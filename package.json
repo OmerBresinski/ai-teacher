@@ -23,6 +23,7 @@
     "typecheck:root": "tsc --noEmit -p tsconfig.json",
     "format:root": "biome format --write --no-errors-on-unmatched ./*.json ./*.ts",
     "verify-bootstrap": "bash scripts/verify-bootstrap.sh",
+    "skills:check": "bun scripts/skills-check.ts",
     "prepare": "lefthook install"
   },
   "devDependencies": {
