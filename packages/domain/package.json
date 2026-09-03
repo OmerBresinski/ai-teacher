@@ -1,0 +1,33 @@
+{
+  "name": "@tj/domain",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Zod schemas + types for the Teaching Journey core objects, branded IDs, job names/events and the StorageAdapter interface (Master PRD §8, ADR 0006/0011/0012/0013).",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./ids": "./src/ids.ts",
+    "./jobs": "./src/jobs.ts",
+    "./storage": "./src/storage.ts",
+    "./states": "./src/states.ts",
+    "./objects": "./src/objects/index.ts",
+    "./result": "./src/result.ts"
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@tj/config": "workspace:*",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "zod": "4.5.4"
+  }
+}
