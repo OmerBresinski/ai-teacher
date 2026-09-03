@@ -1,0 +1,27 @@
+# Git hooks (ADR 0015). Installed by `bun install` via the root `prepare` script
+# (`lefthook install`); re-run `bunx lefthook install` if hooks go missing.
+# Bypass in an emergency with `LEFTHOOK=0 git commit ...` -- CI re-runs the same checks.
+
+pre-commit:
+  parallel: false
+  jobs:
+    - name: biome
+      # Format + lint only the staged files, apply safe fixes, then re-stage them.
+      # `--no-errors-on-unmatched` keeps commits with only .md/.sh/.yml files green.
+      run: >
+        bunx --bun biome check --staged --write --no-errors-on-unmatched
+        && git update-index --again
+    - name: secrets
+      # Secret scan (ADR 0015). gitleaks is optional locally; CI runs it unconditionally.
+      run: >
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks protect --staged --redact --verbose;
+        else
+          echo "lefthook: gitleaks not on PATH -- skipping local secret scan (CI will run it)";
+        fi
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      # Conventional Commits, enforced via commitlint.config.ts.
+      run: bunx --bun commitlint --edit {1}
