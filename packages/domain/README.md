@@ -55,7 +55,7 @@ and React tsconfigs.
 
 One file per object under `src/objects/`. Each schema is `z.strictObject` and carries **only**
 ownership + audit fields: `id` (branded), `workspaceId`, `createdAt`, `updatedAt` (ISO 8601 UTC
-strings), plus `version` for `Journey`. `Workspace` is the tenant root and has `id`, `name`,
+strings), plus `version` for `Journey`. `Workspace` is the tenant root and has `id`,
 `createdAt`, `updatedAt` — no `workspaceId`. A test asserts this invariant over `OBJECT_SCHEMAS`.
 
 | Object          | File                | Filled by                                                    |

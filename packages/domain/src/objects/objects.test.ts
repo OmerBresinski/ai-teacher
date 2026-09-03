@@ -42,16 +42,13 @@ describe("core object skeletons", () => {
     expect(Journey.safeParse({ ...base, version: 0, goal: "x" }).success).toBe(false);
     expect(Journey.safeParse({ ...base, version: -1 }).success).toBe(false);
     expect(Journey.safeParse({ ...base, version: 1.5 }).success).toBe(false);
-    expect(
-      Workspace.safeParse({ id: base.id, name: "Mine", createdAt: now, updatedAt: now }).success,
-    ).toBe(true);
+    expect(Workspace.safeParse({ id: base.id, createdAt: now, updatedAt: now }).success).toBe(true);
     expect(
       Workspace.safeParse({
         id: base.id,
-        name: "Mine",
         createdAt: now,
         updatedAt: now,
-        plan: "pro",
+        name: "Mine",
       }).success,
     ).toBe(false);
   });
@@ -71,7 +68,7 @@ describe("core object skeletons", () => {
     );
     for (const file of files) {
       const text = await Bun.file(`${import.meta.dir}/${file}`).text();
-      expect(text).toMatch(/^\/\/ Filled by F\d{2} \(.+\)$/m);
+      expect(text).toMatch(/^\/\/ Filled by F\d{2}(\/F\d{2})? \(.+\)$/m);
     }
   });
 });

@@ -6,9 +6,9 @@ import { IsoDateTime } from "../primitives";
 //
 // The container for a user's Journeys, Sources and settings. One personal Workspace per user at
 // MVP. This is the tenant root, so it is the only core object without a `workspaceId`.
+// Display name, plan, members and policies are F17 fields — not defined here.
 export const Workspace = z.strictObject({
   id: WorkspaceId,
-  name: z.string(),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
