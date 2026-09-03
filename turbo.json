@@ -8,11 +8,27 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/.agents/**",
+        "!**/.claude/**",
+        "!**/.opencode/**",
+        "!AGENTS.md",
+        "!skills-lock.json"
+      ]
     },
     "lint": {
       "dependsOn": ["//#lint:root"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/biome.json"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/biome.json",
+        "!**/.agents/**",
+        "!**/.claude/**",
+        "!**/.opencode/**",
+        "!AGENTS.md",
+        "!skills-lock.json"
+      ]
     },
     "lint:fix": {
       "dependsOn": ["//#lint:root:fix"],
@@ -23,10 +39,26 @@
       "cache": false
     },
     "typecheck": {
-      "dependsOn": ["^typecheck", "//#typecheck:root"]
+      "dependsOn": ["^typecheck", "//#typecheck:root"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/.agents/**",
+        "!**/.claude/**",
+        "!**/.opencode/**",
+        "!AGENTS.md",
+        "!skills-lock.json"
+      ]
     },
     "test": {
-      "outputs": ["coverage/**"]
+      "outputs": ["coverage/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/.agents/**",
+        "!**/.claude/**",
+        "!**/.opencode/**",
+        "!AGENTS.md",
+        "!skills-lock.json"
+      ]
     },
     "test:e2e": {
       "dependsOn": ["build"],
