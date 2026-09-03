@@ -1,0 +1,197 @@
+/*
+ * @tj/ui — single source of design tokens (ADR 0009).
+ *
+ * Tokens filled by F18 (App Shell PRD §7). Everything below is a neutral placeholder so
+ * the plumbing (Tailwind v4 + shadcn + data-theme switching) can be exercised end to end.
+ *
+ * Theming model
+ * -------------
+ * - Themes switch by the `data-theme` attribute on <html>: "light" | "dark" | "high-contrast".
+ * - `:root` holds the light palette. `[data-theme="dark"]` and `[data-theme="high-contrast"]`
+ *   override the same variable names. No `dark:` classes anywhere: components only use tokens.
+ * - Before JS runs (or if the ThemeProvider is not mounted) `html:not([data-theme])` follows the
+ *   OS via `prefers-color-scheme`. Once `data-theme` is set, the attribute wins unconditionally.
+ * - Tailwind utilities (`bg-background`, `text-muted-foreground`, `bg-status-taught`, ...) are
+ *   mapped from these variables in the single `@theme inline` block below.
+ *
+ * Consumers (apps) import this file once and add an `@source` pointing at `packages/ui/src` so
+ * Tailwind sees the classes used inside the package (see packages/ui/README.md).
+ */
+
+@import "tailwindcss";
+
+/* Scan this package's own source for utility classes (relative to this file → packages/ui/src). */
+@source "../";
+
+/*
+ * Tailwind's built-in `dark:` variant is a `prefers-color-scheme` media query, which would ignore
+ * an explicit user choice. Re-point it at the data-theme attribute so an accidental `dark:` class
+ * (e.g. in freshly added shadcn code) stays coherent. Convention remains: use tokens, not `dark:`.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ------------------------------------------------------------------------------------------ */
+/* Light (default)                                                                            */
+/* ------------------------------------------------------------------------------------------ */
+:root {
+  color-scheme: light;
+
+  /* Colour */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --surface: oklch(1 0 0);
+  --surface-foreground: oklch(0.145 0 0);
+  --accent: oklch(0.205 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --border: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  /* Lesson / Artefact state chips (glossary) */
+  --status-draft: oklch(0.556 0 0);
+  --status-reviewed: oklch(0.55 0.15 250);
+  --status-stale: oklch(0.7 0.15 80);
+  --status-taught: oklch(0.55 0.15 150);
+  --status-attention: oklch(0.6 0.2 25);
+
+  /* Radius — 8px grid */
+  --radius: 0.5rem;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Dark (explicit)                                                                            */
+/* ------------------------------------------------------------------------------------------ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --surface: oklch(0.205 0 0);
+  --surface-foreground: oklch(0.985 0 0);
+  --accent: oklch(0.922 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --ring: oklch(0.556 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --status-draft: oklch(0.708 0 0);
+  --status-reviewed: oklch(0.7 0.15 250);
+  --status-stale: oklch(0.8 0.15 80);
+  --status-taught: oklch(0.7 0.15 150);
+  --status-attention: oklch(0.7 0.2 25);
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Dark (OS preference, before JS) — same values as [data-theme="dark"]; keep in sync.         */
+/* Only applies while <html> has no data-theme, i.e. before ThemeProvider / THEME_INIT_SCRIPT.  */
+/* ------------------------------------------------------------------------------------------ */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    color-scheme: dark;
+
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --surface: oklch(0.205 0 0);
+    --surface-foreground: oklch(0.985 0 0);
+    --accent: oklch(0.922 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --border: oklch(1 0 0 / 10%);
+    --ring: oklch(0.556 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.985 0 0);
+
+    --status-draft: oklch(0.708 0 0);
+    --status-reviewed: oklch(0.7 0.15 250);
+    --status-stale: oklch(0.8 0.15 80);
+    --status-taught: oklch(0.7 0.15 150);
+    --status-attention: oklch(0.7 0.2 25);
+  }
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* High contrast (explicit only; ThemeProvider also resolves `prefers-contrast: more` here)    */
+/* Placeholder: light-based, pure black/white with saturated status colours. F18 decides       */
+/* whether a dark high-contrast variant is needed (F18-D4).                                    */
+/* ------------------------------------------------------------------------------------------ */
+[data-theme="high-contrast"] {
+  color-scheme: light;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0 0 0);
+  --surface: oklch(1 0 0);
+  --surface-foreground: oklch(0 0 0);
+  --accent: oklch(0 0 0);
+  --accent-foreground: oklch(1 0 0);
+  --muted: oklch(0.94 0 0);
+  --muted-foreground: oklch(0 0 0);
+  --border: oklch(0 0 0);
+  --ring: oklch(0.45 0.25 264);
+  --destructive: oklch(0.45 0.25 27);
+  --destructive-foreground: oklch(1 0 0);
+
+  --status-draft: oklch(0.3 0 0);
+  --status-reviewed: oklch(0.4 0.2 250);
+  --status-stale: oklch(0.5 0.18 80);
+  --status-taught: oklch(0.4 0.18 150);
+  --status-attention: oklch(0.45 0.25 25);
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Tailwind theme mapping — the ONLY place variables become utilities.                        */
+/* `inline` makes utilities reference the variable (e.g. `bg-background` → var(--background)) */
+/* so a data-theme switch re-colours everything without re-generating CSS.                    */
+/* ------------------------------------------------------------------------------------------ */
+@theme inline {
+  /* Colour */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-status-draft: var(--status-draft);
+  --color-status-reviewed: var(--status-reviewed);
+  --color-status-stale: var(--status-stale);
+  --color-status-taught: var(--status-taught);
+  --color-status-attention: var(--status-attention);
+
+  /* Type — placeholder system stack; F18 swaps in the product typeface (see PRD §7). */
+  --font-sans:
+    ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+
+  /* Radius (8px grid: --radius = 8px; steps of 4px around it) */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Spacing: Tailwind's default `--spacing: 0.25rem` is kept; use multiples of 2 (8px grid). */
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Base                                                                                       */
+/* ------------------------------------------------------------------------------------------ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground;
+  }
+}
