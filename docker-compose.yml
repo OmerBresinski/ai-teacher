@@ -1,0 +1,46 @@
+# Local development stack (TEACH-18, ADR 0006): Postgres 16 + pgvector and NOTHING else.
+# api / worker / web run natively with `bun --watch`; do not add Redis, mail catchers, etc.
+#
+#   bun run setup      # first time: env files, compose up, migrate, hooks
+#   bun run db:up      # start Postgres (idempotent)
+#   bun run db:down    # stop it (data kept)
+#   bun run db:reset   # wipe the volume and start fresh (re-runs infra/postgres/init)
+#   bun run db:logs    # follow Postgres logs
+#
+# Host port: `TJ_PG_PORT` (default 5432). Set it in the root `.env` -- docker compose reads
+# `.env` from this directory automatically -- or in the shell (`TJ_PG_PORT=5433 bun run db:up`).
+# The shell value wins over `.env`.
+#
+# pgvector does NOT need `shared_preload_libraries` (it is a plain extension, enabled per
+# database with `CREATE EXTENSION vector`), so no custom `command` is set here. The init script
+# enables it in both databases; `@tj/db` migrations may repeat `CREATE EXTENSION IF NOT EXISTS`.
+
+# Fixed project name so every checkout/worktree of this repo shares one container and one
+# volume instead of fighting over port 5432 (the default project name is the directory name).
+name: teaching-journey
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: teaching_journey
+    ports:
+      - "${TJ_PG_PORT:-5432}:5432"
+    volumes:
+      - tj_pgdata:/var/lib/postgresql/data
+      # Runs only when the volume is EMPTY (first boot / after `db:reset`).
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # `-h localhost` forces TCP: the temporary server the entrypoint starts while running the
+      # init scripts only listens on a unix socket, so the check stays red until the real server
+      # (with both databases) is up.
+      test: ["CMD-SHELL", "pg_isready -h localhost -U postgres -d teaching_journey"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+volumes:
+  tj_pgdata:
