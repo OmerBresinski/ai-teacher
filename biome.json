@@ -17,7 +17,11 @@
       "!**/coverage",
       "!**/playwright-report",
       "!**/test-results",
-      "!bun.lock"
+      "!bun.lock",
+      "!**/.agents",
+      "!**/.claude",
+      "!**/.opencode",
+      "!**/skills-lock.json"
     ]
   },
   "formatter": {
