@@ -20,6 +20,7 @@
     "test:e2e": "turbo run test:e2e",
     "lint:root": "biome check --no-errors-on-unmatched ./*.json ./*.ts",
     "lint:root:fix": "biome check --write --no-errors-on-unmatched ./*.json ./*.ts",
+    "typecheck:root": "tsc --noEmit -p tsconfig.json",
     "format:root": "biome format --write --no-errors-on-unmatched ./*.json ./*.ts",
     "verify-bootstrap": "bash scripts/verify-bootstrap.sh",
     "prepare": "lefthook install"
