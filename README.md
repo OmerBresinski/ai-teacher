@@ -65,8 +65,8 @@ Only `packages/config` exists today; sibling tickets add the rest (see `docs/p0-
 (`moduleResolution: "bundler"`) all resolve this directly, so:
 
 - `typecheck` is `tsc --noEmit` in every workspace and does **not** depend on `^build`. In
-  `turbo.json` it has `dependsOn: ["^typecheck"]` only so failures surface in the package that
-  owns them first (and so a dependency's changes invalidate dependents' caches).
+  `turbo.json` it has `dependsOn: ["^typecheck", "//#typecheck:root"]` so failures surface in the
+  package that owns them first (and so a dependency's changes invalidate dependents' caches).
 - `build` is only meaningful for **apps** (`apps/api` and `apps/worker` bundle with
   `bun build --target=bun`; `apps/web` with `vite build`) and for packages that opt in (e.g.
   `@tj/domain` may add a `tsup` build to verify tree-shaking). `build` keeps
