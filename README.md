@@ -58,6 +58,13 @@ docs/
 
 Only `packages/config` exists today; sibling tickets add the rest (see `docs/p0-ticket-map.md`).
 
+## Agent skills
+
+Coding agents start from [`AGENTS.md`](AGENTS.md) (root) and the `AGENTS.md` in each app/package,
+which name the vendored skills to load (`<location>/.agents/skills/<name>/`) and the ADR constraints
+that override generic skill advice. Sources, pinned commits, re-install commands and the
+`bun run skills:check` verifier are documented in [`docs/agent-skills.md`](docs/agent-skills.md).
+
 ## Internal packages are consumed from source
 
 **Decision (TEACH-11):** internal `@tj/*` packages are *just-in-time* packages. Their

@@ -1,0 +1,65 @@
+# AGENTS.md — Teaching Journey monorepo
+
+**Teaching Journey** (working name "AI Teacher") is an AI-assisted planning tool that takes a
+teacher from a goal to a sequence of Lessons, generates coherent Artefacts (plans, slides,
+worksheets, quizzes, …) for each Lesson, and adapts future Lessons from class-level Observations.
+This is a Bun + Turborepo monorepo. Product decisions live in Notion; engineering decisions are
+ADRs in [`docs/adr/README.md`](docs/adr/README.md); shared vocabulary (Journey, Lesson, Artefact,
+Workspace, Observation, …) is defined in [`docs/glossary.md`](docs/glossary.md) and must be used
+exactly as written. Setup, commands and conventions: [`README.md`](README.md).
+
+## Ground rules
+
+- **Default branch is `master`** (not `main`). Trunk-based, squash merges, PRs required.
+  Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, …) are enforced by commitlint.
+- **Internal packages are consumed from source** (see README "Internal packages are consumed from
+  source"): `@tj/*` `package.json#exports` point at `src/*.ts`; nothing is built before `dev`,
+  `typecheck` or `test`; `typecheck` does not depend on `^build`.
+- Dependency direction is apps → packages, never packages → apps; `@tj/domain` depends on nothing
+  internal. Bun uses the isolated linker: a workspace can only import what it declares.
+- Biome is the only linter/formatter (root `biome.json`; 2-space, double quotes, 100 cols, `a11y`
+  at `error`). Exact dependency versions (`bunfig.toml` `exact = true`). No secrets in git.
+- **Load the relevant skill before touching that area.** Each app/package has its own `AGENTS.md`
+  naming the skills to load and the ADR constraints that override generic skill advice.
+
+## Package map
+
+From [ADR 0013](docs/adr/0013-monorepo-layout.md):
+
+```
+apps/
+  web/          @tj/web        Vite + React SPA, TanStack Router (code-based)   ADR 0004
+  api/          @tj/api        Hono on Bun, Hono RPC contract                    ADR 0005
+  worker/       @tj/worker     pg-boss consumer                                  ADR 0006
+packages/
+  ui/           @tj/ui         Tailwind v4 + shadcn design system               ADR 0009
+  db/           @tj/db         Drizzle schema, migrations, forWorkspace()       ADR 0006/0007
+  domain/       @tj/domain     Zod schemas + types, job names, StorageAdapter   Master PRD §8
+  api-client/   @tj/api-client Hono RPC AppType + typed client factory          ADR 0005
+  config/       @tj/config     Shared tsconfig bases, Tailwind preset           TEACH-11
+docs/
+  adr/          Architecture decision records
+  glossary.md   Shared vocabulary
+```
+
+Per-area agent guides: [`apps/web/AGENTS.md`](apps/web/AGENTS.md),
+[`apps/api/AGENTS.md`](apps/api/AGENTS.md), [`apps/worker/AGENTS.md`](apps/worker/AGENTS.md),
+[`packages/ui/AGENTS.md`](packages/ui/AGENTS.md).
+
+## Agent skills
+
+Skills are vendored per app/package under `<location>/.agents/skills/<name>/SKILL.md` (with
+`.claude/skills/<name>` symlinks). Inventory, sources, pinned commits and re-install commands:
+[`docs/agent-skills.md`](docs/agent-skills.md). `bun run skills:check` verifies they are present.
+Never hand-edit skill contents.
+
+| Skill | Where | Load when… |
+| ----- | ----- | ---------- |
+| `tanstack-router` | `apps/web` | defining routes, loaders, search params, navigation (**code-based routes only**, ADR 0004) |
+| `tanstack-query` | `apps/web` | fetching/caching server state, invalidation, mutations |
+| `shadcn` | `packages/ui`, `apps/web` | adding or composing UI components (add them in `packages/ui` only, ADR 0009) |
+| `vercel-react-best-practices` | `apps/web` | writing/reviewing React for performance and bundle size (F18-R05: 250 KB gz) |
+| `deploy-to-vercel` | `apps/web` | Vercel projects, previews, env vars (ADR 0010) |
+| `hono` | `apps/api` | Hono routes, middleware, validation, `streamSSE`, RPC (ADR 0005, 0012) |
+| `use-railway` | `apps/api`, `apps/worker` | Railway services, Postgres, variables, PR environments (ADR 0010) |
+
