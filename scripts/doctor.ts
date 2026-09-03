@@ -279,7 +279,20 @@ await runMain(async () => {
     return pass(found);
   });
 
-  // TODO(TEACH-27): call skills:check here when it lands (bun scripts/skills-check.ts).
+  await check("agent skills (skills:check)", async () => {
+    const proc = await $`bun ${ROOT}/scripts/skills-check.ts`.cwd(ROOT).quiet().nothrow();
+    if (proc.exitCode !== 0) {
+      const lines = proc.stdout
+        .toString()
+        .split("\n")
+        .filter((l) => l.includes("MISSING"));
+      return fail(
+        lines.length > 0 ? lines.join("; ") : `exit ${proc.exitCode}`,
+        "Re-install per docs/agent-skills.md, or run: bun run skills:check",
+      );
+    }
+    return pass("all skills present (docs/agent-skills.md)");
+  });
 
   // -- summary ----------------------------------------------------------------------------------
   console.log("");

@@ -66,7 +66,7 @@
       "cache": false
     },
     "//#lint:root": {
-      "inputs": ["*.json", "*.ts"]
+      "inputs": ["*.json", "*.ts", "scripts/**/*.ts", "biome.json"]
     },
     "//#typecheck:root": {
       "inputs": [
