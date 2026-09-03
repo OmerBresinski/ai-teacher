@@ -1,0 +1,53 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "lint": {
+      "dependsOn": ["//#lint:root"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/biome.json"]
+    },
+    "lint:fix": {
+      "dependsOn": ["//#lint:root:fix"],
+      "cache": false
+    },
+    "format": {
+      "dependsOn": ["//#format:root"],
+      "cache": false
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck", "//#typecheck:root"]
+    },
+    "test": {
+      "outputs": ["coverage/**"]
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "//#lint:root": {
+      "inputs": ["*.json", "*.ts"]
+    },
+    "//#typecheck:root": {
+      "inputs": [
+        "tsconfig.json",
+        "*.ts",
+        "scripts/**/*.ts",
+        "$TURBO_ROOT$/packages/config/tsconfig/*.json"
+      ]
+    },
+    "//#lint:root:fix": {
+      "cache": false
+    },
+    "//#format:root": {
+      "cache": false
+    }
+  }
+}

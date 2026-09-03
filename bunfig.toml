@@ -1,0 +1,3 @@
+[install]
+# Pin exact versions in package.json on `bun add` (no ^ or ~ ranges).
+exact = true

@@ -24,3 +24,7 @@ Product decisions live in Notion (Master PRD §17 and each feature PRD's "Decisi
 | 0016 | Deviations from PRD accepted for MVP scaffolding   | Accepted |
 
 Template: `0000-template.md`.
+
+## Amendments
+
+- 2026-09-03 — The default branch is **`master`**, not `main` (founder decision; the GitHub repo `OmerBresinski/ai-teacher` was created with `master` and is not renamed). Read `main` in ADR 0015 as `master`.

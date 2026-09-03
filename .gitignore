@@ -6,3 +6,14 @@ dist/
 !.env.example
 *.log
 .DS_Store
+
+# Local data (docker volumes, uploaded files for the disk StorageAdapter)
+.data/
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+
+# TypeScript incremental state
+*.tsbuildinfo
