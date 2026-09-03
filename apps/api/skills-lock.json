@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "hono": {
+      "source": "honojs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/hono/SKILL.md",
+      "computedHash": "9627afbe5bc8fec711a7d546aa1e0db0eefcea21a35577e932621bacf588d07a"
+    },
+    "use-railway": {
+      "source": "railwayapp/railway-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/railway/skills/use-railway/SKILL.md",
+      "computedHash": "670ed631943a05391ebb1b83988a8fe54dd4d26e0d5ffe9d43064a9fc578385e"
+    }
+  }
+}
