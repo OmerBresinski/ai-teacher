@@ -34,6 +34,109 @@ Everyday commands (all run through Turborepo, see [ADR 0002](docs/adr/0002-turbo
 | `bun run test:e2e`         | Playwright, after `build`                                        |
 | `bun run verify-bootstrap` | End-to-end check of this scaffold (`scripts/verify-bootstrap.sh`) |
 
+## Local development
+
+One Postgres in Docker, everything else native (ADR [0006](docs/adr/0006-postgres-drizzle-pgboss.md),
+[0015](docs/adr/0015-env-logging-commits.md); TEACH-18). Local development uses synthetic data only —
+never point a local `.env` at production.
+
+### Prerequisites
+
+- **Bun 1.3.6** — pinned in `package.json#packageManager` and `.bun-version`; `bun upgrade` if older.
+- **Docker** with Compose v2 (Docker Desktop on macOS; Docker Engine + compose plugin on Linux),
+  running. The scripts call `docker compose`, not `docker-compose`.
+- macOS, Linux or **WSL2**. Windows without WSL is not supported (the scripts rely on `lsof`,
+  POSIX signals and LF line endings — see `.gitattributes`).
+- Optional: `gh` (opening PRs from the terminal) and `gitleaks` (local secret scan; CI runs it
+  regardless). `bun run doctor` warns when `gitleaks` is missing.
+
+### The three commands
+
+```sh
+bun run setup     # once per machine, safe to re-run: checks Bun/Docker, creates .env files,
+                  # starts Postgres, runs migrations (when @tj/db exists), installs git hooks
+bun run dev       # starts Postgres if it is not reachable, then `turbo run dev`; Ctrl-C stops
+                  # turbo and every app it started (no orphans)
+bun run doctor    # PASS / WARN / FAIL per check with a plain-language fix; exit 1 on any FAIL
+```
+
+All root scripts are TypeScript run by Bun (`scripts/*.ts`, helpers in `scripts/lib/`):
+
+| Command                | What it does                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| `bun run setup [--ci]` | Bootstrap (above). `--ci` skips `lefthook install`.                                 |
+| `bun run dev`          | Ensure Postgres, then `turbo run dev` (prefixed logs; `TURBO_UI=tui bun run dev` for the TUI). Extra args pass through: `bun run dev -- --filter=@tj/web`. |
+| `bun run doctor`       | Diagnose: Bun, Docker, compose health, `DATABASE_URL`/`TEST_DATABASE_URL`, databases, pgvector, `.env` keys, ports 3001/3002/5173, lefthook, gitleaks. |
+| `bun run db:up`        | `docker compose up -d --wait postgres` (idempotent).                               |
+| `bun run db:down`      | Stop Postgres; the data volume is kept.                                             |
+| `bun run db:reset`     | `down -v` → up → re-run init scripts → migrate. **Deletes all local data.**          |
+| `bun run db:logs`      | `docker compose logs -f postgres`.                                                  |
+| `bun run clean`        | Remove `node_modules`, `dist`, `.turbo`, `coverage` in the root and every workspace (not the DB volume). Follow with `bun install`. |
+| `bun run test:scripts` | `bun test scripts/` — unit tests for the helpers; also runs as part of `bun run test`. |
+
+### What `docker-compose.yml` runs
+
+A single `postgres` service from `pgvector/pgvector:pg16` (user/password `postgres`/`postgres`),
+published on `localhost:${TJ_PG_PORT:-5432}`, data in the named volume `tj_pgdata`, healthcheck
+`pg_isready`. On the **first boot of an empty volume** `infra/postgres/init/01-create-test-db.sh`
+creates `teaching_journey_test` and enables pgvector in both `teaching_journey` and
+`teaching_journey_test` (`CREATE EXTENSION IF NOT EXISTS vector;` — `@tj/db` migrations may repeat
+it). pgvector needs no `shared_preload_libraries`. The compose project is named `teaching-journey`
+so every checkout or worktree shares the same container and volume. No other services: no Redis,
+no mail catcher (ADR 0008 logs mail to the console).
+
+### Environment files
+
+- **Root `.env`** (copied from `.env.example` by `setup`): `TJ_PG_PORT` and, optionally,
+  `DATABASE_URL` / `TEST_DATABASE_URL`. When the URLs are unset the scripts derive them from
+  `TJ_PG_PORT` (`postgres://postgres:postgres@localhost:<port>/teaching_journey[_test]`), so a port
+  conflict needs one change. Read by **docker compose** (it loads `.env` from the directory of the
+  compose file) and by the **root scripts** (Bun auto-loads `.env` from the cwd).
+- **Per-app `.env`** next to each `package.json`: every app/package that reads env keeps its own
+  `.env.example` (ADR 0015). Bun loads `.env` from the process cwd only — it does **not** walk up
+  to the root, and Turborepo does not load env files either — so `apps/api` reads `apps/api/.env`.
+  `WEB_ORIGIN=http://localhost:5173` and `VITE_API_URL=http://localhost:3001` will live there
+  (TEACH-16/21; the web app proxies the API through Vite so cookies stay same-origin).
+- `setup` discovers every `**/.env.example` (skipping `node_modules`, build output) and copies it
+  to a sibling `.env` **only when missing** — it never overwrites. `doctor` lists, per file, the
+  keys of the example that the `.env` lacks. New apps are picked up automatically.
+- Precedence everywhere: shell variable > `.env` file > built-in default
+  (`TJ_PG_PORT=5433 bun run db:up`).
+- `setup` and `db:reset` run `bun run db:migrate` inside `packages/db` when that workspace exists
+  and declares the script, with `DATABASE_URL` and `TEST_DATABASE_URL` set in its environment.
+
+### Reset the database
+
+```sh
+bun run db:reset   # docker compose down -v -> up --wait -> init scripts -> db:migrate (if present)
+```
+
+Use it after a schema change you cannot migrate forward, after editing `infra/postgres/init/`, or
+whenever the volume looks broken. `db:down` alone keeps the data.
+
+### Tests against the test database
+
+Integration tests use `TEST_DATABASE_URL` (default
+`postgres://postgres:postgres@localhost:5432/teaching_journey_test`), never `DATABASE_URL`, so a test
+run cannot clobber your development data. The test database exists as long as the volume was created
+by our init script — if `doctor` reports it missing, run `bun run db:reset`. The test harness
+(TEACH-22) wires `bun test`/Vitest to this URL.
+
+### Troubleshooting
+
+| Symptom                                                                | Fix                                                                                                                   |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `Docker does not appear to be running. Start Docker Desktop and re-run.` | Start Docker Desktop (or `sudo systemctl start docker`), then re-run the command.                                     |
+| Port 5432 is taken by another Postgres                                 | Set `TJ_PG_PORT=5433` in the root `.env` and run `bun run db:up` (compose recreates the container on the new port). If you set `DATABASE_URL` explicitly, keep its port in sync — `doctor` warns otherwise. |
+| `doctor`: `Compose service postgres — healthy, but publishes port X while TJ_PG_PORT=Y` | The container was started with a different port. `bun run db:up`.                                          |
+| Stale volume after a schema change / `teaching_journey_test` missing / pgvector not enabled | `bun run db:reset` — init scripts only run on an empty volume.                                          |
+| Postgres never becomes healthy                                         | `bun run db:logs`; a corrupt volume is fixed by `bun run db:reset`.                                                   |
+| `doctor`: `Env <file> — missing N key(s)`                              | Copy the listed keys from the sibling `.env.example` into that `.env`.                                                |
+| `doctor`: `Port 3001/3002/5173 — in use by <process>`                  | Stop that process (the PID is printed) or change the app's port in its `.env`.                                        |
+| Git hooks missing                                                      | `bunx lefthook install` (also runs on `bun install`).                                                                 |
+| `bun run dev` leaves processes behind                                  | It should not: `dev.ts` forwards SIGINT/SIGTERM to turbo and waits for it. Report it with `pgrep -fl turbo` output.   |
+
+
 ## Package map
 
 From [ADR 0013](docs/adr/0013-monorepo-layout.md). Everything internal is scoped `@tj/*` and never

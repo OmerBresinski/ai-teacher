@@ -9,7 +9,6 @@
  *
  * Self-contained on purpose: TEACH-18 owns `scripts/lib/` and the `doctor` script.
  */
-// TODO(TEACH-18): wire into bun run doctor
 
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";

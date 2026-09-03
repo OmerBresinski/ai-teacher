@@ -50,6 +50,7 @@
       ]
     },
     "test": {
+      "dependsOn": ["//#test:scripts"],
       "outputs": ["coverage/**"],
       "inputs": [
         "$TURBO_DEFAULT$",
@@ -65,7 +66,7 @@
       "cache": false
     },
     "//#lint:root": {
-      "inputs": ["*.json", "*.ts"]
+      "inputs": ["*.json", "*.ts", "scripts/**/*.ts", "biome.json"]
     },
     "//#typecheck:root": {
       "inputs": [
@@ -74,6 +75,9 @@
         "scripts/**/*.ts",
         "$TURBO_ROOT$/packages/config/tsconfig/*.json"
       ]
+    },
+    "//#test:scripts": {
+      "inputs": ["scripts/**/*.ts"]
     },
     "//#lint:root:fix": {
       "cache": false
