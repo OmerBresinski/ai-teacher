@@ -64,6 +64,9 @@ jobs:
       - name: bun run skills:check
         run: bun run skills:check
 
+      - name: bun run env:generate --check (docs/env.md, .env.example, .gitleaks.toml in sync with infra/env.contract.ts)
+        run: bun run env:generate --check
+
       - name: bun run verify-bootstrap
         run: bun run verify-bootstrap
 

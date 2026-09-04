@@ -11,6 +11,10 @@ pre-commit:
       run: >
         bunx --bun biome check --staged --write --no-errors-on-unmatched
         && git update-index --again
+    - name: env-contract
+      # docs/env.md, every .env.example and .gitleaks.toml are generated from infra/env.contract.ts
+      # (TEACH-26). Cheap and deterministic; `bun run env:generate` fixes it.
+      run: bun scripts/env-generate.ts --check
     - name: secrets
       # Secret scan (ADR 0015). gitleaks is optional locally; CI runs it unconditionally.
       run: >
