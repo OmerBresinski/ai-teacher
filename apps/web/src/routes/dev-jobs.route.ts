@@ -5,8 +5,7 @@ import { authLayoutRoute } from "./auth.route";
 export const devJobsSearchSchema = z.object({
   /**
    * Job to follow; kept in the URL so a reload reconnects and the server replays events.
-   * `.catch(undefined)`: the search parser JSON-decodes values, so `?jobId=1` would otherwise
-   * fail validation and bubble to the root errorComponent; a malformed param is silently dropped.
+   * `.catch(undefined)` drops malformed (e.g. JSON-decoded numeric) values — see search-schemas.test.ts.
    */
   jobId: z.string().optional().catch(undefined),
 });

@@ -1,10 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@tj/ui";
 
 /**
- * Router `defaultPendingComponent`. Shown while a route's `beforeLoad`/`loader` (e.g. the
- * authenticated shell awaiting `GET /me`) or a lazy chunk is still in flight, so a cold load never
- * leaves `#root` empty. Screen readers get "Loading…" through the live region; sighted users get
- * pulsing placeholders that mirror the card layout used by the error and not-found pages.
+ * Router `defaultPendingComponent`. Rendered as soon as a route's `beforeLoad`/`loader` (e.g. the
+ * authenticated shell awaiting `GET /me`) or a lazy chunk is in flight (`defaultPendingMs: 0` in
+ * `src/router.tsx`), and kept up for at least `defaultPendingMinMs` so it never flashes. Screen
+ * readers get "Loading…" through the status region; sighted users get pulsing placeholders that
+ * mirror the card layout used by the error and not-found pages.
  */
 export function RoutePendingPage() {
   return (
@@ -12,7 +13,7 @@ export function RoutePendingPage() {
       <Card aria-busy="true">
         <CardHeader>
           <CardTitle>
-            <span className="sr-only" role="status" aria-live="polite">
+            <span className="sr-only" role="status">
               Loading…
             </span>
             <span aria-hidden="true" className="block h-5 w-2/5 animate-pulse rounded bg-muted" />

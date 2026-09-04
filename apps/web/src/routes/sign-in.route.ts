@@ -6,8 +6,8 @@ export const signInSearchSchema = z.object({
   /**
    * Where to send the teacher after the magic link is verified (`location.href` of the guard).
    * `.catch(undefined)`: the search parser JSON-decodes values, so `?redirect=1` or
-   * `?redirect[]=x` would otherwise fail validation and bubble to the root errorComponent; a
-   * malformed param is silently dropped instead.
+   * `?redirect=%5B%22a%22%5D` would otherwise fail validation and bubble to the root
+   * errorComponent; a malformed param is silently dropped instead (see search-schemas.test.ts).
    */
   redirect: z.string().optional().catch(undefined),
 });

@@ -38,6 +38,10 @@ export const router = createRouter({
   context: { queryClient },
   defaultPreload: "intent",
   defaultPendingComponent: RoutePendingPage,
+  // Cold load awaits `/me` in `beforeLoad` and ADR 0004 targets a <1 s shell, so show the skeleton
+  // immediately (default is 1000 ms of nothing); the short minimum avoids a flash on fast loads.
+  defaultPendingMs: 0,
+  defaultPendingMinMs: 200,
   scrollRestoration: true,
   Wrap,
 });

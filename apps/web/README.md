@@ -47,9 +47,9 @@ rejects relative `baseURL`s) — `hc()` and `EventSource` accept relative URLs a
 No `@tanstack/router-plugin`, no `createFileRoute`, no generated `routeTree.gen.ts`. Layout:
 
 ```
-src/router.ts                 assembles routeTree + createRouter + Register augmentation (only here)
+src/router.tsx                assembles routeTree + createRouter + Wrap (providers) + Register augmentation
 src/routes/root.route.ts      createRootRouteWithContext<{ queryClient }>() — error/notFound components
-src/routes/root.layout.tsx    QueryClientProvider + ThemeProvider + <Outlet/> + DEV-only lazy devtools
+src/routes/root.layout.tsx    <Outlet/> + DEV-only lazy devtools
 src/routes/<name>.route.ts    createRoute(...) — path, validateSearch (Zod), beforeLoad/loader
 src/routes/<name>.page.tsx    the component, loaded with lazyRouteComponent (own chunk)
 ```
@@ -79,7 +79,7 @@ __root__
 2. `src/routes/thing.page.tsx` exporting `ThingPage`. Read params/search with
    `getRouteApi("<route id>")` — the id of a child of the pathless `auth` layout is prefixed
    (`"/auth/things/$id"`), not the URL path.
-3. Register it in `src/router.ts` (`authLayoutRoute.addChildren([...])`). `<Link to>` and
+3. Register it in `src/router.tsx` (`authLayoutRoute.addChildren([...])`). `<Link to>` and
    `navigate()` are type-checked against the tree; `src/types.test-d.tsx` guards that.
 
 ## Server state (`src/lib/query.ts`)
