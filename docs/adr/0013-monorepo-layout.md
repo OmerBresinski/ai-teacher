@@ -34,3 +34,19 @@ Feature packages (e.g. `@tj/skills-runtime`, `@tj/identifier-guard`, `@tj/knowle
 
 - Clear ownership per package; the dependency direction is apps → packages, never packages → apps, and `@tj/domain` depends on nothing internal.
 - Renaming the scope later is a mechanical find/replace.
+
+## Amendment (2026-09-04)
+
+Two packages were added by the P0 tickets and are now part of the map (the body above is kept as
+originally decided):
+
+```
+packages/
+  jobs/         @tj/jobs       pg-boss runtime (createBoss, ensureQueues), typed job registry,
+                               enqueue/cancel, runJob + job events (ADR 0006, 0012)
+  storage/      @tj/storage    StorageAdapter implementations — local disk (dev/tests) and Vercel
+                               Blob (production) — createStorage(env), deleteByPrefix (ADR 0011)
+```
+
+Dependency direction is unchanged: both depend on `@tj/domain` (and `@tj/jobs` on `@tj/db`);
+`apps/api` and `apps/worker` consume them.
