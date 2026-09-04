@@ -180,7 +180,7 @@ const CONTRACT = [
     files: ["api", "worker"],
     railwayValue: "production",
     description:
-      "development | test | production. `development` switches on pino-pretty; `production` refuses ENABLE_TEST_ROUTES and ignores the x-tj-workspace-id shim.",
+      "development | test | production. `development` switches on pino-pretty; `production` refuses ENABLE_TEST_ROUTES and ALLOW_WORKSPACE_HEADER_SHIM.",
   },
   {
     name: "PORT",
@@ -397,6 +397,20 @@ const CONTRACT = [
     files: ["api"],
     description:
       '"1" mounts the test-only routes (`/__test/*`, TEACH-22) when NODE_ENV=test. Refused at boot when NODE_ENV=production; never set it on Railway.',
+  },
+  {
+    name: "ALLOW_WORKSPACE_HEADER_SHIM",
+    services: ["api"],
+    scope: "config",
+    local: "1",
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "enum",
+    values: ["1"],
+    files: ["api"],
+    description:
+      "Development/test only: lets x-tj-workspace-id select a Workspace without a session. Refused at boot when NODE_ENV=production; never set it on Railway.",
   },
 
   // --- storage (ADR 0011) ------------------------------------------------------------------------

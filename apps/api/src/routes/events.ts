@@ -12,7 +12,7 @@ import { acquireStreamOr429, requireRuntime } from "./jobs";
 
 export function eventRoutes(runtime: EventsRuntime | undefined) {
   return new Hono<AppEnv>().get("/events", (c) => {
-    const workspaceId = getWorkspaceId(c);
+    const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
     const rt = requireRuntime(runtime);
     const release = acquireStreamOr429(rt, workspaceId);
     return streamJobEvents(c, rt, {

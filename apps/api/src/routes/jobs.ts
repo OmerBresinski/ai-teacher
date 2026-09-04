@@ -1,7 +1,8 @@
 /**
  * `/jobs/*` — enqueue, cancel and per-job SSE (ADR 0006: the API only enqueues; ADR 0012: SSE
  * with `Last-Event-ID` replay). Every route resolves the caller's Workspace with
- * `getWorkspaceId(c)` and checks job ownership through `job_events` scoped by `forWorkspace()`.
+ * the Workspace stored by `requireSession` and checks job ownership through `job_events` scoped by
+ * `forWorkspace()`.
  */
 import { zValidator } from "@hono/zod-validator";
 import { listJobEvents } from "@tj/db";
@@ -56,7 +57,7 @@ export function jobRoutes(runtime: EventsRuntime | undefined) {
       requireJsonBody(),
       zValidator("json", PingPayloadSchema, validationHook),
       async (c) => {
-        const workspaceId = getWorkspaceId(c);
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
         const rt = requireRuntime(runtime);
         const body = c.req.valid("json");
         const jobId = await enqueue(rt.jobs, "ping", body, { workspaceId });
@@ -71,7 +72,7 @@ export function jobRoutes(runtime: EventsRuntime | undefined) {
       requireJsonBody(),
       zValidator("json", AiPingPayloadSchema, validationHook),
       async (c) => {
-        const workspaceId = getWorkspaceId(c);
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
         const rt = requireRuntime(runtime);
         const body = c.req.valid("json");
         const jobId = await enqueue(rt.jobs, "ai.ping", body, { workspaceId });
@@ -82,7 +83,7 @@ export function jobRoutes(runtime: EventsRuntime | undefined) {
       },
     )
     .post("/jobs/:id/cancel", zValidator("param", jobParam, validationHook), async (c) => {
-      const workspaceId = getWorkspaceId(c);
+      const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
       const rt = requireRuntime(runtime);
       const { id } = c.req.valid("param");
       await assertJobInWorkspace(rt, workspaceId, id);
@@ -90,7 +91,7 @@ export function jobRoutes(runtime: EventsRuntime | undefined) {
       return c.json({ status: result.status }, 202);
     })
     .get("/jobs/:id/events", zValidator("param", jobParam, validationHook), async (c) => {
-      const workspaceId = getWorkspaceId(c);
+      const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
       const rt = requireRuntime(runtime);
       const { id } = c.req.valid("param");
       await assertJobInWorkspace(rt, workspaceId, id);

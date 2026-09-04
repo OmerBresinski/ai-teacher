@@ -22,21 +22,21 @@ export const UNAUTHORIZED_MESSAGE = "You need to sign in to do that.";
 
 /**
  * `auth` may be `undefined` (an app built without better-auth, e.g. unit tests of public
- * routes). With no valid session the request is rejected with 401 — except outside production,
- * where the dev-only `x-tj-workspace-id` header shim (`workspace.ts`) is honoured so curl/tests
- * can select a Workspace without a cookie. Production ignores the header entirely.
+ * routes). With no valid session the request is rejected with 401 — except when the explicitly
+ * enabled `x-tj-workspace-id` header shim (`workspace.ts`) lets curl/tests select a Workspace
+ * without a cookie. Production cannot enable the shim.
  */
 export function requireSession(
   auth: Pick<Auth, "api"> | undefined,
   db: Pick<DbHandle, "sql">,
+  opts: { allowHeaderShim: boolean },
 ): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     const result = auth ? await auth.api.getSession({ headers: c.req.raw.headers }) : null;
     if (!result) {
-      // Dev-only header shim: a present `x-tj-workspace-id` is validated by `getWorkspaceId`
-      // (400 if malformed); an absent header falls through to the standard 401.
-      if (process.env.NODE_ENV !== "production" && c.req.header(WORKSPACE_HEADER) !== undefined) {
-        c.set("workspaceId", getWorkspaceId(c));
+      // An enabled shim validates a present header (400 if malformed); an absent header is 401.
+      if (opts.allowHeaderShim && c.req.header(WORKSPACE_HEADER) !== undefined) {
+        c.set("workspaceId", getWorkspaceId(c, opts));
         await next();
         return;
       }

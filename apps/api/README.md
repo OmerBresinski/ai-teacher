@@ -319,17 +319,15 @@ data: {"type":"progress","jobId":"…","workspaceId":"…","at":"…","progress"
 
 ### Workspace seam (`src/workspace.ts`)
 
-`getWorkspaceId(c)` is how every tenant route learns the caller's Workspace:
+`getWorkspaceId(c, { allowHeaderShim })` is how every tenant route learns the caller's Workspace:
 
 1. `c.get("workspaceId")` when set — **TEACH-20's `requireSession` sets it** after verifying the
    session cookie.
-2. Otherwise, **outside production only**, the `x-tj-workspace-id` header (must be a UUID,
-   else `400 bad_request`). `requireSession` honours this shim when no session cookie is present
-   and `NODE_ENV !== "production"`, so curl and integration tests can pick a Workspace without
-   signing in. In production the header is ignored and the request gets `401`.
+2. Otherwise, only when `ALLOW_WORKSPACE_HEADER_SHIM=1`, the `x-tj-workspace-id` header (must be a
+   UUID, else `400 bad_request`). `requireSession` honours this shim when no session cookie is
+   present, so curl and integration tests can pick a Workspace without signing in. The flag is
+   refused in production.
 3. Otherwise `401 unauthorized`.
-
-`requireWorkspace()` is the middleware form (sets the variable once for a router).
 
 ### Config knobs (`src/events/config.ts`)
 
