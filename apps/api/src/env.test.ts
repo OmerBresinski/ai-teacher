@@ -72,6 +72,30 @@ describe("parseEnv", () => {
     expect(r.env.LOG_LEVEL).toBe("warn");
   });
 
+  test("WEB_ORIGIN_PATTERNS: empty by default, split and validated as origin globs", () => {
+    const none = parseEnv(base);
+    expect(none.ok && none.env.WEB_ORIGIN_PATTERNS).toEqual([]);
+    const ok = parseEnv({
+      ...base,
+      WEB_ORIGIN_PATTERNS: "https://*.vercel.app, https://tj-web-*-team.vercel.app",
+    });
+    expect(ok.ok && ok.env.WEB_ORIGIN_PATTERNS).toEqual([
+      "https://*.vercel.app",
+      "https://tj-web-*-team.vercel.app",
+    ]);
+    const bad = parseEnv({ ...base, WEB_ORIGIN_PATTERNS: "https://app.example.com" });
+    expect(bad.ok).toBe(false);
+    if (bad.ok) return;
+    expect(bad.errors[0]?.variable).toBe("WEB_ORIGIN_PATTERNS");
+    expect(bad.errors[0]?.message).toContain("origin glob");
+  });
+
+  test("COOKIE_SAMESITE accepts lax|none|strict, defaults to lax", () => {
+    expect(parseEnv({ ...base, COOKIE_SAMESITE: "none" }).ok).toBe(true);
+    expect(parseEnv({ ...base, COOKIE_SAMESITE: "none", NODE_ENV: "production" }).ok).toBe(true);
+    expect(parseEnv({ ...base, COOKIE_SAMESITE: "None" }).ok).toBe(false);
+  });
+
   test("missing DATABASE_URL → `DATABASE_URL: Required`", () => {
     const r = parseEnv({ BETTER_AUTH_SECRET: base.BETTER_AUTH_SECRET });
     expect(r.ok).toBe(false);

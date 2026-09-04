@@ -1,0 +1,14 @@
+# Files the Vercel CLI must never upload on a manual `vercel deploy` (git-based deploys clone the
+# repo, so this only matters for CLI deploys). The CLI does NOT read .gitignore: without this file
+# local `.env` files would be uploaded as deployment source.
+.env
+.env.*
+!.env.example
+node_modules
+dist
+coverage
+.turbo
+.data
+playwright-report
+test-results
+*.log

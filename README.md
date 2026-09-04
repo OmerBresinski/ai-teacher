@@ -326,7 +326,18 @@ Biome is configured once in the root `biome.json` (ADR 0003); packages do not ca
 - Product terms (Journey, Lesson, Artefact, Workspace, …) are used exactly as defined in
   [`docs/glossary.md`](docs/glossary.md).
 
-## Deploy (Railway)
+## Deploy
+
+### Vercel (web)
+
+`apps/web` deploys to Vercel as a static Vite build — project `teaching-journey-web`, Root Directory
+`apps/web`, production branch **`master`** (ADR 0010 says "production"; the repo's default branch
+is `master`, see Conventions). Every PR gets a preview whose `VITE_API_URL` is derived at build time
+from the Railway PR-environment URL template (`scripts/vercel-env.ts`); Speed Insights loads in
+production builds only. Config: [`apps/web/vercel.json`](apps/web/vercel.json); runbook, env
+scopes and dashboard-only steps: [`infra/README.md` → "Vercel (web)"](infra/README.md#vercel-web--teach-25).
+
+### Railway (api, worker, Postgres)
 
 `apps/api` and `apps/worker` ship as **one Docker image** built from the root
 [`Dockerfile`](Dockerfile) (multi-stage, `oven/bun:1.3.6-alpine`, ~155 MB) and run on Railway in

@@ -6,6 +6,7 @@
  * `loadEnv()` is the boot-time wrapper used by `src/index.ts`.
  */
 import { z } from "zod";
+import { isValidOriginPattern } from "./origins";
 
 export const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace", "silent"] as const;
 export type LogLevel = (typeof LOG_LEVELS)[number];
@@ -20,6 +21,27 @@ const originList = z
       .filter((s) => s.length > 0),
   )
   .pipe(z.array(z.url()).min(1));
+
+/**
+ * Comma-separated glob origins (`https://*.vercel.app`); empty by default. Each entry must be an
+ * origin (scheme + host, optional port, no path) containing at least one `*`. See `origins.ts`.
+ */
+const originPatternList = z
+  .string()
+  .default("")
+  .transform((raw) =>
+    raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0),
+  )
+  .pipe(
+    z.array(
+      z.string().refine(isValidOriginPattern, {
+        message: "Each entry must be an origin glob like https://*.vercel.app (no path)",
+      }),
+    ),
+  );
 
 /** Empty strings (e.g. `GOOGLE_CLIENT_ID=` left in `.env`) count as "unset". */
 const optionalString = z
@@ -36,6 +58,8 @@ export const EnvSchema = z
     DATABASE_URL: z.url(),
     /** Comma-separated in the environment; an array of origins after parsing. */
     WEB_ORIGIN: originList,
+    /** Glob origins for per-deployment preview URLs (Vercel), matched alongside `WEB_ORIGIN`. */
+    WEB_ORIGIN_PATTERNS: originPatternList,
     LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
 
     // --- Auth (ADR 0008, TEACH-20) ---------------------------------------------------------

@@ -18,6 +18,19 @@
         "!skills-lock.json"
       ]
     },
+    "@tj/web#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"],
+      "env": ["VITE_API_URL", "VITE_APP_ENV", "VITE_DEV_API_TARGET"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/.agents/**",
+        "!**/.claude/**",
+        "!**/.opencode/**",
+        "!AGENTS.md",
+        "!skills-lock.json"
+      ]
+    },
     "lint": {
       "dependsOn": ["//#lint:root"],
       "inputs": [

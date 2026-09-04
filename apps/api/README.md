@@ -23,6 +23,7 @@ not load env files), so the API reads `apps/api/.env`.
 | `PORT`         | `3001`                  | coerced to an integer                                     |
 | `DATABASE_URL` | — (required)            | Postgres URL; `/health` runs `select 1` on it              |
 | `WEB_ORIGIN`   | `http://localhost:5173` | comma-separated browser origins allowed by CORS → `string[]` |
+| `WEB_ORIGIN_PATTERNS` | empty            | comma-separated origin globs (`https://tj-web-*-team.vercel.app`) for Vercel preview URLs; `*` = one DNS label, no path (`src/origins.ts`) |
 | `LOG_LEVEL`    | `info`                  | pino level (`fatal` … `trace`, `silent`)                   |
 
 `TEST_DATABASE_URL` is read only by the tests (`@tj/db/testing`), never by the server.
@@ -44,8 +45,9 @@ Middleware order:
 2. **logger** — one pino line per request: `method`, `path`, `status`, `duration_ms`,
    `request_id`. **Never log bodies, prompts or Artefact content.** A child logger is available as
    `c.get("logger")`.
-3. **CORS** — origins from `env.WEB_ORIGIN`, `credentials: true`, `maxAge: 600`. Requests from any
-   other origin receive **no** CORS headers at all.
+3. **CORS** — origins from `env.WEB_ORIGIN` (exact) and `env.WEB_ORIGIN_PATTERNS` (globs, see
+   `createOriginMatcher` in `src/origins.ts`), `credentials: true`, `maxAge: 600`. Requests from
+   any other origin receive **no** CORS headers at all.
 4. **`secureHeaders()`**.
 5. **Routes** — chained feature routers from `src/routes/`.
 6. **`notFound` / `onError`** — the envelope below.
@@ -146,7 +148,7 @@ are wired in `src/auth/auth.ts` and switch on when their credentials are present
 | `BETTER_AUTH_SECRET` | **required** | ≥ 32 chars, signs cookies/tokens. `openssl rand -base64 32`. TEACH-26 makes `bun run setup` generate it. |
 | `BETTER_AUTH_URL` | `http://localhost:3001` | Public origin of this API. Magic links are `<BETTER_AUTH_URL>/auth/magic-link/verify?token=…`. |
 | `COOKIE_DOMAIN` | unset | Parent domain for the session cookie, e.g. `.teachingjourney.app`. |
-| `COOKIE_SAMESITE` | `lax` | `lax` \| `none` \| `strict`. |
+| `COOKIE_SAMESITE` | `lax` | `lax` \| `none` \| `strict`. `none` forces `Secure` in every `NODE_ENV` and logs a boot warning (preview exception, TEACH-25). |
 | `MAIL_PROVIDER` | `console` | Only `console` exists until F17; anything else stops boot with `MAIL_PROVIDER: only "console" is supported until F17`. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | unset | Both set → Google sign-in on. Otherwise boot logs `Google sign-in disabled (no credentials)`. |
 | `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | unset | Same for Microsoft. |
@@ -194,9 +196,12 @@ NODE_ENV=test ENABLE_TEST_ROUTES=1 PORT=3811 DATABASE_URL=$TEST_DATABASE_URL \
   `COOKIE_DOMAIN=.<parent>` (`advanced.crossSubDomainCookies`); cookies are `Secure` whenever
   `NODE_ENV=production`.
 - **Previews on unrelated origins** (Vercel preview ↔ Railway PR environment): set
-  `COOKIE_SAMESITE=none` (requires `Secure`, i.e. production mode) and leave `COOKIE_DOMAIN` unset.
-- Cookie names are prefixed `tj.`; `trustedOrigins` is `WEB_ORIGIN`, so requests carrying an
-  `Origin` outside that list are rejected by better-auth's CSRF check.
+  `COOKIE_SAMESITE=none` on that Railway PR environment only — `sessionCookieAttributes()` then
+  emits `SameSite=None; Secure` (Secure forced, since browsers drop `None` without it) and
+  `createAuth` logs a warning at boot. Leave `COOKIE_DOMAIN` unset. Production stays `lax`.
+- Cookie names are prefixed `tj.`; `trustedOrigins` is `WEB_ORIGIN` + `WEB_ORIGIN_PATTERNS`
+  (better-auth understands the same `*` globs), so requests carrying an `Origin` outside those
+  are rejected by better-auth's CSRF check.
 - Trade-off of the cookie cache: after sign-out, a client that keeps replaying its old
   `tj.session_data` cookie is still accepted for up to `cookieCache.maxAge` (300 s). Browsers do
   not do this — sign-out clears both cookies.
