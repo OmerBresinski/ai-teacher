@@ -1,0 +1,26 @@
+{
+  "name": "@tj/storage",
+  "version": "0.0.0",
+  "private": true,
+  "description": "StorageAdapter implementations for Teaching Journey: local disk (development/tests) and Vercel Blob (production), plus createStorage(env) and deleteByPrefix (ADR 0011, F15-R02).",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@tj/domain": "workspace:*",
+    "@vercel/blob": "2.8.0"
+  },
+  "devDependencies": {
+    "@tj/config": "workspace:*",
+    "typescript": "5.9.3"
+  }
+}
