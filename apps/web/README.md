@@ -147,9 +147,12 @@ scopes, Railway pairing, dashboard-only checklist, verified preview) is in
 | `../../scripts/vercel-env.ts` | Resolves `VITE_APP_ENV` / `VITE_API_URL` at build time: production → the Production `VITE_API_URL`; preview → `RAILWAY_PR_API_URL_TEMPLATE` (`{pr}` = PR number) or `VITE_API_URL_FALLBACK`. Pure function, `bun test scripts/`. |
 | `src/lib/speed-insights.ts` | `@vercel/speed-insights` via dynamic import behind `import.meta.env.VITE_APP_ENV === "production"` (a literal Vite inlines, so preview/dev `dist/` contain none of it — checked on the live preview). Reports the matched route pattern, never the pathname. |
 
-Env values per scope live in Vercel, not in git; production `VITE_API_URL` is a `TODO(domain)`
-placeholder until the domain exists (`bun run env:check` verifies the names; `docs/env.md`). The API side of previews (`COOKIE_SAMESITE=none`,
-`WEB_ORIGIN_PATTERNS`) is described in `apps/api/README.md` "Cookie strategy".
+Env values per scope live in Vercel, not in git (`bun run env:check` verifies the names;
+`docs/env.md`). Production `VITE_API_URL` is the live Railway api
+`https://api-production-903f.up.railway.app` (`TODO(domain)`: `https://api.<domain>` later);
+previews use `RAILWAY_PR_API_URL_TEMPLATE=https://api-ai-teacher-pr-{pr}.up.railway.app`. The API
+side (`COOKIE_SAMESITE=none` — currently also in production, since web and api share no parent
+domain — and `WEB_ORIGIN_PATTERNS`) is described in `apps/api/README.md` "Cookie strategy".
 
 Manual deploys go from the **repository root** (`vercel link --yes --project teaching-journey-web`,
 then `vercel deploy --yes --target=preview`); `.vercel/` and `.env.local` are gitignored.

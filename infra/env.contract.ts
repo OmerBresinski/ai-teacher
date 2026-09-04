@@ -298,7 +298,7 @@ const CONTRACT = [
     files: ["api"],
     railwayValue: "none",
     description:
-      "lax (default) | none | strict. `none` makes the cookie `SameSite=None; Secure` (Secure forced whatever NODE_ENV, boot warning) for web and api on unrelated origins — Vercel preview <-> Railway PR api, and production until `app.<d>`/`api.<d>` exist. Then switch production to `lax` + COOKIE_DOMAIN.",
+      "lax (default) | none | strict. `none` makes the cookie `SameSite=None; Secure` (Secure forced whatever NODE_ENV, boot warning) for web and api on unrelated origins — Vercel preview <-> Railway PR api, and **production today** (`*.vercel.app` <-> `*.up.railway.app`, set 2026-09-04). Once `app.<d>`/`api.<d>` exist, switch production to `lax` + COOKIE_DOMAIN (ADR 0008).",
   },
   {
     name: "MAIL_PROVIDER",
@@ -495,7 +495,7 @@ const CONTRACT = [
     format: "string",
     files: ["web"],
     description:
-      "Base URL the browser uses for the API. Locally `/api`: the Vite dev server proxies `/api/*` to the api and strips the prefix so cookies stay same-origin. A production build requires an absolute URL — Vercel Production holds `https://api.<domain>` (placeholder `https://api.example.invalid` until the domain exists); previews derive it (see RAILWAY_PR_API_URL_TEMPLATE).",
+      "Base URL the browser uses for the API. Locally `/api`: the Vite dev server proxies `/api/*` to the api and strips the prefix so cookies stay same-origin. A production build requires an absolute URL — Vercel Production holds the Railway api origin (`https://api-production-903f.up.railway.app` today, `https://api.<domain>` once a domain exists); previews derive it (see RAILWAY_PR_API_URL_TEMPLATE).",
   },
   {
     name: "VITE_APP_ENV",
@@ -535,7 +535,7 @@ const CONTRACT = [
     setBy: "manual",
     runtimeOnly: true,
     description:
-      "Vercel Preview only. `https://api-pr-{pr}.up.railway.app`: `scripts/vercel-env.ts` replaces `{pr}` with VERCEL_GIT_PULL_REQUEST_ID to point the preview at the Railway PR api. Confirm the real pattern after the first Railway PR deploy. Never in a local .env.",
+      "Vercel Preview only. `https://api-ai-teacher-pr-{pr}.up.railway.app` (Railway names PR environments after the GitHub repo, `ai-teacher-pr-<n>`; confirmed with PR #30): `scripts/vercel-env.ts` replaces `{pr}` with VERCEL_GIT_PULL_REQUEST_ID to point the preview at the Railway PR api. Never in a local .env.",
   },
   {
     name: "VITE_API_URL_FALLBACK",
@@ -547,7 +547,7 @@ const CONTRACT = [
     setBy: "manual",
     runtimeOnly: true,
     description:
-      "Vercel Preview only. API origin for preview builds without a PR number (branch pushes) or without a template — point it at the Railway production api. Never in a local .env.",
+      "Vercel Preview only. API origin for preview builds without a PR number (branch pushes) or without a template — point it at the Railway production api (`https://api-production-903f.up.railway.app`). Never in a local .env.",
   },
   {
     name: "E2E_VERBOSE",
