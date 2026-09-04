@@ -126,6 +126,7 @@ function buildApp({
   if (auth) app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
   const guard = requireSession(auth, db);
   app.use("/me", guard);
+  app.use("/me/*", guard);
   app.use("/jobs/*", guard);
   app.use("/events", guard);
   app.use("/files/*", guard);

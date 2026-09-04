@@ -87,9 +87,9 @@ describe("GET /me/greeting", () => {
     const res = await greetingRequest(app);
     expect(await res.json()).toEqual({ text: FALLBACK_GREETING, source: "fallback" });
     const records = lines.map((line) => JSON.parse(line) as Record<string, unknown>);
-    expect(
-      records.filter((record) => record.level === 40 && record.greeting === "fallback"),
-    ).toHaveLength(1);
+    const warns = records.filter((record) => record.level === 40 && record.greeting === "fallback");
+    expect(warns).toHaveLength(1);
+    expect(warns[0]).toMatchObject({ aiErrorCode: "provider" });
     const serialized = lines.join("");
     expect(serialized).not.toContain("private provider body");
     expect(serialized).not.toContain("school teacher");
@@ -119,11 +119,21 @@ describe("GET /me/greeting", () => {
     const app = createApp({ env: TEST_ENV, db: fakeSql(true) });
     const res = await greetingRequest(app, "?weekday=Funday");
     expect(res.status).toBe(400);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(await res.json()).toMatchObject({
       error: { code: "validation_failed", fields: ["weekday"] },
     });
   });
 
+  test("requires a session", async () => {
+    const app = createApp({ env: TEST_ENV, db: fakeSql(true) });
+    const res = await app.request("/me/greeting");
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ error: { code: "unauthorized" } });
+  });
+});
+
+describe("GET /me", () => {
   test("requires a session", async () => {
     const app = createApp({ env: TEST_ENV, db: fakeSql(true) });
     const res = await app.request("/me");
