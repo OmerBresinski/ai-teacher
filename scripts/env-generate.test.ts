@@ -28,6 +28,7 @@ describe("renderEnvExample", () => {
       "WEB_ORIGIN",
       "BETTER_AUTH_URL",
       "MAIL_PROVIDER",
+      "ALLOW_WORKSPACE_HEADER_SHIM",
       "AWS_REGION",
       "AI_MODEL_FRONTIER",
       "AI_MODEL_STANDARD",
