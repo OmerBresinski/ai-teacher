@@ -93,7 +93,7 @@ export default defineConfig({
       cwd: ".",
       // A production build must bake an absolute VITE_API_URL (src/env.ts), so the e2e build is
       // separate from `dist/` (which `bun run build` produces with the `.env` value `/api`).
-      command: `vite build --outDir dist/e2e && vite preview --outDir dist/e2e --port ${E2E_PORTS.web} --strictPort`,
+      command: `bun --bun vite build --outDir dist/e2e && bun --bun vite preview --outDir dist/e2e --port ${E2E_PORTS.web} --strictPort`,
       url: E2E_WEB_URL,
       reuseExistingServer: !CI,
       timeout: 180_000,
