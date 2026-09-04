@@ -2,7 +2,15 @@
  * Authentication flows (ADR 0008): the auth layout redirect, magic-link sign-in through the real
  * form (with the link read back from the api's capture route), keyboard-only sign-in, sign-out.
  */
-import { expect, lastMagicLink, signIn, test, uniqueEmail } from "./fixtures";
+import {
+  E2E_WEB_URL,
+  escapeRegExp,
+  expect,
+  lastMagicLink,
+  signIn,
+  test,
+  uniqueEmail,
+} from "./fixtures";
 
 test.describe("auth", () => {
   test("a protected page redirects to /sign-in and remembers where you were going", async ({
@@ -75,5 +83,31 @@ test.describe("auth", () => {
     await page.goto("/");
     await expect(page).toHaveURL(/\/sign-in\?/);
     expect(new URL(page.url()).searchParams.get("redirect")).toBe("/");
+  });
+
+  test("a used magic link sends you to /sign-in with an explanation", async ({ page, request }) => {
+    const email = await signIn(page, request);
+    const link = await lastMagicLink(request, email);
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await expect(page).toHaveURL(/\/sign-in$/);
+
+    // Tokens are single-use: the second visit fails verification and better-auth redirects to
+    // our errorCallbackURL with `?error=INVALID_TOKEN` (TEACH-68).
+    await page.goto(link);
+    await expect(page).toHaveURL(/\/sign-in\?/);
+    const search = new URL(page.url()).searchParams;
+    expect(search.get("error")).toBe("INVALID_TOKEN");
+    expect(search.get("redirect")).toBe("/");
+    await expect(page.getByRole("alert")).toHaveText(
+      "That sign-in link has expired or was already used. Request a new one below.",
+    );
+
+    // Requesting a fresh link from here must not carry the error into the next callback.
+    await page.getByLabel("Email address").fill(email);
+    await page.getByRole("button", { name: "Email me a link" }).click();
+    await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
+    await page.goto(await lastMagicLink(request, email));
+    await expect(page).toHaveURL(new RegExp(`^${escapeRegExp(E2E_WEB_URL)}/$`));
+    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
   });
 });

@@ -17,6 +17,17 @@ describe("search schemas drop malformed params", () => {
     expect(parse("")).toEqual({ redirect: undefined });
   });
 
+  it("signInSearchSchema.error", () => {
+    const parse = (qs: string) => signInSearchSchema.parse(defaultParseSearch(qs));
+    expect(parse("?error=INVALID_TOKEN")).toEqual({ redirect: undefined, error: "INVALID_TOKEN" });
+    expect(parse("?error=INVALID_TOKEN&redirect=%2Fx")).toEqual({
+      redirect: "/x",
+      error: "INVALID_TOKEN",
+    });
+    expect(parse("?error=1")).toEqual({ redirect: undefined, error: undefined });
+    expect(parse("?error=%5B%22a%22%5D")).toEqual({ redirect: undefined, error: undefined });
+  });
+
   it("devJobsSearchSchema.jobId", () => {
     const parse = (qs: string) => devJobsSearchSchema.parse(defaultParseSearch(qs));
     expect(parse("?jobId=abc")).toEqual({ jobId: "abc" });

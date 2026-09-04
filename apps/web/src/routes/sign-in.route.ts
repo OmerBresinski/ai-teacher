@@ -10,6 +10,11 @@ export const signInSearchSchema = z.object({
    * errorComponent; a malformed param is silently dropped instead (see search-schemas.test.ts).
    */
   redirect: z.string().optional().catch(undefined),
+  /**
+   * better-auth's error code (e.g. `INVALID_TOKEN`) appended by the magic-link verify endpoint
+   * when it redirects to our `errorCallbackURL` (TEACH-68). Same lenient parsing as `redirect`.
+   */
+  error: z.string().optional().catch(undefined),
 });
 
 export const signInRoute = createRoute({

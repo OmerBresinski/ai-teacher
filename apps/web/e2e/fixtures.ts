@@ -18,15 +18,24 @@ export function uniqueEmail(prefix = "e2e"): string {
   return `${prefix}-${stamp}-${rand}@example.test`;
 }
 
-/** Ask the api to "send" a magic link for `email` exactly like the sign-in form does. */
+/**
+ * Ask the api to "send" a magic link for `email` exactly like the sign-in form does, including the
+ * `errorCallbackURL` that sends a failed verification back to `/sign-in` (TEACH-68).
+ */
 export async function requestMagicLink(
   request: APIRequestContext,
   email: string,
   callbackPath = "/",
 ): Promise<void> {
+  const errorCallbackURL = new URL("/sign-in", E2E_WEB_URL);
+  errorCallbackURL.searchParams.set("redirect", callbackPath);
   const res = await request.post(`${E2E_API_URL}/auth/sign-in/magic-link`, {
     headers: { origin: E2E_WEB_URL },
-    data: { email, callbackURL: `${E2E_WEB_URL}${callbackPath}` },
+    data: {
+      email,
+      callbackURL: `${E2E_WEB_URL}${callbackPath}`,
+      errorCallbackURL: errorCallbackURL.toString(),
+    },
   });
   expect(res.ok(), `magic-link request failed: ${res.status()} ${await res.text()}`).toBe(true);
 }
