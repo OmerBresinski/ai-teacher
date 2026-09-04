@@ -55,6 +55,52 @@ describe("without a jobs context", () => {
     expect((await body(res)).error.code).toBe("service_unavailable");
   });
 
+  test("POST /jobs/ai-ping rejects a text/plain body before the runtime check", async () => {
+    const res = await app.request("/jobs/ai-ping", {
+      method: "POST",
+      headers: {
+        "content-type": "text/plain",
+        Origin: "https://app.example.test",
+        [WORKSPACE_HEADER]: ws,
+      },
+      body: "x=1",
+    });
+    expect(res.status).toBe(400);
+    const b = await body(res);
+    expect(b.error.code).toBe("validation_failed");
+    expect(b.error.fields).toEqual(["(body)"]);
+  });
+
+  test("POST /jobs/ping rejects a form body before the runtime check", async () => {
+    const res = await app.request("/jobs/ping", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        Origin: "https://app.example.test",
+        [WORKSPACE_HEADER]: ws,
+      },
+      body: "message=hi",
+    });
+    expect(res.status).toBe(400);
+    const b = await body(res);
+    expect(b.error.code).toBe("validation_failed");
+    expect(b.error.fields).toEqual(["(body)"]);
+  });
+
+  test("POST /jobs/ping accepts application/json with parameters", async () => {
+    const res = await app.request("/jobs/ping", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        Origin: "https://app.example.test",
+        [WORKSPACE_HEADER]: ws,
+      },
+      body: JSON.stringify({ message: "hi" }),
+    });
+    expect(res.status).toBe(503);
+    expect((await body(res)).error.code).toBe("service_unavailable");
+  });
+
   test("POST /jobs/ai-ping rejects an unknown model class", async () => {
     const res = await app.request("/jobs/ai-ping", {
       method: "POST",
