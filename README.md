@@ -347,8 +347,11 @@ Biome is configured once in the root `biome.json` (ADR 0003); packages do not ca
 
 `apps/web` deploys to Vercel as a static Vite build — project `teaching-journey-web`, Root Directory
 `apps/web`, production branch **`master`** (ADR 0010 says "production"; the repo's default branch
-is `master`, see Conventions). Every PR gets a preview whose `VITE_API_URL` is derived at build time
-from the Railway PR-environment URL template (`scripts/vercel-env.ts`); Speed Insights loads in
+is `master`, see Conventions). Live: **<https://teaching-journey-web.vercel.app>**, talking to the
+Railway api at `https://api-production-903f.up.railway.app` (cross-site cookie stopgap until a
+domain exists, ADR 0008/0010 amendments). Every PR gets a preview whose `VITE_API_URL` is derived
+at build time from the Railway PR-environment URL template
+(`https://api-ai-teacher-pr-{pr}.up.railway.app`, `scripts/vercel-env.ts`); Speed Insights loads in
 production builds only. Config: [`apps/web/vercel.json`](apps/web/vercel.json); runbook, env
 scopes and dashboard-only steps: [`infra/README.md` → "Vercel (web)"](infra/README.md#vercel-web--teach-25).
 
@@ -357,7 +360,9 @@ scopes and dashboard-only steps: [`infra/README.md` → "Vercel (web)"](infra/RE
 `apps/api` and `apps/worker` ship as **one Docker image** built from the root
 [`Dockerfile`](Dockerfile) (multi-stage, `oven/bun:1.3.6-alpine`, ~155 MB) and run on Railway in
 EU-West (Amsterdam) next to a `pgvector/pgvector:pg16` Postgres (ADR
-[0010](docs/adr/0010-hosting-vercel-railway.md)). The image's entrypoint takes one word:
+[0010](docs/adr/0010-hosting-vercel-railway.md)) — project `teaching-journey`, provisioned
+2026-09-04 by `infra/railway/provision.sh`; api at `https://api-production-903f.up.railway.app`,
+every PR gets an `ai-teacher-pr-<n>` environment. The image's entrypoint takes one word:
 `api`, `worker` or `migrate`; Railway runs `migrate` as the api's pre-deploy command (ADR 0006:
 never on boot). Config-as-code lives in [`infra/railway/`](infra/railway/), the full runbook
 (topology, variables, deploy/rollback, PR environments, dashboard-only steps) in

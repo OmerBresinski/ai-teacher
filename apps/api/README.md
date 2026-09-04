@@ -201,13 +201,16 @@ NODE_ENV=test ENABLE_TEST_ROUTES=1 PORT=3811 DATABASE_URL=$TEST_DATABASE_URL \
 
 - **Local development**: web and api are made same-origin by the Vite dev proxy, so no
   `COOKIE_DOMAIN`, `SameSite=Lax`, not `Secure`.
-- **Production**: `app.<parent>` (Vercel) and `api.<parent>` (Railway) share the cookie via
-  `COOKIE_DOMAIN=.<parent>` (`advanced.crossSubDomainCookies`); cookies are `Secure` whenever
-  `NODE_ENV=production`.
-- **Previews on unrelated origins** (Vercel preview ↔ Railway PR environment): set
-  `COOKIE_SAMESITE=none` on that Railway PR environment only — `sessionCookieAttributes()` then
-  emits `SameSite=None; Secure` (Secure forced, since browsers drop `None` without it) and
-  `createAuth` logs a warning at boot. Leave `COOKIE_DOMAIN` unset. Production stays `lax`.
+- **Production (target)**: `app.<parent>` (Vercel) and `api.<parent>` (Railway) share the cookie
+  via `COOKIE_DOMAIN=.<parent>` (`advanced.crossSubDomainCookies`); cookies are `Secure` whenever
+  `NODE_ENV=production`. **Today (since 2026-09-04)** there is no parent domain —
+  `teaching-journey-web.vercel.app` ↔ `api-production-903f.up.railway.app` — so production runs the
+  unrelated-origins mode below (`COOKIE_SAMESITE=none`, `COOKIE_DOMAIN` unset); switch to `lax` +
+  `COOKIE_DOMAIN` once the domain exists (ADR 0008 amendment, `infra/README.md`).
+- **Unrelated origins** (Vercel preview ↔ Railway PR environment `ai-teacher-pr-<n>`, and
+  production until the domain): `COOKIE_SAMESITE=none` — `sessionCookieAttributes()` then emits
+  `SameSite=None; Secure` (Secure forced, since browsers drop `None` without it) and `createAuth`
+  logs a warning at boot. Leave `COOKIE_DOMAIN` unset.
 - Cookie names are prefixed `tj.`; `trustedOrigins` is `WEB_ORIGIN` + `WEB_ORIGIN_PATTERNS`
   (better-auth understands the same `*` globs), so requests carrying an `Origin` outside those
   are rejected by better-auth's CSRF check.
