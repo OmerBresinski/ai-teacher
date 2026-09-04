@@ -35,17 +35,21 @@ together. Work items that are dashboard-only or founder decisions are reported b
    `(TEACH-n)` and a link to the issue when there is one). Serialize units that touch the same
    files (e.g. `infra/README.md`) — merge one, rebase the next. Subagents must run
    `bun run lint`, `bun run typecheck` and the relevant tests before opening the PR, and must not
-   merge.
+   merge. When there is a Linear issue, move it to **In Progress** when work starts.
 2. **Review with a separate subagent.** For every PR, launch a fresh `general` subagent that
    loads **`thermo-nuclear-code-quality-review`** (root `.agents/skills/`) and reviews the branch
-   diff against `master`. It reports findings only; it does not edit code.
+   diff against `master`. It reports findings only; it does not edit code. Move the Linear issue
+   to **In Review** when the PR is open and the review starts.
 3. **Fix, push, merge.** If the review has findings, fix them (or the implementing subagent
    does), push, and re-review only if the fix was structural. If it has none, merge straight
    away. Merge with `gh pr merge --squash --delete-branch` once CI is green
    (`gh pr checks --watch`).
-4. **Close the loop.** When the work came from Linear, move the issue to Done with a comment
-   naming the PR and anything deliberately left open; keep `infra/README.md` "Known gaps" in sync
-   when the issue is one.
+4. **Close the loop.** When the work came from Linear, move the issue to **Done** once the PR is
+   merged, with a comment naming the PR and anything deliberately left open; keep
+   `infra/README.md` "Known gaps" in sync when the issue is one.
+
+Linear status mirrors the pipeline: Todo → In Progress (branch started) → In Review (PR open,
+review running) → Done (merged). Never skip a state and never mark Done before the merge.
 
 ## Package map
 
