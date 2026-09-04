@@ -4,14 +4,14 @@
  */
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../app";
-import { parseEnv } from "../env";
+import { type Env, parseEnv } from "../env";
 import { CaptureMailSender } from "../mail";
 import { fakeSql, silentLogger, TEST_ENV } from "../test-helpers";
 import { testRoutesEnabled } from "./test-routes";
 
 const LINK = "http://localhost:3001/auth/magic-link/verify?token=abc&callbackURL=%2F";
 
-function appWith(env: Partial<typeof TEST_ENV> & { ENABLE_TEST_ROUTES?: string }) {
+function appWith(env: { NODE_ENV?: Env["NODE_ENV"]; ENABLE_TEST_ROUTES?: string }) {
   const mail = new CaptureMailSender();
   const app = createApp({
     env: { ...TEST_ENV, ...env },
