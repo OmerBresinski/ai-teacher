@@ -117,11 +117,14 @@ export function parseSkillTable(markdown: string): SkillEntry[] {
   throw new Error("No skill table with `Skill` and `Path` columns found in the markdown.");
 }
 
-/** Splits `<location>/.agents/skills/<name>` into its parts, or `null` if not in that shape. */
+/**
+ * Splits `<location>/.agents/skills/<name>` into its parts, or `null` if not in that shape.
+ * A repo-root install (`.agents/skills/<name>`) has location `.`.
+ */
 export function parseCanonicalPath(path: string): { location: string; name: string } | null {
-  const m = /^(.+?)\/\.agents\/skills\/([^/]+)\/?$/.exec(path.replace(/\\/g, "/"));
-  if (!m?.[1] || !m[2]) return null;
-  return { location: m[1], name: m[2] };
+  const m = /^(?:(.+?)\/)?\.agents\/skills\/([^/]+)\/?$/.exec(path.replace(/\\/g, "/"));
+  if (!m?.[2]) return null;
+  return { location: m[1] ?? ".", name: m[2] };
 }
 
 function lstatOrNull(path: string) {

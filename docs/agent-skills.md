@@ -48,7 +48,9 @@ Per location, on disk:
 Decided in [ADR 0017](adr/0017-agent-skill-layout.md) (TEACH-28): **`<location>/.agents/skills/<name>/`
 is the canonical real copy; `<location>/.claude/skills/<name>` is a relative symlink to it.** There
 is one real copy *per location* — the same skill in two locations is two real directories, each
-with its own symlink. A real directory where a symlink is expected, a broken or absolute symlink,
+with its own symlink. The repo root is a location too (`.agents/skills/<name>`, `.claude/skills/<name>`);
+it holds skills that serve the whole repo rather than one app, currently only the review skill.
+A real directory where a symlink is expected, a broken or absolute symlink,
 or a missing `.claude` link fails `bun run skills:check` with a message naming the path, e.g.
 
 ```
