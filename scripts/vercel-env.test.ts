@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { railwayPrApiUrl, resolveWebEnv, shellQuote, toExportLines } from "./vercel-env";
 
-const TEMPLATE = "https://api-pr-{pr}.up.railway.app";
+const TEMPLATE = "https://api-ai-teacher-pr-{pr}.up.railway.app";
 
 describe("railwayPrApiUrl", () => {
   test("substitutes the PR number", () => {
-    expect(railwayPrApiUrl(TEMPLATE, "42")).toBe("https://api-pr-42.up.railway.app");
+    expect(railwayPrApiUrl(TEMPLATE, "42")).toBe("https://api-ai-teacher-pr-42.up.railway.app");
   });
 
   test("rejects a template without {pr}, a non-numeric PR and a non-URL result", () => {

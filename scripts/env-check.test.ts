@@ -130,8 +130,8 @@ describe("targets and reports", () => {
       "vercel:teaching-journey-web:preview",
     ]);
     const withPr = buildTargets({ pr: 42 });
-    expect(withPr.map((t) => t.environment)).toContain("pr-42");
-    const apiPr = withPr.find((t) => t.service === "api" && t.environment === "pr-42");
+    expect(withPr.map((t) => t.environment)).toContain("ai-teacher-pr-42");
+    const apiPr = withPr.find((t) => t.service === "api" && t.environment === "ai-teacher-pr-42");
     expect(apiPr?.expected).toContain("WEB_ORIGIN_PATTERNS");
   });
 
@@ -176,7 +176,7 @@ describe("targets and reports", () => {
     const output = lines.join("\n");
     expect(output).not.toContain("SECRETVALUE123");
     expect(output).not.toContain("eyJ2Ijoi");
-    expect(output).toContain("DRIFT Railway api / pr-7");
+    expect(output).toContain("DRIFT Railway api / ai-teacher-pr-7");
     expect(output).toContain("ok    Vercel teaching-journey-web / preview");
   });
 

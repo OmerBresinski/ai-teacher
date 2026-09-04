@@ -112,7 +112,7 @@ function railwaySection(): string {
   return targets
     .map(
       ({ service, env }) =>
-        `- Railway \`${service}\` / ${env === "pr" ? "`pr-<n>`" : "`production`"}: ${namesList(
+        `- Railway \`${service}\` / ${env === "pr" ? "`ai-teacher-pr-<n>`" : "`production`"}: ${namesList(
           railwayNames(service, env),
         )}`,
     )
@@ -159,7 +159,7 @@ function rotationSection(): string {
     "",
     "1. Generate the new value **without printing it**, e.g. `openssl rand -base64 32 > /tmp/secret` (or let the provider's console generate it).",
     "2. Set it in the provider, values via stdin so nothing lands in shell history or logs:",
-    "   - Railway: `railway variable set NAME --stdin --service api < /tmp/secret` (repeat with `--environment pr-<n>` for an open PR environment; `--skip-deploys` to batch, then `railway redeploy --service api --yes`).",
+    "   - Railway: `railway variable set NAME --stdin --service api < /tmp/secret` (repeat with `--environment ai-teacher-pr-<n>` for an open PR environment; `--skip-deploys` to batch, then `railway redeploy --service api --yes`).",
     "   - Vercel: `vercel env rm NAME production --yes && vercel env add NAME production --sensitive < /tmp/secret` — then redeploy.",
     "   - GitHub Actions: `gh secret set NAME --repo OmerBresinski/ai-teacher < /tmp/secret`.",
     "3. `rm /tmp/secret`; run `bun run env:check` — it compares **names only** and confirms nothing is missing or extra.",
@@ -200,13 +200,13 @@ curl -N -b jar localhost:3001/jobs/<jobId>/events       # queued -> started -> p
 this contract (missing keys, malformed URLs/ports/enums — values are never printed).`;
 
 const PR_ENVIRONMENTS = `A pull request gets a Vercel preview (\`apps/web\`) and, once Railway billing is active, a Railway
-PR environment \`pr-<n>\` that copies \`production\`'s services and variables and gives the api its own
+PR environment \`ai-teacher-pr-<n>\` that copies \`production\`'s services and variables and gives the api its own
 Postgres and domain (\`infra/README.md\` → "PR environments").
 
 - Reference variables (\`DATABASE_URL\`, \`BETTER_AUTH_URL\`) resolve inside the PR environment, so nothing is copied by hand.
 - The PR api must accept the preview origin and set a cross-site cookie: \`WEB_ORIGIN_PATTERNS\` (glob of the Vercel preview URLs) and \`COOKIE_SAMESITE=none\` are the two PR-only values in the matrix (\`railway = pr\` / \`both\`).
 - The Vercel preview points at the PR api through \`RAILWAY_PR_API_URL_TEMPLATE\` (\`{pr}\` → PR number) resolved by \`scripts/vercel-env.ts\`; \`VITE_API_URL_FALLBACK\` covers branch builds without a PR.
-- \`bun run env:check --pr <n>\` compares the names on \`pr-<n>\` against the matrix (\`railway variable list --environment pr-<n>\`).`;
+- \`bun run env:check --pr <n>\` compares the names on \`ai-teacher-pr-<n>\` against the matrix (\`railway variable list --environment ai-teacher-pr-<n>\`).`;
 
 /** The whole `docs/env.md`. */
 export function renderEnvDoc(): string {

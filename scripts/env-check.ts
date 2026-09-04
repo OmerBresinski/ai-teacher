@@ -2,7 +2,7 @@
 // bun run env:check [--pr <n>] [--fix] [--strict]
 //
 // Compares the variable NAMES present on the providers with `infra/env.contract.ts`:
-//   - Railway: `railway variable list --json --service api|worker [--environment pr-<n>]`
+//   - Railway: `railway variable list --json --service api|worker [--environment ai-teacher-pr-<n>]`
 //   - Vercel:  `vercel env ls production|preview --json` (falls back to parsing the table)
 // Values returned by the CLIs are dropped at the parsing boundary; nothing here prints one.
 //
