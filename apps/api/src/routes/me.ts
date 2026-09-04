@@ -1,18 +1,78 @@
-/** `GET /me` — who am I and which Workspace am I in. Protected by `requireSession` (app.ts). */
+/**
+ * `/me` routes are protected by `requireSession` (app.ts). The greeting is one bounded small-model
+ * call, so it runs inline rather than adding an ADR 0006 job/SSE round trip for a page subtitle.
+ */
+import { zValidator } from "@hono/zod-validator";
+import { type CreatedAi, isAiError, ProviderFailure } from "@tj/ai";
+import { FALLBACK_GREETING, GreetingQuerySchema, type GreetingResponse } from "@tj/domain";
+import { generateText } from "ai";
 import { Hono } from "hono";
 import { UNAUTHORIZED_MESSAGE } from "../auth/require-session";
 import type { AppEnv } from "../context";
 import { errorResponse } from "../errors";
+import {
+  buildGreetingPrompt,
+  firstNameOf,
+  GREETING_SYSTEM_PROMPT,
+  sanitiseGreeting,
+} from "../greeting/prompt";
+import { validationHook } from "../validation";
 
-export const meRoutes = new Hono<AppEnv>().get("/me", (c) => {
-  const user = c.get("user");
-  const workspaceId = c.get("workspaceId");
-  // `requireSession` always sets both; the guard keeps the route safe if it is ever mounted bare.
-  if (!user || !workspaceId) {
-    return errorResponse(c, 401, "unauthorized", UNAUTHORIZED_MESSAGE, false);
-  }
-  return c.json(
-    { user: { id: user.id, email: user.email, name: user.name }, workspaceId: workspaceId },
-    200,
+export function meRoutes(ai: CreatedAi | undefined) {
+  return (
+    new Hono<AppEnv>()
+      .get("/me", (c) => {
+        const user = c.get("user");
+        const workspaceId = c.get("workspaceId");
+        // `requireSession` always sets both; the guard keeps the route safe if it is ever mounted bare.
+        if (!user || !workspaceId) {
+          return errorResponse(c, 401, "unauthorized", UNAUTHORIZED_MESSAGE, false);
+        }
+        return c.json(
+          { user: { id: user.id, email: user.email, name: user.name }, workspaceId: workspaceId },
+          200,
+        );
+      })
+      // Set before validation so every greeting response (200, 400) is `private, no-store`.
+      .use("/me/greeting", async (c, next) => {
+        c.header("cache-control", "private, no-store");
+        await next();
+      })
+      .get("/me/greeting", zValidator("query", GreetingQuerySchema, validationHook), async (c) => {
+        const { weekday } = c.req.valid("query");
+        const fallback = { text: FALLBACK_GREETING, source: "fallback" as const };
+        if (!ai || ai.kind === "unconfigured") return c.json(fallback, 200);
+
+        try {
+          const result = await generateText({
+            model: ai.model("small"),
+            system: GREETING_SYSTEM_PROMPT,
+            prompt: buildGreetingPrompt({ firstName: firstNameOf(c.get("user")?.name), weekday }),
+            maxOutputTokens: 40,
+            temperature: 0.9,
+            abortSignal: c.req.raw.signal,
+          });
+          const text = sanitiseGreeting(result.text);
+          if (!text) return c.json(fallback, 200);
+          return c.json({ text, source: "model" as const } satisfies GreetingResponse, 200);
+        } catch (error) {
+          if (c.req.raw.signal.aborted) throw error;
+          // ADR 0015: never serialise the error itself — `ProviderFailure.message` carries the
+          // provider's diagnostic text. Log only primitive, content-free metadata.
+          const failure = isAiError(error) ? error.cause : undefined;
+          c.get("logger").warn(
+            {
+              greeting: "fallback",
+              aiErrorCode: isAiError(error) ? error.code : undefined,
+              providerStatusCode:
+                failure instanceof ProviderFailure ? failure.statusCode : undefined,
+              providerRetryable:
+                failure instanceof ProviderFailure ? failure.isRetryable : undefined,
+            },
+            "greeting model call failed",
+          );
+          return c.json(fallback, 200);
+        }
+      })
   );
-});
+}

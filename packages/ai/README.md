@@ -30,6 +30,10 @@ Model classes are defined in `@tj/domain`: `frontier` is for planning and adapta
 for plans and outlines, and `small` for items, variants, and summaries. Callers select a class, not
 a provider model ID.
 
+## Consumers
+
+Reference call sites: `apps/worker` `ai.ping` and `apps/api` `GET /me/greeting`.
+
 `createAi({})` returns `{ kind: "unconfigured" }` and only throws when `model()` is requested.
 That throw is `AiError` with code `"unconfigured"` and names `AWS_BEARER_TOKEN_BEDROCK`.
 

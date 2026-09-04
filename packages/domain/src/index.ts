@@ -6,6 +6,7 @@
  */
 
 export * from "./ai";
+export * from "./greeting";
 export * from "./ids";
 export * from "./jobs";
 export * from "./objects/index";
