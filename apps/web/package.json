@@ -23,6 +23,7 @@
     "@tj/api-client": "workspace:*",
     "@tj/domain": "workspace:*",
     "@tj/ui": "workspace:*",
+    "@vercel/speed-insights": "2.0.0",
     "hono": "4.13.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
