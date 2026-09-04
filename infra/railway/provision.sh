@@ -27,7 +27,7 @@ export RAILWAY_AGENT_SESSION="${RAILWAY_AGENT_SESSION:-teach-24-provision-$$}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-log() { printf '\n==> %s\n' "$*"; }
+log() { printf '\n==> %s\n' "$*" >&2; }
 need() { command -v "$1" >/dev/null || { echo "missing: $1" >&2; exit 1; }; }
 need railway; need jq; need python3; need openssl
 
@@ -79,7 +79,9 @@ PG_ID=$(ensure_service postgres --image "$PG_IMAGE" \
 echo "postgres=$PG_ID"
 if ! railway volume list --json 2>/dev/null | jq -e '.volumes[] | select(.serviceName=="postgres")' >/dev/null; then
   log "volume for postgres"
-  railway volume add --service "$PG_ID" --mount-path /var/lib/postgresql/data --json >/dev/null
+  # `volume add` (CLI 5.49) has no --service flag: it targets the linked service.
+  railway service link postgres >/dev/null
+  railway volume add --mount-path /var/lib/postgresql/data --json >/dev/null
 fi
 # Region + no start-command override; NEVER give postgres a public domain / TCP proxy by default.
 gql 'mutation($s:String!,$e:String!,$i:ServiceInstanceUpdateInput!){serviceInstanceUpdate(serviceId:$s,environmentId:$e,input:$i)}' \
@@ -89,15 +91,22 @@ gql 'mutation($s:String!,$e:String!,$i:ServiceInstanceUpdateInput!){serviceInsta
 API_ID=$(ensure_service api);       echo "api=$API_ID"
 WORKER_ID=$(ensure_service worker); echo "worker=$WORKER_ID"
 
-set_config_file() { # serviceId path
+# Railway deprecated railway.json/toml config-as-code (2026) in favour of .railway/railway.ts, and
+# "DOCKERFILE" left the Builder enum (a Dockerfile is auto-detected via dockerfilePath). Until we
+# migrate to IaC, apply the settings from infra/railway/<svc>.json directly to the service instance
+# so those files remain the reviewable source of truth.
+apply_service_settings() { # serviceId path
+  local input
+  input=$(jq -c --arg r "$REGION" '
+    {dockerfilePath: .build.dockerfilePath, watchPatterns: .build.watchPatterns, region: $r}
+    + (.deploy | del(.region))' "$2")
   gql 'mutation($s:String!,$e:String!,$i:ServiceInstanceUpdateInput!){serviceInstanceUpdate(serviceId:$s,environmentId:$e,input:$i)}' \
-    "$(jq -n --arg s "$1" --arg e "$ENV_ID" --arg p "$2" --arg r "$REGION" \
-        '{s:$s,e:$e,i:{railwayConfigFile:$p,builder:"DOCKERFILE",dockerfilePath:"Dockerfile",region:$r}}')" \
-    | jq -e '.data.serviceInstanceUpdate==true' >/dev/null || { echo "serviceInstanceUpdate failed for $1" >&2; exit 1; }
+    "$(jq -n --arg s "$1" --arg e "$ENV_ID" --argjson i "$input" '{s:$s,e:$e,i:$i}')" \
+    | jq -e '.data.serviceInstanceUpdate==true' >/dev/null || { echo "serviceInstanceUpdate failed for $1 ($2)" >&2; exit 1; }
 }
-log "config-as-code paths + region"
-set_config_file "$API_ID" "infra/railway/api.json"
-set_config_file "$WORKER_ID" "infra/railway/worker.json"
+log "service settings from infra/railway/*.json + region"
+apply_service_settings "$API_ID" "infra/railway/api.json"
+apply_service_settings "$WORKER_ID" "infra/railway/worker.json"
 
 # --- 4. Variables (from infra/env.contract.ts via scripts/railway-vars.ts; TEACH-26) ------------
 # `railway-vars.ts` prints the non-secret `NAME=value` pairs (plain config + `${{...}}` references)

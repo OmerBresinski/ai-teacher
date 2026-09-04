@@ -32,8 +32,10 @@ RUN bunx turbo@2.10.12 prune @tj/api @tj/worker --docker --out-dir /pruned
 FROM base AS deps
 COPY --from=pruner /pruned/json/ ./
 # `--ignore-scripts`: the root `prepare` (lefthook install) needs a git checkout.
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --ignore-scripts
+# No BuildKit cache mount: Railway only accepts `id=s/<service id>-<path>` and forbids variables in
+# the id, which one Dockerfile shared by `api` and `worker` cannot satisfy. Layer caching still skips
+# this step when the manifests/lockfile are unchanged.
+RUN bun install --frozen-lockfile --ignore-scripts
 
 # ---------------------------------------------------------------------------------------------
 FROM base AS build
