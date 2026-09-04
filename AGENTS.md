@@ -22,6 +22,30 @@ exactly as written. Setup, commands and conventions: [`README.md`](README.md).
 - **Load the relevant skill before touching that area.** Each app/package has its own `AGENTS.md`
   naming the skills to load and the ADR constraints that override generic skill advice.
 
+## Writing tickets (Linear issues)
+
+Tickets are executed by implementing subagents that are **less capable than the agent writing the
+ticket** and start with an empty context. A ticket that says "add a route like the others" will be
+guessed; a ticket that names the file, the function and the pattern will be built. Before writing a
+ticket, **read the code paths it touches** — never describe them from memory or by analogy:
+
+- Name the exact files and symbols to create or change (`apps/api/src/routes/me.ts`,
+  `meRoutes`, `CreateAppOptions.ai`), and the existing file that is the pattern to copy
+  (`files.ts` for route injection, `ping.ts` for a job handler). Quote small signatures verbatim.
+- State the repo-specific conventions the implementor cannot infer: how collaborators are injected
+  (route-factory arguments, `deps` on `JobContext`), which helpers tests use (`TEST_ENV`,
+  `fakeSql`, `WORKSPACE_HEADER`, `createFakeAi`), exact dependency pins, which skill to load and
+  which of its advice an ADR overrides.
+- Call out traps you found while reading: e.g. the dev header shim sets `workspaceId` but not
+  `user`; route modules must not leak Bun-only types into `AppType`; pino drops `undefined`.
+- Give a full acceptance table (setup → expected status/body/log lines), the test file names and
+  the cases in each, and the exact PR title (≤ 100 chars, commitlint).
+- Say what is out of scope and which ADR decides each design choice, so the implementor does not
+  re-open it.
+
+Use `linear_get_issue` on a recent well-specified ticket (e.g. TEACH-69, TEACH-74) as the shape
+to follow. A ticket is ready when a subagent could open the PR without asking a single question.
+
 ## Delivery workflow (implement → PR → review → merge)
 
 The user says **what** to do (a Linear project, a list of issues, a feature, a bug — anything);
