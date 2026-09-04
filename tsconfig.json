@@ -1,4 +1,8 @@
 {
   "extends": "@tj/config/tsconfig/node.json",
-  "include": ["commitlint.config.ts", "scripts/**/*.ts", "infra/**/*.ts"]
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["commitlint.config.ts", "scripts/**/*.ts", "infra/**/*.ts", ".railway/**/*.ts"]
 }

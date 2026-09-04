@@ -31,7 +31,6 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | --- | ----- | ------ | -------------------- |
 | **Sign-in mail is console-only** | `MAIL_PROVIDER=console` in production: magic links are printed to the api log (`railway logs --service api`), never sent. Only someone with Railway access can sign in. | A real mail provider (Resend/Postmark) behind the existing `MailSender` interface, `MAIL_PROVIDER=resend` + API key on Railway. | TEACH-35; ADR 0008; `apps/api/src/mail/` |
 | **Cross-site session cookie** | `COOKIE_SAMESITE=none` on the production api because `*.vercel.app` and `*.up.railway.app` share no parent domain. | Buy `<domain>`; `app.<domain>` → Vercel, `api.<domain>` → Railway; `COOKIE_SAMESITE=lax`, `COOKIE_DOMAIN=.<domain>`, `WEB_ORIGIN`/`BETTER_AUTH_URL`/`VITE_API_URL` updated. | TEACH-36; "Cookie stopgap" below; ADR 0008 amendment |
-| **Railway config-as-code deprecated** | `infra/railway/*.json` applied by `provision.sh` through the API; files keep working until **2026-12-01**. | Migrate to `.railway/railway.ts` (`railway config migrate`). | TEACH-38; "Config-as-code" below; ADR 0010 amendment |
 | **Vercel production is public** | `teaching-journey-web.vercel.app` has no Deployment Protection; sign-in is gated by the console-only mail, so exposure is low. | Founder decision once mail works: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
 | **OAuth disabled** | Google/Microsoft sign-in off (no client credentials); magic link only. | Set the four `*_CLIENT_ID`/`*_CLIENT_SECRET` variables when the OAuth apps exist. | TEACH-39; `docs/env.md` |
@@ -112,8 +111,8 @@ them (Vercel's build uses its own remote cache: "Detected Turbo").
    `WEB_ORIGIN_PATTERNS=https://teaching-journey-web-*-omerbresinskis-projects.vercel.app`
    (glob, `*` = one DNS label — covers `…-git-<branch>-…` and `…-<hash>-…` preview URLs; also
    fed to better-auth `trustedOrigins`). `WEB_ORIGIN` keeps the exact production/alias origins.
-   `WEB_ORIGIN_PATTERNS` is still set per PR environment by hand (checklist below); seeding it
-   through `infra/railway/api.json` `environments.pr` overrides is a TEACH-24 follow-up.
+   `WEB_ORIGIN_PATTERNS` is inherited from production by PR environments (it is set there today);
+   `.railway/railway.ts` cannot seed PR-only values — see "Config-as-code" (`preserve()` only).
 4. Vercel's SSO protection does not affect the page's own XHR/SSE to the api once the page loaded.
 
 ### Cookie stopgap: `COOKIE_SAMESITE=none` in production
@@ -224,11 +223,11 @@ rm /tmp/token /tmp/prod.env
                               region: europe-west4-drams3a (EU-West, Amsterdam)
 ```
 
-| Service    | Source                                  | Config-as-code                | Ports / network                                   |
-| ---------- | --------------------------------------- | ----------------------------- | ------------------------------------------------- |
-| `api`      | GitHub repo, root `Dockerfile`          | `infra/railway/api.json`      | `PORT=3001`; `https://api-production-903f.up.railway.app`; `/health` |
-| `worker`   | GitHub repo, root `Dockerfile`          | `infra/railway/worker.json`   | `PORT=3002` (health only); **no public domain**   |
-| `postgres` | image `pgvector/pgvector:pg16` + volume `postgres-volume` (`/var/lib/postgresql/data`) | — (image service) | 5432 on the private network only; **no domain, no TCP proxy** |
+| Service    | Source                                  | Declared in (IaC)                        | Ports / network                                   |
+| ---------- | --------------------------------------- | ---------------------------------------- | ------------------------------------------------- |
+| `api`      | GitHub repo, root `Dockerfile`          | `.railway/railway.ts` `service("api")`   | `PORT=3001`; `https://api-production-903f.up.railway.app`; `/health` |
+| `worker`   | GitHub repo, root `Dockerfile`          | `.railway/railway.ts` `service("worker")` | `PORT=3002` (health only); **no public domain**   |
+| `postgres` | image `pgvector/pgvector:pg16` + volume `postgres-volume` (`/var/lib/postgresql/data`) | `.railway/railway.ts` `service("postgres")` + `volume("postgres-volume")` | 5432 on the private network only; **no domain, no TCP proxy** |
 
 Project `teaching-journey` (`a79752e1-8bf5-41d0-b832-f1b64aaf6d2f`), workspace
 `omerbresinski's Projects` (Hobby). Environments: `production` (`d595bbf8-dc4b-494f-b1f7-0023dd2dc25d`)
@@ -262,8 +261,8 @@ Multi-stage, pinned to `oven/bun:1.3.6-alpine` (matches `.bun-version`; bump tog
 `infra/docker/entrypoint.sh` (`ENTRYPOINT`, default `CMD ["api"]`) `exec`s Bun so SIGTERM reaches
 the process: `api` → `bun apps/api/dist/index.js`, `worker` → `bun apps/worker/dist/index.js`,
 `migrate` → `bun packages/db/dist/migrate.js`, anything else → usage, exit 2. Railway's
-"start command" **replaces the `ENTRYPOINT`** (exec form), which is why the config files use the
-full `/app/entrypoint.sh api` etc. `HEALTHCHECK` fetches `http://127.0.0.1:$PORT/health`.
+"start command" **replaces the `ENTRYPOINT`** (exec form), which is why `.railway/railway.ts` uses
+the full `/app/entrypoint.sh api` etc. `HEALTHCHECK` fetches `http://127.0.0.1:$PORT/health`.
 The entrypoint also forces `NODE_ENV=production` for every command: the bundles cannot load
 `pino-pretty` (a worker thread `bun build` does not bundle), so `NODE_ENV=development` would crash
 the image on boot.
@@ -281,31 +280,76 @@ bun run docker:run:worker    # GET :3002/health -> {"ok":true,"activeJobs":0,"bo
 `infra/docker/`; `apps/web`, `packages/ui`, docs, tests, CI and env files never reach the daemon.
 CI job `docker-build-smoke` runs `docker build .` on every PR.
 
-## Config-as-code (`infra/railway/*.json`)
+## Config-as-code (`.railway/railway.ts`, infrastructure-as-code)
 
-One `railway.json` per service. **Railway deprecated config-as-code files** (`railway.json` /
-`railway.toml`) in favour of `.railway/railway.ts` infrastructure-as-code: the
-`serviceInstanceUpdate.railwayConfigFile` field now errors and `DOCKERFILE` is no longer in the
-`Builder` enum. Existing files keep working until **2026-12-01**. Therefore `provision.sh` no
-longer points the service at a file; it reads `infra/railway/{api,worker}.json` and applies the
-values directly via `serviceInstanceUpdate` (the files stay the single, reviewable source of the
-settings). Migrating to `.railway/railway.ts` (`railway config migrate`) is a follow-up to finish
-before that date.
+**TEACH-38 (2026-09-04):** Railway deprecated per-service config-as-code files (`railway.json` /
+`railway.toml`, read from the repo at deploy time; hard cutoff **2026-12-01**) in favour of
+project-level **infrastructure-as-code**: one [`.railway/railway.ts`](../.railway/railway.ts)
+describing the whole Railway project, evaluated by the CLI (`railway config plan` / `apply`).
+The old `infra/railway/{api,worker}.json` + `serviceInstanceUpdate` shim and the root
+`railway.json` are gone; the TS file is the single source of truth for service settings **and**
+for the `postgres` image service + its volume. Facts that shape how it is used:
 
-| Key                                  | `api.json`                                   | `worker.json`                  |
-| ------------------------------------ | -------------------------------------------- | ------------------------------ |
-| `build.builder` / `dockerfilePath`   | `DOCKERFILE` / `Dockerfile`                  | same                           |
-| `build.watchPatterns`                | api + db/domain/jobs/config + Docker files   | worker + same packages         |
-| `deploy.region`                      | `europe-west4-drams3a`                       | same                           |
-| `deploy.startCommand`                | `/app/entrypoint.sh api`                     | `/app/entrypoint.sh worker`    |
-| `deploy.preDeployCommand`            | `["/app/entrypoint.sh migrate"]` (600 s max) | —                              |
-| `deploy.healthcheckPath` / timeout   | `/health` / 300 s                            | `/health` / 300 s (on `PORT`)  |
-| `deploy.restartPolicyType` / retries | `ON_FAILURE` / 5                             | same                           |
-| `deploy.drainingSeconds`             | 30 (Railway sends SIGTERM, then SIGKILL)     | 30 (worker drains jobs ≤ 25 s) |
-| `deploy.overlapSeconds`              | 10 (old api serves while new one warms up)   | — (one consumer at a time)     |
+- **The CLI is the only path.** Railway does *not* read `.railway/railway.ts` from the repository
+  at build or deploy time — settings change only when someone runs `railway config apply`
+  (`provision.sh` step 3 does; a plain push of the file changes nothing on Railway). `railway config
+  plan` is read-only and is the drift check (`--detailed-exit-code`: 0 = in sync, 2 = drift).
+- **Whole environment, omit = delete.** The file must list every service, volume *and variable*
+  of the environment; anything missing is planned as a destructive delete. Variables are therefore
+  rendered from [`env.contract.ts`](env.contract.ts) (`railwayNames()`, production ∪ PR names) as
+  `preserve()` = "keep whatever value Railway has" (a no-op when the variable is not set). Values
+  are never in the file; they are seeded / rotated by `provision.sh` and `railway variable set` as
+  before. A variable on Railway that the contract does not know shows up in `plan` as a delete,
+  which is the intended drift check — `provision.sh` runs `apply --yes` *without*
+  `--confirm-destructive`, so such a plan aborts instead of deleting.
+- **Postgres in IaC: yes.** `service("postgres", { source: image("pgvector/pgvector:pg16"),
+  volumeMounts, replicas: { "europe-west4-drams3a": 1 }, deploy: { restartPolicyType: "ALWAYS" } })`
+  and `volume("postgres-volume", { region, sizeMB: 5000, … })` were imported with `railway config
+  pull` and plan as a no-op against the live service, so the GraphQL region/restart-policy mutation
+  left `provision.sh`. The volume/service are still *created* by the CLI in step 2 (proven path);
+  `apply` then reconciles. Volume lifecycle is deliberately conservative on Railway's side
+  (detach/shrink/delete are destructive and blocked non-interactively).
+- **PR-environment variables: no.** `apply` targets one linked environment (production). PR
+  environments are copies of production created by Railway; IaC has no `environments.pr`-style
+  overrides (the `ctx.environment` switch only changes what a manual `apply` against that
+  environment would render). `WEB_ORIGIN_PATTERNS` therefore keeps living on production (inherited
+  by PR envs) and `projectUpdate { prDeploys: true }` stays the one GraphQL call in `provision.sh`.
+- **Tooling.** `railway` (npm, root devDependency) provides `railway/iac` and its types; the CLI
+  (5.49+) evaluates the file with **Node ≥ 22.6** (`--experimental-strip-types`; Node 18/20 fail
+  with `bad option`). The file imports `../infra/env.contract.ts` (extension required for Node;
+  root `tsconfig.json` has `allowImportingTsExtensions`). It is linted/typechecked by
+  `bun run lint` / `typecheck` (`lint:root`, `typecheck:root`), excluded from the Docker context
+  (`.dockerignore`) and not a turbo input of any app task. `preDeployTimeoutSeconds` is accepted by
+  the CLI but missing from the SDK types (3.11.0) — hence the one cast in the file. Restart policy
+  `ON_FAILURE` is Railway's default and stored as `null`, so it is *not* written explicitly (an
+  explicit value never converges in `plan`); only `restartPolicyMaxRetries` is.
+
+Settings declared per service (all live in production, `plan` = "already up to date"):
+
+| Setting                                 | `service("api")`                              | `service("worker")`            |
+| --------------------------------------- | --------------------------------------------- | ------------------------------ |
+| `source`                                | `github("OmerBresinski/ai-teacher", { branch: "master" })` | same              |
+| `build.builder` / `dockerfilePath`      | `DOCKERFILE` / `Dockerfile`                   | same                           |
+| `build.watchPatterns`                   | image inputs (`Dockerfile`, `.dockerignore`, `infra/docker/**`, `.railway/**`, manifests) + db/domain/jobs/config + `apps/api/**` | same + `apps/worker/**` |
+| `replicas`                              | `{ "europe-west4-drams3a": 1 }` (region)      | same                           |
+| `start`                                 | `/app/entrypoint.sh api`                      | `/app/entrypoint.sh worker`    |
+| `preDeploy` / `preDeployTimeoutSeconds` | `/app/entrypoint.sh migrate` / 600 s          | —                              |
+| `healthcheck` / `healthcheckTimeout`    | `/health` / 300 s                             | `/health` / 300 s (on `PORT`)  |
+| restart policy                          | `ON_FAILURE` (default) / `restartPolicyMaxRetries: 5` | same                   |
+| `deploy.drainingSeconds`                | 30 (Railway sends SIGTERM, then SIGKILL)      | 30 (worker drains jobs ≤ 25 s) |
+| `deploy.overlapSeconds`                 | 10 (old api serves while new one warms up)    | — (one consumer at a time)     |
+| `env`                                   | contract names as `preserve()`                | same                           |
 
 Pre-deploy runs in the freshly built image **before** the new api replica starts and before the
 health check; a failed migration fails the deploy and the previous deployment keeps serving.
+
+```sh
+export PATH="$HOME/.nvm/versions/node/v22.17.0/bin:$HOME/.bun/bin:$PATH"   # node >= 22.6 + railway CLI
+railway config plan                    # read-only diff vs production
+railway config apply                   # interactive confirm; provision.sh uses --yes
+railway config pull --force            # re-import live state (then diff against git; it also
+                                       #   rewrites variables as an explicit preserve() list)
+```
 
 ## Variables (names only — values live in Railway, never in git)
 
@@ -362,18 +406,20 @@ Never set `ENABLE_TEST_ROUTES` on Railway (the api refuses it with `NODE_ENV=pro
 
 ```sh
 export PATH="$HOME/.bun/bin:$PATH"           # railway >= 5.49, logged in
-./infra/railway/provision.sh                 # idempotent: project, services, volume, vars, domain,
-                                             # config paths, GitHub source, PR environments
-                                             # (variables come from infra/env.contract.ts)
+./infra/railway/provision.sh                 # idempotent: project, services, volume, IaC settings
+                                             # (railway config apply), vars, domain, GitHub source,
+                                             # PR environments (variables: infra/env.contract.ts)
 ./infra/railway/provision.sh --deploy        # ...plus a first `railway up` of api and worker
 ```
 
-The script uses the CLI for everything it can and two GraphQL mutations for what it cannot:
-`serviceInstanceUpdate` (builder, start/pre-deploy commands, health check, restart policy, region —
-the values from `infra/railway/{api,worker}.json`) and `projectUpdate { prDeploys: true }` (PR
-environments). Re-running is safe; it never prints secrets. It was executed end-to-end on
+The script uses the CLI for everything it can — service settings, region and the postgres
+image/volume come from `.railway/railway.ts` via `railway config apply --yes` (step 3, see
+"Config-as-code") — and one GraphQL mutation for what it cannot: `projectUpdate { prDeploys: true }`
+(PR environments). Re-running is safe; it never prints secrets. It was executed end-to-end on
 2026-09-04 (all steps passed, including the GitHub source connect — the Railway GitHub App was
-already installed).
+already installed); the IaC step replaced the former `serviceInstanceUpdate` shim on the same day
+(TEACH-38) and was verified with `plan` → apply → `plan` = no changes against production. A fresh
+provisioning run with the IaC step has not been exercised end-to-end.
 
 ### Platform findings from the first live run (fixed in PR #30, master `08239fc`)
 
@@ -382,9 +428,10 @@ already installed).
    service id into a file that also builds locally and in CI.
 2. **`railway volume add` (CLI 5.49) has no `--service` flag** — it attaches the volume to the
    *linked* service, so the script `railway service link`s `postgres` first.
-3. **Config-as-code files are deprecated** (see "Config-as-code"): `railwayConfigFile` errors and
-   `DOCKERFILE` left the `Builder` enum, so the script applies the JSON values through
-   `serviceInstanceUpdate` instead. Files work until 2026-12-01; then `.railway/railway.ts`.
+3. **Config-as-code files are deprecated** (`railwayConfigFile` errors, `DOCKERFILE` left the
+   `Builder` enum). First worked around with a `serviceInstanceUpdate` shim; since TEACH-38 the
+   settings live in `.railway/railway.ts` and are applied with `railway config apply` (see
+   "Config-as-code").
 
 | Task                     | Command                                                                                          |
 | ------------------------ | ------------------------------------------------------------------------------------------------ |
@@ -395,6 +442,7 @@ already installed).
 | Manual migrate           | `railway ssh --service api /app/entrypoint.sh migrate` (runs inside the live api container, which has the bundle and the private-network `DATABASE_URL`). `railway run` is *local* execution with Railway variables — the private Postgres host is not reachable from a laptop, so it is not an option here. **Needs an SSH key registered with Railway** (`railway ssh keys`) — not done yet. |
 | Connect to Postgres      | `railway connect postgres` (SSH tunnel; no public proxy exists on purpose), then `select extname from pg_extension;` → `vector`. Same SSH-key prerequisite as above (`railway ssh keys`); until it is registered, the only DB access is through the api/worker themselves. |
 | Variables                | `bun run env:check [--pr <n>] [--fix]` (names vs `docs/env.md`); `railway variable list --service api --json`; `railway variable set K=V --service api`; secrets via `--stdin` |
+| Settings drift           | `railway config plan --detailed-exit-code` (exit 2 = `.railway/railway.ts` and production differ); `railway config apply` to push the file |
 
 ## PR environments
 
@@ -459,7 +507,8 @@ Open:
 - [ ] Vercel: Deployment Protection decision for production; *Speed Insights → Enable*.
 - [ ] GitHub: `TURBO_TOKEN` secret + `TURBO_TEAM` variable for the CI remote cache (see "Turbo remote cache").
 - [ ] Optional: Google / Microsoft OAuth credentials (F17); `railway ssh keys` for `railway ssh` /
-      `railway connect`; config-as-code migration to `.railway/railway.ts` before 2026-12-01.
+      `railway connect`.
 
-Everything else — project, region, image + volume, services, service settings, variables,
-public domain, GitHub source, PR environments — is done by `provision.sh` via CLI/GraphQL.
+Everything else — project, region, image + volume, services, service settings
+(`.railway/railway.ts`), variables, public domain, GitHub source, PR environments — is done by
+`provision.sh` via CLI, `railway config apply` and one GraphQL call.

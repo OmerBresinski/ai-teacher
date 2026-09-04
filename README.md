@@ -363,7 +363,8 @@ EU-West (Amsterdam) next to a `pgvector/pgvector:pg16` Postgres (ADR
 2026-09-04 by `infra/railway/provision.sh`; api at `https://api-production-903f.up.railway.app`,
 every PR gets an `ai-teacher-pr-<n>` environment. The image's entrypoint takes one word:
 `api`, `worker` or `migrate`; Railway runs `migrate` as the api's pre-deploy command (ADR 0006:
-never on boot). Config-as-code lives in [`infra/railway/`](infra/railway/), the full runbook
+never on boot). The Railway project is declared in [`.railway/railway.ts`](.railway/railway.ts)
+(infrastructure-as-code, `railway config plan|apply`), the full runbook
 (topology, variables, deploy/rollback, PR environments, dashboard-only steps) in
 [`infra/README.md`](infra/README.md).
 
