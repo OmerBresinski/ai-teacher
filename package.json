@@ -36,10 +36,10 @@
     "test:scripts": "bun test scripts/",
     "test:db": "bun scripts/test-db.ts",
     "test:e2e": "turbo run test:e2e",
-    "lint:root": "biome check --no-errors-on-unmatched ./*.json ./*.ts scripts infra",
-    "lint:root:fix": "biome check --write --no-errors-on-unmatched ./*.json ./*.ts scripts infra",
+    "lint:root": "biome check --no-errors-on-unmatched ./*.json ./*.ts scripts infra .railway",
+    "lint:root:fix": "biome check --write --no-errors-on-unmatched ./*.json ./*.ts scripts infra .railway",
     "typecheck:root": "tsc --noEmit -p tsconfig.json",
-    "format:root": "biome format --write --no-errors-on-unmatched ./*.json ./*.ts scripts infra",
+    "format:root": "biome format --write --no-errors-on-unmatched ./*.json ./*.ts scripts infra .railway",
     "verify-bootstrap": "bash scripts/verify-bootstrap.sh",
     "check:bundle-budget": "bun scripts/check-bundle-budget.ts",
     "skills:check": "bun scripts/skills-check.ts",
@@ -53,6 +53,7 @@
     "@tj/config": "workspace:*",
     "@types/bun": "1.3.6",
     "lefthook": "2.1.12",
+    "railway": "3.11.0",
     "turbo": "2.10.12",
     "typescript": "5.9.3"
   }

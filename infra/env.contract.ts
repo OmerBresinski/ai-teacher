@@ -235,14 +235,14 @@ const CONTRACT = [
     services: ["api"],
     scope: "config",
     local: null,
-    railway: "pr",
+    railway: "both",
     vercel: "n/a",
     setBy: "template",
     railwayValue: "https://teaching-journey-web-*-omerbresinskis-projects.vercel.app",
     format: "origin-pattern-list",
     files: ["api"],
     description:
-      "Optional comma-separated origin GLOBS for per-deployment Vercel preview URLs (`*` = one DNS label, no path), e.g. `https://teaching-journey-web-*-omerbresinskis-projects.vercel.app`. Railway PR environments only; unset in production and locally.",
+      "Optional comma-separated origin GLOBS for per-deployment Vercel preview URLs (`*` = one DNS label, no path), e.g. `https://teaching-journey-web-*-omerbresinskis-projects.vercel.app`. Set on Railway production so PR environments (copies of production) inherit it; the api ignores it when no preview origin matches. Unset locally.",
   },
   {
     name: "BETTER_AUTH_SECRET",

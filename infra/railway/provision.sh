@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
-# Provision the Teaching Journey Railway project (TEACH-24, ADR 0010). Idempotent: re-run safely.
+# Provision the Teaching Journey Railway project (TEACH-24 / TEACH-38, ADR 0010). Idempotent: re-run
+# safely.
 #
-#   ./infra/railway/provision.sh                 # create/link project, services, vars, domain
+#   ./infra/railway/provision.sh                 # create/link project, services, IaC settings, vars, domain
 #   ./infra/railway/provision.sh --deploy        # ...and `railway up` api + worker from this checkout
 #
-# Requires: railway CLI >= 5.49 logged in (`railway whoami`), bun, jq, python3, openssl, and a Railway
-# workspace WITH AN ACTIVE PLAN (project creation is rejected server-side otherwise:
-# "Your trial has expired. Please select a plan to continue using Railway.").
+# Requires: railway CLI >= 5.49 logged in (`railway whoami`), bun, node >= 22.6 (the CLI evaluates
+# .railway/railway.ts with node), jq, python3, openssl, `bun install` done (the `railway` npm package
+# provides `railway/iac`), and a Railway workspace WITH AN ACTIVE PLAN (project creation is rejected
+# server-side otherwise: "Your trial has expired. Please select a plan to continue using Railway.").
 #
-# Everything here is CLI or GraphQL (backboard). The two things that still need the dashboard are
-# listed at the end of the run and in infra/README.md ("Dashboard-only steps").
+# Service settings (builder, watch patterns, commands, health check, region, ...) and the postgres
+# image + volume are declared in .railway/railway.ts and pushed with `railway config apply` (step 3).
+# Everything else is CLI, plus one GraphQL mutation (`projectUpdate { prDeploys }`, step 6). The
+# things that still need the dashboard are listed at the end of the run and in infra/README.md
+# ("Dashboard-only steps").
 set -euo pipefail
 
 PROJECT_NAME="${RAILWAY_PROJECT_NAME:-teaching-journey}"
 WORKSPACE="${RAILWAY_WORKSPACE:-}"                   # id or exact name; prompts if unset+interactive
 ENVIRONMENT="${RAILWAY_ENVIRONMENT:-production}"
-REGION="${RAILWAY_REGION:-europe-west4-drams3a}"     # EU-West (Amsterdam), ADR 0010 / 0016
+# Region (europe-west4-drams3a, EU-West / ADR 0010 / 0016) lives in .railway/railway.ts.
 PG_IMAGE="${RAILWAY_PG_IMAGE:-pgvector/pgvector:pg16}" # same image as docker-compose.yml
 GITHUB_REPO="${RAILWAY_GITHUB_REPO:-OmerBresinski/ai-teacher}"
 GITHUB_BRANCH="${RAILWAY_GITHUB_BRANCH:-master}"
@@ -29,7 +34,10 @@ cd "$ROOT"
 
 log() { printf '\n==> %s\n' "$*" >&2; }
 need() { command -v "$1" >/dev/null || { echo "missing: $1" >&2; exit 1; }; }
-need railway; need jq; need python3; need openssl
+need railway; need jq; need python3; need openssl; need node
+node -e 'const [M,m]=process.versions.node.split(".").map(Number); process.exit(M>22||(M===22&&m>=6)?0:1)' \
+  || { echo "node >= 22.6 required to evaluate .railway/railway.ts (have $(node -v))" >&2; exit 1; }
+[[ -d node_modules/railway ]] || { echo "missing: node_modules/railway -- run 'bun install' (railway/iac for .railway/railway.ts)" >&2; exit 1; }
 
 # --- GraphQL helper (token from the CLI's own config; nothing is stored here) ------------------
 gql() {
@@ -83,30 +91,24 @@ if ! railway volume list --json 2>/dev/null | jq -e '.volumes[] | select(.servic
   railway service link postgres >/dev/null
   railway volume add --mount-path /var/lib/postgresql/data --json >/dev/null
 fi
-# Region + no start-command override; NEVER give postgres a public domain / TCP proxy by default.
-gql 'mutation($s:String!,$e:String!,$i:ServiceInstanceUpdateInput!){serviceInstanceUpdate(serviceId:$s,environmentId:$e,input:$i)}' \
-  "$(jq -n --arg s "$PG_ID" --arg e "$ENV_ID" --arg r "$REGION" '{s:$s,e:$e,i:{region:$r,restartPolicyType:"ALWAYS"}}')" >/dev/null
+# Region, restart policy ALWAYS and the volume mount are declared in .railway/railway.ts (step 3).
+# NEVER give postgres a public domain / TCP proxy.
 
-# --- 3. api + worker services (Dockerfile at repo root, per-service config-as-code) ---------------
+# --- 3. api + worker services + settings + GitHub source from .railway/railway.ts (IaC, TEACH-38) --
 API_ID=$(ensure_service api);       echo "api=$API_ID"
 WORKER_ID=$(ensure_service worker); echo "worker=$WORKER_ID"
 
-# Railway deprecated railway.json/toml config-as-code (2026) in favour of .railway/railway.ts, and
-# "DOCKERFILE" left the Builder enum (a Dockerfile is auto-detected via dockerfilePath). Until we
-# migrate to IaC, apply the settings from infra/railway/<svc>.json directly to the service instance
-# so those files remain the reviewable source of truth.
-apply_service_settings() { # serviceId path
-  local input
-  input=$(jq -c --arg r "$REGION" '
-    {dockerfilePath: .build.dockerfilePath, watchPatterns: .build.watchPatterns, region: $r}
-    + (.deploy | del(.region))' "$2")
-  gql 'mutation($s:String!,$e:String!,$i:ServiceInstanceUpdateInput!){serviceInstanceUpdate(serviceId:$s,environmentId:$e,input:$i)}' \
-    "$(jq -n --arg s "$1" --arg e "$ENV_ID" --argjson i "$input" '{s:$s,e:$e,i:$i}')" \
-    | jq -e '.data.serviceInstanceUpdate==true' >/dev/null || { echo "serviceInstanceUpdate failed for $1 ($2)" >&2; exit 1; }
-}
-log "service settings from infra/railway/*.json + region"
-apply_service_settings "$API_ID" "infra/railway/api.json"
-apply_service_settings "$WORKER_ID" "infra/railway/worker.json"
+# `railway config apply` diffs .railway/railway.ts against the linked environment and pushes only the
+# changes (no-op when already in sync). Variables are listed there as `preserve()` (names from
+# infra/env.contract.ts), so this never writes values; it WOULD delete a variable that is on Railway
+# but not in the contract -- such destructive changes are refused non-interactively (no
+# --confirm-destructive here on purpose): fix the contract or the variable, then re-run.
+# The file also declares `source: github(...)` for api and worker, so the Railway GitHub App must be
+# installed on the repo (dashboard, once) BEFORE this step; otherwise apply fails here.
+log "service settings + GitHub source: railway config apply (.railway/railway.ts)"
+railway config apply --yes \
+  || { echo "!! railway config apply failed. If the error mentions the GitHub source: install the Railway GitHub App on $GITHUB_REPO (dashboard) and re-run." >&2; exit 1; }
+railway config plan --detailed-exit-code >/dev/null || { echo "!! .railway/railway.ts still differs from Railway -- run 'railway config plan'" >&2; exit 1; }
 
 # --- 4. Variables (from infra/env.contract.ts via scripts/railway-vars.ts; TEACH-26) ------------
 # `railway-vars.ts` prints the non-secret `NAME=value` pairs (plain config + `${{...}}` references)
@@ -141,19 +143,12 @@ fi
 API_DOMAIN=$(railway domain list --service api --json | jq -r '.domains[0].domain // .domains[0].name // empty')
 echo "api domain: https://${API_DOMAIN:-<pending>}"
 
-# --- 6. GitHub source (needs the Railway GitHub App installed on the repo -- dashboard, once) -----
-log "source: $GITHUB_REPO@$GITHUB_BRANCH"
-for svc in api worker; do
-  railway service source connect --repo "$GITHUB_REPO" --branch "$GITHUB_BRANCH" --service "$svc" --json \
-    || echo "!! could not connect GitHub source for $svc -- install the Railway GitHub App on $GITHUB_REPO (dashboard) and re-run"
-done
-
-# --- 7. PR environments (project setting; GraphQL -- not exposed by the CLI) ---------------------
+# --- 6. PR environments (project setting; GraphQL -- not exposed by the CLI nor by IaC) -----------
 log "PR environments: enable"
 gql 'mutation($id:String!,$i:ProjectUpdateInput!){projectUpdate(id:$id,input:$i){id prDeploys}}' \
   "$(jq -n --arg id "$PROJECT_ID" '{id:$id,i:{prDeploys:true}}')" | jq -c '.data // .errors'
 
-# --- 8. Optional first deploy from this checkout ------------------------------------------------
+# --- 7. Optional first deploy from this checkout ------------------------------------------------
 if [[ "${1:-}" == "--deploy" ]]; then
   log "deploy (railway up)"
   railway up --service api --ci -m "TEACH-24 provision"
@@ -168,7 +163,9 @@ Done. Verify:
   curl -s https://${API_DOMAIN:-<api-domain>}/health        # {"ok":true,"db":"up"}
   railway connect postgres  ->  select extname from pg_extension;   # vector
 
+Drift check any time: railway config plan   (.railway/railway.ts vs production)
+
 Dashboard-only (see infra/README.md):
-  - Install the Railway GitHub App on $GITHUB_REPO if step 6 printed "!!".
+  - Install the Railway GitHub App on $GITHUB_REPO before step 3 (railway config apply declares the GitHub source).
   - Confirm Settings -> Environments -> "Enable PR environments" is on (set here via projectUpdate).
 EOF

@@ -74,8 +74,9 @@ describe("infra/env.contract.ts", () => {
       "WORKER_CONCURRENCY",
       "BLOB_READ_WRITE_TOKEN",
     ]);
+    // Set on production so PR environments (copies of production) inherit it (TEACH-38).
     expect(railwayNames("api", "pr")).toContain("WEB_ORIGIN_PATTERNS");
-    expect(railwayNames("api", "production")).not.toContain("WEB_ORIGIN_PATTERNS");
+    expect(railwayNames("api", "production")).toContain("WEB_ORIGIN_PATTERNS");
     expect(railwayNames("api", "production")).not.toContain("ENABLE_TEST_ROUTES");
     expect(vercelNames("production")).toEqual(["VITE_API_URL", "VITE_APP_ENV"]);
     expect(vercelNames("preview")).toEqual([

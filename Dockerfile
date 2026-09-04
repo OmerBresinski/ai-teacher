@@ -2,7 +2,7 @@
 # Teaching Journey -- one image for `api`, `worker` and `migrate` (ADR 0001, 0006, 0010; TEACH-24).
 #
 # Railway builds this file for the `api` and `worker` services with different start commands
-# (see infra/railway/*.json); the same image runs migrations as the api's pre-deploy command.
+# (see .railway/railway.ts); the same image runs migrations as the api's pre-deploy command.
 # Locally: `bun run docker:build` then `docker:migrate` / `docker:run:api` / `docker:run:worker`.
 #
 # Stages

@@ -89,7 +89,14 @@
       "env": ["CI", "TEST_DATABASE_URL", "PLAYWRIGHT_*"]
     },
     "//#lint:root": {
-      "inputs": ["*.json", "*.ts", "scripts/**/*.ts", "infra/**/*.ts", "biome.json"]
+      "inputs": [
+        "*.json",
+        "*.ts",
+        "scripts/**/*.ts",
+        "infra/**/*.ts",
+        ".railway/*.ts",
+        "biome.json"
+      ]
     },
     "//#typecheck:root": {
       "inputs": [
@@ -97,6 +104,7 @@
         "*.ts",
         "scripts/**/*.ts",
         "infra/**/*.ts",
+        ".railway/*.ts",
         "$TURBO_ROOT$/packages/config/tsconfig/*.json"
       ]
     },
