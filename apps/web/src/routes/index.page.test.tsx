@@ -82,7 +82,7 @@ describe("IndexPage greeting", () => {
     );
     renderPage();
 
-    const greeting = await screen.findByText("Chalk dust is optional today.");
+    const greeting = await screen.findByText("Chalk dust is optional today.", { selector: "p" });
     expect(greeting).toHaveClass("opacity-100");
   });
 
@@ -91,7 +91,7 @@ describe("IndexPage greeting", () => {
     renderPage();
 
     await waitFor(() => expect(getGreeting).toHaveBeenCalledTimes(1));
-    const greeting = screen.getByText(FALLBACK_GREETING);
+    const greeting = screen.getByText(FALLBACK_GREETING, { selector: "p" });
     expect(greeting).toHaveClass("opacity-0");
     expect(greeting).toHaveAttribute("aria-hidden", "true");
   });
@@ -102,11 +102,12 @@ describe("IndexPage greeting", () => {
       .mockResolvedValueOnce(jsonResponse(200, { text: "Second joke.", source: "model" }));
     renderPage();
 
-    await screen.findByText("First joke.");
+    await screen.findByText("First joke.", { selector: "p" });
     fireEvent.click(screen.getByRole("button", { name: "New joke" }));
 
-    const next = await screen.findByText("Second joke.");
+    const next = await screen.findByText("Second joke.", { selector: "p" });
     expect(next).toHaveClass("opacity-100");
+    expect(screen.getByRole("status")).toHaveTextContent("Second joke.");
     expect(getGreeting).toHaveBeenCalledTimes(2);
   });
 
@@ -114,6 +115,8 @@ describe("IndexPage greeting", () => {
     getGreeting.mockRejectedValue(new Error("unavailable"));
     renderPage();
 
-    await waitFor(() => expect(screen.getByText(FALLBACK_GREETING)).toHaveClass("opacity-100"));
+    await waitFor(() =>
+      expect(screen.getByText(FALLBACK_GREETING, { selector: "p" })).toHaveClass("opacity-100"),
+    );
   });
 });

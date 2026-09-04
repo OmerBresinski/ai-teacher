@@ -49,13 +49,18 @@ export function IndexPage() {
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           Hello{me?.user.name ? `, ${me.user.name}` : ""}
         </h1>
-        <div className="flex items-start gap-2">
+        {/* `min-h-14` reserves two `text-lg` lines so a longer joke does not shift the page. */}
+        <div className="flex min-h-14 items-start gap-2">
           <p
             className={`text-lg text-muted-foreground transition-opacity duration-300 ${hidden ? "opacity-0" : "opacity-100"}`}
             aria-hidden={hidden}
           >
             {text}
           </p>
+          {/* Announces the new joke to assistive tech once it has settled; the visible line fades. */}
+          <span role="status" className="sr-only">
+            {hidden ? "" : text}
+          </span>
           <Button
             variant="ghost"
             size="icon-xs"
