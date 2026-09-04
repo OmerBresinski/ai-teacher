@@ -87,7 +87,7 @@ docs/
 
 Per-area agent guides: [`apps/web/AGENTS.md`](apps/web/AGENTS.md),
 [`apps/api/AGENTS.md`](apps/api/AGENTS.md), [`apps/worker/AGENTS.md`](apps/worker/AGENTS.md),
-[`packages/ui/AGENTS.md`](packages/ui/AGENTS.md).
+[`packages/ui/AGENTS.md`](packages/ui/AGENTS.md), [`packages/ai/AGENTS.md`](packages/ai/AGENTS.md).
 
 ## Agent skills
 
@@ -108,4 +108,3 @@ edit or copy them (ADR 0017).
 | `hono` | `apps/api` | Hono routes, middleware, validation, `streamSSE`, RPC (ADR 0005, 0012) |
 | `use-railway` | `apps/api`, `apps/worker` | Railway services, Postgres, variables, PR environments (ADR 0010) |
 | `thermo-nuclear-code-quality-review` | repo root | reviewing a PR diff in step 2 of the delivery workflow — **review agents only** |
-
