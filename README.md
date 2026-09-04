@@ -134,6 +134,18 @@ is exported as `unsafeDb` on purpose. `job_events` plus `pg_notify('job_events',
 contract between the worker and the API's SSE stream (ADR 0012). Details, rules and the testing
 helper: `packages/db/README.md`.
 
+### Worker & jobs
+
+Background jobs run on **pg-boss** in the same Postgres (ADR 0006). [`packages/jobs`](packages/jobs/README.md)
+(`@tj/jobs`) is the typed layer both sides share: `createBoss()` + `ensureQueues()` at boot,
+`enqueue(ctx, name, payload, { workspaceId })` / `cancel(ctx, jobId)` for the API, and
+`runJob()` + the `JobRegistry` mapped type for the worker. Payloads are Zod-validated before
+pg-boss is touched; every job writes `queued → started → progress* → completed | failed |
+cancelled` to `job_events` (ADR 0012). [`apps/worker`](apps/worker/README.md) (`@tj/worker`) is
+the sole consumer: `bun run dev` inside it (env from `apps/worker/.env`), `GET :3002/health`,
+SIGTERM waits up to 25 s for active jobs and exits 0. pg-boss installs its own `pgboss` schema on
+first start (`pgboss_test` in tests) — the one set of tables not managed by `@tj/db` migrations.
+
 ### Tests against the test database
 
 Integration tests use `TEST_DATABASE_URL` (default
