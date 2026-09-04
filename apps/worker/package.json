@@ -19,6 +19,7 @@
     "@tj/db": "workspace:*",
     "@tj/domain": "workspace:*",
     "@tj/jobs": "workspace:*",
+    "ai": "7.0.92",
     "pg-boss": "12.30.0",
     "pino": "10.3.1",
     "zod": "4.5.4"

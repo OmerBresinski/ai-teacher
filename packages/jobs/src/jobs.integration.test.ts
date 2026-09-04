@@ -38,6 +38,7 @@ const pingJob = defineJob("ping", async ({ payload, signal, progress }) => {
     await progress(Math.round((i / payload.steps) * 100), `step ${i}/${payload.steps}`);
   }
 });
+const aiPingJob = defineJob("ai.ping", async () => {});
 
 const logger = pino({ level: "silent" });
 
@@ -50,7 +51,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
   const outcomes: RunJobOutcome[] = [];
   const shutdown = new AbortController();
 
-  const registry: JobRegistry = { ping: pingJob };
+  const registry: JobRegistry = { ping: pingJob, "ai.ping": aiPingJob };
 
   async function eventsFor(jobId: JobId): Promise<JobEvent[]> {
     const rows = await listJobEvents(unsafeDb, { workspaceId, jobId, limit: 100 });
@@ -134,6 +135,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
             const outcome = await runJob(ctx, "ping", registry, job, {
               shutdown: shutdown.signal,
               logger,
+              deps: undefined,
             });
             outcomes.push(outcome);
             results.push(outcome);
@@ -272,8 +274,12 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         ping: async () => {
           throw new Error("flaky");
         },
+        "ai.ping": aiPingJob,
       };
-      const outcome = await runJob(ctx, "ping", reg, fakeJob(jobId, 0), { logger });
+      const outcome = await runJob(ctx, "ping", reg, fakeJob(jobId, 0), {
+        logger,
+        deps: undefined,
+      });
       expect(outcome).toMatchObject({ status: "failed", event: "progress" });
       const events = await eventsFor(jobId);
       expect(events.map((e) => e.type)).toEqual(["started", "progress"]);
@@ -287,8 +293,12 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         ping: async () => {
           throw new Error("still flaky");
         },
+        "ai.ping": aiPingJob,
       };
-      const outcome = await runJob(ctx, "ping", reg, fakeJob(jobId, 1), { logger });
+      const outcome = await runJob(ctx, "ping", reg, fakeJob(jobId, 1), {
+        logger,
+        deps: undefined,
+      });
       expect(outcome).toMatchObject({ status: "failed", event: "failed" });
       const events = await eventsFor(jobId);
       expect(events.map((e) => e.type)).toEqual(["started", "failed"]);
@@ -306,8 +316,13 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         ping: async ({ signal }) => {
           await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()));
         },
+        "ai.ping": aiPingJob,
       };
-      const run = runJob(ctx, "ping", reg, fakeJob(jobId, 1), { logger, shutdown: ac.signal });
+      const run = runJob(ctx, "ping", reg, fakeJob(jobId, 1), {
+        logger,
+        shutdown: ac.signal,
+        deps: undefined,
+      });
       await Bun.sleep(50);
       ac.abort("shutdown");
       const outcome = await run;
@@ -323,7 +338,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
       const jobId = newId<JobId>();
       const job = fakeJob(jobId, 0);
       (job.data as { payload: unknown }).payload = { message: 42 };
-      const outcome = await runJob(ctx, "ping", registry, job, { logger });
+      const outcome = await runJob(ctx, "ping", registry, job, { logger, deps: undefined });
       expect(outcome).toMatchObject({ status: "deadletter", event: "failed" });
       const events = await eventsFor(jobId);
       expect(events.map((e) => e.type)).toEqual(["failed"]);

@@ -43,7 +43,11 @@ for (const name of Object.values(JobName)) {
     async (jobs) => {
       const results = [];
       for (const job of jobs as BossJob[]) {
-        const run = runJob(ctx, name, registry, job, { shutdown: shutdown.signal, logger });
+        const run = runJob(ctx, name, registry, job, {
+          shutdown: shutdown.signal,
+          logger,
+          deps,
+        });
         active.set(job.id, run);
         try {
           results.push(await run);

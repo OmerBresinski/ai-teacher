@@ -22,6 +22,26 @@ describe("without a jobs context", () => {
     expect((await body(res)).error.code).toBe("service_unavailable");
   });
 
+  test("POST /jobs/ai-ping applies defaults before the runtime check", async () => {
+    const res = await app.request("/jobs/ai-ping", {
+      method: "POST",
+      headers: { "content-type": "application/json", [WORKSPACE_HEADER]: ws },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(503);
+    expect((await body(res)).error.code).toBe("service_unavailable");
+  });
+
+  test("POST /jobs/ai-ping rejects an unknown model class", async () => {
+    const res = await app.request("/jobs/ai-ping", {
+      method: "POST",
+      headers: { "content-type": "application/json", [WORKSPACE_HEADER]: ws },
+      body: JSON.stringify({ class: "huge" }),
+    });
+    expect(res.status).toBe(400);
+    expect((await body(res)).error.code).toBe("validation_failed");
+  });
+
   test("GET /events → 503", async () => {
     const res = await app.request("/events", { headers: { [WORKSPACE_HEADER]: ws } });
     expect(res.status).toBe(503);
@@ -52,6 +72,16 @@ describe("without a jobs context", () => {
 describe("workspace seam (header shim outside production)", () => {
   test("missing header → 401 unauthorized", async () => {
     const res = await app.request("/events");
+    expect(res.status).toBe(401);
+    expect((await body(res)).error.code).toBe("unauthorized");
+  });
+
+  test("POST /jobs/ai-ping without a session → 401 unauthorized", async () => {
+    const res = await app.request("/jobs/ai-ping", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
     expect(res.status).toBe(401);
     expect((await body(res)).error.code).toBe("unauthorized");
   });

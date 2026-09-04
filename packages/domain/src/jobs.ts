@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ModelClassSchema } from "./ai";
 import { JobId, WorkspaceId } from "./ids";
 import { IsoDateTime } from "./primitives";
 
@@ -12,6 +13,7 @@ import { IsoDateTime } from "./primitives";
  */
 export const JobName = {
   ping: "ping",
+  aiPing: "ai.ping",
 } as const;
 export type JobName = (typeof JobName)[keyof typeof JobName];
 
@@ -32,9 +34,18 @@ export const PingPayloadSchema = z.strictObject({
 export type PingPayload = z.infer<typeof PingPayloadSchema>;
 export type PingPayloadInput = z.input<typeof PingPayloadSchema>;
 
+/** Small, content-free Bedrock smoke call (ADR 0018 §7). */
+export const AiPingPayloadSchema = z.strictObject({
+  class: ModelClassSchema.default("small"),
+  prompt: z.string().min(1).max(200).default("Reply with the single word: pong."),
+});
+export type AiPingPayload = z.infer<typeof AiPingPayloadSchema>;
+export type AiPingPayloadInput = z.input<typeof AiPingPayloadSchema>;
+
 /** Payload schema per job name. `satisfies` keeps the record exhaustive over `JobName`. */
 export const JobPayloadSchemas = {
   ping: PingPayloadSchema,
+  "ai.ping": AiPingPayloadSchema,
 } as const satisfies Record<JobName, z.ZodType>;
 
 /** Parsed (output) payload type per job name. */

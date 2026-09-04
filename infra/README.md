@@ -372,6 +372,8 @@ source of truth; this section only says how the values get there.
 contract seeds the region and model-class IDs; the bearer key is a manual Railway secret. TEACH-72
 will add the operational setup and rotation runbook.
 
+**AI smoke test:** after signing in locally, `curl -X POST http://localhost:3001/jobs/ai-ping -H 'content-type: application/json' -H 'x-tj-workspace-id: <workspace-id>' -d '{"class":"small"}'`, then `curl -N http://localhost:3001/jobs/<job-id>/events -H 'x-tj-workspace-id: <workspace-id>'`; expect `started`, two metadata-only `progress` events, then `completed`.
+
 ### Post-provisioning checklist (after `provision.sh`, manual values)
 
 State on 2026-09-04 (`bun run env:check` against `api`/`worker` production): everything the

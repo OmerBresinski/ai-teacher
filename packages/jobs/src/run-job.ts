@@ -16,6 +16,7 @@ import {
   type AbortReason,
   type JobContext,
   type JobData,
+  type JobHandler,
   type JobRegistry,
   type JobsContext,
   NonRetryableError,
@@ -30,10 +31,12 @@ const JobDataEnvelope = z.object({
   payload: z.unknown(),
 });
 
-export interface RunJobOptions {
+export interface RunJobOptions<D = unknown> {
   /** Aborted by the worker on SIGTERM/SIGINT; handlers see `signal.reason === "shutdown"`. */
   shutdown?: AbortSignal;
   logger: Logger;
+  /** App-owned dependencies passed through to the selected job handler. */
+  deps: D;
   /** Test seam. */
   cancelPollIntervalMs?: number;
   /** Test seam. */
@@ -68,12 +71,12 @@ export type RunJobOutcome = JobResult & {
  * Returns the pg-boss disposition; the worker registers with `perJobResults: true` and returns
  * `[outcome]` so pg-boss can distinguish "retry" (`failed`) from "never again" (`deadletter`).
  */
-export async function runJob<N extends JobName>(
+export async function runJob<N extends JobName, D = unknown>(
   ctx: JobsContext,
   name: N,
-  registry: JobRegistry,
+  registry: JobRegistry<D>,
   bossJob: JobWithMetadata<unknown>,
-  opts: RunJobOptions,
+  opts: RunJobOptions<D>,
 ): Promise<RunJobOutcome> {
   const envelope = JobDataEnvelope.safeParse(bossJob.data);
   if (!envelope.success) {
@@ -130,12 +133,13 @@ export async function runJob<N extends JobName>(
     onError: (err) => logger.warn({ err }, "progress event failed"),
   });
 
-  const jobCtx: JobContext<N> = {
+  const jobCtx: JobContext<N, D> = {
     ...base,
     payload,
     signal: abort.signal,
     progress: progress.emit,
     logger,
+    deps: opts.deps,
   };
 
   await emit({ type: "started", ...base, at: nowIso() });
@@ -144,7 +148,7 @@ export async function runJob<N extends JobName>(
   let thrown: unknown;
   let threw = false;
   try {
-    await registry[name](jobCtx as JobContext<typeof name>);
+    await (registry[name] as JobHandler<N, D>)(jobCtx);
   } catch (err) {
     threw = true;
     thrown = err;

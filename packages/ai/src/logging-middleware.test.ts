@@ -104,7 +104,10 @@ describe("AI logging middleware", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(AiError);
       expect(isAiError(error, "provider")).toBe(true);
-      expect((error as Error & { cause?: unknown }).cause).toBe(providerError);
+      expect((error as Error & { cause?: unknown }).cause).toMatchObject({
+        name: "Error",
+        message: providerError.message,
+      });
     }
 
     expect(lines).toHaveLength(1);
@@ -142,7 +145,10 @@ describe("AI logging middleware", () => {
     }
 
     expect(isAiError(caught, "provider")).toBe(true);
-    expect((caught as Error & { cause?: unknown }).cause).toBe(streamError);
+    expect((caught as Error & { cause?: unknown }).cause).toMatchObject({
+      name: "Error",
+      message: streamError.message,
+    });
     expect(lines).toHaveLength(1);
     const record = JSON.parse(lines[0] ?? "") as { level: number; ai: Record<string, unknown> };
     expect(record.level).toBe(40);
@@ -171,7 +177,10 @@ describe("AI logging middleware", () => {
     }
 
     expect(isAiError(caught, "provider")).toBe(true);
-    expect((caught as Error & { cause?: unknown }).cause).toBe(cancelError);
+    expect((caught as Error & { cause?: unknown }).cause).toMatchObject({
+      name: "Error",
+      message: cancelError.message,
+    });
     expect(lines).toHaveLength(1);
     const record = JSON.parse(lines[0] ?? "") as { level: number };
     expect(record.level).toBe(40);

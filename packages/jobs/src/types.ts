@@ -32,8 +32,8 @@ export interface JobData<K extends JobName = JobName> {
   payload: JobPayloads[K];
 }
 
-/** Handed to a job handler by `runJob()`. */
-export interface JobContext<K extends JobName> {
+/** Handed to a job handler by `runJob()`. `D` is owned by the consuming worker application. */
+export interface JobContext<K extends JobName, D = unknown> {
   jobId: JobId;
   workspaceId: WorkspaceId;
   payload: JobPayloads[K];
@@ -50,18 +50,23 @@ export interface JobContext<K extends JobName> {
   progress: (percent?: number, message?: string) => Promise<void>;
   /** Child logger with `jobId`, `workspaceId`, `job` bound. Never log payload/content bodies. */
   logger: Logger;
+  /** App-owned dependencies supplied at worker boot; never import app modules from `@tj/jobs`. */
+  deps: D;
 }
 
-export type JobHandler<K extends JobName> = (ctx: JobContext<K>) => Promise<void>;
+export type JobHandler<K extends JobName, D = unknown> = (ctx: JobContext<K, D>) => Promise<void>;
 
 /**
  * One handler per `JobName`. A mapped type, so adding a name to `@tj/domain` without registering
  * a handler here is a compile error in the worker.
  */
-export type JobRegistry = { [K in JobName]: JobHandler<K> };
+export type JobRegistry<D = unknown> = { [K in JobName]: JobHandler<K, D> };
 
 /** Identity helper that pins `K` so the handler's `ctx.payload` is typed. */
-export function defineJob<K extends JobName>(name: K, handler: JobHandler<K>): JobHandler<K> {
+export function defineJob<K extends JobName, D = unknown>(
+  name: K,
+  handler: JobHandler<K, D>,
+): JobHandler<K, D> {
   void name;
   return handler;
 }

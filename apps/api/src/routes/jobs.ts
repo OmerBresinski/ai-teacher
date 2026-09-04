@@ -5,7 +5,7 @@
  */
 import { zValidator } from "@hono/zod-validator";
 import { listJobEvents } from "@tj/db";
-import { JobId, PingPayloadSchema, type WorkspaceId } from "@tj/domain";
+import { AiPingPayloadSchema, JobId, PingPayloadSchema, type WorkspaceId } from "@tj/domain";
 import { cancel, enqueue } from "@tj/jobs";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -56,6 +56,16 @@ export function jobRoutes(runtime: EventsRuntime | undefined) {
       const rt = requireRuntime(runtime);
       const body = c.req.valid("json");
       const jobId = await enqueue(rt.jobs, "ping", body, { workspaceId });
+      if (jobId === null) {
+        throw new HTTPException(409, { message: "An identical job is already queued." });
+      }
+      return c.json({ jobId }, 202);
+    })
+    .post("/jobs/ai-ping", zValidator("json", AiPingPayloadSchema, validationHook), async (c) => {
+      const workspaceId = getWorkspaceId(c);
+      const rt = requireRuntime(runtime);
+      const body = c.req.valid("json");
+      const jobId = await enqueue(rt.jobs, "ai.ping", body, { workspaceId });
       if (jobId === null) {
         throw new HTTPException(409, { message: "An identical job is already queued." });
       }

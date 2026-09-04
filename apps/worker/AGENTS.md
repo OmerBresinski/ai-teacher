@@ -18,9 +18,9 @@ a health endpoint. Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolde
 - **ADR 0012 — job events.** Handlers publish `started` / `progress` / `completed` (and failure)
   events for each job (job-events table or pg-boss completion hooks); the API fans them out over
   SSE. Never open an HTTP stream to clients from here.
-- **ADR 0018 — AI provider.** Provider is `@tj/ai` `createAi`; callers use `ai.model(cls)` and
-  pass `abortSignal`. Never import `@ai-sdk/*` directly in apps, use the Vercel AI Gateway, or log
-  prompt/completion text. Model IDs come from `AI_MODEL_*`.
+- **ADR 0018 — AI provider.** Provider is `@tj/ai` `createAi`; handlers use `deps.ai.model(cls)`
+  and pass `signal` as `abortSignal`. Never import `@ai-sdk/*` directly in apps, use the Vercel AI
+  Gateway, or log prompt/completion text. Model IDs come from `AI_MODEL_*`.
 - **Never import from `apps/api`.** Share code only through packages (`@tj/domain`, `@tj/db`,
   `@tj/jobs`, …). Dependency direction is apps → packages.
 - ADR 0007: tenant tables only through `forWorkspace(workspaceId)` from `@tj/db`.

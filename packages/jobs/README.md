@@ -28,21 +28,22 @@ import {
 | `ensureQueues` | `(boss: PgBoss) => Promise<void>` | `createQueue` for every `JobName` with the shared policy (below). Idempotent; run on every boot. pg-boss ≥ 10 refuses `send` to a queue that was never created. |
 | `enqueue` | `<N extends JobName>(ctx: JobsContext, name: N, payload: JobPayloadInputs[N], opts: { workspaceId: WorkspaceId; singletonKey?: string }) => Promise<JobId \| null>` | `JobPayloadSchemas[name].parse(payload)` **before** pg-boss is touched (throws `ZodError`); mints `jobId = newId<JobId>()`; `boss.send(name, { jobId, workspaceId, payload }, { id: jobId, singletonKey, retryLimit: 1 })`; writes the `queued` event. `null` only when `singletonKey` deduplicated (no event). |
 | `cancel` | `(ctx: JobsContext, jobId: JobId, opts?: { name?: JobName }) => Promise<CancelResult>` | See "Cancel semantics". |
-| `defineJob` | `<K extends JobName>(name: K, handler: JobHandler<K>) => JobHandler<K>` | Identity helper that types `ctx.payload`. |
-| `runJob` | `<N extends JobName>(ctx: JobsContext, name: N, registry: JobRegistry, bossJob: JobWithMetadata, opts: { logger: pino.Logger; shutdown?: AbortSignal }) => Promise<RunJobOutcome>` | Runs one pg-boss job through the registry and emits events. Returns the pg-boss `perJobResults` disposition (`{ id, status: "completed" \| "failed" \| "deadletter", output? }`) plus `event`, the last event type written. |
+| `defineJob` | `<K extends JobName, D>(name: K, handler: JobHandler<K, D>) => JobHandler<K, D>` | Identity helper that types `ctx.payload` and app-owned `ctx.deps`. |
+| `runJob` | `<N extends JobName, D>(ctx: JobsContext, name: N, registry: JobRegistry<D>, bossJob: JobWithMetadata, opts: { logger: pino.Logger; deps: D; shutdown?: AbortSignal }) => Promise<RunJobOutcome>` | Runs one pg-boss job through the registry and emits events. Returns the pg-boss `perJobResults` disposition (`{ id, status: "completed" \| "failed" \| "deadletter", output? }`) plus `event`, the last event type written. |
 | `emitJobEvent` | `(ctx: Pick<JobsContext, "db" \| "sql">, event: JobEvent) => Promise<{ id: number }>` | `insertJobEvent` then `notifyJobEvent` with the returned id — the order `@tj/db` requires. |
 
 ```ts
 interface JobsContext { boss: PgBoss; db: Db /* unsafeDb from createDb */; sql: Sql }
 
-interface JobContext<K extends JobName> {
+interface JobContext<K extends JobName, D = unknown> {
   jobId: JobId; workspaceId: WorkspaceId; payload: JobPayloads[K];
   signal: AbortSignal;                                   // reason: "cancelled" | "shutdown"
   progress: (percent?: number, message?: string) => Promise<void>;
   logger: pino.Logger;                                   // jobId/workspaceId/job/attempt bound
+  deps: D;                                               // app-owned dependencies
 }
-type JobHandler<K> = (ctx: JobContext<K>) => Promise<void>;
-type JobRegistry = { [K in JobName]: JobHandler<K> };   // missing handler = compile error
+type JobHandler<K, D = unknown> = (ctx: JobContext<K, D>) => Promise<void>;
+type JobRegistry<D = unknown> = { [K in JobName]: JobHandler<K, D> }; // exhaustive by JobName
 ```
 
 Booting either process:
@@ -62,10 +63,12 @@ is the sole consumer).
 
 1. In `@tj/domain` (`packages/domain/src/jobs.ts`): add the name to `JobName`, a strict payload
    schema, and register it in `JobPayloadSchemas`.
-2. In `apps/worker/src/jobs/<name>.ts`: `export const fooJob = defineJob("foo", async (ctx) => …)`.
-3. Add it to `apps/worker/src/jobs/index.ts`. Until you do, `typecheck` fails: `JobRegistry` is a
+2. Put app-owned capabilities in the worker deps object at boot and pass it as `runJob(..., { deps })`.
+   Handlers receive the typed object as `ctx.deps`; `@tj/jobs` never imports application modules.
+3. In `apps/worker/src/jobs/<name>.ts`: `export const fooJob = defineJob("foo", async (ctx) => …)`.
+4. Add it to `apps/worker/src/jobs/index.ts`. Until you do, `typecheck` fails: `JobRegistry` is a
    mapped type over `JobName`.
-4. `ensureQueues()` creates the queue on the next boot; `enqueue(ctx, "foo", …)` is typed.
+5. `ensureQueues()` creates the queue on the next boot; `enqueue(ctx, "foo", …)` is typed.
 
 Handler rules: check `ctx.signal.aborted` between steps (and pass the signal to fetch / AI calls);
 call `ctx.progress()` freely — it is rate-limited; throw `NonRetryableError` when a retry cannot
