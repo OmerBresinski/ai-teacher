@@ -40,6 +40,28 @@ export interface StorageAdapter {
   list(prefix: string): AsyncIterable<StorageObject>;
 }
 
+/** Body + metadata of one stored object, as returned by {@link ReadableStorageAdapter.get}. */
+export interface StorageObjectBody {
+  key: string;
+  /** Streams the object bytes; never buffered by the adapter. */
+  body: ReadableStream<Uint8Array>;
+  /** MIME type recorded at `put` time (`application/octet-stream` when unknown). */
+  contentType: string;
+  /** Size in bytes. */
+  size: number;
+  updatedAt: Date;
+}
+
+/**
+ * `StorageAdapter` plus a server-side read (ADR 0011 amendment 2026-09-04). Private objects have
+ * no browser-reachable URL; the API's `GET /files/:key` proxy authorises the caller and streams
+ * `get(key)`. Both `@tj/storage` adapters implement this.
+ */
+export interface ReadableStorageAdapter extends StorageAdapter {
+  /** Rejects with a `not_found` storage error when the object does not exist. */
+  get(key: string): Promise<StorageObjectBody>;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Storage keys: `<workspaceId>/<part>/<part>/...`
 // ---------------------------------------------------------------------------------------------

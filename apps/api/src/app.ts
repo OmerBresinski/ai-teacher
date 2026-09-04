@@ -6,6 +6,7 @@
  * The router type is exported as `AppType` and consumed by `@tj/api-client` (`hc<AppType>()`).
  */
 import type { DbHandle } from "@tj/db";
+import type { ReadableStorageAdapter } from "@tj/domain";
 import type { JobsContext } from "@tj/jobs";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -21,6 +22,7 @@ import { createLogger, type Logger } from "./logger";
 import type { CaptureMailSender } from "./mail";
 import { createOriginMatcher } from "./origins";
 import { eventRoutes } from "./routes/events";
+import { fileRoutes } from "./routes/files";
 import { healthRoutes } from "./routes/health";
 import { helloRoutes } from "./routes/hello";
 import { jobRoutes } from "./routes/jobs";
@@ -49,9 +51,24 @@ export interface CreateAppOptions {
    * a sender is passed, so a stray option can never expose the route.
    */
   testMail?: CaptureMailSender;
+  /**
+   * Object storage behind `GET /files/:key` (ADR 0011 amendment). `src/index.ts` passes
+   * `createStorage(process.env).adapter` (local disk unless `BLOB_READ_WRITE_TOKEN` is set).
+   * Absent → the route answers 503.
+   */
+  storage?: ReadableStorageAdapter;
 }
 
-function buildApp({ env, db, logger: injected, auth, jobs, events, testMail }: CreateAppOptions) {
+function buildApp({
+  env,
+  db,
+  logger: injected,
+  auth,
+  jobs,
+  events,
+  testMail,
+  storage,
+}: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
   const eventsRuntime = events ?? (jobs ? createEventsRuntime({ jobs, logger }) : undefined);
   const app = new Hono<AppEnv>();
@@ -106,6 +123,7 @@ function buildApp({ env, db, logger: injected, auth, jobs, events, testMail }: C
   app.use("/me", guard);
   app.use("/jobs/*", guard);
   app.use("/events", guard);
+  app.use("/files/*", guard);
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
   const routes = app
@@ -113,15 +131,14 @@ function buildApp({ env, db, logger: injected, auth, jobs, events, testMail }: C
     .route("/", helloRoutes)
     .route("/", meRoutes)
     .route("/", jobRoutes(eventsRuntime))
-    .route("/", eventRoutes(eventsRuntime));
+    .route("/", eventRoutes(eventsRuntime))
+    .route("/", fileRoutes(storage));
 
   // TEACH-22: test-only capture route, outside the RPC contract (`AppType` stays clean).
   if (testMail && testRoutesEnabled(env)) {
     app.route("/", testRoutes(testMail));
     logger.warn("test routes enabled (NODE_ENV=test, ENABLE_TEST_ROUTES=1): GET /__test/*");
   }
-
-  // TEACH-15 follow-up: GET /files/:key proxy over the StorageAdapter (packages/storage).
 
   // 6. Errors → envelope. Unknown errors are logged with their stack but never sent to clients.
   app.notFound((c) =>

@@ -93,4 +93,10 @@ describe("vercel.json", () => {
     const hash = `'sha256-${await sha256Base64(THEME_INIT_SCRIPT)}'`;
     expect(scriptSrc, `update vercel.json script-src to ${hash}`).toContain(hash);
   });
+
+  test("CSP style-src has no 'unsafe-inline' (the built index.html carries no inline styles)", () => {
+    const csp = headersFor("/")["Content-Security-Policy-Report-Only"] ?? "";
+    const styleSrc = csp.split(";").find((d) => d.trim().startsWith("style-src")) ?? "";
+    expect(styleSrc.trim()).toBe("style-src 'self'");
+  });
 });

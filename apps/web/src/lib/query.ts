@@ -1,4 +1,5 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
+import type { InferResponseType } from "hono/client";
 import { api } from "@/lib/api";
 
 /** Error envelope returned by every non-2xx API response (apps/api/README.md). */
@@ -53,23 +54,8 @@ export const queryKeys = {
   job: (id: string) => ["job", id] as const,
 };
 
-/**
- * Every JSON body a client method can resolve to, minus the error envelope. The api types
- * `errorResponse()` with the whole `ContentfulStatusCode` union (which includes 200), so Hono's
- * `InferResponseType<…, 200>` cannot separate the envelope from the success body; excluding the
- * envelope shape does. Follow-up: narrow `errorResponse`'s status type in `apps/api/src/errors.ts`.
- */
-export type SuccessBody<M extends (...args: never[]) => Promise<unknown>> = Exclude<
-  Awaited<ReturnType<M>> extends infer R
-    ? R extends { json(): Promise<infer O> }
-      ? O
-      : never
-    : never,
-  ApiErrorEnvelope
->;
-
 /** `200` body of `GET /me` — `{ user: { id, email, name }, workspaceId }`. */
-export type Me = SuccessBody<typeof api.me.$get>;
+export type Me = InferResponseType<typeof api.me.$get, 200>;
 
 /**
  * Who am I. Resolves to `null` on 401 (not signed in) so route guards can redirect instead of

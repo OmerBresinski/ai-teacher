@@ -4,6 +4,7 @@
  */
 import { createDb } from "@tj/db";
 import { createBoss, ensureQueues, type JobsContext } from "@tj/jobs";
+import { createStorage } from "@tj/storage";
 import { createApp } from "./app";
 import { createAuth } from "./auth/auth";
 import { logUsersWithoutWorkspace } from "./auth/workspace-hook";
@@ -20,13 +21,33 @@ const db = createDb(env.DATABASE_URL);
 // magic link can be read back through GET /__test/last-magic-link (Playwright sign-in fixture).
 const testMail = testRoutesEnabled(env) ? new CaptureMailSender(loadMailSender(env, logger)) : null;
 const auth = createAuth({ env, db, mail: testMail ?? loadMailSender(env, logger), logger });
-const boss = createBoss(env.DATABASE_URL, { applicationName: "tj-api" });
+// ADR 0006: the api only enqueues/cancels; `role: "enqueue-only"` disables pg-boss maintenance
+// (`supervise`) and cron (`schedule`) so only the worker runs them.
+const boss = createBoss(env.DATABASE_URL, { applicationName: "tj-api", role: "enqueue-only" });
 boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
 await boss.start();
 await ensureQueues(boss);
 const jobs: JobsContext = { boss, db: db.unsafeDb, sql: db.sql };
 const events = createEventsRuntime({ jobs, databaseUrl: env.DATABASE_URL, logger });
-const app = createApp({ env, db, logger, auth, jobs, events, testMail: testMail ?? undefined });
+// ADR 0011: Vercel Blob when BLOB_READ_WRITE_TOKEN is set, else local disk at STORAGE_ROOT
+// (default .data/storage). These variables are all optional and read by @tj/storage directly;
+// adding them to the env contract (TEACH-26) is a follow-up.
+const storage = createStorage({
+  BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
+  STORAGE_ROOT: process.env.STORAGE_ROOT,
+  STORAGE_PUBLIC_BASE_URL: process.env.STORAGE_PUBLIC_BASE_URL,
+  STORAGE_PUBLIC_PREFIXES: process.env.STORAGE_PUBLIC_PREFIXES,
+});
+const app = createApp({
+  env,
+  db,
+  logger,
+  auth,
+  jobs,
+  events,
+  testMail: testMail ?? undefined,
+  storage: storage.adapter,
+});
 void logUsersWithoutWorkspace(db, logger).catch((err) =>
   logger.warn({ err }, "users-without-workspace self-check failed"),
 );
@@ -44,6 +65,7 @@ logger.info(
     web_origin: env.WEB_ORIGIN,
     web_origin_patterns: env.WEB_ORIGIN_PATTERNS,
     cookie_samesite: env.COOKIE_SAMESITE,
+    storage: storage.kind,
   },
   `api listening on http://localhost:${server.port}`,
 );

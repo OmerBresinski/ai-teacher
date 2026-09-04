@@ -24,7 +24,7 @@ import {
 
 | Function | Signature | Notes |
 | -------- | --------- | ----- |
-| `createBoss` | `(databaseUrl: string, opts?: { schema?: "pgboss" \| "pgboss_test"; max?: number; applicationName?: string }) => PgBoss` | **Not started.** Caller does `await boss.start()` then `await ensureQueues(boss)`. |
+| `createBoss` | `(databaseUrl: string, opts?: { schema?: "pgboss" \| "pgboss_test"; max?: number; applicationName?: string; role?: "worker" \| "enqueue-only" }) => PgBoss` | **Not started.** Caller does `await boss.start()` then `await ensureQueues(boss)`. `role: "enqueue-only"` (the api, ADR 0006) sets `supervise: false, schedule: false` so only the worker runs maintenance and cron. `bossOptions()` returns the same config for tests. |
 | `ensureQueues` | `(boss: PgBoss) => Promise<void>` | `createQueue` for every `JobName` with the shared policy (below). Idempotent; run on every boot. pg-boss ≥ 10 refuses `send` to a queue that was never created. |
 | `enqueue` | `<N extends JobName>(ctx: JobsContext, name: N, payload: JobPayloadInputs[N], opts: { workspaceId: WorkspaceId; singletonKey?: string }) => Promise<JobId \| null>` | `JobPayloadSchemas[name].parse(payload)` **before** pg-boss is touched (throws `ZodError`); mints `jobId = newId<JobId>()`; `boss.send(name, { jobId, workspaceId, payload }, { id: jobId, singletonKey, retryLimit: 1 })`; writes the `queued` event. `null` only when `singletonKey` deduplicated (no event). |
 | `cancel` | `(ctx: JobsContext, jobId: JobId, opts?: { name?: JobName }) => Promise<CancelResult>` | See "Cancel semantics". |

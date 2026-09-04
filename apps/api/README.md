@@ -50,7 +50,13 @@ Mount points (search for the ticket ids in `src/app.ts`):
 
 - `// TEACH-20: mount /auth/* and requireSession here`
 - `// TEACH-19: mount /jobs and /events here` (`streamSSE`, `Last-Event-ID` replay — ADR 0012)
-- `// TEACH-15 follow-up: GET /files/:key proxy` (over the `StorageAdapter`)
+- `fileRoutes(storage)` — `GET /files/:key` proxy over the `ReadableStorageAdapter` (see "Files")
+
+## Background jobs (ADR 0006)
+
+`src/index.ts` builds pg-boss with `createBoss(env.DATABASE_URL, { applicationName: "tj-api",
+role: "enqueue-only" })`: the api only `enqueue`s/`cancel`s, so pg-boss maintenance
+(`supervise: false`) and cron (`schedule: false`) are off here and run in `apps/worker` alone.
 
 ## Error envelope
 
@@ -121,7 +127,19 @@ module-level singletons, so tests can inject fakes.
 | `GET /hello?name=x`  | `200 { message: "Hello, x" }`; `400 validation_failed` when `name` is empty |
 | `GET /me`            | `200 { user: { id, email, name }, workspaceId }`; `401 unauthorized` without a session (see "Auth") |
 | `/auth/*`            | better-auth endpoints (magic link, session, sign-out; OAuth when configured) |
+| `GET /files/:key`    | Streams a stored object (`content-type`, `content-length`, `cache-control: private, no-store`); `401` without a session, `404` for a missing object **or** a key outside the caller's Workspace (never 403), `400 validation_failed` for a malformed key, `503` when no storage adapter is configured (see "Files") |
 | `GET /__test/last-magic-link?email=x` | **Test-only** (see "Test routes"): `200 { email, url }` or `404 not_found`. Absent unless `NODE_ENV=test` and `ENABLE_TEST_ROUTES=1`. |
+
+## Files (`GET /files/:key`, ADR 0011 amendment)
+
+Vercel Blob has no time-limited signed URLs for private blobs, so every Artefact/Source download
+goes through this proxy. `src/index.ts` builds the adapter with `createStorage()` from
+`@tj/storage` — Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set, otherwise local disk at
+`STORAGE_ROOT` (default `.data/storage`) — and passes it as `createApp({ storage })`. The route
+is behind `requireSession`; the key (`<workspaceId>/<segment>/…`, `StorageKeySchema`) must start
+with the caller's `workspaceId` or the answer is `404`, and the body is streamed from
+`storage.get(key)` without buffering. `src/routes/files.ts` deliberately imports only from
+`@tj/domain`: `@tj/storage` uses Bun globals, which must not leak into `AppType`.
 
 ## `AppType` and `@tj/api-client`
 

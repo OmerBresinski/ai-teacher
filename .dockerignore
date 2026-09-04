@@ -30,6 +30,7 @@ coverage
 .railway
 
 # Not part of the api/worker image: the SPA, the design system, docs, CI, tests, tooling.
+# (packages/storage IS part of it: @tj/api's GET /files/:key proxy bundles the StorageAdapter.)
 # turbo prune must still see every workspace's manifest to resolve the graph + lockfile, so the
 # package.json of each excluded workspace is re-included (their sources are not).
 apps/web/**
@@ -38,8 +39,6 @@ packages/ui/**
 !packages/ui/package.json
 packages/api-client/**
 !packages/api-client/package.json
-packages/storage/**
-!packages/storage/package.json
 docs
 .github
 infra/postgres

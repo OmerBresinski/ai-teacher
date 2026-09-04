@@ -187,6 +187,9 @@ the process: `api` → `bun apps/api/dist/index.js`, `worker` → `bun apps/work
 `migrate` → `bun packages/db/dist/migrate.js`, anything else → usage, exit 2. Railway's
 "start command" **replaces the `ENTRYPOINT`** (exec form), which is why the config files use the
 full `/app/entrypoint.sh api` etc. `HEALTHCHECK` fetches `http://127.0.0.1:$PORT/health`.
+The entrypoint also forces `NODE_ENV=production` for every command: the bundles cannot load
+`pino-pretty` (a worker thread `bun build` does not bundle), so `NODE_ENV=development` would crash
+the image on boot.
 
 Local parity (root `package.json`, all verified against the compose Postgres):
 

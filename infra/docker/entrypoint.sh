@@ -13,6 +13,12 @@ set -eu
 cmd="${1:-api}"
 [ "$#" -gt 0 ] && shift
 
+# The bundles are production-only: with NODE_ENV=development pino loads `pino-pretty` in a worker
+# thread, which `bun build` cannot bundle, and the process crashes on boot. The image ships no
+# node_modules, so NODE_ENV is forced here regardless of what the caller passed (`-e NODE_ENV=…`
+# or a Railway variable). Pretty logs are a `bun run dev` feature, never an image feature.
+export NODE_ENV=production
+
 case "$cmd" in
   api)     exec bun apps/api/dist/index.js "$@" ;;
   worker)  exec bun apps/worker/dist/index.js "$@" ;;

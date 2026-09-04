@@ -4,6 +4,7 @@
  * `apps/api` (enqueue/cancel, TEACH-19).
  */
 export {
+  bossOptions,
   type CreateBossOptions,
   createBoss,
   ensureQueues,

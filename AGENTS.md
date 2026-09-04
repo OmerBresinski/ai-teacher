@@ -36,6 +36,8 @@ packages/
   db/           @tj/db         Drizzle schema, migrations, forWorkspace()       ADR 0006/0007
   domain/       @tj/domain     Zod schemas + types, job names, StorageAdapter   Master PRD §8
   api-client/   @tj/api-client Hono RPC AppType + typed client factory          ADR 0005
+  jobs/         @tj/jobs       pg-boss runtime + typed job registry             ADR 0006
+  storage/      @tj/storage    StorageAdapter impls (local disk, Vercel Blob)   ADR 0011
   config/       @tj/config     Shared tsconfig bases, Tailwind preset           TEACH-11
 docs/
   adr/          Architecture decision records

@@ -24,6 +24,7 @@
         "@tj/db": "workspace:*",
         "@tj/domain": "workspace:*",
         "@tj/jobs": "workspace:*",
+        "@tj/storage": "workspace:*",
         "better-auth": "1.7.2",
         "hono": "4.13.5",
         "pg-boss": "12.30.0",
