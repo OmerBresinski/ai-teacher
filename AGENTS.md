@@ -52,6 +52,8 @@ Skills are vendored per app/package under `<location>/.agents/skills/<name>/SKIL
 `.claude/skills/<name>` symlinks). Inventory, sources, pinned commits and re-install commands:
 [`docs/agent-skills.md`](docs/agent-skills.md). `bun run skills:check` verifies they are present.
 Never hand-edit skill contents.
+Skills live in `<location>/.agents/skills`; `.claude/skills` entries are relative symlinks — never
+edit or copy them (ADR 0017).
 
 | Skill | Where | Load when… |
 | ----- | ----- | ---------- |

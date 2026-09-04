@@ -10,8 +10,9 @@ Skill contents are vendored verbatim from upstream and **never hand-edited** —
 command to update. `**/.agents/**`, `**/.claude/**` and `**/.opencode/**` are excluded from Biome,
 from Turborepo task inputs (so skill edits never bust caches) and marked `linguist-vendored`.
 
-`bun run skills:check` (`scripts/skills-check.ts`) parses the table below and fails if any `Path`
-lacks a `SKILL.md`.
+`bun run skills:check` (`scripts/skills-check.ts`, also run by `bun run doctor`) parses the table
+below and fails if any `Path` lacks a `SKILL.md` **or** violates the layout in
+[ADR 0017](adr/0017-agent-skill-layout.md) — see [Layout](#layout).
 
 ## Installed skills
 
@@ -39,6 +40,63 @@ Per location, on disk:
 | `apps/api` | `hono`, `use-railway` | same two | `apps/api/skills-lock.json` |
 | `apps/worker` | `use-railway` | same one | `apps/worker/skills-lock.json` |
 | `packages/ui` | `shadcn` | same one | `packages/ui/skills-lock.json` |
+
+## Layout
+
+Decided in [ADR 0017](adr/0017-agent-skill-layout.md) (TEACH-28): **`<location>/.agents/skills/<name>/`
+is the canonical real copy; `<location>/.claude/skills/<name>` is a relative symlink to it.** There
+is one real copy *per location* — the same skill in two locations is two real directories, each
+with its own symlink. A real directory where a symlink is expected, a broken or absolute symlink,
+or a missing `.claude` link fails `bun run skills:check` with a message naming the path, e.g.
+
+```
+apps/api/.claude/skills/hono: real directory where a relative symlink to apps/api/.agents/skills/hono was expected
+```
+
+`.opencode/skills/` is not created by the CLI (OpenCode reads `.agents/skills/` directly); if one
+ever appears it must also be a relative symlink to the `.agents` copy. Windows without symlink
+support (`core.symlinks=false`) is unsupported; use WSL.
+
+### Audit, 2026-09-04 (TEACH-28)
+
+Commands: `find . -path '*/skills/*' -maxdepth 5 \( -type l -o -type d \) -not -path
+'*/node_modules/*' -exec ls -ld {} +` and `git ls-files -s | grep ^120000`. CLI: `skills`
+v1.5.23 (`npx -y skills --version`), installed with `--agent universal claude-code -y`, no
+`--dir` flag exists (installs into `cwd`). `git config core.symlinks` is unset (git default;
+symlinks honoured on macOS/Linux). No `.opencode/` directory anywhere.
+
+| Path | Kind | Link target (relative) |
+| ---- | ---- | ---------------------- |
+| `apps/api/.agents/skills/hono` | real dir | — |
+| `apps/api/.agents/skills/use-railway` | real dir | — |
+| `apps/api/.claude/skills/hono` | symlink (git `120000`) | `../../.agents/skills/hono` |
+| `apps/api/.claude/skills/use-railway` | symlink (git `120000`) | `../../.agents/skills/use-railway` |
+| `apps/web/.agents/skills/deploy-to-vercel` | real dir | — |
+| `apps/web/.agents/skills/shadcn` | real dir | — |
+| `apps/web/.agents/skills/tanstack-query` | real dir | — |
+| `apps/web/.agents/skills/tanstack-router` | real dir | — |
+| `apps/web/.agents/skills/vercel-react-best-practices` | real dir | — |
+| `apps/web/.claude/skills/deploy-to-vercel` | symlink (git `120000`) | `../../.agents/skills/deploy-to-vercel` |
+| `apps/web/.claude/skills/shadcn` | symlink (git `120000`) | `../../.agents/skills/shadcn` |
+| `apps/web/.claude/skills/tanstack-query` | symlink (git `120000`) | `../../.agents/skills/tanstack-query` |
+| `apps/web/.claude/skills/tanstack-router` | symlink (git `120000`) | `../../.agents/skills/tanstack-router` |
+| `apps/web/.claude/skills/vercel-react-best-practices` | symlink (git `120000`) | `../../.agents/skills/vercel-react-best-practices` |
+| `apps/worker/.agents/skills/use-railway` | real dir | — |
+| `apps/worker/.claude/skills/use-railway` | symlink (git `120000`) | `../../.agents/skills/use-railway` |
+| `packages/ui/.agents/skills/shadcn` | real dir | — |
+| `packages/ui/.claude/skills/shadcn` | symlink (git `120000`) | `../../.agents/skills/shadcn` |
+
+Duplicates across locations: `diff -rq packages/ui/.agents/skills/shadcn apps/web/.agents/skills/shadcn`
+and `diff -rq apps/api/.agents/skills/use-railway apps/worker/.agents/skills/use-railway` both
+report no differences. These are separate real installs in different locations — expected
+per-location vendoring, not symlink drift. Result: 9 real dirs, 9 relative symlinks, 0 violations;
+nothing needed fixing. Size: `.agents` totals 1.9 MB (`apps/web` 624K, `apps/api` 588K,
+`apps/worker` 572K, `packages/ui` 128K); symlinks + `skills-lock.json` files add ~16 KB, so the
+vendored total is ≈1.9 MB and the two duplicated skills account for ~700 KB of it.
+
+Prevention outside the check: `**/.agents`, `**/.claude`, `**/.opencode`, `**/skills-lock.json`
+are excluded in `biome.json`, Turborepo task `inputs` (`turbo.json`), the root `.dockerignore`
+(TEACH-28; TEACH-24 extends it), and marked `linguist-vendored` in `.gitattributes`.
 
 ### Substitutions recorded at install time
 
