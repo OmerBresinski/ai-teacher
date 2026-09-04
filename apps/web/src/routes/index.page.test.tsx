@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { FALLBACK_GREETING } from "@tj/domain";
@@ -9,10 +9,31 @@ const getGreeting = mock();
 const signOut = mock();
 const navigate = mock();
 
+// `mock.module` is process-wide and outlives this file, so other suites (e.g. `lib/query.test.ts`,
+// which stubs `fetch` under the real client) would otherwise see these fakes when they run later.
+// Delegate to the real client once this suite is finished. Destructure the value now: the module
+// namespace is a live binding that `mock.module` repoints at the mock, which would loop forever.
+let suiteActive = true;
+const { api: realApi } = await import("@/lib/api");
+type MeGet = typeof realApi.me.$get;
+type GreetingGet = typeof realApi.me.greeting.$get;
 mock.module("@/lib/api", () => ({
-  api: { me: { $get: getMe, greeting: { $get: getGreeting } } },
+  api: {
+    me: {
+      $get: ((...args: Parameters<MeGet>) =>
+        suiteActive ? getMe(...args) : realApi.me.$get(...args)) as MeGet,
+      greeting: {
+        $get: ((...args: Parameters<GreetingGet>) =>
+          suiteActive ? getGreeting(...args) : realApi.me.greeting.$get(...args)) as GreetingGet,
+      },
+    },
+  },
 }));
 mock.module("@/lib/auth", () => ({ authClient: { signOut } }));
+
+afterAll(() => {
+  suiteActive = false;
+});
 
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
@@ -52,7 +73,7 @@ describe("IndexPage greeting", () => {
     getGreeting.mockReset();
     signOut.mockReset();
     navigate.mockReset();
-    getMe.mockResolvedValue(resolvedMe());
+    getMe.mockImplementation(async () => resolvedMe());
   });
 
   it("shows the generated greeting after it resolves", async () => {
