@@ -50,3 +50,15 @@ packages/
 
 Dependency direction is unchanged: both depend on `@tj/domain` (and `@tj/jobs` on `@tj/db`);
 `apps/api` and `apps/worker` consume them.
+
+## Amendment (2026-09-04, ADR 0018)
+
+```
+packages/
+  ai/           @tj/ai         Model client — Amazon Bedrock via the Vercel AI SDK; createAi(env),
+                               model classes (frontier / standard / small), usage logging, test
+                               fake (ADR 0018)
+```
+
+Server-only. Depends on `@tj/domain` internally; consumed by `apps/worker` and `apps/api`, never by
+`apps/web`.

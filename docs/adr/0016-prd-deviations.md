@@ -19,3 +19,7 @@ The founder chose to defer two product commitments to move faster on the scaffol
 
 - Product PRDs in Notion should be annotated to reference this ADR (F15 §4 #8, F15-D5, F18-D1, F18-R06, F17-R01).
 - Nothing in the scaffold blocks any reversal: storage is behind an adapter, hosting is Docker-based, the SPA can add a service worker without architectural change, and cookie mode is env-driven so TEACH-30 flips production to `Lax` without a code change (existing sessions are invalidated once).
+
+## Amendment (2026-09-04, ADR 0018)
+
+5. **Model inference region.** ADR 0018 puts model calls on Amazon Bedrock in `us-east-1`, because that is where the account's Bedrock API key and model access live. Prompts and completions therefore transit the US in flight; nothing is stored there (no Bedrock invocation logging is enabled; Bedrock does not train on API inputs). This contradicts F13-R11 ("UK/EU region endpoints where available") and is a wider deviation than item 1. **Revisit before M3** together with item 1: Bedrock offers `eu.` cross-region inference profiles for the same Claude models, so the fix is a key in an EU region plus new `AI_MODEL_*` / `AWS_REGION` values — an env change behind `createAi`, not a code change. F15-R01's data-flow statement must name AWS (Bedrock) as a sub-processor of lesson content, and the Cohort Profile allow-list (F02-R10) is what keeps learner data out of that flow.

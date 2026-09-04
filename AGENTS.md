@@ -78,6 +78,7 @@ packages/
   api-client/   @tj/api-client Hono RPC AppType + typed client factory          ADR 0005
   jobs/         @tj/jobs       pg-boss runtime + typed job registry             ADR 0006
   storage/      @tj/storage    StorageAdapter impls (local disk, Vercel Blob)   ADR 0011
+  ai/           @tj/ai         Model client: Bedrock via Vercel AI SDK, classes   ADR 0018
   config/       @tj/config     Shared tsconfig bases, Tailwind preset           TEACH-11
 docs/
   adr/          Architecture decision records
