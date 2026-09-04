@@ -1,8 +1,8 @@
+import { describe, expect, it } from "bun:test";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
 
-import { emitMatchMediaChange, setMatchMedia } from "../../vitest.setup";
+import { emitMatchMediaChange, setMatchMedia } from "../../bun-test.setup";
 import { resolveTheme, THEME_STORAGE_KEY, type Theme } from "./theme";
 import { createThemeInitScript, THEME_INIT_SCRIPT } from "./theme-init";
 import { ThemeProvider, useTheme } from "./theme-provider";
@@ -166,7 +166,7 @@ describe("ThemeProvider", () => {
 });
 
 describe("THEME_INIT_SCRIPT", () => {
-  // Execute the generated script text in the test global scope (where jsdom's window/document,
+  // Execute the generated script text in the test global scope (where happy-dom's window/document,
   // the matchMedia mock and localStorage live) — the same environment a real <script> would see.
   const run = (script: string) => {
     new Function(script)();

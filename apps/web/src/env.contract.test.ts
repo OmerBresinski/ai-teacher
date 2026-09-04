@@ -1,5 +1,5 @@
 /** Schema <-> contract parity for the web app (TEACH-26, see infra/env.contract.ts). */
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 import { ENV, namesForService, schemaNamesForService } from "../../../infra/env.contract";
 import { EnvSchema } from "./env";
 

@@ -19,7 +19,7 @@ Product decisions live in Notion (Master PRD §17 and each feature PRD's "Decisi
 | 0011 | Vercel Blob for object storage                     | Accepted (amended 2026-09-04) |
 | 0012 | Server-sent events for generation progress         | Accepted |
 | 0013 | Monorepo layout and @tj/* package scope            | Accepted |
-| 0014 | Testing: bun test, Vitest, Playwright              | Accepted |
+| 0014 | Testing: bun test, Playwright (Vitest retired)     | Accepted |
 | 0015 | Env validation, logging, commit conventions        | Accepted |
 | 0016 | Deviations from PRD accepted for MVP scaffolding   | Accepted |
 | 0017 | Agent skill layout: .agents canonical + symlinks   | Accepted |

@@ -160,21 +160,20 @@ Note: `bunx shadcn init` cannot run here (it refuses without a recognised app fr
 
 ## Testing
 
-Vitest + React Testing Library + jsdom (ADR 0014):
+`bun test` + React Testing Library + happy-dom (ADR 0014, amended):
 
 ```sh
-bun run --filter=@tj/ui test          # vitest run
+bun run --filter=@tj/ui test          # bun test
 bun run --filter=@tj/ui test:watch
 ```
 
-`vitest.setup.ts` registers `@testing-library/jest-dom/vitest`, mocks `window.matchMedia`
-(`setMatchMedia({ dark, moreContrast })`, `emitMatchMediaChange()`), points `localStorage` at
-jsdom's implementation (Node ≥ 22 ships a stub that otherwise shadows it) and resets
-`<html data-theme>` between tests. `vitest.config.ts` enables `css: true` and resolves the `@/*`
-alias from `tsconfig.json` via Vite 8's `resolve.tsconfigPaths`.
-
-The Vitest config lives in this package for now; **TEACH-22** moves a shared React/jsdom preset
-into `@tj/config` and this package will extend it.
+`bunfig.toml#[test].preload` lists, in order, `@tj/config/bun-test/dom` (registers happy-dom on
+`globalThis`), `@tj/config/bun-test/setup` (jest-dom matchers on Bun's `expect`, `cleanup()` after
+each test) and `./bun-test.setup.ts`, which mocks `window.matchMedia`
+(`setMatchMedia({ dark, moreContrast })`, `emitMatchMediaChange()`) and resets `localStorage` and
+`<html data-theme>` between tests. Bun resolves the `@/*` alias from `tsconfig.json#paths` natively.
+The jest-dom matcher types come from `@tj/config/bun-test/jest-dom` (listed in `tsconfig.json`
+`types`).
 
 ## Notes for maintainers
 
@@ -186,7 +185,7 @@ into `@tj/config` and this package will extend it.
   `globals.css` `@theme`. F18 should decide whether to delete it (recommended) or repurpose it.
 - **Dependencies** are pinned exactly (`bunfig.toml` `exact = true`). React/ReactDOM are peers
   (`^19`) with exact devDependency copies for tests. Aligning versions across `apps/web`:
-  `react 19.2.8`, `tailwindcss 4.3.3`, `vite 8.2.2`, `vitest 4.1.11`, `@vitejs/plugin-react 6.1.1`.
+  `react 19.2.8`, `tailwindcss 4.3.3`, `@testing-library/react 16.3.3`.
 - **Build.** There is no build step; apps compile the source. To smoke-test the CSS pipeline
   without an app: `bunx --package @tailwindcss/cli tailwindcss -i src/styles/globals.css -o /tmp/ui.css`
   and grep for `.bg-background`, `.motion-safe\:transition-all`, `[data-theme="dark"]`.

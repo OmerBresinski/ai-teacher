@@ -1,7 +1,7 @@
+import { describe, expect, it, mock } from "bun:test";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
 
 import { Input } from "./input";
 
@@ -22,7 +22,7 @@ function Controlled({ onChange }: { onChange: (value: string) => void }) {
 describe("Input", () => {
   it("forwards value and onChange", async () => {
     const user = userEvent.setup();
-    const onChange = vi.fn();
+    const onChange = mock();
     render(<Controlled onChange={onChange} />);
 
     const input = screen.getByRole("textbox", { name: "Lesson title" });

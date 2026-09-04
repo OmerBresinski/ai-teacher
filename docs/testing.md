@@ -12,45 +12,75 @@ bun run test:e2e                   # Playwright (builds @tj/web first)
 
 ## Runners and the naming rule
 
-Two unit runners, one browser runner. A file's **suffix and location** decide who runs it; the
-`include`/`testMatch` globs enforce it, so nothing is ever picked up twice.
+One unit runner (`bun test`), one browser runner (Playwright). A file's **suffix and location**
+decide who runs it; `bunfig.toml#[test].root` and Playwright's `testDir`/`testMatch` enforce it,
+so nothing is ever picked up twice.
 
 | Runner | Workspaces | Files | Config |
 | ------ | ---------- | ----- | ------ |
 | `bun test` | `apps/api`, `apps/worker`, `packages/db`, `packages/domain`, `packages/jobs`, `packages/storage`, `packages/api-client`, root `scripts/` | `src/**/*.test.ts` (`*.db.test.ts` / `*.integration.test.ts` for suites that need Postgres) | none — `bun test` in the workspace |
-| Vitest | `apps/web`, `packages/ui` | `src/**/*.test.{ts,tsx}` only | `@tj/config/vitest/react` preset (see below) |
-| Playwright | `apps/web` | `e2e/**/*.spec.ts` only | `apps/web/playwright.config.ts` |
+| `bun test` + happy-dom | `apps/web`, `packages/ui` | `src/**/*.test.{ts,tsx}` only | `bunfig.toml` `[test]` with the `@tj/config/bun-test/*` preloads (see below) |
+| Playwright | `apps/web` | `e2e/**/*.spec.ts` only | `apps/web/playwright.config.ts`, run as `bun --bun playwright test` |
 
 Rules:
 
 - **`*.test.*` is a unit/integration test; `*.spec.ts` is a Playwright spec.** Never mix.
-- A workspace has exactly one unit runner, named in its `package.json#scripts.test`
-  (`bun test` or `vitest run`). `turbo run test` calls that script, so `bun run test
-  --filter=@tj/web` runs Vitest, never `bun test`.
-- Do not run bare `bun test` from the repository root or from a React workspace: Bun would find
-  the Vitest files (and the Playwright specs) and fail on their imports. Use the scripts above.
-- Vitest's `include` is fixed to `src/**` by the preset; Playwright's `testDir` is `e2e/`.
-  `src/**/*.test-d.tsx` files are compile-time contracts checked by `tsc` (`bun run typecheck`),
-  not executed.
+- Every workspace's `package.json#scripts.test` is `bun test` (`turbo run test` calls it). In the
+  React workspaces `bunfig.toml` sets `root = "src"`, so `bun test` there never sees `e2e/`.
+- Bare `bun test` from the repository root is still not a supported entry point: it would run
+  every workspace's files from one cwd, without the per-workspace `bunfig.toml` (no DOM preloads,
+  no `root`). Use `bun run test` / `bun run test --filter=<workspace>`.
+- `src/**/*.test-d.tsx` files are compile-time contracts checked by `tsc` (`bun run typecheck`),
+  not executed — Bun's discovery glob matches `.test.`, `_test_`, `.spec.`, `_spec_` only.
 
-## Shared Vitest preset (`@tj/config/vitest/react`)
+## React workspaces: preloads in `@tj/config/bun-test`
 
-`packages/config/vitest/react.ts` exports `reactVitestConfig(overrides?)`: jsdom, `globals`,
-`css: true`, `@vitejs/plugin-react`, `resolve.tsconfigPaths`, the shared setup file
-(`@testing-library/jest-dom/vitest` matchers, jsdom `localStorage` fix, `cleanup()` after each
-test) and v8 coverage (`coverage/`, `text-summary` + `lcov`; enabled automatically when
-`CI=true`, or with `vitest run --coverage`). `overrides` is deep-merged (`mergeConfig`), so a
-workspace adds its own `setupFiles` or `test.env` without repeating the preset:
+No runtime other than Bun (ADR 0014, amended). `packages/config/bun-test/` holds two preloads that
+must stay separate — ESM hoists imports, so `@testing-library/react` would otherwise be evaluated
+before the DOM exists:
 
-```ts
-// apps/web/vitest.config.ts
-import { reactVitestConfig } from "@tj/config/vitest/react";
-export default reactVitestConfig({ test: { env: { VITE_API_URL: "/api" } } });
+| Preload | Does |
+| ------- | ---- |
+| `@tj/config/bun-test/dom` | `GlobalRegistrator.register()` from `@happy-dom/global-registrator`: `window`, `document`, `localStorage`, `HTMLElement`, … on `globalThis`. |
+| `@tj/config/bun-test/setup` | `expect.extend(@testing-library/jest-dom/matchers)` and `afterEach(cleanup)`. |
+| `<workspace>/bun-test.setup.ts` | Workspace-specific: `packages/ui` mocks `matchMedia` (`setMatchMedia`, `emitMatchMediaChange`) and resets storage/`data-theme`; `apps/web` pins `VITE_API_URL=/api`, `VITE_APP_ENV=development` because under Bun `import.meta.env` is `process.env` (Vite only inlines `VITE_*` at build time) and `import.meta.env.PROD` is therefore `undefined`. |
+
+```toml
+# apps/web/bunfig.toml
+[test]
+root = "src"
+preload = ["@tj/config/bun-test/dom", "@tj/config/bun-test/setup", "./bun-test.setup.ts"]
+coverageReporter = ["text", "lcov"]
+coverageDir = "coverage"
+coverageSkipTestFiles = true
 ```
 
-`packages/ui/vitest.setup.ts` keeps only what is specific to the design system (the controllable
-`matchMedia` mock). For the jest-dom matcher **types**, list
-`"@testing-library/jest-dom/vitest"` in the workspace `tsconfig.json#compilerOptions.types`.
+Bun reads the nearest `bunfig.toml` from the cwd, so each React workspace carries its own; install
+settings (`exact = true`) still come from the root file. `@happy-dom/global-registrator` is declared
+once, in `@tj/config` (the isolated linker resolves a preload's imports from the package that owns
+it). Bun resolves `@/*` from `tsconfig.json#paths` natively; JSX needs no plugin. For the jest-dom
+matcher **types**, list `"@tj/config/bun-test/jest-dom"` (with `"@types/bun"`) in the workspace
+`tsconfig.json#compilerOptions.types`.
+
+Coverage: `bun test --coverage` writes `coverage/lcov.info` (+ a text table). The `test` script is
+`bun test ${CI:+--coverage}`, so it is on whenever `CI` is set and off locally; `turbo.json` caches
+`coverage/**`.
+
+### Mocking cheatsheet (Vitest → `bun:test`)
+
+| Vitest | `bun:test` |
+| ------ | ---------- |
+| `vi.fn()` | `mock()` |
+| `vi.spyOn(obj, "m")` … `vi.restoreAllMocks()` | `spyOn(obj, "m")` … `spy.mockRestore()` (or `mock.restore()` for all) |
+| `vi.stubGlobal("fetch", f)` / `vi.unstubAllGlobals()` | `const orig = globalThis.fetch; globalThis.fetch = f;` … `afterEach(() => { globalThis.fetch = orig; })` |
+| `vi.mock("@/lib/auth", factory)` (hoisted) | `mock.module("@/lib/auth", factory)` **before** the import that needs it — put it at the top and `await import("./subject")` afterwards |
+| `vi.mock("pkg", async (importOriginal) => ({ ...(await importOriginal()), x }))` | `const actual = await import("pkg"); mock.module("pkg", () => ({ ...actual, x }));` |
+
+`mock.module()` is **per process**, and `bun test` runs every file of a workspace in one process: a module mocked in one file stays mocked for files that run after it. Keep module mocks to modules that only the mocking file imports (today: `sign-in.page.test.tsx` mocks `@/lib/auth` and `@tanstack/react-router`, and no other `apps/web` unit test imports either). If a test fails only in the full run, run it alone (`bun test src/path/file.test.tsx`) to bisect.
+| `expect(x).toEqual(y)` (untyped `y`) | typed `y: typeof x` — widen with `expect<T>(x)` or cast the fixture when `x` carries a branded/tagged type |
+
+See `apps/web/src/routes/sign-in.page.test.tsx` (module mocks), `apps/web/src/lib/query.test.ts`
+(global swap) and `packages/ui/bun-test.setup.ts` (`matchMedia`).
 
 ## Server tests and the database harness
 
@@ -180,13 +210,13 @@ must arrive).
 Running and debugging:
 
 ```sh
-bunx playwright install chromium                 # once per Playwright version (CI adds --with-deps)
+bunx --bun playwright install chromium           # once per Playwright version (CI adds --with-deps)
 bun run test:e2e                                 # from the root, via turbo (build first)
-cd apps/web && bunx playwright test              # directly
-cd apps/web && bunx playwright test auth         # one file
-cd apps/web && bunx playwright test --ui         # or `bun run test:e2e:ui`
-cd apps/web && bunx playwright show-report       # html report (playwright-report/)
-cd apps/web && bunx playwright show-trace test-results/<test>/trace.zip
+cd apps/web && bun --bun playwright test         # directly (the Playwright runner runs on Bun)
+cd apps/web && bun --bun playwright test auth    # one file
+cd apps/web && bun --bun playwright test --ui    # or `bun run test:e2e:ui`
+cd apps/web && bun --bun playwright show-report  # html report (playwright-report/)
+cd apps/web && bun --bun playwright show-trace test-results/<test>/trace.zip
 ```
 
 Traces and screenshots are kept for failures only; CI uploads `playwright-report/` and
@@ -196,7 +226,7 @@ Traces and screenshots are kept for failures only; CI uploads `playwright-report
 ## Flake guidance
 
 - **Retries hide bugs.** Playwright retries once in CI only (`retries: CI ? 1 : 0`); a retried
-  pass is a flake to investigate, not a fix. `bun test` and Vitest never retry.
+  pass is a flake to investigate, not a fix. `bun test` never retries.
 - SSE/pg-boss timing: assert with `expect.poll` or `waitFor` loops bounded well above the job's
   duration (the specs use 15 s for a 1.5 s job). Never compare wall-clock durations tighter than
   the pg-boss polling interval (500 ms) unless the test controls the clock.
@@ -210,6 +240,6 @@ Traces and screenshots are kept for failures only; CI uploads `playwright-report
 
 `test` job: Postgres service + `teaching_journey_test`, then `bun run test:db` (compose skipped
 under `CI=true`; `REQUIRE_TEST_DB=1`), coverage uploaded. `e2e` job: Postgres service +
-`teaching_journey_test`, `bunx playwright install --with-deps chromium` (browser cache keyed on the
+`teaching_journey_test`, `bunx --bun playwright install --with-deps chromium` (browser cache keyed on the
 Playwright version), `bun run test:e2e`, report uploaded on failure. Both jobs are gated by the
 `CI_STRICT` repository variable (README "CI").

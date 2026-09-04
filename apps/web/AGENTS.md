@@ -33,5 +33,5 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   origin comes from an env var validated in `src/env.ts` (Zod, ADR 0015). No server code here.
 - `vercel-react-best-practices` includes Next.js-specific advice (RSC, `next/*`); it does not
   apply — this is a Vite SPA.
-- Tests: Vitest + React Testing Library + jsdom; Playwright + axe in `e2e/` (ADR 0014). Biome
+- Tests: `bun test` + React Testing Library + happy-dom; Playwright + axe in `e2e/` (ADR 0014). Biome
   `a11y` rules are errors.

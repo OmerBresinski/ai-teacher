@@ -28,7 +28,7 @@ const stdout = process.env.E2E_VERBOSE ? "pipe" : "ignore";
 
 export default defineConfig({
   testDir: "./e2e",
-  // Naming rule (docs/testing.md): Playwright owns `e2e/**/*.spec.ts`; Vitest owns `src/**/*.test.*`.
+  // Naming rule (docs/testing.md): Playwright owns `e2e/**/*.spec.ts`; `bun test` owns `src/**/*.test.*`.
   testMatch: /.*\.spec\.ts$/,
   fullyParallel: true,
   forbidOnly: CI,

@@ -573,7 +573,7 @@ const CONTRACT = [
     setBy: "template",
     runtimeOnly: true,
     description:
-      "`true` on GitHub Actions. `test:db` then skips docker compose, Playwright uses CI settings, vitest enables coverage.",
+      "`true` on GitHub Actions. `test:db` then skips docker compose, Playwright uses CI settings, `bun test` enables coverage.",
   },
   {
     name: "CI_STRICT",

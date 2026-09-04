@@ -25,5 +25,5 @@ TEACH-13; tokens and the component set are F18 project work.
   is keyboard-reachable.
 - Package shape follows the README ("Internal packages are consumed from source"): `exports` point
   at `src/*.ts(x)`, `tsconfig.json` extends `@tj/config/tsconfig/react.json`, tests run with
-  Vitest + React Testing Library + jsdom (ADR 0014). `@tj/ui` depends on nothing internal except
+  `bun test` + React Testing Library + happy-dom (ADR 0014). `@tj/ui` depends on nothing internal except
   `@tj/config`.

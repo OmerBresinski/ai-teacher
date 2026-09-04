@@ -1,13 +1,15 @@
 /**
- * Workspace-specific Vitest setup for `@tj/ui`. jest-dom matchers, the jsdom `localStorage`
- * fix and `cleanup()` come from the shared preset (`@tj/config/vitest/setup`); this file only
- * adds the controllable `matchMedia` mock the theme tests need.
+ * Workspace-specific `bun test` preload for `@tj/ui`. jest-dom matchers, happy-dom and `cleanup()`
+ * come from the shared preloads (`@tj/config/bun-test/{dom,setup}`); this file only adds the
+ * controllable `matchMedia` mock the theme tests need. It is also imported by
+ * `theme-provider.test.tsx` for `setMatchMedia` / `emitMatchMediaChange` — the module is shared
+ * with the preload instance, so the hooks below are registered exactly once.
  */
-import { afterEach, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, mock } from "bun:test";
 
 /**
- * jsdom has no `window.matchMedia`. Provide a controllable mock so theme tests can flip OS
- * preferences via `setMatchMedia({ dark: true })` and fire `change` events with
+ * happy-dom's `window.matchMedia` is static. Provide a controllable mock so theme tests can flip
+ * OS preferences via `setMatchMedia({ dark: true })` and fire `change` events with
  * `emitMatchMediaChange()`.
  */
 type MediaState = { dark: boolean; moreContrast: boolean };
@@ -60,15 +62,18 @@ export function emitMatchMediaChange(): void {
   }
 }
 
+// `vi.stubGlobal` / `vi.unstubAllGlobals` equivalent: swap the global by hand and restore it.
+const originalMatchMedia = globalThis.matchMedia;
+
 beforeEach(() => {
   mediaState.dark = false;
   mediaState.moreContrast = false;
   listeners.clear();
   window.localStorage.clear();
   delete document.documentElement.dataset.theme;
-  vi.stubGlobal("matchMedia", vi.fn(createMatchMedia));
+  globalThis.matchMedia = mock(createMatchMedia);
 });
 
 afterEach(() => {
-  vi.unstubAllGlobals();
+  globalThis.matchMedia = originalMatchMedia;
 });
