@@ -1,0 +1,66 @@
+# GENERATED from infra/env.contract.ts by `bun run env:generate` -- do not edit by hand.
+#
+# Extends gitleaks' default rules with one rule per secret-scoped variable of the environment
+# contract: a literal `NAME=<20+ chars>` for any of them fails the pre-commit hook
+# (`gitleaks protect --staged`) and the CI `secrets` job. Examples, docs and tests are allowed to
+# show placeholders; the compose credentials (postgres/postgres) are synthetic and allowed.
+title = "Teaching Journey"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic local values and documentation"
+paths = [
+  '''\.env\.example$''',
+  '''^docs/env\.md$''',
+  '''\.test\.tsx?$''',
+  '''\.spec\.ts$''',
+]
+regexes = [
+  '''postgres://postgres:postgres@(localhost|host\.docker\.internal|127\.0\.0\.1)''',
+  '''\$\{\{[^}]+\}\}''',
+  '''(process|import\.meta)\.env\.''',
+]
+
+[[rules]]
+id = "tj-database-url"
+description = "Teaching Journey secret DATABASE_URL assigned a literal value (infra/env.contract.ts)"
+regex = '''(?i)\bDATABASE_URL\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
+keywords = ["DATABASE_URL"]
+
+[[rules]]
+id = "tj-test-database-url"
+description = "Teaching Journey secret TEST_DATABASE_URL assigned a literal value (infra/env.contract.ts)"
+regex = '''(?i)\bTEST_DATABASE_URL\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
+keywords = ["TEST_DATABASE_URL"]
+
+[[rules]]
+id = "tj-better-auth-secret"
+description = "Teaching Journey secret BETTER_AUTH_SECRET assigned a literal value (infra/env.contract.ts)"
+regex = '''(?i)\bBETTER_AUTH_SECRET\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
+keywords = ["BETTER_AUTH_SECRET"]
+
+[[rules]]
+id = "tj-google-client-secret"
+description = "Teaching Journey secret GOOGLE_CLIENT_SECRET assigned a literal value (infra/env.contract.ts)"
+regex = '''(?i)\bGOOGLE_CLIENT_SECRET\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
+keywords = ["GOOGLE_CLIENT_SECRET"]
+
+[[rules]]
+id = "tj-microsoft-client-secret"
+description = "Teaching Journey secret MICROSOFT_CLIENT_SECRET assigned a literal value (infra/env.contract.ts)"
+regex = '''(?i)\bMICROSOFT_CLIENT_SECRET\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
+keywords = ["MICROSOFT_CLIENT_SECRET"]
+
+[[rules]]
+id = "tj-blob-read-write-token"
+description = "Teaching Journey secret BLOB_READ_WRITE_TOKEN assigned a literal value (infra/env.contract.ts)"
+regex = '''(?i)\bBLOB_READ_WRITE_TOKEN\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
+keywords = ["BLOB_READ_WRITE_TOKEN"]
+
+[[rules]]
+id = "tj-turbo-token"
+description = "Teaching Journey secret TURBO_TOKEN assigned a literal value (infra/env.contract.ts)"
+regex = '''(?i)\bTURBO_TOKEN\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
+keywords = ["TURBO_TOKEN"]
