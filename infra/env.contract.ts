@@ -388,7 +388,7 @@ const CONTRACT = [
     runtimeOnly: true,
     files: ["api", "worker"],
     description:
-      "Vercel Blob read-write token. When set (non-blank) `@tj/storage` picks `VercelBlobStorage`; otherwise the local-disk adapter under `.data/`. Optional in CI to run the Blob contract tests.",
+      'Vercel Blob read-write token for the private store `teaching-journey` (`store_Ii6wcxuuLOvPP4ou`, `fra1`; infra/README.md "Vercel Blob (files)"). When set (non-blank) `@tj/storage` picks `VercelBlobStorage`; otherwise the local-disk adapter under `.data/`. Set on Railway api + worker since 2026-09-04 (TEACH-37); never on Vercel — the SPA does not read it. Optional in CI to run the Blob contract tests.',
   },
   {
     name: "STORAGE_PUBLIC_BASE_URL",
@@ -430,7 +430,7 @@ const CONTRACT = [
     runtimeOnly: true,
     files: ["api", "worker"],
     description:
-      "Comma-separated key prefixes treated as public by `@tj/storage` (served by URL instead of the `GET /files/:key` proxy). Empty means everything is private.",
+      'Comma-separated key prefixes treated as public by `@tj/storage` (served by URL instead of the `GET /files/:key` proxy). Empty means everything is private. Leave unset on Railway: the production store `teaching-journey` is a **private** store and rejects `access: "public"` uploads.',
   },
 
   // --- api: SSE knobs (ADR 0012, apps/api/src/events/config.ts) ----------------------------------
