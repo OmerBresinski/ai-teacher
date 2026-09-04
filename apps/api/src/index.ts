@@ -38,7 +38,13 @@ const server = Bun.serve({
 });
 
 logger.info(
-  { port: server.port, node_env: env.NODE_ENV, web_origin: env.WEB_ORIGIN },
+  {
+    port: server.port,
+    node_env: env.NODE_ENV,
+    web_origin: env.WEB_ORIGIN,
+    web_origin_patterns: env.WEB_ORIGIN_PATTERNS,
+    cookie_samesite: env.COOKIE_SAMESITE,
+  },
   `api listening on http://localhost:${server.port}`,
 );
 

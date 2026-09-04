@@ -177,6 +177,46 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     expect(sessionLine).toMatch(/Domain=\.example\.test/i);
   });
 
+  test("COOKIE_SAMESITE=none → SameSite=None; Secure on the session cookie + boot warning", async () => {
+    const warnings: string[] = [];
+    const logger = {
+      ...silentLogger,
+      warn: (...args: unknown[]) => warnings.push(String(args.at(-1))),
+    } as unknown as typeof silentLogger;
+    const crossMail = new CaptureMailSender();
+    const cross = createApp({
+      env: TEST_ENV,
+      db,
+      logger: silentLogger,
+      auth: createAuth({
+        env: { ...AUTH_ENV, COOKIE_SAMESITE: "none" },
+        db,
+        mail: crossMail,
+        logger,
+      }),
+    });
+    expect(warnings.some((w) => w.startsWith("COOKIE_SAMESITE=none"))).toBe(true);
+    const r1 = await cross.request(`${BASE}/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: WEB },
+      body: JSON.stringify({ email: "cross@example.test", callbackURL: `${WEB}/` }),
+    });
+    expect(r1.status).toBe(200);
+    const link = extractFirstUrl(crossMail.last?.text ?? "");
+    const r2 = await cross.request(link ?? "", { redirect: "manual" });
+    const sessionLine = r2.headers
+      .getSetCookie()
+      .find((l) => /^(__Secure-)?tj\.session_token=/.test(l));
+    expect(sessionLine).toMatch(/SameSite=None/i);
+    expect(sessionLine).toMatch(/;\s*Secure/i);
+
+    // Default (lax) in NODE_ENV=test: Lax and not Secure.
+    const { res } = await followLink(await requestMagicLink("lax@example.test"));
+    const laxLine = res.headers.getSetCookie().find((l) => l.startsWith("tj.session_token="));
+    expect(laxLine).toMatch(/SameSite=Lax/i);
+    expect(laxLine).not.toMatch(/;\s*Secure/i);
+  });
+
   test("Google/Microsoft disabled without credentials: boot log + social sign-in rejected", async () => {
     const lines: string[] = [];
     const logger = {

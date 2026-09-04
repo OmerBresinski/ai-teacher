@@ -23,6 +23,7 @@ export type AuthEnv = Pick<
   Env,
   | "NODE_ENV"
   | "WEB_ORIGIN"
+  | "WEB_ORIGIN_PATTERNS"
   | "BETTER_AUTH_SECRET"
   | "BETTER_AUTH_URL"
   | "COOKIE_DOMAIN"
@@ -77,13 +78,39 @@ function magicLinkMail(url: string): { subject: string; text: string; html: stri
   };
 }
 
+/**
+ * Session cookie attributes (ADR 0008). `Lax` by default; `COOKIE_SAMESITE=none` is the
+ * *preview* exception (Vercel preview ↔ Railway PR api on unrelated origins) and browsers only
+ * accept `SameSite=None` together with `Secure`, so it forces `secure` regardless of `NODE_ENV`.
+ * Production keeps `Lax` and shares the cookie via `COOKIE_DOMAIN` (ADR 0010).
+ */
+export function sessionCookieAttributes(env: Pick<AuthEnv, "NODE_ENV" | "COOKIE_SAMESITE">): {
+  sameSite: "lax" | "strict" | "none";
+  secure: boolean;
+  httpOnly: true;
+} {
+  const sameSite = env.COOKIE_SAMESITE ?? "lax";
+  return {
+    sameSite,
+    secure: sameSite === "none" || env.NODE_ENV === "production",
+    httpOnly: true,
+  };
+}
+
 export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
+  if (env.COOKIE_SAMESITE === "none") {
+    logger.warn(
+      "COOKIE_SAMESITE=none: session cookie is SameSite=None; Secure (cross-site preview mode). " +
+        "Production should use lax + COOKIE_DOMAIN (ADR 0008/0010).",
+    );
+  }
   return betterAuth({
     appName: "Teaching Journey",
     baseURL: env.BETTER_AUTH_URL,
     basePath: AUTH_BASE_PATH,
     secret: env.BETTER_AUTH_SECRET,
-    trustedOrigins: env.WEB_ORIGIN,
+    // better-auth accepts `https://*.vercel.app`-style globs, so the preview patterns go straight in.
+    trustedOrigins: [...env.WEB_ORIGIN, ...env.WEB_ORIGIN_PATTERNS],
     database: drizzleAdapter(db.unsafeDb, { provider: "pg", usePlural: true, schema: authSchema }),
     emailAndPassword: { enabled: false },
     plugins: [
@@ -102,12 +129,8 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
       crossSubDomainCookies: env.COOKIE_DOMAIN
         ? { enabled: true, domain: env.COOKIE_DOMAIN }
         : { enabled: false },
-      defaultCookieAttributes: {
-        sameSite: env.COOKIE_SAMESITE ?? "lax",
-        secure: env.NODE_ENV === "production",
-        httpOnly: true,
-      },
-      useSecureCookies: env.NODE_ENV === "production",
+      defaultCookieAttributes: sessionCookieAttributes(env),
+      useSecureCookies: env.NODE_ENV === "production" || env.COOKIE_SAMESITE === "none",
     },
     databaseHooks: {
       user: {

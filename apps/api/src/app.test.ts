@@ -97,6 +97,16 @@ describe("CORS", () => {
     expect(res.headers.get("Access-Control-Allow-Credentials")).toBeNull();
   });
 
+  test("origin matching a WEB_ORIGIN_PATTERNS glob is allowed (Vercel previews)", async () => {
+    const ok = await preflight("https://teaching-journey-web-git-x-preview.example.test");
+    expect(ok.headers.get("Access-Control-Allow-Origin")).toBe(
+      "https://teaching-journey-web-git-x-preview.example.test",
+    );
+    expect(ok.headers.get("Access-Control-Allow-Credentials")).toBe("true");
+    const nested = await preflight("https://a.b-preview.example.test");
+    expect(nested.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+
   test("simple request from an allowed origin is reflected", async () => {
     const res = await testApp().request("/hello?name=x", {
       headers: { Origin: "https://app.example.test" },

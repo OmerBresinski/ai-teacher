@@ -19,6 +19,7 @@ import { classifyError, envelope } from "./errors";
 import { createEventsRuntime, type EventsRuntime } from "./events/runtime";
 import { createLogger, type Logger } from "./logger";
 import type { CaptureMailSender } from "./mail";
+import { createOriginMatcher } from "./origins";
 import { eventRoutes } from "./routes/events";
 import { healthRoutes } from "./routes/health";
 import { helloRoutes } from "./routes/hello";
@@ -28,7 +29,7 @@ import { testRoutes, testRoutesEnabled } from "./routes/test-routes";
 
 export interface CreateAppOptions {
   env: Pick<Env, "NODE_ENV" | "LOG_LEVEL" | "WEB_ORIGIN"> &
-    Partial<Pick<Env, "ENABLE_TEST_ROUTES">>;
+    Partial<Pick<Env, "ENABLE_TEST_ROUTES" | "WEB_ORIGIN_PATTERNS">>;
   /** Only `sql` is used today (`/health`); routes will take `unsafeDb` through `forWorkspace()`. */
   db: Pick<DbHandle, "sql">;
   /** Inject a logger (tests pass a silent one). Defaults to `createLogger(env)`. */
@@ -75,12 +76,13 @@ function buildApp({ env, db, logger: injected, auth, jobs, events, testMail }: C
     );
   });
 
-  // 3. CORS: only the configured web origins (Vercel production + previews in deploys, ADR 0010).
+  // 3. CORS: only the configured web origins (Vercel production + previews in deploys, ADR 0010):
+  // exact `WEB_ORIGIN` entries plus `WEB_ORIGIN_PATTERNS` globs for per-deployment preview URLs.
   // Requests from other origins get no CORS headers at all (Hono's `cors()` would still emit
   // `Allow-Credentials`), so the middleware only runs for allowed origins.
-  const allowed = new Set(env.WEB_ORIGIN);
+  const allowed = createOriginMatcher(env.WEB_ORIGIN, env.WEB_ORIGIN_PATTERNS ?? []);
   const corsMiddleware = cors({
-    origin: (origin) => (allowed.has(origin) ? origin : null),
+    origin: (origin) => (allowed(origin) ? origin : null),
     credentials: true,
     maxAge: 600,
     allowHeaders: ["Content-Type", "x-request-id", "Last-Event-ID"],
@@ -88,7 +90,7 @@ function buildApp({ env, db, logger: injected, auth, jobs, events, testMail }: C
   });
   app.use(async (c, next) => {
     const origin = c.req.header("Origin");
-    if (origin !== undefined && !allowed.has(origin)) {
+    if (origin !== undefined && !allowed(origin)) {
       if (c.req.method === "OPTIONS") return c.body(null, 204);
       return next();
     }
