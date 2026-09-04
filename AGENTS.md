@@ -42,6 +42,35 @@ together. Work items that are dashboard-only or founder decisions are reported b
    loads **`thermo-nuclear-code-quality-review`** (root `.agents/skills/`) and reviews the branch
    diff against `master`. It reports findings only; it does not edit code. Move the Linear issue
    to **In Review** when the PR is open and the review starts.
+   **Findings are posted on the GitHub PR as inline review comments**, anchored to the file and
+   line they concern, in one review submission via the REST API (not `gh pr review`, which only
+   takes a body):
+
+   ```sh
+   # commit_id: gh pr view <n> --json headRefOid -q .headRefOid
+   # event is always "COMMENT": GitHub rejects REQUEST_CHANGES/APPROVE on your own PR (422),
+   # and the reviewer runs as the PR author. Flag blockers in the body as "BLOCKER:" instead.
+   gh api repos/{owner}/{repo}/pulls/<n>/reviews --input - <<'EOF'
+   {
+     "commit_id": "<head sha>",
+     "event": "COMMENT",
+     "body": "<one-paragraph summary; 'No findings.' when empty>",
+     "comments": [
+       { "path": "apps/api/src/routes/lessons.ts", "line": 42, "side": "RIGHT",
+         "body": "<finding, phrased as in the skill>" }
+     ]
+   }
+   EOF
+   ```
+
+   The heredoc is quoted (`<<'EOF'`) on purpose: the payload must be literal, valid JSON — no
+   comments inside it, and no shell interpolation, so backticks in finding text survive.
+   `line` is the line number in the **new** file for added/changed lines (`side: "RIGHT"`); use
+   `side: "LEFT"` only for deleted lines. Use `start_line`/`start_side` for multi-line ranges.
+   Only lines inside the diff hunks can be anchored — put a finding about unchanged code in the
+   review `body` with a `path:line` reference instead. A review with no findings is still
+   submitted (`comments: []`, `event: "COMMENT"`) so the PR carries the record. The subagent
+   also returns the same findings in its final message so step 3 can act on them.
 3. **Fix, push, merge.** If the review has findings, fix them (or the implementing subagent
    does), push, and re-review only if the fix was structural. If it has none, merge straight
    away. Merge with `gh pr merge --squash --delete-branch` once CI is green
