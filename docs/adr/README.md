@@ -22,6 +22,7 @@ Product decisions live in Notion (Master PRD §17 and each feature PRD's "Decisi
 | 0014 | Testing: bun test, Vitest, Playwright              | Accepted |
 | 0015 | Env validation, logging, commit conventions        | Accepted |
 | 0016 | Deviations from PRD accepted for MVP scaffolding   | Accepted |
+| 0017 | Agent skill layout: .agents canonical + symlinks   | Accepted |
 
 Template: `0000-template.md`.
 

@@ -285,7 +285,7 @@ await runMain(async () => {
       const lines = proc.stdout
         .toString()
         .split("\n")
-        .filter((l) => l.includes("MISSING"));
+        .filter((l) => l.includes("MISSING") || l.includes("FAIL"));
       return fail(
         lines.length > 0 ? lines.join("; ") : `exit ${proc.exitCode}`,
         "Re-install per docs/agent-skills.md, or run: bun run skills:check",

@@ -1,0 +1,23 @@
+# Docker build context exclusions (root). Started in TEACH-28 for agent-skill directories;
+# TEACH-24 (Railway Dockerfiles for api/worker) builds on this file — extend, do not replace.
+#
+# Agent skills and agent guides (ADR 0017): never needed in an image.
+**/.agents
+**/.claude
+**/.opencode
+**/skills-lock.json
+**/AGENTS.md
+
+# Dependencies, VCS, secrets, build outputs, caches, local data.
+node_modules
+**/node_modules
+.git
+.env*
+**/.env*
+dist
+**/dist
+.turbo
+**/.turbo
+coverage
+**/coverage
+.data

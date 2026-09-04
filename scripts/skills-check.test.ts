@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
   checkEntries,
+  checkLayout,
   checkSkills,
+  formatLayoutFailure,
   formatResults,
+  parseCanonicalPath,
   parsePathCell,
   parseSkillTable,
   splitRow,
@@ -66,9 +69,20 @@ describe("filesystem checks", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  async function installFake(path: string) {
+  /** Mimics `skills add --agent universal claude-code`: real dir + relative `.claude` symlink. */
+  async function installFake(path: string, { withLink = true } = {}) {
     await mkdir(join(root, path), { recursive: true });
     await writeFile(join(root, path, "SKILL.md"), "---\nname: fake\n---\n");
+    if (withLink) await linkVariant(path, ".claude");
+  }
+
+  async function linkVariant(path: string, variant: string, target?: string) {
+    const parts = parseCanonicalPath(path);
+    if (!parts) throw new Error(`not canonical: ${path}`);
+    const link = join(root, parts.location, variant, "skills", parts.name);
+    await mkdir(dirname(link), { recursive: true });
+    await symlink(target ?? join("..", "..", ".agents", "skills", parts.name), link);
+    return link;
   }
 
   test("reports every skill present when all SKILL.md files exist", async () => {
@@ -87,8 +101,11 @@ describe("filesystem checks", () => {
     const results = await checkSkills(doc, root);
     expect(results).toHaveLength(4);
     expect(results.every((r) => r.present)).toBe(true);
+    expect(results.every((r) => r.layout.ok)).toBe(true);
+    expect(formatResults(results)).toContain("layout");
     expect(formatResults(results)).toContain("ok");
     expect(formatResults(results)).not.toContain("MISSING");
+    expect(formatResults(results)).not.toContain("FAIL");
   });
 
   test("names the missing skill and path when a directory is absent", async () => {
@@ -111,5 +128,110 @@ describe("filesystem checks", () => {
     await mkdir(join(root, "apps/web/.agents/skills/alpha"), { recursive: true });
     const [alpha] = checkEntries([{ skill: "alpha", path: "apps/web/.agents/skills/alpha" }], root);
     expect(alpha?.present).toBe(false);
+  });
+});
+
+describe("layout checks (ADR 0017)", () => {
+  let root: string;
+  const ENTRY = { skill: "alpha", path: "apps/web/.agents/skills/alpha" };
+  const CANONICAL = join("apps/web/.agents/skills/alpha");
+  const CLAUDE = "apps/web/.claude/skills/alpha";
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), "skills-layout-"));
+    await mkdir(join(root, CANONICAL), { recursive: true });
+    await writeFile(join(root, CANONICAL, "SKILL.md"), "---\nname: alpha\n---\n");
+    await writeFile(join(root, CANONICAL, "extra.md"), "reference\n");
+    await mkdir(join(root, "apps/web/.claude/skills"), { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  test("parseCanonicalPath splits <location>/.agents/skills/<name>", () => {
+    expect(parseCanonicalPath("apps/web/.agents/skills/alpha")).toEqual({
+      location: "apps/web",
+      name: "alpha",
+    });
+    expect(parseCanonicalPath("packages/ui/.agents/skills/shadcn/")).toEqual({
+      location: "packages/ui",
+      name: "shadcn",
+    });
+    expect(parseCanonicalPath("apps/web/.claude/skills/alpha")).toBeNull();
+    expect(parseCanonicalPath("apps/web/skills/alpha")).toBeNull();
+  });
+
+  test("passes with a real canonical dir and a relative .claude symlink", async () => {
+    await symlink("../../.agents/skills/alpha", join(root, CLAUDE));
+    expect(checkLayout(ENTRY, root)).toEqual({ ok: true });
+  });
+
+  test("also accepts an optional relative .opencode symlink", async () => {
+    await symlink("../../.agents/skills/alpha", join(root, CLAUDE));
+    await mkdir(join(root, "apps/web/.opencode/skills"), { recursive: true });
+    await symlink("../../.agents/skills/alpha", join(root, "apps/web/.opencode/skills/alpha"));
+    expect(checkLayout(ENTRY, root)).toEqual({ ok: true });
+  });
+
+  test("fails naming the path when .claude holds a real duplicate directory", async () => {
+    await cp(join(root, CANONICAL), join(root, CLAUDE), { recursive: true });
+    const layout = checkLayout(ENTRY, root);
+    expect(layout.ok).toBe(false);
+    if (layout.ok) return;
+    expect(layout.path).toBe(CLAUDE);
+    expect(layout.reason).toMatch(/real directory where a relative symlink/);
+    const [result] = checkEntries([ENTRY], root);
+    expect(formatLayoutFailure(result as NonNullable<typeof result>)).toBe(
+      `${CLAUDE}: real directory where a relative symlink to ${CANONICAL} was expected`,
+    );
+    expect(formatResults([result as NonNullable<typeof result>])).toContain("FAIL");
+  });
+
+  test("fails on a broken symlink", async () => {
+    await symlink("../../.agents/skills/does-not-exist", join(root, CLAUDE));
+    const layout = checkLayout(ENTRY, root);
+    expect(layout).toMatchObject({ ok: false, path: CLAUDE });
+    if (!layout.ok) expect(layout.reason).toMatch(/broken symlink/);
+  });
+
+  test("fails on an absolute symlink target even when it resolves correctly", async () => {
+    await symlink(join(root, CANONICAL), join(root, CLAUDE));
+    const layout = checkLayout(ENTRY, root);
+    expect(layout).toMatchObject({ ok: false, path: CLAUDE });
+    if (!layout.ok) expect(layout.reason).toMatch(/absolute symlink target/);
+  });
+
+  test("fails when the .claude link is missing", async () => {
+    const layout = checkLayout(ENTRY, root);
+    expect(layout).toMatchObject({ ok: false, path: CLAUDE });
+    if (!layout.ok) expect(layout.reason).toMatch(/missing; expected a relative symlink/);
+  });
+
+  test("fails when the symlink resolves to a different real directory", async () => {
+    await mkdir(join(root, "apps/web/.agents/skills/other"), { recursive: true });
+    await symlink("../../.agents/skills/other", join(root, CLAUDE));
+    const layout = checkLayout(ENTRY, root);
+    expect(layout).toMatchObject({ ok: false, path: CLAUDE });
+    if (!layout.ok) expect(layout.reason).toMatch(/does not resolve to/);
+  });
+
+  test("fails when the canonical dir is missing or is itself a symlink", async () => {
+    await rm(join(root, CANONICAL), { recursive: true });
+    expect(checkLayout(ENTRY, root)).toMatchObject({
+      ok: false,
+      path: CANONICAL,
+      reason: "canonical skill directory is missing",
+    });
+
+    await mkdir(join(root, "apps/web/real"), { recursive: true });
+    await writeFile(join(root, "apps/web/real/SKILL.md"), "x");
+    await symlink("../../real", join(root, CANONICAL));
+    expect(checkLayout(ENTRY, root)).toMatchObject({ ok: false, path: CANONICAL });
+  });
+
+  test("fails when a path is not under .agents/skills", () => {
+    const layout = checkLayout({ skill: "x", path: "apps/web/.claude/skills/x" }, root);
+    expect(layout).toMatchObject({ ok: false, path: "apps/web/.claude/skills/x" });
   });
 });
