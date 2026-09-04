@@ -248,8 +248,13 @@ jobs:
           psql -h localhost -U postgres -d teaching_journey_test -v ON_ERROR_STOP=1 \
             -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
+      # Run from apps/web so `bunx` resolves the pinned `@playwright/test` (isolated linker: the
+      # root has no node_modules/.bin), instead of fetching whatever is latest on npm. A latest
+      # resolution both misses the browser cache and downloads a Chromium build the pinned
+      # runner cannot use.
       - name: Playwright version
         id: pw
+        working-directory: apps/web
         run: |
           version="$(bunx --bun playwright --version 2>/dev/null | awk '{print $2}' || echo unknown)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -262,6 +267,7 @@ jobs:
 
       # `--bun` everywhere Playwright is invoked: the whole toolchain runs on Bun, no Node (ADR 0014).
       - name: Install Chromium
+        working-directory: apps/web
         run: bunx --bun playwright install --with-deps chromium
 
       - name: bun run test:e2e
