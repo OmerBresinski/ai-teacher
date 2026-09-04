@@ -70,7 +70,7 @@ export const test = base.extend<{ signedInPage: SignedIn }>({
   /** A page whose browser context holds a valid session for a brand-new user, sitting on `/`. */
   signedInPage: async ({ page, request }, use) => {
     const email = await signIn(page, request);
-    await expect(page.getByText("You are signed in to Teaching Journey.")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
     await use({ page, email });
   },
 });
