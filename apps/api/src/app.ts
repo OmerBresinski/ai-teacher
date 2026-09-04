@@ -10,12 +10,15 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
+import type { Auth } from "./auth/auth";
+import { requireSession } from "./auth/require-session";
 import type { AppEnv } from "./context";
 import type { Env } from "./env";
 import { classifyError, envelope } from "./errors";
 import { createLogger, type Logger } from "./logger";
 import { healthRoutes } from "./routes/health";
 import { helloRoutes } from "./routes/hello";
+import { meRoutes } from "./routes/me";
 
 export interface CreateAppOptions {
   env: Pick<Env, "NODE_ENV" | "LOG_LEVEL" | "WEB_ORIGIN">;
@@ -23,9 +26,14 @@ export interface CreateAppOptions {
   db: Pick<DbHandle, "sql">;
   /** Inject a logger (tests pass a silent one). Defaults to `createLogger(env)`. */
   logger?: Logger;
+  /**
+   * better-auth instance (`createAuth()`, TEACH-20). When omitted, `/auth/*` is not mounted and
+   * every protected path answers 401 — fine for unit tests that only touch public routes.
+   */
+  auth?: Auth;
 }
 
-function buildApp({ env, db, logger: injected }: CreateAppOptions) {
+function buildApp({ env, db, logger: injected, auth }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
   const app = new Hono<AppEnv>();
 
@@ -72,10 +80,15 @@ function buildApp({ env, db, logger: injected }: CreateAppOptions) {
   // 4. Security headers.
   app.use(secureHeaders());
 
-  // TEACH-20: mount /auth/* and requireSession here (before the feature routers below).
+  // TEACH-20: better-auth at /auth/* and `requireSession` on every protected path prefix.
+  if (auth) app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
+  const guard = requireSession(auth, db);
+  app.use("/me", guard);
+  app.use("/jobs/*", guard);
+  app.use("/events", guard);
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
-  const routes = app.route("/", healthRoutes(db)).route("/", helloRoutes);
+  const routes = app.route("/", healthRoutes(db)).route("/", helloRoutes).route("/", meRoutes);
 
   // TEACH-19: mount /jobs and /events here (streamSSE, Last-Event-ID replay — ADR 0012).
   // TEACH-15 follow-up: GET /files/:key proxy over the StorageAdapter (packages/storage).

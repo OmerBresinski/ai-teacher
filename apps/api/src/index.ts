@@ -4,13 +4,20 @@
  */
 import { createDb } from "@tj/db";
 import { createApp } from "./app";
+import { createAuth } from "./auth/auth";
+import { logUsersWithoutWorkspace } from "./auth/workspace-hook";
 import { loadEnv } from "./env";
 import { createLogger } from "./logger";
+import { loadMailSender } from "./mail";
 
 const env = loadEnv();
 const logger = createLogger(env);
 const db = createDb(env.DATABASE_URL);
-const app = createApp({ env, db, logger });
+const auth = createAuth({ env, db, mail: loadMailSender(env, logger), logger });
+const app = createApp({ env, db, logger, auth });
+void logUsersWithoutWorkspace(db, logger).catch((err) =>
+  logger.warn({ err }, "users-without-workspace self-check failed"),
+);
 
 const server = Bun.serve({
   port: env.PORT,
