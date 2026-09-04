@@ -20,6 +20,9 @@ describe("safeContentType", () => {
       "application/x-ecmascript",
       "",
       "not a media type",
+      "text/plain; charset=utf-8\r\nX-Injected: yes",
+      "text/plain; charset=utf-8\u0000",
+      "text/plain; name=\u00e9",
     ]) {
       expect(safeContentType(contentType)).toBe("application/octet-stream");
     }

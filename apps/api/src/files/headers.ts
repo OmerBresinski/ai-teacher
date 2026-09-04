@@ -22,10 +22,18 @@ function mediaType(raw: string): string | undefined {
   return type;
 }
 
+/**
+ * A header value must be printable ASCII (0x20–0x7E). Anything else — CR/LF,
+ * NUL, non-ASCII — would either be rejected by the runtime when the response is
+ * built (a 500 for the caller) or, in a lenient server, become header injection.
+ */
+const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
+
 export function safeContentType(raw: string): string {
   const type = mediaType(raw);
   if (
     !type ||
+    !PRINTABLE_ASCII.test(raw) ||
     EXECUTABLE_TYPES.has(type) ||
     type.includes("javascript") ||
     type.includes("ecmascript")

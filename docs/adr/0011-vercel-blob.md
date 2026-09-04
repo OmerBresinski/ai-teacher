@@ -29,8 +29,9 @@ originally written for private objects.
 `apps/api` (TEACH-15/16 follow-up). The route requires a session (`requireSession`), rejects any
 key that is not prefixed by the caller's `workspaceId/` with **404** (never 403, so the existence of
 other tenants' objects is not leaked), reads the object through `ReadableStorageAdapter.get(key)`
-from `@tj/storage` and streams the body with its stored `content-type`, `content-length` and
-`cache-control: private, no-store`. For private objects `getSignedUrl` returns that proxy path
+from `@tj/storage` and streams the body with `content-length`,
+`cache-control: private, no-store` and a `content-type` **derived from** the stored one (see the
+TEACH-78 amendment below — executable types are neutralised and downloads are forced by default). For private objects `getSignedUrl` returns that proxy path
 (`/files/<key>`) and `expiresInSeconds` is advisory; the Blob CDN URL is returned **only** for
 explicitly public prefixes (`STORAGE_PUBLIC_PREFIXES`) — public assets such as logos, never
 teacher content. The local-disk adapter behaves the same way through the same route.
@@ -63,5 +64,12 @@ mode on this store.
 the `teaching-journey-web` Vercel project and injected the token into its env; the SPA never reads it,
 so it was removed from the Vercel project (the store stays connected, the token stays valid).
 
-**Security.** The API proxy forces `attachment` plus a CSP sandbox except for an explicit inline-safe
-allow-list and neutralises executable content types to prevent stored XSS on the API origin.
+## Amendment (2026-09-04, TEACH-78) — download response hardening
+
+`GET /files/:key` never reflects the stored `content-type` verbatim: `text/html`, XHTML, SVG, XML,
+any `*javascript*`/`*ecmascript*` type, and unparseable or non-printable-ASCII values become
+`application/octet-stream`; every response carries `Content-Security-Policy: default-src 'none';
+sandbox` and `Content-Disposition: attachment` (with RFC 5987 filename parameters) except for an
+explicit inline-safe allow-list (`application/pdf`, `image/png|jpeg|gif|webp`) which is served
+`inline`. A teacher-supplied file therefore cannot execute as a document on the API origin (stored
+XSS → account takeover), whatever type it was uploaded with.
