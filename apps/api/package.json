@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@hono/zod-validator": "0.9.1",
+    "@tj/ai": "workspace:*",
     "@tj/db": "workspace:*",
     "@tj/domain": "workspace:*",
     "@tj/jobs": "workspace:*",

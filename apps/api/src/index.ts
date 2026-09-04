@@ -2,6 +2,8 @@
  * Process entry point: validate env, connect to Postgres, start `Bun.serve`, shut down cleanly
  * on SIGTERM/SIGINT (stop accepting, drain in-flight requests, close the pool, exit 0).
  */
+
+import { createAi } from "@tj/ai";
 import { createDb } from "@tj/db";
 import { createBoss, ensureQueues, type JobsContext } from "@tj/jobs";
 import { createStorage } from "@tj/storage";
@@ -38,6 +40,7 @@ const storage = createStorage({
   STORAGE_PUBLIC_BASE_URL: process.env.STORAGE_PUBLIC_BASE_URL,
   STORAGE_PUBLIC_PREFIXES: process.env.STORAGE_PUBLIC_PREFIXES,
 });
+const ai = createAi(env, { logger });
 const app = createApp({
   env,
   db,
@@ -47,6 +50,7 @@ const app = createApp({
   events,
   testMail: testMail ?? undefined,
   storage: storage.adapter,
+  ai,
 });
 void logUsersWithoutWorkspace(db, logger).catch((err) =>
   logger.warn({ err }, "users-without-workspace self-check failed"),
@@ -66,6 +70,7 @@ logger.info(
     web_origin_patterns: env.WEB_ORIGIN_PATTERNS,
     cookie_samesite: env.COOKIE_SAMESITE,
     storage: storage.kind,
+    ai: ai.kind,
   },
   `api listening on http://localhost:${server.port}`,
 );

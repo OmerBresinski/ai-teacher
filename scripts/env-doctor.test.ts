@@ -16,6 +16,10 @@ describe("doctor: validateEnvFile", () => {
     "WEB_ORIGIN=http://localhost:5173",
     "BETTER_AUTH_URL=http://localhost:3001",
     "MAIL_PROVIDER=console",
+    "AWS_REGION=us-east-1",
+    "AI_MODEL_FRONTIER=us.anthropic.claude-opus-5",
+    "AI_MODEL_STANDARD=us.anthropic.claude-sonnet-5",
+    "AI_MODEL_SMALL=us.anthropic.claude-haiku-4-5-20251001-v1:0",
     "BETTER_AUTH_SECRET=not-a-real-secret-just-long-enough-0123456789",
   ].join("\n");
 
@@ -68,7 +72,16 @@ describe("doctor: validateEnvFile", () => {
       "worker",
       "DATABASE_URL=postgres://postgres:postgres@localhost:5432/teaching_journey",
     );
-    expect(report.missing).toEqual(["NODE_ENV", "PORT", "LOG_LEVEL", "WORKER_CONCURRENCY"]);
+    expect(report.missing).toEqual([
+      "NODE_ENV",
+      "PORT",
+      "LOG_LEVEL",
+      "WORKER_CONCURRENCY",
+      "AWS_REGION",
+      "AI_MODEL_FRONTIER",
+      "AI_MODEL_STANDARD",
+      "AI_MODEL_SMALL",
+    ]);
   });
 
   test("checkFormat edge cases", () => {

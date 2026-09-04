@@ -15,6 +15,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@tj/ai": "workspace:*",
     "@tj/db": "workspace:*",
     "@tj/domain": "workspace:*",
     "@tj/jobs": "workspace:*",

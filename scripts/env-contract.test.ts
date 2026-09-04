@@ -73,6 +73,11 @@ describe("infra/env.contract.ts", () => {
       "LOG_LEVEL",
       "WORKER_CONCURRENCY",
       "BLOB_READ_WRITE_TOKEN",
+      "AWS_BEARER_TOKEN_BEDROCK",
+      "AWS_REGION",
+      "AI_MODEL_FRONTIER",
+      "AI_MODEL_STANDARD",
+      "AI_MODEL_SMALL",
     ]);
     // Set on production so PR environments (copies of production) inherit it (TEACH-38).
     expect(railwayNames("api", "pr")).toContain("WEB_ORIGIN_PATTERNS");
@@ -109,6 +114,27 @@ describe("generated .env.example files exist for every contract file", () => {
   test("paths resolve", async () => {
     for (const { path: relPath } of Object.values(ENV_FILES)) {
       expect(await Bun.file(path.join(ROOT, relPath)).exists(), relPath).toBe(true);
+    }
+  });
+});
+
+describe("AI provider defaults", () => {
+  test("contract literals match @tj/ai DEFAULT_REGION and DEFAULT_MODEL_IDS", async () => {
+    // The contract duplicates the literals so `infra/` stays dependency-free (ADR 0018).
+    const { DEFAULT_MODEL_IDS, DEFAULT_REGION } = await import("../packages/ai/src/create-ai");
+    const byName = (name: string) => {
+      const variable = ENV_CONTRACT.find((entry) => entry.name === name);
+      if (!variable) throw new Error(`missing ${name} in env contract`);
+      return variable;
+    };
+    const expected = {
+      AWS_REGION: DEFAULT_REGION,
+      AI_MODEL_FRONTIER: DEFAULT_MODEL_IDS.frontier,
+      AI_MODEL_STANDARD: DEFAULT_MODEL_IDS.standard,
+      AI_MODEL_SMALL: DEFAULT_MODEL_IDS.small,
+    };
+    for (const [name, value] of Object.entries(expected)) {
+      expect(byName(name)).toMatchObject({ local: value, railwayValue: value });
     }
   });
 });

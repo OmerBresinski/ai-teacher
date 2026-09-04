@@ -368,6 +368,10 @@ source of truth; this section only says how the values get there.
 - **`postgres` service**: `POSTGRES_USER` / `POSTGRES_PASSWORD` (random hex) / `POSTGRES_DB` /
   `PGDATA=/var/lib/postgresql/data/pgdata` — set once at `railway add`.
 
+**AI provider:** api and worker use Amazon Bedrock via `@tj/ai` (ADR 0018). The environment
+contract seeds the region and model-class IDs; the bearer key is a manual Railway secret. TEACH-72
+will add the operational setup and rotation runbook.
+
 ### Post-provisioning checklist (after `provision.sh`, manual values)
 
 State on 2026-09-04 (`bun run env:check` against `api`/`worker` production): everything the
