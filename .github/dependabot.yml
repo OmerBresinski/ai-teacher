@@ -20,6 +20,13 @@ updates:
       minor-and-patch:
         update-types: ["minor", "patch"]
       # Majors stay one PR per dependency so breaking changes are reviewed individually.
+    ignore:
+      # TypeScript 7 (the Go-native compiler) has no JS API compatible with tsup's .d.ts emit
+      # (`@tj/domain` build fails: `Cannot read properties of undefined (reading
+      # 'useCaseSensitiveFileNames')`), drizzle-kit or Biome's TS interop. Stay on 5.x until the
+      # toolchain supports it; revisit deliberately, not via a bot PR (see PR #12).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   # Actions in .github/workflows and .github/actions are pinned to full SHAs; Dependabot bumps the
   # SHA and keeps the `# vX.Y.Z` comment in sync.
