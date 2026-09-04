@@ -5,6 +5,7 @@
  * (by hash, not `'unsafe-inline'`). If `THEME_INIT_SCRIPT` changes, this test tells you the new
  * hash to paste into `vercel.json`.
  */
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { THEME_INIT_SCRIPT } from "@tj/ui";

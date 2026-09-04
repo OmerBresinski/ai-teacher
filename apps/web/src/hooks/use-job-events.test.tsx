@@ -1,6 +1,6 @@
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { act, render, screen } from "@testing-library/react";
 import type { JobEvent } from "@tj/domain/jobs";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { JobEventList } from "@/components/job-event-list";
 import { FakeEventSource, installFakeEventSource } from "@/test/fake-event-source";
 import { useJobEvents } from "./use-job-events";
@@ -32,12 +32,15 @@ function Harness({ jobId }: { jobId: string | undefined }) {
   );
 }
 
+// `installFakeEventSource()` swaps the global; put the real one back so nothing leaks between files.
+const originalEventSource = globalThis.EventSource;
+
 describe("useJobEvents", () => {
   beforeEach(() => {
     installFakeEventSource();
   });
   afterEach(() => {
-    vi.restoreAllMocks();
+    globalThis.EventSource = originalEventSource;
   });
 
   it("does not connect without a job id", () => {
@@ -71,7 +74,7 @@ describe("useJobEvents", () => {
   });
 
   it("ignores unknown or malformed payloads with a warning", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = spyOn(console, "warn").mockImplementation(() => {});
     render(<Harness jobId={JOB_ID} />);
     const source = FakeEventSource.latest;
     act(() => {
@@ -81,6 +84,7 @@ describe("useJobEvents", () => {
     });
     expect(warn).toHaveBeenCalledTimes(3);
     expect(screen.getByText("No events yet.")).toBeInTheDocument();
+    warn.mockRestore();
   });
 
   it("closes the stream on a terminal event and sets percent to 100 when completed", () => {

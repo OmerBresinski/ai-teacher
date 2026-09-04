@@ -1,15 +1,18 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const magicLink = vi.fn();
-vi.mock("@/lib/auth", () => ({ authClient: { signIn: { magicLink } } }));
+// `mock.module` is not hoisted like `vi.mock`, so register both module mocks before the dynamic
+// `import()` of the page below pulls them in.
+const magicLink = mock();
+mock.module("@/lib/auth", () => ({ authClient: { signIn: { magicLink } } }));
 
 let search: { redirect?: string } = {};
-vi.mock("@tanstack/react-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
-  return { ...actual, getRouteApi: () => ({ useSearch: () => search }) };
-});
+const actualRouter = await import("@tanstack/react-router");
+mock.module("@tanstack/react-router", () => ({
+  ...actualRouter,
+  getRouteApi: () => ({ useSearch: () => search }),
+}));
 
 const { SignInPage, callbackUrl, normaliseEmail } = await import("./sign-in.page");
 

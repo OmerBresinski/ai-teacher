@@ -9,7 +9,7 @@ SSE (ADR 0012). Deploys to Vercel as a static build (ADR 0010).
 bun run dev          # vite --port 5173 --strictPort   (reads apps/web/.env)
 bun run build        # vite build → dist/ (+ dist/.vite/manifest.json for the bundle budget)
 bun run preview      # serve dist/ locally
-bun run test         # vitest run (jsdom + Testing Library)
+bun run test         # bun test (happy-dom + Testing Library, src/**/*.test.{ts,tsx})
 bun run typecheck    # tsc --noEmit — includes src/types.test-d.tsx (compile-time contract)
 bun run lint         # biome check .
 ```
@@ -158,16 +158,18 @@ then `vercel deploy --yes --target=preview`); `.vercel/` and `.env.local` are gi
 
 Full guide: [`docs/testing.md`](../../docs/testing.md).
 
-**Unit (Vitest):** `bun run test` → `vitest run` with the shared preset
-`@tj/config/vitest/react` (jsdom, jest-dom, `cleanup()`, `css: true`, v8 coverage;
-`vitest.config.ts` only adds `VITE_API_URL=/api`). Files: `src/**/*.test.{ts,tsx}` — nothing
-else. Covered: env parsing, `meQueryOptions` (200 / 401 → `null` / envelope → `ApiError`), the
+**Unit (`bun test`):** `bun run test` → `bun test` with the preloads listed in `bunfig.toml`:
+`@tj/config/bun-test/dom` (happy-dom globals), `@tj/config/bun-test/setup` (jest-dom matchers,
+`cleanup()`) and `./bun-test.setup.ts` (pins `VITE_API_URL=/api`, `VITE_APP_ENV=development` for
+`src/env.ts` — under Bun `import.meta.env` is `process.env`). `root = "src"` keeps Bun away from
+`e2e/`. Coverage (`coverage/lcov.info`) is written when `CI=true`. Files: `src/**/*.test.{ts,tsx}`
+— nothing else. Covered: env parsing, `meQueryOptions` (200 / 401 → `null` / envelope → `ApiError`), the
 sign-in form (trim + lowercase, callback URL, error state), `useJobEvents` with a fake
 `EventSource` (`src/test/fake-event-source.ts`), and `src/types.test-d.tsx` for compile-time
 contracts (checked by `tsc`, not run).
 
 **End-to-end (Playwright + axe):** `bun run test:e2e` (root, via turbo after `build`) or
-`bunx playwright test` here. `playwright.config.ts` starts the api (`NODE_ENV=test`,
+`bun --bun playwright test` here (Playwright's CLI runs on Bun; no Node). `playwright.config.ts` starts the api (`NODE_ENV=test`,
 `ENABLE_TEST_ROUTES=1`), the worker and a `vite preview` of an e2e build (`dist/e2e`, with
 `VITE_API_URL=http://localhost:3811` baked in) against `TEST_DATABASE_URL`, on 3811/3822/4193.
 `e2e/fixtures.ts` provides `signedInPage` (magic link read back from the api's test-only
