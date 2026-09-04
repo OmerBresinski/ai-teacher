@@ -43,8 +43,10 @@ ticket, **read the code paths it touches** — never describe them from memory o
 - Say what is out of scope and which ADR decides each design choice, so the implementor does not
   re-open it.
 
-Use `linear_get_issue` on a recent well-specified ticket (e.g. TEACH-69, TEACH-74) as the shape
-to follow. A ticket is ready when a subagent could open the PR without asking a single question.
+Always create tickets from the Linear **Agentic Task** issue template (`template: "Agentic Task"`
+in `linear_save_issue`; `linear_get_template` shows its sections) and fill every section rather
+than inventing a shape. A ticket is ready when a subagent could open the PR without asking a
+single question.
 
 ## Delivery workflow (implement → PR → review → merge)
 
