@@ -1,4 +1,4 @@
-# Infrastructure — Railway (api, worker, Postgres) and the Docker image
+# Infrastructure — Vercel (web), Railway (api, worker, Postgres) and the Docker image
 
 Runbook for everything that is not the local compose stack (that lives in
 [`../docker-compose.yml`](../docker-compose.yml) and [`postgres/`](postgres/)). Decisions:
@@ -15,6 +15,112 @@ EU-West), [0016](../docs/adr/0016-prd-deviations.md) (EU not UK residency).
 > using Railway."* Pick a plan (Hobby is enough) in the dashboard, then run
 > `./infra/railway/provision.sh --deploy` once — it performs every step below. Fields marked
 > `<pending>` are filled in by that run.
+
+## Vercel (web) — TEACH-25
+
+`apps/web` is a static Vite build on Vercel (ADR 0010). Everything below except the items in the
+"dashboard-only" list was done with the CLI / API and is reproducible; ids live in the (gitignored)
+`.vercel/project.json` created by `vercel link`, never in git.
+
+| Setting                | Value                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| Team / project         | `omerbresinskis-projects` (personal) / **`teaching-journey-web`**                                  |
+| Root Directory         | `apps/web` (`vercel project update teaching-journey-web --root-directory apps/web`); "Include source files outside of the Root Directory" is on (API `sourceFilesOutsideRootDirectory: true`, the default) |
+| Framework preset       | Vite (project setting and `apps/web/vercel.json#framework`)                                         |
+| Install / build        | from `apps/web/vercel.json`: `cd ../.. && bun install --frozen-lockfile --ignore-scripts` (skips the root `prepare` → `lefthook install`, which has no git repo on Vercel) and `cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web`; output `dist` |
+| Ignored Build Step     | `bash scripts/vercel-ignore-build.sh` (relative to `apps/web`): skips when nothing under `apps/web`, `packages/{ui,api-client,domain,config}`, `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`; always builds when that SHA is missing |
+| Git                    | `vercel git connect https://github.com/OmerBresinski/ai-teacher.git`; production branch **`master`** (the default was `main`; fixed with `PATCH /v1/projects/teaching-journey-web/branch {"branch":"master"}`). Pushes to `master` deploy production, every other branch/PR a preview |
+| Domains                | `teaching-journey-web.vercel.app` (auto). `app.<domain>` — `TODO(domain)`, TEACH-26              |
+| Deployment protection  | Vercel Authentication (SSO) on all non-custom-domain deployments — Hobby default; previews ask for a Vercel login. A Protection Bypass for Automation secret exists (curl/e2e: `x-vercel-protection-bypass: <secret>`, read it in *Settings → Deployment Protection*; never commit it) |
+| Speed Insights         | `@vercel/speed-insights` is loaded **only** when `VITE_APP_ENV=production` (`apps/web/src/lib/speed-insights.ts`, dynamic import, verified absent from preview `dist/`). Enabling the *feature* on the project is dashboard-only (CLI refuses: "incurs charges") |
+| Verified preview       | `https://teaching-journey-5v1umubdb-omerbresinskis-projects.vercel.app` (2026-09-04): `/dev/jobs` → 200 HTML, `/assets/does-not-exist.js` → 404, `/assets/*` `Cache-Control: public, max-age=31536000, immutable`, `/` and deep links `no-cache`, security headers present, no speed-insights code |
+
+### Environment variables (names + non-secret values)
+
+| Variable                      | Scope      | Value                                                                                             |
+| ----------------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
+| `VITE_APP_ENV`                | Production | `production`                                                                                      |
+| `VITE_API_URL`                | Production | `https://api.example.invalid` — **placeholder, `TODO(domain)`**: replace with `https://api.<domain>` (TEACH-26) via `vercel env rm VITE_API_URL production && vercel env add VITE_API_URL production --value https://api.<domain> --no-sensitive` |
+| `VITE_APP_ENV`                | Preview    | `preview`                                                                                         |
+| `RAILWAY_PR_API_URL_TEMPLATE` | Preview    | `https://api-pr-{pr}.up.railway.app` — the *expected* Railway PR-environment domain (see "PR environments"); **confirm after the first Railway PR deploy** and update with `vercel env` |
+| `VITE_API_URL_FALLBACK`       | Preview    | `https://api.example.invalid` placeholder — used for branch pushes without a PR and while the template is unconfirmed; point it at the Railway production api once it exists |
+
+`scripts/vercel-env.ts` (repo root, `bun test scripts/`) turns these into the two `VITE_*` values
+the bundle sees: production → the explicit `VITE_API_URL`; preview → `RAILWAY_PR_API_URL_TEMPLATE`
+with `{pr}` = `VERCEL_GIT_PULL_REQUEST_ID`, else `VITE_API_URL_FALLBACK`, else the build fails
+loudly. The `vercel-env:` line in the build log shows which rule fired. `turbo.json` lists
+`VITE_API_URL` / `VITE_APP_ENV` under `@tj/web#build.env`, so the turbo cache key changes with
+them (Vercel's build uses its own remote cache: "Detected Turbo").
+
+### Headers and rewrites (`apps/web/vercel.json`)
+
+- Rewrite `/((?!assets/|_vercel/).*)` → `/index.html` (SPA deep links); missing `/assets/*` files
+  stay 404 instead of returning HTML.
+- `/assets/*` → `public, max-age=31536000, immutable` (hashed filenames); everything else
+  (`/`, `/index.html`, deep links) → `no-cache`. Note: a 404 under `/assets/` also carries the
+  immutable header — harmless because hashed names never repeat, but do not add un-hashed files
+  under `assets/`.
+- `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy:
+  strict-origin-when-cross-origin`, `Permissions-Policy` denying camera/microphone/geolocation/
+  payment/usb/interest-cohort.
+- `Content-Security-Policy-Report-Only` — `default-src 'self'`; `script-src 'self'
+  '<sha256 of THEME_INIT_SCRIPT>'` (the inline theme script is allowed by hash, not
+  `'unsafe-inline'`; `apps/web/src/vercel-config.test.ts` fails with the new hash whenever the
+  script changes); `style-src 'self' 'unsafe-inline'` (React/Radix inline styles); `connect-src
+  'self' https:` — `vercel.json` is static, so the exact API origin cannot be injected per
+  environment; `https:` is the honest conservative choice. It is report-only with no `report-to`,
+  i.e. violations only show in the browser console. Follow-up: enforce it (and narrow
+  `connect-src`) once the API domains are fixed, e.g. by generating the header at build time.
+
+### Pairing a Vercel preview with a Railway PR environment (pending Railway billing)
+
+1. Railway PR env `pr-<n>` deploys the api at the domain matching `RAILWAY_PR_API_URL_TEMPLATE`.
+2. Vercel builds the PR with `VITE_API_URL` = that domain (see above).
+3. The api in the PR env must accept the preview origin and set a cross-site cookie: on the Railway
+   **PR environment only** set `COOKIE_SAMESITE=none` (`apps/api`: cookie becomes `SameSite=None;
+   Secure`, boot logs a warning; production stays `lax` + `COOKIE_DOMAIN`) and
+   `WEB_ORIGIN_PATTERNS=https://teaching-journey-web-*-omerbresinskis-projects.vercel.app`
+   (glob, `*` = one DNS label — covers `…-git-<branch>-…` and `…-<hash>-…` preview URLs; also
+   fed to better-auth `trustedOrigins`). `WEB_ORIGIN` keeps the exact production/alias origins.
+   Both can be seeded through `infra/railway/api.json` once Railway's `environments.pr` overrides
+   are wired (TEACH-24 follow-up).
+4. Vercel's SSO protection does not affect the page's own XHR/SSE to the api once the page loaded.
+
+### Turbo remote cache (TEACH-23 phase 2)
+
+`bunx turbo link --yes --scope omerbresinskis-projects` succeeded locally on 2026-09-04 (turbo
+reuses the Vercel CLI login; `.turbo/config.json` holds only the team id and is gitignored) and a
+`--cache=remote:rw` run hit the remote cache. For GitHub Actions: create a token at
+<https://vercel.com/account/tokens> (scope `omerbresinskis-projects`), then
+`gh secret set TURBO_TOKEN --repo OmerBresinski/ai-teacher` and
+`gh variable set TURBO_TEAM --body omerbresinskis-projects --repo OmerBresinski/ai-teacher`.
+`.github/workflows/ci.yml` already forwards both. No token is stored in this repository.
+
+### Manual deploys
+
+```sh
+export PATH="$HOME/.bun/bin:$PATH"                     # vercel CLI logged in
+vercel link --yes --project teaching-journey-web --scope omerbresinskis-projects   # from the repo ROOT
+vercel deploy --yes --target=preview                   # preview; Root Directory applies server-side
+vercel deploy --yes --prod                             # production (master) — avoid; let Git do it
+```
+
+Link and deploy from the **repository root**, not `apps/web`: with Root Directory set, a CLI
+upload from `apps/web` fails with `Root Directory "apps/web" does not exist`. `.vercelignore`
+(root) keeps `.env*` files, `dist`, `node_modules` etc. out of CLI uploads — the CLI does **not**
+read `.gitignore`. Delete `.env.local` if `vercel link` creates one.
+
+### Dashboard-only (Vercel)
+
+- [ ] *Speed Insights → Enable* on `teaching-journey-web` (charges; CLI refuses non-interactively).
+      The client code is already in the production bundle.
+- [ ] Optional: *Web Analytics* (`@vercel/analytics` is not installed — add it the same
+      production-only way if wanted).
+- [ ] When domains exist (TEACH-26): add `app.<domain>`, set `VITE_API_URL` (Production) to
+      `https://api.<domain>`, point `VITE_API_URL_FALLBACK` at the production api, and confirm
+      `RAILWAY_PR_API_URL_TEMPLATE` from a real Railway PR environment.
+- [ ] Confirm the GitHub App has access to `OmerBresinski/ai-teacher` (it did — `vercel git connect`
+      succeeded and PR comments are on) after any GitHub permission change.
 
 ## Topology
 
@@ -121,8 +227,9 @@ health check; a failed migration fails the deploy and the previous deployment ke
 | `LOG_LEVEL`           | ✓   | ✓      | `info`                                                                                                            |
 | `BETTER_AUTH_SECRET`  | ✓   |        | script, `openssl rand -base64 32` via `--stdin`; rotate with the same command                                     |
 | `BETTER_AUTH_URL`     | ✓   |        | `https://${{RAILWAY_PUBLIC_DOMAIN}}` (resolves per environment, PR envs included)                                 |
-| `WEB_ORIGIN`          | ✓   |        | `https://placeholder.vercel.app` until **TEACH-25** sets the real Vercel prod + preview origins (comma-separated)  |
-| `COOKIE_SAMESITE`     | ✓   |        | `none` (web and api are on unrelated origins until `app.<d>`/`api.<d>` exist — ADR 0008/0010)                     |
+| `WEB_ORIGIN`          | ✓   |        | production: `https://teaching-journey-web.vercel.app` (+ `https://app.<domain>` later), comma-separated exact origins |
+| `WEB_ORIGIN_PATTERNS` | ✓   |        | PR environments: `https://teaching-journey-web-*-omerbresinskis-projects.vercel.app` (glob; see "Vercel (web)"); unset in production |
+| `COOKIE_SAMESITE`     | ✓   |        | `none` while web and api are on unrelated origins (forces `Secure`; boot warning); `lax` + `COOKIE_DOMAIN` once `app.<d>`/`api.<d>` exist — ADR 0008/0010 |
 | `COOKIE_DOMAIN`       | ✓   |        | unset; **TEACH-26** sets `.<domain>` once custom domains exist                                                     |
 | `MAIL_PROVIDER`       | ✓   |        | `console` until F17                                                                                               |
 | `GOOGLE_*`, `MICROSOFT_*` | ✓ |      | unset (optional OAuth) — TEACH-26                                                                                 |
@@ -165,13 +272,14 @@ services and variables, builds the PR commit for `api` and `worker`, and gets a 
 resolve inside the PR environment, so `DATABASE_URL` points at the PR's own database and
 `BETTER_AUTH_URL` at the PR api. The environment is deleted when the PR closes.
 
-API preview URL pattern for **TEACH-25** (Vercel preview → Railway preview): Railway generates
+API preview URL pattern (Vercel preview → Railway preview): Railway generates
 `https://<service>-<environment>.up.railway.app`, i.e. expected `https://api-pr-<number>.up.railway.app`
 — the production one is `https://api-production-<hash>.up.railway.app` unless renamed with
-`railway domain update`. **Confirm the actual generated name** from `railway domain list --service api --environment pr-<n> --json`
-after the first PR deploy and record it here; do not hard-code it before then. `WEB_ORIGIN` in the
-PR environment must include the Vercel preview origin (TEACH-25 sets it via `environments.pr` in
-`infra/railway/api.json` or a PR-env variable).
+`railway domain update`. TEACH-25 does **not** hard-code it: the Vercel Preview variable
+`RAILWAY_PR_API_URL_TEMPLATE=https://api-pr-{pr}.up.railway.app` feeds `scripts/vercel-env.ts`.
+**Confirm the actual generated name** from `railway domain list --service api --environment pr-<n> --json`
+after the first PR deploy and update that variable. The PR environment's api needs
+`WEB_ORIGIN_PATTERNS` (Vercel preview origins) and `COOKIE_SAMESITE=none` — see "Vercel (web)".
 
 ## Networking notes
 

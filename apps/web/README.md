@@ -133,6 +133,27 @@ it on every PR. Current initial load ≈ 134 KB gz. Keep it down by:
 - Vite 8 bundles with **Rolldown**: `output.manualChunks` is deprecated, so React is pinned to its
   own chunk with `build.rollupOptions.output.codeSplitting.groups`.
 
+## Deploy (Vercel, ADR 0010)
+
+Static build on Vercel, project **`teaching-journey-web`**, Root Directory `apps/web`; pushes to
+`master` deploy production, every PR gets a preview. The full runbook (project settings, env
+scopes, Railway pairing, dashboard-only checklist, verified preview) is in
+[`infra/README.md` → "Vercel (web)"](../../infra/README.md#vercel-web--teach-25). In this app:
+
+| File | Role |
+| ---- | ---- |
+| `vercel.json` | `framework: vite`; install/build run from the repo root (`bun install --frozen-lockfile --ignore-scripts`, `bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web`); SPA rewrite `/((?!assets/\|_vercel/).*)` → `/index.html`; `Cache-Control` immutable for `/assets/*`, `no-cache` for the shell; `nosniff`, `DENY`, referrer/permissions policies; `Content-Security-Policy-Report-Only` allowing the inline theme script **by hash** and `connect-src 'self' https:` (static file → API origin cannot be templated). `src/vercel-config.test.ts` guards all of it and prints the new hash if `THEME_INIT_SCRIPT` changes. |
+| `scripts/vercel-ignore-build.sh` | Ignored Build Step: exit 0 (skip) unless `apps/web`, `packages/{ui,api-client,domain,config}`, `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`. |
+| `../../scripts/vercel-env.ts` | Resolves `VITE_APP_ENV` / `VITE_API_URL` at build time: production → the Production `VITE_API_URL`; preview → `RAILWAY_PR_API_URL_TEMPLATE` (`{pr}` = PR number) or `VITE_API_URL_FALLBACK`. Pure function, `bun test scripts/`. |
+| `src/lib/speed-insights.ts` | `@vercel/speed-insights` via dynamic import behind `import.meta.env.VITE_APP_ENV === "production"` (a literal Vite inlines, so preview/dev `dist/` contain none of it — checked on the live preview). Reports the matched route pattern, never the pathname. |
+
+Env values per scope live in Vercel, not in git; production `VITE_API_URL` is a `TODO(domain)`
+placeholder until TEACH-26. The API side of previews (`COOKIE_SAMESITE=none`,
+`WEB_ORIGIN_PATTERNS`) is described in `apps/api/README.md` "Cookie strategy".
+
+Manual deploys go from the **repository root** (`vercel link --yes --project teaching-journey-web`,
+then `vercel deploy --yes --target=preview`); `.vercel/` and `.env.local` are gitignored.
+
 ## Testing
 
 Full guide: [`docs/testing.md`](../../docs/testing.md).
