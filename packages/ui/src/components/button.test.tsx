@@ -1,6 +1,6 @@
+import { describe, expect, it, mock } from "bun:test";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
 
 import { Button } from "./button";
 
@@ -12,7 +12,7 @@ describe("Button", () => {
 
   it("forwards onClick", async () => {
     const user = userEvent.setup();
-    const onClick = vi.fn();
+    const onClick = mock();
     render(<Button onClick={onClick}>Click</Button>);
     await user.click(screen.getByRole("button", { name: "Click" }));
     expect(onClick).toHaveBeenCalledTimes(1);
@@ -63,7 +63,7 @@ describe("Button", () => {
 
   it("is not clickable when disabled", async () => {
     const user = userEvent.setup();
-    const onClick = vi.fn();
+    const onClick = mock();
     render(
       <Button disabled onClick={onClick}>
         Disabled

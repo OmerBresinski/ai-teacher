@@ -5,7 +5,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vitest/globals", "@testing-library/jest-dom/vitest"]
+    "types": ["@types/bun", "@tj/config/bun-test/jest-dom"]
   },
-  "include": ["src", "vitest.config.ts", "vitest.setup.ts"]
+  "include": ["src", "bun-test.setup.ts"]
 }
