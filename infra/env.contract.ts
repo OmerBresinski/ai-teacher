@@ -237,7 +237,8 @@ const CONTRACT = [
     local: null,
     railway: "pr",
     vercel: "n/a",
-    setBy: "manual",
+    setBy: "template",
+    railwayValue: "https://teaching-journey-web-*-omerbresinskis-projects.vercel.app",
     format: "origin-pattern-list",
     files: ["api"],
     description:

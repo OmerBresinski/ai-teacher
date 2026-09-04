@@ -20,6 +20,21 @@ EU-West), [0016](../docs/adr/0016-prd-deviations.md) (EU not UK residency).
 > `db:migrate: DATABASE_URL up to date`). The only known variable gap is `BLOB_READ_WRITE_TOKEN`
 > (no Vercel Blob store yet — see "Post-provisioning checklist").
 
+## Known gaps (read this first)
+
+The stack works end-to-end but several pieces are deliberate stopgaps. Each is tracked as a
+Linear issue in project **P1 — Production hardening**; update this table when one closes.
+
+| Gap | Today | Target | Tracked / documented |
+| --- | ----- | ------ | -------------------- |
+| **Sign-in mail is console-only** | `MAIL_PROVIDER=console` in production: magic links are printed to the api log (`railway logs --service api`), never sent. Only someone with Railway access can sign in. | A real mail provider (Resend/Postmark) behind the existing `MailSender` interface, `MAIL_PROVIDER=resend` + API key on Railway. | TEACH-35; ADR 0008; `apps/api/src/mail/` |
+| **Cross-site session cookie** | `COOKIE_SAMESITE=none` on the production api because `*.vercel.app` and `*.up.railway.app` share no parent domain. | Buy `<domain>`; `app.<domain>` → Vercel, `api.<domain>` → Railway; `COOKIE_SAMESITE=lax`, `COOKIE_DOMAIN=.<domain>`, `WEB_ORIGIN`/`BETTER_AUTH_URL`/`VITE_API_URL` updated. | TEACH-36; "Cookie stopgap" below; ADR 0008 amendment |
+| **File storage is ephemeral** | No Vercel Blob store; api/worker run `storage: local-disk` inside the container, wiped on every deploy. Harmless until Artefact uploads exist. | Create the Blob store, set `BLOB_READ_WRITE_TOKEN` on api + worker (`bun run env:check` flags it). | TEACH-37; "Post-provisioning checklist"; ADR 0011 |
+| **Railway config-as-code deprecated** | `infra/railway/*.json` applied by `provision.sh` through the API; files keep working until **2026-12-01**. | Migrate to `.railway/railway.ts` (`railway config migrate`). | TEACH-38; "Config-as-code" below; ADR 0010 amendment |
+| **Vercel production is public** | `teaching-journey-web.vercel.app` has no Deployment Protection; sign-in is gated by the console-only mail, so exposure is low. | Founder decision once mail works: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
+| **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
+| **OAuth disabled** | Google/Microsoft sign-in off (no client credentials); magic link only. | Set the four `*_CLIENT_ID`/`*_CLIENT_SECRET` variables when the OAuth apps exist. | TEACH-39; `docs/env.md` |
+
 ## Vercel (web) — TEACH-25
 
 `apps/web` is a static Vite build on Vercel (ADR 0010). Everything below except the items in the
@@ -33,7 +48,7 @@ EU-West), [0016](../docs/adr/0016-prd-deviations.md) (EU not UK residency).
 | Framework preset       | Vite (project setting and `apps/web/vercel.json#framework`)                                         |
 | Install / build        | from `apps/web/vercel.json`: `cd ../.. && bun install --frozen-lockfile --ignore-scripts` (skips the root `prepare` → `lefthook install`, which has no git repo on Vercel) and `cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web`; output `dist` |
 | Ignored Build Step     | `bash scripts/vercel-ignore-build.sh` (relative to `apps/web`): skips when nothing under `apps/web`, `packages/{ui,api-client,domain,config}`, `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`; always builds when that SHA is missing |
-| Git                    | `vercel git connect https://github.com/OmerBresinski/ai-teacher.git`; production branch **`master`** (the default was `main`; fixed with `PATCH /v1/projects/teaching-journey-web/branch {"branch":"master"}`). Pushes to `master` deploy production, every other branch/PR a preview |
+| Git                    | `vercel git connect https://github.com/OmerBresinski/ai-teacher.git`; production branch **`master`** (set via `PATCH /v1/projects/teaching-journey-web/branch {"branch":"master"}`). Pushes to `master` deploy production, every other branch/PR a preview |
 | Domains                | `teaching-journey-web.vercel.app` (auto). `app.<domain>` — `TODO(domain)`, domain follow-up              |
 | Deployment protection  | Vercel Authentication (SSO) — Hobby default "Standard Protection": previews ask for a Vercel login. Whether to also protect **production** (`teaching-journey-web.vercel.app`) is a founder decision (dashboard-only); since 2026-09-04 the site works end-to-end against the Railway api, so this is low urgency — see "Dashboard-only (Vercel)". A Protection Bypass for Automation secret exists (curl/e2e: `x-vercel-protection-bypass: <secret>`, read it in *Settings → Deployment Protection*; never commit it) |
 | Speed Insights         | `@vercel/speed-insights` is loaded **only** when `VITE_APP_ENV=production` (`apps/web/src/lib/speed-insights.ts`, dynamic import, verified absent from preview `dist/`). Enabling the *feature* on the project is dashboard-only (CLI refuses: "incurs charges") |

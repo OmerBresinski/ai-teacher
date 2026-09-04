@@ -12,13 +12,19 @@ import {
   vercelNames,
 } from "../../infra/env.contract";
 
+/**
+ * Railway names PR environments `<github-repo>-pr-<n>` (verified: PR #30 → `ai-teacher-pr-30`),
+ * not `<project>-pr-<n>`; the api's public domain follows as `api-<env>.up.railway.app`.
+ */
+export const RAILWAY_PR_ENV_PREFIX = "ai-teacher-pr-";
+
 export type ProviderName = "railway" | "vercel";
 
 export interface Target {
   provider: ProviderName;
   /** `api` / `worker` for Railway; the Vercel project for Vercel. */
   service: string;
-  /** `production`, `pr-<n>` (Railway) or `production` / `preview` (Vercel). */
+  /** `production`, `ai-teacher-pr-<n>` (Railway PR env; named after the GitHub repo) or `production` / `preview` (Vercel). */
   environment: string;
   expected: string[];
 }
@@ -136,7 +142,8 @@ export function buildTargets(options: { pr?: number }): Target[] {
   const railwayEnvs: { name: string; kind: RailwayEnvironment }[] = [
     { name: "production", kind: "production" },
   ];
-  if (options.pr !== undefined) railwayEnvs.push({ name: `pr-${options.pr}`, kind: "pr" });
+  if (options.pr !== undefined)
+    railwayEnvs.push({ name: `${RAILWAY_PR_ENV_PREFIX}${options.pr}`, kind: "pr" });
   const targets: Target[] = [];
   for (const service of ["api", "worker"] as const) {
     for (const env of railwayEnvs) {

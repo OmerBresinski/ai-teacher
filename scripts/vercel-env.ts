@@ -3,7 +3,7 @@
  * Vercel build-time environment for `apps/web` (TEACH-25, ADR 0010).
  *
  * Vercel builds every branch with the *Preview* environment's variables, but the API a preview
- * should talk to is the Railway PR environment for the same pull request (`pr-<number>`). That
+ * should talk to is the Railway PR environment for the same pull request (`ai-teacher-pr-<number>`). That
  * URL is only known at build time (`VERCEL_GIT_PULL_REQUEST_ID`), so this script resolves
  * `VITE_API_URL` / `VITE_APP_ENV` and either
  *
@@ -67,7 +67,7 @@ function nonEmpty(value: string | undefined): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-/** `https://api-pr-{pr}.up.railway.app` + `"42"` → `https://api-pr-42.up.railway.app`. */
+/** `https://api-ai-teacher-pr-{pr}.up.railway.app` + `"42"` → `https://api-ai-teacher-pr-42.up.railway.app`. */
 export function railwayPrApiUrl(template: string, prNumber: string): string {
   if (!template.includes(PR_PLACEHOLDER)) {
     throw new UserFacingError(

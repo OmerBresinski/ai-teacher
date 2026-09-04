@@ -12,7 +12,7 @@ Misconfigured environments should fail at boot, not at first request. Observabil
 
 - **Environment:** each app has `src/env.ts` that parses `process.env` (or `import.meta.env` for web) with a Zod schema and throws on missing/invalid values. `.env.example` is committed per app; real values live in Vercel/Railway. No secrets in the repository; a secret-scanning pre-commit hook is enabled.
 - **Logging:** `pino` structured JSON logs in `apps/api` and `apps/worker` with a request-id middleware; `pino-pretty` in development. No prompt or content bodies are logged. Error tracking and tracing are deferred to a later ADR.
-- **Commits:** trunk-based development on `main`; squash merges; Conventional Commits enforced by `commitlint` in a `lefthook` pre-commit/commit-msg hook alongside Biome. No changesets.
+- **Commits:** trunk-based development on `master`; squash merges; Conventional Commits enforced by `commitlint` in a `lefthook` pre-commit/commit-msg hook alongside Biome. No changesets.
 
 ## Amendment (TEACH-26, 2026-09-04)
 

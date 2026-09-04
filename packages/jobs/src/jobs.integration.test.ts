@@ -177,7 +177,13 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         expect(e.jobId).toBe(jobId);
         expect(e.workspaceId).toBe(workspaceId);
       }
-      expect((await bossState(jobId))?.state).toBe("completed");
+      // The `completed` event is emitted inside the handler; pg-boss flips the row to `completed`
+      // only after the handler returns, so poll instead of asserting once (flaked on slow CI).
+      const settled = await waitFor(
+        async () => (await bossState(jobId))?.state === "completed",
+        2_000,
+      );
+      expect(settled).toBe(true);
       expect(outcomes.at(-1)).toMatchObject({ id: jobId, status: "completed", event: "completed" });
     });
 

@@ -321,8 +321,7 @@ Biome is configured once in the root `biome.json` (ADR 0003); packages do not ca
 
 ## Conventions
 
-- **Default branch is `master`** (not `main`; see the amendment in
-  [`docs/adr/README.md`](docs/adr/README.md)). Trunk-based development, squash merges.
+- **Default branch is `master`.** Trunk-based development, squash merges.
 - **Pull requests are required** to change `master` (branch protection; CI checks are added by
   TEACH-23). Do not push directly.
 - **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `build:`, `ci:`, `refactor:`,
