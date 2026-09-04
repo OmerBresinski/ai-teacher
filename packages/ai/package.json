@@ -1,0 +1,29 @@
+{
+  "name": "@tj/ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@ai-sdk/amazon-bedrock": "5.0.74",
+    "@tj/domain": "workspace:*",
+    "ai": "7.0.92",
+    "pino": "10.3.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@tj/config": "workspace:*",
+    "typescript": "5.9.3"
+  }
+}
