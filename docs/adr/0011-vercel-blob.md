@@ -39,3 +39,26 @@ teacher content. The local-disk adapter behaves the same way through the same ro
 (Railway egress rather than CDN egress). Browser-to-Blob direct downloads remain possible later
 for public assets only. `get(key)` is part of `@tj/storage`'s `ReadableStorageAdapter`; lifting it
 into `@tj/domain`'s `StorageAdapter` is a follow-up.
+
+## Amendment (2026-09-04, TEACH-37) — store provisioned
+
+**Status.** Implemented in production. The store **`teaching-journey`** (`store_Ii6wcxuuLOvPP4ou`,
+team `omerbresinskis-projects`) was created with the Vercel CLI on 2026-09-04 and its read-write
+token set on the Railway `api` and `worker` services (`production`; PR environments inherit it).
+The api boots with `storage="vercel-blob"`; the local-disk adapter remains the development/test
+default. Runbook: `infra/README.md` "Vercel Blob (files)".
+
+**Region.** Vercel Blob offers no Amsterdam region, so the store lives in **`fra1` (Frankfurt)** —
+the closest EU region to Railway's `europe-west4` (ADR 0010). Data stays in the EU (ADR 0016); the
+"Vercel-controlled regions" concern above is therefore resolved: the region is chosen at creation and
+immutable.
+
+**Access.** The store is **private** at the store level (immutable). Vercel rejects `access:
+"public"` uploads to a private store (verified), so `STORAGE_PUBLIC_PREFIXES` must stay unset and
+every download goes through `GET /files/:key` as decided in the 2026-09-04 amendment above. Public
+assets (logos etc.) would need a second, public store or a different host — not a separate access
+mode on this store.
+
+**Token placement.** `BLOB_READ_WRITE_TOKEN` lives only on Railway. The CLI connected the store to
+the `teaching-journey-web` Vercel project and injected the token into its env; the SPA never reads it,
+so it was removed from the Vercel project (the store stays connected, the token stays valid).

@@ -17,8 +17,10 @@ EU-West), [0016](../docs/adr/0016-prd-deviations.md) (EU not UK residency).
 > on `master`, PR environments are on and **verified with PR #30** (see "PR environments").
 > Production is wired end-to-end to the Vercel web app (CORS preflight → 204, magic link → `302`
 > back to `https://teaching-journey-web.vercel.app` with the session cookie → `/me` 200; pre-deploy
-> `db:migrate: DATABASE_URL up to date`). The only known variable gap is `BLOB_READ_WRITE_TOKEN`
-> (no Vercel Blob store yet — see "Post-provisioning checklist").
+> `db:migrate: DATABASE_URL up to date`). Since TEACH-37 (2026-09-04) the Vercel Blob store
+> **`teaching-journey`** (`store_Ii6wcxuuLOvPP4ou`, `fra1`, private) exists and
+> `BLOB_READ_WRITE_TOKEN` is set on api + worker: the api boots with `storage="vercel-blob"`
+> (see "Vercel Blob" below).
 
 ## Known gaps (read this first)
 
@@ -29,7 +31,6 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | --- | ----- | ------ | -------------------- |
 | **Sign-in mail is console-only** | `MAIL_PROVIDER=console` in production: magic links are printed to the api log (`railway logs --service api`), never sent. Only someone with Railway access can sign in. | A real mail provider (Resend/Postmark) behind the existing `MailSender` interface, `MAIL_PROVIDER=resend` + API key on Railway. | TEACH-35; ADR 0008; `apps/api/src/mail/` |
 | **Cross-site session cookie** | `COOKIE_SAMESITE=none` on the production api because `*.vercel.app` and `*.up.railway.app` share no parent domain. | Buy `<domain>`; `app.<domain>` → Vercel, `api.<domain>` → Railway; `COOKIE_SAMESITE=lax`, `COOKIE_DOMAIN=.<domain>`, `WEB_ORIGIN`/`BETTER_AUTH_URL`/`VITE_API_URL` updated. | TEACH-36; "Cookie stopgap" below; ADR 0008 amendment |
-| **File storage is ephemeral** | No Vercel Blob store; api/worker run `storage: local-disk` inside the container, wiped on every deploy. Harmless until Artefact uploads exist. | Create the Blob store, set `BLOB_READ_WRITE_TOKEN` on api + worker (`bun run env:check` flags it). | TEACH-37; "Post-provisioning checklist"; ADR 0011 |
 | **Railway config-as-code deprecated** | `infra/railway/*.json` applied by `provision.sh` through the API; files keep working until **2026-12-01**. | Migrate to `.railway/railway.ts` (`railway config migrate`). | TEACH-38; "Config-as-code" below; ADR 0010 amendment |
 | **Vercel production is public** | `teaching-journey-web.vercel.app` has no Deployment Protection; sign-in is gated by the console-only mail, so exposure is low. | Founder decision once mail works: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
@@ -158,13 +159,45 @@ read `.gitignore`. Delete `.env.local` if `vercel link` creates one.
       The client code is already in the production bundle.
 - [ ] Optional: *Web Analytics* (`@vercel/analytics` is not installed — add it the same
       production-only way if wanted).
-- [ ] Create a **Vercel Blob store** (Storage → Blob) and copy its `BLOB_READ_WRITE_TOKEN` to the
-      Railway api and worker (ADR 0011; see "Post-provisioning checklist").
+- [x] **Vercel Blob store** — done from the CLI on 2026-09-04 (TEACH-37), no dashboard step was
+      needed; see "Vercel Blob (files)" below.
 - [ ] When domains exist (follow-up): add `app.<domain>`, set `VITE_API_URL` (Production) to
       `https://api.<domain>` and `VITE_API_URL_FALLBACK` to the same. `RAILWAY_PR_API_URL_TEMPLATE`
       is already confirmed and does not change.
 - [x] GitHub App access to `OmerBresinski/ai-teacher` (`vercel git connect` succeeded, PR comments
       on) — re-check after any GitHub permission change.
+
+## Vercel Blob (files) — TEACH-37
+
+Object storage for Sources / Artefacts is a **Vercel Blob** store (ADR 0011), consumed only by the
+Railway api and worker through `@tj/storage` (`createStorage` picks `VercelBlobStorage` whenever
+`BLOB_READ_WRITE_TOKEN` is set). Created with the CLI on 2026-09-04 — nothing dashboard-only:
+
+| Setting  | Value                                                                                           |
+| -------- | ----------------------------------------------------------------------------------------------- |
+| Store    | **`teaching-journey`** (`store_Ii6wcxuuLOvPP4ou`), team `omerbresinskis-projects`                 |
+| Access   | **private** (store-level, immutable): every blob needs the token; browsers read files through the api proxy `GET /files/:key` (ADR 0011 amendment). `STORAGE_PUBLIC_PREFIXES` must stay unset — a private store cannot hold `access: "public"` blobs |
+| Region   | **`fra1`** (Frankfurt, EU). Blob offers no Amsterdam region (allowed: `arn1 bom1 cdg1 cle1 cpt1 dub1 dxb1 fra1 gru1 hkg1 hnd1 iad1 icn1 kix1 lhr1 pdx1 sfo1 sin1 syd1 yul1`); `fra1` is the closest to Railway's `europe-west4` (Amsterdam) and keeps the EU residency of ADR 0016. Immutable after creation |
+| Base URL | `ii6wcxuulovpp4ou.private.blob.vercel-storage.com` (not browsable without the token)              |
+| Command  | `vercel blob create-store teaching-journey --access private --region fra1 --environment production --environment preview --yes --scope omerbresinskis-projects` (from the repo root, project linked) |
+| Project link | The CLI connected the store to `teaching-journey-web` and injected `BLOB_READ_WRITE_TOKEN` into the project's Production/Preview env. The SPA never reads it, so it was removed again (`vercel env rm BLOB_READ_WRITE_TOKEN production`) to keep the secret off the web project; the store stays connected and the token stays valid. `bun run env:check` treats it as `extra` if it reappears |
+| Token    | Lives on Railway `api` + `worker` (`production`; PR environments inherit it). Never in git, never on Vercel |
+| Verified | api boot log `storage="vercel-blob"` (production, 2026-09-04); `BLOB_READ_WRITE_TOKEN=… bun test packages/storage/src/vercel-blob.test.ts` → 10 pass against the real store (writes under a fresh `ws_*` prefix and deletes it; the store was empty afterwards) |
+
+Inspect / rotate (the token is only ever piped, never printed):
+
+```sh
+vercel blob list-stores --all --scope omerbresinskis-projects       # name, id, region, size, connected projects
+vercel blob get-store store_Ii6wcxuuLOvPP4ou --scope omerbresinskis-projects
+vercel blob list --rw-token "$(cat /tmp/token)"                       # contents; `del <pathname>` / `empty-store`
+# obtain the token: dashboard → Storage → teaching-journey → ".env.local" tab, or reconnect the store
+# to the project and `vercel env pull /tmp/prod.env --environment production` (then `vercel env rm` it
+# again). Write ONLY the value to /tmp/token, then:
+railway variable set BLOB_READ_WRITE_TOKEN --stdin --service api --skip-deploys < /tmp/token
+railway variable set BLOB_READ_WRITE_TOKEN --stdin --service worker --skip-deploys < /tmp/token
+railway redeploy --service api --yes && railway redeploy --service worker --yes
+rm /tmp/token /tmp/prod.env
+```
 
 ## Topology
 
@@ -201,8 +234,9 @@ Project `teaching-journey` (`a79752e1-8bf5-41d0-b832-f1b64aaf6d2f`), workspace
 `omerbresinski's Projects` (Hobby). Environments: `production` (`d595bbf8-dc4b-494f-b1f7-0023dd2dc25d`)
 + ephemeral `ai-teacher-pr-<number>`. Service ids: `api` `ef433c66-c762-4c21-890e-c69856a09a39`,
 `worker` `5d7a3bc8-a02d-44b8-83ca-ea11c20a1676`, `postgres` `5c408f9c-b1f2-4820-8a0b-a888391dfa02`
-(`railway status --json`). Storage: the api runs `storage: "local-disk"` until a Vercel Blob store
-exists — ephemeral on Railway, acceptable until Artefact uploads land (ADR 0011).
+(`railway status --json`). Storage: api and worker run `storage: "vercel-blob"` against the private
+store `teaching-journey` (`fra1`, see "Vercel Blob (files)"); without `BLOB_READ_WRITE_TOKEN` they
+would fall back to `local-disk`, which is ephemeral on Railway (ADR 0011).
 
 ### Why not Railway's managed Postgres
 
@@ -293,14 +327,15 @@ source of truth; this section only says how the values get there.
 ### Post-provisioning checklist (after `provision.sh`, manual values)
 
 State on 2026-09-04 (`bun run env:check` against `api`/`worker` production): everything the
-contract requires is present **except `BLOB_READ_WRITE_TOKEN`** on both services — no Vercel Blob
-store exists yet, and the api runs `storage: "local-disk"` meanwhile (ADR 0011). `COOKIE_SAMESITE`
-is `none` in production (cookie stopgap, see "Vercel (web)"); `COOKIE_DOMAIN` and the OAuth
-credentials are unset by design until the domain / F17 arrive.
+contract requires is present, including **`BLOB_READ_WRITE_TOKEN`** on both services (set from the
+CLI on 2026-09-04, TEACH-37 — store `teaching-journey`, `store_Ii6wcxuuLOvPP4ou`, `fra1`; the api
+boots with `storage="vercel-blob"`). `COOKIE_SAMESITE` is `none` in production (cookie stopgap, see
+"Vercel (web)"); `COOKIE_DOMAIN` and the OAuth credentials are unset by design until the domain /
+F17 arrive (`env:check` still lists them under `missing` for `api`).
 
 ```sh
 bun run env:check --fix                 # names on api/worker production vs docs/env.md; prints the commands
-# Blob store (open): Vercel dashboard → Storage → Create → Blob, copy the read-write token, then
+# Blob token (done 2026-09-04; this is the re-set / rotation recipe — see "Vercel Blob (files)"):
 railway variable set BLOB_READ_WRITE_TOKEN --stdin --service api --skip-deploys < /tmp/token    # ADR 0011
 railway variable set BLOB_READ_WRITE_TOKEN --stdin --service worker --skip-deploys < /tmp/token
 # domain (open, TODO(domain)): once app.<domain> / api.<domain> exist,
@@ -413,14 +448,14 @@ Done:
       `railway service source connect --repo OmerBresinski/ai-teacher --branch master` succeeded for
       api and worker; pushes to `master` auto-deploy.
 - [x] *Settings → Environments → Enable PR environments* — on (`prDeploys: true`), verified with PR #30.
+- [x] **Vercel Blob store** `teaching-journey` (`fra1`, private) + `BLOB_READ_WRITE_TOKEN` on api +
+      worker — done from the CLI on 2026-09-04 (TEACH-37, ADR 0011).
 
 Open:
 
 - [ ] **Buy a domain** (`TODO(domain)`): `app.<domain>` → Vercel, `api.<domain>` → Railway
       (`railway domain add api.<domain> --service api` + CNAME), then `COOKIE_DOMAIN` /
       `COOKIE_SAMESITE=lax`, Vercel `VITE_API_URL` / `VITE_API_URL_FALLBACK`, narrower CSP `connect-src`.
-- [ ] **Vercel Blob store** → `BLOB_READ_WRITE_TOKEN` on api + worker (ADR 0011; the one
-      `bun run env:check` drift today).
 - [ ] Vercel: Deployment Protection decision for production; *Speed Insights → Enable*.
 - [ ] GitHub: `TURBO_TOKEN` secret + `TURBO_TEAM` variable for the CI remote cache (see "Turbo remote cache").
 - [ ] Optional: Google / Microsoft OAuth credentials (F17); `railway ssh keys` for `railway ssh` /
