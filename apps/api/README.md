@@ -126,6 +126,7 @@ module-level singletons, so tests can inject fakes.
 | `GET /health`        | `200 { ok: true, db: "up" }` or `503` envelope (`retryable: true`) |
 | `GET /hello?name=x`  | `200 { message: "Hello, x" }`; `400 validation_failed` when `name` is empty |
 | `GET /me`            | `200 { user: { id, email, name }, workspaceId }`; `401 unauthorized` without a session (see "Auth") |
+| `GET /me/greeting?weekday=` | Session; always `200 { text, source: "model" \| "fallback" }` when the weekday is valid |
 | `/auth/*`            | better-auth endpoints (magic link, session, sign-out; OAuth when configured) |
 | `GET /files/:key`    | Streams a stored object (`content-type`, `content-length`, `cache-control: private, no-store`); `401` without a session, `404` for a missing object **or** a key outside the caller's Workspace (never 403), `400 validation_failed` for a malformed key, `503` when no storage adapter is configured (see "Files") |
 | `GET /__test/last-magic-link?email=x` | **Test-only** (see "Test routes"): `200 { email, url }` or `404 not_found`. Absent unless `NODE_ENV=test` and `ENABLE_TEST_ROUTES=1`. |

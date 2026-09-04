@@ -72,6 +72,7 @@ function buildApp({
   events,
   testMail,
   storage,
+  ai,
 }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
   const eventsRuntime = events ?? (jobs ? createEventsRuntime({ jobs, logger }) : undefined);
@@ -133,7 +134,7 @@ function buildApp({
   const routes = app
     .route("/", healthRoutes(db))
     .route("/", helloRoutes)
-    .route("/", meRoutes)
+    .route("/", meRoutes(ai))
     .route("/", jobRoutes(eventsRuntime))
     .route("/", eventRoutes(eventsRuntime))
     .route("/", fileRoutes(storage));

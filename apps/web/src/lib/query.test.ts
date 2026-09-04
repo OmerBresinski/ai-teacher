@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient } from "@tanstack/react-query";
-import { ApiError, type Me, meQueryOptions, queryKeys } from "./query";
+import {
+  ApiError,
+  greetingQueryOptions,
+  localWeekday,
+  type Me,
+  meQueryOptions,
+  queryKeys,
+} from "./query";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -24,6 +31,15 @@ describe("meQueryOptions", () => {
     // Bun types `expect(x).toEqual(y)` as `y: typeof x`; widen the data-tagged key to its shape.
     expect<readonly unknown[]>(meQueryOptions.queryKey).toEqual(queryKeys.me);
     expect(queryKeys.job("x")).toEqual(["job", "x"]);
+  });
+
+  it("keys greetings by the teacher's local weekday", () => {
+    expect<readonly unknown[]>(greetingQueryOptions("Monday").queryKey).toEqual([
+      "me",
+      "greeting",
+      "Monday",
+    ]);
+    expect(localWeekday(new Date(2026, 8, 4, 12))).toBe("Friday");
   });
 
   it("resolves the body on 200", async () => {

@@ -1,19 +1,24 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { FALLBACK_GREETING } from "@tj/domain";
 import { Button, Card, CardContent } from "@tj/ui";
 import { authClient } from "@/lib/auth";
-import { meQueryOptions, queryKeys } from "@/lib/query";
+import { greetingQueryOptions, localWeekday, meQueryOptions, queryKeys } from "@/lib/query";
 
 const labelClass = "text-xs font-medium uppercase tracking-wider text-muted-foreground";
 
 export function IndexPage() {
   const { data: me } = useQuery(meQueryOptions);
+  const weekday = localWeekday();
+  const greeting = useQuery({ ...greetingQueryOptions(weekday), enabled: me != null });
+  const text = greeting.data?.text ?? FALLBACK_GREETING;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   async function signOut() {
     await authClient.signOut();
     await queryClient.invalidateQueries({ queryKey: queryKeys.me });
+    queryClient.removeQueries({ queryKey: ["me", "greeting"] });
     await navigate({ to: "/sign-in", search: {} });
   }
 
@@ -24,8 +29,11 @@ export function IndexPage() {
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           Hello{me?.user.name ? `, ${me.user.name}` : ""}
         </h1>
-        <p className="text-lg text-muted-foreground">
-          You are signed in. Journeys, Lessons and Artefacts will appear here soon.
+        <p
+          className={`text-lg text-muted-foreground transition-opacity duration-300 ${greeting.isPending ? "opacity-0" : "opacity-100"}`}
+          aria-hidden={greeting.isPending}
+        >
+          {text}
         </p>
       </header>
 
