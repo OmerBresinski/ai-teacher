@@ -222,8 +222,8 @@ intermediate deployments, then redeploy them:
 ```sh
 printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s api --skip-deploys
 printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s worker --skip-deploys
-railway redeploy -s api -y
-railway redeploy -s worker -y
+railway redeploy -p <project> -e production -s api -y
+railway redeploy -p <project> -e production -s worker -y
 ```
 
 ### Change a model
@@ -231,15 +231,17 @@ railway redeploy -s worker -y
 Set the selected model ID on both production services, then redeploy them:
 
 ```sh
-railway variable set AI_MODEL_SMALL=<id> -e production -s api --skip-deploys
-railway variable set AI_MODEL_SMALL=<id> -e production -s worker --skip-deploys
-railway redeploy -s api -y
-railway redeploy -s worker -y
+railway variable set AI_MODEL_SMALL=<id> -p <project> -e production -s api --skip-deploys
+railway variable set AI_MODEL_SMALL=<id> -p <project> -e production -s worker --skip-deploys
+railway redeploy -p <project> -e production -s api -y
+railway redeploy -p <project> -e production -s worker -y
 ```
 
-Use the matching `AI_MODEL_STANDARD` or `AI_MODEL_FRONTIER` name for those classes. The defaults
-live in [`infra/env.contract.ts`](env.contract.ts); update them there too, or `railway config plan`
-and `bun run env:check` will report drift.
+Use the matching `AI_MODEL_STANDARD` or `AI_MODEL_FRONTIER` name for those classes. Update the
+matching `railwayValue` in [`infra/env.contract.ts`](env.contract.ts) as well so a fresh
+`provision.sh` seeds the same ID. Neither `railway config plan` nor `bun run env:check` compares
+variable **values** (both check names only), so the only check that a model change took effect is
+the smoke test below: its progress message names the model ID that actually answered.
 
 ### Smoke test
 
