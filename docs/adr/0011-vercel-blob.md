@@ -62,3 +62,6 @@ mode on this store.
 **Token placement.** `BLOB_READ_WRITE_TOKEN` lives only on Railway. The CLI connected the store to
 the `teaching-journey-web` Vercel project and injected the token into its env; the SPA never reads it,
 so it was removed from the Vercel project (the store stays connected, the token stays valid).
+
+**Security.** The API proxy forces `attachment` plus a CSP sandbox except for an explicit inline-safe
+allow-list and neutralises executable content types to prevent stored XSS on the API origin.
