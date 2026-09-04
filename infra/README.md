@@ -34,6 +34,7 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | **Vercel production is public** | `teaching-journey-web.vercel.app` has no Deployment Protection; sign-in is gated by the console-only mail, so exposure is low. | Founder decision once mail works: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
 | **OAuth disabled** | Google/Microsoft sign-in off (no client credentials); magic link only. | Set the four `*_CLIENT_ID`/`*_CLIENT_SECRET` variables when the OAuth apps exist. | TEACH-39; `docs/env.md` |
+| **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
 
 ## Vercel (web) — TEACH-25
 
@@ -197,6 +198,74 @@ railway variable set BLOB_READ_WRITE_TOKEN --stdin --service worker --skip-deplo
 railway redeploy --service api --yes && railway redeploy --service worker --yes
 rm /tmp/token /tmp/prod.env
 ```
+
+## AI provider (Bedrock) — TEACH-72
+
+The api and worker call Amazon Bedrock through `@tj/ai` (ADR [0018](../docs/adr/0018-ai-provider.md)).
+The variable descriptions and full matrix are generated in [`docs/env.md`](../docs/env.md); this
+section records the Railway production runbook. PR environments inherit production values when
+Railway creates them.
+
+| Name | Scope | Services | Where set |
+| ---- | ----- | -------- | --------- |
+| `AWS_BEARER_TOKEN_BEDROCK` | secret | api, worker | manual, via stdin |
+| `AWS_REGION` | config | api, worker | template / `railwayValue` |
+| `AI_MODEL_FRONTIER` | config | api, worker | template / `railwayValue` |
+| `AI_MODEL_STANDARD` | config | api, worker | template / `railwayValue` |
+| `AI_MODEL_SMALL` | config | api, worker | template / `railwayValue` |
+
+### Set or rotate the bearer token
+
+Never echo the token or pass it as an argument. Set both production services without triggering two
+intermediate deployments, then redeploy them:
+
+```sh
+printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s api --skip-deploys
+printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s worker --skip-deploys
+railway redeploy -p <project> -e production -s api -y
+railway redeploy -p <project> -e production -s worker -y
+```
+
+### Change a model
+
+Set the selected model ID on both production services, then redeploy them:
+
+```sh
+railway variable set AI_MODEL_SMALL=<id> -p <project> -e production -s api --skip-deploys
+railway variable set AI_MODEL_SMALL=<id> -p <project> -e production -s worker --skip-deploys
+railway redeploy -p <project> -e production -s api -y
+railway redeploy -p <project> -e production -s worker -y
+```
+
+Use the matching `AI_MODEL_STANDARD` or `AI_MODEL_FRONTIER` name for those classes. Update the
+matching `railwayValue` in [`infra/env.contract.ts`](env.contract.ts) as well so a fresh
+`provision.sh` seeds the same ID. Neither `railway config plan` nor `bun run env:check` compares
+variable **values** (both check names only), so the only check that a model change took effect is
+the smoke test below: its progress message names the model ID that actually answered.
+
+### Smoke test
+
+1. Sign in on production. Magic links are console-logged because of Known gap TEACH-35:
+   `railway logs -s api -e production`.
+2. `POST /jobs/ai-ping` with `{"class":"small"}`, `{"class":"standard"}`, or
+   `{"class":"frontier"}`.
+3. Follow `GET /jobs/:id/events` until `completed`. The second `progress` message carries
+   `<modelId>: in=<n> out=<n> finish=<reason>`.
+
+Bedrock runs in `us-east-1`; prompts and completions transit the US in flight. This residency
+deviation is recorded in ADR [0016 §5](../docs/adr/0016-prd-deviations.md#amendment-2026-09-04-adr-0018).
+
+**Verification recorded (2026-09-04):** both services deploy `SUCCESS` and boot with
+`ai="bedrock"`; production verification is the `ai.ping` job path in ADR
+[0018 §7](../docs/adr/0018-ai-provider.md#decision). Three-class smoke test against production
+(`POST /jobs/ai-ping` → `GET /jobs/:id/events`, all `completed`; model access is granted for all
+three in `us-east-1`):
+
+| class | progress message |
+| ----- | ---------------- |
+| `small` | `us.anthropic.claude-haiku-4-5-20251001-v1:0: in=16 out=5 finish=stop` |
+| `standard` | `us.anthropic.claude-sonnet-5: in=17 out=4 finish=stop` |
+| `frontier` | `us.anthropic.claude-opus-5: in=17 out=4 finish=stop` |
 
 ## Topology
 
@@ -368,12 +437,6 @@ source of truth; this section only says how the values get there.
 - **`postgres` service**: `POSTGRES_USER` / `POSTGRES_PASSWORD` (random hex) / `POSTGRES_DB` /
   `PGDATA=/var/lib/postgresql/data/pgdata` — set once at `railway add`.
 
-**AI provider:** api and worker use Amazon Bedrock via `@tj/ai` (ADR 0018). The environment
-contract seeds the region and model-class IDs; the bearer key is a manual Railway secret. TEACH-72
-will add the operational setup and rotation runbook.
-
-**AI smoke test:** after signing in locally, `curl -X POST http://localhost:3001/jobs/ai-ping -H 'content-type: application/json' -H 'x-tj-workspace-id: <workspace-id>' -d '{"class":"small"}'`, then `curl -N http://localhost:3001/jobs/<job-id>/events -H 'x-tj-workspace-id: <workspace-id>'`; expect `started`, two metadata-only `progress` events, then `completed`.
-
 ### Post-provisioning checklist (after `provision.sh`, manual values)
 
 State on 2026-09-04 (`bun run env:check` against `api`/`worker` production): everything the
@@ -388,6 +451,9 @@ bun run env:check --fix                 # names on api/worker production vs docs
 # Blob token (done 2026-09-04; this is the re-set / rotation recipe — see "Vercel Blob (files)"):
 railway variable set BLOB_READ_WRITE_TOKEN --stdin --service api --skip-deploys < /tmp/token    # ADR 0011
 railway variable set BLOB_READ_WRITE_TOKEN --stdin --service worker --skip-deploys < /tmp/token
+# Bedrock bearer token (done 2026-09-04; use stdin so it is never printed or passed as argv):
+printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s api --skip-deploys
+printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s worker --skip-deploys
 # domain (open, TODO(domain)): once app.<domain> / api.<domain> exist,
 railway variable set COOKIE_DOMAIN=.<domain> --service api --skip-deploys
 railway variable set COOKIE_SAMESITE=lax --service api --skip-deploys              # switch from the `none` stopgap
