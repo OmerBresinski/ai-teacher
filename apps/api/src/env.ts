@@ -95,6 +95,8 @@ export const EnvSchema = z
     ALLOW_CONSOLE_MAIL_IN_PRODUCTION: optionalString,
     /** `"1"` mounts the test-only routes (TEACH-22). Never in production. */
     ENABLE_TEST_ROUTES: optionalString,
+    /** `"1"` enables the dev/test `x-tj-workspace-id` header shim. Never in production. */
+    ALLOW_WORKSPACE_HEADER_SHIM: optionalString,
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.AWS_BEARER_TOKEN_BEDROCK) {
@@ -115,6 +117,20 @@ export const EnvSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["ENABLE_TEST_ROUTES"],
+        message: "Cannot be set when NODE_ENV=production",
+      });
+    }
+    if (env.ALLOW_WORKSPACE_HEADER_SHIM !== undefined && env.ALLOW_WORKSPACE_HEADER_SHIM !== "1") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ALLOW_WORKSPACE_HEADER_SHIM"],
+        message: 'Must be "1" or unset',
+      });
+    }
+    if (env.ALLOW_WORKSPACE_HEADER_SHIM === "1" && env.NODE_ENV === "production") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ALLOW_WORKSPACE_HEADER_SHIM"],
         message: "Cannot be set when NODE_ENV=production",
       });
     }
@@ -170,6 +186,16 @@ export function parseEnv(source: Record<string, string | undefined> = process.en
   ) {
     errors.unshift({
       variable: "ENABLE_TEST_ROUTES",
+      message: "Cannot be set when NODE_ENV=production",
+    });
+  }
+  if (
+    source.NODE_ENV === "production" &&
+    (source.ALLOW_WORKSPACE_HEADER_SHIM ?? "").trim() !== "" &&
+    !errors.some((e) => e.variable === "ALLOW_WORKSPACE_HEADER_SHIM")
+  ) {
+    errors.unshift({
+      variable: "ALLOW_WORKSPACE_HEADER_SHIM",
       message: "Cannot be set when NODE_ENV=production",
     });
   }

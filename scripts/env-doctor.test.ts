@@ -16,6 +16,7 @@ describe("doctor: validateEnvFile", () => {
     "WEB_ORIGIN=http://localhost:5173",
     "BETTER_AUTH_URL=http://localhost:3001",
     "MAIL_PROVIDER=console",
+    "ALLOW_WORKSPACE_HEADER_SHIM=1",
     "AWS_REGION=us-east-1",
     "AI_MODEL_FRONTIER=us.anthropic.claude-opus-5",
     "AI_MODEL_STANDARD=us.anthropic.claude-sonnet-5",

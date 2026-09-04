@@ -41,7 +41,9 @@ import { testRoutes, testRoutesEnabled } from "./routes/test-routes";
 
 export interface CreateAppOptions {
   env: Pick<Env, "NODE_ENV" | "LOG_LEVEL" | "MAIL_PROVIDER" | "WEB_ORIGIN"> &
-    Partial<Pick<Env, "ENABLE_TEST_ROUTES" | "WEB_ORIGIN_PATTERNS">>;
+    Partial<
+      Pick<Env, "ALLOW_WORKSPACE_HEADER_SHIM" | "ENABLE_TEST_ROUTES" | "WEB_ORIGIN_PATTERNS">
+    >;
   /** Only `sql` is used today (`/health`); routes will take `unsafeDb` through `forWorkspace()`. */
   db: Pick<DbHandle, "sql">;
   /** Inject a logger (tests pass a silent one). Defaults to `createLogger(env)`. */
@@ -86,6 +88,7 @@ function buildApp({
   rateLimit,
 }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
+  const allowHeaderShim = env.ALLOW_WORKSPACE_HEADER_SHIM === "1";
   const eventsRuntime = events ?? (jobs ? createEventsRuntime({ jobs, logger }) : undefined);
   const aiLimiter = createRateLimiter(loadRateLimitConfig(process.env, rateLimit));
   const app = new Hono<AppEnv>();
@@ -137,7 +140,7 @@ function buildApp({
   // TEACH-20: better-auth at /auth/* and guards on every protected path prefix.
   if (auth) app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
   const csrf = rejectCrossSiteRequests(allowed);
-  const guard = requireSession(auth, db);
+  const guard = requireSession(auth, db, { allowHeaderShim });
   const PROTECTED_PATHS = ["/me", "/me/*", "/jobs/*", "/events", "/files/*"] as const;
   for (const path of PROTECTED_PATHS) {
     app.use(path, csrf);
@@ -159,6 +162,11 @@ function buildApp({
   if (testMail && testRoutesEnabled(env)) {
     app.route("/", testRoutes(testMail));
     logger.warn("test routes enabled (NODE_ENV=test, ENABLE_TEST_ROUTES=1): GET /__test/*");
+  }
+  if (allowHeaderShim) {
+    logger.warn(
+      "workspace header shim enabled (ALLOW_WORKSPACE_HEADER_SHIM=1): x-tj-workspace-id selects any Workspace without a session",
+    );
   }
   if (env.NODE_ENV === "production" && env.MAIL_PROVIDER === "console") {
     logger.warn(

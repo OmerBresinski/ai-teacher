@@ -46,7 +46,7 @@ export function fileRoutes(storage: ReadableStorageAdapter | undefined) {
     "/files/:key{.+}",
     zValidator("param", fileParam, validationHook),
     async (c) => {
-      const workspaceId = getWorkspaceId(c);
+      const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
       if (!storage) {
         throw new HTTPException(503, { message: "File downloads are not available right now." });
       }

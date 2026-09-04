@@ -221,14 +221,18 @@ NODE_ENV=test ENABLE_TEST_ROUTES=1 PORT=3811 DATABASE_URL=$TEST_DATABASE_URL \
 
 ### `requireSession`
 
-`requireSession(auth, db)` (`src/auth/require-session.ts`) is mounted path-scoped in `app.ts`:
-`/me`, `/jobs/*`, `/events`. Add new protected prefixes there. After it runs:
+`requireSession(auth, db, { allowHeaderShim })` (`src/auth/require-session.ts`) is mounted
+path-scoped in `app.ts` through the `PROTECTED_PATHS` list — `/me`, `/me/*`, `/jobs/*`, `/events`,
+`/files/*` — right after the `rejectCrossSiteRequests` guard (TEACH-77). Add new protected prefixes
+to that list only. `allowHeaderShim` is `env.ALLOW_WORKSPACE_HEADER_SHIM === "1"` (dev/test only;
+refused in production): it is the sole place the `x-tj-workspace-id` header is honoured. After it
+runs:
 
 | `c.get(…)` | Value |
 | ---------- | ----- |
 | `"user"` | better-auth user: `{ id, email, name, emailVerified, image, createdAt, updatedAt }` |
 | `"session"` | better-auth session: `{ id, token, userId, expiresAt, ipAddress, userAgent, … }` |
-| `"workspaceId"` | the caller's personal `WorkspaceId` — what `forWorkspace()` / `getWorkspaceId(c)` should use |
+| `"workspaceId"` | the caller's personal `WorkspaceId` — what `forWorkspace()` / `getWorkspaceId(c, { allowHeaderShim: false })` should use downstream (never re-read the header) |
 
 No session → `401 { error: { code: "unauthorized", message: "You need to sign in to do that.", retryable: false, requestId } }`.
 `createApp({ auth })` is optional: without an `Auth`, `/auth/*` is not mounted and every
@@ -319,17 +323,15 @@ data: {"type":"progress","jobId":"…","workspaceId":"…","at":"…","progress"
 
 ### Workspace seam (`src/workspace.ts`)
 
-`getWorkspaceId(c)` is how every tenant route learns the caller's Workspace:
+`getWorkspaceId(c, { allowHeaderShim })` is how every tenant route learns the caller's Workspace:
 
 1. `c.get("workspaceId")` when set — **TEACH-20's `requireSession` sets it** after verifying the
    session cookie.
-2. Otherwise, **outside production only**, the `x-tj-workspace-id` header (must be a UUID,
-   else `400 bad_request`). `requireSession` honours this shim when no session cookie is present
-   and `NODE_ENV !== "production"`, so curl and integration tests can pick a Workspace without
-   signing in. In production the header is ignored and the request gets `401`.
+2. Otherwise, only when `ALLOW_WORKSPACE_HEADER_SHIM=1`, the `x-tj-workspace-id` header (must be a
+   UUID, else `400 bad_request`). `requireSession` honours this shim when no session cookie is
+   present, so curl and integration tests can pick a Workspace without signing in. The flag is
+   refused in production.
 3. Otherwise `401 unauthorized`.
-
-`requireWorkspace()` is the middleware form (sets the variable once for a router).
 
 ### Config knobs (`src/events/config.ts`)
 

@@ -6,7 +6,7 @@ import type { ErrorEnvelope } from "./errors";
 
 const errorBody = (res: Response) => res.json() as Promise<ErrorEnvelope>;
 
-import { fakeSql, silentLogger, TEST_ENV, testApp } from "./test-helpers";
+import { fakeSql, silentLogger, TEST_ENV, TEST_ENV_NO_SHIM, testApp } from "./test-helpers";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -47,7 +47,7 @@ describe("boot warnings", () => {
       },
     );
     createApp({
-      env: { ...TEST_ENV, NODE_ENV: "production" },
+      env: { ...TEST_ENV_NO_SHIM, NODE_ENV: "production" },
       db: fakeSql(true),
       logger,
     });
@@ -57,6 +57,23 @@ describe("boot warnings", () => {
     expect(line.msg).toBe(
       "ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1: magic-link sign-in URLs are printed to this log. Remove the variable once a real MailSender (TEACH-29) is configured.",
     );
+  });
+
+  test("warns when the workspace header shim is enabled", () => {
+    const lines: string[] = [];
+    const logger = pino(
+      { level: "trace" },
+      {
+        write(line) {
+          lines.push(line);
+        },
+      },
+    );
+    createApp({ env: TEST_ENV, db: fakeSql(true), logger });
+    expect(lines).toHaveLength(1);
+    const line = JSON.parse(lines[0] ?? "") as { level: number; msg: string };
+    expect(line.level).toBe(40);
+    expect(line.msg).toContain("ALLOW_WORKSPACE_HEADER_SHIM");
   });
 });
 

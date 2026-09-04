@@ -79,7 +79,7 @@ export function createRateLimiter({ limit, windowMs }: RateLimitConfig): RateLim
 
 export function rateLimitByWorkspace(limiter: RateLimiter): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
-    const result = limiter.take(getWorkspaceId(c));
+    const result = limiter.take(getWorkspaceId(c, { allowHeaderShim: false }));
     if (!result.ok) {
       c.header("Retry-After", String(Math.ceil(result.retryAfterMs / 1_000)));
       throw new HTTPException(429, {

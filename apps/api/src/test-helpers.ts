@@ -2,12 +2,17 @@ import type { DbHandle } from "@tj/db";
 import pino from "pino";
 import { createApp } from "./app";
 
-export const TEST_ENV = {
+export const TEST_ENV_NO_SHIM = {
   NODE_ENV: "test" as const,
   LOG_LEVEL: "silent" as const,
   MAIL_PROVIDER: "console",
   WEB_ORIGIN: ["http://localhost:5173", "https://app.example.test"],
   WEB_ORIGIN_PATTERNS: ["https://*-preview.example.test"],
+};
+
+export const TEST_ENV = {
+  ...TEST_ENV_NO_SHIM,
+  ALLOW_WORKSPACE_HEADER_SHIM: "1",
 };
 
 export const silentLogger = pino({ level: "silent" });

@@ -103,6 +103,45 @@ describe("parseEnv", () => {
     ]);
   });
 
+  test('ALLOW_WORKSPACE_HEADER_SHIM must be "1" and never in production', () => {
+    expect(parseEnv({ ...base, ALLOW_WORKSPACE_HEADER_SHIM: "1" }).ok).toBe(true);
+
+    const invalid = parseEnv({ ...base, ALLOW_WORKSPACE_HEADER_SHIM: "true" });
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.errors).toContainEqual({
+        variable: "ALLOW_WORKSPACE_HEADER_SHIM",
+        message: 'Must be "1" or unset',
+      });
+    }
+
+    const production = {
+      ...base,
+      NODE_ENV: "production" as const,
+      AWS_BEARER_TOKEN_BEDROCK: "test-key",
+      ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "1",
+      ALLOW_WORKSPACE_HEADER_SHIM: "1",
+    };
+    const prod = parseEnv(production);
+    expect(prod.ok).toBe(false);
+    if (!prod.ok) {
+      expect(prod.errors).toContainEqual({
+        variable: "ALLOW_WORKSPACE_HEADER_SHIM",
+        message: "Cannot be set when NODE_ENV=production",
+      });
+    }
+
+    const fallback = parseEnv({ ...production, DATABASE_URL: undefined });
+    expect(fallback.ok).toBe(false);
+    if (!fallback.ok) {
+      expect(fallback.errors).toContainEqual({ variable: "DATABASE_URL", message: "Required" });
+      expect(fallback.errors).toContainEqual({
+        variable: "ALLOW_WORKSPACE_HEADER_SHIM",
+        message: "Cannot be set when NODE_ENV=production",
+      });
+    }
+  });
+
   test("requires production console mail to be explicitly acknowledged", () => {
     const production = {
       ...base,

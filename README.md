@@ -113,6 +113,8 @@ it; `bun run env:check` compares the names on the providers with it. Values are 
   overwrites — and then generates `BETTER_AUTH_SECRET` into `apps/api/.env` when absent
   (`crypto.randomBytes(32)`, base64url; the value is never shown). The local path needs nothing
   from Railway or Vercel — see "Local-only path" in `docs/env.md`.
+- Existing hand-written `apps/api/.env` files must add `ALLOW_WORKSPACE_HEADER_SHIM=1` to retain
+  curl/test access through `x-tj-workspace-id`; it is refused in production.
 - Precedence everywhere: shell variable > `.env` file > built-in default
   (`TJ_PG_PORT=5433 bun run db:up`).
 - `setup` and `db:reset` run `bun run db:migrate` inside `packages/db` with `DATABASE_URL` and
