@@ -390,30 +390,33 @@ Every job starts from the composite action [`.github/actions/setup`](.github/act
 
 ### Phase split and `CI_STRICT`
 
-`apps/*` and `packages/db` land in TEACH-14/16/21/22, so Phase 1 ships the pipeline with the
-Postgres-backed `test` job and the Playwright `e2e` job **gated**: they run, but a failure does not
+**Status: Phase 2 is live (2026-09-04).** `CI_STRICT=true` is set on the repository and every job
+below is a required status check on `master`. The history is kept for when a job has to be
+temporarily un-gated.
+
+`apps/*` and `packages/db` landed in TEACH-14/16/21/22, so Phase 1 shipped the pipeline with the
+Postgres-backed `test` job and the Playwright `e2e` job **gated**: they ran, but a failure did not
 block the PR (`continue-on-error`). The gate is the repository variable `CI_STRICT`:
 
 - `CI_STRICT` unset or anything other than `true` -> `test` and `e2e` are informational (Phase 1).
 - `CI_STRICT=true` -> `test` and `e2e` are blocking, like every other job (Phase 2).
 
-Flip it with `gh variable set CI_STRICT --body true --repo OmerBresinski/ai-teacher` once the first
-real test suites are green. The `build` job's bundle-budget step prints
-`Bundle budget: skipped — apps/web/dist/.vite/manifest.json not found (TEACH-21)` and exits 0 until
-the web app produces a Vite manifest; from then on it fails above 250 KB gzip (warns above 200 KB;
-override with `BUNDLE_BUDGET_KB` / `BUNDLE_WARN_KB`).
+Flip it with `gh variable set CI_STRICT --body true --repo OmerBresinski/ai-teacher` (or `--body
+false` to un-gate again). The `build` job's bundle-budget step fails above 250 KB gzip (warns above
+200 KB; override with `BUNDLE_BUDGET_KB` / `BUNDLE_WARN_KB`).
 
 ### Phase 2: require the checks on `master`
 
-Branch protection is **not** changed by Phase 1. Once `CI_STRICT=true` has produced a few green
-runs, require every job with (do not run this before then -- gated jobs would still be required):
+Applied on 2026-09-04 after six consecutive green `test`/`e2e` runs. `required_linear_history` is
+on, so PRs must be **squash-merged** (`gh pr merge N --squash`); merge commits are rejected.
+`docker-build-smoke` is required because the `Dockerfile` now always exists. To re-apply or change:
 
 ```sh
 cat > /tmp/protection.json <<'JSON'
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["quality", "tooling-smoke", "test", "build", "e2e", "audit", "secrets"]
+    "contexts": ["quality", "tooling-smoke", "test", "build", "e2e", "audit", "secrets", "docker-build-smoke"]
   },
   "enforce_admins": false,
   "required_pull_request_reviews": { "required_approving_review_count": 0 },
