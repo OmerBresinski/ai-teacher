@@ -193,7 +193,7 @@ reaches every workspace's tests; locally the per-package `.env` files supply the
 
 `apps/web` ([`@tj/web`](apps/web/README.md), ADR 0004) is a Vite + React SPA with **code-based**
 TanStack Router routes (`src/routes/<name>.route.ts` + `<name>.page.tsx`, assembled in
-`src/router.ts`), TanStack Query and the typed RPC client. `bun run --filter=@tj/web dev` serves it
+`src/router.tsx`), TanStack Query and the typed RPC client. `bun run --filter=@tj/web dev` serves it
 on `http://localhost:5173`.
 
 - **Env** (`apps/web/.env`, from the generated `.env.example`; [`docs/env.md`](docs/env.md)):

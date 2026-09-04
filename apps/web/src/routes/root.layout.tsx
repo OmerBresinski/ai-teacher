@@ -1,9 +1,11 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, useRouteContext } from "@tanstack/react-router";
-import { ThemeProvider } from "@tj/ui";
+import { Outlet } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 
 /**
+ * Root route component: just the outlet. App-wide providers (`QueryClientProvider`,
+ * `ThemeProvider`) live in the router's `Wrap` option (`src/router.tsx`) so the root
+ * `errorComponent` / `notFoundComponent`, which replace this component, still get them.
+ *
  * Devtools are DEV-only dynamic imports so they never reach the production bundle
  * (`import.meta.env.DEV` is statically false in `vite build`, so Rolldown drops the chunks).
  */
@@ -12,15 +14,12 @@ const Devtools = import.meta.env.DEV
   : () => null;
 
 export function RootLayout() {
-  const { queryClient } = useRouteContext({ from: "__root__" });
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <Outlet />
-        <Suspense fallback={null}>
-          <Devtools />
-        </Suspense>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <>
+      <Outlet />
+      <Suspense fallback={null}>
+        <Devtools />
+      </Suspense>
+    </>
   );
 }

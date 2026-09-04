@@ -3,8 +3,11 @@ import { z } from "zod";
 import { authLayoutRoute } from "./auth.route";
 
 export const devJobsSearchSchema = z.object({
-  /** Job to follow; kept in the URL so a reload reconnects and the server replays events. */
-  jobId: z.string().optional(),
+  /**
+   * Job to follow; kept in the URL so a reload reconnects and the server replays events.
+   * `.catch(undefined)` drops malformed (e.g. JSON-decoded numeric) values — see search-schemas.test.ts.
+   */
+  jobId: z.string().optional().catch(undefined),
 });
 
 /** Development aid for the ADR 0012 SSE demo — not a product route. */
