@@ -96,8 +96,9 @@ no mail catcher (ADR 0008 logs mail to the console).
 - **Per-app `.env`** next to each `package.json`: every app/package that reads env keeps its own
   `.env.example` (ADR 0015). Bun loads `.env` from the process cwd only — it does **not** walk up
   to the root, and Turborepo does not load env files either — so `apps/api` reads `apps/api/.env`.
-  `WEB_ORIGIN=http://localhost:5173` and `VITE_API_URL=http://localhost:3001` will live there
-  (TEACH-16/21; the web app proxies the API through Vite so cookies stay same-origin).
+  `WEB_ORIGIN=http://localhost:5173` lives there (see "API" below); `VITE_API_URL=http://localhost:3001`
+  will live in `apps/web/.env` (TEACH-21; the web app proxies the API through Vite so cookies stay
+  same-origin).
 - `setup` discovers every `**/.env.example` (skipping `node_modules`, build output) and copies it
   to a sibling `.env` **only when missing** — it never overwrites. `doctor` lists, per file, the
   keys of the example that the `.env` lacks. New apps are picked up automatically.
@@ -139,7 +140,25 @@ Integration tests use `TEST_DATABASE_URL` (default
 `postgres://postgres:postgres@localhost:5432/teaching_journey_test`), never `DATABASE_URL`, so a test
 run cannot clobber your development data. The test database exists as long as the volume was created
 by our init script — if `doctor` reports it missing, run `bun run db:reset`. The test harness
-(TEACH-22) wires `bun test`/Vitest to this URL.
+(TEACH-22) wires `bun test`/Vitest to this URL. `turbo.json` passes `DATABASE_URL` and
+`TEST_DATABASE_URL` through to the `test` task, so a value exported in the shell (as CI does) reaches
+every workspace's tests; locally the per-package `.env` files supply them.
+
+### API
+
+`apps/api` ([`@tj/api`](apps/api/README.md), ADR 0005/0015) is Hono on Bun; `packages/api-client`
+([`@tj/api-client`](packages/api-client/README.md)) is the typed Hono RPC client for `apps/web`.
+
+- **Env** (`apps/api/.env`, from `.env.example`): `NODE_ENV`, `PORT` (3001), `DATABASE_URL`
+  (required), `WEB_ORIGIN` (comma-separated CORS origins, default `http://localhost:5173`),
+  `LOG_LEVEL`. Boot fails with one `VAR: message` line per problem and exit code 1.
+- **Error envelope**: every non-2xx body is
+  `{ error: { code, message, requestId, retryable, fields? } }`; `message` is a plain sentence safe
+  for the UI; `x-request-id` is echoed (or generated) on every response.
+- **Adding a route**: create a chained router under `apps/api/src/routes/` (`new Hono<AppEnv>()
+  .get(…)`) validated with `zValidator(target, schema, validationHook)`, then append it to the
+  `app.route("/", …)` chain in `apps/api/src/app.ts`. `AppType` updates automatically and
+  `@tj/api-client` (type-only import of `@tj/api/app`) exposes it as `client.<path>.$get()`.
 
 ### Troubleshooting
 

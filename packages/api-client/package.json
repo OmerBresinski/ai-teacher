@@ -1,0 +1,26 @@
+{
+  "name": "@tj/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Hono RPC client for @tj/api: re-exports AppType (type-only) and createApiClient() for apps/web (ADR 0005).",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@tj/api": "workspace:*",
+    "hono": "4.13.5"
+  },
+  "devDependencies": {
+    "@tj/config": "workspace:*",
+    "typescript": "5.9.3"
+  }
+}
