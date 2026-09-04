@@ -35,7 +35,7 @@ test.describe("auth", () => {
 
     // A second visit is a plain page load with the session cookie: no redirect to /sign-in.
     await page.goto("/");
-    await expect(page.getByText("You are signed in to Teaching Journey.")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
     await expect(page.getByText(email, { exact: true })).toBeVisible();
   });
 
@@ -59,7 +59,7 @@ test.describe("auth", () => {
     await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
 
     await page.goto(await lastMagicLink(request, email));
-    await expect(page.getByText("You are signed in to Teaching Journey.")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
   });
 
   test("sign out returns to /sign-in and protected pages are locked again", async ({
@@ -67,7 +67,7 @@ test.describe("auth", () => {
     request,
   }) => {
     await signIn(page, request);
-    await expect(page.getByText("You are signed in to Teaching Journey.")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/sign-in$/);
