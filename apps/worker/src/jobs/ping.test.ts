@@ -25,6 +25,7 @@ function ctx(
         calls.push([percent, message]);
       },
       logger,
+      deps: undefined,
     },
   };
 }

@@ -15,8 +15,12 @@ describe("JobRegistry", () => {
         payload.message.toUpperCase();
         payload.steps.toFixed();
       }),
+      "ai.ping": defineJob("ai.ping", async ({ payload }) => {
+        payload.class.toUpperCase();
+        payload.prompt.toUpperCase();
+      }),
     };
-    // @ts-expect-error missing `ping`
+    // @ts-expect-error missing job handlers
     const missing: JobRegistry = {};
     // @ts-expect-error unknown job name
     const extra: JobRegistry = { ...ok, nope: async () => {} };

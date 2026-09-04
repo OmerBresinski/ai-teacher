@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { type JobId, newId, type WorkspaceId } from "./ids";
 import {
+  AiPingPayloadSchema,
   isTerminalJobEvent,
   JOB_TERMINAL_EVENT_TYPES,
   type JobEvent,
@@ -21,6 +22,7 @@ const at = new Date().toISOString();
 describe("JobName", () => {
   test("const object and schema agree", () => {
     expect(JobName.ping).toBe("ping");
+    expect(JobName.aiPing).toBe("ai.ping");
     expect(JobNameSchema.options).toEqual(Object.values(JobName));
     expect(JobNameSchema.parse("ping")).toBe("ping");
     expect(JobNameSchema.safeParse("nope").success).toBe(false);
@@ -56,6 +58,17 @@ describe("JobPayloadSchemas.ping", () => {
     ["unknown field", { message: "x", extra: true }],
   ])("rejects %s", (_label, input) => {
     expect(PingPayloadSchema.safeParse(input).success).toBe(false);
+  });
+});
+
+describe("JobPayloadSchemas.ai.ping", () => {
+  test("applies the safe smoke defaults and rejects unknown fields", () => {
+    expect(AiPingPayloadSchema.parse({})).toEqual({
+      class: "small",
+      prompt: "Reply with the single word: pong.",
+    });
+    expect(AiPingPayloadSchema.safeParse({ class: "huge" }).success).toBe(false);
+    expect(AiPingPayloadSchema.safeParse({ extra: true }).success).toBe(false);
   });
 });
 

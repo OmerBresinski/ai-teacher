@@ -69,6 +69,7 @@ const pingJob = defineJob("ping", async ({ payload, signal, progress }) => {
     await progress(Math.round((i / payload.steps) * 100), `step ${i}/${payload.steps}`);
   }
 });
+const aiPingJob = defineJob("ai.ping", async () => {});
 
 // --- a tiny SSE reader -----------------------------------------------------------------------
 
@@ -171,7 +172,7 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
   let workspaceA: WorkspaceId;
   let workspaceB: WorkspaceId;
   const shutdown = new AbortController();
-  const registry: JobRegistry = { ping: pingJob };
+  const registry: JobRegistry = { ping: pingJob, "ai.ping": aiPingJob };
   const controllers: AbortController[] = [];
 
   function headers(ws: WorkspaceId, extra: Record<string, string> = {}) {
@@ -233,6 +234,7 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
             await runJob(jobsCtx, "ping", registry, job, {
               shutdown: shutdown.signal,
               logger: silentLogger,
+              deps: undefined,
             }),
           );
         }
@@ -285,6 +287,23 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
   afterEach(async () => {
     for (const ac of controllers.splice(0)) ac.abort();
     await runtime.stop();
+  });
+
+  test("POST /jobs/ai-ping stores the defaulted smoke payload", async () => {
+    const res = await app.request("/jobs/ai-ping", {
+      method: "POST",
+      headers: headers(workspaceA, { "content-type": "application/json" }),
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(202);
+    const { jobId } = (await res.json()) as { jobId: JobId };
+    const [row] = await boss.findJobs("ai.ping", { id: jobId });
+    expect(row?.data).toEqual({
+      jobId,
+      workspaceId: workspaceA,
+      payload: { class: "small", prompt: "Reply with the single word: pong." },
+    });
+    await boss.deleteJob("ai.ping", jobId);
   });
 
   test("(a) live stream: queued, started, progress×3, completed, then the stream ends", async () => {
@@ -412,6 +431,7 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
               await runJob(jobsCtx, "ping", registry, job, {
                 shutdown: shutdown.signal,
                 logger: silentLogger,
+                deps: undefined,
               }),
             );
           }
