@@ -79,7 +79,7 @@ together. Work items that are dashboard-only or founder decisions are reported b
 
    ```sh
    gh api graphql -f query='{repository(owner:"{owner}",name:"{repo}"){pullRequest(number:<n>){
-     reviewThreads(first:50){nodes{id isResolved}}}}}' \
+     reviewThreads(first:100){nodes{id isResolved}}}}}' \
      -q '.data.repository.pullRequest.reviewThreads.nodes[]|select(.isResolved==false)|.id' |
    xargs -I{} gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"{}"}){thread{isResolved}}}'
    ```
