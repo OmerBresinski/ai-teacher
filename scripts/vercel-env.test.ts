@@ -40,7 +40,7 @@ describe("resolveWebEnv", () => {
       }),
     ).toEqual({
       VITE_APP_ENV: "preview",
-      VITE_API_URL: "https://api-pr-17.up.railway.app",
+      VITE_API_URL: "https://api-ai-teacher-pr-17.up.railway.app",
       source: "railway-pr-template",
     });
   });
@@ -95,9 +95,11 @@ describe("shell output", () => {
     expect(
       toExportLines({
         VITE_APP_ENV: "preview",
-        VITE_API_URL: "https://api-pr-1.up.railway.app",
+        VITE_API_URL: "https://api-ai-teacher-pr-1.up.railway.app",
         source: "railway-pr-template",
       }),
-    ).toBe("export VITE_APP_ENV='preview'\nexport VITE_API_URL='https://api-pr-1.up.railway.app'");
+    ).toBe(
+      "export VITE_APP_ENV='preview'\nexport VITE_API_URL='https://api-ai-teacher-pr-1.up.railway.app'",
+    );
   });
 });
