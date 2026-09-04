@@ -412,10 +412,11 @@ export PATH="$HOME/.bun/bin:$PATH"           # railway >= 5.49, logged in
 ./infra/railway/provision.sh --deploy        # ...plus a first `railway up` of api and worker
 ```
 
-The script uses the CLI for everything it can — service settings, region and the postgres
-image/volume come from `.railway/railway.ts` via `railway config apply --yes` (step 3, see
-"Config-as-code") — and one GraphQL mutation for what it cannot: `projectUpdate { prDeploys: true }`
-(PR environments). Re-running is safe; it never prints secrets. It was executed end-to-end on
+The script uses the CLI for everything it can — service settings, region, the GitHub source and
+the postgres image/volume come from `.railway/railway.ts` via `railway config apply --yes` (step 3,
+see "Config-as-code"; the Railway GitHub App must be installed on the repo first, otherwise apply
+fails there) — and one GraphQL mutation for what it cannot: `projectUpdate { prDeploys: true }`
+(PR environments). The script requires `node >= 22.6` on `PATH` and refuses to run otherwise. Re-running is safe; it never prints secrets. It was executed end-to-end on
 2026-09-04 (all steps passed, including the GitHub source connect — the Railway GitHub App was
 already installed); the IaC step replaced the former `serviceInstanceUpdate` shim on the same day
 (TEACH-38) and was verified with `plan` → apply → `plan` = no changes against production. A fresh
@@ -492,9 +493,9 @@ and waits up to 25 s for running jobs (`apps/worker`). Both were observed exitin
 Done:
 
 - [x] **Billing**: `omerbresinski's Projects` is on Hobby; `teaching-journey` lives there.
-- [x] **Railway GitHub App** on `OmerBresinski/ai-teacher` — already installed, so
-      `railway service source connect --repo OmerBresinski/ai-teacher --branch master` succeeded for
-      api and worker; pushes to `master` auto-deploy.
+- [x] **Railway GitHub App** on `OmerBresinski/ai-teacher` — already installed; the api/worker
+      `source: github(...)` declared in `.railway/railway.ts` applies cleanly and pushes to `master`
+      auto-deploy.
 - [x] *Settings → Environments → Enable PR environments* — on (`prDeploys: true`), verified with PR #30.
 - [x] **Vercel Blob store** `teaching-journey` (`fra1`, private) + `BLOB_READ_WRITE_TOKEN` on api +
       worker — done from the CLI on 2026-09-04 (TEACH-37, ADR 0011).

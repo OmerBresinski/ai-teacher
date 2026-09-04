@@ -12,7 +12,7 @@
 #
 # Service settings (builder, watch patterns, commands, health check, region, ...) and the postgres
 # image + volume are declared in .railway/railway.ts and pushed with `railway config apply` (step 3).
-# Everything else is CLI, plus one GraphQL mutation (`projectUpdate { prDeploys }`, step 7). The
+# Everything else is CLI, plus one GraphQL mutation (`projectUpdate { prDeploys }`, step 6). The
 # things that still need the dashboard are listed at the end of the run and in infra/README.md
 # ("Dashboard-only steps").
 set -euo pipefail
@@ -35,6 +35,8 @@ cd "$ROOT"
 log() { printf '\n==> %s\n' "$*" >&2; }
 need() { command -v "$1" >/dev/null || { echo "missing: $1" >&2; exit 1; }; }
 need railway; need jq; need python3; need openssl; need node
+node -e 'const [M,m]=process.versions.node.split(".").map(Number); process.exit(M>22||(M===22&&m>=6)?0:1)' \
+  || { echo "node >= 22.6 required to evaluate .railway/railway.ts (have $(node -v))" >&2; exit 1; }
 [[ -d node_modules/railway ]] || { echo "missing: node_modules/railway -- run 'bun install' (railway/iac for .railway/railway.ts)" >&2; exit 1; }
 
 # --- GraphQL helper (token from the CLI's own config; nothing is stored here) ------------------
@@ -92,7 +94,7 @@ fi
 # Region, restart policy ALWAYS and the volume mount are declared in .railway/railway.ts (step 3).
 # NEVER give postgres a public domain / TCP proxy.
 
-# --- 3. api + worker services + settings from .railway/railway.ts (IaC, TEACH-38) ----------------
+# --- 3. api + worker services + settings + GitHub source from .railway/railway.ts (IaC, TEACH-38) --
 API_ID=$(ensure_service api);       echo "api=$API_ID"
 WORKER_ID=$(ensure_service worker); echo "worker=$WORKER_ID"
 
@@ -101,8 +103,11 @@ WORKER_ID=$(ensure_service worker); echo "worker=$WORKER_ID"
 # infra/env.contract.ts), so this never writes values; it WOULD delete a variable that is on Railway
 # but not in the contract -- such destructive changes are refused non-interactively (no
 # --confirm-destructive here on purpose): fix the contract or the variable, then re-run.
-log "service settings: railway config apply (.railway/railway.ts)"
-railway config apply --yes
+# The file also declares `source: github(...)` for api and worker, so the Railway GitHub App must be
+# installed on the repo (dashboard, once) BEFORE this step; otherwise apply fails here.
+log "service settings + GitHub source: railway config apply (.railway/railway.ts)"
+railway config apply --yes \
+  || { echo "!! railway config apply failed. If the error mentions the GitHub source: install the Railway GitHub App on $GITHUB_REPO (dashboard) and re-run." >&2; exit 1; }
 railway config plan --detailed-exit-code >/dev/null || { echo "!! .railway/railway.ts still differs from Railway -- run 'railway config plan'" >&2; exit 1; }
 
 # --- 4. Variables (from infra/env.contract.ts via scripts/railway-vars.ts; TEACH-26) ------------
@@ -138,19 +143,12 @@ fi
 API_DOMAIN=$(railway domain list --service api --json | jq -r '.domains[0].domain // .domains[0].name // empty')
 echo "api domain: https://${API_DOMAIN:-<pending>}"
 
-# --- 6. GitHub source (needs the Railway GitHub App installed on the repo -- dashboard, once) -----
-log "source: $GITHUB_REPO@$GITHUB_BRANCH"
-for svc in api worker; do
-  railway service source connect --repo "$GITHUB_REPO" --branch "$GITHUB_BRANCH" --service "$svc" --json \
-    || echo "!! could not connect GitHub source for $svc -- install the Railway GitHub App on $GITHUB_REPO (dashboard) and re-run"
-done
-
-# --- 7. PR environments (project setting; GraphQL -- not exposed by the CLI nor by IaC) -----------
+# --- 6. PR environments (project setting; GraphQL -- not exposed by the CLI nor by IaC) -----------
 log "PR environments: enable"
 gql 'mutation($id:String!,$i:ProjectUpdateInput!){projectUpdate(id:$id,input:$i){id prDeploys}}' \
   "$(jq -n --arg id "$PROJECT_ID" '{id:$id,i:{prDeploys:true}}')" | jq -c '.data // .errors'
 
-# --- 8. Optional first deploy from this checkout ------------------------------------------------
+# --- 7. Optional first deploy from this checkout ------------------------------------------------
 if [[ "${1:-}" == "--deploy" ]]; then
   log "deploy (railway up)"
   railway up --service api --ci -m "TEACH-24 provision"
@@ -168,6 +166,6 @@ Done. Verify:
 Drift check any time: railway config plan   (.railway/railway.ts vs production)
 
 Dashboard-only (see infra/README.md):
-  - Install the Railway GitHub App on $GITHUB_REPO if step 6 printed "!!".
+  - Install the Railway GitHub App on $GITHUB_REPO before step 3 (railway config apply declares the GitHub source).
   - Confirm Settings -> Environments -> "Enable PR environments" is on (set here via projectUpdate).
 EOF

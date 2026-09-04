@@ -53,16 +53,16 @@ const IMAGE_WATCH = [
  * Pre-deploy (migration) timeout. The CLI engine and `railway config pull` know the field, but the
  * `railway` SDK types (3.11.0) do not list it yet -- drop the cast once `DeployConfig` has it.
  */
-const PRE_DEPLOY_TIMEOUT = { preDeployTimeoutSeconds: 600 } as unknown as DeployConfig;
+const PRE_DEPLOY_TIMEOUT = { preDeployTimeoutSeconds: 600 } as DeployConfig & {
+  preDeployTimeoutSeconds: number;
+};
 
 /**
- * Every contract variable the service may carry on Railway (production and PR-only names — PR
- * environments are copies of production, so PR-only names like WEB_ORIGIN_PATTERNS may live on
- * production too), value left to Railway (see the header).
+ * Every contract variable the service carries on Railway production (PR environments are copies
+ * of it), value left to Railway (see the header).
  */
 function contractEnv(svc: "api" | "worker") {
-  const names = new Set([...railwayNames(svc, "production"), ...railwayNames(svc, "pr")]);
-  return Object.fromEntries([...names].sort().map((name) => [name, preserve()]));
+  return Object.fromEntries(railwayNames(svc, "production").map((name) => [name, preserve()]));
 }
 
 export default defineRailway(() => {
