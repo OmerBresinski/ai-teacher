@@ -16,19 +16,23 @@ import { WORKSPACE_HEADER } from "../workspace";
 const ws = newId<WorkspaceId>();
 const other = newId<WorkspaceId>();
 const bytes = new TextEncoder().encode("%PDF-1.7 hello teaching journey");
+const htmlBytes = new TextEncoder().encode("<script>location='/me'</script>");
 
 let root: string;
 let app: ReturnType<typeof createApp>;
 let key: string;
 let foreignKey: string;
+let htmlKey: string;
 
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "tj-api-files-"));
   const storage = new LocalDiskStorage(root);
   key = storageKey(ws, "exports", "lesson 1.pdf");
   foreignKey = storageKey(other, "exports", "secret.pdf");
+  htmlKey = storageKey(ws, "exports", "evil.html");
   await storage.put(key, bytes, { contentType: "application/pdf" });
   await storage.put(foreignKey, bytes, { contentType: "application/pdf" });
+  await storage.put(htmlKey, htmlBytes, { contentType: "text/html" });
   app = createApp({ env: TEST_ENV, db: fakeSql(true), logger: silentLogger, storage });
 });
 
@@ -39,12 +43,17 @@ async function errorCode(res: Response) {
 }
 
 describe("GET /files/:key", () => {
-  test("streams the object with content-type, content-length and no-store", async () => {
+  test("streams inline-safe objects with safe headers, content-length and no-store", async () => {
     const res = await app.request(`/files/${ws}/exports/lesson%201.pdf`, {
       headers: { [WORKSPACE_HEADER]: ws },
     });
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/pdf");
+    expect(res.headers.get("content-disposition")).toBe(
+      "inline; filename=\"lesson 1.pdf\"; filename*=UTF-8''lesson%201.pdf",
+    );
+    expect(res.headers.get("content-security-policy")).toBe("default-src 'none'; sandbox");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("content-length")).toBe(String(bytes.byteLength));
     expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
@@ -56,6 +65,16 @@ describe("GET /files/:key", () => {
     });
     expect(res.status).toBe(403);
     expect(await errorCode(res)).toBe("forbidden");
+  });
+
+  test("neutralises HTML and forces a download", async () => {
+    const res = await app.request(`/files/${htmlKey}`, { headers: { [WORKSPACE_HEADER]: ws } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/octet-stream");
+    expect(res.headers.get("content-disposition")).toBe(
+      "attachment; filename=\"evil.html\"; filename*=UTF-8''evil.html",
+    );
+    expect(res.headers.get("content-security-policy")).toBe("default-src 'none'; sandbox");
   });
 
   test("another Workspace's key → 404 (not 403)", async () => {

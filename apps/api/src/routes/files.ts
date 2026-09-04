@@ -6,8 +6,8 @@
  * - `requireSession` (mounted in `app.ts`) supplies the caller's Workspace.
  * - The key is validated as `<workspaceId>/<segment>/…`; a key under **another** Workspace is a
  *   `404` — never `403`, so the existence of other tenants' objects is not leaked.
- * - The body is streamed (never buffered) with the stored `content-type`, `content-length` and
- *   `cache-control: private, no-store`.
+ * - The body is streamed (never buffered) with a safe `content-type`, `content-disposition`,
+ *   `content-length` and `cache-control: private, no-store`.
  */
 import { zValidator } from "@hono/zod-validator";
 import {
@@ -20,6 +20,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { AppEnv } from "../context";
+import { downloadHeaders } from "../files/headers";
 import { validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
 
@@ -57,7 +58,7 @@ export function fileRoutes(storage: ReadableStorageAdapter | undefined) {
       try {
         const object = await storage.get(key);
         return c.body(object.body, 200, {
-          "content-type": object.contentType,
+          ...downloadHeaders({ key, contentType: object.contentType }),
           "content-length": String(object.size),
           "cache-control": "private, no-store",
           "last-modified": object.updatedAt.toUTCString(),
