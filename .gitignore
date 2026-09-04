@@ -7,6 +7,9 @@ dist/
 *.log
 .DS_Store
 
+# Vercel CLI link metadata (`vercel link`) — project ids stay local
+.vercel/
+
 # Local data (docker volumes, uploaded files for the disk StorageAdapter)
 .data/
 
@@ -17,3 +20,6 @@ test-results/
 
 # TypeScript incremental state
 *.tsbuildinfo
+
+# Turborepo
+.turbo
