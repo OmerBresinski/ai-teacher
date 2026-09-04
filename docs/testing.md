@@ -75,6 +75,8 @@ Coverage: `bun test --coverage` writes `coverage/lcov.info` (+ a text table). Th
 | `vi.stubGlobal("fetch", f)` / `vi.unstubAllGlobals()` | `const orig = globalThis.fetch; globalThis.fetch = f;` … `afterEach(() => { globalThis.fetch = orig; })` |
 | `vi.mock("@/lib/auth", factory)` (hoisted) | `mock.module("@/lib/auth", factory)` **before** the import that needs it — put it at the top and `await import("./subject")` afterwards |
 | `vi.mock("pkg", async (importOriginal) => ({ ...(await importOriginal()), x }))` | `const actual = await import("pkg"); mock.module("pkg", () => ({ ...actual, x }));` |
+
+`mock.module()` is **per process**, and `bun test` runs every file of a workspace in one process: a module mocked in one file stays mocked for files that run after it. Keep module mocks to modules that only the mocking file imports (today: `sign-in.page.test.tsx` mocks `@/lib/auth` and `@tanstack/react-router`, and no other `apps/web` unit test imports either). If a test fails only in the full run, run it alone (`bun test src/path/file.test.tsx`) to bisect.
 | `expect(x).toEqual(y)` (untyped `y`) | typed `y: typeof x` — widen with `expect<T>(x)` or cast the fixture when `x` carries a branded/tagged type |
 
 See `apps/web/src/routes/sign-in.page.test.tsx` (module mocks), `apps/web/src/lib/query.test.ts`
