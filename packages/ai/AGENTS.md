@@ -6,7 +6,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md), ADR 0018, ADR 0015, and this guide
 
 | Skill | Load when… |
 | --- | --- |
-| `ai-sdk` | Any AI SDK code. Load it from `./.agents/skills/ai-sdk` when present; it is vendored by TEACH-73. |
+| `ai-sdk` | Any AI SDK code. Installed at `./.agents/skills/ai-sdk`. |
 
 ## Constraints
 
