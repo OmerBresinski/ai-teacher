@@ -73,8 +73,23 @@ together. Work items that are dashboard-only or founder decisions are reported b
    also returns the same findings in its final message so step 3 can act on them.
 3. **Fix, push, merge.** If the review has findings, fix them (or the implementing subagent
    does), push, and re-review only if the fix was structural. If it has none, merge straight
-   away. Merge with `gh pr merge --squash --delete-branch` once CI is green
-   (`gh pr checks --watch`).
+   away. `master` requires every review thread to be resolved, so after a finding is fixed (or
+   consciously declined, with a reply saying why) resolve its thread — there is no `gh` command
+   for this, use GraphQL:
+
+   ```sh
+   gh api graphql -f query='{repository(owner:"{owner}",name:"{repo}"){pullRequest(number:<n>){
+     reviewThreads(first:50){nodes{id isResolved}}}}}' \
+     -q '.data.repository.pullRequest.reviewThreads.nodes[]|select(.isResolved==false)|.id' |
+   xargs -I{} gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"{}"}){thread{isResolved}}}'
+   ```
+
+   Merge with `gh pr merge --squash --delete-branch` once CI is green (`gh pr checks --watch`).
+   `master` also requires the branch to be up to date: if `gh pr view <n> --json
+   mergeStateStatus` says `BEHIND`, rebase on `origin/master`, `git push --force-with-lease`,
+   and wait for CI again. `gh pr checks --watch` can return while a second run for the same
+   head is still in progress — re-check `mergeStateStatus` before merging rather than
+   reaching for `--admin`.
 4. **Watch the deploys.** A merge to `master` deploys Vercel (web) and Railway (api, worker).
    After merging, wait for both and check they succeeded:
    `vercel ls teaching-journey-web --scope omerbresinskis-projects` (latest Production must be
