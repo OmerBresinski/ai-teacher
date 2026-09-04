@@ -22,7 +22,8 @@ const migrated = new Set<string>();
 /**
  * Connect to `TEST_DATABASE_URL` for a `bun test` file. Migrates the database once per process
  * (many files can share it), and returns `{ ok: false, reason }` — instead of throwing — when the
- * URL is unset or the server is unreachable, so tests can skip visibly:
+ * URL is unset or the server is unreachable, so tests can skip visibly (unless `REQUIRE_TEST_DB=1`,
+ * in which case it throws so the skip becomes a failure — see `REQUIRE_TEST_DB_MESSAGE`):
  *
  * ```ts
  * const t = await withTestDb();
@@ -46,14 +47,14 @@ const migrated = new Set<string>();
 export async function withTestDb(opts: { max?: number } = {}): Promise<WithTestDbResult> {
   const url = process.env.TEST_DATABASE_URL;
   if (!url) {
-    return { ok: false, reason: "TEST_DATABASE_URL is not set (run `bun run test:db`)" };
+    return unavailable("TEST_DATABASE_URL is not set (run `bun run test:db`)");
   }
   let lock: postgres.Sql;
   try {
     lock = await acquireTestDbLock(url);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, reason: `cannot reach ${url}: ${message}` };
+    return unavailable(`cannot reach ${url}: ${message}`);
   }
   if (!migrated.has(url)) {
     try {
@@ -62,7 +63,7 @@ export async function withTestDb(opts: { max?: number } = {}): Promise<WithTestD
     } catch (err) {
       await releaseTestDbLock(lock);
       const message = err instanceof Error ? err.message : String(err);
-      return { ok: false, reason: `cannot reach or migrate ${url}: ${message}` };
+      return unavailable(`cannot reach or migrate ${url}: ${message}`);
     }
   }
   const handle = createDb(url, { max: opts.max ?? 4 });
@@ -80,6 +81,21 @@ export async function withTestDb(opts: { max?: number } = {}): Promise<WithTestD
     },
   };
   return { ok: true, db };
+}
+
+/**
+ * `REQUIRE_TEST_DB=1` (set by `bun run test:db` and CI) turns "skip with a reason" into a hard
+ * failure, so a green run can never be an all-skipped run: the file-level `await withTestDb()`
+ * throws and `bun test` reports the file as failed with the reason in the message.
+ */
+export const REQUIRE_TEST_DB_MESSAGE =
+  "REQUIRE_TEST_DB=1 but the test database is unavailable — the DB suites would have been skipped";
+
+function unavailable(reason: string): WithTestDbResult {
+  if (process.env.REQUIRE_TEST_DB === "1") {
+    throw new Error(`${REQUIRE_TEST_DB_MESSAGE}: ${reason}`);
+  }
+  return { ok: false, reason };
 }
 
 /**
