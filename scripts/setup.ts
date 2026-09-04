@@ -5,20 +5,24 @@
 // re-run at any time. `--ci` skips installing git hooks.
 //
 //   1. prerequisites: Bun >= package.json#packageManager, Docker daemon, gh (optional)
-//   2. copy every **/.env.example -> .env that is missing (never overwrites)
+//   2. copy every **/.env.example -> .env that is missing (never overwrites); generate the
+//      `generated` secrets of infra/env.contract.ts (BETTER_AUTH_SECRET) when a .env lacks them
 //   3. docker compose up -d --wait postgres
 //   4. bun run db:migrate in packages/db when @tj/db exists (TEACH-14), else a skip notice
 //   5. bunx lefthook install (unless --ci)
 //   6. next steps
 
 import { copyFile } from "node:fs/promises";
+import path from "node:path";
 import { $ } from "bun";
+import { ENV_CONTRACT, ENV_FILES, placementsOf } from "../infra/env.contract";
 import { dockerStatus, startPostgres } from "./lib/docker";
 import { databaseUrl, envPathFor, findEnvExamples, pgPort, testDatabaseUrl } from "./lib/env";
 import { ExitCode, runMain, UserFacingError } from "./lib/exit";
 import { missingLefthookHooks } from "./lib/git";
 import { colour, log } from "./lib/log";
 import { ROOT, rel } from "./lib/paths";
+import { ensureGeneratedSecret } from "./lib/secrets";
 import { parseBunVersion, satisfiesMinimum } from "./lib/versions";
 import { readPackageJson, runMigrateIfPresent } from "./lib/workspaces";
 
@@ -79,6 +83,22 @@ async function scaffoldEnvFiles(): Promise<{ created: string[]; kept: string[] }
   return { created, kept };
 }
 
+/**
+ * Every `setBy: "generated"` secret of the contract is created in the `.env` next to the example
+ * that documents it when missing (TEACH-26). The value is never printed.
+ */
+async function generateSecrets(): Promise<void> {
+  for (const v of ENV_CONTRACT) {
+    if (v.setBy !== "generated") continue;
+    for (const placement of placementsOf(v)) {
+      const envPath = path.join(ROOT, path.dirname(ENV_FILES[placement.file].path), ".env");
+      const outcome = await ensureGeneratedSecret(envPath, v.name);
+      if (outcome === "generated") log.ok(`generated ${v.name} in ${rel(envPath)} (not shown)`);
+      else log.info(`${v.name} present in ${rel(envPath)}`);
+    }
+  }
+}
+
 async function installHooks(): Promise<void> {
   if (ci) {
     log.info("--ci: skipping git hooks");
@@ -107,6 +127,7 @@ await runMain(async () => {
 
   log.step("Environment files");
   await scaffoldEnvFiles();
+  await generateSecrets();
 
   log.step("Postgres (docker compose)");
   const port = await pgPort();
