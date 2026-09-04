@@ -7,6 +7,10 @@ import { greetingQueryOptions, meQueryOptions, queryKeys } from "@/lib/query";
 
 const labelClass = "text-xs font-medium uppercase tracking-wider text-muted-foreground";
 
+/** Shown in place of the joke when the Workspace hits the api's AI rate limit (429). */
+export const RATE_LIMITED_MESSAGE =
+  "The joke machine is cooling down. Even in 2026, comedy has a rate limit.";
+
 /** Inline so `apps/web` does not take on an icon dependency for one button. */
 function RefreshIcon({ spinning }: { spinning: boolean }) {
   return (
@@ -29,7 +33,9 @@ function RefreshIcon({ spinning }: { spinning: boolean }) {
 export function IndexPage() {
   const { data: me } = useQuery(meQueryOptions);
   const greeting = useQuery({ ...greetingQueryOptions, enabled: me != null });
-  const text = greeting.data?.text ?? FALLBACK_GREETING;
+  // A failed refetch keeps the previous joke in `data`; the rate-limit notice must win over it.
+  const rateLimited = greeting.error?.code === "rate_limited";
+  const text = rateLimited ? RATE_LIMITED_MESSAGE : (greeting.data?.text ?? FALLBACK_GREETING);
   // Hidden during the first load *and* while a refresh is in flight, so the new joke fades in.
   const hidden = greeting.isFetching;
   const queryClient = useQueryClient();
@@ -52,7 +58,7 @@ export function IndexPage() {
         {/* `min-h-14` reserves two `text-lg` lines so a longer joke does not shift the page. */}
         <div className="flex min-h-14 items-start gap-2">
           <p
-            className={`text-lg text-muted-foreground transition-opacity duration-300 ${hidden ? "opacity-0" : "opacity-100"}`}
+            className={`text-lg transition-opacity duration-300 ${rateLimited ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"} ${hidden ? "opacity-0" : "opacity-100"}`}
             aria-hidden={hidden}
           >
             {text}

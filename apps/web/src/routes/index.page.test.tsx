@@ -42,7 +42,7 @@ mock.module("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
 }));
 
-const { IndexPage } = await import("./index.page");
+const { IndexPage, RATE_LIMITED_MESSAGE } = await import("./index.page");
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -109,6 +109,25 @@ describe("IndexPage greeting", () => {
     expect(next).toHaveClass("opacity-100");
     expect(screen.getByRole("status")).toHaveTextContent("Second joke.");
     expect(getGreeting).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a witty rate-limit notice in a different colour when the api returns 429", async () => {
+    getGreeting
+      .mockResolvedValueOnce(jsonResponse(200, { text: "First joke.", source: "model" }))
+      .mockResolvedValueOnce(
+        jsonResponse(429, {
+          error: { code: "rate_limited", message: "Too many requests.", retryable: true },
+        }),
+      );
+    renderPage();
+
+    await screen.findByText("First joke.", { selector: "p" });
+    fireEvent.click(screen.getByRole("button", { name: "New joke" }));
+
+    const notice = await screen.findByText(RATE_LIMITED_MESSAGE, { selector: "p" });
+    expect(notice).toHaveClass("text-amber-600", "opacity-100");
+    expect(notice).not.toHaveClass("text-muted-foreground");
+    expect(screen.queryByText("First joke.", { selector: "p" })).toBeNull();
   });
 
   it("shows the shared fallback when the greeting request fails", async () => {
