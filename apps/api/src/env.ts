@@ -51,6 +51,9 @@ const optionalString = z
   .optional()
   .transform((v) => (v === undefined || v.trim() === "" ? undefined : v));
 
+const CONSOLE_MAIL_IN_PRODUCTION_ERROR =
+  "console is not allowed in production (set ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1 to accept that sign-in links are printed to the log)";
+
 export const COOKIE_SAMESITE_VALUES = ["lax", "none", "strict"] as const;
 
 export const EnvSchema = z
@@ -88,6 +91,8 @@ export const EnvSchema = z
     GOOGLE_CLIENT_SECRET: optionalString,
     MICROSOFT_CLIENT_ID: optionalString,
     MICROSOFT_CLIENT_SECRET: optionalString,
+    /** Acknowledges that console mail prints magic-link URLs in the production api log. */
+    ALLOW_CONSOLE_MAIL_IN_PRODUCTION: optionalString,
     /** `"1"` mounts the test-only routes (TEACH-22). Never in production. */
     ENABLE_TEST_ROUTES: optionalString,
   })
@@ -113,6 +118,27 @@ export const EnvSchema = z
         message: "Cannot be set when NODE_ENV=production",
       });
     }
+    if (
+      env.ALLOW_CONSOLE_MAIL_IN_PRODUCTION !== undefined &&
+      env.ALLOW_CONSOLE_MAIL_IN_PRODUCTION !== "1"
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ALLOW_CONSOLE_MAIL_IN_PRODUCTION"],
+        message: 'Must be "1" or unset',
+      });
+    }
+    if (
+      env.NODE_ENV === "production" &&
+      env.MAIL_PROVIDER === "console" &&
+      env.ALLOW_CONSOLE_MAIL_IN_PRODUCTION !== "1"
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["MAIL_PROVIDER"],
+        message: CONSOLE_MAIL_IN_PRODUCTION_ERROR,
+      });
+    }
   });
 
 export type Env = z.output<typeof EnvSchema>;
@@ -135,8 +161,8 @@ export function parseEnv(source: Record<string, string | undefined> = process.en
     variable: String(issue.path[0] ?? "(root)"),
     message: describeIssue(issue),
   }));
-  // Zod skips `superRefine` when the object itself is invalid; the production gate for the
-  // test routes must be reported regardless of what else is missing (TEACH-22).
+  // Zod skips `superRefine` when the object itself is invalid; production gates must be reported
+  // regardless of what else is missing (TEACH-22, TEACH-76).
   if (
     source.NODE_ENV === "production" &&
     (source.ENABLE_TEST_ROUTES ?? "").trim() !== "" &&
@@ -145,6 +171,17 @@ export function parseEnv(source: Record<string, string | undefined> = process.en
     errors.unshift({
       variable: "ENABLE_TEST_ROUTES",
       message: "Cannot be set when NODE_ENV=production",
+    });
+  }
+  if (
+    source.NODE_ENV === "production" &&
+    (source.MAIL_PROVIDER ?? "console") === "console" &&
+    source.ALLOW_CONSOLE_MAIL_IN_PRODUCTION !== "1" &&
+    !errors.some((e) => e.variable === "MAIL_PROVIDER")
+  ) {
+    errors.unshift({
+      variable: "MAIL_PROVIDER",
+      message: CONSOLE_MAIL_IN_PRODUCTION_ERROR,
     });
   }
   if (

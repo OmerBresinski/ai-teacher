@@ -322,7 +322,22 @@ const CONTRACT = [
     files: ["api"],
     railwayValue: "console",
     description:
-      "Magic-link delivery. Only `console` exists until F17 wires a real provider: the link is printed in the api log.",
+      "Magic-link delivery. Only `console` exists until TEACH-29 configures a real provider. In production it is refused unless ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1; each link is printed in the api log at warn level.",
+  },
+  {
+    name: "ALLOW_CONSOLE_MAIL_IN_PRODUCTION",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "both",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "enum",
+    values: ["1"],
+    files: ["api"],
+    railwayValue: "1",
+    description:
+      "Acknowledges that with MAIL_PROVIDER=console in production every magic-link URL is printed to the api log. Required for console mail in production; delete when TEACH-29 lands.",
   },
   {
     name: "GOOGLE_CLIENT_ID",

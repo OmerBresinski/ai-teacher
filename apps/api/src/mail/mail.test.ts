@@ -1,35 +1,66 @@
 import { describe, expect, test } from "bun:test";
-import { silentLogger } from "../test-helpers";
+import pino from "pino";
+import { silentLogger, TEST_ENV } from "../test-helpers";
 import { CaptureMailSender, ConsoleMailSender, createMailSender, extractFirstUrl } from "./index";
 
 describe("mail", () => {
   test("createMailSender: console → ConsoleMailSender", () => {
-    expect(createMailSender({ MAIL_PROVIDER: "console" }, silentLogger)).toBeInstanceOf(
-      ConsoleMailSender,
-    );
+    expect(createMailSender(TEST_ENV, silentLogger)).toBeInstanceOf(ConsoleMailSender);
   });
 
   test("createMailSender: anything else fails readably", () => {
-    expect(() => createMailSender({ MAIL_PROVIDER: "smtp" }, silentLogger)).toThrow(
+    expect(() => createMailSender({ ...TEST_ENV, MAIL_PROVIDER: "smtp" }, silentLogger)).toThrow(
       'MAIL_PROVIDER: only "console" is supported until F17 (got "smtp")',
     );
   });
 
-  test("ConsoleMailSender logs a boxed block containing the link at info", async () => {
+  test("ConsoleMailSender logs the production sign-in link at warn", async () => {
     const lines: string[] = [];
-    const logger = {
-      ...silentLogger,
-      info: (_obj: unknown, msg: string) => lines.push(msg),
-    } as unknown as typeof silentLogger;
-    await new ConsoleMailSender(logger).send({
+    const logger = pino(
+      { level: "trace" },
+      {
+        write(line) {
+          lines.push(line);
+        },
+      },
+    );
+    const url = "https://api/auth/magic-link/verify?token=SECRET";
+    await new ConsoleMailSender(logger, { NODE_ENV: "production" }).send({
       to: "t@example.test",
       subject: "Hi",
-      text: "Open http://localhost:3001/auth/magic-link/verify?token=abc now",
+      text: `Open ${url} now`,
     });
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toContain("═══");
-    expect(lines[0]).toContain("MAIL (MAIL_PROVIDER=console) → t@example.test");
-    expect(lines[0]).toContain("http://localhost:3001/auth/magic-link/verify?token=abc");
+    const line = JSON.parse(lines[0] ?? "") as { level: number; msg: string };
+    expect(line.level).toBe(40);
+    expect(line.msg).toContain("SIGN-IN LINK IN LOG");
+    expect(line.msg).toContain("ALLOW_CONSOLE_MAIL_IN_PRODUCTION");
+    expect(line.msg).toContain(url);
+  });
+
+  test("ConsoleMailSender keeps the development info block unchanged", async () => {
+    const lines: string[] = [];
+    const logger = pino(
+      { level: "trace" },
+      {
+        write(line) {
+          lines.push(line);
+        },
+      },
+    );
+    const url = "http://localhost:3001/auth/magic-link/verify?token=abc";
+    await new ConsoleMailSender(logger, { NODE_ENV: "development" }).send({
+      to: "t@example.test",
+      subject: "Hi",
+      text: `Open ${url} now`,
+    });
+    expect(lines).toHaveLength(1);
+    const line = JSON.parse(lines[0] ?? "") as { level: number; msg: string };
+    expect(line.level).toBe(30);
+    expect(line.msg).toContain("═══");
+    expect(line.msg).toContain("MAIL (MAIL_PROVIDER=console) → t@example.test");
+    expect(line.msg).toContain(url);
+    expect(line.msg).not.toContain("SIGN-IN LINK IN LOG");
   });
 
   test("CaptureMailSender keeps every message", async () => {

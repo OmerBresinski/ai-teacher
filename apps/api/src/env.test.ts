@@ -43,7 +43,11 @@ describe("parseEnv", () => {
   });
 
   test("requires the Bedrock key in production", () => {
-    const production = parseEnv({ ...base, NODE_ENV: "production" });
+    const production = parseEnv({
+      ...base,
+      NODE_ENV: "production",
+      ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "1",
+    });
     expect(production).toEqual({
       ok: false,
       errors: [
@@ -90,12 +94,56 @@ describe("parseEnv", () => {
       ENABLE_TEST_ROUTES: "1",
       NODE_ENV: "production",
       AWS_BEARER_TOKEN_BEDROCK: "test-key",
+      ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "1",
     });
     expect(prod.ok).toBe(false);
     if (prod.ok) return;
     expect(prod.errors).toEqual([
       { variable: "ENABLE_TEST_ROUTES", message: "Cannot be set when NODE_ENV=production" },
     ]);
+  });
+
+  test("requires production console mail to be explicitly acknowledged", () => {
+    const production = {
+      ...base,
+      NODE_ENV: "production" as const,
+      AWS_BEARER_TOKEN_BEDROCK: "test-key",
+    };
+    const message =
+      "console is not allowed in production (set ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1 to accept that sign-in links are printed to the log)";
+
+    for (const source of [{ ...production, MAIL_PROVIDER: "console" }, production]) {
+      const result = parseEnv(source);
+      expect(result.ok).toBe(false);
+      if (result.ok) continue;
+      expect(result.errors).toContainEqual({ variable: "MAIL_PROVIDER", message });
+    }
+
+    const fallback = parseEnv({ ...production, MAIL_PROVIDER: "console", DATABASE_URL: undefined });
+    expect(fallback.ok).toBe(false);
+    if (!fallback.ok) {
+      expect(fallback.errors).toContainEqual({ variable: "DATABASE_URL", message: "Required" });
+      expect(fallback.errors).toContainEqual({ variable: "MAIL_PROVIDER", message });
+    }
+
+    expect(
+      parseEnv({
+        ...production,
+        MAIL_PROVIDER: "console",
+        ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "1",
+      }).ok,
+    ).toBe(true);
+
+    const invalidFlag = parseEnv({ ...base, ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "yes" });
+    expect(invalidFlag.ok).toBe(false);
+    if (!invalidFlag.ok) {
+      expect(invalidFlag.errors).toContainEqual({
+        variable: "ALLOW_CONSOLE_MAIL_IN_PRODUCTION",
+        message: 'Must be "1" or unset',
+      });
+    }
+
+    expect(parseEnv({ ...base, MAIL_PROVIDER: "console" }).ok).toBe(true);
   });
 
   test("coerces PORT and splits WEB_ORIGIN", () => {
@@ -106,6 +154,7 @@ describe("parseEnv", () => {
       NODE_ENV: "production",
       LOG_LEVEL: "warn",
       AWS_BEARER_TOKEN_BEDROCK: "test-key",
+      ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "1",
     });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
@@ -141,6 +190,7 @@ describe("parseEnv", () => {
         COOKIE_SAMESITE: "none",
         NODE_ENV: "production",
         AWS_BEARER_TOKEN_BEDROCK: "test-key",
+        ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "1",
       }).ok,
     ).toBe(true);
     expect(parseEnv({ ...base, COOKIE_SAMESITE: "None" }).ok).toBe(false);
