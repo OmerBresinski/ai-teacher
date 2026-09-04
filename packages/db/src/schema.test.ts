@@ -19,8 +19,25 @@ describe("schema classification", () => {
     expect(tenant.size + nonTenant.size).toBe(Object.keys(ALL_TABLES).length);
   });
 
-  test("workspaces is the only non-tenant table", () => {
-    expect(NON_TENANT_TABLES.map(name)).toEqual(["workspaces"]);
+  test("non-tenant tables are the tenant root and the better-auth identity tables (ADR 0008)", () => {
+    expect(NON_TENANT_TABLES.map(name).sort()).toEqual([
+      "accounts",
+      "sessions",
+      "users",
+      "verifications",
+      "workspaces",
+    ]);
+  });
+
+  test("workspaces.owner_user_id references users and is unique (one personal Workspace)", () => {
+    const config = getTableConfig(workspaces);
+    const fk = config.foreignKeys.find((f) =>
+      f.reference().columns.some((c) => c.name === "owner_user_id"),
+    );
+    expect(fk).toBeDefined();
+    expect(getTableConfig(fk?.reference().foreignTable as PgTable).name).toBe("users");
+    const unique = config.indexes.find((i) => i.config.name === "workspaces_owner_user_id_uidx");
+    expect(unique?.config.unique).toBe(true);
   });
 
   test("tenant tables have workspace_id NOT NULL with a FK to workspaces and an index", () => {

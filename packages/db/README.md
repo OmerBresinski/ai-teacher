@@ -45,11 +45,12 @@ before adding replicas. Prepared statements are on; turn them off if a transacti
 
 | Table        | Tenant? | Notes                                                                                                  |
 | ------------ | ------- | ------------------------------------------------------------------------------------------------------ |
-| `workspaces` | root    | `id uuid` PK **no default** (minted with `newId<WorkspaceId>()`), `owner_user_id text` (FK to `users` lands with TEACH-20), `name text`, `created_at`/`updated_at timestamptz default now()`. `name` is a DB-side superset of the `@tj/domain` Workspace skeleton; F17 owns it. |
+| `workspaces` | root    | `id uuid` PK **no default** (minted with `newId<WorkspaceId>()`), `owner_user_id text` FK → `users.id` `ON DELETE CASCADE`, **unique** (one personal Workspace per user, TEACH-20), `name text`, `created_at`/`updated_at timestamptz default now()`. `name` is a DB-side superset of the `@tj/domain` Workspace skeleton; F17 owns it. |
+| `users`, `sessions`, `accounts`, `verifications` | no (identity) | better-auth 1.7.2 tables (`schema/auth.ts`, generated with `@better-auth/cli` then adjusted to `timestamptz`). `text` ids minted by better-auth. Identity sits above the Workspace (ADR 0008). |
 | `job_events` | yes     | `id bigserial` PK (= SSE event id), `job_id uuid`, `workspace_id uuid` FK → `workspaces` `ON DELETE CASCADE`, `type text`, `payload jsonb` (the whole `JobEvent`), `at timestamptz`. Indexes `(workspace_id, at)`, `(job_id, at)`. Immutable rows. |
 
 `schema/index.ts` classifies every table into `TENANT_TABLES = [jobEvents]` or
-`NON_TENANT_TABLES = [workspaces]`. The classification is checked twice: at the type level (adding
+`NON_TENANT_TABLES = [workspaces, users, sessions, accounts, verifications]`. The classification is checked twice: at the type level (adding
 a table to `ALL_TABLES` without listing it in exactly one list is a compile error) and by
 `schema.test.ts` (every tenant table has `workspace_id NOT NULL`, a FK to `workspaces` and an
 index led by `workspace_id`).

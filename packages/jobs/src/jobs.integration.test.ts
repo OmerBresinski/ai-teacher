@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { listJobEvents, workspaces } from "@tj/db";
-import { withTestDb } from "@tj/db/testing";
+import { listJobEvents } from "@tj/db";
+import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
 import type { PgBoss } from "pg-boss";
 import pino from "pino";
@@ -87,9 +87,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
   beforeEach(async () => {
     await truncateTenantTables();
     workspaceId = newId<WorkspaceId>();
-    await unsafeDb
-      .insert(workspaces)
-      .values({ id: workspaceId, ownerUserId: "test-user", name: "jobs test" });
+    await createTestUserWithWorkspace(unsafeDb, { workspaceId, workspaceName: "jobs test" });
     outcomes.length = 0;
   });
 
