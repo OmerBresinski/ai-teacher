@@ -1,0 +1,38 @@
+# Dependabot (TEACH-23). Weekly, grouped, so the version bumps arrive as a couple of PRs rather
+# than dozens. Exact versions are enforced by bunfig.toml (`exact = true`); Dependabot updates the
+# pinned version in package.json and bun.lock together.
+version: 2
+updates:
+  # Bun workspaces (root + apps/* + packages/*). `bun` is a supported ecosystem
+  # (reads bun.lock); do not switch to `npm`, which would ignore the lockfile.
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Asia/Jerusalem"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels: ["dependencies"]
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+      # Majors stay one PR per dependency so breaking changes are reviewed individually.
+
+  # Actions in .github/workflows and .github/actions are pinned to full SHAs; Dependabot bumps the
+  # SHA and keeps the `# vX.Y.Z` comment in sync.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Asia/Jerusalem"
+    commit-message:
+      prefix: "ci(deps)"
+    labels: ["dependencies", "ci"]
+    groups:
+      actions:
+        patterns: ["*"]
