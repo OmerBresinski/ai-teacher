@@ -221,14 +221,18 @@ NODE_ENV=test ENABLE_TEST_ROUTES=1 PORT=3811 DATABASE_URL=$TEST_DATABASE_URL \
 
 ### `requireSession`
 
-`requireSession(auth, db)` (`src/auth/require-session.ts`) is mounted path-scoped in `app.ts`:
-`/me`, `/jobs/*`, `/events`. Add new protected prefixes there. After it runs:
+`requireSession(auth, db, { allowHeaderShim })` (`src/auth/require-session.ts`) is mounted
+path-scoped in `app.ts` through the `PROTECTED_PATHS` list — `/me`, `/me/*`, `/jobs/*`, `/events`,
+`/files/*` — right after the `rejectCrossSiteRequests` guard (TEACH-77). Add new protected prefixes
+to that list only. `allowHeaderShim` is `env.ALLOW_WORKSPACE_HEADER_SHIM === "1"` (dev/test only;
+refused in production): it is the sole place the `x-tj-workspace-id` header is honoured. After it
+runs:
 
 | `c.get(…)` | Value |
 | ---------- | ----- |
 | `"user"` | better-auth user: `{ id, email, name, emailVerified, image, createdAt, updatedAt }` |
 | `"session"` | better-auth session: `{ id, token, userId, expiresAt, ipAddress, userAgent, … }` |
-| `"workspaceId"` | the caller's personal `WorkspaceId` — what `forWorkspace()` / `getWorkspaceId(c)` should use |
+| `"workspaceId"` | the caller's personal `WorkspaceId` — what `forWorkspace()` / `getWorkspaceId(c, { allowHeaderShim: false })` should use downstream (never re-read the header) |
 
 No session → `401 { error: { code: "unauthorized", message: "You need to sign in to do that.", retryable: false, requestId } }`.
 `createApp({ auth })` is optional: without an `Auth`, `/auth/*` is not mounted and every
