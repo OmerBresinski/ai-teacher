@@ -18,14 +18,17 @@ import type { Env } from "./env";
 import { classifyError, envelope } from "./errors";
 import { createEventsRuntime, type EventsRuntime } from "./events/runtime";
 import { createLogger, type Logger } from "./logger";
+import type { CaptureMailSender } from "./mail";
 import { eventRoutes } from "./routes/events";
 import { healthRoutes } from "./routes/health";
 import { helloRoutes } from "./routes/hello";
 import { jobRoutes } from "./routes/jobs";
 import { meRoutes } from "./routes/me";
+import { testRoutes, testRoutesEnabled } from "./routes/test-routes";
 
 export interface CreateAppOptions {
-  env: Pick<Env, "NODE_ENV" | "LOG_LEVEL" | "WEB_ORIGIN">;
+  env: Pick<Env, "NODE_ENV" | "LOG_LEVEL" | "WEB_ORIGIN"> &
+    Partial<Pick<Env, "ENABLE_TEST_ROUTES">>;
   /** Only `sql` is used today (`/health`); routes will take `unsafeDb` through `forWorkspace()`. */
   db: Pick<DbHandle, "sql">;
   /** Inject a logger (tests pass a silent one). Defaults to `createLogger(env)`. */
@@ -39,9 +42,15 @@ export interface CreateAppOptions {
   jobs?: JobsContext;
   /** SSE runtime (hub, listener, limits). Defaults to one built from `jobs` without a listener. */
   events?: EventsRuntime;
+  /**
+   * The capturing mail sender behind `GET /__test/last-magic-link` (TEACH-22). Mounted only when
+   * `testRoutesEnabled(env)` — `NODE_ENV=test` and `ENABLE_TEST_ROUTES=1` — regardless of whether
+   * a sender is passed, so a stray option can never expose the route.
+   */
+  testMail?: CaptureMailSender;
 }
 
-function buildApp({ env, db, logger: injected, auth, jobs, events }: CreateAppOptions) {
+function buildApp({ env, db, logger: injected, auth, jobs, events, testMail }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
   const eventsRuntime = events ?? (jobs ? createEventsRuntime({ jobs, logger }) : undefined);
   const app = new Hono<AppEnv>();
@@ -103,6 +112,12 @@ function buildApp({ env, db, logger: injected, auth, jobs, events }: CreateAppOp
     .route("/", meRoutes)
     .route("/", jobRoutes(eventsRuntime))
     .route("/", eventRoutes(eventsRuntime));
+
+  // TEACH-22: test-only capture route, outside the RPC contract (`AppType` stays clean).
+  if (testMail && testRoutesEnabled(env)) {
+    app.route("/", testRoutes(testMail));
+    logger.warn("test routes enabled (NODE_ENV=test, ENABLE_TEST_ROUTES=1): GET /__test/*");
+  }
 
   // TEACH-15 follow-up: GET /files/:key proxy over the StorageAdapter (packages/storage).
 
