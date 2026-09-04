@@ -187,8 +187,12 @@ jobs:
             echo "Bundle budget: skipped — apps/web/dist/.vite/manifest.json not found (TEACH-21)"
           fi
           # Always writes bundle-budget.md (skip notice or report); exits 1 above the budget.
+          set +e
           bun run check:bundle-budget --markdown-out bundle-budget.md
+          status=$?
+          set -e
           cat bundle-budget.md >> "$GITHUB_STEP_SUMMARY"
+          exit $status
 
       - name: Sticky bundle-budget PR comment
         if: always() && github.event_name == 'pull_request' && steps.budget.outputs.present == 'true'
@@ -267,7 +271,7 @@ jobs:
         # OSV fallback below instead of turning the job red or, worse, silently green.
         run: |
           set +e
-          output="$(timeout 240 bun audit --audit-level=high 2>&1)"
+          output="$(timeout 120 bun audit --audit-level=high 2>&1)"
           code=$?
           set -e
           printf '%s\n' "$output"
@@ -286,9 +290,18 @@ jobs:
         # OSV.dev mirrors the GitHub Advisory Database and is independent of npm's endpoint.
         # osv-scanner exits 1 on ANY finding, so filter to >= high ourselves. Image pinned by digest.
         run: |
+          set +e
           docker run --rm -v "$PWD:/src" -w /src \
             ghcr.io/google/osv-scanner@sha256:8108ae94eadea5a02c9bec6e646909d5b790b44bd62d7f5b7f0b1d6d0ffc7734 \
-            --lockfile=bun.lock --format json > osv.json || true # v2.5.1
+            --lockfile=bun.lock --format json > osv.json # v2.5.1
+          code=$?
+          set -e
+          # osv-scanner v2: 0 = clean, 1 = findings; anything else = scanner/network error -> fail loudly.
+          if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then
+            echo "::error title=audit::osv-scanner failed (exit $code); dependency audit could not run"
+            exit 1
+          fi
+          jq -e '.results' osv.json >/dev/null || { echo "::error title=audit::osv-scanner produced no results"; exit 1; }
           jq -r '[.results[]?.packages[]? | .package as $p | .vulnerabilities[]? |
                   "\(.database_specific.severity // "UNKNOWN")\t\(.id)\t\($p.name)@\($p.version)"] | .[]' osv.json \
             | sort | tee osv-summary.tsv
