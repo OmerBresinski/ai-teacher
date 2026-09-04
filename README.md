@@ -272,3 +272,76 @@ Biome is configured once in the root `biome.json` (ADR 0003); packages do not ca
   `LEFTHOOK=0 git commit …` bypasses them in an emergency; CI re-runs the same checks.
 - Product terms (Journey, Lesson, Artefact, Workspace, …) are used exactly as defined in
   [`docs/glossary.md`](docs/glossary.md).
+
+## CI
+
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every pull request
+and on pushes to `master` (TEACH-23). One run per branch: a new push cancels the previous run.
+Every job starts from the composite action [`.github/actions/setup`](.github/actions/setup/action.yml)
+(Bun from `.bun-version`, install cache keyed on `bun.lock`, `bun install --frozen-lockfile`).
+
+| Job | What it runs | Reproduce locally | Blocking |
+| --- | ------------ | ----------------- | -------- |
+| `quality` | `bun run lint`, `typecheck`, `skills:check`, `verify-bootstrap`; commitlint on the PR title | the same four commands; `echo "<title>" \| bunx --bun commitlint` | yes |
+| `tooling-smoke` | `bun run setup --ci && bun run doctor` against docker compose, then `bun run test:scripts` | the same commands (needs Docker) | yes |
+| `test` | `bun run test` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test`; `bun run db:migrate` when the script exists; uploads `coverage/` | `bun run db:up && bun run test` | **gated** (see below) |
+| `build` | `bun run build`; `bun run check:bundle-budget --markdown-out bundle-budget.md`; sticky PR comment `<!-- tj-bundle-budget -->` | `bun run build && bun run check:bundle-budget` | yes |
+| `e2e` | Playwright Chromium (cached) + `bun run test:e2e`; report uploaded on failure. Skipped until `apps/web/package.json` exists | `bunx playwright install chromium && bun run test:e2e` | **gated** |
+| `audit` | `bun audit --audit-level=high` (native in Bun 1.3.6); `actions/dependency-review-action` with `fail-on-severity: high` on PRs | `bun audit --audit-level=high` | yes |
+| `secrets` | `gitleaks/gitleaks-action` over the full history (`fetch-depth: 0`) | `gitleaks git --redact .` (or `gitleaks protect --staged` via the pre-commit hook) | yes |
+| `docker-build-smoke` | `docker build .` -- skipped until a `Dockerfile` exists | `docker build .` | yes (once present) |
+| `detect` | probes for `apps/web/package.json` and `Dockerfile` so the optional jobs above can be skipped (`hashFiles()` is not allowed in job-level `if`) | -- | -- |
+
+### Phase split and `CI_STRICT`
+
+`apps/*` and `packages/db` land in TEACH-14/16/21/22, so Phase 1 ships the pipeline with the
+Postgres-backed `test` job and the Playwright `e2e` job **gated**: they run, but a failure does not
+block the PR (`continue-on-error`). The gate is the repository variable `CI_STRICT`:
+
+- `CI_STRICT` unset or anything other than `true` -> `test` and `e2e` are informational (Phase 1).
+- `CI_STRICT=true` -> `test` and `e2e` are blocking, like every other job (Phase 2).
+
+Flip it with `gh variable set CI_STRICT --body true --repo OmerBresinski/ai-teacher` once the first
+real test suites are green. The `build` job's bundle-budget step prints
+`Bundle budget: skipped — apps/web/dist/.vite/manifest.json not found (TEACH-21)` and exits 0 until
+the web app produces a Vite manifest; from then on it fails above 250 KB gzip (warns above 200 KB;
+override with `BUNDLE_BUDGET_KB` / `BUNDLE_WARN_KB`).
+
+### Phase 2: require the checks on `master`
+
+Branch protection is **not** changed by Phase 1. Once `CI_STRICT=true` has produced a few green
+runs, require every job with (do not run this before then -- gated jobs would still be required):
+
+```sh
+cat > /tmp/protection.json <<'JSON'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["quality", "tooling-smoke", "test", "build", "e2e", "audit", "secrets"]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": { "required_approving_review_count": 0 },
+  "restrictions": null,
+  "required_linear_history": true,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_conversation_resolution": true
+}
+JSON
+gh api -X PUT repos/OmerBresinski/ai-teacher/branches/master/protection --input /tmp/protection.json
+```
+
+### Remote cache and secrets
+
+- **Turborepo remote cache** ([ADR 0002](docs/adr/0002-turborepo.md)): the workflow forwards
+  `TURBO_TOKEN` (repository secret) and `TURBO_TEAM` (repository variable). Both are empty until
+  the Vercel project exists (TEACH-21/ADR 0010); `turbo` then simply runs without a remote cache.
+  `TURBO_TELEMETRY_DISABLED=1` and `DO_NOT_TRACK=1` are set for every job.
+- **gitleaks**: `GITLEAKS_LICENSE` is only required for organisation-owned repositories.
+  `OmerBresinski/ai-teacher` is a personal repository, so no license is configured; if the repo
+  ever moves to an organisation, obtain a free key at gitleaks.io and add it as a repository
+  secret. A `.gitleaks.toml` at the root is picked up automatically if an allowlist is ever needed.
+- **Dependabot** ([`.github/dependabot.yml`](.github/dependabot.yml)): weekly, `bun` ecosystem with
+  minor/patch grouped into one PR, plus `github-actions` (SHA-pinned actions with `# vX.Y.Z`
+  comments). [`CODEOWNERS`](.github/CODEOWNERS) requests a review from `@OmerBresinski` on every
+  PR; the [PR template](.github/pull_request_template.md) carries the merge checklist.
