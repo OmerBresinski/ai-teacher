@@ -158,7 +158,9 @@ describe("layout checks (ADR 0017)", () => {
       location: "packages/ui",
       name: "shadcn",
     });
+    expect(parseCanonicalPath(".agents/skills/review")).toEqual({ location: ".", name: "review" });
     expect(parseCanonicalPath("apps/web/.claude/skills/alpha")).toBeNull();
+    expect(parseCanonicalPath(".claude/skills/alpha")).toBeNull();
     expect(parseCanonicalPath("apps/web/skills/alpha")).toBeNull();
   });
 

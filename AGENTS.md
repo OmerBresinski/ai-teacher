@@ -22,6 +22,31 @@ exactly as written. Setup, commands and conventions: [`README.md`](README.md).
 - **Load the relevant skill before touching that area.** Each app/package has its own `AGENTS.md`
   naming the skills to load and the ADR constraints that override generic skill advice.
 
+## Delivery workflow (implement → PR → review → merge)
+
+The user says **what** to do (a Linear project, a list of issues, a feature, a bug — anything);
+this section is **how** it gets delivered. Runs without further prompting unless a step needs
+credentials, spends money, or mutates live infrastructure — ask once, up front, for all of those
+together. Work items that are dashboard-only or founder decisions are reported back, not faked.
+
+1. **Implement in parallel with subagents.** Split the request into independent units of work.
+   One `general` subagent per unit, each on its own branch (the Linear `gitBranchName` when there
+   is an issue), each opening its own PR with `gh pr create` (title `<type>(<scope>): …`, with
+   `(TEACH-n)` and a link to the issue when there is one). Serialize units that touch the same
+   files (e.g. `infra/README.md`) — merge one, rebase the next. Subagents must run
+   `bun run lint`, `bun run typecheck` and the relevant tests before opening the PR, and must not
+   merge.
+2. **Review with a separate subagent.** For every PR, launch a fresh `general` subagent that
+   loads **`thermo-nuclear-code-quality-review`** (root `.agents/skills/`) and reviews the branch
+   diff against `master`. It reports findings only; it does not edit code.
+3. **Fix, push, merge.** If the review has findings, fix them (or the implementing subagent
+   does), push, and re-review only if the fix was structural. If it has none, merge straight
+   away. Merge with `gh pr merge --squash --delete-branch` once CI is green
+   (`gh pr checks --watch`).
+4. **Close the loop.** When the work came from Linear, move the issue to Done with a comment
+   naming the PR and anything deliberately left open; keep `infra/README.md` "Known gaps" in sync
+   when the issue is one.
+
 ## Package map
 
 From [ADR 0013](docs/adr/0013-monorepo-layout.md):
@@ -66,4 +91,5 @@ edit or copy them (ADR 0017).
 | `deploy-to-vercel` | `apps/web` | Vercel projects, previews, env vars (ADR 0010) |
 | `hono` | `apps/api` | Hono routes, middleware, validation, `streamSSE`, RPC (ADR 0005, 0012) |
 | `use-railway` | `apps/api`, `apps/worker` | Railway services, Postgres, variables, PR environments (ADR 0010) |
+| `thermo-nuclear-code-quality-review` | repo root | reviewing a PR diff in step 2 of the delivery workflow — **review agents only** |
 
