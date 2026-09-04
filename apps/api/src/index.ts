@@ -3,10 +3,12 @@
  * on SIGTERM/SIGINT (stop accepting, drain in-flight requests, close the pool, exit 0).
  */
 import { createDb } from "@tj/db";
+import { createBoss, ensureQueues, type JobsContext } from "@tj/jobs";
 import { createApp } from "./app";
 import { createAuth } from "./auth/auth";
 import { logUsersWithoutWorkspace } from "./auth/workspace-hook";
 import { loadEnv } from "./env";
+import { createEventsRuntime } from "./events/runtime";
 import { createLogger } from "./logger";
 import { loadMailSender } from "./mail";
 
@@ -14,7 +16,13 @@ const env = loadEnv();
 const logger = createLogger(env);
 const db = createDb(env.DATABASE_URL);
 const auth = createAuth({ env, db, mail: loadMailSender(env, logger), logger });
-const app = createApp({ env, db, logger, auth });
+const boss = createBoss(env.DATABASE_URL, { applicationName: "tj-api" });
+boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
+await boss.start();
+await ensureQueues(boss);
+const jobs: JobsContext = { boss, db: db.unsafeDb, sql: db.sql };
+const events = createEventsRuntime({ jobs, databaseUrl: env.DATABASE_URL, logger });
+const app = createApp({ env, db, logger, auth, jobs, events });
 void logUsersWithoutWorkspace(db, logger).catch((err) =>
   logger.warn({ err }, "users-without-workspace self-check failed"),
 );
@@ -37,7 +45,10 @@ async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, "shutting down");
   try {
     // `stop(false)` stops accepting new connections and resolves once in-flight requests finish.
+    // Open SSE streams count as in-flight, so end them first.
+    await events.stop();
     await server.stop(false);
+    await boss.stop({ graceful: true, close: true });
     await db.close();
     logger.info("shutdown complete");
     process.exit(0);
