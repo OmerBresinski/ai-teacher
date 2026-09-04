@@ -217,3 +217,87 @@ magic link out of the "sent" email. See `src/auth.db.test.ts`.
 diff against `packages/db/src/schema/auth.ts` (keep `timestamptz` and the snake_case index
 names), then `bun run --cwd packages/db db:generate` for a migration if columns changed. Run
 `bun run --filter=@tj/api test` — `auth.db.test.ts` covers the whole flow against Postgres.
+
+## Jobs & events (TEACH-19, ADR 0006/0012)
+
+The API **enqueues** pg-boss jobs and **streams** their events; it never runs them
+(`apps/worker` does). `src/index.ts` builds the pg-boss context (`createBoss` → `start` →
+`ensureQueues`) and an events runtime, and passes both to `createApp({ env, db, logger, jobs,
+events })`. Without `jobs` (unit tests) every route below answers `503 service_unavailable`.
+
+| Route                        | Response                                                            |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `POST /jobs/ping`            | body `{ message, steps?, failAt? }` (`PingPayloadSchema`, strict) → `202 { jobId }`; `409 conflict` when a singleton key deduplicated the send |
+| `POST /jobs/:id/cancel`      | `202 { status }` with `status` ∈ `cancelled` (never started; event written here) \| `cancelling` (running; the worker emits `cancelled` within ~250 ms) \| `already_finished` \| `not_found` |
+| `GET /jobs/:id/events`       | SSE for one job; closes after a terminal event                       |
+| `GET /events`                | SSE firehose for the caller's Workspace; never closes                |
+
+`:id` must be a UUID (`400 validation_failed`, `fields: ["id"]`). A job is visible only through
+its own Workspace: the routes look for at least one `job_events` row via
+`forWorkspace(workspaceId)` and answer `404 not_found` otherwise — another tenant cannot tell a
+missing job from a foreign one.
+
+### SSE protocol
+
+```
+id: 42
+event: progress
+data: {"type":"progress","jobId":"…","workspaceId":"…","at":"…","progress":{"percent":33,"message":"step 1/3"}}
+```
+
+- `id` is the `job_events.id` (bigserial, monotonic per database); `event` is the job event type
+  (`queued | started | progress | completed | failed | cancelled`); `data` is the full `JobEvent`
+  from `@tj/domain`.
+- **Replay**: on connect the API sends rows with `id > Last-Event-ID` (all rows when the header is
+  absent or not a non-negative integer), at most `EVENTS_REPLAY_LIMIT` of them, then switches to
+  live delivery. `EventSource` sends `Last-Event-ID` automatically on reconnect, so no event is
+  lost or duplicated across drops.
+- **Live path**: the worker `INSERT`s a row then `NOTIFY job_events` with `{ id, jobId,
+  workspaceId }`. The API keeps one `LISTEN` per process (`src/events/listener.ts`, a dedicated
+  `max: 1` connection started lazily on the first stream) and fans notifications out through an
+  in-memory hub (`src/events/hub.ts`). Each stream then re-reads `job_events` with
+  `afterId: lastSent`, so the wire payload always comes from the table.
+- **Terminal close**: `GET /jobs/:id/events` ends after `completed`, `failed` or `cancelled`.
+  `GET /events` stays open.
+- **Heartbeat**: a `: ping` comment every `EVENTS_HEARTBEAT_MS` keeps proxies from idling the
+  connection out. Headers: `Content-Type: text/event-stream`, `Cache-Control: no-cache`,
+  `X-Accel-Buffering: no`, `Connection: keep-alive`; CORS (credentials) applies as elsewhere and
+  `Last-Event-ID` is an allowed request header.
+- **Degraded mode**: if `LISTEN` cannot be established the listener retries with backoff
+  (500 ms → 10 s) and marks the hub degraded; while degraded every open stream polls
+  `job_events` every `EVENTS_POLL_MS`. Delivery continues, only latency changes.
+- **Limits**: at most `EVENTS_MAX_STREAMS_PER_WORKSPACE` concurrent streams per Workspace;
+  beyond that `429 rate_limited` (`retryable: true`). Slots are released when the client
+  disconnects, the job finishes, or the process shuts down (streams are ended before
+  `server.stop()` so shutdown never waits on an open firehose).
+
+### Workspace seam (`src/workspace.ts`)
+
+`getWorkspaceId(c)` is how every tenant route learns the caller's Workspace:
+
+1. `c.get("workspaceId")` when set — **TEACH-20's `requireSession` sets it** after verifying the
+   session cookie.
+2. Otherwise, **outside production only**, the `x-tj-workspace-id` header (must be a UUID,
+   else `400 bad_request`). `requireSession` honours this shim when no session cookie is present
+   and `NODE_ENV !== "production"`, so curl and integration tests can pick a Workspace without
+   signing in. In production the header is ignored and the request gets `401`.
+3. Otherwise `401 unauthorized`.
+
+`requireWorkspace()` is the middleware form (sets the variable once for a router).
+
+### Config knobs (`src/events/config.ts`)
+
+Read from `process.env` with Zod defaults; TEACH-26 folds them into the `src/env.ts` contract.
+
+| Variable                           | Default | Meaning                                             |
+| ---------------------------------- | ------- | --------------------------------------------------- |
+| `EVENTS_MAX_STREAMS_PER_WORKSPACE` | `20`    | concurrent SSE streams per Workspace before 429     |
+| `EVENTS_REPLAY_LIMIT`              | `500`   | rows replayed on connect                            |
+| `EVENTS_HEARTBEAT_MS`              | `15000` | `: ping` interval                                   |
+| `EVENTS_POLL_MS`                   | `1000`  | poll interval while the LISTEN connection is down   |
+
+Integration tests (`src/routes/jobs.integration.test.ts`) run a real pg-boss on schema
+`pgboss_test` plus an in-test worker loop and skip visibly when `TEST_DATABASE_URL` is unreachable.
+They create and use a dedicated database `<test database>_api` (derived from `TEST_DATABASE_URL`)
+because turbo runs the `@tj/db` / `@tj/jobs` suites in parallel and those truncate the shared test
+database between tests.

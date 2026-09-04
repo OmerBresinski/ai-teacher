@@ -6,6 +6,7 @@
  * The router type is exported as `AppType` and consumed by `@tj/api-client` (`hc<AppType>()`).
  */
 import type { DbHandle } from "@tj/db";
+import type { JobsContext } from "@tj/jobs";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
@@ -15,9 +16,12 @@ import { requireSession } from "./auth/require-session";
 import type { AppEnv } from "./context";
 import type { Env } from "./env";
 import { classifyError, envelope } from "./errors";
+import { createEventsRuntime, type EventsRuntime } from "./events/runtime";
 import { createLogger, type Logger } from "./logger";
+import { eventRoutes } from "./routes/events";
 import { healthRoutes } from "./routes/health";
 import { helloRoutes } from "./routes/hello";
+import { jobRoutes } from "./routes/jobs";
 import { meRoutes } from "./routes/me";
 
 export interface CreateAppOptions {
@@ -31,10 +35,15 @@ export interface CreateAppOptions {
    * every protected path answers 401 — fine for unit tests that only touch public routes.
    */
   auth?: Auth;
+  /** pg-boss context for `/jobs/*` (TEACH-19). Absent → those routes answer 503. */
+  jobs?: JobsContext;
+  /** SSE runtime (hub, listener, limits). Defaults to one built from `jobs` without a listener. */
+  events?: EventsRuntime;
 }
 
-function buildApp({ env, db, logger: injected, auth }: CreateAppOptions) {
+function buildApp({ env, db, logger: injected, auth, jobs, events }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
+  const eventsRuntime = events ?? (jobs ? createEventsRuntime({ jobs, logger }) : undefined);
   const app = new Hono<AppEnv>();
 
   // 1. request-id: honour an incoming `x-request-id`, otherwise crypto.randomUUID(); echoed back.
@@ -88,9 +97,13 @@ function buildApp({ env, db, logger: injected, auth }: CreateAppOptions) {
   app.use("/events", guard);
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
-  const routes = app.route("/", healthRoutes(db)).route("/", helloRoutes).route("/", meRoutes);
+  const routes = app
+    .route("/", healthRoutes(db))
+    .route("/", helloRoutes)
+    .route("/", meRoutes)
+    .route("/", jobRoutes(eventsRuntime))
+    .route("/", eventRoutes(eventsRuntime));
 
-  // TEACH-19: mount /jobs and /events here (streamSSE, Last-Event-ID replay — ADR 0012).
   // TEACH-15 follow-up: GET /files/:key proxy over the StorageAdapter (packages/storage).
 
   // 6. Errors → envelope. Unknown errors are logged with their stack but never sent to clients.
