@@ -73,6 +73,7 @@ All root scripts are TypeScript run by Bun (`scripts/*.ts`, helpers in `scripts/
 | `bun run db:logs`      | `docker compose logs -f postgres`.                                                  |
 | `bun run clean`        | Remove `node_modules`, `dist`, `.turbo`, `coverage` in the root and every workspace (not the DB volume). Follow with `bun install`. |
 | `bun run test:scripts` | `bun test scripts/` — unit tests for the helpers; also runs as part of `bun run test`. |
+| `bun run db:migrate` / `db:generate` / `db:studio` / `test:db` | Database commands — see "Database" below. |
 
 ### What `docker-compose.yml` runs
 
@@ -113,6 +114,24 @@ bun run db:reset   # docker compose down -v -> up --wait -> init scripts -> db:m
 
 Use it after a schema change you cannot migrate forward, after editing `infra/postgres/init/`, or
 whenever the volume looks broken. `db:down` alone keeps the data.
+
+### Database
+
+Schema and migrations live in [`packages/db`](packages/db/README.md) (`@tj/db`, ADR 0006/0007).
+
+```sh
+bun run db:migrate    # apply packages/db/drizzle to DATABASE_URL, then TEST_DATABASE_URL (idempotent)
+bun run db:generate   # after editing packages/db/src/schema: drizzle-kit generate -> review -> commit
+bun run db:studio     # Drizzle Studio against DATABASE_URL
+bun run test:db       # ensure Postgres, migrate, run the @tj/db integration tests
+```
+
+Migrations are committed SQL under `packages/db/drizzle/` and run as an explicit step (`setup`,
+`db:reset`, `test:db`, the deploy pipeline) — never on app boot. Tenant tables are only reached
+through `forWorkspace(db, workspaceId)`, which injects the `workspace_id` predicate; the raw client
+is exported as `unsafeDb` on purpose. `job_events` plus `pg_notify('job_events', …)` is the
+contract between the worker and the API's SSE stream (ADR 0012). Details, rules and the testing
+helper: `packages/db/README.md`.
 
 ### Tests against the test database
 
