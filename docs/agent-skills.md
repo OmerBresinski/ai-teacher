@@ -31,11 +31,13 @@ branch HEAD at install time (`gh api repos/<o>/<r>/commits/HEAD -q .sha`); the C
 | `vercel-react-best-practices` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (`skills/react-best-practices`) | `063bee94c3f4df8453406c830b0a7df0f2860278` | `apps/web/.agents/skills/vercel-react-best-practices` | React performance rules (waterfalls, bundle size, re-renders). Next.js-specific sections do not apply (Vite SPA). | TEACH-21, TEACH-23 (bundle budget); ADR 0004; F18-R05 |
 | `deploy-to-vercel` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (`skills/deploy-to-vercel`) | `063bee94c3f4df8453406c830b0a7df0f2860278` | `apps/web/.agents/skills/deploy-to-vercel` | Vercel CLI deploys, preview URLs, project linking, env vars. | TEACH-25, TEACH-26; ADR 0010, 0011 |
 | `use-railway` | [railwayapp/railway-skills](https://github.com/railwayapp/railway-skills) (`plugins/railway/skills/use-railway`) | `5d1e97178f86c82795d6737928bd641e0552166a` | `apps/api/.agents/skills/use-railway`, `apps/worker/.agents/skills/use-railway` | Railway CLI/API: services, Postgres, variables, PR environments, domains, `railway.json` IaC, troubleshooting. | TEACH-24, TEACH-26; ADR 0006, 0010 |
+| `thermo-nuclear-code-quality-review` | [cursor/plugins](https://github.com/cursor/plugins) (`cursor-team-kit/skills/thermo-nuclear-code-quality-review`) | `93b00b89ef425a9c1bac0d0b317dfc49c930ac99` | `.agents/skills/thermo-nuclear-code-quality-review` | Strict maintainability review of a branch's diff (abstractions, file size, spaghetti growth). Loaded by the **review agent** in the delivery workflow (root `AGENTS.md` → "Delivery workflow"), never by the implementing agent. | P1 hardening (TEACH-37/38) |
 
 Per location, on disk:
 
 | Location | `.agents/skills/` | `.claude/skills/` (symlinks → `../../.agents/skills/<name>`) | Manifest |
 | -------- | ----------------- | ------------------------------------------------------------ | -------- |
+| repo root | `thermo-nuclear-code-quality-review` | same one | `skills-lock.json` |
 | `apps/web` | `tanstack-router`, `tanstack-query`, `shadcn`, `vercel-react-best-practices`, `deploy-to-vercel` | same five | `apps/web/skills-lock.json` |
 | `apps/api` | `hono`, `use-railway` | same two | `apps/api/skills-lock.json` |
 | `apps/worker` | `use-railway` | same one | `apps/worker/skills-lock.json` |
@@ -139,6 +141,9 @@ A="--agent universal claude-code -y"
 
 ( cd packages/ui \
   && $S https://github.com/shadcn-ui/ui                      --skill shadcn          $A )
+
+# repo root (review agent only)
+$S https://github.com/cursor/plugins --skill thermo-nuclear-code-quality-review $A
 
 bun run skills:check
 ```
