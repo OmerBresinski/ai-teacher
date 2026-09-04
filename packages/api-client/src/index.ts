@@ -8,6 +8,7 @@
 import type { AppType } from "@tj/api/app";
 import { hc } from "hono/client";
 
+export { AUTH_BASE_PATH, type AuthClient, createAuthClient } from "./auth";
 export type { AppType };
 
 /**
