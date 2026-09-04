@@ -20,7 +20,7 @@ EU-West), [0016](../docs/adr/0016-prd-deviations.md) (EU not UK residency).
 > `db:migrate: DATABASE_URL up to date`). Since TEACH-37 (2026-09-04) the Vercel Blob store
 > **`teaching-journey`** (`store_Ii6wcxuuLOvPP4ou`, `fra1`, private) exists and
 > `BLOB_READ_WRITE_TOKEN` is set on api + worker: the api boots with `storage="vercel-blob"`
-> (see "Vercel Blob" below).
+> (see "Vercel Blob (files)" below).
 
 ## Known gaps (read this first)
 
@@ -180,7 +180,7 @@ Railway api and worker through `@tj/storage` (`createStorage` picks `VercelBlobS
 | Region   | **`fra1`** (Frankfurt, EU). Blob offers no Amsterdam region (allowed: `arn1 bom1 cdg1 cle1 cpt1 dub1 dxb1 fra1 gru1 hkg1 hnd1 iad1 icn1 kix1 lhr1 pdx1 sfo1 sin1 syd1 yul1`); `fra1` is the closest to Railway's `europe-west4` (Amsterdam) and keeps the EU residency of ADR 0016. Immutable after creation |
 | Base URL | `ii6wcxuulovpp4ou.private.blob.vercel-storage.com` (not browsable without the token)              |
 | Command  | `vercel blob create-store teaching-journey --access private --region fra1 --environment production --environment preview --yes --scope omerbresinskis-projects` (from the repo root, project linked) |
-| Project link | The CLI connected the store to `teaching-journey-web` and injected `BLOB_READ_WRITE_TOKEN` into the project's Production/Preview env. The SPA never reads it, so it was removed again (`vercel env rm BLOB_READ_WRITE_TOKEN production`) to keep the secret off the web project; the store stays connected and the token stays valid. `bun run env:check` treats it as `extra` if it reappears |
+| Project link | The CLI connected the store to `teaching-journey-web` and injected `BLOB_READ_WRITE_TOKEN` into the project's Production env (`vercel env ls` shows no copy in Preview or Development). The SPA never reads it, so it was removed again (`vercel env rm BLOB_READ_WRITE_TOKEN production`) to keep the secret off the web project; the store stays connected and the token stays valid. `bun run env:check` treats it as `extra` if it reappears |
 | Token    | Lives on Railway `api` + `worker` (`production`; PR environments inherit it). Never in git, never on Vercel |
 | Verified | api boot log `storage="vercel-blob"` (production, 2026-09-04); `BLOB_READ_WRITE_TOKEN=… bun test packages/storage/src/vercel-blob.test.ts` → 10 pass against the real store (writes under a fresh `ws_*` prefix and deletes it; the store was empty afterwards) |
 
