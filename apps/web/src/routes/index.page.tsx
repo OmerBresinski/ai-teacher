@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Button } from "@tj/ui";
+import { Button, Card, CardContent } from "@tj/ui";
 import { authClient } from "@/lib/auth";
 import { meQueryOptions, queryKeys } from "@/lib/query";
+
+const labelClass = "text-xs font-medium uppercase tracking-wider text-muted-foreground";
 
 export function IndexPage() {
   const { data: me } = useQuery(meQueryOptions);
@@ -18,9 +20,7 @@ export function IndexPage() {
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-2xl flex-col justify-center gap-10 px-6 py-16">
       <header className="flex flex-col gap-4">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-          Teaching Journey
-        </p>
+        <p className={labelClass}>Teaching Journey</p>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           Hello{me?.user.name ? `, ${me.user.name}` : ""}
         </h1>
@@ -29,16 +29,16 @@ export function IndexPage() {
         </p>
       </header>
 
-      <dl className="grid gap-y-4 rounded-lg border bg-card p-6 text-card-foreground sm:grid-cols-[8rem_1fr] sm:gap-x-6">
-        <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Email
-        </dt>
-        <dd className="break-all">{me?.user.email}</dd>
-        <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Workspace
-        </dt>
-        <dd className="break-all font-mono text-sm">{me?.workspaceId}</dd>
-      </dl>
+      <Card>
+        <CardContent>
+          <dl className="grid gap-y-4 sm:grid-cols-[8rem_1fr] sm:gap-x-6">
+            <dt className={labelClass}>Email</dt>
+            <dd className="break-all">{me?.user.email}</dd>
+            <dt className={labelClass}>Workspace</dt>
+            <dd className="break-all font-mono text-sm">{me?.workspaceId}</dd>
+          </dl>
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap items-center gap-4">
         <Button variant="outline" onClick={() => void signOut()}>
