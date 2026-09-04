@@ -22,6 +22,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@hono/zod-validator": "0.9.1",
+        "@tj/ai": "workspace:*",
         "@tj/db": "workspace:*",
         "@tj/domain": "workspace:*",
         "@tj/jobs": "workspace:*",
@@ -77,6 +78,7 @@
       "name": "@tj/worker",
       "version": "0.0.0",
       "dependencies": {
+        "@tj/ai": "workspace:*",
         "@tj/db": "workspace:*",
         "@tj/domain": "workspace:*",
         "@tj/jobs": "workspace:*",

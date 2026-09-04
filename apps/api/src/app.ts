@@ -5,6 +5,8 @@
  * Middleware order: request-id → logger → CORS → secureHeaders → routes → onError / notFound.
  * The router type is exported as `AppType` and consumed by `@tj/api-client` (`hc<AppType>()`).
  */
+
+import type { CreatedAi } from "@tj/ai";
 import type { DbHandle } from "@tj/db";
 import type { ReadableStorageAdapter } from "@tj/domain";
 import type { JobsContext } from "@tj/jobs";
@@ -57,6 +59,8 @@ export interface CreateAppOptions {
    * Absent → the route answers 503.
    */
   storage?: ReadableStorageAdapter;
+  /** AI client selected at boot (ADR 0018); future routes consume it through this seam. */
+  ai?: CreatedAi;
 }
 
 function buildApp({

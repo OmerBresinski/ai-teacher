@@ -5,6 +5,8 @@
  * `parseEnv()` is the pure core (returns a Result, never exits) so it can be unit-tested;
  * `loadEnv()` is the boot-time wrapper used by `src/index.ts`.
  */
+
+import { DEFAULT_MODEL_IDS, DEFAULT_REGION } from "@tj/ai";
 import { z } from "zod";
 import { isValidOriginPattern } from "./origins";
 
@@ -62,6 +64,13 @@ export const EnvSchema = z
     WEB_ORIGIN_PATTERNS: originPatternList,
     LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
 
+    // --- AI provider (ADR 0018) ------------------------------------------------------------
+    AWS_BEARER_TOKEN_BEDROCK: optionalString,
+    AWS_REGION: z.string().default(DEFAULT_REGION),
+    AI_MODEL_FRONTIER: z.string().min(1).default(DEFAULT_MODEL_IDS.frontier),
+    AI_MODEL_STANDARD: z.string().min(1).default(DEFAULT_MODEL_IDS.standard),
+    AI_MODEL_SMALL: z.string().min(1).default(DEFAULT_MODEL_IDS.small),
+
     // --- Auth (ADR 0008, TEACH-20) ---------------------------------------------------------
     /** Signs session cookies and tokens. `bun run setup` generates it (infra/env.contract.ts). */
     BETTER_AUTH_SECRET: z
@@ -83,6 +92,13 @@ export const EnvSchema = z
     ENABLE_TEST_ROUTES: optionalString,
   })
   .superRefine((env, ctx) => {
+    if (env.NODE_ENV === "production" && !env.AWS_BEARER_TOKEN_BEDROCK) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["AWS_BEARER_TOKEN_BEDROCK"],
+        message: "required in production (ADR 0018)",
+      });
+    }
     if (env.ENABLE_TEST_ROUTES !== undefined && env.ENABLE_TEST_ROUTES !== "1") {
       ctx.addIssue({
         code: "custom",
@@ -129,6 +145,16 @@ export function parseEnv(source: Record<string, string | undefined> = process.en
     errors.unshift({
       variable: "ENABLE_TEST_ROUTES",
       message: "Cannot be set when NODE_ENV=production",
+    });
+  }
+  if (
+    source.NODE_ENV === "production" &&
+    (source.AWS_BEARER_TOKEN_BEDROCK ?? "").trim() === "" &&
+    !errors.some((e) => e.variable === "AWS_BEARER_TOKEN_BEDROCK")
+  ) {
+    errors.unshift({
+      variable: "AWS_BEARER_TOKEN_BEDROCK",
+      message: "required in production (ADR 0018)",
     });
   }
   return { ok: false, errors };

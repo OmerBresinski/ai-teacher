@@ -42,6 +42,11 @@ is set".
 | `STORAGE_PUBLIC_BASE_URL` | api, worker | config | — | n/a | n/a | manual | Local-disk adapter only: base URL returned by `getSignedUrl` instead of `file://` paths. |
 | `STORAGE_ROOT` | api, worker | config | — | n/a | n/a | manual | Local-disk adapter only: directory that holds stored objects. Defaults to `.data/storage` (gitignored) when unset. |
 | `STORAGE_PUBLIC_PREFIXES` | api, worker | config | — | n/a | n/a | manual | Comma-separated key prefixes treated as public by `@tj/storage` (served by URL instead of the `GET /files/:key` proxy). Empty means everything is private. Leave unset on Railway: the production store `teaching-journey` is a **private** store and rejects `access: "public"` uploads. |
+| `AWS_BEARER_TOKEN_BEDROCK` | api, worker | secret | — | prod | n/a | manual | Amazon Bedrock API key (bearer). Required in production; when unset in development/test `@tj/ai` is `unconfigured` and AI jobs/routes fail fast. Never set on Vercel (ADR 0018). |
+| `AWS_REGION` | api, worker | config | `us-east-1` | prod | n/a | template | Amazon Bedrock region. `us-east-1` is the data-residency deviation recorded in ADR 0016 §5; production uses this value (ADR 0018). |
+| `AI_MODEL_FRONTIER` | api, worker | config | `us.anthropic.claude-opus-5` | prod | n/a | template | Bedrock model ID for the F13 §7 frontier class: planning, adaptation and coherence. |
+| `AI_MODEL_STANDARD` | api, worker | config | `us.anthropic.claude-sonnet-5` | prod | n/a | template | Bedrock model ID for the F13 §7 standard class: plan, notes and slide outline generation. |
+| `AI_MODEL_SMALL` | api, worker | config | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | prod | n/a | template | Bedrock model ID for the F13 §7 small class: items, glossary, variants and summaries. |
 | `EVENTS_MAX_STREAMS_PER_WORKSPACE` | api | config | — | n/a | n/a | template | Concurrent SSE streams per Workspace before `429 rate_limited` (default 20). |
 | `EVENTS_REPLAY_LIMIT` | api | config | — | n/a | n/a | template | Most `job_events` rows replayed when a stream opens (default 500, max 5000). |
 | `EVENTS_HEARTBEAT_MS` | api | config | — | n/a | n/a | template | Interval of the `: ping` SSE comment that keeps proxies awake (default 15000). |
@@ -95,15 +100,15 @@ this contract (missing keys, malformed URLs/ports/enums — values are never pri
 - **reference** — a Railway reference / template such as `${{postgres.POSTGRES_PASSWORD}}` or `https://${{RAILWAY_PUBLIC_DOMAIN}}`, seeded by `provision.sh` (`bun scripts/railway-vars.ts <service>` prints the exact list)
   `DATABASE_URL`, `BETTER_AUTH_URL`
 - **template** — a plain, non-secret value with a known default — seeded by `provision.sh` / `vercel env add` / `.env.example`
-  `TJ_PG_PORT`, `TEST_DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`, `WORKER_CONCURRENCY`, `WEB_ORIGIN_PATTERNS`, `COOKIE_SAMESITE`, `MAIL_PROVIDER`, `EVENTS_MAX_STREAMS_PER_WORKSPACE`, `EVENTS_REPLAY_LIMIT`, `EVENTS_HEARTBEAT_MS`, `EVENTS_POLL_MS`, `VITE_APP_ENV`, `VITE_DEV_API_TARGET`, `CI`, `REQUIRE_TEST_DB`
+  `TJ_PG_PORT`, `TEST_DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`, `WORKER_CONCURRENCY`, `WEB_ORIGIN_PATTERNS`, `COOKIE_SAMESITE`, `MAIL_PROVIDER`, `AWS_REGION`, `AI_MODEL_FRONTIER`, `AI_MODEL_STANDARD`, `AI_MODEL_SMALL`, `EVENTS_MAX_STREAMS_PER_WORKSPACE`, `EVENTS_REPLAY_LIMIT`, `EVENTS_HEARTBEAT_MS`, `EVENTS_POLL_MS`, `VITE_APP_ENV`, `VITE_DEV_API_TARGET`, `CI`, `REQUIRE_TEST_DB`
 - **manual** — a human pastes it: OAuth credentials, tokens, real domains. `bun run env:check --fix` prints the exact `railway variable set` / `vercel env add` command (with a placeholder, never a value)
-  `WEB_ORIGIN`, `COOKIE_DOMAIN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `ENABLE_TEST_ROUTES`, `BLOB_READ_WRITE_TOKEN`, `STORAGE_PUBLIC_BASE_URL`, `STORAGE_ROOT`, `STORAGE_PUBLIC_PREFIXES`, `VITE_API_URL`, `RAILWAY_PR_API_URL_TEMPLATE`, `VITE_API_URL_FALLBACK`, `E2E_VERBOSE`, `CI_STRICT`, `TURBO_TOKEN`, `TURBO_TEAM`
+  `WEB_ORIGIN`, `COOKIE_DOMAIN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `ENABLE_TEST_ROUTES`, `BLOB_READ_WRITE_TOKEN`, `STORAGE_PUBLIC_BASE_URL`, `STORAGE_ROOT`, `STORAGE_PUBLIC_PREFIXES`, `AWS_BEARER_TOKEN_BEDROCK`, `VITE_API_URL`, `RAILWAY_PR_API_URL_TEMPLATE`, `VITE_API_URL_FALLBACK`, `E2E_VERBOSE`, `CI_STRICT`, `TURBO_TOKEN`, `TURBO_TEAM`
 
 Expected names per provider target (what `bun run env:check` verifies):
 
-- Railway `api` / `production`: `DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`, `WEB_ORIGIN`, `WEB_ORIGIN_PATTERNS`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `COOKIE_DOMAIN`, `COOKIE_SAMESITE`, `MAIL_PROVIDER`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `BLOB_READ_WRITE_TOKEN`
+- Railway `api` / `production`: `DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`, `WEB_ORIGIN`, `WEB_ORIGIN_PATTERNS`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `COOKIE_DOMAIN`, `COOKIE_SAMESITE`, `MAIL_PROVIDER`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `BLOB_READ_WRITE_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_REGION`, `AI_MODEL_FRONTIER`, `AI_MODEL_STANDARD`, `AI_MODEL_SMALL`
 - Railway `api` / `ai-teacher-pr-<n>`: `DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`, `WEB_ORIGIN`, `WEB_ORIGIN_PATTERNS`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `COOKIE_SAMESITE`, `MAIL_PROVIDER`
-- Railway `worker` / `production`: `DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`, `WORKER_CONCURRENCY`, `BLOB_READ_WRITE_TOKEN`
+- Railway `worker` / `production`: `DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`, `WORKER_CONCURRENCY`, `BLOB_READ_WRITE_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_REGION`, `AI_MODEL_FRONTIER`, `AI_MODEL_STANDARD`, `AI_MODEL_SMALL`
 - Railway `worker` / `ai-teacher-pr-<n>`: `DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`, `WORKER_CONCURRENCY`
 - Vercel `teaching-journey-web` / `production`: `VITE_API_URL`, `VITE_APP_ENV`
 - Vercel `teaching-journey-web` / `preview`: `VITE_APP_ENV`, `RAILWAY_PR_API_URL_TEMPLATE`, `VITE_API_URL_FALLBACK`
@@ -120,7 +125,7 @@ bun run env:check --pr <n> --fix       # same for an open PR environment
 
 ## Rotating a secret
 
-Secret-scoped variables: `DATABASE_URL`, `TEST_DATABASE_URL`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_SECRET`, `BLOB_READ_WRITE_TOKEN`, `TURBO_TOKEN`.
+Secret-scoped variables: `DATABASE_URL`, `TEST_DATABASE_URL`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_SECRET`, `BLOB_READ_WRITE_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, `TURBO_TOKEN`.
 
 1. Generate the new value **without printing it**, e.g. `openssl rand -base64 32 > /tmp/secret` (or let the provider's console generate it).
 2. Set it in the provider, values via stdin so nothing lands in shell history or logs:

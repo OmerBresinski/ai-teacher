@@ -60,6 +60,12 @@ regex = '''(?i)\bBLOB_READ_WRITE_TOKEN\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-
 keywords = ["BLOB_READ_WRITE_TOKEN"]
 
 [[rules]]
+id = "tj-aws-bearer-token-bedrock"
+description = "Teaching Journey secret AWS_BEARER_TOKEN_BEDROCK assigned a literal value (infra/env.contract.ts)"
+regex = '''(?i)\bAWS_BEARER_TOKEN_BEDROCK\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
+keywords = ["AWS_BEARER_TOKEN_BEDROCK"]
+
+[[rules]]
 id = "tj-turbo-token"
 description = "Teaching Journey secret TURBO_TOKEN assigned a literal value (infra/env.contract.ts)"
 regex = '''(?i)\bTURBO_TOKEN\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''

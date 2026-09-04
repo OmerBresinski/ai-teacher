@@ -1,6 +1,7 @@
 import { createDb } from "@tj/db";
 import { JobName } from "@tj/domain";
 import { type BossJob, createBoss, ensureQueues, type JobsContext, runJob } from "@tj/jobs";
+import { createWorkerDeps } from "./deps";
 import { parseEnv } from "./env";
 import { registry } from "./jobs";
 import { createLogger } from "./logger";
@@ -12,6 +13,7 @@ const POLLING_INTERVAL_SECONDS = 0.5;
 
 const env = parseEnv();
 const logger = createLogger(env);
+const deps = createWorkerDeps(env, logger);
 
 const { unsafeDb, sql, close } = createDb(env.DATABASE_URL, { max: 4 });
 const boss = createBoss(env.DATABASE_URL);
@@ -69,7 +71,7 @@ const server = Bun.serve({
     return new Response("not found", { status: 404 });
   },
 });
-logger.info({ port: server.port, env: env.NODE_ENV }, "worker ready");
+logger.info({ port: server.port, env: env.NODE_ENV, ai: deps.ai.kind }, "worker ready");
 
 let stopping = false;
 async function stop(signal: string): Promise<void> {

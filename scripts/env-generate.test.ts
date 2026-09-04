@@ -28,8 +28,13 @@ describe("renderEnvExample", () => {
       "WEB_ORIGIN",
       "BETTER_AUTH_URL",
       "MAIL_PROVIDER",
+      "AWS_REGION",
+      "AI_MODEL_FRONTIER",
+      "AI_MODEL_STANDARD",
+      "AI_MODEL_SMALL",
     ]);
     expect(text).toContain("\n# BETTER_AUTH_SECRET=\n");
+    expect(text).toContain("\n# AWS_BEARER_TOKEN_BEDROCK=\n");
     expect(text).toContain("\n# GOOGLE_CLIENT_SECRET=\n");
     expect(text).toContain("\n# EVENTS_POLL_MS=\n");
     expect(text).toEndWith("\n");

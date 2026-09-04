@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { tmpdir } from "node:os";
+import { DEFAULT_MODEL_IDS, DEFAULT_REGION } from "@tj/ai";
 import { parseEnv } from "./env";
 
 const base = {
@@ -22,7 +23,43 @@ describe("parseEnv", () => {
       BETTER_AUTH_URL: "http://localhost:3001",
       COOKIE_SAMESITE: "lax",
       MAIL_PROVIDER: "console",
+      AWS_REGION: DEFAULT_REGION,
+      AI_MODEL_FRONTIER: DEFAULT_MODEL_IDS.frontier,
+      AI_MODEL_STANDARD: DEFAULT_MODEL_IDS.standard,
+      AI_MODEL_SMALL: DEFAULT_MODEL_IDS.small,
     });
+  });
+
+  test("allows no key outside production and treats a blank key as unset", () => {
+    const development = parseEnv(base);
+    expect(development.ok).toBe(true);
+    if (!development.ok) return;
+    expect(development.env.AWS_BEARER_TOKEN_BEDROCK).toBeUndefined();
+
+    const blank = parseEnv({ ...base, AWS_BEARER_TOKEN_BEDROCK: " " });
+    expect(blank.ok).toBe(true);
+    if (!blank.ok) return;
+    expect(blank.env.AWS_BEARER_TOKEN_BEDROCK).toBeUndefined();
+  });
+
+  test("requires the Bedrock key in production", () => {
+    const production = parseEnv({ ...base, NODE_ENV: "production" });
+    expect(production).toEqual({
+      ok: false,
+      errors: [
+        {
+          variable: "AWS_BEARER_TOKEN_BEDROCK",
+          message: "required in production (ADR 0018)",
+        },
+      ],
+    });
+  });
+
+  test("uses the configured small model", () => {
+    const result = parseEnv({ ...base, AI_MODEL_SMALL: "custom-small" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.env.AI_MODEL_SMALL).toBe("custom-small");
   });
 
   test("auth: short BETTER_AUTH_SECRET and blank optionals", () => {
@@ -48,7 +85,12 @@ describe("parseEnv", () => {
     expect(parseEnv({ ...base, ENABLE_TEST_ROUTES: "1" }).ok).toBe(true);
     const bad = parseEnv({ ...base, ENABLE_TEST_ROUTES: "yes" });
     expect(bad.ok).toBe(false);
-    const prod = parseEnv({ ...base, ENABLE_TEST_ROUTES: "1", NODE_ENV: "production" });
+    const prod = parseEnv({
+      ...base,
+      ENABLE_TEST_ROUTES: "1",
+      NODE_ENV: "production",
+      AWS_BEARER_TOKEN_BEDROCK: "test-key",
+    });
     expect(prod.ok).toBe(false);
     if (prod.ok) return;
     expect(prod.errors).toEqual([
@@ -63,6 +105,7 @@ describe("parseEnv", () => {
       WEB_ORIGIN: "https://app.example.com, https://preview.example.com",
       NODE_ENV: "production",
       LOG_LEVEL: "warn",
+      AWS_BEARER_TOKEN_BEDROCK: "test-key",
     });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
@@ -92,7 +135,14 @@ describe("parseEnv", () => {
 
   test("COOKIE_SAMESITE accepts lax|none|strict, defaults to lax", () => {
     expect(parseEnv({ ...base, COOKIE_SAMESITE: "none" }).ok).toBe(true);
-    expect(parseEnv({ ...base, COOKIE_SAMESITE: "none", NODE_ENV: "production" }).ok).toBe(true);
+    expect(
+      parseEnv({
+        ...base,
+        COOKIE_SAMESITE: "none",
+        NODE_ENV: "production",
+        AWS_BEARER_TOKEN_BEDROCK: "test-key",
+      }).ok,
+    ).toBe(true);
     expect(parseEnv({ ...base, COOKIE_SAMESITE: "None" }).ok).toBe(false);
   });
 

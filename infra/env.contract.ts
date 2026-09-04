@@ -98,6 +98,14 @@ export interface EnvVar {
 
 const PG_LOCAL = "postgres://postgres:postgres@localhost:5432/teaching_journey";
 const PG_LOCAL_TEST = "postgres://postgres:postgres@localhost:5432/teaching_journey_test";
+// Keep these dependency-free: packages/ai/src/env-contract-defaults.test.ts asserts they match
+// @tj/ai's exported defaults.
+const AI_DEFAULT_REGION = "us-east-1";
+const AI_DEFAULT_MODEL_IDS = {
+  frontier: "us.anthropic.claude-opus-5",
+  standard: "us.anthropic.claude-sonnet-5",
+  small: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+} as const;
 /** Railway reference syntax (`${"{{"}service.VAR}}`), resolved by Railway, not a JS template. */
 const RAILWAY_DB_REF = [
   "postgres://$",
@@ -431,6 +439,77 @@ const CONTRACT = [
     files: ["api", "worker"],
     description:
       'Comma-separated key prefixes treated as public by `@tj/storage` (served by URL instead of the `GET /files/:key` proxy). Empty means everything is private. Leave unset on Railway: the production store `teaching-journey` is a **private** store and rejects `access: "public"` uploads.',
+  },
+
+  // --- AI provider (ADR 0018) ---------------------------------------------------------------------
+  {
+    name: "AWS_BEARER_TOKEN_BEDROCK",
+    services: ["api", "worker"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api", "worker"],
+    description:
+      "Amazon Bedrock API key (bearer). Required in production; when unset in development/test `@tj/ai` is `unconfigured` and AI jobs/routes fail fast. Never set on Vercel (ADR 0018).",
+  },
+  {
+    name: "AWS_REGION",
+    services: ["api", "worker"],
+    scope: "config",
+    local: AI_DEFAULT_REGION,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "string",
+    files: ["api", "worker"],
+    railwayValue: AI_DEFAULT_REGION,
+    description:
+      "Amazon Bedrock region. `us-east-1` is the data-residency deviation recorded in ADR 0016 §5; production uses this value (ADR 0018).",
+  },
+  {
+    name: "AI_MODEL_FRONTIER",
+    services: ["api", "worker"],
+    scope: "config",
+    local: AI_DEFAULT_MODEL_IDS.frontier,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "string",
+    files: ["api", "worker"],
+    railwayValue: AI_DEFAULT_MODEL_IDS.frontier,
+    description:
+      "Bedrock model ID for the F13 §7 frontier class: planning, adaptation and coherence.",
+  },
+  {
+    name: "AI_MODEL_STANDARD",
+    services: ["api", "worker"],
+    scope: "config",
+    local: AI_DEFAULT_MODEL_IDS.standard,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "string",
+    files: ["api", "worker"],
+    railwayValue: AI_DEFAULT_MODEL_IDS.standard,
+    description:
+      "Bedrock model ID for the F13 §7 standard class: plan, notes and slide outline generation.",
+  },
+  {
+    name: "AI_MODEL_SMALL",
+    services: ["api", "worker"],
+    scope: "config",
+    local: AI_DEFAULT_MODEL_IDS.small,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "string",
+    files: ["api", "worker"],
+    railwayValue: AI_DEFAULT_MODEL_IDS.small,
+    description:
+      "Bedrock model ID for the F13 §7 small class: items, glossary, variants and summaries.",
   },
 
   // --- api: SSE knobs (ADR 0012, apps/api/src/events/config.ts) ----------------------------------
