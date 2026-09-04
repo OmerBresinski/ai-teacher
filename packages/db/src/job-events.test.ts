@@ -9,8 +9,7 @@ import {
   listJobEvents,
   notifyJobEvent,
 } from "./job-events";
-import { workspaces } from "./schema";
-import { withTestDb } from "./testing";
+import { createTestUserWithWorkspace, withTestDb } from "./testing";
 
 const t = await withTestDb();
 const describeDb = t.ok ? describe : describe.skip;
@@ -28,10 +27,8 @@ describeDb("job events", () => {
 
   beforeEach(async () => {
     await truncateTenantTables();
-    await unsafeDb.insert(workspaces).values([
-      { id: wsA, ownerUserId: "user-a", name: "A" },
-      { id: wsB, ownerUserId: "user-b", name: "B" },
-    ]);
+    await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsA, workspaceName: "A" });
+    await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsB, workspaceName: "B" });
   });
 
   test("insertJobEvent rejects an unknown event type", async () => {

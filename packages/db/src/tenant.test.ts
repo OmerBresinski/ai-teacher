@@ -3,7 +3,7 @@ import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
 import { eq } from "drizzle-orm";
 import { jobEvents, workspaces } from "./schema";
 import { forWorkspace } from "./tenant";
-import { withTestDb } from "./testing";
+import { createTestUserWithWorkspace, withTestDb } from "./testing";
 
 const t = await withTestDb();
 const describeDb = t.ok ? describe : describe.skip;
@@ -33,10 +33,8 @@ describeDb("forWorkspace", () => {
 
   beforeEach(async () => {
     await truncateTenantTables();
-    await unsafeDb.insert(workspaces).values([
-      { id: wsA, ownerUserId: "user-a", name: "A" },
-      { id: wsB, ownerUserId: "user-b", name: "B" },
-    ]);
+    await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsA, workspaceName: "A" });
+    await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsB, workspaceName: "B" });
   });
 
   test("select only returns the scoped workspace's rows", async () => {

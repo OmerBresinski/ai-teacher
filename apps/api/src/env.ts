@@ -21,14 +21,59 @@ const originList = z
   )
   .pipe(z.array(z.url()).min(1));
 
-export const EnvSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().min(1).max(65535).default(3001),
-  DATABASE_URL: z.url(),
-  /** Comma-separated in the environment; an array of origins after parsing. */
-  WEB_ORIGIN: originList,
-  LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
-});
+/** Empty strings (e.g. `GOOGLE_CLIENT_ID=` left in `.env`) count as "unset". */
+const optionalString = z
+  .string()
+  .optional()
+  .transform((v) => (v === undefined || v.trim() === "" ? undefined : v));
+
+export const COOKIE_SAMESITE_VALUES = ["lax", "none", "strict"] as const;
+
+export const EnvSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+    DATABASE_URL: z.url(),
+    /** Comma-separated in the environment; an array of origins after parsing. */
+    WEB_ORIGIN: originList,
+    LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
+
+    // --- Auth (ADR 0008, TEACH-20) ---------------------------------------------------------
+    /** Signs session cookies and tokens. `openssl rand -base64 32`; TEACH-26 makes `setup` do it. */
+    BETTER_AUTH_SECRET: z
+      .string({ error: "Required — generate one with `openssl rand -base64 32`" })
+      .min(32, "Must be at least 32 characters (`openssl rand -base64 32`)"),
+    /** Public origin of this API; magic links point here (`<BETTER_AUTH_URL>/auth/...`). */
+    BETTER_AUTH_URL: z.url().default("http://localhost:3001"),
+    /** Parent domain for the session cookie (`.example.com`) so app.<d> and api.<d> share it. */
+    COOKIE_DOMAIN: optionalString,
+    /** `none` is needed when web and api are on unrelated origins (Vercel ↔ Railway previews). */
+    COOKIE_SAMESITE: z.enum(COOKIE_SAMESITE_VALUES).default("lax"),
+    /** Only `console` exists until F17 wires a real provider. */
+    MAIL_PROVIDER: z.string().default("console"),
+    GOOGLE_CLIENT_ID: optionalString,
+    GOOGLE_CLIENT_SECRET: optionalString,
+    MICROSOFT_CLIENT_ID: optionalString,
+    MICROSOFT_CLIENT_SECRET: optionalString,
+    /** `"1"` mounts the test-only routes (TEACH-22). Never in production. */
+    ENABLE_TEST_ROUTES: optionalString,
+  })
+  .superRefine((env, ctx) => {
+    if (env.ENABLE_TEST_ROUTES !== undefined && env.ENABLE_TEST_ROUTES !== "1") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ENABLE_TEST_ROUTES"],
+        message: 'Must be "1" or unset',
+      });
+    }
+    if (env.ENABLE_TEST_ROUTES === "1" && env.NODE_ENV === "production") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ENABLE_TEST_ROUTES"],
+        message: "Cannot be set when NODE_ENV=production",
+      });
+    }
+  });
 
 export type Env = z.output<typeof EnvSchema>;
 

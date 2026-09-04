@@ -123,9 +123,97 @@ module-level singletons, so tests can inject fakes.
 | -------------------- | ------------------------------------------------------------ |
 | `GET /health`        | `200 { ok: true, db: "up" }` or `503` envelope (`retryable: true`) |
 | `GET /hello?name=x`  | `200 { message: "Hello, x" }`; `400 validation_failed` when `name` is empty |
+| `GET /me`            | `200 { user: { id, email, name }, workspaceId }`; `401 unauthorized` without a session (see "Auth") |
+| `/auth/*`            | better-auth endpoints (magic link, session, sign-out; OAuth when configured) |
 
 ## `AppType` and `@tj/api-client`
 
 `src/app.ts` exports `type AppType`. `package.json#exports` exposes `./app` → `./src/app.ts` so
 `packages/api-client` can `import type { AppType } from "@tj/api/app"` (type-only; nothing from the
 server ends up in a browser bundle). See `packages/api-client/README.md`.
+
+## Auth
+
+Identity is **better-auth 1.7.2** (pinned exactly; ADR 0008) running inside this app with the
+Drizzle adapter over `@tj/db`. Only the email magic link is enabled; Google and Microsoft OAuth
+are wired in `src/auth/auth.ts` and switch on when their credentials are present.
+
+### Environment
+
+| Variable | Default | Notes |
+| -------- | ------- | ----- |
+| `BETTER_AUTH_SECRET` | **required** | ≥ 32 chars, signs cookies/tokens. `openssl rand -base64 32`. TEACH-26 makes `bun run setup` generate it. |
+| `BETTER_AUTH_URL` | `http://localhost:3001` | Public origin of this API. Magic links are `<BETTER_AUTH_URL>/auth/magic-link/verify?token=…`. |
+| `COOKIE_DOMAIN` | unset | Parent domain for the session cookie, e.g. `.teachingjourney.app`. |
+| `COOKIE_SAMESITE` | `lax` | `lax` \| `none` \| `strict`. |
+| `MAIL_PROVIDER` | `console` | Only `console` exists until F17; anything else stops boot with `MAIL_PROVIDER: only "console" is supported until F17`. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | unset | Both set → Google sign-in on. Otherwise boot logs `Google sign-in disabled (no credentials)`. |
+| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | unset | Same for Microsoft. |
+| `ENABLE_TEST_ROUTES` | unset | `"1"` mounts TEACH-22's test-only routes. Refused when `NODE_ENV=production`. |
+
+### Dev flow (console mail)
+
+```sh
+curl -X POST localhost:3001/auth/sign-in/magic-link \
+  -H 'content-type: application/json' -H 'origin: http://localhost:5173' \
+  -d '{"email":"you@example.com","callbackURL":"http://localhost:5173/"}'
+```
+
+The api log prints a boxed `MAIL (MAIL_PROVIDER=console)` block containing the link. Open it (or
+`curl -i "<link>"`): the response is a `302` to `callbackURL` with `Set-Cookie: tj.session_token=…`
+and `tj.session_data=…` (a 5-minute signed cache of the session so `requireSession` does not hit
+the database on every request). `GET /me` with the cookie returns
+`{ user: { id, email, name }, workspaceId }`. Links are single-use and expire after 5 minutes.
+Sign out with `POST /auth/sign-out` (with the cookie and an `Origin` header).
+
+### Cookie strategy
+
+- **Local development**: web and api are made same-origin by the Vite dev proxy, so no
+  `COOKIE_DOMAIN`, `SameSite=Lax`, not `Secure`.
+- **Production**: `app.<parent>` (Vercel) and `api.<parent>` (Railway) share the cookie via
+  `COOKIE_DOMAIN=.<parent>` (`advanced.crossSubDomainCookies`); cookies are `Secure` whenever
+  `NODE_ENV=production`.
+- **Previews on unrelated origins** (Vercel preview ↔ Railway PR environment): set
+  `COOKIE_SAMESITE=none` (requires `Secure`, i.e. production mode) and leave `COOKIE_DOMAIN` unset.
+- Cookie names are prefixed `tj.`; `trustedOrigins` is `WEB_ORIGIN`, so requests carrying an
+  `Origin` outside that list are rejected by better-auth's CSRF check.
+- Trade-off of the cookie cache: after sign-out, a client that keeps replaying its old
+  `tj.session_data` cookie is still accepted for up to `cookieCache.maxAge` (300 s). Browsers do
+  not do this — sign-out clears both cookies.
+
+### `requireSession`
+
+`requireSession(auth, db)` (`src/auth/require-session.ts`) is mounted path-scoped in `app.ts`:
+`/me`, `/jobs/*`, `/events`. Add new protected prefixes there. After it runs:
+
+| `c.get(…)` | Value |
+| ---------- | ----- |
+| `"user"` | better-auth user: `{ id, email, name, emailVerified, image, createdAt, updatedAt }` |
+| `"session"` | better-auth session: `{ id, token, userId, expiresAt, ipAddress, userAgent, … }` |
+| `"workspaceId"` | the caller's personal `WorkspaceId` — what `forWorkspace()` / `getWorkspaceId(c)` should use |
+
+No session → `401 { error: { code: "unauthorized", message: "You need to sign in to do that.", retryable: false, requestId } }`.
+`createApp({ auth })` is optional: without an `Auth`, `/auth/*` is not mounted and every
+protected path answers 401 (unit tests of public routes).
+
+### Personal workspace
+
+`databaseHooks.user.create.after` calls `createPersonalWorkspace(db, user.id)`
+(`src/auth/workspace-hook.ts`), inserting `workspaces { id: newId(), owner_user_id, name: "Personal" }`
+with `ON CONFLICT (owner_user_id) DO NOTHING` — the unique index on `workspaces.owner_user_id`
+(migration `0001_auth`) encodes the MVP rule of one personal Workspace per user; F17 relaxes it.
+`requireSession` also creates the Workspace if it is missing, and `index.ts` runs
+`logUsersWithoutWorkspace()` at boot, which warns with a count if any user has none.
+
+Tests: `@tj/db/testing` exports `createTestUserWithWorkspace(unsafeDb, opts?)` (inserts a `users`
+row directly plus its Workspace) and `issueSessionCookie(auth, userId)` (returns a `Cookie` header
+value signed by the real better-auth instance). `src/mail` exports `CaptureMailSender` to read the
+magic link out of the "sent" email. See `src/auth.db.test.ts`.
+
+### Upgrading better-auth
+
+`better-auth` is pinned exactly (`apps/api` and `packages/api-client` must match). After bumping:
+`bunx @better-auth/cli@latest generate --config <file exporting auth> --output /tmp/auth.ts` and
+diff against `packages/db/src/schema/auth.ts` (keep `timestamptz` and the snake_case index
+names), then `bun run --cwd packages/db db:generate` for a migration if columns changed. Run
+`bun run --filter=@tj/api test` — `auth.db.test.ts` covers the whole flow against Postgres.
