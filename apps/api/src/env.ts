@@ -63,7 +63,7 @@ export const EnvSchema = z
     LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
 
     // --- Auth (ADR 0008, TEACH-20) ---------------------------------------------------------
-    /** Signs session cookies and tokens. `openssl rand -base64 32`; TEACH-26 makes `setup` do it. */
+    /** Signs session cookies and tokens. `bun run setup` generates it (infra/env.contract.ts). */
     BETTER_AUTH_SECRET: z
       .string({ error: "Required — generate one with `openssl rand -base64 32`" })
       .min(32, "Must be at least 32 characters (`openssl rand -base64 32`)"),

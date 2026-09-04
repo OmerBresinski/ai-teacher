@@ -5,7 +5,7 @@ import { z } from "zod";
  * Railway the variables come from the service. A bad value prints one line per problem and
  * exits 1 — nothing else runs.
  */
-const EnvSchema = z.object({
+export const EnvSchema = z.object({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(4),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
