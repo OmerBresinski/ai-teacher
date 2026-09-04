@@ -41,7 +41,9 @@ reason. Prompts, messages, completion text, and API keys are never logged.
 
 `AiError` codes are `"unconfigured"`, `"provider"`, and `"invalid_model"`; use
 `isAiError(error, code?)` to identify them. Provider failures are wrapped as `AiError("provider")`
-and retain the original failure as `cause`.
+and carry a content-free `ProviderFailure` summary (`name`, truncated `message`, `statusCode`,
+`isRetryable`) as `cause`. The raw AI SDK error is dropped on purpose: it exposes the request body
+(the prompt) and response body, which must never reach a logger (ADR 0015).
 
 There is no package retry layer. Pass an `abortSignal` (for example `ctx.signal` from a Job) to the
 AI SDK call. The SDK's default `maxRetries` is 2; callers can override it per call when necessary.

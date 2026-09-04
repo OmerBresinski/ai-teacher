@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
-import { createAi, isAiError } from "@tj/ai";
+import { AiError, createAi, isAiError } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { NonRetryableError } from "@tj/jobs";
 import pino from "pino";
@@ -84,6 +84,39 @@ describe("ai.ping job", () => {
     }
     expect(JSON.stringify(lines)).not.toContain(h.ctx.payload.prompt);
     expect(JSON.stringify(lines)).not.toContain("private provider response");
+  });
+
+  test("fails non-retryably when the model class is rejected as invalid", async () => {
+    const ai = createFakeAi();
+    ai.model = () => {
+      throw new AiError("invalid_model", "unknown model class");
+    };
+    const h = ctx({ ai });
+
+    await expect(aiPingJob(h.ctx)).rejects.toMatchObject({
+      name: "NonRetryableError",
+      message: "unknown model class",
+    });
+  });
+
+  test("skips the final progress report when aborted during the model call", async () => {
+    const ac = new AbortController();
+    const ai = createFakeAi();
+    const realModel = ai.model.bind(ai);
+    ai.model = (cls) => {
+      ac.abort("cancelled mid-call");
+      return realModel(cls);
+    };
+    const h = ctx({ ai }, ac);
+
+    try {
+      await aiPingJob(h.ctx);
+    } catch (error) {
+      // The SDK may reject with an abort error; either way no completion progress is emitted.
+      expect((error as Error).name).toMatch(/Abort/);
+    }
+
+    expect(h.calls.map(([percent]) => percent)).toEqual([10]);
   });
 
   test("does not call a model after the signal is already aborted", async () => {
