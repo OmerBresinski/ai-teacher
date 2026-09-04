@@ -2,7 +2,8 @@
  * `createApp({ env, db })` — builds the Hono application with no `serve` side effects, so tests
  * call `app.request()` and `src/index.ts` hands `app.fetch` to `Bun.serve`.
  *
- * Middleware order: request-id → logger → CORS → secureHeaders → routes → onError / notFound.
+ * Middleware order: request-id → logger → CORS → secureHeaders → CSRF guard → session guard →
+ * routes → onError / notFound.
  * The router type is exported as `AppType` and consumed by `@tj/api-client` (`hc<AppType>()`).
  */
 
@@ -17,6 +18,7 @@ import { secureHeaders } from "hono/secure-headers";
 import type { Auth } from "./auth/auth";
 import { requireSession } from "./auth/require-session";
 import type { AppEnv } from "./context";
+import { rejectCrossSiteRequests } from "./csrf";
 import type { Env } from "./env";
 import { classifyError, envelope } from "./errors";
 import { createEventsRuntime, type EventsRuntime } from "./events/runtime";
@@ -132,14 +134,15 @@ function buildApp({
   // 4. Security headers.
   app.use(secureHeaders());
 
-  // TEACH-20: better-auth at /auth/* and `requireSession` on every protected path prefix.
+  // TEACH-20: better-auth at /auth/* and guards on every protected path prefix.
   if (auth) app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
+  const csrf = rejectCrossSiteRequests(allowed);
   const guard = requireSession(auth, db);
-  app.use("/me", guard);
-  app.use("/me/*", guard);
-  app.use("/jobs/*", guard);
-  app.use("/events", guard);
-  app.use("/files/*", guard);
+  const PROTECTED_PATHS = ["/me", "/me/*", "/jobs/*", "/events", "/files/*"] as const;
+  for (const path of PROTECTED_PATHS) {
+    app.use(path, csrf);
+    app.use(path, guard);
+  }
   app.use("/jobs/ai-ping", rateLimitByWorkspace(aiLimiter));
   app.use("/me/greeting", rateLimitByWorkspace(aiLimiter));
 

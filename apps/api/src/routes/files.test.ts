@@ -50,6 +50,14 @@ describe("GET /files/:key", () => {
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
   });
 
+  test("foreign Origin → 403 before reading storage", async () => {
+    const res = await app.request(`/files/${key}`, {
+      headers: { Origin: "https://evil.example", [WORKSPACE_HEADER]: ws },
+    });
+    expect(res.status).toBe(403);
+    expect(await errorCode(res)).toBe("forbidden");
+  });
+
   test("another Workspace's key → 404 (not 403)", async () => {
     const res = await app.request(`/files/${foreignKey}`, { headers: { [WORKSPACE_HEADER]: ws } });
     expect(res.status).toBe(404);

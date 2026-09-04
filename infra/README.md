@@ -116,6 +116,8 @@ them (Vercel's build uses its own remote cache: "Detected Turbo").
    fed to better-auth `trustedOrigins`). `WEB_ORIGIN` keeps the exact production/alias origins.
    `WEB_ORIGIN_PATTERNS` is inherited from production by PR environments (it is set there today);
    `.railway/railway.ts` cannot seed PR-only values — see "Config-as-code" (`preserve()` only).
+   A new web origin absent from `WEB_ORIGIN`/`WEB_ORIGIN_PATTERNS` receives 403 on protected routes
+   instead of a silent CORS failure.
 4. Vercel's SSO protection does not affect the page's own XHR/SSE to the api once the page loaded.
 
 ### Cookie stopgap: `COOKIE_SAMESITE=none` in production
@@ -124,8 +126,9 @@ them (Vercel's build uses its own remote cache: "Detected Turbo").
 parent domain, so the ADR 0008 target (`SameSite=Lax` + `COOKIE_DOMAIN=.<domain>`) cannot work yet.
 Since 2026-09-04 production runs **`COOKIE_SAMESITE=none`** (session cookie
 `__Secure-tj.session_token …; Secure; SameSite=None`, verified: magic link → 302 to the Vercel
-origin → `/me` 200). CSRF exposure is bounded by CORS (`WEB_ORIGIN` / `WEB_ORIGIN_PATTERNS`) and
-better-auth's origin checks. Plan: once a domain exists, point `app.<domain>` at Vercel and
+origin → `/me` 200). Cross-site requests are rejected by `rejectCrossSiteRequests` (403) using the
+same origin allow-list as CORS; CORS alone does not prevent CSRF. Plan: once a domain exists, point
+`app.<domain>` at Vercel and
 `api.<domain>` at Railway, then `COOKIE_DOMAIN=.<domain>` + `COOKIE_SAMESITE=lax` on the api
 (post-provisioning checklist). Recorded as dated amendments in ADR 0008 and ADR 0010.
 

@@ -289,10 +289,13 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
     await runtime.stop();
   });
 
-  test("POST /jobs/ai-ping stores the defaulted smoke payload", async () => {
+  test("POST /jobs/ai-ping with an allowed Origin stores the defaulted smoke payload", async () => {
     const res = await app.request("/jobs/ai-ping", {
       method: "POST",
-      headers: headers(workspaceA, { "content-type": "application/json" }),
+      headers: headers(workspaceA, {
+        "content-type": "application/json",
+        Origin: "https://app.example.test",
+      }),
       body: JSON.stringify({}),
     });
     expect(res.status).toBe(202);
