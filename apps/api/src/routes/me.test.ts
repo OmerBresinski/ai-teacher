@@ -125,6 +125,33 @@ describe("GET /me/greeting", () => {
     });
   });
 
+  test("does not call the model after the Workspace limit is reached", async () => {
+    const { lines, logger } = createMemoryLogger();
+    const app = createApp({
+      env: TEST_ENV,
+      db: fakeSql(true),
+      logger,
+      ai: createFakeAi({ logger, usage: { inputTokens: 2, outputTokens: 1 } }),
+      rateLimit: { limit: 2, windowMs: 60_000 },
+    });
+
+    expect((await greetingRequest(app)).status).toBe(200);
+    expect((await greetingRequest(app)).status).toBe(200);
+    const logCountBeforeLimitedRequest = lines.length;
+
+    const limited = await greetingRequest(app);
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("Retry-After")).toBe("60");
+    expect(await limited.json()).toMatchObject({
+      error: { code: "rate_limited", retryable: true },
+    });
+
+    const laterRecords = lines
+      .slice(logCountBeforeLimitedRequest)
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(laterRecords.filter((record) => record.ai !== undefined)).toEqual([]);
+  });
+
   test("requires a session", async () => {
     const app = createApp({ env: TEST_ENV, db: fakeSql(true) });
     const res = await app.request("/me/greeting");
