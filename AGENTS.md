@@ -44,12 +44,21 @@ together. Work items that are dashboard-only or founder decisions are reported b
    does), push, and re-review only if the fix was structural. If it has none, merge straight
    away. Merge with `gh pr merge --squash --delete-branch` once CI is green
    (`gh pr checks --watch`).
-4. **Close the loop.** When the work came from Linear, move the issue to **Done** once the PR is
-   merged, with a comment naming the PR and anything deliberately left open; keep
+4. **Watch the deploys.** A merge to `master` deploys Vercel (web) and Railway (api, worker).
+   After merging, wait for both and check they succeeded:
+   `vercel ls teaching-journey-web --scope omerbresinskis-projects` (latest Production must be
+   `Ready`) and `railway deployment list --service api|worker --environment production --json |
+   jq '.[0].status'` (must be `SUCCESS`; `railway logs --service <svc> --build` for the failure).
+   If either failed, fix it before doing anything else — a fix PR through the same
+   implement → review → merge steps — and do not mark the Linear issue Done until the deploy is
+   green.
+5. **Close the loop.** When the work came from Linear, move the issue to **Done** once the PR is
+   merged and deployed, with a comment naming the PR and anything deliberately left open; keep
    `infra/README.md` "Known gaps" in sync when the issue is one.
 
 Linear status mirrors the pipeline: Todo → In Progress (branch started) → In Review (PR open,
-review running) → Done (merged). Never skip a state and never mark Done before the merge.
+review running) → Done (merged and deployed). Never skip a state and never mark Done before the
+merge and the deploy check.
 
 ## Package map
 
