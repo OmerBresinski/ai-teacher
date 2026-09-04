@@ -1,0 +1,35 @@
+{
+  "name": "@tj/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Drizzle ORM schema, migrations and the forWorkspace() tenancy helper for Teaching Journey (ADR 0006/0007/0012).",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./tenant": "./src/tenant.ts",
+    "./schema": "./src/schema/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun src/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@tj/domain": "workspace:*",
+    "drizzle-orm": "0.45.2",
+    "postgres": "3.4.9",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@tj/config": "workspace:*",
+    "drizzle-kit": "0.31.10",
+    "typescript": "5.9.3"
+  }
+}
