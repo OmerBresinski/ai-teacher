@@ -35,7 +35,9 @@ together. Work items that are dashboard-only or founder decisions are reported b
    `(TEACH-n)` and a link to the issue when there is one). Serialize units that touch the same
    files (e.g. `infra/README.md`) — merge one, rebase the next. Subagents must run
    `bun run lint`, `bun run typecheck` and the relevant tests before opening the PR, and must not
-   merge. When there is a Linear issue, move it to **In Progress** when work starts.
+   merge. When there is a Linear issue, move it to **In Progress** and set its **Assignee** to
+   the currently authenticated Linear user (`assignee: "me"` in `linear_save_issue`) when work
+   starts, so the ticket is never left unassigned while it is being worked on.
 2. **Review with a separate subagent.** For every PR, launch a fresh `general` subagent that
    loads **`thermo-nuclear-code-quality-review`** (root `.agents/skills/`) and reviews the branch
    diff against `master`. It reports findings only; it does not edit code. Move the Linear issue
@@ -56,9 +58,9 @@ together. Work items that are dashboard-only or founder decisions are reported b
    merged and deployed, with a comment naming the PR and anything deliberately left open; keep
    `infra/README.md` "Known gaps" in sync when the issue is one.
 
-Linear status mirrors the pipeline: Todo → In Progress (branch started) → In Review (PR open,
-review running) → Done (merged and deployed). Never skip a state and never mark Done before the
-merge and the deploy check.
+Linear status mirrors the pipeline: Todo → In Progress (branch started, assignee set to the
+authenticated user) → In Review (PR open, review running) → Done (merged and deployed). Never
+skip a state and never mark Done before the merge and the deploy check.
 
 ## Package map
 
