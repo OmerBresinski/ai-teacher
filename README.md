@@ -31,7 +31,7 @@ Everyday commands (all run through Turborepo, see [ADR 0002](docs/adr/0002-turbo
 | `bun run format`           | Biome format (write)                                             |
 | `bun run typecheck`        | `tsc --noEmit` per workspace, dependencies first                 |
 | `bun run test`             | Unit/integration tests (`bun test` or Vitest per workspace)      |
-| `bun run test:e2e`         | Playwright, after `build`                                        |
+| `bun run test:e2e`         | Playwright + axe, after `build` ([`docs/testing.md`](docs/testing.md)) |
 | `bun run verify-bootstrap` | End-to-end check of this scaffold (`scripts/verify-bootstrap.sh`) |
 
 ## Local development
@@ -124,7 +124,7 @@ Schema and migrations live in [`packages/db`](packages/db/README.md) (`@tj/db`, 
 bun run db:migrate    # apply packages/db/drizzle to DATABASE_URL, then TEST_DATABASE_URL (idempotent)
 bun run db:generate   # after editing packages/db/src/schema: drizzle-kit generate -> review -> commit
 bun run db:studio     # Drizzle Studio against DATABASE_URL
-bun run test:db       # ensure Postgres, migrate, run the @tj/db integration tests
+bun run test:db       # ensure Postgres, migrate, run EVERY workspace's tests with REQUIRE_TEST_DB=1
 ```
 
 Migrations are committed SQL under `packages/db/drizzle/` and run as an explicit step (`setup`,
@@ -146,15 +146,21 @@ the sole consumer: `bun run dev` inside it (env from `apps/worker/.env`), `GET :
 SIGTERM waits up to 25 s for active jobs and exits 0. pg-boss installs its own `pgboss` schema on
 first start (`pgboss_test` in tests) — the one set of tables not managed by `@tj/db` migrations.
 
-### Tests against the test database
+### Testing
+
+Full guide: [`docs/testing.md`](docs/testing.md) — runners and the file-naming rule (`bun test`
+for server packages, Vitest via the `@tj/config/vitest/react` preset for React packages, Playwright
+`e2e/**/*.spec.ts`), the `withTestDb()` harness and factories, the test-only magic-link capture
+route, running subsets, e2e locally, flake guidance.
 
 Integration tests use `TEST_DATABASE_URL` (default
 `postgres://postgres:postgres@localhost:5432/teaching_journey_test`), never `DATABASE_URL`, so a test
 run cannot clobber your development data. The test database exists as long as the volume was created
-by our init script — if `doctor` reports it missing, run `bun run db:reset`. The test harness
-(TEACH-22) wires `bun test`/Vitest to this URL. `turbo.json` passes `DATABASE_URL` and
-`TEST_DATABASE_URL` through to the `test` task, so a value exported in the shell (as CI does) reaches
-every workspace's tests; locally the per-package `.env` files supply them.
+by our init script — if `doctor` reports it missing, run `bun run db:reset`. `bun run test` skips
+DB suites with a printed reason when the database is unreachable; `bun run test:db` sets
+`REQUIRE_TEST_DB=1` so they fail instead. `turbo.json` passes `DATABASE_URL`, `TEST_DATABASE_URL`
+and `REQUIRE_TEST_DB` through to the `test` task, so a value exported in the shell (as CI does)
+reaches every workspace's tests; locally the per-package `.env` files supply them.
 
 ### API
 
@@ -351,9 +357,9 @@ Every job starts from the composite action [`.github/actions/setup`](.github/act
 | --- | ------------ | ----------------- | -------- |
 | `quality` | `bun run lint`, `typecheck`, `skills:check`, `verify-bootstrap`; commitlint on the PR title | the same four commands; `echo "<title>" \| bunx --bun commitlint` | yes |
 | `tooling-smoke` | `bun run setup --ci && bun run doctor` against docker compose, then `bun run test:scripts` | the same commands (needs Docker) | yes |
-| `test` | `bun run test` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test`; `bun run db:migrate` when the script exists; uploads `coverage/` | `bun run db:up && bun run test` | **gated** (see below) |
+| `test` | `bun run test:db` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test` (migrates, `REQUIRE_TEST_DB=1`); uploads `coverage/` | `bun run test:db` | **gated** (see below) |
 | `build` | `bun run build`; `bun run check:bundle-budget --markdown-out bundle-budget.md`; sticky PR comment `<!-- tj-bundle-budget -->` | `bun run build && bun run check:bundle-budget` | yes |
-| `e2e` | Playwright Chromium (cached) + `bun run test:e2e`; report uploaded on failure. Skipped until `apps/web/package.json` exists | `bunx playwright install chromium && bun run test:e2e` | **gated** |
+| `e2e` | Postgres service + `teaching_journey_test`, Playwright Chromium (cached) + `bun run test:e2e`; report uploaded on failure | `bunx playwright install chromium && bun run test:e2e` (needs the compose Postgres) | **gated** |
 | `audit` | `bun audit --audit-level=high` (native in Bun 1.3.6); when npm's advisory endpoint is down it falls back to `osv-scanner` on `bun.lock`, failing only on high/critical; `actions/dependency-review-action` with `fail-on-severity: high` on PRs | `bun audit --audit-level=high` (or `docker run --rm -v "$PWD:/src" -w /src ghcr.io/google/osv-scanner:v2.5.1 --lockfile=bun.lock`) | yes |
 | `secrets` | `gitleaks/gitleaks-action` over the full history (`fetch-depth: 0`) | `gitleaks git --redact .` (or `gitleaks protect --staged` via the pre-commit hook) | yes |
 | `docker-build-smoke` | `docker build .` -- skipped until a `Dockerfile` exists | `docker build .` | yes (once present) |

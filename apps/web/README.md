@@ -135,10 +135,21 @@ it on every PR. Current initial load ≈ 134 KB gz. Keep it down by:
 
 ## Testing
 
-Vitest + React Testing Library + jsdom (ADR 0014), `src/**/*.test.{ts,tsx}`. `vitest.setup.ts`
-registers `jest-dom` matchers, points `localStorage` at jsdom's implementation and cleans up
-after each test; `vitest.config.ts` sets `VITE_API_URL=/api` for tests. Covered: env parsing,
-`meQueryOptions` (200 / 401 → `null` / envelope → `ApiError`), the sign-in form (trim + lowercase,
-callback URL, error state), `useJobEvents` with a fake `EventSource` (parse, ignore unknown,
-terminal close, reconnect on id change), and `src/types.test-d.tsx` for compile-time contracts.
-Playwright + axe end-to-end tests arrive with TEACH-22.
+Full guide: [`docs/testing.md`](../../docs/testing.md).
+
+**Unit (Vitest):** `bun run test` → `vitest run` with the shared preset
+`@tj/config/vitest/react` (jsdom, jest-dom, `cleanup()`, `css: true`, v8 coverage;
+`vitest.config.ts` only adds `VITE_API_URL=/api`). Files: `src/**/*.test.{ts,tsx}` — nothing
+else. Covered: env parsing, `meQueryOptions` (200 / 401 → `null` / envelope → `ApiError`), the
+sign-in form (trim + lowercase, callback URL, error state), `useJobEvents` with a fake
+`EventSource` (`src/test/fake-event-source.ts`), and `src/types.test-d.tsx` for compile-time
+contracts (checked by `tsc`, not run).
+
+**End-to-end (Playwright + axe):** `bun run test:e2e` (root, via turbo after `build`) or
+`bunx playwright test` here. `playwright.config.ts` starts the api (`NODE_ENV=test`,
+`ENABLE_TEST_ROUTES=1`), the worker and a `vite preview` of an e2e build (`dist/e2e`, with
+`VITE_API_URL=http://localhost:3811` baked in) against `TEST_DATABASE_URL`, on 3811/3822/4193.
+`e2e/fixtures.ts` provides `signedInPage` (magic link read back from the api's test-only
+`GET /__test/last-magic-link`). Specs: `e2e/auth.spec.ts`, `e2e/jobs.spec.ts` (including the
+reload-mid-run replay proof), `e2e/a11y.spec.ts` (zero serious/critical axe violations on
+`/sign-in`, `/`, `/dev/jobs`). Files: `e2e/**/*.spec.ts` — never `*.test.*`.
