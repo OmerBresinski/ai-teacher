@@ -202,6 +202,13 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         retryable: false,
       });
       // pg-boss: terminal failure, retry_count still 0, so no second `started` ever appears.
+      // The `failed` event is written inside the handler, *before* pg-boss records the result, so
+      // give the row a moment to reach its terminal state instead of reading it immediately.
+      const settled = await waitFor(
+        async () => (await bossState(jobId))?.state === "failed",
+        2_000,
+      );
+      expect(settled).toBe(true);
       const row = await bossState(jobId);
       expect(row?.state).toBe("failed");
       expect(row?.retryCount).toBe(0);
