@@ -24,8 +24,8 @@ await deleteByPrefix(adapter, workspaceId); // F15-R02
 | `VercelBlobStorage({ token, publicPrefixes?, proxyBasePath?, listPageSize? })` | production | Vercel Blob via `@vercel/blob` 2.8.0 |
 
 Both implement `StorageAdapter` from `@tj/domain` (`put`, `getSignedUrl`, `delete`, `list`) plus
-`get(key)` (`ReadableStorageAdapter`), which the API's file proxy needs to stream bytes
-server-side. `get` is not yet on the domain interface — lift it there once TEACH-16/19 land.
+`get(key)` (`ReadableStorageAdapter`, also from `@tj/domain`), which the API's `GET /files/:key`
+proxy uses to stream bytes server-side (`apps/api/src/routes/files.ts`).
 
 ### LocalDiskStorage
 
@@ -101,12 +101,10 @@ workspace id and cleans up after itself.
 Vercel Blob regions are Vercel-controlled, so files are EU-resident at best, not UK-resident.
 Revisit before M3 / M4; an S3-compatible adapter behind the same interface is the escape hatch.
 
-## ADR 0011 follow-up
+## ADR 0011 amendment (2026-09-04)
 
-ADR 0011 says clients read through `getSignedUrl`. With private Blobs and no SDK presigned-URL
-support in 2.8.0, this package returns an API proxy path instead. Suggested amendment text:
-
-> Private objects are read through the API proxy `GET /files/:key`, which authorises the caller
-> and streams the object via `StorageAdapter.get`. `getSignedUrl` returns that proxy path (or the
-> CDN URL for explicitly public prefixes); `expiresInSeconds` is advisory. `get(key)` is added to
-> the `StorageAdapter` interface.
+ADR 0011 originally said clients read through `getSignedUrl`. With private Blobs and no SDK
+presigned-URL support in 2.8.0, private objects are read through the API proxy `GET /files/:key`
+(session + workspace-scoped key, streams `get(key)`); `getSignedUrl` returns that proxy path, or
+the CDN URL for explicitly public prefixes only. See the amendment in
+[`docs/adr/0011-vercel-blob.md`](../../docs/adr/0011-vercel-blob.md).
