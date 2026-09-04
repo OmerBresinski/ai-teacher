@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { GreetingQuerySchema, GreetingResponseSchema } from "./greeting";
+import { FALLBACK_GREETING, GreetingResponseSchema } from "./greeting";
 
 describe("Greeting schemas", () => {
   test("accepts a model greeting", () => {
@@ -14,7 +14,9 @@ describe("Greeting schemas", () => {
     expect(GreetingResponseSchema.safeParse({ text: "x", source: "cached" }).success).toBe(false);
   });
 
-  test("rejects an unknown weekday", () => {
-    expect(GreetingQuerySchema.safeParse({ weekday: "Funday" }).success).toBe(false);
+  test("the fallback itself is a valid greeting", () => {
+    expect(
+      GreetingResponseSchema.safeParse({ text: FALLBACK_GREETING, source: "fallback" }).success,
+    ).toBe(true);
   });
 });

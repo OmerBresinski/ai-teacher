@@ -3,22 +3,48 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { FALLBACK_GREETING } from "@tj/domain";
 import { Button, Card, CardContent } from "@tj/ui";
 import { authClient } from "@/lib/auth";
-import { greetingQueryOptions, localWeekday, meQueryOptions, queryKeys } from "@/lib/query";
+import { greetingQueryOptions, meQueryOptions, queryKeys } from "@/lib/query";
 
 const labelClass = "text-xs font-medium uppercase tracking-wider text-muted-foreground";
 
+/** Shown in place of the joke when the Workspace hits the api's AI rate limit (429). */
+export const RATE_LIMITED_MESSAGE =
+  "The joke machine is cooling down. Even in 2026, comedy has a rate limit.";
+
+/** Inline so `apps/web` does not take on an icon dependency for one button. */
+function RefreshIcon({ spinning }: { spinning: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={spinning ? "animate-spin" : undefined}
+    >
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v6h-6" />
+    </svg>
+  );
+}
+
 export function IndexPage() {
   const { data: me } = useQuery(meQueryOptions);
-  const weekday = localWeekday();
-  const greeting = useQuery({ ...greetingQueryOptions(weekday), enabled: me != null });
-  const text = greeting.data?.text ?? FALLBACK_GREETING;
+  const greeting = useQuery({ ...greetingQueryOptions, enabled: me != null });
+  // A failed refetch keeps the previous joke in `data`; the rate-limit notice must win over it.
+  const rateLimited = greeting.error?.code === "rate_limited";
+  const text = rateLimited ? RATE_LIMITED_MESSAGE : (greeting.data?.text ?? FALLBACK_GREETING);
+  // Hidden during the first load *and* while a refresh is in flight, so the new joke fades in.
+  const hidden = greeting.isFetching;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   async function signOut() {
     await authClient.signOut();
     await queryClient.invalidateQueries({ queryKey: queryKeys.me });
-    queryClient.removeQueries({ queryKey: ["me", "greeting"] });
+    queryClient.removeQueries({ queryKey: queryKeys.greeting });
     await navigate({ to: "/sign-in", search: {} });
   }
 
@@ -29,12 +55,30 @@ export function IndexPage() {
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           Hello{me?.user.name ? `, ${me.user.name}` : ""}
         </h1>
-        <p
-          className={`text-lg text-muted-foreground transition-opacity duration-300 ${greeting.isPending ? "opacity-0" : "opacity-100"}`}
-          aria-hidden={greeting.isPending}
-        >
-          {text}
-        </p>
+        {/* `min-h-14` reserves two `text-lg` lines so a longer joke does not shift the page. */}
+        <div className="flex min-h-14 items-start gap-2">
+          <p
+            className={`text-lg transition-opacity duration-300 ${rateLimited ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"} ${hidden ? "opacity-0" : "opacity-100"}`}
+            aria-hidden={hidden}
+          >
+            {text}
+          </p>
+          {/* Announces the new joke to assistive tech once it has settled; the visible line fades. */}
+          <span role="status" className="sr-only">
+            {hidden ? "" : text}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="mt-1 shrink-0 text-muted-foreground"
+            aria-label="New joke"
+            title="New joke"
+            disabled={me == null || greeting.isFetching}
+            onClick={() => void greeting.refetch()}
+          >
+            <RefreshIcon spinning={greeting.isFetching} />
+          </Button>
+        </div>
       </header>
 
       <Card>

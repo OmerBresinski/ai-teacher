@@ -1,13 +1,6 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient } from "@tanstack/react-query";
-import {
-  ApiError,
-  greetingQueryOptions,
-  localWeekday,
-  type Me,
-  meQueryOptions,
-  queryKeys,
-} from "./query";
+import { ApiError, greetingQueryOptions, type Me, meQueryOptions, queryKeys } from "./query";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -33,13 +26,10 @@ describe("meQueryOptions", () => {
     expect(queryKeys.job("x")).toEqual(["job", "x"]);
   });
 
-  it("keys greetings by the teacher's local weekday", () => {
-    expect<readonly unknown[]>(greetingQueryOptions("Monday").queryKey).toEqual([
-      "me",
-      "greeting",
-      "Monday",
-    ]);
-    expect(localWeekday(new Date(2026, 8, 4, 12))).toBe("Friday");
+  it("keys the greeting under `me` so sign-out invalidation covers it", () => {
+    expect<readonly unknown[]>(greetingQueryOptions.queryKey).toEqual(["me", "greeting"]);
+    expect(greetingQueryOptions.staleTime).toBe(Number.POSITIVE_INFINITY);
+    expect(greetingQueryOptions.retry).toBe(false);
   });
 
   it("resolves the body on 200", async () => {
