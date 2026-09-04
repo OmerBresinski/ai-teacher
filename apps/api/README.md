@@ -125,6 +125,7 @@ module-level singletons, so tests can inject fakes.
 | `GET /hello?name=x`  | `200 { message: "Hello, x" }`; `400 validation_failed` when `name` is empty |
 | `GET /me`            | `200 { user: { id, email, name }, workspaceId }`; `401 unauthorized` without a session (see "Auth") |
 | `/auth/*`            | better-auth endpoints (magic link, session, sign-out; OAuth when configured) |
+| `GET /__test/last-magic-link?email=x` | **Test-only** (see "Test routes"): `200 { email, url }` or `404 not_found`. Absent unless `NODE_ENV=test` and `ENABLE_TEST_ROUTES=1`. |
 
 ## `AppType` and `@tj/api-client`
 
@@ -165,6 +166,25 @@ and `tj.session_data=…` (a 5-minute signed cache of the session so `requireSes
 the database on every request). `GET /me` with the cookie returns
 `{ user: { id, email, name }, workspaceId }`. Links are single-use and expire after 5 minutes.
 Sign out with `POST /auth/sign-out` (with the cookie and an `Origin` header).
+
+### Test routes (`src/routes/test-routes.ts`, TEACH-22)
+
+`GET /__test/last-magic-link?email=<address>` returns the last magic link the api "sent" to that
+address — `200 { email, url }`, or `404 not_found` before any was sent. Playwright's `signedInPage`
+fixture uses it to sign in without a mailbox ([`docs/testing.md`](../../docs/testing.md)).
+
+It is mounted **only** when `testRoutesEnabled(env)` — `NODE_ENV === "test"` **and**
+`ENABLE_TEST_ROUTES=1`. In that mode `src/index.ts` wraps the mail sender in a `CaptureMailSender`
+(messages are recorded in memory *and* still forwarded to the console sender), and the app logs
+`test routes enabled …` at `warn`. The route is not part of `AppType`. As a second, independent
+guard, `src/env.ts` refuses to boot with `ENABLE_TEST_ROUTES` set when `NODE_ENV=production`
+(`ENABLE_TEST_ROUTES: Cannot be set when NODE_ENV=production`, exit 1), even if other variables
+are also invalid. Start the api in this mode by hand with:
+
+```sh
+NODE_ENV=test ENABLE_TEST_ROUTES=1 PORT=3811 DATABASE_URL=$TEST_DATABASE_URL \
+  WEB_ORIGIN=http://localhost:4193 BETTER_AUTH_URL=http://localhost:3811 bun src/index.ts
+```
 
 ### Cookie strategy
 

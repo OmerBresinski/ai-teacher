@@ -1,4 +1,8 @@
 {
   "extends": "./tsconfig/node.json",
-  "include": ["tailwind.preset.ts"]
+  "compilerOptions": {
+    "lib": ["DOM", "ESNext"],
+    "types": ["@types/bun", "vitest/globals"]
+  },
+  "include": ["tailwind.preset.ts", "vitest/*.ts"]
 }

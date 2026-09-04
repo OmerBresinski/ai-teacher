@@ -1,8 +1,8 @@
 # CI (TEACH-23). Reproduce every job locally with the commands in README "CI".
 #
-# Phase split: `apps/*` and `packages/db` do not exist yet (TEACH-14/21/22). The `test` and `e2e`
-# jobs therefore run in "gated" mode -- they still execute, but a failure does not block the PR --
-# until the repository variable CI_STRICT is set to "true" (Phase 2, see README "CI").
+# Phase split: the `test` and `e2e` jobs run in "gated" mode -- they execute, but a failure does
+# not block the PR -- until the repository variable CI_STRICT is set to "true" (Phase 2, see
+# README "CI"). Both jobs are wired to the real suites since TEACH-22 (docs/testing.md).
 #
 # Every third-party action is pinned to a full commit SHA; the trailing comment is the tag it was
 # resolved from. Update the SHA and the comment together (Dependabot opens those PRs).
@@ -101,7 +101,7 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # Gated until CI_STRICT=true (Phase 2): Postgres-backed tests land with TEACH-14/22.
+    # Gated until CI_STRICT=true (Phase 2, README "CI").
     continue-on-error: ${{ vars.CI_STRICT != 'true' }}
     services:
       postgres:
@@ -141,16 +141,11 @@ jobs:
           psql -h localhost -U postgres -d teaching_journey_test -v ON_ERROR_STOP=1 \
             -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
-      - name: bun run db:migrate (when @tj/db defines it)
-        run: |
-          if jq -e '.scripts["db:migrate"]' package.json >/dev/null; then
-            bun run db:migrate
-          else
-            echo "db:migrate script not defined yet (TEACH-14) -- skipping"
-          fi
-
-      - name: bun run test
-        run: bun run test
+      # `test:db` under CI=true skips docker compose (Postgres is the job service above), migrates
+      # both databases and runs `turbo run test` with REQUIRE_TEST_DB=1 so a DB suite that cannot
+      # connect fails instead of skipping (docs/testing.md).
+      - name: bun run test:db
+        run: bun run test:db
 
       - name: Upload coverage
         if: always() && hashFiles('**/coverage/**') != ''
@@ -217,13 +212,38 @@ jobs:
     name: e2e
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Playwright lands with apps/web (TEACH-21/22); gated until CI_STRICT=true.
+    # Playwright (apps/web/e2e, TEACH-22); gated until CI_STRICT=true.
     needs: detect
     if: needs.detect.outputs.web == 'true'
     continue-on-error: ${{ vars.CI_STRICT != 'true' }}
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: teaching_journey
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h localhost -U postgres -d teaching_journey"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      # playwright.config.ts boots api + worker against this database and migrates it first.
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/teaching_journey_test
+      PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
+
+      - name: Create the test database (mirrors infra/postgres/init)
+        run: |
+          psql -h localhost -U postgres -d teaching_journey -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE teaching_journey_test;"
+          psql -h localhost -U postgres -d teaching_journey_test -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Playwright version
         id: pw

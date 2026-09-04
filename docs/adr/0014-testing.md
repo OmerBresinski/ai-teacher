@@ -19,3 +19,4 @@ Server packages run on Bun; React components need a DOM environment and Testing 
 
 - Two unit runners, each idiomatic for its target; both are fast.
 - The F15-R11 "statement verification" suite will live in `packages/db` and `apps/api` tests once those features exist.
+- **Amendment (TEACH-22, 2026-09-04):** instead of a per-run schema, integration tests share the `teaching_journey_test` database (`TEST_DATABASE_URL`), migrated once per process and truncated between tests, with a session-level advisory lock serialising concurrent packages; the api's SSE suite uses a derived `<db>_api` database. `REQUIRE_TEST_DB=1` (set by `bun run test:db` and CI) makes an unavailable database a failure rather than a skip. Details: [`docs/testing.md`](../testing.md).

@@ -95,6 +95,18 @@ export function parseEnv(source: Record<string, string | undefined> = process.en
     variable: String(issue.path[0] ?? "(root)"),
     message: describeIssue(issue),
   }));
+  // Zod skips `superRefine` when the object itself is invalid; the production gate for the
+  // test routes must be reported regardless of what else is missing (TEACH-22).
+  if (
+    source.NODE_ENV === "production" &&
+    (source.ENABLE_TEST_ROUTES ?? "").trim() !== "" &&
+    !errors.some((e) => e.variable === "ENABLE_TEST_ROUTES")
+  ) {
+    errors.unshift({
+      variable: "ENABLE_TEST_ROUTES",
+      message: "Cannot be set when NODE_ENV=production",
+    });
+  }
   return { ok: false, errors };
 }
 

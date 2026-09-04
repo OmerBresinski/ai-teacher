@@ -40,16 +40,30 @@ export class ConsoleMailSender implements MailSender {
   }
 }
 
-/** Test double: keeps every message so a test can read the magic link out of `last`. */
+/**
+ * Keeps every message in memory so the magic link can be read back — by unit tests (`last`) and
+ * by the test-only `GET /__test/last-magic-link` route (`lastFor(email)`, TEACH-22). When
+ * `forwardTo` is given the message is also delivered through it (the api process in
+ * `NODE_ENV=test` wraps the console sender so the link is still printed).
+ */
 export class CaptureMailSender implements MailSender {
   readonly all: MailMessage[] = [];
+
+  constructor(private readonly forwardTo?: MailSender) {}
 
   get last(): MailMessage | undefined {
     return this.all.at(-1);
   }
 
+  /** Most recent message addressed to `email` (case-insensitive), or `undefined`. */
+  lastFor(email: string): MailMessage | undefined {
+    const wanted = email.trim().toLowerCase();
+    return this.all.findLast((m) => m.to.toLowerCase() === wanted);
+  }
+
   async send(message: MailMessage): Promise<void> {
     this.all.push(message);
+    await this.forwardTo?.send(message);
   }
 
   clear(): void {

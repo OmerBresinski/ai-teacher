@@ -1,24 +1,9 @@
-import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
-import { afterEach, beforeEach, vi } from "vitest";
-
 /**
- * Node >= 22.4 exposes an experimental `localStorage` global (a non-functional stub unless
- * `--localstorage-file` is set). Vitest's jsdom environment only overrides a fixed list of window
- * keys and `localStorage`/`sessionStorage` are not on it, so the Node stub shadows jsdom's Storage
- * ("localStorage.clear is not a function"). Point the globals at jsdom's implementation instead.
- * Uses defineProperty (no read) so Node's "--localstorage-file" warning is never triggered.
+ * Workspace-specific Vitest setup for `@tj/ui`. jest-dom matchers, the jsdom `localStorage`
+ * fix and `cleanup()` come from the shared preset (`@tj/config/vitest/setup`); this file only
+ * adds the controllable `matchMedia` mock the theme tests need.
  */
-const dom = (globalThis as { jsdom?: { window: Window } }).jsdom;
-if (dom) {
-  for (const key of ["localStorage", "sessionStorage"] as const) {
-    Object.defineProperty(globalThis, key, {
-      value: dom.window[key],
-      configurable: true,
-      writable: true,
-    });
-  }
-}
+import { afterEach, beforeEach, vi } from "vitest";
 
 /**
  * jsdom has no `window.matchMedia`. Provide a controllable mock so theme tests can flip OS
@@ -85,6 +70,5 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  cleanup();
   vi.unstubAllGlobals();
 });

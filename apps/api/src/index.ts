@@ -10,19 +10,23 @@ import { logUsersWithoutWorkspace } from "./auth/workspace-hook";
 import { loadEnv } from "./env";
 import { createEventsRuntime } from "./events/runtime";
 import { createLogger } from "./logger";
-import { loadMailSender } from "./mail";
+import { CaptureMailSender, loadMailSender } from "./mail";
+import { testRoutesEnabled } from "./routes/test-routes";
 
 const env = loadEnv();
 const logger = createLogger(env);
 const db = createDb(env.DATABASE_URL);
-const auth = createAuth({ env, db, mail: loadMailSender(env, logger), logger });
+// TEACH-22: under NODE_ENV=test + ENABLE_TEST_ROUTES=1 the console sender is wrapped so the last
+// magic link can be read back through GET /__test/last-magic-link (Playwright sign-in fixture).
+const testMail = testRoutesEnabled(env) ? new CaptureMailSender(loadMailSender(env, logger)) : null;
+const auth = createAuth({ env, db, mail: testMail ?? loadMailSender(env, logger), logger });
 const boss = createBoss(env.DATABASE_URL, { applicationName: "tj-api" });
 boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
 await boss.start();
 await ensureQueues(boss);
 const jobs: JobsContext = { boss, db: db.unsafeDb, sql: db.sql };
 const events = createEventsRuntime({ jobs, databaseUrl: env.DATABASE_URL, logger });
-const app = createApp({ env, db, logger, auth, jobs, events });
+const app = createApp({ env, db, logger, auth, jobs, events, testMail: testMail ?? undefined });
 void logUsersWithoutWorkspace(db, logger).catch((err) =>
   logger.warn({ err }, "users-without-workspace self-check failed"),
 );
