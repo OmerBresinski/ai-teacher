@@ -255,9 +255,15 @@ deviation is recorded in ADR [0016 §5](../docs/adr/0016-prd-deviations.md#amend
 
 **Verification recorded (2026-09-04):** both services deploy `SUCCESS` and boot with
 `ai="bedrock"`; production verification is the `ai.ping` job path in ADR
-[0018 §7](../docs/adr/0018-ai-provider.md#decision).
+[0018 §7](../docs/adr/0018-ai-provider.md#decision). Three-class smoke test against production
+(`POST /jobs/ai-ping` → `GET /jobs/:id/events`, all `completed`; model access is granted for all
+three in `us-east-1`):
 
-<!-- TEACH-72: three-class smoke results go here -->
+| class | progress message |
+| ----- | ---------------- |
+| `small` | `us.anthropic.claude-haiku-4-5-20251001-v1:0: in=16 out=5 finish=stop` |
+| `standard` | `us.anthropic.claude-sonnet-5: in=17 out=4 finish=stop` |
+| `frontier` | `us.anthropic.claude-opus-5: in=17 out=4 finish=stop` |
 
 ## Topology
 
