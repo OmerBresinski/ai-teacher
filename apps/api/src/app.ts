@@ -38,7 +38,7 @@ import { meRoutes } from "./routes/me";
 import { testRoutes, testRoutesEnabled } from "./routes/test-routes";
 
 export interface CreateAppOptions {
-  env: Pick<Env, "NODE_ENV" | "LOG_LEVEL" | "WEB_ORIGIN"> &
+  env: Pick<Env, "NODE_ENV" | "LOG_LEVEL" | "MAIL_PROVIDER" | "WEB_ORIGIN"> &
     Partial<Pick<Env, "ENABLE_TEST_ROUTES" | "WEB_ORIGIN_PATTERNS">>;
   /** Only `sql` is used today (`/health`); routes will take `unsafeDb` through `forWorkspace()`. */
   db: Pick<DbHandle, "sql">;
@@ -156,6 +156,11 @@ function buildApp({
   if (testMail && testRoutesEnabled(env)) {
     app.route("/", testRoutes(testMail));
     logger.warn("test routes enabled (NODE_ENV=test, ENABLE_TEST_ROUTES=1): GET /__test/*");
+  }
+  if (env.NODE_ENV === "production" && env.MAIL_PROVIDER === "console") {
+    logger.warn(
+      "ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1: magic-link sign-in URLs are printed to this log. Remove the variable once a real MailSender (TEACH-29) is configured.",
+    );
   }
 
   // 6. Errors → envelope. Unknown errors are logged with their stack but never sent to clients.

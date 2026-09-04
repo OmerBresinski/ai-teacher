@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { HTTPException } from "hono/http-exception";
+import pino from "pino";
 import { createApp } from "./app";
 import type { ErrorEnvelope } from "./errors";
 
@@ -31,6 +32,31 @@ describe("GET /hello", () => {
     const res = await testApp().request("/hello");
     expect(res.status).toBe(400);
     expect((await errorBody(res)).error.fields).toEqual(["name"]);
+  });
+});
+
+describe("boot warnings", () => {
+  test("warns when production has opted in to console mail", () => {
+    const lines: string[] = [];
+    const logger = pino(
+      { level: "trace" },
+      {
+        write(line) {
+          lines.push(line);
+        },
+      },
+    );
+    createApp({
+      env: { ...TEST_ENV, NODE_ENV: "production" },
+      db: fakeSql(true),
+      logger,
+    });
+    expect(lines).toHaveLength(1);
+    const line = JSON.parse(lines[0] ?? "") as { level: number; msg: string };
+    expect(line.level).toBe(40);
+    expect(line.msg).toBe(
+      "ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1: magic-link sign-in URLs are printed to this log. Remove the variable once a real MailSender (TEACH-29) is configured.",
+    );
   });
 });
 

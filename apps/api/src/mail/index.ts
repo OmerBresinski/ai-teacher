@@ -21,9 +21,12 @@ export interface MailSender {
 
 const RULE = "═".repeat(78);
 
-/** Logs each message at `info` inside a clearly boxed block so the link is easy to spot. */
+/** Logs each message inside a clearly boxed block so the link is easy to spot. */
 export class ConsoleMailSender implements MailSender {
-  constructor(private readonly logger: Logger) {}
+  constructor(
+    private readonly logger: Logger,
+    private readonly env: Pick<Env, "NODE_ENV">,
+  ) {}
 
   async send(message: MailMessage): Promise<void> {
     const block = [
@@ -36,6 +39,13 @@ export class ConsoleMailSender implements MailSender {
       RULE,
       "",
     ].join("\n");
+    if (this.env.NODE_ENV === "production") {
+      this.logger.warn(
+        { to: message.to, subject: message.subject },
+        `SIGN-IN LINK IN LOG (ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1) →${block}`,
+      );
+      return;
+    }
     this.logger.info({ to: message.to, subject: message.subject }, block);
   }
 }
@@ -72,15 +82,21 @@ export class CaptureMailSender implements MailSender {
 }
 
 /** Pick the sender for `MAIL_PROVIDER`. Anything but `console` is a boot error until F17. */
-export function createMailSender(env: Pick<Env, "MAIL_PROVIDER">, logger: Logger): MailSender {
-  if (env.MAIL_PROVIDER === "console") return new ConsoleMailSender(logger);
+export function createMailSender(
+  env: Pick<Env, "MAIL_PROVIDER" | "NODE_ENV">,
+  logger: Logger,
+): MailSender {
+  if (env.MAIL_PROVIDER === "console") return new ConsoleMailSender(logger, env);
   throw new Error(
     `MAIL_PROVIDER: only "console" is supported until F17 (got "${env.MAIL_PROVIDER}")`,
   );
 }
 
 /** Boot-time wrapper: an unsupported `MAIL_PROVIDER` prints one readable line and exits 1. */
-export function loadMailSender(env: Pick<Env, "MAIL_PROVIDER">, logger: Logger): MailSender {
+export function loadMailSender(
+  env: Pick<Env, "MAIL_PROVIDER" | "NODE_ENV">,
+  logger: Logger,
+): MailSender {
   try {
     return createMailSender(env, logger);
   } catch (err) {
