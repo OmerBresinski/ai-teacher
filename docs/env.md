@@ -52,7 +52,7 @@ is set".
 | `RAILWAY_PR_API_URL_TEMPLATE` | web | config | — | n/a | preview | manual | Vercel Preview only. `https://api-pr-{pr}.up.railway.app`: `scripts/vercel-env.ts` replaces `{pr}` with VERCEL_GIT_PULL_REQUEST_ID to point the preview at the Railway PR api. Confirm the real pattern after the first Railway PR deploy. Never in a local .env. |
 | `VITE_API_URL_FALLBACK` | web | config | — | n/a | preview | manual | Vercel Preview only. API origin for preview builds without a PR number (branch pushes) or without a template — point it at the Railway production api. Never in a local .env. |
 | `E2E_VERBOSE` | web | config | — | n/a | n/a | manual | Any value makes `playwright.config.ts` pipe api/worker logs at level info instead of discarding them. Shell only. |
-| `CI` | ci | config | — | n/a | n/a | template | `true` on GitHub Actions. `test:db` then skips docker compose, Playwright uses CI settings, vitest enables coverage. |
+| `CI` | ci | config | — | n/a | n/a | template | `true` on GitHub Actions. `test:db` then skips docker compose, Playwright uses CI settings, `bun test` enables coverage. |
 | `CI_STRICT` | ci | config | — | n/a | n/a | manual | Repository variable. `true` makes the gated `test` and `e2e` jobs blocking (README "CI"). |
 | `REQUIRE_TEST_DB` | ci, compose | config | — | n/a | n/a | template | `1` makes DB-backed suites fail instead of skipping when TEST_DATABASE_URL is unreachable. Set by `bun run test:db` and CI. |
 | `TURBO_TOKEN` | ci | secret | — | n/a | n/a | manual | Repository secret: Vercel token for the Turborepo remote cache (ADR 0002). Empty = no remote cache. |

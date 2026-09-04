@@ -251,7 +251,7 @@ jobs:
       - name: Playwright version
         id: pw
         run: |
-          version="$(bunx playwright --version 2>/dev/null | awk '{print $2}' || echo unknown)"
+          version="$(bunx --bun playwright --version 2>/dev/null | awk '{print $2}' || echo unknown)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
@@ -260,8 +260,9 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
 
+      # `--bun` everywhere Playwright is invoked: the whole toolchain runs on Bun, no Node (ADR 0014).
       - name: Install Chromium
-        run: bunx playwright install --with-deps chromium
+        run: bunx --bun playwright install --with-deps chromium
 
       - name: bun run test:e2e
         run: bun run test:e2e
