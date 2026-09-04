@@ -51,6 +51,7 @@
     },
     "test": {
       "dependsOn": ["//#test:scripts"],
+      "env": ["DATABASE_URL", "TEST_DATABASE_URL"],
       "outputs": ["coverage/**"],
       "inputs": [
         "$TURBO_DEFAULT$",
