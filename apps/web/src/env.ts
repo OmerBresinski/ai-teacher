@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const absoluteUrl = z.url({ protocol: /^https?$/ });
 
-const EnvSchema = z.object({
+export const EnvSchema = z.object({
   /** API base URL: `/api` (dev proxy) or an absolute origin in production builds. */
   VITE_API_URL: z.string().min(1).default("/api"),
   VITE_APP_ENV: z.enum(["development", "preview", "production"]).default("development"),

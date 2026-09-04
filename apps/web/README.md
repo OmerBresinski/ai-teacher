@@ -18,13 +18,13 @@ bun run lint         # biome check .
 
 Vite exposes only `VITE_*` variables to the bundle. They are parsed with Zod when `src/env.ts`
 loads; an invalid value throws a readable `Invalid web environment:` error before anything
-renders (ADR 0015). `.env.example` is committed; `bun run setup` copies it to `.env`.
+renders (ADR 0015). `bun run setup` copies the generated `.env.example` to `.env`.
 
-| Variable              | Default       | Notes                                                                              |
-| --------------------- | ------------- | ---------------------------------------------------------------------------------- |
-| `VITE_API_URL`        | `/api`        | Base URL for the API. Relative in dev (proxied, below). A **production build must use an absolute `http(s)` URL** (checked via `import.meta.env.PROD`). |
-| `VITE_APP_ENV`        | `development` | `development` \| `preview` \| `production`                                          |
-| `VITE_DEV_API_TARGET` | `http://localhost:3001` | Read by `vite.config.ts` only (never bundled): where the dev proxy forwards `/api/*`. |
+`VITE_API_URL` (`/api` in dev, an absolute `http(s)` URL in a production build — checked via
+`import.meta.env.PROD`), `VITE_APP_ENV`, `VITE_DEV_API_TARGET` (read by `vite.config.ts` only) and
+the Vercel-only `RAILWAY_PR_API_URL_TEMPLATE` / `VITE_API_URL_FALLBACK` are declared in the env
+contract — [`docs/env.md`](../../docs/env.md). `src/env.contract.test.ts` keeps `EnvSchema` and the
+contract in step.
 
 ## Dev proxy decision
 
@@ -148,7 +148,7 @@ scopes, Railway pairing, dashboard-only checklist, verified preview) is in
 | `src/lib/speed-insights.ts` | `@vercel/speed-insights` via dynamic import behind `import.meta.env.VITE_APP_ENV === "production"` (a literal Vite inlines, so preview/dev `dist/` contain none of it — checked on the live preview). Reports the matched route pattern, never the pathname. |
 
 Env values per scope live in Vercel, not in git; production `VITE_API_URL` is a `TODO(domain)`
-placeholder until TEACH-26. The API side of previews (`COOKIE_SAMESITE=none`,
+placeholder until the domain exists (`bun run env:check` verifies the names; `docs/env.md`). The API side of previews (`COOKIE_SAMESITE=none`,
 `WEB_ORIGIN_PATTERNS`) is described in `apps/api/README.md` "Cookie strategy".
 
 Manual deploys go from the **repository root** (`vercel link --yes --project teaching-journey-web`,

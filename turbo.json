@@ -55,6 +55,7 @@
       "dependsOn": ["^typecheck", "//#typecheck:root"],
       "inputs": [
         "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/infra/env.contract.ts",
         "!**/.agents/**",
         "!**/.claude/**",
         "!**/.opencode/**",
@@ -74,6 +75,7 @@
       "outputs": ["coverage/**"],
       "inputs": [
         "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/infra/env.contract.ts",
         "!**/.agents/**",
         "!**/.claude/**",
         "!**/.opencode/**",
@@ -88,18 +90,27 @@
       "outputs": ["playwright-report/**", "test-results/**"]
     },
     "//#lint:root": {
-      "inputs": ["*.json", "*.ts", "scripts/**/*.ts", "biome.json"]
+      "inputs": ["*.json", "*.ts", "scripts/**/*.ts", "infra/**/*.ts", "biome.json"]
     },
     "//#typecheck:root": {
       "inputs": [
         "tsconfig.json",
         "*.ts",
         "scripts/**/*.ts",
+        "infra/**/*.ts",
         "$TURBO_ROOT$/packages/config/tsconfig/*.json"
       ]
     },
     "//#test:scripts": {
-      "inputs": ["scripts/**/*.ts"]
+      "inputs": [
+        "scripts/**/*.ts",
+        "infra/**/*.ts",
+        "turbo.json",
+        ".env.example",
+        "**/.env.example",
+        "docs/env.md",
+        ".gitleaks.toml"
+      ]
     },
     "//#lint:root:fix": {
       "cache": false

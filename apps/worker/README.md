@@ -9,15 +9,10 @@ surface beyond `/health`.
 ## Environment
 
 Validated with Zod at boot (`src/env.ts`, ADR 0015); a bad value prints the offending keys and
-exits 1. `bun run setup` copies `.env.example` to `.env`; Bun reads `.env` from the cwd only.
-
-| Variable | Default | Meaning |
-| -------- | ------- | ------- |
-| `DATABASE_URL` | — (required) | Postgres URL; same database as `apps/api`. pg-boss installs its own `pgboss` schema on first start. |
-| `WORKER_CONCURRENCY` | `4` | Jobs processed concurrently per queue in this process (`localConcurrency`). |
-| `PORT` | `3002` | Health endpoint port. |
-| `LOG_LEVEL` | `info` | pino level. |
-| `NODE_ENV` | `development` | `development` switches on `pino-pretty`. |
+exits 1. `bun run setup` copies the generated `.env.example` to `.env`; Bun reads `.env` from the
+cwd only. Variables (`DATABASE_URL` required; `WORKER_CONCURRENCY` 4, `PORT` 3002, `LOG_LEVEL`,
+`NODE_ENV`) and where each value is set: [`docs/env.md`](../../docs/env.md).
+`src/env.contract.test.ts` keeps `EnvSchema` and the contract in step.
 
 ## Run
 

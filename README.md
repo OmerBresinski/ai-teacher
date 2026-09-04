@@ -64,9 +64,11 @@ All root scripts are TypeScript run by Bun (`scripts/*.ts`, helpers in `scripts/
 
 | Command                | What it does                                                                        |
 | ---------------------- | ----------------------------------------------------------------------------------- |
-| `bun run setup [--ci]` | Bootstrap (above). `--ci` skips `lefthook install`.                                 |
+| `bun run setup [--ci]` | Bootstrap (above): `.env` files from the examples, `BETTER_AUTH_SECRET` generated (never printed), Postgres, migrations. `--ci` skips `lefthook install`. |
 | `bun run dev`          | Ensure Postgres, then `turbo run dev` (prefixed logs; `TURBO_UI=tui bun run dev` for the TUI). Extra args pass through: `bun run dev -- --filter=@tj/web`. |
-| `bun run doctor`       | Diagnose: Bun, Docker, compose health, `DATABASE_URL`/`TEST_DATABASE_URL`, databases, pgvector, `.env` keys, ports 3001/3002/5173, lefthook, gitleaks. |
+| `bun run doctor`       | Diagnose: Bun, Docker, compose health, `DATABASE_URL`/`TEST_DATABASE_URL`, databases, pgvector, every `.env` against the env contract (missing keys, malformed values — names only), ports 3001/3002/5173, lefthook, gitleaks. |
+| `bun run env:generate [--check]` | Regenerate `docs/env.md`, every `.env.example` and `.gitleaks.toml` from [`infra/env.contract.ts`](infra/env.contract.ts); `--check` fails on drift (CI, pre-commit). |
+| `bun run env:check [--pr <n>] [--fix] [--strict]` | Compare the variable **names** on Railway (`api`/`worker`, production + `pr-<n>`) and Vercel (production, preview) with the contract; `--fix` prints the reconciling commands with placeholders. Skips a provider that is not linked. |
 | `bun run db:up`        | `docker compose up -d --wait postgres` (idempotent).                               |
 | `bun run db:down`      | Stop Postgres; the data volume is kept.                                             |
 | `bun run db:reset`     | `down -v` → up → re-run init scripts → migrate. **Deletes all local data.**          |
@@ -86,26 +88,32 @@ it). pgvector needs no `shared_preload_libraries`. The compose project is named 
 so every checkout or worktree shares the same container and volume. No other services: no Redis,
 no mail catcher (ADR 0008 logs mail to the console).
 
-### Environment files
+### Environment
+
+**One contract, everything derived** ([`docs/env.md`](docs/env.md), TEACH-26). Every variable any
+app, package, script or CI job reads is declared once in [`infra/env.contract.ts`](infra/env.contract.ts)
+with its services, scope (`secret` / `config`), local value, Railway / Vercel targets and who
+sets it. `bun run env:generate` writes `docs/env.md` (the matrix), every `.env.example` and
+`.gitleaks.toml` from it — **edit the contract, not the outputs** (`env:generate --check` fails
+in CI and in the pre-commit hook otherwise). `bun run doctor` validates each local `.env` against
+it; `bun run env:check` compares the names on the providers with it. Values are never printed.
 
 - **Root `.env`** (copied from `.env.example` by `setup`): `TJ_PG_PORT` and, optionally,
   `DATABASE_URL` / `TEST_DATABASE_URL`. When the URLs are unset the scripts derive them from
   `TJ_PG_PORT` (`postgres://postgres:postgres@localhost:<port>/teaching_journey[_test]`), so a port
   conflict needs one change. Read by **docker compose** (it loads `.env` from the directory of the
   compose file) and by the **root scripts** (Bun auto-loads `.env` from the cwd).
-- **Per-app `.env`** next to each `package.json`: every app/package that reads env keeps its own
-  `.env.example` (ADR 0015). Bun loads `.env` from the process cwd only — it does **not** walk up
-  to the root, and Turborepo does not load env files either — so `apps/api` reads `apps/api/.env`.
-  `WEB_ORIGIN=http://localhost:5173` lives there (see "API" below); `VITE_API_URL=/api` lives in
-  `apps/web/.env` (the web app proxies `/api/*` to the API through Vite so cookies stay same-origin,
-  see "Web app" below).
-- `setup` discovers every `**/.env.example` (skipping `node_modules`, build output) and copies it
-  to a sibling `.env` **only when missing** — it never overwrites. `doctor` lists, per file, the
-  keys of the example that the `.env` lacks. New apps are picked up automatically.
+- **Per-app `.env`** next to each `package.json`: `apps/api`, `apps/worker`, `apps/web`,
+  `packages/db`, `packages/jobs`. Bun loads `.env` from the process cwd only — it does **not** walk
+  up to the root, and Turborepo does not load env files either — so `apps/api` reads `apps/api/.env`.
+- `setup` copies every generated `.env.example` to a sibling `.env` **only when missing** — it never
+  overwrites — and then generates `BETTER_AUTH_SECRET` into `apps/api/.env` when absent
+  (`crypto.randomBytes(32)`, base64url; the value is never shown). The local path needs nothing
+  from Railway or Vercel — see "Local-only path" in `docs/env.md`.
 - Precedence everywhere: shell variable > `.env` file > built-in default
   (`TJ_PG_PORT=5433 bun run db:up`).
-- `setup` and `db:reset` run `bun run db:migrate` inside `packages/db` when that workspace exists
-  and declares the script, with `DATABASE_URL` and `TEST_DATABASE_URL` set in its environment.
+- `setup` and `db:reset` run `bun run db:migrate` inside `packages/db` with `DATABASE_URL` and
+  `TEST_DATABASE_URL` set in its environment.
 
 ### Reset the database
 
@@ -167,9 +175,9 @@ reaches every workspace's tests; locally the per-package `.env` files supply the
 `apps/api` ([`@tj/api`](apps/api/README.md), ADR 0005/0015) is Hono on Bun; `packages/api-client`
 ([`@tj/api-client`](packages/api-client/README.md)) is the typed Hono RPC client for `apps/web`.
 
-- **Env** (`apps/api/.env`, from `.env.example`): `NODE_ENV`, `PORT` (3001), `DATABASE_URL`
-  (required), `WEB_ORIGIN` (comma-separated CORS origins, default `http://localhost:5173`),
-  `LOG_LEVEL`. Boot fails with one `VAR: message` line per problem and exit code 1.
+- **Env** (`apps/api/.env`, from the generated `.env.example`; matrix in [`docs/env.md`](docs/env.md)):
+  `DATABASE_URL` and `BETTER_AUTH_SECRET` are required, the rest has defaults. Boot fails with one
+  `VAR: message` line per problem and exit code 1.
 - **Error envelope**: every non-2xx body is
   `{ error: { code, message, requestId, retryable, fields? } }`; `message` is a plain sentence safe
   for the UI; `x-request-id` is echoed (or generated) on every response.
@@ -185,9 +193,10 @@ TanStack Router routes (`src/routes/<name>.route.ts` + `<name>.page.tsx`, assemb
 `src/router.ts`), TanStack Query and the typed RPC client. `bun run --filter=@tj/web dev` serves it
 on `http://localhost:5173`.
 
-- **Env** (`apps/web/.env`, from `.env.example`): `VITE_API_URL=/api` and `VITE_APP_ENV`, validated
-  by Zod in `src/env.ts`; `VITE_DEV_API_TARGET` (default `http://localhost:3001`) is where the dev
-  proxy forwards `/api/*` after stripping the prefix, so auth cookies stay same-origin.
+- **Env** (`apps/web/.env`, from the generated `.env.example`; [`docs/env.md`](docs/env.md)):
+  `VITE_API_URL=/api` and `VITE_APP_ENV`, validated by Zod in `src/env.ts`; `VITE_DEV_API_TARGET`
+  (default `http://localhost:3001`) is where the dev proxy forwards `/api/*` after stripping the
+  prefix, so auth cookies stay same-origin.
 - **Routes**: `/sign-in` (magic link), `/` (who am I + sign out) and `/dev/jobs` (development aid:
   enqueue `ping`, follow it over SSE, cancel). Everything but `/sign-in` sits under an auth layout
   whose `beforeLoad` resolves `/me` through the Query client and redirects when there is no session.
@@ -203,7 +212,8 @@ on `http://localhost:5173`.
 | `doctor`: `Compose service postgres — healthy, but publishes port X while TJ_PG_PORT=Y` | The container was started with a different port. `bun run db:up`.                                          |
 | Stale volume after a schema change / `teaching_journey_test` missing / pgvector not enabled | `bun run db:reset` — init scripts only run on an empty volume.                                          |
 | Postgres never becomes healthy                                         | `bun run db:logs`; a corrupt volume is fixed by `bun run db:reset`.                                                   |
-| `doctor`: `Env <file> — missing N key(s)`                              | Copy the listed keys from the sibling `.env.example` into that `.env`.                                                |
+| `doctor`: `Env <file> — missing N key(s)` / `invalid: KEY (expected …)` | `bun run setup` regenerates `BETTER_AUTH_SECRET`; for other keys copy them from the sibling `.env.example` (`docs/env.md` lists the accepted shapes). |
+| `env:generate --check` fails                                            | You edited a generated file. Change [`infra/env.contract.ts`](infra/env.contract.ts) instead and run `bun run env:generate`. |
 | `doctor`: `Port 3001/3002/5173 — in use by <process>`                  | Stop that process (the PID is printed) or change the app's port in its `.env`.                                        |
 | Git hooks missing                                                      | `bunx lefthook install` (also runs on `bun install`).                                                                 |
 | `bun run dev` leaves processes behind                                  | It should not: `dev.ts` forwards SIGINT/SIGTERM to turbo and waits for it. Report it with `pgrep -fl turbo` output.   |
@@ -319,6 +329,8 @@ Biome is configured once in the root `biome.json` (ADR 0003); packages do not ca
   `pre-commit` hook runs `biome check --staged --write` and re-stages the result.
 - **Secrets never land in git.** The `pre-commit` hook runs `gitleaks protect --staged` when
   `gitleaks` is installed (and prints a one-line warning otherwise); CI scans unconditionally.
+  Rules for the contract's secret names come from the generated `.gitleaks.toml`; rotation steps
+  are in [`docs/env.md`](docs/env.md) "Rotating a secret".
 - **Exact versions.** `bunfig.toml` sets `[install] exact = true`; `bun add` pins exact versions
   and `bun.lock` is committed. CI installs with `bun install --frozen-lockfile`.
 - **Hooks** are managed by [lefthook](https://github.com/evilmartians/lefthook) (`lefthook.yml`).
@@ -366,7 +378,7 @@ Every job starts from the composite action [`.github/actions/setup`](.github/act
 
 | Job | What it runs | Reproduce locally | Blocking |
 | --- | ------------ | ----------------- | -------- |
-| `quality` | `bun run lint`, `typecheck`, `skills:check`, `verify-bootstrap`; commitlint on the PR title | the same four commands; `echo "<title>" \| bunx --bun commitlint` | yes |
+| `quality` | `bun run lint`, `typecheck`, `skills:check`, `env:generate --check`, `verify-bootstrap`; commitlint on the PR title | the same five commands; `echo "<title>" \| bunx --bun commitlint` | yes |
 | `tooling-smoke` | `bun run setup --ci && bun run doctor` against docker compose, then `bun run test:scripts` | the same commands (needs Docker) | yes |
 | `test` | `bun run test:db` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test` (migrates, `REQUIRE_TEST_DB=1`); uploads `coverage/` | `bun run test:db` | **gated** (see below) |
 | `build` | `bun run build`; `bun run check:bundle-budget --markdown-out bundle-budget.md`; sticky PR comment `<!-- tj-bundle-budget -->` | `bun run build && bun run check:bundle-budget` | yes |
@@ -427,7 +439,9 @@ gh api -X PUT repos/OmerBresinski/ai-teacher/branches/master/protection --input 
 - **gitleaks**: `GITLEAKS_LICENSE` is only required for organisation-owned repositories.
   `OmerBresinski/ai-teacher` is a personal repository, so no license is configured; if the repo
   ever moves to an organisation, obtain a free key at gitleaks.io and add it as a repository
-  secret. A `.gitleaks.toml` at the root is picked up automatically if an allowlist is ever needed.
+  secret. [`.gitleaks.toml`](.gitleaks.toml) (generated from the env contract, `bun run
+  env:generate`) extends the default rules with one rule per `secret`-scoped variable and is picked
+  up automatically by the action and by the pre-commit hook.
 - **Dependabot** ([`.github/dependabot.yml`](.github/dependabot.yml)): weekly, `bun` ecosystem with
   minor/patch grouped into one PR, plus `github-actions` (SHA-pinned actions with `# vX.Y.Z`
   comments). [`CODEOWNERS`](.github/CODEOWNERS) requests a review from `@OmerBresinski` on every

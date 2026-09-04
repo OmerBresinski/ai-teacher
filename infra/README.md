@@ -30,20 +30,25 @@ EU-West), [0016](../docs/adr/0016-prd-deviations.md) (EU not UK residency).
 | Install / build        | from `apps/web/vercel.json`: `cd ../.. && bun install --frozen-lockfile --ignore-scripts` (skips the root `prepare` → `lefthook install`, which has no git repo on Vercel) and `cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web`; output `dist` |
 | Ignored Build Step     | `bash scripts/vercel-ignore-build.sh` (relative to `apps/web`): skips when nothing under `apps/web`, `packages/{ui,api-client,domain,config}`, `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`; always builds when that SHA is missing |
 | Git                    | `vercel git connect https://github.com/OmerBresinski/ai-teacher.git`; production branch **`master`** (the default was `main`; fixed with `PATCH /v1/projects/teaching-journey-web/branch {"branch":"master"}`). Pushes to `master` deploy production, every other branch/PR a preview |
-| Domains                | `teaching-journey-web.vercel.app` (auto). `app.<domain>` — `TODO(domain)`, TEACH-26              |
+| Domains                | `teaching-journey-web.vercel.app` (auto). `app.<domain>` — `TODO(domain)`, domain follow-up              |
 | Deployment protection  | Vercel Authentication (SSO) on all non-custom-domain deployments — Hobby default; previews ask for a Vercel login. A Protection Bypass for Automation secret exists (curl/e2e: `x-vercel-protection-bypass: <secret>`, read it in *Settings → Deployment Protection*; never commit it) |
 | Speed Insights         | `@vercel/speed-insights` is loaded **only** when `VITE_APP_ENV=production` (`apps/web/src/lib/speed-insights.ts`, dynamic import, verified absent from preview `dist/`). Enabling the *feature* on the project is dashboard-only (CLI refuses: "incurs charges") |
 | Verified preview       | `https://teaching-journey-5v1umubdb-omerbresinskis-projects.vercel.app` (2026-09-04): `/dev/jobs` → 200 HTML, `/assets/does-not-exist.js` → 404, `/assets/*` `Cache-Control: public, max-age=31536000, immutable`, `/` and deep links `no-cache`, security headers present, no speed-insights code |
 
-### Environment variables (names + non-secret values)
+### Environment variables
 
-| Variable                      | Scope      | Value                                                                                             |
-| ----------------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
-| `VITE_APP_ENV`                | Production | `production`                                                                                      |
-| `VITE_API_URL`                | Production | `https://api.example.invalid` — **placeholder, `TODO(domain)`**: replace with `https://api.<domain>` (TEACH-26) via `vercel env rm VITE_API_URL production && vercel env add VITE_API_URL production --value https://api.<domain> --no-sensitive` |
-| `VITE_APP_ENV`                | Preview    | `preview`                                                                                         |
-| `RAILWAY_PR_API_URL_TEMPLATE` | Preview    | `https://api-pr-{pr}.up.railway.app` — the *expected* Railway PR-environment domain (see "PR environments"); **confirm after the first Railway PR deploy** and update with `vercel env` |
-| `VITE_API_URL_FALLBACK`       | Preview    | `https://api.example.invalid` placeholder — used for branch pushes without a PR and while the template is unconfirmed; point it at the Railway production api once it exists |
+Names and scopes come from the env contract — [`docs/env.md`](../docs/env.md) is the source of
+truth (Vercel `production`: `VITE_API_URL`, `VITE_APP_ENV`; `preview`: `VITE_APP_ENV`,
+`RAILWAY_PR_API_URL_TEMPLATE`, `VITE_API_URL_FALLBACK`). `bun run env:check` verifies the names on
+the project (`vercel env ls <env> --json`, values discarded) and `--fix` prints the `vercel env add`
+commands. Current non-secret values worth knowing:
+
+- `VITE_API_URL` (Production) is the placeholder `https://api.example.invalid` — **`TODO(domain)`**:
+  replace with `https://api.<domain>` via `vercel env rm VITE_API_URL production && vercel env add
+  VITE_API_URL production` once the Railway api has a domain.
+- `RAILWAY_PR_API_URL_TEMPLATE` (Preview) is the *expected* `https://api-pr-{pr}.up.railway.app`;
+  **confirm after the first Railway PR deploy** (see "PR environments").
+- `VITE_API_URL_FALLBACK` (Preview) is the same placeholder; point it at the Railway production api.
 
 `scripts/vercel-env.ts` (repo root, `bun test scripts/`) turns these into the two `VITE_*` values
 the bundle sees: production → the explicit `VITE_API_URL`; preview → `RAILWAY_PR_API_URL_TEMPLATE`
@@ -116,7 +121,7 @@ read `.gitignore`. Delete `.env.local` if `vercel link` creates one.
       The client code is already in the production bundle.
 - [ ] Optional: *Web Analytics* (`@vercel/analytics` is not installed — add it the same
       production-only way if wanted).
-- [ ] When domains exist (TEACH-26): add `app.<domain>`, set `VITE_API_URL` (Production) to
+- [ ] When domains exist (follow-up): add `app.<domain>`, set `VITE_API_URL` (Production) to
       `https://api.<domain>`, point `VITE_API_URL_FALLBACK` at the production api, and confirm
       `RAILWAY_PR_API_URL_TEMPLATE` from a real Railway PR environment.
 - [ ] Confirm the GitHub App has access to `OmerBresinski/ai-teacher` (it did — `vercel git connect`
@@ -164,7 +169,7 @@ must ship the extension: we run the same `pgvector/pgvector:pg16` image as `dock
 with a volume at `/var/lib/postgresql/data` and `PGDATA=/var/lib/postgresql/data/pgdata` (the
 official image refuses a non-empty mount root). Trade-off: no Railway backups UI / `DATABASE_URL`
 auto-variable; `DATABASE_URL` is a reference variable instead (below), and backups are a
-TEACH-26+ follow-up (`pg_dump` cron or Railway volume backups).
+a follow-up (`pg_dump` cron or Railway volume backups).
 
 ## The image (`Dockerfile`)
 
@@ -219,22 +224,40 @@ health check; a failed migration fails the deploy and the previous deployment ke
 
 ## Variables (names only — values live in Railway, never in git)
 
-| Variable              | api | worker | Set by / value shape                                                                                              |
-| --------------------- | :-: | :----: | ----------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`        | ✓   | ✓      | reference: `postgres://${{postgres.POSTGRES_USER}}:${{postgres.POSTGRES_PASSWORD}}@${{postgres.RAILWAY_PRIVATE_DOMAIN}}:5432/${{postgres.POSTGRES_DB}}` |
-| `PORT`                | 3001| 3002   | script                                                                                                            |
-| `NODE_ENV`            | ✓   | ✓      | `production`                                                                                                      |
-| `LOG_LEVEL`           | ✓   | ✓      | `info`                                                                                                            |
-| `BETTER_AUTH_SECRET`  | ✓   |        | script, `openssl rand -base64 32` via `--stdin`; rotate with the same command                                     |
-| `BETTER_AUTH_URL`     | ✓   |        | `https://${{RAILWAY_PUBLIC_DOMAIN}}` (resolves per environment, PR envs included)                                 |
-| `WEB_ORIGIN`          | ✓   |        | production: `https://teaching-journey-web.vercel.app` (+ `https://app.<domain>` later), comma-separated exact origins |
-| `WEB_ORIGIN_PATTERNS` | ✓   |        | PR environments: `https://teaching-journey-web-*-omerbresinskis-projects.vercel.app` (glob; see "Vercel (web)"); unset in production |
-| `COOKIE_SAMESITE`     | ✓   |        | `none` while web and api are on unrelated origins (forces `Secure`; boot warning); `lax` + `COOKIE_DOMAIN` once `app.<d>`/`api.<d>` exist — ADR 0008/0010 |
-| `COOKIE_DOMAIN`       | ✓   |        | unset; **TEACH-26** sets `.<domain>` once custom domains exist                                                     |
-| `MAIL_PROVIDER`       | ✓   |        | `console` until F17                                                                                               |
-| `GOOGLE_*`, `MICROSOFT_*` | ✓ |      | unset (optional OAuth) — TEACH-26                                                                                 |
-| `WORKER_CONCURRENCY`  |     | ✓      | `4`                                                                                                               |
-| `POSTGRES_USER/PASSWORD/DB`, `PGDATA` | postgres | | script (`postgres` / random hex / `teaching_journey` / `/var/lib/postgresql/data/pgdata`)                 |
+The per-service matrix (which name, which environment, who sets it) is generated from
+[`infra/env.contract.ts`](env.contract.ts) into [`docs/env.md`](../docs/env.md) — that page is the
+source of truth; this section only says how the values get there.
+
+- **Seeded by `provision.sh`** (step 4) from the contract via `bun scripts/railway-vars.ts api|worker`:
+  plain config (`NODE_ENV`, `PORT`, `LOG_LEVEL`, `MAIL_PROVIDER`, `COOKIE_SAMESITE`,
+  `WORKER_CONCURRENCY`, `WEB_ORIGIN`) and the references
+  `DATABASE_URL=postgres://${{postgres.POSTGRES_USER}}:${{postgres.POSTGRES_PASSWORD}}@${{postgres.RAILWAY_PRIVATE_DOMAIN}}:5432/${{postgres.POSTGRES_DB}}`
+  and `BETTER_AUTH_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}` (resolve per environment, PR envs included).
+- **Generated by `provision.sh`**: `BETTER_AUTH_SECRET` (`openssl rand -base64 32 | railway variable
+  set BETTER_AUTH_SECRET --stdin --service api`); rotate with the same command (`docs/env.md`
+  "Rotating a secret").
+- **`postgres` service**: `POSTGRES_USER` / `POSTGRES_PASSWORD` (random hex) / `POSTGRES_DB` /
+  `PGDATA=/var/lib/postgresql/data/pgdata` — set once at `railway add`.
+
+### Post-provisioning checklist (after `provision.sh`, manual values)
+
+```sh
+bun run env:check --fix                 # names on api/worker production vs docs/env.md; prints the commands
+# manual values (see docs/env.md "Where each value is set"); set through stdin, never inline:
+railway variable set COOKIE_DOMAIN=.<domain> --service api --skip-deploys          # once app./api.<domain> exist,
+railway variable set COOKIE_SAMESITE=lax --service api --skip-deploys              # then switch from `none`
+railway variable set GOOGLE_CLIENT_ID=<id> --service api --skip-deploys            # F17 (optional)
+railway variable set GOOGLE_CLIENT_SECRET --stdin --service api --skip-deploys < /tmp/secret
+railway variable set MICROSOFT_CLIENT_ID=<id> --service api --skip-deploys
+railway variable set MICROSOFT_CLIENT_SECRET --stdin --service api --skip-deploys < /tmp/secret
+railway variable set BLOB_READ_WRITE_TOKEN --stdin --service api --skip-deploys < /tmp/token    # ADR 0011
+railway variable set BLOB_READ_WRITE_TOKEN --stdin --service worker --skip-deploys < /tmp/token
+railway redeploy --service api --yes && railway redeploy --service worker --yes
+# per PR environment (after the first PR deploy):
+railway variable set --service api --environment pr-<n> --skip-deploys \
+  'WEB_ORIGIN_PATTERNS=https://teaching-journey-web-*-omerbresinskis-projects.vercel.app'
+bun run env:check --pr <n>
+```
 
 Never set `ENABLE_TEST_ROUTES` on Railway (the api refuses it with `NODE_ENV=production`).
 
@@ -244,6 +267,7 @@ Never set `ENABLE_TEST_ROUTES` on Railway (the api refuses it with `NODE_ENV=pro
 export PATH="$HOME/.bun/bin:$PATH"           # railway >= 5.49, logged in
 ./infra/railway/provision.sh                 # idempotent: project, services, volume, vars, domain,
                                              # config paths, GitHub source, PR environments
+                                             # (variables come from infra/env.contract.ts)
 ./infra/railway/provision.sh --deploy        # ...plus a first `railway up` of api and worker
 ```
 
@@ -261,7 +285,7 @@ It has been syntax-checked and its JSON parsing verified against a live project'
 | Restart                  | `railway restart --service api --yes`                                                            |
 | Manual migrate           | `railway ssh --service api /app/entrypoint.sh migrate` (runs inside the live api container, which has the bundle and the private-network `DATABASE_URL`). `railway run` is *local* execution with Railway variables — the private Postgres host is not reachable from a laptop, so it is not an option here. |
 | Connect to Postgres      | `railway connect postgres` (SSH tunnel; no public proxy exists on purpose), then `select extname from pg_extension;` → `vector` |
-| Variables                | `railway variable list --service api --json`; `railway variable set K=V --service api`; secrets via `--stdin` |
+| Variables                | `bun run env:check [--pr <n>] [--fix]` (names vs `docs/env.md`); `railway variable list --service api --json`; `railway variable set K=V --service api`; secrets via `--stdin` |
 
 ## PR environments
 
@@ -306,7 +330,7 @@ and waits up to 25 s for running jobs (`apps/worker`). Both were observed exitin
       succeeds and pushes to `master` auto-deploy. The script prints `!!` if this is missing.
 - [ ] Confirm *Settings → Environments → Enable PR environments* shows on (set by the script).
 - [ ] Optional: rename the generated api domain (`railway domain update <old> --domain api-teaching-journey`)
-      and later add `api.<domain>` (TEACH-26).
+      and later add `api.<domain>` (domain follow-up).
 
 Everything else — project, region, image + volume, services, config-as-code paths, variables,
 public domain, PR environments — is done by `provision.sh` via CLI/GraphQL.

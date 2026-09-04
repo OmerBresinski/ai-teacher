@@ -1,4 +1,4 @@
 {
   "extends": "@tj/config/tsconfig/node.json",
-  "include": ["commitlint.config.ts", "scripts/**/*.ts"]
+  "include": ["commitlint.config.ts", "scripts/**/*.ts", "infra/**/*.ts"]
 }

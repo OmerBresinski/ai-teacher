@@ -4,7 +4,7 @@
 #   ./infra/railway/provision.sh                 # create/link project, services, vars, domain
 #   ./infra/railway/provision.sh --deploy        # ...and `railway up` api + worker from this checkout
 #
-# Requires: railway CLI >= 5.49 logged in (`railway whoami`), jq, python3, openssl, and a Railway
+# Requires: railway CLI >= 5.49 logged in (`railway whoami`), bun, jq, python3, openssl, and a Railway
 # workspace WITH AN ACTIVE PLAN (project creation is rejected server-side otherwise:
 # "Your trial has expired. Please select a plan to continue using Railway.").
 #
@@ -19,7 +19,7 @@ REGION="${RAILWAY_REGION:-europe-west4-drams3a}"     # EU-West (Amsterdam), ADR 
 PG_IMAGE="${RAILWAY_PG_IMAGE:-pgvector/pgvector:pg16}" # same image as docker-compose.yml
 GITHUB_REPO="${RAILWAY_GITHUB_REPO:-OmerBresinski/ai-teacher}"
 GITHUB_BRANCH="${RAILWAY_GITHUB_BRANCH:-master}"
-WEB_ORIGIN_PLACEHOLDER="${WEB_ORIGIN_PLACEHOLDER:-https://placeholder.vercel.app}" # TEACH-25
+WEB_ORIGIN_PLACEHOLDER="${WEB_ORIGIN_PLACEHOLDER:-}"  # optional override of the contract's WEB_ORIGIN
 
 export RAILWAY_CALLER="${RAILWAY_CALLER:-skill:use-railway@1.3.7}"
 export RAILWAY_AGENT_SESSION="${RAILWAY_AGENT_SESSION:-teach-24-provision-$$}"
@@ -99,18 +99,30 @@ log "config-as-code paths + region"
 set_config_file "$API_ID" "infra/railway/api.json"
 set_config_file "$WORKER_ID" "infra/railway/worker.json"
 
-# --- 4. Variables (names documented in infra/README.md; TEACH-26 finalises values) ---------------
-DB_REF='postgres://${{postgres.POSTGRES_USER}}:${{postgres.POSTGRES_PASSWORD}}@${{postgres.RAILWAY_PRIVATE_DOMAIN}}:5432/${{postgres.POSTGRES_DB}}'
-log "variables: api"
-railway variable set --service api --skip-deploys \
-  "DATABASE_URL=$DB_REF" PORT=3001 NODE_ENV=production LOG_LEVEL=info MAIL_PROVIDER=console \
-  'BETTER_AUTH_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}' "WEB_ORIGIN=$WEB_ORIGIN_PLACEHOLDER" COOKIE_SAMESITE=none
+# --- 4. Variables (from infra/env.contract.ts via scripts/railway-vars.ts; TEACH-26) ------------
+# `railway-vars.ts` prints the non-secret `NAME=value` pairs (plain config + `${{...}}` references)
+# for a service; secrets are `# secret:` comments and are set below through --stdin. WEB_ORIGIN
+# can still be overridden for a first deploy with WEB_ORIGIN_PLACEHOLDER.
+need bun
+seed_variables() { # service
+  local svc="$1" line; local -a pairs=()
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    if [[ "$svc" == api && "$line" == WEB_ORIGIN=* && -n "${WEB_ORIGIN_PLACEHOLDER:-}" ]]; then
+      line="WEB_ORIGIN=$WEB_ORIGIN_PLACEHOLDER"
+    fi
+    pairs+=("$line")
+  done < <(bun scripts/railway-vars.ts "$svc")
+  log "variables: $svc (${#pairs[@]} from the contract)"
+  railway variable set --service "$svc" --skip-deploys "${pairs[@]}"
+}
+seed_variables api
 if ! railway variable list --service api --json | jq -e 'has("BETTER_AUTH_SECRET")' >/dev/null; then
   openssl rand -base64 32 | tr -d '\n' | railway variable set BETTER_AUTH_SECRET --stdin --service api --skip-deploys
 fi
-log "variables: worker"
-railway variable set --service worker --skip-deploys \
-  "DATABASE_URL=$DB_REF" PORT=3002 NODE_ENV=production LOG_LEVEL=info WORKER_CONCURRENCY=4
+seed_variables worker
+echo "manual/secret names still to set (docs/env.md, 'Where each value is set'):"
+bun scripts/railway-vars.ts api | grep -E '^# (secret|manual):' | grep -v BETTER_AUTH_SECRET || true
 
 # --- 5. Public domain for api only ---------------------------------------------------------------
 if ! railway domain list --service api --json | jq -e '.domains | length > 0' >/dev/null 2>&1; then

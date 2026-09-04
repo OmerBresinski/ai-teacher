@@ -1,6 +1,6 @@
 /**
- * Tunables for the SSE endpoints. Read from `process.env` with defaults; `src/env.ts` is owned by
- * TEACH-20 right now, so these stay out of the boot contract until TEACH-26 folds them in.
+ * Tunables for the SSE endpoints. Read from `process.env` with defaults, separately from the boot
+ * schema in `src/env.ts`; both are declared in `infra/env.contract.ts` (see `env.contract.test.ts`).
  */
 import { z } from "zod";
 
