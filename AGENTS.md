@@ -10,7 +10,7 @@ exactly as written. Setup, commands and conventions: [`README.md`](README.md).
 
 ## Ground rules
 
-- **Default branch is `master`** (not `main`). Trunk-based, squash merges, PRs required.
+- **Default branch is `master`.** Trunk-based, squash merges, PRs required.
   Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, …) are enforced by commitlint.
 - **Internal packages are consumed from source** (see README "Internal packages are consumed from
   source"): `@tj/*` `package.json#exports` point at `src/*.ts`; nothing is built before `dev`,

@@ -28,6 +28,5 @@ Template: `0000-template.md`.
 
 ## Amendments
 
-- 2026-09-03 — The default branch is **`master`**, not `main` (founder decision; the GitHub repo `OmerBresinski/ai-teacher` was created with `master` and is not renamed). Read `main` in ADR 0015 as `master`.
 - 2026-09-04 — ADR 0011: private Artefact/Source downloads go through the API proxy `GET /files/:key` (session + workspace-scoped key); Vercel Blob has no time-limited signed URLs for private blobs. See the amendment section in `0011-vercel-blob.md`.
 - 2026-09-04 — ADR 0013: `packages/jobs` (`@tj/jobs`) and `packages/storage` (`@tj/storage`) added to the package map. See the amendment section in `0013-monorepo-layout.md`.
