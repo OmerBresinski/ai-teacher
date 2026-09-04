@@ -1,0 +1,351 @@
+# CI (TEACH-23). Reproduce every job locally with the commands in README "CI".
+#
+# Phase split: `apps/*` and `packages/db` do not exist yet (TEACH-14/21/22). The `test` and `e2e`
+# jobs therefore run in "gated" mode -- they still execute, but a failure does not block the PR --
+# until the repository variable CI_STRICT is set to "true" (Phase 2, see README "CI").
+#
+# Every third-party action is pinned to a full commit SHA; the trailing comment is the tag it was
+# resolved from. Update the SHA and the comment together (Dependabot opens those PRs).
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+  TURBO_TELEMETRY_DISABLED: 1
+  DO_NOT_TRACK: 1
+  # "true" -> test/e2e failures block the PR. Anything else -> they are reported but not blocking.
+  CI_STRICT: ${{ vars.CI_STRICT }}
+
+jobs:
+  detect:
+    # hashFiles() is not available in job-level `if`, so presence checks run once here and the
+    # optional jobs key off these outputs.
+    name: detect
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      web: ${{ steps.probe.outputs.web }}
+      dockerfile: ${{ steps.probe.outputs.dockerfile }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: probe
+        run: |
+          [ -f apps/web/package.json ] && echo "web=true" >> "$GITHUB_OUTPUT" || echo "web=false" >> "$GITHUB_OUTPUT"
+          [ -f Dockerfile ] && echo "dockerfile=true" >> "$GITHUB_OUTPUT" || echo "dockerfile=false" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: bun run lint
+        run: bun run lint
+
+      - name: bun run typecheck
+        run: bun run typecheck
+
+      - name: bun run skills:check
+        run: bun run skills:check
+
+      - name: bun run verify-bootstrap
+        run: bun run verify-bootstrap
+
+      - name: commitlint the PR title (squash merges use it as the commit subject)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | bunx --bun commitlint --verbose
+
+  tooling-smoke:
+    name: tooling-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Root scripts derive DATABASE_URL / TEST_DATABASE_URL from this port.
+      TJ_PG_PORT: "5432"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: bun run setup --ci
+        run: bun run setup --ci
+
+      - name: bun run doctor
+        run: bun run doctor
+
+      - name: bun run test:scripts
+        run: bun run test:scripts
+
+      - name: docker compose down
+        if: always()
+        run: docker compose down -v --remove-orphans
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Gated until CI_STRICT=true (Phase 2): Postgres-backed tests land with TEACH-14/22.
+    continue-on-error: ${{ vars.CI_STRICT != 'true' }}
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: teaching_journey
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h localhost -U postgres -d teaching_journey"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/teaching_journey
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/teaching_journey_test
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: Gate status
+        run: |
+          if [ "$CI_STRICT" = "true" ]; then
+            echo "CI_STRICT=true -> failures in this job block the PR"
+          else
+            echo "::notice title=test is gated::CI_STRICT is not 'true'; failures are reported but do not block (Phase 1, TEACH-23)"
+          fi
+
+      - name: Create the test database (mirrors infra/postgres/init)
+        run: |
+          psql -h localhost -U postgres -d teaching_journey -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE teaching_journey_test;" \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          psql -h localhost -U postgres -d teaching_journey_test -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+      - name: bun run db:migrate (when @tj/db defines it)
+        run: |
+          if jq -e '.scripts["db:migrate"]' package.json >/dev/null; then
+            bun run db:migrate
+          else
+            echo "db:migrate script not defined yet (TEACH-14) -- skipping"
+          fi
+
+      - name: bun run test
+        run: bun run test
+
+      - name: Upload coverage
+        if: always() && hashFiles('**/coverage/**') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: |
+            **/coverage/**
+            !**/node_modules/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write # sticky bundle-budget comment
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: bun run build
+        run: bun run build
+
+      - name: Bundle budget (F18-R05, 250 KB gzip)
+        id: budget
+        run: |
+          if [ -f apps/web/dist/.vite/manifest.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Bundle budget: skipped — apps/web/dist/.vite/manifest.json not found (TEACH-21)"
+          fi
+          # Always writes bundle-budget.md (skip notice or report); exits 1 above the budget.
+          set +e
+          bun run check:bundle-budget --markdown-out bundle-budget.md
+          status=$?
+          set -e
+          cat bundle-budget.md >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
+      - name: Sticky bundle-budget PR comment
+        if: always() && github.event_name == 'pull_request' && steps.budget.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          marker='<!-- tj-bundle-budget -->'
+          body="$(printf '%s\n%s\n' "$marker" "$(cat bundle-budget.md)")"
+          existing="$(gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n1)"
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing" -f body="$body" >/dev/null
+            echo "updated comment $existing"
+          else
+            gh api -X POST "repos/$REPO/issues/$PR_NUMBER/comments" -f body="$body" >/dev/null
+            echo "created comment"
+          fi
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Playwright lands with apps/web (TEACH-21/22); gated until CI_STRICT=true.
+    needs: detect
+    if: needs.detect.outputs.web == 'true'
+    continue-on-error: ${{ vars.CI_STRICT != 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: Playwright version
+        id: pw
+        run: |
+          version="$(bunx playwright --version 2>/dev/null | awk '{print $2}' || echo unknown)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: bun run test:e2e
+        run: bun run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            **/playwright-report/**
+            **/test-results/**
+            !**/node_modules/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: bun audit --audit-level=high
+        id: bun_audit
+        # Native in Bun >= 1.2.15 (verified on 1.3.6); exits 1 when advisories >= high exist. It
+        # talks to npm's bulk-advisory endpoint, which has outages ("ConnectionClosed: audit request
+        # failed" after minutes of hanging). Classify the outcome so an outage falls through to the
+        # OSV fallback below instead of turning the job red or, worse, silently green.
+        run: |
+          set +e
+          output="$(timeout 120 bun audit --audit-level=high 2>&1)"
+          code=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$code" -eq 0 ]; then
+            echo "result=ok" >> "$GITHUB_OUTPUT"
+          elif [ "$code" -eq 124 ] || printf '%s' "$output" | grep -qi "audit request failed"; then
+            echo "::warning title=bun audit unavailable::npm advisory endpoint unreachable (exit $code); falling back to osv-scanner"
+            echo "result=unavailable" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=vulnerable" >> "$GITHUB_OUTPUT"
+            exit "$code"
+          fi
+
+      - name: Fallback -- osv-scanner on bun.lock (high/critical only)
+        if: steps.bun_audit.outputs.result == 'unavailable'
+        # OSV.dev mirrors the GitHub Advisory Database and is independent of npm's endpoint.
+        # osv-scanner exits 1 on ANY finding, so filter to >= high ourselves. Image pinned by digest.
+        run: |
+          set +e
+          docker run --rm -v "$PWD:/src" -w /src \
+            ghcr.io/google/osv-scanner@sha256:8108ae94eadea5a02c9bec6e646909d5b790b44bd62d7f5b7f0b1d6d0ffc7734 \
+            --lockfile=bun.lock --format json > osv.json # v2.5.1
+          code=$?
+          set -e
+          # osv-scanner v2: 0 = clean, 1 = findings; anything else = scanner/network error -> fail loudly.
+          if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then
+            echo "::error title=audit::osv-scanner failed (exit $code); dependency audit could not run"
+            exit 1
+          fi
+          jq -e '.results' osv.json >/dev/null || { echo "::error title=audit::osv-scanner produced no results"; exit 1; }
+          jq -r '[.results[]?.packages[]? | .package as $p | .vulnerabilities[]? |
+                  "\(.database_specific.severity // "UNKNOWN")\t\(.id)\t\($p.name)@\($p.version)"] | .[]' osv.json \
+            | sort | tee osv-summary.tsv
+          high="$(awk -F'\t' '$1=="HIGH" || $1=="CRITICAL" || $1=="UNKNOWN"' osv-summary.tsv | wc -l | tr -d ' ')"
+          if [ "$high" -gt 0 ]; then
+            echo "::error title=audit::$high high/critical (or unrated) advisories in bun.lock (osv-scanner)"
+            exit 1
+          fi
+          echo "audit: no high/critical advisories (osv-scanner fallback; $(wc -l < osv-summary.tsv | tr -d ' ') lower-severity findings listed above)"
+
+      - name: Dependency review (PRs only)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+
+  secrets:
+    name: secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write # gitleaks comments on the offending PR lines
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # scan the full history of the branch, not just the merge commit
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Only required for organisation-owned repos; OmerBresinski/ai-teacher is a personal
+          # account, so this is empty and unused (README "CI").
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  docker-build-smoke:
+    name: docker-build-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # No Dockerfile yet; TEACH-16/17 (api/worker on Railway, ADR 0010) add one.
+    needs: detect
+    if: needs.detect.outputs.dockerfile == 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: docker build .
+        run: docker build .
