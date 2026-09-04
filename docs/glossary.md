@@ -36,5 +36,8 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **Route tree** — the code-based TanStack Router definition in `apps/web/src/router.ts` (ADR 0004).
 - **AppType** — the exported type of the Hono router used by the Hono RPC client (ADR 0005).
 - **Env schema** — the Zod schema in each app's `src/env.ts` that validates configuration at boot (ADR 0015).
+- **AI provider** — the hosted model service behind `@tj/ai`; Amazon Bedrock at MVP, reached through the Vercel AI SDK (ADR 0018). Features never import a vendor SDK.
+- **Model class** — the tier a caller asks `@tj/ai` for instead of a model ID: `frontier` (planning, coherence, adaptation), `standard` (plan, notes, slide outline), `small` (items, glossary, variants, summaries). Each maps to a Bedrock model ID via `AI_MODEL_<CLASS>` (F13 §7, ADR 0018).
+- **Model call** — one `generateText` / `streamText` invocation through `@tj/ai`. Logged as class, model ID, provider, latency and token counts — never as prompt or completion text (ADR 0015, F13-R10).
 - **Preview environment** — a per-PR deployment: Vercel preview for `web`, Railway PR environment for `api`/`worker` (ADR 0010).
 - **ADR** — Architecture Decision Record under `docs/adr/`; engineering decisions only. Product decisions live in Notion.

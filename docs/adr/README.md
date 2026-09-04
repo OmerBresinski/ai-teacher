@@ -18,11 +18,12 @@ Product decisions live in Notion (Master PRD §17 and each feature PRD's "Decisi
 | 0010 | Hosting: Vercel (web) + Railway (api, worker, PG)  | Accepted |
 | 0011 | Vercel Blob for object storage                     | Accepted (amended 2026-09-04) |
 | 0012 | Server-sent events for generation progress         | Accepted |
-| 0013 | Monorepo layout and @tj/* package scope            | Accepted |
+| 0013 | Monorepo layout and @tj/* package scope            | Accepted (amended 2026-09-04) |
 | 0014 | Testing: bun test, Playwright (Vitest retired)     | Accepted |
 | 0015 | Env validation, logging, commit conventions        | Accepted |
-| 0016 | Deviations from PRD accepted for MVP scaffolding   | Accepted |
+| 0016 | Deviations from PRD accepted for MVP scaffolding   | Accepted (amended 2026-09-04) |
 | 0017 | Agent skill layout: .agents canonical + symlinks   | Accepted |
+| 0018 | AI provider: Amazon Bedrock via Vercel AI SDK in @tj/ai | Accepted |
 
 Template: `0000-template.md`.
 
@@ -30,3 +31,5 @@ Template: `0000-template.md`.
 
 - 2026-09-04 — ADR 0011: private Artefact/Source downloads go through the API proxy `GET /files/:key` (session + workspace-scoped key); Vercel Blob has no time-limited signed URLs for private blobs. See the amendment section in `0011-vercel-blob.md`.
 - 2026-09-04 — ADR 0013: `packages/jobs` (`@tj/jobs`) and `packages/storage` (`@tj/storage`) added to the package map. See the amendment section in `0013-monorepo-layout.md`.
+- 2026-09-04 — ADR 0013: `packages/ai` (`@tj/ai`) added to the package map (ADR 0018). See the second amendment section in `0013-monorepo-layout.md`.
+- 2026-09-04 — ADR 0016: item 5, model inference in AWS `us-east-1` (ADR 0018) widens the data-residency deviation; same revisit date. See `0016-prd-deviations.md`.
