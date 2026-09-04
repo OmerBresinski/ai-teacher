@@ -32,7 +32,7 @@ RUN bunx turbo@2.10.12 prune @tj/api @tj/worker --docker --out-dir /pruned
 FROM base AS deps
 COPY --from=pruner /pruned/json/ ./
 # `--ignore-scripts`: the root `prepare` (lefthook install) needs a git checkout.
-RUN --mount=type=cache,target=/root/.bun/install/cache \
+RUN --mount=type=cache,id=bun-install-cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --ignore-scripts
 
 # ---------------------------------------------------------------------------------------------
