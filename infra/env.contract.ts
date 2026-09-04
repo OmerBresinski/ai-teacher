@@ -403,6 +403,34 @@ const CONTRACT = [
     description:
       "Local-disk adapter only: base URL returned by `getSignedUrl` instead of `file://` paths.",
   },
+  {
+    name: "STORAGE_ROOT",
+    services: ["api", "worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    runtimeOnly: true,
+    files: ["api", "worker"],
+    description:
+      "Local-disk adapter only: directory that holds stored objects. Defaults to `.data/storage` (gitignored) when unset.",
+  },
+  {
+    name: "STORAGE_PUBLIC_PREFIXES",
+    services: ["api", "worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    runtimeOnly: true,
+    files: ["api", "worker"],
+    description:
+      "Comma-separated key prefixes treated as public by `@tj/storage` (served by URL instead of the `GET /files/:key` proxy). Empty means everything is private.",
+  },
 
   // --- api: SSE knobs (ADR 0012, apps/api/src/events/config.ts) ----------------------------------
   {

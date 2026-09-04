@@ -40,6 +40,8 @@ is set".
 | `ENABLE_TEST_ROUTES` | api | config | — | n/a | n/a | manual | "1" mounts the test-only routes (`/__test/*`, TEACH-22) when NODE_ENV=test. Refused at boot when NODE_ENV=production; never set it on Railway. |
 | `BLOB_READ_WRITE_TOKEN` | api, worker, ci | secret | — | prod | n/a | manual | Vercel Blob read-write token. When set (non-blank) `@tj/storage` picks `VercelBlobStorage`; otherwise the local-disk adapter under `.data/`. Optional in CI to run the Blob contract tests. |
 | `STORAGE_PUBLIC_BASE_URL` | api, worker | config | — | n/a | n/a | manual | Local-disk adapter only: base URL returned by `getSignedUrl` instead of `file://` paths. |
+| `STORAGE_ROOT` | api, worker | config | — | n/a | n/a | manual | Local-disk adapter only: directory that holds stored objects. Defaults to `.data/storage` (gitignored) when unset. |
+| `STORAGE_PUBLIC_PREFIXES` | api, worker | config | — | n/a | n/a | manual | Comma-separated key prefixes treated as public by `@tj/storage` (served by URL instead of the `GET /files/:key` proxy). Empty means everything is private. |
 | `EVENTS_MAX_STREAMS_PER_WORKSPACE` | api | config | — | n/a | n/a | template | Concurrent SSE streams per Workspace before `429 rate_limited` (default 20). |
 | `EVENTS_REPLAY_LIMIT` | api | config | — | n/a | n/a | template | Most `job_events` rows replayed when a stream opens (default 500, max 5000). |
 | `EVENTS_HEARTBEAT_MS` | api | config | — | n/a | n/a | template | Interval of the `: ping` SSE comment that keeps proxies awake (default 15000). |
@@ -95,7 +97,7 @@ this contract (missing keys, malformed URLs/ports/enums — values are never pri
 - **template** — a plain, non-secret value with a known default — seeded by `provision.sh` / `vercel env add` / `.env.example`
   `TJ_PG_PORT`, `TEST_DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`, `WORKER_CONCURRENCY`, `COOKIE_SAMESITE`, `MAIL_PROVIDER`, `EVENTS_MAX_STREAMS_PER_WORKSPACE`, `EVENTS_REPLAY_LIMIT`, `EVENTS_HEARTBEAT_MS`, `EVENTS_POLL_MS`, `VITE_APP_ENV`, `VITE_DEV_API_TARGET`, `CI`, `REQUIRE_TEST_DB`
 - **manual** — a human pastes it: OAuth credentials, tokens, real domains. `bun run env:check --fix` prints the exact `railway variable set` / `vercel env add` command (with a placeholder, never a value)
-  `WEB_ORIGIN`, `WEB_ORIGIN_PATTERNS`, `COOKIE_DOMAIN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `ENABLE_TEST_ROUTES`, `BLOB_READ_WRITE_TOKEN`, `STORAGE_PUBLIC_BASE_URL`, `VITE_API_URL`, `RAILWAY_PR_API_URL_TEMPLATE`, `VITE_API_URL_FALLBACK`, `E2E_VERBOSE`, `CI_STRICT`, `TURBO_TOKEN`, `TURBO_TEAM`
+  `WEB_ORIGIN`, `WEB_ORIGIN_PATTERNS`, `COOKIE_DOMAIN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `ENABLE_TEST_ROUTES`, `BLOB_READ_WRITE_TOKEN`, `STORAGE_PUBLIC_BASE_URL`, `STORAGE_ROOT`, `STORAGE_PUBLIC_PREFIXES`, `VITE_API_URL`, `RAILWAY_PR_API_URL_TEMPLATE`, `VITE_API_URL_FALLBACK`, `E2E_VERBOSE`, `CI_STRICT`, `TURBO_TOKEN`, `TURBO_TEAM`
 
 Expected names per provider target (what `bun run env:check` verifies):
 
