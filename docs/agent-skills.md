@@ -27,6 +27,7 @@ branch HEAD at install time (`gh api repos/<o>/<r>/commits/HEAD -q .sha`); the C
 | `tanstack-router` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) (`plugins/tanstack-router/skills/tanstack-router`) | `6f5521ecbdfbfa3d54d335eba6c8b4df0b804c03` | `apps/web/.agents/skills/tanstack-router` | TanStack Router API: `createRoute`/`createRootRouteWithContext`, search params, loaders, code splitting. **Its "use file-based routing" advice is overridden by ADR 0004 (code-based).** | TEACH-21; ADR 0004; F18 App Shell |
 | `tanstack-query` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) (`plugins/tanstack-query/skills/tanstack-query`) | `6f5521ecbdfbfa3d54d335eba6c8b4df0b804c03` | `apps/web/.agents/skills/tanstack-query` | Server-state: query keys, `queryOptions`, invalidation, mutations, prefetching via router loaders. | TEACH-21, TEACH-19 (SSE → invalidate); ADR 0004, 0012; F18-R04 |
 | `shadcn` | [shadcn-ui/ui](https://github.com/shadcn-ui/ui) (`skills/shadcn`) | `8720dec73f5aebed9f649ea58636f54599fdedf1` | `packages/ui/.agents/skills/shadcn`, `apps/web/.agents/skills/shadcn` | Official shadcn skill: `components.json`, registries, adding/composing components, Tailwind v4 styling. Components are added in `packages/ui` only (ADR 0009). | TEACH-13, TEACH-21; ADR 0009; F18-R13, F18-R09 |
+| `ai-sdk` | [vercel/ai](https://github.com/vercel/ai) (`skills/use-ai-sdk`) | `d0b6d6d83aadb4188afc13b504b2fb2d88468050` | `packages/ai/.agents/skills/ai-sdk`, `apps/worker/.agents/skills/ai-sdk`, `apps/api/.agents/skills/ai-sdk` | Vercel AI SDK API (`generateText`, `streamText`, `Output.object`, middleware, `ai/test` mocks). **Its "use the Vercel AI Gateway" and "fetch model IDs from `ai-gateway.vercel.sh`" advice is overridden by ADR 0018 (Bedrock via `createAi`, model IDs from env).** | P2 (TEACH-69..72); ADR 0018; F13 |
 | `hono` | [honojs/skills](https://github.com/honojs/skills) (`skills/hono`) — successor of `yusukebe/hono-skill`, see below | `b04b90bfe0a3a41789045bc114b5834d0333e15c` | `apps/api/.agents/skills/hono` | Official Hono skill: routing, middleware, `@hono/zod-validator`, `streamSSE`, testing, RPC (`hc<AppType>`). | TEACH-16, TEACH-19, TEACH-20; ADR 0005, 0012, 0015 |
 | `vercel-react-best-practices` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (`skills/react-best-practices`) | `063bee94c3f4df8453406c830b0a7df0f2860278` | `apps/web/.agents/skills/vercel-react-best-practices` | React performance rules (waterfalls, bundle size, re-renders). Next.js-specific sections do not apply (Vite SPA). | TEACH-21, TEACH-23 (bundle budget); ADR 0004; F18-R05 |
 | `deploy-to-vercel` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (`skills/deploy-to-vercel`) | `063bee94c3f4df8453406c830b0a7df0f2860278` | `apps/web/.agents/skills/deploy-to-vercel` | Vercel CLI deploys, preview URLs, project linking, env vars. | TEACH-25, TEACH-26; ADR 0010, 0011 |
@@ -39,8 +40,9 @@ Per location, on disk:
 | -------- | ----------------- | ------------------------------------------------------------ | -------- |
 | repo root | `thermo-nuclear-code-quality-review` | same one | `skills-lock.json` |
 | `apps/web` | `tanstack-router`, `tanstack-query`, `shadcn`, `vercel-react-best-practices`, `deploy-to-vercel` | same five | `apps/web/skills-lock.json` |
-| `apps/api` | `hono`, `use-railway` | same two | `apps/api/skills-lock.json` |
-| `apps/worker` | `use-railway` | same one | `apps/worker/skills-lock.json` |
+| `apps/api` | `hono`, `use-railway`, `ai-sdk` | same three | `apps/api/skills-lock.json` |
+| `apps/worker` | `use-railway`, `ai-sdk` | same two | `apps/worker/skills-lock.json` |
+| `packages/ai` | `ai-sdk` | same one | `packages/ai/skills-lock.json` |
 | `packages/ui` | `shadcn` | same one | `packages/ui/skills-lock.json` |
 
 ## Layout
@@ -136,10 +138,15 @@ A="--agent universal claude-code -y"
 
 ( cd apps/api \
   && $S https://github.com/honojs/skills                     --skill hono            $A \
-  && $S https://github.com/railwayapp/railway-skills         --skill use-railway     $A )
+  && $S https://github.com/railwayapp/railway-skills         --skill use-railway     $A \
+  && $S https://github.com/vercel/ai                         --skill ai-sdk          $A )
 
 ( cd apps/worker \
-  && $S https://github.com/railwayapp/railway-skills         --skill use-railway     $A )
+  && $S https://github.com/railwayapp/railway-skills         --skill use-railway     $A \
+  && $S https://github.com/vercel/ai                         --skill ai-sdk          $A )
+
+( cd packages/ai \
+  && $S https://github.com/vercel/ai                         --skill ai-sdk          $A )
 
 ( cd packages/ui \
   && $S https://github.com/shadcn-ui/ui                      --skill shadcn          $A )
@@ -154,6 +161,9 @@ To update everything already listed in a location's `skills-lock.json`: `cd <loc
 skills update -y`. To see what a repo offers before installing: `npx -y skills add <repo> --list`.
 After any update, refresh the `Commit` column above (`gh api repos/<o>/<r>/commits/HEAD -q .sha`)
 and commit the CLI's changes as-is (`chore(skills): …`).
+
+`ai-sdk` is installed in `packages/ai`, `apps/worker`, and `apps/api`; update all three together,
+like the other multi-location skills, so their vendored copies do not drift.
 
 Observed CLI behaviour (v1.5.23), for the record:
 
