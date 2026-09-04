@@ -27,8 +27,19 @@ export class ApiError extends Error {
   }
 }
 
-/** Build an `ApiError` from a non-ok `Response`, tolerating non-JSON bodies. */
-export async function apiErrorFromResponse(res: Response): Promise<ApiError> {
+/**
+ * The subset of `Response` this helper needs. Hono RPC's `ClientResponse<...>` return type is
+ * structurally compatible with `Response` except for a few DOM-only members (e.g.
+ * `textStream`), so we accept that narrower shape instead of `Response` itself — every call
+ * site passes either one.
+ */
+interface ApiResponseLike {
+  readonly status: number;
+  json(): Promise<unknown>;
+}
+
+/** Build an `ApiError` from a non-ok API response, tolerating non-JSON bodies. */
+export async function apiErrorFromResponse(res: ApiResponseLike): Promise<ApiError> {
   let envelope: ApiErrorEnvelope["error"] | undefined;
   try {
     const body = (await res.json()) as Partial<ApiErrorEnvelope>;
