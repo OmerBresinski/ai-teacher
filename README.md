@@ -287,7 +287,7 @@ Every job starts from the composite action [`.github/actions/setup`](.github/act
 | `test` | `bun run test` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test`; `bun run db:migrate` when the script exists; uploads `coverage/` | `bun run db:up && bun run test` | **gated** (see below) |
 | `build` | `bun run build`; `bun run check:bundle-budget --markdown-out bundle-budget.md`; sticky PR comment `<!-- tj-bundle-budget -->` | `bun run build && bun run check:bundle-budget` | yes |
 | `e2e` | Playwright Chromium (cached) + `bun run test:e2e`; report uploaded on failure. Skipped until `apps/web/package.json` exists | `bunx playwright install chromium && bun run test:e2e` | **gated** |
-| `audit` | `bun audit --audit-level=high` (native in Bun 1.3.6); `actions/dependency-review-action` with `fail-on-severity: high` on PRs | `bun audit --audit-level=high` | yes |
+| `audit` | `bun audit --audit-level=high` (native in Bun 1.3.6); when npm's advisory endpoint is down it falls back to `osv-scanner` on `bun.lock`, failing only on high/critical; `actions/dependency-review-action` with `fail-on-severity: high` on PRs | `bun audit --audit-level=high` (or `docker run --rm -v "$PWD:/src" -w /src ghcr.io/google/osv-scanner:v2.5.1 --lockfile=bun.lock`) | yes |
 | `secrets` | `gitleaks/gitleaks-action` over the full history (`fetch-depth: 0`) | `gitleaks git --redact .` (or `gitleaks protect --staged` via the pre-commit hook) | yes |
 | `docker-build-smoke` | `docker build .` -- skipped until a `Dockerfile` exists | `docker build .` | yes (once present) |
 | `detect` | probes for `apps/web/package.json` and `Dockerfile` so the optional jobs above can be skipped (`hashFiles()` is not allowed in job-level `if`) | -- | -- |
@@ -337,6 +337,9 @@ gh api -X PUT repos/OmerBresinski/ai-teacher/branches/master/protection --input 
   `TURBO_TOKEN` (repository secret) and `TURBO_TEAM` (repository variable). Both are empty until
   the Vercel project exists (TEACH-21/ADR 0010); `turbo` then simply runs without a remote cache.
   `TURBO_TELEMETRY_DISABLED=1` and `DO_NOT_TRACK=1` are set for every job.
+- **Dependency graph / Dependabot alerts** are enabled on the repository (TEACH-23 turned them on
+  via `gh api -X PUT repos/OmerBresinski/ai-teacher/vulnerability-alerts`); `dependency-review-action`
+  refuses to run without the graph.
 - **gitleaks**: `GITLEAKS_LICENSE` is only required for organisation-owned repositories.
   `OmerBresinski/ai-teacher` is a personal repository, so no license is configured; if the repo
   ever moves to an organisation, obtain a free key at gitleaks.io and add it as a repository
