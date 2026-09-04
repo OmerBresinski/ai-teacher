@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FALLBACK_GREETING } from "@tj/domain";
 import type { ReactNode } from "react";
 
@@ -94,6 +94,20 @@ describe("IndexPage greeting", () => {
     const greeting = screen.getByText(FALLBACK_GREETING);
     expect(greeting).toHaveClass("opacity-0");
     expect(greeting).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("fetches a new joke when the refresh button is pressed", async () => {
+    getGreeting
+      .mockResolvedValueOnce(jsonResponse(200, { text: "First joke.", source: "model" }))
+      .mockResolvedValueOnce(jsonResponse(200, { text: "Second joke.", source: "model" }));
+    renderPage();
+
+    await screen.findByText("First joke.");
+    fireEvent.click(screen.getByRole("button", { name: "New joke" }));
+
+    const next = await screen.findByText("Second joke.");
+    expect(next).toHaveClass("opacity-100");
+    expect(getGreeting).toHaveBeenCalledTimes(2);
   });
 
   it("shows the shared fallback when the greeting request fails", async () => {

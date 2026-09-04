@@ -24,8 +24,8 @@ function createMemoryLogger() {
   return { lines, logger };
 }
 
-function greetingRequest(app: ReturnType<typeof createApp>, query = "") {
-  return app.request(`/me/greeting${query}`, { headers: { [WORKSPACE_HEADER]: workspaceId } });
+function greetingRequest(app: ReturnType<typeof createApp>) {
+  return app.request("/me/greeting", { headers: { [WORKSPACE_HEADER]: workspaceId } });
 }
 
 describe("GET /me/greeting", () => {
@@ -42,7 +42,7 @@ describe("GET /me/greeting", () => {
       }),
     });
 
-    const res = await greetingRequest(app, "?weekday=Friday");
+    const res = await greetingRequest(app);
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(await res.json()).toEqual({
@@ -113,16 +113,6 @@ describe("GET /me/greeting", () => {
     });
     const res = await greetingRequest(app);
     expect(await res.json()).toEqual({ text: FALLBACK_GREETING, source: "fallback" });
-  });
-
-  test("rejects an invalid weekday", async () => {
-    const app = createApp({ env: TEST_ENV, db: fakeSql(true) });
-    const res = await greetingRequest(app, "?weekday=Funday");
-    expect(res.status).toBe(400);
-    expect(res.headers.get("cache-control")).toBe("private, no-store");
-    expect(await res.json()).toMatchObject({
-      error: { code: "validation_failed", fields: ["weekday"] },
-    });
   });
 
   test("does not call the model after the Workspace limit is reached", async () => {

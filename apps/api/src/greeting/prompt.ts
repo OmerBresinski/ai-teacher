@@ -1,19 +1,21 @@
-import { GREETING_MAX_CHARS, type Weekday } from "@tj/domain";
+import { GREETING_MAX_CHARS } from "@tj/domain";
 
 export const GREETING_SYSTEM_PROMPT = [
-  "You write a single short greeting for a school teacher who has just opened their lesson-planning tool.",
-  "Rules: one sentence; at most 120 characters; warm and lightly witty; plain text only;",
-  "no emojis; no exclamation marks; no quotation marks; do not mention being an AI or a model;",
-  "do not give advice, instructions or questions; do not use the word 'welcome'.",
-  "If a first name is given you may use it once; if not, do not invent one.",
+  "You write one original dad joke about programming in the year 2026, where AI writes most of the code.",
+  "Themes to pick from: AI pair programmers, vibe coding, prompts instead of code, agents filing PRs,",
+  "code review by robots, the AI taking your bugs personally, legacy code the AI refuses to touch.",
+  "Rules: one or two short sentences; at most 140 characters in total; groan-worthy but kind;",
+  "plain text only; no emojis; no exclamation marks; no quotation marks; no hashtags;",
+  "do not explain the joke; do not mention that you are an AI or a model; avoid the word 'welcome'.",
+  "If a first name is given you may address the reader by it once; if not, do not invent one.",
+  "Never reuse a well-known joke; make a fresh one each time.",
 ].join(" ");
 
-export function buildGreetingPrompt(input: { firstName?: string; weekday?: Weekday }): string {
+export function buildGreetingPrompt(input: { firstName?: string }): string {
   const name = input.firstName
-    ? `Teacher's first name: ${input.firstName}.`
+    ? `Reader's first name: ${input.firstName}.`
     : "No name is available.";
-  const weekday = input.weekday ? `Today is ${input.weekday}.` : "Today is unknown.";
-  return `${name} ${weekday} Write the greeting.`;
+  return `${name} Write the joke.`;
 }
 
 export function firstNameOf(fullName: string | null | undefined): string | undefined {
