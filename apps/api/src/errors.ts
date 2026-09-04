@@ -77,10 +77,15 @@ export function envelope(
   return { error: { code, message, requestId, retryable, ...(fields ? { fields } : {}) } };
 }
 
-/** Send an error envelope with the given status. Use it in route handlers (e.g. 503 from health). */
-export function errorResponse(
+/**
+ * Send an error envelope with the given status. Use it in route handlers (e.g. 503 from health).
+ * Generic over the status literal so Hono RPC records e.g. `401` (not the whole
+ * `ContentfulStatusCode` union) and `InferResponseType<…, 200>` in `apps/web` yields the success
+ * body alone.
+ */
+export function errorResponse<S extends ContentfulStatusCode>(
   c: Context,
-  status: ContentfulStatusCode,
+  status: S,
   code: ErrorCode,
   message: string,
   retryable = false,
