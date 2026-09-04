@@ -33,7 +33,7 @@ export function formatViolations(violations: Violation[]): string {
  */
 export async function expectNoSeriousA11yViolations(page: Page, label: string): Promise<void> {
   const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"])
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])
     .analyze();
   const violations = results.violations as Violation[];
   const blocking = violations.filter((v) => BLOCKING_IMPACTS.has(v.impact ?? ""));
