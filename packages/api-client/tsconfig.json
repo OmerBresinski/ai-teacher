@@ -1,0 +1,11 @@
+{
+  "extends": "@tj/config/tsconfig/base.json",
+  "compilerOptions": {
+    // Browser + Bun consumers: no Bun globals may leak into the public types.
+    "lib": ["ESNext", "DOM"],
+    "types": []
+  },
+  "include": ["src"],
+  // `bun test` transpiles the runtime tests itself; they use `bun:test`, which `types: []` hides.
+  "exclude": ["src/**/*.test.ts"]
+}
