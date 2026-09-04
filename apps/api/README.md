@@ -296,5 +296,7 @@ Read from `process.env` with Zod defaults; TEACH-26 folds them into the `src/env
 | `EVENTS_POLL_MS`                   | `1000`  | poll interval while the LISTEN connection is down   |
 
 Integration tests (`src/routes/jobs.integration.test.ts`) run a real pg-boss on schema
-`pgboss_test` plus an in-test worker loop against `TEST_DATABASE_URL` and skip visibly when it is
-unreachable.
+`pgboss_test` plus an in-test worker loop and skip visibly when `TEST_DATABASE_URL` is unreachable.
+They create and use a dedicated database `<test database>_api` (derived from `TEST_DATABASE_URL`)
+because turbo runs the `@tj/db` / `@tj/jobs` suites in parallel and those truncate the shared test
+database between tests.

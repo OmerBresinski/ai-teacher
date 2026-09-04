@@ -4,7 +4,7 @@
  * Skips visibly when the database is unreachable.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { workspaces } from "@tj/db";
+import { createDb, workspaces } from "@tj/db";
 import { withTestDb } from "@tj/db/testing";
 import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
 import {
@@ -24,6 +24,33 @@ import { createEventsRuntime, type EventsRuntime } from "../events/runtime";
 import { silentLogger, TEST_ENV } from "../test-helpers";
 import { WORKSPACE_HEADER } from "../workspace";
 
+/**
+ * This suite gets its own database, `<TEST_DATABASE_URL database>_api`, created on the fly from
+ * `TEST_DATABASE_URL`. turbo runs `@tj/db`, `@tj/jobs` and `@tj/api` tests in parallel and the
+ * sibling suites `TRUNCATE … CASCADE` the shared test database between tests, which would wipe
+ * the Workspaces (and job events) this suite's worker loop is writing to mid-run.
+ */
+async function dedicatedTestDbUrl(suffix: string): Promise<string | undefined> {
+  const base = process.env.TEST_DATABASE_URL;
+  if (!base) return undefined;
+  const url = new URL(base);
+  const name = `${url.pathname.slice(1)}${suffix}`;
+  const admin = createDb(base, { max: 1 });
+  try {
+    const [row] = await admin.sql`select 1 from pg_database where datname = ${name}`;
+    if (!row) await admin.sql.unsafe(`create database "${name}"`);
+  } catch (err) {
+    // Concurrent creation from another test file is fine; anything else surfaces in withTestDb.
+    if (!(err instanceof Error && /already exists/.test(err.message))) throw err;
+  } finally {
+    await admin.close();
+  }
+  url.pathname = `/${name}`;
+  return url.toString();
+}
+
+const dedicatedUrl = await dedicatedTestDbUrl("_api").catch(() => undefined);
+if (dedicatedUrl) process.env.TEST_DATABASE_URL = dedicatedUrl;
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
 if (!t.ok) console.warn(`skipping /jobs + /events integration tests: ${t.reason}`);
@@ -195,7 +222,6 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
     boss.on("error", (err) => console.error("pg-boss error", err));
     await boss.start();
     await ensureQueues(boss);
-    await boss.deleteAllJobs("ping");
     jobsCtx = { boss, db: unsafeDb, sql };
     await boss.work(
       "ping",
@@ -216,20 +242,30 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
   });
 
   afterAll(async () => {
+    // Remove what this file created (cascades to job_events; users only exist after TEACH-20).
+    await sql`delete from workspaces where owner_user_id like ${"u-%"} and name in ('A','B')`;
+    await sql`delete from users where id like ${"u-%"} and email like ${"%@example.test"}`.catch(
+      () => {},
+    );
     shutdown.abort();
     await boss.offWork("ping");
     await boss.stop({ graceful: false, close: true });
     await close();
   });
 
+  // No `truncateTenantTables()` here: turbo runs `@tj/db`, `@tj/jobs` and this suite against the
+  // same TEST_DATABASE_URL in parallel, and truncating `workspaces` cascades into a sibling's
+  // in-flight job events. Every test uses fresh Workspace ids, so isolation comes for free.
   beforeEach(async () => {
-    await t.db.truncateTenantTables();
     workspaceA = newId<WorkspaceId>();
     workspaceB = newId<WorkspaceId>();
-    await ensureOwnerUsers(["u-a", "u-b"]);
+    // Owner ids are unique per workspace once TEACH-20 lands; derive them from the workspace id.
+    const ownerA = `u-${workspaceA}`;
+    const ownerB = `u-${workspaceB}`;
+    await ensureOwnerUsers([ownerA, ownerB]);
     await unsafeDb.insert(workspaces).values([
-      { id: workspaceA, ownerUserId: "u-a", name: "A" },
-      { id: workspaceB, ownerUserId: "u-b", name: "B" },
+      { id: workspaceA, ownerUserId: ownerA, name: "A" },
+      { id: workspaceB, ownerUserId: ownerB, name: "B" },
     ]);
     runtime = createEventsRuntime({
       jobs: jobsCtx,
