@@ -47,10 +47,13 @@ together. Work items that are dashboard-only or founder decisions are reported b
    takes a body):
 
    ```sh
+   # commit_id: gh pr view <n> --json headRefOid -q .headRefOid
+   # event is always "COMMENT": GitHub rejects REQUEST_CHANGES/APPROVE on your own PR (422),
+   # and the reviewer runs as the PR author. Flag blockers in the body as "BLOCKER:" instead.
    gh api repos/{owner}/{repo}/pulls/<n>/reviews --input - <<'EOF'
    {
-     "commit_id": "<head sha from: gh pr view <n> --json headRefOid -q .headRefOid>",
-     "event": "COMMENT",              # or "REQUEST_CHANGES" when there is a blocker
+     "commit_id": "<head sha>",
+     "event": "COMMENT",
      "body": "<one-paragraph summary; 'No findings.' when empty>",
      "comments": [
        { "path": "apps/api/src/routes/lessons.ts", "line": 42, "side": "RIGHT",
@@ -60,6 +63,8 @@ together. Work items that are dashboard-only or founder decisions are reported b
    EOF
    ```
 
+   The heredoc is quoted (`<<'EOF'`) on purpose: the payload must be literal, valid JSON — no
+   comments inside it, and no shell interpolation, so backticks in finding text survive.
    `line` is the line number in the **new** file for added/changed lines (`side: "RIGHT"`); use
    `side: "LEFT"` only for deleted lines. Use `start_line`/`start_side` for multi-line ranges.
    Only lines inside the diff hunks can be anchored — put a finding about unchanged code in the
