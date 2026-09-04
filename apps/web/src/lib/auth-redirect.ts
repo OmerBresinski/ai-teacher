@@ -9,18 +9,30 @@ const AUTH_ERROR_PARAMS = ["error", "error_description"] as const;
 /** Sentinel origin: only used to parse relative paths; never appears in the returned value. */
 const PARSE_ORIGIN = "http://relative.invalid";
 
-/** True for `/path` (any relative path) but not for `//host` (protocol-relative) or absolute URLs. */
+/**
+ * True for `/path` only: not `//host` (protocol-relative), not `/\host` (WHATWG URL parsing treats
+ * `\` as `/` for http(s), so that is protocol-relative too), not an absolute URL.
+ */
 export function isSameOriginPath(target: string | undefined): target is string {
-  return typeof target === "string" && target.startsWith("/") && !target.startsWith("//");
+  return typeof target === "string" && /^\/(?![/\\])/.test(target);
 }
 
 /**
  * Normalise a redirect target to a same-origin relative path without auth error params.
- * Anything that is not a same-origin path collapses to `/`.
+ * Anything that is not a same-origin path — or cannot be parsed — collapses to `/`. The result
+ * always satisfies `isSameOriginPath` (e.g. `/..//evil.example` normalises to `//evil.example`
+ * and is rejected).
  */
 export function sanitiseRedirectPath(target: string | undefined): string {
   if (!isSameOriginPath(target)) return "/";
-  const url = new URL(target, PARSE_ORIGIN);
+  let url: URL;
+  try {
+    url = new URL(target, PARSE_ORIGIN);
+  } catch {
+    return "/";
+  }
+  if (url.origin !== PARSE_ORIGIN) return "/";
   for (const param of AUTH_ERROR_PARAMS) url.searchParams.delete(param);
-  return url.pathname + url.search + url.hash;
+  const path = url.pathname + url.search + url.hash;
+  return isSameOriginPath(path) ? path : "/";
 }

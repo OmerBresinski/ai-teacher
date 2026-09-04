@@ -33,13 +33,16 @@ export function callbackUrl(origin: string, redirect: string | undefined): strin
  */
 export function errorCallbackUrl(origin: string, redirect: string | undefined): string {
   const url = new URL("/sign-in", origin);
-  if (redirect !== undefined) url.searchParams.set("redirect", sanitiseRedirectPath(redirect));
+  url.searchParams.set("redirect", sanitiseRedirectPath(redirect));
   return url.toString();
 }
 
-/** Human copy for better-auth's error codes; the raw code is never shown. */
+/**
+ * Human copy for better-auth's error codes; the raw code is never shown. The magic-link plugin
+ * (better-auth 1.7) only emits `INVALID_TOKEN`, for both used and expired tokens.
+ */
 export function verifyErrorMessage(code: string): string {
-  return code === "INVALID_TOKEN" || code === "EXPIRED_TOKEN"
+  return code === "INVALID_TOKEN"
     ? "That sign-in link has expired or was already used. Request a new one below."
     : "We could not sign you in. Request a new link below.";
 }

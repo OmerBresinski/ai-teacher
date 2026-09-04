@@ -99,7 +99,7 @@ describe("SignInPage", () => {
   });
 
   it("helpers: errorCallbackUrl points at /sign-in and keeps the redirect", () => {
-    expect(errorCallbackUrl("http://a", undefined)).toBe("http://a/sign-in");
+    expect(errorCallbackUrl("http://a", undefined)).toBe("http://a/sign-in?redirect=%2F");
     expect(errorCallbackUrl("http://a", "/dev/jobs?jobId=1")).toBe(
       "http://a/sign-in?redirect=%2Fdev%2Fjobs%3FjobId%3D1",
     );
