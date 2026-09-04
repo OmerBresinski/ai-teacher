@@ -20,7 +20,9 @@ const db = createDb(env.DATABASE_URL);
 // magic link can be read back through GET /__test/last-magic-link (Playwright sign-in fixture).
 const testMail = testRoutesEnabled(env) ? new CaptureMailSender(loadMailSender(env, logger)) : null;
 const auth = createAuth({ env, db, mail: testMail ?? loadMailSender(env, logger), logger });
-const boss = createBoss(env.DATABASE_URL, { applicationName: "tj-api" });
+// ADR 0006: the api only enqueues/cancels; `role: "enqueue-only"` disables pg-boss maintenance
+// (`supervise`) and cron (`schedule`) so only the worker runs them.
+const boss = createBoss(env.DATABASE_URL, { applicationName: "tj-api", role: "enqueue-only" });
 boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
 await boss.start();
 await ensureQueues(boss);

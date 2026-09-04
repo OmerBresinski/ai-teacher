@@ -11,6 +11,12 @@ export interface CreateBossOptions {
   max?: number;
   /** `application_name` reported to Postgres. Default `"tj-worker"`. */
   applicationName?: string;
+  /**
+   * `"worker"` (default) runs pg-boss maintenance (`supervise`) and the cron scheduler
+   * (`schedule`). `"enqueue-only"` turns both off — for `apps/api`, which only `send`s/`cancel`s
+   * (ADR 0006) and must not compete with the worker for maintenance or duplicate cron ticks.
+   */
+  role?: "worker" | "enqueue-only";
 }
 
 /** Retry policy applied to every queue by `ensureQueues()` and to every job by `enqueue()`. */
@@ -34,18 +40,29 @@ export const JOB_EXPIRE_IN_SECONDS = 15 * 60;
  * so `ensureQueues()` + `enqueue()` is the whole configuration surface.
  */
 export function createBoss(databaseUrl: string, opts: CreateBossOptions = {}): PgBoss {
+  return new PgBoss(bossOptions(databaseUrl, opts));
+}
+
+/** The `PgBoss` constructor options `createBoss` uses — exported so tests can assert on them. */
+export function bossOptions(
+  databaseUrl: string,
+  opts: CreateBossOptions = {},
+): ConstructorParameters<typeof PgBoss>[0] {
   if (!databaseUrl) throw new Error("createBoss: a Postgres connection URL is required");
-  return new PgBoss({
+  const worker = (opts.role ?? "worker") === "worker";
+  return {
     connectionString: databaseUrl,
     schema: opts.schema ?? "pgboss",
     max: opts.max ?? 4,
     application_name: opts.applicationName ?? "tj-worker",
-    // Job rows are pruned by pg-boss maintenance; the worker is the only process that supervises.
-    supervise: true,
+    // Job rows are pruned by pg-boss maintenance; the worker is the only process that supervises
+    // (and the only one that would run cron schedules). The api is enqueue-only (ADR 0006).
+    supervise: worker,
+    schedule: worker,
     // Our queues are tiny; poll a little faster than the 2 s default so a `ping` from the demo
     // feels immediate. Workers set their own interval in `work()`.
     monitorIntervalSeconds: 60,
-  });
+  };
 }
 
 /**

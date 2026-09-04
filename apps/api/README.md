@@ -52,6 +52,12 @@ Mount points (search for the ticket ids in `src/app.ts`):
 - `// TEACH-19: mount /jobs and /events here` (`streamSSE`, `Last-Event-ID` replay — ADR 0012)
 - `// TEACH-15 follow-up: GET /files/:key proxy` (over the `StorageAdapter`)
 
+## Background jobs (ADR 0006)
+
+`src/index.ts` builds pg-boss with `createBoss(env.DATABASE_URL, { applicationName: "tj-api",
+role: "enqueue-only" })`: the api only `enqueue`s/`cancel`s, so pg-boss maintenance
+(`supervise: false`) and cron (`schedule: false`) are off here and run in `apps/worker` alone.
+
 ## Error envelope
 
 Every non-2xx response has the same body; `message` is a plain sentence safe to show in the UI
