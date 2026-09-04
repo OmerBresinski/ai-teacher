@@ -23,6 +23,12 @@ import { createEventsRuntime, type EventsRuntime } from "./events/runtime";
 import { createLogger, type Logger } from "./logger";
 import type { CaptureMailSender } from "./mail";
 import { createOriginMatcher } from "./origins";
+import {
+  createRateLimiter,
+  loadRateLimitConfig,
+  type RateLimitConfig,
+  rateLimitByWorkspace,
+} from "./rate-limit";
 import { eventRoutes } from "./routes/events";
 import { fileRoutes } from "./routes/files";
 import { healthRoutes } from "./routes/health";
@@ -61,6 +67,8 @@ export interface CreateAppOptions {
   storage?: ReadableStorageAdapter;
   /** AI client selected at boot (ADR 0018); future routes consume it through this seam. */
   ai?: CreatedAi;
+  /** Per-Workspace model-call request limit; tests override the default config. */
+  rateLimit?: Partial<RateLimitConfig>;
 }
 
 function buildApp({
@@ -73,9 +81,11 @@ function buildApp({
   testMail,
   storage,
   ai,
+  rateLimit,
 }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
   const eventsRuntime = events ?? (jobs ? createEventsRuntime({ jobs, logger }) : undefined);
+  const aiLimiter = createRateLimiter(loadRateLimitConfig(process.env, rateLimit));
   const app = new Hono<AppEnv>();
 
   // 1. request-id: honour an incoming `x-request-id`, otherwise crypto.randomUUID(); echoed back.
@@ -130,6 +140,8 @@ function buildApp({
   app.use("/jobs/*", guard);
   app.use("/events", guard);
   app.use("/files/*", guard);
+  app.use("/jobs/ai-ping", rateLimitByWorkspace(aiLimiter));
+  app.use("/me/greeting", rateLimitByWorkspace(aiLimiter));
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
   const routes = app

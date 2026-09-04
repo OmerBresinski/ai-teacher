@@ -35,6 +35,7 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
 | **OAuth disabled** | Google/Microsoft sign-in off (no client credentials); magic link only. | Set the four `*_CLIENT_ID`/`*_CLIENT_SECRET` variables when the OAuth apps exist. | TEACH-39; `docs/env.md` |
 | **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
+| **AI rate limit is per api replica (in memory)** | One Railway api replica applies the per-Workspace limit locally. | Use Postgres or Redis before scaling the api horizontally. | TEACH-75; `apps/api/src/rate-limit.ts` |
 
 ## Vercel (web) — TEACH-25
 
@@ -205,6 +206,9 @@ The api and worker call Amazon Bedrock through `@tj/ai` (ADR [0018](../docs/adr/
 The variable descriptions and full matrix are generated in [`docs/env.md`](../docs/env.md); this
 section records the Railway production runbook. PR environments inherit production values when
 Railway creates them.
+
+The api limits model-call requests per Workspace with `AI_RATE_LIMIT_PER_WORKSPACE` and
+`AI_RATE_LIMIT_WINDOW_S`; defaults apply unless those config variables are set.
 
 | Name | Scope | Services | Where set |
 | ---- | ----- | -------- | --------- |

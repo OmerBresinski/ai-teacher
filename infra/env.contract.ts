@@ -563,6 +563,33 @@ const CONTRACT = [
       "Poll interval while the LISTEN connection is down — degraded mode (default 1000).",
   },
 
+  // --- api: AI request rate-limit knobs (apps/api/src/rate-limit.ts) --------------------------------
+  {
+    name: "AI_RATE_LIMIT_PER_WORKSPACE",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["api"],
+    description:
+      "Model-call requests per Workspace per window on the AI routes (`/jobs/ai-ping`, `/me/greeting`) before `429 rate_limited` (default 10).",
+  },
+  {
+    name: "AI_RATE_LIMIT_WINDOW_S",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["api"],
+    description: "Window length in seconds for `AI_RATE_LIMIT_PER_WORKSPACE` (default 60).",
+  },
+
   // --- web (Vite / Vercel, ADR 0004 / 0010) ---------------------------------------------------------
   {
     name: "VITE_API_URL",

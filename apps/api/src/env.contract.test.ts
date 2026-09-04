@@ -7,8 +7,13 @@ import { describe, expect, test } from "bun:test";
 import { ENV, namesForService, schemaNamesForService } from "../../../infra/env.contract";
 import { EnvSchema } from "./env";
 import { EventsConfigSchema } from "./events/config";
+import { RateLimitConfigSchema } from "./rate-limit";
 
-const schemaKeys = [...Object.keys(EnvSchema.shape), ...Object.keys(EventsConfigSchema.shape)];
+const schemaKeys = [
+  ...Object.keys(EnvSchema.shape),
+  ...Object.keys(EventsConfigSchema.shape),
+  ...Object.keys(RateLimitConfigSchema.shape),
+];
 
 describe("apps/api env schema vs infra/env.contract.ts", () => {
   test("every schema key is a contract name for service api", () => {
