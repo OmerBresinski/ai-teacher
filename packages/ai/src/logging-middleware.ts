@@ -9,14 +9,18 @@ interface LoggingMiddlewareOptions {
   modelId: string;
 }
 
+/**
+ * Token counts are `null` (not `undefined`) when unknown so pino serializes the key: a log line
+ * always carries `inputTokens` and `outputTokens`, even on the error path.
+ */
 interface AiLogFields {
   class: ModelClass;
   modelId: string;
   provider: "bedrock";
   durationMs: number;
-  inputTokens: number | undefined;
-  outputTokens: number | undefined;
-  cachedInputTokens?: number | undefined;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  cachedInputTokens?: number;
   finishReason: string;
 }
 
@@ -36,8 +40,8 @@ function logSuccess(
     modelId: options.modelId,
     provider: "bedrock",
     durationMs: Date.now() - startedAt,
-    inputTokens: usage.inputTokens.total,
-    outputTokens: usage.outputTokens.total,
+    inputTokens: usage.inputTokens.total ?? null,
+    outputTokens: usage.outputTokens.total ?? null,
     finishReason,
   };
   if (cachedInputTokens !== undefined) ai.cachedInputTokens = cachedInputTokens;
@@ -51,8 +55,8 @@ function logError(logger: pino.Logger, options: LoggingMiddlewareOptions, starte
       modelId: options.modelId,
       provider: "bedrock",
       durationMs: Date.now() - startedAt,
-      inputTokens: undefined,
-      outputTokens: undefined,
+      inputTokens: null,
+      outputTokens: null,
       finishReason: "error",
     } satisfies AiLogFields,
   });
@@ -115,7 +119,11 @@ export function createLoggingMiddleware(
             },
             async cancel(reason) {
               logStreamError();
-              await reader.cancel(reason);
+              try {
+                await reader.cancel(reason);
+              } catch (error) {
+                throw toProviderError(error);
+              }
             },
           }),
         };
