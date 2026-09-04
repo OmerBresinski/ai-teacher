@@ -5,9 +5,9 @@
   "description": "Teaching Journey web app: Vite + React SPA with code-based TanStack Router and TanStack Query (ADR 0004).",
   "type": "module",
   "scripts": {
-    "dev": "vite --port 5173 --strictPort",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "bun --bun vite --port 5173 --strictPort",
+    "build": "bun --bun vite build",
+    "preview": "bun --bun vite preview",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
