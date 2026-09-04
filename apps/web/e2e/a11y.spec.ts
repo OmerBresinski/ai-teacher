@@ -19,7 +19,7 @@ test.describe("accessibility (axe)", () => {
     // The greeting fades in over 300ms; axe reads the blended mid-transition colour as a contrast
     // failure, so wait until the announced joke is in and the paragraph is fully opaque.
     await expect(page.getByRole("status")).not.toBeEmpty();
-    await expect(page.getByRole("status").locator("xpath=preceding-sibling::p")).toHaveCSS(
+    await expect(page.getByRole("status").locator("xpath=preceding-sibling::p[1]")).toHaveCSS(
       "opacity",
       "1",
     );
