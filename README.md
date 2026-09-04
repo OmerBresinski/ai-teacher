@@ -43,11 +43,12 @@ never point a local `.env` at production.
 ### Prerequisites
 
 - **Bun 1.3.6** — pinned in `package.json#packageManager` and `.bun-version`; `bun upgrade` if older.
-- **Node ≥ 20 — for Vitest only.** Everything runs on Bun (`vite` dev/build/preview are invoked
+- **Node 22 — for Vitest only.** Everything runs on Bun (`vite` dev/build/preview are invoked
   with `bun --bun` so the `#!/usr/bin/env node` shebang is ignored), except `vitest` in `apps/web`
   and `packages/ui`: `bun --bun vitest` cannot host jsdom workers yet, so `bun run test` there
-  needs a Node ≥ 20 on `PATH` (`.nvmrc` says `20`; `bun run doctor` warns otherwise). Node 18
-  fails with `'node:util' does not provide an export named 'styleText'`.
+  needs Node on `PATH`. `.nvmrc` is the single source of truth (`nvm use`; CI installs the same
+  major via `actions/setup-node`; `bun run doctor` warns when yours is older). Node 18 fails
+  with `'node:util' does not provide an export named 'styleText'`.
 - **Docker** with Compose v2 (Docker Desktop on macOS; Docker Engine + compose plugin on Linux),
   running. The scripts call `docker compose`, not `docker-compose`.
 - macOS, Linux or **WSL2**. Windows without WSL is not supported (the scripts rely on `lsof`,

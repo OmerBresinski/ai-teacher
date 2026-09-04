@@ -69,8 +69,6 @@ const DEV_PORTS: { port: number; owner: string }[] = [
   { port: 5173, owner: "apps/web (Vite)" },
 ];
 const OUR_PROCESS_RE = /^(bun|node|vite|turbo)/i;
-/** Vite 8 / Vitest 4 need `node:util` `styleText`; Node 18 lacks it. */
-const NODE_MIN_FOR_VITEST = "20.0.0";
 
 async function portListeners(port: number): Promise<{ command: string; pid: string }[] | null> {
   if (Bun.which("lsof") === null) return null;
@@ -105,17 +103,19 @@ await runMain(async () => {
 
   // Vitest (apps/web, packages/ui; ADR 0014) still runs on Node -- `bun --bun vitest` cannot host
   // jsdom workers yet. Everything else (vite dev/build/preview, api, worker, scripts) runs on Bun.
+  // `.nvmrc` is the single source of truth (`nvm use`, CI `actions/setup-node`).
   await check("Node for Vitest", async () => {
+    const wanted = (await Bun.file(path.join(ROOT, ".nvmrc")).text()).trim();
+    const fix = `nvm install ${wanted} && nvm use   (or: brew install node@${wanted}) -- only Vitest needs it`;
     const nodeBin = Bun.which("node");
-    const fix = "nvm install 20 && nvm use   (or: brew install node@22) -- only Vitest needs it";
     if (nodeBin === null)
       return warn("node not on PATH -- `bun run test` in apps/web and packages/ui will fail", fix);
     const out = await $`${nodeBin} --version`.quiet().nothrow();
     const version = out.stdout.toString().trim().replace(/^v/, "");
-    if (!satisfiesMinimum(version, NODE_MIN_FOR_VITEST)) {
-      return warn(`node ${version} < ${NODE_MIN_FOR_VITEST} required by Vitest 4 / Vite 8`, fix);
+    if (!satisfiesMinimum(version, `${wanted}.0.0`)) {
+      return warn(`node ${version} < ${wanted} (.nvmrc) required by Vitest 4 / Vite 8`, fix);
     }
-    return pass(`node ${version} (>= ${NODE_MIN_FOR_VITEST}; Vitest only)`);
+    return pass(`node ${version} (.nvmrc ${wanted}; Vitest only)`);
   });
 
   // -- docker -----------------------------------------------------------------------------------
