@@ -9,6 +9,7 @@ Hono application on Bun. The typed contract for `apps/web` (Hono RPC). Read the 
 | ----- | ---------- |
 | `hono` | routes, middleware, validation, `streamSSE`, testing, RPC types |
 | `use-railway` | Railway service config, variables, Postgres, PR environments, deploy failures |
+| `ai-sdk` | calling a model or touching AI SDK code |
 
 ## Constraints that override the skills
 
@@ -19,6 +20,9 @@ Hono application on Bun. The typed contract for `apps/web` (Hono RPC). Read the 
   Validate input with `@hono/zod-validator` on every route. Do not add a second framework or
   OpenAPI generator; if a public API is needed later, add `hono-openapi` on the same routes.
 - Routes are grouped by feature under `src/routes/`.
+- **ADR 0018 — AI provider.** Provider is `@tj/ai` `createAi`; callers use `ai.model(cls)` and
+  pass `abortSignal`. Never import `@ai-sdk/*` directly in apps, use the Vercel AI Gateway, or log
+  prompt/completion text. Model IDs come from `AI_MODEL_*`.
 - **ADR 0015 — env + logging.** `src/env.ts` parses `process.env` with Zod and throws on boot when
   values are missing/invalid; `.env.example` is committed here. Logging is `pino` structured JSON
   with a request-id middleware (`pino-pretty` in dev). **Never log prompt or content bodies.**
