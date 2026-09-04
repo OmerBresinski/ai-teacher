@@ -66,16 +66,12 @@ export function createRateLimiter({ limit, windowMs }: RateLimitConfig): RateLim
       }
 
       bucket.count += 1;
-      prune(now);
       return { ok: true, remaining: limit - bucket.count };
     },
     count(key, now = Date.now()) {
+      // Read-only: expired buckets read as 0 and are removed only by `prune()` in `take()`.
       const bucket = buckets.get(key);
-      if (!bucket || now >= bucket.resetAt) {
-        buckets.delete(key);
-        return 0;
-      }
-      return bucket.count;
+      return !bucket || now >= bucket.resetAt ? 0 : bucket.count;
     },
     size: () => buckets.size,
   };
