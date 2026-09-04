@@ -96,9 +96,9 @@ no mail catcher (ADR 0008 logs mail to the console).
 - **Per-app `.env`** next to each `package.json`: every app/package that reads env keeps its own
   `.env.example` (ADR 0015). Bun loads `.env` from the process cwd only — it does **not** walk up
   to the root, and Turborepo does not load env files either — so `apps/api` reads `apps/api/.env`.
-  `WEB_ORIGIN=http://localhost:5173` lives there (see "API" below); `VITE_API_URL=http://localhost:3001`
-  will live in `apps/web/.env` (TEACH-21; the web app proxies the API through Vite so cookies stay
-  same-origin).
+  `WEB_ORIGIN=http://localhost:5173` lives there (see "API" below); `VITE_API_URL=/api` lives in
+  `apps/web/.env` (the web app proxies `/api/*` to the API through Vite so cookies stay same-origin,
+  see "Web app" below).
 - `setup` discovers every `**/.env.example` (skipping `node_modules`, build output) and copies it
   to a sibling `.env` **only when missing** — it never overwrites. `doctor` lists, per file, the
   keys of the example that the `.env` lacks. New apps are picked up automatically.
@@ -171,6 +171,22 @@ every workspace's tests; locally the per-package `.env` files supply them.
   .get(…)`) validated with `zValidator(target, schema, validationHook)`, then append it to the
   `app.route("/", …)` chain in `apps/api/src/app.ts`. `AppType` updates automatically and
   `@tj/api-client` (type-only import of `@tj/api/app`) exposes it as `client.<path>.$get()`.
+
+### Web app
+
+`apps/web` ([`@tj/web`](apps/web/README.md), ADR 0004) is a Vite + React SPA with **code-based**
+TanStack Router routes (`src/routes/<name>.route.ts` + `<name>.page.tsx`, assembled in
+`src/router.ts`), TanStack Query and the typed RPC client. `bun run --filter=@tj/web dev` serves it
+on `http://localhost:5173`.
+
+- **Env** (`apps/web/.env`, from `.env.example`): `VITE_API_URL=/api` and `VITE_APP_ENV`, validated
+  by Zod in `src/env.ts`; `VITE_DEV_API_TARGET` (default `http://localhost:3001`) is where the dev
+  proxy forwards `/api/*` after stripping the prefix, so auth cookies stay same-origin.
+- **Routes**: `/sign-in` (magic link), `/` (who am I + sign out) and `/dev/jobs` (development aid:
+  enqueue `ping`, follow it over SSE, cancel). Everything but `/sign-in` sits under an auth layout
+  whose `beforeLoad` resolves `/me` through the Query client and redirects when there is no session.
+- **Bundle budget**: `bun run --filter=@tj/web build` then `bun run check:bundle-budget` (root)
+  prints the gzip table; CI fails above 250 KB.
 
 ### Troubleshooting
 
