@@ -1,0 +1,31 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile",
+    "watchPatterns": [
+      "Dockerfile",
+      ".dockerignore",
+      "infra/docker/**",
+      "infra/railway/worker.json",
+      "package.json",
+      "bun.lock",
+      "bunfig.toml",
+      "turbo.json",
+      "apps/worker/**",
+      "packages/db/**",
+      "packages/domain/**",
+      "packages/jobs/**",
+      "packages/config/**"
+    ]
+  },
+  "deploy": {
+    "region": "europe-west4-drams3a",
+    "startCommand": "/app/entrypoint.sh worker",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 5,
+    "drainingSeconds": 30
+  }
+}

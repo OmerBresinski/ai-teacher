@@ -320,6 +320,26 @@ Biome is configured once in the root `biome.json` (ADR 0003); packages do not ca
 - Product terms (Journey, Lesson, Artefact, Workspace, …) are used exactly as defined in
   [`docs/glossary.md`](docs/glossary.md).
 
+## Deploy (Railway)
+
+`apps/api` and `apps/worker` ship as **one Docker image** built from the root
+[`Dockerfile`](Dockerfile) (multi-stage, `oven/bun:1.3.6-alpine`, ~155 MB) and run on Railway in
+EU-West (Amsterdam) next to a `pgvector/pgvector:pg16` Postgres (ADR
+[0010](docs/adr/0010-hosting-vercel-railway.md)). The image's entrypoint takes one word:
+`api`, `worker` or `migrate`; Railway runs `migrate` as the api's pre-deploy command (ADR 0006:
+never on boot). Config-as-code lives in [`infra/railway/`](infra/railway/), the full runbook
+(topology, variables, deploy/rollback, PR environments, dashboard-only steps) in
+[`infra/README.md`](infra/README.md).
+
+Local parity against the compose Postgres:
+
+```sh
+bun run docker:build         # docker build -t tj:local .
+bun run docker:migrate       # idempotent: "DATABASE_URL up to date"
+bun run docker:run:api       # http://localhost:3001/health -> {"ok":true,"db":"up"}
+bun run docker:run:worker    # http://localhost:3002/health
+```
+
 ## CI
 
 GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every pull request
