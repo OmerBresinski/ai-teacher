@@ -30,7 +30,7 @@ Everyday commands (all run through Turborepo, see [ADR 0002](docs/adr/0002-turbo
 | `bun run lint:fix`         | Same, applying safe fixes                                        |
 | `bun run format`           | Biome format (write)                                             |
 | `bun run typecheck`        | `tsc --noEmit` per workspace, dependencies first                 |
-| `bun run test`             | Unit/integration tests (`bun test` or Vitest per workspace)      |
+| `bun run test`             | Unit/integration tests (`bun test` in every workspace)           |
 | `bun run test:e2e`         | Playwright + axe, after `build` ([`docs/testing.md`](docs/testing.md)) |
 | `bun run verify-bootstrap` | End-to-end check of this scaffold (`scripts/verify-bootstrap.sh`) |
 
@@ -43,11 +43,9 @@ never point a local `.env` at production.
 ### Prerequisites
 
 - **Bun 1.3.6** — pinned in `package.json#packageManager` and `.bun-version`; `bun upgrade` if older.
-- **Node ≥ 20 — for Vitest only.** Everything runs on Bun (`vite` dev/build/preview are invoked
-  with `bun --bun` so the `#!/usr/bin/env node` shebang is ignored), except `vitest` in `apps/web`
-  and `packages/ui`: `bun --bun vitest` cannot host jsdom workers yet, so `bun run test` there
-  needs a Node ≥ 20 on `PATH` (`.nvmrc` says `20`; `bun run doctor` warns otherwise). Node 18
-  fails with `'node:util' does not provide an export named 'styleText'`.
+- **No Node.js.** Everything runs on Bun: `vite` and `playwright` are invoked with `bun --bun` so
+  their `#!/usr/bin/env node` shebangs are ignored, and React unit tests run under `bun test` with
+  happy-dom (ADR 0014, amended). A Node on `PATH` is neither needed nor used.
 - **Docker** with Compose v2 (Docker Desktop on macOS; Docker Engine + compose plugin on Linux),
   running. The scripts call `docker compose`, not `docker-compose`.
 - macOS, Linux or **WSL2**. Windows without WSL is not supported (the scripts rely on `lsof`,
@@ -162,8 +160,8 @@ first start (`pgboss_test` in tests) — the one set of tables not managed by `@
 ### Testing
 
 Full guide: [`docs/testing.md`](docs/testing.md) — runners and the file-naming rule (`bun test`
-for server packages, Vitest via the `@tj/config/vitest/react` preset for React packages, Playwright
-`e2e/**/*.spec.ts`), the `withTestDb()` harness and factories, the test-only magic-link capture
+everywhere — React workspaces preload happy-dom + Testing Library from `@tj/config/bun-test`;
+Playwright owns `e2e/**/*.spec.ts`), the `withTestDb()` harness and factories, the test-only magic-link capture
 route, running subsets, e2e locally, flake guidance.
 
 Integration tests use `TEST_DATABASE_URL` (default
@@ -289,7 +287,7 @@ Every new package **must** copy this shape:
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"           // or "vitest run" for React packages (ADR 0014)
+    "test": "bun test"           // React packages add a bunfig.toml [test].preload (ADR 0014)
   },
   "devDependencies": {
     "@tj/config": "workspace:*",
