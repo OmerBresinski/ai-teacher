@@ -65,13 +65,15 @@ Create one Linear issue per finding with `project: "Tech debt"`, using the **Age
 template to the standard above: include the exact `path:line`, the pattern file and an acceptance
 table. A Tech debt ticket is picked up cold by a subagent months later, so "we should look at X"
 is not a ticket. Set priority to High only for data loss, duplicate spend or a security hole;
-otherwise use Medium or Low. Before creating a ticket, search the project for one on the same
-file or symbol and comment on it instead of duplicating it.
+otherwise Medium or Low — the project takes any priority. Before creating a ticket, search Linear
+(`linear_list_issues` with `query` on the file or symbol name, not only the Tech debt project) and
+comment on it instead of duplicating it.
 
-The `reviewer` is read-only and does not create tickets. It marks these findings in its review
-body as `TECH-DEBT:` alongside the existing `BLOCKER:` convention in step 2; the main agent files
-them after the review, replies on the thread with the ticket id, and resolves it. A filed ticket
-counts as consciously declined with a stated reason for the purpose of step 3.
+The `reviewer` is read-only and does not create tickets. It prefixes each deferred **inline**
+comment with `TECH-DEBT:` so the thread is identifiable, and lists them in one line of the review
+summary; `BLOCKER:` stays as it is in step 2. The main agent files them after the review. The
+thread is resolved only after a reply states why it is out of scope for this PR and names the Tech
+debt ticket id; the ticket alone is not a decision.
 
 When the user asks for an audit or a list of issues, report findings in chat first. The user
 decides; file the findings they do not want fixed now in Tech debt.
@@ -128,8 +130,9 @@ review → CI path that `master` protection depends on.
    ```sh
    # commit_id: gh pr view <n> --json headRefOid -q .headRefOid
    # event is always "COMMENT": GitHub rejects REQUEST_CHANGES/APPROVE on your own PR (422),
-   # and the reviewer runs as the PR author. Flag blockers as "BLOCKER:" and out-of-scope findings
-   # as "TECH-DEBT:" (see "Tech debt" above) in the body instead.
+   # and the reviewer runs as the PR author. Prefix each deferred inline comment with "TECH-DEBT:"
+   # so the thread is identifiable, and list them in one line of the review summary; "BLOCKER:"
+   # stays as it is in step 2 (see "Tech debt" above).
    gh api repos/{owner}/{repo}/pulls/<n>/reviews --input - <<'EOF'
    {
      "commit_id": "<head sha>",
@@ -155,8 +158,9 @@ review → CI path that `master` protection depends on.
    (resume it with its `task_id`), pushes, and the `reviewer` re-reviews only if the fix was
    structural. With or without findings, the main agent then runs the acceptance check described
    above and merges only when it passes. `master` requires every review thread to be resolved, so
-   after a finding is fixed (or consciously declined, with a reply saying why — filing a Tech debt
-   ticket and naming it in the reply counts) resolve its
+   after a finding is fixed (or deferred, with the thread resolved only after a reply states why it
+   is out of scope for this PR and names the Tech debt ticket id — the ticket alone is not a
+   decision) resolve its
    thread — there is no `gh` command for this, use GraphQL:
 
    ```sh
