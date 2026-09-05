@@ -13,9 +13,12 @@ package delivers today (TEACH-13).
 ```ts
 import {
   // components (shadcn new-york, adapted — see "Adding a shadcn component")
-  Button, buttonVariants, type ButtonProps,
-  Input, type InputProps,
-  Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter,
+   Button, buttonVariants, type ButtonProps,
+   Input, type InputProps,
+   Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter,
+   AlertDialog, ConfirmDialog, Dialog, DropdownMenu, Popover, Tooltip, TooltipProvider,
+   Tabs, Switch, Checkbox, RadioGroup, Select, Separator, Skeleton, Textarea,
+   Label, Kbd, Spinner, Toaster, toast,
   // theming
   ThemeProvider, useTheme, type ThemeProviderProps, type ThemeContextValue,
   THEME_INIT_SCRIPT, createThemeInitScript,
@@ -174,6 +177,9 @@ each test) and `./bun-test.setup.ts`, which mocks `window.matchMedia`
 `<html data-theme>` between tests. Bun resolves the `@/*` alias from `tsconfig.json#paths` natively.
 The jest-dom matcher types come from `@tj/config/bun-test/jest-dom` (listed in `tsconfig.json`
 `types`).
+
+Radix overlay tests also rely on the package setup's minimal `ResizeObserver`, `PointerEvent`, and
+`scrollIntoView` polyfills. Keep those polyfills rather than skipping portal interaction tests.
 
 ## Notes for maintainers
 

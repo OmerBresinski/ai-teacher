@@ -64,6 +64,7 @@ describe("TeachDeck globals", () => {
       "--color-ink-3",
       "--color-brand-tint",
       "--color-brand-text",
+      "--color-scrim",
     ]) {
       expect(theme).toContain(token);
     }

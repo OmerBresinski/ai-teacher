@@ -57,6 +57,7 @@
   --accent: rgb(26 24 22 / 0.06);
   --accent-foreground: #1a1816;
   --accent-active: rgb(26 24 22 / 0.1);
+  --scrim: rgb(0 0 0 / 0.4);
   --destructive: #b3261e;
   --destructive-foreground: #ffffff;
   --success: #217a54;
@@ -121,6 +122,7 @@
   --accent: rgb(247 243 235 / 0.08);
   --accent-foreground: #f2f0eb;
   --accent-active: rgb(247 243 235 / 0.14);
+  --scrim: rgb(0 0 0 / 0.6);
   --destructive: #e8595f;
   --destructive-foreground: #231110;
   --success: #86c7a8;
@@ -184,6 +186,7 @@
     --accent: rgb(247 243 235 / 0.08);
     --accent-foreground: #f2f0eb;
     --accent-active: rgb(247 243 235 / 0.14);
+    --scrim: rgb(0 0 0 / 0.6);
     --destructive: #e8595f;
     --destructive-foreground: #231110;
     --success: #86c7a8;
@@ -247,6 +250,7 @@
   --accent: rgb(255 255 255 / 0.14);
   --accent-foreground: #ffffff; /* 15.1:1 on the accent wash over --background */
   --accent-active: rgb(255 255 255 / 0.22);
+  --scrim: rgb(0 0 0 / 0.6);
   --destructive: #ff7b7b;
   --destructive-foreground: #000000; /* 8.5:1 on --destructive */
   --success: #9be1ba;
@@ -306,6 +310,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-active: var(--accent-active);
+  --color-scrim: var(--scrim);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
@@ -363,6 +368,7 @@
   --shadow-2: var(--shadow-2);
   --shadow-3: var(--shadow-3);
   --animate-arrive: tj-arrive var(--duration-arrive) var(--ease-arrive) both;
+  --animate-arrive-centered: tj-arrive-centered var(--duration-arrive) var(--ease-arrive) both;
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -387,6 +393,18 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes tj-arrive-centered {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + var(--tj-arrive-distance, var(--arrive-rise))));
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
   }
 }
 
