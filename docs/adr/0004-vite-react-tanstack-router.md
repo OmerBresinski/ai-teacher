@@ -16,5 +16,5 @@ F18-D6 asks for a mainstream React stack with a server-driven data layer and acc
 
 - Simple static deploy (ADR 0010); bundle budget is fully under our control; route-level code splitting via `lazyRouteComponent`.
 - No SSR: first paint depends on the bundle; the 250 KB budget is enforced in CI to protect the <1 s target.
-- Code-based routing means the route tree is explicit and type-safe but must be maintained by hand; keep route definitions colocated under `apps/web/src/routes/` with one file per route group and assemble them in `router.ts`.
+- Code-based routing means the route tree is explicit and type-safe but must be maintained by hand; keep route definitions colocated under `apps/web/src/routes/` with one file per route group and assemble them in `router.tsx`.
 - PWA/offline (F18-R06) is not part of the scaffold; see ADR 0016.
