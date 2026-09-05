@@ -2,7 +2,7 @@
 
 The design system: Tailwind CSS v4 tokens + shadcn/ui components (Radix primitives), consumed by
 `apps/web` as `@tj/ui`. Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by
-TEACH-13; tokens and the component set are F18 project work.
+TEACH-13; tokens and components follow ADR 0019's TeachDeck visual system.
 
 ## Skills to load (in `./.agents/skills/`)
 
@@ -17,9 +17,11 @@ TEACH-13; tokens and the component set are F18 project work.
   add …` runs in this directory). Apps import from `@tj/ui`; they never install shadcn components
   or Tailwind plugins themselves. Components are copied source: keep the count deliberate and
   upgrade manually.
-- **Theming via `data-theme`.** Tokens are CSS custom properties (colour, type, spacing, radius on
-  an 8 px grid); light / dark / high-contrast themes switch with a `data-theme` attribute on
-  `<html>` (F18-D4). Do not use Tailwind's `dark:` class strategy or a `.dark` root class.
+- **Theming via `data-theme`.** ADR 0019's tokens are CSS custom properties; light / dark /
+  high-contrast themes switch with a `data-theme` attribute on `<html>` (F18-D4). Use the named
+  radius ladder (`chip` 6px, `control` 8px, `card` 10px, `dialog` 12px, `face` 16px), not ad-hoc
+  radii. Use `font-ui` by default; reserve `font-display` (Lora) for product-name moments at 20px
+  or larger. Do not use Tailwind's `dark:` class strategy or a `.dark` root class.
 - **Accessibility is enforced (F18-R09, WCAG 2.2 AA).** Biome's `a11y` rule group is at `error`;
   keep Radix primitives' semantics intact, never strip focus styles, and every interactive element
   is keyboard-reachable.

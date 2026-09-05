@@ -27,7 +27,7 @@ describe("Card", () => {
 
     const card = screen.getByTestId("card");
     expect(card).toHaveAttribute("data-slot", "card");
-    expect(card).toHaveClass("bg-surface", "max-w-md");
+    expect(card).toHaveClass("bg-card", "rounded-card", "shadow-1", "max-w-md");
     expect(screen.getByText("Lesson 3")).toHaveAttribute("data-slot", "card-title");
     expect(screen.getByText("Photosynthesis, part 1")).toHaveAttribute(
       "data-slot",

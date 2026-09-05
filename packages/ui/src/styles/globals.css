@@ -1,8 +1,8 @@
 /*
- * @tj/ui — single source of design tokens (ADR 0009).
+ * @tj/ui — single source of TeachDeck design tokens (ADRs 0009 and 0019).
  *
- * Tokens filled by F18 (App Shell PRD §7). Everything below is a neutral placeholder so
- * the plumbing (Tailwind v4 + shadcn + data-theme switching) can be exercised end to end.
+ * TeachDeck's warm paper, ink, terracotta, type, radius, and motion values are expressed through
+ * shadcn's semantic names so existing and CLI-installed primitives paint consistently.
  *
  * Theming model
  * -------------
@@ -11,16 +11,18 @@
  *   override the same variable names. No `dark:` classes anywhere: components only use tokens.
  * - Before JS runs (or if the ThemeProvider is not mounted) `html:not([data-theme])` follows the
  *   OS via `prefers-color-scheme`. Once `data-theme` is set, the attribute wins unconditionally.
- * - Tailwind utilities (`bg-background`, `text-muted-foreground`, `bg-status-taught`, ...) are
- *   mapped from these variables in the single `@theme inline` block below.
+ * - Tailwind utilities (`bg-background`, `text-muted-foreground`, `bg-primary`, ...) are mapped
+ *   from these variables in the single `@theme inline` block below.
  *
  * Consumers (apps) import this file once and add an `@source` pointing at `packages/ui/src` so
  * Tailwind sees the classes used inside the package (see packages/ui/README.md).
  */
 
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource/lora/500.css";
 @import "tailwindcss";
 
-/* Scan this package's own source for utility classes (relative to this file → packages/ui/src). */
+/* Scan this package's own source for utility classes (relative to this file -> packages/ui/src). */
 @source "../";
 
 /*
@@ -37,28 +39,63 @@
   color-scheme: light;
 
   /* Colour */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --surface: oklch(1 0 0);
-  --surface-foreground: oklch(0.145 0 0);
-  --accent: oklch(0.205 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --border: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
+  --background: #f7f6f2;
+  --foreground: #1a1816;
+  --card: #ffffff;
+  --card-foreground: #1a1816;
+  --popover: #ffffff;
+  --popover-foreground: #1a1816;
+  --primary: #d2644b;
+  --primary-hover: #c05740;
+  --primary-press: #ae4b31;
+  /* Ink on terracotta is 5.63:1; white would be 3.71:1 and fails WCAG AA. */
+  --primary-foreground: #1a1816;
+  --secondary: #f9f8f6;
+  --secondary-foreground: #4e4a44;
+  --muted: #f9f8f6;
+  --muted-foreground: #6b6761;
+  --accent: rgb(26 24 22 / 0.06);
+  --accent-foreground: #1a1816;
+  --accent-active: rgb(26 24 22 / 0.1);
+  --destructive: #b3261e;
+  --destructive-foreground: #ffffff;
+  --success: #217a54;
+  --warning: #8a5a00;
+  --border: #e5e0d8;
+  --border-faint: #f2efeb;
+  --border-control: #8a857b;
+  --input: #e5e0d8;
+  --ring: #d2644b;
+  --canvas: #efece6;
+  --sidebar: #f7f6f2;
+  --sidebar-foreground: #1a1816;
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: #1a1816;
+  --sidebar-border: #e5e0d8;
+  --ink-2: #4e4a44;
+  --ink-3: #6b6761;
+  --ink-4: #8f8a80;
+  --brand-text: #b04a33;
+  --brand-tint: rgb(210 100 75 / 0.12);
+  --brand-tint-line: rgb(210 100 75 / 0.28);
+  --brand-quiet: #fbf0ed;
+  --shadow-1: 0 1px 2px rgb(26 24 22 / 0.06), 0 0 0 1px rgb(26 24 22 / 0.05);
+  --shadow-2:
+    0 1px 2px rgb(26 24 22 / 0.06), 0 8px 24px rgb(26 24 22 / 0.08), 0 0 0 1px rgb(26 24 22 / 0.06);
+  --shadow-3:
+    0 2px 4px rgb(26 24 22 / 0.06), 0 12px 32px rgb(26 24 22 / 0.12), 0 0 0 1px rgb(26 24 22 / 0.07);
 
-  /* Lesson / Artefact state chips (glossary) */
-  --status-draft: oklch(0.556 0 0);
-  --status-reviewed: oklch(0.55 0.15 250);
-  --status-stale: oklch(0.7 0.15 80);
-  --status-taught: oklch(0.55 0.15 150);
-  --status-attention: oklch(0.6 0.2 25);
-
-  /* Radius — 8px grid */
-  --radius: 0.5rem;
+  /* Geometry and motion */
+  --radius-chip: 6px;
+  --radius-control: 8px;
+  --radius-card: 10px;
+  --radius-dialog: 12px;
+  --radius-face: 16px;
+  --radius: var(--radius-control);
+  --duration-fast: 150ms;
+  --duration-arrive: 450ms;
+  --ease-arrive: cubic-bezier(0.22, 1, 0.36, 1);
+  --arrive-rise: 16px;
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -67,120 +104,265 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --surface: oklch(0.205 0 0);
-  --surface-foreground: oklch(0.985 0 0);
-  --accent: oklch(0.922 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --ring: oklch(0.556 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-
-  --status-draft: oklch(0.708 0 0);
-  --status-reviewed: oklch(0.7 0.15 250);
-  --status-stale: oklch(0.8 0.15 80);
-  --status-taught: oklch(0.7 0.15 150);
-  --status-attention: oklch(0.7 0.2 25);
+  --background: #1a1816;
+  --foreground: #f2f0eb;
+  --card: #242220;
+  --card-foreground: #f2f0eb;
+  --popover: #242220;
+  --popover-foreground: #f2f0eb;
+  --primary: #e6866b;
+  --primary-hover: #ee9b83;
+  --primary-press: #d5745a;
+  --primary-foreground: #1f110c;
+  --secondary: #161513;
+  --secondary-foreground: #bcb6ac;
+  --muted: #161513;
+  --muted-foreground: #9c958b;
+  --accent: rgb(247 243 235 / 0.08);
+  --accent-foreground: #f2f0eb;
+  --accent-active: rgb(247 243 235 / 0.14);
+  --destructive: #e8595f;
+  --destructive-foreground: #231110;
+  --success: #86c7a8;
+  --warning: #e0b060;
+  --border: #33302a;
+  --border-faint: #262420;
+  --border-control: #7e786f;
+  --input: #33302a;
+  --ring: #e6866b;
+  --canvas: #131211;
+  --sidebar: #1a1816;
+  --sidebar-foreground: #f2f0eb;
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: #f2f0eb;
+  --sidebar-border: #33302a;
+  --ink-2: #bcb6ac;
+  --ink-3: #9c958b;
+  --ink-4: #6e6860;
+  --brand-text: #e6866b;
+  --brand-tint: rgb(230 134 107 / 0.14);
+  --brand-tint-line: rgb(230 134 107 / 0.28);
+  --brand-quiet: #2a211d;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.06);
+  --shadow-2:
+    0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08);
+  --shadow-3:
+    0 2px 4px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.09);
+  --radius-chip: 6px;
+  --radius-control: 8px;
+  --radius-card: 10px;
+  --radius-dialog: 12px;
+  --radius-face: 16px;
+  --radius: var(--radius-control);
+  --duration-fast: 150ms;
+  --duration-arrive: 450ms;
+  --ease-arrive: cubic-bezier(0.22, 1, 0.36, 1);
+  --arrive-rise: 16px;
 }
 
 /* ------------------------------------------------------------------------------------------ */
-/* Dark (OS preference, before JS) — same values as [data-theme="dark"]; keep in sync.         */
-/* Only applies while <html> has no data-theme, i.e. before ThemeProvider / THEME_INIT_SCRIPT.  */
+/* Dark (OS preference, before JS) — same values as [data-theme="dark"]; keep in sync.      */
 /* ------------------------------------------------------------------------------------------ */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
     color-scheme: dark;
 
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --surface: oklch(0.205 0 0);
-    --surface-foreground: oklch(0.985 0 0);
-    --accent: oklch(0.922 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --border: oklch(1 0 0 / 10%);
-    --ring: oklch(0.556 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --destructive-foreground: oklch(0.985 0 0);
-
-    --status-draft: oklch(0.708 0 0);
-    --status-reviewed: oklch(0.7 0.15 250);
-    --status-stale: oklch(0.8 0.15 80);
-    --status-taught: oklch(0.7 0.15 150);
-    --status-attention: oklch(0.7 0.2 25);
+    --background: #1a1816;
+    --foreground: #f2f0eb;
+    --card: #242220;
+    --card-foreground: #f2f0eb;
+    --popover: #242220;
+    --popover-foreground: #f2f0eb;
+    --primary: #e6866b;
+    --primary-hover: #ee9b83;
+    --primary-press: #d5745a;
+    --primary-foreground: #1f110c;
+    --secondary: #161513;
+    --secondary-foreground: #bcb6ac;
+    --muted: #161513;
+    --muted-foreground: #9c958b;
+    --accent: rgb(247 243 235 / 0.08);
+    --accent-foreground: #f2f0eb;
+    --accent-active: rgb(247 243 235 / 0.14);
+    --destructive: #e8595f;
+    --destructive-foreground: #231110;
+    --success: #86c7a8;
+    --warning: #e0b060;
+    --border: #33302a;
+    --border-faint: #262420;
+    --border-control: #7e786f;
+    --input: #33302a;
+    --ring: #e6866b;
+    --canvas: #131211;
+    --sidebar: #1a1816;
+    --sidebar-foreground: #f2f0eb;
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: #f2f0eb;
+    --sidebar-border: #33302a;
+    --ink-2: #bcb6ac;
+    --ink-3: #9c958b;
+    --ink-4: #6e6860;
+    --brand-text: #e6866b;
+    --brand-tint: rgb(230 134 107 / 0.14);
+    --brand-tint-line: rgb(230 134 107 / 0.28);
+    --brand-quiet: #2a211d;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.06);
+    --shadow-2:
+      0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08);
+    --shadow-3:
+      0 2px 4px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.09);
+    --radius-chip: 6px;
+    --radius-control: 8px;
+    --radius-card: 10px;
+    --radius-dialog: 12px;
+    --radius-face: 16px;
+    --radius: var(--radius-control);
+    --duration-fast: 150ms;
+    --duration-arrive: 450ms;
+    --ease-arrive: cubic-bezier(0.22, 1, 0.36, 1);
+    --arrive-rise: 16px;
   }
 }
 
 /* ------------------------------------------------------------------------------------------ */
 /* High contrast (explicit only; ThemeProvider also resolves `prefers-contrast: more` here)    */
-/* Placeholder: light-based, pure black/white with saturated status colours. F18 decides       */
-/* whether a dark high-contrast variant is needed (F18-D4).                                    */
 /* ------------------------------------------------------------------------------------------ */
 [data-theme="high-contrast"] {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0 0 0);
-  --surface: oklch(1 0 0);
-  --surface-foreground: oklch(0 0 0);
-  --accent: oklch(0 0 0);
-  --accent-foreground: oklch(1 0 0);
-  --muted: oklch(0.94 0 0);
-  --muted-foreground: oklch(0 0 0);
-  --border: oklch(0 0 0);
-  --ring: oklch(0.45 0.25 264);
-  --destructive: oklch(0.45 0.25 27);
-  --destructive-foreground: oklch(1 0 0);
-
-  --status-draft: oklch(0.3 0 0);
-  --status-reviewed: oklch(0.4 0.2 250);
-  --status-stale: oklch(0.5 0.18 80);
-  --status-taught: oklch(0.4 0.18 150);
-  --status-attention: oklch(0.45 0.25 25);
+  --background: #000000;
+  --foreground: #ffffff; /* 21:1 on --background */
+  --card: #0e0d0c;
+  --card-foreground: #ffffff; /* 19.5:1 on --card */
+  --popover: #0e0d0c;
+  --popover-foreground: #ffffff; /* 19.5:1 on --popover */
+  --primary: #ffa07a;
+  --primary-hover: #ffb092;
+  --primary-press: #e88965;
+  --primary-foreground: #000000; /* 10.5:1 on --primary */
+  --secondary: #161513;
+  --secondary-foreground: #ffffff; /* 18.9:1 on --secondary */
+  --muted: #161513;
+  --muted-foreground: #e6e2da; /* 15.6:1 on --muted */
+  --accent: rgb(255 255 255 / 0.14);
+  --accent-foreground: #ffffff; /* 15.1:1 on the accent wash over --background */
+  --accent-active: rgb(255 255 255 / 0.22);
+  --destructive: #ff7b7b;
+  --destructive-foreground: #000000; /* 8.5:1 on --destructive */
+  --success: #9be1ba;
+  --warning: #ffd27a;
+  --border: #8a857b;
+  --border-faint: #3e3a34;
+  --border-control: #ffffff;
+  --input: #8a857b;
+  --ring: #ffffff;
+  --canvas: #000000;
+  --sidebar: #000000;
+  --sidebar-foreground: #ffffff; /* 21:1 on --sidebar */
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: #ffffff; /* 15.1:1 on the sidebar accent wash */
+  --sidebar-border: #8a857b;
+  --ink-2: #ffffff; /* 21:1 on --background */
+  --ink-3: #e6e2da; /* 16.3:1 on --background */
+  --ink-4: #cfc9be; /* 13.1:1 on --background */
+  --brand-text: #ffa07a; /* 10.5:1 on --background */
+  --brand-tint: rgb(255 160 122 / 0.18);
+  --brand-tint-line: rgb(255 160 122 / 0.36);
+  --brand-quiet: #2e1b16;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.16);
+  --shadow-2:
+    0 1px 2px rgb(0 0 0 / 0.6), 0 8px 24px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.2);
+  --shadow-3:
+    0 2px 4px rgb(0 0 0 / 0.6), 0 12px 32px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.24);
+  --radius-chip: 6px;
+  --radius-control: 8px;
+  --radius-card: 10px;
+  --radius-dialog: 12px;
+  --radius-face: 16px;
+  --radius: var(--radius-control);
+  --duration-fast: 150ms;
+  --duration-arrive: 450ms;
+  --ease-arrive: cubic-bezier(0.22, 1, 0.36, 1);
+  --arrive-rise: 16px;
 }
 
 /* ------------------------------------------------------------------------------------------ */
 /* Tailwind theme mapping — the ONLY place variables become utilities.                        */
-/* `inline` makes utilities reference the variable (e.g. `bg-background` → var(--background)) */
-/* so a data-theme switch re-colours everything without re-generating CSS.                    */
 /* ------------------------------------------------------------------------------------------ */
 @theme inline {
   /* Colour */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-surface-foreground: var(--surface-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-press: var(--primary-press);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-active: var(--accent-active);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-border-faint: var(--border-faint);
+  --color-border-control: var(--border-control);
+  --color-input: var(--input);
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-status-draft: var(--status-draft);
-  --color-status-reviewed: var(--status-reviewed);
-  --color-status-stale: var(--status-stale);
-  --color-status-taught: var(--status-taught);
-  --color-status-attention: var(--status-attention);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-canvas: var(--canvas);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-brand-text: var(--brand-text);
+  --color-brand-tint: var(--brand-tint);
+  --color-brand-tint-line: var(--brand-tint-line);
+  --color-brand-quiet: var(--brand-quiet);
 
-  /* Type — placeholder system stack; F18 swaps in the product typeface (see PRD §7). */
-  --font-sans:
-    ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
-    "Noto Color Emoji";
+  /* Type */
+  --font-ui: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Lora", Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-ui);
+  --text-eyebrow: 12px;
+  --text-eyebrow--line-height: 16px;
+  --text-meta: 13px;
+  --text-meta--line-height: 18px;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-lead: 15px;
+  --text-lead--line-height: 22px;
+  --text-title: 20px;
+  --text-title--line-height: 26px;
 
-  /* Radius (8px grid: --radius = 8px; steps of 4px around it) */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Radius */
+  --radius-chip: var(--radius-chip);
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
+  --radius-dialog: var(--radius-dialog);
+  --radius-face: var(--radius-face);
+  --radius-sm: var(--radius-chip);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-card);
+  --radius-xl: var(--radius-dialog);
+  --radius-2xl: var(--radius-face);
 
-  /* Spacing: Tailwind's default `--spacing: 0.25rem` is kept; use multiples of 2 (8px grid). */
+  /* Elevation and motion */
+  --shadow-1: var(--shadow-1);
+  --shadow-2: var(--shadow-2);
+  --shadow-3: var(--shadow-3);
+  --animate-arrive: tj-arrive var(--duration-arrive) var(--ease-arrive) both;
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -192,6 +374,30 @@
   }
 
   body {
-    @apply bg-background font-sans text-foreground;
+    @apply bg-background font-ui text-foreground;
+  }
+}
+
+@keyframes tj-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(var(--arrive-rise));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Translation drops out for reduced motion while the arrival remains a short opacity fade. */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  [data-theme="dark"],
+  [data-theme="high-contrast"],
+  html:not([data-theme]) {
+    --duration-fast: 1ms;
+    --duration-arrive: 150ms;
+    --arrive-rise: 0px;
   }
 }
