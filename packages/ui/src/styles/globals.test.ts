@@ -22,6 +22,17 @@ function variables(block: string): string[] {
     .filter((name): name is string => name !== undefined);
 }
 
+const rootOnlyGeometry = new Set([
+  "--sidebar-width",
+  "--sidebar-width-collapsed",
+  "--tile-height",
+  "--pill-height",
+]);
+
+function paletteVariables(block: string): string[] {
+  return variables(block).filter((name) => !rootOnlyGeometry.has(name));
+}
+
 describe("TeachDeck globals", () => {
   it("defines all three resolved theme blocks", () => {
     expect(css).toContain(":root {");
@@ -31,14 +42,28 @@ describe("TeachDeck globals", () => {
   });
 
   it("keeps the explicit themes and OS dark mirror in sync", () => {
-    const light = variables(blockFor(":root {"));
-    const dark = variables(blockFor('[data-theme="dark"] {'));
-    const systemDark = variables(blockFor("html:not([data-theme]) {"));
-    const highContrast = variables(blockFor('[data-theme="high-contrast"] {'));
+    const light = paletteVariables(blockFor(":root {"));
+    const dark = paletteVariables(blockFor('[data-theme="dark"] {'));
+    const systemDark = paletteVariables(blockFor("html:not([data-theme]) {"));
+    const highContrast = paletteVariables(blockFor('[data-theme="high-contrast"] {'));
 
     expect(dark).toEqual(light);
     expect(systemDark).toEqual(dark);
     expect(highContrast).toEqual(light);
+  });
+
+  it("keeps component geometry root-only", () => {
+    const root = variables(blockFor(":root {"));
+    for (const variable of rootOnlyGeometry) expect(root).toContain(variable);
+
+    for (const selector of [
+      '[data-theme="dark"] {',
+      "html:not([data-theme]) {",
+      '[data-theme="high-contrast"] {',
+    ]) {
+      const theme = variables(blockFor(selector));
+      for (const variable of rootOnlyGeometry) expect(theme).not.toContain(variable);
+    }
   });
 
   it("does not retain the retired palette tokens", () => {

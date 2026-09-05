@@ -97,6 +97,12 @@
   --duration-arrive: 450ms;
   --ease-arrive: cubic-bezier(0.22, 1, 0.36, 1);
   --arrive-rise: 16px;
+
+  /* Component geometry */
+  --sidebar-width: 220px;
+  --sidebar-width-collapsed: 56px;
+  --tile-height: 64px;
+  --pill-height: 24px;
 }
 
 /* ------------------------------------------------------------------------------------------ */

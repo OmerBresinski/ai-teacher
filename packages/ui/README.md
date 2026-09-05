@@ -18,14 +18,19 @@ import {
    Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter,
    AlertDialog, ConfirmDialog, Dialog, DropdownMenu, Popover, Tooltip, TooltipProvider,
    Tabs, Switch, Checkbox, RadioGroup, Select, Separator, Skeleton, Textarea,
-   Label, Kbd, Spinner, Toaster, toast,
+   Label, Kbd, Toaster, toast, Spinner,
+   // shell compositions
+   AppBar, AppBarGroup, AppBarTitle, Display, SectionHeading, PageTitle,
+   Sidebar, SidebarItem, Tile, EmptyState, StatusPill, Stack,
+   ListSurface, ListSurfaceHeader, ListSurfaceRow, ListSurfaceCell,
+   IconButton, IconGroup, SearchInput,
   // theming
   ThemeProvider, useTheme, type ThemeProviderProps, type ThemeContextValue,
   THEME_INIT_SCRIPT, createThemeInitScript,
   THEMES, RESOLVED_THEMES, THEME_STORAGE_KEY, isTheme, isResolvedTheme, resolveTheme,
   type Theme, type ResolvedTheme, type SystemPreferences,
   // utilities
-  cn,
+   cn, useInlineRename, type UseInlineRenameOptions,
 } from "@tj/ui";
 ```
 
