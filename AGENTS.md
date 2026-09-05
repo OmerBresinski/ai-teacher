@@ -50,10 +50,24 @@ single question.
 
 ## Delivery workflow (implement → PR → review → merge)
 
-The user says **what** to do (a Linear project, a list of issues, a feature, a bug — anything);
-this section is **how** it gets delivered. Runs without further prompting unless a step needs
-credentials, spends money, or mutates live infrastructure — ask once, up front, for all of those
-together. Work items that are dashboard-only or founder decisions are reported back, not faked.
+The user says **what** to do (a Linear project, a list of issues, a feature, a bug, a design
+tweak, a one-line docs fix — anything that changes files); this section is **how** it gets
+delivered. **It applies to every code change, not only to Linear-tracked work or work the user
+asked to ship as a PR.** Runs without further prompting unless a step needs credentials, spends
+money, or mutates live infrastructure — ask once, up front, for all of those together. Work
+items that are dashboard-only or founder decisions are reported back, not faked.
+
+**The main agent never implements and never code-reviews.** Its job is to gather context (via
+`explore` subagents), decide the approach, write the brief, delegate the implementation to
+`general` subagents (step 1) and the code review to the `reviewer` subagent (step 2), and then
+run the **acceptance check**: does the result match the brief — right branch and PR title, CI
+green, every review finding fixed or declined with a stated reason, screenshots or a verified
+visual result for UI work, nothing outside the brief touched. It does not read the diff for
+quality; that is the reviewer's job and doing it twice wastes the expensive model. The only
+edits it makes itself are to the brief. If it catches itself editing source, tests, styles or
+docs in the working tree, that is the signal to stop and delegate. Reasons this rule exists:
+the main agent runs on the most expensive model, and direct edits skip the branch → PR →
+review → CI path that `master` protection depends on.
 
 1. **Implement in parallel with subagents.** Split the request into independent units of work.
    One `general` subagent per unit, each on its own branch (the Linear `gitBranchName` when there
@@ -64,6 +78,13 @@ together. Work items that are dashboard-only or founder decisions are reported b
    merge. When there is a Linear issue, move it to **In Progress** and set its **Assignee** to
    the currently authenticated Linear user (`assignee: "me"` in `linear_save_issue`) when work
    starts, so the ticket is never left unassigned while it is being worked on.
+   The brief to each subagent follows the same standard as a Linear ticket ("Writing tickets"
+   above): exact files and symbols, the pattern file to copy, repo conventions it cannot infer
+   (token mapping in `packages/ui/README.md`, `motion-safe:`, `data-theme`, the CSP in
+   `apps/web/vercel.json`), traps found while reading, the acceptance criteria, the test files
+   and cases, the branch name and the exact PR title. Screenshots or a verified visual result
+   are part of acceptance for UI work — say how to obtain them (which servers, which ports,
+   the `GET /__test/last-magic-link` sign-in route).
 2. **Review with a separate subagent.** For every PR, launch a fresh **`reviewer`** subagent (a
    read-only agent defined in the user's global opencode config — `edit` denied, its own model —
    fall back to `general` only if `reviewer` is not available) that loads
@@ -99,11 +120,12 @@ together. Work items that are dashboard-only or founder decisions are reported b
    review `body` with a `path:line` reference instead. A review with no findings is still
    submitted (`comments: []`, `event: "COMMENT"`) so the PR carries the record. The subagent
    also returns the same findings in its final message so step 3 can act on them.
-3. **Fix, push, merge.** If the review has findings, fix them (or the implementing subagent
-   does), push, and re-review only if the fix was structural. If it has none, merge straight
-   away. `master` requires every review thread to be resolved, so after a finding is fixed (or
-   consciously declined, with a reply saying why) resolve its thread — there is no `gh` command
-   for this, use GraphQL:
+3. **Fix, push, merge.** If the review has findings, the implementing subagent fixes them
+   (resume it with its `task_id`), pushes, and the `reviewer` re-reviews only if the fix was
+   structural. The main agent then does the acceptance check described above. If the review has
+   none, merge straight away. `master` requires every review thread to be resolved, so after a
+   finding is fixed (or consciously declined, with a reply saying why) resolve its thread —
+   there is no `gh` command for this, use GraphQL:
 
    ```sh
    gh api graphql -f query='{repository(owner:"{owner}",name:"{repo}"){pullRequest(number:<n>){
@@ -138,6 +160,8 @@ together. Work items that are dashboard-only or founder decisions are reported b
 Linear status mirrors the pipeline: Todo → In Progress (branch started, assignee set to the
 authenticated user) → In Review (PR open, review running) → Done (merged and deployed). Never
 skip a state and never mark Done before the merge and the deploy check.
+
+Work that did not come from Linear still goes through steps 1–4; only step 5 is skipped.
 
 ## Package map
 
