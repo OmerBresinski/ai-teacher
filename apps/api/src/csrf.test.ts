@@ -80,9 +80,9 @@ describe("rejectCrossSiteRequests", () => {
 
   test("rejects foreign GET requests to protected routes", async () => {
     const headers = { Origin: "https://evil.example", [WORKSPACE_HEADER]: workspaceId };
-    const greeting = await app.request("/me/greeting", { headers });
+    const me = await app.request("/me", { headers });
     const events = await app.request("/events", { headers });
-    expect(greeting.status).toBe(403);
+    expect(me.status).toBe(403);
     expect(events.status).toBe(403);
   });
 

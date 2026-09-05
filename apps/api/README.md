@@ -126,7 +126,6 @@ module-level singletons, so tests can inject fakes.
 | `GET /health`        | `200 { ok: true, db: "up" }` or `503` envelope (`retryable: true`) |
 | `GET /hello?name=x`  | `200 { message: "Hello, x" }`; `400 validation_failed` when `name` is empty |
 | `GET /me`            | `200 { user: { id, email, name }, workspaceId }`; `401 unauthorized` without a session (see "Auth") |
-| `GET /me/greeting` | Session; a fresh model-written programming/AI dad joke per call; `200 { text, source: "model" \| "fallback" }`, or `429 rate_limited` when the Workspace exceeds the AI request limit |
 | `/auth/*`            | better-auth endpoints (magic link, session, sign-out; OAuth when configured) |
 | `GET /files/:key`    | Streams a stored object (`content-type`, `content-length`, `cache-control: private, no-store`); `401` without a session, `404` for a missing object **or** a key outside the caller's Workspace (never 403), `400 validation_failed` for a malformed key, `503` when no storage adapter is configured (see "Files") |
 | `GET /__test/last-magic-link?email=x` | **Test-only** (see "Test routes"): `200 { email, url }` or `404 not_found`. Absent unless `NODE_ENV=test` and `ENABLE_TEST_ROUTES=1`. |
@@ -282,8 +281,8 @@ missing job from a foreign one.
 
 ### AI request limit
 
-`POST /jobs/ai-ping` and `GET /me/greeting` share an in-memory, per-Workspace fixed-window limit:
-10 requests per 60 seconds by default. Set `AI_RATE_LIMIT_PER_WORKSPACE` and
+`POST /jobs/ai-ping` has an in-memory, per-Workspace fixed-window limit: 10 requests per 60
+seconds by default. Set `AI_RATE_LIMIT_PER_WORKSPACE` and
 `AI_RATE_LIMIT_WINDOW_S` to tune it. An over-limit request returns `429 rate_limited`,
 `retryable: true`, and `Retry-After` in seconds before validation or any model call runs.
 

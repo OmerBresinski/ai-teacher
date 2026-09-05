@@ -53,7 +53,7 @@ is set".
 | `EVENTS_REPLAY_LIMIT` | api | config | — | n/a | n/a | template | Most `job_events` rows replayed when a stream opens (default 500, max 5000). |
 | `EVENTS_HEARTBEAT_MS` | api | config | — | n/a | n/a | template | Interval of the `: ping` SSE comment that keeps proxies awake (default 15000). |
 | `EVENTS_POLL_MS` | api | config | — | n/a | n/a | template | Poll interval while the LISTEN connection is down — degraded mode (default 1000). |
-| `AI_RATE_LIMIT_PER_WORKSPACE` | api | config | — | n/a | n/a | template | Model-call requests per Workspace per window on the AI routes (`/jobs/ai-ping`, `/me/greeting`) before `429 rate_limited` (default 10). |
+| `AI_RATE_LIMIT_PER_WORKSPACE` | api | config | — | n/a | n/a | template | Model-call requests per Workspace per window on `POST /jobs/ai-ping` before `429 rate_limited` (default 10). |
 | `AI_RATE_LIMIT_WINDOW_S` | api | config | — | n/a | n/a | template | Window length in seconds for `AI_RATE_LIMIT_PER_WORKSPACE` (default 60). |
 | `VITE_API_URL` | web | config | `/api` | n/a | prod | manual | Base URL the browser uses for the API. Locally `/api`: the Vite dev server proxies `/api/*` to the api and strips the prefix so cookies stay same-origin. A production build requires an absolute URL — Vercel Production holds the Railway api origin (`https://api-production-903f.up.railway.app` today, `https://api.<domain>` once a domain exists); previews derive it (see RAILWAY_PR_API_URL_TEMPLATE). |
 | `VITE_APP_ENV` | web | config | `development` | n/a | both | template | development \| preview \| production. Only `production` loads Vercel Speed Insights. On Vercel `scripts/vercel-env.ts` sets it from VERCEL_ENV at build time. |

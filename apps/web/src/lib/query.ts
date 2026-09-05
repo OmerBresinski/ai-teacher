@@ -62,31 +62,11 @@ export const queryClient = new QueryClient({
 
 export const queryKeys = {
   me: ["me"] as const,
-  greeting: ["me", "greeting"] as const,
   job: (id: string) => ["job", id] as const,
 };
 
 /** `200` body of `GET /me` — `{ user: { id, email, name }, workspaceId }`. */
 export type Me = InferResponseType<typeof api.me.$get, 200>;
-export type Greeting = InferResponseType<typeof api.me.greeting.$get, 200>;
-
-/**
- * One model-written joke per sign-in; `refetch()` (the refresh button) asks for a new one. Never
- * refetched automatically — the API already degrades to a fallback, so no retry either.
- */
-export const greetingQueryOptions = queryOptions<Greeting, ApiError>({
-  queryKey: queryKeys.greeting,
-  queryFn: async () => {
-    const res = await api.me.greeting.$get();
-    if (res.status !== 200) throw await apiErrorFromResponse(res);
-    return (await res.json()) as Greeting;
-  },
-  staleTime: Number.POSITIVE_INFINITY,
-  gcTime: Number.POSITIVE_INFINITY,
-  retry: false,
-  refetchOnWindowFocus: false,
-  refetchOnReconnect: false,
-});
 
 /**
  * Who am I. Resolves to `null` on 401 (not signed in) so route guards can redirect instead of

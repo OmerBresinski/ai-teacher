@@ -8,7 +8,6 @@
   "exports": {
     ".": "./src/index.ts",
     "./ai": "./src/ai.ts",
-    "./greeting": "./src/greeting.ts",
     "./ids": "./src/ids.ts",
     "./jobs": "./src/jobs.ts",
     "./storage": "./src/storage.ts",

@@ -11,7 +11,7 @@ import { fakeSql, silentLogger, TEST_ENV, TEST_ENV_NO_SHIM, testApp } from "./te
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 describe("GET /hello", () => {
-  test("200 with a greeting", async () => {
+  test("returns 200", async () => {
     const res = await testApp().request("/hello?name=x");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ message: "Hello, x" });
