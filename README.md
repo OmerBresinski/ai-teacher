@@ -271,6 +271,8 @@ that override generic skill advice. Sources, pinned commits, re-install commands
   `dependsOn: ["^build"]` and `outputs: ["dist/**"]`; packages without a `build` script are simply
   skipped.
 - Nothing needs to be built before you can run `dev`, `typecheck` or `test`.
+- `test` depends on a no-op `transit` task (`dependsOn: ["^transit"]`) so a change in an upstream
+  `@tj/*` package's sources invalidates dependents' test cache without serialising their test runs.
 
 Every new package **must** copy this shape:
 
@@ -391,29 +393,20 @@ Every job starts from the composite action [`.github/actions/setup`](.github/act
 | --- | ------------ | ----------------- | -------- |
 | `quality` | `bun run lint`, `typecheck`, `skills:check`, `env:generate --check`, `verify-bootstrap`; commitlint on the PR title | the same five commands; `echo "<title>" \| bunx --bun commitlint` | yes |
 | `tooling-smoke` | `bun run setup --ci && bun run doctor` against docker compose, then `bun run test:scripts` | the same commands (needs Docker) | yes |
-| `test` | `bun run test:db` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test` (migrates, `REQUIRE_TEST_DB=1`); uploads `coverage/` | `bun run test:db` | **gated** (see below) |
+| `test` | `bun run test:db` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test` (migrates, `REQUIRE_TEST_DB=1`); uploads `coverage/` | `bun run test:db` | yes |
 | `build` | `bun run build`; `bun run check:bundle-budget --markdown-out bundle-budget.md`; sticky PR comment `<!-- tj-bundle-budget -->` | `bun run build && bun run check:bundle-budget` | yes |
-| `e2e` | Postgres service + `teaching_journey_test`, Playwright Chromium (cached) + `bun run test:e2e`; report uploaded on failure | `bunx playwright install chromium && bun run test:e2e` (needs the compose Postgres) | **gated** |
+| `e2e` | Postgres service + `teaching_journey_test`, Playwright Chromium (cached) + `bun run test:e2e`; report uploaded on failure | `bunx playwright install chromium && bun run test:e2e` (needs the compose Postgres) | yes |
 | `audit` | `bun audit --audit-level=high` (native in Bun 1.3.6); when npm's advisory endpoint is down it falls back to `osv-scanner` on `bun.lock`, failing only on high/critical; `actions/dependency-review-action` with `fail-on-severity: high` on PRs | `bun audit --audit-level=high` (or `docker run --rm -v "$PWD:/src" -w /src ghcr.io/google/osv-scanner:v2.5.1 --lockfile=bun.lock`) | yes |
 | `secrets` | `gitleaks/gitleaks-action` over the full history (`fetch-depth: 0`) | `gitleaks git --redact .` (or `gitleaks protect --staged` via the pre-commit hook) | yes |
 | `docker-build-smoke` | `docker build .` -- skipped until a `Dockerfile` exists | `docker build .` | yes (once present) |
 | `detect` | probes for `apps/web/package.json` and `Dockerfile` so the optional jobs above can be skipped (`hashFiles()` is not allowed in job-level `if`) | -- | -- |
 
-### Phase split and `CI_STRICT`
+### `test` and `e2e` are blocking
 
-**Status: Phase 2 is live (2026-09-04).** `CI_STRICT=true` is set on the repository and every job
-below is a required status check on `master`. The history is kept for when a job has to be
-temporarily un-gated.
-
-`apps/*` and `packages/db` landed in TEACH-14/16/21/22, so Phase 1 shipped the pipeline with the
-Postgres-backed `test` job and the Playwright `e2e` job **gated**: they ran, but a failure did not
-block the PR (`continue-on-error`). The gate is the repository variable `CI_STRICT`:
-
-- `CI_STRICT` unset or anything other than `true` -> `test` and `e2e` are informational (Phase 1).
-- `CI_STRICT=true` -> `test` and `e2e` are blocking, like every other job (Phase 2).
-
-Flip it with `gh variable set CI_STRICT --body true --repo OmerBresinski/ai-teacher` (or `--body
-false` to un-gate again). The `build` job's bundle-budget step fails above 250 KB gzip (warns above
+The Postgres-backed `test` job and the Playwright `e2e` job were gated (`continue-on-error` behind a
+repository variable) while they stabilised (TEACH-23 Phase 1). Since 2026-09-04 they block like
+every other job, and the gate was removed on 2026-09-05 so a deleted or mistyped variable cannot
+silently un-gate them. The `build` job's bundle-budget step fails above 250 KB gzip (warns above
 200 KB; override with `BUNDLE_BUDGET_KB` / `BUNDLE_WARN_KB`).
 
 ### Phase 2: require the checks on `master`

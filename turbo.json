@@ -63,8 +63,9 @@
         "!skills-lock.json"
       ]
     },
+    "transit": { "dependsOn": ["^transit"] },
     "test": {
-      "dependsOn": ["//#test:scripts"],
+      "dependsOn": ["transit", "//#test:scripts"],
       "env": [
         "CI",
         "DATABASE_URL",
