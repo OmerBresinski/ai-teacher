@@ -84,7 +84,6 @@ function buildApp({
   events,
   testMail,
   storage,
-  ai,
   rateLimit,
 }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
@@ -147,13 +146,12 @@ function buildApp({
     app.use(path, guard);
   }
   app.use("/jobs/ai-ping", rateLimitByWorkspace(aiLimiter));
-  app.use("/me/greeting", rateLimitByWorkspace(aiLimiter));
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
   const routes = app
     .route("/", healthRoutes(db))
     .route("/", helloRoutes)
-    .route("/", meRoutes(ai))
+    .route("/", meRoutes())
     .route("/", jobRoutes(eventsRuntime))
     .route("/", eventRoutes(eventsRuntime))
     .route("/", fileRoutes(storage));

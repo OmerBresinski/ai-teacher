@@ -32,7 +32,7 @@ a provider model ID.
 
 ## Consumers
 
-Reference call sites: `apps/worker` `ai.ping` and `apps/api` `GET /me/greeting`.
+Reference call site: `apps/worker` `ai.ping`.
 
 `createAi({})` returns `{ kind: "unconfigured" }` and only throws when `model()` is requested.
 That throw is `AiError` with code `"unconfigured"` and names `AWS_BEARER_TOKEN_BEDROCK`.

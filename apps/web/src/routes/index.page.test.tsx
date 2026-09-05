@@ -1,11 +1,9 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { FALLBACK_GREETING } from "@tj/domain";
 import type { ReactNode } from "react";
 
 const getMe = mock();
-const getGreeting = mock();
 const signOut = mock();
 const navigate = mock();
 
@@ -16,16 +14,11 @@ const navigate = mock();
 let suiteActive = true;
 const { api: realApi } = await import("@/lib/api");
 type MeGet = typeof realApi.me.$get;
-type GreetingGet = typeof realApi.me.greeting.$get;
 mock.module("@/lib/api", () => ({
   api: {
     me: {
       $get: ((...args: Parameters<MeGet>) =>
         suiteActive ? getMe(...args) : realApi.me.$get(...args)) as MeGet,
-      greeting: {
-        $get: ((...args: Parameters<GreetingGet>) =>
-          suiteActive ? getGreeting(...args) : realApi.me.greeting.$get(...args)) as GreetingGet,
-      },
     },
   },
 }));
@@ -42,7 +35,7 @@ mock.module("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
 }));
 
-const { IndexPage, RATE_LIMITED_MESSAGE } = await import("./index.page");
+const { IndexPage } = await import("./index.page");
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -67,75 +60,27 @@ function resolvedMe() {
   });
 }
 
-describe("IndexPage greeting", () => {
+describe("IndexPage", () => {
   beforeEach(() => {
     getMe.mockReset();
-    getGreeting.mockReset();
     signOut.mockReset();
     navigate.mockReset();
     getMe.mockImplementation(async () => resolvedMe());
   });
 
-  it("shows the generated greeting after it resolves", async () => {
-    getGreeting.mockResolvedValue(
-      jsonResponse(200, { text: "Chalk dust is optional today.", source: "model" }),
-    );
+  it("renders the signed-in user's name and email", async () => {
     renderPage();
 
-    const greeting = await screen.findByText("Chalk dust is optional today.", { selector: "p" });
-    expect(greeting).toHaveClass("opacity-100");
+    expect(await screen.findByRole("heading", { name: "Hello, Ada" })).toBeVisible();
+    expect(screen.getByText("ada@example.com")).toBeVisible();
   });
 
-  it("reserves an invisible greeting line while the query is pending", async () => {
-    getGreeting.mockReturnValue(new Promise(() => {}));
+  it("signs out and navigates to the sign-in page", async () => {
     renderPage();
 
-    await waitFor(() => expect(getGreeting).toHaveBeenCalledTimes(1));
-    const greeting = screen.getByText(FALLBACK_GREETING, { selector: "p" });
-    expect(greeting).toHaveClass("opacity-0");
-    expect(greeting).toHaveAttribute("aria-hidden", "true");
-  });
+    fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
 
-  it("fetches a new joke when the refresh button is pressed", async () => {
-    getGreeting
-      .mockResolvedValueOnce(jsonResponse(200, { text: "First joke.", source: "model" }))
-      .mockResolvedValueOnce(jsonResponse(200, { text: "Second joke.", source: "model" }));
-    renderPage();
-
-    await screen.findByText("First joke.", { selector: "p" });
-    fireEvent.click(screen.getByRole("button", { name: "New joke" }));
-
-    const next = await screen.findByText("Second joke.", { selector: "p" });
-    expect(next).toHaveClass("opacity-100");
-    expect(screen.getByRole("status")).toHaveTextContent("Second joke.");
-    expect(getGreeting).toHaveBeenCalledTimes(2);
-  });
-
-  it("shows a witty rate-limit notice in a different colour when the api returns 429", async () => {
-    getGreeting
-      .mockResolvedValueOnce(jsonResponse(200, { text: "First joke.", source: "model" }))
-      .mockResolvedValueOnce(
-        jsonResponse(429, {
-          error: { code: "rate_limited", message: "Too many requests.", retryable: true },
-        }),
-      );
-    renderPage();
-
-    await screen.findByText("First joke.", { selector: "p" });
-    fireEvent.click(screen.getByRole("button", { name: "New joke" }));
-
-    const notice = await screen.findByText(RATE_LIMITED_MESSAGE, { selector: "p" });
-    expect(notice).toHaveClass("text-amber-600", "opacity-100");
-    expect(notice).not.toHaveClass("text-muted-foreground");
-    expect(screen.queryByText("First joke.", { selector: "p" })).toBeNull();
-  });
-
-  it("shows the shared fallback when the greeting request fails", async () => {
-    getGreeting.mockRejectedValue(new Error("unavailable"));
-    renderPage();
-
-    await waitFor(() =>
-      expect(screen.getByText(FALLBACK_GREETING, { selector: "p" })).toHaveClass("opacity-100"),
-    );
+    await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
+    expect(navigate).toHaveBeenCalledWith({ to: "/sign-in", search: {} });
   });
 });
