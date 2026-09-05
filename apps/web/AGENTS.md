@@ -31,6 +31,8 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   HTTP requests through the typed `@tj/api-client` (`hc<AppType>`), never `fetch` by hand.
 - ADR 0010: deploys to Vercel as a static build with an SPA rewrite (`/* -> /index.html`); the API
   origin comes from an env var validated in `src/env.ts` (Zod, ADR 0015). No server code here.
+- Library data comes from `src/mocks` via `src/lib/library.ts` (ADR 0020); screens never import the
+  store directly.
 - `vercel-react-best-practices` includes Next.js-specific advice (RSC, `next/*`); it does not
   apply — this is a Vite SPA.
 - Tests: `bun test` + React Testing Library + happy-dom; Playwright + axe in `e2e/` (ADR 0014). Biome
