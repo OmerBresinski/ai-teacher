@@ -13,6 +13,7 @@
     "dev": "bun scripts/dev.ts",
     "setup": "bun scripts/setup.ts",
     "doctor": "bun scripts/doctor.ts",
+    "smoke:prod": "bun scripts/smoke-prod.ts",
     "env:generate": "bun scripts/env-generate.ts",
     "env:check": "bun scripts/env-check.ts",
     "db:up": "bun scripts/db-up.ts",
