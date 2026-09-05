@@ -18,3 +18,10 @@ F18 requires tokens, a component library on accessible primitives, and that ever
 - Fast to reach a Linear-grade shell; accessibility of primitives is inherited from Radix.
 - The scaffold installs Tailwind and the shadcn configuration only; tokens, state chips and the component set are F18 project work.
 - shadcn components are copied source, so upgrades are manual; keep the component count deliberate.
+
+## Amendment (2026-09-05, ADR 0019)
+
+The Decision's "radius on an 8 px grid" clause is superseded by ADR 0019's named 6/8/10/12/16px
+radius ladder. The Consequences clause that tokens, state chips, and the component set are F18
+project work is superseded: `@tj/ui` adopts the TeachDeck tokens, F18-R07 chips are not built in
+the shell, and the component boundary is the shell kit in `@tj/ui` and editor kit in `@tj/editor`.

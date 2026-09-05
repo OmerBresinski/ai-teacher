@@ -2,7 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-09-05
-- Related PRD decisions: ADR 0004, ADR 0005, TD project item 1 (tie-in contract)
+- Related PRD decisions: TD project item 1 (tie-in contract), D-001
+- Related ADRs: 0004, 0005
 
 ## Context
 

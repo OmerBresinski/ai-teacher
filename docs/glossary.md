@@ -10,7 +10,7 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **Class-level** — data about the group as a whole, never attributable to an individual learner.
 - **Cohort Profile** — class-level description of who is being taught; never individual.
 - **Concept** — a unit of understanding with prerequisites, objectives and typical misconceptions; a node in the Progression.
-- **Draft / Reviewed / Stale / Taught / Needs attention** — the universal state vocabulary (F18-R07); the same chips everywhere.
+- **Draft / Reviewed / Stale / Taught / Needs attention** — the universal state vocabulary (F18-R07); the same chips everywhere. *(Superseded for the Shell by ADR 0019; the stale flag survives in F07.)*
 - **Identifier guard** — shared component that blocks learner names, IDs, emails and identifying phrases in free text (F15-R03).
 - **Journey** — the plan from goal to outcome across N lessons; the product's central object. Typed and versioned. *(superseded by Series — TD decision D-001, 2026-09-05; the term remains in package/ADR names for history)*
 - **Knowledge node** — an entry in the progressions/misconceptions graph (F05).
@@ -23,14 +23,14 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **Series** — an ordered list of Lessons with non-exclusive membership; a Lesson may belong to several Series. The unit of sequencing that replaced the Journey planner.
 - **Skill** — a packaged pedagogical capability the runtime calls (F13).
 - **Source** — a teacher-provided material (file/URL) used for grounding.
-- **Workspace** — the container for a user's Journeys, Sources and settings. One personal Workspace per user at MVP.
 - **Worksheet** — a paginated A4 document made of blocks such as heading, question, multiple-choice, and fill-gap. It stands beside a Lesson's slides and is edited in the worksheet editor.
+- **Workspace** — the container for a user's Journeys, Sources and settings. One personal Workspace per user at MVP.
 
 ## Engineering terms
 
+- **Activity tray** — the UI surface listing running and completed jobs (F18-R04); consumes job events.
 - **ADR** — Architecture Decision Record under `docs/adr/`; engineering decisions only. Product decisions live in Notion.
 - **AI provider** — the hosted model service behind `@tj/ai`; Amazon Bedrock at MVP, reached through the Vercel AI SDK (ADR 0018). Features never import a vendor SDK.
-- **Activity tray** — the UI surface listing running and completed jobs (F18-R04); consumes job events.
 - **App** — a deployable unit under `apps/` (`web`, `api`, `worker`).
 - **App bar** — the 48px docked top bar of a screen.
 - **AppType** — the exported type of the Hono router used by the Hono RPC client (ADR 0005).

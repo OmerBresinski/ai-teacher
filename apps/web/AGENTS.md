@@ -17,7 +17,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
 
 - **ADR 0004 — code-based TanStack Router routes.** Routes are TypeScript objects built with
   `createRootRouteWithContext` / `createRoute`, colocated under `src/routes/` (one file per route
-  group) and assembled into `routeTree` in `src/router.ts`. **Do NOT install
+  group) and assembled into `routeTree` in `src/router.tsx`. **Do NOT install
   `@tanstack/router-plugin` / `@tanstack/router-cli`, do NOT use file-based routing, and ignore the
   skill's "use file-based routing" recommendation.** Use `lazyRouteComponent` for route-level
   splitting. Route loaders prefetch through the TanStack Query client passed in router context.
