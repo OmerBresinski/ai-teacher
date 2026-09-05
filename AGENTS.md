@@ -64,8 +64,10 @@ together. Work items that are dashboard-only or founder decisions are reported b
    merge. When there is a Linear issue, move it to **In Progress** and set its **Assignee** to
    the currently authenticated Linear user (`assignee: "me"` in `linear_save_issue`) when work
    starts, so the ticket is never left unassigned while it is being worked on.
-2. **Review with a separate subagent.** For every PR, launch a fresh `general` subagent that
-   loads **`thermo-nuclear-code-quality-review`** (root `.agents/skills/`) and reviews the branch
+2. **Review with a separate subagent.** For every PR, launch a fresh **`reviewer`** subagent (a
+   read-only agent defined in the user's global opencode config — `edit` denied, its own model —
+   fall back to `general` only if `reviewer` is not available) that loads
+   **`thermo-nuclear-code-quality-review`** (root `.agents/skills/`) and reviews the branch
    diff against `master`. It reports findings only; it does not edit code. Move the Linear issue
    to **In Review** when the PR is open and the review starts.
    **Findings are posted on the GitHub PR as inline review comments**, anchored to the file and
@@ -178,4 +180,4 @@ edit or copy them (ADR 0017).
 | `deploy-to-vercel` | `apps/web` | Vercel projects, previews, env vars (ADR 0010) |
 | `hono` | `apps/api` | Hono routes, middleware, validation, `streamSSE`, RPC (ADR 0005, 0012) |
 | `use-railway` | `apps/api`, `apps/worker` | Railway services, Postgres, variables, PR environments (ADR 0010) |
-| `thermo-nuclear-code-quality-review` | repo root | reviewing a PR diff in step 2 of the delivery workflow — **review agents only** |
+| `thermo-nuclear-code-quality-review` | repo root | reviewing a PR diff in step 2 of the delivery workflow — **`reviewer` subagent only** |
