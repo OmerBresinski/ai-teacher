@@ -12,7 +12,7 @@
 // Defaults are production; PR environments can be probed with --api / --web-origin.
 
 import { parseArgs } from "node:util";
-import { ExitCode, runMain } from "./lib/exit";
+import { ExitCode, runMain, UserFacingError } from "./lib/exit";
 import { log } from "./lib/log";
 
 export const PRODUCTION_API = "https://api-production-903f.up.railway.app";
@@ -24,6 +24,8 @@ export interface SmokeCase {
   path: string;
   headers?: Record<string, string>;
   expect: number;
+  /** Response headers that must be present with exactly this value. */
+  expectHeaders?: Record<string, string>;
 }
 
 /**
@@ -60,18 +62,37 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 403,
     },
     {
-      name: "preflight from the app origin",
+      // The full exchange the JSON POST above triggers; 204 alone would pass while the browser
+      // still blocks the request for a missing/wrong allow header.
+      name: "preflight from the app origin allows the JSON POST with credentials",
       method: "OPTIONS",
       path: "/jobs/ai-ping",
-      headers: { Origin: webOrigin, "Access-Control-Request-Method": "POST" },
+      headers: {
+        Origin: webOrigin,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type",
+      },
       expect: 204,
+      expectHeaders: {
+        "access-control-allow-origin": webOrigin,
+        "access-control-allow-credentials": "true",
+      },
     },
   ];
 }
 
 export interface SmokeResult extends SmokeCase {
+  /** Status code, or a description of what went wrong (network error, missing header). */
   actual: number | string;
   ok: boolean;
+}
+
+function headerMismatch(res: Response, want: Record<string, string> | undefined): string | null {
+  for (const [name, value] of Object.entries(want ?? {})) {
+    const got = res.headers.get(name);
+    if (got !== value) return `${res.status} but ${name}=${got ?? "<missing>"} (want ${value})`;
+  }
+  return null;
 }
 
 export async function runSmoke(
@@ -88,7 +109,11 @@ export async function runSmoke(
           body: c.method === "POST" ? "{}" : undefined,
           redirect: "manual",
         });
-        return { ...c, actual: res.status, ok: res.status === c.expect };
+        if (res.status !== c.expect) return { ...c, actual: res.status, ok: false };
+        const mismatch = headerMismatch(res, c.expectHeaders);
+        return mismatch
+          ? { ...c, actual: mismatch, ok: false }
+          : { ...c, actual: res.status, ok: true };
       } catch (err) {
         return { ...c, actual: err instanceof Error ? err.message : String(err), ok: false };
       }
@@ -97,14 +122,29 @@ export async function runSmoke(
 }
 
 async function main(): Promise<number> {
-  const { values } = parseArgs({
-    options: {
-      api: { type: "string", default: PRODUCTION_API },
-      "web-origin": { type: "string", default: PRODUCTION_WEB_ORIGIN },
-    },
-  });
+  let values: { api?: string; "web-origin"?: string };
+  try {
+    values = parseArgs({
+      options: {
+        api: { type: "string", default: PRODUCTION_API },
+        "web-origin": { type: "string", default: PRODUCTION_WEB_ORIGIN },
+      },
+    }).values;
+  } catch (err) {
+    throw new UserFacingError(
+      `${err instanceof Error ? err.message : String(err)}\nUsage: bun run smoke:prod [--api <url>] [--web-origin <origin>]`,
+      ExitCode.Usage,
+    );
+  }
   const api = (values.api ?? PRODUCTION_API).replace(/\/$/, "");
   const webOrigin = values["web-origin"] ?? PRODUCTION_WEB_ORIGIN;
+  for (const [flag, value] of [
+    ["--api", api],
+    ["--web-origin", webOrigin],
+  ] as const) {
+    if (!URL.canParse(value))
+      throw new UserFacingError(`${flag} is not a URL: ${value}`, ExitCode.Usage);
+  }
 
   log.step(`Smoke-checking ${api} as ${webOrigin}`);
   const results = await runSmoke(api, smokeCases(webOrigin));

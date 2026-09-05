@@ -11,7 +11,18 @@ function fakeApi(): typeof fetch {
     const origin = headers.get("origin");
     const crossSite = headers.get("sec-fetch-site") === "cross-site";
     if (url.pathname === "/health") return new Response("ok", { status: 200 });
-    if (init?.method === "OPTIONS" && origin === WEB) return new Response(null, { status: 204 });
+    if (init?.method === "OPTIONS" && origin === WEB) {
+      const wantsHeaders = headers.get("access-control-request-headers") ?? "";
+      if (!wantsHeaders.includes("content-type")) return new Response(null, { status: 204 });
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "access-control-allow-origin": WEB,
+          "access-control-allow-credentials": "true",
+          "access-control-allow-headers": "Content-Type, x-request-id, Last-Event-ID",
+        },
+      });
+    }
     if (origin !== null && origin !== WEB) return new Response("forbidden", { status: 403 });
     if (origin === null && crossSite) return new Response("forbidden", { status: 403 });
     return new Response("unauthorized", { status: 401 });
@@ -34,6 +45,17 @@ describe("smoke-prod", () => {
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), broken);
     const failed = results.filter((r) => !r.ok).map((r) => r.path);
     expect(failed).toEqual(["/me", "/jobs/ai-ping"]);
+  });
+
+  test("a 204 preflight without CORS allow headers fails the case", async () => {
+    const noCors: typeof fetch = (async (input, init) => {
+      if (init?.method === "OPTIONS") return new Response(null, { status: 204 });
+      return fakeApi()(input, init);
+    }) as typeof fetch;
+    const results = await runSmoke("https://api.example.test", smokeCases(WEB), noCors);
+    const failed = results.filter((r) => !r.ok);
+    expect(failed.map((r) => r.method)).toEqual(["OPTIONS"]);
+    expect(String(failed[0]?.actual)).toContain("access-control-allow-origin=<missing>");
   });
 
   test("a network error is reported as a failed case, not a crash", async () => {
