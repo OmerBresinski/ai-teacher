@@ -78,13 +78,11 @@ review → CI path that `master` protection depends on.
    merge. When there is a Linear issue, move it to **In Progress** and set its **Assignee** to
    the currently authenticated Linear user (`assignee: "me"` in `linear_save_issue`) when work
    starts, so the ticket is never left unassigned while it is being worked on.
-   The brief to each subagent follows the same standard as a Linear ticket ("Writing tickets"
-   above): exact files and symbols, the pattern file to copy, repo conventions it cannot infer
-   (token mapping in `packages/ui/README.md`, `motion-safe:`, `data-theme`, the CSP in
-   `apps/web/vercel.json`), traps found while reading, the acceptance criteria, the test files
-   and cases, the branch name and the exact PR title. Screenshots or a verified visual result
-   are part of acceptance for UI work — say how to obtain them (which servers, which ports,
-   the `GET /__test/last-magic-link` sign-in route).
+   The brief to each subagent meets the "Writing tickets" standard above (exact files and
+   symbols, pattern file, non-inferable conventions, traps, acceptance table, tests, branch name,
+   exact PR title); the per-area `AGENTS.md` names the conventions and skills for that area. For
+   UI work, a verified visual result is part of acceptance — say how to obtain it (which servers
+   and ports, the `GET /__test/last-magic-link` sign-in route).
 2. **Review with a separate subagent.** For every PR, launch a fresh **`reviewer`** subagent (a
    read-only agent defined in the user's global opencode config — `edit` denied, its own model —
    fall back to `general` only if `reviewer` is not available) that loads
@@ -122,10 +120,10 @@ review → CI path that `master` protection depends on.
    also returns the same findings in its final message so step 3 can act on them.
 3. **Fix, push, merge.** If the review has findings, the implementing subagent fixes them
    (resume it with its `task_id`), pushes, and the `reviewer` re-reviews only if the fix was
-   structural. The main agent then does the acceptance check described above. If the review has
-   none, merge straight away. `master` requires every review thread to be resolved, so after a
-   finding is fixed (or consciously declined, with a reply saying why) resolve its thread —
-   there is no `gh` command for this, use GraphQL:
+   structural. With or without findings, the main agent then runs the acceptance check described
+   above and merges only when it passes. `master` requires every review thread to be resolved, so
+   after a finding is fixed (or consciously declined, with a reply saying why) resolve its
+   thread — there is no `gh` command for this, use GraphQL:
 
    ```sh
    gh api graphql -f query='{repository(owner:"{owner}",name:"{repo}"){pullRequest(number:<n>){
