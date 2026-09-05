@@ -160,6 +160,7 @@ function SidebarItem({
   asChild = false,
   href,
   className,
+  onClick,
   ...props
 }: SidebarItemProps) {
   const { collapsed } = useContext(SidebarContext);
@@ -185,6 +186,11 @@ function SidebarItem({
     "data-sidebar-item": "",
     "aria-current": active ? ("page" as const) : undefined,
     "aria-disabled": disabled || undefined,
+    tabIndex: disabled ? -1 : undefined,
+    onClick: (event: React.MouseEvent<HTMLElement>) => {
+      if (disabled) event.preventDefault();
+      onClick?.(event);
+    },
     className: cn(
       "flex h-8 items-center rounded-control px-2 text-left outline-none motion-safe:transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
       collapsed ? "justify-center" : "gap-2",
@@ -201,19 +207,19 @@ function SidebarItem({
     if (!isValidElement(child))
       throw new Error("SidebarItem with asChild requires one element child.");
     item = (
-      <Slot {...shared} {...props}>
+      <Slot {...props} {...shared}>
         {cloneElement(child, undefined, body)}
       </Slot>
     );
   } else if (href) {
     item = (
-      <a href={href} {...shared} {...props}>
+      <a href={href} {...props} {...shared}>
         {body}
       </a>
     );
   } else {
     item = (
-      <button type="button" disabled={disabled} {...shared} {...props}>
+      <button type="button" disabled={disabled} {...props} {...shared}>
         {body}
       </button>
     );

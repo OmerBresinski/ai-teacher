@@ -55,6 +55,15 @@ describe("TeachDeck globals", () => {
   it("keeps component geometry root-only", () => {
     const root = variables(blockFor(":root {"));
     for (const variable of rootOnlyGeometry) expect(root).toContain(variable);
+
+    for (const selector of [
+      '[data-theme="dark"] {',
+      "html:not([data-theme]) {",
+      '[data-theme="high-contrast"] {',
+    ]) {
+      const theme = variables(blockFor(selector));
+      for (const variable of rootOnlyGeometry) expect(theme).not.toContain(variable);
+    }
   });
 
   it("does not retain the retired palette tokens", () => {

@@ -3,8 +3,8 @@ import type * as React from "react";
 import { cn } from "../lib/cn";
 
 /*
- * The ONLY component allowed to use `font-display`. Lora is loaded at 500 and
- * never appears below its 20px floor; app-bar and card titles use font-ui.
+ * `font-display` (Lora) appears only here and on `DialogTitle`/`AlertDialogTitle`;
+ * never below 20px; product-name moments only (ADR 0019 §2).
  */
 
 export type DisplaySize = "sm" | "md" | "lg" | "xl";

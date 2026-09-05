@@ -40,20 +40,117 @@ function Navigation({
 }
 
 describe("Sidebar", () => {
-  it("cycles navigation focus through main and foot items without changing the tab order", async () => {
+  it("cycles focus without activating enabled items and skips disabled items", async () => {
     const user = userEvent.setup();
-    render(<Navigation />);
+    const onHome = mock();
+    const onLessons = mock();
+    const onDisabled = mock();
+    const onShortcuts = mock();
+    render(
+      <TooltipProvider>
+        <Sidebar aria-label="Library" wordmark="TeachDeck">
+          <SidebarItem icon={<Home aria-hidden />} onClick={onHome}>
+            Home
+          </SidebarItem>
+          <SidebarItem icon={<Home aria-hidden />} onClick={onLessons}>
+            Lessons
+          </SidebarItem>
+          <SidebarItem icon={<Home aria-hidden />} disabled onClick={onDisabled}>
+            Disabled
+          </SidebarItem>
+          <SidebarItem icon={<Home aria-hidden />} onClick={onShortcuts}>
+            Shortcuts
+          </SidebarItem>
+        </Sidebar>
+      </TooltipProvider>,
+    );
     const home = screen.getByRole("button", { name: "Home" });
+    const lessons = screen.getByRole("button", { name: "Lessons" });
     const shortcuts = screen.getByRole("button", { name: "Shortcuts" });
 
     home.focus();
-    await user.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowDown}");
+    expect(lessons).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
     expect(shortcuts).toHaveFocus();
     await user.keyboard("{Home}");
     expect(home).toHaveFocus();
     await user.keyboard("{End}");
     expect(shortcuts).toHaveFocus();
-    expect(home).not.toHaveAttribute("tabindex", "-1");
+    await user.keyboard("{ArrowDown}");
+    expect(home).toHaveFocus();
+
+    for (const item of [home, lessons, shortcuts]) {
+      expect([null, "0"]).toContain(item.getAttribute("tabindex"));
+    }
+    expect(screen.getByRole("button", { name: "Disabled" })).toHaveAttribute("tabindex", "-1");
+    expect(onHome).not.toHaveBeenCalled();
+    expect(onLessons).not.toHaveBeenCalled();
+    expect(onDisabled).not.toHaveBeenCalled();
+    expect(onShortcuts).not.toHaveBeenCalled();
+  });
+
+  it("renders asChild as an anchor and includes it in arrow navigation", async () => {
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider>
+        <Sidebar aria-label="Library" wordmark="TeachDeck">
+          <SidebarItem asChild icon={<Home aria-hidden />}>
+            <a href="/x">Linked lessons</a>
+          </SidebarItem>
+          <SidebarItem icon={<Home aria-hidden />}>Worksheets</SidebarItem>
+        </Sidebar>
+      </TooltipProvider>,
+    );
+    const link = screen.getByRole("link", { name: "Linked lessons" });
+
+    expect(link).toHaveAttribute("href", "/x");
+    expect(link).toHaveAttribute("data-sidebar-item");
+    link.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Worksheets" })).toHaveFocus();
+  });
+
+  it("makes disabled links unfocusable and prevents navigation", async () => {
+    const user = userEvent.setup();
+    let asChildPrevented = false;
+    let hrefPrevented = false;
+    render(
+      <TooltipProvider>
+        <Sidebar aria-label="Library" wordmark="TeachDeck">
+          <SidebarItem
+            asChild
+            disabled
+            icon={<Home aria-hidden />}
+            onClick={(event) => {
+              asChildPrevented = event.defaultPrevented;
+            }}
+          >
+            <a href="/disabled-child">Disabled child link</a>
+          </SidebarItem>
+          <SidebarItem
+            href="/disabled-href"
+            disabled
+            icon={<Home aria-hidden />}
+            onClick={(event) => {
+              hrefPrevented = event.defaultPrevented;
+            }}
+          >
+            Disabled href link
+          </SidebarItem>
+        </Sidebar>
+      </TooltipProvider>,
+    );
+    const childLink = screen.getByRole("link", { name: "Disabled child link" });
+    const hrefLink = screen.getByRole("link", { name: "Disabled href link" });
+
+    for (const link of [childLink, hrefLink]) {
+      expect(link).toHaveAttribute("aria-disabled", "true");
+      expect(link).toHaveAttribute("tabindex", "-1");
+      await user.click(link);
+    }
+    expect(asChildPrevented).toBe(true);
+    expect(hrefPrevented).toBe(true);
   });
 
   it("uses collapsed markup, tooltip labels, and the collapsed width", async () => {
