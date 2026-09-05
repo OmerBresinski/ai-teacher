@@ -49,11 +49,25 @@ describe("rejectCrossSiteRequests", () => {
     expect((await aiPing({})).status).toBe(503);
   });
 
-  test("rejects browser-marked cross-site requests despite an allowed Origin", async () => {
+  test("allows an allowed Origin even when the browser marks the request cross-site", async () => {
+    // Production today: web on *.vercel.app, api on *.up.railway.app — every request is cross-site.
     const res = await aiPing({
       Origin: "https://app.example.test",
       "Sec-Fetch-Site": "cross-site",
     });
+    expect(res.status).toBe(503);
+  });
+
+  test("allows an allowed Referer fallback even when marked cross-site", async () => {
+    const res = await aiPing({
+      Referer: "https://app.example.test/page",
+      "Sec-Fetch-Site": "cross-site",
+    });
+    expect(res.status).toBe(503);
+  });
+
+  test("rejects a cross-site request that carries no Origin or Referer", async () => {
+    const res = await aiPing({ "Sec-Fetch-Site": "cross-site" });
     expect(res.status).toBe(403);
     expect((await error(res)).error.code).toBe("forbidden");
   });
