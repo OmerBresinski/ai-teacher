@@ -57,7 +57,7 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
     },
     {
       name: "cross-site request with no Origin (img-tag style) is rejected",
-      path: "/me/greeting",
+      path: "/me",
       headers: { "Sec-Fetch-Site": "cross-site" },
       expect: 403,
     },

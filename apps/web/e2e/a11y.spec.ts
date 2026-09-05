@@ -16,13 +16,7 @@ test.describe("accessibility (axe)", () => {
     signedInPage: { page },
   }) => {
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
-    // The greeting fades in over 300ms; axe reads the blended mid-transition colour as a contrast
-    // failure, so wait until the announced joke is in and the paragraph is fully opaque.
-    await expect(page.getByRole("status")).not.toBeEmpty();
-    await expect(page.getByRole("status").locator("xpath=preceding-sibling::p[1]")).toHaveCSS(
-      "opacity",
-      "1",
-    );
+    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "/");
   });
 
