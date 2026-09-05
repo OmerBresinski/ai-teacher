@@ -58,6 +58,14 @@ describe("rejectCrossSiteRequests", () => {
     expect(res.status).toBe(503);
   });
 
+  test("allows an allowed Referer fallback even when marked cross-site", async () => {
+    const res = await aiPing({
+      Referer: "https://app.example.test/page",
+      "Sec-Fetch-Site": "cross-site",
+    });
+    expect(res.status).toBe(503);
+  });
+
   test("rejects a cross-site request that carries no Origin or Referer", async () => {
     const res = await aiPing({ "Sec-Fetch-Site": "cross-site" });
     expect(res.status).toBe(403);
