@@ -71,7 +71,7 @@ comment on it instead of duplicating it.
 
 The `reviewer` is read-only and does not create tickets. It prefixes each deferred **inline**
 comment with `TECH-DEBT:` so the thread is identifiable, and lists them in one line of the review
-summary; `BLOCKER:` stays as it is in step 2. The main agent files them after the review. The
+summary; `BLOCKER:` is unchanged. The main agent files them after the review. The
 thread is resolved only after a reply states why it is out of scope for this PR and names the Tech
 debt ticket id; the ticket alone is not a decision.
 
@@ -130,9 +130,9 @@ review → CI path that `master` protection depends on.
    ```sh
    # commit_id: gh pr view <n> --json headRefOid -q .headRefOid
    # event is always "COMMENT": GitHub rejects REQUEST_CHANGES/APPROVE on your own PR (422),
-   # and the reviewer runs as the PR author. Prefix each deferred inline comment with "TECH-DEBT:"
-   # so the thread is identifiable, and list them in one line of the review summary; "BLOCKER:"
-   # stays as it is in step 2 (see "Tech debt" above).
+   # and the reviewer runs as the PR author. Flag blockers in the review body as "BLOCKER:" instead,
+  # and prefix each deferred inline comment with "TECH-DEBT:" so the thread is identifiable, listing
+   # them in one line of the review summary (see "Tech debt" above).
    gh api repos/{owner}/{repo}/pulls/<n>/reviews --input - <<'EOF'
    {
      "commit_id": "<head sha>",
@@ -157,11 +157,10 @@ review → CI path that `master` protection depends on.
 3. **Fix, push, merge.** If the review has findings, the implementing subagent fixes them
    (resume it with its `task_id`), pushes, and the `reviewer` re-reviews only if the fix was
    structural. With or without findings, the main agent then runs the acceptance check described
-   above and merges only when it passes. `master` requires every review thread to be resolved, so
-   after a finding is fixed (or deferred, with the thread resolved only after a reply states why it
-   is out of scope for this PR and names the Tech debt ticket id — the ticket alone is not a
-   decision) resolve its
-   thread — there is no `gh` command for this, use GraphQL:
+   above and merges only when it passes. `master` requires every review thread to be resolved:
+   after a finding is fixed, or deferred with a reply that says why it is out of scope for this PR
+   and names the Tech debt ticket id (the ticket alone is not a decision), resolve its thread —
+   there is no `gh` command for this, use GraphQL:
 
    ```sh
    gh api graphql -f query='{repository(owner:"{owner}",name:"{repo}"){pullRequest(number:<n>){
