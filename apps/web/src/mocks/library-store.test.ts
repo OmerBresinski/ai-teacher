@@ -62,11 +62,20 @@ describe("library store", () => {
     const documents = await listDocuments();
     const firstDocument = documents[0];
     if (!firstDocument) throw new Error("Expected seeded documents");
+    const originalDocumentTitle = firstDocument.title;
     firstDocument.title = "Changed by caller";
+
     const rows = await listSeriesWithLessons();
     const firstRow = rows[0];
     if (!firstRow) throw new Error("Expected seeded series");
-    firstRow.series.lessonIds.length = 0;
+    const originalLessonIds = [...firstRow.series.lessonIds];
+    const firstLesson = firstRow.lessons[0];
+    if (!firstLesson) throw new Error("Expected seeded series lessons");
+    const originalLessonTitle = firstLesson.title;
+    firstRow.series.lessonIds.pop();
+    firstRow.series.lessonIds.push("caller-added");
+    firstLesson.title = "Changed by caller";
+
     const created = await createDocument({
       kind: "lesson",
       title: "New",
@@ -75,11 +84,17 @@ describe("library store", () => {
     });
     created.title = "Changed by caller";
 
-    await expect(listDocuments()).resolves.not.toContainEqual(
-      expect.objectContaining({ title: "Changed by caller" }),
+    await expect(listDocuments()).resolves.toContainEqual(
+      expect.objectContaining({ id: firstDocument.id, title: originalDocumentTitle }),
     );
-    await expect(loadSeriesWithLessons(firstRow.series.id)).resolves.toMatchObject({
-      series: { lessonIds: expect.any(Array) },
-    });
+    await expect(listDocuments()).resolves.toContainEqual(
+      expect.objectContaining({ id: created.id, title: "New" }),
+    );
+
+    const reloaded = await loadSeriesWithLessons(firstRow.series.id);
+    expect(reloaded?.series.lessonIds).toEqual(originalLessonIds);
+    expect(reloaded?.lessons).toContainEqual(
+      expect.objectContaining({ id: firstLesson.id, title: originalLessonTitle }),
+    );
   });
 });

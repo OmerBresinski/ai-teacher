@@ -1,7 +1,23 @@
 import { describe, expect, it, mock } from "bun:test";
-import { type MutationFunctionContext, QueryClient } from "@tanstack/react-query";
+import {
+  type MutationFunctionContext,
+  QueryClient,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
 import { libraryMutations, libraryQueries, sortDocuments } from "./library";
 import { queryKeys } from "./query";
+
+async function invokeOnSuccess<TData, TVariables>(
+  onSuccess: UseMutationOptions<TData, Error, TVariables>["onSuccess"],
+): Promise<void> {
+  if (!onSuccess) throw new Error("Expected mutation onSuccess callback");
+  await onSuccess(
+    undefined as TData,
+    undefined as TVariables,
+    undefined,
+    {} as MutationFunctionContext,
+  );
+}
 
 describe("library queries", () => {
   it("uses the library query-key family", () => {
@@ -14,16 +30,33 @@ describe("library queries", () => {
     );
   });
 
-  it("invalidates the full library family after a document mutation", async () => {
+  it("invalidates the full library family after every mutation", async () => {
     const queryClient = new QueryClient();
     const invalidateQueries = mock().mockResolvedValue(undefined);
     queryClient.invalidateQueries = invalidateQueries;
 
-    await libraryMutations
-      .renameDocument(queryClient)
-      .onSuccess?.(true, ["id", "Name"], undefined, {} as MutationFunctionContext);
+    const onSuccess = [
+      () => invokeOnSuccess(libraryMutations.createDocument(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.renameDocument(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.duplicateDocument(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.softDeleteDocument(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.restoreDocument(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.createSeries(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.renameSeries(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.duplicateSeries(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.addLessonsToSeries(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.removeLessonFromSeries(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.setSeriesLessons(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.softDeleteSeries(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.restoreSeries(queryClient).onSuccess),
+    ];
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["library"] });
+    for (const invoke of onSuccess) {
+      await invoke();
+      expect(invalidateQueries).toHaveBeenLastCalledWith({ queryKey: queryKeys.library });
+    }
+
+    expect(invalidateQueries).toHaveBeenCalledTimes(onSuccess.length);
   });
 });
 
