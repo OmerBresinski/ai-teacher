@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ThemeProvider } from "../theme/theme-provider";
@@ -16,9 +16,11 @@ describe("Toaster", () => {
     );
     toast("Deleted X", { action: { label: "Undo", onClick } });
     expect(await screen.findByText("Deleted X")).toBeInTheDocument();
+    const toastElement = screen.getByText("Deleted X").closest("[data-sonner-toast]");
     await user.click(screen.getByRole("button", { name: "Undo" }));
     expect(onClick).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Deleted X")).toBeInTheDocument();
+    // happy-dom does not finish Sonner's exit animation, so assert its immediate dismissal state.
+    await waitFor(() => expect(toastElement).toHaveAttribute("data-removed", "true"));
   });
 
   it("caps the visible stack at three toasts", async () => {
@@ -29,6 +31,9 @@ describe("Toaster", () => {
     );
     for (const label of ["One", "Two", "Three", "Four"]) toast(label);
     await screen.findByText("Four");
-    expect(screen.getAllByText(/One|Two|Three|Four/)).toHaveLength(4);
+    await waitFor(() => {
+      const toasts = document.querySelectorAll('[data-sonner-toast][data-visible="true"]');
+      expect(toasts).toHaveLength(3);
+    });
   });
 });
