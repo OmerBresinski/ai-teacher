@@ -65,6 +65,18 @@ export function emitMatchMediaChange(): void {
 // `vi.stubGlobal` / `vi.unstubAllGlobals` equivalent: swap the global by hand and restore it.
 const originalMatchMedia = globalThis.matchMedia;
 
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+class PointerEventMock extends MouseEvent {}
+
+const originalResizeObserver = globalThis.ResizeObserver;
+const originalPointerEvent = globalThis.PointerEvent;
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+
 beforeEach(() => {
   mediaState.dark = false;
   mediaState.moreContrast = false;
@@ -72,8 +84,14 @@ beforeEach(() => {
   window.localStorage.clear();
   delete document.documentElement.dataset.theme;
   globalThis.matchMedia = mock(createMatchMedia);
+  globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+  globalThis.PointerEvent = PointerEventMock as unknown as typeof PointerEvent;
+  HTMLElement.prototype.scrollIntoView = () => {};
 });
 
 afterEach(() => {
   globalThis.matchMedia = originalMatchMedia;
+  globalThis.ResizeObserver = originalResizeObserver;
+  globalThis.PointerEvent = originalPointerEvent;
+  HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
 });

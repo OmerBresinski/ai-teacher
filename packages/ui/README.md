@@ -13,9 +13,12 @@ package delivers today (TEACH-13).
 ```ts
 import {
   // components (shadcn new-york, adapted — see "Adding a shadcn component")
-  Button, buttonVariants, type ButtonProps,
-  Input, type InputProps,
-  Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter,
+   Button, buttonVariants, type ButtonProps,
+   Input, type InputProps,
+   Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter,
+   AlertDialog, ConfirmDialog, Dialog, DropdownMenu, Popover, Tooltip, TooltipProvider,
+   Tabs, Switch, Checkbox, RadioGroup, Select, Separator, Skeleton, Textarea,
+   Label, Kbd, Spinner, Toaster, toast,
   // theming
   ThemeProvider, useTheme, type ThemeProviderProps, type ThemeContextValue,
   THEME_INIT_SCRIPT, createThemeInitScript,
