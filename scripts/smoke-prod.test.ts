@@ -37,9 +37,9 @@ describe("smoke-prod", () => {
   });
 
   test("a network error is reported as a failed case, not a crash", async () => {
-    const down: typeof fetch = (async () => {
+    const down = (async () => {
       throw new Error("ECONNREFUSED");
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), down);
     expect(results.every((r) => !r.ok && r.actual === "ECONNREFUSED")).toBe(true);
   });
