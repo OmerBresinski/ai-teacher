@@ -241,5 +241,5 @@ Traces and screenshots are kept for failures only; CI uploads `playwright-report
 `test` job: Postgres service + `teaching_journey_test`, then `bun run test:db` (compose skipped
 under `CI=true`; `REQUIRE_TEST_DB=1`), coverage uploaded. `e2e` job: Postgres service +
 `teaching_journey_test`, `bunx --bun playwright install --with-deps chromium` (browser cache keyed on the
-Playwright version), `bun run test:e2e`, report uploaded on failure. Both jobs are gated by the
-`CI_STRICT` repository variable (README "CI").
+Playwright version), `bun run test:e2e`, report uploaded on failure. Both jobs are required status
+checks on `master` (README "CI").

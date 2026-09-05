@@ -1,9 +1,5 @@
 # CI (TEACH-23). Reproduce every job locally with the commands in README "CI".
 #
-# Phase split: the `test` and `e2e` jobs run in "gated" mode -- they execute, but a failure does
-# not block the PR -- until the repository variable CI_STRICT is set to "true" (Phase 2, see
-# README "CI"). Both jobs are wired to the real suites since TEACH-22 (docs/testing.md).
-#
 # Every third-party action is pinned to a full commit SHA; the trailing comment is the tag it was
 # resolved from. Update the SHA and the comment together (Dependabot opens those PRs).
 
@@ -26,8 +22,6 @@ env:
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
   TURBO_TELEMETRY_DISABLED: 1
   DO_NOT_TRACK: 1
-  # "true" -> test/e2e failures block the PR. Anything else -> they are reported but not blocking.
-  CI_STRICT: ${{ vars.CI_STRICT }}
 
 jobs:
   detect:
@@ -104,8 +98,6 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # Gated until CI_STRICT=true (Phase 2, README "CI").
-    continue-on-error: ${{ vars.CI_STRICT != 'true' }}
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -127,14 +119,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
-
-      - name: Gate status
-        run: |
-          if [ "$CI_STRICT" = "true" ]; then
-            echo "CI_STRICT=true -> failures in this job block the PR"
-          else
-            echo "::notice title=test is gated::CI_STRICT is not 'true'; failures are reported but do not block (Phase 1, TEACH-23)"
-          fi
 
       - name: Create the test database (mirrors infra/postgres/init)
         run: |
@@ -215,10 +199,9 @@ jobs:
     name: e2e
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Playwright (apps/web/e2e, TEACH-22); gated until CI_STRICT=true.
+    # Playwright (apps/web/e2e, TEACH-22).
     needs: detect
     if: needs.detect.outputs.web == 'true'
-    continue-on-error: ${{ vars.CI_STRICT != 'true' }}
     services:
       postgres:
         image: pgvector/pgvector:pg16

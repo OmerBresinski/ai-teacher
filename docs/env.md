@@ -62,7 +62,6 @@ is set".
 | `VITE_API_URL_FALLBACK` | web | config | — | n/a | preview | manual | Vercel Preview only. API origin for preview builds without a PR number (branch pushes) or without a template — point it at the Railway production api (`https://api-production-903f.up.railway.app`). Never in a local .env. |
 | `E2E_VERBOSE` | web | config | — | n/a | n/a | manual | Any value makes `playwright.config.ts` pipe api/worker logs at level info instead of discarding them. Shell only. |
 | `CI` | ci | config | — | n/a | n/a | template | `true` on GitHub Actions. `test:db` then skips docker compose, Playwright uses CI settings, `bun test` enables coverage. |
-| `CI_STRICT` | ci | config | — | n/a | n/a | manual | Repository variable. `true` makes the gated `test` and `e2e` jobs blocking (README "CI"). |
 | `REQUIRE_TEST_DB` | ci, compose | config | — | n/a | n/a | template | `1` makes DB-backed suites fail instead of skipping when TEST_DATABASE_URL is unreachable. Set by `bun run test:db` and CI. |
 | `TURBO_TOKEN` | ci | secret | — | n/a | n/a | manual | Repository secret: Vercel token for the Turborepo remote cache (ADR 0002). Empty = no remote cache. |
 | `TURBO_TEAM` | ci | config | — | n/a | n/a | manual | Repository variable: Vercel team slug for the remote cache (`omerbresinskis-projects`). |
@@ -106,7 +105,7 @@ this contract (missing keys, malformed URLs/ports/enums — values are never pri
 - **template** — a plain, non-secret value with a known default — seeded by `provision.sh` / `vercel env add` / `.env.example`
   `TJ_PG_PORT`, `TEST_DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`, `WORKER_CONCURRENCY`, `WEB_ORIGIN_PATTERNS`, `COOKIE_SAMESITE`, `MAIL_PROVIDER`, `ALLOW_WORKSPACE_HEADER_SHIM`, `AWS_REGION`, `AI_MODEL_FRONTIER`, `AI_MODEL_STANDARD`, `AI_MODEL_SMALL`, `EVENTS_MAX_STREAMS_PER_WORKSPACE`, `EVENTS_REPLAY_LIMIT`, `EVENTS_HEARTBEAT_MS`, `EVENTS_POLL_MS`, `AI_RATE_LIMIT_PER_WORKSPACE`, `AI_RATE_LIMIT_WINDOW_S`, `VITE_APP_ENV`, `VITE_DEV_API_TARGET`, `CI`, `REQUIRE_TEST_DB`
 - **manual** — a human pastes it: OAuth credentials, tokens, real domains. `bun run env:check --fix` prints the exact `railway variable set` / `vercel env add` command (with a placeholder, never a value)
-  `WEB_ORIGIN`, `COOKIE_DOMAIN`, `ALLOW_CONSOLE_MAIL_IN_PRODUCTION`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `ENABLE_TEST_ROUTES`, `BLOB_READ_WRITE_TOKEN`, `STORAGE_PUBLIC_BASE_URL`, `STORAGE_ROOT`, `STORAGE_PUBLIC_PREFIXES`, `AWS_BEARER_TOKEN_BEDROCK`, `VITE_API_URL`, `RAILWAY_PR_API_URL_TEMPLATE`, `VITE_API_URL_FALLBACK`, `E2E_VERBOSE`, `CI_STRICT`, `TURBO_TOKEN`, `TURBO_TEAM`
+  `WEB_ORIGIN`, `COOKIE_DOMAIN`, `ALLOW_CONSOLE_MAIL_IN_PRODUCTION`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `ENABLE_TEST_ROUTES`, `BLOB_READ_WRITE_TOKEN`, `STORAGE_PUBLIC_BASE_URL`, `STORAGE_ROOT`, `STORAGE_PUBLIC_PREFIXES`, `AWS_BEARER_TOKEN_BEDROCK`, `VITE_API_URL`, `RAILWAY_PR_API_URL_TEMPLATE`, `VITE_API_URL_FALLBACK`, `E2E_VERBOSE`, `TURBO_TOKEN`, `TURBO_TEAM`
 
 Expected names per provider target (what `bun run env:check` verifies):
 

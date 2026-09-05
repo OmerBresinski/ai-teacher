@@ -712,18 +712,6 @@ const CONTRACT = [
       "`true` on GitHub Actions. `test:db` then skips docker compose, Playwright uses CI settings, `bun test` enables coverage.",
   },
   {
-    name: "CI_STRICT",
-    services: ["ci"],
-    scope: "config",
-    local: null,
-    railway: "n/a",
-    vercel: "n/a",
-    setBy: "manual",
-    runtimeOnly: true,
-    description:
-      'Repository variable. `true` makes the gated `test` and `e2e` jobs blocking (README "CI").',
-  },
-  {
     name: "REQUIRE_TEST_DB",
     services: ["ci", "compose"],
     scope: "config",
