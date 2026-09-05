@@ -10,6 +10,7 @@ export {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./components/alert-dialog";
+export { AppBar, AppBarGroup, type AppBarProps, AppBarTitle } from "./components/app-bar";
 export { Button, type ButtonProps, buttonVariants } from "./components/button";
 export {
   Card,
@@ -35,6 +36,7 @@ export {
   DialogTrigger,
   dialogContentVariants,
 } from "./components/dialog";
+export { Display, type DisplayProps, type DisplaySize } from "./components/display";
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -52,9 +54,20 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./components/dropdown-menu";
+export { EmptyState, type EmptyStateProps } from "./components/empty-state";
+export { IconButton, type IconButtonProps, IconGroup } from "./components/icon-button";
 export { Input, type InputProps } from "./components/input";
 export { Kbd, KbdGroup } from "./components/kbd";
 export { Label } from "./components/label";
+export {
+  ListSurface,
+  ListSurfaceCell,
+  type ListSurfaceCellProps,
+  ListSurfaceHeader,
+  type ListSurfaceProps,
+  ListSurfaceRow,
+} from "./components/list-surface";
+export { PageTitle, type PageTitleProps } from "./components/page-title";
 export {
   Popover,
   PopoverAnchor,
@@ -65,6 +78,8 @@ export {
   PopoverTrigger,
 } from "./components/popover";
 export { RadioGroup, RadioGroupItem } from "./components/radio-group";
+export { SearchInput, type SearchInputProps } from "./components/search-input";
+export { SectionHeading, type SectionHeadingProps } from "./components/section-heading";
 export {
   Select,
   SelectContent,
@@ -78,15 +93,25 @@ export {
   SelectValue,
 } from "./components/select";
 export { Separator } from "./components/separator";
+export {
+  Sidebar,
+  SidebarItem,
+  type SidebarItemProps,
+  type SidebarProps,
+} from "./components/sidebar";
 export { Skeleton } from "./components/skeleton";
 export { Toaster, toast } from "./components/sonner";
 export { Spinner } from "./components/spinner";
+export { Stack, type StackProps } from "./components/stack";
+export { StatusPill, type StatusPillProps, type StatusPillTone } from "./components/status-pill";
 export { Switch } from "./components/switch";
 export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/tabs";
 export { Textarea } from "./components/textarea";
+export { Tile, type TileProps } from "./components/tile";
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./components/tooltip";
 // Utilities
 export { cn } from "./lib/cn";
+export { type UseInlineRenameOptions, useInlineRename } from "./lib/use-inline-rename";
 export {
   isResolvedTheme,
   isTheme,

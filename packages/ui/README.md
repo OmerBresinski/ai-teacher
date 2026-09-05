@@ -19,6 +19,11 @@ import {
    AlertDialog, ConfirmDialog, Dialog, DropdownMenu, Popover, Tooltip, TooltipProvider,
    Tabs, Switch, Checkbox, RadioGroup, Select, Separator, Skeleton, Textarea,
    Label, Kbd, Spinner, Toaster, toast,
+   // shell compositions
+   AppBar, AppBarGroup, AppBarTitle, Display, SectionHeading, PageTitle,
+   Sidebar, SidebarItem, Tile, EmptyState, StatusPill, Stack,
+   ListSurface, ListSurfaceHeader, ListSurfaceRow, ListSurfaceCell,
+   IconButton, IconGroup, SearchInput,
   // theming
   ThemeProvider, useTheme, type ThemeProviderProps, type ThemeContextValue,
   THEME_INIT_SCRIPT, createThemeInitScript,
