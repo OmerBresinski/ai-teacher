@@ -123,9 +123,14 @@ together. Work items that are dashboard-only or founder decisions are reported b
    `vercel ls teaching-journey-web --scope omerbresinskis-projects` (latest Production must be
    `Ready`) and `railway deployment list --service api|worker --environment production --json |
    jq '.[0].status'` (must be `SUCCESS`; `railway logs --service <svc> --build` for the failure).
-   If either failed, fix it before doing anything else — a fix PR through the same
-   implement → review → merge steps — and do not mark the Linear issue Done until the deploy is
-   green.
+   Then run **`bun run smoke:prod`** (`scripts/smoke-prod.ts`): it sends the request shapes a
+   real browser produces from the production web origin — including `Sec-Fetch-Site: cross-site`,
+   which every request carries until TEACH-30 — and must exit 0. Local e2e cannot catch guard
+   regressions because the Vite proxy makes requests same-origin (2026-09-05 CSRF incident,
+   PR #66). If the deploy or the smoke check failed, fix it before doing anything else — a fix PR
+   through the same implement → review → merge steps — and do not mark the Linear issue Done
+   until both are green. A PR that changes `apps/api/src/app.ts`, `csrf.ts`, `origins.ts` or
+   `auth/require-session.ts` adds a smoke case for any new browser-facing request shape.
 5. **Close the loop.** When the work came from Linear, move the issue to **Done** once the PR is
    merged and deployed, with a comment naming the PR and anything deliberately left open; keep
    `infra/README.md` "Known gaps" in sync when the issue is one.

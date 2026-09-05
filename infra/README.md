@@ -487,6 +487,14 @@ Never set `ENABLE_TEST_ROUTES` on Railway (the api refuses it with `NODE_ENV=pro
 
 ## Provision, deploy, roll back
 
+After every production deploy run `bun run smoke:prod` (`scripts/smoke-prod.ts`). It probes the
+api unauthenticated with the exact headers a browser sends from `https://teaching-journey-web.vercel.app`
+(`Origin` + `Sec-Fetch-Site: cross-site` — the web and api are different sites until the parent
+domain exists) and asserts the guards answer correctly: app origin → 401 (reached the session
+guard), foreign origin → 403, cross-site without Origin → 403, preflight → 204, `/health` → 200.
+`--api <url> --web-origin <origin>` targets a PR environment. Added after the 2026-09-05 incident
+(PR #66) in which a CSRF guard returned 403 to every real request while local e2e stayed green.
+
 ```sh
 export PATH="$HOME/.bun/bin:$PATH"           # railway >= 5.49, logged in
 ./infra/railway/provision.sh                 # idempotent: project, services, volume, IaC settings
