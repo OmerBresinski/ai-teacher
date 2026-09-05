@@ -79,9 +79,9 @@ review → CI path that `master` protection depends on.
    first, or those scripts fail with `turbo: command not found`. (The commit hooks and CI still run
    Biome, commitlint and the test suite, so a docs-only change may rely on those instead — say
    which in the brief.) When there is a Linear issue, move it to **In Progress** and set its
-   **Assignee** to
-   the currently authenticated Linear user (`assignee: "me"` in `linear_save_issue`) when work
-   starts, so the ticket is never left unassigned while it is being worked on.
+   **Assignee** to the currently authenticated Linear user (`assignee: "me"` in
+   `linear_save_issue`) when work starts, so the ticket is never left unassigned while it is being
+   worked on.
    The brief to each subagent meets the "Writing tickets" standard above (exact files and
    symbols, pattern file, non-inferable conventions, traps, acceptance table, tests, branch name,
    exact PR title); the per-area `AGENTS.md` names the conventions and skills for that area. For
@@ -145,10 +145,11 @@ review → CI path that `master` protection depends on.
 4. **Watch the deploys.** A merge to `master` deploys Vercel (web) and Railway (api, worker).
    After merging, wait for both and check they succeeded:
    `vercel ls teaching-journey-web --scope omerbresinskis-projects` (latest Production must be
-   `Ready`) and `railway deployment list -p a79752e1-8bf5-41d0-b832-f1b64aaf6d2f -e production
-   -s api|worker --json | jq '.[0].status'` (must be `SUCCESS`, or `SKIPPED` when the change is
-   outside the service's watch paths, e.g. docs-only; `railway logs -p … -e production -s <svc>
-   --build` for the failure). The `-p` flag is the `teaching-journey` project id and is needed
+   `Ready`) and, for Railway, `for s in api worker; do railway deployment list
+   -p a79752e1-8bf5-41d0-b832-f1b64aaf6d2f -e production -s $s --json | jq -r '.[0].status';
+   done` (each must be `SUCCESS`, or `SKIPPED` when the change is outside the service's watch
+   paths, e.g. docs-only; `railway logs -p a79752e1-8bf5-41d0-b832-f1b64aaf6d2f -e production
+   -s <svc> --build` for the failure). `-p` is the `teaching-journey` project id and is required
    whenever the CLI runs from a directory that is not `railway link`ed — worktrees never are.
    Then run **`bun run smoke:prod`** (`scripts/smoke-prod.ts`): it sends the request shapes a
    real browser produces from the production web origin — including `Sec-Fetch-Site: cross-site`,
