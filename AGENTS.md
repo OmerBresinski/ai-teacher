@@ -48,6 +48,34 @@ in `linear_save_issue`; `linear_get_template` shows its sections) and fill every
 than inventing a shape. A ticket is ready when a subagent could open the PR without asking a
 single question.
 
+### Tech debt
+
+There is a standing Linear project **Tech debt** (team Teacher AI,
+https://linear.app/missionsxyz/project/tech-debt-e0bb70c65305) for real findings that are not
+part of the work in hand.
+
+File a finding there when it is a valid code-review finding (step 2 of the delivery workflow) but
+out of scope for the PR under review; when an implementing or exploring subagent finds a defect,
+performance risk or maintainability problem while reading code that is not what the user asked
+for; or when the user declines a nice to have for now. Do not file anything blocking the current
+PR (fix it), product or feature ideas (they are Notion / founder decisions), or work that already
+has a ticket.
+
+Create one Linear issue per finding with `project: "Tech debt"`, using the **Agentic Task**
+template to the standard above: include the exact `path:line`, the pattern file and an acceptance
+table. A Tech debt ticket is picked up cold by a subagent months later, so "we should look at X"
+is not a ticket. Set priority to High only for data loss, duplicate spend or a security hole;
+otherwise use Medium or Low. Before creating a ticket, search the project for one on the same
+file or symbol and comment on it instead of duplicating it.
+
+The `reviewer` is read-only and does not create tickets. It marks these findings in its review
+body as `TECH-DEBT:` alongside the existing `BLOCKER:` convention in step 2; the main agent files
+them after the review, replies on the thread with the ticket id, and resolves it. A filed ticket
+counts as consciously declined with a stated reason for the purpose of step 3.
+
+When the user asks for an audit or a list of issues, report findings in chat first. The user
+decides; file the findings they do not want fixed now in Tech debt.
+
 ## Delivery workflow (implement → PR → review → merge)
 
 The user says **what** to do (a Linear project, a list of issues, a feature, a bug, a design
@@ -100,7 +128,8 @@ review → CI path that `master` protection depends on.
    ```sh
    # commit_id: gh pr view <n> --json headRefOid -q .headRefOid
    # event is always "COMMENT": GitHub rejects REQUEST_CHANGES/APPROVE on your own PR (422),
-   # and the reviewer runs as the PR author. Flag blockers in the body as "BLOCKER:" instead.
+   # and the reviewer runs as the PR author. Flag blockers as "BLOCKER:" and out-of-scope findings
+   # as "TECH-DEBT:" (see "Tech debt" above) in the body instead.
    gh api repos/{owner}/{repo}/pulls/<n>/reviews --input - <<'EOF'
    {
      "commit_id": "<head sha>",
@@ -126,7 +155,8 @@ review → CI path that `master` protection depends on.
    (resume it with its `task_id`), pushes, and the `reviewer` re-reviews only if the fix was
    structural. With or without findings, the main agent then runs the acceptance check described
    above and merges only when it passes. `master` requires every review thread to be resolved, so
-   after a finding is fixed (or consciously declined, with a reply saying why) resolve its
+   after a finding is fixed (or consciously declined, with a reply saying why — filing a Tech debt
+   ticket and naming it in the reply counts) resolve its
    thread — there is no `gh` command for this, use GraphQL:
 
    ```sh
