@@ -178,6 +178,9 @@ each test) and `./bun-test.setup.ts`, which mocks `window.matchMedia`
 The jest-dom matcher types come from `@tj/config/bun-test/jest-dom` (listed in `tsconfig.json`
 `types`).
 
+Radix overlay tests also rely on the package setup's minimal `ResizeObserver`, `PointerEvent`, and
+`scrollIntoView` polyfills. Keep those polyfills rather than skipping portal interaction tests.
+
 ## Notes for maintainers
 
 - **Biome CSS parsing.** `packages/ui/biome.json` (`root: false`, `extends: "//"`) exists only to
