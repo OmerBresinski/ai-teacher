@@ -78,4 +78,11 @@ describe("sortDocuments", () => {
       "1",
     ]);
   });
+
+  it("falls back to the edit stamp for legacy summaries without a creation stamp", () => {
+    const legacy = { id: "legacy", title: "Legacy", updatedAt: "2026-01-04T00:00:00.000Z" };
+    const sorted = sortDocuments([...documents, legacy], "created");
+
+    expect(sorted.map((document) => document.id)).toEqual(["legacy", "2", "3", "1"]);
+  });
 });

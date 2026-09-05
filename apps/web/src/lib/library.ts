@@ -147,14 +147,13 @@ export function libraryCounts(
 
 const collator = new Intl.Collator("en-GB", { numeric: true, sensitivity: "base" });
 
-export function sortDocuments(
-  documents: DocumentSummary[],
-  sort: "edited" | "created" | "title",
-): DocumentSummary[] {
+export function sortDocuments<
+  T extends Pick<DocumentSummary, "title" | "updatedAt"> & { createdAt?: string },
+>(documents: T[], sort: "edited" | "created" | "title"): T[] {
   const sorted = [...documents];
   if (sort === "title") sorted.sort((a, b) => collator.compare(a.title, b.title));
   else if (sort === "created") {
-    sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    sorted.sort((a, b) => (b.createdAt ?? b.updatedAt).localeCompare(a.createdAt ?? a.updatedAt));
   } else {
     sorted.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
