@@ -100,9 +100,15 @@ the main agent runs on the most expensive model, and direct edits skip the branc
 review → CI path that `master` protection depends on.
 
 1. **Implement in parallel with subagents.** Split the request into independent units of work.
-   One `general` subagent per unit, each on its own branch (the Linear `gitBranchName` when there
-   is an issue), each opening its own PR with `gh pr create` (title `<type>(<scope>): …`, with
-   `(TEACH-n)` and a link to the issue when there is one). Serialize units that touch the same
+   One `general` subagent per unit, each on its own branch, each opening its own PR with
+   `gh pr create` (title `<type>(<scope>): …`, with `(TEACH-n)` and a link to the issue when
+   there is one). **Branch name:** when there is a Linear issue, the branch **must** be the
+   issue's `gitBranchName` exactly as returned by `linear_get_issue` (e.g.
+   `omerbres/teach-69-packagesai-tjai-…`) — never invent, shorten or re-slug it. The main
+   session fetches it and passes it verbatim to the subagent's prompt; the subagent creates the
+   branch with `git checkout -b <gitBranchName>`. The issue ID in the branch is what Linear's
+   GitHub integration uses to attach the PR to the ticket and drive its status. Without an issue,
+   use `<type>/<short-slug>`. Serialize units that touch the same
    files (e.g. `infra/README.md`) — merge one, rebase the next. Subagents must run
    `bun run lint`, `bun run typecheck` and the relevant tests before opening the PR, and must not
    merge. A fresh `git worktree` has no `node_modules`: run `bun install --frozen-lockfile` in it
@@ -117,6 +123,9 @@ review → CI path that `master` protection depends on.
    exact PR title); the per-area `AGENTS.md` names the conventions and skills for that area. For
    UI work, a verified visual result is part of acceptance — say how to obtain it (which servers
    and ports, the `GET /__test/last-magic-link` sign-in route).
+   Subagent models are set in the global OpenCode config (`general`/`explore` → GPT-5.6 Terra
+   high; `reviewer` → GPT-5.6 Luna); the main session stays on Claude Fable 5.1. Do not
+   override models per task.
 2. **Review with a separate subagent.** For every PR, launch a fresh **`reviewer`** subagent (a
    read-only agent defined in the user's global opencode config — `edit` denied, its own model —
    fall back to `general` only if `reviewer` is not available) that loads
