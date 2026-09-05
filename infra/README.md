@@ -51,7 +51,7 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | Framework preset       | Vite (project setting and `apps/web/vercel.json#framework`)                                         |
 | Install / build        | from `apps/web/vercel.json`: `cd ../.. && bun install --frozen-lockfile --ignore-scripts` (skips the root `prepare` → `lefthook install`, which has no git repo on Vercel) and `cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web`; output `dist` |
 | Ignored Build Step     | `bash scripts/vercel-ignore-build.sh` (relative to `apps/web`): skips when nothing under `apps/web`, `packages/{ui,api-client,domain,config}`, `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`; always builds when that SHA is missing |
-| Git                    | `vercel git connect https://github.com/OmerBresinski/ai-teacher.git`; production branch **`master`** (set via `PATCH /v1/projects/teaching-journey-web/branch {"branch":"master"}`). Pushes to `master` deploy production, every other branch/PR a preview |
+| Git                    | `vercel git connect https://github.com/OmerBresinski/ai-teacher.git`; production branch **`master`** (set via `PATCH /v1/projects/teaching-journey-web/branch {"branch":"master"}`). Pushes to `master` deploy production. **Preview deployments are disabled since 2026-09-05** (`apps/web/vercel.json` `git.deploymentEnabled: { "master": true, "*": false }`): PRs hit the Hobby-plan build rate limit and the previews were not being used. Re-enable by deleting that key; the pairing recipe below still applies then |
 | Domains                | `teaching-journey-web.vercel.app` (auto). `app.<domain>` — `TODO(domain)`, domain follow-up              |
 | Deployment protection  | Vercel Authentication (SSO) — Hobby default "Standard Protection": previews ask for a Vercel login. Whether to also protect **production** (`teaching-journey-web.vercel.app`) is a founder decision (dashboard-only); since 2026-09-04 the site works end-to-end against the Railway api, so this is low urgency — see "Dashboard-only (Vercel)". A Protection Bypass for Automation secret exists (curl/e2e: `x-vercel-protection-bypass: <secret>`, read it in *Settings → Deployment Protection*; never commit it) |
 | Speed Insights         | `@vercel/speed-insights` is loaded **only** when `VITE_APP_ENV=production` (`apps/web/src/lib/speed-insights.ts`, dynamic import, verified absent from preview `dist/`). Enabling the *feature* on the project is dashboard-only (CLI refuses: "incurs charges") |
@@ -102,6 +102,9 @@ them (Vercel's build uses its own remote cache: "Detected Turbo").
   `connect-src`) once the API domains are fixed, e.g. by generating the header at build time.
 
 ### Pairing a Vercel preview with a Railway PR environment (verified with PR #30, 2026-09-04)
+
+> Vercel previews are currently **disabled** (see the Git row above); this section describes how the
+> pairing works when they are turned back on.
 
 1. Railway PR env `ai-teacher-pr-<n>` deploys the api at `https://api-ai-teacher-pr-<n>.up.railway.app`
    (matches `RAILWAY_PR_API_URL_TEMPLATE`; PR #30 → `https://api-ai-teacher-pr-30.up.railway.app`,
