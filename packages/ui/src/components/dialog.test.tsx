@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./dialog";
@@ -32,5 +32,8 @@ describe("Dialog", () => {
     );
     await user.keyboard("{Escape}");
     expect(screen.getByRole("dialog")).toHaveClass("max-w-[360px]");
+    expect(screen.getByRole("dialog")).not.toHaveClass("motion-safe:animate-arrive");
+    fireEvent.pointerDown(document.body);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

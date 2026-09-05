@@ -10,6 +10,6 @@ describe("Popover", () => {
         <PopoverContent>Options</PopoverContent>
       </Popover>,
     );
-    expect(screen.getByText("Options")).toHaveClass("rounded-card", "shadow-2");
+    expect(screen.getByText("Options").parentElement).toHaveClass("rounded-card", "shadow-2");
   });
 });

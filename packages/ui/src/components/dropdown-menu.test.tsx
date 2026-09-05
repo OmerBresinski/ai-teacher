@@ -20,13 +20,20 @@ describe("DropdownMenu", () => {
           <DropdownMenuItem>One</DropdownMenuItem>
           <DropdownMenuItem>Two</DropdownMenuItem>
           <DropdownMenuItem onSelect={onSelect}>Three</DropdownMenuItem>
+          <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+            Keep open
+          </DropdownMenuItem>
           <DropdownMenuItem destructive>Delete</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>,
     );
-    await user.click(screen.getByRole("button", { name: "Open" }));
-    expect(screen.getByRole("menuitem", { name: "Delete" })).toHaveClass("text-destructive");
-    await user.click(screen.getByRole("menuitem", { name: "Three" }));
+    await user.tab();
+    await user.keyboard("{Enter}{ArrowDown}{ArrowDown}{Enter}");
     expect(onSelect).toHaveBeenCalled();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toHaveClass("text-destructive");
+    await user.click(screen.getByRole("menuitem", { name: "Keep open" }));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
   });
 });

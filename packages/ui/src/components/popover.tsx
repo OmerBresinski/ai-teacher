@@ -20,6 +20,7 @@ function PopoverContent({
   className,
   align = "center",
   sideOffset = 4,
+  children,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
@@ -29,11 +30,13 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-card border border-border bg-popover p-3 text-popover-foreground shadow-2 [--tj-arrive-distance:6px] outline-hidden motion-safe:animate-arrive",
+          "z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-card border border-border bg-popover p-3 text-popover-foreground shadow-2 outline-hidden",
           className,
         )}
         {...props}
-      />
+      >
+        <div className="[--tj-arrive-distance:6px] motion-safe:animate-arrive">{children}</div>
+      </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   );
 }

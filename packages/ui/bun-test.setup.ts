@@ -73,9 +73,9 @@ class ResizeObserverMock {
 
 class PointerEventMock extends MouseEvent {}
 
-const originalResizeObserver = globalThis.ResizeObserver;
-const originalPointerEvent = globalThis.PointerEvent;
-const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+let installedResizeObserver = false;
+let installedPointerEvent = false;
+let installedScrollIntoView = false;
 
 beforeEach(() => {
   mediaState.dark = false;
@@ -84,14 +84,32 @@ beforeEach(() => {
   window.localStorage.clear();
   delete document.documentElement.dataset.theme;
   globalThis.matchMedia = mock(createMatchMedia);
-  globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
-  globalThis.PointerEvent = PointerEventMock as unknown as typeof PointerEvent;
-  HTMLElement.prototype.scrollIntoView = () => {};
+  if (!globalThis.ResizeObserver) {
+    globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+    installedResizeObserver = true;
+  }
+  if (!globalThis.PointerEvent) {
+    globalThis.PointerEvent = PointerEventMock as unknown as typeof PointerEvent;
+    installedPointerEvent = true;
+  }
+  if (!HTMLElement.prototype.scrollIntoView) {
+    HTMLElement.prototype.scrollIntoView = () => {};
+    installedScrollIntoView = true;
+  }
 });
 
 afterEach(() => {
   globalThis.matchMedia = originalMatchMedia;
-  globalThis.ResizeObserver = originalResizeObserver;
-  globalThis.PointerEvent = originalPointerEvent;
-  HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+  if (installedResizeObserver) {
+    delete (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+    installedResizeObserver = false;
+  }
+  if (installedPointerEvent) {
+    delete (globalThis as { PointerEvent?: typeof PointerEvent }).PointerEvent;
+    installedPointerEvent = false;
+  }
+  if (installedScrollIntoView) {
+    delete (HTMLElement.prototype as { scrollIntoView?: () => void }).scrollIntoView;
+    installedScrollIntoView = false;
+  }
 });

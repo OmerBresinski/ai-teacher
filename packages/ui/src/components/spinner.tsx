@@ -16,7 +16,7 @@ function Spinner({
   return (
     <svg
       aria-hidden="true"
-      className={cn("animate-spin", size === 16 ? "size-4" : "size-5", className)}
+      className={cn("motion-safe:animate-spin", size === 16 ? "size-4" : "size-5", className)}
       fill="none"
       viewBox="0 0 24 24"
       {...props}
