@@ -14,6 +14,7 @@ F18 requires tokens, a component library on accessible primitives, and that ever
 
 ## Consequences
 
+- Amended 2026-09-05 by ADR 0019.
 - Fast to reach a Linear-grade shell; accessibility of primitives is inherited from Radix.
 - The scaffold installs Tailwind and the shadcn configuration only; tokens, state chips and the component set are F18 project work.
 - shadcn components are copied source, so upgrades are manual; keep the component count deliberate.
