@@ -64,6 +64,10 @@ export const queryKeys = {
   me: ["me"] as const,
   greeting: ["me", "greeting"] as const,
   job: (id: string) => ["job", id] as const,
+  library: ["library"] as const,
+  libraryDocuments: ["library", "documents"] as const,
+  librarySeries: ["library", "series"] as const,
+  librarySeriesDetail: (id: string) => ["library", "series", id] as const,
 };
 
 /** `200` body of `GET /me` — `{ user: { id, email, name }, workspaceId }`. */
