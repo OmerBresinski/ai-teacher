@@ -58,6 +58,7 @@
   --primary-fill: #d2644b;
   --primary-fill-hover: #c05740;
   --primary-fill-press: #ae4b31;
+  --primary-fill-aa: #b04a33; /* 4.51:1 under white; check glyphs and text selection */
   --secondary: #f9f8f6;
   --secondary-foreground: #4e4a44;
   --muted: #f9f8f6;
@@ -132,6 +133,7 @@
   --primary-fill: #e6866b;
   --primary-fill-hover: #ee9b83;
   --primary-fill-press: #d5745a;
+  --primary-fill-aa: var(--primary-fill);
   --secondary: #161513;
   --secondary-foreground: #bcb6ac;
   --muted: #161513;
@@ -199,6 +201,7 @@
     --primary-fill: #e6866b;
     --primary-fill-hover: #ee9b83;
     --primary-fill-press: #d5745a;
+    --primary-fill-aa: var(--primary-fill);
     --secondary: #161513;
     --secondary-foreground: #bcb6ac;
     --muted: #161513;
@@ -266,6 +269,7 @@
   --primary-fill: var(--primary);
   --primary-fill-hover: var(--primary);
   --primary-fill-press: var(--primary);
+  --primary-fill-aa: var(--primary-fill);
   --secondary: #161513;
   --secondary-foreground: #ffffff; /* 18.9:1 on --secondary */
   --muted: #161513;
@@ -330,6 +334,7 @@
   --color-primary-fill: var(--primary-fill);
   --color-primary-fill-hover: var(--primary-fill-hover);
   --color-primary-fill-press: var(--primary-fill-press);
+  --color-primary-fill-aa: var(--primary-fill-aa);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
