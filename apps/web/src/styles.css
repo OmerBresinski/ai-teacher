@@ -1,2 +1,4 @@
 @import "@tj/ui/styles/globals.css";
 @source "../../../packages/ui/src";
+/* @tj/editor components use Tailwind utilities on the same tokens (ADR 0022); scan them too. */
+@source "../../../packages/editor/src";

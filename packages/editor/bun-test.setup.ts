@@ -30,6 +30,21 @@ beforeEach(() => {
       delete (HTMLElement.prototype as { scrollIntoView?: () => void }).scrollIntoView;
     });
   }
+  // Pointer capture: the ink and transform layers call these on every stroke.
+  for (const name of ["setPointerCapture", "releasePointerCapture"] as const) {
+    if (!Element.prototype[name]) {
+      Element.prototype[name] = () => {};
+      installed.push(() => {
+        delete (Element.prototype as Partial<Record<typeof name, unknown>>)[name];
+      });
+    }
+  }
+  if (!Element.prototype.hasPointerCapture) {
+    Element.prototype.hasPointerCapture = () => false;
+    installed.push(() => {
+      delete (Element.prototype as { hasPointerCapture?: unknown }).hasPointerCapture;
+    });
+  }
   if (!globalThis.PointerEvent) {
     globalThis.PointerEvent = PointerEventMock as unknown as typeof PointerEvent;
     installed.push(() => {
