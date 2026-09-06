@@ -37,4 +37,11 @@ describe("Card", () => {
     expect(screen.getByText("Body")).toHaveAttribute("data-slot", "card-content");
     expect(screen.getByText("Footer")).toHaveAttribute("data-slot", "card-footer");
   });
+
+  it("creates no stacking context, so overlay actions can beat a sibling cover link", () => {
+    const { container } = render(<Card variant="contained">Face</Card>);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).not.toMatch(/\bisolate\b/);
+    expect(root.className).not.toMatch(/\bz-\d/);
+  });
 });

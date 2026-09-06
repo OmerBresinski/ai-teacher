@@ -47,8 +47,9 @@ test.describe("series detail", () => {
     const rows = page.getByRole("list", { name: "Lessons in teaching order" }).locator("li");
     await rows.nth(2).hover();
     const grip = rows.nth(2).getByRole("button", { name: "Reorder" });
-    const gripBox = (await grip.boundingBox())!;
-    const firstBox = (await rows.first().boundingBox())!;
+    const gripBox = await grip.boundingBox();
+    const firstBox = await rows.first().boundingBox();
+    if (!gripBox || !firstBox) throw new Error("Rows have no layout");
     await page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
     await page.mouse.down();
     await page.mouse.move(gripBox.x + gripBox.width / 2, firstBox.y + 4, { steps: 12 });

@@ -234,4 +234,58 @@ test.describe("library shell", () => {
     await page.waitForTimeout(500);
     await scanAll("dark");
   });
+
+  test("keyboard only: Tab to a card, F2 rename, Enter; menu ArrowDown, Delete, Undo", async ({
+    signedInPage: { page },
+  }) => {
+    await page.goto("/lessons");
+    const card = page.locator("article", { hasText: "The water cycle" }).first();
+    await card.getByRole("link", { name: "Open The water cycle" }).focus();
+    await page.keyboard.press("F2");
+    const input = page.getByRole("textbox", { name: "Rename The water cycle" });
+    await expect(input).toBeFocused();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("Water everywhere");
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("link", { name: "Open Water everywhere" })).toBeVisible();
+
+    const renamed = page.locator("article", { hasText: "Water everywhere" }).first();
+    await renamed.getByRole("link", { name: "Open Water everywhere" }).focus();
+    // Overlay actions are focus-within visible: Tab reaches Present, then the menu.
+    await page.keyboard.press("Tab");
+    await expect(renamed.getByRole("button", { name: "Present" })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(renamed.getByRole("button", { name: "More actions" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("menu")).toBeVisible();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("menuitem", { name: "Delete" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("link", { name: "Open Water everywhere" })).toHaveCount(0);
+
+    const undo = page.getByRole("button", { name: "Undo" });
+    await expect(undo).toBeVisible();
+    await undo.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("link", { name: "Open Water everywhere" })).toBeVisible();
+  });
+
+  test("narrow viewport: two-column grid and a usable sidebar", async ({
+    signedInPage: { page },
+  }) => {
+    await page.setViewportSize({ width: 900, height: 700 });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+    const recent = page.getByRole("region", { name: "Recent" });
+    const columns = await recent
+      .locator(".grid")
+      .first()
+      .evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(" ").length);
+    expect(columns).toBe(2);
+    await page.getByRole("button", { name: "Collapse sidebar" }).click();
+    await expect(page.getByRole("navigation", { name: "Library" })).toHaveCSS("width", "56px");
+    await page.getByRole("link", { name: /^Lessons\b/ }).click();
+    await expect(page).toHaveURL(/\/lessons$/);
+    await expectNoSeriousA11yViolations(page, "/lessons (900px)");
+  });
 });
