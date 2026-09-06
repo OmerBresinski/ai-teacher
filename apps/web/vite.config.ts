@@ -47,7 +47,7 @@ function resourceHints(apiUrl: string): Plugin {
         if (apiOrigin) {
           tags.push({
             tag: "link",
-            attrs: { rel: "preconnect", href: apiOrigin },
+            attrs: { rel: "preconnect", href: apiOrigin, crossorigin: "use-credentials" },
             injectTo: "head",
           });
         }
