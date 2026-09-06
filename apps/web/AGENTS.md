@@ -40,7 +40,9 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   narrow viewport), `series` (detail page incl. real-pointer drag), `viewer`, `present`, `editor`
   (canvas drag/snap/resize, navigator reorder, autosave, the TeachDeck geometry checks),
   `editor-text` (double-click to edit, Escape commits, toolbar, option label, Why? panel),
-  `editor-chrome` (toolbar routing, rail inserts, opacity drag, theme dialog), `a11y`
+  `editor-chrome` (toolbar routing, rail inserts, opacity drag, theme dialog), `editor-layout`
+  (lint badge + Tidy; the `electricity` seed is stored at `fitVersion: 0` so the fit migration
+  runs once when it is opened), `a11y`
   (the nine signed-in library/document routes × the three themes via `page.addInitScript` setting `tj-theme`, plus open dialogs/menus; `/sign-in` and
   `/dev/jobs` once in light), `kit` (opt-in,
   `E2E_KIT=1`). `src/router.test.ts` pins the registered route set; `packages/ui/src/styles/contrast.test.ts`

@@ -17,9 +17,11 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   IconButton,
+  Tooltip,
 } from "@tj/ui";
 import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSlideLint } from "../layout/use-slide-lint";
 import { SLIDE_KIND_LABELS } from "../model/layouts";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
@@ -525,6 +527,15 @@ const NavigatorRow = memo(function NavigatorRow({
 }) {
   const hasNotes = !!slide.notes?.trim();
   const hasSteps = slideStepCount(slide) > 0;
+  // Text fitting engine: a slide whose boxes collide, or whose text has been pushed off the slide,
+  // gets a warning dot. Debounced inside the hook, so typing never triggers a lint. "Tidy slide"
+  // in the slide toolbar is the fix.
+  const lint = useSlideLint(slide, theme);
+  const needsTidy = !lint.ok;
+  const warning =
+    lint.overlaps.length === 0 && lint.overflow.length === 0 && lint.laneOverflow.length > 0
+      ? "There is no room under the answers for a reason. Tidy will not move the cards up."
+      : "Something on this slide overlaps or does not fit. Use Tidy slide.";
 
   return (
     <div
@@ -583,8 +594,20 @@ const NavigatorRow = memo(function NavigatorRow({
         <SlideScaler zoom={geometry.thumbW / SLIDE_W}>
           <SlideView slide={slide} theme={theme} mode="thumb" />
         </SlideScaler>
-        {hasNotes || hasSteps ? (
+        {hasNotes || hasSteps || needsTidy ? (
           <span className="absolute top-1 right-1 flex gap-1">
+            {needsTidy ? (
+              <Tooltip label={warning} side="right">
+                <span
+                  role="img"
+                  aria-label={warning}
+                  data-lint-badge
+                  // biome-ignore lint/a11y/noNoninteractiveTabindex: the dot's sentence is the only place the teacher is told why the slide is flagged; focus opens its tooltip
+                  tabIndex={0}
+                  className="block size-2 rounded-full bg-warning outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                />
+              </Tooltip>
+            ) : null}
             {hasNotes ? (
               <span aria-hidden className="block size-2 rounded-full bg-[#2E9465]" />
             ) : null}

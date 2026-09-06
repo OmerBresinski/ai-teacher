@@ -10,11 +10,14 @@ import {
   PopoverTrigger,
   Textarea,
   Tooltip,
+  toast,
 } from "@tj/ui";
 import { ImagePlus, WandSparkles } from "lucide-react";
 import { Fragment, memo, useState } from "react";
 import { ColorPicker } from "../../kit/Color";
 import { Panel, PanelSeparator } from "../../kit/Panel";
+import { createMeasurer } from "../../layout/measure";
+import { type TidyOutcome, tidyMessage, tidySlideReducer } from "../../layout/tidy";
 import { SLIDE_KIND_LABELS, SLIDE_KIND_ORDER } from "../../model/layouts";
 import * as reducers from "../../model/reducers";
 import { useEditSession } from "../../model/use-edit-session";
@@ -28,6 +31,15 @@ const TRANSITIONS: { value: TransitionId; label: string }[] = [
   { value: "push", label: "Push" },
   { value: "morph", label: "Morph" },
 ];
+
+const NOTHING_TO_TIDY: TidyOutcome = {
+  moved: 0,
+  stepped: 0,
+  continued: 0,
+  overflow: [],
+  laneOverflow: [],
+  changed: false,
+};
 
 /** Where the picker's list stops being lesson furniture and starts being questions. */
 const FIRST_QUESTION_KIND: SlideKind = "true-false";
@@ -135,13 +147,19 @@ export const SlideToolbar = memo(function SlideToolbar({
 
       <PanelSeparator />
 
-      <Tooltip label="Tidy arrives with the layout engine">
-        <span className="inline-flex">
-          <IconButton label="Tidy slide" noTooltip aria-disabled="true" className="opacity-50">
-            <WandSparkles aria-hidden {...ICON} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      {/* The text fitting engine, on demand: measures the slide with the real theme faces, grows
+          every auto-height box to its type, pushes what collides down the 7pt rhythm, steps
+          heading/body/small down a stop if the slide still overruns, and continues a long list on
+          a new slide rather than going below the 24pt floor. One reducer, so one undo step. */}
+      <IconButton
+        label="Tidy slide"
+        onClick={() => {
+          const made = history.dispatch(tidySlideReducer, slide.id, createMeasurer(theme));
+          toast(tidyMessage(made?.outcome ?? NOTHING_TO_TIDY));
+        }}
+      >
+        <WandSparkles aria-hidden {...ICON} />
+      </IconButton>
 
       <ConfirmDialog
         open={convertTo !== null}

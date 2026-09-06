@@ -69,6 +69,10 @@ src/
   layout/     text-fitting engine: reflow, explanation panel (lint/tidy/fit arrive in phase C)
   slide/      SlideView (the one renderer), SlideScaler, SlideStatic, elements/*
   kit/        Panel, Segmented, NumberInput, ZoomControl, Color, Rail — chrome with no @tj/ui twin
+  layout/     text fitting engine: reflow/lint/fit-plan (pure), measure (DOM ruler), tidy
+              (pure over the lesson; `tidySlideReducer` for dispatch), use-slide-lint (navigator
+              badge), use-fit-migration (once per lesson on open); `test-ruler.ts` is the fake
+              Measurer the tests use — happy-dom cannot lay out text
   text/       Tiptap extensions, static HTML, doc-marks/links (pure), active-editor context
   present/    LessonViewer, PresentView and present-mode pieces (`@tj/editor/present`)
   lesson/     LessonEditor shell (`@tj/editor/lesson`): TopBar, InsertRail, Navigator, Canvas,

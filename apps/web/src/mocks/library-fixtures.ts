@@ -1,5 +1,12 @@
 import type { Lesson, Worksheet } from "@tj/domain/documents";
-import { demoLibrary, demoWorksheet, newSlide, starterLesson, starterWorksheet } from "@tj/editor";
+import {
+  demoLibrary,
+  demoWorksheet,
+  docFromText,
+  newSlide,
+  starterLesson,
+  starterWorksheet,
+} from "@tj/editor";
 import type { LibraryTheme, Series } from "./library-schema";
 import type { StoredDocument } from "./summarise";
 
@@ -80,6 +87,29 @@ function lesson(now: Date, meta: Meta, extra = 0): Lesson {
   return stamp(now, body, meta);
 }
 
+/**
+ * A lesson as it comes back from storage written before `fitVersion` existed: the recipe's
+ * vocabulary slide with its definition boxes squashed to the old height, so the raised floors make
+ * the text run into the row below until the editor tidies it.
+ */
+function staleLesson(now: Date, meta: Meta): Lesson {
+  const body = starterLesson(meta.title, meta.themeId);
+  body.slides.push(newSlide("vocabulary", meta.themeId));
+  const vocab = body.slides[body.slides.length - 1];
+  if (vocab) {
+    for (const el of vocab.elements) {
+      if (el.type !== "text" || el.style.preset !== "small") continue;
+      // A three-line definition in a box authored for one line, under the old, smaller floor.
+      el.doc = docFromText(
+        "A complete path that lets electricity flow from the cell, through every component in turn, and back again",
+      );
+      el.h = 28;
+    }
+  }
+  body.fitVersion = 0;
+  return stamp(now, body, meta);
+}
+
 function worksheet(now: Date, meta: Meta): Worksheet {
   return stamp(now, starterWorksheet(meta.title, meta.themeId), meta);
 }
@@ -136,7 +166,10 @@ export function seedLibrary(now: Date): { documents: StoredDocument[]; series: S
       meta("rivers", "How rivers shape the land", "exam-hall", "Geography", "Year 5", 600),
       2,
     ),
-    lesson(now, meta("electricity", "Simple circuits", "night-lab", "Science", "Year 6", 960), 1),
+    // Stored under the previous floor table (`fitVersion: 0`) with a vocabulary slide whose
+    // definition boxes were authored too short for the raised `small` floor: the editor's fit
+    // migration (TEACH-106) re-fits it once on open. The other seeds are all current.
+    staleLesson(now, meta("electricity", "Simple circuits", "night-lab", "Science", "Year 6", 960)),
     stamp(
       now,
       demoWorksheet(),
