@@ -14,6 +14,7 @@ import {
   getDocument,
   getSeriesWithLessons,
   listSummaries,
+  MalformedCursorError,
   putDocument,
   restore,
   softDelete,
@@ -294,13 +295,36 @@ describeDb("documents repository", () => {
       expect(byUpdated.items.map((r) => r.title)).toEqual(["First", "Second"]);
     });
 
-    test("clamps limit to 1–200 and rejects a malformed cursor", async () => {
+    test("clamps limit to 1–200", async () => {
       await seedLesson("Only");
       expect((await listSummaries(wsA, { kind: "lesson", limit: 0 })).items).toHaveLength(1);
       expect((await listSummaries(wsA, { kind: "lesson", limit: 9999 })).items).toHaveLength(1);
-      await expect(listSummaries(wsA, { kind: "lesson", cursor: "not-a-cursor" })).rejects.toThrow(
-        /malformed cursor/,
-      );
+    });
+
+    test("rejects cursors it did not produce with MalformedCursorError", async () => {
+      await seedLesson("A");
+      await seedLesson("B");
+      const encode = (value: unknown) =>
+        Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
+      const page = await listSummaries(wsA, { kind: "lesson", limit: 1 });
+      const valid = page.nextCursor ?? "";
+      const rejects = async (cursor: string, sort: "updated" | "title" | "created" = "updated") =>
+        expect(listSummaries(wsA, { kind: "lesson", sort, cursor })).rejects.toThrow(
+          MalformedCursorError,
+        );
+      await rejects("not-a-cursor");
+      await rejects(encode("a string"));
+      await rejects(encode({ v: "x", id: "y" }));
+      await rejects(encode({ s: "updated", v: "not-a-date", id: newId() }));
+      await rejects(encode({ s: "updated", v: new Date().toISOString(), id: "not-a-uuid" }));
+      await rejects(encode({ s: "updated", v: new Date().toISOString(), id: newId(), extra: 1 }));
+      // A cursor from one sort cannot be replayed under another.
+      await rejects(valid, "title");
+      await rejects(valid, "created");
+      // The real one still works for its own sort.
+      expect(
+        (await listSummaries(wsA, { kind: "lesson", limit: 1, cursor: valid })).items,
+      ).toHaveLength(1);
     });
   });
 

@@ -18,6 +18,7 @@ export {
   type ListSummariesOptions,
   type ListSummariesResult,
   listSummaries,
+  MalformedCursorError,
   type PutDocumentResult,
   parseDocumentBody,
   putDocument,

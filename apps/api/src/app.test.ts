@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { HTTPException } from "hono/http-exception";
 import pino from "pino";
 import { createApp } from "./app";
-import type { ErrorEnvelope } from "./errors";
+import { ConflictError, type ErrorEnvelope } from "./errors";
 
 const errorBody = (res: Response) => res.json() as Promise<ErrorEnvelope>;
 
@@ -200,6 +200,27 @@ describe("errors", () => {
     const teapot = await app.request("/teapot");
     expect(teapot.status).toBe(418);
     expect((await errorBody(teapot)).error.code).toBe("http_error");
+  });
+
+  test("ConflictError → 409 conflict with its reason in the envelope", async () => {
+    const app = createApp({ env: TEST_ENV, db: fakeSql(true), logger: silentLogger });
+    app.get("/stale", () => {
+      throw new ConflictError("stale", "This document changed elsewhere. Reload to continue.");
+    });
+    app.get("/plain-409", () => {
+      throw new HTTPException(409, { message: "An identical job is already queued." });
+    });
+    const stale = await app.request("/stale");
+    expect(stale.status).toBe(409);
+    expect((await errorBody(stale)).error).toMatchObject({
+      code: "conflict",
+      reason: "stale",
+      message: "This document changed elsewhere. Reload to continue.",
+      retryable: false,
+    });
+    const plain = await errorBody(await app.request("/plain-409"));
+    expect(plain.error.code).toBe("conflict");
+    expect(plain.error).not.toHaveProperty("reason");
   });
 
   test("security headers are set", async () => {

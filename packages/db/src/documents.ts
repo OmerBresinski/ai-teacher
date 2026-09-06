@@ -25,6 +25,7 @@ import {
   or,
   type SQL,
 } from "drizzle-orm";
+import { z } from "zod";
 import { documents } from "./schema/documents";
 import type { WorkspaceDb } from "./tenant";
 
@@ -111,27 +112,40 @@ function promoted(body: DocumentBody) {
 
 // --- cursor ------------------------------------------------------------------------------------
 
-type Cursor = { v: string; id: string };
+/**
+ * Keyset cursor (ADR 0024 §17): the sort it belongs to, the last row's sort value and its id.
+ * Validated with Zod on the way back in so a hand-edited or cross-sort cursor is a
+ * `MalformedCursorError`, never a malformed SQL comparison or a `500`.
+ */
+const CursorSchema = z.discriminatedUnion("s", [
+  z.strictObject({ s: z.enum(["updated", "created"]), v: z.iso.datetime(), id: z.uuid() }),
+  z.strictObject({ s: z.literal("title"), v: z.string(), id: z.uuid() }),
+]);
+type Cursor = z.infer<typeof CursorSchema>;
+
+/** Thrown by `listSummaries` when `cursor` is not one it produced; the API maps it to a 400. */
+export class MalformedCursorError extends Error {
+  override readonly name = "MalformedCursorError";
+  constructor() {
+    super("The page cursor is not valid.");
+  }
+}
 
 function encodeCursor(cursor: Cursor): string {
   return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 }
 
-function decodeCursor(text: string): Cursor | null {
+/** Decode a cursor for `sort`; anything that is not one `listSummaries` produced for it throws. */
+function decodeCursor(text: string, sort: ListSort): Cursor {
+  let parsed: unknown;
   try {
-    const parsed: unknown = JSON.parse(Buffer.from(text, "base64url").toString("utf8"));
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      typeof (parsed as Cursor).v === "string" &&
-      typeof (parsed as Cursor).id === "string"
-    ) {
-      return parsed as Cursor;
-    }
+    parsed = JSON.parse(Buffer.from(text, "base64url").toString("utf8"));
   } catch {
-    // fall through
+    throw new MalformedCursorError();
   }
-  return null;
+  const result = CursorSchema.safeParse(parsed);
+  if (!result.success || result.data.s !== sort) throw new MalformedCursorError();
+  return result.data;
 }
 
 /** Sort key per `ListSort`: the column, its direction, and how its value is carried in a cursor. */
@@ -154,7 +168,7 @@ function cursorValue(row: DocumentSummaryRow, sort: ListSort): string {
 
 function keysetWhere(sort: ListSort, cursor: Cursor): SQL {
   const { column, direction } = SORTS[sort];
-  const value = sort === "title" ? cursor.v : new Date(cursor.v);
+  const value = cursor.s === "title" ? cursor.v : new Date(cursor.v);
   const before = direction === "desc" ? lt : gt;
   const idBefore = direction === "desc" ? lt : gt;
   return or(
@@ -184,11 +198,7 @@ export async function listSummaries(
     const pattern = `%${escapeLike(q.trim())}%`;
     filters.push(or(ilike(documents.title, pattern), ilike(documents.subject, pattern)) as SQL);
   }
-  if (cursor !== undefined) {
-    const decoded = decodeCursor(cursor);
-    if (decoded === null) throw new Error("listSummaries: malformed cursor");
-    filters.push(keysetWhere(sort, decoded));
-  }
+  if (cursor !== undefined) filters.push(keysetWhere(sort, decodeCursor(cursor, sort)));
   const { column, direction } = SORTS[sort];
   const order = direction === "desc" ? desc : asc;
   const rows = await ws
@@ -199,7 +209,7 @@ export async function listSummaries(
   const last = items[items.length - 1];
   const nextCursor =
     rows.length > pageSize && last !== undefined
-      ? encodeCursor({ v: cursorValue(last, sort), id: last.id })
+      ? encodeCursor({ s: sort, v: cursorValue(last, sort), id: last.id } as Cursor)
       : null;
   return { items, nextCursor };
 }

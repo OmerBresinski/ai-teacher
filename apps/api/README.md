@@ -75,6 +75,11 @@ Every non-2xx response has the same body; `message` is a plain sentence safe to 
 }
 ```
 
+Two optional fields: `fields` (only `validation_failed`) and `reason` (only `conflict` from the
+document routes: `"stale"` when the `expectedUpdatedAt` a client sent is behind the row,
+`"generating"` when a job holds the lesson's generating lock — ADR 0024 §4, §18). Throw
+`ConflictError(reason, message)` from `src/errors.ts` to set it.
+
 | Source                                       | Status        | `code`                                      |
 | -------------------------------------------- | ------------- | ------------------------------------------- |
 | `zValidator` failure (via `validationHook`) / `ZodError` | 400 | `validation_failed` (+ `fields: string[]`)   |
@@ -127,6 +132,13 @@ module-level singletons, so tests can inject fakes.
 | `GET /hello?name=x`  | `200 { message: "Hello, x" }`; `400 validation_failed` when `name` is empty |
 | `GET /me`            | `200 { user: { id, email, name }, workspaceId }`; `401 unauthorized` without a session (see "Auth") |
 | `/auth/*`            | better-auth endpoints (magic link, session, sign-out; OAuth when configured) |
+| `GET /documents?kind=&sort=&q=&cursor=&limit=` | `200 { items: DocumentSummary[], nextCursor }`; `400 validation_failed` for a bad `kind`/`sort`/`limit`, `400 bad_request` for a malformed cursor (see "Documents") |
+| `POST /documents`    | `201 { document }` from `{ kind, body }`; `422 unprocessable` with the parser's message; `413 payload_too_large` over 10 MB |
+| `GET /documents/:id` | `200 { document }` (soft-deleted rows included, `deletedAt` set); `404` unknown or another Workspace |
+| `PUT /documents/:id` | `200 { document }` from `{ document, expectedUpdatedAt }`; `409 conflict` with `reason: "stale" \| "generating"`; `422` when `document.id` differs from the URL or the document is invalid; `413` over 10 MB; `404` |
+| `DELETE /documents/:id` | `204` (idempotent); `404` |
+| `POST /documents/:id/restore` | `200 { document }`; `404` |
+| `GET /documents/:id/lessons` | `200 { series, lessons: DocumentSummary[] }` in `body.lessonIds` order; `404` when not found or not a series |
 | `GET /files/:key`    | Streams a stored object (`content-type`, `content-length`, `cache-control: private, no-store`); `401` without a session, `404` for a missing object **or** a key outside the caller's Workspace (never 403), `400 validation_failed` for a malformed key, `503` when no storage adapter is configured (see "Files") |
 | `GET /__test/last-magic-link?email=x` | **Test-only** (see "Test routes"): `200 { email, url }` or `404 not_found`. Absent unless `NODE_ENV=test` and `ENABLE_TEST_ROUTES=1`. |
 
@@ -140,6 +152,24 @@ is behind `requireSession`; the key (`<workspaceId>/<segment>/…`, `StorageKeyS
 with the caller's `workspaceId` or the answer is `404`, and the body is streamed from
 `storage.get(key)` without buffering. `src/routes/files.ts` deliberately imports only from
 `@tj/domain`: `@tj/storage` uses Bun globals, which must not leak into `AppType`.
+
+## Documents (`/documents/*`, ADR 0024)
+
+`src/routes/documents.ts` (`documentRoutes(unsafeDb)`) is the persistence API for Lesson,
+Worksheet and Series documents. Every handler scopes the injected Drizzle client with
+`forWorkspace(unsafeDb, workspaceId)` (ADR 0007) and calls the `@tj/db` repository
+(`packages/db/src/documents.ts`), so another Workspace's id is a `404` — never `403`. Bodies are
+validated twice: the request shape with `zValidator`, the document itself in the repository
+(`migrate()` then `parseLesson` / `parseWorksheet` / `parseSeries`); a `DocumentParseError`
+becomes `422` with the parser's message. `POST` mints the row id and rewrites `body.id` (§11).
+`PUT` is a whole-document write with optimistic concurrency: `expectedUpdatedAt` must equal the
+row's `updatedAt` and no job may hold `generatingJobId`, otherwise `409` with `reason`. `POST` and
+`PUT` are capped at `DOCUMENT_BODY_LIMIT_BYTES` (10 MB, `hono/body-limit`) while images are data
+URLs (§8). Lists never read `body`: `toSummaryJson` maps the promoted columns to the domain
+`DocumentSummary` shape (ISO strings, `null` → absent) plus `deletedAt` and `generatingJobId`;
+`sort` is `updated | title | created`, `q` is an `ILIKE` on title and subject, and `cursor` is the
+opaque keyset cursor from the previous page (§17). `/documents` and `/documents/*` are both in
+`PROTECTED_PATHS` (CSRF guard + `requireSession`).
 
 ## `AppType` and `@tj/api-client`
 

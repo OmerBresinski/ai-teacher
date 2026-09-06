@@ -1,5 +1,15 @@
 import type { z } from "zod";
 
+/**
+ * Thrown by `migrate()` and by `parseLesson` / `parseWorksheet` / `parseSeries` when the input is
+ * not a document this build can read. A named class so a caller (the API's `POST`/`PUT
+ * /documents`) can turn it into a 422 without matching on the message; the message is the
+ * TeachDeck copy, safe to show to the teacher.
+ */
+export class DocumentParseError extends Error {
+  override readonly name = "DocumentParseError";
+}
+
 /*
  * Version migrations and the shared parse-error message (ADR 0021 §3). Behavioural reference:
  * TeachDeck `lib/model/schema.ts:480-554`. The error copy is verbatim: a TeachDeck file and a
@@ -24,7 +34,7 @@ export function migrate(json: unknown): unknown {
     case 1:
       return doc;
     default:
-      throw new Error(
+      throw new DocumentParseError(
         `This file was made with a newer version of TeachDeck (document version ${String(doc.version)}).`,
       );
   }

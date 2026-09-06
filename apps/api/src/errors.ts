@@ -24,6 +24,14 @@ export const ERROR_CODES = [
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
+/**
+ * Why a `409 conflict` happened on a document write (ADR 0024 §4, §18): `stale` — the
+ * `expectedUpdatedAt` the client sent is behind the row; `generating` — a job holds the row's
+ * generating lock. The client refetches on either; `reason` only decides the wording.
+ */
+export const CONFLICT_REASONS = ["stale", "generating"] as const;
+export type ConflictReason = (typeof CONFLICT_REASONS)[number];
+
 export interface ErrorEnvelope {
   error: {
     code: ErrorCode;
@@ -32,6 +40,8 @@ export interface ErrorEnvelope {
     retryable: boolean;
     /** Only for `validation_failed`: the top-level field names that failed. */
     fields?: string[];
+    /** Only for `conflict` from the document routes. */
+    reason?: ConflictReason;
   };
 }
 
@@ -59,6 +69,15 @@ export class ValidationError extends Error {
   }
 }
 
+/** A `409` whose envelope carries a `reason`; thrown by the document routes. */
+export class ConflictError extends HTTPException {
+  readonly reason: ConflictReason;
+  constructor(reason: ConflictReason, message: string) {
+    super(409, { message });
+    this.reason = reason;
+  }
+}
+
 export function zodFields(error: ZodError): string[] {
   const fields = new Set<string>();
   for (const issue of error.issues) fields.add(String(issue.path[0] ?? "(root)"));
@@ -72,9 +91,19 @@ export function envelope(
   message: string,
   retryable: boolean,
   fields?: string[],
+  reason?: ConflictReason,
 ): ErrorEnvelope {
   const requestId = c.get("requestId") ?? c.res.headers.get("x-request-id") ?? "";
-  return { error: { code, message, requestId, retryable, ...(fields ? { fields } : {}) } };
+  return {
+    error: {
+      code,
+      message,
+      requestId,
+      retryable,
+      ...(fields ? { fields } : {}),
+      ...(reason ? { reason } : {}),
+    },
+  };
 }
 
 /**
@@ -100,6 +129,7 @@ export interface ClassifiedError {
   message: string;
   retryable: boolean;
   fields?: string[];
+  reason?: ConflictReason;
   /** True when the original error must be logged with its stack (unexpected failure). */
   unexpected: boolean;
 }
@@ -136,6 +166,7 @@ export function classifyError(err: unknown): ClassifiedError {
       code,
       message,
       retryable: RETRYABLE_STATUSES.has(status),
+      ...(err instanceof ConflictError ? { reason: err.reason } : {}),
       unexpected: status >= 500,
     };
   }

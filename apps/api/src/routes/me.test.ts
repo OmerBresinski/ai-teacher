@@ -3,7 +3,7 @@ import type { DbHandle } from "@tj/db";
 import { newId, type WorkspaceId } from "@tj/domain";
 import { createApp } from "../app";
 import type { Auth } from "../auth/auth";
-import { fakeSql, TEST_ENV } from "../test-helpers";
+import { fakeSql, TEST_ENV, unreachableDb } from "../test-helpers";
 
 const workspaceId = newId<WorkspaceId>();
 
@@ -11,6 +11,7 @@ describe("GET /me", () => {
   test("returns the signed-in user and Workspace", async () => {
     const db = {
       sql: (async () => [{ id: workspaceId }]) as unknown as DbHandle["sql"],
+      unsafeDb: unreachableDb,
     };
     const auth = {
       api: {
