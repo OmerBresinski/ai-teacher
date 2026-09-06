@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { AgeBand } from "./lesson";
 import { AgeBandSchema } from "./lesson";
-import { describeIssues, migrate } from "./migrate";
+import { DocumentParseError, migrate } from "./migrate";
 import { type RichDoc, RichDocSchema } from "./rich-text";
 import type { Id } from "./slide";
 
@@ -233,14 +233,14 @@ export const StoredWorksheetSchema = WorksheetSchema.extend({
 
 export function parseWorksheet(input: unknown): Worksheet {
   const result = WorksheetSchema.safeParse(migrate(input));
-  if (!result.success) throw new Error(describeIssues(result.error, "worksheet"));
+  if (!result.success) throw new DocumentParseError(result.error, "worksheet");
   return result.data as Worksheet;
 }
 
 /** A worksheet out of storage. Tolerant where `parseWorksheet` is strict. */
 export function parseStoredWorksheet(input: unknown): Worksheet {
   const result = StoredWorksheetSchema.safeParse(migrate(input));
-  if (!result.success) throw new Error(describeIssues(result.error, "worksheet"));
+  if (!result.success) throw new DocumentParseError(result.error, "worksheet");
   return result.data as Worksheet;
 }
 

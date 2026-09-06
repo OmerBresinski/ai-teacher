@@ -30,6 +30,18 @@ export function migrate(json: unknown): unknown {
   }
 }
 
+/**
+ * Thrown by `parseLesson` / `parseWorksheet` / `parseSeries` when the input is not a valid
+ * document. A named class so a caller (the API's `POST`/`PUT /documents`) can turn it into a
+ * 422 without matching on the message; the message itself is `describeIssues()`.
+ */
+export class DocumentParseError extends Error {
+  override readonly name = "DocumentParseError";
+  constructor(error: z.ZodError, what: string) {
+    super(describeIssues(error, what));
+  }
+}
+
 /** Human-readable message naming the first three problems. */
 export function describeIssues(error: z.ZodError, what: string): string {
   const issues = error.issues.slice(0, 3).map((issue) => {

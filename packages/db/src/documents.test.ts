@@ -14,6 +14,7 @@ import {
   getDocument,
   getSeriesWithLessons,
   listSummaries,
+  MalformedCursorError,
   putDocument,
   restore,
   softDelete,
@@ -299,7 +300,7 @@ describeDb("documents repository", () => {
       expect((await listSummaries(wsA, { kind: "lesson", limit: 0 })).items).toHaveLength(1);
       expect((await listSummaries(wsA, { kind: "lesson", limit: 9999 })).items).toHaveLength(1);
       await expect(listSummaries(wsA, { kind: "lesson", cursor: "not-a-cursor" })).rejects.toThrow(
-        /malformed cursor/,
+        MalformedCursorError,
       );
     });
   });

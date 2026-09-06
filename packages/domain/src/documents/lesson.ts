@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type Brief, BriefSchema } from "./brief";
-import { describeIssues, migrate } from "./migrate";
+import { DocumentParseError, migrate } from "./migrate";
 import { type Id, type Slide, SlideSchema } from "./slide";
 
 /*
@@ -82,7 +82,7 @@ export const LessonSchema = z.object({
 
 export function parseLesson(input: unknown): Lesson {
   const result = LessonSchema.safeParse(migrate(input));
-  if (!result.success) throw new Error(describeIssues(result.error, "lesson"));
+  if (!result.success) throw new DocumentParseError(result.error, "lesson");
   return result.data as Lesson;
 }
 

@@ -86,6 +86,14 @@ describe("rejectCrossSiteRequests", () => {
     expect(events.status).toBe(403);
   });
 
+  test("guards the bare /documents path as well as /documents/*", async () => {
+    const headers = { Origin: "https://evil.example", [WORKSPACE_HEADER]: workspaceId };
+    const list = await app.request("/documents?kind=lesson", { headers });
+    const one = await app.request(`/documents/${workspaceId}`, { headers });
+    expect(list.status).toBe(403);
+    expect(one.status).toBe(403);
+  });
+
   test("leaves public routes unguarded", async () => {
     expect(
       (await app.request("/health", { headers: { Origin: "https://evil.example" } })).status,

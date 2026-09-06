@@ -113,6 +113,14 @@ function promoted(body: DocumentBody) {
 
 type Cursor = { v: string; id: string };
 
+/** Thrown by `listSummaries` when `cursor` is not one it produced; the API maps it to a 400. */
+export class MalformedCursorError extends Error {
+  override readonly name = "MalformedCursorError";
+  constructor() {
+    super("The page cursor is not valid.");
+  }
+}
+
 function encodeCursor(cursor: Cursor): string {
   return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 }
@@ -186,7 +194,7 @@ export async function listSummaries(
   }
   if (cursor !== undefined) {
     const decoded = decodeCursor(cursor);
-    if (decoded === null) throw new Error("listSummaries: malformed cursor");
+    if (decoded === null) throw new MalformedCursorError();
     filters.push(keysetWhere(sort, decoded));
   }
   const { column, direction } = SORTS[sort];

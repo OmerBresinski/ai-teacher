@@ -31,6 +31,7 @@ import {
   type RateLimitConfig,
   rateLimitByWorkspace,
 } from "./rate-limit";
+import { documentRoutes } from "./routes/documents";
 import { eventRoutes } from "./routes/events";
 import { fileRoutes } from "./routes/files";
 import { healthRoutes } from "./routes/health";
@@ -44,8 +45,11 @@ export interface CreateAppOptions {
     Partial<
       Pick<Env, "ALLOW_WORKSPACE_HEADER_SHIM" | "ENABLE_TEST_ROUTES" | "WEB_ORIGIN_PATTERNS">
     >;
-  /** Only `sql` is used today (`/health`); routes will take `unsafeDb` through `forWorkspace()`. */
-  db: Pick<DbHandle, "sql">;
+  /**
+   * `sql` for `/health` and the session guard; `unsafeDb` for the document routes, which scope it
+   * per request with `forWorkspace()` (ADR 0007) and never query a tenant table through it raw.
+   */
+  db: Pick<DbHandle, "sql" | "unsafeDb">;
   /** Inject a logger (tests pass a silent one). Defaults to `createLogger(env)`. */
   logger?: Logger;
   /**
@@ -140,7 +144,15 @@ function buildApp({
   if (auth) app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
   const csrf = rejectCrossSiteRequests(allowed);
   const guard = requireSession(auth, db, { allowHeaderShim });
-  const PROTECTED_PATHS = ["/me", "/me/*", "/jobs/*", "/events", "/files/*"] as const;
+  const PROTECTED_PATHS = [
+    "/me",
+    "/me/*",
+    "/jobs/*",
+    "/events",
+    "/files/*",
+    "/documents",
+    "/documents/*",
+  ] as const;
   for (const path of PROTECTED_PATHS) {
     app.use(path, csrf);
     app.use(path, guard);
@@ -154,7 +166,8 @@ function buildApp({
     .route("/", meRoutes())
     .route("/", jobRoutes(eventsRuntime))
     .route("/", eventRoutes(eventsRuntime))
-    .route("/", fileRoutes(storage));
+    .route("/", fileRoutes(storage))
+    .route("/", documentRoutes(db.unsafeDb));
 
   // TEACH-22: test-only capture route, outside the RPC contract (`AppType` stays clean).
   if (testMail && testRoutesEnabled(env)) {
@@ -181,7 +194,7 @@ function buildApp({
     const log = c.get("logger") ?? logger;
     if (e.unexpected) log.error({ err, status: e.status }, "unhandled error");
     else log.info({ status: e.status, code: e.code }, "request error");
-    return c.json(envelope(c, e.code, e.message, e.retryable, e.fields), e.status);
+    return c.json(envelope(c, e.code, e.message, e.retryable, e.fields, e.reason), e.status);
   });
 
   return routes;
