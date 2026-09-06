@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DocumentParseError } from "./migrate";
+import { DocumentParseError, describeIssues } from "./migrate";
 import type { Id } from "./slide";
 
 /*
@@ -32,7 +32,7 @@ export const SeriesSchema = z.object({
  */
 export function parseSeries(input: unknown): Series {
   const result = SeriesSchema.safeParse(input);
-  if (!result.success) throw new DocumentParseError(result.error, "series");
+  if (!result.success) throw new DocumentParseError(describeIssues(result.error, "series"));
   return result.data as Series;
 }
 
