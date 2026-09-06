@@ -202,8 +202,8 @@ describe("PresentView", () => {
     key("p");
     key("3");
     expect(screen.getByText(/Go to slide 3/)).toBeVisible();
-    // Commit a stroke on the pen layer (the interactive svg; [1] is the highlighter blend layer).
-    const svg = container.querySelectorAll("[data-present-stage] svg")[2] as SVGSVGElement;
+    // Commit a stroke on the pen layer.
+    const svg = container.querySelector('[data-ink-layer="pen"]') as SVGSVGElement;
     svg.getBoundingClientRect = () =>
       ({
         left: 0,

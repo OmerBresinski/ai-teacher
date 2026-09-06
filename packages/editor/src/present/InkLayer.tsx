@@ -203,6 +203,7 @@ export function InkLayer({ slideId, interactive = true }: Props) {
         {...SVG_BOX}
         aria-hidden
         focusable="false"
+        data-ink-layer="highlighter"
         className="pointer-events-none absolute inset-0 z-[395]"
         style={{ mixBlendMode: "multiply" }}
       >
@@ -221,6 +222,7 @@ export function InkLayer({ slideId, interactive = true }: Props) {
         ref={svgRef}
         aria-hidden
         focusable="false"
+        data-ink-layer="pen"
         className="absolute inset-0 z-[400]"
         style={{ pointerEvents: active ? "auto" : "none", cursor, touchAction: "none" }}
         onPointerDown={onPointerDown}
