@@ -80,7 +80,10 @@ test.describe("present mode", () => {
     await page.getByRole("button", { name: "Stay in this window" }).click();
     await expect(status(page)).toContainText("Slide 1 of");
     await page.keyboard.press("p");
-    await expect(page.getByRole("button", { name: "Pen" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "Pen", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     const slide = page.locator('[data-slide-mode="present"]');
     const box = await slide.boundingBox();
@@ -142,7 +145,7 @@ test.describe("present mode", () => {
     await page.keyboard.press("End");
     await page.keyboard.press("Space");
     await expect(page.getByRole("heading", { name: "End of lesson" })).toBeVisible();
-    await expect(page.getByText("Next: Fractions of amounts")).toBeVisible();
+    await expect(page.getByText("Next: Fractions of amounts", { exact: true })).toBeVisible();
     await page.keyboard.press("Space");
     await expect(page).toHaveURL(/\/l\/demo-fractions\/present\?series=series-romans$/);
     await page.getByRole("button", { name: "Stay in this window" }).click();
