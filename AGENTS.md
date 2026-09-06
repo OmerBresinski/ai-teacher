@@ -91,9 +91,28 @@ items that are dashboard-only or founder decisions are reported back, not faked.
 **One agent implements; a separate agent reviews.** The main agent does the work itself —
 reads the code, decides the approach, edits, tests, opens the PR, lands it. The only thing it
 never does is code-review its own diff: that goes to the `reviewer` subagent (step 2), which runs
-on a different model and is read-only. The `general` and `explore` subagents are disabled in the
-global OpenCode config: they ran in parallel and the machine cannot take it. Do not try to spawn
-them.
+on a different model and is read-only.
+
+### Tool portability
+
+The mechanisms in this section are named after the founder's setup (OpenCode, the Linear MCP
+server, the T3 Code browser). This file is plain `AGENTS.md` and is also read by Codex, Claude
+Code and Cursor. Check your own tool list and map by **capability**, not by name:
+
+- **A separate read-only review agent.** If you have a subagent/task tool: spawn one on a
+  different model from yours, with file edits denied, have it load
+  `.agents/skills/thermo-nuclear-code-quality-review`, and have **it** post the findings as the
+  single `COMMENT` review in step 2 (posting a review is reporting, not editing code). If you
+  cannot start a second agent, cannot give it a different model, or cannot make it read-only:
+  stop after opening the PR and ask a human to review. Never review your own diff in the same
+  session and never land an unreviewed PR.
+- **Linear tools** (`linear_get_issue`, `linear_save_issue`, …). Same names if the Linear MCP
+  server is installed. If absent: do steps 1–4 and list the Linear status changes for a human to
+  make.
+- **Browser/preview tools.** Any browser automation you have; the deliverable is a screenshot of
+  the working UI on the PR. With no browser at all: say so in the PR description and ask the
+  human to verify visually before landing — UI acceptance is not met until someone has.
+- Model names in this file are informational only.
 
 Cost discipline still applies. The main agent's prompt is re-read on every turn, so each turn has a
 fixed cost regardless of how little it does. Batch independent tool calls into one message. Never
@@ -120,7 +139,8 @@ to `master` directly.
    work, a verified visual result (screenshot via the preview tools, with the
    `GET /__test/last-magic-link` sign-in route) is part of acceptance.
 2. **Review with a separate subagent.** For every PR, launch a fresh **`reviewer`** subagent (a
-   read-only agent defined in the user's global opencode config — `edit` denied, GPT-5.6 Luna)
+   read-only agent on a different model from the implementer; in OpenCode it is defined in the
+   user's global config with `edit` denied — see "Tool portability" for other harnesses)
    that loads **`thermo-nuclear-code-quality-review`** (root `.agents/skills/`) and reviews the
    branch diff against `master`. It reports findings only; it does not edit code. Move the Linear
    issue to **In Review** when the PR is open and the review starts.
