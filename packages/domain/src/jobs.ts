@@ -67,8 +67,9 @@ export const REGENERATE_MAX_TARGETS = 20;
 export const REGENERATE_INSTRUCTION_MAX = 500;
 
 /**
- * One slide, element or block a proposal job targets or returns (ADR 0025 §18). An element is
- * addressed by its slide and its own id; a block by its id alone.
+ * One slide, element or block a proposal job targets or returns (ADR 0025 §18). Exactly one
+ * side: a slide (`slideId`, optionally narrowed to one of its elements by `elementId`) or a
+ * worksheet block (`blockId`). `elementId` without `slideId` is meaningless and rejected.
  */
 export const ProposalTargetSchema = z
   .strictObject({
@@ -76,8 +77,12 @@ export const ProposalTargetSchema = z
     elementId: z.string().optional(),
     blockId: z.string().optional(),
   })
-  .refine((target) => target.slideId !== undefined || target.blockId !== undefined, {
-    message: "A target names a slideId or a blockId.",
+  .refine((target) => (target.slideId !== undefined) !== (target.blockId !== undefined), {
+    message: "A target names either a slideId or a blockId, not both.",
+  })
+  .refine((target) => target.elementId === undefined || target.slideId !== undefined, {
+    message: "An elementId needs its slideId.",
+    path: ["elementId"],
   });
 export type ProposalTarget = z.infer<typeof ProposalTargetSchema>;
 
@@ -163,15 +168,26 @@ export type JobProgress = z.infer<typeof JobProgressSchema>;
 // ---------------------------------------------------------------------------------------------
 
 /**
- * One re-derived element or block. Exactly one of `element` / `block` is set, matching the
- * target; the editor applies every proposal of a result as one undo transaction (ADR 0022 §4).
+ * One re-derived element or block. Exactly one of `element` / `block` is set and it matches the
+ * target's side (a slide target carries an element, a block target a block); the editor applies
+ * every proposal of a result as one undo transaction (ADR 0022 §4).
  */
-export const ProposalSchema = z.strictObject({
-  target: ProposalTargetSchema,
-  element: SlideElementSchema.optional(),
-  block: WorksheetBlockSchema.optional(),
-  generatedFrom: GeneratedFromSchema,
-});
+export const ProposalSchema = z
+  .strictObject({
+    target: ProposalTargetSchema,
+    element: SlideElementSchema.optional(),
+    block: WorksheetBlockSchema.optional(),
+    generatedFrom: GeneratedFromSchema,
+  })
+  .refine(
+    (proposal) =>
+      proposal.target.blockId !== undefined
+        ? proposal.block !== undefined && proposal.element === undefined
+        : proposal.element !== undefined && proposal.block === undefined,
+    {
+      message: "A proposal carries exactly one of element (slide target) or block (block target).",
+    },
+  );
 export type Proposal = z.infer<typeof ProposalSchema>;
 
 const proposalResultFields = {

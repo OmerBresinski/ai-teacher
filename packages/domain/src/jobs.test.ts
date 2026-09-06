@@ -17,6 +17,7 @@ import {
   JobResultSchema,
   type PingPayload,
   PingPayloadSchema,
+  ProposalSchema,
   REGENERATE_INSTRUCTION_MAX,
   REGENERATE_MAX_TARGETS,
 } from "./jobs";
@@ -145,13 +146,17 @@ describe("JobPayloadSchemas.lesson.regenerate", () => {
     });
   });
 
-  test("every target names a slideId or a blockId", () => {
-    const result = JobPayloadSchemas["lesson.regenerate"].safeParse({
-      lessonId,
-      targets: [{ elementId: "e1" }],
-    });
+  test("every target names exactly one of slideId or blockId, and elementId needs its slideId", () => {
+    const schema = JobPayloadSchemas["lesson.regenerate"];
+    const result = schema.safeParse({ lessonId, targets: [{ elementId: "e1" }] });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(["targets", 0]);
+    expect(schema.safeParse({ lessonId, targets: [{ slideId: "s", blockId: "b" }] }).success).toBe(
+      false,
+    );
+    const dangling = schema.safeParse({ lessonId, targets: [{ blockId: "b", elementId: "e" }] });
+    expect(dangling.success).toBe(false);
+    expect(dangling.error?.issues[0]?.path).toEqual(["targets", 0, "elementId"]);
   });
 
   test("bounds: 1..REGENERATE_MAX_TARGETS targets, instruction ≤ REGENERATE_INSTRUCTION_MAX", () => {
@@ -225,6 +230,28 @@ describe("JobResultSchema (ADR 0025 §19)", () => {
     expect(result.job).toBe("lesson.regenerate");
     expect(result.proposals).toHaveLength(2);
     expect(result.flagged).toEqual([{ slideId: "s2", elementId: "e9" }]);
+  });
+
+  test("a proposal carries exactly one payload, on the target's side", () => {
+    const element = {
+      id: "e1",
+      type: "text",
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+      doc: { type: "doc" },
+      style: { preset: "body" },
+    };
+    const block = { id: "b1", type: "paragraph", doc: { type: "doc" } };
+    const proposal = (p: Record<string, unknown>) =>
+      ProposalSchema.safeParse({ generatedFrom: provenance, ...p }).success;
+    expect(proposal({ target: { slideId: "s1" } })).toBe(false);
+    expect(proposal({ target: { slideId: "s1" }, element, block })).toBe(false);
+    expect(proposal({ target: { slideId: "s1" }, block })).toBe(false);
+    expect(proposal({ target: { blockId: "b1" }, element })).toBe(false);
+    expect(proposal({ target: { slideId: "s1", elementId: "e1" }, element })).toBe(true);
+    expect(proposal({ target: { blockId: "b1" }, block })).toBe(true);
   });
 
   test("rejects an unknown job, a lesson.plan result, and unknown fields", () => {

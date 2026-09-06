@@ -67,6 +67,29 @@ describe("LessonFactsSchema", () => {
     expect(result.error.issues[0]?.path).toEqual(["outline", 4, "kind"]);
   });
 
+  test("an outline entry id is unique too, but factRefs may not point at an outline entry", () => {
+    const facts = lessonFacts();
+    facts.outline[0] = { ...(facts.outline[0] as (typeof facts.outline)[number]), id: "o1" };
+    let result = LessonFactsSchema.safeParse(facts);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toContainEqual(
+      expect.objectContaining({ path: ["outline", 0, "id"], message: 'duplicate fact id "o1"' }),
+    );
+    const structural = lessonFacts();
+    structural.outline[1] = {
+      ...(structural.outline[1] as (typeof structural.outline)[number]),
+      factRefs: ["s1"],
+    };
+    result = LessonFactsSchema.safeParse(structural);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([
+      expect.objectContaining({
+        path: ["outline", 1, "factRefs", 0],
+        message: 'outline references missing fact "s1"',
+      }),
+    ]);
+  });
+
   test("minutes must be a whole number of at least one; durationMin likewise", () => {
     const facts = lessonFacts();
     facts.outline[0] = { ...(facts.outline[0] as (typeof facts.outline)[number]), minutes: 0 };

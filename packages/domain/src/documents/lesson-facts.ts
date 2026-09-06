@@ -142,14 +142,13 @@ export const OutlineEntrySchema = z.strictObject({
   factRefs: z.array(FactIdSchema),
 });
 
-/** The fact arrays, in the order ids are checked for uniqueness. */
+/** The arrays whose ids `factRefs` may point at. Outline entries are structure, not facts. */
 const FACT_ARRAYS = [
   "objectives",
   "vocabulary",
   "workedExamples",
   "questions",
   "misconceptions",
-  "outline",
 ] as const;
 
 export const LessonFactsSchema = z
@@ -163,24 +162,29 @@ export const LessonFactsSchema = z
     durationMin: z.number().int().min(1),
   })
   .superRefine((facts, ctx) => {
-    // Ids are the addressing scheme for `factRefs`, so they must be unique across every array,
-    // and every reference must resolve — the same two rules `SlideSchema` applies to elements.
+    // Ids are the addressing scheme for `factRefs`, so they must be unique across every array
+    // (outline included), and every reference must resolve to a fact — an outline entry is not
+    // one. The same two rules `SlideSchema` applies to elements.
+    const factIds = new Set<string>();
     const seen = new Set<string>();
+    const claim = (id: string, path: (string | number)[]) => {
+      if (seen.has(id)) {
+        ctx.addIssue({ code: "custom", message: `duplicate fact id "${id}"`, path });
+      }
+      seen.add(id);
+    };
     for (const key of FACT_ARRAYS) {
       facts[key].forEach((fact, i) => {
-        if (seen.has(fact.id)) {
-          ctx.addIssue({
-            code: "custom",
-            message: `duplicate fact id "${fact.id}"`,
-            path: [key, i, "id"],
-          });
-        }
-        seen.add(fact.id);
+        claim(fact.id, [key, i, "id"]);
+        factIds.add(fact.id);
       });
     }
     facts.outline.forEach((entry, i) => {
+      claim(entry.id, ["outline", i, "id"]);
+    });
+    facts.outline.forEach((entry, i) => {
       entry.factRefs.forEach((ref, j) => {
-        if (!seen.has(ref)) {
+        if (!factIds.has(ref)) {
           ctx.addIssue({
             code: "custom",
             message: `outline references missing fact "${ref}"`,
