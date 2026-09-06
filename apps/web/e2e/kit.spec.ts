@@ -97,6 +97,16 @@ test.describe("/kit (Vite development build)", () => {
     const menu = page.getByRole("menu");
     await expect(menu).toHaveClass(/tj-stage/);
     await expect(menu).toHaveCSS("background-color", "rgb(31, 29, 27)");
+    if (process.env.TEACH_SCREENSHOTS === "1") {
+      await page.screenshot({ path: "/tmp/teach-97-stage-menu.png" });
+    }
     await page.keyboard.press("Escape");
+    if (process.env.TEACH_SCREENSHOTS === "1") {
+      await page.getByRole("tab", { name: "Light" }).click();
+      await stage.screenshot({ path: "/tmp/teach-97-stage.png" });
+      const slider = page.getByRole("slider", { name: "Font size range" }).first();
+      await slider.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: "/tmp/teach-97-slider.png" });
+    }
   });
 });
