@@ -7,16 +7,16 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **Adaptation** — proposed and accepted changes to future Lessons based on Observations.
 - **Artefact** — a generated document that is a projection of a Lesson + Journey (plan, notes, slides, worksheet, quiz, exit ticket, …). Carries a derived-from lineage and a review state.
 - **Artefact set** — all Artefacts for one Lesson, generated coherently from the same plan.
+- **Block** — one unit of a Worksheet: heading, paragraph, instructions, question, multiple-choice, fill-gap, matching, word search, word bank, answer box, lines, image, table, divider or page break (`WorksheetBlock` in `@tj/domain`). Blocks flow and paginate; they have no coordinates.
 - **Class-level** — data about the group as a whole, never attributable to an individual learner.
 - **Cohort Profile** — class-level description of who is being taught; never individual.
 - **Concept** — a unit of understanding with prerequisites, objectives and typical misconceptions; a node in the Progression.
 - **Draft / Reviewed / Stale / Taught / Needs attention** — the universal state vocabulary (F18-R07); the same chips everywhere. *(Superseded for the Shell by ADR 0019; the stale flag survives in F07.)*
+- **Export** — producing a file from a Lesson or Worksheet in the teacher's browser: PDF (browser print of a print route), PPTX, PNG, DOCX or JSON (ADR 0023). Always teacher-initiated; never server-side at MVP.
 - **Identifier guard** — shared component that blocks learner names, IDs, emails and identifying phrases in free text (F15-R03).
+- **Import** — creating a Lesson or Worksheet from a JSON file in the interchange format, which is the domain document itself (`*.teachdeck.json`, `*.worksheet.json`; ADR 0021 §7). Entered from the Library's Import dialog.
 - **Journey** — the plan from goal to outcome across N lessons; the product's central object. Typed and versioned. *(superseded by Series — TD decision D-001, 2026-09-05; the term remains in package/ADR names for history)*
 - **Knowledge node** — an entry in the progressions/misconceptions graph (F05).
-- **Block** — one unit of a Worksheet: heading, paragraph, instructions, question, multiple-choice, fill-gap, matching, word search, word bank, answer box, lines, image, table, divider or page break (`WorksheetBlock` in `@tj/domain`). Blocks flow and paginate; they have no coordinates.
-- **Export** — producing a file from a Lesson or Worksheet in the teacher's browser: PDF (browser print of a print route), PPTX, PNG, DOCX or JSON (ADR 0023). Always teacher-initiated; never server-side at MVP.
-- **Import** — creating a Lesson or Worksheet from a JSON file in the interchange format, which is the domain document itself (`*.teachdeck.json`, `*.worksheet.json`; ADR 0021 §7). Entered from the Library's Import dialog.
 - **Lesson** — an ordered session in the Journey covering one or more Concepts. In the editor, it is a slide deck with 960×540-point slides plus notes; the Library shows it as a card.
 - **Library** — the signed-in home: Home plus the kind pages.
 - **Observation** — class-level evidence of understanding recorded after teaching.
@@ -28,7 +28,7 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **Slide** — one 960×540-point page of a Lesson: a `kind` (title, objectives, true-false, …), an ordered list of elements (text, image, shape, line, icon, table, embed, option, gap-text, timer, group) whose array order is draw order, optional notes, transition and question data (`Slide` in `@tj/domain`). Coordinates are points; export maps 1pt = 1pt.
 - **Source** — a teacher-provided material (file/URL) used for grounding.
 - **Stage** — the present-mode surface: the letterboxed slide plus its controls, timer, ink and overview, always on the dark stage palette regardless of the app theme. In code, the `.tj-stage` variable scope in `@tj/ui` (ADR 0022 §3).
-- **Theme (document)** — one of the six built-in slide designs a Lesson references by `themeId` (background, ink, accent, two font stacks, tags such as `dyslexia` or `low-vision`; `Theme` in `@tj/domain`, resolved by `getTheme`). Distinct from the app **theme** (`light` / `dark` / `high-contrast`, `data-theme` on `<html>`).
+- **Theme (document)** — one of the six built-in slide designs a Lesson references by `themeId` (background, ink, accent, two font stacks, tags such as `dyslexia` or `low-vision`). The `Theme` type and schema live in `@tj/domain`; the catalogue (`THEMES`, `getTheme`, `DEFAULT_THEME_ID`) and the fonts it names live in `@tj/editor`. Distinct from the app **theme** (`light` / `dark` / `high-contrast`, `data-theme` on `<html>`).
 - **Worksheet** — a paginated A4 document made of blocks such as heading, question, multiple-choice, and fill-gap. It stands beside a Lesson's slides and is edited in the worksheet editor.
 - **Workspace** — the container for a user's Journeys, Sources and settings. One personal Workspace per user at MVP.
 

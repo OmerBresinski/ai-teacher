@@ -2,8 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-06
-- Related PRD decisions: TD project items 2 and 6 (package the editor; design-system consumption), F18-R05 (bundle budget), F18-D4 (themes), F18-R09 (WCAG 2.2 AA)
-- Related ADRs: 0004, 0013, 0019, 0020, 0021
+- Related PRD decisions: TD project items 2 and 6 (package the editor; design-system consumption), F18-R05 (bundle budget), F18-D4 (themes), F18-R09 (WCAG 2.2 AA); ADRs 0004, 0013, 0019, 0020, 0021
 
 ## Context
 
@@ -73,9 +72,10 @@ have restyled Radix twins in `@tj/ui`.
 5. **Loading and saving.** The route loader keeps resolving the document via
    `libraryQueries.document(id)` (`ensureQueryData`, 404 on null); the editor reads the same query.
    The editor owns the autosave debounce (800 ms, TeachDeck's `AUTOSAVE_MS`) and calls an `onSave(doc)`
-   prop; `apps/web` wires it to `useMutation(libraryMutations.saveDocument(queryClient))`, which
-   writes the mock store today and `PUT /lessons/:id` later, and invalidates `["library"]` on
-   success. Save state (`saved` / `unsaved` / `saving` / `failed`) is exposed through a
+   prop; `apps/web` wires it to `useMutation(libraryMutations.saveDocument(queryClient))`, which takes a
+   `Lesson | Worksheet`, writes the mock store today and, once the API exists, the kind's own
+   endpoint (`PUT /lessons/:id` or `PUT /worksheets/:id` through `@tj/api-client`, ADR 0005), and
+   invalidates `["library"]` on success. Save state (`saved` / `unsaved` / `saving` / `failed`) is exposed through a
    `useSyncExternalStore`-backed hook as TeachDeck's `useSaveState` is; a `beforeunload` flush is
    kept. The document query's `staleTime` is long enough that re-entering the editor does not
    refetch under an in-flight save.
@@ -85,7 +85,8 @@ have restyled Radix twins in `@tj/ui`.
    `@fontsource*` (item 7); `next/dynamic` → `React.lazy` / `lazyRouteComponent`; `'use client'`
    is deleted. Route files are not ported; the four existing routes (`/l/$lessonId`,
    `/l/$lessonId/present`, `/w/$worksheetId`, `/w/$worksheetId/print`) plus a new
-   `/l/$lessonId/print` (ADR 0023) mount `@tj/editor` components with `lazyRouteComponent`.
+   `/l/$lessonId/print` (ADR 0023) — five routes in all — each mount `@tj/editor` components with
+   `lazyRouteComponent`; none of them may be imported statically from the route tree.
    Paths do not change (TeachDeck's `components/ui2/paths.ts` and Greg's print routes share them).
 7. **Document theme fonts.** The six slide themes reference eleven families TeachDeck loads with
    `next/font/google` (`lib/fonts.ts`: Lexend, Gabarito, Figtree, Source Serif 4, Schibsted
@@ -94,7 +95,7 @@ have restyled Radix twins in `@tj/ui`.
    a `fonts.css` that defines the same `--font-*` variables; it is imported by the editor CSS, so
    it loads with the editor, present and thumbnail chunks and never with the initial bundle. No
    Google Fonts requests; the CSP is unchanged (ADR 0019 §2).
-8. **Bundle.** The four routes stay `lazyRouteComponent` chunks. Exporter libraries (pptxgenjs,
+8. **Bundle.** All five editor routes stay `lazyRouteComponent` chunks. Exporter libraries (pptxgenjs,
    docx, modern-screenshot) are `await import()`ed inside the export action, never statically
    (ADR 0023). Static text rendering (`renderDocHTML` over `@tiptap/html`) is shared by the viewer,
    present mode, print and thumbnails; the Tiptap React editor and ProseMirror view load only with

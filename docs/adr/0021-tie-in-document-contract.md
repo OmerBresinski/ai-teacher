@@ -2,8 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-06
-- Related PRD decisions: TD project item 1 (tie-in contract), item 5 (`reachedSlideId`/`taughtAt`), D-001 (Series), A9 (account copy)
-- Related ADRs: 0011, 0013, 0020
+- Related PRD decisions: TD project item 1 (tie-in contract), item 5 (`reachedSlideId`/`taughtAt`), D-001 (Series), A9 (account copy); ADRs 0011, 0013, 0020
 
 ## Context
 
@@ -37,13 +36,17 @@ Two facts in TeachDeck's model need a decision rather than a copy:
    `AgeBandSchema`, `RichDocSchema` schemas; `worksheet.ts` for `Worksheet`, `WorksheetBlock`,
    `WorksheetHeader`, `PageSize`, `WorksheetSchema`, `WorksheetBlockSchema`; `series.ts` for
    `Series`, `SeriesSchema`. Constants (`SLIDE_W`, `SLIDE_H`, `PAGE_A4`, `PAGE_LETTER`) and the pure
-   helpers `slideStepCount`, `hasRevealableAnswer` move with them. The two small pure modules
-   `schema.ts` imports — the word-search size limits and `normaliseHref` — move into `@tj/domain`
-   too, so `@tj/domain` keeps depending on `zod` only (ADR 0013). Field names, enum values and
+   helpers `slideStepCount`, `hasRevealableAnswer` move with them. The three small pure values
+   `schema.ts` imports — `MAX_CRITERIA` (`lib/model/worksheet-factories.ts`), the word-search size
+   limits `WORD_SEARCH_MIN_SIZE`/`WORD_SEARCH_MAX_SIZE` (`lib/worksheet/word-search.ts`) and
+   `normaliseHref` (`lib/text/links.ts`) — move into `@tj/domain` too, with their validation
+   tests, so `@tj/domain` keeps depending on `zod` only (ADR 0013). Field names, enum values and
    error messages are unchanged so TeachDeck JSON files parse without translation.
 2. **Workspace fields are not on the document.** `workspaceOwnedFields` (`workspaceId`,
    timestamps) belong to the persistence row the API adds later, not to the JSON the editor reads
-   and writes. The editor document is exactly TeachDeck's shape.
+   and writes. The editor document is TeachDeck's shape plus the two optional fields in item 4;
+   a TeachDeck file is a valid product document and a product file without those fields is a
+   valid TeachDeck file. Both stay `version: 1`; optional additions never bump the version.
 3. **Versioning.** `CURRENT_VERSION` and `migrate()` move into `@tj/domain` beside the schemas and
    run at every boundary that accepts a document: JSON import, the mock store on load, and the API
    on read once it exists. The layout re-fit (`FIT_VERSION`, `fitVersion`, `use-fit-migration`)
