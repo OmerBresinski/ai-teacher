@@ -13,6 +13,8 @@ const FORBIDDEN = [
   "zustand",
   "@tanstack/react-virtual",
   "tinykeys",
+  "immer",
+  "@tanstack/react-query",
 ];
 
 describe("@tj/editor/thumb", () => {
