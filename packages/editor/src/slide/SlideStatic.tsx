@@ -40,3 +40,44 @@ export function SlideStatic({ slide, theme, width, className }: SlideStaticProps
     </div>
   );
 }
+
+export type SlideFluidProps = {
+  slide: Slide;
+  theme: Theme;
+  className?: string;
+};
+
+/**
+ * `SlideStatic` for a box whose width the caller does not know: a card thumbnail, a list row, a
+ * series stack. The wrapper is a 16:9 inline-size container and the slide scales with
+ * `100cqw / 960` — pure CSS, no ResizeObserver, no effect (ADR 0022 §4, `vercel-react-best-practices`).
+ */
+export function SlideFluid({ slide, theme, className }: SlideFluidProps) {
+  return (
+    <div
+      className={className}
+      data-slide-fluid
+      style={{
+        position: "relative",
+        width: "100%",
+        aspectRatio: `${SLIDE_W} / ${SLIDE_H}`,
+        overflow: "hidden",
+        containerType: "inline-size",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: SLIDE_W,
+          height: SLIDE_H,
+          transform: `scale(calc(100cqw / ${SLIDE_W}))`,
+          transformOrigin: "top left",
+        }}
+      >
+        <SlideView slide={slide} theme={theme} mode="thumb" />
+      </div>
+    </div>
+  );
+}

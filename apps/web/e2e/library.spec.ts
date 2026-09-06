@@ -53,11 +53,11 @@ test.describe("library shell", () => {
     await expect(page.getByText("Decimals practice", { exact: true }).first()).toBeVisible();
     await page.getByLabel("Back to the library").click();
     await page.getByRole("link", { name: /^Worksheets\b/ }).click();
-    // Starter worksheets have 4 blocks (mock store).
+    // The count is the starter worksheet's real block count (TeachDeck `starterWorksheet`, 5).
     const card = page.locator("article", { hasText: "Decimals practice" }).first();
     await expect(card).toBeVisible();
     await page.getByRole("button", { name: "List" }).click();
-    await expect(page.getByRole("row", { name: /Decimals practice/ })).toContainText("4 blocks");
+    await expect(page.getByRole("row", { name: /Decimals practice/ })).toContainText("5 blocks");
   });
 
   test("New series uses the untitled fallback on Enter", async ({ signedInPage: { page } }) => {
@@ -75,7 +75,8 @@ test.describe("library shell", () => {
     const search = page.getByRole("searchbox", { name: "Search by title" });
     await search.fill("water");
     await expect(page).toHaveURL(/\/lessons\?q=water$/);
-    await expect(page.getByText("The water cycle")).toBeVisible();
+    // The title appears on the card and inside its rendered cover slide.
+    await expect(page.getByText("The water cycle").first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Open The water cycle" })).toHaveCount(1);
     await page.reload();
     await expect(search).toHaveValue("water");
@@ -301,5 +302,24 @@ test.describe("library shell", () => {
     await page.getByRole("link", { name: /^Lessons\b/ }).click();
     await expect(page).toHaveURL(/\/lessons$/);
     await expectNoSeriousA11yViolations(page, "/lessons (900px)");
+  });
+
+  test("library cards paint the lesson's first slide, not a placeholder initial", async ({
+    signedInPage: { page },
+  }) => {
+    await page.goto("/lessons");
+    await expect(page.getByRole("link", { name: "Open The water cycle" })).toBeVisible();
+    // Every seeded lesson card carries a rendered slide (TEACH-99); the swatch-and-initial
+    // fallback is for documents with no first slide only.
+    const cards = page.locator("[data-slot='card-thumbnail']");
+    const count = await cards.count();
+    expect(count).toBeGreaterThan(0);
+    await expect(page.locator("[data-slot='card-thumbnail'] [data-slide-root]")).toHaveCount(count);
+    // The cover renders the lesson title inside the slide at thumbnail scale.
+    const waterCycle = page
+      .locator("[data-slide-root]")
+      .filter({ hasText: "The water cycle" })
+      .first();
+    await expect(waterCycle).toHaveAttribute("data-slide-mode", "thumb");
   });
 });

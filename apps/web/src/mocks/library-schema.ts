@@ -1,3 +1,4 @@
+import type { Slide } from "@tj/domain/documents";
 import { z } from "zod";
 
 export const DocumentKind = z.enum(["lesson", "worksheet"]);
@@ -15,6 +16,12 @@ export const DocumentSummary = z.object({
   subject: z.string().optional(),
   yearGroup: z.string().optional(),
   deletedAt: z.iso.datetime().optional(),
+  /**
+   * The first slide for the card thumbnail; `null` for worksheets (ADR 0021 §6). Typed, not
+   * validated here: the slide was already validated as part of its document, and importing
+   * `SlideSchema` would pull the document schemas into the initial bundle through this module.
+   */
+  cover: z.custom<Slide | null>((value) => value === null || typeof value === "object"),
 });
 export type DocumentSummary = z.infer<typeof DocumentSummary>;
 

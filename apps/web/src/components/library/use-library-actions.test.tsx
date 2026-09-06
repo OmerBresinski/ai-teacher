@@ -30,7 +30,8 @@ function renderActions() {
 }
 
 const lesson = (): Promise<DocumentSummary> =>
-  loadDocument("demo-water-cycle").then((doc) => {
+  listDocuments().then((docs) => {
+    const doc = docs.find((d) => d.id === "demo-water-cycle");
     if (!doc) throw new Error("fixture missing");
     return doc;
   });

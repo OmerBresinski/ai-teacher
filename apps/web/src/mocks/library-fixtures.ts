@@ -1,7 +1,22 @@
-import type { DocumentSummary, LibraryTheme, Series } from "./library-schema";
+import type { Lesson, Worksheet } from "@tj/domain/documents";
+import { demoLibrary, demoWorksheet, newSlide, starterLesson, starterWorksheet } from "@tj/editor";
+import type { LibraryTheme, Series } from "./library-schema";
+import type { StoredDocument } from "./summarise";
 
+/**
+ * The New dialog's theme picker: the editor's six themes (ADR 0021; the catalogue itself lives in
+ * `@tj/editor`, and `library-fixtures.test.ts` checks this table agrees with it) with the shell's
+ * own "Primary / Secondary / Calm / Bold" filter chips. A literal so the dialog's chunk does not
+ * carry the catalogue.
+ */
 export const LIBRARY_THEMES: LibraryTheme[] = [
-  { id: "chalk", name: "Chalk & Cream", swatch: "#FAF4E6", ink: "#2C2A24", tags: ["Calm"] },
+  {
+    id: "chalk",
+    name: "Chalk & Cream",
+    swatch: "#FAF4E6",
+    ink: "#2C2A24",
+    tags: ["Primary", "Calm"],
+  },
   {
     id: "playground",
     name: "Playground",
@@ -9,181 +24,139 @@ export const LIBRARY_THEMES: LibraryTheme[] = [
     ink: "#33261D",
     tags: ["Primary", "Bold"],
   },
-  { id: "paper", name: "Paper", swatch: "#F2EFE8", ink: "#1F2328", tags: ["Secondary", "Calm"] },
-  { id: "slate", name: "Slate", swatch: "#263238", ink: "#F5F5F5", tags: ["Secondary"] },
-  { id: "meadow", name: "Meadow", swatch: "#E8F2E5", ink: "#25402E", tags: ["Primary", "Calm"] },
-  { id: "ember", name: "Ember", swatch: "#FCE9DF", ink: "#4A1F13", tags: ["Bold"] },
+  {
+    id: "reading-room",
+    name: "Reading Room",
+    swatch: "#F2EFE8",
+    ink: "#1F2328",
+    tags: ["Secondary", "Calm"],
+  },
+  {
+    id: "exam-hall",
+    name: "Exam Hall",
+    swatch: "#F6F7F5",
+    ink: "#16191C",
+    tags: ["Secondary", "Calm"],
+  },
+  {
+    id: "night-lab",
+    name: "Night Lab",
+    swatch: "#131519",
+    ink: "#ECEDEF",
+    tags: ["Secondary", "Bold"],
+  },
+  { id: "beacon", name: "Beacon", swatch: "#FFFDF2", ink: "#0E0E0E", tags: ["Primary", "Bold"] },
 ];
 
 function timestamp(now: Date, hoursAgo: number): string {
   return new Date(now.getTime() - hoursAgo * 60 * 60 * 1000).toISOString();
 }
 
-function document(
-  now: Date,
-  hoursAgo: number,
+type Meta = {
+  id: string;
+  title: string;
+  themeId: string;
+  subject: string;
+  yearGroup: string;
+  hoursAgo: number;
+};
+
+/** Stamp identity, timestamps and card metadata onto a freshly built body. */
+function stamp<T extends Lesson | Worksheet>(now: Date, body: T, meta: Meta): T {
+  body.id = meta.id;
+  body.title = meta.title;
+  body.themeId = meta.themeId;
+  body.subject = meta.subject;
+  body.yearGroup = meta.yearGroup;
+  body.updatedAt = timestamp(now, meta.hoursAgo);
+  body.createdAt = timestamp(now, meta.hoursAgo + 24);
+  return body;
+}
+
+/** A starter lesson with `extra` more content slides, so seeded decks vary in length. */
+function lesson(now: Date, meta: Meta, extra = 0): Lesson {
+  const body = starterLesson(meta.title, meta.themeId);
+  for (let i = 0; i < extra; i += 1) body.slides.push(newSlide("content", meta.themeId));
+  return stamp(now, body, meta);
+}
+
+function worksheet(now: Date, meta: Meta): Worksheet {
+  return stamp(now, starterWorksheet(meta.title, meta.themeId), meta);
+}
+
+const meta = (
   id: string,
-  kind: DocumentSummary["kind"],
   title: string,
-  count: number,
   themeId: string,
   subject: string,
   yearGroup: string,
-): DocumentSummary {
-  const updatedAt = timestamp(now, hoursAgo);
-  return {
-    id,
-    kind,
-    title,
-    count,
-    updatedAt,
-    createdAt: timestamp(now, hoursAgo + 24),
-    themeId,
-    subject,
-    yearGroup,
-  };
-}
+  hoursAgo: number,
+): Meta => ({ id, title, themeId, subject, yearGroup, hoursAgo });
 
-/** A stable, suitably varied library for the first library screens. */
-export function seedLibrary(now: Date): { documents: DocumentSummary[]; series: Series[] } {
-  const documents = [
-    document(
+/**
+ * A stable, suitably varied library for the first library screens. The two demo lessons are
+ * TeachDeck's (`demoLibrary()`, same ids); everything else is starter content under a different
+ * title so every card has a real first slide to paint.
+ */
+export function seedLibrary(now: Date): { documents: StoredDocument[]; series: Series[] } {
+  const [waterCycle, fractions] = demoLibrary() as [Lesson, Lesson];
+  const bodies: (Lesson | Worksheet)[] = [
+    stamp(
       now,
+      waterCycle,
+      meta("demo-water-cycle", "The water cycle", "chalk", "Science", "Year 4", 1),
+    ),
+    stamp(
+      now,
+      fractions,
+      meta("demo-fractions", "Fractions of amounts", "playground", "Maths", "Year 4", 3),
+    ),
+    lesson(now, meta("roman-roads", "Roman roads", "reading-room", "History", "Year 4", 12), 2),
+    lesson(
+      now,
+      meta("roman-army", "Life in the Roman army", "night-lab", "History", "Year 4", 30),
       1,
-      "demo-water-cycle",
-      "lesson",
-      "The water cycle",
-      7,
-      "chalk",
-      "Science",
-      "Year 4",
     ),
-    document(
+    lesson(now, meta("roman-empire", "The Roman Empire", "beacon", "History", "Year 4", 72)),
+    lesson(
       now,
-      3,
-      "demo-fractions",
-      "lesson",
-      "Fractions of amounts",
-      6,
-      "playground",
-      "Maths",
-      "Year 4",
+      meta("equivalent-fractions", "Equivalent fractions", "exam-hall", "Maths", "Year 4", 120),
     ),
-    document(now, 12, "roman-roads", "lesson", "Roman roads", 8, "paper", "History", "Year 4"),
-    document(
+    lesson(
       now,
-      30,
-      "roman-army",
-      "lesson",
-      "Life in the Roman army",
-      7,
-      "slate",
-      "History",
-      "Year 4",
+      meta("plant-parts", "Parts of a flowering plant", "chalk", "Science", "Year 3", 216),
+      1,
     ),
-    document(
+    lesson(
       now,
-      72,
-      "roman-empire",
-      "lesson",
-      "The Roman Empire",
-      6,
-      "ember",
-      "History",
-      "Year 4",
+      meta("fronted-adverbials", "Fronted adverbials", "reading-room", "English", "Year 5", 384),
     ),
-    document(
+    lesson(
       now,
-      120,
-      "equivalent-fractions",
-      "lesson",
-      "Equivalent fractions",
-      6,
-      "meadow",
-      "Maths",
-      "Year 4",
+      meta("rivers", "How rivers shape the land", "exam-hall", "Geography", "Year 5", 600),
+      2,
     ),
-    document(
+    lesson(now, meta("electricity", "Simple circuits", "night-lab", "Science", "Year 6", 960), 1),
+    stamp(
       now,
-      216,
-      "plant-parts",
-      "lesson",
-      "Parts of a flowering plant",
-      7,
-      "chalk",
-      "Science",
-      "Year 3",
+      demoWorksheet(),
+      meta("fraction-practice", "Fractions practice", "playground", "Maths", "Year 4", 48),
     ),
-    document(
+    worksheet(
       now,
-      384,
-      "fronted-adverbials",
-      "lesson",
-      "Fronted adverbials",
-      6,
-      "paper",
-      "English",
-      "Year 5",
+      meta("roman-source", "Roman source investigation", "beacon", "History", "Year 4", 168),
     ),
-    document(
+    worksheet(
       now,
-      600,
-      "rivers",
-      "lesson",
-      "How rivers shape the land",
-      8,
-      "meadow",
-      "Geography",
-      "Year 5",
+      meta("plant-labels", "Label a flowering plant", "chalk", "Science", "Year 3", 480),
     ),
-    document(now, 960, "electricity", "lesson", "Simple circuits", 7, "slate", "Science", "Year 6"),
-    document(
+    worksheet(
       now,
-      48,
-      "fraction-practice",
-      "worksheet",
-      "Fractions practice",
-      4,
-      "playground",
-      "Maths",
-      "Year 4",
-    ),
-    document(
-      now,
-      168,
-      "roman-source",
-      "worksheet",
-      "Roman source investigation",
-      5,
-      "ember",
-      "History",
-      "Year 4",
-    ),
-    document(
-      now,
-      480,
-      "plant-labels",
-      "worksheet",
-      "Label a flowering plant",
-      4,
-      "chalk",
-      "Science",
-      "Year 3",
-    ),
-    document(
-      now,
-      840,
-      "river-vocabulary",
-      "worksheet",
-      "River vocabulary",
-      6,
-      "paper",
-      "Geography",
-      "Year 5",
+      meta("river-vocabulary", "River vocabulary", "reading-room", "Geography", "Year 5", 840),
     ),
   ];
 
-  const series = [
+  const series: Series[] = [
     {
       id: "series-romans",
       title: "The Romans",
@@ -200,5 +173,5 @@ export function seedLibrary(now: Date): { documents: DocumentSummary[]; series: 
     },
   ];
 
-  return { documents, series };
+  return { documents: bodies.map((body) => ({ body })), series };
 }

@@ -33,6 +33,7 @@ function summary(overrides: Partial<DocumentSummary> = {}): DocumentSummary {
     title: "Untitled",
     count: 6,
     themeId: "chalk",
+    cover: null,
     createdAt: "2026-09-01T00:00:00.000Z",
     updatedAt: "2026-09-02T00:00:00.000Z",
     ...overrides,
@@ -89,6 +90,7 @@ describe("library queries", () => {
 
     const onSuccess = [
       () => invokeOnSuccess(libraryMutations.createDocument(queryClient).onSuccess),
+      () => invokeOnSuccess(libraryMutations.saveDocument(queryClient).onSuccess),
       () => invokeOnSuccess(libraryMutations.renameDocument(queryClient).onSuccess),
       () => invokeOnSuccess(libraryMutations.duplicateDocument(queryClient).onSuccess),
       () => invokeOnSuccess(libraryMutations.softDeleteDocument(queryClient).onSuccess),
@@ -139,6 +141,7 @@ describe("sortDocuments", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-03T00:00:00.000Z",
       themeId: "chalk",
+      cover: null,
     },
     {
       id: "2",
@@ -148,6 +151,7 @@ describe("sortDocuments", () => {
       createdAt: "2026-01-03T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
       themeId: "chalk",
+      cover: null,
     },
     {
       id: "3",
@@ -157,6 +161,7 @@ describe("sortDocuments", () => {
       createdAt: "2026-01-02T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",
       themeId: "chalk",
+      cover: null,
     },
   ];
 

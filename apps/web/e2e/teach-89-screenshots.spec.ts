@@ -10,7 +10,7 @@ test("capture TEACH-89 shell states", async ({ signedInPage: { page } }) => {
 
   await page.goto("/lessons");
   await page.getByRole("button", { name: "List" }).click();
-  await expect(page.getByText("The water cycle")).toBeVisible();
+  await expect(page.getByText("The water cycle").first()).toBeVisible();
   await page.screenshot({ path: "/tmp/teach-89-lessons-list.png", fullPage: true });
 
   await page.getByRole("button", { name: "Collapse sidebar" }).click();
