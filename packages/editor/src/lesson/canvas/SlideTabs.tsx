@@ -70,7 +70,9 @@ export function SlideTabs({
         left,
         top,
         zIndex: 41,
-        visibility: size.w === 0 ? "hidden" : undefined,
+        // Unmeasured for one un-painted render: transparent, not `visibility: hidden`, which would
+        // also drop the controls from the accessibility tree.
+        opacity: size.w === 0 ? 0 : undefined,
       }}
     >
       <Tabs value={showing ? "answer" : "question"} onValueChange={pick}>

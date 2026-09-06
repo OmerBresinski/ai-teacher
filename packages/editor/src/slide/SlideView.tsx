@@ -1,6 +1,6 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, lazy, Suspense, useMemo, useState } from "react";
 import { hasExplanationPanel } from "../layout/explanation";
 import { SAFE } from "../model/grid";
 import { docToPlainText } from "../text/static";
@@ -18,7 +18,8 @@ import {
 } from "./elements/kit";
 import { OverflowGlyph } from "./elements/TextView";
 
-// phase C (TEACH-104): `const ExplanationEditor = lazy(() => import('./elements/ExplanationEditor'))`
+const ExplanationEditor = lazy(() => import("./elements/ExplanationEditor"));
+
 // returns here for the `edit` branch of the "Why?" panel.
 
 export type { SlideMode };
@@ -167,8 +168,15 @@ export function SlideView({
       ) : null}
 
       {panel ? (
-        // phase C (TEACH-104): `mode === 'edit'` renders ExplanationEditor in a Suspense here.
-        explanation ? (
+        mode === "edit" ? (
+          <Suspense
+            fallback={
+              <ExplanationPanel slide={slide} theme={theme} text={explanation ?? ""} mode={mode} />
+            }
+          >
+            <ExplanationEditor slide={slide} theme={theme} text={explanation ?? ""} />
+          </Suspense>
+        ) : explanation ? (
           <ExplanationPanel slide={slide} theme={theme} text={explanation} mode={mode} />
         ) : null
       ) : explanation ? (

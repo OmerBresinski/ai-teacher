@@ -1,20 +1,16 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import type { SlideMode } from "./kit";
 
-/**
- * Edit-mode hooks the renderer needs from whoever owns the document. Nothing in this
- * package's view, present, capture or thumb paths provides one, so those modes never
- * touch editor state (ADR 0022 §4). The lesson editor (phase C) provides it.
- */
-export type EditorHooks = {
-  /**
-   * Non-undoable and slide-addressed: a measured height is derived, not a user edit, and
-   * it must land on the slide being rendered, not on whichever slide is active.
-   */
-  writeElementHeight: (slideId: string, id: string, h: number) => void;
-};
+export {
+  type EditingState,
+  EditingStateContext,
+  type EditorHooks,
+  EditorHooksContext,
+  useEditingState,
+  useEditorHooks,
+} from "../editor-hooks";
 
-export const EditorHooksContext = createContext<EditorHooks | null>(null);
+import { EditorHooksContext } from "../editor-hooks";
 
 /** Smallest change worth writing, in slide points. */
 const MIN_DELTA = 1;

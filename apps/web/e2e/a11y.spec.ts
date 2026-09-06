@@ -93,5 +93,21 @@ test.describe("accessibility (axe)", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     await settled();
     await expectNoSeriousA11yViolations(page, "Add lessons dialog", '[role="dialog"]');
+    await page.keyboard.press("Escape");
+
+    // The editor with a text element being typed into: Tiptap's contenteditable plus the text
+    // toolbar over it (TEACH-104 row 12).
+    await page.goto("/l/demo-water-cycle");
+    const title = page
+      .locator("[data-slide-frame] [data-element-id]")
+      .filter({ hasText: "The water cycle" })
+      .first();
+    const titleBox = await title.boundingBox();
+    if (!titleBox) throw new Error("no title");
+    // Under the transform layer's catcher, so click where it is rather than on it.
+    await page.mouse.dblclick(titleBox.x + titleBox.width / 2, titleBox.y + titleBox.height / 2);
+    await expect(page.locator("[data-slide-frame] .ProseMirror")).toBeFocused();
+    await expect(page.getByRole("toolbar", { name: "Text" })).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "editor with text editing open");
   });
 });

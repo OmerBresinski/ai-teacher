@@ -1,6 +1,7 @@
-import type { Id, Slide } from "@tj/domain/documents";
+import type { Id, Slide, Theme } from "@tj/domain/documents";
 import {
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -8,6 +9,12 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  EXPLANATION_PLACEHOLDER,
+  explanationLane,
+  explanationLayout,
+  hasExplanationPanel,
+} from "../../layout/explanation";
 import {
   centre as centreOf,
   normaliseAngle,
@@ -20,15 +27,17 @@ import {
 import * as reducers from "../../model/reducers";
 import { buildSnapTargets, type Guide, type SnapTarget } from "../../model/snapping";
 import type { ElementTransform } from "../../slide/elements/ElementFrame";
+import { explanationText } from "../../slide/elements/kit";
 import { useSlideScale } from "../../slide/SlideScaler";
 import { useHistory } from "../document-context";
 import {
+  useAnswerShowing,
   useSelection,
   useSessionActions,
   useSessionRead,
   useSessionUi,
 } from "../use-editor-session";
-import { DRAG_START_PX, type HandleId } from "./constants";
+import { DRAG_START_PX, type HandleId, isTextEditable } from "./constants";
 import { describeBoxes } from "./describe";
 import { Guides } from "./Guides";
 import {
@@ -73,6 +82,7 @@ export type { PreviewMap };
 
 export type SelectionLayerProps = {
   slide: Slide;
+  theme: Theme;
   preview: PreviewMap | null;
   onPreview: (next: PreviewMap | null) => void;
   /** True while the canvas is panning (Space held): the stage takes no gestures. */
@@ -82,6 +92,7 @@ export type SelectionLayerProps = {
 
 export function SelectionLayer({
   slide,
+  theme,
   preview,
   onPreview,
   disabled = false,
@@ -94,9 +105,10 @@ export function SelectionLayer({
 
   const history = useHistory();
   const selection = useSelection();
-  const { editingTextId, showGuides } = useSessionUi();
+  const { editingTextId, editingExplanation, showGuides } = useSessionUi();
   const actions = useSessionActions();
   const readSession = useSessionRead();
+  const showingAnswer = useAnswerShowing(slide);
 
   const [coarse, setCoarse] = useState(false);
   const [hoverId, setHoverId] = useState<Id | null>(null);
@@ -544,6 +556,42 @@ export function SelectionLayer({
     );
   };
 
+  /** Double-click: into the text of a text-bearing element, or into the "Why?" panel. */
+  const onStageDoubleClick = (e: ReactMouseEvent) => {
+    if (disabled) return;
+    const at = toSlide(e.clientX, e.clientY);
+    // The "Why?" panel is slide content but not an element, so `pick` cannot see it. It owns its
+    // own box in the answer state, ahead of the empty canvas underneath it.
+    if (showingAnswer && hasExplanationPanel(slide.question)) {
+      const box = explanationLayout({
+        slide,
+        theme,
+        text: explanationText(slide.question) || EXPLANATION_PLACEHOLDER,
+      });
+      // The card is anchored by its bottom and may have grown taller than the ruler predicted, so
+      // the *rendered* box is the hit target where there is one.
+      const drawn = rootRef.current?.parentElement
+        ?.querySelector("[data-explanation-panel]")
+        ?.getBoundingClientRect();
+      const top = drawn ? toSlide(drawn.left, drawn.top).y : box.y;
+      if (
+        !box.collapsed &&
+        at.x >= box.x &&
+        at.x <= box.x + box.w &&
+        at.y >= top &&
+        at.y <= box.y + box.h
+      ) {
+        actions.setEditingExplanation(slide.id);
+        return;
+      }
+    }
+    const hit = pick(at);
+    if (!hit || hit.locked) return;
+    // SPEC §7 scopes this to shape-*with-label*; a hairline rule must not drop into a text editor.
+    if (!isTextEditable(hit.el)) return;
+    actions.setEditingText(hit.id);
+  };
+
   const onStageHover = (e: ReactPointerEvent) => {
     if (gesture.current.kind !== "none") return;
     const hit = pick(toSlide(e.clientX, e.clientY));
@@ -609,6 +657,7 @@ export function SelectionLayer({
 
   const stageProps = {
     onPointerDown: onStageDown,
+    onDoubleClick: onStageDoubleClick,
     onPointerMove: onStageHover,
     onPointerLeave: () => setHoverId(null),
   };
@@ -619,10 +668,15 @@ export function SelectionLayer({
     cursor: disabled ? "grab" : cursor,
   };
 
-  // While a text editor is mounted (TEACH-104), the stage catcher opens a hole over that element
-  // so every pointer event inside it reaches the editor.
+  // While a text editor is mounted, the stage catcher opens a hole over that element so every
+  // pointer event inside it reaches Tiptap. The "Why?" panel grows and shrinks under the caret, so
+  // its hole is the whole lane it may occupy rather than the box it happens to fill this frame.
   const editingBox = editingTextId ? byId.get(editingTextId) : undefined;
-  const hole = editingBox ? rotatedBounds(editingBox.rect, editingBox.rotation) : null;
+  const hole = editingBox
+    ? rotatedBounds(editingBox.rect, editingBox.rotation)
+    : editingExplanation === slide.id && showingAnswer
+      ? explanationLane(slide)
+      : null;
 
   const hover = hoverId && !selection.includes(hoverId) ? byId.get(hoverId) : undefined;
   const [first] = selected;

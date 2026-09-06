@@ -16,6 +16,7 @@ import { SlideView } from "../slide/SlideView";
 import { SlideActions } from "./canvas/SlideActions";
 import { SlideTabs } from "./canvas/SlideTabs";
 import { useLesson } from "./document-context";
+import { ContextualToolbar } from "./toolbar/ContextualToolbar";
 import { type PreviewMap, SelectionLayer } from "./transform/SelectionLayer";
 import { useCanvasKeys } from "./transform/use-canvas-keys";
 import {
@@ -262,6 +263,7 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange }: CanvasPro
               />
               <SelectionLayer
                 slide={slide}
+                theme={theme}
                 preview={preview}
                 onPreview={setPreview}
                 disabled={spaceDown}
@@ -281,6 +283,7 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange }: CanvasPro
           if (e.target instanceof Element && e.target.closest("button")) e.preventDefault();
         }}
       >
+        <ContextualToolbar slide={slide} theme={theme} stageRef={stage} scale={scale} />
         <SlideActions slide={slide} stageRef={stage} tabsRef={tabs} scale={scale} />
         {/* Wrapped so the pill can measure the tabs' own floating box. */}
         <div ref={tabs}>
