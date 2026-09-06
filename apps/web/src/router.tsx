@@ -88,7 +88,14 @@ export const router = createRouter({
 
 // Which shell page a document's back arrow returns to (`useShellReturn`). Committed navigations
 // only: `beforeLoad`/`loader` also run for hover preloads, which must not move the return target.
-router.subscribe("onResolved", ({ toLocation }) => rememberShell(toLocation.pathname));
+// A series page whose loader resolved `null` (deleted or never existed) is not a place to return
+// to — its own "Back to the library" would otherwise point at itself.
+router.subscribe("onResolved", ({ toLocation }) => {
+  const missingSeries = router.state.matches.some(
+    (match) => match.routeId === seriesDetailRoute.id && match.loaderData === null,
+  );
+  if (!missingSeries) rememberShell(toLocation.pathname);
+});
 
 declare module "@tanstack/react-router" {
   interface Register {
