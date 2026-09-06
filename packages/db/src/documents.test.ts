@@ -128,6 +128,19 @@ describeDb("documents repository", () => {
       expect((result.row.body as Lesson).slides).toHaveLength(4);
     });
 
+    test("two writes inside one millisecond still get distinct updated_at values", async () => {
+      const row = await createDocument(wsA, "lesson", lessonFixture());
+      // Force the row's clock to "now" so the next write lands in the same millisecond window.
+      const pinned = new Date();
+      await unsafeDb.update(documents).set({ updatedAt: pinned }).where(eq(documents.id, row.id));
+      const first = await putDocument(wsA, row.id, { ...row.body, title: "One" }, pinned);
+      expect(first.status).toBe("ok");
+      if (first.status !== "ok") return;
+      expect(first.row.updatedAt.getTime()).toBeGreaterThan(pinned.getTime());
+      const stale = await putDocument(wsA, row.id, { ...row.body, title: "Two" }, pinned);
+      expect(stale.status).toBe("conflict");
+    });
+
     test("conflict: a stale expectedUpdatedAt returns the current row unchanged", async () => {
       const row = await createDocument(wsA, "lesson", lessonFixture());
       const first = await putDocument(wsA, row.id, { ...row.body, title: "One" }, row.updatedAt);
@@ -325,12 +338,33 @@ describeDb("documents repository", () => {
       const row = await createDocument(wsA, "lesson", lessonFixture());
       expect(await softDelete(wsA, row.id)).toBe(true);
       expect(await softDelete(wsA, row.id)).toBe(false);
-      expect((await getDocument(wsA, row.id))?.deletedAt).toBeInstanceOf(Date);
+      const deleted = await getDocument(wsA, row.id);
+      expect(deleted?.deletedAt).toBeInstanceOf(Date);
+      expect(deleted?.updatedAt.getTime()).toBeGreaterThan(row.updatedAt.getTime());
       expect((await listSummaries(wsA, { kind: "lesson" })).items).toHaveLength(0);
       expect(await restore(wsA, row.id)).toBe(true);
       expect(await restore(wsA, row.id)).toBe(false);
-      expect((await getDocument(wsA, row.id))?.deletedAt).toBeNull();
+      const restored = await getDocument(wsA, row.id);
+      expect(restored?.deletedAt).toBeNull();
+      expect(restored?.updatedAt.getTime()).toBeGreaterThan(deleted?.updatedAt.getTime() ?? 0);
       expect((await listSummaries(wsA, { kind: "lesson" })).items).toHaveLength(1);
+    });
+
+    test("a pre-delete snapshot is stale after delete + restore", async () => {
+      const row = await createDocument(wsA, "lesson", lessonFixture());
+      await softDelete(wsA, row.id);
+      await restore(wsA, row.id);
+      const put = await putDocument(wsA, row.id, { ...row.body, title: "Old" }, row.updatedAt);
+      expect(put.status).toBe("conflict");
+    });
+
+    test("restore moves the document to the top of the updated order", async () => {
+      const first = await createDocument(wsA, "lesson", { ...lessonFixture(), title: "First" });
+      await createDocument(wsA, "lesson", { ...lessonFixture(), title: "Second" });
+      await softDelete(wsA, first.id);
+      await restore(wsA, first.id);
+      const page = await listSummaries(wsA, { kind: "lesson" });
+      expect(page.items.map((r) => r.title)).toEqual(["First", "Second"]);
     });
 
     test("neither touches another Workspace's row", async () => {

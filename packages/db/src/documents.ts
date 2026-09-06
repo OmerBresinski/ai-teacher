@@ -75,6 +75,15 @@ export const LIST_MAX_LIMIT = 200;
 // Every column but `body`: what a list row is.
 const { body: _body, ...summaryColumns } = getTableColumns(documents);
 
+/**
+ * The next `updated_at` for a row: now, but strictly later than the value it replaces, so two
+ * writes inside one millisecond still produce distinct timestamps and a client echoing the older
+ * one is told `conflict` rather than let through.
+ */
+function nextUpdatedAt(previous: Date): Date {
+  return new Date(Math.max(Date.now(), previous.getTime() + 1));
+}
+
 /** Parse `input` as a document of `kind`: `migrate()` first, then the kind's parser. */
 export function parseDocumentBody(kind: DocumentKind, input: unknown): DocumentBody {
   const upgraded = migrate(input);
@@ -291,7 +300,7 @@ export async function putDocument(
         isNull(documents.generatingJobId),
       ),
     )
-    .set({ body: parsed, ...promoted(parsed), updatedAt: new Date() })
+    .set({ body: parsed, ...promoted(parsed), updatedAt: nextUpdatedAt(current.updatedAt) })
     .returning();
   const row = rows[0];
   if (row) return { status: "ok", row };
@@ -303,20 +312,32 @@ export async function putDocument(
   return { status: "conflict", row: after };
 }
 
-/** Set `deleted_at` (ADR 0024 §5). `false` when the row is missing or already deleted. */
+/**
+ * Set `deleted_at` (ADR 0024 §5) and advance `updated_at`, as the mock store did: a deletion is
+ * a change the row's clock records, so an editor holding a pre-delete snapshot is told `conflict`
+ * after a restore rather than silently overwriting it. `false` when missing or already deleted.
+ */
 export async function softDelete(ws: WorkspaceDb, id: string): Promise<boolean> {
+  const current = await getDocument(ws, id);
+  if (current === null || current.deletedAt !== null) return false;
+  const now = nextUpdatedAt(current.updatedAt);
   const rows = await ws
     .update(documents, and(eq(documents.id, id), isNull(documents.deletedAt)))
-    .set({ deletedAt: new Date() })
+    .set({ deletedAt: now, updatedAt: now })
     .returning({ id: documents.id });
   return rows.length > 0;
 }
 
-/** Clear `deleted_at`. `false` when the row is missing or not deleted. */
+/**
+ * Clear `deleted_at` and advance `updated_at`, so a restored document returns to the top of the
+ * "recently updated" order (the library's Undo). `false` when missing or not deleted.
+ */
 export async function restore(ws: WorkspaceDb, id: string): Promise<boolean> {
+  const current = await getDocument(ws, id);
+  if (current === null || current.deletedAt === null) return false;
   const rows = await ws
     .update(documents, and(eq(documents.id, id), isNotNull(documents.deletedAt)))
-    .set({ deletedAt: null })
+    .set({ deletedAt: null, updatedAt: nextUpdatedAt(current.updatedAt) })
     .returning({ id: documents.id });
   return rows.length > 0;
 }
