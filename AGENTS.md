@@ -250,6 +250,7 @@ packages/
   storage/      @tj/storage    StorageAdapter impls (local disk, Vercel Blob)   ADR 0011
   ai/           @tj/ai         Model client: Bedrock via Vercel AI SDK, classes   ADR 0018
   editor/       @tj/editor     Lesson/worksheet editor, viewer, present, export   ADR 0022
+  slides/       @tj/slides     Pure slide recipes, theme catalogue, materialise   ADR 0025
   config/       @tj/config     Shared tsconfig bases, Tailwind preset           TEACH-11
 docs/
   adr/          Architecture decision records
@@ -259,7 +260,8 @@ docs/
 Per-area agent guides: [`apps/web/AGENTS.md`](apps/web/AGENTS.md),
 [`apps/api/AGENTS.md`](apps/api/AGENTS.md), [`apps/worker/AGENTS.md`](apps/worker/AGENTS.md),
 [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md), [`packages/ai/AGENTS.md`](packages/ai/AGENTS.md),
-[`packages/editor/AGENTS.md`](packages/editor/AGENTS.md).
+[`packages/editor/AGENTS.md`](packages/editor/AGENTS.md),
+[`packages/slides/AGENTS.md`](packages/slides/AGENTS.md).
 
 ## Agent skills
 

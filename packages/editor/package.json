@@ -53,6 +53,7 @@
     "@tiptap/react": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
     "@tj/domain": "workspace:*",
+    "@tj/slides": "workspace:*",
     "@tj/ui": "workspace:*",
     "clsx": "2.1.1",
     "immer": "11.1.18",

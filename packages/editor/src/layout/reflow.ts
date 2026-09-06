@@ -72,26 +72,28 @@ import type {
   Theme,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { contains, type Rect } from "../model/geometry";
-import { BASELINE, SAFE } from "../model/grid";
-import { fontFloor, resolveTextStyle, type TextRole } from "../slide/elements/kit";
+import {
+  BASELINE,
+  contains,
+  fontFloor,
+  OPTION,
+  type Rect,
+  resolveTextStyle,
+  SAFE_BOTTOM,
+  SAFETY,
+  type TextRole,
+  withSafety,
+} from "@tj/slides";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
 /* ------------------------------------------------------------------ */
 
 /**
- * Cross-browser slack (research/04 §4, DEFERRED wave 3). Spent as clearance below a
- * box that has to move, and as headroom in the overflow test — never stored in the
- * box's height, which `use-auto-height.ts` owns in edit mode. See the header.
+ * `SAFETY`, `withSafety`, `SAFE_BOTTOM` and `OPTION` live in `@tj/slides` (ADR 0025 §9) so the
+ * recipes size cards from the numbers the engine measures with; re-exported for the callers here.
  */
-export const SAFETY = 0.04;
-
-/** The room a box needs, its cushion included. */
-export const withSafety = (h: number) => Math.ceil(h * (1 + SAFETY));
-
-/** Bottom edge of the safe area; content past it is an overflow. */
-export const SAFE_BOTTOM = SAFE.y + SAFE.h;
+export { OPTION, SAFE_BOTTOM, SAFETY, withSafety };
 
 /** Sub-point noise from rounding is not an overflow. */
 const EPS = 0.5;
@@ -104,25 +106,6 @@ export const STEPPABLE: readonly TextPreset[] = ["heading", "body", "small"];
 
 /** The theme's own type ladder, largest first, used as the step-down stops. */
 const LADDER: readonly TextPreset[] = ["title", "subtitle", "heading", "body", "small"];
-
-/**
- * Chrome `OptionView` draws inside an option's box, and the leading it sets on the
- * card's text. Mirrored here because the renderer keeps them module-private; if they
- * move there, they move here.
- * (`components/slide/elements/OptionView.tsx`: PAD, CHIP, CHIP_GAP, TICK_LANE, and the
- * 1.35 leading research/04 §4 gives a card.)
- *
- * Exported so the recipes in `lib/model/layouts.ts` can size a card from the same
- * numbers the engine measures it with, rather than from a number someone typed once.
- */
-export const OPTION = {
-  pad: 24,
-  chip: 34,
-  chipGap: 19,
-  tickLane: 44,
-  border: 1.5,
-  line: 1.35,
-} as const;
 
 /* ------------------------------------------------------------------ */
 /* Measurement contract                                                */
