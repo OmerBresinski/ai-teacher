@@ -34,6 +34,8 @@ describeDb("runJob dependencies", () => {
         received = injected;
       }),
       "lesson.plan": defineJob("lesson.plan", async () => {}),
+      "lesson.cascade": defineJob("lesson.cascade", async () => {}),
+      "lesson.regenerate": defineJob("lesson.regenerate", async () => {}),
     };
     const jobId = newId<JobId>();
     const boss = {

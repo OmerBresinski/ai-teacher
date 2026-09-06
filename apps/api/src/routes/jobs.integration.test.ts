@@ -71,6 +71,8 @@ const pingJob = defineJob("ping", async ({ payload, signal, progress }) => {
 });
 const aiPingJob = defineJob("ai.ping", async () => {});
 const lessonPlanJob = defineJob("lesson.plan", async () => {});
+const lessonCascadeJob = defineJob("lesson.cascade", async () => {});
+const lessonRegenerateJob = defineJob("lesson.regenerate", async () => {});
 
 // --- a tiny SSE reader -----------------------------------------------------------------------
 
@@ -177,6 +179,8 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
     ping: pingJob,
     "ai.ping": aiPingJob,
     "lesson.plan": lessonPlanJob,
+    "lesson.cascade": lessonCascadeJob,
+    "lesson.regenerate": lessonRegenerateJob,
   };
   const controllers: AbortController[] = [];
 

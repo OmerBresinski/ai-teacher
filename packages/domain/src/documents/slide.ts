@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type Provenance, provenanceFields } from "./generated-from";
 import { isLinkableHref } from "./links";
 import { type RichDoc, RichDocSchema } from "./rich-text";
 
@@ -106,7 +107,7 @@ type ElementBase = {
   reveal?: "fade" | "rise" | "none";
   /** Shared across slides for the 'morph' transition. */
   morphKey?: string;
-};
+} & Provenance;
 
 export type TextPreset = "title" | "subtitle" | "heading" | "body" | "small" | "caption";
 
@@ -270,6 +271,8 @@ const elementBase = {
   revealStep: z.number().optional(),
   reveal: z.enum(["fade", "rise", "none"]).optional(),
   morphKey: z.string().optional(),
+  // F06 / F07 provenance (ADR 0025 §2). Declared here because `z.object` strips unknown keys.
+  ...provenanceFields,
 };
 
 export const TextPresetSchema = z.enum([

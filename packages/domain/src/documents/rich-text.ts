@@ -40,3 +40,21 @@ export const RichDocSchema: z.ZodType<RichDoc> = z.object({
   type: z.literal("doc"),
   content: z.array(RichNodeSchema).optional(),
 });
+
+/**
+ * The plain-text projection of a rich doc (ADR 0025 §10): text nodes joined in order, a line
+ * break after every paragraph and list item, trailing breaks trimmed. Shared by `checkLesson` and
+ * the Evaluate stage so the worker and the editor read the same words; behavioural twin of the
+ * editor's `docToPlainText` (`packages/editor/src/text/static.ts`), kept here because the domain
+ * package depends on `zod` only.
+ */
+export function richDocToPlainText(doc: RichDoc | RichNode): string {
+  const out: string[] = [];
+  const walk = (node: RichNode) => {
+    if (node.text) out.push(node.text);
+    for (const child of node.content ?? []) walk(child);
+    if (node.type === "paragraph" || node.type === "listItem") out.push("\n");
+  };
+  walk(doc as RichNode);
+  return out.join("").replace(/\n+$/, "");
+}

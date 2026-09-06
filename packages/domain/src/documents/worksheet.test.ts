@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { worksheet } from "./fixtures.test-helpers";
+import { generatedWorksheet, worksheet } from "./fixtures.test-helpers";
 import {
   isWorksheet,
   MAX_CRITERIA,
@@ -84,6 +84,64 @@ describe("parseWorksheet", () => {
       expect(WorksheetBlockSchema.safeParse(block).success).toBe(true);
     }
     expect(WorksheetBlockSchema.safeParse({ id: "x", type: "sticker" }).success).toBe(false);
+  });
+
+  test("a generated worksheet round-trips with lessonId and provenance on every block (ADR 0025 §2, §4)", () => {
+    const input = generatedWorksheet();
+    const parsed = parseWorksheet(JSON.parse(JSON.stringify(input)));
+    expect(parsed).toEqual(input);
+    expect(parsed.lessonId).toBe("gen-water-cycle");
+    expect(parsed.blocks.every((b) => b.authoredBy === "ai" && b.generatedFrom)).toBe(true);
+    expect(parseStoredWorksheet(JSON.parse(JSON.stringify(input)))).toEqual(input);
+  });
+
+  test("a TeachDeck worksheet parses with lessonId undefined", () => {
+    expect(parseWorksheet(worksheet()).lessonId).toBeUndefined();
+  });
+
+  test("every block type accepts provenance and rejects a bad authoredBy", () => {
+    const doc = { type: "doc" as const };
+    const provenance = {
+      authoredBy: "ai",
+      generatedFrom: {
+        factRefs: ["o1"],
+        promptVersion: "generate.v1",
+        model: "m",
+        at: "2026-09-06T10:00:00.000Z",
+      },
+    };
+    const blocks = [
+      { id: "1", type: "heading", doc, level: 2 },
+      { id: "2", type: "paragraph", doc },
+      { id: "3", type: "instructions", doc },
+      { id: "4", type: "question", doc, answerLines: 3 },
+      { id: "5", type: "multiple-choice", doc, options: [] },
+      { id: "6", type: "fill-gap", doc, gaps: [{ id: "g", answer: "x" }] },
+      { id: "7", type: "matching", pairs: [{ id: "p", left: "a", right: "b" }] },
+      { id: "8", type: "word-bank", words: ["a"] },
+      { id: "9", type: "answer-box", heightPt: 120 },
+      { id: "10", type: "lines", count: 4 },
+      { id: "11", type: "image", src: "x.png", widthPct: 50 },
+      { id: "12", type: "table", rows: [["a", "b"]], header: true },
+      { id: "13", type: "divider" },
+      { id: "14", type: "page-break" },
+      {
+        id: "15",
+        type: "word-search",
+        words: ["RAIN"],
+        size: 10,
+        directions: "all",
+        seed: 1,
+        showWordBank: false,
+      },
+    ];
+    for (const block of blocks) {
+      const parsed = WorksheetBlockSchema.parse({ ...block, ...provenance });
+      expect(parsed).toEqual({ ...block, ...provenance } as typeof parsed);
+      expect(
+        WorksheetBlockSchema.safeParse({ ...block, ...provenance, authoredBy: "robot" }).success,
+      ).toBe(false);
+    }
   });
 
   test("a future version is refused before validation", () => {

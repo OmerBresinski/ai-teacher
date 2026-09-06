@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type Provenance, provenanceFields } from "./generated-from";
 import type { AgeBand } from "./lesson";
 import { AgeBandSchema } from "./lesson";
 import { DocumentParseError, describeIssues, migrate } from "./migrate";
@@ -47,6 +48,8 @@ export type Worksheet = {
   readingLevel?: string;
   /** BCP-47 tag for spellcheck and hyphenation; "en-GB" unless the teacher says otherwise. */
   language?: string;
+  /** F06 (ADR 0025 §4): the lesson this sheet was generated beside, when it was. */
+  lessonId?: Id;
 };
 
 /**
@@ -66,7 +69,13 @@ export type WorksheetHeader = {
   criteria?: string[];
 };
 
-export type WorksheetBlock =
+/**
+ * Every block carries the F06/F07 provenance fields (ADR 0025 §2) on top of its own shape; the
+ * intersection below keeps the per-type members readable.
+ */
+export type WorksheetBlock = WorksheetBlockBody & Provenance;
+
+type WorksheetBlockBody =
   | { id: Id; type: "heading"; doc: RichDoc; level: 1 | 2 }
   | { id: Id; type: "paragraph"; doc: RichDoc }
   | { id: Id; type: "instructions"; doc: RichDoc }
@@ -109,17 +118,22 @@ export type WorksheetBlock =
   | { id: Id; type: "divider" }
   | { id: Id; type: "page-break" };
 
+/** F06/F07 provenance on every block (ADR 0025 §2); `z.object` would strip undeclared keys. */
+const blockMeta = provenanceFields;
+
 export const WorksheetBlockSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string(),
+    ...blockMeta,
     type: z.literal("heading"),
     doc: RichDocSchema,
     level: z.union([z.literal(1), z.literal(2)]),
   }),
-  z.object({ id: z.string(), type: z.literal("paragraph"), doc: RichDocSchema }),
-  z.object({ id: z.string(), type: z.literal("instructions"), doc: RichDocSchema }),
+  z.object({ id: z.string(), ...blockMeta, type: z.literal("paragraph"), doc: RichDocSchema }),
+  z.object({ id: z.string(), ...blockMeta, type: z.literal("instructions"), doc: RichDocSchema }),
   z.object({
     id: z.string(),
+    ...blockMeta,
     type: z.literal("question"),
     doc: RichDocSchema,
     number: z.number().optional(),
@@ -129,6 +143,7 @@ export const WorksheetBlockSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string(),
+    ...blockMeta,
     type: z.literal("multiple-choice"),
     doc: RichDocSchema,
     options: z.array(z.object({ id: z.string(), text: z.string(), correct: z.boolean() })),
@@ -136,6 +151,7 @@ export const WorksheetBlockSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string(),
+    ...blockMeta,
     type: z.literal("fill-gap"),
     doc: RichDocSchema,
     gaps: z.array(z.object({ id: z.string(), answer: z.string() })),
@@ -143,12 +159,14 @@ export const WorksheetBlockSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string(),
+    ...blockMeta,
     type: z.literal("matching"),
     pairs: z.array(z.object({ id: z.string(), left: z.string(), right: z.string() })),
     number: z.number().optional(),
   }),
   z.object({
     id: z.string(),
+    ...blockMeta,
     type: z.literal("word-search"),
     words: z.array(z.string()),
     size: z.number().min(WORD_SEARCH_MIN_SIZE).max(WORD_SEARCH_MAX_SIZE),
@@ -157,16 +175,23 @@ export const WorksheetBlockSchema = z.discriminatedUnion("type", [
     showWordBank: z.boolean(),
     number: z.number().optional(),
   }),
-  z.object({ id: z.string(), type: z.literal("word-bank"), words: z.array(z.string()) }),
   z.object({
     id: z.string(),
+    ...blockMeta,
+    type: z.literal("word-bank"),
+    words: z.array(z.string()),
+  }),
+  z.object({
+    id: z.string(),
+    ...blockMeta,
     type: z.literal("answer-box"),
     heightPt: z.number(),
     label: z.string().optional(),
   }),
-  z.object({ id: z.string(), type: z.literal("lines"), count: z.number() }),
+  z.object({ id: z.string(), ...blockMeta, type: z.literal("lines"), count: z.number() }),
   z.object({
     id: z.string(),
+    ...blockMeta,
     type: z.literal("image"),
     src: z.string(),
     alt: z.string().optional(),
@@ -175,12 +200,13 @@ export const WorksheetBlockSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string(),
+    ...blockMeta,
     type: z.literal("table"),
     rows: z.array(z.array(z.string())),
     header: z.boolean().optional(),
   }),
-  z.object({ id: z.string(), type: z.literal("divider") }),
-  z.object({ id: z.string(), type: z.literal("page-break") }),
+  z.object({ id: z.string(), ...blockMeta, type: z.literal("divider") }),
+  z.object({ id: z.string(), ...blockMeta, type: z.literal("page-break") }),
 ]) as z.ZodType<WorksheetBlock>;
 
 export const WorksheetSchema = z.object({
@@ -211,6 +237,8 @@ export const WorksheetSchema = z.object({
   subject: z.string().optional(),
   readingLevel: z.string().optional(),
   language: z.string().optional(),
+  // F06 (ADR 0025 §4).
+  lessonId: z.string().optional(),
 });
 
 /**
