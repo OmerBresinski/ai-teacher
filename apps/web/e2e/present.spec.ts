@@ -88,7 +88,9 @@ test.describe("present mode", () => {
     const slide = page.locator('[data-slide-mode="present"]');
     const box = await slide.boundingBox();
     if (!box) throw new Error("slide not laid out");
-    const inkSvg = page.locator("[data-present-stage] svg").nth(1);
+    // The pen layer is the interactive svg with pointer events on; the blend layer beneath it
+    // (highlighter) is pointer-events-none and stays empty for a pen stroke.
+    const inkSvg = page.locator("[data-present-stage] svg.z-\\[400\\]");
     const strokes = () => inkSvg.locator("path[d]:not([d=''])").count();
     expect(await strokes()).toBe(0);
 
