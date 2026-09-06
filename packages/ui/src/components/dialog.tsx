@@ -35,7 +35,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-scrim motion-safe:transition-opacity motion-safe:duration-[150ms] data-[state=closed]:opacity-0 data-[state=open]:opacity-100",
+        "fixed inset-0 z-50 bg-scrim motion-safe:animate-fade-in motion-safe:data-[state=closed]:animate-fade-out",
         className,
       )}
       {...props}
@@ -43,8 +43,10 @@ function DialogOverlay({
   );
 }
 
+// Centred by the `translate` property so it holds under reduced motion, when the arrival animation
+// (which used to carry the centring transform) is not applied at all.
 const dialogContentVariants = cva(
-  "fixed top-1/2 left-1/2 z-50 grid w-full gap-4 rounded-dialog bg-card p-6 text-card-foreground shadow-3 outline-none motion-safe:animate-arrive-centered",
+  "fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog bg-card p-6 text-card-foreground shadow-3 outline-none motion-safe:animate-arrive motion-safe:data-[state=closed]:animate-fade-out",
   {
     variants: {
       size: {

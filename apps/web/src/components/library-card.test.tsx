@@ -34,13 +34,7 @@ function renderCard(doc = lesson, hero = false) {
   const onRename = mock();
   const result = render(
     <TooltipProvider>
-      <LibraryCard
-        doc={doc}
-        hero={hero}
-        now={new Date("2026-09-06T12:00:00.000Z").getTime()}
-        onAction={onAction}
-        onRename={onRename}
-      />
+      <LibraryCard doc={doc} hero={hero} onAction={onAction} onRename={onRename} />
     </TooltipProvider>,
   );
   return { ...result, onAction, onRename };
@@ -115,7 +109,7 @@ describe("LibraryCard", () => {
     const list = render(
       <table>
         <tbody>
-          <LibraryCard doc={lesson} view="list" now={0} onAction={() => {}} onRename={onRename} />
+          <LibraryCard doc={lesson} view="list" onAction={() => {}} onRename={onRename} />
         </tbody>
       </table>,
     );
@@ -142,7 +136,7 @@ describe("LibraryCard", () => {
     const list = render(
       <table>
         <tbody>
-          <LibraryCard doc={lesson} view="list" now={0} onAction={() => {}} onRename={() => {}} />
+          <LibraryCard doc={lesson} view="list" onAction={() => {}} onRename={() => {}} />
         </tbody>
       </table>,
     );

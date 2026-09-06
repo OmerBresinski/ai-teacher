@@ -1,11 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@tj/ui";
 
 /**
- * Router `defaultPendingComponent`. Rendered as soon as a route's `beforeLoad`/`loader` (e.g. the
- * authenticated shell awaiting `GET /me`) or a lazy chunk is in flight (`defaultPendingMs: 0` in
- * `src/router.tsx`), and kept up for at least `defaultPendingMinMs` so it never flashes. Screen
- * readers get "Loading…" through the status region; sighted users get pulsing placeholders that
- * mirror the card layout used by the error and not-found pages.
+ * Router `defaultPendingComponent`. Rendered once a route's `beforeLoad`/`loader` (e.g. the
+ * authenticated shell awaiting `GET /me`) or a lazy chunk has been in flight for
+ * `defaultPendingMs` (`src/router.tsx`), and kept up for at least `defaultPendingMinMs` so it
+ * never flashes. Screen readers get "Loading…" through the status region; sighted users get
+ * pulsing placeholders that mirror the card layout used by the error and not-found pages.
  */
 export function RoutePendingPage() {
   return (

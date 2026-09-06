@@ -8,6 +8,7 @@ import {
   isValidElement,
   type ReactNode,
   useContext,
+  useMemo,
   useState,
 } from "react";
 
@@ -42,6 +43,8 @@ function Sidebar({
 }: SidebarProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const collapsed = collapsedProp ?? internalCollapsed;
+  // Stable per `collapsed`, so items re-render when it flips and not on every parent render.
+  const context = useMemo(() => ({ collapsed }), [collapsed]);
 
   const toggle = () => {
     const next = !collapsed;
@@ -78,14 +81,14 @@ function Sidebar({
   };
 
   return (
-    <SidebarContext.Provider value={{ collapsed }}>
+    <SidebarContext.Provider value={context}>
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: keydown bubbles from the focusable items; the nav only redirects focus between them. */}
       <nav
         aria-label={ariaLabel}
         onKeyDown={onKeyDown}
         style={{ width: collapsed ? "var(--sidebar-width-collapsed)" : "var(--sidebar-width)" }}
         className={cn(
-          "sticky top-0 flex h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar",
+          "sticky top-0 flex h-dvh shrink-0 flex-col overflow-x-hidden border-r border-sidebar-border bg-sidebar motion-safe:transition-[width] motion-safe:duration-(--duration-fast)",
           className,
         )}
         {...props}

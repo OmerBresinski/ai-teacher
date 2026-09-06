@@ -1,20 +1,21 @@
 import { Outlet } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Kbd } from "@tj/ui";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { LibraryShellContext } from "@/components/library-shell-context";
 import { LibrarySidebar } from "@/components/library-sidebar";
 
 export function LibraryLayout() {
   const [importOpen, setImportOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const openImport = useCallback(() => setImportOpen(true), []);
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), []);
+  // A stable value: otherwise toggling either dialog would re-render every `useLibraryShell` page.
+  const shell = useMemo(() => ({ openImport }), [openImport]);
 
   return (
-    <LibraryShellContext.Provider value={{ openImport: () => setImportOpen(true) }}>
+    <LibraryShellContext.Provider value={shell}>
       <div className="flex min-h-dvh bg-background">
-        <LibrarySidebar
-          onImport={() => setImportOpen(true)}
-          onShortcuts={() => setShortcutsOpen(true)}
-        />
+        <LibrarySidebar onImport={openImport} onShortcuts={openShortcuts} />
         <div className="min-w-0 flex-1">
           <Outlet />
         </div>

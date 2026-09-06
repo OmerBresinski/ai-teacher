@@ -29,9 +29,10 @@ import {
   SquareArrowOutUpRight,
   Trash2,
 } from "lucide-react";
-import type { ReactNode } from "react";
-import { absoluteTime, relativeTime, sizeOf, yearAndSubject } from "@/lib/format";
+import { memo, type ReactNode } from "react";
+import { sizeOf, yearAndSubject } from "@/lib/format";
 import type { DocumentSummary } from "@/mocks/library-schema";
+import { EditedTime } from "./edited-time";
 import { LessonThumb } from "./lesson-thumb";
 
 type DocumentAction = "open" | "present" | "duplicate" | "export" | "delete";
@@ -40,7 +41,6 @@ export type LibraryCardProps = {
   doc: DocumentSummary;
   view?: "grid" | "list";
   hero?: boolean;
-  now: number;
   className?: string;
   onAction: (action: DocumentAction, doc: DocumentSummary) => void;
   onRename: (doc: DocumentSummary, title: string) => void;
@@ -139,28 +139,16 @@ function KindIcon({ kind }: { kind: DocumentSummary["kind"] }) {
   );
 }
 
-function EditedTime({
-  updatedAt,
-  now,
-  prefix = "",
-}: {
-  updatedAt: string;
-  now: number;
-  prefix?: string;
-}) {
-  return (
-    <time dateTime={updatedAt} title={absoluteTime(updatedAt)}>
-      {prefix}
-      {relativeTime(updatedAt, now)}
-    </time>
-  );
-}
-
-export function LibraryCard({
+/**
+ * Memoised: a search keystroke or the minute clock re-renders the page, and every card carries a
+ * Radix menu. `doc` keeps its identity across refetches (TanStack Query structural sharing), the
+ * handlers come stable from `useLibraryActions` and the clock is read inside `EditedTime`, so an
+ * unchanged card skips the render entirely.
+ */
+export const LibraryCard = memo(function LibraryCard({
   doc,
   view = "grid",
   hero = false,
-  now,
   className,
   onAction,
   onRename,
@@ -212,7 +200,7 @@ export function LibraryCard({
         <ListSurfaceCell className="w-32 truncate text-meta text-ink-3">{subject}</ListSurfaceCell>
         <ListSurfaceCell className="w-[152px] text-meta text-ink-3">{sizeOf(doc)}</ListSurfaceCell>
         <ListSurfaceCell className="w-24 text-meta text-ink-3">
-          <EditedTime updatedAt={doc.updatedAt} now={now} />
+          <EditedTime updatedAt={doc.updatedAt} />
         </ListSurfaceCell>
         <ListSurfaceCell className="w-[104px]">
           <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100 pointer-coarse:opacity-100">
@@ -235,14 +223,14 @@ export function LibraryCard({
       {subject ? <span aria-hidden>·</span> : null}
       <span>{sizeOf(doc)}</span>
       <span aria-hidden>·</span>
-      <EditedTime updatedAt={doc.updatedAt} now={now} prefix="Edited " />
+      <EditedTime updatedAt={doc.updatedAt} prefix="Edited " />
     </>
   ) : (
     <>
       <KindIcon kind={doc.kind} />
       {subject ? <span>{subject}</span> : null}
       {subject ? <span aria-hidden>·</span> : null}
-      <EditedTime updatedAt={doc.updatedAt} now={now} />
+      <EditedTime updatedAt={doc.updatedAt} />
     </>
   );
 
@@ -301,4 +289,4 @@ export function LibraryCard({
       </Card>
     </article>
   );
-}
+});

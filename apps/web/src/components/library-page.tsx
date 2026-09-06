@@ -53,11 +53,18 @@ import { useLibraryActions } from "./library/use-library-actions";
 
 export type { LibraryMode } from "./library/library-model";
 
+// One import promise per chunk: `lazy` and the hover/focus preload below share it, so warming the
+// chunk on intent makes the first open instant instead of a Suspense gap (bundle-preload). A failed
+// warm-up is silent; the click still goes through `lazy`, whose failure reaches the error boundary.
+const loadNewDocumentDialog = () => import("./new-document-dialog");
+const loadNewSeriesDialog = () => import("./new-series-dialog");
+const warmNewDocumentDialog = () => void loadNewDocumentDialog().catch(() => {});
+const warmNewSeriesDialog = () => void loadNewSeriesDialog().catch(() => {});
 const NewDocumentDialog = lazy(() =>
-  import("./new-document-dialog").then(({ NewDocumentDialog }) => ({ default: NewDocumentDialog })),
+  loadNewDocumentDialog().then(({ NewDocumentDialog }) => ({ default: NewDocumentDialog })),
 );
 const NewSeriesDialog = lazy(() =>
-  import("./new-series-dialog").then(({ NewSeriesDialog }) => ({ default: NewSeriesDialog })),
+  loadNewSeriesDialog().then(({ NewSeriesDialog }) => ({ default: NewSeriesDialog })),
 );
 
 const LESSON_TILE_ICON = <Presentation size={24} strokeWidth={1.5} />;
@@ -67,7 +74,16 @@ const SORT_ICON = <ArrowDownUp aria-hidden size={16} strokeWidth={1.5} />;
 const GRID_ICON = <LayoutGrid aria-hidden size={16} strokeWidth={1.5} />;
 const LIST_ICON = <List aria-hidden size={16} strokeWidth={1.5} />;
 
-type CreateTarget = "lesson" | "worksheet" | "series" | null;
+type CreateTarget = "lesson" | "worksheet" | "series";
+
+/**
+ * Which create dialog is showing. `target` survives `open: false` so the dialog can play its exit
+ * animation with the right copy; `session` bumps on every open and is the dialog's `key`, which
+ * remounts it with fresh form state without a reset effect. Neither dialog is mounted (or its
+ * chunk requested) before the first open.
+ */
+type CreateState = { target: CreateTarget; open: boolean; session: number };
+const CREATE_IDLE: CreateState = { target: "lesson", open: false, session: 0 };
 
 export function LibraryPage({ mode }: { mode: LibraryMode }) {
   const isHome = mode === "home";
@@ -77,6 +93,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   const { openImport } = useLibraryShell();
   const actions = useLibraryActions();
   const navigate = useNavigate();
+  // The page reads the clock for the Recent / Earlier split; cards read it in `EditedTime`.
   const now = useNow();
   // Subscribe to the string, not the search object: a new object arrives on every navigation.
   const query = useRouterState({
@@ -84,7 +101,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   });
   const [sort, setSort] = usePreference<Sort>("tj:library:sort", SORTS, "edited");
   const [view, setView] = usePreference<View>("tj:library:view", VIEWS, "grid");
-  const [creating, setCreating] = useState<CreateTarget>(null);
+  const [creating, setCreating] = useState<CreateState>(CREATE_IDLE);
   const searchRef = useRef<HTMLInputElement>(null);
   useSlashToFocus(searchRef);
 
@@ -115,12 +132,10 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   const titleCount = isSeries ? series.length : kind ? countKind(documents, kind) : 0;
 
   const documentCardProps = {
-    now,
     onAction: actions.onDocumentAction,
     onRename: actions.onDocumentRename,
   };
   const seriesCardProps = {
-    now,
     onAction: actions.onSeriesAction,
     onRename: actions.onSeriesRename,
   };
@@ -135,9 +150,16 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
     void Promise.all([documentsQuery.refetch(), seriesQuery.refetch()]);
   }
 
-  function openCreate(): void {
-    setCreating(isSeries ? "series" : (kind ?? "lesson"));
+  function openCreate(target: CreateTarget = isSeries ? "series" : (kind ?? "lesson")): void {
+    setCreating((current) => ({ target, open: true, session: current.session + 1 }));
   }
+
+  function closeCreate(open: boolean): void {
+    if (!open) setCreating((current) => ({ ...current, open: false }));
+  }
+
+  const createTarget = creating.target;
+  const documentDialogTarget = createTarget === "series" ? null : createTarget;
 
   return (
     <main className="min-h-dvh px-6 py-8 lg:px-12">
@@ -209,14 +231,26 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
             tone="primary"
             icon={LESSON_TILE_ICON}
             className="col-span-2"
-            onClick={() => setCreating("lesson")}
+            onPointerEnter={warmNewDocumentDialog}
+            onFocus={warmNewDocumentDialog}
+            onClick={() => openCreate("lesson")}
           >
             New lesson
           </Tile>
-          <Tile icon={WORKSHEET_TILE_ICON} onClick={() => setCreating("worksheet")}>
+          <Tile
+            icon={WORKSHEET_TILE_ICON}
+            onPointerEnter={warmNewDocumentDialog}
+            onFocus={warmNewDocumentDialog}
+            onClick={() => openCreate("worksheet")}
+          >
             New worksheet
           </Tile>
-          <Tile icon={SERIES_TILE_ICON} onClick={() => setCreating("series")}>
+          <Tile
+            icon={SERIES_TILE_ICON}
+            onPointerEnter={warmNewSeriesDialog}
+            onFocus={warmNewSeriesDialog}
+            onClick={() => openCreate("series")}
+          >
             New series
           </Tile>
         </div>
@@ -305,24 +339,25 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
         )}
       </div>
 
-      {/* Mounted only while open, so each dialog starts from fresh state without a reset effect. */}
+      {/*
+        Mounted from the first open onwards and remounted through `key` on every open, so each
+        dialog starts from fresh state and still stays in the tree while its close animation plays.
+      */}
       <Suspense fallback={null}>
-        {creating === "lesson" || creating === "worksheet" ? (
+        {creating.session > 0 && documentDialogTarget ? (
           <NewDocumentDialog
-            open
-            kind={creating}
-            onOpenChange={(open) => {
-              if (!open) setCreating(null);
-            }}
-            onCreate={(values) => actions.createNewDocument(creating, values)}
+            key={creating.session}
+            open={creating.open}
+            kind={documentDialogTarget}
+            onOpenChange={closeCreate}
+            onCreate={(values) => actions.createNewDocument(documentDialogTarget, values)}
           />
         ) : null}
-        {creating === "series" ? (
+        {creating.session > 0 && createTarget === "series" ? (
           <NewSeriesDialog
-            open
-            onOpenChange={(open) => {
-              if (!open) setCreating(null);
-            }}
+            key={creating.session}
+            open={creating.open}
+            onOpenChange={closeCreate}
             onCreate={actions.createNewSeries}
           />
         ) : null}

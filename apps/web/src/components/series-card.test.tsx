@@ -37,12 +37,7 @@ function renderCard(value = item) {
   const onAction = mock();
   return render(
     <TooltipProvider>
-      <SeriesCard
-        item={value}
-        now={new Date("2026-09-06T12:00:00.000Z").getTime()}
-        onAction={onAction}
-        onRename={() => {}}
-      />
+      <SeriesCard item={value} onAction={onAction} onRename={() => {}} />
     </TooltipProvider>,
   );
 }
@@ -81,12 +76,7 @@ describe("SeriesCard", () => {
     const onAction = mock();
     render(
       <TooltipProvider>
-        <SeriesCard
-          item={item}
-          now={new Date("2026-09-06T12:00:00.000Z").getTime()}
-          onAction={onAction}
-          onRename={() => {}}
-        />
+        <SeriesCard item={item} onAction={onAction} onRename={() => {}} />
       </TooltipProvider>,
     );
 

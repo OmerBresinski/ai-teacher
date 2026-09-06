@@ -33,7 +33,7 @@ function Card({
         data-slot="card"
         // Do not add isolate: card actions must sit above the sibling cover link's z-index.
         className={cn(
-          "flex flex-col overflow-hidden rounded-face bg-card text-card-foreground shadow-1 hover:shadow-2 focus-within:shadow-2",
+          "flex flex-col overflow-hidden rounded-face bg-card text-card-foreground shadow-1 motion-safe:transition-shadow motion-safe:duration-(--duration-fast) hover:shadow-2 focus-within:shadow-2",
           className,
         )}
         {...props}
@@ -90,7 +90,7 @@ function CardOverlay({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-overlay"
       className={cn(
-        "pointer-events-none pointer-coarse:opacity-100 absolute inset-0 z-2 flex items-end justify-between bg-gradient-to-t from-black/30 p-2 opacity-0 transition-opacity duration-fast group-hover/card:opacity-100 group-focus-within/card:opacity-100",
+        "pointer-events-none pointer-coarse:opacity-100 absolute inset-0 z-2 flex items-end justify-between bg-gradient-to-t from-black/30 p-2 opacity-0 motion-safe:transition-opacity motion-safe:duration-(--duration-fast) group-hover/card:opacity-100 group-focus-within/card:opacity-100",
         className,
       )}
       {...props}

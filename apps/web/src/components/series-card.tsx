@@ -13,8 +13,9 @@ import {
   useInlineRename,
 } from "@tj/ui";
 import { Copy, MoreHorizontal, Pencil, Play, Trash2 } from "lucide-react";
-import { absoluteTime, relativeTime } from "@/lib/format";
+import { memo } from "react";
 import type { SeriesWithLessons } from "@/mocks/library-schema";
+import { EditedTime } from "./edited-time";
 import { LessonThumb } from "./lesson-thumb";
 
 type SeriesAction = "present" | "duplicate" | "delete";
@@ -22,7 +23,6 @@ type SeriesAction = "present" | "duplicate" | "delete";
 export type SeriesCardProps = {
   item: SeriesWithLessons;
   headingLevel?: "h2" | "h3";
-  now: number;
   onAction: (action: SeriesAction, item: SeriesWithLessons) => void;
   onRename: (item: SeriesWithLessons, title: string) => void;
 };
@@ -70,10 +70,10 @@ function SeriesMenu({
   );
 }
 
-export function SeriesCard({
+/** Memoised for the same reason as `LibraryCard`: a stable `item` and handlers skip the re-render. */
+export const SeriesCard = memo(function SeriesCard({
   item,
   headingLevel = "h2",
-  now,
   onAction,
   onRename,
 }: SeriesCardProps) {
@@ -122,9 +122,7 @@ export function SeriesCard({
               <p className="mt-1 truncate text-meta tabular-nums text-ink-3">
                 {firstLesson?.yearGroup ? `${firstLesson.yearGroup} · ` : ""}
                 {item.lessons.length} lesson{item.lessons.length === 1 ? "" : "s"} ·{" "}
-                <time dateTime={item.series.updatedAt} title={absoluteTime(item.series.updatedAt)}>
-                  {relativeTime(item.series.updatedAt, now)}
-                </time>
+                <EditedTime updatedAt={item.series.updatedAt} />
               </p>
             </div>
             <div className="relative z-2 flex items-center gap-1 opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100 pointer-coarse:opacity-100">
@@ -163,4 +161,4 @@ export function SeriesCard({
       </Card>
     </article>
   );
-}
+});

@@ -12,7 +12,7 @@ import { cn } from "../lib/cn";
  */
 
 const dropdownMenuContentClass =
-  "z-50 min-w-[180px] rounded-card border border-border bg-popover p-1 text-popover-foreground shadow-2";
+  "z-50 min-w-[180px] rounded-card border border-border bg-popover p-1 text-popover-foreground shadow-2 motion-safe:data-[state=closed]:animate-fade-out";
 const dropdownMenuItemClass =
   "relative flex h-8 cursor-default items-center gap-2 rounded-control px-2 text-body outline-hidden select-none focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:size-4";
 

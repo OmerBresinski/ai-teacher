@@ -29,6 +29,27 @@ import { queryKeys } from "@/lib/query";
 const COLLAPSED_KEY = "tj:sidebar-collapsed";
 const COLLAPSED_EVENT = "tj:sidebar-collapsed";
 
+// Static icons hoisted so a pathname or count change does not rebuild them (rendering-hoist-jsx).
+const ICON = { size: 16, strokeWidth: 1.5 } as const;
+const HOME_ICON = <House {...ICON} />;
+const LESSONS_ICON = <Presentation {...ICON} />;
+const WORKSHEETS_ICON = <FileText {...ICON} />;
+const SERIES_ICON = <Layers {...ICON} />;
+const IMPORT_ICON = <Upload {...ICON} />;
+const SHORTCUTS_ICON = <CircleHelp {...ICON} />;
+const THEME_ICON = <SunMoon {...ICON} />;
+const SIGN_OUT_ICON = <LogOut {...ICON} />;
+const WORDMARK = (
+  <Display as="span" size="md" className="whitespace-nowrap">
+    TeachDeck
+  </Display>
+);
+const MARK = (
+  <Display as="span" size="md">
+    T
+  </Display>
+);
+
 function readCollapsed(): boolean {
   try {
     return localStorage.getItem(COLLAPSED_KEY) === "1";
@@ -95,27 +116,19 @@ export function LibrarySidebar({
       aria-label="Library"
       collapsed={collapsed}
       onCollapsedChange={setCollapsed}
-      wordmark={
-        <Display as="span" size="md" className="whitespace-nowrap">
-          TeachDeck
-        </Display>
-      }
-      mark={
-        <Display as="span" size="md">
-          T
-        </Display>
-      }
+      wordmark={WORDMARK}
+      mark={MARK}
       foot={
         <>
-          <SidebarItem icon={<Upload size={16} strokeWidth={1.5} />} onClick={onImport}>
+          <SidebarItem icon={IMPORT_ICON} onClick={onImport}>
             Import
           </SidebarItem>
-          <SidebarItem icon={<CircleHelp size={16} strokeWidth={1.5} />} onClick={onShortcuts}>
+          <SidebarItem icon={SHORTCUTS_ICON} onClick={onShortcuts}>
             Keyboard shortcuts
           </SidebarItem>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <SidebarItem icon={<SunMoon size={16} strokeWidth={1.5} />}>Theme</SidebarItem>
+              <SidebarItem icon={THEME_ICON}>Theme</SidebarItem>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuRadioGroup
@@ -129,22 +142,18 @@ export function LibrarySidebar({
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <SidebarItem icon={<LogOut size={16} strokeWidth={1.5} />} onClick={() => void signOut()}>
+          <SidebarItem icon={SIGN_OUT_ICON} onClick={() => void signOut()}>
             Sign out
           </SidebarItem>
         </>
       }
     >
-      <SidebarItem
-        asChild
-        icon={<House size={16} strokeWidth={1.5} />}
-        active={isActive(pathname, "/")}
-      >
+      <SidebarItem asChild icon={HOME_ICON} active={isActive(pathname, "/")}>
         <Link to="/">Home</Link>
       </SidebarItem>
       <SidebarItem
         asChild
-        icon={<Presentation size={16} strokeWidth={1.5} />}
+        icon={LESSONS_ICON}
         count={documentCounts?.lesson}
         active={isActive(pathname, "/lessons")}
       >
@@ -152,7 +161,7 @@ export function LibrarySidebar({
       </SidebarItem>
       <SidebarItem
         asChild
-        icon={<FileText size={16} strokeWidth={1.5} />}
+        icon={WORKSHEETS_ICON}
         count={documentCounts?.worksheet}
         active={isActive(pathname, "/worksheets")}
       >
@@ -160,7 +169,7 @@ export function LibrarySidebar({
       </SidebarItem>
       <SidebarItem
         asChild
-        icon={<Layers size={16} strokeWidth={1.5} />}
+        icon={SERIES_ICON}
         count={seriesCount}
         active={isActive(pathname, "/series")}
       >

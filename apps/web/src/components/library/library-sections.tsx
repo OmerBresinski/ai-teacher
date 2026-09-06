@@ -23,8 +23,8 @@ import type { LibraryMode, View } from "./library-model";
  */
 export const GRID = "grid grid-cols-2 items-start gap-6 lg:grid-cols-3 xl:grid-cols-4";
 
-export type DocumentCardCallbacks = Pick<LibraryCardProps, "now" | "onAction" | "onRename">;
-export type SeriesCardCallbacks = Pick<SeriesCardProps, "now" | "onAction" | "onRename">;
+export type DocumentCardCallbacks = Pick<LibraryCardProps, "onAction" | "onRename">;
+export type SeriesCardCallbacks = Pick<SeriesCardProps, "onAction" | "onRename">;
 
 const SERIES_ICON = <Layers strokeWidth={1.5} />;
 const LIBRARY_ICON = <LibraryBig strokeWidth={1.5} />;
