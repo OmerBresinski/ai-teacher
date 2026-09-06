@@ -16,12 +16,13 @@ export function reorderVisible(
   if (moved === undefined) return null;
   const before = insertion >= visibleIds.length ? null : visibleIds[insertion];
   if (before === moved) return null;
-  // Dropping into the gap directly below the moved row is also a no-op.
-  if (insertion === from + 1) return null;
 
   const rest = lessonIds.filter((id) => id !== moved);
   const at = before ? rest.indexOf(before) : -1;
-  return at === -1 ? [...rest, moved] : [...rest.slice(0, at), moved, ...rest.slice(at)];
+  const next = at === -1 ? [...rest, moved] : [...rest.slice(0, at), moved, ...rest.slice(at)];
+  // Dropping into the gap just below the moved row usually reproduces the stored order — unless a
+  // hidden id sits in that gap, in which case the move is real. Compare, do not guess.
+  return next.every((id, index) => id === lessonIds[index]) ? null : next;
 }
 
 /** Move the visible row at `from` one step; `null` at the edges. */

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { useRowDrag } from "./use-row-drag";
 
 const ROW = 56;
@@ -74,6 +74,36 @@ describe("useRowDrag", () => {
     fireEvent.pointerMove(grip, { clientY: 80, pointerId: 2 });
     fireEvent.pointerCancel(grip, { pointerId: 2 });
     expect(screen.getByTestId("state")).toHaveTextContent("idle");
+  });
+
+  it("releases pointer capture on Escape and hands out stable grip props per index", () => {
+    const onDrop = mock();
+    const { rerender } = render(<List onDrop={onDrop} />);
+    mockListTop(0);
+    const grip = screen.getByRole("button", { name: "Reorder a" }) as HTMLElement;
+    const captured: number[] = [];
+    grip.setPointerCapture = (id) => void captured.push(id);
+    grip.hasPointerCapture = (id) => captured.includes(id);
+    grip.releasePointerCapture = (id) => void captured.splice(captured.indexOf(id), 1);
+
+    fireEvent.pointerDown(grip, { button: 0, clientY: 0, pointerId: 7 });
+    fireEvent.pointerMove(grip, { clientY: 80, pointerId: 7 });
+    expect(captured).toEqual([7]);
+    fireEvent.keyDown(grip, { key: "Escape" });
+    expect(captured).toEqual([]);
+
+    rerender(<List onDrop={onDrop} />);
+  });
+
+  it("hands out the same grip props object per index across renders", () => {
+    const { result, rerender } = renderHook(() =>
+      useRowDrag({ rowHeight: ROW, count: 3, onDrop: () => {} }),
+    );
+    const first = result.current.gripProps(1);
+    rerender();
+    // Memoised rows can skip pointer-move re-renders because their props are referentially stable.
+    expect(result.current.gripProps(1)).toBe(first);
+    expect(result.current.gripProps(2)).not.toBe(first);
   });
 
   it("only the primary button starts a drag", () => {

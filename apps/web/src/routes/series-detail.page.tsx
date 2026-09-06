@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { Button, Card, EmptyState, PageTitle } from "@tj/ui";
 import { Layers, Play } from "lucide-react";
 import type * as React from "react";
-import { lazy, Suspense, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { ROW_H, SeriesLessonRow } from "@/components/series/series-lesson-row";
 import { useSeriesActions } from "@/components/series/use-series-actions";
 import { useRowDrag } from "@/hooks/use-row-drag";
@@ -22,6 +22,7 @@ const AddLessonsDialog = lazy(() =>
 const SERIES_ICON = <Layers strokeWidth={1.5} />;
 const PLAY_ICON = <Play aria-hidden size={16} />;
 const EMPTY_LESSONS: SeriesWithLessons["lessons"] = [];
+const EMPTY_IDS: string[] = [];
 
 export function SeriesDetailPage() {
   const { seriesId } = useParams({ from: seriesDetailRoute.id });
@@ -51,33 +52,46 @@ export function SeriesDetailPage() {
 function SeriesDetail({ item }: { item: SeriesWithLessons | undefined }) {
   const actions = useSeriesActions(item);
   const lessons = item?.lessons ?? EMPTY_LESSONS;
-  const lessonIds = item?.series.lessonIds ?? [];
-  const visibleIds = lessons.map((lesson) => lesson.id);
+  const lessonIds = item?.series.lessonIds ?? EMPTY_IDS;
+  const visibleIds = useMemo(() => lessons.map((lesson) => lesson.id), [lessons]);
   const slideCount = lessons.reduce((sum, lesson) => sum + lesson.count, 0);
   const [adding, setAdding] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const rows = useRef(new Map<string, HTMLLIElement>());
   const focusAfterMove = useRef<string | null>(null);
+  // Row callbacks read the latest order through this ref so their identities stay stable and the
+  // memoised rows skip the pointer-move re-renders (advanced-use-latest).
+  const latest = useRef({ lessons, lessonIds, visibleIds, actions });
+  latest.current = { lessons, lessonIds, visibleIds, actions };
 
   // Lessons the Add dialog offers: every lesson not already in this series, newest first.
   const { data: allLessons = EMPTY_LESSONS } = useQuery({
     ...libraryQueries.documents(),
     select: librarySelectors.byKind("lesson"),
   });
-  const inSeries = new Set(lessonIds);
-  const candidates = allLessons.filter((lesson) => !inSeries.has(lesson.id));
+  const candidates = useMemo(() => {
+    const inSeries = new Set(lessonIds);
+    return allLessons.filter((lesson) => !inSeries.has(lesson.id));
+  }, [allLessons, lessonIds]);
 
-  function commitOrder(next: string[] | null, movedId: string | undefined, position: number): void {
-    if (!next) return;
-    focusAfterMove.current = movedId ?? null;
-    actions.setOrder(next);
-    setAnnouncement(`Moved to position ${position}`);
-  }
+  const commitOrder = useCallback(
+    (next: string[] | null, movedId: string | undefined, position: number): void => {
+      if (!next) return;
+      focusAfterMove.current = movedId ?? null;
+      latest.current.actions.setOrder(next);
+      setAnnouncement(`Moved to position ${position}`);
+    },
+    [],
+  );
 
-  function move(index: number, direction: -1 | 1): void {
-    const next = stepVisible(lessonIds, visibleIds, index, direction);
-    commitOrder(next, visibleIds[index], index + direction + 1);
-  }
+  const move = useCallback(
+    (index: number, direction: -1 | 1): void => {
+      const { lessonIds, visibleIds } = latest.current;
+      const next = stepVisible(lessonIds, visibleIds, index, direction);
+      commitOrder(next, visibleIds[index], index + direction + 1);
+    },
+    [commitOrder],
+  );
 
   const drag = useRowDrag({
     rowHeight: ROW_H,
@@ -88,28 +102,49 @@ function SeriesDetail({ item }: { item: SeriesWithLessons | undefined }) {
     },
   });
 
-  // The moved row keeps focus across the re-render: rows are keyed by id, so the node persists.
-  const rowRef = (id: string) => (node: HTMLLIElement | null) => {
-    if (node) rows.current.set(id, node);
-    else rows.current.delete(id);
-    if (node && focusAfterMove.current === id && visibleIds.indexOf(id) !== -1) {
-      node.focus();
-      focusAfterMove.current = null;
+  // Callback refs, one per lesson id, kept across renders. The moved row keeps focus after a
+  // reorder: rows are keyed by id, so the node persists and is re-attached here.
+  const rowRefs = useRef(new Map<string, (node: HTMLLIElement | null) => void>());
+  const rowRef = (id: string) => {
+    let ref = rowRefs.current.get(id);
+    if (!ref) {
+      ref = (node) => {
+        if (node) rows.current.set(id, node);
+        else rows.current.delete(id);
+        if (node && focusAfterMove.current === id) {
+          node.focus();
+          focusAfterMove.current = null;
+        }
+      };
+      rowRefs.current.set(id, ref);
     }
+    return ref;
   };
 
-  function onRowKeyDown(event: React.KeyboardEvent<HTMLLIElement>, index: number): void {
-    if (event.target !== event.currentTarget) return;
-    const direction = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
-    if (direction === 0) return;
-    event.preventDefault();
-    if (event.metaKey || event.ctrlKey) {
-      move(index, direction);
-      return;
-    }
-    const nextId = visibleIds[index + direction];
-    if (nextId) rows.current.get(nextId)?.focus();
-  }
+  const onRowKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLLIElement>, index: number): void => {
+      if (event.target !== event.currentTarget) return;
+      const direction = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
+      if (direction === 0) return;
+      event.preventDefault();
+      if (event.metaKey || event.ctrlKey) {
+        move(index, direction);
+        return;
+      }
+      const nextId = latest.current.visibleIds[index + direction];
+      if (nextId) rows.current.get(nextId)?.focus();
+    },
+    [move],
+  );
+
+  const onGripActivate = useCallback((index: number): void => {
+    rows.current.get(latest.current.visibleIds[index] ?? "")?.focus();
+  }, []);
+
+  const onRemove = useCallback((index: number): void => {
+    const lesson = latest.current.lessons[index];
+    if (lesson) latest.current.actions.remove(lesson.id, lesson.title, index);
+  }, []);
 
   return (
     <main className="min-h-dvh px-6 py-8 lg:px-12">
@@ -155,12 +190,9 @@ function SeriesDetail({ item }: { item: SeriesWithLessons | undefined }) {
                   total={lessons.length}
                   dragging={drag.drag.from === index}
                   gripProps={drag.gripProps(index)}
-                  onGripActivate={(i) => rows.current.get(visibleIds[i] ?? "")?.focus()}
+                  onGripActivate={onGripActivate}
                   onMove={move}
-                  onRemove={(i) => {
-                    const lesson = lessons[i];
-                    if (lesson) actions.remove(lesson.id, lesson.title, i);
-                  }}
+                  onRemove={onRemove}
                   onRowKeyDown={onRowKeyDown}
                   rowRef={rowRef(lesson.id)}
                 />

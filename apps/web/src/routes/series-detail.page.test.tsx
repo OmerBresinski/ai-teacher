@@ -1,10 +1,15 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import { loadSeriesWithLessons, resetLibraryStore } from "@/mocks/library-store";
+import {
+  createSeries,
+  listSeriesWithLessons,
+  loadSeriesWithLessons,
+  resetLibraryStore,
+} from "@/mocks/library-store";
 
 let seriesId = "series-romans";
 const navigate = mock();
@@ -118,11 +123,57 @@ describe("SeriesDetailPage", () => {
     await waitFor(() => expect(rows()).toEqual(["roman-roads", "demo-fractions", "roman-army"]));
   });
 
+  it("renames through the page title and the series list picks it up", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.dblClick(await screen.findByRole("heading", { name: "The Romans" }));
+    const input = screen.getByRole("textbox", { name: "Series name" });
+    await user.clear(input);
+    await user.type(input, "Rome and its roads{Enter}");
+
+    expect(await screen.findByRole("heading", { name: "Rome and its roads" })).toBeVisible();
+    const list = await listSeriesWithLessons();
+    expect(list.find((item) => item.series.id === "series-romans")?.series.title).toBe(
+      "Rome and its roads",
+    );
+  });
+
+  it("adds lessons in candidate order, not click order", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("heading", { name: "The Romans" });
+    await waitFor(() => expect(rows()).toHaveLength(3));
+
+    await user.click(screen.getByRole("button", { name: "Add lesson" }));
+    const dialog = await screen.findByRole("dialog");
+    const boxes = within(dialog).getAllByRole("checkbox");
+    const [first, second] = boxes.map((box) => box.getAttribute("aria-labelledby"));
+    const nameOf = (id: string | null | undefined) =>
+      (id && document.getElementById(id)?.textContent) ?? "";
+    const [firstTitle, secondTitle] = [nameOf(first), nameOf(second)];
+    expect(firstTitle && secondTitle).toBeTruthy();
+
+    await user.click(boxes[1] as HTMLElement);
+    await user.click(boxes[0] as HTMLElement);
+    await user.click(within(dialog).getByRole("button", { name: "Add 2 lessons" }));
+
+    await waitFor(() => expect(rows()).toHaveLength(5));
+    const stored = await loadSeriesWithLessons("series-romans");
+    expect(stored?.lessons.slice(3).map((lesson) => lesson.title)).toEqual([
+      firstTitle,
+      secondTitle,
+    ]);
+  });
+
   it("renders the empty series and the missing series states", async () => {
-    seriesId = "series-fractions";
+    const empty = await createSeries("Blank unit");
+    seriesId = empty.id;
     const { unmount } = renderPage();
-    await screen.findByRole("heading", { name: "Fractions unit" });
-    await waitFor(() => expect(rows()).toHaveLength(2));
+    await screen.findByRole("heading", { name: "Blank unit" });
+    expect(screen.getByText("No lessons in this series")).toBeVisible();
+    expect(screen.getByText("No lessons yet")).toBeVisible();
+    expect(screen.getAllByRole("button", { name: "Add lesson" })).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "Present series" })).toBeNull();
     unmount();
 
     seriesId = "does-not-exist";

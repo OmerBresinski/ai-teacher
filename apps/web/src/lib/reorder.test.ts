@@ -20,6 +20,8 @@ describe("reorderVisible", () => {
     const visible = ["a", "b", "c"];
     expect(reorderVisible(stored, visible, 2, 0)).toEqual(["c", "a", "trash", "b"]);
     expect(reorderVisible(stored, visible, 0, 3)).toEqual(["trash", "b", "c", "a"]);
+    // The gap below "a" holds a hidden id, so dropping there hops over it (TeachDeck parity).
+    expect(reorderVisible(["a", "trash", "b"], ["a", "b"], 0, 1)).toEqual(["trash", "a", "b"]);
   });
 });
 
