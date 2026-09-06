@@ -3,7 +3,7 @@ import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
 import { ZodError } from "zod";
 import {
   getTerminalJobEvent,
-  hasAnyJobEvent,
+  hasQueuedJobEvent,
   insertJobEvent,
   JOB_EVENTS_CHANNEL,
   type JobEventNotification,
@@ -138,11 +138,14 @@ describeDb("job events", () => {
     expect(await getTerminalJobEvent(unsafeDb, { workspaceId: wsB, jobId })).toBeUndefined();
   });
 
-  test("hasAnyJobEvent is true from the first queued row, scoped to the Workspace", async () => {
+  test("hasQueuedJobEvent is true only once the queued row exists, scoped to the Workspace", async () => {
     const jobId = newId<JobId>();
-    expect(await hasAnyJobEvent(forWorkspace(unsafeDb, wsA), jobId)).toBe(false);
+    const ws = forWorkspace(unsafeDb, wsA);
+    expect(await hasQueuedJobEvent(ws, jobId)).toBe(false);
+    await insertJobEvent(unsafeDb, { type: "started", jobId, workspaceId: wsA, at: at() });
+    expect(await hasQueuedJobEvent(ws, jobId)).toBe(false);
     await insertJobEvent(unsafeDb, { type: "queued", jobId, workspaceId: wsA, at: at() });
-    expect(await hasAnyJobEvent(forWorkspace(unsafeDb, wsA), jobId)).toBe(true);
-    expect(await hasAnyJobEvent(forWorkspace(unsafeDb, wsB), jobId)).toBe(false);
+    expect(await hasQueuedJobEvent(ws, jobId)).toBe(true);
+    expect(await hasQueuedJobEvent(forWorkspace(unsafeDb, wsB), jobId)).toBe(false);
   });
 });

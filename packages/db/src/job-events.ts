@@ -113,10 +113,18 @@ export function getTerminalJobEvent(
   return terminalJobEventFor(forWorkspace(db, workspaceId), jobId);
 }
 
-/** Whether any event at all — `queued` included — was ever written for `jobId` in `ws`. */
-export async function hasAnyJobEvent(ws: WorkspaceDb, jobId: JobId): Promise<boolean> {
+/**
+ * Whether the `queued` event `enqueue()` writes exists for `jobId` in `ws`. `enqueue` sends to
+ * pg-boss before inserting `queued`, so a job may have `started` and still lack it (TEACH-82 X3);
+ * ADR 0025 §24 keys the stale-lock window on this row specifically.
+ */
+export async function hasQueuedJobEvent(ws: WorkspaceDb, jobId: JobId): Promise<boolean> {
   const rows = await ws
-    .project({ id: jobEvents.id }, jobEvents, eq(jobEvents.jobId, jobId))
+    .project(
+      { id: jobEvents.id },
+      jobEvents,
+      and(eq(jobEvents.jobId, jobId), eq(jobEvents.type, "queued")),
+    )
     .limit(1);
   return rows.length > 0;
 }

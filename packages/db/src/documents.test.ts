@@ -311,6 +311,20 @@ describeDb("documents repository", () => {
       expect((await releaseStaleLock(wsA, row, { logger })).generatingJobId).toBe(jobId);
     });
 
+    test("started/progress but no queued row (enqueue's insert failed): released after the window", async () => {
+      const jobId = newId<JobId>();
+      const row = await createDocument(wsA, "lesson", lessonFixture(), { generatingJobId: jobId });
+      await insertJobEvent(unsafeDb, event(jobId, "started"));
+      await insertJobEvent(unsafeDb, event(jobId, "progress"));
+      const recent = new Date(row.updatedAt.getTime() + 2 * 60_000);
+      expect((await releaseStaleLock(wsA, row, { now: recent, logger })).generatingJobId).toBe(
+        jobId,
+      );
+      const late = new Date(row.updatedAt.getTime() + STALE_LOCK_AFTER_MS + 60_000);
+      expect((await releaseStaleLock(wsA, row, { now: late, logger })).generatingJobId).toBeNull();
+      expect(logs).toEqual([{ lessonId: row.id, jobId, reason: "never_queued" }]);
+    });
+
     test("no event at all: released after the stale window, untouched inside it", async () => {
       const jobId = newId<JobId>();
       const row = await createDocument(wsA, "lesson", lessonFixture(), { generatingJobId: jobId });
@@ -325,7 +339,7 @@ describeDb("documents repository", () => {
       expect(logs).toEqual([{ lessonId: row.id, jobId, reason: "never_queued" }]);
     });
 
-    test("only queued/started/progress events: untouched however old the row is", async () => {
+    test("a queued job (queued/started/progress events): untouched however old the row is", async () => {
       const jobId = newId<JobId>();
       const row = await createDocument(wsA, "lesson", lessonFixture(), { generatingJobId: jobId });
       await insertJobEvent(unsafeDb, event(jobId, "queued"));

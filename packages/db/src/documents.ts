@@ -26,7 +26,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { z } from "zod";
-import { hasAnyJobEvent, terminalJobEventFor } from "./job-events";
+import { hasQueuedJobEvent, terminalJobEventFor } from "./job-events";
 import { documents } from "./schema/documents";
 import type { WorkspaceDb } from "./tenant";
 
@@ -442,8 +442,10 @@ export async function clearGenerating(ws: WorkspaceDb, id: string, jobId: JobId)
 
 /**
  * Self-heal for the PR #110 residual (ADR 0025 §24): a row whose `generating_job_id` names a job
- * that has already written a terminal event, or that never wrote any event and has not been
- * touched for `staleAfterMs`, is locked by nothing. `GET /documents/:id` calls this before
+ * that has already written a terminal event, or that has no `queued` event and has not been
+ * touched for `staleAfterMs`, is locked by nothing. (A job that `started` without a `queued` row —
+ * `enqueue()`'s insert failed after `boss.send()` — is unlocked by the window too; if it is somehow
+ * still running, its next `putDocumentAsJob` answers `lost_lock` and it stops, §6.) `GET /documents/:id` calls this before
  * answering so a teacher is never shown a lesson locked by a dead job for more than ten minutes.
  * Returns the row as it stands afterwards; untouched rows come back as given.
  */
@@ -468,7 +470,7 @@ async function staleLockReason(
   opts: ReleaseStaleLockOptions,
 ): Promise<"terminal" | "never_queued" | null> {
   if ((await terminalJobEventFor(ws, jobId)) !== undefined) return "terminal";
-  if (await hasAnyJobEvent(ws, jobId)) return null;
+  if (await hasQueuedJobEvent(ws, jobId)) return null;
   const now = opts.now ?? new Date();
   const staleAfterMs = opts.staleAfterMs ?? STALE_LOCK_AFTER_MS;
   return now.getTime() - row.updatedAt.getTime() > staleAfterMs ? "never_queued" : null;

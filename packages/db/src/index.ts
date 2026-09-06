@@ -33,7 +33,7 @@ export {
 } from "./documents";
 export {
   getTerminalJobEvent,
-  hasAnyJobEvent,
+  hasQueuedJobEvent,
   insertJobEvent,
   JOB_EVENTS_CHANNEL,
   type JobEventNotification,
