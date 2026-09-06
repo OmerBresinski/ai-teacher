@@ -7,7 +7,7 @@ import {
 } from "@tj/domain/documents";
 import { AppBar, AppBarGroup, AppBarTitle, Button, cn, IconButton, Switch } from "@tj/ui";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { memo, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { getTheme } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideStatic } from "../slide/SlideStatic";
@@ -274,8 +274,10 @@ export function LessonViewer({
 /**
  * One slide in the rail: a 168px picture with its number beside it, current slide ringed in the
  * accent. A raw button on purpose: `Button` would put a control's height and padding on a picture.
+ * Memoised: every step or answer toggle re-renders the viewer, and only the row whose `current`
+ * flips should repaint its thumbnail (`onSelect` is a stable `useCallback`).
  */
-function RailRow({
+const RailRow = memo(function RailRow({
   slide,
   theme,
   number,
@@ -314,4 +316,4 @@ function RailRow({
       </span>
     </button>
   );
-}
+});

@@ -45,7 +45,7 @@ describe("LessonViewerPage", () => {
     renderPage();
     expect((await screen.findAllByText("The water cycle"))[0]).toBeVisible();
     expect(screen.getByText(/\d+ slides/)).toBeVisible();
-    expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("aria-disabled", "true");
     fireEvent.keyDown(window, { key: "ArrowRight" });
     fireEvent.click(screen.getByRole("button", { name: "Present" }));
     expect(navigate).toHaveBeenCalledWith({

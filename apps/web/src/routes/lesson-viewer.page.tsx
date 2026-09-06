@@ -45,8 +45,10 @@ export function LessonViewerPage() {
         </IconButton>
       }
       exportSlot={
+        // `aria-disabled`, not `disabled`: a disabled button swallows pointer and focus events, so
+        // its tooltip could never open. This one announces as disabled, stays focusable and does nothing.
         <Tooltip label="Export arrives with the export phase">
-          <Button variant="ghost" size="sm" disabled>
+          <Button variant="ghost" size="sm" aria-disabled="true" className="opacity-50">
             Export
           </Button>
         </Tooltip>
