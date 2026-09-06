@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { z } from "zod";
 import { libraryQueries } from "@/lib/library";
 import { authLayoutRoute } from "./auth.route";
 
@@ -18,6 +19,8 @@ export const lessonPresentRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: "/l/$lessonId/present",
   loader: editorLoader,
+  validateSearch: (search) =>
+    z.object({ series: z.string().optional().catch(undefined) }).parse(search),
   component: lazyRouteComponent(() => import("./editor-stubs.page"), "EditorStubPage"),
 });
 

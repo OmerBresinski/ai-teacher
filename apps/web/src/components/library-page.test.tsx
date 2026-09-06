@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { QueryClient, QueryClientProvider, queryOptions } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import * as ui from "@tj/ui";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { libraryQueries } from "@/lib/library";
@@ -144,8 +145,36 @@ describe("LibraryPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Recent" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Earlier" })).toBeVisible();
-    expect(screen.getByRole("list", { name: "Recent" })).toBeVisible();
-    expect(screen.getByRole("list", { name: "Earlier" })).toBeVisible();
+    expect(screen.getByRole("table", { name: "Recent" })).toBeVisible();
+    expect(screen.getByRole("table", { name: "Earlier" })).toBeVisible();
+  });
+
+  it("deletes through a six-second Undo toast and restores the document", async () => {
+    const toastSpy = spyOn(ui, "toast");
+    renderPage("lesson");
+
+    await screen.findByText("The water cycle");
+    const menuTrigger = screen.getAllByRole("button", { name: "More actions" })[0];
+    if (!menuTrigger) throw new Error("Library card menu trigger is missing");
+    fireEvent.pointerDown(menuTrigger, {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+    const deletedToast = toastSpy.mock.calls.find(([message]) =>
+      String(message).startsWith("Deleted “"),
+    );
+    if (!deletedToast) throw new Error("Delete toast is missing");
+    const options = deletedToast[1] as unknown as {
+      duration: number;
+      action: { onClick: () => void };
+    };
+    expect(options.duration).toBe(6000);
+    options.action.onClick();
+    const title = String(deletedToast[0]).slice(9, -1);
+    await waitFor(() => expect(screen.getByText(title)).toBeVisible());
+    toastSpy.mockRestore();
   });
 });
 

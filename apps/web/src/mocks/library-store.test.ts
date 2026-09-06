@@ -9,7 +9,9 @@ import {
   renameDocument,
   resetLibraryStore,
   restoreDocument,
+  restoreSeries,
   softDeleteDocument,
+  softDeleteSeries,
 } from "./library-store";
 
 beforeEach(resetLibraryStore);
@@ -36,6 +38,16 @@ describe("library store", () => {
     await purgeDocument("demo-fractions");
     const rows = await listSeriesWithLessons();
     expect(rows.every((row) => !row.series.lessonIds.includes("demo-fractions"))).toBe(true);
+  });
+
+  it("restores a soft-deleted series with its lesson order intact", async () => {
+    const before = await loadSeriesWithLessons("series-romans");
+    await expect(softDeleteSeries("series-romans")).resolves.toBe(true);
+    await expect(loadSeriesWithLessons("series-romans")).resolves.toBeNull();
+    await expect(restoreSeries("series-romans")).resolves.toBe(true);
+    expect((await loadSeriesWithLessons("series-romans"))?.series.lessonIds).toEqual(
+      before?.series.lessonIds,
+    );
   });
 
   it("adds each new lesson once and leaves existing memberships in place", async () => {

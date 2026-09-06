@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Button,
@@ -12,10 +12,12 @@ import {
   EmptyState,
   IconButton,
   IconGroup,
+  ListSurface,
+  ListSurfaceCell,
+  ListSurfaceHeader,
   SearchInput,
   SectionHeading,
   Skeleton,
-  Stack,
   Tile,
   toast,
 } from "@tj/ui";
@@ -29,10 +31,12 @@ import {
   Presentation,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { LibraryCard, type LibraryCardProps } from "@/components/library-card";
 import { useLibraryShell } from "@/components/library-shell-context";
+import { SeriesCard, type SeriesCardProps } from "@/components/series-card";
 import { useDocumentTitle } from "@/hooks/use-document-title";
-import { libraryQueries, sortDocuments } from "@/lib/library";
-import { LIBRARY_THEMES } from "@/mocks/library-fixtures";
+import { useNow } from "@/hooks/use-now";
+import { libraryMutations, libraryQueries, sortDocuments } from "@/lib/library";
 import type { DocumentSummary, SeriesWithLessons } from "@/mocks/library-schema";
 
 export type LibraryMode = "home" | "lesson" | "worksheet" | "series";
@@ -56,7 +60,6 @@ const HOME_BANDS = 3;
 const SPLIT_AT = 8;
 const RECENT_MS = 7 * 24 * 60 * 60 * 1000;
 const GRID = "grid grid-cols-2 gap-6 lg:grid-cols-3 xl:grid-cols-4";
-const FALLBACK_THEME = { swatch: "#F2EFE8", ink: "#1F2328" };
 const SKELETON_KEYS = ["one", "two", "three", "four"] as const;
 
 function readPreference<T extends string>(key: string, values: readonly T[], fallback: T): T {
@@ -103,14 +106,6 @@ function usePreference<T extends string>(
   return [value, (next) => writePreference(key, next)];
 }
 
-function documentHref(document: DocumentSummary): "/l/$lessonId" | "/w/$worksheetId" {
-  return document.kind === "lesson" ? "/l/$lessonId" : "/w/$worksheetId";
-}
-
-function themeFor(themeId: string): { swatch: string; ink: string } {
-  return LIBRARY_THEMES.find((theme) => theme.id === themeId) ?? FALLBACK_THEME;
-}
-
 function isRecent(updatedAt: string): boolean {
   return Date.now() - Date.parse(updatedAt) < RECENT_MS;
 }
@@ -120,7 +115,17 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   const { openImport } = useLibraryShell();
   const documents = useQuery(libraryQueries.documents());
   const series = useQuery(libraryQueries.series());
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const now = useNow();
+  const duplicateDocument = useMutation(libraryMutations.duplicateDocument(queryClient));
+  const renameDocument = useMutation(libraryMutations.renameDocument(queryClient));
+  const softDeleteDocument = useMutation(libraryMutations.softDeleteDocument(queryClient));
+  const restoreDocument = useMutation(libraryMutations.restoreDocument(queryClient));
+  const duplicateSeries = useMutation(libraryMutations.duplicateSeries(queryClient));
+  const renameSeries = useMutation(libraryMutations.renameSeries(queryClient));
+  const softDeleteSeries = useMutation(libraryMutations.softDeleteSeries(queryClient));
+  const restoreSeries = useMutation(libraryMutations.restoreSeries(queryClient));
   const search = useRouterState({ select: (state) => state.location.search });
   const query = typeof search.q === "string" ? search.q : "";
   const [sort, setSort] = usePreference<Sort>(
@@ -209,6 +214,77 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   function announceCreation(): void {
     toast("Creation dialogs arrive in the next ticket");
   }
+
+  function onDocumentAction(
+    action: Parameters<LibraryCardProps["onAction"]>[0],
+    doc: DocumentSummary,
+  ): void {
+    if (action === "open") {
+      if (doc.kind === "lesson")
+        void navigate({ to: "/l/$lessonId", params: { lessonId: doc.id } });
+      else void navigate({ to: "/w/$worksheetId", params: { worksheetId: doc.id } });
+      return;
+    }
+    if (action === "present") {
+      void navigate({ to: "/l/$lessonId/present", params: { lessonId: doc.id } });
+      return;
+    }
+    if (action === "duplicate") {
+      duplicateDocument.mutate([doc.id], { onSuccess: () => toast(`Duplicated “${doc.title}”`) });
+      return;
+    }
+    if (action === "delete") {
+      softDeleteDocument.mutate(doc.id, {
+        onSuccess: () =>
+          toast(`Deleted “${doc.title}”`, {
+            duration: 6000,
+            action: { label: "Undo", onClick: () => restoreDocument.mutate(doc.id) },
+          }),
+      });
+    }
+  }
+
+  function onSeriesAction(
+    action: Parameters<SeriesCardProps["onAction"]>[0],
+    item: SeriesWithLessons,
+  ): void {
+    if (action === "present") {
+      const firstLesson = item.lessons[0];
+      if (firstLesson) {
+        void navigate({
+          to: "/l/$lessonId/present",
+          params: { lessonId: firstLesson.id },
+          search: { series: item.series.id },
+        });
+      }
+      return;
+    }
+    if (action === "duplicate") {
+      duplicateSeries.mutate([item.series.id], {
+        onSuccess: () => toast(`Duplicated “${item.series.title}”`),
+      });
+      return;
+    }
+    softDeleteSeries.mutate(item.series.id, {
+      onSuccess: () =>
+        toast(`Deleted “${item.series.title}”`, {
+          duration: 6000,
+          action: { label: "Undo", onClick: () => restoreSeries.mutate(item.series.id) },
+        }),
+    });
+  }
+
+  const documentCardProps = {
+    now,
+    onAction: onDocumentAction,
+    onRename: (doc: DocumentSummary, title: string) => renameDocument.mutate([doc.id, title]),
+  };
+  const seriesCardProps = {
+    now,
+    onAction: onSeriesAction,
+    onRename: (item: SeriesWithLessons, title: string) =>
+      renameSeries.mutate([item.series.id, title]),
+  };
 
   const titleCount = isSeries ? allSeries.length : kindDocuments.length;
 
@@ -315,24 +391,28 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
                 <SectionHeading className="mb-4">Recent</SectionHeading>
                 {hero ? (
                   <div className={GRID}>
-                    <DocumentCard document={hero} className="col-span-2" />
+                    <LibraryCard doc={hero} hero className="col-span-2" {...documentCardProps} />
                     {beside.map((document) => (
-                      <DocumentCard key={document.id} document={document} />
+                      <LibraryCard key={document.id} doc={document} {...documentCardProps} />
                     ))}
                   </div>
                 ) : (
-                  <DocumentGrid documents={beside} />
+                  <DocumentGrid documents={beside} {...documentCardProps} />
                 )}
               </section>
             ) : null}
             <HomeSection title="Lessons" count={lessons.length} to="/lessons">
-              <DocumentGrid documents={lessons.slice(0, HOME_CARDS)} />
+              <DocumentGrid documents={lessons.slice(0, HOME_CARDS)} {...documentCardProps} />
             </HomeSection>
             <HomeSection title="Worksheets" count={worksheets.length} to="/worksheets">
-              <DocumentGrid documents={worksheets.slice(0, HOME_CARDS)} />
+              <DocumentGrid documents={worksheets.slice(0, HOME_CARDS)} {...documentCardProps} />
             </HomeSection>
             <HomeSection title="Series" count={allSeries.length} to="/series">
-              <SeriesGrid series={matchedSeries.slice(0, HOME_BANDS)} headingLevel="h3" />
+              <SeriesGrid
+                series={matchedSeries.slice(0, HOME_BANDS)}
+                headingLevel="h3"
+                {...seriesCardProps}
+              />
             </HomeSection>
           </>
         ) : empty ? (
@@ -342,26 +422,41 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
             <EmptyLibrary mode={mode} onCreate={announceCreation} onImport={openImport} />
           )
         ) : isSeries ? (
-          <SeriesGrid series={matchedSeries} />
+          <SeriesGrid series={matchedSeries} {...seriesCardProps} />
         ) : split ? (
           <>
             <section className="mb-8">
               <SectionHeading className="mb-4" count={splitRecent.length}>
                 Recent
               </SectionHeading>
-              <DocumentResults documents={splitRecent} view={view} label="Recent" />
+              <DocumentResults
+                documents={splitRecent}
+                view={view}
+                label="Recent"
+                {...documentCardProps}
+              />
             </section>
             <section>
               <SectionHeading className="mb-4" count={splitEarlier.length}>
                 Earlier
               </SectionHeading>
-              <DocumentResults documents={splitEarlier} view={view} label="Earlier" />
+              <DocumentResults
+                documents={splitEarlier}
+                view={view}
+                label="Earlier"
+                {...documentCardProps}
+              />
             </section>
           </>
         ) : view === "list" ? (
-          <DocumentResults documents={matchedDocuments} view={view} label={TITLES[mode]} />
+          <DocumentResults
+            documents={matchedDocuments}
+            view={view}
+            label={TITLES[mode]}
+            {...documentCardProps}
+          />
         ) : (
-          <DocumentGrid documents={matchedDocuments} />
+          <DocumentGrid documents={matchedDocuments} {...documentCardProps} />
         )}
       </div>
     </main>
@@ -398,12 +493,18 @@ function HomeSection({
   );
 }
 
-function DocumentGrid({ documents }: { documents: DocumentSummary[] }) {
+type DocumentCardCallbacks = Pick<LibraryCardProps, "now" | "onAction" | "onRename">;
+type SeriesCardCallbacks = Pick<SeriesCardProps, "now" | "onAction" | "onRename">;
+
+function DocumentGrid({
+  documents,
+  ...cardProps
+}: { documents: DocumentSummary[] } & DocumentCardCallbacks) {
   // The reference fixed four columns; this responsive grid keeps the same density on wide screens.
   return (
     <div className={GRID}>
       {documents.map((document) => (
-        <DocumentCard key={document.id} document={document} />
+        <LibraryCard key={document.id} doc={document} {...cardProps} />
       ))}
     </div>
   );
@@ -413,104 +514,58 @@ function DocumentResults({
   documents,
   view,
   label,
+  ...cardProps
 }: {
   documents: DocumentSummary[];
   view: View;
   label: string;
-}) {
-  if (view === "grid") return <DocumentGrid documents={documents} />;
+} & DocumentCardCallbacks) {
+  if (view === "grid") return <DocumentGrid documents={documents} {...cardProps} />;
   return (
-    <ul aria-label={label} className="space-y-3">
-      {documents.map((document) => (
-        <li key={document.id}>
-          <DocumentCard document={document} list />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function DocumentCard({
-  document,
-  className,
-  list = false,
-}: {
-  document: DocumentSummary;
-  className?: string;
-  list?: boolean;
-}) {
-  const theme = themeFor(document.themeId);
-  const href = documentHref(document);
-  const meta = `${document.count} ${document.kind === "lesson" ? "slides" : "blocks"}${document.subject ? ` · ${document.subject}` : ""}`;
-  return (
-    <Card
-      className={`${list ? "flex-row items-center gap-0 py-0" : "gap-0 overflow-hidden py-0"} ${className ?? ""}`}
+    <ListSurface
+      aria-label={label}
+      header={
+        <ListSurfaceHeader>
+          <ListSurfaceCell header className="w-16">
+            Thumbnail
+          </ListSurfaceCell>
+          <ListSurfaceCell header>Title</ListSurfaceCell>
+          <ListSurfaceCell header className="w-32">
+            Year and subject
+          </ListSurfaceCell>
+          <ListSurfaceCell header className="w-[152px]">
+            Size
+          </ListSurfaceCell>
+          <ListSurfaceCell header className="w-24">
+            Edited
+          </ListSurfaceCell>
+          <ListSurfaceCell header className="w-[104px] text-right">
+            Actions
+          </ListSurfaceCell>
+        </ListSurfaceHeader>
+      }
     >
-      <Link
-        to={href}
-        params={
-          document.kind === "lesson" ? { lessonId: document.id } : { worksheetId: document.id }
-        }
-        className={list ? "flex min-w-0 flex-1 items-center gap-4 p-4" : "block"}
-      >
-        <div
-          aria-hidden
-          className={list ? "size-16 shrink-0 rounded-control" : "aspect-video w-full"}
-          style={{ backgroundColor: theme.swatch }}
-        />
-        <div className={list ? "min-w-0" : "p-4"}>
-          <h3 className="truncate font-semibold">{document.title}</h3>
-          <p className="mt-1 text-meta text-ink-3">{meta}</p>
-        </div>
-      </Link>
-    </Card>
+      {documents.map((document) => (
+        <LibraryCard key={document.id} doc={document} view="list" {...cardProps} />
+      ))}
+    </ListSurface>
   );
 }
 
 function SeriesGrid({
   series,
   headingLevel = "h2",
+  ...cardProps
 }: {
   series: SeriesWithLessons[];
   headingLevel?: "h2" | "h3";
-}) {
+} & SeriesCardCallbacks) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {series.map((item) => (
-        <SeriesBand key={item.series.id} item={item} headingLevel={headingLevel} />
+        <SeriesCard key={item.series.id} item={item} headingLevel={headingLevel} {...cardProps} />
       ))}
     </div>
-  );
-}
-
-function SeriesBand({
-  item,
-  headingLevel,
-}: {
-  item: SeriesWithLessons;
-  headingLevel: "h2" | "h3";
-}) {
-  const Title = headingLevel;
-  return (
-    <Card className="gap-3 p-4">
-      <Link to="/series/$seriesId" params={{ seriesId: item.series.id }} className="block">
-        <Stack
-          sheets={item.lessons
-            .slice(0, 3)
-            .map((lesson) => (
-              <span
-                key={lesson.id}
-                aria-hidden
-                className="block size-full"
-                style={{ backgroundColor: themeFor(lesson.themeId).swatch }}
-              />
-            ))}
-          width={120}
-        />
-        <Title className="mt-4 font-semibold">{item.series.title}</Title>
-        <p className="mt-1 text-meta text-ink-3">{item.lessons.length} lessons</p>
-      </Link>
-    </Card>
   );
 }
 

@@ -7,12 +7,90 @@ import { cn } from "../lib/cn";
  * Shadcn semantic token names resolve to TeachDeck values in `globals.css`.
  */
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+export type CardProps = React.ComponentProps<"div"> & {
+  variant?: "default" | "contained";
+  thumbnail?: React.ReactNode;
+  overlay?: React.ReactNode;
+  heading?: React.ReactNode;
+  meta?: React.ReactNode;
+  aspect?: "16:9" | "4:3";
+};
+
+function Card({
+  className,
+  variant = "default",
+  thumbnail,
+  overlay,
+  heading,
+  meta,
+  aspect = "16:9",
+  children,
+  ...props
+}: CardProps) {
+  if (variant === "contained") {
+    return (
+      <div
+        data-slot="card"
+        // Do not add isolate: card actions must sit above the sibling cover link's z-index.
+        className={cn(
+          "flex flex-col overflow-hidden rounded-face bg-card text-card-foreground shadow-1 hover:shadow-2 focus-within:shadow-2",
+          className,
+        )}
+        {...props}
+      >
+        <div
+          data-slot="card-thumbnail"
+          className={cn(
+            "relative order-1 shrink-0 border-b border-border",
+            aspect === "16:9" ? "aspect-video" : "aspect-[4/3]",
+          )}
+        >
+          {thumbnail}
+          {overlay}
+        </div>
+        <div data-slot="card-footer" className="order-2 flex flex-col gap-1 px-4 py-3">
+          {heading ? (
+            <div
+              data-slot="card-heading"
+              className="truncate text-lead font-semibold text-foreground"
+            >
+              {heading}
+            </div>
+          ) : null}
+          {meta ? (
+            <div
+              data-slot="card-meta"
+              className="flex items-center gap-1.5 truncate text-meta tabular-nums text-ink-3"
+            >
+              {meta}
+            </div>
+          ) : null}
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-slot="card"
       className={cn(
         "flex flex-col gap-6 rounded-card border border-border bg-card py-6 text-card-foreground shadow-1",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CardOverlay({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-overlay"
+      className={cn(
+        "pointer-events-none pointer-coarse:opacity-100 absolute inset-0 z-2 flex items-end justify-between bg-gradient-to-t from-black/30 p-2 opacity-0 transition-opacity duration-fast group-hover/card:opacity-100 group-focus-within/card:opacity-100",
         className,
       )}
       {...props}
@@ -77,4 +155,13 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-export { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };
+export {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardOverlay,
+  CardTitle,
+};
