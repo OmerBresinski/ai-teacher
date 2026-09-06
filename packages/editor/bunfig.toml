@@ -1,0 +1,10 @@
+# `bun test` for @tj/editor (ADR 0014, amended): happy-dom + Testing Library via the shared preloads,
+# then the workspace-specific matchMedia mock. Order matters: the DOM must exist before
+# `@testing-library/react` is imported. `[install]` is not repeated here: Bun reads install
+# settings from the workspace root's bunfig.toml (`exact = true`).
+[test]
+root = "src"
+preload = ["@tj/config/bun-test/dom", "@tj/config/bun-test/setup", "./bun-test.setup.ts"]
+coverageReporter = ["text", "lcov"]
+coverageDir = "coverage"
+coverageSkipTestFiles = true

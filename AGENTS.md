@@ -249,6 +249,7 @@ packages/
   jobs/         @tj/jobs       pg-boss runtime + typed job registry             ADR 0006
   storage/      @tj/storage    StorageAdapter impls (local disk, Vercel Blob)   ADR 0011
   ai/           @tj/ai         Model client: Bedrock via Vercel AI SDK, classes   ADR 0018
+  editor/       @tj/editor     Lesson/worksheet editor, viewer, present, export   ADR 0022
   config/       @tj/config     Shared tsconfig bases, Tailwind preset           TEACH-11
 docs/
   adr/          Architecture decision records
@@ -257,7 +258,8 @@ docs/
 
 Per-area agent guides: [`apps/web/AGENTS.md`](apps/web/AGENTS.md),
 [`apps/api/AGENTS.md`](apps/api/AGENTS.md), [`apps/worker/AGENTS.md`](apps/worker/AGENTS.md),
-[`packages/ui/AGENTS.md`](packages/ui/AGENTS.md), [`packages/ai/AGENTS.md`](packages/ai/AGENTS.md).
+[`packages/ui/AGENTS.md`](packages/ui/AGENTS.md), [`packages/ai/AGENTS.md`](packages/ai/AGENTS.md),
+[`packages/editor/AGENTS.md`](packages/editor/AGENTS.md).
 
 ## Agent skills
 
@@ -272,9 +274,9 @@ edit or copy them (ADR 0017).
 | ----- | ----- | ---------- |
 | `tanstack-router` | `apps/web` | defining routes, loaders, search params, navigation (**code-based routes only**, ADR 0004) |
 | `tanstack-query` | `apps/web` | fetching/caching server state, invalidation, mutations |
-| `shadcn` | `packages/ui`, `apps/web` | adding or composing UI components (add them in `packages/ui` only, ADR 0009) |
+| `shadcn` | `packages/ui`, `apps/web`, `packages/editor` | adding or composing UI components (add them in `packages/ui` only, ADR 0009) |
 | `ai-sdk` | `packages/ai`, `apps/worker`, `apps/api` | calling models: `generateText`/`streamText`/structured output through `@tj/ai` (**Bedrock via `createAi`, never the AI Gateway**, ADR 0018) |
-| `vercel-react-best-practices` | `apps/web` | writing/reviewing React for performance and bundle size (F18-R05: 250 KB gz) |
+| `vercel-react-best-practices` | `apps/web`, `packages/editor` | writing/reviewing React for performance and bundle size (F18-R05: 250 KB gz) |
 | `deploy-to-vercel` | `apps/web` | Vercel projects, previews, env vars (ADR 0010) |
 | `hono` | `apps/api` | Hono routes, middleware, validation, `streamSSE`, RPC (ADR 0005, 0012) |
 | `use-railway` | `apps/api`, `apps/worker` | Railway services, Postgres, variables, PR environments (ADR 0010) |

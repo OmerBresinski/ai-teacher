@@ -1,0 +1,33 @@
+/*
+ * Document theme fonts (ADR 0022 §7). Self-hosted through @fontsource, loaded with the editor,
+ * present and thumbnail chunks — never with the initial bundle. The `--font-*` names are the ones
+ * TeachDeck's `lib/fonts.ts` registered, so `FONT_STACKS` in `src/model/fonts.ts` resolves
+ * unchanged. Every family is a variable font; `@fontsource-variable/*` names them "<Family> Variable".
+ */
+@import "@fontsource-variable/lexend";
+@import "@fontsource-variable/gabarito";
+@import "@fontsource-variable/figtree";
+@import "@fontsource-variable/source-serif-4";
+@import "@fontsource-variable/schibsted-grotesk";
+@import "@fontsource-variable/literata";
+@import "@fontsource-variable/public-sans";
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource-variable/instrument-sans";
+@import "@fontsource-variable/atkinson-hyperlegible-next";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+:root {
+  --font-lexend: "Lexend Variable";
+  --font-gabarito: "Gabarito Variable";
+  --font-figtree: "Figtree Variable";
+  --font-source-serif: "Source Serif 4 Variable";
+  --font-schibsted: "Schibsted Grotesk Variable";
+  --font-literata: "Literata Variable";
+  --font-public-sans: "Public Sans Variable";
+  --font-bricolage: "Bricolage Grotesque Variable";
+  --font-instrument-sans: "Instrument Sans Variable";
+  --font-atkinson: "Atkinson Hyperlegible Next Variable";
+  --font-geist: "Geist Variable";
+  --font-geist-mono: "Geist Mono Variable";
+}
