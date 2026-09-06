@@ -6,6 +6,8 @@ import { describe, expect, it } from "bun:test";
  * the point — the shell, the editor stubs and `last-shell.ts` all agree on these paths.
  */
 const { router } = await import("./router");
+const { kitRoute } = await import("./routes/kit.route");
+const { authLayoutRoute } = await import("./routes/auth.route");
 
 const SHELL_ROUTES = [
   "/",
@@ -22,10 +24,18 @@ const SHELL_ROUTES = [
 ];
 
 describe("router", () => {
-  it("registers exactly the shell, editor-stub and dev routes (+ /kit in DEV)", () => {
-    const registered = Object.keys(router.routesByPath).sort();
-    const expected = [...SHELL_ROUTES, ...(import.meta.env.DEV ? ["/kit"] : [])].sort();
-    expect(registered).toEqual(expected);
+  it("registers exactly the shell, editor-stub and dev routes", () => {
+    // `import.meta.env.DEV` is unset under `bun test`, so this is the production route set.
+    expect(import.meta.env.DEV).toBeFalsy();
+    expect(Object.keys(router.routesByPath).sort()).toEqual([...SHELL_ROUTES].sort());
+  });
+
+  it("keeps /kit out of production and defines it for DEV registration", () => {
+    expect(router.routesByPath).not.toHaveProperty("/kit");
+    // The DEV branch cannot flip inside one process; assert the route it would register instead.
+    // `path` is only assigned once a route is attached to a tree; read the definition instead.
+    expect((kitRoute.options as { path?: string }).path).toBe("/kit");
+    expect(kitRoute.options.getParentRoute?.()).toBe(authLayoutRoute);
   });
 
   it("nests every signed-in route under the auth guard, and the library pages under one shell", () => {

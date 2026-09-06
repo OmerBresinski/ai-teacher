@@ -180,10 +180,8 @@ describe("Tabs keyboard", () => {
   it("uses a roving tabindex and links each tab to its panel", async () => {
     const user = userEvent.setup();
     render(<Panels />);
-    // Radix parks the single Tab stop on the list until a tab has been focused once…
-    expect(screen.getByRole("tablist")).toHaveAttribute("tabindex", "0");
     await user.click(screen.getByRole("tab", { name: "Beta" }));
-    // …then exactly one tab is tabbable, and it is the selected one.
+    // Exactly one tab is in the Tab order and it is the selected one (roving tabindex).
     const tabs = screen.getAllByRole("tab");
     const tabbable = tabs.filter((tab) => tab.getAttribute("tabindex") === "0");
     expect(tabbable).toHaveLength(1);

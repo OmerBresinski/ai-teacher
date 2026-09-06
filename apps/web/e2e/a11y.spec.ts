@@ -60,8 +60,14 @@ test.describe("accessibility (axe)", () => {
   test("open overlays are clean: create dialogs, card menu, series row menu", async ({
     signedInPage: { page },
   }) => {
-    // Dialogs arrive over 450 ms; axe reads contrast through the fade, so let the motion finish.
-    const settled = () => page.waitForTimeout(500);
+    // Dialogs and menus arrive over 450 ms; axe reads contrast through the fade, so wait for every
+    // running animation on the surface (or its inner wrapper) to finish rather than for a fixed time.
+    const settled = async () => {
+      const surface = page.locator('[role="dialog"], [role="menu"]').last();
+      await surface.evaluate((el) =>
+        Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished)),
+      );
+    };
     for (const label of ["New lesson", "New worksheet", "New series"]) {
       await page.getByRole("button", { name: label }).click();
       await expect(page.getByRole("dialog")).toBeVisible();
