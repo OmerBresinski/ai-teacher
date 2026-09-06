@@ -18,6 +18,7 @@ import {
   worksheetEditorRoute,
   worksheetPrintRoute,
 } from "@/routes/editor-stubs.route";
+import { kitRoute } from "@/routes/kit.route";
 import {
   indexRoute,
   lessonsRoute,
@@ -44,6 +45,7 @@ export const routeTree = rootRoute.addChildren([
     worksheetEditorRoute,
     worksheetPrintRoute,
     devJobsRoute,
+    ...(import.meta.env.DEV ? [kitRoute] : []),
   ]),
 ]);
 

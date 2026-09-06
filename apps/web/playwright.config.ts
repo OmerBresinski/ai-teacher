@@ -14,17 +14,22 @@
  */
 import { defineConfig, devices } from "@playwright/test";
 
-export const E2E_PORTS = { api: 3811, worker: 3822, web: 4193 } as const;
+const CI = process.env.CI === "true";
+const E2E_KIT = process.env.E2E_KIT === "1";
+// The optional kit gate cannot reuse a developer's production-mode e2e server: it needs Vite dev.
+const ports = E2E_KIT
+  ? { api: 3813, worker: 3823, web: 4194 }
+  : { api: 3811, worker: 3822, web: 4193 };
+export const E2E_PORTS = ports;
 export const E2E_API_URL = `http://localhost:${E2E_PORTS.api}`;
 export const E2E_WEB_URL = `http://localhost:${E2E_PORTS.web}`;
-
-const CI = process.env.CI === "true";
+export const KIT_E2E_WEB_URL = "http://localhost:4194";
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
   "postgres://postgres:postgres@localhost:5432/teaching_journey_test";
 // Deliberately not a secret: the e2e api only ever talks to the throwaway test database.
 const E2E_AUTH_SECRET = "e2e-only-secret-not-used-anywhere-else-0123456789";
-const stdout = process.env.E2E_VERBOSE ? "pipe" : "ignore";
+const stdout: "pipe" | "ignore" = process.env.E2E_VERBOSE ? "pipe" : "ignore";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -47,7 +52,22 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      testIgnore: /kit\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    ...(E2E_KIT
+      ? [
+          {
+            name: "kit",
+            testMatch: /kit\.spec\.ts$/,
+            use: { ...devices["Desktop Chrome"], baseURL: KIT_E2E_WEB_URL },
+          },
+        ]
+      : []),
+  ],
   webServer: [
     {
       name: "api",
@@ -88,18 +108,39 @@ export default defineConfig({
         LOG_LEVEL: process.env.E2E_VERBOSE ? "info" : "warn",
       },
     },
-    {
-      name: "web",
-      cwd: ".",
-      // A production build must bake an absolute VITE_API_URL (src/env.ts), so the e2e build is
-      // separate from `dist/` (which `bun run build` produces with the `.env` value `/api`).
-      command: `bun --bun vite build --outDir dist/e2e && bun --bun vite preview --outDir dist/e2e --port ${E2E_PORTS.web} --strictPort`,
-      url: E2E_WEB_URL,
-      reuseExistingServer: !CI,
-      timeout: 180_000,
-      stdout,
-      stderr: "pipe",
-      env: { VITE_API_URL: E2E_API_URL, VITE_APP_ENV: "preview" },
-    },
+    ...(E2E_KIT
+      ? []
+      : [
+          {
+            name: "web",
+            cwd: ".",
+            // A production build must bake an absolute VITE_API_URL (src/env.ts), so the e2e build is
+            // separate from `dist/` (which `bun run build` produces with the `.env` value `/api`).
+            command: `bunx vite build --outDir dist/e2e && bunx vite preview --outDir dist/e2e --port ${E2E_PORTS.web} --strictPort`,
+            url: E2E_WEB_URL,
+            reuseExistingServer: !CI,
+            timeout: 180_000,
+            stdout,
+            stderr: "pipe" as const,
+            env: { VITE_API_URL: E2E_API_URL, VITE_APP_ENV: "preview" },
+          },
+        ]),
+    ...(E2E_KIT
+      ? [
+          {
+            name: "kit-dev",
+            cwd: ".",
+            // `/kit` is deliberately absent from builds. Run this one project against Vite's
+            // development server when explicitly requested, never in the production e2e suite.
+            command: `bunx vite --port 4194 --strictPort`,
+            url: KIT_E2E_WEB_URL,
+            reuseExistingServer: !CI,
+            timeout: 60_000,
+            stdout,
+            stderr: "pipe" as const,
+            env: { VITE_API_URL: E2E_API_URL },
+          },
+        ]
+      : []),
   ],
 });

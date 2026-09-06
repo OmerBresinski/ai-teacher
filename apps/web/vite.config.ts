@@ -21,6 +21,18 @@ function themeInit(): Plugin {
   };
 }
 
+/** The kit is a development-only route, so its utility classes must not grow production CSS. */
+function kitStyles(mode: string): Plugin {
+  return {
+    name: "tj:kit-styles",
+    enforce: "pre",
+    transform(code, id) {
+      if (mode !== "production" || !id.endsWith("/src/styles.css")) return;
+      return `${code}\n@source not "./components/kit";\n`;
+    },
+  };
+}
+
 /**
  * Resource hints for the cold load, production build only (the dev server is same-origin and serves
  * fonts from source):
@@ -83,7 +95,13 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_DEV_API_TARGET || "http://localhost:3001";
 
   return {
-    plugins: [react(), tailwindcss(), themeInit(), resourceHints(env.VITE_API_URL ?? "")],
+    plugins: [
+      react(),
+      kitStyles(mode),
+      tailwindcss(),
+      themeInit(),
+      resourceHints(env.VITE_API_URL ?? ""),
+    ],
     resolve: {
       // Honour `paths` from ./tsconfig.json (`@/*` → `./src/*`) without a plugin (Vite 8).
       tsconfigPaths: true,
