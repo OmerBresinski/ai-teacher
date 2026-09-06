@@ -5,7 +5,13 @@ import {
   type UseMutationOptions,
 } from "@tanstack/react-query";
 import type { DocumentSummary, SeriesWithLessons } from "@/mocks/library-schema";
-import { libraryMutations, libraryQueries, librarySelectors, sortDocuments } from "./library";
+import {
+  libraryCache,
+  libraryMutations,
+  libraryQueries,
+  librarySelectors,
+  sortDocuments,
+} from "./library";
 import { queryKeys } from "./query";
 
 async function invokeOnSuccess<TData, TVariables>(
@@ -72,6 +78,8 @@ describe("library queries", () => {
     expect(placeholder(seriesOptions)).toEqual(seriesItem);
     expect(placeholder(libraryQueries.document("missing", queryClient))).toBeUndefined();
     expect(placeholder(libraryQueries.document("d1"))).toBeUndefined();
+    expect(libraryCache.document(queryClient, "d1")).toEqual(lesson);
+    expect(libraryCache.seriesDetail(queryClient, "nope")).toBeUndefined();
   });
 
   it("invalidates the full library family after every mutation", async () => {

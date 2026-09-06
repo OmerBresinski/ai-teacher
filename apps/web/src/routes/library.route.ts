@@ -1,8 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRoute, lazyRouteComponent, notFound } from "@tanstack/react-router";
 import { z } from "zod";
-import { rememberShell } from "@/lib/last-shell";
-import { libraryQueries } from "@/lib/library";
+import { libraryCache, libraryQueries } from "@/lib/library";
 import { pageTitle } from "@/lib/page-title";
 import { authLayoutRoute } from "./auth.route";
 
@@ -25,9 +24,6 @@ async function prefetchLibrary(queryClient: QueryClient): Promise<void> {
 export const libraryLayoutRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   id: "library",
-  // Which shell page a document's back arrow returns to. A navigation side effect, so it lives
-  // with navigation rather than in a component effect.
-  beforeLoad: ({ location }) => rememberShell(location.pathname),
   component: lazyRouteComponent(() => import("./library.layout"), "LibraryLayout"),
 });
 
@@ -69,15 +65,20 @@ export const seriesIndexRoute = createRoute({
 export const seriesDetailRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/series/$seriesId",
-  // Hover preload (`defaultPreload: "intent"`) runs this: the one record the page needs, plus the
-  // lists the sidebar counts read. The list settles first from cache and seeds `placeholderData`.
+  // Hover preload (`defaultPreload: "intent"`) runs this. The lists settle from cache, so the page
+  // renders at once from `placeholderData`; the exact record is fetched without blocking and the
+  // page's `useQuery` picks it up. Unknown ids are 404'd from the cached list without a round trip.
   loader: async ({ context: { queryClient }, params }) => {
-    const [detail] = await Promise.all([
-      queryClient.ensureQueryData(libraryQueries.seriesDetail(params.seriesId, queryClient)),
-      prefetchLibrary(queryClient),
-    ]);
-    if (!detail) throw notFound();
-    return detail;
+    await prefetchLibrary(queryClient);
+    const options = libraryQueries.seriesDetail(params.seriesId, queryClient);
+    const cached = libraryCache.seriesDetail(queryClient, params.seriesId);
+    if (!cached) {
+      const detail = await queryClient.ensureQueryData(options);
+      if (!detail) throw notFound();
+      return detail;
+    }
+    void queryClient.prefetchQuery(options);
+    return cached;
   },
   head: ({ loaderData }) => pageTitle(loaderData?.series.title ?? "Series"),
   component: lazyRouteComponent(() => import("./series-detail.page"), "SeriesDetailPage"),

@@ -1,17 +1,24 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRoute, lazyRouteComponent, notFound } from "@tanstack/react-router";
 import { z } from "zod";
-import { libraryQueries } from "@/lib/library";
+import { libraryCache, libraryQueries } from "@/lib/library";
 import { pageTitle } from "@/lib/page-title";
 import { authLayoutRoute } from "./auth.route";
 
 /**
  * Editor stubs (`@tj/editor` replaces the page, not the routes). Each loader resolves the one
- * document the route is about — what a hover preload should fetch once a backend exists — and
- * turns a missing id into a 404 before the page renders.
+ * document the route is about — what a hover preload should fetch once a backend exists. When the
+ * list cache already knows the document the page renders from that placeholder immediately and the
+ * exact record is fetched behind it; otherwise the loader waits and 404s a missing id.
  */
 async function loadDocument(queryClient: QueryClient, id: string) {
-  const document = await queryClient.ensureQueryData(libraryQueries.document(id, queryClient));
+  const options = libraryQueries.document(id, queryClient);
+  const cached = libraryCache.document(queryClient, id);
+  if (cached) {
+    void queryClient.prefetchQuery(options);
+    return cached;
+  }
+  const document = await queryClient.ensureQueryData(options);
   if (!document) throw notFound();
   return document;
 }

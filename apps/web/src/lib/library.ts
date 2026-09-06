@@ -28,26 +28,32 @@ import { queryKeys } from "./query";
  * the real API will serve. Until then `placeholderData` seeds a detail from the cached list so a
  * card → detail navigation paints immediately and the detail fetch settles behind it.
  */
+/** The cached list entry for an id — the seed for detail placeholders and the loaders' fast path. */
+export const libraryCache = {
+  document: (queryClient: QueryClient, id: string): DocumentSummary | undefined =>
+    queryClient
+      .getQueryData<DocumentSummary[]>(queryKeys.libraryDocuments)
+      ?.find((document) => document.id === id),
+  seriesDetail: (queryClient: QueryClient, id: string): SeriesWithLessons | undefined =>
+    queryClient
+      .getQueryData<SeriesWithLessons[]>(queryKeys.librarySeries)
+      ?.find((item) => item.series.id === id),
+};
+
 export const libraryQueries = {
   documents: () => queryOptions({ queryKey: queryKeys.libraryDocuments, queryFn: listDocuments }),
   document: (id: string, queryClient?: QueryClient) =>
     queryOptions({
       queryKey: queryKeys.libraryDocument(id),
       queryFn: () => loadDocument(id),
-      placeholderData: () =>
-        queryClient
-          ?.getQueryData<DocumentSummary[]>(queryKeys.libraryDocuments)
-          ?.find((document) => document.id === id),
+      placeholderData: () => (queryClient ? libraryCache.document(queryClient, id) : undefined),
     }),
   series: () => queryOptions({ queryKey: queryKeys.librarySeries, queryFn: listSeriesWithLessons }),
   seriesDetail: (id: string, queryClient?: QueryClient) =>
     queryOptions({
       queryKey: queryKeys.librarySeriesDetail(id),
       queryFn: () => loadSeriesWithLessons(id),
-      placeholderData: () =>
-        queryClient
-          ?.getQueryData<SeriesWithLessons[]>(queryKeys.librarySeries)
-          ?.find((item) => item.series.id === id),
+      placeholderData: () => (queryClient ? libraryCache.seriesDetail(queryClient, id) : undefined),
     }),
 };
 
