@@ -283,7 +283,9 @@ async function rebaseBranch(state: PrState, deps: LandPrDeps): Promise<void> {
 
 /** One entry of `gh pr view --json statusCheckRollup`: a check run or a commit status context. */
 interface StatusCheck {
+  /** Check runs carry `name`; commit status contexts carry `context` instead. */
   name?: unknown;
+  context?: unknown;
   conclusion?: unknown;
   status?: unknown;
   state?: unknown;
@@ -325,7 +327,12 @@ export function hasPendingChecks(checks: StatusCheck[]): boolean {
 
 function blockedMessage(pr: number, checks: StatusCheck[]): string {
   const details = checks.map((check) => {
-    const name = typeof check.name === "string" ? check.name : "unnamed check";
+    const name =
+      typeof check.name === "string"
+        ? check.name
+        : typeof check.context === "string"
+          ? check.context
+          : "unnamed check";
     const state =
       typeof check.conclusion === "string"
         ? check.conclusion
@@ -418,7 +425,7 @@ export async function landPr(
   let rebaseRounds = 0;
   let unknownRetries = 0;
   let state: PrState;
-  const startedAt = deps.now();
+  const deadline = deps.now() + timeoutMin * 60_000;
 
   while (true) {
     await waitForCi(pr, deps);
@@ -449,14 +456,15 @@ export async function landPr(
     if (state.mergeStateStatus === "BLOCKED") {
       const checks = await statusChecks(pr, deps);
       if (!hasPendingChecks(checks)) throw new UserFacingError(blockedMessage(pr, checks));
-      if (deps.now() - startedAt > timeoutMin * 60_000) {
+      const remainingMs = deadline - deps.now();
+      if (remainingMs <= 0) {
         throw new UserFacingError(
           `PR #${pr} still had pending checks after ${timeoutMin} min.\n${blockedMessage(pr, checks)}`,
         );
       }
       // Checks are queued but not yet attached to the PR, so `gh pr checks --watch` had nothing
-      // to wait for. Give GitHub a moment and go round again.
-      await deps.sleep(PENDING_CHECKS_DELAY_MS);
+      // to wait for. Give GitHub a moment (never past the deadline) and go round again.
+      await deps.sleep(Math.min(PENDING_CHECKS_DELAY_MS, remainingMs));
       continue;
     }
     if (state.mergeStateStatus === "UNKNOWN") {

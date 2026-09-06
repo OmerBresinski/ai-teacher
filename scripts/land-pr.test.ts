@@ -209,11 +209,21 @@ describe("land-pr", () => {
     expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
   });
 
+  test("names a blocked status context by its `context` field", async () => {
+    const fake = fakeDeps({
+      states: ["BLOCKED"],
+      checks: [[{ context: "docker-build-smoke", state: "FAILURE" }]],
+    });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("docker-build-smoke: FAILURE");
+  });
+
   test("gives up on a BLOCKED PR whose checks never attach within the timeout", async () => {
     const fake = fakeDeps({ states: Array(200).fill("BLOCKED"), checks: [[]] });
     await expect(landPr(42, { timeoutMin: 1 }, fake.deps)).rejects.toThrow(
       "still had pending checks after 1 min",
     );
+    // The last sleep is capped to the remaining budget, so total waiting never exceeds it.
+    expect(fake.deps.now()).toBe(60_000);
   });
 
   test("refuses a PR with merge conflicts", async () => {
