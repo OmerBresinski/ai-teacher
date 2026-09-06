@@ -19,6 +19,26 @@ test.describe("library shell", () => {
     await expect(page.getByRole("heading", { name: "Series" })).toBeVisible();
   });
 
+  test("New lesson creates an untitled lesson and opens its editor stub", async ({
+    signedInPage: { page },
+  }) => {
+    await page.getByRole("button", { name: "New lesson" }).click();
+    await page.getByRole("button", { name: "Next" }).click();
+    await page.getByRole("radio", { name: "Playground" }).click();
+    await page.getByRole("button", { name: "Create lesson" }).click();
+
+    await expect(page).toHaveURL(/\/l\/[^/]+$/);
+    await expect(page.getByText("Untitled lesson", { exact: true }).first()).toBeVisible();
+  });
+
+  test("New series uses the untitled fallback on Enter", async ({ signedInPage: { page } }) => {
+    await page.getByRole("button", { name: "New series" }).click();
+    await page.getByRole("textbox", { name: "Title" }).press("Enter");
+
+    await expect(page).toHaveURL(/\/series\/[^/]+$/);
+    await expect(page.getByText("Untitled series", { exact: true })).toBeVisible();
+  });
+
   test("Lessons search survives reload and Escape clears it", async ({
     signedInPage: { page },
   }) => {
@@ -141,5 +161,32 @@ test.describe("library shell", () => {
     await expectNoSeriousA11yViolations(page, "/lessons (dark)");
     await page.goto("/series");
     await expectNoSeriousA11yViolations(page, "/series (dark)");
+  });
+
+  test("New document and series dialogs have no serious or critical axe findings in both themes", async ({
+    signedInPage: { page },
+  }) => {
+    await page.getByRole("button", { name: "New lesson" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.waitForTimeout(500);
+    await expectNoSeriousA11yViolations(page, "new lesson dialog (light)", '[role="dialog"]');
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.getByRole("button", { name: "New series" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.waitForTimeout(500);
+    await expectNoSeriousA11yViolations(page, "new series dialog (light)", '[role="dialog"]');
+    await page.getByRole("button", { name: "Cancel" }).click();
+
+    await page.getByRole("button", { name: "Theme" }).click();
+    await page.getByRole("menuitemradio", { name: "Dark" }).click();
+    await page.getByRole("button", { name: "New lesson" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.waitForTimeout(500);
+    await expectNoSeriousA11yViolations(page, "new lesson dialog (dark)", '[role="dialog"]');
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.getByRole("button", { name: "New series" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.waitForTimeout(500);
+    await expectNoSeriousA11yViolations(page, "new series dialog (dark)", '[role="dialog"]');
   });
 });

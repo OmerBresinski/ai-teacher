@@ -30,9 +30,10 @@ import {
   List,
   Presentation,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { LibraryCard, type LibraryCardProps } from "@/components/library-card";
 import { useLibraryShell } from "@/components/library-shell-context";
+import type { NewDocumentValues } from "@/components/new-document-dialog";
 import { SeriesCard, type SeriesCardProps } from "@/components/series-card";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useNow } from "@/hooks/use-now";
@@ -61,6 +62,12 @@ const SPLIT_AT = 8;
 const RECENT_MS = 7 * 24 * 60 * 60 * 1000;
 const GRID = "grid grid-cols-2 gap-6 lg:grid-cols-3 xl:grid-cols-4";
 const SKELETON_KEYS = ["one", "two", "three", "four"] as const;
+const NewDocumentDialog = lazy(() =>
+  import("./new-document-dialog").then(({ NewDocumentDialog }) => ({ default: NewDocumentDialog })),
+);
+const NewSeriesDialog = lazy(() =>
+  import("./new-series-dialog").then(({ NewSeriesDialog }) => ({ default: NewSeriesDialog })),
+);
 
 function readPreference<T extends string>(key: string, values: readonly T[], fallback: T): T {
   try {
@@ -126,6 +133,10 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   const renameSeries = useMutation(libraryMutations.renameSeries(queryClient));
   const softDeleteSeries = useMutation(libraryMutations.softDeleteSeries(queryClient));
   const restoreSeries = useMutation(libraryMutations.restoreSeries(queryClient));
+  const createDocument = useMutation(libraryMutations.createDocument(queryClient));
+  const createSeries = useMutation(libraryMutations.createSeries(queryClient));
+  const [newKind, setNewKind] = useState<"lesson" | "worksheet" | null>(null);
+  const [newSeries, setNewSeries] = useState(false);
   const search = useRouterState({ select: (state) => state.location.search });
   const query = typeof search.q === "string" ? search.q : "";
   const [sort, setSort] = usePreference<Sort>(
@@ -211,8 +222,26 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
     if (mode === "series") void navigate({ to: "/series", search, replace: true });
   }
 
-  function announceCreation(): void {
-    toast("Creation dialogs arrive in the next ticket");
+  async function createNewDocument(values: NewDocumentValues): Promise<void> {
+    if (!newKind) return;
+    const document = await createDocument.mutateAsync({ kind: newKind, ...values });
+    setNewKind(null);
+    if (document.kind === "lesson") {
+      await navigate({ to: "/l/$lessonId", params: { lessonId: document.id } });
+    } else {
+      await navigate({ to: "/w/$worksheetId", params: { worksheetId: document.id } });
+    }
+  }
+
+  async function createNewSeries(title: string): Promise<void> {
+    const series = await createSeries.mutateAsync([title]);
+    setNewSeries(false);
+    await navigate({ to: "/series/$seriesId", params: { seriesId: series.id } });
+  }
+
+  function openEmptyStateCreation(): void {
+    if (mode === "series") setNewSeries(true);
+    else setNewKind(mode === "worksheet" ? "worksheet" : "lesson");
   }
 
   function onDocumentAction(
@@ -356,14 +385,17 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
             tone="primary"
             icon={<Presentation size={24} strokeWidth={1.5} />}
             className="col-span-2"
-            onClick={announceCreation}
+            onClick={() => setNewKind("lesson")}
           >
             New lesson
           </Tile>
-          <Tile icon={<FileText size={24} strokeWidth={1.5} />} onClick={announceCreation}>
+          <Tile
+            icon={<FileText size={24} strokeWidth={1.5} />}
+            onClick={() => setNewKind("worksheet")}
+          >
             New worksheet
           </Tile>
-          <Tile icon={<Layers size={24} strokeWidth={1.5} />} onClick={announceCreation}>
+          <Tile icon={<Layers size={24} strokeWidth={1.5} />} onClick={() => setNewSeries(true)}>
             New series
           </Tile>
         </div>
@@ -383,7 +415,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
         ) : loading ? (
           <SkeletonGrid />
         ) : isHome && allDocuments.length + allSeries.length === 0 ? (
-          <EmptyLibrary mode={mode} onCreate={announceCreation} onImport={openImport} />
+          <EmptyLibrary mode={mode} onCreate={openEmptyStateCreation} onImport={openImport} />
         ) : isHome ? (
           <>
             {hero || beside.length > 0 ? (
@@ -419,7 +451,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
           searching ? (
             <NoMatches onClear={() => setSearch("")} />
           ) : (
-            <EmptyLibrary mode={mode} onCreate={announceCreation} onImport={openImport} />
+            <EmptyLibrary mode={mode} onCreate={openEmptyStateCreation} onImport={openImport} />
           )
         ) : isSeries ? (
           <SeriesGrid series={matchedSeries} {...seriesCardProps} />
@@ -459,6 +491,21 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
           <DocumentGrid documents={matchedDocuments} {...documentCardProps} />
         )}
       </div>
+      <Suspense fallback={null}>
+        {newKind ? (
+          <NewDocumentDialog
+            open
+            onOpenChange={(open) => {
+              if (!open) setNewKind(null);
+            }}
+            kind={newKind}
+            onCreate={createNewDocument}
+          />
+        ) : null}
+        {newSeries ? (
+          <NewSeriesDialog open onOpenChange={setNewSeries} onCreate={createNewSeries} />
+        ) : null}
+      </Suspense>
     </main>
   );
 }
