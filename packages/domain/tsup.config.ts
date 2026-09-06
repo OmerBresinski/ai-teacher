@@ -13,6 +13,7 @@ export default defineConfig({
     storage: "src/storage.ts",
     states: "src/states.ts",
     objects: "src/objects/index.ts",
+    documents: "src/documents/index.ts",
     result: "src/result.ts",
   },
   format: ["esm"],

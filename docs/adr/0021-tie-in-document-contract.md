@@ -30,7 +30,11 @@ Two facts in TeachDeck's model need a decision rather than a copy:
 ## Decision
 
 1. **Schema home.** TeachDeck's document types and Zod schemas are adopted **verbatim** into
-   `@tj/domain` under `packages/domain/src/objects/`: `lesson.ts` (replacing the stub) for
+   `@tj/domain` under `packages/domain/src/documents/`, exported as the subpath
+   `@tj/domain/documents` and not from the root barrel (amended 2026-09-06, TEACH-96: the
+   `objects/lesson.ts` stub is kept as the future persistence-row skeleton because
+   `objects.test.ts` requires `workspaceId` and forbids `version` on every core object, so the
+   editor document cannot live there): `lesson.ts` for
    `Lesson`, `Slide`, `SlideElement`, `QuestionData`, `Theme` types and the `LessonSchema`,
    `SlideSchema`, `SlideElementSchema`, `QuestionDataSchema`, `SlideKindSchema`,
    `AgeBandSchema`, `RichDocSchema` schemas; `worksheet.ts` for `Worksheet`, `WorksheetBlock`,
@@ -86,3 +90,10 @@ Two facts in TeachDeck's model need a decision rather than a copy:
   one-off rewrite of stored documents, which is why `src` is typed as a plain string now.
 - Revisit when the API lands: the row shape (`workspaceId`, `kind`, `body jsonb`), the list
   endpoint's summary shape, and whether `migrate()` runs on read or on write.
+
+## Amendment (2026-09-06, TEACH-96)
+
+§1 named `packages/domain/src/objects/` and "replacing the stub". The schemas live in
+`packages/domain/src/documents/` as the subpath `@tj/domain/documents`; the `objects/lesson.ts`
+stub stays for the persistence row. The three pure values `schema.ts` imported (`MAX_CRITERIA`,
+the word-search size limits, `normaliseHref`) moved with it.
