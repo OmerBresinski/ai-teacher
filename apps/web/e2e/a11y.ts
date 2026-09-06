@@ -12,7 +12,7 @@ interface Violation {
   impact?: string | null;
   help: string;
   helpUrl: string;
-  nodes: { target: unknown[] }[];
+  nodes: { target: unknown[]; html: string }[];
 }
 
 export function formatViolations(violations: Violation[]): string {
@@ -25,6 +25,18 @@ export function formatViolations(violations: Violation[]): string {
       return `- [${v.impact ?? "unknown"}] ${v.id}: ${v.help} (${v.nodes.length} node(s): ${targets}) ${v.helpUrl}`;
     })
     .join("\n");
+}
+
+/**
+ * ADR 0019 §4 (amended 2026-09-06): filled primary controls carry `data-primary-fill` and use
+ * TeachDeck's white-on-terracotta (3.71:1) by decision. Their `color-contrast` findings are logged,
+ * not failed. Any other element or rule still blocks.
+ */
+function isRecordedContrastException(violation: Violation): boolean {
+  return (
+    violation.id === "color-contrast" &&
+    violation.nodes.every((node) => node.html.includes("data-primary-fill"))
+  );
 }
 
 /**
@@ -47,8 +59,10 @@ export async function expectNoSeriousA11yViolations(
   if (selector) builder.include(selector);
   const results = await builder.analyze();
   const violations = results.violations as Violation[];
-  const blocking = violations.filter((v) => BLOCKING_IMPACTS.has(v.impact ?? ""));
-  const advisory = violations.filter((v) => !BLOCKING_IMPACTS.has(v.impact ?? ""));
+  const blocking = violations.filter(
+    (v) => BLOCKING_IMPACTS.has(v.impact ?? "") && !isRecordedContrastException(v),
+  );
+  const advisory = violations.filter((v) => !blocking.includes(v));
   if (advisory.length > 0) {
     console.log(
       `axe (${label}): ${advisory.length} non-blocking finding(s)\n${formatViolations(advisory)}`,

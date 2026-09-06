@@ -1,6 +1,6 @@
 # 0019 — Adopt the TeachDeck visual system in `@tj/ui`; shell and editor kits
 
-- Status: Accepted
+- Status: Accepted, amended 2026-09-06
 - Date: 2026-09-05
 - Related PRD decisions: TD project (Greg's row 1 decision), F18-D4, F18-R09, F18-R13
 
@@ -71,3 +71,13 @@ system.
 - `@tj/ui` continues to keep its component count deliberate.
 - ADR 0009 is amended by this decision. `packages/ui/AGENTS.md` and `apps/web/AGENTS.md` mentions
   of state chips and placeholder tokens are stale and need a follow-up; they are not changed here.
+
+## Amendment (2026-09-06)
+
+§4 is reversed for filled primary controls. After comparing the shipped shell against TeachDeck
+side by side, the founders chose the exact TeachDeck look: filled `Button` and `Tile` use the brand
+terracotta `#D2644B` under white text (3.71:1, below WCAG AA 4.5:1). This is a recorded product
+exception limited to those two filled surfaces; icons, borders, focus rings and small text keep
+their AA tokens (`--brand-text` for terracotta text). The e2e axe run treats `color-contrast`
+findings on `[data-primary-fill]` elements as advisory (logged, not failing); every other rule and
+element stays blocking. TEACH-94 tracks revisiting this if a design partner requires strict AA.

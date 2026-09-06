@@ -49,15 +49,16 @@
   --primary-hover: #c05740;
   --primary-press: #ae4b31;
   /*
-   * Filled controls (Button default, Tile primary) use a darker terracotta so white text passes
-   * AA: #b04a33 is TeachDeck's own small-text accent, 4.51:1 under white. `--primary` itself
-   * (#d2644b, 3.71:1 under white) stays for borders, icons, focus rings and large text
-   * (ADR 0019 §4, option b).
+   * Filled controls (Button default, Tile primary) are TeachDeck's brand terracotta under white:
+   * 3.71:1, below WCAG AA. A recorded product exception (ADR 0019 §4, amended 2026-09-06);
+   * axe's color-contrast rule is advisory for these controls in e2e. Icons, borders, rings and
+   * small text keep their own AA tokens (`--brand-text`).
    */
   --primary-foreground: #ffffff;
-  --primary-fill: #b04a33;
-  --primary-fill-hover: #a0442e;
-  --primary-fill-press: #8f3b27;
+  --primary-fill: #d2644b;
+  --primary-fill-hover: #c05740;
+  --primary-fill-press: #ae4b31;
+  --primary-fill-aa: #b04a33; /* 4.51:1 under white; check glyphs and text selection */
   --secondary: #f9f8f6;
   --secondary-foreground: #4e4a44;
   --muted: #f9f8f6;
@@ -132,6 +133,7 @@
   --primary-fill: #e6866b;
   --primary-fill-hover: #ee9b83;
   --primary-fill-press: #d5745a;
+  --primary-fill-aa: var(--primary-fill);
   --secondary: #161513;
   --secondary-foreground: #bcb6ac;
   --muted: #161513;
@@ -199,6 +201,7 @@
     --primary-fill: #e6866b;
     --primary-fill-hover: #ee9b83;
     --primary-fill-press: #d5745a;
+    --primary-fill-aa: var(--primary-fill);
     --secondary: #161513;
     --secondary-foreground: #bcb6ac;
     --muted: #161513;
@@ -266,6 +269,7 @@
   --primary-fill: var(--primary);
   --primary-fill-hover: var(--primary);
   --primary-fill-press: var(--primary);
+  --primary-fill-aa: var(--primary-fill);
   --secondary: #161513;
   --secondary-foreground: #ffffff; /* 18.9:1 on --secondary */
   --muted: #161513;
@@ -330,6 +334,7 @@
   --color-primary-fill: var(--primary-fill);
   --color-primary-fill-hover: var(--primary-fill-hover);
   --color-primary-fill-press: var(--primary-fill-press);
+  --color-primary-fill-aa: var(--primary-fill-aa);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
