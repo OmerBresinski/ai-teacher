@@ -30,6 +30,10 @@ const StateSchema = z.custom<PipelineState>(() => true, { message: "pipeline sta
 const DEPS_KEY = "deps";
 const FAILURE_KEY = "failure";
 const RESUME_KEY = "resumeFrom";
+/** Stages whose `execute` actually ran (not skipped), for the summary line. */
+const ENTERED_KEY = "entered";
+/** The last state a stage returned — the last persisted checkpoint — for the summary on failure. */
+const CHECKPOINT_KEY = "checkpoint";
 
 type Ctx = { requestContext: RequestContext; runId: string };
 
@@ -89,8 +93,12 @@ function stageStep(
         ? (requestContext.getRaw(RESUME_KEY) as StageName | null)
         : resumeFrom(inputData.lesson);
       if (!shouldRun(stage, from)) return inputData;
+      const entered = (requestContext.getRaw(ENTERED_KEY) as StageName[] | undefined) ?? [];
+      requestContext.setRaw(ENTERED_KEY, [...entered, stage]);
       try {
-        return await run(inputData, deps);
+        const next = await run(inputData, deps);
+        requestContext.setRaw(CHECKPOINT_KEY, next);
+        return next;
       } catch (error) {
         requestContext.setRaw(FAILURE_KEY, error);
         throw error;
@@ -142,7 +150,6 @@ export async function runLessonPipeline(
     worksheetId: input.worksheetId,
     worksheet: input.worksheet,
   };
-  const stagesRun = from ? STAGE_ORDER.slice(STAGE_ORDER.indexOf(from)) : [];
   let outcome: "success" | "failed" = "failed";
   let final: PipelineState | undefined;
 
@@ -165,18 +172,19 @@ export async function runLessonPipeline(
     return final;
   } finally {
     // One `generation summary` line per job whatever the outcome (ADR 0025 §16): counts, cost
-    // and duration — never content. On failure the findings are those of the last persisted
-    // checkpoint the stages left on the request context's stashed error, so only the counts the
-    // budget knows are reported.
+    // and duration — never content. `stages` are the stages that actually ran; on failure the
+    // findings are those of the last checkpoint a stage persisted (none when Plan itself failed).
+    const checkpoint =
+      final ?? (requestContext.getRaw(CHECKPOINT_KEY) as PipelineState | undefined);
     const findings = { error: 0, warning: 0 };
-    for (const f of final?.lesson.generation?.findings ?? []) findings[f.severity] += 1;
+    for (const f of checkpoint?.lesson.generation?.findings ?? []) findings[f.severity] += 1;
     deps.logger.info(
       {
         generation: {
           lessonId: deps.context.lessonId,
           jobId: deps.context.jobId,
           outcome,
-          stages: stagesRun,
+          stages: (requestContext.getRaw(ENTERED_KEY) as StageName[] | undefined) ?? [],
           ...deps.budget.totals(),
           findings,
           durationMs: Date.now() - startedAt,

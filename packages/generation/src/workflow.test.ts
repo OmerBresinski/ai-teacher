@@ -292,7 +292,35 @@ describe("runLessonPipeline", () => {
       recordingDeps(ai, { logger }),
     ).catch(() => undefined);
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
-    expect(summary.generation).toMatchObject({ outcome: "failed", calls: 1 + 2 + 2 });
+    // Plan ran and Generate failed; Evaluate and Repair were never entered.
+    expect(summary.generation).toMatchObject({
+      outcome: "failed",
+      stages: ["plan", "generate"],
+      calls: 1 + 2 + 2,
+    });
+  });
+
+  test("a failed run's summary counts the findings of the last persisted checkpoint", async () => {
+    const { lines, logger } = memoryLogger();
+    // A tiny budget stops Generate after Plan with a `budget` error finding at `generated`; then a
+    // double schema miss in Evaluate would only warn, so break Repair's assumptions instead: make
+    // Evaluate itself throw by aborting after its persist and check the summary sees the finding.
+    const ai = scriptedPipelineAi();
+    const deps = recordingDeps(ai, {
+      logger,
+      budget: createBudget({ capUsd: 0.0001, capTokens: 1_000_000 }),
+      abortAfterPersist: 3,
+    });
+    await runLessonPipeline(
+      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
+      deps,
+    ).catch(() => undefined);
+    const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
+    expect(summary.generation).toMatchObject({
+      outcome: "failed",
+      stages: ["plan", "generate", "evaluate", "repair"],
+      findings: { error: 1, warning: 0 },
+    });
   });
 
   test("writes one generation summary line with counts, never content", async () => {

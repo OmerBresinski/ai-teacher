@@ -61,7 +61,8 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
     model = knownTargetsOnly(call.output.findings, state);
   } catch (error) {
     if (error instanceof BudgetExceeded) {
-      model = [BUDGET_FINDING(error.by, "the review")];
+      // One budget finding per job: Generate's already says the cap was hit.
+      model = carried.length > 0 ? [] : [BUDGET_FINDING(error.by, "the review")];
     } else if (error instanceof StageFailure) {
       model = [
         {
