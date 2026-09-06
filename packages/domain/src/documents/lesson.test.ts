@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { lesson, multipleChoiceSlide, titleSlide, trueFalseSlide } from "./fixtures.test-helpers";
+import { GUARD_MESSAGE } from "./identifier-guard";
 import { isLesson, LessonSchema, parseLesson } from "./lesson";
 import { hasRevealableAnswer, SlideSchema, slideStepCount } from "./slide";
 
@@ -30,6 +31,33 @@ describe("parseLesson", () => {
   test("a lesson without the TD item 5 fields still parses (optional means no migration)", () => {
     expect(LessonSchema.safeParse(lesson()).success).toBe(true);
     expect(isLesson(lesson())).toBe(true);
+  });
+
+  test("a TeachDeck fixture without a brief parses with brief undefined (ADR 0024 §1)", () => {
+    expect(parseLesson(lesson()).brief).toBeUndefined();
+  });
+
+  test("a lesson with a brief round-trips through JSON unchanged", () => {
+    const input = {
+      ...lesson(),
+      brief: {
+        topic: "Fractions of amounts",
+        durationMin: 60,
+        classContext: { sizeBand: "25to30" as const, needs: { send: 2 } },
+      },
+    };
+    expect(parseLesson(JSON.parse(JSON.stringify(input)))).toEqual(input);
+  });
+
+  test("a brief holding a learner name is rejected at [brief, topic] with GUARD_MESSAGE", () => {
+    const result = LessonSchema.safeParse({
+      ...lesson(),
+      brief: { topic: "Help Amir Khan with fractions", durationMin: 60 },
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([
+      expect.objectContaining({ path: ["brief", "topic"], message: GUARD_MESSAGE }),
+    ]);
   });
 
   test("rejects rubbish with a readable message naming at most three problems", () => {

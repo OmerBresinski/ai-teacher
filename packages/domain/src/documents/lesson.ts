@@ -1,11 +1,13 @@
 import { z } from "zod";
+import { type Brief, BriefSchema } from "./brief";
 import { describeIssues, migrate } from "./migrate";
 import { type Id, type Slide, SlideSchema } from "./slide";
 
 /*
  * Lesson document (ADR 0021). Behavioural reference: TeachDeck `lib/model/types.ts:37-66` and
- * `lib/model/schema.ts:252,325-346,490-511`. Two optional fields are added for TD item 5;
- * everything else is TeachDeck's shape, so its JSON files parse unchanged.
+ * `lib/model/schema.ts:252,325-346,490-511`. Three product-only optional fields are added —
+ * `reachedSlideId` and `taughtAt` for TD item 5, `brief` for F01 (ADR 0024 §1); everything else
+ * is TeachDeck's shape, so its JSON files parse unchanged.
  */
 
 export type AgeBand = "eyfs" | "ks1" | "ks2" | "ks3" | "ks4" | "post16";
@@ -42,6 +44,11 @@ export type Lesson = {
   reachedSlideId?: Id;
   /** TD item 5 (ADR 0021 §4): ISO time present mode exited past slide 1; unset until then. */
   taughtAt?: string;
+  /**
+   * F01 (ADR 0024 §1): what the teacher stated before generation. Optional so a TeachDeck file
+   * without one is still a valid document; `subject` / `yearGroup` above stay canonical.
+   */
+  brief?: Brief;
 };
 
 export const AgeBandSchema = z.enum(["eyfs", "ks1", "ks2", "ks3", "ks4", "post16"]);
@@ -69,6 +76,8 @@ export const LessonSchema = z.object({
   // TD item 5 (ADR 0021 §4).
   reachedSlideId: z.string().optional(),
   taughtAt: z.string().optional(),
+  // F01 (ADR 0024 §1).
+  brief: BriefSchema.optional(),
 });
 
 export function parseLesson(input: unknown): Lesson {
