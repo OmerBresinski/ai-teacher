@@ -1,0 +1,162 @@
+{
+  "starter": {
+    "kind": "starter",
+    "heading": "Do now",
+    "items": ["Name the three states of matter.", "Which state has particles furthest apart?"],
+    "footnote": "3 minutes. Answer in your book.",
+    "factRefs": ["q1"],
+    "notes": "Retrieval from last lesson; take answers cold."
+  },
+  "vocabulary": {
+    "kind": "vocabulary",
+    "entries": [
+      {
+        "term": "Particle",
+        "definition": "A very small piece of a substance, too small to see."
+      },
+      {
+        "term": "Solid",
+        "definition": "Particles packed closely and only vibrating."
+      },
+      {
+        "term": "Liquid",
+        "definition": "Particles touching but able to move past each other."
+      },
+      {
+        "term": "Gas",
+        "definition": "Particles far apart and moving freely."
+      }
+    ],
+    "factRefs": ["v1", "v2", "v3", "v4"],
+    "notes": "Say each term aloud and have the class repeat it."
+  },
+  "content": {
+    "kind": "content",
+    "heading": "The particle model",
+    "body": "Everything is made of tiny particles. How they are arranged and how they move decides whether a substance is a solid, a liquid or a gas.",
+    "factRefs": ["o1"],
+    "notes": "Draw the three particle diagrams on the board."
+  },
+  "worked-example": {
+    "kind": "worked-example",
+    "heading": "Worked example",
+    "question": "Why does an ice cube left on a plate turn into a puddle?",
+    "steps": [
+      "Room air is warmer than the ice, so energy passes into it.",
+      "The particles vibrate more strongly.",
+      "They break free and slide past each other: the ice melts."
+    ],
+    "factRefs": ["x1", "o2"],
+    "notes": "Reveal one step at a time."
+  },
+  "true-false": {
+    "kind": "true-false",
+    "statement": "Particles in a solid do not move at all.",
+    "correct": false,
+    "explanation": "They vibrate in fixed positions.",
+    "factRefs": ["q3", "o1"],
+    "notes": "Ask for hands up before revealing."
+  },
+  "multiple-choice": {
+    "kind": "multiple-choice",
+    "stem": "In which state of matter are the particles furthest apart?",
+    "options": [
+      {
+        "text": "Solid",
+        "correct": false
+      },
+      {
+        "text": "Liquid",
+        "correct": false
+      },
+      {
+        "text": "Gas",
+        "correct": true
+      },
+      {
+        "text": "They are the same in all three",
+        "correct": false
+      }
+    ],
+    "explanation": "Gas particles move freely with large gaps between them.",
+    "factRefs": ["q1", "o3"],
+    "notes": "Watch for the misconception that liquids are the most spread out."
+  },
+  "sort": {
+    "kind": "sort",
+    "stem": "Put these in order of increasing particle energy.",
+    "steps": ["Ice", "Water", "Steam", "Steam at a higher temperature"],
+    "factRefs": ["q4", "o3"],
+    "notes": "Pupils order the cards in pairs."
+  },
+  "exit-ticket": {
+    "kind": "exit-ticket",
+    "items": [
+      "Describe the particles in a liquid.",
+      "Name the change of state from gas to liquid.",
+      "Predict what happens to a gas when it is cooled."
+    ],
+    "footnote": "Answer on a sticky note and hand it in.",
+    "factRefs": ["o1", "o2", "o3"],
+    "notes": "Collect and sort into three piles."
+  },
+  "title": {
+    "kind": "title",
+    "title": "States of matter",
+    "subtitle": "Year 8 \u00b7 Science",
+    "factRefs": []
+  },
+  "objectives": {
+    "kind": "objectives",
+    "items": ["Describe particles in each state"],
+    "factRefs": ["o1"]
+  },
+  "instructions": {
+    "kind": "instructions",
+    "steps": ["Draw the three diagrams.", "Label each state."],
+    "footnote": "10 minutes.",
+    "factRefs": ["o1"]
+  },
+  "discussion": {
+    "kind": "discussion",
+    "prompt": "Why does a wet playground dry faster on a windy day?",
+    "factRefs": ["o2"]
+  },
+  "matching": {
+    "kind": "matching",
+    "stem": "Match each state to its particles.",
+    "pairs": [
+      {
+        "left": "Solid",
+        "right": "Packed closely, vibrating"
+      },
+      {
+        "left": "Liquid",
+        "right": "Touching, sliding past"
+      },
+      {
+        "left": "Gas",
+        "right": "Far apart, moving freely"
+      }
+    ],
+    "factRefs": ["v2", "v3", "v4"]
+  },
+  "fill-gap": {
+    "kind": "fill-gap",
+    "stem": "Complete the sentence.",
+    "sentence": "Ice ___ when it is heated and water ___ when it is cooled.",
+    "answers": ["melts", "freezes"],
+    "factRefs": ["v5", "o2"]
+  },
+  "open-response": {
+    "kind": "open-response",
+    "stem": "Explain why a balloon shrinks in a fridge.",
+    "modelAnswer": "The gas particles lose energy, move less and take up less room.",
+    "factRefs": ["o3"]
+  },
+  "plenary": {
+    "kind": "plenary",
+    "items": ["We can describe particles in each state", "We can name the changes of state"],
+    "factRefs": ["o1", "o2"]
+  }
+}
