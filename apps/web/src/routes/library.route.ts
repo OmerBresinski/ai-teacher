@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { createRoute, lazyRouteComponent, notFound } from "@tanstack/react-router";
+import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { z } from "zod";
 import { libraryCache, libraryQueries } from "@/lib/library";
 import { pageTitle } from "@/lib/page-title";
@@ -67,18 +67,17 @@ export const seriesDetailRoute = createRoute({
   path: "/series/$seriesId",
   // Hover preload (`defaultPreload: "intent"`) runs this. The lists settle from cache, so the page
   // renders at once from `placeholderData`; the exact record is fetched without blocking and the
-  // page's `useQuery` picks it up. Unknown ids are 404'd from the cached list without a round trip.
+  // page's `useQuery` picks it up. A missing series is not a 404: the page renders TeachDeck's
+  // "deleted or never existed" state with a way back (TEACH-92), so the loader resolves `null`.
   loader: async ({ context: { queryClient }, params }) => {
     await prefetchLibrary(queryClient);
     const options = libraryQueries.seriesDetail(params.seriesId, queryClient);
     const cached = libraryCache.seriesDetail(queryClient, params.seriesId);
-    if (!cached) {
-      const detail = await queryClient.ensureQueryData(options);
-      if (!detail) throw notFound();
-      return detail;
+    if (cached) {
+      void queryClient.prefetchQuery(options);
+      return cached;
     }
-    void queryClient.prefetchQuery(options);
-    return cached;
+    return queryClient.ensureQueryData(options);
   },
   head: ({ loaderData }) => pageTitle(loaderData?.series.title ?? "Series"),
   component: lazyRouteComponent(() => import("./series-detail.page"), "SeriesDetailPage"),
