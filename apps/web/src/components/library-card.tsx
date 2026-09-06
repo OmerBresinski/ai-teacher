@@ -13,15 +13,18 @@ import {
   IconButton,
   ListSurfaceCell,
   ListSurfaceRow,
+  Tooltip,
   toast,
   useInlineRename,
 } from "@tj/ui";
 import {
   Copy,
   Download,
+  FileText,
   MoreHorizontal,
   Pencil,
   Play,
+  Presentation,
   Printer,
   SquareArrowOutUpRight,
   Trash2,
@@ -121,6 +124,21 @@ function DocumentMenu({
   );
 }
 
+const KIND_LABEL = { lesson: "Lesson", worksheet: "Worksheet" } as const;
+
+/** The kind as a 16px glyph in the meta line, with the word in a tooltip (TeachDeck `KindIcon`). */
+function KindIcon({ kind }: { kind: DocumentSummary["kind"] }) {
+  const Glyph = kind === "lesson" ? Presentation : FileText;
+  return (
+    <Tooltip label={KIND_LABEL[kind]}>
+      {/* Above the cover link so the pointer reaches the trigger; hover-only, like TeachDeck. */}
+      <span className="relative z-2 inline-flex shrink-0 text-ink-3">
+        <Glyph aria-hidden size={16} strokeWidth={1.5} />
+      </span>
+    </Tooltip>
+  );
+}
+
 function EditedTime({
   updatedAt,
   now,
@@ -212,6 +230,7 @@ export function LibraryCard({
 
   const meta = hero ? (
     <>
+      <KindIcon kind={doc.kind} />
       {subject ? <span>{subject}</span> : null}
       {subject ? <span aria-hidden>·</span> : null}
       <span>{sizeOf(doc)}</span>
@@ -220,6 +239,7 @@ export function LibraryCard({
     </>
   ) : (
     <>
+      <KindIcon kind={doc.kind} />
       {subject ? <span>{subject}</span> : null}
       {subject ? <span aria-hidden>·</span> : null}
       <EditedTime updatedAt={doc.updatedAt} now={now} />

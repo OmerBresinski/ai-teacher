@@ -9,15 +9,19 @@ import {
   SectionHeading,
   Skeleton,
 } from "@tj/ui";
-import { Layers, LibraryBig } from "lucide-react";
+import { ChevronRight, Layers, LibraryBig } from "lucide-react";
 import type { ReactNode } from "react";
 import { LibraryCard, type LibraryCardProps } from "@/components/library-card";
 import { SeriesCard, type SeriesCardProps } from "@/components/series-card";
 import type { DocumentSummary, SeriesWithLessons } from "@/mocks/library-schema";
 import type { LibraryMode, View } from "./library-model";
 
-/** TeachDeck fixes four columns; the responsive grid keeps that density on wide screens. */
-export const GRID = "grid grid-cols-2 gap-6 lg:grid-cols-3 xl:grid-cols-4";
+/**
+ * TeachDeck fixes four columns; the responsive grid keeps that density on wide screens.
+ * `items-start`: a stretched cell would extend each card's cover link and hover zone to the row's
+ * tallest neighbour (the Home hero), so hovering the empty column below a card lit it up.
+ */
+export const GRID = "grid grid-cols-2 items-start gap-6 lg:grid-cols-3 xl:grid-cols-4";
 
 export type DocumentCardCallbacks = Pick<LibraryCardProps, "now" | "onAction" | "onRename">;
 export type SeriesCardCallbacks = Pick<SeriesCardProps, "now" | "onAction" | "onRename">;
@@ -71,8 +75,12 @@ export function HomeSection({
         className="mb-4"
         count={count}
         action={
-          <Link to={to} className="text-sm font-medium text-brand-text hover:underline">
+          <Link
+            to={to}
+            className="flex shrink-0 items-center gap-1 text-body font-medium text-brand-text hover:underline"
+          >
             See all
+            <ChevronRight aria-hidden size={16} strokeWidth={1.5} />
           </Link>
         }
       >
@@ -118,7 +126,7 @@ export function SeriesGrid({
   ...cardProps
 }: { series: SeriesWithLessons[]; headingLevel?: "h2" | "h3" } & SeriesCardCallbacks) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid items-start gap-4 md:grid-cols-2">
       {series.map((item) => (
         <SeriesCard key={item.series.id} item={item} headingLevel={headingLevel} {...cardProps} />
       ))}
