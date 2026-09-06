@@ -49,6 +49,7 @@ const IMAGE_WATCH = [
   "packages/config/**",
   "packages/storage/**",
   "packages/ai/**",
+  "packages/slides/**",
 ];
 
 /**

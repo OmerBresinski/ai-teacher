@@ -40,9 +40,11 @@ reference; nothing is pasted from it without reading the file it came from.
   register with `text/active-editor.tsx` so the text toolbar can drive the caret. Renderer paths
   (`view`, `present`, `capture`, `thumb`) never see any of it.
 - **ADR 0021 — documents come from `@tj/domain/documents`.** Never redeclare `Slide`, `Lesson`,
-  `Worksheet`, `Theme`; the theme *catalogue*, id factories and starter content live here.
-- **ADR 0013 — never import `apps/*`.** Internal dependencies are `@tj/domain`, `@tj/ui`,
-  `@tj/config`. Bun's isolated linker: every import is declared in `package.json`, versions exact.
+  `Worksheet`, `Theme`. The theme *catalogue*, grid, layout recipes and doc builders live in
+  `@tj/slides` (ADR 0025 §9) and are re-exported from `src/model/*`; starter content and
+  `insert.ts` stay here.
+- **ADR 0013 — never import `apps/*`.** Internal dependencies are `@tj/domain`, `@tj/slides`,
+  `@tj/ui`, `@tj/config`. Never import `packages/slides/src/...` by relative path. Bun's isolated linker: every import is declared in `package.json`, versions exact.
 - **No Next.js.** `next/link` → TanStack `Link` (in `apps/web`, via callbacks here), `next/font` →
   `@fontsource` (`src/styles/fonts.css`), `next/dynamic` → `React.lazy`, no `'use client'`.
 - **Bundle (ADR 0022 §8).** `./thumb` must never pull Tiptap's React editor or any editing module
@@ -59,8 +61,9 @@ reference; nothing is pasted from it without reading the file it came from.
 
 ```
 src/
-  model/      themes (catalogue, floors, FIT_VERSION), fonts, grid, factories, layouts, geometry,
-              insert (element factories), reducers/ (pure lesson reducers, immer inside),
+  model/      themes, fonts, grid, factories, layouts, geometry are one-line re-exports of
+              `@tj/slides` (ADR 0025 §9); insert (element factories), reducers/ (pure lesson
+              reducers, immer inside),
               use-document-history (undo/redo/transactions over the Query cache)
   text/       Tiptap extension set + static HTML rendering (renderDocHTML)
   layout/     text-fitting engine: reflow, explanation panel (lint/tidy/fit arrive in phase C)

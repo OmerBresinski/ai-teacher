@@ -200,6 +200,7 @@
         "@tiptap/react": "3.31.3",
         "@tiptap/starter-kit": "3.31.3",
         "@tj/domain": "workspace:*",
+        "@tj/slides": "workspace:*",
         "@tj/ui": "workspace:*",
         "clsx": "2.1.1",
         "immer": "11.1.18",
@@ -240,6 +241,20 @@
       },
       "devDependencies": {
         "@tj/config": "workspace:*",
+        "typescript": "5.9.3",
+      },
+    },
+    "packages/slides": {
+      "name": "@tj/slides",
+      "version": "0.0.0",
+      "dependencies": {
+        "@tj/domain": "workspace:*",
+        "nanoid": "5.1.16",
+        "zod": "4.5.4",
+      },
+      "devDependencies": {
+        "@tj/config": "workspace:*",
+        "@types/bun": "1.4.0",
         "typescript": "5.9.3",
       },
     },
@@ -869,6 +884,8 @@
     "@tj/editor": ["@tj/editor@workspace:packages/editor"],
 
     "@tj/jobs": ["@tj/jobs@workspace:packages/jobs"],
+
+    "@tj/slides": ["@tj/slides@workspace:packages/slides"],
 
     "@tj/storage": ["@tj/storage@workspace:packages/storage"],
 
