@@ -37,6 +37,7 @@ function Sidebar({
   onCollapsedChange,
   className,
   "aria-label": ariaLabel,
+  onKeyDown: onKeyDownProp,
   ...props
 }: SidebarProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(false);
@@ -51,6 +52,8 @@ function Sidebar({
   // Arrow/Home/End move focus between items; they never activate. Items keep their own tab stops
   // (no roving tabindex) — a deliberate TeachDeck choice so every link stays reachable by Tab.
   const onKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    onKeyDownProp?.(event);
+    if (event.defaultPrevented) return;
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
 
     const items = Array.from(

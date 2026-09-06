@@ -184,4 +184,23 @@ describe("Sidebar", () => {
     expect(screen.getByRole("button", { name: "Home" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("button", { name: "Home" })).toHaveClass("bg-brand-quiet");
   });
+
+  it("composes a caller's onKeyDown with keyboard navigation", async () => {
+    const user = userEvent.setup();
+    const onKeyDown = mock();
+    render(
+      <TooltipProvider>
+        <Sidebar aria-label="Library" onKeyDown={onKeyDown}>
+          <SidebarItem icon={<Home size={16} />}>Home</SidebarItem>
+          <SidebarItem icon={<Home size={16} />}>Lessons</SidebarItem>
+        </Sidebar>
+      </TooltipProvider>,
+    );
+
+    screen.getByRole("button", { name: "Home" }).focus();
+    await user.keyboard("{ArrowDown}");
+
+    expect(onKeyDown).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Lessons" })).toHaveFocus();
+  });
 });

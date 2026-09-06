@@ -24,6 +24,24 @@ describe("PageTitle", () => {
     expect(onCommit).toHaveBeenCalledWith("New");
   });
 
+  it("starts renaming on F2 from the focused heading and selects the text", async () => {
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider>
+        <PageTitle label="Title" renameLabel="Rename lesson" onCommit={() => {}}>
+          Lesson one
+        </PageTitle>
+      </TooltipProvider>,
+    );
+
+    screen.getByRole("heading", { name: "Lesson one" }).focus();
+    await user.keyboard("{F2}");
+
+    const input = screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement;
+    expect(input).toHaveFocus();
+    expect(input.selectionEnd).toBe("Lesson one".length);
+  });
+
   it("does not commit Escape, empty, or unchanged titles", async () => {
     const user = userEvent.setup();
     const onCommit = mock();

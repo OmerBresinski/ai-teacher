@@ -47,7 +47,6 @@ function PageTitle({
 
   return (
     <div className={cn("flex min-w-0 items-center gap-1", className)}>
-      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: F2 / double-click start rename; the pencil button is the pointer/AT path. */}
       <Heading
         className="min-w-0"
         tabIndex={0}
