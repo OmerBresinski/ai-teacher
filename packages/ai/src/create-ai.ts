@@ -5,6 +5,7 @@ import { wrapLanguageModel } from "ai";
 import pino from "pino";
 import { AiError } from "./errors";
 import { createLoggingMiddleware } from "./logging-middleware";
+import { isPriced } from "./prices";
 import type {
   AiCallContext,
   AiEnv,
@@ -91,6 +92,20 @@ export function createConfiguredAi(options: ConfiguredAiOptions): ConfiguredAi {
 }
 
 /**
+ * ADR 0025 §15: a configured model id with no entry in `PRICES` is capped by tokens instead of
+ * USD. Said once at boot, per class, so the fallback is never silent.
+ */
+function warnUnpricedModels(logger: pino.Logger, modelIds: ModelIds): void {
+  for (const [modelClass, modelId] of Object.entries(modelIds)) {
+    if (isPriced(modelId)) continue;
+    logger.warn(
+      { ai: { class: modelClass, modelId } },
+      "model id has no list price in @tj/ai PRICES; lesson budgets fall back to the token cap",
+    );
+  }
+}
+
+/**
  * Creates the Bedrock-backed model client from explicit environment values. It never reads
  * `process.env`, allowing apps to validate their environment at boot and tests to be deterministic.
  */
@@ -101,6 +116,7 @@ export function createAi(env: AiEnv, options: CreateAiOptions = {}): CreatedAi {
   if (!apiKey) return unconfiguredAi(region, modelIds);
 
   const logger = options.logger ?? pino({ level: "silent" });
+  warnUnpricedModels(logger, modelIds);
   const bedrock = createAmazonBedrock({ apiKey, region });
   return createConfiguredAi({
     region,

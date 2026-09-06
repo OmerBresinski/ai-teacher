@@ -48,6 +48,13 @@ describe("costUsd", () => {
     expect(isPriced(DEFAULT_MODEL_IDS.frontier)).toBe(true);
   });
 
+  test("a prototype property name is not a priced model", () => {
+    for (const id of ["toString", "constructor", "__proto__", "hasOwnProperty"]) {
+      expect(isPriced(id)).toBe(false);
+      expect(costUsd(id, { inputTokens: 1, outputTokens: 1 })).toBeNull();
+    }
+  });
+
   test("zero usage costs zero, not null", () => {
     expect(costUsd(DEFAULT_MODEL_IDS.frontier, { inputTokens: 0, outputTokens: 0 })).toBe(0);
   });

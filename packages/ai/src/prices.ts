@@ -37,14 +37,19 @@ export interface TokenUsage {
   cachedInputTokens?: number | undefined;
 }
 
+/** The row for a model id, or `undefined`. Own properties only: `"toString"` is not a model. */
+function priceOf(modelId: string): ModelPrice | undefined {
+  return Object.hasOwn(PRICES, modelId) ? PRICES[modelId] : undefined;
+}
+
 /** Whether a model id has a row in `PRICES`. */
 export function isPriced(modelId: string): boolean {
-  return modelId in PRICES;
+  return priceOf(modelId) !== undefined;
 }
 
 /** USD for one call, or `null` when the model id is unpriced. */
 export function costUsd(modelId: string, usage: TokenUsage): number | null {
-  const price = PRICES[modelId];
+  const price = priceOf(modelId);
   if (!price) return null;
   const cached = Math.min(usage.cachedInputTokens ?? 0, usage.inputTokens);
   const uncached = usage.inputTokens - cached;
