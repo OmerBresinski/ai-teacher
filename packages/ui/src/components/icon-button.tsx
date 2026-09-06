@@ -9,10 +9,21 @@ export type IconButtonProps = React.ComponentProps<"button"> & {
   size?: "sm" | "md";
   active?: boolean;
   noTooltip?: boolean;
+  /** Class for the portalled tooltip, e.g. `"tj-stage"` on the stage (ADR 0022 §3). */
+  tooltipClassName?: string;
 };
 
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
-  { label, size = "md", active = false, noTooltip = false, className, type, ...props },
+  {
+    label,
+    size = "md",
+    active = false,
+    noTooltip = false,
+    tooltipClassName,
+    className,
+    type,
+    ...props
+  },
   ref,
 ) {
   const button = (
@@ -30,7 +41,13 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(function
     />
   );
 
-  return noTooltip ? button : <Tooltip label={label}>{button}</Tooltip>;
+  return noTooltip ? (
+    button
+  ) : (
+    <Tooltip label={label} contentClassName={tooltipClassName}>
+      {button}
+    </Tooltip>
+  );
 });
 
 function IconGroup({

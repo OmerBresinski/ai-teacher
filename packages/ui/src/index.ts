@@ -102,6 +102,7 @@ export {
   type SidebarProps,
 } from "./components/sidebar";
 export { Skeleton } from "./components/skeleton";
+export { Slider } from "./components/slider";
 export { Toaster, toast } from "./components/sonner";
 export { Spinner } from "./components/spinner";
 export { Stack, type StackProps } from "./components/stack";

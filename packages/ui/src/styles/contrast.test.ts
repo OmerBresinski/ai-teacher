@@ -123,6 +123,56 @@ describe("token contrast", () => {
     }
   });
 
+  describe("stage scope (ADR 0022 §3)", () => {
+    const stage = blockFor(".tj-stage {");
+    const stageToken = (name: string): string => {
+      const match = stage.match(new RegExp(`${name}\\s*:\\s*([^;]+);`));
+      if (!match?.[1]) throw new Error(`Missing stage token ${name}`);
+      return match[1].replace(/\/\*.*?\*\//g, "").trim();
+    };
+    const STAGE_TEXT: [string, string][] = [
+      ["--foreground", "--card"],
+      ["--foreground", "--background"],
+      ["--muted-foreground", "--background"],
+      ["--muted-foreground", "--card"],
+      ["--secondary-foreground", "--secondary"],
+      ["--muted-foreground", "--secondary"],
+      ["--brand-text", "--background"],
+      ["--destructive", "--card"],
+      ["--destructive-foreground", "--destructive"],
+      ["--success", "--background"],
+      ["--warning", "--background"],
+    ];
+
+    it("every text pair clears 4.5:1 on the stage", () => {
+      const failures = STAGE_TEXT.flatMap(([fg, bg]) => {
+        const ratio = contrast(stageToken(fg), stageToken(bg));
+        return ratio < 4.5 ? [`${fg} on ${bg} = ${ratio.toFixed(2)}`] : [];
+      });
+      expect(failures).toEqual([]);
+    });
+
+    it("control boundaries and the accent clear 3:1 on the stage", () => {
+      for (const bg of ["--background", "--card", "--secondary"]) {
+        expect(contrast(stageToken("--border-control"), stageToken(bg))).toBeGreaterThanOrEqual(3);
+        expect(contrast(stageToken("--primary"), stageToken(bg))).toBeGreaterThanOrEqual(3);
+      }
+    });
+
+    it("checked controls keep the recorded white-on-terracotta fill (ADR 0019 §4)", () => {
+      expect(stageToken("--primary-fill-aa")).toBe(stageToken("--primary-fill"));
+      expect(stageToken("--primary-foreground")).toBe("#ffffff");
+      expect(
+        contrast(stageToken("--primary-foreground"), stageToken("--primary-fill-aa")),
+      ).toBeGreaterThanOrEqual(3.7);
+    });
+
+    it("paints no ground of its own", () => {
+      expect(stage).not.toMatch(/^\s*background\s*:/m);
+      expect(stage).not.toMatch(/^\s*color\s*:/m);
+    });
+  });
+
   it("the helper agrees with the WCAG reference values", () => {
     expect(contrast("#000000", "#ffffff")).toBeCloseTo(21, 1);
     expect(contrast("#767676", "#ffffff")).toBeCloseTo(4.54, 1);
