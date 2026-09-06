@@ -340,7 +340,11 @@
   --primary-fill: #d2644b;
   --primary-fill-hover: #c05740;
   --primary-fill-press: #ae4b31;
-  --secondary: #1f1d1b;
+  /* Checked Checkbox/Radio fill: white glyphs on the stage accent clear 3.7:1 like the light
+     theme's recorded exception, and the dark themes already use the plain fill here. */
+  --primary-fill-aa: #d2644b;
+  /* Inputs, Select triggers and Tabs lists sit in the stage well, a step below the ground. */
+  --secondary: #100f0e; /* --stage-well: ground at 88% over black */
   --secondary-foreground: #f7f6f2;
   --muted: #1f1d1b;
   --muted-foreground: #a39d94; /* --v2-stage-muted, 6.90:1 on the ground */

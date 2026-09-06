@@ -135,6 +135,8 @@ describe("token contrast", () => {
       ["--foreground", "--background"],
       ["--muted-foreground", "--background"],
       ["--muted-foreground", "--card"],
+      ["--secondary-foreground", "--secondary"],
+      ["--muted-foreground", "--secondary"],
       ["--brand-text", "--background"],
       ["--destructive", "--card"],
       ["--destructive-foreground", "--destructive"],
@@ -151,10 +153,15 @@ describe("token contrast", () => {
     });
 
     it("control boundaries and the accent clear 3:1 on the stage", () => {
-      for (const bg of ["--background", "--card"]) {
+      for (const bg of ["--background", "--card", "--secondary"]) {
         expect(contrast(stageToken("--border-control"), stageToken(bg))).toBeGreaterThanOrEqual(3);
         expect(contrast(stageToken("--primary"), stageToken(bg))).toBeGreaterThanOrEqual(3);
       }
+    });
+
+    it("checked controls keep the recorded white-on-terracotta fill (ADR 0019 §4)", () => {
+      expect(stageToken("--primary-fill-aa")).toBe(stageToken("--primary-fill"));
+      expect(contrast("#ffffff", stageToken("--primary-fill-aa"))).toBeGreaterThanOrEqual(3.7);
     });
 
     it("paints no ground of its own", () => {

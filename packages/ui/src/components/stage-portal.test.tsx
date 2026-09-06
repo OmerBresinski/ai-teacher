@@ -15,9 +15,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
+import { IconButton } from "./icon-button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
-import { TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 
 /*
  * ADR 0022 §3: a surface opened from present mode's stage carries `tj-stage` itself, because a
@@ -90,6 +91,26 @@ describe("stage className on portalled content", () => {
     const tooltip = await screen.findByRole("tooltip");
     // Radix renders the role on an inner node; the styled Content is its closest slot ancestor.
     expect(tooltip.closest('[data-slot="tooltip-content"]')).toHaveClass("tj-stage");
+  });
+
+  it("Tooltip wrapper and IconButton forward a content class to the portal", async () => {
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider delayDuration={0}>
+        <Tooltip label="Draw" contentClassName="tj-stage">
+          <button type="button">Wrapped</button>
+        </Tooltip>
+        <IconButton label="Pen" tooltipClassName="tj-stage">
+          <span aria-hidden>✎</span>
+        </IconButton>
+      </TooltipProvider>,
+    );
+    for (const name of ["Wrapped", "Pen"]) {
+      await user.hover(screen.getByRole("button", { name }));
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip.closest('[data-slot="tooltip-content"]')).toHaveClass("tj-stage");
+      await user.unhover(screen.getByRole("button", { name }));
+    }
   });
 
   it("SelectContent", async () => {

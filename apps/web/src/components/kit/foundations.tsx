@@ -117,7 +117,7 @@ export function Foundations() {
         >
           <Button>Present</Button>
           <Button variant="outline">Notes</Button>
-          <IconButton label="Pen">
+          <IconButton label="Pen" tooltipClassName="tj-stage">
             <Pencil aria-hidden size={16} strokeWidth={1.5} />
           </IconButton>
           <Switch aria-label="Laser" defaultChecked />

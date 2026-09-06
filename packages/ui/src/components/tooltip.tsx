@@ -32,12 +32,15 @@ function Tooltip({
   label,
   shortcut,
   side,
+  contentClassName,
   ref,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root> & {
   label: React.ReactNode;
   shortcut?: string;
   side?: React.ComponentProps<typeof TooltipPrimitive.Content>["side"];
+  /** Reaches the portalled content, e.g. `"tj-stage"` for a control on the stage (ADR 0022 §3). */
+  contentClassName?: string;
   ref?: React.Ref<HTMLElement>;
 }) {
   return (
@@ -45,7 +48,7 @@ function Tooltip({
       <TooltipPrimitive.Trigger ref={ref as React.Ref<HTMLButtonElement>} asChild>
         {children}
       </TooltipPrimitive.Trigger>
-      <TooltipContent side={side}>
+      <TooltipContent side={side} className={contentClassName}>
         <span>{label}</span>
         {shortcut ? <Kbd>{shortcut}</Kbd> : null}
       </TooltipContent>
