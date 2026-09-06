@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { defaultParseSearch } from "@tanstack/react-router";
 import { devJobsSearchSchema } from "./dev-jobs.route";
+import { librarySearchSchema } from "./library.route";
 import { signInSearchSchema } from "./sign-in.route";
 
 /**
@@ -35,5 +36,13 @@ describe("search schemas drop malformed params", () => {
     expect(parse("?jobId=123")).toEqual({ jobId: undefined });
     expect(parse("?jobId=%5B%22a%22%5D")).toEqual({ jobId: undefined });
     expect(parse("")).toEqual({ jobId: undefined });
+  });
+
+  it("librarySearchSchema.q", () => {
+    const parse = (qs: string) => librarySearchSchema.parse(defaultParseSearch(qs));
+    expect(parse("?q=water")).toEqual({ q: "water" });
+    expect(parse("?q=123")).toEqual({ q: "" });
+    expect(parse("?q=%5B%22water%22%5D")).toEqual({ q: "" });
+    expect(parse("")).toEqual({ q: undefined });
   });
 });

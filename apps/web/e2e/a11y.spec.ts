@@ -16,7 +16,7 @@ test.describe("accessibility (axe)", () => {
     signedInPage: { page },
   }) => {
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "/");
   });
 
