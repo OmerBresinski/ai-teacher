@@ -4,7 +4,14 @@ import {
   QueryClient,
   type UseMutationOptions,
 } from "@tanstack/react-query";
-import { libraryMutations, libraryQueries, sortDocuments } from "./library";
+import type { DocumentSummary, SeriesWithLessons } from "@/mocks/library-schema";
+import {
+  libraryCache,
+  libraryMutations,
+  libraryQueries,
+  librarySelectors,
+  sortDocuments,
+} from "./library";
 import { queryKeys } from "./query";
 
 async function invokeOnSuccess<TData, TVariables>(
@@ -19,6 +26,19 @@ async function invokeOnSuccess<TData, TVariables>(
   );
 }
 
+function summary(overrides: Partial<DocumentSummary> = {}): DocumentSummary {
+  return {
+    id: "doc",
+    kind: "lesson",
+    title: "Untitled",
+    count: 6,
+    themeId: "chalk",
+    createdAt: "2026-09-01T00:00:00.000Z",
+    updatedAt: "2026-09-02T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
 describe("library queries", () => {
   it("uses the library query-key family", () => {
     expect<readonly unknown[]>(libraryQueries.documents().queryKey).toEqual(
@@ -28,6 +48,38 @@ describe("library queries", () => {
     expect<readonly unknown[]>(libraryQueries.seriesDetail("s1").queryKey).toEqual(
       queryKeys.librarySeriesDetail("s1"),
     );
+    expect<readonly unknown[]>(libraryQueries.document("d1").queryKey).toEqual(
+      queryKeys.libraryDocument("d1"),
+    );
+  });
+
+  it("seeds detail placeholders from the cached lists so navigation paints instantly", () => {
+    const queryClient = new QueryClient();
+    const lesson = summary({ id: "d1", title: "Rivers" });
+    const seriesItem: SeriesWithLessons = {
+      series: {
+        id: "s1",
+        title: "Geography",
+        lessonIds: ["d1"],
+        createdAt: lesson.createdAt,
+        updatedAt: lesson.updatedAt,
+      },
+      lessons: [lesson],
+    };
+    queryClient.setQueryData(queryKeys.libraryDocuments, [lesson]);
+    queryClient.setQueryData(queryKeys.librarySeries, [seriesItem]);
+
+    const documentOptions = libraryQueries.document("d1", queryClient);
+    const seriesOptions = libraryQueries.seriesDetail("s1", queryClient);
+    const placeholder = (options: { placeholderData?: unknown }) =>
+      (options.placeholderData as () => unknown)();
+
+    expect(placeholder(documentOptions)).toEqual(lesson);
+    expect(placeholder(seriesOptions)).toEqual(seriesItem);
+    expect(placeholder(libraryQueries.document("missing", queryClient))).toBeUndefined();
+    expect(placeholder(libraryQueries.document("d1"))).toBeUndefined();
+    expect(libraryCache.document(queryClient, "d1")).toEqual(lesson);
+    expect(libraryCache.seriesDetail(queryClient, "nope")).toBeUndefined();
   });
 
   it("invalidates the full library family after every mutation", async () => {
@@ -57,6 +109,23 @@ describe("library queries", () => {
     }
 
     expect(invalidateQueries).toHaveBeenCalledTimes(onSuccess.length);
+  });
+});
+
+describe("librarySelectors", () => {
+  it("counts kinds in one pass and narrows lists by kind", () => {
+    const documents = [
+      summary({ id: "a", kind: "lesson" }),
+      summary({ id: "b", kind: "worksheet" }),
+      summary({ id: "c", kind: "lesson" }),
+    ];
+    expect(librarySelectors.countsByKind(documents)).toEqual({ lesson: 2, worksheet: 1 });
+    expect(
+      librarySelectors
+        .byKind("worksheet")(documents)
+        .map((d) => d.id),
+    ).toEqual(["b"]);
+    expect(librarySelectors.length(documents)).toBe(3);
   });
 });
 

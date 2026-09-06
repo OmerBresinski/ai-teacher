@@ -65,6 +65,7 @@ export const queryKeys = {
   job: (id: string) => ["job", id] as const,
   library: ["library"] as const,
   libraryDocuments: ["library", "documents"] as const,
+  libraryDocument: (id: string) => ["library", "documents", id] as const,
   librarySeries: ["library", "series"] as const,
   librarySeriesDetail: (id: string) => ["library", "series", id] as const,
 };

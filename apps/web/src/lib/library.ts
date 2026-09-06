@@ -9,6 +9,7 @@ import {
   duplicateSeries,
   listDocuments,
   listSeriesWithLessons,
+  loadDocument,
   loadSeriesWithLessons,
   removeLessonFromSeries,
   renameDocument,
@@ -21,14 +22,51 @@ import {
 } from "@/mocks/library-store";
 import { queryKeys } from "./query";
 
+/**
+ * Query options for the library (ADR 0020). Lists are the source of truth; the per-entity options
+ * exist so route loaders, hover preloads and detail pages ask for exactly one record — the shape
+ * the real API will serve. Until then `placeholderData` seeds a detail from the cached list so a
+ * card → detail navigation paints immediately and the detail fetch settles behind it.
+ */
+/** The cached list entry for an id — the seed for detail placeholders and the loaders' fast path. */
+export const libraryCache = {
+  document: (queryClient: QueryClient, id: string): DocumentSummary | undefined =>
+    queryClient
+      .getQueryData<DocumentSummary[]>(queryKeys.libraryDocuments)
+      ?.find((document) => document.id === id),
+  seriesDetail: (queryClient: QueryClient, id: string): SeriesWithLessons | undefined =>
+    queryClient
+      .getQueryData<SeriesWithLessons[]>(queryKeys.librarySeries)
+      ?.find((item) => item.series.id === id),
+};
+
 export const libraryQueries = {
   documents: () => queryOptions({ queryKey: queryKeys.libraryDocuments, queryFn: listDocuments }),
+  document: (id: string, queryClient?: QueryClient) =>
+    queryOptions({
+      queryKey: queryKeys.libraryDocument(id),
+      queryFn: () => loadDocument(id),
+      placeholderData: () => (queryClient ? libraryCache.document(queryClient, id) : undefined),
+    }),
   series: () => queryOptions({ queryKey: queryKeys.librarySeries, queryFn: listSeriesWithLessons }),
-  seriesDetail: (id: string) =>
+  seriesDetail: (id: string, queryClient?: QueryClient) =>
     queryOptions({
       queryKey: queryKeys.librarySeriesDetail(id),
       queryFn: () => loadSeriesWithLessons(id),
+      placeholderData: () => (queryClient ? libraryCache.seriesDetail(queryClient, id) : undefined),
     }),
+};
+
+/** `select` helpers: subscribe components to the slice they render, not the whole list. */
+export const librarySelectors = {
+  byKind: (kind: DocumentSummary["kind"]) => (documents: DocumentSummary[]) =>
+    documents.filter((document) => document.kind === kind),
+  countsByKind: (documents: DocumentSummary[]): Record<DocumentSummary["kind"], number> => {
+    const counts = { lesson: 0, worksheet: 0 };
+    for (const document of documents) counts[document.kind] += 1;
+    return counts;
+  },
+  length: (items: unknown[]): number => items.length,
 };
 
 export type LibraryDocumentsQuery = ReturnType<typeof libraryQueries.documents>;
@@ -133,16 +171,8 @@ export const libraryMutations = {
 export function libraryCounts(
   documents: DocumentSummary[],
   series: SeriesWithLessons[],
-): {
-  lesson: number;
-  worksheet: number;
-  series: number;
-} {
-  return {
-    lesson: documents.filter((document) => document.kind === "lesson").length,
-    worksheet: documents.filter((document) => document.kind === "worksheet").length,
-    series: series.length,
-  };
+): { lesson: number; worksheet: number; series: number } {
+  return { ...librarySelectors.countsByKind(documents), series: series.length };
 }
 
 const collator = new Intl.Collator("en-GB", { numeric: true, sensitivity: "base" });

@@ -35,7 +35,6 @@ import { LibraryCard, type LibraryCardProps } from "@/components/library-card";
 import { useLibraryShell } from "@/components/library-shell-context";
 import type { NewDocumentValues } from "@/components/new-document-dialog";
 import { SeriesCard, type SeriesCardProps } from "@/components/series-card";
-import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useNow } from "@/hooks/use-now";
 import { libraryMutations, libraryQueries, sortDocuments } from "@/lib/library";
 import type { DocumentSummary, SeriesWithLessons } from "@/mocks/library-schema";
@@ -118,7 +117,6 @@ function isRecent(updatedAt: string): boolean {
 }
 
 export function LibraryPage({ mode }: { mode: LibraryMode }) {
-  useDocumentTitle(`${TITLES[mode]} · Teaching Journey`);
   const { openImport } = useLibraryShell();
   const documents = useQuery(libraryQueries.documents());
   const series = useQuery(libraryQueries.series());

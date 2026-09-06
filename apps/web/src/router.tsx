@@ -8,6 +8,7 @@ import { createRouter } from "@tanstack/react-router";
 import { ThemeProvider, Toaster, TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { RoutePendingPage } from "@/components/route-pending-page";
+import { rememberShell } from "@/lib/last-shell";
 import { queryClient } from "@/lib/query";
 import { authLayoutRoute } from "@/routes/auth.route";
 import { devJobsRoute } from "@/routes/dev-jobs.route";
@@ -76,6 +77,10 @@ export const router = createRouter({
   scrollRestoration: true,
   Wrap,
 });
+
+// Which shell page a document's back arrow returns to (`useShellReturn`). Committed navigations
+// only: `beforeLoad`/`loader` also run for hover preloads, which must not move the return target.
+router.subscribe("onResolved", ({ toLocation }) => rememberShell(toLocation.pathname));
 
 declare module "@tanstack/react-router" {
   interface Register {
