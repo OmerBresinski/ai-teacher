@@ -203,7 +203,7 @@ export const LibraryCard = memo(function LibraryCard({
           <EditedTime updatedAt={doc.updatedAt} />
         </ListSurfaceCell>
         <ListSurfaceCell className="w-[104px]">
-          <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100 pointer-coarse:opacity-100">
+          <div className="flex justify-end gap-1 opacity-0 motion-safe:transition-opacity motion-safe:duration-(--duration-fast) group-hover/row:opacity-100 group-focus-within/row:opacity-100 pointer-coarse:opacity-100">
             <Button size="xs" className="relative z-2" onClick={primaryAction}>
               {primaryLabel}
             </Button>

@@ -125,7 +125,7 @@ export const SeriesCard = memo(function SeriesCard({
                 <EditedTime updatedAt={item.series.updatedAt} />
               </p>
             </div>
-            <div className="relative z-2 flex items-center gap-1 opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100 pointer-coarse:opacity-100">
+            <div className="relative z-2 flex items-center gap-1 opacity-0 motion-safe:transition-opacity motion-safe:duration-(--duration-fast) group-hover/card:opacity-100 group-focus-within/card:opacity-100 pointer-coarse:opacity-100">
               {firstLesson ? (
                 <Button size="sm" onClick={() => onAction("present", item)}>
                   <Play aria-hidden size={16} />

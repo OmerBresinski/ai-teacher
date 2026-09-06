@@ -22,6 +22,56 @@ function themeInit(): Plugin {
 }
 
 /**
+ * Resource hints for the cold load, production build only (the dev server is same-origin and serves
+ * fonts from source):
+ *
+ * - `preconnect` to the API origin, so the DNS/TLS handshake for the first `GET /me` overlaps the
+ *   script download instead of following it. No `crossorigin` attribute on purpose: the client
+ *   fetches with credentials, and only a credentialed preconnect is reused for those requests.
+ * - `preload` the two latin `.woff2` files every screen uses (Plus Jakarta Sans variable, Lora 500).
+ *   Without it the browser discovers them only after the CSS is parsed and text is laid out, so the
+ *   first frames paint in the fallback face and swap ~150 ms later. Other subsets stay lazy: their
+ *   `unicode-range` means they download only when such text is present.
+ */
+function resourceHints(apiUrl: string): Plugin {
+  const apiOrigin = /^https?:\/\//.test(apiUrl) ? new URL(apiUrl).origin : null;
+  return {
+    name: "tj:resource-hints",
+    apply: "build",
+    transformIndexHtml: {
+      order: "post",
+      handler(_html, ctx) {
+        const tags: { tag: string; attrs: Record<string, string | boolean>; injectTo: "head" }[] =
+          [];
+        if (apiOrigin) {
+          tags.push({
+            tag: "link",
+            attrs: { rel: "preconnect", href: apiOrigin },
+            injectTo: "head",
+          });
+        }
+        for (const fileName of Object.keys(ctx.bundle ?? {})) {
+          if (!/(plus-jakarta-sans-latin-wght|lora-latin-500)-normal-[^/]*\.woff2$/.test(fileName))
+            continue;
+          tags.push({
+            tag: "link",
+            attrs: {
+              rel: "preload",
+              as: "font",
+              type: "font/woff2",
+              href: `/${fileName}`,
+              crossorigin: true,
+            },
+            injectTo: "head",
+          });
+        }
+        return tags;
+      },
+    },
+  };
+}
+
+/**
  * Dev proxy decision (ADR 0008 "local development uses a Vite dev proxy"): the browser calls
  * `/api/*` on the Vite origin, Vite forwards to the API and strips the `/api` prefix (API routes
  * stay unprefixed: `/api/me` → `http://localhost:3001/me`). Cookies are therefore same-origin in
@@ -32,7 +82,7 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_DEV_API_TARGET || "http://localhost:3001";
 
   return {
-    plugins: [react(), tailwindcss(), themeInit()],
+    plugins: [react(), tailwindcss(), themeInit(), resourceHints(env.VITE_API_URL ?? "")],
     resolve: {
       // Honour `paths` from ./tsconfig.json (`@/*` → `./src/*`) without a plugin (Vite 8).
       tsconfigPaths: true,

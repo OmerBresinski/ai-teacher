@@ -51,6 +51,13 @@ type ThemeTag = "All" | "Primary" | "Secondary" | "Calm" | "Bold";
 /** TeachDeck's list (`components/library/year-groups.ts`): EYFS then Year 1–13; the label is stored. */
 const YEAR_GROUPS = ["EYFS", ...Array.from({ length: 13 }, (_, index) => `Year ${index + 1}`)];
 const THEME_TAGS: ThemeTag[] = ["All", "Primary", "Secondary", "Calm", "Bold"];
+const READING_LEVELS = ["Below year group", "Same as year group", "Above year group"];
+const LANGUAGES = [
+  { value: "en-GB", label: "British English" },
+  { value: "en-US", label: "American English" },
+  { value: "cy", label: "Welsh" },
+];
+const THEMES_BY_ID = new Map(LIBRARY_THEMES.map((theme) => [theme.id, theme]));
 
 export function NewDocumentDialog({ open, onOpenChange, kind, onCreate }: NewDocumentDialogProps) {
   const titleId = useId();
@@ -82,12 +89,7 @@ export function NewDocumentDialog({ open, onOpenChange, kind, onCreate }: NewDoc
   function selectThemeTag(value: string): void {
     const next = value as ThemeTag;
     setThemeTag(next);
-    if (
-      next !== "All" &&
-      !LIBRARY_THEMES.find((theme) => theme.id === themeId)?.tags.includes(next)
-    ) {
-      setThemeId("");
-    }
+    if (next !== "All" && !THEMES_BY_ID.get(themeId)?.tags.includes(next)) setThemeId("");
   }
 
   async function submit(): Promise<void> {
@@ -166,18 +168,14 @@ export function NewDocumentDialog({ open, onOpenChange, kind, onCreate }: NewDoc
                 value={readingLevel}
                 onValueChange={setReadingLevel}
                 placeholder="Same as year group"
-                items={["Below year group", "Same as year group", "Above year group"]}
+                items={READING_LEVELS}
               />
               <SelectField
                 id={languageId}
                 label="Language"
                 value={language}
                 onValueChange={setLanguage}
-                items={[
-                  { value: "en-GB", label: "British English" },
-                  { value: "en-US", label: "American English" },
-                  { value: "cy", label: "Welsh" },
-                ]}
+                items={LANGUAGES}
               />
             </div>
             <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true" />

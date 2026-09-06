@@ -20,6 +20,8 @@ export interface JobEventsState {
 }
 
 const INITIAL: JobEventsState = { events: [], status: "idle", percent: null, terminal: null };
+/** The API names SSE events by type (`event: progress`); derived once from the schema. */
+const EVENT_TYPES = JobEventSchema.options.map((option) => option.shape.type.value);
 let seq = 0;
 
 type Action =
@@ -92,9 +94,7 @@ export function useJobEvents(jobId: string | undefined): JobEventsState {
       if (isTerminalJobEvent(parsed.data)) source.close();
     };
 
-    for (const type of JobEventSchema.options.map((o) => o.shape.type.value)) {
-      source.addEventListener(type, onMessage as EventListener);
-    }
+    for (const type of EVENT_TYPES) source.addEventListener(type, onMessage as EventListener);
     source.addEventListener("message", onMessage as EventListener);
     source.onopen = () => dispatch({ type: "status", status: "open" });
     source.onerror = () => {

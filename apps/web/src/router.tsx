@@ -78,6 +78,9 @@ export const router = createRouter({
   defaultPendingMs: 100,
   defaultPendingMinMs: 200,
   scrollRestoration: true,
+  // Search params and loader data keep their identity when their contents are unchanged, so
+  // `useSearch()` / `useLoaderData()` consumers do not re-render on every navigation.
+  defaultStructuralSharing: true,
   Wrap,
 });
 

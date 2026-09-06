@@ -21,13 +21,14 @@ import {
   SunMoon,
   Upload,
 } from "lucide-react";
-import { useSyncExternalStore } from "react";
 import { authClient } from "@/lib/auth";
 import { libraryQueries, librarySelectors } from "@/lib/library";
 import { queryKeys } from "@/lib/query";
+import { usePreference } from "@/lib/use-preference";
 
+/** Stable client storage contract (apps/web/AGENTS.md); "1" collapsed, anything else expanded. */
 const COLLAPSED_KEY = "tj:sidebar-collapsed";
-const COLLAPSED_EVENT = "tj:sidebar-collapsed";
+const COLLAPSED_VALUES = ["0", "1"] as const;
 
 // Static icons hoisted so a pathname or count change does not rebuild them (rendering-hoist-jsx).
 const ICON = { size: 16, strokeWidth: 1.5 } as const;
@@ -50,26 +51,6 @@ const MARK = (
   </Display>
 );
 
-function readCollapsed(): boolean {
-  try {
-    return localStorage.getItem(COLLAPSED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function subscribeCollapsed(onChange: () => void): () => void {
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === COLLAPSED_KEY) onChange();
-  };
-  window.addEventListener(COLLAPSED_EVENT, onChange);
-  window.addEventListener("storage", onStorage);
-  return () => {
-    window.removeEventListener(COLLAPSED_EVENT, onChange);
-    window.removeEventListener("storage", onStorage);
-  };
-}
-
 function isActive(pathname: string, href: "/" | "/lessons" | "/worksheets" | "/series"): boolean {
   return href === "/" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -82,7 +63,9 @@ export function LibrarySidebar({
   onShortcuts: () => void;
 }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
+  // `usePreference` caches the read and announces same-tab writes, like the sort/view prefs.
+  const [collapsedFlag, setCollapsedFlag] = usePreference(COLLAPSED_KEY, COLLAPSED_VALUES, "0");
+  const collapsed = collapsedFlag === "1";
   const { theme, setTheme } = useTheme();
   // `select` keeps the sidebar subscribed to three numbers, not to every card's fields.
   const { data: documentCounts } = useQuery({
@@ -97,12 +80,7 @@ export function LibrarySidebar({
   const navigate = useNavigate();
 
   function setCollapsed(next: boolean): void {
-    try {
-      localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
-    } catch {
-      // The UI still changes in this tab when client storage is unavailable.
-    }
-    window.dispatchEvent(new Event(COLLAPSED_EVENT));
+    setCollapsedFlag(next ? "1" : "0");
   }
 
   async function signOut(): Promise<void> {
