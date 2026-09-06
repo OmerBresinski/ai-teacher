@@ -1,15 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import {
-  createSeries,
-  listSeriesWithLessons,
-  loadSeriesWithLessons,
-  resetLibraryStore,
-} from "@/mocks/library-store";
+import { libraryQueries } from "@/lib/library";
+import { createSeries, loadSeriesWithLessons, resetLibraryStore } from "@/mocks/library-store";
 
 let seriesId = "series-romans";
 const navigate = mock();
@@ -26,12 +22,25 @@ mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
 const { SeriesDetailPage } = await import("./series-detail.page");
 
-function renderPage() {
+/** The `/series` list beside the page: proves a write here invalidates and re-renders the list. */
+function SeriesTitles() {
+  const { data } = useQuery(libraryQueries.series());
+  return (
+    <ul aria-label="Series list">
+      {data?.map((item) => (
+        <li key={item.series.id}>{item.series.title}</li>
+      ))}
+    </ul>
+  );
+}
+
+function renderPage({ withList = false } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <SeriesDetailPage />
+        {withList ? <SeriesTitles /> : null}
       </TooltipProvider>
     </QueryClientProvider>,
   );
@@ -123,19 +132,20 @@ describe("SeriesDetailPage", () => {
     await waitFor(() => expect(rows()).toEqual(["roman-roads", "demo-fractions", "roman-army"]));
   });
 
-  it("renames through the page title and the series list picks it up", async () => {
+  it("renames through the page title and the series list re-renders through invalidation", async () => {
     const user = userEvent.setup();
-    renderPage();
+    renderPage({ withList: true });
+    const list = await screen.findByRole("list", { name: "Series list" });
+    await waitFor(() => expect(within(list).getByText("The Romans")).toBeVisible());
+
     await user.dblClick(await screen.findByRole("heading", { name: "The Romans" }));
     const input = screen.getByRole("textbox", { name: "Series name" });
     await user.clear(input);
     await user.type(input, "Rome and its roads{Enter}");
 
     expect(await screen.findByRole("heading", { name: "Rome and its roads" })).toBeVisible();
-    const list = await listSeriesWithLessons();
-    expect(list.find((item) => item.series.id === "series-romans")?.series.title).toBe(
-      "Rome and its roads",
-    );
+    await waitFor(() => expect(within(list).getByText("Rome and its roads")).toBeVisible());
+    expect(within(list).queryByText("The Romans")).toBeNull();
   });
 
   it("adds lessons in candidate order, not click order", async () => {

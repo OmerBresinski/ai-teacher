@@ -23,6 +23,7 @@ const SERIES_ICON = <Layers strokeWidth={1.5} />;
 const PLAY_ICON = <Play aria-hidden size={16} />;
 const EMPTY_LESSONS: SeriesWithLessons["lessons"] = [];
 const EMPTY_IDS: string[] = [];
+const selectLessons = librarySelectors.byKind("lesson");
 
 export function SeriesDetailPage() {
   const { seriesId } = useParams({ from: seriesDetailRoute.id });
@@ -67,7 +68,7 @@ function SeriesDetail({ item }: { item: SeriesWithLessons | undefined }) {
   // Lessons the Add dialog offers: every lesson not already in this series, newest first.
   const { data: allLessons = EMPTY_LESSONS } = useQuery({
     ...libraryQueries.documents(),
-    select: librarySelectors.byKind("lesson"),
+    select: selectLessons,
   });
   const candidates = useMemo(() => {
     const inSeries = new Set(lessonIds);
@@ -110,7 +111,11 @@ function SeriesDetail({ item }: { item: SeriesWithLessons | undefined }) {
     if (!ref) {
       ref = (node) => {
         if (node) rows.current.set(id, node);
-        else rows.current.delete(id);
+        else {
+          // Row unmounted (removed from the series): forget both the node and this callback.
+          rows.current.delete(id);
+          rowRefs.current.delete(id);
+        }
         if (node && focusAfterMove.current === id) {
           node.focus();
           focusAfterMove.current = null;

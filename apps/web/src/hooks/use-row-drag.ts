@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** Pointer travel before a press becomes a drag (TeachDeck). */
 export const DRAG_THRESHOLD_PX = 4;
@@ -50,7 +50,9 @@ export function useRowDrag({ rowHeight, count, onDrop }: Options) {
   const latest = useRef({ rowHeight, count, onDrop });
   latest.current = { rowHeight, count, onDrop };
 
-  const handlers = useMemo(() => {
+  // Created once per mount (lazy state, not `useMemo`, which React may discard): the row props
+  // must keep their identity for the memoised rows, and the unmount cleanup must not fire mid-drag.
+  const [handlers] = useState(() => {
     function release(): void {
       const current = press.current;
       if (current?.target.hasPointerCapture(current.pointerId)) {
@@ -122,7 +124,7 @@ export function useRowDrag({ rowHeight, count, onDrop }: Options) {
     }
 
     return { gripProps, cancel: release };
-  }, []);
+  });
 
   // Abandon a drag if the list unmounts mid-gesture (e.g. the series is deleted elsewhere).
   useEffect(() => handlers.cancel, [handlers]);
