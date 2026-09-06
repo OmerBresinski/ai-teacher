@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { defaultParseSearch } from "@tanstack/react-router";
 import { devJobsSearchSchema } from "./dev-jobs.route";
+import { presentSearchSchema } from "./editor-stubs.route";
 import { librarySearchSchema } from "./library.route";
 import { signInSearchSchema } from "./sign-in.route";
 
@@ -44,5 +45,24 @@ describe("search schemas drop malformed params", () => {
     expect(parse("?q=123")).toEqual({ q: "" });
     expect(parse("?q=%5B%22water%22%5D")).toEqual({ q: "" });
     expect(parse("")).toEqual({ q: undefined });
+  });
+
+  it("presentSearchSchema: series, from and a 1-based slide", () => {
+    const parse = (qs: string) => presentSearchSchema.parse(defaultParseSearch(qs));
+    expect(parse("?series=series-romans&from=view&slide=4")).toEqual({
+      series: "series-romans",
+      from: "view",
+      slide: 4,
+    });
+    // `?slide=abc` and `?slide=0` are dropped, so the deck opens on slide 1.
+    expect(parse("?slide=abc")).toEqual({ series: undefined, from: undefined, slide: undefined });
+    expect(parse("?slide=0")).toEqual({ series: undefined, from: undefined, slide: undefined });
+    expect(parse("?slide=2.5")).toEqual({ series: undefined, from: undefined, slide: undefined });
+    expect(parse("?from=elsewhere")).toEqual({
+      series: undefined,
+      from: undefined,
+      slide: undefined,
+    });
+    expect(parse("")).toEqual({ series: undefined, from: undefined, slide: undefined });
   });
 });

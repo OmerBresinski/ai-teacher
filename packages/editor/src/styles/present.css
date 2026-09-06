@@ -1,0 +1,117 @@
+/*
+ * Present-mode motion (TeachDeck components/present/present.css). Part of editor.css. Durations
+ * read @tj/ui's --duration-* tokens; nothing here animates anything but transform and opacity.
+ */
+.td-present-layer,
+.td-autohide {
+  --d-slide: 320ms;
+  --d-slow: var(--duration-arrive, 450ms);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out-soft: var(--ease-arrive, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+/* ---- slide transitions (SPEC §8: fade | push | morph | none) ------------- */
+
+@keyframes td-present-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes td-present-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes td-present-push-in {
+  from {
+    transform: translateX(var(--td-push-from, 100%));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes td-present-push-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--td-push-to, -100%));
+  }
+}
+
+.td-present-layer {
+  position: absolute;
+  inset: 0;
+  will-change: transform, opacity;
+}
+
+.td-in-fade {
+  animation: td-present-fade-in var(--d-slide) var(--ease-standard) both;
+}
+.td-out-fade {
+  animation: td-present-fade-out var(--d-slide) var(--ease-standard) both;
+}
+.td-in-push {
+  animation: td-present-push-in var(--d-slide) var(--ease-standard) both;
+}
+.td-out-push {
+  animation: td-present-push-out var(--d-slide) var(--ease-standard) both;
+}
+
+/* Morph tweens the shared elements itself (WAAPI, in Stage); the layers only cross-fade. */
+.td-in-morph {
+  animation: td-present-fade-in var(--d-slide) var(--ease-standard) both;
+}
+.td-out-morph {
+  animation: td-present-fade-out calc(var(--d-slide) * 0.6) var(--ease-standard) both;
+}
+
+/* ---- timer at zero ------------------------------------------------------- */
+
+@keyframes td-timer-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.td-timer-done {
+  animation: td-timer-pulse 1400ms ease-in-out infinite;
+}
+
+/* ---- chrome that gets out of the way ------------------------------------- */
+
+.td-autohide {
+  transition: opacity var(--d-slow) var(--ease-out-soft);
+}
+
+.td-autohide[data-hidden="true"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .td-in-push,
+  .td-out-push,
+  .td-in-morph,
+  .td-out-morph,
+  .td-in-fade,
+  .td-out-fade {
+    animation-duration: 1ms;
+  }
+  .td-timer-done {
+    animation: none;
+  }
+}

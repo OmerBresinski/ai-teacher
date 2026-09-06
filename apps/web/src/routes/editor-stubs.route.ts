@@ -25,8 +25,10 @@ async function loadDocument(queryClient: QueryClient, id: string) {
 
 const stubPage = lazyRouteComponent(() => import("./editor-stubs.page"), "EditorStubPage");
 // Built once: `validateSearch` runs on every navigation and hover preload.
-const presentSearchSchema = z.object({
+export const presentSearchSchema = z.object({
   series: z.string().optional().catch(undefined),
+  /** Where Present was pressed, so exit returns there (`edit` lands on the editor in phase C). */
+  from: z.enum(["view", "edit"]).optional().catch(undefined),
   /** 1-based slide to open on; the viewer's Present passes the slide being viewed. */
   slide: z.coerce.number().int().positive().optional().catch(undefined),
 });
@@ -47,8 +49,9 @@ export const lessonPresentRoute = createRoute({
   path: "/l/$lessonId/present",
   loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
   validateSearch: (search) => presentSearchSchema.parse(search),
-  head: titleFrom,
-  component: stubPage,
+  head: ({ loaderData }) => pageTitle(`${loaderData?.title ?? "Lesson"} · Presenting`),
+  // Present mode (TEACH-101).
+  component: lazyRouteComponent(() => import("./lesson-present.page"), "LessonPresentPage"),
 });
 
 export const worksheetEditorRoute = createRoute({
