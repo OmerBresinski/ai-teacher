@@ -70,6 +70,7 @@ const pingJob = defineJob("ping", async ({ payload, signal, progress }) => {
   }
 });
 const aiPingJob = defineJob("ai.ping", async () => {});
+const lessonPlanJob = defineJob("lesson.plan", async () => {});
 
 // --- a tiny SSE reader -----------------------------------------------------------------------
 
@@ -172,7 +173,11 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
   let workspaceA: WorkspaceId;
   let workspaceB: WorkspaceId;
   const shutdown = new AbortController();
-  const registry: JobRegistry = { ping: pingJob, "ai.ping": aiPingJob };
+  const registry: JobRegistry = {
+    ping: pingJob,
+    "ai.ping": aiPingJob,
+    "lesson.plan": lessonPlanJob,
+  };
   const controllers: AbortController[] = [];
 
   function headers(ws: WorkspaceId, extra: Record<string, string> = {}) {

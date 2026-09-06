@@ -19,6 +19,9 @@ describe("JobRegistry", () => {
         payload.class.toUpperCase();
         payload.prompt.toUpperCase();
       }),
+      "lesson.plan": defineJob("lesson.plan", async ({ payload }) => {
+        payload.lessonId.toUpperCase();
+      }),
     };
     // @ts-expect-error missing job handlers
     const missing: JobRegistry = {};

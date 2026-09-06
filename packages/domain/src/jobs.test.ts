@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type JobId, newId, type WorkspaceId } from "./ids";
+import { type JobId, LessonId, newId, type WorkspaceId } from "./ids";
 import {
   AiPingPayloadSchema,
   isTerminalJobEvent,
@@ -23,6 +23,7 @@ describe("JobName", () => {
   test("const object and schema agree", () => {
     expect(JobName.ping).toBe("ping");
     expect(JobName.aiPing).toBe("ai.ping");
+    expect(JobName.lessonPlan).toBe("lesson.plan");
     expect(JobNameSchema.options).toEqual(Object.values(JobName));
     expect(JobNameSchema.parse("ping")).toBe("ping");
     expect(JobNameSchema.safeParse("nope").success).toBe(false);
@@ -69,6 +70,27 @@ describe("JobPayloadSchemas.ai.ping", () => {
     });
     expect(AiPingPayloadSchema.safeParse({ class: "huge" }).success).toBe(false);
     expect(AiPingPayloadSchema.safeParse({ extra: true }).success).toBe(false);
+  });
+});
+
+describe("JobPayloadSchemas.lesson.plan", () => {
+  const lessonId = "0192f7a0-0000-7000-8000-000000000042";
+
+  test("accepts a UUID lessonId and nothing else", () => {
+    const parsed = JobPayloadSchemas["lesson.plan"].parse({ lessonId });
+    expect(parsed).toEqual({ lessonId: LessonId.parse(lessonId) });
+  });
+
+  test("rejects a non-UUID lessonId (LessonId brand)", () => {
+    expect(() => JobPayloadSchemas["lesson.plan"].parse({ lessonId: "not-a-uuid" })).toThrow();
+  });
+
+  test("rejects unknown fields (strict)", () => {
+    expect(() => JobPayloadSchemas["lesson.plan"].parse({ lessonId, extra: 1 })).toThrow();
+  });
+
+  test("rejects a missing lessonId", () => {
+    expect(JobPayloadSchemas["lesson.plan"].safeParse({}).success).toBe(false);
   });
 });
 

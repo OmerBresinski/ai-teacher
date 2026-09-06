@@ -12,7 +12,10 @@ const ids = {
   workspaceId: "0192f7a0-0000-7000-8000-000000000002",
 } as unknown as { jobId: never; workspaceId: never };
 
-function ctx(deps: WorkerDeps, ac = new AbortController()) {
+// `db` is not touched by ai.ping; a marker stands in for the pool.
+const fakeDb = { marker: "fake-db" } as unknown as WorkerDeps["db"];
+
+function ctx(deps: Omit<WorkerDeps, "db">, ac = new AbortController()) {
   const calls: Array<[number | undefined, string | undefined]> = [];
   return {
     calls,
@@ -25,7 +28,7 @@ function ctx(deps: WorkerDeps, ac = new AbortController()) {
         calls.push([percent, message]);
       },
       logger: pino({ level: "silent" }),
-      deps,
+      deps: { ...deps, db: fakeDb },
     },
   };
 }

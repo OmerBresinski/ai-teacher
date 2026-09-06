@@ -39,6 +39,7 @@ const pingJob = defineJob("ping", async ({ payload, signal, progress }) => {
   }
 });
 const aiPingJob = defineJob("ai.ping", async () => {});
+const lessonPlanJob = defineJob("lesson.plan", async () => {});
 
 const logger = pino({ level: "silent" });
 
@@ -51,7 +52,11 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
   const outcomes: RunJobOutcome[] = [];
   const shutdown = new AbortController();
 
-  const registry: JobRegistry = { ping: pingJob, "ai.ping": aiPingJob };
+  const registry: JobRegistry = {
+    ping: pingJob,
+    "ai.ping": aiPingJob,
+    "lesson.plan": lessonPlanJob,
+  };
 
   async function eventsFor(jobId: JobId): Promise<JobEvent[]> {
     const rows = await listJobEvents(unsafeDb, { workspaceId, jobId, limit: 100 });
@@ -275,6 +280,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
           throw new Error("flaky");
         },
         "ai.ping": aiPingJob,
+        "lesson.plan": lessonPlanJob,
       };
       const outcome = await runJob(ctx, "ping", reg, fakeJob(jobId, 0), {
         logger,
@@ -294,6 +300,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
           throw new Error("still flaky");
         },
         "ai.ping": aiPingJob,
+        "lesson.plan": lessonPlanJob,
       };
       const outcome = await runJob(ctx, "ping", reg, fakeJob(jobId, 1), {
         logger,
@@ -317,6 +324,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
           await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()));
         },
         "ai.ping": aiPingJob,
+        "lesson.plan": lessonPlanJob,
       };
       const run = runJob(ctx, "ping", reg, fakeJob(jobId, 1), {
         logger,

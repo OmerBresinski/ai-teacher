@@ -13,9 +13,9 @@ const POLLING_INTERVAL_SECONDS = 0.5;
 
 const env = parseEnv();
 const logger = createLogger(env);
-const deps = createWorkerDeps(env, logger);
 
 const { unsafeDb, sql, close } = createDb(env.DATABASE_URL, { max: 4 });
+const deps = createWorkerDeps(env, logger, unsafeDb);
 const boss = createBoss(env.DATABASE_URL);
 const ctx: JobsContext = { boss, db: unsafeDb, sql };
 
