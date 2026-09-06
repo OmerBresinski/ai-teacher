@@ -26,6 +26,15 @@ the Vercel-only `RAILWAY_PR_API_URL_TEMPLATE` / `VITE_API_URL_FALLBACK` are decl
 contract — [`docs/env.md`](../../docs/env.md). `src/env.contract.test.ts` keeps `EnvSchema` and the
 contract in step.
 
+### Image search
+
+The lesson editor's Add image panel (`@tj/editor` `AddImagePanel`) calls Openverse
+(`https://api.openverse.org/v1/images/`) directly from the browser — no key, no env var, no API
+route; `vercel.json`'s CSP already allows the connect and `data:` images. Tenor GIF search is not
+included (it needs a client-side key). Uploaded and searched images are stored as data URLs until
+the upload endpoint lands (ADR 0021 §5); a searched image whose host refuses CORS stays a remote
+`https:` URL, which is why the CSP's `img-src` allows `https:` (thumbnails in the panel need it too).
+
 ## Dev proxy decision
 
 In development the browser calls `/api/*` on the Vite origin; `vite.config.ts` proxies that to

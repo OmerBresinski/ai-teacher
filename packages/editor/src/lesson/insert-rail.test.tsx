@@ -65,12 +65,12 @@ describe("InsertRail", () => {
     expect(read().slides[1]?.kind).toBe("multiple-choice");
   });
 
-  test("Image is off with a tooltip; Info shows the lesson's facts and edits the subject", async () => {
+  test("Image opens the Add image panel; Info shows the lesson's facts and edits the subject", async () => {
     const { read } = renderEditor();
-    expect(within(rail()).getByRole("button", { name: "Image" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    fireEvent.click(within(rail()).getByRole("button", { name: "Image" }));
+    const image = await screen.findByRole("dialog", { name: "Add image" });
+    fireEvent.keyDown(image, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add image" })).toBeNull());
     fireEvent.click(within(rail()).getByRole("button", { name: "Info" }));
     const info = await screen.findByRole("dialog", { name: "Lesson information" });
     expect(within(info).getByText("Seed lesson")).toBeInTheDocument();

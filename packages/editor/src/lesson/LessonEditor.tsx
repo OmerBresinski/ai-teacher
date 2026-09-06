@@ -205,7 +205,7 @@ export function LessonEditor({
   focusedRef.current = canvasFocused;
   const insertRef = useRef(insert);
   insertRef.current = insert;
-  const { setZoom } = session.actions;
+  const { setZoom, openImagePanel } = session.actions;
   const readSession = session.read;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -230,6 +230,12 @@ export function LessonEditor({
         e.preventDefault();
         setHelpOpen(true);
       } else if (focusedRef.current && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        if (e.key === "i") {
+          // The picture comes from the panel, not a factory: `i` opens it where the rail anchors it.
+          e.preventDefault();
+          openImagePanel();
+          return;
+        }
         const make = INSERT_KEYS[e.key];
         if (!make) return;
         e.preventDefault();
@@ -238,7 +244,7 @@ export function LessonEditor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [readSession, setZoom, theme]);
+  }, [readSession, setZoom, openImagePanel, theme]);
 
   if (!lesson || !slide) return null;
 
@@ -268,6 +274,7 @@ export function LessonEditor({
                       theme={theme}
                       onFocusChange={setCanvasFocused}
                       onScaleChange={onScaleChange}
+                      onInsert={insert}
                     />
                   </div>
                   <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />

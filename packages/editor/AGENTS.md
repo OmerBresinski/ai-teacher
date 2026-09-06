@@ -66,7 +66,8 @@ src/
               reducers, immer inside),
               use-document-history (undo/redo/transactions over the Query cache)
   text/       Tiptap extension set + static HTML rendering (renderDocHTML)
-  layout/     text-fitting engine: reflow, explanation panel (lint/tidy/fit arrive in phase C)
+  images/     image-search (Openverse mapping + `searchOpenverse`/`fetchRemoteImage`, pure; no
+              Tenor, no `process.env`), images (`fileToDataUrl` downscale, `isImageFile`)
   slide/      SlideView (the one renderer), SlideScaler, SlideStatic, elements/*
   kit/        Panel, Segmented, NumberInput, ZoomControl, Color, Rail — chrome with no @tj/ui twin
   layout/     text fitting engine: reflow/lint/fit-plan (pure), measure (DOM ruler), tidy
@@ -80,7 +81,10 @@ src/
               hit-test, resize), toolbar/ (ContextualToolbar routing + placement; one file per
               bar: Text, Shape, Line, Image, Other, Multi, Slide, AnswerDrawer, MoreDrawer; shared
               DropTrigger/useElementWrites), insert/ (IconPicker, LessonInfo), InsertRail,
-              ThemeDialog, use-editor-session, use-autosave, slide-commands, keys, shortcuts
+              AddImagePanel (Upload / Photos popover; open state and replace target are session
+              `imagePanel`), image-source (file/stock → `ImageSource`, `imageFields`),
+              canvas/use-image-drop (paste + drop listeners), ThemeDialog, use-editor-session,
+              use-autosave, slide-commands, keys, shortcuts
   styles/     editor.css = fonts.css + slide.css + present.css
   thumb.ts    the library's thumbnail entry (`@tj/editor/thumb`)
 ```
@@ -92,7 +96,11 @@ selection do not — those are Playwright's). ProseMirror's contenteditable carr
 query it as `.ProseMirror`. Floating chrome that has not measured yet is `opacity: 0`, never
 `visibility: hidden` — the latter empties every control's accessible name. Radix menus do not open
 on `fireEvent.click`: use `keyDown Enter` on the trigger; a menu closing hands focus to its trigger
-a tick later, so wait for it before opening a Popover or the popover reads the move as "outside". Every stylesheet the slide needs travels with the route that paints it: pages in `apps/web`
+a tick later, so wait for it before opening a Popover or the popover reads the move as "outside".
+A Radix Popover's content stays mounted through its fade-out and reports a pointer down from that
+window a tick later — `AddImagePanel` ignores an `onInteractOutside` whose event predates the
+current open, or Replace right after an upload would close the panel it opened. Radix Tabs switch
+on `mouseDown`+`click`. Search tests stub `globalThis.fetch` (restore it in `afterEach`). Every stylesheet the slide needs travels with the route that paints it: pages in `apps/web`
 import `@tj/editor/styles/editor.css` themselves rather than relying on the library chunk.
 
 Tests: `bun test` in this directory. Behaviour tests only; TeachDeck's vitest files are a

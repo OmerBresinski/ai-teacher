@@ -44,7 +44,8 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(functio
           clear();
           event.currentTarget.blur();
         }}
-        className="h-8 pl-8 pr-8"
+        // Our own Clear button stands in for Chrome's native cancel glyph; two crosses is one too many.
+        className="h-8 pl-8 pr-8 [&::-webkit-search-cancel-button]:hidden"
         {...props}
       />
       {value ? (

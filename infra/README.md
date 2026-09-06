@@ -95,7 +95,9 @@ them (Vercel's build uses its own remote cache: "Detected Turbo").
 - `Content-Security-Policy-Report-Only` — `default-src 'self'`; `script-src 'self'
   '<sha256 of THEME_INIT_SCRIPT>'` (the inline theme script is allowed by hash, not
   `'unsafe-inline'`; `apps/web/src/vercel-config.test.ts` fails with the new hash whenever the
-  script changes); `style-src 'self' 'unsafe-inline'` (React/Radix inline styles); `connect-src
+  script changes); `style-src 'self' 'unsafe-inline'` (React/Radix inline styles); `img-src 'self' data: blob:
+  https:` (data URLs for uploaded images, `https:` for Openverse thumbnails and searched images
+  whose host refuses CORS — TEACH-107); `connect-src
   'self' https:` — `vercel.json` is static, so the exact API origin cannot be injected per
   environment; `https:` is the honest conservative choice. It is report-only with no `report-to`,
   i.e. violations only show in the browser console. Follow-up: enforce it (and narrow

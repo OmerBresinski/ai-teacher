@@ -33,12 +33,13 @@ import {
 } from "../model/insert";
 import { SLIDE_KIND_LABELS } from "../model/layouts";
 import { getTheme } from "../model/themes";
+import { AddImagePanel } from "./AddImagePanel";
 import { useHistory, useLesson } from "./document-context";
 import { IconPicker } from "./insert/IconPicker";
 import { LessonInfo } from "./insert/LessonInfo";
 import { hint } from "./keys";
 import { addSlideAfter } from "./slide-commands";
-import { useActiveSlide, useSessionActions } from "./use-editor-session";
+import { useActiveSlide, useSessionActions, useSessionUi } from "./use-editor-session";
 
 /** The question kinds insert a whole slide, not an element (SPEC §7). */
 const QUESTION_KINDS: SlideKind[] = [
@@ -62,13 +63,14 @@ export type InsertRailProps = {
 /**
  * The insert rail (TeachDeck `components/v2/editor/InsertRail.tsx`): text presets, image, shapes,
  * lines, icons, table, question slides, timer, embed, then Info and Help at the foot. The image
- * button is off until the images ticket (TEACH-107).
+ * button anchors the Add image panel (TEACH-107), which the session opens and closes.
  */
 export const InsertRail = memo(function InsertRail({ onInsert, onHelp }: InsertRailProps) {
   const lesson = useLesson();
   const theme = getTheme(lesson.themeId);
   const history = useHistory();
   const session = useSessionActions();
+  const { imagePanel } = useSessionUi();
   // Resolved, not the raw session id: before the teacher picks a slide it is `null`, and a new
   // question slide must still land after the one on the canvas rather than at the end.
   const activeSlideId = useActiveSlide(lesson.slides)?.id ?? null;
@@ -93,15 +95,11 @@ export const InsertRail = memo(function InsertRail({ onInsert, onHelp }: InsertR
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <RailButton
-        label="Image"
-        shortcut={hint("i")}
-        tooltipLabel="Images arrive with a later release"
-        aria-disabled="true"
-        className="cursor-default opacity-50 hover:bg-transparent hover:text-ink-2"
-      >
-        <ImageIcon aria-hidden {...ICON} />
-      </RailButton>
+      <AddImagePanel onInsert={onInsert}>
+        <RailButton label="Image" shortcut={hint("i")} active={imagePanel !== null}>
+          <ImageIcon aria-hidden {...ICON} />
+        </RailButton>
+      </AddImagePanel>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
