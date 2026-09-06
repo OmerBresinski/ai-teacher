@@ -82,3 +82,16 @@ not this decision; this ADR settles only the client layer everything else will c
 - Deferred to F13: second provider and failover, routing policy beyond env vars, prompt caching
   (`cachePoint` provider option is available when wanted), per-Journey budgets, eval harness,
   prompt retention for debugging (F13-D5).
+
+## Amendment (2026-09-06, ADR 0025)
+
+§1 said "Mastra or another agent framework is not adopted". ADR 0025 §21 adopts `@mastra/core`
+**in-process only**: `createStep`/`createWorkflow` compose the lesson pipeline inside the pg-boss
+handler; there is no `Mastra` instance, storage, server or model router in production, models
+still come from `createAi` (§3), and `MASTRA_TELEMETRY_DISABLED=1` is in the env contract. §6's
+log line gains optional `lessonId`, `jobId`, `stage`, `promptVersion` and `costUsd`; `@tj/ai`
+gains a static price table, `costUsd()` and `createBudget()` (ADR 0025 §15, §16). "Cost is
+derived later from tokens" is now. Of the items the Consequences deferred to F13, the eval
+harness starts with F06's eval set (ADR 0025 §23, `@mastra/evals` scorers in the eval script
+only); the second provider, failover, routing policy, prompt caching and per-Journey budgets stay
+with F13.

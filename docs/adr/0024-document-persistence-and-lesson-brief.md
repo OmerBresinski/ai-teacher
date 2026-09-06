@@ -170,3 +170,15 @@ is F01's project description and is not repeated here.
 
 Nothing at the time of acceptance. Deferred to other projects: retention/sweep (F15), stage split
 and first-slide streaming (F06), `POST /files` uploads (follow-up ticket).
+
+## Amendment (2026-09-06, ADR 0025)
+
+§13 said "no field is reserved now"; ADR 0025 §20 reserves `Lesson.sources?: SourceRef[]` as
+references only, while `POST /lessons` keeps taking the brief alone until F03.
+§14: Plan, Generate, Evaluate and Repair are **one** `lesson.plan` job, checkpointed on
+`Lesson.generation.stage`; a `progress` payload carries `documentUpdatedAt`, not a slide
+(ADR 0025 §5, §7). §18: `putDocument` refuses writes while the lock is set, so the worker writes
+through `putDocumentAsJob(ws, id, body, jobId)` keyed on `generating_job_id = :jobId` rather than
+"with its own `expectedUpdatedAt`"; the worksheet row the job creates carries the same lock; and a
+lock whose job is terminal or never queued is released on read (ADR 0025 §6, §4, §24).
+Consequences: `LessonFacts` is an optional document field (ADR 0025 §1).

@@ -73,3 +73,17 @@ packages/
 
 Browser-only React library. Depends on `@tj/domain` (documents) and `@tj/ui` internally; consumed
 by `apps/web` only, never by `apps/api` or `apps/worker`.
+
+## Amendment (2026-09-06, ADR 0025)
+
+```
+packages/
+  slides/       @tj/slides     Pure slide recipes: theme catalogue, grid, layoutSlide,
+                               rich-doc builders, materialiseSlide (ADR 0025 §9)
+  generation/   @tj/generation Lesson generation pipeline: Plan / Generate / Evaluate / Repair
+                               stages, spec schemas, prompts, budget, Mastra workflow (ADR 0025 §17)
+```
+
+`@tj/slides` depends on `@tj/domain`, `nanoid` and `zod` only and is consumed by `@tj/editor` and
+`@tj/generation`. `@tj/generation` is server-only (`@tj/domain`, `@tj/ai`, `@tj/slides`,
+`@mastra/core`, `ai`, `zod`) and is consumed by `apps/worker`; never by `apps/web`.
