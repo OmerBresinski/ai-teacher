@@ -5,7 +5,14 @@ import { wrapLanguageModel } from "ai";
 import pino from "pino";
 import { AiError } from "./errors";
 import { createLoggingMiddleware } from "./logging-middleware";
-import type { AiEnv, ConfiguredAi, CreateAiOptions, CreatedAi, UnconfiguredAi } from "./types";
+import type {
+  AiCallContext,
+  AiEnv,
+  ConfiguredAi,
+  CreateAiOptions,
+  CreatedAi,
+  UnconfiguredAi,
+} from "./types";
 
 export const DEFAULT_REGION = "us-east-1";
 
@@ -22,7 +29,11 @@ interface ConfiguredAiOptions {
   region: string;
   modelIds: ModelIds;
   logger: pino.Logger;
-  createModel(modelClass: ModelClassType, modelId: string): WrappableLanguageModel;
+  createModel(
+    modelClass: ModelClassType,
+    modelId: string,
+    context: AiCallContext | undefined,
+  ): WrappableLanguageModel;
 }
 
 function requireModelClass(modelClass: ModelClassType): ModelClassType {
@@ -63,15 +74,16 @@ export function createConfiguredAi(options: ConfiguredAiOptions): ConfiguredAi {
     modelId(modelClass) {
       return options.modelIds[requireModelClass(modelClass)];
     },
-    model(modelClass): LanguageModel {
+    model(modelClass, context): LanguageModel {
       const modelClassValue = requireModelClass(modelClass);
       const modelId = options.modelIds[modelClassValue];
       return wrapLanguageModel({
-        model: options.createModel(modelClassValue, modelId),
+        model: options.createModel(modelClassValue, modelId, context),
         middleware: createLoggingMiddleware({
           logger: options.logger,
           modelClass: modelClassValue,
           modelId,
+          context,
         }),
       });
     },

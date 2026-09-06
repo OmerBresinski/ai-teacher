@@ -14,17 +14,29 @@ export interface CreateAiOptions {
   logger?: pino.Logger | undefined;
 }
 
+/**
+ * What the pipeline knows about a call that the middleware may log beside the usage
+ * (ADR 0025 §16). Identifiers and version strings only — never prompt or document content.
+ */
+export interface AiCallContext {
+  lessonId?: string | undefined;
+  jobId?: string | undefined;
+  stage?: string | undefined;
+  promptVersion?: string | undefined;
+}
+
 export interface ConfiguredAi {
   kind: "bedrock";
   region: string;
-  model(modelClass: ModelClass): LanguageModel;
+  /** `context` is carried onto the `ai` log line of every call made through this model. */
+  model(modelClass: ModelClass, context?: AiCallContext): LanguageModel;
   modelId(modelClass: ModelClass): string;
 }
 
 export interface UnconfiguredAi {
   kind: "unconfigured";
   region: string;
-  model(modelClass: ModelClass): LanguageModel;
+  model(modelClass: ModelClass, context?: AiCallContext): LanguageModel;
   modelId(modelClass: ModelClass): string;
 }
 

@@ -42,6 +42,14 @@ describe("createAi", () => {
     expect(ai.modelId("standard")).toBe(DEFAULT_MODEL_IDS.standard);
   });
 
+  test("model(cls, context) is accepted with and without a context on both client kinds", () => {
+    const configured = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
+    expect(configured.model("small")).toBeDefined();
+    expect(configured.model("small", { lessonId: "l1", stage: "plan" })).toBeDefined();
+    const unconfigured = createAi({});
+    expect(() => unconfigured.model("small", { lessonId: "l1" })).toThrow();
+  });
+
   test("rejects invalid model classes at the package boundary", () => {
     const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
     try {

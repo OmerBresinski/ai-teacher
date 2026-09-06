@@ -33,6 +33,7 @@ describe("renderEnvExample", () => {
       "AI_MODEL_FRONTIER",
       "AI_MODEL_STANDARD",
       "AI_MODEL_SMALL",
+      "MASTRA_TELEMETRY_DISABLED",
     ]);
     expect(text).toContain("\n# BETTER_AUTH_SECRET=\n");
     expect(text).toContain("\n# AWS_BEARER_TOKEN_BEDROCK=\n");

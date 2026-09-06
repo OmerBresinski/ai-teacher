@@ -62,6 +62,8 @@ export function checkFormat(
       return isPort(value) ? null : "a port (1-65535)";
     case "int":
       return /^\d+$/.test(value) ? null : "an integer";
+    case "number":
+      return /^\d+(\.\d+)?$/.test(value) ? null : "a non-negative number";
     case "enum": {
       const allowed = values ?? [];
       return allowed.includes(value) ? null : `one of ${allowed.join(" | ")}`;

@@ -3,7 +3,7 @@ import { Writable } from "node:stream";
 import { generateText, streamText, wrapLanguageModel } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
-import { AiError, DEFAULT_MODEL_IDS, isAiError } from "./index";
+import { AiError, DEFAULT_MODEL_IDS, isAiError, PRICES } from "./index";
 import { createLoggingMiddleware } from "./logging-middleware";
 import { createFakeAi } from "./testing";
 
@@ -76,6 +76,45 @@ describe("AI logging middleware", () => {
     expect(JSON.stringify(record)).not.toContain(completion);
   });
 
+  test("carries the call context and the list-price cost, and nothing else (ADR 0025 §16)", async () => {
+    const { lines, logger } = createMemoryLogger();
+    const prompt = "private prompt text";
+    const ai = createFakeAi({ logger, usage: { inputTokens: 1_000_000, outputTokens: 0 } });
+    const context = {
+      lessonId: "0192f7a0-0000-7000-8000-000000000042",
+      jobId: "0192f7a0-0000-7000-8000-0000000000aa",
+      stage: "plan",
+      promptVersion: "plan.v1",
+    };
+
+    await generateText({ model: ai.model("small", context), prompt });
+    expect(lines).toHaveLength(1);
+    const record = JSON.parse(lines[0] ?? "") as { ai: Record<string, unknown> };
+    expect(record.ai).toMatchObject({
+      ...context,
+      class: "small",
+      modelId: DEFAULT_MODEL_IDS.small,
+      costUsd: PRICES[DEFAULT_MODEL_IDS.small]?.inputPerMTok,
+    });
+    expect(JSON.stringify(record)).not.toContain(prompt);
+  });
+
+  test("without a context the fields are absent and costUsd is still present", async () => {
+    const { lines, logger } = createMemoryLogger();
+    const ai = createFakeAi({ logger, modelIds: { small: "unpriced-model" } });
+    await generateText({ model: ai.model("small"), prompt: "p" });
+    const record = JSON.parse(lines[0] ?? "") as { ai: Record<string, unknown> };
+    expect(record.ai).not.toHaveProperty("lessonId");
+    expect(record.ai).not.toHaveProperty("stage");
+    expect(record.ai).not.toHaveProperty("promptVersion");
+    expect(record.ai).toHaveProperty("costUsd", null);
+
+    const priced = createMemoryLogger();
+    const pricedAi = createFakeAi({ logger: priced.logger });
+    await generateText({ model: pricedAi.model("small"), prompt: "p" });
+    expect(JSON.parse(priced.lines[0] ?? "").ai.costUsd).toEqual(expect.any(Number));
+  });
+
   test("writes one success log when a stream reaches its finish part", async () => {
     const { lines, logger } = createMemoryLogger();
     const ai = createFakeAi({ logger, usage: { inputTokens: 2, outputTokens: 1 } });
@@ -118,10 +157,11 @@ describe("AI logging middleware", () => {
       provider: "bedrock",
       inputTokens: null,
       outputTokens: null,
+      costUsd: null,
       finishReason: "error",
     });
     expect(Object.keys(record.ai)).toEqual(
-      expect.arrayContaining(["inputTokens", "outputTokens", "durationMs", "modelId"]),
+      expect.arrayContaining(["inputTokens", "outputTokens", "costUsd", "durationMs", "modelId"]),
     );
     expect(JSON.stringify(record)).not.toContain(prompt);
     expect(JSON.stringify(record)).not.toContain(providerError.message);
