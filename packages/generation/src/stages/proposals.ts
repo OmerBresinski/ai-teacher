@@ -205,10 +205,12 @@ export async function proposeFor(
     const generatedFrom = { factRefs: call.output.factRefs, ...meta(call.modelId) };
     if (job.elementIds === null) {
       // The same `question`/`notes` on every element proposal: the editor applies them once the
-      // whole slide's elements are in place (`ProposalSchema` doc).
+      // whole slide's elements are in place (`ProposalSchema` doc). `notes` is always present so
+      // stale notes are cleared (`null`) when the new slide has none; `question` is present only
+      // for a question kind, and its absence clears the old answer data.
       const slideFields = {
         ...(fresh.question ? { question: fresh.question } : {}),
-        ...(fresh.notes !== undefined ? { notes: fresh.notes } : {}),
+        notes: fresh.notes ?? null,
       };
       return fresh.elements.map((element) => ({
         target: { slideId: slide.id },

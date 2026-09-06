@@ -178,9 +178,10 @@ export type JobProgress = z.infer<typeof JobProgressSchema>;
  * every proposal of a result as one undo transaction (ADR 0022 §4).
  *
  * A whole-slide re-derivation (a target with no `elementId`) also replaces the slide's answer
- * data: every element proposal of that slide carries the same `question` (and `notes`), because
- * the new `question` names the new elements' ids and only holds once all of them are in place.
- * Element-level proposals never carry them.
+ * data and presenter notes: every element proposal of that slide carries the same `question`
+ * and `notes`, because the new `question` names the new elements' ids and only holds once all of
+ * them are in place. `notes: null` clears notes the new slide does not have; `question` absent
+ * clears the answer data (a non-question kind). Element-level proposals never carry them.
  */
 export const ProposalSchema = z
   .strictObject({
@@ -189,8 +190,8 @@ export const ProposalSchema = z
     block: WorksheetBlockSchema.optional(),
     /** The re-derived slide's `question`, on whole-slide proposals of a question slide. */
     question: QuestionDataSchema.optional(),
-    /** The re-derived slide's presenter notes, on whole-slide proposals. */
-    notes: z.string().optional(),
+    /** The re-derived slide's presenter notes on whole-slide proposals; `null` clears them. */
+    notes: z.string().nullable().optional(),
     generatedFrom: GeneratedFromSchema,
   })
   .refine(
