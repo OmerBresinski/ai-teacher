@@ -354,6 +354,16 @@ export async function restore(ws: WorkspaceDb, id: string): Promise<boolean> {
 }
 
 /**
+ * Hard-delete a row — **not** the soft delete teachers see (§5). For the one case where a row was
+ * written and its job could not be queued (`POST /lessons`): the lesson never existed as far as
+ * the Library is concerned, so it must not linger as a locked, soft-deleted ghost.
+ */
+export async function deleteDocument(ws: WorkspaceDb, id: string): Promise<boolean> {
+  const rows = await ws.delete(documents, eq(documents.id, id)).returning({ id: documents.id });
+  return rows.length > 0;
+}
+
+/**
  * Release the generating lock (ADR 0024 §18) — only when it is still held by `jobId`, so a job
  * that finishes late never unlocks a lesson a newer job has since locked.
  */

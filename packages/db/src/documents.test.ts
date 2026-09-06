@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import {
   clearGenerating,
   createDocument,
+  deleteDocument,
   escapeLike,
   getDocument,
   getSeriesWithLessons,
@@ -395,6 +396,17 @@ describeDb("documents repository", () => {
       const row = await createDocument(wsA, "lesson", lessonFixture());
       expect(await softDelete(wsB, row.id)).toBe(false);
       expect((await getDocument(wsA, row.id))?.deletedAt).toBeNull();
+    });
+  });
+
+  describe("deleteDocument", () => {
+    test("removes the row for its Workspace only", async () => {
+      const row = await createDocument(wsA, "lesson", lessonFixture());
+      expect(await deleteDocument(wsB, row.id)).toBe(false);
+      expect(await getDocument(wsA, row.id)).not.toBeNull();
+      expect(await deleteDocument(wsA, row.id)).toBe(true);
+      expect(await getDocument(wsA, row.id)).toBeNull();
+      expect(await deleteDocument(wsA, row.id)).toBe(false);
     });
   });
 

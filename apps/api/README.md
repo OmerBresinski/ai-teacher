@@ -182,9 +182,10 @@ the same input with the same message. `lessonFromBrief()` applies the defaults t
 `ageBand` from the year group (`deriveAgeBand`: Reception → `eyfs`, Year 1–2 → `ks1`, 3–6 → `ks2`,
 7–9 → `ks3`, 10–11 → `ks4`, 12–13 → `post16`), `durationMin` from the age band
 (`defaultDurationMin`: 30 / 45 / 60), `title` = the topic cut to 80 characters, `themeId` =
-`DEFAULT_THEME_ID`, `language` = `en-GB`, `slides: []`. The handler then enqueues `lesson.plan
-{ lessonId }` (the job id is minted by `enqueue`), inserts the row with `generating_job_id = jobId`
-inside `ws.tx`, cancelling the job if the insert fails, and answers `202 { lessonId, jobId }`. The
+`DEFAULT_THEME_ID`, `language` = `en-GB`, `slides: []`. The handler then mints the job id, inserts
+the row with `generating_job_id = jobId` **first** (so a fast worker always finds a lock to clear),
+enqueues `lesson.plan { lessonId }` under that id — removing the row again if the enqueue fails —
+and answers `202 { lessonId, jobId }`. The
 client navigates to `/l/$lessonId` and follows `GET /jobs/:jobId/events`; until the worker's
 terminal event clears the lock, `PUT /documents/:lessonId` is `409 conflict` with
 `reason: "generating"`. `/lessons` shares the per-Workspace model-call limiter with

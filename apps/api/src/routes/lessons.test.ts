@@ -3,17 +3,18 @@
  * runtime, `lessonFromBrief` defaults, and cancel-on-insert-failure with a fake `JobsContext`.
  */
 import { describe, expect, mock, test } from "bun:test";
-import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
-import { GUARD_MESSAGE } from "@tj/domain/documents";
+import type { WorkspaceDb } from "@tj/db";
+import { type LessonId, newId, type WorkspaceId } from "@tj/domain";
 import type { JobsContext } from "@tj/jobs";
 import { createApp } from "../app";
 import type { ErrorEnvelope } from "../errors";
 import { createEventsRuntime } from "../events/runtime";
-import { fakeSql, silentLogger, TEST_ENV, TEST_ENV_NO_SHIM, testApp } from "../test-helpers";
+import { fakeSql, silentLogger, TEST_ENV_NO_SHIM, testApp } from "../test-helpers";
 import { WORKSPACE_HEADER } from "../workspace";
-import { lessonFromBrief } from "./lessons";
+import { createLessonAndEnqueue, lessonFromBrief } from "./lessons";
 
 const ws = newId<WorkspaceId>();
+
 const post = (body: unknown, headers: Record<string, string> = { [WORKSPACE_HEADER]: ws }) => ({
   method: "POST",
   headers: { ...headers, "content-type": "application/json" },
@@ -139,53 +140,66 @@ describe("lessonFromBrief", () => {
   });
 });
 
-describe("POST /lessons when the insert fails", () => {
-  test("cancels the queued job and answers a 5xx envelope", async () => {
-    // pg-boss honours `options.id`; the fake must echo it or `enqueue` refuses the mismatch.
-    const send = mock(async (_name: string, _data: unknown, opts: { id: string }) => opts.id);
-    const cancelled: string[] = [];
-    const boss = {
-      send,
-      findJobs: mock(async (_name: string, { id }: { id: string }) => [
-        { id, state: "created", data: { workspaceId: ws }, startedOn: null },
-      ]),
-      cancel: mock(async (_name: string, id: string) => {
-        cancelled.push(id);
+describe("createLessonAndEnqueue when the enqueue fails", () => {
+  const lessonId = newId<LessonId>();
+  const lesson = lessonFromBrief(validBrief, lessonId, new Date());
+
+  function fakes(sendResult: "throws" | "null") {
+    const created: unknown[] = [];
+    const deleted: string[] = [];
+    const scoped = {
+      workspaceId: ws,
+      insert: () => ({
+        values: (row: unknown) => ({
+          returning: async () => {
+            created.push(row);
+            return [row];
+          },
+        }),
       }),
-    };
-    // The jobs context's db accepts the `queued` job-event insert; the route's `unsafeDb` throws
-    // on first touch, so the failure is the document insert — after the job is queued.
-    const jobsDb = {
-      insert: () => ({ values: () => ({ returning: async () => [{ id: 1 }] }) }),
-    };
-    let touched = 0;
-    const brokenDb = new Proxy(
-      {},
-      {
-        get(_t, prop) {
-          touched++;
-          throw new Error(`db.${String(prop)} unavailable`);
+      delete: () => ({
+        returning: async () => {
+          deleted.push(lessonId);
+          return [{ id: lessonId }];
         },
-      },
-    );
-    const jobs = { boss, db: jobsDb, sql: (async () => []) as never } as unknown as JobsContext;
-    const runtime = createEventsRuntime({ jobs, logger: silentLogger });
-    const app = createApp({
-      env: TEST_ENV,
-      db: { sql: fakeSql(true).sql, unsafeDb: brokenDb as never },
-      logger: silentLogger,
-      jobs,
-      events: runtime,
+      }),
+    } as unknown as WorkspaceDb;
+    const send = mock(async (_name: string, _data: unknown, _opts: { id: string }) => {
+      if (sendResult === "throws") throw new Error("pg-boss down");
+      return null;
     });
+    const jobs = {
+      boss: { send, cancel: mock(async () => {}) },
+      db: {},
+      sql: {},
+    } as unknown as JobsContext;
+    const runtime = createEventsRuntime({ jobs, logger: silentLogger });
+    return { ws: scoped, runtime, send, created, deleted };
+  }
 
-    const res = await app.request("/lessons", post(validBrief));
+  test("removes the just-inserted row and rethrows when pg-boss is down", async () => {
+    const f = fakes("throws");
+    await expect(createLessonAndEnqueue(f.ws, f.runtime, lesson)).rejects.toThrow("pg-boss down");
+    expect(f.created).toHaveLength(1);
+    expect((f.created[0] as { generatingJobId: string }).generatingJobId).toMatch(
+      /^[0-9a-f-]{36}$/,
+    );
+    expect(f.deleted).toEqual([lessonId]);
+  });
 
-    expect(res.status).toBe(500);
-    expect((await errorBody(res)).error.code).toBe("internal_error");
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(touched).toBeGreaterThan(0);
-    const queuedId = send.mock.calls[0]?.[2].id;
-    expect(typeof queuedId).toBe("string");
-    expect(cancelled).toEqual([queuedId as string]);
+  test("removes the row and answers 409 when the send was deduplicated", async () => {
+    const f = fakes("null");
+    await expect(createLessonAndEnqueue(f.ws, f.runtime, lesson)).rejects.toMatchObject({
+      status: 409,
+    });
+    expect(f.deleted).toEqual([lessonId]);
+  });
+
+  test("enqueue is given the same job id the row was locked with", async () => {
+    const f = fakes("throws");
+    await createLessonAndEnqueue(f.ws, f.runtime, lesson).catch(() => undefined);
+    const lockedWith = (f.created[0] as { generatingJobId: string }).generatingJobId;
+    const sentWith = (f.send.mock.calls[0] as unknown as [string, unknown, { id: string }])[2].id;
+    expect(sentWith).toBe(lockedWith);
   });
 });
