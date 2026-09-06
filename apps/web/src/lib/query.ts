@@ -1,4 +1,4 @@
-import { QueryClient, queryOptions } from "@tanstack/react-query";
+import { notifyManager, QueryClient, queryOptions } from "@tanstack/react-query";
 import type { InferResponseType } from "hono/client";
 import { api } from "@/lib/api";
 
@@ -49,6 +49,13 @@ export async function apiErrorFromResponse(res: ApiResponseLike): Promise<ApiErr
   }
   return new ApiError(res.status, envelope);
 }
+
+// Deliver cache notifications synchronously rather than on TanStack's default `setTimeout(0)`.
+// The editor writes the document into the cache from pointer handlers (`useDocumentHistory`) and
+// clears its drag preview in the same handler; with a deferred notification the canvas painted one
+// frame from the stale document — the dragged element snapped back, then forward. Synchronous
+// delivery lets React batch both into the one render. (The editor's test harness does the same.)
+notifyManager.setScheduler((callback) => callback());
 
 export const queryClient = new QueryClient({
   defaultOptions: {
