@@ -43,6 +43,8 @@ export {
   type JobData,
   type JobHandler,
   type JobRegistry,
+  type JobResultFor,
   type JobsContext,
   NonRetryableError,
+  type ProgressExtra,
 } from "./types";

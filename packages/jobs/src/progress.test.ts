@@ -54,6 +54,18 @@ describe("progress rate limit", () => {
     expect(emitted).toHaveLength(2);
   });
 
+  test("documentUpdatedAt rides on the event and survives a later percent-only call in the window (ADR 0025 §7)", async () => {
+    const { emitter, emitted } = harness();
+    const iso = "2026-09-06T10:00:00.000Z";
+    await emitter.emit(10, "start", { documentUpdatedAt: iso });
+    expect(emitted).toEqual([{ percent: 10, message: "start", documentUpdatedAt: iso }]);
+    const later = "2026-09-06T10:00:01.000Z";
+    void emitter.emit(30, "slide 3", { documentUpdatedAt: later });
+    void emitter.emit(40);
+    await emitter.flush();
+    expect(emitted[1]).toEqual({ percent: 40, message: "slide 3", documentUpdatedAt: later });
+  });
+
   test("omits undefined fields (strict JobProgressSchema)", async () => {
     const { emitter, emitted } = harness();
     await emitter.emit();

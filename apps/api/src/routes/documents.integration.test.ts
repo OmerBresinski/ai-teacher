@@ -4,7 +4,7 @@
  * guard rows are in `documents.test.ts`.
  */
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import { createDocument, forWorkspace } from "@tj/db";
+import { createDocument, forWorkspace, insertJobEvent } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, newId, type WorkspaceId } from "@tj/domain";
 import type { Lesson, Series } from "@tj/domain/documents";
@@ -176,6 +176,40 @@ describeDb("/documents against Postgres", () => {
       const foreign = await send(wsB, "GET", `/documents/${row.id}`);
       expect(foreign.status).toBe(404);
       expect((await errorOf(foreign)).message).toBe("That document does not exist.");
+    });
+
+    test("releases a lock whose job has a terminal event, so a following PUT succeeds (ADR 0025 §24)", async () => {
+      const jobId = newId<JobId>();
+      const row = await createDocument(forWorkspace(unsafeDb, wsA), "lesson", lessonFixture(), {
+        generatingJobId: jobId,
+      });
+      const at = new Date().toISOString();
+      await insertJobEvent(unsafeDb, { type: "queued", jobId, workspaceId: wsA, at });
+      await insertJobEvent(unsafeDb, { type: "completed", jobId, workspaceId: wsA, at });
+
+      const res = await send(wsA, "GET", `/documents/${row.id}`);
+      expect(res.status).toBe(200);
+      const doc = await documentOf(res);
+      expect(doc.generatingJobId).toBeNull();
+
+      const put = await send(wsA, "PUT", `/documents/${row.id}`, {
+        document: { ...row.body, title: "After the dead job" },
+        expectedUpdatedAt: doc.updatedAt,
+      });
+      expect(put.status).toBe(200);
+      expect((await documentOf(put)).title).toBe("After the dead job");
+    });
+
+    test("keeps a lock whose job is still running", async () => {
+      const jobId = newId<JobId>();
+      const row = await createDocument(forWorkspace(unsafeDb, wsA), "lesson", lessonFixture(), {
+        generatingJobId: jobId,
+      });
+      const at = new Date().toISOString();
+      await insertJobEvent(unsafeDb, { type: "queued", jobId, workspaceId: wsA, at });
+      await insertJobEvent(unsafeDb, { type: "started", jobId, workspaceId: wsA, at });
+      const res = await send(wsA, "GET", `/documents/${row.id}`);
+      expect((await documentOf(res)).generatingJobId).toBe(jobId);
     });
   });
 

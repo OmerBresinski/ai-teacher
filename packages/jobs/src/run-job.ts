@@ -5,6 +5,7 @@ import {
   type JobName,
   JobPayloadSchemas,
   type JobPayloads,
+  type JobResult as JobResultPayload,
   WorkspaceId,
 } from "@tj/domain";
 import type { JobResult, JobWithMetadata } from "pg-boss";
@@ -55,7 +56,8 @@ export type RunJobOutcome = JobResult & {
  *
  * - `started` before the handler runs (after the payload is re-validated);
  * - `progress` from `ctx.progress()` (rate-limited, see `progress.ts`);
- * - `completed` when the handler returns;
+ * - `completed` when the handler returns — carrying the handler's return value as `result` when
+ *   it returned one (ADR 0025 §19; proposal jobs), nothing otherwise;
  * - `cancelled` when `cancel()` flipped the pg-boss row while the handler ran (polled every
  *   250 ms) and the handler returned or threw after `signal.aborted`;
  * - `failed { retryable: false }` when the handler threw `NonRetryableError` (or the stored
@@ -147,8 +149,10 @@ export async function runJob<N extends JobName, D = unknown>(
 
   let thrown: unknown;
   let threw = false;
+  let result: JobResultPayload | undefined;
   try {
-    await (registry[name] as JobHandler<N, D>)(jobCtx);
+    const returned = await (registry[name] as JobHandler<N, D>)(jobCtx);
+    if (returned !== undefined) result = returned as JobResultPayload;
   } catch (err) {
     threw = true;
     thrown = err;
@@ -168,8 +172,9 @@ export async function runJob<N extends JobName, D = unknown>(
   }
 
   if (!threw && !abort.signal.aborted) {
-    await emit({ type: "completed", ...base, at: nowIso() });
-    logger.info("job completed");
+    // `JobCompletedEventSchema` is strict: the key is present only when there is a result.
+    await emit({ type: "completed", ...base, at: nowIso(), ...(result ? { result } : {}) });
+    logger.info({ hasResult: result !== undefined }, "job completed");
     return { id: bossJob.id, status: "completed", event: "completed" };
   }
 
