@@ -294,7 +294,7 @@ async function rebaseBranch(state: PrState, deps: LandPrDeps): Promise<void> {
     if (restore) {
       const back = await deps
         .git(restore)
-        .catch((err): CommandResult => ({ exitCode: 1, stdout: "", stderr: String(err) }));
+        .catch((): CommandResult => ({ exitCode: 1, stdout: "" }));
       if (back.exitCode !== 0) {
         log.warn(`Could not return to the starting checkout (git ${restore.join(" ")}).`);
       }

@@ -123,7 +123,7 @@ function fakeDeps(options: FakeOptions = {}): {
         if (args[0] === "branch") return ok(options.currentBranch ?? "chore/land-pr-script");
         if (args[0] === "rev-parse") return ok("deadbeef");
         if (options.failGit?.some((f) => f.join(" ") === args.join(" "))) {
-          return { exitCode: 1, stdout: "", stderr: "CONFLICT" };
+          return { exitCode: 1, stdout: "CONFLICT" };
         }
         return ok();
       },
