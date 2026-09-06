@@ -1,7 +1,7 @@
 import { SLIDE_W, type Slide, type ThemeTag } from "@tj/domain/documents";
 import { Button, cn, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@tj/ui";
 import { Check } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { newSlide } from "../model/factories";
 import * as reducers from "../model/reducers";
 import { getTheme, THEME_TAG_LABELS, THEMES } from "../model/themes";
@@ -26,8 +26,12 @@ const CONTENT_FIRST: Slide["kind"][] = ["objectives", "vocabulary"];
 
 /**
  * The theme picker (TeachDeck `ThemeDialog`) paints the slide the teacher is actually looking at,
- * so the choice is made on their own words rather than on a stock sample. Every tile click applies
- * the theme at once; Cancel (button, Esc, backdrop) puts the opening theme back, Done keeps it.
+ * so the choice is made on their own words rather than on a stock sample.
+ *
+ * The whole dialog is one history transaction: it opens on mount-open, every tile click dispatches
+ * `setTheme` inside it (the canvas previews live, nothing is recorded or saved), Done ends it (one
+ * undo step, one autosave), and Cancel — button, Esc, backdrop — rolls it back, so a browse through
+ * the six themes leaves no trace in the history and costs no save.
  */
 export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const lesson = useLesson();
@@ -49,17 +53,30 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
     return own ?? newSlide("objectives", lesson.themeId);
   }, [slide, lesson.slides, lesson.themeId]);
 
-  // The theme this dialog opened with, captured on open, so Cancel can put it back.
-  const openedThemeId = useRef<string | null>(null);
-  const wasOpen = useRef(false);
-  if (open && !wasOpen.current) openedThemeId.current = lesson.themeId;
-  wasOpen.current = open;
+  // The transaction follows the committed open state: opened in an effect (never during render),
+  // and rolled back if the dialog unmounts with it still open.
+  const historyRef = useRef(history);
+  historyRef.current = history;
+  const inTx = useRef(false);
+  useEffect(() => {
+    if (!open) return;
+    historyRef.current.beginTransaction();
+    inTx.current = true;
+    return () => {
+      if (inTx.current) historyRef.current.rollbackTransaction();
+      inTx.current = false;
+    };
+  }, [open]);
 
   const setTheme = (id: string) => history.dispatch(reducers.setTheme, id);
+  const done = () => {
+    if (inTx.current) history.endTransaction();
+    inTx.current = false;
+    onClose();
+  };
   const cancel = () => {
-    if (openedThemeId.current && openedThemeId.current !== lesson.themeId) {
-      setTheme(openedThemeId.current);
-    }
+    if (inTx.current) history.rollbackTransaction();
+    inTx.current = false;
     onClose();
   };
 
@@ -151,7 +168,7 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
           <Button variant="ghost" onClick={cancel}>
             Cancel
           </Button>
-          <Button onClick={onClose}>Done</Button>
+          <Button onClick={done}>Done</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

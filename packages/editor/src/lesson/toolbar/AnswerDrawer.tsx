@@ -140,7 +140,25 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
                     id={`${rowId}-multi`}
                     checked={!!question.multi}
                     aria-label="Allow several correct answers"
-                    onCheckedChange={(multi) => set({ ...question, multi })}
+                    // Back to one answer: keep the first correct option only, so a single-answer
+                    // question can never carry two ticks.
+                    onCheckedChange={(multi) => {
+                      if (multi) {
+                        set({ ...question, multi });
+                        return;
+                      }
+                      let kept = false;
+                      set({
+                        ...question,
+                        multi: false,
+                        options: question.options.map((o) => {
+                          if (!o.correct) return o;
+                          if (kept) return { ...o, correct: false };
+                          kept = true;
+                          return o;
+                        }),
+                      });
+                    }}
                   />
                 </PanelRow>
               </>

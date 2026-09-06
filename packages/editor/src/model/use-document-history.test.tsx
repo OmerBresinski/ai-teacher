@@ -147,6 +147,27 @@ describe("useDocumentHistory", () => {
     expect(firstX(result.current.lesson)).toBe(40);
   });
 
+  test("rollbackTransaction restores the opening document: nothing recorded, nothing notified", () => {
+    const { result, onChange } = setup();
+    const before = result.current.lesson;
+    const sid = slideId(before);
+    const eid = elementId(before);
+    act(() => {
+      result.current.beginTransaction();
+      result.current.beginTransaction();
+      result.current.dispatch(r.transformElements, sid, [eid], { dx: 25 });
+    });
+    expect(firstX(result.current.lesson)).toBe(35);
+    act(() => result.current.rollbackTransaction());
+    expect(result.current.lesson).toBe(before);
+    expect(result.current.isTransactionInFlight()).toBe(false);
+    expect(result.current.canUndo).toBe(false);
+    expect(onChange).not.toHaveBeenCalled();
+    // Outside a transaction it is a no-op.
+    act(() => result.current.rollbackTransaction());
+    expect(result.current.lesson).toBe(before);
+  });
+
   test("nested transactions commit once, at the outermost end", () => {
     const { result } = setup();
     const before = result.current.lesson;

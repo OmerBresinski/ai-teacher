@@ -49,6 +49,12 @@ export type DocumentHistory = {
   /** Wrap a pointer drag: dispatches inside record nothing; `endTransaction` commits one step. */
   beginTransaction: () => void;
   endTransaction: () => void;
+  /**
+   * Abandon the open transaction: the cache goes back to what it held at `beginTransaction`,
+   * nothing is recorded and nothing is saved. A preview the teacher cancelled (the theme dialog),
+   * or a gesture that was interrupted.
+   */
+  rollbackTransaction: () => void;
   /** True while a transaction is open (the fit migration waits for the teacher's edit to land). */
   isTransactionInFlight: () => boolean;
 };
@@ -185,6 +191,14 @@ export function useDocumentHistory<TData = unknown>({
     }
   }, [read, record]);
 
+  const rollbackTransaction = useCallback(() => {
+    if (txDepth.current === 0) return;
+    txDepth.current = 0;
+    const pre = txPre.current;
+    txPre.current = null;
+    if (pre && pre !== read()) write(pre);
+  }, [read, write]);
+
   const isTransactionInFlight = useCallback(() => txDepth.current > 0, []);
 
   return useMemo(
@@ -197,8 +211,19 @@ export function useDocumentHistory<TData = unknown>({
       canRedo: flags.canRedo,
       beginTransaction,
       endTransaction,
+      rollbackTransaction,
       isTransactionInFlight,
     }),
-    [lesson, dispatch, undo, redo, flags, beginTransaction, endTransaction, isTransactionInFlight],
+    [
+      lesson,
+      dispatch,
+      undo,
+      redo,
+      flags,
+      beginTransaction,
+      endTransaction,
+      rollbackTransaction,
+      isTransactionInFlight,
+    ],
   );
 }

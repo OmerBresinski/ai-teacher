@@ -193,5 +193,11 @@ describe("SlideToolbar (rows 5, 6)", () => {
     expect(q().multi).toBe(true);
     fireEvent.click(boxes[0] as HTMLElement);
     expect(q().options.filter((o) => o.correct)).toHaveLength(2);
+    // Back to one answer: only the first tick survives.
+    fireEvent.click(screen.getByRole("switch", { name: "Allow several correct answers" }));
+    expect(q().multi).toBe(false);
+    expect(q().options.map((o) => o.correct)).toEqual(
+      [true, false, false, false].slice(0, q().options.length),
+    );
   });
 });

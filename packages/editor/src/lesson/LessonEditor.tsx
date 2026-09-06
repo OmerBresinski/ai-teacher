@@ -99,6 +99,7 @@ export function LessonEditor({
       canRedo: history.canRedo,
       beginTransaction: history.beginTransaction,
       endTransaction: history.endTransaction,
+      rollbackTransaction: history.rollbackTransaction,
       isTransactionInFlight: history.isTransactionInFlight,
     }),
     [
@@ -109,6 +110,7 @@ export function LessonEditor({
       history.canRedo,
       history.beginTransaction,
       history.endTransaction,
+      history.rollbackTransaction,
       history.isTransactionInFlight,
     ],
   );
