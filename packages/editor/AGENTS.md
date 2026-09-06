@@ -22,7 +22,10 @@ reference; nothing is pasted from it without reading the file it came from.
   `className="tj-stage"` (`tooltipClassName` / `contentClassName` on `IconButton` / `Tooltip`).
 - **ADR 0022 §4 — TanStack Query is the only store.** No `zustand`, `zundo`, `immer`-as-store or
   `idb-keyval`. The document lives in the Query cache under the key the app passes in; edits are
-  pure reducers in `src/model/reducers/` applied through `useDocumentHistory`. Transient UI state
+  pure reducers in `src/model/reducers/` applied through `useDocumentHistory`. A reducer is
+  `(lesson, ...args) => Lesson` or `=> { lesson, id }`; it returns the *same* object for a no-op
+  (the hook treats identity as "nothing changed") and `silent(...)`-marked reducers
+  (`setFitVersion`, `updateElementLayout`) write without an undo step. Transient UI state
   (selection, zoom, drag deltas, ink, timer) is React state and refs; pointer moves write refs and
   commit one reducer on release. Renderer paths (`view`, `present`, `capture`, `thumb`) read
   editor state through `EditorHooksContext` only, which those modes never provide.
@@ -46,7 +49,9 @@ reference; nothing is pasted from it without reading the file it came from.
 
 ```
 src/
-  model/      themes (catalogue, floors, FIT_VERSION), fonts, grid, factories, layouts, geometry
+  model/      themes (catalogue, floors, FIT_VERSION), fonts, grid, factories, layouts, geometry,
+              insert (element factories), reducers/ (pure lesson reducers, immer inside),
+              use-document-history (undo/redo/transactions over the Query cache)
   text/       Tiptap extension set + static HTML rendering (renderDocHTML)
   layout/     text-fitting engine: reflow, explanation panel (lint/tidy/fit arrive in phase C)
   slide/      SlideView (the one renderer), SlideScaler, SlideStatic, elements/*

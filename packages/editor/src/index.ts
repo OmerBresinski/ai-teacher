@@ -10,9 +10,20 @@ export * from "./model/factories";
 export * from "./model/fonts";
 export * from "./model/geometry";
 export * from "./model/grid";
+export * from "./model/images";
+export * from "./model/insert";
 export * from "./model/layouts";
+export * as reducers from "./model/reducers";
 export * from "./model/starter";
 export * from "./model/themes";
+export {
+  type AnyReducer,
+  type DocumentHistory,
+  type DocumentHistoryOptions,
+  HISTORY_LIMIT,
+  type ReducerResult,
+  useDocumentHistory,
+} from "./model/use-document-history";
 export * from "./model/worksheet-factories";
 export * from "./slide/elements";
 export { SlideScaler, useSlideScale } from "./slide/SlideScaler";
