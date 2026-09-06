@@ -4,10 +4,11 @@
  * `apps/worker` (progress, then `clearGenerating`). Skips visibly when the database is unreachable.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { clearGenerating, forWorkspace, getDocument, listJobEvents } from "@tj/db";
+import { clearGenerating, createDocument, forWorkspace, getDocument, listJobEvents } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
 import type { Lesson } from "@tj/domain/documents";
+import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
 import {
   type BossJob,
   createBoss,
@@ -223,6 +224,83 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     const limited = await postLesson(wsA, { brief: { topic: "One too many" } });
     expect(limited.status).toBe(429);
     expect(await errorOf(limited)).toMatchObject({ code: "rate_limited", retryable: true });
+  });
+
+  describe("POST /lessons/:id/cascade and /regenerate (ADR 0025 §18)", () => {
+    const postJson = (ws: WorkspaceId, path: string, body: unknown) =>
+      app.request(path, {
+        method: "POST",
+        headers: headers(ws, { "content-type": "application/json" }),
+        body: JSON.stringify(body),
+      });
+
+    /** A generated lesson row, unlocked, in `wsA`. */
+    async function seedGenerated() {
+      const ws = forWorkspace(unsafeDb, wsA);
+      const row = await createDocument(ws, "lesson", generatedLesson());
+      return row.id as LessonId;
+    }
+
+    test("202 { jobId }: a queued event exists; the same job again while queued is 409", async () => {
+      const lessonId = await seedGenerated();
+      const res = await postJson(wsA, `/lessons/${lessonId}/cascade`, { changedFactIds: ["o2"] });
+      expect(res.status).toBe(202);
+      const { jobId } = (await res.json()) as { jobId: JobId };
+      expect(jobId).toMatch(/^[0-9a-f-]{36}$/);
+      const events = await listJobEvents(unsafeDb, { workspaceId: wsA, jobId, limit: 5 });
+      expect(events.map((e) => e.type)).toEqual(["queued"]);
+      // Inside the debounce slot the same job for the same lesson is refused.
+      const again = await postJson(wsA, `/lessons/${lessonId}/cascade`, { changedFactIds: ["o1"] });
+      expect(again.status).toBe(409);
+      // A different job for the same lesson is not deduplicated against it.
+      const regen = await postJson(wsA, `/lessons/${lessonId}/regenerate`, {
+        targets: [{ slideId: "s-mc" }],
+      });
+      expect(regen.status).toBe(202);
+      // The lesson row was not locked or written.
+      const row = await getDocument(forWorkspace(unsafeDb, wsA), lessonId);
+      expect(row?.generatingJobId).toBeNull();
+    });
+
+    test("404 for an unknown id, a worksheet id and another Workspace's lesson", async () => {
+      const ws = forWorkspace(unsafeDb, wsA);
+      expect(
+        (await postJson(wsA, `/lessons/${newId()}/cascade`, { changedFactIds: ["o1"] })).status,
+      ).toBe(404);
+      const sheet = await createDocument(ws, "worksheet", generatedWorksheet());
+      expect(
+        (await postJson(wsA, `/lessons/${sheet.id}/cascade`, { changedFactIds: ["o1"] })).status,
+      ).toBe(404);
+      const lessonId = await seedGenerated();
+      const wsB = newId<WorkspaceId>();
+      await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsB });
+      expect(
+        (await postJson(wsB, `/lessons/${lessonId}/cascade`, { changedFactIds: ["o1"] })).status,
+      ).toBe(404);
+    });
+
+    test("409 generating while a pipeline holds the lock", async () => {
+      const ws = forWorkspace(unsafeDb, wsA);
+      const row = await createDocument(ws, "lesson", generatedLesson(), {
+        generatingJobId: newId<JobId>(),
+      });
+      const res = await postJson(wsA, `/lessons/${row.id}/regenerate`, {
+        targets: [{ slideId: "s-mc" }],
+      });
+      expect(res.status).toBe(409);
+      expect(await errorOf(res)).toMatchObject({ code: "conflict", reason: "generating" });
+    });
+
+    test("the model-call limiter covers the sub-paths", async () => {
+      const lessonId = await seedGenerated();
+      for (let i = 0; i < 3; i++) {
+        expect((await postLesson(wsA, { brief: { topic: `Topic ${i}` } })).status).toBe(202);
+      }
+      const limited = await postJson(wsA, `/lessons/${lessonId}/cascade`, {
+        changedFactIds: ["o1"],
+      });
+      expect(limited.status).toBe(429);
+    });
   });
 
   test("the lesson is listed for its Workspace and invisible to another", async () => {

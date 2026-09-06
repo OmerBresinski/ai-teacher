@@ -13,16 +13,32 @@
  * itself cancels the pg-boss job when it cannot write the `queued` event. The same request body
  * cap as `/documents` applies. Rate-limited per Workspace with the model-call limiter in `app.ts`
  * (§15). Nothing about the brief is logged — only `{ lessonId, jobId }` (ADR 0015).
+ *
+ * `POST /lessons/:id/cascade` and `POST /lessons/:id/regenerate` (ADR 0025 §18, §19) enqueue the
+ * proposal jobs. They take **no** generating lock — the teacher keeps editing and the editor
+ * applies the result as one undo transaction — so they refuse (`409 generating`) only while a
+ * pipeline still holds the row. `singletonKey` `<lessonId>:<job>` with a `PROPOSAL_DEBOUNCE_S`
+ * slot debounces each job per lesson: a second identical request inside the slot is `409`
+ * "already queued" (as `/jobs/*`), and the editor coalesces its fact edits anyway.
  */
 import { zValidator } from "@hono/zod-validator";
 import {
   createDocument,
   deleteDocument,
   forWorkspace,
+  getDocument,
   type ScopableDb,
   type WorkspaceDb,
 } from "@tj/db";
-import { type JobId, type LessonId, newId } from "@tj/domain";
+import {
+  type JobId,
+  type JobName,
+  type JobPayloadInputs,
+  LessonCascadePayloadSchema,
+  type LessonId,
+  LessonRegeneratePayloadSchema,
+  newId,
+} from "@tj/domain";
 import {
   type CreateLesson,
   CreateLessonSchema,
@@ -36,11 +52,13 @@ import {
 import { enqueue } from "@tj/jobs";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { z } from "zod";
 import type { AppEnv } from "../context";
+import { ConflictError } from "../errors";
 import type { EventsRuntime } from "../events/runtime";
 import { requireJsonBody, validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
-import { documentBodyLimit } from "./documents";
+import { documentBodyLimit, GENERATING_MESSAGE, NOT_FOUND_MESSAGE } from "./documents";
 import { requireRuntime } from "./jobs";
 
 /**
@@ -103,20 +121,96 @@ export async function createLessonAndEnqueue(
   return { lessonId, jobId };
 }
 
+const lessonParam = z.object({ id: z.uuid() });
+/** The request bodies: the payload schemas without `lessonId`, which comes from the path. */
+const cascadeBody = LessonCascadePayloadSchema.omit({ lessonId: true });
+const regenerateBody = LessonRegeneratePayloadSchema.omit({ lessonId: true });
+
+type ProposalJob = Extract<JobName, "lesson.cascade" | "lesson.regenerate">;
+
+/**
+ * One proposal job per lesson per this many seconds. pg-boss `standard` queues do not dedupe on
+ * `singletonKey` alone; the throttle slot is what makes a repeat request `409` while the previous
+ * one is still queued or running (a cascade takes a few seconds on the fake, tens on Bedrock).
+ */
+export const PROPOSAL_DEBOUNCE_S = 5;
+
+/**
+ * Enqueue a proposal job for an existing, unlocked lesson (ADR 0025 §18). `404` for a missing or
+ * non-lesson row (another Workspace's id reads as missing, ADR 0007); `409 generating` while the
+ * pipeline holds the lock; `409` when the same job is already queued for this lesson.
+ */
+async function enqueueProposal<J extends ProposalJob>(
+  ws: WorkspaceDb,
+  rt: EventsRuntime,
+  job: J,
+  payload: JobPayloadInputs[J],
+): Promise<JobId> {
+  const row = await getDocument(ws, payload.lessonId);
+  if (row === null || row.kind !== "lesson") {
+    throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+  }
+  if (row.generatingJobId !== null) throw new ConflictError("generating", GENERATING_MESSAGE);
+  const jobId = await enqueue(rt.jobs, job, payload, {
+    workspaceId: ws.workspaceId,
+    singletonKey: `${payload.lessonId}:${job.slice("lesson.".length)}`,
+    singletonSeconds: PROPOSAL_DEBOUNCE_S,
+  });
+  if (jobId === null)
+    throw new HTTPException(409, { message: "An identical job is already queued." });
+  return jobId;
+}
+
 export function lessonRoutes(unsafeDb: ScopableDb, runtime: EventsRuntime | undefined) {
-  return new Hono<AppEnv>().post(
-    "/lessons",
-    documentBodyLimit(),
-    requireJsonBody(),
-    zValidator("json", CreateLessonSchema, validationHook),
-    async (c) => {
-      const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-      const rt = requireRuntime(runtime);
-      const lesson = lessonFromBrief(c.req.valid("json"), newId<LessonId>(), new Date());
-      const ws = forWorkspace(unsafeDb, workspaceId);
-      const { lessonId, jobId } = await createLessonAndEnqueue(ws, rt, lesson);
-      c.get("logger")?.info({ lessonId, jobId }, "lesson created from brief");
-      return c.json({ lessonId, jobId }, 202);
-    },
-  );
+  return new Hono<AppEnv>()
+    .post(
+      "/lessons",
+      documentBodyLimit(),
+      requireJsonBody(),
+      zValidator("json", CreateLessonSchema, validationHook),
+      async (c) => {
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+        const rt = requireRuntime(runtime);
+        const lesson = lessonFromBrief(c.req.valid("json"), newId<LessonId>(), new Date());
+        const ws = forWorkspace(unsafeDb, workspaceId);
+        const { lessonId, jobId } = await createLessonAndEnqueue(ws, rt, lesson);
+        c.get("logger")?.info({ lessonId, jobId }, "lesson created from brief");
+        return c.json({ lessonId, jobId }, 202);
+      },
+    )
+    .post(
+      "/lessons/:id/cascade",
+      requireJsonBody(),
+      zValidator("param", lessonParam, validationHook),
+      zValidator("json", cascadeBody, validationHook),
+      async (c) => {
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+        const rt = requireRuntime(runtime);
+        const lessonId = c.req.valid("param").id as LessonId;
+        const { changedFactIds } = c.req.valid("json");
+        const ws = forWorkspace(unsafeDb, workspaceId);
+        const jobId = await enqueueProposal(ws, rt, "lesson.cascade", { lessonId, changedFactIds });
+        c.get("logger")?.info({ lessonId, jobId, facts: changedFactIds.length }, "cascade queued");
+        return c.json({ jobId }, 202);
+      },
+    )
+    .post(
+      "/lessons/:id/regenerate",
+      requireJsonBody(),
+      zValidator("param", lessonParam, validationHook),
+      zValidator("json", regenerateBody, validationHook),
+      async (c) => {
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+        const rt = requireRuntime(runtime);
+        const lessonId = c.req.valid("param").id as LessonId;
+        const body = c.req.valid("json");
+        const ws = forWorkspace(unsafeDb, workspaceId);
+        const jobId = await enqueueProposal(ws, rt, "lesson.regenerate", { lessonId, ...body });
+        c.get("logger")?.info(
+          { lessonId, jobId, targets: body.targets.length },
+          "regenerate queued",
+        );
+        return c.json({ jobId }, 202);
+      },
+    );
 }

@@ -15,10 +15,14 @@ import type { JobData, JobsContext } from "./types";
 export interface EnqueueOptions {
   workspaceId: WorkspaceId;
   /**
-   * pg-boss `singletonKey`: while a job with the same key is queued (created/retry) in this
-   * queue, a second `enqueue` is a no-op and returns `null`. Use it to debounce "regenerate".
+   * pg-boss `singletonKey`. On our `standard` queues a key alone deduplicates nothing (only the
+   * `short`/`stately`/`exclusive` policies do); paired with `singletonSeconds` it throttles: one
+   * job per key per `singletonSeconds` slot, a second `enqueue` inside the slot returns `null`.
+   * The proposal routes use it to debounce `lesson.cascade` / `lesson.regenerate` per lesson.
    */
   singletonKey?: string;
+  /** The throttle slot for `singletonKey`, in whole seconds. */
+  singletonSeconds?: number;
   /**
    * Use this `JobId` instead of minting one. For callers that must write the id somewhere before
    * the job can run — `POST /lessons` stores it as the lesson's generating lock, then enqueues, so
@@ -50,6 +54,7 @@ export async function enqueue<N extends JobName>(
   const sent = await ctx.boss.send(name, data, {
     id: jobId,
     singletonKey: opts.singletonKey,
+    singletonSeconds: opts.singletonSeconds,
     retryLimit: JOB_RETRY_LIMIT,
   });
   if (sent === null) return null;

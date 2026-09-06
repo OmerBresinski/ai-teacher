@@ -55,6 +55,20 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
     ],
     shape: 'a "multiple-choice" slide spec',
   },
+  cascade: {
+    facts,
+    audience,
+    target: { kind: "block", blockType: "question", blockId: "b1", text: "Why?\nAnswer: Because." },
+    shape: 'a "question" block spec',
+    changedFactIds: ["o1"],
+  },
+  regenerate: {
+    facts,
+    audience,
+    target: { kind: "slide", slideKind: "content", slideId: "s5", text: "The particle model" },
+    shape: 'a "content" slide spec',
+    instruction: "simpler words",
+  },
 };
 
 const PINNED: Record<PromptName, { version: string; hash: string }> = {
@@ -77,6 +91,14 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   repair: {
     version: "repair.v1",
     hash: "69044a8fb8d5c888ef35ae3d5910a23f82b8446af175dd073c01952648e9666b",
+  },
+  cascade: {
+    version: "cascade.v1",
+    hash: "283d85851eb9ed2907f3a84cea214e0ce883438deab5c1e5607416a98dc113d6",
+  },
+  regenerate: {
+    version: "regenerate.v1",
+    hash: "f0e545aa74a5b033d8a199d7f891b55f31efe335d91c116e8889f99444c9d8bc",
   },
 };
 

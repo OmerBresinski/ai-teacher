@@ -79,6 +79,73 @@ describe("POST /lessons validation", () => {
   });
 });
 
+const CASCADE_PATH = `/lessons/${newId<LessonId>()}/cascade`;
+const REGENERATE_PATH = `/lessons/${newId<LessonId>()}/regenerate`;
+
+describe("POST /lessons/:id/cascade and /regenerate guards and validation (ADR 0025 §18)", () => {
+  test("401 without a session or shim; 403 cross-site", async () => {
+    const noShim = createApp({ env: TEST_ENV_NO_SHIM, db: fakeSql(true), logger: silentLogger });
+    expect((await noShim.request(CASCADE_PATH, post({ changedFactIds: ["o1"] }, {}))).status).toBe(
+      401,
+    );
+    expect(
+      (
+        await testApp().request(
+          REGENERATE_PATH,
+          post(
+            { targets: [{ slideId: "s1" }] },
+            {
+              [WORKSPACE_HEADER]: ws,
+              origin: "https://evil.example",
+              "sec-fetch-site": "cross-site",
+            },
+          ),
+        )
+      ).status,
+    ).toBe(403);
+  });
+
+  test.each([
+    ["cascade: no changed facts", CASCADE_PATH, { changedFactIds: [] }, ["changedFactIds"]],
+    [
+      "cascade: lessonId in the body (strict)",
+      CASCADE_PATH,
+      { changedFactIds: ["o1"], lessonId: "x" },
+      ["(root)"],
+    ],
+    ["regenerate: no targets", REGENERATE_PATH, { targets: [] }, ["targets"]],
+    [
+      "regenerate: a target with neither slideId nor blockId",
+      REGENERATE_PATH,
+      { targets: [{ elementId: "e" }] },
+      ["targets"],
+    ],
+    [
+      "regenerate: an instruction over 500 chars",
+      REGENERATE_PATH,
+      { targets: [{ slideId: "s" }], instruction: "x".repeat(501) },
+      ["instruction"],
+    ],
+  ])("400 validation_failed for %s", async (_label, path, body, fields) => {
+    const res = await testApp().request(path, post(body));
+    expect(res.status).toBe(400);
+    expect((await errorBody(res)).error).toMatchObject({ code: "validation_failed", fields });
+  });
+
+  test("400 for a non-UUID lesson id", async () => {
+    const res = await testApp().request(
+      "/lessons/not-a-uuid/cascade",
+      post({ changedFactIds: ["o1"] }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  test("503 when no job runtime is configured, before any read", async () => {
+    const res = await testApp().request(CASCADE_PATH, post({ changedFactIds: ["o1"] }));
+    expect(res.status).toBe(503);
+  });
+});
+
 describe("lessonFromBrief", () => {
   const id = newId<LessonId>();
   const now = new Date("2026-09-06T10:00:00.000Z");

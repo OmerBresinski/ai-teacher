@@ -76,6 +76,11 @@ export const ProposalTargetSchema = z
     slideId: z.string().optional(),
     elementId: z.string().optional(),
     blockId: z.string().optional(),
+    /**
+     * Why a target is in `flagged` rather than re-derived: `teacher` (its `authoredBy` is not
+     * `"ai"`, F07 asks the teacher) or `too_many` (past the per-job cap on re-derived targets).
+     */
+    reason: z.enum(["teacher", "too_many"]).optional(),
   })
   .refine((target) => (target.slideId !== undefined) !== (target.blockId !== undefined), {
     message: "A target names either a slideId or a blockId, not both.",
@@ -208,6 +213,8 @@ export const JobResultSchema = z.discriminatedUnion("job", [
 export type JobResult = z.infer<typeof JobResultSchema>;
 /** Narrow a `JobResult` to one job's shape. */
 export type JobResultOf<J extends JobResult["job"]> = Extract<JobResult, { job: J }>;
+export type LessonCascadeResult = JobResultOf<"lesson.cascade">;
+export type LessonRegenerateResult = JobResultOf<"lesson.regenerate">;
 
 export const JobErrorSchema = z.strictObject({
   message: z.string(),

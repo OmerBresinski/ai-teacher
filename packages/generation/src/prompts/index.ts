@@ -2,6 +2,7 @@ import { evaluatePrompt } from "./evaluate";
 import { generateSlidePrompt } from "./generate-slide";
 import { generateWorksheetPrompt } from "./generate-worksheet";
 import { planPrompt } from "./plan";
+import { cascadePrompt, regeneratePrompt } from "./propose";
 import { repairPrompt } from "./repair";
 
 /*
@@ -14,9 +15,18 @@ export type { EvaluateInput } from "./evaluate";
 export type { GenerateSlideInput } from "./generate-slide";
 export type { GenerateWorksheetInput } from "./generate-worksheet";
 export type { PlanInput } from "./plan";
+export type { ProposeInput } from "./propose";
 export type { RepairInput } from "./repair";
 export type { Audience } from "./shared";
-export { evaluatePrompt, generateSlidePrompt, generateWorksheetPrompt, planPrompt, repairPrompt };
+export {
+  cascadePrompt,
+  evaluatePrompt,
+  generateSlidePrompt,
+  generateWorksheetPrompt,
+  planPrompt,
+  regeneratePrompt,
+  repairPrompt,
+};
 
 export const PROMPTS = {
   plan: planPrompt,
@@ -24,6 +34,8 @@ export const PROMPTS = {
   "generate-worksheet": generateWorksheetPrompt,
   evaluate: evaluatePrompt,
   repair: repairPrompt,
+  cascade: cascadePrompt,
+  regenerate: regeneratePrompt,
 } as const;
 export type PromptName = keyof typeof PROMPTS;
 
@@ -33,6 +45,8 @@ export const PROMPT_VERSIONS = {
   "generate-worksheet": generateWorksheetPrompt.version,
   evaluate: evaluatePrompt.version,
   repair: repairPrompt.version,
+  cascade: cascadePrompt.version,
+  regenerate: regeneratePrompt.version,
 } as const satisfies Record<PromptName, string>;
 
 /**

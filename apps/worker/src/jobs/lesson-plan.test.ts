@@ -4,6 +4,7 @@ import { createDocument, forWorkspace, getDocument } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
 import { lesson as lessonFixture } from "@tj/domain/documents/fixtures";
+import { noSources } from "@tj/generation";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
 import { lessonPlanJob } from "./lesson-plan";
@@ -21,7 +22,12 @@ describeDb("lesson.plan job (stub)", () => {
   afterAll(() => close());
 
   const workspaceId = newId<WorkspaceId>();
-  const deps: WorkerDeps = { ai: createFakeAi(), db: unsafeDb };
+  const deps: WorkerDeps = {
+    ai: createFakeAi(),
+    db: unsafeDb,
+    caps: { capUsd: 5, capTokens: 1_000_000 },
+    sources: noSources,
+  };
 
   beforeEach(async () => {
     await truncateTenantTables();
