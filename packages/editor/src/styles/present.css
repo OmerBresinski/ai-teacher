@@ -1,14 +1,8 @@
 /*
  * Present-mode motion (TeachDeck components/present/present.css). Part of editor.css. Durations
- * read @tj/ui's --duration-* tokens; nothing here animates anything but transform and opacity.
+ * and curves are @tj/ui's motion ladder (--duration-slide, --duration-slow, --ease-standard,
+ * --ease-out-soft in globals.css); nothing here animates anything but transform and opacity.
  */
-.td-present-layer,
-.td-autohide {
-  --d-slide: 320ms;
-  --d-slow: var(--duration-arrive, 450ms);
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --ease-out-soft: var(--ease-arrive, cubic-bezier(0.22, 1, 0.36, 1));
-}
 
 /* ---- slide transitions (SPEC §8: fade | push | morph | none) ------------- */
 
@@ -55,24 +49,24 @@
 }
 
 .td-in-fade {
-  animation: td-present-fade-in var(--d-slide) var(--ease-standard) both;
+  animation: td-present-fade-in var(--duration-slide) var(--ease-standard) both;
 }
 .td-out-fade {
-  animation: td-present-fade-out var(--d-slide) var(--ease-standard) both;
+  animation: td-present-fade-out var(--duration-slide) var(--ease-standard) both;
 }
 .td-in-push {
-  animation: td-present-push-in var(--d-slide) var(--ease-standard) both;
+  animation: td-present-push-in var(--duration-slide) var(--ease-standard) both;
 }
 .td-out-push {
-  animation: td-present-push-out var(--d-slide) var(--ease-standard) both;
+  animation: td-present-push-out var(--duration-slide) var(--ease-standard) both;
 }
 
 /* Morph tweens the shared elements itself (WAAPI, in Stage); the layers only cross-fade. */
 .td-in-morph {
-  animation: td-present-fade-in var(--d-slide) var(--ease-standard) both;
+  animation: td-present-fade-in var(--duration-slide) var(--ease-standard) both;
 }
 .td-out-morph {
-  animation: td-present-fade-out calc(var(--d-slide) * 0.6) var(--ease-standard) both;
+  animation: td-present-fade-out calc(var(--duration-slide) * 0.6) var(--ease-standard) both;
 }
 
 /* ---- timer at zero ------------------------------------------------------- */
@@ -94,7 +88,7 @@
 /* ---- chrome that gets out of the way ------------------------------------- */
 
 .td-autohide {
-  transition: opacity var(--d-slow) var(--ease-out-soft);
+  transition: opacity var(--duration-slow) var(--ease-out-soft);
 }
 
 .td-autohide[data-hidden="true"] {

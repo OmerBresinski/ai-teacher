@@ -27,6 +27,32 @@ const rootOnlyGeometry = new Set([
   "--sidebar-width-collapsed",
   "--tile-height",
   "--pill-height",
+  "--radius-key",
+  // Motion ladder and editor chrome geometry (TeachDeck tokens.css); one value for every theme.
+  "--duration-instant",
+  "--duration-base",
+  "--duration-slow",
+  "--duration-slide",
+  "--duration-reveal",
+  "--stagger",
+  "--ease-out",
+  "--ease-out-soft",
+  "--ease-standard",
+  "--ease-in",
+  "--topbar-height",
+  "--toolbar-height",
+  "--rail-width",
+  "--navigator-width",
+  "--navigator-width-sm",
+  "--inspector-width",
+  "--panel-pad",
+  "--row-height",
+  "--row-height-lg",
+  "--field-height",
+  "--button-height-xs",
+  "--button-height",
+  "--button-height-lg",
+  "--canvas-gap",
 ]);
 
 function paletteVariables(block: string): string[] {
@@ -66,6 +92,14 @@ describe("TeachDeck globals", () => {
     }
   });
 
+  it("collapses the motion ladder under reduced motion", () => {
+    const reduced = blockFor("@media (prefers-reduced-motion: reduce) {");
+    for (const variable of ["--duration-slide", "--duration-reveal", "--duration-base"]) {
+      expect(reduced).toMatch(new RegExp(`${variable}: 1ms;`));
+    }
+    expect(reduced).toMatch(/--duration-slow: 150ms;/);
+  });
+
   it("does not retain the retired palette tokens", () => {
     const retiredStatusPrefix = ["--status", "-"].join("");
     const retiredSurfaceToken = ["--", "surface"].join("");
@@ -86,6 +120,10 @@ describe("TeachDeck globals", () => {
       "--text-meta",
       "--font-display",
       "--shadow-2",
+      "--shadow-slide",
+      "--shadow-lift",
+      "--radius-key",
+      "--color-border-strong",
       "--color-ink-3",
       "--color-brand-tint",
       "--color-brand-text",
