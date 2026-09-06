@@ -29,7 +29,7 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 ## Engineering terms
 
 - **Activity tray** — the UI surface listing running and completed jobs (F18-R04); consumes job events.
-- **ADR** — Architecture Decision Record under `docs/adr/`; engineering decisions only. Product decisions live in Notion.
+- **ADR** — Architecture Decision Record under `docs/adr/`; engineering decisions only. Product decisions are the founder's and are not recorded here.
 - **AI provider** — the hosted model service behind `@tj/ai`; Amazon Bedrock at MVP, reached through the Vercel AI SDK (ADR 0018). Features never import a vendor SDK.
 - **App** — a deployable unit under `apps/` (`web`, `api`, `worker`).
 - **App bar** — the 48px docked top bar of a screen.

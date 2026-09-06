@@ -3,7 +3,7 @@
 Monorepo for **Teaching Journey** (working name "AI Teacher"): an AI-assisted planning tool that
 takes a teacher from a goal to a sequence of Lessons, generates coherent Artefacts (plans, slides,
 worksheets, quizzes, …) for each Lesson, and adapts future Lessons from class-level Observations.
-Product decisions live in Notion; engineering decisions live in [`docs/adr/`](docs/adr/README.md)
+Product decisions are the founder's and are not recorded in this repo; engineering decisions live in [`docs/adr/`](docs/adr/README.md)
 and shared vocabulary in [`docs/glossary.md`](docs/glossary.md).
 
 ## Prerequisites

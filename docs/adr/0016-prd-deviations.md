@@ -17,7 +17,7 @@ The founder chose to defer two product commitments to move faster on the scaffol
 
 ## Consequences
 
-- Product PRDs in Notion should be annotated to reference this ADR (F15 §4 #8, F15-D5, F18-D1, F18-R06, F17-R01).
+- Product PRDs should be annotated to reference this ADR (F15 §4 #8, F15-D5, F18-D1, F18-R06, F17-R01).
 - Nothing in the scaffold blocks any reversal: storage is behind an adapter, hosting is Docker-based, the SPA can add a service worker without architectural change, and cookie mode is env-driven so TEACH-30 flips production to `Lax` without a code change (existing sessions are invalidated once).
 
 ## Amendment (2026-09-04, ADR 0018)

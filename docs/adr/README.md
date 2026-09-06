@@ -2,7 +2,7 @@
 
 Decisions made for the Teaching Journey (working name "AI Teacher") codebase. Each ADR is small and immutable; supersede rather than edit.
 
-Product decisions live in Notion (Master PRD §17 and each feature PRD's "Decisions" table). ADRs here cover engineering decisions only, and reference the product decision they implement or deviate from.
+Product decisions are the founder's and are not recorded here. ADRs cover engineering decisions only, and reference the product decision they implement or deviate from.
 
 | #    | Title                                              | Status   |
 | ---- | -------------------------------------------------- | -------- |
