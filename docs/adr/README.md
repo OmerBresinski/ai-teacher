@@ -43,3 +43,4 @@ Template: `0000-template.md`.
 - 2026-09-06 — ADR 0019 §3 and §5: the stage palette moves to `@tj/ui` as the `.tj-stage` scope and the editor consumes `@tj/ui` twins (ADR 0022). See the second amendment in `0019-teachdeck-visual-system.md`.
 - 2026-09-06 — ADR 0020: `@tj/domain` holds the document schemas (ADR 0021); the mock store holds full documents; "no Zustand" covers the editor (ADR 0022). See `0020-frontend-mock-data-layer.md`.
 - 2026-09-06 — ADR 0021 §1: the schemas live at `@tj/domain/documents` (subpath only); the `objects/lesson.ts` row stub is kept (TEACH-96). See the amendment in `0021-tie-in-document-contract.md`.
+- 2026-09-06 — ADR 0013: `packages/editor` (`@tj/editor`) added to the layout (ADR 0022, TEACH-98). See the third amendment in `0013-monorepo-layout.md`.

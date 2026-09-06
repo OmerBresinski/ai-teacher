@@ -62,3 +62,14 @@ packages/
 
 Server-only. Depends on `@tj/domain` internally; consumed by `apps/worker` and `apps/api`, never by
 `apps/web`.
+
+## Amendment (2026-09-06, ADR 0022)
+
+```
+packages/
+  editor/       @tj/editor     Lesson and worksheet editor, viewer, present mode, exporters;
+                               static slide renderer for thumbnails (`./thumb`) (ADR 0022)
+```
+
+Browser-only React library. Depends on `@tj/domain` (documents) and `@tj/ui` internally; consumed
+by `apps/web` only, never by `apps/api` or `apps/worker`.
