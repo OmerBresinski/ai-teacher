@@ -139,6 +139,7 @@ module-level singletons, so tests can inject fakes.
 | `DELETE /documents/:id` | `204` (idempotent); `404` |
 | `POST /documents/:id/restore` | `200 { document }`; `404` |
 | `GET /documents/:id/lessons` | `200 { series, lessons: DocumentSummary[] }` in `body.lessonIds` order; `404` when not found or not a series |
+| `POST /lessons`      | `202 { lessonId, jobId }` from a brief (see "Lessons"); `400 validation_failed` (same Zod + Identifier guard as the brief screen); `409 conflict` when an identical job is queued; `429 rate_limited` past the model-call allowance; `503` without a job runtime |
 | `GET /files/:key`    | Streams a stored object (`content-type`, `content-length`, `cache-control: private, no-store`); `401` without a session, `404` for a missing object **or** a key outside the caller's Workspace (never 403), `400 validation_failed` for a malformed key, `503` when no storage adapter is configured (see "Files") |
 | `GET /__test/last-magic-link?email=x` | **Test-only** (see "Test routes"): `200 { email, url }` or `404 not_found`. Absent unless `NODE_ENV=test` and `ENABLE_TEST_ROUTES=1`. |
 
@@ -170,6 +171,26 @@ URLs (§8). Lists never read `body`: `toSummaryJson` maps the promoted columns t
 `sort` is `updated | title | created`, `q` is an `ILIKE` on title and subject, and `cursor` is the
 opaque keyset cursor from the previous page (§17). `/documents` and `/documents/*` are both in
 `PROTECTED_PATHS` (CSRF guard + `requireSession`).
+
+## Lessons (`POST /lessons`, ADR 0024 §6, §13, §15, §18)
+
+`src/routes/lessons.ts` (`lessonRoutes(unsafeDb, runtime)`) is how a brief becomes a Lesson. The
+body is `CreateLessonSchema` from `@tj/domain/documents` — `{ brief: { topic, durationMin?,
+classContext?, answers? }, subject?, yearGroup?, ageBand?, readingLevel?, language?, themeId? }`,
+strict, every free-text field behind the Identifier guard — so the brief screen and the API reject
+the same input with the same message. `lessonFromBrief()` applies the defaults the screen shows:
+`ageBand` from the year group (`deriveAgeBand`: Reception → `eyfs`, Year 1–2 → `ks1`, 3–6 → `ks2`,
+7–9 → `ks3`, 10–11 → `ks4`, 12–13 → `post16`), `durationMin` from the age band
+(`defaultDurationMin`: 30 / 45 / 60), `title` = the topic cut to 80 characters, `themeId` =
+`DEFAULT_THEME_ID`, `language` = `en-GB`, `slides: []`. The handler then mints the job id, inserts
+the row with `generating_job_id = jobId` **first** (so a fast worker always finds a lock to clear),
+enqueues `lesson.plan { lessonId }` under that id — removing the row again if the enqueue fails —
+and answers `202 { lessonId, jobId }`. The
+client navigates to `/l/$lessonId` and follows `GET /jobs/:jobId/events`; until the worker's
+terminal event clears the lock, `PUT /documents/:lessonId` is `409 conflict` with
+`reason: "generating"`. `/lessons` shares the per-Workspace model-call limiter with
+`/jobs/ai-ping` (`AI_RATE_LIMIT_PER_WORKSPACE` / `AI_RATE_LIMIT_WINDOW_S`), the 10 MB body cap with
+`/documents`, and is in `PROTECTED_PATHS`. Only `{ lessonId, jobId }` is logged.
 
 ## `AppType` and `@tj/api-client`
 

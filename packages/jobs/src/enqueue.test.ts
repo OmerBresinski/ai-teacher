@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
-import { newId, type WorkspaceId } from "@tj/domain";
+import { type JobId, newId, type WorkspaceId } from "@tj/domain";
 import type { PgBoss } from "pg-boss";
 import { ZodError } from "zod";
 import { enqueue } from "./enqueue";
@@ -8,10 +8,11 @@ import type { JobsContext } from "./types";
 /** A boss whose `send` echoes the requested id, and db/sql stubs that throw if touched. */
 function fakeCtx() {
   const send = mock(async (_name: string, _data: object, opts: { id: string }) => opts.id);
-  const boss = { send } as unknown as PgBoss;
+  const cancel = mock(async (_name: string, _id: string) => {});
+  const boss = { send, cancel } as unknown as PgBoss;
   const db = new Proxy({}, { get: () => () => fail("db touched") }) as JobsContext["db"];
   const sql = (() => fail("sql touched")) as unknown as JobsContext["sql"];
-  return { ctx: { boss, db, sql } satisfies JobsContext, send };
+  return { ctx: { boss, db, sql } satisfies JobsContext, send, cancel };
 }
 function fail(msg: string): never {
   throw new Error(msg);
@@ -66,6 +67,30 @@ describe("enqueue", () => {
     expect(opts.id).toBe(data.jobId);
     expect(opts.retryLimit).toBe(1);
     expect(opts.singletonKey).toBeUndefined();
+  });
+
+  test("cancels the pg-boss job when the queued event cannot be written (no orphan)", async () => {
+    const { ctx, send, cancel } = fakeCtx();
+    await expect(enqueue(ctx, "ping", { message: "hi" }, { workspaceId })).rejects.toThrow(
+      "db touched",
+    );
+    const sentId = (send.mock.calls[0] as unknown as [string, object, { id: string }])[2].id;
+    expect(cancel).toHaveBeenCalledWith("ping", sentId);
+  });
+
+  test("uses the caller's job id when one is supplied", async () => {
+    const { ctx, send } = fakeCtx();
+    const id = newId<JobId>();
+    await expect(enqueue(ctx, "ping", { message: "hi" }, { workspaceId, id })).rejects.toThrow(
+      "db touched",
+    );
+    const [, data, opts] = send.mock.calls[0] as unknown as [
+      string,
+      { jobId: string },
+      { id: string },
+    ];
+    expect(opts.id).toBe(id);
+    expect(data.jobId).toBe(id);
   });
 
   test("returns null (and writes no event) when singletonKey deduplicates the send", async () => {

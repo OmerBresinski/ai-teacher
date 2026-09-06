@@ -19,6 +19,12 @@ export interface EnqueueOptions {
    * queue, a second `enqueue` is a no-op and returns `null`. Use it to debounce "regenerate".
    */
   singletonKey?: string;
+  /**
+   * Use this `JobId` instead of minting one. For callers that must write the id somewhere before
+   * the job can run — `POST /lessons` stores it as the lesson's generating lock, then enqueues, so
+   * a fast worker can never clear a lock that has not been written yet (ADR 0024 §18).
+   */
+  id?: JobId;
 }
 
 /**
@@ -38,7 +44,7 @@ export async function enqueue<N extends JobName>(
   JobNameSchema.parse(name);
   const schema = JobPayloadSchemas[name];
   const parsed = schema.parse(payload) as JobPayloads[N];
-  const jobId = newId<JobId>();
+  const jobId = opts.id ?? newId<JobId>();
   const data: JobData<N> = { jobId, workspaceId: opts.workspaceId, payload: parsed };
 
   const sent = await ctx.boss.send(name, data, {
@@ -52,12 +58,20 @@ export async function enqueue<N extends JobName>(
     throw new Error(`enqueue: pg-boss returned id ${sent}, expected ${jobId}`);
   }
 
-  await emitJobEvent(ctx, {
-    type: "queued",
-    jobId,
-    workspaceId: opts.workspaceId,
-    at: nowIso(),
-  });
+  try {
+    await emitJobEvent(ctx, {
+      type: "queued",
+      jobId,
+      workspaceId: opts.workspaceId,
+      at: nowIso(),
+    });
+  } catch (error) {
+    // The job is in pg-boss but nobody can follow it (no `queued` row, and the caller gets no id):
+    // take it back out so it does not run as an orphan. If even that fails, the original error
+    // is the one worth reporting.
+    await ctx.boss.cancel(name, jobId).catch(() => undefined);
+    throw error;
+  }
   return jobId;
 }
 

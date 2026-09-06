@@ -213,7 +213,7 @@ export const THEMES: Theme[] = [
   },
 ];
 
-export const DEFAULT_THEME_ID = "chalk";
+export { DEFAULT_THEME_ID } from "@tj/domain/documents";
 
 export function getTheme(id: string | undefined | null): Theme {
   return THEMES.find((t) => t.id === id) ?? (THEMES[0] as Theme);

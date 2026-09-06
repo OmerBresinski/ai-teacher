@@ -253,17 +253,18 @@ export async function getSeriesWithLessons(
 // --- writes ------------------------------------------------------------------------------------
 
 /**
- * Insert a new document. The row id is minted here and written into `body.id` (ADR 0024 §11), so
- * Import and Make a copy get a fresh identity. Throws the parser's message when `body` is not a
- * valid document of `kind`; nothing is written in that case.
+ * Insert a new document. The row id is minted here — or supplied by a caller that had to know it
+ * first, as `POST /lessons` does to enqueue `lesson.plan { lessonId }` before the insert — and is
+ * written into `body.id` (ADR 0024 §11), so Import and Make a copy get a fresh identity. Throws
+ * the parser's message when `body` is not a valid document of `kind`; nothing is written then.
  */
 export async function createDocument(
   ws: WorkspaceDb,
   kind: DocumentKind,
   body: unknown,
-  opts: { generatingJobId?: JobId } = {},
+  opts: { id?: string; generatingJobId?: JobId } = {},
 ): Promise<DocumentRow> {
-  const id = newId();
+  const id = opts.id ?? newId();
   const parsed = { ...parseDocumentBody(kind, body), id } as DocumentBody;
   const now = new Date();
   const rows = await ws
@@ -349,6 +350,16 @@ export async function restore(ws: WorkspaceDb, id: string): Promise<boolean> {
     .update(documents, and(eq(documents.id, id), isNotNull(documents.deletedAt)))
     .set({ deletedAt: null, updatedAt: nextUpdatedAt(current.updatedAt) })
     .returning({ id: documents.id });
+  return rows.length > 0;
+}
+
+/**
+ * Hard-delete a row — **not** the soft delete teachers see (§5). For the one case where a row was
+ * written and its job could not be queued (`POST /lessons`): the lesson never existed as far as
+ * the Library is concerned, so it must not linger as a locked, soft-deleted ghost.
+ */
+export async function deleteDocument(ws: WorkspaceDb, id: string): Promise<boolean> {
+  const rows = await ws.delete(documents, eq(documents.id, id)).returning({ id: documents.id });
   return rows.length > 0;
 }
 

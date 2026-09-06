@@ -12,6 +12,7 @@
 
 export * from "./brief";
 export * from "./class-context";
+export * from "./create-lesson";
 export * from "./identifier-guard";
 export * from "./lesson";
 export * from "./links";

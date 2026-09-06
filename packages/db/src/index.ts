@@ -9,6 +9,7 @@ export {
   type DocumentBody,
   type DocumentRow,
   type DocumentSummaryRow,
+  deleteDocument,
   escapeLike,
   getDocument,
   getSeriesWithLessons,
