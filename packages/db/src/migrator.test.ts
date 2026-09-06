@@ -27,11 +27,27 @@ describeDb("migrations", () => {
     expect(rows.length).toBe(1);
   });
 
-  test("both application tables exist", async () => {
+  test("the application tables exist", async () => {
     const rows = await sql<{ table_name: string }[]>`
       select table_name from information_schema.tables
-      where table_schema = 'public' and table_name in ('workspaces', 'job_events')
+      where table_schema = 'public' and table_name in ('workspaces', 'job_events', 'documents')
       order by table_name`;
-    expect(rows.map((r) => r.table_name)).toEqual(["job_events", "workspaces"]);
+    expect(rows.map((r) => r.table_name)).toEqual(["documents", "job_events", "workspaces"]);
+  });
+
+  test("documents has the document_kind enum and its four indexes (ADR 0024 §3)", async () => {
+    const kinds = await sql<{ enumlabel: string }[]>`
+      select enumlabel from pg_enum e join pg_type t on t.oid = e.enumtypid
+      where t.typname = 'document_kind' order by e.enumsortorder`;
+    expect(kinds.map((k) => k.enumlabel)).toEqual(["lesson", "worksheet", "series"]);
+    const indexes = await sql<{ indexname: string }[]>`
+      select indexname from pg_indexes where tablename = 'documents' order by indexname`;
+    expect(indexes.map((i) => i.indexname)).toEqual([
+      "documents_pkey",
+      "documents_workspace_id_deleted_at_idx",
+      "documents_workspace_id_idx",
+      "documents_workspace_id_kind_title_idx",
+      "documents_workspace_id_kind_updated_at_idx",
+    ]);
   });
 });

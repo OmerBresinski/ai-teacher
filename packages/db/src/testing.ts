@@ -9,8 +9,8 @@ import { users, workspaces } from "./schema/index";
 export interface TestDbHandle extends DbHandle {
   url: string;
   /**
-   * `TRUNCATE job_events, workspaces, sessions, accounts, verifications, users RESTART IDENTITY
-   * CASCADE` — every application table, identity included — call in `beforeEach`.
+   * `TRUNCATE job_events, documents, workspaces, sessions, accounts, verifications, users RESTART
+   * IDENTITY CASCADE` — every application table, identity included — call in `beforeEach`.
    */
   truncateTenantTables: () => Promise<void>;
 }
@@ -72,7 +72,7 @@ export async function withTestDb(opts: { max?: number } = {}): Promise<WithTestD
     url,
     truncateTenantTables: async () => {
       await handle.unsafeDb.execute(
-        rawSql`truncate table job_events, workspaces, sessions, accounts, verifications, users restart identity cascade`,
+        rawSql`truncate table job_events, documents, workspaces, sessions, accounts, verifications, users restart identity cascade`,
       );
     },
     close: async () => {

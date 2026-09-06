@@ -5,6 +5,7 @@ import type {
   PgDatabase,
   PgQueryResultHKT,
   PgTable,
+  SelectedFields,
   TableLikeHasEmptySelection,
 } from "drizzle-orm/pg-core";
 
@@ -45,6 +46,22 @@ function scopedQueries(db: ScopableDb, workspaceId: WorkspaceId) {
     select<T extends TenantTable>(table: T, extraWhere?: SQL) {
       return db
         .select()
+        .from(table as FromArg<T>)
+        .where(scope(table, workspaceId, extraWhere));
+    },
+
+    /**
+     * `SELECT <fields> FROM table WHERE workspace_id = :ws [AND extraWhere]` — a projection, for
+     * list queries that must not load a wide column (`documents.body`). `fields` is a Drizzle
+     * selection object built from the table's columns.
+     */
+    project<T extends TenantTable, F extends SelectedFields>(
+      fields: F,
+      table: T,
+      extraWhere?: SQL,
+    ) {
+      return db
+        .select(fields)
         .from(table as FromArg<T>)
         .where(scope(table, workspaceId, extraWhere));
     },
@@ -103,9 +120,9 @@ export interface WorkspaceDb extends ReturnType<typeof scopedQueries> {
  * ```
  *
  * Rules:
- * - `select`/`update`/`delete` take an optional `extraWhere` that is `AND`ed with the tenant
- *   predicate — it never replaces it. Do **not** call `.where()` again on the returned builder:
- *   Drizzle would overwrite the predicate. Chain `orderBy`/`limit`/`returning` instead.
+ * - `select`/`project`/`update`/`delete` take an optional `extraWhere` that is `AND`ed with the
+ *   tenant predicate — it never replaces it. Do **not** call `.where()` again on the returned
+ *   builder: Drizzle would overwrite the predicate. Chain `orderBy`/`limit`/`returning` instead.
  * - `insert(table).values()` stamps `workspaceId` on every row (object or array); passing your
  *   own `workspaceId` is a type error.
  * - Joins are not offered. Write them in a repository module inside this package and apply the
