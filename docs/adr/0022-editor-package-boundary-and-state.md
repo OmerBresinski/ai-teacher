@@ -135,3 +135,12 @@ have restyled Radix twins in `@tj/ui`.
 route family for every document kind: `saveDocument` calls `PUT /documents/:id` with the full
 document and the `updatedAt` last seen, and must surface the 409 `stale` / `generating` answers
 (ADR 0024 §4, §18) rather than swallow them.
+
+## Amendment (2026-09-06, ADR 0025)
+
+§1's dependency list gains `@tj/slides`: `src/model/{themes,grid,layouts}.ts`, the rich-doc
+builders in `factories.ts` and the pure parts of `slide/elements/kit.ts` / `text/static.ts` they
+need move there and are re-exported from their old paths (ADR 0025 §9). §4 gains a cascade rule:
+proposals from `lesson.cascade` / `lesson.regenerate` are applied through one reducer inside
+`beginTransaction`/`endTransaction`, so a fact change and everything it re-derives is one undo
+step (ADR 0025 §18).

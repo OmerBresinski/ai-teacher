@@ -17,3 +17,12 @@ Progress streams over **Server-Sent Events** from `apps/api` (`GET /jobs/:id/eve
 - Works through Vercel/Railway without sticky sessions; reconnects natively via `Last-Event-ID`.
 - One-way only; any client-to-server action (cancel, retry) is a normal HTTP request.
 - The scaffold implements one end-to-end demo: enqueue a `ping` job, worker runs it, API streams `started`/`progress`/`completed`, web renders it.
+
+## Amendment (2026-09-06, ADR 0025)
+
+The six event types are unchanged; two payloads grow. `JobProgressSchema` gains an optional
+`documentUpdatedAt` so a generating job can tell the editor the document changed and it refetches
+(ADR 0025 §7) — slide content never travels in an event. `JobCompletedEventSchema` gains an
+optional `result`, typed per job name in `JobResultSchemas`, so proposal jobs (`lesson.cascade`,
+`lesson.regenerate`) hand a bounded result to the editor over the stream it already follows
+(ADR 0025 §19). `runJob` writes a handler's return value into that field.
