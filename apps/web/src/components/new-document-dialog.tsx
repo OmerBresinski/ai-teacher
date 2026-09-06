@@ -21,9 +21,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@tj/ui";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { LIBRARY_THEMES } from "@/mocks/library-fixtures";
 
+/**
+ * State lives for the life of the mount: callers render the dialog only while it is open (or give
+ * it a fresh `key`), so every opening starts clean without a reset effect.
+ */
 export type NewDocumentValues = {
   title: string;
   themeId: string;
@@ -66,20 +70,6 @@ export function NewDocumentDialog({ open, onOpenChange, kind, onCreate }: NewDoc
   const [busy, setBusy] = useState(false);
   const noun = kind === "lesson" ? "lesson" : "worksheet";
   const placeholder = kind === "lesson" ? "The water cycle" : "Fractions practice";
-
-  useEffect(() => {
-    if (!open) return;
-    setStep("about");
-    setTitle("");
-    setYearGroup("");
-    setSubject("");
-    setReadingLevel("");
-    setLanguage("en-GB");
-    setThemeId(LIBRARY_THEMES[0]?.id ?? "");
-    setThemeTag("All");
-    setStart("starter");
-    setBusy(false);
-  }, [open]);
 
   const themes = useMemo(
     () =>

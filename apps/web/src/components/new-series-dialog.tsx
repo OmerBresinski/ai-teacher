@@ -9,8 +9,12 @@ import {
   Label,
   Spinner,
 } from "@tj/ui";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 
+/**
+ * State lives for the life of the mount: callers render the dialog only while it is open (or give
+ * it a fresh `key`), so every opening starts clean without a reset effect.
+ */
 export type NewSeriesDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -21,12 +25,6 @@ export function NewSeriesDialog({ open, onOpenChange, onCreate }: NewSeriesDialo
   const titleId = useId();
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setTitle("");
-    setBusy(false);
-  }, [open]);
 
   async function submit(): Promise<void> {
     if (busy) return;
