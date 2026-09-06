@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import { type JobId, newId, type WorkspaceId } from "@tj/domain";
+import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
 import { type Lesson, type Series, summarise } from "@tj/domain/documents";
 import {
   lesson as lessonFixture,
@@ -17,9 +17,13 @@ import {
   listSummaries,
   MalformedCursorError,
   putDocument,
+  putDocumentAsJob,
+  releaseStaleLock,
   restore,
+  STALE_LOCK_AFTER_MS,
   softDelete,
 } from "./documents";
+import { insertJobEvent } from "./job-events";
 import { documents } from "./schema/documents";
 import { forWorkspace, type WorkspaceDb } from "./tenant";
 import { createTestUserWithWorkspace, withTestDb } from "./testing";
@@ -183,6 +187,180 @@ describeDb("documents repository", () => {
       await expect(putDocument(wsA, row.id, { junk: true }, row.updatedAt)).rejects.toThrow(
         /not a valid TeachDeck lesson/,
       );
+    });
+  });
+
+  describe("putDocumentAsJob (ADR 0025 §6)", () => {
+    const locked = (jobId: JobId) =>
+      createDocument(wsA, "lesson", lessonFixture(), { generatingJobId: jobId });
+
+    test("ok: the lock holder replaces the body, promoted columns and updated_at; the lock stays", async () => {
+      const jobId = newId<JobId>();
+      const row = await locked(jobId);
+      const body = row.body as Lesson;
+      const next: Lesson = { ...body, title: "Planned", slides: [...body.slides, titleSlide()] };
+      const result = await putDocumentAsJob(wsA, row.id, next, jobId);
+      expect(result.status).toBe("ok");
+      if (result.status !== "ok") return;
+      expect(result.row.title).toBe("Planned");
+      expect(result.row.itemCount).toBe(4);
+      expect(result.row.updatedAt.getTime()).toBeGreaterThan(row.updatedAt.getTime());
+      expect(result.row.generatingJobId).toBe(jobId);
+      // Any number of times while the lock is held (one write per slide, §7).
+      const again = await putDocumentAsJob(wsA, row.id, { ...next, title: "Again" }, jobId);
+      expect(again.status).toBe("ok");
+      if (again.status !== "ok") return;
+      expect(again.row.updatedAt.getTime()).toBeGreaterThan(result.row.updatedAt.getTime());
+    });
+
+    test("lost_lock: another job's id, or an unlocked row; the row is unchanged", async () => {
+      const jobId = newId<JobId>();
+      const row = await locked(jobId);
+      const other = await putDocumentAsJob(
+        wsA,
+        row.id,
+        { ...row.body, title: "X" },
+        newId<JobId>(),
+      );
+      expect(other).toEqual({ status: "lost_lock" });
+      const unlocked = await createDocument(wsA, "lesson", lessonFixture());
+      const result = await putDocumentAsJob(
+        wsA,
+        unlocked.id,
+        { ...unlocked.body, title: "X" },
+        jobId,
+      );
+      expect(result).toEqual({ status: "lost_lock" });
+      expect((await getDocument(wsA, row.id))?.title).toBe("The water cycle");
+      expect((await getDocument(wsA, unlocked.id))?.title).toBe("The water cycle");
+    });
+
+    test("a soft-deleted row under the lock is still the job's to finish", async () => {
+      const jobId = newId<JobId>();
+      const row = await locked(jobId);
+      await softDelete(wsA, row.id);
+      const result = await putDocumentAsJob(wsA, row.id, { ...row.body, title: "Late" }, jobId);
+      expect(result.status).toBe("ok");
+      if (result.status !== "ok") return;
+      expect(result.row.deletedAt).toBeInstanceOf(Date);
+      expect(result.row.title).toBe("Late");
+    });
+
+    test("missing: unknown id and another Workspace's id", async () => {
+      const jobId = newId<JobId>();
+      const row = await locked(jobId);
+      expect(await putDocumentAsJob(wsA, newId(), row.body, jobId)).toEqual({ status: "missing" });
+      expect(await putDocumentAsJob(wsB, row.id, row.body, jobId)).toEqual({ status: "missing" });
+    });
+
+    test("throws when body.id does not match, and the parser's message for an invalid body", async () => {
+      const jobId = newId<JobId>();
+      const row = await locked(jobId);
+      await expect(
+        putDocumentAsJob(wsA, row.id, { ...row.body, id: "other" }, jobId),
+      ).rejects.toThrow(/putDocumentAsJob: body\.id other does not match/);
+      await expect(putDocumentAsJob(wsA, row.id, { junk: true }, jobId)).rejects.toThrow(
+        /not a valid TeachDeck lesson/,
+      );
+    });
+  });
+
+  describe("releaseStaleLock (ADR 0025 §24)", () => {
+    const event = (jobId: JobId, type: JobEvent["type"]): JobEvent => {
+      const base = { jobId, workspaceId: wsAId, at: new Date().toISOString() };
+      if (type === "failed") return { type, ...base, error: { message: "x", retryable: false } };
+      if (type === "progress") return { type, ...base, progress: {} };
+      return { type, ...base } as JobEvent;
+    };
+    const logs: unknown[] = [];
+    const logger = {
+      info(fields: unknown) {
+        logs.push(fields);
+      },
+    };
+    beforeEach(() => {
+      logs.length = 0;
+    });
+
+    test("an unlocked row is returned as is, with no lookup side effects", async () => {
+      const row = await createDocument(wsA, "lesson", lessonFixture());
+      expect(await releaseStaleLock(wsA, row, { logger })).toEqual(row);
+      expect(logs).toEqual([]);
+    });
+
+    test.each(["completed", "failed", "cancelled"] as const)(
+      "a %s event for the locking job releases the lock and says so",
+      async (type) => {
+        const jobId = newId<JobId>();
+        const row = await createDocument(wsA, "lesson", lessonFixture(), {
+          generatingJobId: jobId,
+        });
+        await insertJobEvent(unsafeDb, event(jobId, "queued"));
+        await insertJobEvent(unsafeDb, event(jobId, type));
+        const fresh = await releaseStaleLock(wsA, row, { logger });
+        expect(fresh.generatingJobId).toBeNull();
+        expect((await getDocument(wsA, row.id))?.generatingJobId).toBeNull();
+        expect(logs).toEqual([{ lessonId: row.id, jobId, reason: "terminal" }]);
+      },
+    );
+
+    test("a terminal event in another Workspace does not count", async () => {
+      const jobId = newId<JobId>();
+      const row = await createDocument(wsA, "lesson", lessonFixture(), { generatingJobId: jobId });
+      await insertJobEvent(unsafeDb, { ...event(jobId, "completed"), workspaceId: wsBId });
+      expect((await releaseStaleLock(wsA, row, { logger })).generatingJobId).toBe(jobId);
+    });
+
+    test("started/progress but no queued row (enqueue's insert failed): released after the window", async () => {
+      const jobId = newId<JobId>();
+      const row = await createDocument(wsA, "lesson", lessonFixture(), { generatingJobId: jobId });
+      await insertJobEvent(unsafeDb, event(jobId, "started"));
+      await insertJobEvent(unsafeDb, event(jobId, "progress"));
+      const recent = new Date(row.updatedAt.getTime() + 2 * 60_000);
+      expect((await releaseStaleLock(wsA, row, { now: recent, logger })).generatingJobId).toBe(
+        jobId,
+      );
+      const late = new Date(row.updatedAt.getTime() + STALE_LOCK_AFTER_MS + 60_000);
+      expect((await releaseStaleLock(wsA, row, { now: late, logger })).generatingJobId).toBeNull();
+      expect(logs).toEqual([{ lessonId: row.id, jobId, reason: "never_queued" }]);
+    });
+
+    test("no event at all: released after the stale window, untouched inside it", async () => {
+      const jobId = newId<JobId>();
+      const row = await createDocument(wsA, "lesson", lessonFixture(), { generatingJobId: jobId });
+      const recent = new Date(row.updatedAt.getTime() + 2 * 60_000);
+      expect((await releaseStaleLock(wsA, row, { now: recent, logger })).generatingJobId).toBe(
+        jobId,
+      );
+      expect(logs).toEqual([]);
+      const late = new Date(row.updatedAt.getTime() + STALE_LOCK_AFTER_MS + 60_000);
+      const fresh = await releaseStaleLock(wsA, row, { now: late, logger });
+      expect(fresh.generatingJobId).toBeNull();
+      expect(logs).toEqual([{ lessonId: row.id, jobId, reason: "never_queued" }]);
+    });
+
+    test("a queued job (queued/started/progress events): untouched however old the row is", async () => {
+      const jobId = newId<JobId>();
+      const row = await createDocument(wsA, "lesson", lessonFixture(), { generatingJobId: jobId });
+      await insertJobEvent(unsafeDb, event(jobId, "queued"));
+      await insertJobEvent(unsafeDb, event(jobId, "started"));
+      await insertJobEvent(unsafeDb, event(jobId, "progress"));
+      const late = new Date(row.updatedAt.getTime() + 24 * 60 * 60_000);
+      expect((await releaseStaleLock(wsA, row, { now: late, logger })).generatingJobId).toBe(jobId);
+      expect(logs).toEqual([]);
+    });
+
+    test("releases only the lock it was shown: a newer job's lock survives", async () => {
+      const oldJob = newId<JobId>();
+      const newJob = newId<JobId>();
+      const row = await createDocument(wsA, "lesson", lessonFixture(), { generatingJobId: oldJob });
+      await insertJobEvent(unsafeDb, event(oldJob, "completed"));
+      await unsafeDb
+        .update(documents)
+        .set({ generatingJobId: newJob })
+        .where(eq(documents.id, row.id));
+      const fresh = await releaseStaleLock(wsA, row, { logger });
+      expect(fresh.generatingJobId).toBe(newJob);
     });
   });
 

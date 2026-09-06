@@ -20,13 +20,20 @@ export {
   type ListSummariesResult,
   listSummaries,
   MalformedCursorError,
+  type PutDocumentAsJobResult,
   type PutDocumentResult,
   parseDocumentBody,
   putDocument,
+  putDocumentAsJob,
+  type ReleaseStaleLockOptions,
+  releaseStaleLock,
   restore,
+  STALE_LOCK_AFTER_MS,
   softDelete,
 } from "./documents";
 export {
+  getTerminalJobEvent,
+  hasQueuedJobEvent,
   insertJobEvent,
   JOB_EVENTS_CHANNEL,
   type JobEventNotification,
@@ -35,6 +42,7 @@ export {
   type ListJobEventsOptions,
   listJobEvents,
   notifyJobEvent,
+  terminalJobEventFor,
 } from "./job-events";
 export { MIGRATIONS_FOLDER, migrateDatabase } from "./migrator";
 export * from "./schema/index";

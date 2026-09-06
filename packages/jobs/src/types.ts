@@ -1,5 +1,5 @@
 import type { Db, Sql } from "@tj/db";
-import type { JobId, JobName, JobPayloads, WorkspaceId } from "@tj/domain";
+import type { JobId, JobName, JobPayloads, JobProgress, JobResult, WorkspaceId } from "@tj/domain";
 import type { PgBoss } from "pg-boss";
 import type { Logger } from "pino";
 
@@ -45,16 +45,37 @@ export interface JobContext<K extends JobName, D = unknown> {
   signal: AbortSignal;
   /**
    * Emit a `progress` event. Rate-limited to one event per 250 ms: calls inside the window are
-   * coalesced and the latest one is emitted when the window closes (never dropped silently).
+   * coalesced field by field and the result is emitted when the window closes (never dropped
+   * silently). `extra.documentUpdatedAt` (ADR 0025 §7) tells the read-only editor the document
+   * changed; no content travels in an event.
    */
-  progress: (percent?: number, message?: string) => Promise<void>;
+  progress: (percent?: number, message?: string, extra?: ProgressExtra) => Promise<void>;
   /** Child logger with `jobId`, `workspaceId`, `job` bound. Never log payload/content bodies. */
   logger: Logger;
   /** App-owned dependencies supplied at worker boot; never import app modules from `@tj/jobs`. */
   deps: D;
 }
 
-export type JobHandler<K extends JobName, D = unknown> = (ctx: JobContext<K, D>) => Promise<void>;
+/** The optional fields of a `progress` event beyond `percent` and `message`. */
+export type ProgressExtra = Pick<JobProgress, "documentUpdatedAt">;
+
+/**
+ * The result a handler for `K` may return (ADR 0025 §19): its member of `JobResultSchema`, or
+ * nothing for jobs that return none (`never | void` is `void`, so those handlers stay `async () =>
+ * {}`). `runJob` writes it onto the `completed` event.
+ */
+export type JobResultFor<K extends JobName> = Extract<JobResult, { job: K }>;
+
+/**
+ * `void` (not `undefined`) keeps every `async () => {}` handler valid; `undefined` would force
+ * each result-less job to `return undefined` explicitly.
+ */
+// biome-ignore lint/suspicious/noConfusingVoidType: see above
+export type HandlerReturn<K extends JobName> = Promise<void | JobResultFor<K>>;
+
+export type JobHandler<K extends JobName, D = unknown> = (
+  ctx: JobContext<K, D>,
+) => HandlerReturn<K>;
 
 /**
  * One handler per `JobName`. A mapped type, so adding a name to `@tj/domain` without registering

@@ -26,6 +26,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { z } from "zod";
+import { hasQueuedJobEvent, terminalJobEventFor } from "./job-events";
 import { documents } from "./schema/documents";
 import type { WorkspaceDb } from "./tenant";
 
@@ -69,6 +70,29 @@ export type PutDocumentResult =
   | { status: "conflict"; row: DocumentRow }
   | { status: "generating"; jobId: JobId }
   | { status: "missing" };
+
+export type PutDocumentAsJobResult =
+  | { status: "ok"; row: DocumentRow }
+  /** The row is unlocked or locked by another job: a newer job owns it. Write nothing further. */
+  | { status: "lost_lock" }
+  | { status: "missing" };
+
+/** How long a locked row may sit with no job event at all before the lock is presumed dead. */
+export const STALE_LOCK_AFTER_MS = 10 * 60 * 1000;
+
+export interface ReleaseStaleLockOptions {
+  /** Test seam; defaults to `new Date()`. */
+  now?: Date;
+  /** Defaults to `STALE_LOCK_AFTER_MS`. */
+  staleAfterMs?: number;
+  /** Receives one `info` line per release: ids and the reason, never the body. */
+  logger?: ReleaseLogger;
+}
+
+/** The slice of a pino logger this module needs; `@tj/db` does not depend on pino. */
+export interface ReleaseLogger {
+  info(fields: { lessonId: string; jobId: string; reason: string }, message: string): void;
+}
 
 export const LIST_DEFAULT_LIMIT = 100;
 export const LIST_MAX_LIMIT = 200;
@@ -285,6 +309,29 @@ export async function createDocument(
 }
 
 /**
+ * The part of a whole-document write both `putDocument` and `putDocumentAsJob` share: parse the
+ * body by the row's kind, refuse a body that names another document, and issue one `UPDATE` whose
+ * predicate the caller adds to `id`. Returns the written row, or `undefined` when nothing matched.
+ */
+async function replaceBody(
+  ws: WorkspaceDb,
+  current: DocumentRow,
+  body: unknown,
+  predicate: SQL,
+  caller: string,
+): Promise<DocumentRow | undefined> {
+  const parsed = parseDocumentBody(current.kind, body);
+  if (parsed.id !== current.id) {
+    throw new Error(`${caller}: body.id ${parsed.id} does not match document ${current.id}`);
+  }
+  const rows = await ws
+    .update(documents, and(eq(documents.id, current.id), predicate))
+    .set({ body: parsed, ...promoted(parsed), updatedAt: nextUpdatedAt(current.updatedAt) })
+    .returning();
+  return rows[0];
+}
+
+/**
  * Replace a document's body with optimistic concurrency (ADR 0024 §4) under the generating lock
  * (§18): one `UPDATE … WHERE id AND updated_at = :expected AND generating_job_id IS NULL`. When no
  * row matches, the current row is read to say why: `missing`, `generating` or `conflict`.
@@ -298,22 +345,13 @@ export async function putDocument(
 ): Promise<PutDocumentResult> {
   const current = await getDocument(ws, id);
   if (current === null) return { status: "missing" };
-  const parsed = parseDocumentBody(current.kind, body);
-  if (parsed.id !== id) {
-    throw new Error(`putDocument: body.id ${parsed.id} does not match document ${id}`);
-  }
-  const rows = await ws
-    .update(
-      documents,
-      and(
-        eq(documents.id, id),
-        eq(documents.updatedAt, expectedUpdatedAt),
-        isNull(documents.generatingJobId),
-      ),
-    )
-    .set({ body: parsed, ...promoted(parsed), updatedAt: nextUpdatedAt(current.updatedAt) })
-    .returning();
-  const row = rows[0];
+  const row = await replaceBody(
+    ws,
+    current,
+    body,
+    and(eq(documents.updatedAt, expectedUpdatedAt), isNull(documents.generatingJobId)) as SQL,
+    "putDocument",
+  );
   if (row) return { status: "ok", row };
   const after = await getDocument(ws, id);
   if (after === null) return { status: "missing" };
@@ -321,6 +359,35 @@ export async function putDocument(
     return { status: "generating", jobId: after.generatingJobId as JobId };
   }
   return { status: "conflict", row: after };
+}
+
+/**
+ * The worker's write path under the generating lock (ADR 0025 §6, amending ADR 0024 §18): one
+ * `UPDATE … WHERE id AND generating_job_id = :jobId`. The lock is the concurrency token — no
+ * `expectedUpdatedAt` — so the job holding it may write the row as often as it likes (after every
+ * slide, §7). A soft-deleted row under the lock is still the job's to finish, so `deleted_at` is
+ * not in the predicate. When nothing matches the row is re-read to say why: `missing` (hard-deleted
+ * by `POST /lessons`' failure path) or `lost_lock` (unlocked, or a newer job owns it); the handler
+ * stops with `NonRetryableError` on either. `body.id` must equal `id`; a mismatch throws.
+ */
+export async function putDocumentAsJob(
+  ws: WorkspaceDb,
+  id: string,
+  body: unknown,
+  jobId: JobId,
+): Promise<PutDocumentAsJobResult> {
+  const current = await getDocument(ws, id);
+  if (current === null) return { status: "missing" };
+  const row = await replaceBody(
+    ws,
+    current,
+    body,
+    eq(documents.generatingJobId, jobId),
+    "putDocumentAsJob",
+  );
+  if (row) return { status: "ok", row };
+  const after = await getDocument(ws, id);
+  return after === null ? { status: "missing" } : { status: "lost_lock" };
 }
 
 /**
@@ -371,4 +438,40 @@ export async function clearGenerating(ws: WorkspaceDb, id: string, jobId: JobId)
   await ws
     .update(documents, and(eq(documents.id, id), eq(documents.generatingJobId, jobId)))
     .set({ generatingJobId: null });
+}
+
+/**
+ * Self-heal for the PR #110 residual (ADR 0025 §24): a row whose `generating_job_id` names a job
+ * that has already written a terminal event, or that has no `queued` event and has not been
+ * touched for `staleAfterMs`, is locked by nothing. (A job that `started` without a `queued` row —
+ * `enqueue()`'s insert failed after `boss.send()` — is unlocked by the window too; if it is somehow
+ * still running, its next `putDocumentAsJob` answers `lost_lock` and it stops, §6.) `GET /documents/:id` calls this before
+ * answering so a teacher is never shown a lesson locked by a dead job for more than ten minutes.
+ * Returns the row as it stands afterwards; untouched rows come back as given.
+ */
+export async function releaseStaleLock(
+  ws: WorkspaceDb,
+  row: DocumentRow,
+  opts: ReleaseStaleLockOptions = {},
+): Promise<DocumentRow> {
+  const jobId = row.generatingJobId as JobId | null;
+  if (jobId === null) return row;
+  const reason = await staleLockReason(ws, row, jobId, opts);
+  if (reason === null) return row;
+  await clearGenerating(ws, row.id, jobId);
+  opts.logger?.info({ lessonId: row.id, jobId, reason }, "released a stale generating lock");
+  return (await getDocument(ws, row.id)) ?? { ...row, generatingJobId: null };
+}
+
+async function staleLockReason(
+  ws: WorkspaceDb,
+  row: DocumentRow,
+  jobId: JobId,
+  opts: ReleaseStaleLockOptions,
+): Promise<"terminal" | "never_queued" | null> {
+  if ((await terminalJobEventFor(ws, jobId)) !== undefined) return "terminal";
+  if (await hasQueuedJobEvent(ws, jobId)) return null;
+  const now = opts.now ?? new Date();
+  const staleAfterMs = opts.staleAfterMs ?? STALE_LOCK_AFTER_MS;
+  return now.getTime() - row.updatedAt.getTime() > staleAfterMs ? "never_queued" : null;
 }

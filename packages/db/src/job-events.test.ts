@@ -2,6 +2,8 @@ import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
 import { ZodError } from "zod";
 import {
+  getTerminalJobEvent,
+  hasQueuedJobEvent,
   insertJobEvent,
   JOB_EVENTS_CHANNEL,
   type JobEventNotification,
@@ -9,6 +11,7 @@ import {
   listJobEvents,
   notifyJobEvent,
 } from "./job-events";
+import { forWorkspace } from "./tenant";
 import { createTestUserWithWorkspace, withTestDb } from "./testing";
 
 const t = await withTestDb();
@@ -122,5 +125,27 @@ describeDb("job events", () => {
     await expect(
       notifyJobEvent(sql, { id: 0, jobId: newId<JobId>(), workspaceId: wsA }),
     ).rejects.toBeInstanceOf(ZodError);
+  });
+
+  test("getTerminalJobEvent finds the terminal row for a job in its Workspace only", async () => {
+    const jobId = newId<JobId>();
+    const base = { jobId, workspaceId: wsA, at: at() };
+    await insertJobEvent(unsafeDb, { type: "queued", ...base });
+    await insertJobEvent(unsafeDb, { type: "started", ...base });
+    expect(await getTerminalJobEvent(unsafeDb, { workspaceId: wsA, jobId })).toBeUndefined();
+    const { id } = await insertJobEvent(unsafeDb, { type: "completed", ...base });
+    expect((await getTerminalJobEvent(unsafeDb, { workspaceId: wsA, jobId }))?.id).toBe(id);
+    expect(await getTerminalJobEvent(unsafeDb, { workspaceId: wsB, jobId })).toBeUndefined();
+  });
+
+  test("hasQueuedJobEvent is true only once the queued row exists, scoped to the Workspace", async () => {
+    const jobId = newId<JobId>();
+    const ws = forWorkspace(unsafeDb, wsA);
+    expect(await hasQueuedJobEvent(ws, jobId)).toBe(false);
+    await insertJobEvent(unsafeDb, { type: "started", jobId, workspaceId: wsA, at: at() });
+    expect(await hasQueuedJobEvent(ws, jobId)).toBe(false);
+    await insertJobEvent(unsafeDb, { type: "queued", jobId, workspaceId: wsA, at: at() });
+    expect(await hasQueuedJobEvent(ws, jobId)).toBe(true);
+    expect(await hasQueuedJobEvent(forWorkspace(unsafeDb, wsB), jobId)).toBe(false);
   });
 });

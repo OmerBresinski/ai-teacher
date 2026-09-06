@@ -29,6 +29,7 @@ import {
   listSummaries,
   MalformedCursorError,
   putDocument,
+  releaseStaleLock,
   restore,
   type ScopableDb,
   softDelete,
@@ -150,8 +151,14 @@ export function documentRoutes(unsafeDb: ScopableDb) {
     )
     .get("/documents/:id", zValidator("param", documentParam, validationHook), async (c) => {
       const ws = scoped(c);
-      const row = await getDocument(ws, c.req.valid("param").id);
-      if (row === null) notFound();
+      const found = await getDocument(ws, c.req.valid("param").id);
+      if (found === null) notFound();
+      // ADR 0025 §24: a lock whose job is terminal or was never queued is released on read, so
+      // no lesson stays locked by a dead job for more than `STALE_LOCK_AFTER_MS`.
+      const row =
+        found.generatingJobId === null
+          ? found
+          : await releaseStaleLock(ws, found, { logger: c.get("logger") });
       return c.json({ document: toDocumentJson(row) }, 200);
     })
     .put(

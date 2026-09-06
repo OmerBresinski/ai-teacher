@@ -1,9 +1,15 @@
-import { type JobEvent, JobEventSchema, JobId, WorkspaceId } from "@tj/domain";
-import { and, asc, eq, gt, type SQL } from "drizzle-orm";
+import {
+  JOB_TERMINAL_EVENT_TYPES,
+  type JobEvent,
+  JobEventSchema,
+  JobId,
+  WorkspaceId,
+} from "@tj/domain";
+import { and, asc, eq, gt, inArray, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import type { Sql } from "./client";
 import { jobEvents } from "./schema/job-events";
-import { forWorkspace, type ScopableDb } from "./tenant";
+import { forWorkspace, type ScopableDb, type WorkspaceDb } from "./tenant";
 
 /**
  * Job events: the write path used by `apps/worker` (TEACH-17) and the read path used by the SSE
@@ -78,6 +84,49 @@ export async function listJobEvents(
     .select(jobEvents, extra)
     .orderBy(asc(jobEvents.id))
     .limit(limit);
+}
+
+/**
+ * The terminal event (`completed` / `failed` / `cancelled`) recorded for `jobId` in `ws`, or
+ * `undefined` while the job is still running or was never queued. Not a page over
+ * `listJobEvents`: the terminal row may be older than any page. TEACH-82's pre-run guard and
+ * `releaseStaleLock` (ADR 0025 §24) both read this.
+ */
+export async function terminalJobEventFor(
+  ws: WorkspaceDb,
+  jobId: JobId,
+): Promise<JobEventRow | undefined> {
+  const rows = await ws
+    .select(
+      jobEvents,
+      and(eq(jobEvents.jobId, jobId), inArray(jobEvents.type, [...JOB_TERMINAL_EVENT_TYPES])),
+    )
+    .limit(1);
+  return rows[0];
+}
+
+/** `terminalJobEventFor` from a raw client, in the shape TEACH-82 FR 2 specifies. */
+export function getTerminalJobEvent(
+  db: ScopableDb,
+  { workspaceId, jobId }: { workspaceId: WorkspaceId; jobId: JobId },
+): Promise<JobEventRow | undefined> {
+  return terminalJobEventFor(forWorkspace(db, workspaceId), jobId);
+}
+
+/**
+ * Whether the `queued` event `enqueue()` writes exists for `jobId` in `ws`. `enqueue` sends to
+ * pg-boss before inserting `queued`, so a job may have `started` and still lack it (TEACH-82 X3);
+ * ADR 0025 §24 keys the stale-lock window on this row specifically.
+ */
+export async function hasQueuedJobEvent(ws: WorkspaceDb, jobId: JobId): Promise<boolean> {
+  const rows = await ws
+    .project(
+      { id: jobEvents.id },
+      jobEvents,
+      and(eq(jobEvents.jobId, jobId), eq(jobEvents.type, "queued")),
+    )
+    .limit(1);
+  return rows.length > 0;
 }
 
 /**
