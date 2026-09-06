@@ -112,10 +112,11 @@ Code and Cursor. Check your own tool list and map by **capability**, not by name
 - **Browser/preview tools.** Any browser automation you have; the deliverable is a screenshot of
   the working UI on the PR. With no browser at all: say so in the PR description and ask the
   human to verify visually before landing — UI acceptance is not met until someone has.
-- **Reviewer model.** Preferred: GPT-5.6 Luna. If your harness or provider does not offer it,
-  use Claude Sonnet 5. Either way it must differ from the implementing agent's model; if neither
-  is available and the only option is your own model, fall back to asking a human to review.
-  In OpenCode the choice is pinned in the user's global `reviewer` agent definition, not here.
+- **Reviewer model.** In order: GPT-5.6 Luna; if unavailable, Claude Sonnet 5; if neither is
+  available, ask a human to review. The reviewer must be a different model from the implementer:
+  skip a candidate that is the implementer's own model and move to the next. Do not substitute
+  another model. In OpenCode the choice is pinned in the user's global `reviewer` agent
+  definition, not here.
 
 Cost discipline still applies. The main agent's prompt is re-read on every turn, so each turn has a
 fixed cost regardless of how little it does. Batch independent tool calls into one message. Never
