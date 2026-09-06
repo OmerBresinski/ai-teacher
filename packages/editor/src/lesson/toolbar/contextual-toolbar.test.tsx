@@ -110,16 +110,16 @@ describe("LineToolbar (row 2)", () => {
 });
 
 describe("ImageToolbar (row 3)", () => {
-  test("fit and alt text write the element; Replace is off", async () => {
+  test("fit and alt text write the element; Replace opens the panel in replace mode", async () => {
     const { container, read } = renderEditor(chromeLesson());
     clickAt(container, 550, 330);
     const bar = toolbar("Image");
     fireEvent.click(within(bar).getByRole("radio", { name: "Fill" }));
     expect(first(read(), 5)).toMatchObject({ fit: "cover" });
-    expect(within(bar).getByRole("button", { name: /Replace/ })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    fireEvent.click(within(bar).getByRole("button", { name: /Replace/ }));
+    const replace = await screen.findByRole("dialog", { name: "Replace image" });
+    fireEvent.keyDown(replace, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Replace image" })).toBeNull());
     fireEvent.click(within(bar).getByRole("button", { name: "Alt" }));
     const alt = await screen.findByRole("textbox", { name: "Alt text" });
     fireEvent.change(alt, { target: { value: "A cloud" } });

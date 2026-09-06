@@ -1,4 +1,11 @@
-import { SLIDE_H, SLIDE_W, type Slide, slideStepCount, type Theme } from "@tj/domain/documents";
+import {
+  SLIDE_H,
+  SLIDE_W,
+  type Slide,
+  type SlideElement,
+  slideStepCount,
+  type Theme,
+} from "@tj/domain/documents";
 import {
   cn,
   DropdownMenu,
@@ -15,6 +22,7 @@ import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { SlideActions } from "./canvas/SlideActions";
 import { SlideTabs } from "./canvas/SlideTabs";
+import { useImageDrop } from "./canvas/use-image-drop";
 import { useLesson } from "./document-context";
 import { ContextualToolbar } from "./toolbar/ContextualToolbar";
 import { type PreviewMap, SelectionLayer } from "./transform/SelectionLayer";
@@ -31,8 +39,8 @@ import {
  * The editor canvas (TeachDeck `components/v2/editor/Canvas.tsx`): a scroll region holding the
  * 960x540 slide at the session's zoom, with the transform layer as a sibling of `SlideView` inside
  * the same `SlideScaler`, the slide's own floating chrome (actions pill, Question / Answer tabs) in
- * screen space over it, and the zoom cluster bottom-right. Image drop and paste arrive with the
- * images ticket (TEACH-107); the contextual toolbar with TEACH-105.
+ * screen space over it, and the zoom cluster bottom-right. A pasted or dropped image file becomes
+ * an element through `useImageDrop` (TEACH-107).
  */
 
 export const ZOOM_STEPS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 4, 8];
@@ -48,9 +56,11 @@ export type CanvasProps = {
   onFocusChange: (focused: boolean) => void;
   /** Fires whenever the measured scale changes — a ref write in the shell, not state. */
   onScaleChange?: (scale: number) => void;
+  /** Add an element to this slide and select it — the shell's `insert`, for paste and drop. */
+  onInsert: (el: SlideElement) => void;
 };
 
-export function Canvas({ slide, theme, onFocusChange, onScaleChange }: CanvasProps) {
+export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }: CanvasProps) {
   const lesson = useLesson();
   const zoom = useZoom();
   const { previewStep } = useSessionUi();
@@ -73,6 +83,7 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange }: CanvasPro
   const tabs = useRef<HTMLDivElement>(null);
 
   useCanvasKeys({ enabled: focused, lesson, slide });
+  const dropping = useImageDrop({ scroller, stage, onInsert });
 
   const focus = useCallback(
     (next: boolean) => {
@@ -227,7 +238,10 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange }: CanvasPro
                 position: "relative",
                 width: SLIDE_W,
                 height: SLIDE_H,
-                boxShadow: "var(--shadow-slide)",
+                // The drop ring is a second shadow rather than a border so the frame never moves.
+                boxShadow: dropping
+                  ? `var(--shadow-slide), 0 0 0 ${3 / Math.max(scale, 0.05)}px var(--border-strong)`
+                  : "var(--shadow-slide)",
               }}
             >
               {/* `isolation` contains the slide's own z-indices so the selection layer stays above them. */}

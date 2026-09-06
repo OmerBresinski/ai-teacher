@@ -6,12 +6,13 @@ import { NumberInput } from "../../kit/NumberInput";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import { Segmented } from "../../kit/Segmented";
 import { normaliseHref } from "../../text/links";
+import { useSessionActions } from "../use-editor-session";
 import { MoreDrawer } from "./MoreDrawer";
 import { BarButton, ICON, ICON_SM, useElementWrites } from "./shared";
 
 /**
- * Replace, fit, crop, corner radius, alt text, credit (TeachDeck `ImageToolbar`). Replace and
- * crop are off until the images ticket (TEACH-107) brings the file pipeline.
+ * Replace, fit, crop, corner radius, alt text, credit (TeachDeck `ImageToolbar`). Replace opens
+ * the Add image panel in replace mode (TEACH-107); crop beyond the two fit modes is out of scope.
  */
 export const ImageToolbar = memo(function ImageToolbar({
   element,
@@ -21,6 +22,7 @@ export const ImageToolbar = memo(function ImageToolbar({
   slideId: string;
 }) {
   const { update, scrub, end } = useElementWrites(slideId);
+  const { openImagePanel } = useSessionActions();
   const altId = useId();
   // An imported lesson is untrusted JSON and could carry `javascript:` here, so the address goes
   // through the same gate as a typed link. No href, no anchor.
@@ -28,12 +30,10 @@ export const ImageToolbar = memo(function ImageToolbar({
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Image" data-image-toolbar>
-      <Tooltip label="Replacing an image arrives with a later release">
-        <BarButton aria-disabled="true" className="opacity-50 hover:bg-transparent">
-          <Replace aria-hidden {...ICON_SM} />
-          Replace
-        </BarButton>
-      </Tooltip>
+      <BarButton onClick={() => openImagePanel({ elementId: element.id })}>
+        <Replace aria-hidden {...ICON_SM} />
+        Replace
+      </BarButton>
 
       <PanelSeparator />
 

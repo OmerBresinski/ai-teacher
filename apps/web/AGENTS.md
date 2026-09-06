@@ -42,7 +42,9 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   `editor-text` (double-click to edit, Escape commits, toolbar, option label, Why? panel),
   `editor-chrome` (toolbar routing, rail inserts, opacity drag, theme dialog), `editor-layout`
   (lint badge + Tidy; the `electricity` seed is stored at `fitVersion: 0` so the fit migration
-  runs once when it is opened), `a11y`
+  runs once when it is opened), `editor-images` (upload/paste/drop, Openverse search and Replace;
+  `page.route` mocks `api.openverse.org` and the image hosts, never the network; fixture PNG in
+  `e2e/fixtures/`; the Photos-tab screenshot is opt-in via `TEACH_SCREENSHOTS=1`), `a11y`
   (the nine signed-in library/document routes × the three themes via `page.addInitScript` setting `tj-theme`, plus open dialogs/menus; `/sign-in` and
   `/dev/jobs` once in light), `kit` (opt-in,
   `E2E_KIT=1`). `src/router.test.ts` pins the registered route set; `packages/ui/src/styles/contrast.test.ts`

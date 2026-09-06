@@ -130,5 +130,50 @@ test.describe("accessibility (axe)", () => {
     await expect(page.getByRole("dialog", { name: "Theme" })).toBeVisible();
     await settled();
     await expectNoSeriousA11yViolations(page, "theme dialog", '[role="dialog"]');
+    await page.keyboard.press("Escape");
+
+    // The Add image panel on both tabs (TEACH-107 row 12); the search is mocked, never live.
+    await page.route("https://api.openverse.org/**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          page_count: 1,
+          results: [
+            {
+              id: "a11y",
+              title: "River",
+              url: "https://cors.test/a.png",
+              thumbnail: "https://cors.test/a-thumb.png",
+              creator: "Ada",
+              license: "by",
+              license_version: "2.0",
+            },
+          ],
+        }),
+      }),
+    );
+    await page.route("https://cors.test/**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>',
+      }),
+    );
+    await page
+      .getByRole("toolbar", { name: "Insert" })
+      .getByRole("button", { name: "Image" })
+      .click();
+    const imagePanel = page.getByRole("dialog", { name: "Add image" });
+    await expect(imagePanel).toBeVisible();
+    await settled();
+    await expectNoSeriousA11yViolations(page, "add image panel (upload)", '[role="dialog"]');
+    await imagePanel.getByRole("tab", { name: "Photos" }).click();
+    const field = imagePanel.getByRole("searchbox", { name: "Search images" });
+    await field.fill("river");
+    await field.press("Enter");
+    await expect(imagePanel.getByRole("button", { name: "River by Ada, CC BY 2.0" })).toBeVisible();
+    await settled();
+    await expectNoSeriousA11yViolations(page, "add image panel (photos)", '[role="dialog"]');
   });
 });

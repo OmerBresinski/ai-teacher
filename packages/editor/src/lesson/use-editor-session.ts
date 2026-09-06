@@ -41,7 +41,15 @@ export type SessionState = {
   previewAnswer: boolean;
   showGuides: boolean;
   snap: boolean;
+  /**
+   * The Add image panel (TEACH-107). Session state rather than a module-level event so the rail
+   * button, the `i` shortcut and the image toolbar's Replace all open the same popover; `replace`
+   * names the element whose `src` the chosen image swaps instead of adding a new one.
+   */
+  imagePanel: ImagePanelState;
 };
+
+export type ImagePanelState = null | { mode: "add" } | { mode: "replace"; elementId: Id };
 
 export const INITIAL_SESSION: SessionState = {
   activeSlideId: null,
@@ -55,6 +63,7 @@ export const INITIAL_SESSION: SessionState = {
   previewAnswer: false,
   showGuides: true,
   snap: true,
+  imagePanel: null,
 };
 
 export type SessionAction =
@@ -70,7 +79,8 @@ export type SessionAction =
   | { type: "toggleGuides" }
   | { type: "toggleSnap" }
   | { type: "copy"; elements: SlideElement[] }
-  | { type: "copySlide"; slide: Slide };
+  | { type: "copySlide"; slide: Slide }
+  | { type: "setImagePanel"; panel: ImagePanelState };
 
 export function sessionReducer(s: SessionState, a: SessionAction): SessionState {
   switch (a.type) {
@@ -121,6 +131,8 @@ export function sessionReducer(s: SessionState, a: SessionAction): SessionState 
       return a.elements.length === 0 ? s : { ...s, clipboard: a.elements };
     case "copySlide":
       return { ...s, clipboardSlide: a.slide };
+    case "setImagePanel":
+      return s.imagePanel === a.panel ? s : { ...s, imagePanel: a.panel };
   }
 }
 
@@ -140,6 +152,9 @@ export type SessionActions = {
   /** Keep these elements as the clipboard (`cut` is copy + `deleteElements` in the caller). */
   copy: (elements: SlideElement[]) => void;
   copySlide: (slide: Slide) => void;
+  /** Open the Add image panel; with `replace`, the chosen image swaps that element's `src`. */
+  openImagePanel: (replace?: { elementId: Id }) => void;
+  closeImagePanel: () => void;
 };
 
 export type EditorSession = {
@@ -172,6 +187,12 @@ export function useEditorSessionState(initial: Partial<SessionState> = {}): Edit
       toggleSnap: () => dispatch({ type: "toggleSnap" }),
       copy: (elements) => dispatch({ type: "copy", elements }),
       copySlide: (slide) => dispatch({ type: "copySlide", slide }),
+      openImagePanel: (replace) =>
+        dispatch({
+          type: "setImagePanel",
+          panel: replace ? { mode: "replace", elementId: replace.elementId } : { mode: "add" },
+        }),
+      closeImagePanel: () => dispatch({ type: "setImagePanel", panel: null }),
     }),
     [],
   );
@@ -212,6 +233,7 @@ export function EditorSessionProvider({
     previewAnswer,
     showGuides,
     snap,
+    imagePanel,
   } = state;
   const ui = useMemo<SessionUi>(
     () => ({
@@ -223,6 +245,7 @@ export function EditorSessionProvider({
       previewAnswer,
       showGuides,
       snap,
+      imagePanel,
     }),
     [
       editingTextId,
@@ -233,6 +256,7 @@ export function EditorSessionProvider({
       previewAnswer,
       showGuides,
       snap,
+      imagePanel,
     ],
   );
   return createElement(
