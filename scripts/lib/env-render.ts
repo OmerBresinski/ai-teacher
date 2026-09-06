@@ -284,6 +284,7 @@ keywords = ["${name}"]`;
 # contract: a literal \`NAME=<20+ chars>\` for any of them fails the pre-commit hook
 # (\`gitleaks protect --staged\`) and the CI \`secrets\` job. Examples, docs and tests are allowed to
 # show placeholders; the compose credentials (postgres/postgres) are synthetic and allowed.
+# Vendored agent skills (\`.agents/skills/\`, ADR 0017) carry upstream example strings, never ours.
 title = "Teaching Journey"
 
 [extend]
@@ -296,6 +297,7 @@ paths = [
   '''^docs/env\\.md$''',
   '''\\.test\\.tsx?$''',
   '''\\.spec\\.ts$''',
+  '''(^|/)\\.agents/skills/''',
 ]
 regexes = [
   '''postgres://postgres:postgres@(localhost|host\\.docker\\.internal|127\\.0\\.0\\.1)''',
