@@ -91,4 +91,7 @@ handler; there is no `Mastra` instance, storage, server or model router in produ
 still come from `createAi` (§3), and `MASTRA_TELEMETRY_DISABLED=1` is in the env contract. §6's
 log line gains optional `lessonId`, `jobId`, `stage`, `promptVersion` and `costUsd`; `@tj/ai`
 gains a static price table, `costUsd()` and `createBudget()` (ADR 0025 §15, §16). "Cost is
-derived later from tokens" is now.
+derived later from tokens" is now. Of the items the Consequences deferred to F13, the eval
+harness starts with F06's eval set (ADR 0025 §23, `@mastra/evals` scorers in the eval script
+only); the second provider, failover, routing policy, prompt caching and per-Journey budgets stay
+with F13.

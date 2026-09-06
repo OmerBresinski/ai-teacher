@@ -111,6 +111,9 @@ web-local one of §6; and `migrate()` runs on write, so storage is always `CURRE
 §1 placed "the theme *catalogue*, id factories and starter content" in `@tj/editor`. The
 catalogue, the grid, the layout recipes and the rich-doc builders move to the pure package
 `@tj/slides` so the worker can lay out generated slides with the same recipes (ADR 0025 §9);
-`@tj/editor` re-exports them. Under the §2 rule the Lesson gains optional `facts`, `generation`,
-`artefacts`, `sources`; every slide element and worksheet block gains optional `generatedFrom`
-and `authoredBy`; the Worksheet gains optional `lessonId` (ADR 0025 §1–§4, §20). No version bump.
+`@tj/editor` re-exports them. §3: the `FIT_VERSION` constant moves with the catalogue it
+describes; the re-fit (`fitVersion`, `use-fit-migration`) stays in `@tj/editor` and still runs
+only when a lesson is opened for editing. Under the §2 rule the Lesson gains optional `facts`,
+`generation`, `artefacts`, `sources`; every slide element and worksheet block gains optional
+`generatedFrom` and `authoredBy`; the Worksheet gains optional `lessonId` (ADR 0025 §1–§4, §20).
+No version bump.

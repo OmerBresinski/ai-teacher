@@ -65,7 +65,7 @@ What the code says today, read on `master` at `9752445`:
    Record<stage, string>, usage: { calls, inputTokens, outputTokens, costUsd: number | null },
    findings: Finding[] }`. `stage` is the checkpoint a retry resumes from; `findings` holds the
    model-check findings and the unrepaired schema findings at completion (residuals). Schema
-   findings are otherwise **recomputed** client-side by the shared checker (item 9), never trusted
+   findings are otherwise **recomputed** client-side by the shared checker (item 10), never trusted
    from storage.
 4. **The worksheet is a second `documents` row, linked both ways.** `Lesson.artefacts?: {
    worksheetId: string }` and `Worksheet.lessonId?: string` (both optional additions). The worker
@@ -110,7 +110,9 @@ What the code says today, read on `master` at `9752445`:
    `multiple-choice`, `fill-gap`, `matching`, `word-bank`.
 9. **The layout recipes move to a pure package `@tj/slides`.** `packages/slides` holds the theme
    catalogue (`THEMES`, `getTheme`, `DEFAULT_THEME_ID` re-export, `fontFloor`, `textRole`,
-   `MIN_FONT_SIZE`, `FIT_VERSION`), `grid.ts`, `layouts.ts` (`layoutSlide`, `SLIDE_KIND_*`),
+   `MIN_FONT_SIZE`, and the `FIT_VERSION` constant, which tracks the floors the recipes lay out
+   against; the re-fit itself — `fitVersion` handling and `use-fit-migration` — stays in the
+   editor as ADR 0021 §3 says), `grid.ts`, `layouts.ts` (`layoutSlide`, `SLIDE_KIND_*`),
    the rich-doc builders (`docFromText`, `docFromBullets`, `docFromNumbered`) and
    `materialiseSlide`; dependencies are `@tj/domain`, `nanoid` and `zod` only — no React, no
    Tiptap, no CSS. `@tj/editor` re-exports what it exported before so no import site in `apps/web`
@@ -122,8 +124,11 @@ What the code says today, read on `master` at `9752445`:
    ADR 0022 §1's dependency list; ADR 0013's package map gains a row.
 10. **The shared checker lives in `@tj/domain`.** `@tj/domain/documents/checks.ts` exports
     `checkLesson(lesson: Lesson, worksheet?: Worksheet): Finding[]` — pure, zod-only, identical in
-    the worker and the editor. `Finding = { check: string; severity: "error" | "warning"; target:
-    { slideId?, elementId?, blockId?, factId? }; message: string; fix?: RepairHint }`. The F06
+    the worker and the editor. When `worksheet` is omitted the worksheet half of the objective
+    check is skipped (no finding, not a pass); the worker always passes the worksheet it created,
+    and the editor passes it once `Lesson.artefacts.worksheetId` has loaded. `Finding = { check:
+    string; severity: "error" | "warning"; target: { slideId?, elementId?, blockId?, factId? };
+    message: string; fix?: RepairHint }`. The F06
     checks and their severities: every question slide and question block has an answer
     (`error`); every objective is referenced by ≥1 slide **and** ≥1 worksheet block (`error`);
     every vocabulary term used in slide text exists in `facts.vocabulary` (`warning`); outline
@@ -184,13 +189,17 @@ What the code says today, read on `master` at `9752445`:
     slides N and M to match" with Undo and View. The regenerate preview is the impact set computed
     client-side from `factRefs`, no model call.
 19. **Job results ride on the `completed` event.** `JobCompletedEventSchema` gains an optional
-    `result` whose schema is per job name (`JobResultSchemas`, `lesson.cascade` and
-    `lesson.regenerate` → `{ proposals: [...], flagged: [...] }`; `lesson.plan` → none). `runJob`
-    accepts a handler return value and writes it into the terminal event; the SSE stream the
-    editor already follows delivers it. Bounded to a few elements; not a general result store.
-    This amends ADR 0012.
+    `result: JobResultSchema`, a `z.discriminatedUnion("job", [...])` whose members are declared
+    per job name in `@tj/domain/jobs.ts` (`{ job: "lesson.cascade" | "lesson.regenerate",
+    proposals: [...], flagged: [...] }`; `lesson.plan` returns none). A `job_events` row carries no
+    job name, so the discriminator is inside the result and SSE consumers narrow on `result.job`.
+    `runJob` accepts a handler return value and writes it into the terminal event; the SSE stream
+    the editor already follows delivers it. Bounded to a few elements; not a general result
+    store. This amends ADR 0012.
 20. **`Lesson.sources` is reserved as references.** `Lesson.sources?: SourceRef[]`, `SourceRef =
     { id, kind: "file" | "paste", name, storageKey?, pages? }` — no extracted text in the body.
+    This supersedes ADR 0024 §13's "no field is reserved now"; `POST /lessons` still takes no
+    `sourceIds` until F03 adds them.
     Plan takes `sourceTexts: { sourceId, ref: { page? | slide? }, text }[]` from a `SourceLoader`
     the worker owns (`deps.sources`), stubbed to `[]` until F03. `curriculumRef` on objectives is
     reserved for F05; Plan marks model-inferred objectives with no `curriculumRef`.
@@ -216,7 +225,8 @@ What the code says today, read on `master` at `9752445`:
     (fixture briefs → fixture lessons → `checkLesson`) runs on every PR. The paid half runs only on
     `workflow_dispatch` or the `run-eval` PR label, needs `AWS_BEARER_TOKEN_BEDROCK` as a GitHub
     Actions secret the founder adds, is capped by `AI_EVAL_RUN_COST_CAP_USD`, and posts tokens and
-    cost against the last `master` run.
+    cost against the last `master` run. This is the first eval harness; ADR 0018 deferred "eval
+    harness" to F13, which keeps the general harness and routing policy.
 24. **TEACH-82 gates the pipeline; residuals are self-healed.** TEACH-82 FR 1–5 (terminal-event
     guard, one terminal row per job, cancel re-read) land before the pipeline handler ticket: a
     double run is a double spend. The first PR #110 residual (row locked, no job) is closed here:
@@ -245,9 +255,10 @@ What the code says today, read on `master` at `9752445`:
   `packages/generation/**` and `packages/slides/**`, ADR 0018 Consequences pattern). Its telemetry
   is disabled by env; its storage and server are not used. Revisit if a second engine beside
   pg-boss ever starts to own retries or state.
-- Amendments: ADR 0012 (progress `documentUpdatedAt`, `completed.result`); ADR 0018 §1 (Mastra
-  in-process); ADR 0021 §1 (catalogue moves to `@tj/slides`); ADR 0022 §1 (dependency list);
-  ADR 0024 §14 and §18 (one job; `putDocumentAsJob`). ADR 0013's package map: two rows.
+- Amendments: ADR 0012 (progress `documentUpdatedAt`, `completed.result`); ADR 0018 §1 and
+  Consequences (Mastra in-process; the F06 eval set); ADR 0021 §1 and §3 (catalogue and
+  `FIT_VERSION` move to `@tj/slides`); ADR 0022 §1 (dependency list); ADR 0024 §13, §14 and §18
+  (`Lesson.sources` reserved; one job; `putDocumentAsJob`). ADR 0013's package map: two rows.
 - Env contract grows by `AI_LESSON_COST_CAP_USD`, `AI_LESSON_TOKEN_CAP`,
   `AI_EVAL_RUN_COST_CAP_USD`, `MASTRA_TELEMETRY_DISABLED`, and the test-only `AI_FAKE_SCRIPT`.
 - Generated lessons have no images and no `timer` slides until an image source and a timing

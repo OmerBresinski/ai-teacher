@@ -23,6 +23,7 @@ Progress streams over **Server-Sent Events** from `apps/api` (`GET /jobs/:id/eve
 The six event types are unchanged; two payloads grow. `JobProgressSchema` gains an optional
 `documentUpdatedAt` so a generating job can tell the editor the document changed and it refetches
 (ADR 0025 §7) — slide content never travels in an event. `JobCompletedEventSchema` gains an
-optional `result`, typed per job name in `JobResultSchemas`, so proposal jobs (`lesson.cascade`,
+optional `result`, a discriminated union on `result.job` (a `job_events` row has no job name),
+so proposal jobs (`lesson.cascade`,
 `lesson.regenerate`) hand a bounded result to the editor over the stream it already follows
 (ADR 0025 §19). `runJob` writes a handler's return value into that field.

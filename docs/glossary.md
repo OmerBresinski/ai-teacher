@@ -63,7 +63,7 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **Generation package** (`@tj/generation`) — the server-only package holding the pipeline stages, slide and block spec schemas, prompts, budget wiring and the in-process Mastra workflow; consumed by `apps/worker` only (ADR 0025 §17, §21).
 - **Job** — a unit of background work enqueued by the API and executed by the worker via pg-boss (ADR 0006). Job names are constants in `@tj/domain`.
 - **Job event** — a progress record (`queued`, `started`, `progress`, `completed`, `failed`, `cancelled`) emitted by the worker and streamed to clients over SSE (ADR 0012).
-- **Job result** — the optional `result` on a `completed` job event, typed per job name in `JobResultSchemas`; how proposal jobs return their proposals to the editor (ADR 0025 §19).
+- **Job result** — the optional `result` on a `completed` job event, a discriminated union on `result.job` declared in `@tj/domain/jobs.ts`; how proposal jobs return their proposals to the editor (ADR 0025 §19).
 - **Kind page** — a Library page listing one kind of document: Lessons, Worksheets, or Series.
 - **Kit** — the `/kit` component gallery route, available only in development, showing every `@tj/ui` component in every state; the visual acceptance surface.
 - **Mock data layer** — the Zod-validated fixtures and in-memory store in `apps/web/src/mocks` (ADR 0020). *(To be replaced by `@tj/api-client` calls behind the same query options when the document API lands — ADR 0024 §9.)*

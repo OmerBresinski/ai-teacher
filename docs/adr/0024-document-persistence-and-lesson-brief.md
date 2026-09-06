@@ -173,6 +173,8 @@ and first-slide streaming (F06), `POST /files` uploads (follow-up ticket).
 
 ## Amendment (2026-09-06, ADR 0025)
 
+§13 said "no field is reserved now"; ADR 0025 §20 reserves `Lesson.sources?: SourceRef[]` as
+references only, while `POST /lessons` keeps taking the brief alone until F03.
 §14: Plan, Generate, Evaluate and Repair are **one** `lesson.plan` job, checkpointed on
 `Lesson.generation.stage`; a `progress` payload carries `documentUpdatedAt`, not a slide
 (ADR 0025 §5, §7). §18: `putDocument` refuses writes while the lock is set, so the worker writes
