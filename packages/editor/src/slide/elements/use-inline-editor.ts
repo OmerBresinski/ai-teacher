@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useEditSession } from "../../model/use-edit-session";
 import { useActiveEditor } from "../../text/active-editor";
 import { baseExtensions } from "../../text/extensions";
+import { normaliseDoc } from "../../text/normalise";
 import { useEditorHooks } from "../editor-hooks";
 
 /**
@@ -52,8 +53,9 @@ export function useInlineEditor({
   const hooks = useEditorHooks();
   const active = useActiveEditor();
   // Both fixed on entry: the seed write makes `doc` defined, and neither the starting content nor
-  // the session may restart because of it.
-  const [initial] = useState(() => doc ?? EMPTY_DOC);
+  // the session may restart because of it. Normalised, because a stored doc may carry what
+  // ProseMirror refuses (an empty text node) and the editor must open on the words, not on nothing.
+  const [initial] = useState(() => normaliseDoc(doc ?? EMPTY_DOC));
   const seed = useRef(seedEmpty);
 
   const hooksRef = useRef(hooks);
@@ -68,12 +70,8 @@ export function useInlineEditor({
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  /** What the editor last wrote, so an echo of our own write is not adopted back. */
-  const written = useRef<RichDoc | null>(null);
-  const write = (next: RichDoc) => {
-    written.current = next;
+  const write = (next: RichDoc) =>
     sessionRef.current.run(() => hooksRef.current?.writeElementDoc(slideId, id, next));
-  };
 
   const editor = useEditor(
     {
@@ -121,15 +119,17 @@ export function useInlineEditor({
 
   /**
    * The cache stays the single source of truth. If the doc changes underneath the mounted editor
-   * — an undo, a toolbar command applied to the whole doc — adopt it rather than writing the stale
-   * ProseMirror document back over it on the next keystroke. Our own writes come straight back
-   * as `doc` and are recognised by identity of content.
+   * — an undo, a redo, a toolbar command applied to the whole doc — adopt it rather than writing
+   * the stale ProseMirror document back over it on the next keystroke. The only test is whether
+   * the editor already shows it: our own writes come straight back as `doc` and match by content,
+   * and no memory of "what we last wrote" is kept, because an undo → redo lands on a doc we did
+   * write while the editor shows something else.
    */
   useEffect(() => {
     if (!editor || editor.isDestroyed || !doc) return;
-    if (written.current && same(written.current, doc)) return;
-    if (same(doc, editor.getJSON() as RichDoc)) return;
-    editor.commands.setContent(doc as unknown as Content, { emitUpdate: false });
+    const next = normaliseDoc(doc);
+    if (same(next, editor.getJSON() as RichDoc)) return;
+    editor.commands.setContent(next as unknown as Content, { emitUpdate: false });
   }, [editor, doc]);
 
   return editor;

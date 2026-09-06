@@ -17,7 +17,7 @@ afterEach(cleanup);
 
 const para = (text: string): RichDoc => ({
   type: "doc",
-  content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+  content: [{ type: "paragraph", content: text ? [{ type: "text", text }] : undefined }],
 });
 
 /**
@@ -148,6 +148,55 @@ describe("useInlineEditor", () => {
     expect(hooks.beginTransaction).toHaveBeenCalledTimes(2);
     unmount();
     expect(hooks.endTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  test("undo → redo → type: the editor follows both and the next keystroke builds on the redone doc", async () => {
+    const { hooks, wrapper, state } = harness(para("A"));
+    const { result, rerender } = renderHook(
+      () => useInlineEditor({ slideId: "s1", id: "e1", doc: state.doc }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current).not.toBeNull());
+    const editor = result.current;
+    if (!editor) throw new Error("no editor");
+    act(() => editor.commands.insertContent("B"));
+    rerender();
+    const withB = lastDoc(hooks) as RichDoc;
+    expect(editor.getText()).toBe("AB");
+    // Undo: the cache goes back to "A".
+    state.doc = para("A");
+    rerender();
+    expect(editor.getText()).toBe("A");
+    // Redo: the cache returns to the doc this editor wrote — the editor must follow it, not keep "A".
+    state.doc = withB;
+    rerender();
+    expect(editor.getText()).toBe("AB");
+    act(() => editor.commands.insertContent("C"));
+    rerender();
+    expect(docToPlainText(lastDoc(hooks) as RichDoc)).toBe("ABC");
+  });
+
+  test("opens on the words of a stored doc that carries an empty text node", async () => {
+    const stored: RichDoc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "" },
+            { type: "text", text: "Kept" },
+          ],
+        },
+      ],
+    };
+    const { hooks, wrapper, state } = harness(stored);
+    const { result } = renderHook(
+      () => useInlineEditor({ slideId: "s1", id: "e1", doc: state.doc }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current).not.toBeNull());
+    expect(result.current?.getText()).toBe("Kept");
+    expect(hooks.writeElementDoc).not.toHaveBeenCalled();
   });
 
   test("adopts a doc changed underneath it (an undo) without echoing its own writes back", async () => {
