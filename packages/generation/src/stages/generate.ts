@@ -11,7 +11,7 @@ import type { z } from "zod";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { generateSlidePrompt, generateWorksheetPrompt } from "../prompts";
 import { WorksheetSpecSchema } from "../specs";
-import { BudgetExceeded, type PipelineDeps, type PipelineState } from "../types";
+import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
 import { audienceOf, generationOf, slideText } from "./shared";
 
 /*
@@ -62,7 +62,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
 
   // Resume support: slides already present (Plan's two, or a partial earlier attempt) stay.
   for (let i = lesson.slides.length; i < total; i++) {
-    if (deps.signal.aborted) break;
+    throwIfAborted(deps.signal);
     const entry = entries[i] as (typeof entries)[number];
     let slide: Slide;
     try {
@@ -102,8 +102,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     );
   }
 
+  throwIfAborted(deps.signal);
   let worksheet = state.worksheet;
-  if (!stopped && !deps.signal.aborted && !worksheet) {
+  if (!stopped && !worksheet) {
     try {
       const call = await callStructured({
         deps,
@@ -158,6 +159,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     }
   }
 
+  throwIfAborted(deps.signal);
   if (stopped) findings.push(stopped);
   lesson = withUsage(
     {

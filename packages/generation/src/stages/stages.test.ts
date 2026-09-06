@@ -131,6 +131,20 @@ describe("generate", () => {
     expect(deps.progress.at(-1)?.message).toBe("Slides ready");
   });
 
+  test("a cancel mid-way throws without claiming `generated`; the slides written stay persisted", async () => {
+    const start = await planned();
+    const slides = FIXTURES.plan.outline
+      .slice(PLANNED_SLIDES)
+      .map((e) => json(FIXTURES.slides[e.kind]));
+    const ai = createFakeAi({ script: [...slides, json(FIXTURES.worksheet)], usage });
+    const deps = recordingDeps(ai, { abortAfterPersist: 2 });
+    const error = await generate(start, deps).catch((e) => e);
+    expect((error as Error).name).toBe("AbortError");
+    expect(deps.persisted).toHaveLength(2);
+    expect(deps.persisted.at(-1)?.lesson.generation?.stage).toBe("planned");
+    expect(ai.calls).toHaveLength(2);
+  });
+
   test("resumes: slides already present are not regenerated", async () => {
     const start = await planned();
     const slides = FIXTURES.plan.outline

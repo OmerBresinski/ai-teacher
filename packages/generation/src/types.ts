@@ -95,3 +95,22 @@ export function callContext(
 ): AiCallContext {
   return { ...deps.context, stage, promptVersion };
 }
+
+/** The error a cancelled stage throws: the signal's own reason when it is one, else an AbortError. */
+export function abortError(signal: AbortSignal): Error {
+  const reason = signal.reason;
+  if (reason instanceof Error) return reason;
+  return new DOMException(
+    typeof reason === "string" ? reason : "The operation was aborted.",
+    "AbortError",
+  );
+}
+
+/**
+ * Cancel is checked between model calls (ADR 0025 §5): what was written stays, and the stage
+ * stops here rather than advancing a checkpoint it did not earn, so a retry resumes correctly and
+ * the worker records `cancelled`, not `completed`.
+ */
+export function throwIfAborted(signal: AbortSignal): void {
+  if (signal.aborted) throw abortError(signal);
+}

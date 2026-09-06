@@ -116,6 +116,23 @@ describe("callStructured", () => {
     expect(ai.calls.length).toBeLessThanOrEqual(1);
   });
 
+  test("an abort between the first miss and the retry stops the retry", async () => {
+    const controller = new AbortController();
+    const ai = createFakeAi({
+      script: [
+        (call) => {
+          // The first answer is a schema miss; cancel lands while it is being handled.
+          if (call.index === 0) controller.abort();
+          return "nope";
+        },
+        JSON.stringify({ answer: "never asked" }),
+      ],
+    });
+    const error = await call(deps(ai, { signal: controller.signal })).catch((e) => e);
+    expect((error as Error).name).toBe("AbortError");
+    expect(ai.calls).toHaveLength(1);
+  });
+
   test("a provider error is rethrown as is (no retry, no StageFailure)", async () => {
     const ai = createFakeAi({ error: new Error("bedrock down") });
     const error = await call(deps(ai)).catch((e) => e);

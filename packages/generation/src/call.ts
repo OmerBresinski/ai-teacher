@@ -7,6 +7,7 @@ import {
   type PipelineDeps,
   StageFailure,
   type StageName,
+  throwIfAborted,
 } from "./types";
 
 /*
@@ -64,7 +65,7 @@ export async function callStructured<I, T>(
   const { deps, stage, cls, prompt, input, schema, maxOutputTokens } = options;
   // Cancel is checked between model calls (ADR 0025 §5); the fake ignores `abortSignal`, so the
   // check is here rather than trusted to the provider.
-  if (deps.signal.aborted) throw abortError(deps.signal);
+  throwIfAborted(deps.signal);
   const exceeded = deps.budget.exceeded();
   if (exceeded) throw new BudgetExceeded(exceeded.by);
   const modelId = deps.ai.modelId(cls);
@@ -96,6 +97,8 @@ export async function callStructured<I, T>(
       { stage, promptVersion: prompt.version, issues: issues.length },
       "structured output did not validate; retrying once",
     );
+    // The retry is a second model call: the same two gates apply before it.
+    throwIfAborted(deps.signal);
     const exceededNow = deps.budget.exceeded();
     if (exceededNow) throw new BudgetExceeded(exceededNow.by);
     try {
@@ -145,13 +148,4 @@ export function issuesOf(error: NoObjectGeneratedError): string[] {
     });
   }
   return ["- The answer was not valid JSON for the requested shape."];
-}
-
-function abortError(signal: AbortSignal): Error {
-  const reason = signal.reason;
-  if (reason instanceof Error) return reason;
-  return new DOMException(
-    typeof reason === "string" ? reason : "The operation was aborted.",
-    "AbortError",
-  );
 }

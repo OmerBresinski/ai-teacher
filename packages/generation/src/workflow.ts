@@ -142,41 +142,49 @@ export async function runLessonPipeline(
     worksheetId: input.worksheetId,
     worksheet: input.worksheet,
   };
-
-  const run = await lessonWorkflow.createRun({ runId: deps.context.jobId });
-  const result = await run.start({ inputData: state, requestContext });
-
-  if (result.status !== "success") {
-    const stashed = requestContext.getRaw(FAILURE_KEY);
-    if (stashed instanceof Error) throw stashed;
-    const message =
-      result.status === "failed"
-        ? describe(result.error)
-        : `workflow ended with status ${result.status}`;
-    throw new StageFailure(from ?? "plan", message, {
-      cause: result.status === "failed" ? result.error : undefined,
-    });
-  }
-
-  const final = result.result;
-  const generation = final.lesson.generation;
   const stagesRun = from ? STAGE_ORDER.slice(STAGE_ORDER.indexOf(from)) : [];
-  const findings = { error: 0, warning: 0 };
-  for (const f of generation?.findings ?? []) findings[f.severity] += 1;
-  deps.logger.info(
-    {
-      generation: {
-        lessonId: deps.context.lessonId,
-        jobId: deps.context.jobId,
-        stages: stagesRun,
-        ...deps.budget.totals(),
-        findings,
-        durationMs: Date.now() - startedAt,
+  let outcome: "success" | "failed" = "failed";
+  let final: PipelineState | undefined;
+
+  try {
+    const run = await lessonWorkflow.createRun({ runId: deps.context.jobId });
+    const result = await run.start({ inputData: state, requestContext });
+    if (result.status !== "success") {
+      const stashed = requestContext.getRaw(FAILURE_KEY);
+      if (stashed instanceof Error) throw stashed;
+      const message =
+        result.status === "failed"
+          ? describe(result.error)
+          : `workflow ended with status ${result.status}`;
+      throw new StageFailure(from ?? "plan", message, {
+        cause: result.status === "failed" ? result.error : undefined,
+      });
+    }
+    final = result.result;
+    outcome = "success";
+    return final;
+  } finally {
+    // One `generation summary` line per job whatever the outcome (ADR 0025 §16): counts, cost
+    // and duration — never content. On failure the findings are those of the last persisted
+    // checkpoint the stages left on the request context's stashed error, so only the counts the
+    // budget knows are reported.
+    const findings = { error: 0, warning: 0 };
+    for (const f of final?.lesson.generation?.findings ?? []) findings[f.severity] += 1;
+    deps.logger.info(
+      {
+        generation: {
+          lessonId: deps.context.lessonId,
+          jobId: deps.context.jobId,
+          outcome,
+          stages: stagesRun,
+          ...deps.budget.totals(),
+          findings,
+          durationMs: Date.now() - startedAt,
+        },
       },
-    },
-    "generation summary",
-  );
-  return final;
+      "generation summary",
+    );
+  }
 }
 
 function describe(error: unknown): string {

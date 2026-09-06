@@ -211,16 +211,14 @@ describe("runLessonPipeline", () => {
     const ai = scriptedPipelineAi();
     // persist #1 is Plan (2 slides); #3 is the 4th slide.
     const deps = recordingDeps(ai, { abortAfterPersist: 3 });
-    let outcome: "returned" | "threw" = "returned";
-    try {
-      await runLessonPipeline(
-        { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
-        deps,
-      );
-    } catch {
-      outcome = "threw";
-    }
-    void outcome;
+    // Throws the abort so the worker records `cancelled`; what was written stays (ADR 0025 §5)
+    // and no checkpoint past `planned` is claimed, so a retry resumes from the slides on disk.
+    const error = await runLessonPipeline(
+      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
+      deps,
+    ).catch((e) => e);
+    expect((error as Error).name).toBe("AbortError");
+    expect(deps.persisted.at(-1)?.lesson.generation?.stage).toBe("planned");
     const generateCalls = ai.calls.filter((c) => c.context?.stage === "generate");
     expect(generateCalls).toHaveLength(2);
     expect(deps.persisted[2]?.lesson.slides).toHaveLength(4);
@@ -286,6 +284,17 @@ describe("runLessonPipeline", () => {
     expect(lesson.generation?.findings.map((f) => f.severity)).toEqual(["warning"]);
   });
 
+  test("a failed run still writes the summary line, marked failed", async () => {
+    const { lines, logger } = memoryLogger();
+    const ai = scriptedPipelineAiWithInserted(3, ["not json", "still not json"]);
+    await runLessonPipeline(
+      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
+      recordingDeps(ai, { logger }),
+    ).catch(() => undefined);
+    const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
+    expect(summary.generation).toMatchObject({ outcome: "failed", calls: 1 + 2 + 2 });
+  });
+
   test("writes one generation summary line with counts, never content", async () => {
     const { lines, logger } = memoryLogger();
     await runLessonPipeline(
@@ -294,6 +303,7 @@ describe("runLessonPipeline", () => {
     );
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
     expect(summary.generation).toMatchObject({
+      outcome: "success",
       stages: ["plan", "generate", "evaluate", "repair"],
       calls: 1 + GENERATED_SLIDES + 1 + 1,
       findings: { error: 0, warning: 0 },

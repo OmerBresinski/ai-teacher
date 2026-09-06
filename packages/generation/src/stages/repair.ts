@@ -11,7 +11,13 @@ import {
 import type { z } from "zod";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { repairPrompt } from "../prompts";
-import { BudgetExceeded, type PipelineDeps, type PipelineState, StageFailure } from "../types";
+import {
+  BudgetExceeded,
+  type PipelineDeps,
+  type PipelineState,
+  StageFailure,
+  throwIfAborted,
+} from "../types";
 import { BUDGET_FINDING, withUsage } from "./generate";
 import { audienceOf, blockText, generationOf, slideText } from "./shared";
 
@@ -67,7 +73,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   const extra: Finding[] = [];
 
   for (const target of repairTargets(generation.findings)) {
-    if (deps.signal.aborted) break;
+    throwIfAborted(deps.signal);
     try {
       if (target.slideId !== undefined) {
         const index = lesson.slides.findIndex((s) => s.id === target.slideId);
@@ -149,6 +155,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
     }
   }
 
+  throwIfAborted(deps.signal);
   const schema = checkLesson(lesson, worksheet);
   const next = withUsage(
     {
