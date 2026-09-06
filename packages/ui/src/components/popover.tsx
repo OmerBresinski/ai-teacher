@@ -30,7 +30,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-card border border-border bg-popover p-3 text-popover-foreground shadow-2 outline-hidden",
+          "z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-card border border-border bg-popover p-3 text-popover-foreground shadow-2 outline-hidden motion-safe:data-[state=closed]:animate-fade-out",
           className,
         )}
         {...props}

@@ -29,7 +29,7 @@ import {
   SquareArrowOutUpRight,
   Trash2,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { absoluteTime, relativeTime, sizeOf, yearAndSubject } from "@/lib/format";
 import type { DocumentSummary } from "@/mocks/library-schema";
 import { LessonThumb } from "./lesson-thumb";
@@ -156,7 +156,12 @@ function EditedTime({
   );
 }
 
-export function LibraryCard({
+/**
+ * Memoised: a search keystroke or the minute clock re-renders the page, and every card carries a
+ * Radix menu. `doc` keeps its identity across refetches (TanStack Query structural sharing) and the
+ * handlers come stable from `useLibraryActions`, so unchanged cards skip the render.
+ */
+export const LibraryCard = memo(function LibraryCard({
   doc,
   view = "grid",
   hero = false,
@@ -301,4 +306,4 @@ export function LibraryCard({
       </Card>
     </article>
   );
-}
+});

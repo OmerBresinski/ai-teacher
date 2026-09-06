@@ -13,6 +13,7 @@ import {
   useInlineRename,
 } from "@tj/ui";
 import { Copy, MoreHorizontal, Pencil, Play, Trash2 } from "lucide-react";
+import { memo } from "react";
 import { absoluteTime, relativeTime } from "@/lib/format";
 import type { SeriesWithLessons } from "@/mocks/library-schema";
 import { LessonThumb } from "./lesson-thumb";
@@ -70,7 +71,8 @@ function SeriesMenu({
   );
 }
 
-export function SeriesCard({
+/** Memoised for the same reason as `LibraryCard`: stable `item` and handlers skip the re-render. */
+export const SeriesCard = memo(function SeriesCard({
   item,
   headingLevel = "h2",
   now,
@@ -163,4 +165,4 @@ export function SeriesCard({
       </Card>
     </article>
   );
-}
+});

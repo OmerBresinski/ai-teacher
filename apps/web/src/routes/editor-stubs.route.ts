@@ -24,6 +24,8 @@ async function loadDocument(queryClient: QueryClient, id: string) {
 }
 
 const stubPage = lazyRouteComponent(() => import("./editor-stubs.page"), "EditorStubPage");
+// Built once: `validateSearch` runs on every navigation and hover preload.
+const presentSearchSchema = z.object({ series: z.string().optional().catch(undefined) });
 const titleFrom = ({ loaderData }: { loaderData?: { title: string } }) =>
   pageTitle(loaderData?.title ?? "Document");
 
@@ -39,8 +41,7 @@ export const lessonPresentRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: "/l/$lessonId/present",
   loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
-  validateSearch: (search) =>
-    z.object({ series: z.string().optional().catch(undefined) }).parse(search),
+  validateSearch: (search) => presentSearchSchema.parse(search),
   head: titleFrom,
   component: stubPage,
 });

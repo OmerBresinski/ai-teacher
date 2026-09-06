@@ -70,9 +70,12 @@ export const router = createRouter({
   context: { queryClient },
   defaultPreload: "intent",
   defaultPendingComponent: RoutePendingPage,
-  // Cold load awaits `/me` in `beforeLoad` and ADR 0004 targets a <1 s shell, so show the skeleton
-  // immediately (default is 1000 ms of nothing); the short minimum avoids a flash on fast loads.
-  defaultPendingMs: 0,
+  // Cold load awaits `/me` in `beforeLoad` and ADR 0004 targets a <1 s shell, so the skeleton
+  // appears after 100 ms (default is 1000 ms of nothing). Not 0: the first visit to every route in
+  // a session awaits its `lazyRouteComponent` chunk, and at 0 ms even a cached module — an
+  // `import()` resolving in a microtask — replaced the page with the skeleton for `pendingMinMs`.
+  // Under 100 ms reads as instant; above it the skeleton is held for the minimum so it never flashes.
+  defaultPendingMs: 100,
   defaultPendingMinMs: 200,
   scrollRestoration: true,
   Wrap,
