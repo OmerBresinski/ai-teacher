@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ModelClassSchema } from "./ai";
 import { GeneratedFromSchema } from "./documents/generated-from";
-import { SlideElementSchema } from "./documents/slide";
+import { QuestionDataSchema, SlideElementSchema } from "./documents/slide";
 import { WorksheetBlockSchema } from "./documents/worksheet";
 import { JobId, LessonId, WorkspaceId } from "./ids";
 import { IsoDateTime } from "./primitives";
@@ -176,12 +176,21 @@ export type JobProgress = z.infer<typeof JobProgressSchema>;
  * One re-derived element or block. Exactly one of `element` / `block` is set and it matches the
  * target's side (a slide target carries an element, a block target a block); the editor applies
  * every proposal of a result as one undo transaction (ADR 0022 §4).
+ *
+ * A whole-slide re-derivation (a target with no `elementId`) also replaces the slide's answer
+ * data: every element proposal of that slide carries the same `question` (and `notes`), because
+ * the new `question` names the new elements' ids and only holds once all of them are in place.
+ * Element-level proposals never carry them.
  */
 export const ProposalSchema = z
   .strictObject({
     target: ProposalTargetSchema,
     element: SlideElementSchema.optional(),
     block: WorksheetBlockSchema.optional(),
+    /** The re-derived slide's `question`, on whole-slide proposals of a question slide. */
+    question: QuestionDataSchema.optional(),
+    /** The re-derived slide's presenter notes, on whole-slide proposals. */
+    notes: z.string().optional(),
     generatedFrom: GeneratedFromSchema,
   })
   .refine(
@@ -191,6 +200,15 @@ export const ProposalSchema = z
         : proposal.element !== undefined && proposal.block === undefined,
     {
       message: "A proposal carries exactly one of element (slide target) or block (block target).",
+    },
+  )
+  .refine(
+    (proposal) =>
+      (proposal.question === undefined && proposal.notes === undefined) ||
+      (proposal.target.slideId !== undefined && proposal.target.elementId === undefined),
+    {
+      message: "question and notes belong to whole-slide proposals only.",
+      path: ["question"],
     },
   );
 export type Proposal = z.infer<typeof ProposalSchema>;

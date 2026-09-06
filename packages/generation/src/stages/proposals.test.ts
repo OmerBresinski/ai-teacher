@@ -4,6 +4,7 @@ import { createFakeAi } from "@tj/ai/testing";
 import { ProposalSchema, type ProposalTarget } from "@tj/domain";
 import { type SlideElement, SlideSchema, WorksheetBlockSchema } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
+import { materialiseSlide } from "@tj/slides";
 import { PROMPT_VERSIONS } from "../prompts";
 import { FIXTURES, recordingDeps } from "../testing";
 import {
@@ -22,6 +23,30 @@ function fixturePair() {
   const lesson = generatedLesson();
   const worksheet = generatedWorksheet();
   return { lesson, worksheet };
+}
+
+const META = { promptVersion: "generate-slide.v1", model: "m", at: "2026-09-06T10:00:00.000Z" };
+
+/**
+ * The fixture pair with its hand-built vocabulary slide replaced by one the recipe laid out, so
+ * element positions match what a re-derivation produces (as every generated slide does).
+ */
+function fixturePairWithRecipeVocab() {
+  const { lesson, worksheet } = fixturePair();
+  let n = 0;
+  const slide = {
+    ...materialiseSlide(FIXTURES.slides.vocabulary, lesson.themeId, META, () => `r${++n}`),
+    id: "s-vocab",
+  };
+  lesson.slides = lesson.slides.map((s) => (s.id === "s-vocab" ? slide : s));
+  const texts = slide.elements.filter((e) => e.type === "text");
+  return {
+    lesson,
+    worksheet,
+    slide,
+    term: texts[1] as SlideElement,
+    def: texts[4] as SlideElement,
+  };
 }
 
 describe("impactSet", () => {
@@ -114,17 +139,18 @@ describe("proposeFor", () => {
   };
 
   test("cascade: one call per distinct slide and per block; proposals carry cascade.v1 and parse", async () => {
-    const { lesson, worksheet } = fixturePair();
+    const { lesson, worksheet, term, def } = fixturePairWithRecipeVocab();
+    // s-vocab has no `question`, so element targets stay element-level.
     const targets: ProposalTarget[] = [
-      { slideId: "s-mc", elementId: "q" },
-      { slideId: "s-mc", elementId: "o1" },
+      { slideId: "s-vocab", elementId: term.id },
+      { slideId: "s-vocab", elementId: def.id },
       { blockId: "wb3" },
     ];
-    const ai = createFakeAi({ script: [json(mcSpec), json(blockSpec)], usage });
+    const ai = createFakeAi({ script: [json(FIXTURES.slides.vocabulary), json(blockSpec)], usage });
     const deps = recordingDeps(ai);
     const { proposals, stoppedBy } = await proposeFor(
       targets,
-      { lesson, worksheet, changedFactIds: ["q1"] },
+      { lesson, worksheet, changedFactIds: ["v1"] },
       deps,
     );
     expect(stoppedBy).toBeUndefined();
@@ -141,12 +167,15 @@ describe("proposeFor", () => {
     for (const p of proposals) expect(ProposalSchema.safeParse(p).success).toBe(true);
     const elementProposals = proposals.filter((p) => p.element);
     expect(elementProposals.map((p) => p.target)).toEqual([
-      { slideId: "s-mc", elementId: "q" },
-      { slideId: "s-mc", elementId: "o1" },
+      { slideId: "s-vocab", elementId: term.id },
+      { slideId: "s-vocab", elementId: def.id },
     ]);
+    expect(elementProposals.every((p) => p.question === undefined && p.notes === undefined)).toBe(
+      true,
+    );
     for (const p of elementProposals) {
       const original = lesson.slides
-        .find((s) => s.id === "s-mc")
+        .find((s) => s.id === "s-vocab")
         ?.elements.find((e) => e.id === p.target.elementId) as SlideElement;
       expect(p.element).toMatchObject({
         x: original.x,
@@ -164,8 +193,10 @@ describe("proposeFor", () => {
     expect(WorksheetBlockSchema.safeParse(blockProposal?.block).success).toBe(true);
     expect(blockProposal?.block?.id).not.toBe("wb3");
     // Nothing was written: the inputs are untouched.
-    expect(lesson).toEqual(generatedLesson());
     expect(worksheet).toEqual(generatedWorksheet());
+    expect(lesson.slides.filter((s) => s.id !== "s-vocab")).toEqual(
+      generatedLesson().slides.filter((s) => s.id !== "s-vocab"),
+    );
   });
 
   test("regenerate: a slide-only target yields every element of the new slide, with regenerate.v1 and the instruction in the prompt", async () => {
@@ -270,6 +301,31 @@ describe("proposeFor", () => {
     const deps = recordingDeps(createFakeAi({ script: [json(mcSpec)], usage }));
     deps.abort.abort();
     await expect(proposeFor([{ slideId: "s-mc" }], { lesson }, deps)).rejects.toThrow();
+  });
+  test("an element the teacher grouped is matched by its depth-first position and replaced in place", async () => {
+    const { lesson, slide, term } = fixturePairWithRecipeVocab();
+    const [heading, rule, ...rest] = slide.elements;
+    slide.elements = [
+      heading as SlideElement,
+      rule as SlideElement,
+      { id: "grp", type: "group", x: 0, y: 0, w: 1, h: 1, children: rest },
+    ];
+    const ai = createFakeAi({ script: [json(FIXTURES.slides.vocabulary)], usage });
+    const { proposals } = await proposeFor(
+      [{ slideId: "s-vocab", elementId: term.id }],
+      { lesson, changedFactIds: ["v1"] },
+      recordingDeps(ai),
+    );
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0]?.target).toEqual({ slideId: "s-vocab", elementId: term.id });
+    expect(proposals[0]?.element).toMatchObject({
+      type: "text",
+      x: term.x,
+      y: term.y,
+      w: term.w,
+      h: term.h,
+    });
+    expect(proposals[0]?.element?.id).not.toBe(term.id);
   });
 });
 

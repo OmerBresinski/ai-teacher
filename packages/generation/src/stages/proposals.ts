@@ -110,13 +110,30 @@ export interface ProposeResult {
 /** One slide's worth of work: every target on that slide shares one model call. */
 type SlideJob = { slideId: string; elementIds: string[] | null };
 
+/** Every element on a slide in depth-first order, groups walked — the order recipes lay out in. */
+function flatten(elements: readonly SlideElement[]): SlideElement[] {
+  const out: SlideElement[] = [];
+  const walk = (list: readonly SlideElement[]) => {
+    for (const element of list) {
+      if (element.type === "group") walk(element.children);
+      else out.push(element);
+    }
+  };
+  walk(elements);
+  return out;
+}
+
 /**
  * Re-derive the targets (ADR 0025 §18): one `standard` call per distinct slide (a whole-slide
  * spec; the current slide's text is the "previous version") or per block, at most
  * `PROPOSE_CONCURRENCY` in flight. An `elementId` target yields only that element's replacement,
  * placed exactly where the original sits; a slide-only target yields every element of the new
- * slide. Budget exhaustion ends the pass and reports it; a target the model cannot re-derive in
- * two attempts is skipped (the editor keeps the original), never a job failure.
+ * slide together with its `question` and `notes`. On a question slide an element target is
+ * widened to the whole slide: the answer data names element ids, so a lone replacement would
+ * leave `question` pointing at an element that no longer exists. Elements the teacher has grouped
+ * are matched by their depth-first position, which is the recipe's order. Budget exhaustion ends
+ * the pass and reports it; a target the model cannot re-derive in two attempts is skipped (the
+ * editor keeps the original), never a job failure.
  */
 export async function proposeFor(
   targets: readonly ProposalTarget[],
@@ -154,7 +171,9 @@ export async function proposeFor(
     }
     if (target.slideId === undefined) continue;
     const job = slides.get(target.slideId) ?? { slideId: target.slideId, elementIds: [] };
-    if (target.elementId === undefined) job.elementIds = null;
+    const isQuestionSlide =
+      lesson.slides.find((s) => s.id === target.slideId)?.question !== undefined;
+    if (target.elementId === undefined || isQuestionSlide) job.elementIds = null;
     else if (job.elementIds !== null && !job.elementIds.includes(target.elementId)) {
       job.elementIds.push(target.elementId);
     }
@@ -185,21 +204,36 @@ export async function proposeFor(
     const fresh = materialiseSlide(call.output, lesson.themeId, meta(call.modelId), deps.ids);
     const generatedFrom = { factRefs: call.output.factRefs, ...meta(call.modelId) };
     if (job.elementIds === null) {
+      // The same `question`/`notes` on every element proposal: the editor applies them once the
+      // whole slide's elements are in place (`ProposalSchema` doc).
+      const slideFields = {
+        ...(fresh.question ? { question: fresh.question } : {}),
+        ...(fresh.notes !== undefined ? { notes: fresh.notes } : {}),
+      };
       return fresh.elements.map((element) => ({
         target: { slideId: slide.id },
         element,
+        ...slideFields,
         generatedFrom,
       }));
     }
     // Per element: the replacement is the new slide's element in the same role (same position
-    // in the recipe's element order), moved to the original's box so the layout the teacher
+    // in the recipe's depth-first order), moved to the original's box so the layout the teacher
     // sees does not jump.
+    const originals = flatten(slide.elements);
+    const replacements = flatten(fresh.elements);
     const out: Proposal[] = [];
     for (const elementId of job.elementIds) {
-      const index = slide.elements.findIndex((e) => e.id === elementId);
-      const original = slide.elements[index];
-      const replacement = fresh.elements[index];
-      if (!original || !replacement || original.type !== replacement.type) continue;
+      const index = originals.findIndex((e) => e.id === elementId);
+      const original = originals[index];
+      const replacement = replacements[index];
+      if (!original || !replacement || original.type !== replacement.type) {
+        deps.logger.info(
+          { stage, slideId: slide.id },
+          "no matching element in the re-derived slide; skipped",
+        );
+        continue;
+      }
       out.push({
         target: { slideId: slide.id, elementId },
         element: { ...replacement, x: original.x, y: original.y, w: original.w, h: original.h },

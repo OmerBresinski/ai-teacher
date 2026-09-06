@@ -8,6 +8,7 @@ import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtur
 import { noSources, PROPOSE_CONCURRENCY } from "@tj/generation";
 import { FIXTURES } from "@tj/generation/testing";
 import { NonRetryableError } from "@tj/jobs";
+import { materialiseSlide } from "@tj/slides";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
 import { lessonCascadeJob } from "./lesson-cascade";
@@ -107,8 +108,12 @@ describeDb("lesson.cascade / lesson.regenerate jobs", () => {
     if (!result) return;
     expect(JobResultSchema.safeParse(result).success).toBe(true);
     expect(result.job).toBe("lesson.cascade");
-    expect(result.proposals.map((p) => p.target)).toEqual([
-      { slideId: "s-mc", elementId: "q" },
+    // `s-mc` is a question slide, so its element target is widened to the whole slide (the
+    // answer data names element ids): every element of the re-derived slide, then the block.
+    const slideProposals = result.proposals.filter((p) => p.target.slideId === "s-mc");
+    expect(slideProposals.length).toBeGreaterThan(1);
+    expect(slideProposals.every((p) => p.target.elementId === undefined && p.question)).toBe(true);
+    expect(result.proposals.filter((p) => p.target.blockId).map((p) => p.target)).toEqual([
       { blockId: "wb3" },
     ]);
     expect(result.flagged).toEqual([
@@ -126,25 +131,42 @@ describeDb("lesson.cascade / lesson.regenerate jobs", () => {
   });
 
   test("regenerate: an element target keeps the original box; a slide target returns the whole slide", async () => {
-    const { lessonId, lessonRow } = await seed();
-    const mc = (lessonRow.body as Lesson).slides.find((s) => s.id === "s-mc");
-    const q = mc?.elements.find((e) => e.id === "q") as SlideElement;
+    // Replace the hand-built vocabulary slide with one the recipe laid out (no `question`), so an
+    // element target stays element-level and positions match the re-derivation.
+    let n = 0;
+    const vocab = {
+      ...materialiseSlide(
+        FIXTURES.slides.vocabulary,
+        "chalk",
+        { promptVersion: "generate-slide.v1", model: "m", at: "2026-09-06T10:00:00.000Z" },
+        () => `r${++n}`,
+      ),
+      id: "s-vocab",
+    };
+    const { lessonId } = await seed((lesson) => {
+      lesson.slides = lesson.slides.map((s) => (s.id === "s-vocab" ? vocab : s));
+    });
+    const term = vocab.elements.filter((e) => e.type === "text")[1] as SlideElement;
     const ai = createFakeAi({
-      script: [json(mcSpec), json(mcSpec)],
+      script: [json(FIXTURES.slides.vocabulary), json(mcSpec)],
       usage: { inputTokens: 500, outputTokens: 200 },
     });
     const one = await lessonRegenerateJob(
       ctx(
-        { lessonId, targets: [{ slideId: "s-mc", elementId: "q" }], instruction: "simpler words" },
+        {
+          lessonId,
+          targets: [{ slideId: "s-vocab", elementId: term.id }],
+          instruction: "simpler words",
+        },
         ai,
       ).ctx as never,
     );
     expect(one?.proposals).toHaveLength(1);
     expect(one?.proposals[0]?.element).toMatchObject({
-      x: q.x,
-      y: q.y,
-      w: q.w,
-      h: q.h,
+      x: term.x,
+      y: term.y,
+      w: term.w,
+      h: term.h,
       authoredBy: "ai",
     });
     expect(one?.proposals[0]?.generatedFrom.promptVersion).toBe("regenerate.v1");
@@ -157,6 +179,7 @@ describeDb("lesson.cascade / lesson.regenerate jobs", () => {
     expect(whole?.proposals.every((p) => p.target.slideId === "s-mc" && !p.target.elementId)).toBe(
       true,
     );
+    expect(whole?.proposals.every((p) => p.question?.type === "multiple-choice")).toBe(true);
     expect(whole?.flagged).toEqual([]);
   });
 
