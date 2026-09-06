@@ -63,16 +63,17 @@
   --secondary-foreground: #4e4a44;
   --muted: #f9f8f6;
   --muted-foreground: #6b6761;
-  --accent: rgb(26 24 22 / 0.06);
+  --accent: rgb(96 74 40 / 0.07); /* TeachDeck app-subtle: the warm hover wash */
   --accent-foreground: #1a1816;
-  --accent-active: rgb(26 24 22 / 0.1);
-  --scrim: rgb(0 0 0 / 0.4);
+  --accent-active: rgb(96 74 40 / 0.12); /* TeachDeck app-active: pressed / selected */
+  --scrim: rgb(26 24 22 / 0.32);
   --destructive: #b3261e;
   --destructive-foreground: #ffffff;
   --success: #217a54;
   --warning: #8a5a00;
   --border: #e5e0d8;
   --border-faint: #f2efeb;
+  --border-strong: #d5cec1;
   --border-control: #8a857b;
   --input: #e5e0d8;
   --ring: #d2644b;
@@ -86,14 +87,16 @@
   --ink-3: #6b6761;
   --ink-4: #8f8a80;
   --brand-text: #b04a33;
-  --brand-tint: rgb(210 100 75 / 0.12);
-  --brand-tint-line: rgb(210 100 75 / 0.28);
+  --brand-tint: rgb(210 100 75 / 0.1);
+  --brand-tint-line: rgb(210 100 75 / 0.2);
   --brand-quiet: #fbf0ed;
   --shadow-1: 0 1px 2px rgb(26 24 22 / 0.06), 0 0 0 1px rgb(26 24 22 / 0.05);
   --shadow-2:
     0 1px 2px rgb(26 24 22 / 0.06), 0 8px 24px rgb(26 24 22 / 0.08), 0 0 0 1px rgb(26 24 22 / 0.06);
   --shadow-3:
     0 2px 4px rgb(26 24 22 / 0.06), 0 12px 32px rgb(26 24 22 / 0.12), 0 0 0 1px rgb(26 24 22 / 0.07);
+  --shadow-slide: 0 1px 1px rgb(26 24 22 / 0.04), 0 8px 24px rgb(26 24 22 / 0.1);
+  --shadow-lift: 0 10px 30px rgb(26 24 22 / 0.1), 0 0 0 1px rgb(26 24 22 / 0.06);
 
   /* Geometry and motion */
   --radius-chip: 6px;
@@ -102,16 +105,45 @@
   --radius-dialog: 12px;
   --radius-face: 16px;
   --radius: var(--radius-control);
+  --radius-key: 4px; /* a Kbd cap: tighter than --radius-chip on a 20px cap */
   --duration-fast: 150ms;
   --duration-arrive: 450ms;
   --ease-arrive: cubic-bezier(0.22, 1, 0.36, 1);
   --arrive-rise: 16px;
 
-  /* Component geometry */
+  /* Motion ladder (TeachDeck tokens.css --d-* / --ease-*); root-only, themes do not repeat it. */
+  --duration-instant: 90ms; /* checkbox, toggle, icon swap */
+  --duration-base: 200ms; /* indicator slides, section expand */
+  --duration-slow: 300ms; /* panel open/close, navigator reorder */
+  --duration-slide: 320ms; /* presentation slide transition */
+  --duration-reveal: 260ms; /* in-slide reveal phase */
+  --stagger: 40ms; /* per item, capped at 6 items */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-soft: cubic-bezier(0.25, 1, 0.5, 1); /* quart-out: fills */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* on-screen movement */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* exits only */
+
+  /* Component geometry (shell) */
   --sidebar-width: 220px;
   --sidebar-width-collapsed: 56px;
   --tile-height: 64px;
   --pill-height: 24px;
+
+  /* Editor chrome geometry (TeachDeck tokens.css); read by @tj/editor, never redefined there. */
+  --topbar-height: 48px; /* docked, flush, hairline below */
+  --toolbar-height: 40px;
+  --rail-width: 56px; /* icon-only insert rail */
+  --navigator-width: 212px; /* 168px thumb (16:9 = 168x94.5) + 22px gutters */
+  --navigator-width-sm: 84px; /* compact: 60px thumb */
+  --inspector-width: 268px;
+  --panel-pad: 12px; /* bars and cards; a dialog pads 24 */
+  --row-height: 32px; /* inspector rows, menu items */
+  --row-height-lg: 40px; /* list rows with an avatar/thumb */
+  --field-height: 32px;
+  --button-height-xs: 24px;
+  --button-height: 32px;
+  --button-height-lg: 36px;
+  --canvas-gap: 40px;
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -148,6 +180,7 @@
   --warning: #e0b060;
   --border: #33302a;
   --border-faint: #262420;
+  --border-strong: #45413a;
   --border-control: #7e786f;
   --input: #33302a;
   --ring: #e6866b;
@@ -169,6 +202,8 @@
     0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08);
   --shadow-3:
     0 2px 4px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.09);
+  --shadow-slide: 0 1px 1px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.45);
+  --shadow-lift: 0 10px 30px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.08);
   --radius-chip: 6px;
   --radius-control: 8px;
   --radius-card: 10px;
@@ -216,6 +251,7 @@
     --warning: #e0b060;
     --border: #33302a;
     --border-faint: #262420;
+    --border-strong: #45413a;
     --border-control: #7e786f;
     --input: #33302a;
     --ring: #e6866b;
@@ -237,6 +273,8 @@
       0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08);
     --shadow-3:
       0 2px 4px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.09);
+    --shadow-slide: 0 1px 1px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.45);
+    --shadow-lift: 0 10px 30px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.08);
     --radius-chip: 6px;
     --radius-control: 8px;
     --radius-card: 10px;
@@ -284,6 +322,7 @@
   --warning: #ffd27a;
   --border: #8a857b;
   --border-faint: #3e3a34;
+  --border-strong: #5a554d;
   --border-control: #ffffff;
   --input: #8a857b;
   --ring: #ffffff;
@@ -305,6 +344,8 @@
     0 1px 2px rgb(0 0 0 / 0.6), 0 8px 24px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.2);
   --shadow-3:
     0 2px 4px rgb(0 0 0 / 0.6), 0 12px 32px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.24);
+  --shadow-slide: 0 1px 1px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.45);
+  --shadow-lift: 0 10px 30px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.08);
   --radius-chip: 6px;
   --radius-control: 8px;
   --radius-card: 10px;
@@ -361,6 +402,7 @@
   --warning: #e8940a; /* --stage-warning */
   --border: rgb(247 246 242 / 0.1); /* --stage-hairline */
   --border-faint: rgb(247 246 242 / 0.06);
+  --border-strong: rgb(247 246 242 / 0.22);
   --border-control: #7e786f; /* 4.24:1 on the ground, 3.84:1 on the surface */
   --input: rgb(247 246 242 / 0.1);
   --ring: #d2644b;
@@ -380,6 +422,8 @@
   --shadow-2:
     0 1px 2px rgb(0 0 0 / 0.45), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(247 246 242 / 0.1);
   --shadow-3: 0 0 0 1px rgb(247 246 242 / 0.1), 0 16px 40px rgb(0 0 0 / 0.55);
+  --shadow-slide: 0 1px 1px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.5);
+  --shadow-lift: 0 10px 30px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(247 246 242 / 0.1);
   color-scheme: dark;
 }
 
@@ -412,6 +456,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-border-faint: var(--border-faint);
+  --color-border-strong: var(--border-strong);
   --color-border-control: var(--border-control);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -449,6 +494,7 @@
   --text-title--line-height: 26px;
 
   /* Radius */
+  --radius-key: var(--radius-key);
   --radius-chip: var(--radius-chip);
   --radius-control: var(--radius-control);
   --radius-card: var(--radius-card);
@@ -464,6 +510,8 @@
   --shadow-1: var(--shadow-1);
   --shadow-2: var(--shadow-2);
   --shadow-3: var(--shadow-3);
+  --shadow-slide: var(--shadow-slide);
+  --shadow-lift: var(--shadow-lift);
   --animate-arrive: tj-arrive var(--duration-arrive) var(--ease-arrive) both;
   --animate-fade-in: tj-fade-in var(--duration-fast) ease-out both;
   --animate-fade-out: tj-fade-out var(--duration-fast) ease-in both;

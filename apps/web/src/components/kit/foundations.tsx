@@ -62,16 +62,18 @@ export function Foundations() {
           </Variant>
         ))}
       </Specimen>
-      <Specimen name="Hairlines" note="Faint, standard and control borders.">
+      <Specimen name="Hairlines" note="Faint, standard, strong and control borders.">
         <div className="flex w-full flex-col gap-3">
           <Separator className="bg-border-faint" />
           <Separator className="bg-border" />
+          <Separator className="bg-border-strong" />
           <Separator className="bg-border-control" />
         </div>
       </Specimen>
-      <Specimen name="Radii" note="Chip through face, labelled in pixels.">
+      <Specimen name="Radii" note="Key through face, labelled in pixels.">
         {(
           [
+            ["Key 4px", "rounded-key"],
             ["Chip 6px", "rounded-chip"],
             ["Control 8px", "rounded-control"],
             ["Card 10px", "rounded-card"],
@@ -90,6 +92,8 @@ export function Foundations() {
             ["Shadow 1", "shadow-1"],
             ["Shadow 2", "shadow-2"],
             ["Shadow 3", "shadow-3"],
+            ["Slide", "shadow-slide"],
+            ["Lift", "shadow-lift"],
           ] as const
         ).map(([label, className]) => (
           <Variant key={label} label={label}>
