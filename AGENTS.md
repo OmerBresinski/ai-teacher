@@ -25,8 +25,8 @@ exactly as written. Setup, commands and conventions: [`README.md`](README.md).
 
 ## Writing tickets (Linear issues)
 
-Tickets are executed by implementing subagents that are **less capable than the agent writing the
-ticket** and start with an empty context. A ticket that says "add a route like the others" will be
+Tickets are picked up by a fresh session (often on a cheaper model) that starts with an **empty
+context** and none of the reading the ticket author did. A ticket that says "add a route like the others" will be
 guessed; a ticket that names the file, the function and the pattern will be built. Before writing a
 ticket, **read the code paths it touches** — never describe them from memory or by analogy:
 
@@ -46,7 +46,7 @@ ticket, **read the code paths it touches** — never describe them from memory o
 
 Always create tickets from the Linear **Agentic Task** issue template (`template: "Agentic Task"`
 in `linear_save_issue`; `linear_get_template` shows its sections) and fill every section rather
-than inventing a shape. A ticket is ready when a subagent could open the PR without asking a
+than inventing a shape. A ticket is ready when a cold session could open the PR without asking a
 single question.
 
 ### Tech debt
@@ -56,7 +56,7 @@ https://linear.app/missionsxyz/project/tech-debt-e0bb70c65305) for real findings
 part of the work in hand.
 
 File a finding there when it is a valid code-review finding (step 2 of the delivery workflow) but
-out of scope for the PR under review; when an implementing or exploring subagent finds a defect,
+out of scope for the PR under review; when the agent finds a defect,
 performance risk or maintainability problem while reading code that is not what the user asked
 for; or when the user declines a nice to have for now. Do not file anything blocking the current
 PR (fix it), product or feature ideas (they are founder decisions), or work that already
@@ -64,7 +64,7 @@ has a ticket.
 
 Create one Linear issue per finding with `project: "Tech debt"`, using the **Agentic Task**
 template to the standard above: include the exact `path:line`, the pattern file and an acceptance
-table. A Tech debt ticket is picked up cold by a subagent months later, so "we should look at X"
+table. A Tech debt ticket is picked up cold months later, so "we should look at X"
 is not a ticket. Set priority to High only for data loss, duplicate spend or a security hole;
 otherwise Medium or Low — the project takes any priority. Before creating a ticket, search Linear
 (`linear_list_issues` with `query` on the file or symbol name, not only the Tech debt project) and
@@ -88,59 +88,42 @@ asked to ship as a PR.** Runs without further prompting unless a step needs cred
 money, or mutates live infrastructure — ask once, up front, for all of those together. Work
 items that are dashboard-only or founder decisions are reported back, not faked.
 
-**The main agent never implements and never code-reviews.** Its job is to gather context (via
-`explore` subagents), decide the approach, write the brief, delegate the implementation to
-`general` subagents (step 1) and the code review to the `reviewer` subagent (step 2), and then
-run the **acceptance check**: does the result match the brief — right branch and PR title, CI
-green, every review finding fixed or declined with a stated reason, screenshots or a verified
-visual result for UI work, nothing outside the brief touched. It does not read the diff for
-quality; that is the reviewer's job and doing it twice wastes the expensive model. The only
-edits it makes itself are to the brief. The main agent runs on the most expensive model and its
-prompt is re-read on every turn, so each turn it takes has a fixed cost regardless of how little it
-does. Never spend a main-agent turn on waiting or polling (CI, deploys, `sleep`): delegate anything
-that takes more than a minute to a subagent and have it return one short result. Ask every subagent
-for a **terse final message** — PR number, branch, CI state, findings count, and anything the brief
-asked for — not a narrative; the main agent re-reads that message on every later turn of the
-session. Prefer a fresh session per feature over one long session: state lives in Linear and GitHub,
-not in the chat. If it catches itself editing source, tests, styles or docs in the working tree,
-that is the signal to stop and delegate. Reasons this rule exists:
-the main agent runs on the most expensive model, and direct edits skip the branch → PR →
-review → CI path that `master` protection depends on.
+**One agent implements; a separate agent reviews.** The main agent does the work itself —
+reads the code, decides the approach, edits, tests, opens the PR, lands it. The only thing it
+never does is code-review its own diff: that goes to the `reviewer` subagent (step 2), which runs
+on a different model and is read-only. The `general` and `explore` subagents are disabled in the
+global OpenCode config: they ran in parallel and the machine cannot take it. Do not try to spawn
+them.
 
-1. **Implement in parallel with subagents.** Split the request into independent units of work.
-   One `general` subagent per unit, each on its own branch, each opening its own PR with
-   `gh pr create` (title `<type>(<scope>): …`, with `(TEACH-n)` and a link to the issue when
+Cost discipline still applies. The main agent's prompt is re-read on every turn, so each turn has a
+fixed cost regardless of how little it does. Batch independent tool calls into one message. Never
+spend a turn polling (CI, deploys, `sleep`) — `bun run land <pr>` does the whole wait-and-merge in
+one bash call. Prefer a fresh session per feature over one long session: state lives in Linear and
+GitHub, not in the chat. Every edit goes through the branch → PR → review → CI path; never commit
+to `master` directly.
+
+1. **Implement.** One PR per independent unit of work, done sequentially — finish and land one
+   before starting the next when they touch the same files (e.g. `infra/README.md`). Open the PR
+   with `gh pr create` (title `<type>(<scope>): …`, with `(TEACH-n)` and a link to the issue when
    there is one). **Branch name:** when there is a Linear issue, the branch **must** be the
    issue's `gitBranchName` exactly as returned by `linear_get_issue` (e.g.
-   `omerbres/teach-69-packagesai-tjai-…`) — never invent, shorten or re-slug it. The main
-   session fetches it and passes it verbatim to the subagent's prompt; the subagent creates the
-   branch with `git checkout -b <gitBranchName>`. The issue ID in the branch is what Linear's
-   GitHub integration uses to attach the PR to the ticket and drive its status. Without an issue,
-   use `<type>/<short-slug>`. Serialize units that touch the same
-   files (e.g. `infra/README.md`) — merge one, rebase the next. Subagents must run
-   `bun run lint`, `bun run typecheck` and the relevant tests before opening the PR, and must not
-   merge. A fresh `git worktree` has no `node_modules`: run `bun install --frozen-lockfile` in it
-   first, or those scripts fail with `turbo: command not found`. (The commit hooks and CI still run
-   Biome, commitlint and the test suite, so a docs-only change may rely on those instead — say
-   which in the brief.) When there is a Linear issue, move it to **In Progress** and set its
-   **Assignee** to the currently authenticated Linear user (`assignee: "me"` in
+   `omerbres/teach-69-packagesai-tjai-…`) — never invent, shorten or re-slug it; create it with
+   `git checkout -b <gitBranchName>`. The issue ID in the branch is what Linear's GitHub
+   integration uses to attach the PR to the ticket and drive its status. Without an issue, use
+   `<type>/<short-slug>`. Run `bun run lint`, `bun run typecheck` and the relevant tests before
+   opening the PR. A fresh `git worktree` has no `node_modules`: run
+   `bun install --frozen-lockfile` in it first, or those scripts fail with
+   `turbo: command not found`. When there is a Linear issue, move it to **In Progress** and set
+   its **Assignee** to the currently authenticated Linear user (`assignee: "me"` in
    `linear_save_issue`) when work starts, so the ticket is never left unassigned while it is being
-   worked on.
-   The brief to each subagent meets the "Writing tickets" standard above (exact files and
-   symbols, pattern file, non-inferable conventions, traps, acceptance table, tests, branch name,
-   exact PR title); the per-area `AGENTS.md` names the conventions and skills for that area. For
-   UI work, a verified visual result is part of acceptance — say how to obtain it (which servers
-   and ports, the `GET /__test/last-magic-link` sign-in route).
-   Subagent models are set in the global OpenCode config (`general`/`explore` → GPT-5.6 Terra
-    high; `reviewer` → GPT-5.6 Luna); the main session stays on Claude Fable 5.1. Do not
-    override models per task. Require a terse final message with the PR number, branch, CI state,
-    findings count, and every result the brief requests.
+   worked on. Before touching an area, read its `AGENTS.md` and load the skills it names. For UI
+   work, a verified visual result (screenshot via the preview tools, with the
+   `GET /__test/last-magic-link` sign-in route) is part of acceptance.
 2. **Review with a separate subagent.** For every PR, launch a fresh **`reviewer`** subagent (a
-   read-only agent defined in the user's global opencode config — `edit` denied, its own model —
-   fall back to `general` only if `reviewer` is not available) that loads
-   **`thermo-nuclear-code-quality-review`** (root `.agents/skills/`) and reviews the branch
-   diff against `master`. It reports findings only; it does not edit code. Move the Linear issue
-   to **In Review** when the PR is open and the review starts.
+   read-only agent defined in the user's global opencode config — `edit` denied, GPT-5.6 Luna)
+   that loads **`thermo-nuclear-code-quality-review`** (root `.agents/skills/`) and reviews the
+   branch diff against `master`. It reports findings only; it does not edit code. Move the Linear
+   issue to **In Review** when the PR is open and the review starts.
    **Findings are posted on the GitHub PR as inline review comments**, anchored to the file and
    line they concern, in one review submission via the REST API (not `gh pr review`, which only
    takes a body):
@@ -173,14 +156,9 @@ review → CI path that `master` protection depends on.
     submitted (`comments: []`, `event: "COMMENT"`) so the PR carries the record. The subagent
     also returns the same findings as a compact list in its terse final message so step 3 can act
     on them.
-3. **Fix, push, merge.** If the review has findings, the implementing subagent fixes them
-   (resume it with its `task_id`), pushes, and the `reviewer` re-reviews only if the fix was
-   structural. With or without findings, the main agent then runs the acceptance check described
-   above. After it passes, the main agent delegates landing to one `general` subagent whose whole
-   brief is `bun run land <pr>`; the subagent returns the script's summary block verbatim and
-   nothing else. The script waits for CI, refuses unresolved review threads, rebases when `BEHIND`,
-   squash-merges, watches Vercel and both Railway services, and runs `bun run smoke:prod`. `master`
-   requires every review thread to be resolved:
+3. **Fix, push, merge.** If the review has findings, the main agent fixes them, pushes, and the
+   `reviewer` re-reviews only if the fix was structural. `master` requires every review thread to
+   be resolved:
    after a finding is fixed, or deferred with a reply that says why it is out of scope for this PR
    and names the Tech debt ticket id (the ticket alone is not a decision), resolve its thread —
    there is no `gh` command for this, use GraphQL:
@@ -192,6 +170,10 @@ review → CI path that `master` protection depends on.
    xargs -I{} gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"{}"}){thread{isResolved}}}'
    ```
 
+   Then run `bun run land <pr>` in a single bash call (allow a long timeout, ~25 min). It waits
+   for CI, refuses unresolved review threads, rebases when `BEHIND`, squash-merges, watches Vercel
+   and both Railway services, and runs `bun run smoke:prod`, printing one summary block. Do not
+   poll any of those by hand.
 4. **Watch the deploys.** A merge to `master` deploys Vercel (web) and Railway (api, worker).
    The latest Production Vercel deployment must be `Ready`; each Railway service must be `SUCCESS`,
    or `SKIPPED` when the change is outside the service's watch paths, e.g. docs-only. `-p` is the
