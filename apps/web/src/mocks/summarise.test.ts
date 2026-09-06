@@ -45,6 +45,17 @@ describe("summarise", () => {
     expect(bodyImage?.type === "image" && bodyImage.src).toBe(dataUrl);
   });
 
+  it("the cover is a deep copy: mutating it never reaches the stored document", () => {
+    const body = lessonWithImage();
+    const summary = summarise({ body });
+    const element = summary.cover?.elements[0];
+    if (!element) throw new Error("cover has no elements");
+    element.x = -999;
+    (element as { extra?: string }).extra = "mutated";
+    expect(body.slides[0]?.elements[0]?.x).not.toBe(-999);
+    expect("extra" in (body.slides[0]?.elements[0] ?? {})).toBe(false);
+  });
+
   it("a worksheet counts blocks and has no cover", () => {
     const body = demoWorksheet();
     const summary = summarise({ body, deletedAt: "2026-09-06T00:00:00.000Z" });

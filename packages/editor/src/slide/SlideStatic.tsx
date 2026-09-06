@@ -50,7 +50,9 @@ export type SlideFluidProps = {
 /**
  * `SlideStatic` for a box whose width the caller does not know: a card thumbnail, a list row, a
  * series stack. The wrapper is a 16:9 inline-size container and the slide scales with
- * `100cqw / 960` — pure CSS, no ResizeObserver, no effect (ADR 0022 §4, `vercel-react-best-practices`).
+ * `calc(100cqw / 960px)` — a length divided by a length is a number, which `scale()` accepts
+ * (CSS Values 4; Chromium 125+, Safari 17.4+, Firefox 127+). Pure CSS: no ResizeObserver, no
+ * effect (ADR 0022 §4). The kit e2e asserts the computed transform in a real browser.
  */
 export function SlideFluid({ slide, theme, className }: SlideFluidProps) {
   return (
@@ -72,7 +74,7 @@ export function SlideFluid({ slide, theme, className }: SlideFluidProps) {
           left: 0,
           width: SLIDE_W,
           height: SLIDE_H,
-          transform: `scale(calc(100cqw / ${SLIDE_W}))`,
+          transform: `scale(calc(100cqw / ${SLIDE_W}px))`,
           transformOrigin: "top left",
         }}
       >

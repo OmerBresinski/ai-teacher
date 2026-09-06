@@ -321,5 +321,20 @@ test.describe("library shell", () => {
       .filter({ hasText: "The water cycle" })
       .first();
     await expect(waterCycle).toHaveAttribute("data-slide-mode", "thumb");
+    // The fluid thumb really scales: the 960pt slide's transform resolves to a number below 1 and
+    // the scaled slide sits inside its container's width (a rejected `calc()` would leave it 960px).
+    const fluid = page.locator("[data-slide-fluid]").first();
+    const metrics = await fluid.evaluate((el) => {
+      const inner = el.firstElementChild as HTMLElement;
+      const matrix = new DOMMatrixReadOnly(getComputedStyle(inner).transform);
+      return {
+        scale: matrix.a,
+        containerWidth: el.getBoundingClientRect().width,
+        slideWidth: inner.getBoundingClientRect().width,
+      };
+    });
+    expect(metrics.scale).toBeGreaterThan(0);
+    expect(metrics.scale).toBeLessThan(1);
+    expect(Math.abs(metrics.slideWidth - metrics.containerWidth)).toBeLessThan(2);
   });
 });

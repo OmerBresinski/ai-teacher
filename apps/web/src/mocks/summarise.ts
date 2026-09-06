@@ -22,14 +22,13 @@ export type StoredDocument = {
 export function coverOf(lesson: Lesson): Slide | null {
   const first = lesson.slides[0];
   if (!first) return null;
-  return {
-    ...first,
-    elements: first.elements.map((element) =>
-      element.type === "image" && element.src.startsWith("data:")
-        ? { ...element, src: "" }
-        : element,
-    ),
-  };
+  // A deep copy: a summary leaves the store through the list and series queries, and a caller
+  // mutating a nested element must never reach the stored document.
+  const cover = structuredClone(first);
+  for (const element of cover.elements) {
+    if (element.type === "image" && element.src.startsWith("data:")) element.src = "";
+  }
+  return cover;
 }
 
 /**

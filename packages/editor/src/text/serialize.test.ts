@@ -84,6 +84,68 @@ const FIXTURES: Record<string, RichDoc> = {
     ],
   },
   hardBreak: { type: "doc", content: [p([t("a"), { type: "hardBreak" }, t("b")])] },
+  markedHardBreak: {
+    type: "doc",
+    content: [
+      p([
+        t("a", [{ type: "bold" }]),
+        { type: "hardBreak", marks: [{ type: "bold" }] },
+        t("b", [{ type: "bold" }]),
+      ]),
+    ],
+  },
+  markRuns: {
+    type: "doc",
+    content: [
+      p([
+        t("a", [{ type: "bold" }]),
+        t("b", [{ type: "bold" }, { type: "italic" }]),
+        t("c", [{ type: "bold" }]),
+        t("d", [{ type: "italic" }]),
+        t("e"),
+        t("f", [{ type: "italic" }]),
+      ]),
+    ],
+  },
+  adjacentLinks: {
+    type: "doc",
+    content: [
+      p([
+        t("l", [{ type: "link", attrs: { href: "https://x.y" } }]),
+        t("m", [{ type: "link", attrs: { href: "https://x.z" } }]),
+        t("n", [{ type: "link", attrs: { href: "https://x.z" } }]),
+      ]),
+    ],
+  },
+  linkAttrs: {
+    type: "doc",
+    content: [
+      p([
+        t("nulls", [
+          {
+            type: "link",
+            attrs: { href: "https://x.y", target: null, rel: null, class: null, title: "T" },
+          },
+        ]),
+        t("full", [
+          {
+            type: "link",
+            attrs: {
+              href: "https://x.y",
+              target: "_self",
+              rel: "nofollow",
+              class: "c",
+              title: null,
+            },
+          },
+        ]),
+      ]),
+    ],
+  },
+  colourNull: {
+    type: "doc",
+    content: [p([t("t", [{ type: "textStyle", attrs: { color: null } }])])],
+  },
   ordered: {
     type: "doc",
     content: [
@@ -127,6 +189,13 @@ describe("serializeDoc matches @tiptap/html byte for byte", () => {
       expect(serializeDoc(doc)).toBe(tiptap(doc));
     });
   }
+
+  test("an empty text node — which ProseMirror refuses outright — serialises to nothing", () => {
+    expect(() => tiptap({ type: "doc", content: [p([t("")])] })).toThrow(/Empty text/);
+    expect(serializeDoc({ type: "doc", content: [p([t("", [{ type: "bold" }]), t("x")])] })).toBe(
+      "<p><strong></strong>x</p>",
+    );
+  });
 
   test("an unknown node type throws so renderDocHTML can fall back", () => {
     expect(() =>
