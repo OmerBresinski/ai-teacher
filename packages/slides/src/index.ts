@@ -15,6 +15,8 @@ export * from "./fonts";
 export * from "./geometry";
 export * from "./grid";
 export * from "./layouts";
+export * from "./materialise";
 export * from "./metrics";
+export * from "./specs";
 export * from "./text-style";
 export * from "./themes";
