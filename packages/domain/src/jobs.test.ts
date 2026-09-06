@@ -254,6 +254,38 @@ describe("JobResultSchema (ADR 0025 §19)", () => {
     expect(proposal({ target: { blockId: "b1" }, block })).toBe(true);
   });
 
+  test("question and notes ride only on whole-slide proposals; notes may be null to clear", () => {
+    const element = {
+      id: "e1",
+      type: "text",
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+      doc: { type: "doc" },
+      style: { preset: "body" },
+    };
+    const whole = (extra: Record<string, unknown>) =>
+      ProposalSchema.safeParse({
+        target: { slideId: "s1" },
+        element,
+        generatedFrom: provenance,
+        ...extra,
+      }).success;
+    expect(whole({ notes: null })).toBe(true);
+    expect(whole({ notes: "Say this.", question: { type: "true-false", correct: true } })).toBe(
+      true,
+    );
+    expect(
+      ProposalSchema.safeParse({
+        target: { slideId: "s1", elementId: "e1" },
+        element,
+        generatedFrom: provenance,
+        notes: null,
+      }).success,
+    ).toBe(false);
+  });
+
   test("rejects an unknown job, a lesson.plan result, and unknown fields", () => {
     expect(JobResultSchema.safeParse({ job: "lesson.plan" }).success).toBe(false);
     expect(

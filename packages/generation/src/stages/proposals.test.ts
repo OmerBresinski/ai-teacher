@@ -217,13 +217,39 @@ describe("proposeFor", () => {
       ),
     ).toBe(true);
     expect(proposals.every((p) => p.generatedFrom.promptVersion === "regenerate.v1")).toBe(true);
-    // The proposed elements together form a valid slide.
+    // Every proposal of the slide carries the same fresh question and notes, and together they
+    // form a valid slide whose answer data names the new element ids.
+    const question = proposals[0]?.question;
+    expect(question?.type).toBe("multiple-choice");
+    expect(proposals.every((p) => p.question === question && p.notes === mcSpec.notes)).toBe(true);
     const slide = {
       id: "s-mc",
       kind: "multiple-choice" as const,
       elements: proposals.map((p) => p.element as SlideElement),
+      question,
     };
     expect(SlideSchema.safeParse(slide).success).toBe(true);
+    for (const p of proposals) expect(ProposalSchema.safeParse(p).success).toBe(true);
+    // A re-derived slide without notes clears the old ones explicitly.
+    const cleared = await proposeFor(
+      [{ slideId: "s-mc" }],
+      { lesson },
+      recordingDeps(createFakeAi({ script: [json({ ...mcSpec, notes: undefined })], usage })),
+    );
+    expect(cleared.proposals.every((p) => p.notes === null)).toBe(true);
+  });
+
+  test("an element target on a question slide is widened to the whole slide (answer data names ids)", async () => {
+    const { lesson } = fixturePair();
+    const ai = createFakeAi({ script: [json(mcSpec)], usage });
+    const { proposals } = await proposeFor(
+      [{ slideId: "s-mc", elementId: "o2" }],
+      { lesson, changedFactIds: ["q1"] },
+      recordingDeps(ai),
+    );
+    expect(ai.calls).toHaveLength(1);
+    expect(proposals.length).toBeGreaterThan(1);
+    expect(proposals.every((p) => p.target.elementId === undefined && p.question)).toBe(true);
   });
 
   test("a slide-only target subsumes element targets on the same slide (one call)", async () => {
