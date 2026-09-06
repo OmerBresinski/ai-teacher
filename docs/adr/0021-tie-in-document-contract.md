@@ -97,3 +97,11 @@ Two facts in TeachDeck's model need a decision rather than a copy:
 `packages/domain/src/documents/` as the subpath `@tj/domain/documents`; the `objects/lesson.ts`
 stub stays for the persistence row. The three pure values `schema.ts` imported (`MAX_CRITERIA`,
 the word-search size limits, `normaliseHref`) moved with it.
+
+## Amendment (2026-09-06, ADR 0024)
+
+The three questions deferred above are answered by ADR 0024: the row shape is one `documents`
+tenant table with `kind` + `body jsonb` and promoted list columns (§3); the list summary shape is
+the `DocumentSummary` produced by a single `summarise()` in `@tj/domain` (§3), replacing the
+web-local one of §6; and `migrate()` runs on write, so storage is always `CURRENT_VERSION` (§4).
+`Lesson.brief` is added as an optional product field under the §2 rule (no version bump).
