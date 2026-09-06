@@ -1,5 +1,4 @@
 import { Pencil } from "lucide-react";
-import { useEffect, useRef } from "react";
 
 import { cn } from "../lib/cn";
 import { useInlineRename } from "../lib/use-inline-rename";
@@ -26,28 +25,7 @@ function PageTitle({
   className,
 }: PageTitleProps) {
   const rename = useInlineRename(children, { onCommit: onCommit ?? (() => {}) });
-  const headingRef = useRef<HTMLHeadingElement>(null);
   const Heading = as;
-
-  useEffect(() => {
-    if (!onCommit) return;
-    const heading = headingRef.current;
-    if (!heading) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "F2") return;
-      event.preventDefault();
-      event.stopPropagation();
-      rename.start();
-    };
-
-    heading.addEventListener("dblclick", rename.start);
-    heading.addEventListener("keydown", onKeyDown);
-    return () => {
-      heading.removeEventListener("dblclick", rename.start);
-      heading.removeEventListener("keydown", onKeyDown);
-    };
-  }, [onCommit, rename]);
 
   if (!onCommit) {
     return (
@@ -69,7 +47,13 @@ function PageTitle({
 
   return (
     <div className={cn("flex min-w-0 items-center gap-1", className)}>
-      <Heading ref={headingRef} className="min-w-0" tabIndex={0}>
+      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: F2 / double-click start rename; the pencil button is the pointer/AT path. */}
+      <Heading
+        className="min-w-0"
+        tabIndex={0}
+        onDoubleClick={rename.start}
+        onKeyDown={rename.onCardKeyDown}
+      >
         <Display as="span" size="lg" className="min-w-0 truncate">
           {children}
         </Display>

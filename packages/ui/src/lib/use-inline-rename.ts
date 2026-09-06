@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 export type UseInlineRenameOptions = {
   onCommit: (title: string) => void;
@@ -10,14 +10,7 @@ export type UseInlineRenameOptions = {
 function useInlineRename(initial: string, { onCommit, onDone }: UseInlineRenameOptions) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(initial);
-  const inputRef = useRef<HTMLInputElement>(null);
   const cancelled = useRef(false);
-
-  useEffect(() => {
-    if (!editing) return;
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, [editing]);
 
   const done = () => {
     setEditing(false);
@@ -42,7 +35,9 @@ function useInlineRename(initial: string, { onCommit, onDone }: UseInlineRenameO
     editing,
     start,
     inputProps: {
-      ref: inputRef,
+      // The input mounts when editing starts, so `autoFocus` + select-on-focus replace an effect.
+      autoFocus: true,
+      onFocus: (event: React.FocusEvent<HTMLInputElement>) => event.currentTarget.select(),
       value: draft,
       onChange: (event: React.ChangeEvent<HTMLInputElement>) => setDraft(event.target.value),
       onBlur: commit,
