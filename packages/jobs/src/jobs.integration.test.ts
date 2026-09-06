@@ -364,6 +364,33 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
       });
     });
 
+    test("a shutdown that lands before the handler starts never runs it", async () => {
+      const jobId = newId<JobId>();
+      const ac = new AbortController();
+      let calls = 0;
+      const reg: JobRegistry = {
+        ping: async () => {
+          calls += 1;
+        },
+        "ai.ping": aiPingJob,
+        "lesson.plan": lessonPlanJob,
+        "lesson.cascade": lessonCascadeJob,
+        "lesson.regenerate": lessonRegenerateJob,
+      };
+      const run = runJob(ctx, "ping", reg, fakeJob(jobId, 1), {
+        logger,
+        shutdown: ac.signal,
+        deps: undefined,
+      });
+      // Abort synchronously after the call: `runJob` is still awaiting the `started` write.
+      ac.abort("shutdown");
+      const outcome = await run;
+      expect(calls).toBe(0);
+      expect(outcome).toMatchObject({ status: "failed", event: "failed" });
+      const last = (await eventsFor(jobId)).at(-1);
+      expect(last?.type === "failed" && last.error?.retryable).toBe(true);
+    });
+
     test("a stored payload that no longer validates is dead-lettered as non-retryable", async () => {
       const jobId = newId<JobId>();
       const job = fakeJob(jobId, 0);

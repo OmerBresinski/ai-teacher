@@ -32,8 +32,8 @@ interface FakeOptions {
   checks?: unknown[][];
   /** What `git branch --show-current` answers (default: the PR's own branch). */
   currentBranch?: string;
-  /** A git invocation that exits 1, e.g. `["rebase", "origin/master"]`. */
-  failGit?: string[];
+  /** Git invocations that exit 1, e.g. `[["rebase", "origin/master"]]`. */
+  failGit?: string[][];
 }
 
 function fakeDeps(options: FakeOptions = {}): {
@@ -121,7 +121,8 @@ function fakeDeps(options: FakeOptions = {}): {
       git: async (args) => {
         calls.git.push(args);
         if (args[0] === "branch") return ok(options.currentBranch ?? "chore/land-pr-script");
-        if (options.failGit && args.join(" ") === options.failGit.join(" ")) {
+        if (args[0] === "rev-parse") return ok("deadbeef");
+        if (options.failGit?.some((f) => f.join(" ") === args.join(" "))) {
           return { exitCode: 1, stdout: "", stderr: "CONFLICT" };
         }
         return ok();
@@ -183,7 +184,7 @@ describe("land-pr", () => {
     const fake = fakeDeps({
       states: ["BEHIND"],
       currentBranch: "fix/next-thing",
-      failGit: ["rebase", "origin/master"],
+      failGit: [["rebase", "origin/master"]],
     });
     await expect(landPr(42, {}, fake.deps)).rejects.toThrow("git rebase origin/master");
     expect(fake.calls.git.slice(-2)).toEqual([
@@ -191,6 +192,28 @@ describe("land-pr", () => {
       ["checkout", "fix/next-thing"],
     ]);
     expect(fake.calls.git.some((args) => args[0] === "push")).toBe(false);
+  });
+
+  test("a failed restore does not mask the rebase error", async () => {
+    const fake = fakeDeps({
+      states: ["BEHIND"],
+      currentBranch: "fix/next-thing",
+      failGit: [
+        ["rebase", "origin/master"],
+        ["checkout", "fix/next-thing"],
+      ],
+    });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("git rebase origin/master");
+  });
+
+  test("a detached HEAD is restored by commit", async () => {
+    const fake = fakeDeps({ states: ["BEHIND", "CLEAN"], currentBranch: "" });
+    await landPr(42, {}, fake.deps);
+    expect(fake.calls.git.slice(0, 2)).toEqual([
+      ["branch", "--show-current"],
+      ["rev-parse", "HEAD"],
+    ]);
+    expect(fake.calls.git.at(-1)).toEqual(["checkout", "--detach", "deadbeef"]);
   });
 
   test("stops after two rebase rounds", async () => {
