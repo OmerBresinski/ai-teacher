@@ -308,20 +308,33 @@ async function statusChecks(pr: number, deps: LandPrDeps): Promise<StatusCheck[]
     : [];
 }
 
+const FAILED_CONCLUSIONS = new Set([
+  "FAILURE",
+  "ERROR",
+  "CANCELLED",
+  "TIMED_OUT",
+  "ACTION_REQUIRED",
+  "STARTUP_FAILURE",
+]);
+
 /**
- * True while GitHub has not finished computing the PR's checks: a check run without a conclusion,
- * a status context still `PENDING`/`EXPECTED`, a placeholder with no name or status (GitHub lists
- * one for a run it has queued but not yet attached to the PR), or no checks at all. `gh pr checks
- * --watch` returns immediately in the last two cases, which is why `BLOCKED` right after a push
- * means "not yet", not "never".
+ * True while a `BLOCKED` PR may still become mergeable on its own: nothing in the rollup has
+ * failed. Right after a push GitHub reports `BLOCKED` with checks that are queued, that are
+ * listed as a nameless placeholder, or that are simply absent while only Vercel's contexts have
+ * arrived (observed on PRs #95 and #96) — `gh pr checks --watch` returns immediately in all three
+ * cases. A rollup that is entirely green but still `BLOCKED` therefore means a required check has
+ * not attached yet, and the caller waits (bounded by its deadline). A failed or errored check is
+ * final and reported at once.
  */
 export function hasPendingChecks(checks: StatusCheck[]): boolean {
-  if (checks.length === 0) return true;
-  return checks.some((check) => {
-    if (typeof check.conclusion === "string") return false;
-    if (typeof check.state === "string")
-      return check.state === "PENDING" || check.state === "EXPECTED";
-    return check.status !== "COMPLETED";
+  return !checks.some((check) => {
+    const verdict =
+      typeof check.conclusion === "string"
+        ? check.conclusion
+        : typeof check.state === "string"
+          ? check.state
+          : null;
+    return verdict !== null && FAILED_CONCLUSIONS.has(verdict);
   });
 }
 

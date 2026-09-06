@@ -282,16 +282,19 @@ describe("land-pr", () => {
     expect(fake.calls.gh.filter((args) => args[0] === "api")).toHaveLength(3);
   });
 
-  test("classifies check runs, status contexts and placeholders as pending or settled", () => {
+  test("treats a BLOCKED rollup as pending unless something has failed", () => {
     expect(hasPendingChecks([])).toBe(true);
     expect(hasPendingChecks([{ name: null, conclusion: null, status: null }])).toBe(true);
     expect(hasPendingChecks([{ name: "test", status: "QUEUED", conclusion: null }])).toBe(true);
     expect(hasPendingChecks([{ name: "ctx", state: "PENDING" }])).toBe(true);
-    expect(hasPendingChecks([{ name: "ctx", state: "SUCCESS" }])).toBe(false);
-    expect(hasPendingChecks([{ name: "test", conclusion: "FAILURE" }])).toBe(false);
+    // Only Vercel's contexts have arrived; the required CI checks have not attached yet.
+    expect(hasPendingChecks([{ context: "Vercel", state: "SUCCESS" }])).toBe(true);
     expect(hasPendingChecks([{ name: "test", status: "COMPLETED", conclusion: "SUCCESS" }])).toBe(
-      false,
+      true,
     );
+    expect(hasPendingChecks([{ name: "test", conclusion: "FAILURE" }])).toBe(false);
+    expect(hasPendingChecks([{ name: "test", conclusion: "CANCELLED" }])).toBe(false);
+    expect(hasPendingChecks([{ context: "ctx", state: "ERROR" }])).toBe(false);
   });
 
   test("reads pageInfo defensively", () => {
