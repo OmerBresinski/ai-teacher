@@ -14,6 +14,7 @@ test.describe("/kit (Vite development build)", () => {
   test("renders the gallery, tracks sections, passes axe in every explicit theme, and captures references", async ({
     signedInPage: { page },
   }) => {
+    await expect(page.getByRole("link", { name: "Kit" })).toBeVisible();
     await page.goto("/kit");
     await expect(page.getByRole("heading", { level: 1, name: "The kit" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link")).toHaveCount(
