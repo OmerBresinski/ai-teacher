@@ -100,6 +100,7 @@ export function LessonEditor({
       beginTransaction: history.beginTransaction,
       endTransaction: history.endTransaction,
       rollbackTransaction: history.rollbackTransaction,
+      flushTransactions: history.flushTransactions,
       isTransactionInFlight: history.isTransactionInFlight,
     }),
     [
@@ -111,6 +112,7 @@ export function LessonEditor({
       history.beginTransaction,
       history.endTransaction,
       history.rollbackTransaction,
+      history.flushTransactions,
       history.isTransactionInFlight,
     ],
   );

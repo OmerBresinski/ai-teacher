@@ -54,29 +54,32 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
   }, [slide, lesson.slides, lesson.themeId]);
 
   // The transaction follows the committed open state: opened in an effect (never during render),
-  // and rolled back if the dialog unmounts with it still open.
+  // and rolled back if the dialog unmounts with it still open. Opening the dialog first commits
+  // whatever else was in flight — a toolbar scrub still inside its idle window — so the browse is
+  // the only open transaction and Cancel can never discard someone else's edit.
   const historyRef = useRef(history);
   historyRef.current = history;
-  const inTx = useRef(false);
+  const tx = useRef<number | null>(null);
   useEffect(() => {
     if (!open) return;
-    historyRef.current.beginTransaction();
-    inTx.current = true;
+    const h = historyRef.current;
+    h.flushTransactions();
+    tx.current = h.beginTransaction();
     return () => {
-      if (inTx.current) historyRef.current.rollbackTransaction();
-      inTx.current = false;
+      if (tx.current !== null) h.rollbackTransaction(tx.current);
+      tx.current = null;
     };
   }, [open]);
 
   const setTheme = (id: string) => history.dispatch(reducers.setTheme, id);
   const done = () => {
-    if (inTx.current) history.endTransaction();
-    inTx.current = false;
+    if (tx.current !== null) history.endTransaction(tx.current);
+    tx.current = null;
     onClose();
   };
   const cancel = () => {
-    if (inTx.current) history.rollbackTransaction();
-    inTx.current = false;
+    if (tx.current !== null) history.rollbackTransaction(tx.current);
+    tx.current = null;
     onClose();
   };
 

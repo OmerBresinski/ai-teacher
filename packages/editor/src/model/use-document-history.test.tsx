@@ -168,6 +168,38 @@ describe("useDocumentHistory", () => {
     expect(result.current.lesson).toBe(before);
   });
 
+  test("a stale tokened end is ignored; flushTransactions commits everything open", () => {
+    const { result, onChange } = setup();
+    const before = result.current.lesson;
+    const sid = slideId(before);
+    const eid = elementId(before);
+    let scrub = 0;
+    act(() => {
+      scrub = result.current.beginTransaction();
+      result.current.dispatch(r.transformElements, sid, [eid], { dx: 5 });
+    });
+    // The teacher moves on (opens a dialog): everything in flight commits as one step.
+    act(() => result.current.flushTransactions());
+    expect(result.current.canUndo).toBe(true);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    // The dialog opens its own transaction; the scrub's idle timer fires late.
+    let browse = 0;
+    act(() => {
+      browse = result.current.beginTransaction();
+      result.current.dispatch(r.setTheme, "beacon");
+      result.current.endTransaction(scrub);
+    });
+    expect(result.current.isTransactionInFlight()).toBe(true);
+    expect(result.current.lesson?.themeId).toBe("beacon");
+    // A rollback with a stale token is ignored; with the live one it restores the snapshot.
+    act(() => result.current.rollbackTransaction(scrub));
+    expect(result.current.lesson?.themeId).toBe("beacon");
+    act(() => result.current.rollbackTransaction(browse));
+    expect(result.current.lesson?.themeId).toBe(before?.themeId);
+    expect(result.current.isTransactionInFlight()).toBe(false);
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
   test("nested transactions commit once, at the outermost end", () => {
     const { result } = setup();
     const before = result.current.lesson;

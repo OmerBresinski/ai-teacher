@@ -32,7 +32,7 @@ function harness(initial: RichDoc | undefined = para("")) {
       state.doc = d;
     }),
     writeExplanation: mock(() => {}),
-    beginTransaction: mock(() => {}),
+    beginTransaction: mock(() => 1),
     endTransaction: mock(() => {}),
     exitTextEdit: mock(() => {}),
     exitExplanationEdit: mock(() => {}),

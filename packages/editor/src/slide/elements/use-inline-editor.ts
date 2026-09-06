@@ -65,7 +65,7 @@ export function useInlineEditor({
 
   const session = useEditSession({
     beginTransaction: () => hooksRef.current?.beginTransaction(),
-    endTransaction: () => hooksRef.current?.endTransaction(),
+    endTransaction: (token) => hooksRef.current?.endTransaction(token),
   });
   const sessionRef = useRef(session);
   sessionRef.current = session;
