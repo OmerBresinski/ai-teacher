@@ -16,8 +16,8 @@ reference; nothing is pasted from it without reading the file it came from.
 ## Constraints that override the skills
 
 - **ADR 0022 §2 — the twin rule.** Where `@tj/ui` has a Radix twin, use it. The editor kit
-  (`src/kit/`) holds only geometry-owning chrome with no twin (Panel, Rail, Segmented, NumberInput,
-  Color, ZoomControl). TeachDeck's `components/ui2/floating.ts` is never ported: Radix owns the
+  (`src/kit/`, created by the present-mode ticket TEACH-101; not yet present) will hold only
+  geometry-owning chrome with no twin (Panel, Rail, Segmented, NumberInput, Color, ZoomControl). TeachDeck's `components/ui2/floating.ts` is never ported: Radix owns the
   one floating layer. A `@tj/ui` surface opened from the present-mode stage carries
   `className="tj-stage"` (`tooltipClassName` / `contentClassName` on `IconButton` / `Tooltip`).
 - **ADR 0022 §4 — TanStack Query is the only store.** No `zustand`, `zundo`, `immer`-as-store or
