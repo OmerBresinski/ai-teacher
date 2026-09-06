@@ -12,13 +12,16 @@ import type { Id, Lesson, Slide } from "@tj/domain/documents";
 import { FIT_VERSION } from "../model/themes";
 import { type MeasureInput, type Measurer, textPartsOf } from "./reflow";
 
-/** The auto-height text boxes on a slide, with the ruler input each one needs. */
+/**
+ * The auto-height text boxes on a slide, with the ruler input each one needs. Option cards count:
+ * the engine treats them as auto-height (`textPartsOf`) and grows them at render time like a text
+ * box, so a deck whose only stale slide is a question with overlong answers must be flagged too.
+ */
 const growable = (slide: Slide) =>
   slide.elements.flatMap((el) => {
-    if (el.type !== "text" && el.type !== "gap-text") return [];
-    if (el.style.autoHeight === false) return [];
+    if (el.type !== "text" && el.type !== "gap-text" && el.type !== "option") return [];
     const parts = textPartsOf(el, slide);
-    if (!parts) return [];
+    if (!parts?.autoHeight) return [];
     return [
       {
         el,

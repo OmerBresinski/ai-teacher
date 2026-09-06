@@ -7,6 +7,7 @@ import { docFromText, newLesson } from "../model/factories";
 import { FIT_VERSION } from "../model/themes";
 import { useDocumentHistory } from "../model/use-document-history";
 import type { Measurer } from "./reflow";
+import { tidySlideReducer } from "./tidy";
 import {
   createRunGate,
   type FitMigrationDeps,
@@ -76,6 +77,7 @@ function setup(lesson: Lesson) {
     dispatch: hook.result.current.dispatch as FitMigrationDeps["dispatch"],
     beginTransaction: hook.result.current.beginTransaction,
     endTransaction: hook.result.current.endTransaction,
+    rollbackTransaction: hook.result.current.rollbackTransaction,
     isIdle: () => true,
     measurer: () => flatRuler,
     warm: () => {},
@@ -143,6 +145,66 @@ describe("runFitMigration", () => {
     expect(read().fitVersion).toBe(0);
   });
 
+  test("a tidy that throws rolls everything back and leaves the lesson unstamped", () => {
+    const { hook, read, deps } = setup(stale([brokenSlide("b"), brokenSlide("c")]));
+    const before = read();
+    // The second slide's tidy throws; the first is already dispatched inside the transaction.
+    const base = deps();
+    let tidies = 0;
+    const explosive: FitMigrationDeps["dispatch"] = (reducer, ...args) => {
+      if ((reducer as unknown) === tidySlideReducer && ++tidies === 2)
+        throw new Error("ruler broke");
+      return base.dispatch(reducer, ...args);
+    };
+    expect(() => act(() => void runFitMigration(deps({ dispatch: explosive })))).toThrow(
+      "ruler broke",
+    );
+    // The rollback restores the snapshot (slides by identity); the un-stamp is a fresh silent write.
+    expect(read().slides).toEqual(before.slides);
+    expect(read().slides[0]).toBe(before.slides[0]);
+    expect(read().fitVersion).toBe(0);
+    expect(hook.result.current.canUndo).toBe(false);
+    expect(hook.result.current.isTransactionInFlight()).toBe(false);
+  });
+
+  test("a stale deck whose only fault is an overlong option card is flagged and tidied", () => {
+    const options: Slide = {
+      id: "q",
+      kind: "multiple-choice",
+      elements: [
+        {
+          id: "stem",
+          type: "text",
+          x: 58,
+          y: 43,
+          w: 844,
+          h: 60,
+          doc: docFromText("Which is it?"),
+          style: { preset: "heading", autoHeight: true },
+        },
+        {
+          id: "o1",
+          type: "option",
+          x: 58,
+          y: 140,
+          w: 400,
+          h: 60,
+          doc: docFromText("A very long answer"),
+        },
+        { id: "o2", type: "option", x: 58, y: 210, w: 400, h: 60, doc: docFromText("Another") },
+      ],
+    };
+    const { read, deps } = setup(stale([options]));
+    // Every option needs 120pt: o1 grows into o2.
+    const ruler: Measurer = (input) => (input.role === "option" ? 120 : 1);
+    let out: ReturnType<typeof runFitMigration> | undefined;
+    act(() => {
+      out = runFitMigration(deps({ measurer: () => ruler }));
+    });
+    expect(out).toEqual({ ran: true, tidied: 1 });
+    expect(read().fitVersion).toBe(FIT_VERSION);
+  });
+
   test("never tidies a continuation slide the tidy itself added (ids captured up front)", () => {
     // A tall list on a flat ruler never splits; the plan is fixed before any tidy runs regardless.
     const { read, deps } = setup(stale([brokenSlide("b")]));
@@ -168,6 +230,7 @@ describe("useFitMigration", () => {
             dispatch: hook.result.current.dispatch as FitMigrationDeps["dispatch"],
             beginTransaction: hook.result.current.beginTransaction,
             endTransaction: hook.result.current.endTransaction,
+            rollbackTransaction: hook.result.current.rollbackTransaction,
             isIdle: () => {
               attempts += 1;
               return idle;
@@ -201,6 +264,7 @@ describe("useFitMigration", () => {
             dispatch: hook.result.current.dispatch as FitMigrationDeps["dispatch"],
             beginTransaction: hook.result.current.beginTransaction,
             endTransaction: hook.result.current.endTransaction,
+            rollbackTransaction: hook.result.current.rollbackTransaction,
             isIdle: () => {
               attempts += 1;
               return false;

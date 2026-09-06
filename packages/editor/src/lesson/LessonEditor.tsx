@@ -170,6 +170,7 @@ export function LessonEditor({
       dispatch: h.dispatch as FitMigrationDeps["dispatch"],
       beginTransaction: h.beginTransaction,
       endTransaction: h.endTransaction,
+      rollbackTransaction: h.rollbackTransaction,
       isIdle: () => {
         const s = session.read();
         return (

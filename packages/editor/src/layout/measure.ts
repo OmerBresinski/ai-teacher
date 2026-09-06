@@ -50,25 +50,31 @@ export async function whenFontsReady(): Promise<void> {
 type Entry = { height: number };
 let cache = new WeakMap<RichDoc, Map<string, Entry>>();
 
-function cacheKey(
-  input: MeasureInput,
-  size: number,
-  lineHeight: number,
-  family: string,
-  weight: number,
-): string {
+/** Every resolved metric that moves a line break or a line box. */
+type TypeMetrics = {
+  fontSize: number;
+  lineHeight: number;
+  fontFamily: string;
+  fontWeight: number;
+  letterSpacing: string;
+  textTransform?: string;
+};
+
+function cacheKey(input: MeasureInput, size: number, m: TypeMetrics): string {
   return [
     fontSignature(),
     Math.round(input.width * 100) / 100,
     Math.round(input.inset * 100) / 100,
     Math.round(input.chrome * 100) / 100,
     size,
-    lineHeight,
-    weight,
+    m.lineHeight,
+    m.fontWeight,
+    m.letterSpacing,
+    m.textTransform ?? "",
     input.preset,
     input.role ?? "",
     input.style?.align ?? "",
-    family,
+    m.fontFamily,
   ].join("|");
 }
 
@@ -184,7 +190,7 @@ export function measureMany(inputs: MeasureInput[], theme: Theme): number[] {
     if (!input) continue;
     const r = resolveTextStyle(input.style, theme, input.preset, input.role);
     const size = input.fontSize ?? r.fontSize;
-    const key = cacheKey(input, size, r.lineHeight, r.fontFamily, r.fontWeight);
+    const key = cacheKey(input, size, r);
     const hit = cache.get(input.doc)?.get(key);
     if (hit) {
       results[i] = hit.height;

@@ -4,6 +4,7 @@ import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
 import {
   fitMigrationMessage,
+  fitVersionOf,
   measureInputsOf,
   planFitMigration,
   renderedHeights,
@@ -52,6 +53,8 @@ export type FitMigrationDeps = {
   ) => ReturnType<R> | undefined;
   beginTransaction: () => number;
   endTransaction: (token?: number) => void;
+  /** Abandon the open transaction: nothing recorded, the snapshot restored. */
+  rollbackTransaction: (token?: number) => void;
   /** False puts the run off: something of the teacher's is in flight. */
   isIdle: () => boolean;
   /** Injected in tests; the defaults are the DOM ruler. */
@@ -89,8 +92,11 @@ export function runFitMigration(deps: FitMigrationDeps): FitMigrationOutcome {
   // Stamped first, and outside the undo history: written before the transaction it is inside the
   // snapshot the transaction restores, so undo gives the teacher their layout back while the app
   // keeps the fact that it has looked.
+  const previousVersion = fitVersionOf(lesson);
   dispatch(reducers.setFitVersion, plan.version);
 
+  // All or nothing: a tidy that throws rolls every slide back and un-stamps the lesson, so a
+  // half-migrated deck is never marked current and the next open tries again.
   let tidied = 0;
   const token = deps.beginTransaction();
   try {
@@ -98,9 +104,12 @@ export function runFitMigration(deps: FitMigrationDeps): FitMigrationOutcome {
       const made = dispatch(tidySlideReducer, id, measure);
       if (made?.outcome.changed) tidied += 1;
     }
-  } finally {
-    deps.endTransaction(token);
+  } catch (error) {
+    deps.rollbackTransaction(token);
+    dispatch(reducers.setFitVersion, previousVersion);
+    throw error;
   }
+  deps.endTransaction(token);
 
   return { ran: true, tidied };
 }
