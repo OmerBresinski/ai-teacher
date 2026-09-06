@@ -1,0 +1,125 @@
+import { describe, expect, test } from "bun:test";
+import { Writable } from "node:stream";
+import { createBudget } from "@tj/ai";
+import { createFakeAi } from "@tj/ai/testing";
+import pino from "pino";
+import { z } from "zod";
+import { callStructured } from "./call";
+import { BudgetExceeded, type PipelineDeps, StageFailure } from "./types";
+
+const schema = z.object({ answer: z.string() });
+const prompt = {
+  version: "test.v1",
+  system: "system text",
+  user: (input: string) => `user ${input}`,
+};
+
+function deps(ai: ReturnType<typeof createFakeAi>, extra: Partial<PipelineDeps> = {}) {
+  return {
+    ai,
+    budget: createBudget({ capUsd: 1, capTokens: 1_000_000 }),
+    signal: new AbortController().signal,
+    logger: pino({ level: "silent" }),
+    context: { lessonId: "l1", jobId: "j1" },
+    ...extra,
+  };
+}
+
+const call = (d: ReturnType<typeof deps>, input = "hi") =>
+  callStructured({
+    deps: d,
+    stage: "plan",
+    cls: "standard",
+    prompt,
+    input,
+    schema,
+    maxOutputTokens: 100,
+  });
+
+describe("callStructured", () => {
+  test("returns the parsed object, charges the budget and carries the stage context", async () => {
+    const ai = createFakeAi({
+      script: [JSON.stringify({ answer: "42", extra: true })],
+      usage: { inputTokens: 10, outputTokens: 5 },
+    });
+    const d = deps(ai);
+    const result = await call(d);
+    expect(result).toEqual({
+      output: { answer: "42" },
+      usage: { inputTokens: 10, outputTokens: 5 },
+      attempts: 1,
+      modelId: ai.modelId("standard"),
+    });
+    expect(d.budget.totals()).toMatchObject({ calls: 1, inputTokens: 10, outputTokens: 5 });
+    expect(ai.calls[0]?.context).toEqual({
+      lessonId: "l1",
+      jobId: "j1",
+      stage: "plan",
+      promptVersion: "test.v1",
+    });
+  });
+
+  test("retries once on a schema miss with the issues in the prompt, and both attempts are charged", async () => {
+    const ai = createFakeAi({
+      script: [JSON.stringify({ answer: 1 }), JSON.stringify({ answer: "ok" })],
+    });
+    const lines: string[] = [];
+    const logger = pino(
+      { level: "info" },
+      new Writable({
+        write(c, _e, cb) {
+          lines.push(c.toString());
+          cb();
+        },
+      }),
+    );
+    const d = deps(ai, { logger });
+    const result = await call(d);
+    expect(result.attempts).toBe(2);
+    expect(result.output).toEqual({ answer: "ok" });
+    expect(d.budget.totals().calls).toBe(2);
+    expect(ai.calls).toHaveLength(2);
+    expect(lines.join("\n")).toContain("retrying once");
+    // Neither the model's text nor the prompt reaches the log.
+    expect(lines.join("\n")).not.toContain('"answer"');
+    expect(lines.join("\n")).not.toContain("system text");
+  });
+
+  test("a second miss is a StageFailure naming the stage, with the issues as cause", async () => {
+    const ai = createFakeAi({ script: ["nope", "still nope"] });
+    const d = deps(ai);
+    const error = await call(d).catch((e) => e);
+    expect(error).toBeInstanceOf(StageFailure);
+    expect((error as StageFailure).stage).toBe("plan");
+    expect((error as StageFailure).cause).toEqual([
+      "- The answer was not valid JSON for the requested shape.",
+    ]);
+    expect((error as Error).message).not.toContain("nope");
+    expect(d.budget.totals().calls).toBe(2);
+  });
+
+  test("an exceeded budget refuses the call before it is made", async () => {
+    const ai = createFakeAi({ script: ["unused"] });
+    const budget = createBudget({ capUsd: 0.000001, capTokens: 10 });
+    budget.charge("made-up", { inputTokens: 50, outputTokens: 0 });
+    const error = await call(deps(ai, { budget })).catch((e) => e);
+    expect(error).toBeInstanceOf(BudgetExceeded);
+    expect((error as BudgetExceeded).by).toBe("tokens");
+    expect(ai.calls).toHaveLength(0);
+  });
+
+  test("an aborted signal rejects without a retry", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const ai = createFakeAi({ script: [JSON.stringify({ answer: "x" })] });
+    await expect(call(deps(ai, { signal: controller.signal }))).rejects.toThrow();
+    expect(ai.calls.length).toBeLessThanOrEqual(1);
+  });
+
+  test("a provider error is rethrown as is (no retry, no StageFailure)", async () => {
+    const ai = createFakeAi({ error: new Error("bedrock down") });
+    const error = await call(deps(ai)).catch((e) => e);
+    expect(error).not.toBeInstanceOf(StageFailure);
+    expect(ai.calls).toHaveLength(0);
+  });
+});

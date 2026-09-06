@@ -1,0 +1,25 @@
+{
+  "kind": "multiple-choice",
+  "stem": "In which state of matter are the particles furthest apart?",
+  "options": [
+    {
+      "text": "Solid",
+      "correct": false
+    },
+    {
+      "text": "Liquid",
+      "correct": false
+    },
+    {
+      "text": "Gas",
+      "correct": true
+    },
+    {
+      "text": "Plasma is not on this course",
+      "correct": false
+    }
+  ],
+  "explanation": "Gas particles are far apart and move freely.",
+  "factRefs": ["q1", "o3"],
+  "notes": "Repaired."
+}

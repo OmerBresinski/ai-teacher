@@ -1,0 +1,213 @@
+{
+  "objectives": [
+    {
+      "text": "Describe the arrangement and movement of particles in solids, liquids and gases"
+    },
+    {
+      "text": "Explain melting, boiling, condensing and freezing as changes of state"
+    },
+    {
+      "text": "Use the particle model to predict what happens when a substance is heated or cooled"
+    }
+  ],
+  "vocabulary": [
+    {
+      "term": "Particle",
+      "definition": "A very small piece of a substance, too small to see."
+    },
+    {
+      "term": "Solid",
+      "definition": "A state in which particles are packed closely and only vibrate."
+    },
+    {
+      "term": "Liquid",
+      "definition": "A state in which particles touch but can move past each other."
+    },
+    {
+      "term": "Gas",
+      "definition": "A state in which particles are far apart and move freely."
+    },
+    {
+      "term": "Melting",
+      "definition": "The change of state from solid to liquid on heating."
+    },
+    {
+      "term": "Condensing",
+      "definition": "The change of state from gas to liquid on cooling."
+    }
+  ],
+  "workedExamples": [
+    {
+      "problem": "Why does an ice cube left on a plate turn into a puddle?",
+      "steps": [
+        "Room air is warmer than the ice, so energy passes into the ice.",
+        "The particles gain energy and vibrate more strongly.",
+        "They break free of their fixed positions and can slide past each other."
+      ],
+      "answer": "The ice melts: its particles gain energy and it changes from a solid to a liquid."
+    }
+  ],
+  "questions": [
+    {
+      "stem": "In which state of matter are the particles furthest apart?",
+      "answer": "Gas",
+      "reasoning": "Gas particles have large gaps between them and move freely."
+    },
+    {
+      "stem": "What is the change of state from liquid to gas called?",
+      "answer": "Boiling (or evaporating)",
+      "reasoning": "Particles gain enough energy to escape the liquid as a gas."
+    },
+    {
+      "stem": "True or false: particles in a solid do not move at all.",
+      "answer": "False",
+      "reasoning": "They vibrate in fixed positions."
+    },
+    {
+      "stem": "Put these in order of increasing particle energy: gas, solid, liquid.",
+      "answer": "Solid, liquid, gas",
+      "reasoning": "Energy rises from solid through liquid to gas."
+    }
+  ],
+  "outline": [
+    {
+      "kind": "title",
+      "minutes": 2,
+      "factRefs": []
+    },
+    {
+      "kind": "objectives",
+      "minutes": 3,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        },
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "kind": "starter",
+      "minutes": 5,
+      "factRefs": [
+        {
+          "type": "question",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "kind": "vocabulary",
+      "minutes": 8,
+      "factRefs": [
+        {
+          "type": "vocabulary",
+          "index": 0
+        },
+        {
+          "type": "vocabulary",
+          "index": 1
+        },
+        {
+          "type": "vocabulary",
+          "index": 2
+        },
+        {
+          "type": "vocabulary",
+          "index": 3
+        }
+      ]
+    },
+    {
+      "kind": "content",
+      "minutes": 7,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "kind": "worked-example",
+      "minutes": 8,
+      "factRefs": [
+        {
+          "type": "workedExample",
+          "index": 0
+        },
+        {
+          "type": "objective",
+          "index": 1
+        }
+      ]
+    },
+    {
+      "kind": "true-false",
+      "minutes": 5,
+      "factRefs": [
+        {
+          "type": "question",
+          "index": 2
+        },
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "kind": "multiple-choice",
+      "minutes": 7,
+      "factRefs": [
+        {
+          "type": "question",
+          "index": 0
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "kind": "sort",
+      "minutes": 8,
+      "factRefs": [
+        {
+          "type": "question",
+          "index": 3
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "kind": "exit-ticket",
+      "minutes": 7,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        },
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    }
+  ]
+}

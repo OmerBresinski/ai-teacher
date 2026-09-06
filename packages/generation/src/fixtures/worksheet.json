@@ -1,0 +1,90 @@
+{
+  "title": "States of matter",
+  "subtitle": "I can describe solids, liquids and gases using the particle model",
+  "criteria": [
+    "Describe the particles in each state",
+    "Name the four changes of state",
+    "Predict the effect of heating or cooling"
+  ],
+  "blocks": [
+    {
+      "type": "heading",
+      "text": "States of matter",
+      "level": 1,
+      "factRefs": []
+    },
+    {
+      "type": "instructions",
+      "text": "Answer every question in full sentences. Use the word bank to help you.",
+      "factRefs": []
+    },
+    {
+      "type": "word-bank",
+      "words": ["particle", "solid", "liquid", "gas", "melting", "condensing"],
+      "factRefs": ["v1", "v2", "v3", "v4", "v5", "v6"]
+    },
+    {
+      "type": "question",
+      "text": "Describe how the particles are arranged in a solid.",
+      "answer": "They are packed closely together in a regular pattern and only vibrate in place.",
+      "answerLines": 3,
+      "marks": 2,
+      "factRefs": ["o1", "v2"]
+    },
+    {
+      "type": "multiple-choice",
+      "text": "In which state of matter are the particles furthest apart?",
+      "options": [
+        {
+          "text": "Solid",
+          "correct": false
+        },
+        {
+          "text": "Liquid",
+          "correct": false
+        },
+        {
+          "text": "Gas",
+          "correct": true
+        },
+        {
+          "text": "They are the same in all three",
+          "correct": false
+        }
+      ],
+      "factRefs": ["q1", "o1"]
+    },
+    {
+      "type": "fill-gap",
+      "sentence": "Ice ___ when it is heated and steam ___ when it is cooled.",
+      "answers": ["melts", "condenses"],
+      "factRefs": ["o2", "v5", "v6"]
+    },
+    {
+      "type": "matching",
+      "pairs": [
+        {
+          "left": "Melting",
+          "right": "Solid to liquid"
+        },
+        {
+          "left": "Boiling",
+          "right": "Liquid to gas"
+        },
+        {
+          "left": "Condensing",
+          "right": "Gas to liquid"
+        }
+      ],
+      "factRefs": ["o2"]
+    },
+    {
+      "type": "question",
+      "text": "A sealed balloon is left in a warm room. Use the particle model to predict what happens to it and explain why.",
+      "answer": "It expands: the gas particles gain energy, move faster and push harder on the balloon, so it takes up more room.",
+      "answerLines": 5,
+      "marks": 3,
+      "factRefs": ["o3", "x1"]
+    }
+  ]
+}
