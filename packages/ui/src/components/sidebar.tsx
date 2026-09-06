@@ -1,5 +1,6 @@
 import { Slot } from "@radix-ui/react-slot";
 import { PanelLeft } from "lucide-react";
+import type * as React from "react";
 import {
   Children,
   cloneElement,
@@ -7,9 +8,6 @@ import {
   isValidElement,
   type ReactNode,
   useContext,
-  useEffect,
-  useEffectEvent,
-  useRef,
   useState,
 } from "react";
 
@@ -39,10 +37,10 @@ function Sidebar({
   onCollapsedChange,
   className,
   "aria-label": ariaLabel,
+  onKeyDown: onKeyDownProp,
   ...props
 }: SidebarProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(false);
-  const navRef = useRef<HTMLElement>(null);
   const collapsed = collapsedProp ?? internalCollapsed;
 
   const toggle = () => {
@@ -51,13 +49,17 @@ function Sidebar({
     onCollapsedChange?.(next);
   };
 
-  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+  // Arrow/Home/End move focus between items; they never activate. Items keep their own tab stops
+  // (no roving tabindex) — a deliberate TeachDeck choice so every link stays reachable by Tab.
+  const onKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    onKeyDownProp?.(event);
+    if (event.defaultPrevented) return;
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
 
-    const root = navRef.current;
-    if (!root) return;
     const items = Array.from(
-      root.querySelectorAll<HTMLElement>('[data-sidebar-item]:not([aria-disabled="true"])'),
+      event.currentTarget.querySelectorAll<HTMLElement>(
+        '[data-sidebar-item]:not([aria-disabled="true"])',
+      ),
     );
     if (items.length === 0) return;
 
@@ -73,20 +75,14 @@ function Sidebar({
 
     event.preventDefault();
     items[next]?.focus();
-  });
-
-  useEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return;
-    nav.addEventListener("keydown", onKeyDown);
-    return () => nav.removeEventListener("keydown", onKeyDown);
-  }, []);
+  };
 
   return (
     <SidebarContext.Provider value={{ collapsed }}>
+      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: keydown bubbles from the focusable items; the nav only redirects focus between them. */}
       <nav
-        ref={navRef}
         aria-label={ariaLabel}
+        onKeyDown={onKeyDown}
         style={{ width: collapsed ? "var(--sidebar-width-collapsed)" : "var(--sidebar-width)" }}
         className={cn(
           "sticky top-0 flex h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar",
