@@ -92,6 +92,14 @@ describe("TeachDeck globals", () => {
     }
   });
 
+  it("collapses the motion ladder under reduced motion", () => {
+    const reduced = blockFor("@media (prefers-reduced-motion: reduce) {");
+    for (const variable of ["--duration-slide", "--duration-reveal", "--duration-base"]) {
+      expect(reduced).toMatch(new RegExp(`${variable}: 1ms;`));
+    }
+    expect(reduced).toMatch(/--duration-slow: 150ms;/);
+  });
+
   it("does not retain the retired palette tokens", () => {
     const retiredStatusPrefix = ["--status", "-"].join("");
     const retiredSurfaceToken = ["--", "surface"].join("");

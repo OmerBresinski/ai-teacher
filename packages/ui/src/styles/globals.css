@@ -569,7 +569,9 @@
   }
 }
 
-/* Translation drops out for reduced motion while the arrival remains a short opacity fade. */
+/* Translation drops out for reduced motion while the arrival remains a short opacity fade. The
+   motion ladder collapses to 1ms as TeachDeck's tokens.css does; --duration-slow drives opacity-only
+   fades in @tj/editor, so it stays short rather than instant. */
 @media (prefers-reduced-motion: reduce) {
   :root,
   [data-theme="dark"],
@@ -578,5 +580,11 @@
     --duration-fast: 1ms;
     --duration-arrive: 150ms;
     --arrive-rise: 0px;
+    --duration-instant: 1ms;
+    --duration-base: 1ms;
+    --duration-slow: 150ms;
+    --duration-slide: 1ms;
+    --duration-reveal: 1ms;
+    --stagger: 0ms;
   }
 }
