@@ -21,8 +21,8 @@ export type EditorHooks = {
   /** An undoable write of a question slide's "Why?" text. */
   writeExplanation: (slideId: string, text: string) => void;
   /** Wrap a run of writes into one undo step (`useEditSession` drives these). */
-  beginTransaction: () => void;
-  endTransaction: () => void;
+  beginTransaction: () => number;
+  endTransaction: (token?: number) => void;
   /** Leave text editing: clears `editingTextId` and puts focus back on the canvas. */
   exitTextEdit: () => void;
   exitExplanationEdit: () => void;

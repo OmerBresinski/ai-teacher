@@ -2,6 +2,7 @@
 
 import type { Id, Lesson, Slide, SlideKind } from "@tj/domain/documents";
 import { cloneSlide, newSlide } from "../factories";
+import { layoutSlide } from "../layouts";
 import { edit, editSlide, type WithId } from "./core";
 
 /** `afterId` null/undefined or unknown → append. */
@@ -126,3 +127,20 @@ export const setSlideNotes = (lesson: Lesson, slideId: Id, notes: string): Lesso
     if (notes.trim()) s.notes = notes;
     else delete s.notes;
   });
+
+/**
+ * Convert a slide to another kind: the recipe's elements and question replace the slide's own;
+ * notes, transition and background are kept (TeachDeck `changeLayout`, which was four store edits
+ * in a transaction — here one reducer, one undo step). Same kind → unchanged.
+ */
+export const changeLayout = (lesson: Lesson, slideId: Id, kind: SlideKind): Lesson => {
+  const slide = lesson.slides.find((s) => s.id === slideId);
+  if (!slide || slide.kind === kind) return lesson;
+  const layout = layoutSlide(kind, lesson.themeId);
+  return editSlide(lesson, slideId, (s) => {
+    s.kind = kind;
+    s.elements = layout.elements;
+    if (layout.question) s.question = layout.question;
+    else delete s.question;
+  });
+};

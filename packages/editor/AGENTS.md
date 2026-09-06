@@ -68,13 +68,15 @@ src/
   text/       Tiptap extension set + static HTML rendering (renderDocHTML)
   layout/     text-fitting engine: reflow, explanation panel (lint/tidy/fit arrive in phase C)
   slide/      SlideView (the one renderer), SlideScaler, SlideStatic, elements/*
-  kit/        Panel, Segmented, NumberInput, ZoomControl, Color — chrome with no @tj/ui twin
+  kit/        Panel, Segmented, NumberInput, ZoomControl, Color, Rail — chrome with no @tj/ui twin
   text/       Tiptap extensions, static HTML, doc-marks/links (pure), active-editor context
   present/    LessonViewer, PresentView and present-mode pieces (`@tj/editor/present`)
   lesson/     LessonEditor shell (`@tj/editor/lesson`): TopBar, InsertRail, Navigator, Canvas,
               canvas/ (SlideActions, SlideTabs, placement), transform/ (SelectionLayer, keys,
-              hit-test, resize), toolbar/ (ContextualToolbar placement, TextToolbar),
-              use-editor-session, use-autosave, slide-commands, keys, shortcuts
+              hit-test, resize), toolbar/ (ContextualToolbar routing + placement; one file per
+              bar: Text, Shape, Line, Image, Other, Multi, Slide, AnswerDrawer, MoreDrawer; shared
+              DropTrigger/useElementWrites), insert/ (IconPicker, LessonInfo), InsertRail,
+              ThemeDialog, use-editor-session, use-autosave, slide-commands, keys, shortcuts
   styles/     editor.css = fonts.css + slide.css + present.css
   thumb.ts    the library's thumbnail entry (`@tj/editor/thumb`)
 ```
@@ -84,7 +86,9 @@ plus the layout stubs happy-dom lacks (the navigator's `offsetHeight`, so react-
 rows). A real Tiptap editor does construct under happy-dom (`editor.commands.*` works; typing and
 selection do not — those are Playwright's). ProseMirror's contenteditable carries no ARIA role, so
 query it as `.ProseMirror`. Floating chrome that has not measured yet is `opacity: 0`, never
-`visibility: hidden` — the latter empties every control's accessible name. Every stylesheet the slide needs travels with the route that paints it: pages in `apps/web`
+`visibility: hidden` — the latter empties every control's accessible name. Radix menus do not open
+on `fireEvent.click`: use `keyDown Enter` on the trigger; a menu closing hands focus to its trigger
+a tick later, so wait for it before opening a Popover or the popover reads the move as "outside". Every stylesheet the slide needs travels with the route that paints it: pages in `apps/web`
 import `@tj/editor/styles/editor.css` themselves rather than relying on the library chunk.
 
 Tests: `bun test` in this directory. Behaviour tests only; TeachDeck's vitest files are a

@@ -46,9 +46,23 @@ export type DocumentHistory = {
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  /** Wrap a pointer drag: dispatches inside record nothing; `endTransaction` commits one step. */
-  beginTransaction: () => void;
-  endTransaction: () => void;
+  /**
+   * Wrap a pointer drag: dispatches inside record nothing; `endTransaction` commits one step. The
+   * returned token names this opening; an owner whose end may arrive late (an idle-timer edit
+   * session) passes it back so a stale end cannot close a transaction someone else has since opened.
+   */
+  beginTransaction: () => number;
+  /** Without a token, closes the innermost opening; with one, closes that opening if still open. */
+  endTransaction: (token?: number) => void;
+  /**
+   * Abandon every open transaction: the cache goes back to what it held when the outermost began,
+   * nothing is recorded and nothing is saved. A preview the teacher cancelled (the theme dialog).
+   * With a token, only if that opening is still open — and it is the caller's job to have
+   * `flushTransactions()` first so it is the only one.
+   */
+  rollbackTransaction: (token?: number) => void;
+  /** Commit every open transaction now — the teacher moved on to something else. */
+  flushTransactions: () => void;
   /** True while a transaction is open (the fit migration waits for the teacher's edit to land). */
   isTransactionInFlight: () => boolean;
 };
@@ -88,7 +102,9 @@ export function useDocumentHistory<TData = unknown>({
 
   const past = useRef<Lesson[]>([]);
   const future = useRef<Lesson[]>([]);
-  const txDepth = useRef(0);
+  /** Open transaction tokens, outermost first; the snapshot is taken when the first opens. */
+  const txStack = useRef<number[]>([]);
+  const txSeq = useRef(0);
   const txPre = useRef<Lesson | null>(null);
   const [flags, setFlags] = useState({ canUndo: false, canRedo: false });
 
@@ -135,7 +151,7 @@ export function useDocumentHistory<TData = unknown>({
       const result = reducer(current, ...args) as ReturnType<R>;
       const next = lessonOf(result);
       if (next === current) return result;
-      const inTransaction = txDepth.current > 0;
+      const inTransaction = txStack.current.length > 0;
       if (!inTransaction && !isSilentReducer(reducer)) record(current);
       write(next);
       if (!inTransaction) onChangeRef.current?.(next);
@@ -145,7 +161,7 @@ export function useDocumentHistory<TData = unknown>({
   );
 
   const undo = useCallback(() => {
-    if (txDepth.current > 0) return;
+    if (txStack.current.length > 0) return;
     const current = read();
     const previous = past.current.pop();
     if (!current || !previous) return;
@@ -156,7 +172,7 @@ export function useDocumentHistory<TData = unknown>({
   }, [read, write, sync]);
 
   const redo = useCallback(() => {
-    if (txDepth.current > 0) return;
+    if (txStack.current.length > 0) return;
     const current = read();
     const next = future.current.pop();
     if (!current || !next) return;
@@ -167,15 +183,14 @@ export function useDocumentHistory<TData = unknown>({
   }, [read, write, sync]);
 
   const beginTransaction = useCallback(() => {
-    txDepth.current += 1;
-    if (txDepth.current > 1) return; // nested: keep the outer snapshot
-    txPre.current = read() ?? null;
+    const token = ++txSeq.current;
+    if (txStack.current.length === 0) txPre.current = read() ?? null; // nested: keep the outer snapshot
+    txStack.current.push(token);
+    return token;
   }, [read]);
 
-  const endTransaction = useCallback(() => {
-    if (txDepth.current === 0) return;
-    txDepth.current -= 1;
-    if (txDepth.current > 0) return; // inner end: the outermost owner commits
+  /** The outermost owner has closed: one history step for everything since the snapshot. */
+  const commit = useCallback(() => {
     const pre = txPre.current;
     txPre.current = null;
     const post = read();
@@ -185,7 +200,40 @@ export function useDocumentHistory<TData = unknown>({
     }
   }, [read, record]);
 
-  const isTransactionInFlight = useCallback(() => txDepth.current > 0, []);
+  const endTransaction = useCallback(
+    (token?: number) => {
+      const stack = txStack.current;
+      if (stack.length === 0) return;
+      if (token === undefined) stack.pop();
+      else {
+        const at = stack.indexOf(token);
+        if (at === -1) return; // stale: this opening was already flushed or rolled back
+        stack.splice(at, 1);
+      }
+      if (stack.length === 0) commit();
+    },
+    [commit],
+  );
+
+  const flushTransactions = useCallback(() => {
+    if (txStack.current.length === 0) return;
+    txStack.current = [];
+    commit();
+  }, [commit]);
+
+  const rollbackTransaction = useCallback(
+    (token?: number) => {
+      if (txStack.current.length === 0) return;
+      if (token !== undefined && !txStack.current.includes(token)) return;
+      txStack.current = [];
+      const pre = txPre.current;
+      txPre.current = null;
+      if (pre && pre !== read()) write(pre);
+    },
+    [read, write],
+  );
+
+  const isTransactionInFlight = useCallback(() => txStack.current.length > 0, []);
 
   return useMemo(
     () => ({
@@ -197,8 +245,21 @@ export function useDocumentHistory<TData = unknown>({
       canRedo: flags.canRedo,
       beginTransaction,
       endTransaction,
+      rollbackTransaction,
+      flushTransactions,
       isTransactionInFlight,
     }),
-    [lesson, dispatch, undo, redo, flags, beginTransaction, endTransaction, isTransactionInFlight],
+    [
+      lesson,
+      dispatch,
+      undo,
+      redo,
+      flags,
+      beginTransaction,
+      endTransaction,
+      rollbackTransaction,
+      flushTransactions,
+      isTransactionInFlight,
+    ],
   );
 }

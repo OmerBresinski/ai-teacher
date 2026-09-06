@@ -197,7 +197,11 @@ test.describe("lesson editor", () => {
     await expect(frame(page)).toBeVisible();
     const scale = await scaleOf(page);
     // A fresh rectangle from the rail: shapes lock aspect by default (text boxes do not).
-    await page.getByRole("button", { name: "Shape" }).click();
+    await page
+      .getByRole("toolbar", { name: "Insert" })
+      .getByRole("button", { name: "Shape" })
+      .click();
+    await page.getByRole("menuitem", { name: "Rectangle" }).click();
     const rect = page.locator('[data-slide-frame] [data-element-type="shape"]').last();
     await expect(page.locator("[data-selection-frame]")).toBeVisible();
     const start = await sizeOf(rect);

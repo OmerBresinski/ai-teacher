@@ -47,7 +47,7 @@ function Session({ slide, theme, text }: { slide: Slide; theme: Theme; text: str
 
   const session = useEditSession({
     beginTransaction: () => hooksRef.current?.beginTransaction(),
-    endTransaction: () => hooksRef.current?.endTransaction(),
+    endTransaction: (token) => hooksRef.current?.endTransaction(token),
   });
   const write = (value: string) =>
     session.run(() => hooksRef.current?.writeExplanation(slideId, value));

@@ -18,6 +18,7 @@ import { HelpDialog } from "./HelpDialog";
 import { InsertRail } from "./InsertRail";
 import { isInTextField, matchesBinding } from "./keys";
 import { Navigator } from "./Navigator";
+import { ThemeDialog } from "./ThemeDialog";
 import { TopBar } from "./TopBar";
 import { CANVAS_ROOT_SELECTOR } from "./transform/gesture-state";
 import { useAutosave } from "./use-autosave";
@@ -79,6 +80,7 @@ export function LessonEditor({
   });
   const session = useEditorSessionState();
   const [helpOpen, setHelpOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
   const [canvasFocused, setCanvasFocused] = useState(false);
 
   // Canvas writes its measured scale here on every render of SlideScaler. A ref, not state: the
@@ -97,6 +99,8 @@ export function LessonEditor({
       canRedo: history.canRedo,
       beginTransaction: history.beginTransaction,
       endTransaction: history.endTransaction,
+      rollbackTransaction: history.rollbackTransaction,
+      flushTransactions: history.flushTransactions,
       isTransactionInFlight: history.isTransactionInFlight,
     }),
     [
@@ -107,6 +111,8 @@ export function LessonEditor({
       history.canRedo,
       history.beginTransaction,
       history.endTransaction,
+      history.rollbackTransaction,
+      history.flushTransactions,
       history.isTransactionInFlight,
     ],
   );
@@ -152,10 +158,12 @@ export function LessonEditor({
 
   /** Add an element to the active slide and select it — TeachDeck's `insertElement`. */
   const insert = useCallback(
-    (el: SlideElement) => {
+    (el: SlideElement, options?: { edit?: boolean }) => {
       if (!slide) return;
       history.dispatch(reducers.addElement, el, slide.id);
       session.actions.select([el.id]);
+      // A new text box goes straight into edit: the placeholder is there to be typed over.
+      if (options?.edit) session.actions.setEditingText(el.id);
     },
     [history.dispatch, session.actions, slide],
   );
@@ -194,7 +202,7 @@ export function LessonEditor({
         const make = INSERT_KEYS[e.key];
         if (!make) return;
         e.preventDefault();
-        insertRef.current(make(theme));
+        insertRef.current(make(theme), { edit: e.key === "t" });
       }
     };
     window.addEventListener("keydown", onKey);
@@ -217,11 +225,12 @@ export function LessonEditor({
                   <TopBar
                     onBack={onBack}
                     onPresent={onPresent}
+                    onOpenTheme={() => setThemeOpen(true)}
                     exportSlot={exportSlot}
                     autosave={autosave}
                   />
                   <div className="flex min-h-0 flex-1">
-                    <InsertRail theme={theme} onInsert={insert} onHelp={() => setHelpOpen(true)} />
+                    <InsertRail onInsert={insert} onHelp={() => setHelpOpen(true)} />
                     <Navigator />
                     <Canvas
                       slide={slide}
@@ -231,6 +240,7 @@ export function LessonEditor({
                     />
                   </div>
                   <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+                  <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
                 </div>
               </ActiveEditorProvider>
             </EditingStateContext.Provider>
