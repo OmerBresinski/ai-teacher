@@ -161,7 +161,10 @@ describe("token contrast", () => {
 
     it("checked controls keep the recorded white-on-terracotta fill (ADR 0019 §4)", () => {
       expect(stageToken("--primary-fill-aa")).toBe(stageToken("--primary-fill"));
-      expect(contrast("#ffffff", stageToken("--primary-fill-aa"))).toBeGreaterThanOrEqual(3.7);
+      expect(stageToken("--primary-foreground")).toBe("#ffffff");
+      expect(
+        contrast(stageToken("--primary-foreground"), stageToken("--primary-fill-aa")),
+      ).toBeGreaterThanOrEqual(3.7);
     });
 
     it("paints no ground of its own", () => {

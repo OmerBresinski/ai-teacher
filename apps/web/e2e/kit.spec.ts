@@ -64,6 +64,7 @@ test.describe("/kit (Vite development build)", () => {
         return {
           background: style.getPropertyValue("--background").trim(),
           card: style.getPropertyValue("--card").trim(),
+          onPrimary: style.getPropertyValue("--primary-foreground").trim(),
           // Painted by the specimen's own `bg-background`, not by the scope.
           paint: style.backgroundColor,
         };
@@ -75,6 +76,7 @@ test.describe("/kit (Vite development build)", () => {
       const tokens = await readTokens();
       expect(tokens.background, theme).toBe("#141312");
       expect(tokens.card, theme).toBe("#1f1d1b");
+      expect(tokens.onPrimary, theme).toBe("#ffffff");
     }
 
     // A filled Button inside the scope paints the stage accent.

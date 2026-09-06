@@ -337,6 +337,9 @@
   --primary: #d2644b; /* --v2-stage-accent, 5.01:1 on the ground */
   --primary-hover: #c05740;
   --primary-press: #ae4b31;
+  /* TeachDeck's stage buttons are white on terracotta in every app theme (ADR 0019 §4 exception);
+     without this the dark themes' ink-on-terracotta would leak in. */
+  --primary-foreground: #ffffff;
   --primary-fill: #d2644b;
   --primary-fill-hover: #c05740;
   --primary-fill-press: #ae4b31;
