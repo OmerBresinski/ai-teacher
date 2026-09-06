@@ -17,7 +17,7 @@ function Tile({ children, icon, tone = "default", className, type, ...props }: T
         "group flex h-16 w-full items-center justify-start gap-3 rounded-card px-5 text-left text-lead font-semibold outline-none motion-safe:transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
         primary
           ? "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-press"
-          : "border border-border bg-card shadow-1 hover:bg-accent",
+          : "border border-border bg-card text-foreground shadow-1 hover:bg-accent",
         className,
       )}
       {...props}

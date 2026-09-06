@@ -37,7 +37,7 @@ export type LibraryCardProps = {
   doc: DocumentSummary;
   view?: "grid" | "list";
   hero?: boolean;
-  now?: number;
+  now: number;
   className?: string;
   onAction: (action: DocumentAction, doc: DocumentSummary) => void;
   onRename: (doc: DocumentSummary, title: string) => void;
@@ -48,13 +48,15 @@ function DocumentLink({
   className,
   hidden = false,
   children,
+  onDoubleClick,
 }: {
   doc: DocumentSummary;
   className?: string;
   hidden?: boolean;
   children?: ReactNode;
+  onDoubleClick?: React.MouseEventHandler<HTMLAnchorElement>;
 }) {
-  const props = { className, hidden, "aria-label": `Open ${doc.title}` };
+  const props = { className, hidden, onDoubleClick, "aria-label": `Open ${doc.title}` };
   return doc.kind === "lesson" ? (
     <Link to="/l/$lessonId" params={{ lessonId: doc.id }} {...props}>
       {children}
@@ -140,7 +142,7 @@ export function LibraryCard({
   doc,
   view = "grid",
   hero = false,
-  now = Date.now(),
+  now,
   className,
   onAction,
   onRename,
@@ -179,6 +181,10 @@ export function LibraryCard({
           ) : (
             <DocumentLink
               doc={doc}
+              onDoubleClick={(event) => {
+                event.preventDefault();
+                rename.start();
+              }}
               className="relative z-2 block truncate font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {doc.title}
@@ -223,7 +229,7 @@ export function LibraryCard({
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: the focusable cover link bubbles F2 from every card control.
     <article
-      className={cn("group/card relative", className)}
+      className={cn("group/card relative", hero && "col-span-2", className)}
       onKeyDown={rename.onCardKeyDown}
       onDoubleClick={rename.start}
     >

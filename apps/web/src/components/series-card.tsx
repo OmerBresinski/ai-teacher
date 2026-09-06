@@ -22,7 +22,7 @@ type SeriesAction = "present" | "duplicate" | "delete";
 export type SeriesCardProps = {
   item: SeriesWithLessons;
   headingLevel?: "h2" | "h3";
-  now?: number;
+  now: number;
   onAction: (action: SeriesAction, item: SeriesWithLessons) => void;
   onRename: (item: SeriesWithLessons, title: string) => void;
 };
@@ -73,7 +73,7 @@ function SeriesMenu({
 export function SeriesCard({
   item,
   headingLevel = "h2",
-  now = Date.now(),
+  now,
   onAction,
   onRename,
 }: SeriesCardProps) {

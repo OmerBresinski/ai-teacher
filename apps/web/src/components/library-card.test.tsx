@@ -1,5 +1,5 @@
-import { afterAll, describe, expect, it, mock } from "bun:test";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterAll, afterEach, describe, expect, it, mock } from "bun:test";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import type { DocumentSummary } from "@/mocks/library-schema";
@@ -13,6 +13,8 @@ mock.module("@tanstack/react-router", () => ({
 }));
 
 const { LibraryCard } = await import("./library-card");
+
+afterEach(cleanup);
 
 const lesson: DocumentSummary = {
   id: "lesson-1",
@@ -70,9 +72,72 @@ describe("LibraryCard", () => {
     renderCard(worksheet);
     expect(screen.getByRole("button", { name: "Print" })).toBeVisible();
 
-    renderCard(lesson, true);
-    expect(screen.getAllByText(/7 slides/)).not.toHaveLength(0);
+    const hero = renderCard(lesson, true);
+    expect(hero.container.querySelector("article")).toHaveClass("col-span-2");
+    expect(hero.container).toHaveTextContent(/7 slides.*Edited/);
     expect(screen.getAllByRole("button", { name: "Present" })).not.toHaveLength(0);
+  });
+
+  it("handles inline rename lifecycle in grid and list views", async () => {
+    const { container, onRename } = renderCard();
+    const article = container.querySelector("article");
+    if (!article) throw new Error("Library card article is missing");
+    const cover = container.querySelector("a[aria-label='Open Water cycle']");
+    if (!cover) throw new Error("Library card cover link is missing");
+
+    fireEvent.doubleClick(article);
+    const input = await screen.findByRole("textbox", { name: "Rename Water cycle" });
+    expect(cover).toHaveAttribute("hidden");
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(cover).not.toHaveAttribute("hidden");
+    expect(onRename).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(article, { key: "F2" });
+    fireEvent.change(await screen.findByRole("textbox"), { target: { value: "Changed" } });
+    fireEvent.blur(screen.getByRole("textbox"));
+    expect(onRename).toHaveBeenCalledWith(lesson, "Changed");
+
+    cleanup();
+    const list = render(
+      <table>
+        <tbody>
+          <LibraryCard doc={lesson} view="list" now={0} onAction={() => {}} onRename={onRename} />
+        </tbody>
+      </table>,
+    );
+    const titleLink = list.container.querySelector("a[aria-label='Open Water cycle']");
+    if (!titleLink) throw new Error("List title link is missing");
+    fireEvent.doubleClick(titleLink);
+    expect(await screen.findAllByRole("textbox")).not.toHaveLength(0);
+  });
+
+  it("renders worksheet and destructive menu semantics plus list row actions", async () => {
+    const worksheet = { ...lesson, kind: "worksheet" as const };
+    const { container } = renderCard(worksheet);
+    const trigger = screen.getAllByRole("button", { name: "More actions" })[0];
+    if (!trigger) throw new Error("Library card menu trigger is missing");
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+    expect(screen.queryByRole("menuitem", { name: "Present" })).not.toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toHaveAttribute(
+      "data-variant",
+      "destructive",
+    );
+    expect(container.querySelector("article")?.className).not.toContain("col-span-2");
+
+    cleanup();
+    const list = render(
+      <table>
+        <tbody>
+          <LibraryCard doc={lesson} view="list" now={0} onAction={() => {}} onRename={() => {}} />
+        </tbody>
+      </table>,
+    );
+    const listTitle = list.container.querySelector("a[aria-label='Open Water cycle']");
+    if (!listTitle) throw new Error("List title link is missing");
+    expect(listTitle).toBeVisible();
+    expect(list.container.querySelector("tr > td:last-child > div")?.className).toContain(
+      "group-hover/row:opacity-100",
+    );
   });
 });
 

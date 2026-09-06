@@ -1,5 +1,7 @@
 import { test } from "./fixtures";
 
+test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
+
 test("captures library card reference states", async ({ signedInPage: { page } }) => {
   await page.goto("/lessons");
   await page.locator("article").first().hover();

@@ -61,6 +61,17 @@ describe("SeriesCard", () => {
     ).toEqual(["Present series", "RenameF2", "Duplicate", "Delete"]);
   });
 
+  it("caps the stack at three sheets with the documented transforms", () => {
+    const firstLesson = item.lessons[0];
+    if (!firstLesson) throw new Error("Series needs a lesson");
+    const fourLessons = [...item.lessons, { ...firstLesson, id: "lesson-4", title: "Four" }];
+    const { container } = renderCard({ ...item, lessons: fourLessons });
+    const sheets = container.querySelectorAll("[style*='rotate']");
+    expect(sheets).toHaveLength(2);
+    expect(sheets[0]).toHaveAttribute("style", expect.stringContaining("rotate(-4deg)"));
+    expect(sheets[1]).toHaveAttribute("style", expect.stringContaining("rotate(3.5deg)"));
+  });
+
   it("hides the primary Present series action when there are no lessons", () => {
     renderCard({ ...item, series: { ...item.series, lessonIds: [] }, lessons: [] });
     expect(screen.queryByRole("button", { name: "Present series" })).not.toBeInTheDocument();

@@ -82,8 +82,16 @@ test.describe("library shell", () => {
     await expect(page).toHaveURL(/\/l\/demo-water-cycle\/present$/);
 
     await page.goto("/lessons");
-    await card.getByRole("link", { name: "Open The water cycle" }).click();
+    const body = await card.boundingBox();
+    if (!body) throw new Error("Library card has no bounding box");
+    await page.mouse.click(body.x + 12, body.y + 12);
     await expect(page).toHaveURL(/\/l\/demo-water-cycle$/);
+
+    await page.goto("/worksheets");
+    const worksheet = page.locator("article").filter({ hasText: "Fractions practice" }).first();
+    await worksheet.hover();
+    await worksheet.getByRole("button", { name: "Print" }).click();
+    await expect(page).toHaveURL(/\/w\/fraction-practice\/print$/);
   });
 
   test("Delete can be undone from a card menu", async ({ signedInPage: { page } }) => {
@@ -124,5 +132,14 @@ test.describe("library shell", () => {
     await page.goto("/series");
     await expect(page.getByRole("heading", { name: "Series" })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "/series");
+    await page.goto("/");
+    await page.getByRole("button", { name: "Theme" }).click();
+    await page.getByRole("menuitemradio", { name: "Dark" }).click();
+    await page.waitForTimeout(200);
+    await expectNoSeriousA11yViolations(page, "/ (dark)");
+    await page.goto("/lessons");
+    await expectNoSeriousA11yViolations(page, "/lessons (dark)");
+    await page.goto("/series");
+    await expectNoSeriousA11yViolations(page, "/series (dark)");
   });
 });
