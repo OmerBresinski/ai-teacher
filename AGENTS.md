@@ -136,7 +136,17 @@ to `master` directly.
    `<type>/<short-slug>`. Run `bun run lint`, `bun run typecheck` and the relevant tests before
    opening the PR. A fresh `git worktree` has no `node_modules`: run
    `bun install --frozen-lockfile` in it first, or those scripts fail with
-   `turbo: command not found`. When there is a Linear issue, move it to **In Progress** and set
+   `turbo: command not found`. **Lint the PR title locally before `gh pr create` and before any
+   `gh pr edit --title`:** CI runs commitlint on the title (squash merges use it as the commit
+   subject) and a rejected title costs a full CI round-trip. Run
+   `printf '%s\n' "<title>" | bun run --silent commitlint` (needs `node_modules`; without them
+   `bunx commitlint` fetches an unpinned copy that cannot resolve the shareable config) and fix
+   until it prints nothing. The two rules that bite: `header-max-length` — the whole title including
+   `(TEACH-n)` is ≤ 100 chars; `subject-case` — the subject after `<type>(<scope>): ` must not
+   start with a capital or be Sentence/Start/UPPER case, so write `adr 0021`, `csrf`, `readme`,
+   not `ADRs`, `CSRF`, `README` (identifiers like `@tj/ai` or `forWorkspace()` are fine). If CI
+   fails on the title, `gh pr edit --title` then re-run the workflow — a plain rerun reuses the
+   old title. When there is a Linear issue, move it to **In Progress** and set
    its **Assignee** to the currently authenticated Linear user (`assignee: "me"` in
    `linear_save_issue`) when work starts, so the ticket is never left unassigned while it is being
    worked on. Before touching an area, read its `AGENTS.md` and load the skills it names. For UI
