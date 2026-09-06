@@ -43,8 +43,7 @@ test.describe("auth", () => {
 
     // A second visit is a plain page load with the session cookie: no redirect to /sign-in.
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
-    await expect(page.getByText(email, { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
   });
 
   test("keyboard-only sign-in: Tab to the field, type, Enter", async ({ page, request }) => {
@@ -67,7 +66,7 @@ test.describe("auth", () => {
     await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
 
     await page.goto(await lastMagicLink(request, email));
-    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
   });
 
   test("sign out returns to /sign-in and protected pages are locked again", async ({
@@ -75,9 +74,13 @@ test.describe("auth", () => {
     request,
   }) => {
     await signIn(page, request);
-    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
 
+    const meRequest = page.waitForRequest(
+      (request) => new URL(request.url()).pathname === "/me" && request.method() === "GET",
+    );
     await page.getByRole("button", { name: "Sign out" }).click();
+    await meRequest;
     await expect(page).toHaveURL(/\/sign-in$/);
 
     await page.goto("/");
@@ -108,6 +111,6 @@ test.describe("auth", () => {
     await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
     await page.goto(await lastMagicLink(request, email));
     await expect(page).toHaveURL(new RegExp(`^${escapeRegExp(E2E_WEB_URL)}/$`));
-    await expect(page.getByRole("heading", { level: 1, name: /^Hello/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
   });
 });

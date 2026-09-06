@@ -14,6 +14,22 @@ export const links = [
   <Link key="home" to="/" />,
   <Link key="sign-in" to="/sign-in" search={{ redirect: "/" }} />,
   <Link key="jobs" to="/dev/jobs" search={{ jobId: "x" }} />,
+  <Link key="lessons" to="/lessons" search={{ q: "water" }} />,
+  <Link key="worksheets" to="/worksheets" search={{ q: "water" }} />,
+  <Link key="series" to="/series" search={{ q: "water" }} />,
+  <Link key="series-detail" to="/series/$seriesId" params={{ seriesId: "series-romans" }} />,
+  <Link key="lesson-editor" to="/l/$lessonId" params={{ lessonId: "demo-water-cycle" }} />,
+  <Link key="lesson-present" to="/l/$lessonId/present" params={{ lessonId: "demo-water-cycle" }} />,
+  <Link
+    key="worksheet-editor"
+    to="/w/$worksheetId"
+    params={{ worksheetId: "fraction-practice" }}
+  />,
+  <Link
+    key="worksheet-print"
+    to="/w/$worksheetId/print"
+    params={{ worksheetId: "fraction-practice" }}
+  />,
 ];
 
 // @ts-expect-error `/nope` is not a route
