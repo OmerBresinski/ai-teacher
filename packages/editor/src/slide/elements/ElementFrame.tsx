@@ -8,8 +8,16 @@ const STAGGER = 40;
 /** Delay stops, not items: 6 stops is the 240ms tail SPEC §8 and research/04 §2 specify. */
 const STAGGER_CAP = 6;
 
+/**
+ * A rect the editor is previewing for an element mid-gesture (drag, resize, rotate). The document
+ * in the cache is untouched until pointer-up (ADR 0022 §4); the frame paints from this instead.
+ */
+export type ElementTransform = { x: number; y: number; w: number; h: number; rotation?: number };
+
 export type ElementFrameProps = {
   element: SlideElement;
+  /** Edit mode only: the in-flight geometry to draw instead of the element's own. */
+  override?: ElementTransform;
   theme: Theme;
   mode: SlideMode;
   /** Slide being rendered, threaded to renderers so their writes are addressed. */
@@ -53,7 +61,10 @@ export function ElementFrame({
   optionIndex,
   animateReveals = true,
   style,
+  override,
 }: ElementFrameProps) {
+  const box = override ?? element;
+  const rotation = override ? (override.rotation ?? element.rotation) : element.rotation;
   const revealStep = element.revealStep ?? 0;
   const beyond = revealStep > step;
   const hidden = beyond && mode !== "edit";
@@ -75,15 +86,15 @@ export function ElementFrame({
       aria-hidden={hidden || undefined}
       style={{
         position: "absolute",
-        left: element.x,
-        top: element.y,
-        width: element.w,
-        height: element.h,
+        left: box.x,
+        top: box.y,
+        width: box.w,
+        height: box.h,
         zIndex,
         opacity: element.opacity ?? 1,
         visibility: hidden ? "hidden" : undefined,
         pointerEvents: hidden ? "none" : undefined,
-        transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+        transform: rotation ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: "center center",
         ...style,
       }}
