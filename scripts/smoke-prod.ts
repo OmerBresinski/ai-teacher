@@ -50,6 +50,26 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 401,
     },
     {
+      // The first browser-facing POST that creates data and ends in a model call (ADR 0024 §6, §15):
+      // the same shape as the ai-ping case, so a guard regression on the new prefix shows here.
+      name: "app origin, POST /lessons JSON, reaches the session guard",
+      method: "POST",
+      path: "/lessons",
+      headers: { ...browser, "Content-Type": "application/json" },
+      expect: 401,
+    },
+    {
+      name: "foreign origin POST /lessons is rejected before the session guard",
+      method: "POST",
+      path: "/lessons",
+      headers: {
+        Origin: "https://evil.example",
+        "Sec-Fetch-Site": "cross-site",
+        "Content-Type": "application/json",
+      },
+      expect: 403,
+    },
+    {
       name: "foreign origin is rejected",
       path: "/me",
       headers: { Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" },

@@ -37,6 +37,7 @@ import { fileRoutes } from "./routes/files";
 import { healthRoutes } from "./routes/health";
 import { helloRoutes } from "./routes/hello";
 import { jobRoutes } from "./routes/jobs";
+import { lessonRoutes } from "./routes/lessons";
 import { meRoutes } from "./routes/me";
 import { testRoutes, testRoutesEnabled } from "./routes/test-routes";
 
@@ -152,12 +153,16 @@ function buildApp({
     "/files/*",
     "/documents",
     "/documents/*",
+    "/lessons",
+    "/lessons/*",
   ] as const;
   for (const path of PROTECTED_PATHS) {
     app.use(path, csrf);
     app.use(path, guard);
   }
+  // Every request on these ends in a model call (ADR 0024 §15): one shared per-Workspace limiter.
   app.use("/jobs/ai-ping", rateLimitByWorkspace(aiLimiter));
+  app.use("/lessons", rateLimitByWorkspace(aiLimiter));
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
   const routes = app
@@ -167,7 +172,8 @@ function buildApp({
     .route("/", jobRoutes(eventsRuntime))
     .route("/", eventRoutes(eventsRuntime))
     .route("/", fileRoutes(storage))
-    .route("/", documentRoutes(db.unsafeDb));
+    .route("/", documentRoutes(db.unsafeDb))
+    .route("/", lessonRoutes(db.unsafeDb, eventsRuntime));
 
   // TEACH-22: test-only capture route, outside the RPC contract (`AppType` stays clean).
   if (testMail && testRoutesEnabled(env)) {

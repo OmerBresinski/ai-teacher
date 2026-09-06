@@ -1,10 +1,17 @@
 import type { TextPreset } from "./slide";
 
 /*
- * Theme types (ADR 0021). The catalogue (`THEMES`, `getTheme`, `DEFAULT_THEME_ID`) and the
- * fonts it names live in `@tj/editor`; a document only carries a `themeId`. Behavioural
- * reference: TeachDeck `lib/model/types.ts:317-354`.
+ * Theme types (ADR 0021). The catalogue (`THEMES`, `getTheme`) and the fonts it names live in
+ * `@tj/editor`; a document only carries a `themeId`. Behavioural reference: TeachDeck
+ * `lib/model/types.ts:317-354`.
  */
+
+/**
+ * The theme a lesson gets when nobody chose one. Declared here as well as in the `@tj/editor`
+ * catalogue so the API (`POST /lessons`, ADR 0024 §6) can set it without importing the editor;
+ * `@tj/editor` re-exports this value, so the two cannot drift.
+ */
+export const DEFAULT_THEME_ID = "chalk";
 
 export type ThemeTag =
   | "early-learners"

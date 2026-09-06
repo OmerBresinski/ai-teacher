@@ -253,17 +253,18 @@ export async function getSeriesWithLessons(
 // --- writes ------------------------------------------------------------------------------------
 
 /**
- * Insert a new document. The row id is minted here and written into `body.id` (ADR 0024 §11), so
- * Import and Make a copy get a fresh identity. Throws the parser's message when `body` is not a
- * valid document of `kind`; nothing is written in that case.
+ * Insert a new document. The row id is minted here — or supplied by a caller that had to know it
+ * first, as `POST /lessons` does to enqueue `lesson.plan { lessonId }` before the insert — and is
+ * written into `body.id` (ADR 0024 §11), so Import and Make a copy get a fresh identity. Throws
+ * the parser's message when `body` is not a valid document of `kind`; nothing is written then.
  */
 export async function createDocument(
   ws: WorkspaceDb,
   kind: DocumentKind,
   body: unknown,
-  opts: { generatingJobId?: JobId } = {},
+  opts: { id?: string; generatingJobId?: JobId } = {},
 ): Promise<DocumentRow> {
-  const id = newId();
+  const id = opts.id ?? newId();
   const parsed = { ...parseDocumentBody(kind, body), id } as DocumentBody;
   const now = new Date();
   const rows = await ws
