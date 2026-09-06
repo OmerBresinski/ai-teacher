@@ -43,3 +43,10 @@ content); `libraryQueries.document(id)` returns the full document and a `saveDoc
 replaces it. `DocumentSummary` stays web-local and gains `cover: Slide | null`. "No Zustand" now
 covers the editor as well: the document being edited lives in the Query cache (ADR 0022 §4). A
 reload still reseeds.
+
+## Amendment (2026-09-06, ADR 0024)
+
+The mock data layer is retired by ADR 0024 §9: `apps/web/src/mocks` is replaced by
+`@tj/api-client` calls to the `/documents` and `/lessons` routes inside the same TanStack Query
+option factories and mutations, so the hook surface the shell and the Editor port consume does not
+change. Seed content moves to `bun run db:seed` (ADR 0024 §16); no switchable offline mode is kept.
