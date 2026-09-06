@@ -48,8 +48,16 @@
   --primary: #d2644b;
   --primary-hover: #c05740;
   --primary-press: #ae4b31;
-  /* Ink on terracotta is 5.63:1; white would be 3.71:1 and fails WCAG AA. */
-  --primary-foreground: #1a1816;
+  /*
+   * Filled controls (Button default, Tile primary) use a darker terracotta so white text passes
+   * AA: #b04a33 is TeachDeck's own small-text accent, 4.51:1 under white. `--primary` itself
+   * (#d2644b, 3.71:1 under white) stays for borders, icons, focus rings and large text
+   * (ADR 0019 §4, option b).
+   */
+  --primary-foreground: #ffffff;
+  --primary-fill: #b04a33;
+  --primary-fill-hover: #a0442e;
+  --primary-fill-press: #8f3b27;
   --secondary: #f9f8f6;
   --secondary-foreground: #4e4a44;
   --muted: #f9f8f6;
@@ -121,6 +129,9 @@
   --primary-hover: #ee9b83;
   --primary-press: #d5745a;
   --primary-foreground: #1f110c;
+  --primary-fill: #e6866b;
+  --primary-fill-hover: #ee9b83;
+  --primary-fill-press: #d5745a;
   --secondary: #161513;
   --secondary-foreground: #bcb6ac;
   --muted: #161513;
@@ -185,6 +196,9 @@
     --primary-hover: #ee9b83;
     --primary-press: #d5745a;
     --primary-foreground: #1f110c;
+    --primary-fill: #e6866b;
+    --primary-fill-hover: #ee9b83;
+    --primary-fill-press: #d5745a;
     --secondary: #161513;
     --secondary-foreground: #bcb6ac;
     --muted: #161513;
@@ -249,6 +263,9 @@
   --primary-hover: #ffb092;
   --primary-press: #e88965;
   --primary-foreground: #000000; /* 10.5:1 on --primary */
+  --primary-fill: var(--primary);
+  --primary-fill-hover: var(--primary);
+  --primary-fill-press: var(--primary);
   --secondary: #161513;
   --secondary-foreground: #ffffff; /* 18.9:1 on --secondary */
   --muted: #161513;
@@ -310,6 +327,9 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-press: var(--primary-press);
+  --color-primary-fill: var(--primary-fill);
+  --color-primary-fill-hover: var(--primary-fill-hover);
+  --color-primary-fill-press: var(--primary-fill-press);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);

@@ -31,10 +31,21 @@ export function formatViolations(violations: Violation[]): string {
  * Scan `page` with axe. Fails the test on serious/critical violations; logs the rest to the
  * console with the page `label` so they can be tracked down in the report.
  */
-export async function expectNoSeriousA11yViolations(page: Page, label: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])
-    .analyze();
+export async function expectNoSeriousA11yViolations(
+  page: Page,
+  label: string,
+  selector?: string,
+): Promise<void> {
+  const builder = new AxeBuilder({ page }).withTags([
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa",
+    "best-practice",
+  ]);
+  if (selector) builder.include(selector);
+  const results = await builder.analyze();
   const violations = results.violations as Violation[];
   const blocking = violations.filter((v) => BLOCKING_IMPACTS.has(v.impact ?? ""));
   const advisory = violations.filter((v) => !BLOCKING_IMPACTS.has(v.impact ?? ""));
