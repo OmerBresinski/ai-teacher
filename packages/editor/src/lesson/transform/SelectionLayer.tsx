@@ -554,8 +554,10 @@ export function SelectionLayer({
   const unlockedSelection = () => readSession().selection.filter((id) => !byId.get(id)?.locked);
 
   const onHandleDown = (handle: HandleId, e: ReactPointerEvent) => {
+    // While panning the press must reach the canvas's pan handler, so do not stop it here.
+    if (disabled) return;
     e.stopPropagation();
-    if (e.button !== 0 || disabled) return;
+    if (e.button !== 0) return;
     const ids = unlockedSelection();
     if (ids.length === 0) return;
     measureStage();
@@ -578,8 +580,9 @@ export function SelectionLayer({
   };
 
   const onRotateDown = (_corner: HandleId, e: ReactPointerEvent) => {
+    if (disabled) return;
     e.stopPropagation();
-    if (e.button !== 0 || disabled) return;
+    if (e.button !== 0) return;
     const ids = unlockedSelection();
     if (ids.length === 0) return;
     measureStage();

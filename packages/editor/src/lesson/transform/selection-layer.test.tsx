@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import type { GroupElement } from "@tj/domain/documents";
 import { catcher, nextFrame, pointer, renderEditor, seededLesson, shape } from "../test-harness";
@@ -245,6 +245,19 @@ describe("SelectionLayer", () => {
     await drag(catcher(container), [150, 150], [190, 150], 3);
     expect(read().slides[0]?.elements[0]?.x).toBe(100);
     expect(container.querySelector("[data-selection-frame]")).toBeNull();
+    fireEvent.keyUp(window, { key: " ", code: "Space" });
+
+    // From a handle too: with Space held the press bubbles to the scroller for the pan.
+    fireEvent.pointerDown(catcher(container), pointer(150, 150));
+    fireEvent.pointerUp(window, pointer(150, 150));
+    const se = container.querySelector<HTMLElement>('[data-handle="se"]');
+    if (!se) throw new Error("no se handle");
+    fireEvent.keyDown(window, { key: " ", code: "Space" });
+    const reached = mock(() => {});
+    screen.getByRole("group", { name: "Slide canvas" }).addEventListener("pointerdown", reached);
+    await drag(se, [300, 200], [400, 300], 3);
+    expect(reached).toHaveBeenCalledTimes(1);
+    expect(read().slides[0]?.elements[0]).toMatchObject({ w: 200, h: 100 });
     fireEvent.keyUp(window, { key: " ", code: "Space" });
     await drag(catcher(container), [150, 150], [190, 150], 3);
     expect(read().slides[0]?.elements[0]?.x).toBe(140);
