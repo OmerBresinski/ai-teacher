@@ -29,6 +29,7 @@ import {
   Presentation,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useLibraryShell } from "@/components/library-shell-context";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { libraryQueries, sortDocuments } from "@/lib/library";
 import { LIBRARY_THEMES } from "@/mocks/library-fixtures";
@@ -116,6 +117,7 @@ function isRecent(updatedAt: string): boolean {
 
 export function LibraryPage({ mode }: { mode: LibraryMode }) {
   useDocumentTitle(`${TITLES[mode]} · Teaching Journey`);
+  const { openImport } = useLibraryShell();
   const documents = useQuery(libraryQueries.documents());
   const series = useQuery(libraryQueries.series());
   const navigate = useNavigate();
@@ -181,7 +183,8 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
+        return;
       const target = event.target as HTMLElement | null;
       if (
         target?.tagName === "INPUT" ||
@@ -304,7 +307,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
         ) : loading ? (
           <SkeletonGrid />
         ) : isHome && allDocuments.length + allSeries.length === 0 ? (
-          <EmptyLibrary mode={mode} onCreate={announceCreation} />
+          <EmptyLibrary mode={mode} onCreate={announceCreation} onImport={openImport} />
         ) : isHome ? (
           <>
             {hero || beside.length > 0 ? (
@@ -336,7 +339,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
           searching ? (
             <NoMatches onClear={() => setSearch("")} />
           ) : (
-            <EmptyLibrary mode={mode} onCreate={announceCreation} />
+            <EmptyLibrary mode={mode} onCreate={announceCreation} onImport={openImport} />
           )
         ) : isSeries ? (
           <SeriesGrid series={matchedSeries} />
@@ -511,7 +514,15 @@ function SeriesBand({
   );
 }
 
-function EmptyLibrary({ mode, onCreate }: { mode: LibraryMode; onCreate: () => void }) {
+function EmptyLibrary({
+  mode,
+  onCreate,
+  onImport,
+}: {
+  mode: LibraryMode;
+  onCreate: () => void;
+  onImport: () => void;
+}) {
   const series = mode === "series";
   return (
     <EmptyState
@@ -528,7 +539,11 @@ function EmptyLibrary({ mode, onCreate }: { mode: LibraryMode; onCreate: () => v
           {series ? "New series" : mode === "worksheet" ? "New worksheet" : "New lesson"}
         </Button>
       }
-      secondaryAction={<Button variant="ghost">Import</Button>}
+      secondaryAction={
+        <Button variant="ghost" onClick={onImport}>
+          Import
+        </Button>
+      }
     />
   );
 }

@@ -76,7 +76,11 @@ test.describe("auth", () => {
     await signIn(page, request);
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
 
+    const meRequest = page.waitForRequest(
+      (request) => new URL(request.url()).pathname === "/me" && request.method() === "GET",
+    );
     await page.getByRole("button", { name: "Sign out" }).click();
+    await meRequest;
     await expect(page).toHaveURL(/\/sign-in$/);
 
     await page.goto("/");

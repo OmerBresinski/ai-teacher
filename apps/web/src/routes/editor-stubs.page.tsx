@@ -13,7 +13,7 @@ export function EditorStubPage() {
   const match = pathname.match(/^\/(?:l|w)\/([^/]+)(?:\/(?:present|print))?$/);
   const document = documents.data?.find((entry) => entry.id === match?.[1]);
 
-  if (!documents.isPending && !document) notFound();
+  if (!documents.isPending && !document) throw notFound();
   useDocumentTitle(`${document?.title ?? "Document"} · Teaching Journey`);
 
   function backToLibrary(): void {

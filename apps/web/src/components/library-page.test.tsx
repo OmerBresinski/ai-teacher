@@ -1,8 +1,9 @@
-import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { QueryClient, QueryClientProvider, queryOptions } from "@tanstack/react-query";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
+import { libraryQueries } from "@/lib/library";
 
 let search: { q?: string } = {};
 const navigate = mock();
@@ -83,15 +84,58 @@ describe("LibraryPage", () => {
     expect(localStorage.getItem("tj:library:view")).toBe("list");
   });
 
-  it("focuses search with slash and shows the exact search-miss state", async () => {
+  it("focuses search only when slash has no modifier or editable target", async () => {
     search = { q: "no matching title" };
     renderPage("lesson");
 
     const input = await screen.findByRole("searchbox", { name: "Search by title" });
     fireEvent.keyDown(document, { key: "/" });
     expect(input).toHaveFocus();
+    input.blur();
+
+    for (const modifier of ["altKey", "ctrlKey", "metaKey", "shiftKey"] as const) {
+      fireEvent.keyDown(document, { key: "/", [modifier]: true });
+      expect(input).not.toHaveFocus();
+    }
+
+    input.focus();
+    fireEvent.keyDown(input, { key: "/" });
+    expect(input).toHaveFocus();
+
+    const editable = document.createElement("div");
+    editable.contentEditable = "true";
+    document.body.append(editable);
+    editable.focus();
+    fireEvent.keyDown(editable, { key: "/" });
+    expect(input).not.toHaveFocus();
+    editable.remove();
+
     expect(await screen.findByText("No titles match that")).toBeVisible();
     expect(screen.getAllByRole("button", { name: "Clear search" })).toHaveLength(2);
+  });
+
+  it("renders the query error and retries the failed document query", async () => {
+    let shouldThrow = true;
+    let calls = 0;
+    const documents = libraryQueries.documents();
+    const documentsSpy = spyOn(libraryQueries, "documents").mockImplementation(() =>
+      queryOptions({
+        ...documents,
+        queryFn: async () => {
+          calls += 1;
+          if (shouldThrow) throw new Error("forced library failure");
+          return [];
+        },
+      }),
+    );
+
+    renderPage("home");
+
+    expect(await screen.findByText("Your library could not be loaded")).toBeVisible();
+    shouldThrow = false;
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(calls).toBeGreaterThan(1));
+    documentsSpy.mockRestore();
   });
 
   it("keeps Recent and Earlier groups when the list preference is selected", async () => {

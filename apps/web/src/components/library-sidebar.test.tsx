@@ -39,7 +39,7 @@ function renderSidebar() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <LibrarySidebar onShortcuts={() => {}} />
+          <LibrarySidebar onImport={() => {}} onShortcuts={() => {}} />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>,

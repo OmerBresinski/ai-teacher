@@ -10,7 +10,7 @@ export const librarySearchSchema = z.object({
 });
 
 async function prefetchLibrary(queryClient: QueryClient): Promise<void> {
-  await Promise.all([
+  await Promise.allSettled([
     queryClient.ensureQueryData(libraryQueries.documents()),
     queryClient.ensureQueryData(libraryQueries.series()),
   ]);

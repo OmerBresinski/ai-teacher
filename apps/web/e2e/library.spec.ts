@@ -54,6 +54,20 @@ test.describe("library shell", () => {
     await expect(page).toHaveURL(/\/lessons$/);
   });
 
+  test("unknown editor documents render the not-found page", async ({ signedInPage: { page } }) => {
+    await page.goto("/l/nope");
+
+    await expect(page.getByText("Page not found")).toBeVisible();
+  });
+
+  test("Series search miss clears the query", async ({ signedInPage: { page } }) => {
+    await page.goto("/series?q=zzz");
+
+    await expect(page.getByText("No titles match that")).toBeVisible();
+    await page.getByRole("button", { name: "Clear search" }).last().click();
+    await expect(page).toHaveURL(/\/series$/);
+  });
+
   test("Home, Lessons, and Series have no serious or critical axe findings in light and dark themes", async ({
     signedInPage: { page },
   }) => {
@@ -64,9 +78,14 @@ test.describe("library shell", () => {
     await page.goto("/series");
     await expect(page.getByRole("heading", { name: "Series" })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "/series");
+    await page.goto("/");
     await page.getByRole("button", { name: "Theme" }).click();
     await page.getByRole("menuitemradio", { name: "Dark" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expectNoSeriousA11yViolations(page, "/ (dark)");
+    await page.goto("/lessons");
+    await expectNoSeriousA11yViolations(page, "/lessons (dark)");
+    await page.goto("/series");
     await expectNoSeriousA11yViolations(page, "/series (dark)");
   });
 });
