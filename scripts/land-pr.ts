@@ -20,6 +20,8 @@ const DEPLOY_POLL_MS = 15_000;
 const NO_DEPLOYMENT_WAIT_MS = 90_000;
 const DEFAULT_TIMEOUT_MIN = 20;
 const MAX_REBASE_ROUNDS = 2;
+/** Review-thread pages of 100 fetched before giving up. */
+const MAX_THREAD_PAGES = 10;
 
 export interface CommandResult {
   exitCode: number;
@@ -157,7 +159,10 @@ export function parseVercelProduction(tableText: string): string | null {
 
   for (const line of lines.slice(headerIndex + 1)) {
     const columns = line.split(/\s{2,}/);
-    if (columns[environmentIndex] === "Production") return columns[statusIndex] ?? null;
+    if (columns[environmentIndex] !== "Production") continue;
+    const status = columns[statusIndex];
+    // The CLI prefixes the status with a coloured marker ("● Ready", "● Error"); keep the word.
+    return status === undefined ? null : status.replace(/^[^A-Za-z]+/, "").trim();
   }
   return null;
 }
@@ -195,10 +200,45 @@ async function reviewThreadCount(pr: number, deps: LandPrDeps): Promise<number> 
     throw new UserFacingError("Could not identify the GitHub repository.");
   }
 
-  const query = `{repository(owner:"${owner}",name:"${name}"){pullRequest(number:${pr}){reviewThreads(first:100){nodes{id isResolved}}}}}`;
-  const result = await deps.gh(["api", "graphql", "-f", `query=${query}`]);
-  requireSuccess(result, "Could not read review threads");
-  return unresolvedThreadCount(output(result));
+  let unresolved = 0;
+  let cursor: string | null = null;
+  for (let page = 0; page < MAX_THREAD_PAGES; page++) {
+    const after = cursor === null ? "" : `,after:"${cursor}"`;
+    const query = `{repository(owner:"${owner}",name:"${name}"){pullRequest(number:${pr}){reviewThreads(first:100${after}){pageInfo{hasNextPage endCursor}nodes{id isResolved}}}}}`;
+    const result = await deps.gh(["api", "graphql", "-f", `query=${query}`]);
+    requireSuccess(result, "Could not read review threads");
+    const json = output(result);
+    unresolved += unresolvedThreadCount(json);
+    const pageInfo = reviewThreadsPageInfo(json);
+    if (!pageInfo.hasNextPage || pageInfo.endCursor === null) return unresolved;
+    cursor = pageInfo.endCursor;
+  }
+  throw new UserFacingError(
+    `PR #${pr} has more than ${MAX_THREAD_PAGES * 100} review threads; refusing to guess.`,
+  );
+}
+
+export function reviewThreadsPageInfo(graphqlJson: unknown): {
+  hasNextPage: boolean;
+  endCursor: string | null;
+} {
+  const parsed =
+    typeof graphqlJson === "string" ? parseJson(graphqlJson, "review threads") : graphqlJson;
+  const pageInfo = (
+    parsed as {
+      data?: {
+        repository?: {
+          pullRequest?: {
+            reviewThreads?: { pageInfo?: { hasNextPage?: unknown; endCursor?: unknown } };
+          };
+        };
+      };
+    } | null
+  )?.data?.repository?.pullRequest?.reviewThreads?.pageInfo;
+  return {
+    hasNextPage: pageInfo?.hasNextPage === true,
+    endCursor: typeof pageInfo?.endCursor === "string" ? pageInfo.endCursor : null,
+  };
 }
 
 async function waitForCi(pr: number, deps: LandPrDeps): Promise<void> {
@@ -495,8 +535,24 @@ export function parseLandPrArgs(argv: string[]): ParsedLandPrArgs {
   };
 }
 
-function shellResult(result: { exitCode: number | undefined; stdout: Uint8Array }): CommandResult {
+function shellResult(result: {
+  exitCode: number | undefined;
+  stdout: Uint8Array;
+  stderr?: Uint8Array;
+}): CommandResult {
   return { exitCode: result.exitCode ?? ExitCode.Failure, stdout: result.stdout.toString() };
+}
+
+/** `vercel ls` writes its deployment table to stderr; return both streams as one text. */
+function shellResultWithStderr(result: {
+  exitCode: number | undefined;
+  stdout: Uint8Array;
+  stderr: Uint8Array;
+}): CommandResult {
+  return {
+    exitCode: result.exitCode ?? ExitCode.Failure,
+    stdout: `${result.stdout.toString()}\n${result.stderr.toString()}`,
+  };
 }
 
 function realDeps(): LandPrDeps {
@@ -504,7 +560,7 @@ function realDeps(): LandPrDeps {
     gh: async (args) => shellResult(await $`gh ${args}`.cwd(ROOT).quiet().nothrow()),
     git: async (args) => shellResult(await $`git ${args}`.cwd(ROOT).quiet().nothrow()),
     vercelLs: async () =>
-      shellResult(
+      shellResultWithStderr(
         await $`vercel ls ${VERCEL_PROJECT} --scope ${VERCEL_SCOPE}`.cwd(ROOT).quiet().nothrow(),
       ),
     railwayList: async (service) =>

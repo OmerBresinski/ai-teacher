@@ -5,17 +5,25 @@ import {
   landPr,
   parseLandPrArgs,
   parseVercelProduction,
+  reviewThreadsPageInfo,
 } from "./land-pr";
 import { ExitCode, UserFacingError } from "./lib/exit";
 
 const ok = (stdout = ""): CommandResult => ({ exitCode: 0, stdout });
-const VERCEL_READY = `Age  Deployment  Status  Environment  Duration  Username
-2m   https://preview.example.vercel.app  Ready  Preview  20s  omer
-1m   https://teaching-journey-web.vercel.app  Ready  Production  21s  omer`;
+// Captured from `vercel ls` 59.x: the table is on stderr and the status carries a "●" marker.
+const VERCEL_READY = `Vercel CLI 59.11.2 (Node.js 24.14.1)
+Fetching deployments in omerbresinskis-projects
+> Deployments for omerbresinskis-projects/teaching-journey-web [241ms]
+
+  Age     Project                                          Deployment                                                                Status       Environment     Duration     Username
+  2m      omerbresinskis-projects/teaching-journey-web     https://teaching-journey-mpta5j1vh-omerbresinskis-projects.vercel.app     ● Canceled   Preview         2s           omerbresinski
+  8m      omerbresinskis-projects/teaching-journey-web     https://teaching-journey-7qoiteule-omerbresinskis-projects.vercel.app     ● Ready      Production      7s           omerbresinski`;
 
 interface FakeOptions {
   states?: string[];
   unresolved?: number;
+  /** Split the unresolved threads over this many GraphQL pages (default 1). */
+  threadPages?: number;
   railway?: Partial<Record<"api" | "worker", Array<{ id: string; status?: string }>>>;
   vercel?: string;
   smokeExitCode?: number;
@@ -50,15 +58,22 @@ function fakeDeps(options: FakeOptions = {}): {
         calls.gh.push(args);
         if (args[0] === "repo") return ok("owner/repo");
         if (args[0] === "api") {
+          const pages = options.threadPages ?? 1;
+          const query = args[3] ?? "";
+          const page = query.includes("after:") ? Number(query.match(/after:"p(\d+)"/)?.[1]) : 0;
+          const last = page === pages - 1;
           return ok(
             JSON.stringify({
               data: {
                 repository: {
                   pullRequest: {
                     reviewThreads: {
-                      nodes: Array.from({ length: options.unresolved ?? 0 }, () => ({
-                        isResolved: false,
-                      })),
+                      pageInfo: { hasNextPage: !last, endCursor: last ? null : `p${page + 1}` },
+                      nodes: last
+                        ? Array.from({ length: options.unresolved ?? 0 }, () => ({
+                            isResolved: false,
+                          }))
+                        : [{ isResolved: true }],
                     },
                   },
                 },
@@ -182,7 +197,7 @@ describe("land-pr", () => {
 
   test("fails a Vercel Production Error deployment", async () => {
     const fake = fakeDeps({
-      vercel: VERCEL_READY.replace("Ready  Production", "Error  Production"),
+      vercel: VERCEL_READY.replace("● Ready", "● Error"),
     });
     await expect(landPr(42, {}, fake.deps)).rejects.toThrow("Vercel Production deployment failed");
   });
@@ -199,6 +214,26 @@ describe("land-pr", () => {
 
   test("finds the Production status in a Vercel table with a Preview above it", () => {
     expect(parseVercelProduction(VERCEL_READY)).toBe("Ready");
+    expect(parseVercelProduction(VERCEL_READY.replace("● Ready", "● Error"))).toBe("Error");
+  });
+
+  test("finds unresolved threads on a later GraphQL page", async () => {
+    const fake = fakeDeps({ unresolved: 1, threadPages: 3 });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("1 unresolved review thread");
+    expect(fake.calls.gh.filter((args) => args[0] === "api")).toHaveLength(3);
+  });
+
+  test("reads pageInfo defensively", () => {
+    expect(reviewThreadsPageInfo("{}")).toEqual({ hasNextPage: false, endCursor: null });
+    expect(
+      reviewThreadsPageInfo({
+        data: {
+          repository: {
+            pullRequest: { reviewThreads: { pageInfo: { hasNextPage: true, endCursor: "x" } } },
+          },
+        },
+      }),
+    ).toEqual({ hasNextPage: true, endCursor: "x" });
   });
 
   test("rejects missing and non-numeric PR numbers as usage errors", () => {
