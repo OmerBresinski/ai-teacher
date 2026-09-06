@@ -148,6 +148,9 @@ describe("targets and reports", () => {
       "AI_MODEL_FRONTIER",
       "AI_MODEL_STANDARD",
       "AI_MODEL_SMALL",
+      "AI_LESSON_COST_CAP_USD",
+      "AI_LESSON_TOKEN_CAP",
+      "MASTRA_TELEMETRY_DISABLED",
     ]);
     expect(report.extra).toEqual(["ROGUE_VAR"]);
     const commands = fixCommands(report);
@@ -159,6 +162,9 @@ describe("targets and reports", () => {
       "railway variable set --service worker --skip-deploys 'AI_MODEL_FRONTIER=us.anthropic.claude-opus-5'",
       "railway variable set --service worker --skip-deploys 'AI_MODEL_STANDARD=us.anthropic.claude-sonnet-5'",
       "railway variable set --service worker --skip-deploys 'AI_MODEL_SMALL=us.anthropic.claude-haiku-4-5-20251001-v1:0'",
+      "railway variable set --service worker --skip-deploys 'AI_LESSON_COST_CAP_USD=0.50'",
+      "railway variable set --service worker --skip-deploys 'AI_LESSON_TOKEN_CAP=300000'",
+      "railway variable set --service worker --skip-deploys 'MASTRA_TELEMETRY_DISABLED=1'",
       "# not in the contract: railway variable delete ROGUE_VAR --service worker --environment production   (or add it to infra/env.contract.ts)",
     ]);
   });

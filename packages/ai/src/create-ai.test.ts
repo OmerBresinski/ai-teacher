@@ -1,5 +1,18 @@
 import { describe, expect, test } from "bun:test";
+import { Writable } from "node:stream";
+import pino from "pino";
 import { createAi, DEFAULT_MODEL_IDS, DEFAULT_REGION, isAiError } from "./index";
+
+function createMemoryLogger() {
+  const lines: string[] = [];
+  const destination = new Writable({
+    write(chunk, _encoding, callback) {
+      lines.push(chunk.toString());
+      callback();
+    },
+  });
+  return { lines, logger: pino({ level: "info" }, destination) };
+}
 
 describe("createAi", () => {
   test("returns an unconfigured client when the Bedrock key is absent or blank", () => {
@@ -40,6 +53,31 @@ describe("createAi", () => {
     expect(ai.region).toBe("eu-west-1");
     expect(ai.modelId("small")).toBe("us.amazon.nova-micro-v1:0");
     expect(ai.modelId("standard")).toBe(DEFAULT_MODEL_IDS.standard);
+  });
+
+  test("model(cls, context) is accepted with and without a context on both client kinds", () => {
+    const configured = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
+    expect(configured.model("small")).toBeDefined();
+    expect(configured.model("small", { lessonId: "l1", stage: "plan" })).toBeDefined();
+    const unconfigured = createAi({});
+    expect(() => unconfigured.model("small", { lessonId: "l1" })).toThrow();
+  });
+
+  test("warns once per unpriced configured model id at boot, and not for the defaults (ADR 0025 §15)", () => {
+    const quiet = createMemoryLogger();
+    createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" }, { logger: quiet.logger });
+    expect(quiet.lines).toEqual([]);
+
+    const noisy = createMemoryLogger();
+    createAi(
+      { AWS_BEARER_TOKEN_BEDROCK: "test-key", AI_MODEL_SMALL: "us.amazon.nova-micro-v1:0" },
+      { logger: noisy.logger },
+    );
+    expect(noisy.lines).toHaveLength(1);
+    const record = JSON.parse(noisy.lines[0] ?? "") as { level: number; ai: unknown; msg: string };
+    expect(record.level).toBe(40);
+    expect(record.ai).toEqual({ class: "small", modelId: "us.amazon.nova-micro-v1:0" });
+    expect(record.msg).toContain("token cap");
   });
 
   test("rejects invalid model classes at the package boundary", () => {

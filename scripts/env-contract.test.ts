@@ -78,6 +78,9 @@ describe("infra/env.contract.ts", () => {
       "AI_MODEL_FRONTIER",
       "AI_MODEL_STANDARD",
       "AI_MODEL_SMALL",
+      "AI_LESSON_COST_CAP_USD",
+      "AI_LESSON_TOKEN_CAP",
+      "MASTRA_TELEMETRY_DISABLED",
     ]);
     // Set on production so PR environments (copies of production) inherit it (TEACH-38).
     expect(railwayNames("api", "pr")).toContain("WEB_ORIGIN_PATTERNS");

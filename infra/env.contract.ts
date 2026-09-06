@@ -48,6 +48,7 @@ export type EnvFormat =
   | "postgres-url"
   | "port"
   | "int"
+  | "number"
   | "enum"
   | "origin-list"
   | "origin-pattern-list"
@@ -539,6 +540,64 @@ const CONTRACT = [
     railwayValue: AI_DEFAULT_MODEL_IDS.small,
     description:
       "Bedrock model ID for the F13 §7 small class: items, glossary, variants and summaries.",
+  },
+
+  // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------------------
+  {
+    name: "AI_LESSON_COST_CAP_USD",
+    services: ["worker"],
+    scope: "config",
+    local: "0.50",
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "number",
+    files: ["worker"],
+    railwayValue: "0.50",
+    description:
+      "Per-lesson spend cap in USD for the `lesson.plan` pipeline (ADR 0025 §15). Every stage charges `createBudget` after each call and stops between calls once the cap is exceeded; what was written stays and the teacher is told.",
+  },
+  {
+    name: "AI_LESSON_TOKEN_CAP",
+    services: ["worker"],
+    scope: "config",
+    local: "300000",
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["worker"],
+    railwayValue: "300000",
+    description:
+      "Per-lesson input + output token cap, used instead of `AI_LESSON_COST_CAP_USD` once a configured model id has no entry in `@tj/ai` `PRICES` (ADR 0025 §15) — the cap is never silently absent.",
+  },
+  {
+    name: "AI_EVAL_RUN_COST_CAP_USD",
+    services: ["worker"],
+    scope: "config",
+    local: "3.00",
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "number",
+    files: ["worker"],
+    runtimeOnly: true,
+    description:
+      "Spend cap in USD for one paid run of the `@tj/generation` eval set (ADR 0025 §23). Read by the eval script only, never by the worker's boot schema.",
+  },
+  {
+    name: "MASTRA_TELEMETRY_DISABLED",
+    services: ["api", "worker"],
+    scope: "config",
+    local: "1",
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "string",
+    files: ["api", "worker"],
+    railwayValue: "1",
+    description:
+      "Mastra core is used in-process by @tj/generation (ADR 0025 §21); its anonymous telemetry (`posthog-node`) is disabled.",
   },
 
   // --- api: SSE knobs (ADR 0012, apps/api/src/events/config.ts) ----------------------------------

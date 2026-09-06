@@ -73,6 +73,8 @@ export const EnvSchema = z
     AI_MODEL_FRONTIER: z.string().min(1).default(DEFAULT_MODEL_IDS.frontier),
     AI_MODEL_STANDARD: z.string().min(1).default(DEFAULT_MODEL_IDS.standard),
     AI_MODEL_SMALL: z.string().min(1).default(DEFAULT_MODEL_IDS.small),
+    /** ADR 0025 §21: Mastra's anonymous telemetry stays off; the api only forwards the flag. */
+    MASTRA_TELEMETRY_DISABLED: optionalString,
 
     // --- Auth (ADR 0008, TEACH-20) ---------------------------------------------------------
     /** Signs session cookies and tokens. `bun run setup` generates it (infra/env.contract.ts). */

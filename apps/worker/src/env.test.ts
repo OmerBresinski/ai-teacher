@@ -17,7 +17,32 @@ describe("worker env", () => {
       AI_MODEL_FRONTIER: DEFAULT_MODEL_IDS.frontier,
       AI_MODEL_STANDARD: DEFAULT_MODEL_IDS.standard,
       AI_MODEL_SMALL: DEFAULT_MODEL_IDS.small,
+      AI_LESSON_COST_CAP_USD: 0.5,
+      AI_LESSON_TOKEN_CAP: 300_000,
+      MASTRA_TELEMETRY_DISABLED: undefined,
     });
+  });
+
+  test("coerces the budget caps and refuses a non-numeric cap (ADR 0025 §15)", () => {
+    const env = parseEnv({
+      DATABASE_URL: DB,
+      AI_LESSON_COST_CAP_USD: "1.25",
+      AI_LESSON_TOKEN_CAP: "50000",
+    });
+    expect(env.AI_LESSON_COST_CAP_USD).toBe(1.25);
+    expect(env.AI_LESSON_TOKEN_CAP).toBe(50_000);
+    const exit = spyOn(process, "exit").mockImplementation((() => {
+      throw new Error("exit");
+    }) as never);
+    const error = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(() => parseEnv({ DATABASE_URL: DB, AI_LESSON_COST_CAP_USD: "abc" })).toThrow("exit");
+      expect(error.mock.calls[0]?.[0]).toContain("apps/worker: invalid environment");
+      expect(error.mock.calls[0]?.[0]).toContain("AI_LESSON_COST_CAP_USD");
+    } finally {
+      exit.mockRestore();
+      error.mockRestore();
+    }
   });
 
   test("accepts no key in development, treats a blank key as unset, and allows model overrides", () => {

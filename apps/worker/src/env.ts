@@ -24,6 +24,10 @@ export const EnvSchema = z
     AI_MODEL_FRONTIER: z.string().min(1).default(DEFAULT_MODEL_IDS.frontier),
     AI_MODEL_STANDARD: z.string().min(1).default(DEFAULT_MODEL_IDS.standard),
     AI_MODEL_SMALL: z.string().min(1).default(DEFAULT_MODEL_IDS.small),
+    // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------
+    AI_LESSON_COST_CAP_USD: z.coerce.number().nonnegative().default(0.5),
+    AI_LESSON_TOKEN_CAP: z.coerce.number().int().positive().default(300_000),
+    MASTRA_TELEMETRY_DISABLED: optionalString,
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.AWS_BEARER_TOKEN_BEDROCK) {

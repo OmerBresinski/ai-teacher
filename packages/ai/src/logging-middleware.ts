@@ -2,18 +2,23 @@ import type { ModelClass } from "@tj/domain";
 import type { LanguageModelMiddleware } from "ai";
 import type pino from "pino";
 import { toProviderError } from "./errors";
+import { costUsd } from "./prices";
+import type { AiCallContext } from "./types";
 
 interface LoggingMiddlewareOptions {
   logger: pino.Logger;
   modelClass: ModelClass;
   modelId: string;
+  /** ADR 0025 §16: pipeline identifiers to log beside the usage. Never content. */
+  context?: AiCallContext | undefined;
 }
 
 /**
- * Token counts are `null` (not `undefined`) when unknown so pino serializes the key: a log line
- * always carries `inputTokens` and `outputTokens`, even on the error path.
+ * Token counts and `costUsd` are `null` (not `undefined`) when unknown so pino serializes the
+ * key: a log line always carries `inputTokens`, `outputTokens` and `costUsd`, even on the error
+ * path. The context fields are present only when the caller supplied them.
  */
-interface AiLogFields {
+interface AiLogFields extends AiCallContext {
   class: ModelClass;
   modelId: string;
   provider: "bedrock";
@@ -21,7 +26,20 @@ interface AiLogFields {
   inputTokens: number | null;
   outputTokens: number | null;
   cachedInputTokens?: number;
+  /** ADR 0025 §15: list price of this call, `null` for an unpriced model id. */
+  costUsd: number | null;
   finishReason: string;
+}
+
+/** Only the context keys the caller set; pino would keep an explicit `undefined` out anyway. */
+function contextFields(context: AiCallContext | undefined): AiCallContext {
+  const fields: AiCallContext = {};
+  if (!context) return fields;
+  if (context.lessonId !== undefined) fields.lessonId = context.lessonId;
+  if (context.jobId !== undefined) fields.jobId = context.jobId;
+  if (context.stage !== undefined) fields.stage = context.stage;
+  if (context.promptVersion !== undefined) fields.promptVersion = context.promptVersion;
+  return fields;
 }
 
 function logSuccess(
@@ -35,13 +53,20 @@ function logSuccess(
   finishReason: string,
 ) {
   const cachedInputTokens = usage.inputTokens.cacheRead;
+  const inputTokens = usage.inputTokens.total ?? null;
+  const outputTokens = usage.outputTokens.total ?? null;
   const ai: AiLogFields = {
+    ...contextFields(options.context),
     class: options.modelClass,
     modelId: options.modelId,
     provider: "bedrock",
     durationMs: Date.now() - startedAt,
-    inputTokens: usage.inputTokens.total ?? null,
-    outputTokens: usage.outputTokens.total ?? null,
+    inputTokens,
+    outputTokens,
+    costUsd:
+      inputTokens === null || outputTokens === null
+        ? null
+        : costUsd(options.modelId, { inputTokens, outputTokens, cachedInputTokens }),
     finishReason,
   };
   if (cachedInputTokens !== undefined) ai.cachedInputTokens = cachedInputTokens;
@@ -51,12 +76,14 @@ function logSuccess(
 function logError(logger: pino.Logger, options: LoggingMiddlewareOptions, startedAt: number) {
   logger.warn({
     ai: {
+      ...contextFields(options.context),
       class: options.modelClass,
       modelId: options.modelId,
       provider: "bedrock",
       durationMs: Date.now() - startedAt,
       inputTokens: null,
       outputTokens: null,
+      costUsd: null,
       finishReason: "error",
     } satisfies AiLogFields,
   });

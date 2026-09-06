@@ -21,6 +21,7 @@ describe("doctor: validateEnvFile", () => {
     "AI_MODEL_FRONTIER=us.anthropic.claude-opus-5",
     "AI_MODEL_STANDARD=us.anthropic.claude-sonnet-5",
     "AI_MODEL_SMALL=us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "MASTRA_TELEMETRY_DISABLED=1",
     "BETTER_AUTH_SECRET=not-a-real-secret-just-long-enough-0123456789",
   ].join("\n");
 
@@ -82,10 +83,18 @@ describe("doctor: validateEnvFile", () => {
       "AI_MODEL_FRONTIER",
       "AI_MODEL_STANDARD",
       "AI_MODEL_SMALL",
+      "AI_LESSON_COST_CAP_USD",
+      "AI_LESSON_TOKEN_CAP",
+      "AI_EVAL_RUN_COST_CAP_USD",
+      "MASTRA_TELEMETRY_DISABLED",
     ]);
   });
 
   test("checkFormat edge cases", () => {
+    expect(checkFormat("number", "0.50")).toBeNull();
+    expect(checkFormat("number", "3")).toBeNull();
+    expect(checkFormat("number", "abc")).toBe("a non-negative number");
+    expect(checkFormat("number", "-1")).toBe("a non-negative number");
     expect(checkFormat("url", "/api")).toBe("an absolute http(s) URL");
     expect(checkFormat("url", "https://api.example.test")).toBeNull();
     expect(checkFormat("port", "70000")).toBe("a port (1-65535)");

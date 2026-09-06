@@ -5,7 +5,15 @@ import { wrapLanguageModel } from "ai";
 import pino from "pino";
 import { AiError } from "./errors";
 import { createLoggingMiddleware } from "./logging-middleware";
-import type { AiEnv, ConfiguredAi, CreateAiOptions, CreatedAi, UnconfiguredAi } from "./types";
+import { isPriced } from "./prices";
+import type {
+  AiCallContext,
+  AiEnv,
+  ConfiguredAi,
+  CreateAiOptions,
+  CreatedAi,
+  UnconfiguredAi,
+} from "./types";
 
 export const DEFAULT_REGION = "us-east-1";
 
@@ -22,7 +30,11 @@ interface ConfiguredAiOptions {
   region: string;
   modelIds: ModelIds;
   logger: pino.Logger;
-  createModel(modelClass: ModelClassType, modelId: string): WrappableLanguageModel;
+  createModel(
+    modelClass: ModelClassType,
+    modelId: string,
+    context: AiCallContext | undefined,
+  ): WrappableLanguageModel;
 }
 
 function requireModelClass(modelClass: ModelClassType): ModelClassType {
@@ -63,19 +75,34 @@ export function createConfiguredAi(options: ConfiguredAiOptions): ConfiguredAi {
     modelId(modelClass) {
       return options.modelIds[requireModelClass(modelClass)];
     },
-    model(modelClass): LanguageModel {
+    model(modelClass, context): LanguageModel {
       const modelClassValue = requireModelClass(modelClass);
       const modelId = options.modelIds[modelClassValue];
       return wrapLanguageModel({
-        model: options.createModel(modelClassValue, modelId),
+        model: options.createModel(modelClassValue, modelId, context),
         middleware: createLoggingMiddleware({
           logger: options.logger,
           modelClass: modelClassValue,
           modelId,
+          context,
         }),
       });
     },
   };
+}
+
+/**
+ * ADR 0025 §15: a configured model id with no entry in `PRICES` is capped by tokens instead of
+ * USD. Said once at boot, per class, so the fallback is never silent.
+ */
+function warnUnpricedModels(logger: pino.Logger, modelIds: ModelIds): void {
+  for (const [modelClass, modelId] of Object.entries(modelIds)) {
+    if (isPriced(modelId)) continue;
+    logger.warn(
+      { ai: { class: modelClass, modelId } },
+      "model id has no list price in @tj/ai PRICES; lesson budgets fall back to the token cap",
+    );
+  }
 }
 
 /**
@@ -89,6 +116,7 @@ export function createAi(env: AiEnv, options: CreateAiOptions = {}): CreatedAi {
   if (!apiKey) return unconfiguredAi(region, modelIds);
 
   const logger = options.logger ?? pino({ level: "silent" });
+  warnUnpricedModels(logger, modelIds);
   const bedrock = createAmazonBedrock({ apiKey, region });
   return createConfiguredAi({
     region,
