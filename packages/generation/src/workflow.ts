@@ -8,11 +8,11 @@ import { plan } from "./stages/plan";
 import { repair } from "./stages/repair";
 import {
   type PipelineDeps,
+  type PipelineStageName,
   type PipelineState,
   STAGE_CHECKPOINT,
   STAGE_ORDER,
   StageFailure,
-  type StageName,
 } from "./types";
 
 /*
@@ -59,7 +59,7 @@ function depsOf({ requestContext, runId }: Ctx): PipelineDeps {
 }
 
 /** The first stage that still has to run for this lesson (ADR 0025 §5 checkpoint resume). */
-export function resumeFrom(lesson: Lesson): StageName | null {
+export function resumeFrom(lesson: Lesson): PipelineStageName | null {
   const done = lesson.generation?.stage;
   if (!done) return "plan";
   const index = STAGE_ORDER.findIndex((stage) => STAGE_CHECKPOINT[stage] === done);
@@ -67,7 +67,7 @@ export function resumeFrom(lesson: Lesson): StageName | null {
 }
 
 /** Whether `stage` runs for a lesson resuming at `from`. */
-function shouldRun(stage: StageName, from: StageName | null): boolean {
+function shouldRun(stage: PipelineStageName, from: PipelineStageName | null): boolean {
   if (from === null) return false;
   return STAGE_ORDER.indexOf(stage) >= STAGE_ORDER.indexOf(from);
 }
@@ -78,7 +78,7 @@ function shouldRun(stage: StageName, from: StageName | null): boolean {
  * rethrow the original instance — Mastra serialises step errors to `{ name, message }`.
  */
 function stageStep(
-  stage: StageName,
+  stage: PipelineStageName,
   run: (state: PipelineState, deps: PipelineDeps) => Promise<PipelineState>,
 ) {
   return createStep({
@@ -90,10 +90,10 @@ function stageStep(
       const deps = depsOf({ requestContext, runId });
       // `runLessonPipeline` sets `resumeFrom`; a Studio run has none and resumes from the lesson.
       const from = requestContext.hasRaw(RESUME_KEY)
-        ? (requestContext.getRaw(RESUME_KEY) as StageName | null)
+        ? (requestContext.getRaw(RESUME_KEY) as PipelineStageName | null)
         : resumeFrom(inputData.lesson);
       if (!shouldRun(stage, from)) return inputData;
-      const entered = (requestContext.getRaw(ENTERED_KEY) as StageName[] | undefined) ?? [];
+      const entered = (requestContext.getRaw(ENTERED_KEY) as PipelineStageName[] | undefined) ?? [];
       requestContext.setRaw(ENTERED_KEY, [...entered, stage]);
       try {
         const next = await run(inputData, deps);
@@ -184,7 +184,7 @@ export async function runLessonPipeline(
           lessonId: deps.context.lessonId,
           jobId: deps.context.jobId,
           outcome,
-          stages: (requestContext.getRaw(ENTERED_KEY) as StageName[] | undefined) ?? [],
+          stages: (requestContext.getRaw(ENTERED_KEY) as PipelineStageName[] | undefined) ?? [],
           ...deps.budget.totals(),
           findings,
           durationMs: Date.now() - startedAt,

@@ -75,7 +75,16 @@ const server = Bun.serve({
     return new Response("not found", { status: 404 });
   },
 });
-logger.info({ port: server.port, env: env.NODE_ENV, ai: deps.ai.kind }, "worker ready");
+logger.info(
+  {
+    port: server.port,
+    env: env.NODE_ENV,
+    ai: deps.ai.kind,
+    costCapUsd: deps.caps.capUsd,
+    tokenCap: deps.caps.capTokens,
+  },
+  "worker ready",
+);
 
 let stopping = false;
 async function stop(signal: string): Promise<void> {

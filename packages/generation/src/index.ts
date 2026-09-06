@@ -20,6 +20,16 @@ export * from "./specs";
 export { evaluate } from "./stages/evaluate";
 export { BUDGET_FINDING, generate, PLANNED_SLIDES } from "./stages/generate";
 export { plan } from "./stages/plan";
+export {
+  type ImpactSet,
+  impactSet,
+  MAX_REDO_TARGETS,
+  PROPOSE_CONCURRENCY,
+  type ProposeContext,
+  type ProposeResult,
+  proposeFor,
+  runBounded,
+} from "./stages/proposals";
 export { MAX_TARGETS, repair, repairTargets } from "./stages/repair";
 export { audienceOf, blockText, slideText } from "./stages/shared";
 export * from "./types";

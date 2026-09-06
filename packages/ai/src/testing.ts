@@ -28,7 +28,11 @@ export interface FakeReply {
   usage?: FakeAiUsage | undefined;
 }
 
-export type FakeScriptEntry = string | FakeReply | ((call: FakeCall) => string | FakeReply);
+/** A function entry may be async, so a test can hold a call open (concurrency, cancellation). */
+export type FakeScriptEntry =
+  | string
+  | FakeReply
+  | ((call: FakeCall) => string | FakeReply | Promise<string | FakeReply>);
 
 export interface CreateFakeAiOptions {
   /** The answer once the script is exhausted (and for every call when there is no script). */
@@ -74,18 +78,22 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
   const modelIds = { ...DEFAULT_MODEL_IDS, ...options.modelIds };
   const calls: FakeCall[] = [];
 
-  /** Records the call and resolves its scripted reply; one entry is consumed per call. */
-  const nextReply = (
+  /**
+   * Records the call and resolves its scripted reply; one entry is consumed per call, in the
+   * order the calls arrive (the record is taken before a function entry runs, so `calls` lists
+   * concurrent calls in start order).
+   */
+  const nextReply = async (
     modelClass: ModelClassType,
     modelId: string,
     context: AiCallContext | undefined,
   ) => {
     const call: FakeCall = { index: calls.length, modelClass, modelId, context, usage: {} };
+    calls.push(call);
     const entry = script.shift() ?? fallback;
-    const resolved = typeof entry === "function" ? entry(call) : entry;
+    const resolved = typeof entry === "function" ? await entry(call) : entry;
     const reply: FakeReply = typeof resolved === "string" ? { text: resolved } : resolved;
     call.usage = reply.usage ?? options.usage ?? {};
-    calls.push(call);
     return { text: reply.text, usage: usageForFake(call.usage) };
   };
 
@@ -99,7 +107,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
         modelId,
         doGenerate: async () => {
           if (options.error !== undefined) throw options.error;
-          const { text, usage } = nextReply(modelClass, modelId, context);
+          const { text, usage } = await nextReply(modelClass, modelId, context);
           return {
             content: [{ type: "text", text }],
             finishReason: { unified: "stop", raw: undefined },
@@ -109,12 +117,12 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
         },
         doStream: async () => ({
           stream: new ReadableStream({
-            start(controller) {
+            async start(controller) {
               if (options.error !== undefined) {
                 controller.error(options.error);
                 return;
               }
-              const { text, usage } = nextReply(modelClass, modelId, context);
+              const { text, usage } = await nextReply(modelClass, modelId, context);
               controller.enqueue({ type: "text-start", id: "fake-text" });
               controller.enqueue({ type: "text-delta", id: "fake-text", delta: text });
               controller.enqueue({ type: "text-end", id: "fake-text" });

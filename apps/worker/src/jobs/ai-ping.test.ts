@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
 import { AiError, createAi, isAiError } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
+import { noSources } from "@tj/generation";
 import { NonRetryableError } from "@tj/jobs";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
@@ -15,7 +16,9 @@ const ids = {
 // `db` is not touched by ai.ping; a marker stands in for the pool.
 const fakeDb = { marker: "fake-db" } as unknown as WorkerDeps["db"];
 
-function ctx(deps: Omit<WorkerDeps, "db">, ac = new AbortController()) {
+const TEST_CAPS = { capUsd: 5, capTokens: 1_000_000 };
+
+function ctx(deps: Pick<WorkerDeps, "ai">, ac = new AbortController()) {
   const calls: Array<[number | undefined, string | undefined]> = [];
   return {
     calls,
@@ -28,7 +31,7 @@ function ctx(deps: Omit<WorkerDeps, "db">, ac = new AbortController()) {
         calls.push([percent, message]);
       },
       logger: pino({ level: "silent" }),
-      deps: { ...deps, db: fakeDb },
+      deps: { ...deps, db: fakeDb, caps: TEST_CAPS, sources: noSources },
     },
   };
 }

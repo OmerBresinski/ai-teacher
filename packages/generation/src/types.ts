@@ -8,18 +8,24 @@ import type { Logger } from "pino";
  * and injects it as `persist`; tests inject a recorder.
  */
 
-/** A pipeline stage name, as it appears in `promptVersions`, call contexts and failures. */
-export type StageName = "plan" | "generate" | "evaluate" | "repair";
+/** The four `lesson.plan` stages, in order; each writes a checkpoint (ADR 0025 §5). */
+export type PipelineStageName = "plan" | "generate" | "evaluate" | "repair";
 
-/** The checkpoint each stage writes to `Lesson.generation.stage` (ADR 0025 §3, §5). */
-export const STAGE_CHECKPOINT: Record<StageName, GenerationStage> = {
+/**
+ * Every stage a model call can belong to, as it appears in call contexts and failures: the
+ * pipeline's four plus the two proposal jobs (§18), which write no checkpoint.
+ */
+export type StageName = PipelineStageName | "cascade" | "regenerate";
+
+/** The checkpoint each pipeline stage writes to `Lesson.generation.stage` (ADR 0025 §3, §5). */
+export const STAGE_CHECKPOINT: Record<PipelineStageName, GenerationStage> = {
   plan: "planned",
   generate: "generated",
   evaluate: "evaluated",
   repair: "repaired",
 };
 
-export const STAGE_ORDER: readonly StageName[] = ["plan", "generate", "evaluate", "repair"];
+export const STAGE_ORDER: readonly PipelineStageName[] = ["plan", "generate", "evaluate", "repair"];
 
 /** One extracted passage of a teacher-provided Source (ADR 0025 §20); loaded by the worker. */
 export type SourceText = {

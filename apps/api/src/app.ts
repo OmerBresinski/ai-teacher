@@ -163,6 +163,10 @@ function buildApp({
   // Every request on these ends in a model call (ADR 0024 §15): one shared per-Workspace limiter.
   app.use("/jobs/ai-ping", rateLimitByWorkspace(aiLimiter));
   app.use("/lessons", rateLimitByWorkspace(aiLimiter));
+  // The proposal routes (ADR 0025 §18) each end in model calls too. Named exactly: Hono's
+  // `/lessons/*` also matches `/lessons`, which would charge a brief twice.
+  app.use("/lessons/:id/cascade", rateLimitByWorkspace(aiLimiter));
+  app.use("/lessons/:id/regenerate", rateLimitByWorkspace(aiLimiter));
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
   const routes = app

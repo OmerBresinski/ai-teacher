@@ -33,7 +33,7 @@ describe("smoke-prod", () => {
   test("every case passes against a correctly guarded api", async () => {
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), fakeApi());
     expect(results.every((r) => r.ok)).toBe(true);
-    expect(results.length).toBe(8);
+    expect(results.length).toBe(10);
   });
 
   test("catches the 2026-09-05 regression: cross-site header rejected despite allowed Origin", async () => {
@@ -44,7 +44,12 @@ describe("smoke-prod", () => {
     }) as typeof fetch;
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), broken);
     const failed = results.filter((r) => !r.ok).map((r) => r.path);
-    expect(failed).toEqual(["/me", "/jobs/ai-ping", "/lessons"]);
+    expect(failed).toEqual([
+      "/me",
+      "/jobs/ai-ping",
+      "/lessons",
+      "/lessons/0192f7a0-0000-7000-8000-000000000042/cascade",
+    ]);
   });
 
   test("a 204 preflight without CORS allow headers fails the case", async () => {
