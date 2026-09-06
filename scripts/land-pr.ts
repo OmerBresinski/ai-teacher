@@ -16,6 +16,8 @@ const RAILWAY_PROJECT = "a79752e1-8bf5-41d0-b832-f1b64aaf6d2f";
 const RAILWAY_SERVICES = ["api", "worker"] as const;
 const UNKNOWN_RETRIES = 10;
 const UNKNOWN_DELAY_MS = 6_000;
+/** Wait between polls while a queued CI run has not yet been attached to the PR. */
+const PENDING_CHECKS_DELAY_MS = 15_000;
 const DEPLOY_POLL_MS = 15_000;
 const NO_DEPLOYMENT_WAIT_MS = 90_000;
 const DEFAULT_TIMEOUT_MIN = 20;
@@ -279,7 +281,17 @@ async function rebaseBranch(state: PrState, deps: LandPrDeps): Promise<void> {
   }
 }
 
-async function blockedMessage(pr: number, deps: LandPrDeps): Promise<string> {
+/** One entry of `gh pr view --json statusCheckRollup`: a check run or a commit status context. */
+interface StatusCheck {
+  /** Check runs carry `name`; commit status contexts carry `context` instead. */
+  name?: unknown;
+  context?: unknown;
+  conclusion?: unknown;
+  status?: unknown;
+  state?: unknown;
+}
+
+async function statusChecks(pr: number, deps: LandPrDeps): Promise<StatusCheck[]> {
   const result = await deps.gh([
     "pr",
     "view",
@@ -291,22 +303,59 @@ async function blockedMessage(pr: number, deps: LandPrDeps): Promise<string> {
   ]);
   requireSuccess(result, `Could not read status checks for PR #${pr}`);
   const parsed = parseJson(output(result), "status checks");
-  const checks = Array.isArray(parsed) ? parsed : [];
-  const details = checks
-    .filter(
-      (check): check is { name?: unknown; conclusion?: unknown; status?: unknown } =>
-        typeof check === "object" && check !== null,
-    )
-    .map((check) => {
-      const name = typeof check.name === "string" ? check.name : "unnamed check";
-      const state =
-        typeof check.conclusion === "string"
-          ? check.conclusion
+  return Array.isArray(parsed)
+    ? parsed.filter((check): check is StatusCheck => typeof check === "object" && check !== null)
+    : [];
+}
+
+const FAILED_CONCLUSIONS = new Set([
+  "FAILURE",
+  "ERROR",
+  "CANCELLED",
+  "TIMED_OUT",
+  "ACTION_REQUIRED",
+  "STARTUP_FAILURE",
+]);
+
+/**
+ * True while a `BLOCKED` PR may still become mergeable on its own: nothing in the rollup has
+ * failed. Right after a push GitHub reports `BLOCKED` with checks that are queued, that are
+ * listed as a nameless placeholder, or that are simply absent while only Vercel's contexts have
+ * arrived (observed on PRs #95 and #96) — `gh pr checks --watch` returns immediately in all three
+ * cases. A rollup that is entirely green but still `BLOCKED` therefore means a required check has
+ * not attached yet, and the caller waits (bounded by its deadline). A failed or errored check is
+ * final and reported at once.
+ */
+export function hasPendingChecks(checks: StatusCheck[]): boolean {
+  return !checks.some((check) => {
+    const verdict =
+      typeof check.conclusion === "string"
+        ? check.conclusion
+        : typeof check.state === "string"
+          ? check.state
+          : null;
+    return verdict !== null && FAILED_CONCLUSIONS.has(verdict);
+  });
+}
+
+function blockedMessage(pr: number, checks: StatusCheck[]): string {
+  const details = checks.map((check) => {
+    const name =
+      typeof check.name === "string"
+        ? check.name
+        : typeof check.context === "string"
+          ? check.context
+          : "unnamed check";
+    const state =
+      typeof check.conclusion === "string"
+        ? check.conclusion
+        : typeof check.state === "string"
+          ? check.state
           : typeof check.status === "string"
             ? check.status
             : "UNKNOWN";
-      return `${name}: ${state}`;
-    });
+    return `${name}: ${state}`;
+  });
   return `PR #${pr} is blocked: a required check or review is still missing.${
     details.length === 0 ? "" : `\n${details.join("\n")}`
   }`;
@@ -389,6 +438,7 @@ export async function landPr(
   let rebaseRounds = 0;
   let unknownRetries = 0;
   let state: PrState;
+  const deadline = deps.now() + timeoutMin * 60_000;
 
   while (true) {
     await waitForCi(pr, deps);
@@ -417,7 +467,18 @@ export async function landPr(
       throw new UserFacingError(`PR #${pr} has merge conflicts.`);
     }
     if (state.mergeStateStatus === "BLOCKED") {
-      throw new UserFacingError(await blockedMessage(pr, deps));
+      const checks = await statusChecks(pr, deps);
+      if (!hasPendingChecks(checks)) throw new UserFacingError(blockedMessage(pr, checks));
+      const remainingMs = deadline - deps.now();
+      if (remainingMs <= 0) {
+        throw new UserFacingError(
+          `PR #${pr} still had pending checks after ${timeoutMin} min.\n${blockedMessage(pr, checks)}`,
+        );
+      }
+      // Checks are queued but not yet attached to the PR, so `gh pr checks --watch` had nothing
+      // to wait for. Give GitHub a moment (never past the deadline) and go round again.
+      await deps.sleep(Math.min(PENDING_CHECKS_DELAY_MS, remainingMs));
+      continue;
     }
     if (state.mergeStateStatus === "UNKNOWN") {
       if (unknownRetries >= UNKNOWN_RETRIES) {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   type CommandResult,
+  hasPendingChecks,
   type LandPrDeps,
   landPr,
   parseLandPrArgs,
@@ -27,6 +28,8 @@ interface FakeOptions {
   railway?: Partial<Record<"api" | "worker", Array<{ id: string; status?: string }>>>;
   vercel?: string;
   smokeExitCode?: number;
+  /** `statusCheckRollup` snapshots returned in order; the last one repeats. */
+  checks?: unknown[][];
 }
 
 function fakeDeps(options: FakeOptions = {}): {
@@ -34,6 +37,7 @@ function fakeDeps(options: FakeOptions = {}): {
   calls: { gh: string[][]; git: string[][]; railway: string[]; smoke: number };
 } {
   const states = [...(options.states ?? ["CLEAN"])];
+  const checkSnapshots = [...(options.checks ?? [[{ name: "test", conclusion: "SUCCESS" }]])];
   const railway = {
     api: [...(options.railway?.api ?? [{ id: "old-api" }, { id: "new-api", status: "SUCCESS" }])],
     worker: [
@@ -82,6 +86,10 @@ function fakeDeps(options: FakeOptions = {}): {
           );
         }
         if (args[0] === "pr" && args[1] === "checks") return ok();
+        if (args[0] === "pr" && args[1] === "view" && args.includes("statusCheckRollup")) {
+          const snapshot = checkSnapshots.length > 1 ? checkSnapshots.shift() : checkSnapshots[0];
+          return ok(JSON.stringify(snapshot ?? []));
+        }
         if (
           args[0] === "pr" &&
           args[1] === "view" &&
@@ -167,6 +175,57 @@ describe("land-pr", () => {
     expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
   });
 
+  test("keeps waiting while BLOCKED with a queued run not yet attached to the PR", async () => {
+    // Observed 2026-09-06 on PR #95: `gh pr checks --watch` returned at once because the rollup
+    // held only a nameless placeholder, and the script gave up on the first BLOCKED read.
+    const fake = fakeDeps({
+      states: ["BLOCKED", "BLOCKED", "CLEAN"],
+      checks: [
+        [
+          { name: null, conclusion: null, status: null },
+          { name: "Vercel", conclusion: "SUCCESS" },
+        ],
+        [{ name: "test", status: "IN_PROGRESS", conclusion: null }],
+        [{ name: "test", conclusion: "SUCCESS" }],
+      ],
+    });
+    const summary = await landPr(42, {}, fake.deps);
+
+    expect(summary.ok).toBe(true);
+    expect(fake.calls.gh.filter((args) => args[1] === "checks")).toHaveLength(3);
+  });
+
+  test("fails a BLOCKED PR whose checks have all finished", async () => {
+    const fake = fakeDeps({
+      states: ["BLOCKED"],
+      checks: [
+        [
+          { name: "test", conclusion: "SUCCESS" },
+          { name: "e2e", conclusion: "FAILURE" },
+        ],
+      ],
+    });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("e2e: FAILURE");
+    expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
+  });
+
+  test("names a blocked status context by its `context` field", async () => {
+    const fake = fakeDeps({
+      states: ["BLOCKED"],
+      checks: [[{ context: "docker-build-smoke", state: "FAILURE" }]],
+    });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("docker-build-smoke: FAILURE");
+  });
+
+  test("gives up on a BLOCKED PR whose checks never attach within the timeout", async () => {
+    const fake = fakeDeps({ states: Array(200).fill("BLOCKED"), checks: [[]] });
+    await expect(landPr(42, { timeoutMin: 1 }, fake.deps)).rejects.toThrow(
+      "still had pending checks after 1 min",
+    );
+    // The last sleep is capped to the remaining budget, so total waiting never exceeds it.
+    expect(fake.deps.now()).toBe(60_000);
+  });
+
   test("refuses a PR with merge conflicts", async () => {
     const fake = fakeDeps({ states: ["DIRTY"] });
     await expect(landPr(42, {}, fake.deps)).rejects.toThrow("merge conflicts");
@@ -221,6 +280,21 @@ describe("land-pr", () => {
     const fake = fakeDeps({ unresolved: 1, threadPages: 3 });
     await expect(landPr(42, {}, fake.deps)).rejects.toThrow("1 unresolved review thread");
     expect(fake.calls.gh.filter((args) => args[0] === "api")).toHaveLength(3);
+  });
+
+  test("treats a BLOCKED rollup as pending unless something has failed", () => {
+    expect(hasPendingChecks([])).toBe(true);
+    expect(hasPendingChecks([{ name: null, conclusion: null, status: null }])).toBe(true);
+    expect(hasPendingChecks([{ name: "test", status: "QUEUED", conclusion: null }])).toBe(true);
+    expect(hasPendingChecks([{ name: "ctx", state: "PENDING" }])).toBe(true);
+    // Only Vercel's contexts have arrived; the required CI checks have not attached yet.
+    expect(hasPendingChecks([{ context: "Vercel", state: "SUCCESS" }])).toBe(true);
+    expect(hasPendingChecks([{ name: "test", status: "COMPLETED", conclusion: "SUCCESS" }])).toBe(
+      true,
+    );
+    expect(hasPendingChecks([{ name: "test", conclusion: "FAILURE" }])).toBe(false);
+    expect(hasPendingChecks([{ name: "test", conclusion: "CANCELLED" }])).toBe(false);
+    expect(hasPendingChecks([{ context: "ctx", state: "ERROR" }])).toBe(false);
   });
 
   test("reads pageInfo defensively", () => {
