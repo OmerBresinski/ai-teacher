@@ -1,4 +1,15 @@
-import { Separator } from "@tj/ui";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Separator,
+  Slider,
+  Switch,
+} from "@tj/ui";
+import { Pencil } from "lucide-react";
 import { KitGroup, Specimen, Variant } from "./frame";
 
 const swatches = [
@@ -94,6 +105,33 @@ export function Foundations() {
           <p className="text-lead text-ink-2">Lead</p>
           <p className="font-display text-title">Title</p>
           <p className="font-display text-[28px] leading-9">Display</p>
+        </div>
+      </Specimen>
+      <Specimen
+        name="Stage"
+        note="The present-mode scope (ADR 0022 §3): `tj-stage` remaps the tokens inside a subtree and stays dark in every theme. A portalled menu carries the class itself."
+      >
+        <div
+          data-testid="kit-stage"
+          className="tj-stage flex flex-wrap items-center gap-3 rounded-card bg-background p-4 text-foreground"
+        >
+          <Button>Present</Button>
+          <Button variant="outline">Notes</Button>
+          <IconButton label="Pen">
+            <Pencil aria-hidden size={16} strokeWidth={1.5} />
+          </IconButton>
+          <Switch aria-label="Laser" defaultChecked />
+          <Slider aria-label="Timer" defaultValue={[40]} className="w-40" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">Stage menu</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="tj-stage">
+              <DropdownMenuItem>Overview</DropdownMenuItem>
+              <DropdownMenuItem>Shortcuts</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <span className="text-meta text-muted-foreground">Muted on the stage ground</span>
         </div>
       </Specimen>
     </KitGroup>

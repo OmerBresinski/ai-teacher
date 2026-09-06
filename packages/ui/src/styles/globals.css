@@ -318,6 +318,65 @@
 }
 
 /* ------------------------------------------------------------------------------------------ */
+/* Stage scope — present mode's permanently dark palette (ADR 0022 §3, TEACH-97).             */
+/*                                                                                            */
+/* A variable SCOPE, not a fourth theme: it remaps the semantic names inside a subtree and     */
+/* sits after every theme block so it wins by order under light, dark and high-contrast.      */
+/* Portalled @tj/ui surfaces opened from the stage carry `className="tj-stage"` themselves.    */
+/* It paints no background or colour of its own — a scope that painted its ground would fill   */
+/* a full-screen dialog wrapper underneath the scrim. Values from TeachDeck                    */
+/* components/ui2/tokens.css:48-60, :397-420, :580-627 (f3dbcf7).                             */
+/* ------------------------------------------------------------------------------------------ */
+.tj-stage {
+  --background: #141312; /* --v2-stage-ground */
+  --foreground: #f7f6f2; /* --stage-text at full alpha; 15.5:1 on the surface */
+  --card: #1f1d1b; /* --stage-surface */
+  --card-foreground: #f7f6f2;
+  --popover: #1f1d1b;
+  --popover-foreground: #f7f6f2;
+  --primary: #d2644b; /* --v2-stage-accent, 5.01:1 on the ground */
+  --primary-hover: #c05740;
+  --primary-press: #ae4b31;
+  --primary-fill: #d2644b;
+  --primary-fill-hover: #c05740;
+  --primary-fill-press: #ae4b31;
+  --secondary: #1f1d1b;
+  --secondary-foreground: #f7f6f2;
+  --muted: #1f1d1b;
+  --muted-foreground: #a39d94; /* --v2-stage-muted, 6.90:1 on the ground */
+  --accent: rgb(247 246 242 / 0.1); /* --stage-hover */
+  --accent-foreground: #f7f6f2;
+  --accent-active: rgb(247 246 242 / 0.16); /* --stage-press */
+  --scrim: rgb(0 0 0 / 0.6);
+  --destructive: #ee6e73; /* --stage-danger, 5.69:1 on the surface */
+  --destructive-foreground: #231110; /* --v2-stage-on-danger */
+  --success: #3fb07a; /* --stage-ok */
+  --warning: #e8940a; /* --stage-warning */
+  --border: rgb(247 246 242 / 0.1); /* --stage-hairline */
+  --border-faint: rgb(247 246 242 / 0.06);
+  --border-control: #7e786f; /* 4.24:1 on the ground, 3.84:1 on the surface */
+  --input: rgb(247 246 242 / 0.1);
+  --ring: #d2644b;
+  --canvas: #141312;
+  --sidebar: #141312;
+  --sidebar-foreground: #f7f6f2;
+  --sidebar-accent-foreground: #f7f6f2;
+  --sidebar-border: rgb(247 246 242 / 0.1);
+  --ink-2: rgb(247 246 242 / 0.72);
+  --ink-3: #a39d94;
+  --ink-4: rgb(163 157 148 / 0.65);
+  --brand-text: #d2644b; /* the accent is legal as small text on the stage ground */
+  --brand-tint: rgb(210 100 75 / 0.22); /* --stage-active */
+  --brand-tint-line: rgb(210 100 75 / 0.55);
+  --brand-quiet: #1f1d1b;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(247 246 242 / 0.1);
+  --shadow-2:
+    0 1px 2px rgb(0 0 0 / 0.45), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(247 246 242 / 0.1);
+  --shadow-3: 0 0 0 1px rgb(247 246 242 / 0.1), 0 16px 40px rgb(0 0 0 / 0.55);
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------------------------------------ */
 /* Tailwind theme mapping — the ONLY place variables become utilities.                        */
 /* ------------------------------------------------------------------------------------------ */
 @theme inline {

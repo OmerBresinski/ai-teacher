@@ -7,6 +7,8 @@ import { Button } from "./button";
  * Generated from shadcn@4.21.0 new-york alert-dialog on 2026-09-06 for @tj/ui.
  * The surface matches the small TeachDeck Dialog instead of the stock neutral modal.
  * The optional destructive action composes the package Button to preserve its token states.
+ * `className="tj-stage"` on the content puts the portalled surface on the stage palette
+ * (ADR 0022 §3): the class lands on the Radix `Content` inside the `Portal`, never on a wrapper.
  */
 
 function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
