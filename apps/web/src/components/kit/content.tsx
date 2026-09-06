@@ -1,3 +1,4 @@
+import { newLesson } from "@tj/editor";
 import {
   Button,
   Card,
@@ -20,6 +21,8 @@ import { MoreHorizontal, Plus } from "lucide-react";
 import { useState } from "react";
 import { LessonThumb } from "@/components/lesson-thumb";
 import { KitGroup, Specimen, Variant } from "./frame";
+
+const KIT_COVER = newLesson("Fractions").slides[0] ?? null;
 
 const stackSheets = ["front", "near", "far"] as const;
 
@@ -62,7 +65,9 @@ export function Content() {
           <Card
             variant="contained"
             className="w-72"
-            thumbnail={<LessonThumb lesson={{ title: "Fractions", themeId: "chalk" }} />}
+            thumbnail={
+              <LessonThumb lesson={{ title: "Fractions", themeId: "chalk", cover: KIT_COVER }} />
+            }
             overlay={
               <CardOverlay>
                 <StatusPill opaque>Draft</StatusPill>

@@ -1,16 +1,19 @@
-import { generateHTML } from "@tiptap/html";
 import type { RichDoc, RichNode } from "@tj/domain/documents";
-import { baseExtensions } from "./extensions";
+import { serializeDoc } from "./serialize";
 
 const cache = new WeakMap<RichDoc, string>();
 
-/** Render a rich doc to HTML with no editor instance. Safe on server and client. */
+/**
+ * Render a rich doc to HTML with no editor instance. Pure TypeScript (`./serialize`), so the
+ * viewer, present, print and thumbnail chunks carry no Tiptap; parity with `@tiptap/html` is held
+ * by `serialize.test.ts`. A doc the serialiser does not understand falls back to escaped plain text.
+ */
 export function renderDocHTML(doc: RichDoc): string {
   const hit = cache.get(doc);
   if (hit) return hit;
   let html = "";
   try {
-    html = generateHTML(doc as Parameters<typeof generateHTML>[0], baseExtensions);
+    html = serializeDoc(doc);
   } catch {
     html = `<p>${escapeHtml(docToPlainText(doc))}</p>`;
   }

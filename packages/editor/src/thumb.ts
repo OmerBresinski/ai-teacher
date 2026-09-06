@@ -4,4 +4,9 @@
  * `thumb.test.ts` builds this entry and checks.
  */
 export { DEFAULT_THEME_ID, getTheme, THEMES } from "./model/themes";
-export { SlideStatic, type SlideStaticProps } from "./slide/SlideStatic";
+export {
+  SlideFluid,
+  type SlideFluidProps,
+  SlideStatic,
+  type SlideStaticProps,
+} from "./slide/SlideStatic";

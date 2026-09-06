@@ -20,6 +20,7 @@ function doc(id: string, overrides: Partial<DocumentSummary> = {}): DocumentSumm
     title: id,
     count: 6,
     themeId: "chalk",
+    cover: null,
     createdAt: hoursAgo(48),
     updatedAt: hoursAgo(1),
     ...overrides,

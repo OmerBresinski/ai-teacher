@@ -1,9 +1,22 @@
+import type { Lesson, Worksheet } from "@tj/domain/documents";
+import { parseLesson, parseWorksheet } from "@tj/domain/documents";
+import { cloneSlide, newLesson, newWorksheet, starterLesson, starterWorksheet } from "@tj/editor";
 import { seedLibrary } from "./library-fixtures";
 import type { DocumentKind, DocumentSummary, Series, SeriesWithLessons } from "./library-schema";
+import { isLessonBody, type StoredDocument, summarise } from "./summarise";
 
 const LATENCY_MS = import.meta.env.MODE === "test" ? 0 : 120;
 
-const documents = new Map<string, DocumentSummary>();
+/**
+ * Full documents (ADR 0021, ADR 0020 amendment): the store holds the editor document and derives
+ * every library summary from it with `summarise`. `loadDocument` returns the body the editor
+ * edits; `saveDocument` replaces it. A reload reseeds.
+ *
+ * This module carries the seed content, the document factories (`@tj/editor`) and the validators
+ * (`@tj/domain/documents`). `lib/library.ts` imports it lazily so none of that sits in the initial
+ * bundle (ADR 0022 §8); tests import it directly.
+ */
+const documents = new Map<string, StoredDocument>();
 const series = new Map<string, Series>();
 
 function delay(): Promise<void> {
@@ -18,12 +31,17 @@ function seed(): void {
   const seeded = seedLibrary(new Date());
   documents.clear();
   series.clear();
-  for (const document of seeded.documents) documents.set(document.id, copy(document));
+  for (const document of seeded.documents) documents.set(document.body.id, copy(document));
   for (const entry of seeded.series) series.set(entry.id, copy(entry));
 }
 
 function timestamp(): string {
   return new Date().toISOString();
+}
+
+function liveDocument(id: string): StoredDocument | undefined {
+  const stored = documents.get(id);
+  return stored && !stored.deletedAt ? stored : undefined;
 }
 
 function liveSeries(id: string): Series | undefined {
@@ -33,10 +51,15 @@ function liveSeries(id: string): Series | undefined {
 
 function resolveSeries(entry: Series): SeriesWithLessons {
   const lessons = entry.lessonIds.flatMap((id) => {
-    const document = documents.get(id);
-    return document && document.kind === "lesson" && !document.deletedAt ? [copy(document)] : [];
+    const stored = liveDocument(id);
+    return stored && isLessonBody(stored.body) ? [summarise(stored)] : [];
   });
   return { series: copy(entry), lessons };
+}
+
+/** Validate a body the way an import is validated, so the store never holds a shape the editor cannot open. */
+function validate(body: Lesson | Worksheet): Lesson | Worksheet {
+  return isLessonBody(body) ? parseLesson(body) : parseWorksheet(body);
 }
 
 seed();
@@ -49,20 +72,33 @@ export async function resetLibraryStore(): Promise<void> {
 export async function listDocuments(): Promise<DocumentSummary[]> {
   await delay();
   return [...documents.values()]
-    .filter((document) => !document.deletedAt)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map(copy);
+    .filter((stored) => !stored.deletedAt)
+    .map(summarise)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-export async function loadDocument(id: string): Promise<DocumentSummary | null> {
+/** The full editor document, or null when it is missing or in the bin. */
+export async function loadDocument(id: string): Promise<Lesson | Worksheet | null> {
   await delay();
-  const document = documents.get(id);
-  return document && !document.deletedAt ? copy(document) : null;
+  const stored = liveDocument(id);
+  return stored ? copy(stored.body) : null;
 }
 
-// Deliberate per TEACH-88/TEACH-91: the input contract mirrors what the real API will receive so
-// the mock→API swap does not change call sites; the summary shape intentionally omits them until
-// the tie-in contract (TD item 1) fixes the document model.
+/**
+ * Replace a document with the editor's copy. The body is validated first and the stored one is
+ * untouched when validation fails; `updatedAt` is stamped here so the card order follows edits.
+ */
+export async function saveDocument(body: Lesson | Worksheet): Promise<void> {
+  await delay();
+  const next = validate(copy(body));
+  const stored = documents.get(next.id);
+  if (!stored) throw new Error(`No document ${next.id} to save into.`);
+  next.updatedAt = timestamp();
+  documents.set(next.id, { ...stored, body: next });
+}
+
+// The input contract mirrors what the real API will receive so the mock→API swap does not change
+// call sites (TEACH-88/91); the body is built with the editor's factories (ADR 0021).
 export async function createDocument(input: {
   kind: DocumentKind;
   title: string;
@@ -74,28 +110,35 @@ export async function createDocument(input: {
   start?: string;
 }): Promise<DocumentSummary> {
   await delay();
-  const now = timestamp();
-  const document: DocumentSummary = {
-    id: crypto.randomUUID(),
-    kind: input.kind,
-    title: input.title.trim(),
-    count: input.kind === "lesson" ? 6 : 4,
-    createdAt: now,
-    updatedAt: now,
-    themeId: input.themeId,
-    ...(input.subject ? { subject: input.subject } : {}),
-    ...(input.yearGroup ? { yearGroup: input.yearGroup } : {}),
-  };
-  documents.set(document.id, document);
-  return copy(document);
+  const title = input.title.trim();
+  const starter = input.start !== "blank";
+  const body: Lesson | Worksheet =
+    input.kind === "lesson"
+      ? starter
+        ? starterLesson(title, input.themeId)
+        : newLesson(title, input.themeId)
+      : starter
+        ? starterWorksheet(title, input.themeId)
+        : newWorksheet(title, input.themeId);
+  body.id = crypto.randomUUID();
+  if (input.subject) body.subject = input.subject;
+  if (input.yearGroup) body.yearGroup = input.yearGroup;
+  if (input.readingLevel) body.readingLevel = input.readingLevel;
+  if (input.language) body.language = input.language;
+  const stored: StoredDocument = { body };
+  documents.set(body.id, stored);
+  return summarise(stored);
 }
 
 export async function renameDocument(id: string, title: string): Promise<boolean> {
   await delay();
-  const document = documents.get(id);
+  const stored = documents.get(id);
   const trimmed = title.trim();
-  if (!document || !trimmed) return false;
-  documents.set(id, { ...document, title: trimmed, updatedAt: timestamp() });
+  if (!stored || !trimmed) return false;
+  documents.set(id, {
+    ...stored,
+    body: { ...stored.body, title: trimmed, updatedAt: timestamp() },
+  });
   return true;
 }
 
@@ -104,36 +147,35 @@ export async function duplicateDocument(
   newTitle?: string,
 ): Promise<DocumentSummary | null> {
   await delay();
-  const source = documents.get(id);
-  if (!source || source.deletedAt) return null;
+  const source = liveDocument(id);
+  if (!source) return null;
   const now = timestamp();
-  const document: DocumentSummary = {
-    ...source,
-    id: crypto.randomUUID(),
-    title: (newTitle ?? `${source.title} (copy)`).trim(),
-    createdAt: now,
-    updatedAt: now,
-  };
-  delete document.deletedAt;
-  documents.set(document.id, document);
-  return copy(document);
+  const body = copy(source.body);
+  body.id = crypto.randomUUID();
+  body.title = (newTitle ?? `${source.body.title} (copy)`).trim();
+  body.createdAt = now;
+  body.updatedAt = now;
+  // Fresh element ids too, so a copy can later sit beside its source in one document safely.
+  if (isLessonBody(body)) body.slides = body.slides.map(cloneSlide);
+  const stored: StoredDocument = { body };
+  documents.set(body.id, stored);
+  return summarise(stored);
 }
 
 export async function softDeleteDocument(id: string): Promise<boolean> {
   await delay();
-  const document = documents.get(id);
-  if (!document) return false;
-  documents.set(id, { ...document, deletedAt: timestamp(), updatedAt: timestamp() });
+  const stored = documents.get(id);
+  if (!stored) return false;
+  const now = timestamp();
+  documents.set(id, { body: { ...stored.body, updatedAt: now }, deletedAt: now });
   return true;
 }
 
 export async function restoreDocument(id: string): Promise<boolean> {
   await delay();
-  const document = documents.get(id);
-  if (!document) return false;
-  const restored = { ...document, updatedAt: timestamp() };
-  delete restored.deletedAt;
-  documents.set(id, restored);
+  const stored = documents.get(id);
+  if (!stored) return false;
+  documents.set(id, { body: { ...stored.body, updatedAt: timestamp() } });
   return true;
 }
 

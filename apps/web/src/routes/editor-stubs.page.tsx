@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { AppBar, AppBarGroup, AppBarTitle, Button, EmptyState, IconButton } from "@tj/ui";
 import { ArrowLeft, FileText, Presentation } from "lucide-react";
 import { useShellReturn } from "@/lib/last-shell";
-import { libraryQueries } from "@/lib/library";
+import { kindOf, libraryQueries } from "@/lib/library";
 
 const WORKSHEET_ICON = <FileText strokeWidth={1.5} />;
 const LESSON_ICON = <Presentation strokeWidth={1.5} />;
@@ -33,7 +33,7 @@ export function EditorStubPage() {
       </AppBar>
       <main className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-2xl items-center p-6">
         <EmptyState
-          icon={document?.kind === "worksheet" ? WORKSHEET_ICON : LESSON_ICON}
+          icon={document && kindOf(document) === "worksheet" ? WORKSHEET_ICON : LESSON_ICON}
           title="The editor arrives with @tj/editor"
           body="This document opens in the TeachDeck editor once it is packaged (TD project item 2)."
           action={<Button onClick={backToLibrary}>Back to the library</Button>}

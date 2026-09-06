@@ -58,7 +58,8 @@ describe("LibraryPage", () => {
 
     const input = await screen.findByRole("searchbox", { name: "Search by title" });
     expect(input).toHaveValue("water");
-    expect(await screen.findByText("The water cycle")).toBeVisible();
+    // The card title and its (aria-hidden) cover slide both carry the text.
+    expect((await screen.findAllByText("The water cycle"))[0]).toBeVisible();
 
     fireEvent.keyDown(input, { key: "Escape" });
     const navigation = navigate.mock.calls[0]?.[0] as {
@@ -153,7 +154,7 @@ describe("LibraryPage", () => {
     const toastSpy = spyOn(ui, "toast");
     renderPage("lesson");
 
-    await screen.findByText("The water cycle");
+    await screen.findAllByText("The water cycle");
     const menuTrigger = screen.getAllByRole("button", { name: "More actions" })[0];
     if (!menuTrigger) throw new Error("Library card menu trigger is missing");
     fireEvent.pointerDown(menuTrigger, {
@@ -173,7 +174,7 @@ describe("LibraryPage", () => {
     expect(options.duration).toBe(6000);
     options.action.onClick();
     const title = String(deletedToast[0]).slice(9, -1);
-    await waitFor(() => expect(screen.getByText(title)).toBeVisible());
+    await waitFor(() => expect(screen.getAllByText(title)[0]).toBeVisible());
     toastSpy.mockRestore();
   });
 });

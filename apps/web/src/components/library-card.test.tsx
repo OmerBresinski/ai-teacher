@@ -25,6 +25,7 @@ const lesson: DocumentSummary = {
   updatedAt: "2026-09-06T11:00:00.000Z",
   createdAt: "2026-09-05T11:00:00.000Z",
   themeId: "chalk",
+  cover: null,
   yearGroup: "Year 4",
   subject: "Science",
 };

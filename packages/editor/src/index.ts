@@ -5,15 +5,23 @@
  */
 export * from "./layout/explanation";
 export * from "./layout/reflow";
+export * from "./model/demo-worksheet";
 export * from "./model/factories";
 export * from "./model/fonts";
 export * from "./model/geometry";
 export * from "./model/grid";
 export * from "./model/layouts";
+export * from "./model/starter";
 export * from "./model/themes";
+export * from "./model/worksheet-factories";
 export * from "./slide/elements";
 export { SlideScaler, useSlideScale } from "./slide/SlideScaler";
-export { SlideStatic, type SlideStaticProps } from "./slide/SlideStatic";
+export {
+  SlideFluid,
+  type SlideFluidProps,
+  SlideStatic,
+  type SlideStaticProps,
+} from "./slide/SlideStatic";
 export { type SlideMode, SlideView, type SlideViewProps } from "./slide/SlideView";
 export * from "./text/extensions";
 export * from "./text/static";

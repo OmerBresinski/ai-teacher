@@ -18,6 +18,8 @@ test.describe("series detail", () => {
     await expect(page).toHaveTitle("The Romans · Teaching Journey");
     await expect(page.getByRole("heading", { name: "The Romans" })).toBeVisible();
     await expect(page.getByText(/3 lessons · \d+ slides/)).toBeVisible();
+    // Series rows and the sheet stack render real slides (TEACH-99).
+    expect(await page.locator("[data-slide-root]").count()).toBeGreaterThanOrEqual(3);
     expect(await rowIds(page)).toEqual(["roman-roads", "demo-fractions", "roman-army"]);
     await expect(page.getByRole("button", { name: "Present series" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Add lesson" })).toBeVisible();
