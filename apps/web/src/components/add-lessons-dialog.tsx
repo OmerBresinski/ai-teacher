@@ -1,3 +1,8 @@
+/**
+ * Pick lessons to add to a series. No consumer yet: the series detail page (TEACH-92) mounts it
+ * through `React.lazy` like `NewDocumentDialog` in `library-page.tsx`, so it stays out of the
+ * initial bundle. Import it lazily; never statically from a route that is in the initial load.
+ */
 import {
   Button,
   Checkbox,

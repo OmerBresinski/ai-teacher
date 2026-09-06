@@ -19,7 +19,7 @@ test.describe("library shell", () => {
     await expect(page.getByRole("heading", { name: "Series" })).toBeVisible();
   });
 
-  test("New lesson creates an untitled lesson and opens its editor stub", async ({
+  test("New lesson creates an untitled lesson, opens its stub and leads Recent on return", async ({
     signedInPage: { page },
   }) => {
     await page.getByRole("button", { name: "New lesson" }).click();
@@ -29,6 +29,35 @@ test.describe("library shell", () => {
 
     await expect(page).toHaveURL(/\/l\/[^/]+$/);
     await expect(page.getByText("Untitled lesson", { exact: true }).first()).toBeVisible();
+
+    await page.getByLabel("Back to the library").click();
+    await expect(page).toHaveURL(/\/$/);
+    // Newest lesson is the Recent hero: first heading inside the Recent section.
+    const recent = page.getByRole("region", { name: "Recent" });
+    await expect(recent.getByText("Untitled lesson", { exact: true }).first()).toBeVisible();
+    // Sidebar count moved from the seeded 10 to 11.
+    // The count is part of the link's accessible name ("Lessons 11").
+    await expect(page.getByRole("link", { name: /^Lessons\b/ })).toContainText("11");
+  });
+
+  test("New worksheet trims the title and opens the worksheet stub", async ({
+    signedInPage: { page },
+  }) => {
+    await page.getByRole("button", { name: "New worksheet" }).click();
+    await page.getByRole("textbox", { name: "Title" }).fill("  Decimals practice  ");
+    await page.getByRole("button", { name: "Next" }).click();
+    await page.getByRole("radio", { name: "Playground" }).click();
+    await page.getByRole("button", { name: "Create worksheet" }).click();
+
+    await expect(page).toHaveURL(/\/w\/[^/]+$/);
+    await expect(page.getByText("Decimals practice", { exact: true }).first()).toBeVisible();
+    await page.getByLabel("Back to the library").click();
+    await page.getByRole("link", { name: /^Worksheets\b/ }).click();
+    // Starter worksheets have 4 blocks (mock store).
+    const card = page.locator("article", { hasText: "Decimals practice" }).first();
+    await expect(card).toBeVisible();
+    await page.getByRole("button", { name: "List" }).click();
+    await expect(page.getByRole("row", { name: /Decimals practice/ })).toContainText("4 blocks");
   });
 
   test("New series uses the untitled fallback on Enter", async ({ signedInPage: { page } }) => {
@@ -163,30 +192,40 @@ test.describe("library shell", () => {
     await expectNoSeriousA11yViolations(page, "/series (dark)");
   });
 
-  test("New document and series dialogs have no serious or critical axe findings in both themes", async ({
+  test("Create dialogs have no serious or critical axe findings in both themes", async ({
     signedInPage: { page },
   }) => {
-    await page.getByRole("button", { name: "New lesson" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await page.waitForTimeout(500);
-    await expectNoSeriousA11yViolations(page, "new lesson dialog (light)", '[role="dialog"]');
-    await page.getByRole("button", { name: "Cancel" }).click();
-    await page.getByRole("button", { name: "New series" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await page.waitForTimeout(500);
-    await expectNoSeriousA11yViolations(page, "new series dialog (light)", '[role="dialog"]');
-    await page.getByRole("button", { name: "Cancel" }).click();
+    // AddLessonsDialog has no consumer until the series detail page (TEACH-92) mounts it;
+    // its axe coverage is added there.
+    async function scanDialog(label: string) {
+      await expect(page.getByRole("dialog")).toBeVisible();
+      await page.waitForTimeout(500);
+      await expectNoSeriousA11yViolations(page, label, '[role="dialog"]');
+    }
+    async function scanAll(theme: string) {
+      await page.getByRole("button", { name: "New lesson" }).click();
+      await scanDialog(`new lesson dialog, about (${theme})`);
+      await page.getByRole("button", { name: "Next" }).click();
+      await scanDialog(`new lesson dialog, theme (${theme})`);
+      await page.getByRole("button", { name: "Back" }).click();
+      await page.getByRole("button", { name: "Cancel" }).click();
 
+      await page.getByRole("button", { name: "New worksheet" }).click();
+      await scanDialog(`new worksheet dialog, about (${theme})`);
+      await page.getByRole("button", { name: "Next" }).click();
+      await scanDialog(`new worksheet dialog, theme (${theme})`);
+      await page.getByRole("button", { name: "Back" }).click();
+      await page.getByRole("button", { name: "Cancel" }).click();
+
+      await page.getByRole("button", { name: "New series" }).click();
+      await scanDialog(`new series dialog (${theme})`);
+      await page.getByRole("button", { name: "Cancel" }).click();
+    }
+
+    await scanAll("light");
     await page.getByRole("button", { name: "Theme" }).click();
     await page.getByRole("menuitemradio", { name: "Dark" }).click();
-    await page.getByRole("button", { name: "New lesson" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
     await page.waitForTimeout(500);
-    await expectNoSeriousA11yViolations(page, "new lesson dialog (dark)", '[role="dialog"]');
-    await page.getByRole("button", { name: "Cancel" }).click();
-    await page.getByRole("button", { name: "New series" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await page.waitForTimeout(500);
-    await expectNoSeriousA11yViolations(page, "new series dialog (dark)", '[role="dialog"]');
+    await scanAll("dark");
   });
 });

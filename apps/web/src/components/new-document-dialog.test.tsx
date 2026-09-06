@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { NewDocumentDialog } from "./new-document-dialog";
 
 function renderDialog(onCreate = mock()) {
@@ -11,17 +12,51 @@ function renderDialog(onCreate = mock()) {
 afterEach(cleanup);
 
 describe("NewDocumentDialog", () => {
-  it("advances on Enter and preserves About values when returning", () => {
+  it("advances on Enter in the title and preserves every About value when returning", async () => {
+    const user = userEvent.setup();
     renderDialog();
 
-    const title = screen.getByRole("textbox", { name: "Title" });
-    fireEvent.change(title, { target: { value: "Water" } });
-    const form = title.closest("form");
-    if (!form) throw new Error("New document form is missing");
-    fireEvent.submit(form);
+    await user.type(screen.getByRole("textbox", { name: "Title" }), "Water");
+    await user.type(screen.getByRole("textbox", { name: "Subject" }), "Science");
+    // Implicit form submission: Enter inside the input, not a synthetic submit event.
+    await user.keyboard("{Enter}");
     expect(screen.getByRole("heading", { name: "Choose a theme" })).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("Water");
+    expect(screen.getByRole("textbox", { name: "Subject" })).toHaveValue("Science");
+    expect(screen.getByRole("heading", { name: "New lesson" })).toBeVisible();
+  });
+
+  it("offers EYFS then Year 1 to Year 13 as year groups", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("combobox", { name: "Year group" }));
+    const options = screen.getAllByRole("option").map((option) => option.textContent);
+    expect(options).toEqual(["EYFS", ...Array.from({ length: 13 }, (_, i) => `Year ${i + 1}`)]);
+  });
+
+  it("blocks Escape and outside clicks while creation is pending", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = mock();
+    render(
+      <NewDocumentDialog
+        open
+        onOpenChange={onOpenChange}
+        kind="lesson"
+        onCreate={() => new Promise<void>(() => {})}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Create lesson" }));
+    expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
+
+    await user.keyboard("{Escape}");
+    fireEvent.pointerDown(document.body);
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("uses the defaults and passes trimmed values to onCreate", async () => {

@@ -44,7 +44,8 @@ export type NewDocumentDialogProps = {
 type Step = "about" | "theme";
 type ThemeTag = "All" | "Primary" | "Secondary" | "Calm" | "Bold";
 
-const YEAR_GROUPS = ["Reception", ...Array.from({ length: 13 }, (_, index) => `Year ${index + 1}`)];
+/** TeachDeck's list (`components/library/year-groups.ts`): EYFS then Year 1–13; the label is stored. */
+const YEAR_GROUPS = ["EYFS", ...Array.from({ length: 13 }, (_, index) => `Year ${index + 1}`)];
 const THEME_TAGS: ThemeTag[] = ["All", "Primary", "Secondary", "Calm", "Bold"];
 
 export function NewDocumentDialog({ open, onOpenChange, kind, onCreate }: NewDocumentDialogProps) {

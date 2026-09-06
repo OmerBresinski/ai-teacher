@@ -419,7 +419,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
         ) : isHome ? (
           <>
             {hero || beside.length > 0 ? (
-              <section className="mb-8">
+              <section className="mb-8" aria-label="Recent">
                 <SectionHeading className="mb-4">Recent</SectionHeading>
                 {hero ? (
                   <div className={GRID}>

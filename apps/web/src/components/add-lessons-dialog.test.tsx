@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { DocumentSummary } from "@/mocks/library-schema";
 import { AddLessonsDialog } from "./add-lessons-dialog";
 
@@ -68,5 +69,28 @@ describe("AddLessonsDialog", () => {
       target: { value: "missing" },
     });
     expect(screen.getByText("Nothing matches that")).toBeVisible();
+  });
+
+  it("blocks Escape and outside clicks while adding is pending", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = mock();
+    render(
+      <AddLessonsDialog
+        open
+        onOpenChange={onOpenChange}
+        candidates={candidates}
+        hasLessons
+        onAdd={() => new Promise<void>(() => {})}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: /One/ }));
+    await user.click(screen.getByRole("button", { name: "Add 1 lesson" }));
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+
+    await user.keyboard("{Escape}");
+    fireEvent.pointerDown(document.body);
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });
