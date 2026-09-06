@@ -1,6 +1,6 @@
 import type { OptionElement } from "@tj/domain/documents";
 import { Check } from "lucide-react";
-import type { ReactNode } from "react";
+import { lazy, type ReactNode, Suspense } from "react";
 import { docToPlainText } from "../../text/static";
 import {
   type ElementViewProps,
@@ -15,7 +15,7 @@ import { RichText } from "./RichText";
  * Edit mode only: the store subscription and, behind another lazy boundary, Tiptap. The
  * viewer, present, capture and thumb bundles carry neither.
  */
-// phase C (TEACH-104): `const EditableLabel = lazy(() => import('./EditableLabel'))` returns here.
+const EditableLabel = lazy(() => import("./EditableLabel"));
 
 const PAD = 24;
 const CHIP = 34;
@@ -42,6 +42,7 @@ export function OptionView({
   element,
   theme,
   mode,
+  slideId,
   revealAnswer,
   question,
   optionIndex,
@@ -158,7 +159,16 @@ export function OptionView({
     </div>
   );
 
-  // phase C (TEACH-104): `mode === "edit"` renders `EditableLabel` with `render={({ editor }) => card(editor)}`.
-  void mode;
-  return card(null);
+  if (mode !== "edit") return card(null);
+  return (
+    <Suspense fallback={card(null)}>
+      <EditableLabel
+        slideId={slideId}
+        id={element.id}
+        doc={element.doc}
+        style={textTypeCss(r)}
+        render={({ editor }) => card(editor)}
+      />
+    </Suspense>
+  );
 }

@@ -1,5 +1,5 @@
 import type { GapTextElement, Theme } from "@tj/domain/documents";
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { renderDocHTML } from "../../text/static";
 import {
   type ElementViewProps,
@@ -17,7 +17,7 @@ import { TextShell } from "./TextView";
  * Edit mode only: the store subscription, the height measurement and, behind another
  * lazy boundary, Tiptap. The viewer, present, capture and thumb bundles carry none of it.
  */
-// phase C (TEACH-104): `const EditableLabel = lazy(() => import('./EditableLabel'))` returns here.
+const EditableLabel = lazy(() => import("./EditableLabel"));
 
 const escapeHtml = (s: string) =>
   s.replace(
@@ -38,6 +38,7 @@ export function GapTextView({
   element,
   theme,
   mode,
+  slideId,
   revealAnswer,
   question,
 }: ElementViewProps<GapTextElement>) {
@@ -64,8 +65,20 @@ export function GapTextView({
     </TextShell>
   );
 
-  // phase C (TEACH-104): in `edit` mode render `EditableLabel` with `measure` and `render={box}`.
-  return box({ editor: null, overflowing: false });
+  const resting = () => box({ editor: null, overflowing: false });
+  if (mode !== "edit") return resting();
+  return (
+    <Suspense fallback={resting()}>
+      <EditableLabel
+        slideId={slideId}
+        id={element.id}
+        doc={element.doc}
+        style={{ flex: "0 0 auto", ...textTypeCss(r) }}
+        measure={{ h: element.h, autoHeight: r.autoHeight, chrome: r.padding * 2 }}
+        render={box}
+      />
+    </Suspense>
+  );
 }
 
 /** Says why the sentence suddenly reads `[[gap:a]]`. Never printed, never presented. */

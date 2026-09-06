@@ -1,10 +1,17 @@
 import type { QueryKey } from "@tanstack/react-query";
-import type { Lesson, SlideElement, Theme } from "@tj/domain/documents";
+import type { Lesson, RichDoc, SlideElement, Theme } from "@tj/domain/documents";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { makeLine, makeShape, makeText } from "../model/insert";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
 import { useDocumentHistory } from "../model/use-document-history";
+import {
+  type EditingState,
+  EditingStateContext,
+  type EditorHooks,
+  EditorHooksContext,
+} from "../slide/editor-hooks";
+import { ActiveEditorProvider } from "../text/active-editor";
 import { Canvas, stepZoom } from "./Canvas";
 import { HistoryProvider, LessonProvider } from "./document-context";
 import { HelpDialog } from "./HelpDialog";
@@ -12,6 +19,7 @@ import { InsertRail } from "./InsertRail";
 import { isInTextField, matchesBinding } from "./keys";
 import { Navigator } from "./Navigator";
 import { TopBar } from "./TopBar";
+import { CANVAS_ROOT_SELECTOR } from "./transform/gesture-state";
 import { useAutosave } from "./use-autosave";
 import {
   EditorSessionProvider,
@@ -103,6 +111,42 @@ export function LessonEditor({
     ],
   );
 
+  // What the element renderers may do to the document (ADR 0022 §4): the two contexts the slide
+  // package reads in edit mode. The functions are stable; the two ids change on entry/exit.
+  const { setEditingText, setEditingExplanation } = session.actions;
+  const editorHooks = useMemo<EditorHooks>(
+    () => ({
+      writeElementHeight: (slideId, id, h) =>
+        history.dispatch(reducers.updateElementLayout, slideId, id, { h }),
+      writeElementDoc: (slideId, id, doc: RichDoc) =>
+        history.dispatch(reducers.updateElement, slideId, id, { doc } as Partial<SlideElement>),
+      writeExplanation: (slideId, text) => history.dispatch(reducers.setExplanation, slideId, text),
+      beginTransaction: history.beginTransaction,
+      endTransaction: history.endTransaction,
+      // Esc out of a text editor lands focus back on the stage, so the canvas keys work at once.
+      exitTextEdit: () => {
+        setEditingText(null);
+        document.querySelector<HTMLElement>(CANVAS_ROOT_SELECTOR)?.focus({ preventScroll: true });
+      },
+      exitExplanationEdit: () => {
+        setEditingExplanation(null);
+        document.querySelector<HTMLElement>(CANVAS_ROOT_SELECTOR)?.focus({ preventScroll: true });
+      },
+    }),
+    [
+      history.dispatch,
+      history.beginTransaction,
+      history.endTransaction,
+      setEditingText,
+      setEditingExplanation,
+    ],
+  );
+  const { editingTextId, editingExplanation } = session.state;
+  const editingState = useMemo<EditingState>(
+    () => ({ editingTextId, editingExplanation }),
+    [editingTextId, editingExplanation],
+  );
+
   const theme = useMemo(() => getTheme(lesson?.themeId), [lesson?.themeId]);
   const slide = lesson ? resolveActiveSlide(lesson.slides, session.state.activeSlideId) : undefined;
 
@@ -163,28 +207,34 @@ export function LessonEditor({
     <LessonProvider value={lesson}>
       <HistoryProvider value={historyApi}>
         <EditorSessionProvider session={session}>
-          <div
-            className="flex h-dvh flex-col overflow-hidden bg-background"
-            data-lesson-editor={lessonId}
-          >
-            <TopBar
-              onBack={onBack}
-              onPresent={onPresent}
-              exportSlot={exportSlot}
-              autosave={autosave}
-            />
-            <div className="flex min-h-0 flex-1">
-              <InsertRail theme={theme} onInsert={insert} onHelp={() => setHelpOpen(true)} />
-              <Navigator />
-              <Canvas
-                slide={slide}
-                theme={theme}
-                onFocusChange={setCanvasFocused}
-                onScaleChange={onScaleChange}
-              />
-            </div>
-            <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-          </div>
+          <EditorHooksContext.Provider value={editorHooks}>
+            <EditingStateContext.Provider value={editingState}>
+              <ActiveEditorProvider>
+                <div
+                  className="flex h-dvh flex-col overflow-hidden bg-background"
+                  data-lesson-editor={lessonId}
+                >
+                  <TopBar
+                    onBack={onBack}
+                    onPresent={onPresent}
+                    exportSlot={exportSlot}
+                    autosave={autosave}
+                  />
+                  <div className="flex min-h-0 flex-1">
+                    <InsertRail theme={theme} onInsert={insert} onHelp={() => setHelpOpen(true)} />
+                    <Navigator />
+                    <Canvas
+                      slide={slide}
+                      theme={theme}
+                      onFocusChange={setCanvasFocused}
+                      onScaleChange={onScaleChange}
+                    />
+                  </div>
+                  <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+                </div>
+              </ActiveEditorProvider>
+            </EditingStateContext.Provider>
+          </EditorHooksContext.Provider>
         </EditorSessionProvider>
       </HistoryProvider>
     </LessonProvider>

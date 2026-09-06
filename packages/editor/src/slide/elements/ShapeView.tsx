@@ -1,12 +1,12 @@
 import type { ShapeElement, ShapeKind } from "@tj/domain/documents";
-import type { ReactNode } from "react";
+import { lazy, type ReactNode, Suspense } from "react";
 import { isDocEmpty } from "../../text/static";
 import { type ElementViewProps, resolveTextStyle, textTypeCss } from "./kit";
 import { RichText } from "./RichText";
 import { TextShell } from "./TextView";
 
 /** Edit mode only: the store subscription and, behind another lazy boundary, Tiptap. */
-// phase C (TEACH-104): `const EditableLabel = lazy(() => import('./EditableLabel'))` returns here.
+const EditableLabel = lazy(() => import("./EditableLabel"));
 
 /** Path/geometry for every ShapeKind, drawn in the element's own point space. */
 function shapeNode(kind: ShapeKind, w: number, h: number, radius: number) {
@@ -66,7 +66,7 @@ function speechPath(w: number, h: number, radius: number): string {
   ].join(" ");
 }
 
-export function ShapeView({ element, theme, mode }: ElementViewProps<ShapeElement>) {
+export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<ShapeElement>) {
   const w = Math.max(1, element.w);
   const h = Math.max(1, element.h);
   const stroke = element.stroke;
@@ -116,7 +116,18 @@ export function ShapeView({ element, theme, mode }: ElementViewProps<ShapeElemen
     </div>
   );
 
-  // phase C (TEACH-104): in `edit` mode render `EditableLabel` (seedEmpty when `doc` is
-  // undefined) with `render={({ editor }) => shape(editor)}`.
-  return shape(null);
+  if (mode !== "edit") return shape(null);
+  return (
+    <Suspense fallback={shape(null)}>
+      <EditableLabel
+        slideId={slideId}
+        id={element.id}
+        doc={element.doc}
+        // A shape can be given a label it never had, so the first edit seeds one.
+        seedEmpty={element.doc === undefined}
+        style={{ flex: "0 0 auto", ...textTypeCss(r) }}
+        render={({ editor }) => shape(editor)}
+      />
+    </Suspense>
+  );
 }

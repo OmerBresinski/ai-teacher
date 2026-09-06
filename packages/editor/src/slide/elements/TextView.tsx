@@ -1,6 +1,6 @@
 import type { TextElement, Theme } from "@tj/domain/documents";
 import { TriangleAlert } from "lucide-react";
-import type { CSSProperties, ReactNode, Ref } from "react";
+import { type CSSProperties, lazy, type ReactNode, type Ref, Suspense } from "react";
 import {
   type ElementViewProps,
   JUSTIFY,
@@ -17,7 +17,7 @@ import { RichText } from "./RichText";
  * boundary) Tiptap. Split out so the viewer, present, capture and thumb bundles carry
  * none of it — they render `StaticText` and nothing else.
  */
-// phase C (TEACH-104): `const EditableText = lazy(() => import('./EditableText'))` returns here.
+const EditableText = lazy(() => import("./EditableText"));
 
 /**
  * The box every text-ish element sits in: padding, optional fill, vertical alignment,
@@ -88,8 +88,13 @@ export function OverflowGlyph({ theme, title }: { theme: Theme; title?: string }
 
 export function TextView(props: ElementViewProps<TextElement>) {
   const { element, theme, mode } = props;
-  // phase C (TEACH-104): in `edit` mode wrap `staticView` in Suspense around `EditableText`.
-  return <StaticText element={element} theme={theme} mode={mode} />;
+  const staticView = <StaticText element={element} theme={theme} mode={mode} />;
+  if (mode !== "edit") return staticView;
+  return (
+    <Suspense fallback={staticView}>
+      <EditableText {...props} />
+    </Suspense>
+  );
 }
 
 /** Pure presentation: no hooks, no store, no observers. The only path outside edit mode. */

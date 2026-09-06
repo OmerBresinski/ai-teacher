@@ -31,8 +31,14 @@ reference; nothing is pasted from it without reading the file it came from.
   (`useReducer` + split contexts, read with `useSelection`/`useActiveSlideId`/`useZoom`/
   `useSessionUi`, written through `useSessionActions`), the document is reached through
   `document-context.ts` (`useLesson`, `useHistory`), and a drag paints `SlideView` from a
-  `transformOverride` preview map until pointer-up dispatches `transformElements` once. Renderer
-  paths (`view`, `present`, `capture`, `thumb`) never see any of it.
+  `transformOverride` preview map until pointer-up dispatches `transformElements` once. Element
+  renderers reach the document only through `slide/editor-hooks.ts` (`EditorHooksContext` for the
+  stable write functions, `EditingStateContext` for `editingTextId`/`editingExplanation`), which
+  `LessonEditor` provides; the Tiptap editors (`EditableText`, `EditableLabel`, `LabelEditor`,
+  `ExplanationEditor`) are `React.lazy` behind `mode === "edit"`, write every keystroke through
+  `useEditSession` (one transaction per typing burst, closed after 500 ms idle or on blur), and
+  register with `text/active-editor.tsx` so the text toolbar can drive the caret. Renderer paths
+  (`view`, `present`, `capture`, `thumb`) never see any of it.
 - **ADR 0021 — documents come from `@tj/domain/documents`.** Never redeclare `Slide`, `Lesson`,
   `Worksheet`, `Theme`; the theme *catalogue*, id factories and starter content live here.
 - **ADR 0013 — never import `apps/*`.** Internal dependencies are `@tj/domain`, `@tj/ui`,
@@ -59,18 +65,23 @@ src/
   text/       Tiptap extension set + static HTML rendering (renderDocHTML)
   layout/     text-fitting engine: reflow, explanation panel (lint/tidy/fit arrive in phase C)
   slide/      SlideView (the one renderer), SlideScaler, SlideStatic, elements/*
-  kit/        Panel, Segmented, NumberInput, ZoomControl — chrome with no @tj/ui twin
+  kit/        Panel, Segmented, NumberInput, ZoomControl, Color — chrome with no @tj/ui twin
+  text/       Tiptap extensions, static HTML, doc-marks/links (pure), active-editor context
   present/    LessonViewer, PresentView and present-mode pieces (`@tj/editor/present`)
   lesson/     LessonEditor shell (`@tj/editor/lesson`): TopBar, InsertRail, Navigator, Canvas,
               canvas/ (SlideActions, SlideTabs, placement), transform/ (SelectionLayer, keys,
-              hit-test, resize), use-editor-session, use-autosave, slide-commands, keys, shortcuts
+              hit-test, resize), toolbar/ (ContextualToolbar placement, TextToolbar),
+              use-editor-session, use-autosave, slide-commands, keys, shortcuts
   styles/     editor.css = fonts.css + slide.css + present.css
   thumb.ts    the library's thumbnail entry (`@tj/editor/thumb`)
 ```
 
 Tests that mount the shell use `src/lesson/test-harness.tsx` (`renderEditor`): a seeded QueryClient
 plus the layout stubs happy-dom lacks (the navigator's `offsetHeight`, so react-virtual renders
-rows). Every stylesheet the slide needs travels with the route that paints it: pages in `apps/web`
+rows). A real Tiptap editor does construct under happy-dom (`editor.commands.*` works; typing and
+selection do not — those are Playwright's). ProseMirror's contenteditable carries no ARIA role, so
+query it as `.ProseMirror`. Floating chrome that has not measured yet is `opacity: 0`, never
+`visibility: hidden` — the latter empties every control's accessible name. Every stylesheet the slide needs travels with the route that paints it: pages in `apps/web`
 import `@tj/editor/styles/editor.css` themselves rather than relying on the library chunk.
 
 Tests: `bun test` in this directory. Behaviour tests only; TeachDeck's vitest files are a

@@ -38,8 +38,9 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
 - Tests: `bun test` + React Testing Library + happy-dom; Playwright + axe in `e2e/` (ADR 0014). Biome
   `a11y` rules are errors. Specs: `auth`, `library` (shell, cards, dialogs, keyboard-only flow,
   narrow viewport), `series` (detail page incl. real-pointer drag), `viewer`, `present`, `editor`
-  (canvas drag/snap/resize, navigator reorder, autosave, the TeachDeck geometry checks), `a11y` (the
-  nine signed-in library/document routes × the three themes via `page.addInitScript` setting `tj-theme`, plus open dialogs/menus; `/sign-in` and
+  (canvas drag/snap/resize, navigator reorder, autosave, the TeachDeck geometry checks),
+  `editor-text` (double-click to edit, Escape commits, toolbar, option label, Why? panel), `a11y`
+  (the nine signed-in library/document routes × the three themes via `page.addInitScript` setting `tj-theme`, plus open dialogs/menus; `/sign-in` and
   `/dev/jobs` once in light), `kit` (opt-in,
   `E2E_KIT=1`). `src/router.test.ts` pins the registered route set; `packages/ui/src/styles/contrast.test.ts`
   pins token contrast. A full reload reseeds the mock library (ADR 0020) — assert persistence through
