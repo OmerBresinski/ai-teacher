@@ -9,7 +9,7 @@ import {
   SectionHeading,
   Skeleton,
 } from "@tj/ui";
-import { Layers, LibraryBig } from "lucide-react";
+import { ChevronRight, Layers, LibraryBig } from "lucide-react";
 import type { ReactNode } from "react";
 import { LibraryCard, type LibraryCardProps } from "@/components/library-card";
 import { SeriesCard, type SeriesCardProps } from "@/components/series-card";
@@ -71,8 +71,12 @@ export function HomeSection({
         className="mb-4"
         count={count}
         action={
-          <Link to={to} className="text-sm font-medium text-brand-text hover:underline">
+          <Link
+            to={to}
+            className="flex shrink-0 items-center gap-1 text-body font-medium text-brand-text hover:underline"
+          >
             See all
+            <ChevronRight aria-hidden size={16} strokeWidth={1.5} />
           </Link>
         }
       >
