@@ -16,6 +16,8 @@ const RAILWAY_PROJECT = "a79752e1-8bf5-41d0-b832-f1b64aaf6d2f";
 const RAILWAY_SERVICES = ["api", "worker"] as const;
 const UNKNOWN_RETRIES = 10;
 const UNKNOWN_DELAY_MS = 6_000;
+/** Wait between polls while a queued CI run has not yet been attached to the PR. */
+const PENDING_CHECKS_DELAY_MS = 15_000;
 const DEPLOY_POLL_MS = 15_000;
 const NO_DEPLOYMENT_WAIT_MS = 90_000;
 const DEFAULT_TIMEOUT_MIN = 20;
@@ -279,7 +281,15 @@ async function rebaseBranch(state: PrState, deps: LandPrDeps): Promise<void> {
   }
 }
 
-async function blockedMessage(pr: number, deps: LandPrDeps): Promise<string> {
+/** One entry of `gh pr view --json statusCheckRollup`: a check run or a commit status context. */
+interface StatusCheck {
+  name?: unknown;
+  conclusion?: unknown;
+  status?: unknown;
+  state?: unknown;
+}
+
+async function statusChecks(pr: number, deps: LandPrDeps): Promise<StatusCheck[]> {
   const result = await deps.gh([
     "pr",
     "view",
@@ -291,22 +301,41 @@ async function blockedMessage(pr: number, deps: LandPrDeps): Promise<string> {
   ]);
   requireSuccess(result, `Could not read status checks for PR #${pr}`);
   const parsed = parseJson(output(result), "status checks");
-  const checks = Array.isArray(parsed) ? parsed : [];
-  const details = checks
-    .filter(
-      (check): check is { name?: unknown; conclusion?: unknown; status?: unknown } =>
-        typeof check === "object" && check !== null,
-    )
-    .map((check) => {
-      const name = typeof check.name === "string" ? check.name : "unnamed check";
-      const state =
-        typeof check.conclusion === "string"
-          ? check.conclusion
+  return Array.isArray(parsed)
+    ? parsed.filter((check): check is StatusCheck => typeof check === "object" && check !== null)
+    : [];
+}
+
+/**
+ * True while GitHub has not finished computing the PR's checks: a check run without a conclusion,
+ * a status context still `PENDING`/`EXPECTED`, a placeholder with no name or status (GitHub lists
+ * one for a run it has queued but not yet attached to the PR), or no checks at all. `gh pr checks
+ * --watch` returns immediately in the last two cases, which is why `BLOCKED` right after a push
+ * means "not yet", not "never".
+ */
+export function hasPendingChecks(checks: StatusCheck[]): boolean {
+  if (checks.length === 0) return true;
+  return checks.some((check) => {
+    if (typeof check.conclusion === "string") return false;
+    if (typeof check.state === "string")
+      return check.state === "PENDING" || check.state === "EXPECTED";
+    return check.status !== "COMPLETED";
+  });
+}
+
+function blockedMessage(pr: number, checks: StatusCheck[]): string {
+  const details = checks.map((check) => {
+    const name = typeof check.name === "string" ? check.name : "unnamed check";
+    const state =
+      typeof check.conclusion === "string"
+        ? check.conclusion
+        : typeof check.state === "string"
+          ? check.state
           : typeof check.status === "string"
             ? check.status
             : "UNKNOWN";
-      return `${name}: ${state}`;
-    });
+    return `${name}: ${state}`;
+  });
   return `PR #${pr} is blocked: a required check or review is still missing.${
     details.length === 0 ? "" : `\n${details.join("\n")}`
   }`;
@@ -389,6 +418,7 @@ export async function landPr(
   let rebaseRounds = 0;
   let unknownRetries = 0;
   let state: PrState;
+  const startedAt = deps.now();
 
   while (true) {
     await waitForCi(pr, deps);
@@ -417,7 +447,17 @@ export async function landPr(
       throw new UserFacingError(`PR #${pr} has merge conflicts.`);
     }
     if (state.mergeStateStatus === "BLOCKED") {
-      throw new UserFacingError(await blockedMessage(pr, deps));
+      const checks = await statusChecks(pr, deps);
+      if (!hasPendingChecks(checks)) throw new UserFacingError(blockedMessage(pr, checks));
+      if (deps.now() - startedAt > timeoutMin * 60_000) {
+        throw new UserFacingError(
+          `PR #${pr} still had pending checks after ${timeoutMin} min.\n${blockedMessage(pr, checks)}`,
+        );
+      }
+      // Checks are queued but not yet attached to the PR, so `gh pr checks --watch` had nothing
+      // to wait for. Give GitHub a moment and go round again.
+      await deps.sleep(PENDING_CHECKS_DELAY_MS);
+      continue;
     }
     if (state.mergeStateStatus === "UNKNOWN") {
       if (unknownRetries >= UNKNOWN_RETRIES) {
