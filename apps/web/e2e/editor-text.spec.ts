@@ -99,7 +99,7 @@ test.describe("text editing", () => {
     await page.keyboard.press("End");
     await page.keyboard.press("Backspace");
     await expect(proseMirror(page)).toContainText("The water cycl");
-    await page.keyboard.press("Meta+d");
+    await page.keyboard.press("ControlOrMeta+d");
     expect(await elements(page).count()).toBe(count);
     await page.keyboard.press("Escape");
     expect(await elements(page).count()).toBe(count);
@@ -112,7 +112,7 @@ test.describe("text editing", () => {
     const title = elements(page).filter({ hasText: "The water cycle" }).first();
     await dblclickAt(page, title);
     await expect(proseMirror(page)).toBeFocused();
-    await page.keyboard.press("Meta+a");
+    await page.keyboard.press("ControlOrMeta+a");
     const bold = page.getByRole("toolbar", { name: "Text" }).getByRole("button", { name: "Bold" });
     await bold.click();
     await expect(bold).toHaveAttribute("aria-pressed", "true");

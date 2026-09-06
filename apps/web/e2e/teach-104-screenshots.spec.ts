@@ -45,7 +45,7 @@ test("captures the editor with text editing open and measures keystroke-to-paint
     `typing latency (keystroke→paint, n=${samples.length}): p50 ${p50?.toFixed(1)} ms, p95 ${p95?.toFixed(1)} ms, max ${sorted[sorted.length - 1]?.toFixed(1)} ms`,
   );
 
-  await page.keyboard.press("Meta+a");
+  await page.keyboard.press("ControlOrMeta+a");
   await page.getByRole("toolbar", { name: "Text" }).getByRole("button", { name: "Link" }).click();
   await page.getByRole("textbox", { name: "Link address" }).fill("javascript:alert(1)");
   await page.keyboard.press("Enter");
