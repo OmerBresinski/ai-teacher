@@ -334,6 +334,8 @@ export function Navigator() {
 
   /* ---- context menu ---------------------------------------------------- */
   const [menuAt, setMenuAt] = useState<{ x: number; y: number; id: Id } | null>(null);
+  const lastMenuAt = useRef(menuAt);
+  if (menuAt) lastMenuAt.current = menuAt;
 
   const onRowContextMenu = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -444,15 +446,17 @@ export function Navigator() {
         </IconButton>
       </div>
 
-      {/* The context menu: a controlled DropdownMenu whose trigger is a 1px anchor at the pointer. */}
+      {/* The context menu: a controlled DropdownMenu whose trigger is a 1px anchor at the pointer.
+          The anchor keeps its last position after the menu closes: the content stays mounted for
+          its fade-out and would otherwise re-position to the top-left corner for a frame. */}
       <DropdownMenu open={menuAt !== null} onOpenChange={(o) => !o && setMenuAt(null)}>
         <DropdownMenuTrigger asChild>
           <span
             aria-hidden
             style={{
               position: "fixed",
-              left: menuAt?.x ?? 0,
-              top: menuAt?.y ?? 0,
+              left: menuAt?.x ?? lastMenuAt.current?.x ?? 0,
+              top: menuAt?.y ?? lastMenuAt.current?.y ?? 0,
               width: 1,
               height: 1,
             }}
