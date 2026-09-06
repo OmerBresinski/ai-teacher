@@ -26,8 +26,9 @@ function themeInit(): Plugin {
  * fonts from source):
  *
  * - `preconnect` to the API origin, so the DNS/TLS handshake for the first `GET /me` overlaps the
- *   script download instead of following it. No `crossorigin` attribute on purpose: the client
- *   fetches with credentials, and only a credentialed preconnect is reused for those requests.
+ *   script download instead of following it. `crossorigin="use-credentials"` matches the client's
+ *   `credentials: "include"` fetches: a connection opened in a different credentials mode is not
+ *   reused for them (HTML "obtain a connection", credentials flag).
  * - `preload` the two latin `.woff2` files every screen uses (Plus Jakarta Sans variable, Lora 500).
  *   Without it the browser discovers them only after the CSS is parsed and text is laid out, so the
  *   first frames paint in the fallback face and swap ~150 ms later. Other subsets stay lazy: their
