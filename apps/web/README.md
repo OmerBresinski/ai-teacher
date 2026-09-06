@@ -32,7 +32,8 @@ The lesson editor's Add image panel (`@tj/editor` `AddImagePanel`) calls Openver
 (`https://api.openverse.org/v1/images/`) directly from the browser — no key, no env var, no API
 route; `vercel.json`'s CSP already allows the connect and `data:` images. Tenor GIF search is not
 included (it needs a client-side key). Uploaded and searched images are stored as data URLs until
-the upload endpoint lands (ADR 0021 §5).
+the upload endpoint lands (ADR 0021 §5); a searched image whose host refuses CORS stays a remote
+`https:` URL, which is why the CSP's `img-src` allows `https:` (thumbnails in the panel need it too).
 
 ## Dev proxy decision
 

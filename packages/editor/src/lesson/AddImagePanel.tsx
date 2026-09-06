@@ -125,14 +125,24 @@ function UploadTab({ onPick }: { onPick: (source: ImageSource) => void }) {
   const file = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const dropLabel = useId();
+  // Decoding a large file takes a moment; if the panel closed meanwhile (Esc, a click outside, a
+  // different element selected for Replace) the picture must not land on whatever is there now.
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   const take = async (files: FileList | null) => {
     const chosen = files?.[0];
     if (!chosen) return;
     try {
-      onPick(await sourceFromFile(chosen));
+      const source = await sourceFromFile(chosen);
+      if (alive.current) onPick(source);
     } catch {
-      toast(UNREADABLE_MESSAGE);
+      if (alive.current) toast(UNREADABLE_MESSAGE);
     }
   };
 
