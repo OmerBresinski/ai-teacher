@@ -56,6 +56,8 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     ping: defineJob("ping", async () => {}),
     "ai.ping": defineJob("ai.ping", async () => {}),
     "lesson.plan": lessonPlanJob,
+    "lesson.cascade": defineJob("lesson.cascade", async () => {}),
+    "lesson.regenerate": defineJob("lesson.regenerate", async () => {}),
   };
 
   const headers = (ws: WorkspaceId, extra: Record<string, string> = {}) => ({

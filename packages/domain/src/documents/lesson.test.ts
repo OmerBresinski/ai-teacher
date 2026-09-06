@@ -1,8 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { lesson, multipleChoiceSlide, titleSlide, trueFalseSlide } from "./fixtures.test-helpers";
+import {
+  generatedLesson,
+  lesson,
+  multipleChoiceSlide,
+  titleSlide,
+  trueFalseSlide,
+} from "./fixtures.test-helpers";
 import { GUARD_MESSAGE } from "./identifier-guard";
 import { isLesson, LessonSchema, parseLesson } from "./lesson";
-import { hasRevealableAnswer, SlideSchema, slideStepCount } from "./slide";
+import {
+  hasRevealableAnswer,
+  type Slide,
+  type SlideElement,
+  SlideSchema,
+  slideStepCount,
+} from "./slide";
 
 describe("parseLesson", () => {
   test("round-trips a TeachDeck-shaped lesson through JSON", () => {
@@ -58,6 +70,42 @@ describe("parseLesson", () => {
     expect(result.error?.issues).toEqual([
       expect.objectContaining({ path: ["brief", "topic"], message: GUARD_MESSAGE }),
     ]);
+  });
+
+  test("a generated lesson round-trips through JSON with facts, generation, artefacts and provenance (ADR 0025)", () => {
+    const input = generatedLesson();
+    const parsed = parseLesson(JSON.parse(JSON.stringify(input)));
+    expect(parsed).toEqual(input);
+    expect(parsed.slides[0]?.elements[0]?.generatedFrom).toBeDefined();
+    expect(parsed.slides[0]?.elements[0]?.authoredBy).toBe("ai");
+    expect(parsed.facts?.objectives.map((o) => o.id)).toEqual(["o1", "o2"]);
+    expect(parsed.generation?.stage).toBe("repaired");
+    expect(parsed.artefacts?.worksheetId).toBe("gen-water-cycle-ws");
+  });
+
+  test("a TeachDeck fixture parses with the F06 fields undefined (optional means no migration)", () => {
+    const parsed = parseLesson(lesson());
+    expect(parsed.facts).toBeUndefined();
+    expect(parsed.generation).toBeUndefined();
+    expect(parsed.artefacts).toBeUndefined();
+    expect(parsed.sources).toBeUndefined();
+  });
+
+  test("sources are references only and round-trip", () => {
+    const input = {
+      ...lesson(),
+      sources: [{ id: "src1", kind: "file" as const, name: "plan.pdf", pages: 2 }],
+    };
+    expect(parseLesson(JSON.parse(JSON.stringify(input)))).toEqual(input);
+  });
+
+  test("a bad fact id inside facts is reported under [facts, ...]", () => {
+    const result = LessonSchema.safeParse({
+      ...lesson(),
+      facts: { ...generatedLesson().facts, durationMin: 0 },
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["facts", "durationMin"]);
   });
 
   test("rejects rubbish with a readable message naming at most three problems", () => {
@@ -152,6 +200,37 @@ describe("SlideSchema referential integrity", () => {
       style: { preset: "body" },
     });
     expect(SlideSchema.safeParse(slide).success).toBe(true);
+  });
+
+  test("authoredBy must be ai or teacher; generatedFrom is strict (ADR 0025 §2)", () => {
+    const slide = titleSlide();
+    slide.elements[0] = { ...(slide.elements[0] as SlideElement), authoredBy: "robot" as never };
+    const result = SlideSchema.safeParse(slide);
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues[0]?.path).toEqual(["elements", 0, "authoredBy"]);
+
+    const generated = generatedLesson().slides[0] as Slide;
+    const element = generated.elements[0] as SlideElement;
+    const withExtra = {
+      ...generated,
+      elements: [{ ...element, generatedFrom: { ...element.generatedFrom, temperature: 0.2 } }],
+    };
+    expect(SlideSchema.safeParse(withExtra).success).toBe(false);
+  });
+
+  test("provenance survives inside a group", () => {
+    const generated = generatedLesson().slides[1] as Slide;
+    const [heading, ...rest] = generated.elements;
+    const slide: Slide = {
+      ...generated,
+      elements: [
+        heading as SlideElement,
+        { id: "grp", type: "group", x: 0, y: 0, w: 1, h: 1, children: rest },
+      ],
+    };
+    const parsed = SlideSchema.parse(JSON.parse(JSON.stringify(slide)));
+    expect(parsed).toEqual(slide);
   });
 
   test("an image creditUrl must be an http(s) address", () => {

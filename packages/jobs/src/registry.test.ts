@@ -22,6 +22,12 @@ describe("JobRegistry", () => {
       "lesson.plan": defineJob("lesson.plan", async ({ payload }) => {
         payload.lessonId.toUpperCase();
       }),
+      "lesson.cascade": defineJob("lesson.cascade", async ({ payload }) => {
+        payload.changedFactIds.length.toFixed();
+      }),
+      "lesson.regenerate": defineJob("lesson.regenerate", async ({ payload }) => {
+        payload.targets.length.toFixed();
+      }),
     };
     // @ts-expect-error missing job handlers
     const missing: JobRegistry = {};

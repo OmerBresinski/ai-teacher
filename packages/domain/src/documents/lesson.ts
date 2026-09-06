@@ -1,12 +1,16 @@
 import { z } from "zod";
 import { type Brief, BriefSchema } from "./brief";
+import { type Generation, GenerationSchema } from "./generation";
+import { type LessonFacts, LessonFactsSchema } from "./lesson-facts";
 import { DocumentParseError, describeIssues, migrate } from "./migrate";
 import { type Id, type Slide, SlideSchema } from "./slide";
+import { type SourceRef, SourceRefSchema } from "./source-ref";
 
 /*
  * Lesson document (ADR 0021). Behavioural reference: TeachDeck `lib/model/types.ts:37-66` and
- * `lib/model/schema.ts:252,325-346,490-511`. Three product-only optional fields are added —
- * `reachedSlideId` and `taughtAt` for TD item 5, `brief` for F01 (ADR 0024 §1); everything else
+ * `lib/model/schema.ts:252,325-346,490-511`. Product-only optional fields are added —
+ * `reachedSlideId` and `taughtAt` for TD item 5, `brief` for F01 (ADR 0024 §1), `facts`,
+ * `generation`, `artefacts` and `sources` for F06 (ADR 0025 §1, §3, §4, §20); everything else
  * is TeachDeck's shape, so its JSON files parse unchanged.
  */
 
@@ -49,7 +53,19 @@ export type Lesson = {
    * without one is still a valid document; `subject` / `yearGroup` above stay canonical.
    */
   brief?: Brief;
+  /** F06 (ADR 0025 §1): the facts every slide and block is derived from. */
+  facts?: LessonFacts;
+  /** F06 (ADR 0025 §3): the `lesson.plan` job's checkpoint, usage and residual findings. */
+  generation?: Generation;
+  /** F06 (ADR 0025 §4): the worksheet row generated beside this lesson. */
+  artefacts?: LessonArtefacts;
+  /** F03 (ADR 0025 §20): references to the teacher's source materials; never their text. */
+  sources?: SourceRef[];
 };
+
+export type LessonArtefacts = { worksheetId: Id };
+
+export const LessonArtefactsSchema = z.strictObject({ worksheetId: z.string() });
 
 export const AgeBandSchema = z.enum(["eyfs", "ks1", "ks2", "ks3", "ks4", "post16"]);
 
@@ -78,6 +94,11 @@ export const LessonSchema = z.object({
   taughtAt: z.string().optional(),
   // F01 (ADR 0024 §1).
   brief: BriefSchema.optional(),
+  // F06 (ADR 0025 §1, §3, §4) and F03 (§20).
+  facts: LessonFactsSchema.optional(),
+  generation: GenerationSchema.optional(),
+  artefacts: LessonArtefactsSchema.optional(),
+  sources: z.array(SourceRefSchema).optional(),
 });
 
 export function parseLesson(input: unknown): Lesson {

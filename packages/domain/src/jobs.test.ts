@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { type JobId, LessonId, newId, type WorkspaceId } from "./ids";
 import {
   AiPingPayloadSchema,
+  CASCADE_MAX_FACTS,
   isTerminalJobEvent,
   JOB_TERMINAL_EVENT_TYPES,
+  JobCompletedEventSchema,
   type JobEvent,
   JobEventSchema,
   JobEventType,
@@ -11,8 +13,12 @@ import {
   JobNameSchema,
   JobPayloadSchemas,
   type JobPayloads,
+  JobProgressSchema,
+  JobResultSchema,
   type PingPayload,
   PingPayloadSchema,
+  REGENERATE_INSTRUCTION_MAX,
+  REGENERATE_MAX_TARGETS,
 } from "./jobs";
 
 const jobId = newId<JobId>();
@@ -24,6 +30,8 @@ describe("JobName", () => {
     expect(JobName.ping).toBe("ping");
     expect(JobName.aiPing).toBe("ai.ping");
     expect(JobName.lessonPlan).toBe("lesson.plan");
+    expect(JobName.lessonCascade).toBe("lesson.cascade");
+    expect(JobName.lessonRegenerate).toBe("lesson.regenerate");
     expect(JobNameSchema.options).toEqual(Object.values(JobName));
     expect(JobNameSchema.parse("ping")).toBe("ping");
     expect(JobNameSchema.safeParse("nope").success).toBe(false);
@@ -91,6 +99,155 @@ describe("JobPayloadSchemas.lesson.plan", () => {
 
   test("rejects a missing lessonId", () => {
     expect(JobPayloadSchemas["lesson.plan"].safeParse({}).success).toBe(false);
+  });
+});
+
+describe("JobPayloadSchemas.lesson.cascade", () => {
+  const lessonId = "0192f7a0-0000-7000-8000-000000000042";
+
+  test("needs at least one changed fact id and at most CASCADE_MAX_FACTS", () => {
+    expect(() =>
+      JobPayloadSchemas["lesson.cascade"].parse({ lessonId, changedFactIds: [] }),
+    ).toThrow();
+    expect(
+      JobPayloadSchemas["lesson.cascade"].parse({ lessonId, changedFactIds: ["o1", "v2"] }),
+    ).toEqual({ lessonId: LessonId.parse(lessonId), changedFactIds: ["o1", "v2"] });
+    const tooMany = Array.from({ length: CASCADE_MAX_FACTS + 1 }, (_, i) => `o${i}`);
+    expect(
+      JobPayloadSchemas["lesson.cascade"].safeParse({ lessonId, changedFactIds: tooMany }).success,
+    ).toBe(false);
+  });
+
+  test("rejects unknown fields and a non-UUID lessonId", () => {
+    expect(
+      JobPayloadSchemas["lesson.cascade"].safeParse({ lessonId, changedFactIds: ["o1"], x: 1 })
+        .success,
+    ).toBe(false);
+    expect(
+      JobPayloadSchemas["lesson.cascade"].safeParse({ lessonId: "nope", changedFactIds: ["o1"] })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("JobPayloadSchemas.lesson.regenerate", () => {
+  const lessonId = "0192f7a0-0000-7000-8000-000000000042";
+
+  test("accepts slide, element and block targets with an optional instruction", () => {
+    const payload = {
+      lessonId,
+      targets: [{ slideId: "s1" }, { slideId: "s1", elementId: "e1" }, { blockId: "b1" }],
+      instruction: "Make it simpler",
+    };
+    expect(JobPayloadSchemas["lesson.regenerate"].parse(payload)).toEqual({
+      ...payload,
+      lessonId: LessonId.parse(lessonId),
+    });
+  });
+
+  test("every target names a slideId or a blockId", () => {
+    const result = JobPayloadSchemas["lesson.regenerate"].safeParse({
+      lessonId,
+      targets: [{ elementId: "e1" }],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["targets", 0]);
+  });
+
+  test("bounds: 1..REGENERATE_MAX_TARGETS targets, instruction ≤ REGENERATE_INSTRUCTION_MAX", () => {
+    const schema = JobPayloadSchemas["lesson.regenerate"];
+    expect(schema.safeParse({ lessonId, targets: [] }).success).toBe(false);
+    const many = Array.from({ length: REGENERATE_MAX_TARGETS + 1 }, (_, i) => ({
+      slideId: `s${i}`,
+    }));
+    expect(schema.safeParse({ lessonId, targets: many }).success).toBe(false);
+    expect(
+      schema.safeParse({
+        lessonId,
+        targets: [{ slideId: "s" }],
+        instruction: "x".repeat(REGENERATE_INSTRUCTION_MAX + 1),
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("JobResultSchema (ADR 0025 §19)", () => {
+  const base = { jobId, workspaceId, at };
+  const provenance = {
+    factRefs: ["o1"],
+    promptVersion: "generate.v1",
+    model: "m",
+    at: "2026-09-06T10:00:00.000Z",
+  };
+
+  test("a completed event carries an optional result whose job discriminator narrows", () => {
+    const event = JobCompletedEventSchema.parse({
+      type: "completed",
+      ...base,
+      result: { job: "lesson.cascade", proposals: [], flagged: [] },
+    });
+    expect(event.result?.job).toBe("lesson.cascade");
+    if (event.result?.job === "lesson.cascade") {
+      expect(event.result.proposals).toEqual([]);
+      expect(event.result.flagged).toEqual([]);
+    }
+    expect(JobEventSchema.parse({ type: "completed", ...base })).toEqual({
+      type: "completed",
+      ...base,
+    });
+  });
+
+  test("a proposal carries a target, an element or a block, and its provenance", () => {
+    const element = {
+      id: "e1",
+      type: "text",
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+      doc: { type: "doc" },
+      style: { preset: "body" },
+      authoredBy: "ai",
+      generatedFrom: provenance,
+    };
+    const result = JobResultSchema.parse({
+      job: "lesson.regenerate",
+      proposals: [
+        { target: { slideId: "s1", elementId: "e1" }, element, generatedFrom: provenance },
+        {
+          target: { blockId: "b1" },
+          block: { id: "b1", type: "paragraph", doc: { type: "doc" } },
+          generatedFrom: provenance,
+        },
+      ],
+      flagged: [{ slideId: "s2", elementId: "e9" }],
+    });
+    expect(result.job).toBe("lesson.regenerate");
+    expect(result.proposals).toHaveLength(2);
+    expect(result.flagged).toEqual([{ slideId: "s2", elementId: "e9" }]);
+  });
+
+  test("rejects an unknown job, a lesson.plan result, and unknown fields", () => {
+    expect(JobResultSchema.safeParse({ job: "lesson.plan" }).success).toBe(false);
+    expect(
+      JobResultSchema.safeParse({ job: "lesson.cascade", proposals: [], flagged: [], extra: 1 })
+        .success,
+    ).toBe(false);
+    expect(
+      JobEventSchema.safeParse({ type: "completed", ...base, result: { job: "nope" } }).success,
+    ).toBe(false);
+  });
+
+  test("a progress event carries documentUpdatedAt as an ISO UTC time (ADR 0025 §7)", () => {
+    const progress = { percent: 10, documentUpdatedAt: "2026-09-06T10:00:00.000Z" };
+    expect(JobProgressSchema.parse(progress)).toEqual(progress);
+    expect(
+      JobProgressSchema.safeParse({ percent: 10, documentUpdatedAt: "2026-09-06" }).success,
+    ).toBe(false);
+    const event = JobEventSchema.parse({ type: "progress", ...base, progress });
+    expect(event.type === "progress" && event.progress.documentUpdatedAt).toBe(
+      "2026-09-06T10:00:00.000Z",
+    );
   });
 });
 
