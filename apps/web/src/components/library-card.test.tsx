@@ -1,5 +1,6 @@
 import { afterAll, afterEach, describe, expect, it, mock } from "bun:test";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import type { DocumentSummary } from "@/mocks/library-schema";
@@ -65,6 +66,19 @@ describe("LibraryCard", () => {
     expect(
       (await screen.findAllByRole("menuitem")).map((item) => item.textContent?.trim()),
     ).toEqual(["Open", "Present", "Duplicate", "Export JSON", "RenameF2", "Delete"]);
+  });
+
+  it("shows the kind glyph with its name in a tooltip, above the cover link", async () => {
+    const user = userEvent.setup();
+    const { container } = renderCard();
+    const glyph = container.querySelector("svg.lucide-presentation");
+    expect(glyph).not.toBeNull();
+    expect(glyph?.parentElement).toHaveClass("z-2");
+    await user.hover(glyph as Element);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Lesson");
+
+    renderCard({ ...lesson, id: "worksheet-1", kind: "worksheet" });
+    expect(document.querySelector("svg.lucide-file-text")).not.toBeNull();
   });
 
   it("uses Print for worksheet cards and has hero metadata", () => {

@@ -16,8 +16,12 @@ import { SeriesCard, type SeriesCardProps } from "@/components/series-card";
 import type { DocumentSummary, SeriesWithLessons } from "@/mocks/library-schema";
 import type { LibraryMode, View } from "./library-model";
 
-/** TeachDeck fixes four columns; the responsive grid keeps that density on wide screens. */
-export const GRID = "grid grid-cols-2 gap-6 lg:grid-cols-3 xl:grid-cols-4";
+/**
+ * TeachDeck fixes four columns; the responsive grid keeps that density on wide screens.
+ * `items-start`: a stretched cell would extend each card's cover link and hover zone to the row's
+ * tallest neighbour (the Home hero), so hovering the empty column below a card lit it up.
+ */
+export const GRID = "grid grid-cols-2 items-start gap-6 lg:grid-cols-3 xl:grid-cols-4";
 
 export type DocumentCardCallbacks = Pick<LibraryCardProps, "now" | "onAction" | "onRename">;
 export type SeriesCardCallbacks = Pick<SeriesCardProps, "now" | "onAction" | "onRename">;
@@ -122,7 +126,7 @@ export function SeriesGrid({
   ...cardProps
 }: { series: SeriesWithLessons[]; headingLevel?: "h2" | "h3" } & SeriesCardCallbacks) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid items-start gap-4 md:grid-cols-2">
       {series.map((item) => (
         <SeriesCard key={item.series.id} item={item} headingLevel={headingLevel} {...cardProps} />
       ))}

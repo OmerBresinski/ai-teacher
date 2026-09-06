@@ -131,7 +131,8 @@ function KindIcon({ kind }: { kind: DocumentSummary["kind"] }) {
   const Glyph = kind === "lesson" ? Presentation : FileText;
   return (
     <Tooltip label={KIND_LABEL[kind]}>
-      <span className="inline-flex shrink-0 text-ink-3">
+      {/* Above the cover link so the pointer reaches the trigger; hover-only, like TeachDeck. */}
+      <span className="relative z-2 inline-flex shrink-0 text-ink-3">
         <Glyph aria-hidden size={16} strokeWidth={1.5} />
       </span>
     </Tooltip>
