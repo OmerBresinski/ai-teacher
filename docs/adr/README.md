@@ -26,7 +26,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0018 | AI provider: Amazon Bedrock via Vercel AI SDK in @tj/ai | Accepted |
 | 0019 | Adopt the TeachDeck visual system in @tj/ui; shell and editor kits | Accepted, amended 2026-09-06 (×2) |
 | 0020 | Library screens run on an in-memory mock data layer behind TanStack Query | Accepted (amended 2026-09-06) |
-| 0021 | Tie-in document contract: TeachDeck schemas in @tj/domain | Accepted |
+| 0021 | Tie-in document contract: TeachDeck schemas in @tj/domain | Accepted (amended 2026-09-06) |
 | 0022 | @tj/editor: package boundary, kit rule, state model and fonts | Accepted |
 | 0023 | Export pipeline: client-side exporters, SPA print routes, JSON import | Accepted |
 
@@ -42,3 +42,4 @@ Template: `0000-template.md`.
 - 2026-09-05 — ADR 0009: `@tj/ui` adopts the TeachDeck visual system and separates the shell and editor kits (ADR 0019). See `0009-tailwind-shadcn.md`.
 - 2026-09-06 — ADR 0019 §3 and §5: the stage palette moves to `@tj/ui` as the `.tj-stage` scope and the editor consumes `@tj/ui` twins (ADR 0022). See the second amendment in `0019-teachdeck-visual-system.md`.
 - 2026-09-06 — ADR 0020: `@tj/domain` holds the document schemas (ADR 0021); the mock store holds full documents; "no Zustand" covers the editor (ADR 0022). See `0020-frontend-mock-data-layer.md`.
+- 2026-09-06 — ADR 0021 §1: the schemas live at `@tj/domain/documents` (subpath only); the `objects/lesson.ts` row stub is kept (TEACH-96). See the amendment in `0021-tie-in-document-contract.md`.

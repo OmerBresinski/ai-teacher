@@ -19,6 +19,7 @@ resolves to a file under `src/`. `bun run build` (tsup) additionally emits ESM +
 | `@tj/domain`          | `src/index.ts`          | Everything below, plus `IsoDateTime`                                                                       |
 | `@tj/domain/ids`      | `src/ids.ts`            | `WorkspaceId`, `UserId`, `JobId`, `JourneyId`, `LessonId`, `ArtefactId`, `SourceId`, `ObservationId`, `AdaptationId`, `ConceptId`, `CohortProfileId`, `SkillId`, `KnowledgeNodeId`, `ID_SCHEMAS`, `IdBrand`, `AnyId`, `newId()` |
 | `@tj/domain/objects`  | `src/objects/index.ts`  | `Workspace`, `Journey`, `CohortProfile`, `Concept`, `Lesson`, `Artefact`, `Observation`, `Adaptation`, `Source`, `Skill`, `KnowledgeNode`, `OBJECT_SCHEMAS`, `ObjectName`, `workspaceOwnedFields` |
+| `@tj/domain/documents` | `src/documents/index.ts` | **Subpath only, not in the root barrel.** `Lesson`, `Slide`, `SlideElement`, `QuestionData`, `Theme`, `Worksheet`, `WorksheetBlock`, `Series`, `RichDoc` types; `LessonSchema`, `SlideSchema`, `SlideElementSchema`, `QuestionDataSchema`, `WorksheetSchema`, `StoredWorksheetSchema`, `WorksheetBlockSchema`, `SeriesSchema`, `RichDocSchema`; `parseLesson()`, `parseWorksheet()`, `parseStoredWorksheet()`, `parseSeries()`, `isLesson()`, `isWorksheet()`, `isSeries()`, `migrate()`, `CURRENT_VERSION`, `normaliseHref()`, `slideStepCount()`, `hasRevealableAnswer()`, `SLIDE_W/H`, `PAGE_A4/LETTER`, `MAX_CRITERIA`, `WORD_SEARCH_MIN/MAX_SIZE` |
 | `@tj/domain/states`   | `src/states.ts`         | `ArtefactState`, `LessonTaughtState`, `AttentionFlag`                                                      |
 | `@tj/domain/jobs`     | `src/jobs.ts`           | `JobName`, `JobNameSchema`, `PingPayloadSchema`, `PingPayload(Input)`, `JobPayloadSchemas`, `JobPayloads`, `JobPayloadInputs`, `JobEventType`, `JobEventSchema`, `JobEvent`, `JobEventOf`, per-variant `Job*EventSchema`, `JobProgressSchema`, `JobErrorSchema`, `JOB_TERMINAL_EVENT_TYPES`, `JobTerminalEventType`, `isTerminalJobEvent()` |
 | `@tj/domain/storage`  | `src/storage.ts`        | `StorageAdapter`, `StorageObject`, `StoragePutOptions`, `StorageSignedUrlOptions`, `storageKey()`, `parseStorageKey()`, `StorageKeySchema`, `StorageKey`, `StorageKeyError`, `ParsedStorageKey` |
@@ -50,6 +51,21 @@ so a `JobId` cannot be passed where a `WorkspaceId` is expected.
 `*Id` schema; treat client-minted ids as opaque and never sort by id in the UI. The Bun global is
 read through `globalThis` with a local structural type, so the file compiles under both the Node
 and React tsconfigs.
+
+## Documents (the tie-in contract)
+
+`src/documents/` holds the Lesson, Worksheet and Series **documents** the editor reads and writes:
+TeachDeck's `lib/model/{types,schema}.ts` adopted verbatim ([ADR 0021](../../docs/adr/0021-tie-in-document-contract.md)),
+plus two optional fields on `Lesson` (`reachedSlideId`, `taughtAt`, TD item 5). A TeachDeck JSON file
+is a valid product document and vice versa; `migrate()` runs at every boundary that accepts one
+(import, the mock store, later the API). Ids are TeachDeck's plain strings, not the branded ids in
+`src/ids.ts`.
+
+It is deliberately **not** re-exported from `@tj/domain`: `documents/lesson.ts` `Lesson` is the
+editor document, while `objects/lesson.ts` `Lesson` is the future workspace-owned persistence row
+(with `workspaceId` and without `version`, as `objects.test.ts` enforces). Import
+`@tj/domain/documents` explicitly. The theme *catalogue*, id factories and starter content live in
+`@tj/editor`; only the `Theme` type is here.
 
 ## Core objects (skeletons)
 
