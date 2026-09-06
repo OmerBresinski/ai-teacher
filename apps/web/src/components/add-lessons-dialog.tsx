@@ -38,7 +38,7 @@ export function AddLessonsDialog({
 }: AddLessonsDialogProps) {
   const searchId = useId();
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
 
   const filtered = useMemo(() => {
@@ -48,25 +48,24 @@ export function AddLessonsDialog({
       : candidates;
   }, [candidates, query]);
   const label =
-    selected.length === 0
+    selected.size === 0
       ? "Add lessons"
-      : `Add ${selected.length} ${selected.length === 1 ? "lesson" : "lessons"}`;
+      : `Add ${selected.size} ${selected.size === 1 ? "lesson" : "lessons"}`;
 
   function toggle(id: string): void {
-    setSelected((current) =>
-      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
-    );
+    setSelected((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   }
 
   async function submit(): Promise<void> {
-    if (busy || selected.length === 0) return;
+    if (busy || selected.size === 0) return;
     setBusy(true);
     try {
-      await onAdd(
-        candidates
-          .filter((candidate) => selected.includes(candidate.id))
-          .map((candidate) => candidate.id),
-      );
+      // Library order, not click order.
+      await onAdd(candidates.filter((candidate) => selected.has(candidate.id)).map((c) => c.id));
     } finally {
       setBusy(false);
     }
@@ -110,7 +109,7 @@ export function AddLessonsDialog({
                   <LessonRow
                     key={candidate.id}
                     candidate={candidate}
-                    checked={selected.includes(candidate.id)}
+                    checked={selected.has(candidate.id)}
                     onCheckedChange={() => toggle(candidate.id)}
                   />
                 ))}
@@ -124,7 +123,7 @@ export function AddLessonsDialog({
           </Button>
           <Button
             className="bg-foreground text-background hover:bg-foreground"
-            disabled={busy || selected.length === 0}
+            disabled={busy || selected.size === 0}
             onClick={() => void submit()}
           >
             {busy ? <Spinner /> : null}
