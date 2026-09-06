@@ -1,6 +1,8 @@
 import type { QueryKey } from "@tanstack/react-query";
 import type { Lesson, RichDoc, SlideElement, Theme } from "@tj/domain/documents";
+import { toast } from "@tj/ui";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
 import { makeLine, makeShape, makeText } from "../model/insert";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
@@ -152,6 +154,35 @@ export function LessonEditor({
     () => ({ editingTextId, editingExplanation }),
     [editingTextId, editingExplanation],
   );
+
+  // The fit migration (ADR 0021 §3): a lesson laid out under an older floor table is re-fitted
+  // once, on open, when the editor is quiet. Reads the latest lesson/history/session at run time.
+  const lessonRef = useRef(lesson);
+  lessonRef.current = lesson;
+  const historyRef = useRef(history);
+  historyRef.current = history;
+  const getFitDeps = useCallback((): FitMigrationDeps | null => {
+    const current = lessonRef.current;
+    if (!current) return null;
+    const h = historyRef.current;
+    return {
+      lesson: current,
+      dispatch: h.dispatch as FitMigrationDeps["dispatch"],
+      beginTransaction: h.beginTransaction,
+      endTransaction: h.endTransaction,
+      rollbackTransaction: h.rollbackTransaction,
+      isIdle: () => {
+        const s = session.read();
+        return (
+          !s.editingTextId &&
+          !s.editingExplanation &&
+          s.selection.length === 0 &&
+          !h.isTransactionInFlight()
+        );
+      },
+    };
+  }, [session]);
+  useFitMigration({ lessonId: lesson?.id, getDeps: getFitDeps, notify: (m) => toast(m) });
 
   const theme = useMemo(() => getTheme(lesson?.themeId), [lesson?.themeId]);
   const slide = lesson ? resolveActiveSlide(lesson.slides, session.state.activeSlideId) : undefined;
