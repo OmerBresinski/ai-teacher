@@ -56,6 +56,7 @@ describe("LibrarySidebar", () => {
   it("marks the current library branch active and persists collapse", async () => {
     renderSidebar();
 
+    expect(screen.getByText("TeachDeck")).toHaveClass("whitespace-nowrap");
     expect(screen.getByRole("link", { name: /Lessons/ })).toHaveAttribute("aria-current", "page");
     fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
     expect(localStorage.getItem("tj:sidebar-collapsed")).toBe("1");

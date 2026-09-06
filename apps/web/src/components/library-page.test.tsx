@@ -144,8 +144,8 @@ describe("LibraryPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Recent" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Earlier" })).toBeVisible();
-    expect(screen.getByRole("list", { name: "Recent" })).toBeVisible();
-    expect(screen.getByRole("list", { name: "Earlier" })).toBeVisible();
+    expect(screen.getByRole("table", { name: "Recent" })).toBeVisible();
+    expect(screen.getByRole("table", { name: "Earlier" })).toBeVisible();
   });
 });
 

@@ -19,6 +19,8 @@ export {
   CardDescription,
   CardFooter,
   CardHeader,
+  CardOverlay,
+  type CardProps,
   CardTitle,
 } from "./components/card";
 export { Checkbox } from "./components/checkbox";

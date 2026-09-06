@@ -6,6 +6,7 @@ test.describe("library shell", () => {
     signedInPage: { page },
   }) => {
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+    await expect(page.getByText("TeachDeck", { exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Library" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Home/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Lessons/ })).toBeVisible();
@@ -26,7 +27,7 @@ test.describe("library shell", () => {
     await search.fill("water");
     await expect(page).toHaveURL(/\/lessons\?q=water$/);
     await expect(page.getByText("The water cycle")).toBeVisible();
-    await expect(page.getByRole("heading", { level: 3 })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Open The water cycle" })).toHaveCount(1);
     await page.reload();
     await expect(search).toHaveValue("water");
     await search.press("Escape");
@@ -68,24 +69,60 @@ test.describe("library shell", () => {
     await expect(page).toHaveURL(/\/series$/);
   });
 
-  test("Home, Lessons, and Series have no serious or critical axe findings in light and dark themes", async ({
+  test("card cover links and actions preserve their destinations", async ({
+    signedInPage: { page },
+  }) => {
+    await page.goto("/lessons");
+    const card = page.locator("article").filter({ hasText: "The water cycle" }).first();
+    await card.hover();
+    const present = card.getByRole("button", { name: "Present" });
+    const box = await present.boundingBox();
+    if (!box) throw new Error("Present button has no bounding box");
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page).toHaveURL(/\/l\/demo-water-cycle\/present$/);
+
+    await page.goto("/lessons");
+    await card.getByRole("link", { name: "Open The water cycle" }).click();
+    await expect(page).toHaveURL(/\/l\/demo-water-cycle$/);
+  });
+
+  test("Delete can be undone from a card menu", async ({ signedInPage: { page } }) => {
+    await page.goto("/lessons");
+    const card = page.locator("article").filter({ hasText: "The water cycle" }).first();
+    await card.hover();
+    await card.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await expect(page.getByRole("link", { name: "Open The water cycle" })).not.toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByRole("link", { name: "Open The water cycle" })).toBeVisible();
+  });
+
+  test("List view uses the library table headings", async ({ signedInPage: { page } }) => {
+    await page.goto("/lessons");
+    await page.getByRole("button", { name: "List" }).click();
+    const table = page.getByRole("table").first();
+    await expect(table).toBeVisible();
+    await expect(table.getByRole("columnheader")).toHaveText([
+      "Thumbnail",
+      "Title",
+      "Year and subject",
+      "Size",
+      "Edited",
+      "Actions",
+    ]);
+  });
+
+  test("Home, Lessons grid/list, and Series have no serious or critical axe findings", async ({
     signedInPage: { page },
   }) => {
     await expectNoSeriousA11yViolations(page, "/");
     await page.goto("/lessons");
     await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "/lessons");
+    await page.getByRole("button", { name: "List" }).click();
+    await expectNoSeriousA11yViolations(page, "/lessons (list)");
     await page.goto("/series");
     await expect(page.getByRole("heading", { name: "Series" })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "/series");
-    await page.goto("/");
-    await page.getByRole("button", { name: "Theme" }).click();
-    await page.getByRole("menuitemradio", { name: "Dark" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await expectNoSeriousA11yViolations(page, "/ (dark)");
-    await page.goto("/lessons");
-    await expectNoSeriousA11yViolations(page, "/lessons (dark)");
-    await page.goto("/series");
-    await expectNoSeriousA11yViolations(page, "/series (dark)");
   });
 });

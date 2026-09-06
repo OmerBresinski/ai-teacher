@@ -90,13 +90,13 @@ export function LibrarySidebar({
       collapsed={collapsed}
       onCollapsedChange={setCollapsed}
       wordmark={
-        <Display as="span" size="md">
-          Teaching Journey
+        <Display as="span" size="md" className="whitespace-nowrap">
+          TeachDeck
         </Display>
       }
       mark={
         <Display as="span" size="md">
-          TJ
+          T
         </Display>
       }
       foot={
