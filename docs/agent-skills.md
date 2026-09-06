@@ -16,7 +16,7 @@ below and fails if any `Path` lacks a `SKILL.md` **or** violates the layout in
 
 ## Installed skills
 
-Installed on 2026-09-04 with `skills` CLI **v1.5.23** (`npx skills`, from
+Installed with `skills` CLI **v1.5.23** (first batch 2026-09-04; `packages/generation` on 2026-09-06) (`npx skills`, from
 [vercel-labs/skills](https://github.com/vercel-labs/skills)). `Commit` is the source repo's default
 branch HEAD at install time (`gh api repos/<o>/<r>/commits/HEAD -q .sha`); the CLI's own
 `skills-lock.json` in each location records the upstream `skillPath` and a content hash
@@ -27,11 +27,12 @@ branch HEAD at install time (`gh api repos/<o>/<r>/commits/HEAD -q .sha`); the C
 | `tanstack-router` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) (`plugins/tanstack-router/skills/tanstack-router`) | `6f5521ecbdfbfa3d54d335eba6c8b4df0b804c03` | `apps/web/.agents/skills/tanstack-router` | TanStack Router API: `createRoute`/`createRootRouteWithContext`, search params, loaders, code splitting. **Its "use file-based routing" advice is overridden by ADR 0004 (code-based).** | TEACH-21; ADR 0004; F18 App Shell |
 | `tanstack-query` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) (`plugins/tanstack-query/skills/tanstack-query`) | `6f5521ecbdfbfa3d54d335eba6c8b4df0b804c03` | `apps/web/.agents/skills/tanstack-query` | Server-state: query keys, `queryOptions`, invalidation, mutations, prefetching via router loaders. | TEACH-21, TEACH-19 (SSE → invalidate); ADR 0004, 0012; F18-R04 |
 | `shadcn` | [shadcn-ui/ui](https://github.com/shadcn-ui/ui) (`skills/shadcn`) | `8720dec73f5aebed9f649ea58636f54599fdedf1` | `packages/ui/.agents/skills/shadcn`, `apps/web/.agents/skills/shadcn`, `packages/editor/.agents/skills/shadcn` | Official shadcn skill: `components.json`, registries, adding/composing components, Tailwind v4 styling. Components are added in `packages/ui` only (ADR 0009). | TEACH-13, TEACH-21; ADR 0009; F18-R13, F18-R09 |
-| `ai-sdk` | [vercel/ai](https://github.com/vercel/ai) (`skills/use-ai-sdk`) | `d0b6d6d83aadb4188afc13b504b2fb2d88468050` | `packages/ai/.agents/skills/ai-sdk`, `apps/worker/.agents/skills/ai-sdk`, `apps/api/.agents/skills/ai-sdk` | Vercel AI SDK API (`generateText`, `streamText`, `Output.object`, middleware, `ai/test` mocks). **Its "use the Vercel AI Gateway" and "fetch model IDs from `ai-gateway.vercel.sh`" advice is overridden by ADR 0018 (Bedrock via `createAi`, model IDs from env).** | P2 (TEACH-69..72); ADR 0018; F13 |
+| `ai-sdk` | [vercel/ai](https://github.com/vercel/ai) (`skills/use-ai-sdk`) | `d0b6d6d83aadb4188afc13b504b2fb2d88468050` (`packages/generation` copy: `efdfd6290d783864f00ebdf5a0aad8711f2eb2db`, 2026-09-06, identical content) | `packages/ai/.agents/skills/ai-sdk`, `apps/worker/.agents/skills/ai-sdk`, `apps/api/.agents/skills/ai-sdk`, `packages/generation/.agents/skills/ai-sdk` | Vercel AI SDK API (`generateText`, `streamText`, `Output.object`, middleware, `ai/test` mocks). **Its "use the Vercel AI Gateway" and "fetch model IDs from `ai-gateway.vercel.sh`" advice is overridden by ADR 0018 (Bedrock via `createAi`, model IDs from env).** | P2 (TEACH-69..72); ADR 0018; F13 |
 | `hono` | [honojs/skills](https://github.com/honojs/skills) (`skills/hono`) — successor of `yusukebe/hono-skill`, see below | `b04b90bfe0a3a41789045bc114b5834d0333e15c` | `apps/api/.agents/skills/hono` | Official Hono skill: routing, middleware, `@hono/zod-validator`, `streamSSE`, testing, RPC (`hc<AppType>`). | TEACH-16, TEACH-19, TEACH-20; ADR 0005, 0012, 0015 |
 | `vercel-react-best-practices` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (`skills/react-best-practices`) | `063bee94c3f4df8453406c830b0a7df0f2860278` | `apps/web/.agents/skills/vercel-react-best-practices`, `packages/editor/.agents/skills/vercel-react-best-practices` | React performance rules (waterfalls, bundle size, re-renders). Next.js-specific sections do not apply (Vite SPA). | TEACH-21, TEACH-23 (bundle budget); ADR 0004; F18-R05 |
 | `deploy-to-vercel` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (`skills/deploy-to-vercel`) | `063bee94c3f4df8453406c830b0a7df0f2860278` | `apps/web/.agents/skills/deploy-to-vercel` | Vercel CLI deploys, preview URLs, project linking, env vars. | TEACH-25, TEACH-26; ADR 0010, 0011 |
 | `use-railway` | [railwayapp/railway-skills](https://github.com/railwayapp/railway-skills) (`plugins/railway/skills/use-railway`) | `5d1e97178f86c82795d6737928bd641e0552166a` | `apps/api/.agents/skills/use-railway`, `apps/worker/.agents/skills/use-railway` | Railway CLI/API: services, Postgres, variables, PR environments, domains, `.railway/railway.ts` IaC, troubleshooting. | TEACH-24, TEACH-26; ADR 0006, 0010 |
+| `mastra` | [mastra-ai/skills](https://github.com/mastra-ai/skills) (`skills/mastra`) | `690d5d6cc6e918e73264b483ad3894ade7c763d9` | `packages/generation/.agents/skills/mastra` | Official Mastra skill: documentation lookup (embedded `node_modules/@mastra/*/dist/docs`, then mastra.ai), `createStep`/`createWorkflow`, `RequestContext`, scorers, common errors. **Its model-router (`"provider/model"` strings), storage, server and Studio-in-production advice is overridden by ADR 0025 §21: Mastra is composed in-process only, models come from `@tj/ai` `createAi` (ADR 0018), no `new Mastra()` outside `mastra.dev.ts`.** Installed 2026-09-06. | TEACH-129, TEACH-131, TEACH-132; ADR 0025 §17, §21, §23 |
 | `thermo-nuclear-code-quality-review` | [cursor/plugins](https://github.com/cursor/plugins) (`cursor-team-kit/skills/thermo-nuclear-code-quality-review`) | `93b00b89ef425a9c1bac0d0b317dfc49c930ac99` | `.agents/skills/thermo-nuclear-code-quality-review` | Strict maintainability review of a branch's diff (abstractions, file size, spaghetti growth). Loaded by the **review agent** in the delivery workflow (root `AGENTS.md` → "Delivery workflow"), never by the implementing agent. | P1 hardening (TEACH-37/38) |
 
 Per location, on disk:
@@ -45,6 +46,7 @@ Per location, on disk:
 | `packages/ai` | `ai-sdk` | same one | `packages/ai/skills-lock.json` |
 | `packages/ui` | `shadcn` | same one | `packages/ui/skills-lock.json` |
 | `packages/editor` | `shadcn`, `vercel-react-best-practices` | same two | `packages/editor/skills-lock.json` |
+| `packages/generation` | `mastra`, `ai-sdk` | same two | `packages/generation/skills-lock.json` (the package itself is created by TEACH-129; skills were installed first so the location exists) |
 
 ## Layout
 
@@ -103,7 +105,10 @@ vendored total is ≈1.9 MB and the two duplicated skills account for ~700 KB of
 
 Prevention outside the check: `**/.agents`, `**/.claude`, `**/.opencode`, `**/skills-lock.json`
 are excluded in `biome.json`, Turborepo task `inputs` (`turbo.json`), the root `.dockerignore`
-(TEACH-28; TEACH-24 extends it), and marked `linguist-vendored` in `.gitattributes`.
+(TEACH-28; TEACH-24 extends it), and marked `linguist-vendored` in `.gitattributes`. `.agents/skills/`
+is also on the gitleaks path allowlist (generated into `.gitleaks.toml` from
+`scripts/lib/env-render.ts`): upstream docs carry example connection strings (the Mastra skill's
+`references/common-errors.md` shows a placeholder Postgres URL), which are theirs, not ours.
 
 ### Substitutions recorded at install time
 
@@ -152,6 +157,10 @@ A="--agent universal claude-code -y"
 ( cd packages/ui \
   && $S https://github.com/shadcn-ui/ui                      --skill shadcn          $A )
 
+( cd packages/generation \
+  && $S https://github.com/mastra-ai/skills                  --skill mastra          $A \
+  && $S https://github.com/vercel/ai                         --skill ai-sdk          $A )
+
 # repo root (review agent only)
 $S https://github.com/cursor/plugins --skill thermo-nuclear-code-quality-review $A
 
@@ -163,7 +172,7 @@ skills update -y`. To see what a repo offers before installing: `npx -y skills a
 After any update, refresh the `Commit` column above (`gh api repos/<o>/<r>/commits/HEAD -q .sha`)
 and commit the CLI's changes as-is (`chore(skills): …`).
 
-`ai-sdk` is installed in `packages/ai`, `apps/worker`, and `apps/api`; update all three together,
+`ai-sdk` is installed in `packages/ai`, `apps/worker`, `apps/api` and `packages/generation`; update all four together,
 like the other multi-location skills, so their vendored copies do not drift.
 
 Observed CLI behaviour (v1.5.23), for the record:
