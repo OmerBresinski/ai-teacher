@@ -30,6 +30,10 @@ interface FakeOptions {
   smokeExitCode?: number;
   /** `statusCheckRollup` snapshots returned in order; the last one repeats. */
   checks?: unknown[][];
+  /** What `git branch --show-current` answers (default: the PR's own branch). */
+  currentBranch?: string;
+  /** A git invocation that exits 1, e.g. `["rebase", "origin/master"]`. */
+  failGit?: string[];
 }
 
 function fakeDeps(options: FakeOptions = {}): {
@@ -116,6 +120,10 @@ function fakeDeps(options: FakeOptions = {}): {
       },
       git: async (args) => {
         calls.git.push(args);
+        if (args[0] === "branch") return ok(options.currentBranch ?? "chore/land-pr-script");
+        if (options.failGit && args.join(" ") === options.failGit.join(" ")) {
+          return { exitCode: 1, stdout: "", stderr: "CONFLICT" };
+        }
         return ok();
       },
       vercelLs: async () => ok(options.vercel ?? VERCEL_READY),
@@ -149,16 +157,40 @@ describe("land-pr", () => {
     expect(summary.smoke.status).toBe("passed");
   });
 
-  test("rebases one BEHIND round before merging", async () => {
-    const fake = fakeDeps({ states: ["BEHIND", "CLEAN"] });
+  test("rebases one BEHIND round before merging and returns to the branch it started on", async () => {
+    const fake = fakeDeps({ states: ["BEHIND", "CLEAN"], currentBranch: "fix/next-thing" });
     await landPr(42, {}, fake.deps);
 
     expect(fake.calls.git).toEqual([
+      ["branch", "--show-current"],
       ["fetch", "origin"],
       ["checkout", "chore/land-pr-script"],
       ["rebase", "origin/master"],
       ["push", "--force-with-lease"],
+      ["checkout", "fix/next-thing"],
     ]);
+  });
+
+  test("does not check out again when already on the PR branch", async () => {
+    const fake = fakeDeps({ states: ["BEHIND", "CLEAN"], currentBranch: "chore/land-pr-script" });
+    await landPr(42, {}, fake.deps);
+    expect(fake.calls.git.filter((args) => args[0] === "checkout")).toEqual([
+      ["checkout", "chore/land-pr-script"],
+    ]);
+  });
+
+  test("a rebase that stops on conflicts is aborted and the original branch restored", async () => {
+    const fake = fakeDeps({
+      states: ["BEHIND"],
+      currentBranch: "fix/next-thing",
+      failGit: ["rebase", "origin/master"],
+    });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("git rebase origin/master");
+    expect(fake.calls.git.slice(-2)).toEqual([
+      ["rebase", "--abort"],
+      ["checkout", "fix/next-thing"],
+    ]);
+    expect(fake.calls.git.some((args) => args[0] === "push")).toBe(false);
   });
 
   test("stops after two rebase rounds", async () => {

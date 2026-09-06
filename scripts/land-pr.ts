@@ -269,15 +269,30 @@ async function prState(pr: number, deps: LandPrDeps): Promise<PrState> {
   return parsePrState(output(result));
 }
 
+/**
+ * Rebase the PR's branch onto master and push. The worktree is put back on whatever it was on
+ * before, whether the rebase succeeded or not: `land` is often run from a *different* branch (the
+ * next piece of work), and a later `git rebase` typed there must not land on the PR's branch.
+ * A rebase that stopped on conflicts is aborted before switching back, so the worktree is clean.
+ */
 async function rebaseBranch(state: PrState, deps: LandPrDeps): Promise<void> {
-  for (const args of [
-    ["fetch", "origin"],
-    ["checkout", state.headRefName],
-    ["rebase", "origin/master"],
-    ["push", "--force-with-lease"],
-  ]) {
-    const result = await deps.git(args);
-    requireSuccess(result, `git ${args.join(" ")}`);
+  const before = await deps.git(["branch", "--show-current"]);
+  requireSuccess(before, "git branch --show-current");
+  const previous = output(before).trim();
+  const switchedAway = previous !== "" && previous !== state.headRefName;
+  try {
+    for (const args of [
+      ["fetch", "origin"],
+      ["checkout", state.headRefName],
+      ["rebase", "origin/master"],
+      ["push", "--force-with-lease"],
+    ]) {
+      const result = await deps.git(args);
+      if (result.exitCode !== 0 && args[0] === "rebase") await deps.git(["rebase", "--abort"]);
+      requireSuccess(result, `git ${args.join(" ")}`);
+    }
+  } finally {
+    if (switchedAway) await deps.git(["checkout", previous]);
   }
 }
 

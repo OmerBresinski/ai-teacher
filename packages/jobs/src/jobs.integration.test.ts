@@ -327,9 +327,21 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
     test("a shutdown abort is a retryable failure", async () => {
       const jobId = newId<JobId>();
       const ac = new AbortController();
+      // The handler reports when it is running rather than the test sleeping: `runJob` writes the
+      // `started` event to Postgres before it calls the handler, and on a slow CI database that
+      // outlasted a fixed sleep — the abort landed first, the listener below never fired and the
+      // test hung to its timeout (flaked on PR #122).
+      let running!: () => void;
+      const started = new Promise<void>((resolve) => {
+        running = resolve;
+      });
       const reg: JobRegistry = {
         ping: async ({ signal }) => {
-          await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()));
+          running();
+          if (signal.aborted) return;
+          await new Promise<void>((resolve) =>
+            signal.addEventListener("abort", () => resolve(), { once: true }),
+          );
         },
         "ai.ping": aiPingJob,
         "lesson.plan": lessonPlanJob,
@@ -341,7 +353,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         shutdown: ac.signal,
         deps: undefined,
       });
-      await Bun.sleep(50);
+      await started;
       ac.abort("shutdown");
       const outcome = await run;
       expect(outcome).toMatchObject({ status: "failed", event: "failed" });
