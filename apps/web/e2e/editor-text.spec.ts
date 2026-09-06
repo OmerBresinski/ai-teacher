@@ -12,6 +12,7 @@ const proseMirror = (page: Page) => page.locator("[data-slide-frame] .ProseMirro
 const stage = (page: Page) => page.locator("[data-selection-layer]");
 
 async function box(locator: Locator) {
+  await expect(locator).toBeVisible();
   const b = await locator.boundingBox();
   if (!b) throw new Error("not on screen");
   return b;

@@ -109,5 +109,26 @@ test.describe("accessibility (axe)", () => {
     await expect(page.locator("[data-slide-frame] .ProseMirror")).toBeFocused();
     await expect(page.getByRole("toolbar", { name: "Text" })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "editor with text editing open");
+
+    // The shape toolbar with its More drawer open, and the theme dialog (TEACH-105 row 11).
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("toolbar", { name: "Insert" })
+      .getByRole("button", { name: "Shape" })
+      .click();
+    await page.getByRole("menuitem", { name: "Rectangle" }).click();
+    await expect(page.getByRole("toolbar", { name: "Shape" })).toBeVisible();
+    await page
+      .getByRole("toolbar", { name: "Shape" })
+      .getByRole("button", { name: "More" })
+      .click();
+    await expect(page.getByRole("dialog", { name: "More" })).toBeVisible();
+    await settled();
+    await expectNoSeriousA11yViolations(page, "shape toolbar + More drawer");
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Theme" }).click();
+    await expect(page.getByRole("dialog", { name: "Theme" })).toBeVisible();
+    await settled();
+    await expectNoSeriousA11yViolations(page, "theme dialog", '[role="dialog"]');
   });
 });

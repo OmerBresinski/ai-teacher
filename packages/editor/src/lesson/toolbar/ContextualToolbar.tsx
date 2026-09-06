@@ -7,13 +7,19 @@ import {
   CHROME_MIN_TOP as MIN_TOP,
 } from "../canvas/place-slide-actions";
 import { useSelectedElements, useSessionUi } from "../use-editor-session";
+import { ImageToolbar } from "./ImageToolbar";
+import { LineToolbar } from "./LineToolbar";
+import { MultiToolbar } from "./MultiToolbar";
+import { OtherToolbar } from "./OtherToolbar";
+import { ShapeToolbar } from "./ShapeToolbar";
+import { SlideToolbar } from "./SlideToolbar";
 import { TextToolbar } from "./TextToolbar";
 
 /*
  * One floating toolbar, above the selection in screen space (TeachDeck `ContextualToolbar.tsx`;
  * SPEC §7). Fixed-positioned so nothing in the canvas can clip it, re-measured after every render,
- * so panning, zooming and resizing all keep it attached. This ticket mounts the text toolbar only;
- * the element and slide toolbars slot into the same switch with TEACH-105.
+ * so panning, zooming and resizing all keep it attached. The switch at the bottom routes the
+ * selection: nothing → the slide toolbar, several → multi, one → its type's bar.
  *
  * The bar re-renders on every Tiptap transaction, so measuring inline would read two rects — two
  * forced layouts — on the typing path. Every measurement after the first therefore waits for a
@@ -107,9 +113,8 @@ export function ContextualToolbar({
     };
   }, [schedule, stageRef]);
 
+  if (!stageRect) return null;
   const [only] = selected;
-  // Until TEACH-105 the bar has one occupant: a single selected text element.
-  if (!stageRect || selected.length !== 1 || !only || only.type !== "text") return null;
 
   // Anchor: the selection's bounds, or the top of the slide when nothing is selected.
   const bounds =
@@ -145,13 +150,27 @@ export function ContextualToolbar({
         opacity: size.w === 0 ? 0 : undefined,
       }}
     >
-      <TextToolbar
-        // A fresh instance on entering/leaving text edit, so its link/menu state starts clean.
-        key={only.id + String(editingTextId === only.id)}
-        element={only}
-        theme={theme}
-        slideId={slide.id}
-      />
+      {selected.length === 0 || !only ? (
+        <SlideToolbar slide={slide} theme={theme} />
+      ) : selected.length > 1 ? (
+        <MultiToolbar elements={selected} slideId={slide.id} />
+      ) : only.type === "text" ? (
+        <TextToolbar
+          // A fresh instance on entering/leaving text edit, so its link/menu state starts clean.
+          key={only.id + String(editingTextId === only.id)}
+          element={only}
+          theme={theme}
+          slideId={slide.id}
+        />
+      ) : only.type === "image" ? (
+        <ImageToolbar element={only} slideId={slide.id} />
+      ) : only.type === "shape" ? (
+        <ShapeToolbar element={only} theme={theme} slideId={slide.id} />
+      ) : only.type === "line" ? (
+        <LineToolbar element={only} theme={theme} slideId={slide.id} />
+      ) : (
+        <OtherToolbar element={only} theme={theme} slideId={slide.id} />
+      )}
     </div>
   );
 }

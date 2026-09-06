@@ -197,6 +197,24 @@ describe("slides", () => {
     expect(r.nudgeSlides(lesson, ["nope"], 1)).toBe(lesson);
   });
 
+  test("changeLayout swaps in the recipe, keeps notes/background, is a no-op for the same kind", () => {
+    let lesson = newLesson("Convert");
+    const id = lesson.slides[0]?.id ?? "";
+    lesson = r.setSlideNotes(lesson, id, "Say hello");
+    lesson = r.setSlideBackground(lesson, id, { color: "#123456" });
+    expect(r.changeLayout(lesson, id, lesson.slides[0]?.kind ?? "title")).toBe(lesson);
+    const next = r.changeLayout(lesson, id, "true-false");
+    const s = next.slides[0];
+    expect(s?.kind).toBe("true-false");
+    expect(s?.question?.type).toBe("true-false");
+    expect(s?.notes).toBe("Say hello");
+    expect(s?.background).toEqual({ color: "#123456" });
+    expect(s?.elements.length).toBeGreaterThan(0);
+    const back = r.changeLayout(next, id, "blank");
+    expect(back.slides[0]?.question).toBeUndefined();
+    expect(r.changeLayout(next, "nope", "blank")).toBe(next);
+  });
+
   test("updateSlide, setSlideBackground, setSlideNotes add and remove", () => {
     const { lesson, slideId } = blank();
     expect(r.updateSlide(lesson, slideId, { transition: "fade" }).slides[0]?.transition).toBe(
