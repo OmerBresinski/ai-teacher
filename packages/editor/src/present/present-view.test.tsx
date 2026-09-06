@@ -196,6 +196,34 @@ describe("PresentView", () => {
     expect(onProgress.mock.calls[0]?.[0]?.exitedPastFirst).toBe(true);
   });
 
+  it("a committed stroke does not rebind the key handler: a typed jump number survives it", async () => {
+    const { container } = renderPresent();
+    await start();
+    key("p");
+    key("3");
+    expect(screen.getByText(/Go to slide 3/)).toBeVisible();
+    // Commit a stroke on the pen layer (the interactive svg; [1] is the highlighter blend layer).
+    const svg = container.querySelectorAll("[data-present-stage] svg")[2] as SVGSVGElement;
+    svg.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 960,
+        height: 540,
+        right: 960,
+        bottom: 540,
+        x: 0,
+        y: 0,
+      }) as DOMRect;
+    fireEvent.pointerDown(svg, { button: 0, pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 200, clientY: 100, buttons: 1 });
+    fireEvent.pointerUp(svg, { pointerId: 1, clientX: 200, clientY: 100 });
+    expect(svg.querySelectorAll("path[d]:not([d=''])").length).toBe(1);
+    // The pending jump still lands.
+    key("Enter");
+    expect(status()).toContain("Slide 3 of");
+  });
+
   it("?slide= starts on that slide", async () => {
     renderPresent({ startIndex: 3 });
     await start();

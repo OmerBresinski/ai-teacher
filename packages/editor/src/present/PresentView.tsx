@@ -92,6 +92,9 @@ function PresentSurface({
   session,
 }: PresentViewProps & { session: PresentSession }) {
   const { state, dispatch, ink } = session;
+  // The key handler is bound once; `ink` is a new object per committed stroke (its `inkVersion`
+  // is how the layers subscribe), so the handler takes the stable `clearInk` callback instead.
+  const clearInk = ink.clearInk;
   const theme = getTheme(lesson.themeId);
   const fullscreen = useFullscreen();
   const [started, setStarted] = useState(false);
@@ -290,7 +293,7 @@ function PresentSurface({
         case "x": {
           take();
           const id = s.slideIds[s.index];
-          if (id) ink.clearInk(id);
+          if (id) clearInk(id);
           return;
         }
         case "o":
@@ -314,7 +317,7 @@ function PresentSurface({
       window.removeEventListener("keydown", onKey);
       window.clearTimeout(timer.current);
     };
-  }, [exit, toggleFullscreen, dispatch, ink, report]);
+  }, [exit, toggleFullscreen, dispatch, clearInk, report]);
 
   /* ---------------- pointer: tap thirds, swipe, click ---------------- */
 
