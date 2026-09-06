@@ -399,7 +399,6 @@
   --shadow-2: var(--shadow-2);
   --shadow-3: var(--shadow-3);
   --animate-arrive: tj-arrive var(--duration-arrive) var(--ease-arrive) both;
-  --animate-arrive-centered: tj-arrive-centered var(--duration-arrive) var(--ease-arrive) both;
   --animate-fade-in: tj-fade-in var(--duration-fast) ease-out both;
   --animate-fade-out: tj-fade-out var(--duration-fast) ease-in both;
 }
@@ -419,23 +418,11 @@
 
 /*
  * Arrival: a short rise while fading in. Callers shorten the rise with `--tj-arrive-distance`
- * (menus use 6px). `tj-arrive-centered` is the same motion for surfaces centred with
- * `-translate-x-1/2 -translate-y-1/2` (the `translate` property composes with `transform`, so the
- * keyframes never have to carry the centring themselves and it survives reduced motion).
+ * (menus use 6px). Centred surfaces (dialogs) position with `-translate-x-1/2 -translate-y-1/2`:
+ * the `translate` property composes with this `transform`, so the keyframes never carry the
+ * centring and it survives reduced motion, where `motion-safe:` animations do not apply.
  */
 @keyframes tj-arrive {
-  from {
-    opacity: 0;
-    transform: translateY(var(--tj-arrive-distance, var(--arrive-rise)));
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes tj-arrive-centered {
   from {
     opacity: 0;
     transform: translateY(var(--tj-arrive-distance, var(--arrive-rise)));

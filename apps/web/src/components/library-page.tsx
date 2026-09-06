@@ -93,6 +93,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   const { openImport } = useLibraryShell();
   const actions = useLibraryActions();
   const navigate = useNavigate();
+  // The page reads the clock for the Recent / Earlier split; cards read it in `EditedTime`.
   const now = useNow();
   // Subscribe to the string, not the search object: a new object arrives on every navigation.
   const query = useRouterState({
@@ -131,12 +132,10 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   const titleCount = isSeries ? series.length : kind ? countKind(documents, kind) : 0;
 
   const documentCardProps = {
-    now,
     onAction: actions.onDocumentAction,
     onRename: actions.onDocumentRename,
   };
   const seriesCardProps = {
-    now,
     onAction: actions.onSeriesAction,
     onRename: actions.onSeriesRename,
   };

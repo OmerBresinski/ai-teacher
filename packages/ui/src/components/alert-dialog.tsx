@@ -32,7 +32,7 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[360px] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog bg-card p-6 text-card-foreground shadow-3 outline-none motion-safe:animate-arrive-centered motion-safe:data-[state=closed]:animate-fade-out",
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[360px] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog bg-card p-6 text-card-foreground shadow-3 outline-none motion-safe:animate-arrive motion-safe:data-[state=closed]:animate-fade-out",
           className,
         )}
         {...props}

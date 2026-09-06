@@ -46,7 +46,7 @@ function DialogOverlay({
 // Centred by the `translate` property so it holds under reduced motion, when the arrival animation
 // (which used to carry the centring transform) is not applied at all.
 const dialogContentVariants = cva(
-  "fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog bg-card p-6 text-card-foreground shadow-3 outline-none motion-safe:animate-arrive-centered motion-safe:data-[state=closed]:animate-fade-out",
+  "fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog bg-card p-6 text-card-foreground shadow-3 outline-none motion-safe:animate-arrive motion-safe:data-[state=closed]:animate-fade-out",
   {
     variants: {
       size: {

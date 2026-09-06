@@ -32,7 +32,7 @@ describe("Dialog", () => {
     );
     await user.keyboard("{Escape}");
     expect(screen.getByRole("dialog")).toHaveClass("max-w-[360px]");
-    expect(screen.getByRole("dialog")).not.toHaveClass("motion-safe:animate-arrive");
+    expect(screen.getByRole("dialog")).toHaveClass("-translate-x-1/2", "-translate-y-1/2");
     fireEvent.pointerDown(document.body);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
