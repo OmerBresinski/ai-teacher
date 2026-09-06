@@ -128,3 +128,10 @@ have restyled Radix twins in `@tj/ui`.
 - Revisit if the reducer + Query model cannot hold frame rate on a 30-element slide drag in the
   phase-C spike; the fallback is a `useReducer` document inside the editor with Query updated on
   save, not a return to zustand.
+
+## Amendment (2026-09-06, ADR 0024)
+
+§5 named the save endpoint as `PUT /lessons/:id` or `PUT /worksheets/:id`. ADR 0024 §7 decides one
+route family for every document kind: `saveDocument` calls `PUT /documents/:id` with the full
+document and the `updatedAt` last seen, and must surface the 409 `stale` / `generating` answers
+(ADR 0024 §4, §18) rather than swallow them.
