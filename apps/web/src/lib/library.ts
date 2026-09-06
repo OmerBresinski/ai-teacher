@@ -63,6 +63,10 @@ export const libraryQueries = {
       queryFn: (): Promise<LibraryDocumentOrSummary | null> => via("loadDocument")(id),
       placeholderData: (): LibraryDocumentOrSummary | undefined =>
         queryClient ? libraryCache.document(queryClient, id) : undefined,
+      // The editor edits this entry in place (ADR 0022 §4): a refetch under an in-flight save
+      // would replace the teacher's edits with the store's last copy. The mock never changes
+      // underneath; the API's saves invalidate `["library"]` on success, which covers this key.
+      staleTime: Number.POSITIVE_INFINITY,
     }),
   series: () =>
     queryOptions({ queryKey: queryKeys.librarySeries, queryFn: via("listSeriesWithLessons") }),
@@ -106,6 +110,22 @@ export const libraryMutations = {
   saveDocument: (queryClient: QueryClient): UseMutationOptions<void, Error, LibraryDocument> => ({
     mutationFn: via("saveDocument"),
     onSuccess: () => invalidateLibrary(queryClient),
+  }),
+  /**
+   * The editor's autosave (ADR 0022 §5). The document's own cache entry is the editor's working
+   * copy and is *not* refetched on success: a save that resolves after the next edit would put the
+   * stored copy back over it. Only the lists — cards, counts, series rows — are refreshed, so the
+   * library shows the new title and `updatedAt` when the teacher returns.
+   */
+  autosaveDocument: (
+    queryClient: QueryClient,
+  ): UseMutationOptions<void, Error, LibraryDocument> => ({
+    mutationFn: via("saveDocument"),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments, exact: true }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.librarySeries }),
+      ]).then(() => undefined),
   }),
   renameDocument: (
     queryClient: QueryClient,

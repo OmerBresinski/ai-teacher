@@ -67,22 +67,3 @@ export function moveSlideBy({ history, lesson }: SlideCommandDeps, id: Id, dir: 
   if (!canMoveSlide(lesson, id, dir)) return;
   history.dispatch(reducers.moveSlide, id, slideIndex(lesson, id) + dir);
 }
-
-/**
- * Reorder a set of slides to `toIndex` in one undo step (the navigator's drag and ⌘↑/↓). The
- * picked slides keep their relative order and land where the insertion line was.
- */
-export function moveSlides({ history, lesson }: SlideCommandDeps, moving: Id[], toIndex: number) {
-  const order = lesson.slides.map((s) => s.id);
-  const set = new Set(moving);
-  const before = order.slice(0, toIndex).filter((id) => !set.has(id)).length;
-  const rest = order.filter((id) => !set.has(id));
-  const picked = order.filter((id) => set.has(id));
-  const next = [...rest.slice(0, before), ...picked, ...rest.slice(before)];
-  if (next.every((id, i) => id === order[i])) return;
-  history.beginTransaction();
-  next.forEach((id, i) => {
-    history.dispatch(reducers.moveSlide, id, i);
-  });
-  history.endTransaction();
-}

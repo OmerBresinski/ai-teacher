@@ -9,7 +9,7 @@ import {
   IconGroup,
 } from "@tj/ui";
 import { Minus, MoreHorizontal, Plus } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ZoomControl } from "../kit/ZoomControl";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
@@ -59,6 +59,8 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange }: CanvasPro
   const showingAnswer = useAnswerShowing(slide);
 
   const [scale, setScale] = useState(1);
+  /** What 'fit' resolves to: the scroll region minus the gutter, measured on the region itself. */
+  const [fitScale, setFitScale] = useState(1);
   const [focused, setFocused] = useState(false);
   /** The in-flight geometry of a drag, painted by `SlideView` instead of the cache (ADR 0022 §4). */
   const [preview, setPreview] = useState<PreviewMap | null>(null);
@@ -86,6 +88,25 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange }: CanvasPro
     },
     [onScaleChange],
   );
+
+  /* ---- fit ---------------------------------------------------------------- */
+  // Measured on the scroller, not on the content box inside it: the content is sized from the
+  // scale, so measuring it would feed the answer back into the question — at 100% it is already
+  // wider than a small window and "fit" could never shrink it.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      setFitScale(
+        Math.max(0.05, Math.min((width - GUTTER * 2) / SLIDE_W, (height - GUTTER * 2) / SLIDE_H)),
+      );
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const effectiveZoom = zoom === "fit" ? fitScale : zoom;
 
   /* ---- zoom about the pointer ------------------------------------------ */
   useEffect(() => {
@@ -186,7 +207,7 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange }: CanvasPro
         onPointerUp={onPanUp}
       >
         <div style={{ minWidth: "100%", minHeight: "100%", width: contentW, height: contentH }}>
-          <SlideScaler zoom={zoom} gutter={GUTTER} onScale={onScale}>
+          <SlideScaler zoom={effectiveZoom} gutter={GUTTER} onScale={onScale}>
             <div
               ref={stage}
               id={STAGE_ID}

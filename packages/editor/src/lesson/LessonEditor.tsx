@@ -1,4 +1,4 @@
-import type { QueryFunction, QueryKey } from "@tanstack/react-query";
+import type { QueryKey } from "@tanstack/react-query";
 import type { Lesson, SlideElement, Theme } from "@tj/domain/documents";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { makeLine, makeShape, makeText } from "../model/insert";
@@ -43,8 +43,8 @@ export type LessonEditorProps = {
   lessonId: string;
   /** The cache entry that holds the document — `queryKeys.libraryDocument(id)` in the app. */
   queryKey: QueryKey;
-  /** The same query's fetcher, for the first mount if the loader has not filled the cache. */
-  queryFn: QueryFunction<unknown, QueryKey>;
+  /** Fetches the document for a first mount the loader has not filled (e.g. `fetchQuery(options)`). */
+  queryFn?: () => Promise<unknown>;
   /** Persist the document: the mock store today, `PUT /documents/:id` later. */
   onSave: (lesson: Lesson) => Promise<void>;
   onBack: () => void;

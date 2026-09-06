@@ -49,6 +49,41 @@ export const moveSlide = (lesson: Lesson, id: Id, toIndex: number): Lesson =>
     if (s) l.slides.splice(Math.max(0, Math.min(toIndex, l.slides.length)), 0, s);
   });
 
+/**
+ * Reorder a set of slides to `toIndex` in one step (the navigator's drag and ⌘↑/↓). The picked
+ * slides keep their relative order and land where the insertion line was; unknown ids are ignored.
+ * One reducer rather than N `moveSlide`s so the order is computed from the lesson being edited,
+ * never from a render that may be a tick behind the cache.
+ */
+export const moveSlides = (lesson: Lesson, ids: Id[], toIndex: number): Lesson => {
+  const order = lesson.slides.map((s) => s.id);
+  const set = new Set(ids);
+  const picked = order.filter((id) => set.has(id));
+  if (picked.length === 0) return lesson;
+  const before = order.slice(0, toIndex).filter((id) => !set.has(id)).length;
+  const rest = order.filter((id) => !set.has(id));
+  const next = [...rest.slice(0, before), ...picked, ...rest.slice(before)];
+  if (next.every((id, i) => id === order[i])) return lesson;
+  const byId = new Map(lesson.slides.map((s) => [s.id, s]));
+  return edit(lesson, (l) => {
+    l.slides = next.flatMap((id) => {
+      const s = byId.get(id);
+      return s ? [s] : [];
+    });
+  });
+};
+
+/** Move a set of slides one place up or down together; already at the end → unchanged. */
+export const nudgeSlides = (lesson: Lesson, ids: Id[], dir: -1 | 1): Lesson => {
+  const set = new Set(ids);
+  const positions = lesson.slides.flatMap((s, i) => (set.has(s.id) ? [i] : []));
+  const first = positions[0];
+  const last = positions[positions.length - 1];
+  if (first === undefined || last === undefined) return lesson;
+  const target = dir === -1 ? Math.max(0, first - 1) : Math.min(lesson.slides.length, last + 2);
+  return moveSlides(lesson, ids, target);
+};
+
 export type SlidePatch = Partial<Omit<Slide, "id" | "elements">>;
 
 export const updateSlide = (lesson: Lesson, id: Id, patch: SlidePatch): Lesson =>

@@ -16,9 +16,9 @@ reference; nothing is pasted from it without reading the file it came from.
 ## Constraints that override the skills
 
 - **ADR 0022 §2 — the twin rule.** Where `@tj/ui` has a Radix twin, use it. The editor kit
-  (`src/kit/`, created by the present-mode ticket TEACH-101; not yet present) will hold only
-  geometry-owning chrome with no twin (Panel, Rail, Segmented, NumberInput, Color, ZoomControl). TeachDeck's `components/ui2/floating.ts` is never ported: Radix owns the
-  one floating layer. A `@tj/ui` surface opened from the present-mode stage carries
+  (`src/kit/`) holds only geometry-owning chrome with no twin (Panel, Segmented, NumberInput,
+  ZoomControl; Rail and Color arrive with TEACH-105). TeachDeck's `components/ui2/floating.ts` is
+  never ported: Radix owns the one floating layer. A `@tj/ui` surface opened from the present-mode stage carries
   `className="tj-stage"` (`tooltipClassName` / `contentClassName` on `IconButton` / `Tooltip`).
 - **ADR 0022 §4 — TanStack Query is the only store.** No `zustand`, `zundo`, `immer`-as-store or
   `idb-keyval`. The document lives in the Query cache under the key the app passes in; edits are
@@ -27,8 +27,12 @@ reference; nothing is pasted from it without reading the file it came from.
   (the hook treats identity as "nothing changed") and `silent(...)`-marked reducers
   (`setFitVersion`, `updateElementLayout`) write without an undo step. Transient UI state
   (selection, zoom, drag deltas, ink, timer) is React state and refs; pointer moves write refs and
-  commit one reducer on release. Renderer paths (`view`, `present`, `capture`, `thumb`) read
-  editor state through `EditorHooksContext` only, which those modes never provide.
+  commit one reducer on release. In the lesson editor that state is `use-editor-session.ts`
+  (`useReducer` + split contexts, read with `useSelection`/`useActiveSlideId`/`useZoom`/
+  `useSessionUi`, written through `useSessionActions`), the document is reached through
+  `document-context.ts` (`useLesson`, `useHistory`), and a drag paints `SlideView` from a
+  `transformOverride` preview map until pointer-up dispatches `transformElements` once. Renderer
+  paths (`view`, `present`, `capture`, `thumb`) never see any of it.
 - **ADR 0021 — documents come from `@tj/domain/documents`.** Never redeclare `Slide`, `Lesson`,
   `Worksheet`, `Theme`; the theme *catalogue*, id factories and starter content live here.
 - **ADR 0013 — never import `apps/*`.** Internal dependencies are `@tj/domain`, `@tj/ui`,
@@ -55,9 +59,19 @@ src/
   text/       Tiptap extension set + static HTML rendering (renderDocHTML)
   layout/     text-fitting engine: reflow, explanation panel (lint/tidy/fit arrive in phase C)
   slide/      SlideView (the one renderer), SlideScaler, SlideStatic, elements/*
-  styles/     editor.css = fonts.css + slide.css
+  kit/        Panel, Segmented, NumberInput, ZoomControl — chrome with no @tj/ui twin
+  present/    LessonViewer, PresentView and present-mode pieces (`@tj/editor/present`)
+  lesson/     LessonEditor shell (`@tj/editor/lesson`): TopBar, InsertRail, Navigator, Canvas,
+              canvas/ (SlideActions, SlideTabs, placement), transform/ (SelectionLayer, keys,
+              hit-test, resize), use-editor-session, use-autosave, slide-commands, keys, shortcuts
+  styles/     editor.css = fonts.css + slide.css + present.css
   thumb.ts    the library's thumbnail entry (`@tj/editor/thumb`)
 ```
+
+Tests that mount the shell use `src/lesson/test-harness.tsx` (`renderEditor`): a seeded QueryClient
+plus the layout stubs happy-dom lacks (the navigator's `offsetHeight`, so react-virtual renders
+rows). Every stylesheet the slide needs travels with the route that paints it: pages in `apps/web`
+import `@tj/editor/styles/editor.css` themselves rather than relying on the library chunk.
 
 Tests: `bun test` in this directory. Behaviour tests only; TeachDeck's vitest files are a
 catalogue of cases, not ported (ADR 0022 §9).

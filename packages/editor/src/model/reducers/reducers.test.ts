@@ -167,6 +167,30 @@ describe("slides", () => {
     expect(r.moveSlide(lesson, "nope", 1)).toBe(lesson);
   });
 
+  test("moveSlides lands a set at the insertion line in order; nudgeSlides steps it by one", () => {
+    let lesson = newLesson("Four");
+    for (let i = 0; i < 3; i++) lesson = r.addSlide(lesson, "content").lesson;
+    const [a = "", b = "", c = "", d = ""] = lesson.slides.map((s) => s.id);
+    const order = (l: typeof lesson) => l.slides.map((s) => s.id);
+    // Slide 1 dropped below slide 3 (insertion index 3 in a four-slide deck).
+    expect(order(r.moveSlides(lesson, [a], 3))).toEqual([b, c, a, d]);
+    // Two picked slides keep their relative order and travel together.
+    expect(order(r.moveSlides(lesson, [d, b], 0))).toEqual([b, d, a, c]);
+    expect(order(r.moveSlides(lesson, [a, b], 4))).toEqual([c, d, a, b]);
+    // Same place, unknown ids, nothing picked: the same object.
+    expect(r.moveSlides(lesson, [a], 0)).toBe(lesson);
+    expect(r.moveSlides(lesson, [a], 1)).toBe(lesson);
+    expect(r.moveSlides(lesson, ["nope"], 2)).toBe(lesson);
+    // Untouched slides keep their identity.
+    expect(r.moveSlides(lesson, [a], 3).slides[0]).toBe(lesson.slides[1]);
+
+    expect(order(r.nudgeSlides(lesson, [b], 1))).toEqual([a, c, b, d]);
+    expect(order(r.nudgeSlides(lesson, [b], -1))).toEqual([b, a, c, d]);
+    expect(order(r.nudgeSlides(lesson, [c, d], 1))).toEqual([a, b, c, d]);
+    expect(r.nudgeSlides(lesson, [a], -1)).toBe(lesson);
+    expect(r.nudgeSlides(lesson, [], 1)).toBe(lesson);
+  });
+
   test("updateSlide, setSlideBackground, setSlideNotes add and remove", () => {
     const { lesson, slideId } = blank();
     expect(r.updateSlide(lesson, slideId, { transition: "fade" }).slides[0]?.transition).toBe(

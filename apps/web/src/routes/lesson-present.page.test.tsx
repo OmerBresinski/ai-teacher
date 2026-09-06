@@ -44,13 +44,24 @@ describe("LessonPresentPage", () => {
   });
   afterAll(() => mock.restore());
 
-  it("presents the lesson; Escape exits back to the lesson route", async () => {
+  it("presents the lesson; Escape exits back to the editor", async () => {
     renderPage();
     await start();
     expect(screen.getAllByRole("status")[0]?.textContent).toMatch(/Slide 1 of \d+/);
     key("Escape");
     expect(navigate).toHaveBeenCalledWith({
       to: "/l/$lessonId",
+      params: { lessonId: "demo-water-cycle" },
+    });
+  });
+
+  it("?from=view exits back to the viewer", async () => {
+    search = { from: "view" };
+    renderPage();
+    await start();
+    key("Escape");
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/l/$lessonId/view",
       params: { lessonId: "demo-water-cycle" },
     });
   });

@@ -4,12 +4,10 @@ import { expect, test } from "./fixtures";
 const status = (page: import("@playwright/test").Page) => page.getByRole("status");
 
 test.describe("lesson viewer", () => {
-  test("opens from a library card, shows every slide in the rail and walks the deck", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/lessons");
-    await page.getByRole("link", { name: "Open The water cycle" }).click();
-    await expect(page).toHaveURL(/\/l\/demo-water-cycle$/);
+  test("shows every slide in the rail and walks the deck", async ({ signedInPage: { page } }) => {
+    // The card's Open goes to the editor; the read-only viewer lives on `/view` (TEACH-103).
+    await page.goto("/l/demo-water-cycle/view");
+    await expect(page).toHaveURL(/\/l\/demo-water-cycle\/view$/);
     await expect(page).toHaveTitle("The water cycle · Teaching Journey");
     await expect(page.getByText("The water cycle").first()).toBeVisible();
 
@@ -35,29 +33,32 @@ test.describe("lesson viewer", () => {
     await expect(status(page)).toContainText("Slide 3 of");
     await expect(thumbs.nth(2)).toHaveAttribute("aria-current", "true");
 
-    await expectNoSeriousA11yViolations(page, "/l/demo-water-cycle");
+    await expectNoSeriousA11yViolations(page, "/l/demo-water-cycle/view");
   });
 
   test("Present opens present mode at the current slide; Back returns to the library", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/lessons");
-    await page.getByRole("link", { name: "Open The water cycle" }).click();
+    await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
+    await page.goto("/l/demo-water-cycle/view");
     // Wait for the viewer's key handler to be live before pressing a key.
     await expect(status(page)).toHaveText(/Slide 1 of/);
     await page.keyboard.press("ArrowRight");
     await expect(status(page)).toContainText("Slide 2 of");
     await page.getByRole("button", { name: "Present" }).click();
-    await expect(page).toHaveURL(/\/l\/demo-water-cycle\/present\?slide=2$/);
+    await expect(page).toHaveURL(
+      /\/l\/demo-water-cycle\/present\?(from=view&slide=2|slide=2&from=view)$/,
+    );
     await page.goBack();
     await page.getByRole("button", { name: "Back to the library" }).click();
     await expect(page).toHaveURL(/\/lessons$/);
   });
 
   test("Make a copy creates a new lesson and opens it", async ({ signedInPage: { page } }) => {
-    await page.goto("/l/demo-water-cycle");
+    await page.goto("/l/demo-water-cycle/view");
     await page.getByRole("button", { name: "Make a copy" }).click();
-    await expect(page).toHaveURL(/\/l\/(?!demo-water-cycle$)[\w-]+$/);
+    await expect(page).toHaveURL(/\/l\/(?!demo-water-cycle\/view$)[\w-]+\/view$/);
     await expect(page.getByText("Duplicated “The water cycle”")).toBeVisible();
     await expect(page.getByText("The water cycle (copy)").first()).toBeVisible();
     // Client-side back to the library: a full reload would reseed the mock store (ADR 0020). With

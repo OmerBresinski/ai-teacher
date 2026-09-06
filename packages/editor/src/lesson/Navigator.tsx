@@ -28,7 +28,7 @@ import { SlideView } from "../slide/SlideView";
 import { AddSlidePicker } from "./AddSlidePicker";
 import { useHistory, useLesson } from "./document-context";
 import { hint } from "./keys";
-import { addSlideAfter, duplicateSlide, moveSlides } from "./slide-commands";
+import { addSlideAfter, duplicateSlide } from "./slide-commands";
 import { useActiveSlideId, useSessionActions, useSessionUi } from "./use-editor-session";
 
 /*
@@ -172,13 +172,11 @@ export function Navigator() {
   const deps = { history, lesson, session };
   const ids = selection;
 
-  const nudgeSlides = (dir: -1 | 1) => {
-    const positions = ids.map((id) => index.get(id) ?? 0).sort((a, b) => a - b);
-    const first = positions[0] ?? 0;
-    const last = positions[positions.length - 1] ?? 0;
-    const target = dir === -1 ? Math.max(0, first - 1) : Math.min(list.length, last + 2);
-    moveSlides(deps, ids, target);
-  };
+  // Reorders are one reducer each, computed from the lesson in the cache: a second ⌘↓ inside the
+  // same tick must see the first one's order, not this render's.
+  const moveSlides = (moving: Id[], toIndex: number) =>
+    history.dispatch(reducers.moveSlides, moving, toIndex);
+  const nudgeSlides = (dir: -1 | 1) => history.dispatch(reducers.nudgeSlides, ids, dir);
 
   const duplicate = () => {
     history.beginTransaction();
@@ -231,12 +229,12 @@ export function Navigator() {
       // ⌘⇧↑/↓ moves the selection to the very top/bottom of the deck; plain ⌘ nudges by one;
       // neither held moves the active slide instead.
       ArrowDown: () => {
-        if (mod && e.shiftKey) moveSlides(deps, ids, list.length);
+        if (mod && e.shiftKey) moveSlides(ids, list.length);
         else if (mod) nudgeSlides(1);
         else goTo(i + 1, e.shiftKey);
       },
       ArrowUp: () => {
-        if (mod && e.shiftKey) moveSlides(deps, ids, 0);
+        if (mod && e.shiftKey) moveSlides(ids, 0);
         else if (mod) nudgeSlides(-1);
         else goTo(i - 1, e.shiftKey);
       },
@@ -289,6 +287,10 @@ export function Navigator() {
     if (e.button !== 0) return;
     const id = e.currentTarget.dataset.id;
     if (!id) return;
+    // Keyboard focus belongs to the listbox, never to the row: a focused row that a reorder moves
+    // in the DOM loses focus with it, and the next ⌘↑ would go nowhere.
+    e.preventDefault();
+    scroller.current?.focus({ preventScroll: true });
     dragStart.current = { y: e.clientY, id, started: false };
     e.currentTarget.setPointerCapture(e.pointerId);
   }, []);
@@ -308,8 +310,8 @@ export function Navigator() {
     [insertionAt],
   );
 
-  const depsRef = useRef(deps);
-  depsRef.current = deps;
+  const historyRef = useRef(history);
+  historyRef.current = history;
   const onRowPointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const id = e.currentTarget.dataset.id;
@@ -318,7 +320,7 @@ export function Navigator() {
       e.currentTarget.releasePointerCapture?.(e.pointerId);
       const current = dragRef.current;
       if (start?.started && current) {
-        moveSlides(depsRef.current, current.ids, current.at);
+        historyRef.current.dispatch(reducers.moveSlides, current.ids, current.at);
         setDrag(null);
         return;
       }
