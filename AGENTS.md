@@ -100,15 +100,18 @@ server, the T3 Code browser). This file is plain `AGENTS.md` and is also read by
 Code and Cursor. Check your own tool list and map by **capability**, not by name:
 
 - **A separate read-only review agent.** If you have a subagent/task tool: spawn one on a
-  different model from yours, have it load `.agents/skills/thermo-nuclear-code-quality-review`,
-  and post findings with the REST snippet in step 2. If you have no way to start a second agent:
+  different model from yours, with file edits denied, have it load
+  `.agents/skills/thermo-nuclear-code-quality-review`, and have **it** post the findings as the
+  single `COMMENT` review in step 2 (posting a review is reporting, not editing code). If you
+  cannot start a second agent, cannot give it a different model, or cannot make it read-only:
   stop after opening the PR and ask a human to review. Never review your own diff in the same
   session and never land an unreviewed PR.
 - **Linear tools** (`linear_get_issue`, `linear_save_issue`, …). Same names if the Linear MCP
   server is installed. If absent: do steps 1–4 and list the Linear status changes for a human to
   make.
 - **Browser/preview tools.** Any browser automation you have; the deliverable is a screenshot of
-  the working UI on the PR.
+  the working UI on the PR. With no browser at all: say so in the PR description and ask the
+  human to verify visually before landing — UI acceptance is not met until someone has.
 - Model names in this file are informational only.
 
 Cost discipline still applies. The main agent's prompt is re-read on every turn, so each turn has a
