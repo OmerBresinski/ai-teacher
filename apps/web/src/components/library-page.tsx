@@ -103,7 +103,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
     [documents, kind, query, sort],
   );
   const seriesItems = useMemo(
-    () => (isSeries || isHome ? seriesShelf(series, isHome ? "" : query, sort) : EMPTY_SERIES),
+    () => (isSeries || isHome ? seriesShelf(series, query, sort) : EMPTY_SERIES),
     [series, isSeries, isHome, query, sort],
   );
   const split = useMemo(() => (kind ? splitByRecency(shelf, now) : null), [kind, shelf, now]);

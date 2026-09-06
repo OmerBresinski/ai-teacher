@@ -28,7 +28,8 @@ function subscribe(key: string, onChange: () => void): () => void {
     onChange();
   };
   const onStorage = (storageEvent: StorageEvent) => {
-    if (storageEvent.key === key) invalidate();
+    // `key === null` is `localStorage.clear()` in another tab.
+    if (storageEvent.key === key || storageEvent.key === null) invalidate();
   };
   window.addEventListener(event, invalidate);
   window.addEventListener("storage", onStorage);

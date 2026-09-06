@@ -40,6 +40,16 @@ describe("usePreference", () => {
     expect(result.current[0]).toBe("list");
   });
 
+  it("drops the cache when another tab clears storage", () => {
+    writePreference(KEY, "list");
+    const { result } = renderHook(() => usePreference(KEY, VALUES, "grid"));
+    act(() => {
+      localStorage.clear();
+      window.dispatchEvent(new StorageEvent("storage", { key: null }));
+    });
+    expect(result.current[0]).toBe("grid");
+  });
+
   it("does not re-read storage on every render", () => {
     writePreference(KEY, "list");
     const { result, rerender } = renderHook(() => usePreference(KEY, VALUES, "grid"));
