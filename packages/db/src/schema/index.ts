@@ -1,9 +1,11 @@
 import { accounts, sessions, users, verifications } from "./auth";
+import { documents } from "./documents";
 import { jobEvents } from "./job-events";
 import { workspaces } from "./workspaces";
 
 export * from "./_columns";
 export { accounts, authSchema, sessions, users, verifications } from "./auth";
+export { documentKind, documents } from "./documents";
 export { jobEvents } from "./job-events";
 export { workspaces } from "./workspaces";
 
@@ -12,7 +14,7 @@ export { workspaces } from "./workspaces";
  * invariant test checks each one has `workspace_id NOT NULL` with a FK and an index (ADR 0007).
  * **Add every new tenant table here.**
  */
-export const TENANT_TABLES = [jobEvents] as const;
+export const TENANT_TABLES = [jobEvents, documents] as const;
 
 /**
  * The documented allow-list of tables without `workspace_id` (ADR 0007): the tenant root and the
@@ -29,6 +31,7 @@ export const ALL_TABLES = {
   accounts,
   verifications,
   jobEvents,
+  documents,
 } as const;
 
 // ---------------------------------------------------------------------------------------------

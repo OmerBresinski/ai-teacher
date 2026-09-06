@@ -14,6 +14,7 @@ export default defineConfig({
     states: "src/states.ts",
     objects: "src/objects/index.ts",
     documents: "src/documents/index.ts",
+    "documents/fixtures": "src/documents/fixtures.test-helpers.ts",
     result: "src/result.ts",
   },
   format: ["esm"],

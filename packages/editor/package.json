@@ -10,6 +10,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./thumb": "./src/thumb.ts",
+    "./starter": "./src/starter.ts",
     "./styles/editor.css": "./src/styles/editor.css",
     "./present": "./src/present/index.ts"
   },

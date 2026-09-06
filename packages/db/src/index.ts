@@ -4,6 +4,27 @@
  */
 export { type CreateDbOptions, createDb, type Db, type DbHandle, type Sql } from "./client";
 export {
+  clearGenerating,
+  createDocument,
+  type DocumentBody,
+  type DocumentRow,
+  type DocumentSummaryRow,
+  escapeLike,
+  getDocument,
+  getSeriesWithLessons,
+  LIST_DEFAULT_LIMIT,
+  LIST_MAX_LIMIT,
+  type ListSort,
+  type ListSummariesOptions,
+  type ListSummariesResult,
+  listSummaries,
+  type PutDocumentResult,
+  parseDocumentBody,
+  putDocument,
+  restore,
+  softDelete,
+} from "./documents";
+export {
   insertJobEvent,
   JOB_EVENTS_CHANNEL,
   type JobEventNotification,
