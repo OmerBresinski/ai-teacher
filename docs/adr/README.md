@@ -24,8 +24,11 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0016 | Deviations from PRD accepted for MVP scaffolding   | Accepted (amended 2026-09-04) |
 | 0017 | Agent skill layout: .agents canonical + symlinks   | Accepted |
 | 0018 | AI provider: Amazon Bedrock via Vercel AI SDK in @tj/ai | Accepted |
-| 0019 | Adopt the TeachDeck visual system in @tj/ui; shell and editor kits | Accepted, amended 2026-09-06 |
-| 0020 | Library screens run on an in-memory mock data layer behind TanStack Query | Accepted |
+| 0019 | Adopt the TeachDeck visual system in @tj/ui; shell and editor kits | Accepted, amended 2026-09-06 (×2) |
+| 0020 | Library screens run on an in-memory mock data layer behind TanStack Query | Accepted (amended 2026-09-06) |
+| 0021 | Tie-in document contract: TeachDeck schemas in @tj/domain | Accepted |
+| 0022 | @tj/editor: package boundary, kit rule, state model and fonts | Accepted |
+| 0023 | Export pipeline: client-side exporters, SPA print routes, JSON import | Accepted |
 
 Template: `0000-template.md`.
 
@@ -37,3 +40,5 @@ Template: `0000-template.md`.
 - 2026-09-04 — ADR 0016: item 5, model inference in AWS `us-east-1` (ADR 0018) widens the data-residency deviation; same revisit date. See `0016-prd-deviations.md`.
 - 2026-09-06 — ADR 0019 §4: filled primary controls use TeachDeck's white-on-terracotta as a recorded contrast exception. See `0019-teachdeck-visual-system.md`.
 - 2026-09-05 — ADR 0009: `@tj/ui` adopts the TeachDeck visual system and separates the shell and editor kits (ADR 0019). See `0009-tailwind-shadcn.md`.
+- 2026-09-06 — ADR 0019 §3 and §5: the stage palette moves to `@tj/ui` as the `.tj-stage` scope and the editor consumes `@tj/ui` twins (ADR 0022). See the second amendment in `0019-teachdeck-visual-system.md`.
+- 2026-09-06 — ADR 0020: `@tj/domain` holds the document schemas (ADR 0021); the mock store holds full documents; "no Zustand" covers the editor (ADR 0022). See `0020-frontend-mock-data-layer.md`.

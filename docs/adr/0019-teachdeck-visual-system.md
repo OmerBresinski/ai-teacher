@@ -81,3 +81,11 @@ exception limited to those two filled surfaces; icons, borders, focus rings and 
 their AA tokens (`--brand-text` for terracotta text). The e2e axe run treats `color-contrast`
 findings on `[data-primary-fill]` elements as advisory (logged, not failing); every other rule and
 element stays blocking. TEACH-94 tracks revisiting this if a design partner requires strict AA.
+
+## Amendment (2026-09-06, ADR 0022)
+
+§3's "the permanently-dark present-mode stage palette belongs to `@tj/editor`" and §5's "TeachDeck's
+hand-rolled `components/ui2` kit … ships inside `@tj/editor`" are superseded. The stage palette
+lives in `@tj/ui/src/styles/globals.css` as the `.tj-stage` variable scope, and the editor consumes
+`@tj/ui` primitives wherever a twin exists (the "twin rule"); only geometry-owning editor components
+with no twin are ported. `@tj/ui` remains the token owner. See `0022-editor-package-boundary-and-state.md`.

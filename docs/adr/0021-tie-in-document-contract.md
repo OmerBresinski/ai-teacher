@@ -1,0 +1,85 @@
+# 0021 — Tie-in document contract: TeachDeck's Lesson, Worksheet and Series schemas in `@tj/domain`
+
+- Status: Accepted
+- Date: 2026-09-06
+- Related PRD decisions: TD project item 1 (tie-in contract), item 5 (`reachedSlideId`/`taughtAt`), D-001 (Series), A9 (account copy)
+- Related ADRs: 0011, 0013, 0020
+
+## Context
+
+TeachDeck (`gregjwa/pres-ui-temp`, checkpoint `f3dbcf7`) defines the documents the editor, viewer,
+present mode and exporters all read: `lib/model/types.ts` (Lesson, Slide, SlideElement, Worksheet,
+WorksheetBlock, Series, Theme) and `lib/model/schema.ts` (Zod 4 schemas, `version: 1`,
+`CURRENT_VERSION`, `migrate()`, `parseLesson`/`parseWorksheet`/`parseSeries`). A slide is 960×540
+points; a worksheet page is A4 or Letter. Greg's row-1 decision is that this model is the product's.
+
+Our side has stubs: `packages/domain/src/objects/lesson.ts` is `{ id, ...workspaceOwnedFields }`,
+and `apps/web/src/mocks/library-schema.ts` holds library summaries only (ADR 0020: "`@tj/domain` is
+not extended until the tie-in contract lands"). No API exists for documents; everything in this
+project is frontend-only and the backend will connect later (TD project description note).
+
+Two facts in TeachDeck's model need a decision rather than a copy:
+
+- Inserted images are stored as base64 data URLs in `ImageElement.src` (see the quota comment in
+  `components/editor/use-autosave.ts`). Fine for IndexedDB; not for a Postgres row or a list
+  response.
+- Two migrations exist: a shape migration (`migrate()` on `version`) and a layout re-fit
+  (`fitVersion` against `FIT_VERSION` in `lib/model/themes.ts`, run by
+  `lib/layout/use-fit-migration.ts`, which needs DOM font measurement and the editor's undo
+  transaction).
+
+## Decision
+
+1. **Schema home.** TeachDeck's document types and Zod schemas are adopted **verbatim** into
+   `@tj/domain` under `packages/domain/src/objects/`: `lesson.ts` (replacing the stub) for
+   `Lesson`, `Slide`, `SlideElement`, `QuestionData`, `Theme` types and the `LessonSchema`,
+   `SlideSchema`, `SlideElementSchema`, `QuestionDataSchema`, `SlideKindSchema`,
+   `AgeBandSchema`, `RichDocSchema` schemas; `worksheet.ts` for `Worksheet`, `WorksheetBlock`,
+   `WorksheetHeader`, `PageSize`, `WorksheetSchema`, `WorksheetBlockSchema`; `series.ts` for
+   `Series`, `SeriesSchema`. Constants (`SLIDE_W`, `SLIDE_H`, `PAGE_A4`, `PAGE_LETTER`) and the pure
+   helpers `slideStepCount`, `hasRevealableAnswer` move with them. The two small pure modules
+   `schema.ts` imports — the word-search size limits and `normaliseHref` — move into `@tj/domain`
+   too, so `@tj/domain` keeps depending on `zod` only (ADR 0013). Field names, enum values and
+   error messages are unchanged so TeachDeck JSON files parse without translation.
+2. **Workspace fields are not on the document.** `workspaceOwnedFields` (`workspaceId`,
+   timestamps) belong to the persistence row the API adds later, not to the JSON the editor reads
+   and writes. The editor document is exactly TeachDeck's shape.
+3. **Versioning.** `CURRENT_VERSION` and `migrate()` move into `@tj/domain` beside the schemas and
+   run at every boundary that accepts a document: JSON import, the mock store on load, and the API
+   on read once it exists. The layout re-fit (`FIT_VERSION`, `fitVersion`, `use-fit-migration`)
+   stays in `@tj/editor` and runs only when a lesson is opened for editing, as TeachDeck does
+   (`docs/DEFERRED.md`, "Fit migration"). `fitVersion` is part of the schema.
+4. **TD item 5 fields.** `LessonSchema` gains two optional fields now: `reachedSlideId?: Id` (the
+   furthest slide shown in present mode) and `taughtAt?: string` (ISO, set when present mode exits
+   past slide 1). Optional means no migration. Present mode writes them (ADR 0022 phase B).
+5. **Images.** `ImageElement.src` stays a string and the contract is a **URL**: once the API exists,
+   the editor uploads on insert and stores the `/files/:key` proxy URL (ADR 0011). Until then the
+   editor keeps producing data URLs and the mock store accepts them; the summary's `cover` (item 6)
+   strips data-URL `src` values so list responses stay small. The upload endpoint is API work
+   outside this project.
+6. **Library summary.** `DocumentSummary` in `apps/web/src/mocks/library-schema.ts` stays a
+   hand-maintained, web-local shape (ADR 0020) and gains `cover: Slide | null` for lessons: the
+   first slide's full element tree, so the library paints a real slide thumbnail from one list
+   query. The mock store fills `count`, `themeId`, `subject`, `yearGroup` and `cover` from the
+   document it holds when a document is created or saved; there is no shared `summarise()` in
+   `@tj/domain` yet. The API decides its own list shape later.
+7. **Interchange format.** The JSON export/import format **is** the domain document:
+   `*.teachdeck.json` for a Lesson, `*.worksheet.json` for a Worksheet (TeachDeck
+   `lib/export/json.ts` naming). Import is `migrate()` → `parseLesson`/`parseWorksheet` → create.
+   A file from a newer version fails with TeachDeck's exact message.
+
+## Consequences
+
+- One Zod source for the editor, the import dialog, and later the API and worker; TeachDeck JSON
+  files are valid product documents from day one.
+- `@tj/domain` grows by ~1,000 lines and gains a `nanoid`-free surface: id generation
+  (`lib/model/factories.ts` uses `nanoid`) stays in `@tj/editor`; domain holds shapes only.
+- The stub `Lesson` object and its `objects.test.ts` case are replaced; `Artefact` and `Journey`
+  stubs are untouched (Journey is superseded by Series, D-001, but its stub remains for history).
+- `apps/web/src/mocks` holds full documents (ADR 0020 amendment): the store keeps a
+  `Map<id, Lesson | Worksheet>` seeded from TeachDeck's `lib/model/starter.ts` demo lessons and
+  `lib/worksheet/demo.ts`; summaries are maintained beside them. A reload reseeds, as today.
+- Data-URL images are a known temporary shape; the ticket that adds uploads must also add a
+  one-off rewrite of stored documents, which is why `src` is typed as a plain string now.
+- Revisit when the API lands: the row shape (`workspaceId`, `kind`, `body jsonb`), the list
+  endpoint's summary shape, and whether `migrate()` runs on read or on write.

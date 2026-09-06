@@ -33,3 +33,13 @@ relevant query keys. Replacing the mock layer with the real API therefore replac
 - There is no throwaway persistence to delete.
 - Library-summary shapes may drift from the tie-in contract. This risk is accepted because the
   shapes are internal to `apps/web`.
+
+## Amendment (2026-09-06, ADR 0021 and 0022)
+
+"`@tj/domain` is not extended until the tie-in contract lands" is discharged: the contract is ADR
+0021, and `@tj/domain` now holds the Lesson, Worksheet and Series schemas. The mock store gains full
+documents beside the summaries (`Map<id, Lesson | Worksheet>` seeded from TeachDeck's starter
+content); `libraryQueries.document(id)` returns the full document and a `saveDocument` mutation
+replaces it. `DocumentSummary` stays web-local and gains `cover: Slide | null`. "No Zustand" now
+covers the editor as well: the document being edited lives in the Query cache (ADR 0022 §4). A
+reload still reseeds.

@@ -14,6 +14,9 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **Identifier guard** — shared component that blocks learner names, IDs, emails and identifying phrases in free text (F15-R03).
 - **Journey** — the plan from goal to outcome across N lessons; the product's central object. Typed and versioned. *(superseded by Series — TD decision D-001, 2026-09-05; the term remains in package/ADR names for history)*
 - **Knowledge node** — an entry in the progressions/misconceptions graph (F05).
+- **Block** — one unit of a Worksheet: heading, paragraph, instructions, question, multiple-choice, fill-gap, matching, word search, word bank, answer box, lines, image, table, divider or page break (`WorksheetBlock` in `@tj/domain`). Blocks flow and paginate; they have no coordinates.
+- **Export** — producing a file from a Lesson or Worksheet in the teacher's browser: PDF (browser print of a print route), PPTX, PNG, DOCX or JSON (ADR 0023). Always teacher-initiated; never server-side at MVP.
+- **Import** — creating a Lesson or Worksheet from a JSON file in the interchange format, which is the domain document itself (`*.teachdeck.json`, `*.worksheet.json`; ADR 0021 §7). Entered from the Library's Import dialog.
 - **Lesson** — an ordered session in the Journey covering one or more Concepts. In the editor, it is a slide deck with 960×540-point slides plus notes; the Library shows it as a card.
 - **Library** — the signed-in home: Home plus the kind pages.
 - **Observation** — class-level evidence of understanding recorded after teaching.
@@ -22,7 +25,10 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **Reviewed** — the teacher has opened, checked and confirmed an Artefact; unlocks the "AI-assisted, teacher-reviewed" export label.
 - **Series** — an ordered list of Lessons with non-exclusive membership; a Lesson may belong to several Series. The unit of sequencing that replaced the Journey planner.
 - **Skill** — a packaged pedagogical capability the runtime calls (F13).
+- **Slide** — one 960×540-point page of a Lesson: a `kind` (title, objectives, true-false, …), an ordered list of elements (text, image, shape, line, icon, table, embed, option, gap-text, timer, group) whose array order is draw order, optional notes, transition and question data (`Slide` in `@tj/domain`). Coordinates are points; export maps 1pt = 1pt.
 - **Source** — a teacher-provided material (file/URL) used for grounding.
+- **Stage** — the present-mode surface: the letterboxed slide plus its controls, timer, ink and overview, always on the dark stage palette regardless of the app theme. In code, the `.tj-stage` variable scope in `@tj/ui` (ADR 0022 §3).
+- **Theme (document)** — one of the six built-in slide designs a Lesson references by `themeId` (background, ink, accent, two font stacks, tags such as `dyslexia` or `low-vision`; `Theme` in `@tj/domain`, resolved by `getTheme`). Distinct from the app **theme** (`light` / `dark` / `high-contrast`, `data-theme` on `<html>`).
 - **Worksheet** — a paginated A4 document made of blocks such as heading, question, multiple-choice, and fill-gap. It stands beside a Lesson's slides and is edited in the worksheet editor.
 - **Workspace** — the container for a user's Journeys, Sources and settings. One personal Workspace per user at MVP.
 
@@ -34,8 +40,11 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **App** — a deployable unit under `apps/` (`web`, `api`, `worker`).
 - **App bar** — the 48px docked top bar of a screen.
 - **AppType** — the exported type of the Hono router used by the Hono RPC client (ADR 0005).
+- **Cover** — the first Slide of a Lesson, carried on its `DocumentSummary` so the Library renders a real thumbnail from the list query (ADR 0021 §6).
+- **Document** — a Lesson or Worksheet as persisted and exchanged: the `@tj/domain` schema with `version`, validated by `parseLesson` / `parseWorksheet` and upgraded by `migrate()` (ADR 0021). The Library summary is derived from it.
 - **Domain package** (`@tj/domain`) — Zod schemas and TypeScript types for the product objects above, plus job-name constants and the `StorageAdapter` interface. Depends on nothing internal.
-- **Editor kit** — TeachDeck's `components/ui2` component set that ships inside `@tj/editor` (ADR 0019).
+- **Editor kit** — the components that ship inside `@tj/editor` because they own document geometry or editor chrome and have no `@tj/ui` twin (Panel, Rail, Segmented, NumberInput, Color, ZoomControl, Deck, Overlay, FadeIn). Everything with a twin comes from `@tj/ui` (the "twin rule", ADR 0022 §2).
+- **Editor package** (`@tj/editor`) — the React library holding the lesson editor, viewer, present mode, worksheet editor and exporters, mounted by `apps/web` on `/l/$lessonId(/present|/print)` and `/w/$worksheetId(/print)` (ADR 0022).
 - **Env schema** — the Zod schema in each app's `src/env.ts` that validates configuration at boot (ADR 0015).
 - **Job** — a unit of background work enqueued by the API and executed by the worker via pg-boss (ADR 0006). Job names are constants in `@tj/domain`.
 - **Job event** — a progress record (`queued`, `started`, `progress`, `completed`, `failed`, `cancelled`) emitted by the worker and streamed to clients over SSE (ADR 0012).
@@ -46,6 +55,7 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **Model class** — the tier a caller asks `@tj/ai` for instead of a model ID: `frontier` (planning, coherence, adaptation), `standard` (plan, notes, slide outline), `small` (items, glossary, variants, summaries). Each maps to a Bedrock model ID via `AI_MODEL_<CLASS>` (F13 §7, ADR 0018).
 - **Package** — an internal library under `packages/`, scoped `@tj/*`, never published.
 - **Preview environment** — a per-PR deployment: Vercel preview for `web`, Railway PR environment for `api`/`worker` (ADR 0010).
+- **Reducer (editor)** — a pure function `(document, action) => document` in `packages/editor/src/model/reducers/`; the port of a TeachDeck store action. Applied to the Query cache through `useDocumentHistory`, which owns undo/redo (ADR 0022 §4).
 - **Route tree** — the code-based TanStack Router definition in `apps/web/src/router.tsx` (ADR 0004).
 - **Scoped DB** — the `forWorkspace(workspaceId)` query interface from `@tj/db` that always applies the tenant predicate (ADR 0007). The only permitted way to query tenant tables.
 - **Shell** — the persistent chrome around a screen (sidebar, app bar, theme selector), owned by `@tj/ui` (ADR 0019).
