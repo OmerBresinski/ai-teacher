@@ -10,7 +10,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./thumb": "./src/thumb.ts",
-    "./styles/editor.css": "./src/styles/editor.css"
+    "./styles/editor.css": "./src/styles/editor.css",
+    "./present": "./src/present/index.ts"
   },
   "scripts": {
     "lint": "biome check .",

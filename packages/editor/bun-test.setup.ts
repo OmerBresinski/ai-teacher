@@ -2,7 +2,8 @@
  * Workspace-specific `bun test` preload for `@tj/editor`. jest-dom matchers, happy-dom and
  * `cleanup()` come from the shared preloads (`@tj/config/bun-test/{dom,setup}`); this file adds
  * the browser APIs the slide renderer touches and happy-dom lacks: `ResizeObserver` (SlideScaler,
- * auto-height), `PointerEvent` (the transform layer, phase C) and `requestAnimationFrame`.
+ * auto-height), `PointerEvent` (the transform layer, phase C) and `scrollIntoView` (the viewer's
+ * rail keeps the current thumb in view).
  */
 import { afterEach, beforeEach } from "bun:test";
 
@@ -21,6 +22,12 @@ beforeEach(() => {
     globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
     installed.push(() => {
       delete (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+    });
+  }
+  if (!HTMLElement.prototype.scrollIntoView) {
+    HTMLElement.prototype.scrollIntoView = () => {};
+    installed.push(() => {
+      delete (HTMLElement.prototype as { scrollIntoView?: () => void }).scrollIntoView;
     });
   }
   if (!globalThis.PointerEvent) {
