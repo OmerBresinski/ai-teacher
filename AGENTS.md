@@ -139,9 +139,9 @@ to `master` directly.
    `turbo: command not found`. **Lint the PR title locally before `gh pr create` and before any
    `gh pr edit --title`:** CI runs commitlint on the title (squash merges use it as the commit
    subject) and a rejected title costs a full CI round-trip. Run
-   `printf '%s\n' "<title>" | bun run --silent commitlint` (needs `node_modules`; do not use
-   `bunx commitlint`, which fetches an unpinned copy and edits the lockfile) and fix until it
-   prints nothing. The two rules that bite: `header-max-length` — the whole title including
+   `printf '%s\n' "<title>" | bun run --silent commitlint` (needs `node_modules`; without them
+   `bunx commitlint` fetches an unpinned copy that cannot resolve the shareable config) and fix
+   until it prints nothing. The two rules that bite: `header-max-length` — the whole title including
    `(TEACH-n)` is ≤ 100 chars; `subject-case` — the subject after `<type>(<scope>): ` must not
    start with a capital or be Sentence/Start/UPPER case, so write `adr 0021`, `csrf`, `readme`,
    not `ADRs`, `CSRF`, `README` (identifiers like `@tj/ai` or `forWorkspace()` are fine). If CI
