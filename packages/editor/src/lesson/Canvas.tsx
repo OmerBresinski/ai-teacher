@@ -10,7 +10,7 @@ import {
 } from "@tj/ui";
 import { Minus, MoreHorizontal, Plus } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ZoomControl } from "../kit/ZoomControl";
+import { nextStep, ZoomControl } from "../kit/ZoomControl";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { SlideActions } from "./canvas/SlideActions";
@@ -260,7 +260,12 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange }: CanvasPro
                   boxShadow: `inset 0 0 0 1px ${theme.colors.line}`,
                 }}
               />
-              <SelectionLayer slide={slide} preview={preview} onPreview={setPreview} />
+              <SelectionLayer
+                slide={slide}
+                preview={preview}
+                onPreview={setPreview}
+                disabled={spaceDown}
+              />
             </div>
           </SlideScaler>
         </div>
@@ -306,17 +311,11 @@ function zoomAbout(el: HTMLElement, from: number, to: number, clientX: number, c
 }
 
 /**
- * 'fit' has no fixed percentage — step from what is actually on screen, so a 72% fit steps up to
- * 75% before it steps down.
+ * 'fit' has no fixed percentage — step from what is actually on screen to the nearest stop in
+ * that direction, so a 72% fit steps up to 75% and down to 50% (never skipping a stop).
  */
-export function stepZoom(current: number, dir: 1 | -1): number {
-  const i = ZOOM_STEPS.findIndex((z) => z > current + 0.0001);
-  const next =
-    dir === 1
-      ? ZOOM_STEPS[i === -1 ? ZOOM_STEPS.length - 1 : i]
-      : ZOOM_STEPS[Math.max(0, (i === -1 ? ZOOM_STEPS.length : i) - 2)];
-  return next ?? current;
-}
+export const stepZoom = (current: number, dir: 1 | -1): number =>
+  nextStep(ZOOM_STEPS, current, dir);
 
 /* ------------------------------------------------------------------ */
 /* Footer                                                              */

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
-import { catcher, nextFrame, pointer, renderEditor } from "../test-harness";
+import type { GroupElement } from "@tj/domain/documents";
+import { catcher, nextFrame, pointer, renderEditor, seededLesson, shape } from "../test-harness";
 
 /*
  * Rows 2, 6, 7 and 8 of TEACH-103 with synthetic pointer events on the real layer. happy-dom has no
@@ -174,6 +175,79 @@ describe("SelectionLayer", () => {
     expect(read().slides[0]?.elements[0]?.y).toBe(95);
     fireEvent.keyDown(window, { key: "z", metaKey: true });
     expect(read().slides[0]?.elements[0]?.y).toBe(100);
+  });
+
+  test("pointercancel (or a window blur) discards the preview and writes nothing", async () => {
+    const { container, client, read } = renderEditor();
+    const setQueryData = spyOn(client, "setQueryData");
+    const before = read();
+    fireEvent.pointerDown(catcher(container), pointer(150, 150));
+    fireEvent.pointerMove(window, pointer(190, 170));
+    await act(nextFrame);
+    expect(rectOf(elementsOf(container)[0] as HTMLElement)).toMatchObject({ x: 140, y: 120 });
+    fireEvent.pointerCancel(window, pointer(190, 170));
+    expect(rectOf(elementsOf(container)[0] as HTMLElement)).toMatchObject({ x: 100, y: 100 });
+    expect(read()).toBe(before);
+    expect(setQueryData).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
+
+    fireEvent.pointerDown(catcher(container), pointer(150, 150));
+    fireEvent.pointerMove(window, pointer(160, 160));
+    await act(nextFrame);
+    fireEvent.blur(window);
+    expect(read()).toBe(before);
+    // The layer is not stranded: the next drag works and commits.
+    await drag(catcher(container), [150, 150], [170, 150], 3);
+    expect(read().slides[0]?.elements[0]?.x).toBe(120);
+  });
+
+  test("resizing a group previews and commits its children scaled with the frame", async () => {
+    const lesson = seededLesson();
+    const first = lesson.slides[0];
+    if (!first) throw new Error("seed");
+    const group: GroupElement = {
+      id: "grp",
+      type: "group",
+      x: 100,
+      y: 100,
+      w: 200,
+      h: 100,
+      children: [shape(0, 0, 100, 50), shape(100, 50, 100, 50)],
+    };
+    first.elements = [group];
+    const { container, read } = renderEditor(lesson);
+    fireEvent.pointerDown(catcher(container), pointer(150, 150));
+    fireEvent.pointerUp(window, pointer(150, 150));
+    const se = container.querySelector<HTMLElement>('[data-handle="se"]');
+    if (!se) throw new Error("no se handle");
+    // Groups are not aspect-locked: the corner to (500, 300) doubles both axes.
+    fireEvent.pointerDown(se, pointer(300, 200));
+    fireEvent.pointerMove(window, pointer(500, 300));
+    await act(nextFrame);
+    // Mid-gesture the children are painted at their scaled geometry, not their old one.
+    const painted = container.querySelectorAll<HTMLElement>(
+      '[data-slide-mode="edit"] [data-element-id="grp"] [data-element-id]',
+    );
+    expect(rectOf(painted[1] as HTMLElement)).toEqual({ x: 200, y: 100, w: 200, h: 100 });
+    expect(read().slides[0]?.elements[0]).toBe(group);
+    fireEvent.pointerUp(window, pointer(500, 300));
+    const committed = read().slides[0]?.elements[0] as GroupElement;
+    expect(committed).toMatchObject({ x: 100, y: 100, w: 400, h: 200 });
+    expect(committed.children[1]).toMatchObject({ x: 200, y: 100, w: 200, h: 100 });
+  });
+
+  test("with Space held the stage pans: a press on an element starts no gesture", async () => {
+    const { container, read } = renderEditor();
+    // Focus the canvas first (a click does), then hold Space.
+    fireEvent.pointerDown(catcher(container), pointer(50, 50));
+    fireEvent.pointerUp(window, pointer(50, 50));
+    fireEvent.keyDown(window, { key: " ", code: "Space" });
+    await drag(catcher(container), [150, 150], [190, 150], 3);
+    expect(read().slides[0]?.elements[0]?.x).toBe(100);
+    expect(container.querySelector("[data-selection-frame]")).toBeNull();
+    fireEvent.keyUp(window, { key: " ", code: "Space" });
+    await drag(catcher(container), [150, 150], [190, 150], 3);
+    expect(read().slides[0]?.elements[0]?.x).toBe(140);
   });
 
   test("keys stay out of a text field, except Escape", async () => {

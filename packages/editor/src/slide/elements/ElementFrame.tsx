@@ -12,7 +12,15 @@ const STAGGER_CAP = 6;
  * A rect the editor is previewing for an element mid-gesture (drag, resize, rotate). The document
  * in the cache is untouched until pointer-up (ADR 0022 §4); the frame paints from this instead.
  */
-export type ElementTransform = { x: number; y: number; w: number; h: number; rotation?: number };
+export type ElementTransform = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number;
+  /** A group's children scaled with its frame, so the preview and the committed result match. */
+  children?: SlideElement[];
+};
 
 export type ElementFrameProps = {
   element: SlideElement;
@@ -65,6 +73,10 @@ export function ElementFrame({
 }: ElementFrameProps) {
   const box = override ?? element;
   const rotation = override ? (override.rotation ?? element.rotation) : element.rotation;
+  const shown: SlideElement =
+    override?.children && element.type === "group"
+      ? { ...element, children: override.children }
+      : element;
   const revealStep = element.revealStep ?? 0;
   const beyond = revealStep > step;
   const hidden = beyond && mode !== "edit";
@@ -110,7 +122,7 @@ export function ElementFrame({
         }}
       >
         <ElementBody
-          element={element}
+          element={shown}
           theme={theme}
           mode={mode}
           slideId={slideId}

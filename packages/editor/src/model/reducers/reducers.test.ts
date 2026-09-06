@@ -186,9 +186,15 @@ describe("slides", () => {
 
     expect(order(r.nudgeSlides(lesson, [b], 1))).toEqual([a, c, b, d]);
     expect(order(r.nudgeSlides(lesson, [b], -1))).toEqual([b, a, c, d]);
-    expect(order(r.nudgeSlides(lesson, [c, d], 1))).toEqual([a, b, c, d]);
+    // A contiguous block moves as one; a block already at the end stays put.
+    expect(order(r.nudgeSlides(lesson, [b, c], 1))).toEqual([a, d, b, c]);
+    expect(r.nudgeSlides(lesson, [c, d], 1)).toBe(lesson);
     expect(r.nudgeSlides(lesson, [a], -1)).toBe(lesson);
+    // A non-contiguous selection keeps its gaps: each picked slide swaps with its own neighbour.
+    expect(order(r.nudgeSlides(lesson, [a, c], 1))).toEqual([b, a, d, c]);
+    expect(order(r.nudgeSlides(lesson, [b, d], -1))).toEqual([b, a, d, c]);
     expect(r.nudgeSlides(lesson, [], 1)).toBe(lesson);
+    expect(r.nudgeSlides(lesson, ["nope"], 1)).toBe(lesson);
   });
 
   test("updateSlide, setSlideBackground, setSlideNotes add and remove", () => {

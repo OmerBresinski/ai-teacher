@@ -1,4 +1,4 @@
-import type { Id, Slide, SlideElement } from "@tj/domain/documents";
+import type { Id, Slide } from "@tj/domain/documents";
 import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
@@ -15,20 +15,10 @@ import {
   type Rect,
   rectOf,
   rotatedBounds,
-  rotatePoint,
-  snapAngle,
   unionRect,
 } from "../../model/geometry";
 import * as reducers from "../../model/reducers";
-import {
-  buildSnapTargets,
-  computeMoveSnap,
-  computeSnap,
-  type Guide,
-  SNAP_THRESHOLD_PX,
-  type SnapOptions,
-  SPACING_THRESHOLD_PX,
-} from "../../model/snapping";
+import { buildSnapTargets, type Guide, type SnapTarget } from "../../model/snapping";
 import type { ElementTransform } from "../../slide/elements/ElementFrame";
 import { useSlideScale } from "../../slide/SlideScaler";
 import { useHistory } from "../document-context";
@@ -38,178 +28,65 @@ import {
   useSessionRead,
   useSessionUi,
 } from "../use-editor-session";
-import {
-  ASPECT_LOCKED_TYPES,
-  DRAG_START_PX,
-  type HandleId,
-  MIN_SIZE,
-  ROTATE_FINE_DEG,
-  ROTATE_SNAP_DEG,
-  ROTATE_SNAP_THRESHOLD_DEG,
-  TOKENS,
-} from "./constants";
+import { DRAG_START_PX, type HandleId } from "./constants";
+import { describeBoxes } from "./describe";
 import { Guides } from "./Guides";
+import {
+  angleOf,
+  boundsOfBoxes,
+  type Gesture,
+  type PreviewMap,
+  patchFor,
+  previewDrag,
+  previewResize,
+  previewRotate,
+  type Sample,
+  sampleOf,
+  startBoxOf,
+} from "./gesture-maths";
 import {
   CANVAS_NOTICE_EVENT,
   type CanvasNoticeDetail,
   setPointerGestureActive,
 } from "./gesture-state";
 import { HoverOutline } from "./HoverOutline";
-import { boxesOf, clampToStage, type ElementBox, hitsBox, marqueeHits } from "./hit-test";
-import {
-  anchorOf,
-  applyEdgeSnap,
-  clampGroupScale,
-  movingLinesFor,
-  resizeRect,
-  scaleAbout,
-  scaleGroupChildren,
-} from "./resize";
+import { boxesOf, type ElementBox, hitsBox, marqueeHits } from "./hit-test";
+import { AngleLabel, Marquee, MemberOutlines, VISUALLY_HIDDEN } from "./overlays";
 import { SelectionFrame } from "./SelectionFrame";
 
 /*
- * The editor's transform layer (TeachDeck `components/editor/transform/SelectionLayer.tsx`,
- * 1,090 lines, ported in pieces: marquee, move, resize, rotate, hover). Rendered by the Canvas as
- * a sibling of `<SlideView>` inside the same `<SlideScaler>`, so it shares the slide's coordinate
- * space and its scale. All chrome is divided by the scale, so a handle is 8 screen px and the snap
- * threshold is 8 screen px at 50%, 100% and 200% zoom alike.
+ * The editor's transform layer (TeachDeck `components/editor/transform/SelectionLayer.tsx`).
+ * Rendered by the Canvas as a sibling of `<SlideView>` inside the same `<SlideScaler>`, so it
+ * shares the slide's coordinate space and its scale. This file is the orchestration: pointer
+ * lifecycle, the gesture record and the render; the geometry of each gesture is `gesture-maths.ts`,
+ * the passive drawings `overlays.tsx`, the live-region copy `describe.ts`.
  *
  * The one structural change from TeachDeck (ADR 0022 §4): pointer moves never write the document.
  * Each frame computes a **preview** — the rects the selection would have — and hands it to the
  * Canvas through `onPreview`; the Canvas paints `SlideView` from it via `transformOverride`. The
  * reducer runs once, on pointer-up, inside `beginTransaction`/`endTransaction`, so a drag is one
- * cache write, one undo step and one autosave.
+ * cache write, one undo step and one autosave. A cancelled gesture (pointercancel, window blur,
+ * tab hidden) discards the preview and writes nothing.
  */
 
-/** Element id → in-flight geometry, painted by `SlideView` instead of the cache. */
-export type PreviewMap = ReadonlyMap<Id, ElementTransform>;
+export type { PreviewMap };
 
 export type SelectionLayerProps = {
   slide: Slide;
   preview: PreviewMap | null;
   onPreview: (next: PreviewMap | null) => void;
+  /** True while the canvas is panning (Space held): the stage takes no gestures. */
+  disabled?: boolean;
   className?: string;
 };
 
-/** A pointer sample plus the modifier state we care about. */
-type Sample = { x: number; y: number; shift: boolean; alt: boolean; meta: boolean };
-
-type StartBox = {
-  id: Id;
-  rect: Rect;
-  rotation: number;
-  type: SlideElement["type"];
-  lockHeight: boolean;
-  /** Group children, in the group's local space, as they were at gesture start. */
-  children?: SlideElement[];
-};
-
-type Gesture =
-  | { kind: "none" }
-  | {
-      kind: "drag";
-      ids: Id[];
-      boxes: StartBox[];
-      bounds: Rect;
-      origin: Sample;
-      duplicate: boolean;
-      started: boolean;
-      /** The total delta the preview currently shows — what pointer-up commits. */
-      applied: Point;
-    }
-  | { kind: "marquee"; origin: Point; additive: boolean; base: Id[] }
-  | {
-      kind: "resize";
-      handle: HandleId;
-      ids: Id[];
-      boxes: StartBox[];
-      bounds: Rect;
-      multi: boolean;
-      started: boolean;
-    }
-  | {
-      kind: "rotate";
-      ids: Id[];
-      boxes: StartBox[];
-      pivot: Point;
-      startAngle: number;
-      started: boolean;
-    };
-
-const angleOf = (p: Point, about: Point) =>
-  (Math.atan2(p.y - about.y, p.x - about.x) * 180) / Math.PI;
-
-const sampleOf = (e: {
-  clientX: number;
-  clientY: number;
-  shiftKey: boolean;
-  altKey: boolean;
-  metaKey: boolean;
-  ctrlKey: boolean;
-}): Sample => ({
-  x: e.clientX,
-  y: e.clientY,
-  shift: e.shiftKey,
-  alt: e.altKey,
-  meta: e.metaKey || e.ctrlKey,
-});
-
-const VISUALLY_HIDDEN: CSSProperties = {
-  position: "absolute",
-  width: 1,
-  height: 1,
-  margin: -1,
-  padding: 0,
-  border: 0,
-  overflow: "hidden",
-  clipPath: "inset(50%)",
-  whiteSpace: "nowrap",
-};
-
-/** A screen-reader name for an element: its own name, else its kind. */
-function nameOf(el: SlideElement): string {
-  const named = (el as { name?: string }).name;
-  if (named) return named;
-  if (el.type === "image") return el.alt ? `Image, ${el.alt}` : "Image";
-  return el.type.replace("-", " ").replace(/^./, (c) => c.toUpperCase());
-}
-
-function describeBoxes(boxes: ElementBox[]): string {
-  const [b] = boxes;
-  if (!b) return "Nothing selected";
-  if (boxes.length > 1) return `${boxes.length} elements selected`;
-  const r = b.rect;
-  const parts = [
-    `${nameOf(b.el)} selected`,
-    `x ${Math.round(r.x)}, y ${Math.round(r.y)}`,
-    `${Math.round(r.w)} by ${Math.round(r.h)} points`,
-  ];
-  if (b.rotation) parts.push(`rotated ${Math.round(normaliseAngle(b.rotation))} degrees`);
-  if (b.locked) parts.push("locked");
-  return parts.join(", ");
-}
-
-const startBoxOf = (b: ElementBox): StartBox => ({
-  id: b.id,
-  rect: b.rect,
-  rotation: b.rotation,
-  type: b.el.type,
-  lockHeight: (b.el.type === "text" || b.el.type === "gap-text") && b.el.style.autoHeight !== false,
-  children: b.el.type === "group" ? b.el.children : undefined,
-});
-
-const boundsOfBoxes = (boxes: StartBox[]) =>
-  unionRect(boxes.map((b) => rotatedBounds(b.rect, b.rotation)));
-
-/** A group's children scaled with its frame, so the contents follow (or `undefined` for others). */
-function childrenFor(b: StartBox, rect: Rect): SlideElement[] | undefined {
-  if (!b.children) return undefined;
-  const sx = b.rect.w === 0 ? 1 : rect.w / b.rect.w;
-  const sy = b.rect.h === 0 ? 1 : rect.h / b.rect.h;
-  return scaleGroupChildren(b.children, sx, sy);
-}
-
-export function SelectionLayer({ slide, preview, onPreview, className }: SelectionLayerProps) {
+export function SelectionLayer({
+  slide,
+  preview,
+  onPreview,
+  disabled = false,
+  className,
+}: SelectionLayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const scale = useSlideScale();
   const scaleRef = useRef(scale);
@@ -293,7 +170,7 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
   const gesture = useRef<Gesture>({ kind: "none" });
   const sample = useRef<Sample | null>(null);
   const raf = useRef(0);
-  const snapTargets = useRef<ReturnType<typeof buildSnapTargets>>([]);
+  const snapTargets = useRef<SnapTarget[]>([]);
   const capture = useRef<{ el: Element; pointerId: number } | null>(null);
   /** The map last handed to `onPreview`, so pointer-up commits exactly what was on screen. */
   const previewRef = useRef<Map<Id, ElementTransform> | null>(null);
@@ -342,7 +219,7 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
   );
 
   const startBoxesFor = useCallback(
-    (ids: Id[]): StartBox[] =>
+    (ids: Id[]) =>
       ids.flatMap((id) => {
         const b = byId.get(id);
         return b ? [startBoxOf(b)] : [];
@@ -389,252 +266,18 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
 
   /* ---------------- per-frame preview ---------------- */
 
-  const previewDrag = useCallback(
-    (g: Extract<Gesture, { kind: "drag" }>, s: Sample) => {
-      const session = readSession();
-      const k = scaleRef.current || 1;
-      let dx = (s.x - g.origin.x) / k;
-      let dy = (s.y - g.origin.y) / k;
-
-      // Shift constrains to one axis. The frozen axis is passed to the snapper as "no lines may
-      // snap here", so neither alignment nor equal spacing can put the movement back.
-      const lines: NonNullable<SnapOptions["lines"]> = {};
-      if (s.shift) {
-        if (Math.abs(dx) >= Math.abs(dy)) {
-          dy = 0;
-          lines.y = [];
-        } else {
-          dx = 0;
-          lines.x = [];
-        }
-      }
-
-      let next: Guide[] = [];
-      if (session.snap && !s.meta) {
-        const moved: Rect = { ...g.bounds, x: g.bounds.x + dx, y: g.bounds.y + dy };
-        const r = computeMoveSnap(
-          moved,
-          snapTargets.current,
-          SNAP_THRESHOLD_PX / k,
-          SPACING_THRESHOLD_PX / k,
-          { lines },
-        );
-        dx += r.dx;
-        dy += r.dy;
-        next = r.guides;
-      }
-
-      const moved: Rect = { ...g.bounds, x: g.bounds.x + dx, y: g.bounds.y + dy };
-      const clamped = clampToStage(moved);
-      const cdx = clamped.x - moved.x;
-      const cdy = clamped.y - moved.y;
-      if (cdx || cdy) {
-        dx += cdx;
-        dy += cdy;
-        // The clamp has just pushed the element off whatever it snapped to: drop the guide.
-        next = next.filter((g2) => !(cdx && g2.axis === "x") && !(cdy && g2.axis === "y"));
-      }
-
-      g.applied = { x: dx, y: dy };
-      const map = new Map<Id, ElementTransform>();
-      for (const b of g.boxes) {
-        map.set(b.id, {
-          x: b.rect.x + dx,
-          y: b.rect.y + dy,
-          w: b.rect.w,
-          h: b.rect.h,
-          rotation: b.rotation,
-        });
-      }
-      publish(map);
-      setGuides(session.showGuides ? next : []);
-    },
-    [publish, readSession],
-  );
-
-  const previewResize = useCallback(
-    (g: Extract<Gesture, { kind: "resize" }>, s: Sample) => {
-      const session = readSession();
-      const k = scaleRef.current || 1;
-      const p = toSlide(s.x, s.y);
-      const corner = g.handle.length === 2;
-      const map = new Map<Id, ElementTransform>();
-
-      if (!g.multi) {
-        const b = g.boxes[0];
-        if (!b) return;
-        const aspectDefault = ASPECT_LOCKED_TYPES.has(b.type);
-        const aspect = corner && (s.shift ? !aspectDefault : aspectDefault);
-        let rect = resizeRect({
-          handle: g.handle,
-          start: b.rect,
-          rotation: b.rotation,
-          pointer: p,
-          fromCentre: s.alt,
-          aspect,
-          lockHeight: b.lockHeight,
-        });
-        let next: Guide[] = [];
-        // `applyEdgeSnap` works in slide axes, so it is only meaningful on an unrotated element.
-        if (session.snap && !s.meta && !s.alt && !aspect && !b.rotation) {
-          const r = computeSnap(rect, snapTargets.current, SNAP_THRESHOLD_PX / k, {
-            lines: movingLinesFor(g.handle),
-          });
-          rect = applyEdgeSnap(rect, g.handle, r.dx, r.dy, MIN_SIZE);
-          next = r.guides;
-        }
-        g.started = true;
-        map.set(b.id, { ...rect, rotation: b.rotation });
-        publish(map);
-        setGuides(session.showGuides ? next : []);
-        return;
-      }
-
-      // Multi-select: one bounding box, everything inside scales with it about the handle's
-      // anchor. Members are scaled by their *centre*, so a rotated member keeps its place, and the
-      // scale is floored once for the whole group so small members cannot shear the arrangement.
-      const target = resizeRect({
-        handle: g.handle,
-        start: g.bounds,
-        pointer: p,
-        fromCentre: s.alt,
-        aspect: corner ? !s.shift : false,
-      });
-      const anchor = anchorOf(g.bounds, g.handle, s.alt);
-      const sx = clampGroupScale(
-        g.bounds.w === 0 ? 1 : target.w / g.bounds.w,
-        g.boxes.map((b) => b.rect.w),
-      );
-      const sy = clampGroupScale(
-        g.bounds.h === 0 ? 1 : target.h / g.bounds.h,
-        g.boxes.map((b) => b.rect.h),
-      );
-      g.started = true;
-      for (const b of g.boxes) {
-        const r = scaleAbout(b.rect, anchor, sx, sy);
-        const h = b.lockHeight ? b.rect.h : r.h;
-        const y = b.lockHeight ? r.y + (r.h - h) / 2 : r.y;
-        map.set(b.id, { x: r.x, y, w: r.w, h, rotation: b.rotation });
-      }
-      publish(map);
-      setGuides([]);
-    },
-    [publish, readSession, toSlide],
-  );
-
-  const previewRotate = useCallback(
-    (g: Extract<Gesture, { kind: "rotate" }>, s: Sample) => {
-      const p = toSlide(s.x, s.y);
-      const raw = angleOf(p, g.pivot) - g.startAngle;
-
-      // Snap the *resulting* angle, not the change in angle: an element already at 7° must land
-      // on 15°, not on 7 + 15. The delta is derived from the snapped result so a multi-selection
-      // stays rigid.
-      const base = g.boxes[0]?.rotation ?? 0;
-      const target = s.meta
-        ? base + raw
-        : s.alt
-          ? Math.round((base + raw) / ROTATE_FINE_DEG) * ROTATE_FINE_DEG
-          : snapAngle(base + raw, ROTATE_SNAP_DEG, ROTATE_SNAP_THRESHOLD_DEG);
-      const delta = target - base;
-      g.started = true;
-
-      const map = new Map<Id, ElementTransform>();
-      for (const b of g.boxes) {
-        const rotation = normaliseAngle(b.rotation + delta);
-        if (g.boxes.length === 1) {
-          map.set(b.id, { ...b.rect, rotation });
-        } else {
-          const c = rotatePoint(centreOf(b.rect), g.pivot, delta);
-          map.set(b.id, {
-            x: c.x - b.rect.w / 2,
-            y: c.y - b.rect.h / 2,
-            w: b.rect.w,
-            h: b.rect.h,
-            rotation,
-          });
-        }
-      }
-      publish(map);
-      const shown = g.boxes.length === 1 ? normaliseAngle(target) : normaliseAngle(delta);
-      setAngleLabel(Math.round(shown));
-    },
-    [publish, toSlide],
-  );
-
-  /* ---------------- commit on release ---------------- */
-
-  /**
-   * The one place the document is written by a pointer gesture. Everything the preview showed is
-   * dispatched inside the transaction the gesture opened on its first movement.
-   */
-  const commit = useCallback(
-    (g: Gesture) => {
-      const slideId = slide.id;
-      const shown = previewRef.current;
-      if (g.kind === "drag" && g.started) {
-        if (g.applied.x || g.applied.y) {
-          history.dispatch(reducers.transformElements, slideId, g.ids, {
-            dx: g.applied.x,
-            dy: g.applied.y,
-          });
-        }
-        history.endTransaction();
-        return;
-      }
-      if ((g.kind === "resize" || g.kind === "rotate") && g.started && shown) {
-        // A transaction so a multi-select's N patches are one undo step.
-        history.beginTransaction();
-        for (const b of g.boxes) {
-          const p = shown.get(b.id);
-          if (!p) continue;
-          const rect = { x: p.x, y: p.y, w: p.w, h: p.h };
-          const children = g.kind === "resize" ? childrenFor(b, rect) : undefined;
-          history.dispatch(reducers.updateElement, slideId, b.id, {
-            ...rect,
-            ...(g.kind === "rotate" ? { rotation: p.rotation ?? 0 } : null),
-            ...(children ? { children } : null),
-          } as Partial<SlideElement>);
-        }
-        history.endTransaction();
-      }
-    },
-    [history, slide.id],
-  );
-
-  const endGesture = useCallback(() => {
-    const g = gesture.current;
-    commit(g);
-    if (g.kind === "marquee") {
-      const m = marqueeRef.current;
-      if (m && (m.w > 1 || m.h > 1)) {
-        const hits = marqueeHits(boxesRef.current, m);
-        actions.select(g.additive ? Array.from(new Set([...g.base, ...hits])) : hits);
-      }
-      setMarquee(null);
-    }
-    gesture.current = { kind: "none" };
-    sample.current = null;
-    setPointerGestureActive(false);
-    releasePointer();
-    if (raf.current) cancelAnimationFrame(raf.current);
-    raf.current = 0;
-    publish(null);
-    setGuides([]);
-    setAngleLabel(null);
-  }, [actions, commit, publish, releasePointer]);
-
-  /* ---------------- window listeners ---------------- */
-
   const flush = useCallback(() => {
     raf.current = 0;
     const s = sample.current;
     const g = gesture.current;
     if (!s || g.kind === "none") return;
+    const { snap, showGuides: guidesOn } = readSession();
+    const settings = { snap, showGuides: guidesOn };
+    const k = scaleRef.current || 1;
+
     if (g.kind === "drag") {
       if (!g.started) {
-        const moved = Math.hypot(s.x - g.origin.x, s.y - g.origin.y);
-        if (moved < DRAG_START_PX) return;
+        if (Math.hypot(s.x - g.origin.x, s.y - g.origin.y) < DRAG_START_PX) return;
         // The transaction opens on the first movement, not on pointerdown, so a click that never
         // moves opens none. Alt-drag: the copies are made inside it, so duplicate-and-move is a
         // single undo step.
@@ -657,11 +300,21 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
         }
         g.started = true;
       }
-      previewDrag(g, s);
+      const out = previewDrag(g, s, k, snapTargets.current, settings);
+      g.applied = out.delta;
+      publish(out.preview);
+      setGuides(out.guides);
     } else if (g.kind === "resize") {
-      previewResize(g, s);
+      const out = previewResize(g, s, toSlide(s.x, s.y), k, snapTargets.current, settings);
+      if (!out) return;
+      g.started = true;
+      publish(out.preview);
+      setGuides(out.guides);
     } else if (g.kind === "rotate") {
-      previewRotate(g, s);
+      const out = previewRotate(g, s, toSlide(s.x, s.y));
+      g.started = true;
+      publish(out.preview);
+      setAngleLabel(out.label);
     } else if (g.kind === "marquee") {
       const p = toSlide(s.x, s.y);
       setMarquee({
@@ -671,11 +324,78 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
         h: Math.abs(p.y - g.origin.y),
       });
     }
-  }, [actions, history, previewDrag, previewResize, previewRotate, slide.id, toSlide]);
+  }, [actions, history, publish, readSession, slide.id, toSlide]);
 
   const schedule = useCallback(() => {
     if (!raf.current) raf.current = requestAnimationFrame(flush);
   }, [flush]);
+
+  /* ---------------- ending a gesture ---------------- */
+
+  /**
+   * The one place the document is written by a pointer gesture: everything the preview showed is
+   * dispatched inside one transaction (the drag's is already open — `reset` closes it). A marquee
+   * selects what it enclosed.
+   */
+  const commit = useCallback(
+    (g: Gesture) => {
+      const shown = previewRef.current;
+      if (g.kind === "drag" && g.started) {
+        if (g.applied.x || g.applied.y) {
+          history.dispatch(reducers.transformElements, slide.id, g.ids, {
+            dx: g.applied.x,
+            dy: g.applied.y,
+          });
+        }
+      } else if ((g.kind === "resize" || g.kind === "rotate") && g.started && shown) {
+        history.beginTransaction();
+        for (const b of g.boxes) {
+          const p = shown.get(b.id);
+          if (p) history.dispatch(reducers.updateElement, slide.id, b.id, patchFor(g.kind, b, p));
+        }
+        history.endTransaction();
+      } else if (g.kind === "marquee") {
+        const m = marqueeRef.current;
+        if (m && (m.w > 1 || m.h > 1)) {
+          const hits = marqueeHits(boxesRef.current, m);
+          actions.select(g.additive ? Array.from(new Set([...g.base, ...hits])) : hits);
+        }
+      }
+    },
+    [actions, history, slide.id],
+  );
+
+  /**
+   * Forget the gesture and every transient drawing. A drag opened its transaction on first
+   * movement; this closes it, so the history records whatever `commit` dispatched — or nothing at
+   * all on a cancel (an Alt-duplicate's copies are the one exception, and stay where they are).
+   */
+  const reset = useCallback(() => {
+    const g = gesture.current;
+    if (g.kind === "drag" && g.started) history.endTransaction();
+    gesture.current = { kind: "none" };
+    sample.current = null;
+    setPointerGestureActive(false);
+    releasePointer();
+    if (raf.current) cancelAnimationFrame(raf.current);
+    raf.current = 0;
+    publish(null);
+    setMarquee(null);
+    setGuides([]);
+    setAngleLabel(null);
+  }, [history, publish, releasePointer]);
+
+  /** Pointer released: commit what the preview showed, then reset. */
+  const endGesture = useCallback(() => {
+    commit(gesture.current);
+    reset();
+  }, [commit, reset]);
+
+  /** Pointer cancelled, window blurred or tab hidden: the preview is discarded, nothing lands. */
+  const cancelGesture = useCallback(() => {
+    if (gesture.current.kind === "none") return;
+    reset();
+  }, [reset]);
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -696,12 +416,8 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
     // Alt-Tab, an OS-level drag or a tab switch never delivers pointerup, and pointercancel does
     // not fire for window blur. Without these the gesture is stranded and the transaction stays
     // open, so later edits go unrecorded too.
-    const onAbort = () => {
-      if (gesture.current.kind === "none") return;
-      endGesture();
-    };
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") onAbort();
+      if (document.visibilityState === "hidden") cancelGesture();
     };
     const onKey = (e: KeyboardEvent) => {
       if (gesture.current.kind === "none" || !sample.current) return;
@@ -715,31 +431,26 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-    window.addEventListener("blur", onAbort);
+    window.addEventListener("pointercancel", cancelGesture);
+    window.addEventListener("blur", cancelGesture);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("keydown", onKey);
     window.addEventListener("keyup", onKey);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-      window.removeEventListener("blur", onAbort);
+      window.removeEventListener("pointercancel", cancelGesture);
+      window.removeEventListener("blur", cancelGesture);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("keyup", onKey);
     };
-  }, [endGesture, flush, schedule]);
+  }, [cancelGesture, endGesture, flush, schedule]);
 
   // Unmounting mid-gesture must not leave the history's transaction open either.
-  const endRef = useRef(endGesture);
-  endRef.current = endGesture;
-  useEffect(
-    () => () => {
-      if (gesture.current.kind !== "none") endRef.current();
-    },
-    [],
-  );
+  const cancelRef = useRef(cancelGesture);
+  cancelRef.current = cancelGesture;
+  useEffect(() => () => cancelRef.current(), []);
 
   /* ---------------- hit testing ---------------- */
 
@@ -778,7 +489,8 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
   };
 
   const onStageDown = (e: ReactPointerEvent) => {
-    if (e.button !== 0) return;
+    // While the canvas pans (Space held) the press belongs to the scroller, not to the elements.
+    if (e.button !== 0 || disabled) return;
     const session = readSession();
     measureStage();
     focusStage();
@@ -843,7 +555,7 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
 
   const onHandleDown = (handle: HandleId, e: ReactPointerEvent) => {
     e.stopPropagation();
-    if (e.button !== 0) return;
+    if (e.button !== 0 || disabled) return;
     const ids = unlockedSelection();
     if (ids.length === 0) return;
     measureStage();
@@ -867,7 +579,7 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
 
   const onRotateDown = (_corner: HandleId, e: ReactPointerEvent) => {
     e.stopPropagation();
-    if (e.button !== 0) return;
+    if (e.button !== 0 || disabled) return;
     const ids = unlockedSelection();
     if (ids.length === 0) return;
     measureStage();
@@ -901,7 +613,7 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
     position: "absolute",
     pointerEvents: "auto",
     touchAction: "none",
-    cursor,
+    cursor: disabled ? "grab" : cursor,
   };
 
   // While a text editor is mounted (TEACH-104), the stage catcher opens a hole over that element
@@ -994,80 +706,24 @@ export function SelectionLayer({ slide, preview, onPreview, className }: Selecti
         />
       ) : null}
 
-      {selected.length > 1 ? (
+      {selected.length > 1 && selectionBounds ? (
         <>
-          {selected.map((b) => (
-            <div
-              key={b.id}
-              aria-hidden
-              style={{
-                position: "absolute",
-                left: b.rect.x,
-                top: b.rect.y,
-                width: b.rect.w,
-                height: b.rect.h,
-                transform: b.rotation ? `rotate(${b.rotation}deg)` : undefined,
-                transformOrigin: "50% 50%",
-                outline: `${1 / scale}px solid ${TOKENS.frame}`,
-                opacity: 0.6,
-                pointerEvents: "none",
-              }}
-            />
-          ))}
-          {selectionBounds ? (
-            <SelectionFrame
-              rect={selectionBounds}
-              scale={scale}
-              handles={!gestureOn}
-              coarsePointer={coarse}
-              onHandleDown={onHandleDown}
-              onRotateDown={onRotateDown}
-            />
-          ) : null}
+          <MemberOutlines boxes={selected} scale={scale} />
+          <SelectionFrame
+            rect={selectionBounds}
+            scale={scale}
+            handles={!gestureOn}
+            coarsePointer={coarse}
+            onHandleDown={onHandleDown}
+            onRotateDown={onRotateDown}
+          />
         </>
       ) : null}
 
       {showGuides ? <Guides guides={guides} scale={scale} /> : null}
-
-      {marquee ? (
-        <div
-          aria-hidden
-          data-marquee
-          style={{
-            position: "absolute",
-            left: marquee.x,
-            top: marquee.y,
-            width: marquee.w,
-            height: marquee.h,
-            background: TOKENS.marqueeFill,
-            outline: `${1 / scale}px solid ${TOKENS.frame}`,
-            pointerEvents: "none",
-          }}
-        />
-      ) : null}
-
+      {marquee ? <Marquee rect={marquee} scale={scale} /> : null}
       {angleLabel !== null && selectionBounds ? (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: selectionBounds.x + selectionBounds.w / 2,
-            top: selectionBounds.y + selectionBounds.h + 10 / scale,
-            transform: "translateX(-50%)",
-            background: TOKENS.frame,
-            color: "#fff",
-            fontSize: 11 / scale,
-            lineHeight: 1.2,
-            fontFamily: "var(--font-ui), system-ui, sans-serif",
-            fontVariantNumeric: "tabular-nums",
-            padding: `${2 / scale}px ${6 / scale}px`,
-            borderRadius: 3 / scale,
-            whiteSpace: "nowrap",
-            pointerEvents: "none",
-          }}
-        >
-          {angleLabel}&deg;
-        </div>
+        <AngleLabel bounds={selectionBounds} angle={angleLabel} scale={scale} />
       ) : null}
     </div>
   );

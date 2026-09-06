@@ -73,15 +73,35 @@ export const moveSlides = (lesson: Lesson, ids: Id[], toIndex: number): Lesson =
   });
 };
 
-/** Move a set of slides one place up or down together; already at the end → unchanged. */
+/**
+ * Move each picked slide one place up or down by swapping it with its unpicked neighbour, so a
+ * non-contiguous selection keeps its gaps and a block at the end stays put. Picked slides are
+ * walked from the leading edge so two neighbours never trade places with each other.
+ */
 export const nudgeSlides = (lesson: Lesson, ids: Id[], dir: -1 | 1): Lesson => {
   const set = new Set(ids);
-  const positions = lesson.slides.flatMap((s, i) => (set.has(s.id) ? [i] : []));
-  const first = positions[0];
-  const last = positions[positions.length - 1];
-  if (first === undefined || last === undefined) return lesson;
-  const target = dir === -1 ? Math.max(0, first - 1) : Math.min(lesson.slides.length, last + 2);
-  return moveSlides(lesson, ids, target);
+  const order = lesson.slides.map((s) => s.id);
+  const indices = order.flatMap((id, i) => (set.has(id) ? [i] : []));
+  if (indices.length === 0) return lesson;
+  if (dir === 1) indices.reverse();
+  let moved = false;
+  for (const i of indices) {
+    const j = i + dir;
+    const neighbour = order[j];
+    const own = order[i];
+    if (neighbour === undefined || own === undefined || set.has(neighbour)) continue;
+    order[i] = neighbour;
+    order[j] = own;
+    moved = true;
+  }
+  if (!moved) return lesson;
+  const byId = new Map(lesson.slides.map((s) => [s.id, s]));
+  return edit(lesson, (l) => {
+    l.slides = order.flatMap((id) => {
+      const s = byId.get(id);
+      return s ? [s] : [];
+    });
+  });
 };
 
 export type SlidePatch = Partial<Omit<Slide, "id" | "elements">>;
