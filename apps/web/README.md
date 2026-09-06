@@ -125,13 +125,20 @@ TS imports (follow-up: give `@tj/ui` an importable `theme-init` entry).
 
 `vite build` writes `dist/.vite/manifest.json`; from the root, `bun run check:bundle-budget`
 sums the entry chunk + static imports + CSS (gzip) and fails above 250 KB (warns at 200 KB). CI runs
-it on every PR. Current initial load ≈ 134 KB gz. Keep it down by:
+it on every PR. Keep it down by:
 
 - route pages via `lazyRouteComponent` (own chunks — see `sign-in.page`, `index.page`,
   `dev-jobs.page`); shared page-only deps (better-auth client) land in a lazy shared chunk;
 - devtools only through `import.meta.env.DEV` dynamic imports (`root.layout.tsx`);
 - Vite 8 bundles with **Rolldown**: `output.manualChunks` is deprecated, so React is pinned to its
   own chunk with `build.rollupOptions.output.codeSplitting.groups`.
+
+Recorded initial load, so drift is visible in review (update the row when a PR moves it by more
+than 2 KB):
+
+| Date | Initial load (gz) | After |
+| --- | --- | --- |
+| 2026-09-06 | 176.6 KB | library shell, cards, dialogs, series detail (TEACH-89 → 94) |
 
 ## Deploy (Vercel, ADR 0010)
 

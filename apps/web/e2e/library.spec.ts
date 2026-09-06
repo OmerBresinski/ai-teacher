@@ -234,4 +234,72 @@ test.describe("library shell", () => {
     await page.waitForTimeout(500);
     await scanAll("dark");
   });
+
+  test("keyboard only: Tab to a card, F2 rename, Enter; Tab to the menu, Delete, Undo", async ({
+    signedInPage: { page },
+  }) => {
+    await page.goto("/lessons");
+    await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
+    // Start from the page's first control and Tab until the first card's cover link has focus.
+    await page.getByRole("searchbox", { name: "Search by title" }).focus();
+    const coverLink = page.getByRole("link", { name: "Open The water cycle" });
+    for (let presses = 0; presses < 12; presses += 1) {
+      if (await coverLink.evaluate((el) => el === document.activeElement)) break;
+      await page.keyboard.press("Tab");
+    }
+    await expect(coverLink).toBeFocused();
+
+    await page.keyboard.press("F2");
+    const input = page.getByRole("textbox", { name: "Rename The water cycle" });
+    await expect(input).toBeFocused();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("Water everywhere");
+    await page.keyboard.press("Enter");
+    const renamedLink = page.getByRole("link", { name: "Open Water everywhere" });
+    await expect(renamedLink).toBeVisible();
+
+    // Overlay actions become visible on focus-within: Tab reaches Present, then the menu.
+    await expect(renamedLink).toBeFocused();
+    await page.keyboard.press("Tab");
+    const card = page.locator("article", { hasText: "Water everywhere" }).first();
+    await expect(card.getByRole("button", { name: "Present" })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(card.getByRole("button", { name: "More actions" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("menu")).toBeVisible();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("menuitem", { name: "Delete" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(renamedLink).toHaveCount(0);
+
+    // The toast's Undo is reachable by keyboard: Tab from wherever focus landed until it is focused.
+    const undo = page.getByRole("button", { name: "Undo" });
+    await expect(undo).toBeVisible();
+    for (let presses = 0; presses < 40; presses += 1) {
+      if (await undo.evaluate((el) => el === document.activeElement)) break;
+      await page.keyboard.press("Tab");
+    }
+    await expect(undo).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("link", { name: "Open Water everywhere" })).toBeVisible();
+  });
+
+  test("narrow viewport: two-column grid and a usable sidebar", async ({
+    signedInPage: { page },
+  }) => {
+    await page.setViewportSize({ width: 900, height: 700 });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+    const recent = page.getByRole("region", { name: "Recent" });
+    const columns = await recent
+      .locator(".grid")
+      .first()
+      .evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(" ").length);
+    expect(columns).toBe(2);
+    await page.getByRole("button", { name: "Collapse sidebar" }).click();
+    await expect(page.getByRole("navigation", { name: "Library" })).toHaveCSS("width", "56px");
+    await page.getByRole("link", { name: /^Lessons\b/ }).click();
+    await expect(page).toHaveURL(/\/lessons$/);
+    await expectNoSeriousA11yViolations(page, "/lessons (900px)");
+  });
 });

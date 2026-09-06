@@ -29,7 +29,7 @@ import {
   SquareArrowOutUpRight,
   Trash2,
 } from "lucide-react";
-import { memo, type ReactNode } from "react";
+import { memo, type ReactNode, useRef } from "react";
 import { sizeOf, yearAndSubject } from "@/lib/format";
 import type { DocumentSummary } from "@/mocks/library-schema";
 import { EditedTime } from "./edited-time";
@@ -52,14 +52,16 @@ function DocumentLink({
   hidden = false,
   children,
   onDoubleClick,
+  ref,
 }: {
   doc: DocumentSummary;
   className?: string;
   hidden?: boolean;
   children?: ReactNode;
   onDoubleClick?: React.MouseEventHandler<HTMLAnchorElement>;
+  ref?: React.Ref<HTMLAnchorElement>;
 }) {
-  const props = { className, hidden, onDoubleClick, "aria-label": `Open ${doc.title}` };
+  const props = { className, hidden, onDoubleClick, ref, "aria-label": `Open ${doc.title}` };
   return doc.kind === "lesson" ? (
     <Link to="/l/$lessonId" params={{ lessonId: doc.id }} {...props}>
       {children}
@@ -154,7 +156,17 @@ export const LibraryCard = memo(function LibraryCard({
   onRename,
 }: LibraryCardProps) {
   const navigate = useNavigate();
-  const rename = useInlineRename(doc.title, { onCommit: (title) => onRename(doc, title) });
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  const rename = useInlineRename(doc.title, {
+    onCommit: (title) => onRename(doc, title),
+    // The cover link is hidden while editing; hand focus back to it so a keyboard user can carry
+    // on from the card (Tab reaches Present, then the menu) instead of falling to <body>. Wait a
+    // frame for the link to be visible again, and never steal focus from a rename that restarted.
+    onDone: () =>
+      requestAnimationFrame(() => {
+        if (!(document.activeElement instanceof HTMLInputElement)) linkRef.current?.focus();
+      }),
+  });
   const subject = yearAndSubject(doc);
   const primaryLabel = doc.kind === "lesson" ? "Present" : "Print";
 
@@ -186,6 +198,7 @@ export const LibraryCard = memo(function LibraryCard({
             title
           ) : (
             <DocumentLink
+              ref={linkRef}
               doc={doc}
               onDoubleClick={(event) => {
                 event.preventDefault();
@@ -242,6 +255,7 @@ export const LibraryCard = memo(function LibraryCard({
       onDoubleClick={rename.start}
     >
       <DocumentLink
+        ref={linkRef}
         doc={doc}
         hidden={rename.editing}
         className="absolute inset-0 z-1 rounded-face outline-none focus-visible:ring-2 focus-visible:ring-ring"

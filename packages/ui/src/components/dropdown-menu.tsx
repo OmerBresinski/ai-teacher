@@ -35,6 +35,8 @@ function DropdownMenuTrigger({
 function DropdownMenuContent({
   className,
   sideOffset = 4,
+  // Arrow keys wrap at both ends, as TeachDeck's menus did (Radix defaults to stopping).
+  loop = true,
   children,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
@@ -43,6 +45,7 @@ function DropdownMenuContent({
       <DropdownMenuPrimitive.Content
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
+        loop={loop}
         className={cn(
           `${dropdownMenuContentClass} max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto`,
           className,
