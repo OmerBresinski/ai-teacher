@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Lesson } from "./lesson";
 import type { Series } from "./series";
-import { type Slide, SlideSchema } from "./slide";
+import { type Slide, type SlideElement, SlideSchema } from "./slide";
 import type { Worksheet } from "./worksheet";
 
 /*
@@ -52,6 +52,32 @@ export function documentKind(doc: Document): DocumentKind {
   return "series";
 }
 
+const isDataUrl = (src: string): boolean => src.startsWith("data:");
+
+function stripDataUrls(elements: SlideElement[]): void {
+  for (const element of elements) {
+    if (element.type === "image" && isDataUrl(element.src)) element.src = "";
+    else if (element.type === "group") stripDataUrls(element.children);
+  }
+}
+
+/**
+ * The first slide as the library card paints it. Data-URL images (in elements, nested groups and
+ * the slide background) are stripped to an empty `src` so a list response and the promoted
+ * `cover` column never carry megabytes of base64 (ADR 0021 §5); the renderer shows the image
+ * frame without a picture. A deep copy, so a caller mutating the cover never reaches the document.
+ */
+export function coverOf(lesson: Lesson): Slide | null {
+  const first = lesson.slides[0];
+  if (!first) return null;
+  const cover = structuredClone(first);
+  stripDataUrls(cover.elements);
+  if (cover.background?.image !== undefined && isDataUrl(cover.background.image)) {
+    cover.background.image = "";
+  }
+  return cover;
+}
+
 export function summarise(doc: Document): DocumentSummary {
   const base = { id: doc.id, title: doc.title, createdAt: doc.createdAt, updatedAt: doc.updatedAt };
   if ("slides" in doc) {
@@ -62,7 +88,7 @@ export function summarise(doc: Document): DocumentSummary {
       yearGroup: doc.yearGroup,
       themeId: doc.themeId,
       itemCount: doc.slides.length,
-      cover: doc.slides[0] ?? null,
+      cover: coverOf(doc),
     };
   }
   if ("blocks" in doc) {

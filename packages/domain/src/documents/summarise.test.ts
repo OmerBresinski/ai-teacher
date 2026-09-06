@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { lesson, titleSlide, worksheet } from "./fixtures.test-helpers";
 import type { Series } from "./series";
-import { DocumentKindSchema, DocumentSummarySchema, documentKind, summarise } from "./summarise";
+import type { Slide, SlideElement } from "./slide";
+import {
+  coverOf,
+  DocumentKindSchema,
+  DocumentSummarySchema,
+  documentKind,
+  summarise,
+} from "./summarise";
 
 const series = (): Series => ({
   id: "series-fractions",
@@ -33,6 +40,44 @@ describe("summarise", () => {
 
   test("a lesson with no slides has a null cover", () => {
     expect(summarise({ ...lesson(), slides: [] })).toMatchObject({ itemCount: 0, cover: null });
+  });
+
+  test("the cover strips data-URL images (elements, groups, background) without touching the lesson", () => {
+    const dataUrl = "data:image/png;base64,iVBORw0KGgo=";
+    const image = (id: string, src: string): SlideElement => ({
+      id,
+      type: "image",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 100,
+      src,
+      fit: "cover",
+    });
+    const first: Slide = {
+      ...titleSlide(),
+      background: { image: dataUrl },
+      elements: [
+        image("i1", dataUrl),
+        image("i2", "/files/abc"),
+        { id: "g", type: "group", x: 0, y: 0, w: 1, h: 1, children: [image("i3", dataUrl)] },
+      ],
+    };
+    const doc = { ...lesson(), slides: [first] };
+    const cover = summarise(doc).cover;
+    expect(cover).not.toBeNull();
+    const els = cover?.elements ?? [];
+    expect(els[0]?.type === "image" && els[0].src).toBe("");
+    expect(els[1]?.type === "image" && els[1].src).toBe("/files/abc");
+    const group = els[2];
+    const nested = group?.type === "group" ? group.children[0] : undefined;
+    expect(nested?.type === "image" && nested.src).toBe("");
+    expect(cover?.background?.image).toBe("");
+    // The document itself is untouched.
+    const original = doc.slides[0]?.elements[0];
+    expect(original?.type === "image" && original.src).toBe(dataUrl);
+    expect(doc.slides[0]?.background?.image).toBe(dataUrl);
+    expect(coverOf(doc)).not.toBe(doc.slides[0]);
   });
 
   test("a worksheet: block count (not pages), null cover, its own theme", () => {
