@@ -1,16 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import {
-  Display,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-  Sidebar,
-  SidebarItem,
-  useTheme,
-} from "@tj/ui";
+import { Display, Sidebar, SidebarItem } from "@tj/ui";
 import {
   CircleHelp,
   FileText,
@@ -18,13 +8,14 @@ import {
   Layers,
   LogOut,
   Presentation,
-  SunMoon,
+  SwatchBook,
   Upload,
 } from "lucide-react";
 import { authClient } from "@/lib/auth";
 import { libraryQueries, librarySelectors } from "@/lib/library";
 import { queryKeys } from "@/lib/query";
 import { usePreference } from "@/lib/use-preference";
+import { ThemeMenu } from "./theme-menu";
 
 /** Stable client storage contract (apps/web/AGENTS.md); "1" collapsed, anything else expanded. */
 const COLLAPSED_KEY = "tj:sidebar-collapsed";
@@ -38,8 +29,8 @@ const WORKSHEETS_ICON = <FileText {...ICON} />;
 const SERIES_ICON = <Layers {...ICON} />;
 const IMPORT_ICON = <Upload {...ICON} />;
 const SHORTCUTS_ICON = <CircleHelp {...ICON} />;
-const THEME_ICON = <SunMoon {...ICON} />;
 const SIGN_OUT_ICON = <LogOut {...ICON} />;
+const KIT_ICON = <SwatchBook {...ICON} />;
 const WORDMARK = (
   <Display as="span" size="md" className="whitespace-nowrap">
     TeachDeck
@@ -66,7 +57,6 @@ export function LibrarySidebar({
   // `usePreference` caches the read and announces same-tab writes, like the sort/view prefs.
   const [collapsedFlag, setCollapsedFlag] = usePreference(COLLAPSED_KEY, COLLAPSED_VALUES, "0");
   const collapsed = collapsedFlag === "1";
-  const { theme, setTheme } = useTheme();
   // `select` keeps the sidebar subscribed to three numbers, not to every card's fields.
   const { data: documentCounts } = useQuery({
     ...libraryQueries.documents(),
@@ -104,22 +94,12 @@ export function LibrarySidebar({
           <SidebarItem icon={SHORTCUTS_ICON} onClick={onShortcuts}>
             Keyboard shortcuts
           </SidebarItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarItem icon={THEME_ICON}>Theme</SidebarItem>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuRadioGroup
-                value={theme}
-                onValueChange={(value) => setTheme(value as typeof theme)}
-              >
-                <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="dark">Dark</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="high-contrast">High contrast</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="system">System</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {import.meta.env.DEV ? (
+            <SidebarItem asChild icon={KIT_ICON} active={pathname === "/kit"}>
+              <Link to="/kit">Kit</Link>
+            </SidebarItem>
+          ) : null}
+          <ThemeMenu />
           <SidebarItem icon={SIGN_OUT_ICON} onClick={() => void signOut()}>
             Sign out
           </SidebarItem>
