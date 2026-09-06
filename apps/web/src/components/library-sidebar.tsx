@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { authClient } from "@/lib/auth";
-import { libraryCounts, libraryQueries } from "@/lib/library";
+import { libraryQueries, librarySelectors } from "@/lib/library";
 import { queryKeys } from "@/lib/query";
 
 const COLLAPSED_KEY = "tj:sidebar-collapsed";
@@ -63,9 +63,15 @@ export function LibrarySidebar({
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
   const { theme, setTheme } = useTheme();
-  const documents = useQuery(libraryQueries.documents());
-  const series = useQuery(libraryQueries.series());
-  const counts = libraryCounts(documents.data ?? [], series.data ?? []);
+  // `select` keeps the sidebar subscribed to three numbers, not to every card's fields.
+  const { data: documentCounts } = useQuery({
+    ...libraryQueries.documents(),
+    select: librarySelectors.countsByKind,
+  });
+  const { data: seriesCount } = useQuery({
+    ...libraryQueries.series(),
+    select: librarySelectors.length,
+  });
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -139,7 +145,7 @@ export function LibrarySidebar({
       <SidebarItem
         asChild
         icon={<Presentation size={16} strokeWidth={1.5} />}
-        count={counts.lesson}
+        count={documentCounts?.lesson}
         active={isActive(pathname, "/lessons")}
       >
         <Link to="/lessons">Lessons</Link>
@@ -147,7 +153,7 @@ export function LibrarySidebar({
       <SidebarItem
         asChild
         icon={<FileText size={16} strokeWidth={1.5} />}
-        count={counts.worksheet}
+        count={documentCounts?.worksheet}
         active={isActive(pathname, "/worksheets")}
       >
         <Link to="/worksheets">Worksheets</Link>
@@ -155,7 +161,7 @@ export function LibrarySidebar({
       <SidebarItem
         asChild
         icon={<Layers size={16} strokeWidth={1.5} />}
-        count={counts.series}
+        count={seriesCount}
         active={isActive(pathname, "/series")}
       >
         <Link to="/series">Series</Link>

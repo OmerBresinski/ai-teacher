@@ -1,18 +1,12 @@
-import { Outlet, useRouterState } from "@tanstack/react-router";
+import { Outlet } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Kbd } from "@tj/ui";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LibraryShellContext } from "@/components/library-shell-context";
 import { LibrarySidebar } from "@/components/library-sidebar";
-import { rememberShell } from "@/lib/last-shell";
 
 export function LibraryLayout() {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [importOpen, setImportOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-
-  useEffect(() => {
-    rememberShell(pathname);
-  }, [pathname]);
 
   return (
     <LibraryShellContext.Provider value={{ openImport: () => setImportOpen(true) }}>

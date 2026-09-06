@@ -1,4 +1,4 @@
-import { Outlet } from "@tanstack/react-router";
+import { HeadContent, Outlet } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 
 /**
@@ -16,6 +16,7 @@ const Devtools = import.meta.env.DEV
 export function RootLayout() {
   return (
     <>
+      <HeadContent />
       <Outlet />
       <Suspense fallback={null}>
         <Devtools />

@@ -54,6 +54,12 @@ export async function listDocuments(): Promise<DocumentSummary[]> {
     .map(copy);
 }
 
+export async function loadDocument(id: string): Promise<DocumentSummary | null> {
+  await delay();
+  const document = documents.get(id);
+  return document && !document.deletedAt ? copy(document) : null;
+}
+
 // Deliberate per TEACH-88/TEACH-91: the input contract mirrors what the real API will receive so
 // the mock→API swap does not change call sites; the summary shape intentionally omits them until
 // the tie-in contract (TD item 1) fixes the document model.

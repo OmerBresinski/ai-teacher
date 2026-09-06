@@ -97,8 +97,11 @@ test.describe("library shell", () => {
   test("editor stubs return to the last library page", async ({ signedInPage: { page } }) => {
     await page.goto("/lessons");
     await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
+    await expect(page).toHaveTitle("Lessons · Teaching Journey");
     await page.goto("/l/demo-water-cycle");
     await expect(page.getByText("The editor arrives with @tj/editor")).toBeVisible();
+    // Route `head()` reads the loader's document.
+    await expect(page).toHaveTitle("The water cycle · Teaching Journey");
     await expect(page.getByRole("navigation", { name: "Library" })).not.toBeVisible();
     await page.getByLabel("Back to the library").click();
     await expect(page).toHaveURL(/\/lessons$/);
