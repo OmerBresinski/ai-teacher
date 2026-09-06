@@ -4,7 +4,7 @@ import { type CSSProperties, useMemo, useState } from "react";
 import { hasExplanationPanel } from "../layout/explanation";
 import { SAFE } from "../model/grid";
 import { docToPlainText } from "../text/static";
-import { ElementFrame } from "./elements/ElementFrame";
+import { ElementFrame, type ElementTransform } from "./elements/ElementFrame";
 import { ExplanationPanel } from "./elements/ExplanationPanel";
 import {
   explanationText,
@@ -32,7 +32,15 @@ export type SlideViewProps = {
   /** Question slides: show the correct answer state. */
   revealAnswer?: boolean;
   className?: string;
+  /**
+   * Edit mode: geometry to paint for elements mid-gesture, keyed by element id. The transform layer
+   * previews a drag here and dispatches one reducer on release (ADR 0022 §4), so the cache — and
+   * every other subscriber — is untouched while the pointer moves.
+   */
+  transformOverride?: ReadonlyMap<string, ElementTransform>;
 };
+
+export type { ElementTransform };
 
 const ALL = Number.POSITIVE_INFINITY;
 
@@ -48,6 +56,7 @@ export function SlideView({
   step,
   revealAnswer = false,
   className,
+  transformOverride,
 }: SlideViewProps) {
   /**
    * `step` unset means "show the finished slide" — what a thumbnail, an export and the
@@ -145,6 +154,7 @@ export function SlideView({
           sortIndex={sortIndex.get(el.id)}
           optionIndex={optionIndex.get(el.id)}
           animateReveals={forward}
+          override={mode === "edit" ? transformOverride?.get(el.id) : undefined}
         />
       ))}
 

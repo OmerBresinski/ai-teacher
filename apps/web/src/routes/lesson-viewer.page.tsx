@@ -6,17 +6,18 @@ import { ArrowLeft } from "lucide-react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryMutations, libraryQueries } from "@/lib/library";
+import { lessonViewRoute } from "./documents.route";
 import { EditorStubPage } from "./editor-stubs.page";
-import { lessonEditorRoute } from "./editor-stubs.route";
+import "@tj/editor/styles/editor.css";
 
 /**
- * `/l/$lessonId` — the read-only viewer (TEACH-100). The loader has already resolved the document
- * (or 404ed); until the full body arrives the list placeholder is a summary, so the page waits. A
- * worksheet id on a lesson route shows the stub, as before. The editor takes this route over in
- * phase C and the viewer moves to `/l/$lessonId/view`.
+ * `/l/$lessonId/view` — the read-only viewer (TEACH-100; `/l/$lessonId` is the editor since
+ * TEACH-103). The loader has already resolved the document (or 404ed); until the full body arrives
+ * the list placeholder is a summary, so the page waits. A worksheet id on a lesson route shows the
+ * stub, as before.
  */
 export function LessonViewerPage() {
-  const { lessonId } = useParams({ from: lessonEditorRoute.id });
+  const { lessonId } = useParams({ from: lessonViewRoute.id });
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const shellReturn = useShellReturn();
@@ -33,7 +34,7 @@ export function LessonViewerPage() {
       return;
     }
     toast(`Duplicated “${data.title}”`);
-    await navigate({ to: "/l/$lessonId", params: { lessonId: copy.id } });
+    await navigate({ to: "/l/$lessonId/view", params: { lessonId: copy.id } });
   };
 
   return (
@@ -57,7 +58,7 @@ export function LessonViewerPage() {
         void navigate({
           to: "/l/$lessonId/present",
           params: { lessonId },
-          search: { series: undefined, slide },
+          search: { series: undefined, slide, from: "view" },
         })
       }
       onDuplicate={onDuplicate}

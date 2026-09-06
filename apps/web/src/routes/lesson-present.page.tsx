@@ -4,8 +4,9 @@ import { type NextLesson, type PresentProgress, PresentView } from "@tj/editor/p
 import { Spinner } from "@tj/ui";
 import { useCallback, useMemo } from "react";
 import { isFullDocument, libraryMutations, libraryQueries } from "@/lib/library";
+import { lessonPresentRoute } from "./documents.route";
 import { EditorStubPage } from "./editor-stubs.page";
-import { lessonPresentRoute } from "./editor-stubs.route";
+import "@tj/editor/styles/editor.css";
 
 /**
  * `/l/$lessonId/present` (TEACH-101). `?series=` says this lesson is one of several being taught in
@@ -42,15 +43,19 @@ export function LessonPresentPage() {
     };
   }, [seriesId, series, lessonId, navigate]);
 
-  // Out goes back where the teacher came from: the series page, or the lesson (`from` decides
-  // which surface once the editor exists).
+  // Out goes back where the teacher came from: the series page, the viewer (`from=view`) or the
+  // editor (the default — Present from a card lands on the editor too).
   const onExit = useCallback(() => {
     if (seriesId) {
       void navigate({ to: "/series/$seriesId", params: { seriesId } });
       return;
     }
+    if (from === "view") {
+      void navigate({ to: "/l/$lessonId/view", params: { lessonId } });
+      return;
+    }
     void navigate({ to: "/l/$lessonId", params: { lessonId } });
-  }, [navigate, seriesId, lessonId]);
+  }, [navigate, seriesId, lessonId, from]);
 
   const lesson = data && isFullDocument(data) && "slides" in data ? data : null;
 
@@ -68,7 +73,6 @@ export function LessonPresentPage() {
 
   if (!data || !isFullDocument(data)) return <Loading />;
   if (!lesson) return <EditorStubPage />;
-  void from;
 
   return (
     <PresentView

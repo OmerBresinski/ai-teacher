@@ -25,8 +25,11 @@ export type AnyReducer = (lesson: Lesson, ...args: any[]) => ReducerResult;
 export type DocumentHistoryOptions<TData = unknown> = {
   /** The cache entry that holds the document (e.g. `queryKeys.libraryDocument(id)`). */
   queryKey: QueryKey;
-  /** The query's fetcher; the cache entry may hold a summary or `null` until it resolves. */
-  queryFn: QueryFunction<TData, QueryKey>;
+  /**
+   * The query's fetcher; the cache entry may hold a summary or `null` until it resolves. Optional
+   * because `queryOptions()` types its own as optional — the route loader has filled the cache.
+   */
+  queryFn?: QueryFunction<TData, QueryKey>;
   /** Called after every committed change — once per transaction, not per dispatch inside it. */
   onChange?: (lesson: Lesson) => void;
 };

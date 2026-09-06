@@ -12,7 +12,8 @@
     "./thumb": "./src/thumb.ts",
     "./starter": "./src/starter.ts",
     "./styles/editor.css": "./src/styles/editor.css",
-    "./present": "./src/present/index.ts"
+    "./present": "./src/present/index.ts",
+    "./lesson": "./src/lesson/index.ts"
   },
   "scripts": {
     "lint": "biome check .",
@@ -40,6 +41,7 @@
     "@fontsource-variable/public-sans": "5.3.0",
     "@fontsource-variable/schibsted-grotesk": "5.3.0",
     "@fontsource-variable/source-serif-4": "5.3.0",
+    "@tanstack/react-virtual": "3.14.10",
     "@tiptap/core": "3.31.3",
     "@tiptap/extension-color": "3.31.3",
     "@tiptap/extension-link": "3.31.3",

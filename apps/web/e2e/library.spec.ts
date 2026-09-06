@@ -19,7 +19,7 @@ test.describe("library shell", () => {
     await expect(page.getByRole("heading", { name: "Series" })).toBeVisible();
   });
 
-  test("New lesson creates an untitled lesson, opens its stub and leads Recent on return", async ({
+  test("New lesson creates an untitled lesson, opens the editor and leads Recent on return", async ({
     signedInPage: { page },
   }) => {
     await page.getByRole("button", { name: "New lesson" }).click();
@@ -28,9 +28,11 @@ test.describe("library shell", () => {
     await page.getByRole("button", { name: "Create lesson" }).click();
 
     await expect(page).toHaveURL(/\/l\/[^/]+$/);
-    await expect(page.getByText("Untitled lesson", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Untitled lesson", exact: true }),
+    ).toBeVisible();
 
-    await page.getByLabel("Back to the library").click();
+    await page.getByLabel("Back to library").click();
     await expect(page).toHaveURL(/\/$/);
     // Newest lesson is the Recent hero: first heading inside the Recent section.
     const recent = page.getByRole("region", { name: "Recent" });
@@ -95,7 +97,7 @@ test.describe("library shell", () => {
     await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
   });
 
-  test("editor stubs return to the last library page", async ({ signedInPage: { page } }) => {
+  test("document routes return to the last library page", async ({ signedInPage: { page } }) => {
     await page.goto("/lessons");
     await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
     await expect(page).toHaveTitle("Lessons · Teaching Journey");
@@ -103,12 +105,12 @@ test.describe("library shell", () => {
     await page.getByRole("link", { name: /^Worksheets\b/ }).hover();
     await page.waitForTimeout(300);
     await page.goto("/l/demo-water-cycle");
-    // The viewer (TEACH-100) owns `/l/*`; the stub remains on `/w/*` until phase D.
-    await expect(page.getByRole("navigation", { name: "Slides" })).toBeVisible();
+    // The editor (TEACH-103) owns `/l/*`; the stub remains on `/w/*` until phase D.
+    await expect(page.getByRole("listbox", { name: "Slides" })).toBeVisible();
     // Route `head()` reads the loader's document.
     await expect(page).toHaveTitle("The water cycle · Teaching Journey");
     await expect(page.getByRole("navigation", { name: "Library" })).not.toBeVisible();
-    await page.getByLabel("Back to the library").click();
+    await page.getByLabel("Back to library").click();
     await expect(page).toHaveURL(/\/lessons$/);
   });
 

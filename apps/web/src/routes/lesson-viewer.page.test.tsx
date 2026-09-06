@@ -51,7 +51,7 @@ describe("LessonViewerPage", () => {
     expect(navigate).toHaveBeenCalledWith({
       to: "/l/$lessonId/present",
       params: { lessonId: "demo-water-cycle" },
-      search: { series: undefined, slide: 2 },
+      search: { series: undefined, slide: 2, from: "view" },
     });
   });
 
@@ -62,7 +62,7 @@ describe("LessonViewerPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Make a copy" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     const call = navigate.mock.calls[0]?.[0] as { to: string; params: { lessonId: string } };
-    expect(call.to).toBe("/l/$lessonId");
+    expect(call.to).toBe("/l/$lessonId/view");
     expect(call.params.lessonId).not.toBe("demo-water-cycle");
     expect((await listDocuments()).length).toBe(before + 1);
     expect(toastSpy).toHaveBeenCalledWith("Duplicated “The water cycle”");

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { defaultParseSearch } from "@tanstack/react-router";
 import { devJobsSearchSchema } from "./dev-jobs.route";
-import { presentSearchSchema } from "./editor-stubs.route";
+import { presentSearchSchema } from "./documents.route";
 import { librarySearchSchema } from "./library.route";
 import { signInSearchSchema } from "./sign-in.route";
 

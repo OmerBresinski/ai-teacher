@@ -49,6 +49,61 @@ export const moveSlide = (lesson: Lesson, id: Id, toIndex: number): Lesson =>
     if (s) l.slides.splice(Math.max(0, Math.min(toIndex, l.slides.length)), 0, s);
   });
 
+/**
+ * Reorder a set of slides to `toIndex` in one step (the navigator's drag and ⌘↑/↓). The picked
+ * slides keep their relative order and land where the insertion line was; unknown ids are ignored.
+ * One reducer rather than N `moveSlide`s so the order is computed from the lesson being edited,
+ * never from a render that may be a tick behind the cache.
+ */
+export const moveSlides = (lesson: Lesson, ids: Id[], toIndex: number): Lesson => {
+  const order = lesson.slides.map((s) => s.id);
+  const set = new Set(ids);
+  const picked = order.filter((id) => set.has(id));
+  if (picked.length === 0) return lesson;
+  const before = order.slice(0, toIndex).filter((id) => !set.has(id)).length;
+  const rest = order.filter((id) => !set.has(id));
+  const next = [...rest.slice(0, before), ...picked, ...rest.slice(before)];
+  if (next.every((id, i) => id === order[i])) return lesson;
+  const byId = new Map(lesson.slides.map((s) => [s.id, s]));
+  return edit(lesson, (l) => {
+    l.slides = next.flatMap((id) => {
+      const s = byId.get(id);
+      return s ? [s] : [];
+    });
+  });
+};
+
+/**
+ * Move each picked slide one place up or down by swapping it with its unpicked neighbour, so a
+ * non-contiguous selection keeps its gaps and a block at the end stays put. Picked slides are
+ * walked from the leading edge so two neighbours never trade places with each other.
+ */
+export const nudgeSlides = (lesson: Lesson, ids: Id[], dir: -1 | 1): Lesson => {
+  const set = new Set(ids);
+  const order = lesson.slides.map((s) => s.id);
+  const indices = order.flatMap((id, i) => (set.has(id) ? [i] : []));
+  if (indices.length === 0) return lesson;
+  if (dir === 1) indices.reverse();
+  let moved = false;
+  for (const i of indices) {
+    const j = i + dir;
+    const neighbour = order[j];
+    const own = order[i];
+    if (neighbour === undefined || own === undefined || set.has(neighbour)) continue;
+    order[i] = neighbour;
+    order[j] = own;
+    moved = true;
+  }
+  if (!moved) return lesson;
+  const byId = new Map(lesson.slides.map((s) => [s.id, s]));
+  return edit(lesson, (l) => {
+    l.slides = order.flatMap((id) => {
+      const s = byId.get(id);
+      return s ? [s] : [];
+    });
+  });
+};
+
 export type SlidePatch = Partial<Omit<Slide, "id" | "elements">>;
 
 export const updateSlide = (lesson: Lesson, id: Id, patch: SlidePatch): Lesson =>

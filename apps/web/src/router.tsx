@@ -15,9 +15,10 @@ import { devJobsRoute } from "@/routes/dev-jobs.route";
 import {
   lessonEditorRoute,
   lessonPresentRoute,
+  lessonViewRoute,
   worksheetEditorRoute,
   worksheetPrintRoute,
-} from "@/routes/editor-stubs.route";
+} from "@/routes/documents.route";
 import { kitRoute } from "@/routes/kit.route";
 import {
   indexRoute,
@@ -41,6 +42,7 @@ export const routeTree = rootRoute.addChildren([
       seriesDetailRoute,
     ]),
     lessonEditorRoute,
+    lessonViewRoute,
     lessonPresentRoute,
     worksheetEditorRoute,
     worksheetPrintRoute,

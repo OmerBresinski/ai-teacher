@@ -41,7 +41,8 @@ test.describe("accessibility (axe)", () => {
     { path: "/worksheets", ready: "Worksheets" },
     { path: "/series", ready: "Series" },
     { path: "/series/series-romans", ready: "The Romans" },
-    { path: "/l/demo-water-cycle", ready: /\d+ slides/ },
+    { path: "/l/demo-water-cycle", ready: "The water cycle" },
+    { path: "/l/demo-water-cycle/view", ready: /\d+ slides/ },
     { path: "/l/demo-water-cycle/present", ready: "Start presenting" },
     { path: "/w/fraction-practice/print", ready: "The editor arrives with @tj/editor" },
   ];

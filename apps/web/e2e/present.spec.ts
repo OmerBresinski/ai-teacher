@@ -155,17 +155,29 @@ test.describe("present mode", () => {
     await expect(page).toHaveURL(/\/series\/series-romans$/);
   });
 
-  test("?slide= opens on that slide; Escape from the viewer's Present returns to the lesson", async ({
+  test("?slide= opens on that slide; Escape from the viewer's Present returns to the viewer", async ({
     signedInPage: { page },
   }) => {
-    await page.goto("/l/demo-water-cycle");
+    await page.goto("/l/demo-water-cycle/view");
     await expect(page.getByRole("status")).toHaveText(/Slide 1 of/);
     await page.keyboard.press("ArrowRight");
     await page.getByRole("button", { name: "Present" }).click();
-    await expect(page).toHaveURL(/present\?slide=2$/);
+    await expect(page).toHaveURL(/present\?(from=view&slide=2|slide=2&from=view)$/);
     await page.getByRole("button", { name: "Stay in this window" }).click();
     await expect(status(page)).toContainText("Slide 2 of");
     await page.keyboard.press("Escape");
+    await expect(page).toHaveURL(/\/l\/demo-water-cycle\/view$/);
+  });
+
+  test("Escape from the editor's Present returns to the editor", async ({
+    signedInPage: { page },
+  }) => {
+    await page.goto("/l/demo-water-cycle");
+    await page.getByRole("button", { name: "Present" }).click();
+    await expect(page).toHaveURL(/present\?from=edit$/);
+    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await page.keyboard.press("Escape");
     await expect(page).toHaveURL(/\/l\/demo-water-cycle$/);
+    await expect(page.getByRole("listbox", { name: "Slides" })).toBeVisible();
   });
 });
