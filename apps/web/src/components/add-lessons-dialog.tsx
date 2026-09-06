@@ -2,6 +2,9 @@
  * Pick lessons to add to a series. No consumer yet: the series detail page (TEACH-92) mounts it
  * through `React.lazy` like `NewDocumentDialog` in `library-page.tsx`, so it stays out of the
  * initial bundle. Import it lazily; never statically from a route that is in the initial load.
+ *
+ * State lives for the life of the mount: render it only while open (or give it a fresh `key`), so
+ * every opening starts clean without a reset effect.
  */
 import {
   Button,
@@ -15,7 +18,7 @@ import {
   SearchInput,
   Spinner,
 } from "@tj/ui";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { DocumentSummary } from "@/mocks/library-schema";
 
 export type AddLessonsDialogProps = {
@@ -37,13 +40,6 @@ export function AddLessonsDialog({
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setQuery("");
-    setSelected([]);
-    setBusy(false);
-  }, [open]);
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();

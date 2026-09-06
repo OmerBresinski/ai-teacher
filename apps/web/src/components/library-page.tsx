@@ -1,66 +1,58 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Button,
-  Card,
   Display,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  EmptyState,
   IconButton,
   IconGroup,
-  ListSurface,
-  ListSurfaceCell,
-  ListSurfaceHeader,
   SearchInput,
   SectionHeading,
-  Skeleton,
   Tile,
-  toast,
 } from "@tj/ui";
-import {
-  ArrowDownUp,
-  FileText,
-  Layers,
-  LayoutGrid,
-  LibraryBig,
-  List,
-  Presentation,
-} from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { LibraryCard, type LibraryCardProps } from "@/components/library-card";
+import { ArrowDownUp, FileText, Layers, LayoutGrid, List, Presentation } from "lucide-react";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
+import { LibraryCard } from "@/components/library-card";
 import { useLibraryShell } from "@/components/library-shell-context";
-import type { NewDocumentValues } from "@/components/new-document-dialog";
-import { SeriesCard, type SeriesCardProps } from "@/components/series-card";
 import { useNow } from "@/hooks/use-now";
-import { libraryMutations, libraryQueries, sortDocuments } from "@/lib/library";
-import type { DocumentSummary, SeriesWithLessons } from "@/mocks/library-schema";
+import { useSlashToFocus } from "@/hooks/use-slash-to-focus";
+import { libraryQueries } from "@/lib/library";
+import { usePreference } from "@/lib/use-preference";
+import {
+  EMPTY_DOCUMENTS,
+  EMPTY_SERIES,
+  HOME_BANDS,
+  homeShelves,
+  kindShelf,
+  type LibraryMode,
+  SORT_LABELS,
+  SORTS,
+  type Sort,
+  seriesShelf,
+  splitByRecency,
+  TITLES,
+  VIEWS,
+  type View,
+} from "./library/library-model";
+import {
+  DocumentGrid,
+  DocumentResults,
+  EmptyLibrary,
+  GRID,
+  HomeSection,
+  LoadFailed,
+  NoMatches,
+  SeriesGrid,
+  SkeletonGrid,
+} from "./library/library-sections";
+import { useLibraryActions } from "./library/use-library-actions";
 
-export type LibraryMode = "home" | "lesson" | "worksheet" | "series";
+export type { LibraryMode } from "./library/library-model";
 
-type Sort = "edited" | "created" | "title";
-type View = "grid" | "list";
-
-const TITLES: Record<LibraryMode, string> = {
-  home: "Home",
-  lesson: "Lessons",
-  worksheet: "Worksheets",
-  series: "Series",
-};
-const SORT_LABELS: Record<Sort, string> = {
-  edited: "Edited",
-  created: "Created",
-  title: "Title A–Z",
-};
-const HOME_CARDS = 4;
-const HOME_BANDS = 3;
-const SPLIT_AT = 8;
-const RECENT_MS = 7 * 24 * 60 * 60 * 1000;
-const GRID = "grid grid-cols-2 gap-6 lg:grid-cols-3 xl:grid-cols-4";
-const SKELETON_KEYS = ["one", "two", "three", "four"] as const;
 const NewDocumentDialog = lazy(() =>
   import("./new-document-dialog").then(({ NewDocumentDialog }) => ({ default: NewDocumentDialog })),
 );
@@ -68,252 +60,84 @@ const NewSeriesDialog = lazy(() =>
   import("./new-series-dialog").then(({ NewSeriesDialog }) => ({ default: NewSeriesDialog })),
 );
 
-function readPreference<T extends string>(key: string, values: readonly T[], fallback: T): T {
-  try {
-    const value = localStorage.getItem(key);
-    return values.includes(value as T) ? (value as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+const LESSON_TILE_ICON = <Presentation size={24} strokeWidth={1.5} />;
+const WORKSHEET_TILE_ICON = <FileText size={24} strokeWidth={1.5} />;
+const SERIES_TILE_ICON = <Layers size={24} strokeWidth={1.5} />;
+const SORT_ICON = <ArrowDownUp aria-hidden size={16} strokeWidth={1.5} />;
+const GRID_ICON = <LayoutGrid aria-hidden size={16} strokeWidth={1.5} />;
+const LIST_ICON = <List aria-hidden size={16} strokeWidth={1.5} />;
 
-function subscribePreference(key: string, onChange: () => void): () => void {
-  const event = `tj:${key}`;
-  const onStorage = (storageEvent: StorageEvent) => {
-    if (storageEvent.key === key) onChange();
-  };
-  window.addEventListener(event, onChange);
-  window.addEventListener("storage", onStorage);
-  return () => {
-    window.removeEventListener(event, onChange);
-    window.removeEventListener("storage", onStorage);
-  };
-}
-
-function writePreference(key: string, value: string): void {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // Preferences remain at their defaults when browser storage is disabled.
-  }
-  window.dispatchEvent(new Event(`tj:${key}`));
-}
-
-function usePreference<T extends string>(
-  key: string,
-  values: readonly T[],
-  fallback: T,
-): [T, (value: T) => void] {
-  const value = useSyncExternalStore(
-    (onChange) => subscribePreference(key, onChange),
-    () => readPreference(key, values, fallback),
-    () => fallback,
-  );
-  return [value, (next) => writePreference(key, next)];
-}
-
-function isRecent(updatedAt: string): boolean {
-  return Date.now() - Date.parse(updatedAt) < RECENT_MS;
-}
+type CreateTarget = "lesson" | "worksheet" | "series" | null;
 
 export function LibraryPage({ mode }: { mode: LibraryMode }) {
-  const { openImport } = useLibraryShell();
-  const documents = useQuery(libraryQueries.documents());
-  const series = useQuery(libraryQueries.series());
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const now = useNow();
-  const duplicateDocument = useMutation(libraryMutations.duplicateDocument(queryClient));
-  const renameDocument = useMutation(libraryMutations.renameDocument(queryClient));
-  const softDeleteDocument = useMutation(libraryMutations.softDeleteDocument(queryClient));
-  const restoreDocument = useMutation(libraryMutations.restoreDocument(queryClient));
-  const duplicateSeries = useMutation(libraryMutations.duplicateSeries(queryClient));
-  const renameSeries = useMutation(libraryMutations.renameSeries(queryClient));
-  const softDeleteSeries = useMutation(libraryMutations.softDeleteSeries(queryClient));
-  const restoreSeries = useMutation(libraryMutations.restoreSeries(queryClient));
-  const createDocument = useMutation(libraryMutations.createDocument(queryClient));
-  const createSeries = useMutation(libraryMutations.createSeries(queryClient));
-  const [newKind, setNewKind] = useState<"lesson" | "worksheet" | null>(null);
-  const [newSeries, setNewSeries] = useState(false);
-  const search = useRouterState({ select: (state) => state.location.search });
-  const query = typeof search.q === "string" ? search.q : "";
-  const [sort, setSort] = usePreference<Sort>(
-    "tj:library:sort",
-    ["edited", "created", "title"],
-    "edited",
-  );
-  const [view, setView] = usePreference<View>("tj:library:view", ["grid", "list"], "grid");
-  const searchRef = useRef<HTMLInputElement>(null);
   const isHome = mode === "home";
   const isSeries = mode === "series";
-  const kind = mode === "lesson" || mode === "worksheet" ? mode : undefined;
-  const allDocuments = documents.data ?? [];
-  const allSeries = series.data ?? [];
-  const kindDocuments = useMemo(
-    () => (kind ? allDocuments.filter((document) => document.kind === kind) : allDocuments),
-    [allDocuments, kind],
+  const kind = mode === "lesson" || mode === "worksheet" ? mode : null;
+
+  const { openImport } = useLibraryShell();
+  const actions = useLibraryActions();
+  const navigate = useNavigate();
+  const now = useNow();
+  // Subscribe to the string, not the search object: a new object arrives on every navigation.
+  const query = useRouterState({
+    select: (state) => (typeof state.location.search.q === "string" ? state.location.search.q : ""),
+  });
+  const [sort, setSort] = usePreference<Sort>("tj:library:sort", SORTS, "edited");
+  const [view, setView] = usePreference<View>("tj:library:view", VIEWS, "grid");
+  const [creating, setCreating] = useState<CreateTarget>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  useSlashToFocus(searchRef);
+
+  const documentsQuery = useQuery(libraryQueries.documents());
+  const seriesQuery = useQuery(libraryQueries.series());
+  // Stable empties keep the memos below from recomputing while a query is pending.
+  const documents = documentsQuery.data ?? EMPTY_DOCUMENTS;
+  const series = seriesQuery.data ?? EMPTY_SERIES;
+
+  const home = useMemo(
+    () => (isHome ? homeShelves(documents, sort) : null),
+    [isHome, documents, sort],
   );
-  const matchedDocuments = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return sortDocuments(
-      kindDocuments.filter(
-        (document) => !normalized || document.title.toLowerCase().includes(normalized),
-      ),
-      sort,
-    );
-  }, [kindDocuments, query, sort]);
-  const matchedSeries = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    const matches = allSeries.filter(
-      (item) => !normalized || item.series.title.toLowerCase().includes(normalized),
-    );
-    const byId = new Map(matches.map((item) => [item.series.id, item]));
-    return sortDocuments(
-      matches.map((item) => item.series),
-      sort,
-    ).flatMap((entry) => {
-      const item = byId.get(entry.id);
-      return item ? [item] : [];
-    });
-  }, [allSeries, query, sort]);
-  const sortedDocuments = useMemo(() => sortDocuments(allDocuments, sort), [allDocuments, sort]);
-  const lessons = sortedDocuments.filter((document) => document.kind === "lesson");
-  const worksheets = sortedDocuments.filter((document) => document.kind === "worksheet");
-  const recent = useMemo(() => sortDocuments(allDocuments, "edited"), [allDocuments]);
-  const hero = recent.find((document) => document.kind === "lesson");
-  const beside = recent.filter((document) => document.id !== hero?.id).slice(0, hero ? 2 : 4);
-  const splitRecent = matchedDocuments.filter((document) => isRecent(document.updatedAt));
-  const splitEarlier = matchedDocuments.filter((document) => !isRecent(document.updatedAt));
-  const split =
-    !isHome &&
-    !isSeries &&
-    matchedDocuments.length > SPLIT_AT &&
-    splitRecent.length > 0 &&
-    splitEarlier.length > 0;
-  const loading = documents.isPending || series.isPending;
-  const error = documents.isError || series.isError;
-  const empty = isSeries ? matchedSeries.length === 0 : matchedDocuments.length === 0;
+  const shelf = useMemo(
+    () => (kind ? kindShelf(documents, kind, query, sort) : EMPTY_DOCUMENTS),
+    [documents, kind, query, sort],
+  );
+  const seriesItems = useMemo(
+    () => (isSeries || isHome ? seriesShelf(series, isHome ? "" : query, sort) : EMPTY_SERIES),
+    [series, isSeries, isHome, query, sort],
+  );
+  const split = useMemo(() => (kind ? splitByRecency(shelf, now) : null), [kind, shelf, now]);
+
+  const loading = documentsQuery.isPending || seriesQuery.isPending;
+  const failed = documentsQuery.isError || seriesQuery.isError;
   const searching = query.trim().length > 0;
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
-        return;
-      const target = event.target as HTMLElement | null;
-      if (
-        target?.tagName === "INPUT" ||
-        target?.tagName === "TEXTAREA" ||
-        target?.isContentEditable
-      )
-        return;
-      event.preventDefault();
-      searchRef.current?.focus();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  function setSearch(next: string): void {
-    const search = next ? { q: next } : {};
-    if (mode === "lesson") void navigate({ to: "/lessons", search, replace: true });
-    if (mode === "worksheet") void navigate({ to: "/worksheets", search, replace: true });
-    if (mode === "series") void navigate({ to: "/series", search, replace: true });
-  }
-
-  async function createNewDocument(values: NewDocumentValues): Promise<void> {
-    if (!newKind) return;
-    const document = await createDocument.mutateAsync({ kind: newKind, ...values });
-    setNewKind(null);
-    if (document.kind === "lesson") {
-      await navigate({ to: "/l/$lessonId", params: { lessonId: document.id } });
-    } else {
-      await navigate({ to: "/w/$worksheetId", params: { worksheetId: document.id } });
-    }
-  }
-
-  async function createNewSeries(title: string): Promise<void> {
-    const series = await createSeries.mutateAsync([title]);
-    setNewSeries(false);
-    await navigate({ to: "/series/$seriesId", params: { seriesId: series.id } });
-  }
-
-  function openEmptyStateCreation(): void {
-    if (mode === "series") setNewSeries(true);
-    else setNewKind(mode === "worksheet" ? "worksheet" : "lesson");
-  }
-
-  function onDocumentAction(
-    action: Parameters<LibraryCardProps["onAction"]>[0],
-    doc: DocumentSummary,
-  ): void {
-    if (action === "open") {
-      if (doc.kind === "lesson")
-        void navigate({ to: "/l/$lessonId", params: { lessonId: doc.id } });
-      else void navigate({ to: "/w/$worksheetId", params: { worksheetId: doc.id } });
-      return;
-    }
-    if (action === "present") {
-      void navigate({ to: "/l/$lessonId/present", params: { lessonId: doc.id } });
-      return;
-    }
-    if (action === "duplicate") {
-      duplicateDocument.mutate([doc.id], { onSuccess: () => toast(`Duplicated “${doc.title}”`) });
-      return;
-    }
-    if (action === "delete") {
-      softDeleteDocument.mutate(doc.id, {
-        onSuccess: () =>
-          toast(`Deleted “${doc.title}”`, {
-            duration: 6000,
-            action: { label: "Undo", onClick: () => restoreDocument.mutate(doc.id) },
-          }),
-      });
-    }
-  }
-
-  function onSeriesAction(
-    action: Parameters<SeriesCardProps["onAction"]>[0],
-    item: SeriesWithLessons,
-  ): void {
-    if (action === "present") {
-      const firstLesson = item.lessons[0];
-      if (firstLesson) {
-        void navigate({
-          to: "/l/$lessonId/present",
-          params: { lessonId: firstLesson.id },
-          search: { series: item.series.id },
-        });
-      }
-      return;
-    }
-    if (action === "duplicate") {
-      duplicateSeries.mutate([item.series.id], {
-        onSuccess: () => toast(`Duplicated “${item.series.title}”`),
-      });
-      return;
-    }
-    softDeleteSeries.mutate(item.series.id, {
-      onSuccess: () =>
-        toast(`Deleted “${item.series.title}”`, {
-          duration: 6000,
-          action: { label: "Undo", onClick: () => restoreSeries.mutate(item.series.id) },
-        }),
-    });
-  }
+  const empty = isSeries ? seriesItems.length === 0 : shelf.length === 0;
+  const titleCount = isSeries ? series.length : kind ? countKind(documents, kind) : 0;
 
   const documentCardProps = {
     now,
-    onAction: onDocumentAction,
-    onRename: (doc: DocumentSummary, title: string) => renameDocument.mutate([doc.id, title]),
+    onAction: actions.onDocumentAction,
+    onRename: actions.onDocumentRename,
   };
   const seriesCardProps = {
     now,
-    onAction: onSeriesAction,
-    onRename: (item: SeriesWithLessons, title: string) =>
-      renameSeries.mutate([item.series.id, title]),
+    onAction: actions.onSeriesAction,
+    onRename: actions.onSeriesRename,
   };
 
-  const titleCount = isSeries ? allSeries.length : kindDocuments.length;
+  function setSearch(next: string): void {
+    if (!kind && !isSeries) return;
+    const to = mode === "lesson" ? "/lessons" : mode === "worksheet" ? "/worksheets" : "/series";
+    void navigate({ to, search: next ? { q: next } : {}, replace: true });
+  }
+
+  function retry(): void {
+    void Promise.all([documentsQuery.refetch(), seriesQuery.refetch()]);
+  }
+
+  function openCreate(): void {
+    setCreating(isSeries ? "series" : (kind ?? "lesson"));
+  }
 
   return (
     <main className="min-h-dvh px-6 py-8 lg:px-12">
@@ -324,7 +148,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
           </Display>
           {!isHome && !loading ? <span className="text-meta text-ink-3">{titleCount}</span> : null}
         </div>
-        {!isHome && !error ? (
+        {!isHome && !failed ? (
           <div className="flex flex-wrap items-center gap-2">
             <SearchInput
               ref={searchRef}
@@ -338,7 +162,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <ArrowDownUp aria-hidden size={16} strokeWidth={1.5} />
+                  {SORT_ICON}
                   Sort: {SORT_LABELS[sort]}
                 </Button>
               </DropdownMenuTrigger>
@@ -347,9 +171,11 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
                   value={sort}
                   onValueChange={(value) => setSort(value as Sort)}
                 >
-                  <DropdownMenuRadioItem value="edited">Edited</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="created">Created</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="title">Title A–Z</DropdownMenuRadioItem>
+                  {SORTS.map((value) => (
+                    <DropdownMenuRadioItem key={value} value={value}>
+                      {SORT_LABELS[value]}
+                    </DropdownMenuRadioItem>
+                  ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -361,7 +187,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
                   active={view === "grid"}
                   onClick={() => setView("grid")}
                 >
-                  <LayoutGrid aria-hidden size={16} strokeWidth={1.5} />
+                  {GRID_ICON}
                 </IconButton>
                 <IconButton
                   label="List"
@@ -369,7 +195,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
                   active={view === "list"}
                   onClick={() => setView("list")}
                 >
-                  <List aria-hidden size={16} strokeWidth={1.5} />
+                  {LIST_ICON}
                 </IconButton>
               </IconGroup>
             )}
@@ -377,298 +203,136 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
         ) : null}
       </div>
 
-      {isHome && !error ? (
+      {isHome && !failed ? (
         <div className={`${GRID} mt-6`}>
           <Tile
             tone="primary"
-            icon={<Presentation size={24} strokeWidth={1.5} />}
+            icon={LESSON_TILE_ICON}
             className="col-span-2"
-            onClick={() => setNewKind("lesson")}
+            onClick={() => setCreating("lesson")}
           >
             New lesson
           </Tile>
-          <Tile
-            icon={<FileText size={24} strokeWidth={1.5} />}
-            onClick={() => setNewKind("worksheet")}
-          >
+          <Tile icon={WORKSHEET_TILE_ICON} onClick={() => setCreating("worksheet")}>
             New worksheet
           </Tile>
-          <Tile icon={<Layers size={24} strokeWidth={1.5} />} onClick={() => setNewSeries(true)}>
+          <Tile icon={SERIES_TILE_ICON} onClick={() => setCreating("series")}>
             New series
           </Tile>
         </div>
       ) : null}
 
       <div className="mt-8">
-        {error ? (
-          <EmptyState
-            icon={<LibraryBig strokeWidth={1.5} />}
-            title="Your library could not be loaded"
-            action={
-              <Button onClick={() => void Promise.all([documents.refetch(), series.refetch()])}>
-                Retry
-              </Button>
-            }
-          />
+        {failed ? (
+          <LoadFailed onRetry={retry} />
         ) : loading ? (
           <SkeletonGrid />
-        ) : isHome && allDocuments.length + allSeries.length === 0 ? (
-          <EmptyLibrary mode={mode} onCreate={openEmptyStateCreation} onImport={openImport} />
-        ) : isHome ? (
-          <>
-            {hero || beside.length > 0 ? (
-              <section className="mb-8" aria-label="Recent">
-                <SectionHeading className="mb-4">Recent</SectionHeading>
-                {hero ? (
-                  <div className={GRID}>
-                    <LibraryCard doc={hero} hero className="col-span-2" {...documentCardProps} />
-                    {beside.map((document) => (
-                      <LibraryCard key={document.id} doc={document} {...documentCardProps} />
-                    ))}
-                  </div>
-                ) : (
-                  <DocumentGrid documents={beside} {...documentCardProps} />
-                )}
-              </section>
-            ) : null}
-            <HomeSection title="Lessons" count={lessons.length} to="/lessons">
-              <DocumentGrid documents={lessons.slice(0, HOME_CARDS)} {...documentCardProps} />
-            </HomeSection>
-            <HomeSection title="Worksheets" count={worksheets.length} to="/worksheets">
-              <DocumentGrid documents={worksheets.slice(0, HOME_CARDS)} {...documentCardProps} />
-            </HomeSection>
-            <HomeSection title="Series" count={allSeries.length} to="/series">
-              <SeriesGrid
-                series={matchedSeries.slice(0, HOME_BANDS)}
-                headingLevel="h3"
-                {...seriesCardProps}
-              />
-            </HomeSection>
-          </>
+        ) : home ? (
+          documents.length + series.length === 0 ? (
+            <EmptyLibrary mode={mode} onCreate={openCreate} onImport={openImport} />
+          ) : (
+            <>
+              {home.hero || home.beside.length > 0 ? (
+                <section className="mb-8" aria-label="Recent">
+                  <SectionHeading className="mb-4">Recent</SectionHeading>
+                  {home.hero ? (
+                    <div className={GRID}>
+                      <LibraryCard doc={home.hero} hero {...documentCardProps} />
+                      {home.beside.map((document) => (
+                        <LibraryCard key={document.id} doc={document} {...documentCardProps} />
+                      ))}
+                    </div>
+                  ) : (
+                    <DocumentGrid documents={home.beside} {...documentCardProps} />
+                  )}
+                </section>
+              ) : null}
+              <HomeSection title="Lessons" count={home.lessonCount} to="/lessons">
+                <DocumentGrid documents={home.lessons} {...documentCardProps} />
+              </HomeSection>
+              <HomeSection title="Worksheets" count={home.worksheetCount} to="/worksheets">
+                <DocumentGrid documents={home.worksheets} {...documentCardProps} />
+              </HomeSection>
+              <HomeSection title="Series" count={series.length} to="/series">
+                <SeriesGrid
+                  series={seriesItems.slice(0, HOME_BANDS)}
+                  headingLevel="h3"
+                  {...seriesCardProps}
+                />
+              </HomeSection>
+            </>
+          )
         ) : empty ? (
           searching ? (
             <NoMatches onClear={() => setSearch("")} />
           ) : (
-            <EmptyLibrary mode={mode} onCreate={openEmptyStateCreation} onImport={openImport} />
+            <EmptyLibrary mode={mode} onCreate={openCreate} onImport={openImport} />
           )
         ) : isSeries ? (
-          <SeriesGrid series={matchedSeries} {...seriesCardProps} />
+          <SeriesGrid series={seriesItems} {...seriesCardProps} />
         ) : split ? (
           <>
             <section className="mb-8">
-              <SectionHeading className="mb-4" count={splitRecent.length}>
+              <SectionHeading className="mb-4" count={split.recent.length}>
                 Recent
               </SectionHeading>
               <DocumentResults
-                documents={splitRecent}
+                documents={split.recent}
                 view={view}
                 label="Recent"
                 {...documentCardProps}
               />
             </section>
             <section>
-              <SectionHeading className="mb-4" count={splitEarlier.length}>
+              <SectionHeading className="mb-4" count={split.earlier.length}>
                 Earlier
               </SectionHeading>
               <DocumentResults
-                documents={splitEarlier}
+                documents={split.earlier}
                 view={view}
                 label="Earlier"
                 {...documentCardProps}
               />
             </section>
           </>
-        ) : view === "list" ? (
+        ) : (
           <DocumentResults
-            documents={matchedDocuments}
+            documents={shelf}
             view={view}
             label={TITLES[mode]}
             {...documentCardProps}
           />
-        ) : (
-          <DocumentGrid documents={matchedDocuments} {...documentCardProps} />
         )}
       </div>
+
+      {/* Mounted only while open, so each dialog starts from fresh state without a reset effect. */}
       <Suspense fallback={null}>
-        {newKind ? (
+        {creating === "lesson" || creating === "worksheet" ? (
           <NewDocumentDialog
             open
+            kind={creating}
             onOpenChange={(open) => {
-              if (!open) setNewKind(null);
+              if (!open) setCreating(null);
             }}
-            kind={newKind}
-            onCreate={createNewDocument}
+            onCreate={(values) => actions.createNewDocument(creating, values)}
           />
         ) : null}
-        {newSeries ? (
-          <NewSeriesDialog open onOpenChange={setNewSeries} onCreate={createNewSeries} />
+        {creating === "series" ? (
+          <NewSeriesDialog
+            open
+            onOpenChange={(open) => {
+              if (!open) setCreating(null);
+            }}
+            onCreate={actions.createNewSeries}
+          />
         ) : null}
       </Suspense>
     </main>
   );
 }
 
-function HomeSection({
-  title,
-  count,
-  to,
-  children,
-}: {
-  title: string;
-  count: number;
-  to: "/lessons" | "/worksheets" | "/series";
-  children: React.ReactNode;
-}) {
-  if (count === 0) return null;
-  return (
-    <section className="mb-8">
-      <SectionHeading
-        className="mb-4"
-        count={count}
-        action={
-          <Link to={to} className="text-sm font-medium text-brand-text hover:underline">
-            See all
-          </Link>
-        }
-      >
-        {title}
-      </SectionHeading>
-      {children}
-    </section>
-  );
-}
-
-type DocumentCardCallbacks = Pick<LibraryCardProps, "now" | "onAction" | "onRename">;
-type SeriesCardCallbacks = Pick<SeriesCardProps, "now" | "onAction" | "onRename">;
-
-function DocumentGrid({
-  documents,
-  ...cardProps
-}: { documents: DocumentSummary[] } & DocumentCardCallbacks) {
-  // The reference fixed four columns; this responsive grid keeps the same density on wide screens.
-  return (
-    <div className={GRID}>
-      {documents.map((document) => (
-        <LibraryCard key={document.id} doc={document} {...cardProps} />
-      ))}
-    </div>
-  );
-}
-
-function DocumentResults({
-  documents,
-  view,
-  label,
-  ...cardProps
-}: {
-  documents: DocumentSummary[];
-  view: View;
-  label: string;
-} & DocumentCardCallbacks) {
-  if (view === "grid") return <DocumentGrid documents={documents} {...cardProps} />;
-  return (
-    <ListSurface
-      aria-label={label}
-      header={
-        <ListSurfaceHeader>
-          <ListSurfaceCell header className="w-16">
-            Thumbnail
-          </ListSurfaceCell>
-          <ListSurfaceCell header>Title</ListSurfaceCell>
-          <ListSurfaceCell header className="w-32">
-            Year and subject
-          </ListSurfaceCell>
-          <ListSurfaceCell header className="w-[152px]">
-            Size
-          </ListSurfaceCell>
-          <ListSurfaceCell header className="w-24">
-            Edited
-          </ListSurfaceCell>
-          <ListSurfaceCell header className="w-[104px] text-right">
-            Actions
-          </ListSurfaceCell>
-        </ListSurfaceHeader>
-      }
-    >
-      {documents.map((document) => (
-        <LibraryCard key={document.id} doc={document} view="list" {...cardProps} />
-      ))}
-    </ListSurface>
-  );
-}
-
-function SeriesGrid({
-  series,
-  headingLevel = "h2",
-  ...cardProps
-}: {
-  series: SeriesWithLessons[];
-  headingLevel?: "h2" | "h3";
-} & SeriesCardCallbacks) {
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {series.map((item) => (
-        <SeriesCard key={item.series.id} item={item} headingLevel={headingLevel} {...cardProps} />
-      ))}
-    </div>
-  );
-}
-
-function EmptyLibrary({
-  mode,
-  onCreate,
-  onImport,
-}: {
-  mode: LibraryMode;
-  onCreate: () => void;
-  onImport: () => void;
-}) {
-  const series = mode === "series";
-  return (
-    <EmptyState
-      stacked
-      icon={series ? <Layers strokeWidth={1.5} /> : <LibraryBig strokeWidth={1.5} />}
-      title={series ? "No series yet" : "Nothing here yet"}
-      body={
-        series
-          ? "A series is a set of lessons in teaching order."
-          : "Make a lesson or a worksheet. Everything you make is saved in your Workspace. If you made one somewhere else, import its file."
-      }
-      action={
-        <Button onClick={onCreate}>
-          {series ? "New series" : mode === "worksheet" ? "New worksheet" : "New lesson"}
-        </Button>
-      }
-      secondaryAction={
-        <Button variant="ghost" onClick={onImport}>
-          Import
-        </Button>
-      }
-    />
-  );
-}
-
-function NoMatches({ onClear }: { onClear: () => void }) {
-  return (
-    <EmptyState
-      title="No titles match that"
-      action={<Button onClick={onClear}>Clear search</Button>}
-    />
-  );
-}
-
-function SkeletonGrid() {
-  return (
-    <div className={GRID} aria-busy="true">
-      {SKELETON_KEYS.map((key) => (
-        <Card key={key} className="gap-3 overflow-hidden p-0">
-          <Skeleton className="aspect-video w-full" />
-          <div className="space-y-2 p-4">
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-3 w-5/6" />
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
+function countKind(documents: readonly { kind: string }[], kind: string): number {
+  let count = 0;
+  for (const document of documents) if (document.kind === kind) count += 1;
+  return count;
 }
