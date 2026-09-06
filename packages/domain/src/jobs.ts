@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ModelClassSchema } from "./ai";
-import { JobId, WorkspaceId } from "./ids";
+import { JobId, LessonId, WorkspaceId } from "./ids";
 import { IsoDateTime } from "./primitives";
 
 // ---------------------------------------------------------------------------------------------
@@ -14,6 +14,7 @@ import { IsoDateTime } from "./primitives";
 export const JobName = {
   ping: "ping",
   aiPing: "ai.ping",
+  lessonPlan: "lesson.plan",
 } as const;
 export type JobName = (typeof JobName)[keyof typeof JobName];
 
@@ -42,10 +43,23 @@ export const AiPingPayloadSchema = z.strictObject({
 export type AiPingPayload = z.infer<typeof AiPingPayloadSchema>;
 export type AiPingPayloadInput = z.input<typeof AiPingPayloadSchema>;
 
+/**
+ * The F06 Plan stage for one lesson (ADR 0024 §14). Enqueued by `POST /lessons` in the same
+ * transaction that creates the `documents` row and sets its generating lock (§6, §18); the worker
+ * reads the brief from the row, so the payload carries the id only. Whether Plan, Generate,
+ * Evaluate and Repair stay one job is F06's decision; the name and payload do not change.
+ */
+export const LessonPlanPayloadSchema = z.strictObject({
+  lessonId: LessonId,
+});
+export type LessonPlanPayload = z.infer<typeof LessonPlanPayloadSchema>;
+export type LessonPlanPayloadInput = z.input<typeof LessonPlanPayloadSchema>;
+
 /** Payload schema per job name. `satisfies` keeps the record exhaustive over `JobName`. */
 export const JobPayloadSchemas = {
   ping: PingPayloadSchema,
   "ai.ping": AiPingPayloadSchema,
+  "lesson.plan": LessonPlanPayloadSchema,
 } as const satisfies Record<JobName, z.ZodType>;
 
 /** Parsed (output) payload type per job name. */

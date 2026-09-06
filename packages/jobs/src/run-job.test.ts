@@ -33,6 +33,7 @@ describeDb("runJob dependencies", () => {
       "ai.ping": defineJob<"ai.ping", typeof deps>("ai.ping", async ({ deps: injected }) => {
         received = injected;
       }),
+      "lesson.plan": defineJob("lesson.plan", async () => {}),
     };
     const jobId = newId<JobId>();
     const boss = {
