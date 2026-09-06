@@ -13,11 +13,12 @@ function Tile({ children, icon, tone = "default", className, type, ...props }: T
   return (
     <button
       type={type ?? "button"}
+      data-primary-fill={primary ? "" : undefined}
       className={cn(
         "group flex h-16 w-full items-center justify-start gap-3 rounded-card px-5 text-left text-lead font-semibold outline-none motion-safe:transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
         primary
           ? "bg-primary-fill text-primary-foreground hover:bg-primary-fill-hover active:bg-primary-fill-press"
-          : "border border-border bg-card text-foreground shadow-1 hover:bg-accent",
+          : "border border-border-control/40 bg-card text-foreground hover:bg-accent active:bg-accent-active",
         className,
       )}
       {...props}
@@ -26,12 +27,14 @@ function Tile({ children, icon, tone = "default", className, type, ...props }: T
         aria-hidden
         className={cn(
           "flex size-10 shrink-0 items-center justify-center rounded-control [&_svg]:size-6",
-          primary ? "bg-brand-tint text-brand-text" : "bg-secondary text-ink-2",
+          primary ? "bg-white/15 text-primary-foreground" : "bg-brand-quiet text-brand-text",
         )}
       >
         {icon}
       </span>
-      <span className="min-w-0 flex-1 truncate">{children}</span>
+      <span className="min-w-0 flex-1 truncate" data-primary-fill={primary ? "" : undefined}>
+        {children}
+      </span>
     </button>
   );
 }

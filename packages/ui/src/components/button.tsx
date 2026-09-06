@@ -64,6 +64,8 @@ function Button({
     <Comp
       data-slot="button"
       data-variant={variant}
+      // Recorded contrast exception (ADR 0019 §4 amendment): axe treats this surface as advisory.
+      data-primary-fill={variant === "default" ? "" : undefined}
       data-size={size}
       // Only native <button> gets the default; a slotted <a> must not receive type="button".
       type={asChild ? type : (type ?? "button")}
