@@ -34,12 +34,13 @@ const item: SeriesWithLessons = {
 };
 
 function renderCard(value = item) {
+  const onAction = mock();
   return render(
     <TooltipProvider>
       <SeriesCard
         item={value}
         now={new Date("2026-09-06T12:00:00.000Z").getTime()}
-        onAction={() => {}}
+        onAction={onAction}
         onRename={() => {}}
       />
     </TooltipProvider>,
@@ -63,6 +64,23 @@ describe("SeriesCard", () => {
   it("hides the primary Present series action when there are no lessons", () => {
     renderCard({ ...item, series: { ...item.series, lessonIds: [] }, lessons: [] });
     expect(screen.queryByRole("button", { name: "Present series" })).not.toBeInTheDocument();
+  });
+
+  it("delegates Present series through the page action", () => {
+    const onAction = mock();
+    render(
+      <TooltipProvider>
+        <SeriesCard
+          item={item}
+          now={new Date("2026-09-06T12:00:00.000Z").getTime()}
+          onAction={onAction}
+          onRename={() => {}}
+        />
+      </TooltipProvider>,
+    );
+
+    screen.getByRole("button", { name: "Present series" }).click();
+    expect(onAction).toHaveBeenCalledWith("present", item);
   });
 });
 
