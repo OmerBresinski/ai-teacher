@@ -18,7 +18,7 @@ The founder holds an **Amazon Bedrock API key** (long-term bearer token) in an a
 access is in `us-east-1`. Bedrock hosts Anthropic Claude (the intended models), Amazon Nova, Meta,
 Mistral and others behind one endpoint and one bill.
 
-F13 (Notion) asks for two providers with failover, routing by model class as configuration, prompt
+F13 asks for two providers with failover, routing by model class as configuration, prompt
 caching, per-call observability and UK/EU endpoints. Most of F13 is the skills runtime proper and is
 not this decision; this ADR settles only the client layer everything else will call.
 

@@ -3,8 +3,9 @@
 **Teaching Journey** (working name "AI Teacher") is an AI-assisted planning tool that takes a
 teacher from a goal to a sequence of Lessons, generates coherent Artefacts (plans, slides,
 worksheets, quizzes, …) for each Lesson, and adapts future Lessons from class-level Observations.
-This is a Bun + Turborepo monorepo. Product decisions live in Notion; engineering decisions are
-ADRs in [`docs/adr/README.md`](docs/adr/README.md); shared vocabulary (Journey, Lesson, Artefact,
+This is a Bun + Turborepo monorepo. Product decisions are the founder's and are not recorded in
+this repo; engineering decisions are ADRs in [`docs/adr/README.md`](docs/adr/README.md); shared
+vocabulary (Journey, Lesson, Artefact,
 Workspace, Observation, …) is defined in [`docs/glossary.md`](docs/glossary.md) and must be used
 exactly as written. Setup, commands and conventions: [`README.md`](README.md).
 
@@ -58,7 +59,7 @@ File a finding there when it is a valid code-review finding (step 2 of the deliv
 out of scope for the PR under review; when an implementing or exploring subagent finds a defect,
 performance risk or maintainability problem while reading code that is not what the user asked
 for; or when the user declines a nice to have for now. Do not file anything blocking the current
-PR (fix it), product or feature ideas (they are Notion / founder decisions), or work that already
+PR (fix it), product or feature ideas (they are founder decisions), or work that already
 has a ticket.
 
 Create one Linear issue per finding with `project: "Tech debt"`, using the **Agentic Task**
@@ -94,8 +95,15 @@ run the **acceptance check**: does the result match the brief — right branch a
 green, every review finding fixed or declined with a stated reason, screenshots or a verified
 visual result for UI work, nothing outside the brief touched. It does not read the diff for
 quality; that is the reviewer's job and doing it twice wastes the expensive model. The only
-edits it makes itself are to the brief. If it catches itself editing source, tests, styles or
-docs in the working tree, that is the signal to stop and delegate. Reasons this rule exists:
+edits it makes itself are to the brief. The main agent runs on the most expensive model and its
+prompt is re-read on every turn, so each turn it takes has a fixed cost regardless of how little it
+does. Never spend a main-agent turn on waiting or polling (CI, deploys, `sleep`): delegate anything
+that takes more than a minute to a subagent and have it return one short result. Ask every subagent
+for a **terse final message** — PR number, branch, CI state, findings count, and anything the brief
+asked for — not a narrative; the main agent re-reads that message on every later turn of the
+session. Prefer a fresh session per feature over one long session: state lives in Linear and GitHub,
+not in the chat. If it catches itself editing source, tests, styles or docs in the working tree,
+that is the signal to stop and delegate. Reasons this rule exists:
 the main agent runs on the most expensive model, and direct edits skip the branch → PR →
 review → CI path that `master` protection depends on.
 
@@ -124,8 +132,9 @@ review → CI path that `master` protection depends on.
    UI work, a verified visual result is part of acceptance — say how to obtain it (which servers
    and ports, the `GET /__test/last-magic-link` sign-in route).
    Subagent models are set in the global OpenCode config (`general`/`explore` → GPT-5.6 Terra
-   high; `reviewer` → GPT-5.6 Luna); the main session stays on Claude Fable 5.1. Do not
-   override models per task.
+    high; `reviewer` → GPT-5.6 Luna); the main session stays on Claude Fable 5.1. Do not
+    override models per task. Require a terse final message with the PR number, branch, CI state,
+    findings count, and every result the brief requests.
 2. **Review with a separate subagent.** For every PR, launch a fresh **`reviewer`** subagent (a
    read-only agent defined in the user's global opencode config — `edit` denied, its own model —
    fall back to `general` only if `reviewer` is not available) that loads
@@ -161,12 +170,17 @@ review → CI path that `master` protection depends on.
    `side: "LEFT"` only for deleted lines. Use `start_line`/`start_side` for multi-line ranges.
    Only lines inside the diff hunks can be anchored — put a finding about unchanged code in the
    review `body` with a `path:line` reference instead. A review with no findings is still
-   submitted (`comments: []`, `event: "COMMENT"`) so the PR carries the record. The subagent
-   also returns the same findings in its final message so step 3 can act on them.
+    submitted (`comments: []`, `event: "COMMENT"`) so the PR carries the record. The subagent
+    also returns the same findings as a compact list in its terse final message so step 3 can act
+    on them.
 3. **Fix, push, merge.** If the review has findings, the implementing subagent fixes them
    (resume it with its `task_id`), pushes, and the `reviewer` re-reviews only if the fix was
    structural. With or without findings, the main agent then runs the acceptance check described
-   above and merges only when it passes. `master` requires every review thread to be resolved:
+   above. After it passes, the main agent delegates landing to one `general` subagent whose whole
+   brief is `bun run land <pr>`; the subagent returns the script's summary block verbatim and
+   nothing else. The script waits for CI, refuses unresolved review threads, rebases when `BEHIND`,
+   squash-merges, watches Vercel and both Railway services, and runs `bun run smoke:prod`. `master`
+   requires every review thread to be resolved:
    after a finding is fixed, or deferred with a reply that says why it is out of scope for this PR
    and names the Tech debt ticket id (the ticket alone is not a decision), resolve its thread —
    there is no `gh` command for this, use GraphQL:
@@ -178,22 +192,12 @@ review → CI path that `master` protection depends on.
    xargs -I{} gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"{}"}){thread{isResolved}}}'
    ```
 
-   Merge with `gh pr merge --squash --delete-branch` once CI is green (`gh pr checks --watch`).
-   `master` also requires the branch to be up to date: if `gh pr view <n> --json
-   mergeStateStatus` says `BEHIND`, rebase on `origin/master`, `git push --force-with-lease`,
-   and wait for CI again. `gh pr checks --watch` can return while a second run for the same
-   head is still in progress — re-check `mergeStateStatus` before merging rather than
-   reaching for `--admin`.
 4. **Watch the deploys.** A merge to `master` deploys Vercel (web) and Railway (api, worker).
-   After merging, wait for both and check they succeeded:
-   `vercel ls teaching-journey-web --scope omerbresinskis-projects` (latest Production must be
-   `Ready`) and, for Railway, `for s in api worker; do railway deployment list
-   -p a79752e1-8bf5-41d0-b832-f1b64aaf6d2f -e production -s $s --json | jq -r '.[0].status';
-   done` (each must be `SUCCESS`, or `SKIPPED` when the change is outside the service's watch
-   paths, e.g. docs-only; `railway logs -p a79752e1-8bf5-41d0-b832-f1b64aaf6d2f -e production
-   -s <svc> --build` for the failure). `-p` is the `teaching-journey` project id and is required
-   whenever the CLI runs from a directory that is not `railway link`ed — worktrees never are.
-   Then run **`bun run smoke:prod`** (`scripts/smoke-prod.ts`): it sends the request shapes a
+   The latest Production Vercel deployment must be `Ready`; each Railway service must be `SUCCESS`,
+   or `SKIPPED` when the change is outside the service's watch paths, e.g. docs-only. `-p` is the
+   `teaching-journey` project id and is required whenever the CLI runs from a directory that is not
+   `railway link`ed — worktrees never are. `bun run smoke:prod` (`scripts/smoke-prod.ts`) sends the
+   request shapes a
    real browser produces from the production web origin — including `Sec-Fetch-Site: cross-site`,
    which every request carries until TEACH-30 — and must exit 0. Local e2e cannot catch guard
    regressions because the Vite proxy makes requests same-origin (2026-09-05 CSRF incident,
@@ -201,6 +205,7 @@ review → CI path that `master` protection depends on.
    through the same implement → review → merge steps — and do not mark the Linear issue Done
    until both are green. A PR that changes `apps/api/src/app.ts`, `csrf.ts`, `origins.ts` or
    `auth/require-session.ts` adds a smoke case for any new browser-facing request shape.
+   The individual commands live in `scripts/land-pr.ts` if something has to be run by hand.
 5. **Close the loop.** When the work came from Linear, move the issue to **Done** once the PR is
    merged and deployed, with a comment naming the PR and anything deliberately left open; keep
    `infra/README.md` "Known gaps" in sync when the issue is one.
