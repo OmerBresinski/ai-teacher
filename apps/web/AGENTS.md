@@ -37,3 +37,5 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   apply — this is a Vite SPA.
 - Tests: `bun test` + React Testing Library + happy-dom; Playwright + axe in `e2e/` (ADR 0014). Biome
   `a11y` rules are errors.
+- Client storage keys: `tj:sidebar-collapsed`, `tj:library:sort`, `tj:library:view`, and
+  `tj:last-shell` are the stable browser preference/session contracts for the library shell.

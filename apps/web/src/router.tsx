@@ -5,19 +5,45 @@
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
-import { ThemeProvider } from "@tj/ui";
+import { ThemeProvider, Toaster, TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { queryClient } from "@/lib/query";
 import { authLayoutRoute } from "@/routes/auth.route";
 import { devJobsRoute } from "@/routes/dev-jobs.route";
-import { indexRoute } from "@/routes/index.route";
+import {
+  lessonEditorRoute,
+  lessonPresentRoute,
+  worksheetEditorRoute,
+  worksheetPrintRoute,
+} from "@/routes/editor-stubs.route";
+import {
+  indexRoute,
+  lessonsRoute,
+  libraryLayoutRoute,
+  seriesDetailRoute,
+  seriesIndexRoute,
+  worksheetsRoute,
+} from "@/routes/library.route";
 import { rootRoute } from "@/routes/root.route";
 import { signInRoute } from "@/routes/sign-in.route";
 
 export const routeTree = rootRoute.addChildren([
   signInRoute,
-  authLayoutRoute.addChildren([indexRoute, devJobsRoute]),
+  authLayoutRoute.addChildren([
+    libraryLayoutRoute.addChildren([
+      indexRoute,
+      lessonsRoute,
+      worksheetsRoute,
+      seriesIndexRoute,
+      seriesDetailRoute,
+    ]),
+    lessonEditorRoute,
+    lessonPresentRoute,
+    worksheetEditorRoute,
+    worksheetPrintRoute,
+    devJobsRoute,
+  ]),
 ]);
 
 /**
@@ -28,7 +54,12 @@ export const routeTree = rootRoute.addChildren([
 function Wrap({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>{children}</ThemeProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          {children}
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
