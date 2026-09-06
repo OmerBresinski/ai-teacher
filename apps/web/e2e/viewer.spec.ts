@@ -43,7 +43,10 @@ test.describe("lesson viewer", () => {
   }) => {
     await page.goto("/lessons");
     await page.getByRole("link", { name: "Open The water cycle" }).click();
+    // Wait for the viewer's key handler to be live before pressing a key.
+    await expect(status(page)).toHaveText(/Slide 1 of/);
     await page.keyboard.press("ArrowRight");
+    await expect(status(page)).toContainText("Slide 2 of");
     await page.getByRole("button", { name: "Present" }).click();
     await expect(page).toHaveURL(/\/l\/demo-water-cycle\/present\?slide=2$/);
     await page.goBack();
@@ -57,7 +60,9 @@ test.describe("lesson viewer", () => {
     await expect(page).toHaveURL(/\/l\/(?!demo-water-cycle$)[\w-]+$/);
     await expect(page.getByText("Duplicated “The water cycle”")).toBeVisible();
     await expect(page.getByText("The water cycle (copy)").first()).toBeVisible();
-    await page.goto("/lessons");
+    // Client-side back to the library: a full reload would reseed the mock store (ADR 0020).
+    await page.getByRole("button", { name: "Back to the library" }).click();
+    await expect(page).toHaveURL(/\/lessons$/);
     // Sidebar count moved from the seeded 10 to 11 (the count is in the link's accessible name).
     await expect(page.getByRole("link", { name: /^Lessons\b/ })).toContainText("11");
   });

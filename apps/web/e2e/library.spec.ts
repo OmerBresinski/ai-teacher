@@ -103,7 +103,8 @@ test.describe("library shell", () => {
     await page.getByRole("link", { name: /^Worksheets\b/ }).hover();
     await page.waitForTimeout(300);
     await page.goto("/l/demo-water-cycle");
-    await expect(page.getByText("The editor arrives with @tj/editor")).toBeVisible();
+    // The viewer (TEACH-100) owns `/l/*`; the stub remains on `/w/*` until phase D.
+    await expect(page.getByRole("navigation", { name: "Slides" })).toBeVisible();
     // Route `head()` reads the loader's document.
     await expect(page).toHaveTitle("The water cycle · Teaching Journey");
     await expect(page.getByRole("navigation", { name: "Library" })).not.toBeVisible();
