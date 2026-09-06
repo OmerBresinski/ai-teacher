@@ -60,9 +60,10 @@ test.describe("lesson viewer", () => {
     await expect(page).toHaveURL(/\/l\/(?!demo-water-cycle$)[\w-]+$/);
     await expect(page.getByText("Duplicated “The water cycle”")).toBeVisible();
     await expect(page.getByText("The water cycle (copy)").first()).toBeVisible();
-    // Client-side back to the library: a full reload would reseed the mock store (ADR 0020).
+    // Client-side back to the library: a full reload would reseed the mock store (ADR 0020). With
+    // no shell page visited this session the return target is Home, whose sidebar has the count.
     await page.getByRole("button", { name: "Back to the library" }).click();
-    await expect(page).toHaveURL(/\/lessons$/);
+    await expect(page).toHaveURL(/\/$/);
     // Sidebar count moved from the seeded 10 to 11 (the count is in the link's accessible name).
     await expect(page.getByRole("link", { name: /^Lessons\b/ })).toContainText("11");
   });
