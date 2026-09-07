@@ -141,8 +141,10 @@ function stripAnsi(value: string): string {
   return value.replace(new RegExp(`${escapeCharacter}\\[[0-?]*[ -/]*[@-~]`, "g"), "");
 }
 
-/** Returns the first Production deployment status from Vercel's human-readable table. */
-export function parseVercelProduction(tableText: string): string | null {
+/** The first Production row of `vercel ls`: its status and the deployment URL that identifies it. */
+export function parseVercelProductionRow(
+  tableText: string,
+): { status: string; deployment: string | null } | null {
   const lines = stripAnsi(tableText)
     .split("\n")
     .map((line) => line.trim())
@@ -159,14 +161,24 @@ export function parseVercelProduction(tableText: string): string | null {
   const statusIndex = headers.indexOf("Status");
   if (environmentIndex === -1 || statusIndex === -1) return null;
 
+  const deploymentIndex = headers.indexOf("Deployment");
   for (const line of lines.slice(headerIndex + 1)) {
     const columns = line.split(/\s{2,}/);
     if (columns[environmentIndex] !== "Production") continue;
     const status = columns[statusIndex];
+    if (status === undefined) return null;
     // The CLI prefixes the status with a coloured marker ("● Ready", "● Error"); keep the word.
-    return status === undefined ? null : status.replace(/^[^A-Za-z]+/, "").trim();
+    return {
+      status: status.replace(/^[^A-Za-z]+/, "").trim(),
+      deployment: deploymentIndex === -1 ? null : (columns[deploymentIndex] ?? null),
+    };
   }
   return null;
+}
+
+/** Returns the first Production deployment status from Vercel's human-readable table. */
+export function parseVercelProduction(tableText: string): string | null {
+  return parseVercelProductionRow(tableText)?.status ?? null;
 }
 
 function parsePrState(json: string): PrState {
@@ -243,12 +255,25 @@ export function reviewThreadsPageInfo(graphqlJson: unknown): {
   };
 }
 
+/**
+ * Wait for the checks branch protection requires — and only those. Vercel's preview check is not
+ * required, and while the Hobby plan is rate-limited it fails within seconds of every push; with
+ * it in the set, `--fail-fast` reported "CI failed" before a single required job had finished and
+ * every landing fell back to a human watching `gh pr checks` (PRs #122–#125).
+ */
 async function waitForCi(pr: number, deps: LandPrDeps): Promise<void> {
-  log.step(`Waiting for CI on PR #${pr}`);
-  const watched = await deps.gh(["pr", "checks", String(pr), "--watch", "--fail-fast"]);
+  log.step(`Waiting for required CI checks on PR #${pr}`);
+  const watched = await deps.gh([
+    "pr",
+    "checks",
+    String(pr),
+    "--required",
+    "--watch",
+    "--fail-fast",
+  ]);
   if (watched.exitCode === ExitCode.Ok) return;
 
-  const checks = await deps.gh(["pr", "checks", String(pr)]);
+  const checks = await deps.gh(["pr", "checks", String(pr), "--required"]);
   const failingChecks = output(checks);
   throw new UserFacingError(
     `CI failed for PR #${pr}${failingChecks === "" ? "" : `\n${failingChecks}`}`,
@@ -397,9 +422,13 @@ function blockedMessage(pr: number, checks: StatusCheck[]): string {
   }`;
 }
 
-async function preMergeDeployments(
-  deps: LandPrDeps,
-): Promise<Record<RailwayService, string | null>> {
+interface PreMergeDeployments {
+  railway: Record<RailwayService, string | null>;
+  /** The Production deployment URL before the merge, so a new one can be told from the old. */
+  vercel: string | null;
+}
+
+async function preMergeDeployments(deps: LandPrDeps): Promise<PreMergeDeployments> {
   const records = await Promise.all(
     RAILWAY_SERVICES.map(async (service) => {
       const result = await deps.railwayList(service);
@@ -407,15 +436,21 @@ async function preMergeDeployments(
       return [service, railwayDeployment(output(result)).id] as const;
     }),
   );
-  return Object.fromEntries(records) as Record<RailwayService, string | null>;
+  const vercel = await deps.vercelLs();
+  requireSuccess(vercel, "Could not read Vercel deployments");
+  return {
+    railway: Object.fromEntries(records) as Record<RailwayService, string | null>,
+    vercel: parseVercelProductionRow(output(vercel))?.deployment ?? null,
+  };
 }
 
 async function watchDeploys(
-  preMergeIds: Record<RailwayService, string | null>,
+  preMerge: PreMergeDeployments,
   timeoutMin: number,
   deps: LandPrDeps,
 ): Promise<{ vercel: CheckSummary; railway: Record<RailwayService, CheckSummary> }> {
   const startedAt = deps.now();
+  const preMergeIds = preMerge.railway;
   let vercel: CheckSummary | null = null;
   const railway: Partial<Record<RailwayService, CheckSummary>> = {};
 
@@ -423,10 +458,19 @@ async function watchDeploys(
     if (vercel === null) {
       const result = await deps.vercelLs();
       requireSuccess(result, "Could not read Vercel deployments");
-      const status = parseVercelProduction(output(result));
-      if (status === "Error")
+      const row = parseVercelProductionRow(output(result));
+      if (row?.status === "Error")
         throw new UserFacingError("Vercel Production deployment failed (Error).");
-      if (status === "Ready") vercel = { ok: true, status };
+      if (row !== null && row.deployment !== null && row.deployment === preMerge.vercel) {
+        // Nothing new after a merge to master means Vercel never started a build — the Hobby
+        // plan's rate limit ("retry in 24 hours"). Waiting the full timeout would not change
+        // that; report it and let the summary say the deploy is pending.
+        if (deps.now() - startedAt >= NO_DEPLOYMENT_WAIT_MS) {
+          vercel = { ok: true, status: "PENDING (no new deployment — rate limited?)" };
+        }
+      } else if (row?.status === "Ready") {
+        vercel = { ok: true, status: row.status };
+      }
     }
 
     for (const service of RAILWAY_SERVICES) {
@@ -524,15 +568,17 @@ export async function landPr(
       await deps.sleep(UNKNOWN_DELAY_MS);
       continue;
     }
-    if (state.mergeStateStatus !== "CLEAN") {
+    // UNSTABLE: a non-required check (Vercel's rate-limited preview) failed; the required set
+    // passed in `waitForCi`, and GitHub allows the merge.
+    if (state.mergeStateStatus !== "CLEAN" && state.mergeStateStatus !== "UNSTABLE") {
       throw new UserFacingError(`PR #${pr} cannot be merged: ${state.mergeStateStatus}.`);
     }
     break;
   }
 
-  const preMergeIds = deploy
+  const preMerge: PreMergeDeployments = deploy
     ? await preMergeDeployments(deps)
-    : ({ api: null, worker: null } satisfies Record<RailwayService, string | null>);
+    : { railway: { api: null, worker: null }, vercel: null };
   log.step(`Squash-merging PR #${pr}`);
   requireSuccess(
     await deps.gh(["pr", "merge", String(pr), "--squash", "--delete-branch"]),
@@ -553,7 +599,7 @@ export async function landPr(
     throw new UserFacingError(`GitHub did not return a merge commit for PR #${pr}.`);
 
   const deployment = deploy
-    ? await watchDeploys(preMergeIds, timeoutMin, deps)
+    ? await watchDeploys(preMerge, timeoutMin, deps)
     : {
         vercel: { ok: true, status: "skipped" } as CheckSummary,
         railway: {
