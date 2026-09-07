@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@tj/ui";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
-import { LessonViewer } from "./LessonViewer";
+import { LessonViewer, type PendingSlide } from "./LessonViewer";
 
 function renderViewer(overrides: Partial<React.ComponentProps<typeof LessonViewer>> = {}) {
   const lesson = demoLibrary()[0];
@@ -104,5 +104,90 @@ describe("LessonViewer", () => {
     renderViewer({ exportSlot: <button type="button">Export</button>, leading: <span>Back</span> });
     expect(screen.getByRole("button", { name: "Export" })).toBeVisible();
     expect(screen.getByText("Back")).toBeVisible();
+  });
+
+  describe("while generating", () => {
+    const skeletons = (container: HTMLElement) =>
+      container.querySelectorAll('nav[aria-label="Slides"] li[aria-hidden="true"]');
+    const arriving = (container: HTMLElement) =>
+      container.querySelectorAll('button[aria-label^="Slide"].motion-safe\\:animate-arrive');
+
+    function renderGenerating(count: number, pending: PendingSlide[]) {
+      const base = demoLibrary()[0];
+      if (!base) throw new Error("demo lesson missing");
+      const lesson = { ...base, slides: base.slides.slice(0, count) };
+      const props = { onPresent: () => {}, onDuplicate: () => Promise.resolve() };
+      const utils = render(
+        <TooltipProvider>
+          <LessonViewer lesson={lesson} pending={pending} {...props} />
+        </TooltipProvider>,
+      );
+      const rerenderWith = (slides: number, nextPending: PendingSlide[]) =>
+        utils.rerender(
+          <TooltipProvider>
+            <LessonViewer
+              lesson={{ ...base, slides: base.slides.slice(0, slides) }}
+              pending={nextPending}
+              {...props}
+            />
+          </TooltipProvider>,
+        );
+      return { ...utils, base, rerenderWith };
+    }
+
+    it("shows one skeleton per pending slide, numbered after the real ones, and the count of both", () => {
+      const { container } = renderGenerating(3, [{ kind: "content" }, { kind: "multiple-choice" }]);
+      expect(screen.getAllByRole("button", { name: /^Slide \d+$/ })).toHaveLength(3);
+      const rows = skeletons(container);
+      expect(rows).toHaveLength(2);
+      for (const row of rows) expect(row.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+      expect([...rows].map((row) => row.textContent?.trim())).toEqual(["4", "5"]);
+      expect(screen.getByText("3 of 5 slides")).toBeVisible();
+      // The keys stop at the last real slide.
+      fireEvent.keyDown(window, { key: "End" });
+      expect(status()).toBe("Slide 3 of 3");
+      // Nothing present at mount animates.
+      expect(arriving(container)).toHaveLength(0);
+    });
+
+    it("without `pending` there are no skeletons, a plain count and no arrival animation", () => {
+      const { lesson, container } = renderViewer();
+      expect(skeletons(container)).toHaveLength(0);
+      expect(screen.getByText(`${lesson.slides.length} slides`)).toBeVisible();
+      expect(container.querySelector(".motion-safe\\:animate-arrive")).toBeNull();
+    });
+
+    it("a slide that lands after mount fades in where its skeleton stood", () => {
+      const { container, rerenderWith } = renderGenerating(3, [
+        { kind: "content" },
+        { kind: "multiple-choice" },
+      ]);
+      rerenderWith(4, [{ kind: "multiple-choice" }]);
+      expect(skeletons(container)).toHaveLength(1);
+      const buttons = screen.getAllByRole("button", { name: /^Slide \d+$/ });
+      expect(buttons).toHaveLength(4);
+      expect(buttons[3]).toHaveClass("motion-safe:animate-arrive");
+      for (const button of buttons.slice(0, 3)) {
+        expect(button).not.toHaveClass("motion-safe:animate-arrive");
+      }
+      expect(screen.getByText("4 of 5 slides")).toBeVisible();
+    });
+
+    it("two slides landing in one refetch are staggered", () => {
+      const { rerenderWith } = renderGenerating(3, [
+        { kind: "content" },
+        { kind: "multiple-choice" },
+      ]);
+      rerenderWith(5, []);
+      const buttons = screen.getAllByRole("button", { name: /^Slide \d+$/ });
+      expect(buttons[3]).toHaveStyle({ animationDelay: "0ms" });
+      expect(buttons[4]).toHaveStyle({ animationDelay: "80ms" });
+      // The delay is fixed once the row exists: a later render leaves it alone.
+      rerenderWith(5, []);
+      expect(screen.getAllByRole("button", { name: /^Slide \d+$/ })[4]).toHaveStyle({
+        animationDelay: "80ms",
+      });
+      expect(screen.getByText("5 slides")).toBeVisible();
+    });
   });
 });

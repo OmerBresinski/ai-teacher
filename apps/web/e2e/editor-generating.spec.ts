@@ -6,20 +6,40 @@
  * and asserts the hand-over to the editor — the "clears" half. The "shows" half seeds a lesson
  * locked by a job that never ran, which stays locked (no terminal event, not yet stale).
  */
+import type { LessonFacts } from "@tj/domain/documents";
 import { demoWorkspace } from "@tj/editor/starter";
+import { expectNoSeriousA11yViolations } from "./a11y";
 import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 
 test.use({ seed: false });
 
+/** What Plan persists: the outline of the whole lesson, before the content slides exist. */
+const OUTLINE_KINDS = ["title", "objectives", "content", "multiple-choice", "plenary"] as const;
+const FACTS: LessonFacts = {
+  objectives: [],
+  vocabulary: [],
+  workedExamples: [],
+  questions: [],
+  misconceptions: [],
+  outline: OUTLINE_KINDS.map((kind, i) => ({ id: `s${i + 1}`, kind, minutes: 12, factRefs: [] })),
+  durationMin: 60,
+};
+
 test.describe("generating lesson", () => {
-  test("a locked lesson shows the read-only banner instead of the editor", async ({
+  test("a locked lesson shows the read-only banner instead of the editor, with a skeleton per slide to come", async ({
     signedInPage: { page },
   }) => {
     const jobId = "01a06a15-1849-7000-ac6a-c07e27fe308b";
     const water = demoWorkspace(new Date()).find((d) => d.key === "demo-water-cycle");
-    if (!water) throw new Error("fixture missing");
+    if (!water || !("slides" in water.body)) throw new Error("fixture missing");
     // Dated now, or `GET /documents/:id` would treat a never-queued lock as stale (ADR 0025 §24).
-    const body = { ...water.body, updatedAt: new Date().toISOString() };
+    // Three of the five outlined slides written: the rail shows two skeletons after them.
+    const body = {
+      ...water.body,
+      slides: water.body.slides.slice(0, 3),
+      facts: FACTS,
+      updatedAt: new Date().toISOString(),
+    };
     const res = await page.request.post(`${E2E_API_URL}/__test/seed-library`, {
       headers: { origin: E2E_WEB_URL },
       data: { documents: [{ ...water, body, generatingJobId: jobId }] },
@@ -35,6 +55,21 @@ test.describe("generating lesson", () => {
     await expect(page.getByRole("button", { name: "Rename lesson" })).toHaveCount(0);
     await expect(page.locator("[data-slide-root]").first()).toBeVisible();
     await expect(page).toHaveTitle("The water cycle · Teaching Journey");
+
+    const rail = page.getByRole("navigation", { name: "Slides" });
+    await expect(rail.getByRole("button", { name: /^Slide \d+$/ })).toHaveCount(3);
+    await expect(rail.locator('li[aria-hidden="true"]')).toHaveCount(2);
+    await expect(page.getByText("3 of 5 slides")).toBeVisible();
+
+    // The generating route is not in the a11y sweep (it needs a locked seed), so it is scanned
+    // here in each theme.
+    for (const theme of ["light", "dark", "high-contrast"] as const) {
+      await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
+      await page.reload();
+      await expect(rail.locator('li[aria-hidden="true"]')).toHaveCount(2);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      await expectNoSeriousA11yViolations(page, `generating lesson (${theme})`);
+    }
   });
 
   test("a lesson from a brief opens on its page and unlocks when the job ends", async ({

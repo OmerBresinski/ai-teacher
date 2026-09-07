@@ -69,7 +69,9 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   through `POST /__test/seed-library` and hands back `ids` / `paths` (`paths.lesson("demo-water-cycle")`,
   `paths.key(uuid)`); `test.use({ seed: false })` opts a spec out. Ids are server-minted uuids, so
   no spec hard-codes a document path. `editor-generating` covers the locked lesson (banner, no
-  editor) and the brief → `/l/:id` flow.
+  editor, one skeleton rail row per `facts.outline` entry still to come, axe in the three themes —
+  the route needs a locked seed so it is not in `a11y`) and the brief → `/l/:id` flow;
+  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation.
 - Client storage keys: `tj:sidebar-collapsed`, `tj:library:sort`, `tj:library:view`, and
   `tj:last-shell` are the stable browser preference/session contracts for the library shell;
   `tj:navigator` (full / compact rail) is the editor's.
