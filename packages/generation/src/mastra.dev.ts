@@ -75,7 +75,11 @@ export function devDeps(context: { lessonId: string; jobId: string }): PipelineD
 // A Studio run starts from a JSON form that cannot carry `deps`; the workflow asks this factory.
 registerDevDeps((runId) => devDeps({ lessonId: "studio-lesson", jobId: runId }));
 
+/** Studio's port. Pinned because `apps/worker/.env` carries the worker's `PORT`, which `mastra dev` would otherwise honour. */
+export const STUDIO_PORT = 4111;
+
 export const mastra = new Mastra({
   workflows: { lessonWorkflow },
   logger: false,
+  server: { port: STUDIO_PORT },
 });
