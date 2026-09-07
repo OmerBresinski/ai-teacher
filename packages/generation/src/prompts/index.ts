@@ -1,3 +1,4 @@
+import { checkInputPrompt } from "./check-input";
 import { evaluatePrompt } from "./evaluate";
 import { generateSlidePrompt } from "./generate-slide";
 import { generateWorksheetPrompt } from "./generate-worksheet";
@@ -12,6 +13,7 @@ import { repairPrompt } from "./repair";
  * `generation.promptVersions`, and `prompts.test.ts` pins a hash of each prompt's text to it.
  */
 
+export type { CheckInputInput } from "./check-input";
 export type { EvaluateInput } from "./evaluate";
 export type { GenerateSlideInput } from "./generate-slide";
 export type { GenerateWorksheetInput } from "./generate-worksheet";
@@ -22,6 +24,7 @@ export type { RepairInput } from "./repair";
 export type { Audience } from "./shared";
 export {
   cascadePrompt,
+  checkInputPrompt,
   evaluatePrompt,
   generateSlidePrompt,
   generateWorksheetPrompt,
@@ -32,6 +35,7 @@ export {
 };
 
 export const PROMPTS = {
+  "check-input": checkInputPrompt,
   "plan-skeleton": planSkeletonPrompt,
   "plan-facts": planFactsPrompt,
   "generate-slide": generateSlidePrompt,
@@ -44,6 +48,7 @@ export const PROMPTS = {
 export type PromptName = keyof typeof PROMPTS;
 
 export const PROMPT_VERSIONS = {
+  "check-input": checkInputPrompt.version,
   "plan-skeleton": planSkeletonPrompt.version,
   "plan-facts": planFactsPrompt.version,
   "generate-slide": generateSlidePrompt.version,

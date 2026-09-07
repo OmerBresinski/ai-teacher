@@ -17,6 +17,7 @@ export {
 } from "./call";
 export * from "./prompts";
 export * from "./specs";
+export { checkInput } from "./stages/check-input";
 export { evaluate } from "./stages/evaluate";
 export { BUDGET_FINDING, generate, PLANNED_SLIDES } from "./stages/generate";
 export { plan } from "./stages/plan";
@@ -34,6 +35,7 @@ export { MAX_TARGETS, repair, repairTargets } from "./stages/repair";
 export { audienceOf, blockText, slideText } from "./stages/shared";
 export * from "./types";
 export {
+  checkInputStep,
   evaluateStep,
   generateStep,
   lessonWorkflow,

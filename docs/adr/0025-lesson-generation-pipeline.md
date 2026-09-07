@@ -81,6 +81,13 @@ What the code says today, read on `master` at `9752445`:
    of jobs is rejected: it would re-lock the row four times and hand the lock across four
    at-least-once boundaries. Cancel (`signal.aborted`) is checked between model calls; what was
    written stays.
+
+   **Amended 2026-09-07 (TEACH-137): an input check runs first.** A `check-input` step precedes
+   Plan in the same job: the Identifier guard re-run over the Brief's free text, then one `small`
+   call (`check-input.v<n>`) reporting `learner-name`, `unsafe-content` or `not-a-lesson` findings.
+   Any finding stops the run with `InputRejected` (the findings, content-free) before anything is
+   persisted; the worker maps it to a non-retryable failure. The step writes no checkpoint: a
+   lesson with no `generation` runs it again, a lesson at `planned` or later never does.
 6. **The worker writes through `putDocumentAsJob`.** `packages/db/src/documents.ts` gains
    `putDocumentAsJob(ws, id, body, jobId): Promise<{ status: "ok"; row } | { status: "lost_lock" }
    | { status: "missing" }>` — `UPDATE … WHERE id = :id AND generating_job_id = :jobId`. The lock

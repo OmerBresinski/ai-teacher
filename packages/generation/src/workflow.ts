@@ -2,6 +2,7 @@ import { RequestContext } from "@mastra/core/request-context";
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import type { Lesson } from "@tj/domain/documents";
 import { z } from "zod";
+import { checkInput } from "./stages/check-input";
 import { evaluate } from "./stages/evaluate";
 import { generate } from "./stages/generate";
 import { plan } from "./stages/plan";
@@ -16,8 +17,8 @@ import {
 } from "./types";
 
 /*
- * The in-process Mastra workflow (ADR 0025 §5, §21): four thin steps around the pure stage
- * functions. The state — the documents plus the worksheet row id — travels as step IO. Mastra
+ * The in-process Mastra workflow (ADR 0025 §5, §21): five thin steps around the pure stage
+ * functions — the input check (TEACH-137) and the four checkpointed stages. The state — the documents plus the worksheet row id — travels as step IO. Mastra
  * validates step IO against Standard JSON Schema; `z.custom<PipelineState>()` declares the type
  * without re-validating a document of up to 1 MB on every hop (`parseLesson` already ran when the
  * row was read, and `persist` validates on write). `deps` ride on the `RequestContext`; they hold
@@ -58,10 +59,14 @@ function depsOf({ requestContext, runId }: Ctx): PipelineDeps {
   throw new Error("pipeline deps missing from the request context");
 }
 
-/** The first stage that still has to run for this lesson (ADR 0025 §5 checkpoint resume). */
+/**
+ * The first stage that still has to run for this lesson (ADR 0025 §5 checkpoint resume). No
+ * checkpoint means nothing is certified yet, so the run starts from the input check; a lesson at
+ * `planned` or later has had its brief checked and resumes after its checkpoint.
+ */
 export function resumeFrom(lesson: Lesson): PipelineStageName | null {
   const done = lesson.generation?.stage;
-  if (!done) return "plan";
+  if (!done) return STAGE_ORDER[0] ?? null;
   const index = STAGE_ORDER.findIndex((stage) => STAGE_CHECKPOINT[stage] === done);
   return STAGE_ORDER[index + 1] ?? null;
 }
@@ -107,6 +112,7 @@ function stageStep(
   });
 }
 
+export const checkInputStep = stageStep("check-input", checkInput);
 export const planStep = stageStep("plan", plan);
 export const generateStep = stageStep("generate", generate);
 export const evaluateStep = stageStep("evaluate", evaluate);
@@ -114,10 +120,11 @@ export const repairStep = stageStep("repair", repair);
 
 export const lessonWorkflow = createWorkflow({
   id: "lesson-plan",
-  description: "Plan → Generate → Evaluate → Repair for one lesson (ADR 0025)",
+  description: "Check input → Plan → Generate → Evaluate → Repair for one lesson (ADR 0025)",
   inputSchema: StateSchema,
   outputSchema: StateSchema,
 })
+  .then(checkInputStep)
   .then(planStep)
   .then(generateStep)
   .then(evaluateStep)
@@ -163,7 +170,7 @@ export async function runLessonPipeline(
         result.status === "failed"
           ? describe(result.error)
           : `workflow ended with status ${result.status}`;
-      throw new StageFailure(from ?? "plan", message, {
+      throw new StageFailure(from ?? "check-input", message, {
         cause: result.status === "failed" ? result.error : undefined,
       });
     }

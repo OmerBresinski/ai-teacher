@@ -1,5 +1,5 @@
 import type { AiCallContext, Budget, CreatedAi } from "@tj/ai";
-import type { GenerationStage, Lesson, SourceRef, Worksheet } from "@tj/domain/documents";
+import type { Finding, GenerationStage, Lesson, SourceRef, Worksheet } from "@tj/domain/documents";
 import type { Logger } from "pino";
 
 /*
@@ -8,8 +8,12 @@ import type { Logger } from "pino";
  * and injects it as `persist`; tests inject a recorder.
  */
 
-/** The four `lesson.plan` stages, in order; each writes a checkpoint (ADR 0025 §5). */
-export type PipelineStageName = "plan" | "generate" | "evaluate" | "repair";
+/**
+ * The `lesson.plan` stages, in order (ADR 0025 §5). `check-input` (TEACH-137) runs first and
+ * writes no checkpoint: it either lets the brief through or stops the job; the four after it each
+ * write one.
+ */
+export type PipelineStageName = "check-input" | "plan" | "generate" | "evaluate" | "repair";
 
 /**
  * Every stage a model call can belong to, as it appears in call contexts and failures: the
@@ -17,15 +21,25 @@ export type PipelineStageName = "plan" | "generate" | "evaluate" | "repair";
  */
 export type StageName = PipelineStageName | "cascade" | "regenerate";
 
-/** The checkpoint each pipeline stage writes to `Lesson.generation.stage` (ADR 0025 §3, §5). */
-export const STAGE_CHECKPOINT: Record<PipelineStageName, GenerationStage> = {
+/**
+ * The checkpoint each pipeline stage writes to `Lesson.generation.stage` (ADR 0025 §3, §5);
+ * `null` for a stage that writes none, so a resumed job never lands on it.
+ */
+export const STAGE_CHECKPOINT: Record<PipelineStageName, GenerationStage | null> = {
+  "check-input": null,
   plan: "planned",
   generate: "generated",
   evaluate: "evaluated",
   repair: "repaired",
 };
 
-export const STAGE_ORDER: readonly PipelineStageName[] = ["plan", "generate", "evaluate", "repair"];
+export const STAGE_ORDER: readonly PipelineStageName[] = [
+  "check-input",
+  "plan",
+  "generate",
+  "evaluate",
+  "repair",
+];
 
 /** One extracted passage of a teacher-provided Source (ADR 0025 §20); loaded by the worker. */
 export type SourceText = {
@@ -82,6 +96,19 @@ export class StageFailure extends Error {
     options: { cause?: unknown } = {},
   ) {
     super(message, options);
+  }
+}
+
+/**
+ * The brief must not go to Plan (TEACH-137): a learner's name, unsafe content or not a lesson
+ * request. Thrown by `check-input` before anything is persisted; the worker maps it to a
+ * `NonRetryableError` — a re-run cannot fix the input. `findings` carry the teacher-readable,
+ * content-free reasons; `message` is the first of them.
+ */
+export class InputRejected extends Error {
+  override readonly name = "InputRejected";
+  constructor(readonly findings: Finding[]) {
+    super(findings[0]?.message ?? "The brief cannot be turned into a lesson as written.");
   }
 }
 

@@ -20,6 +20,7 @@ const brief = {
 const audience = audienceOf(sampleBriefLesson());
 
 const SAMPLE_INPUTS: Record<PromptName, unknown> = {
+  "check-input": { topic: brief.topic, answers: brief.answers, audience: brief.audience },
   "plan-skeleton": brief,
   "plan-facts": { ...brief, skeleton: FIXTURES.planSkeleton },
   "generate-slide": {
@@ -74,6 +75,10 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
 };
 
 const PINNED: Record<PromptName, { version: string; hash: string }> = {
+  "check-input": {
+    version: "check-input.v1",
+    hash: "f440fcedd8550eb45de0311f2f12472f827ba785cd22961219becff69ad341b8",
+  },
   "plan-skeleton": {
     version: "plan-skeleton.v1",
     hash: "2df135d0804a8cbedf796e3e5b461e5d50433e0c715a52cec89ce9122e643fe9",

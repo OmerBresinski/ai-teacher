@@ -19,6 +19,30 @@ export { BlockSpecSchema, SlideSpecSchema };
 const line = (max: number) => z.string().trim().min(1).max(max);
 
 /* ------------------------------------------------------------------ */
+/* Check input                                                         */
+/* ------------------------------------------------------------------ */
+
+/** The checks the input step's model call may report (TEACH-137); every one stops the run. */
+export const INPUT_CHECKS = ["learner-name", "unsafe-content", "not-a-lesson"] as const;
+export type InputCheck = (typeof INPUT_CHECKS)[number];
+
+/**
+ * The `Finding` shape, narrowed: a fixed `check`, always an `error`, no target (the finding is
+ * about the brief, not a slide) and a message the teacher reads. The model never echoes the text
+ * it objected to — the message names the problem, not the words.
+ */
+export const InputFindingSchema = z.strictObject({
+  check: z.enum(INPUT_CHECKS),
+  severity: z.literal("error"),
+  target: z.strictObject({}),
+  message: line(SPEC_LIMITS.body),
+});
+export const CheckInputOutputSchema = z.strictObject({
+  findings: z.array(InputFindingSchema).max(3),
+});
+export type CheckInputOutput = z.infer<typeof CheckInputOutputSchema>;
+
+/* ------------------------------------------------------------------ */
 /* Plan                                                                */
 /* ------------------------------------------------------------------ */
 

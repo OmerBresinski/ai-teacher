@@ -11,7 +11,7 @@ import {
   parseStoredWorksheet,
 } from "@tj/domain/documents";
 import { noSources } from "@tj/generation";
-import { FIXTURES, PLAN_CALLS, pipelineScript, scriptedPipelineAi } from "@tj/generation/testing";
+import { FIXTURES, pipelineScript, SLIDES_INDEX, scriptedPipelineAi } from "@tj/generation/testing";
 import { NonRetryableError } from "@tj/jobs";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
@@ -155,8 +155,9 @@ describeDb("lesson.plan job", () => {
   test("a failed Evaluate keeps the locks; the retry resumes after `generated` without re-planning", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
-    // Evaluate is the 12th call (2 plan + 8 slides + worksheet); make it blow up as the provider.
-    const evaluateIndex = PLAN_CALLS + FIXTURES.planSkeleton.outline.length - 2 + 1;
+    // Evaluate is the 13th call (check + 2 plan + 8 slides + worksheet); make it blow up as the
+    // provider.
+    const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2 + 1;
     const first: FakeAi = createFakeAi({
       script: pipelineScript({
         overrides: {
@@ -191,7 +192,7 @@ describeDb("lesson.plan job", () => {
   test("a `generated` checkpoint whose worksheet row is missing is recreated under the same id on retry", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
-    const evaluateIndex = PLAN_CALLS + FIXTURES.planSkeleton.outline.length - 2 + 1;
+    const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2 + 1;
     const first = createFakeAi({
       script: pipelineScript({
         overrides: {
@@ -232,13 +233,40 @@ describeDb("lesson.plan job", () => {
     expect((await getDocument(ws(), lessonId))?.generatingJobId).toBeNull();
   });
 
+  test("a brief the input check refuses is a NonRetryableError with the finding's message; nothing written, locks released", async () => {
+    const jobId = newId<JobId>();
+    const lessonId = await briefLesson(jobId);
+    const before = await getDocument(ws(), lessonId);
+    const ai = scriptedPipelineAi({
+      checkInput: {
+        findings: [
+          {
+            check: "learner-name",
+            severity: "error",
+            target: {},
+            message: "The brief seems to name a pupil. Please reword it.",
+          },
+        ],
+      },
+    });
+
+    await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(ai)).ctx)).rejects.toThrow(
+      new NonRetryableError("The brief seems to name a pupil. Please reword it."),
+    );
+
+    expect(ai.calls.map((c) => c.context?.stage)).toEqual(["check-input"]);
+    const after = await getDocument(ws(), lessonId);
+    expect(after?.updatedAt.toISOString()).toBe(before?.updatedAt.toISOString());
+    expect(after?.generatingJobId).toBeNull();
+  });
+
   test("a cancel during Generate keeps the slides so far and releases the locks", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
     const ac = new AbortController();
     // Cancel while the fifth slide's answer is pending: four slides are already on the row.
     const script = pipelineScript();
-    const pending = PLAN_CALLS + 2;
+    const pending = SLIDES_INDEX + 2;
     script[pending] = async (call) => {
       ac.abort("cancelled");
       return script[pending - 1] as string;
@@ -254,16 +282,18 @@ describeDb("lesson.plan job", () => {
     expect((await getDocument(ws(), lessonId))?.generatingJobId).toBeNull();
   });
 
-  test("a cost cap of $0.0001 completes with a budget finding after at most two calls", async () => {
+  test("a tiny cost cap completes with a budget finding after at most three calls", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
     const ai = scriptedPipelineAi();
 
+    // The fake's usage costs $0.003 on `small` and $0.009 on `standard`: the cap admits the input
+    // check and Plan's skeleton call and refuses the facts call, which Plan records as a finding.
     await lessonPlanJob(
-      ctx(jobId, lessonId, depsWith(ai, { capUsd: 0.0001, capTokens: 1_000_000 })).ctx,
+      ctx(jobId, lessonId, depsWith(ai, { capUsd: 0.005, capTokens: 1_000_000 })).ctx,
     );
 
-    expect(ai.calls.length).toBeLessThanOrEqual(2);
+    expect(ai.calls.length).toBeLessThanOrEqual(3);
     const lesson = await storedLesson(lessonId);
     expect(lesson.generation?.stage).toBe("repaired");
     expect(lesson.generation?.findings.some((f) => f.check === "budget")).toBe(true);

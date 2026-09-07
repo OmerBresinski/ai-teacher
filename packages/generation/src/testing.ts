@@ -15,8 +15,8 @@ import { noSources, type PipelineDeps, type PipelineState } from "./types";
 
 /*
  * Test helpers for the pipeline and its consumers (ADR 0025 §22): the fixtures as typed values,
- * a scripted fake that answers Plan (skeleton, facts) → Generate×N → worksheet → Evaluate →
- * Repair in order, the
+ * a scripted fake that answers check-input → Plan (skeleton, facts) → Generate×N → worksheet →
+ * Evaluate → Repair in order, the
  * empty lesson `POST /lessons` creates, and a `PipelineDeps` recorder. Network-free.
  */
 
@@ -59,22 +59,30 @@ export function fixtureSlideScript(): string[] {
   return FIXTURES.planSkeleton.outline.slice(2).map((entry) => json(FIXTURES.slides[entry.kind]));
 }
 
-/** Plan's two answers, in call order: the skeleton, then the facts. */
+/** The input check's one answer (a clean brief), then Plan's two: the skeleton, then the facts. */
+export const CHECK_INPUT_CALLS = 1;
 export const PLAN_CALLS = 2;
+/** Script index of the first Plan answer. */
+export const PLAN_INDEX = CHECK_INPUT_CALLS;
+/** Script index of the first slide answer. */
+export const SLIDES_INDEX = CHECK_INPUT_CALLS + PLAN_CALLS;
 
 /**
- * The script for one full run on the fixture plan: 2 plan (skeleton, facts) + 8 slides +
- * 1 worksheet + 1 evaluate (+ repair answers when a test injects an `error` finding). `overrides`
- * replaces entries by index so a test can script a schema miss at a chosen call.
+ * The script for one full run on the fixture plan: 1 check-input + 2 plan (skeleton, facts) +
+ * 8 slides + 1 worksheet + 1 evaluate (+ repair answers when a test injects an `error` finding).
+ * `overrides` replaces entries by index so a test can script a schema miss at a chosen call;
+ * `checkInput` replaces the input check's answer.
  */
 export function pipelineScript(
   options: {
+    checkInput?: unknown;
     evaluate?: unknown;
     repairs?: number;
     overrides?: Record<number, FakeScriptEntry>;
   } = {},
 ): FakeScriptEntry[] {
   const script: FakeScriptEntry[] = [
+    json(options.checkInput ?? { findings: [] }),
     json(FIXTURES.planSkeleton),
     json(FIXTURES.planFacts),
     ...fixtureSlideScript(),
