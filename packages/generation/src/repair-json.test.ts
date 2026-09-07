@@ -51,6 +51,13 @@ describe("repairJsonText", () => {
     });
   });
 
+  test("an inherited name is not a repeated key: no hoist for { toString: { … } }", () => {
+    const text = JSON.stringify({ toString: JSON.stringify({ items: ["a"] }) });
+    const repaired = repairJsonText(text);
+    expect(repaired.repairs).toEqual(["parsed-string"]);
+    expect(JSON.parse(repaired.text as string)).toEqual({ toString: { items: ["a"] } });
+  });
+
   test("valid JSON with nothing to repair and non-JSON text both return null", () => {
     expect(repairJsonText(JSON.stringify(answer))).toEqual({ text: null, repairs: [] });
     expect(repairJsonText("Sure! Here is the plan:")).toEqual({ text: null, repairs: [] });

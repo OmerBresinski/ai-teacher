@@ -74,7 +74,7 @@ function hoistWrappedAnswer(value: unknown, repairs: JsonRepairKind[]): unknown 
   const only = keys[0];
   if (keys.length !== 1 || only === undefined) return value;
   const inner = value[only];
-  if (!isObject(inner) || !(only in inner)) return value;
+  if (!isObject(inner) || !Object.hasOwn(inner, only)) return value;
   repairs.push("hoisted");
   return inner;
 }

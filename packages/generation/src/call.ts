@@ -68,9 +68,10 @@ const RETRY_PREFIX = "\n\nYour previous answer did not validate:\n";
 /**
  * The retry's closing instruction. The misses seen in production are shape misses (a list or the
  * whole answer given as a string, a key left out), so the reminder is about shape, not content.
+ * Schema-neutral on purpose: some lists hold strings and some keys are optional.
  */
 const RETRY_SUFFIX =
-  "\n\nAnswer again with the complete JSON object in exactly the shape shown: every top-level key present, every list a JSON array of objects (never a string containing JSON, never prose).";
+  "\n\nAnswer again with the complete answer as one JSON object in the shape shown. Lists are JSON arrays, never strings containing JSON; do not wrap the answer or any part of it in a string; no prose.";
 
 /**
  * `Output.object` with a repair pass: when the text fails to parse or validate, `repairJsonText`
@@ -201,9 +202,10 @@ function usageOf(usage: {
  * the model invented — those are replaced by a count. The retry prompt keeps them: the model needs
  * to know which keys to drop.
  *
- * One line per path: zod reports a wrong type and then keeps checking the value as if it were
- * right (`expected array, received string` followed by `Too big: expected string to have <=4
- * characters` for the same field), and the second line would send the model the wrong way.
+ * After a wrong type on a path, the follow-on checks on that path are dropped: zod keeps checking
+ * a mistyped value as if it were right (`expected array, received string` followed by `Too big:
+ * expected string to have <=4 characters` for the same field), and the second line would send
+ * the model the wrong way. Distinct refinement failures on one path are all kept.
  */
 export function issuesOf(
   error: NoObjectGeneratedError,
@@ -215,7 +217,7 @@ export function issuesOf(
   const zodIssues =
     cause?.issues ?? (cause as { cause?: { issues?: unknown[] } } | undefined)?.cause?.issues;
   if (Array.isArray(zodIssues) && zodIssues.length > 0) {
-    const seenPaths = new Set<string>();
+    const mistyped = new Set<string>();
     const lines: string[] = [];
     for (const issue of zodIssues) {
       const i = issue as {
@@ -225,8 +227,8 @@ export function issuesOf(
         keys?: unknown[];
       };
       const pathKey = (i.path ?? []).join(".");
-      if (seenPaths.has(pathKey)) continue;
-      seenPaths.add(pathKey);
+      if (mistyped.has(pathKey)) continue;
+      if (i.code === "invalid_type") mistyped.add(pathKey);
       const path = pathKey.length > 0 ? `${pathKey}: ` : "";
       const message =
         audience === "log" && i.code === "unrecognized_keys"

@@ -121,6 +121,34 @@ describe("callStructured repairs the text before validating it", () => {
     expect(log.text()).not.toContain("received number");
   });
 
+  test("two refinement failures on one path are both kept: only follow-ons to a type miss are dropped", async () => {
+    const twice = z.strictObject({
+      items: z
+        .array(z.string())
+        .refine((v) => v.length !== 1, { message: "give more than one item" })
+        .refine((v) => !v.includes("x"), { message: "no x" }),
+    });
+    const ai = createFakeAi({
+      script: [JSON.stringify({ items: ["x"] }), JSON.stringify({ items: ["a", "b"] })],
+    });
+    const log = capturingLogger();
+    const d = deps(ai, { logger: log.logger });
+    await callStructured({
+      deps: d,
+      stage: "plan",
+      cls: "standard",
+      prompt,
+      input: "hi",
+      schema: twice,
+      maxOutputTokens: 100,
+    });
+    const issues = /"issues":(\[[^\]]*\])/.exec(log.text())?.[1];
+    expect(JSON.parse(issues as string)).toEqual([
+      "- items: give more than one item",
+      "- items: no x",
+    ]);
+  });
+
   test("one issue per path: the checks zod runs after a type miss are not sent to the model", async () => {
     const ai = createFakeAi({
       script: [JSON.stringify({ items: "hello world" }), JSON.stringify({ items: ["a"] })],
