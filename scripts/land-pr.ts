@@ -269,16 +269,52 @@ async function prState(pr: number, deps: LandPrDeps): Promise<PrState> {
   return parsePrState(output(result));
 }
 
+/**
+ * Rebase the PR's branch onto master and push. The worktree is put back on whatever it was on
+ * before, whether the rebase succeeded or not: `land` is often run from a *different* branch (the
+ * next piece of work), and a later `git rebase` typed there must not land on the PR's branch.
+ * A rebase that stopped on conflicts is aborted before switching back, so the worktree is clean.
+ */
 async function rebaseBranch(state: PrState, deps: LandPrDeps): Promise<void> {
-  for (const args of [
-    ["fetch", "origin"],
-    ["checkout", state.headRefName],
-    ["rebase", "origin/master"],
-    ["push", "--force-with-lease"],
-  ]) {
-    const result = await deps.git(args);
-    requireSuccess(result, `git ${args.join(" ")}`);
+  const restore = await startingCheckout(state, deps);
+  try {
+    for (const args of [
+      ["fetch", "origin"],
+      ["checkout", state.headRefName],
+      ["rebase", "origin/master"],
+      ["push", "--force-with-lease"],
+    ]) {
+      const result = await deps.git(args);
+      if (result.exitCode !== 0 && args[0] === "rebase") await deps.git(["rebase", "--abort"]);
+      requireSuccess(result, `git ${args.join(" ")}`);
+    }
+  } finally {
+    // Cleanup must never replace the error that brought us here: a failed restore is reported,
+    // not thrown, so the rebase failure (if any) is the one the caller sees.
+    if (restore) {
+      const back = await deps
+        .git(restore)
+        .catch((): CommandResult => ({ exitCode: 1, stdout: "" }));
+      if (back.exitCode !== 0) {
+        log.warn(`Could not return to the starting checkout (git ${restore.join(" ")}).`);
+      }
+    }
   }
+}
+
+/**
+ * The `git checkout` that puts the worktree back where it was, or null when it is already on the
+ * PR's branch. A detached HEAD (`--show-current` prints nothing) is restored by commit.
+ */
+async function startingCheckout(state: PrState, deps: LandPrDeps): Promise<string[] | null> {
+  const branch = await deps.git(["branch", "--show-current"]);
+  requireSuccess(branch, "git branch --show-current");
+  const name = output(branch).trim();
+  if (name === state.headRefName) return null;
+  if (name !== "") return ["checkout", name];
+  const head = await deps.git(["rev-parse", "HEAD"]);
+  requireSuccess(head, "git rev-parse HEAD");
+  return ["checkout", "--detach", output(head).trim()];
 }
 
 /** One entry of `gh pr view --json statusCheckRollup`: a check run or a commit status context. */

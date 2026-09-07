@@ -151,8 +151,12 @@ export async function runJob<N extends JobName, D = unknown>(
   let threw = false;
   let result: JobResultPayload | undefined;
   try {
-    const returned = await (registry[name] as JobHandler<N, D>)(jobCtx);
-    if (returned !== undefined) result = returned as JobResultPayload;
+    // A shutdown or cancellation that landed while `started` was being written: the handler has
+    // not begun, so do not begin it — the aborted branches below record the outcome.
+    if (!abort.signal.aborted) {
+      const returned = await (registry[name] as JobHandler<N, D>)(jobCtx);
+      if (returned !== undefined) result = returned as JobResultPayload;
+    }
   } catch (err) {
     threw = true;
     thrown = err;
