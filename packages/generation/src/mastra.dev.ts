@@ -4,7 +4,6 @@ import { createAi, createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { CreateLessonSchema, lessonFromBrief } from "@tj/domain/documents";
 import pino from "pino";
-import { z } from "zod";
 import { pipelineScript } from "./testing";
 import { noSources, type PipelineDeps } from "./types";
 import { lessonWorkflow, registerDevDeps, StateSchema } from "./workflow";
@@ -92,14 +91,16 @@ export const STUDIO_PORT = Number(process.env.PORT ?? 4111);
  * which is not something to type into a form.
  */
 export const StudioInputSchema = CreateLessonSchema.extend({
+  // `.describe()` on the domain schemas themselves: the identifier guard and length caps on
+  // `topic` stay exactly as `POST /lessons` applies them (ADR 0024 §2).
   brief: CreateLessonSchema.shape.brief.extend({
-    topic: z.string().min(1).describe("Topic or objective, e.g. 'The water cycle'"),
+    topic: CreateLessonSchema.shape.brief.shape.topic.describe(
+      "Topic or objective, e.g. 'The water cycle'",
+    ),
   }),
-  yearGroup: z
-    .string()
-    .max(40)
-    .optional()
-    .describe("e.g. 'Year 5' — sets the key stage and default length"),
+  yearGroup: CreateLessonSchema.shape.yearGroup.describe(
+    "e.g. 'Year 5' — sets the key stage and default length",
+  ),
 });
 
 export const studioLessonWorkflow = createWorkflow({
