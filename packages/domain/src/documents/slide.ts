@@ -144,11 +144,26 @@ export type ImageElement = ElementBase & {
   fit: "cover" | "contain";
   /** Fractional crop rect (0..1) applied before fit. */
   crop?: { x: number; y: number; w: number; h: number };
+  /**
+   * The point of interest as fractions of the picture (0..1, default centre). A re-cover after the
+   * box changes shape keeps it in view (TEACH-153).
+   */
+  focal?: { x: number; y: number };
+  /** Non-destructive adjustments layered over `src` (TEACH-153); `src` itself is never rewritten. */
+  imageTransform?: ImageTransform;
   radius?: number;
   /** Attribution for a searched image: "Title by Creator, CC BY 2.0". */
   credit?: string;
   /** The page the searched image came from, linked beside the credit. */
   creditUrl?: string;
+};
+
+export type ImageTransform = {
+  /** Degrees, -45..45, applied with a cover zoom so no empty corners show. */
+  straighten?: number;
+  rotate?: 0 | 90 | 180 | 270;
+  flipH?: boolean;
+  flipV?: boolean;
 };
 
 export type ShapeKind =
@@ -325,6 +340,15 @@ const ImageElementSchema = z.object({
   alt: z.string().optional(),
   fit: z.enum(["cover", "contain"]),
   crop: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
+  focal: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).optional(),
+  imageTransform: z
+    .object({
+      straighten: z.number().min(-45).max(45).optional(),
+      rotate: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).optional(),
+      flipH: z.boolean().optional(),
+      flipV: z.boolean().optional(),
+    })
+    .optional(),
   radius: z.number().optional(),
   credit: z.string().optional(),
   // The credit line renders as an anchor in the image toolbar, and an imported lesson is
