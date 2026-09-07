@@ -112,6 +112,22 @@ Code and Cursor. Check your own tool list and map by **capability**, not by name
 - **Browser/preview tools.** Any browser automation you have; the deliverable is a screenshot of
   the working UI on the PR. With no browser at all: say so in the PR description and ask the
   human to verify visually before landing — UI acceptance is not met until someone has.
+  **Host PR screenshots on the `pr-screenshots` orphan branch, never on Linear.**
+  `uploads.linear.app` URLs need a Linear session, so GitHub's image proxy gets a 401 and the
+  PR shows a broken image (PRs #122, #128, #132). There is no API for uploading comment images,
+  so commit the PNGs to the orphan branch and embed the raw URL:
+
+  ```sh
+  D=$(mktemp -d) && git worktree add "$D" pr-screenshots && cp /tmp/teach-<n>-*.png "$D"/pr-<pr>/ \
+    && git -C "$D" add -A && git -C "$D" -c commit.gpgsign=false commit --no-verify -m "chore: screenshots for #<pr>" \
+    && git -C "$D" push origin pr-screenshots && git worktree remove "$D"
+  # then in the PR comment:
+  # ![editor](https://raw.githubusercontent.com/OmerBresinski/ai-teacher/pr-screenshots/pr-<pr>/editor.png)
+  ```
+
+  Create `pr-<pr>/` first (`mkdir -p`). Attaching the same file to the Linear issue with
+  `linear_prepare_attachment_upload` is fine as an extra; it is not the PR deliverable. The branch is
+  never merged and never rebased; it is not on CI.
 - **Reviewer model.** In order: GPT-5.6 Luna; if unavailable, Claude Sonnet 5; if neither is
   available, ask a human to review. The reviewer must be a different model from the implementer:
   skip a candidate that is the implementer's own model and move to the next. Do not substitute
@@ -150,7 +166,7 @@ to `master` directly.
    `turbo: command not found`. **Lint the PR title locally before `gh pr create` and before any
    `gh pr edit --title`:** CI runs commitlint on the title (squash merges use it as the commit
    subject) and a rejected title costs a full CI round-trip. Run
-   `printf '%s\n' "<title>" | bun run --silent commitlint` (needs `node_modules`; without them
+   `printf '%s\n' "<title>" | bun --bun node_modules/.bin/commitlint` (needs `node_modules`; without them
    `bunx commitlint` fetches an unpinned copy that cannot resolve the shareable config) and fix
    until it prints nothing. The two rules that bite: `header-max-length` — the whole title including
    `(TEACH-n)` is ≤ 100 chars; `subject-case` — the subject after `<type>(<scope>): ` must not
