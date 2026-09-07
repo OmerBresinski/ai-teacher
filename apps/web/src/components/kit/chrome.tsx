@@ -30,7 +30,9 @@ export function Chrome() {
               <AppBarTitle>The water cycle</AppBarTitle>
             </AppBarGroup>
             <AppBarGroup className="ml-auto">
-              <Button size="sm">Present</Button>
+              <Button variant="primary" size="sm">
+                Present
+              </Button>
             </AppBarGroup>
           </AppBar>
         </div>
