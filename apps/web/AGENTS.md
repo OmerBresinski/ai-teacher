@@ -36,7 +36,11 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   over `GET /documents` (`librarySelectors.items` / `.count` flatten the pages; counts are "loaded
   so far", the API has no totals), `document(id)` is the editor's working copy with its row state
   in `documentMeta(id)`, and every `libraryMutations.*` is a whole-document `PUT` with
-  `expectedUpdatedAt`. Screens never call `api.documents` themselves. A `409` arrives as
+  `expectedUpdatedAt`; rename, delete and the series membership writes are optimistic
+  (`lib/library-optimistic.ts` edits every cached page in `onMutate`, rolls back in `onError`,
+  reconciles in `onSettled`). Screens never call `api.documents` themselves. Route loaders warm
+  only the list a page reads and never depend on `q` — the search box writes the URL per
+  keystroke and the page's 250 ms debounce owns the fetch. A `409` arrives as
   `ApiError.reason` (`stale` → `useSaveWithConflictToast` offers Reload; `generating` →
   `GeneratingLesson` renders the read-only banner over SSE). Unit tests stub the transport with
   `src/test/fake-api.ts` (`installFakeApi()`), seeded with `demoWorkspace()` under its keys
@@ -73,7 +77,10 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   one form validated by `CreateLessonSchema` from `@tj/domain/documents` (the same schema
   `POST /lessons` runs, so the identifier guard reads the same), the two clarifying questions from
   `lib/brief-questions.ts` (product copy lives only there), `libraryMutations.createLesson` →
-  `/l/$lessonId`. "New lesson" in the library navigates here; `NewDocumentDialog` stays for
+  `seedGeneratingLesson` (the new lesson and its lock go into the cache first, so `/l/$lessonId`
+  paints before its first GET) → `/l/$lessonId`. The form model is `lib/brief-form.ts`, the
+  presentational pieces `components/brief/*`. "New lesson" in the library navigates here (and
+  preloads the chunk on hover); `NewDocumentDialog` stays for
   worksheets and for the page's "Blank lesson" action. e2e: `brief` spec; `/lessons/new` is in the
   a11y route list.
 - Document routes: `/l/$lessonId` is the editor (`lesson-editor.page.tsx`, `LessonEditor` from

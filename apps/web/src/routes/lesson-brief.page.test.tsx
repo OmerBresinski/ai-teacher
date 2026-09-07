@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { GUARD_MESSAGE } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
+import { queryKeys } from "@/lib/query";
 import { installFakeApi } from "@/test/fake-api";
 
 const { fakeApi, restore: restoreFetch } = installFakeApi();
@@ -24,13 +25,14 @@ const { LessonBriefPage } = await import("./lesson-brief.page");
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <LessonBriefPage />
       </TooltipProvider>
     </QueryClientProvider>,
   );
+  return { ...view, queryClient };
 }
 
 const topicBox = () => screen.getByRole("textbox", { name: "Topic or objective" });
@@ -76,7 +78,7 @@ describe("LessonBriefPage", () => {
   });
 
   it("posts the brief with the default answers and no durationMin, then opens the lesson", async () => {
-    renderPage();
+    const { queryClient } = renderPage();
     fireEvent.change(topicBox(), { target: { value: "Fractions of amounts" } });
     await pickYearGroup("Year 5");
     fireEvent.click(createButton());
@@ -100,6 +102,18 @@ describe("LessonBriefPage", () => {
       to: "/l/$lessonId",
       params: { lessonId: created?.id },
     });
+    // The lesson page paints from the cache before its first GET: body and lock are seeded, and
+    // the entry is marked stale so the page reconciles with the row in the background.
+    const id = created?.id ?? "";
+    const seeded = queryClient.getQueryData<{ title: string; slides: unknown[] }>(
+      queryKeys.libraryDocument(id),
+    );
+    expect(seeded?.title).toBe("Fractions of amounts");
+    expect(seeded?.slides).toEqual([]);
+    expect(queryClient.getQueryData(queryKeys.libraryDocumentMeta(id))).toMatchObject({
+      generatingJobId: created?.generatingJobId,
+    });
+    expect(queryClient.getQueryState(queryKeys.libraryDocument(id))?.isInvalidated).toBe(true);
   });
 
   it("skipping both questions sends no answers; a typed duration travels as durationMin", async () => {

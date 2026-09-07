@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { z } from "zod";
+import type { LibraryMode } from "@/components/library/library-model";
 import { libraryCache, libraryQueries, SORTS, type Sort } from "@/lib/library";
 import { pageTitle } from "@/lib/page-title";
 import { readPreference } from "@/lib/use-preference";
@@ -12,17 +13,26 @@ export const librarySearchSchema = z.object({
 });
 
 /**
- * Warm the first page of each list without failing the navigation: `LibraryPage` owns the error
- * state (Retry), so a rejected prefetch must reach `useInfiniteQuery`, not the route error
- * boundary. The sort preference is read here so the page's first query is the one warmed.
+ * Warm the first page of the lists a page reads, without failing the navigation: `LibraryPage`
+ * owns the error state (Retry), so a rejected prefetch must reach `useInfiniteQuery`, not the
+ * route error boundary. Home reads all three; a kind page reads its own (the sidebar's counts
+ * fetch the default-keyed lists themselves, in parallel, and never block the navigation). The sort
+ * preference is read here so the key warmed is the one the page mounts with. The search term is
+ * deliberately **not** a loader dependency: the box writes `q` to the URL on every keystroke, and
+ * a loader keyed on it would fetch per keystroke and defeat the page's 250 ms debounce.
  */
-async function prefetchLibrary(queryClient: QueryClient, q = ""): Promise<void> {
+function prefetchLibrary(queryClient: QueryClient, mode: LibraryMode): Promise<unknown> {
   const sort = readSortPreference();
-  await Promise.allSettled([
-    queryClient.ensureInfiniteQueryData(libraryQueries.documents("lesson", { sort, q })),
-    queryClient.ensureInfiniteQueryData(libraryQueries.documents("worksheet", { sort, q })),
-    queryClient.ensureInfiniteQueryData(libraryQueries.series({ sort, q })),
-  ]);
+  const documents = (kind: "lesson" | "worksheet") =>
+    queryClient.ensureInfiniteQueryData(libraryQueries.documents(kind, { sort }));
+  const series = () => queryClient.ensureInfiniteQueryData(libraryQueries.series({ sort }));
+  return Promise.allSettled(
+    mode === "home"
+      ? [documents("lesson"), documents("worksheet"), series()]
+      : mode === "series"
+        ? [series()]
+        : [documents(mode)],
+  );
 }
 
 /** The `tj:library:sort` preference (apps/web/AGENTS.md), as `usePreference` reads it. */
@@ -40,7 +50,7 @@ export const libraryLayoutRoute = createRoute({
 export const indexRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/",
-  loader: ({ context }) => prefetchLibrary(context.queryClient),
+  loader: ({ context }) => prefetchLibrary(context.queryClient, "home"),
   head: () => pageTitle("Home"),
   component: lazyRouteComponent(() => import("./index.page"), "IndexPage"),
 });
@@ -49,8 +59,7 @@ export const lessonsRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/lessons",
   validateSearch: librarySearchSchema,
-  loaderDeps: ({ search }) => ({ q: search.q ?? "" }),
-  loader: ({ context, deps }) => prefetchLibrary(context.queryClient, deps.q),
+  loader: ({ context }) => prefetchLibrary(context.queryClient, "lesson"),
   head: () => pageTitle("Lessons"),
   component: lazyRouteComponent(() => import("./library-kind.page"), "LessonsPage"),
 });
@@ -59,8 +68,7 @@ export const worksheetsRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/worksheets",
   validateSearch: librarySearchSchema,
-  loaderDeps: ({ search }) => ({ q: search.q ?? "" }),
-  loader: ({ context, deps }) => prefetchLibrary(context.queryClient, deps.q),
+  loader: ({ context }) => prefetchLibrary(context.queryClient, "worksheet"),
   head: () => pageTitle("Worksheets"),
   component: lazyRouteComponent(() => import("./library-kind.page"), "WorksheetsPage"),
 });
@@ -69,8 +77,7 @@ export const seriesIndexRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/series",
   validateSearch: librarySearchSchema,
-  loaderDeps: ({ search }) => ({ q: search.q ?? "" }),
-  loader: ({ context, deps }) => prefetchLibrary(context.queryClient, deps.q),
+  loader: ({ context }) => prefetchLibrary(context.queryClient, "series"),
   head: () => pageTitle("Series"),
   component: lazyRouteComponent(() => import("./library-kind.page"), "SeriesPage"),
 });
@@ -83,7 +90,7 @@ export const seriesDetailRoute = createRoute({
   // page's `useQuery` picks it up. A missing series is not a 404: the page renders TeachDeck's
   // "deleted or never existed" state with a way back (TEACH-92), so the loader resolves `null`.
   loader: async ({ context: { queryClient }, params }) => {
-    await prefetchLibrary(queryClient);
+    await prefetchLibrary(queryClient, "series");
     const options = libraryQueries.seriesDetail(params.seriesId, queryClient);
     const cached = libraryCache.seriesDetail(queryClient, params.seriesId);
     if (cached) {

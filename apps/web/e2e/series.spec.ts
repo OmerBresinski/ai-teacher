@@ -92,8 +92,11 @@ test.describe("series detail", () => {
     await dialog.getByRole("checkbox").nth(1).check();
     await dialog.getByRole("checkbox").nth(0).check();
     await dialog.getByRole("button", { name: "Add 2 lessons" }).click();
+    // The rows appear optimistically while the dialog is still up; roles behind it are hidden, so
+    // wait for it to close before reading them.
+    await expect(dialog).toHaveCount(0);
     await expect(page.getByText(/5 lessons/)).toBeVisible();
-    expect((await rowIds(page, paths)).length).toBe(5);
+    await expect.poll(() => rowIds(page, paths)).toHaveLength(5);
 
     // Fresh load: the return target is whatever shell page was last committed in this session.
     await page.goto("/series/00000000-0000-4000-8000-000000000000");

@@ -3,9 +3,8 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { LessonEditor } from "@tj/editor/lesson";
 import { Button, IconButton, Tooltip } from "@tj/ui";
 import { ArrowLeft } from "lucide-react";
-import { useCallback } from "react";
+import { lazy, Suspense, useCallback } from "react";
 import { EmptyLesson } from "@/components/empty-lesson";
-import { GeneratingLesson } from "@/components/generating-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
@@ -15,6 +14,14 @@ import { lessonEditorRoute } from "./documents.route";
 // The slide stylesheet (theme fonts, rich-text rules, reveal motion) travels with every route that
 // paints a slide (ADR 0022 §7): a direct load of `/l/…` must not depend on the library chunk.
 import "@tj/editor/styles/editor.css";
+
+// The generating view renders the read-only viewer (`@tj/editor/present`), a chunk most editor
+// loads never need: only a lesson still under its `lesson.plan` lock reaches it (bundle-conditional).
+const GeneratingLesson = lazy(() =>
+  import("@/components/generating-lesson").then(({ GeneratingLesson }) => ({
+    default: GeneratingLesson,
+  })),
+);
 
 /**
  * `/l/$lessonId` — the lesson editor (TEACH-103). The loader has already resolved the document (or
@@ -32,7 +39,13 @@ export function LessonEditorPage() {
   const shellReturn = useShellReturn();
   const options = libraryQueries.document(lessonId, queryClient);
   const { data } = useQuery(options);
-  const { data: meta } = useQuery(libraryQueries.documentMeta(lessonId));
+  // The body fetch writes the row state beside it, so this query only needs its own request when
+  // the meta was invalidated later (a 409, the job's terminal event). Enabling it after the body
+  // has arrived keeps the hover-preload path to one `GET /documents/:id`.
+  const { data: meta } = useQuery({
+    ...libraryQueries.documentMeta(lessonId),
+    enabled: data != null && isFullDocument(data),
+  });
   const save = useSaveWithConflictToast(lessonId);
 
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
@@ -52,15 +65,17 @@ export function LessonEditorPage() {
   }
   if (meta?.generatingJobId) {
     return (
-      <GeneratingLesson
-        lesson={data}
-        jobId={meta.generatingJobId}
-        leading={
-          <IconButton label="Back to the library" onClick={onBack}>
-            <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
-          </IconButton>
-        }
-      />
+      <Suspense fallback={<RoutePendingPage />}>
+        <GeneratingLesson
+          lesson={data}
+          jobId={meta.generatingJobId}
+          leading={
+            <IconButton label="Back to the library" onClick={onBack}>
+              <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
+            </IconButton>
+          }
+        />
+      </Suspense>
     );
   }
 
