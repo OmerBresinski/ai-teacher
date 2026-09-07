@@ -277,6 +277,18 @@ describe("ImageToolbar (row 3)", () => {
     fireEvent.change(alt, { target: { value: "A cloud" } });
     expect(first(read(), 5)).toMatchObject({ alt: "A cloud" });
   });
+
+  test("Corners is the shape bar's menu, not a spinbutton; picking 16 writes the radius", async () => {
+    const { container, read } = renderEditor(chromeLesson());
+    clickAt(container, 550, 330);
+    const bar = toolbar("Image");
+    expect(within(bar).queryByRole("spinbutton")).toBeNull();
+    openMenu(within(bar).getByRole("button", { name: "Corners, 0" }));
+    const square = await screen.findByRole("menuitemradio", { name: /^0 Square$/ });
+    expect(square).toBeChecked();
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "16" }));
+    expect(first(read(), 5)).toMatchObject({ radius: 16 });
+  });
 });
 
 describe("MultiToolbar (row 4)", () => {
