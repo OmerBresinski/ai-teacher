@@ -29,11 +29,11 @@
   box-shadow: var(--shadow-slide);
 }
 
-/* The "a question does not fit" hint above the preview; never printed. */
+/* The "a question does not fit" hint above the pages; never printed. */
 .ws-print-hint {
   max-width: 520px;
-  margin: 0 auto;
-  padding: 24px;
+  margin: 0;
+  padding: 0 24px;
   text-align: center;
   font-size: 13px;
   line-height: 20px;

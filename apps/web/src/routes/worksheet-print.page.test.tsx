@@ -54,6 +54,8 @@ describe("WorksheetPrintPage", () => {
     expect(container.querySelectorAll(".ws-print-root .ws-page").length).toBeGreaterThan(0);
     expect(screen.getByText(/^Page 1 of \d+$/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Back to the library" })).toBeNull();
+    // The one landmark on the page (axe `landmark-one-main`).
+    expect(screen.getByRole("main")).toHaveClass("ws-print-root");
     // The demo sheet ships without an answer key.
     expect(screen.queryByRole("heading", { level: 2, name: "Answer key" })).toBeNull();
     await settle();

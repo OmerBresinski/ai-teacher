@@ -54,17 +54,18 @@ export function WorksheetPrint({ worksheet, auto = false, backSlot }: WorksheetP
 
   return (
     <>
-      {ready && oversize.length > 0 ? (
-        <p className="ws-print-hint">
-          A question does not fit on its page. {backSlot ?? "Go back"} and shorten it, or cut its
-          answer lines.
-        </p>
-      ) : null}
       {/* `@page` takes no custom properties, so the paper is written out here. */}
       <style>{`@page { size: ${worksheet.pageSize === "Letter" ? "Letter" : "A4"}; }`}</style>
-      <div className="ws-print-root" style={{ visibility: ready ? undefined : "hidden" }}>
+      {/* The page's one landmark: the route renders no app chrome around it (ADR 0023 §2). */}
+      <main className="ws-print-root" style={{ visibility: ready ? undefined : "hidden" }}>
+        {ready && oversize.length > 0 ? (
+          <p className="ws-print-hint">
+            A question does not fit on its page. {backSlot ?? "Go back"} and shorten it, or cut its
+            answer lines.
+          </p>
+        ) : null}
         <Sheet worksheet={worksheet} theme={theme} pages={pages} mode="print" />
-      </div>
+      </main>
       {measureNode}
     </>
   );
