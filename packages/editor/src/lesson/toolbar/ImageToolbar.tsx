@@ -2,16 +2,15 @@ import type { ImageElement } from "@tj/domain/documents";
 import { IconButton, Input, Label, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
 import { Crop, Replace } from "lucide-react";
 import { memo, useId } from "react";
-import { NumberInput } from "../../kit/NumberInput";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import { Segmented } from "../../kit/Segmented";
 import { normaliseHref } from "../../text/links";
 import { useSessionActions } from "../use-editor-session";
 import { MoreDrawer } from "./MoreDrawer";
-import { BarButton, ICON, ICON_SM, OpacityControl, useElementWrites } from "./shared";
+import { BarButton, CornersMenu, ICON, ICON_SM, OpacityControl, useElementWrites } from "./shared";
 
 /**
- * Replace, fit, crop, corner radius, alt text, credit (TeachDeck `ImageToolbar`). Replace opens
+ * Replace, fit, crop, corners, alt text, credit (TeachDeck `ImageToolbar`). Replace opens
  * the Add image panel in replace mode (TEACH-107); Crop enters crop mode on the slide (TEACH-153),
  * where `CropToolbar` takes this bar's place.
  */
@@ -54,12 +53,9 @@ export const ImageToolbar = memo(function ImageToolbar({
 
       <PanelSeparator />
 
-      <NumberInput
+      <CornersMenu
         value={element.radius ?? 0}
-        onChange={(radius) => scrub(() => update<ImageElement>(element.id, { radius }))}
-        min={0}
-        max={200}
-        aria-label="Corner radius"
+        onPick={(radius) => update<ImageElement>(element.id, { radius })}
       />
 
       <Popover onOpenChange={(open) => !open && end()}>
