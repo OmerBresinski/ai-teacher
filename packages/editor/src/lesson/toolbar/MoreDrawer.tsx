@@ -6,16 +6,7 @@ import {
   type SlideElement,
   type TextElement,
 } from "@tj/domain/documents";
-import {
-  Button,
-  IconButton,
-  Input,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Slider,
-  Switch,
-} from "@tj/ui";
+import { Button, IconButton, Input, Popover, PopoverContent, PopoverTrigger, Switch } from "@tj/ui";
 import {
   ArrowDown,
   ArrowDownToLine,
@@ -32,7 +23,7 @@ import { PanelRow } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
 import { useProposals } from "../proposals-context";
 import { useSessionActions } from "../use-editor-session";
-import { ICON, ICON_SM, PanelSection, useElementWrites } from "./shared";
+import { ICON, ICON_SM, OpacityField, opacityOf, PanelSection, useElementWrites } from "./shared";
 
 const ROUNDABLE = new Set<SlideElement["type"]>(["image", "shape", "text"]);
 
@@ -57,6 +48,7 @@ export function MoreDrawer({
   const one = elements.length === 1 ? elements[0] : null;
   const { onRegenerate } = useProposals();
   const { openRegenerate } = useSessionActions();
+  const opacity = opacityOf(elements);
 
   return (
     <Popover onOpenChange={(open) => !open && end()}>
@@ -172,16 +164,14 @@ export function MoreDrawer({
           ) : null}
 
           <PanelSection title="Effects">
-            <PanelRow label="Opacity">
-              <Slider
-                value={[Math.round((one?.opacity ?? 1) * 100)]}
-                onValueChange={([v]) => scrub(() => updateMany(ids, { opacity: (v ?? 100) / 100 }))}
-                onValueCommit={end}
-                min={0}
-                max={100}
-                aria-label="Opacity"
-                valueLabel={(v) => `${v}%`}
-                className="w-28"
+            <PanelRow label="Opacity" htmlFor={`${rowId}-opacity`}>
+              <OpacityField
+                id={`${rowId}-opacity`}
+                value={opacity.value}
+                mixed={opacity.mixed}
+                onChange={(v) => scrub(() => updateMany(ids, { opacity: v / 100 }))}
+                onCommit={end}
+                className="w-40"
               />
             </PanelRow>
             {one && ROUNDABLE.has(one.type) ? (

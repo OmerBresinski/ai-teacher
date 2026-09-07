@@ -10,15 +10,15 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Slider,
   Tooltip,
 } from "@tj/ui";
 import { memo, type ReactNode, useId } from "react";
 import { ColorPicker } from "../../kit/Color";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import { docFromText } from "../../model/factories";
+import { shapeRadius } from "../../slide/elements/ShapeView";
 import { MoreDrawer } from "./MoreDrawer";
-import { BarButton, useElementWrites, useThemePalette } from "./shared";
+import { BarButton, OpacityControl, useElementWrites, useThemePalette } from "./shared";
 
 /** The border widths on offer, slide points. 0 is "None". */
 const BORDER_WIDTHS: readonly number[] = [0, 1, 2, 3, 4, 6, 8, 12];
@@ -43,12 +43,10 @@ export const ShapeToolbar = memo(function ShapeToolbar({
   const { update, scrub, end } = useElementWrites(slideId);
   const palette = useThemePalette(theme);
   const labelId = useId();
-  const opacityId = useId();
 
   // Mirror ShapeView's defaults so the menu marks what is actually drawn.
   const borderWidth = element.strokeWidth ?? (element.stroke ? 2 : 0);
-  const radius = element.radius ?? theme.radius;
-  const opacity = Math.round((element.opacity ?? 1) * 100);
+  const radius = shapeRadius(element, theme);
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Shape" data-shape-toolbar>
@@ -114,38 +112,7 @@ export const ShapeToolbar = memo(function ShapeToolbar({
 
       <PanelSeparator />
 
-      <Popover onOpenChange={(open) => !open && end()}>
-        <Tooltip label="Opacity">
-          <PopoverTrigger asChild>
-            <BarButton aria-label={`Opacity, ${opacity}%`} className="font-medium tabular-nums">
-              {opacity}%
-            </BarButton>
-          </PopoverTrigger>
-        </Tooltip>
-        <PopoverContent align="start" className="w-64 p-3" aria-label="Opacity">
-          <div className="flex items-center gap-3">
-            <Label htmlFor={opacityId} className="text-ink-3 text-meta">
-              Opacity
-            </Label>
-            <Slider
-              id={opacityId}
-              aria-label="Opacity"
-              min={0}
-              max={100}
-              step={1}
-              value={[opacity]}
-              onValueChange={([v]) => {
-                if (v === undefined) return;
-                scrub(() => update<ShapeElement>(element.id, { opacity: v / 100 }));
-              }}
-              className="flex-1"
-            />
-            <output htmlFor={opacityId} className="w-10 text-right text-meta tabular-nums">
-              {opacity}%
-            </output>
-          </div>
-        </PopoverContent>
-      </Popover>
+      <OpacityControl slideId={slideId} elements={[element]} />
 
       <Popover onOpenChange={(open) => !open && end()}>
         <Tooltip label="Label">

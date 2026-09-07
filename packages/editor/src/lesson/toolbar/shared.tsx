@@ -5,9 +5,15 @@ import {
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuTrigger,
+  Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Slider,
+  Tooltip,
 } from "@tj/ui";
 import { ChevronDown } from "lucide-react";
-import { type ComponentProps, type ReactNode, useMemo } from "react";
+import { type ComponentProps, type ReactNode, useId, useMemo } from "react";
 import * as reducers from "../../model/reducers";
 import type { ElementPatch } from "../../model/reducers/elements";
 import { useEditSession } from "../../model/use-edit-session";
@@ -133,5 +139,127 @@ export function PanelSection({ title, children }: { title: string; children: Rea
       </h3>
       {children}
     </section>
+  );
+}
+
+/* --- Opacity ------------------------------------------------------ */
+
+/** What the selection's opacity reads as: the common value, or the first element's marked mixed. */
+export function opacityOf(elements: SlideElement[]): { value: number; mixed: boolean } {
+  const pct = (el: SlideElement | undefined) => Math.round((el?.opacity ?? 1) * 100);
+  const value = pct(elements[0]);
+  return { value, mixed: elements.some((el) => pct(el) !== value) };
+}
+
+/** A circle half filled: the opacity glyph. */
+export function OpacityGlyph() {
+  return (
+    <svg
+      width={16}
+      height={16}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      aria-hidden
+      focusable="false"
+    >
+      <circle cx={8} cy={8} r={6.25} />
+      <path d="M8 1.75A6.25 6.25 0 0 1 8 14.25Z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** The slider with its readout, shared by the bar popover and the More drawer. */
+export function OpacityField({
+  id,
+  value,
+  mixed,
+  onChange,
+  onCommit,
+  className,
+}: {
+  id?: string;
+  /** Percent, 0 to 100. */
+  value: number;
+  /** The selected elements disagree; the readout shows the first one's value. */
+  mixed: boolean;
+  onChange: (percent: number) => void;
+  onCommit: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex items-center gap-2", className)}>
+      <Slider
+        id={id}
+        aria-label="Opacity"
+        min={0}
+        max={100}
+        step={1}
+        value={[value]}
+        onValueChange={([v]) => {
+          if (v !== undefined) onChange(v);
+        }}
+        onValueCommit={onCommit}
+        valueLabel={(v) => `${v}%`}
+        className="flex-1"
+      />
+      <output htmlFor={id} className="w-10 shrink-0 text-right text-meta tabular-nums">
+        {value}%
+      </output>
+      {mixed ? (
+        <span data-opacity-mixed className="shrink-0 text-ink-3 text-meta">
+          Mixed
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The bar control: the glyph and the percent, opening the slider. Writes to every element given,
+ * so a multi-selection scrubs as one; the run is one undo step and ends on release.
+ */
+export function OpacityControl({
+  slideId,
+  elements,
+}: {
+  slideId: string;
+  elements: SlideElement[];
+}) {
+  const { updateMany, scrub, end } = useElementWrites(slideId);
+  const id = useId();
+  const { value, mixed } = opacityOf(elements);
+  const ids = elements.map((e) => e.id);
+  return (
+    <Popover onOpenChange={(open) => !open && end()}>
+      <Tooltip label="Opacity">
+        <PopoverTrigger asChild>
+          <BarButton
+            data-opacity-control
+            aria-label={`Opacity, ${value}%${mixed ? ", mixed" : ""}`}
+            className="font-medium tabular-nums"
+          >
+            <OpacityGlyph />
+            {value}%
+          </BarButton>
+        </PopoverTrigger>
+      </Tooltip>
+      <PopoverContent align="start" className="w-64 p-3" aria-label="Opacity">
+        <div className="flex items-center gap-3">
+          <Label htmlFor={id} className="text-ink-3 text-meta">
+            Opacity
+          </Label>
+          <OpacityField
+            id={id}
+            value={value}
+            mixed={mixed}
+            onChange={(v) => scrub(() => updateMany(ids, { opacity: v / 100 }))}
+            onCommit={end}
+            className="flex-1"
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
