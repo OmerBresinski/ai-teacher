@@ -7,7 +7,7 @@
 export type StorageErrorCode =
   /** The object does not exist (`getSignedUrl`, `get`). */
   | "not_found"
-  /** The backend (file system, Vercel Blob API) failed; `cause` carries the original error. */
+  /** The backend (file system, S3 API) failed; `cause` carries the original error. */
   | "backend"
   /**
    * The key passed domain validation but this adapter still refuses it (e.g. the resolved

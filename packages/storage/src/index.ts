@@ -14,9 +14,9 @@ export {
 export { isStorageError, StorageError, type StorageErrorCode } from "./errors";
 export { assertObjectKey, assertPrefix, encodeKeyForUrl, keyIsUnderPrefix } from "./keys";
 export { LocalDiskStorage, type LocalDiskStorageOptions, META_SUFFIX } from "./local-disk";
+export { S3Storage, type S3StorageOptions } from "./s3";
 export {
   isReadableStorageAdapter,
   type ReadableStorageAdapter,
   type StorageObjectBody,
 } from "./types";
-export { VercelBlobStorage, type VercelBlobStorageOptions } from "./vercel-blob";

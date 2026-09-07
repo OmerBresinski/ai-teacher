@@ -34,7 +34,7 @@ function isNotFound(error: unknown): boolean {
 
 /**
  * `StorageAdapter` backed by a directory on the local file system. Used in development and
- * tests (ADR 0011); **not** for production.
+ * tests (ADR 0026); **not** for production.
  *
  * - Objects live at `<rootDir>/<key>`; `contentType` is kept in a `<key>.meta.json` sidecar that
  *   `list()` never reports.

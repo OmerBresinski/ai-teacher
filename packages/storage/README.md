@@ -1,14 +1,14 @@
 # @tj/storage
 
-`StorageAdapter` implementations for Teaching Journey (ADR 0011). Consumed from source
-(`exports["."] → src/index.ts`); depends only on `@tj/domain` and `@vercel/blob`. No framework
-imports, no `@tj/db`.
+`StorageAdapter` implementations for Teaching Journey (ADR 0026, superseding ADR 0011). Consumed
+from source (`exports["."] → src/index.ts`); depends only on `@tj/domain` and Bun's built-in
+`Bun.S3Client`. No framework imports, no `@tj/db`.
 
 ```ts
 import { createStorage, deleteByPrefix } from "@tj/storage";
 import { storageKey } from "@tj/domain";
 
-const { adapter, kind } = createStorage(process.env); // "vercel-blob" | "local-disk"
+const { adapter, kind } = createStorage(process.env); // "s3" | "local-disk"
 const key = storageKey(workspaceId, "sources", `${sourceId}.pdf`);
 await adapter.put(key, request.body, { contentType: "application/pdf" });
 const url = await adapter.getSignedUrl(key, { expiresInSeconds: 300 });
@@ -21,7 +21,7 @@ await deleteByPrefix(adapter, workspaceId); // F15-R02
 | Class | Used in | Backend |
 | ----- | ------- | ------- |
 | `LocalDiskStorage(rootDir, { publicBaseUrl? })` | development, tests | directory on disk |
-| `VercelBlobStorage({ token, publicPrefixes?, proxyBasePath?, listPageSize? })` | production | Vercel Blob via `@vercel/blob` 2.8.0 |
+| `S3Storage({ endpoint, bucket, accessKeyId, secretAccessKey, region?, proxyBasePath?, listPageSize? })` | production | S3-compatible bucket via `Bun.S3Client` (the Railway Bucket `files`) |
 
 Both implement `StorageAdapter` from `@tj/domain` (`put`, `getSignedUrl`, `delete`, `list`) plus
 `get(key)` (`ReadableStorageAdapter`, also from `@tj/domain`), which the API's `GET /files/:key`
@@ -39,31 +39,40 @@ proxy uses to stream bytes server-side (`apps/api/src/routes/files.ts`).
 - `delete` is idempotent and removes object + sidecar.
 - `list(prefix)` is recursive and returns `{ key, size, updatedAt }` in sorted order.
 
-### VercelBlobStorage
+### S3Storage
 
-- `@vercel/blob` **2.8.0** supports `access: "private"`; everything is stored private with
-  `addRandomSuffix: false` so the Blob pathname *is* the storage key. `allowOverwrite: true`
-  keeps `put` idempotent for the same key.
-- Keys under `publicPrefixes` (`<ws>` or `<ws>/sub`, path-style match) are stored with
-  `access: "public"`; `getSignedUrl` returns their CDN URL.
-- **Private objects have no browser-reachable URL.** `getSignedUrl` returns the relative proxy
-  path `${proxyBasePath}/${key}` (default `/files/<key>`, segments percent-encoded). The API
-  route `GET /files/:key` (TEACH-16/19) must authenticate the caller, check the key's workspace
-  against the session, call `adapter.get(key)` and stream `body` with `contentType`. That proxy is
-  the only sanctioned read path; `expiresInSeconds` is ignored because the proxy authorises every
-  request.
-- `list` follows every `cursor` page and applies path-style prefix matching (`<ws>/sources` does
-  not match `<ws>/sources-old/x`).
-- `delete` is idempotent (`del` on an unknown pathname is a no-op).
+- `Bun.S3Client` with **path-style** requests (`virtualHostedStyle: false`): Railway reports
+  `urlStyle: "virtual-host"` but virtual-hosted requests fail with `NoSuchBucket` against its
+  endpoint. The object key *is* the storage key; `contentType` is stored as the object's
+  `Content-Type` (`type`) and read back from `stat()`.
+- `put` writes a `Uint8Array` in one request and a `ReadableStream` through `file(key).writer()`
+  (multipart upload; parts go out as chunks arrive).
+- **Every object is private; there is no public mode.** `getSignedUrl` never presigns: it returns
+  the relative proxy path `${proxyBasePath}/${key}` (default `/files/<key>`, segments
+  percent-encoded) after a `stat()` so a missing object throws `not_found`. The API route
+  `GET /files/:key` authenticates the caller, checks the key's workspace against the session,
+  calls `adapter.get(key)` and streams `body` with `contentType`. That proxy is the only
+  sanctioned read path (ADR 0026 §4); `expiresInSeconds` is ignored.
+- `get` = `stat()` then `file(key).stream()`, so a missing key fails before the stream is handed out.
+- `list` follows every `nextContinuationToken` page and applies path-style prefix matching
+  (`<ws>/sources` does not match `<ws>/sources-old/x`).
+- `delete` is idempotent (S3 `DeleteObject` on an unknown key succeeds).
+- `S3Error` with `code` `NoSuchKey` / `NotFound` → `StorageError("not_found")`; anything else →
+  `StorageError("backend")` with the original error on `cause`.
 
 ## Environment variables (`createStorage(env)`)
 
 | Variable | Effect |
 | -------- | ------ |
-| `BLOB_READ_WRITE_TOKEN` | When set (non-blank) → `VercelBlobStorage`; otherwise local disk. |
+| `S3_BUCKET` | When set (non-blank) → `S3Storage`; otherwise local disk. |
+| `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Required when `S3_BUCKET` is set; a blank one makes `createStorage` throw (boot fails rather than falling back to ephemeral disk). |
+| `S3_REGION` | Optional SigV4 region; default `auto` (what Railway reports). |
 | `STORAGE_ROOT` | Local-disk root. Default `.data/storage` (git-ignored). |
 | `STORAGE_PUBLIC_BASE_URL` | Local-disk `getSignedUrl` base instead of `file://`. |
-| `STORAGE_PUBLIC_PREFIXES` | Comma-separated Blob public prefixes. |
+
+The variables are `S3_*`, not `AWS_*`, because the api and worker already carry
+`AWS_BEARER_TOKEN_BEDROCK` / `AWS_REGION` for Bedrock (ADR 0018) and the AWS SDK credential chain
+would pick up `AWS_ACCESS_KEY_ID`.
 
 ## Key rules
 
@@ -78,7 +87,7 @@ NUL or `.`. Invalid keys throw the domain `StorageKeyError` before any backend c
 
 - `StorageKeyError` (`@tj/domain`) — bad key or prefix.
 - `StorageError` (this package) with `code`:
-  `"not_found"` (`getSignedUrl`/`get` on a missing object), `"backend"` (fs / Blob API failure,
+  `"not_found"` (`getSignedUrl`/`get` on a missing object), `"backend"` (fs / S3 API failure,
   original error on `cause`), `"invalid_key"`. Use `isStorageError(err, code?)`.
 
 ## deleteByPrefix (F15-R02)
@@ -92,19 +101,20 @@ sidecar-independent records (DB rows) themselves.
 
 `bun run --filter=@tj/storage test`. `runStorageContract(name, factory, { skip? })`
 (`src/storage-contract.ts`) is the shared behavioural suite: it runs against `LocalDiskStorage`
-in a `mkdtemp` directory and against `VercelBlobStorage` when `BLOB_READ_WRITE_TOKEN` is set;
-without a token the Blob suite is skipped with that reason. The Blob run writes under a fresh
-workspace id and cleans up after itself.
+in a `mkdtemp` directory and against `S3Storage` when `S3_BUCKET`, `S3_ENDPOINT`,
+`S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` are set (locally:
+`eval "$(railway bucket credentials --bucket files --json | jq -r '"export S3_BUCKET=\(.bucketName) S3_ENDPOINT=\(.endpoint) S3_ACCESS_KEY_ID=\(.accessKeyId) S3_SECRET_ACCESS_KEY=\(.secretAccessKey)"')"`);
+without them the S3 suite is skipped with that reason. The S3 run writes under a fresh workspace
+id and cleans up after itself.
 
 ## Residency (ADR 0016)
 
-Vercel Blob regions are Vercel-controlled, so files are EU-resident at best, not UK-resident.
-Revisit before M3 / M4; an S3-compatible adapter behind the same interface is the escape hatch.
+The bucket is in Railway's `ams` region, the same metro as the api, worker and Postgres. Files are
+EU-resident, not UK-resident; revisit before M3 / M4 (ADR 0016 §1).
 
-## ADR 0011 amendment (2026-09-04)
+## History
 
-ADR 0011 originally said clients read through `getSignedUrl`. With private Blobs and no SDK
-presigned-URL support in 2.8.0, private objects are read through the API proxy `GET /files/:key`
-(session + workspace-scoped key, streams `get(key)`); `getSignedUrl` returns that proxy path, or
-the CDN URL for explicitly public prefixes only. See the amendment in
-[`docs/adr/0011-vercel-blob.md`](../../docs/adr/0011-vercel-blob.md).
+ADR 0011 (2026-09-03) chose Vercel Blob; its 2026-09-04 amendment introduced the `GET /files/:key`
+proxy because Blob had no signed URLs for private objects. ADR 0026 (2026-09-07) replaced Blob with
+the Railway Bucket and kept the proxy as the deliberate read path. See
+[`docs/adr/0026-railway-bucket-storage.md`](../../docs/adr/0026-railway-bucket-storage.md).

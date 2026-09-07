@@ -142,7 +142,11 @@ describe("targets and reports", () => {
     const report = compareNames(target, parseRailwayVariablesJson(RAILWAY_WORKER_JSON) ?? []);
     expect(report.missing).toEqual([
       "WORKER_CONCURRENCY",
-      "BLOB_READ_WRITE_TOKEN",
+      "S3_BUCKET",
+      "S3_ENDPOINT",
+      "S3_REGION",
+      "S3_ACCESS_KEY_ID",
+      "S3_SECRET_ACCESS_KEY",
       "AWS_BEARER_TOKEN_BEDROCK",
       "AWS_REGION",
       "AI_MODEL_FRONTIER",
@@ -156,7 +160,11 @@ describe("targets and reports", () => {
     const commands = fixCommands(report);
     expect(commands).toEqual([
       "railway variable set --service worker --skip-deploys 'WORKER_CONCURRENCY=4'",
-      "railway variable set BLOB_READ_WRITE_TOKEN --stdin --service worker --skip-deploys  < /path/to/secret",
+      "railway variable set --service worker --skip-deploys 'S3_BUCKET=files-jtopgcer1vrw3abyfb'",
+      "railway variable set --service worker --skip-deploys 'S3_ENDPOINT=https://t3.storageapi.dev'",
+      "railway variable set --service worker --skip-deploys 'S3_REGION=auto'",
+      "railway variable set S3_ACCESS_KEY_ID --stdin --service worker --skip-deploys  < /path/to/secret",
+      "railway variable set S3_SECRET_ACCESS_KEY --stdin --service worker --skip-deploys  < /path/to/secret",
       "railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin --service worker --skip-deploys  < /path/to/secret",
       "railway variable set --service worker --skip-deploys 'AWS_REGION=us-east-1'",
       "railway variable set --service worker --skip-deploys 'AI_MODEL_FRONTIER=us.anthropic.claude-opus-5'",

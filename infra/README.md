@@ -17,10 +17,10 @@ EU-West), [0016](../docs/adr/0016-prd-deviations.md) (EU not UK residency).
 > on `master`, PR environments are on and **verified with PR #30** (see "PR environments").
 > Production is wired end-to-end to the Vercel web app (CORS preflight → 204, magic link → `302`
 > back to `https://teaching-journey-web.vercel.app` with the session cookie → `/me` 200; pre-deploy
-> `db:migrate: DATABASE_URL up to date`). Since TEACH-37 (2026-09-04) the Vercel Blob store
-> **`teaching-journey`** (`store_Ii6wcxuuLOvPP4ou`, `fra1`, private) exists and
-> `BLOB_READ_WRITE_TOKEN` is set on api + worker: the api boots with `storage="vercel-blob"`
-> (see "Vercel Blob (files)" below).
+> `db:migrate: DATABASE_URL up to date`). Since TEACH-142 (2026-09-07) object storage is the
+> Railway Bucket **`files`** (`c161038f-1fd4-496b-84a3-301a74d18401`, region `ams`) and the
+> `S3_*` variables are set on api + worker: the api boots with `storage="s3"` (see "Railway
+> Bucket (files)" below). The Vercel Blob store from TEACH-37 is deleted (ADR 0026).
 
 ## Known gaps (read this first)
 
@@ -169,45 +169,50 @@ read `.gitignore`. Delete `.env.local` if `vercel link` creates one.
       The client code is already in the production bundle.
 - [ ] Optional: *Web Analytics* (`@vercel/analytics` is not installed — add it the same
       production-only way if wanted).
-- [x] **Vercel Blob store** — done from the CLI on 2026-09-04 (TEACH-37), no dashboard step was
-      needed; see "Vercel Blob (files)" below.
 - [ ] When domains exist (follow-up): add `app.<domain>`, set `VITE_API_URL` (Production) to
       `https://api.<domain>` and `VITE_API_URL_FALLBACK` to the same. `RAILWAY_PR_API_URL_TEMPLATE`
       is already confirmed and does not change.
 - [x] GitHub App access to `OmerBresinski/ai-teacher` (`vercel git connect` succeeded, PR comments
       on) — re-check after any GitHub permission change.
 
-## Vercel Blob (files) — TEACH-37
+## Railway Bucket (files) — TEACH-142
 
-Object storage for Sources / Artefacts is a **Vercel Blob** store (ADR 0011), consumed only by the
-Railway api and worker through `@tj/storage` (`createStorage` picks `VercelBlobStorage` whenever
-`BLOB_READ_WRITE_TOKEN` is set). Created with the CLI on 2026-09-04 — nothing dashboard-only:
+Object storage for Sources / Artefacts is the **Railway Bucket `files`** (ADR
+[0026](../docs/adr/0026-railway-bucket-storage.md), superseding ADR 0011's Vercel Blob), consumed
+only by the Railway api and worker through `@tj/storage` (`createStorage` picks `S3Storage` on
+`Bun.S3Client` whenever `S3_BUCKET` is set). Created with the CLI on 2026-09-07 — nothing
+dashboard-only:
 
 | Setting  | Value                                                                                           |
 | -------- | ----------------------------------------------------------------------------------------------- |
-| Store    | **`teaching-journey`** (`store_Ii6wcxuuLOvPP4ou`), team `omerbresinskis-projects`                 |
-| Access   | **private** (store-level, immutable): every blob needs the token; browsers read files through the api proxy `GET /files/:key` (ADR 0011 amendment). `STORAGE_PUBLIC_PREFIXES` must stay unset — a private store cannot hold `access: "public"` blobs |
-| Region   | **`fra1`** (Frankfurt, EU). Blob offers no Amsterdam region (allowed: `arn1 bom1 cdg1 cle1 cpt1 dub1 dxb1 fra1 gru1 hkg1 hnd1 iad1 icn1 kix1 lhr1 pdx1 sfo1 sin1 syd1 yul1`); `fra1` is the closest to Railway's `europe-west4` (Amsterdam) and keeps the EU residency of ADR 0016. Immutable after creation |
-| Base URL | `ii6wcxuulovpp4ou.private.blob.vercel-storage.com` (not browsable without the token)              |
-| Command  | `vercel blob create-store teaching-journey --access private --region fra1 --environment production --environment preview --yes --scope omerbresinskis-projects` (from the repo root, project linked) |
-| Project link | The CLI connected the store to `teaching-journey-web` and injected `BLOB_READ_WRITE_TOKEN` into the project's Production env (`vercel env ls` shows no copy in Preview or Development). The SPA never reads it, so it was removed again (`vercel env rm BLOB_READ_WRITE_TOKEN production`) to keep the secret off the web project; the store stays connected and the token stays valid. `bun run env:check` treats it as `extra` if it reappears |
-| Token    | Lives on Railway `api` + `worker` (`production`; PR environments inherit it). Never in git, never on Vercel |
-| Verified | api boot log `storage="vercel-blob"` (production, 2026-09-04); `BLOB_READ_WRITE_TOKEN=… bun test packages/storage/src/vercel-blob.test.ts` → 10 pass against the real store (writes under a fresh `ws_*` prefix and deletes it; the store was empty afterwards) |
+| Bucket   | **`files`** (`c161038f-1fd4-496b-84a3-301a74d18401`), project `teaching-journey`, environment `production`; declared as `bucket("files", { region: "ams" })` in `.railway/railway.ts` |
+| Region   | **`ams`** (Amsterdam) — same metro as the services (`europe-west4-drams3a`), so files, Postgres and compute are all Railway EU-West (ADR 0016 §1 amendment) |
+| Endpoint | `https://t3.storageapi.dev`, bucket name `files-jtopgcer1vrw3abyfb` (`S3_ENDPOINT`, `S3_BUCKET`, both non-secret). Railway reports `urlStyle: "virtual-host"` but only **path-style** requests work from `Bun.S3Client` (virtual-hosted → `NoSuchBucket`); the adapter sets `virtualHostedStyle: false` |
+| Region (SigV4) | `auto` (`S3_REGION`; also the adapter default) |
+| Access   | Every object is private; browsers read files through the api proxy `GET /files/:key` (ADR 0026 §4). There is no public mode |
+| Credentials | `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` on Railway `api` + `worker` (`production`; PR environments inherit them). Never in git, never on Vercel |
+| Command  | `railway bucket create files --region ams --json` (project linked; `railway link --project teaching-journey --environment production` first in a worktree) |
+| Verified | `S3_* bun test packages/storage/src/s3.test.ts` → contract suite passes against the real bucket (writes under a fresh workspace prefix and deletes it; `railway bucket info --bucket files --json` → `objects: 0` afterwards); api boot log `storage="s3"` (production, 2026-09-07) |
 
-Inspect / rotate (the token is only ever piped, never printed):
+Inspect / rotate (secrets are only ever piped, never printed):
 
 ```sh
-vercel blob list-stores --all --scope omerbresinskis-projects       # name, id, region, size, connected projects
-vercel blob get-store store_Ii6wcxuuLOvPP4ou --scope omerbresinskis-projects
-vercel blob list --rw-token "$(cat /tmp/token)"                       # contents; `del <pathname>` / `empty-store`
-# obtain the token: dashboard → Storage → teaching-journey → ".env.local" tab, or reconnect the store
-# to the project and `vercel env pull /tmp/prod.env --environment production` (then `vercel env rm` it
-# again). Write ONLY the value to /tmp/token, then:
-railway variable set BLOB_READ_WRITE_TOKEN --stdin --service api --skip-deploys < /tmp/token
-railway variable set BLOB_READ_WRITE_TOKEN --stdin --service worker --skip-deploys < /tmp/token
+railway bucket list --environment production --json            # id, name
+railway bucket info --bucket files --json                        # objects, storage bytes, region
+railway bucket credentials --bucket files --json > /tmp/creds.json   # endpoint, accessKeyId, secretAccessKey, bucketName
+# rotate: --reset invalidates the current key pair, then re-set both secrets on both services
+railway bucket credentials --bucket files --reset --yes --json > /tmp/creds.json
+for svc in api worker; do
+  jq -r .accessKeyId     /tmp/creds.json | railway variable set S3_ACCESS_KEY_ID     --stdin --service $svc --skip-deploys
+  jq -r .secretAccessKey /tmp/creds.json | railway variable set S3_SECRET_ACCESS_KEY --stdin --service $svc --skip-deploys
+done
 railway redeploy --service api --yes && railway redeploy --service worker --yes
-rm /tmp/token /tmp/prod.env
+rm /tmp/creds.json
 ```
+
+Deleting the bucket (`railway bucket delete --bucket files --yes`) destroys every object and is
+blocked for as long as teacher content lives there; F15-R02 delete-all is `deleteByPrefix` per
+Workspace, not bucket deletion.
 
 ## AI provider (Bedrock) — TEACH-72
 
@@ -310,14 +315,16 @@ three in `us-east-1`):
 | `api`      | GitHub repo, root `Dockerfile`          | `.railway/railway.ts` `service("api")`   | `PORT=3001`; `https://api-production-903f.up.railway.app`; `/health` |
 | `worker`   | GitHub repo, root `Dockerfile`          | `.railway/railway.ts` `service("worker")` | `PORT=3002` (health only); **no public domain**   |
 | `postgres` | image `pgvector/pgvector:pg16` + volume `postgres-volume` (`/var/lib/postgresql/data`) | `.railway/railway.ts` `service("postgres")` + `volume("postgres-volume")` | 5432 on the private network only; **no domain, no TCP proxy** |
+| `files`    | Railway Bucket (S3-compatible object storage), region `ams` | `.railway/railway.ts` `bucket("files")` | `https://t3.storageapi.dev` over HTTPS with the `S3_*` credentials; private objects only |
 
 Project `teaching-journey` (`a79752e1-8bf5-41d0-b832-f1b64aaf6d2f`), workspace
 `omerbresinski's Projects` (Hobby). Environments: `production` (`d595bbf8-dc4b-494f-b1f7-0023dd2dc25d`)
 + ephemeral `ai-teacher-pr-<number>`. Service ids: `api` `ef433c66-c762-4c21-890e-c69856a09a39`,
 `worker` `5d7a3bc8-a02d-44b8-83ca-ea11c20a1676`, `postgres` `5c408f9c-b1f2-4820-8a0b-a888391dfa02`
-(`railway status --json`). Storage: api and worker run `storage: "vercel-blob"` against the private
-store `teaching-journey` (`fra1`, see "Vercel Blob (files)"); without `BLOB_READ_WRITE_TOKEN` they
-would fall back to `local-disk`, which is ephemeral on Railway (ADR 0011).
+(`railway status --json`). Storage: api and worker run `storage: "s3"` against the Railway Bucket
+`files` (`ams`, see "Railway Bucket (files)"); without `S3_BUCKET` they would fall back to
+`local-disk`, which is ephemeral on Railway, and with `S3_BUCKET` but a missing `S3_*` sibling they
+refuse to boot (ADR 0026).
 
 ### Why not Railway's managed Postgres
 
@@ -370,7 +377,7 @@ project-level **infrastructure-as-code**: one [`.railway/railway.ts`](../.railwa
 describing the whole Railway project, evaluated by the CLI (`railway config plan` / `apply`).
 The old `infra/railway/{api,worker}.json` + `serviceInstanceUpdate` shim and the root
 `railway.json` are gone; the TS file is the single source of truth for service settings **and**
-for the `postgres` image service + its volume. Facts that shape how it is used:
+for the `postgres` image service + its volume and the `files` bucket. Facts that shape how it is used:
 
 - **The CLI is the only path.** Railway does *not* read `.railway/railway.ts` from the repository
   at build or deploy time — settings change only when someone runs `railway config apply`
@@ -452,18 +459,22 @@ source of truth; this section only says how the values get there.
 
 ### Post-provisioning checklist (after `provision.sh`, manual values)
 
-State on 2026-09-04 (`bun run env:check` against `api`/`worker` production): everything the
-contract requires is present, including **`BLOB_READ_WRITE_TOKEN`** on both services (set from the
-CLI on 2026-09-04, TEACH-37 — store `teaching-journey`, `store_Ii6wcxuuLOvPP4ou`, `fra1`; the api
-boots with `storage="vercel-blob"`). `COOKIE_SAMESITE` is `none` in production (cookie stopgap, see
+State on 2026-09-07 (`bun run env:check` against `api`/`worker` production): everything the
+contract requires is present, including the five **`S3_*`** variables on both services (set from
+the CLI on 2026-09-07, TEACH-142 — Railway Bucket `files`, `ams`; the api boots with
+`storage="s3"`). `COOKIE_SAMESITE` is `none` in production (cookie stopgap, see
 "Vercel (web)"); `COOKIE_DOMAIN` and the OAuth credentials are unset by design until the domain /
 F17 arrive (`env:check` still lists them under `missing` for `api`).
 
 ```sh
 bun run env:check --fix                 # names on api/worker production vs docs/env.md; prints the commands
-# Blob token (done 2026-09-04; this is the re-set / rotation recipe — see "Vercel Blob (files)"):
-railway variable set BLOB_READ_WRITE_TOKEN --stdin --service api --skip-deploys < /tmp/token    # ADR 0011
-railway variable set BLOB_READ_WRITE_TOKEN --stdin --service worker --skip-deploys < /tmp/token
+# Bucket credentials (done 2026-09-07; rotation recipe under "Railway Bucket (files)"):          # ADR 0026
+railway bucket credentials --bucket files --json > /tmp/creds.json
+for svc in api worker; do
+  railway variable set --service $svc --skip-deploys "S3_BUCKET=$(jq -r .bucketName /tmp/creds.json)" "S3_ENDPOINT=$(jq -r .endpoint /tmp/creds.json)" "S3_REGION=auto"
+  jq -r .accessKeyId     /tmp/creds.json | railway variable set S3_ACCESS_KEY_ID     --stdin --service $svc --skip-deploys
+  jq -r .secretAccessKey /tmp/creds.json | railway variable set S3_SECRET_ACCESS_KEY --stdin --service $svc --skip-deploys
+done; rm /tmp/creds.json
 # Bedrock bearer token (done 2026-09-04; use stdin so it is never printed or passed as argv):
 printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s api --skip-deploys
 printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s worker --skip-deploys
@@ -590,8 +601,8 @@ Done:
       `source: github(...)` declared in `.railway/railway.ts` applies cleanly and pushes to `master`
       auto-deploy.
 - [x] *Settings → Environments → Enable PR environments* — on (`prDeploys: true`), verified with PR #30.
-- [x] **Vercel Blob store** `teaching-journey` (`fra1`, private) + `BLOB_READ_WRITE_TOKEN` on api +
-      worker — done from the CLI on 2026-09-04 (TEACH-37, ADR 0011).
+- [x] **Railway Bucket** `files` (`ams`) + the `S3_*` variables on api + worker — done from the
+      CLI on 2026-09-07 (TEACH-142, ADR 0026). The Vercel Blob store from TEACH-37 was deleted.
 
 Open:
 

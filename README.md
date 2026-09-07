@@ -241,7 +241,7 @@ packages/
   domain/       @tj/domain     Zod schemas + types, job names, StorageAdapter   Master PRD §8
   api-client/   @tj/api-client Hono RPC AppType + typed client factory          ADR 0005
   jobs/         @tj/jobs       pg-boss runtime + typed job registry             ADR 0006
-  storage/      @tj/storage    StorageAdapter impls (local disk, Vercel Blob)   ADR 0011
+  storage/      @tj/storage    StorageAdapter impls (local disk, Railway S3)   ADR 0026
   ai/           @tj/ai         Model client: Bedrock via Vercel AI SDK, classes   ADR 0018
   config/       @tj/config     Shared tsconfig bases, Tailwind preset           TEACH-11
 docs/

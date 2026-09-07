@@ -1,6 +1,6 @@
 # 0011 — Vercel Blob for object storage
 
-- Status: Accepted
+- Status: Superseded by [ADR 0026](0026-railway-bucket-storage.md) (2026-09-07)
 - Date: 2026-09-03
 - Related PRD decisions: F03 (Sources), F12 (export files), F15-R02 (deletion destroys originals)
 
