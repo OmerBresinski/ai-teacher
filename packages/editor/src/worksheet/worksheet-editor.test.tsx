@@ -204,6 +204,36 @@ describe("WorksheetEditor", () => {
     expect(read().header.criteria).toEqual(["I can add fractions."]);
   });
 
+  test("empty fields keep the same room on the sheet as in the measuring column (page breaks agree)", () => {
+    const sheet = withBlocks([
+      {
+        id: "mc",
+        type: "multiple-choice",
+        doc: docFromText("Q"),
+        options: [{ id: "o1", text: "", correct: false }],
+      },
+      { id: "wb", type: "word-bank", words: ["", "sea"] },
+      { id: "ab", type: "answer-box", heightPt: 100 },
+      { id: "img", type: "image", src: "data:,", widthPct: 50 },
+      { id: "tb", type: "table", rows: [["", "x"]] },
+    ]);
+    const { container } = renderWorksheetEditor(sheet);
+    const measured = container.querySelector(".ws-measure");
+    if (!measured) throw new Error("no measuring column");
+    // Printed side: an empty string holds a no-break space; an empty bank word its 24pt slot.
+    expect(measured.querySelector(".ws-opt-text")?.textContent).toBe("\u00a0");
+    expect(measured.querySelector(".ws-word-empty")).not.toBeNull();
+    expect(measured.querySelector("td")?.textContent).toBe("\u00a0");
+    // Optional label / caption: absent on both sides until the block carries one.
+    expect(measured.querySelector(".ws-answerbox-label")).toBeNull();
+    expect(measured.querySelector(".ws-caption")).toBeNull();
+    expect(row(container, "ab").querySelector(".ws-answerbox-label")).toBeNull();
+    expect(row(container, "img").querySelector(".ws-caption")).toBeNull();
+    // Editor side: the same strings are fields (their line is `min-height: 1lh` in CSS).
+    expect(row(container, "mc").querySelector(".ws-opt-text.ws-input")).not.toBeNull();
+    expect(row(container, "wb").querySelectorAll(".ws-input-inline").length).toBe(2);
+  });
+
   test("Backspace on a selected block deletes it; Escape clears the selection", () => {
     const sheet = withBlocks([
       { id: uid(), type: "paragraph", doc: docFromText("One") },

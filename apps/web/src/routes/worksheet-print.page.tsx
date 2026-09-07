@@ -23,7 +23,9 @@ export function WorksheetPrintPage() {
 
   if (!data || !isFullDocument(data)) return <RoutePendingPage />;
   if (kindOf(data) !== "worksheet" || !("blocks" in data)) {
-    return <WrongKindPage document={{ id: data.id, title: data.title, kind: "lesson" }} />;
+    return (
+      <WrongKindPage document={{ id: data.id, title: data.title, kind: "lesson" }} chrome="none" />
+    );
   }
 
   return (

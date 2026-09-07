@@ -5,7 +5,7 @@ import { expect, test } from "./fixtures";
 /*
  * The lesson editor on `/l/$lessonId` (TEACH-103): rows 1, 3, 4, 5, 9 and 11 of the acceptance
  * table with real pointer events, plus the fidelity addendum's computed-style checks against
- * TeachDeck's geometry (navigator 212, rail 56, top bar 48, thumb 168x94, `--shadow-slide`, the
+ * TeachDeck's geometry (navigator 218 — TeachDeck's 212 plus 6px of air between number and thumb, rail 56, top bar 48, thumb 168x94, `--shadow-slide`, the
  * zoom cluster 16px in from the corner).
  */
 
@@ -97,7 +97,7 @@ test.describe("lesson editor", () => {
 
     const width = (sel: string) => page.locator(sel).evaluate((n) => getComputedStyle(n).width);
     const height = (sel: string) => page.locator(sel).evaluate((n) => getComputedStyle(n).height);
-    expect(await width("[data-navigator]")).toBe("212px");
+    expect(await width("[data-navigator]")).toBe("218px");
     expect(await width("[data-insert-rail]")).toBe("56px");
     expect(await height("[data-topbar]")).toBe("48px");
 

@@ -16,7 +16,10 @@ import { useBlockWrites, useTypingSession } from "./worksheet-context";
  * Edit-mode variants of the blocks whose content is plain strings rather than rich text (TeachDeck
  * `components/v2/worksheet/EditableBlocks.tsx`). The markup matches the printed markup exactly —
  * only the text nodes become fields — so nothing moves when a block is selected, and the measured
- * height stays true.
+ * height stays true. That contract has two halves, and `BlockContent` keeps the other: an empty
+ * string prints as a no-break space (`fieldText`) where a `SheetField` holds `min-height: 1lh`, an
+ * empty bank word prints 24pt wide (`.ws-word-empty`) where `.ws-input-inline` reserves 24pt, and
+ * an optional label or caption exists on both sides only while it is defined.
  */
 
 /**
@@ -306,18 +309,22 @@ export function EditableBlock({
       );
 
     case "answer-box":
+      // The label exists (and takes its line) only once the toolbar has added it — the same
+      // condition `BlockContent` prints and the measuring column paginates from.
       return (
         <div>
-          <SheetField
-            className="ws-answerbox-label"
-            label="Answer box label"
-            value={block.label ?? ""}
-            onChange={(label) =>
-              patch<AnswerBox>(block.id, (b) => {
-                b.label = label;
-              })
-            }
-          />
+          {block.label !== undefined ? (
+            <SheetField
+              className="ws-answerbox-label"
+              label="Answer box label"
+              value={block.label}
+              onChange={(label) =>
+                patch<AnswerBox>(block.id, (b) => {
+                  b.label = label;
+                })
+              }
+            />
+          ) : null}
           <div className="ws-answerbox" style={{ height: `${block.heightPt}pt` }} />
         </div>
       );
@@ -326,17 +333,19 @@ export function EditableBlock({
       return (
         <figure className="ws-figure" style={{ width: `${block.widthPct}%` }}>
           <img src={block.src} alt={block.alt ?? ""} />
-          <figcaption className="ws-caption">
-            <SheetField
-              label="Caption"
-              value={block.caption ?? ""}
-              onChange={(caption) =>
-                patch<ImageBlock>(block.id, (b) => {
-                  b.caption = caption;
-                })
-              }
-            />
-          </figcaption>
+          {block.caption !== undefined ? (
+            <figcaption className="ws-caption">
+              <SheetField
+                label="Caption"
+                value={block.caption}
+                onChange={(caption) =>
+                  patch<ImageBlock>(block.id, (b) => {
+                    b.caption = caption;
+                  })
+                }
+              />
+            </figcaption>
+          ) : null}
         </figure>
       );
 

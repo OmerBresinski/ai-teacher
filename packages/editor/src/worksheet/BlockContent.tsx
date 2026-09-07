@@ -55,6 +55,19 @@ function Lines({ count }: { count: number }) {
 
 const marksLabel = (marks: number) => `(${marks} ${marks === 1 ? "mark" : "marks"})`;
 
+/**
+ * A plain-string field of the sheet as printed. An empty one still holds its line (a no-break
+ * space), because the editor's `SheetField` holds one too (`min-height: 1lh`) — the measuring
+ * column renders this markup, so the two must agree on every height or the page breaks the
+ * teacher sees would not be the ones the printer makes.
+ */
+export const fieldText = (text: string | undefined) => text || "\u00a0";
+
+/** An empty word in the bank keeps the 24pt the editor's field reserves, for the same reason. */
+function BankWord({ word }: { word: string }) {
+  return word ? <span>{word}</span> : <span className="ws-word-empty">{"\u00a0"}</span>;
+}
+
 /** Blanks are sized to the answer, as on a printed cloze exercise. */
 function gapMarkup(block: Extract<WorksheetBlock, { type: "fill-gap" }>): string {
   return renderDocHTML(block.doc).replace(/\[\[gap:([A-Za-z0-9_-]+)\]\]/g, (_match, id: string) => {
@@ -145,7 +158,7 @@ export function BlockContent({
               <div key={option.id} className="ws-opt">
                 <div className="ws-opt-box" />
                 <div className="ws-opt-letter">{optionLetter(i)}</div>
-                <div className="ws-opt-text">{option.text}</div>
+                <div className="ws-opt-text">{fieldText(option.text)}</div>
               </div>
             ))}
           </div>
@@ -167,7 +180,7 @@ export function BlockContent({
             <div className="ws-match-col">
               {block.pairs.map((pair) => (
                 <div key={pair.id} className="ws-match-row">
-                  <div className="ws-match-term">{pair.left}</div>
+                  <div className="ws-match-term">{fieldText(pair.left)}</div>
                   <div className="ws-match-blank" />
                 </div>
               ))}
@@ -179,7 +192,7 @@ export function BlockContent({
                 return (
                   <div key={pair.id} className="ws-match-row">
                     <div className="ws-match-letter">{optionLetter(position)}</div>
-                    <div className="ws-match-term">{pair.right}</div>
+                    <div className="ws-match-term">{fieldText(pair.right)}</div>
                   </div>
                 );
               })}
@@ -203,7 +216,7 @@ export function BlockContent({
           <div className="ws-wordbank">
             {block.words.map((word, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: the same word may appear twice; position is the identity
-              <span key={`${word}-${i}`}>{word}</span>
+              <BankWord key={`${word}-${i}`} word={word} />
             ))}
           </div>
         </div>
@@ -212,7 +225,9 @@ export function BlockContent({
     case "answer-box":
       return (
         <div>
-          {block.label ? <div className="ws-answerbox-label">{block.label}</div> : null}
+          {block.label !== undefined ? (
+            <div className="ws-answerbox-label">{fieldText(block.label)}</div>
+          ) : null}
           <div className="ws-answerbox" style={{ height: `${block.heightPt}pt` }} />
         </div>
       );
@@ -224,7 +239,9 @@ export function BlockContent({
       return (
         <figure className="ws-figure" style={{ width: `${block.widthPct}%` }}>
           <img src={block.src} alt={block.alt ?? ""} />
-          {block.caption ? <figcaption className="ws-caption">{block.caption}</figcaption> : null}
+          {block.caption !== undefined ? (
+            <figcaption className="ws-caption">{fieldText(block.caption)}</figcaption>
+          ) : null}
         </figure>
       );
 
@@ -236,7 +253,7 @@ export function BlockContent({
               <tr>
                 {block.rows[0]?.map((cell, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: table cells are positional; a `string[][]` has no ids
-                  <th key={i}>{cell}</th>
+                  <th key={i}>{fieldText(cell)}</th>
                 ))}
               </tr>
             </thead>
@@ -247,7 +264,7 @@ export function BlockContent({
               <tr key={r}>
                 {row.map((cell, c) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: table cells are positional; a `string[][]` has no ids
-                  <td key={c}>{cell || " "}</td>
+                  <td key={c}>{fieldText(cell)}</td>
                 ))}
               </tr>
             ))}

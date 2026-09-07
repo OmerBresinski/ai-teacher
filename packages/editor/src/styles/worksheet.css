@@ -414,6 +414,12 @@
   margin-bottom: 5pt;
 }
 
+/* The room an empty word keeps, on paper and on screen alike (`BankWord`, `.ws-input-inline`). */
+.ws-word-empty {
+  display: inline-block;
+  min-width: 24pt;
+}
+
 .ws-wordbank {
   display: flex;
   flex-wrap: wrap;

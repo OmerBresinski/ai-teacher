@@ -89,5 +89,9 @@ describe("WorksheetPrintPage", () => {
     worksheetId = "demo-water-cycle";
     renderPage();
     expect(await screen.findByText("This is a lesson")).toBeVisible();
+    // Still chrome-free (ADR 0023 §2): no AppBar; the way back is a link under the message.
+    expect(screen.queryByRole("banner")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Back to the library" })).toBeNull();
+    expect(screen.getByText("Back to the library")).toBeInTheDocument();
   });
 });
