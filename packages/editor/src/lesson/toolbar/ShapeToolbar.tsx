@@ -17,6 +17,7 @@ import { ColorPicker } from "../../kit/Color";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import { docFromText } from "../../model/factories";
 import { shapeRadius } from "../../slide/elements/ShapeView";
+import { LabelTextControls } from "./LabelTextControls";
 import { MoreDrawer } from "./MoreDrawer";
 import { BarButton, OpacityControl, useElementWrites, useThemePalette } from "./shared";
 
@@ -27,9 +28,10 @@ const CORNER_RADII: readonly number[] = [0, 4, 8, 12, 16, 24];
 const CORNERED: ReadonlySet<ShapeElement["shape"]> = new Set(["rect", "rounded"]);
 
 /**
- * Fill, border, border width, corners (rectangles only), opacity, label (TeachDeck
- * `ShapeToolbar`). Every control is a 32px ghost button at weight 500; the two colours are a
- * filled circle and a ring so the bar reads as fill-then-border without a caption.
+ * Fill, border, border width, corners (rectangles only), opacity, label, and once the shape has a
+ * label its text controls (TeachDeck `ShapeToolbar`). Every control is a 32px ghost button at
+ * weight 500; the two colours are a filled circle and a ring so the bar reads as fill-then-border
+ * without a caption.
  */
 export const ShapeToolbar = memo(function ShapeToolbar({
   element,
@@ -120,7 +122,7 @@ export const ShapeToolbar = memo(function ShapeToolbar({
             <BarButton className="font-medium">Label</BarButton>
           </PopoverTrigger>
         </Tooltip>
-        <PopoverContent align="end" className="w-60 p-3" aria-label="Label">
+        <PopoverContent align="end" className="w-auto min-w-60 p-3" aria-label="Label">
           <div className="flex items-center justify-between gap-3">
             <Label htmlFor={labelId} className="text-ink-3 text-meta">
               Label
@@ -136,6 +138,8 @@ export const ShapeToolbar = memo(function ShapeToolbar({
               className="h-8 w-32"
             />
           </div>
+          {/* Second row, once there is a label to style. */}
+          <LabelTextControls element={element} theme={theme} slideId={slideId} />
         </PopoverContent>
       </Popover>
 
