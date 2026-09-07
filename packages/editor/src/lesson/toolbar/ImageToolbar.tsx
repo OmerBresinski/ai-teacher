@@ -1,5 +1,5 @@
 import type { ImageElement } from "@tj/domain/documents";
-import { IconButton, Input, Label, Popover, PopoverContent, PopoverTrigger, Tooltip } from "@tj/ui";
+import { IconButton, Input, Label, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
 import { Crop, Replace } from "lucide-react";
 import { memo, useId } from "react";
 import { NumberInput } from "../../kit/NumberInput";
@@ -12,7 +12,8 @@ import { BarButton, ICON, ICON_SM, OpacityControl, useElementWrites } from "./sh
 
 /**
  * Replace, fit, crop, corner radius, alt text, credit (TeachDeck `ImageToolbar`). Replace opens
- * the Add image panel in replace mode (TEACH-107); crop beyond the two fit modes is out of scope.
+ * the Add image panel in replace mode (TEACH-107); Crop enters crop mode on the slide (TEACH-153),
+ * where `CropToolbar` takes this bar's place.
  */
 export const ImageToolbar = memo(function ImageToolbar({
   element,
@@ -22,7 +23,7 @@ export const ImageToolbar = memo(function ImageToolbar({
   slideId: string;
 }) {
   const { update, scrub, end } = useElementWrites(slideId);
-  const { openImagePanel } = useSessionActions();
+  const { openImagePanel, enterCrop } = useSessionActions();
   const altId = useId();
   // An imported lesson is untrusted JSON and could carry `javascript:` here, so the address goes
   // through the same gate as a typed link. No href, no anchor.
@@ -47,13 +48,9 @@ export const ImageToolbar = memo(function ImageToolbar({
         ]}
       />
 
-      <Tooltip label="Coming soon">
-        <span className="inline-flex">
-          <IconButton label="Crop" noTooltip aria-disabled="true" className="opacity-50">
-            <Crop aria-hidden {...ICON} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <IconButton label="Crop" onClick={() => enterCrop(element)} data-crop-button>
+        <Crop aria-hidden {...ICON} />
+      </IconButton>
 
       <PanelSeparator />
 

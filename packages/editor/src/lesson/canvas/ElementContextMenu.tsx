@@ -86,6 +86,10 @@ export function ElementContextMenu({ slide, menu, onClose, returnFocus }: Elemen
     history.dispatch(reducers.reorder, slide.id, read().selection, how);
 
   const canPaste = !!clipboard && clipboard.length > 0;
+  const picked = selected();
+  const [onlyPicked] = picked;
+  const croppable =
+    picked.length === 1 && onlyPicked?.type === "image" && !onlyPicked.locked ? onlyPicked : null;
   const topmost = isAtEdge(slide.elements, selection, "top");
   const bottommost = isAtEdge(slide.elements, selection, "bottom");
 
@@ -144,6 +148,15 @@ export function ElementContextMenu({ slide, menu, onClose, returnFocus }: Elemen
               Paste
               <DropdownMenuShortcut>{hint("$mod+v")}</DropdownMenuShortcut>
             </DropdownMenuItem>
+            {croppable ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => actions.enterCrop(croppable)}>
+                  Crop image
+                  <DropdownMenuShortcut>{hint("Enter")}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </>
+            ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={topmost} onSelect={() => reorder("front")}>
               Bring to front

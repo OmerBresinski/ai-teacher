@@ -64,10 +64,15 @@ export function AddImagePanel({ children, onInsert }: AddImagePanelProps) {
   const pick = (source: ImageSource) => {
     if (replacing && slide) {
       // Same id, same frame; a plain upload over a searched image clears the old credit.
+      // A new picture starts untouched: the old crop, focal point and transform go with the old
+      // bitmap (TEACH-153).
       history.dispatch(reducers.updateElement<ImageElement>, slide.id, replacing, {
         alt: undefined,
         credit: undefined,
         creditUrl: undefined,
+        crop: undefined,
+        focal: undefined,
+        imageTransform: undefined,
         ...imageFields(source),
       });
     } else {

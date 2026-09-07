@@ -49,6 +49,7 @@ export const CANVAS_SHORTCUTS: CanvasShortcut[] = [
   { id: "duplicate", label: "Duplicate the selection", keys: ["$mod+d"], group: "Edit" },
   { id: "select-all", label: "Select all", keys: ["$mod+a"], group: "Selection" },
   { id: "escape", label: "Exit text edit, then deselect", keys: ["Escape"], group: "Selection" },
+  { id: "crop", label: "Crop the selected image", keys: ["Enter"], group: "Edit" },
   { id: "cycle", label: "Next / previous element", keys: ["Tab", "Shift+Tab"], group: "Selection" },
   { id: "group", label: "Group", keys: ["$mod+g"], group: "Arrange" },
   { id: "ungroup", label: "Ungroup", keys: ["$mod+Shift+g"], group: "Arrange" },
@@ -214,6 +215,18 @@ export function useCanvasKeys({ enabled, lesson, slide }: CanvasKeysOptions): vo
         () => {
           if (read().editingTextId) actions.setEditingText(null);
           else actions.clearSelection();
+        },
+      ],
+      // Enter on one selected picture opens crop mode (TEACH-153). Only from the canvas itself: a
+      // focused toolbar button's Enter is that button's.
+      [
+        "Enter",
+        () => {
+          if (!isCanvasFocused() || read().crop) return false;
+          const els = selectedElements();
+          const [only] = els;
+          if (els.length !== 1 || !only || only.type !== "image" || only.locked) return false;
+          actions.enterCrop(only);
         },
       ],
       // Tab is only ours to swallow while the canvas actually has focus; otherwise a keyboard user

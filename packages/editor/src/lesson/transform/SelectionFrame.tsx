@@ -29,6 +29,10 @@ export type SelectionFrameProps = {
   /** Hide handles (during a gesture, or while the text editor is open). */
   handles?: boolean;
   coarsePointer?: boolean;
+  /** Draw the rotate grip and corner zones. Crop mode turns them off: the picture is what turns. */
+  rotate?: boolean;
+  /** Extra shadow on the frame line, e.g. the two-tone focus band in crop mode. */
+  frameShadow?: string;
   onHandleDown?: (handle: HandleId, e: ReactPointerEvent) => void;
   onRotateDown?: (corner: HandleId, e: ReactPointerEvent) => void;
 };
@@ -50,6 +54,8 @@ export function SelectionFrame({
   locked = false,
   handles = true,
   coarsePointer = false,
+  rotate = true,
+  frameShadow,
   onHandleDown,
   onRotateDown,
 }: SelectionFrameProps) {
@@ -60,6 +66,7 @@ export function SelectionFrame({
   const stem = ROTATE_STEM / scale;
   const stemW = 1 / scale;
   const showHandles = handles && !locked;
+  const showRotate = showHandles && rotate;
 
   return (
     <div
@@ -81,6 +88,7 @@ export function SelectionFrame({
           inset: 0,
           outline: `${FRAME_STROKE / scale}px solid ${TOKENS.frame}`,
           outlineOffset: 0,
+          boxShadow: frameShadow,
         }}
       />
 
@@ -102,7 +110,7 @@ export function SelectionFrame({
         </div>
       ) : null}
 
-      {showHandles
+      {showRotate
         ? CORNERS.map((c) => {
             const d = HANDLE_DIR[c];
             return (
@@ -125,7 +133,7 @@ export function SelectionFrame({
           })
         : null}
 
-      {showHandles ? (
+      {showRotate ? (
         <>
           {/* Stem from the bottom edge down to the grip. */}
           <div
