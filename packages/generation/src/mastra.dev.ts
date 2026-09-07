@@ -1,10 +1,13 @@
 import { Mastra } from "@mastra/core";
+import { createWorkflow } from "@mastra/core/workflows";
 import { createAi, createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
+import { CreateLessonSchema, lessonFromBrief } from "@tj/domain/documents";
 import pino from "pino";
+import { z } from "zod";
 import { pipelineScript } from "./testing";
 import { noSources, type PipelineDeps } from "./types";
-import { lessonWorkflow, registerDevDeps } from "./workflow";
+import { lessonWorkflow, registerDevDeps, StateSchema } from "./workflow";
 
 /*
  * Development-only Studio entry (ADR 0025 §21): `bun run studio:generation` boots Mastra's dev
@@ -75,11 +78,46 @@ export function devDeps(context: { lessonId: string; jobId: string }): PipelineD
 // A Studio run starts from a JSON form that cannot carry `deps`; the workflow asks this factory.
 registerDevDeps((runId) => devDeps({ lessonId: "studio-lesson", jobId: runId }));
 
-/** Studio's port. Pinned because `apps/worker/.env` carries the worker's `PORT`, which `mastra dev` would otherwise honour. */
-export const STUDIO_PORT = 4111;
+/**
+ * Studio's port: 4111 unless `PORT` is set in the shell. Read here from the shell (`process.env`
+ * before `--env` is merged is not available), so the root script sets `PORT=4111` explicitly:
+ * without it `apps/worker/.env`'s `PORT=3002` would move Studio onto the worker's port.
+ */
+export const STUDIO_PORT = Number(process.env.PORT ?? 4111);
+
+/**
+ * What Studio's run form asks for: the same brief `POST /lessons` takes (`CreateLessonSchema`),
+ * mapped to the pipeline state with `lessonFromBrief` — the lesson id and worksheet id are
+ * minted here since nothing is persisted. The inner `lessonWorkflow` takes a whole `PipelineState`,
+ * which is not something to type into a form.
+ */
+export const StudioInputSchema = CreateLessonSchema.extend({
+  brief: CreateLessonSchema.shape.brief.extend({
+    topic: z.string().min(1).describe("Topic or objective, e.g. 'The water cycle'"),
+  }),
+  yearGroup: z
+    .string()
+    .max(40)
+    .optional()
+    .describe("e.g. 'Year 5' — sets the key stage and default length"),
+});
+
+export const studioLessonWorkflow = createWorkflow({
+  id: "lesson-from-brief",
+  description:
+    "Type a brief, get a lesson: the full Plan → Generate → Evaluate → Repair pipeline (ADR 0025)",
+  inputSchema: StudioInputSchema,
+  outputSchema: StateSchema,
+})
+  .map(async ({ inputData }) => ({
+    lesson: lessonFromBrief(inputData, crypto.randomUUID(), new Date()),
+    worksheetId: crypto.randomUUID(),
+  }))
+  .then(lessonWorkflow)
+  .commit();
 
 export const mastra = new Mastra({
-  workflows: { lessonWorkflow },
+  workflows: { studioLessonWorkflow, lessonWorkflow },
   logger: false,
   server: { port: STUDIO_PORT },
 });

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BRIEF_DURATION_MAX, BRIEF_DURATION_MIN, BriefSchema } from "./brief";
-import { type AgeBand, AgeBandSchema } from "./lesson";
+import { type AgeBand, AgeBandSchema, type Lesson, parseLesson } from "./lesson";
+import { DEFAULT_THEME_ID } from "./theme";
 
 /*
  * `POST /lessons` request and its defaults (ADR 0024 §6, §13; F01 item 2). Kept apart from
@@ -64,4 +65,30 @@ export function defaultDurationMin(ageBand: AgeBand | undefined): number {
     default:
       return 60;
   }
+}
+
+/**
+ * The empty lesson the brief becomes: canonical Lesson fields from the request, `ageBand` derived
+ * from the year group when not given, `durationMin` defaulted by key stage, `title` from the topic.
+ * Pure, so `POST /lessons`, the brief screen and the Studio entry all apply the same defaults.
+ */
+export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date): Lesson {
+  const ageBand = input.ageBand ?? deriveAgeBand(input.yearGroup);
+  const durationMin = input.brief.durationMin ?? defaultDurationMin(ageBand);
+  const at = now.toISOString();
+  return parseLesson({
+    version: 1,
+    id: lessonId,
+    title: input.brief.topic.trim().slice(0, LESSON_TITLE_MAX),
+    themeId: input.themeId ?? DEFAULT_THEME_ID,
+    slides: [],
+    createdAt: at,
+    updatedAt: at,
+    subject: input.subject,
+    yearGroup: input.yearGroup,
+    ageBand,
+    readingLevel: input.readingLevel,
+    language: input.language ?? "en-GB",
+    brief: { ...input.brief, durationMin },
+  });
 }

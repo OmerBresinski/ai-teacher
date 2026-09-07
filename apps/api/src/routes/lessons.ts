@@ -39,16 +39,7 @@ import {
   LessonRegeneratePayloadSchema,
   newId,
 } from "@tj/domain";
-import {
-  type CreateLesson,
-  CreateLessonSchema,
-  DEFAULT_THEME_ID,
-  defaultDurationMin,
-  deriveAgeBand,
-  LESSON_TITLE_MAX,
-  type Lesson,
-  parseLesson,
-} from "@tj/domain/documents";
+import { CreateLessonSchema, type Lesson, lessonFromBrief } from "@tj/domain/documents";
 import { enqueue } from "@tj/jobs";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -61,31 +52,9 @@ import { getWorkspaceId } from "../workspace";
 import { documentBodyLimit, GENERATING_MESSAGE, NOT_FOUND_MESSAGE } from "./documents";
 import { requireRuntime } from "./jobs";
 
-/**
- * The empty lesson the brief becomes: canonical Lesson fields from the request, `ageBand` derived
- * from the year group when not given, `durationMin` defaulted by key stage, `title` from the topic.
- * Pure, so the brief screen can show the same defaults the API applies.
- */
-export function lessonFromBrief(input: CreateLesson, lessonId: LessonId, now: Date): Lesson {
-  const ageBand = input.ageBand ?? deriveAgeBand(input.yearGroup);
-  const durationMin = input.brief.durationMin ?? defaultDurationMin(ageBand);
-  const at = now.toISOString();
-  return parseLesson({
-    version: 1,
-    id: lessonId,
-    title: input.brief.topic.trim().slice(0, LESSON_TITLE_MAX),
-    themeId: input.themeId ?? DEFAULT_THEME_ID,
-    slides: [],
-    createdAt: at,
-    updatedAt: at,
-    subject: input.subject,
-    yearGroup: input.yearGroup,
-    ageBand,
-    readingLevel: input.readingLevel,
-    language: input.language ?? "en-GB",
-    brief: { ...input.brief, durationMin },
-  });
-}
+// `lessonFromBrief` lives in `@tj/domain/documents` (shared with the Studio entry); re-exported
+// because `lessons.test.ts` and the brief screen import it from here.
+export { lessonFromBrief };
 
 /**
  * Insert the locked lesson, then queue its Plan job under the pre-minted id. On an enqueue failure
