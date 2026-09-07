@@ -18,39 +18,43 @@ import { KitGroup, Specimen, Variant } from "./frame";
 export function TextEntry() {
   const [search, setSearch] = useState("");
   return (
-    <KitGroup id="text-entry" title="Text entry">
+    <KitGroup
+      id="text-entry"
+      title="Text entry"
+      rule="Fields take the soft hairline at rest, the strong hairline on hover and the two-tone accent band on focus. Invalid is the danger text tone on the field, not a saturated red."
+    >
       <Specimen name="SearchInput, empty and filled" bleed>
-        <Variant label="Empty">
+        <Variant label="Nothing typed">
           <SearchInput
             label="Search the kit"
-            placeholder="Search components"
+            placeholder="Search lessons"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </Variant>
-        <Variant label="Filled">
+        <Variant label="Searching">
           <SearchInput
             label="Search the kit, filled"
-            placeholder="Search components"
-            value="Button"
+            placeholder="Search lessons"
+            value="Fractions"
             onChange={() => {}}
             onClear={() => {}}
           />
         </Variant>
       </Specimen>
       <Specimen name="Input" note="Rest, invalid and disabled native input states.">
-        <Variant label="Rest">
+        <Variant label="Empty">
           <Input aria-label="Lesson title" className="w-56" placeholder="Untitled lesson" />
         </Variant>
-        <Variant label="Invalid">
+        <Variant label="Name already used">
           <Input
             aria-label="Invalid lesson title"
             className="w-56"
             aria-invalid
-            defaultValue="Already taken"
+            defaultValue="The water cycle"
           />
         </Variant>
-        <Variant label="Disabled">
+        <Variant label="Locked">
           <Input
             aria-label="Disabled lesson title"
             className="w-56"
@@ -60,18 +64,18 @@ export function TextEntry() {
         </Variant>
       </Specimen>
       <Specimen name="Textarea" note="Long-form text, invalid and disabled states.">
-        <Variant label="Rest">
+        <Variant label="Empty">
           <Textarea aria-label="Notes" className="w-64" placeholder="Notes for this lesson" />
         </Variant>
-        <Variant label="Invalid">
+        <Variant label="Over the limit">
           <Textarea
             aria-label="Invalid notes"
             className="w-64"
             aria-invalid
-            defaultValue="Too long."
+            defaultValue="Ask the class where rain comes from before slide 2, then show the diagram and let them label it in pairs."
           />
         </Variant>
-        <Variant label="Disabled">
+        <Variant label="Locked">
           <Textarea
             aria-label="Disabled notes"
             className="w-64"

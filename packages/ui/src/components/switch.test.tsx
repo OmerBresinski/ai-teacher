@@ -11,6 +11,8 @@ describe("Switch", () => {
     await user.click(screen.getByRole("switch", { name: "Publish" }));
     expect(screen.getByRole("switch", { name: "Publish" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("switch", { name: "Publish" })).toHaveClass(
+      "h-6",
+      "w-11",
       "data-[state=checked]:bg-primary",
     );
   });
