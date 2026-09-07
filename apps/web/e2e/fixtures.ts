@@ -7,6 +7,7 @@
  * only under `NODE_ENV=test` + `ENABLE_TEST_ROUTES=1`, see apps/api/README.md) and visits it.
  */
 import { type APIRequestContext, test as base, expect, type Page } from "@playwright/test";
+import { demoWorkspace } from "@tj/editor/starter";
 import { E2E_API_URL, E2E_WEB_URL } from "../playwright.config";
 
 export { E2E_API_URL, E2E_WEB_URL };
@@ -70,17 +71,67 @@ export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Demo-fixture key (`demo-water-cycle`, `series-romans`, …) → the uuid the seed gave it. */
+export type SeedIds = Record<string, string>;
+
+/**
+ * Fill the signed-in user's Workspace with `demoWorkspace()` through the test-only
+ * `POST /__test/seed-library` (ADR 0024 §16: Workspaces start empty). Uses `page.request` so the
+ * session cookie travels; the `origin` header is what the api's CSRF guard checks.
+ */
+export async function seedLibrary(page: Page): Promise<SeedIds> {
+  const res = await page.request.post(`${E2E_API_URL}/__test/seed-library`, {
+    headers: { origin: E2E_WEB_URL },
+    data: { documents: demoWorkspace(new Date()) },
+  });
+  expect(res.ok(), `POST /__test/seed-library failed: ${res.status()} ${await res.text()}`).toBe(
+    true,
+  );
+  const body = (await res.json()) as { ids: SeedIds };
+  return body.ids;
+}
+
+/** Route helpers over the seeded ids, so a spec reads `paths.lesson("demo-water-cycle")`. */
+export function seededPaths(ids: SeedIds) {
+  const id = (key: string): string => {
+    const value = ids[key];
+    if (!value) throw new Error(`seed has no document "${key}"`);
+    return value;
+  };
+  const keys = new Map(Object.entries(ids).map(([key, value]) => [value, key]));
+  return {
+    id,
+    /** The demo key for a seeded id (`data-lesson-id` attributes carry ids), or the id itself. */
+    key: (value: string | null): string => (value === null ? "" : (keys.get(value) ?? value)),
+    lesson: (key: string, suffix: "" | "/view" | "/present" = "") => `/l/${id(key)}${suffix}`,
+    worksheet: (key: string, suffix: "" | "/print" = "") => `/w/${id(key)}${suffix}`,
+    series: (key: string) => `/series/${id(key)}`,
+  };
+}
+export type SeededPaths = ReturnType<typeof seededPaths>;
+
 export interface SignedIn {
   page: Page;
   email: string;
+  /** The seeded ids; empty when the spec opted out with `test.use({ seed: false })`. */
+  ids: SeedIds;
+  paths: SeededPaths;
 }
 
-export const test = base.extend<{ signedInPage: SignedIn }>({
+export const test = base.extend<{ signedInPage: SignedIn; seed: boolean }>({
+  /** Whether `signedInPage` seeds the demo library first. Most specs assume the demo content. */
+  seed: [true, { option: true }],
   /** A page whose browser context holds a valid session for a brand-new user, sitting on `/`. */
-  signedInPage: async ({ page, request }, use) => {
+  signedInPage: async ({ page, request, seed }, use) => {
     const email = await signIn(page, request);
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
-    await use({ page, email });
+    const ids = seed ? await seedLibrary(page) : {};
+    if (seed) {
+      // The library was fetched empty on landing; reload so the specs start from the seeded lists.
+      await page.reload();
+      await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+    }
+    await use({ page, email, ids, paths: seededPaths(ids) });
   },
 });
 

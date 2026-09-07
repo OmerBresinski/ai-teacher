@@ -47,6 +47,7 @@ export {
 } from "./job-events";
 export { MIGRATIONS_FOLDER, migrateDatabase } from "./migrator";
 export * from "./schema/index";
+export { type SeedDocument, type SeedResult, seedDocuments } from "./seed";
 export {
   forWorkspace,
   type ScopableDb,

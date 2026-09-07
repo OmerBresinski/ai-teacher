@@ -142,6 +142,7 @@ module-level singletons, so tests can inject fakes.
 | `POST /lessons`      | `202 { lessonId, jobId }` from a brief (see "Lessons"); `400 validation_failed` (same Zod + Identifier guard as the brief screen); `409 conflict` when an identical job is queued; `429 rate_limited` past the model-call allowance; `503` without a job runtime |
 | `GET /files/:key`    | Streams a stored object (`content-type`, `content-length`, `cache-control: private, no-store`); `401` without a session, `404` for a missing object **or** a key outside the caller's Workspace (never 403), `400 validation_failed` for a malformed key, `503` when no storage adapter is configured (see "Files") |
 | `GET /__test/last-magic-link?email=x` | **Test-only** (see "Test routes"): `200 { email, url }` or `404 not_found`. Absent unless `NODE_ENV=test` and `ENABLE_TEST_ROUTES=1`. |
+| `POST /__test/seed-library` | **Test-only**, session-guarded: inserts `{ documents: [{ key, kind, body, generatingJobId? }] }` into the caller's Workspace, `201 { ids: { [key]: uuid } }`. |
 
 ## Files (`GET /files/:key`, ADR 0011 amendment, ADR 0026 §4)
 
@@ -232,11 +233,18 @@ the database on every request). `GET /me` with the cookie returns
 `{ user: { id, email, name }, workspaceId }`. Links are single-use and expire after 5 minutes.
 Sign out with `POST /auth/sign-out` (with the cookie and an `Origin` header).
 
-### Test routes (`src/routes/test-routes.ts`, TEACH-22)
+### Test routes (`src/routes/test-routes.ts`, TEACH-22, TEACH-121)
 
 `GET /__test/last-magic-link?email=<address>` returns the last magic link the api "sent" to that
 address — `200 { email, url }`, or `404 not_found` before any was sent. Playwright's `signedInPage`
 fixture uses it to sign in without a mailbox ([`docs/testing.md`](../../docs/testing.md)).
+
+`POST /__test/seed-library` inserts documents into the **caller's** Workspace (it sits behind the
+CSRF and session guards like `/documents`): the body is `{ documents: [{ key, kind, body,
+generatingJobId? }] }` — the e2e fixture posts `demoWorkspace()` from `@tj/editor/starter`, so the
+api never depends on the editor — and the answer is `201 { ids: { [key]: uuid } }`. Series bodies
+name lessons by `key`; `seedDocuments` in `@tj/db` maps them to the minted ids and dates the rows
+from the bodies (ADR 0024 §16: Workspaces start empty, seeding is a test concern).
 
 It is mounted **only** when `testRoutesEnabled(env)` — `NODE_ENV === "test"` **and**
 `ENABLE_TEST_ROUTES=1`. In that mode `src/index.ts` wraps the mail sender in a `CaptureMailSender`

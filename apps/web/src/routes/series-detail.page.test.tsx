@@ -1,11 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useInfiniteQuery } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import { libraryQueries } from "@/lib/library";
-import { createSeries, loadSeriesWithLessons, resetLibraryStore } from "@/mocks/library-store";
+import { libraryQueries, librarySelectors } from "@/lib/library";
+import { installFakeApi } from "@/test/fake-api";
+
+const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let seriesId = "series-romans";
 const navigate = mock();
@@ -24,7 +26,7 @@ const { SeriesDetailPage } = await import("./series-detail.page");
 
 /** The `/series` list beside the page: proves a write here invalidates and re-renders the list. */
 function SeriesTitles() {
-  const { data } = useQuery(libraryQueries.series());
+  const { data } = useInfiniteQuery({ ...libraryQueries.series(), select: librarySelectors.items });
   return (
     <ul aria-label="Series list">
       {data?.map((item) => (
@@ -54,9 +56,12 @@ describe("SeriesDetailPage", () => {
     navigate.mockReset();
     toastSpy.mockReset();
     cleanup();
-    await resetLibraryStore();
+    fakeApi.reset();
   });
-  afterAll(() => mock.restore());
+  afterAll(() => {
+    mock.restore();
+    restoreFetch();
+  });
 
   it("shows the header, counts, rows in teaching order and the primary actions", async () => {
     renderPage();
@@ -91,7 +96,7 @@ describe("SeriesDetailPage", () => {
     expect(screen.getAllByRole("listitem")[1]).toHaveFocus();
     expect(screen.getByRole("status")).toHaveTextContent("Moved to position 2");
 
-    const stored = await loadSeriesWithLessons("series-romans");
+    const stored = fakeApi.listSeriesWithLessons().find((s) => s.series.id === "series-romans");
     expect(stored?.series.lessonIds).toEqual(["demo-fractions", "roman-roads", "roman-army"]);
   });
 
@@ -168,7 +173,7 @@ describe("SeriesDetailPage", () => {
     await user.click(within(dialog).getByRole("button", { name: "Add 2 lessons" }));
 
     await waitFor(() => expect(rows()).toHaveLength(5));
-    const stored = await loadSeriesWithLessons("series-romans");
+    const stored = fakeApi.listSeriesWithLessons().find((s) => s.series.id === "series-romans");
     expect(stored?.lessons.slice(3).map((lesson) => lesson.title)).toEqual([
       firstTitle,
       secondTitle,
@@ -176,8 +181,23 @@ describe("SeriesDetailPage", () => {
   });
 
   it("renders the empty series and the missing series states", async () => {
-    const empty = await createSeries("Blank unit");
-    seriesId = empty.id;
+    const now = new Date().toISOString();
+    fakeApi.rows.set("blank-unit", {
+      id: "blank-unit",
+      kind: "series",
+      body: {
+        id: "blank-unit",
+        title: "Blank unit",
+        lessonIds: [],
+        createdAt: now,
+        updatedAt: now,
+      },
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+      generatingJobId: null,
+    });
+    seriesId = "blank-unit";
     const { unmount } = renderPage();
     await screen.findByRole("heading", { name: "Blank unit" });
     expect(screen.getByText("No lessons in this series")).toBeVisible();

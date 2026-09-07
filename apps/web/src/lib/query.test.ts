@@ -76,6 +76,23 @@ describe("meQueryOptions", () => {
     expect(apiError.requestId).toBe("r1");
   });
 
+  it("carries the document routes' conflict reason and validation fields", () => {
+    const stale = new ApiError(409, {
+      code: "conflict",
+      message: "This document changed elsewhere. Reload to continue.",
+      reason: "stale",
+    });
+    expect(stale.reason).toBe("stale");
+    expect(stale.retryable).toBe(false);
+    const invalid = new ApiError(400, {
+      code: "validation_failed",
+      message: "The request contains invalid fields.",
+      fields: ["brief"],
+    });
+    expect(invalid.fields).toEqual(["brief"]);
+    expect(invalid.reason).toBeUndefined();
+  });
+
   it("tolerates a non-JSON error body", async () => {
     stubFetch(mock().mockResolvedValue(new Response("boom", { status: 502 })));
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

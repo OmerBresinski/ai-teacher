@@ -24,6 +24,16 @@ export const AUTOSAVE_MS = 800;
 export const SAVE_FAILED_MESSAGE =
   "Could not save your changes. Export a copy before you close the tab.";
 
+/**
+ * Reject `onSave` with this when the app has already told the teacher why the write was refused
+ * (a `409` the app turned into its own toast with a Reload action, ADR 0024 §4). The indicator
+ * still shows "Not saved" and the unload warning still stands; only the generic toast is skipped,
+ * so the teacher is not told to export a copy over the message that explains what to do.
+ */
+export class SaveRefusedError extends Error {
+  override readonly name = "SaveRefusedError";
+}
+
 export type Autosave<D extends SavableDocument = SavableDocument> = {
   /** Hand to the history hook's `onChange`: one call per committed change. */
   onChange: (document: D) => void;
@@ -61,10 +71,10 @@ export function useAutosave<D extends SavableDocument>(
       for (const l of listeners) l();
     };
 
-    const fail = () => {
+    const fail = (reported: boolean) => {
       // `pending` stays set on purpose: the beforeunload warning is the net.
       setState("failed");
-      if (!warned) toast(SAVE_FAILED_MESSAGE, { duration: 12_000 });
+      if (!warned && !reported) toast(SAVE_FAILED_MESSAGE, { duration: 12_000 });
       warned = true;
     };
 
@@ -81,9 +91,9 @@ export function useAutosave<D extends SavableDocument>(
         // Only "Saved" if nothing changed while the write was in flight.
         if (pending === null) setState("saved");
         else setState("unsaved");
-      } catch {
+      } catch (error) {
         pending = pending ?? document;
-        fail();
+        fail(error instanceof SaveRefusedError);
       }
     };
 

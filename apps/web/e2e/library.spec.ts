@@ -1,6 +1,23 @@
 import { expectNoSeriousA11yViolations } from "./a11y";
 import { expect, test } from "./fixtures";
 
+test.describe("empty Workspace", () => {
+  test.use({ seed: false });
+
+  test("a new Workspace shows the empty state from the documents api", async ({
+    signedInPage: { page },
+  }) => {
+    const listed = page.waitForRequest((request) => request.url().includes("/documents?"));
+    await page.goto("/lessons");
+    const query = new URL((await listed).url()).searchParams;
+    expect(query.get("kind")).toBe("lesson");
+    expect(query.get("sort")).toBe("updated");
+    expect(query.get("limit")).toBe("100");
+    await expect(page.getByText("Nothing here yet")).toBeVisible();
+    await expect(page.getByRole("link", { name: /^Lessons\b/ })).toContainText("0");
+  });
+});
+
 test.describe("library shell", () => {
   test("Home has the library navigation, create strip, and capped sections", async ({
     signedInPage: { page },
@@ -78,15 +95,56 @@ test.describe("library shell", () => {
   }) => {
     await page.goto("/lessons");
     const search = page.getByRole("searchbox", { name: "Search by title" });
+    // The search is the server's (ADR 0024 §17): the list request carries `q`.
+    const searched = page.waitForRequest(
+      (request) =>
+        request.url().includes("/documents?") &&
+        new URL(request.url()).searchParams.get("q") === "water",
+    );
     await search.fill("water");
     await expect(page).toHaveURL(/\/lessons\?q=water$/);
+    const request = new URL((await searched).url()).searchParams;
+    expect(request.get("kind")).toBe("lesson");
+    expect(request.get("sort")).toBe("updated");
     // The title appears on the card and inside its rendered cover slide.
     await expect(page.getByText("The water cycle").first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Open The water cycle" })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: /^Open / })).toHaveCount(1);
     await page.reload();
     await expect(search).toHaveValue("water");
     await search.press("Escape");
     await expect(page).toHaveURL(/\/lessons$/);
+  });
+
+  test("Sort by title asks the server for that order", async ({ signedInPage: { page } }) => {
+    await page.goto("/lessons");
+    await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
+    const sorted = page.waitForRequest(
+      (request) =>
+        request.url().includes("/documents?") &&
+        new URL(request.url()).searchParams.get("sort") === "title",
+    );
+    await page.getByRole("button", { name: /^Sort:/ }).click();
+    await page.getByRole("menuitemradio", { name: "Title A–Z" }).click();
+    await sorted;
+    const titles = () =>
+      page
+        .getByRole("link", { name: /^Open / })
+        .evaluateAll((links) => links.map((link) => link.getAttribute("aria-label") ?? ""));
+    await expect.poll(titles).toHaveLength(10);
+    // The page still splits Recent / Earlier; within each group the order is the server's.
+    const ordered = await titles();
+    expect(ordered[0]).toBe("Open Equivalent fractions");
+    const recentCount = Number(
+      await page
+        .getByRole("heading", { name: "Recent" })
+        .locator("..")
+        .textContent()
+        .then((text) => text?.replace(/\D/g, "") ?? "0"),
+    );
+    for (const group of [ordered.slice(0, recentCount), ordered.slice(recentCount)]) {
+      expect(group).toEqual([...group].sort((a, b) => a.localeCompare(b)));
+    }
   });
 
   test("collapsed navigation persists after reload and exposes item tooltips", async ({
@@ -100,14 +158,16 @@ test.describe("library shell", () => {
     await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
   });
 
-  test("document routes return to the last library page", async ({ signedInPage: { page } }) => {
+  test("document routes return to the last library page", async ({
+    signedInPage: { page, paths },
+  }) => {
     await page.goto("/lessons");
     await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
     await expect(page).toHaveTitle("Lessons · Teaching Journey");
     // Hover preloads run loaders but must not move the return target (committed navigations only).
     await page.getByRole("link", { name: /^Worksheets\b/ }).hover();
     await page.waitForTimeout(300);
-    await page.goto("/l/demo-water-cycle");
+    await page.goto(paths.lesson("demo-water-cycle"));
     // The editor (TEACH-103) owns `/l/*`; the stub remains on `/w/*` until phase D.
     await expect(page.getByRole("listbox", { name: "Slides" })).toBeVisible();
     // Route `head()` reads the loader's document.
@@ -118,7 +178,8 @@ test.describe("library shell", () => {
   });
 
   test("unknown editor documents render the not-found page", async ({ signedInPage: { page } }) => {
-    await page.goto("/l/nope");
+    // A uuid the Workspace does not hold; ids are server-minted (ADR 0024 §11).
+    await page.goto("/l/00000000-0000-4000-8000-000000000000");
 
     await expect(page.getByText("Page not found")).toBeVisible();
   });
@@ -132,7 +193,7 @@ test.describe("library shell", () => {
   });
 
   test("card cover links and actions preserve their destinations", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
     await page.goto("/lessons");
     const card = page.locator("article").filter({ hasText: "The water cycle" }).first();
@@ -141,19 +202,19 @@ test.describe("library shell", () => {
     const box = await present.boundingBox();
     if (!box) throw new Error("Present button has no bounding box");
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    await expect(page).toHaveURL(/\/l\/demo-water-cycle\/present$/);
+    await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle", "/present")}$`));
 
     await page.goto("/lessons");
     const body = await card.boundingBox();
     if (!body) throw new Error("Library card has no bounding box");
     await page.mouse.click(body.x + 12, body.y + 12);
-    await expect(page).toHaveURL(/\/l\/demo-water-cycle$/);
+    await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle")}$`));
 
     await page.goto("/worksheets");
     const worksheet = page.locator("article").filter({ hasText: "Fractions practice" }).first();
     await worksheet.hover();
     await worksheet.getByRole("button", { name: "Print" }).click();
-    await expect(page).toHaveURL(/\/w\/fraction-practice\/print$/);
+    await expect(page).toHaveURL(new RegExp(`${paths.worksheet("fraction-practice", "/print")}$`));
   });
 
   test("Delete can be undone from a card menu", async ({ signedInPage: { page } }) => {
@@ -280,9 +341,11 @@ test.describe("library shell", () => {
     await expect(renamedLink).toHaveCount(0);
 
     // The toast's Undo is reachable by keyboard: Tab from wherever focus landed until it is focused.
+    // Focus falls back to the document when the deleted card unmounts, so the walk can start at
+    // the top of the page: the sidebar, the page controls and every card come before the toast.
     const undo = page.getByRole("button", { name: "Undo" });
     await expect(undo).toBeVisible();
-    for (let presses = 0; presses < 40; presses += 1) {
+    for (let presses = 0; presses < 80; presses += 1) {
       if (await undo.evaluate((el) => el === document.activeElement)) break;
       await page.keyboard.press("Tab");
     }

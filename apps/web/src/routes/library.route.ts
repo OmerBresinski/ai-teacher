@@ -1,8 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { z } from "zod";
-import { libraryCache, libraryQueries } from "@/lib/library";
+import { libraryCache, libraryQueries, SORTS, type Sort } from "@/lib/library";
 import { pageTitle } from "@/lib/page-title";
+import { readPreference } from "@/lib/use-preference";
 import { authLayoutRoute } from "./auth.route";
 
 export const librarySearchSchema = z.object({
@@ -11,14 +12,23 @@ export const librarySearchSchema = z.object({
 });
 
 /**
- * Warm both lists without failing the navigation: `LibraryPage` owns the error state (Retry), so a
- * rejected prefetch must reach `useQuery`, not the route error boundary.
+ * Warm the first page of each list without failing the navigation: `LibraryPage` owns the error
+ * state (Retry), so a rejected prefetch must reach `useInfiniteQuery`, not the route error
+ * boundary. The sort preference is read here so the page's first query is the one warmed.
  */
-async function prefetchLibrary(queryClient: QueryClient): Promise<void> {
+async function prefetchLibrary(queryClient: QueryClient, q = ""): Promise<void> {
+  const sort = readSortPreference();
   await Promise.allSettled([
-    queryClient.ensureQueryData(libraryQueries.documents()),
-    queryClient.ensureQueryData(libraryQueries.series()),
+    queryClient.ensureInfiniteQueryData(libraryQueries.documents("lesson", { sort, q })),
+    queryClient.ensureInfiniteQueryData(libraryQueries.documents("worksheet", { sort, q })),
+    queryClient.ensureInfiniteQueryData(libraryQueries.series({ sort, q })),
   ]);
+}
+
+/** The `tj:library:sort` preference (apps/web/AGENTS.md), as `usePreference` reads it. */
+function readSortPreference(): Sort {
+  const stored = readPreference("tj:library:sort");
+  return SORTS.includes(stored as Sort) ? (stored as Sort) : "edited";
 }
 
 export const libraryLayoutRoute = createRoute({
@@ -39,7 +49,8 @@ export const lessonsRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/lessons",
   validateSearch: librarySearchSchema,
-  loader: ({ context }) => prefetchLibrary(context.queryClient),
+  loaderDeps: ({ search }) => ({ q: search.q ?? "" }),
+  loader: ({ context, deps }) => prefetchLibrary(context.queryClient, deps.q),
   head: () => pageTitle("Lessons"),
   component: lazyRouteComponent(() => import("./library-kind.page"), "LessonsPage"),
 });
@@ -48,7 +59,8 @@ export const worksheetsRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/worksheets",
   validateSearch: librarySearchSchema,
-  loader: ({ context }) => prefetchLibrary(context.queryClient),
+  loaderDeps: ({ search }) => ({ q: search.q ?? "" }),
+  loader: ({ context, deps }) => prefetchLibrary(context.queryClient, deps.q),
   head: () => pageTitle("Worksheets"),
   component: lazyRouteComponent(() => import("./library-kind.page"), "WorksheetsPage"),
 });
@@ -57,7 +69,8 @@ export const seriesIndexRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/series",
   validateSearch: librarySearchSchema,
-  loader: ({ context }) => prefetchLibrary(context.queryClient),
+  loaderDeps: ({ search }) => ({ q: search.q ?? "" }),
+  loader: ({ context, deps }) => prefetchLibrary(context.queryClient, deps.q),
   head: () => pageTitle("Series"),
   component: lazyRouteComponent(() => import("./library-kind.page"), "SeriesPage"),
 });

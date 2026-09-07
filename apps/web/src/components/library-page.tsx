@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Button,
@@ -18,21 +18,21 @@ import { ArrowDownUp, FileText, Layers, LayoutGrid, List, Presentation } from "l
 import { lazy, Suspense, useMemo, useRef, useState } from "react";
 import { LibraryCard } from "@/components/library-card";
 import { useLibraryShell } from "@/components/library-shell-context";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useNow } from "@/hooks/use-now";
 import { useSlashToFocus } from "@/hooks/use-slash-to-focus";
-import { libraryQueries } from "@/lib/library";
+import { libraryQueries, librarySelectors } from "@/lib/library";
 import { usePreference } from "@/lib/use-preference";
 import {
   EMPTY_DOCUMENTS,
   EMPTY_SERIES,
   HOME_BANDS,
   homeShelves,
-  kindShelf,
   type LibraryMode,
+  SEARCH_DEBOUNCE_MS,
   SORT_LABELS,
   SORTS,
   type Sort,
-  seriesShelf,
   splitByRecency,
   TITLES,
   VIEWS,
@@ -49,6 +49,7 @@ import {
   SeriesGrid,
   SkeletonGrid,
 } from "./library/library-sections";
+import { LoadMore } from "./library/load-more";
 import { useLibraryActions } from "./library/use-library-actions";
 
 export type { LibraryMode } from "./library/library-model";
@@ -105,31 +106,44 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   const searchRef = useRef<HTMLInputElement>(null);
   useSlashToFocus(searchRef);
 
-  const documentsQuery = useQuery(libraryQueries.documents());
-  const seriesQuery = useQuery(libraryQueries.series());
+  // Every list is one server query per kind (ADR 0024 §17): Home reads the first page of each,
+  // a kind page pages through its own with the search term after the debounce.
+  const q = useDebouncedValue(query, SEARCH_DEBOUNCE_MS);
+  const lessonsQuery = useInfiniteQuery({
+    ...libraryQueries.documents("lesson", { sort, q: isHome ? "" : q }),
+    select: librarySelectors.items,
+    enabled: isHome || kind === "lesson",
+  });
+  const worksheetsQuery = useInfiniteQuery({
+    ...libraryQueries.documents("worksheet", { sort, q: isHome ? "" : q }),
+    select: librarySelectors.items,
+    enabled: isHome || kind === "worksheet",
+  });
+  const seriesQuery = useInfiniteQuery({
+    ...libraryQueries.series({ sort, q: isHome ? "" : q }),
+    select: librarySelectors.items,
+    enabled: isHome || isSeries,
+  });
+  const kindQuery = kind === "worksheet" ? worksheetsQuery : lessonsQuery;
+  const pagedQuery = isSeries ? seriesQuery : kindQuery;
   // Stable empties keep the memos below from recomputing while a query is pending.
-  const documents = documentsQuery.data ?? EMPTY_DOCUMENTS;
+  const lessons = lessonsQuery.data ?? EMPTY_DOCUMENTS;
+  const worksheets = worksheetsQuery.data ?? EMPTY_DOCUMENTS;
   const series = seriesQuery.data ?? EMPTY_SERIES;
+  const shelf = kind ? (kindQuery.data ?? EMPTY_DOCUMENTS) : EMPTY_DOCUMENTS;
 
   const home = useMemo(
-    () => (isHome ? homeShelves(documents, sort) : null),
-    [isHome, documents, sort],
-  );
-  const shelf = useMemo(
-    () => (kind ? kindShelf(documents, kind, query, sort) : EMPTY_DOCUMENTS),
-    [documents, kind, query, sort],
-  );
-  const seriesItems = useMemo(
-    () => (isSeries || isHome ? seriesShelf(series, query, sort) : EMPTY_SERIES),
-    [series, isSeries, isHome, query, sort],
+    () => (isHome ? homeShelves(lessons, worksheets) : null),
+    [isHome, lessons, worksheets],
   );
   const split = useMemo(() => (kind ? splitByRecency(shelf, now) : null), [kind, shelf, now]);
 
-  const loading = documentsQuery.isPending || seriesQuery.isPending;
-  const failed = documentsQuery.isError || seriesQuery.isError;
+  const active = isHome ? [lessonsQuery, worksheetsQuery, seriesQuery] : [pagedQuery];
+  const loading = active.some((entry) => entry.isPending);
+  const failed = active.some((entry) => entry.isError);
   const searching = query.trim().length > 0;
-  const empty = isSeries ? seriesItems.length === 0 : shelf.length === 0;
-  const titleCount = isSeries ? series.length : kind ? countKind(documents, kind) : 0;
+  const empty = isSeries ? series.length === 0 : shelf.length === 0;
+  const titleCount = isSeries ? series.length : shelf.length;
 
   const documentCardProps = {
     onAction: actions.onDocumentAction,
@@ -147,7 +161,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   }
 
   function retry(): void {
-    void Promise.all([documentsQuery.refetch(), seriesQuery.refetch()]);
+    void Promise.all(active.map((entry) => entry.refetch()));
   }
 
   function openCreate(target: CreateTarget = isSeries ? "series" : (kind ?? "lesson")): void {
@@ -262,7 +276,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
         ) : loading ? (
           <SkeletonGrid />
         ) : home ? (
-          documents.length + series.length === 0 ? (
+          lessons.length + worksheets.length + series.length === 0 ? (
             <EmptyLibrary mode={mode} onCreate={openCreate} onImport={openImport} />
           ) : (
             <>
@@ -289,7 +303,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
               </HomeSection>
               <HomeSection title="Series" count={series.length} to="/series">
                 <SeriesGrid
-                  series={seriesItems.slice(0, HOME_BANDS)}
+                  series={series.slice(0, HOME_BANDS)}
                   headingLevel="h3"
                   {...seriesCardProps}
                 />
@@ -303,7 +317,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
             <EmptyLibrary mode={mode} onCreate={openCreate} onImport={openImport} />
           )
         ) : isSeries ? (
-          <SeriesGrid series={seriesItems} {...seriesCardProps} />
+          <SeriesGrid series={series} {...seriesCardProps} />
         ) : split ? (
           <>
             <section className="mb-8">
@@ -337,6 +351,13 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
             {...documentCardProps}
           />
         )}
+        {!isHome && !failed && !loading ? (
+          <LoadMore
+            hasNextPage={pagedQuery.hasNextPage}
+            isFetchingNextPage={pagedQuery.isFetchingNextPage}
+            onLoadMore={() => void pagedQuery.fetchNextPage()}
+          />
+        ) : null}
       </div>
 
       {/*
@@ -364,10 +385,4 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
       </Suspense>
     </main>
   );
-}
-
-function countKind(documents: readonly { kind: string }[], kind: string): number {
-  let count = 0;
-  for (const document of documents) if (document.kind === kind) count += 1;
-  return count;
 }

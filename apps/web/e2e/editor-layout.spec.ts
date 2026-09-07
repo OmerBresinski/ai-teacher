@@ -18,9 +18,9 @@ async function dblclickAt(page: Page, target: ReturnType<Page["locator"]>) {
 
 test.describe("layout engine", () => {
   test("row 6: typing until a heading overruns the body flags the slide; Tidy fixes it in one undo step", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto("/l/demo-water-cycle");
+    await page.goto(paths.lesson("demo-water-cycle"));
     // Slide 5 (Explanation): a heading over a body paragraph.
     await rows(page).nth(4).click();
     const heading = elements(page).filter({ hasText: "The sun powers the whole cycle" }).first();
@@ -56,9 +56,9 @@ test.describe("layout engine", () => {
   });
 
   test("row 7: a lesson stored under the old floors is re-fitted once on open and stamped", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto("/l/electricity");
+    await page.goto(paths.lesson("electricity"));
     await expect(page.getByRole("heading", { level: 1, name: "Simple circuits" })).toBeVisible();
     // The migration waits for fonts and an idle editor, then tidies the flagged slide once.
     await expect(page.getByText(/tidied to fit the new text sizes/)).toBeVisible({
@@ -68,8 +68,8 @@ test.describe("layout engine", () => {
     const undo = page.getByRole("button", { name: "Undo" });
     await expect(undo).toBeEnabled();
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
-    // Undo restores the layout but keeps the stamp: leaving and coming back (client-side, so the
-    // mock store is not reseeded) runs no second migration and shows no second toast.
+    // Undo restores the layout but keeps the stamp: leaving and coming back runs no second
+    // migration and shows no second toast.
     await undo.click();
     await expect(undo).toBeDisabled();
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });

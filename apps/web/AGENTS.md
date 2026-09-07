@@ -31,8 +31,16 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   HTTP requests through the typed `@tj/api-client` (`hc<AppType>`), never `fetch` by hand.
 - ADR 0010: deploys to Vercel as a static build with an SPA rewrite (`/* -> /index.html`); the API
   origin comes from an env var validated in `src/env.ts` (Zod, ADR 0015). No server code here.
-- Library data comes from `src/mocks` via `src/lib/library.ts` (ADR 0020); screens never import the
-  store directly.
+- Library data comes from the documents API through `src/lib/library.ts` (ADR 0024 §9; ADR 0020
+  is superseded): `libraryQueries.documents(kind, { sort, q })` and `series()` are infinite queries
+  over `GET /documents` (`librarySelectors.items` / `.count` flatten the pages; counts are "loaded
+  so far", the API has no totals), `document(id)` is the editor's working copy with its row state
+  in `documentMeta(id)`, and every `libraryMutations.*` is a whole-document `PUT` with
+  `expectedUpdatedAt`. Screens never call `api.documents` themselves. A `409` arrives as
+  `ApiError.reason` (`stale` → `useSaveWithConflictToast` offers Reload; `generating` →
+  `GeneratingLesson` renders the read-only banner over SSE). Unit tests stub the transport with
+  `src/test/fake-api.ts` (`installFakeApi()`), seeded with `demoWorkspace()` under its keys
+  (`demo-water-cycle`, `series-romans`, …) as ids.
 - `vercel-react-best-practices` includes Next.js-specific advice (RSC, `next/*`); it does not
   apply — this is a Vite SPA.
 - Tests: `bun test` + React Testing Library + happy-dom; Playwright + axe in `e2e/` (ADR 0014). Biome
@@ -53,8 +61,11 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   `a11y` (the ten signed-in library/document routes × the three themes via `page.addInitScript` setting `tj-theme`, plus open dialogs/menus; `/sign-in` and
   `/dev/jobs` once in light), `kit` (opt-in,
   `E2E_KIT=1`). `src/router.test.ts` pins the registered route set; `packages/ui/src/styles/contrast.test.ts`
-  pins token contrast. A full reload reseeds the mock library (ADR 0020) — assert persistence through
-  client-side navigation.
+  pins token contrast. Workspaces start empty (ADR 0024 §16): `signedInPage` seeds `demoWorkspace()`
+  through `POST /__test/seed-library` and hands back `ids` / `paths` (`paths.lesson("demo-water-cycle")`,
+  `paths.key(uuid)`); `test.use({ seed: false })` opts a spec out. Ids are server-minted uuids, so
+  no spec hard-codes a document path. `editor-generating` covers the locked lesson (banner, no
+  editor) and the brief → `/l/:id` flow.
 - Client storage keys: `tj:sidebar-collapsed`, `tj:library:sort`, `tj:library:view`, and
   `tj:last-shell` are the stable browser preference/session contracts for the library shell;
   `tj:navigator` (full / compact rail) is the editor's.

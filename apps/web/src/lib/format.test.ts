@@ -16,10 +16,10 @@ describe("relativeTime", () => {
 
 describe("library formatting", () => {
   it("formats document metadata", () => {
-    expect(sizeOf({ kind: "lesson", count: 1 })).toBe("1 slide");
-    expect(sizeOf({ kind: "lesson", count: 3 })).toBe("3 slides");
-    expect(sizeOf({ kind: "worksheet", count: 1 })).toBe("1 block");
-    expect(sizeOf({ kind: "worksheet", count: 3 })).toBe("3 blocks");
+    expect(sizeOf({ kind: "lesson", itemCount: 1 })).toBe("1 slide");
+    expect(sizeOf({ kind: "lesson", itemCount: 3 })).toBe("3 slides");
+    expect(sizeOf({ kind: "worksheet", itemCount: 1 })).toBe("1 block");
+    expect(sizeOf({ kind: "worksheet", itemCount: 3 })).toBe("3 blocks");
     expect(yearAndSubject({ yearGroup: "Year 4", subject: "Science" })).toBe("Year 4 Science");
     expect(yearAndSubject({ subject: "Science" })).toBe("Science");
     expect(absoluteTime("2026-09-06T12:00:00.000Z")).toContain("September");

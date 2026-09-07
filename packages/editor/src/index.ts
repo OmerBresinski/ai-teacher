@@ -6,6 +6,7 @@
 export * from "./layout/explanation";
 export * from "./layout/reflow";
 export * from "./model/demo-worksheet";
+export * from "./model/demo-workspace";
 export * from "./model/factories";
 export * from "./model/fonts";
 export * from "./model/geometry";

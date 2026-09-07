@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { expectNoSeriousA11yViolations } from "./a11y";
-import { expect, test } from "./fixtures";
+import { expect, type SeededPaths, test } from "./fixtures";
 
 /*
  * The lesson editor on `/l/$lessonId` (TEACH-103): rows 1, 3, 4, 5, 9 and 11 of the acceptance
@@ -9,7 +9,7 @@ import { expect, test } from "./fixtures";
  * zoom cluster 16px in from the corner).
  */
 
-const EDITOR = "/l/demo-water-cycle";
+const EDITOR = (paths: SeededPaths) => paths.lesson("demo-water-cycle");
 
 const frame = (page: Page) => page.locator("[data-slide-frame]");
 const stageElements = (page: Page) => page.locator("[data-slide-frame] [data-element-id]");
@@ -68,11 +68,11 @@ const resolved = (page: Page, value: string, property: "boxShadow" = "boxShadow"
 
 test.describe("lesson editor", () => {
   test("row 1: the editor opens with the title, every slide in the navigator, slide 1 at fit and Saved", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
     await page.goto("/lessons");
     await page.getByRole("link", { name: "Open The water cycle" }).click();
-    await expect(page).toHaveURL(/\/l\/demo-water-cycle$/);
+    await expect(page).toHaveURL(new RegExp(`${EDITOR(paths)}$`));
     await expect(page.getByRole("heading", { level: 1, name: "The water cycle" })).toBeVisible();
     await expect(page).toHaveTitle("The water cycle · Teaching Journey");
 
@@ -88,11 +88,11 @@ test.describe("lesson editor", () => {
     expect(slide.height).toBeLessThanOrEqual(canvas.height - 80 + 1);
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
-    await expectNoSeriousA11yViolations(page, EDITOR);
+    await expectNoSeriousA11yViolations(page, "/l/:id");
   });
 
-  test("fidelity: TeachDeck's geometry to the pixel", async ({ signedInPage: { page } }) => {
-    await page.goto(EDITOR);
+  test("fidelity: TeachDeck's geometry to the pixel", async ({ signedInPage: { page, paths } }) => {
+    await page.goto(EDITOR(paths));
     await expect(page.getByRole("heading", { level: 1, name: "The water cycle" })).toBeVisible();
 
     const width = (sel: string) => page.locator(sel).evaluate((n) => getComputedStyle(n).width);
@@ -129,9 +129,9 @@ test.describe("lesson editor", () => {
   });
 
   test("row 3: dragging an element 40px right moves it 40/scale points, as one undo step", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(frame(page)).toBeVisible();
     const scale = await scaleOf(page);
     // The title on slide 1: the largest text box, the easiest to hit.
@@ -158,9 +158,9 @@ test.describe("lesson editor", () => {
   });
 
   test("row 4: a drag near a sibling's edge snaps to it with a guide; snap off leaves it where it lands", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(frame(page)).toBeVisible();
     const scale = await scaleOf(page);
     const title = stageElements(page).filter({ hasText: "The water cycle" }).first();
@@ -191,9 +191,9 @@ test.describe("lesson editor", () => {
   });
 
   test("row 5: a corner handle resizes; Shift on a shape releases the aspect lock", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(frame(page)).toBeVisible();
     const scale = await scaleOf(page);
     // A fresh rectangle from the rail: shapes lock aspect by default (text boxes do not).
@@ -225,9 +225,9 @@ test.describe("lesson editor", () => {
   });
 
   test("row 9: ⌘↓ moves slide 2 down; dragging slide 1 below slide 3 reorders", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(rows(page)).toHaveCount(7);
     const label = (i: number) => rows(page).nth(i).getAttribute("aria-label");
     const second = await label(1);
@@ -280,16 +280,16 @@ test.describe("lesson editor", () => {
     await expect(page.getByText("Unsaved changes")).toBeVisible();
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
 
-    // Client-side back (a reload would reseed the mock library): the card has the new title.
+    // Back to the library: the card has the new title from the api.
     await page.getByRole("button", { name: "Back to library" }).click();
     await expect(page).toHaveURL(/\/lessons$/);
     await expect(page.getByRole("link", { name: "Open Rain, rivers and seas" })).toBeVisible();
   });
 
   test("row 14: zoom shortcuts step through ZOOM_STEPS and ⌘⌥0 fits", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(frame(page)).toBeVisible();
     const readout = page.getByRole("button", { name: /^Zoom, \d+ percent$/ });
     const fit = await frame(page).boundingBox();

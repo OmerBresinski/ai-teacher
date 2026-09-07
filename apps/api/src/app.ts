@@ -179,10 +179,13 @@ function buildApp({
     .route("/", documentRoutes(db.unsafeDb))
     .route("/", lessonRoutes(db.unsafeDb, eventsRuntime));
 
-  // TEACH-22: test-only capture route, outside the RPC contract (`AppType` stays clean).
+  // TEACH-22/121: test-only routes, outside the RPC contract (`AppType` stays clean). The seed
+  // route writes into the caller's Workspace, so it sits behind the same guards as `/documents`.
   if (testMail && testRoutesEnabled(env)) {
-    app.route("/", testRoutes(testMail));
-    logger.warn("test routes enabled (NODE_ENV=test, ENABLE_TEST_ROUTES=1): GET /__test/*");
+    app.use("/__test/seed-library", csrf);
+    app.use("/__test/seed-library", guard);
+    app.route("/", testRoutes(testMail, db.unsafeDb));
+    logger.warn("test routes enabled (NODE_ENV=test, ENABLE_TEST_ROUTES=1): /__test/*");
   }
   if (allowHeaderShim) {
     logger.warn(

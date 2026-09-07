@@ -22,7 +22,7 @@ import {
   TabsTrigger,
 } from "@tj/ui";
 import { useId, useMemo, useState } from "react";
-import { LIBRARY_THEMES } from "@/mocks/library-fixtures";
+import { LIBRARY_THEMES } from "@/lib/library-themes";
 
 /**
  * State lives for the life of the mount: callers render the dialog only while it is open (or give

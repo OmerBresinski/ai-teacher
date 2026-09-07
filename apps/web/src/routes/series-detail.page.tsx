@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Button, Card, EmptyState, PageTitle } from "@tj/ui";
 import { Layers, Play } from "lucide-react";
@@ -8,9 +8,8 @@ import { ROW_H, SeriesLessonRow } from "@/components/series/series-lesson-row";
 import { useSeriesActions } from "@/components/series/use-series-actions";
 import { useRowDrag } from "@/hooks/use-row-drag";
 import { useShellReturn } from "@/lib/last-shell";
-import { libraryQueries, librarySelectors } from "@/lib/library";
+import { libraryQueries, librarySelectors, type SeriesWithLessons } from "@/lib/library";
 import { reorderVisible, stepVisible } from "@/lib/reorder";
-import type { SeriesWithLessons } from "@/mocks/library-schema";
 import { seriesDetailRoute } from "./library.route";
 
 const AddLessonsDialog = lazy(() =>
@@ -23,7 +22,6 @@ const SERIES_ICON = <Layers strokeWidth={1.5} />;
 const PLAY_ICON = <Play aria-hidden size={16} />;
 const EMPTY_LESSONS: SeriesWithLessons["lessons"] = [];
 const EMPTY_IDS: string[] = [];
-const selectLessons = librarySelectors.byKind("lesson");
 
 export function SeriesDetailPage() {
   const { seriesId } = useParams({ from: seriesDetailRoute.id });
@@ -55,7 +53,7 @@ function SeriesDetail({ item }: { item: SeriesWithLessons | undefined }) {
   const lessons = item?.lessons ?? EMPTY_LESSONS;
   const lessonIds = item?.series.lessonIds ?? EMPTY_IDS;
   const visibleIds = useMemo(() => lessons.map((lesson) => lesson.id), [lessons]);
-  const slideCount = lessons.reduce((sum, lesson) => sum + lesson.count, 0);
+  const slideCount = lessons.reduce((sum, lesson) => sum + lesson.itemCount, 0);
   const [adding, setAdding] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const rows = useRef(new Map<string, HTMLLIElement>());
@@ -65,10 +63,11 @@ function SeriesDetail({ item }: { item: SeriesWithLessons | undefined }) {
   const latest = useRef({ lessons, lessonIds, visibleIds, actions });
   latest.current = { lessons, lessonIds, visibleIds, actions };
 
-  // Lessons the Add dialog offers: every lesson not already in this series, newest first.
-  const { data: allLessons = EMPTY_LESSONS } = useQuery({
-    ...libraryQueries.documents(),
-    select: selectLessons,
+  // Lessons the Add dialog offers: every lesson not already in this series, newest first (the
+  // first page of the list; a Workspace past 100 lessons searches instead — F16).
+  const { data: allLessons = EMPTY_LESSONS } = useInfiniteQuery({
+    ...libraryQueries.documents("lesson"),
+    select: librarySelectors.items,
   });
   const candidates = useMemo(() => {
     const inSeries = new Set(lessonIds);

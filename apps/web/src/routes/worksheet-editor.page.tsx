@@ -1,12 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { WorksheetEditor } from "@tj/editor/worksheet-editor";
 import { Button, Tooltip } from "@tj/ui";
 import { useCallback } from "react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
+import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { useShellReturn } from "@/lib/last-shell";
-import { isFullDocument, kindOf, libraryMutations, libraryQueries } from "@/lib/library";
+import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
 import { worksheetEditorRoute } from "./documents.route";
 // The editor's stylesheet (theme fonts, the paper, the editing chrome) travels with this route
 // only (ADR 0022 §8): Vite ships it with the lazy chunk, so none of it reaches the initial bundle.
@@ -30,7 +31,7 @@ export function WorksheetEditorPage() {
   const shellReturn = useShellReturn();
   const options = libraryQueries.document(worksheetId, queryClient);
   const { data } = useQuery(options);
-  const { mutateAsync: save } = useMutation(libraryMutations.autosaveDocument(queryClient));
+  const save = useSaveWithConflictToast(worksheetId);
 
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
   const onPrint = useCallback(() => {

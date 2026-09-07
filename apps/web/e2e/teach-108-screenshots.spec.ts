@@ -5,9 +5,9 @@ test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots a
 test.use({ viewport: { width: 1100, height: 1500 } });
 
 test("captures the worksheet print route on screen and in print media", async ({
-  signedInPage: { page },
+  signedInPage: { page, paths },
 }) => {
-  await page.goto("/w/fraction-practice/print");
+  await page.goto(paths.worksheet("fraction-practice", "/print"));
   await expect(page.locator(".ws-print-root")).toHaveCSS("visibility", "visible");
   await page.waitForTimeout(400);
   await page.screenshot({ path: "/tmp/teach-108-print-screen.png", fullPage: true });

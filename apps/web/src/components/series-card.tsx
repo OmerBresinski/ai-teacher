@@ -14,7 +14,7 @@ import {
 } from "@tj/ui";
 import { Copy, MoreHorizontal, Pencil, Play, Trash2 } from "lucide-react";
 import { memo } from "react";
-import type { SeriesWithLessons } from "@/mocks/library-schema";
+import type { SeriesWithLessons } from "@/lib/library";
 import { EditedTime } from "./edited-time";
 import { LessonThumb } from "./lesson-thumb";
 

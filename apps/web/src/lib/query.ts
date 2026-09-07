@@ -4,7 +4,16 @@ import { api } from "@/lib/api";
 
 /** Error envelope returned by every non-2xx API response (apps/api/README.md). */
 export interface ApiErrorEnvelope {
-  error: { code: string; message: string; requestId?: string; retryable?: boolean };
+  error: {
+    code: string;
+    message: string;
+    requestId?: string;
+    retryable?: boolean;
+    /** Only for `validation_failed`: the top-level field names that failed. */
+    fields?: string[];
+    /** Only for a `409` from the document routes: `stale` or `generating` (ADR 0024 §4, §18). */
+    reason?: string;
+  };
 }
 
 /**
@@ -16,6 +25,8 @@ export class ApiError extends Error {
   readonly status: number;
   readonly retryable: boolean;
   readonly requestId?: string;
+  readonly fields?: string[];
+  readonly reason?: string;
 
   constructor(status: number, envelope: ApiErrorEnvelope["error"] | undefined) {
     super(envelope?.message ?? "Something went wrong talking to the server.");
@@ -24,6 +35,8 @@ export class ApiError extends Error {
     this.code = envelope?.code ?? "unknown";
     this.retryable = envelope?.retryable ?? status >= 500;
     this.requestId = envelope?.requestId;
+    this.fields = envelope?.fields;
+    this.reason = envelope?.reason;
   }
 }
 
@@ -71,10 +84,15 @@ export const queryKeys = {
   me: ["me"] as const,
   job: (id: string) => ["job", id] as const,
   library: ["library"] as const,
+  /** The infinite lists; `libraryQueries.documents` appends `kind`, `sort` and `q`. */
   libraryDocuments: ["library", "documents"] as const,
-  libraryDocument: (id: string) => ["library", "documents", id] as const,
+  /** The editor's working copy of one document body (ADR 0022 §4). */
+  libraryDocument: (id: string) => ["library", "document", id] as const,
+  /** The row state beside the body: `updatedAt` for optimistic concurrency, the generating lock. */
+  libraryDocumentMeta: (id: string) => ["library", "document-meta", id] as const,
   librarySeries: ["library", "series"] as const,
-  librarySeriesDetail: (id: string) => ["library", "series", id] as const,
+  librarySeriesDetails: ["library", "series-detail"] as const,
+  librarySeriesDetail: (id: string) => ["library", "series-detail", id] as const,
 };
 
 /** `200` body of `GET /me` — `{ user: { id, email, name }, workspaceId }`. */

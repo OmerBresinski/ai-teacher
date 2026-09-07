@@ -1,12 +1,12 @@
 import type { Locator, Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, type SeededPaths, test } from "./fixtures";
 
 /*
  * In-place text editing on `/l/$lessonId` (TEACH-104): rows 1, 2, 7 and 9 of the acceptance table
  * with a real caret — double-click, type, Escape — where happy-dom cannot follow.
  */
 
-const EDITOR = "/l/demo-water-cycle";
+const EDITOR = (paths: SeededPaths) => paths.lesson("demo-water-cycle");
 const elements = (page: Page) => page.locator("[data-slide-frame] [data-element-id]");
 const proseMirror = (page: Page) => page.locator("[data-slide-frame] .ProseMirror");
 const stage = (page: Page) => page.locator("[data-selection-layer]");
@@ -32,9 +32,9 @@ async function dblclickAt(page: Page, target: Locator) {
 
 test.describe("text editing", () => {
   test("row 1: double-click opens a `td-rt` contenteditable in the same box, without a layout shift", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     const title = elements(page).filter({ hasText: "The water cycle" }).first();
     await expect(title).toBeVisible();
     const before = await box(richText(title));
@@ -61,9 +61,9 @@ test.describe("text editing", () => {
   });
 
   test("row 2: typing then Escape commits as one undo step and hands focus back to the canvas", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     const title = elements(page).filter({ hasText: "The water cycle" }).first();
     await dblclickAt(page, title);
     const pm = proseMirror(page);
@@ -89,9 +89,9 @@ test.describe("text editing", () => {
   });
 
   test("row 10: inside the editor, Delete and ⌘D edit text and never touch the element", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     const title = elements(page).filter({ hasText: "The water cycle" }).first();
     await expect(title).toBeVisible();
     const count = await elements(page).count();
@@ -107,9 +107,9 @@ test.describe("text editing", () => {
   });
 
   test("row 4: with the editor open, the toolbar's Bold acts on the selection and lands in the doc", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     const title = elements(page).filter({ hasText: "The water cycle" }).first();
     await dblclickAt(page, title);
     await expect(proseMirror(page)).toBeFocused();
@@ -123,9 +123,9 @@ test.describe("text editing", () => {
   });
 
   test("row 7: an option card's label edits in place and Escape commits", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     // Slide 6 is the true/false check with two option cards.
     await page.getByRole("listbox", { name: "Slides" }).getByRole("option").nth(5).click();
     const option = page.locator('[data-slide-frame] [data-element-type="option"]').first();
@@ -141,9 +141,9 @@ test.describe("text editing", () => {
   });
 
   test("row 9: the Why? panel edits in the answer state; Escape closes it", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await page.getByRole("listbox", { name: "Slides" }).getByRole("option").nth(5).click();
     await page.getByRole("tab", { name: "Answer" }).click();
     const panel = page.locator("[data-explanation-panel]");

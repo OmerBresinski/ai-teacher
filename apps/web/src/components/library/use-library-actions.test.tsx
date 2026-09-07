@@ -1,14 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import type { DocumentSummary } from "@tj/domain/documents";
 import type { ReactNode } from "react";
-import type { DocumentSummary, SeriesWithLessons } from "@/mocks/library-schema";
-import {
-  listDocuments,
-  listSeriesWithLessons,
-  loadDocument,
-  resetLibraryStore,
-} from "@/mocks/library-store";
+import type { SeriesWithLessons } from "@/lib/library";
+import { installFakeApi } from "@/test/fake-api";
+
+const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 const navigate = mock();
 const toastSpy = mock();
@@ -29,18 +27,17 @@ function renderActions() {
   return { ...renderHook(() => useLibraryActions(), { wrapper }), invalidate };
 }
 
-const lesson = (): Promise<DocumentSummary> =>
-  listDocuments().then((docs) => {
-    const doc = docs.find((d) => d.id === "demo-water-cycle");
-    if (!doc) throw new Error("fixture missing");
-    return doc;
-  });
+const lesson = async (): Promise<DocumentSummary> => {
+  const doc = fakeApi.listDocuments().find((d) => d.id === "demo-water-cycle");
+  if (!doc) throw new Error("fixture missing");
+  return doc;
+};
 const romans = async (): Promise<SeriesWithLessons> => {
-  const item = (await listSeriesWithLessons()).find((s) => s.series.id === "series-romans");
+  const item = fakeApi.listSeriesWithLessons().find((s) => s.series.id === "series-romans");
   if (!item) throw new Error("fixture missing");
   return item;
 };
-/** Fire a handler and let the mock store's async mutation settle inside act. */
+/** Fire a handler and let the fake api's async mutation settle inside act. */
 const fire = (run: () => void) =>
   act(async () => {
     run();
@@ -54,9 +51,12 @@ describe("useLibraryActions", () => {
     navigate.mockReset();
     toastSpy.mockReset();
     cleanup();
-    await resetLibraryStore();
+    fakeApi.reset();
   });
-  afterAll(() => mock.restore());
+  afterAll(() => {
+    mock.restore();
+    restoreFetch();
+  });
 
   it("open and present navigate to the document routes by kind", async () => {
     const { result } = renderActions();
@@ -85,7 +85,7 @@ describe("useLibraryActions", () => {
     const doc = await lesson();
     await fire(() => result.current.onDocumentAction("duplicate", doc));
     await waitFor(() => expect(toastSpy).toHaveBeenCalledWith(`Duplicated “${doc.title}”`));
-    const titles = (await listDocuments()).map((d) => d.title);
+    const titles = fakeApi.listDocuments().map((d) => d.title);
     expect(titles).toContain(`${doc.title} (copy)`);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["library"] });
   });
@@ -95,15 +95,13 @@ describe("useLibraryActions", () => {
     const doc = await lesson();
     await fire(() => result.current.onDocumentAction("delete", doc));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
-    expect((await listDocuments()).some((d) => d.id === doc.id)).toBe(false);
+    expect(fakeApi.listDocuments().some((d) => d.id === doc.id)).toBe(false);
 
     const [message, options] = lastToast();
     expect(message).toBe(`Deleted “${doc.title}”`);
     expect(options.duration).toBe(UNDO_MS);
     await fire(() => options.action?.onClick());
-    await waitFor(async () =>
-      expect((await listDocuments()).some((d) => d.id === doc.id)).toBe(true),
-    );
+    await waitFor(() => expect(fakeApi.listDocuments().some((d) => d.id === doc.id)).toBe(true));
   });
 
   it("export is a placeholder toast; rename writes the trimmed title", async () => {
@@ -112,7 +110,7 @@ describe("useLibraryActions", () => {
     await fire(() => result.current.onDocumentAction("export", doc));
     expect(toastSpy).toHaveBeenCalledWith("Export arrives with the editor");
     await fire(() => result.current.onDocumentRename(doc, "Rain"));
-    await waitFor(async () => expect((await loadDocument(doc.id))?.title).toBe("Rain"));
+    await waitFor(() => expect(fakeApi.loadDocument(doc.id)?.title).toBe("Rain"));
   });
 
   it("series: present goes to the first lesson with the series search param", async () => {
@@ -137,10 +135,10 @@ describe("useLibraryActions", () => {
 
     await fire(() => result.current.onSeriesAction("delete", item));
     await waitFor(() => expect(lastToast()[0]).toBe(`Deleted “${item.series.title}”`));
-    expect((await listSeriesWithLessons()).some((s) => s.series.id === item.series.id)).toBe(false);
+    expect(fakeApi.listSeriesWithLessons().some((s) => s.series.id === item.series.id)).toBe(false);
     await fire(() => lastToast()[1].action?.onClick());
-    await waitFor(async () =>
-      expect((await listSeriesWithLessons()).some((s) => s.series.id === item.series.id)).toBe(
+    await waitFor(() =>
+      expect(fakeApi.listSeriesWithLessons().some((s) => s.series.id === item.series.id)).toBe(
         true,
       ),
     );

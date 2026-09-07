@@ -88,6 +88,42 @@ describe("GET /__test/last-magic-link", () => {
   });
 });
 
+describe("POST /__test/seed-library", () => {
+  const body = JSON.stringify({ documents: [] });
+  const post = (app: ReturnType<typeof appWith>["app"], headers: Record<string, string> = {}) =>
+    app.request("/__test/seed-library", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body,
+    });
+
+  test("is not mounted without the flag", async () => {
+    const { app } = appWith({});
+    expect((await post(app)).status).toBe(404);
+  });
+
+  test("sits behind the session guard: 401 without a session or shim", async () => {
+    const { app } = appWith({ ENABLE_TEST_ROUTES: "1" });
+    expect((await post(app)).status).toBe(401);
+  });
+
+  test("validates the document list shape", async () => {
+    const { app } = appWith({ ENABLE_TEST_ROUTES: "1" });
+    const res = await app.request("/__test/seed-library", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-tj-workspace-id": "00000000-0000-4000-8000-000000000001",
+      },
+      body: JSON.stringify({ documents: [{ key: "k", kind: "poem", body: {} }] }),
+    });
+    expect(res.status).toBe(400);
+    const envelope = (await res.json()) as { error: { code: string; fields: string[] } };
+    expect(envelope.error.code).toBe("validation_failed");
+    expect(envelope.error.fields).toEqual(["documents"]);
+  });
+});
+
 describe("CaptureMailSender forwarding", () => {
   test("records and forwards to the wrapped sender", async () => {
     const inner = new CaptureMailSender();

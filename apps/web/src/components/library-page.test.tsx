@@ -1,10 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
-import { QueryClient, QueryClientProvider, queryOptions } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import * as ui from "@tj/ui";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import { libraryQueries } from "@/lib/library";
+import { installFakeApi } from "@/test/fake-api";
+
+const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let search: { q?: string } = {};
 const navigate = mock();
@@ -38,6 +40,7 @@ describe("LibraryPage", () => {
     search = {};
     navigate.mockReset();
     localStorage.clear();
+    fakeApi.reset();
   });
 
   it("renders Home's capped library sections and creation strip", async () => {
@@ -60,6 +63,15 @@ describe("LibraryPage", () => {
     expect(input).toHaveValue("water");
     // The card title and its (aria-hidden) cover slide both carry the text.
     expect((await screen.findAllByText("The water cycle"))[0]).toBeVisible();
+    // The search went to the server as `q`, on the lesson list only.
+    const listRequest = fakeApi.requests.find((r) => r.path === "/documents");
+    expect(Object.fromEntries(listRequest?.query ?? [])).toMatchObject({
+      kind: "lesson",
+      q: "water",
+      sort: "updated",
+      limit: "100",
+    });
+    expect(screen.queryByText("Roman roads")).toBeNull();
 
     fireEvent.keyDown(input, { key: "Escape" });
     const navigation = navigate.mock.calls[0]?.[0] as {
@@ -82,6 +94,12 @@ describe("LibraryPage", () => {
     });
     fireEvent.click(await screen.findByRole("menuitemradio", { name: "Title A–Z" }));
     expect(localStorage.getItem("tj:library:sort")).toBe("title");
+    // The new order is the server's: a fresh list request carries `sort=title`.
+    await waitFor(() =>
+      expect(
+        fakeApi.requests.some((r) => r.path === "/documents" && r.query.get("sort") === "title"),
+      ).toBe(true),
+    );
     fireEvent.click(screen.getByRole("button", { name: "List" }));
     expect(localStorage.getItem("tj:library:view")).toBe("list");
   });
@@ -117,27 +135,36 @@ describe("LibraryPage", () => {
   });
 
   it("renders the query error and retries the failed document query", async () => {
-    let shouldThrow = true;
-    let calls = 0;
-    const documents = libraryQueries.documents();
-    const documentsSpy = spyOn(libraryQueries, "documents").mockImplementation(() =>
-      queryOptions({
-        ...documents,
-        queryFn: async () => {
-          calls += 1;
-          if (shouldThrow) throw new Error("forced library failure");
-          return [];
-        },
-      }),
+    fakeApi.failNext(
+      (r) => r.path === "/documents" && r.query.get("kind") === "lesson",
+      () =>
+        new Response(JSON.stringify({ error: { code: "internal_error", message: "boom" } }), {
+          status: 500,
+        }),
     );
 
     renderPage("home");
 
     expect(await screen.findByText("Your library could not be loaded")).toBeVisible();
-    shouldThrow = false;
+    const before = fakeApi.requests.filter((r) => r.query.get("kind") === "lesson").length;
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(calls).toBeGreaterThan(1));
-    documentsSpy.mockRestore();
+    await waitFor(() =>
+      expect(fakeApi.requests.filter((r) => r.query.get("kind") === "lesson").length).toBe(
+        before + 1,
+      ),
+    );
+    expect(await screen.findByRole("heading", { name: "Recent" })).toBeVisible();
+  });
+
+  it("shows the empty state for a Workspace with nothing in it", async () => {
+    fakeApi.rows.clear();
+    renderPage("home");
+    expect(await screen.findByText("Nothing here yet")).toBeVisible();
+    expect(fakeApi.requests.map((r) => r.query.get("kind")).sort()).toEqual([
+      "lesson",
+      "series",
+      "worksheet",
+    ]);
   });
 
   it("keeps Recent and Earlier groups when the list preference is selected", async () => {
@@ -181,4 +208,5 @@ describe("LibraryPage", () => {
 
 afterAll(() => {
   mock.restore();
+  restoreFetch();
 });

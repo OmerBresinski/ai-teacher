@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, type SeededPaths, test } from "./fixtures";
 
 /*
  * The editor's contextual chrome (TEACH-105): the slide and element toolbars route with the
@@ -7,7 +7,7 @@ import { expect, test } from "./fixtures";
  * and the More drawer's opacity slider is one undo step per drag.
  */
 
-const EDITOR = "/l/demo-water-cycle";
+const EDITOR = (paths: SeededPaths) => paths.lesson("demo-water-cycle");
 const elements = (page: Page) => page.locator("[data-slide-frame] [data-element-id]");
 
 async function clickAt(page: Page, target: ReturnType<Page["locator"]>) {
@@ -18,9 +18,9 @@ async function clickAt(page: Page, target: ReturnType<Page["locator"]>) {
 
 test.describe("editor chrome", () => {
   test("nothing selected shows the Slide toolbar; a selected text box swaps it for Text", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(page.getByRole("toolbar", { name: "Slide" })).toBeVisible();
     await clickAt(page, elements(page).filter({ hasText: "The water cycle" }).first());
     await expect(page.getByRole("toolbar", { name: "Text" })).toBeVisible();
@@ -35,9 +35,9 @@ test.describe("editor chrome", () => {
   });
 
   test("row 7: the rail inserts a shape and a line, each selected at the slide centre", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
     await page
@@ -64,9 +64,9 @@ test.describe("editor chrome", () => {
   });
 
   test("row 1: a shape's fill changes from the palette; the opacity slider drag is one undo step", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await page
       .getByRole("toolbar", { name: "Insert" })
       .getByRole("button", { name: "Shape" })
@@ -111,9 +111,9 @@ test.describe("editor chrome", () => {
   });
 
   test("row 8: the theme dialog switches to Playground and the canvas follows", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     const root = page.locator("[data-slide-frame] [data-slide-root]");
     const before = await root.evaluate((n) => getComputedStyle(n).backgroundColor);
     await page.getByRole("button", { name: "Theme" }).click();
@@ -133,9 +133,9 @@ test.describe("editor chrome", () => {
   });
 
   test("row 10: Escape closes a popover without deselecting", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await page
       .getByRole("toolbar", { name: "Insert" })
       .getByRole("button", { name: "Shape" })

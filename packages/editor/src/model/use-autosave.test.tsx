@@ -3,7 +3,13 @@ import { act, cleanup, fireEvent, renderHook, screen, waitFor } from "@testing-l
 import type { Lesson } from "@tj/domain/documents";
 import { renderEditor } from "../lesson/test-harness";
 import { newLesson } from "../model/factories";
-import { AUTOSAVE_MS, SAVE_FAILED_MESSAGE, useAutosave, useSaveState } from "./use-autosave";
+import {
+  AUTOSAVE_MS,
+  SAVE_FAILED_MESSAGE,
+  SaveRefusedError,
+  useAutosave,
+  useSaveState,
+} from "./use-autosave";
 
 /*
  * Rows 11–13 of TEACH-103. `bun test` has no fake timers, so the hook takes its debounce as an
@@ -92,6 +98,20 @@ describe("useAutosave", () => {
     expect(toastSpy).toHaveBeenCalledTimes(1);
 
     // Unsaved work: `beforeunload` is answered (preventDefault) so the browser asks.
+    const unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+  });
+
+  test("a SaveRefusedError says Not saved without the generic toast", async () => {
+    const onSave = mock((_l: Lesson) => Promise.reject(new SaveRefusedError("stale")));
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10 });
+      return { autosave, state: useSaveState(autosave) };
+    });
+    act(() => result.current.autosave.onChange(newLesson("A")));
+    await waitFor(() => expect(result.current.state).toBe("failed"));
+    expect(toastSpy).not.toHaveBeenCalled();
     const unload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);

@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import { loadDocument, resetLibraryStore } from "@/mocks/library-store";
+import { installFakeApi } from "@/test/fake-api";
+
+const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let lessonId = "demo-water-cycle";
 let search: Record<string, unknown> = {};
@@ -40,9 +42,12 @@ describe("LessonPresentPage", () => {
     search = {};
     navigate.mockReset();
     cleanup();
-    await resetLibraryStore();
+    fakeApi.reset();
   });
-  afterAll(() => mock.restore());
+  afterAll(() => {
+    mock.restore();
+    restoreFetch();
+  });
 
   it("presents the lesson; Escape exits back to the editor", async () => {
     renderPage();
@@ -106,19 +111,19 @@ describe("LessonPresentPage", () => {
     key("ArrowLeft");
     key("Escape");
     await waitFor(async () => {
-      const body = await loadDocument("demo-water-cycle");
+      const body = fakeApi.loadDocument("demo-water-cycle");
       if (!body || !("slides" in body)) throw new Error("lesson missing");
       expect(body.reachedSlideId).toBe(body.slides[2]?.id);
       expect(body.taughtAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
     cleanup();
-    await resetLibraryStore();
+    fakeApi.reset();
     renderPage();
     await start();
     key("Escape");
     await waitFor(async () => {
-      const body = await loadDocument("demo-water-cycle");
+      const body = fakeApi.loadDocument("demo-water-cycle");
       if (!body || !("slides" in body)) throw new Error("lesson missing");
       expect(body.reachedSlideId).toBe(body.slides[0]?.id);
       expect(body.taughtAt).toBeUndefined();

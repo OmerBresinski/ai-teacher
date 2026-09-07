@@ -2,8 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "@tj/ui";
 import { UNDO_MS } from "@/components/library/use-library-actions";
-import { libraryMutations } from "@/lib/library";
-import type { SeriesWithLessons } from "@/mocks/library-schema";
+import { libraryMutations, type SeriesWithLessons } from "@/lib/library";
 
 /** The writes the series detail page performs, with their toasts and navigation. */
 export function useSeriesActions(item: SeriesWithLessons | null | undefined) {

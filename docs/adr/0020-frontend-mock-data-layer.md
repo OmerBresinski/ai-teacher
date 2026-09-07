@@ -1,6 +1,6 @@
 # 0020 — Library screens run on an in-memory mock data layer behind TanStack Query
 
-- Status: Accepted
+- Status: Superseded by ADR 0024 §9 (implemented 2026-09-07, TEACH-121)
 - Date: 2026-09-05
 - Related PRD decisions: TD project item 1 (tie-in contract), D-001
 - Related ADRs: 0004, 0005
@@ -50,3 +50,15 @@ The mock data layer is retired by ADR 0024 §9: `apps/web/src/mocks` is replaced
 `@tj/api-client` calls to the `/documents` and `/lessons` routes inside the same TanStack Query
 option factories and mutations, so the hook surface the shell and the Editor port consume does not
 change. Seed content moves to `bun run db:seed` (ADR 0024 §16); no switchable offline mode is kept.
+
+## Amendment (2026-09-07, TEACH-121 — implemented)
+
+Done. `apps/web/src/mocks` is deleted. `lib/library.ts` holds the same `libraryQueries` /
+`libraryMutations` names over the RPC client: lists are `infiniteQueryOptions` keyed by kind, sort
+and search term (ADR 0024 §17), a document body is one Query entry with its row state
+(`updatedAt`, `generatingJobId`) in a `documentMeta` entry beside it, and every write is a
+whole-document `PUT` with `expectedUpdatedAt`; a `409` surfaces as `ApiError.reason` (§18). The
+fixtures live on as `demoWorkspace()` in `@tj/editor/starter`, inserted by `bun run db:seed` and
+by the e2e `POST /__test/seed-library` route through `seedDocuments` in `@tj/db`. Unit tests stub
+the transport with `apps/web/src/test/fake-api.ts`, an in-memory server behind `globalThis.fetch`
+that speaks the same routes and status codes.

@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-// bun run db:seed -- fill one Workspace with the TeachDeck starter content (ADR 0024 §16):
-//   the two demo lessons (`demoLibrary()`) and the demo worksheet (`demoWorksheet()`) from
-//   `@tj/editor`, inserted through the `@tj/db` documents repository so every promoted column is
-//   computed the same way the API computes it.
+// bun run db:seed -- fill one Workspace with the demo library (ADR 0024 §16): `demoWorkspace()`
+//   from `@tj/editor/starter` (ten lessons, four worksheets, two series — the same fixtures the e2e
+//   `POST /__test/seed-library` route inserts), through `seedDocuments` in `@tj/db` so every
+//   promoted column is computed the same way the API computes it.
 //
 //   bun run db:seed --workspace <uuid>        # a Workspace id
 //   bun run db:seed --email teacher@x.test    # the personal Workspace of that user
@@ -14,24 +14,15 @@
 // is for development and e2e only, and it refuses to run unless DATABASE_URL points at localhost.
 
 import { parseArgs } from "node:util";
-import { createDb, createDocument, documents, forWorkspace } from "@tj/db";
+import { createDb, documents, forWorkspace, seedDocuments } from "@tj/db";
 import { type WorkspaceId, WorkspaceId as WorkspaceIdSchema } from "@tj/domain";
-import type { DocumentKind } from "@tj/domain/documents";
-import { demoLibrary, demoWorksheet } from "@tj/editor/starter";
+import { demoWorkspace } from "@tj/editor/starter";
 import { databaseUrl, parseDatabaseUrl } from "./lib/env";
 import { ExitCode, runMain, UserFacingError } from "./lib/exit";
 import { log } from "./lib/log";
 
 const USAGE =
   "usage: bun run db:seed (--workspace <uuid> | --email <address>) [--database-url <url>]";
-
-/** The documents the seed owns: kind + body. Titles are the idempotency key. */
-export function seedDocuments(): { kind: DocumentKind; body: { title: string } }[] {
-  return [
-    ...demoLibrary().map((body) => ({ kind: "lesson" as const, body })),
-    { kind: "worksheet" as const, body: demoWorksheet() },
-  ];
-}
 
 await runMain(async () => {
   const { values } = parseArgs({
@@ -85,17 +76,16 @@ await runMain(async () => {
     const existing = new Set(
       (await ws.project({ title: documents.title }, documents)).map((row) => row.title),
     );
-    let inserted = 0;
-    for (const { kind, body } of seedDocuments()) {
-      if (existing.has(body.title)) {
-        log.info(`skip   ${kind.padEnd(9)} "${body.title}" (already present)`);
-        continue;
+    const items = demoWorkspace(new Date());
+    const result = await seedDocuments(ws, items, { skipTitles: existing });
+    for (const item of items) {
+      if (result.skipped.includes(item.key)) {
+        log.info(`skip   ${item.kind.padEnd(9)} "${item.body.title}" (already present)`);
+      } else {
+        log.ok(`insert ${item.kind.padEnd(9)} "${item.body.title}" -> ${result.ids.get(item.key)}`);
       }
-      const row = await createDocument(ws, kind, body);
-      inserted++;
-      log.ok(`insert ${kind.padEnd(9)} "${row.title}" -> ${row.id}`);
     }
-    log.ok(`${inserted} document(s) inserted, ${seedDocuments().length - inserted} skipped`);
+    log.ok(`${result.inserted.length} document(s) inserted, ${result.skipped.length} skipped`);
   } finally {
     await close();
   }
