@@ -53,6 +53,12 @@ const rootOnlyGeometry = new Set([
   "--button-height",
   "--button-height-lg",
   "--canvas-gap",
+  "--toggle-w",
+  "--toggle-h",
+  "--toggle-thumb",
+  "--checkbox",
+  "--check-glyph",
+  "--hit",
 ]);
 
 function paletteVariables(block: string): string[] {

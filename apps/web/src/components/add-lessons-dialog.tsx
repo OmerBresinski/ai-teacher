@@ -123,7 +123,7 @@ export function AddLessonsDialog({
             Cancel
           </Button>
           <Button
-            className="bg-foreground text-background hover:bg-foreground"
+            variant="primary"
             disabled={busy || selected.size === 0}
             onClick={() => void submit()}
           >

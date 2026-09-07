@@ -32,7 +32,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(function
       type={type ?? "button"}
       aria-label={label}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-control text-ink-2 outline-none motion-safe:transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex shrink-0 items-center justify-center rounded-control text-ink-2 outline-none motion-safe:transition-colors hover:bg-accent hover:text-foreground focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-50",
         size === "sm" ? "size-6" : "size-8",
         active && "bg-accent-active text-foreground",
         className,

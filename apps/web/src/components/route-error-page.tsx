@@ -20,7 +20,9 @@ export function RouteErrorPage({ error }: ErrorComponentProps) {
           <CardDescription>{message}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={() => void router.invalidate()}>Retry</Button>
+          <Button variant="primary" onClick={() => void router.invalidate()}>
+            Retry
+          </Button>
         </CardContent>
       </Card>
     </main>
