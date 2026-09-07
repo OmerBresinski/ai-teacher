@@ -149,7 +149,11 @@ nohup bun run land <pr> > /tmp/land-<pr>.log 2>&1 &
 Read `/tmp/land-<pr>.log` once, when the next PR is ready to open (or when there is nothing else to
 do). Never run `gh run watch`, `gh pr checks --watch` or `gh run view` in a loop by hand — the
 script already does the one blocking wait, and it waits only on the checks branch protection
-requires. Prefer a fresh session per feature over one long session: state lives in Linear and
+requires. Every line it logs is timestamped and every wait is bounded by `--timeout-min` (default
+20): if the process is still alive past that, something outside the script is stuck (a hung `gh`,
+`vercel` or `railway` call) — kill it, read the log to see the last stamped line, and land by hand
+from that point. Do not `sleep` and re-read the log on a schedule; the script exits when it is
+done or when its deadline passes, and a log without a summary block means it has not finished. Prefer a fresh session per feature over one long session: state lives in Linear and
 GitHub, not in the chat. Every edit goes through the branch → PR → review → CI path; never commit
 to `master` directly.
 
@@ -177,7 +181,11 @@ to `master` directly.
    old title. When there is a Linear issue, move it to **In Progress** and set
    its **Assignee** to the currently authenticated Linear user (`assignee: "me"` in
    `linear_save_issue`) when work starts, so the ticket is never left unassigned while it is being
-   worked on. Before touching an area, read its `AGENTS.md` and load the skills it names. For UI
+   worked on. **The issue's project follows it:** if that project is still `Planned` (or
+   `Backlog`) — no issue in it has reached Done yet — move the project to **In Progress** in the
+   same step (`linear_save_project` with `state: "In Progress"`), so the projects view shows what
+   is actually being built. Do not touch the project's status otherwise; when the last issue
+   closes, whether the project is Completed is a founder call (see "Linear projects" below). Before touching an area, read its `AGENTS.md` and load the skills it names. For UI
    work, a verified visual result (screenshot via the preview tools, with the
    `GET /__test/last-magic-link` sign-in route) is part of acceptance.
 2. **Review with a separate subagent.** For every PR, launch a fresh **`reviewer`** subagent (a
@@ -233,13 +241,17 @@ to `master` directly.
    ```
 
    Then run `bun run land <pr>` — in the background as described under cost discipline, or in a
-   single bash call with a long timeout (~25 min) when it is the last thing left. It waits for the
-   **required** checks (`gh pr checks --required --watch`; Vercel's preview check is not required
-   and is ignored), refuses unresolved review threads, rebases when `BEHIND`, squash-merges a
-   `CLEAN` or `UNSTABLE` PR, watches Vercel and both Railway services, and runs
-   `bun run smoke:prod`, printing one summary block. Do not poll any of those by hand. If it
-   exits non-zero, the log names the failing check or step — read it once and act on it; do not
-   re-implement its wait with `gh` commands.
+   single bash call with a long timeout (~25 min) when it is the last thing left. It refuses
+   unresolved review threads up front, polls the **required** checks every 15 s
+   (`gh pr checks --required --json`; Vercel's preview check is not required and is ignored;
+   "no checks reported" right after a push counts as pending), rebases when `BEHIND`,
+   squash-merges a `CLEAN` or `UNSTABLE` PR the moment the checks are green, watches Vercel and
+   both Railway services, and runs `bun run smoke:prod`, printing one summary block. Do not poll
+   any of those by hand. If it exits non-zero, the log names the failing check or step — read it
+   once and act on it; do not re-implement its wait with `gh` commands. A summary whose first
+   line ends in "a deploy did not finish in time" means the PR **is merged** and one deploy was
+   still running at the deadline (its status line says which and what was last seen): check that
+   service once with the CLI, do not re-run `land` and do not re-merge.
 4. **Watch the deploys.** A merge to `master` deploys Vercel (web) and Railway (api, worker).
    The latest Production Vercel deployment must be `Ready`; each Railway service must be `SUCCESS`,
    or `SKIPPED` when the change is outside the service's watch paths, e.g. docs-only. **Vercel
@@ -269,6 +281,20 @@ authenticated user) → In Review (PR open, review running) → Done (merged and
 skip a state and never mark Done before the merge and the deploy check.
 
 Work that did not come from Linear still goes through steps 1–4; only step 5 is skipped.
+
+### Linear projects
+
+The projects view (team Teacher AI) is kept readable by two rules, both mechanical:
+
+- **Status follows the issues.** A project is `In Progress` from the moment the first of its
+  issues is started (step 1 above) — never before, and never left `Planned` while a PR for it is
+  open. `Completed` and `Canceled` are founder decisions; the agent does not set them. A project
+  with no issues yet stays `Backlog`/`Planned`.
+- **Order is by what is being worked on, then what comes next, then Tech debt.** Projects in
+  `In Progress` sit at the top, the `Planned` ones below in the order the founder wants them
+  picked up (their project priority reflects it), and **Tech debt** is always last. The agent
+  does not reorder projects on its own; when asked to, it reports the proposed order in chat
+  first and applies it only after the founder agrees.
 
 ## Package map
 

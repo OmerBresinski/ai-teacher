@@ -1,10 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
   type CommandResult,
+  ciVerdict,
+  formatLandPrSummary,
   hasPendingChecks,
   type LandPrDeps,
   landPr,
   parseLandPrArgs,
+  parseRequiredChecks,
   parseVercelProduction,
   reviewThreadsPageInfo,
 } from "./land-pr";
@@ -34,6 +37,11 @@ interface FakeOptions {
   currentBranch?: string;
   /** Git invocations that exit 1, e.g. `[["rebase", "origin/master"]]`. */
   failGit?: string[][];
+  /**
+   * `gh pr checks --json` answers in order; the last one repeats. A string is gh's stderr with a
+   * non-zero exit (e.g. "no checks reported"), an array is the parsed JSON rows.
+   */
+  requiredChecks?: Array<string | Array<{ name: string; bucket: string; state: string }>>;
 }
 
 function fakeDeps(options: FakeOptions = {}): {
@@ -42,6 +50,9 @@ function fakeDeps(options: FakeOptions = {}): {
 } {
   const states = [...(options.states ?? ["CLEAN"])];
   const checkSnapshots = [...(options.checks ?? [[{ name: "test", conclusion: "SUCCESS" }]])];
+  const requiredChecks = [
+    ...(options.requiredChecks ?? [[{ name: "test", bucket: "pass", state: "SUCCESS" }]]),
+  ];
   const railway = {
     api: [...(options.railway?.api ?? [{ id: "old-api" }, { id: "new-api", status: "SUCCESS" }])],
     worker: [
@@ -89,7 +100,11 @@ function fakeDeps(options: FakeOptions = {}): {
             }),
           );
         }
-        if (args[0] === "pr" && args[1] === "checks") return ok();
+        if (args[0] === "pr" && args[1] === "checks") {
+          const answer = requiredChecks.length > 1 ? requiredChecks.shift() : requiredChecks[0];
+          if (typeof answer === "string") return { exitCode: 1, stdout: "", stderr: answer };
+          return ok(JSON.stringify(answer ?? []));
+        }
         if (args[0] === "pr" && args[1] === "view" && args.includes("statusCheckRollup")) {
           const snapshot = checkSnapshots.length > 1 ? checkSnapshots.shift() : checkSnapshots[0];
           return ok(JSON.stringify(snapshot ?? []));
@@ -164,11 +179,93 @@ describe("land-pr", () => {
     expect(summary.smoke.status).toBe("passed");
   });
 
-  test("waits only for the required checks, so a failing non-required Vercel check does not stop it", async () => {
+  test("reads only the required checks, so a failing non-required Vercel check does not stop it", async () => {
     const fake = fakeDeps();
     await landPr(42, {}, fake.deps);
-    const watch = fake.calls.gh.find((args) => args.includes("--watch"));
-    expect(watch).toEqual(["pr", "checks", "42", "--required", "--watch", "--fail-fast"]);
+    const read = fake.calls.gh.find((args) => args[1] === "checks");
+    expect(read).toEqual(["pr", "checks", "42", "--required", "--json", "name,bucket,state"]);
+    expect(fake.calls.gh.some((args) => args.includes("--watch"))).toBe(false);
+  });
+
+  test("polls the required checks until none is pending, treating 'no checks reported' as pending", async () => {
+    // Right after a push gh answers "no checks reported" (exit 1) until the run attaches; then
+    // the rows arrive one state at a time. Each read is one `gh pr checks` call, 15 s apart.
+    const fake = fakeDeps({
+      requiredChecks: [
+        "no checks reported on the 'chore/land-pr-script' branch",
+        "no required checks reported on the 'chore/land-pr-script' branch",
+        [
+          { name: "test", bucket: "pass", state: "SUCCESS" },
+          { name: "e2e", bucket: "pending", state: "IN_PROGRESS" },
+        ],
+        [
+          { name: "test", bucket: "pass", state: "SUCCESS" },
+          { name: "e2e", bucket: "skipping", state: "SKIPPED" },
+        ],
+      ],
+    });
+    const summary = await landPr(42, {}, fake.deps);
+    expect(summary.ok).toBe(true);
+    expect(fake.calls.gh.filter((args) => args[1] === "checks")).toHaveLength(4);
+    expect(fake.deps.now()).toBe(45_000);
+  });
+
+  test("fails fast on a failed or cancelled required check, naming it", async () => {
+    const fake = fakeDeps({
+      requiredChecks: [
+        [
+          { name: "test", bucket: "pass", state: "SUCCESS" },
+          { name: "e2e", bucket: "fail", state: "FAILURE" },
+          { name: "build", bucket: "pending", state: "QUEUED" },
+        ],
+      ],
+    });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("e2e: FAILURE");
+    expect(fake.calls.gh.some((args) => args[1] === "merge")).toBe(false);
+  });
+
+  test("gives up on CI that is still running at the deadline, naming what was pending", async () => {
+    const fake = fakeDeps({
+      requiredChecks: [[{ name: "e2e", bucket: "pending", state: "IN_PROGRESS" }]],
+    });
+    await expect(landPr(42, { timeoutMin: 1 }, fake.deps)).rejects.toThrow("still pending: e2e");
+    expect(fake.deps.now()).toBe(60_000);
+  });
+
+  test("a gh error other than 'no checks reported' is surfaced, not waited out", async () => {
+    const fake = fakeDeps({ requiredChecks: ["HTTP 502: bad gateway"] });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("HTTP 502");
+  });
+
+  test("refuses unresolved threads before waiting on CI", async () => {
+    const fake = fakeDeps({ unresolved: 1 });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("unresolved review thread");
+    expect(fake.calls.gh.some((args) => args[1] === "checks")).toBe(false);
+  });
+
+  test("a deploy that outlives the watch is reported in the summary, not thrown", async () => {
+    // The PR is merged by then; the caller must learn the merge commit and which deploy is
+    // unaccounted for instead of a bare "timed out" (PRs #127 and #130 lost that information).
+    const fake = fakeDeps({
+      railway: {
+        api: [{ id: "old-api" }, { id: "new-api", status: "BUILDING" }],
+      },
+    });
+    const summary = await landPr(42, { timeoutMin: 2 }, fake.deps);
+    expect(summary.ok).toBe(false);
+    expect(summary.mergedAs).toBe("abc123");
+    expect(summary.railway.api.ok).toBe(false);
+    expect(summary.railway.api.status).toContain("TIMED OUT after 2 min (last seen: BUILDING)");
+    expect(summary.vercel.status).toBe("Ready");
+    expect(formatLandPrSummary(summary)).toContain("a deploy did not finish in time");
+  });
+
+  test("treats a SLEEPING Railway service as deployed", async () => {
+    const fake = fakeDeps({
+      railway: { api: [{ id: "old-api" }, { id: "new-api", status: "SLEEPING" }] },
+    });
+    const summary = await landPr(42, {}, fake.deps);
+    expect(summary.railway.api.status).toBe("SLEEPING");
   });
 
   test("merges an UNSTABLE PR: required checks passed, only a non-required one failed", async () => {
@@ -396,6 +493,36 @@ Fetching deployments in omerbresinskis-projects
     expect(hasPendingChecks([{ name: "test", conclusion: "FAILURE" }])).toBe(false);
     expect(hasPendingChecks([{ name: "test", conclusion: "CANCELLED" }])).toBe(false);
     expect(hasPendingChecks([{ context: "ctx", state: "ERROR" }])).toBe(false);
+  });
+
+  test("reduces gh's buckets to one CI verdict", () => {
+    expect(ciVerdict([])).toEqual({ kind: "green" });
+    expect(
+      ciVerdict([
+        { name: "test", bucket: "pass", state: "SUCCESS" },
+        { name: "e2e", bucket: "skipping", state: "SKIPPED" },
+      ]),
+    ).toEqual({ kind: "green" });
+    expect(
+      ciVerdict([
+        { name: "test", bucket: "pending", state: "QUEUED" },
+        { name: "e2e", bucket: "pending", state: "EXPECTED" },
+      ]),
+    ).toEqual({ kind: "pending", names: ["test", "e2e"] });
+    expect(ciVerdict([{ name: "e2e", bucket: "cancel", state: "CANCELLED" }])).toEqual({
+      kind: "failed",
+      detail: "e2e: CANCELLED",
+    });
+  });
+
+  test("parses gh's check rows defensively", () => {
+    expect(parseRequiredChecks("{}")).toEqual([]);
+    expect(parseRequiredChecks('[{"name":"test","bucket":"pass","state":"SUCCESS"},1]')).toEqual([
+      { name: "test", bucket: "pass", state: "SUCCESS" },
+    ]);
+    expect(parseRequiredChecks("[{}]")).toEqual([
+      { name: "unnamed check", bucket: "pending", state: "UNKNOWN" },
+    ]);
   });
 
   test("reads pageInfo defensively", () => {
