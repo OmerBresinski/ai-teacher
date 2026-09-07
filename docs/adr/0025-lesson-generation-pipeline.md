@@ -96,6 +96,24 @@ What the code says today, read on `master` at `9752445`:
    `documentUpdatedAt: IsoDateTime`; the read-only editor refetches `GET /documents/:id` when it
    changes and the slides appear one by one. ADR 0012's event types are unchanged; this amends its
    payload shape only.
+
+   **Amended 2026-09-07 (TEACH-138): the title slide comes before any model call, and Plan is two
+   calls.** Nothing is visible until the first persist, so the `title` slide is materialised from
+   the Brief alone (`generatedFrom.promptVersion: "brief"`, `model: "none"`) and written before
+   Plan's first call. Plan then makes two `standard` calls instead of one: a **skeleton** call
+   (`plan-skeleton.v<n>`: objectives and outline, whose `factRefs` may name objectives only) after
+   which the `objectives` slide is materialised and the skeleton-only facts written, and a
+   **facts** call (`plan-facts.v<n>`: vocabulary, worked examples, questions, and the outline
+   entries each supports) after which the merged `LessonFacts` are written with
+   `generation.stage: "planned"`. The two intermediate persists carry **no** `generation` key —
+   `stage` is the checkpoint and must not be claimed before the facts exist; a retry that finds a
+   lesson without one re-runs Plan and keeps the title slide it left. `promptVersions.planned`
+   records both versions as `plan-skeleton.v<n>+plan-facts.v<n>`. The first `progress` events
+   are `2 "Starting"`, `6 "Planned the lesson"`, `10 "Planned"`. Plan's output is also trimmed
+   (`reasoning` ≤ 120 chars, ≤ 4 worked-example steps, ≤ 6 terms) so the facts call is short;
+   Generate is unchanged and stays sequential (a parallel Generate was considered and rejected).
+   A budget stop on the facts call keeps the skeleton facts, records the `budget` finding and
+   still reaches `planned` (item 15); Generate does not add a second `budget` finding.
 8. **The model produces content, never geometry.** Generate asks for a per-kind **slide spec** —
    a Zod discriminated union on `kind` (e.g. `{ kind: "multiple-choice", stem, options: [{ text,
    correct }], explanation, notes, factRefs }`) — and a pure `materialiseSlide(spec, themeId, ids)`
@@ -265,7 +283,7 @@ What the code says today, read on `master` at `9752445`:
   spec exist; the teacher adds them. F07 finds `authoredBy`/`generatedFrom` already in place and
   ships behaviour only. F05 fills `curriculumRef`; F03 fills `Lesson.sources` and the loader.
 - The worksheet is not deleted with its lesson (item 4); F15's retention work decides cascade.
-- Costs: about 16 model calls per lesson (1 Plan + ~12 Generate + 1 worksheet + 1 Evaluate + ≤1
+- Costs: about 17 model calls per lesson (2 Plan + ~12 Generate + 1 worksheet + 1 Evaluate + ≤1
   Repair) on `standard`/`small`; the first baseline is recorded by the eval ticket (F06 item 9).
 
 ## Open

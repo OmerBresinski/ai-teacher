@@ -27,7 +27,7 @@ Shared vocabulary for the Teaching Journey codebase. Product terms are copied fr
 - **LessonFacts** — the one object every Artefact of a Lesson is derived from: objectives (optional `curriculumRef`), vocabulary, worked examples, questions with answers and reasoning, misconceptions (empty at MVP), the `outline` (ordered slide kinds with minutes and the facts each covers) and `durationMin`. Stored as the optional `Lesson.facts` field; every fact has a stable short id that `factRefs` point at (ADR 0025 §1).
 - **Library** — the signed-in home: Home plus the kind pages.
 - **Observation** — class-level evidence of understanding recorded after teaching.
-- **Plan** — the first pipeline stage: the Brief (and, from F03, Source text) becomes `LessonFacts` in one `standard` model call; the `title` and `objectives` slides are then materialised from it without a second call so the first slide is visible early (ADR 0025 §5, §7).
+- **Plan** — the first pipeline stage: the Brief (and, from F03, Source text) becomes `LessonFacts` in two `standard` model calls — a skeleton (objectives and outline) and then the remaining facts. The `title` slide is materialised from the Brief and persisted before any call, the `objectives` slide after the skeleton call, so the first slides are visible early; only the persist after the facts call carries `generation.stage: "planned"` (ADR 0025 §5, §7; TEACH-138).
 - **Progression** — the ordered, dependency-aware set of Concepts a Journey covers (a DAG).
 - **Provenance** — machine- and human-readable indication that content was produced with AI and reviewed by a named role.
 - **Reviewed** — the teacher has opened, checked and confirmed an Artefact; unlocks the "AI-assisted, teacher-reviewed" export label.

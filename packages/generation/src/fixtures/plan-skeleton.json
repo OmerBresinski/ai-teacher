@@ -1,0 +1,126 @@
+{
+  "learningObjectives": [
+    {
+      "text": "Describe the arrangement and movement of particles in solids, liquids and gases"
+    },
+    {
+      "text": "Explain melting, boiling, condensing and freezing as changes of state"
+    },
+    {
+      "text": "Use the particle model to predict what happens when a substance is heated or cooled"
+    }
+  ],
+  "outline": [
+    {
+      "kind": "title",
+      "minutes": 2,
+      "factRefs": []
+    },
+    {
+      "kind": "objectives",
+      "minutes": 3,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        },
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "kind": "starter",
+      "minutes": 5,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "kind": "vocabulary",
+      "minutes": 8,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "kind": "content",
+      "minutes": 7,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "kind": "worked-example",
+      "minutes": 8,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        }
+      ]
+    },
+    {
+      "kind": "true-false",
+      "minutes": 5,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "kind": "multiple-choice",
+      "minutes": 7,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "kind": "sort",
+      "minutes": 8,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "kind": "exit-ticket",
+      "minutes": 7,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        },
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    }
+  ]
+}

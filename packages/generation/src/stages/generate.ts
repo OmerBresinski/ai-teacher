@@ -10,7 +10,7 @@ import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { generateSlidePrompt, generateWorksheetPrompt } from "../prompts";
 import { WorksheetSpecSchema } from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
-import { audienceOf, generationOf, slideText } from "./shared";
+import { audienceOf, BUDGET_FINDING, generationOf, slideText } from "./shared";
 
 /*
  * Generate (ADR 0025 §4, §7, §8, §15): one `standard` call per outline entry after the two Plan
@@ -27,12 +27,7 @@ const PROGRESS_SLIDES_FROM = 10;
 const PROGRESS_SLIDES_SPAN = 70;
 const PROGRESS_WORKSHEET = 85;
 
-export const BUDGET_FINDING = (by: "usd" | "tokens", where: string): Finding => ({
-  check: "budget",
-  severity: "error",
-  target: {},
-  message: `Generation stopped at ${where}: the lesson's ${by === "usd" ? "cost" : "token"} cap was reached. What was written is kept.`,
-});
+export { BUDGET_FINDING };
 
 export async function generate(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   let lesson = state.lesson;
@@ -153,7 +148,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   }
 
   throwIfAborted(deps.signal);
-  if (stopped) findings.push(stopped);
+  // One budget residual per lesson: when Plan's facts call was already the stop, this is the same
+  // stop seen again, not a second one.
+  if (stopped && !findings.some((f) => f.check === "budget")) findings.push(stopped);
   lesson = withUsage(
     {
       ...lesson,

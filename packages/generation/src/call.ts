@@ -50,9 +50,11 @@ export interface CallResult<T> {
 
 /** The token caps per stage (ticket guidance); a slide or repair answer is small by design. */
 export const MAX_OUTPUT_TOKENS = {
-  // A full plan (4 objectives, 8 vocabulary, 3 worked examples, 8 questions, 16 outline entries)
-  // pretty-printed runs to ~3 500 tokens; leave room so the cap is never the reason it fails.
-  plan: 6000,
+  // The skeleton (4 objectives, 16 outline entries) is a few hundred tokens; the facts (6 terms,
+  // 3 worked examples, 8 questions, the outline refs) ~2 500 pretty-printed. Room left so the cap
+  // is never the reason a call fails.
+  planSkeleton: 1500,
+  planFacts: 4000,
   slide: 1500,
   worksheet: 4000,
   evaluate: 2000,

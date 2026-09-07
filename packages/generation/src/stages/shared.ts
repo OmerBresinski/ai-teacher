@@ -1,12 +1,27 @@
-import type { Lesson, RichDoc, Slide, SlideElement, Worksheet } from "@tj/domain/documents";
+import type {
+  Finding,
+  Lesson,
+  RichDoc,
+  Slide,
+  SlideElement,
+  Worksheet,
+} from "@tj/domain/documents";
 import { richDocToPlainText } from "@tj/domain/documents";
 import type { Audience } from "../prompts";
 
 /*
  * Small pure helpers the stages share: the audience block from a lesson, the plain-text
  * projection of slides and blocks (what Evaluate and Repair read, ADR 0025 §11), and the
- * generation-state accessor.
+ * generation-state accessor, and the finding a budget stop records (§15).
  */
+
+/** The residual a stage records when the per-lesson budget stops it between calls (ADR 0025 §15). */
+export const BUDGET_FINDING = (by: "usd" | "tokens", where: string): Finding => ({
+  check: "budget",
+  severity: "error",
+  target: {},
+  message: `Generation stopped at ${where}: the lesson's ${by === "usd" ? "cost" : "token"} cap was reached. What was written is kept.`,
+});
 
 export function audienceOf(lesson: Lesson): Audience {
   return {
