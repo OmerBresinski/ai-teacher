@@ -36,10 +36,14 @@ test.describe("library shell", () => {
     await expect(page.getByRole("heading", { name: "Series" })).toBeVisible();
   });
 
-  test("New lesson creates an untitled lesson, opens the editor and leads Recent on return", async ({
+  test("New lesson opens the brief; Blank lesson keeps the dialog path and leads Recent on return", async ({
     signedInPage: { page },
   }) => {
     await page.getByRole("button", { name: "New lesson" }).click();
+    await expect(page).toHaveURL(/\/lessons\/new$/);
+    await expect(page.getByRole("textbox", { name: "Topic or objective" })).toBeFocused();
+
+    await page.getByRole("button", { name: "Blank lesson" }).click();
     await page.getByRole("button", { name: "Next" }).click();
     await page.getByRole("radio", { name: "Playground" }).click();
     await page.getByRole("button", { name: "Create lesson" }).click();
@@ -50,7 +54,8 @@ test.describe("library shell", () => {
     ).toBeVisible();
 
     await page.getByLabel("Back to library").click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/lessons\/new$|\/$/);
+    await page.goto("/");
     // Newest lesson is the Recent hero: first heading inside the Recent section.
     const recent = page.getByRole("region", { name: "Recent" });
     await expect(recent.getByText("Untitled lesson", { exact: true }).first()).toBeVisible();
@@ -277,13 +282,6 @@ test.describe("library shell", () => {
       await expectNoSeriousA11yViolations(page, label, '[role="dialog"]');
     }
     async function scanAll(theme: string) {
-      await page.getByRole("button", { name: "New lesson" }).click();
-      await scanDialog(`new lesson dialog, about (${theme})`);
-      await page.getByRole("button", { name: "Next" }).click();
-      await scanDialog(`new lesson dialog, theme (${theme})`);
-      await page.getByRole("button", { name: "Back" }).click();
-      await page.getByRole("button", { name: "Cancel" }).click();
-
       await page.getByRole("button", { name: "New worksheet" }).click();
       await scanDialog(`new worksheet dialog, about (${theme})`);
       await page.getByRole("button", { name: "Next" }).click();

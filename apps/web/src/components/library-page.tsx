@@ -164,7 +164,12 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
     void Promise.all(active.map((entry) => entry.refetch()));
   }
 
+  /** New lesson is the brief screen (F01, TEACH-122); worksheets and series keep their dialogs. */
   function openCreate(target: CreateTarget = isSeries ? "series" : (kind ?? "lesson")): void {
+    if (target === "lesson") {
+      void navigate({ to: "/lessons/new" });
+      return;
+    }
     setCreating((current) => ({ target, open: true, session: current.session + 1 }));
   }
 
@@ -245,8 +250,6 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
             tone="primary"
             icon={LESSON_TILE_ICON}
             className="col-span-2"
-            onPointerEnter={warmNewDocumentDialog}
-            onFocus={warmNewDocumentDialog}
             onClick={() => openCreate("lesson")}
           >
             New lesson
@@ -277,7 +280,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
           <SkeletonGrid />
         ) : home ? (
           lessons.length + worksheets.length + series.length === 0 ? (
-            <EmptyLibrary mode={mode} onCreate={openCreate} onImport={openImport} />
+            <EmptyLibrary mode={mode} onCreate={() => openCreate()} onImport={openImport} />
           ) : (
             <>
               {home.hero || home.beside.length > 0 ? (
@@ -314,7 +317,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
           searching ? (
             <NoMatches onClear={() => setSearch("")} />
           ) : (
-            <EmptyLibrary mode={mode} onCreate={openCreate} onImport={openImport} />
+            <EmptyLibrary mode={mode} onCreate={() => openCreate()} onImport={openImport} />
           )
         ) : isSeries ? (
           <SeriesGrid series={series} {...seriesCardProps} />
