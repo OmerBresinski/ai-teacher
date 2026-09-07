@@ -16,6 +16,10 @@ export const HANDLE_HIT = 20;
 export const HANDLE_HIT_COARSE = 28;
 /** Rotation hover zone diagonally outside each corner, screen px. */
 export const ROTATE_ZONE = 20;
+/** Visible rotate handle below the frame: round handle diameter, stem length, glyph, screen px. */
+export const ROTATE_HANDLE = 22;
+export const ROTATE_STEM = 16;
+export const ROTATE_GLYPH = 12;
 /** Selection frame stroke, screen px. */
 export const FRAME_STROKE = 1.5;
 /** Hover outline stroke, screen px, at 0.5 alpha. */
