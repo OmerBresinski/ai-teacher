@@ -113,26 +113,26 @@ describe("SelectionLayer", () => {
     expect(read().slides[0]?.elements[0]?.x).toBe(295);
   });
 
-  test("row 5: a corner handle resizes; Shift on a shape releases the aspect lock", async () => {
+  test("row 5: a corner handle resizes; a shape is free by default and Shift locks the ratio", async () => {
     const { container, read } = renderEditor();
     fireEvent.pointerDown(catcher(container), pointer(150, 150));
     fireEvent.pointerUp(window, pointer(150, 150));
     const se = container.querySelector<HTMLElement>('[data-handle="se"]');
     if (!se) throw new Error("no se handle");
 
-    // Shapes lock aspect by default: the corner to (400, 300) wants 300x200; the larger change
-    // (x2 on the height) drives the ratio, so 200x100 → 400x200 about the nw anchor.
+    // Shapes resize freely: the corner follows the pointer on both axes, 200x100 → 300x200.
     await drag(se, [300, 200], [400, 300], 4);
-    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 400, h: 200 });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 300, h: 200 });
 
-    // Shift frees it: the box follows the pointer on both axes.
+    // Shift locks the ratio: the corner to (550, 380) wants 450x280; the larger change (x1.5 on
+    // the width) drives the ratio, so 300x200 → 450x300 about the nw anchor.
     const se2 = container.querySelector<HTMLElement>('[data-handle="se"]');
     if (!se2) throw new Error("no se handle");
-    await drag(se2, [500, 300], [540, 380], 4, { shiftKey: true });
-    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 440, h: 280 });
+    await drag(se2, [400, 300], [550, 380], 4, { shiftKey: true });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 450, h: 300 });
     // Two gestures, two undo steps.
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    expect(read().slides[0]?.elements[0]).toMatchObject({ w: 400, h: 200 });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ w: 300, h: 200 });
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(read().slides[0]?.elements[0]).toMatchObject({ w: 200, h: 100 });
   });
