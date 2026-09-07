@@ -20,6 +20,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { nextStep, ZoomControl } from "../kit/ZoomControl";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
+import { type CanvasMenuState, ElementContextMenu } from "./canvas/ElementContextMenu";
 import { SlideActions } from "./canvas/SlideActions";
 import { SlideTabs } from "./canvas/SlideTabs";
 import { useImageDrop } from "./canvas/use-image-drop";
@@ -27,6 +28,7 @@ import { useLesson } from "./document-context";
 import { isInTextField } from "./keys";
 import { ResidualBadge } from "./ResidualBadge";
 import { ContextualToolbar } from "./toolbar/ContextualToolbar";
+import { boxesOf, hitTest } from "./transform/hit-test";
 import { type MarginHandle, type PreviewMap, SelectionLayer } from "./transform/SelectionLayer";
 import { useCanvasKeys } from "./transform/use-canvas-keys";
 import {
@@ -66,7 +68,7 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
   const lesson = useLesson();
   const zoom = useZoom();
   const { previewStep } = useSessionUi();
-  const { setZoom } = useSessionActions();
+  const { setZoom, select, clearSelection } = useSessionActions();
   const read = useSessionRead();
   // The Answer tab and the last reveal step are the same state (SPEC §6), decided once.
   const showingAnswer = useAnswerShowing(slide);
@@ -168,6 +170,26 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
     };
   }, [focused]);
 
+  /* ---- context menu ----------------------------------------------------- */
+  const [menu, setMenu] = useState<CanvasMenuState>(null);
+  // Hit-tested in slide space rather than read off the DOM: the transform layer sits over the slide
+  // and would otherwise be the target. A right-click on an unselected element selects it first; on
+  // empty ground it deselects. Outside the slide, and inside a text being edited, the browser's own
+  // menu is left alone.
+  const onContextMenu = (e: React.MouseEvent) => {
+    const st = stage.current;
+    if (!st || spaceDown || isInTextField(e.target)) return;
+    const rect = st.getBoundingClientRect();
+    const p = { x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale };
+    if (p.x < 0 || p.y < 0 || p.x > SLIDE_W || p.y > SLIDE_H) return;
+    e.preventDefault();
+    const hit = hitTest(boxesOf(slide.elements), p);
+    if (hit) {
+      if (!read().selection.includes(hit.id)) select([hit.id]);
+    } else clearSelection();
+    setMenu({ x: e.clientX, y: e.clientY, kind: hit ? "element" : "ground" });
+  };
+
   const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const onPanDown = (e: React.PointerEvent) => {
     const el = scroller.current;
@@ -243,6 +265,7 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
         onPointerDown={onScrollerDown}
         onPointerMove={onPanMove}
         onPointerUp={onPanUp}
+        onContextMenu={onContextMenu}
       >
         <div style={{ minWidth: "100%", minHeight: "100%", width: contentW, height: contentH }}>
           <SlideScaler zoom={effectiveZoom} gutter={GUTTER} onScale={onScale}>
@@ -341,6 +364,18 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
         </div>
       </div>
       <CanvasFooter scale={scale} steps={steps} />
+      <ElementContextMenu
+        slide={slide}
+        menu={menu}
+        onClose={() => setMenu(null)}
+        // Back to the stage (the canvas tab stop), or the region when the stage is not mounted.
+        returnFocus={() =>
+          (
+            scroller.current?.querySelector<HTMLElement>("[data-selection-layer]") ??
+            scroller.current
+          )?.focus({ preventScroll: true })
+        }
+      />
     </main>
   );
 }
