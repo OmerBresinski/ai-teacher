@@ -67,7 +67,7 @@ function DialogSpecimen({
             <Button variant="ghost">Cancel</Button>
           </DialogClose>
           <DialogClose asChild>
-            <Button>Done</Button>
+            <Button variant="primary">Done</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -105,7 +105,9 @@ export function Feedback() {
         name="ConfirmDialog, pending"
         note="The primary stays disabled while the work runs."
       >
-        <Button onClick={() => setConfirmOpen(true)}>Save changes</Button>
+        <Button variant="primary" onClick={() => setConfirmOpen(true)}>
+          Save changes
+        </Button>
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
@@ -136,7 +138,9 @@ export function Feedback() {
         </AlertDialog>
       </Specimen>
       <Specimen name="Toast, plain and with Undo">
-        <Button onClick={() => toast("Lesson saved")}>Save lesson</Button>
+        <Button variant="primary" onClick={() => toast("Lesson saved")}>
+          Save lesson
+        </Button>
         <Button
           variant="secondary"
           onClick={() =>

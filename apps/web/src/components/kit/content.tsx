@@ -47,7 +47,8 @@ export function Content() {
             </div>
           </Variant>
           <Variant label="Over a thumbnail">
-            <div className="relative h-[68px] w-full overflow-hidden rounded-card bg-brand-text">
+            <div className="relative aspect-video w-full overflow-hidden rounded-card border border-border">
+              <LessonThumb lesson={{ title: "Fractions", themeId: "chalk", cover: KIT_COVER }} />
               <div className="absolute top-2 left-2">
                 <StatusPill opaque>Draft</StatusPill>
               </div>
@@ -90,7 +91,9 @@ export function Content() {
             </CardHeader>
             <CardContent>Next up: The water cycle, Tuesday.</CardContent>
             <CardFooter>
-              <Button size="sm">Present series</Button>
+              <Button variant="primary" size="sm">
+                Present series
+              </Button>
             </CardFooter>
           </Card>
           <Card
@@ -145,7 +148,7 @@ export function Content() {
             icon={<Plus />}
             title="No lessons yet"
             body="Your first lesson takes about a minute."
-            action={<Button>New lesson</Button>}
+            action={<Button variant="primary">New lesson</Button>}
           />
           <EmptyState
             icon={<Plus />}

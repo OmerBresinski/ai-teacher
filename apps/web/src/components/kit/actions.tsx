@@ -3,9 +3,9 @@ import { Copy, FileText, Layers, Plus, Presentation } from "lucide-react";
 import { KitGroup, Specimen, Variant } from "./frame";
 
 const buttonRows = [
-  ["default", "Primary, one per bar", "New lesson"],
-  ["secondary", "Secondary, the quiet-strong action", "Present"],
-  ["outline", "Outline, beside a primary", "Save a copy"],
+  ["primary", "Primary, one per bar", "New lesson"],
+  ["inverse", "Inverse, the quiet-strong action", "Present"],
+  ["default", "Quiet, beside a primary", "Save a copy"],
   ["ghost", "Ghost, in bars and rows", "Duplicate"],
   ["link", "Link, inside prose", "See all lessons"],
   ["destructive", "Destructive, in a confirm footer only", "Delete lesson"],
@@ -26,7 +26,7 @@ export function Actions() {
     >
       <Specimen
         name="Button, every variant and size"
-        note="The same verb at the bar, control and dialog rungs, then with a glyph."
+        note="Terracotta fill, ink pill, quiet hairline, ghost, link, destructive. The same verb at the bar, control and dialog rungs, then with a glyph."
       >
         <div className="space-y-4">
           {buttonRows.map(([variant, label, copy]) => (
@@ -45,7 +45,9 @@ export function Actions() {
             </Variant>
           ))}
           <Variant label="Nothing to do yet">
-            <Button disabled>Present</Button>
+            <Button variant="primary" disabled>
+              Present
+            </Button>
           </Variant>
         </div>
       </Specimen>

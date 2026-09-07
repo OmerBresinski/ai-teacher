@@ -22,7 +22,7 @@ export function Choice() {
     <KitGroup
       id="choice"
       title="Choice"
-      rule="Checkbox, radio and the off switch are the only controls that carry the control edge (#8A857B). The on state is the accent fill; the radio is round so it never reads as a checkbox."
+      rule="Checkbox, radio and the off switch are the only controls that carry the control edge (#8A857B). The on state is the accent fill; the radio is round so it never reads as a checkbox. Tabs mark the active item with ink, never with the fill."
     >
       <Specimen name="Switch" note="44 by 24, a 20px thumb. Off shows its edge, on shows the fill.">
         <Variant label="Answer key on">
@@ -99,7 +99,11 @@ export function Choice() {
           </IconButton>
         </IconGroup>
       </Specimen>
-      <Specimen name="Tabs" note="The active label is ink; the underline carries the accent." bleed>
+      <Specimen
+        name="Tabs, segmented"
+        note="The active label is ink on a raised card-coloured thumb; the rest sit in ink-3 on the wash. No fill, no underline."
+        bleed
+      >
         <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList>
             <TabsTrigger value="slides">Slides</TabsTrigger>

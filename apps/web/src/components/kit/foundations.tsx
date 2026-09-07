@@ -126,7 +126,7 @@ export function Foundations() {
           data-testid="kit-stage"
           className="tj-stage flex flex-wrap items-center gap-3 rounded-card bg-background p-4 text-foreground"
         >
-          <Button>Present</Button>
+          <Button variant="primary">Present</Button>
           <Button variant="outline">Notes</Button>
           <IconButton label="Pen" tooltipClassName="tj-stage">
             <Pencil aria-hidden size={16} strokeWidth={1.5} />
