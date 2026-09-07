@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { resetLibraryStore } from "@/mocks/library-store";
@@ -33,6 +33,21 @@ function renderPage() {
 /** `whenFontsReady` resolves on a microtask and the print fires two frames later: let both land. */
 const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 60)));
 
+/**
+ * Nothing here is timed against a fixed delay (TEACH-140). `WorksheetPrint` keeps `<main>` at
+ * `visibility: hidden` until the sheet is measured and the fonts are in; a role query polled during
+ * that window leaves happy-dom's computed-style cache saying the `<h1>` is hidden after the inline
+ * style is gone, and `findByRole` then never resolves. So wait on the inline style — read from the
+ * attribute, not the cache — and only then query by role.
+ */
+const WAIT = { timeout: 3000 };
+const whenSheetShown = () =>
+  waitFor(() => {
+    const main = document.querySelector<HTMLElement>("main.ws-print-root");
+    expect(main).not.toBeNull();
+    expect(main?.style.visibility).toBe("");
+  }, WAIT);
+
 describe("WorksheetPrintPage", () => {
   beforeEach(async () => {
     worksheetId = "fraction-practice";
@@ -45,8 +60,9 @@ describe("WorksheetPrintPage", () => {
 
   it("renders the demo worksheet as pages with its title and footer, and no app chrome", async () => {
     const { container } = renderPage();
+    await whenSheetShown();
     expect(
-      await screen.findByRole("heading", {
+      screen.getByRole("heading", {
         level: 1,
         name: "The water cycle: check your understanding",
       }),
@@ -68,15 +84,18 @@ describe("WorksheetPrintPage", () => {
     try {
       search = { auto: "1" };
       renderPage();
-      await screen.findByRole("heading", { level: 1 });
-      await settle();
-      await settle();
-      expect(print).toHaveBeenCalledTimes(1);
+      await whenSheetShown();
+      // Wait for the call, not for a fixed delay: fonts-ready → measure → two frames is not a
+      // fixed number of milliseconds under CI load.
+      await waitFor(() => expect(print).toHaveBeenCalledTimes(1), WAIT);
       cleanup();
 
       search = {};
       renderPage();
-      await screen.findByRole("heading", { level: 1 });
+      await whenSheetShown();
+      expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+      // A negative cannot be awaited: give the gate the same room it needs to print, then assert
+      // it did not.
       await settle();
       await settle();
       expect(print).toHaveBeenCalledTimes(1);
