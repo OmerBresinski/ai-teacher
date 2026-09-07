@@ -3,6 +3,11 @@
 //
 // Lands a reviewed pull request without making the main agent poll CI or deploys one turn at a
 // time. It refuses to make review-thread decisions: resolve or explicitly defer those first.
+//
+// Every wait is bounded by --timeout-min (default 20) and every state change is logged with a
+// timestamp, so a log read later says where the time went. The merge happens as soon as the
+// required checks are green; a deploy that outlives the watch is reported in the summary (exit 1)
+// rather than hiding the fact that the PR is already merged.
 
 import { parseArgs } from "node:util";
 import { $ } from "bun";
@@ -18,6 +23,8 @@ const UNKNOWN_RETRIES = 10;
 const UNKNOWN_DELAY_MS = 6_000;
 /** Wait between polls while a queued CI run has not yet been attached to the PR. */
 const PENDING_CHECKS_DELAY_MS = 15_000;
+/** Wait between reads of the required checks while at least one is still running. */
+const CI_POLL_MS = 15_000;
 const DEPLOY_POLL_MS = 15_000;
 const NO_DEPLOYMENT_WAIT_MS = 90_000;
 const DEFAULT_TIMEOUT_MIN = 20;
@@ -28,6 +35,8 @@ const MAX_THREAD_PAGES = 10;
 export interface CommandResult {
   exitCode: number;
   stdout: string;
+  /** Present for commands whose failure message matters (gh writes its errors here). */
+  stderr?: string;
 }
 
 export type RailwayService = (typeof RAILWAY_SERVICES)[number];
@@ -49,7 +58,7 @@ export interface LandPrOptions {
 }
 
 export interface CheckSummary {
-  ok: true;
+  ok: boolean;
   status: string;
 }
 
@@ -60,7 +69,8 @@ export interface LandPrSummary {
   vercel: CheckSummary;
   railway: Record<RailwayService, CheckSummary>;
   smoke: CheckSummary;
-  ok: true;
+  /** False when the PR merged but a deploy did not finish in time; the statuses say which. */
+  ok: boolean;
 }
 
 interface PrState {
@@ -87,7 +97,7 @@ function output(result: CommandResult): string {
 
 function requireSuccess(result: CommandResult, command: string): void {
   if (result.exitCode !== ExitCode.Ok) {
-    const detail = output(result);
+    const detail = `${result.stderr ?? ""}\n${result.stdout}`.trim();
     throw new UserFacingError(`${command} failed.${detail === "" ? "" : `\n${detail}`}`);
   }
 }
@@ -255,29 +265,131 @@ export function reviewThreadsPageInfo(graphqlJson: unknown): {
   };
 }
 
+/** One row of `gh pr checks --json name,bucket,state`. */
+interface RequiredCheck {
+  name: string;
+  /** gh's verdict: pass | fail | pending | skipping | cancel. */
+  bucket: string;
+  state: string;
+}
+
+/** Null when gh did not answer with a JSON array at all; the caller must not read that as green. */
+export function parseRequiredChecks(json: string): RequiredCheck[] | null {
+  const parsed = parseJson(json, "required checks");
+  if (!Array.isArray(parsed)) return null;
+  return parsed.flatMap((row) => {
+    if (typeof row !== "object" || row === null) return [];
+    const check = row as { name?: unknown; bucket?: unknown; state?: unknown };
+    return [
+      {
+        name: typeof check.name === "string" ? check.name : "unnamed check",
+        bucket: typeof check.bucket === "string" ? check.bucket : "pending",
+        state: typeof check.state === "string" ? check.state : "UNKNOWN",
+      },
+    ];
+  });
+}
+
+export type CiVerdict =
+  | { kind: "green" }
+  | { kind: "pending"; names: string[] }
+  | { kind: "failed"; detail: string };
+
+/** gh buckets that satisfy branch protection; anything else keeps the wait going or fails it. */
+const GREEN_BUCKETS = new Set(["pass", "skipping"]);
+const FAILED_BUCKETS = new Set(["fail", "cancel"]);
+
+/**
+ * Reduce one read of the required checks to a verdict. gh's `--required` filter already dropped
+ * the non-required Vercel contexts; `skipping` (a path-filtered job) satisfies branch protection.
+ * `cancel` is final: on the head commit it means someone stopped the run, and a superseded run
+ * lives on the previous commit, which gh never reads. Only a non-empty list in which every row is
+ * green is green: an empty list or a bucket this script does not know is pending, never a merge.
+ */
+export function ciVerdict(checks: RequiredCheck[]): CiVerdict {
+  const failed = checks.filter((check) => FAILED_BUCKETS.has(check.bucket));
+  if (failed.length > 0) {
+    return {
+      kind: "failed",
+      detail: failed.map((check) => `${check.name}: ${check.state}`).join("\n"),
+    };
+  }
+  const pending = checks
+    .filter((check) => !GREEN_BUCKETS.has(check.bucket))
+    .map((check) => check.name);
+  if (checks.length === 0 || pending.length > 0) return { kind: "pending", names: pending };
+  return { kind: "green" };
+}
+
 /**
  * Wait for the checks branch protection requires — and only those. Vercel's preview check is not
  * required, and while the Hobby plan is rate-limited it fails within seconds of every push; with
  * it in the set, `--fail-fast` reported "CI failed" before a single required job had finished and
  * every landing fell back to a human watching `gh pr checks` (PRs #122–#125).
+ *
+ * This polls `gh pr checks --json` itself rather than delegating to `--watch`: the watch has no
+ * timeout, logs nothing a later reader can date, and returns the moment the rollup holds no
+ * pending row — including right after a push, when the queued run has not attached yet and gh
+ * answers "no checks reported". Here every read is stamped, "no checks reported" counts as
+ * pending, and the whole wait is bounded by the caller's deadline.
  */
-async function waitForCi(pr: number, deps: LandPrDeps): Promise<void> {
+async function waitForCi(pr: number, deadline: number, deps: LandPrDeps): Promise<void> {
   log.step(`Waiting for required CI checks on PR #${pr}`);
-  const watched = await deps.gh([
-    "pr",
-    "checks",
-    String(pr),
-    "--required",
-    "--watch",
-    "--fail-fast",
-  ]);
-  if (watched.exitCode === ExitCode.Ok) return;
+  let lastPending: string | null = null;
+  while (true) {
+    const read = await deps.gh([
+      "pr",
+      "checks",
+      String(pr),
+      "--required",
+      "--json",
+      "name,bucket,state",
+    ]);
+    const verdict = requiredChecksVerdict(read);
+    if (verdict.kind === "green") {
+      log.timed("all required checks passed");
+      return;
+    }
+    if (verdict.kind === "failed") {
+      throw new UserFacingError(`CI failed for PR #${pr}\n${verdict.detail}`);
+    }
+    const pending =
+      verdict.names.length === 0 ? "(no checks attached yet)" : verdict.names.join(", ");
+    if (pending !== lastPending) {
+      log.timed(`waiting on: ${pending}`);
+      lastPending = pending;
+    }
+    const remainingMs = deadline - deps.now();
+    if (remainingMs <= 0) {
+      throw new UserFacingError(
+        `CI for PR #${pr} was still running at the deadline; still pending: ${pending}`,
+      );
+    }
+    await deps.sleep(Math.min(CI_POLL_MS, remainingMs));
+  }
+}
 
-  const checks = await deps.gh(["pr", "checks", String(pr), "--required"]);
-  const failingChecks = output(checks);
-  throw new UserFacingError(
-    `CI failed for PR #${pr}${failingChecks === "" ? "" : `\n${failingChecks}`}`,
-  );
+function requiredChecksVerdict(read: CommandResult): CiVerdict {
+  if (read.exitCode === ExitCode.Ok) {
+    const checks = parseRequiredChecks(output(read));
+    if (checks === null) {
+      throw new UserFacingError(`gh pr checks did not return a JSON array:\n${output(read)}`);
+    }
+    return ciVerdict(checks);
+  }
+  const message = `${read.stderr ?? ""}\n${read.stdout}`;
+  // Both come from gh's populateStatusChecks and mean the run has not attached to the PR yet.
+  if (/no (required )?checks reported/.test(message)) return { kind: "pending", names: [] };
+  throw new UserFacingError(`Could not read required checks.\n${message.trim()}`);
+}
+
+async function requireResolvedThreads(pr: number, deps: LandPrDeps): Promise<void> {
+  const unresolved = await reviewThreadCount(pr, deps);
+  if (unresolved > 0) {
+    throw new UserFacingError(
+      `PR #${pr} has ${unresolved} unresolved review thread(s); resolve them (or reply with the Tech debt ticket id) before landing.`,
+    );
+  }
 }
 
 async function prState(pr: number, deps: LandPrDeps): Promise<PrState> {
@@ -453,12 +565,20 @@ async function watchDeploys(
   const preMergeIds = preMerge.railway;
   let vercel: CheckSummary | null = null;
   const railway: Partial<Record<RailwayService, CheckSummary>> = {};
+  const seen: Record<string, string | null> = {};
+  const note = (name: string, status: string | null): void => {
+    if (seen[name] === status) return;
+    seen[name] = status;
+    log.timed(`${name}: ${status ?? "no deployment yet"}`);
+  };
 
-  while (deps.now() - startedAt <= timeoutMin * 60_000) {
+  const deployDeadline = startedAt + timeoutMin * 60_000;
+  while (deps.now() <= deployDeadline) {
     if (vercel === null) {
       const result = await deps.vercelLs();
       requireSuccess(result, "Could not read Vercel deployments");
       const row = parseVercelProductionRow(output(result));
+      note("vercel", row === null ? null : `${row.status} (${row.deployment ?? "?"})`);
       if (row?.status === "Error")
         throw new UserFacingError("Vercel Production deployment failed (Error).");
       if (row !== null && row.deployment !== null && row.deployment === preMerge.vercel) {
@@ -486,13 +606,15 @@ async function watchDeploys(
       requireSuccess(result, `Could not read Railway ${service} deployments`);
       const deployment = railwayDeployment(output(result));
       const elapsed = deps.now() - startedAt;
-      if (deployment.id === preMergeIds[service]) {
+      const isNew = deployment.id !== preMergeIds[service];
+      note(`railway ${service}`, isNew ? deployment.status : null);
+      if (!isNew) {
         if (elapsed >= NO_DEPLOYMENT_WAIT_MS) {
           railway[service] = { ok: true, status: "SKIPPED (no new deployment)" };
         }
         continue;
       }
-      if (deployment.status === "SUCCESS" || deployment.status === "SKIPPED") {
+      if (deployment.status !== null && RAILWAY_DONE.has(deployment.status)) {
         railway[service] = { ok: true, status: deployment.status };
       } else if (deployment.status === "FAILED" || deployment.status === "CRASHED") {
         throw new UserFacingError(
@@ -507,12 +629,29 @@ async function watchDeploys(
         railway: railway as Record<RailwayService, CheckSummary>,
       };
     }
-    await deps.sleep(DEPLOY_POLL_MS);
+    const remainingMs = deployDeadline - deps.now();
+    if (remainingMs <= 0) break;
+    await deps.sleep(Math.min(DEPLOY_POLL_MS, remainingMs));
   }
-  throw new UserFacingError(
-    `Timed out waiting for production deploys after ${timeoutMin} minute(s).`,
-  );
+  // The PR is already merged: a deploy that outlives the watch is reported, not thrown, so the
+  // summary still names the merge commit and says exactly which deploy is unaccounted for.
+  const timedOut = (name: string): CheckSummary => ({
+    ok: false,
+    status: `TIMED OUT after ${timeoutMin} min (last seen: ${seen[name] ?? "no deployment"})`,
+  });
+  return {
+    vercel: vercel ?? timedOut("vercel"),
+    railway: Object.fromEntries(
+      RAILWAY_SERVICES.map((service) => [
+        service,
+        railway[service] ?? timedOut(`railway ${service}`),
+      ]),
+    ) as Record<RailwayService, CheckSummary>,
+  };
 }
+
+/** Railway statuses that mean the deployment is live (or was correctly not rebuilt). */
+const RAILWAY_DONE = new Set(["SUCCESS", "SKIPPED", "SLEEPING"]);
 
 export async function landPr(
   pr: number,
@@ -527,16 +666,15 @@ export async function landPr(
   let state: PrState;
   const deadline = deps.now() + timeoutMin * 60_000;
 
+  // Threads first: an unresolved thread is a decision for the caller, and finding out after a
+  // six-minute CI wait wastes the wait. The check is repeated before the merge (cheap).
+  await requireResolvedThreads(pr, deps);
   while (true) {
-    await waitForCi(pr, deps);
-    const unresolved = await reviewThreadCount(pr, deps);
-    if (unresolved > 0) {
-      throw new UserFacingError(
-        `PR #${pr} has ${unresolved} unresolved review thread(s); resolve them (or reply with the Tech debt ticket id) before landing.`,
-      );
-    }
+    await waitForCi(pr, deadline, deps);
+    await requireResolvedThreads(pr, deps);
 
     state = await prState(pr, deps);
+    log.timed(`merge state: ${state.mergeStateStatus}`);
     if (state.state !== "OPEN") throw new UserFacingError(`PR #${pr} is ${state.state}, not open.`);
     if (state.isDraft) throw new UserFacingError(`PR #${pr} is a draft and cannot be landed.`);
     if (state.mergeStateStatus === "BEHIND") {
@@ -568,11 +706,12 @@ export async function landPr(
       continue;
     }
     if (state.mergeStateStatus === "UNKNOWN") {
-      if (unknownRetries >= UNKNOWN_RETRIES) {
+      const remainingMs = deadline - deps.now();
+      if (unknownRetries >= UNKNOWN_RETRIES || remainingMs <= 0) {
         throw new UserFacingError(`GitHub did not compute a merge state for PR #${pr} in time.`);
       }
       unknownRetries += 1;
-      await deps.sleep(UNKNOWN_DELAY_MS);
+      await deps.sleep(Math.min(UNKNOWN_DELAY_MS, remainingMs));
       continue;
     }
     // UNSTABLE: a non-required check (Vercel's rate-limited preview) failed; the required set
@@ -628,13 +767,16 @@ export async function landPr(
     vercel: deployment.vercel,
     railway: deployment.railway,
     smoke,
-    ok: true,
+    ok:
+      deployment.vercel.ok &&
+      RAILWAY_SERVICES.every((service) => deployment.railway[service].ok) &&
+      smoke.ok,
   };
 }
 
 export function formatLandPrSummary(summary: LandPrSummary): string {
   return [
-    `land-pr: PR #${summary.pr} merged as ${summary.mergedAs}`,
+    `land-pr: PR #${summary.pr} merged as ${summary.mergedAs}${summary.ok ? "" : " — a deploy did not finish in time"}`,
     `  ci: ${summary.ci.status}`,
     `  vercel: ${summary.vercel.status}`,
     `  railway api: ${summary.railway.api.status}`,
@@ -690,7 +832,11 @@ function shellResult(result: {
   stdout: Uint8Array;
   stderr?: Uint8Array;
 }): CommandResult {
-  return { exitCode: result.exitCode ?? ExitCode.Failure, stdout: result.stdout.toString() };
+  return {
+    exitCode: result.exitCode ?? ExitCode.Failure,
+    stdout: result.stdout.toString(),
+    stderr: result.stderr?.toString(),
+  };
 }
 
 /** `vercel ls` writes its deployment table to stderr; return both streams as one text. */
@@ -730,7 +876,7 @@ async function main(): Promise<number> {
   const { pr, options } = parseLandPrArgs(process.argv.slice(2));
   const summary = await landPr(pr, options, realDeps());
   console.log(formatLandPrSummary(summary));
-  return ExitCode.Ok;
+  return summary.ok ? ExitCode.Ok : ExitCode.Failure;
 }
 
 if (import.meta.main) await runMain(main);

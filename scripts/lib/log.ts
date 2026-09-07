@@ -31,6 +31,10 @@ export const log = {
   info(message: string): void {
     console.log(`    ${message}`);
   },
+  /** An `info` line prefixed with the wall-clock time, for long waits whose log is read later. */
+  timed(message: string, at: Date = new Date()): void {
+    console.log(`    ${colour.dim(at.toISOString().slice(11, 19))}  ${message}`);
+  },
   ok(message: string): void {
     console.log(`    ${colour.green("ok")}    ${message}`);
   },

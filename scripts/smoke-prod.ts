@@ -17,6 +17,8 @@ import { log } from "./lib/log";
 
 export const PRODUCTION_API = "https://api-production-903f.up.railway.app";
 export const PRODUCTION_WEB_ORIGIN = "https://teaching-journey-web.vercel.app";
+/** Per-request ceiling: a hung origin must fail the smoke check, not park `bun run land`. */
+export const REQUEST_TIMEOUT_MS = 15_000;
 
 export interface SmokeCase {
   name: string;
@@ -148,6 +150,7 @@ export async function runSmoke(
           headers: c.headers,
           body: c.method === "POST" ? "{}" : undefined,
           redirect: "manual",
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
         if (res.status !== c.expect) return { ...c, actual: res.status, ok: false };
         const mismatch = headerMismatch(res, c.expectHeaders);
