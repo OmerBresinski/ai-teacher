@@ -7,7 +7,7 @@ import { z } from "zod";
 import { callStructured } from "./call";
 import { BudgetExceeded, type PipelineDeps, StageFailure } from "./types";
 
-const schema = z.object({ answer: z.string() });
+const schema = z.strictObject({ answer: z.string() });
 const prompt = {
   version: "test.v1",
   system: "system text",
@@ -54,7 +54,7 @@ const call = (d: ReturnType<typeof deps>, input = "hi") =>
 describe("callStructured", () => {
   test("returns the parsed object, charges the budget and carries the stage context", async () => {
     const ai = createFakeAi({
-      script: [JSON.stringify({ answer: "42", extra: true })],
+      script: [JSON.stringify({ answer: "42" })],
       usage: { inputTokens: 10, outputTokens: 5 },
     });
     const d = deps(ai);
@@ -76,7 +76,7 @@ describe("callStructured", () => {
 
   test("retries once on a schema miss with the issues in the prompt, and both attempts are charged", async () => {
     const ai = createFakeAi({
-      script: [JSON.stringify({ answer: 1 }), JSON.stringify({ answer: "ok" })],
+      script: [JSON.stringify({ answer: 1, pupilName: "Aisha" }), JSON.stringify({ answer: "ok" })],
     });
     const log = capturingLogger();
     const d = deps(ai, { logger: log.logger });
@@ -88,20 +88,28 @@ describe("callStructured", () => {
     expect(log.text()).toContain("retrying once");
     // The validation issues (path + message) are logged so a production miss is diagnosable…
     expect(log.text()).toContain("answer: Invalid input: expected string, received number");
-    // …but neither the model's text nor the prompt reaches the log.
+    // …with the key names the model invented reduced to a count (ADR 0015)…
+    expect(log.text()).toContain("1 unrecognized key(s)");
+    expect(log.text()).not.toContain("pupilName");
+    expect(log.text()).not.toContain("Aisha");
+    // …and neither the model's text nor the prompt reaches the log.
     expect(log.text()).not.toContain('"answer":1');
     expect(log.text()).not.toContain("system text");
   });
 
   test("a second miss is a StageFailure naming the stage, with the issues as cause and in the log", async () => {
-    const ai = createFakeAi({ script: ["nope", JSON.stringify({ answer: 2 })] });
+    const ai = createFakeAi({
+      script: ["nope", JSON.stringify({ answer: 2, pupilName: "Aisha" })],
+    });
     const log = capturingLogger();
     const d = deps(ai, { logger: log.logger });
     const error = await call(d).catch((e) => e);
     expect(error).toBeInstanceOf(StageFailure);
     expect((error as StageFailure).stage).toBe("plan");
+    // The cause (what the retry prompt is built from) keeps the key name; the log does not.
     expect((error as StageFailure).cause).toEqual([
       "- answer: Invalid input: expected string, received number",
+      '- Unrecognized key: "pupilName"',
     ]);
     expect((error as Error).message).not.toContain("nope");
     expect(d.budget.totals().calls).toBe(2);
@@ -109,6 +117,8 @@ describe("callStructured", () => {
     expect(log.text()).toContain("giving up");
     expect(log.text()).toContain("- The answer was not valid JSON for the requested shape.");
     expect(log.text()).toContain("- answer: Invalid input: expected string, received number");
+    expect(log.text()).toContain("- 1 unrecognized key(s)");
+    expect(log.text()).not.toContain("pupilName");
     expect(log.text()).not.toContain("nope");
     expect(log.text()).not.toContain('"answer":2');
   });
