@@ -1,4 +1,4 @@
-import type { ShapeElement, ShapeKind } from "@tj/domain/documents";
+import type { ShapeElement, ShapeKind, Theme } from "@tj/domain/documents";
 import { lazy, type ReactNode, Suspense } from "react";
 import { isDocEmpty } from "../../text/static";
 import { type ElementViewProps, resolveTextStyle, textTypeCss } from "./kit";
@@ -8,13 +8,19 @@ import { TextShell } from "./TextView";
 /** Edit mode only: the store subscription and, behind another lazy boundary, Tiptap. */
 const EditableLabel = lazy(() => import("./EditableLabel"));
 
+/** The corner radius a shape is drawn with: a plain rectangle stays square until given corners. */
+export function shapeRadius(element: ShapeElement, theme: Theme): number {
+  return element.radius ?? (element.shape === "rect" ? 0 : theme.radius);
+}
+
 /** Path/geometry for every ShapeKind, drawn in the element's own point space. */
-function shapeNode(kind: ShapeKind, w: number, h: number, radius: number) {
+export function shapeNode(kind: ShapeKind, w: number, h: number, radius: number) {
   const cx = w / 2;
   const cy = h / 2;
   switch (kind) {
     case "ellipse":
       return <ellipse cx={cx} cy={cy} rx={Math.max(0, cx)} ry={Math.max(0, cy)} />;
+    case "rect":
     case "rounded":
       return <rect x={0} y={0} width={w} height={h} rx={Math.min(radius, Math.min(w, h) / 2)} />;
     case "pill":
@@ -72,7 +78,7 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
   const stroke = element.stroke;
   const strokeWidth = element.strokeWidth ?? (stroke ? 2 : 0);
   const fill = element.fill ?? theme.colors.surface;
-  const radius = element.radius ?? theme.radius;
+  const radius = shapeRadius(element, theme);
 
   const label = element.doc && !isDocEmpty(element.doc) ? element.doc : null;
   const r = resolveTextStyle(

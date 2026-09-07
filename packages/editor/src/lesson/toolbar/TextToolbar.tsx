@@ -44,6 +44,7 @@ import {
 import { docLinkHref, normaliseHref, setDocLink } from "../../text/links";
 import { useHistory } from "../document-context";
 import { useSessionUi } from "../use-editor-session";
+import { OpacityControl } from "./shared";
 
 /*
  * The text toolbar (TeachDeck `components/v2/editor/toolbar/TextToolbar.tsx`): preset, size,
@@ -399,6 +400,9 @@ export function TextToolbar({
           Right
         </DropdownMenuRadioItem>
       </DropTrigger>
+
+      <PanelSeparator />
+      <OpacityControl slideId={slideId} elements={[element]} />
     </Panel>
   );
 }
