@@ -251,3 +251,83 @@ export function pictureStyle(
 
 const round = (n: number) => Math.round(n * 10000) / 10000;
 const pct = (f: number) => `${round(f * 100)}%`;
+
+/* ---------------- the crop-mode draft ---------------- */
+
+/**
+ * What crop mode edits before it commits: the element's three adjustment fields, the trimmed box
+ * (the handles), the bitmap's natural size once measured, and whether Reset was the last word.
+ */
+export type CropDraft = {
+  crop?: Crop;
+  focal?: Focal;
+  imageTransform?: ImageTransform;
+  box?: Rect;
+  natural?: Size;
+  reset?: boolean;
+};
+
+export const RESET_DRAFT: CropDraft = {
+  crop: undefined,
+  focal: undefined,
+  imageTransform: undefined,
+  box: undefined,
+  reset: true,
+};
+
+/** The aspect the draft's picture shows at, from the natural size if measured, else the box. */
+export function draftAspect(d: CropDraft, box: Size): number {
+  return displayedAspect(d.natural ?? box, d.imageTransform);
+}
+
+/** The window the draft shows: its crop, else cover round its focal point. */
+export function draftCrop(d: CropDraft, box: Size): Crop {
+  return d.crop ?? cropFor(box, draftAspect(d, box), ZOOM_MIN, d.focal ?? CENTRE);
+}
+
+/** A quarter turn: the displayed aspect swaps, so the window is re-derived at the same zoom. */
+export function draftRotate(d: CropDraft, box: Size): Partial<CropDraft> {
+  const before = draftAspect(d, box);
+  const imageTransform = rotateQuarter(d.imageTransform);
+  const after = displayedAspect(d.natural ?? box, imageTransform);
+  const zoom = zoomOf(draftCrop(d, box), box, before);
+  const focal = turnedFocal(d.focal);
+  return { imageTransform, crop: cropFor(box, after, zoom, focal ?? CENTRE), focal };
+}
+
+/** A displayed point after the picture turns a quarter clockwise. */
+function turnedFocal(f: Focal | undefined): Focal | undefined {
+  return f ? { x: 1 - f.y, y: f.x } : f;
+}
+
+/** A flip mirrors the picture in place: the window and the focal point mirror with it. */
+export function draftFlip(d: CropDraft, box: Size, axis: "h" | "v"): Partial<CropDraft> {
+  const c = draftCrop(d, box);
+  const f = d.focal;
+  return axis === "h"
+    ? {
+        imageTransform: flip(d.imageTransform, "h"),
+        crop: { ...c, x: 1 - c.x - c.w },
+        focal: f ? { x: 1 - f.x, y: f.y } : f,
+      }
+    : {
+        imageTransform: flip(d.imageTransform, "v"),
+        crop: { ...c, y: 1 - c.y - c.h },
+        focal: f ? { x: f.x, y: 1 - f.y } : f,
+      };
+}
+
+export function draftStraighten(d: CropDraft, deg: number): Partial<CropDraft> {
+  const straighten = Math.round(clamp(deg, -STRAIGHTEN_MAX, STRAIGHTEN_MAX));
+  return { imageTransform: { ...d.imageTransform, straighten } };
+}
+
+/** Zoom about a window point (the pointer), or the window's centre for the slider and keys. */
+export function draftZoom(
+  d: CropDraft,
+  box: Size,
+  zoom: number,
+  at: Focal = CENTRE,
+): Partial<CropDraft> {
+  return { crop: zoomAbout(draftCrop(d, box), zoom, at, box, draftAspect(d, box)) };
+}

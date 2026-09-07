@@ -7,6 +7,7 @@ import {
   CHROME_MIN_TOP as MIN_TOP,
 } from "../canvas/place-slide-actions";
 import { useSelectedElements, useSessionUi } from "../use-editor-session";
+import { CropToolbar } from "./CropToolbar";
 import { ImageToolbar } from "./ImageToolbar";
 import { LineToolbar } from "./LineToolbar";
 import { MultiToolbar } from "./MultiToolbar";
@@ -41,7 +42,7 @@ export function ContextualToolbar({
   scale: number;
 }) {
   const selected = useSelectedElements(slide);
-  const { editingTextId } = useSessionUi();
+  const { editingTextId, crop } = useSessionUi();
 
   const bar = useRef<HTMLDivElement>(null);
   const [stageRect, setStageRect] = useState<{ left: number; top: number } | null>(null);
@@ -49,7 +50,7 @@ export function ContextualToolbar({
 
   const frame = useRef<number | null>(null);
   // Which toolbar is on screen: a different one is a different width.
-  const shape = `${slide.id}|${selected.map((el) => el.id).join(",")}|${editingTextId ?? ""}`;
+  const shape = `${slide.id}|${selected.map((el) => el.id).join(",")}|${editingTextId ?? ""}|${crop?.id ?? ""}`;
   const lastShape = useRef<string | null>(null);
 
   const measure = useCallback(() => {
@@ -162,6 +163,8 @@ export function ContextualToolbar({
           theme={theme}
           slideId={slide.id}
         />
+      ) : only.type === "image" && crop?.id === only.id ? (
+        <CropToolbar element={only} />
       ) : only.type === "image" ? (
         <ImageToolbar element={only} slideId={slide.id} />
       ) : only.type === "shape" ? (
