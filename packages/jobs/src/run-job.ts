@@ -1,4 +1,11 @@
 import {
+  getTerminalJobEvent,
+  isUniqueViolation,
+  JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX,
+  type JobEventRow,
+  notifyJobEvent,
+} from "@tj/db";
+import {
   type JobError,
   type JobEvent,
   JobId,
@@ -42,6 +49,8 @@ export interface RunJobOptions<D = unknown> {
   cancelPollIntervalMs?: number;
   /** Test seam. */
   progressMinIntervalMs?: number;
+  /** Test seam: replaces `emitJobEvent` (e.g. to persist a terminal row and then fail the notify). */
+  emit?: typeof emitJobEvent;
 }
 
 /** What `runJob` decided; also the pg-boss `perJobResults` disposition for the job. */
@@ -50,6 +59,32 @@ export type RunJobOutcome = JobResult & {
   /** The terminal (or last) event type written for this attempt. */
   event: "completed" | "failed" | "cancelled" | "progress";
 };
+
+/**
+ * The pg-boss disposition that matches a terminal `job_events` row already on record — used when
+ * a retry finds the job settled (pre-run guard) and when a terminal insert loses to the
+ * one-terminal-per-job index. Mirrors the dispositions `runJob` returns when it writes the row
+ * itself: `completed` and `cancelled` are done; `failed` is `deadletter` when the stored error is
+ * `retryable: false` (nothing should run again) and `failed` otherwise.
+ */
+export function dispositionForTerminal(bossJobId: string, row: JobEventRow): RunJobOutcome {
+  const stored = row.payload;
+  switch (stored.type) {
+    case "completed":
+      return { id: bossJobId, status: "completed", event: "completed" };
+    case "cancelled":
+      return { id: bossJobId, status: "completed", event: "cancelled" };
+    case "failed":
+      return {
+        id: bossJobId,
+        status: stored.error.retryable ? "failed" : "deadletter",
+        output: stored.error,
+        event: "failed",
+      };
+    default:
+      throw new Error(`dispositionForTerminal: ${stored.type} is not a terminal event type`);
+  }
+}
 
 /**
  * Run one pg-boss job through the registry, emitting job events (ADR 0012):
@@ -68,7 +103,22 @@ export type RunJobOutcome = JobResult & {
  *   manual retry (F13-R03).
  *
  * The three terminal types therefore stay terminal (`JOB_TERMINAL_EVENT_TYPES`): once one of them
- * is written for a `jobId` no further event follows.
+ * is written for a `jobId` no further event follows. Two mechanisms hold that line (TEACH-82):
+ *
+ * - **Pre-run guard.** Before `started`, `job_events` is checked for a terminal row. A retry that
+ *   pg-boss issued because the *previous attempt's terminal write* threw after the insert (e.g.
+ *   the `NOTIFY` failed) finds the row, re-issues the notify so no SSE subscriber is left waiting,
+ *   skips the handler and returns the disposition the stored row implies.
+ * - **Unique-violation as idempotent.** The partial unique index
+ *   `job_events_one_terminal_per_job_uidx` allows one terminal row per job. A terminal insert that
+ *   loses to it is not an error: the winning row is loaded and its disposition returned.
+ *
+ * Residual (needs an outbox or side-effect idempotency key, out of scope here): if the terminal
+ * **insert** itself fails after the handler did external work, pg-boss retries and the handler
+ * runs again. Cancellation is re-read from pg-boss once more after the handler settles, so a
+ * cancel that lands between the last poll and the terminal decision is recorded as `cancelled`;
+ * a cancel that lands after that read and before pg-boss stores the disposition still surfaces as
+ * `completed` in `job_events`.
  *
  * Returns the pg-boss disposition; the worker registers with `perJobResults: true` and returns
  * `[outcome]` so pg-boss can distinguish "retry" (`failed`) from "never again" (`deadletter`).
@@ -92,7 +142,37 @@ export async function runJob<N extends JobName, D = unknown>(
   const { jobId, workspaceId } = envelope.data;
   const logger = opts.logger.child({ job: name, jobId, workspaceId, attempt: bossJob.retryCount });
   const base = { jobId, workspaceId } as const;
-  const emit = (event: JobEvent) => emitJobEvent(ctx, event);
+  const emit = (event: JobEvent) => (opts.emit ?? emitJobEvent)(ctx, event);
+
+  // Pre-run guard: a job already settled by an earlier attempt never runs (or emits) again.
+  const terminal = await getTerminalJobEvent(ctx.db, base);
+  if (terminal) {
+    logger.info({ type: terminal.type, eventId: terminal.id }, "job already terminal, skipping");
+    await notifyJobEvent(ctx.sql, { id: terminal.id, ...base });
+    return dispositionForTerminal(bossJob.id, terminal);
+  }
+
+  /**
+   * Write a terminal event and return `outcome`; when the one-terminal-per-job index rejects the
+   * insert, the job was settled concurrently — return the stored row's disposition instead.
+   * TODO(TEACH-82): a failure of the insert itself (not a unique violation) still escapes and
+   * pg-boss retries the whole handler — see "Residual" in the docblock.
+   */
+  const settle = async (event: JobEvent, outcome: RunJobOutcome): Promise<RunJobOutcome> => {
+    try {
+      await emit(event);
+      return outcome;
+    } catch (err) {
+      if (!isUniqueViolation(err, JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX)) throw err;
+      const winner = await getTerminalJobEvent(ctx.db, base);
+      if (!winner) throw err;
+      logger.warn(
+        { attempted: event.type, stored: winner.type },
+        "terminal event already recorded; keeping the stored one",
+      );
+      return dispositionForTerminal(bossJob.id, winner);
+    }
+  };
 
   const payloadResult = JobPayloadSchemas[name].safeParse(envelope.data.payload);
   if (!payloadResult.success) {
@@ -100,9 +180,11 @@ export async function runJob<N extends JobName, D = unknown>(
       message: `invalid ${name} payload: ${payloadResult.error.issues.map((i) => i.message).join("; ")}`,
       retryable: false,
     };
-    await emit({ type: "failed", ...base, at: nowIso(), error });
     logger.warn({ issues: payloadResult.error.issues }, "payload failed validation");
-    return { id: bossJob.id, status: "deadletter", output: error, event: "failed" };
+    return settle(
+      { type: "failed", ...base, at: nowIso(), error },
+      { id: bossJob.id, status: "deadletter", output: error, event: "failed" },
+    );
   }
   const payload = payloadResult.data as JobPayloads[N];
 
@@ -168,18 +250,33 @@ export async function runJob<N extends JobName, D = unknown>(
   // Flush any coalesced progress before the terminal event so ordering is preserved.
   await progress.flush();
 
+  // The poll is gone; a cancel that landed between its last tick and now would otherwise be
+  // recorded as `completed` (or `failed`) while pg-boss says `cancelled`. Read once more.
+  if (!abort.signal.aborted) {
+    try {
+      const [row] = await ctx.boss.findJobs(name, { id: bossJob.id });
+      if (row?.state === "cancelled") abortWith("cancelled");
+    } catch (err) {
+      logger.warn({ err }, "final cancel re-read failed; treating the job as not cancelled");
+    }
+  }
+
   if (abort.signal.aborted && abort.signal.reason === "cancelled") {
-    await emit({ type: "cancelled", ...base, at: nowIso() });
     logger.info("job cancelled");
     // The pg-boss row is already `cancelled`; a `completed` disposition is a no-op on it.
-    return { id: bossJob.id, status: "completed", event: "cancelled" };
+    return settle(
+      { type: "cancelled", ...base, at: nowIso() },
+      { id: bossJob.id, status: "completed", event: "cancelled" },
+    );
   }
 
   if (!threw && !abort.signal.aborted) {
-    // `JobCompletedEventSchema` is strict: the key is present only when there is a result.
-    await emit({ type: "completed", ...base, at: nowIso(), ...(result ? { result } : {}) });
     logger.info({ hasResult: result !== undefined }, "job completed");
-    return { id: bossJob.id, status: "completed", event: "completed" };
+    // `JobCompletedEventSchema` is strict: the key is present only when there is a result.
+    return settle(
+      { type: "completed", ...base, at: nowIso(), ...(result ? { result } : {}) },
+      { id: bossJob.id, status: "completed", event: "completed" },
+    );
   }
 
   const shutdown = abort.signal.aborted && abort.signal.reason === "shutdown";
@@ -191,9 +288,11 @@ export async function runJob<N extends JobName, D = unknown>(
 
   if (thrown instanceof NonRetryableError) {
     const error: JobError = { message, retryable: false };
-    await emit({ type: "failed", ...base, at: nowIso(), error });
     logger.warn({ err: thrown }, "job failed (non-retryable)");
-    return { id: bossJob.id, status: "deadletter", output: error, event: "failed" };
+    return settle(
+      { type: "failed", ...base, at: nowIso(), error },
+      { id: bossJob.id, status: "deadletter", output: error, event: "failed" },
+    );
   }
 
   const attemptsLeft = bossJob.retryCount < bossJob.retryLimit;
@@ -211,9 +310,11 @@ export async function runJob<N extends JobName, D = unknown>(
   }
 
   const error: JobError = { message, retryable: true };
-  await emit({ type: "failed", ...base, at: nowIso(), error });
   logger.error({ err: thrown, shutdown }, "job failed; no attempts left");
-  return { id: bossJob.id, status: "failed", output: error, event: "failed" };
+  return settle(
+    { type: "failed", ...base, at: nowIso(), error },
+    { id: bossJob.id, status: "failed", output: error, event: "failed" },
+  );
 }
 
 function truncate(s: string, max = 200): string {

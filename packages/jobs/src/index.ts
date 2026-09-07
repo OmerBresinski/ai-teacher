@@ -32,6 +32,7 @@ export {
 export {
   type BossJob,
   CANCEL_POLL_INTERVAL_MS,
+  dispositionForTerminal,
   type RunJobOptions,
   type RunJobOutcome,
   runJob,
