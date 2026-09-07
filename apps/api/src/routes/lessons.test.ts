@@ -48,7 +48,7 @@ describe("POST /lessons validation", () => {
     ["an empty body", {}, ["brief"]],
     [
       "a learner name in the topic (Identifier guard)",
-      { brief: { topic: "Help Amir Khan" } },
+      { brief: { topic: "Help a pupil called Amir" } },
       ["brief"],
     ],
     ["sourceIds (Sources are F03; strict)", { ...validBrief, sourceIds: [] }, ["(root)"]],

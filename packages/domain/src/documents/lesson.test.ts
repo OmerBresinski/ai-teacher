@@ -64,7 +64,7 @@ describe("parseLesson", () => {
   test("a brief holding a learner name is rejected at [brief, topic] with GUARD_MESSAGE", () => {
     const result = LessonSchema.safeParse({
       ...lesson(),
-      brief: { topic: "Help Amir Khan with fractions", durationMin: 60 },
+      brief: { topic: "Help a pupil called Amir with fractions", durationMin: 60 },
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues).toEqual([

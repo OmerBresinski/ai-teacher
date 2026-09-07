@@ -92,7 +92,7 @@ describe("CreateLessonSchema", () => {
   });
 
   test("the Identifier guard applies with the same message", () => {
-    const result = CreateLessonSchema.safeParse({ brief: { topic: "Help Amir Khan" } });
+    const result = CreateLessonSchema.safeParse({ brief: { topic: "Help a pupil called Amir" } });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]).toMatchObject({
       path: ["brief", "topic"],

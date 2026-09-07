@@ -54,7 +54,7 @@ describe("ClassContextSchema", () => {
 
   test.each([
     ["notes", { notes: "contact j.smith@school.org" }],
-    ["priorKnowledge", { priorKnowledge: "only Amir Khan knows this" }],
+    ["priorKnowledge", { priorKnowledge: "only the pupil called Amir knows this" }],
   ])("rejects an identifier in %s with GUARD_MESSAGE", (field, input) => {
     const result = ClassContextSchema.safeParse(input);
     expect(result.success).toBe(false);
