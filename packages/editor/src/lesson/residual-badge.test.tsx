@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
 import { pointer, renderEditor } from "./test-harness";
@@ -53,31 +53,27 @@ describe("residual badge", () => {
     );
   });
 
-  test("row 6: fixing the answer clears slide 4's dot on the autosave cadence", async () => {
-    const { read, client } = renderEditor(lessonWithTwoFindings());
+  test("row 6: marking an option correct clears slide 4's dot on the autosave cadence", async () => {
+    const { read } = renderEditor(lessonWithTwoFindings());
     expect(residualDots()).toHaveLength(2);
-    // The teacher marks an option correct (the Answer drawer's reducer, applied to the cache).
-    const lesson = read();
-    const mc = lesson.slides[3];
-    if (mc?.question?.type !== "multiple-choice") throw new Error("fixture");
-    const fixed: Lesson = {
-      ...lesson,
-      slides: lesson.slides.map((s, i) =>
-        i === 3 && mc.question?.type === "multiple-choice"
-          ? {
-              ...s,
-              question: {
-                ...mc.question,
-                options: mc.question.options.map((o, j) => ({ ...o, correct: j === 0 })),
-              },
-            }
-          : s,
-      ),
-    };
-    act(() => client.setQueryData(["library", "documents", "L1"], fixed));
-    // Not per edit: still two right after the change…
+    // Open slide 4 and its Answer drawer; tick the first option.
+    const fourth = rows()[3];
+    if (!fourth) throw new Error("row");
+    fireEvent.pointerDown(fourth, pointer(20, 20));
+    fireEvent.pointerUp(fourth, pointer(20, 20));
+    fireEvent.click(
+      within(screen.getByRole("toolbar", { name: "Slide" })).getByRole("button", {
+        name: "Answer",
+      }),
+    );
+    const boxes = await screen.findAllByRole("checkbox", { name: /is correct/ });
+    fireEvent.click(boxes[0] as HTMLElement);
+    const q = read().slides[3]?.question;
+    expect(q?.type === "multiple-choice" && q.options[0]?.correct).toBe(true);
+    // Not per edit: still two right after the change (the debounce has not fired)…
     expect(residualDots()).toHaveLength(2);
-    // …one after the 800 ms window.
+    expect(screen.getByRole("button", { name: "2 things to check" })).toBeVisible();
+    // …one once autosave's 800 ms window closes.
     await waitFor(() => expect(residualDots()).toHaveLength(1), { timeout: 3_000 });
     expect(screen.getByRole("button", { name: "1 thing to check" })).toBeVisible();
     expect(rows()[3]?.querySelector("[data-residual-badge]")).toBeNull();

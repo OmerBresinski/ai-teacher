@@ -90,8 +90,8 @@ export function LessonEditor({
     queryFn,
     onChange: autosave.onChange,
   });
-  // The residual findings (ADR 0025 §12), recomputed on the autosave cadence rather than per edit.
-  const residuals = useComputedResidualFindings(lesson, worksheet);
+  // The residual findings (ADR 0025 §12), derived at the autosave cadence rather than per edit.
+  const residuals = useComputedResidualFindings(lesson, worksheet, autosave);
   const session = useEditorSessionState();
   const [helpOpen, setHelpOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);

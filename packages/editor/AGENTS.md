@@ -115,9 +115,9 @@ src/
               `imagePanel`), image-source (file/stock → `ImageSource`, `imageFields`),
               canvas/use-image-drop (paste + drop listeners), ThemeDialog, use-editor-session,
               slide-commands, keys, shortcuts; residual-findings (`residualFindings(lesson,
-              worksheet)` = stored model findings + live `checkLesson`, deduped; the context
-              `LessonEditor` fills on the autosave cadence — 800 ms after a change, never per
-              keystroke), SlideBadge (the one navigator dot: the layout lint and the residuals both
+              worksheet)` = stored model findings + live `checkLesson`, deduped; derived in render over
+              `autosave.getSettled()` — the document the 800 ms debounce last handed to the write —
+              while unsaved, over the live document once saved; never per keystroke, no effect), SlideBadge (the one navigator dot: the layout lint and the residuals both
               use it, `data-lint-badge` / `data-residual-badge`, `data-tone`), ResidualBadge (the
               canvas footer's "N things to check" popover with Go to slide; a `budget` finding is
               listed first). `LessonEditor` takes the app's `worksheet` and `onOpenWorksheet`

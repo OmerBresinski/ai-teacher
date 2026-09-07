@@ -42,6 +42,12 @@ export type Autosave<D extends SavableDocument = SavableDocument> = {
   flush: () => Promise<void>;
   subscribe: (listener: () => void) => () => void;
   getState: () => SaveState;
+  /**
+   * The document as of the last time the debounce fired — what is being (or was last) written.
+   * `null` until the first change. Work that must follow edits at the save cadence rather than per
+   * keystroke (the residual checks, ADR 0025 §12) derives from this instead of the live document.
+   */
+  getSettled: () => D | null;
 };
 
 export type AutosaveOptions = {
@@ -61,15 +67,25 @@ export function useAutosave<D extends SavableDocument>(
     let state: SaveState = "saved";
     const listeners = new Set<() => void>();
     let pending: D | null = null;
+    let settled: D | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let inFlight: Promise<void> | null = null;
     /** One toast per run of failures: typing through a broken save must not stack twelve of them. */
     let warned = false;
 
+    const notify = () => {
+      for (const l of listeners) l();
+    };
     const setState = (next: SaveState) => {
       if (next === state) return;
       state = next;
-      for (const l of listeners) l();
+      notify();
+    };
+    /** The debounce fired (or a flush is about to write): publish what is being written. */
+    const settle = () => {
+      if (pending === null || pending === settled) return;
+      settled = pending;
+      notify();
     };
 
     const fail = (reported: boolean) => {
@@ -82,6 +98,7 @@ export function useAutosave<D extends SavableDocument>(
     const write = async (): Promise<void> => {
       if (timer) clearTimeout(timer);
       timer = undefined;
+      settle();
       const document = pending;
       if (!document) return;
       pending = null;
@@ -125,6 +142,7 @@ export function useAutosave<D extends SavableDocument>(
         };
       },
       getState: () => state,
+      getSettled: () => settled,
       hasPending: () => pending !== null,
     };
   }, []);
@@ -159,4 +177,11 @@ export type SaveStateSource = Pick<Autosave, "subscribe" | "getState">;
 /** What the saved indicator should say right now. */
 export function useSaveState(autosave: SaveStateSource): SaveState {
   return useSyncExternalStore(autosave.subscribe, autosave.getState, SAVED);
+}
+
+const NONE = () => null;
+
+/** The document at the save cadence: the last one the debounce handed to the write, or `null`. */
+export function useSettledDocument<D extends SavableDocument>(autosave: Autosave<D>): D | null {
+  return useSyncExternalStore(autosave.subscribe, autosave.getSettled, NONE);
 }

@@ -5,15 +5,16 @@ import {
   type Lesson,
   type Worksheet,
 } from "@tj/domain/documents";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { AUTOSAVE_MS } from "../model/use-autosave";
+import { createContext, useContext, useMemo, useState } from "react";
+import { type Autosave, useSaveState, useSettledDocument } from "../model/use-autosave";
 
 /*
  * The residual findings the editor shows (ADR 0025 §10, §12, §25): the model checks and the
  * budget stop exactly as the job stored them on `Lesson.generation.findings`, plus the schema
  * checks recomputed live by `checkLesson` — never trusted from storage, so a hand fix clears its
  * badge on the next save. `SlideBadge` on the navigator rows and `ResidualBadge` in the canvas
- * footer both read `ResidualFindingsContext`, which `LessonEditor` fills from `useResidualFindings`.
+ * footer both read `ResidualFindingsContext`, which `LessonEditor` fills from
+ * `useComputedResidualFindings`.
  */
 
 /** The merge, pure: stored model findings + live schema findings, deduped by `check` + target. */
@@ -63,34 +64,28 @@ export const ResidualFindingsContext = createContext<ResidualFindings>(EMPTY);
 export const useResidualFindings = (): ResidualFindings => useContext(ResidualFindingsContext);
 
 /**
- * Recompute on the autosave cadence: the first lesson seen (at mount, or when the query fills)
- * is merged synchronously; every later change to the lesson or the worksheet re-runs
- * `checkLesson` after `AUTOSAVE_MS`, never per keystroke. The timer is the one external thing
- * here, hence an effect; the merge itself is pure.
+ * The residual findings at the save cadence, derived in render — no effect. While the teacher is
+ * typing (`unsaved`, `saving`, `failed`) the merge runs over the document the autosave debounce
+ * last handed to the write (`getSettled`), so it moves every 800 ms and never per keystroke; once
+ * everything is `saved` the live document is that same document — or a fresher one a Reload put
+ * in the cache — so the live one is read. Between the first edit and the first debounce there is
+ * no settled document yet, so the previous source stays (React's "information from previous
+ * renders" pattern). `checkLesson` is cheap; the memo keys on the document identity immer
+ * preserves, so an unchanged lesson is free.
  */
 export function useComputedResidualFindings(
   lesson: Lesson | undefined,
   worksheet: Worksheet | undefined,
-  delay: number = AUTOSAVE_MS,
+  autosave: Autosave<Lesson>,
 ): ResidualFindings {
-  const [state, setState] = useState<{ seeded: boolean; findings: Finding[] }>(() => ({
-    seeded: lesson !== undefined,
-    findings: lesson ? residualFindings(lesson, worksheet) : [],
-  }));
-  // The lesson arrived after mount (the query filled): seed once, in render, not a tick later.
-  if (!state.seeded && lesson) {
-    setState({ seeded: true, findings: residualFindings(lesson, worksheet) });
-  }
-
-  useEffect(() => {
-    if (!lesson) return;
-    const timer = window.setTimeout(
-      () => setState({ seeded: true, findings: residualFindings(lesson, worksheet) }),
-      delay,
-    );
-    return () => window.clearTimeout(timer);
-  }, [lesson, worksheet, delay]);
-
-  const { findings } = state;
-  return useMemo(() => ({ findings, bySlide: findingsBySlide(findings) }), [findings]);
+  const state = useSaveState(autosave);
+  const settled = useSettledDocument(autosave);
+  const desired = state === "saved" ? lesson : settled;
+  const [source, setSource] = useState(lesson);
+  if (desired !== undefined && desired !== null && desired !== source) setSource(desired);
+  const current = desired ?? source;
+  return useMemo(() => {
+    const findings = current ? residualFindings(current, worksheet) : [];
+    return { findings, bySlide: findingsBySlide(findings) };
+  }, [current, worksheet]);
 }
