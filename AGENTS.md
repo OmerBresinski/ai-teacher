@@ -118,14 +118,15 @@ Code and Cursor. Check your own tool list and map by **capability**, not by name
   so commit the PNGs to the orphan branch and embed the raw URL:
 
   ```sh
-  D=$(mktemp -d) && git worktree add "$D" pr-screenshots && cp /tmp/teach-<n>-*.png "$D"/pr-<pr>/ \
-    && git -C "$D" add -A && git -C "$D" -c commit.gpgsign=false commit --no-verify -m "chore: screenshots for #<pr>" \
+  D=$(mktemp -d) && git worktree add "$D" pr-screenshots && mkdir -p "$D"/pr-<pr> \
+    && cp /tmp/teach-<n>-*.png "$D"/pr-<pr>/ && git -C "$D" add -A \
+    && git -C "$D" -c commit.gpgsign=false commit --no-verify -m "chore: screenshots for #<pr>" \
     && git -C "$D" push origin pr-screenshots && git worktree remove "$D"
   # then in the PR comment:
   # ![editor](https://raw.githubusercontent.com/OmerBresinski/ai-teacher/pr-screenshots/pr-<pr>/editor.png)
   ```
 
-  Create `pr-<pr>/` first (`mkdir -p`). Attaching the same file to the Linear issue with
+  Attaching the same file to the Linear issue with
   `linear_prepare_attachment_upload` is fine as an extra; it is not the PR deliverable. The branch is
   never merged and never rebased; it is not on CI.
 - **Reviewer model.** In order: GPT-5.6 Luna; if unavailable, Claude Sonnet 5; if neither is
