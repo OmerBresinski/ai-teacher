@@ -24,9 +24,10 @@ import { SlideActions } from "./canvas/SlideActions";
 import { SlideTabs } from "./canvas/SlideTabs";
 import { useImageDrop } from "./canvas/use-image-drop";
 import { useLesson } from "./document-context";
+import { isInTextField } from "./keys";
 import { ResidualBadge } from "./ResidualBadge";
 import { ContextualToolbar } from "./toolbar/ContextualToolbar";
-import { type PreviewMap, SelectionLayer } from "./transform/SelectionLayer";
+import { type MarginHandle, type PreviewMap, SelectionLayer } from "./transform/SelectionLayer";
 import { useCanvasKeys } from "./transform/use-canvas-keys";
 import {
   useAnswerShowing,
@@ -79,6 +80,8 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
 
   const scroller = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  /** The selection layer's entry point for a press on the margin round the slide. */
+  const layer = useRef<MarginHandle | null>(null);
   // The Question / Answer tabs' wrapper: the pill hangs off the other end of the same band, and at
   // a low zoom the two ends meet, so the pill measures the tabs and gives way.
   const tabs = useRef<HTMLDivElement>(null);
@@ -184,6 +187,26 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
     scroller.current?.releasePointerCapture?.(e.pointerId);
   };
 
+  /**
+   * Space held: pan. Otherwise a primary press on the grey margin (anything in the scroll region
+   * that is not the stage) is slide ground: the selection layer starts its marquee from there, and
+   * a plain click clears the selection. Presses on the stage are the layer's own; the floating
+   * toolbars live outside the scroller and never arrive here; the right button leaves the press
+   * to `onContextMenu`.
+   */
+  const onScrollerDown = (e: React.PointerEvent) => {
+    if (spaceDown) {
+      onPanDown(e);
+      return;
+    }
+    if (e.button !== 0 || isInTextField(e.target)) return;
+    const st = stage.current;
+    if (!st || (e.target instanceof Node && st.contains(e.target))) return;
+    // Like the pan: otherwise the browser starts selecting the slide's text under the sweep.
+    e.preventDefault();
+    layer.current?.pointerDown(e);
+  };
+
   /* ---- layout ----------------------------------------------------------- */
   const contentW = SLIDE_W * scale + GUTTER * 2;
   const contentH = SLIDE_H * scale + GUTTER * 2;
@@ -200,6 +223,7 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
       {/* biome-ignore lint/a11y/useSemanticElements: a fieldset is not a scroll region; the group role names the region for a screen reader */}
       <div
         ref={scroller}
+        data-canvas-scroller
         tabIndex={-1}
         role="group"
         aria-label="Slide canvas"
@@ -216,7 +240,7 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
             return;
           scroller.current?.focus({ preventScroll: true });
         }}
-        onPointerDown={onPanDown}
+        onPointerDown={onScrollerDown}
         onPointerMove={onPanMove}
         onPointerUp={onPanUp}
       >
@@ -283,6 +307,7 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
                 preview={preview}
                 onPreview={setPreview}
                 disabled={spaceDown}
+                marginRef={layer}
               />
             </div>
           </SlideScaler>
