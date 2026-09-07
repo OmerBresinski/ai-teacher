@@ -322,7 +322,11 @@ export function LessonBriefPage() {
   const [blankOpen, setBlankOpen] = useState(false);
   const [blankSession, setBlankSession] = useState(0);
 
-  const patch = (change: Partial<BriefState>) => setState((current) => ({ ...current, ...change }));
+  // An edit clears the API's field marks: they describe the request that was sent, not this one.
+  const patch = (change: Partial<BriefState>) => {
+    setState((current) => ({ ...current, ...change }));
+    setServerFields((current) => (current.size === 0 ? current : new Set()));
+  };
   const touch = (field: string) =>
     setTouched((current) => (current.has(field) ? current : new Set(current).add(field)));
 

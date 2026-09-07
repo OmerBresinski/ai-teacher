@@ -194,6 +194,9 @@ describe("LessonBriefPage", () => {
     expect(navigate).not.toHaveBeenCalled();
     expect(topicBox()).toHaveValue("Fractions of amounts");
     expect(topicBox()).toHaveAttribute("aria-invalid", "true");
+    // Editing clears the server's mark: it described the request that was sent.
+    fireEvent.change(topicBox(), { target: { value: "Fractions of amounts and shapes" } });
+    expect(topicBox()).not.toHaveAttribute("aria-invalid");
 
     fakeApi.failNext(
       (r) => r.path === "/lessons",
