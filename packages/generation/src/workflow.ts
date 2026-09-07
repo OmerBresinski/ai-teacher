@@ -25,7 +25,7 @@ import {
  * no step retries: `callStructured` owns the one retry (§14) and pg-boss owns the job retry.
  */
 
-const StateSchema = z.custom<PipelineState>(() => true, { message: "pipeline state" });
+export const StateSchema = z.custom<PipelineState>(() => true, { message: "pipeline state" });
 
 const DEPS_KEY = "deps";
 const FAILURE_KEY = "failure";

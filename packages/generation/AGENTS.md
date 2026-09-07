@@ -44,7 +44,8 @@ src/
   workflow.ts     lessonWorkflow, resumeFrom, runLessonPipeline
   testing.ts      fixtures as values, scripted fake, recording deps (`@tj/generation/testing`)
   fixtures/       plan.json, slides.json, worksheet.json, evaluate.json, repair.json
-  mastra.dev.ts   Studio entry (`bun run studio:generation`); src/mastra/index.ts re-exports it
+  mastra.dev.ts   Studio entry (`bun run studio:generation`: Bedrock from apps/worker/.env;
+                  `AI_FAKE_SCRIPT=1` for the fixture fake); src/mastra/index.ts re-exports it
 ```
 
 Tests: `bun test` in this directory; network-free, no `AWS_BEARER_TOKEN_BEDROCK` needed.

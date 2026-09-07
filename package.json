@@ -38,7 +38,7 @@
     "test": "turbo run test",
     "test:scripts": "bun test scripts/",
     "test:db": "bun scripts/test-db.ts",
-    "studio:generation": "cd packages/generation && MASTRA_TELEMETRY_DISABLED=1 AI_FAKE_SCRIPT=1 bunx mastra dev --dir src/mastra",
+    "studio:generation": "cd packages/generation && MASTRA_TELEMETRY_DISABLED=1 PORT=4111 bunx mastra dev --dir src/mastra --env ../../apps/worker/.env",
     "test:e2e": "turbo run test:e2e",
     "lint:root": "biome check --no-errors-on-unmatched ./*.json ./*.ts scripts infra .railway",
     "lint:root:fix": "biome check --write --no-errors-on-unmatched ./*.json ./*.ts scripts infra .railway",
