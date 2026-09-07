@@ -1,7 +1,7 @@
 /**
- * `GET /files/:key` — the private-file proxy (ADR 0011 amendment 2026-09-04). Vercel Blob has no
- * time-limited signed URLs for private blobs, so every Artefact/Source download is authorised here
- * per request and streamed from the `StorageAdapter`.
+ * `GET /files/:key` — the private-file proxy (ADR 0011 amendment 2026-09-04, kept by ADR 0026 §4).
+ * Every object is private and every Artefact/Source download is authorised here per request and
+ * streamed from the `StorageAdapter`; a presigned bucket URL would bypass this route's hardening.
  *
  * - `requireSession` (mounted in `app.ts`) supplies the caller's Workspace.
  * - The key is validated as `<workspaceId>/<segment>/…`; a key under **another** Workspace is a

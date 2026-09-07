@@ -41,7 +41,7 @@ function streamOf(bytes: Uint8Array, chunk = 64 * 1024): ReadableStream<Uint8Arr
 
 /**
  * Behavioural contract every `StorageAdapter` in this package must satisfy. Run it against a
- * factory; the Blob run skips cleanly when `BLOB_READ_WRITE_TOKEN` is not set.
+ * factory; the S3 run skips cleanly when the `S3_*` variables are not set.
  */
 export function runStorageContract(
   name: string,

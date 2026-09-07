@@ -23,3 +23,11 @@ The founder chose to defer two product commitments to move faster on the scaffol
 ## Amendment (2026-09-04, ADR 0018)
 
 5. **Model inference region.** ADR 0018 puts model calls on Amazon Bedrock in `us-east-1`, because that is where the account's Bedrock API key and model access live. Prompts and completions therefore transit the US in flight; nothing is stored there (no Bedrock invocation logging is enabled; Bedrock does not train on API inputs). This contradicts F13-R11 ("UK/EU region endpoints where available") and is a wider deviation than item 1. **Revisit before M3** together with item 1: Bedrock offers `eu.` cross-region inference profiles for the same Claude models, so the fix is a key in an EU region plus new `AI_MODEL_*` / `AWS_REGION` values — an env change behind `createAi`, not a code change. F15-R01's data-flow statement must name AWS (Bedrock) as a sub-processor of lesson content, and the Cohort Profile allow-list (F02-R10) is what keeps learner data out of that flow.
+
+## Amendment (2026-09-07, ADR 0026)
+
+Item 1: files no longer live on Vercel Blob (`fra1`). ADR 0026 moves object storage to a Railway
+Bucket in `ams`, so compute, Postgres and files are all Railway EU-West (Amsterdam). The deviation
+itself (EU-resident, not UK-resident) and its revisit dates (before M3, no later than M4) are
+unchanged; the "Vercel-controlled regions" clause and the "move Blob to an S3-compatible store"
+option are resolved.

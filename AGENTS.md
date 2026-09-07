@@ -268,7 +268,7 @@ packages/
   domain/       @tj/domain     Zod schemas + types, job names, StorageAdapter   Master PRD §8
   api-client/   @tj/api-client Hono RPC AppType + typed client factory          ADR 0005
   jobs/         @tj/jobs       pg-boss runtime + typed job registry             ADR 0006
-  storage/      @tj/storage    StorageAdapter impls (local disk, Vercel Blob)   ADR 0011
+  storage/      @tj/storage    StorageAdapter impls (local disk, Railway S3)   ADR 0026
   ai/           @tj/ai         Model client: Bedrock via Vercel AI SDK, classes   ADR 0018
   editor/       @tj/editor     Lesson/worksheet editor, viewer, present, export   ADR 0022
   slides/       @tj/slides     Pure slide recipes, theme catalogue, materialise   ADR 0025

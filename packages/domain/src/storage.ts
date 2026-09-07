@@ -3,7 +3,7 @@ import { WorkspaceId } from "./ids";
 import { err, ok, type Result } from "./result";
 
 // ---------------------------------------------------------------------------------------------
-// StorageAdapter (ADR 0011): implemented by @tj/storage (local disk, Vercel Blob)
+// StorageAdapter (ADR 0011 / 0026): implemented by @tj/storage (local disk, S3 bucket)
 // ---------------------------------------------------------------------------------------------
 
 /** One stored object as returned by `StorageAdapter.list`. */

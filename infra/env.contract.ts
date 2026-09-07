@@ -414,9 +414,54 @@ const CONTRACT = [
       "Development/test only: lets x-tj-workspace-id select a Workspace without a session. Refused at boot when NODE_ENV=production; never set it on Railway.",
   },
 
-  // --- storage (ADR 0011) ------------------------------------------------------------------------
+  // --- storage (ADR 0026) ------------------------------------------------------------------------
   {
-    name: "BLOB_READ_WRITE_TOKEN",
+    name: "S3_BUCKET",
+    services: ["api", "worker", "ci"],
+    scope: "config",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "string",
+    runtimeOnly: true,
+    railwayValue: "files-jtopgcer1vrw3abyfb",
+    files: ["api", "worker"],
+    description:
+      'Bucket name of the Railway Bucket `files` (`ams`; `railway bucket credentials --bucket files --json` → `bucketName`; infra/README.md "Railway Bucket (files)"). When set (non-blank) `@tj/storage` picks `S3Storage` and the other `S3_*` variables become required; otherwise the local-disk adapter under `.data/`. Set on Railway api + worker (TEACH-142); never on Vercel — the SPA does not read it. Optional in CI to run the S3 contract tests.',
+  },
+  {
+    name: "S3_ENDPOINT",
+    services: ["api", "worker", "ci"],
+    scope: "config",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "url",
+    runtimeOnly: true,
+    railwayValue: "https://t3.storageapi.dev",
+    files: ["api", "worker"],
+    description:
+      "S3 API endpoint of the Railway Bucket (`railway bucket credentials` → `endpoint`). Requests are path-style (`<endpoint>/<bucket>/<key>`, ADR 0026 §5). Required when `S3_BUCKET` is set.",
+  },
+  {
+    name: "S3_REGION",
+    services: ["api", "worker", "ci"],
+    scope: "config",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "string",
+    runtimeOnly: true,
+    railwayValue: "auto",
+    files: ["api", "worker"],
+    description:
+      "SigV4 region for the bucket. Railway reports `auto`, which is also the adapter default when unset.",
+  },
+  {
+    name: "S3_ACCESS_KEY_ID",
     services: ["api", "worker", "ci"],
     scope: "secret",
     local: null,
@@ -426,7 +471,20 @@ const CONTRACT = [
     runtimeOnly: true,
     files: ["api", "worker"],
     description:
-      'Vercel Blob read-write token for the private store `teaching-journey` (`store_Ii6wcxuuLOvPP4ou`, `fra1`; infra/README.md "Vercel Blob (files)"). When set (non-blank) `@tj/storage` picks `VercelBlobStorage`; otherwise the local-disk adapter under `.data/`. Set on Railway api + worker since 2026-09-04 (TEACH-37); never on Vercel — the SPA does not read it. Optional in CI to run the Blob contract tests.',
+      "Access key id of the Railway Bucket credentials (`railway bucket credentials --bucket files --json` → `accessKeyId`). Required when `S3_BUCKET` is set. Named `S3_*`, not `AWS_*`, so the AWS SDK credential chain used for Bedrock never picks it up (ADR 0026 §3).",
+  },
+  {
+    name: "S3_SECRET_ACCESS_KEY",
+    services: ["api", "worker", "ci"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    runtimeOnly: true,
+    files: ["api", "worker"],
+    description:
+      "Secret access key of the Railway Bucket credentials (`railway bucket credentials --bucket files --json` → `secretAccessKey`). Required when `S3_BUCKET` is set. Rotate with `railway bucket credentials --bucket files --reset --yes`, then re-set both `S3_*` secrets on api and worker.",
   },
   {
     name: "STORAGE_PUBLIC_BASE_URL",
@@ -455,20 +513,6 @@ const CONTRACT = [
     files: ["api", "worker"],
     description:
       "Local-disk adapter only: directory that holds stored objects. Defaults to `.data/storage` (gitignored) when unset.",
-  },
-  {
-    name: "STORAGE_PUBLIC_PREFIXES",
-    services: ["api", "worker"],
-    scope: "config",
-    local: null,
-    railway: "n/a",
-    vercel: "n/a",
-    setBy: "manual",
-    format: "string",
-    runtimeOnly: true,
-    files: ["api", "worker"],
-    description:
-      'Comma-separated key prefixes treated as public by `@tj/storage` (served by URL instead of the `GET /files/:key` proxy). Empty means everything is private. Leave unset on Railway: the production store `teaching-journey` is a **private** store and rejects `access: "public"` uploads.',
   },
 
   // --- AI provider (ADR 0018) ---------------------------------------------------------------------

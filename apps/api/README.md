@@ -143,12 +143,14 @@ module-level singletons, so tests can inject fakes.
 | `GET /files/:key`    | Streams a stored object (`content-type`, `content-length`, `cache-control: private, no-store`); `401` without a session, `404` for a missing object **or** a key outside the caller's Workspace (never 403), `400 validation_failed` for a malformed key, `503` when no storage adapter is configured (see "Files") |
 | `GET /__test/last-magic-link?email=x` | **Test-only** (see "Test routes"): `200 { email, url }` or `404 not_found`. Absent unless `NODE_ENV=test` and `ENABLE_TEST_ROUTES=1`. |
 
-## Files (`GET /files/:key`, ADR 0011 amendment)
+## Files (`GET /files/:key`, ADR 0011 amendment, ADR 0026 §4)
 
-Vercel Blob has no time-limited signed URLs for private blobs, so every Artefact/Source download
-goes through this proxy. `src/index.ts` builds the adapter with `createStorage()` from
-`@tj/storage` — Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set, otherwise local disk at
-`STORAGE_ROOT` (default `.data/storage`) — and passes it as `createApp({ storage })`. The route
+Every stored object is private and every Artefact/Source download goes through this proxy, which
+is where per-request authorisation and the TEACH-78 response hardening live (a presigned bucket
+URL would bypass both). `src/index.ts` builds the adapter with `createStorage()` from
+`@tj/storage` — the Railway Bucket (`S3Storage` on `Bun.S3Client`) when `S3_BUCKET` is set,
+otherwise local disk at `STORAGE_ROOT` (default `.data/storage`) — and passes it as
+`createApp({ storage })`. The route
 is behind `requireSession`; the key (`<workspaceId>/<segment>/…`, `StorageKeySchema`) must start
 with the caller's `workspaceId` or the answer is `404`, and the body is streamed from
 `storage.get(key)` without buffering. `src/routes/files.ts` deliberately imports only from

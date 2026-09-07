@@ -16,7 +16,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0008 | better-auth for identity                           | Accepted |
 | 0009 | Tailwind + shadcn/ui as the design-system base     | Accepted (amended 2026-09-05) |
 | 0010 | Hosting: Vercel (web) + Railway (api, worker, PG)  | Accepted |
-| 0011 | Vercel Blob for object storage                     | Accepted (amended 2026-09-04) |
+| 0011 | Vercel Blob for object storage                     | Superseded by 0026 (2026-09-07) |
 | 0012 | Server-sent events for generation progress         | Accepted (amended 2026-09-06) |
 | 0013 | Monorepo layout and @tj/* package scope            | Accepted (amended 2026-09-06) |
 | 0014 | Testing: bun test, Playwright (Vitest retired)     | Accepted |
@@ -31,6 +31,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0023 | Export pipeline: client-side exporters, SPA print routes, JSON import | Accepted |
 | 0024 | Document persistence and the lesson brief: `documents` table, document API, `POST /lessons` | Accepted (amended 2026-09-06) |
 | 0025 | Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair | Accepted |
+| 0026 | Railway Bucket (S3-compatible) for object storage  | Accepted |
 
 Template: `0000-template.md`.
 
@@ -55,3 +56,4 @@ Template: `0000-template.md`.
 - 2026-09-06 — ADR 0021 §1, §3: the theme catalogue, layout recipes and `FIT_VERSION` move to `@tj/slides` (the re-fit stays in the editor); optional `facts`, `generation`, `artefacts`, `sources`, `generatedFrom`, `authoredBy`, `Worksheet.lessonId` (ADR 0025). See the third amendment in `0021-tie-in-document-contract.md`.
 - 2026-09-06 — ADR 0022 §1, §4: `@tj/slides` dependency; cascade proposals apply as one transaction (ADR 0025 §9, §18). See the second amendment in `0022-editor-package-boundary-and-state.md`.
 - 2026-09-06 — ADR 0024 §13, §14, §18: `Lesson.sources` reserved as references; one `lesson.plan` job with checkpoints; the worker writes through `putDocumentAsJob` keyed on the lock; stale locks released on read (ADR 0025 §5–§7, §24). See the amendment in `0024-document-persistence-and-lesson-brief.md`.
+- 2026-09-07 — ADR 0016 §1: files move from Vercel Blob (`fra1`) to a Railway Bucket in `ams` (ADR 0026); the residency statement is now "Railway EU-West" for compute, Postgres and files. See `0016-prd-deviations.md`.

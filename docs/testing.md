@@ -125,8 +125,8 @@ What it guarantees:
 where Postgres is a job service), runs `bun run db:migrate` for both databases, then
 `turbo run test` with `TEST_DATABASE_URL` and `REQUIRE_TEST_DB=1`. Extra arguments pass through:
 `bun run test:db -- --filter=@tj/jobs`. The only suite that still skips under `test:db` is the
-Vercel Blob storage contract, gated on `BLOB_READ_WRITE_TOKEN` (not a database concern); it prints
-its reason.
+S3 storage contract (`packages/storage/src/s3.test.ts`), gated on the `S3_*` variables of the
+Railway Bucket (not a database concern); it prints its reason.
 
 pg-boss: the `@tj/jobs` and `@tj/api` integration suites use pg-boss schema `pgboss_test`, so the
 development `pgboss` schema is never touched. `apps/api/src/routes/jobs.integration.test.ts`

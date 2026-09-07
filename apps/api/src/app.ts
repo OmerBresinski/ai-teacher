@@ -70,7 +70,7 @@ export interface CreateAppOptions {
   testMail?: CaptureMailSender;
   /**
    * Object storage behind `GET /files/:key` (ADR 0011 amendment). `src/index.ts` passes
-   * `createStorage(process.env).adapter` (local disk unless `BLOB_READ_WRITE_TOKEN` is set).
+   * `createStorage(process.env).adapter` (local disk unless `S3_BUCKET` is set).
    * Absent → the route answers 503.
    */
   storage?: ReadableStorageAdapter;

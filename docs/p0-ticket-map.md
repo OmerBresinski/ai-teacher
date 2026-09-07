@@ -10,7 +10,7 @@ Linear project: **P0 — Monorepo Scaffolding** (team Teacher AI). Tickets use t
 | 1 | TEACH-13 | `@tj/ui`: Tailwind v4 + shadcn plumbing, theme switching | 11, 27 |
 | 1 | TEACH-18 | Local dev env: docker-compose (PG+pgvector), `setup`/`doctor`/`dev`, env scaffolding | 11 |
 | 2 | TEACH-14 | `@tj/db`: Drizzle, migrations, `forWorkspace()` | 11, 12, 18 |
-| 2 | TEACH-15 | `@tj/storage`: local disk + Vercel Blob | 11, 12 |
+| 2 | TEACH-15 | `@tj/storage`: local disk + Vercel Blob (Blob replaced by the Railway Bucket in TEACH-142, ADR 0026) | 11, 12 |
 | 2 | TEACH-28 | Investigate `.agents` vs `.claude`/`.opencode` skill duplication; canonical layout + enforcement (Medium) | 27 |
 | 3 | TEACH-16 | `apps/api` (Hono) + `@tj/api-client` | 12, 14, 27 |
 | 3 | TEACH-17 | `apps/worker` + `@tj/jobs` (pg-boss, ping job, events) | 12, 14, 27 |

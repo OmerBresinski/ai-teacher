@@ -2,7 +2,7 @@
  * Railway infrastructure-as-code for the `teaching-journey` project (TEACH-38, ADR 0010).
  *
  * This file is the source of truth for the Railway project: the `postgres` image service and its
- * volume, and the `api` / `worker` services built from the root `Dockerfile` (builder, watch
+ * volume, the `files` bucket (ADR 0026), and the `api` / `worker` services built from the root `Dockerfile` (builder, watch
  * patterns, start / pre-deploy commands, health check, restart policy, draining / overlap,
  * region). Runbook and the settings table: infra/README.md "Config-as-code".
  *
@@ -20,6 +20,7 @@
  * Needs `railway` (npm, root devDependency) and Node >= 22.6 for the CLI's TypeScript runner.
  */
 import {
+  bucket,
   type DeployConfig,
   defineRailway,
   github,
@@ -93,6 +94,11 @@ export default defineRailway(() => {
     },
   });
 
+  // Object storage (ADR 0026): S3-compatible bucket in the same metro as the services. Created
+  // with `railway bucket create files --region ams` (TEACH-142); credentials come from
+  // `railway bucket credentials --bucket files` and live on api + worker as the `S3_*` variables.
+  const files = bucket("files", { region: "ams" });
+
   // Railway's start command replaces the image ENTRYPOINT, hence the full /app/entrypoint.sh path.
   const worker = service("worker", {
     source: repo,
@@ -136,6 +142,6 @@ export default defineRailway(() => {
   // The api's generated `*.up.railway.app` domain is Railway-managed and intentionally not here;
   // custom domains (`api.<domain>`, TODO(domain)) would go in `domains: [...]`.
   return project("teaching-journey", {
-    resources: [postgres, postgresVolume, api, worker],
+    resources: [postgres, postgresVolume, files, api, worker],
   });
 });

@@ -31,14 +31,17 @@ await boss.start();
 await ensureQueues(boss);
 const jobs: JobsContext = { boss, db: db.unsafeDb, sql: db.sql };
 const events = createEventsRuntime({ jobs, databaseUrl: env.DATABASE_URL, logger });
-// ADR 0011: Vercel Blob when BLOB_READ_WRITE_TOKEN is set, else local disk at STORAGE_ROOT
-// (default .data/storage). These variables are all optional and read by @tj/storage directly;
-// adding them to the env contract (TEACH-26) is a follow-up.
+// ADR 0026: the Railway Bucket (S3) when S3_BUCKET is set, else local disk at STORAGE_ROOT
+// (default .data/storage). These variables are `runtimeOnly` in infra/env.contract.ts and read by
+// @tj/storage directly; a set S3_BUCKET with a missing S3_* sibling throws here (boot fails).
 const storage = createStorage({
-  BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
+  S3_BUCKET: process.env.S3_BUCKET,
+  S3_ENDPOINT: process.env.S3_ENDPOINT,
+  S3_REGION: process.env.S3_REGION,
+  S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
+  S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
   STORAGE_ROOT: process.env.STORAGE_ROOT,
   STORAGE_PUBLIC_BASE_URL: process.env.STORAGE_PUBLIC_BASE_URL,
-  STORAGE_PUBLIC_PREFIXES: process.env.STORAGE_PUBLIC_PREFIXES,
 });
 const ai = createAi(env, { logger });
 const app = createApp({
