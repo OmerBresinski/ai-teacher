@@ -17,6 +17,7 @@ import {
 import { type PipelineDeps, type PipelineInput, runLessonPipeline } from "@tj/generation";
 import { defineJob, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
+import type { Logger } from "pino";
 import type { WorkerDeps } from "../deps";
 
 /**
@@ -51,7 +52,7 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
       keepLocksForRetry = signal.reason === "shutdown";
       return;
     }
-    const loaded = await loadLockedLesson(ws, lessonId, jobId);
+    const loaded = await loadLockedLesson(ws, lessonId, jobId, logger);
     worksheetId = loaded.worksheetId;
     if (deps.ai.kind === "unconfigured") {
       throw new NonRetryableError("AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)");
@@ -105,35 +106,48 @@ interface LoadedLockedLesson {
 /**
  * The lesson row this job owns, or a `NonRetryableError`: `lesson missing` when the API's failure
  * path hard-deleted it (§6), `lock lost` when it is unlocked or a newer job holds it — nothing is
- * written in either case. On a resume the stored worksheet (if any) rides along as state.
+ * written in either case.
+ *
+ * The worksheet row id is fixed here, before Plan, and written onto `lesson.artefacts` by the
+ * first `persist`, so every retry of this job looks for the same row: a worksheet created just
+ * before the lesson write failed is found and reused rather than orphaned. On a resume the stored
+ * worksheet (if any) rides along as state; a checkpoint at or past `generated` whose worksheet row
+ * is missing is rolled back to `planned` so Generate recreates it (the slides already on the row
+ * are kept, so that costs one call).
  */
 async function loadLockedLesson(
   ws: WorkspaceDb,
   lessonId: LessonId,
   jobId: JobId,
+  logger: Logger,
 ): Promise<LoadedLockedLesson> {
   const row = await getDocument(ws, lessonId);
   if (row === null || row.kind !== "lesson") throw new NonRetryableError("lesson missing");
   if (row.generatingJobId !== jobId) throw new NonRetryableError("lock lost");
-  const lesson = parseLesson(row.body);
-  if (!lesson.brief) throw new NonRetryableError("lesson has no brief to plan from");
-  const worksheetId = lesson.artefacts?.worksheetId ?? newId();
-  let worksheet: Worksheet | undefined;
-  let worksheetRowExists = false;
-  if (lesson.artefacts?.worksheetId) {
-    const worksheetRow = await getDocument(ws, worksheetId);
-    if (worksheetRow !== null && worksheetRow.kind === "worksheet") {
-      worksheetRowExists = true;
-      worksheet = parseStoredWorksheet(worksheetRow.body);
-    }
+  const stored = parseLesson(row.body);
+  if (!stored.brief) throw new NonRetryableError("lesson has no brief to plan from");
+  const worksheetId = stored.artefacts?.worksheetId ?? newId();
+  let lesson: Lesson = stored.artefacts ? stored : { ...stored, artefacts: { worksheetId } };
+
+  const worksheetRow = await getDocument(ws, worksheetId);
+  const worksheetRowExists = worksheetRow !== null && worksheetRow.kind === "worksheet";
+  const worksheet = worksheetRowExists ? parseStoredWorksheet(worksheetRow.body) : undefined;
+  if (!worksheetRowExists && lesson.generation && lesson.generation.stage !== "planned") {
+    logger.warn(
+      { lessonId, worksheetId, stage: lesson.generation.stage },
+      "worksheet row missing at a later checkpoint; resuming from planned to recreate it",
+    );
+    lesson = { ...lesson, generation: { ...lesson.generation, stage: "planned" } };
   }
   return { input: { lesson, worksheetId, worksheet }, worksheetId, worksheetRowExists };
 }
 
 /**
- * `PipelineDeps.persist`: the lesson through `putDocumentAsJob` (the lock is the predicate); the
- * worksheet row is created under the same lock the first time a stage hands one over and updated
- * through `putDocumentAsJob` after that. A `lost_lock` / `missing` answer stops the job for good.
+ * `PipelineDeps.persist`. The worksheet goes first — created under the same lock the first time a
+ * stage hands one over, `putDocumentAsJob` after that — and the lesson, whose `generation.stage`
+ * is the checkpoint, last: a failure between the two leaves the checkpoint un-advanced, so the
+ * retry re-runs the stage instead of trusting a worksheet that was never written. A `lost_lock` /
+ * `missing` answer for either row stops the job for good.
  */
 function makePersist(
   ws: WorkspaceDb,
@@ -143,12 +157,10 @@ function makePersist(
 ): PipelineDeps["persist"] {
   let worksheetCreated = loaded.worksheetRowExists;
   return async (lesson: Lesson, worksheet?: Worksheet) => {
-    const result = await putDocumentAsJob(ws, lessonId, lesson, jobId);
-    if (result.status !== "ok") throw new NonRetryableError(`lesson ${result.status}`);
     if (worksheet) {
       if (worksheetCreated) {
-        const ws2 = await putDocumentAsJob(ws, loaded.worksheetId, worksheet, jobId);
-        if (ws2.status !== "ok") throw new NonRetryableError(`worksheet ${ws2.status}`);
+        const put = await putDocumentAsJob(ws, loaded.worksheetId, worksheet, jobId);
+        if (put.status !== "ok") throw new NonRetryableError(`worksheet ${put.status}`);
       } else {
         await createDocument(ws, "worksheet", worksheet, {
           id: loaded.worksheetId,
@@ -157,6 +169,8 @@ function makePersist(
         worksheetCreated = true;
       }
     }
+    const result = await putDocumentAsJob(ws, lessonId, lesson, jobId);
+    if (result.status !== "ok") throw new NonRetryableError(`lesson ${result.status}`);
     return { updatedAt: result.row.updatedAt.toISOString() };
   };
 }

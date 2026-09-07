@@ -188,6 +188,40 @@ describeDb("lesson.plan job", () => {
     expect((await getDocument(ws(), worksheetId))?.generatingJobId).toBeNull();
   });
 
+  test("a `generated` checkpoint whose worksheet row is missing is recreated under the same id on retry", async () => {
+    const jobId = newId<JobId>();
+    const lessonId = await briefLesson(jobId);
+    const evaluateIndex = 1 + FIXTURES.plan.outline.length - 2 + 1;
+    const first = createFakeAi({
+      script: pipelineScript({
+        overrides: {
+          [evaluateIndex]: () => {
+            throw new Error("provider unreachable");
+          },
+        },
+      }),
+    });
+    await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(first)).ctx)).rejects.toThrow();
+    const mid = await storedLesson(lessonId);
+    const worksheetId = mid.artefacts?.worksheetId ?? "";
+    expect(mid.generation?.stage).toBe("generated");
+    // The partial state the review found: checkpoint advanced, worksheet row not there.
+    expect(await deleteDocument(ws(), worksheetId)).toBe(true);
+
+    // Generate re-runs for the worksheet only (every slide is already on the row), then Evaluate.
+    const second = createFakeAi({ script: pipelineScript().slice(evaluateIndex - 1) });
+    await lessonPlanJob(ctx(jobId, lessonId, depsWith(second)).ctx);
+
+    expect(second.calls.map((c) => c.context?.stage)).toEqual(["generate", "evaluate"]);
+    const done = await storedLesson(lessonId);
+    expect(done.generation?.stage).toBe("repaired");
+    expect(done.slides).toHaveLength(FIXTURES.plan.outline.length);
+    expect(done.artefacts?.worksheetId).toBe(worksheetId);
+    const worksheetRow = await getDocument(ws(), worksheetId);
+    expect(worksheetRow?.kind).toBe("worksheet");
+    expect(worksheetRow?.generatingJobId).toBeNull();
+  });
+
   test("an unconfigured provider is a NonRetryableError and releases the lock", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
