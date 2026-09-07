@@ -13,7 +13,9 @@
     "./starter": "./src/starter.ts",
     "./styles/editor.css": "./src/styles/editor.css",
     "./present": "./src/present/index.ts",
-    "./lesson": "./src/lesson/index.ts"
+    "./lesson": "./src/lesson/index.ts",
+    "./worksheet": "./src/worksheet/index.ts",
+    "./styles/print.css": "./src/styles/print.css"
   },
   "scripts": {
     "lint": "biome check .",

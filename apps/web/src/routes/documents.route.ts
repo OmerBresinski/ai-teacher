@@ -33,6 +33,18 @@ export const presentSearchSchema = z.object({
   /** 1-based slide to open on; the viewer's Present passes the slide being viewed. */
   slide: z.coerce.number().int().positive().optional().catch(undefined),
 });
+/**
+ * `/w/$worksheetId/print?auto=1` prints as soon as the sheet is measured (TeachDeck
+ * `worksheetPrintHref`). The router's parser JSON-decodes `1` to a number, so both spellings are
+ * accepted and normalised to the string; anything else is dropped rather than thrown.
+ */
+export const worksheetPrintSearchSchema = z.object({
+  auto: z
+    .union([z.literal("1"), z.literal(1)])
+    .transform((): "1" => "1")
+    .optional()
+    .catch(undefined),
+});
 const titleFrom = ({ loaderData }: { loaderData?: { title: string } }) =>
   pageTitle(loaderData?.title ?? "Document");
 
@@ -72,10 +84,12 @@ export const worksheetEditorRoute = createRoute({
   component: stubPage,
 });
 
+/** The print layout (TEACH-108; ADR 0023 §2): the paginated sheet, no app chrome. */
 export const worksheetPrintRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: "/w/$worksheetId/print",
   loader: ({ context, params }) => loadDocument(context.queryClient, params.worksheetId),
+  validateSearch: (search) => worksheetPrintSearchSchema.parse(search),
   head: titleFrom,
-  component: stubPage,
+  component: lazyRouteComponent(() => import("./worksheet-print.page"), "WorksheetPrintPage"),
 });
