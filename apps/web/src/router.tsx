@@ -20,6 +20,7 @@ import {
   worksheetPrintRoute,
 } from "@/routes/documents.route";
 import { kitRoute } from "@/routes/kit.route";
+import { lessonBriefRoute } from "@/routes/lesson-brief.route";
 import {
   indexRoute,
   lessonsRoute,
@@ -37,6 +38,7 @@ export const routeTree = rootRoute.addChildren([
     libraryLayoutRoute.addChildren([
       indexRoute,
       lessonsRoute,
+      lessonBriefRoute,
       worksheetsRoute,
       seriesIndexRoute,
       seriesDetailRoute,

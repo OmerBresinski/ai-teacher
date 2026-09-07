@@ -38,6 +38,7 @@ test.describe("accessibility (axe)", () => {
   const ROUTES = (paths: SeededPaths): { path: string; ready: RegExp | string }[] => [
     { path: "/", ready: "Home" },
     { path: "/lessons", ready: "Lessons" },
+    { path: "/lessons/new", ready: "Topic or objective" },
     { path: "/worksheets", ready: "Worksheets" },
     { path: "/series", ready: "Series" },
     { path: paths.series("series-romans"), ready: "The Romans" },
@@ -77,7 +78,9 @@ test.describe("accessibility (axe)", () => {
         Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished)),
       );
     };
-    for (const label of ["New lesson", "New worksheet", "New series"]) {
+    // New lesson is the brief screen since TEACH-122 (scanned in the route list); the dialogs stay
+    // for worksheets and series.
+    for (const label of ["New worksheet", "New series"]) {
       await page.getByRole("button", { name: label }).click();
       await expect(page.getByRole("dialog")).toBeVisible();
       await settled();

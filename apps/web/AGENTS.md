@@ -69,6 +69,13 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
 - Client storage keys: `tj:sidebar-collapsed`, `tj:library:sort`, `tj:library:view`, and
   `tj:last-shell` are the stable browser preference/session contracts for the library shell;
   `tj:navigator` (full / compact rail) is the editor's.
+- `/lessons/new` is the lesson brief (`lesson-brief.route.ts` + `lesson-brief.page.tsx`, F01 item 2):
+  one form validated by `CreateLessonSchema` from `@tj/domain/documents` (the same schema
+  `POST /lessons` runs, so the identifier guard reads the same), the two clarifying questions from
+  `lib/brief-questions.ts` (product copy lives only there), `libraryMutations.createLesson` →
+  `/l/$lessonId`. "New lesson" in the library navigates here; `NewDocumentDialog` stays for
+  worksheets and for the page's "Blank lesson" action. e2e: `brief` spec; `/lessons/new` is in the
+  a11y route list.
 - Document routes: `/l/$lessonId` is the editor (`lesson-editor.page.tsx`, `LessonEditor` from
   `@tj/editor/lesson`), `/l/$lessonId/view` the read-only viewer, `/l/$lessonId/present` present
   mode (`?from=edit|view` decides where exit lands). Each page imports `@tj/editor/styles/editor.css`.
