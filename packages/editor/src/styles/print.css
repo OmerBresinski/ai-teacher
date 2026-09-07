@@ -1,0 +1,74 @@
+/*
+ * `@tj/editor/styles/print.css` — everything the worksheet print route paints with: the theme
+ * fonts, the sheet, and the print layout (TeachDeck `app/w/[id]/print/print.css`). On screen the
+ * route is a plain preview; on paper it is exactly the sheet's page size with no chrome, no margins
+ * of the browser's own, and one element-painted page per sheet (`@page` can only carry size and
+ * margin).
+ *
+ * The size itself is written by `WorksheetPrint`, because it follows the worksheet and `@page`
+ * cannot read a custom property. Imported by the print page only (ADR 0022 §8): Vite ships it with
+ * that lazy chunk, so none of it reaches the initial bundle or any other route.
+ */
+@import "./fonts.css";
+@import "./worksheet.css";
+
+@page {
+  margin: 0;
+}
+
+.ws-print-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 24px;
+  background: var(--canvas);
+}
+
+.ws-print-root .ws-page {
+  box-shadow: var(--shadow-slide);
+}
+
+/* The "a question does not fit" hint above the preview; never printed. */
+.ws-print-hint {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--foreground);
+}
+
+.ws-print-hint a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ws-print-hint a:hover {
+  text-decoration: none;
+}
+
+@media print {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .ws-print-hint {
+    display: none;
+  }
+
+  .ws-print-root {
+    display: block;
+    gap: 0;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .ws-print-root .ws-page {
+    box-shadow: none;
+  }
+}

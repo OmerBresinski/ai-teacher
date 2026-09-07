@@ -22,7 +22,9 @@ reference; nothing is pasted from it without reading the file it came from.
   `className="tj-stage"` (`tooltipClassName` / `contentClassName` on `IconButton` / `Tooltip`).
 - **ADR 0022 §4 — TanStack Query is the only store.** No `zustand`, `zundo`, `immer`-as-store or
   `idb-keyval`. The document lives in the Query cache under the key the app passes in; edits are
-  pure reducers in `src/model/reducers/` applied through `useDocumentHistory`. A reducer is
+  pure reducers in `src/model/reducers/` applied through `useDocumentHistory` (lessons) and
+  `src/worksheet/reducers/` applied through `useWorksheetHistory` (worksheets); both are thin
+  wrappers over the one generic `src/model/use-history.ts`. A reducer is
   `(lesson, ...args) => Lesson` or `=> { lesson, id }`; it returns the *same* object for a no-op
   (the hook treats identity as "nothing changed") and `silent(...)`-marked reducers
   (`setFitVersion`, `updateElementLayout`) write without an undo step. Transient UI state
@@ -63,8 +65,9 @@ reference; nothing is pasted from it without reading the file it came from.
 src/
   model/      themes, fonts, grid, factories, layouts, geometry are one-line re-exports of
               `@tj/slides` (ADR 0025 §9); insert (element factories), reducers/ (pure lesson
-              reducers, immer inside),
-              use-document-history (undo/redo/transactions over the Query cache)
+              reducers, immer inside), use-history (the one undo/redo/transactions implementation
+              over the Query cache, generic in the document type), use-document-history (its
+              `Lesson` wrapper), worksheet-factories, demo-worksheet
   text/       Tiptap extension set + static HTML rendering (renderDocHTML)
   images/     image-search (Openverse mapping + `searchOpenverse`/`fetchRemoteImage`, pure; no
               Tenor, no `process.env`), images (`fileToDataUrl` downscale, `isImageFile`)
@@ -76,6 +79,14 @@ src/
               Measurer the tests use — happy-dom cannot lay out text
   text/       Tiptap extensions, static HTML, doc-marks/links (pure), active-editor context
   present/    LessonViewer, PresentView and present-mode pieces (`@tj/editor/present`)
+  worksheet/  `@tj/editor/worksheet`: pure modules (metrics, paginate, answers, word-search — TeachDeck
+              `lib/worksheet/*`), reducers/ (pure worksheet reducers; `edit` renumbers questions),
+              use-worksheet-history (the `Worksheet` wrapper over `model/use-history`), the static
+              renderer (Sheet, BlockContent, WordSearch, block-types), measure (off-screen column +
+              ResizeObserver → `useSheetPagination`; the one external subscription — it ignores
+              reports taken while `display: none` under `@media print`) and WorksheetPrint
+              (`?auto=1` → `window.print()` once, after `whenFontsReady` and two frames). Editor
+              chrome (BlockShell, EditableBlocks, toolbars) arrives with TEACH-109.
   lesson/     LessonEditor shell (`@tj/editor/lesson`): TopBar, InsertRail, Navigator, Canvas,
               canvas/ (SlideActions, SlideTabs, placement), transform/ (SelectionLayer, keys,
               hit-test, resize), toolbar/ (ContextualToolbar routing + placement; one file per
@@ -85,7 +96,11 @@ src/
               `imagePanel`), image-source (file/stock → `ImageSource`, `imageFields`),
               canvas/use-image-drop (paste + drop listeners), ThemeDialog, use-editor-session,
               use-autosave, slide-commands, keys, shortcuts
-  styles/     editor.css = fonts.css + slide.css + present.css
+  styles/     editor.css = fonts.css + slide.css + present.css; print.css = fonts.css +
+              worksheet.css + the print layout (`@tj/editor/styles/print.css`, imported by the
+              worksheet print page only). worksheet.css reads only `--ws-*` variables set by
+              `sheetVars()`; its `.ws-rt` rules are scoped under `.ws-sheet` so they beat slide.css's
+              `.td-rt` (RichText carries both classes) whatever the import order.
   thumb.ts    the library's thumbnail entry (`@tj/editor/thumb`)
 ```
 

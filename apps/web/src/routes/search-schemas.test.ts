@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { defaultParseSearch } from "@tanstack/react-router";
 import { devJobsSearchSchema } from "./dev-jobs.route";
-import { presentSearchSchema } from "./documents.route";
+import { presentSearchSchema, worksheetPrintSearchSchema } from "./documents.route";
 import { librarySearchSchema } from "./library.route";
 import { signInSearchSchema } from "./sign-in.route";
 
@@ -64,5 +64,15 @@ describe("search schemas drop malformed params", () => {
       slide: undefined,
     });
     expect(parse("")).toEqual({ series: undefined, from: undefined, slide: undefined });
+  });
+
+  it('worksheetPrintSearchSchema.auto: `?auto=1` (a number to the parser) and a quoted "1" both mean print', () => {
+    const parse = (qs: string) => worksheetPrintSearchSchema.parse(defaultParseSearch(qs));
+    expect(parse("?auto=1")).toEqual({ auto: "1" });
+    expect(parse("?auto=%221%22")).toEqual({ auto: "1" });
+    expect(parse("?auto=0")).toEqual({ auto: undefined });
+    expect(parse("?auto=true")).toEqual({ auto: undefined });
+    expect(parse("?auto=%5B%221%22%5D")).toEqual({ auto: undefined });
+    expect(parse("")).toEqual({ auto: undefined });
   });
 });
