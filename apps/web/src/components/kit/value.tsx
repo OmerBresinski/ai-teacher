@@ -17,7 +17,7 @@ export function Value() {
     <KitGroup
       id="value"
       title="Value"
-      rule="A value reads in tabular figures beside its control. The slider track is a hairline, the fill is ink; the accent is kept for the focus band."
+      rule="A value reads in tabular figures beside its control. The slider track is a hairline, the fill is ink; the accent is kept for the focus band. The bubble reads the value while it moves; the readout beside it stays."
     >
       <Specimen
         name="Popover"
@@ -52,19 +52,43 @@ export function Value() {
           <span className="text-body text-destructive">Could not save</span>
         </Variant>
       </Specimen>
-      <Specimen name="Slider" note="Ink fill on a control-border track; 32px row, 16px thumb.">
+      <Specimen
+        name="Slider"
+        note="Ink fill on a control-border track; 32px row, 16px thumb. Drag or use the arrow keys to see the value bubble."
+      >
         <Variant label="Zoom">
-          <Slider aria-label="Zoom" defaultValue={[50]} className="w-56" />
+          <Slider
+            aria-label="Zoom"
+            defaultValue={[50]}
+            valueLabel={(v) => `${v}%`}
+            className="w-56"
+          />
         </Variant>
         <Variant label="Font size, min and max">
-          <Slider aria-label="Font size range" defaultValue={[20, 70]} className="w-56" />
+          <Slider
+            aria-label="Font size range"
+            defaultValue={[20, 70]}
+            valueLabel={(v) => `${v} pt`}
+            className="w-56"
+          />
         </Variant>
         <Variant label="Locked">
-          <Slider aria-label="Opacity" defaultValue={[30]} disabled className="w-56" />
+          <Slider
+            aria-label="Opacity"
+            defaultValue={[30]}
+            valueLabel={(v) => `${v}%`}
+            disabled
+            className="w-56"
+          />
         </Variant>
         <Variant label="Corner radius, with readout">
           <div className="flex w-64 items-center gap-3">
-            <Slider aria-label="Corner radius" defaultValue={[8]} max={32} />
+            <Slider
+              aria-label="Corner radius"
+              defaultValue={[8]}
+              max={32}
+              valueLabel={(v) => `${v} px`}
+            />
             <span className="w-8 text-right text-meta text-ink-3 tabular-nums">8</span>
           </div>
         </Variant>

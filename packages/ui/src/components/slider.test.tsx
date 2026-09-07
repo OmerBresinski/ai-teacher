@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Slider } from "./slider";
@@ -11,7 +11,7 @@ describe("Slider", () => {
     render(<Slider aria-label="Zoom" defaultValue={[50]} step={5} onValueChange={onValueChange} />);
     const thumb = screen.getByRole("slider", { name: "Zoom" });
     expect(thumb).toHaveAttribute("aria-valuenow", "50");
-    thumb.focus();
+    act(() => thumb.focus());
     await user.keyboard("{ArrowRight}");
     expect(thumb).toHaveAttribute("aria-valuenow", "55");
     expect(onValueChange).toHaveBeenCalledWith([55]);
@@ -33,6 +33,36 @@ describe("Slider", () => {
     expect(root).toHaveAttribute("data-disabled");
     expect(root).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("slider", { name: "Zoom" })).toHaveAttribute("data-disabled");
+  });
+
+  it("valueLabel: aria-valuetext reads the formatted value; the bubble shows on keyboard focus only", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <Slider aria-label="Opacity" defaultValue={[50]} step={5} valueLabel={(v) => `${v}%`} />,
+    );
+    const thumb = screen.getByRole("slider", { name: "Opacity" });
+    expect(thumb).toHaveAttribute("aria-valuetext", "50%");
+    // At rest there is no bubble: the readout beside the slider is the resting value.
+    expect(container.querySelector('[data-slot="slider-value"]')).toBeNull();
+    await user.tab();
+    expect(thumb).toHaveFocus();
+    expect(container.querySelector('[data-slot="slider-value"]')).toHaveTextContent("50%");
+    await user.keyboard("{ArrowRight}");
+    expect(thumb).toHaveAttribute("aria-valuetext", "55%");
+    expect(container.querySelector('[data-slot="slider-value"]')).toHaveTextContent("55%");
+    // Shift + arrow steps by ten steps (Radix); Home and End go to the ends.
+    await user.keyboard("{Shift>}{ArrowLeft}{/Shift}");
+    expect(thumb).toHaveAttribute("aria-valuenow", "5");
+    await user.keyboard("{End}");
+    expect(thumb).toHaveAttribute("aria-valuetext", "100%");
+    await user.tab();
+    expect(container.querySelector('[data-slot="slider-value"]')).toBeNull();
+  });
+
+  it("without valueLabel there is no aria-valuetext and no bubble", () => {
+    const { container } = render(<Slider aria-label="Zoom" defaultValue={[20]} />);
+    expect(screen.getByRole("slider", { name: "Zoom" })).not.toHaveAttribute("aria-valuetext");
+    expect(container.querySelector('[data-slot="slider-value"]')).toBeNull();
   });
 
   it("paints the ink fill, not the accent (Switch owns the accent)", () => {

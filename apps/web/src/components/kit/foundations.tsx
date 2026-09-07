@@ -132,7 +132,12 @@ export function Foundations() {
             <Pencil aria-hidden size={16} strokeWidth={1.5} />
           </IconButton>
           <Switch aria-label="Laser pointer" defaultChecked />
-          <Slider aria-label="Timer" defaultValue={[40]} className="w-40" />
+          <Slider
+            aria-label="Timer"
+            defaultValue={[40]}
+            valueLabel={(v) => `${v} min`}
+            className="w-40"
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">Stage menu</Button>
