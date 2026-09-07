@@ -5,6 +5,7 @@ import { EmptyState, Spinner } from "@tj/ui";
 import { Sparkles } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
+import { pendingSlides } from "@/lib/pending-slides";
 import { queryKeys } from "@/lib/query";
 
 /**
@@ -72,6 +73,8 @@ export function GeneratingLesson({
           leading={leading}
           onPresent={() => undefined}
           onDuplicate={() => Promise.resolve()}
+          // A stopped run promises no more slides; a live one shows a skeleton per slide to come.
+          pending={failed ? [] : pendingSlides(lesson)}
         />
       ) : (
         <main className="flex flex-1 items-center justify-center px-6 py-12">

@@ -1,11 +1,12 @@
 import {
+  type GeneratableSlideKind,
   hasRevealableAnswer,
   type Lesson,
   type Slide,
   slideStepCount,
   type Theme,
 } from "@tj/domain/documents";
-import { AppBar, AppBarGroup, AppBarTitle, Button, cn, IconButton, Switch } from "@tj/ui";
+import { AppBar, AppBarGroup, AppBarTitle, Button, cn, IconButton, Skeleton, Switch } from "@tj/ui";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { memo, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { getTheme } from "../model/themes";
@@ -25,6 +26,11 @@ const THUMB = 168;
 const SWIPE_PX = 48;
 /** 168px thumb (16:9 = 168x94.5) + 22px gutters. */
 const RAIL_WIDTH = 212;
+/** Between two thumbs that land in the same refetch, so they still arrive one after another. */
+const ARRIVE_STAGGER_MS = 80;
+
+/** A slide the generating pipeline has still to write (ADR 0025 §7). */
+export type PendingSlide = { kind: GeneratableSlideKind };
 
 export type LessonViewerProps = {
   lesson: Lesson;
@@ -36,6 +42,12 @@ export type LessonViewerProps = {
   leading?: ReactNode;
   /** Where the export control sits once it exists (E1). */
   exportSlot?: ReactNode;
+  /**
+   * Slides still to come, in order, after `lesson.slides` (the generating view only). Each gets a
+   * skeleton row in the rail, and a thumb that lands after mount fades in where its skeleton stood.
+   * Absent for a finished lesson: nothing in the rail animates.
+   */
+  pending?: readonly PendingSlide[];
 };
 
 export function LessonViewer({
@@ -44,6 +56,7 @@ export function LessonViewer({
   onDuplicate,
   leading,
   exportSlot,
+  pending,
 }: LessonViewerProps) {
   const theme = getTheme(lesson.themeId);
   const [index, setIndex] = useState(0);
@@ -51,6 +64,7 @@ export function LessonViewer({
   const [showAnswer, setShowAnswer] = useState(false);
   const [copying, setCopying] = useState(false);
   const railRef = useRef<HTMLElement>(null);
+  const arrivals = useArrivals(lesson.slides.length, pending !== undefined);
 
   const slide = lesson.slides[index];
   const question = slide ? hasRevealableAnswer(slide) : false;
@@ -151,7 +165,11 @@ export function LessonViewer({
         <AppBarGroup>
           {leading}
           <AppBarTitle>{lesson.title}</AppBarTitle>
-          <span className="shrink-0 text-meta text-ink-3">{lesson.slides.length} slides</span>
+          <span className="shrink-0 text-meta text-ink-3">
+            {pending && pending.length > 0
+              ? `${lesson.slides.length} of ${lesson.slides.length + pending.length} slides`
+              : `${lesson.slides.length} slides`}
+          </span>
         </AppBarGroup>
 
         {/* One primary in the bar and everything else as text. */}
@@ -183,9 +201,18 @@ export function LessonViewer({
                   number={i + 1}
                   current={i === index}
                   onSelect={goToSlide}
+                  arriveDelay={arrivals(i)}
                 />
               </li>
             ))}
+            {/*
+             * Keyed by the absolute position the slide will take, so a skeleton stays mounted while
+             * the ones before it fill in, and a landing thumb is the only thing that changes.
+             */}
+            {pending?.map((_, i) => {
+              const position = lesson.slides.length + i;
+              return <SkeletonRow key={`slot-${position}`} number={position + 1} />;
+            })}
           </ul>
         </nav>
 
@@ -272,10 +299,37 @@ export function LessonViewer({
 }
 
 /**
+ * Which rail rows fade in, and how long each waits. Only rows that mount after the first render
+ * arrive, and only while generating (`live`): a finished lesson opened from the library must not
+ * animate its rail. Rows that land in the same refetch are staggered by `ARRIVE_STAGGER_MS` so
+ * they still appear one after another. Returns `null` for a row that does not animate.
+ *
+ * Refs, not state: the counts are bookkeeping about previous renders, and the delay of a row is
+ * fixed the first time it is seen so the memoised `RailRow` keeps a stable prop.
+ */
+function useArrivals(count: number, live: boolean): (index: number) => number | null {
+  const initialCount = useRef(count);
+  const previousCount = useRef(count);
+  const delays = useRef(new Map<number, number>());
+  useEffect(() => {
+    previousCount.current = count;
+  }, [count]);
+  return (index) => {
+    if (!live || index < initialCount.current) return null;
+    const known = delays.current.get(index);
+    if (known !== undefined) return known;
+    const delay = Math.max(0, index - previousCount.current) * ARRIVE_STAGGER_MS;
+    delays.current.set(index, delay);
+    return delay;
+  };
+}
+
+/**
  * One slide in the rail: a 168px picture with its number beside it, current slide ringed in the
  * accent. A raw button on purpose: `Button` would put a control's height and padding on a picture.
  * Memoised: every step or answer toggle re-renders the viewer, and only the row whose `current`
- * flips should repaint its thumbnail (`onSelect` is a stable `useCallback`).
+ * flips should repaint its thumbnail (`onSelect` is a stable `useCallback`). `arriveDelay` (ms)
+ * fades the thumb in on mount over `--duration-arrive`; `null` mounts it still.
  */
 const RailRow = memo(function RailRow({
   slide,
@@ -283,12 +337,14 @@ const RailRow = memo(function RailRow({
   number,
   current,
   onSelect,
+  arriveDelay,
 }: {
   slide: Slide;
   theme: Theme;
   number: number;
   current: boolean;
   onSelect: (index: number) => void;
+  arriveDelay: number | null;
 }) {
   return (
     <button
@@ -301,7 +357,9 @@ const RailRow = memo(function RailRow({
         "flex w-full items-center rounded-chip px-1 py-0.5 text-left outline-none",
         "motion-safe:transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50",
         current ? "bg-brand-quiet" : "hover:bg-accent",
+        arriveDelay !== null && "[--tj-arrive-distance:4px] motion-safe:animate-arrive",
       )}
+      style={arriveDelay !== null ? { animationDelay: `${arriveDelay}ms` } : undefined}
     >
       <span className="w-[18px] shrink-0 pr-1 text-right text-meta text-ink-3 tabular-nums">
         {number}
@@ -317,3 +375,22 @@ const RailRow = memo(function RailRow({
     </button>
   );
 });
+
+/**
+ * The box a slide still to be written will take: the same number column and thumb footprint as
+ * `RailRow`, so nothing reflows when the thumb lands. Not a control and hidden from the tree — the
+ * rail lists only real slides, and the keys stop at the last one.
+ */
+function SkeletonRow({ number }: { number: number }) {
+  return (
+    <li aria-hidden="true" className="flex w-full items-center px-1 py-0.5">
+      <span className="w-[18px] shrink-0 pr-1 text-right text-meta text-ink-3 tabular-nums">
+        {number}
+      </span>
+      <Skeleton
+        className="aspect-video shrink-0 rounded-chip ring-1 ring-border"
+        style={{ width: THUMB }}
+      />
+    </li>
+  );
+}

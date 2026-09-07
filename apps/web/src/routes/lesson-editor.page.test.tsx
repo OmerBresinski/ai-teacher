@@ -178,4 +178,60 @@ describe("LessonEditorPage", () => {
     expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
     expect(screen.queryByTestId("generating-banner")).toBeNull();
   });
+
+  it("a locked lesson shows a skeleton per slide to come and fades each thumb in as it lands", async () => {
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    const row = fakeApi.get("demo-water-cycle");
+    if (!row || !("slides" in row.body)) throw new Error("fixture missing");
+    const written = row.body.slides;
+    // Plan has persisted the outline (four slides) with the first two slides written.
+    const kinds = ["title", "objectives", "content", "plenary"] as const;
+    row.body.facts = {
+      objectives: [],
+      vocabulary: [],
+      workedExamples: [],
+      questions: [],
+      misconceptions: [],
+      outline: kinds.map((kind, i) => ({ id: `s${i + 1}`, kind, minutes: 15, factRefs: [] })),
+      durationMin: 60,
+    };
+    row.body.slides = written.slice(0, 2);
+    renderPage();
+
+    await screen.findByTestId("generating-banner");
+    const skeletons = () =>
+      document.querySelectorAll('nav[aria-label="Slides"] li[aria-hidden="true"]');
+    const thumbs = () => screen.getAllByRole("button", { name: /^Slide \d+$/ });
+    await waitFor(() => expect(skeletons()).toHaveLength(2));
+    expect(thumbs()).toHaveLength(2);
+    expect(screen.getByText("2 of 4 slides")).toBeVisible();
+
+    // The worker writes the third slide and says so.
+    row.body.slides = written.slice(0, 3);
+    const source = FakeEventSource.latest;
+    act(() => {
+      source.open();
+      source.emit(
+        "progress",
+        jobEvent("progress", {
+          progress: { percent: 60, documentUpdatedAt: "2026-09-04T10:00:01.000Z" },
+        }),
+        "1",
+      );
+    });
+    await waitFor(() => expect(thumbs()).toHaveLength(3));
+    expect(skeletons()).toHaveLength(1);
+    expect(thumbs()[2]).toHaveClass("motion-safe:animate-arrive");
+    expect(thumbs()[0]).not.toHaveClass("motion-safe:animate-arrive");
+    expect(screen.getByText("3 of 4 slides")).toBeVisible();
+
+    // A stopped run promises nothing more; what was written stays.
+    act(() => {
+      source.emit("cancelled", jobEvent("cancelled"), "2");
+    });
+    await waitFor(() => expect(skeletons()).toHaveLength(0));
+    expect(thumbs()).toHaveLength(3);
+    expect(screen.getByText("3 slides")).toBeVisible();
+  });
 });
