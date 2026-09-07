@@ -262,6 +262,88 @@ describe("elements", () => {
     expect(r.addElement(lesson, a, "nope")).toBe(lesson);
   });
 
+  test("a non-text element inserts beneath the lowest text; text inserts on top", () => {
+    const t1 = newText("title", "Title", { x: 0, y: 0, w: 400, h: 60 });
+    const t2 = newText("body", "Body", { x: 0, y: 100, w: 400, h: 40 });
+    const { lesson, slideId } = blank(t1, t2);
+    const pic = shape(10, 10);
+    const withPic = r.addElement(lesson, pic, slideId);
+    expect(elements(withPic, slideId).map((e) => e.id)).toEqual([pic.id, t1.id, t2.id]);
+    // The next picture goes directly under the lowest text, above the picture already there.
+    expect(r.insertIndex(elements(withPic, slideId), shape(0, 0))).toBe(1);
+    const t3 = newText("body", "More", { x: 0, y: 200, w: 400, h: 40 });
+    const withText = r.addElement(withPic, t3, slideId);
+    expect(elements(withText, slideId).map((e) => e.id)).toEqual([pic.id, t1.id, t2.id, t3.id]);
+    // Mixed batch: each lands by the rule, the shape under the words, the text on top.
+    const s2 = shape(20, 20);
+    const t4 = newText("body", "Last", { x: 0, y: 300, w: 400, h: 40 });
+    const mixed = r.addElements(withText, [s2, t4], slideId);
+    expect(elements(mixed, slideId).map((e) => e.id)).toEqual([
+      pic.id,
+      s2.id,
+      t1.id,
+      t2.id,
+      t3.id,
+      t4.id,
+    ]);
+  });
+
+  test("a non-text element on a slide with no text lands last", () => {
+    const a = shape(0, 0);
+    const b = shape(50, 50);
+    const { lesson, slideId } = blank(a);
+    expect(elements(r.addElement(lesson, b, slideId), slideId).map((e) => e.id)).toEqual([
+      a.id,
+      b.id,
+    ]);
+  });
+
+  test("gap text and options count as words: a picture goes beneath them too", () => {
+    const opt: SlideElement = {
+      id: uid(),
+      type: "option",
+      x: 0,
+      y: 0,
+      w: 200,
+      h: 40,
+    } as SlideElement;
+    const { lesson, slideId } = blank(opt);
+    const pic = shape(0, 0);
+    expect(elements(r.addElement(lesson, pic, slideId), slideId).map((e) => e.id)).toEqual([
+      pic.id,
+      opt.id,
+    ]);
+  });
+
+  test("duplicate and paste keep the source's place: the copy sits directly above it", () => {
+    const under = shape(0, 0);
+    const t = newText("body", "hi", { x: 0, y: 0, w: 100, h: 40 });
+    const over = shape(200, 0);
+    const { lesson, slideId } = blank(under, t, over);
+    const dup = r.duplicateElements(lesson, slideId, [under.id]);
+    expect(elements(dup.lesson, slideId).map((e) => e.id)).toEqual([
+      under.id,
+      ...dup.ids,
+      t.id,
+      over.id,
+    ]);
+    const pasted = r.pasteElements(lesson, [t], slideId);
+    expect(elements(pasted.lesson, slideId).map((e) => e.id)).toEqual([
+      under.id,
+      t.id,
+      ...pasted.ids,
+      over.id,
+    ]);
+    // The source is gone (a cut, or another slide): the insert rule decides instead.
+    const foreign = r.pasteElements(lesson, [shape(5, 5)], slideId);
+    expect(elements(foreign.lesson, slideId).map((e) => e.id)).toEqual([
+      under.id,
+      ...foreign.ids,
+      t.id,
+      over.id,
+    ]);
+  });
+
   test("updateElement with a patch, with a mutator, and inside a group", () => {
     const t = newText("body", "hi", { x: 0, y: 0, w: 100, h: 40 });
     const a = shape(0, 0);
@@ -338,16 +420,16 @@ describe("elements", () => {
     expect(grp.type === "group" && grp.children.map((ch) => ch.x)).toEqual([0, 200]);
   });
 
-  test("duplicateElements: fresh ids offset by 16, appended on top", () => {
+  test("duplicateElements: fresh ids offset by 16, directly above the source", () => {
     const a = shape(10, 10);
     const b = shape(50, 50);
     const { lesson, slideId } = blank(a, b);
     const { lesson: next, ids } = r.duplicateElements(lesson, slideId, [a.id]);
     expect(ids).toHaveLength(1);
     expect(ids[0]).not.toBe(a.id);
-    expect(elements(next, slideId).map((e) => e.id)).toEqual([a.id, b.id, ids[0] as string]);
+    expect(elements(next, slideId).map((e) => e.id)).toEqual([a.id, ids[0] as string, b.id]);
     expect(el(next, slideId, ids[0] as string)).toMatchObject({ x: 26, y: 26 });
-    expect(r.duplicateElements(lesson, slideId, [a.id], 40).lesson.slides[0]?.elements[2]?.x).toBe(
+    expect(r.duplicateElements(lesson, slideId, [a.id], 40).lesson.slides[0]?.elements[1]?.x).toBe(
       50,
     );
     expect(r.duplicateElements(lesson, slideId, ["nope"])).toEqual({ lesson, ids: [] });

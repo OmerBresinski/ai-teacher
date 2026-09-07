@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { newLesson } from "./factories";
 import { fitWithin } from "./images";
 import {
   clampRect,
@@ -17,11 +18,43 @@ import {
   SHAPE_KINDS,
   TEXT_PRESETS,
 } from "./insert";
+import { addElement } from "./reducers";
 import { getTheme } from "./themes";
 
 const theme = getTheme("chalk");
 const inside = (r: { x: number; y: number; w: number; h: number }) =>
   r.x >= 0 && r.y >= 0 && r.x + r.w <= SLIDE_W && r.y + r.h <= SLIDE_H;
+
+describe("insert draw order", () => {
+  test("a shape from the rail goes beneath the slide's text; a text preset goes on top", () => {
+    const lesson = newLesson("Test");
+    const slide = lesson.slides[0];
+    if (!slide) throw new Error("newLesson has a slide");
+    const title = makeText("title", theme);
+    const body = makeText("body", theme);
+    slide.elements = [title, body];
+    const pic = makeShape("rect", theme);
+    const withPic = addElement(lesson, pic, slide.id);
+    expect(withPic.slides[0]?.elements.map((e) => e.id)).toEqual([pic.id, title.id, body.id]);
+    const heading = makeText("heading", theme);
+    const withHeading = addElement(withPic, heading, slide.id);
+    expect(withHeading.slides[0]?.elements.map((e) => e.id)).toEqual([
+      pic.id,
+      title.id,
+      body.id,
+      heading.id,
+    ]);
+    // No text on the slide: the shape appends as before.
+    const empty = newLesson("Empty");
+    const only = makeShape("ellipse", theme);
+    const first = empty.slides[0];
+    if (!first) throw new Error("newLesson has a slide");
+    first.elements = [];
+    const pics = addElement(addElement(empty, only, first.id), makeIcon("sun", theme), first.id);
+    expect(pics.slides[0]?.elements[0]?.id).toBe(only.id);
+    expect(pics.slides[0]?.elements).toHaveLength(2);
+  });
+});
 
 describe("insert factories", () => {
   test("placeRect centres on the slide by default and clamps to the overhang", () => {
