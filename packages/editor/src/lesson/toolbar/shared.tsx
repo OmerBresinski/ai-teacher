@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Input,
   Label,
@@ -128,6 +129,112 @@ export function BarButton({ className, ...rest }: ComponentProps<"button">) {
         "inline-flex h-8 items-center gap-1 rounded-control px-2 text-body text-foreground outline-none transition-colors duration-(--duration-fast) ease-(--ease-out-soft) hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=open]:bg-accent-active",
         className,
       )}
+    />
+  );
+}
+
+/**
+ * An icon trigger over a radio menu of numeric steps, each row a number and a drawn preview of
+ * what that number looks like. The current value is the marked row.
+ */
+export function StepMenu({
+  label,
+  value,
+  steps,
+  icon,
+  preview,
+  onPick,
+}: {
+  label: string;
+  value: number;
+  steps: readonly number[];
+  icon: ReactNode;
+  preview: (n: number) => ReactNode;
+  onPick: (n: number) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <Tooltip label={label}>
+        <DropdownMenuTrigger asChild>
+          <BarButton
+            aria-label={`${label}, ${value}`}
+            className="w-8 justify-center px-0 font-medium"
+          >
+            {icon}
+          </BarButton>
+        </DropdownMenuTrigger>
+      </Tooltip>
+      <DropdownMenuContent align="start" aria-label={label} className="min-w-44">
+        <DropdownMenuRadioGroup value={String(value)}>
+          {steps.map((n) => (
+            <DropdownMenuRadioItem
+              key={n}
+              value={String(n)}
+              onSelect={() => onPick(n)}
+              className="gap-3 pr-3 font-medium"
+            >
+              <span className="w-5 text-right tabular-nums">{n}</span>
+              {preview(n)}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/* --- Corners ------------------------------------------------------ */
+
+/** Corner radii, slide points, for anything with corners to round: rectangles and images. */
+export const CORNER_RADII: readonly number[] = [0, 4, 8, 12, 16, 24];
+
+/** One rounded corner: the corners glyph. */
+export function CornersGlyph() {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      aria-hidden
+      focusable="false"
+    >
+      <path d="M4 16V9.5A5.5 5.5 0 0 1 9.5 4H16" />
+    </svg>
+  );
+}
+
+/**
+ * The "Corners" menu the shape and image bars share: 0 Square, 4, 8, 12, 16, 24, each row a
+ * rounded-box preview, the current radius marked.
+ */
+export function CornersMenu({
+  value,
+  onPick,
+}: {
+  value: number;
+  onPick: (radius: number) => void;
+}) {
+  return (
+    <StepMenu
+      label="Corners"
+      value={value}
+      steps={CORNER_RADII}
+      icon={<CornersGlyph />}
+      preview={(n) => (
+        <span className="flex flex-1 items-center gap-3">
+          <span
+            aria-hidden
+            className="block h-4 w-7 border-[1.5px] border-foreground"
+            style={{ borderRadius: Math.min(n / 2, 8) }}
+          />
+          {n === 0 ? <span className="text-ink-3">Square</span> : null}
+        </span>
+      )}
+      onPick={onPick}
     />
   );
 }

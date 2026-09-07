@@ -1,30 +1,24 @@
 import type { ShapeElement, Theme } from "@tj/domain/documents";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-  Input,
-  Label,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Tooltip,
-} from "@tj/ui";
-import { memo, type ReactNode, useId } from "react";
+import { Input, Label, Popover, PopoverContent, PopoverTrigger, Tooltip } from "@tj/ui";
+import { memo, useId } from "react";
 import { ColorPicker } from "../../kit/Color";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import { docFromText } from "../../model/factories";
 import { shapeRadius } from "../../slide/elements/ShapeView";
 import { LabelTextControls } from "./LabelTextControls";
 import { MoreDrawer } from "./MoreDrawer";
-import { BarButton, OpacityControl, useElementWrites, useThemePalette } from "./shared";
+import {
+  BarButton,
+  CornersMenu,
+  OpacityControl,
+  StepMenu,
+  useElementWrites,
+  useThemePalette,
+} from "./shared";
 
 /** The border widths on offer, slide points. 0 is "None". */
 const BORDER_WIDTHS: readonly number[] = [0, 1, 2, 3, 4, 6, 8, 12];
-/** Corner radii, slide points. Rectangles and speech bubbles have corners to round. */
-const CORNER_RADII: readonly number[] = [0, 4, 8, 12, 16, 24];
+/** Rectangles and speech bubbles have corners to round. */
 const CORNERED: ReadonlySet<ShapeElement["shape"]> = new Set(["rect", "rounded", "speech"]);
 
 /**
@@ -93,21 +87,8 @@ export const ShapeToolbar = memo(function ShapeToolbar({
         }
       />
       {CORNERED.has(element.shape) ? (
-        <StepMenu
-          label="Corners"
+        <CornersMenu
           value={radius}
-          steps={CORNER_RADII}
-          icon={<CornersGlyph />}
-          preview={(n) => (
-            <span className="flex flex-1 items-center gap-3">
-              <span
-                aria-hidden
-                className="block h-4 w-7 border-[1.5px] border-foreground"
-                style={{ borderRadius: Math.min(n / 2, 8) }}
-              />
-              {n === 0 ? <span className="text-ink-3">Square</span> : null}
-            </span>
-          )}
           onPick={(radius) => update<ShapeElement>(element.id, { radius })}
         />
       ) : null}
@@ -159,56 +140,6 @@ export const ShapeToolbar = memo(function ShapeToolbar({
   );
 });
 
-/**
- * An icon trigger over a radio menu of numeric steps, each row a number and a drawn preview of
- * what that number looks like. The current value is the marked row.
- */
-function StepMenu({
-  label,
-  value,
-  steps,
-  icon,
-  preview,
-  onPick,
-}: {
-  label: string;
-  value: number;
-  steps: readonly number[];
-  icon: ReactNode;
-  preview: (n: number) => ReactNode;
-  onPick: (n: number) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <Tooltip label={label}>
-        <DropdownMenuTrigger asChild>
-          <BarButton
-            aria-label={`${label}, ${value}`}
-            className="w-8 justify-center px-0 font-medium"
-          >
-            {icon}
-          </BarButton>
-        </DropdownMenuTrigger>
-      </Tooltip>
-      <DropdownMenuContent align="start" aria-label={label} className="min-w-44">
-        <DropdownMenuRadioGroup value={String(value)}>
-          {steps.map((n) => (
-            <DropdownMenuRadioItem
-              key={n}
-              value={String(n)}
-              onSelect={() => onPick(n)}
-              className="gap-3 pr-3 font-medium"
-            >
-              <span className="w-5 text-right tabular-nums">{n}</span>
-              {preview(n)}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 /** Three stacked lines of growing weight: the border-width glyph. */
 function BorderWidthGlyph() {
   return (
@@ -223,25 +154,6 @@ function BorderWidthGlyph() {
       <rect x={3} y={4} width={14} height={1} rx={0.5} />
       <rect x={3} y={8.5} width={14} height={2} rx={1} />
       <rect x={3} y={13.5} width={14} height={3} rx={1.5} />
-    </svg>
-  );
-}
-
-/** One rounded corner: the corners glyph. */
-function CornersGlyph() {
-  return (
-    <svg
-      width={20}
-      height={20}
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      aria-hidden
-      focusable="false"
-    >
-      <path d="M4 16V9.5A5.5 5.5 0 0 1 9.5 4H16" />
     </svg>
   );
 }

@@ -143,8 +143,8 @@ const CREDIT_INSET = 6;
 
 /**
  * The attribution affordance on a selected searched image (TEACH-153 §5): a small "i" at the top
- * right of the frame; hover or focus reads "Photo by {credit}", and with a `creditUrl` it is a link
- * to the source. It stays through crop mode, so the credit is never hidden by adjusting.
+ * right of the frame; hover or focus reads the credit as stored ("Title by Creator, licence") under
+ * an "Image credit" heading, and with a `creditUrl` it is a link to the source. It stays through crop mode, so the credit is never hidden by adjusting.
  */
 export function CreditBadge({
   rect,
@@ -179,17 +179,22 @@ export function CreditBadge({
     pointerEvents: "auto",
     outline: "none",
   };
-  const label = `Photo by ${credit}`;
   const glyph = <Info size={12 / scale} strokeWidth={2} aria-hidden />;
+  const tip = (
+    <span className="flex flex-col gap-0.5">
+      <span className="text-eyebrow text-ink-3">Image credit</span>
+      <span>{credit}</span>
+    </span>
+  );
   return (
-    <Tooltip label={label}>
+    <Tooltip label={tip}>
       {href ? (
         <a
           data-credit-badge
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`${label}. Opens the source.`}
+          aria-label={`${credit}. Opens the source.`}
           onPointerDown={(e) => e.stopPropagation()}
           style={style}
         >
@@ -199,7 +204,7 @@ export function CreditBadge({
         <button
           type="button"
           data-credit-badge
-          aria-label={label}
+          aria-label={credit}
           onPointerDown={(e) => e.stopPropagation()}
           style={style}
         >
