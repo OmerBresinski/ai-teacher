@@ -468,6 +468,13 @@ async function watchDeploys(
         if (deps.now() - startedAt >= NO_DEPLOYMENT_WAIT_MS) {
           vercel = { ok: true, status: "PENDING (no new deployment — rate limited?)" };
         }
+      } else if (row?.status === "Canceled") {
+        // The other face of the rate limit (seen 2026-09-07): Vercel *does* create a Production
+        // deployment for the merge and cancels it after ~2 s. It is a new id, so the branch above
+        // never fires, and `Canceled` is neither `Ready` nor `Error` — without this the watch
+        // ran to its timeout on every land. The PR is merged and Railway is checked separately;
+        // the web deploy catches up on the next successful build.
+        vercel = { ok: true, status: "PENDING (Production deployment Canceled — rate limited?)" };
       } else if (row?.status === "Ready") {
         vercel = { ok: true, status: row.status };
       }
