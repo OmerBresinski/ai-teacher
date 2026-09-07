@@ -153,7 +153,8 @@ export const WorksheetSpecSchema = z.strictObject({
   subtitle: line(SPEC_LIMITS.heading).optional(),
   /** Success criteria; the worksheet header shows at most four. */
   criteria: z.array(line(SPEC_LIMITS.item)).max(4),
-  blocks: z.array(BlockSpecSchema).min(4).max(10),
+  // The prompt asks for 4–10; the schema allows two more so an eleventh block is not a retry.
+  blocks: z.array(BlockSpecSchema).min(4).max(12),
 });
 export type WorksheetSpec = z.infer<typeof WorksheetSpecSchema>;
 

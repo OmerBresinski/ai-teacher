@@ -77,12 +77,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "4d3d81705c97653c67583964f71621fc89012073589c98c7282c900278e5dce3",
   },
   "generate-slide": {
-    version: "generate-slide.v1",
-    hash: "6a8382ae5e7cb7a68b3bedb053c96e1d1a54571592cef2cd7dc9fced7030619c",
+    version: "generate-slide.v2",
+    hash: "cdd8f04801cc9dfcda4ada72ea1ac6b63ad08c64524c68cb276f98abaeac9964",
   },
   "generate-worksheet": {
-    version: "generate-worksheet.v1",
-    hash: "373da00835d641a575f87aa5a2650b1360c67898e7a16aff7d66952814b501d6",
+    version: "generate-worksheet.v3",
+    hash: "d1d5fc280e99447afc89ef63b35b3ebcbc708b604d70fed39ba71bc4ca8f7814",
   },
   evaluate: {
     version: "evaluate.v1",

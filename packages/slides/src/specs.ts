@@ -255,3 +255,20 @@ const _slideKinds: readonly SlideSpec["kind"][] = GENERATABLE_SLIDE_KINDS;
 const _blockTypes: readonly BlockSpec["type"][] = GENERATABLE_BLOCK_TYPES;
 void _slideKinds;
 void _blockTypes;
+
+/**
+ * The spec schema for one slide kind / block type, as a plain object schema, or `undefined` for a
+ * kind the pipeline cannot generate (`image-text`, `blank`, `image` blocks …). Structured-output
+ * providers (Bedrock's tool-based mode) require the top level to be `type: object`; the unions
+ * above serialise as a top-level `anyOf`, which Bedrock rejects with a 400. A per-kind schema is
+ * also the tighter ask: the model cannot answer with a different kind.
+ */
+export function slideSpecSchemaFor(kind: string): z.ZodType<SlideSpec> | undefined {
+  const option = SlideSpecSchema.options.find((o) => o.shape.kind.value === kind);
+  return option as unknown as z.ZodType<SlideSpec> | undefined;
+}
+
+export function blockSpecSchemaFor(type: string): z.ZodType<BlockSpec> | undefined {
+  const option = BlockSpecSchema.options.find((o) => o.shape.type.value === type);
+  return option as unknown as z.ZodType<BlockSpec> | undefined;
+}
