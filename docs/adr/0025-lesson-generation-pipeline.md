@@ -181,6 +181,20 @@ What the code says today, read on `master` at `9752445`:
     (F06 item 4); a second miss is a typed `StageFailure` the pipeline surfaces (Plan/Generate:
     job fails; Evaluate/Repair: recorded as a finding, job completes). No third attempt, no
     text-and-parse path.
+    **Amended 2026-09-08: a deterministic repair runs when the first validation fails.** Sonnet 5 and Haiku 4.5
+    get their schema from the Bedrock provider as a forced `json` tool, and a tool input sometimes
+    arrives with a list — or the whole answer — serialised as a JSON *string*
+    (`{ "learningObjectives": "[{…}]" }`; two production Plan failures on 2026-09-07). The text is
+    validated by `Output.object` as before; only when that fails does `repairJsonText`
+    (`packages/generation/src/repair-json.ts`) parse any string property that is itself JSON and
+    hoist an answer wrapped under its own first key, and the repaired text is validated the same
+    way. If it passes it is the answer (logged as `repairs: [...]`, kinds only); if not, the
+    original miss goes to the one retry as before. The retry prompt ends with a shape
+    reminder (lists are arrays, never JSON-in-a-string, nothing wrapped in a string) and drops the
+    checks zod runs on a path after a wrong type there, since the follow-on message ("Too big:
+    expected string to have <=4 characters" for a string where an array was due) misleads the
+    model. This is not a text-and-parse path: `Output.object` and its schema still drive the
+    call; the repair is a pure function of the text with no model involvement.
 15. **Cost: a USD cap with a token fallback.** `@tj/ai` gains `PRICES: Record<modelId, {
     inputPerMTok, outputPerMTok, cachedInputPerMTok }>` for the three `DEFAULT_MODEL_IDS`, a
     `costUsd(modelId, usage): number | null` helper, and a `createBudget({ capUsd, capTokens })`
