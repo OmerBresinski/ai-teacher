@@ -180,6 +180,7 @@ export function MoreDrawer({
                 min={0}
                 max={100}
                 aria-label="Opacity"
+                valueLabel={(v) => `${v}%`}
                 className="w-28"
               />
             </PanelRow>

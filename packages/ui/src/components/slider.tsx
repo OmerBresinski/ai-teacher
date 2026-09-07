@@ -11,7 +11,19 @@ import { cn } from "../lib/cn";
  * puts the slider role, keyboard model and `aria-valuenow` on each thumb, so the `aria-label` /
  * `aria-labelledby` given to the component is forwarded to every thumb — that is where a screen
  * reader and Testing Library look for the name.
+ *
+ * `valueLabel` (TEACH-150) opts a slider into a value bubble: a small ink tag above the thumb that
+ * reads the formatted value while the thumb is being dragged or has keyboard focus, and is gone at
+ * rest. The same formatter feeds `aria-valuetext`, so a screen reader hears "60%" rather than "60".
+ * A persistent `<output>` beside the slider is still the caller's job where a value must be
+ * readable at rest. Keyboard: arrows step by `step`, Shift + arrows and PageUp/PageDown step by ten
+ * steps, Home and End go to the ends — all from Radix.
  */
+
+type SliderProps = React.ComponentProps<typeof SliderPrimitive.Root> & {
+  /** Formats a thumb's value for the bubble and `aria-valuetext`. Enables the bubble when set. */
+  valueLabel?: (value: number) => string;
+};
 
 function Slider({
   className,
@@ -19,14 +31,31 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  step = 1,
+  valueLabel,
+  onValueChange,
+  onPointerDown,
+  onPointerUp,
+  onPointerCancel,
+  onKeyDown,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
-  const values = React.useMemo(
-    () => (Array.isArray(value) ? value : Array.isArray(defaultValue) ? defaultValue : [min]),
-    [value, defaultValue, min],
+}: SliderProps) {
+  // Uncontrolled sliders keep a mirror of their value so the bubble can read it.
+  const [inner, setInner] = React.useState<number[]>(() =>
+    Array.isArray(defaultValue) ? defaultValue : [min],
   );
+  const values = Array.isArray(value) ? value : inner;
+
+  // The bubble shows for the focused thumb while a pointer drag is in progress or the focus came
+  // from the keyboard. Radix focuses the thumb on pointer down, so a pointer flag set before that
+  // focus tells the two apart; a later arrow key turns the keyboard flag back on.
+  const [dragging, setDragging] = React.useState(false);
+  const [keyboard, setKeyboard] = React.useState(false);
+  const [focused, setFocused] = React.useState<number | null>(null);
+  const pointerFocus = React.useRef(false);
+  const showBubble = valueLabel !== undefined && (dragging || keyboard);
 
   return (
     <SliderPrimitive.Root
@@ -35,6 +64,28 @@ function Slider({
       value={value}
       min={min}
       max={max}
+      step={step}
+      onValueChange={(next) => {
+        if (value === undefined) setInner(next);
+        onValueChange?.(next);
+      }}
+      onPointerDown={(e) => {
+        pointerFocus.current = true;
+        setDragging(true);
+        onPointerDown?.(e);
+      }}
+      onPointerUp={(e) => {
+        setDragging(false);
+        onPointerUp?.(e);
+      }}
+      onPointerCancel={(e) => {
+        setDragging(false);
+        onPointerCancel?.(e);
+      }}
+      onKeyDown={(e) => {
+        setKeyboard(true);
+        onKeyDown?.(e);
+      }}
       className={cn(
         "relative flex h-8 w-full touch-none select-none items-center data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
         className,
@@ -47,18 +98,39 @@ function Slider({
       >
         <SliderPrimitive.Range data-slot="slider-range" className="absolute h-full bg-ink-2" />
       </SliderPrimitive.Track>
-      {values.map((_, index) => (
+      {values.map((v, index) => (
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           // biome-ignore lint/suspicious/noArrayIndexKey: thumbs are positional; Radix keys by index too
           key={index}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
-          className="block size-4 shrink-0 rounded-full border border-border-control bg-card shadow-sm outline-none motion-safe:transition-shadow focus-visible:shadow-focus disabled:pointer-events-none"
-        />
+          aria-valuetext={valueLabel ? valueLabel(v) : undefined}
+          onFocus={() => {
+            setFocused(index);
+            setKeyboard(!pointerFocus.current);
+            pointerFocus.current = false;
+          }}
+          onBlur={() => {
+            setFocused(null);
+            setKeyboard(false);
+          }}
+          className="relative block size-4 shrink-0 rounded-full border border-border-control bg-card shadow-sm outline-none motion-safe:transition-shadow focus-visible:shadow-focus disabled:pointer-events-none"
+        >
+          {showBubble && focused === index && valueLabel ? (
+            <span
+              aria-hidden
+              data-slot="slider-value"
+              className="-translate-x-1/2 pointer-events-none absolute bottom-full left-1/2 mb-1 whitespace-nowrap rounded-[4px] bg-foreground px-1.5 py-0.5 font-medium text-[12px] text-background leading-4 tabular-nums"
+            >
+              {valueLabel(v)}
+            </span>
+          ) : null}
+        </SliderPrimitive.Thumb>
       ))}
     </SliderPrimitive.Root>
   );
 }
 
+export type { SliderProps };
 export { Slider };
