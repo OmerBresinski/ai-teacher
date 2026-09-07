@@ -134,6 +134,11 @@ jobs:
       - name: bun run test:db
         run: bun run test:db
 
+      # The free half of the F06 eval set (ADR 0025 §23, docs/eval.md): eight briefs through the
+      # pipeline on the scripted fake, then the schema checks. No network, no model, < 30 s.
+      - name: bun run eval:schema
+        run: bun run eval:schema
+
       - name: Upload coverage
         if: always() && hashFiles('**/coverage/**') != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

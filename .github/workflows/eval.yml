@@ -1,0 +1,107 @@
+# The paid half of the F06 eval set (ADR 0025 §23, docs/eval.md): every eval brief through the
+# real pipeline on Bedrock, capped per run by AI_EVAL_RUN_COST_CAP_USD. Spends money, so it runs
+# only when asked: a `workflow_dispatch` (from `master` to refresh the baseline) or the `run-eval`
+# label on a PR. Docs-only PRs never carry the label. The `test` job in ci.yml runs the free
+# schema half on every PR; nothing here is required for merge.
+#
+# Needs the repository secret AWS_BEARER_TOKEN_BEDROCK (founder action). Without it the run fails
+# at once with exit 2 and writes nothing.
+#
+# Every third-party action is pinned to a full commit SHA; the trailing comment is the tag it was
+# resolved from. Update the SHA and the comment together (Dependabot opens those PRs).
+
+name: Eval
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled, synchronize]
+
+concurrency:
+  group: eval-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write # the results comment
+  actions: read # download the master artifact
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  DO_NOT_TRACK: 1
+
+jobs:
+  paid:
+    name: paid eval (Bedrock)
+    # A labelled PR, or a manual run. `synchronize` re-runs only while the label is still on.
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'run-eval')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: bun run eval:paid
+        env:
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+          AWS_REGION: us-east-1
+          # The env contract defaults (infra/env.contract.ts); change there first.
+          AI_MODEL_FRONTIER: us.anthropic.claude-opus-5
+          AI_MODEL_STANDARD: us.anthropic.claude-sonnet-5
+          AI_MODEL_SMALL: us.anthropic.claude-haiku-4-5-20251001-v1:0
+          AI_EVAL_RUN_COST_CAP_USD: "3.00"
+          AI_LESSON_TOKEN_CAP: "300000"
+          MASTRA_TELEMETRY_DISABLED: "1"
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bun run eval:paid
+
+      - name: Upload results
+        if: always() && hashFiles('packages/generation/eval/results/*.json') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: eval-${{ github.event.pull_request.head.sha || github.sha }}
+          path: packages/generation/eval/results/*.json
+          retention-days: 90
+
+      # A manual run from master is the baseline every PR comment compares against.
+      - name: Upload as the master baseline
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && hashFiles('packages/generation/eval/results/*.json') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: eval-master-latest
+          path: packages/generation/eval/results/*.json
+          overwrite: true
+          retention-days: 90
+
+      - name: Download the master baseline (if any)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p eval-master
+          run_id="$(gh run list --workflow eval.yml --branch master --event workflow_dispatch --status success --limit 1 --json databaseId -q '.[0].databaseId' || true)"
+          if [ -n "$run_id" ]; then
+            gh run download "$run_id" -n eval-master-latest -D eval-master || echo "no eval-master-latest artifact on run $run_id"
+          else
+            echo "no successful master eval run yet"
+          fi
+
+      - name: Post or update the results comment
+        if: github.event_name == 'pull_request' && hashFiles('packages/generation/eval/results/*.json') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          now="$(find packages/generation/eval/results -name '*.json' | head -n1)"
+          master="$(find eval-master -name '*.json' 2>/dev/null | head -n1 || true)"
+          bun packages/generation/eval/delta.ts "$now" ${master:+"$master"} > eval-comment.md
+          marker='<!-- tj-eval-results -->'
+          existing="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n1 || true)"
+          if [ -n "$existing" ]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${existing}" -F body=@eval-comment.md > /dev/null
+          else
+            gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" -F body=@eval-comment.md > /dev/null
+          fi

@@ -15,6 +15,7 @@ dist/
 
 # Test output
 coverage/
+packages/generation/eval/results/
 playwright-report/
 test-results/
 
