@@ -6,7 +6,7 @@ import { NumberInput } from "../../kit/NumberInput";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import { Segmented } from "../../kit/Segmented";
 import { MoreDrawer } from "./MoreDrawer";
-import { DropTrigger, useElementWrites, useThemePalette } from "./shared";
+import { DropTrigger, OpacityControl, useElementWrites, useThemePalette } from "./shared";
 
 const ARROWS = [
   { id: "none", label: "No arrows", start: false, end: false },
@@ -73,6 +73,8 @@ export const LineToolbar = memo(function LineToolbar({
         palette={useThemePalette(theme)}
         onChange={(stroke) => update<LineElement>(element.id, { stroke })}
       />
+
+      <OpacityControl slideId={slideId} elements={[element]} />
 
       <PanelSeparator />
       <MoreDrawer slideId={slideId} elements={[element]} />

@@ -12,7 +12,7 @@ import { ColorPicker } from "../../kit/Color";
 import { NumberInput } from "../../kit/NumberInput";
 import { Panel, PanelLabel, PanelSeparator } from "../../kit/Panel";
 import { MoreDrawer } from "./MoreDrawer";
-import { useElementWrites, useThemePalette } from "./shared";
+import { OpacityControl, useElementWrites, useThemePalette } from "./shared";
 
 /** Everything else, one control apiece (TeachDeck `OtherToolbar`): icon, embed, timer, table. */
 export const OtherToolbar = memo(function OtherToolbar({
@@ -99,6 +99,8 @@ export const OtherToolbar = memo(function OtherToolbar({
         </>
       ) : null}
 
+      <OpacityControl slideId={slideId} elements={[element]} />
+      <PanelSeparator />
       <MoreDrawer slideId={slideId} elements={[element]} />
     </Panel>
   );

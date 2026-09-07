@@ -25,7 +25,7 @@ import type { Align } from "../../model/reducers/arrange";
 import { useHistory } from "../document-context";
 import { useSessionActions } from "../use-editor-session";
 import { MoreDrawer } from "./MoreDrawer";
-import { BarButton, ICON, ICON_SM } from "./shared";
+import { BarButton, ICON, ICON_SM, OpacityControl } from "./shared";
 
 const ALIGNMENTS: { id: Align; label: string; icon: typeof AlignStartVertical }[] = [
   { id: "left", label: "Align left", icon: AlignStartVertical },
@@ -106,6 +106,7 @@ export const MultiToolbar = memo(function MultiToolbar({
       >
         <Group aria-hidden {...ICON} />
       </IconButton>
+      <OpacityControl slideId={slideId} elements={elements} />
       <PanelSeparator />
       <MoreDrawer slideId={slideId} elements={elements} />
     </Panel>
