@@ -14,6 +14,21 @@ const prompt = {
   user: (input: string) => `user ${input}`,
 };
 
+/** A pino logger that keeps its JSON lines so a test can assert what did (not) reach the log. */
+function capturingLogger() {
+  const lines: string[] = [];
+  const logger = pino(
+    { level: "info" },
+    new Writable({
+      write(c, _e, cb) {
+        lines.push(c.toString());
+        cb();
+      },
+    }),
+  );
+  return { logger, text: () => lines.join("\n") };
+}
+
 function deps(ai: ReturnType<typeof createFakeAi>, extra: Partial<PipelineDeps> = {}) {
   return {
     ai,
@@ -63,39 +78,39 @@ describe("callStructured", () => {
     const ai = createFakeAi({
       script: [JSON.stringify({ answer: 1 }), JSON.stringify({ answer: "ok" })],
     });
-    const lines: string[] = [];
-    const logger = pino(
-      { level: "info" },
-      new Writable({
-        write(c, _e, cb) {
-          lines.push(c.toString());
-          cb();
-        },
-      }),
-    );
-    const d = deps(ai, { logger });
+    const log = capturingLogger();
+    const d = deps(ai, { logger: log.logger });
     const result = await call(d);
     expect(result.attempts).toBe(2);
     expect(result.output).toEqual({ answer: "ok" });
     expect(d.budget.totals().calls).toBe(2);
     expect(ai.calls).toHaveLength(2);
-    expect(lines.join("\n")).toContain("retrying once");
-    // Neither the model's text nor the prompt reaches the log.
-    expect(lines.join("\n")).not.toContain('"answer"');
-    expect(lines.join("\n")).not.toContain("system text");
+    expect(log.text()).toContain("retrying once");
+    // The validation issues (path + message) are logged so a production miss is diagnosable…
+    expect(log.text()).toContain("answer: Invalid input: expected string, received number");
+    // …but neither the model's text nor the prompt reaches the log.
+    expect(log.text()).not.toContain('"answer":1');
+    expect(log.text()).not.toContain("system text");
   });
 
-  test("a second miss is a StageFailure naming the stage, with the issues as cause", async () => {
-    const ai = createFakeAi({ script: ["nope", "still nope"] });
-    const d = deps(ai);
+  test("a second miss is a StageFailure naming the stage, with the issues as cause and in the log", async () => {
+    const ai = createFakeAi({ script: ["nope", JSON.stringify({ answer: 2 })] });
+    const log = capturingLogger();
+    const d = deps(ai, { logger: log.logger });
     const error = await call(d).catch((e) => e);
     expect(error).toBeInstanceOf(StageFailure);
     expect((error as StageFailure).stage).toBe("plan");
     expect((error as StageFailure).cause).toEqual([
-      "- The answer was not valid JSON for the requested shape.",
+      "- answer: Invalid input: expected string, received number",
     ]);
     expect((error as Error).message).not.toContain("nope");
     expect(d.budget.totals().calls).toBe(2);
+    // Both misses' issues reach the log (pino drops a non-Error `cause`), the model's text does not.
+    expect(log.text()).toContain("giving up");
+    expect(log.text()).toContain("- The answer was not valid JSON for the requested shape.");
+    expect(log.text()).toContain("- answer: Invalid input: expected string, received number");
+    expect(log.text()).not.toContain("nope");
+    expect(log.text()).not.toContain('"answer":2');
   });
 
   test("an exceeded budget refuses the call before it is made", async () => {

@@ -99,8 +99,11 @@ export async function callStructured<I, T>(
     // The failed attempt was still paid for. `error.text` (the model's words) is never logged.
     if (error.usage) deps.budget.charge(modelId, usageOf(error.usage));
     const issues = issuesOf(error);
+    // The issues are logged in full: they are zod paths and messages (`workedExamples.1.steps.2:
+    // Too big …`), never the model's words, and without them a schema miss in production cannot
+    // be diagnosed (the 2026-09-07 derivatives lesson failed Plan twice with only `issues=5`).
     deps.logger.info(
-      { stage, promptVersion: prompt.version, issues: issues.length },
+      { stage, promptVersion: prompt.version, issues },
       "structured output did not validate; retrying once",
     );
     // The retry is a second model call: the same two gates apply before it.
@@ -113,12 +116,16 @@ export async function callStructured<I, T>(
     } catch (again) {
       if (!NoObjectGeneratedError.isInstance(again)) throw again;
       if (again.usage) deps.budget.charge(modelId, usageOf(again.usage));
+      const retryIssues = issuesOf(again);
+      // pino's `err` serializer drops a non-Error `cause`, so the second miss is logged here.
+      deps.logger.warn(
+        { stage, promptVersion: prompt.version, issues: retryIssues },
+        "structured output did not validate on the retry; giving up",
+      );
       throw new StageFailure(
         stage,
         `${stage}: the model did not produce a valid ${prompt.version} answer in two attempts`,
-        {
-          cause: issuesOf(again),
-        },
+        { cause: retryIssues },
       );
     }
   }
