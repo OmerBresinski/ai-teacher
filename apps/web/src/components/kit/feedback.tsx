@@ -24,20 +24,50 @@ import {
 import { useState } from "react";
 import { KitGroup, Specimen, Variant } from "./frame";
 
-function DialogSpecimen({ size }: { size: "sm" | "md" | "lg" | "full" }) {
+const dialogs = [
+  ["sm", "Rename lesson", "Rename lesson", "The new name shows in the library and the top bar."],
+  [
+    "md",
+    "Lesson settings",
+    "Lesson settings",
+    "Year group, subject and the theme for every slide.",
+  ],
+  [
+    "lg",
+    "Choose a template",
+    "Choose a template",
+    "Pick a starting point; every slide stays editable.",
+  ],
+  ["full", "Import a deck", "Import a deck", "Drop a PowerPoint or Google Slides export here."],
+] as const;
+
+function DialogSpecimen({
+  size,
+  trigger,
+  title,
+  body,
+}: {
+  size: "sm" | "md" | "lg" | "full";
+  trigger: string;
+  title: string;
+  body: string;
+}) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="secondary">Open {size}</Button>
+        <Button variant="secondary">{trigger}</Button>
       </DialogTrigger>
       <DialogContent size={size}>
         <DialogHeader>
-          <DialogTitle>{size} dialog</DialogTitle>
-          <DialogDescription>Dialog content is tokenized.</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{body}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <DialogClose asChild>
-            <Button>Close</Button>
+            <Button variant="ghost">Cancel</Button>
+          </DialogClose>
+          <DialogClose asChild>
+            <Button>Done</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -48,66 +78,78 @@ function DialogSpecimen({ size }: { size: "sm" | "md" | "lg" | "full" }) {
 export function Feedback() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   return (
-    <KitGroup id="feedback" title="Feedback">
-      <Specimen name="Dialog, sm md lg full" bleed>
-        {(["sm", "md", "lg", "full"] as const).map((size) => (
-          <DialogSpecimen key={size} size={size} />
+    <KitGroup
+      id="feedback"
+      title="Feedback"
+      rule="Dialog titles are Lora 20 at radius 12. One primary in the footer, the rest text. A toast carries at most one action, and it is Undo."
+    >
+      <Specimen name="Dialog, four widths" note="Rename, settings, template and import." bleed>
+        {dialogs.map(([size, trigger, title, body]) => (
+          <DialogSpecimen key={size} size={size} trigger={trigger} title={title} body={body} />
         ))}
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="secondary">Open non-dismissible</Button>
+            <Button variant="secondary">Generating slides</Button>
           </DialogTrigger>
           <DialogContent dismissible={false} showCloseButton={false}>
             <DialogHeader>
-              <DialogTitle>Working</DialogTitle>
+              <DialogTitle>Writing your lesson</DialogTitle>
             </DialogHeader>
-            <p>Wait for the work to complete.</p>
+            <p className="text-body text-ink-2">
+              About a minute. The dialog closes on its own when the slides are ready.
+            </p>
           </DialogContent>
         </Dialog>
       </Specimen>
-      <Specimen name="ConfirmDialog, pending demo">
-        <Button onClick={() => setConfirmOpen(true)}>Confirm after 1.5 seconds</Button>
+      <Specimen
+        name="ConfirmDialog, pending"
+        note="The primary stays disabled while the work runs."
+      >
+        <Button onClick={() => setConfirmOpen(true)}>Save changes</Button>
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
           title="Save changes?"
-          body="The pending button stays disabled."
+          body="Pupils who open the lesson after this see the new version."
           confirmLabel="Save"
           onConfirm={() => new Promise((resolve) => setTimeout(resolve, 1500))}
         />
       </Specimen>
-      <Specimen name="AlertDialog primitives">
+      <Specimen
+        name="AlertDialog primitives"
+        note="An explicit decision the teacher cannot dismiss by clicking away."
+      >
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="outline">Open alert</Button>
+            <Button variant="outline">Leave without saving</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Alert title</AlertDialogTitle>
-              <AlertDialogDescription>
-                An alert dialog has an explicit decision.
-              </AlertDialogDescription>
+              <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
+              <AlertDialogDescription>Changes to three slides will be lost.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction>Continue</AlertDialogAction>
+              <AlertDialogCancel>Keep editing</AlertDialogCancel>
+              <AlertDialogAction>Leave</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </Specimen>
-      <Specimen name="Toast, default and Undo action">
-        <Button onClick={() => toast("Lesson saved")}>Default toast</Button>
+      <Specimen name="Toast, plain and with Undo">
+        <Button onClick={() => toast("Lesson saved")}>Save lesson</Button>
         <Button
           variant="secondary"
           onClick={() =>
-            toast("Lesson deleted", { action: { label: "Undo", onClick: () => toast("Restored") } })
+            toast("Lesson deleted", {
+              action: { label: "Undo", onClick: () => toast("Lesson restored") },
+            })
           }
         >
-          Toast with Undo
+          Delete lesson
         </Button>
       </Specimen>
-      <Specimen name="Skeleton">
-        <Variant label="Content loading">
+      <Specimen name="Skeleton" note="A title line while the library loads.">
+        <Variant label="Loading a title">
           <Skeleton className="h-8 w-48" />
         </Variant>
       </Specimen>

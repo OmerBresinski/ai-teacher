@@ -25,27 +25,31 @@ export function Overlays() {
   const [layout, setLayout] = useState("grid");
   const [showMeta, setShowMeta] = useState(true);
   return (
-    <KitGroup id="overlays" title="Overlays">
+    <KitGroup
+      id="overlays"
+      title="Overlays"
+      rule="Menus and popovers float on the panel shadow with a hairline at radius 12. Shortcuts sit at the right in Kbd; one destructive row, at the foot, after a separator."
+    >
       <Specimen
         name="DropdownMenu"
         note="Items, shortcut, destructive action, separator, checkbox, radio and sub menu."
       >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button>
+            <Button variant="secondary">
+              Lesson
               <ChevronDown aria-hidden />
-              Actions
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuLabel>Lesson</DropdownMenuLabel>
+            <DropdownMenuLabel>The water cycle</DropdownMenuLabel>
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <Copy aria-hidden />
                 Duplicate <DropdownMenuShortcut>⌘D</DropdownMenuShortcut>
               </DropdownMenuItem>
               <DropdownMenuCheckboxItem checked={showMeta} onCheckedChange={setShowMeta}>
-                Show metadata
+                Show year group
               </DropdownMenuCheckboxItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -67,16 +71,16 @@ export function Overlays() {
           </DropdownMenuContent>
         </DropdownMenu>
       </Specimen>
-      <Specimen name="Tooltip with shortcut">
+      <Specimen name="Tooltip with shortcut" note="The name of a glyph, and its key.">
         <Tooltip label="Copy link" shortcut="⌘C">
           <Button variant="secondary">
-            Hover for <Kbd>⌘C</Kbd>
+            Copy link <Kbd>⌘C</Kbd>
           </Button>
         </Tooltip>
       </Specimen>
-      <Specimen name="DropdownMenu states">
-        <Variant label="Layout">Selected: {layout}</Variant>
-        <Variant label="Metadata">{showMeta ? "Shown" : "Hidden"}</Variant>
+      <Specimen name="DropdownMenu state" note="What the menu above last set.">
+        <Variant label="Library view">{layout === "grid" ? "Grid" : "List"}</Variant>
+        <Variant label="Year group">{showMeta ? "Shown" : "Hidden"}</Variant>
       </Specimen>
     </KitGroup>
   );

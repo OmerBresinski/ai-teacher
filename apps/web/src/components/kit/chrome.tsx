@@ -18,12 +18,16 @@ import { KitGroup, Specimen, Variant } from "./frame";
 export function Chrome() {
   const [collapsed, setCollapsed] = useState(false);
   return (
-    <KitGroup id="chrome" title="Chrome">
-      <Specimen name="AppBar" bleed>
+    <KitGroup
+      id="chrome"
+      title="Chrome"
+      rule="Bars are 48px on white with a hairline below, one primary at the right. The sidebar is sticky and full height; its active item takes the accent tint with an accent-text glyph."
+    >
+      <Specimen name="AppBar" note="The lesson name at the left, Present at the right." bleed>
         <div className="w-full overflow-hidden rounded-card border border-border">
           <AppBar>
             <AppBarGroup>
-              <AppBarTitle>Lesson title</AppBarTitle>
+              <AppBarTitle>The water cycle</AppBarTitle>
             </AppBarGroup>
             <AppBarGroup className="ml-auto">
               <Button size="sm">Present</Button>
@@ -31,18 +35,22 @@ export function Chrome() {
           </AppBar>
         </div>
       </Specimen>
-      <Specimen name="AppBar, maxWidth" bleed>
+      <Specimen
+        name="AppBar, narrowed"
+        note="The worksheet editor caps the bar at the page width."
+        bleed
+      >
         <div className="w-full overflow-hidden rounded-card border border-border">
           <AppBar maxWidth={480}>
             <AppBarGroup>
-              <AppBarTitle>Max width</AppBarTitle>
+              <AppBarTitle>Fractions worksheet</AppBarTitle>
             </AppBarGroup>
           </AppBar>
         </div>
       </Specimen>
       <Specimen name="Sidebar, expanded and collapsed" bleed>
         <div className="flex flex-wrap gap-6">
-          <Variant label="Expanded 320px">
+          <Variant label="Expanded">
             <div className="h-80 overflow-hidden rounded-card border border-border">
               <Sidebar
                 className="relative h-full"
@@ -68,7 +76,7 @@ export function Chrome() {
               </Sidebar>
             </div>
           </Variant>
-          <Variant label="Collapsed 320px">
+          <Variant label="Collapsed">
             <div className="h-80 overflow-hidden rounded-card border border-border">
               <Sidebar
                 className="relative h-full"
@@ -86,7 +94,7 @@ export function Chrome() {
           </Variant>
         </div>
       </Specimen>
-      <Specimen name="ListSurface, header and rows" bleed>
+      <Specimen name="ListSurface, header and rows" note="The list view of the library." bleed>
         <ListSurface
           aria-label="Kit list"
           header={
@@ -97,11 +105,11 @@ export function Chrome() {
           }
         >
           <ListSurfaceRow>
-            <ListSurfaceCell>Fractions</ListSurfaceCell>
+            <ListSurfaceCell>Fractions, week 3</ListSurfaceCell>
             <ListSurfaceCell>Lesson</ListSurfaceCell>
           </ListSurfaceRow>
           <ListSurfaceRow>
-            <ListSurfaceCell>Water cycle</ListSurfaceCell>
+            <ListSurfaceCell>The water cycle</ListSurfaceCell>
             <ListSurfaceCell>Worksheet</ListSurfaceCell>
           </ListSurfaceRow>
         </ListSurface>

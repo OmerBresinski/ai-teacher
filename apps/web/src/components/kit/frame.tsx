@@ -1,4 +1,4 @@
-import { Card, Display } from "@tj/ui";
+import { Card, Display, SectionHeading } from "@tj/ui";
 import { type ReactNode, useEffect, useEffectEvent, useState } from "react";
 
 export const KIT_SECTIONS = [
@@ -15,6 +15,9 @@ export const KIT_SECTIONS = [
 ] as const;
 
 export type KitSectionId = (typeof KIT_SECTIONS)[number][0];
+
+/** The tracked uppercase eyebrow: 12/500, 0.08em, ink-3. Above a title or over a specimen. */
+export const eyebrowClass = "text-eyebrow font-medium tracking-[0.08em] text-ink-3 uppercase";
 
 export function KitFrame({ children }: { children: ReactNode }) {
   const current = useCurrentSection();
@@ -51,11 +54,13 @@ export function KitHeader({ children }: { children: ReactNode }) {
   return (
     <header className="mb-12 flex flex-wrap items-start justify-between gap-6">
       <div>
-        <Display as="h1" size="lg">
+        <p className={eyebrowClass}>@tj/ui</p>
+        <Display as="h1" size="lg" className="mt-2">
           The kit
         </Display>
         <p className="mt-2 max-w-[58ch] text-lead text-ink-2">
-          Every control, surface and overlay in @tj/ui, in every variant and state.
+          Every control, surface and overlay a teacher meets, in the copy they meet it with. Each
+          group carries the rule it shows.
         </p>
       </div>
       {children}
@@ -66,20 +71,19 @@ export function KitHeader({ children }: { children: ReactNode }) {
 export function KitGroup({
   id,
   title,
+  rule,
   children,
 }: {
   id: KitSectionId;
   title: string;
+  /** One short line stating the ruling this group demonstrates. */
+  rule: string;
   children: ReactNode;
 }) {
   return (
     <section id={id} className="scroll-mt-24">
-      <div className="mb-5 flex items-center gap-4">
-        <Display as="h2" size="sm">
-          {title}
-        </Display>
-        <span aria-hidden className="h-px flex-1 bg-border" />
-      </div>
+      <SectionHeading>{title}</SectionHeading>
+      <p className="mb-5 max-w-[72ch] text-meta text-ink-3">{rule}</p>
       <Card className="gap-0 overflow-hidden py-0">{children}</Card>
     </section>
   );
@@ -123,7 +127,7 @@ export function Variant({
 }) {
   return (
     <div className={`flex min-w-0 flex-col items-start gap-2 ${grow ? "w-full" : ""}`}>
-      <span className="text-eyebrow font-semibold tracking-wide text-ink-3 uppercase">{label}</span>
+      <span className={eyebrowClass}>{label}</span>
       {children}
     </div>
   );
