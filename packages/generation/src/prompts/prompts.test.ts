@@ -76,11 +76,11 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
 const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "plan-skeleton": {
     version: "plan-skeleton.v1",
-    hash: "aa4d12cccec3d83e0a7d3e9be65e5cc347445e5ae14d3e8a9c5ff05acf9efadf",
+    hash: "2df135d0804a8cbedf796e3e5b461e5d50433e0c715a52cec89ce9122e643fe9",
   },
   "plan-facts": {
     version: "plan-facts.v1",
-    hash: "79fabb7d949a3de8afb34e41d45d27648d84522318654733f7d55e8f7bed6df7",
+    hash: "37bb4178f67f3e2099007a46cb556346516c8915488f6c5dcf5c3654c7f87f72",
   },
   "generate-slide": {
     version: "generate-slide.v2",

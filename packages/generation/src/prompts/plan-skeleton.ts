@@ -20,7 +20,7 @@ export type PlanSkeletonInput = {
 };
 
 const EXAMPLE = {
-  objectives: [
+  learningObjectives: [
     { text: "Describe the three states of matter in terms of particles" },
     { text: "Explain melting and boiling as changes of state" },
   ],
@@ -70,7 +70,7 @@ export const planSkeletonPrompt = {
     'The outline starts with a "title" slide and then an "objectives" slide; the remaining slides teach, practise and check the objectives in a sensible order and end with an "exit-ticket" or "plenary".',
     "Outline minutes add up to the lesson length within ten per cent.",
     'Refer to objectives from the outline by position: { "type": "objective", "index": 0-based }. Only objectives can be referenced here. Every outline slide after the first two names at least one objective.',
-    "Give 1–4 objectives and 6–14 outline slides in total; include at least two slides pupils answer (true-false, multiple-choice, matching, fill-gap, sort or open-response) and one vocabulary slide.",
+    "Give 1–4 objectives and 8–10 outline slides for an hour-long lesson (fewer for a shorter one); include at least two slides pupils answer (true-false, multiple-choice, matching, fill-gap, sort or open-response) and one vocabulary slide.",
     "",
     "Answer as JSON in exactly this shape:",
     example(EXAMPLE),

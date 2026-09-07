@@ -51,7 +51,7 @@ export const planFactsPrompt = {
     "Rules:",
     HOUSE_RULES,
     "Give up to 6 vocabulary terms, up to 3 worked examples with at most 4 short steps each, and up to 8 questions. Keep every reasoning to one sentence.",
-    'Refer to facts by list and position: { "type": "vocabulary" | "workedExample" | "question", "index": 0-based }. In "outlineFactRefs", "index" is the 0-based position of the outline slide; list only slides from position 2 onwards and only the facts that slide draws on. A question slide needs a question; a vocabulary slide needs vocabulary; a worked-example slide needs a worked example.',
+    'Write the three lists first, in the order vocabulary, workedExamples, questions, and only then "outlineFactRefs", so every position you refer to exists. Refer to facts by list and position: { "type": "vocabulary" | "workedExample" | "question", "index": 0-based }. In "outlineFactRefs", "index" is the 0-based position of the outline slide; list only slides from position 2 onwards and only the facts that slide draws on. A question slide needs a question; a vocabulary slide needs vocabulary; a worked-example slide needs a worked example.',
     "Every question and worked example must serve at least one objective, and every objective must be checked by at least one question.",
     "",
     "Answer as JSON in exactly this shape:",
@@ -60,7 +60,7 @@ export const planFactsPrompt = {
   user(input: PlanFactsInput): string {
     const parts = briefBlock(input);
     parts.push("", "Objectives:");
-    input.skeleton.objectives.forEach((o, i) => {
+    input.skeleton.learningObjectives.forEach((o, i) => {
       parts.push(`  ${i}: ${o.text}`);
     });
     parts.push("Outline (position: kind, minutes):");

@@ -71,7 +71,10 @@ function refineOutlineRefs(
  */
 export const PlanSkeletonSchema = z
   .strictObject({
-    objectives: z
+    // Not `objectives`: with that key first, Sonnet 5 behind Bedrock's `json` tool returns the
+    // whole answer as a string under it (reproduced 12/12 on 2026-09-07); `learningObjectives`,
+    // like the five-key schema before it, does not.
+    learningObjectives: z
       .array(z.strictObject({ text: line(SPEC_LIMITS.item) }))
       .min(1)
       .max(4),
@@ -80,7 +83,7 @@ export const PlanSkeletonSchema = z
   .superRefine((skeleton, ctx) => {
     skeleton.outline.forEach((entry, i) => {
       refineOutlineRefs(ctx, ["outline", i, "factRefs"], entry.factRefs, {
-        objective: skeleton.objectives.length,
+        objective: skeleton.learningObjectives.length,
       });
     });
     // The deck opens with the two slides Plan materialises itself (ADR 0025 §7).
@@ -151,7 +154,7 @@ export const EMPTY_PLAN_FACTS: PlanFacts = {
 export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts> {
   return PlanFactsShape.superRefine((facts, ctx) => {
     const sizes = {
-      objective: skeleton.objectives.length,
+      objective: skeleton.learningObjectives.length,
       vocabulary: facts.vocabulary.length,
       workedExample: facts.workedExamples.length,
       question: facts.questions.length,
@@ -196,7 +199,7 @@ export function assignFactIds(
   for (const entry of facts.outlineFactRefs)
     added.set(entry.index, [...(added.get(entry.index) ?? []), ...entry.factRefs]);
   return LessonFactsSchema.parse({
-    objectives: skeleton.objectives.map((o, i) => ({ id: id("objective", i), ...o })),
+    objectives: skeleton.learningObjectives.map((o, i) => ({ id: id("objective", i), ...o })),
     vocabulary: facts.vocabulary.map((v, i) => ({ id: id("vocabulary", i), ...v })),
     workedExamples: facts.workedExamples.map((x, i) => ({ id: id("workedExample", i), ...x })),
     questions: facts.questions.map((q, i) => ({ id: id("question", i), ...q })),

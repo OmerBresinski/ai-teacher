@@ -170,7 +170,7 @@ describeDb("lesson.plan on pg-boss", () => {
     expect(summaries).toHaveLength(1);
     const all = JSON.stringify(lines);
     const content = [
-      ...FIXTURES.planSkeleton.objectives.map((o) => o.text),
+      ...FIXTURES.planSkeleton.learningObjectives.map((o) => o.text),
       ...Object.values(FIXTURES.slides)
         .map((s) => ("stem" in s ? s.stem : undefined))
         .filter((x): x is string => typeof x === "string"),
