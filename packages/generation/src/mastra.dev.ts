@@ -11,10 +11,14 @@ import { lessonWorkflow, registerDevDeps } from "./workflow";
  * server with the default in-memory storage so the `lesson-plan` workflow can be inspected and
  * run by hand. Never imported by an app or by `src/index.ts` (`bundle.test.ts` pins that).
  *
- * `AI_FAKE_SCRIPT=1` runs on `createFakeAi` with the fixture script — network-free, free of
- * charge; otherwise `createAi(process.env)` (Bedrock, needs `AWS_BEARER_TOKEN_BEDROCK`). Studio
- * starts runs from a JSON form that cannot carry functions, so `registerDevDeps` below supplies
- * the deps per run; production never registers one.
+ * `bun run studio:generation` loads `apps/worker/.env` (`mastra dev --env`), so Bedrock, the
+ * model ids and the budget caps come from the same file the worker uses — no flags. Without
+ * `AWS_BEARER_TOKEN_BEDROCK` the client boots `unconfigured` and the first run fails with the
+ * standard message rather than silently using the fake. `AI_FAKE_SCRIPT=1 bun run
+ * studio:generation` opts into `createFakeAi` on the fixture script: network-free, free of
+ * charge, and the topic is ignored. Studio starts runs from a JSON form that cannot carry
+ * functions, so `registerDevDeps` below supplies the deps per run; production never registers
+ * one.
  */
 
 const logger = pino({ level: process.env.LOG_LEVEL ?? "info" });
