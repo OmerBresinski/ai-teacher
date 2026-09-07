@@ -830,6 +830,7 @@ export function SelectionLayer({
           coarsePointer={coarse}
           toSlide={toSlide}
           focusRing={focusRing}
+          onPointerFocus={focusStage}
         />
       ) : selected.length === 1 && first ? (
         <SelectionFrame
