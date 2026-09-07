@@ -8,6 +8,8 @@ afterEach(cleanup);
 
 const rail = () => screen.getByRole("listbox", { name: "Slides" });
 const rows = () => within(rail()).getAllByRole("option");
+/** The rail's one tab stop: the open slide's row (roving tabindex). */
+const stop = () => rail().querySelector('[role="option"][tabindex="0"]')?.id;
 const ids = (lesson: { slides: { id: string }[] }): string[] => lesson.slides.map((s) => s.id);
 /** The three seeded slide ids, named. */
 const abc = (lesson: { slides: { id: string }[] }) => {
@@ -23,7 +25,26 @@ describe("Navigator", () => {
     expect(options).toHaveLength(3);
     expect(options[0]).toHaveAttribute("aria-selected", "true");
     expect(options[0]?.textContent).toContain("1");
-    expect(rail()).toHaveAttribute("aria-activedescendant", options[0]?.id);
+    expect(stop()).toBe(options[0]?.id);
+  });
+
+  test("roving tabindex: the rail is not a tab stop; arrows, Home and End move focus with the selection", () => {
+    const { read } = renderEditor();
+    const { a, b, c } = abc(read());
+    expect(rail()).toHaveAttribute("tabindex", "-1");
+    const first = rows()[0] as HTMLElement;
+    first.focus();
+    fireEvent.keyDown(first, { key: "ArrowDown" });
+    expect(stop()).toBe(`slide-opt-${b}`);
+    expect(document.activeElement?.id).toBe(`slide-opt-${b}`);
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: "End" });
+    expect(stop()).toBe(`slide-opt-${c}`);
+    expect(document.activeElement?.id).toBe(`slide-opt-${c}`);
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: "Home" });
+    expect(stop()).toBe(`slide-opt-${a}`);
+    expect(document.activeElement?.id).toBe(`slide-opt-${a}`);
+    // Only one row is ever in the tab order.
+    expect(rail().querySelectorAll('[role="option"][tabindex="0"]')).toHaveLength(1);
   });
 
   test("row 9: ⌘↓ on slide 2 swaps it with slide 3, one undo step", () => {
@@ -33,7 +54,7 @@ describe("Navigator", () => {
     if (!second) throw new Error("no row");
     fireEvent.pointerDown(second, pointer(20, 20));
     fireEvent.pointerUp(second, pointer(20, 20));
-    expect(rail()).toHaveAttribute("aria-activedescendant", `slide-opt-${b}`);
+    expect(stop()).toBe(`slide-opt-${b}`);
 
     fireEvent.keyDown(rail(), { key: "ArrowDown", metaKey: true });
     expect(ids(read())).toEqual([a, c, b]);
@@ -93,7 +114,7 @@ describe("Navigator", () => {
     expect(
       container.querySelector(`[data-slide-frame] [data-slide-id="${slides[1]?.id}"]`),
     ).not.toBeNull();
-    expect(rail()).toHaveAttribute("aria-activedescendant", `slide-opt-${slides[1]?.id}`);
+    expect(stop()).toBe(`slide-opt-${slides[1]?.id}`);
   });
 
   test("Delete on the rail removes the active slide and lands on its neighbour; the last slide stays", () => {
@@ -101,7 +122,7 @@ describe("Navigator", () => {
     const { b, c } = abc(read());
     fireEvent.keyDown(rail(), { key: "Delete" });
     expect(ids(read())).toEqual([b, c]);
-    expect(rail()).toHaveAttribute("aria-activedescendant", `slide-opt-${b}`);
+    expect(stop()).toBe(`slide-opt-${b}`);
     fireEvent.keyDown(rail(), { key: "Delete" });
     fireEvent.keyDown(rail(), { key: "Delete" });
     expect(read().slides).toHaveLength(1);
