@@ -9,17 +9,19 @@ import { PROMPT_VERSIONS, PROMPTS, type PromptName, promptHash } from "./index";
  * version → update the hash here. A wording change without a bump fails this file.
  */
 
-const facts = assignFactIds(FIXTURES.plan, 60);
+const facts = assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
+const brief = {
+  topic: "States of matter",
+  durationMin: 60,
+  audience: audienceOf(sampleBriefLesson()),
+  sourceTexts: [],
+  answers: { q1: "yes" },
+};
 const audience = audienceOf(sampleBriefLesson());
 
 const SAMPLE_INPUTS: Record<PromptName, unknown> = {
-  plan: {
-    topic: "States of matter",
-    durationMin: 60,
-    audience,
-    sourceTexts: [],
-    answers: { q1: "yes" },
-  },
+  "plan-skeleton": brief,
+  "plan-facts": { ...brief, skeleton: FIXTURES.planSkeleton },
   "generate-slide": {
     facts,
     entry: facts.outline[3],
@@ -72,13 +74,19 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
 };
 
 const PINNED: Record<PromptName, { version: string; hash: string }> = {
-  plan: {
-    version: "plan.v1",
-    hash: "4d3d81705c97653c67583964f71621fc89012073589c98c7282c900278e5dce3",
+  "plan-skeleton": {
+    version: "plan-skeleton.v1",
+    hash: "aa4d12cccec3d83e0a7d3e9be65e5cc347445e5ae14d3e8a9c5ff05acf9efadf",
+  },
+  "plan-facts": {
+    version: "plan-facts.v1",
+    hash: "79fabb7d949a3de8afb34e41d45d27648d84522318654733f7d55e8f7bed6df7",
   },
   "generate-slide": {
     version: "generate-slide.v2",
-    hash: "cdd8f04801cc9dfcda4ada72ea1ac6b63ad08c64524c68cb276f98abaeac9964",
+    // Re-pinned in TEACH-138 without a bump: the wording is unchanged, the sample `entry`
+    // (`facts.outline[3]`) gained an objective ref when the fixture plan was split.
+    hash: "9b6b5b037c2fa7bb56697a4870afa327d23d9e2593606ff205a20b2134096a10",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v3",

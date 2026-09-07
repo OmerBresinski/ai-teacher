@@ -1,7 +1,8 @@
 import { evaluatePrompt } from "./evaluate";
 import { generateSlidePrompt } from "./generate-slide";
 import { generateWorksheetPrompt } from "./generate-worksheet";
-import { planPrompt } from "./plan";
+import { planFactsPrompt } from "./plan-facts";
+import { planSkeletonPrompt } from "./plan-skeleton";
 import { cascadePrompt, regeneratePrompt } from "./propose";
 import { repairPrompt } from "./repair";
 
@@ -14,7 +15,8 @@ import { repairPrompt } from "./repair";
 export type { EvaluateInput } from "./evaluate";
 export type { GenerateSlideInput } from "./generate-slide";
 export type { GenerateWorksheetInput } from "./generate-worksheet";
-export type { PlanInput } from "./plan";
+export type { PlanFactsInput } from "./plan-facts";
+export type { PlanSkeletonInput } from "./plan-skeleton";
 export type { ProposeInput } from "./propose";
 export type { RepairInput } from "./repair";
 export type { Audience } from "./shared";
@@ -23,13 +25,15 @@ export {
   evaluatePrompt,
   generateSlidePrompt,
   generateWorksheetPrompt,
-  planPrompt,
+  planFactsPrompt,
+  planSkeletonPrompt,
   regeneratePrompt,
   repairPrompt,
 };
 
 export const PROMPTS = {
-  plan: planPrompt,
+  "plan-skeleton": planSkeletonPrompt,
+  "plan-facts": planFactsPrompt,
   "generate-slide": generateSlidePrompt,
   "generate-worksheet": generateWorksheetPrompt,
   evaluate: evaluatePrompt,
@@ -40,7 +44,8 @@ export const PROMPTS = {
 export type PromptName = keyof typeof PROMPTS;
 
 export const PROMPT_VERSIONS = {
-  plan: planPrompt.version,
+  "plan-skeleton": planSkeletonPrompt.version,
+  "plan-facts": planFactsPrompt.version,
   "generate-slide": generateSlidePrompt.version,
   "generate-worksheet": generateWorksheetPrompt.version,
   evaluate: evaluatePrompt.version,

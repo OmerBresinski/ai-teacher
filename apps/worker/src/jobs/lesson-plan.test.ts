@@ -11,7 +11,7 @@ import {
   parseStoredWorksheet,
 } from "@tj/domain/documents";
 import { noSources } from "@tj/generation";
-import { FIXTURES, pipelineScript, scriptedPipelineAi } from "@tj/generation/testing";
+import { FIXTURES, PLAN_CALLS, pipelineScript, scriptedPipelineAi } from "@tj/generation/testing";
 import { NonRetryableError } from "@tj/jobs";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
@@ -103,7 +103,7 @@ describeDb("lesson.plan job", () => {
     expect(row?.generatingJobId).toBeNull();
     const lesson = parseLesson(row?.body);
     expect(lesson.facts).toBeDefined();
-    expect(lesson.slides).toHaveLength(FIXTURES.plan.outline.length);
+    expect(lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(lesson.generation?.stage).toBe("repaired");
     expect(lesson.generation?.jobId).toBe(jobId);
     const worksheetId = lesson.artefacts?.worksheetId;
@@ -155,8 +155,8 @@ describeDb("lesson.plan job", () => {
   test("a failed Evaluate keeps the locks; the retry resumes after `generated` without re-planning", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
-    // Evaluate is the 11th call (plan + 8 slides + worksheet); make it blow up as the provider.
-    const evaluateIndex = 1 + FIXTURES.plan.outline.length - 2 + 1;
+    // Evaluate is the 12th call (2 plan + 8 slides + worksheet); make it blow up as the provider.
+    const evaluateIndex = PLAN_CALLS + FIXTURES.planSkeleton.outline.length - 2 + 1;
     const first: FakeAi = createFakeAi({
       script: pipelineScript({
         overrides: {
@@ -191,7 +191,7 @@ describeDb("lesson.plan job", () => {
   test("a `generated` checkpoint whose worksheet row is missing is recreated under the same id on retry", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
-    const evaluateIndex = 1 + FIXTURES.plan.outline.length - 2 + 1;
+    const evaluateIndex = PLAN_CALLS + FIXTURES.planSkeleton.outline.length - 2 + 1;
     const first = createFakeAi({
       script: pipelineScript({
         overrides: {
@@ -215,7 +215,7 @@ describeDb("lesson.plan job", () => {
     expect(second.calls.map((c) => c.context?.stage)).toEqual(["generate", "evaluate"]);
     const done = await storedLesson(lessonId);
     expect(done.generation?.stage).toBe("repaired");
-    expect(done.slides).toHaveLength(FIXTURES.plan.outline.length);
+    expect(done.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(done.artefacts?.worksheetId).toBe(worksheetId);
     const worksheetRow = await getDocument(ws(), worksheetId);
     expect(worksheetRow?.kind).toBe("worksheet");
@@ -236,9 +236,9 @@ describeDb("lesson.plan job", () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
     const ac = new AbortController();
-    // Cancel while the fourth slide's answer is pending: three slides are already on the row.
+    // Cancel while the fifth slide's answer is pending: four slides are already on the row.
     const script = pipelineScript();
-    const pending = 1 + 2;
+    const pending = PLAN_CALLS + 2;
     script[pending] = async (call) => {
       ac.abort("cancelled");
       return script[pending - 1] as string;
@@ -250,7 +250,7 @@ describeDb("lesson.plan job", () => {
     const lesson = await storedLesson(lessonId);
     expect(lesson.generation?.stage).toBe("planned");
     expect(lesson.slides.length).toBeGreaterThanOrEqual(2);
-    expect(lesson.slides.length).toBeLessThan(FIXTURES.plan.outline.length);
+    expect(lesson.slides.length).toBeLessThan(FIXTURES.planSkeleton.outline.length);
     expect((await getDocument(ws(), lessonId))?.generatingJobId).toBeNull();
   });
 

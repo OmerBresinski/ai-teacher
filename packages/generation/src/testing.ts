@@ -5,21 +5,24 @@ import { parseLesson } from "@tj/domain/documents";
 import type { SlideSpec } from "@tj/slides";
 import pino from "pino";
 import evaluateFixture from "./fixtures/evaluate.json";
-import planFixture from "./fixtures/plan.json";
+import planFactsFixture from "./fixtures/plan-facts.json";
+import planSkeletonFixture from "./fixtures/plan-skeleton.json";
 import repairFixture from "./fixtures/repair.json";
 import slidesFixture from "./fixtures/slides.json";
 import worksheetFixture from "./fixtures/worksheet.json";
-import type { PlanOutput, WorksheetSpec } from "./specs";
+import type { PlanFacts, PlanSkeleton, WorksheetSpec } from "./specs";
 import { noSources, type PipelineDeps, type PipelineState } from "./types";
 
 /*
  * Test helpers for the pipeline and its consumers (ADR 0025 §22): the fixtures as typed values,
- * a scripted fake that answers Plan → Generate×N → worksheet → Evaluate → Repair in order, the
+ * a scripted fake that answers Plan (skeleton, facts) → Generate×N → worksheet → Evaluate →
+ * Repair in order, the
  * empty lesson `POST /lessons` creates, and a `PipelineDeps` recorder. Network-free.
  */
 
 export const FIXTURES = {
-  plan: planFixture as PlanOutput,
+  planSkeleton: planSkeletonFixture as PlanSkeleton,
+  planFacts: planFactsFixture as PlanFacts,
   slides: slidesFixture as Record<SlideSpec["kind"], SlideSpec>,
   worksheet: worksheetFixture as WorksheetSpec,
   evaluate: evaluateFixture as { findings: Finding[] },
@@ -53,13 +56,16 @@ const json = (value: unknown) => JSON.stringify(value);
 
 /** The slide answers for the fixture plan's outline entries after `title` and `objectives`. */
 export function fixtureSlideScript(): string[] {
-  return FIXTURES.plan.outline.slice(2).map((entry) => json(FIXTURES.slides[entry.kind]));
+  return FIXTURES.planSkeleton.outline.slice(2).map((entry) => json(FIXTURES.slides[entry.kind]));
 }
 
+/** Plan's two answers, in call order: the skeleton, then the facts. */
+export const PLAN_CALLS = 2;
+
 /**
- * The script for one full run on the fixture plan: 1 plan + 8 slides + 1 worksheet + 1 evaluate
- * (+ repair answers when a test injects an `error` finding). `overrides` replaces entries by
- * index so a test can script a schema miss at a chosen call.
+ * The script for one full run on the fixture plan: 2 plan (skeleton, facts) + 8 slides +
+ * 1 worksheet + 1 evaluate (+ repair answers when a test injects an `error` finding). `overrides`
+ * replaces entries by index so a test can script a schema miss at a chosen call.
  */
 export function pipelineScript(
   options: {
@@ -69,7 +75,8 @@ export function pipelineScript(
   } = {},
 ): FakeScriptEntry[] {
   const script: FakeScriptEntry[] = [
-    json(FIXTURES.plan),
+    json(FIXTURES.planSkeleton),
+    json(FIXTURES.planFacts),
     ...fixtureSlideScript(),
     json(FIXTURES.worksheet),
     json(options.evaluate ?? { findings: [] }),

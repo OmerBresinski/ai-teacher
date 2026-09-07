@@ -131,7 +131,7 @@ describeDb("lesson.plan on pg-boss", () => {
     expect(row?.generatingJobId).toBeNull();
     const stored = parseLesson(row?.body);
     expect(stored.facts).toBeDefined();
-    expect(stored.slides).toHaveLength(FIXTURES.plan.outline.length);
+    expect(stored.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(stored.generation?.stage).toBe("repaired");
     const worksheetId = stored.artefacts?.worksheetId ?? "";
     expect(worksheetId).not.toBe("");
@@ -170,7 +170,7 @@ describeDb("lesson.plan on pg-boss", () => {
     expect(summaries).toHaveLength(1);
     const all = JSON.stringify(lines);
     const content = [
-      ...FIXTURES.plan.objectives.map((o) => o.text),
+      ...FIXTURES.planSkeleton.objectives.map((o) => o.text),
       ...Object.values(FIXTURES.slides)
         .map((s) => ("stem" in s ? s.stem : undefined))
         .filter((x): x is string => typeof x === "string"),

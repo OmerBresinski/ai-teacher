@@ -6,39 +6,144 @@ import { PROMPT_VERSIONS } from "../prompts";
 import { assignFactIds } from "../specs";
 import { FIXTURES, initialState, recordingDeps, sampleBriefLesson } from "../testing";
 import { evaluate } from "./evaluate";
-import { BUDGET_FINDING, generate, PLANNED_SLIDES } from "./generate";
-import { plan } from "./plan";
+import { generate, PLANNED_SLIDES } from "./generate";
+import { plan, TITLE_PROMPT_VERSION } from "./plan";
 import { MAX_TARGETS, repair, repairTargets } from "./repair";
-import { blockText, slideText } from "./shared";
+import { BUDGET_FINDING, blockText, slideText } from "./shared";
 
 const json = (v: unknown) => JSON.stringify(v);
 const usage = { inputTokens: 1000, outputTokens: 400 };
 
+const planScript = () => [json(FIXTURES.planSkeleton), json(FIXTURES.planFacts)];
+const fullFacts = () => assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
+
 describe("plan", () => {
-  test("one standard call → facts with ids, title + objectives slides, generation at planned", async () => {
-    const ai = createFakeAi({ script: [json(FIXTURES.plan)], usage });
+  test("title slide first, then the skeleton, then the facts: three persists, two calls, one checkpoint", async () => {
+    const ai = createFakeAi({ script: planScript(), usage });
     const deps = recordingDeps(ai);
     const state = await plan(initialState(), deps);
-    expect(ai.calls.map((c) => [c.modelClass, c.context?.stage])).toEqual([["standard", "plan"]]);
-    expect(state.lesson.facts).toEqual(assignFactIds(FIXTURES.plan, 60));
+
+    // 1. The title slide is persisted before any model call, with no `generation` yet.
+    const [first, second, third] = deps.persisted;
+    expect(first?.lesson.slides.map((s) => s.kind)).toEqual(["title"]);
+    expect(first?.lesson.generation).toBeUndefined();
+    expect(first?.lesson.facts).toBeUndefined();
+    expect(deps.progress[0]).toEqual({
+      percent: 2,
+      message: "Starting",
+      documentUpdatedAt: first?.updatedAt,
+    });
+    expect(first?.lesson.slides[0]?.elements.every((e) => e.generatedFrom?.model === "none")).toBe(
+      true,
+    );
+    expect(
+      first?.lesson.slides[0]?.elements.every(
+        (e) => e.generatedFrom?.promptVersion === TITLE_PROMPT_VERSION,
+      ),
+    ).toBe(true);
+
+    // 2. After the skeleton call: objectives slide, outline present, the other lists empty.
+    expect(second?.lesson.slides.map((s) => s.kind)).toEqual(["title", "objectives"]);
+    expect(second?.lesson.facts?.outline).toHaveLength(FIXTURES.planSkeleton.outline.length);
+    expect(second?.lesson.facts?.vocabulary).toEqual([]);
+    expect(second?.lesson.facts?.questions).toEqual([]);
+    expect(second?.lesson.generation).toBeUndefined();
+    expect(deps.progress[1]).toMatchObject({ percent: 6, documentUpdatedAt: second?.updatedAt });
+
+    // 3. After the facts call: the checkpoint, the complete facts.
+    expect(third?.lesson.generation?.stage).toBe("planned");
+    expect(third?.lesson.facts).toEqual(fullFacts());
+    expect(deps.progress[2]).toEqual({
+      percent: 10,
+      message: "Planned",
+      documentUpdatedAt: third?.updatedAt,
+    });
+    expect(deps.persisted).toHaveLength(3);
+    expect(ai.calls.map((c) => [c.modelClass, c.context?.stage, c.context?.promptVersion])).toEqual(
+      [
+        ["standard", "plan", PROMPT_VERSIONS["plan-skeleton"]],
+        ["standard", "plan", PROMPT_VERSIONS["plan-facts"]],
+      ],
+    );
+
+    expect(state.lesson.facts).toEqual(fullFacts());
     expect(state.lesson.slides.map((s) => s.kind)).toEqual(["title", "objectives"]);
     for (const slide of state.lesson.slides)
       expect(SlideSchema.safeParse(slide).success).toBe(true);
     expect(state.lesson.generation).toMatchObject({
       jobId: deps.context.jobId,
       stage: "planned",
-      promptVersions: { planned: PROMPT_VERSIONS.plan },
-      usage: { calls: 1, inputTokens: 1000, outputTokens: 400 },
+      promptVersions: {
+        planned: `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}`,
+      },
+      usage: { calls: 2, inputTokens: 2000, outputTokens: 800 },
       findings: [],
     });
-    expect(deps.persisted).toHaveLength(1);
-    expect(deps.progress).toEqual([
-      { percent: 10, message: "Planned", documentUpdatedAt: deps.persisted[0]?.updatedAt },
-    ]);
-    // The objectives slide references the objectives; the title slide the outline's first entry.
+    // The objectives slide references the objectives and carries the skeleton prompt's version.
     const objectives = state.lesson.slides[1];
     expect(objectives?.elements.every((e) => e.generatedFrom?.factRefs.includes("o1"))).toBe(true);
+    expect(
+      objectives?.elements.every(
+        (e) => e.generatedFrom?.promptVersion === PROMPT_VERSIONS["plan-skeleton"],
+      ),
+    ).toBe(true);
     expect(slideText(objectives as never)).toContain("Describe the arrangement");
+  });
+
+  test("a skeleton whose outline refers to vocabulary is a validation issue: one retry", async () => {
+    const broken = structuredClone(FIXTURES.planSkeleton);
+    const entry = broken.outline[2];
+    if (entry) entry.factRefs = [{ type: "vocabulary", index: 0 }];
+    const ai = createFakeAi({
+      script: [json(broken), json(FIXTURES.planSkeleton), json(FIXTURES.planFacts)],
+      usage,
+    });
+    const state = await plan(initialState(), recordingDeps(ai));
+    expect(ai.calls).toHaveLength(3);
+    expect(state.lesson.facts).toEqual(fullFacts());
+  });
+
+  test("facts whose outlineFactRefs index is out of range is a validation issue: one retry", async () => {
+    const broken = structuredClone(FIXTURES.planFacts);
+    broken.outlineFactRefs.push({ index: 99, factRefs: [{ type: "question", index: 0 }] });
+    const ai = createFakeAi({
+      script: [json(FIXTURES.planSkeleton), json(broken), json(FIXTURES.planFacts)],
+      usage,
+    });
+    const state = await plan(initialState(), recordingDeps(ai));
+    expect(ai.calls).toHaveLength(3);
+    expect(state.lesson.facts).toEqual(fullFacts());
+  });
+
+  test("resumed with the title slide and no generation: both calls run, the title is not duplicated", async () => {
+    const first = recordingDeps(createFakeAi({ script: planScript(), usage }));
+    await plan(initialState(), first);
+    const titleOnly = first.persisted[0]?.lesson;
+    if (!titleOnly) throw new Error("no title persist");
+
+    const ai = createFakeAi({ script: planScript(), usage });
+    const deps = recordingDeps(ai);
+    const state = await plan(initialState(titleOnly), deps);
+    expect(ai.calls).toHaveLength(2);
+    expect(state.lesson.slides.map((s) => s.kind)).toEqual(["title", "objectives"]);
+    expect(state.lesson.slides[0]).toEqual(titleOnly.slides[0]);
+    expect(deps.persisted[0]?.lesson.slides).toEqual(titleOnly.slides);
+  });
+
+  test("a budget stop on the facts call keeps the skeleton facts, records the finding, reaches planned", async () => {
+    const ai = createFakeAi({ script: planScript(), usage });
+    // One call's worth of standard-class tokens at list price: the second is refused.
+    const deps = recordingDeps(ai, {
+      budget: createBudget({ capUsd: 0.005, capTokens: 1_000_000 }),
+    });
+    const state = await plan(initialState(), deps);
+    expect(ai.calls).toHaveLength(1);
+    expect(state.lesson.generation?.stage).toBe("planned");
+    expect(state.lesson.facts?.outline).toHaveLength(FIXTURES.planSkeleton.outline.length);
+    expect(state.lesson.facts?.vocabulary).toEqual([]);
+    expect(state.lesson.generation?.findings).toEqual([
+      expect.objectContaining({ check: "budget", severity: "error" }),
+    ]);
   });
 
   test("a lesson without a brief cannot be planned", async () => {
@@ -51,14 +156,14 @@ describe("plan", () => {
 
 describe("generate", () => {
   async function planned() {
-    const ai = createFakeAi({ script: [json(FIXTURES.plan)], usage });
+    const ai = createFakeAi({ script: planScript(), usage });
     const deps = recordingDeps(ai);
     return plan(initialState(), deps);
   }
 
   test("one call per remaining outline entry, then the worksheet; persists after each slide", async () => {
     const start = await planned();
-    const slides = FIXTURES.plan.outline
+    const slides = FIXTURES.planSkeleton.outline
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
     const ai = createFakeAi({ script: [...slides, json(FIXTURES.worksheet)], usage });
@@ -68,7 +173,7 @@ describe("generate", () => {
     expect(
       ai.calls.every((c) => c.modelClass === "standard" && c.context?.stage === "generate"),
     ).toBe(true);
-    expect(state.lesson.slides).toHaveLength(FIXTURES.plan.outline.length);
+    expect(state.lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(deps.persisted).toHaveLength(slides.length + 1);
     expect(deps.persisted.map((p) => p.lesson.slides.length)).toEqual([
       3, 4, 5, 6, 7, 8, 9, 10, 10,
@@ -100,7 +205,7 @@ describe("generate", () => {
 
   test("a spec of the wrong kind is a validation issue: retried once with the right kind", async () => {
     const start = await planned();
-    const slides = FIXTURES.plan.outline
+    const slides = FIXTURES.planSkeleton.outline
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
     const wrongKind = json(FIXTURES.slides.content); // outline[2] is a starter
@@ -112,7 +217,7 @@ describe("generate", () => {
 
   test("budget exceeded mid-way keeps the slides written, records a budget finding, reaches generated", async () => {
     const start = await planned();
-    const slides = FIXTURES.plan.outline
+    const slides = FIXTURES.planSkeleton.outline
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
     const ai = createFakeAi({ script: [...slides, json(FIXTURES.worksheet)], usage });
@@ -122,7 +227,7 @@ describe("generate", () => {
     const state = await generate(start, deps);
     expect(ai.calls.length).toBeLessThan(slides.length);
     expect(state.lesson.slides.length).toBeGreaterThan(PLANNED_SLIDES);
-    expect(state.lesson.slides.length).toBeLessThan(FIXTURES.plan.outline.length);
+    expect(state.lesson.slides.length).toBeLessThan(FIXTURES.planSkeleton.outline.length);
     expect(state.worksheet).toBeUndefined();
     expect(state.lesson.generation?.stage).toBe("generated");
     expect(state.lesson.generation?.findings).toEqual([
@@ -133,7 +238,7 @@ describe("generate", () => {
 
   test("a cancel mid-way throws without claiming `generated`; the slides written stay persisted", async () => {
     const start = await planned();
-    const slides = FIXTURES.plan.outline
+    const slides = FIXTURES.planSkeleton.outline
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
     const ai = createFakeAi({ script: [...slides, json(FIXTURES.worksheet)], usage });
@@ -147,7 +252,7 @@ describe("generate", () => {
 
   test("resumes: slides already present are not regenerated", async () => {
     const start = await planned();
-    const slides = FIXTURES.plan.outline
+    const slides = FIXTURES.planSkeleton.outline
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
     const full = await generate(
@@ -162,7 +267,7 @@ describe("generate", () => {
     const ai = createFakeAi({ script: [...slides.slice(3), json(FIXTURES.worksheet)], usage });
     const state = await generate(partial, recordingDeps(ai));
     expect(ai.calls).toHaveLength(slides.length - 3 + 1);
-    expect(state.lesson.slides).toHaveLength(FIXTURES.plan.outline.length);
+    expect(state.lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(state.lesson.slides.slice(0, 5)).toEqual(full.lesson.slides.slice(0, 5));
   });
 });
@@ -171,8 +276,10 @@ describe("evaluate", () => {
   async function generated() {
     const ai = createFakeAi({
       script: [
-        json(FIXTURES.plan),
-        ...FIXTURES.plan.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
+        ...planScript(),
+        ...FIXTURES.planSkeleton.outline
+          .slice(PLANNED_SLIDES)
+          .map((e) => json(FIXTURES.slides[e.kind])),
         json(FIXTURES.worksheet),
       ],
       usage,
@@ -281,8 +388,10 @@ describe("repair", () => {
 
   test("regenerates only the targeted slide and block in place, then re-checks", async () => {
     const script = [
-      json(FIXTURES.plan),
-      ...FIXTURES.plan.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
+      ...planScript(),
+      ...FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((e) => json(FIXTURES.slides[e.kind])),
       json(FIXTURES.worksheet),
     ];
     const setupAi = createFakeAi({ script, usage });
@@ -358,8 +467,10 @@ describe("repair", () => {
 
   test("a target that cannot be repaired keeps its error and gains a repair warning", async () => {
     const script = [
-      json(FIXTURES.plan),
-      ...FIXTURES.plan.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
+      ...planScript(),
+      ...FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((e) => json(FIXTURES.slides[e.kind])),
       json(FIXTURES.worksheet),
     ];
     const setupDeps = recordingDeps(createFakeAi({ script, usage }));
