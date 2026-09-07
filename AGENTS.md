@@ -149,7 +149,7 @@ nohup bun run land <pr> > /tmp/land-<pr>.log 2>&1 &
 Read `/tmp/land-<pr>.log` once, when the next PR is ready to open (or when there is nothing else to
 do). Never run `gh run watch`, `gh pr checks --watch` or `gh run view` in a loop by hand — the
 script already does the one blocking wait, and it waits only on the checks branch protection
-requires. Every line it logs is timestamped and every wait is bounded by `--timeout-min` (default
+requires. Every wait it logs is timestamped and every wait is bounded by `--timeout-min` (default
 20): if the process is still alive past that, something outside the script is stuck (a hung `gh`,
 `vercel` or `railway` call) — kill it, read the log to see the last stamped line, and land by hand
 from that point. Do not `sleep` and re-read the log on a schedule; the script exits when it is

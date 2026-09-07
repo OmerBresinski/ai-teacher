@@ -97,7 +97,7 @@ function output(result: CommandResult): string {
 
 function requireSuccess(result: CommandResult, command: string): void {
   if (result.exitCode !== ExitCode.Ok) {
-    const detail = output(result);
+    const detail = `${result.stderr ?? ""}\n${result.stdout}`.trim();
     throw new UserFacingError(`${command} failed.${detail === "" ? "" : `\n${detail}`}`);
   }
 }
@@ -273,9 +273,10 @@ interface RequiredCheck {
   state: string;
 }
 
-export function parseRequiredChecks(json: string): RequiredCheck[] {
+/** Null when gh did not answer with a JSON array at all; the caller must not read that as green. */
+export function parseRequiredChecks(json: string): RequiredCheck[] | null {
   const parsed = parseJson(json, "required checks");
-  if (!Array.isArray(parsed)) return [];
+  if (!Array.isArray(parsed)) return null;
   return parsed.flatMap((row) => {
     if (typeof row !== "object" || row === null) return [];
     const check = row as { name?: unknown; bucket?: unknown; state?: unknown };
@@ -294,22 +295,29 @@ export type CiVerdict =
   | { kind: "pending"; names: string[] }
   | { kind: "failed"; detail: string };
 
+/** gh buckets that satisfy branch protection; anything else keeps the wait going or fails it. */
+const GREEN_BUCKETS = new Set(["pass", "skipping"]);
+const FAILED_BUCKETS = new Set(["fail", "cancel"]);
+
 /**
  * Reduce one read of the required checks to a verdict. gh's `--required` filter already dropped
  * the non-required Vercel contexts; `skipping` (a path-filtered job) satisfies branch protection.
  * `cancel` is final: on the head commit it means someone stopped the run, and a superseded run
- * lives on the previous commit, which gh never reads.
+ * lives on the previous commit, which gh never reads. Only a non-empty list in which every row is
+ * green is green: an empty list or a bucket this script does not know is pending, never a merge.
  */
 export function ciVerdict(checks: RequiredCheck[]): CiVerdict {
-  const failed = checks.filter((check) => check.bucket === "fail" || check.bucket === "cancel");
+  const failed = checks.filter((check) => FAILED_BUCKETS.has(check.bucket));
   if (failed.length > 0) {
     return {
       kind: "failed",
       detail: failed.map((check) => `${check.name}: ${check.state}`).join("\n"),
     };
   }
-  const pending = checks.filter((check) => check.bucket === "pending").map((check) => check.name);
-  if (pending.length > 0) return { kind: "pending", names: pending };
+  const pending = checks
+    .filter((check) => !GREEN_BUCKETS.has(check.bucket))
+    .map((check) => check.name);
+  if (checks.length === 0 || pending.length > 0) return { kind: "pending", names: pending };
   return { kind: "green" };
 }
 
@@ -362,7 +370,13 @@ async function waitForCi(pr: number, deadline: number, deps: LandPrDeps): Promis
 }
 
 function requiredChecksVerdict(read: CommandResult): CiVerdict {
-  if (read.exitCode === ExitCode.Ok) return ciVerdict(parseRequiredChecks(output(read)));
+  if (read.exitCode === ExitCode.Ok) {
+    const checks = parseRequiredChecks(output(read));
+    if (checks === null) {
+      throw new UserFacingError(`gh pr checks did not return a JSON array:\n${output(read)}`);
+    }
+    return ciVerdict(checks);
+  }
   const message = `${read.stderr ?? ""}\n${read.stdout}`;
   // Both come from gh's populateStatusChecks and mean the run has not attached to the PR yet.
   if (/no (required )?checks reported/.test(message)) return { kind: "pending", names: [] };
@@ -558,7 +572,8 @@ async function watchDeploys(
     log.timed(`${name}: ${status ?? "no deployment yet"}`);
   };
 
-  while (deps.now() - startedAt <= timeoutMin * 60_000) {
+  const deployDeadline = startedAt + timeoutMin * 60_000;
+  while (deps.now() <= deployDeadline) {
     if (vercel === null) {
       const result = await deps.vercelLs();
       requireSuccess(result, "Could not read Vercel deployments");
@@ -614,7 +629,9 @@ async function watchDeploys(
         railway: railway as Record<RailwayService, CheckSummary>,
       };
     }
-    await deps.sleep(DEPLOY_POLL_MS);
+    const remainingMs = deployDeadline - deps.now();
+    if (remainingMs <= 0) break;
+    await deps.sleep(Math.min(DEPLOY_POLL_MS, remainingMs));
   }
   // The PR is already merged: a deploy that outlives the watch is reported, not thrown, so the
   // summary still names the merge commit and says exactly which deploy is unaccounted for.
@@ -689,11 +706,12 @@ export async function landPr(
       continue;
     }
     if (state.mergeStateStatus === "UNKNOWN") {
-      if (unknownRetries >= UNKNOWN_RETRIES) {
+      const remainingMs = deadline - deps.now();
+      if (unknownRetries >= UNKNOWN_RETRIES || remainingMs <= 0) {
         throw new UserFacingError(`GitHub did not compute a merge state for PR #${pr} in time.`);
       }
       unknownRetries += 1;
-      await deps.sleep(UNKNOWN_DELAY_MS);
+      await deps.sleep(Math.min(UNKNOWN_DELAY_MS, remainingMs));
       continue;
     }
     // UNSTABLE: a non-required check (Vercel's rate-limited preview) failed; the required set

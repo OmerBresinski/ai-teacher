@@ -232,6 +232,43 @@ describe("land-pr", () => {
     expect(fake.deps.now()).toBe(60_000);
   });
 
+  test("a non-array checks payload is an error, never a merge", async () => {
+    const fake = fakeDeps({ requiredChecks: [] });
+    fake.deps.gh = (
+      (original) => async (args: string[]) =>
+        args[1] === "checks" ? ok('{"unexpected":true}') : original(args)
+    )(fake.deps.gh);
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("did not return a JSON array");
+    expect(fake.calls.gh.some((args) => args[1] === "merge")).toBe(false);
+  });
+
+  test("an empty checks array keeps waiting instead of merging", async () => {
+    const fake = fakeDeps({
+      requiredChecks: [[], [{ name: "test", bucket: "pass", state: "SUCCESS" }]],
+    });
+    const summary = await landPr(42, {}, fake.deps);
+    expect(summary.ok).toBe(true);
+    expect(fake.calls.gh.filter((args) => args[1] === "checks")).toHaveLength(2);
+  });
+
+  test("the deploy watch never sleeps past its deadline", async () => {
+    const fake = fakeDeps({
+      railway: { api: [{ id: "old-api" }, { id: "new-api", status: "BUILDING" }] },
+    });
+    const summary = await landPr(42, { timeoutMin: 1 }, fake.deps);
+    expect(summary.ok).toBe(false);
+    // 60 s budget, 15 s polls: the last sleep is capped so the clock stops exactly at the deadline.
+    expect(fake.deps.now()).toBe(60_000);
+  });
+
+  test("an UNKNOWN merge state is bounded by the deadline, not only by its retry count", async () => {
+    const fake = fakeDeps({ states: Array(20).fill("UNKNOWN") });
+    await expect(landPr(42, { timeoutMin: 0.25 }, fake.deps)).rejects.toThrow(
+      "did not compute a merge state",
+    );
+    expect(fake.deps.now()).toBe(15_000);
+  });
+
   test("a gh error other than 'no checks reported' is surfaced, not waited out", async () => {
     const fake = fakeDeps({ requiredChecks: ["HTTP 502: bad gateway"] });
     await expect(landPr(42, {}, fake.deps)).rejects.toThrow("HTTP 502");
@@ -496,7 +533,13 @@ Fetching deployments in omerbresinskis-projects
   });
 
   test("reduces gh's buckets to one CI verdict", () => {
-    expect(ciVerdict([])).toEqual({ kind: "green" });
+    // An empty list is not proof of anything; only a non-empty all-green list merges.
+    expect(ciVerdict([])).toEqual({ kind: "pending", names: [] });
+    // A bucket this script has never seen must not be mistaken for green either.
+    expect(ciVerdict([{ name: "test", bucket: "mystery", state: "???" }])).toEqual({
+      kind: "pending",
+      names: ["test"],
+    });
     expect(
       ciVerdict([
         { name: "test", bucket: "pass", state: "SUCCESS" },
@@ -516,7 +559,7 @@ Fetching deployments in omerbresinskis-projects
   });
 
   test("parses gh's check rows defensively", () => {
-    expect(parseRequiredChecks("{}")).toEqual([]);
+    expect(parseRequiredChecks("{}")).toBeNull();
     expect(parseRequiredChecks('[{"name":"test","bucket":"pass","state":"SUCCESS"},1]')).toEqual([
       { name: "test", bucket: "pass", state: "SUCCESS" },
     ]);
