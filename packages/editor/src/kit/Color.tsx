@@ -1,5 +1,5 @@
-import { cn, Input, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
-import { type Ref, useState } from "react";
+import { cn, Input, Popover, PopoverContent, PopoverTrigger, Tooltip } from "@tj/ui";
+import { type ReactElement, type Ref, useState } from "react";
 import { PanelLabel } from "./Panel";
 
 /*
@@ -18,8 +18,13 @@ const CHECKER =
   "linear-gradient(45deg, transparent 75%, var(--border) 75%), " +
   "linear-gradient(-45deg, transparent 75%, var(--border) 75%)";
 
+/** Square is the picker grid; circle and ring are the toolbar's fill and border triggers. */
+export type SwatchShape = "square" | "circle" | "ring";
+
 export type ColorSwatchProps = {
   color: string;
+  /** Default "square". A ring draws the colour as a 3px band around an empty centre. */
+  shape?: SwatchShape;
   /** Default 24. */
   size?: number;
   selected?: boolean;
@@ -35,6 +40,7 @@ export type ColorSwatchProps = {
  */
 export function ColorSwatch({
   color,
+  shape = "square",
   size = SWATCH,
   selected,
   title,
@@ -43,18 +49,25 @@ export function ColorSwatch({
   ref,
 }: ColorSwatchProps) {
   const isTransparent = !color || color === "transparent";
+  const ring = shape === "ring";
   const classes = cn(
-    "inline-block shrink-0 rounded-key shadow-[inset_0_0_0_1px_var(--border-strong)]",
+    "inline-block shrink-0",
+    shape === "square" ? "rounded-key" : "rounded-full",
+    !ring && "shadow-[inset_0_0_0_1px_var(--border-strong)]",
     selected && "outline-2 outline-offset-2 outline-primary",
     className,
   );
   const style = {
     width: size,
     height: size,
-    background: isTransparent ? undefined : color,
+    background: isTransparent || ring ? undefined : color,
     backgroundImage: isTransparent ? CHECKER : undefined,
     backgroundSize: isTransparent ? "6px 6px" : undefined,
     backgroundPosition: isTransparent ? "0 0, 0 3px, 3px -3px, -3px 0px" : undefined,
+    // Hairline, 3px colour band, hairline: the border swatch reads as a border.
+    boxShadow: ring
+      ? `inset 0 0 0 1px var(--border-strong), inset 0 0 0 4px ${isTransparent ? "transparent" : color}, inset 0 0 0 5px var(--border-strong)`
+      : undefined,
   };
 
   // No onClick: purely decorative (e.g. inside the picker's own trigger) — a span, never a nested
@@ -125,8 +138,12 @@ export type ColorPickerProps = {
   palette?: string[];
   /** Swatch size inside the 32px trigger. Default 24. */
   size?: number;
+  /** Trigger swatch shape. Default "square". */
+  swatch?: SwatchShape;
   /** Accessible name, default "Colour". */
   label?: string;
+  /** Also show `label` as a tooltip on the trigger (needs a TooltipProvider above). */
+  tooltip?: boolean;
   disabled?: boolean;
   className?: string;
 };
@@ -136,7 +153,9 @@ export function ColorPicker({
   onChange,
   palette = [],
   size = SWATCH,
+  swatch = "square",
   label = "Colour",
+  tooltip = false,
   disabled = false,
   className,
 }: ColorPickerProps) {
@@ -182,23 +201,25 @@ export function ColorPicker({
         setOpen(next);
       }}
     >
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label={label}
-          data-color-picker
-          className={cn(
-            "inline-flex size-8 items-center justify-center rounded-control outline-none",
-            "transition-colors duration-(--duration-fast) ease-(--ease-out-soft)",
-            "hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 active:bg-accent-active",
-            disabled && "pointer-events-none opacity-45",
-            className,
-          )}
-        >
-          <ColorSwatch color={value} size={size} title={value} />
-        </button>
-      </PopoverTrigger>
+      <TriggerWrap tooltip={tooltip ? label : undefined}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            aria-label={label}
+            data-color-picker
+            className={cn(
+              "inline-flex size-8 items-center justify-center rounded-control outline-none",
+              "transition-colors duration-(--duration-fast) ease-(--ease-out-soft)",
+              "hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 active:bg-accent-active",
+              disabled && "pointer-events-none opacity-45",
+              className,
+            )}
+          >
+            <ColorSwatch color={value} size={size} title={value} shape={swatch} />
+          </button>
+        </PopoverTrigger>
+      </TriggerWrap>
       <PopoverContent align="start" className="w-52 p-2" aria-label={label}>
         <div className="flex flex-col gap-2">
           {palette.length > 0 ? (
@@ -252,4 +273,9 @@ export function ColorPicker({
       </PopoverContent>
     </Popover>
   );
+}
+
+/** Tooltip's trigger clones the PopoverTrigger, which clones the button: one DOM node, two roots. */
+function TriggerWrap({ tooltip, children }: { tooltip?: string; children: ReactElement }) {
+  return tooltip ? <Tooltip label={tooltip}>{children}</Tooltip> : children;
 }

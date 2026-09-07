@@ -76,7 +76,7 @@ describe("ContextualToolbar routing", () => {
 });
 
 describe("ShapeToolbar (row 1)", () => {
-  test("fill from the palette is one write; stroke width scrub is one undo step", async () => {
+  test("fill from the palette is one write; a border width pick is one undo step", async () => {
     const { container, read } = renderEditor(chromeLesson());
     clickAt(container, 150, 130);
     fireEvent.click(within(toolbar("Shape")).getByRole("button", { name: "Fill" }));
@@ -84,16 +84,28 @@ describe("ShapeToolbar (row 1)", () => {
     fireEvent.click(swatch);
     expect((first(read()) as { fill?: string }).fill).toBe(theme.colors.correct);
 
-    const width = within(toolbar("Shape")).getByRole("spinbutton", { name: "Stroke width" });
-    fireEvent.keyDown(width, { key: "ArrowUp" });
-    fireEvent.keyDown(width, { key: "ArrowUp" });
-    fireEvent.keyDown(width, { key: "ArrowUp" });
-    expect((first(read()) as { strokeWidth?: number }).strokeWidth).toBe(3);
-    // The scrub's session closes after the idle window; then the run is one undo step.
+    // The menu marks the drawn width (none yet) and a pick writes width plus a first border colour.
+    openMenu(within(toolbar("Shape")).getByRole("button", { name: /Border width/ }));
+    expect(await screen.findByRole("menuitemradio", { name: "0 None" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "3" }));
+    expect(first(read())).toMatchObject({ strokeWidth: 3, stroke: theme.colors.ink });
     await idle();
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect((first(read()) as { strokeWidth?: number }).strokeWidth ?? 0).toBe(0);
     expect((first(read()) as { fill?: string }).fill).toBe(theme.colors.correct);
+  });
+
+  test("opacity popover writes the element's opacity from the slider", async () => {
+    const { container, read } = renderEditor(chromeLesson());
+    clickAt(container, 150, 130);
+    fireEvent.click(within(toolbar("Shape")).getByRole("button", { name: /Opacity/ }));
+    const slider = await screen.findByRole("slider", { name: "Opacity" });
+    expect(slider).toHaveAttribute("aria-valuenow", "100");
+    fireEvent.keyDown(slider, { key: "ArrowLeft" });
+    expect((first(read()) as { opacity?: number }).opacity).toBeCloseTo(0.99);
   });
 });
 
