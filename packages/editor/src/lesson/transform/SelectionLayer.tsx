@@ -1,10 +1,12 @@
 import type { Id, Slide, Theme } from "@tj/domain/documents";
 import {
   type CSSProperties,
+  type MutableRefObject,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -87,8 +89,16 @@ export type SelectionLayerProps = {
   onPreview: (next: PreviewMap | null) => void;
   /** True while the canvas is panning (Space held): the stage takes no gestures. */
   disabled?: boolean;
+  /**
+   * Filled with the entry point the canvas calls for a press on the grey margin round the slide,
+   * so a marquee can start off the slide and a plain click there clears the selection as slide
+   * ground does. The pointer is mapped to slide space through the same stage rect and scale.
+   */
+  marginRef?: MutableRefObject<MarginHandle | null>;
   className?: string;
 };
+
+export type MarginHandle = { pointerDown: (e: ReactPointerEvent) => void };
 
 export function SelectionLayer({
   slide,
@@ -96,6 +106,7 @@ export function SelectionLayer({
   preview,
   onPreview,
   disabled = false,
+  marginRef,
   className,
 }: SelectionLayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -500,6 +511,33 @@ export function SelectionLayer({
     capturePointer(e);
   };
 
+  /** Ground pressed, on the slide or in the margin: clear (unless additive) and start the marquee. */
+  const startMarquee = (p: Point, e: ReactPointerEvent, selection: readonly Id[]) => {
+    if (!e.shiftKey) actions.clearSelection();
+    beginGesture(
+      {
+        kind: "marquee",
+        origin: p,
+        additive: e.shiftKey,
+        base: e.shiftKey ? [...selection] : [],
+      },
+      e,
+    );
+    setMarquee({ x: p.x, y: p.y, w: 0, h: 0 });
+  };
+
+  // The canvas margin has no elements to hit, so a press there is always ground.
+  const onMarginDown = (e: ReactPointerEvent) => {
+    if (e.button !== 0 || disabled) return;
+    const session = readSession();
+    measureStage();
+    focusStage();
+    if (session.editingTextId) actions.setEditingText(null);
+    if (session.editingExplanation) actions.setEditingExplanation(null);
+    startMarquee(toSlide(e.clientX, e.clientY), e, session.selection);
+  };
+  useImperativeHandle(marginRef, () => ({ pointerDown: onMarginDown }));
+
   const onStageDown = (e: ReactPointerEvent) => {
     // While the canvas pans (Space held) the press belongs to the scroller, not to the elements.
     if (e.button !== 0 || disabled) return;
@@ -514,17 +552,7 @@ export function SelectionLayer({
     if (session.editingExplanation) actions.setEditingExplanation(null);
 
     if (!hit) {
-      if (!e.shiftKey) actions.clearSelection();
-      beginGesture(
-        {
-          kind: "marquee",
-          origin: p,
-          additive: e.shiftKey,
-          base: e.shiftKey ? session.selection : [],
-        },
-        e,
-      );
-      setMarquee({ x: p.x, y: p.y, w: 0, h: 0 });
+      startMarquee(p, e, session.selection);
       return;
     }
 

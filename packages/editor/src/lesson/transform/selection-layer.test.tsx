@@ -157,6 +157,28 @@ describe("SelectionLayer", () => {
     expect(read().slides[0]?.elements).toHaveLength(2);
   });
 
+  test("row 7b: a marquee from the canvas margin selects what it crosses; a margin click clears", async () => {
+    const { container } = renderEditor();
+    const margin = container.querySelector<HTMLElement>("[data-canvas-scroller]");
+    if (!margin) throw new Error("no scroller");
+    // The press lands left of and above the slide (negative slide coordinates) and sweeps over both.
+    await drag(margin, [-60, -40], [650, 250], 3);
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+    expect(screen.getByRole("status", { name: "" }).textContent).toBe("2 elements selected");
+
+    // A plain click in the margin is ground: the selection goes.
+    fireEvent.pointerDown(margin, pointer(-60, -40));
+    fireEvent.pointerUp(window, pointer(-60, -40));
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(0);
+
+    // The right button belongs to the context menu, not the marquee.
+    fireEvent.pointerDown(catcher(container), pointer(150, 150));
+    fireEvent.pointerUp(window, pointer(150, 150));
+    fireEvent.pointerDown(margin, pointer(-60, -40, { button: 2 }));
+    fireEvent.pointerUp(window, pointer(-60, -40, { button: 2 }));
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+  });
+
   test("row 8: ↑×5 nudges by 5 in one undo step; Shift+↑ nudges by 10", async () => {
     const { container, read } = renderEditor();
     fireEvent.pointerDown(catcher(container), pointer(150, 150));
