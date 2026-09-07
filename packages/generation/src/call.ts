@@ -1,6 +1,7 @@
 import type { ModelClass } from "@tj/domain";
-import { generateText, NoObjectGeneratedError, Output } from "ai";
+import { generateText, NoObjectGeneratedError, Output, type OutputInterface } from "ai";
 import type { z } from "zod";
+import { type JsonRepairKind, repairJsonText } from "./repair-json";
 import {
   BudgetExceeded,
   callContext,
@@ -12,10 +13,10 @@ import {
 
 /*
  * One structured model call (ADR 0025 §14): `generateText` with `Output.object`, the budget
- * consulted before and charged after every attempt, one retry on a schema miss with the
- * validation issues in context, and a typed `StageFailure` on the second miss. Nothing about the
- * prompt or the model's text is logged (ADR 0015); only the issue messages travel back into the
- * retry prompt.
+ * consulted before and charged after every attempt, a deterministic repair of the text before
+ * validation (`repair-json.ts`), one retry on a schema miss with the validation issues in
+ * context, and a typed `StageFailure` on the second miss. Nothing about the prompt or the model's
+ * text is logged (ADR 0015); only the issue messages travel back into the retry prompt.
  */
 
 export interface StructuredPrompt<I> {
@@ -64,6 +65,46 @@ export const MAX_OUTPUT_TOKENS = {
 } as const;
 
 const RETRY_PREFIX = "\n\nYour previous answer did not validate:\n";
+/**
+ * The retry's closing instruction. The misses seen in production are shape misses (a list or the
+ * whole answer given as a string, a key left out), so the reminder is about shape, not content.
+ */
+const RETRY_SUFFIX =
+  "\n\nAnswer again with the complete JSON object in exactly the shape shown: every top-level key present, every list a JSON array of objects (never a string containing JSON, never prose).";
+
+/**
+ * `Output.object` with a repair pass: when the text fails to parse or validate, `repairJsonText`
+ * is tried once and, if the repaired text validates, that answer is returned and `onRepair` told
+ * what was done. A repaired text that still fails rethrows the *original* error, so the retry
+ * prompt describes what the model actually sent.
+ */
+function repairingObjectOutput<T>(
+  schema: z.ZodType<T>,
+  onRepair: (repairs: JsonRepairKind[]) => void,
+): OutputInterface<T> {
+  const inner = Output.object({ schema });
+  return {
+    name: inner.name,
+    responseFormat: inner.responseFormat,
+    parsePartialOutput: (options) => inner.parsePartialOutput(options),
+    createElementStreamTransform: () => inner.createElementStreamTransform(),
+    async parseCompleteOutput(options, context) {
+      try {
+        return await inner.parseCompleteOutput(options, context);
+      } catch (error) {
+        const repaired = repairJsonText(options.text);
+        if (repaired.text === null) throw error;
+        try {
+          const output = await inner.parseCompleteOutput({ text: repaired.text }, context);
+          onRepair(repaired.repairs);
+          return output;
+        } catch {
+          throw error;
+        }
+      }
+    },
+  };
+}
 
 export async function callStructured<I, T>(
   options: CallStructuredOptions<I, T>,
@@ -77,13 +118,21 @@ export async function callStructured<I, T>(
   const modelId = deps.ai.modelId(cls);
   const model = deps.ai.model(cls, callContext(deps, stage, prompt.version));
   const userText = prompt.user(input);
+  const output = repairingObjectOutput(schema, (repairs) => {
+    // Repair kinds only — never the text (ADR 0015). Counted so a model change that makes the
+    // quirk common (or rare) shows up in the logs.
+    deps.logger.info(
+      { stage, promptVersion: prompt.version, repairs },
+      "structured output repaired before validation",
+    );
+  });
 
   const attempt = async (text: string): Promise<CallResult<T>> => {
     const result = await generateText({
       model,
       system: prompt.system,
       prompt: text,
-      output: Output.object({ schema }),
+      output,
       abortSignal: deps.signal,
       maxOutputTokens,
     });
@@ -112,7 +161,7 @@ export async function callStructured<I, T>(
     const exceededNow = deps.budget.exceeded();
     if (exceededNow) throw new BudgetExceeded(exceededNow.by);
     try {
-      const second = await attempt(`${userText}${RETRY_PREFIX}${issues.join("\n")}`);
+      const second = await attempt(`${userText}${RETRY_PREFIX}${issues.join("\n")}${RETRY_SUFFIX}`);
       return { ...second, attempts: 2 };
     } catch (again) {
       if (!NoObjectGeneratedError.isInstance(again)) throw again;
@@ -151,6 +200,10 @@ function usageOf(usage: {
  * types, our own refinement text) except `unrecognized_keys`, whose message repeats the key names
  * the model invented — those are replaced by a count. The retry prompt keeps them: the model needs
  * to know which keys to drop.
+ *
+ * One line per path: zod reports a wrong type and then keeps checking the value as if it were
+ * right (`expected array, received string` followed by `Too big: expected string to have <=4
+ * characters` for the same field), and the second line would send the model the wrong way.
  */
 export function issuesOf(
   error: NoObjectGeneratedError,
@@ -162,20 +215,26 @@ export function issuesOf(
   const zodIssues =
     cause?.issues ?? (cause as { cause?: { issues?: unknown[] } } | undefined)?.cause?.issues;
   if (Array.isArray(zodIssues) && zodIssues.length > 0) {
-    return zodIssues.map((issue) => {
+    const seenPaths = new Set<string>();
+    const lines: string[] = [];
+    for (const issue of zodIssues) {
       const i = issue as {
         path?: (string | number)[];
         message: string;
         code?: string;
         keys?: unknown[];
       };
-      const path = i.path && i.path.length > 0 ? `${i.path.join(".")}: ` : "";
+      const pathKey = (i.path ?? []).join(".");
+      if (seenPaths.has(pathKey)) continue;
+      seenPaths.add(pathKey);
+      const path = pathKey.length > 0 ? `${pathKey}: ` : "";
       const message =
         audience === "log" && i.code === "unrecognized_keys"
           ? `${i.keys?.length ?? "some"} unrecognized key(s)`
           : i.message;
-      return `- ${path}${message}`;
-    });
+      lines.push(`- ${path}${message}`);
+    }
+    return lines;
   }
   return ["- The answer was not valid JSON for the requested shape."];
 }

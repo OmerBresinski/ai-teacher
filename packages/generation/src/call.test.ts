@@ -51,6 +51,91 @@ const call = (d: ReturnType<typeof deps>, input = "hi") =>
     maxOutputTokens: 100,
   });
 
+/** A list field, for the Bedrock "list as a string" quirk (`repair-json.ts`). */
+const listSchema = z.strictObject({ items: z.array(z.string()).max(4) });
+const callList = (d: ReturnType<typeof deps>) =>
+  callStructured({
+    deps: d,
+    stage: "plan",
+    cls: "standard",
+    prompt,
+    input: "hi",
+    schema: listSchema,
+    maxOutputTokens: 100,
+  });
+
+describe("callStructured repairs the text before validating it", () => {
+  test("a list sent as a JSON string is unwrapped: one call, no retry, the repair kinds logged", async () => {
+    const ai = createFakeAi({
+      script: [JSON.stringify({ items: JSON.stringify(["a", "b"]) })],
+    });
+    const log = capturingLogger();
+    const d = deps(ai, { logger: log.logger });
+    const result = await callList(d);
+    expect(result.output).toEqual({ items: ["a", "b"] });
+    expect(result.attempts).toBe(1);
+    expect(ai.calls).toHaveLength(1);
+    expect(log.text()).toContain("structured output repaired before validation");
+    expect(log.text()).toContain('"repairs":["parsed-string"]');
+    expect(log.text()).not.toContain("retrying once");
+    // Only the repair kinds are logged, never the text.
+    expect(log.text()).not.toContain('"a"');
+  });
+
+  test("the whole answer sent as a string under its first key is hoisted", async () => {
+    const ai = createFakeAi({
+      script: [JSON.stringify({ items: JSON.stringify({ items: ["a"] }) })],
+    });
+    const log = capturingLogger();
+    const d = deps(ai, { logger: log.logger });
+    const result = await callList(d);
+    expect(result.output).toEqual({ items: ["a"] });
+    expect(result.attempts).toBe(1);
+    expect(log.text()).toContain('"repairs":["parsed-string","hoisted"]');
+  });
+
+  test("an answer that already validates is never repaired, even when a string holds JSON", async () => {
+    const ai = createFakeAi({
+      script: [JSON.stringify({ answer: JSON.stringify({ answer: "ok" }) })],
+    });
+    const log = capturingLogger();
+    const d = deps(ai, { logger: log.logger });
+    const result = await call(d);
+    expect(result.output).toEqual({ answer: '{"answer":"ok"}' });
+    expect(log.text()).not.toContain("repaired");
+  });
+
+  test("a repair that still does not validate falls through to the retry with the original issues", async () => {
+    const ai = createFakeAi({
+      // `[1, 2]` unwraps to numbers, which the schema refuses; the retry answers properly.
+      script: [JSON.stringify({ items: "[1, 2]" }), JSON.stringify({ items: ["a"] })],
+    });
+    const log = capturingLogger();
+    const d = deps(ai, { logger: log.logger });
+    const result = await callList(d);
+    expect(result.output).toEqual({ items: ["a"] });
+    expect(result.attempts).toBe(2);
+    expect(log.text()).not.toContain("repaired before validation");
+    // The issue describes what the model sent (a string), not the failed repair (numbers).
+    expect(log.text()).toContain("items: Invalid input: expected array, received string");
+    expect(log.text()).not.toContain("received number");
+  });
+
+  test("one issue per path: the checks zod runs after a type miss are not sent to the model", async () => {
+    const ai = createFakeAi({
+      script: [JSON.stringify({ items: "hello world" }), JSON.stringify({ items: ["a"] })],
+    });
+    const log = capturingLogger();
+    const d = deps(ai, { logger: log.logger });
+    await callList(d);
+    const issues = /"issues":(\[[^\]]*\])/.exec(log.text())?.[1];
+    expect(issues).toBeDefined();
+    expect(JSON.parse(issues as string)).toEqual([
+      "- items: Invalid input: expected array, received string",
+    ]);
+  });
+});
+
 describe("callStructured", () => {
   test("returns the parsed object, charges the budget and carries the stage context", async () => {
     const ai = createFakeAi({
