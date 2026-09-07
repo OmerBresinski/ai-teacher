@@ -99,17 +99,42 @@ export class StageFailure extends Error {
   }
 }
 
+/** The checks the input step may report (TEACH-137); every one stops the run. */
+export const INPUT_CHECKS = ["learner-name", "unsafe-content", "not-a-lesson"] as const;
+export type InputCheck = (typeof INPUT_CHECKS)[number];
+
+/**
+ * What the teacher is told per check. Fixed text, never the model's: the model's own `message`
+ * stays on the finding for the editor, but the error message travels into logs and the job's
+ * terminal event (ADR 0015), so it must not be able to echo the brief.
+ */
+export const INPUT_CHECK_MESSAGES: Record<InputCheck, string> = {
+  "learner-name":
+    "The brief seems to name or identify a pupil. Please describe the class without naming anyone.",
+  "unsafe-content": "The brief asks for material that is not suitable for a classroom.",
+  "not-a-lesson":
+    "The brief does not describe a lesson to teach. Please give a topic or objective.",
+};
+
 /**
  * The brief must not go to Plan (TEACH-137): a learner's name, unsafe content or not a lesson
  * request. Thrown by `check-input` before anything is persisted; the worker maps it to a
- * `NonRetryableError` — a re-run cannot fix the input. `findings` carry the teacher-readable,
- * content-free reasons; `message` is the first of them.
+ * `NonRetryableError` — a re-run cannot fix the input. `findings` carry the reasons for the
+ * editor; `message` is the fixed text for the first recognised check, so nothing the model wrote
+ * reaches a log line or a job event.
  */
 export class InputRejected extends Error {
   override readonly name = "InputRejected";
   constructor(readonly findings: Finding[]) {
-    super(findings[0]?.message ?? "The brief cannot be turned into a lesson as written.");
+    super(inputRejectionMessage(findings));
   }
+}
+
+export function inputRejectionMessage(findings: Finding[]): string {
+  const known = findings.find((f) => (INPUT_CHECKS as readonly string[]).includes(f.check));
+  return known
+    ? INPUT_CHECK_MESSAGES[known.check as InputCheck]
+    : INPUT_CHECK_MESSAGES["not-a-lesson"];
 }
 
 /** Thrown by `callStructured` when `budget.exceeded()` before a call; stages catch it (§15). */

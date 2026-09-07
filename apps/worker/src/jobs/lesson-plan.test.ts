@@ -10,7 +10,7 @@ import {
   parseLesson,
   parseStoredWorksheet,
 } from "@tj/domain/documents";
-import { noSources } from "@tj/generation";
+import { INPUT_CHECK_MESSAGES, noSources } from "@tj/generation";
 import { FIXTURES, pipelineScript, SLIDES_INDEX, scriptedPipelineAi } from "@tj/generation/testing";
 import { NonRetryableError } from "@tj/jobs";
 import pino from "pino";
@@ -250,8 +250,9 @@ describeDb("lesson.plan job", () => {
       },
     });
 
+    // The job-visible message is the fixed per-check text, not what the model wrote.
     await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(ai)).ctx)).rejects.toThrow(
-      new NonRetryableError("The brief seems to name a pupil. Please reword it."),
+      new NonRetryableError(INPUT_CHECK_MESSAGES["learner-name"]),
     );
 
     expect(ai.calls.map((c) => c.context?.stage)).toEqual(["check-input"]);

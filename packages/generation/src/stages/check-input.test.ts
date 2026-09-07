@@ -9,7 +9,7 @@ import {
   sampleBriefLesson,
   scriptedPipelineAi,
 } from "../testing";
-import { InputRejected } from "../types";
+import { INPUT_CHECK_MESSAGES, InputRejected } from "../types";
 import { resumeFrom, runLessonPipeline } from "../workflow";
 import { checkInput } from "./check-input";
 
@@ -37,7 +37,9 @@ describe("check-input", () => {
     ).catch((e) => e);
     expect(error).toBeInstanceOf(InputRejected);
     expect((error as InputRejected).findings).toEqual(LEARNER_NAME.findings);
-    expect((error as InputRejected).message).toBe(LEARNER_NAME.findings[0]?.message ?? "");
+    // The message the worker and the job event carry is the fixed text, never the model's.
+    expect((error as InputRejected).message).toBe(INPUT_CHECK_MESSAGES["learner-name"]);
+    expect((error as InputRejected).message).not.toBe(LEARNER_NAME.findings[0]?.message);
     expect(deps.persisted).toHaveLength(0);
     expect(deps.progress).toHaveLength(0);
     expect(ai.calls.map((c) => c.context?.stage)).toEqual(["check-input"]);

@@ -7,6 +7,7 @@ import {
 } from "@tj/domain/documents";
 import { BlockSpecSchema, SlideSpecSchema, SPEC_LIMITS } from "@tj/slides";
 import { z } from "zod";
+import { INPUT_CHECKS } from "./types";
 
 /*
  * What each stage asks the model for (ADR 0025 §8, §11, §12, §14). Content only — the model
@@ -21,10 +22,6 @@ const line = (max: number) => z.string().trim().min(1).max(max);
 /* ------------------------------------------------------------------ */
 /* Check input                                                         */
 /* ------------------------------------------------------------------ */
-
-/** The checks the input step's model call may report (TEACH-137); every one stops the run. */
-export const INPUT_CHECKS = ["learner-name", "unsafe-content", "not-a-lesson"] as const;
-export type InputCheck = (typeof INPUT_CHECKS)[number];
 
 /**
  * The `Finding` shape, narrowed: a fixed `check`, always an `error`, no target (the finding is

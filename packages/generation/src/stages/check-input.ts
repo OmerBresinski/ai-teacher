@@ -2,7 +2,12 @@ import { type Finding, findNamePatterns } from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { checkInputPrompt } from "../prompts";
 import { CheckInputOutputSchema } from "../specs";
-import { InputRejected, type PipelineDeps, type PipelineState } from "../types";
+import {
+  INPUT_CHECK_MESSAGES,
+  InputRejected,
+  type PipelineDeps,
+  type PipelineState,
+} from "../types";
 import { audienceOf } from "./shared";
 
 /*
@@ -15,13 +20,12 @@ import { audienceOf } from "./shared";
  * logs the text (ADR 0015): only `{ stage, findings: n }`.
  */
 
-/** The message the Identifier guard's structural hit carries; the model's own is used otherwise. */
+/** The Identifier guard's structural hit, in the shared `Finding` shape. */
 const GUARD_FINDING: Finding = {
   check: "learner-name",
   severity: "error",
   target: {},
-  message:
-    "The brief contains a pupil identifier (an email, a number or a named pupil). Please reword it without identifying anyone.",
+  message: INPUT_CHECK_MESSAGES["learner-name"],
 };
 
 /** Every free-text field of the Brief and its class context, in one list. */
@@ -38,6 +42,9 @@ export async function checkInput(state: PipelineState, deps: PipelineDeps): Prom
   const brief = state.lesson.brief;
   if (!brief) throw new Error("check-input: the lesson has no brief");
 
+  // A structural hit is a learner identifier in the text (an email, an id number, "a pupil
+  // called …"): that text must not reach a model at all (ADR 0024 §2, principle P6), so the
+  // model call is skipped, not added to.
   const structural = briefTexts(brief).some((text) => findNamePatterns(text).length > 0);
   const findings: Finding[] = structural ? [GUARD_FINDING] : [];
 
