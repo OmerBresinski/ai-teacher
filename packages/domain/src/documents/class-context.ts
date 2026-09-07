@@ -6,7 +6,8 @@ import { guarded } from "./identifier-guard";
  * facts about the group a lesson is for, never about an individual: a size band, needs as counts
  * per category, what the class already knows, and notes. Every field is optional so generation
  * proceeds when the context is absent; the object is strict so a `roster` or `names` key can never
- * be smuggled in; every free-text field is refined by the Identifier guard.
+ * be smuggled in; every free-text field is refined by the Identifier guard (emails, ID numbers,
+ * "a pupil called …"). A bare name is the pipeline's model check to catch (TEACH-137).
  */
 
 export const SIZE_BANDS = ["under15", "15to24", "25to30", "over30"] as const;
