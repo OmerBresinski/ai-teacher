@@ -150,20 +150,27 @@ export const EMPTY_PLAN_FACTS: PlanFacts = {
   outlineFactRefs: [],
 };
 
-/** The facts schema for one skeleton: every reference lands inside its list and its outline. */
+/** The first outline positions Plan materialises itself; the facts call may not touch them. */
+const FIRST_FACT_SLIDE = 2;
+
+/**
+ * The facts schema for one skeleton: every reference lands inside its list, every outline
+ * position exists and is one of the slides the facts feed (not `title` / `objectives`, whose
+ * objective references the skeleton fixed), and only the three lists this call produces may be
+ * referenced — the objectives are already wired by the skeleton.
+ */
 export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts> {
   return PlanFactsShape.superRefine((facts, ctx) => {
     const sizes = {
-      objective: skeleton.learningObjectives.length,
       vocabulary: facts.vocabulary.length,
       workedExample: facts.workedExamples.length,
       question: facts.questions.length,
     };
     facts.outlineFactRefs.forEach((entry, i) => {
-      if (entry.index >= skeleton.outline.length) {
+      if (entry.index < FIRST_FACT_SLIDE || entry.index >= skeleton.outline.length) {
         ctx.addIssue({
           code: "custom",
-          message: `outline index ${entry.index} is out of range (${skeleton.outline.length} entries)`,
+          message: `outline index ${entry.index} is out of range (positions ${FIRST_FACT_SLIDE}–${skeleton.outline.length - 1} take facts)`,
           path: ["outlineFactRefs", i, "index"],
         });
       }

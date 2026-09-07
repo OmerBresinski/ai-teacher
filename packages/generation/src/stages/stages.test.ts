@@ -3,7 +3,7 @@ import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
 import { PROMPT_VERSIONS } from "../prompts";
-import { assignFactIds } from "../specs";
+import { assignFactIds, planFactsSchemaFor } from "../specs";
 import { FIXTURES, initialState, recordingDeps, sampleBriefLesson } from "../testing";
 import { evaluate } from "./evaluate";
 import { generate, PLANNED_SLIDES } from "./generate";
@@ -113,6 +113,25 @@ describe("plan", () => {
     const state = await plan(initialState(), recordingDeps(ai));
     expect(ai.calls).toHaveLength(3);
     expect(state.lesson.facts).toEqual(fullFacts());
+  });
+
+  test("facts that touch the objectives slide or reference an objective are validation issues", async () => {
+    const skeleton = FIXTURES.planSkeleton;
+    const schema = planFactsSchemaFor(skeleton);
+    const onObjectivesSlide = structuredClone(FIXTURES.planFacts);
+    onObjectivesSlide.outlineFactRefs.push({
+      index: 1,
+      factRefs: [{ type: "question", index: 0 }],
+    });
+    const objectiveRef = structuredClone(FIXTURES.planFacts);
+    objectiveRef.outlineFactRefs.push({ index: 2, factRefs: [{ type: "objective", index: 0 }] });
+    expect(schema.safeParse(FIXTURES.planFacts).success).toBe(true);
+    expect(schema.safeParse(onObjectivesSlide).error?.issues.map((i) => i.path)).toEqual([
+      ["outlineFactRefs", 6, "index"],
+    ]);
+    expect(schema.safeParse(objectiveRef).error?.issues.map((i) => i.path)).toEqual([
+      ["outlineFactRefs", 6, "factRefs", 0, "type"],
+    ]);
   });
 
   test("resumed with the title slide and no generation: both calls run, the title is not duplicated", async () => {
