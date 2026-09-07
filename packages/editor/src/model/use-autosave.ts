@@ -10,7 +10,8 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
  * unload warning as the net.
  *
  * Generic in the document (`Lesson` or `Worksheet`): the write is the `onSave(document)` prop
- * (ADR 0022 §5): the mock store today, `PUT /documents/:id` later. Nothing here knows which.
+ * (ADR 0022 §5) — `PUT /documents/:id` in the app; nothing here knows that. Exposed as
+ * `@tj/editor/autosave` so the app can import `SaveRefusedError` without either editor's chunk.
  */
 
 export type SaveState = "saved" | "unsaved" | "saving" | "failed";

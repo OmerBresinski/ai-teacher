@@ -68,6 +68,23 @@ describeDb("seedDocuments", () => {
     expect(items.map((row) => row.title)).toEqual(["first", "second"]);
   });
 
+  test("a body the parser refuses rolls the whole seed back", async () => {
+    const [first] = fixtures();
+    if (!first) throw new Error("fixture missing");
+    const bad: SeedDocument = {
+      key: "bad",
+      kind: "lesson",
+      body: {
+        id: "bad",
+        title: "Bad",
+        createdAt: first.body.createdAt,
+        updatedAt: first.body.updatedAt,
+      },
+    };
+    await expect(seedDocuments(ws, [first, bad])).rejects.toThrow();
+    expect((await listSummaries(ws, { kind: "lesson" })).items).toEqual([]);
+  });
+
   test("skipTitles leaves those documents out and their keys unresolved", async () => {
     const result = await seedDocuments(ws, fixtures(), { skipTitles: new Set(["first"]) });
     expect(result.skipped).toEqual(["first"]);

@@ -33,12 +33,21 @@ export interface SeedResult {
  * assigned above it, and keys that were not inserted drop out. Row timestamps are set from the
  * body's — the fixtures are dated hours to weeks in the past so the library's Recent / Earlier
  * split and the sort orders have something to show — and `body.updatedAt` is aligned to the row
- * so `expectedUpdatedAt` round-trips. `skipTitles` makes a re-run idempotent by title.
+ * so `expectedUpdatedAt` round-trips. `skipTitles` makes a re-run idempotent by title. One
+ * transaction: a body the parser refuses leaves nothing behind.
  */
-export async function seedDocuments(
+export function seedDocuments(
   ws: WorkspaceDb,
   items: readonly SeedDocument[],
   opts: { skipTitles?: ReadonlySet<string> } = {},
+): Promise<SeedResult> {
+  return ws.tx((scoped) => seedInto(scoped, items, opts));
+}
+
+async function seedInto(
+  ws: WorkspaceDb,
+  items: readonly SeedDocument[],
+  opts: { skipTitles?: ReadonlySet<string> },
 ): Promise<SeedResult> {
   const ids = new Map<string, string>();
   const inserted: DocumentRow[] = [];

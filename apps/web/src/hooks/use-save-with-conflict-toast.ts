@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SaveRefusedError } from "@tj/editor/lesson";
+import { SaveRefusedError } from "@tj/editor/autosave";
 import { toast } from "@tj/ui";
 import { useCallback } from "react";
 import { type LibraryDocument, libraryMutations, libraryQueries } from "@/lib/library";
