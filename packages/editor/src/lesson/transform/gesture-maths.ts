@@ -20,7 +20,7 @@ import {
 } from "../../model/snapping";
 import type { ElementTransform } from "../../slide/elements/ElementFrame";
 import {
-  ASPECT_LOCKED_TYPES,
+  aspectLockedByDefault,
   type HandleId,
   MIN_SIZE,
   ROTATE_FINE_DEG,
@@ -238,7 +238,7 @@ export function previewResize(
   if (!g.multi) {
     const b = g.boxes[0];
     if (!b) return null;
-    const aspectDefault = ASPECT_LOCKED_TYPES.has(b.type);
+    const aspectDefault = aspectLockedByDefault([b.type]);
     const aspect = corner && (s.shift ? !aspectDefault : aspectDefault);
     let rect = resizeRect({
       handle: g.handle,
@@ -262,12 +262,14 @@ export function previewResize(
     return { preview, guides: settings.showGuides ? guides : [] };
   }
 
+  // The group follows its members: locked only if every one is a locked type, Shift inverts.
+  const groupDefault = aspectLockedByDefault(g.boxes.map((b) => b.type));
   const target = resizeRect({
     handle: g.handle,
     start: g.bounds,
     pointer,
     fromCentre: s.alt,
-    aspect: corner ? !s.shift : false,
+    aspect: corner && (s.shift ? !groupDefault : groupDefault),
   });
   const anchor = anchorOf(g.bounds, g.handle, s.alt);
   const sx = clampGroupScale(
