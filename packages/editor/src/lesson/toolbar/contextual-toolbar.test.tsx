@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import type { Lesson, SlideElement } from "@tj/domain/documents";
+import type { Lesson, ShapeElement, SlideElement } from "@tj/domain/documents";
+import { docFromText } from "../../model/factories";
 import { makeLine, makeShape, makeTable, makeText, makeTimer } from "../../model/insert";
 import { getTheme } from "../../model/themes";
+import { docHasMark } from "../../text/doc-marks";
 import { catcher, pointer, renderEditor, seededLesson } from "../test-harness";
 
 /*
@@ -106,6 +108,55 @@ describe("ShapeToolbar (row 1)", () => {
     expect(slider).toHaveAttribute("aria-valuenow", "100");
     fireEvent.keyDown(slider, { key: "ArrowLeft" });
     expect((first(read()) as { opacity?: number }).opacity).toBeCloseTo(0.99);
+  });
+});
+
+describe("ShapeToolbar label text controls", () => {
+  const openLabel = async () => {
+    fireEvent.click(within(toolbar("Shape")).getByRole("button", { name: "Label" }));
+    return await screen.findByRole("dialog", { name: "Label" });
+  };
+
+  test("a labelled shape's preset, size, colour and marks write it from the Label popover", async () => {
+    const lesson = chromeLesson();
+    const slide = lesson.slides[0];
+    if (!slide) throw new Error("seed");
+    slide.elements[0] = { ...(first(lesson) as ShapeElement), doc: docFromText("Go") };
+    const { container, read } = renderEditor(lesson);
+    clickAt(container, 150, 130);
+    const panel = await openLabel();
+    expect(within(panel).getByRole("button", { name: /^Label style/ })).toHaveAccessibleName(
+      "Label style, Body",
+    );
+
+    openMenu(within(panel).getByRole("button", { name: /^Label style/ }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Heading" }));
+    expect((first(read()) as ShapeElement).textStyle).toMatchObject({ preset: "heading" });
+
+    const before = Number(within(panel).getByText(/^\d+$/).textContent);
+    fireEvent.click(within(panel).getByRole("button", { name: "Larger" }));
+    expect((first(read()) as ShapeElement).textStyle?.fontSize).toBe(before + 2);
+
+    fireEvent.click(within(panel).getByRole("button", { name: "Label colour" }));
+    fireEvent.click(await screen.findByRole("button", { name: theme.colors.accent }));
+    expect((first(read()) as ShapeElement).textStyle?.color).toBe(theme.colors.accent);
+
+    const bold = within(panel).getByRole("button", { name: "Bold" });
+    expect(bold).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(bold);
+    expect(docHasMark((first(read()) as ShapeElement).doc, "bold")).toBe(true);
+    expect(within(panel).getByRole("button", { name: "Bold" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  test("a shape with no label has only the label field", async () => {
+    const { container } = renderEditor(chromeLesson());
+    clickAt(container, 150, 130);
+    const panel = await openLabel();
+    expect(within(panel).getByRole("textbox")).toBeTruthy();
+    expect(within(panel).queryByRole("button", { name: /^Label style/ })).toBeNull();
   });
 });
 
