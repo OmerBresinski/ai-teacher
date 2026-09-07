@@ -1,4 +1,4 @@
-import type { ImageElement } from "@tj/domain/documents";
+import { type ImageElement, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
@@ -89,6 +89,8 @@ export type CropLayerProps = {
   toSlide: (clientX: number, clientY: number) => Point;
   /** The canvas has keyboard focus: draw the two-tone band on the crop frame. */
   focusRing: boolean;
+  /** Take the stage's focus from the pointer, so no keyboard ring appears for a click. */
+  onPointerFocus: () => void;
 };
 
 export function CropLayer({
@@ -98,6 +100,7 @@ export function CropLayer({
   coarsePointer,
   toSlide,
   focusRing,
+  onPointerFocus,
 }: CropLayerProps) {
   const history = useHistory();
   const actions = useSessionActions();
@@ -192,6 +195,7 @@ export function CropLayer({
   );
 
   const begin = (g: Gesture, e: ReactPointerEvent) => {
+    onPointerFocus();
     gesture.current = g;
     setPointerGestureActive(true);
     try {
@@ -317,9 +321,12 @@ export function CropLayer({
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing) return;
       if (isInTextField(e.target)) return;
-      // The crop bar's sliders own their arrows.
-      if (e.target instanceof Element && e.target.closest("[data-crop-toolbar]")) {
-        if (e.key !== "Escape" && e.key !== "Enter") return;
+      if (e.target instanceof Element) {
+        // A slider popover owns its arrows, and its Escape closes it (Radix), not the mode.
+        if (e.target.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return;
+        // The bar's own buttons keep Enter and Escape as finish; the rest of the keys are theirs.
+        if (e.target.closest("[data-crop-toolbar]") && e.key !== "Escape" && e.key !== "Enter")
+          return;
       }
       if (e.metaKey || e.ctrlKey) return;
       const s = read().crop;
@@ -432,113 +439,127 @@ export function CropLayer({
   );
 
   return (
+    // The picture may run past the slide; it is clipped to the card like the slide's own content.
     <div
       data-crop-layer
       style={{
         position: "absolute",
         left: 0,
         top: 0,
-        width: 0,
-        height: 0,
-        transform: rotation ? `rotate(${rotation}deg)` : undefined,
-        transformOrigin: `${centre.x}px ${centre.y}px`,
+        width: SLIDE_W,
+        height: SLIDE_H,
+        overflow: "hidden",
+        borderRadius: "inherit",
         pointerEvents: "none",
       }}
     >
-      {/* The whole picture, natural extent, live under the pointer. */}
       <div
-        ref={catcher}
-        data-crop-picture
-        onPointerDown={onPictureDown}
         style={{
           position: "absolute",
-          left: P.x,
-          top: P.y,
-          width: P.w,
-          height: P.h,
-          overflow: "hidden",
-          pointerEvents: "auto",
-          touchAction: "none",
-          cursor: dragging && gesture.current?.kind === "pan" ? "grabbing" : "grab",
-          background: "rgb(27 26 23 / 0.08)",
-        }}
-      >
-        <img
-          src={element.src}
-          alt=""
-          draggable={false}
-          style={{
-            display: "block",
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            width: img.width,
-            height: img.height,
-            transform: img.transform,
-            objectFit: "fill",
-            objectPosition: img.objectPosition,
-            userSelect: "none",
-          }}
-        />
-      </div>
-
-      {/* Dim what the frame will not show. */}
-      {veil({ x: P.x, y: P.y, w: P.w, h: B.y - P.y })}
-      {veil({ x: P.x, y: B.y + B.h, w: P.w, h: P.y + P.h - B.y - B.h })}
-      {veil({ x: P.x, y: B.y, w: B.x - P.x, h: B.h })}
-      {veil({ x: B.x + B.w, y: B.y, w: P.x + P.w - B.x - B.w, h: B.h })}
-
-      {/* Rule of thirds while a gesture is in flight. */}
-      {dragging ? (
-        <>
-          {line({ left: B.x + B.w / 3, top: B.y, width: px(1), height: B.h })}
-          {line({ left: B.x + (2 * B.w) / 3, top: B.y, width: px(1), height: B.h })}
-          {line({ left: B.x, top: B.y + B.h / 3, width: B.w, height: px(1) })}
-          {line({ left: B.x, top: B.y + (2 * B.h) / 3, width: B.w, height: px(1) })}
-        </>
-      ) : null}
-
-      {/* The focal point: a ring with a dot. */}
-      <div
-        aria-hidden
-        data-focal-ring
-        style={{
-          position: "absolute",
-          left: P.x + focal.x * P.w - px(FOCAL_RING / 2),
-          top: P.y + focal.y * P.h - px(FOCAL_RING / 2),
-          width: px(FOCAL_RING),
-          height: px(FOCAL_RING),
-          borderRadius: "50%",
-          border: `${px(2)}px solid #fff`,
-          boxShadow: `0 0 0 ${px(1)}px rgb(27 26 23 / 0.45), inset 0 0 0 ${px(1)}px rgb(27 26 23 / 0.45)`,
+          left: 0,
+          top: 0,
+          width: 0,
+          height: 0,
+          transform: rotation ? `rotate(${rotation}deg)` : undefined,
+          transformOrigin: `${centre.x}px ${centre.y}px`,
           pointerEvents: "none",
-          display: "grid",
-          placeItems: "center",
         }}
       >
+        {/* The whole picture, natural extent, live under the pointer. */}
         <div
+          ref={catcher}
+          data-crop-picture
+          onPointerDown={onPictureDown}
           style={{
-            width: px(4),
-            height: px(4),
-            borderRadius: "50%",
-            background: TOKENS.frame,
+            position: "absolute",
+            left: P.x,
+            top: P.y,
+            width: P.w,
+            height: P.h,
+            overflow: "hidden",
+            pointerEvents: "auto",
+            touchAction: "none",
+            cursor: dragging && gesture.current?.kind === "pan" ? "grabbing" : "grab",
+            background: "rgb(27 26 23 / 0.08)",
           }}
+        >
+          <img
+            src={element.src}
+            alt=""
+            draggable={false}
+            style={{
+              display: "block",
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              width: img.width,
+              height: img.height,
+              transform: img.transform,
+              objectFit: "fill",
+              objectPosition: img.objectPosition,
+              userSelect: "none",
+            }}
+          />
+        </div>
+
+        {/* Dim what the frame will not show. */}
+        {veil({ x: P.x, y: P.y, w: P.w, h: B.y - P.y })}
+        {veil({ x: P.x, y: B.y + B.h, w: P.w, h: P.y + P.h - B.y - B.h })}
+        {veil({ x: P.x, y: B.y, w: B.x - P.x, h: B.h })}
+        {veil({ x: B.x + B.w, y: B.y, w: P.x + P.w - B.x - B.w, h: B.h })}
+
+        {/* Rule of thirds while a gesture is in flight. */}
+        {dragging ? (
+          <>
+            {line({ left: B.x + B.w / 3, top: B.y, width: px(1), height: B.h })}
+            {line({ left: B.x + (2 * B.w) / 3, top: B.y, width: px(1), height: B.h })}
+            {line({ left: B.x, top: B.y + B.h / 3, width: B.w, height: px(1) })}
+            {line({ left: B.x, top: B.y + (2 * B.h) / 3, width: B.w, height: px(1) })}
+          </>
+        ) : null}
+
+        {/* The focal point: a ring with a dot. */}
+        <div
+          aria-hidden
+          data-focal-ring
+          style={{
+            position: "absolute",
+            left: P.x + focal.x * P.w - px(FOCAL_RING / 2),
+            top: P.y + focal.y * P.h - px(FOCAL_RING / 2),
+            width: px(FOCAL_RING),
+            height: px(FOCAL_RING),
+            borderRadius: "50%",
+            border: `${px(2)}px solid #fff`,
+            boxShadow: `0 0 0 ${px(1)}px rgb(27 26 23 / 0.45), inset 0 0 0 ${px(1)}px rgb(27 26 23 / 0.45)`,
+            pointerEvents: "none",
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          <div
+            style={{
+              width: px(4),
+              height: px(4),
+              borderRadius: "50%",
+              background: TOKENS.frame,
+            }}
+          />
+        </div>
+
+        <SelectionFrame
+          rect={B}
+          scale={scale}
+          handles={!dragging}
+          rotate={false}
+          coarsePointer={coarsePointer}
+          frameShadow={
+            focusRing
+              ? `0 0 0 ${px(FRAME_STROKE + 2)}px var(--focus-gap), 0 0 0 ${px(FRAME_STROKE + 4)}px var(--ring)`
+              : undefined
+          }
+          onHandleDown={onHandleDown}
         />
       </div>
-
-      <SelectionFrame
-        rect={B}
-        scale={scale}
-        handles={!dragging}
-        rotate={false}
-        coarsePointer={coarsePointer}
-        frameShadow={
-          focusRing
-            ? `0 0 0 ${px(FRAME_STROKE + 2)}px var(--focus-gap), 0 0 0 ${px(FRAME_STROKE + 4)}px var(--ring)`
-            : undefined
-        }
-        onHandleDown={onHandleDown}
-      />
     </div>
   );
 }
