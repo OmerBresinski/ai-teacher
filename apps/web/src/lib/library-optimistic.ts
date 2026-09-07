@@ -7,8 +7,9 @@ import { queryKeys } from "./query";
  * write the teacher just performed — rename, delete, reorder — is applied to every cached page
  * that shows the row, so the screen answers at once; the server round trip and the invalidation
  * that follows only confirm it. Every edit returns a `rollback` that puts the snapshots back on
- * failure. Only lists and detail placeholders are touched here; a document body (the editor's
- * working copy, ADR 0022 §4) is the editor's to change.
+ * failure. Only lists and detail entries are touched — and only those are cancelled and
+ * snapshotted, so an editor's in-flight body fetch or working copy (ADR 0022 §4) is never
+ * disturbed by a library write.
  */
 
 /** A list row as the API serves it; the two row-state columns ride beside the summary. */
@@ -38,25 +39,40 @@ function editPages<T>(data: InfiniteData<Page<T>> | undefined, edit: Edit<T>) {
   };
 }
 
-/** Snapshot every cached library entry; the returned function restores them all. */
-function snapshot(queryClient: QueryClient): Rollback {
-  const entries = queryClient.getQueriesData<unknown>({ queryKey: queryKeys.library });
+/** The keys an optimistic edit may touch: the document lists, the series lists, series details. */
+const LIST_KEYS = [
+  queryKeys.libraryDocuments,
+  queryKeys.librarySeries,
+  queryKeys.librarySeriesDetails,
+] as const;
+
+/**
+ * Cancel in-flight list fetches (a response that predates the write must not land on top of it)
+ * and snapshot the list entries. The returned `rollback` restores them — unless another library
+ * write is still in flight, in which case the snapshot may predate that write's own edit and
+ * restoring it would undo work the server has accepted; the settle-time invalidation reconciles
+ * both instead. (`isMutating` still counts the failing mutation while its `onError` runs.)
+ */
+async function prepare(queryClient: QueryClient): Promise<Rollback> {
+  await Promise.all(LIST_KEYS.map((queryKey) => queryClient.cancelQueries({ queryKey })));
+  const entries = LIST_KEYS.flatMap((queryKey) =>
+    queryClient.getQueriesData<unknown>({ queryKey }),
+  );
   return () => {
+    if (queryClient.isMutating() > 1) return;
     for (const [key, data] of entries) queryClient.setQueryData(key, data);
   };
 }
 
 /**
  * Apply `edit` to a document wherever a summary of it is cached: the document lists and each
- * series' lessons (cards and detail pages paint those). Cancel in-flight list fetches first so a
- * response that predates the write cannot land on top of it.
+ * series' lessons (cards and detail pages paint those).
  */
 export async function editDocumentSummaries(
   queryClient: QueryClient,
   edit: Edit<DocumentSummary>,
 ): Promise<Rollback> {
-  await queryClient.cancelQueries({ queryKey: queryKeys.library });
-  const rollback = snapshot(queryClient);
+  const rollback = await prepare(queryClient);
   queryClient.setQueriesData<InfiniteData<Page<SummaryRow>>>(
     { queryKey: queryKeys.libraryDocuments },
     (data) => editPages(data, (row) => edit(row) as SummaryRow | null),
@@ -84,8 +100,7 @@ export async function editSeries(
   queryClient: QueryClient,
   edit: Edit<SeriesItem>,
 ): Promise<Rollback> {
-  await queryClient.cancelQueries({ queryKey: queryKeys.library });
-  const rollback = snapshot(queryClient);
+  const rollback = await prepare(queryClient);
   queryClient.setQueriesData<InfiniteData<Page<SeriesItem>>>(
     { queryKey: queryKeys.librarySeries },
     (data) => editPages(data, edit),

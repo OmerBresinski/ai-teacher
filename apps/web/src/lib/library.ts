@@ -383,13 +383,22 @@ function optimistic<TVariables>(
   };
 }
 
-/** The optimistic rename of a document: its cards, its series rows and, if open, its working copy. */
-function applyRename(queryClient: QueryClient, id: string, title: string): Promise<Rollback> {
-  queryClient.setQueryData<LibraryDocumentOrSummary | null>(
-    queryKeys.libraryDocument(id),
-    (body) => (body ? { ...body, title } : body),
+/**
+ * The optimistic rename of a document: its cards and series rows through the list snapshot, plus
+ * — if a copy of the body is cached — its title there too, with its own restore, since the list
+ * snapshot deliberately leaves document bodies alone.
+ */
+async function applyRename(queryClient: QueryClient, id: string, title: string): Promise<Rollback> {
+  const rollbackLists = await editDocumentSummaries(queryClient, (row) =>
+    row.id === id ? { ...row, title } : row,
   );
-  return editDocumentSummaries(queryClient, (row) => (row.id === id ? { ...row, title } : row));
+  const bodyKey = queryKeys.libraryDocument(id);
+  const before = queryClient.getQueryData<LibraryDocumentOrSummary | null>(bodyKey);
+  if (before) queryClient.setQueryData(bodyKey, { ...before, title });
+  return () => {
+    rollbackLists();
+    if (before && queryClient.isMutating() <= 1) queryClient.setQueryData(bodyKey, before);
+  };
 }
 
 /** Refresh the lists only — the document working copies stay as the editor left them. */

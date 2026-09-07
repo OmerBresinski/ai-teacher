@@ -447,12 +447,42 @@ describe("optimistic updates", () => {
     const body = queryClient.getQueryData(libraryQueries.document("roman-roads").queryKey);
     expect(body && "title" in body ? body.title : "").toBe("Roman roads and forts");
 
-    // The failure path restores the snapshot.
+    // The failure path restores the snapshot — lists, series rows and the body alike.
     rollback?.();
     expect(titles(queryClient)).toContain("Roman roads");
     expect(libraryCache.seriesDetail(queryClient, "series-romans")?.lessons[0]?.title).toBe(
       "Roman roads",
     );
+    const restored = queryClient.getQueryData(libraryQueries.document("roman-roads").queryKey);
+    expect(restored && "title" in restored ? restored.title : "").toBe("Roman roads");
+  });
+
+  it("only cancels list fetches and leaves a rollback to the refetch while another write is in flight", async () => {
+    const queryClient = newClient();
+    await queryClient.fetchInfiniteQuery(libraryQueries.documents("lesson"));
+    const cancel = mock(queryClient.cancelQueries.bind(queryClient));
+    queryClient.cancelQueries = cancel;
+    const rollback = await libraryMutations
+      .softDeleteDocument(queryClient)
+      .onMutate?.("roman-roads", {} as MutationFunctionContext);
+    const cancelled = cancel.mock.calls.map(
+      ([filters]) => (filters as { queryKey: unknown }).queryKey,
+    );
+    expect(cancelled).toEqual([
+      queryKeys.libraryDocuments,
+      queryKeys.librarySeries,
+      queryKeys.librarySeriesDetails,
+    ]);
+    expect(cancelled).not.toContainEqual(queryKeys.library);
+
+    // Another write still running: restoring this snapshot would undo its edit, so it is skipped.
+    const isMutating = mock(() => 2);
+    queryClient.isMutating = isMutating;
+    rollback?.();
+    expect(titles(queryClient)).not.toContain("Roman roads");
+    isMutating.mockReturnValue(1);
+    rollback?.();
+    expect(titles(queryClient)).toContain("Roman roads");
   });
 
   it("a failed delete puts the card back; a successful one leaves it gone", async () => {

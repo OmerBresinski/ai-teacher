@@ -19,9 +19,16 @@ export const librarySearchSchema = z.object({
  * fetch the default-keyed lists themselves, in parallel, and never block the navigation). The sort
  * preference is read here so the key warmed is the one the page mounts with. The search term is
  * deliberately **not** a loader dependency: the box writes `q` to the URL on every keystroke, and
- * a loader keyed on it would fetch per keystroke and defeat the page's 250 ms debounce.
+ * a loader keyed on it would fetch per keystroke and defeat the page's 250 ms debounce. A page
+ * opened with `?q=` set reads the searched list, not this one, so nothing is warmed then: the page
+ * fetches its own list at once and the sidebar warms the defaults beside it.
  */
-function prefetchLibrary(queryClient: QueryClient, mode: LibraryMode): Promise<unknown> {
+function prefetchLibrary(
+  queryClient: QueryClient,
+  mode: LibraryMode,
+  { searching = false } = {},
+): Promise<unknown> {
+  if (searching) return Promise.resolve();
   const sort = readSortPreference();
   const documents = (kind: "lesson" | "worksheet") =>
     queryClient.ensureInfiniteQueryData(libraryQueries.documents(kind, { sort }));
@@ -59,7 +66,9 @@ export const lessonsRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/lessons",
   validateSearch: librarySearchSchema,
-  loader: ({ context }) => prefetchLibrary(context.queryClient, "lesson"),
+  // A boolean dep, not `q` itself: the loader re-runs only when the search starts or clears.
+  loaderDeps: ({ search }) => ({ searching: (search.q ?? "").trim() !== "" }),
+  loader: ({ context, deps }) => prefetchLibrary(context.queryClient, "lesson", deps),
   head: () => pageTitle("Lessons"),
   component: lazyRouteComponent(() => import("./library-kind.page"), "LessonsPage"),
 });
@@ -68,7 +77,9 @@ export const worksheetsRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/worksheets",
   validateSearch: librarySearchSchema,
-  loader: ({ context }) => prefetchLibrary(context.queryClient, "worksheet"),
+  // A boolean dep, not `q` itself: the loader re-runs only when the search starts or clears.
+  loaderDeps: ({ search }) => ({ searching: (search.q ?? "").trim() !== "" }),
+  loader: ({ context, deps }) => prefetchLibrary(context.queryClient, "worksheet", deps),
   head: () => pageTitle("Worksheets"),
   component: lazyRouteComponent(() => import("./library-kind.page"), "WorksheetsPage"),
 });
@@ -77,7 +88,9 @@ export const seriesIndexRoute = createRoute({
   getParentRoute: () => libraryLayoutRoute,
   path: "/series",
   validateSearch: librarySearchSchema,
-  loader: ({ context }) => prefetchLibrary(context.queryClient, "series"),
+  // A boolean dep, not `q` itself: the loader re-runs only when the search starts or clears.
+  loaderDeps: ({ search }) => ({ searching: (search.q ?? "").trim() !== "" }),
+  loader: ({ context, deps }) => prefetchLibrary(context.queryClient, "series", deps),
   head: () => pageTitle("Series"),
   component: lazyRouteComponent(() => import("./library-kind.page"), "SeriesPage"),
 });
