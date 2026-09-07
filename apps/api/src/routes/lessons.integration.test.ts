@@ -169,13 +169,21 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     // The lock is either still held by this job or already released by the worker loop.
     expect([jobId as string, null]).toContain(row?.generatingJobId ?? null);
 
-    // The job runs to completion and releases the lock.
-    expect(
-      await waitFor(async () => (await getDocument(ws, lessonId))?.generatingJobId === null),
-    ).toBe(true);
+    // The job runs to completion and releases the lock. Wait for the terminal event, not the
+    // lock: the handler clears the lock in its `finally`, and `runJob` writes `completed` only
+    // after that (progress flush, cancel re-read, insert) — polling the lock alone raced it.
+    const eventsFor = () => listJobEvents(unsafeDb, { workspaceId: wsA, jobId, limit: 20 });
+    expect(await waitFor(async () => (await eventsFor()).some((e) => e.type === "completed"))).toBe(
+      true,
+    );
+    expect((await getDocument(ws, lessonId))?.generatingJobId).toBeNull();
     expect(released).toContain(lessonId);
-    const events = await listJobEvents(unsafeDb, { workspaceId: wsA, jobId, limit: 20 });
-    expect(events.map((e) => e.type)).toEqual(["queued", "started", "progress", "completed"]);
+    expect((await eventsFor()).map((e) => e.type)).toEqual([
+      "queued",
+      "started",
+      "progress",
+      "completed",
+    ]);
   });
 
   test("explicit duration and class context are kept; no year group means no age band", async () => {
