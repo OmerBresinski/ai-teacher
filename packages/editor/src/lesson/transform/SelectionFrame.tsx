@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react";
+import { Lock, RotateCw } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Rect } from "../../model/geometry";
 import {
@@ -12,6 +12,9 @@ import {
   handleHitSize,
   LOCK_GLYPH,
   ROTATE_CURSOR,
+  ROTATE_GLYPH,
+  ROTATE_HANDLE,
+  ROTATE_STEM,
   ROTATE_ZONE,
   resizeCursor,
   TOKENS,
@@ -53,6 +56,9 @@ export function SelectionFrame({
   const draw = HANDLE_SIZE / scale;
   const hit = handleHitSize(rect, scale, coarsePointer) / scale;
   const zone = ROTATE_ZONE / scale;
+  const grip = ROTATE_HANDLE / scale;
+  const stem = ROTATE_STEM / scale;
+  const stemW = 1 / scale;
   const showHandles = handles && !locked;
 
   return (
@@ -118,6 +124,52 @@ export function SelectionFrame({
             );
           })
         : null}
+
+      {showHandles ? (
+        <>
+          {/* Stem from the bottom edge down to the grip. */}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: rect.w / 2 - stemW / 2,
+              top: rect.h,
+              width: stemW,
+              height: stem,
+              background: TOKENS.frame,
+            }}
+          />
+          {/* The discoverable rotate grip: the same gesture as the invisible corner zones. */}
+          <button
+            type="button"
+            data-rotate-grip
+            aria-label="Rotate"
+            onPointerDown={(e) => onRotateDown?.("s", e)}
+            style={{
+              position: "absolute",
+              left: rect.w / 2 - grip / 2,
+              top: rect.h + stem,
+              width: grip,
+              height: grip,
+              margin: 0,
+              padding: 0,
+              border: 0,
+              borderRadius: "50%",
+              background: TOKENS.handleFill,
+              boxShadow: `0 0 0 ${FRAME_STROKE / scale}px ${TOKENS.frame}`,
+              color: "var(--foreground)",
+              cursor: "grab",
+              pointerEvents: "auto",
+              touchAction: "none",
+              display: "grid",
+              placeItems: "center",
+              lineHeight: 0,
+            }}
+          >
+            <RotateCw size={ROTATE_GLYPH / scale} strokeWidth={2} aria-hidden />
+          </button>
+        </>
+      ) : null}
 
       {showHandles
         ? HANDLES.map((h) => {
