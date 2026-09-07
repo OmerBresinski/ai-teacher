@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
+import { generateText } from "ai";
 import pino from "pino";
-import { createAi, DEFAULT_MODEL_IDS, DEFAULT_REGION, isAiError } from "./index";
+import {
+  createAi,
+  DEFAULT_MODEL_IDS,
+  DEFAULT_REGION,
+  isAiError,
+  isAnthropicModelId,
+} from "./index";
 
 function createMemoryLogger() {
   const lines: string[] = [];
@@ -88,5 +95,72 @@ describe("createAi", () => {
     } catch (error) {
       expect(isAiError(error, "invalid_model")).toBe(true);
     }
+  });
+});
+
+describe("thinking is off for Anthropic models on Bedrock", () => {
+  test("isAnthropicModelId matches bare and region-prefixed Anthropic ids only", () => {
+    for (const id of [
+      "anthropic.claude-sonnet-5",
+      "us.anthropic.claude-sonnet-5",
+      "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+      DEFAULT_MODEL_IDS.frontier,
+    ]) {
+      expect(isAnthropicModelId(id)).toBe(true);
+    }
+    for (const id of [
+      "us.amazon.nova-micro-v1:0",
+      "meta.llama3-70b-instruct-v1:0",
+      "anthropicx.y",
+    ]) {
+      expect(isAnthropicModelId(id)).toBe(false);
+    }
+  });
+
+  test("the configured client sends the raw thinking-disabled field to Bedrock", async () => {
+    // Capture the request body the Bedrock adapter would send; no network.
+    let body: Record<string, unknown> | undefined;
+    const fetch = (async (_url: string, init: RequestInit) => {
+      body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return new Response(JSON.stringify({ message: "captured" }), { status: 500 });
+    }) as unknown as typeof globalThis.fetch;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fetch;
+    try {
+      const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
+      await generateText({ model: ai.model("standard"), prompt: "x", maxRetries: 0 }).catch(
+        () => undefined,
+      );
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(body?.additionalModelRequestFields).toEqual({ thinking: { type: "disabled" } });
+  });
+
+  test("a caller's own providerOptions win over the default", async () => {
+    let body: Record<string, unknown> | undefined;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return new Response("{}", { status: 500 });
+    }) as unknown as typeof globalThis.fetch;
+    try {
+      const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
+      await generateText({
+        model: ai.model("standard"),
+        prompt: "x",
+        maxRetries: 0,
+        providerOptions: {
+          bedrock: {
+            additionalModelRequestFields: { thinking: { type: "enabled", budget_tokens: 2048 } },
+          },
+        },
+      }).catch(() => undefined);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(body?.additionalModelRequestFields).toEqual({
+      thinking: { type: "enabled", budget_tokens: 2048 },
+    });
   });
 });

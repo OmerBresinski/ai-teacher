@@ -1,15 +1,12 @@
 import type { Proposal, ProposalTarget } from "@tj/domain";
 import type { Lesson, SlideElement, Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import {
-  type BlockSpec,
-  BlockSpecSchema,
+  blockSpecSchemaFor,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
-  type SlideSpec,
-  SlideSpecSchema,
+  slideSpecSchemaFor,
 } from "@tj/slides";
-import type { z } from "zod";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { cascadePrompt, regeneratePrompt } from "../prompts";
 import {
@@ -185,7 +182,8 @@ export async function proposeFor(
 
   const doSlide = async (job: SlideJob): Promise<Proposal[]> => {
     const slide = lesson.slides.find((s) => s.id === job.slideId);
-    if (!slide) return [];
+    const schema = slide ? slideSpecSchemaFor(slide.kind) : undefined;
+    if (!slide || !schema) return [];
     const call = await callStructured({
       deps,
       stage,
@@ -195,10 +193,7 @@ export async function proposeFor(
         { kind: "slide", slideKind: slide.kind, slideId: slide.id, text: slideText(slide) },
         `a "${slide.kind}" slide spec`,
       ),
-      schema: SlideSpecSchema.refine((spec) => spec.kind === slide.kind, {
-        message: `kind must be "${slide.kind}"`,
-        path: ["kind"],
-      }) as unknown as z.ZodType<SlideSpec>,
+      schema,
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
     const fresh = materialiseSlide(call.output, lesson.themeId, meta(call.modelId), deps.ids);
@@ -247,7 +242,8 @@ export async function proposeFor(
 
   const doBlock = async (blockId: string): Promise<Proposal[]> => {
     const block = worksheet?.blocks.find((b) => b.id === blockId);
-    if (!block) return [];
+    const schema = block ? blockSpecSchemaFor(block.type) : undefined;
+    if (!block || !schema) return [];
     const call = await callStructured({
       deps,
       stage,
@@ -257,10 +253,7 @@ export async function proposeFor(
         { kind: "block", blockType: block.type, blockId: block.id, text: blockText(block) },
         `a "${block.type}" block spec`,
       ),
-      schema: BlockSpecSchema.refine((spec) => spec.type === block.type, {
-        message: `type must be "${block.type}"`,
-        path: ["type"],
-      }) as unknown as z.ZodType<BlockSpec>,
+      schema,
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
     const fresh: WorksheetBlock = materialiseBlock(call.output, meta(call.modelId), deps.ids);

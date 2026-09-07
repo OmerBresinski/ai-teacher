@@ -75,6 +75,16 @@ export function factsBlock(facts: LessonFacts): string {
   return out.join("\n");
 }
 
+/**
+ * The character caps `SlideSpecSchema` / `BlockSpecSchema` enforce, stated so the model does not
+ * learn them from a validation retry. Kept in step with `SPEC_LIMITS` by `prompts.test.ts`.
+ */
+export function limitsBlock(limits: Record<string, number>): string {
+  return `Length limits (characters): ${Object.entries(limits)
+    .map(([k, v]) => `${k} ≤ ${v}`)
+    .join(", ")}. Stay well under them.`;
+}
+
 /** One JSON example, pretty-printed, for a prompt to show the exact shape wanted. */
 export function example(value: unknown): string {
   return JSON.stringify(value, null, 2);

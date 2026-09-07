@@ -1,14 +1,11 @@
 import { checkLesson, type Finding, type Slide, type Worksheet } from "@tj/domain/documents";
 import {
-  type BlockSpec,
-  BlockSpecSchema,
+  blockSpecSchemaFor,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
-  type SlideSpec,
-  SlideSpecSchema,
+  slideSpecSchemaFor,
 } from "@tj/slides";
-import type { z } from "zod";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { repairPrompt } from "../prompts";
 import {
@@ -48,17 +45,6 @@ export function repairTargets(findings: Finding[]): Target[] {
   return [...byKey.values()].slice(0, MAX_TARGETS);
 }
 
-const sameKind = <K extends string>(kind: K) =>
-  SlideSpecSchema.refine((spec) => spec.kind === kind, {
-    message: `kind must be "${kind}"`,
-    path: ["kind"],
-  }) as unknown as z.ZodType<SlideSpec>;
-const sameType = <T extends string>(type: T) =>
-  BlockSpecSchema.refine((spec) => spec.type === type, {
-    message: `type must be "${type}"`,
-    path: ["type"],
-  }) as unknown as z.ZodType<BlockSpec>;
-
 export async function repair(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   let { lesson, worksheet } = state;
   const facts = lesson.facts;
@@ -78,7 +64,9 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
       if (target.slideId !== undefined) {
         const index = lesson.slides.findIndex((s) => s.id === target.slideId);
         const slide = lesson.slides[index];
-        if (!slide) continue;
+        // A kind the pipeline cannot generate (an image slide the teacher added) cannot be repaired.
+        const schema = slide ? slideSpecSchemaFor(slide.kind) : undefined;
+        if (!slide || !schema) continue;
         const call = await callStructured({
           deps,
           stage: "repair",
@@ -96,7 +84,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
             findings: target.findings,
             shape: `a "${slide.kind}" slide spec`,
           },
-          schema: sameKind(slide.kind),
+          schema,
           maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
         });
         repaired.add(target.key);
@@ -108,7 +96,8 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
       } else if (target.blockId !== undefined && worksheet) {
         const index = worksheet.blocks.findIndex((b) => b.id === target.blockId);
         const block = worksheet.blocks[index];
-        if (!block) continue;
+        const schema = block ? blockSpecSchemaFor(block.type) : undefined;
+        if (!block || !schema) continue;
         const call = await callStructured({
           deps,
           stage: "repair",
@@ -126,7 +115,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
             findings: target.findings,
             shape: `a "${block.type}" block spec`,
           },
-          schema: sameType(block.type),
+          schema,
           maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
         });
         repaired.add(target.key);

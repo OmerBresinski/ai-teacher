@@ -1,5 +1,13 @@
 import type { LessonFacts, OutlineEntry } from "@tj/domain/documents";
-import { type Audience, audienceBlock, example, factsBlock, HOUSE_RULES } from "./shared";
+import { SPEC_LIMITS } from "@tj/slides";
+import {
+  type Audience,
+  audienceBlock,
+  example,
+  factsBlock,
+  HOUSE_RULES,
+  limitsBlock,
+} from "./shared";
 
 /*
  * Generate — one slide (ADR 0025 §8): the outline entry becomes a per-kind spec; geometry is the
@@ -47,7 +55,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v1",
+  version: "generate-slide.v2",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
@@ -58,6 +66,19 @@ export const generateSlidePrompt = {
     "`notes` is a short paragraph of presenter notes for the teacher: what to say, what to ask, what misconception to watch for.",
     "Keep text short enough to read from the back of a classroom: one idea per slide, no paragraph over forty words.",
     "Answers must be correct and unambiguous; a multiple-choice has exactly one correct option and three plausible distractors.",
+    limitsBlock({
+      title: SPEC_LIMITS.title,
+      "heading/subtitle": SPEC_LIMITS.heading,
+      "each item/step": SPEC_LIMITS.item,
+      body: SPEC_LIMITS.body,
+      stem: SPEC_LIMITS.stem,
+      option: SPEC_LIMITS.option,
+      term: SPEC_LIMITS.term,
+      definition: SPEC_LIMITS.definition,
+      footnote: SPEC_LIMITS.footnote,
+      answer: SPEC_LIMITS.answer,
+      notes: SPEC_LIMITS.notes,
+    }),
     "",
     "The JSON shape per kind:",
     ...Object.entries(SHAPES).map(([kind, shape]) => `- ${kind}: ${shape}`),

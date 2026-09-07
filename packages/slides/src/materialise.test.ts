@@ -10,6 +10,7 @@ import {
   SlideSchema,
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
+import { z } from "zod";
 import { vocabularyGrid } from "./layouts";
 import {
   type IdSupplier,
@@ -17,7 +18,14 @@ import {
   materialiseSlide,
   vocabularySlots,
 } from "./materialise";
-import { type BlockSpec, BlockSpecSchema, type SlideSpec, SlideSpecSchema } from "./specs";
+import {
+  type BlockSpec,
+  BlockSpecSchema,
+  blockSpecSchemaFor,
+  type SlideSpec,
+  SlideSpecSchema,
+  slideSpecSchemaFor,
+} from "./specs";
 import { THEMES } from "./themes";
 
 const meta = {
@@ -464,3 +472,28 @@ const _exhaustive: Record<GeneratableSlideKind, true> = Object.fromEntries(
 ) as Record<GeneratableSlideKind, true>;
 void _exhaustive;
 void ({} as Slide);
+
+describe("per-kind spec schemas (structured-output providers need a top-level object)", () => {
+  test("every generatable kind and type has a plain object schema whose JSON Schema is type object", () => {
+    for (const kind of GENERATABLE_SLIDE_KINDS) {
+      const schema = slideSpecSchemaFor(kind);
+      expect(schema).toBeDefined();
+      expect(z.toJSONSchema(schema as z.ZodType).type).toBe("object");
+      expect(schema?.safeParse(minimalSpec(kind)).success).toBe(true);
+      expect(schema?.safeParse(minimalSpec(kind === "title" ? "content" : "title")).success).toBe(
+        false,
+      );
+    }
+    for (const type of GENERATABLE_BLOCK_TYPES) {
+      expect(z.toJSONSchema(blockSpecSchemaFor(type) as z.ZodType).type).toBe("object");
+    }
+    // The unions themselves are anyOf at the top level — the shape Bedrock refuses.
+    expect(z.toJSONSchema(SlideSpecSchema).type).toBeUndefined();
+  });
+
+  test("a kind the pipeline cannot generate has no schema", () => {
+    expect(slideSpecSchemaFor("image-text")).toBeUndefined();
+    expect(slideSpecSchemaFor("blank")).toBeUndefined();
+    expect(blockSpecSchemaFor("image")).toBeUndefined();
+  });
+});

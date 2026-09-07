@@ -3,11 +3,9 @@ import {
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
-  type SlideSpec,
-  SlideSpecSchema,
+  slideSpecSchemaFor,
   vocabularySlots,
 } from "@tj/slides";
-import type { z } from "zod";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { generateSlidePrompt, generateWorksheetPrompt } from "../prompts";
 import { WorksheetSpecSchema } from "../specs";
@@ -36,14 +34,6 @@ export const BUDGET_FINDING = (by: "usd" | "tokens", where: string): Finding => 
   message: `Generation stopped at ${where}: the lesson's ${by === "usd" ? "cost" : "token"} cap was reached. What was written is kept.`,
 });
 
-/** Only a spec of the outline entry's kind is a valid answer; a mismatch is a retryable issue. */
-function specSchemaFor(kind: SlideSpec["kind"]): z.ZodType<SlideSpec> {
-  return SlideSpecSchema.refine((spec) => spec.kind === kind, {
-    message: `kind must be "${kind}"`,
-    path: ["kind"],
-  }) as unknown as z.ZodType<SlideSpec>;
-}
-
 export async function generate(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   let lesson = state.lesson;
   const facts = lesson.facts;
@@ -64,6 +54,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   for (let i = lesson.slides.length; i < total; i++) {
     throwIfAborted(deps.signal);
     const entry = entries[i] as (typeof entries)[number];
+    // `OutlineEntrySchema` only admits generatable kinds, so this never fires; it keeps the type.
+    const schema = slideSpecSchemaFor(entry.kind);
+    if (!schema) throw new Error(`generate: no spec schema for slide kind "${entry.kind}"`);
     let slide: Slide;
     try {
       const call = await callStructured({
@@ -82,7 +75,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
           vocabularySlots: vocabularySlots(lesson.themeId),
           lessonTitle: lesson.title,
         },
-        schema: specSchemaFor(entry.kind),
+        schema,
         maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
       });
       slide = materialiseSlide(call.output, lesson.themeId, meta(call.modelId), deps.ids);

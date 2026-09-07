@@ -1,7 +1,7 @@
 import { createAmazonBedrock } from "@ai-sdk/amazon-bedrock";
 import { ModelClass, ModelClassSchema, type ModelClass as ModelClassType } from "@tj/domain";
 import type { LanguageModel } from "ai";
-import { wrapLanguageModel } from "ai";
+import { defaultSettingsMiddleware, wrapLanguageModel } from "ai";
 import pino from "pino";
 import { AiError } from "./errors";
 import { createLoggingMiddleware } from "./logging-middleware";
@@ -122,6 +122,32 @@ export function createAi(env: AiEnv, options: CreateAiOptions = {}): CreatedAi {
     region,
     modelIds,
     logger,
-    createModel: (_modelClass, modelId) => bedrock(modelId),
+    createModel: (_modelClass, modelId) => {
+      const model = bedrock(modelId);
+      if (!isAnthropicModelId(modelId)) return model;
+      return wrapLanguageModel({
+        model,
+        middleware: defaultSettingsMiddleware({ settings: { providerOptions: NO_THINKING } }),
+      });
+    },
   });
+}
+
+/**
+ * Anthropic models on Bedrock from the Sonnet 5 generation think before they answer unless told
+ * not to, and the thinking is billed against `maxOutputTokens`: a structured call with a 4 000
+ * token cap can spend all of it thinking and return an empty body, which the caller sees as a
+ * schema miss (ADR 0025 §14) after paying for both attempts. Every call this package makes asks
+ * for JSON in a fixed shape, where hidden reasoning buys nothing, so it is off by default. The
+ * SDK's `reasoningConfig: { type: "disabled" }` is not honoured by the adapter for these ids;
+ * the raw request field is. A caller that wants thinking passes its own `providerOptions`, which
+ * `defaultSettingsMiddleware` lets win.
+ */
+export const NO_THINKING = {
+  bedrock: { additionalModelRequestFields: { thinking: { type: "disabled" } } },
+} as const;
+
+/** `anthropic.…`, `us.anthropic.…`, `eu.anthropic.…` — any region-prefixed Anthropic id. */
+export function isAnthropicModelId(modelId: string): boolean {
+  return /^(?:[a-z]{2}\.)?anthropic\./.test(modelId);
 }
