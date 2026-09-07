@@ -4,17 +4,17 @@ import { LessonViewer } from "@tj/editor/present";
 import { Button, IconButton, Tooltip, toast } from "@tj/ui";
 import { ArrowLeft } from "lucide-react";
 import { RoutePendingPage } from "@/components/route-pending-page";
+import { WrongKindPage } from "@/components/wrong-kind-page";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryMutations, libraryQueries } from "@/lib/library";
 import { lessonViewRoute } from "./documents.route";
-import { EditorStubPage } from "./editor-stubs.page";
 import "@tj/editor/styles/editor.css";
 
 /**
  * `/l/$lessonId/view` — the read-only viewer (TEACH-100; `/l/$lessonId` is the editor since
  * TEACH-103). The loader has already resolved the document (or 404ed); until the full body arrives
  * the list placeholder is a summary, so the page waits. A worksheet id on a lesson route shows the
- * stub, as before.
+ * `WrongKindPage`.
  */
 export function LessonViewerPage() {
   const { lessonId } = useParams({ from: lessonViewRoute.id });
@@ -25,7 +25,9 @@ export function LessonViewerPage() {
   const { mutateAsync: duplicate } = useMutation(libraryMutations.duplicateDocument(queryClient));
 
   if (!data || !isFullDocument(data)) return <RoutePendingPage />;
-  if (kindOf(data) !== "lesson" || !("slides" in data)) return <EditorStubPage />;
+  if (kindOf(data) !== "lesson" || !("slides" in data)) {
+    return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
+  }
 
   const onDuplicate = async () => {
     const copy = await duplicate([lessonId]);

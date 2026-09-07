@@ -85,9 +85,9 @@ describe("WorksheetPrintPage", () => {
     }
   });
 
-  it("a lesson id on the print route shows the stub rather than crashing", async () => {
+  it("a lesson id on the print route shows WrongKindPage rather than crashing", async () => {
     worksheetId = "demo-water-cycle";
     renderPage();
-    expect(await screen.findByText("The editor arrives with @tj/editor")).toBeVisible();
+    expect(await screen.findByText("This is a lesson")).toBeVisible();
   });
 });

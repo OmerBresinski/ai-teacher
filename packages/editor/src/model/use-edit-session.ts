@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 /**
  * One undo step per gesture or typing session (TeachDeck `use-edit-session.ts`; SPEC §4, §7).
@@ -24,6 +24,8 @@ export type EditSession = {
   run: (write: () => void) => void;
   /** Close the session now — the gesture or the typing run is over. */
   end: () => void;
+  /** True while a session is open — the history is paused and owes one entry. */
+  isOpen: () => boolean;
 };
 
 export function useEditSession(tx: Transactions, idleMs: number = IDLE_MS): EditSession {
@@ -56,8 +58,10 @@ export function useEditSession(tx: Transactions, idleMs: number = IDLE_MS): Edit
     [end, idleMs],
   );
 
+  const isOpen = useCallback(() => open.current !== null, []);
+
   // A toolbar unmounts the moment the selection changes: commit, never strand.
   useEffect(() => end, [end]);
 
-  return { run, end };
+  return useMemo(() => ({ run, end, isOpen }), [run, end, isOpen]);
 }

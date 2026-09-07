@@ -1,0 +1,339 @@
+/*
+ * `@tj/editor/styles/worksheet-edit.css` — the worksheet editor's chrome (TeachDeck
+ * `components/worksheet/worksheet.css` "Editor-only chrome" and `worksheet-v2.css`, merged). It is
+ * imported by the editor route only: the print route imports `print.css`, which carries the paper
+ * (`worksheet.css`) and nothing here, so `@media print` never has to hide any of it.
+ *
+ * The rule that governs every selector below: nothing may change a box the paginator measures. The
+ * hidden measuring column renders the printed markup (`FlowItemContent`), never `BlockShell`, and
+ * a page break is computed from those heights — so everything here is absolutely positioned, a
+ * pseudo-element out of flow, or paint on a box that already exists (colour, radius, shadow).
+ */
+@import "./fonts.css";
+@import "./worksheet.css";
+
+/* ---- the column and the scaled pages ------------------------------------ */
+
+.ws-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 48px 96px;
+  background: var(--canvas);
+}
+
+/* `Sheet` lays its pages out in a column; the editor frames each at its scaled size so the
+   surrounding flow (toolbars, the drop line) sees the box the teacher sees. */
+.ws-column .ws-sheet {
+  display: contents;
+}
+
+.ws-page-frame {
+  position: relative;
+  flex: none;
+  overflow: visible;
+}
+
+.ws-page-frame > div {
+  position: absolute;
+  inset: 0 auto auto 0;
+}
+
+/* The block's frame is its focus indicator; a ring on top would double-frame the text. */
+.ws-edit .ProseMirror:focus-visible {
+  box-shadow: none;
+}
+
+/* ---- the block shell ------------------------------------------------------- */
+
+/* `isolation` keeps the selection ring's negative z-index inside the block, so it paints over the
+   paper but under the block's own type. */
+.ws-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+/* A hover wash the shape of the selection ring, behind the type by the same isolation trick. A
+   pseudo-element on an already-relative box: it adds no height. */
+.ws-shell::after {
+  content: "";
+  position: absolute;
+  inset: -5pt -7pt 6pt -7pt;
+  z-index: -1;
+  border-radius: var(--radius-control);
+  background: transparent;
+  pointer-events: none;
+  transition: background-color var(--duration-fast) var(--ease-out-soft);
+}
+
+.ws-shell:hover::after {
+  background: var(--accent);
+}
+
+/* A hovered block that is already selected keeps its frame alone. */
+.ws-shell:hover:has(.ws-selected-ring)::after {
+  background: transparent;
+}
+
+/* 2px `--primary` at the control radius, as an inset shadow on an out-of-flow overlay. */
+.ws-selected-ring {
+  position: absolute;
+  inset: -5pt -7pt 6pt -7pt;
+  z-index: -1;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 2px var(--primary);
+  pointer-events: none;
+}
+
+/* The header is one shell too; its ring sits on the header's own padding. */
+.ws-header.ws-shell .ws-selected-ring {
+  inset: -6pt -7pt -4pt -7pt;
+}
+
+/* ---- the gutter glyphs ------------------------------------------------------ */
+
+/* `top`/`left` are inline: `BlockShell` centres a 24pt handle on the block's first line, and the
+   two glyphs sit 24pt apart at HANDLE_X / PLUS_X. The size is restated with enough specificity to
+   beat the kit's own `size-8`, because a wider or taller box would decentre one glyph and collide
+   with the other. */
+.ws-shell .ws-gutter {
+  position: absolute;
+  width: 16pt;
+  height: 24pt;
+  border-radius: var(--radius-chip);
+  color: var(--ink-4);
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft);
+}
+
+/* The block's actions appear on hover and on focus-within, in its margin, never over its content;
+   a 200ms enter delay so the glyphs never chase the cursor. */
+.ws-shell:hover .ws-gutter,
+.ws-shell:focus-within .ws-gutter,
+.ws-gutter:focus-visible {
+  opacity: 1;
+  transition-delay: 200ms;
+}
+
+.ws-shell .ws-gutter:hover {
+  background: var(--accent);
+  color: var(--ink-2);
+}
+
+.ws-shell .ws-gutter:active {
+  background: var(--accent-active);
+}
+
+/* Out of the way while a block is being typed into: a handle under a moving caret reads as
+   something about to be dragged. */
+.ws-typing .ws-shell .ws-gutter {
+  opacity: 0;
+  transition-delay: 0ms;
+  pointer-events: none;
+}
+
+.ws-gutter-handle {
+  cursor: grab;
+}
+
+/* The drawn box stays 16 × 24pt; the 32px pointer target is a pseudo-element centred on it. */
+.ws-gutter::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+}
+
+/* ---- the header's own affordances --------------------------------------------- */
+
+.ws-criterion {
+  position: relative;
+}
+
+/* Out of flow, to the right of the criterion's text: the row's height is the printed one. */
+.ws-criterion-remove {
+  position: absolute;
+  top: 50%;
+  right: -28pt;
+  transform: translateY(-50%);
+  color: var(--ink-4);
+}
+
+/* ---- the oversize warning ------------------------------------------------------ */
+
+/* Editor-only: `BlockShell` renders it above the block and the print route never does. It keeps a
+   left rule rather than becoming a StatusPill, because it wraps to two lines inside the paper
+   column and a pill does not wrap. It IS in flow — and that is the point: the same block is over
+   height in the measuring column, so the warning cannot make a break the paginator did not. */
+.ws-warning {
+  display: flex;
+  align-items: center;
+  gap: 6pt;
+  margin-bottom: 5pt;
+  padding-left: 6pt;
+  border-left: 2px solid var(--destructive);
+  border-radius: 0 var(--radius-chip) var(--radius-chip) 0;
+  font-family: var(--font-ui);
+  font-size: 9.5pt;
+  line-height: 1.4;
+  color: var(--destructive);
+}
+
+/* ---- inline fields — the printed text, typed into ------------------------------------ */
+
+/* No layout shift: the focus affordance is an inset shadow, never a border. These are
+   `contentEditable` spans laid out as the printed block they stand in for, so a long option wraps
+   on screen exactly where it wraps on paper. An empty field still holds a line (`min-height: 1lh`)
+   so the block cannot collapse under the caret. */
+.ws-input {
+  display: block;
+  min-height: 1lh;
+  padding: 0;
+  border: 0;
+  border-radius: 2pt;
+  background: transparent;
+  outline: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  box-shadow: inset 0 -1px 0 transparent;
+  transition: box-shadow var(--duration-fast) var(--ease-out-soft);
+}
+
+/* The word bank: a span in a wrapping row, shrink-wrapped to its own word. */
+.ws-input-inline {
+  display: inline-block;
+  min-width: 24pt;
+}
+
+.ws-input:hover {
+  box-shadow: inset 0 -1px 0 var(--ws-rule);
+}
+
+/* focus-visible, not focus: clicking into a blank should not paint a focus underline. */
+.ws-input:focus-visible {
+  box-shadow: inset 0 -1.5px 0 var(--primary);
+}
+
+/* A title field that is empty still holds the title's line. */
+.ws-title .ws-input,
+.ws-objective .ws-input,
+.ws-criterion-text.ws-input {
+  display: block;
+}
+
+/* The teacher's own tick on a multiple-choice option: `ws-opt-box` is the printed square, and
+   the button keeps its exact box so the option row never moves. Accent ink and an accent ring say
+   "this is the answer being recorded"; none of it prints. */
+.ws-opt-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  color: var(--ws-ink);
+  cursor: pointer;
+}
+
+.ws-opt-check-on {
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1.5px var(--primary);
+}
+
+.ws-opt-check svg {
+  width: 9pt;
+  height: 9pt;
+  stroke-width: 2.5;
+}
+
+/* ---- the empty sheet ------------------------------------------------------------------- */
+
+.ws-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6pt;
+  margin-top: 12pt;
+  padding: 8pt 12pt;
+  border: 1.5pt dashed var(--ws-rule-strong);
+  border-radius: 6pt;
+  background: transparent;
+  color: var(--ws-muted);
+  font-family: var(--font-ui);
+  font-size: 10.5pt;
+  cursor: pointer;
+}
+
+.ws-empty:hover {
+  color: var(--ws-ink);
+  border-color: var(--ws-ink);
+}
+
+.ws-empty kbd {
+  padding: 0 4pt;
+  border: 1px solid var(--ws-rule-strong);
+  border-radius: 3pt;
+  font-family: inherit;
+  font-size: 9pt;
+}
+
+/* ---- drag to reorder ----------------------------------------------------------------- */
+
+.ws-drop-line {
+  position: absolute;
+  z-index: 10;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 999px;
+  pointer-events: none;
+  transition: top var(--duration-base) var(--ease-out-soft);
+}
+
+/* Drag preview: a DOM clone that follows the cursor. Opacity 0.001, not 0 — at zero the browser
+   drops the element from the paint tree and there is nothing to see moving. */
+.ws-drag-ghost {
+  position: fixed;
+  z-index: 40;
+  opacity: 0.001;
+  pointer-events: none;
+  background: #ffffff;
+}
+
+.ws-drag-ghost .ws-shell .ws-gutter,
+.ws-drag-ghost .ws-shell .ws-selected-ring {
+  display: none;
+}
+
+.ws-dragging {
+  opacity: 0.4;
+}
+
+/* ---- the floating toolbars ------------------------------------------------------------ */
+
+/* Fixed above the paper, centred over the column: a bar stuck to the block would ride under the
+   topbar on the first block and off the screen on the last. */
+.ws-toolbar {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  align-self: center;
+  margin-bottom: -40px;
+  pointer-events: none;
+}
+
+.ws-toolbar > * {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-shell::after,
+  .ws-shell .ws-gutter,
+  .ws-drop-line,
+  .ws-input {
+    transition: none;
+  }
+}

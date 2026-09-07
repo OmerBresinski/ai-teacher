@@ -75,9 +75,9 @@ describe("LessonViewerPage", () => {
     expect(navigate).toHaveBeenCalledWith({ to: "/" });
   });
 
-  it("a worksheet id on the lesson route shows the stub rather than crashing", async () => {
+  it("a worksheet id on the lesson route shows WrongKindPage rather than crashing", async () => {
     lessonId = "fraction-practice";
     renderPage();
-    expect(await screen.findByText("The editor arrives with @tj/editor")).toBeVisible();
+    expect(await screen.findByText("This is a worksheet")).toBeVisible();
   });
 });

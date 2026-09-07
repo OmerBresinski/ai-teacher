@@ -15,7 +15,9 @@
     "./present": "./src/present/index.ts",
     "./lesson": "./src/lesson/index.ts",
     "./worksheet": "./src/worksheet/index.ts",
-    "./styles/print.css": "./src/styles/print.css"
+    "./styles/print.css": "./src/styles/print.css",
+    "./styles/worksheet-edit.css": "./src/styles/worksheet-edit.css",
+    "./worksheet-editor": "./src/worksheet/editor-index.ts"
   },
   "scripts": {
     "lint": "biome check .",

@@ -4,10 +4,10 @@ import { LessonEditor } from "@tj/editor/lesson";
 import { Button, Tooltip } from "@tj/ui";
 import { useCallback } from "react";
 import { RoutePendingPage } from "@/components/route-pending-page";
+import { WrongKindPage } from "@/components/wrong-kind-page";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryMutations, libraryQueries } from "@/lib/library";
 import { lessonEditorRoute } from "./documents.route";
-import { EditorStubPage } from "./editor-stubs.page";
 // The slide stylesheet (theme fonts, rich-text rules, reveal motion) travels with every route that
 // paints a slide (ADR 0022 §7): a direct load of `/l/…` must not depend on the library chunk.
 import "@tj/editor/styles/editor.css";
@@ -17,7 +17,7 @@ import "@tj/editor/styles/editor.css";
  * 404ed); until the full body arrives the list placeholder is a summary, so the page waits. The
  * editor reads and writes the same query entry the loader filled (ADR 0022 §4) and saves through
  * the autosave mutation, which refreshes the library lists but leaves the working copy alone. A
- * worksheet id on a lesson route shows the stub, as before.
+ * worksheet id on a lesson route shows `WrongKindPage`.
  */
 export function LessonEditorPage() {
   const { lessonId } = useParams({ from: lessonEditorRoute.id });
@@ -40,7 +40,9 @@ export function LessonEditorPage() {
   );
 
   if (!data || !isFullDocument(data)) return <RoutePendingPage />;
-  if (kindOf(data) !== "lesson" || !("slides" in data)) return <EditorStubPage />;
+  if (kindOf(data) !== "lesson" || !("slides" in data)) {
+    return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
+  }
 
   return (
     <LessonEditor

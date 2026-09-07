@@ -24,7 +24,6 @@ async function loadDocument(queryClient: QueryClient, id: string) {
   return document;
 }
 
-const stubPage = lazyRouteComponent(() => import("./editor-stubs.page"), "EditorStubPage");
 // Built once: `validateSearch` runs on every navigation and hover preload.
 export const presentSearchSchema = z.object({
   series: z.string().optional().catch(undefined),
@@ -76,12 +75,13 @@ export const lessonPresentRoute = createRoute({
   component: lazyRouteComponent(() => import("./lesson-present.page"), "LessonPresentPage"),
 });
 
+/** The worksheet editor (TEACH-109). */
 export const worksheetEditorRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: "/w/$worksheetId",
   loader: ({ context, params }) => loadDocument(context.queryClient, params.worksheetId),
   head: titleFrom,
-  component: stubPage,
+  component: lazyRouteComponent(() => import("./worksheet-editor.page"), "WorksheetEditorPage"),
 });
 
 /** The print layout (TEACH-108; ADR 0023 §2): the paginated sheet, no app chrome. */

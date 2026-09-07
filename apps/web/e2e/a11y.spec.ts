@@ -44,6 +44,7 @@ test.describe("accessibility (axe)", () => {
     { path: "/l/demo-water-cycle", ready: "The water cycle" },
     { path: "/l/demo-water-cycle/view", ready: /\d+ slides/ },
     { path: "/l/demo-water-cycle/present", ready: "Start presenting" },
+    { path: "/w/fraction-practice", ready: "Fractions practice" },
     // The print route paints paper-white pages whatever the theme (print.css forces the sheet).
     { path: "/w/fraction-practice/print", ready: "The water cycle: check your understanding" },
   ];

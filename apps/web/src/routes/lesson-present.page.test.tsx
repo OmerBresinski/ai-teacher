@@ -132,9 +132,9 @@ describe("LessonPresentPage", () => {
     expect(screen.getAllByRole("status")[0]?.textContent).toMatch(/Slide 3 of/);
   });
 
-  it("a worksheet id shows the stub", async () => {
+  it("a worksheet id shows WrongKindPage", async () => {
     lessonId = "fraction-practice";
     renderPage();
-    expect(await screen.findByText("The editor arrives with @tj/editor")).toBeVisible();
+    expect(await screen.findByText("This is a worksheet")).toBeVisible();
   });
 });

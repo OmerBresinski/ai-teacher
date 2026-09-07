@@ -1,19 +1,13 @@
-import {
-  AppBar,
-  AppBarGroup,
-  Button,
-  cn,
-  IconButton,
-  Input,
-  Tooltip,
-  useInlineRename,
-} from "@tj/ui";
-import { ArrowLeft, Pencil, Play, Redo2, Undo2 } from "lucide-react";
+import type { Lesson } from "@tj/domain/documents";
+import { AppBar, AppBarGroup, Button, IconButton, Tooltip } from "@tj/ui";
+import { ArrowLeft, Play, Redo2, Undo2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { InlineTitle } from "../kit/InlineTitle";
 import { PanelSeparator } from "../kit/Panel";
+import { SaveIndicator } from "../kit/SaveIndicator";
 import * as reducers from "../model/reducers";
+import type { Autosave } from "../model/use-autosave";
 import { useHistory, useLesson } from "./document-context";
-import { type Autosave, type SaveState, useSaveState } from "./use-autosave";
 
 /*
  * The editor's top bar (TeachDeck `components/v2/editor/TopBar.tsx`): back arrow → title (inline
@@ -29,7 +23,7 @@ export type TopBarProps = {
   onOpenTheme?: () => void;
   /** Where the export control sits once it exists (E1, TEACH-110). */
   exportSlot?: ReactNode;
-  autosave: Autosave;
+  autosave: Autosave<Lesson>;
 };
 
 export function TopBar({ onBack, onPresent, onOpenTheme, exportSlot, autosave }: TopBarProps) {
@@ -48,7 +42,12 @@ export function TopBar({ onBack, onPresent, onOpenTheme, exportSlot, autosave }:
         <IconButton label="Back to library" onClick={onBack}>
           <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
         </IconButton>
-        <LessonTitle title={lesson.title} onCommit={(t) => dispatch(reducers.setTitle, t)} />
+        <InlineTitle
+          title={lesson.title}
+          fieldLabel="Lesson title"
+          renameLabel="Rename lesson"
+          onCommit={(t) => dispatch(reducers.setTitle, t)}
+        />
         <PanelSeparator />
         <IconButton label="Undo" disabled={!canUndo} onClick={undo}>
           <Undo2 aria-hidden size={16} strokeWidth={1.5} />
@@ -80,41 +79,6 @@ export function TopBar({ onBack, onPresent, onOpenTheme, exportSlot, autosave }:
 
 /* ------------------------------------------------------------------ */
 
-/**
- * The lesson title as an inline-renamable heading (the shell's `useInlineRename` pattern, in place
- * of TeachDeck's own `AppBarTitle onCommit`): double-click, F2 or the pencil opens the field; Enter
- * or blur commits through `setTitle`; Escape cancels.
- */
-function LessonTitle({ title, onCommit }: { title: string; onCommit: (title: string) => void }) {
-  const rename = useInlineRename(title, { onCommit });
-  if (rename.editing) {
-    return (
-      <Input
-        aria-label="Lesson title"
-        className="h-8 w-64 font-semibold text-lead"
-        {...rename.inputProps}
-      />
-    );
-  }
-  return (
-    <div className="flex min-w-0 items-center gap-1">
-      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: the heading is the rename target (double-click, F2), as in `PageTitle` */}
-      <h1
-        className="min-w-0 truncate font-semibold text-lead outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: F2 renames from the heading, as in `PageTitle`
-        tabIndex={0}
-        onDoubleClick={rename.start}
-        onKeyDown={rename.onCardKeyDown}
-      >
-        {title}
-      </h1>
-      <IconButton label="Rename lesson" size="sm" onClick={rename.start}>
-        <Pencil aria-hidden size={14} strokeWidth={1.5} />
-      </IconButton>
-    </div>
-  );
-}
-
 /** A ghost label that is off until its feature lands: focusable, announced as disabled, tooltipped. */
 function QuietButton({
   label,
@@ -140,42 +104,5 @@ function QuietButton({
         {label}
       </Button>
     </Tooltip>
-  );
-}
-
-const SAVE_LABELS: Record<SaveState, string> = {
-  saved: "Saved",
-  unsaved: "Unsaved changes",
-  saving: "Saving…",
-  failed: "Not saved",
-};
-
-/**
- * What actually happens, named: an edit is unsaved for 800 ms before a write is even attempted,
- * and a write can fail. Polite live region, so a screen reader hears "Saving…" → "Saved" without
- * being interrupted by it.
- */
-export function SaveIndicator({ autosave }: { autosave: Autosave }) {
-  const state = useSaveState(autosave);
-  const failed = state === "failed";
-  return (
-    <span
-      aria-live="polite"
-      data-save-state={state}
-      data-tabular
-      className={cn(
-        "mr-1 inline-flex items-center gap-1.5 text-meta",
-        failed ? "text-destructive" : "text-ink-3",
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "size-1.5 shrink-0 rounded-full",
-          failed ? "bg-destructive" : state === "saved" ? "bg-success" : "bg-warning",
-        )}
-      />
-      {SAVE_LABELS[state]}
-    </span>
   );
 }
