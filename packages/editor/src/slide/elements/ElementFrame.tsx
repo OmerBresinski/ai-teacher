@@ -73,10 +73,14 @@ export function ElementFrame({
 }: ElementFrameProps) {
   const box = override ?? element;
   const rotation = override ? (override.rotation ?? element.rotation) : element.rotation;
-  const shown: SlideElement =
-    override?.children && element.type === "group"
-      ? { ...element, children: override.children }
-      : element;
+  // The renderer draws from the in-flight geometry too: ShapeView, LineView and IconView size
+  // their SVG from `element.w`/`element.h`, so a preview that only moved the frame would leave the
+  // polygon at its committed size until pointer-up.
+  const shown: SlideElement = override
+    ? override.children && element.type === "group"
+      ? { ...element, x: box.x, y: box.y, w: box.w, h: box.h, children: override.children }
+      : { ...element, x: box.x, y: box.y, w: box.w, h: box.h }
+    : element;
   const revealStep = element.revealStep ?? 0;
   const beyond = revealStep > step;
   const hidden = beyond && mode !== "edit";
