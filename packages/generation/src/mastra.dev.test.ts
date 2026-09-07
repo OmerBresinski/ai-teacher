@@ -9,7 +9,9 @@ describe("StudioInputSchema", () => {
     expect(StudioInputSchema.safeParse({ brief: { topic: "a lesson about legos" } }).success).toBe(
       true,
     );
-    const guarded = StudioInputSchema.safeParse({ brief: { topic: "Help Amir Khan with legos" } });
+    const guarded = StudioInputSchema.safeParse({
+      brief: { topic: "Help a pupil called Amir with Lego" },
+    });
     expect(guarded.success).toBe(false);
     expect(guarded.error?.issues[0]?.message).toBe(GUARD_MESSAGE);
     expect(StudioInputSchema.safeParse({ brief: { topic: "x".repeat(501) } }).success).toBe(false);

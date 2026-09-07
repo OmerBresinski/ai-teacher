@@ -177,7 +177,8 @@ opaque keyset cursor from the previous page (§17). `/documents` and `/documents
 `src/routes/lessons.ts` (`lessonRoutes(unsafeDb, runtime)`) is how a brief becomes a Lesson. The
 body is `CreateLessonSchema` from `@tj/domain/documents` — `{ brief: { topic, durationMin?,
 classContext?, answers? }, subject?, yearGroup?, ageBand?, readingLevel?, language?, themeId? }`,
-strict, every free-text field behind the Identifier guard — so the brief screen and the API reject
+strict, every free-text field behind the Identifier guard (emails, ID numbers, "a pupil called …";
+bare names are the pipeline's model check, TEACH-137) — so the brief screen and the API reject
 the same input with the same message. `lessonFromBrief()` applies the defaults the screen shows:
 `ageBand` from the year group (`deriveAgeBand`: Reception → `eyfs`, Year 1–2 → `ks1`, 3–6 → `ks2`,
 7–9 → `ks3`, 10–11 → `ks4`, 12–13 → `post16`), `durationMin` from the age band

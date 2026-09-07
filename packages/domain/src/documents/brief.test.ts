@@ -38,7 +38,10 @@ describe("BriefSchema", () => {
   });
 
   test("rejects a learner name in the topic with GUARD_MESSAGE at [topic]", () => {
-    const result = BriefSchema.safeParse({ ...minimal(), topic: "Help Amir Khan with fractions" });
+    const result = BriefSchema.safeParse({
+      ...minimal(),
+      topic: "Help a pupil called Amir with fractions",
+    });
     expect(result.success).toBe(false);
     expect(result.error?.issues).toEqual([
       expect.objectContaining({ path: ["topic"], message: GUARD_MESSAGE }),
@@ -57,7 +60,10 @@ describe("BriefSchema", () => {
   });
 
   test("guards answer values", () => {
-    const result = BriefSchema.safeParse({ ...minimal(), answers: { q1: "focus on Amir Khan" } });
+    const result = BriefSchema.safeParse({
+      ...minimal(),
+      answers: { q1: "focus on the student named Amir" },
+    });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(["answers", "q1"]);
     expect(result.error?.issues[0]?.message).toBe(GUARD_MESSAGE);
