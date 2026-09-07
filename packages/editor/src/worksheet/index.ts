@@ -1,8 +1,9 @@
 /**
  * `@tj/editor/worksheet` — the worksheet model and its static renderer (ADR 0022, 0023 §2): pure
  * pagination / metrics / answer-key / word-search modules, the reducers and history hook, the
- * `Sheet` renderer and the `WorksheetPrint` layout. The editing surface (`WorksheetEditor`) lands
- * with the next ticket. The page that mounts `WorksheetPrint` imports `@tj/editor/styles/print.css`.
+ * `Sheet` renderer and the `WorksheetPrint` layout. The editing surface is `@tj/editor/worksheet-editor`
+ * (its own entry, so this one never pulls Tiptap into the print chunk). The page that mounts
+ * `WorksheetPrint` imports `@tj/editor/styles/print.css`.
  */
 
 export * from "./answers";

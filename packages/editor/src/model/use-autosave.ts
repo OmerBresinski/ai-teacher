@@ -1,28 +1,32 @@
-import type { Lesson } from "@tj/domain/documents";
+import type { Lesson, Worksheet } from "@tj/domain/documents";
 import { toast } from "@tj/ui";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 /**
- * Autosave for the editor (TeachDeck `components/editor/use-autosave.ts`), with the one thing the
- * write itself cannot give the chrome: an outcome. Edits are "Unsaved changes" for the 800 ms
- * before a write is even attempted, "Saving…" while it runs, "Saved" after, and "Not saved" when
- * it rejects — said out loud once, with the unload warning as the net.
+ * Autosave for both editors (TeachDeck `components/editor/use-autosave.ts` and
+ * `lib/worksheet/autosave.ts`), with the one thing the write itself cannot give the chrome: an
+ * outcome. Edits are "Unsaved changes" for the 800 ms before a write is even attempted, "Saving…"
+ * while it runs, "Saved" after, and "Not saved" when it rejects — said out loud once, with the
+ * unload warning as the net.
  *
- * The write is the `onSave(lesson)` prop (ADR 0022 §5): the mock store today, `PUT /documents/:id`
- * later. Nothing here knows which.
+ * Generic in the document (`Lesson` or `Worksheet`): the write is the `onSave(document)` prop
+ * (ADR 0022 §5): the mock store today, `PUT /documents/:id` later. Nothing here knows which.
  */
 
 export type SaveState = "saved" | "unsaved" | "saving" | "failed";
+
+/** What autosave can persist: any full document the app's `saveDocument` accepts. */
+export type SavableDocument = Lesson | Worksheet;
 
 /** TeachDeck's `AUTOSAVE_MS`. */
 export const AUTOSAVE_MS = 800;
 
 export const SAVE_FAILED_MESSAGE =
-  "Could not save this lesson. Export a copy before you close the tab.";
+  "Could not save your changes. Export a copy before you close the tab.";
 
-export type Autosave = {
-  /** Hand to `useDocumentHistory`'s `onChange`: one call per committed change. */
-  onChange: (lesson: Lesson) => void;
+export type Autosave<D extends SavableDocument = SavableDocument> = {
+  /** Hand to the history hook's `onChange`: one call per committed change. */
+  onChange: (document: D) => void;
   /** Write anything outstanding now — before Present opens, before the route is left. */
   flush: () => Promise<void>;
   subscribe: (listener: () => void) => () => void;
@@ -34,10 +38,10 @@ export type AutosaveOptions = {
   delay?: number;
 };
 
-export function useAutosave(
-  onSave: (lesson: Lesson) => Promise<void>,
+export function useAutosave<D extends SavableDocument>(
+  onSave: (document: D) => Promise<void>,
   { delay = AUTOSAVE_MS }: AutosaveOptions = {},
-): Autosave {
+): Autosave<D> {
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
 
@@ -45,7 +49,7 @@ export function useAutosave(
   const store = useMemo(() => {
     let state: SaveState = "saved";
     const listeners = new Set<() => void>();
-    let pending: Lesson | null = null;
+    let pending: D | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let inFlight: Promise<void> | null = null;
     /** One toast per run of failures: typing through a broken save must not stack twelve of them. */
@@ -67,18 +71,18 @@ export function useAutosave(
     const write = async (): Promise<void> => {
       if (timer) clearTimeout(timer);
       timer = undefined;
-      const lesson = pending;
-      if (!lesson) return;
+      const document = pending;
+      if (!document) return;
       pending = null;
       setState("saving");
       try {
-        await onSaveRef.current(lesson);
+        await onSaveRef.current(document);
         warned = false;
         // Only "Saved" if nothing changed while the write was in flight.
         if (pending === null) setState("saved");
         else setState("unsaved");
       } catch {
-        pending = pending ?? lesson;
+        pending = pending ?? document;
         fail();
       }
     };
@@ -96,8 +100,8 @@ export function useAutosave(
     };
 
     return {
-      onChange: (lesson: Lesson) => {
-        pending = lesson;
+      onChange: (document: D) => {
+        pending = document;
         setState("unsaved");
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => void flush(), delay);
@@ -138,7 +142,10 @@ export function useAutosave(
 
 const SAVED = (): SaveState => "saved";
 
+/** The half of an `Autosave` the indicator reads; independent of the document type. */
+export type SaveStateSource = Pick<Autosave, "subscribe" | "getState">;
+
 /** What the saved indicator should say right now. */
-export function useSaveState(autosave: Autosave): SaveState {
+export function useSaveState(autosave: SaveStateSource): SaveState {
   return useSyncExternalStore(autosave.subscribe, autosave.getState, SAVED);
 }

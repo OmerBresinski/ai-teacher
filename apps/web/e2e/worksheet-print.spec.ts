@@ -93,7 +93,7 @@ test.describe("worksheet print route", () => {
     expect(pdfPageCount(pdf)).toBe(count);
   });
 
-  test("the starter worksheet prints; a lesson id shows the stub without crashing", async ({
+  test("the starter worksheet prints; a lesson id shows the wrong-kind page without crashing", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/w/roman-source/print");
@@ -104,7 +104,7 @@ test.describe("worksheet print route", () => {
     await expect(page.getByText("Page 1 of 1")).toBeVisible();
 
     await page.goto("/w/demo-water-cycle/print");
-    await expect(page.getByText("The editor arrives with @tj/editor")).toBeVisible();
+    await expect(page.getByText("This is a lesson")).toBeVisible();
     await expect(page.locator(".ws-page")).toHaveCount(0);
   });
 });

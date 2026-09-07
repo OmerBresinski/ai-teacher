@@ -12,9 +12,11 @@ export {
   normalizeHex,
   RECENT_COLORS_KEY,
 } from "./Color";
+export { InlineTitle, type InlineTitleProps } from "./InlineTitle";
 export { clamp, format, round, snap } from "./math";
 export { NumberInput, type NumberInputProps } from "./NumberInput";
 export { Panel, PanelLabel, type PanelProps, PanelRow, PanelSeparator } from "./Panel";
 export { Rail, RailButton, type RailButtonProps, type RailProps, RailSeparator } from "./Rail";
+export { SaveIndicator } from "./SaveIndicator";
 export { Segmented, type SegmentedOption, type SegmentedProps } from "./Segmented";
 export { nextStep, ZoomControl, type ZoomControlProps, type ZoomValue } from "./ZoomControl";

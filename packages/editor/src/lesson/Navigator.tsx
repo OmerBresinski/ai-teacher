@@ -38,12 +38,15 @@ import { useActiveSlideId, useSessionActions, useSessionUi } from "./use-editor-
  * slide number to their left, keyboard navigation and reorder, pointer drag-reorder, a context menu
  * and the "Add slide" picker in the footer.
  *
- * Geometry — 168x94 thumbs, 8px gap, 22px number column. 94, not 16:9's exact 94.5: a half pixel
+ * Geometry — 168x94 thumbs, 8px gap, 28px number column (the digits, then `NUM_GAP` of air before
+ * the thumbnail, so a number never reads as part of the slide). 94, not 16:9's exact 94.5: a half pixel
  * put every row boundary off the pixel grid, so the hairline under a thumbnail rendered at two
  * different weights down the rail.
  */
-const FULL = { thumbW: 168, thumbH: 94, gap: 8, numW: 22 };
-const COMPACT = { thumbW: 60, thumbH: 33.75, gap: 6, numW: 16 };
+const FULL = { thumbW: 168, thumbH: 94, gap: 8, numW: 28 };
+const COMPACT = { thumbW: 60, thumbH: 33.75, gap: 6, numW: 22 };
+/** Air between the slide number's right edge and the thumbnail, inside `numW`. */
+const NUM_GAP = 10;
 type Geometry = typeof FULL;
 
 /** Browser preference: whether the rail is collapsed to the compact thumbs. */
@@ -580,7 +583,7 @@ const NavigatorRow = memo(function NavigatorRow({
           "shrink-0 pt-1 text-right font-semibold text-meta tabular-nums",
           active ? "text-foreground" : "text-ink-3",
         )}
-        style={{ width: geometry.numW - 4, marginRight: 4 }}
+        style={{ width: geometry.numW - NUM_GAP, marginRight: NUM_GAP }}
       >
         {number}
       </span>

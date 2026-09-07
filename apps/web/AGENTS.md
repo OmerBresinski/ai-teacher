@@ -46,8 +46,11 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   `page.route` mocks `api.openverse.org` and the image hosts, never the network; fixture PNG in
   `e2e/fixtures/`; the Photos-tab screenshot is opt-in via `TEACH_SCREENSHOTS=1`),
   `worksheet-print` (pages/header/footer, `?auto=1` prints once — `window.print` is stubbed in
-  `addInitScript`, `emulateMedia("print")` + `page.pdf()` page count, the lesson-id stub), `a11y`
-  (the nine signed-in library/document routes × the three themes via `page.addInitScript` setting `tj-theme`, plus open dialogs/menus; `/sign-in` and
+  `addInitScript`, `emulateMedia("print")` + `page.pdf()` page count, the lesson-id wrong-kind
+  page), `worksheet-editor` (header + blocks + the print route's page count, a typing burst as one
+  undo step and its autosave, `/` → slash menu → Question, a real-pointer handle drag, Print opening
+  `/print?auto=1` in a new tab via `page.context().waitForEvent("page")`, wrong-kind both ways),
+  `a11y` (the ten signed-in library/document routes × the three themes via `page.addInitScript` setting `tj-theme`, plus open dialogs/menus; `/sign-in` and
   `/dev/jobs` once in light), `kit` (opt-in,
   `E2E_KIT=1`). `src/router.test.ts` pins the registered route set; `packages/ui/src/styles/contrast.test.ts`
   pins token contrast. A full reload reseeds the mock library (ADR 0020) — assert persistence through
@@ -58,7 +61,13 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
 - Document routes: `/l/$lessonId` is the editor (`lesson-editor.page.tsx`, `LessonEditor` from
   `@tj/editor/lesson`), `/l/$lessonId/view` the read-only viewer, `/l/$lessonId/present` present
   mode (`?from=edit|view` decides where exit lands). Each page imports `@tj/editor/styles/editor.css`.
+  `/w/$worksheetId` is the worksheet editor (`worksheet-editor.page.tsx`, `WorksheetEditor` from
+  `@tj/editor/worksheet-editor`; imports `@tj/editor/styles/worksheet-edit.css`; Print →
+  `window.open(worksheetPrintHref(id), "_blank", "noopener")` after the autosave flush).
   `/w/$worksheetId/print` is the worksheet print layout (`worksheet-print.page.tsx`, `WorksheetPrint`
   from `@tj/editor/worksheet`, `?auto=1` validated by `worksheetPrintSearchSchema` — the parser
   decodes `1` to a number, so the schema accepts both); it imports `@tj/editor/styles/print.css`
-  instead, and renders no AppBar/sidebar/Toaster (ADR 0023 §2).
+  instead, and renders no AppBar/sidebar/Toaster (ADR 0023 §2). A document opened on the other
+  kind's route renders `components/wrong-kind-page.tsx` (title, "This is a lesson/worksheet", a
+  link to the right route) — every document page narrows with `kindOf` + `"blocks" in` /
+  `"slides" in` before mounting the editor.

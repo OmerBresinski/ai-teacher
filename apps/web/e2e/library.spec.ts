@@ -42,7 +42,7 @@ test.describe("library shell", () => {
     await expect(page.getByRole("link", { name: /^Lessons\b/ })).toContainText("11");
   });
 
-  test("New worksheet trims the title and opens the worksheet stub", async ({
+  test("New worksheet trims the title and opens the worksheet editor", async ({
     signedInPage: { page },
   }) => {
     await page.getByRole("button", { name: "New worksheet" }).click();
@@ -52,8 +52,11 @@ test.describe("library shell", () => {
     await page.getByRole("button", { name: "Create worksheet" }).click();
 
     await expect(page).toHaveURL(/\/w\/[^/]+$/);
-    await expect(page.getByText("Decimals practice", { exact: true }).first()).toBeVisible();
-    await page.getByLabel("Back to the library").click();
+    // The top bar's title; the sheet carries the printed h1 too.
+    await expect(
+      page.locator("[data-topbar]").getByRole("heading", { level: 1, name: "Decimals practice" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Back to library" }).click();
     await page.getByRole("link", { name: /^Worksheets\b/ }).click();
     // The count is the starter worksheet's real block count (TeachDeck `starterWorksheet`, 5).
     const card = page.locator("article", { hasText: "Decimals practice" }).first();

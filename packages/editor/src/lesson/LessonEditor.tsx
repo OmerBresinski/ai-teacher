@@ -6,6 +6,7 @@ import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migrat
 import { makeLine, makeShape, makeText } from "../model/insert";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
+import { useAutosave } from "../model/use-autosave";
 import { useDocumentHistory } from "../model/use-document-history";
 import {
   type EditingState,
@@ -23,7 +24,6 @@ import { Navigator } from "./Navigator";
 import { ThemeDialog } from "./ThemeDialog";
 import { TopBar } from "./TopBar";
 import { CANVAS_ROOT_SELECTOR } from "./transform/gesture-state";
-import { useAutosave } from "./use-autosave";
 import {
   EditorSessionProvider,
   resolveActiveSlide,

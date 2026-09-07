@@ -30,7 +30,7 @@ Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
 Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
   configurable: true,
   get(this: HTMLElement) {
-    return this.getAttribute("role") === "listbox" ? 212 : 0;
+    return this.getAttribute("role") === "listbox" ? 218 : 0;
   },
 });
 

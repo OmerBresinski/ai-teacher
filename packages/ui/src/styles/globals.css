@@ -133,8 +133,8 @@
   --topbar-height: 48px; /* docked, flush, hairline below */
   --toolbar-height: 40px;
   --rail-width: 56px; /* icon-only insert rail */
-  --navigator-width: 212px; /* 168px thumb (16:9 = 168x94.5) + 22px gutters */
-  --navigator-width-sm: 84px; /* compact: 60px thumb */
+  --navigator-width: 218px; /* 168px thumb (16:9 = 168x94.5) + 28px number column + gutters */
+  --navigator-width-sm: 90px; /* compact: 60px thumb + 22px number column */
   --inspector-width: 268px;
   --panel-pad: 12px; /* bars and cards; a dialog pads 24 */
   --row-height: 32px; /* inspector rows, menu items */

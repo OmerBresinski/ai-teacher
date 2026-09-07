@@ -17,7 +17,7 @@ reference; nothing is pasted from it without reading the file it came from.
 
 - **ADR 0022 §2 — the twin rule.** Where `@tj/ui` has a Radix twin, use it. The editor kit
   (`src/kit/`) holds only geometry-owning chrome with no twin (Panel, Segmented, NumberInput,
-  ZoomControl; Rail and Color arrive with TEACH-105). TeachDeck's `components/ui2/floating.ts` is
+  ZoomControl, Rail, Color, SaveIndicator, InlineTitle). TeachDeck's `components/ui2/floating.ts` is
   never ported: Radix owns the one floating layer. A `@tj/ui` surface opened from the present-mode stage carries
   `className="tj-stage"` (`tooltipClassName` / `contentClassName` on `IconButton` / `Tooltip`).
 - **ADR 0022 §4 — TanStack Query is the only store.** No `zustand`, `zundo`, `immer`-as-store or
@@ -29,7 +29,9 @@ reference; nothing is pasted from it without reading the file it came from.
   (the hook treats identity as "nothing changed") and `silent(...)`-marked reducers
   (`setFitVersion`, `updateElementLayout`) write without an undo step. Transient UI state
   (selection, zoom, drag deltas, ink, timer) is React state and refs; pointer moves write refs and
-  commit one reducer on release. In the lesson editor that state is `use-editor-session.ts`
+  commit one reducer on release. In the lesson editor that state is `use-editor-session.ts`;
+  in the worksheet editor it is `worksheet/use-worksheet-session.ts` (selection, the block whose
+  Tiptap editor is mounted, where its caret should land)
   (`useReducer` + split contexts, read with `useSelection`/`useActiveSlideId`/`useZoom`/
   `useSessionUi`, written through `useSessionActions`), the document is reached through
   `document-context.ts` (`useLesson`, `useHistory`), and a drag paints `SlideView` from a
@@ -67,12 +69,15 @@ src/
               `@tj/slides` (ADR 0025 §9); insert (element factories), reducers/ (pure lesson
               reducers, immer inside), use-history (the one undo/redo/transactions implementation
               over the Query cache, generic in the document type), use-document-history (its
-              `Lesson` wrapper), worksheet-factories, demo-worksheet
+              `Lesson` wrapper), use-edit-session (one undo step per gesture/typing run),
+              use-autosave (generic over `Lesson | Worksheet`; both top bars read it),
+              worksheet-factories, demo-worksheet
   text/       Tiptap extension set + static HTML rendering (renderDocHTML)
   images/     image-search (Openverse mapping + `searchOpenverse`/`fetchRemoteImage`, pure; no
               Tenor, no `process.env`), images (`fileToDataUrl` downscale, `isImageFile`)
   slide/      SlideView (the one renderer), SlideScaler, SlideStatic, elements/*
-  kit/        Panel, Segmented, NumberInput, ZoomControl, Color, Rail — chrome with no @tj/ui twin
+  kit/        Panel, Segmented, NumberInput, ZoomControl, Color, Rail, SaveIndicator (the live
+              region over the autosave store), InlineTitle (the h1 that renames) — no @tj/ui twin
   layout/     text fitting engine: reflow/lint/fit-plan (pure), measure (DOM ruler), tidy
               (pure over the lesson; `tidySlideReducer` for dispatch), use-slide-lint (navigator
               badge), use-fit-migration (once per lesson on open); `test-ruler.ts` is the fake
@@ -85,8 +90,22 @@ src/
               renderer (Sheet, BlockContent, WordSearch, block-types), measure (off-screen column +
               ResizeObserver → `useSheetPagination`; the one external subscription — it ignores
               reports taken while `display: none` under `@media print`) and WorksheetPrint
-              (`?auto=1` → `window.print()` once, after `whenFontsReady` and two frames). Editor
-              chrome (BlockShell, EditableBlocks, toolbars) arrives with TEACH-109.
+              (`?auto=1` → `window.print()` once, after `whenFontsReady` and two frames).
+              `@tj/editor/worksheet-editor` (`editor-index.ts`, its own entry so the print chunk
+              never pulls Tiptap): WorksheetEditor shell (block-row actions over refs, split /
+              merge / slash intents, the ⌘Z window handler), worksheet-context (four contexts:
+              worksheet, history API, typing session, UI session; `useBlockWrites` = `patch`
+              inside the typing session / `commit` as its own step), typing-session (over
+              `useEditSession`; `undo`/`redo` close the open session first), use-worksheet-session,
+              use-block-drag (pointer refs, one `moveBlock` on release), BlockShell (memoised row:
+              gutter + / handle, ring, oversize warning; `lazy()`-loads BlockTextEditor),
+              BlockTextEditor (the one mounted Tiptap; `block-extensions` = base set with
+              `undoRedo: false` — the cache is the only history), EditableBlocks (`SheetField`
+              contentEditable spans laid out as the printed text, so measured heights hold),
+              EditableHeader + HeaderToolbar (rules, objective, criteria, paper, key, RAG),
+              SlashMenu (`@tj/ui` Popover on a virtual anchor; combobox + listbox), toolbar/
+              (BlockToolbar routes to Question / WordSearch / AnswerSpace / Layout, one file per
+              family; shared NumberField + LinesPopover), WorksheetTopBar
   lesson/     LessonEditor shell (`@tj/editor/lesson`): TopBar, InsertRail, Navigator, Canvas,
               canvas/ (SlideActions, SlideTabs, placement), transform/ (SelectionLayer, keys,
               hit-test, resize), toolbar/ (ContextualToolbar routing + placement; one file per
@@ -95,16 +114,22 @@ src/
               AddImagePanel (Upload / Photos popover; open state and replace target are session
               `imagePanel`), image-source (file/stock → `ImageSource`, `imageFields`),
               canvas/use-image-drop (paste + drop listeners), ThemeDialog, use-editor-session,
-              use-autosave, slide-commands, keys, shortcuts
+              slide-commands, keys, shortcuts
   styles/     editor.css = fonts.css + slide.css + present.css; print.css = fonts.css +
               worksheet.css + the print layout (`@tj/editor/styles/print.css`, imported by the
-              worksheet print page only). worksheet.css reads only `--ws-*` variables set by
+              worksheet print page only); worksheet-edit.css = fonts.css + worksheet.css + the
+              editor chrome (gutter, ring, fields, toolbars, drop line — every rule out of flow or
+              paint-only, so nothing the measuring column paginates from can move). worksheet.css reads only `--ws-*` variables set by
               `sheetVars()`; its `.ws-rt` rules are scoped under `.ws-sheet` so they beat slide.css's
               `.td-rt` (RichText carries both classes) whatever the import order.
   thumb.ts    the library's thumbnail entry (`@tj/editor/thumb`)
 ```
 
-Tests that mount the shell use `src/lesson/test-harness.tsx` (`renderEditor`): a seeded QueryClient
+Tests that mount the worksheet editor use `src/worksheet/editor-test-harness.tsx`
+(`renderWorksheetEditor`, `row(container, id)`); `worksheet-editor.test.tsx` drives the slash menu
+(the `+` gutter button; options are picked on `pointerDown`), the toolbars (`spinbutton` by label,
+change + blur), the header switches and a handle drag with stubbed `getBoundingClientRect`s.
+Tests that mount the lesson shell use `src/lesson/test-harness.tsx` (`renderEditor`): a seeded QueryClient
 plus the layout stubs happy-dom lacks (the navigator's `offsetHeight`, so react-virtual renders
 rows). A real Tiptap editor does construct under happy-dom (`editor.commands.*` works; typing and
 selection do not — those are Playwright's). ProseMirror's contenteditable carries no ARIA role, so

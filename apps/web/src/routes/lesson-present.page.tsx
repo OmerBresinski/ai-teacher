@@ -3,9 +3,9 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { type NextLesson, type PresentProgress, PresentView } from "@tj/editor/present";
 import { Spinner } from "@tj/ui";
 import { useCallback, useMemo } from "react";
+import { WrongKindPage } from "@/components/wrong-kind-page";
 import { isFullDocument, libraryMutations, libraryQueries } from "@/lib/library";
 import { lessonPresentRoute } from "./documents.route";
-import { EditorStubPage } from "./editor-stubs.page";
 import "@tj/editor/styles/editor.css";
 
 /**
@@ -72,7 +72,9 @@ export function LessonPresentPage() {
   );
 
   if (!data || !isFullDocument(data)) return <Loading />;
-  if (!lesson) return <EditorStubPage />;
+  if (!lesson) {
+    return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
+  }
 
   return (
     <PresentView

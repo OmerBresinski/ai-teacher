@@ -1,8 +1,8 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, fireEvent, renderHook, screen, waitFor } from "@testing-library/react";
 import type { Lesson } from "@tj/domain/documents";
+import { renderEditor } from "../lesson/test-harness";
 import { newLesson } from "../model/factories";
-import { renderEditor } from "./test-harness";
 import { AUTOSAVE_MS, SAVE_FAILED_MESSAGE, useAutosave, useSaveState } from "./use-autosave";
 
 /*
