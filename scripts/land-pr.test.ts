@@ -127,7 +127,13 @@ function fakeDeps(options: FakeOptions = {}): {
         }
         return ok();
       },
-      vercelLs: async () => ok(options.vercel ?? VERCEL_READY),
+      // Before the merge the Production row is an older deployment; after it, the new one.
+      vercelLs: async () =>
+        ok(
+          mergeCalls === 0
+            ? VERCEL_READY.replace("7qoiteule", "0ldpr0dxx")
+            : (options.vercel ?? VERCEL_READY),
+        ),
       railwayList: async (service) => {
         calls.railway.push(service);
         const deployment = railway[service].shift() ?? lastRailway[service];
@@ -156,6 +162,28 @@ describe("land-pr", () => {
     expect(summary.railway.api.status).toBe("SUCCESS");
     expect(summary.railway.worker.status).toBe("SKIPPED");
     expect(summary.smoke.status).toBe("passed");
+  });
+
+  test("waits only for the required checks, so a failing non-required Vercel check does not stop it", async () => {
+    const fake = fakeDeps();
+    await landPr(42, {}, fake.deps);
+    const watch = fake.calls.gh.find((args) => args.includes("--watch"));
+    expect(watch).toEqual(["pr", "checks", "42", "--required", "--watch", "--fail-fast"]);
+  });
+
+  test("merges an UNSTABLE PR: required checks passed, only a non-required one failed", async () => {
+    const fake = fakeDeps({ states: ["UNSTABLE"] });
+    const summary = await landPr(42, {}, fake.deps);
+    expect(summary.ok).toBe(true);
+    expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(true);
+  });
+
+  test("reports a Vercel deploy that never starts as pending instead of waiting out the timeout", async () => {
+    // The same Production row before and after the merge: the rate limit refused the build.
+    const fake = fakeDeps({ vercel: VERCEL_READY.replace("7qoiteule", "0ldpr0dxx") });
+    const summary = await landPr(42, {}, fake.deps);
+    expect(summary.ok).toBe(true);
+    expect(summary.vercel.status).toContain("PENDING");
   });
 
   test("rebases one BEHIND round before merging and returns to the branch it started on", async () => {

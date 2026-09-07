@@ -121,7 +121,18 @@ Code and Cursor. Check your own tool list and map by **capability**, not by name
 Cost discipline still applies. The main agent's prompt is re-read on every turn, so each turn has a
 fixed cost regardless of how little it does. Batch independent tool calls into one message. Never
 spend a turn polling (CI, deploys, `sleep`) — `bun run land <pr>` does the whole wait-and-merge in
-one bash call. Prefer a fresh session per feature over one long session: state lives in Linear and
+one bash call. **Do not wait on CI in the foreground.** A full CI run is ~6 minutes (e2e alone is
+4) and a `BEHIND` PR pays it twice (rebase → second run). Start the landing in the background and
+carry on with the next unit of work:
+
+```sh
+nohup bun run land <pr> > /tmp/land-<pr>.log 2>&1 &
+```
+
+Read `/tmp/land-<pr>.log` once, when the next PR is ready to open (or when there is nothing else to
+do). Never run `gh run watch`, `gh pr checks --watch` or `gh run view` in a loop by hand — the
+script already does the one blocking wait, and it waits only on the checks branch protection
+requires. Prefer a fresh session per feature over one long session: state lives in Linear and
 GitHub, not in the chat. Every edit goes through the branch → PR → review → CI path; never commit
 to `master` directly.
 
@@ -204,13 +215,22 @@ to `master` directly.
    xargs -I{} gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"{}"}){thread{isResolved}}}'
    ```
 
-   Then run `bun run land <pr>` in a single bash call (allow a long timeout, ~25 min). It waits
-   for CI, refuses unresolved review threads, rebases when `BEHIND`, squash-merges, watches Vercel
-   and both Railway services, and runs `bun run smoke:prod`, printing one summary block. Do not
-   poll any of those by hand.
+   Then run `bun run land <pr>` — in the background as described under cost discipline, or in a
+   single bash call with a long timeout (~25 min) when it is the last thing left. It waits for the
+   **required** checks (`gh pr checks --required --watch`; Vercel's preview check is not required
+   and is ignored), refuses unresolved review threads, rebases when `BEHIND`, squash-merges a
+   `CLEAN` or `UNSTABLE` PR, watches Vercel and both Railway services, and runs
+   `bun run smoke:prod`, printing one summary block. Do not poll any of those by hand. If it
+   exits non-zero, the log names the failing check or step — read it once and act on it; do not
+   re-implement its wait with `gh` commands.
 4. **Watch the deploys.** A merge to `master` deploys Vercel (web) and Railway (api, worker).
    The latest Production Vercel deployment must be `Ready`; each Railway service must be `SUCCESS`,
-   or `SKIPPED` when the change is outside the service's watch paths, e.g. docs-only. `-p` is the
+   or `SKIPPED` when the change is outside the service's watch paths, e.g. docs-only. **Vercel
+   Hobby rate limit:** when Vercel refuses to build ("Deployment rate limited — retry in 24
+   hours") no new Production deployment appears; `land` reports `vercel: PENDING (no new
+   deployment — rate limited?)` after 90 s instead of waiting out its timeout. That is not a
+   failure of the PR: merge stands, note "Vercel deploy pending — rate limit" in the Linear
+   closing comment, and move on. The deploy catches up on the next successful build. `-p` is the
    `teaching-journey` project id and is required whenever the CLI runs from a directory that is not
    `railway link`ed — worktrees never are. `bun run smoke:prod` (`scripts/smoke-prod.ts`) sends the
    request shapes a
