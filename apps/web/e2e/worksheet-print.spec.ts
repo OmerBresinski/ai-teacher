@@ -19,9 +19,9 @@ const pdfPageCount = (pdf: Buffer) =>
 
 test.describe("worksheet print route", () => {
   test("renders the demo worksheet as A4 pages with header, blocks and footer numbers", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto("/w/fraction-practice/print");
+    await page.goto(paths.worksheet("fraction-practice", "/print"));
     await expect(page).toHaveTitle("Fractions practice · Teaching Journey");
     const pages = page.locator(".ws-print-root .ws-page");
     await expect(pages.first()).toBeVisible();
@@ -47,11 +47,11 @@ test.describe("worksheet print route", () => {
     // A4 at 1:1 is 595pt = 793.33px wide.
     const box = await pages.first().boundingBox();
     expect(box && Math.abs(box.width - 793.33) < 1).toBe(true);
-    await expectNoSeriousA11yViolations(page, "/w/fraction-practice/print");
+    await expectNoSeriousA11yViolations(page, "/w/:id/print");
   });
 
   test("?auto=1 calls window.print exactly once, after the fonts are ready", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
     await page.addInitScript(() => {
       window.__prints = 0;
@@ -59,7 +59,7 @@ test.describe("worksheet print route", () => {
         window.__prints = (window.__prints ?? 0) + 1;
       };
     });
-    await page.goto("/w/fraction-practice/print?auto=1");
+    await page.goto(`${paths.worksheet("fraction-practice", "/print")}?auto=1`);
     await expect(page.locator(".ws-print-root .ws-page").first()).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.__prints)).toBe(1);
     const fontsReady = await page.evaluate(() =>
@@ -71,9 +71,9 @@ test.describe("worksheet print route", () => {
   });
 
   test("print media shows only the pages, and the PDF has one page per .ws-page", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto("/w/fraction-practice/print");
+    await page.goto(paths.worksheet("fraction-practice", "/print"));
     const pages = page.locator(".ws-print-root .ws-page");
     await expect(pages.first()).toBeVisible();
     await expect(page.locator(".ws-print-root")).toHaveCSS("visibility", "visible");
@@ -94,16 +94,16 @@ test.describe("worksheet print route", () => {
   });
 
   test("the starter worksheet prints; a lesson id shows the wrong-kind page without crashing", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto("/w/roman-source/print");
+    await page.goto(paths.worksheet("roman-source", "/print"));
     await expect(page.locator(".ws-print-root .ws-page").first()).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 1, name: "Roman source investigation" }),
     ).toBeVisible();
     await expect(page.getByText("Page 1 of 1")).toBeVisible();
 
-    await page.goto("/w/demo-water-cycle/print");
+    await page.goto(`/w/${paths.id("demo-water-cycle")}/print`);
     await expect(page.getByText("This is a lesson")).toBeVisible();
     await expect(page.locator(".ws-page")).toHaveCount(0);
   });

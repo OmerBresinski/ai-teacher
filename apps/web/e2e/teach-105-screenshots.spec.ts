@@ -5,9 +5,9 @@ test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots a
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test("captures the slide toolbar, a shape toolbar with the More drawer, and the theme dialog", async ({
-  signedInPage: { page },
+  signedInPage: { page, paths },
 }) => {
-  await page.goto("/l/demo-water-cycle");
+  await page.goto(paths.lesson("demo-water-cycle"));
   await expect(page.getByRole("toolbar", { name: "Slide" })).toBeVisible();
   await page.waitForTimeout(400);
   await page.screenshot({ path: "/tmp/teach-105-slide-toolbar.png" });

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { DocumentSummary } from "@/mocks/library-schema";
+import type { DocumentSummary } from "@tj/domain/documents";
 import { AddLessonsDialog } from "./add-lessons-dialog";
 
 afterEach(cleanup);
@@ -10,7 +10,7 @@ const candidates: DocumentSummary[] = ["One", "Two", "Three"].map((title, index)
   id: `lesson-${index + 1}`,
   kind: "lesson",
   title,
-  count: 4,
+  itemCount: 4,
   updatedAt: "2026-09-06T12:00:00.000Z",
   createdAt: "2026-09-06T12:00:00.000Z",
   themeId: "chalk",

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Display, Sidebar, SidebarItem } from "@tj/ui";
 import {
@@ -57,14 +57,20 @@ export function LibrarySidebar({
   // `usePreference` caches the read and announces same-tab writes, like the sort/view prefs.
   const [collapsedFlag, setCollapsedFlag] = usePreference(COLLAPSED_KEY, COLLAPSED_VALUES, "0");
   const collapsed = collapsedFlag === "1";
-  // `select` keeps the sidebar subscribed to three numbers, not to every card's fields.
-  const { data: documentCounts } = useQuery({
-    ...libraryQueries.documents(),
-    select: librarySelectors.countsByKind,
+  // `select` keeps the sidebar subscribed to three numbers, not to every card's fields. The API
+  // returns no totals (ADR 0024 §17), so each count is the rows loaded so far — exact until a
+  // list grows past its first page of 100; F16 decides whether exact counts matter.
+  const { data: lessonCount } = useInfiniteQuery({
+    ...libraryQueries.documents("lesson"),
+    select: librarySelectors.count,
   });
-  const { data: seriesCount } = useQuery({
+  const { data: worksheetCount } = useInfiniteQuery({
+    ...libraryQueries.documents("worksheet"),
+    select: librarySelectors.count,
+  });
+  const { data: seriesCount } = useInfiniteQuery({
     ...libraryQueries.series(),
-    select: librarySelectors.length,
+    select: librarySelectors.count,
   });
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -112,7 +118,7 @@ export function LibrarySidebar({
       <SidebarItem
         asChild
         icon={LESSONS_ICON}
-        count={documentCounts?.lesson}
+        count={lessonCount}
         active={isActive(pathname, "/lessons")}
       >
         <Link to="/lessons">Lessons</Link>
@@ -120,7 +126,7 @@ export function LibrarySidebar({
       <SidebarItem
         asChild
         icon={WORKSHEETS_ICON}
-        count={documentCounts?.worksheet}
+        count={worksheetCount}
         active={isActive(pathname, "/worksheets")}
       >
         <Link to="/worksheets">Worksheets</Link>

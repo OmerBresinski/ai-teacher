@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import { resetLibraryStore } from "@/mocks/library-store";
+import { installFakeApi } from "@/test/fake-api";
+
+const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let worksheetId = "fraction-practice";
 let search: { auto?: "1" } = {};
@@ -54,9 +56,12 @@ describe("WorksheetPrintPage", () => {
     search = {};
     navigate.mockReset();
     cleanup();
-    await resetLibraryStore();
+    fakeApi.reset();
   });
-  afterAll(() => mock.restore());
+  afterAll(() => {
+    mock.restore();
+    restoreFetch();
+  });
 
   it("renders the demo worksheet as pages with its title and footer, and no app chrome", async () => {
     const { container } = renderPage();

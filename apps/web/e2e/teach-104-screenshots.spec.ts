@@ -8,9 +8,9 @@ test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots a
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test("captures the editor with text editing open and measures keystroke-to-paint", async ({
-  signedInPage: { page },
+  signedInPage: { page, paths },
 }) => {
-  await page.goto("/l/demo-water-cycle");
+  await page.goto(paths.lesson("demo-water-cycle"));
   const title = page
     .locator("[data-slide-frame] [data-element-id]")
     .filter({ hasText: "The water cycle" })

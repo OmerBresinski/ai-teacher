@@ -5,9 +5,9 @@ test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots a
 test.use({ viewport: { width: 1280, height: 900 } });
 
 test("captures the worksheet editor with a block selected and with the slash menu open", async ({
-  signedInPage: { page },
+  signedInPage: { page, paths },
 }) => {
-  await page.goto("/w/fraction-practice");
+  await page.goto(paths.worksheet("fraction-practice"));
   const blocks = page.locator(".ws-column .ws-block");
   await expect(blocks).toHaveCount(8);
   await page.waitForTimeout(400);

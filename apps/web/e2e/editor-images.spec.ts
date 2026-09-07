@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Page, Route } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, type SeededPaths, test } from "./fixtures";
 
 /*
  * Images in the lesson editor (TEACH-107 rows 2–7, 9): upload, paste and drop land a downscaled
@@ -10,7 +10,7 @@ import { expect, test } from "./fixtures";
  * toast when it does not; Replace keeps the element and its frame.
  */
 
-const EDITOR = "/l/demo-water-cycle";
+const EDITOR = (paths: SeededPaths) => paths.lesson("demo-water-cycle");
 const FIXTURE = fileURLToPath(new URL("./fixtures/photo-3000x2000.png", import.meta.url));
 const PNG = readFileSync(FIXTURE);
 /** A different picture for the search results, so a replaced `src` can be told from the upload. */
@@ -89,9 +89,9 @@ async function expectInlined(img: ReturnType<Page["locator"]>) {
 
 test.describe("editor images", () => {
   test("row 2: uploading a 3000x2000 PNG adds a centred, downscaled image as one undo step", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
 
@@ -123,9 +123,9 @@ test.describe("editor images", () => {
   });
 
   test("row 3: an image pasted onto the canvas is inserted at the centre", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
     await page.getByRole("group", { name: "Slide canvas" }).click({ position: { x: 5, y: 5 } });
@@ -145,9 +145,9 @@ test.describe("editor images", () => {
   });
 
   test("row 4: a file dropped near the corner lands under the pointer, clamped to the slide", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
     const slide = await page.locator("[data-slide-frame]").boundingBox();
@@ -187,10 +187,10 @@ test.describe("editor images", () => {
   });
 
   test("rows 5–7: Photos searches Openverse, inlines a CORS-served result and links one that is not", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
     const asked = await mockSearch(page);
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
 
@@ -234,7 +234,7 @@ test.describe("editor images", () => {
   });
 
   test("row 8: a 500 from Openverse shows the failure copy and Retry recovers", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
     let fail = true;
     await page.route(OPENVERSE, (route) =>
@@ -249,7 +249,7 @@ test.describe("editor images", () => {
     await page.route("https://cors.test/**", (route) =>
       route.fulfill({ status: 200, contentType: "image/png", body: PNG }),
     );
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await openPhotos(page, "rain");
     await expect(panel(page).getByText("Search failed. Try again.")).toBeVisible();
     fail = false;
@@ -260,10 +260,10 @@ test.describe("editor images", () => {
   });
 
   test("row 9: Replace keeps the element and its frame and swaps src and alt", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
     await mockSearch(page);
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
 
@@ -302,10 +302,12 @@ test.describe("editor images", () => {
     expect(Math.abs(frame.height - before.height)).toBeLessThan(1);
   });
 
-  test("the panel's Photos tab with results (screenshot)", async ({ signedInPage: { page } }) => {
+  test("the panel's Photos tab with results (screenshot)", async ({
+    signedInPage: { page, paths },
+  }) => {
     test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
     await mockSearch(page);
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await openPhotos(page, "river");
     await expect(
       panel(page).getByRole("button", { name: "River bend by Ada Lovelace, CC BY 2.0" }),

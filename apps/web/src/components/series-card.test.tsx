@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it, mock } from "bun:test";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import type { SeriesWithLessons } from "@/mocks/library-schema";
+import type { SeriesWithLessons } from "@/lib/library";
 
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
@@ -25,7 +25,7 @@ const item: SeriesWithLessons = {
     id: `lesson-${index + 1}`,
     kind: "lesson" as const,
     title,
-    count: 4,
+    itemCount: 4,
     updatedAt: "2026-09-06T11:00:00.000Z",
     createdAt: "2026-09-01T12:00:00.000Z",
     themeId: "chalk",

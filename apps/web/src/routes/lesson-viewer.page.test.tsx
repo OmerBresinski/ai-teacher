@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import { listDocuments, resetLibraryStore } from "@/mocks/library-store";
+import { installFakeApi } from "@/test/fake-api";
+
+const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let lessonId = "demo-water-cycle";
 const navigate = mock();
@@ -37,9 +39,12 @@ describe("LessonViewerPage", () => {
     navigate.mockReset();
     toastSpy.mockReset();
     cleanup();
-    await resetLibraryStore();
+    fakeApi.reset();
   });
-  afterAll(() => mock.restore());
+  afterAll(() => {
+    mock.restore();
+    restoreFetch();
+  });
 
   it("renders the lesson in the viewer with Present, Export (disabled) and Make a copy", async () => {
     renderPage();
@@ -58,13 +63,13 @@ describe("LessonViewerPage", () => {
   it("Make a copy duplicates the document, toasts and navigates to the copy", async () => {
     renderPage();
     await screen.findAllByText("The water cycle");
-    const before = (await listDocuments()).length;
+    const before = fakeApi.listDocuments().length;
     fireEvent.click(screen.getByRole("button", { name: "Make a copy" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     const call = navigate.mock.calls[0]?.[0] as { to: string; params: { lessonId: string } };
     expect(call.to).toBe("/l/$lessonId/view");
     expect(call.params.lessonId).not.toBe("demo-water-cycle");
-    expect((await listDocuments()).length).toBe(before + 1);
+    expect(fakeApi.listDocuments().length).toBe(before + 1);
     expect(toastSpy).toHaveBeenCalledWith("Duplicated “The water cycle”");
   });
 

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import type { DocumentSummary } from "@tj/domain/documents";
 import {
   Button,
   Card,
@@ -13,7 +14,7 @@ import { ChevronRight, Layers, LibraryBig } from "lucide-react";
 import type { ReactNode } from "react";
 import { LibraryCard, type LibraryCardProps } from "@/components/library-card";
 import { SeriesCard, type SeriesCardProps } from "@/components/series-card";
-import type { DocumentSummary, SeriesWithLessons } from "@/mocks/library-schema";
+import type { SeriesWithLessons } from "@/lib/library";
 import type { LibraryMode, View } from "./library-model";
 
 /**

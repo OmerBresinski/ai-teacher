@@ -5,7 +5,7 @@
  * (`addInitScript` precedes every page script), so each scan sees the final colours.
  */
 import { expectNoSeriousA11yViolations } from "./a11y";
-import { expect, test } from "./fixtures";
+import { expect, type SeededPaths, test } from "./fixtures";
 
 test.describe("accessibility (axe)", () => {
   test("/sign-in has no serious or critical violations", async ({ page }) => {
@@ -35,24 +35,29 @@ test.describe("accessibility (axe)", () => {
   });
 
   const THEMES = ["light", "dark", "high-contrast"] as const;
-  const ROUTES: { path: string; ready: RegExp | string }[] = [
+  const ROUTES = (paths: SeededPaths): { path: string; ready: RegExp | string }[] => [
     { path: "/", ready: "Home" },
     { path: "/lessons", ready: "Lessons" },
     { path: "/worksheets", ready: "Worksheets" },
     { path: "/series", ready: "Series" },
-    { path: "/series/series-romans", ready: "The Romans" },
-    { path: "/l/demo-water-cycle", ready: "The water cycle" },
-    { path: "/l/demo-water-cycle/view", ready: /\d+ slides/ },
-    { path: "/l/demo-water-cycle/present", ready: "Start presenting" },
-    { path: "/w/fraction-practice", ready: "Fractions practice" },
+    { path: paths.series("series-romans"), ready: "The Romans" },
+    { path: paths.lesson("demo-water-cycle"), ready: "The water cycle" },
+    { path: paths.lesson("demo-water-cycle", "/view"), ready: /\d+ slides/ },
+    { path: paths.lesson("demo-water-cycle", "/present"), ready: "Start presenting" },
+    { path: paths.worksheet("fraction-practice"), ready: "Fractions practice" },
     // The print route paints paper-white pages whatever the theme (print.css forces the sheet).
-    { path: "/w/fraction-practice/print", ready: "The water cycle: check your understanding" },
+    {
+      path: paths.worksheet("fraction-practice", "/print"),
+      ready: "The water cycle: check your understanding",
+    },
   ];
 
   for (const theme of THEMES) {
-    test(`every route is clean in the ${theme} theme`, async ({ signedInPage: { page } }) => {
+    test(`every route is clean in the ${theme} theme`, async ({
+      signedInPage: { page, paths },
+    }) => {
       await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
-      for (const route of ROUTES) {
+      for (const route of ROUTES(paths)) {
         await page.goto(route.path);
         await expect(page.getByText(route.ready).first()).toBeVisible();
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
@@ -62,7 +67,7 @@ test.describe("accessibility (axe)", () => {
   }
 
   test("open overlays are clean: create dialogs, card menu, series row menu", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
     // Dialogs and menus arrive over 450 ms; axe reads contrast through the fade, so wait for every
     // running animation on the surface (or its inner wrapper) to finish rather than for a fixed time.
@@ -90,7 +95,7 @@ test.describe("accessibility (axe)", () => {
     await expectNoSeriousA11yViolations(page, "card menu", '[role="menu"]');
     await page.keyboard.press("Escape");
 
-    await page.goto("/series/series-romans");
+    await page.goto(paths.series("series-romans"));
     await page.getByRole("button", { name: "Add lesson" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await settled();
@@ -99,7 +104,7 @@ test.describe("accessibility (axe)", () => {
 
     // The editor with a text element being typed into: Tiptap's contenteditable plus the text
     // toolbar over it (TEACH-104 row 12).
-    await page.goto("/l/demo-water-cycle");
+    await page.goto(paths.lesson("demo-water-cycle"));
     const title = page
       .locator("[data-slide-frame] [data-element-id]")
       .filter({ hasText: "The water cycle" })

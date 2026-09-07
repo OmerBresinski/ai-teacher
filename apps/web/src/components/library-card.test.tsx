@@ -1,9 +1,9 @@
 import { afterAll, afterEach, describe, expect, it, mock } from "bun:test";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { DocumentSummary } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import type { DocumentSummary } from "@/mocks/library-schema";
 
 const navigate = mock();
 const actualRouter = await import("@tanstack/react-router");
@@ -21,7 +21,7 @@ const lesson: DocumentSummary = {
   id: "lesson-1",
   kind: "lesson",
   title: "Water cycle",
-  count: 7,
+  itemCount: 7,
   updatedAt: "2026-09-06T11:00:00.000Z",
   createdAt: "2026-09-05T11:00:00.000Z",
   themeId: "chalk",
@@ -77,7 +77,7 @@ describe("LibraryCard", () => {
   });
 
   it("uses Print for worksheet cards and has hero metadata", () => {
-    const worksheet = { ...lesson, id: "worksheet-1", kind: "worksheet" as const, count: 4 };
+    const worksheet = { ...lesson, id: "worksheet-1", kind: "worksheet" as const, itemCount: 4 };
     renderCard(worksheet);
     expect(screen.getByRole("button", { name: "Print" })).toBeVisible();
 

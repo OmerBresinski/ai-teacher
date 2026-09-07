@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import type { DocumentSummary } from "@tj/domain/documents";
 import {
   Button,
   cn,
@@ -16,7 +17,6 @@ import { memo } from "react";
 import { LessonThumb } from "@/components/lesson-thumb";
 import { sizeOf, yearAndSubject } from "@/lib/format";
 import { modKeyLabel } from "@/lib/platform";
-import type { DocumentSummary } from "@/mocks/library-schema";
 
 /** Row height in px; the drag hook maps pointer offset to gaps with it (TeachDeck `ROW_H`). */
 export const ROW_H = 56;

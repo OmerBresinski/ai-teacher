@@ -9,6 +9,11 @@ import { useSyncExternalStore } from "react";
  */
 const cache = new Map<string, string | null>();
 
+/** The stored value, or `null`; cached like the hook's reads (route loaders use this). */
+export function readPreference(key: string): string | null {
+  return read(key);
+}
+
 function read(key: string): string | null {
   if (cache.has(key)) return cache.get(key) ?? null;
   let value: string | null = null;

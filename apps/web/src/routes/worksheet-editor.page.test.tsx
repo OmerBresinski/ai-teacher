@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import { listDocuments, loadDocument, resetLibraryStore } from "@/mocks/library-store";
+import { installFakeApi } from "@/test/fake-api";
+
+const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let worksheetId = "fraction-practice";
 const navigate = mock();
@@ -33,16 +35,19 @@ describe("WorksheetEditorPage", () => {
     worksheetId = "fraction-practice";
     navigate.mockReset();
     cleanup();
-    await resetLibraryStore();
+    fakeApi.reset();
   });
-  afterAll(() => mock.restore());
+  afterAll(() => {
+    mock.restore();
+    restoreFetch();
+  });
 
   it("row 1: mounts the editor with the title, the header, every block and Saved", async () => {
     const { container } = renderPage();
     expect(
       await screen.findByRole("heading", { level: 1, name: "Fractions practice" }),
     ).toBeVisible();
-    const worksheet = await loadDocument("fraction-practice");
+    const worksheet = fakeApi.loadDocument("fraction-practice");
     const count = worksheet && "blocks" in worksheet ? worksheet.blocks.length : 0;
     expect(count).toBeGreaterThan(1);
     // The header strip is on the sheet, editable.
@@ -66,9 +71,9 @@ describe("WorksheetEditorPage", () => {
     fireEvent.blur(input);
     expect(screen.getByText("Unsaved changes")).toBeVisible();
     await waitFor(() => expect(screen.getByText("Saved")).toBeVisible(), { timeout: 3_000 });
-    const saved = await loadDocument("fraction-practice");
+    const saved = fakeApi.loadDocument("fraction-practice");
     expect(saved?.title).toBe("Fractions: a check");
-    expect((await listDocuments()).find((d) => d.id === "fraction-practice")?.title).toBe(
+    expect(fakeApi.listDocuments().find((d) => d.id === "fraction-practice")?.title).toBe(
       "Fractions: a check",
     );
   });

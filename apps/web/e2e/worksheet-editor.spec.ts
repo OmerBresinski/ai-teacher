@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expectNoSeriousA11yViolations } from "./a11y";
-import { expect, test } from "./fixtures";
+import { expect, type SeededPaths, test } from "./fixtures";
 
 /*
  * The worksheet editor on `/w/$worksheetId` (TEACH-109): rows 1, 2, 3, 7 and 9 of the acceptance
@@ -8,15 +8,15 @@ import { expect, test } from "./fixtures";
  * on the gutter handle, Print opening a new tab — where happy-dom cannot follow.
  */
 
-const EDITOR = "/w/fraction-practice";
+const EDITOR = (paths: SeededPaths) => paths.worksheet("fraction-practice");
 const blocks = (page: Page) => page.locator(".ws-column .ws-block");
 const proseMirror = (page: Page) => page.locator(".ws-column .ProseMirror");
 
 test.describe("worksheet editor", () => {
   test("row 1: the header, every block and Saved; page breaks as the print route makes them", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(page).toHaveTitle("Fractions practice · Teaching Journey");
     await expect(page.getByRole("heading", { level: 1, name: "Fractions practice" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Sheet title" })).toHaveText(
@@ -26,15 +26,15 @@ test.describe("worksheet editor", () => {
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
     // The same paginator as `/print`: the same number of pages.
     const editorPages = await page.locator(".ws-column .ws-page").count();
-    await page.goto(`${EDITOR}/print`);
+    await page.goto(paths.worksheet("fraction-practice", "/print"));
     await expect(page.locator(".ws-print-root")).toHaveCSS("visibility", "visible");
     expect(await page.locator(".ws-print-root .ws-page").count()).toBe(editorPages);
   });
 
   test("row 2: a typing burst is one undo step and autosaves", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     const stem = blocks(page).locator(".ws-q-stem").first();
     await expect(stem).toBeVisible();
     const original = (await stem.textContent()) ?? "";
@@ -57,9 +57,9 @@ test.describe("worksheet editor", () => {
   });
 
   test("row 3: `/` in an empty paragraph opens the slash menu; Question inserts a numbered block", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(blocks(page)).toHaveCount(8);
     const count = 8;
     // Insert a paragraph below the first block through the gutter, then type `/` into it.
@@ -74,7 +74,7 @@ test.describe("worksheet editor", () => {
       .locator('[role="dialog"]')
       .last()
       .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
-    await expectNoSeriousA11yViolations(page, `${EDITOR} (slash menu open)`);
+    await expectNoSeriousA11yViolations(page, "/w/:id (slash menu open)");
     await page.getByRole("combobox", { name: "Filter blocks" }).fill("para");
     await page.keyboard.press("Enter");
     await expect(blocks(page)).toHaveCount(count + 1);
@@ -93,9 +93,9 @@ test.describe("worksheet editor", () => {
   });
 
   test("row 7: dragging the gutter handle of block 3 above block 1 reorders in one undo step", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(blocks(page)).toHaveCount(8);
     const ids = await blocks(page).evaluateAll((els) =>
       els.map((el) => el.getAttribute("data-block-id")),
@@ -123,10 +123,10 @@ test.describe("worksheet editor", () => {
   });
 
   test("row 9: Print opens the print route with ?auto=1 in a new tab", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
     const context = page.context();
-    await page.goto(EDITOR);
+    await page.goto(EDITOR(paths));
     await expect(page.getByRole("button", { name: "Print" })).toBeEnabled();
     const [tab] = await Promise.all([
       context.waitForEvent("page"),
@@ -134,19 +134,19 @@ test.describe("worksheet editor", () => {
     ]);
     await tab.waitForLoadState();
     expect(new URL(tab.url()).pathname + new URL(tab.url()).search).toBe(
-      "/w/fraction-practice/print?auto=1",
+      `${paths.worksheet("fraction-practice", "/print")}?auto=1`,
     );
     await tab.close();
   });
 
   test("row 10: a lesson id on the worksheet route shows the wrong-kind page", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto("/w/demo-water-cycle");
+    await page.goto(`/w/${paths.id("demo-water-cycle")}`);
     await expect(page.getByText("This is a lesson")).toBeVisible();
     await page.getByRole("link", { name: "Open the lesson" }).click();
-    await expect(page).toHaveURL(/\/l\/demo-water-cycle$/);
-    await page.goto("/l/fraction-practice");
+    await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle")}$`));
+    await page.goto(`/l/${paths.id("fraction-practice")}`);
     await expect(page.getByText("This is a worksheet")).toBeVisible();
   });
 });

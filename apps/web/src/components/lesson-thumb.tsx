@@ -2,7 +2,7 @@ import { getTheme, SlideFluid } from "@tj/editor/thumb";
 // Slide CSS and the twelve document fonts ride with the first chunk that paints a slide (the
 // library route), not with the initial bundle (ADR 0022 §7-8).
 import "@tj/editor/styles/editor.css";
-import type { DocumentSummary } from "@/mocks/library-schema";
+import type { DocumentSummary } from "@tj/domain/documents";
 
 /**
  * A lesson's first slide at card size (ADR 0021 §6). The summary carries `cover`; the thumb fills

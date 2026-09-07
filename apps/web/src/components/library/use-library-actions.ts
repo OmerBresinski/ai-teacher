@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import type { DocumentSummary } from "@tj/domain/documents";
 import { toast } from "@tj/ui";
 import { useMemo } from "react";
 import type { LibraryCardProps } from "@/components/library-card";
 import type { NewDocumentValues } from "@/components/new-document-dialog";
 import type { SeriesCardProps } from "@/components/series-card";
-import { libraryMutations } from "@/lib/library";
-import type { DocumentSummary, SeriesWithLessons } from "@/mocks/library-schema";
+import { libraryMutations, type SeriesWithLessons } from "@/lib/library";
 
 /** TeachDeck's delete Undo window. */
 export const UNDO_MS = 6000;

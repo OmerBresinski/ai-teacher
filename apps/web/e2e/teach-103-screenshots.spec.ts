@@ -10,9 +10,9 @@ test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots a
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test("captures the editor at rest, with a selection and guides, and the navigator", async ({
-  signedInPage: { page },
+  signedInPage: { page, paths },
 }) => {
-  await page.goto("/l/demo-water-cycle");
+  await page.goto(paths.lesson("demo-water-cycle"));
   await expect(page.getByRole("heading", { level: 1, name: "The water cycle" })).toBeVisible();
   await page.waitForTimeout(600);
   await page.screenshot({ path: "/tmp/teach-103-editor.png" });

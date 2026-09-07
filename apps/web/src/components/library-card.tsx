@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import type { DocumentSummary } from "@tj/domain/documents";
 import {
   Button,
   Card,
@@ -31,7 +32,6 @@ import {
 } from "lucide-react";
 import { memo, type ReactNode, useRef } from "react";
 import { sizeOf, yearAndSubject } from "@/lib/format";
-import type { DocumentSummary } from "@/mocks/library-schema";
 import { EditedTime } from "./edited-time";
 import { LessonThumb } from "./lesson-thumb";
 
@@ -126,7 +126,7 @@ function DocumentMenu({
   );
 }
 
-const KIND_LABEL = { lesson: "Lesson", worksheet: "Worksheet" } as const;
+const KIND_LABEL = { lesson: "Lesson", worksheet: "Worksheet", series: "Series" } as const;
 
 /** The kind as a 16px glyph in the meta line, with the word in a tooltip (TeachDeck `KindIcon`). */
 function KindIcon({ kind }: { kind: DocumentSummary["kind"] }) {

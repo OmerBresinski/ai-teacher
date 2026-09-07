@@ -1,16 +1,16 @@
 import { expectNoSeriousA11yViolations } from "./a11y";
-import { expect, test } from "./fixtures";
+import { expect, type SeededPaths, test } from "./fixtures";
 
-const PRESENT = "/l/demo-water-cycle/present";
+const PRESENT = (paths: SeededPaths) => paths.lesson("demo-water-cycle", "/present");
 const status = (page: import("@playwright/test").Page) => page.getByRole("status").first();
 
 test.describe("present mode", () => {
   test("stays on the stage palette in every app theme and letterboxes the slide", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
     for (const theme of ["light", "dark", "high-contrast"] as const) {
       await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
-      await page.goto(PRESENT);
+      await page.goto(PRESENT(paths));
       const root = page.locator("[data-present-root]");
       await expect(root).toHaveClass(/tj-stage/);
       const tokens = await root.evaluate((el) => {
@@ -38,9 +38,9 @@ test.describe("present mode", () => {
   });
 
   test("keys move the deck; B/W blank the screen; digits jump; O opens the overview", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(PRESENT);
+    await page.goto(PRESENT(paths));
     await page.getByRole("button", { name: "Stay in this window" }).click();
     await expect(status(page)).toContainText("Slide 1 of");
     await page.keyboard.press("Space");
@@ -74,9 +74,9 @@ test.describe("present mode", () => {
   });
 
   test("pen draws a stroke with real pointer events; X clears; eraser removes", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(PRESENT);
+    await page.goto(PRESENT(paths));
     await page.getByRole("button", { name: "Stay in this window" }).click();
     await expect(status(page)).toContainText("Slide 1 of");
     await page.keyboard.press("p");
@@ -124,9 +124,9 @@ test.describe("present mode", () => {
   });
 
   test("the timer counts down from a preset and shows on the stage", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto(PRESENT);
+    await page.goto(PRESENT(paths));
     await page.getByRole("button", { name: "Stay in this window" }).click();
     await page.keyboard.press("t");
     const panel = page.getByRole("radiogroup", { name: "Timer mode" });
@@ -138,27 +138,32 @@ test.describe("present mode", () => {
   });
 
   test("presenting from a series chains to the next lesson and exits to the series", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto("/series/series-romans");
+    const romans = paths.id("series-romans");
+    await page.goto(paths.series("series-romans"));
     await page.getByRole("button", { name: "Present series" }).click();
-    await expect(page).toHaveURL(/\/l\/roman-roads\/present\?series=series-romans$/);
+    await expect(page).toHaveURL(
+      new RegExp(`${paths.lesson("roman-roads", "/present")}\\?series=${romans}$`),
+    );
     await page.getByRole("button", { name: "Stay in this window" }).click();
     await page.keyboard.press("End");
     await page.keyboard.press("Space");
     await expect(page.getByRole("heading", { name: "End of lesson" })).toBeVisible();
     await expect(page.getByText("Next: Fractions of amounts", { exact: true })).toBeVisible();
     await page.keyboard.press("Space");
-    await expect(page).toHaveURL(/\/l\/demo-fractions\/present\?series=series-romans$/);
+    await expect(page).toHaveURL(
+      new RegExp(`${paths.lesson("demo-fractions", "/present")}\\?series=${romans}$`),
+    );
     await page.getByRole("button", { name: "Stay in this window" }).click();
     await page.keyboard.press("Escape");
-    await expect(page).toHaveURL(/\/series\/series-romans$/);
+    await expect(page).toHaveURL(new RegExp(`${paths.series("series-romans")}$`));
   });
 
   test("?slide= opens on that slide; Escape from the viewer's Present returns to the viewer", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto("/l/demo-water-cycle/view");
+    await page.goto(paths.lesson("demo-water-cycle", "/view"));
     await expect(page.getByRole("status")).toHaveText(/Slide 1 of/);
     await page.keyboard.press("ArrowRight");
     await page.getByRole("button", { name: "Present" }).click();
@@ -166,18 +171,18 @@ test.describe("present mode", () => {
     await page.getByRole("button", { name: "Stay in this window" }).click();
     await expect(status(page)).toContainText("Slide 2 of");
     await page.keyboard.press("Escape");
-    await expect(page).toHaveURL(/\/l\/demo-water-cycle\/view$/);
+    await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle", "/view")}$`));
   });
 
   test("Escape from the editor's Present returns to the editor", async ({
-    signedInPage: { page },
+    signedInPage: { page, paths },
   }) => {
-    await page.goto("/l/demo-water-cycle");
+    await page.goto(paths.lesson("demo-water-cycle"));
     await page.getByRole("button", { name: "Present" }).click();
     await expect(page).toHaveURL(/present\?from=edit$/);
     await page.getByRole("button", { name: "Stay in this window" }).click();
     await page.keyboard.press("Escape");
-    await expect(page).toHaveURL(/\/l\/demo-water-cycle$/);
+    await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle")}$`));
     await expect(page.getByRole("listbox", { name: "Slides" })).toBeVisible();
   });
 });

@@ -6,6 +6,8 @@
  * State lives for the life of the mount: render it only while open (or give it a fresh `key`), so
  * every opening starts clean without a reset effect.
  */
+
+import type { DocumentSummary } from "@tj/domain/documents";
 import {
   Button,
   Checkbox,
@@ -19,7 +21,6 @@ import {
   Spinner,
 } from "@tj/ui";
 import { useId, useMemo, useState } from "react";
-import type { DocumentSummary } from "@/mocks/library-schema";
 
 export type AddLessonsDialogProps = {
   open: boolean;
@@ -159,7 +160,7 @@ function LessonRow({
           {candidate.title}
         </span>
         <span className="block truncate text-micro text-ink-3">
-          {candidate.count} {candidate.count === 1 ? "slide" : "slides"}
+          {candidate.itemCount} {candidate.itemCount === 1 ? "slide" : "slides"}
           {candidate.yearGroup ? ` · ${candidate.yearGroup}` : ""}
           {candidate.subject ? ` · ${candidate.subject}` : ""}
         </span>

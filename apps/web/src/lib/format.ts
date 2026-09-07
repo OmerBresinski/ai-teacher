@@ -1,4 +1,4 @@
-import type { DocumentSummary } from "@/mocks/library-schema";
+import type { DocumentSummary } from "@tj/domain/documents";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 const DATE_TIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
@@ -26,9 +26,9 @@ export function absoluteTime(iso: string): string {
   return DATE_TIME_FORMAT.format(new Date(iso));
 }
 
-export function sizeOf(document: Pick<DocumentSummary, "count" | "kind">): string {
+export function sizeOf(document: Pick<DocumentSummary, "itemCount" | "kind">): string {
   const noun = document.kind === "lesson" ? "slide" : "block";
-  return `${document.count} ${noun}${document.count === 1 ? "" : "s"}`;
+  return `${document.itemCount} ${noun}${document.itemCount === 1 ? "" : "s"}`;
 }
 
 export function yearAndSubject(document: Pick<DocumentSummary, "yearGroup" | "subject">): string {

@@ -11,6 +11,7 @@
     ".": "./src/index.ts",
     "./thumb": "./src/thumb.ts",
     "./starter": "./src/starter.ts",
+    "./autosave": "./src/model/use-autosave.ts",
     "./styles/editor.css": "./src/styles/editor.css",
     "./present": "./src/present/index.ts",
     "./lesson": "./src/lesson/index.ts",
