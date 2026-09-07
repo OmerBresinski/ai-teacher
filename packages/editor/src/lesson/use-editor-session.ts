@@ -10,7 +10,13 @@
  * document half as an argument or are composed by the caller (`use-canvas-keys.ts`).
  */
 
-import { type Id, type Slide, type SlideElement, slideStepCount } from "@tj/domain/documents";
+import {
+  type Id,
+  type ImageElement,
+  type Slide,
+  type SlideElement,
+  slideStepCount,
+} from "@tj/domain/documents";
 import {
   createContext,
   createElement,
@@ -21,6 +27,7 @@ import {
   useReducer,
   useRef,
 } from "react";
+import type { CropDraft } from "./image-adjust";
 
 export type Zoom = number | "fit";
 
@@ -53,7 +60,15 @@ export type SessionState = {
    * open the one dialog `LessonEditor` mounts.
    */
   regenerate: RegenerateTarget | null;
+  /**
+   * Crop mode (TEACH-153): the image being adjusted and the draft of its adjustments. The draft is
+   * written to the document once, when the mode ends, so a whole crop session is one undo step.
+   * `dirty` is false until the teacher changes something; seeding the natural size does not count.
+   */
+  crop: CropSession | null;
 };
+
+export type CropSession = { id: Id; draft: CropDraft; dirty: boolean };
 
 export type ImagePanelState = null | { mode: "add" } | { mode: "replace"; elementId: Id };
 export type RegenerateTarget = { slideId: Id; elementId?: Id };
@@ -72,6 +87,7 @@ export const INITIAL_SESSION: SessionState = {
   snap: true,
   imagePanel: null,
   regenerate: null,
+  crop: null,
 };
 
 export type SessionAction =
@@ -89,23 +105,34 @@ export type SessionAction =
   | { type: "copy"; elements: SlideElement[] }
   | { type: "copySlide"; slide: Slide }
   | { type: "setImagePanel"; panel: ImagePanelState }
-  | { type: "setRegenerate"; target: RegenerateTarget | null };
+  | { type: "setRegenerate"; target: RegenerateTarget | null }
+  | { type: "enterCrop"; element: ImageElement }
+  | { type: "updateCrop"; patch: Partial<CropDraft>; seed: boolean }
+  | { type: "exitCrop" };
 
 export function sessionReducer(s: SessionState, a: SessionAction): SessionState {
   switch (a.type) {
     case "select":
-      return { ...s, selection: a.ids, editingTextId: null };
+      return {
+        ...s,
+        selection: a.ids,
+        editingTextId: null,
+        // Crop mode belongs to one selected image; any other selection ends it (the layer commits
+        // its draft as it unmounts).
+        crop: s.crop && a.ids.length === 1 && a.ids[0] === s.crop.id ? s.crop : null,
+      };
     case "toggleSelect":
       return {
         ...s,
         selection: s.selection.includes(a.id)
           ? s.selection.filter((x) => x !== a.id)
           : [...s.selection, a.id],
+        crop: null,
       };
     case "clearSelection":
-      return s.selection.length === 0 && !s.editingTextId
+      return s.selection.length === 0 && !s.editingTextId && !s.crop
         ? s
-        : { ...s, selection: [], editingTextId: null };
+        : { ...s, selection: [], editingTextId: null, crop: null };
     case "setActiveSlide":
       // Changing slide drops everything that addressed the old one.
       return s.activeSlideId === a.id
@@ -118,6 +145,7 @@ export function sessionReducer(s: SessionState, a: SessionAction): SessionState 
             editingExplanation: null,
             previewStep: 0,
             previewAnswer: false,
+            crop: null,
           };
     case "setEditingText":
       return { ...s, editingTextId: a.id, selection: a.id ? [a.id] : s.selection };
@@ -144,6 +172,29 @@ export function sessionReducer(s: SessionState, a: SessionAction): SessionState 
       return s.imagePanel === a.panel ? s : { ...s, imagePanel: a.panel };
     case "setRegenerate":
       return s.regenerate === a.target ? s : { ...s, regenerate: a.target };
+    case "enterCrop": {
+      const el = a.element;
+      return {
+        ...s,
+        selection: [el.id],
+        editingTextId: null,
+        crop: {
+          id: el.id,
+          draft: { crop: el.crop, focal: el.focal, imageTransform: el.imageTransform },
+          dirty: false,
+        },
+      };
+    }
+    case "updateCrop": {
+      if (!s.crop) return s;
+      const draft: CropDraft = { ...s.crop.draft, ...a.patch };
+      // Reset stands until the teacher changes something else; a seed (natural size, the cover
+      // window) is not a change.
+      draft.reset = a.patch.reset ?? (a.seed ? s.crop.draft.reset : false);
+      return { ...s, crop: { ...s.crop, draft, dirty: s.crop.dirty || !a.seed } };
+    }
+    case "exitCrop":
+      return s.crop ? { ...s, crop: null } : s;
   }
 }
 
@@ -168,6 +219,12 @@ export type SessionActions = {
   closeImagePanel: () => void;
   openRegenerate: (target: RegenerateTarget) => void;
   closeRegenerate: () => void;
+  /** Enter crop mode on this image (TEACH-153); the draft starts as the element's own fields. */
+  enterCrop: (element: ImageElement) => void;
+  /** Change the draft; `seed` marks a measurement rather than an edit, so it does not dirty it. */
+  updateCrop: (patch: Partial<CropDraft>, seed?: boolean) => void;
+  /** Leave crop mode; the layer commits the draft as it unmounts. */
+  exitCrop: () => void;
 };
 
 export type EditorSession = {
@@ -208,6 +265,9 @@ export function useEditorSessionState(initial: Partial<SessionState> = {}): Edit
       closeImagePanel: () => dispatch({ type: "setImagePanel", panel: null }),
       openRegenerate: (target) => dispatch({ type: "setRegenerate", target }),
       closeRegenerate: () => dispatch({ type: "setRegenerate", target: null }),
+      enterCrop: (element) => dispatch({ type: "enterCrop", element }),
+      updateCrop: (patch, seed = false) => dispatch({ type: "updateCrop", patch, seed }),
+      exitCrop: () => dispatch({ type: "exitCrop" }),
     }),
     [],
   );
@@ -250,6 +310,7 @@ export function EditorSessionProvider({
     snap,
     imagePanel,
     regenerate,
+    crop,
   } = state;
   const ui = useMemo<SessionUi>(
     () => ({
@@ -263,6 +324,7 @@ export function EditorSessionProvider({
       snap,
       imagePanel,
       regenerate,
+      crop,
     }),
     [
       editingTextId,
@@ -275,6 +337,7 @@ export function EditorSessionProvider({
       snap,
       imagePanel,
       regenerate,
+      crop,
     ],
   );
   return createElement(
