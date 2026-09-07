@@ -5,7 +5,8 @@
  * structural guarantee, not a classifier: every hit is shown to the teacher as a request to
  * reword, so only patterns with no innocent reading are here. A "Firstname Surname" heuristic was
  * tried and removed: topics are routinely Title Case ("How Lego Bricks Are Made", "Ancient Greek
- * Gods") and it refused them (TEACH-137 adds a model check for names as the pipeline's first step).
+ * Gods") and it refused them; bare names are the `check-input` model step's job, the pipeline's
+ * first stage (`@tj/generation` `stages/check-input.ts`, TEACH-137).
  *
  * Applied as a Zod refinement (`guarded`) to every free-text field of `Brief` and `ClassContext`,
  * so the client form and the API reject with the same `GUARD_MESSAGE`. Never applied to the lesson

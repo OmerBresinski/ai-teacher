@@ -1,5 +1,5 @@
 import type { AiCallContext, Budget, CreatedAi } from "@tj/ai";
-import type { GenerationStage, Lesson, SourceRef, Worksheet } from "@tj/domain/documents";
+import type { Finding, GenerationStage, Lesson, SourceRef, Worksheet } from "@tj/domain/documents";
 import type { Logger } from "pino";
 
 /*
@@ -8,8 +8,12 @@ import type { Logger } from "pino";
  * and injects it as `persist`; tests inject a recorder.
  */
 
-/** The four `lesson.plan` stages, in order; each writes a checkpoint (ADR 0025 §5). */
-export type PipelineStageName = "plan" | "generate" | "evaluate" | "repair";
+/**
+ * The `lesson.plan` stages, in order (ADR 0025 §5). `check-input` (TEACH-137) runs first and
+ * writes no checkpoint: it either lets the brief through or stops the job; the four after it each
+ * write one.
+ */
+export type PipelineStageName = "check-input" | "plan" | "generate" | "evaluate" | "repair";
 
 /**
  * Every stage a model call can belong to, as it appears in call contexts and failures: the
@@ -17,15 +21,25 @@ export type PipelineStageName = "plan" | "generate" | "evaluate" | "repair";
  */
 export type StageName = PipelineStageName | "cascade" | "regenerate";
 
-/** The checkpoint each pipeline stage writes to `Lesson.generation.stage` (ADR 0025 §3, §5). */
-export const STAGE_CHECKPOINT: Record<PipelineStageName, GenerationStage> = {
+/**
+ * The checkpoint each pipeline stage writes to `Lesson.generation.stage` (ADR 0025 §3, §5);
+ * `null` for a stage that writes none, so a resumed job never lands on it.
+ */
+export const STAGE_CHECKPOINT: Record<PipelineStageName, GenerationStage | null> = {
+  "check-input": null,
   plan: "planned",
   generate: "generated",
   evaluate: "evaluated",
   repair: "repaired",
 };
 
-export const STAGE_ORDER: readonly PipelineStageName[] = ["plan", "generate", "evaluate", "repair"];
+export const STAGE_ORDER: readonly PipelineStageName[] = [
+  "check-input",
+  "plan",
+  "generate",
+  "evaluate",
+  "repair",
+];
 
 /** One extracted passage of a teacher-provided Source (ADR 0025 §20); loaded by the worker. */
 export type SourceText = {
@@ -83,6 +97,44 @@ export class StageFailure extends Error {
   ) {
     super(message, options);
   }
+}
+
+/** The checks the input step may report (TEACH-137); every one stops the run. */
+export const INPUT_CHECKS = ["learner-name", "unsafe-content", "not-a-lesson"] as const;
+export type InputCheck = (typeof INPUT_CHECKS)[number];
+
+/**
+ * What the teacher is told per check. Fixed text, never the model's: the model's own `message`
+ * stays on the finding for the editor, but the error message travels into logs and the job's
+ * terminal event (ADR 0015), so it must not be able to echo the brief.
+ */
+export const INPUT_CHECK_MESSAGES: Record<InputCheck, string> = {
+  "learner-name":
+    "The brief seems to name or identify a pupil. Please describe the class without naming anyone.",
+  "unsafe-content": "The brief asks for material that is not suitable for a classroom.",
+  "not-a-lesson":
+    "The brief does not describe a lesson to teach. Please give a topic or objective.",
+};
+
+/**
+ * The brief must not go to Plan (TEACH-137): a learner's name, unsafe content or not a lesson
+ * request. Thrown by `check-input` before anything is persisted; the worker maps it to a
+ * `NonRetryableError` — a re-run cannot fix the input. `findings` carry the reasons for the
+ * editor; `message` is the fixed text for the first recognised check, so nothing the model wrote
+ * reaches a log line or a job event.
+ */
+export class InputRejected extends Error {
+  override readonly name = "InputRejected";
+  constructor(readonly findings: Finding[]) {
+    super(inputRejectionMessage(findings));
+  }
+}
+
+export function inputRejectionMessage(findings: Finding[]): string {
+  const known = findings.find((f) => (INPUT_CHECKS as readonly string[]).includes(f.check));
+  return known
+    ? INPUT_CHECK_MESSAGES[known.check as InputCheck]
+    : INPUT_CHECK_MESSAGES["not-a-lesson"];
 }
 
 /** Thrown by `callStructured` when `budget.exceeded()` before a call; stages catch it (§15). */

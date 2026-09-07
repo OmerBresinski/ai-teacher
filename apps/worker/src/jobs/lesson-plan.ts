@@ -14,7 +14,12 @@ import {
   parseStoredWorksheet,
   type Worksheet,
 } from "@tj/domain/documents";
-import { type PipelineDeps, type PipelineInput, runLessonPipeline } from "@tj/generation";
+import {
+  InputRejected,
+  type PipelineDeps,
+  type PipelineInput,
+  runLessonPipeline,
+} from "@tj/generation";
 import { defineJob, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { Logger } from "pino";
@@ -80,6 +85,16 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
         return;
       }
       if (isAiError(error, "unconfigured") || isAiError(error, "invalid_model")) {
+        throw new NonRetryableError(error.message);
+      }
+      // The brief itself was refused (TEACH-137): a re-run cannot fix the input. `error.message`
+      // is the fixed per-check text from `@tj/generation`, never the model's words, so it can
+      // travel into the job's terminal event; the log carries the check codes only.
+      if (error instanceof InputRejected) {
+        logger.info(
+          { lessonId, findings: error.findings.map((f) => f.check) },
+          "lesson brief rejected by the input check",
+        );
         throw new NonRetryableError(error.message);
       }
       if (!(error instanceof NonRetryableError)) keepLocksForRetry = true;

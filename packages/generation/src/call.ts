@@ -50,6 +50,8 @@ export interface CallResult<T> {
 
 /** The token caps per stage (ticket guidance); a slide or repair answer is small by design. */
 export const MAX_OUTPUT_TOKENS = {
+  // At most three one-sentence findings.
+  checkInput: 400,
   // The skeleton (4 objectives, 16 outline entries) is a few hundred tokens; the facts (6 terms,
   // 3 worked examples, 8 questions, the outline refs) ~2 500 pretty-printed. Room left so the cap
   // is never the reason a call fails.

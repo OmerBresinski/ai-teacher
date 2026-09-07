@@ -7,8 +7,10 @@ import { PROMPT_VERSIONS } from "./prompts";
 import { TITLE_PROMPT_VERSION } from "./stages/plan";
 import {
   answeringAi,
+  CHECK_INPUT_CALLS,
   FIXTURES,
   PLAN_CALLS,
+  PLAN_INDEX,
   recordingDeps,
   SAMPLE_WORKSHEET_ID,
   sampleBriefLesson,
@@ -22,6 +24,9 @@ const TOTAL_SLIDES = FIXTURES.planSkeleton.outline.length; // 10
 const GENERATED_SLIDES = TOTAL_SLIDES - 2; // 8
 /** Plan persists three times: the title slide, the skeleton, the planned checkpoint. */
 const PLAN_PERSISTS = 3;
+/** Script index of the first slide answer: after the input check and Plan's two answers. */
+const SLIDES_INDEX = CHECK_INPUT_CALLS + PLAN_CALLS;
+const ALL_STAGES = ["check-input", "plan", "generate", "evaluate", "repair"];
 const PLANNED_VERSION = `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}`;
 
 function memoryLogger() {
@@ -93,21 +98,22 @@ describe("runLessonPipeline", () => {
         { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
         recordingDeps(ai),
       );
-      expect(ai.calls).toHaveLength(PLAN_CALLS + GENERATED_SLIDES + 1 + 1);
+      expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1);
       expect(ai.calls.map((c) => c.modelClass)).toEqual([
+        "small",
         ...Array.from({ length: PLAN_CALLS + GENERATED_SLIDES + 1 }, () => "standard" as const),
         "small",
       ]);
       expect(ai.calls.map((c) => c.context?.stage)).toEqual([
+        "check-input",
         "plan",
         "plan",
         ...Array.from({ length: GENERATED_SLIDES + 1 }, () => "generate"),
         "evaluate",
       ]);
-      expect(ai.calls.slice(0, 2).map((c) => c.context?.promptVersion)).toEqual([
-        PROMPT_VERSIONS["plan-skeleton"],
-        PROMPT_VERSIONS["plan-facts"],
-      ]);
+      expect(ai.calls.slice(PLAN_INDEX, SLIDES_INDEX).map((c) => c.context?.promptVersion)).toEqual(
+        [PROMPT_VERSIONS["plan-skeleton"], PROMPT_VERSIONS["plan-facts"]],
+      );
       for (const call of ai.calls) {
         expect(call.context?.lessonId).toBeDefined();
         expect(call.context?.jobId).toBeDefined();
@@ -176,25 +182,26 @@ describe("runLessonPipeline", () => {
 
   test("a schema miss on the third slide is retried once and the slide lands", async () => {
     const { lines, logger } = memoryLogger();
-    // Script indices 0–1 are plan; slides start at 2; the third generated slide is index 4.
+    // Script index 0 is the input check, 1–2 are plan; slides start at 3; the third generated
+    // slide is index 5.
     const bad = "not json";
     const good = JSON.stringify(
       FIXTURES.slides[FIXTURES.planSkeleton.outline[4]?.kind ?? "content"],
     );
-    const ai = scriptedPipelineAiWithInserted(PLAN_CALLS + 2, [bad, good]);
+    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 2, [bad, good]);
     const deps = recordingDeps(ai, { logger });
     const { lesson } = await runLessonPipeline(
       { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
       deps,
     );
-    expect(ai.calls).toHaveLength(PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1);
+    expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1);
     expect(lesson.slides).toHaveLength(TOTAL_SLIDES);
     expect(lines.join("\n")).not.toContain(bad);
     expect(lines.some((l) => l.includes("retrying once"))).toBe(true);
   });
 
   test("two schema misses on a slide fail Generate with a StageFailure; earlier slides were persisted", async () => {
-    const ai = scriptedPipelineAiWithInserted(PLAN_CALLS + 2, ["not json", "still not json"]);
+    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 2, ["not json", "still not json"]);
     const deps = recordingDeps(ai);
     await expect(
       runLessonPipeline({ lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID }, deps),
@@ -202,7 +209,7 @@ describe("runLessonPipeline", () => {
     try {
       await runLessonPipeline(
         { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
-        recordingDeps(scriptedPipelineAiWithInserted(PLAN_CALLS + 2, ["x", "y"])),
+        recordingDeps(scriptedPipelineAiWithInserted(SLIDES_INDEX + 2, ["x", "y"])),
       );
     } catch (error) {
       expect((error as StageFailure).stage).toBe("generate");
@@ -212,16 +219,18 @@ describe("runLessonPipeline", () => {
     expect(deps.persisted.at(-1)?.lesson.slides).toHaveLength(4);
   });
 
+  // The fake's usage (1 000 in / 400 out) costs $0.003 on `small` and $0.009 on `standard` at list
+  // price: this cap admits the input check and Plan's skeleton call, then refuses the facts call.
+  const TINY_CAP = { capUsd: 0.005, capTokens: 1_000_000 };
+
   test("a tiny USD cap stops after Plan's skeleton call, records one budget finding and still completes", async () => {
     const ai = scriptedPipelineAi();
-    const deps = recordingDeps(ai, {
-      budget: createBudget({ capUsd: 0.0001, capTokens: 1_000_000 }),
-    });
+    const deps = recordingDeps(ai, { budget: createBudget(TINY_CAP) });
     const { lesson } = await runLessonPipeline(
       { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
       deps,
     );
-    expect(ai.calls.map((c) => c.context?.stage)).toEqual(["plan"]);
+    expect(ai.calls.map((c) => c.context?.stage)).toEqual(["check-input", "plan"]);
     expect(lesson.generation?.stage).toBe("repaired");
     expect(lesson.generation?.findings.filter((f) => f.check === "budget")).toEqual([
       expect.objectContaining({ severity: "error" }),
@@ -253,7 +262,7 @@ describe("runLessonPipeline", () => {
     const entry = broken.outline[2];
     if (entry) entry.factRefs = [{ type: "vocabulary", index: 0 }];
     // The retry consumes the next script entry, so the good skeleton follows the broken one.
-    const fixed = scriptedPipelineAiWithInserted(0, [
+    const fixed = scriptedPipelineAiWithInserted(PLAN_INDEX, [
       JSON.stringify(broken),
       JSON.stringify(FIXTURES.planSkeleton),
     ]);
@@ -269,7 +278,7 @@ describe("runLessonPipeline", () => {
   test("facts whose outlineFactRefs index is out of range is a validation issue: one retry", async () => {
     const broken = structuredClone(FIXTURES.planFacts);
     broken.outlineFactRefs.push({ index: 99, factRefs: [{ type: "question", index: 0 }] });
-    const fixed = scriptedPipelineAiWithInserted(1, [
+    const fixed = scriptedPipelineAiWithInserted(PLAN_INDEX + 1, [
       JSON.stringify(broken),
       JSON.stringify(FIXTURES.planFacts),
     ]);
@@ -290,7 +299,8 @@ describe("runLessonPipeline", () => {
     );
     const titleOnly = first.persisted[0]?.lesson;
     if (!titleOnly || titleOnly.generation) throw new Error("no title-only persist");
-    expect(resumeFrom(titleOnly)).toBe("plan");
+    // No checkpoint: the input check runs again too — nothing was certified.
+    expect(resumeFrom(titleOnly)).toBe("check-input");
 
     const ai = scriptedPipelineAi();
     const { lesson } = await runLessonPipeline(
@@ -346,17 +356,17 @@ describe("runLessonPipeline", () => {
 
   test("a failed run still writes the summary line, marked failed", async () => {
     const { lines, logger } = memoryLogger();
-    const ai = scriptedPipelineAiWithInserted(PLAN_CALLS + 2, ["not json", "still not json"]);
+    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 2, ["not json", "still not json"]);
     await runLessonPipeline(
       { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
       recordingDeps(ai, { logger }),
     ).catch(() => undefined);
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
-    // Plan ran and Generate failed; Evaluate and Repair were never entered.
+    // The check and Plan ran and Generate failed; Evaluate and Repair were never entered.
     expect(summary.generation).toMatchObject({
       outcome: "failed",
-      stages: ["plan", "generate"],
-      calls: PLAN_CALLS + 2 + 2,
+      stages: ["check-input", "plan", "generate"],
+      calls: CHECK_INPUT_CALLS + PLAN_CALLS + 2 + 2,
     });
   });
 
@@ -368,7 +378,7 @@ describe("runLessonPipeline", () => {
     const ai = scriptedPipelineAi();
     const deps = recordingDeps(ai, {
       logger,
-      budget: createBudget({ capUsd: 0.0001, capTokens: 1_000_000 }),
+      budget: createBudget(TINY_CAP),
       abortAfterPersist: PLAN_PERSISTS,
     });
     await runLessonPipeline(
@@ -378,7 +388,7 @@ describe("runLessonPipeline", () => {
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
     expect(summary.generation).toMatchObject({
       outcome: "failed",
-      stages: ["plan", "generate"],
+      stages: ["check-input", "plan", "generate"],
       findings: { error: 1, warning: 0 },
     });
   });
@@ -392,8 +402,8 @@ describe("runLessonPipeline", () => {
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
     expect(summary.generation).toMatchObject({
       outcome: "success",
-      stages: ["plan", "generate", "evaluate", "repair"],
-      calls: PLAN_CALLS + GENERATED_SLIDES + 1 + 1,
+      stages: ALL_STAGES,
+      calls: CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1,
       findings: { error: 0, warning: 0 },
     });
     expect(summary.generation.durationMs).toEqual(expect.any(Number));
@@ -404,7 +414,7 @@ describe("runLessonPipeline", () => {
 describe("resumeFrom", () => {
   test("maps the checkpoint to the next stage", () => {
     const base = sampleBriefLesson();
-    expect(resumeFrom(base)).toBe("plan");
+    expect(resumeFrom(base)).toBe("check-input");
     const at = (stage: "planned" | "generated" | "evaluated" | "repaired") => ({
       ...base,
       generation: {

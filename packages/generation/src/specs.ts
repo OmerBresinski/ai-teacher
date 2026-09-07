@@ -7,6 +7,7 @@ import {
 } from "@tj/domain/documents";
 import { BlockSpecSchema, SlideSpecSchema, SPEC_LIMITS } from "@tj/slides";
 import { z } from "zod";
+import { INPUT_CHECKS } from "./types";
 
 /*
  * What each stage asks the model for (ADR 0025 §8, §11, §12, §14). Content only — the model
@@ -17,6 +18,26 @@ import { z } from "zod";
 export { BlockSpecSchema, SlideSpecSchema };
 
 const line = (max: number) => z.string().trim().min(1).max(max);
+
+/* ------------------------------------------------------------------ */
+/* Check input                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The `Finding` shape, narrowed: a fixed `check`, always an `error`, no target (the finding is
+ * about the brief, not a slide) and a message the teacher reads. The model never echoes the text
+ * it objected to — the message names the problem, not the words.
+ */
+export const InputFindingSchema = z.strictObject({
+  check: z.enum(INPUT_CHECKS),
+  severity: z.literal("error"),
+  target: z.strictObject({}),
+  message: line(SPEC_LIMITS.body),
+});
+export const CheckInputOutputSchema = z.strictObject({
+  findings: z.array(InputFindingSchema).max(3),
+});
+export type CheckInputOutput = z.infer<typeof CheckInputOutputSchema>;
 
 /* ------------------------------------------------------------------ */
 /* Plan                                                                */
