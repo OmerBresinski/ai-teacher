@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { LessonEditor } from "@tj/editor/lesson";
 import { Button, IconButton, Tooltip } from "@tj/ui";
 import { ArrowLeft } from "lucide-react";
-import { lazy, Suspense, useCallback } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { EmptyLesson } from "@/components/empty-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
@@ -47,8 +47,27 @@ export function LessonEditorPage() {
     enabled: data != null && isFullDocument(data),
   });
   const save = useSaveWithConflictToast(lessonId);
+  // A job that failed or was cancelled releases the lock, yet the page stays on the generating
+  // view for it (the outcome, the partial slides, Back to library) until the teacher leaves.
+  const [stoppedJobId, setStoppedJobId] = useState<string | null>(null);
+  // The generated worksheet (ADR 0025 §4), so the editor's objective-coverage check sees both
+  // halves (§10). Its own row; a lesson without the artefact never asks.
+  const worksheetId =
+    data && isFullDocument(data) && "artefacts" in data ? data.artefacts?.worksheetId : undefined;
+  const { data: worksheetData } = useQuery({
+    ...libraryQueries.document(worksheetId ?? "", queryClient),
+    enabled: worksheetId !== undefined,
+  });
+  const worksheet =
+    worksheetData && isFullDocument(worksheetData) && "blocks" in worksheetData
+      ? worksheetData
+      : undefined;
 
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
+  const onOpenWorksheet = useCallback(
+    (id: string) => void navigate({ to: "/w/$worksheetId", params: { worksheetId: id } }),
+    [navigate],
+  );
   const onPresent = useCallback(
     () =>
       void navigate({
@@ -63,12 +82,15 @@ export function LessonEditorPage() {
   if (kindOf(data) !== "lesson" || !("slides" in data)) {
     return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
   }
-  if (meta?.generatingJobId) {
+  const generatingJobId = meta?.generatingJobId ?? stoppedJobId;
+  if (generatingJobId) {
     return (
       <Suspense fallback={<RoutePendingPage />}>
         <GeneratingLesson
           lesson={data}
-          jobId={meta.generatingJobId}
+          jobId={generatingJobId}
+          onBack={onBack}
+          onStopped={setStoppedJobId}
           leading={
             <IconButton label="Back to the library" onClick={onBack}>
               <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
@@ -89,6 +111,8 @@ export function LessonEditorPage() {
       onSave={save}
       onBack={onBack}
       onPresent={onPresent}
+      worksheet={worksheet}
+      onOpenWorksheet={onOpenWorksheet}
       exportSlot={
         // `aria-disabled`, not `disabled`: a disabled button swallows pointer and focus events, so
         // its tooltip could never open (the viewer's pattern).

@@ -114,7 +114,14 @@ src/
               AddImagePanel (Upload / Photos popover; open state and replace target are session
               `imagePanel`), image-source (file/stock → `ImageSource`, `imageFields`),
               canvas/use-image-drop (paste + drop listeners), ThemeDialog, use-editor-session,
-              slide-commands, keys, shortcuts
+              slide-commands, keys, shortcuts; residual-findings (`residualFindings(lesson,
+              worksheet)` = stored model findings + live `checkLesson`, deduped; the context
+              `LessonEditor` fills on the autosave cadence — 800 ms after a change, never per
+              keystroke), SlideBadge (the one navigator dot: the layout lint and the residuals both
+              use it, `data-lint-badge` / `data-residual-badge`, `data-tone`), ResidualBadge (the
+              canvas footer's "N things to check" popover with Go to slide; a `budget` finding is
+              listed first). `LessonEditor` takes the app's `worksheet` and `onOpenWorksheet`
+              (TopBar "Worksheet" when `lesson.artefacts.worksheetId` is set) — ADR 0025 §10, §12
   styles/     editor.css = fonts.css + slide.css + present.css; print.css = fonts.css +
               worksheet.css + the print layout (`@tj/editor/styles/print.css`, imported by the
               worksheet print page only); worksheet-edit.css = fonts.css + worksheet.css + the

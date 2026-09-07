@@ -24,6 +24,7 @@ import { SlideActions } from "./canvas/SlideActions";
 import { SlideTabs } from "./canvas/SlideTabs";
 import { useImageDrop } from "./canvas/use-image-drop";
 import { useLesson } from "./document-context";
+import { ResidualBadge } from "./ResidualBadge";
 import { ContextualToolbar } from "./toolbar/ContextualToolbar";
 import { type PreviewMap, SelectionLayer } from "./transform/SelectionLayer";
 import { useCanvasKeys } from "./transform/use-canvas-keys";
@@ -345,11 +346,12 @@ function CanvasFooter({ scale, steps }: { scale: number; steps: number }) {
 
   return (
     // 32px row, 16px in from the bottom and the right. Three objects, one weight: the steps group,
-    // the zoom control and the canvas options.
+    // the zoom control and the canvas options — plus the residual entry when there is one.
     <div
       data-canvas-footer
       className="pointer-events-none absolute right-4 bottom-4 flex h-8 items-center gap-2"
     >
+      <ResidualBadge className="pointer-events-auto" />
       {steps > 0 ? (
         <IconGroup aria-label="Reveal step" className="pointer-events-auto bg-card">
           <IconButton

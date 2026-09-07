@@ -1,5 +1,5 @@
 import type { QueryKey } from "@tanstack/react-query";
-import type { Lesson, RichDoc, SlideElement, Theme } from "@tj/domain/documents";
+import type { Lesson, RichDoc, SlideElement, Theme, Worksheet } from "@tj/domain/documents";
 import { toast } from "@tj/ui";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
@@ -21,6 +21,7 @@ import { HelpDialog } from "./HelpDialog";
 import { InsertRail } from "./InsertRail";
 import { isInTextField, matchesBinding } from "./keys";
 import { Navigator } from "./Navigator";
+import { ResidualFindingsContext, useComputedResidualFindings } from "./residual-findings";
 import { ThemeDialog } from "./ThemeDialog";
 import { TopBar } from "./TopBar";
 import { CANVAS_ROOT_SELECTOR } from "./transform/gesture-state";
@@ -63,6 +64,13 @@ export type LessonEditorProps = {
   onPresent: () => void;
   /** Where the export control sits once it exists (E1). */
   exportSlot?: ReactNode;
+  /**
+   * The generated worksheet (`lesson.artefacts.worksheetId`), once the app has fetched it, so the
+   * objective-coverage check sees both halves (ADR 0025 §10); absent, that half is skipped.
+   */
+  worksheet?: Worksheet;
+  /** Opens the worksheet; the top bar shows "Worksheet" only when this and the artefact exist. */
+  onOpenWorksheet?: (worksheetId: string) => void;
 };
 
 export function LessonEditor({
@@ -73,6 +81,8 @@ export function LessonEditor({
   onBack,
   onPresent,
   exportSlot,
+  worksheet,
+  onOpenWorksheet,
 }: LessonEditorProps) {
   const autosave = useAutosave(onSave);
   const { lesson, ...history } = useDocumentHistory({
@@ -80,6 +90,8 @@ export function LessonEditor({
     queryFn,
     onChange: autosave.onChange,
   });
+  // The residual findings (ADR 0025 §12), recomputed on the autosave cadence rather than per edit.
+  const residuals = useComputedResidualFindings(lesson, worksheet);
   const session = useEditorSessionState();
   const [helpOpen, setHelpOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -255,31 +267,34 @@ export function LessonEditor({
           <EditorHooksContext.Provider value={editorHooks}>
             <EditingStateContext.Provider value={editingState}>
               <ActiveEditorProvider>
-                <div
-                  className="flex h-dvh flex-col overflow-hidden bg-background"
-                  data-lesson-editor={lessonId}
-                >
-                  <TopBar
-                    onBack={onBack}
-                    onPresent={onPresent}
-                    onOpenTheme={() => setThemeOpen(true)}
-                    exportSlot={exportSlot}
-                    autosave={autosave}
-                  />
-                  <div className="flex min-h-0 flex-1">
-                    <InsertRail onInsert={insert} onHelp={() => setHelpOpen(true)} />
-                    <Navigator />
-                    <Canvas
-                      slide={slide}
-                      theme={theme}
-                      onFocusChange={setCanvasFocused}
-                      onScaleChange={onScaleChange}
-                      onInsert={insert}
+                <ResidualFindingsContext.Provider value={residuals}>
+                  <div
+                    className="flex h-dvh flex-col overflow-hidden bg-background"
+                    data-lesson-editor={lessonId}
+                  >
+                    <TopBar
+                      onBack={onBack}
+                      onPresent={onPresent}
+                      onOpenTheme={() => setThemeOpen(true)}
+                      exportSlot={exportSlot}
+                      onOpenWorksheet={onOpenWorksheet}
+                      autosave={autosave}
                     />
+                    <div className="flex min-h-0 flex-1">
+                      <InsertRail onInsert={insert} onHelp={() => setHelpOpen(true)} />
+                      <Navigator />
+                      <Canvas
+                        slide={slide}
+                        theme={theme}
+                        onFocusChange={setCanvasFocused}
+                        onScaleChange={onScaleChange}
+                        onInsert={insert}
+                      />
+                    </div>
+                    <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+                    <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
                   </div>
-                  <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-                  <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
-                </div>
+                </ResidualFindingsContext.Provider>
               </ActiveEditorProvider>
             </EditingStateContext.Provider>
           </EditorHooksContext.Provider>

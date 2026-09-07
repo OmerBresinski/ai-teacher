@@ -630,6 +630,33 @@ const CONTRACT = [
       "Spend cap in USD for one paid run of the `@tj/generation` eval set (ADR 0025 §23). Read by the eval script only, never by the worker's boot schema.",
   },
   {
+    name: "AI_FAKE_SCRIPT",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "enum",
+    values: ["pipeline"],
+    files: ["worker"],
+    description:
+      '"pipeline" replaces Bedrock with the scripted fake from `@tj/generation/testing` (one fixture run per job, ADR 0025 §22) so the e2e worker generates lessons without a model. Refused at boot when NODE_ENV=production; never set it on Railway.',
+  },
+  {
+    name: "AI_FAKE_DELAY_MS",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "int",
+    files: ["worker"],
+    description:
+      "Pause before each scripted fake answer when `AI_FAKE_SCRIPT` is set, so a browser test can watch slides arrive one by one. Ignored otherwise.",
+  },
+  {
     name: "MASTRA_TELEMETRY_DISABLED",
     services: ["api", "worker"],
     scope: "config",

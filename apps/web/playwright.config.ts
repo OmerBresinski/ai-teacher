@@ -5,7 +5,9 @@
  * with `bun run dev` (5173/3001/3002):
  *
  *   api     http://localhost:3811   NODE_ENV=test ENABLE_TEST_ROUTES=1 → GET /__test/last-magic-link
- *   worker  http://localhost:3822   runs the `ping` jobs the specs enqueue
+ *   worker  http://localhost:3822   runs the `ping` jobs the specs enqueue and `lesson.plan` over the
+ *                                  scripted fake (`AI_FAKE_SCRIPT=pipeline`, paced so slides are
+ *                                  seen arriving; no model, no spend — ADR 0025 §22)
  *   web     http://localhost:4193   `vite build` (VITE_API_URL baked to the api above) + `vite preview`
  *
  * The api command migrates TEST_DATABASE_URL first (`packages/db/src/migrate.ts`), so a fresh
@@ -105,6 +107,8 @@ export default defineConfig({
         PORT: String(E2E_PORTS.worker),
         DATABASE_URL: TEST_DATABASE_URL,
         WORKER_CONCURRENCY: "2",
+        AI_FAKE_SCRIPT: "pipeline",
+        AI_FAKE_DELAY_MS: "250",
         LOG_LEVEL: process.env.E2E_VERBOSE ? "info" : "warn",
       },
     },

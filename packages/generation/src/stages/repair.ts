@@ -1,4 +1,10 @@
-import { checkLesson, type Finding, type Slide, type Worksheet } from "@tj/domain/documents";
+import {
+  checkLesson,
+  type Finding,
+  isSchemaCheck,
+  type Slide,
+  type Worksheet,
+} from "@tj/domain/documents";
 import {
   blockSpecSchemaFor,
   type MaterialiseMeta,
@@ -172,14 +178,6 @@ function wasRepaired(finding: Finding, repaired: Set<string>): boolean {
     slideId !== undefined ? `slide:${slideId}` : blockId !== undefined ? `block:${blockId}` : null;
   return key !== null && repaired.has(key);
 }
-
-const SCHEMA_CHECKS = new Set([
-  "question-answer",
-  "objective-coverage",
-  "vocabulary-in-facts",
-  "timing",
-]);
-const isSchemaCheck = (check: string) => SCHEMA_CHECKS.has(check);
 
 const meta = (modelId: string, deps: Pick<PipelineDeps, "now">): MaterialiseMeta => ({
   promptVersion: repairPrompt.version,

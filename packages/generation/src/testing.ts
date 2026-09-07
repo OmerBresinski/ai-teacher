@@ -79,6 +79,8 @@ export function pipelineScript(
     evaluate?: unknown;
     repairs?: number;
     overrides?: Record<number, FakeScriptEntry>;
+    /** Milliseconds each answer waits before it is returned — for a watcher, not a unit test. */
+    pace?: number;
   } = {},
 ): FakeScriptEntry[] {
   const script: FakeScriptEntry[] = [
@@ -92,8 +94,16 @@ export function pipelineScript(
   ];
   for (const [index, entry] of Object.entries(options.overrides ?? {}))
     script[Number(index)] = entry;
-  return script;
+  const pace = options.pace ?? 0;
+  return pace > 0 ? script.map((entry) => paced(entry, pace)) : script;
 }
+
+const paced =
+  (entry: FakeScriptEntry, ms: number): FakeScriptEntry =>
+  async (call) => {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+    return typeof entry === "function" ? entry(call) : entry;
+  };
 
 /** `scriptedPipelineAi` with `entries` spliced in at `index` in place of the entry there. */
 export function scriptedPipelineAiWithInserted(index: number, entries: FakeScriptEntry[]): FakeAi {

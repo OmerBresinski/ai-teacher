@@ -1,6 +1,6 @@
 import type { Lesson } from "@tj/domain/documents";
 import { AppBar, AppBarGroup, Button, IconButton, Tooltip } from "@tj/ui";
-import { ArrowLeft, Play, Redo2, Undo2 } from "lucide-react";
+import { ArrowLeft, FileText, Play, Redo2, Undo2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { InlineTitle } from "../kit/InlineTitle";
 import { PanelSeparator } from "../kit/Panel";
@@ -23,12 +23,25 @@ export type TopBarProps = {
   onOpenTheme?: () => void;
   /** Where the export control sits once it exists (E1, TEACH-110). */
   exportSlot?: ReactNode;
+  /**
+   * Opens the generated worksheet (`/w/$worksheetId` in the app, ADR 0025 §4). The "Worksheet"
+   * button shows only when the lesson has `artefacts.worksheetId` and the app handles the open.
+   */
+  onOpenWorksheet?: (worksheetId: string) => void;
   autosave: Autosave<Lesson>;
 };
 
-export function TopBar({ onBack, onPresent, onOpenTheme, exportSlot, autosave }: TopBarProps) {
+export function TopBar({
+  onBack,
+  onPresent,
+  onOpenTheme,
+  exportSlot,
+  onOpenWorksheet,
+  autosave,
+}: TopBarProps) {
   const lesson = useLesson();
   const { dispatch, undo, redo, canUndo, canRedo } = useHistory();
+  const worksheetId = lesson.artefacts?.worksheetId;
 
   const present = async () => {
     await autosave.flush();
@@ -67,6 +80,17 @@ export function TopBar({ onBack, onPresent, onOpenTheme, exportSlot, autosave }:
           onClick={onOpenTheme}
         />
         <QuietButton label="Share" hintLabel="Sharing is not available yet" />
+        {worksheetId && onOpenWorksheet ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            data-worksheet-link={worksheetId}
+            onClick={() => onOpenWorksheet(worksheetId)}
+          >
+            <FileText aria-hidden size={16} strokeWidth={1.5} />
+            Worksheet
+          </Button>
+        ) : null}
         {exportSlot}
         <Button size="sm" onClick={() => void present()}>
           <Play aria-hidden size={16} strokeWidth={1.5} />

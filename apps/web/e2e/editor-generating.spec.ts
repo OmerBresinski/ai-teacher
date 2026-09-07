@@ -1,10 +1,10 @@
 /**
  * The generating state on `/l/$lessonId` (ADR 0024 §18, TEACH-121): while a `lesson.plan` job
  * holds the row's lock the page shows the banner and no editor; once the lock is released the
- * editor takes over. The e2e worker has no Bedrock token, so a real `POST /lessons` job ends at
- * once with `failed`; a developer's may hold real credentials, so the spec cancels the job itself
- * and asserts the hand-over to the editor — the "clears" half. The "shows" half seeds a lesson
- * locked by a job that never ran, which stays locked (no terminal event, not yet stale).
+ * editor takes over. The spec cancels the job itself before it starts and asserts the hand-over —
+ * the "clears" half. The "shows" half seeds a lesson locked by a job that never ran, which stays
+ * locked (no terminal event, not yet stale). The full run over the fake worker is
+ * `generation.spec.ts` (TEACH-133).
  */
 import type { LessonFacts } from "@tj/domain/documents";
 import { demoWorkspace } from "@tj/editor/starter";
@@ -81,9 +81,10 @@ test.describe("generating lesson", () => {
     });
     expect(res.status(), await res.text()).toBe(202);
     const { lessonId, jobId } = (await res.json()) as { lessonId: string; jobId: string };
-    // End the job at once: a developer's worker may hold real model credentials, and CI's has
-    // none. Either way the terminal event releases the lock (`releaseStaleLock` on read, ADR
-    // 0025 §24) and the page hands over to the editor — the transition this test is about.
+    // End the job at once, before the fake worker picks it up (pg-boss polls every 0.5 s). The
+    // terminal event releases the lock (`releaseStaleLock` on read, ADR 0025 §24) and the page
+    // hands over — the transition this test is about. Should the worker win the race and write a
+    // slide first, the page lands on the editor instead of the empty state; both are the unlock.
     const cancelled = await page.request.post(`${E2E_API_URL}/jobs/${jobId}/cancel`, {
       headers: { origin: E2E_WEB_URL },
     });
@@ -94,11 +95,13 @@ test.describe("generating lesson", () => {
       { timeout: 20_000 },
     );
     await expect(page.getByTestId("generating-banner")).toHaveCount(0);
-    // The job wrote no slide, so the page offers the first one; the editor mounts on it.
-    await expect(page.getByText("This lesson has no slides yet")).toBeVisible();
-    await page.getByRole("button", { name: "Add a title slide" }).click();
+    // Usually the job wrote no slide, so the page offers the first one; the editor mounts on it.
+    const empty = page.getByRole("button", { name: "Add a title slide" });
+    if (await empty.isVisible()) await empty.click();
     await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible();
-    await expect(page.getByRole("listbox", { name: "Slides" }).getByRole("option")).toHaveCount(1);
+    await expect(
+      page.getByRole("listbox", { name: "Slides" }).getByRole("option").first(),
+    ).toBeVisible();
     // The library lists the new lesson from the api.
     await page.getByRole("button", { name: "Back to library" }).click();
     await expect(
