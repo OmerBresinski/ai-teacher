@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
 import { ZodError } from "zod";
+import { isUniqueViolation } from "./errors";
 import {
   getTerminalJobEvent,
   hasQueuedJobEvent,
@@ -11,6 +12,7 @@ import {
   listJobEvents,
   notifyJobEvent,
 } from "./job-events";
+import { JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX } from "./schema/job-events";
 import { forWorkspace } from "./tenant";
 import { createTestUserWithWorkspace, withTestDb } from "./testing";
 
@@ -136,6 +138,38 @@ describeDb("job events", () => {
     const { id } = await insertJobEvent(unsafeDb, { type: "completed", ...base });
     expect((await getTerminalJobEvent(unsafeDb, { workspaceId: wsA, jobId }))?.id).toBe(id);
     expect(await getTerminalJobEvent(unsafeDb, { workspaceId: wsB, jobId })).toBeUndefined();
+  });
+
+  test("a second terminal event for the same job is a unique violation (TEACH-82)", async () => {
+    const jobId = newId<JobId>();
+    const base = { jobId, workspaceId: wsA, at: at() };
+    await insertJobEvent(unsafeDb, { type: "started", ...base });
+    await insertJobEvent(unsafeDb, { type: "completed", ...base });
+    let thrown: unknown;
+    try {
+      await insertJobEvent(unsafeDb, { type: "cancelled", ...base });
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeDefined();
+    expect(isUniqueViolation(thrown, JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX)).toBe(true);
+    // Non-terminal rows are unaffected by the index and another job's terminal row is fine.
+    await insertJobEvent(unsafeDb, {
+      type: "progress",
+      ...base,
+      progress: { message: "late" },
+    });
+    await insertJobEvent(unsafeDb, {
+      type: "failed",
+      ...base,
+      jobId: newId<JobId>(),
+      error: {
+        message: "x",
+        retryable: false,
+      },
+    });
+    const rows = await listJobEvents(unsafeDb, { workspaceId: wsA, jobId, limit: 10 });
+    expect(rows.map((r) => r.type)).toEqual(["started", "completed", "progress"]);
   });
 
   test("hasQueuedJobEvent is true only once the queued row exists, scoped to the Workspace", async () => {

@@ -61,11 +61,18 @@ describe("schema classification", () => {
     }
   });
 
-  test("job_events has the two indexes ADR 0012 needs", () => {
-    const names = getTableConfig(jobEvents)
-      .indexes.map((i) => i.config.name)
-      .sort();
-    expect(names).toEqual(["job_events_job_id_at_idx", "job_events_workspace_id_at_idx"]);
+  test("job_events has the two indexes ADR 0012 needs and the one-terminal-per-job index (TEACH-82)", () => {
+    const indexes = getTableConfig(jobEvents).indexes;
+    expect(indexes.map((i) => i.config.name).sort()).toEqual([
+      "job_events_job_id_at_idx",
+      "job_events_one_terminal_per_job_uidx",
+      "job_events_workspace_id_at_idx",
+    ]);
+    const terminal = indexes.find((i) => i.config.name === "job_events_one_terminal_per_job_uidx");
+    expect(terminal?.config.unique).toBe(true);
+    expect(terminal?.config.where).toBeDefined();
+    const cols = terminal?.config.columns.map((c) => ("name" in c ? c.name : undefined));
+    expect(cols).toEqual(["job_id"]);
   });
 
   test("workspaces.id has no database default (minted app-side)", () => {

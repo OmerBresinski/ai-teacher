@@ -1,4 +1,9 @@
 import {
+  getTerminalJobEvent,
+  isUniqueViolation,
+  JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX,
+} from "@tj/db";
+import {
   type JobId,
   JobName,
   JobNameSchema,
@@ -85,7 +90,11 @@ export type CancelResult =
   | { status: "cancelled" }
   /** The job is running; pg-boss row cancelled, the worker emits `cancelled` within ~250 ms. */
   | { status: "cancelling" }
-  /** Already completed / failed / cancelled — nothing changed, no event written. */
+  /**
+   * Already completed / failed / cancelled — nothing changed, no event written. `state` is the
+   * pg-boss state, or the stored terminal `job_events.type` when pg-boss still shows the job as
+   * waiting but its previous attempt already settled it (TEACH-82).
+   */
   | { status: "already_finished"; state: string }
   /** No pg-boss job with that id in any known queue. */
   | { status: "not_found" };
@@ -123,12 +132,19 @@ export async function cancel(
     const wasWaiting = before.state === "created" || before.state === "retry";
     const fetchedMeanwhile = toMillis(before.startedOn) !== toMillis(after.startedOn);
     if (wasWaiting && !fetchedMeanwhile) {
-      await emitJobEvent(ctx, {
-        type: "cancelled",
-        jobId,
-        workspaceId: after.data.workspaceId,
-        at: nowIso(),
-      });
+      const workspaceId = after.data.workspaceId;
+      try {
+        await emitJobEvent(ctx, { type: "cancelled", jobId, workspaceId, at: nowIso() });
+      } catch (err) {
+        // A `retry` row whose previous attempt did commit its terminal event but failed the
+        // notify afterwards (TEACH-82 X1): the job is settled in `job_events`, pg-boss only
+        // thinks otherwise. The one-terminal-per-job index rejects our `cancelled`; report the
+        // stored outcome instead of an error.
+        if (!isUniqueViolation(err, JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX)) throw err;
+        const terminal = await getTerminalJobEvent(ctx.db, { workspaceId, jobId });
+        if (!terminal) throw err;
+        return { status: "already_finished", state: terminal.type };
+      }
       return { status: "cancelled" };
     }
     return { status: "cancelling" };

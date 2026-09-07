@@ -31,6 +31,7 @@ export {
   STALE_LOCK_AFTER_MS,
   softDelete,
 } from "./documents";
+export { isUniqueViolation, PG_UNIQUE_VIOLATION } from "./errors";
 export {
   getTerminalJobEvent,
   hasQueuedJobEvent,

@@ -6,7 +6,7 @@ import { workspaces } from "./workspaces";
 export * from "./_columns";
 export { accounts, authSchema, sessions, users, verifications } from "./auth";
 export { documentKind, documents } from "./documents";
-export { jobEvents } from "./job-events";
+export { JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX, jobEvents } from "./job-events";
 export { workspaces } from "./workspaces";
 
 /**
