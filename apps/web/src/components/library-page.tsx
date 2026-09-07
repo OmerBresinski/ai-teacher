@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import {
   Button,
   Display,
@@ -94,6 +94,10 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   const { openImport } = useLibraryShell();
   const actions = useLibraryActions();
   const navigate = useNavigate();
+  const router = useRouter();
+  // The brief is its own chunk: warm it on intent so the click is instant (bundle-preload), the
+  // way the dialogs are warmed below. A failed warm-up is silent; the navigation still loads it.
+  const warmBrief = () => void router.preloadRoute({ to: "/lessons/new" }).catch(() => {});
   // The page reads the clock for the Recent / Earlier split; cards read it in `EditedTime`.
   const now = useNow();
   // Subscribe to the string, not the search object: a new object arrives on every navigation.
@@ -250,6 +254,8 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
             tone="primary"
             icon={LESSON_TILE_ICON}
             className="col-span-2"
+            onPointerEnter={warmBrief}
+            onFocus={warmBrief}
             onClick={() => openCreate("lesson")}
           >
             New lesson

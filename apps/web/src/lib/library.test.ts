@@ -33,12 +33,30 @@ async function invokeOnSuccess<TData, TVariables>(
 }
 
 /** Run a mutation's `mutationFn` outside React. */
-function run<TData, TVariables>(
-  options: UseMutationOptions<TData, Error, TVariables>,
-  variables: TVariables,
+function run<TData, TVariables, TContext>(
+  options: UseMutationOptions<TData, Error, TVariables, TContext>,
+  variables: NoInfer<TVariables>,
 ): Promise<TData> {
   if (!options.mutationFn) throw new Error("Expected mutationFn");
   return options.mutationFn(variables, {} as MutationFunctionContext);
+}
+
+/** Drive a mutation the way `useMutation` does: `onMutate`, then the write, then `onError`/`onSettled`. */
+async function mutate<TData, TVariables, TContext>(
+  options: UseMutationOptions<TData, Error, TVariables, TContext>,
+  variables: NoInfer<TVariables>,
+): Promise<{ result?: TData; error?: unknown }> {
+  const ctx = {} as MutationFunctionContext;
+  const onMutateResult = (await options.onMutate?.(variables, ctx)) as TContext | undefined;
+  try {
+    const result = await run(options, variables);
+    await options.onSettled?.(result, null, variables, onMutateResult, ctx);
+    return { result };
+  } catch (error) {
+    await options.onError?.(error as Error, variables, onMutateResult, ctx);
+    await options.onSettled?.(undefined, error as Error, variables, onMutateResult, ctx);
+    return { error };
+  }
 }
 
 const newClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -357,27 +375,40 @@ describe("library mutations", () => {
     const invalidateQueries = mock().mockResolvedValue(undefined);
     queryClient.invalidateQueries = invalidateQueries;
 
-    const whole = [
+    const onSuccess = [
       libraryMutations.createDocument(queryClient),
       libraryMutations.createLesson(queryClient),
-      libraryMutations.renameDocument(queryClient),
       libraryMutations.duplicateDocument(queryClient),
-      libraryMutations.softDeleteDocument(queryClient),
       libraryMutations.restoreDocument(queryClient),
       libraryMutations.createSeries(queryClient),
-      libraryMutations.renameSeries(queryClient),
       libraryMutations.duplicateSeries(queryClient),
+      libraryMutations.restoreSeries(queryClient),
+    ] as UseMutationOptions<unknown, Error, unknown>[];
+    for (const options of onSuccess) {
+      await invokeOnSuccess(options.onSuccess);
+      expect(invalidateQueries).toHaveBeenLastCalledWith({ queryKey: queryKeys.library });
+    }
+    // The optimistic ones reconcile on settle, success or failure.
+    const onSettled = [
+      libraryMutations.renameDocument(queryClient),
+      libraryMutations.softDeleteDocument(queryClient),
+      libraryMutations.renameSeries(queryClient),
       libraryMutations.addLessonsToSeries(queryClient),
       libraryMutations.removeLessonFromSeries(queryClient),
       libraryMutations.setSeriesLessons(queryClient),
       libraryMutations.softDeleteSeries(queryClient),
-      libraryMutations.restoreSeries(queryClient),
-    ] as UseMutationOptions<unknown, Error, unknown>[];
-    for (const options of whole) {
-      await invokeOnSuccess(options.onSuccess);
+    ] as UseMutationOptions<unknown, Error, unknown, unknown>[];
+    for (const options of onSettled) {
+      await options.onSettled?.(
+        undefined,
+        null,
+        undefined,
+        undefined,
+        {} as MutationFunctionContext,
+      );
       expect(invalidateQueries).toHaveBeenLastCalledWith({ queryKey: queryKeys.library });
     }
-    expect(invalidateQueries).toHaveBeenCalledTimes(whole.length);
+    expect(invalidateQueries).toHaveBeenCalledTimes(onSuccess.length + onSettled.length);
 
     // The editors' saves refresh the lists but never the working copy they are saving.
     invalidateQueries.mockClear();
@@ -389,6 +420,114 @@ describe("library mutations", () => {
     expect(keys).toContainEqual(queryKeys.libraryDocuments);
     expect(keys).toContainEqual(queryKeys.librarySeries);
     expect(keys).not.toContainEqual(queryKeys.library);
+  });
+});
+
+describe("optimistic updates", () => {
+  const titles = (queryClient: QueryClient): string[] => {
+    const data = queryClient.getQueryData(libraryQueries.documents("lesson").queryKey);
+    return data ? librarySelectors.items(data).map((row) => row.title) : [];
+  };
+
+  it("rename shows in every cached list before the PUT lands, and stays after", async () => {
+    const queryClient = newClient();
+    await queryClient.fetchInfiniteQuery(libraryQueries.documents("lesson"));
+    await queryClient.fetchInfiniteQuery(libraryQueries.series());
+    await queryClient.fetchQuery(libraryQueries.document("roman-roads"));
+    const options = libraryMutations.renameDocument(queryClient);
+
+    const rollback = await options.onMutate?.(
+      ["roman-roads", "Roman roads and forts"],
+      {} as MutationFunctionContext,
+    );
+    expect(titles(queryClient)).toContain("Roman roads and forts");
+    expect(titles(queryClient)).not.toContain("Roman roads");
+    const romans = libraryCache.seriesDetail(queryClient, "series-romans");
+    expect(romans?.lessons[0]?.title).toBe("Roman roads and forts");
+    const body = queryClient.getQueryData(libraryQueries.document("roman-roads").queryKey);
+    expect(body && "title" in body ? body.title : "").toBe("Roman roads and forts");
+
+    // The failure path restores the snapshot — lists, series rows and the body alike.
+    rollback?.();
+    expect(titles(queryClient)).toContain("Roman roads");
+    expect(libraryCache.seriesDetail(queryClient, "series-romans")?.lessons[0]?.title).toBe(
+      "Roman roads",
+    );
+    const restored = queryClient.getQueryData(libraryQueries.document("roman-roads").queryKey);
+    expect(restored && "title" in restored ? restored.title : "").toBe("Roman roads");
+  });
+
+  it("only cancels list fetches and leaves a rollback to the refetch while another write is in flight", async () => {
+    const queryClient = newClient();
+    await queryClient.fetchInfiniteQuery(libraryQueries.documents("lesson"));
+    const cancel = mock(queryClient.cancelQueries.bind(queryClient));
+    queryClient.cancelQueries = cancel;
+    const rollback = await libraryMutations
+      .softDeleteDocument(queryClient)
+      .onMutate?.("roman-roads", {} as MutationFunctionContext);
+    const cancelled = cancel.mock.calls.map(
+      ([filters]) => (filters as { queryKey: unknown }).queryKey,
+    );
+    expect(cancelled).toEqual([
+      queryKeys.libraryDocuments,
+      queryKeys.librarySeries,
+      queryKeys.librarySeriesDetails,
+    ]);
+    expect(cancelled).not.toContainEqual(queryKeys.library);
+
+    // Another write still running: restoring this snapshot would undo its edit, so it is skipped.
+    const isMutating = mock(() => 2);
+    queryClient.isMutating = isMutating;
+    rollback?.();
+    expect(titles(queryClient)).not.toContain("Roman roads");
+    isMutating.mockReturnValue(1);
+    rollback?.();
+    expect(titles(queryClient)).toContain("Roman roads");
+  });
+
+  it("a failed delete puts the card back; a successful one leaves it gone", async () => {
+    const queryClient = newClient();
+    await queryClient.fetchInfiniteQuery(libraryQueries.documents("lesson"));
+    const options = libraryMutations.softDeleteDocument(queryClient);
+
+    fakeApi.failNext(
+      (r) => r.method === "DELETE",
+      () =>
+        new Response(JSON.stringify({ error: { code: "internal_error", message: "boom" } }), {
+          status: 500,
+        }),
+    );
+    const failed = await mutate(options, "roman-roads");
+    expect(failed.error).toBeInstanceOf(ApiError);
+    expect(titles(queryClient)).toContain("Roman roads");
+
+    const ok = await mutate(options, "roman-roads");
+    expect(ok.result).toBe(true);
+    expect(fakeApi.get("roman-roads")?.deletedAt).not.toBeNull();
+  });
+
+  it("reordering a series moves its cached rows at once", async () => {
+    const queryClient = newClient();
+    await queryClient.fetchInfiniteQuery(libraryQueries.documents("lesson"));
+    await queryClient.fetchQuery(libraryQueries.seriesDetail("series-romans"));
+    const options = libraryMutations.setSeriesLessons(queryClient);
+    await options.onMutate?.(
+      ["series-romans", ["roman-army", "roman-roads", "demo-fractions"]],
+      {} as MutationFunctionContext,
+    );
+    const detail = queryClient.getQueryData(libraryQueries.seriesDetail("series-romans").queryKey);
+    expect(detail?.series.lessonIds).toEqual(["roman-army", "roman-roads", "demo-fractions"]);
+    expect(detail?.lessons.map((lesson) => lesson.id)).toEqual([
+      "roman-army",
+      "roman-roads",
+      "demo-fractions",
+    ]);
+
+    // Adding a lesson the lists know paints its row from the cached summary.
+    const add = libraryMutations.addLessonsToSeries(queryClient);
+    await add.onMutate?.(["series-romans", ["rivers"], 0], {} as MutationFunctionContext);
+    const after = queryClient.getQueryData(libraryQueries.seriesDetail("series-romans").queryKey);
+    expect(after?.lessons[0]?.title).toBe("How rivers shape the land");
   });
 });
 

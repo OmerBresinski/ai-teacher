@@ -16,6 +16,13 @@ import type {
 } from "@tj/domain/documents";
 import type { InferResponseType } from "hono/client";
 import { api } from "./api";
+import {
+  cachedSummaryIndex,
+  editDocumentSummaries,
+  editSeries,
+  type Rollback,
+  withLessonIds,
+} from "./library-optimistic";
 import { ApiError, apiErrorFromResponse, queryKeys } from "./query";
 
 /*
@@ -357,6 +364,43 @@ function invalidateLibrary(queryClient: QueryClient): Promise<void> {
   return queryClient.invalidateQueries({ queryKey: queryKeys.library });
 }
 
+/**
+ * The optimistic half of a mutation (v5 `onMutate` / `onError` / `onSettled`): apply the edit to
+ * the cache before the request, put the snapshot back if it fails, and reconcile with the server
+ * either way. Spread into a mutation's options beside its `mutationFn`.
+ */
+function optimistic<TVariables>(
+  queryClient: QueryClient,
+  apply: (variables: TVariables) => Promise<Rollback>,
+): Pick<
+  UseMutationOptions<unknown, Error, TVariables, Rollback>,
+  "onMutate" | "onError" | "onSettled"
+> {
+  return {
+    onMutate: apply,
+    onError: (_error, _variables, rollback) => rollback?.(),
+    onSettled: () => invalidateLibrary(queryClient),
+  };
+}
+
+/**
+ * The optimistic rename of a document: its cards and series rows through the list snapshot, plus
+ * — if a copy of the body is cached — its title there too, with its own restore, since the list
+ * snapshot deliberately leaves document bodies alone.
+ */
+async function applyRename(queryClient: QueryClient, id: string, title: string): Promise<Rollback> {
+  const rollbackLists = await editDocumentSummaries(queryClient, (row) =>
+    row.id === id ? { ...row, title } : row,
+  );
+  const bodyKey = queryKeys.libraryDocument(id);
+  const before = queryClient.getQueryData<LibraryDocumentOrSummary | null>(bodyKey);
+  if (before) queryClient.setQueryData(bodyKey, { ...before, title });
+  return () => {
+    rollbackLists();
+    if (before && queryClient.isMutating() <= 1) queryClient.setQueryData(bodyKey, before);
+  };
+}
+
 /** Refresh the lists only — the document working copies stay as the editor left them. */
 function invalidateLists(queryClient: QueryClient): Promise<void> {
   return Promise.all([
@@ -430,6 +474,21 @@ async function updateSeries(
   return saved.body as Series;
 }
 
+/**
+ * The optimistic half of a series membership write: the same pure `seriesOps` change applied to
+ * the cached item, with its lesson rows re-derived from what the lists already hold.
+ */
+function applySeriesLessons(
+  queryClient: QueryClient,
+  id: string,
+  change: (series: Series) => Series,
+): Promise<Rollback> {
+  const known = cachedSummaryIndex(queryClient);
+  return editSeries(queryClient, (item) =>
+    item.series.id === id ? withLessonIds(item, change(item.series).lessonIds, known) : item,
+  );
+}
+
 export const libraryMutations = {
   createDocument: (
     queryClient: QueryClient,
@@ -499,7 +558,7 @@ export const libraryMutations = {
   }),
   renameDocument: (
     queryClient: QueryClient,
-  ): UseMutationOptions<boolean, Error, [string, string]> => ({
+  ): UseMutationOptions<boolean, Error, [string, string], Rollback> => ({
     mutationFn: async ([id, title]) => {
       const trimmed = title.trim();
       if (!trimmed) return false;
@@ -510,7 +569,7 @@ export const libraryMutations = {
       }));
       return true;
     },
-    onSuccess: () => invalidateLibrary(queryClient),
+    ...optimistic(queryClient, ([id, title]) => applyRename(queryClient, id, title.trim())),
   }),
   duplicateDocument: (
     queryClient: QueryClient,
@@ -530,13 +589,17 @@ export const libraryMutations = {
     },
     onSuccess: () => invalidateLibrary(queryClient),
   }),
-  softDeleteDocument: (queryClient: QueryClient): UseMutationOptions<boolean, Error, string> => ({
+  softDeleteDocument: (
+    queryClient: QueryClient,
+  ): UseMutationOptions<boolean, Error, string, Rollback> => ({
     mutationFn: async (id) => {
       const res = await api.documents[":id"].$delete({ param: { id } });
       if (res.status !== 204) throw await apiErrorFromResponse(res);
       return true;
     },
-    onSuccess: () => invalidateLibrary(queryClient),
+    ...optimistic(queryClient, (id) =>
+      editDocumentSummaries(queryClient, (row) => (row.id === id ? null : row)),
+    ),
   }),
   restoreDocument: (queryClient: QueryClient): UseMutationOptions<boolean, Error, string> => ({
     mutationFn: async (id) => {
@@ -564,14 +627,18 @@ export const libraryMutations = {
   }),
   renameSeries: (
     queryClient: QueryClient,
-  ): UseMutationOptions<boolean, Error, [string, string]> => ({
+  ): UseMutationOptions<boolean, Error, [string, string], Rollback> => ({
     mutationFn: async ([id, title]) => {
       const trimmed = title.trim();
       if (!trimmed) return false;
       await updateSeries(queryClient, id, (series) => ({ ...series, title: trimmed }));
       return true;
     },
-    onSuccess: () => invalidateLibrary(queryClient),
+    ...optimistic(queryClient, ([id, title]) =>
+      editSeries(queryClient, (item) =>
+        item.series.id === id ? { ...item, series: { ...item.series, title: title.trim() } } : item,
+      ),
+    ),
   }),
   duplicateSeries: (
     queryClient: QueryClient,
@@ -594,32 +661,42 @@ export const libraryMutations = {
   }),
   addLessonsToSeries: (
     queryClient: QueryClient,
-  ): UseMutationOptions<Series, Error, [string, string[], number?]> => ({
+  ): UseMutationOptions<Series, Error, [string, string[], number?], Rollback> => ({
     mutationFn: ([id, lessonIds, at]) =>
       updateSeries(queryClient, id, (series) => seriesOps.add(series, lessonIds, at)),
-    onSuccess: () => invalidateLibrary(queryClient),
+    ...optimistic(queryClient, ([id, lessonIds, at]) =>
+      applySeriesLessons(queryClient, id, (series) => seriesOps.add(series, lessonIds, at)),
+    ),
   }),
   removeLessonFromSeries: (
     queryClient: QueryClient,
-  ): UseMutationOptions<Series, Error, [string, string]> => ({
+  ): UseMutationOptions<Series, Error, [string, string], Rollback> => ({
     mutationFn: ([id, lessonId]) =>
       updateSeries(queryClient, id, (series) => seriesOps.remove(series, lessonId)),
-    onSuccess: () => invalidateLibrary(queryClient),
+    ...optimistic(queryClient, ([id, lessonId]) =>
+      applySeriesLessons(queryClient, id, (series) => seriesOps.remove(series, lessonId)),
+    ),
   }),
   setSeriesLessons: (
     queryClient: QueryClient,
-  ): UseMutationOptions<Series, Error, [string, string[]]> => ({
+  ): UseMutationOptions<Series, Error, [string, string[]], Rollback> => ({
     mutationFn: ([id, lessonIds]) =>
       updateSeries(queryClient, id, (series) => seriesOps.set(series, lessonIds)),
-    onSuccess: () => invalidateLibrary(queryClient),
+    ...optimistic(queryClient, ([id, lessonIds]) =>
+      applySeriesLessons(queryClient, id, (series) => seriesOps.set(series, lessonIds)),
+    ),
   }),
-  softDeleteSeries: (queryClient: QueryClient): UseMutationOptions<boolean, Error, string> => ({
+  softDeleteSeries: (
+    queryClient: QueryClient,
+  ): UseMutationOptions<boolean, Error, string, Rollback> => ({
     mutationFn: async (id) => {
       const res = await api.documents[":id"].$delete({ param: { id } });
       if (res.status !== 204) throw await apiErrorFromResponse(res);
       return true;
     },
-    onSuccess: () => invalidateLibrary(queryClient),
+    ...optimistic(queryClient, (id) =>
+      editSeries(queryClient, (item) => (item.series.id === id ? null : item)),
+    ),
   }),
   restoreSeries: (queryClient: QueryClient): UseMutationOptions<boolean, Error, string> => ({
     mutationFn: async (id) => {
