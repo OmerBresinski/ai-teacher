@@ -10,30 +10,48 @@ import { cn } from "../lib/cn";
  * - `transition-*` wrapped in `motion-safe:` so `prefers-reduced-motion` is respected.
  * - `type="button"` default (native buttons default to "submit" inside forms).
  * - `import { Slot } from "radix-ui"` → `@radix-ui/react-slot` (single small dependency).
+ *
+ * Variants (V2-DESIGN §2.4, rulings 23 and 25):
+ * - `primary` is the terracotta fill, one per bar. A bare <Button> is NOT a primary: `default`
+ *   is the quiet button (`secondary` and `outline` are the same recipe), a strong hairline on the
+ *   card surface, so a primary has to be asked for by name.
+ * - `inverse` is the ink pill: fully round, ink under paper, the one quiet-strong action on a
+ *   screen (dayback's "Build the live view"). It is not a second primary.
+ * - Weight is the rung: fills and the quiet button carry 600, ghost and link 500. A ghost is a
+ *   bar's text action; at 600 it shouts as loudly as the primary beside it.
+ * - Press is a colour step (`--*-press`), never a brightness filter.
+ * - Sizes read the height ladder tokens: xs 28, sm 32, default 36 (`lg` is the same rung).
  */
 
+const quiet =
+  "border border-border-strong bg-card text-foreground hover:bg-accent active:bg-accent-active disabled:border-border";
+
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-control text-sm font-medium whitespace-nowrap outline-none motion-safe:transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-control text-sm font-semibold whitespace-nowrap outline-none motion-safe:transition-all focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default:
+        default: quiet,
+        secondary: quiet,
+        outline: quiet,
+        primary:
           "bg-primary-fill text-primary-foreground hover:bg-primary-fill-hover active:bg-primary-fill-press",
+        inverse:
+          "rounded-pill bg-inverse text-inverse-foreground hover:bg-inverse-hover active:bg-inverse-press",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20",
-        outline: "border border-border bg-card hover:bg-accent",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-accent",
-        ghost: "hover:bg-accent hover:text-foreground",
-        link: "text-brand-text underline-offset-4 hover:underline",
+          "bg-destructive text-destructive-foreground hover:bg-destructive-hover active:bg-destructive-press",
+        ghost:
+          "font-medium text-ink-2 hover:bg-accent hover:text-foreground active:bg-accent-active",
+        link: "font-medium text-brand-text underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-8 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-6 gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-9 px-6 has-[>svg]:px-4",
-        icon: "size-8",
-        "icon-xs": "size-6 [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-6",
+        default: "h-(--button-height-lg) px-4 has-[>svg]:px-3",
+        lg: "h-(--button-height-lg) px-4 has-[>svg]:px-3",
+        sm: "h-(--button-height) gap-1.5 px-3 has-[>svg]:px-2.5",
+        xs: "h-(--button-height-xs) gap-1 px-2.5 text-xs has-[>svg]:px-2 [&_svg:not([class*='size-'])]:size-3.5",
+        icon: "size-9",
+        "icon-xs": "size-7 [&_svg:not([class*='size-'])]:size-3.5",
+        "icon-sm": "size-8",
         "icon-lg": "size-9",
       },
     },
@@ -65,7 +83,7 @@ function Button({
       data-slot="button"
       data-variant={variant}
       // Recorded contrast exception (ADR 0019 §4 amendment): axe treats this surface as advisory.
-      data-primary-fill={variant === "default" ? "" : undefined}
+      data-primary-fill={variant === "primary" ? "" : undefined}
       data-size={size}
       // Only native <button> gets the default; a slotted <a> must not receive type="button".
       type={asChild ? type : (type ?? "button")}

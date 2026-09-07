@@ -107,7 +107,7 @@ function AlertDialogAction({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Action> & { destructive?: boolean }) {
   return (
     <AlertDialogPrimitive.Action asChild>
-      <Button className={className} variant={destructive ? "destructive" : "default"} {...props} />
+      <Button className={className} variant={destructive ? "destructive" : "primary"} {...props} />
     </AlertDialogPrimitive.Action>
   );
 }

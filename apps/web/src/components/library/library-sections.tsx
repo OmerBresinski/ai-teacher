@@ -155,7 +155,11 @@ export function EmptyLibrary({
           ? "A series is a set of lessons in teaching order."
           : "Make a lesson or a worksheet. Everything you make is saved in your Workspace. If you made one somewhere else, import its file."
       }
-      action={<Button onClick={onCreate}>{NEW_LABEL[mode]}</Button>}
+      action={
+        <Button variant="primary" onClick={onCreate}>
+          {NEW_LABEL[mode]}
+        </Button>
+      }
       secondaryAction={
         <Button variant="ghost" onClick={onImport}>
           Import
@@ -169,7 +173,11 @@ export function NoMatches({ onClear }: { onClear: () => void }) {
   return (
     <EmptyState
       title="No titles match that"
-      action={<Button onClick={onClear}>Clear search</Button>}
+      action={
+        <Button variant="primary" onClick={onClear}>
+          Clear search
+        </Button>
+      }
     />
   );
 }
@@ -179,7 +187,11 @@ export function LoadFailed({ onRetry }: { onRetry: () => void }) {
     <EmptyState
       icon={LIBRARY_ICON}
       title="Your library could not be loaded"
-      action={<Button onClick={onRetry}>Retry</Button>}
+      action={
+        <Button variant="primary" onClick={onRetry}>
+          Retry
+        </Button>
+      }
     />
   );
 }

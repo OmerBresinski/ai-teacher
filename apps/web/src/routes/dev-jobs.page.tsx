@@ -51,7 +51,11 @@ export function DevJobsPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={() => ping.mutate()} disabled={ping.isPending || running}>
+            <Button
+              variant="primary"
+              onClick={() => ping.mutate()}
+              disabled={ping.isPending || running}
+            >
               {ping.isPending ? "Enqueuing…" : "Run ping"}
             </Button>
             <Button

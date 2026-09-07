@@ -78,13 +78,13 @@ export function WorksheetTopBar({
         {exportSlot}
         {printBlocked ? (
           <Tooltip label={PRINT_BLOCKED}>
-            <Button size="sm" aria-disabled="true" className="opacity-50">
+            <Button variant="primary" size="sm" aria-disabled="true" className="opacity-50">
               <Printer aria-hidden size={16} strokeWidth={1.5} />
               Print
             </Button>
           </Tooltip>
         ) : (
-          <Button size="sm" onClick={() => void print()}>
+          <Button variant="primary" size="sm" onClick={() => void print()}>
             <Printer aria-hidden size={16} strokeWidth={1.5} />
             Print
           </Button>

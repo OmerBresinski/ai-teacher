@@ -38,7 +38,9 @@ export function SeriesDetailPage() {
           title="This series is somewhere else"
           body="This series was deleted or never existed."
           action={
-            <Button onClick={() => void navigate({ to: shellReturn })}>Back to the library</Button>
+            <Button variant="primary" onClick={() => void navigate({ to: shellReturn })}>
+              Back to the library
+            </Button>
           }
         />
       </main>
@@ -168,7 +170,7 @@ function SeriesDetail({ item }: { item: SeriesWithLessons | undefined }) {
             Add lesson
           </Button>
           {lessons.length > 0 ? (
-            <Button size="sm" onClick={actions.presentFirst}>
+            <Button variant="primary" size="sm" onClick={actions.presentFirst}>
               {PLAY_ICON}
               Present series
             </Button>
@@ -181,7 +183,11 @@ function SeriesDetail({ item }: { item: SeriesWithLessons | undefined }) {
           <EmptyState
             icon={SERIES_ICON}
             title="No lessons in this series"
-            action={<Button onClick={() => setAdding(true)}>Add lesson</Button>}
+            action={
+              <Button variant="primary" onClick={() => setAdding(true)}>
+                Add lesson
+              </Button>
+            }
           />
         ) : (
           <Card className="relative gap-0 overflow-hidden p-0">

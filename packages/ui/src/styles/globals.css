@@ -19,6 +19,7 @@
  */
 
 @import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource/lora/400.css"; /* standfirst only: one descriptive line under a display title */
 @import "@fontsource/lora/500.css";
 @import "tailwindcss";
 
@@ -67,10 +68,16 @@
   --accent-foreground: #1a1816;
   --accent-active: rgb(96 74 40 / 0.12); /* TeachDeck app-active: pressed / selected */
   --scrim: rgb(26 24 22 / 0.32);
-  --destructive: #b3261e;
+  --destructive: #a4282c;
+
+  --destructive-hover: #922327;
+
+  --destructive-press: #7f1e22;
   --destructive-foreground: #ffffff;
   --success: #217a54;
-  --warning: #8a5a00;
+  --warning: #9a5b0e;
+  --warning-bright: #e8940a; /* dots and fills only, never text */
+  --success-bright: #2e9465;
   --border: #e5e0d8;
   --border-faint: #f2efeb;
   --border-strong: #d5cec1;
@@ -90,6 +97,12 @@
   --brand-tint: rgb(210 100 75 / 0.1);
   --brand-tint-line: rgb(210 100 75 / 0.2);
   --brand-quiet: #fbf0ed;
+  --inverse: #1a1816; /* the ink pill: the one quiet-strong action on a screen */
+  --inverse-hover: #2e2b28;
+  --inverse-press: #0f0e0d;
+  --inverse-foreground: #f7f6f2;
+  --focus-gap: var(--brand-quiet); /* the paper band inside the focus ring */
+  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--ring);
   --shadow-1: 0 1px 2px rgb(26 24 22 / 0.06), 0 0 0 1px rgb(26 24 22 / 0.05);
   --shadow-2:
     0 1px 2px rgb(26 24 22 / 0.06), 0 8px 24px rgb(26 24 22 / 0.08), 0 0 0 1px rgb(26 24 22 / 0.06);
@@ -104,6 +117,8 @@
   --radius-card: 10px;
   --radius-dialog: 12px;
   --radius-face: 16px;
+  --radius-panel: 24px; /* a hero or empty-state panel, the ladder's top */
+  --radius-pill: 9999px;
   --radius: var(--radius-control);
   --radius-key: 4px; /* a Kbd cap: tighter than --radius-chip on a 20px cap */
   --duration-fast: 150ms;
@@ -128,6 +143,12 @@
   --sidebar-width-collapsed: 56px;
   --tile-height: 64px;
   --pill-height: 24px;
+  --toggle-w: 44px; /* Switch track, thumb 20 inside a 24 track */
+  --toggle-h: 24px;
+  --toggle-thumb: 20px;
+  --checkbox: 18px; /* Checkbox and Radio box */
+  --check-glyph: 12px;
+  --hit: 32px; /* the pointer target grown around a control smaller than 32 */
 
   /* Editor chrome geometry (TeachDeck tokens.css); read by @tj/editor, never redefined there. */
   --topbar-height: 48px; /* docked, flush, hairline below */
@@ -140,7 +161,7 @@
   --row-height: 32px; /* inspector rows, menu items */
   --row-height-lg: 40px; /* list rows with an avatar/thumb */
   --field-height: 32px;
-  --button-height-xs: 24px;
+  --button-height-xs: 28px; /* xs 28, sm 32, default 36: the 24px rung is gone */
   --button-height: 32px;
   --button-height-lg: 36px;
   --canvas-gap: 40px;
@@ -175,9 +196,15 @@
   --accent-active: rgb(247 243 235 / 0.14);
   --scrim: rgb(0 0 0 / 0.6);
   --destructive: #e8595f;
+
+  --destructive-hover: #f0797e;
+
+  --destructive-press: #dc545a;
   --destructive-foreground: #231110;
   --success: #86c7a8;
   --warning: #e0b060;
+  --warning-bright: #e8940a; /* dots and fills only, never text */
+  --success-bright: #3fb07a;
   --border: #33302a;
   --border-faint: #262420;
   --border-strong: #45413a;
@@ -197,6 +224,12 @@
   --brand-tint: rgb(230 134 107 / 0.14);
   --brand-tint-line: rgb(230 134 107 / 0.28);
   --brand-quiet: #2a211d;
+  --inverse: #f2f0eb; /* the ink pill: the one quiet-strong action on a screen */
+  --inverse-hover: #ffffff;
+  --inverse-press: #e6e2da;
+  --inverse-foreground: #1a1816;
+  --focus-gap: var(--brand-quiet); /* the paper band inside the focus ring */
+  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--ring);
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.06);
   --shadow-2:
     0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08);
@@ -209,6 +242,8 @@
   --radius-card: 10px;
   --radius-dialog: 12px;
   --radius-face: 16px;
+  --radius-panel: 24px; /* a hero or empty-state panel, the ladder's top */
+  --radius-pill: 9999px;
   --radius: var(--radius-control);
   --duration-fast: 150ms;
   --duration-arrive: 450ms;
@@ -246,9 +281,15 @@
     --accent-active: rgb(247 243 235 / 0.14);
     --scrim: rgb(0 0 0 / 0.6);
     --destructive: #e8595f;
+
+    --destructive-hover: #f0797e;
+
+    --destructive-press: #dc545a;
     --destructive-foreground: #231110;
     --success: #86c7a8;
     --warning: #e0b060;
+    --warning-bright: #e8940a; /* dots and fills only, never text */
+    --success-bright: #3fb07a;
     --border: #33302a;
     --border-faint: #262420;
     --border-strong: #45413a;
@@ -268,6 +309,12 @@
     --brand-tint: rgb(230 134 107 / 0.14);
     --brand-tint-line: rgb(230 134 107 / 0.28);
     --brand-quiet: #2a211d;
+    --inverse: #f2f0eb; /* the ink pill: the one quiet-strong action on a screen */
+    --inverse-hover: #ffffff;
+    --inverse-press: #e6e2da;
+    --inverse-foreground: #1a1816;
+    --focus-gap: var(--brand-quiet); /* the paper band inside the focus ring */
+    --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--ring);
     --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.06);
     --shadow-2:
       0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08);
@@ -280,6 +327,8 @@
     --radius-card: 10px;
     --radius-dialog: 12px;
     --radius-face: 16px;
+    --radius-panel: 24px; /* a hero or empty-state panel, the ladder's top */
+    --radius-pill: 9999px;
     --radius: var(--radius-control);
     --duration-fast: 150ms;
     --duration-arrive: 450ms;
@@ -317,9 +366,15 @@
   --accent-active: rgb(255 255 255 / 0.22);
   --scrim: rgb(0 0 0 / 0.6);
   --destructive: #ff7b7b;
+
+  --destructive-hover: #ff9494;
+
+  --destructive-press: #f06a6a;
   --destructive-foreground: #000000; /* 8.5:1 on --destructive */
   --success: #9be1ba;
   --warning: #ffd27a;
+  --warning-bright: #ffb33c; /* dots and fills only, never text */
+  --success-bright: #9be1ba;
   --border: #8a857b;
   --border-faint: #3e3a34;
   --border-strong: #5a554d;
@@ -339,6 +394,12 @@
   --brand-tint: rgb(255 160 122 / 0.18);
   --brand-tint-line: rgb(255 160 122 / 0.36);
   --brand-quiet: #2e1b16;
+  --inverse: #ffffff; /* the ink pill: the one quiet-strong action on a screen */
+  --inverse-hover: #ffffff;
+  --inverse-press: #e6e2da;
+  --inverse-foreground: #000000;
+  --focus-gap: var(--background); /* the paper band inside the focus ring */
+  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--ring);
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.16);
   --shadow-2:
     0 1px 2px rgb(0 0 0 / 0.6), 0 8px 24px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.2);
@@ -351,6 +412,8 @@
   --radius-card: 10px;
   --radius-dialog: 12px;
   --radius-face: 16px;
+  --radius-panel: 24px; /* a hero or empty-state panel, the ladder's top */
+  --radius-pill: 9999px;
   --radius: var(--radius-control);
   --duration-fast: 150ms;
   --duration-arrive: 450ms;
@@ -397,9 +460,15 @@
   --accent-active: rgb(247 246 242 / 0.16); /* --stage-press */
   --scrim: rgb(0 0 0 / 0.6);
   --destructive: #ee6e73; /* --stage-danger, 5.69:1 on the surface */
+
+  --destructive-hover: #f38489;
+
+  --destructive-press: #e35f65;
   --destructive-foreground: #231110; /* --v2-stage-on-danger */
   --success: #3fb07a; /* --stage-ok */
   --warning: #e8940a; /* --stage-warning */
+  --warning-bright: #e8940a; /* dots and fills only, never text */
+  --success-bright: #3fb07a;
   --border: rgb(247 246 242 / 0.1); /* --stage-hairline */
   --border-faint: rgb(247 246 242 / 0.06);
   --border-strong: rgb(247 246 242 / 0.22);
@@ -418,6 +487,12 @@
   --brand-tint: rgb(210 100 75 / 0.22); /* --stage-active */
   --brand-tint-line: rgb(210 100 75 / 0.55);
   --brand-quiet: #1f1d1b;
+  --inverse: #f7f6f2; /* the ink pill: the one quiet-strong action on a screen */
+  --inverse-hover: #ffffff;
+  --inverse-press: #e6e2da;
+  --inverse-foreground: #141312;
+  --focus-gap: var(--card); /* the paper band inside the focus ring */
+  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--ring);
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(247 246 242 / 0.1);
   --shadow-2:
     0 1px 2px rgb(0 0 0 / 0.45), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(247 246 242 / 0.1);
@@ -462,8 +537,16 @@
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-press: var(--destructive-press);
+  --color-inverse: var(--inverse);
+  --color-inverse-hover: var(--inverse-hover);
+  --color-inverse-press: var(--inverse-press);
+  --color-inverse-foreground: var(--inverse-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-warning-bright: var(--warning-bright);
+  --color-success-bright: var(--success-bright);
   --color-canvas: var(--canvas);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -505,6 +588,8 @@
   --radius-lg: var(--radius-card);
   --radius-xl: var(--radius-dialog);
   --radius-2xl: var(--radius-face);
+  --radius-panel: var(--radius-panel);
+  --radius-pill: var(--radius-pill);
 
   /* Elevation and motion */
   --shadow-1: var(--shadow-1);
@@ -512,6 +597,7 @@
   --shadow-3: var(--shadow-3);
   --shadow-slide: var(--shadow-slide);
   --shadow-lift: var(--shadow-lift);
+  --shadow-focus: var(--focus);
   --animate-arrive: tj-arrive var(--duration-arrive) var(--ease-arrive) both;
   --animate-fade-in: tj-fade-in var(--duration-fast) ease-out both;
   --animate-fade-out: tj-fade-out var(--duration-fast) ease-in both;
@@ -528,6 +614,24 @@
   body {
     @apply bg-background font-ui text-foreground;
   }
+}
+
+/*
+ * Focus band, at the token level. Every focus ring in @tj/ui and @tj/editor is a Tailwind ring
+ * utility (`focus-visible:ring-[3px] focus-visible:ring-ring/50`, shadcn's translucent ring) or
+ * `focus-visible:shadow-focus`. This rule is deliberately UNLAYERED: an unlayered declaration wins
+ * over any layered utility whatever its specificity, so it reshapes each ring into TeachDeck's
+ * two-tone band (2px paper gap, then 2px solid accent) without a class change at the 25 sites,
+ * and `var()` resolves on the focused element, so the stage scope's `--focus-gap` is honoured.
+ * An invalid control's band takes the danger colour.
+ */
+:where(:focus-visible) {
+  --tw-ring-offset-shadow: 0 0 0 2px var(--focus-gap);
+  --tw-ring-shadow: 0 0 0 4px var(--focus-ring, var(--ring));
+}
+
+:where([aria-invalid="true"]:focus-visible) {
+  --focus-ring: var(--destructive);
 }
 
 /*

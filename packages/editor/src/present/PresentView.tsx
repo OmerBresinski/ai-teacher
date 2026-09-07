@@ -431,7 +431,9 @@ function PresentSurface({
                 {lesson.title}
               </Display>
               <div className="mt-6 flex items-center gap-2">
-                <Button onClick={() => start(true)}>Start presenting</Button>
+                <Button variant="primary" onClick={() => start(true)}>
+                  Start presenting
+                </Button>
                 <Button variant="ghost" onClick={() => start(false)}>
                   Stay in this window
                 </Button>

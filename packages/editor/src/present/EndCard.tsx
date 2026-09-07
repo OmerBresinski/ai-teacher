@@ -44,10 +44,14 @@ export function EndCard({
         </Display>
         {next ? <p className="mt-3 text-ink-3 text-lead">Next: {next.title}</p> : null}
         <div className="mt-6 flex items-center gap-2">
-          {next ? <Button onClick={next.onOpen}>Next lesson</Button> : null}
+          {next ? (
+            <Button variant="primary" onClick={next.onOpen}>
+              Next lesson
+            </Button>
+          ) : null}
           {/* One primary. In a series that is the next lesson, so restarting steps down to text. */}
           <Button
-            variant={next ? "ghost" : "default"}
+            variant={next ? "ghost" : "primary"}
             onClick={() => dispatch({ type: "restart" })}
           >
             Back to start

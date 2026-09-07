@@ -105,7 +105,7 @@ export function SignInPage() {
               ) : null}
             </CardContent>
             <CardFooter>
-              <Button type="submit" disabled={status.kind === "sending"}>
+              <Button variant="primary" type="submit" disabled={status.kind === "sending"}>
                 {status.kind === "sending" ? "Sending…" : "Email me a link"}
               </Button>
             </CardFooter>

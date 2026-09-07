@@ -343,7 +343,7 @@ export function TextToolbar({
               </p>
             ) : null}
             <div className="flex items-center gap-1.5">
-              <Button type="submit" size="sm">
+              <Button variant="primary" type="submit" size="sm">
                 Apply
               </Button>
               {hasLink ? (
