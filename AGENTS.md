@@ -227,8 +227,9 @@ to `master` directly.
    The latest Production Vercel deployment must be `Ready`; each Railway service must be `SUCCESS`,
    or `SKIPPED` when the change is outside the service's watch paths, e.g. docs-only. **Vercel
    Hobby rate limit:** when Vercel refuses to build ("Deployment rate limited — retry in 24
-   hours") no new Production deployment appears; `land` reports `vercel: PENDING (no new
-   deployment — rate limited?)` after 90 s instead of waiting out its timeout. That is not a
+   hours") it either creates no new Production deployment or creates one and cancels it after
+   ~2 s; `land` reports `vercel: PENDING (… rate limited?)` (after 90 s in the first case, at
+   once in the second) instead of waiting out its timeout. That is not a
    failure of the PR: merge stands, note "Vercel deploy pending — rate limit" in the Linear
    closing comment, and move on. The deploy catches up on the next successful build. `-p` is the
    `teaching-journey` project id and is required whenever the CLI runs from a directory that is not

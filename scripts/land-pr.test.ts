@@ -186,6 +186,24 @@ describe("land-pr", () => {
     expect(summary.vercel.status).toContain("PENDING");
   });
 
+  test("reports a Canceled Production deployment as pending (the rate limit's other face)", async () => {
+    // Captured 2026-09-07 under "Deployment rate limited — retry in 24 hours": a *new* Production
+    // deployment that Vercel cancelled after 2 s. Before this case the watch ran to its timeout.
+    const canceled = `Vercel CLI 59.11.2 (Node.js 24.14.1)
+Fetching deployments in omerbresinskis-projects
+> Deployments for omerbresinskis-projects/teaching-journey-web [252ms]
+
+  Age     Project                                          Deployment                                                                Status       Environment     Duration     Username
+  13m     omerbresinskis-projects/teaching-journey-web     https://teaching-journey-pi4emvntq-omerbresinskis-projects.vercel.app     Canceled     Production      2s           omerbresinski
+  30m     omerbresinskis-projects/teaching-journey-web     https://teaching-journey-fcg9o4a89-omerbresinskis-projects.vercel.app     ● Ready      Preview         17s          omerbresinski`;
+    const fake = fakeDeps({ vercel: canceled });
+    const summary = await landPr(42, {}, fake.deps);
+    expect(summary.ok).toBe(true);
+    expect(summary.vercel.status).toContain("Canceled");
+    // Decided on the first read: no 90 s wait, no timeout.
+    expect(fake.calls.railway.length).toBeLessThanOrEqual(4);
+  });
+
   test("rebases one BEHIND round before merging and returns to the branch it started on", async () => {
     const fake = fakeDeps({ states: ["BEHIND", "CLEAN"], currentBranch: "fix/next-thing" });
     await landPr(42, {}, fake.deps);
