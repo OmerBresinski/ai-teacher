@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { resetLibraryStore } from "@/mocks/library-store";
@@ -69,14 +69,16 @@ describe("WorksheetPrintPage", () => {
       search = { auto: "1" };
       renderPage();
       await screen.findByRole("heading", { level: 1 });
-      await settle();
-      await settle();
-      expect(print).toHaveBeenCalledTimes(1);
+      // Wait for the call, not for a fixed delay: fonts-ready → measure → two frames is not a
+      // fixed number of milliseconds under CI load (TEACH-140).
+      await waitFor(() => expect(print).toHaveBeenCalledTimes(1), { timeout: 3000 });
       cleanup();
 
       search = {};
       renderPage();
       await screen.findByRole("heading", { level: 1 });
+      // A negative cannot be awaited: give the gate the same room it needs to print, then assert
+      // it did not.
       await settle();
       await settle();
       expect(print).toHaveBeenCalledTimes(1);
