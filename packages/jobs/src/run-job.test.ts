@@ -18,6 +18,7 @@ import {
   type WorkspaceId,
 } from "@tj/domain";
 import pino from "pino";
+import { cancel } from "./enqueue";
 import type { emitJobEvent } from "./events";
 import type { BossJob } from "./run-job";
 import { dispositionForTerminal, runJob } from "./run-job";
@@ -308,6 +309,33 @@ describeDb("runJob dependencies", () => {
       cancelPollIntervalMs: 60_000,
     });
     expect(outcome).toMatchObject({ id: jobId, status: "completed", event: "completed" });
+  });
+
+  test("cancel() of a waiting retry whose previous attempt already settled reports already_finished", async () => {
+    // X1 aftermath: attempt 1 committed `completed` but its notify failed, so pg-boss shows the
+    // job as `retry`. The API's cancel must not surface the unique violation as a 5xx.
+    const jobId = newId<JobId>();
+    const at = new Date().toISOString();
+    await insertJobEvent(unsafeDb, { type: "started", jobId, workspaceId, at });
+    await insertJobEvent(unsafeDb, { type: "completed", jobId, workspaceId, at });
+    const row = {
+      id: jobId,
+      state: "retry",
+      startedOn: new Date(0),
+      data: { jobId, workspaceId, payload: { lessonId, changedFactIds: ["o1"] } },
+    };
+    let cancelled = 0;
+    const waitingBoss = {
+      findJobs: async () => [cancelled > 0 ? { ...row, state: "cancelled" } : row],
+      cancel: async () => {
+        cancelled++;
+      },
+    } as unknown as JobsContext["boss"];
+    const ctx: JobsContext = { boss: waitingBoss, db: unsafeDb, sql };
+    const result = await cancel(ctx, jobId, { name: "lesson.cascade" });
+    expect(result).toEqual({ status: "already_finished", state: "completed" });
+    const events = await listJobEvents(unsafeDb, { workspaceId, jobId, limit: 10 });
+    expect(events.map((e) => e.type)).toEqual(["started", "completed"]);
   });
 });
 
