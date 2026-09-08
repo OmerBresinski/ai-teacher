@@ -136,6 +136,21 @@ export type TextElement = ElementBase & {
   style: TextStyle;
 };
 
+/**
+ * Where a searched photograph came from (Images project, Decision 5). Read by the editor's credit
+ * icon and the export credits page; `provider` widens only when a second provider ships.
+ */
+export type PhotoSource = {
+  provider: "pexels";
+  /** The provider's photo id. */
+  id: string;
+  /** The photo's page on the provider, http(s). */
+  pageUrl: string;
+  photographer: string;
+  /** The photographer's page on the provider, http(s). */
+  photographerUrl: string;
+};
+
 export type ImageElement = ElementBase & {
   type: "image";
   /** A URL by contract (ADR 0021 §5); data URLs are accepted while there is no upload endpoint. */
@@ -149,6 +164,8 @@ export type ImageElement = ElementBase & {
   credit?: string;
   /** The page the searched image came from, linked beside the credit. */
   creditUrl?: string;
+  /** Structured provenance of a Pexels photo; `credit`/`creditUrl` stay for older images. */
+  source?: PhotoSource;
 };
 
 export type ShapeKind =
@@ -318,6 +335,16 @@ const TextElementSchema = z.object({
   style: TextStyleSchema,
 });
 
+// Strict, like `GeneratedFromSchema`: an imported document with an extra key inside `source` is
+// refused rather than silently trimmed. Both URLs render as anchors, hence the http(s) gate.
+export const PhotoSourceSchema = z.strictObject({
+  provider: z.enum(["pexels"]),
+  id: z.string().min(1),
+  pageUrl: z.string().refine(isLinkableHref, "pageUrl must be an http(s) address"),
+  photographer: z.string(),
+  photographerUrl: z.string().refine(isLinkableHref, "photographerUrl must be an http(s) address"),
+});
+
 const ImageElementSchema = z.object({
   ...elementBase,
   type: z.literal("image"),
@@ -332,6 +359,7 @@ const ImageElementSchema = z.object({
   // the toolbar makes, so a stored value that the toolbar would refuse to link never gets stored
   // in the first place.
   creditUrl: z.string().refine(isLinkableHref, "creditUrl must be an http(s) address").optional(),
+  source: PhotoSourceSchema.optional(),
 });
 
 const ShapeElementSchema = z.object({
