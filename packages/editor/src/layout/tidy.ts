@@ -169,7 +169,7 @@ const sizeOf = (el: SlideElement): number | undefined =>
       : undefined;
 
 const docOf = (el: SlideElement): RichDoc | undefined =>
-  el.type === "text" || el.type === "gap-text" || el.type === "option" ? el.doc : undefined;
+  reducers.isTextLike(el) ? el.doc : undefined;
 
 /**
  * Tidy one slide. Safe to call on a slide that is already tidy: it reports `changed: false` and
@@ -219,8 +219,7 @@ export function tidySlide(
         else if (el.type === "option") el.textStyle = { ...el.textStyle, fontSize: size };
       }
       const doc = docOf(next);
-      if (doc && (el.type === "text" || el.type === "gap-text" || el.type === "option"))
-        el.doc = doc;
+      if (doc && reducers.isTextLike(el)) el.doc = doc;
     });
   }
   let after = slideId;

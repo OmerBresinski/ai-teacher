@@ -8,7 +8,9 @@ import { editQuietly, editSlide, findElement, silent, type WithId } from "./core
 /** Elements that are words: they stay on top of everything that is not. */
 const TEXT_LIKE: ReadonlySet<ElementType> = new Set<ElementType>(["text", "gap-text", "option"]);
 
-export const isTextLike = (el: SlideElement): boolean => TEXT_LIKE.has(el.type);
+export type TextLikeElement = Extract<SlideElement, { type: "text" | "gap-text" | "option" }>;
+
+export const isTextLike = (el: SlideElement): el is TextLikeElement => TEXT_LIKE.has(el.type);
 
 /**
  * Where a fresh element enters the draw order (Chalkie's rule, asked for by the owner): a text-like
