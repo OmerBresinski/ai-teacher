@@ -1,10 +1,11 @@
-import type { SlideElement, Theme } from "@tj/domain/documents";
+import type { ShapeElement, SlideElement, Theme } from "@tj/domain/documents";
 import {
   Button,
   cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Input,
   Label,
@@ -19,6 +20,7 @@ import { type ComponentProps, type ReactNode, useId, useMemo, useRef, useState }
 import * as reducers from "../../model/reducers";
 import type { ElementPatch } from "../../model/reducers/elements";
 import { useEditSession } from "../../model/use-edit-session";
+import { shapeRadius } from "../../slide/elements/ShapeView";
 import { useHistory } from "../document-context";
 
 /*
@@ -55,7 +57,7 @@ export function useElementWrites(slideId: string) {
   const session = useEditSession(history);
   const update = <T extends SlideElement>(id: string, patch: ElementPatch<T>) =>
     history.dispatch(reducers.updateElement<T>, slideId, id, patch);
-  const updateMany = (ids: string[], patch: Partial<SlideElement>) =>
+  const updateMany = (ids: string[], patch: ElementPatch) =>
     history.dispatch(reducers.updateElements, slideId, ids, patch);
   return {
     history,
@@ -142,6 +144,17 @@ export function PanelSection({ title, children }: { title: string; children: Rea
       {children}
     </section>
   );
+}
+
+/* --- Shared readouts ---------------------------------------------- */
+
+/**
+ * What a selection reads as for one property: the first element's value, marked mixed when any
+ * other element disagrees. The pattern every multi-selection control follows (TEACH-175).
+ */
+export function commonValue<T>(values: readonly T[]): { value: T | undefined; mixed: boolean } {
+  const value = values[0];
+  return { value, mixed: values.some((v) => v !== value) };
 }
 
 /* --- Opacity ------------------------------------------------------ */
@@ -393,5 +406,182 @@ export function OpacityControl({
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+/* --- Border width and corners ------------------------------------- */
+
+/** The border widths on offer, slide points. 0 is "None". */
+export const BORDER_WIDTHS: readonly number[] = [0, 1, 2, 3, 4, 6, 8, 12];
+/** Corner radii, slide points. Rectangles and speech bubbles have corners to round. */
+export const CORNER_RADII: readonly number[] = [0, 4, 8, 12, 16, 24];
+/** The shapes with corners to round. */
+export const CORNERED: ReadonlySet<ShapeElement["shape"]> = new Set(["rect", "rounded", "speech"]);
+/** The element types with a corner radius: image and shape on `radius`, text on `style.radius`. */
+export const ROUNDABLE: ReadonlySet<SlideElement["type"]> = new Set(["image", "shape", "text"]);
+
+/** The border width ShapeView draws: an unset width with a colour is 2, without one is none. */
+export function borderWidthOf(el: ShapeElement): number {
+  return el.strokeWidth ?? (el.stroke ? 2 : 0);
+}
+
+/** The corner radius an element draws; a shape's falls back to the theme's when unset. */
+export function radiusOf(el: SlideElement, theme?: Theme): number {
+  if (el.type === "shape" && theme) return shapeRadius(el, theme);
+  if (el.type === "image" || el.type === "shape") return el.radius ?? 0;
+  if (el.type === "text") return el.style.radius ?? 0;
+  return 0;
+}
+
+/** Set the radius on an immer draft, wherever that element type keeps it. */
+export function setRadiusOn(draft: SlideElement, radius: number): void {
+  if (draft.type === "text") draft.style.radius = radius;
+  else if (draft.type === "image" || draft.type === "shape") draft.radius = radius;
+}
+
+/**
+ * An icon trigger over a radio menu of numeric steps, each row a number and a drawn preview of
+ * what that number looks like. The current value is the marked row; `null` (a multi-selection
+ * that disagrees) marks none and reads "mixed".
+ */
+export function StepMenu({
+  label,
+  value,
+  steps,
+  icon,
+  preview,
+  onPick,
+}: {
+  label: string;
+  value: number | null;
+  steps: readonly number[];
+  icon: ReactNode;
+  preview: (n: number) => ReactNode;
+  onPick: (n: number) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <Tooltip label={label}>
+        <DropdownMenuTrigger asChild>
+          <BarButton
+            aria-label={`${label}, ${value === null ? "mixed" : value}`}
+            className="w-8 justify-center px-0 font-medium"
+          >
+            {icon}
+          </BarButton>
+        </DropdownMenuTrigger>
+      </Tooltip>
+      <DropdownMenuContent align="start" aria-label={label} className="min-w-44">
+        <DropdownMenuRadioGroup value={value === null ? "" : String(value)}>
+          {steps.map((n) => (
+            <DropdownMenuRadioItem
+              key={n}
+              value={String(n)}
+              onSelect={() => onPick(n)}
+              className="gap-3 pr-3 font-medium"
+            >
+              <span className="w-5 text-right tabular-nums">{n}</span>
+              {preview(n)}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** The border-width menu: a line of each weight, "None" for 0. */
+export function BorderWidthMenu({
+  value,
+  onPick,
+}: {
+  value: number | null;
+  onPick: (n: number) => void;
+}) {
+  return (
+    <StepMenu
+      label="Border width"
+      value={value}
+      steps={BORDER_WIDTHS}
+      icon={<BorderWidthGlyph />}
+      preview={(n) =>
+        n === 0 ? (
+          <span className="flex-1 text-ink-3">None</span>
+        ) : (
+          <span
+            aria-hidden
+            className="block flex-1 rounded-full bg-foreground"
+            style={{ height: n }}
+          />
+        )
+      }
+      onPick={onPick}
+    />
+  );
+}
+
+/** The corners menu: a box with each radius, "Square" for 0. Shared by the Shape and Selection bars. */
+export function CornersMenu({
+  value,
+  onPick,
+}: {
+  value: number | null;
+  onPick: (n: number) => void;
+}) {
+  return (
+    <StepMenu
+      label="Corners"
+      value={value}
+      steps={CORNER_RADII}
+      icon={<CornersGlyph />}
+      preview={(n) => (
+        <span className="flex flex-1 items-center gap-3">
+          <span
+            aria-hidden
+            className="block h-4 w-7 border-[1.5px] border-foreground"
+            style={{ borderRadius: Math.min(n / 2, 8) }}
+          />
+          {n === 0 ? <span className="text-ink-3">Square</span> : null}
+        </span>
+      )}
+      onPick={onPick}
+    />
+  );
+}
+
+/** Three stacked lines of growing weight: the border-width glyph. */
+export function BorderWidthGlyph() {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      aria-hidden
+      focusable="false"
+    >
+      <rect x={3} y={4} width={14} height={1} rx={0.5} />
+      <rect x={3} y={8.5} width={14} height={2} rx={1} />
+      <rect x={3} y={13.5} width={14} height={3} rx={1.5} />
+    </svg>
+  );
+}
+
+/** One rounded corner: the corners glyph. */
+export function CornersGlyph() {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      aria-hidden
+      focusable="false"
+    >
+      <path d="M4 16V9.5A5.5 5.5 0 0 1 9.5 4H16" />
+    </svg>
   );
 }

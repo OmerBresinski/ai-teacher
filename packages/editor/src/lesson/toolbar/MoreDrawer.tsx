@@ -1,12 +1,4 @@
-import {
-  type ImageElement,
-  type ShapeElement,
-  SLIDE_H,
-  SLIDE_W,
-  type SlideElement,
-  type TextElement,
-  type Theme,
-} from "@tj/domain/documents";
+import { SLIDE_H, SLIDE_W, type SlideElement, type Theme } from "@tj/domain/documents";
 import { Button, IconButton, Input, Popover, PopoverContent, PopoverTrigger, Switch } from "@tj/ui";
 import {
   ArrowDown,
@@ -22,12 +14,19 @@ import { type ReactNode, useId } from "react";
 import { NumberInput } from "../../kit/NumberInput";
 import { PanelRow } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
-import { shapeRadius } from "../../slide/elements/ShapeView";
 import { useProposals } from "../proposals-context";
 import { useSessionActions } from "../use-editor-session";
-import { ICON, ICON_SM, OpacityField, opacityOf, PanelSection, useElementWrites } from "./shared";
-
-const ROUNDABLE = new Set<SlideElement["type"]>(["image", "shape", "text"]);
+import {
+  ICON,
+  ICON_SM,
+  OpacityField,
+  opacityOf,
+  PanelSection,
+  ROUNDABLE,
+  radiusOf,
+  setRadiusOn,
+  useElementWrites,
+} from "./shared";
 
 /**
  * Everything the seven visible controls could not hold, behind one trigger (TeachDeck
@@ -184,7 +183,7 @@ export function MoreDrawer({
                 <NumberInput
                   id={`${rowId}-radius`}
                   value={radiusOf(one, theme)}
-                  onChange={(r) => scrub(() => setRadius(update, one, r))}
+                  onChange={(r) => scrub(() => update(one.id, (draft) => setRadiusOn(draft, r)))}
                   min={0}
                   max={200}
                   aria-label="Corner radius"
@@ -246,24 +245,4 @@ export function MoreDrawer({
       </PopoverContent>
     </Popover>
   );
-}
-
-function radiusOf(el: SlideElement, theme?: Theme): number {
-  if (el.type === "shape" && theme) return shapeRadius(el, theme);
-  if (el.type === "image" || el.type === "shape") return el.radius ?? 0;
-  if (el.type === "text") return el.style.radius ?? 0;
-  return 0;
-}
-
-function setRadius(
-  update: ReturnType<typeof useElementWrites>["update"],
-  el: SlideElement,
-  radius: number,
-) {
-  if (el.type === "text") {
-    update<TextElement>(el.id, (draft) => {
-      draft.style.radius = radius;
-    });
-  } else if (el.type === "image") update<ImageElement>(el.id, { radius });
-  else if (el.type === "shape") update<ShapeElement>(el.id, { radius });
 }
