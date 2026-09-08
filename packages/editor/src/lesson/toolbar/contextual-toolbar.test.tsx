@@ -109,6 +109,36 @@ describe("ShapeToolbar (row 1)", () => {
     fireEvent.keyDown(slider, { key: "ArrowLeft" });
     expect((first(read()) as { opacity?: number }).opacity).toBeCloseTo(0.99);
   });
+
+  test("opacity popover: a typed value commits on Enter; Reset shows off 100 and writes it back", async () => {
+    const { container, read } = renderEditor(chromeLesson());
+    const opacity = () => (first(read()) as { opacity?: number }).opacity;
+    clickAt(container, 150, 130);
+    fireEvent.click(within(toolbar("Shape")).getByRole("button", { name: /Opacity/ }));
+    const panel = await screen.findByRole("dialog", { name: "Opacity" });
+    // At the default there is nothing to reset.
+    expect(within(panel).queryByRole("button", { name: "Reset" })).toBeNull();
+
+    const field = within(panel).getByRole("textbox", { name: "Opacity value" });
+    fireEvent.change(field, { target: { value: "40" } });
+    expect(opacity()).toBeUndefined();
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(opacity()).toBeCloseTo(0.4);
+    expect(within(panel).getByRole("slider", { name: "Opacity" })).toHaveAttribute(
+      "aria-valuenow",
+      "40",
+    );
+
+    fireEvent.click(within(panel).getByRole("button", { name: "Reset" }));
+    expect(opacity()).toBe(1);
+    expect(within(panel).queryByRole("button", { name: "Reset" })).toBeNull();
+
+    // Blur commits too, clamped to the range.
+    fireEvent.change(field, { target: { value: "-5" } });
+    fireEvent.blur(field);
+    expect(opacity()).toBe(0);
+    expect(field).toHaveValue("0");
+  });
 });
 
 describe("ShapeToolbar label text controls", () => {

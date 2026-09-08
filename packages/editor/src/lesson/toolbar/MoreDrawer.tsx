@@ -176,7 +176,7 @@ export function MoreDrawer({
                 mixed={opacity.mixed}
                 onChange={(v) => scrub(() => updateMany(ids, { opacity: v / 100 }))}
                 onCommit={end}
-                className="w-40"
+                className="w-52"
               />
             </PanelRow>
             {one && ROUNDABLE.has(one.type) ? (
