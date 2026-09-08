@@ -125,6 +125,12 @@ describe("ShapeToolbar label text controls", () => {
     const { container, read } = renderEditor(lesson);
     clickAt(container, 150, 130);
     const panel = await openLabel();
+    // The two rows sit 12px apart inside 12px padding on a 32px baseline, and nothing clips the
+    // 4px focus band around a control.
+    expect(panel.className).toMatch(/\bgap-3\b/);
+    expect(panel.className).toMatch(/\bp-3\b/);
+    expect(panel.className).not.toMatch(/overflow-hidden/);
+    expect(panel.querySelector("[data-label-text-controls]")?.className).toMatch(/\bh-8\b/);
     expect(within(panel).getByRole("button", { name: /^Label style/ })).toHaveAccessibleName(
       "Label style, Body",
     );
