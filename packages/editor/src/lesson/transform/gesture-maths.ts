@@ -218,8 +218,9 @@ export type ResizePreview = { preview: Map<Id, ElementTransform>; guides: Guide[
 
 /**
  * A single element grows along its own axes about the opposite corner (or its centre under Alt);
- * corners keep the aspect for image-like types unless Shift says otherwise, and the dragged edges
- * snap to siblings when the element is unrotated. A multi-selection scales as one box about the
+ * corners keep the aspect for image-like types, Shift keeps it on every handle for every type
+ * (a side handle then scales both axes about the midline), and the dragged edges snap to siblings
+ * when the element is unrotated. A multi-selection scales as one box about the
  * handle's anchor, members by their centre so a rotated member keeps its place, with the scale
  * floored once for the whole group so small members cannot shear the arrangement.
  */
@@ -238,8 +239,7 @@ export function previewResize(
   if (!g.multi) {
     const b = g.boxes[0];
     if (!b) return null;
-    const aspectDefault = aspectLockedByDefault([b.type]);
-    const aspect = corner && (s.shift ? !aspectDefault : aspectDefault);
+    const aspect = s.shift || (corner && aspectLockedByDefault([b.type]));
     let rect = resizeRect({
       handle: g.handle,
       start: b.rect,
@@ -262,14 +262,13 @@ export function previewResize(
     return { preview, guides: settings.showGuides ? guides : [] };
   }
 
-  // The group follows its members: locked only if every one is a locked type, Shift inverts.
-  const groupDefault = aspectLockedByDefault(g.boxes.map((b) => b.type));
+  // The group follows its members: locked only if every one is a locked type; Shift always locks.
   const target = resizeRect({
     handle: g.handle,
     start: g.bounds,
     pointer,
     fromCentre: s.alt,
-    aspect: corner && (s.shift ? !groupDefault : groupDefault),
+    aspect: s.shift || (corner && aspectLockedByDefault(g.boxes.map((b) => b.type))),
   });
   const anchor = anchorOf(g.bounds, g.handle, s.alt);
   const sx = clampGroupScale(
