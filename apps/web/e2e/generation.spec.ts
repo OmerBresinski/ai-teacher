@@ -17,7 +17,7 @@ test.describe("lesson generation over the fake worker", () => {
     await page.getByRole("textbox", { name: "Topic or objective" }).fill("States of matter");
     await page.getByRole("combobox", { name: "Year group" }).click();
     await page.getByRole("option", { name: "Year 8" }).click();
-    await page.getByRole("button", { name: "Create lesson" }).click();
+    await page.getByRole("button", { name: "Plan it" }).click();
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
 
     // The progress strip is up while the job runs.
@@ -72,7 +72,7 @@ test.describe("lesson generation over the fake worker", () => {
   }) => {
     await page.goto("/lessons/new");
     await page.getByRole("textbox", { name: "Topic or objective" }).fill("Forces and motion");
-    await page.getByRole("button", { name: "Create lesson" }).click();
+    await page.getByRole("button", { name: "Plan it" }).click();
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
     const banner = page.getByTestId("generating-banner");
     // Let the job start before stopping it, so the cancel exercises the running path.
