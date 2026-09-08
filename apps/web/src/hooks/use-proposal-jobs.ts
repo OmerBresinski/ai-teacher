@@ -4,7 +4,7 @@ import type { Lesson, Worksheet } from "@tj/domain/documents";
 import type { LessonEditorHandle, RegenerateTarget } from "@tj/editor/lesson";
 import { slidesReferencing } from "@tj/editor/lesson";
 import { toast } from "@tj/ui";
-import { type RefObject, useCallback, useEffect, useMemo, useState } from "react";
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { isFullDocument, libraryMutations, libraryQueries } from "@/lib/library";
 import { ApiError, apiErrorFromResponse } from "@/lib/query";
@@ -38,11 +38,21 @@ export function slideList(numbers: number[]): string {
   return `slides ${head} and ${numbers.at(-1)}`;
 }
 
-export function cascadeToast(numbers: number[], flagged: number): string {
-  const base = `Auto changed on ${slideList(numbers)} to match`;
-  if (flagged === 0) return base;
-  return `${base} · ${flagged} ${flagged === 1 ? "needs" : "need"} your OK`;
+export function cascadeToast(numbers: number[], flagged: number, worksheet = false): string {
+  const changed =
+    numbers.length > 0
+      ? `Auto changed on ${slideList(numbers)}${worksheet ? " and the worksheet" : ""} to match`
+      : worksheet
+        ? "Auto changed the worksheet to match"
+        : "Nothing on the slides needed changing";
+  if (flagged === 0) return changed;
+  return `${changed} · ${flagged} ${flagged === 1 ? "needs" : "need"} your OK`;
 }
+
+/** A request held while another job is in flight: the latest of its kind. */
+type Deferred =
+  | { kind: "cascade"; changedFactIds: string[] }
+  | { kind: "regenerate"; target: RegenerateTarget; instruction: string | undefined };
 
 export function useProposalJobs(
   lessonId: string,
@@ -54,6 +64,10 @@ export function useProposalJobs(
   const [pending, setPending] = useState<Pending | null>(null);
   const stream = useJobEvents(pending?.jobId);
   const terminal = stream.terminal;
+  // Held requests, by kind, while a job is in flight; read when the terminal event lands.
+  const deferred = useRef<Partial<Record<Deferred["kind"], Deferred>>>({});
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
 
   const readLesson = useCallback((): Lesson | undefined => {
     const data = queryClient.getQueryData(libraryQueries.document(lessonId).queryKey);
@@ -86,6 +100,15 @@ export function useProposalJobs(
 
   const onFactsChanged = useCallback(
     (changedFactIds: string[]) => {
+      if (pendingRef.current) {
+        const held = deferred.current.cascade;
+        const ids = held?.kind === "cascade" ? held.changedFactIds : [];
+        deferred.current.cascade = {
+          kind: "cascade",
+          changedFactIds: [...new Set([...ids, ...changedFactIds])],
+        };
+        return;
+      }
       const lesson = readLesson();
       void enqueue(
         "cascade",
@@ -99,6 +122,10 @@ export function useProposalJobs(
 
   const onRegenerate = useCallback(
     (target: RegenerateTarget, instruction: string | undefined) => {
+      if (pendingRef.current) {
+        deferred.current.regenerate = { kind: "regenerate", target, instruction };
+        return;
+      }
       void enqueue(
         "regenerate",
         () =>
@@ -112,40 +139,74 @@ export function useProposalJobs(
     [enqueue, lessonId],
   );
 
+  /** Send whatever was held while the last job ran: the regenerate first (a teacher's gesture). */
+  const runDeferred = useCallback(() => {
+    const held = deferred.current;
+    deferred.current = {};
+    const next = held.regenerate ?? held.cascade;
+    if (!next) return;
+    if (next.kind === "regenerate") onRegenerate(next.target, next.instruction);
+    else onFactsChanged(next.changedFactIds);
+    // The other kind, if any, waits for this one's terminal event.
+    const other = next.kind === "regenerate" ? held.cascade : undefined;
+    if (other) deferred.current.cascade = other;
+  }, [onRegenerate, onFactsChanged]);
+
   // The stream is the external subscription; applying its result is the side effect (ADR 0012).
   useEffect(() => {
     if (!pending || terminal === null) return;
     setPending(null);
-    if (terminal.type !== "completed") {
-      toast(terminal.type === "failed" ? terminal.error.message : PROPOSALS_FAILED_MESSAGE);
-      return;
-    }
-    const result = terminal.result;
-    if (!result || !isProposalResult(result)) return;
-    const lesson = readLesson();
-    const editor = editorRef.current;
-    if (!lesson || !editor) return;
-    const slideProposals = result.proposals.filter((p) => p.target.slideId !== undefined);
-    const blockProposals = result.proposals.filter((p) => p.target.blockId !== undefined);
-    const touched = slideProposals.length > 0 ? editor.applyProposals(slideProposals) : [];
-    if (blockProposals.length > 0 && worksheetId) {
-      void applyToWorksheet(queryClient, worksheetId, blockProposals, saveWorksheet);
-    }
-    const numbers = touched.map((id) => lesson.slides.findIndex((s) => s.id === id) + 1);
-    const first = touched[0];
-    if (pending.kind === "regenerate") {
-      toast(`Regenerated ${slideList(numbers)}`, {
-        action: { label: "Undo", onClick: () => editor.undo() },
+    pendingRef.current = null;
+    try {
+      if (terminal.type !== "completed") {
+        toast(terminal.type === "failed" ? terminal.error.message : PROPOSALS_FAILED_MESSAGE);
+        return;
+      }
+      const result = terminal.result;
+      if (!result || !isProposalResult(result)) return;
+      const lesson = readLesson();
+      const editor = editorRef.current;
+      if (!lesson || !editor) return;
+      const slideProposals = result.proposals.filter((p) => p.target.slideId !== undefined);
+      const blockProposals = result.proposals.filter((p) => p.target.blockId !== undefined);
+      const touched = slideProposals.length > 0 ? editor.applyProposals(slideProposals) : [];
+      const worksheetChanged = blockProposals.length > 0 && worksheetId !== undefined;
+      if (worksheetChanged) {
+        void applyToWorksheet(queryClient, worksheetId, blockProposals, saveWorksheet);
+      }
+      const numbers = touched.map((id) => lesson.slides.findIndex((s) => s.id === id) + 1);
+      const first = touched[0];
+      // Undo is offered only when the lesson's history gained an entry: a worksheet-only or
+      // flagged-only result has nothing of the teacher's to put back (TEACH-170 for the worksheet).
+      const undo = touched.length > 0 ? { label: "Undo", onClick: () => editor.undo() } : undefined;
+      if (pending.kind === "regenerate") {
+        toast(
+          touched.length > 0
+            ? `Regenerated ${slideList(numbers)}`
+            : "Nothing could be regenerated this time.",
+          undo ? { action: undo } : {},
+        );
+        return;
+      }
+      if (touched.length === 0 && !worksheetChanged && result.flagged.length === 0) return;
+      toast(cascadeToast(numbers, result.flagged.length, worksheetChanged), {
+        duration: 12_000,
+        ...(undo ? { action: undo } : {}),
+        ...(first ? { cancel: { label: "View", onClick: () => editor.goToSlide(first) } } : {}),
       });
-      return;
+    } finally {
+      runDeferred();
     }
-    if (touched.length === 0 && blockProposals.length === 0 && result.flagged.length === 0) return;
-    toast(cascadeToast(numbers, result.flagged.length), {
-      duration: 12_000,
-      action: { label: "Undo", onClick: () => editor.undo() },
-      ...(first ? { cancel: { label: "View", onClick: () => editor.goToSlide(first) } } : {}),
-    });
-  }, [terminal, pending, readLesson, editorRef, worksheetId, queryClient, saveWorksheet]);
+  }, [
+    terminal,
+    pending,
+    readLesson,
+    editorRef,
+    worksheetId,
+    queryClient,
+    saveWorksheet,
+    runDeferred,
+  ]);
 
   const busySlideIds = useMemo(() => new Set(pending?.slideIds ?? []), [pending]);
 
@@ -158,9 +219,10 @@ const isProposalResult = (
   result.job === "lesson.cascade" || result.job === "lesson.regenerate";
 
 /**
- * Block proposals land on the worksheet row through the ordinary whole-document save: the reducer
- * loads on demand (the lesson page never carries the worksheet chunk), the result is written over
- * the cached worksheet and PUT. Not part of the lesson's undo step (Tech debt).
+ * Block proposals land on the worksheet row through the ordinary whole-document save: the
+ * worksheet is read from the cache or fetched (the row may not have loaded yet), the reducer loads
+ * on demand (the lesson page never carries the worksheet chunk), the result is written over the
+ * cached worksheet and PUT. Not part of the lesson's undo step (TEACH-170).
  */
 async function applyToWorksheet(
   queryClient: QueryClient,
@@ -168,8 +230,13 @@ async function applyToWorksheet(
   proposals: Proposal[],
   save: (worksheet: Worksheet) => Promise<void>,
 ): Promise<void> {
-  const current = queryClient.getQueryData(libraryQueries.document(worksheetId).queryKey);
-  if (!current || !isFullDocument(current) || !("blocks" in current)) return;
+  const current = await queryClient
+    .fetchQuery(libraryQueries.document(worksheetId, queryClient))
+    .catch(() => undefined);
+  if (!current || !isFullDocument(current) || !("blocks" in current)) {
+    toast(PROPOSALS_FAILED_MESSAGE);
+    return;
+  }
   const { worksheetReducers } = await import("@tj/editor/worksheet");
   const next = worksheetReducers.applyBlockProposals(current, proposals);
   if (next === current) return;

@@ -45,7 +45,9 @@ test("captures the facts panel, the cascade toast and the regenerate dialog", as
   const objective = panel.getByRole("textbox", { name: "Objective 1" });
   await objective.fill("Describe the water cycle in order");
   await objective.press("Enter");
-  await expect(page.getByText("Auto changed on slide 4 to match")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Auto changed on slide 4 and the worksheet to match")).toBeVisible({
+    timeout: 20_000,
+  });
   await page.waitForTimeout(300);
   await page.screenshot({ path: "/tmp/teach-134-cascade-toast.png" });
 

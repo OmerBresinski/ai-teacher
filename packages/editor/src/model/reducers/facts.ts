@@ -76,8 +76,15 @@ export const updateFact = (lesson: Lesson, factId: FactId, patch: FactPatch): Le
     }
   });
 
-/** The next free id for a kind: one past the highest number in use, never reusing a removed one. */
-export function nextFactId(facts: LessonFacts, kind: FactKind): FactId {
+/**
+ * The next id for a kind: one past the highest number anything in the lesson still points at —
+ * the facts themselves, the outline's `factRefs` and every element's `generatedFrom.factRefs`
+ * (elements keep their refs when a fact is removed). An id nothing references any more may come
+ * round again; that is harmless, since no dangling ref can then be read as pointing at the new
+ * fact. The worksheet's blocks are not scanned (a lesson reducer does not see the worksheet).
+ */
+export function nextFactId(lesson: Lesson, kind: FactKind): FactId {
+  const facts = lesson.facts;
   const prefix = FACT_ID_PREFIX[kind];
   let max = 0;
   const bump = (id: string) => {
@@ -85,16 +92,24 @@ export function nextFactId(facts: LessonFacts, kind: FactKind): FactId {
     const n = Number(id.slice(prefix.length));
     if (Number.isInteger(n) && n > max) max = n;
   };
-  for (const key of Object.values(LIST_OF)) for (const f of facts[key] as AnyFact[]) bump(f.id);
-  // Outline refs may name an id that has since been removed; never reuse it either.
-  for (const entry of facts.outline) for (const ref of entry.factRefs) bump(ref);
+  if (facts) {
+    for (const key of Object.values(LIST_OF)) for (const f of facts[key] as AnyFact[]) bump(f.id);
+    for (const entry of facts.outline) for (const ref of entry.factRefs) bump(ref);
+  }
+  const walk = (elements: readonly SlideElement[]) => {
+    for (const element of elements) {
+      for (const ref of element.generatedFrom?.factRefs ?? []) bump(ref);
+      if (element.type === "group") walk(element.children);
+    }
+  };
+  for (const slide of lesson.slides) walk(slide.elements);
   return `${prefix}${max + 1}`;
 }
 
 /** Append a fact of `kind`; returns the id it minted. A lesson without facts is a no-op. */
 export function addFact(lesson: Lesson, values: FactValues): WithId<"id", FactId | null> {
   if (!lesson.facts) return { lesson, id: null };
-  const id = nextFactId(lesson.facts, values.kind);
+  const id = nextFactId(lesson, values.kind);
   const next = edit(lesson, (draft) => {
     const facts = draft.facts;
     if (!facts) return;

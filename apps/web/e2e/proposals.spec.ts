@@ -55,8 +55,8 @@ test.describe("facts panel and proposals", () => {
 
     // The cascade lands. Slides 2 and 4 derive from o1; the fixture objectives recipe has no
     // element in the position of the seeded one, so the worker skips that target (logged) and the
-    // question slide — a whole-slide proposal — is what changes.
-    const toast = page.getByText("Auto changed on slide 4 to match");
+    // question slide — a whole-slide proposal — is what changes, plus a block on the linked worksheet.
+    const toast = page.getByText("Auto changed on slide 4 and the worksheet to match");
     await expect(toast).toBeVisible({ timeout: 20_000 });
     const rail = page.getByRole("listbox", { name: "Slides" });
     const question = rail.getByRole("option").nth(3);

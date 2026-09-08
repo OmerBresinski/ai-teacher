@@ -35,7 +35,7 @@ describe("facts reducers", () => {
     expect(r.updateFact(next, "x1", { steps: ["Sun.", "Vapour."] })).toBe(next);
   });
 
-  test("addFact mints the next free id per kind and never reuses a removed one", () => {
+  test("addFact mints one past the highest id anything still points at", () => {
     const lesson = generatedLesson();
     const added = r.addFact(lesson, { kind: "objective", text: "Name the three states" });
     expect(added.id).toBe("o3");
@@ -43,11 +43,15 @@ describe("facts reducers", () => {
       id: "o3",
       text: "Name the three states",
     });
-    // Remove o3, then add again: o4, because the outline still refers to nothing ≥ o3 but the
-    // counter is "one past the highest ever seen among facts and outline refs".
+    // Remove o2: the objectives slide's element still derives from it, so o2 is never minted
+    // again while that element exists; the next objective is o4.
     const removed = r.removeFact(added.lesson, "o2");
     const again = r.addFact(removed, { kind: "objective", text: "Another" });
     expect(again.id).toBe("o4");
+    // Remove the brand-new o3 (nothing references it): o3 may come round again — no dangling
+    // ref can point at the newcomer.
+    const noRefs = r.removeFact(added.lesson, "o3");
+    expect(r.addFact(noRefs, { kind: "objective", text: "Fresh" }).id).toBe("o3");
     const vocab = r.addFact(lesson, { kind: "vocabulary", term: "Cloud", definition: "…" });
     expect(vocab.id).toBe("v3");
     const noFacts = generatedLesson();

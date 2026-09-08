@@ -495,6 +495,105 @@ describe("LessonEditorPage", () => {
       expect(screen.getByRole("button", { name: "Redo" })).toBeEnabled();
     });
 
+    it("a second request while a job is in flight is held and sent after the terminal event", async () => {
+      installFakeEventSource();
+      const lesson = seedGenerated();
+      fakeApi.nextProposalJobId = CASCADE_JOB;
+      renderPage();
+      await editObjective();
+      const cascades = () =>
+        fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/cascade");
+      await waitFor(() => expect(cascades()).toHaveLength(1), { timeout: 3_000 });
+      // A second fact commit while the first job runs: held, not posted.
+      const term = screen.getByRole("textbox", { name: "Term 2" });
+      fireEvent.focus(term);
+      fireEvent.change(term, { target: { value: "Condensing" } });
+      fireEvent.blur(term);
+      await wait(1_300);
+      expect(cascades()).toHaveLength(1);
+      // The first job ends; the held cascade goes out with its own ids.
+      const source = FakeEventSource.latest;
+      act(() => {
+        source.open();
+        source.emit(
+          "completed",
+          {
+            ...jobEvent("completed"),
+            jobId: CASCADE_JOB,
+            result: {
+              job: "lesson.cascade",
+              proposals: cascadeProposals(lesson).slice(0, 1),
+              flagged: [],
+            },
+          },
+          "1",
+        );
+      });
+      await waitFor(() => expect(cascades()).toHaveLength(2), { timeout: 3_000 });
+      expect(cascades()[1]?.body).toEqual({ changedFactIds: ["v2"] });
+    });
+
+    it("a worksheet-only result toasts without Undo (the lesson's history gained nothing)", async () => {
+      installFakeEventSource();
+      seedGenerated();
+      const ws = fakeApi.get("fraction-practice");
+      const lessonRow = fakeApi.get("demo-water-cycle");
+      if (!ws || !lessonRow) throw new Error("fixture");
+      lessonRow.body = {
+        ...(lessonRow.body as Lesson),
+        artefacts: { worksheetId: "fraction-practice" },
+      };
+      fakeApi.nextProposalJobId = CASCADE_JOB;
+      renderPage();
+      await editObjective();
+      await waitFor(() => expect(FakeEventSource.instances.length).toBeGreaterThan(0), {
+        timeout: 3_000,
+      });
+      const block = (ws.body as { blocks: { id: string }[] }).blocks[1];
+      if (!block) throw new Error("fixture");
+      act(() => {
+        const source = FakeEventSource.latest;
+        source.open();
+        source.emit(
+          "completed",
+          {
+            ...jobEvent("completed"),
+            jobId: CASCADE_JOB,
+            result: {
+              job: "lesson.cascade",
+              proposals: [
+                {
+                  target: { blockId: block.id },
+                  block: { ...block, id: "b2-new" },
+                  generatedFrom: {
+                    factRefs: ["o1"],
+                    promptVersion: "cascade.v1",
+                    model: "m",
+                    at: "2026-09-08T00:00:00.000Z",
+                  },
+                },
+              ],
+              flagged: [],
+            },
+          },
+          "1",
+        );
+      });
+      await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+      const [message, options] = toastSpy.mock.calls.at(-1) as [string, { action?: unknown }];
+      expect(message).toBe("Auto changed the worksheet to match");
+      expect(options.action).toBeUndefined();
+      // The worksheet row (not in the page's cache before) was fetched, patched and saved.
+      await waitFor(
+        () =>
+          expect(
+            (fakeApi.loadDocument("fraction-practice") as { blocks: { id: string }[] }).blocks[1]
+              ?.id,
+          ).toBe("b2-new"),
+        { timeout: 3_000 },
+      );
+    });
+
     it("row 7: flagged targets are counted in the toast", async () => {
       installFakeEventSource();
       const lesson = seedGenerated();
