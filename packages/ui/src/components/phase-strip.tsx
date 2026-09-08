@@ -173,7 +173,7 @@ function PhaseStrip({
                 }}
                 onPointerCancel={release}
               >
-                <span className="line-clamp-2 w-full text-meta font-medium leading-tight">
+                <span className="line-clamp-2 w-full text-meta font-medium leading-tight hyphens-auto [overflow-wrap:anywhere]">
                   {phase.label}
                 </span>
                 <span className="text-eyebrow text-ink-3 tabular-nums">{phase.minutes} min</span>
