@@ -1,4 +1,5 @@
 // Components (shadcn/ui, adapted — see each file's header comment)
+export { ActionBar, type ActionBarProps } from "./components/action-bar";
 export {
   AlertDialog,
   AlertDialogAction,

@@ -9,6 +9,7 @@ import { Foundations } from "@/components/kit/foundations";
 import { KitFrame, KitHeader } from "@/components/kit/frame";
 import { Motion } from "@/components/kit/motion";
 import { Overlays } from "@/components/kit/overlays";
+import { Steps } from "@/components/kit/steps";
 import { TextEntry } from "@/components/kit/text-entry";
 import { Value } from "@/components/kit/value";
 
@@ -53,6 +54,7 @@ export function KitPage() {
         <Value />
         <Overlays />
         <Feedback />
+        <Steps />
         <Motion />
         <Chrome />
         <Content />

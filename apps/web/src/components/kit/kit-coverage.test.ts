@@ -12,6 +12,7 @@ const kitFiles = [
   "inventory.tsx",
   "motion.tsx",
   "overlays.tsx",
+  "steps.tsx",
   "text-entry.tsx",
   "value.tsx",
 ];
