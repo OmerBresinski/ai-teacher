@@ -33,7 +33,11 @@ export function Steps() {
   const selectedPhase = phases.find((phase) => phase.id === selected);
   const [text, setText] = useState("Describe the arrangement of particles in a solid");
   return (
-    <KitGroup id="steps" title="Steps">
+    <KitGroup
+      id="steps"
+      title="Steps"
+      rule="One question per screen, one primary per bar. Every section reads Suggested until the teacher touches it, then Yours. Phase blocks are sized by their minutes and never narrower than one word."
+    >
       <Specimen
         name="StepRail"
         note="A nav of steps: aria-current on the current one, a tick on completed ones, N of M in text."
