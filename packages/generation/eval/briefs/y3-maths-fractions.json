@@ -1,0 +1,14 @@
+{
+  "brief": {
+    "topic": "Finding a half and a quarter of a set of objects",
+    "classContext": {
+      "sizeBand": "25to30",
+      "needs": {
+        "send": 3,
+        "eal": 2
+      }
+    }
+  },
+  "subject": "Maths",
+  "yearGroup": "Year 3"
+}

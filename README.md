@@ -393,12 +393,13 @@ Every job starts from the composite action [`.github/actions/setup`](.github/act
 | --- | ------------ | ----------------- | -------- |
 | `quality` | `bun run lint`, `typecheck`, `skills:check`, `env:generate --check`, `verify-bootstrap`; commitlint on the PR title | the same five commands; `echo "<title>" \| bunx --bun commitlint` | yes |
 | `tooling-smoke` | `bun run setup --ci && bun run doctor` against docker compose, then `bun run test:scripts` | the same commands (needs Docker) | yes |
-| `test` | `bun run test:db` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test` (migrates, `REQUIRE_TEST_DB=1`); uploads `coverage/` | `bun run test:db` | yes |
+| `test` | `bun run test:db` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test` (migrates, `REQUIRE_TEST_DB=1`), then `bun run eval:schema` (the free half of the F06 eval set, [`docs/eval.md`](docs/eval.md)); uploads `coverage/` | `bun run test:db && bun run eval:schema` | yes |
 | `build` | `bun run build`; `bun run check:bundle-budget --markdown-out bundle-budget.md`; sticky PR comment `<!-- tj-bundle-budget -->` | `bun run build && bun run check:bundle-budget` | yes |
 | `e2e` | Postgres service + `teaching_journey_test`, Playwright Chromium (cached) + `bun run test:e2e`; report uploaded on failure | `bunx playwright install chromium && bun run test:e2e` (needs the compose Postgres) | yes |
 | `audit` | `bun audit --audit-level=high` (native in Bun 1.3.6); when npm's advisory endpoint is down it falls back to `osv-scanner` on `bun.lock`, failing only on high/critical; `actions/dependency-review-action` with `fail-on-severity: high` on PRs | `bun audit --audit-level=high` (or `docker run --rm -v "$PWD:/src" -w /src ghcr.io/google/osv-scanner:v2.5.1 --lockfile=bun.lock`) | yes |
 | `secrets` | `gitleaks/gitleaks-action` over the full history (`fetch-depth: 0`) | `gitleaks git --redact .` (or `gitleaks protect --staged` via the pre-commit hook) | yes |
 | `docker-build-smoke` | `docker build .` -- skipped until a `Dockerfile` exists | `docker build .` | yes (once present) |
+| `Eval` (`eval.yml`) | `bun run eval:paid` on Bedrock — only on `workflow_dispatch` or the `run-eval` PR label; uploads `eval-<sha>` (and `eval-master-latest` from `master`), posts the totals + delta comment `<!-- tj-eval-results -->` ([`docs/eval.md`](docs/eval.md)) | `AWS_BEARER_TOKEN_BEDROCK=… bun run eval:paid` (spends up to `AI_EVAL_RUN_COST_CAP_USD`) | no |
 | `detect` | probes for `apps/web/package.json` and `Dockerfile` so the optional jobs above can be skipped (`hashFiles()` is not allowed in job-level `if`) | -- | -- |
 
 ### `test` and `e2e` are blocking

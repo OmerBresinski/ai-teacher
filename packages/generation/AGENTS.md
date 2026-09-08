@@ -48,4 +48,13 @@ src/
                   `AI_FAKE_SCRIPT=1` for the fixture fake); src/mastra/index.ts re-exports it
 ```
 
+```
+eval/            the F06 eval set (ADR 0025 §23, docs/eval.md): briefs/*.json, briefs.ts, run-brief
+                 (one brief through the pipeline with an in-memory persist), scorers (Mastra
+                 `createScorer` from `@mastra/core/evals`, function steps only), schema.ts
+                 (`bun run eval:schema`, CI's free half), run.ts (`bun run eval:paid`, Bedrock,
+                 label-gated — never run it with a real key from a dev shell unless you mean to
+                 spend), delta.ts (the PR comment). `eval/results/` is gitignored.
+```
+
 Tests: `bun test` in this directory; network-free, no `AWS_BEARER_TOKEN_BEDROCK` needed.
