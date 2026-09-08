@@ -134,34 +134,52 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
 }
 
 /**
- * What an earlier attempt left after its skeleton persist: the objectives slide and the
- * skeleton-only facts, turned back into the `PlanSkeleton` the facts call takes (ordinal
- * references, the inverse of `assignFactIds` for objectives). Absent — and Plan runs from the
- * top — when the lesson has no facts, the facts already carry a later list, the outline is too
- * short, or slide two is not an objectives slide.
+ * What an earlier attempt of *this* prompt version left after its skeleton persist: the
+ * objectives slide and the skeleton-only facts, turned back into the `PlanSkeleton` the facts
+ * call takes (the exact inverse of `assignFactIds` with `EMPTY_PLAN_FACTS`). Strict on purpose —
+ * Plan runs from the top unless every one of these holds, so a teacher-edited or older lesson is
+ * never mistaken for a checkpoint:
+ *   - exactly two slides, `title` then `objectives`, every element of slide two stamped by the
+ *     current `plan-skeleton` version and authored by the model;
+ *   - facts with objectives and an outline of at least two entries, every other list empty;
+ *   - every outline reference resolves to an objective (anything else is not skeleton output);
+ *   - the rebuilt skeleton passes `PlanSkeletonSchema`.
  */
 function existingSkeleton(
   lesson: Lesson,
 ): { skeleton: PlanSkeleton; facts: LessonFacts; objectivesSlide: Slide } | undefined {
   const facts = lesson.facts;
   const objectivesSlide = lesson.slides[1];
-  if (!facts || !objectivesSlide || objectivesSlide.kind !== "objectives") return undefined;
-  if (facts.vocabulary.length + facts.workedExamples.length + facts.questions.length > 0) {
+  if (!facts || lesson.slides.length !== 2 || objectivesSlide?.kind !== "objectives") {
     return undefined;
   }
-  if (facts.objectives.length === 0 || facts.outline.length < 2) return undefined;
+  const stamped = objectivesSlide.elements.every(
+    (el) =>
+      el.authoredBy === "ai" && el.generatedFrom?.promptVersion === planSkeletonPrompt.version,
+  );
+  if (!stamped) return undefined;
+  const laterLists =
+    facts.vocabulary.length +
+    facts.workedExamples.length +
+    facts.questions.length +
+    facts.misconceptions.length;
+  if (laterLists > 0 || facts.objectives.length === 0 || facts.outline.length < 2) {
+    return undefined;
+  }
   const objectiveIndex = new Map(facts.objectives.map((o, i) => [o.id, i]));
-  const outline = facts.outline.map((entry) => ({
-    kind: entry.kind,
-    minutes: entry.minutes,
-    factRefs: entry.factRefs.flatMap((ref) => {
-      const index = objectiveIndex.get(ref);
-      return index === undefined ? [] : [{ type: "objective" as const, index }];
-    }),
-  }));
+  if (!facts.outline.every((entry) => entry.factRefs.every((ref) => objectiveIndex.has(ref)))) {
+    return undefined;
+  }
   const skeleton = PlanSkeletonSchema.safeParse({
     learningObjectives: facts.objectives.map((o) => ({ text: o.text })),
-    outline,
+    outline: facts.outline.map((entry) => ({
+      kind: entry.kind,
+      minutes: entry.minutes,
+      factRefs: entry.factRefs.map((ref) => ({
+        type: "objective" as const,
+        index: objectiveIndex.get(ref) as number,
+      })),
+    })),
   });
   return skeleton.success ? { skeleton: skeleton.data, facts, objectivesSlide } : undefined;
 }

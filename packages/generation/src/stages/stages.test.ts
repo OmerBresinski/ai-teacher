@@ -171,6 +171,61 @@ describe("plan", () => {
     expect(state.lesson.facts).toEqual(fullFacts());
   });
 
+  test("a lesson that only looks like a skeleton checkpoint is planned from the top", async () => {
+    const first = recordingDeps(createFakeAi({ script: planScript(), usage }));
+    await plan(initialState(), first);
+    const afterSkeleton = first.persisted[1]?.lesson;
+    if (!afterSkeleton?.facts) throw new Error("no skeleton persist");
+    const objectives = afterSkeleton.slides[1] as (typeof afterSkeleton.slides)[number];
+
+    const variants: Record<string, typeof afterSkeleton> = {
+      // An older prompt version wrote slide two: its objectives may not match today's schema.
+      olderPrompt: {
+        ...afterSkeleton,
+        slides: [
+          afterSkeleton.slides[0] as (typeof afterSkeleton.slides)[number],
+          {
+            ...objectives,
+            elements: objectives.elements.map((el) => ({
+              ...el,
+              generatedFrom: el.generatedFrom && {
+                ...el.generatedFrom,
+                promptVersion: "plan-skeleton.v1",
+              },
+            })),
+          },
+        ],
+      },
+      // The teacher touched slide two.
+      teacherEdit: {
+        ...afterSkeleton,
+        slides: [
+          afterSkeleton.slides[0] as (typeof afterSkeleton.slides)[number],
+          {
+            ...objectives,
+            elements: objectives.elements.map((el) => ({ ...el, authoredBy: "teacher" as const })),
+          },
+        ],
+      },
+      // A third slide already exists.
+      threeSlides: { ...afterSkeleton, slides: [...afterSkeleton.slides, objectives] },
+      // The facts carry a list the skeleton call never writes.
+      hasMisconceptions: {
+        ...afterSkeleton,
+        facts: {
+          ...afterSkeleton.facts,
+          misconceptions: [{ id: "m1", text: "Heat is a substance." }],
+        },
+      },
+    };
+    for (const [name, lesson] of Object.entries(variants)) {
+      const ai = createFakeAi({ script: planScript(), usage });
+      const state = await plan(initialState(lesson), recordingDeps(ai));
+      expect(ai.calls, name).toHaveLength(2);
+      expect(state.lesson.generation?.stage, name).toBe("planned");
+    }
+  });
+
   test("a budget stop on the facts call keeps the skeleton facts, records the finding, reaches planned", async () => {
     const ai = createFakeAi({ script: planScript(), usage });
     // One call's worth of standard-class tokens at list price: the second is refused.
