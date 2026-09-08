@@ -156,8 +156,17 @@ export type ImageElement = ElementBase & {
   /** A URL by contract (ADR 0021 §5); data URLs are accepted while there is no upload endpoint. */
   src: string;
   alt?: string;
+  /**
+   * "contain" shows the whole picture; "cover" fills the box. A crop implies Fill: whenever `crop`,
+   * `focal` or `imageTransform` is present the picture renders as cover whatever this says, and
+   * choosing Fit clears all three.
+   */
   fit: "cover" | "contain";
-  /** Fractional crop rect (0..1) applied before fit. */
+  /**
+   * The window the box shows, as fractions (0..1) of the covering picture (TEACH-153). Written
+   * for the box shape of the moment; a box that changed shape since (a plain resize writes only
+   * x/y/w/h) re-derives it at the same zoom round `focal` when it renders or enters crop mode.
+   */
   crop?: { x: number; y: number; w: number; h: number };
   /**
    * The point of interest as fractions of the picture (0..1, default centre). A re-cover after the
