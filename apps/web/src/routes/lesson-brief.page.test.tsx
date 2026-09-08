@@ -266,9 +266,18 @@ describe("LessonBriefPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Accept" }));
     expect(screen.getByTestId("question-priorConfidence-done")).toHaveTextContent("Revisiting");
     expect(createButton()).toHaveFocus();
+    // Reopening the first question keeps the second on screen with its settled answer.
     fireEvent.click(screen.getAllByRole("button", { name: "Change" })[0] as HTMLElement);
     expect(screen.getByRole("radio", { name: "Explain" })).toBeChecked();
+    expect(screen.getByTestId("question-priorConfidence-done")).toHaveTextContent("Revisiting");
+    expect(screen.queryByRole("radio", { name: "Revisiting" })).toBeNull();
+    // Re-settling it changes nothing else.
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    expect(screen.getByTestId("question-objectiveVerb-done")).toHaveTextContent("Explain");
+    expect(screen.getByTestId("question-priorConfidence-done")).toHaveTextContent("Revisiting");
+    expect(createButton()).toHaveFocus();
 
+    // What is submitted is what is on screen.
     fireEvent.click(createButton());
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(lastPost()?.body).toEqual({
