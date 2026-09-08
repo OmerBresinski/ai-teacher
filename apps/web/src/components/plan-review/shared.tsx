@@ -1,10 +1,8 @@
 import { Button } from "@tj/ui";
 import { Plus } from "lucide-react";
 import { type ReactNode, type RefObject, useEffect, useState } from "react";
-import type { PlanReviewState } from "@/lib/plan-review";
-import { isYours } from "@/lib/plan-review";
 
-/** Focus the step's first control on arrival (each step remounts on a step change). */
+/** Focus a control once, on mount. */
 export function useArrivalFocus(ref: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     const element = ref.current;
@@ -18,15 +16,12 @@ export function useArrivalFocus(ref: RefObject<HTMLElement | null>): void {
   }, [ref]);
 }
 
-export const markOf = (state: PlanReviewState, key: string): "suggested" | "yours" =>
-  isYours(state, key) ? "yours" : "suggested";
-
-/** The arrive animation's longest run: the 450ms rise after the sixth row's stagger. */
+/** The arrive animation's longest run: the 450ms rise after the sixth item's stagger. */
 const ARRIVE_SETTLED_MS = 450 + 5 * 40 + 50;
 
 /**
- * Whether the rows have finished arriving. Moving a row in the DOM (a reorder) restarts its CSS
- * animation, which would hide it for the stagger delay again; once settled the class comes off.
+ * Whether the items have finished arriving. Moving an item in the DOM (a reorder) restarts its
+ * CSS animation, which would hide it for the stagger delay again; once settled the class comes off.
  */
 export function useArriveSettled(): boolean {
   const [settled, setSettled] = useState(false);
@@ -37,7 +32,7 @@ export function useArriveSettled(): boolean {
   return settled;
 }
 
-/** The kit's arrive animation with the per-row stagger, capped at six rows. */
+/** The kit's arrive animation with the per-item stagger, capped at six. */
 export const arrive = (index: number, settled = false) =>
   settled
     ? { className: undefined, style: undefined }
