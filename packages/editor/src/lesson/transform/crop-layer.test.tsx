@@ -44,6 +44,19 @@ function enterCrop(container: HTMLElement) {
   expect(container.querySelector("[data-crop-layer]")).not.toBeNull();
 }
 
+describe("CropLayer cursor", () => {
+  test("the pan surface shows the crop cursor; the slide and handles keep their own", () => {
+    const { container } = renderEditor(imageLesson("cover"));
+    enterCrop(container);
+    const picture = container.querySelector<HTMLElement>("[data-crop-picture]");
+    expect(picture?.style.cursor.startsWith("url(")).toBe(true);
+    expect(picture?.style.cursor.endsWith("move")).toBe(true);
+    expect(container.querySelector<HTMLElement>("[data-crop-layer]")?.style.cursor).toBe("");
+    const handle = container.querySelector<HTMLElement>("[data-handle]");
+    expect(handle?.style.cursor.startsWith("url(")).toBe(false);
+  });
+});
+
 describe("CropLayer commits once", () => {
   test("zoom then nudge, then Enter: one write carrying the final draft, one undo step", () => {
     const { container, client, read } = renderEditor(imageLesson("cover"));

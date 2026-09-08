@@ -42,6 +42,7 @@ import {
   useSessionUi,
 } from "../use-editor-session";
 import {
+  CROP_CURSOR,
   DRAG_START_PX,
   FRAME_STROKE,
   HANDLE_DIR,
@@ -56,7 +57,8 @@ import { SelectionFrame } from "./SelectionFrame";
  * Crop mode on the slide (TEACH-153). Mounted by `SelectionLayer` in place of the selection frame
  * while the session's `crop` names the selected image. The whole picture is drawn at its natural
  * extent over the slide, dimmed outside the element box; the element box stays where it is. The
- * eight handles trim the box against the picture, a drag inside pans the picture, the wheel (and a
+ * eight handles trim the box against the picture, a drag inside pans the picture (under a crop
+ * cursor; the handles keep their resize cursors and the slide its default), the wheel (and a
  * trackpad pinch) zooms about the pointer, a click sets the focal point. The keyboard has the
  * same reach: arrows nudge, + and - zoom, R turns, H and V flip, 0 resets, Enter or Escape finish.
  *
@@ -476,7 +478,7 @@ export function CropLayer({
             overflow: "hidden",
             pointerEvents: "auto",
             touchAction: "none",
-            cursor: dragging && gesture.current?.kind === "pan" ? "grabbing" : "grab",
+            cursor: CROP_CURSOR,
             background: "rgb(27 26 23 / 0.08)",
           }}
         >
