@@ -23,9 +23,9 @@ import { BarButton, OpacityControl, useElementWrites, useThemePalette } from "./
 
 /** The border widths on offer, slide points. 0 is "None". */
 const BORDER_WIDTHS: readonly number[] = [0, 1, 2, 3, 4, 6, 8, 12];
-/** Corner radii, slide points. Only rectangles have corners to round. */
+/** Corner radii, slide points. Rectangles and speech bubbles have corners to round. */
 const CORNER_RADII: readonly number[] = [0, 4, 8, 12, 16, 24];
-const CORNERED: ReadonlySet<ShapeElement["shape"]> = new Set(["rect", "rounded"]);
+const CORNERED: ReadonlySet<ShapeElement["shape"]> = new Set(["rect", "rounded", "speech"]);
 
 /**
  * Fill, border, border width, corners (rectangles only), opacity, label, and once the shape has a
@@ -144,7 +144,7 @@ export const ShapeToolbar = memo(function ShapeToolbar({
       </Popover>
 
       <PanelSeparator />
-      <MoreDrawer slideId={slideId} elements={[element]} />
+      <MoreDrawer slideId={slideId} elements={[element]} theme={theme} />
     </Panel>
   );
 });

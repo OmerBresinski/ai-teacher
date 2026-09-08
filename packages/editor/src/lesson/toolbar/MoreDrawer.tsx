@@ -5,6 +5,7 @@ import {
   SLIDE_W,
   type SlideElement,
   type TextElement,
+  type Theme,
 } from "@tj/domain/documents";
 import { Button, IconButton, Input, Popover, PopoverContent, PopoverTrigger, Switch } from "@tj/ui";
 import {
@@ -21,6 +22,7 @@ import { type ReactNode, useId } from "react";
 import { NumberInput } from "../../kit/NumberInput";
 import { PanelRow } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
+import { shapeRadius } from "../../slide/elements/ShapeView";
 import { useProposals } from "../proposals-context";
 import { useSessionActions } from "../use-editor-session";
 import { ICON, ICON_SM, OpacityField, opacityOf, PanelSection, useElementWrites } from "./shared";
@@ -36,9 +38,12 @@ export function MoreDrawer({
   slideId,
   elements,
   extra,
+  theme,
 }: {
   slideId: string;
   elements: SlideElement[];
+  /** The slide's theme, so a shape's readout matches the Shape bar (theme radius when unset). */
+  theme?: Theme;
   /** The toolbar's own rows (line height, credit, …), shown first under "Options". */
   extra?: ReactNode;
 }) {
@@ -178,7 +183,7 @@ export function MoreDrawer({
               <PanelRow label="Corner radius" htmlFor={`${rowId}-radius`}>
                 <NumberInput
                   id={`${rowId}-radius`}
-                  value={radiusOf(one)}
+                  value={radiusOf(one, theme)}
                   onChange={(r) => scrub(() => setRadius(update, one, r))}
                   min={0}
                   max={200}
@@ -243,7 +248,8 @@ export function MoreDrawer({
   );
 }
 
-function radiusOf(el: SlideElement): number {
+function radiusOf(el: SlideElement, theme?: Theme): number {
+  if (el.type === "shape" && theme) return shapeRadius(el, theme);
   if (el.type === "image" || el.type === "shape") return el.radius ?? 0;
   if (el.type === "text") return el.style.radius ?? 0;
   return 0;
