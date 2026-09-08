@@ -8,6 +8,7 @@ import {
   cropIsStale,
   currentCrop,
   displayedAspect,
+  draftFlip,
   flip,
   focalAt,
   normaliseTransform,
@@ -206,6 +207,47 @@ describe("transform composition", () => {
     expect(flip({ flipH: true }, "v")).toEqual({ flipH: true, flipV: true });
   });
 
+  test("a flip reverses the straighten tilt, on either axis; twice is the identity", () => {
+    expect(flip({ straighten: 8 }, "h")).toEqual({ straighten: -8, flipH: true });
+    expect(flip({ straighten: 8 }, "v")).toEqual({ straighten: -8, flipV: true });
+    expect(flip(flip({ straighten: 8, rotate: 90 }, "h"), "h")).toEqual({
+      straighten: 8,
+      rotate: 90,
+      flipH: false,
+    });
+    expect(flip({ rotate: 180 }, "h").straighten).toBeUndefined();
+    // A quarter turn after a flip keeps the reversed tilt and still wraps.
+    expect(rotateQuarter(flip({ straighten: 8, rotate: 270 }, "h"))).toEqual({
+      straighten: -8,
+      rotate: 0,
+      flipH: true,
+    });
+  });
+
+  test("draftFlip mirrors the window and focal point with the tilt; twice is the identity", () => {
+    const near = (got: object | undefined, want: Record<string, number>) => {
+      for (const [k, v] of Object.entries(want))
+        close((got as Record<string, number>)[k] ?? NaN, v);
+    };
+    const d = {
+      imageTransform: { straighten: 8 },
+      crop: { x: 0.1, y: 0.2, w: 0.5, h: 0.6 },
+      focal: { x: 0.3, y: 0.7 },
+    };
+    const h = draftFlip(d, box, "h");
+    expect(h.imageTransform).toEqual({ straighten: -8, flipH: true });
+    near(h.crop, { x: 0.4, y: 0.2, w: 0.5, h: 0.6 });
+    near(h.focal, { x: 0.7, y: 0.7 });
+    const v = draftFlip(d, box, "v");
+    expect(v.imageTransform).toEqual({ straighten: -8, flipV: true });
+    near(v.crop, { x: 0.1, y: 0.2, w: 0.5, h: 0.6 });
+    near(v.focal, { x: 0.3, y: 0.3 });
+    const back = draftFlip({ ...d, ...h }, box, "h");
+    expect(back.imageTransform).toEqual({ straighten: 8, flipH: false });
+    near(back.crop, d.crop);
+    near(back.focal, d.focal);
+  });
+
   test("normaliseTransform drops defaults and clamps straighten", () => {
     expect(normaliseTransform({ rotate: 0, flipH: false, straighten: 0 })).toBeUndefined();
     expect(normaliseTransform({ straighten: 80, flipV: true })).toEqual({
@@ -283,6 +325,16 @@ describe("pictureStyle", () => {
     expect(s.img.width).toBe("75%");
     expect(s.img.height).toBe("133.3333%");
     expect(s.img.transform).toContain("rotate(90deg)");
+  });
+
+  test("the flipped state of a tilted picture renders as its mirror image: the tilt reversed", () => {
+    const flipped = flip({ straighten: 8 }, "h");
+    const s = pictureStyle(box, undefined, flipped, undefined);
+    const cover = Math.round(straightenCover(8, 4 / 3) * 10000) / 10000;
+    expect(s.img.transform).toBe(`translate(-50%, -50%) rotate(-8deg) scale(${-cover}, ${cover})`);
+    expect(
+      pictureStyle(box, undefined, flip({ straighten: 8 }, "v"), undefined).img.transform,
+    ).toBe(`translate(-50%, -50%) rotate(-8deg) scale(${cover}, ${-cover})`);
   });
 
   test("straighten tilts outermost with a cover scale; flips are negative scales", () => {
