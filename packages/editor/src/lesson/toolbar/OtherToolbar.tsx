@@ -6,15 +6,22 @@ import type {
   Theme,
   TimerElement,
 } from "@tj/domain/documents";
-import { Input, Switch } from "@tj/ui";
+import { IconButton, Input, Switch, Tooltip } from "@tj/ui";
+import { Ungroup } from "lucide-react";
 import { memo, useId } from "react";
 import { ColorPicker } from "../../kit/Color";
 import { NumberInput } from "../../kit/NumberInput";
 import { Panel, PanelLabel, PanelSeparator } from "../../kit/Panel";
+import * as reducers from "../../model/reducers";
+import { hint } from "../keys";
+import { useSessionActions } from "../use-editor-session";
 import { MoreDrawer } from "./MoreDrawer";
-import { OpacityControl, useElementWrites, useThemePalette } from "./shared";
+import { ICON, OpacityControl, useElementWrites, useThemePalette } from "./shared";
 
-/** Everything else, one control apiece (TeachDeck `OtherToolbar`): icon, embed, timer, table. */
+/**
+ * Everything else, one control apiece (TeachDeck `OtherToolbar`): icon, embed, timer, table, and a
+ * group's Ungroup (TEACH-175: the key binding existed, no control showed it).
+ */
 export const OtherToolbar = memo(function OtherToolbar({
   element,
   theme,
@@ -24,12 +31,30 @@ export const OtherToolbar = memo(function OtherToolbar({
   theme: Theme;
   slideId: string;
 }) {
-  const { update, scrub, end } = useElementWrites(slideId);
+  const { history, update, scrub, end } = useElementWrites(slideId);
+  const { select } = useSessionActions();
   const palette = useThemePalette(theme);
   const id = useId();
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Element" data-other-toolbar>
+      {element.type === "group" ? (
+        <>
+          <Tooltip label="Ungroup" shortcut={hint("$mod+Shift+g")}>
+            <IconButton
+              label="Ungroup"
+              noTooltip
+              onClick={() => {
+                const made = history.dispatch(reducers.ungroup, slideId, element.id);
+                if (made?.ids.length) select(made.ids);
+              }}
+            >
+              <Ungroup aria-hidden {...ICON} />
+            </IconButton>
+          </Tooltip>
+          <PanelSeparator />
+        </>
+      ) : null}
       {element.type === "icon" ? (
         <>
           <ColorPicker
