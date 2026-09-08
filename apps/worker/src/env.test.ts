@@ -20,7 +20,39 @@ describe("worker env", () => {
       AI_LESSON_COST_CAP_USD: 0.5,
       AI_LESSON_TOKEN_CAP: 300_000,
       MASTRA_TELEMETRY_DISABLED: undefined,
+      AI_FAKE_SCRIPT: undefined,
+      AI_FAKE_DELAY_MS: 0,
     });
+  });
+
+  test("the scripted fake is accepted in test and refused in production (ADR 0025 §22)", () => {
+    const env = parseEnv({
+      DATABASE_URL: DB,
+      NODE_ENV: "test",
+      AI_FAKE_SCRIPT: "pipeline",
+      AI_FAKE_DELAY_MS: "300",
+    });
+    expect(env.AI_FAKE_SCRIPT).toBe("pipeline");
+    expect(env.AI_FAKE_DELAY_MS).toBe(300);
+    const exit = spyOn(process, "exit").mockImplementation((() => {
+      throw new Error("exit");
+    }) as never);
+    const error = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(() =>
+        parseEnv({
+          DATABASE_URL: DB,
+          NODE_ENV: "production",
+          AWS_BEARER_TOKEN_BEDROCK: "k",
+          AI_FAKE_SCRIPT: "pipeline",
+        }),
+      ).toThrow("exit");
+      expect(error).toHaveBeenCalledWith(expect.stringContaining("AI_FAKE_SCRIPT: refused"));
+      expect(() => parseEnv({ DATABASE_URL: DB, AI_FAKE_SCRIPT: "other" })).toThrow("exit");
+    } finally {
+      exit.mockRestore();
+      error.mockRestore();
+    }
   });
 
   test("coerces the budget caps and refuses a non-numeric cap (ADR 0025 §15)", () => {

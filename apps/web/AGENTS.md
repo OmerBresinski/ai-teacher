@@ -72,6 +72,12 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   editor, one skeleton rail row per `facts.outline` entry still to come, axe in the three themes —
   the route needs a locked seed so it is not in `a11y`) and the brief → `/l/:id` flow;
   `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation.
+  `generation` runs a lesson end to end over the fake
+  worker (`playwright.config.ts` sets `AI_FAKE_SCRIPT=pipeline` and `AI_FAKE_DELAY_MS=250` on the
+  e2e worker, so `POST /lessons` really generates — banner, slides arriving before the terminal
+  event, the editor taking over in place, the residual footer, the Worksheet link, Stop). Screenshot
+  specs: `teach-<n>-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`; `teach-133` is the generating
+  view and the finished editor with its residuals).
 - Client storage keys: `tj:sidebar-collapsed`, `tj:library:sort`, `tj:library:view`, and
   `tj:last-shell` are the stable browser preference/session contracts for the library shell;
   `tj:navigator` (full / compact rail) is the editor's.

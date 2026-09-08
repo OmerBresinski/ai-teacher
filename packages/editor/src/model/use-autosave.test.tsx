@@ -9,6 +9,7 @@ import {
   SaveRefusedError,
   useAutosave,
   useSaveState,
+  useSettledDocument,
 } from "./use-autosave";
 
 /*
@@ -78,6 +79,27 @@ describe("useAutosave", () => {
     });
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0]?.[0]).toBe(second);
+  });
+
+  test("the settled document is published when the debounce fires, not per change", async () => {
+    const onSave = mock((_l: Lesson) => Promise.resolve());
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 20 });
+      return { autosave, settled: useSettledDocument(autosave) };
+    });
+    expect(result.current.settled).toBeNull();
+    const first = newLesson("One");
+    const second = newLesson("Two");
+    act(() => result.current.autosave.onChange(first));
+    expect(result.current.settled).toBeNull();
+    act(() => result.current.autosave.onChange(second));
+    await waitFor(() => expect(result.current.settled).toBe(second));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    // A flush publishes what it writes, too.
+    const third = newLesson("Three");
+    act(() => result.current.autosave.onChange(third));
+    await act(() => result.current.autosave.flush());
+    expect(result.current.settled).toBe(third);
   });
 
   test("row 12: a rejected write says Not saved, toasts once, and keeps the unload guard", async () => {

@@ -19,6 +19,18 @@ export * from "./finding";
 /** How far the outline may drift from the brief's duration before `timing` warns: 10 %. */
 export const TIMING_TOLERANCE_PERCENT = 10;
 
+/**
+ * The `check` names `checkLesson` produces. Anything else on `Lesson.generation.findings` is a
+ * model check (or the budget stop) and is shown as stored; these four are always recomputed.
+ */
+export const SCHEMA_CHECKS: ReadonlySet<string> = new Set([
+  "question-answer",
+  "objective-coverage",
+  "vocabulary-in-facts",
+  "timing",
+]);
+export const isSchemaCheck = (check: string): boolean => SCHEMA_CHECKS.has(check);
+
 export function checkLesson(lesson: Lesson, worksheet?: Worksheet): Finding[] {
   if (!lesson.facts) return [];
   return [

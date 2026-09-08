@@ -184,6 +184,9 @@ export class FakeApi {
     if (segments[0] === "lessons" && segments.length === 1 && method === "POST") {
       return this.createLesson(body);
     }
+    if (segments[0] === "jobs" && segments[2] === "cancel" && method === "POST") {
+      return json(202, { status: "cancelled" });
+    }
     return error(404, "not_found", `fake api: no route for ${method} ${path}`);
   }
 

@@ -1,71 +1,132 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Lesson } from "@tj/domain/documents";
 import { LessonViewer } from "@tj/editor/present";
-import { EmptyState, Spinner } from "@tj/ui";
-import { Sparkles } from "lucide-react";
+import { Button, EmptyState, Spinner } from "@tj/ui";
+import { Sparkles, Square } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
+import { api } from "@/lib/api";
 import { pendingSlides } from "@/lib/pending-slides";
-import { queryKeys } from "@/lib/query";
+import { apiErrorFromResponse, queryKeys } from "@/lib/query";
 
 /**
  * `/l/$lessonId` while a `lesson.plan` job holds the generating lock (ADR 0024 §18, ADR 0025 §7):
  * a banner with the job's progress over SSE and the lesson read-only underneath. Every `progress`
- * event that names a new `documentUpdatedAt` refetches the body, so slides appear as the worker
- * writes them; the terminal event refetches the row state, which clears the lock and hands the
- * page back to the editor. TEACH-133 replaces this with the full generating view.
+ * event that names a new `documentUpdatedAt` refetches the body — debounced by
+ * `REFETCH_DEBOUNCE_MS` to match the worker's emitter — so slides appear as they are written; the
+ * terminal event refetches the row state, which clears the lock and hands the page back to the
+ * editor in place. `failed` and `cancelled` keep the partial slides visible under their message
+ * with a way back to the library; Stop cancels the job through `POST /jobs/:id/cancel`.
  */
+
+/** The worker coalesces persist → progress at this cadence; a burst of events is one refetch. */
+export const REFETCH_DEBOUNCE_MS = 250;
+
+export const GENERATION_FAILED_MESSAGE = "Generation stopped before the lesson was finished.";
+export const GENERATION_CANCELLED_MESSAGE = "Generation cancelled.";
+
 export function GeneratingLesson({
   lesson,
   jobId,
   leading,
+  onBack,
+  onStopped,
 }: {
   lesson: Lesson;
   jobId: string;
   leading?: ReactNode;
+  onBack: () => void;
+  /** The job ended without completing; the page keeps this view for `jobId` once the lock clears. */
+  onStopped: (jobId: string) => void;
 }) {
   const queryClient = useQueryClient();
   const stream = useJobEvents(jobId);
   const latest = stream.events.at(-1)?.event;
   const message = latest?.type === "progress" ? latest.progress.message : undefined;
-  const documentUpdatedAt =
-    latest?.type === "progress" ? latest.progress.documentUpdatedAt : undefined;
+  // The last `documentUpdatedAt` the stream carried, whichever event it rode in on: a `progress`
+  // without one (a message-only tick) must not reset the value and re-trigger a refetch.
+  const documentUpdatedAt = lastDocumentUpdatedAt(stream.events);
   const terminal = stream.terminal;
 
   // The stream is the external subscription; these invalidations are its side effects on the
-  // cache (ADR 0012), not derived state.
+  // cache (ADR 0012), not derived state. The body refetch waits `REFETCH_DEBOUNCE_MS` so a burst
+  // of persists is one request; the terminal refetch goes at once.
   useEffect(() => {
     if (documentUpdatedAt === undefined) return;
-    void queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocument(lesson.id) });
+    const timer = window.setTimeout(
+      () => void queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocument(lesson.id) }),
+      REFETCH_DEBOUNCE_MS,
+    );
+    return () => window.clearTimeout(timer);
   }, [documentUpdatedAt, lesson.id, queryClient]);
+  // The terminal event refetches the row state too: the released lock is what hands the page to
+  // the editor. A `failed` / `cancelled` outcome is reported to the page first, so it keeps this
+  // view — the message, the partial slides, the way back — rather than opening the editor on the
+  // unlocked row; the next visit reads the row afresh and edits what was written.
   useEffect(() => {
     if (terminal === null) return;
+    if (terminal.type !== "completed") onStopped(jobId);
     void Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocument(lesson.id) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocumentMeta(lesson.id) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments }),
     ]);
-  }, [terminal, lesson.id, queryClient]);
+  }, [terminal, lesson.id, jobId, queryClient, onStopped]);
 
-  const failed = terminal !== null && terminal.type !== "completed";
+  const cancel = useMutation({
+    mutationFn: async () => {
+      const res = await api.jobs[":id"].cancel.$post({ param: { id: jobId } });
+      if (res.status !== 202) throw await apiErrorFromResponse(res);
+      return res.json();
+    },
+  });
+
+  const stopped = terminal !== null && terminal.type !== "completed";
+  const stoppedMessage =
+    terminal?.type === "failed"
+      ? `${GENERATION_FAILED_MESSAGE} ${terminal.error.message}`.trim()
+      : GENERATION_CANCELLED_MESSAGE;
 
   return (
     <div className="flex min-h-dvh flex-col">
       <output
         aria-live="polite"
         data-testid="generating-banner"
+        data-state={stopped ? terminal.type : "running"}
         className="flex flex-wrap items-center gap-3 border-b border-border bg-card px-6 py-3 text-body"
       >
-        {failed ? null : <Spinner size={16} />}
+        {stopped ? null : <Spinner size={16} />}
         <span className="font-medium">
-          {failed
-            ? "Generation stopped before the lesson was finished."
+          {stopped
+            ? stoppedMessage
             : `Generating your lesson…${stream.percent === null ? "" : ` ${stream.percent}%`}`}
         </span>
-        {message && !failed ? <span className="text-ink-3">{message}</span> : null}
-        {stream.percent !== null && !failed ? (
-          <progress className="ml-auto h-1.5 w-40" max={100} value={stream.percent} />
-        ) : null}
+        {message && !stopped ? <span className="text-ink-3">{message}</span> : null}
+        <span className="ml-auto flex items-center gap-3">
+          {stream.percent !== null && !stopped ? (
+            <progress className="h-1.5 w-40" max={100} value={stream.percent} />
+          ) : null}
+          {cancel.isError ? (
+            <span role="alert" className="text-destructive text-meta">
+              Could not stop the job.
+            </span>
+          ) : null}
+          {stopped ? (
+            <Button variant="outline" size="sm" onClick={onBack}>
+              Back to library
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={cancel.isPending || cancel.isSuccess}
+              onClick={() => cancel.mutate()}
+            >
+              <Square aria-hidden size={14} strokeWidth={1.5} />
+              Stop
+            </Button>
+          )}
+        </span>
       </output>
       {lesson.slides.length > 0 ? (
         <LessonViewer
@@ -74,18 +135,32 @@ export function GeneratingLesson({
           onPresent={() => undefined}
           onDuplicate={() => Promise.resolve()}
           // A stopped run promises no more slides; a live one shows a skeleton per slide to come.
-          pending={failed ? [] : pendingSlides(lesson)}
+          pending={stopped ? [] : pendingSlides(lesson)}
         />
       ) : (
         <main className="flex flex-1 items-center justify-center px-6 py-12">
           <EmptyState
             icon={<Sparkles strokeWidth={1.5} />}
             title={lesson.title}
-            body="The first slides appear here as they are written."
+            body={
+              stopped
+                ? "No slides were written before it stopped."
+                : "The first slides appear here as they are written."
+            }
             action={leading}
           />
         </main>
       )}
     </div>
   );
+}
+
+function lastDocumentUpdatedAt(events: ReturnType<typeof useJobEvents>["events"]) {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i]?.event;
+    if (event?.type === "progress" && event.progress.documentUpdatedAt !== undefined) {
+      return event.progress.documentUpdatedAt;
+    }
+  }
+  return undefined;
 }

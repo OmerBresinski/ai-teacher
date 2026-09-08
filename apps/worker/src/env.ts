@@ -28,6 +28,9 @@ export const EnvSchema = z
     AI_LESSON_COST_CAP_USD: z.coerce.number().nonnegative().default(0.5),
     AI_LESSON_TOKEN_CAP: z.coerce.number().int().positive().default(300_000),
     MASTRA_TELEMETRY_DISABLED: optionalString,
+    // --- test-only: the scripted fake in place of Bedrock (ADR 0025 §22) --------------------
+    AI_FAKE_SCRIPT: z.enum(["pipeline"]).optional(),
+    AI_FAKE_DELAY_MS: z.coerce.number().int().nonnegative().default(0),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.AWS_BEARER_TOKEN_BEDROCK) {
@@ -35,6 +38,13 @@ export const EnvSchema = z
         code: "custom",
         path: ["AWS_BEARER_TOKEN_BEDROCK"],
         message: "required in production (ADR 0018)",
+      });
+    }
+    if (env.NODE_ENV === "production" && env.AI_FAKE_SCRIPT !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["AI_FAKE_SCRIPT"],
+        message: "refused in production: the fake never answers a real teacher",
       });
     }
   });

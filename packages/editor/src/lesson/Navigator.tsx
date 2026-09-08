@@ -1,5 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
+  type Finding,
   type Id,
   SLIDE_W,
   type Slide,
@@ -17,7 +18,6 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   IconButton,
-  Tooltip,
 } from "@tj/ui";
 import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -30,6 +30,8 @@ import { SlideView } from "../slide/SlideView";
 import { AddSlidePicker } from "./AddSlidePicker";
 import { useHistory, useLesson } from "./document-context";
 import { hint } from "./keys";
+import { useResidualFindings } from "./residual-findings";
+import { SlideBadge } from "./SlideBadge";
 import { addSlideAfter, duplicateSlide } from "./slide-commands";
 import { useActiveSlideId, useSessionActions, useSessionUi } from "./use-editor-session";
 
@@ -72,6 +74,7 @@ export function Navigator() {
   const activeSlideId = useActiveSlideId();
   const { clipboardSlide } = useSessionUi();
   const theme = useMemo(() => getTheme(lesson.themeId), [lesson.themeId]);
+  const { bySlide: residuals } = useResidualFindings();
 
   const [mode, setMode] = useState<Mode>(readMode);
   const toggleMode = () => {
@@ -396,6 +399,7 @@ export function Navigator() {
                   active={slide.id === activeId}
                   selected={selected.has(slide.id)}
                   dragging={!!draggingIds?.has(slide.id)}
+                  residuals={residuals.get(slide.id)}
                   onPointerDown={onRowPointerDown}
                   onPointerMove={onRowPointerMove}
                   onPointerUp={onRowPointerUp}
@@ -518,6 +522,7 @@ const NavigatorRow = memo(function NavigatorRow({
   active,
   selected,
   dragging,
+  residuals,
   ...handlers
 }: {
   slide: Slide;
@@ -527,6 +532,8 @@ const NavigatorRow = memo(function NavigatorRow({
   active: boolean;
   selected: boolean;
   dragging: boolean;
+  /** Residual findings pointing at this slide (ADR 0025 §12); `undefined` when there are none. */
+  residuals?: Finding[];
   onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -543,6 +550,10 @@ const NavigatorRow = memo(function NavigatorRow({
     lint.overlaps.length === 0 && lint.overflow.length === 0 && lint.laneOverflow.length > 0
       ? "There is no room under the answers for a reason. Tidy will not move the cards up."
       : "Something on this slide overlaps or does not fit. Use Tidy slide.";
+  // The residual dot: one per slide whatever the count, in the worst severity, its label the
+  // messages joined so the tooltip says everything the footer list would.
+  const residualTone = residuals?.some((f) => f.severity === "error") ? "error" : "warning";
+  const residualLabel = residuals?.map((f) => f.message).join(" ") ?? "";
 
   return (
     <div
@@ -601,19 +612,17 @@ const NavigatorRow = memo(function NavigatorRow({
         <SlideScaler zoom={geometry.thumbW / SLIDE_W}>
           <SlideView slide={slide} theme={theme} mode="thumb" />
         </SlideScaler>
-        {hasNotes || hasSteps || needsTidy ? (
+        {hasNotes || hasSteps || needsTidy || residuals ? (
           <span className="absolute top-1 right-1 flex gap-1">
+            {residuals ? (
+              <SlideBadge
+                label={residualLabel}
+                tone={residualTone}
+                testAttribute="data-residual-badge"
+              />
+            ) : null}
             {needsTidy ? (
-              <Tooltip label={warning} side="right">
-                <span
-                  role="img"
-                  aria-label={warning}
-                  data-lint-badge
-                  // biome-ignore lint/a11y/noNoninteractiveTabindex: the dot's sentence is the only place the teacher is told why the slide is flagged; focus opens its tooltip
-                  tabIndex={0}
-                  className="block size-2 rounded-full bg-warning outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                />
-              </Tooltip>
+              <SlideBadge label={warning} tone="warning" testAttribute="data-lint-badge" />
             ) : null}
             {hasNotes ? (
               <span aria-hidden className="block size-2 rounded-full bg-[#2E9465]" />

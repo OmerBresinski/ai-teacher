@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { Lesson } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { installFakeApi } from "@/test/fake-api";
@@ -23,6 +24,8 @@ const toastSpy = mock();
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
 const { LessonEditorPage } = await import("./lesson-editor.page");
+const { GENERATION_CANCELLED_MESSAGE, GENERATION_FAILED_MESSAGE, REFETCH_DEBOUNCE_MS } =
+  await import("@/components/generating-lesson");
 const { RELOAD_LABEL } = await import("@/hooks/use-save-with-conflict-toast");
 
 const JOB_ID = "01a06a15-1849-7000-ac6a-c07e27fe308b";
@@ -46,14 +49,24 @@ Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const utils = render(
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <LessonEditorPage />
       </TooltipProvider>
     </QueryClientProvider>,
   );
+  return { ...utils, queryClient };
 }
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const DOCUMENT_KEY = ["library", "document", "demo-water-cycle"];
+/** Every `invalidateQueries` on the working copy (not the meta or the lists). */
+const documentInvalidations = (spy: ReturnType<typeof mock>) =>
+  spy.mock.calls.filter(
+    (call) =>
+      JSON.stringify((call[0] as { queryKey: unknown }).queryKey) === JSON.stringify(DOCUMENT_KEY),
+  ).length;
 
 describe("LessonEditorPage", () => {
   beforeEach(async () => {
@@ -233,5 +246,157 @@ describe("LessonEditorPage", () => {
     await waitFor(() => expect(skeletons()).toHaveLength(0));
     expect(thumbs()).toHaveLength(3);
     expect(screen.getByText("3 slides")).toBeVisible();
+  });
+
+  it("row 1: three progress events with distinct documentUpdatedAt refetch the body 3 + 1 times and the editor mounts after the unlock", async () => {
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    const { queryClient } = renderPage();
+    await screen.findByTestId("generating-banner");
+    const spy = mock(queryClient.invalidateQueries.bind(queryClient));
+    queryClient.invalidateQueries = spy as typeof queryClient.invalidateQueries;
+    const source = FakeEventSource.latest;
+    act(() => source.open());
+    act(() => source.emit("started", jobEvent("started"), "1"));
+    for (const [i, at] of [
+      "2026-09-04T10:00:01.000Z",
+      "2026-09-04T10:00:02.000Z",
+      "2026-09-04T10:00:03.000Z",
+    ].entries()) {
+      act(() =>
+        source.emit(
+          "progress",
+          jobEvent("progress", {
+            progress: { percent: 20 * (i + 1), message: `Slide ${i + 1}`, documentUpdatedAt: at },
+          }),
+          String(i + 2),
+        ),
+      );
+      // The emitter's cadence: each stamp gets its own debounce window.
+      await act(() => wait(REFETCH_DEBOUNCE_MS + 50));
+    }
+    expect(documentInvalidations(spy)).toBe(3);
+
+    fakeApi.setGenerating("demo-water-cycle", null);
+    act(() => source.emit("completed", jobEvent("completed"), "5"));
+    expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+    expect(documentInvalidations(spy)).toBe(4);
+  });
+
+  it("row 2: two progress events with the same documentUpdatedAt are one refetch", async () => {
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    const { queryClient } = renderPage();
+    await screen.findByTestId("generating-banner");
+    const spy = mock(queryClient.invalidateQueries.bind(queryClient));
+    queryClient.invalidateQueries = spy as typeof queryClient.invalidateQueries;
+    const source = FakeEventSource.latest;
+    act(() => source.open());
+    const at = "2026-09-04T10:00:01.000Z";
+    act(() =>
+      source.emit(
+        "progress",
+        jobEvent("progress", { progress: { percent: 10, message: "a", documentUpdatedAt: at } }),
+        "1",
+      ),
+    );
+    await act(() => wait(REFETCH_DEBOUNCE_MS + 50));
+    act(() =>
+      source.emit(
+        "progress",
+        jobEvent("progress", { progress: { percent: 20, message: "b", documentUpdatedAt: at } }),
+        "2",
+      ),
+    );
+    // A message-only tick does not count as a new document either.
+    act(() =>
+      source.emit(
+        "progress",
+        jobEvent("progress", { progress: { percent: 30, message: "c" } }),
+        "3",
+      ),
+    );
+    await act(() => wait(REFETCH_DEBOUNCE_MS + 50));
+    expect(documentInvalidations(spy)).toBe(1);
+  });
+
+  it("row 3: a failed job shows the error and Back to library, keeps the slides and never mounts the editor", async () => {
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    renderPage();
+    const banner = await screen.findByTestId("generating-banner");
+    const source = FakeEventSource.latest;
+    act(() => source.open());
+    // The api releases the lock on the terminal event; the view must not hand over regardless.
+    fakeApi.setGenerating("demo-water-cycle", null);
+    act(() =>
+      source.emit(
+        "failed",
+        jobEvent("failed", { error: { message: "The model timed out.", retryable: true } }),
+        "1",
+      ),
+    );
+    expect(banner).toHaveTextContent(GENERATION_FAILED_MESSAGE);
+    expect(banner).toHaveTextContent("The model timed out.");
+    expect(banner).toHaveAttribute("data-state", "failed");
+    fireEvent.click(within(banner).getByRole("button", { name: "Back to library" }));
+    expect(navigate).toHaveBeenCalledWith({ to: "/" });
+    // The partial deck is still on screen, read-only: the viewer's slide list, no rename.
+    expect(document.querySelector("[data-slide-frame], [data-slide-id]")).not.toBeNull();
+    await wait(50);
+    expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
+  });
+
+  it("a cancelled job says so", async () => {
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    renderPage();
+    const banner = await screen.findByTestId("generating-banner");
+    const source = FakeEventSource.latest;
+    act(() => source.open());
+    act(() => source.emit("cancelled", jobEvent("cancelled"), "1"));
+    expect(banner).toHaveTextContent(GENERATION_CANCELLED_MESSAGE);
+    expect(within(banner).getByRole("button", { name: "Back to library" })).toBeVisible();
+  });
+
+  it("row 4: Stop posts one cancel for the job", async () => {
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    renderPage();
+    const banner = await screen.findByTestId("generating-banner");
+    fireEvent.click(within(banner).getByRole("button", { name: "Stop" }));
+    await waitFor(() =>
+      expect(
+        fakeApi.requests.filter((r) => r.method === "POST" && r.path === `/jobs/${JOB_ID}/cancel`),
+      ).toHaveLength(1),
+    );
+    // Sent once: the button is off while the request runs and after it succeeds.
+    await waitFor(() =>
+      expect(within(banner).getByRole("button", { name: "Stop" })).toBeDisabled(),
+    );
+    fireEvent.click(within(banner).getByRole("button", { name: "Stop" }));
+    expect(
+      fakeApi.requests.filter((r) => r.method === "POST" && r.path === `/jobs/${JOB_ID}/cancel`),
+    ).toHaveLength(1);
+  });
+
+  it("a lesson with a worksheet artefact fetches it and Worksheet opens /w/:id", async () => {
+    const lesson = fakeApi.loadDocument("demo-water-cycle") as Lesson;
+    const row = fakeApi.get("demo-water-cycle");
+    if (row) row.body = { ...lesson, artefacts: { worksheetId: "fraction-practice" } };
+    renderPage();
+    await screen.findByRole("heading", { level: 1, name: "The water cycle" });
+    fireEvent.click(await screen.findByRole("button", { name: "Worksheet" }));
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/w/$worksheetId",
+      params: { worksheetId: "fraction-practice" },
+    });
+    await waitFor(() =>
+      expect(
+        fakeApi.requests.some(
+          (r) => r.method === "GET" && r.path === "/documents/fraction-practice",
+        ),
+      ).toBe(true),
+    );
   });
 });

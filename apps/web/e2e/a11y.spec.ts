@@ -4,8 +4,10 @@
  * are reported. The theme is set through `localStorage` before the pre-paint script runs
  * (`addInitScript` precedes every page script), so each scan sees the final colours.
  */
+import { generatedLesson } from "@tj/domain/documents/fixtures";
+import { demoWorkspace } from "@tj/editor/starter";
 import { expectNoSeriousA11yViolations } from "./a11y";
-import { expect, type SeededPaths, test } from "./fixtures";
+import { E2E_API_URL, E2E_WEB_URL, expect, type SeededPaths, test } from "./fixtures";
 
 test.describe("accessibility (axe)", () => {
   test("/sign-in has no serious or critical violations", async ({ page }) => {
@@ -66,6 +68,47 @@ test.describe("accessibility (axe)", () => {
       }
     });
   }
+
+  // TEACH-133: the generating view (a locked lesson under its banner) and the editor's residual
+  // popover, in each theme. The lock is a job that never ran, dated now so it is not stale.
+  test("the generating view and the residual popover are clean in every theme", async ({
+    signedInPage: { page },
+  }) => {
+    const jobId = "01a06a15-1849-7000-ac6a-c07e27fe308b";
+    const water = demoWorkspace(new Date()).find((d) => d.key === "demo-water-cycle");
+    if (!water) throw new Error("fixture missing");
+    const body = { ...water.body, updatedAt: new Date().toISOString() };
+    const generated = generatedLesson();
+    const res = await page.request.post(`${E2E_API_URL}/__test/seed-library`, {
+      headers: { origin: E2E_WEB_URL },
+      data: {
+        documents: [
+          { ...water, key: "locked", body, generatingJobId: jobId },
+          { key: "generated", kind: "lesson", body: { ...generated, updatedAt: body.updatedAt } },
+        ],
+      },
+    });
+    expect(res.ok(), await res.text()).toBe(true);
+    const { ids } = (await res.json()) as { ids: Record<string, string> };
+    for (const theme of THEMES) {
+      await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
+      await page.goto(`/l/${ids.locked}`);
+      await expect(page.getByTestId("generating-banner")).toBeVisible();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      await expectNoSeriousA11yViolations(page, `generating view (${theme})`);
+
+      await page.goto(`/l/${ids.generated}`);
+      await page.getByRole("button", { name: /thing(s)? to check$/ }).click();
+      const popover = page.locator('[data-slot="popover-content"]');
+      await expect(popover.getByRole("list").filter({ hasText: "too abstract" })).toBeVisible();
+      // axe reads contrast through the arrival fade: wait for it to finish.
+      await popover.evaluate((el) =>
+        Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+      );
+      await expectNoSeriousA11yViolations(page, `residual popover (${theme})`);
+      await page.keyboard.press("Escape");
+    }
+  });
 
   test("open overlays are clean: create dialogs, card menu, series row menu", async ({
     signedInPage: { page, paths },
