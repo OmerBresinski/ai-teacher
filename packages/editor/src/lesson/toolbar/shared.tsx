@@ -1,10 +1,12 @@
 import type { SlideElement, Theme } from "@tj/domain/documents";
 import {
+  Button,
   cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuTrigger,
+  Input,
   Label,
   Popover,
   PopoverContent,
@@ -13,7 +15,7 @@ import {
   Tooltip,
 } from "@tj/ui";
 import { ChevronDown } from "lucide-react";
-import { type ComponentProps, type ReactNode, useId, useMemo } from "react";
+import { type ComponentProps, type ReactNode, useId, useMemo, useState } from "react";
 import * as reducers from "../../model/reducers";
 import type { ElementPatch } from "../../model/reducers/elements";
 import { useEditSession } from "../../model/use-edit-session";
@@ -171,6 +173,119 @@ export function OpacityGlyph() {
 }
 
 /** The slider with its readout, shared by the bar popover and the More drawer. */
+export type SliderRowProps = {
+  id?: string;
+  /** Names the slider and, as "<label> value", the field. */
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  /** What Reset writes; the button only shows while `value` differs from it. */
+  defaultValue: number;
+  /** Formats the slider's bubble and `aria-valuetext`. */
+  format?: (value: number) => string;
+  /** Called with each new value, from the slider, the field and Reset. */
+  onChange: (value: number) => void;
+  /** The gesture or the typed entry is over: the caller closes its undo step. */
+  onCommit: () => void;
+  /** Trailing content after Reset, such as a "Mixed" note. */
+  children?: ReactNode;
+  className?: string;
+};
+
+/**
+ * A slider with two ways back to an exact number, which a thumb makes hard to hit: a numeric
+ * field (commits on Enter and on blur, clamped to the range and rounded to the step; Escape
+ * throws the draft away) and a quiet Reset that writes `defaultValue`, shown only while the value
+ * is off it. The slider grows; the field and Reset keep their width. Every write goes through the
+ * same `onChange` and `onCommit`, so a typed number is one undo step like a drag.
+ */
+export function SliderRow({
+  id,
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  defaultValue,
+  format,
+  onChange,
+  onCommit,
+  children,
+  className,
+}: SliderRowProps) {
+  // `null` while not typing: the field shows the live value.
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const commitDraft = () => {
+    if (draft === null) return;
+    setDraft(null);
+    const parsed = Number(draft.trim());
+    if (!Number.isFinite(parsed)) return;
+    const next = Math.min(max, Math.max(min, Math.round(parsed / step) * step));
+    onChange(next);
+    onCommit();
+  };
+
+  return (
+    <div className={cn("flex items-center gap-2", className)}>
+      {/* TODO(TEACH-150): pass `resetTo={defaultValue}` once the kit Slider grows that prop. */}
+      <Slider
+        id={id}
+        aria-label={label}
+        min={min}
+        max={max}
+        step={step}
+        value={[value]}
+        onValueChange={([v]) => {
+          if (v !== undefined) onChange(v);
+        }}
+        onValueCommit={onCommit}
+        valueLabel={format}
+        className="flex-1"
+      />
+      <Input
+        aria-label={`${label} value`}
+        inputMode="numeric"
+        pattern="-?[0-9]*"
+        value={draft ?? String(value)}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commitDraft}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commitDraft();
+          } else if (e.key === "Escape" && draft !== null) {
+            e.preventDefault();
+            e.stopPropagation();
+            setDraft(null);
+          }
+        }}
+        className="w-12 shrink-0 px-2 text-right text-meta tabular-nums"
+      />
+      {value !== defaultValue ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          data-slider-reset
+          className="shrink-0"
+          onClick={() => {
+            setDraft(null);
+            onChange(defaultValue);
+            onCommit();
+          }}
+        >
+          Reset
+        </Button>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
+/** The opacity row: 0 to 100 percent, Reset to 100. */
 export function OpacityField({
   id,
   value,
@@ -189,30 +304,25 @@ export function OpacityField({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <Slider
-        id={id}
-        aria-label="Opacity"
-        min={0}
-        max={100}
-        step={1}
-        value={[value]}
-        onValueChange={([v]) => {
-          if (v !== undefined) onChange(v);
-        }}
-        onValueCommit={onCommit}
-        valueLabel={(v) => `${v}%`}
-        className="flex-1"
-      />
-      <output htmlFor={id} className="w-10 shrink-0 text-right text-meta tabular-nums">
-        {value}%
-      </output>
+    <SliderRow
+      id={id}
+      label="Opacity"
+      min={0}
+      max={100}
+      step={1}
+      defaultValue={100}
+      value={value}
+      format={(v) => `${v}%`}
+      onChange={onChange}
+      onCommit={onCommit}
+      className={className}
+    >
       {mixed ? (
         <span data-opacity-mixed className="shrink-0 text-ink-3 text-meta">
           Mixed
         </span>
       ) : null}
-    </div>
+    </SliderRow>
   );
 }
 
@@ -245,7 +355,7 @@ export function OpacityControl({
           </BarButton>
         </PopoverTrigger>
       </Tooltip>
-      <PopoverContent align="start" className="w-64 p-3" aria-label="Opacity">
+      <PopoverContent align="start" className="w-72 p-3" aria-label="Opacity">
         <div className="flex items-center gap-3">
           <Label htmlFor={id} className="text-ink-3 text-meta">
             Opacity
