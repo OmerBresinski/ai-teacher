@@ -77,6 +77,7 @@ export {
 } from "./components/list-surface";
 export { MinutesStepper, type MinutesStepperProps } from "./components/minutes-stepper";
 export { PageTitle, type PageTitleProps } from "./components/page-title";
+export { PhaseStrip, type PhaseStripItem, type PhaseStripProps } from "./components/phase-strip";
 export {
   Popover,
   PopoverAnchor,
