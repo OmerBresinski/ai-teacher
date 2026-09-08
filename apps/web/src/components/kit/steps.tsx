@@ -3,6 +3,7 @@ import {
   Button,
   EditableListRow,
   MinutesStepper,
+  PhaseStrip,
   Progress,
   QuestionShell,
   StepRail,
@@ -21,6 +22,15 @@ const STEPS = [
 
 export function Steps() {
   const [minutes, setMinutes] = useState(8);
+  const [phases, setPhases] = useState([
+    { id: "s1", label: "Title", minutes: 2 },
+    { id: "s2", label: "Objectives", minutes: 3 },
+    { id: "s3", label: "Starter", minutes: 5 },
+    { id: "s4", label: "Explain", minutes: 12 },
+    { id: "s5", label: "Exit ticket", minutes: 6 },
+  ]);
+  const [selected, setSelected] = useState<string | null>("s4");
+  const selectedPhase = phases.find((phase) => phase.id === selected);
   const [text, setText] = useState("Describe the arrangement of particles in a solid");
   return (
     <KitGroup id="steps" title="Steps">
@@ -113,6 +123,43 @@ export function Steps() {
         <Variant label="Disabled">
           <MinutesStepper value={5} onChange={() => {}} label="Minutes, disabled" disabled />
         </Variant>
+      </Specimen>
+      <Specimen
+        name="PhaseStrip"
+        note="The shape of a lesson: blocks sized by minutes. Click or Enter opens the detail, Escape closes it, Alt+Arrow or a drag moves a block."
+      >
+        <PhaseStrip
+          className="max-w-xl"
+          phases={phases}
+          selectedId={selected}
+          onSelect={setSelected}
+          onMove={(from, to) =>
+            setPhases((current) => {
+              const next = [...current];
+              const [item] = next.splice(from, 1);
+              if (item) next.splice(to, 0, item);
+              return next;
+            })
+          }
+          detail={
+            selectedPhase ? (
+              <>
+                <span className="text-body font-medium">{selectedPhase.label}</span>
+                <MinutesStepper
+                  value={selectedPhase.minutes}
+                  onChange={(value) =>
+                    setPhases((current) =>
+                      current.map((phase) =>
+                        phase.id === selectedPhase.id ? { ...phase, minutes: value } : phase,
+                      ),
+                    )
+                  }
+                  label={`Minutes for ${selectedPhase.label}`}
+                />
+              </>
+            ) : null
+          }
+        />
       </Specimen>
       <Specimen
         name="ActionBar"
