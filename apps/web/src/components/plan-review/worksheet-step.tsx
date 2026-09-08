@@ -21,7 +21,7 @@ import {
   TIER_LABELS,
   TIERS,
 } from "@/lib/plan-review";
-import { AddRowButton, arrive, markOf, useArrivalFocus } from "./shared";
+import { AddRowButton, arrive, markOf, useArrivalFocus, useArriveSettled } from "./shared";
 
 export function WorksheetStep({
   state,
@@ -32,11 +32,11 @@ export function WorksheetStep({
 }) {
   const first = useRef<HTMLButtonElement>(null);
   useArrivalFocus(first);
+  const settled = useArriveSettled();
   const id = useId();
   const { worksheet } = state;
   return (
     <QuestionShell
-      eyebrow="4 of 5"
       question="Do you want a worksheet to go with it?"
       help="The worksheet is what they take away. Choose the blocks and which tiers to write."
     >
@@ -52,7 +52,7 @@ export function WorksheetStep({
         </Label>
         <span
           className={cn(
-            "text-eyebrow font-semibold uppercase tracking-wide",
+            "text-eyebrow font-medium",
             markOf(state, "worksheet:enabled") === "yours" ? "text-brand-text" : "text-ink-3",
           )}
         >
@@ -100,7 +100,7 @@ export function WorksheetStep({
                 }}
                 onRemove={() => dispatch({ type: "removeBlock", index: i })}
                 removeLabel={`Remove block ${i + 1}`}
-                {...arrive(i)}
+                {...arrive(i, settled)}
               />
             ))}
           </ol>
@@ -124,7 +124,7 @@ export function WorksheetStep({
           <fieldset className="flex flex-wrap items-center gap-2">
             <legend className="mb-2 text-meta text-ink-2">
               Tiers to write
-              <span className="ml-2 text-eyebrow font-semibold uppercase tracking-wide text-ink-3">
+              <span className="ml-2 text-eyebrow font-medium text-ink-3">
                 {markOf(state, "worksheet:tiers")}
               </span>
             </legend>
@@ -139,7 +139,7 @@ export function WorksheetStep({
                   className={cn(
                     "inline-flex h-8 items-center rounded-full border px-3 text-body font-medium outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-safe:transition-colors",
                     on
-                      ? "border-brand-tint-line bg-brand-tint text-brand-text"
+                      ? "border-brand-tint-line bg-brand-quiet text-brand-text"
                       : "border-border bg-card text-ink-3 hover:bg-accent hover:text-foreground",
                   )}
                 >

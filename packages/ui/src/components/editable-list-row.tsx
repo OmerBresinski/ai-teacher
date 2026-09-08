@@ -83,7 +83,7 @@ function EditableListRow({
         <span
           aria-hidden
           className={cn(
-            "flex h-8 shrink-0 items-center text-eyebrow font-semibold uppercase tracking-wide",
+            "flex h-8 shrink-0 items-center text-eyebrow font-medium",
             mark === "yours" ? "text-brand-text" : "text-ink-3",
           )}
         >

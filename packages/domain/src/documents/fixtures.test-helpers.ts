@@ -473,7 +473,7 @@ export const plannedLesson = (): Lesson => ({
       kind: "title",
       elements: [
         generatedText("t1", "States of matter", [], { style: { preset: "title" } }),
-        generatedText("t2", "Year 7 · Science", [], { style: { preset: "subtitle" } }),
+        generatedText("t2", "Year 7 · Science", [], { style: { preset: "subtitle" }, y: 150 }),
       ],
     },
     {
@@ -485,16 +485,19 @@ export const plannedLesson = (): Lesson => ({
           "ob-1",
           "Describe the arrangement and movement of particles in solids, liquids and gases",
           ["o1"],
+          { y: 140 },
         ),
         generatedText(
           "ob-2",
           "Explain melting, boiling, condensing and freezing as changes of state",
           ["o2"],
+          { y: 230 },
         ),
         generatedText(
           "ob-3",
           "Use the particle model to predict what happens when a substance is heated or cooled",
           ["o3"],
+          { y: 320 },
         ),
       ],
     },
