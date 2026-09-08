@@ -139,27 +139,66 @@ export function nudgeCrop(crop: Crop, dx: number, dy: number): Crop {
 }
 
 /**
- * The box changed shape (Fill, a resize, a layout recipe): the same zoom round the same focal
- * point, re-derived for the new box so the subject stays in view.
+ * The zoom a window encodes on its own. A window made for a box touches the picture box on the
+ * axis the cover was tight on, so that side of the crop is exactly 1/zoom; the other is smaller.
+ * Unlike `zoomOf` this needs no box, so it reads a crop stored under a box that has since changed.
+ */
+export function windowZoom(crop: Crop): number {
+  return clamp(1 / Math.max(crop.w, crop.h, EPS), ZOOM_MIN, ZOOM_MAX);
+}
+
+/**
+ * A stored window no longer matches its box: the picture box it implies (box over crop) is not
+ * the picture's own aspect. A plain corner resize writes only the box, so this is how a crop goes
+ * stale; anything that renders or edits the window re-derives it first.
+ */
+export function cropIsStale(crop: Crop, box: Size, aspect: number): boolean {
+  const c = clampCrop(crop);
+  return Math.abs(box.w / c.w / (box.h / c.h) - aspect) > 1e-3;
+}
+
+/**
+ * The box changed shape (a resize, a layout recipe): the same zoom round the same focal point,
+ * re-derived for the current box so the subject stays in view and the picture keeps its aspect.
  */
 export function rederiveCrop(
   crop: Crop,
   focal: Focal | undefined,
-  oldBox: Size,
-  newBox: Size,
+  box: Size,
   aspect: number,
 ): Crop {
-  return cropFor(newBox, aspect, zoomOf(crop, oldBox, aspect), focal ?? CENTRE);
+  return cropFor(box, aspect, windowZoom(crop), focal ?? CENTRE);
 }
 
-/** The crop an untouched picture enters crop mode with: cover at zoom 1 round the focal point. */
-export function seedCrop(
+/**
+ * The window the element shows now, and so the one crop mode opens on: the stored crop when it
+ * still fits the box, re-derived when the box changed shape since, else cover at zoom 1 round the
+ * focal point for an untouched picture. `pictureStyle` and `seedCrop` both go through this, so
+ * the slide before Crop and the mode after it show the same picture.
+ */
+export function currentCrop(
   element: Pick<ImageElement, "w" | "h" | "crop" | "focal" | "imageTransform">,
   natural: Size,
 ): Crop {
+  const box = { w: element.w, h: element.h };
   const aspect = displayedAspect(natural, element.imageTransform);
-  if (element.crop) return clampCrop(element.crop);
-  return cropFor({ w: element.w, h: element.h }, aspect, ZOOM_MIN, element.focal ?? CENTRE);
+  if (!element.crop) return cropFor(box, aspect, ZOOM_MIN, element.focal ?? CENTRE);
+  const c = clampCrop(element.crop);
+  return cropIsStale(c, box, aspect) ? rederiveCrop(c, element.focal, box, aspect) : c;
+}
+
+/** The crop a picture enters crop mode with: what the slide shows (see `currentCrop`). */
+export const seedCrop = currentCrop;
+
+/**
+ * A crop implies Fill: a window over the picture only makes sense when the picture covers the
+ * box, so any adjustment renders as cover whatever `fit` says (a document edited elsewhere may
+ * carry both). The toolbar's Fit clears the adjustments in the same write.
+ */
+export function renderedFit(
+  element: Pick<ImageElement, "fit" | "crop" | "focal" | "imageTransform">,
+): ImageElement["fit"] {
+  return element.crop || element.focal || element.imageTransform ? "cover" : element.fit;
 }
 
 /* ---------------- slide-space rects (the crop layer) ---------------- */
@@ -213,14 +252,22 @@ export type PictureStyle = {
 /**
  * One inner transform for `ImageView` and the crop layer. `box` is the element's size in slide
  * units, needed only because a quarter-turned bitmap takes the wrapper's height as its width.
+ * `natural`, the bitmap's own size once the view has measured it, lets a crop stored under another
+ * box shape be re-derived for this one (`currentCrop`), so the wrapper keeps the picture's aspect
+ * and nothing is stretched; until it is measured the view falls back on `object-fit: cover`.
  */
 export function pictureStyle(
   box: Size,
   crop: Crop | undefined,
   t: ImageTransform | undefined,
   focal: Focal | undefined,
+  natural?: Size,
 ): PictureStyle {
-  const c = crop ? clampCrop(crop) : FULL_CROP;
+  const c = crop
+    ? natural
+      ? currentCrop({ w: box.w, h: box.h, crop, focal, imageTransform: t }, natural)
+      : clampCrop(crop)
+    : FULL_CROP;
   const quarter = (t?.rotate ?? 0) % 180 === 90;
   const wrapperW = box.w / c.w;
   const wrapperH = box.h / c.h;
@@ -257,11 +304,13 @@ const pct = (f: number) => `${round(f * 100)}%`;
 /**
  * What crop mode edits before it commits: the element's three adjustment fields, the trimmed box
  * (the handles), the bitmap's natural size once measured, and whether Reset was the last word.
+ * `fit` is set when the mode opened on a Fit picture: a crop implies Fill, so the commit writes it.
  */
 export type CropDraft = {
   crop?: Crop;
   focal?: Focal;
   imageTransform?: ImageTransform;
+  fit?: "cover";
   box?: Rect;
   natural?: Size;
   reset?: boolean;
