@@ -222,6 +222,36 @@ describe("SelectionLayer", () => {
     expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
   });
 
+  test("row 7c: the marquee selects what it touches, outlines the candidates live, and misses what it does not", async () => {
+    const { container, read } = renderEditor();
+    const [a, b] = read().slides[0]?.elements ?? [];
+    if (!a || !b) throw new Error("seed");
+    const candidates = () =>
+      Array.from(container.querySelectorAll("[data-marquee-candidate]")).map((n) =>
+        n.getAttribute("data-marquee-candidate"),
+      );
+
+    // (50, 50) to (250, 250): the first shape (x 100..300) is half inside, the second (400..600)
+    // is clear of it. Mid-drag the first is outlined and nothing is selected yet.
+    fireEvent.pointerDown(catcher(container), pointer(50, 50));
+    fireEvent.pointerMove(window, pointer(250, 250));
+    await act(nextFrame);
+    expect(candidates()).toEqual([a.id]);
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(0);
+    fireEvent.pointerUp(window, pointer(250, 250));
+    expect(candidates()).toEqual([]);
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+    expect(screen.getByRole("status", { name: "" }).textContent).toContain("Shape selected");
+
+    // A marquee in the gap between them touches neither, and clears.
+    fireEvent.pointerDown(catcher(container), pointer(320, 50));
+    fireEvent.pointerMove(window, pointer(380, 250));
+    await act(nextFrame);
+    expect(candidates()).toEqual([]);
+    fireEvent.pointerUp(window, pointer(380, 250));
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(0);
+  });
+
   test("row 8: ↑×5 nudges by 5 in one undo step; Shift+↑ nudges by 10", async () => {
     const { container, read } = renderEditor();
     fireEvent.pointerDown(catcher(container), pointer(150, 150));
