@@ -23,7 +23,7 @@ import { SlideView } from "../slide/SlideView";
 import { type CanvasMenuState, ElementContextMenu } from "./canvas/ElementContextMenu";
 import { SlideActions } from "./canvas/SlideActions";
 import { SlideTabs } from "./canvas/SlideTabs";
-import { useImageDrop } from "./canvas/use-image-drop";
+import { pointOnSlide, useImageDrop } from "./canvas/use-image-drop";
 import { useLesson } from "./document-context";
 import { isInTextField } from "./keys";
 import { ResidualBadge } from "./ResidualBadge";
@@ -179,9 +179,8 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
   const onContextMenu = (e: React.MouseEvent) => {
     const st = stage.current;
     if (!st || spaceDown || isInTextField(e.target)) return;
-    const rect = st.getBoundingClientRect();
-    const p = { x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale };
-    if (p.x < 0 || p.y < 0 || p.x > SLIDE_W || p.y > SLIDE_H) return;
+    const p = pointOnSlide(st, e.clientX, e.clientY);
+    if (!p || p.x < 0 || p.y < 0 || p.x > SLIDE_W || p.y > SLIDE_H) return;
     e.preventDefault();
     const hit = hitTest(boxesOf(slide.elements), p);
     if (hit) {
