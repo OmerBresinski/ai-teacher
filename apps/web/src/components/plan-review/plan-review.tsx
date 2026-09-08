@@ -97,7 +97,7 @@ export function PlanReview({
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Cmd+Enter generates from anywhere on the page; every control is focusable
     <main className="min-h-dvh px-6 pt-8 lg:px-12" data-testid="plan-review" onKeyDown={onKeyDown}>
-      <div className="mx-auto flex max-w-3xl flex-col gap-8">
+      <div className="mx-auto flex max-w-4xl flex-col gap-8">
         <header className="flex items-start gap-3">
           {leading}
           <div className="min-w-0">
