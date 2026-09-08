@@ -3,10 +3,10 @@ import { IconButton, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
 import { X } from "lucide-react";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { ImagePicker, type ImageSearchClient } from "../images/ImagePicker";
+import { type ImageSource, imageFields } from "../images/image-source";
 import { makeImage } from "../model/insert";
 import * as reducers from "../model/reducers";
 import { useHistory, useLesson } from "./document-context";
-import { type ImageSource, imageFields } from "./image-source";
 import { useActiveSlide, useSessionActions, useSessionUi } from "./use-editor-session";
 
 /*

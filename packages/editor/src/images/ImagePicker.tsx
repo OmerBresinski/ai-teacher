@@ -12,13 +12,13 @@ import {
 } from "@tj/ui";
 import { Upload } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { type ImageSource, sourceFromFile, sourceFromPicked } from "../lesson/image-source";
 import {
   type ImageSearchClient,
   type PhotoOrientation,
   type PhotoResult,
   SearchError,
 } from "./image-search";
+import { type ImageSource, sourceFromFile, sourceFromPicked } from "./image-source";
 
 export type { ImageSearchClient };
 
@@ -39,11 +39,9 @@ export type ImagePickerProps = {
   images?: ImageSearchClient;
   target: "slide" | "worksheet";
   onPick: (source: ImageSource) => void;
-  onCancel?: () => void;
 };
 
-export function ImagePicker({ images, target, onPick, onCancel }: ImagePickerProps) {
-  void onCancel;
+export function ImagePicker({ images, target, onPick }: ImagePickerProps) {
   return (
     <Tabs defaultValue="upload" className="gap-1">
       <TabsList aria-label="Image source" className="mx-3">

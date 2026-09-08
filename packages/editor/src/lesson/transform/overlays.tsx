@@ -133,4 +133,3 @@ export const VISUALLY_HIDDEN: CSSProperties = {
   clipPath: "inset(50%)",
   whiteSpace: "nowrap",
 };
-
