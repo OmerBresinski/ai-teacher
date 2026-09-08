@@ -92,9 +92,11 @@ export function RegenerateDialog() {
             Cancel
           </Button>
           {askFirst ? (
-            <Button onClick={() => setConfirmedReplace(true)}>Yes, replace them</Button>
+            <Button variant="primary" onClick={() => setConfirmedReplace(true)}>
+              Yes, replace them
+            </Button>
           ) : (
-            <Button onClick={confirm} disabled={!onRegenerate}>
+            <Button variant="primary" onClick={confirm} disabled={!onRegenerate}>
               Regenerate
             </Button>
           )}
