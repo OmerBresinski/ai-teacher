@@ -143,7 +143,12 @@ export function LessonEditor({
   const [themeOpen, setThemeOpen] = useState(false);
   const [factsOpen, setFactsOpen] = useState(false);
   const proposalsEnabled = onFactsChanged !== undefined || onRegenerate !== undefined;
-  const reservedFactIds = useMemo(() => reducers.worksheetFactRefs(worksheet), [worksheet]);
+  // `null` until the linked worksheet is here: its block refs are part of what `addFact` must skip.
+  const reservedFactIds = useMemo(
+    () =>
+      lesson?.artefacts?.worksheetId && !worksheet ? null : reducers.worksheetFactRefs(worksheet),
+    [lesson?.artefacts?.worksheetId, worksheet],
+  );
   const proposals = useMemo<ProposalsApi>(
     () =>
       proposalsEnabled

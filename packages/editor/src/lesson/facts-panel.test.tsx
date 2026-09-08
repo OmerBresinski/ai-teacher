@@ -2,7 +2,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { Proposal } from "@tj/domain";
 import type { Lesson, TextElement } from "@tj/domain/documents";
-import { generatedLesson } from "@tj/domain/documents/fixtures";
+import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
 import { createRef } from "react";
 import type { LessonEditorHandle } from "./LessonEditor";
 import { catcher, pointer, renderEditor } from "./test-harness";
@@ -91,9 +91,21 @@ describe("facts panel", () => {
     expect(onFactsChanged).toHaveBeenCalledTimes(1);
   });
 
+  test("adding waits for the linked worksheet: its block refs are ids a new fact must not take", () => {
+    // The fixture lesson links a worksheet; until the app passes it, Add is disabled.
+    renderEditor(generatedLesson(), { onFactsChanged: () => {} });
+    openPanel();
+    const add = within(panel()).getByRole("button", { name: "Add objective" });
+    expect((add as HTMLButtonElement).disabled).toBe(true);
+    expect(add.title).toBe("Loading the worksheet…");
+  });
+
   test("add and remove report the new / removed id; a removed fact leaves outline refs", async () => {
     const onFactsChanged = mock((_ids: string[]) => {});
-    const { read } = renderEditor(generatedLesson(), { onFactsChanged });
+    const { read } = renderEditor(generatedLesson(), {
+      onFactsChanged,
+      worksheet: generatedWorksheet(),
+    });
     openPanel();
     fireEvent.click(within(panel()).getByRole("button", { name: "Add objective" }));
     expect(read().facts?.objectives.at(-1)?.id).toBe("o3");

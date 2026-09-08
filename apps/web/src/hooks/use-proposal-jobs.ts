@@ -87,12 +87,18 @@ export function useProposalJobs(
   const retry = useRef<ReturnType<typeof setTimeout> | null>(null);
   // `send` and `release` call each other; the ref breaks the cycle without a stale closure.
   const releaseRef = useRef<() => void>(() => {});
-  useEffect(
-    () => () => {
+  // Cleared on unmount: a response or terminal event landing afterwards must not send a held
+  // request, since nothing would follow its job any more.
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      held.current = {};
       if (retry.current) clearTimeout(retry.current);
-    },
-    [],
-  );
+      retry.current = null;
+    };
+  }, []);
 
   const readLesson = useCallback((): Lesson | undefined => {
     const data = queryClient.getQueryData(libraryQueries.document(lessonId).queryKey);
@@ -138,8 +144,9 @@ export function useProposalJobs(
               });
         if (res.status !== 202) throw await apiErrorFromResponse(res);
         const { jobId } = (await res.json()) as { jobId: string };
-        setPending({ jobId, kind: request.kind, slideIds });
+        if (alive.current) setPending({ jobId, kind: request.kind, slideIds });
       } catch (error) {
+        if (!alive.current) return;
         if (error instanceof ApiError && error.status === 409 && error.reason !== "generating") {
           // The singleton slot: an identical job was sent inside the last few seconds. Hold this
           // one and try again once the slot has passed, so a handoff is never dropped.
@@ -161,6 +168,7 @@ export function useProposalJobs(
   /** Free the lane and send the next held request, if any. */
   const release = useCallback(() => {
     busyRef.current = false;
+    if (!alive.current) return;
     const next = held.current.regenerate ?? held.current.cascade;
     if (!next) return;
     delete held.current[next.kind];

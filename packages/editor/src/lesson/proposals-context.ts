@@ -18,8 +18,11 @@ export type ProposalsApi = {
   busySlideIds: ReadonlySet<Id>;
   /** A cascade or regenerate is in flight. */
   busy: boolean;
-  /** Fact ids the worksheet's blocks derive from; `addFact` never mints one of these again. */
-  reservedFactIds: readonly string[];
+  /**
+   * Fact ids the worksheet's blocks derive from; `addFact` never mints one of these again. `null`
+   * while the lesson has a worksheet the app has not fetched yet — adding facts waits for it.
+   */
+  reservedFactIds: readonly string[] | null;
 };
 
 const EMPTY = new Set<Id>();

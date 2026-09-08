@@ -48,7 +48,11 @@ export function FactsPanel({ onClose }: { onClose: () => void }) {
     },
     [session, report],
   );
+  // Adding waits for the worksheet's refs (`reservedFactIds === null`): a fresh id must not
+  // collide with one a worksheet block still derives from.
+  const canAdd = reservedFactIds !== null;
   const add = (kind: FactKind) => {
+    if (!canAdd) return;
     const made = history.dispatch(reducers.addFact, NEW_FACT[kind], reservedFactIds);
     if (made?.id) report(made.id);
   };
@@ -77,7 +81,12 @@ export function FactsPanel({ onClose }: { onClose: () => void }) {
       </header>
       {facts ? (
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-3">
-          <Section title="Objectives" onAdd={() => add("objective")} addLabel="Add objective">
+          <Section
+            title="Objectives"
+            canAdd={canAdd}
+            onAdd={() => add("objective")}
+            addLabel="Add objective"
+          >
             {facts.objectives.map((o, i) => (
               <Row
                 key={o.id}
@@ -96,7 +105,12 @@ export function FactsPanel({ onClose }: { onClose: () => void }) {
               </Row>
             ))}
           </Section>
-          <Section title="Vocabulary" onAdd={() => add("vocabulary")} addLabel="Add term">
+          <Section
+            title="Vocabulary"
+            canAdd={canAdd}
+            onAdd={() => add("vocabulary")}
+            addLabel="Add term"
+          >
             {facts.vocabulary.map((v, i) => (
               <Row key={v.id} onRemove={() => remove(v.id)} removeLabel={`Remove term ${i + 1}`}>
                 <FactField
@@ -117,6 +131,7 @@ export function FactsPanel({ onClose }: { onClose: () => void }) {
           </Section>
           <Section
             title="Worked examples"
+            canAdd={canAdd}
             onAdd={() => add("workedExample")}
             addLabel="Add worked example"
           >
@@ -149,7 +164,12 @@ export function FactsPanel({ onClose }: { onClose: () => void }) {
               </Row>
             ))}
           </Section>
-          <Section title="Questions" onAdd={() => add("question")} addLabel="Add question">
+          <Section
+            title="Questions"
+            canAdd={canAdd}
+            onAdd={() => add("question")}
+            addLabel="Add question"
+          >
             {facts.questions.map((q, i) => (
               <Row
                 key={q.id}
@@ -196,18 +216,27 @@ const splitLines = (text: string) => text.split("\n").filter((line) => line.trim
 function Section({
   title,
   addLabel,
+  canAdd,
   onAdd,
   children,
 }: {
   title: string;
   addLabel: string;
+  canAdd: boolean;
   onAdd: () => void;
   children: ReactNode;
 }) {
   return (
     <PanelSection title={title}>
       <ul className="m-0 flex list-none flex-col gap-2 p-0">{children}</ul>
-      <Button variant="ghost" size="sm" className="self-start" onClick={onAdd}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="self-start"
+        onClick={onAdd}
+        disabled={!canAdd}
+        title={canAdd ? undefined : "Loading the worksheet…"}
+      >
         <Plus aria-hidden size={14} strokeWidth={1.5} />
         {addLabel}
       </Button>
