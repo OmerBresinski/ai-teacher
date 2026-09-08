@@ -1,8 +1,9 @@
 /**
  * Plan review prototype screenshots (`proto/plan-review`). Opt-in:
  * `TEACH_SCREENSHOTS=1 … e2e/plan-review-screenshots.spec.ts`. Seeds `plannedLesson()` — facts,
- * `generation.stage: "planned"`, no lock — so `/l/:id` renders the review, walks the five steps,
- * saves one PNG per step plus the "yours" state, and runs axe on each step. Light theme, 1440×1000.
+ * `generation.stage: "planned"`, no lock — so `/l/:id` renders the one-screen overview, and saves
+ * it at rest, with a phase's minutes open, with two sections "yours", and the generating view after
+ * Generate. axe runs at rest and with the detail open. Light theme, 1440×1000.
  */
 import { plannedLesson } from "@tj/domain/documents/fixtures";
 import { expectNoSeriousA11yViolations } from "./a11y";
@@ -11,7 +12,7 @@ import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 }, seed: false });
 
-test("captures every plan review step, the edited state and the handoff", async ({
+test("captures the overview, an open phase, two sections yours and the handoff", async ({
   signedInPage: { page },
 }) => {
   await page.addInitScript(() => window.localStorage.setItem("tj-theme", "light"));
@@ -35,71 +36,76 @@ test("captures every plan review step, the edited state and the handoff", async 
   await page.goto(`/l/${lessonId}`);
   const review = page.getByTestId("plan-review");
   await expect(review).toBeVisible();
-  const rail = page.getByRole("navigation", { name: "Plan review steps" });
-  await expect(rail).toContainText("1 of 5");
-  await expect(page.getByRole("textbox", { name: "Objective 1, suggested" })).toBeFocused();
-  await page.waitForTimeout(600);
-  await page.screenshot({ path: "/tmp/plan-review-1-objectives.png" });
-  await expectNoSeriousA11yViolations(page, "plan review: objectives");
-
-  // A teacher's edit: the row turns "yours".
-  const objective = page.getByRole("textbox", { name: "Objective 2, suggested" });
-  await objective.fill("Explain melting, boiling, condensing and freezing using particles");
-  await expect(page.getByRole("textbox", { name: "Objective 2, yours" })).toBeVisible();
-  await page.screenshot({ path: "/tmp/plan-review-1-objectives-yours.png" });
-
-  // Enter accepts and advances; focus lands on the first control.
-  await page.keyboard.press("Enter");
-  await expect(rail).toContainText("2 of 5");
-  await expect(page.getByRole("textbox", { name: "Title summary, suggested" })).toBeFocused();
-  await page.waitForTimeout(600);
-  await page.screenshot({ path: "/tmp/plan-review-2-shape.png" });
-  await expectNoSeriousA11yViolations(page, "plan review: shape");
-  // Retime a phase: the running total warns against the brief's 60 minutes.
-  await page.getByRole("button", { name: "More minutes: Minutes for Starter" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "of 60 minutes" })).toContainText(
-    "61 of 60 minutes: 1 over",
+  await expect(
+    page.getByRole("heading", { level: 1, name: "States of matter, 60 minutes for Year 7" }),
+  ).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "of 60 minutes" })).toHaveText(
+    "60 of 60 minutes",
   );
-  // Keyboard reorder: Alt+ArrowDown on the starter's handle moves it below the vocabulary slide.
-  await page.getByRole("button", { name: /^Move Starter/ }).focus();
-  await page.keyboard.press("Alt+ArrowDown");
-  await expect(page.getByRole("button", { name: /^Move Starter, phase 4/ })).toBeVisible();
-  await page.screenshot({ path: "/tmp/plan-review-2-shape-yours.png" });
+  await expect(page.locator("section[data-section] [data-slot=status-pill]")).toHaveText([
+    "Suggested",
+    "Suggested",
+    "Suggested",
+    "Suggested",
+  ]);
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "/tmp/plan-review-1-overview.png" });
+  await expectNoSeriousA11yViolations(page, "plan review: overview");
 
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(rail).toContainText("3 of 5");
-  await expect(page.getByRole("textbox", { name: "Term 1, suggested" })).toBeFocused();
-  await page.waitForTimeout(600);
-  await page.screenshot({ path: "/tmp/plan-review-3-words.png" });
-  await expectNoSeriousA11yViolations(page, "plan review: words");
-
+  // Enter on a focused block opens its minutes; the stepper takes focus.
+  // By id, not name: the name carries the minutes, which the test changes.
+  const starter = page.locator("[data-phase-id=s3]");
+  await expect(starter).toHaveAccessibleName(/^Starter, 5 minutes/);
+  await starter.focus();
   await page.keyboard.press("Enter");
-  await expect(rail).toContainText("4 of 5");
-  await expect(page.getByRole("switch")).toBeFocused();
-  await page.waitForTimeout(600);
-  await page.screenshot({ path: "/tmp/plan-review-4-worksheet.png" });
-  await expectNoSeriousA11yViolations(page, "plan review: worksheet");
-  await page.getByRole("button", { name: "Support" }).click();
-  await expect(page.getByRole("button", { name: "Support" })).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
+  const stepper = page.getByRole("spinbutton", { name: "Minutes for Starter" });
+  await expect(stepper).toBeFocused();
+  await expect(starter).toHaveAttribute("aria-expanded", "true");
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: "/tmp/plan-review-2-phase-open.png" });
+  await expectNoSeriousA11yViolations(page, "plan review: phase open");
 
-  // Escape steps back; Continue twice reaches the summary.
+  // Retime it: the strip's block grows, the total warns, Shape reads "yours".
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  await expect(page.getByRole("status").filter({ hasText: "of 60 minutes" })).toHaveText(
+    "62 of 60 minutes, 2 over",
+  );
+  await expect(page.getByRole("button", { name: /^Starter, 7 minutes/ })).toBeVisible();
+  // Escape closes the detail and returns focus to the block.
   await page.keyboard.press("Escape");
-  await expect(rail).toContainText("3 of 5");
-  await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(rail).toContainText("5 of 5");
-  await expect(page.getByRole("button", { name: "Generate" })).toBeFocused();
-  await expect(review).toContainText("changes are yours");
-  await page.waitForTimeout(600);
-  await page.screenshot({ path: "/tmp/plan-review-5-summary.png" });
-  await expectNoSeriousA11yViolations(page, "plan review: summary");
+  await expect(starter).toBeFocused();
+  await expect(starter).toHaveAttribute("aria-expanded", "false");
+  // Alt+ArrowRight moves the block along the strip.
+  await page.keyboard.press("Alt+ArrowRight");
+  await expect(page.getByRole("button", { name: /^Starter, 7 minutes, phase 4/ })).toBeVisible();
 
-  // Generate hands the page to the generating view with the confirmed outline's skeletons.
+  // An objective edit: two sections are now yours.
+  const objective = page.getByRole("textbox", { name: "Objective 2" });
+  await objective.fill("Explain melting, boiling, condensing and freezing using particles");
+  await expect(page.getByTestId("yours-count")).toHaveText(
+    "2 sections are yours: Objectives and Shape.",
+  );
+  await expect(page.locator("section[data-section] [data-slot=status-pill]")).toHaveText([
+    "Yours",
+    "Yours",
+    "Suggested",
+    "Suggested",
+  ]);
+  // Words and worksheet: a chip goes, a word comes, a tier goes.
+  await page.getByRole("button", { name: "Remove Condensing" }).click();
+  await page.getByRole("textbox", { name: "Add a word" }).fill("Freezing");
   await page.keyboard.press("Enter");
+  await expect(page.getByRole("list", { name: "Words" })).toContainText("Freezing");
+  await page.getByRole("button", { name: "Support" }).click();
+  await expect(page.getByTestId("yours-count")).toContainText("4 sections are yours");
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: "/tmp/plan-review-3-yours.png" });
+  await expectNoSeriousA11yViolations(page, "plan review: yours");
+
+  // Cmd+Enter generates: the generating view with the confirmed outline's skeletons.
+  await page.keyboard.press("ControlOrMeta+Enter");
   await expect(page.getByTestId("generating-banner")).toBeVisible();
   await page.waitForTimeout(600);
-  await page.screenshot({ path: "/tmp/plan-review-6-generating.png" });
+  await page.screenshot({ path: "/tmp/plan-review-4-generating.png" });
 });
