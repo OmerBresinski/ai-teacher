@@ -102,7 +102,7 @@
   --inverse-press: #0f0e0d;
   --inverse-foreground: #f7f6f2;
   --focus-gap: var(--brand-quiet); /* the paper band inside the focus ring */
-  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--ring);
+  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--focus-ring, var(--ring));
   --shadow-1: 0 1px 2px rgb(26 24 22 / 0.06), 0 0 0 1px rgb(26 24 22 / 0.05);
   --shadow-2:
     0 1px 2px rgb(26 24 22 / 0.06), 0 8px 24px rgb(26 24 22 / 0.08), 0 0 0 1px rgb(26 24 22 / 0.06);
@@ -229,7 +229,7 @@
   --inverse-press: #e6e2da;
   --inverse-foreground: #1a1816;
   --focus-gap: var(--brand-quiet); /* the paper band inside the focus ring */
-  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--ring);
+  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--focus-ring, var(--ring));
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.06);
   --shadow-2:
     0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08);
@@ -314,7 +314,7 @@
     --inverse-press: #e6e2da;
     --inverse-foreground: #1a1816;
     --focus-gap: var(--brand-quiet); /* the paper band inside the focus ring */
-    --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--ring);
+    --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--focus-ring, var(--ring));
     --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.06);
     --shadow-2:
       0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08);
@@ -399,7 +399,7 @@
   --inverse-press: #e6e2da;
   --inverse-foreground: #000000;
   --focus-gap: var(--background); /* the paper band inside the focus ring */
-  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--ring);
+  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--focus-ring, var(--ring));
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.16);
   --shadow-2:
     0 1px 2px rgb(0 0 0 / 0.6), 0 8px 24px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.2);
@@ -492,7 +492,7 @@
   --inverse-press: #e6e2da;
   --inverse-foreground: #141312;
   --focus-gap: var(--card); /* the paper band inside the focus ring */
-  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--ring);
+  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--focus-ring, var(--ring));
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(247 246 242 / 0.1);
   --shadow-2:
     0 1px 2px rgb(0 0 0 / 0.45), 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(247 246 242 / 0.1);
@@ -623,7 +623,12 @@
  * over any layered utility whatever its specificity, so it reshapes each ring into TeachDeck's
  * two-tone band (2px paper gap, then 2px solid accent) without a class change at the 25 sites,
  * and `var()` resolves on the focused element, so the stage scope's `--focus-gap` is honoured.
- * An invalid control's band takes the danger colour.
+ *
+ * An invalid control's band takes the danger colour on both paths. The ring utilities read
+ * `--focus-ring` here, on the element. The token path (`--focus`, `focus-visible:shadow-focus`)
+ * names the same `--focus-ring` in every theme block, but a custom property is resolved where it
+ * is declared (the theme root, where `--focus-ring` is unset), so the invalid rule also declares
+ * `--focus` on the element itself, where its `var(--focus-ring)` sees the danger colour.
  *
  * It relies on Tailwind's internal `--tw-ring-offset-shadow` and `--tw-ring-shadow` variables,
  * verified against tailwindcss 4.3.3 (re-check the band in /kit after a Tailwind bump). The rule goes away once the remaining ring sites in @tj/editor move to
@@ -636,6 +641,7 @@
 
 :where([aria-invalid="true"]:focus-visible) {
   --focus-ring: var(--destructive);
+  --focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--focus-ring);
 }
 
 /*
