@@ -23,7 +23,11 @@ export function Steps() {
   const [minutes, setMinutes] = useState(8);
   const [text, setText] = useState("Describe the arrangement of particles in a solid");
   return (
-    <KitGroup id="steps" title="Steps">
+    <KitGroup
+      id="steps"
+      title="Steps"
+      rule="One question per screen in Lora, the control below it, the suggested answer already there. The rail is a nav with a tick per done step and N of M in text; done and current share one accent. Rows arrive with the stagger and grow with their text. One labelled primary per step in the sticky action bar; Enter continues, Escape goes back."
+    >
       <Specimen
         name="StepRail"
         note="A nav of steps: aria-current on the current one, a tick on completed ones, N of M in text."
