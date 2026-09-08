@@ -18,11 +18,18 @@ import { cn } from "../lib/cn";
  * A persistent `<output>` beside the slider is still the caller's job where a value must be
  * readable at rest. Keyboard: arrows step by `step`, Shift + arrows and PageUp/PageDown step by ten
  * steps, Home and End go to the ends — all from Radix.
+ *
+ * `resetTo` (TEACH-150) gives a slider a way back to its resting value, since a drag rarely lands on
+ * exactly 0 or 100: a double-click on a thumb, or Backspace / Delete while it has focus, sets that
+ * thumb to `resetTo` through the same `onValueChange` / `onValueCommit` path a drag takes. The thumb
+ * says so in a title and `aria-description` only when the prop is given; nothing else changes.
  */
 
 type SliderProps = React.ComponentProps<typeof SliderPrimitive.Root> & {
   /** Formats a thumb's value for the bubble and `aria-valuetext`. Enables the bubble when set. */
   valueLabel?: (value: number) => string;
+  /** A double-click on a thumb (or Backspace / Delete while it has focus) sets it to this value. */
+  resetTo?: number;
 };
 
 function Slider({
@@ -33,7 +40,9 @@ function Slider({
   max = 100,
   step = 1,
   valueLabel,
+  resetTo,
   onValueChange,
+  onValueCommit,
   onPointerDown,
   onPointerUp,
   onPointerCancel,
@@ -42,7 +51,8 @@ function Slider({
   "aria-labelledby": ariaLabelledBy,
   ...props
 }: SliderProps) {
-  // Uncontrolled sliders keep a mirror of their value so the bubble can read it.
+  // Uncontrolled sliders keep a mirror of their value so the bubble can read it and a reset can
+  // set it: Radix is driven from this mirror, so a value written here reaches the thumb.
   const [inner, setInner] = React.useState<number[]>(() =>
     Array.isArray(defaultValue) ? defaultValue : [min],
   );
@@ -57,18 +67,28 @@ function Slider({
   const pointerFocus = React.useRef(false);
   const showBubble = valueLabel !== undefined && (dragging || keyboard);
 
+  const change = (next: number[]) => {
+    if (value === undefined) setInner(next);
+    onValueChange?.(next);
+  };
+  const reset = (index: number) => {
+    if (resetTo === undefined || props.disabled) return;
+    const target = Math.min(max, Math.max(min, resetTo));
+    if (values[index] === target) return;
+    const next = values.map((v, i) => (i === index ? target : v));
+    change(next);
+    onValueCommit?.(next);
+  };
+
   return (
     <SliderPrimitive.Root
       data-slot="slider"
-      defaultValue={defaultValue}
-      value={value}
+      value={values}
       min={min}
       max={max}
       step={step}
-      onValueChange={(next) => {
-        if (value === undefined) setInner(next);
-        onValueChange?.(next);
-      }}
+      onValueChange={change}
+      onValueCommit={onValueCommit}
       onPointerDown={(e) => {
         pointerFocus.current = true;
         setDragging(true);
@@ -106,6 +126,14 @@ function Slider({
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
           aria-valuetext={valueLabel ? valueLabel(v) : undefined}
+          aria-description={resetTo === undefined ? undefined : "Double-click to reset"}
+          title={resetTo === undefined ? undefined : "Double-click to reset"}
+          onDoubleClick={() => reset(index)}
+          onKeyDown={(e) => {
+            if (resetTo === undefined || (e.key !== "Backspace" && e.key !== "Delete")) return;
+            e.preventDefault();
+            reset(index);
+          }}
           onFocus={() => {
             setFocused(index);
             setKeyboard(!pointerFocus.current);
