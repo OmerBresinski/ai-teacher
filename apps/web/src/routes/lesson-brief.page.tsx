@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   CreateLessonSchema,
   defaultDurationMin,
@@ -261,9 +261,16 @@ export function LessonBriefPage() {
   return (
     <main className="min-h-dvh px-6 py-8 lg:px-12">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
-        <Display as="h1" size="lg">
-          New lesson
-        </Display>
+        <div className="flex items-baseline justify-between gap-4">
+          <Display as="h1" size="lg">
+            New lesson
+          </Display>
+          {import.meta.env.DEV ? (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/lessons/plan-demo">Plan review demo</Link>
+            </Button>
+          ) : null}
+        </div>
 
         <form
           className="flex flex-col gap-5"

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Lesson } from "@tj/domain/documents";
 import { LessonViewer } from "@tj/editor/present";
-import { Button, EmptyState, Spinner } from "@tj/ui";
+import { Button, EmptyState, Progress, Spinner } from "@tj/ui";
 import { Sparkles, Square } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
@@ -104,7 +104,7 @@ export function GeneratingLesson({
         {message && !stopped ? <span className="text-ink-3">{message}</span> : null}
         <span className="ml-auto flex items-center gap-3">
           {stream.percent !== null && !stopped ? (
-            <progress className="h-1.5 w-40" max={100} value={stream.percent} />
+            <Progress className="w-40" value={stream.percent} label="Generation progress" />
           ) : null}
           {cancel.isError ? (
             <span role="alert" className="text-destructive text-meta">

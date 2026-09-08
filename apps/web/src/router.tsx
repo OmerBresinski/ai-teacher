@@ -29,6 +29,7 @@ import {
   seriesIndexRoute,
   worksheetsRoute,
 } from "@/routes/library.route";
+import { planDemoRoute } from "@/routes/plan-demo.route";
 import { rootRoute } from "@/routes/root.route";
 import { signInRoute } from "@/routes/sign-in.route";
 
@@ -39,6 +40,7 @@ export const routeTree = rootRoute.addChildren([
       indexRoute,
       lessonsRoute,
       lessonBriefRoute,
+      ...(import.meta.env.DEV ? [planDemoRoute] : []),
       worksheetsRoute,
       seriesIndexRoute,
       seriesDetailRoute,
