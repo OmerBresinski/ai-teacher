@@ -9,6 +9,7 @@
  */
 
 import type { Id, Lesson, Slide } from "@tj/domain/documents";
+import { isTextLike } from "../model/reducers";
 import { FIT_VERSION } from "../model/themes";
 import { type MeasureInput, type Measurer, textPartsOf } from "./reflow";
 
@@ -19,7 +20,7 @@ import { type MeasureInput, type Measurer, textPartsOf } from "./reflow";
  */
 const growable = (slide: Slide) =>
   slide.elements.flatMap((el) => {
-    if (el.type !== "text" && el.type !== "gap-text" && el.type !== "option") return [];
+    if (!isTextLike(el)) return [];
     const parts = textPartsOf(el, slide);
     if (!parts?.autoHeight) return [];
     return [

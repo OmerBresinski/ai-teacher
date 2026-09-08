@@ -1,18 +1,61 @@
 /** Element reducers on one slide: add, patch, transform, delete, duplicate, paste. */
 
-import type { Id, Lesson, SlideElement } from "@tj/domain/documents";
+import type { ElementType, Id, Lesson, Slide, SlideElement } from "@tj/domain/documents";
 import { cloneElement } from "../factories";
 import { rectOf, unionRect } from "../geometry";
 import { editQuietly, editSlide, findElement, silent, type WithId } from "./core";
 
+/** Elements that are words: they stay on top of everything that is not. */
+const TEXT_LIKE: ReadonlySet<ElementType> = new Set<ElementType>(["text", "gap-text", "option"]);
+
+export type TextLikeElement = Extract<SlideElement, { type: "text" | "gap-text" | "option" }>;
+
+export const isTextLike = (el: SlideElement): el is TextLikeElement => TEXT_LIKE.has(el.type);
+
+/**
+ * Where a fresh element enters the draw order (Chalkie's rule, asked for by the owner): a text-like
+ * element goes on top; anything else (shape, line, icon, image, table, timer, embed) goes directly
+ * beneath the lowest text-like element, so a picture dropped over a title never covers the words.
+ * With no text on the slide, everything appends.
+ */
+export function insertIndex(elements: readonly SlideElement[], el: SlideElement): number {
+  if (isTextLike(el)) return elements.length;
+  const lowestText = elements.findIndex(isTextLike);
+  return lowestText === -1 ? elements.length : lowestText;
+}
+
+const place = (s: Slide, el: SlideElement) => {
+  s.elements.splice(insertIndex(s.elements, el), 0, el);
+};
+
+/** Add one element at its draw-order position (see `insertIndex`). */
 export const addElement = (lesson: Lesson, el: SlideElement, slideId: Id): Lesson =>
   editSlide(lesson, slideId, (s) => {
-    s.elements.push(el);
+    place(s, el);
   });
 
+/** Add several, one after another, so each lands where `insertIndex` puts it. */
 export const addElements = (lesson: Lesson, els: SlideElement[], slideId: Id): Lesson =>
   editSlide(lesson, slideId, (s) => {
-    s.elements.push(...els);
+    for (const el of els) place(s, el);
+  });
+
+/**
+ * Copies keep the source's place in the stack: they go in as a block directly above the topmost
+ * source element. A copy whose source is not on this slide (paste from another slide, or after a
+ * cut) falls back to the insert rule.
+ */
+const addAbove = (lesson: Lesson, copies: SlideElement[], sourceIds: Id[], slideId: Id): Lesson =>
+  editSlide(lesson, slideId, (s) => {
+    let top = -1;
+    s.elements.forEach((e, i) => {
+      if (sourceIds.includes(e.id)) top = i;
+    });
+    if (top === -1) {
+      for (const el of copies) place(s, el);
+      return;
+    }
+    s.elements.splice(top + 1, 0, ...copies);
   });
 
 export type ElementPatch<T extends SlideElement = SlideElement> = Partial<T> | ((el: T) => void);
@@ -137,7 +180,7 @@ export const deleteElements = (lesson: Lesson, slideId: Id, ids: Id[]): Lesson =
   });
 };
 
-/** Copies with fresh ids, offset diagonally (TeachDeck default 16 points), appended on top. */
+/** Copies with fresh ids, offset diagonally (TeachDeck default 16 points), directly above the source. */
 export function duplicateElements(
   lesson: Lesson,
   slideId: Id,
@@ -155,11 +198,12 @@ export function duplicateElements(
       return c;
     });
   if (copies.length === 0) return { lesson, ids: [] };
-  return { lesson: addElements(lesson, copies, slideId), ids: copies.map((c) => c.id) };
+  return { lesson: addAbove(lesson, copies, ids, slideId), ids: copies.map((c) => c.id) };
 }
 
 /**
- * The document half of paste: clones of the clipboard elements, offset by 16, appended on top.
+ * The document half of paste: clones of the clipboard elements, offset by 16, directly above the
+ * elements they were copied from when those are on this slide (otherwise by the insert rule).
  * Returns the copies too so the caller can keep them as the next clipboard (each paste lands
  * further along, as TeachDeck's did).
  */
@@ -175,5 +219,14 @@ export function pasteElements(
     c.y += 16;
     return c;
   });
-  return { lesson: addElements(lesson, copies, slideId), ids: copies.map((c) => c.id), copies };
+  return {
+    lesson: addAbove(
+      lesson,
+      copies,
+      els.map((e) => e.id),
+      slideId,
+    ),
+    ids: copies.map((c) => c.id),
+    copies,
+  };
 }
