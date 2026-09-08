@@ -11,7 +11,7 @@ test("captures the generating view mid-run and the finished editor with its resi
   await page.getByRole("textbox", { name: "Topic or objective" }).fill("States of matter");
   await page.getByRole("combobox", { name: "Year group" }).click();
   await page.getByRole("option", { name: "Year 8" }).click();
-  await page.getByRole("button", { name: "Create lesson" }).click();
+  await page.getByRole("button", { name: "Plan it" }).click();
   await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
 
   const banner = page.getByTestId("generating-banner");

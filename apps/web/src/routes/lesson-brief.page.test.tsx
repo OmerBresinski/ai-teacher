@@ -36,7 +36,8 @@ function renderPage() {
 }
 
 const topicBox = () => screen.getByRole("textbox", { name: "Topic or objective" });
-const createButton = () => screen.getByRole("button", { name: "Create lesson" });
+const createButton = () => screen.getByRole("button", { name: "Plan it" });
+const LAST_CLASS_KEY = "tj:brief:last-class";
 const lastPost = () => fakeApi.requests.filter((r) => r.path === "/lessons").at(-1);
 
 /** Radix Select opens on a real pointer sequence, so drive it with user-event. */
@@ -52,6 +53,7 @@ describe("LessonBriefPage", () => {
     toastSpy.mockReset();
     cleanup();
     fakeApi.reset();
+    localStorage.clear();
   });
   afterAll(() => {
     mock.restore();
@@ -65,11 +67,16 @@ describe("LessonBriefPage", () => {
     const duration = screen.getByRole("spinbutton", { name: "Duration (minutes)" });
     expect(duration).toHaveAttribute("placeholder", "60");
 
+    // The disabled primary says why.
+    expect(screen.getByRole("status")).toHaveTextContent("Type a topic to plan the lesson.");
     fireEvent.change(topicBox(), { target: { value: "Fractions of amounts" } });
     expect(createButton()).toBeEnabled();
-    // The two questions appear with their first option selected.
-    expect(screen.getByRole("radio", { name: "Recall fractions of amounts" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "New to it" })).toBeChecked();
+    expect(screen.queryByRole("status")).toBeNull();
+    // The first question appears alone, with the suggestion pre-selected and marked.
+    const explain = screen.getByRole("radio", { name: "Explain" });
+    expect(explain).toBeChecked();
+    expect(explain).toHaveAccessibleDescription(/suggested/);
+    expect(screen.queryByRole("radio", { name: "New to it" })).toBeNull();
 
     await pickYearGroup("Year 1");
     await waitFor(() => expect(duration).toHaveAttribute("placeholder", "45"));
@@ -88,10 +95,15 @@ describe("LessonBriefPage", () => {
       brief: {
         topic: "Fractions of amounts",
         answers: {
-          objectiveVerb: "Recall fractions of amounts",
+          objectiveVerb: "Explain fractions of amounts",
           priorConfidence: "New to it",
         },
       },
+      yearGroup: "Year 5",
+      themeId: "chalk",
+    });
+    // The class is remembered for the next brief.
+    expect(JSON.parse(localStorage.getItem(LAST_CLASS_KEY) ?? "{}")).toMatchObject({
       yearGroup: "Year 5",
       themeId: "chalk",
     });
@@ -119,8 +131,12 @@ describe("LessonBriefPage", () => {
   it("skipping both questions sends no answers; a typed duration travels as durationMin", async () => {
     renderPage();
     fireEvent.change(topicBox(), { target: { value: "The water cycle" } });
-    for (const skip of screen.getAllByRole("button", { name: "Skip" })) fireEvent.click(skip);
+    // One question at a time: Skip settles the first and reveals the second.
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    expect(screen.getByRole("radio", { name: "New to it" })).toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(screen.getAllByText("Skipped — the plan decides.")).toHaveLength(2);
+    expect(screen.queryByRole("radio", { name: "New to it" })).toBeNull();
     fireEvent.change(screen.getByRole("spinbutton", { name: "Duration (minutes)" }), {
       target: { value: "45" },
     });
@@ -167,6 +183,12 @@ describe("LessonBriefPage", () => {
     fireEvent.change(duration, { target: { value: "2" } });
     expect(screen.getByRole("alert")).toHaveTextContent("Between 5 and 180 minutes.");
     expect(createButton()).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Duration must be between 5 and 180 minutes.",
+    );
+    expect(createButton()).toHaveAccessibleDescription(
+      "Duration must be between 5 and 180 minutes.",
+    );
     fireEvent.change(duration, { target: { value: "" } });
 
     fireEvent.click(createButton());
@@ -232,9 +254,68 @@ describe("LessonBriefPage", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it("the upload tab is a disabled placeholder", () => {
+  it("Enter accepts the suggestion and reveals the next question; Change reopens", async () => {
     renderPage();
-    const upload = screen.getByRole("tab", { name: /Upload — coming soon/ });
-    expect(upload).toBeDisabled();
+    fireEvent.change(topicBox(), { target: { value: "The water cycle" } });
+    const explain = screen.getByRole("radio", { name: "Explain" });
+    fireEvent.keyDown(explain, { key: "Enter" });
+    expect(screen.getByTestId("question-objectiveVerb-done")).toHaveTextContent("Explain");
+    const newToIt = screen.getByRole("radio", { name: "New to it" });
+    await waitFor(() => expect(newToIt).toHaveFocus());
+    fireEvent.click(screen.getByRole("radio", { name: "Revisiting" }));
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    expect(screen.getByTestId("question-priorConfidence-done")).toHaveTextContent("Revisiting");
+    expect(createButton()).toHaveFocus();
+    // Reopening the first question keeps the second on screen with its settled answer.
+    fireEvent.click(screen.getAllByRole("button", { name: "Change" })[0] as HTMLElement);
+    expect(screen.getByRole("radio", { name: "Explain" })).toBeChecked();
+    expect(screen.getByTestId("question-priorConfidence-done")).toHaveTextContent("Revisiting");
+    expect(screen.queryByRole("radio", { name: "Revisiting" })).toBeNull();
+    // Re-settling it changes nothing else.
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    expect(screen.getByTestId("question-objectiveVerb-done")).toHaveTextContent("Explain");
+    expect(screen.getByTestId("question-priorConfidence-done")).toHaveTextContent("Revisiting");
+    expect(createButton()).toHaveFocus();
+
+    // What is submitted is what is on screen.
+    fireEvent.click(createButton());
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(lastPost()?.body).toEqual({
+      brief: {
+        topic: "The water cycle",
+        answers: { objectiveVerb: "Explain the water cycle", priorConfidence: "Revisiting" },
+      },
+      themeId: "chalk",
+    });
+  });
+
+  it("pre-fills the remembered class with a hint that clears once the field is changed", async () => {
+    localStorage.setItem(
+      LAST_CLASS_KEY,
+      JSON.stringify({
+        subject: "Science",
+        subjectOther: "",
+        yearGroup: "Year 5",
+        themeId: "beacon",
+      }),
+    );
+    renderPage();
+    expect(screen.getByRole("combobox", { name: "Subject" })).toHaveTextContent("Science");
+    expect(screen.getByRole("combobox", { name: "Year group" })).toHaveTextContent("Year 5");
+    expect(screen.getAllByText("From your last lesson")).toHaveLength(2);
+    expect(screen.getByRole("radio", { name: "Beacon" })).toBeChecked();
+    await pickYearGroup("Year 3");
+    await waitFor(() => expect(screen.getAllByText("From your last lesson")).toHaveLength(1));
+  });
+
+  it("renders empty with nothing stored, or with a corrupt value; there is no upload tab", () => {
+    localStorage.setItem(LAST_CLASS_KEY, "{not json");
+    renderPage();
+    expect(screen.getByRole("combobox", { name: "Subject" })).toHaveTextContent("Not set");
+    expect(screen.queryByText("From your last lesson")).toBeNull();
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.getByRole("button", { name: "Blank lesson" })).toBeEnabled();
+    // Six theme tiles as a radio group, arrow keys included by the native control.
+    expect(screen.getAllByRole("radio")).toHaveLength(6);
   });
 });

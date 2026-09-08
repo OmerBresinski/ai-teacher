@@ -6,6 +6,7 @@ import {
   OBJECTIVE_QUESTION,
   objectiveOptions,
   shouldAskQuestions,
+  suggestedObjectiveIndex,
   wordCount,
 } from "./brief-questions";
 
@@ -17,19 +18,29 @@ describe("brief questions", () => {
     expect(shouldAskQuestions("  The   water cycle ")).toBe(true);
   });
 
-  it("build the objective options from the topic, verbs first, one per line", () => {
+  it("build the objective options from the topic: the verb on screen, the sentence in the answer", () => {
     const options = objectiveOptions("Fractions of amounts.");
-    expect(options.map((o) => o.label)).toEqual([
+    expect(options.map((o) => o.value)).toEqual([
       "Recall fractions of amounts",
       "Explain fractions of amounts",
       "Apply fractions of amounts",
       "Evaluate fractions of amounts",
     ]);
-    // The value is the label: the Plan stage reads what the teacher saw.
-    expect(options.every((o) => o.value === o.label)).toBe(true);
+    expect(options.map((o) => o.label)).toEqual(["Recall", "Explain", "Apply", "Evaluate"]);
+    expect(options.every((o) => o.gloss.length > 0)).toBe(true);
     const long = objectiveOptions("A".repeat(120));
-    expect(long[0]?.label.length).toBeLessThan(80);
-    expect(long[0]?.label.endsWith("…")).toBe(true);
+    expect(long[0]?.value.length).toBeLessThan(80);
+    expect(long[0]?.value.endsWith("…")).toBe(true);
+  });
+
+  it("suggests Explain for a noun phrase, Apply for a skill, Recall for facts, Evaluate for a judgement", () => {
+    const verb = (topic: string) => objectiveOptions(topic)[suggestedObjectiveIndex(topic)]?.label;
+    expect(verb("The water cycle")).toBe("Explain");
+    expect(verb("Fractions of amounts")).toBe("Explain");
+    expect(verb("Finding fractions of amounts using bar models")).toBe("Apply");
+    expect(verb("The 7 times table")).toBe("Recall");
+    expect(verb("Was the Roman invasion good for Britain?")).toBe("Explain");
+    expect(verb("Compare the Roman and Viking invasions")).toBe("Evaluate");
   });
 
   it("offers three confidence levels, the plainest first", () => {
