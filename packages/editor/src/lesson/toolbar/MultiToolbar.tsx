@@ -31,13 +31,12 @@ import {
   BarButton,
   BorderWidthMenu,
   borderWidthOf,
-  CORNERED,
   CornersMenu,
   commonValue,
+  hasCorners,
   ICON,
   ICON_SM,
   OpacityControl,
-  ROUNDABLE,
   radiusOf,
   setRadiusOn,
   useElementWrites,
@@ -58,7 +57,7 @@ const isShape = (el: SlideElement): el is ShapeElement => el.type === "shape";
 /**
  * Every control the selection shares, then align, distribute, group (TeachDeck `MultiToolbar`;
  * TEACH-175). All shapes → Fill, Border, Border width, and Corners when every one has corners to
- * round; all roundable (image, shape, text) → Corners alone; always Opacity. Each control reads the
+ * round; any mix of image, text and cornered shape → Corners alone; always Opacity. Each control reads the
  * common value, or "mixed" when the elements disagree, and each write reaches every element in one
  * undo step.
  */
@@ -77,8 +76,8 @@ export const MultiToolbar = memo(function MultiToolbar({
   const ids = elements.map((e) => e.id);
 
   const shapes = elements.every(isShape) ? elements : null;
-  const cornered = shapes?.every((s) => CORNERED.has(s.shape)) === true;
-  const roundable = elements.every((el) => ROUNDABLE.has(el.type));
+  // Corners: every element has corners to round (a star does not, whatever it sits next to).
+  const cornered = elements.every(hasCorners);
 
   const fill = shapes && commonValue(shapes.map((s) => s.fill ?? theme.colors.accent2));
   const stroke = shapes && commonValue(shapes.map((s) => s.stroke ?? theme.colors.ink));
@@ -129,13 +128,13 @@ export const MultiToolbar = memo(function MultiToolbar({
           />
         </>
       ) : null}
-      {cornered || (!shapes && roundable) ? (
+      {cornered ? (
         <CornersMenu
           value={radius.mixed ? null : (radius.value ?? 0)}
           onPick={(r) => updateMany(ids, (draft) => setRadiusOn(draft, r))}
         />
       ) : null}
-      {shapes || roundable ? <PanelSeparator /> : null}
+      {shapes || cornered ? <PanelSeparator /> : null}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
