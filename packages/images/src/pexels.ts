@@ -98,7 +98,14 @@ function isHttps(url: string): boolean {
 }
 
 function toPhotoResult(photo: z.infer<typeof PexelsPhotoSchema>): PhotoResult | null {
-  if (!isHttps(photo.url) || !isHttps(photo.src.large) || !isHttps(photo.src.medium)) return null;
+  if (
+    !isHttps(photo.url) ||
+    !isHttps(photo.src.large) ||
+    !isHttps(photo.src.medium) ||
+    !isHttps(photo.src.tiny)
+  ) {
+    return null;
+  }
   return {
     id: String(photo.id),
     width: photo.width,

@@ -57,6 +57,12 @@ function writeCache(key: string, page: PhotoSearchPage, now: number): void {
     for (const [candidate, entry] of cache) {
       if (now >= entry.expiresAt) cache.delete(candidate);
     }
+    // Still full (every entry live): evict the oldest rather than growing without bound.
+    // `Map` iterates in insertion order, so the first key is the oldest entry.
+    if (cache.size >= IMAGE_SEARCH_CACHE_MAX) {
+      const oldest = cache.keys().next();
+      if (!oldest.done) cache.delete(oldest.value);
+    }
   }
   cache.set(key, { page, expiresAt: now + IMAGE_SEARCH_CACHE_MS });
 }

@@ -87,10 +87,18 @@ describe("createPexelsClient search", () => {
       src: { ...PHOTO.src, large: "http://cdn.example/large.jpeg" },
     };
     const httpPage = { ...PHOTO, id: 2, url: "http://www.pexels.com/photo/2/" };
+    const httpTiny = {
+      ...PHOTO,
+      id: 3,
+      src: { ...PHOTO.src, tiny: "http://cdn.example/tiny.jpeg" },
+    };
     const client = createPexelsClient({
       apiKey: "k",
       fetch: stubFetch(
-        () => new Response(JSON.stringify(okBody([httpLarge, httpPage, PHOTO])), { status: 200 }),
+        () =>
+          new Response(JSON.stringify(okBody([httpLarge, httpPage, httpTiny, PHOTO])), {
+            status: 200,
+          }),
       ),
     });
     const page = await client.search({ query: "river" });

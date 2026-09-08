@@ -108,6 +108,20 @@ describe("GET /images/search", () => {
     expect(await second.json()).toEqual(await first.json());
   });
 
+  test("evicts the oldest entry when every entry is still live", async () => {
+    const { client, state } = makeFake();
+    const app = appWith(client, { limit: 10_000, windowMs: 60_000 });
+    for (let index = 0; index < 500; index += 1) {
+      const res = await app.request(`/images/search?q=evict-${index}`, { headers });
+      expect(res.status).toBe(200);
+    }
+    expect(state.calls).toHaveLength(500);
+    expect((await app.request("/images/search?q=evict-500", { headers })).status).toBe(200);
+    expect(state.calls).toHaveLength(501);
+    expect((await app.request("/images/search?q=evict-0", { headers })).status).toBe(200);
+    expect(state.calls).toHaveLength(502);
+  });
+
   test("short, missing and out-of-range inputs are validation failures", async () => {
     const { client } = makeFake();
     const app = appWith(client);
