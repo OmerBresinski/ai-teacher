@@ -154,7 +154,7 @@ export function ContextualToolbar({
       {selected.length === 0 || !only ? (
         <SlideToolbar slide={slide} theme={theme} />
       ) : selected.length > 1 ? (
-        <MultiToolbar elements={selected} slideId={slide.id} />
+        <MultiToolbar elements={selected} theme={theme} slideId={slide.id} />
       ) : only.type === "text" ? (
         <TextToolbar
           // A fresh instance on entering/leaving text edit, so its link/menu state starts clean.
