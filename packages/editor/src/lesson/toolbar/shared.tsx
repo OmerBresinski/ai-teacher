@@ -157,6 +157,12 @@ export function commonValue<T>(values: readonly T[]): { value: T | undefined; mi
   return { value, mixed: values.some((v) => v !== value) };
 }
 
+/** The first two distinct values, for a swatch that shows what a selection disagrees between. */
+export function firstTwoDistinct<T>(values: readonly T[]): [T, T] | undefined {
+  const [a, b] = [...new Set(values)];
+  return a !== undefined && b !== undefined ? [a, b] : undefined;
+}
+
 /* --- Opacity ------------------------------------------------------ */
 
 /** What the selection's opacity reads as: the common value, or the first element's marked mixed. */

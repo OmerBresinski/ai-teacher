@@ -33,6 +33,7 @@ import {
   borderWidthOf,
   CornersMenu,
   commonValue,
+  firstTwoDistinct,
   hasCorners,
   ICON,
   ICON_SM,
@@ -79,8 +80,10 @@ export const MultiToolbar = memo(function MultiToolbar({
   // Corners: every element has corners to round (a star does not, whatever it sits next to).
   const cornered = elements.every(hasCorners);
 
-  const fill = shapes && commonValue(shapes.map((s) => s.fill ?? theme.colors.accent2));
-  const stroke = shapes && commonValue(shapes.map((s) => s.stroke ?? theme.colors.ink));
+  const fills = shapes?.map((s) => s.fill ?? theme.colors.accent2);
+  const strokes = shapes?.map((s) => s.stroke ?? theme.colors.ink);
+  const fill = fills && commonValue(fills);
+  const stroke = strokes && commonValue(strokes);
   const width = shapes && commonValue(shapes.map(borderWidthOf));
   const radius = commonValue(elements.map((el) => radiusOf(el, theme)));
 
@@ -103,6 +106,7 @@ export const MultiToolbar = memo(function MultiToolbar({
             tooltip
             value={fill?.value ?? theme.colors.accent2}
             mixed={fill?.mixed}
+            mixedColors={fills && firstTwoDistinct(fills)}
             palette={palette}
             onChange={(fill) => updateMany(ids, { fill })}
           />
@@ -112,6 +116,7 @@ export const MultiToolbar = memo(function MultiToolbar({
             tooltip
             value={stroke?.value ?? theme.colors.ink}
             mixed={stroke?.mixed}
+            mixedColors={strokes && firstTwoDistinct(strokes)}
             palette={palette}
             onChange={(stroke) => updateMany(ids, { stroke })}
           />
