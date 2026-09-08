@@ -49,8 +49,15 @@ export function rotateQuarter(t: ImageTransform | undefined, by: 90 | -90 = 90):
   return { ...t, rotate: next as 0 | 90 | 180 | 270 };
 }
 
+/**
+ * A flip mirrors what the teacher sees. A mirror reverses a tilt about the centre, on either axis
+ * (M·R(s) = R(−s)·M), so a picture straightened +8 shows at −8 once flipped; the composition in
+ * `pictureStyle` keeps the tilt outermost and so needs the angle negated here.
+ */
 export function flip(t: ImageTransform | undefined, axis: "h" | "v"): ImageTransform {
-  return axis === "h" ? { ...t, flipH: !t?.flipH } : { ...t, flipV: !t?.flipV };
+  const out = axis === "h" ? { ...t, flipH: !t?.flipH } : { ...t, flipV: !t?.flipV };
+  if (t?.straighten) out.straighten = -t.straighten;
+  return out;
 }
 
 /** Width over height of the picture as displayed: a quarter turn swaps the bitmap's aspect. */
