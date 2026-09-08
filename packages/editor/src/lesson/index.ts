@@ -5,6 +5,7 @@ export { GUTTER, stepZoom, ZOOM_STEPS } from "./Canvas";
 export { impactPreview, impactSentence, slidesReferencing } from "./impact-preview";
 export { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
 export { ALL_SHORTCUTS, HELP_GROUPS, type HelpShortcut, SHELL_SHORTCUTS } from "./shortcuts";
+export { CropBar, type CropBarProps } from "./toolbar/CropToolbar";
 export {
   CANVAS_SHORTCUTS,
   type CanvasShortcut,

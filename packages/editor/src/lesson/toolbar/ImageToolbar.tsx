@@ -1,18 +1,18 @@
 import type { ImageElement } from "@tj/domain/documents";
-import { IconButton, Input, Label, Popover, PopoverContent, PopoverTrigger, Tooltip } from "@tj/ui";
+import { IconButton, Input, Label, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
 import { Crop, Replace } from "lucide-react";
 import { memo, useId } from "react";
-import { NumberInput } from "../../kit/NumberInput";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import { Segmented } from "../../kit/Segmented";
 import { normaliseHref } from "../../text/links";
 import { useSessionActions } from "../use-editor-session";
 import { MoreDrawer } from "./MoreDrawer";
-import { BarButton, ICON, ICON_SM, OpacityControl, useElementWrites } from "./shared";
+import { BarButton, CornersMenu, ICON, ICON_SM, OpacityControl, useElementWrites } from "./shared";
 
 /**
- * Replace, fit, crop, corner radius, alt text, credit (TeachDeck `ImageToolbar`). Replace opens
- * the Add image panel in replace mode (TEACH-107); crop beyond the two fit modes is out of scope.
+ * Replace, fit, crop, corners, alt text, credit (TeachDeck `ImageToolbar`). Replace opens
+ * the Add image panel in replace mode (TEACH-107); Crop enters crop mode on the slide (TEACH-153),
+ * where `CropToolbar` takes this bar's place.
  */
 export const ImageToolbar = memo(function ImageToolbar({
   element,
@@ -22,7 +22,7 @@ export const ImageToolbar = memo(function ImageToolbar({
   slideId: string;
 }) {
   const { update, scrub, end } = useElementWrites(slideId);
-  const { openImagePanel } = useSessionActions();
+  const { openImagePanel, enterCrop } = useSessionActions();
   const altId = useId();
   // An imported lesson is untrusted JSON and could carry `javascript:` here, so the address goes
   // through the same gate as a typed link. No href, no anchor.
@@ -40,29 +40,32 @@ export const ImageToolbar = memo(function ImageToolbar({
       <Segmented
         aria-label="Fit"
         value={element.fit}
-        onChange={(fit) => update<ImageElement>(element.id, { fit })}
+        onChange={(fit) =>
+          update<ImageElement>(element.id, (el) => {
+            el.fit = fit;
+            // Fit shows the whole picture: any crop-mode adjustment goes in the same write.
+            if (fit === "contain") {
+              delete el.crop;
+              delete el.focal;
+              delete el.imageTransform;
+            }
+          })
+        }
         options={[
           { value: "contain", label: "Fit" },
           { value: "cover", label: "Fill" },
         ]}
       />
 
-      <Tooltip label="Coming soon">
-        <span className="inline-flex">
-          <IconButton label="Crop" noTooltip aria-disabled="true" className="opacity-50">
-            <Crop aria-hidden {...ICON} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <IconButton label="Crop" onClick={() => enterCrop(element)} data-crop-button>
+        <Crop aria-hidden {...ICON} />
+      </IconButton>
 
       <PanelSeparator />
 
-      <NumberInput
+      <CornersMenu
         value={element.radius ?? 0}
-        onChange={(radius) => scrub(() => update<ImageElement>(element.id, { radius }))}
-        min={0}
-        max={200}
-        aria-label="Corner radius"
+        onPick={(radius) => update<ImageElement>(element.id, { radius })}
       />
 
       <Popover onOpenChange={(open) => !open && end()}>

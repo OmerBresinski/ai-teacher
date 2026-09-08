@@ -137,6 +137,15 @@ export const ROTATE_CURSOR = `url("data:image/svg+xml;utf8,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6.5A6 6 0 1 0 16 10"/><path d="M15.5 2.5v4h-4"/></g><g fill="none" stroke="#1B1A17" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6.5A6 6 0 1 0 16 10"/><path d="M15.5 2.5v4h-4"/></g></svg>',
 )}") 10 10, grab`;
 
+/**
+ * Crop mode's pan surface: a 20px crop glyph with the hotspot at the frame's corner and `move` as
+ * the fallback. A cursor image is its own document, so it cannot read `--foreground`; the ink and
+ * halo are the same pair `ROTATE_CURSOR` inlines.
+ */
+export const CROP_CURSOR = `url("data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><g fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></g><g fill="none" stroke="#1B1A17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></g></svg>',
+)}") 5 5, move`;
+
 /** Resize cursors by angle bucket; index = round(angle / 45) mod 4. */
 const RESIZE_CURSORS = ["ns-resize", "nesw-resize", "ew-resize", "nwse-resize"] as const;
 

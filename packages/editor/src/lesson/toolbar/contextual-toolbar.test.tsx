@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { Lesson, ShapeElement, SlideElement } from "@tj/domain/documents";
+import type { ImageElement, Lesson, ShapeElement, SlideElement } from "@tj/domain/documents";
 import { docFromText } from "../../model/factories";
 import { makeLine, makeShape, makeTable, makeText, makeTimer } from "../../model/insert";
 import { getTheme } from "../../model/themes";
@@ -276,6 +276,42 @@ describe("ImageToolbar (row 3)", () => {
     const alt = await screen.findByRole("textbox", { name: "Alt text" });
     fireEvent.change(alt, { target: { value: "A cloud" } });
     expect(first(read(), 5)).toMatchObject({ alt: "A cloud" });
+  });
+
+  test("Fit clears the crop, focal point and transform in the same write: a crop implies Fill", () => {
+    const lesson = chromeLesson();
+    Object.assign(first(lesson, 5), {
+      fit: "cover",
+      crop: { x: 0.25, y: 0.25, w: 0.5, h: 0.5 },
+      focal: { x: 0.8, y: 0.2 },
+      imageTransform: { flipH: true },
+    });
+    const { container, client, read } = renderEditor(lesson);
+    clickAt(container, 550, 330);
+    const bar = toolbar("Image");
+    const setQueryData = spyOn(client, "setQueryData");
+    fireEvent.click(within(bar).getByRole("radio", { name: "Fit" }));
+    expect(setQueryData).toHaveBeenCalledTimes(1);
+    const after = first(read(), 5) as ImageElement;
+    expect(after.fit).toBe("contain");
+    expect(after.crop).toBeUndefined();
+    expect(after.focal).toBeUndefined();
+    expect(after.imageTransform).toBeUndefined();
+    // Fill on its own writes only `fit`.
+    fireEvent.click(within(bar).getByRole("radio", { name: "Fill" }));
+    expect(first(read(), 5)).toEqual({ ...after, fit: "cover" });
+  });
+
+  test("Corners is the shape bar's menu, not a spinbutton; picking 16 writes the radius", async () => {
+    const { container, read } = renderEditor(chromeLesson());
+    clickAt(container, 550, 330);
+    const bar = toolbar("Image");
+    expect(within(bar).queryByRole("spinbutton")).toBeNull();
+    openMenu(within(bar).getByRole("button", { name: "Corners, 0" }));
+    const square = await screen.findByRole("menuitemradio", { name: /^0 Square$/ });
+    expect(square).toBeChecked();
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "16" }));
+    expect(first(read(), 5)).toMatchObject({ radius: 16 });
   });
 });
 

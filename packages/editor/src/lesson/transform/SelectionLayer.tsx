@@ -39,6 +39,7 @@ import {
   useSessionRead,
   useSessionUi,
 } from "../use-editor-session";
+import { CropLayer } from "./CropLayer";
 import { DRAG_START_PX, type HandleId, isTextEditable } from "./constants";
 import { describeBoxes } from "./describe";
 import { Guides } from "./Guides";
@@ -65,6 +66,7 @@ import { boxesOf, type ElementBox, hitsBox, marqueeHits } from "./hit-test";
 import {
   AngleLabel,
   CandidateOutlines,
+  CreditBadge,
   Marquee,
   MemberOutlines,
   VISUALLY_HIDDEN,
@@ -136,7 +138,7 @@ export function SelectionLayer({
 
   const history = useHistory();
   const selection = useSelection();
-  const { editingTextId, editingExplanation, showGuides } = useSessionUi();
+  const { editingTextId, editingExplanation, showGuides, crop } = useSessionUi();
   const actions = useSessionActions();
   const readSession = useSessionRead();
   const showingAnswer = useAnswerShowing(slide);
@@ -642,6 +644,11 @@ export function SelectionLayer({
     }
     const hit = pick(at);
     if (!hit || hit.locked) return;
+    // A picture opens in crop mode (TEACH-153).
+    if (hit.el.type === "image") {
+      actions.enterCrop(hit.el);
+      return;
+    }
     // SPEC §7 scopes this to shape-*with-label*; a hairline rule must not drop into a text editor.
     if (!isTextEditable(hit.el)) return;
     actions.setEditingText(hit.id);
@@ -736,6 +743,14 @@ export function SelectionLayer({
   const hover = hoverId && !selection.includes(hoverId) ? byId.get(hoverId) : undefined;
   const [first] = selected;
   const gestureOn = preview !== null;
+  const cropping =
+    crop && selected.length === 1 && first && first.id === crop.id && first.el.type === "image"
+      ? first.el
+      : null;
+  const credited =
+    selected.length === 1 && first && first.el.type === "image" && first.el.credit
+      ? first.el
+      : null;
 
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: focus tracking only; the pointer catcher is the child below
@@ -809,7 +824,18 @@ export function SelectionLayer({
 
       {hover ? <HoverOutline rect={hover.rect} rotation={hover.rotation} scale={scale} /> : null}
 
-      {selected.length === 1 && first ? (
+      {cropping && first ? (
+        <CropLayer
+          key={cropping.id}
+          slideId={slide.id}
+          element={cropping}
+          scale={scale}
+          coarsePointer={coarse}
+          toSlide={toSlide}
+          focusRing={focusRing}
+          onPointerFocus={focusStage}
+        />
+      ) : selected.length === 1 && first ? (
         <SelectionFrame
           rect={first.rect}
           rotation={first.rotation}
@@ -819,6 +845,15 @@ export function SelectionLayer({
           coarsePointer={coarse}
           onHandleDown={onHandleDown}
           onRotateDown={onRotateDown}
+        />
+      ) : null}
+
+      {credited && first ? (
+        <CreditBadge
+          rect={first.rect}
+          scale={scale}
+          credit={credited.credit ?? ""}
+          creditUrl={credited.creditUrl}
         />
       ) : null}
 

@@ -245,6 +245,27 @@ describe("SlideSchema referential integrity", () => {
     expect(SlideSchema.safeParse(image("https://openverse.org/x")).success).toBe(true);
     expect(SlideSchema.safeParse(image("openverse.org/x")).success).toBe(true);
   });
+
+  test("an image carries its focal point and transform, both optional and migration-free", () => {
+    const image = (extra: Record<string, unknown>): unknown => ({
+      ...titleSlide(),
+      elements: [
+        { id: "i", type: "image", x: 0, y: 0, w: 1, h: 1, src: "a.png", fit: "cover", ...extra },
+      ],
+    });
+    const full = image({
+      crop: { x: 0.1, y: 0.2, w: 0.5, h: 0.5 },
+      focal: { x: 0.3, y: 0.7 },
+      imageTransform: { straighten: -8, rotate: 90, flipH: true, flipV: false },
+    });
+    expect(SlideSchema.parse(JSON.parse(JSON.stringify(full))) as unknown).toEqual(full);
+    expect(SlideSchema.safeParse(image({})).success).toBe(true);
+    expect(SlideSchema.safeParse(image({ focal: { x: 1.2, y: 0 } })).success).toBe(false);
+    expect(SlideSchema.safeParse(image({ imageTransform: { rotate: 45 } })).success).toBe(false);
+    expect(SlideSchema.safeParse(image({ imageTransform: { straighten: 60 } })).success).toBe(
+      false,
+    );
+  });
 });
 
 describe("image source (Images project, Decision 5)", () => {

@@ -1,3 +1,4 @@
+import { CropBar } from "@tj/editor/lesson";
 import {
   Button,
   DropdownMenu,
@@ -20,6 +21,30 @@ import {
 import { ChevronDown, Copy, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { KitGroup, Specimen, Variant } from "./frame";
+
+/** The crop bar with live values, so the popovers and the readouts can be tried. */
+function CropBarSpecimen() {
+  const [zoom, setZoom] = useState(1.5);
+  const [straighten, setStraighten] = useState(-4);
+  const pristine = zoom === 1 && straighten === 0;
+  return (
+    <CropBar
+      zoom={zoom}
+      straighten={straighten}
+      pristine={pristine}
+      onZoom={setZoom}
+      onStraighten={setStraighten}
+      onRotate={() => {}}
+      onFlipH={() => {}}
+      onFlipV={() => {}}
+      onReset={() => {
+        setZoom(1);
+        setStraighten(0);
+      }}
+      onDone={() => {}}
+    />
+  );
+}
 
 export function Overlays() {
   const [layout, setLayout] = useState("grid");
@@ -70,6 +95,12 @@ export function Overlays() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </Specimen>
+      <Specimen
+        name="Crop bar"
+        note="Floats above a picture in crop mode in place of the image bar. Two value controls open a slider with the value bubble and read in tabular figures; three glyphs turn and flip; Reset is the text action and Done the one primary."
+      >
+        <CropBarSpecimen />
       </Specimen>
       <Specimen name="Tooltip with shortcut" note="The name of a glyph, and its key.">
         <Tooltip label="Copy link" shortcut="⌘C">
