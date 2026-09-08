@@ -9,25 +9,25 @@ import {
 } from "@tj/domain/documents";
 
 /*
- * Plan review state (prototype, `proto/plan-review`): the pure reducer behind the five review
- * screens. It starts from the `LessonFacts` Plan persisted, keeps the teacher's edits beside a
- * "touched" set so every field reads "suggested" until touched and "yours" after, and derives the
- * `LessonFacts` to generate from (`factsOf`) with every reference still valid. No React here.
+ * Plan review state (prototype, `proto/plan-review`): the pure reducer behind the one-screen
+ * overview of a plan. It starts from the `LessonFacts` Plan persisted, keeps the teacher's edits
+ * beside a "touched" set so every section reads "suggested" until touched and "yours" after, and
+ * derives the `LessonFacts` to generate from (`factsOf`) with every reference still valid. No
+ * React here.
  *
- * Prototype-only: the pipeline emits neither a one-line summary per outline entry nor a
- * worksheet outline today (Linear project "Plan review", "Generation contract"); both are derived
- * deterministically from the facts here so the screens have something honest to show.
+ * Prototype-only: the pipeline emits no worksheet outline today (Linear project "Plan review",
+ * "Generation contract"); `worksheetOutlineOf` derives one from the facts so the review has a
+ * block count and tiers to show.
  */
 
-export const PLAN_STEPS = [
+/** The four sections of the overview, in page order. */
+export const SECTIONS = [
   { id: "objectives", label: "Objectives" },
-  { id: "shape", label: "Shape of the lesson" },
-  { id: "words", label: "Words they will need" },
+  { id: "shape", label: "Shape" },
+  { id: "words", label: "Words" },
   { id: "worksheet", label: "Worksheet" },
-  { id: "summary", label: "Summary" },
 ] as const;
-export type PlanStepId = (typeof PLAN_STEPS)[number]["id"];
-const STEP_IDS = PLAN_STEPS.map((step) => step.id);
+export type SectionId = (typeof SECTIONS)[number]["id"];
 
 export const OBJECTIVES_MAX = 4;
 export const VOCABULARY_MAX = 6;
@@ -49,13 +49,9 @@ export type WorksheetOutline = {
   tiers: Tier[];
 };
 
-/** An outline entry with the one-line summary the review shows. */
-export type Phase = OutlineEntry & { summary: string };
+export type Phase = OutlineEntry;
 
 export type PlanReviewState = {
-  step: PlanStepId;
-  /** Steps the teacher has confirmed (Continue, or accept-all). */
-  done: PlanStepId[];
   /** What Plan proposed; the arrays the review does not edit are taken from here. */
   base: LessonFacts;
   objectives: Objective[];
@@ -67,21 +63,17 @@ export type PlanReviewState = {
 };
 
 export type PlanReviewAction =
-  | { type: "go"; step: PlanStepId }
-  | { type: "next" }
-  | { type: "back" }
-  | { type: "acceptAll" }
   | { type: "editObjective"; id: string; text: string }
   | { type: "addObjective" }
   | { type: "removeObjective"; id: string }
   | { type: "moveObjective"; id: string; delta: -1 | 1 }
-  | { type: "editPhase"; id: string; summary?: string; minutes?: number }
+  | { type: "editPhase"; id: string; minutes: number }
   | { type: "movePhase"; from: number; to: number }
   | { type: "movePhaseBy"; id: string; delta: -1 | 1 }
   | { type: "addPhase"; kind: GeneratableSlideKind }
   | { type: "removePhase"; id: string }
   | { type: "editVocabulary"; id: string; term?: string; definition?: string }
-  | { type: "addVocabulary" }
+  | { type: "addVocabulary"; term: string }
   | { type: "removeVocabulary"; id: string }
   | { type: "setWorksheetEnabled"; enabled: boolean }
   | { type: "editBlock"; index: number; type_?: GeneratableBlockType; summary?: string }
@@ -128,41 +120,6 @@ export const BLOCK_TYPE_LABELS: Record<GeneratableBlockType, string> = {
 /* ------------------------------------------------------------------ */
 
 const clip = (text: string, max = 160) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
-
-/** The one line the Shape step shows under a kind, from the facts the entry references. */
-export function phaseSummary(entry: OutlineEntry, facts: LessonFacts): string {
-  const refs = new Set(entry.factRefs);
-  const question = facts.questions.find((q) => refs.has(q.id));
-  const example = facts.workedExamples.find((x) => refs.has(x.id));
-  const terms = facts.vocabulary.filter((v) => refs.has(v.id)).map((v) => v.term);
-  const objective = facts.objectives.find((o) => refs.has(o.id));
-  switch (entry.kind) {
-    case "title":
-      return "The lesson title and the year group.";
-    case "objectives":
-      return `The ${facts.objectives.length} objectives, read together.`;
-    case "vocabulary":
-      return terms.length > 0 ? terms.join(", ") : "The key words with their definitions.";
-    case "worked-example":
-      return example ? clip(example.problem) : "One problem worked through step by step.";
-    case "exit-ticket":
-      return "Quick checks on each objective before they leave.";
-    case "plenary":
-      return "Look back over the objectives together.";
-    case "content":
-      return objective ? clip(objective.text) : "The main explanation.";
-    case "instructions":
-      return "What to do in the next activity.";
-    case "discussion":
-      return objective ? `Talk about: ${clip(objective.text, 56)}` : "A question to talk about.";
-    default:
-      return question
-        ? clip(question.stem)
-        : objective
-          ? clip(objective.text)
-          : "A check on what they have learned so far.";
-  }
-}
 
 /** A worksheet outline the review can show; the pipeline generates a worksheet in one call today. */
 export function worksheetOutlineOf(facts: LessonFacts): WorksheetOutline {
@@ -239,11 +196,9 @@ const stripRef = (phases: Phase[], id: string): Phase[] =>
 
 export function initPlanReview(facts: LessonFacts): PlanReviewState {
   return {
-    step: "objectives",
-    done: [],
     base: facts,
     objectives: facts.objectives.map((o) => ({ ...o })),
-    phases: facts.outline.map((entry) => ({ ...entry, summary: phaseSummary(entry, facts) })),
+    phases: facts.outline.map((entry) => ({ ...entry })),
     vocabulary: facts.vocabulary.map((v) => ({ ...v })),
     worksheet: worksheetOutlineOf(facts),
     touched: {},
@@ -255,27 +210,6 @@ export function planReviewReducer(
   action: PlanReviewAction,
 ): PlanReviewState {
   switch (action.type) {
-    case "go": {
-      const target = STEP_IDS.indexOf(action.step);
-      const current = STEP_IDS.indexOf(state.step);
-      // Forward only through Continue; back to any step already seen.
-      if (target > current && !state.done.includes(action.step)) return state;
-      return { ...state, step: action.step };
-    }
-    case "next": {
-      const index = STEP_IDS.indexOf(state.step);
-      const next = STEP_IDS[index + 1];
-      const done = state.done.includes(state.step) ? state.done : [...state.done, state.step];
-      return next ? { ...state, step: next, done } : { ...state, done };
-    }
-    case "back": {
-      const index = STEP_IDS.indexOf(state.step);
-      const previous = STEP_IDS[index - 1];
-      return previous ? { ...state, step: previous } : state;
-    }
-    case "acceptAll":
-      return { ...state, step: "summary", done: STEP_IDS.filter((id) => id !== "summary") };
-
     case "editObjective":
       return touch(
         {
@@ -322,13 +256,7 @@ export function planReviewReducer(
         {
           ...state,
           phases: state.phases.map((phase) =>
-            phase.id === action.id
-              ? {
-                  ...phase,
-                  summary: action.summary ?? phase.summary,
-                  minutes: action.minutes ?? phase.minutes,
-                }
-              : phase,
+            phase.id === action.id ? { ...phase, minutes: action.minutes } : phase,
           ),
         },
         `phase:${action.id}`,
@@ -345,8 +273,7 @@ export function planReviewReducer(
     case "addPhase": {
       if (state.phases.length >= PHASES_MAX) return state;
       const id = mintId("s", allIds(state));
-      const entry: OutlineEntry = { id, kind: action.kind, minutes: 5, factRefs: [] };
-      const phase: Phase = { ...entry, summary: phaseSummary(entry, factsOf(state)) };
+      const phase: Phase = { id, kind: action.kind, minutes: 5, factRefs: [] };
       return touch({ ...state, phases: [...state.phases, phase] }, `phase:${id}`, "phases:list");
     }
     case "removePhase":
@@ -374,12 +301,15 @@ export function planReviewReducer(
       );
     case "addVocabulary": {
       if (state.vocabulary.length >= VOCABULARY_MAX) return state;
+      const term = action.term.trim();
+      if (term === "") return state;
       const id = mintId("v", allIds(state));
       const phases = state.phases.map((phase) =>
         phase.kind === "vocabulary" ? { ...phase, factRefs: [...phase.factRefs, id] } : phase,
       );
+      // The definition is Generate's to write (the overview shows terms only).
       return touch(
-        { ...state, vocabulary: [...state.vocabulary, { id, term: "", definition: "" }], phases },
+        { ...state, vocabulary: [...state.vocabulary, { id, term, definition: "" }], phases },
         `vocabulary:${id}`,
         "vocabulary:list",
       );
@@ -451,8 +381,25 @@ export function planReviewReducer(
 export const isYours = (state: PlanReviewState, key: string): boolean =>
   state.touched[key] === true;
 
-/** Every key touched so far; the Summary counts these. */
+/** Every key touched so far. */
 export const yoursKeys = (state: PlanReviewState): string[] => Object.keys(state.touched);
+
+const SECTION_PREFIXES: Record<SectionId, string[]> = {
+  objectives: ["objective:", "objectives:"],
+  shape: ["phase:", "phases:"],
+  words: ["vocabulary:"],
+  worksheet: ["worksheet:"],
+};
+
+/** Whether any field in a section has been touched: the section reads "yours". */
+export const isSectionYours = (state: PlanReviewState, section: SectionId): boolean =>
+  Object.keys(state.touched).some((key) =>
+    SECTION_PREFIXES[section].some((prefix) => key.startsWith(prefix)),
+  );
+
+/** The sections that read "yours", in page order. */
+export const sectionsYours = (state: PlanReviewState): SectionId[] =>
+  SECTIONS.map((section) => section.id).filter((id) => isSectionYours(state, id));
 
 export const totalMinutes = (state: PlanReviewState): number =>
   state.phases.reduce((sum, phase) => sum + phase.minutes, 0);
@@ -473,12 +420,11 @@ export function factsOf(state: PlanReviewState): LessonFacts {
     ...state.base,
     objectives: state.objectives,
     vocabulary: state.vocabulary,
-    outline: state.phases.map(({ summary: _summary, ...entry }) => ({
+    outline: state.phases.map((entry) => ({
       ...entry,
       factRefs: entry.factRefs.filter((ref) => live.has(ref)),
     })),
   };
 }
 
-export const stepIndex = (step: PlanStepId): number => STEP_IDS.indexOf(step);
 export const BLOCK_TYPES = GENERATABLE_BLOCK_TYPES;
