@@ -14,7 +14,9 @@ import {
   confidenceOptions,
   OBJECTIVE_QUESTION,
   objectiveOptions,
+  SUGGESTED_CONFIDENCE_INDEX,
   shouldAskQuestions,
+  suggestedObjectiveIndex,
 } from "./brief-questions";
 import { LIBRARY_THEMES } from "./library-themes";
 import { queryKeys } from "./query";
@@ -59,9 +61,18 @@ export const NEED_LABELS: Record<NeedCategory, string> = {
   other: "Other",
 };
 
-/** One clarifying question's state: which option, or skipped. */
-export type Answer = { skipped: boolean; index: number };
-export const DEFAULT_ANSWER: Answer = { skipped: false, index: 0 };
+/**
+ * One clarifying question's state: which option, or skipped. `index: null` means "the
+ * suggestion" — the option the form pre-selects for the topic (`suggestedObjectiveIndex`), which
+ * follows the topic as it is typed until the teacher picks one herself (TEACH-177 item 3).
+ */
+export type Answer = { skipped: boolean; index: number | null };
+export const DEFAULT_ANSWER: Answer = { skipped: false, index: null };
+
+/** The option index an answer resolves to: the teacher's pick, or the suggestion. */
+export function answerIndex(answer: Answer, suggested: number): number {
+  return answer.index ?? suggested;
+}
 
 export type BriefState = {
   topic: string;
@@ -136,11 +147,13 @@ export function briefInputOf(state: BriefState): CreateLessonInput {
   if (shouldAskQuestions(topic)) {
     const answers: Record<string, string> = {};
     if (!state.objective.skipped) {
-      const option = objectiveOptions(topic)[state.objective.index];
+      const index = answerIndex(state.objective, suggestedObjectiveIndex(topic));
+      const option = objectiveOptions(topic)[index];
       if (option) answers[OBJECTIVE_QUESTION.id] = option.value;
     }
     if (!state.confidence.skipped) {
-      const option = confidenceOptions()[state.confidence.index];
+      const index = answerIndex(state.confidence, SUGGESTED_CONFIDENCE_INDEX);
+      const option = confidenceOptions()[index];
       if (option) answers[CONFIDENCE_QUESTION.id] = option.value;
     }
     if (Object.keys(answers).length > 0) brief.answers = answers;
