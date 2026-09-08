@@ -37,6 +37,37 @@ export function MemberOutlines({ boxes, scale }: { boxes: ElementBox[]; scale: n
   );
 }
 
+/**
+ * The elements a marquee currently touches, shown live while it is dragged: a hairline just
+ * inside each frame at 60%, no handles. Selection itself waits for pointer-up.
+ */
+export function CandidateOutlines({ boxes, scale }: { boxes: ElementBox[]; scale: number }) {
+  return (
+    <>
+      {boxes.map((b) => (
+        <div
+          key={b.id}
+          aria-hidden
+          data-marquee-candidate={b.id}
+          style={{
+            position: "absolute",
+            left: b.rect.x,
+            top: b.rect.y,
+            width: b.rect.w,
+            height: b.rect.h,
+            transform: b.rotation ? `rotate(${b.rotation}deg)` : undefined,
+            transformOrigin: "50% 50%",
+            outline: `${1 / scale}px solid ${TOKENS.frame}`,
+            outlineOffset: `${-1 / scale}px`,
+            opacity: 0.6,
+            pointerEvents: "none",
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
 export function Marquee({ rect, scale }: { rect: Rect; scale: number }) {
   return (
     <div

@@ -71,15 +71,22 @@ describe("hitsBox / hitTest", () => {
 });
 
 describe("marqueeHits", () => {
-  test("takes fully-enclosed elements only", () => {
-    const boxes = [box("in", rect(20, 20, 40, 40)), box("partial", rect(90, 20, 40, 40))];
-    expect(marqueeHits(boxes, rect(0, 0, 100, 100))).toEqual(["in"]);
+  test("takes every element it touches, enclosed or not; a shared edge alone is a miss", () => {
+    const boxes = [
+      box("in", rect(20, 20, 40, 40)),
+      box("partial", rect(90, 20, 40, 40)),
+      box("edge", rect(100, 60, 40, 40)),
+      box("out", rect(150, 20, 40, 40)),
+    ];
+    expect(marqueeHits(boxes, rect(0, 0, 100, 100))).toEqual(["in", "partial"]);
   });
 
   test("measures a rotated element by its rotated bounds", () => {
+    // A 100x20 bar turned 90° stands 20 wide and 100 tall about (50, 30): x 40..60, y -20..80.
     const b = box("a", rect(0, 20, 100, 20), 90);
     expect(cornersOf(b.rect, b.rotation)).toHaveLength(4);
-    expect(marqueeHits([b], rect(0, 0, 100, 100))).toEqual([]);
+    expect(marqueeHits([b], rect(0, 0, 35, 100))).toEqual([]);
+    expect(marqueeHits([b], rect(0, 0, 100, 100))).toEqual(["a"]);
     expect(marqueeHits([b], rect(-50, -50, 200, 200))).toEqual(["a"]);
   });
 });
