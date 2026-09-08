@@ -369,6 +369,14 @@ describe("MultiToolbar shared controls (TEACH-175)", () => {
     expect(first(read(), 3)).toMatchObject({ type: "image", radius: 12 });
   });
 
+  test("a star and an image share no Corners: the star's kind has none to round", () => {
+    const { container } = renderEditor(multiLesson());
+    const bar = selectPair(container, STAR, IMAGE);
+    expect(within(bar).queryByRole("button", { name: /^Corners/ })).toBeNull();
+    expect(within(bar).queryByRole("button", { name: /^Fill/ })).toBeNull();
+    expect(within(bar).getByRole("button", { name: /^Opacity/ })).toBeInTheDocument();
+  });
+
   test("row 4: a rect and a text share Corners only; corners 8 writes radius and style.radius", async () => {
     const { container, read } = renderEditor(multiLesson());
     const bar = selectPair(container, RECT_A, TEXT);

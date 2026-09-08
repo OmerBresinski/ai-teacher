@@ -17,12 +17,12 @@ import * as reducers from "../../model/reducers";
 import { useProposals } from "../proposals-context";
 import { useSessionActions } from "../use-editor-session";
 import {
+  hasCorners,
   ICON,
   ICON_SM,
   OpacityField,
   opacityOf,
   PanelSection,
-  ROUNDABLE,
   radiusOf,
   setRadiusOn,
   useElementWrites,
@@ -178,7 +178,7 @@ export function MoreDrawer({
                 className="w-52"
               />
             </PanelRow>
-            {one && ROUNDABLE.has(one.type) ? (
+            {one && hasCorners(one) ? (
               <PanelRow label="Corner radius" htmlFor={`${rowId}-radius`}>
                 <NumberInput
                   id={`${rowId}-radius`}

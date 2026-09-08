@@ -161,9 +161,8 @@ export function commonValue<T>(values: readonly T[]): { value: T | undefined; mi
 
 /** What the selection's opacity reads as: the common value, or the first element's marked mixed. */
 export function opacityOf(elements: SlideElement[]): { value: number; mixed: boolean } {
-  const pct = (el: SlideElement | undefined) => Math.round((el?.opacity ?? 1) * 100);
-  const value = pct(elements[0]);
-  return { value, mixed: elements.some((el) => pct(el) !== value) };
+  const { value, mixed } = commonValue(elements.map((el) => Math.round((el.opacity ?? 1) * 100)));
+  return { value: value ?? 100, mixed };
 }
 
 /** A circle half filled: the opacity glyph. */
@@ -395,8 +394,15 @@ export const BORDER_WIDTHS: readonly number[] = [0, 1, 2, 3, 4, 6, 8, 12];
 export const CORNER_RADII: readonly number[] = [0, 4, 8, 12, 16, 24];
 /** The shapes with corners to round. */
 export const CORNERED: ReadonlySet<ShapeElement["shape"]> = new Set(["rect", "rounded", "speech"]);
-/** The element types with a corner radius: image and shape on `radius`, text on `style.radius`. */
-export const ROUNDABLE: ReadonlySet<SlideElement["type"]> = new Set(["image", "shape", "text"]);
+/**
+ * Does this element have corners to round? An image or a text always; a shape only when its kind
+ * is in `CORNERED` — a star has a `radius` field but nothing draws it.
+ */
+export function hasCorners(el: SlideElement): boolean {
+  return (
+    el.type === "image" || el.type === "text" || (el.type === "shape" && CORNERED.has(el.shape))
+  );
+}
 
 /** The border width ShapeView draws: an unset width with a colour is 2, without one is none. */
 export function borderWidthOf(el: ShapeElement): number {
