@@ -44,6 +44,7 @@ import {
   resolveActiveSlide,
   useEditorSessionState,
 } from "./use-editor-session";
+import { useHistoryKeys } from "./use-history-keys";
 
 /*
  * The lesson editor shell (TeachDeck `components/v2/editor/EditorShell.tsx`): TopBar over
@@ -240,6 +241,7 @@ export function LessonEditor({
   lessonRef.current = lesson;
   const historyRef = useRef(history);
   historyRef.current = history;
+  useHistoryKeys(historyRef);
   const getFitDeps = useCallback((): FitMigrationDeps | null => {
     const current = lessonRef.current;
     if (!current) return null;
