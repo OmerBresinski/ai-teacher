@@ -1,0 +1,26 @@
+{
+  "name": "@tj/images",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pexels photo search client for Teaching Journey: search with locale fallback, response mapping and typed errors. Server-only (apps/api, apps/worker); never imported by apps/web.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@tj/domain": "workspace:*",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@tj/config": "workspace:*",
+    "typescript": "5.9.3"
+  }
+}

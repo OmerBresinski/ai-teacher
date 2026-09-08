@@ -316,6 +316,7 @@ packages/
   editor/       @tj/editor     Lesson/worksheet editor, viewer, present, export   ADR 0022
   slides/       @tj/slides     Pure slide recipes, theme catalogue, materialise   ADR 0025
   generation/   @tj/generation Pipeline stages, prompts, in-process Mastra workflow ADR 0025
+  images/       @tj/images     Pexels client: search, fetch-to-storage, query rewrite; server-only
   config/       @tj/config     Shared tsconfig bases, Tailwind preset           TEACH-11
 docs/
   adr/          Architecture decision records

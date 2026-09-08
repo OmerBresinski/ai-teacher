@@ -74,6 +74,12 @@ regex = '''(?i)\bAWS_BEARER_TOKEN_BEDROCK\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.
 keywords = ["AWS_BEARER_TOKEN_BEDROCK"]
 
 [[rules]]
+id = "tj-pexels-api-key"
+description = "Teaching Journey secret PEXELS_API_KEY assigned a literal value (infra/env.contract.ts)"
+regex = '''(?i)\bPEXELS_API_KEY\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
+keywords = ["PEXELS_API_KEY"]
+
+[[rules]]
 id = "tj-turbo-token"
 description = "Teaching Journey secret TURBO_TOKEN assigned a literal value (infra/env.contract.ts)"
 regex = '''(?i)\bTURBO_TOKEN\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
