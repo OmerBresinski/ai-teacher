@@ -65,7 +65,7 @@ export function LabelTextControls({
   };
 
   return (
-    <div className="flex items-center gap-0.5" data-label-text-controls>
+    <div className="flex h-8 items-center gap-0.5" data-label-text-controls>
       <DropTrigger
         label="Label style"
         value={r.preset}
