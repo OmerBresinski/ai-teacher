@@ -10,7 +10,7 @@ export function ObjectivesStep({
   state: PlanReviewState;
   dispatch: Dispatch<PlanReviewAction>;
 }) {
-  const first = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+  const first = useRef<HTMLTextAreaElement>(null);
   useArrivalFocus(first);
   const settled = useArriveSettled();
   const onKeyDown = (id: string) => (event: KeyboardEvent<HTMLElement>) => {

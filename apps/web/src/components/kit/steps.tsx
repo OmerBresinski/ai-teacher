@@ -86,7 +86,7 @@ export function Steps() {
       </Specimen>
       <Specimen
         name="EditableListRow"
-        note="Inline text, an optional second field, a trailing control, remove."
+        note="A one-line textarea that grows with its content, an optional second field, a trailing control, remove."
       >
         <ul className="flex max-w-xl flex-col gap-2">
           <EditableListRow

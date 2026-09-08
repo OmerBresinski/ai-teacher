@@ -10,7 +10,7 @@ export function WordsStep({
   state: PlanReviewState;
   dispatch: Dispatch<PlanReviewAction>;
 }) {
-  const first = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+  const first = useRef<HTMLTextAreaElement>(null);
   useArrivalFocus(first);
   const settled = useArriveSettled();
   return (

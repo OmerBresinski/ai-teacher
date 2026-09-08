@@ -9,9 +9,12 @@ export function useArrivalFocus(ref: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
-    element.focus();
+    element.focus({ preventScroll: true });
     // A long line would otherwise scroll to the caret at its end; start at the start.
-    if (element instanceof HTMLInputElement) element.setSelectionRange(0, 0);
+    if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+      element.setSelectionRange(0, 0);
+      element.scrollTop = 0;
+    }
   }, [ref]);
 }
 
