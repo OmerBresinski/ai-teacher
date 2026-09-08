@@ -122,8 +122,18 @@ export const ShapeToolbar = memo(function ShapeToolbar({
             <BarButton className="font-medium">Label</BarButton>
           </PopoverTrigger>
         </Tooltip>
-        <PopoverContent align="end" className="w-auto min-w-60 p-3" aria-label="Label">
-          <div className="flex items-center justify-between gap-3">
+        {/*
+         * Rows are 32px controls with `gap-3` between them and the kit's `p-3` around: every
+         * control's 4px focus band (2px gap + 2px accent) fits inside the row gap and the padding
+         * without touching the input row above or the popover edge. Nothing here sets
+         * `overflow`, so the band, drawn as a box-shadow, is never clipped.
+         */}
+        <PopoverContent
+          align="end"
+          className="flex w-auto min-w-60 flex-col gap-3 p-3"
+          aria-label="Label"
+        >
+          <div className="flex h-8 items-center justify-between gap-3">
             <Label htmlFor={labelId} className="text-ink-3 text-meta">
               Label
             </Label>
