@@ -113,7 +113,7 @@ describe("SelectionLayer", () => {
     expect(read().slides[0]?.elements[0]?.x).toBe(295);
   });
 
-  test("row 5: a corner handle resizes; a shape is free by default and Shift locks the ratio", async () => {
+  test("row 5: a corner handle resizes; a shape is free by default and Shift locks the ratio on any handle", async () => {
     const { container, read } = renderEditor();
     fireEvent.pointerDown(catcher(container), pointer(150, 150));
     fireEvent.pointerUp(window, pointer(150, 150));
@@ -130,11 +130,54 @@ describe("SelectionLayer", () => {
     if (!se2) throw new Error("no se handle");
     await drag(se2, [400, 300], [550, 380], 4, { shiftKey: true });
     expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 450, h: 300 });
-    // Two gestures, two undo steps.
+
+    // Shift on a side handle scales both axes: the right edge to 700 makes 450x300 → 600x400, the
+    // left edge stays at 100 and the height grows evenly about the midline (y 250 → 50..450).
+    const e = container.querySelector<HTMLElement>('[data-handle="e"]');
+    if (!e) throw new Error("no e handle");
+    await drag(e, [550, 250], [700, 250], 4, { shiftKey: true });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 50, w: 600, h: 400 });
+    // Three gestures, three undo steps.
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(read().slides[0]?.elements[0]).toMatchObject({ w: 450, h: 300 });
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(read().slides[0]?.elements[0]).toMatchObject({ w: 300, h: 200 });
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(read().slides[0]?.elements[0]).toMatchObject({ w: 200, h: 100 });
+  });
+
+  test("row 5: an image keeps its ratio from a corner without Shift, and Shift never unlocks it", async () => {
+    const lesson = seededLesson();
+    const first = lesson.slides[0];
+    if (!first) throw new Error("seed");
+    first.elements = [
+      { id: "img", type: "image", x: 100, y: 100, w: 200, h: 100, src: "a.png", fit: "cover" },
+    ];
+    const { container, read } = renderEditor(lesson);
+    fireEvent.pointerDown(catcher(container), pointer(150, 150));
+    fireEvent.pointerUp(window, pointer(150, 150));
+    const handle = (id: string) => {
+      const h = container.querySelector<HTMLElement>(`[data-handle="${id}"]`);
+      if (!h) throw new Error(`no ${id} handle`);
+      return h;
+    };
+
+    // No Shift: the corner to (400, 300) wants 300x200; the larger change (x2 on the height)
+    // drives the ratio, so 200x100 → 400x200.
+    await drag(handle("se"), [300, 200], [400, 300], 4);
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 400, h: 200 });
+
+    // Shift does not release it: the corner to (700, 380) wants 600x280 and gets 600x300.
+    await drag(handle("se"), [500, 300], [700, 380], 4, { shiftKey: true });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 600, h: 300 });
+
+    // A side handle without Shift is still one axis.
+    await drag(handle("e"), [700, 250], [800, 250], 4);
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 700, h: 300 });
+
+    // With Shift it scales both, about the midline: 700x300 → 1050x450, top edge 100 → 25.
+    await drag(handle("e"), [800, 250], [1150, 250], 4, { shiftKey: true });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 25, w: 1050, h: 450 });
   });
 
   test("row 7: marquee selects both; ⌘D duplicates, Delete removes, ⌘Z restores", async () => {

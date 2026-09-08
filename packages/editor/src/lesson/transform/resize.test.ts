@@ -83,6 +83,36 @@ describe("resizeRect — modifiers", () => {
     expect(out).toEqual({ x: 0, y: 0, w: 400, h: 200 });
   });
 
+  test("aspect on a side handle scales the other axis about the midline", () => {
+    // The right edge follows the pointer to 400; the height doubles to match, centred on y=50, and
+    // the left edge stays at 0.
+    const out = resizeRect({ handle: "e", start, pointer: { x: 400, y: 50 }, aspect: true });
+    expect(out).toEqual({ x: 0, y: -50, w: 400, h: 200 });
+  });
+
+  test("aspect on a top handle keeps the bottom edge and centres the width", () => {
+    const out = resizeRect({ handle: "n", start, pointer: { x: 100, y: -100 }, aspect: true });
+    expect(out).toEqual({ x: -100, y: -100, w: 400, h: 200 });
+    expect(out.y + out.h).toBe(start.y + start.h);
+  });
+
+  test("aspect on a rotated side handle keeps the ratio and the world-space anchor", () => {
+    const rotation = 30;
+    const out = resizeRect({
+      handle: "e",
+      start,
+      rotation,
+      pointer: pointerFor(start, rotation, "e"),
+      aspect: true,
+    });
+    expect(out.w).toBeCloseTo(240, 6);
+    expect(out.h).toBeCloseTo(120, 6);
+    const before = worldAnchor(start, rotation, "e");
+    const after = worldAnchor(out, rotation, "e");
+    expect(after.x).toBeCloseTo(before.x, 6);
+    expect(after.y).toBeCloseTo(before.y, 6);
+  });
+
   test("lockHeight leaves an auto-height text alone on a width drag", () => {
     const out = resizeRect({ handle: "e", start, pointer: { x: 500, y: 50 }, lockHeight: true });
     expect([out.w, out.h]).toEqual([500, 100]);
@@ -101,6 +131,11 @@ describe("resizeRect — MIN_SIZE", () => {
     const out = resizeRect({ handle: "se", start, pointer: { x: -300, y: 200 }, aspect: true });
     expect([out.w, out.h]).toEqual([32, MIN_SIZE]);
     expect(out.w / out.h).toBeCloseTo(start.w / start.h, 6);
+  });
+
+  test("floors an aspect side drag on the shorter axis without moving the anchor", () => {
+    const out = resizeRect({ handle: "e", start, pointer: { x: -1000, y: 50 }, aspect: true });
+    expect(out).toEqual({ x: 0, y: 42, w: 32, h: MIN_SIZE });
   });
 
   test("never lets an aspect drag put either axis under MIN_SIZE", () => {
