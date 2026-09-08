@@ -298,8 +298,8 @@ export function useCanvasKeys({ enabled, lesson, slide }: CanvasKeysOptions): vo
         },
       ],
       ["$mod+Shift+Semicolon", () => actions.toggleSnap()],
-      ["$mod+z", () => historyRef.current.undo()],
-      ["$mod+Shift+z", () => historyRef.current.redo()],
+      // Undo and redo are listed above for the shortcut sheet but bound by `useHistoryKeys`, once
+      // for the whole editor, so they work with a menu or popover holding focus.
     ];
 
     const onKeyDown = (e: KeyboardEvent) => {
