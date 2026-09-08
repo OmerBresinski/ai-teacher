@@ -1,9 +1,8 @@
 /**
  * TEACH-150 PR screenshots. Opt-in: `TEACH_SCREENSHOTS=1 … e2e/teach-150-screenshots.spec.ts`.
  *
- * Two runs: the kit shots need `E2E_KIT=1` as well (the production build does not scan the kit's
- * own utilities, so `/kit` is styled only by the Vite dev server); the home and editor shots come
- * from the production build, which carries no dev overlays.
+ * One run against the production build: `/kit` ships in it behind sign-in, and the build scans the
+ * kit's own utilities, so the kit, home and editor shots all come from the same server.
  */
 import type { Page } from "@playwright/test";
 import { expect, seededPaths, seedLibrary, test } from "./fixtures";
@@ -20,7 +19,6 @@ const specimen = (page: Page, name: string) =>
 test("captures the kit's actions, status pills, choice and slider bubble", async ({
   signedInPage: { page },
 }) => {
-  test.skip(process.env.E2E_KIT !== "1", "the kit's utilities are scanned by the dev server only");
   await page.goto("/kit");
   await expect(page.getByRole("heading", { level: 1, name: "The kit" })).toBeVisible();
   await page.waitForTimeout(400);
@@ -59,7 +57,6 @@ test("captures the kit's actions, status pills, choice and slider bubble", async
 test("captures the home page and the focus band on a navigator thumbnail", async ({
   signedInPage: { page },
 }) => {
-  test.skip(process.env.E2E_KIT === "1", "app shots come from the production build");
   const paths = seededPaths(await seedLibrary(page));
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();

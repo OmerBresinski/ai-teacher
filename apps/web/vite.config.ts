@@ -21,18 +21,6 @@ function themeInit(): Plugin {
   };
 }
 
-/** The kit is a development-only route, so its utility classes must not grow production CSS. */
-function kitStyles(mode: string): Plugin {
-  return {
-    name: "tj:kit-styles",
-    enforce: "pre",
-    transform(code, id) {
-      if (mode !== "production" || !id.endsWith("/src/styles.css")) return;
-      return `${code}\n@source not "./components/kit";\n`;
-    },
-  };
-}
-
 /**
  * Resource hints for the cold load, production build only (the dev server is same-origin and serves
  * fonts from source):
@@ -97,7 +85,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      kitStyles(mode),
+      // `/kit` ships in production behind sign-in (TEACH-150), so Tailwind scans its sources like any
+      // other route; an earlier `@source not "./components/kit"` exclusion left the built page unstyled.
       tailwindcss(),
       themeInit(),
       resourceHints(env.VITE_API_URL ?? ""),
