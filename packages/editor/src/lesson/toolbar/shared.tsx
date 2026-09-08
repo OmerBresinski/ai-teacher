@@ -230,7 +230,6 @@ export function SliderRow({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      {/* TODO(TEACH-150): pass `resetTo={defaultValue}` once the kit Slider grows that prop. */}
       <Slider
         id={id}
         aria-label={label}
@@ -238,6 +237,7 @@ export function SliderRow({
         max={max}
         step={step}
         value={[value]}
+        resetTo={defaultValue}
         onValueChange={([v]) => {
           if (v !== undefined) onChange(v);
         }}
