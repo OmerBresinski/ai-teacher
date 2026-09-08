@@ -78,6 +78,25 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 401,
     },
     {
+      // Images pick route (TEACH-157): same guard pair for the new POST prefix.
+      name: "app origin, POST /images/pick JSON, reaches the session guard",
+      method: "POST",
+      path: "/images/pick",
+      headers: { ...browser, "Content-Type": "application/json" },
+      expect: 401,
+    },
+    {
+      name: "foreign origin POST /images/pick is rejected before the session guard",
+      method: "POST",
+      path: "/images/pick",
+      headers: {
+        Origin: "https://evil.example",
+        "Sec-Fetch-Site": "cross-site",
+        "Content-Type": "application/json",
+      },
+      expect: 403,
+    },
+    {
       name: "foreign origin GET /images/search is rejected before the session guard",
       path: "/images/search?q=river",
       headers: {

@@ -187,7 +187,7 @@ function buildApp({
     .route("/", jobRoutes(eventsRuntime))
     .route("/", eventRoutes(eventsRuntime))
     .route("/", fileRoutes(storage))
-    .route("/", imageRoutes(images, imageLimiter))
+    .route("/", imageRoutes(images, imageLimiter, storage))
     .route("/", documentRoutes(db.unsafeDb))
     .route("/", lessonRoutes(db.unsafeDb, eventsRuntime));
 

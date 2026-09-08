@@ -63,6 +63,11 @@ export class PexelsError extends Error {
 
 export interface PexelsClient {
   search(params: PexelsSearchParams): Promise<PhotoSearchPage>;
+  /**
+   * One photo by Pexels id. `null` on 404 (or when the returned photo has no usable
+   * `https:` URLs); other non-2xx answers throw `PexelsError` like `search`.
+   */
+  photo(id: string, signal?: AbortSignal): Promise<PhotoResult | null>;
 }
 
 export interface CreatePexelsClientOptions {
@@ -179,6 +184,21 @@ export function createPexelsClient(options: CreatePexelsClientOptions): PexelsCl
         if (mapped !== null) photos.push(mapped);
       }
       return { photos, nextPage: body.next_page === undefined ? null : body.page + 1 };
+    },
+    async photo(id: string, signal?: AbortSignal): Promise<PhotoResult | null> {
+      const res = await fetchFn(`${baseUrl}/photos/${encodeURIComponent(id)}`, {
+        headers: { Authorization: apiKey },
+        signal,
+      });
+      if (res.status === 404) return null;
+      if (!res.ok) {
+        throw new PexelsError(
+          res.status,
+          `Pexels photo failed with status ${res.status}.`,
+          retryAfterSeconds(res),
+        );
+      }
+      return toPhotoResult(PexelsPhotoSchema.parse(await res.json()));
     },
   };
 }
