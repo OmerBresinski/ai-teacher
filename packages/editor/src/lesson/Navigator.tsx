@@ -638,13 +638,21 @@ const NavigatorRow = memo(function NavigatorRow({
         data-navigator-thumb
         className={cn(
           "relative block overflow-hidden rounded-chip transition-shadow duration-(--duration-base) ease-(--ease-out)",
-          // The open slide gets the system accent as a 2px ring; every other thumbnail keeps the
-          // `--border` hairline, so the ring is the only ring in the rail. Keyboard focus on the row
-          // draws the two-tone focus band outside that ring: on the card, not around the column.
-          active ? "shadow-[0_0_0_2px_var(--primary)]" : "shadow-[0_0_0_1px_var(--border)]",
-          "group-focus-visible:shadow-[0_0_0_2px_var(--primary),0_0_0_4px_var(--focus-gap),0_0_0_6px_var(--ring)]",
+          // Keyboard focus on the row draws the two-tone focus band outside the ring: on the card,
+          // not around the column. Set as a variable the inline shadow reads, so the rest ring stays
+          // one plain layer (the fidelity spec pins its computed value) rather than Tailwind's
+          // five-part shadow stack.
+          "group-focus-visible:[--navigator-thumb-ring:0_0_0_2px_var(--primary),0_0_0_4px_var(--focus-gap),0_0_0_6px_var(--ring)]",
         )}
-        style={{ width: geometry.thumbW, height: geometry.thumbH }}
+        style={{
+          width: geometry.thumbW,
+          height: geometry.thumbH,
+          // The open slide gets the system accent as a 2px ring; every other thumbnail keeps the
+          // `--border` hairline, so the ring is the only ring in the rail.
+          boxShadow: active
+            ? "var(--navigator-thumb-ring, 0 0 0 2px var(--primary))"
+            : "var(--navigator-thumb-ring, 0 0 0 1px var(--border))",
+        }}
       >
         <SlideScaler zoom={geometry.thumbW / SLIDE_W}>
           <SlideView slide={slide} theme={theme} mode="thumb" />
