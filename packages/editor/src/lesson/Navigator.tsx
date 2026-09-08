@@ -30,9 +30,10 @@ import { SlideView } from "../slide/SlideView";
 import { AddSlidePicker } from "./AddSlidePicker";
 import { useHistory, useLesson } from "./document-context";
 import { hint } from "./keys";
+import { useProposals } from "./proposals-context";
 import { useResidualFindings } from "./residual-findings";
 import { SlideBadge } from "./SlideBadge";
-import { addSlideAfter, duplicateSlide } from "./slide-commands";
+import { addSlideAfter, duplicateSlide, regenerateSlide } from "./slide-commands";
 import { useActiveSlideId, useSessionActions, useSessionUi } from "./use-editor-session";
 
 /*
@@ -75,6 +76,7 @@ export function Navigator() {
   const { clipboardSlide } = useSessionUi();
   const theme = useMemo(() => getTheme(lesson.themeId), [lesson.themeId]);
   const { bySlide: residuals } = useResidualFindings();
+  const { busySlideIds, onRegenerate } = useProposals();
 
   const [mode, setMode] = useState<Mode>(readMode);
   const toggleMode = () => {
@@ -400,6 +402,7 @@ export function Navigator() {
                   selected={selected.has(slide.id)}
                   dragging={!!draggingIds?.has(slide.id)}
                   residuals={residuals.get(slide.id)}
+                  busy={busySlideIds.has(slide.id)}
                   onPointerDown={onRowPointerDown}
                   onPointerMove={onRowPointerMove}
                   onPointerUp={onRowPointerUp}
@@ -492,6 +495,14 @@ export function Navigator() {
           >
             Paste after
           </DropdownMenuItem>
+          {onRegenerate ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => menuAt && regenerateSlide(deps, menuAt.id)}>
+                Regenerate slide…
+              </DropdownMenuItem>
+            </>
+          ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => nudgeSlides(-1)}>Move up</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => nudgeSlides(1)}>Move down</DropdownMenuItem>
@@ -523,6 +534,7 @@ const NavigatorRow = memo(function NavigatorRow({
   selected,
   dragging,
   residuals,
+  busy,
   ...handlers
 }: {
   slide: Slide;
@@ -534,6 +546,8 @@ const NavigatorRow = memo(function NavigatorRow({
   dragging: boolean;
   /** Residual findings pointing at this slide (ADR 0025 §12); `undefined` when there are none. */
   residuals?: Finding[];
+  /** A cascade or regenerate in flight will replace content on this slide (TEACH-134 FR 5). */
+  busy: boolean;
   onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -612,6 +626,15 @@ const NavigatorRow = memo(function NavigatorRow({
         <SlideScaler zoom={geometry.thumbW / SLIDE_W}>
           <SlideView slide={slide} theme={theme} mode="thumb" />
         </SlideScaler>
+        {busy ? (
+          <span
+            data-slide-busy
+            role="status"
+            className="absolute inset-0 flex items-center justify-center bg-background/60 font-medium text-foreground text-meta"
+          >
+            changing…
+          </span>
+        ) : null}
         {hasNotes || hasSteps || needsTidy || residuals ? (
           <span className="absolute top-1 right-1 flex gap-1">
             {residuals ? (

@@ -1,5 +1,6 @@
 /** Block-list reducers: insert, update, delete, move, duplicate. Numbering is re-derived by `edit`. */
 
+import type { Proposal } from "@tj/domain";
 import type { Id, Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import { uid } from "../../model/factories";
 import { edit, type WithId } from "./core";
@@ -27,6 +28,23 @@ export function updateBlock<T extends WorksheetBlock>(
     else Object.assign(block, patch);
   });
 }
+
+/**
+ * Apply a job's block proposals (ADR 0025 §19): each replaces the block with `target.blockId` in
+ * place, keeping its position. Slide proposals are ignored here (`applyProposals` on the lesson).
+ */
+export const applyBlockProposals = (
+  worksheet: Worksheet,
+  proposals: readonly Proposal[],
+): Worksheet =>
+  edit(worksheet, (w) => {
+    for (const proposal of proposals) {
+      const { blockId } = proposal.target;
+      if (blockId === undefined || proposal.block === undefined) continue;
+      const at = w.blocks.findIndex((b) => b.id === blockId);
+      if (at !== -1) w.blocks[at] = proposal.block;
+    }
+  });
 
 export const deleteBlock = (worksheet: Worksheet, id: Id): Worksheet =>
   edit(worksheet, (w) => {

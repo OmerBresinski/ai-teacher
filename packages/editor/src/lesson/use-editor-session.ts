@@ -47,9 +47,16 @@ export type SessionState = {
    * names the element whose `src` the chosen image swaps instead of adding a new one.
    */
   imagePanel: ImagePanelState;
+  /**
+   * The Regenerate dialog (TEACH-134, ADR 0025 §18): the slide or element it is open for. Session
+   * state so the slide toolbar, the element toolbars' More drawer and the navigator's menu all
+   * open the one dialog `LessonEditor` mounts.
+   */
+  regenerate: RegenerateTarget | null;
 };
 
 export type ImagePanelState = null | { mode: "add" } | { mode: "replace"; elementId: Id };
+export type RegenerateTarget = { slideId: Id; elementId?: Id };
 
 export const INITIAL_SESSION: SessionState = {
   activeSlideId: null,
@@ -64,6 +71,7 @@ export const INITIAL_SESSION: SessionState = {
   showGuides: true,
   snap: true,
   imagePanel: null,
+  regenerate: null,
 };
 
 export type SessionAction =
@@ -80,7 +88,8 @@ export type SessionAction =
   | { type: "toggleSnap" }
   | { type: "copy"; elements: SlideElement[] }
   | { type: "copySlide"; slide: Slide }
-  | { type: "setImagePanel"; panel: ImagePanelState };
+  | { type: "setImagePanel"; panel: ImagePanelState }
+  | { type: "setRegenerate"; target: RegenerateTarget | null };
 
 export function sessionReducer(s: SessionState, a: SessionAction): SessionState {
   switch (a.type) {
@@ -133,6 +142,8 @@ export function sessionReducer(s: SessionState, a: SessionAction): SessionState 
       return { ...s, clipboardSlide: a.slide };
     case "setImagePanel":
       return s.imagePanel === a.panel ? s : { ...s, imagePanel: a.panel };
+    case "setRegenerate":
+      return s.regenerate === a.target ? s : { ...s, regenerate: a.target };
   }
 }
 
@@ -155,6 +166,8 @@ export type SessionActions = {
   /** Open the Add image panel; with `replace`, the chosen image swaps that element's `src`. */
   openImagePanel: (replace?: { elementId: Id }) => void;
   closeImagePanel: () => void;
+  openRegenerate: (target: RegenerateTarget) => void;
+  closeRegenerate: () => void;
 };
 
 export type EditorSession = {
@@ -193,6 +206,8 @@ export function useEditorSessionState(initial: Partial<SessionState> = {}): Edit
           panel: replace ? { mode: "replace", elementId: replace.elementId } : { mode: "add" },
         }),
       closeImagePanel: () => dispatch({ type: "setImagePanel", panel: null }),
+      openRegenerate: (target) => dispatch({ type: "setRegenerate", target }),
+      closeRegenerate: () => dispatch({ type: "setRegenerate", target: null }),
     }),
     [],
   );
@@ -234,6 +249,7 @@ export function EditorSessionProvider({
     showGuides,
     snap,
     imagePanel,
+    regenerate,
   } = state;
   const ui = useMemo<SessionUi>(
     () => ({
@@ -246,6 +262,7 @@ export function EditorSessionProvider({
       showGuides,
       snap,
       imagePanel,
+      regenerate,
     }),
     [
       editingTextId,
@@ -257,6 +274,7 @@ export function EditorSessionProvider({
       showGuides,
       snap,
       imagePanel,
+      regenerate,
     ],
   );
   return createElement(

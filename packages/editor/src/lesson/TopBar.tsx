@@ -1,6 +1,6 @@
 import type { Lesson } from "@tj/domain/documents";
 import { AppBar, AppBarGroup, Button, IconButton, Tooltip } from "@tj/ui";
-import { ArrowLeft, FileText, Play, Redo2, Undo2 } from "lucide-react";
+import { ArrowLeft, FileText, ListChecks, Play, Redo2, Undo2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { InlineTitle } from "../kit/InlineTitle";
 import { PanelSeparator } from "../kit/Panel";
@@ -28,6 +28,9 @@ export type TopBarProps = {
    * button shows only when the lesson has `artefacts.worksheetId` and the app handles the open.
    */
   onOpenWorksheet?: (worksheetId: string) => void;
+  /** Toggles the facts panel (TEACH-134); absent when the app has not wired the proposal jobs. */
+  onToggleFacts?: () => void;
+  factsOpen?: boolean;
   autosave: Autosave<Lesson>;
 };
 
@@ -37,6 +40,8 @@ export function TopBar({
   onOpenTheme,
   exportSlot,
   onOpenWorksheet,
+  onToggleFacts,
+  factsOpen = false,
   autosave,
 }: TopBarProps) {
   const lesson = useLesson();
@@ -80,6 +85,18 @@ export function TopBar({
           onClick={onOpenTheme}
         />
         <QuietButton label="Share" hintLabel="Sharing is not available yet" />
+        {onToggleFacts ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-pressed={factsOpen}
+            data-facts-toggle
+            onClick={onToggleFacts}
+          >
+            <ListChecks aria-hidden size={16} strokeWidth={1.5} />
+            Facts
+          </Button>
+        ) : null}
         {worksheetId && onOpenWorksheet ? (
           <Button
             variant="ghost"

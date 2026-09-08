@@ -77,7 +77,12 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   e2e worker, so `POST /lessons` really generates — banner, slides arriving before the terminal
   event, the editor taking over in place, the residual footer, the Worksheet link, Stop). Screenshot
   specs: `teach-<n>-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`; `teach-133` is the generating
-  view and the finished editor with its residuals).
+  view and the finished editor with its residuals; `teach-134` the facts panel, the cascade toast
+  and the regenerate dialog). `proposals` (TEACH-134) seeds `generatedLesson()` + its worksheet
+  (worksheet first, so the lesson's `artefacts.worksheetId` is the minted uuid) and, on the fake
+  worker, edits an objective → cascade toast → Undo, and regenerates slide 3 with an instruction;
+  the fake answers cascade/regenerate calls with the fixture spec of the kind the prompt names
+  (`apps/worker/src/fake-ai.ts`).
 - Client storage keys: `tj:sidebar-collapsed`, `tj:library:sort`, `tj:library:view`, and
   `tj:last-shell` are the stable browser preference/session contracts for the library shell;
   `tj:navigator` (full / compact rail) is the editor's.

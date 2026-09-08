@@ -81,6 +81,7 @@ export class FakeApi {
     this.rows.clear();
     this.requests.length = 0;
     this.failures = [];
+    this.nextProposalJobId = null;
     for (const item of demoWorkspace(new Date())) {
       this.rows.set(item.key, {
         id: item.key,
@@ -186,6 +187,13 @@ export class FakeApi {
     }
     if (segments[0] === "jobs" && segments[2] === "cancel" && method === "POST") {
       return json(202, { status: "cancelled" });
+    }
+    if (
+      segments[0] === "lessons" &&
+      (segments[2] === "cascade" || segments[2] === "regenerate") &&
+      method === "POST"
+    ) {
+      return this.enqueueProposal(segments[1] ?? "");
     }
     return error(404, "not_found", `fake api: no route for ${method} ${path}`);
   }
@@ -298,6 +306,25 @@ export class FakeApi {
     });
     return json(200, { series: documentJson(row), lessons });
   }
+
+  /** `POST /lessons/:id/{cascade,regenerate}`: a job id, or the api's two 409s. */
+  private enqueueProposal(id: string): Response {
+    const row = this.rows.get(id);
+    if (row?.kind !== "lesson") {
+      return error(404, "not_found", "That document does not exist.");
+    }
+    if (row.generatingJobId !== null) {
+      return error(409, "conflict", "This lesson is still being generated.", {
+        reason: "generating",
+      });
+    }
+    const jobId = this.nextProposalJobId ?? newId();
+    this.nextProposalJobId = null;
+    return json(202, { jobId });
+  }
+
+  /** When set, the next proposal job gets this id (so a test can drive its fake EventSource). */
+  nextProposalJobId: string | null = null;
 
   private createLesson(input: unknown): Response {
     const jobId = newId();

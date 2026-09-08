@@ -6,7 +6,16 @@ import {
   type SlideElement,
   type TextElement,
 } from "@tj/domain/documents";
-import { IconButton, Input, Popover, PopoverContent, PopoverTrigger, Slider, Switch } from "@tj/ui";
+import {
+  Button,
+  IconButton,
+  Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Slider,
+  Switch,
+} from "@tj/ui";
 import {
   ArrowDown,
   ArrowDownToLine,
@@ -15,11 +24,14 @@ import {
   MoreHorizontal,
   RotateCcw,
   RotateCw,
+  Sparkles,
 } from "lucide-react";
 import { type ReactNode, useId } from "react";
 import { NumberInput } from "../../kit/NumberInput";
 import { PanelRow } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
+import { useProposals } from "../proposals-context";
+import { useSessionActions } from "../use-editor-session";
 import { ICON, ICON_SM, PanelSection, useElementWrites } from "./shared";
 
 const ROUNDABLE = new Set<SlideElement["type"]>(["image", "shape", "text"]);
@@ -43,6 +55,8 @@ export function MoreDrawer({
   const rowId = useId();
   const ids = elements.map((e) => e.id);
   const one = elements.length === 1 ? elements[0] : null;
+  const { onRegenerate } = useProposals();
+  const { openRegenerate } = useSessionActions();
 
   return (
     <Popover onOpenChange={(open) => !open && end()}>
@@ -54,6 +68,21 @@ export function MoreDrawer({
       <PopoverContent align="end" className="w-64 p-3" aria-label="More">
         <div className="flex flex-col gap-2.5">
           {extra ? <PanelSection title="Options">{extra}</PanelSection> : null}
+
+          {/* One AI-derived element, rewritten from the facts (TEACH-134, ADR 0025 §18). */}
+          {one && onRegenerate ? (
+            <PanelSection title="AI">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start"
+                onClick={() => openRegenerate({ slideId, elementId: one.id })}
+              >
+                <Sparkles aria-hidden {...ICON_SM} />
+                Regenerate element…
+              </Button>
+            </PanelSection>
+          ) : null}
 
           {one ? (
             <PanelSection title="Position">

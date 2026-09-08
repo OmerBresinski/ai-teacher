@@ -12,7 +12,7 @@ import {
   Tooltip,
   toast,
 } from "@tj/ui";
-import { ImagePlus, WandSparkles } from "lucide-react";
+import { ImagePlus, Sparkles, WandSparkles } from "lucide-react";
 import { Fragment, memo, useState } from "react";
 import { ColorPicker } from "../../kit/Color";
 import { Panel, PanelSeparator } from "../../kit/Panel";
@@ -22,6 +22,8 @@ import { SLIDE_KIND_LABELS, SLIDE_KIND_ORDER } from "../../model/layouts";
 import * as reducers from "../../model/reducers";
 import { useEditSession } from "../../model/use-edit-session";
 import { useHistory } from "../document-context";
+import { useProposals } from "../proposals-context";
+import { useSessionActions } from "../use-editor-session";
 import { AnswerDrawer } from "./AnswerDrawer";
 import { BarButton, DropTrigger, ICON, useThemePalette } from "./shared";
 
@@ -60,6 +62,8 @@ export const SlideToolbar = memo(function SlideToolbar({
   const notes = useEditSession(history);
   const [convertTo, setConvertTo] = useState<SlideKind | null>(null);
   const palette = useThemePalette(theme);
+  const { onRegenerate } = useProposals();
+  const { openRegenerate } = useSessionActions();
 
   const currentTransition =
     TRANSITIONS.find((t) => t.value === (slide.transition ?? "fade")) ?? TRANSITIONS[1];
@@ -146,6 +150,14 @@ export const SlideToolbar = memo(function SlideToolbar({
       {slide.question ? <AnswerDrawer slide={slide} question={slide.question} /> : null}
 
       <PanelSeparator />
+
+      {/* Regenerate this slide from the facts (TEACH-134, ADR 0025 §18); the dialog previews the
+          impact set and takes an instruction. Only when the app has wired the proposal jobs. */}
+      {onRegenerate ? (
+        <IconButton label="Regenerate slide" onClick={() => openRegenerate({ slideId: slide.id })}>
+          <Sparkles aria-hidden {...ICON} />
+        </IconButton>
+      ) : null}
 
       {/* The text fitting engine, on demand: measures the slide with the real theme faces, grows
           every auto-height box to its type, pushes what collides down the 7pt rhythm, steps

@@ -107,6 +107,26 @@ test.describe("accessibility (axe)", () => {
       );
       await expectNoSeriousA11yViolations(page, `residual popover (${theme})`);
       await page.keyboard.press("Escape");
+
+      // TEACH-134: the facts panel open, then the regenerate dialog over it. The popover stays
+      // mounted through its fade-out; axe must not read contrast through it.
+      await expect(popover).toHaveCount(0);
+      await page.getByRole("button", { name: "Facts" }).click();
+      await expect(page.getByRole("complementary", { name: "Facts" })).toBeVisible();
+      await expectNoSeriousA11yViolations(page, `facts panel (${theme})`);
+      await page
+        .getByRole("listbox", { name: "Slides" })
+        .getByRole("option")
+        .nth(1)
+        .click({ button: "right" });
+      await page.getByRole("menuitem", { name: "Regenerate slide…" }).click();
+      const dialog = page.getByRole("dialog", { name: "Regenerate slide 2" });
+      await expect(dialog).toBeVisible();
+      await dialog.evaluate((el) =>
+        Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+      );
+      await expectNoSeriousA11yViolations(page, `regenerate dialog (${theme})`, '[role="dialog"]');
+      await page.keyboard.press("Escape");
     }
   });
 
