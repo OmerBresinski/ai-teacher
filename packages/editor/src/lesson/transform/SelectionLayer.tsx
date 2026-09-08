@@ -110,10 +110,13 @@ const sameIds = (a: readonly Id[], b: readonly Id[]) =>
   a.length === b.length && a.every((id, i) => id === b[i]);
 
 /**
- * True while a modal Radix layer (a bar menu, a popover) is open. Radix turns `pointer-events`
- * off on `<body>` for the duration, but this layer turns its own back on, so a press meant to
- * dismiss the menu — a second click on the Align trigger — passed through the bar and landed on
- * the element under it, changing the selection. That press belongs to the layer being dismissed.
+ * True while a modal Radix layer (a bar DropdownMenu) is open. This guards the modal case only:
+ * Radix puts `pointer-events: none` on `<body>` for the duration, so the trigger cannot receive
+ * the dismissing click, and because this layer turns its own pointer events back on the press
+ * fell through the bar to the stage's coordinate hit-test — a second click on the Align trigger
+ * selected the element under it. That press belongs to the layer being dismissed. Non-modal
+ * layers (a Popover, the More drawer) leave the body alone: their trigger receives its own click,
+ * and a click on the canvas beside them both dismisses and selects, by design.
  */
 const underModalLayer = () => document.body.style.pointerEvents === "none";
 
