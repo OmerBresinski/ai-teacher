@@ -94,7 +94,13 @@ export async function storePhoto(options: StorePhotoOptions): Promise<StoredPhot
   if (Number.isFinite(declared) && declared > MAX_PHOTO_BYTES) {
     throw new StorePhotoError("too_large", "The photo is too large to store.");
   }
-  const bytes = new Uint8Array(await res.arrayBuffer());
+  // The connection can still drop mid-body: a failed read is a failed fetch.
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(await res.arrayBuffer());
+  } catch {
+    throw new StorePhotoError("fetch_failed", "The photo could not be downloaded.");
+  }
   // And again after: the header is a claim, the body read is the fact.
   if (bytes.length === 0) {
     throw new StorePhotoError("fetch_failed", "The photo download was empty.");

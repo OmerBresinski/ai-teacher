@@ -189,6 +189,31 @@ describe("storePhoto", () => {
     expect(puts).toHaveLength(0);
   });
 
+  test("a body that fails mid-read is a fetch failure", async () => {
+    const { storage, puts } = memoryStorage();
+    const fetch = (() =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.error(new Error("truncated"));
+            },
+          }),
+          { status: 200, headers: { "content-type": "image/jpeg" } },
+        ),
+      )) as unknown as typeof globalThis.fetch;
+    const error = await storePhoto({
+      photo: photo(),
+      target: "slide",
+      storage,
+      workspaceId: ws,
+      fetch,
+    }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(StorePhotoError);
+    expect((error as StorePhotoError).reason).toBe("fetch_failed");
+    expect(puts).toHaveLength(0);
+  });
+
   test("storage errors propagate", async () => {
     const { fetch } = stubFetch(threeHundredKb, "image/jpeg");
     const storage = {
