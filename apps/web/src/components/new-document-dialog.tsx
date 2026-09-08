@@ -246,10 +246,7 @@ export function NewDocumentDialog({ open, onOpenChange, kind, onCreate }: NewDoc
               <Button variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button
-                className="bg-foreground text-background hover:bg-foreground"
-                onClick={() => setStep("theme")}
-              >
+              <Button variant="primary" onClick={() => setStep("theme")}>
                 Next
               </Button>
             </>
@@ -258,11 +255,7 @@ export function NewDocumentDialog({ open, onOpenChange, kind, onCreate }: NewDoc
               <Button variant="ghost" disabled={busy} onClick={() => setStep("about")}>
                 Back
               </Button>
-              <Button
-                className="bg-foreground text-background hover:bg-foreground"
-                disabled={busy || !themeId}
-                onClick={() => void submit()}
-              >
+              <Button variant="primary" disabled={busy || !themeId} onClick={() => void submit()}>
                 {busy ? <Spinner /> : null}
                 Create {noun}
               </Button>

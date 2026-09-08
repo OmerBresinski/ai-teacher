@@ -29,37 +29,71 @@ const stackSheets = ["front", "near", "far"] as const;
 export function Content() {
   const [title, setTitle] = useState("Photosynthesis");
   return (
-    <KitGroup id="content" title="Content">
+    <KitGroup
+      id="content"
+      title="Content"
+      rule="Lora 500 stays on page titles, dialog titles, empty-state headlines and Display. Section headings are the UI face at 15/600 with the count in ink-3. A pill is 12/500 with one boundary: tint or hairline, never both."
+    >
       <Specimen
-        name="StatusPill, all tones and opaque"
-        note="States include dot and thumbnail-overlay treatments."
+        name="StatusPill, one per context"
+        note="Where the pill sits decides its dress: tint in a header, hairline over a picture, dot and text in a row."
+        bleed
       >
-        {(["neutral", "accent", "success", "warning", "danger"] as const).map((tone) => (
-          <StatusPill key={tone} tone={tone} dot opaque={tone === "danger"}>
-            {tone}
-          </StatusPill>
-        ))}
-        <div className="rounded-card bg-brand-text p-2">
-          <StatusPill tone="neutral" opaque dot>
-            Opaque
-          </StatusPill>
+        <div className="grid w-full gap-6 sm:grid-cols-3">
+          <Variant label="In a header">
+            <div className="flex items-center gap-3 rounded-card border border-border bg-card px-4 py-3">
+              <span className="text-body font-semibold whitespace-nowrap">The water cycle</span>
+              <StatusPill tone="warning">Unsaved changes</StatusPill>
+            </div>
+          </Variant>
+          <Variant label="Over a thumbnail">
+            <div className="relative aspect-video w-full overflow-hidden rounded-card border border-border">
+              <LessonThumb lesson={{ title: "Fractions", themeId: "chalk", cover: KIT_COVER }} />
+              <div className="absolute top-2 left-2">
+                <StatusPill opaque>Draft</StatusPill>
+              </div>
+            </div>
+          </Variant>
+          <Variant label="In a list row">
+            <div className="flex w-full items-center justify-between rounded-card border border-border bg-card px-4 py-3">
+              <span className="text-body">Fractions, week 3</span>
+              <StatusPill quiet tone="success">
+                Published
+              </StatusPill>
+            </div>
+          </Variant>
+        </div>
+        <div className="flex flex-wrap items-center gap-6 pt-2">
+          <Variant label="Needs attention">
+            <StatusPill tone="danger" dot>
+              Import failed
+            </StatusPill>
+          </Variant>
+          <Variant label="New this week">
+            <StatusPill tone="accent">New</StatusPill>
+          </Variant>
+          <Variant label="Count">
+            <StatusPill>12 slides</StatusPill>
+          </Variant>
         </div>
       </Specimen>
       <Specimen name="Card, default and contained" bleed>
         <div className="flex flex-wrap gap-6">
           <Card className="w-72">
             <CardHeader>
-              <CardTitle>Default card</CardTitle>
-              <CardDescription>Cards compose headers and descriptions.</CardDescription>
+              <CardTitle>Year 4 Science</CardTitle>
+              <CardDescription>Six lessons, two worksheets, one series.</CardDescription>
               <CardAction>
                 <IconButton label="More" noTooltip>
                   <MoreHorizontal aria-hidden />
                 </IconButton>
               </CardAction>
             </CardHeader>
-            <CardContent>Content area</CardContent>
+            <CardContent>Next up: The water cycle, Tuesday.</CardContent>
             <CardFooter>
-              <Button size="sm">Action</Button>
+              <Button variant="primary" size="sm">
+                Present series
+              </Button>
             </CardFooter>
           </Card>
           <Card
@@ -73,13 +107,14 @@ export function Content() {
                 <StatusPill opaque>Draft</StatusPill>
               </CardOverlay>
             }
-            heading="Contained card"
+            heading="Fractions"
             meta="Year 4 · 6 slides"
           />
         </div>
       </Specimen>
       <Specimen name="SectionHeading, count and action" bleed>
         <SectionHeading
+          className="w-full"
           count={4}
           action={
             <Button size="sm" variant="ghost">
@@ -87,13 +122,16 @@ export function Content() {
             </Button>
           }
         >
-          Lessons
+          Recent lessons
         </SectionHeading>
       </Specimen>
       <Specimen name="Stack, one two and three sheets" bleed>
         <div className="flex flex-wrap gap-12 pt-7">
           {[1, 2, 3].map((count) => (
-            <Variant key={count} label={`${count} sheet${count === 1 ? "" : "s"}`}>
+            <Variant
+              key={count}
+              label={`${count} ${count === 1 ? "lesson" : "lessons"} in the series`}
+            >
               <Stack
                 width={160}
                 sheets={stackSheets
@@ -108,27 +146,34 @@ export function Content() {
         <div className="grid gap-6 lg:grid-cols-3">
           <EmptyState
             icon={<Plus />}
-            title="No lessons"
-            body="Create your first lesson."
-            action={<Button>New lesson</Button>}
+            title="No lessons yet"
+            body="Your first lesson takes about a minute."
+            action={<Button variant="primary">New lesson</Button>}
           />
           <EmptyState
             icon={<Plus />}
             iconTone="quiet"
-            title="No results"
-            body="Try another search."
+            title="Nothing matches"
+            body="Try a shorter search, or check the spelling."
           />
           <EmptyState stacked title="Nothing in this series" body="Add a lesson to get started." />
         </div>
       </Specimen>
-      <Specimen name="PageTitle, renameable">
+      <Specimen name="PageTitle, renameable" note="Double-click or F2 to rename.">
         <PageTitle label="Lesson title" renameLabel="Rename lesson" onCommit={setTitle}>
           {title}
         </PageTitle>
       </Specimen>
-      <Specimen name="Display, all sizes" headingLevel={2}>
-        {(["sm", "md", "lg", "xl"] as const).map((size) => (
-          <Variant key={size} label={size}>
+      <Specimen name="Display, where Lora lands" headingLevel={2}>
+        {(
+          [
+            ["sm", "Dialog title, 20"],
+            ["md", "Wordmark, 22"],
+            ["lg", "Page title, 28"],
+            ["xl", "Sign-in cover, 36"],
+          ] as const
+        ).map(([size, label]) => (
+          <Variant key={size} label={label}>
             <Display as="h3" size={size}>
               Teaching Journey
             </Display>

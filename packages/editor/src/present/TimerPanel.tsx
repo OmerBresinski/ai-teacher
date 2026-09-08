@@ -101,7 +101,7 @@ export function TimerPanel() {
           </Button>
           {/* A countdown at zero is over: it is offered a restart, not a pause. */}
           {finished ? (
-            <Button size="sm" onClick={() => start()}>
+            <Button variant="primary" size="sm" onClick={() => start()}>
               Start again
             </Button>
           ) : timer.running ? (
@@ -113,11 +113,15 @@ export function TimerPanel() {
               Pause
             </Button>
           ) : timer.armed ? (
-            <Button size="sm" onClick={() => dispatch({ type: "resumeTimer", at: at() })}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => dispatch({ type: "resumeTimer", at: at() })}
+            >
               Resume
             </Button>
           ) : (
-            <Button size="sm" onClick={() => start()}>
+            <Button variant="primary" size="sm" onClick={() => start()}>
               Start
             </Button>
           )}

@@ -109,7 +109,7 @@ export function TopBar({
           </Button>
         ) : null}
         {exportSlot}
-        <Button size="sm" onClick={() => void present()}>
+        <Button variant="primary" size="sm" onClick={() => void present()}>
           <Play aria-hidden size={16} strokeWidth={1.5} />
           Present
         </Button>

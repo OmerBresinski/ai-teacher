@@ -65,11 +65,7 @@ export function NewSeriesDialog({ open, onOpenChange, onCreate }: NewSeriesDialo
           <Button variant="ghost" disabled={busy} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            className="bg-foreground text-background hover:bg-foreground"
-            disabled={busy}
-            onClick={() => void submit()}
-          >
+          <Button variant="primary" disabled={busy} onClick={() => void submit()}>
             {busy ? <Spinner /> : null}
             Create series
           </Button>

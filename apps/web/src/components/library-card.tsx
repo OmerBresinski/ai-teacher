@@ -217,7 +217,12 @@ export const LibraryCard = memo(function LibraryCard({
         </ListSurfaceCell>
         <ListSurfaceCell className="w-[104px]">
           <div className="flex justify-end gap-1 opacity-0 motion-safe:transition-opacity motion-safe:duration-(--duration-fast) group-hover/row:opacity-100 group-focus-within/row:opacity-100 pointer-coarse:opacity-100">
-            <Button size="xs" className="relative z-2" onClick={primaryAction}>
+            <Button
+              variant="ghost"
+              size="xs"
+              className="relative z-2 text-brand-text hover:text-brand-text"
+              onClick={primaryAction}
+            >
               {primaryLabel}
             </Button>
             <div className="relative z-2">
@@ -267,6 +272,7 @@ export const LibraryCard = memo(function LibraryCard({
           hero ? undefined : (
             <CardOverlay>
               <Button
+                variant="primary"
                 size="sm"
                 className="relative z-2 pointer-events-auto"
                 onClick={primaryAction}
@@ -289,7 +295,7 @@ export const LibraryCard = memo(function LibraryCard({
       >
         {hero ? (
           <div className="relative z-2 mt-2 flex items-center justify-between gap-2">
-            <Button size="sm" onClick={primaryAction}>
+            <Button variant="primary" size="sm" onClick={primaryAction}>
               <Play aria-hidden size={16} />
               Present
             </Button>

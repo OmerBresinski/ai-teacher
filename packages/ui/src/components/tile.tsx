@@ -15,7 +15,7 @@ function Tile({ children, icon, tone = "default", className, type, ...props }: T
       type={type ?? "button"}
       data-primary-fill={primary ? "" : undefined}
       className={cn(
-        "group flex h-16 w-full items-center justify-start gap-3 rounded-card px-5 text-left text-lead font-semibold outline-none motion-safe:transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+        "group flex h-16 w-full items-center justify-start gap-3 rounded-card px-5 text-left text-lead font-semibold outline-none motion-safe:transition-colors focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-50",
         primary
           ? "bg-primary-fill text-primary-foreground hover:bg-primary-fill-hover active:bg-primary-fill-press"
           : "border border-border-control/40 bg-card text-foreground hover:bg-accent active:bg-accent-active",

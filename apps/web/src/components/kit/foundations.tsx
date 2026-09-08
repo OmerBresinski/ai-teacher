@@ -10,7 +10,7 @@ import {
   Switch,
 } from "@tj/ui";
 import { Pencil } from "lucide-react";
-import { KitGroup, Specimen, Variant } from "./frame";
+import { eyebrowClass, KitGroup, Specimen, Variant } from "./frame";
 
 const swatches = [
   ["Background", "bg-background"],
@@ -27,7 +27,11 @@ const swatches = [
 
 export function Foundations() {
   return (
-    <KitGroup id="foundations" title="Foundations">
+    <KitGroup
+      id="foundations"
+      title="Foundations"
+      rule="Terracotta #D2644B is the only saturated colour in the chrome: fills, rings, frames and glyphs. Under 18px the accent as text is #B04A33. Eyebrows are 12/500, tracked 0.08em, ink-3."
+    >
       <Specimen
         name="Surfaces, primary and status"
         note="Semantic palette tokens across every theme."
@@ -103,12 +107,15 @@ export function Foundations() {
       </Specimen>
       <Specimen name="Type ladder" note="Eyebrow through display type.">
         <div className="space-y-2">
-          <p className="text-eyebrow font-semibold tracking-wide text-ink-3 uppercase">Eyebrow</p>
-          <p className="text-meta text-ink-3">Meta</p>
-          <p className="text-body">Body</p>
-          <p className="text-lead text-ink-2">Lead</p>
-          <p className="font-display text-title">Title</p>
-          <p className="font-display text-[28px] leading-9">Display</p>
+          <p className={eyebrowClass}>Eyebrow, 12 tracked</p>
+          <p className="text-meta text-ink-3">Meta 13, the row under a title</p>
+          <p className="text-body">Body 14, labels and prose</p>
+          <p className="text-lead text-ink-2">Lead 15, a dialog body</p>
+          <p className="font-ui text-lead font-semibold">Section heading 15/600</p>
+          <p className="font-display text-title">Dialog title, Lora 20</p>
+          <p className="font-display text-[28px] leading-9 tracking-[-0.015em]">
+            Page title, Lora 28
+          </p>
         </div>
       </Specimen>
       <Specimen
@@ -119,13 +126,18 @@ export function Foundations() {
           data-testid="kit-stage"
           className="tj-stage flex flex-wrap items-center gap-3 rounded-card bg-background p-4 text-foreground"
         >
-          <Button>Present</Button>
+          <Button variant="primary">Present</Button>
           <Button variant="outline">Notes</Button>
           <IconButton label="Pen" tooltipClassName="tj-stage">
             <Pencil aria-hidden size={16} strokeWidth={1.5} />
           </IconButton>
-          <Switch aria-label="Laser" defaultChecked />
-          <Slider aria-label="Timer" defaultValue={[40]} className="w-40" />
+          <Switch aria-label="Laser pointer" defaultChecked />
+          <Slider
+            aria-label="Timer"
+            defaultValue={[40]}
+            valueLabel={(v) => `${v} min`}
+            className="w-40"
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">Stage menu</Button>

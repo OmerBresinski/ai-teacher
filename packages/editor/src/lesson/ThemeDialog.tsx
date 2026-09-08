@@ -171,7 +171,9 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
           <Button variant="ghost" onClick={cancel}>
             Cancel
           </Button>
-          <Button onClick={done}>Done</Button>
+          <Button variant="primary" onClick={done}>
+            Done
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -148,9 +148,22 @@ export function Navigator() {
   // Keep the current slide in view when it changes from anywhere (an external DOM scroll).
   const virtualizerRef = useRef(virtualizer);
   virtualizerRef.current = virtualizer;
+  // Whether keyboard focus is inside the rail. Kept as a ref rather than read off
+  // `document.activeElement`: a row that a delete unmounts takes focus to the body without a blur.
+  const focusWithin = useRef(false);
   useEffect(() => {
     const i = activeId ? indexRef.current.get(activeId) : undefined;
     if (i !== undefined) virtualizerRef.current.scrollToIndex(i, { align: "auto" });
+    // Focus follows the tab stop: while the rail holds focus and the open slide changes (arrows,
+    // Home/End, a delete, a menu action), the new row takes it. A row the virtualiser has yet to
+    // mount is retried a frame later.
+    if (!activeId || !focusWithin.current) return;
+    const focusRow = () => {
+      const row = document.getElementById(`slide-opt-${activeId}`);
+      if (row && row !== document.activeElement) row.focus({ preventScroll: true });
+      return !!row;
+    };
+    if (!focusRow() && typeof requestAnimationFrame === "function") requestAnimationFrame(focusRow);
   }, [activeId]);
 
   const pick = useCallback(
@@ -297,10 +310,10 @@ export function Navigator() {
     if (e.button !== 0) return;
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    // Keyboard focus belongs to the listbox, never to the row: a focused row that a reorder moves
-    // in the DOM loses focus with it, and the next ⌘↑ would go nowhere.
+    // The pressed row takes focus itself: rows are keyed by slide id, so a reorder moves the node
+    // and its focus together. preventDefault keeps the browser from scrolling it into view.
     e.preventDefault();
-    scroller.current?.focus({ preventScroll: true });
+    e.currentTarget.focus({ preventScroll: true });
     dragStart.current = { y: e.clientY, id, started: false };
     e.currentTarget.setPointerCapture(e.pointerId);
   }, []);
@@ -370,10 +383,18 @@ export function Navigator() {
         role="listbox"
         aria-label="Slides"
         aria-multiselectable
-        aria-activedescendant={activeId ? `slide-opt-${activeId}` : undefined}
-        tabIndex={0}
+        // Roving tabindex: the open slide's row is the rail's one tab stop, so the focus band draws
+        // on that thumbnail rather than around the whole column. Keys bubble up from the row.
+        tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="relative flex-1 overflow-x-hidden overflow-y-auto py-2 outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--border-strong)]"
+        onFocus={() => {
+          focusWithin.current = true;
+        }}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+            focusWithin.current = false;
+        }}
+        className="relative flex-1 overflow-x-hidden overflow-y-auto py-2 outline-none"
       >
         <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
           {virtualizer.getVirtualItems().map((item) => {
@@ -572,8 +593,9 @@ const NavigatorRow = memo(function NavigatorRow({
   return (
     <div
       role="option"
-      // Focus stays on the listbox (`aria-activedescendant`); the row itself is never a tab stop.
-      tabIndex={-1}
+      // Roving tabindex: only the open slide's row is in the tab order; the arrows move focus and
+      // selection together (the rail's onKeyDown). Its focus band draws on the thumbnail below.
+      tabIndex={active ? 0 : -1}
       id={`slide-opt-${slide.id}`}
       data-id={slide.id}
       data-navigator-row
@@ -583,7 +605,7 @@ const NavigatorRow = memo(function NavigatorRow({
       className={cn(
         // One rounded object per row, at the thumbnail's own radius, so rest, hover, press and
         // selected are four intensities of one shape.
-        "mx-1 flex cursor-default items-start gap-0 rounded-chip px-1 pb-2 select-none",
+        "group mx-1 flex cursor-default items-start gap-0 rounded-chip px-1 pb-2 outline-none select-none",
         "transition-colors duration-(--duration-fast) ease-(--ease-out-soft)",
         !(active || selected) && "hover:bg-accent active:bg-accent-active",
       )}
@@ -614,13 +636,22 @@ const NavigatorRow = memo(function NavigatorRow({
       </span>
       <span
         data-navigator-thumb
-        className="relative block overflow-hidden rounded-chip transition-shadow duration-(--duration-base) ease-(--ease-out)"
+        className={cn(
+          "relative block overflow-hidden rounded-chip transition-shadow duration-(--duration-base) ease-(--ease-out)",
+          // Keyboard focus on the row draws the two-tone focus band outside the ring: on the card,
+          // not around the column. Set as a variable the inline shadow reads, so the rest ring stays
+          // one plain layer (the fidelity spec pins its computed value) rather than Tailwind's
+          // five-part shadow stack.
+          "group-focus-visible:[--navigator-thumb-ring:0_0_0_2px_var(--primary),0_0_0_4px_var(--focus-gap),0_0_0_6px_var(--ring)]",
+        )}
         style={{
           width: geometry.thumbW,
           height: geometry.thumbH,
           // The open slide gets the system accent as a 2px ring; every other thumbnail keeps the
           // `--border` hairline, so the ring is the only ring in the rail.
-          boxShadow: active ? "0 0 0 2px var(--primary)" : "0 0 0 1px var(--border)",
+          boxShadow: active
+            ? "var(--navigator-thumb-ring, 0 0 0 2px var(--primary))"
+            : "var(--navigator-thumb-ring, 0 0 0 1px var(--border))",
         }}
       >
         <SlideScaler zoom={geometry.thumbW / SLIDE_W}>

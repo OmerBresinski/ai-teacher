@@ -178,7 +178,7 @@ export function LessonViewer({
             {copying ? "Copying…" : "Make a copy"}
           </Button>
           {exportSlot}
-          <Button size="sm" onClick={() => onPresent(index + 1)}>
+          <Button variant="primary" size="sm" onClick={() => onPresent(index + 1)}>
             <Play aria-hidden size={16} strokeWidth={1.5} />
             Present
           </Button>

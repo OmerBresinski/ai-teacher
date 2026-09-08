@@ -2,6 +2,7 @@ import {
   Checkbox,
   IconButton,
   IconGroup,
+  Label,
   RadioGroup,
   RadioGroupItem,
   Switch,
@@ -16,52 +17,80 @@ import { KitGroup, Specimen, Variant } from "./frame";
 
 export function Choice() {
   const [checked, setChecked] = useState(true);
-  const [tab, setTab] = useState("first");
+  const [tab, setTab] = useState("slides");
   return (
-    <KitGroup id="choice" title="Choice">
-      <Specimen name="Switch" note="Checked, unchecked and disabled states.">
-        <Variant label="Checked">
-          <Switch aria-label="Switch checked" checked />
-        </Variant>
-        <Variant label="Unchecked">
-          <Switch aria-label="Switch unchecked" />
-        </Variant>
-        <Variant label="Disabled">
-          <Switch aria-label="Switch disabled" disabled />
-        </Variant>
-      </Specimen>
-      <Specimen name="Checkbox" note="Unchecked, checked, indeterminate and disabled states.">
-        <Variant label="Unchecked">
-          <Checkbox aria-label="Checkbox unchecked" />
-        </Variant>
-        <Variant label="Checked">
-          <Checkbox
-            aria-label="Checkbox checked"
-            checked={checked}
-            onCheckedChange={(value) => setChecked(value === true)}
-          />
-        </Variant>
-        <Variant label="Indeterminate">
-          <Checkbox aria-label="Checkbox indeterminate" checked="indeterminate" />
-        </Variant>
-        <Variant label="Disabled">
-          <Checkbox aria-label="Checkbox disabled" disabled />
-        </Variant>
-      </Specimen>
-      <Specimen name="RadioGroup">
-        <RadioGroup defaultValue="one" aria-label="Kit radio group">
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="one" id="radio-one" />
-            <label htmlFor="radio-one">One</label>
+    <KitGroup
+      id="choice"
+      title="Choice"
+      rule="Checkbox, radio and the off switch are the only controls that carry the control edge (#8A857B). The on state is the accent fill; the radio is round so it never reads as a checkbox. Tabs mark the active item with ink, never with the fill."
+    >
+      <Specimen name="Switch" note="44 by 24, a 20px thumb. Off shows its edge, on shows the fill.">
+        <Variant label="Answer key on">
+          <div className="flex items-center gap-3">
+            <Switch id="kit-switch-on" defaultChecked />
+            <Label htmlFor="kit-switch-on">Print the answer key</Label>
           </div>
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="two" id="radio-two" />
-            <label htmlFor="radio-two">Two</label>
+        </Variant>
+        <Variant label="Self-assessment off">
+          <div className="flex items-center gap-3">
+            <Switch id="kit-switch-off" />
+            <Label htmlFor="kit-switch-off">Self-assessment box</Label>
+          </div>
+        </Variant>
+        <Variant label="Locked">
+          <div className="flex items-center gap-3">
+            <Switch id="kit-switch-locked" disabled />
+            <Label htmlFor="kit-switch-locked">Objective on every slide</Label>
+          </div>
+        </Variant>
+      </Specimen>
+      <Specimen name="Checkbox" note="18px box, 12px glyph. Mixed means some of the set.">
+        <Variant label="Not selected">
+          <div className="flex items-center gap-2.5">
+            <Checkbox id="kit-check-off" />
+            <Label htmlFor="kit-check-off">Fractions, week 3</Label>
+          </div>
+        </Variant>
+        <Variant label="Selected">
+          <div className="flex items-center gap-2.5">
+            <Checkbox
+              id="kit-check-on"
+              checked={checked}
+              onCheckedChange={(value) => setChecked(value === true)}
+            />
+            <Label htmlFor="kit-check-on">The water cycle</Label>
+          </div>
+        </Variant>
+        <Variant label="Some selected">
+          <div className="flex items-center gap-2.5">
+            <Checkbox id="kit-check-mixed" checked="indeterminate" />
+            <Label htmlFor="kit-check-mixed">All lessons in Science</Label>
+          </div>
+        </Variant>
+        <Variant label="Locked">
+          <div className="flex items-center gap-2.5">
+            <Checkbox id="kit-check-locked" disabled />
+            <Label htmlFor="kit-check-locked">Shared with the department</Label>
+          </div>
+        </Variant>
+      </Specimen>
+      <Specimen name="RadioGroup" note="One of a set. A round 18px control with a 6px dot.">
+        <RadioGroup defaultValue="portrait" aria-label="Page orientation">
+          <div className="flex items-center gap-2.5">
+            <RadioGroupItem value="portrait" id="radio-portrait" />
+            <Label htmlFor="radio-portrait">Portrait</Label>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <RadioGroupItem value="landscape" id="radio-landscape" />
+            <Label htmlFor="radio-landscape">Landscape</Label>
           </div>
         </RadioGroup>
       </Specimen>
-      <Specimen name="IconGroup">
-        <IconGroup aria-label="Gallery view">
+      <Specimen
+        name="IconGroup"
+        note="A hairlined pair on the paper; the active member takes the wash."
+      >
+        <IconGroup aria-label="Library view">
           <IconButton label="Grid view" active noTooltip>
             <Grid2X2 aria-hidden />
           </IconButton>
@@ -70,17 +99,21 @@ export function Choice() {
           </IconButton>
         </IconGroup>
       </Specimen>
-      <Specimen name="Tabs" bleed>
+      <Specimen
+        name="Tabs, segmented"
+        note="The active label is ink on a raised card-coloured thumb; the rest sit in ink-3 on the wash. No fill, no underline."
+        bleed
+      >
         <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList>
-            <TabsTrigger value="first">First</TabsTrigger>
-            <TabsTrigger value="second">Second</TabsTrigger>
+            <TabsTrigger value="slides">Slides</TabsTrigger>
+            <TabsTrigger value="notes">Speaker notes</TabsTrigger>
           </TabsList>
-          <TabsContent value="first" className="rounded-control bg-secondary p-3 text-body">
-            First panel
+          <TabsContent value="slides" className="rounded-control bg-secondary p-3 text-body">
+            Twelve slides, last edited today.
           </TabsContent>
-          <TabsContent value="second" className="rounded-control bg-secondary p-3 text-body">
-            Second panel
+          <TabsContent value="notes" className="rounded-control bg-secondary p-3 text-body">
+            Ask the class where rain comes from before slide 2.
           </TabsContent>
         </Tabs>
       </Specimen>

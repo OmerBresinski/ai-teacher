@@ -136,20 +136,20 @@ export function useCanvasKeys({ enabled, lesson, slide }: CanvasKeysOptions): vo
       }
     };
 
-    const cycle = (dir: 1 | -1) => {
+    // Tab walks the slide's elements without wrapping: past the last one (or before the first, with
+    // Shift) it returns false and the browser moves focus out of the canvas as usual, so the stage
+    // is one tab stop and never a keyboard trap (WCAG 2.1.2). An empty slide passes Tab straight on.
+    const cycle = (dir: 1 | -1): boolean => {
       const els = slideRef.current?.elements ?? [];
-      if (els.length === 0) return;
+      if (els.length === 0) return false;
       const sel = read().selection;
       const last = sel[sel.length - 1];
       const cur = last ? els.findIndex((e) => e.id === last) : -1;
-      const next =
-        cur === -1
-          ? dir === 1
-            ? 0
-            : els.length - 1
-          : (((cur + dir) % els.length) + els.length) % els.length;
+      const next = cur === -1 ? (dir === 1 ? 0 : els.length - 1) : cur + dir;
       const target = els[next];
-      if (target) actions.select([target.id]);
+      if (!target) return false;
+      actions.select([target.id]);
+      return true;
     };
 
     const paste = () => {
@@ -162,7 +162,9 @@ export function useCanvasKeys({ enabled, lesson, slide }: CanvasKeysOptions): vo
       actions.copy(made.copies);
     };
 
-    type Handler = (e: KeyboardEvent) => void;
+    // A handler returns true to let the key fall through to the browser; anything else consumes it.
+    // `unknown` rather than `boolean | void`: Biome's noConfusingVoidType refuses the union.
+    type Handler = (e: KeyboardEvent) => unknown;
     const bindings: [string, Handler][] = [
       ["ArrowLeft", (e) => nudge(-NUDGE, 0, e.key)],
       ["ArrowRight", (e) => nudge(NUDGE, 0, e.key)],
@@ -307,8 +309,10 @@ export function useCanvasKeys({ enabled, lesson, slide }: CanvasKeysOptions): vo
       const hit = bindings.find(([binding]) => matchesBinding(e, binding));
       if (!hit) return;
       if (hit[0].endsWith("Tab") && !isCanvasFocused()) return;
+      // A handler that returns false declined the key (Tab off the end of the elements): the
+      // browser's own action stands.
+      if (hit[1](e) === false) return;
       e.preventDefault();
-      hit[1](e);
     };
 
     const onKeyUp = (e: KeyboardEvent) => {

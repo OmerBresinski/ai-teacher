@@ -82,6 +82,9 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
   // The Question / Answer tabs' wrapper: the pill hangs off the other end of the same band, and at
   // a low zoom the two ends meet, so the pill measures the tabs and gives way.
   const tabs = useRef<HTMLDivElement>(null);
+  // The contextual toolbar's wrapper: it owns the middle of the same band. With a side panel open
+  // the slide toolbar reaches the pill's corner, so the pill measures it and stacks above.
+  const toolbar = useRef<HTMLDivElement>(null);
 
   useCanvasKeys({ enabled: focused, lesson, slide });
   const dropping = useImageDrop({ scroller, stage, onInsert });
@@ -188,21 +191,19 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
 
   return (
     <main className="relative min-w-0 flex-1 bg-canvas" data-canvas>
-      {/* A labelled, focusable scroll region, not a control: the pointer handlers are pan (space
-          plus drag), and the keys that act on the canvas are bound by `useCanvasKeys` while it has
-          focus. A keyboard user who has just tabbed in gets a neutral inset hairline. */}
+      {/* A labelled scroll region, not a control and not a tab stop: the pointer handlers are pan
+          (space plus drag), and the keys that act on the canvas are bound by `useCanvasKeys` while
+          focus is anywhere inside it. Tab lands on the slide stage (`SelectionLayer`), so the focus
+          band wraps the slide card rather than the whole editing zone; a click in the gutter still
+          focuses the region (tabIndex -1), so the keys keep working. */}
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: pan and focus tracking on the scroll region; every activation inside is a real control */}
       {/* biome-ignore lint/a11y/useSemanticElements: a fieldset is not a scroll region; the group role names the region for a screen reader */}
       <div
         ref={scroller}
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: the canvas region is the keyboard target for `useCanvasKeys`
-        tabIndex={0}
+        tabIndex={-1}
         role="group"
         aria-label="Slide canvas"
-        className={cn(
-          "absolute inset-0 overflow-auto outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--border-strong)]",
-          spaceDown && "cursor-grab",
-        )}
+        className={cn("absolute inset-0 overflow-auto outline-none", spaceDown && "cursor-grab")}
         onFocus={() => focus(true)}
         onBlur={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node)) focus(false);
@@ -298,8 +299,17 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
           if (e.target instanceof Element && e.target.closest("button")) e.preventDefault();
         }}
       >
-        <ContextualToolbar slide={slide} theme={theme} stageRef={stage} scale={scale} />
-        <SlideActions slide={slide} stageRef={stage} tabsRef={tabs} scale={scale} />
+        {/* Wrapped so the pill can measure the toolbar's own floating box. */}
+        <div ref={toolbar}>
+          <ContextualToolbar slide={slide} theme={theme} stageRef={stage} scale={scale} />
+        </div>
+        <SlideActions
+          slide={slide}
+          stageRef={stage}
+          toolbarRef={toolbar}
+          tabsRef={tabs}
+          scale={scale}
+        />
         {/* Wrapped so the pill can measure the tabs' own floating box. */}
         <div ref={tabs}>
           <SlideTabs slide={slide} stageRef={stage} stageId={STAGE_ID} scale={scale} />

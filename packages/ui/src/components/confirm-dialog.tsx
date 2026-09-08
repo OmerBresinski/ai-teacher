@@ -63,7 +63,7 @@ function ConfirmDialog({
           <Button
             disabled={pending}
             onClick={confirm}
-            variant={destructive ? "destructive" : "default"}
+            variant={destructive ? "destructive" : "primary"}
           >
             {pending ? <Spinner /> : null}
             {confirmLabel}

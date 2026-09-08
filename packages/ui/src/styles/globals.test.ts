@@ -53,6 +53,12 @@ const rootOnlyGeometry = new Set([
   "--button-height",
   "--button-height-lg",
   "--canvas-gap",
+  "--toggle-w",
+  "--toggle-h",
+  "--toggle-thumb",
+  "--checkbox",
+  "--check-glyph",
+  "--hit",
 ]);
 
 function paletteVariables(block: string): string[] {
@@ -98,6 +104,24 @@ describe("TeachDeck globals", () => {
       expect(reduced).toMatch(new RegExp(`${variable}: 1ms;`));
     }
     expect(reduced).toMatch(/--duration-slow: 150ms;/);
+  });
+
+  it("the focus band names --focus-ring in every theme, and the invalid rule redeclares it", () => {
+    const band = "--focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--focus-ring, var(--ring));";
+    for (const selector of [
+      ":root {",
+      '[data-theme="dark"] {',
+      "html:not([data-theme]) {",
+      '[data-theme="high-contrast"] {',
+      ".tj-stage {",
+    ]) {
+      expect(blockFor(selector)).toContain(band);
+    }
+    // A custom property resolves where it is declared, so the danger colour has to be declared on
+    // the invalid element for the token path as well as for the ring utilities.
+    const invalid = blockFor(':where([aria-invalid="true"]:focus-visible) {');
+    expect(invalid).toContain("--focus-ring: var(--destructive);");
+    expect(invalid).toContain("--focus: 0 0 0 2px var(--focus-gap), 0 0 0 4px var(--focus-ring);");
   });
 
   it("does not retain the retired palette tokens", () => {

@@ -41,7 +41,7 @@ export function EmptyLesson({ lesson, onBack }: { lesson: Lesson; onBack: () => 
           title="This lesson has no slides yet"
           body="Generation did not finish. Start the deck yourself with a title slide."
           action={
-            <Button onClick={() => void addSlide()} disabled={isPending}>
+            <Button variant="primary" onClick={() => void addSlide()} disabled={isPending}>
               Add a title slide
             </Button>
           }

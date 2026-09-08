@@ -55,7 +55,7 @@ export function WrongKindPage({
               : "Lessons open in the lesson editor, not on a worksheet route."
           }
           action={
-            <Button asChild>
+            <Button variant="primary" asChild>
               {worksheet ? (
                 <Link to="/w/$worksheetId" params={{ worksheetId: document.id }}>
                   Open the worksheet

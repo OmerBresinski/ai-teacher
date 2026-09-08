@@ -15,5 +15,6 @@ describe("RadioGroup", () => {
     );
     await user.click(screen.getByRole("radio", { name: "Two" }));
     expect(screen.getByRole("radio", { name: "Two" })).toHaveAttribute("data-state", "checked");
+    expect(screen.getByRole("radio", { name: "Two" })).toHaveClass("rounded-full", "size-[18px]");
   });
 });

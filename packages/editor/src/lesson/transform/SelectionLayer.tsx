@@ -711,8 +711,12 @@ export function SelectionLayer({
         zIndex: 1000,
         borderRadius: "inherit",
         outline: "none",
-        // Keyboard focus only: a neutral inset hairline, the same answer the canvas scroller gives.
-        boxShadow: focusRing ? `inset 0 0 0 ${2 / scale}px var(--border-strong)` : undefined,
+        // Keyboard focus only: the two-tone focus band, outside the slide card at its radius and
+        // counter-scaled so it stays 2px gap + 2px ring at every zoom. The canvas scroller is not a
+        // tab stop, so this is the one band a keyboard user sees for the canvas.
+        boxShadow: focusRing
+          ? `0 0 0 ${2 / scale}px var(--focus-gap), 0 0 0 ${4 / scale}px var(--ring)`
+          : undefined,
       }}
     >
       <div role="status" aria-live="polite" style={VISUALLY_HIDDEN}>

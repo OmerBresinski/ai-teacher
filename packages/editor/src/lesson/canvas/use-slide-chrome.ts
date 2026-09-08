@@ -120,6 +120,40 @@ export function useSlideChrome({
     [],
   );
 
+  // A bar in the band can change width without the frame moving (the toolbar swaps with the
+  // selection), so each floating bar is watched as well as the window. A wrapper holds a
+  // fixed-positioned bar and so has no box of its own to observe: the size observer follows the
+  // wrapper's current child, and a childList observer on the wrapper re-hooks it whenever that
+  // child is replaced (a remount), then re-places on the next frame.
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const wrappers = avoidRefs
+      .map((ref) => ref.current)
+      .filter((el): el is HTMLDivElement => el !== null && el !== undefined);
+    if (wrappers.length === 0) return;
+    const sizes = new ResizeObserver(schedule);
+    const hook = () => {
+      sizes.disconnect();
+      for (const wrapper of wrappers) {
+        const bar = wrapper.firstElementChild;
+        if (bar) sizes.observe(bar);
+      }
+    };
+    hook();
+    const children =
+      typeof MutationObserver === "undefined"
+        ? null
+        : new MutationObserver(() => {
+            hook();
+            schedule();
+          });
+    for (const wrapper of wrappers) children?.observe(wrapper, { childList: true });
+    return () => {
+      sizes.disconnect();
+      children?.disconnect();
+    };
+  }, [avoidRefs, schedule]);
+
   useEffect(() => {
     const onScroll = (e: Event) => {
       const t = e.target;

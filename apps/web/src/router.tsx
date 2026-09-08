@@ -49,7 +49,7 @@ export const routeTree = rootRoute.addChildren([
     worksheetEditorRoute,
     worksheetPrintRoute,
     devJobsRoute,
-    ...(import.meta.env.DEV ? [kitRoute] : []),
+    kitRoute,
   ]),
 ]);
 

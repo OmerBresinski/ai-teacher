@@ -10,18 +10,26 @@ import {
   PopoverTrigger,
   Slider,
 } from "@tj/ui";
+import { useState } from "react";
 import { KitGroup, Specimen, Variant } from "./frame";
 
 export function Value() {
   return (
-    <KitGroup id="value" title="Value">
-      <Specimen name="Popover, value detail" note="A compact value inspector and anchored status.">
+    <KitGroup
+      id="value"
+      title="Value"
+      rule="A value reads in tabular figures beside its control. The slider track is a hairline, the fill is ink; the accent is kept for the focus band. The bubble reads the value while it moves; the readout beside it stays. A slider with a resting value takes resetTo: double-click the thumb, or press Backspace on it, to go back."
+    >
+      <Specimen
+        name="Popover"
+        note="A small anchored panel for settings that do not need a dialog."
+      >
         <Popover>
           <PopoverAnchor asChild>
             <span />
           </PopoverAnchor>
           <PopoverTrigger asChild>
-            <Button>Open value inspector</Button>
+            <Button variant="secondary">Lesson settings</Button>
           </PopoverTrigger>
           <PopoverContent>
             <PopoverHeader>
@@ -34,34 +42,76 @@ export function Value() {
           </PopoverContent>
         </Popover>
       </Specimen>
-      <Specimen name="Value status">
-        <Variant label="Saved">
+      <Specimen name="Status text" note="The save state in a bar, as text in the tone colour.">
+        <Variant label="After a save">
           <span className="text-body text-success">Saved</span>
         </Variant>
-        <Variant label="Warning">
+        <Variant label="Something to check">
           <span className="text-body text-warning">Needs review</span>
         </Variant>
-        <Variant label="Error">
+        <Variant label="Save failed">
           <span className="text-body text-destructive">Could not save</span>
         </Variant>
       </Specimen>
-      <Specimen name="Slider" note="Ink fill on a control-border track; 32px row, 16px thumb.">
-        <Variant label="Default">
-          <Slider aria-label="Zoom" defaultValue={[50]} className="w-56" />
+      <Specimen
+        name="Slider"
+        note="Ink fill on a control-border track; 32px row, 16px thumb. Drag or use the arrow keys to see the value bubble."
+      >
+        <Variant label="Zoom">
+          <Slider
+            aria-label="Zoom"
+            defaultValue={[50]}
+            valueLabel={(v) => `${v}%`}
+            className="w-56"
+          />
         </Variant>
-        <Variant label="Range">
-          <Slider aria-label="Font size range" defaultValue={[20, 70]} className="w-56" />
+        <Variant label="Font size, min and max">
+          <Slider
+            aria-label="Font size range"
+            defaultValue={[20, 70]}
+            valueLabel={(v) => `${v} pt`}
+            className="w-56"
+          />
         </Variant>
-        <Variant label="Disabled">
-          <Slider aria-label="Opacity" defaultValue={[30]} disabled className="w-56" />
+        <Variant label="Opacity, double-click resets to 100">
+          <Slider
+            aria-label="Layer opacity"
+            defaultValue={[62]}
+            resetTo={100}
+            valueLabel={(v) => `${v}%`}
+            className="w-56"
+          />
         </Variant>
-        <Variant label="With value">
-          <div className="flex w-64 items-center gap-3">
-            <Slider aria-label="Corner radius" defaultValue={[8]} max={32} />
-            <span className="w-8 text-right text-meta text-ink-3 tabular-nums">8</span>
-          </div>
+        <Variant label="Locked">
+          <Slider
+            aria-label="Opacity"
+            defaultValue={[30]}
+            valueLabel={(v) => `${v}%`}
+            disabled
+            className="w-56"
+          />
+        </Variant>
+        <Variant label="Corner radius, with readout">
+          <RadiusReadout />
         </Variant>
       </Specimen>
     </KitGroup>
+  );
+}
+
+/** The readout beside the slider follows it: the exhibit is controlled so the number moves too. */
+function RadiusReadout() {
+  const [radius, setRadius] = useState(8);
+  return (
+    <div className="flex w-64 items-center gap-3">
+      <Slider
+        aria-label="Corner radius"
+        value={[radius]}
+        onValueChange={([v]) => setRadius(v ?? 0)}
+        max={32}
+        valueLabel={(v) => `${v} px`}
+      />
+      <span className="w-8 text-right text-meta text-ink-3 tabular-nums">{radius}</span>
+    </div>
   );
 }

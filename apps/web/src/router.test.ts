@@ -23,6 +23,7 @@ const SHELL_ROUTES = [
   "/w/$worksheetId",
   "/w/$worksheetId/print",
   "/dev/jobs",
+  "/kit",
 ];
 
 describe("router", () => {
@@ -32,10 +33,8 @@ describe("router", () => {
     expect(Object.keys(router.routesByPath).sort()).toEqual([...SHELL_ROUTES].sort());
   });
 
-  it("keeps /kit out of production and defines it for DEV registration", () => {
-    expect(router.routesByPath).not.toHaveProperty("/kit");
-    // The DEV branch cannot flip inside one process; assert the route it would register instead.
-    // `path` is only assigned once a route is attached to a tree; read the definition instead.
+  it("ships /kit in production, behind the auth guard", () => {
+    expect(router.routesByPath).toHaveProperty("/kit");
     expect((kitRoute.options as { path?: string }).path).toBe("/kit");
     expect(kitRoute.options.getParentRoute?.()).toBe(authLayoutRoute);
   });
