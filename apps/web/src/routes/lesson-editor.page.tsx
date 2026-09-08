@@ -107,6 +107,8 @@ export function LessonEditorPage() {
     [queryClient, lessonId],
   );
 
+  const onBackToBrief = useCallback(() => void navigate({ to: "/lessons/new" }), [navigate]);
+
   const onPresent = useCallback(
     () =>
       void navigate({
@@ -147,6 +149,7 @@ export function LessonEditorPage() {
           lesson={data}
           facts={data.facts}
           onGenerate={onGenerate}
+          onBackToBrief={onBackToBrief}
           leading={
             <IconButton label="Back to the library" onClick={onBack}>
               <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
