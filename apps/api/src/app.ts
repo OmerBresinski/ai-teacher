@@ -10,6 +10,7 @@
 import type { CreatedAi } from "@tj/ai";
 import type { DbHandle } from "@tj/db";
 import type { ReadableStorageAdapter } from "@tj/domain";
+import type { PexelsClient } from "@tj/images";
 import type { JobsContext } from "@tj/jobs";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -27,6 +28,7 @@ import type { CaptureMailSender } from "./mail";
 import { createOriginMatcher } from "./origins";
 import {
   createRateLimiter,
+  loadImageRateLimitConfig,
   loadRateLimitConfig,
   type RateLimitConfig,
   rateLimitByWorkspace,
@@ -36,6 +38,7 @@ import { eventRoutes } from "./routes/events";
 import { fileRoutes } from "./routes/files";
 import { healthRoutes } from "./routes/health";
 import { helloRoutes } from "./routes/hello";
+import { imageRoutes } from "./routes/images";
 import { jobRoutes } from "./routes/jobs";
 import { lessonRoutes } from "./routes/lessons";
 import { meRoutes } from "./routes/me";
@@ -78,6 +81,10 @@ export interface CreateAppOptions {
   ai?: CreatedAi;
   /** Per-Workspace model-call request limit; tests override the default config. */
   rateLimit?: Partial<RateLimitConfig>;
+  /** Pexels client behind `GET /images/search` (Images project). Absent → the route answers 503. */
+  images?: PexelsClient;
+  /** Per-Workspace photo-search request limit; tests override the default config. */
+  imageRateLimit?: Partial<RateLimitConfig>;
 }
 
 function buildApp({
@@ -90,11 +97,14 @@ function buildApp({
   testMail,
   storage,
   rateLimit,
+  images,
+  imageRateLimit,
 }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
   const allowHeaderShim = env.ALLOW_WORKSPACE_HEADER_SHIM === "1";
   const eventsRuntime = events ?? (jobs ? createEventsRuntime({ jobs, logger }) : undefined);
   const aiLimiter = createRateLimiter(loadRateLimitConfig(process.env, rateLimit));
+  const imageLimiter = createRateLimiter(loadImageRateLimitConfig(process.env, imageRateLimit));
   const app = new Hono<AppEnv>();
 
   // 1. request-id: honour an incoming `x-request-id`, otherwise crypto.randomUUID(); echoed back.
@@ -151,6 +161,7 @@ function buildApp({
     "/jobs/*",
     "/events",
     "/files/*",
+    "/images/*",
     "/documents",
     "/documents/*",
     "/lessons",
@@ -176,6 +187,7 @@ function buildApp({
     .route("/", jobRoutes(eventsRuntime))
     .route("/", eventRoutes(eventsRuntime))
     .route("/", fileRoutes(storage))
+    .route("/", imageRoutes(images, imageLimiter))
     .route("/", documentRoutes(db.unsafeDb))
     .route("/", lessonRoutes(db.unsafeDb, eventsRuntime));
 

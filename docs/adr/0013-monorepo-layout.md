@@ -87,3 +87,14 @@ packages/
 `@tj/slides` depends on `@tj/domain`, `nanoid` and `zod` only and is consumed by `@tj/editor` and
 `@tj/generation`. `@tj/generation` is server-only (`@tj/domain`, `@tj/ai`, `@tj/slides`,
 `@mastra/core`, `ai`, `zod`) and is consumed by `apps/worker`; never by `apps/web`.
+
+## Amendment (2026-09-08, Images)
+
+```
+packages/
+  images/       @tj/images     Pexels client: search, fetch-to-storage, query rewrite (TEACH-156
+                                and followers)
+```
+
+Server-only (`zod` only besides `@tj/domain`) and consumed by `apps/api` and `apps/worker`;
+never by `apps/web`.

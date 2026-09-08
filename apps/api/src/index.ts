@@ -5,6 +5,7 @@
 
 import { createAi } from "@tj/ai";
 import { createDb } from "@tj/db";
+import { createPexelsClient } from "@tj/images";
 import { createBoss, ensureQueues, type JobsContext } from "@tj/jobs";
 import { createStorage } from "@tj/storage";
 import { createApp } from "./app";
@@ -44,6 +45,8 @@ const storage = createStorage({
   STORAGE_PUBLIC_BASE_URL: process.env.STORAGE_PUBLIC_BASE_URL,
 });
 const ai = createAi(env, { logger });
+// Images project: no key degrades to `503` on the route, never a boot failure.
+const images = env.PEXELS_API_KEY ? createPexelsClient({ apiKey: env.PEXELS_API_KEY }) : undefined;
 const app = createApp({
   env,
   db,
@@ -54,6 +57,7 @@ const app = createApp({
   testMail: testMail ?? undefined,
   storage: storage.adapter,
   ai,
+  images,
 });
 void logUsersWithoutWorkspace(db, logger).catch((err) =>
   logger.warn({ err }, "users-without-workspace self-check failed"),
@@ -74,6 +78,7 @@ logger.info(
     cookie_samesite: env.COOKIE_SAMESITE,
     storage: storage.kind,
     ai: ai.kind,
+    images: images ? "pexels" : "disabled",
   },
   `api listening on http://localhost:${server.port}`,
 );

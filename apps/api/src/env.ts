@@ -76,6 +76,13 @@ export const EnvSchema = z
     /** ADR 0025 §21: Mastra's anonymous telemetry stays off; the api only forwards the flag. */
     MASTRA_TELEMETRY_DISABLED: optionalString,
 
+    // --- Images (Pexels, Images project) ---------------------------------------------------
+    /**
+     * Pexels API key, read once at boot. Not required in production: an unset key degrades to
+     * `503` on `GET /images/search`, never a boot failure.
+     */
+    PEXELS_API_KEY: optionalString,
+
     // --- Auth (ADR 0008, TEACH-20) ---------------------------------------------------------
     /** Signs session cookies and tokens. `bun run setup` generates it (infra/env.contract.ts). */
     BETTER_AUTH_SECRET: z

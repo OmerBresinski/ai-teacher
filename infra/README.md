@@ -244,6 +244,23 @@ railway redeploy -p <project> -e production -s api -y
 railway redeploy -p <project> -e production -s worker -y
 ```
 
+### Pexels (Images project)
+
+`PEXELS_API_KEY` (contract: [`infra/env.contract.ts`](env.contract.ts) "images (Pexels)") holds
+the Pexels API key on the **api** service only — the worker gains it in TEACH-159. Never echo the
+key or pass it as an argument:
+
+```sh
+printf '%s' "$PEXELS_API_KEY" | railway variable set PEXELS_API_KEY --stdin -p <project> -e production -s api --skip-deploys
+```
+
+No manual redeploy is needed afterwards: the api service watches `apps/api/**` and
+`packages/images/**` (`.railway/railway.ts`), so the merge that ships the route deploys on its
+own. Until the key is set, `GET /images/search` answers `503` in production — acceptable, not a
+failed deploy. Free-plan budget (200 requests/hour, 20,000/month, shared by editor and worker):
+visible in the api log as `image search` lines and `request error` lines with
+`code: "rate_limited"`.
+
 ### Change a model
 
 Set the selected model ID on both production services, then redeploy them:

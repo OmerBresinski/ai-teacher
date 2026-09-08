@@ -28,6 +28,8 @@ export interface RateLimiter {
 export const RateLimitConfigSchema = z.object({
   AI_RATE_LIMIT_PER_WORKSPACE: z.coerce.number().int().positive().default(10),
   AI_RATE_LIMIT_WINDOW_S: z.coerce.number().int().positive().default(60),
+  IMAGE_RATE_LIMIT_PER_WORKSPACE: z.coerce.number().int().positive().default(30),
+  IMAGE_RATE_LIMIT_WINDOW_S: z.coerce.number().int().positive().default(60),
 });
 
 export function loadRateLimitConfig(
@@ -38,6 +40,19 @@ export function loadRateLimitConfig(
   return {
     limit: parsed.AI_RATE_LIMIT_PER_WORKSPACE,
     windowMs: parsed.AI_RATE_LIMIT_WINDOW_S * 1_000,
+    ...overrides,
+  };
+}
+
+/** Same shape, read from the `IMAGE_*` keys (`GET /images/search`, Images project). */
+export function loadImageRateLimitConfig(
+  source: Record<string, string | undefined> = process.env,
+  overrides: Partial<RateLimitConfig> = {},
+): RateLimitConfig {
+  const parsed = RateLimitConfigSchema.parse(source);
+  return {
+    limit: parsed.IMAGE_RATE_LIMIT_PER_WORKSPACE,
+    windowMs: parsed.IMAGE_RATE_LIMIT_WINDOW_S * 1_000,
     ...overrides,
   };
 }
@@ -77,14 +92,15 @@ export function createRateLimiter({ limit, windowMs }: RateLimitConfig): RateLim
   };
 }
 
-export function rateLimitByWorkspace(limiter: RateLimiter): MiddlewareHandler<AppEnv> {
+export function rateLimitByWorkspace(
+  limiter: RateLimiter,
+  message = "Too many AI requests for this workspace. Try again in a moment.",
+): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     const result = limiter.take(getWorkspaceId(c, { allowHeaderShim: false }));
     if (!result.ok) {
       c.header("Retry-After", String(Math.ceil(result.retryAfterMs / 1_000)));
-      throw new HTTPException(429, {
-        message: "Too many AI requests for this workspace. Try again in a moment.",
-      });
+      throw new HTTPException(429, { message });
     }
     await next();
   };

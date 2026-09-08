@@ -70,6 +70,23 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 401,
     },
     {
+      // Images project: the Pexels proxy is browser-facing, so the new prefix needs the same
+      // guard pair as every other browser-facing route (root AGENTS.md step 4).
+      name: "app origin, GET /images/search, reaches the session guard",
+      path: "/images/search?q=river",
+      headers: browser,
+      expect: 401,
+    },
+    {
+      name: "foreign origin GET /images/search is rejected before the session guard",
+      path: "/images/search?q=river",
+      headers: {
+        Origin: "https://evil.example",
+        "Sec-Fetch-Site": "cross-site",
+      },
+      expect: 403,
+    },
+    {
       name: "foreign origin POST /lessons/:id/cascade is rejected before the session guard",
       method: "POST",
       path: "/lessons/0192f7a0-0000-7000-8000-000000000042/cascade",

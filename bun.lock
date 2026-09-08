@@ -28,6 +28,7 @@
         "@tj/ai": "workspace:*",
         "@tj/db": "workspace:*",
         "@tj/domain": "workspace:*",
+        "@tj/images": "workspace:*",
         "@tj/jobs": "workspace:*",
         "@tj/storage": "workspace:*",
         "ai": "7.0.92",
@@ -247,6 +248,18 @@
         "@tj/config": "workspace:*",
         "@types/bun": "1.4.0",
         "mastra": "1.27.3",
+        "typescript": "5.9.3",
+      },
+    },
+    "packages/images": {
+      "name": "@tj/images",
+      "version": "0.0.0",
+      "dependencies": {
+        "@tj/domain": "workspace:*",
+        "zod": "4.5.4",
+      },
+      "devDependencies": {
+        "@tj/config": "workspace:*",
         "typescript": "5.9.3",
       },
     },
@@ -1034,6 +1047,8 @@
     "@tj/editor": ["@tj/editor@workspace:packages/editor"],
 
     "@tj/generation": ["@tj/generation@workspace:packages/generation"],
+
+    "@tj/images": ["@tj/images@workspace:packages/images"],
 
     "@tj/jobs": ["@tj/jobs@workspace:packages/jobs"],
 

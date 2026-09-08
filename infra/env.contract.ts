@@ -586,6 +586,21 @@ const CONTRACT = [
       "Bedrock model ID for the F13 §7 small class: items, glossary, variants and summaries.",
   },
 
+  // --- images (Pexels, Images project) ----------------------------------------------------------
+  {
+    name: "PEXELS_API_KEY",
+    services: ["api"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api"],
+    description:
+      "Pexels API key for photo search. Read once at boot; when unset `GET /images/search` answers `503` instead of failing the boot. Set on Railway, never in git.",
+  },
+
   // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------------------
   {
     name: "AI_LESSON_COST_CAP_USD",
@@ -747,6 +762,31 @@ const CONTRACT = [
     format: "int",
     files: ["api"],
     description: "Window length in seconds for `AI_RATE_LIMIT_PER_WORKSPACE` (default 60).",
+  },
+  {
+    name: "IMAGE_RATE_LIMIT_PER_WORKSPACE",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["api"],
+    description:
+      "Photo-search requests per Workspace per window on `GET /images/search` before `429 rate_limited` (default 30).",
+  },
+  {
+    name: "IMAGE_RATE_LIMIT_WINDOW_S",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["api"],
+    description: "Window length in seconds for `IMAGE_RATE_LIMIT_PER_WORKSPACE` (default 60).",
   },
 
   // --- web (Vite / Vercel, ADR 0004 / 0010) ---------------------------------------------------------
