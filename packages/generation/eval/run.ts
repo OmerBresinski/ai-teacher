@@ -62,6 +62,16 @@ export interface EvalResults {
   totals: EvalTotals;
 }
 
+/** The median of a sorted sample: the middle value, or the mean of the two middles. */
+export function median(sorted: number[]): number | null {
+  if (sorted.length === 0) return null;
+  const mid = sorted.length / 2;
+  if (sorted.length % 2 === 1) return sorted[Math.floor(mid)] ?? null;
+  const lower = sorted[mid - 1];
+  const upper = sorted[mid];
+  return lower === undefined || upper === undefined ? null : (lower + upper) / 2;
+}
+
 export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budget): EvalTotals {
   const completed = briefs.filter((b) => b.ok);
   const firsts = briefs

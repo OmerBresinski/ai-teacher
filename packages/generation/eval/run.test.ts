@@ -2,11 +2,18 @@ import { describe, expect, test } from "bun:test";
 import { createAi, createBudget } from "@tj/ai";
 import { scriptedPipelineAi } from "../src/testing";
 import { evalBriefs } from "./briefs";
-import { formatResultsTable, runPaidEval, summarise, UNCONFIGURED_MESSAGE } from "./run";
+import { formatResultsTable, median, runPaidEval, summarise, UNCONFIGURED_MESSAGE } from "./run";
 
 /* The paid half's loop and summary, driven on the fake — the shape CI's comment reads. */
 
 describe("eval:paid", () => {
+  test("median: middle value for odd samples, mean of the two middles for even, null for none", () => {
+    expect(median([])).toBeNull();
+    expect(median([7])).toBe(7);
+    expect(median([1, 2, 3])).toBe(2);
+    expect(median([1, 2, 3, 10])).toBe(2.5);
+  });
+
   test("without AWS_BEARER_TOKEN_BEDROCK the client is unconfigured; the script exits 2 with the message", () => {
     expect(createAi({}).kind).toBe("unconfigured");
     expect(UNCONFIGURED_MESSAGE).toContain("AWS_BEARER_TOKEN_BEDROCK");
