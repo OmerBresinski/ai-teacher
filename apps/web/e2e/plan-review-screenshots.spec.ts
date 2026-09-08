@@ -40,7 +40,7 @@ test("captures every plan review step, the edited state and the handoff", async 
   await expect(page.getByRole("textbox", { name: "Objective 1, suggested" })).toBeFocused();
   await page.waitForTimeout(600);
   await page.screenshot({ path: "/tmp/plan-review-1-objectives.png" });
-  await expectNoSeriousA11yViolations(page);
+  await expectNoSeriousA11yViolations(page, "plan review: objectives");
 
   // A teacher's edit: the row turns "yours".
   const objective = page.getByRole("textbox", { name: "Objective 2, suggested" });
@@ -54,7 +54,7 @@ test("captures every plan review step, the edited state and the handoff", async 
   await expect(page.getByRole("textbox", { name: "Title summary, suggested" })).toBeFocused();
   await page.waitForTimeout(600);
   await page.screenshot({ path: "/tmp/plan-review-2-shape.png" });
-  await expectNoSeriousA11yViolations(page);
+  await expectNoSeriousA11yViolations(page, "plan review: shape");
   // Retime a phase: the running total warns against the brief's 60 minutes.
   await page.getByRole("button", { name: "More minutes: Minutes for Starter" }).click();
   await expect(page.getByRole("status").filter({ hasText: "of 60 minutes" })).toContainText(
@@ -71,14 +71,14 @@ test("captures every plan review step, the edited state and the handoff", async 
   await expect(page.getByRole("textbox", { name: "Term 1, suggested" })).toBeFocused();
   await page.waitForTimeout(600);
   await page.screenshot({ path: "/tmp/plan-review-3-words.png" });
-  await expectNoSeriousA11yViolations(page);
+  await expectNoSeriousA11yViolations(page, "plan review: words");
 
   await page.keyboard.press("Enter");
   await expect(rail).toContainText("4 of 5");
   await expect(page.getByRole("switch")).toBeFocused();
   await page.waitForTimeout(600);
   await page.screenshot({ path: "/tmp/plan-review-4-worksheet.png" });
-  await expectNoSeriousA11yViolations(page);
+  await expectNoSeriousA11yViolations(page, "plan review: worksheet");
   await page.getByRole("button", { name: "Support" }).click();
   await expect(page.getByRole("button", { name: "Support" })).toHaveAttribute(
     "aria-pressed",
@@ -95,7 +95,7 @@ test("captures every plan review step, the edited state and the handoff", async 
   await expect(review).toContainText("changes are yours");
   await page.waitForTimeout(600);
   await page.screenshot({ path: "/tmp/plan-review-5-summary.png" });
-  await expectNoSeriousA11yViolations(page);
+  await expectNoSeriousA11yViolations(page, "plan review: summary");
 
   // Generate hands the page to the generating view with the confirmed outline's skeletons.
   await page.keyboard.press("Enter");

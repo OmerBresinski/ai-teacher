@@ -1,4 +1,12 @@
-import { Button, EditableListRow, MinutesStepper, Progress, QuestionShell, StepRail } from "@tj/ui";
+import {
+  ActionBar,
+  Button,
+  EditableListRow,
+  MinutesStepper,
+  Progress,
+  QuestionShell,
+  StepRail,
+} from "@tj/ui";
 import { GripVertical } from "lucide-react";
 import { useState } from "react";
 import { KitGroup, Specimen, Variant } from "./frame";
@@ -105,6 +113,19 @@ export function Steps() {
         <Variant label="Disabled">
           <MinutesStepper value={5} onChange={() => {}} label="Minutes, disabled" disabled />
         </Variant>
+      </Specimen>
+      <Specimen
+        name="ActionBar"
+        note="Sticky under a step: one labelled primary (36px), quiet actions beside it, a hint on the right."
+      >
+        <ActionBar
+          sticky={false}
+          primary={<Button size="lg">Continue</Button>}
+          trailing={<span className="text-meta text-ink-3">Enter continues</span>}
+          className="max-w-xl"
+        >
+          <Button variant="ghost">Back</Button>
+        </ActionBar>
       </Specimen>
       <Specimen
         name="Progress"
