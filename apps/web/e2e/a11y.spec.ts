@@ -110,6 +110,49 @@ test.describe("accessibility (axe)", () => {
     }
   });
 
+  // TEACH-134: the facts panel open, then the regenerate dialog over it, in each theme. Its own
+  // test: six axe runs already fill the 30 s budget on CI, so these six get their own.
+  test("the facts panel and the regenerate dialog are clean in every theme", async ({
+    signedInPage: { page },
+  }) => {
+    const generated = generatedLesson();
+    const res = await page.request.post(`${E2E_API_URL}/__test/seed-library`, {
+      headers: { origin: E2E_WEB_URL },
+      data: {
+        documents: [
+          {
+            key: "generated",
+            kind: "lesson",
+            body: { ...generated, updatedAt: new Date().toISOString() },
+          },
+        ],
+      },
+    });
+    expect(res.ok(), await res.text()).toBe(true);
+    const { ids } = (await res.json()) as { ids: Record<string, string> };
+    for (const theme of THEMES) {
+      await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
+      await page.goto(`/l/${ids.generated}`);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      await page.getByRole("button", { name: "Facts" }).click();
+      await expect(page.getByRole("complementary", { name: "Facts" })).toBeVisible();
+      await expectNoSeriousA11yViolations(page, `facts panel (${theme})`);
+      await page
+        .getByRole("listbox", { name: "Slides" })
+        .getByRole("option")
+        .nth(1)
+        .click({ button: "right" });
+      await page.getByRole("menuitem", { name: "Regenerate slide…" }).click();
+      const dialog = page.getByRole("dialog", { name: "Regenerate slide 2" });
+      await expect(dialog).toBeVisible();
+      await dialog.evaluate((el) =>
+        Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+      );
+      await expectNoSeriousA11yViolations(page, `regenerate dialog (${theme})`, '[role="dialog"]');
+      await page.keyboard.press("Escape");
+    }
+  });
+
   test("open overlays are clean: create dialogs, card menu, series row menu", async ({
     signedInPage: { page, paths },
   }) => {

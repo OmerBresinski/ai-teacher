@@ -2,7 +2,8 @@
 
 export { AUTOSAVE_MS, SaveRefusedError, type SaveState } from "../model/use-autosave";
 export { GUTTER, stepZoom, ZOOM_STEPS } from "./Canvas";
-export { LessonEditor, type LessonEditorProps } from "./LessonEditor";
+export { impactPreview, impactSentence, slidesReferencing } from "./impact-preview";
+export { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
 export { ALL_SHORTCUTS, HELP_GROUPS, type HelpShortcut, SHELL_SHORTCUTS } from "./shortcuts";
 export {
   CANVAS_SHORTCUTS,
@@ -10,3 +11,5 @@ export {
   PASTE_IMAGE_EVENT,
   type PasteImageDetail,
 } from "./transform/use-canvas-keys";
+export { COALESCE_MS } from "./use-coalesced-ids";
+export type { RegenerateTarget } from "./use-editor-session";

@@ -121,7 +121,22 @@ src/
               use it, `data-lint-badge` / `data-residual-badge`, `data-tone`), ResidualBadge (the
               canvas footer's "N things to check" popover with Go to slide; a `budget` finding is
               listed first). `LessonEditor` takes the app's `worksheet` and `onOpenWorksheet`
-              (TopBar "Worksheet" when `lesson.artefacts.worksheetId` is set) — ADR 0025 §10, §12
+              (TopBar "Worksheet" when `lesson.artefacts.worksheetId` is set) — ADR 0025 §10, §12.
+              Proposal jobs (TEACH-134, ADR 0025 §18, §19): `model/reducers/facts.ts` (`updateFact`,
+              `addFact` → next free `o<n>`/`v<n>`/`x<n>`/`q<n>`, `removeFact` drops outline refs
+              only, `applyProposals` element-in-place or whole-slide with `question`/`notes`,
+              `proposalSlideIds`; `worksheet/reducers/blocks.ts` `applyBlockProposals`),
+              FactsPanel (an `aside` beside the canvas, toggled by TopBar "Facts"; every keystroke
+              a reducer inside one `useEditSession` burst, a changed commit reports its id through
+              `use-coalesced-ids` — 1 s union → `onFactsChanged`), RegenerateDialog (session
+              `regenerate` state, opened from SlideToolbar, the More drawer and the navigator menu
+              via `slide-commands.regenerateSlide`; `impact-preview.ts` `impactPreview` /
+              `impactSentence` / `slidesReferencing` are pure), proposals-context (the app's
+              `onFactsChanged` / `onRegenerate` / `busySlideIds` / `busy`; `NO_PROPOSALS` when the
+              app wires nothing — then no Facts button, no Regenerate entries). The app applies a
+              job's result through `LessonEditorHandle.applyProposals` (`editorRef`), which leaves
+              any open text edit, `flushTransactions()` an open typing session, then one
+              transaction — so the cascade is its own undo step and never swallows typed text.
   styles/     editor.css = fonts.css + slide.css + present.css; print.css = fonts.css +
               worksheet.css + the print layout (`@tj/editor/styles/print.css`, imported by the
               worksheet print page only); worksheet-edit.css = fonts.css + worksheet.css + the

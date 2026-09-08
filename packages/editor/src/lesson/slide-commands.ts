@@ -16,7 +16,7 @@ import type { SessionActions } from "./use-editor-session";
 export type SlideCommandDeps = {
   history: HistoryApi;
   lesson: Lesson;
-  session: Pick<SessionActions, "setActiveSlide">;
+  session: Pick<SessionActions, "setActiveSlide" | "openRegenerate">;
 };
 
 export const slideIndex = (lesson: Lesson, id: Id): number =>
@@ -66,4 +66,14 @@ export const canMoveSlide = (lesson: Lesson, id: Id, dir: -1 | 1): boolean => {
 export function moveSlideBy({ history, lesson }: SlideCommandDeps, id: Id, dir: -1 | 1): void {
   if (!canMoveSlide(lesson, id, dir)) return;
   history.dispatch(reducers.moveSlide, id, slideIndex(lesson, id) + dir);
+}
+
+/**
+ * "Regenerate slide…" (TEACH-134, ADR 0025 §18): makes the slide active and opens the Regenerate
+ * dialog for it. No document write here — the proposal the job returns is the undo step.
+ */
+export function regenerateSlide({ lesson, session }: SlideCommandDeps, id: Id): void {
+  if (slideIndex(lesson, id) === -1) return;
+  session.setActiveSlide(id);
+  session.openRegenerate({ slideId: id });
 }

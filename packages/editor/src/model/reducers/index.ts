@@ -13,6 +13,7 @@ export {
   type WithId,
 } from "./core";
 export * from "./elements";
+export * from "./facts";
 export * from "./lesson";
 export * from "./question";
 export * from "./slides";

@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson } from "@tj/domain/documents";
+import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { installFakeApi } from "@/test/fake-api";
@@ -26,6 +27,7 @@ mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 const { LessonEditorPage } = await import("./lesson-editor.page");
 const { GENERATION_CANCELLED_MESSAGE, GENERATION_FAILED_MESSAGE, REFETCH_DEBOUNCE_MS } =
   await import("@/components/generating-lesson");
+const { SINGLETON_RETRY_MS, STILL_GENERATING_MESSAGE } = await import("@/hooks/use-proposal-jobs");
 const { RELOAD_LABEL } = await import("@/hooks/use-save-with-conflict-toast");
 
 const JOB_ID = "01a06a15-1849-7000-ac6a-c07e27fe308b";
@@ -398,5 +400,349 @@ describe("LessonEditorPage", () => {
         ),
       ).toBe(true),
     );
+  });
+
+  describe("proposal jobs (TEACH-134)", () => {
+    const CASCADE_JOB = "01a06a15-1849-7000-ac6a-c07e27fe3134";
+    const seedGenerated = () => {
+      const row = fakeApi.get("demo-water-cycle");
+      if (!row) throw new Error("fixture");
+      row.body = { ...generatedLesson(), id: "demo-water-cycle" };
+      return row.body as Lesson;
+    };
+    const cascadeProposals = (lesson: Lesson) => {
+      const [, objectives, , mc] = lesson.slides;
+      const ob = objectives?.elements[1];
+      const q = mc?.elements[0];
+      if (!objectives || !mc || !ob || !q) throw new Error("fixture");
+      const generatedFrom = {
+        factRefs: ["o1"],
+        promptVersion: "cascade.v1",
+        model: "m",
+        at: "2026-09-08T00:00:00.000Z",
+      };
+      return [
+        {
+          target: { slideId: objectives.id, elementId: ob.id },
+          element: { ...ob, id: "ob-1-new" },
+          generatedFrom,
+        },
+        {
+          target: { slideId: mc.id, elementId: q.id },
+          element: { ...q, id: "q-new" },
+          generatedFrom,
+        },
+      ];
+    };
+    const editObjective = async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Facts" }));
+      const field = screen.getByRole("textbox", { name: "Objective 1" });
+      fireEvent.focus(field);
+      fireEvent.change(field, { target: { value: "Describe the water cycle" } });
+      fireEvent.keyDown(field, { key: "Enter" });
+      fireEvent.blur(field);
+    };
+
+    it("row 6: a fact edit enqueues one cascade; its completed proposals land as one undo step with the toast", async () => {
+      installFakeEventSource();
+      const lesson = seedGenerated();
+      fakeApi.nextProposalJobId = CASCADE_JOB;
+      renderPage();
+      await editObjective();
+      await waitFor(
+        () =>
+          expect(
+            fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/cascade"),
+          ).toHaveLength(1),
+        { timeout: 3_000 },
+      );
+      expect(fakeApi.requests.at(-1)?.body).toEqual({ changedFactIds: ["o1"] });
+      // The impact set is busy until the proposals land.
+      await waitFor(() => expect(document.querySelectorAll("[data-slide-busy]").length).toBe(2));
+      const source = FakeEventSource.latest;
+      expect(source.url).toBe(`/api/jobs/${CASCADE_JOB}/events`);
+      act(() => {
+        source.open();
+        source.emit(
+          "completed",
+          {
+            ...jobEvent("completed"),
+            jobId: CASCADE_JOB,
+            result: { job: "lesson.cascade", proposals: cascadeProposals(lesson), flagged: [] },
+          },
+          "1",
+        );
+      });
+      await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+      const [message, options] = toastSpy.mock.calls.at(-1) as [
+        string,
+        { action?: { label: string; onClick: () => void }; cancel?: { label: string } },
+      ];
+      expect(message).toBe("Auto changed on slides 2 and 4 to match");
+      expect(options.action?.label).toBe("Undo");
+      expect(options.cancel?.label).toBe("View");
+      expect(document.querySelectorAll("[data-slide-busy]")).toHaveLength(0);
+      const stored = () => fakeApi.loadDocument("demo-water-cycle") as Lesson;
+      await waitFor(() => expect(stored().slides[3]?.elements[0]?.id).toBe("q-new"), {
+        timeout: 3_000,
+      });
+      // Undo reverts the cascade in one step; the typed fact — its own step — stays.
+      act(() => options.action?.onClick());
+      await waitFor(() => expect(stored().slides[3]?.elements[0]?.id).toBe("q"), {
+        timeout: 3_000,
+      });
+      expect(stored().facts?.objectives[0]?.text).toBe("Describe the water cycle");
+      expect(screen.getByRole("button", { name: "Redo" })).toBeEnabled();
+    });
+
+    it("a second request while a job is in flight is held and sent after the terminal event", async () => {
+      installFakeEventSource();
+      const lesson = seedGenerated();
+      fakeApi.nextProposalJobId = CASCADE_JOB;
+      renderPage();
+      await editObjective();
+      const cascades = () =>
+        fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/cascade");
+      await waitFor(() => expect(cascades()).toHaveLength(1), { timeout: 3_000 });
+      // A second fact commit while the first job runs: held, not posted.
+      const term = screen.getByRole("textbox", { name: "Term 2" });
+      fireEvent.focus(term);
+      fireEvent.change(term, { target: { value: "Condensing" } });
+      fireEvent.blur(term);
+      await wait(1_300);
+      expect(cascades()).toHaveLength(1);
+      // The first job ends; the held cascade goes out with its own ids.
+      const source = FakeEventSource.latest;
+      act(() => {
+        source.open();
+        source.emit(
+          "completed",
+          {
+            ...jobEvent("completed"),
+            jobId: CASCADE_JOB,
+            result: {
+              job: "lesson.cascade",
+              proposals: cascadeProposals(lesson).slice(0, 1),
+              flagged: [],
+            },
+          },
+          "1",
+        );
+      });
+      await waitFor(() => expect(cascades()).toHaveLength(2), { timeout: 3_000 });
+      expect(cascades()[1]?.body).toEqual({ changedFactIds: ["v2"] });
+    });
+
+    it("a worksheet-only result toasts without Undo (the lesson's history gained nothing)", async () => {
+      installFakeEventSource();
+      seedGenerated();
+      const ws = fakeApi.get("fraction-practice");
+      const lessonRow = fakeApi.get("demo-water-cycle");
+      if (!ws || !lessonRow) throw new Error("fixture");
+      lessonRow.body = {
+        ...(lessonRow.body as Lesson),
+        artefacts: { worksheetId: "fraction-practice" },
+      };
+      fakeApi.nextProposalJobId = CASCADE_JOB;
+      renderPage();
+      await editObjective();
+      await waitFor(() => expect(FakeEventSource.instances.length).toBeGreaterThan(0), {
+        timeout: 3_000,
+      });
+      const block = (ws.body as { blocks: { id: string }[] }).blocks[1];
+      if (!block) throw new Error("fixture");
+      act(() => {
+        const source = FakeEventSource.latest;
+        source.open();
+        source.emit(
+          "completed",
+          {
+            ...jobEvent("completed"),
+            jobId: CASCADE_JOB,
+            result: {
+              job: "lesson.cascade",
+              proposals: [
+                {
+                  target: { blockId: block.id },
+                  block: { ...block, id: "b2-new" },
+                  generatedFrom: {
+                    factRefs: ["o1"],
+                    promptVersion: "cascade.v1",
+                    model: "m",
+                    at: "2026-09-08T00:00:00.000Z",
+                  },
+                },
+              ],
+              flagged: [],
+            },
+          },
+          "1",
+        );
+      });
+      await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+      const [message, options] = toastSpy.mock.calls.at(-1) as [string, { action?: unknown }];
+      expect(message).toBe("Auto changed the worksheet to match");
+      expect(options.action).toBeUndefined();
+      // The worksheet row (not in the page's cache before) was fetched, patched and saved.
+      await waitFor(
+        () =>
+          expect(
+            (fakeApi.loadDocument("fraction-practice") as { blocks: { id: string }[] }).blocks[1]
+              ?.id,
+          ).toBe("b2-new"),
+        { timeout: 3_000 },
+      );
+    });
+
+    it("row 7: flagged targets are counted in the toast", async () => {
+      installFakeEventSource();
+      const lesson = seedGenerated();
+      fakeApi.nextProposalJobId = CASCADE_JOB;
+      renderPage();
+      await editObjective();
+      await waitFor(() => expect(FakeEventSource.instances.length).toBeGreaterThan(0), {
+        timeout: 3_000,
+      });
+      const source = FakeEventSource.latest;
+      act(() => {
+        source.open();
+        source.emit(
+          "completed",
+          {
+            ...jobEvent("completed"),
+            jobId: CASCADE_JOB,
+            result: {
+              job: "lesson.cascade",
+              proposals: cascadeProposals(lesson).slice(0, 1),
+              flagged: [{ slideId: "s-mc", elementId: "q", reason: "teacher" }],
+            },
+          },
+          "1",
+        );
+      });
+      await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+      expect(toastSpy.mock.calls.at(-1)?.[0]).toBe(
+        "Auto changed on slide 2 to match · 1 needs your OK",
+      );
+    });
+
+    it("row 8: a 409 generating toasts and opens no job", async () => {
+      installFakeEventSource();
+      seedGenerated();
+      fakeApi.failNext(
+        (r) => r.path === "/lessons/demo-water-cycle/cascade",
+        () =>
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "conflict",
+                message: "busy",
+                requestId: "x",
+                retryable: false,
+                reason: "generating",
+              },
+            }),
+            { status: 409, headers: { "content-type": "application/json" } },
+          ),
+      );
+      renderPage();
+      await editObjective();
+      await waitFor(() => expect(toastSpy).toHaveBeenCalled(), { timeout: 3_000 });
+      expect(toastSpy.mock.calls.at(-1)?.[0]).toBe(STILL_GENERATING_MESSAGE);
+      expect(FakeEventSource.instances).toHaveLength(0);
+    });
+
+    it("a singleton 409 holds the request and re-sends it once the slot has passed", async () => {
+      installFakeEventSource();
+      seedGenerated();
+      fakeApi.failNext(
+        (r) => r.path === "/lessons/demo-water-cycle/cascade",
+        () =>
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "conflict",
+                message: "An identical job is already queued.",
+                requestId: "x",
+                retryable: true,
+              },
+            }),
+            { status: 409, headers: { "content-type": "application/json" } },
+          ),
+      );
+      renderPage();
+      await editObjective();
+      const cascades = () =>
+        fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/cascade");
+      await waitFor(() => expect(cascades()).toHaveLength(1), { timeout: 3_000 });
+      expect(toastSpy).not.toHaveBeenCalled();
+      await waitFor(() => expect(cascades()).toHaveLength(2), {
+        timeout: SINGLETON_RETRY_MS + 3_000,
+        interval: 200,
+      });
+      expect(cascades()[1]?.body).toEqual({ changedFactIds: ["o1"] });
+      await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+    }, 15_000);
+
+    it("row 10: confirming the regenerate dialog posts one regenerate with the target and instruction", async () => {
+      installFakeEventSource();
+      const lesson = seedGenerated();
+      fakeApi.nextProposalJobId = CASCADE_JOB;
+      renderPage();
+      await screen.findByRole("heading", { level: 1, name: "The water cycle" });
+      const rows = screen
+        .getByRole("listbox", { name: "Slides" })
+        .querySelectorAll('[role="option"]');
+      fireEvent.contextMenu(rows[2] as HTMLElement, { clientX: 40, clientY: 40 });
+      fireEvent.click(await screen.findByRole("menuitem", { name: "Regenerate slide…" }));
+      const dialog = await screen.findByRole("dialog", { name: "Regenerate slide 3" });
+      fireEvent.change(screen.getByRole("textbox", { name: "Instruction (optional)" }), {
+        target: { value: "Simpler words" },
+      });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Regenerate" }));
+      await waitFor(() =>
+        expect(
+          fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/regenerate"),
+        ).toHaveLength(1),
+      );
+      expect(fakeApi.requests.at(-1)?.body).toEqual({
+        targets: [{ slideId: "s-vocab" }],
+        instruction: "Simpler words",
+      });
+      const source = FakeEventSource.latest;
+      const vocab = lesson.slides[2];
+      const el = vocab?.elements[0];
+      if (!vocab || !el) throw new Error("fixture");
+      act(() => {
+        source.open();
+        source.emit(
+          "completed",
+          {
+            ...jobEvent("completed"),
+            jobId: CASCADE_JOB,
+            result: {
+              job: "lesson.regenerate",
+              proposals: [
+                {
+                  target: { slideId: vocab.id },
+                  element: { ...el, id: "vh-new" },
+                  notes: null,
+                  generatedFrom: {
+                    factRefs: ["v1"],
+                    promptVersion: "regenerate.v1",
+                    model: "m",
+                    at: "2026-09-08T00:00:00.000Z",
+                  },
+                },
+              ],
+              flagged: [],
+            },
+          },
+          "1",
+        );
+      });
+      await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+      expect(toastSpy.mock.calls.at(-1)?.[0]).toBe("Regenerated slide 3");
+    });
   });
 });

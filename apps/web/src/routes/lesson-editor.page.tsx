@@ -1,12 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { LessonEditor } from "@tj/editor/lesson";
+import { LessonEditor, type LessonEditorHandle } from "@tj/editor/lesson";
 import { Button, IconButton, Tooltip } from "@tj/ui";
 import { ArrowLeft } from "lucide-react";
-import { lazy, Suspense, useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import { EmptyLesson } from "@/components/empty-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
+import { useProposalJobs } from "@/hooks/use-proposal-jobs";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
@@ -62,6 +63,10 @@ export function LessonEditorPage() {
     worksheetData && isFullDocument(worksheetData) && "blocks" in worksheetData
       ? worksheetData
       : undefined;
+  // The proposal jobs (TEACH-134): the app enqueues and follows, the editor applies through the
+  // handle as one undo step.
+  const editorRef = useRef<LessonEditorHandle | null>(null);
+  const proposals = useProposalJobs(lessonId, editorRef, worksheetId);
 
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
   const onOpenWorksheet = useCallback(
@@ -113,6 +118,11 @@ export function LessonEditorPage() {
       onPresent={onPresent}
       worksheet={worksheet}
       onOpenWorksheet={onOpenWorksheet}
+      editorRef={editorRef}
+      onFactsChanged={proposals.onFactsChanged}
+      onRegenerate={proposals.onRegenerate}
+      busySlideIds={proposals.busySlideIds}
+      proposalsBusy={proposals.busy}
       exportSlot={
         // `aria-disabled`, not `disabled`: a disabled button swallows pointer and focus events, so
         // its tooltip could never open (the viewer's pattern).

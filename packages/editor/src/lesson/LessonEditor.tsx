@@ -1,7 +1,17 @@
 import type { QueryKey } from "@tanstack/react-query";
-import type { Lesson, RichDoc, SlideElement, Theme, Worksheet } from "@tj/domain/documents";
+import type { Proposal } from "@tj/domain";
+import type { Id, Lesson, RichDoc, SlideElement, Theme, Worksheet } from "@tj/domain/documents";
 import { toast } from "@tj/ui";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
 import { makeLine, makeShape, makeText } from "../model/insert";
 import * as reducers from "../model/reducers";
@@ -17,16 +27,20 @@ import {
 import { ActiveEditorProvider } from "../text/active-editor";
 import { Canvas, stepZoom } from "./Canvas";
 import { HistoryProvider, LessonProvider } from "./document-context";
+import { FactsPanel } from "./FactsPanel";
 import { HelpDialog } from "./HelpDialog";
 import { InsertRail } from "./InsertRail";
 import { isInTextField, matchesBinding } from "./keys";
 import { Navigator } from "./Navigator";
+import { NO_PROPOSALS, type ProposalsApi, ProposalsContext } from "./proposals-context";
+import { RegenerateDialog } from "./RegenerateDialog";
 import { ResidualFindingsContext, useComputedResidualFindings } from "./residual-findings";
 import { ThemeDialog } from "./ThemeDialog";
 import { TopBar } from "./TopBar";
 import { CANVAS_ROOT_SELECTOR } from "./transform/gesture-state";
 import {
   EditorSessionProvider,
+  type RegenerateTarget,
   resolveActiveSlide,
   useEditorSessionState,
 } from "./use-editor-session";
@@ -71,6 +85,33 @@ export type LessonEditorProps = {
   worksheet?: Worksheet;
   /** Opens the worksheet; the top bar shows "Worksheet" only when this and the artefact exist. */
   onOpenWorksheet?: (worksheetId: string) => void;
+  /**
+   * The proposal jobs (TEACH-134, ADR 0025 §18): the app enqueues a cascade for changed facts and
+   * a regenerate for a target, follows the job and applies its result through `editorRef`.
+   * `busySlideIds` / `proposalsBusy` paint the in-flight state. Absent → no Facts panel, no
+   * Regenerate entries.
+   */
+  onFactsChanged?: (factIds: string[]) => void;
+  onRegenerate?: (target: RegenerateTarget, instruction: string | undefined) => void;
+  busySlideIds?: ReadonlySet<Id>;
+  proposalsBusy?: boolean;
+  editorRef?: Ref<LessonEditorHandle>;
+};
+
+/**
+ * What the app may do to the open editor once a proposal job completes (ADR 0025 §19). Everything
+ * else stays behind the reducers and the session; this is the one imperative seam.
+ */
+export type LessonEditorHandle = {
+  /**
+   * Apply a job's proposals as one undo step. Leaves any open text edit first: the element being
+   * typed into may be one of those replaced, and an open typing session would otherwise merge with
+   * the cascade into a single history entry. Returns the touched slide ids in document order.
+   */
+  applyProposals: (proposals: readonly Proposal[]) => Id[];
+  undo: () => void;
+  /** Make a slide the active one (the toast's "View"). */
+  goToSlide: (slideId: Id) => void;
 };
 
 export function LessonEditor({
@@ -83,6 +124,11 @@ export function LessonEditor({
   exportSlot,
   worksheet,
   onOpenWorksheet,
+  onFactsChanged,
+  onRegenerate,
+  busySlideIds,
+  proposalsBusy = false,
+  editorRef,
 }: LessonEditorProps) {
   const autosave = useAutosave(onSave);
   const { lesson, ...history } = useDocumentHistory({
@@ -95,6 +141,27 @@ export function LessonEditor({
   const session = useEditorSessionState();
   const [helpOpen, setHelpOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [factsOpen, setFactsOpen] = useState(false);
+  const proposalsEnabled = onFactsChanged !== undefined || onRegenerate !== undefined;
+  // `null` until the linked worksheet is here: its block refs are part of what `addFact` must skip.
+  const reservedFactIds = useMemo(
+    () =>
+      lesson?.artefacts?.worksheetId && !worksheet ? null : reducers.worksheetFactRefs(worksheet),
+    [lesson?.artefacts?.worksheetId, worksheet],
+  );
+  const proposals = useMemo<ProposalsApi>(
+    () =>
+      proposalsEnabled
+        ? {
+            onFactsChanged,
+            onRegenerate,
+            busySlideIds: busySlideIds ?? NO_PROPOSALS.busySlideIds,
+            busy: proposalsBusy,
+            reservedFactIds,
+          }
+        : NO_PROPOSALS,
+    [proposalsEnabled, onFactsChanged, onRegenerate, busySlideIds, proposalsBusy, reservedFactIds],
+  );
   const [canvasFocused, setCanvasFocused] = useState(false);
 
   // Canvas writes its measured scale here on every render of SlideScaler. A ref, not state: the
@@ -196,6 +263,35 @@ export function LessonEditor({
   }, [session]);
   useFitMigration({ lessonId: lesson?.id, getDeps: getFitDeps, notify: (m) => toast(m) });
 
+  // The app's seam for proposal jobs (ADR 0025 §19). Reads history and session through refs so the
+  // handle is stable and always acts on the current document.
+  useImperativeHandle(
+    editorRef,
+    () => ({
+      applyProposals: (incoming) => {
+        const h = historyRef.current;
+        const current = lessonRef.current;
+        if (!current) return [];
+        // Leave any open text edit: its session closes its own transaction on blur, so the cascade
+        // below is its own undo step and never swallows the typed text (TEACH-134 FR 3).
+        const s = session.read();
+        if (s.editingTextId) session.actions.setEditingText(null);
+        if (s.editingExplanation) session.actions.setEditingExplanation(null);
+        h.flushTransactions();
+        h.beginTransaction();
+        try {
+          h.dispatch(reducers.applyProposals, incoming);
+        } finally {
+          h.endTransaction();
+        }
+        return reducers.proposalSlideIds(current, incoming);
+      },
+      undo: () => historyRef.current.undo(),
+      goToSlide: (slideId) => session.actions.setActiveSlide(slideId),
+    }),
+    [session],
+  );
+
   const theme = useMemo(() => getTheme(lesson?.themeId), [lesson?.themeId]);
   const slide = lesson ? resolveActiveSlide(lesson.slides, session.state.activeSlideId) : undefined;
 
@@ -268,32 +364,42 @@ export function LessonEditor({
             <EditingStateContext.Provider value={editingState}>
               <ActiveEditorProvider>
                 <ResidualFindingsContext.Provider value={residuals}>
-                  <div
-                    className="flex h-dvh flex-col overflow-hidden bg-background"
-                    data-lesson-editor={lessonId}
-                  >
-                    <TopBar
-                      onBack={onBack}
-                      onPresent={onPresent}
-                      onOpenTheme={() => setThemeOpen(true)}
-                      exportSlot={exportSlot}
-                      onOpenWorksheet={onOpenWorksheet}
-                      autosave={autosave}
-                    />
-                    <div className="flex min-h-0 flex-1">
-                      <InsertRail onInsert={insert} onHelp={() => setHelpOpen(true)} />
-                      <Navigator />
-                      <Canvas
-                        slide={slide}
-                        theme={theme}
-                        onFocusChange={setCanvasFocused}
-                        onScaleChange={onScaleChange}
-                        onInsert={insert}
+                  <ProposalsContext.Provider value={proposals}>
+                    <div
+                      className="flex h-dvh flex-col overflow-hidden bg-background"
+                      data-lesson-editor={lessonId}
+                    >
+                      <TopBar
+                        onBack={onBack}
+                        onPresent={onPresent}
+                        onOpenTheme={() => setThemeOpen(true)}
+                        exportSlot={exportSlot}
+                        onOpenWorksheet={onOpenWorksheet}
+                        onToggleFacts={
+                          proposalsEnabled && lesson.facts
+                            ? () => setFactsOpen((open) => !open)
+                            : undefined
+                        }
+                        factsOpen={factsOpen}
+                        autosave={autosave}
                       />
+                      <div className="flex min-h-0 flex-1">
+                        <InsertRail onInsert={insert} onHelp={() => setHelpOpen(true)} />
+                        <Navigator />
+                        <Canvas
+                          slide={slide}
+                          theme={theme}
+                          onFocusChange={setCanvasFocused}
+                          onScaleChange={onScaleChange}
+                          onInsert={insert}
+                        />
+                        {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
+                      </div>
+                      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+                      <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
+                      {proposalsEnabled ? <RegenerateDialog /> : null}
                     </div>
-                    <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-                    <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
-                  </div>
+                  </ProposalsContext.Provider>
                 </ResidualFindingsContext.Provider>
               </ActiveEditorProvider>
             </EditingStateContext.Provider>

@@ -268,7 +268,7 @@ describeDb("lesson.plan job", () => {
     // Cancel while the fifth slide's answer is pending: four slides are already on the row.
     const script = pipelineScript();
     const pending = SLIDES_INDEX + 2;
-    script[pending] = async (call) => {
+    script[pending] = async (_call) => {
       ac.abort("cancelled");
       return script[pending - 1] as string;
     };
