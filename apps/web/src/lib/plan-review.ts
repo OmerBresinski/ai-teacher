@@ -127,7 +127,7 @@ export const BLOCK_TYPE_LABELS: Record<GeneratableBlockType, string> = {
 /* Derivations (prototype-only: Plan does not emit these yet)          */
 /* ------------------------------------------------------------------ */
 
-const clip = (text: string, max = 72) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+const clip = (text: string, max = 160) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
 /** The one line the Shape step shows under a kind, from the facts the entry references. */
 export function phaseSummary(entry: OutlineEntry, facts: LessonFacts): string {
