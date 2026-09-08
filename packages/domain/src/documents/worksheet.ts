@@ -4,7 +4,7 @@ import type { AgeBand } from "./lesson";
 import { AgeBandSchema } from "./lesson";
 import { DocumentParseError, describeIssues, migrate } from "./migrate";
 import { type RichDoc, RichDocSchema } from "./rich-text";
-import type { Id } from "./slide";
+import { type Id, type PhotoSource, PhotoSourceSchema } from "./slide";
 
 /*
  * Worksheet document (ADR 0021). A page is A4 portrait (595x842pt) or US Letter (612x792pt).
@@ -113,7 +113,16 @@ type WorksheetBlockBody =
   | { id: Id; type: "word-bank"; words: string[] }
   | { id: Id; type: "answer-box"; heightPt: number; label?: string }
   | { id: Id; type: "lines"; count: number }
-  | { id: Id; type: "image"; src: string; alt?: string; widthPct: number; caption?: string }
+  | {
+      id: Id;
+      type: "image";
+      src: string;
+      alt?: string;
+      widthPct: number;
+      caption?: string;
+      /** Structured provenance of a Pexels photo (Images project, Decision 5). */
+      source?: PhotoSource;
+    }
   | { id: Id; type: "table"; rows: string[][]; header?: boolean }
   | { id: Id; type: "divider" }
   | { id: Id; type: "page-break" };
@@ -197,6 +206,7 @@ export const WorksheetBlockSchema = z.discriminatedUnion("type", [
     alt: z.string().optional(),
     widthPct: z.number(),
     caption: z.string().optional(),
+    source: PhotoSourceSchema.optional(),
   }),
   z.object({
     id: z.string(),

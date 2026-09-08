@@ -247,6 +247,83 @@ describe("SlideSchema referential integrity", () => {
   });
 });
 
+describe("image source (Images project, Decision 5)", () => {
+  const source = {
+    provider: "pexels" as const,
+    id: "12345",
+    pageUrl: "https://www.pexels.com/photo/12345/",
+    photographer: "Ada",
+    photographerUrl: "https://www.pexels.com/@ada",
+  };
+  const imageSlide = (element: Record<string, unknown>) => ({
+    ...titleSlide(),
+    elements: [
+      { id: "i", type: "image", x: 0, y: 0, w: 1, h: 1, src: "a.png", fit: "cover", ...element },
+    ],
+  });
+  const withImage = (element: Record<string, unknown>) => ({
+    ...lesson(),
+    slides: [imageSlide(element)],
+  });
+  const firstIssuePath = (slide: unknown) => {
+    const result = SlideSchema.safeParse(slide);
+    expect(result.success).toBe(false);
+    return result.success ? [] : result.error.issues[0]?.path;
+  };
+
+  test("a lesson whose image carries source round-trips unchanged", () => {
+    const input = withImage({ source });
+    const parsed = parseLesson(JSON.parse(JSON.stringify(input)));
+    expect(parsed).toEqual(input as never);
+    const element = parsed.slides[0]?.elements[0] as SlideElement & { type: "image" };
+    expect(element.source?.provider).toBe("pexels");
+  });
+
+  test("an image without source parses as before; the untouched fixture is unchanged", () => {
+    const parsed = parseLesson(JSON.parse(JSON.stringify(withImage({}))));
+    const element = parsed.slides[0]?.elements[0] as SlideElement & { type: "image" };
+    expect(element.source).toBeUndefined();
+    expect(parseLesson(JSON.parse(JSON.stringify(lesson())))).toEqual(lesson());
+  });
+
+  test("pageUrl must be an http(s) address", () => {
+    const path = firstIssuePath(
+      imageSlide({ source: { ...source, pageUrl: "javascript:alert(1)" } }),
+    );
+    expect(path).toEqual(["elements", 0, "source", "pageUrl"]);
+  });
+
+  test("photographerUrl must be an http(s) address", () => {
+    const path = firstIssuePath(
+      imageSlide({ source: { ...source, photographerUrl: "mailto:a@b.c" } }),
+    );
+    expect(path).toEqual(["elements", 0, "source", "photographerUrl"]);
+  });
+
+  test("provider is pexels only", () => {
+    const path = firstIssuePath(imageSlide({ source: { ...source, provider: "openverse" } }));
+    expect(path).toEqual(["elements", 0, "source", "provider"]);
+  });
+
+  test("source is strict: an extra key is refused", () => {
+    const slide = imageSlide({ source: { ...source, licence: "x" } });
+    expect(SlideSchema.safeParse(slide).success).toBe(false);
+  });
+
+  test("credit, creditUrl and source can all be present", () => {
+    const input = withImage({
+      credit: "Old by Someone, CC0",
+      creditUrl: "https://openverse.org/x",
+      source,
+    });
+    const parsed = parseLesson(JSON.parse(JSON.stringify(input)));
+    const element = parsed.slides[0]?.elements[0] as SlideElement & { type: "image" };
+    expect(element.credit).toBe("Old by Someone, CC0");
+    expect(element.creditUrl).toBe("https://openverse.org/x");
+    expect(element.source).toEqual(source);
+  });
+});
+
 describe("slide helpers", () => {
   test("slideStepCount is the max revealStep plus one for a revealable answer", () => {
     expect(slideStepCount(titleSlide())).toBe(0);

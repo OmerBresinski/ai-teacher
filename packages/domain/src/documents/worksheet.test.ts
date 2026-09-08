@@ -11,6 +11,13 @@ import {
 } from "./worksheet";
 
 const sixCriteria = ["a", "b", "c", "d", "e", "f"];
+const photoSource = {
+  provider: "pexels" as const,
+  id: "12345",
+  pageUrl: "https://www.pexels.com/photo/12345/",
+  photographer: "Ada",
+  photographerUrl: "https://www.pexels.com/@ada",
+};
 
 describe("parseWorksheet", () => {
   test("round-trips a TeachDeck-shaped worksheet through JSON", () => {
@@ -76,6 +83,7 @@ describe("parseWorksheet", () => {
       { id: "9", type: "answer-box", heightPt: 120 },
       { id: "10", type: "lines", count: 4 },
       { id: "11", type: "image", src: "x.png", widthPct: 50 },
+      { id: "11s", type: "image", src: "x.png", widthPct: 50, source: photoSource },
       { id: "12", type: "table", rows: [["a", "b"]], header: true },
       { id: "13", type: "divider" },
       { id: "14", type: "page-break" },
@@ -84,6 +92,31 @@ describe("parseWorksheet", () => {
       expect(WorksheetBlockSchema.safeParse(block).success).toBe(true);
     }
     expect(WorksheetBlockSchema.safeParse({ id: "x", type: "sticker" }).success).toBe(false);
+  });
+
+  test("an image block with source round-trips through the block schema and both parsers", () => {
+    const block = {
+      id: "img",
+      type: "image" as const,
+      src: "x.png",
+      widthPct: 50,
+      source: photoSource,
+    };
+    expect(WorksheetBlockSchema.parse(JSON.parse(JSON.stringify(block)))).toEqual(block);
+    const input = { ...worksheet(), blocks: [block] };
+    expect(parseWorksheet(JSON.parse(JSON.stringify(input)))).toEqual(input);
+    expect(parseStoredWorksheet(JSON.parse(JSON.stringify(input)))).toEqual(input);
+  });
+
+  test("an image block source with a non-http(s) pageUrl is refused", () => {
+    const block = {
+      id: "img",
+      type: "image",
+      src: "x.png",
+      widthPct: 50,
+      source: { ...photoSource, pageUrl: "javascript:x" },
+    };
+    expect(WorksheetBlockSchema.safeParse(block).success).toBe(false);
   });
 
   test("a generated worksheet round-trips with lessonId and provenance on every block (ADR 0025 §2, §4)", () => {
