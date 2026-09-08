@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import type { Lesson, LessonFacts } from "@tj/domain/documents";
 import { LessonEditor, type LessonEditorHandle } from "@tj/editor/lesson";
 import { Button, IconButton, Tooltip } from "@tj/ui";
 import { ArrowLeft } from "lucide-react";
@@ -10,8 +11,10 @@ import { WrongKindPage } from "@/components/wrong-kind-page";
 import { useProposalJobs } from "@/hooks/use-proposal-jobs";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { imageSearchClient } from "@/lib/images";
+import { seedGeneratingLesson } from "@/lib/brief-form";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
+import { queryKeys } from "@/lib/query";
 import { lessonEditorRoute } from "./documents.route";
 // The slide stylesheet (theme fonts, rich-text rules, reveal motion) travels with every route that
 // paints a slide (ADR 0022 §7): a direct load of `/l/…` must not depend on the library chunk.
@@ -19,6 +22,14 @@ import "@tj/editor/styles/editor.css";
 
 // The generating view renders the read-only viewer (`@tj/editor/present`), a chunk most editor
 // loads never need: only a lesson still under its `lesson.plan` lock reaches it (bundle-conditional).
+// The plan review (prototype, `proto/plan-review`): a lesson Plan has written but nobody has
+// confirmed — `generation.stage === "planned"` with no lock — gets the review instead of the editor.
+const PlanReview = lazy(() =>
+  import("@/components/plan-review/plan-review").then(({ PlanReview }) => ({
+    default: PlanReview,
+  })),
+);
+
 const GeneratingLesson = lazy(() =>
   import("@/components/generating-lesson").then(({ GeneratingLesson }) => ({
     default: GeneratingLesson,
@@ -79,6 +90,29 @@ export function LessonEditorPage() {
     () => void navigate({ to: "/worksheets/new", search: { lesson: lessonId } }),
     [navigate, lessonId],
   );
+  // Prototype: confirming the plan writes the edited facts into the cache and hands the page to
+  // the generating view under a fake job id (`seedGeneratingLesson`, the brief's handoff), so the
+  // pending skeletons follow `facts.outline`. No API call; the real contract needs Omer's job split.
+  const onGenerate = useCallback(
+    (facts: LessonFacts) => {
+      const current = queryClient.getQueryData<Lesson>(queryKeys.libraryDocument(lessonId));
+      if (!current?.brief) return;
+      const jobId = `proto-${Date.now().toString(36)}`;
+      seedGeneratingLesson(
+        queryClient,
+        {
+          brief: current.brief,
+          themeId: current.themeId,
+          subject: current.subject,
+          yearGroup: current.yearGroup,
+        },
+        { lessonId, jobId },
+      );
+      queryClient.setQueryData(queryKeys.libraryDocument(lessonId), { ...current, facts });
+    },
+    [queryClient, lessonId],
+  );
+
   const onPresent = useCallback(
     () =>
       void navigate({
@@ -102,6 +136,23 @@ export function LessonEditorPage() {
           jobId={generatingJobId}
           onBack={onBack}
           onStopped={setStoppedJobId}
+          leading={
+            <IconButton label="Back to the library" onClick={onBack}>
+              <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
+            </IconButton>
+          }
+        />
+      </Suspense>
+    );
+  }
+
+  if (data.generation?.stage === "planned" && data.facts && meta?.generatingJobId == null) {
+    return (
+      <Suspense fallback={<RoutePendingPage />}>
+        <PlanReview
+          lesson={data}
+          facts={data.facts}
+          onGenerate={onGenerate}
           leading={
             <IconButton label="Back to the library" onClick={onBack}>
               <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
