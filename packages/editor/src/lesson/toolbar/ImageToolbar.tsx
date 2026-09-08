@@ -40,7 +40,17 @@ export const ImageToolbar = memo(function ImageToolbar({
       <Segmented
         aria-label="Fit"
         value={element.fit}
-        onChange={(fit) => update<ImageElement>(element.id, { fit })}
+        onChange={(fit) =>
+          update<ImageElement>(element.id, (el) => {
+            el.fit = fit;
+            // Fit shows the whole picture: any crop-mode adjustment goes in the same write.
+            if (fit === "contain") {
+              delete el.crop;
+              delete el.focal;
+              delete el.imageTransform;
+            }
+          })
+        }
         options={[
           { value: "contain", label: "Fit" },
           { value: "cover", label: "Fill" },

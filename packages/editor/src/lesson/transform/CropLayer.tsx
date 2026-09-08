@@ -125,14 +125,9 @@ export function CropLayer({
       const d = read().crop?.draft;
       if (!d || d.natural) return;
       const b = d.box ?? rectOf(element);
-      const seeded = seedCrop({ ...element, ...d, w: b.w, h: b.h }, natural);
-      const a = draftAspect({ ...d, natural }, b);
-      // A crop stored under another box shape is re-derived so the picture keeps its own aspect.
-      const p = pictureRect(b, seeded);
-      const skewed = Math.abs(p.w / p.h - a) > 1e-3;
-      const crop = skewed
-        ? draftZoom({ ...d, natural, crop: seeded }, b, zoomOf(seeded, b, a)).crop
-        : seeded;
+      // The window the slide shows: a crop stored under another box shape is re-derived, exactly
+      // as `ImageView` renders it, so the mode opens on the same picture.
+      const crop = seedCrop({ ...element, ...d, w: b.w, h: b.h }, natural);
       actions.updateCrop({ natural, crop }, true);
     };
     img.src = element.src;
@@ -156,6 +151,8 @@ export function CropLayer({
     const d = s.draft;
     history.dispatch(reducers.updateElement<ImageElement>, slideId, s.id, (el) => {
       if (d.box) Object.assign(el, { x: d.box.x, y: d.box.y, w: d.box.w, h: d.box.h });
+      // A crop implies Fill: a Fit picture leaves the mode as cover, in the same undo step.
+      if (d.fit) el.fit = d.fit;
       if (d.reset) {
         delete el.crop;
         delete el.focal;

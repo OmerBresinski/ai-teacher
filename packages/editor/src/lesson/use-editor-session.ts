@@ -64,6 +64,8 @@ export type SessionState = {
    * Crop mode (TEACH-153): the image being adjusted and the draft of its adjustments. The draft is
    * written to the document once, when the mode ends, so a whole crop session is one undo step.
    * `dirty` is false until the teacher changes something; seeding the natural size does not count.
+   * A Fit picture is the exception: a crop implies Fill, so the mode opens with `fit: "cover"` in
+   * the draft and already dirty, and the picture leaves the mode as the mode showed it.
    */
   crop: CropSession | null;
 };
@@ -180,8 +182,13 @@ export function sessionReducer(s: SessionState, a: SessionAction): SessionState 
         editingTextId: null,
         crop: {
           id: el.id,
-          draft: { crop: el.crop, focal: el.focal, imageTransform: el.imageTransform },
-          dirty: false,
+          draft: {
+            crop: el.crop,
+            focal: el.focal,
+            imageTransform: el.imageTransform,
+            ...(el.fit === "contain" ? { fit: "cover" as const } : {}),
+          },
+          dirty: el.fit === "contain",
         },
       };
     }
