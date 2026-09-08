@@ -25,18 +25,22 @@ const ICON = { size: 20, strokeWidth: 1.5 } as const;
  * The slide's own actions, in a pill anchored to the top-right of the slide frame (TeachDeck
  * `components/v2/editor/canvas/SlideActions.tsx`). Rendered in screen space, like the selection
  * frame, so it neither scales nor moves with the zoom; hidden during a drag, resize or rotate and
- * while text is being edited. It shares the band above the slide with the Question / Answer tabs
- * and is the one that gives way.
+ * while text is being edited. It shares the band above the slide with the contextual toolbar and
+ * the Question / Answer tabs and is the one that gives way: above the toolbar when the two meet
+ * (`placeSlideActions`, candidate 2), as with a side panel open at 1280 wide.
  */
 export function SlideActions({
   slide,
   stageRef,
+  toolbarRef,
   tabsRef,
   scale,
 }: {
   slide: Slide;
   /** The 960x540 slide frame. */
   stageRef: RefObject<HTMLDivElement | null>;
+  /** The contextual toolbar's wrapper: it owns the middle of the same band. */
+  toolbarRef?: RefObject<HTMLDivElement | null>;
   /** The Question / Answer tabs' wrapper: the other end of the same band. */
   tabsRef?: RefObject<HTMLDivElement | null>;
   scale: number;
@@ -48,7 +52,10 @@ export function SlideActions({
   const slideCount = lesson.slides.length;
   const index = lesson.slides.findIndex((sl) => sl.id === slide.id);
 
-  const avoidRefs = useMemo(() => (tabsRef ? [tabsRef] : []), [tabsRef]);
+  const avoidRefs = useMemo(
+    () => [toolbarRef, tabsRef].filter((ref) => ref !== undefined),
+    [toolbarRef, tabsRef],
+  );
   const { barRef, frame, avoid, size, viewport, hidden } = useSlideChrome({
     stageRef,
     avoidRefs,

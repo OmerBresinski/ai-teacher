@@ -82,6 +82,9 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
   // The Question / Answer tabs' wrapper: the pill hangs off the other end of the same band, and at
   // a low zoom the two ends meet, so the pill measures the tabs and gives way.
   const tabs = useRef<HTMLDivElement>(null);
+  // The contextual toolbar's wrapper: it owns the middle of the same band. With a side panel open
+  // the slide toolbar reaches the pill's corner, so the pill measures it and stacks above.
+  const toolbar = useRef<HTMLDivElement>(null);
 
   useCanvasKeys({ enabled: focused, lesson, slide });
   const dropping = useImageDrop({ scroller, stage, onInsert });
@@ -296,8 +299,17 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
           if (e.target instanceof Element && e.target.closest("button")) e.preventDefault();
         }}
       >
-        <ContextualToolbar slide={slide} theme={theme} stageRef={stage} scale={scale} />
-        <SlideActions slide={slide} stageRef={stage} tabsRef={tabs} scale={scale} />
+        {/* Wrapped so the pill can measure the toolbar's own floating box. */}
+        <div ref={toolbar}>
+          <ContextualToolbar slide={slide} theme={theme} stageRef={stage} scale={scale} />
+        </div>
+        <SlideActions
+          slide={slide}
+          stageRef={stage}
+          toolbarRef={toolbar}
+          tabsRef={tabs}
+          scale={scale}
+        />
         {/* Wrapped so the pill can measure the tabs' own floating box. */}
         <div ref={tabs}>
           <SlideTabs slide={slide} stageRef={stage} stageId={STAGE_ID} scale={scale} />
