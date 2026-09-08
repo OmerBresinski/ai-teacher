@@ -74,16 +74,19 @@ export const updateElement = <T extends SlideElement>(
     else Object.assign(el, patch);
   });
 
+/** The same patch on every id in one step — an object, or a mutator run on each draft. */
 export const updateElements = (
   lesson: Lesson,
   slideId: Id,
   ids: Id[],
-  patch: Partial<SlideElement>,
+  patch: ElementPatch,
 ): Lesson =>
   editSlide(lesson, slideId, (s) => {
     for (const id of ids) {
       const el = findElement(s, id);
-      if (el) Object.assign(el, patch);
+      if (!el) continue;
+      if (typeof patch === "function") patch(el);
+      else Object.assign(el, patch);
     }
   });
 

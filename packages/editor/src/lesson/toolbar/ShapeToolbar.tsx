@@ -9,17 +9,14 @@ import { LabelTextControls } from "./LabelTextControls";
 import { MoreDrawer } from "./MoreDrawer";
 import {
   BarButton,
+  BorderWidthMenu,
+  borderWidthOf,
+  CORNERED,
   CornersMenu,
   OpacityControl,
-  StepMenu,
   useElementWrites,
   useThemePalette,
 } from "./shared";
-
-/** The border widths on offer, slide points. 0 is "None". */
-const BORDER_WIDTHS: readonly number[] = [0, 1, 2, 3, 4, 6, 8, 12];
-/** Rectangles and speech bubbles have corners to round. */
-const CORNERED: ReadonlySet<ShapeElement["shape"]> = new Set(["rect", "rounded", "speech"]);
 
 /**
  * Fill, border, border width, corners (rectangles only), opacity, label, and once the shape has a
@@ -41,7 +38,7 @@ export const ShapeToolbar = memo(function ShapeToolbar({
   const labelId = useId();
 
   // Mirror ShapeView's defaults so the menu marks what is actually drawn.
-  const borderWidth = element.strokeWidth ?? (element.stroke ? 2 : 0);
+  const borderWidth = borderWidthOf(element);
   const radius = shapeRadius(element, theme);
 
   return (
@@ -62,22 +59,8 @@ export const ShapeToolbar = memo(function ShapeToolbar({
         palette={palette}
         onChange={(stroke) => update<ShapeElement>(element.id, { stroke })}
       />
-      <StepMenu
-        label="Border width"
+      <BorderWidthMenu
         value={borderWidth}
-        steps={BORDER_WIDTHS}
-        icon={<BorderWidthGlyph />}
-        preview={(n) =>
-          n === 0 ? (
-            <span className="flex-1 text-ink-3">None</span>
-          ) : (
-            <span
-              aria-hidden
-              className="block flex-1 rounded-full bg-foreground"
-              style={{ height: n }}
-            />
-          )
-        }
         // A width with no colour would draw nothing: seed the theme ink the first time.
         onPick={(strokeWidth) =>
           update<ShapeElement>(element.id, {
@@ -139,24 +122,6 @@ export const ShapeToolbar = memo(function ShapeToolbar({
     </Panel>
   );
 });
-
-/** Three stacked lines of growing weight: the border-width glyph. */
-function BorderWidthGlyph() {
-  return (
-    <svg
-      width={20}
-      height={20}
-      viewBox="0 0 20 20"
-      fill="currentColor"
-      aria-hidden
-      focusable="false"
-    >
-      <rect x={3} y={4} width={14} height={1} rx={0.5} />
-      <rect x={3} y={8.5} width={14} height={2} rx={1} />
-      <rect x={3} y={13.5} width={14} height={3} rx={1.5} />
-    </svg>
-  );
-}
 
 function plainLabel(el: ShapeElement): string {
   const first = el.doc?.content?.[0]?.content?.[0];
