@@ -85,16 +85,21 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   (`apps/worker/src/fake-ai.ts`).
 - Client storage keys: `tj:sidebar-collapsed`, `tj:library:sort`, `tj:library:view`, and
   `tj:last-shell` are the stable browser preference/session contracts for the library shell;
-  `tj:navigator` (full / compact rail) is the editor's.
+  `tj:navigator` (full / compact rail) is the editor's; `tj:brief:last-class` (subject, year
+  group, theme of the last lesson planned; `lib/brief-memory.ts`) is the brief's.
 - `/lessons/new` is the lesson brief (`lesson-brief.route.ts` + `lesson-brief.page.tsx`, F01 item 2):
   one form validated by `CreateLessonSchema` from `@tj/domain/documents` (the same schema
   `POST /lessons` runs, so the identifier guard reads the same), the two clarifying questions from
-  `lib/brief-questions.ts` (product copy lives only there), `libraryMutations.createLesson` →
+  `lib/brief-questions.ts` (product copy lives only there; asked one at a time, the suggestion
+  marked with `StatusPill`, Enter accepts — TEACH-177), `libraryMutations.createLesson` →
   `seedGeneratingLesson` (the new lesson and its lock go into the cache first, so `/l/$lessonId`
   paints before its first GET) → `/l/$lessonId`. The form model is `lib/brief-form.ts`, the
-  presentational pieces `components/brief/*`. "New lesson" in the library navigates here (and
-  preloads the chunk on hover); `NewDocumentDialog` stays for
-  worksheets and for the page's "Blank lesson" action. e2e: `brief` spec; `/lessons/new` is in the
+  presentational pieces `components/brief/*` (`action-bar.tsx` is the sticky "Plan it" bar, a
+  candidate for `@tj/ui`; `theme-tiles.tsx` draws the title slide per theme with `LessonThumb`).
+  Subject, year group and theme are remembered per browser (`lib/brief-memory.ts`). "New lesson"
+  in the library navigates here (and preloads the chunk on hover); `NewDocumentDialog` stays for
+  worksheets and for the page's "Blank lesson" action (the only blank-lesson entry point). e2e:
+  `brief` spec; `teach-177-screenshots` (opt-in) captures the brief; `/lessons/new` is in the
   a11y route list.
 - Document routes: `/l/$lessonId` is the editor (`lesson-editor.page.tsx`, `LessonEditor` from
   `@tj/editor/lesson`), `/l/$lessonId/view` the read-only viewer, `/l/$lessonId/present` present
