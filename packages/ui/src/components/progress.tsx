@@ -9,7 +9,7 @@ import { cn } from "../lib/cn";
  */
 
 export type ProgressProps = Omit<React.ComponentProps<"div">, "children"> & {
-  /** 0–100; leave undefined for indeterminate. */
+  /** 0 to 100; leave undefined for indeterminate. */
   value?: number;
   /** The accessible name, e.g. "Generating". */
   label: string;

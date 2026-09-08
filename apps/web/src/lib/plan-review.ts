@@ -447,7 +447,7 @@ export function planReviewReducer(
   }
 }
 
-/** Whether the teacher has touched a field (or a list) — "yours" rather than "suggested". */
+/** Whether the teacher has touched a field (or a list): "yours" rather than "suggested". */
 export const isYours = (state: PlanReviewState, key: string): boolean =>
   state.touched[key] === true;
 
