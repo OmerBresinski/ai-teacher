@@ -8,8 +8,9 @@
  *
  *   { "learningObjectives": "[{\"text\": …}]", "outline": [ … ] }      ← a list as a string
  *   { "learningObjectives": "{\"learningObjectives\": […], \"outline\": […]}" }  ← the answer as a string
+ *   { "plan": { "learningObjectives": […], "outline": […] } }             ← the answer under one made-up key
  *
- * Both are the right answer wrapped in quotes. Unwrapping is a pure function of the text — no
+ * All three are the right answer in the wrong wrapper. Unwrapping is a pure function of the text — no
  * second model call, no guessing at content — so it runs before validation and the retry stays
  * for genuine misses. Nothing here logs: the text is the model's output (ADR 0015).
  */
@@ -64,9 +65,11 @@ function parseEmbeddedStrings(value: unknown, repairs: JsonRepairKind[]): unknow
 }
 
 /**
- * `{ a: { a: …, b: … } }` → `{ a: …, b: … }`: the whole answer was the string under its first
- * key and, once parsed, carries that key itself. Only hoists when the outer object has exactly
- * one key and the inner object repeats it — anything else is left alone.
+ * `{ plan: { learningObjectives: …, outline: … } }` → `{ learningObjectives: …, outline: … }`:
+ * the answer was wrapped in one invented key — as a string (seen 2026-09-07) or as an object
+ * (seen 2026-09-08, `1 unrecognized key(s)` with every expected key `undefined`). Only hoists when
+ * the outer object has exactly one own key whose value is an object; the caller accepts the
+ * result only if it then validates, so a legitimate single-key answer is never lost.
  */
 function hoistWrappedAnswer(value: unknown, repairs: JsonRepairKind[]): unknown {
   if (!isObject(value)) return value;
@@ -74,7 +77,7 @@ function hoistWrappedAnswer(value: unknown, repairs: JsonRepairKind[]): unknown 
   const only = keys[0];
   if (keys.length !== 1 || only === undefined) return value;
   const inner = value[only];
-  if (!isObject(inner) || !Object.hasOwn(inner, only)) return value;
+  if (!isObject(inner)) return value;
   repairs.push("hoisted");
   return inner;
 }

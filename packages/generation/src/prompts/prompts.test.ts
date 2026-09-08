@@ -80,12 +80,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v1",
-    hash: "2df135d0804a8cbedf796e3e5b461e5d50433e0c715a52cec89ce9122e643fe9",
+    version: "plan-skeleton.v2",
+    hash: "5563f0edae79cbd3e25de7f6f1d68f69d81914f5d83bcc5d0da1082c2dfec642",
   },
   "plan-facts": {
-    version: "plan-facts.v1",
-    hash: "37bb4178f67f3e2099007a46cb556346516c8915488f6c5dcf5c3654c7f87f72",
+    version: "plan-facts.v2",
+    hash: "bceccf73b9a30f7a19f48f42ee1c0bbc810aebd82adb0d8083daca6bce70f2e0",
   },
   "generate-slide": {
     version: "generate-slide.v2",
