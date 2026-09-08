@@ -56,6 +56,11 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./components/dropdown-menu";
+export {
+  type EditableListField,
+  EditableListRow,
+  type EditableListRowProps,
+} from "./components/editable-list-row";
 export { EmptyState, type EmptyStateProps } from "./components/empty-state";
 export { IconButton, type IconButtonProps, IconGroup } from "./components/icon-button";
 export { Input, type InputProps } from "./components/input";
@@ -69,6 +74,7 @@ export {
   type ListSurfaceProps,
   ListSurfaceRow,
 } from "./components/list-surface";
+export { MinutesStepper, type MinutesStepperProps } from "./components/minutes-stepper";
 export { PageTitle, type PageTitleProps } from "./components/page-title";
 export {
   Popover,
@@ -79,6 +85,8 @@ export {
   PopoverTitle,
   PopoverTrigger,
 } from "./components/popover";
+export { Progress, type ProgressProps } from "./components/progress";
+export { QuestionShell, type QuestionShellProps } from "./components/question-shell";
 export { RadioGroup, RadioGroupItem } from "./components/radio-group";
 export { SearchInput, type SearchInputProps } from "./components/search-input";
 export { SectionHeading, type SectionHeadingProps } from "./components/section-heading";
@@ -107,6 +115,7 @@ export { Toaster, toast } from "./components/sonner";
 export { Spinner } from "./components/spinner";
 export { Stack, type StackProps } from "./components/stack";
 export { StatusPill, type StatusPillProps, type StatusPillTone } from "./components/status-pill";
+export { StepRail, type StepRailProps, type StepRailStep } from "./components/step-rail";
 export { Switch } from "./components/switch";
 export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/tabs";
 export { Textarea } from "./components/textarea";
