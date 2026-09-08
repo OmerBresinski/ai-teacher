@@ -12,6 +12,8 @@ import { pointer, renderEditor } from "./test-harness";
 afterEach(cleanup);
 
 const rail = () => screen.getByRole("listbox", { name: "Slides" });
+/** The rail's one tab stop: the open slide's row (roving tabindex). */
+const activeRow = () => rail().querySelector('[role="option"][tabindex="0"]')?.id;
 const rows = () => within(rail()).getAllByRole("option");
 const residualDots = () => document.querySelectorAll("[data-residual-badge]");
 
@@ -48,9 +50,7 @@ describe("residual badge", () => {
     expect(list).toHaveTextContent("has no correct option");
     // "Go to slide" lands the rail on the flagged slide.
     fireEvent.click(within(list).getByRole("button", { name: "Go to slide 4" }));
-    await waitFor(() =>
-      expect(rail()).toHaveAttribute("aria-activedescendant", `slide-opt-${rows()[3]?.dataset.id}`),
-    );
+    await waitFor(() => expect(activeRow()).toBe(`slide-opt-${rows()[3]?.dataset.id}`));
   });
 
   test("row 6: marking an option correct clears slide 4's dot on the autosave cadence", async () => {
@@ -120,6 +120,6 @@ describe("residual badge", () => {
     if (!second) throw new Error("row");
     fireEvent.pointerDown(second, pointer(20, 20));
     fireEvent.pointerUp(second, pointer(20, 20));
-    expect(rail()).toHaveAttribute("aria-activedescendant", `slide-opt-${second.dataset.id}`);
+    expect(activeRow()).toBe(`slide-opt-${second.dataset.id}`);
   });
 });
