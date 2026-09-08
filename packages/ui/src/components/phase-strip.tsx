@@ -6,7 +6,7 @@ import { cn } from "../lib/cn";
 /*
  * The shape of a lesson at a glance: its phases as a horizontal strip of compact blocks, each a
  * kind label over its minutes, each block's width proportional to its minutes (with a floor so a
- * two-minute title still reads). One block can be selected: the caller renders its `detail` (a
+ * two-minute title still reads and a one-word label is never cut). One block can be selected: the caller renders its `detail` (a
  * minutes stepper, Remove) under the strip, and the block carries `aria-expanded`. Arrow keys move
  * focus along the strip, Enter or Space selects, Escape closes the detail and returns focus to the
  * block, Alt+Arrow moves a block, and a pointer drag along the strip moves one too. A block whose
@@ -26,7 +26,7 @@ export type PhaseStripProps = Omit<React.ComponentProps<"div">, "onSelect"> & {
   detail?: React.ReactNode;
   /** The strip's accessible name. */
   label?: string;
-  /** Pixel floor for a block, default 64. */
+  /** Pixel floor for a block, default 80: room for the longest one-word kind label. */
   minWidth?: number;
 };
 
@@ -42,7 +42,7 @@ function PhaseStrip({
   onMove,
   detail,
   label = "Phases",
-  minWidth = 64,
+  minWidth = 80,
   className,
   ...props
 }: PhaseStripProps) {
@@ -112,7 +112,7 @@ function PhaseStrip({
                 aria-controls={isSelected && detail ? detailId : undefined}
                 data-phase-id={phase.id}
                 className={cn(
-                  "flex h-16 w-full min-w-0 cursor-grab flex-col items-start justify-center gap-0.5 rounded-control border px-2 text-left outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-safe:transition-colors active:cursor-grabbing",
+                  "flex h-16 w-full min-w-0 cursor-grab flex-col items-start justify-center gap-0.5 rounded-control border px-1.5 text-left outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-safe:transition-colors active:cursor-grabbing",
                   isSelected
                     ? "border-primary bg-brand-quiet text-brand-text"
                     : "border-border bg-card text-foreground hover:bg-accent",
@@ -173,7 +173,7 @@ function PhaseStrip({
                 }}
                 onPointerCancel={release}
               >
-                <span className="line-clamp-2 w-full text-meta font-medium leading-tight hyphens-auto [overflow-wrap:anywhere]">
+                <span className="line-clamp-2 w-full text-eyebrow font-medium leading-tight">
                   {phase.label}
                 </span>
                 <span className="text-eyebrow text-ink-3 tabular-nums">{phase.minutes} min</span>
