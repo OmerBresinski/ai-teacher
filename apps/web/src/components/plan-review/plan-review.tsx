@@ -27,8 +27,8 @@ import { WorksheetStep } from "./worksheet-step";
  * `/l/$lessonId` when the lesson is at `generation.stage: "planned"` and unlocked (Linear project
  * "Plan review"): one question per screen, the AI's proposal pre-filled and marked "suggested"
  * until touched, a step rail on the left, a sticky action bar with the one primary of the step
- * ("Continue", "Generate" on the summary), Enter to accept and continue (Cmd/Ctrl+Enter inside a
- * multi-line field), Escape to step back. Prototype: `onGenerate` receives the confirmed facts
+ * ("Continue", "Generate" on the summary), Enter to accept and continue (Shift+Enter is a newline
+ * in a multi-line field), Escape to step back. Prototype: `onGenerate` receives the confirmed facts
  * and the worksheet outline; the page decides what to do with them (today: the cache, no API).
  */
 export function PlanReview({
@@ -60,10 +60,9 @@ export function PlanReview({
   }, [last, onGenerate, state]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.defaultPrevented) return;
     const target = event.target as HTMLElement;
     if (event.key === "Escape") {
-      if (target.closest("[role=menu]")) return;
+      if (event.defaultPrevented || target.closest("[role=menu]")) return;
       event.preventDefault();
       dispatch({ type: "back" });
       return;
@@ -71,7 +70,9 @@ export function PlanReview({
     if (event.key !== "Enter") return;
     const meta = event.metaKey || event.ctrlKey;
     const tag = target.tagName;
-    if (tag === "TEXTAREA" && !meta) return;
+    // The list rows are one-line textareas: Enter continues, Shift+Enter is theirs (a newline in
+    // a multi-line field, nothing elsewhere), Cmd/Ctrl+Enter continues from anywhere.
+    if (tag === "TEXTAREA" && event.shiftKey && !meta) return;
     if (tag === "BUTTON" || tag === "A" || target.closest("[role=menu],[role=menuitem]")) return;
     if (target.getAttribute("role") === "spinbutton" && !meta) return;
     event.preventDefault();

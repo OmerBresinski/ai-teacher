@@ -1,17 +1,18 @@
 import { X } from "lucide-react";
 import type * as React from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import { cn } from "../lib/cn";
 import { IconButton } from "./icon-button";
-import { Input } from "./input";
 import { Textarea } from "./textarea";
 
 /*
  * One row of an editable list: an optional leading slot (a grip, a kind label), an inline text
  * field, an optional second field under it, an optional trailing control (a stepper, a badge) and
- * a remove button. The text is a real `Input`/`Textarea`, so the row is a plain form control to
- * assistive tech; the mark ("suggested" / "yours") is shown as a small label and read after the
- * field's name.
+ * a remove button. The text is a `Textarea` that sits on one line and grows with its content, so
+ * a long objective or summary always reads in full. Enter never inserts a newline (the step above
+ * treats it as "continue"); Shift+Enter does, only in a `multiline` field. The mark ("suggested" /
+ * "yours") is shown as a small label and read after the field's name.
  */
 
 export type EditableListField = {
@@ -20,9 +21,10 @@ export type EditableListField = {
   /** The field's accessible name, e.g. "Objective 2". */
   label: string;
   placeholder?: string;
+  /** Shift+Enter inserts a newline; without it the field stays one logical line. */
   multiline?: boolean;
-  ref?: React.Ref<HTMLInputElement & HTMLTextAreaElement>;
-  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement | HTMLTextAreaElement>;
+  ref?: React.Ref<HTMLTextAreaElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
 };
 
 export type EditableListRowProps = Omit<React.ComponentProps<"li">, "children"> & {
@@ -37,19 +39,36 @@ export type EditableListRowProps = Omit<React.ComponentProps<"li">, "children"> 
 };
 
 function TextField({ field, mark }: { field: EditableListField; mark?: string }) {
-  const shared = {
-    value: field.value,
-    "aria-label": mark ? `${field.label}, ${mark}` : field.label,
-    placeholder: field.placeholder,
-    onKeyDown: field.onKeyDown,
-    onChange: (
-      event: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>,
-    ) => field.onChange(event.target.value),
+  const inner = useRef<HTMLTextAreaElement | null>(null);
+  // Grow to the content (`field-sizing: content` where supported; the measured height elsewhere).
+  useLayoutEffect(() => {
+    const element = inner.current;
+    if (!element) return;
+    element.style.height = "auto";
+    element.style.height = `${element.scrollHeight}px`;
+  });
+  const setRef = (element: HTMLTextAreaElement | null) => {
+    inner.current = element;
+    const { ref } = field;
+    if (typeof ref === "function") ref(element);
+    else if (ref) ref.current = element;
   };
-  return field.multiline ? (
-    <Textarea ref={field.ref} rows={2} className="min-h-16 resize-y" {...shared} />
-  ) : (
-    <Input ref={field.ref} {...shared} />
+  return (
+    <Textarea
+      ref={setRef}
+      rows={1}
+      value={field.value}
+      aria-label={mark ? `${field.label}, ${mark}` : field.label}
+      placeholder={field.placeholder}
+      data-multiline={field.multiline ? "" : undefined}
+      className="field-sizing-content min-h-8 resize-none overflow-hidden px-3 py-1.5 leading-5"
+      onChange={(event) => field.onChange(event.target.value)}
+      onKeyDown={(event) => {
+        // A newline only on Shift+Enter in a multi-line field; plain Enter belongs to the step.
+        if (event.key === "Enter" && !(event.shiftKey && field.multiline)) event.preventDefault();
+        field.onKeyDown?.(event);
+      }}
+    />
   );
 }
 
