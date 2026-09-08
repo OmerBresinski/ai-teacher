@@ -8,7 +8,7 @@ import { Segmented } from "../../kit/Segmented";
 import { normaliseHref } from "../../text/links";
 import { useSessionActions } from "../use-editor-session";
 import { MoreDrawer } from "./MoreDrawer";
-import { BarButton, ICON, ICON_SM, useElementWrites } from "./shared";
+import { BarButton, ICON, ICON_SM, OpacityControl, useElementWrites } from "./shared";
 
 /**
  * Replace, fit, crop, corner radius, alt text, credit (TeachDeck `ImageToolbar`). Replace opens
@@ -87,6 +87,8 @@ export const ImageToolbar = memo(function ImageToolbar({
           </div>
         </PopoverContent>
       </Popover>
+
+      <OpacityControl slideId={slideId} elements={[element]} />
 
       <PanelSeparator />
       <MoreDrawer

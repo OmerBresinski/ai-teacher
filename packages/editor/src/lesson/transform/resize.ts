@@ -13,7 +13,10 @@ export type ResizeInput = {
   pointer: Point;
   /** Alt: resize about the centre instead of the opposite corner. */
   fromCentre?: boolean;
-  /** Keep the start aspect ratio (corner handles only). */
+  /**
+   * Keep the start aspect ratio. On a corner the larger change drives the scale; on a side handle
+   * the dragged axis drives it and the other axis follows, centred on the element's midline.
+   */
   aspect?: boolean;
   /** Auto-height text: the width reflows, the height is the renderer's business. */
   lockHeight?: boolean;
@@ -52,7 +55,8 @@ export function resizeRect(input: ResizeInput): Rect {
     if (d.y) h = d.y * (local.y - anchor.y);
   }
 
-  if (input.aspect && d.x !== 0 && d.y !== 0 && w0 > 0 && h0 > 0) {
+  if (input.aspect && w0 > 0 && h0 > 0) {
+    // A side handle leaves the other axis at 1, so the driven axis wins by construction.
     const sx = w / w0;
     const sy = h / h0;
     let s = Math.abs(sx - 1) > Math.abs(sy - 1) ? sx : sy;
@@ -68,7 +72,9 @@ export function resizeRect(input: ResizeInput): Rect {
 
   if (input.fromCentre) return { x: c0.x - w / 2, y: c0.y - h / 2, w, h };
 
-  // Move the centre so the world-space anchor is unchanged.
+  // Move the centre so the world-space anchor is unchanged. On a side handle the anchor sits on
+  // the midline of the axis it does not drive, so an aspect-locked side drag grows that axis
+  // evenly about the centre.
   const anchor2: Point = { x: (-d.x * w) / 2, y: (-d.y * h) / 2 };
   const shift = rotatePoint(
     { x: anchor.x - anchor2.x, y: anchor.y - anchor2.y },
@@ -125,7 +131,8 @@ export function scaleWithin(child: Rect, from: Rect, to: Rect): Rect {
 
 /**
  * The world-space point a resize keeps fixed: the opposite corner or edge, or the centre under
- * Alt. Axes the handle does not drive use the centre, which is harmless because they do not scale.
+ * Alt. Axes the handle does not drive use the centre: they scale about the midline under Shift
+ * and not at all otherwise.
  */
 export function anchorOf(from: Rect, handle: HandleId, fromCentre = false): Point {
   const c = centre(from);

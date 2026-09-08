@@ -1,10 +1,12 @@
 import type { Id, Slide, Theme } from "@tj/domain/documents";
 import {
   type CSSProperties,
+  type MutableRefObject,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -60,7 +62,13 @@ import {
 } from "./gesture-state";
 import { HoverOutline } from "./HoverOutline";
 import { boxesOf, type ElementBox, hitsBox, marqueeHits } from "./hit-test";
-import { AngleLabel, Marquee, MemberOutlines, VISUALLY_HIDDEN } from "./overlays";
+import {
+  AngleLabel,
+  CandidateOutlines,
+  Marquee,
+  MemberOutlines,
+  VISUALLY_HIDDEN,
+} from "./overlays";
 import { SelectionFrame } from "./SelectionFrame";
 
 /*
@@ -87,8 +95,30 @@ export type SelectionLayerProps = {
   onPreview: (next: PreviewMap | null) => void;
   /** True while the canvas is panning (Space held): the stage takes no gestures. */
   disabled?: boolean;
+  /**
+   * Filled with the entry point the canvas calls for a press on the grey margin round the slide,
+   * so a marquee can start off the slide and a plain click there clears the selection as slide
+   * ground does. The pointer is mapped to slide space through the same stage rect and scale.
+   */
+  marginRef?: MutableRefObject<MarginHandle | null>;
   className?: string;
 };
+
+export type MarginHandle = { pointerDown: (e: ReactPointerEvent) => void };
+
+const sameIds = (a: readonly Id[], b: readonly Id[]) =>
+  a.length === b.length && a.every((id, i) => id === b[i]);
+
+/**
+ * True while a modal Radix layer (a bar DropdownMenu) is open. This guards the modal case only:
+ * Radix puts `pointer-events: none` on `<body>` for the duration, so the trigger cannot receive
+ * the dismissing click, and because this layer turns its own pointer events back on the press
+ * fell through the bar to the stage's coordinate hit-test — a second click on the Align trigger
+ * selected the element under it. That press belongs to the layer being dismissed. Non-modal
+ * layers (a Popover, the More drawer) leave the body alone: their trigger receives its own click,
+ * and a click on the canvas beside them both dismisses and selects, by design.
+ */
+const underModalLayer = () => document.body.style.pointerEvents === "none";
 
 export function SelectionLayer({
   slide,
@@ -96,6 +126,7 @@ export function SelectionLayer({
   preview,
   onPreview,
   disabled = false,
+  marginRef,
   className,
 }: SelectionLayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -113,6 +144,8 @@ export function SelectionLayer({
   const [coarse, setCoarse] = useState(false);
   const [hoverId, setHoverId] = useState<Id | null>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
+  /** What the marquee touches right now, outlined live; `commit` selects the same set. */
+  const [candidates, setCandidates] = useState<Id[]>([]);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [angleLabel, setAngleLabel] = useState<number | null>(null);
   const [cursor, setCursor] = useState<CSSProperties["cursor"]>("default");
@@ -329,12 +362,16 @@ export function SelectionLayer({
       setAngleLabel(out.label);
     } else if (g.kind === "marquee") {
       const p = toSlide(s.x, s.y);
-      setMarquee({
+      const m = {
         x: Math.min(p.x, g.origin.x),
         y: Math.min(p.y, g.origin.y),
         w: Math.abs(p.x - g.origin.x),
         h: Math.abs(p.y - g.origin.y),
-      });
+      };
+      setMarquee(m);
+      // Same hits `commit` will select, so the preview never promises more than the release gives.
+      const hits = m.w > 1 || m.h > 1 ? marqueeHits(boxesRef.current, m) : [];
+      setCandidates((prev) => (sameIds(prev, hits) ? prev : hits));
     }
   }, [actions, history, publish, readSession, slide.id, toSlide]);
 
@@ -347,7 +384,7 @@ export function SelectionLayer({
   /**
    * The one place the document is written by a pointer gesture: everything the preview showed is
    * dispatched inside one transaction (the drag's is already open — `reset` closes it). A marquee
-   * selects what it enclosed.
+   * selects what it touched.
    */
   const commit = useCallback(
     (g: Gesture) => {
@@ -393,6 +430,7 @@ export function SelectionLayer({
     raf.current = 0;
     publish(null);
     setMarquee(null);
+    setCandidates([]);
     setGuides([]);
     setAngleLabel(null);
   }, [history, publish, releasePointer]);
@@ -500,9 +538,36 @@ export function SelectionLayer({
     capturePointer(e);
   };
 
+  /** Ground pressed, on the slide or in the margin: clear (unless additive) and start the marquee. */
+  const startMarquee = (p: Point, e: ReactPointerEvent, selection: readonly Id[]) => {
+    if (!e.shiftKey) actions.clearSelection();
+    beginGesture(
+      {
+        kind: "marquee",
+        origin: p,
+        additive: e.shiftKey,
+        base: e.shiftKey ? [...selection] : [],
+      },
+      e,
+    );
+    setMarquee({ x: p.x, y: p.y, w: 0, h: 0 });
+  };
+
+  // The canvas margin has no elements to hit, so a press there is always ground.
+  const onMarginDown = (e: ReactPointerEvent) => {
+    if (e.button !== 0 || disabled || underModalLayer()) return;
+    const session = readSession();
+    measureStage();
+    focusStage();
+    if (session.editingTextId) actions.setEditingText(null);
+    if (session.editingExplanation) actions.setEditingExplanation(null);
+    startMarquee(toSlide(e.clientX, e.clientY), e, session.selection);
+  };
+  useImperativeHandle(marginRef, () => ({ pointerDown: onMarginDown }));
+
   const onStageDown = (e: ReactPointerEvent) => {
     // While the canvas pans (Space held) the press belongs to the scroller, not to the elements.
-    if (e.button !== 0 || disabled) return;
+    if (e.button !== 0 || disabled || underModalLayer()) return;
     const session = readSession();
     measureStage();
     focusStage();
@@ -514,17 +579,7 @@ export function SelectionLayer({
     if (session.editingExplanation) actions.setEditingExplanation(null);
 
     if (!hit) {
-      if (!e.shiftKey) actions.clearSelection();
-      beginGesture(
-        {
-          kind: "marquee",
-          origin: p,
-          additive: e.shiftKey,
-          base: e.shiftKey ? session.selection : [],
-        },
-        e,
-      );
-      setMarquee({ x: p.x, y: p.y, w: 0, h: 0 });
+      startMarquee(p, e, session.selection);
       return;
     }
 
@@ -603,7 +658,7 @@ export function SelectionLayer({
 
   const onHandleDown = (handle: HandleId, e: ReactPointerEvent) => {
     // While panning the press must reach the canvas's pan handler, so do not stop it here.
-    if (disabled) return;
+    if (disabled || underModalLayer()) return;
     e.stopPropagation();
     if (e.button !== 0) return;
     const ids = unlockedSelection();
@@ -628,7 +683,7 @@ export function SelectionLayer({
   };
 
   const onRotateDown = (_corner: HandleId, e: ReactPointerEvent) => {
-    if (disabled) return;
+    if (disabled || underModalLayer()) return;
     e.stopPropagation();
     if (e.button !== 0) return;
     const ids = unlockedSelection();
@@ -782,6 +837,12 @@ export function SelectionLayer({
       ) : null}
 
       {showGuides ? <Guides guides={guides} scale={scale} /> : null}
+      {marquee && candidates.length > 0 ? (
+        <CandidateOutlines
+          boxes={boxesRef.current.filter((b) => candidates.includes(b.id))}
+          scale={scale}
+        />
+      ) : null}
       {marquee ? <Marquee rect={marquee} scale={scale} /> : null}
       {angleLabel !== null && selectionBounds ? (
         <AngleLabel bounds={selectionBounds} angle={angleLabel} scale={scale} />

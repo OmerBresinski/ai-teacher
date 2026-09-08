@@ -113,28 +113,71 @@ describe("SelectionLayer", () => {
     expect(read().slides[0]?.elements[0]?.x).toBe(295);
   });
 
-  test("row 5: a corner handle resizes; Shift on a shape releases the aspect lock", async () => {
+  test("row 5: a corner handle resizes; a shape is free by default and Shift locks the ratio on any handle", async () => {
     const { container, read } = renderEditor();
     fireEvent.pointerDown(catcher(container), pointer(150, 150));
     fireEvent.pointerUp(window, pointer(150, 150));
     const se = container.querySelector<HTMLElement>('[data-handle="se"]');
     if (!se) throw new Error("no se handle");
 
-    // Shapes lock aspect by default: the corner to (400, 300) wants 300x200; the larger change
-    // (x2 on the height) drives the ratio, so 200x100 → 400x200 about the nw anchor.
+    // Shapes resize freely: the corner follows the pointer on both axes, 200x100 → 300x200.
     await drag(se, [300, 200], [400, 300], 4);
-    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 400, h: 200 });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 300, h: 200 });
 
-    // Shift frees it: the box follows the pointer on both axes.
+    // Shift locks the ratio: the corner to (550, 380) wants 450x280; the larger change (x1.5 on
+    // the width) drives the ratio, so 300x200 → 450x300 about the nw anchor.
     const se2 = container.querySelector<HTMLElement>('[data-handle="se"]');
     if (!se2) throw new Error("no se handle");
-    await drag(se2, [500, 300], [540, 380], 4, { shiftKey: true });
-    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 440, h: 280 });
-    // Two gestures, two undo steps.
+    await drag(se2, [400, 300], [550, 380], 4, { shiftKey: true });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 450, h: 300 });
+
+    // Shift on a side handle scales both axes: the right edge to 700 makes 450x300 → 600x400, the
+    // left edge stays at 100 and the height grows evenly about the midline (y 250 → 50..450).
+    const e = container.querySelector<HTMLElement>('[data-handle="e"]');
+    if (!e) throw new Error("no e handle");
+    await drag(e, [550, 250], [700, 250], 4, { shiftKey: true });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 50, w: 600, h: 400 });
+    // Three gestures, three undo steps.
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    expect(read().slides[0]?.elements[0]).toMatchObject({ w: 400, h: 200 });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ w: 450, h: 300 });
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(read().slides[0]?.elements[0]).toMatchObject({ w: 300, h: 200 });
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(read().slides[0]?.elements[0]).toMatchObject({ w: 200, h: 100 });
+  });
+
+  test("row 5: an image keeps its ratio from a corner without Shift, and Shift never unlocks it", async () => {
+    const lesson = seededLesson();
+    const first = lesson.slides[0];
+    if (!first) throw new Error("seed");
+    first.elements = [
+      { id: "img", type: "image", x: 100, y: 100, w: 200, h: 100, src: "a.png", fit: "cover" },
+    ];
+    const { container, read } = renderEditor(lesson);
+    fireEvent.pointerDown(catcher(container), pointer(150, 150));
+    fireEvent.pointerUp(window, pointer(150, 150));
+    const handle = (id: string) => {
+      const h = container.querySelector<HTMLElement>(`[data-handle="${id}"]`);
+      if (!h) throw new Error(`no ${id} handle`);
+      return h;
+    };
+
+    // No Shift: the corner to (400, 300) wants 300x200; the larger change (x2 on the height)
+    // drives the ratio, so 200x100 → 400x200.
+    await drag(handle("se"), [300, 200], [400, 300], 4);
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 400, h: 200 });
+
+    // Shift does not release it: the corner to (700, 380) wants 600x280 and gets 600x300.
+    await drag(handle("se"), [500, 300], [700, 380], 4, { shiftKey: true });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 600, h: 300 });
+
+    // A side handle without Shift is still one axis.
+    await drag(handle("e"), [700, 250], [800, 250], 4);
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 100, w: 700, h: 300 });
+
+    // With Shift it scales both, about the midline: 700x300 → 1050x450, top edge 100 → 25.
+    await drag(handle("e"), [800, 250], [1150, 250], 4, { shiftKey: true });
+    expect(read().slides[0]?.elements[0]).toMatchObject({ x: 100, y: 25, w: 1050, h: 450 });
   });
 
   test("row 7: marquee selects both; ⌘D duplicates, Delete removes, ⌘Z restores", async () => {
@@ -155,6 +198,95 @@ describe("SelectionLayer", () => {
     expect(read().slides[0]?.elements).toHaveLength(4);
     fireEvent.keyDown(window, { key: "z", metaKey: true });
     expect(read().slides[0]?.elements).toHaveLength(2);
+  });
+
+  test("row 7b: a marquee from the canvas margin selects what it crosses; a margin click clears", async () => {
+    const { container } = renderEditor();
+    const margin = container.querySelector<HTMLElement>("[data-canvas-scroller]");
+    if (!margin) throw new Error("no scroller");
+    // The press lands left of and above the slide (negative slide coordinates) and sweeps over both.
+    await drag(margin, [-60, -40], [650, 250], 3);
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+    expect(screen.getByRole("status", { name: "" }).textContent).toBe("2 elements selected");
+
+    // A plain click in the margin is ground: the selection goes.
+    fireEvent.pointerDown(margin, pointer(-60, -40));
+    fireEvent.pointerUp(window, pointer(-60, -40));
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(0);
+
+    // The right button belongs to the context menu, not the marquee.
+    fireEvent.pointerDown(catcher(container), pointer(150, 150));
+    fireEvent.pointerUp(window, pointer(150, 150));
+    fireEvent.pointerDown(margin, pointer(-60, -40, { button: 2 }));
+    fireEvent.pointerUp(window, pointer(-60, -40, { button: 2 }));
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+  });
+
+  test("row 7c: the marquee selects what it touches, outlines the candidates live, and misses what it does not", async () => {
+    const { container, read } = renderEditor();
+    const [a, b] = read().slides[0]?.elements ?? [];
+    if (!a || !b) throw new Error("seed");
+    const candidates = () =>
+      Array.from(container.querySelectorAll("[data-marquee-candidate]")).map((n) =>
+        n.getAttribute("data-marquee-candidate"),
+      );
+
+    // (50, 50) to (250, 250): the first shape (x 100..300) is half inside, the second (400..600)
+    // is clear of it. Mid-drag the first is outlined and nothing is selected yet.
+    fireEvent.pointerDown(catcher(container), pointer(50, 50));
+    fireEvent.pointerMove(window, pointer(250, 250));
+    await act(nextFrame);
+    expect(candidates()).toEqual([a.id]);
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(0);
+    fireEvent.pointerUp(window, pointer(250, 250));
+    expect(candidates()).toEqual([]);
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+    expect(screen.getByRole("status", { name: "" }).textContent).toContain("Shape selected");
+
+    // A marquee in the gap between them touches neither, and clears.
+    fireEvent.pointerDown(catcher(container), pointer(320, 50));
+    fireEvent.pointerMove(window, pointer(380, 250));
+    await act(nextFrame);
+    expect(candidates()).toEqual([]);
+    fireEvent.pointerUp(window, pointer(380, 250));
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(0);
+  });
+
+  test("a press that dismisses an open bar menu never reaches the canvas", () => {
+    const { container } = renderEditor();
+    fireEvent.pointerDown(catcher(container), pointer(450, 150));
+    fireEvent.pointerUp(window, pointer(450, 150));
+    const frameLeft = () =>
+      container.querySelector<HTMLElement>("[data-selection-frame]")?.style.left;
+    const before = frameLeft();
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+
+    // Radix marks a modal menu open by turning pointer events off on <body>; the stage turns its
+    // own back on, so the click that closes the menu would otherwise land on the slide.
+    const menu = document.createElement("div");
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("data-state", "open");
+    document.body.append(menu);
+    document.body.style.pointerEvents = "none";
+    try {
+      fireEvent.pointerDown(catcher(container), pointer(150, 150));
+      fireEvent.pointerUp(window, pointer(150, 150));
+      expect(frameLeft()).toBe(before);
+      fireEvent.pointerDown(catcher(container), pointer(50, 50));
+      fireEvent.pointerUp(window, pointer(50, 50));
+      expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+    } finally {
+      document.body.style.pointerEvents = "";
+      menu.remove();
+    }
+
+    // With the menu gone the same presses select and clear as usual.
+    fireEvent.pointerDown(catcher(container), pointer(150, 150));
+    fireEvent.pointerUp(window, pointer(150, 150));
+    expect(frameLeft()).not.toBe(before);
+    fireEvent.pointerDown(catcher(container), pointer(50, 50));
+    fireEvent.pointerUp(window, pointer(50, 50));
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(0);
   });
 
   test("row 8: ↑×5 nudges by 5 in one undo step; Shift+↑ nudges by 10", async () => {

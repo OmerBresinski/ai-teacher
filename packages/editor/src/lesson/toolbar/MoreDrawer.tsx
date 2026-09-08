@@ -5,17 +5,9 @@ import {
   SLIDE_W,
   type SlideElement,
   type TextElement,
+  type Theme,
 } from "@tj/domain/documents";
-import {
-  Button,
-  IconButton,
-  Input,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Slider,
-  Switch,
-} from "@tj/ui";
+import { Button, IconButton, Input, Popover, PopoverContent, PopoverTrigger, Switch } from "@tj/ui";
 import {
   ArrowDown,
   ArrowDownToLine,
@@ -30,9 +22,10 @@ import { type ReactNode, useId } from "react";
 import { NumberInput } from "../../kit/NumberInput";
 import { PanelRow } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
+import { shapeRadius } from "../../slide/elements/ShapeView";
 import { useProposals } from "../proposals-context";
 import { useSessionActions } from "../use-editor-session";
-import { ICON, ICON_SM, PanelSection, useElementWrites } from "./shared";
+import { ICON, ICON_SM, OpacityField, opacityOf, PanelSection, useElementWrites } from "./shared";
 
 const ROUNDABLE = new Set<SlideElement["type"]>(["image", "shape", "text"]);
 
@@ -45,9 +38,12 @@ export function MoreDrawer({
   slideId,
   elements,
   extra,
+  theme,
 }: {
   slideId: string;
   elements: SlideElement[];
+  /** The slide's theme, so a shape's readout matches the Shape bar (theme radius when unset). */
+  theme?: Theme;
   /** The toolbar's own rows (line height, credit, …), shown first under "Options". */
   extra?: ReactNode;
 }) {
@@ -57,6 +53,7 @@ export function MoreDrawer({
   const one = elements.length === 1 ? elements[0] : null;
   const { onRegenerate } = useProposals();
   const { openRegenerate } = useSessionActions();
+  const opacity = opacityOf(elements);
 
   return (
     <Popover onOpenChange={(open) => !open && end()}>
@@ -172,23 +169,21 @@ export function MoreDrawer({
           ) : null}
 
           <PanelSection title="Effects">
-            <PanelRow label="Opacity">
-              <Slider
-                value={[Math.round((one?.opacity ?? 1) * 100)]}
-                onValueChange={([v]) => scrub(() => updateMany(ids, { opacity: (v ?? 100) / 100 }))}
-                onValueCommit={end}
-                min={0}
-                max={100}
-                aria-label="Opacity"
-                valueLabel={(v) => `${v}%`}
-                className="w-28"
+            <PanelRow label="Opacity" htmlFor={`${rowId}-opacity`}>
+              <OpacityField
+                id={`${rowId}-opacity`}
+                value={opacity.value}
+                mixed={opacity.mixed}
+                onChange={(v) => scrub(() => updateMany(ids, { opacity: v / 100 }))}
+                onCommit={end}
+                className="w-52"
               />
             </PanelRow>
             {one && ROUNDABLE.has(one.type) ? (
               <PanelRow label="Corner radius" htmlFor={`${rowId}-radius`}>
                 <NumberInput
                   id={`${rowId}-radius`}
-                  value={radiusOf(one)}
+                  value={radiusOf(one, theme)}
                   onChange={(r) => scrub(() => setRadius(update, one, r))}
                   min={0}
                   max={200}
@@ -253,7 +248,8 @@ export function MoreDrawer({
   );
 }
 
-function radiusOf(el: SlideElement): number {
+function radiusOf(el: SlideElement, theme?: Theme): number {
+  if (el.type === "shape" && theme) return shapeRadius(el, theme);
   if (el.type === "image" || el.type === "shape") return el.radius ?? 0;
   if (el.type === "text") return el.style.radius ?? 0;
   return 0;

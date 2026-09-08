@@ -44,6 +44,7 @@ import {
 import { docLinkHref, normaliseHref, setDocLink } from "../../text/links";
 import { useHistory } from "../document-context";
 import { useSessionUi } from "../use-editor-session";
+import { OpacityControl } from "./shared";
 
 /*
  * The text toolbar (TeachDeck `components/v2/editor/toolbar/TextToolbar.tsx`): preset, size,
@@ -53,7 +54,8 @@ import { useSessionUi } from "../use-editor-session";
  * (ADR 0022 §2); the "More" drawer (line height, face, height) arrives with TEACH-105.
  */
 
-const PRESETS: { value: TextPreset; label: string }[] = [
+/** The preset menu, shared with the shape label controls. */
+export const PRESETS: { value: TextPreset; label: string }[] = [
   { value: "title", label: "Title" },
   { value: "heading", label: "Heading" },
   { value: "body", label: "Body" },
@@ -68,12 +70,12 @@ export const BAD_LINK = "Links can only go to a web page or an email address.";
 const LINK_PANEL = "data-link-panel";
 
 /** Nothing legible needs more, and a 400pt body would blow the box apart. */
-const MAX_FONT_SIZE = 200;
+export const MAX_FONT_SIZE = 200;
 
 const ICON = { size: 20, strokeWidth: 1.5 } as const;
 
 /** Re-render the toolbar whenever the live editor's state could have changed. */
-function useEditorTick(editor: Editor | null) {
+export function useEditorTick(editor: Editor | null) {
   const [, bump] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
     if (!editor) return;
@@ -399,6 +401,9 @@ export function TextToolbar({
           Right
         </DropdownMenuRadioItem>
       </DropTrigger>
+
+      <PanelSeparator />
+      <OpacityControl slideId={slideId} elements={[element]} />
     </Panel>
   );
 }
@@ -409,7 +414,7 @@ export function TextToolbar({
  * The −/+ size control. The disabled button kills its own pointer events, so the tooltip needs a
  * live wrapper to hover — the only way the floor ever explains itself.
  */
-const SizeStepper = memo(function SizeStepper({
+export const SizeStepper = memo(function SizeStepper({
   size,
   floor,
   atFloor,

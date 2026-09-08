@@ -16,6 +16,10 @@ export const HANDLE_HIT = 20;
 export const HANDLE_HIT_COARSE = 28;
 /** Rotation hover zone diagonally outside each corner, screen px. */
 export const ROTATE_ZONE = 20;
+/** Visible rotate handle below the frame: round handle diameter, stem length, glyph, screen px. */
+export const ROTATE_HANDLE = 22;
+export const ROTATE_STEM = 16;
+export const ROTATE_GLYPH = 12;
 /** Selection frame stroke, screen px. */
 export const FRAME_STROKE = 1.5;
 /** Hover outline stroke, screen px, at 0.5 alpha. */
@@ -44,15 +48,25 @@ export const DRAG_START_PX = 3;
 
 /**
  * Corner handles lock aspect ratio by default for these — a stretched photo is the commonest
- * amateur tell. Shift releases it. Text is the inverse: free by default, Shift locks.
+ * amateur tell. Text and shapes are free by default (a rectangle is usually drawn to fit its
+ * content, not kept square). Shift always locks and never unlocks: on any handle, corner or side,
+ * it keeps the element's ratio (owner ruling, 8 Sept 2026).
  */
 export const ASPECT_LOCKED_TYPES: ReadonlySet<ElementType> = new Set<ElementType>([
   "image",
   "icon",
-  "shape",
   "embed",
   "timer",
 ]);
+
+/**
+ * Whether a corner drag on this selection keeps the aspect ratio without Shift: a single element
+ * follows its type; a multi-selection is locked only when every member is a locked type, so a
+ * photo mixed with a text box resizes freely like the text does.
+ */
+export function aspectLockedByDefault(types: readonly ElementType[]): boolean {
+  return types.length > 0 && types.every((t) => ASPECT_LOCKED_TYPES.has(t));
+}
 
 /**
  * Element types whose double-click opens the inline text editor. `shape` is conditional — see

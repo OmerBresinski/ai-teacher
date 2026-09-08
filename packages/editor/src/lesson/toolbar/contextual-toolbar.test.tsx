@@ -1,9 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import type { Lesson, SlideElement } from "@tj/domain/documents";
+import { afterEach, describe, expect, mock, test } from "bun:test";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { Lesson, ShapeElement, SlideElement } from "@tj/domain/documents";
+import { docFromText } from "../../model/factories";
 import { makeLine, makeShape, makeTable, makeText, makeTimer } from "../../model/insert";
 import { getTheme } from "../../model/themes";
+import { docHasMark } from "../../text/doc-marks";
 import { catcher, pointer, renderEditor, seededLesson } from "../test-harness";
+import { SliderRow } from "./shared";
 
 /*
  * TEACH-105: which toolbar the selection routes to (TeachDeck `chrome.test.tsx` catalogue), and
@@ -76,7 +79,7 @@ describe("ContextualToolbar routing", () => {
 });
 
 describe("ShapeToolbar (row 1)", () => {
-  test("fill from the palette is one write; stroke width scrub is one undo step", async () => {
+  test("fill from the palette is one write; a border width pick is one undo step", async () => {
     const { container, read } = renderEditor(chromeLesson());
     clickAt(container, 150, 130);
     fireEvent.click(within(toolbar("Shape")).getByRole("button", { name: "Fill" }));
@@ -84,16 +87,165 @@ describe("ShapeToolbar (row 1)", () => {
     fireEvent.click(swatch);
     expect((first(read()) as { fill?: string }).fill).toBe(theme.colors.correct);
 
-    const width = within(toolbar("Shape")).getByRole("spinbutton", { name: "Stroke width" });
-    fireEvent.keyDown(width, { key: "ArrowUp" });
-    fireEvent.keyDown(width, { key: "ArrowUp" });
-    fireEvent.keyDown(width, { key: "ArrowUp" });
-    expect((first(read()) as { strokeWidth?: number }).strokeWidth).toBe(3);
-    // The scrub's session closes after the idle window; then the run is one undo step.
+    // The menu marks the drawn width (none yet) and a pick writes width plus a first border colour.
+    openMenu(within(toolbar("Shape")).getByRole("button", { name: /Border width/ }));
+    expect(await screen.findByRole("menuitemradio", { name: "0 None" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "3" }));
+    expect(first(read())).toMatchObject({ strokeWidth: 3, stroke: theme.colors.ink });
     await idle();
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect((first(read()) as { strokeWidth?: number }).strokeWidth ?? 0).toBe(0);
     expect((first(read()) as { fill?: string }).fill).toBe(theme.colors.correct);
+  });
+
+  test("opacity popover writes the element's opacity from the slider", async () => {
+    const { container, read } = renderEditor(chromeLesson());
+    clickAt(container, 150, 130);
+    fireEvent.click(within(toolbar("Shape")).getByRole("button", { name: /Opacity/ }));
+    const slider = await screen.findByRole("slider", { name: "Opacity" });
+    expect(slider).toHaveAttribute("aria-valuenow", "100");
+    fireEvent.keyDown(slider, { key: "ArrowLeft" });
+    expect((first(read()) as { opacity?: number }).opacity).toBeCloseTo(0.99);
+  });
+
+  test("opacity popover: a typed value commits on Enter; Reset shows off 100 and writes it back", async () => {
+    const { container, read } = renderEditor(chromeLesson());
+    const opacity = () => (first(read()) as { opacity?: number }).opacity;
+    clickAt(container, 150, 130);
+    fireEvent.click(within(toolbar("Shape")).getByRole("button", { name: /Opacity/ }));
+    const panel = await screen.findByRole("dialog", { name: "Opacity" });
+    // At the default there is nothing to reset.
+    expect(within(panel).queryByRole("button", { name: "Reset" })).toBeNull();
+
+    const field = within(panel).getByRole("textbox", { name: "Opacity value" });
+    fireEvent.change(field, { target: { value: "40" } });
+    expect(opacity()).toBeUndefined();
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(opacity()).toBeCloseTo(0.4);
+    expect(within(panel).getByRole("slider", { name: "Opacity" })).toHaveAttribute(
+      "aria-valuenow",
+      "40",
+    );
+
+    fireEvent.click(within(panel).getByRole("button", { name: "Reset" }));
+    expect(opacity()).toBe(1);
+    expect(within(panel).queryByRole("button", { name: "Reset" })).toBeNull();
+
+    // Blur commits too, clamped to the range.
+    fireEvent.change(field, { target: { value: "-5" } });
+    fireEvent.blur(field);
+    expect(opacity()).toBe(0);
+    expect(field).toHaveValue("0");
+  });
+
+  test("a field blur during a slider scrub drops its stale draft; the scrub's commit stands alone", () => {
+    const onChange = mock((_v: number) => {});
+    const onCommit = mock(() => {});
+    const { rerender } = render(
+      <SliderRow
+        label="Opacity"
+        min={0}
+        max={100}
+        defaultValue={100}
+        value={100}
+        onChange={onChange}
+        onCommit={onCommit}
+      />,
+    );
+    const field = screen.getByRole("textbox", { name: "Opacity value" });
+    fireEvent.change(field, { target: { value: "40" } });
+
+    // The scrub starts: a pointer down on the track, which Radix answers with the first value
+    // change of the drag (a keyboard step would commit at once and is not a scrub).
+    const root = document.querySelector<HTMLElement>('[data-slot="slider"]');
+    if (!root) throw new Error("no slider");
+    fireEvent.pointerDown(root, { pointerId: 1, button: 0, clientX: 10, clientY: 5 });
+    const changes = onChange.mock.calls.length;
+    expect(changes).toBeGreaterThan(0);
+    const live = onChange.mock.calls[changes - 1]?.[0];
+    rerender(
+      <SliderRow
+        label="Opacity"
+        min={0}
+        max={100}
+        defaultValue={100}
+        value={live ?? 100}
+        onChange={onChange}
+        onCommit={onCommit}
+      />,
+    );
+
+    // A deferred blur arrives mid-drag with the stale "40": nothing is written, no commit.
+    fireEvent.blur(field);
+    expect(onChange.mock.calls.length).toBe(changes);
+    expect(onCommit).toHaveBeenCalledTimes(0);
+    expect(field).toHaveValue(String(live));
+
+    // Release: the scrub commits once, and a later blur commits typing again.
+    fireEvent.pointerUp(root, { pointerId: 1, button: 0, clientX: 10, clientY: 5 });
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    fireEvent.change(field, { target: { value: "70" } });
+    fireEvent.blur(field);
+    expect(onChange).toHaveBeenLastCalledWith(70);
+    expect(onCommit).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("ShapeToolbar label text controls", () => {
+  const openLabel = async () => {
+    fireEvent.click(within(toolbar("Shape")).getByRole("button", { name: "Label" }));
+    return await screen.findByRole("dialog", { name: "Label" });
+  };
+
+  test("a labelled shape's preset, size, colour and marks write it from the Label popover", async () => {
+    const lesson = chromeLesson();
+    const slide = lesson.slides[0];
+    if (!slide) throw new Error("seed");
+    slide.elements[0] = { ...(first(lesson) as ShapeElement), doc: docFromText("Go") };
+    const { container, read } = renderEditor(lesson);
+    clickAt(container, 150, 130);
+    const panel = await openLabel();
+    // The two rows sit 12px apart inside 12px padding on a 32px baseline, and nothing clips the
+    // 4px focus band around a control.
+    expect(panel.className).toMatch(/\bgap-3\b/);
+    expect(panel.className).toMatch(/\bp-3\b/);
+    expect(panel.className).not.toMatch(/overflow-hidden/);
+    expect(panel.querySelector("[data-label-text-controls]")?.className).toMatch(/\bh-8\b/);
+    expect(within(panel).getByRole("button", { name: /^Label style/ })).toHaveAccessibleName(
+      "Label style, Body",
+    );
+
+    openMenu(within(panel).getByRole("button", { name: /^Label style/ }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Heading" }));
+    expect((first(read()) as ShapeElement).textStyle).toMatchObject({ preset: "heading" });
+
+    const before = Number(within(panel).getByText(/^\d+$/).textContent);
+    fireEvent.click(within(panel).getByRole("button", { name: "Larger" }));
+    expect((first(read()) as ShapeElement).textStyle?.fontSize).toBe(before + 2);
+
+    fireEvent.click(within(panel).getByRole("button", { name: "Label colour" }));
+    fireEvent.click(await screen.findByRole("button", { name: theme.colors.accent }));
+    expect((first(read()) as ShapeElement).textStyle?.color).toBe(theme.colors.accent);
+
+    const bold = within(panel).getByRole("button", { name: "Bold" });
+    expect(bold).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(bold);
+    expect(docHasMark((first(read()) as ShapeElement).doc, "bold")).toBe(true);
+    expect(within(panel).getByRole("button", { name: "Bold" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  test("a shape with no label has only the label field", async () => {
+    const { container } = renderEditor(chromeLesson());
+    clickAt(container, 150, 130);
+    const panel = await openLabel();
+    expect(within(panel).getByRole("textbox")).toBeTruthy();
+    expect(within(panel).queryByRole("button", { name: /^Label style/ })).toBeNull();
   });
 });
 

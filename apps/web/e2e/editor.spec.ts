@@ -190,13 +190,13 @@ test.describe("lesson editor", () => {
     await expect.poll(() => leftOf(title)).toBeCloseTo(before + 5 / scale, 1);
   });
 
-  test("row 5: a corner handle resizes; Shift on a shape releases the aspect lock", async ({
+  test("row 5: a corner handle resizes; a shape is free without Shift and Shift locks the ratio on any handle", async ({
     signedInPage: { page, paths },
   }) => {
     await page.goto(EDITOR(paths));
     await expect(frame(page)).toBeVisible();
     const scale = await scaleOf(page);
-    // A fresh rectangle from the rail: shapes lock aspect by default (text boxes do not).
+    // A fresh rectangle from the rail: shapes resize freely (images lock by default).
     await page
       .getByRole("toolbar", { name: "Insert" })
       .getByRole("button", { name: "Shape" })
@@ -206,22 +206,36 @@ test.describe("lesson editor", () => {
     await expect(page.locator("[data-selection-frame]")).toBeVisible();
     const start = await sizeOf(rect);
 
+    // No Shift: the corner follows the pointer on both axes and the ratio changes; ⌘ keeps the
+    // edges from snapping to a neighbour on the way.
     const se = await centre(page.locator('[data-handle="se"]'));
-    await drag(page, se, 60, 10, 6);
-    await expect.poll(async () => (await sizeOf(rect)).w).toBeGreaterThan(start.w);
-    const locked = await sizeOf(rect);
-    expect(locked.w / locked.h).toBeCloseTo(start.w / start.h, 2);
+    await page.keyboard.down("Meta");
+    await drag(page, se, 40, -20, 6);
+    await page.keyboard.up("Meta");
+    await expect.poll(async () => (await sizeOf(rect)).w).toBeCloseTo(start.w + 40 / scale, 0);
+    const free = await sizeOf(rect);
+    expect(free.h - start.h).toBeCloseTo(-20 / scale, 0);
+    expect(free.w / free.h).not.toBeCloseTo(start.w / start.h, 2);
 
-    // Shift frees the ratio; ⌘ keeps the edges from snapping to a neighbour on the way.
+    // Shift on a corner keeps the ratio.
     const se2 = await centre(page.locator('[data-handle="se"]'));
     await page.keyboard.down("Shift");
-    await page.keyboard.down("Meta");
-    await drag(page, se2, 40, -20, 6);
-    await page.keyboard.up("Meta");
+    await drag(page, se2, 60, 10, 6);
     await page.keyboard.up("Shift");
-    await expect.poll(async () => (await sizeOf(rect)).w).toBeCloseTo(locked.w + 40 / scale, 0);
-    const free = await sizeOf(rect);
-    expect(free.h - locked.h).toBeCloseTo(-20 / scale, 0);
+    await expect.poll(async () => (await sizeOf(rect)).w).toBeGreaterThan(free.w);
+    const locked = await sizeOf(rect);
+    expect(locked.w / locked.h).toBeCloseTo(free.w / free.h, 2);
+
+    // Shift on a side handle keeps it too: the width follows the pointer and the height scales
+    // with it, so both dimensions change.
+    const e = await centre(page.locator('[data-handle="e"]'));
+    await page.keyboard.down("Shift");
+    await drag(page, e, 60, 0, 6);
+    await page.keyboard.up("Shift");
+    await expect.poll(async () => (await sizeOf(rect)).w).toBeCloseTo(locked.w + 60 / scale, 0);
+    const both = await sizeOf(rect);
+    expect(both.h).toBeGreaterThan(locked.h);
+    expect(both.w / both.h).toBeCloseTo(locked.w / locked.h, 2);
   });
 
   test("row 9: ⌘↓ moves slide 2 down; dragging slide 1 below slide 3 reorders", async ({
