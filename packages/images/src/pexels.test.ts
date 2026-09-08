@@ -153,6 +153,30 @@ describe("createPexelsClient search", () => {
     expect((bare as PexelsError).retryAfterS).toBeUndefined();
   });
 
+  test("photo(id) maps one photo", async () => {
+    const seen: string[] = [];
+    const client = createPexelsClient({
+      apiKey: "k",
+      fetch: stubFetch((url) => {
+        seen.push(url);
+        return new Response(JSON.stringify(PHOTO), { status: 200 });
+      }),
+    });
+    const photo = await client.photo("12345");
+    expect(seen).toEqual(["https://api.pexels.com/v1/photos/12345"]);
+    expect(photo?.id).toBe("12345");
+    expect(photo?.photographer).toBe("Ada");
+    expect(photo?.src.medium).toBe("https://images.pexels.com/photos/12345/medium.jpeg");
+  });
+
+  test("photo(id) answers null on 404", async () => {
+    const client = createPexelsClient({
+      apiKey: "k",
+      fetch: stubFetch(() => new Response("gone", { status: 404 })),
+    });
+    await expect(client.photo("404")).resolves.toBeNull();
+  });
+
   test("network failures propagate as the fetch error", async () => {
     const client = createPexelsClient({
       apiKey: "k",

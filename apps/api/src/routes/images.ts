@@ -11,13 +11,21 @@
  * with `code: "rate_limited"`.
  */
 import { zValidator } from "@hono/zod-validator";
-import { type PexelsClient, PexelsError, type PhotoSearchPage } from "@tj/images";
+import type { StorageAdapter } from "@tj/domain";
+import {
+  type PexelsClient,
+  PexelsError,
+  type PhotoResult,
+  type PhotoSearchPage,
+  StorePhotoError,
+  storePhoto,
+} from "@tj/images";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { AppEnv } from "../context";
 import { type RateLimiter, rateLimitByWorkspace } from "../rate-limit";
-import { validationHook } from "../validation";
+import { requireJsonBody, validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
 
 export const IMAGE_RATE_LIMIT_MESSAGE =
@@ -67,73 +75,130 @@ function writeCache(key: string, page: PhotoSearchPage, now: number): void {
   cache.set(key, { page, expiresAt: now + IMAGE_SEARCH_CACHE_MS });
 }
 
-export function imageRoutes(images: PexelsClient | undefined, limiter: RateLimiter) {
-  return new Hono<AppEnv>().get(
-    "/images/search",
-    rateLimitByWorkspace(limiter, IMAGE_RATE_LIMIT_MESSAGE),
-    zValidator("query", SearchQuery, validationHook),
-    async (c) => {
-      const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-      if (!images) {
-        throw new HTTPException(503, { message: "Photo search is not available right now." });
-      }
-      const { q, orientation, page } = c.req.valid("query");
-      const logger = c.get("logger");
-      const start = performance.now();
-      const durationMs = () => Math.round((performance.now() - start) * 100) / 100;
-      const key = cacheKey(q, orientation, page);
-      const now = Date.now();
-      const hit = readCache(key, now);
-      if (hit !== undefined) {
-        logger.info(
-          {
-            workspace_id: workspaceId,
-            q_len: q.length,
-            orientation,
-            page,
-            cached: true,
-            duration_ms: durationMs(),
-          },
-          "image search",
-        );
-        return c.json(hit, 200);
-      }
-      try {
-        const result = await images.search({ query: q, orientation, page, perPage: 24 });
-        writeCache(key, result, now);
-        logger.info(
-          {
-            workspace_id: workspaceId,
-            q_len: q.length,
-            orientation,
-            page,
-            cached: false,
-            upstream_status: 200,
-            duration_ms: durationMs(),
-          },
-          "image search",
-        );
-        return c.json(result, 200);
-      } catch (error) {
-        const upstreamStatus = error instanceof PexelsError ? error.status : undefined;
-        logger.info(
-          {
-            workspace_id: workspaceId,
-            q_len: q.length,
-            orientation,
-            page,
-            cached: false,
-            ...(upstreamStatus === undefined ? {} : { upstream_status: upstreamStatus }),
-            duration_ms: durationMs(),
-          },
-          "image search",
-        );
-        if (error instanceof PexelsError && error.status === 429) {
-          c.header("Retry-After", String(error.retryAfterS ?? 60));
-          throw new HTTPException(429, { message: IMAGE_RATE_LIMIT_MESSAGE });
+const PickBody = z.strictObject({
+  provider: z.literal("pexels"),
+  id: z.string().min(1).max(32),
+  target: z.enum(["slide", "worksheet"]),
+});
+
+export function imageRoutes(
+  images: PexelsClient | undefined,
+  limiter: RateLimiter,
+  storage: StorageAdapter | undefined,
+) {
+  return new Hono<AppEnv>()
+    .get(
+      "/images/search",
+      rateLimitByWorkspace(limiter, IMAGE_RATE_LIMIT_MESSAGE),
+      zValidator("query", SearchQuery, validationHook),
+      async (c) => {
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+        if (!images) {
+          throw new HTTPException(503, { message: "Photo search is not available right now." });
         }
-        throw new HTTPException(503, { message: "Photo search is not available right now." });
-      }
-    },
-  );
+        const { q, orientation, page } = c.req.valid("query");
+        const logger = c.get("logger");
+        const start = performance.now();
+        const durationMs = () => Math.round((performance.now() - start) * 100) / 100;
+        const key = cacheKey(q, orientation, page);
+        const now = Date.now();
+        const hit = readCache(key, now);
+        if (hit !== undefined) {
+          logger.info(
+            {
+              workspace_id: workspaceId,
+              q_len: q.length,
+              orientation,
+              page,
+              cached: true,
+              duration_ms: durationMs(),
+            },
+            "image search",
+          );
+          return c.json(hit, 200);
+        }
+        try {
+          const result = await images.search({ query: q, orientation, page, perPage: 24 });
+          writeCache(key, result, now);
+          logger.info(
+            {
+              workspace_id: workspaceId,
+              q_len: q.length,
+              orientation,
+              page,
+              cached: false,
+              upstream_status: 200,
+              duration_ms: durationMs(),
+            },
+            "image search",
+          );
+          return c.json(result, 200);
+        } catch (error) {
+          const upstreamStatus = error instanceof PexelsError ? error.status : undefined;
+          logger.info(
+            {
+              workspace_id: workspaceId,
+              q_len: q.length,
+              orientation,
+              page,
+              cached: false,
+              ...(upstreamStatus === undefined ? {} : { upstream_status: upstreamStatus }),
+              duration_ms: durationMs(),
+            },
+            "image search",
+          );
+          if (error instanceof PexelsError && error.status === 429) {
+            c.header("Retry-After", String(error.retryAfterS ?? 60));
+            throw new HTTPException(429, { message: IMAGE_RATE_LIMIT_MESSAGE });
+          }
+          throw new HTTPException(503, { message: "Photo search is not available right now." });
+        }
+      },
+    )
+    .post(
+      "/images/pick",
+      rateLimitByWorkspace(limiter, IMAGE_RATE_LIMIT_MESSAGE),
+      requireJsonBody(),
+      zValidator("json", PickBody, validationHook),
+      async (c) => {
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+        if (!images || !storage) {
+          throw new HTTPException(503, { message: "Photo search is not available right now." });
+        }
+        const { id, target } = c.req.valid("json");
+        const logger = c.get("logger");
+        const start = performance.now();
+        const durationMs = () => Math.round((performance.now() - start) * 100) / 100;
+        let photo: PhotoResult | null;
+        try {
+          photo = await images.photo(id);
+        } catch (error) {
+          if (error instanceof PexelsError && error.status === 429) {
+            c.header("Retry-After", String(error.retryAfterS ?? 60));
+            throw new HTTPException(429, { message: IMAGE_RATE_LIMIT_MESSAGE });
+          }
+          throw new HTTPException(503, { message: "Photo search is not available right now." });
+        }
+        if (photo === null) {
+          throw new HTTPException(404, { message: "That photo is no longer available." });
+        }
+        try {
+          const stored = await storePhoto({ photo, target, storage, workspaceId });
+          logger.info(
+            { provider: "pexels", target, bytes: stored.bytes, duration_ms: durationMs() },
+            "image picked",
+          );
+          return c.json(stored, 201);
+        } catch (error) {
+          // The StorePhotoError messages are plain sentences fit for the envelope directly.
+          if (error instanceof StorePhotoError) {
+            if (error.reason === "fetch_failed") {
+              throw new HTTPException(503, { message: "Photo search is not available right now." });
+            }
+            throw new HTTPException(422, { message: error.message });
+          }
+          throw error;
+        }
+      },
+    );
 }

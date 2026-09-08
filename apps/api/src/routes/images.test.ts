@@ -4,9 +4,14 @@
  * guards. Each success-path test uses its own query: the route cache is module-level.
  */
 
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { newId, type WorkspaceId } from "@tj/domain";
-import { type PexelsClient, PexelsError, type PhotoSearchPage } from "@tj/images";
+import { PhotoSourceSchema } from "@tj/domain/documents";
+import { type PexelsClient, PexelsError, type PhotoResult, type PhotoSearchPage } from "@tj/images";
+import { LocalDiskStorage } from "@tj/storage";
 import { createApp } from "../app";
 import type { RateLimitConfig } from "../rate-limit";
 import { fakeSql, silentLogger, TEST_ENV } from "../test-helpers";
@@ -35,10 +40,12 @@ function photo(id: string) {
 interface FakeState {
   calls: { query: string; orientation?: string; page?: number; perPage?: number }[];
   error: unknown;
+  photoCalls: string[];
+  photoResult: PhotoResult | null;
 }
 
 function makeFake(): { client: PexelsClient; state: FakeState } {
-  const state: FakeState = { calls: [], error: null };
+  const state: FakeState = { calls: [], error: null, photoCalls: [], photoResult: null };
   const client: PexelsClient = {
     async search(params): Promise<PhotoSearchPage> {
       state.calls.push({
@@ -50,17 +57,26 @@ function makeFake(): { client: PexelsClient; state: FakeState } {
       if (state.error !== null) throw state.error;
       return { photos: [photo("1"), photo("2")], nextPage: 2 };
     },
+    async photo(id: string) {
+      state.photoCalls.push(id);
+      return state.photoResult;
+    },
   };
   return { client, state };
 }
 
-function appWith(client: PexelsClient | undefined, imageRateLimit?: Partial<RateLimitConfig>) {
+function appWith(
+  client: PexelsClient | undefined,
+  imageRateLimit?: Partial<RateLimitConfig>,
+  storage?: LocalDiskStorage,
+) {
   return createApp({
     env: TEST_ENV,
     db: fakeSql(true),
     logger: silentLogger,
     images: client,
     imageRateLimit,
+    storage,
   });
 }
 
@@ -152,6 +168,7 @@ describe("GET /images/search", () => {
     const throwing: PexelsClient = {
       search: () =>
         Promise.reject(new PexelsError(429, "Pexels search failed with status 429.", 17)),
+      photo: () => Promise.resolve(null),
     };
     const res = await appWith(throwing).request("/images/search?q=gale", { headers });
     expect(res.status).toBe(429);
@@ -164,9 +181,11 @@ describe("GET /images/search", () => {
   test("an upstream 500 or a network failure becomes 503", async () => {
     const failing: PexelsClient = {
       search: () => Promise.reject(new PexelsError(500, "Pexels search failed with status 500.")),
+      photo: () => Promise.resolve(null),
     };
     const broken: PexelsClient = {
       search: () => Promise.reject(new TypeError("fetch failed")),
+      photo: () => Promise.resolve(null),
     };
     for (const [client, q] of [
       [failing, "hail"],
@@ -218,5 +237,189 @@ describe("GET /images/search", () => {
     expect(res.status).toBe(403);
     expect((await errorBody(res)).error.code).toBe("forbidden");
     expect(state.calls).toHaveLength(0);
+  });
+});
+
+describe("POST /images/pick", () => {
+  const realFetch = globalThis.fetch;
+  const roots: string[] = [];
+  afterEach(async () => {
+    globalThis.fetch = realFetch;
+    while (roots.length > 0) await rm(roots.pop() as string, { recursive: true, force: true });
+  });
+
+  function cdnFetch(
+    entries: Record<string, { bytes: Uint8Array; contentType: string; length?: number }>,
+  ) {
+    const seen: string[] = [];
+    const fetch = (async (input: string | URL | Request) => {
+      const url = String(input);
+      seen.push(url);
+      const key = Object.keys(entries).find((k) => url.includes(k));
+      if (key === undefined) return new Response("no", { status: 404 });
+      const entry = entries[key] as { bytes: Uint8Array; contentType: string; length?: number };
+      const headers: Record<string, string> = { "content-type": entry.contentType };
+      if (entry.length !== undefined) headers["content-length"] = String(entry.length);
+      return new Response(entry.bytes, { status: 200, headers });
+    }) as typeof globalThis.fetch;
+    return { fetch, seen };
+  }
+
+  async function pickSetup() {
+    const root = await mkdtemp(join(tmpdir(), "tj-api-pick-"));
+    roots.push(root);
+    const storage = new LocalDiskStorage(root);
+    const { client, state } = makeFake();
+    const app = appWith(client, undefined, storage);
+    return { app, root, storage, state };
+  }
+
+  function pick(
+    app: ReturnType<typeof appWith>,
+    body: unknown,
+    extraHeaders: Record<string, string> = {},
+  ) {
+    return app.request("/images/pick", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", [WORKSPACE_HEADER]: ws, ...extraHeaders },
+      body: JSON.stringify(body),
+    });
+  }
+
+  test("a slide pick stores the large rendition and streams it back", async () => {
+    const { app, state } = await pickSetup();
+    state.photoResult = photo("1");
+    const bytes = new Uint8Array(300 * 1024).fill(9);
+    const { fetch } = cdnFetch({
+      large: { bytes, contentType: "image/jpeg", length: bytes.length },
+    });
+    globalThis.fetch = fetch;
+    const res = await pick(app, { provider: "pexels", id: "1", target: "slide" });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as {
+      key: string;
+      url: string;
+      width: number;
+      height: number;
+      contentType: string;
+      source: unknown;
+    };
+    expect(body.key).toMatch(new RegExp(`^${ws}/images/.+\\.jpg$`));
+    expect(body.url).toBe(`/files/${body.key}`);
+    expect(body.width).toBe(6000);
+    expect(body.height).toBe(4000);
+    expect(body.contentType).toBe("image/jpeg");
+    expect(PhotoSourceSchema.parse(body.source)).toEqual({
+      provider: "pexels",
+      id: "1",
+      pageUrl: "https://www.pexels.com/photo/1/",
+      photographer: "Ada",
+      photographerUrl: "https://www.pexels.com/@ada/",
+    });
+    const file = await app.request(body.url, { headers });
+    expect(file.status).toBe(200);
+    expect(file.headers.get("content-type")).toBe("image/jpeg");
+    expect(new Uint8Array(await file.arrayBuffer())).toEqual(bytes);
+  });
+
+  test("a worksheet pick fetches medium, never original", async () => {
+    const { app, state } = await pickSetup();
+    state.photoResult = photo("2");
+    const { fetch, seen } = cdnFetch({
+      medium: { bytes: new Uint8Array([1]), contentType: "image/jpeg" },
+    });
+    globalThis.fetch = fetch;
+    const res = await pick(app, { provider: "pexels", id: "2", target: "worksheet" });
+    expect(res.status).toBe(201);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toContain("medium");
+    expect(seen[0]).not.toContain("original");
+  });
+
+  test("a photo that is gone is 404", async () => {
+    const { app, state } = await pickSetup();
+    state.photoResult = null;
+    const res = await pick(app, { provider: "pexels", id: "404", target: "slide" });
+    expect(res.status).toBe(404);
+    expect((await errorBody(res)).error.code).toBe("not_found");
+    expect(state.photoCalls).toEqual(["404"]);
+  });
+
+  test("an over-cap download and a non-image are 422 with nothing stored", async () => {
+    for (const entry of [
+      { bytes: new Uint8Array([1]), contentType: "image/jpeg", length: 9_000_000 },
+      { bytes: new Uint8Array([1, 2, 3]), contentType: "text/html" },
+    ] as const) {
+      const { app, root, state } = await pickSetup();
+      state.photoResult = photo("3");
+      const { fetch } = cdnFetch({ large: entry });
+      globalThis.fetch = fetch;
+      const res = await pick(app, { provider: "pexels", id: "3", target: "slide" });
+      expect(res.status).toBe(422);
+      expect((await errorBody(res)).error.code).toBe("unprocessable");
+      expect(await readdir(root)).toEqual([]);
+    }
+  });
+
+  test("a failed download is 503", async () => {
+    const { app, state } = await pickSetup();
+    state.photoResult = photo("4");
+    globalThis.fetch = (() =>
+      Promise.reject(new TypeError("down"))) as unknown as typeof globalThis.fetch;
+    const res = await pick(app, { provider: "pexels", id: "4", target: "slide" });
+    expect(res.status).toBe(503);
+    expect((await errorBody(res)).error.code).toBe("service_unavailable");
+  });
+
+  test("bad provider, missing target and non-JSON bodies are 400", async () => {
+    const { app, state } = await pickSetup();
+    state.photoResult = photo("5");
+    const bad = await pick(app, { provider: "openverse", id: "5", target: "slide" });
+    expect(bad.status).toBe(400);
+    expect((await errorBody(bad)).error.code).toBe("validation_failed");
+    const missing = await pick(app, { provider: "pexels", id: "5" });
+    expect(missing.status).toBe(400);
+    const plain = await app.request("/images/pick", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain", [WORKSPACE_HEADER]: ws },
+      body: "{}",
+    });
+    expect(plain.status).toBe(400);
+  });
+
+  test("no storage or no client is 503", async () => {
+    const { client } = makeFake();
+    const storageless = await appWith(client).request("/images/pick", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", [WORKSPACE_HEADER]: ws },
+      body: JSON.stringify({ provider: "pexels", id: "6", target: "slide" }),
+    });
+    expect(storageless.status).toBe(503);
+    const root = await mkdtemp(join(tmpdir(), "tj-api-pick-"));
+    roots.push(root);
+    const clientless = await appWith(undefined, undefined, new LocalDiskStorage(root)).request(
+      "/images/pick",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", [WORKSPACE_HEADER]: ws },
+        body: JSON.stringify({ provider: "pexels", id: "6", target: "slide" }),
+      },
+    );
+    expect(clientless.status).toBe(503);
+  });
+
+  test("foreign Origin is 403 before photo() is called", async () => {
+    const { app, state } = await pickSetup();
+    const res = await app.request("/images/pick", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "https://evil.example",
+        [WORKSPACE_HEADER]: ws,
+      },
+      body: JSON.stringify({ provider: "pexels", id: "7", target: "slide" }),
+    });
+    expect(res.status).toBe(403);
+    expect(state.photoCalls).toHaveLength(0);
   });
 });
