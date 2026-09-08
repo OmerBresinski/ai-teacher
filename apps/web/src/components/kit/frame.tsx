@@ -9,6 +9,7 @@ export const KIT_SECTIONS = [
   ["value", "Value"],
   ["overlays", "Overlays"],
   ["feedback", "Feedback"],
+  ["steps", "Steps"],
   ["motion", "Motion"],
   ["chrome", "Chrome"],
   ["content", "Content"],

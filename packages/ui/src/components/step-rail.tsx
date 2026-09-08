@@ -8,8 +8,9 @@ import { cn } from "../lib/cn";
  * current one carries `aria-current="step"`, completed ones a tick, and an "N of M" line keeps
  * the position readable without the colour. Completed steps are buttons when `onSelect` is
  * given, so a teacher can go back to one; the others are plain text (the flow moves forward
- * through its own Continue). Vertical by default; `orientation="horizontal"` lays the steps in a
- * row for narrow shells.
+ * through its own Continue). Done and current share the one brand accent (current filled, done
+ * tinted) so the rail reads as one line of progress, not two colours. Vertical by default;
+ * `orientation="horizontal"` lays the steps in a row for narrow shells.
  */
 
 export type StepRailStep = { id: string; label: string };
@@ -64,7 +65,7 @@ function StepRail({
                   isCurrent
                     ? "border-primary bg-primary text-primary-foreground"
                     : isDone
-                      ? "border-success/40 bg-success/10 text-success"
+                      ? "border-brand-tint-line bg-brand-tint text-brand-text"
                       : "border-border text-ink-3",
                 )}
               >
