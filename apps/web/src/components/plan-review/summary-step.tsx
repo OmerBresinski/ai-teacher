@@ -13,11 +13,7 @@ import {
 import { arrive } from "./shared";
 
 function Yours({ show }: { show: boolean }) {
-  return show ? (
-    <span className="ml-2 text-eyebrow font-semibold uppercase tracking-wide text-brand-text">
-      yours
-    </span>
-  ) : null;
+  return show ? <span className="ml-2 text-eyebrow font-medium text-brand-text">yours</span> : null;
 }
 
 function Section({
@@ -75,7 +71,6 @@ export function SummaryStep({ state, lesson }: { state: PlanReviewState; lesson:
     isYours(state, "worksheet:tiers");
   return (
     <QuestionShell
-      eyebrow="5 of 5"
       question="Here is the plan. Ready to write the slides?"
       help={
         edits === 0
@@ -104,9 +99,13 @@ export function SummaryStep({ state, lesson }: { state: PlanReviewState; lesson:
               <li key={phase.id} className="flex gap-3">
                 <span className="w-5 shrink-0 text-right text-ink-3 tabular-nums">{i + 1}</span>
                 <span className="w-24 shrink-0 font-medium">{SLIDE_KIND_LABELS[phase.kind]}</span>
-                <span className="min-w-0 flex-1 truncate text-ink-2">{phase.summary}</span>
-                <span className="shrink-0 text-ink-3 tabular-nums">{phase.minutes} min</span>
-                <Yours show={isYours(state, `phase:${phase.id}`)} />
+                <span className="min-w-0 flex-1 truncate text-ink-2">
+                  {phase.summary}
+                  <Yours show={isYours(state, `phase:${phase.id}`)} />
+                </span>
+                <span className="w-12 shrink-0 text-right text-ink-3 tabular-nums">
+                  {phase.minutes} min
+                </span>
               </li>
             ))}
           </ol>

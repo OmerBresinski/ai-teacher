@@ -1,7 +1,7 @@
 import { EditableListRow, QuestionShell } from "@tj/ui";
 import { type Dispatch, type KeyboardEvent, useRef } from "react";
 import { OBJECTIVES_MAX, type PlanReviewAction, type PlanReviewState } from "@/lib/plan-review";
-import { AddRowButton, arrive, markOf, useArrivalFocus } from "./shared";
+import { AddRowButton, arrive, markOf, useArrivalFocus, useArriveSettled } from "./shared";
 
 export function ObjectivesStep({
   state,
@@ -12,6 +12,7 @@ export function ObjectivesStep({
 }) {
   const first = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   useArrivalFocus(first);
+  const settled = useArriveSettled();
   const onKeyDown = (id: string) => (event: KeyboardEvent<HTMLElement>) => {
     if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
       event.preventDefault();
@@ -20,7 +21,6 @@ export function ObjectivesStep({
   };
   return (
     <QuestionShell
-      eyebrow="1 of 5"
       question="What should pupils be able to do by the end?"
       help="One line each, up to four. Change a line and the objectives slide follows. Alt and an arrow key moves a line."
     >
@@ -46,7 +46,7 @@ export function ObjectivesStep({
                 : undefined
             }
             removeLabel={`Remove objective ${i + 1}`}
-            {...arrive(i)}
+            {...arrive(i, settled)}
           />
         ))}
       </ol>
