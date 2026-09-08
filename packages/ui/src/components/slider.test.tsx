@@ -65,6 +65,46 @@ describe("Slider", () => {
     expect(container.querySelector('[data-slot="slider-value"]')).toBeNull();
   });
 
+  it("resetTo: a double-click on the thumb, or Backspace, sets the value through onValueChange", async () => {
+    const user = userEvent.setup();
+    const onValueChange = mock(() => {});
+    const onValueCommit = mock(() => {});
+    render(
+      <Slider
+        aria-label="Opacity"
+        defaultValue={[37]}
+        resetTo={100}
+        onValueChange={onValueChange}
+        onValueCommit={onValueCommit}
+      />,
+    );
+    const thumb = screen.getByRole("slider", { name: "Opacity" });
+    expect(thumb).toHaveAttribute("title", "Double-click to reset");
+    expect(thumb).toHaveAttribute("aria-description", "Double-click to reset");
+    await user.dblClick(thumb);
+    expect(onValueChange).toHaveBeenCalledWith([100]);
+    expect(onValueCommit).toHaveBeenCalledWith([100]);
+    expect(thumb).toHaveAttribute("aria-valuenow", "100");
+    await user.keyboard("{ArrowLeft}");
+    expect(thumb).toHaveAttribute("aria-valuenow", "99");
+    await user.keyboard("{Backspace}");
+    expect(thumb).toHaveAttribute("aria-valuenow", "100");
+    expect(onValueChange).toHaveBeenLastCalledWith([100]);
+  });
+
+  it("without resetTo a double-click changes nothing and the thumb carries no hint", async () => {
+    const user = userEvent.setup();
+    const onValueChange = mock(() => {});
+    render(<Slider aria-label="Zoom" defaultValue={[37]} onValueChange={onValueChange} />);
+    const thumb = screen.getByRole("slider", { name: "Zoom" });
+    expect(thumb).not.toHaveAttribute("title");
+    expect(thumb).not.toHaveAttribute("aria-description");
+    await user.dblClick(thumb);
+    await user.keyboard("{Backspace}");
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(thumb).toHaveAttribute("aria-valuenow", "37");
+  });
+
   it("paints the ink fill, not the accent (Switch owns the accent)", () => {
     const { container } = render(<Slider aria-label="Zoom" defaultValue={[20]} />);
     expect(container.querySelector('[data-slot="slider-range"]')).toHaveClass("bg-ink-2");

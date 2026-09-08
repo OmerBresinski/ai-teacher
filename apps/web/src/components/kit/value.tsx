@@ -18,7 +18,7 @@ export function Value() {
     <KitGroup
       id="value"
       title="Value"
-      rule="A value reads in tabular figures beside its control. The slider track is a hairline, the fill is ink; the accent is kept for the focus band. The bubble reads the value while it moves; the readout beside it stays."
+      rule="A value reads in tabular figures beside its control. The slider track is a hairline, the fill is ink; the accent is kept for the focus band. The bubble reads the value while it moves; the readout beside it stays. A slider with a resting value takes resetTo: double-click the thumb, or press Backspace on it, to go back."
     >
       <Specimen
         name="Popover"
@@ -70,6 +70,15 @@ export function Value() {
             aria-label="Font size range"
             defaultValue={[20, 70]}
             valueLabel={(v) => `${v} pt`}
+            className="w-56"
+          />
+        </Variant>
+        <Variant label="Opacity, double-click resets to 100">
+          <Slider
+            aria-label="Layer opacity"
+            defaultValue={[62]}
+            resetTo={100}
+            valueLabel={(v) => `${v}%`}
             className="w-56"
           />
         </Variant>
