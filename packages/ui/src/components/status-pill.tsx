@@ -62,6 +62,7 @@ function StatusPill({
   const showDot = quiet || dot;
   return (
     <span
+      data-slot="status-pill"
       className={cn(
         "inline-flex h-6 shrink-0 items-center gap-1.5 text-eyebrow font-medium whitespace-nowrap",
         quiet
