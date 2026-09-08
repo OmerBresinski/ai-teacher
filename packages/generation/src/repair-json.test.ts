@@ -42,20 +42,25 @@ describe("repairJsonText", () => {
     expect(repairJsonText(text)).toEqual({ text: null, repairs: [] });
   });
 
-  test("a single-key object is not hoisted unless the inner object repeats the key", () => {
-    const text = JSON.stringify({ findings: JSON.stringify({ check: "x", severity: "error" }) });
-    const repaired = repairJsonText(text);
-    expect(repaired.repairs).toEqual(["parsed-string"]);
-    expect(JSON.parse(repaired.text as string)).toEqual({
-      findings: { check: "x", severity: "error" },
-    });
+  test("the answer under one made-up key is hoisted, as an object or as a string", () => {
+    const asObject = repairJsonText(JSON.stringify({ plan: answer }));
+    expect(asObject.repairs).toEqual(["hoisted"]);
+    expect(JSON.parse(asObject.text as string)).toEqual(answer);
+    const asString = repairJsonText(JSON.stringify({ result: JSON.stringify(answer) }));
+    expect(asString.repairs).toEqual(["parsed-string", "hoisted"]);
+    expect(JSON.parse(asString.text as string)).toEqual(answer);
   });
 
-  test("an inherited name is not a repeated key: no hoist for { toString: { … } }", () => {
-    const text = JSON.stringify({ toString: JSON.stringify({ items: ["a"] }) });
+  test("a single key holding a list or a scalar is not hoisted", () => {
+    expect(repairJsonText(JSON.stringify({ findings: [] }))).toEqual({ text: null, repairs: [] });
+    expect(repairJsonText(JSON.stringify({ answer: "ok" }))).toEqual({ text: null, repairs: [] });
+  });
+
+  test("an inherited name is an own key like any other; a prototype name is not read", () => {
+    const text = JSON.stringify({ toString: answer });
     const repaired = repairJsonText(text);
-    expect(repaired.repairs).toEqual(["parsed-string"]);
-    expect(JSON.parse(repaired.text as string)).toEqual({ toString: { items: ["a"] } });
+    expect(repaired.repairs).toEqual(["hoisted"]);
+    expect(JSON.parse(repaired.text as string)).toEqual(answer);
   });
 
   test("valid JSON with nothing to repair and non-JSON text both return null", () => {

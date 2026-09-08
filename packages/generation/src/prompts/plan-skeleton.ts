@@ -1,5 +1,6 @@
 import { GENERATABLE_SLIDE_KINDS } from "@tj/domain/documents";
-import { type Audience, audienceBlock, example, HOUSE_RULES } from "./shared";
+import { SPEC_LIMITS } from "@tj/slides";
+import { type Audience, audienceBlock, example, HOUSE_RULES, limitsBlock } from "./shared";
 
 /*
  * Plan, first call (ADR 0025 §1, §7, §13; TEACH-138): the Brief becomes the lesson's skeleton —
@@ -59,7 +60,7 @@ export function briefBlock(input: PlanSkeletonInput): string[] {
 }
 
 export const planSkeletonPrompt = {
-  version: "plan-skeleton.v1",
+  version: "plan-skeleton.v2",
   system: [
     "You are an experienced UK teacher planning one lesson from a brief.",
     "Produce only the lesson's skeleton: the learning objectives and an outline of slides with the minutes each takes. The vocabulary, worked examples and questions come in a later step, so do not write them here.",
@@ -71,6 +72,7 @@ export const planSkeletonPrompt = {
     "Outline minutes add up to the lesson length within ten per cent.",
     'Refer to objectives from the outline by position: { "type": "objective", "index": 0-based }. Only objectives can be referenced here. Every outline slide after the first two names at least one objective.',
     "Give 1–4 objectives and 8–10 outline slides for an hour-long lesson (fewer for a shorter one); include at least two slides pupils answer (true-false, multiple-choice, matching, fill-gap, sort or open-response) and one vocabulary slide.",
+    limitsBlock({ "each objective": SPEC_LIMITS.item }),
     "",
     "Answer as JSON in exactly this shape:",
     example(EXAMPLE),

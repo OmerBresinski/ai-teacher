@@ -1,6 +1,7 @@
+import { SPEC_LIMITS } from "@tj/slides";
 import type { PlanSkeleton } from "../specs";
 import { briefBlock, type PlanSkeletonInput } from "./plan-skeleton";
-import { example, HOUSE_RULES } from "./shared";
+import { example, HOUSE_RULES, limitsBlock } from "./shared";
 
 /*
  * Plan, second call (ADR 0025 §1, §13; TEACH-138): given the skeleton the first call produced,
@@ -43,7 +44,7 @@ const EXAMPLE = {
 };
 
 export const planFactsPrompt = {
-  version: "plan-facts.v1",
+  version: "plan-facts.v2",
   system: [
     "You are an experienced UK teacher completing the plan for one lesson.",
     "You are given the lesson's objectives and its outline of slides. Produce the facts the slides and worksheet will be built from: key vocabulary, worked examples, and questions with answers and a one-line reasoning. Then say which outline slide each fact supports.",
@@ -53,6 +54,15 @@ export const planFactsPrompt = {
     "Give up to 6 vocabulary terms, up to 3 worked examples with at most 4 short steps each, and up to 8 questions. Keep every reasoning to one sentence.",
     'Write the three lists first, in the order vocabulary, workedExamples, questions, and only then "outlineFactRefs", so every position you refer to exists. Refer to facts by list and position: { "type": "vocabulary" | "workedExample" | "question", "index": 0-based }. In "outlineFactRefs", "index" is the 0-based position of the outline slide; list only slides from position 2 onwards and only the facts that slide draws on. A question slide needs a question; a vocabulary slide needs vocabulary; a worked-example slide needs a worked example.',
     "Every question and worked example must serve at least one objective, and every objective must be checked by at least one question.",
+    limitsBlock({
+      term: SPEC_LIMITS.term,
+      definition: SPEC_LIMITS.definition,
+      problem: SPEC_LIMITS.body,
+      "each step": SPEC_LIMITS.item,
+      stem: SPEC_LIMITS.stem,
+      answer: SPEC_LIMITS.answer,
+      reasoning: SPEC_LIMITS.footnote,
+    }),
     "",
     "Answer as JSON in exactly this shape:",
     example(EXAMPLE),

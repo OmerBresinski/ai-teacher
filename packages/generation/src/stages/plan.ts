@@ -6,6 +6,7 @@ import {
   assignFactIds,
   EMPTY_PLAN_FACTS,
   type PlanFacts,
+  type PlanSkeleton,
   PlanSkeletonSchema,
   planFactsSchemaFor,
 } from "../specs";
@@ -24,8 +25,10 @@ import { audienceOf, BUDGET_FINDING } from "./shared";
  *      (`10 "Planned"`).
  *
  * Only the third persist carries `generation`: `stage` is the checkpoint, and a retry that finds
- * a lesson without one re-runs Plan from the top (`resumeFrom`), re-using the title slide it
- * left rather than adding a second. A budget stop on the facts call keeps the skeleton facts,
+ * a lesson without one re-runs Plan (`resumeFrom`), re-using what the earlier attempt left: the
+ * title slide, and — when the second persist landed — the objectives slide and the skeleton
+ * facts, so the skeleton call is not paid twice and the teacher does not watch slide two vanish
+ * (2026-09-08: the facts call failed twice, pg-boss retried, Plan restarted from the title). A budget stop on the facts call keeps the skeleton facts,
  * records the `budget` finding and still reaches `planned` (§15): Generate then stops in turn.
  */
 
@@ -42,9 +45,14 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   if (!brief) throw new Error("plan: the lesson has no brief");
   const startedAt = deps.now().toISOString();
 
-  // 1. The title slide, from the Brief: no model call, and a resumed lesson keeps the one it has.
+  // 1. The title slide, from the Brief: no model call, and a resumed lesson keeps the one it has
+  //    (and its objectives slide, when the earlier attempt got that far).
   const title = existingTitle(lesson) ?? materialiseTitle(lesson, deps);
-  const withTitle: Lesson = { ...lesson, slides: [title] };
+  const resumed = existingSkeleton(lesson);
+  const withTitle: Lesson = {
+    ...lesson,
+    slides: resumed ? [title, resumed.objectivesSlide] : [title],
+  };
   const first = await deps.persist(withTitle);
   await deps.onProgress(PROGRESS_STARTING, "Starting", first.updatedAt);
 
@@ -57,27 +65,36 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     sourceTexts: sourceTexts.map((s) => ({ sourceId: s.sourceId, text: s.text })),
   };
 
-  // 2. The skeleton: objectives and outline, enough for the objectives slide.
-  deps.logger.info({ stage: "plan", call: "skeleton" }, "plan call");
-  const skeletonCall = await callStructured({
-    deps,
-    stage: "plan",
-    cls: "standard",
-    prompt: planSkeletonPrompt,
-    input: briefInput,
-    schema: PlanSkeletonSchema,
-    maxOutputTokens: MAX_OUTPUT_TOKENS.planSkeleton,
-  });
-  const skeleton = skeletonCall.output;
-  const skeletonFacts = assignFactIds(skeleton, EMPTY_PLAN_FACTS, brief.durationMin);
-  const objectives = materialiseObjectives(lesson, skeletonFacts, deps, {
-    promptVersion: planSkeletonPrompt.version,
-    model: skeletonCall.modelId,
-    at: deps.now().toISOString(),
-  });
-  const withSkeleton: Lesson = { ...withTitle, facts: skeletonFacts, slides: [title, objectives] };
-  const second = await deps.persist(withSkeleton);
-  await deps.onProgress(PROGRESS_SKELETON, "Planned the lesson", second.updatedAt);
+  // 2. The skeleton: objectives and outline, enough for the objectives slide. A resumed lesson
+  //    that already has both skips the call.
+  let skeleton: PlanSkeleton;
+  let withSkeleton: Lesson;
+  if (resumed) {
+    deps.logger.info({ stage: "plan", call: "skeleton" }, "plan call skipped: skeleton resumed");
+    skeleton = resumed.skeleton;
+    withSkeleton = { ...withTitle, facts: resumed.facts };
+  } else {
+    deps.logger.info({ stage: "plan", call: "skeleton" }, "plan call");
+    const skeletonCall = await callStructured({
+      deps,
+      stage: "plan",
+      cls: "standard",
+      prompt: planSkeletonPrompt,
+      input: briefInput,
+      schema: PlanSkeletonSchema,
+      maxOutputTokens: MAX_OUTPUT_TOKENS.planSkeleton,
+    });
+    skeleton = skeletonCall.output;
+    const skeletonFacts = assignFactIds(skeleton, EMPTY_PLAN_FACTS, brief.durationMin);
+    const objectives = materialiseObjectives(lesson, skeletonFacts, deps, {
+      promptVersion: planSkeletonPrompt.version,
+      model: skeletonCall.modelId,
+      at: deps.now().toISOString(),
+    });
+    withSkeleton = { ...withTitle, facts: skeletonFacts, slides: [title, objectives] };
+    const second = await deps.persist(withSkeleton);
+    await deps.onProgress(PROGRESS_SKELETON, "Planned the lesson", second.updatedAt);
+  }
 
   // 3. The remaining facts and which outline entry each supports; then the checkpoint.
   deps.logger.info({ stage: "plan", call: "facts" }, "plan call");
@@ -114,6 +131,39 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   const third = await deps.persist(planned);
   await deps.onProgress(PROGRESS_PLANNED, "Planned", third.updatedAt);
   return { ...state, lesson: planned };
+}
+
+/**
+ * What an earlier attempt left after its skeleton persist: the objectives slide and the
+ * skeleton-only facts, turned back into the `PlanSkeleton` the facts call takes (ordinal
+ * references, the inverse of `assignFactIds` for objectives). Absent — and Plan runs from the
+ * top — when the lesson has no facts, the facts already carry a later list, the outline is too
+ * short, or slide two is not an objectives slide.
+ */
+function existingSkeleton(
+  lesson: Lesson,
+): { skeleton: PlanSkeleton; facts: LessonFacts; objectivesSlide: Slide } | undefined {
+  const facts = lesson.facts;
+  const objectivesSlide = lesson.slides[1];
+  if (!facts || !objectivesSlide || objectivesSlide.kind !== "objectives") return undefined;
+  if (facts.vocabulary.length + facts.workedExamples.length + facts.questions.length > 0) {
+    return undefined;
+  }
+  if (facts.objectives.length === 0 || facts.outline.length < 2) return undefined;
+  const objectiveIndex = new Map(facts.objectives.map((o, i) => [o.id, i]));
+  const outline = facts.outline.map((entry) => ({
+    kind: entry.kind,
+    minutes: entry.minutes,
+    factRefs: entry.factRefs.flatMap((ref) => {
+      const index = objectiveIndex.get(ref);
+      return index === undefined ? [] : [{ type: "objective" as const, index }];
+    }),
+  }));
+  const skeleton = PlanSkeletonSchema.safeParse({
+    learningObjectives: facts.objectives.map((o) => ({ text: o.text })),
+    outline,
+  });
+  return skeleton.success ? { skeleton: skeleton.data, facts, objectivesSlide } : undefined;
 }
 
 /** The title slide an earlier attempt of Plan persisted, when the lesson opens with one. */
