@@ -1,11 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, mock, test } from "bun:test";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson, ShapeElement, SlideElement } from "@tj/domain/documents";
 import { docFromText } from "../../model/factories";
 import { makeLine, makeShape, makeTable, makeText, makeTimer } from "../../model/insert";
 import { getTheme } from "../../model/themes";
 import { docHasMark } from "../../text/doc-marks";
 import { catcher, pointer, renderEditor, seededLesson } from "../test-harness";
+import { SliderRow } from "./shared";
 
 /*
  * TEACH-105: which toolbar the selection routes to (TeachDeck `chrome.test.tsx` catalogue), and
@@ -138,6 +139,58 @@ describe("ShapeToolbar (row 1)", () => {
     fireEvent.blur(field);
     expect(opacity()).toBe(0);
     expect(field).toHaveValue("0");
+  });
+
+  test("a field blur during a slider scrub drops its stale draft; the scrub's commit stands alone", () => {
+    const onChange = mock((_v: number) => {});
+    const onCommit = mock(() => {});
+    const { rerender } = render(
+      <SliderRow
+        label="Opacity"
+        min={0}
+        max={100}
+        defaultValue={100}
+        value={100}
+        onChange={onChange}
+        onCommit={onCommit}
+      />,
+    );
+    const field = screen.getByRole("textbox", { name: "Opacity value" });
+    fireEvent.change(field, { target: { value: "40" } });
+
+    // The scrub starts: a pointer down on the track, which Radix answers with the first value
+    // change of the drag (a keyboard step would commit at once and is not a scrub).
+    const root = document.querySelector<HTMLElement>('[data-slot="slider"]');
+    if (!root) throw new Error("no slider");
+    fireEvent.pointerDown(root, { pointerId: 1, button: 0, clientX: 10, clientY: 5 });
+    const changes = onChange.mock.calls.length;
+    expect(changes).toBeGreaterThan(0);
+    const live = onChange.mock.calls[changes - 1]?.[0];
+    rerender(
+      <SliderRow
+        label="Opacity"
+        min={0}
+        max={100}
+        defaultValue={100}
+        value={live ?? 100}
+        onChange={onChange}
+        onCommit={onCommit}
+      />,
+    );
+
+    // A deferred blur arrives mid-drag with the stale "40": nothing is written, no commit.
+    fireEvent.blur(field);
+    expect(onChange.mock.calls.length).toBe(changes);
+    expect(onCommit).toHaveBeenCalledTimes(0);
+    expect(field).toHaveValue(String(live));
+
+    // Release: the scrub commits once, and a later blur commits typing again.
+    fireEvent.pointerUp(root, { pointerId: 1, button: 0, clientX: 10, clientY: 5 });
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    fireEvent.change(field, { target: { value: "70" } });
+    fireEvent.blur(field);
+    expect(onChange).toHaveBeenLastCalledWith(70);
+    expect(onCommit).toHaveBeenCalledTimes(2);
   });
 });
 

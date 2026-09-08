@@ -15,7 +15,7 @@ import {
   Tooltip,
 } from "@tj/ui";
 import { ChevronDown } from "lucide-react";
-import { type ComponentProps, type ReactNode, useId, useMemo, useState } from "react";
+import { type ComponentProps, type ReactNode, useId, useMemo, useRef, useState } from "react";
 import * as reducers from "../../model/reducers";
 import type { ElementPatch } from "../../model/reducers/elements";
 import { useEditSession } from "../../model/use-edit-session";
@@ -217,6 +217,12 @@ export function SliderRow({
 }: SliderRowProps) {
   // `null` while not typing: the field shows the live value.
   const [draft, setDraft] = useState<string | null>(null);
+  // A pointer scrub on the slider, from its first value change after pointer-down until Radix
+  // commits it. Safari and iOS defer the field's blur, so a stale draft could otherwise commit
+  // mid-drag, clobbering the live value and closing the undo step early: while a scrub is on, a
+  // blur drops the draft and the field re-syncs to the live value. Enter commits as usual.
+  const pointerHeld = useRef(false);
+  const scrubbing = useRef(false);
 
   const commitDraft = () => {
     if (draft === null) return;
@@ -238,10 +244,23 @@ export function SliderRow({
         step={step}
         value={[value]}
         resetTo={defaultValue}
-        onValueChange={([v]) => {
-          if (v !== undefined) onChange(v);
+        onPointerDown={() => {
+          pointerHeld.current = true;
         }}
-        onValueCommit={onCommit}
+        onPointerCancel={() => {
+          pointerHeld.current = false;
+          scrubbing.current = false;
+        }}
+        onValueChange={([v]) => {
+          if (v === undefined) return;
+          if (pointerHeld.current) scrubbing.current = true;
+          onChange(v);
+        }}
+        onValueCommit={() => {
+          pointerHeld.current = false;
+          scrubbing.current = false;
+          onCommit();
+        }}
         valueLabel={format}
         className="flex-1"
       />
@@ -251,7 +270,10 @@ export function SliderRow({
         pattern="-?[0-9]*"
         value={draft ?? String(value)}
         onChange={(e) => setDraft(e.target.value)}
-        onBlur={commitDraft}
+        onBlur={() => {
+          if (scrubbing.current) setDraft(null);
+          else commitDraft();
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
