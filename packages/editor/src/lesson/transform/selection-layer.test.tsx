@@ -252,6 +252,43 @@ describe("SelectionLayer", () => {
     expect(container.querySelectorAll("[data-handle]")).toHaveLength(0);
   });
 
+  test("a press that dismisses an open bar menu never reaches the canvas", () => {
+    const { container } = renderEditor();
+    fireEvent.pointerDown(catcher(container), pointer(450, 150));
+    fireEvent.pointerUp(window, pointer(450, 150));
+    const frameLeft = () =>
+      container.querySelector<HTMLElement>("[data-selection-frame]")?.style.left;
+    const before = frameLeft();
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+
+    // Radix marks a modal menu open by turning pointer events off on <body>; the stage turns its
+    // own back on, so the click that closes the menu would otherwise land on the slide.
+    const menu = document.createElement("div");
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("data-state", "open");
+    document.body.append(menu);
+    document.body.style.pointerEvents = "none";
+    try {
+      fireEvent.pointerDown(catcher(container), pointer(150, 150));
+      fireEvent.pointerUp(window, pointer(150, 150));
+      expect(frameLeft()).toBe(before);
+      fireEvent.pointerDown(catcher(container), pointer(50, 50));
+      fireEvent.pointerUp(window, pointer(50, 50));
+      expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+    } finally {
+      document.body.style.pointerEvents = "";
+      menu.remove();
+    }
+
+    // With the menu gone the same presses select and clear as usual.
+    fireEvent.pointerDown(catcher(container), pointer(150, 150));
+    fireEvent.pointerUp(window, pointer(150, 150));
+    expect(frameLeft()).not.toBe(before);
+    fireEvent.pointerDown(catcher(container), pointer(50, 50));
+    fireEvent.pointerUp(window, pointer(50, 50));
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(0);
+  });
+
   test("row 8: ↑×5 nudges by 5 in one undo step; Shift+↑ nudges by 10", async () => {
     const { container, read } = renderEditor();
     fireEvent.pointerDown(catcher(container), pointer(150, 150));

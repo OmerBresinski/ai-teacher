@@ -109,6 +109,14 @@ export type MarginHandle = { pointerDown: (e: ReactPointerEvent) => void };
 const sameIds = (a: readonly Id[], b: readonly Id[]) =>
   a.length === b.length && a.every((id, i) => id === b[i]);
 
+/**
+ * True while a modal Radix layer (a bar menu, a popover) is open. Radix turns `pointer-events`
+ * off on `<body>` for the duration, but this layer turns its own back on, so a press meant to
+ * dismiss the menu — a second click on the Align trigger — passed through the bar and landed on
+ * the element under it, changing the selection. That press belongs to the layer being dismissed.
+ */
+const underModalLayer = () => document.body.style.pointerEvents === "none";
+
 export function SelectionLayer({
   slide,
   theme,
@@ -544,7 +552,7 @@ export function SelectionLayer({
 
   // The canvas margin has no elements to hit, so a press there is always ground.
   const onMarginDown = (e: ReactPointerEvent) => {
-    if (e.button !== 0 || disabled) return;
+    if (e.button !== 0 || disabled || underModalLayer()) return;
     const session = readSession();
     measureStage();
     focusStage();
@@ -556,7 +564,7 @@ export function SelectionLayer({
 
   const onStageDown = (e: ReactPointerEvent) => {
     // While the canvas pans (Space held) the press belongs to the scroller, not to the elements.
-    if (e.button !== 0 || disabled) return;
+    if (e.button !== 0 || disabled || underModalLayer()) return;
     const session = readSession();
     measureStage();
     focusStage();
@@ -647,7 +655,7 @@ export function SelectionLayer({
 
   const onHandleDown = (handle: HandleId, e: ReactPointerEvent) => {
     // While panning the press must reach the canvas's pan handler, so do not stop it here.
-    if (disabled) return;
+    if (disabled || underModalLayer()) return;
     e.stopPropagation();
     if (e.button !== 0) return;
     const ids = unlockedSelection();
@@ -672,7 +680,7 @@ export function SelectionLayer({
   };
 
   const onRotateDown = (_corner: HandleId, e: ReactPointerEvent) => {
-    if (disabled) return;
+    if (disabled || underModalLayer()) return;
     e.stopPropagation();
     if (e.button !== 0) return;
     const ids = unlockedSelection();
