@@ -294,6 +294,147 @@ describe("MultiToolbar (row 4)", () => {
   });
 });
 
+/**
+ * TEACH-175: two rectangles with different fills, a star, an image and a text at known spots, so
+ * every pair in the acceptance table is two clicks away.
+ */
+function multiLesson(): Lesson {
+  const lesson = seededLesson();
+  const first = lesson.slides[0];
+  if (!first) throw new Error("seed");
+  const at = <T extends SlideElement>(el: T, x: number, y: number): T => ({
+    ...el,
+    x,
+    y,
+    w: 100,
+    h: 60,
+  });
+  first.elements = [
+    { ...at(makeShape("rect", theme), 100, 100), fill: theme.colors.correct },
+    { ...at(makeShape("rect", theme), 300, 100), fill: theme.colors.incorrect },
+    at(makeShape("star", theme), 500, 100),
+    {
+      ...at(makeShape("ellipse", theme), 100, 300),
+      type: "image",
+      src: "data:,",
+      fit: "contain",
+    } as SlideElement,
+    at(makeText("body", theme), 300, 300),
+  ];
+  return lesson;
+}
+
+describe("MultiToolbar shared controls (TEACH-175)", () => {
+  const selectPair = (container: HTMLElement, a: [number, number], b: [number, number]) => {
+    clickAt(container, a[0], a[1]);
+    clickAt(container, b[0], b[1], { shiftKey: true });
+    return toolbar("Selection");
+  };
+  const RECT_A: [number, number] = [150, 130];
+  const RECT_B: [number, number] = [350, 130];
+  const STAR: [number, number] = [550, 130];
+  const IMAGE: [number, number] = [150, 330];
+  const TEXT: [number, number] = [350, 330];
+
+  test("row 1: two rects with different fills show Fill as mixed; a pick writes both, one undo restores both", async () => {
+    const { container, read } = renderEditor(multiLesson());
+    const bar = selectPair(container, RECT_A, RECT_B);
+    const fill = within(bar).getByRole("button", { name: "Fill, mixed" });
+    // The swatch shows the two fills it disagrees between, one per half.
+    const swatchStyle = fill.querySelector("span")?.style.backgroundImage ?? "";
+    expect(swatchStyle).toContain(theme.colors.correct);
+    expect(swatchStyle).toContain(theme.colors.incorrect);
+    expect(within(bar).getByRole("button", { name: "Border" })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: /^Border width/ })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: /^Corners/ })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: /^Opacity/ })).toBeInTheDocument();
+    for (const name of ["Align", "Distribute", "Group", "More"]) {
+      expect(within(bar).getByRole("button", { name: new RegExp(`^${name}`) })).toBeInTheDocument();
+    }
+
+    fireEvent.click(fill);
+    // The theme grid first; an earlier pick may have put the same colour among the recents.
+    const [swatch] = await screen.findAllByRole("button", { name: theme.colors.accent });
+    fireEvent.click(swatch as HTMLElement);
+    const fills = () => [0, 1].map((i) => (first(read(), i) as ShapeElement).fill);
+    expect(fills()).toEqual([theme.colors.accent, theme.colors.accent]);
+    expect(within(toolbar("Selection")).getByRole("button", { name: "Fill" })).toBeInTheDocument();
+
+    await idle();
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(fills()).toEqual([theme.colors.correct, theme.colors.incorrect]);
+  });
+
+  test("row 2: a rect and a star share Fill, Border and Border width but not Corners; width 4 writes both", async () => {
+    const { container, read } = renderEditor(multiLesson());
+    const bar = selectPair(container, RECT_A, STAR);
+    expect(within(bar).getByRole("button", { name: "Fill, mixed" })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "Border" })).toBeInTheDocument();
+    expect(within(bar).queryByRole("button", { name: /^Corners/ })).toBeNull();
+    openMenu(within(bar).getByRole("button", { name: "Border width, 0" }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "4" }));
+    for (const i of [0, 2]) {
+      expect(first(read(), i)).toMatchObject({ strokeWidth: 4, stroke: theme.colors.ink });
+    }
+  });
+
+  test("row 3: a rect and an image share Corners and Opacity, not Fill; corners 12 writes both radii", async () => {
+    const { container, read } = renderEditor(multiLesson());
+    const bar = selectPair(container, RECT_A, IMAGE);
+    expect(within(bar).queryByRole("button", { name: /^Fill/ })).toBeNull();
+    expect(within(bar).queryByRole("button", { name: /^Border/ })).toBeNull();
+    expect(within(bar).getByRole("button", { name: /^Opacity/ })).toBeInTheDocument();
+    openMenu(within(bar).getByRole("button", { name: "Corners, 0" }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "12" }));
+    expect(first(read(), 0)).toMatchObject({ radius: 12 });
+    expect(first(read(), 3)).toMatchObject({ type: "image", radius: 12 });
+  });
+
+  test("a star and an image share no Corners: the star's kind has none to round", () => {
+    const { container } = renderEditor(multiLesson());
+    const bar = selectPair(container, STAR, IMAGE);
+    expect(within(bar).queryByRole("button", { name: /^Corners/ })).toBeNull();
+    expect(within(bar).queryByRole("button", { name: /^Fill/ })).toBeNull();
+    expect(within(bar).getByRole("button", { name: /^Opacity/ })).toBeInTheDocument();
+  });
+
+  test("row 4: a rect and a text share Corners only; corners 8 writes radius and style.radius", async () => {
+    const { container, read } = renderEditor(multiLesson());
+    const bar = selectPair(container, RECT_A, TEXT);
+    expect(within(bar).queryByRole("button", { name: /^Fill/ })).toBeNull();
+    expect(within(bar).getByRole("button", { name: /^Opacity/ })).toBeInTheDocument();
+    openMenu(within(bar).getByRole("button", { name: "Corners, 0" }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "8" }));
+    expect(first(read(), 0)).toMatchObject({ radius: 8 });
+    expect((first(read(), 4) as { style: { radius?: number } }).style.radius).toBe(8);
+    // Now they agree, the trigger reads the common value.
+    expect(
+      within(toolbar("Selection")).getByRole("button", { name: "Corners, 8" }),
+    ).toBeInTheDocument();
+  });
+
+  test("row 5: the count label never wraps", () => {
+    const { container } = renderEditor(multiLesson());
+    const bar = selectPair(container, RECT_A, RECT_B);
+    const count = bar.querySelector("[data-selection-count]");
+    expect(count).toHaveTextContent("2 selected");
+    expect(count?.className).toContain("whitespace-nowrap");
+  });
+
+  test("a selected group's bar shows Ungroup; clicking it selects the former children", () => {
+    const { container, read } = renderEditor(multiLesson());
+    const bar = selectPair(container, RECT_A, RECT_B);
+    fireEvent.click(within(bar).getByRole("button", { name: "Group" }));
+    const group = toolbar("Element");
+    const ungroup = within(group).getByRole("button", { name: "Ungroup" });
+    fireEvent.click(ungroup);
+    const els = read().slides[0]?.elements ?? [];
+    expect(els.some((e) => e.type === "group")).toBe(false);
+    expect(els).toHaveLength(5);
+    expect(toolbar("Selection")).toHaveTextContent("2 selected");
+  });
+});
+
 describe("SlideToolbar (rows 5, 6)", () => {
   test("layout menu lists every kind; converting re-applies the recipe after confirming", async () => {
     const { read } = renderEditor(chromeLesson());

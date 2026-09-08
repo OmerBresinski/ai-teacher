@@ -18,6 +18,13 @@ const CHECKER =
   "linear-gradient(45deg, transparent 75%, var(--border) 75%), " +
   "linear-gradient(-45deg, transparent 75%, var(--border) 75%)";
 
+/**
+ * Two halves on the diagonal: the "mixed" swatch for a multi-selection that disagrees, showing the
+ * first two colours it disagrees between — or a neutral split when it has fewer than two.
+ */
+const split = (pair?: [string, string]) =>
+  `linear-gradient(135deg, ${pair?.[0] ?? "var(--foreground)"} 50%, ${pair?.[1] ?? "var(--border-strong)"} 50%)`;
+
 /** Square is the picker grid; circle and ring are the toolbar's fill and border triggers. */
 export type SwatchShape = "square" | "circle" | "ring";
 
@@ -25,6 +32,10 @@ export type ColorSwatchProps = {
   color: string;
   /** Default "square". A ring draws the colour as a 3px band around an empty centre. */
   shape?: SwatchShape;
+  /** The selection disagrees: a split swatch of `mixedColors` (neutral without them). */
+  mixed?: boolean;
+  /** The first two distinct colours the selection disagrees between. */
+  mixedColors?: [string, string];
   /** Default 24. */
   size?: number;
   selected?: boolean;
@@ -41,6 +52,8 @@ export type ColorSwatchProps = {
 export function ColorSwatch({
   color,
   shape = "square",
+  mixed = false,
+  mixedColors,
   size = SWATCH,
   selected,
   title,
@@ -48,8 +61,10 @@ export function ColorSwatch({
   onClick,
   ref,
 }: ColorSwatchProps) {
-  const isTransparent = !color || color === "transparent";
+  const isTransparent = !mixed && (!color || color === "transparent");
   const ring = shape === "ring";
+  // A mixed ring shows the split through a transparent band, its centre painted back over.
+  const band = mixed ? "transparent" : isTransparent ? "transparent" : color;
   const classes = cn(
     "inline-block shrink-0",
     shape === "square" ? "rounded-key" : "rounded-full",
@@ -60,13 +75,15 @@ export function ColorSwatch({
   const style = {
     width: size,
     height: size,
-    background: isTransparent || ring ? undefined : color,
-    backgroundImage: isTransparent ? CHECKER : undefined,
+    background: isTransparent || ring || mixed ? undefined : color,
+    backgroundImage: mixed ? split(mixedColors) : isTransparent ? CHECKER : undefined,
     backgroundSize: isTransparent ? "6px 6px" : undefined,
     backgroundPosition: isTransparent ? "0 0, 0 3px, 3px -3px, -3px 0px" : undefined,
     // Hairline, 3px colour band, hairline: the border swatch reads as a border.
     boxShadow: ring
-      ? `inset 0 0 0 1px var(--border-strong), inset 0 0 0 4px ${isTransparent ? "transparent" : color}, inset 0 0 0 5px var(--border-strong)`
+      ? `inset 0 0 0 1px var(--border-strong), inset 0 0 0 4px ${band}, inset 0 0 0 5px var(--border-strong)${
+          mixed ? `, inset 0 0 0 ${size}px var(--card)` : ""
+        }`
       : undefined,
   };
 
@@ -144,6 +161,10 @@ export type ColorPickerProps = {
   label?: string;
   /** Also show `label` as a tooltip on the trigger (needs a TooltipProvider above). */
   tooltip?: boolean;
+  /** The selected elements disagree: a mixed swatch, no palette mark, an empty hex field. */
+  mixed?: boolean;
+  /** The first two colours they disagree between, drawn as the mixed swatch's two halves. */
+  mixedColors?: [string, string];
   disabled?: boolean;
   className?: string;
 };
@@ -156,6 +177,8 @@ export function ColorPicker({
   swatch = "square",
   label = "Colour",
   tooltip = false,
+  mixed = false,
+  mixedColors,
   disabled = false,
   className,
 }: ColorPickerProps) {
@@ -195,7 +218,7 @@ export function ColorPicker({
       open={open}
       onOpenChange={(next) => {
         if (next) {
-          setHexDraft(value);
+          setHexDraft(mixed ? "" : value);
           setRecents(readRecents());
         }
         setOpen(next);
@@ -206,7 +229,7 @@ export function ColorPicker({
           <button
             type="button"
             disabled={disabled}
-            aria-label={label}
+            aria-label={mixed ? `${label}, mixed` : label}
             data-color-picker
             className={cn(
               "inline-flex size-8 items-center justify-center rounded-control outline-none",
@@ -216,7 +239,14 @@ export function ColorPicker({
               className,
             )}
           >
-            <ColorSwatch color={value} size={size} title={value} shape={swatch} />
+            <ColorSwatch
+              color={value}
+              size={size}
+              title={mixed ? "Mixed" : value}
+              shape={swatch}
+              mixed={mixed}
+              mixedColors={mixedColors}
+            />
           </button>
         </PopoverTrigger>
       </TriggerWrap>
@@ -231,7 +261,7 @@ export function ColorPicker({
                     key={c}
                     color={c}
                     title={c}
-                    selected={c.toLowerCase() === value.toLowerCase()}
+                    selected={!mixed && c.toLowerCase() === value.toLowerCase()}
                     onClick={() => pick(c)}
                   />
                 ))}
@@ -248,7 +278,7 @@ export function ColorPicker({
                     key={c}
                     color={c}
                     title={c}
-                    selected={c.toLowerCase() === value.toLowerCase()}
+                    selected={!mixed && c.toLowerCase() === value.toLowerCase()}
                     onClick={() => pick(c)}
                   />
                 ))}

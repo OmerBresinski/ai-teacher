@@ -1,10 +1,11 @@
-import type { SlideElement } from "@tj/domain/documents";
+import type { ShapeElement, SlideElement, Theme } from "@tj/domain/documents";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  Tooltip,
 } from "@tj/ui";
 import {
   AlignCenterHorizontal,
@@ -19,13 +20,29 @@ import {
   MoveVertical,
 } from "lucide-react";
 import { memo } from "react";
+import { ColorPicker } from "../../kit/Color";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
 import type { Align } from "../../model/reducers/arrange";
-import { useHistory } from "../document-context";
+import { hint } from "../keys";
 import { useSessionActions } from "../use-editor-session";
 import { MoreDrawer } from "./MoreDrawer";
-import { BarButton, ICON, ICON_SM, OpacityControl } from "./shared";
+import {
+  BarButton,
+  BorderWidthMenu,
+  borderWidthOf,
+  CornersMenu,
+  commonValue,
+  firstTwoDistinct,
+  hasCorners,
+  ICON,
+  ICON_SM,
+  OpacityControl,
+  radiusOf,
+  setRadiusOn,
+  useElementWrites,
+  useThemePalette,
+} from "./shared";
 
 const ALIGNMENTS: { id: Align; label: string; icon: typeof AlignStartVertical }[] = [
   { id: "left", label: "Align left", icon: AlignStartVertical },
@@ -36,24 +53,94 @@ const ALIGNMENTS: { id: Align; label: string; icon: typeof AlignStartVertical }[
   { id: "bottom", label: "Align bottom", icon: AlignEndHorizontal },
 ];
 
-/** Align, distribute, group (TeachDeck `MultiToolbar`). */
+const isShape = (el: SlideElement): el is ShapeElement => el.type === "shape";
+
+/**
+ * Every control the selection shares, then align, distribute, group (TeachDeck `MultiToolbar`;
+ * TEACH-175). All shapes → Fill, Border, Border width, and Corners when every one has corners to
+ * round; any mix of image, text and cornered shape → Corners alone; always Opacity. Each control reads the
+ * common value, or "mixed" when the elements disagree, and each write reaches every element in one
+ * undo step.
+ */
 export const MultiToolbar = memo(function MultiToolbar({
   elements,
+  theme,
   slideId,
 }: {
   elements: SlideElement[];
+  theme: Theme;
   slideId: string;
 }) {
-  const history = useHistory();
+  const { history, updateMany } = useElementWrites(slideId);
   const { select } = useSessionActions();
+  const palette = useThemePalette(theme);
   const ids = elements.map((e) => e.id);
+
+  const shapes = elements.every(isShape) ? elements : null;
+  // Corners: every element has corners to round (a star does not, whatever it sits next to).
+  const cornered = elements.every(hasCorners);
+
+  const fills = shapes?.map((s) => s.fill ?? theme.colors.accent2);
+  const strokes = shapes?.map((s) => s.stroke ?? theme.colors.ink);
+  const fill = fills && commonValue(fills);
+  const stroke = strokes && commonValue(strokes);
+  const width = shapes && commonValue(shapes.map(borderWidthOf));
+  const radius = commonValue(elements.map((el) => radiusOf(el, theme)));
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Selection" data-multi-toolbar>
-      <span data-tabular className="px-1.5 text-ink-3 text-meta">
+      <span
+        data-tabular
+        data-selection-count
+        className="whitespace-nowrap px-1.5 text-ink-3 text-meta"
+      >
         {elements.length} selected
       </span>
       <PanelSeparator />
+
+      {shapes ? (
+        <>
+          <ColorPicker
+            label="Fill"
+            swatch="circle"
+            tooltip
+            value={fill?.value ?? theme.colors.accent2}
+            mixed={fill?.mixed}
+            mixedColors={fills && firstTwoDistinct(fills)}
+            palette={palette}
+            onChange={(fill) => updateMany(ids, { fill })}
+          />
+          <ColorPicker
+            label="Border"
+            swatch="ring"
+            tooltip
+            value={stroke?.value ?? theme.colors.ink}
+            mixed={stroke?.mixed}
+            mixedColors={strokes && firstTwoDistinct(strokes)}
+            palette={palette}
+            onChange={(stroke) => updateMany(ids, { stroke })}
+          />
+          <BorderWidthMenu
+            value={width?.mixed ? null : (width?.value ?? 0)}
+            // A width with no colour would draw nothing: seed the theme ink where it is missing.
+            onPick={(strokeWidth) =>
+              updateMany(ids, (draft) => {
+                if (draft.type !== "shape") return;
+                draft.strokeWidth = strokeWidth;
+                if (!draft.stroke && strokeWidth > 0) draft.stroke = theme.colors.ink;
+              })
+            }
+          />
+        </>
+      ) : null}
+      {cornered ? (
+        <CornersMenu
+          value={radius.mixed ? null : (radius.value ?? 0)}
+          onPick={(r) => updateMany(ids, (draft) => setRadiusOn(draft, r))}
+        />
+      ) : null}
+      {shapes || cornered ? <PanelSeparator /> : null}
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <BarButton>
@@ -97,18 +184,21 @@ export const MultiToolbar = memo(function MultiToolbar({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <IconButton
-        label="Group"
-        onClick={() => {
-          const made = history.dispatch(reducers.group, slideId, ids);
-          if (made?.id) select([made.id]);
-        }}
-      >
-        <Group aria-hidden {...ICON} />
-      </IconButton>
+      <Tooltip label="Group" shortcut={hint("$mod+g")}>
+        <IconButton
+          label="Group"
+          noTooltip
+          onClick={() => {
+            const made = history.dispatch(reducers.group, slideId, ids);
+            if (made?.id) select([made.id]);
+          }}
+        >
+          <Group aria-hidden {...ICON} />
+        </IconButton>
+      </Tooltip>
       <OpacityControl slideId={slideId} elements={elements} />
       <PanelSeparator />
-      <MoreDrawer slideId={slideId} elements={elements} />
+      <MoreDrawer slideId={slideId} elements={elements} theme={theme} />
     </Panel>
   );
 });

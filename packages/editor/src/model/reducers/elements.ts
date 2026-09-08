@@ -60,6 +60,12 @@ const addAbove = (lesson: Lesson, copies: SlideElement[], sourceIds: Id[], slide
 
 export type ElementPatch<T extends SlideElement = SlideElement> = Partial<T> | ((el: T) => void);
 
+/** Apply a patch to an immer draft: a mutator runs on it, an object is assigned over it. */
+const applyPatch = <T extends SlideElement>(el: SlideElement, patch: ElementPatch<T>) => {
+  if (typeof patch === "function") patch(el as T);
+  else Object.assign(el, patch);
+};
+
 /** Patch by object or by a mutator run on the immer draft. Reaches into a group's children. */
 export const updateElement = <T extends SlideElement>(
   lesson: Lesson,
@@ -69,21 +75,20 @@ export const updateElement = <T extends SlideElement>(
 ): Lesson =>
   editSlide(lesson, slideId, (s) => {
     const el = findElement(s, id);
-    if (!el) return;
-    if (typeof patch === "function") patch(el as T);
-    else Object.assign(el, patch);
+    if (el) applyPatch(el, patch);
   });
 
+/** The same patch on every id in one step — an object, or a mutator run on each draft. */
 export const updateElements = (
   lesson: Lesson,
   slideId: Id,
   ids: Id[],
-  patch: Partial<SlideElement>,
+  patch: ElementPatch,
 ): Lesson =>
   editSlide(lesson, slideId, (s) => {
     for (const id of ids) {
       const el = findElement(s, id);
-      if (el) Object.assign(el, patch);
+      if (el) applyPatch(el, patch);
     }
   });
 
