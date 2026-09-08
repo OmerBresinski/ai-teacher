@@ -19,7 +19,7 @@ import {
   SLIDE_KIND_LABELS,
   totalMinutes,
 } from "@/lib/plan-review";
-import { AddRowButton, arrive, markOf, useArrivalFocus } from "./shared";
+import { AddRowButton, arrive, markOf, useArrivalFocus, useArriveSettled } from "./shared";
 
 /** Row pitch for the drag hook: a 48px row plus the 8px gap. */
 const ROW_HEIGHT = 56;
@@ -33,6 +33,7 @@ export function ShapeStep({
 }) {
   const first = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   useArrivalFocus(first);
+  const settled = useArriveSettled();
   const total = totalMinutes(state);
   const planned = state.base.durationMin;
   const { drag, listRef, gripProps } = useRowDrag({
@@ -58,7 +59,6 @@ export function ShapeStep({
 
   return (
     <QuestionShell
-      eyebrow="2 of 5"
       question="Does the shape of the lesson look right?"
       help="Each row is one slide. Drag the handle or use Alt and an arrow key to move a phase; change the minutes with the stepper."
     >
@@ -111,9 +111,9 @@ export function ShapeStep({
                   : undefined
               }
               removeLabel={`Remove ${SLIDE_KIND_LABELS[phase.kind]}`}
-              {...arrive(i)}
+              {...arrive(i, settled)}
               style={{
-                ...arrive(i).style,
+                ...arrive(i, settled).style,
                 opacity: drag.from === i ? 0.4 : undefined,
               }}
             />

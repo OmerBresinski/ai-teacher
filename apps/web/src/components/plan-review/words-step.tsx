@@ -1,7 +1,7 @@
 import { EditableListRow, QuestionShell } from "@tj/ui";
 import { type Dispatch, useRef } from "react";
 import { type PlanReviewAction, type PlanReviewState, VOCABULARY_MAX } from "@/lib/plan-review";
-import { AddRowButton, arrive, markOf, useArrivalFocus } from "./shared";
+import { AddRowButton, arrive, markOf, useArrivalFocus, useArriveSettled } from "./shared";
 
 export function WordsStep({
   state,
@@ -12,9 +12,9 @@ export function WordsStep({
 }) {
   const first = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   useArrivalFocus(first);
+  const settled = useArriveSettled();
   return (
     <QuestionShell
-      eyebrow="3 of 5"
       question="Which words will they need?"
       help="Each word gets a definition in their language. Up to six; the vocabulary slide and the word bank follow."
     >
@@ -40,7 +40,7 @@ export function WordsStep({
             }}
             onRemove={() => dispatch({ type: "removeVocabulary", id: item.id })}
             removeLabel={`Remove term ${i + 1}`}
-            {...arrive(i)}
+            {...arrive(i, settled)}
           />
         ))}
       </ol>
