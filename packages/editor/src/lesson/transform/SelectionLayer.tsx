@@ -62,7 +62,13 @@ import {
 } from "./gesture-state";
 import { HoverOutline } from "./HoverOutline";
 import { boxesOf, type ElementBox, hitsBox, marqueeHits } from "./hit-test";
-import { AngleLabel, Marquee, MemberOutlines, VISUALLY_HIDDEN } from "./overlays";
+import {
+  AngleLabel,
+  CandidateOutlines,
+  Marquee,
+  MemberOutlines,
+  VISUALLY_HIDDEN,
+} from "./overlays";
 import { SelectionFrame } from "./SelectionFrame";
 
 /*
@@ -100,6 +106,9 @@ export type SelectionLayerProps = {
 
 export type MarginHandle = { pointerDown: (e: ReactPointerEvent) => void };
 
+const sameIds = (a: readonly Id[], b: readonly Id[]) =>
+  a.length === b.length && a.every((id, i) => id === b[i]);
+
 export function SelectionLayer({
   slide,
   theme,
@@ -124,6 +133,8 @@ export function SelectionLayer({
   const [coarse, setCoarse] = useState(false);
   const [hoverId, setHoverId] = useState<Id | null>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
+  /** What the marquee touches right now, outlined live; `commit` selects the same set. */
+  const [candidates, setCandidates] = useState<Id[]>([]);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [angleLabel, setAngleLabel] = useState<number | null>(null);
   const [cursor, setCursor] = useState<CSSProperties["cursor"]>("default");
@@ -340,12 +351,16 @@ export function SelectionLayer({
       setAngleLabel(out.label);
     } else if (g.kind === "marquee") {
       const p = toSlide(s.x, s.y);
-      setMarquee({
+      const m = {
         x: Math.min(p.x, g.origin.x),
         y: Math.min(p.y, g.origin.y),
         w: Math.abs(p.x - g.origin.x),
         h: Math.abs(p.y - g.origin.y),
-      });
+      };
+      setMarquee(m);
+      // Same hits `commit` will select, so the preview never promises more than the release gives.
+      const hits = m.w > 1 || m.h > 1 ? marqueeHits(boxesRef.current, m) : [];
+      setCandidates((prev) => (sameIds(prev, hits) ? prev : hits));
     }
   }, [actions, history, publish, readSession, slide.id, toSlide]);
 
@@ -358,7 +373,7 @@ export function SelectionLayer({
   /**
    * The one place the document is written by a pointer gesture: everything the preview showed is
    * dispatched inside one transaction (the drag's is already open — `reset` closes it). A marquee
-   * selects what it enclosed.
+   * selects what it touched.
    */
   const commit = useCallback(
     (g: Gesture) => {
@@ -404,6 +419,7 @@ export function SelectionLayer({
     raf.current = 0;
     publish(null);
     setMarquee(null);
+    setCandidates([]);
     setGuides([]);
     setAngleLabel(null);
   }, [history, publish, releasePointer]);
@@ -810,6 +826,12 @@ export function SelectionLayer({
       ) : null}
 
       {showGuides ? <Guides guides={guides} scale={scale} /> : null}
+      {marquee && candidates.length > 0 ? (
+        <CandidateOutlines
+          boxes={boxesRef.current.filter((b) => candidates.includes(b.id))}
+          scale={scale}
+        />
+      ) : null}
       {marquee ? <Marquee rect={marquee} scale={scale} /> : null}
       {angleLabel !== null && selectionBounds ? (
         <AngleLabel bounds={selectionBounds} angle={angleLabel} scale={scale} />

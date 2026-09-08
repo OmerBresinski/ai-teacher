@@ -2,7 +2,6 @@ import { type Id, SLIDE_H, SLIDE_W, type SlideElement } from "@tj/domain/documen
 import {
   centre,
   clamp,
-  contains,
   type Point,
   type Rect,
   rectOf,
@@ -54,9 +53,20 @@ export function hitTest(boxes: ElementBox[], p: Point, slop = 0): ElementBox | n
   return null;
 }
 
-/** Fully-enclosed marquee selection (Canva / Slides / Keynote behaviour). */
+/** Axis-aligned rects that share some area; a shared edge alone does not count. */
+export function intersects(a: Rect, b: Rect): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+/**
+ * Marquee selection: every element the marquee touches, by its rotated bounding box (Chalkie,
+ * Slides, Figma and Keynote all select on intersection; owner ruling, 8 Sept 2026). Locked
+ * elements are included, as they are by a click.
+ */
 export function marqueeHits(boxes: ElementBox[], marquee: Rect): Id[] {
-  return boxes.filter((b) => contains(marquee, rotatedBounds(b.rect, b.rotation))).map((b) => b.id);
+  return boxes
+    .filter((b) => intersects(marquee, rotatedBounds(b.rect, b.rotation)))
+    .map((b) => b.id);
 }
 
 /** Axis-aligned bounds of a set of boxes, each already rotated. */
