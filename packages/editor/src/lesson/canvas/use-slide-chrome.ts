@@ -120,6 +120,19 @@ export function useSlideChrome({
     [],
   );
 
+  // A bar in the band can change width without the frame moving (the toolbar swaps with the
+  // selection), so each floating child is watched as well as the window.
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const watched = avoidRefs
+      .map((ref) => ref.current?.firstElementChild)
+      .filter((el): el is Element => !!el);
+    if (watched.length === 0) return;
+    const observer = new ResizeObserver(schedule);
+    for (const el of watched) observer.observe(el);
+    return () => observer.disconnect();
+  }, [avoidRefs, schedule]);
+
   useEffect(() => {
     const onScroll = (e: Event) => {
       const t = e.target;
