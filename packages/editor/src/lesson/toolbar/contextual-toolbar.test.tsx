@@ -376,6 +376,10 @@ describe("MultiToolbar shared controls (TEACH-175)", () => {
     const { container, read } = renderEditor(multiLesson());
     const bar = selectPair(container, RECT_A, RECT_B);
     const fill = within(bar).getByRole("button", { name: "Fill, mixed" });
+    // The swatch shows the two fills it disagrees between, one per half.
+    const swatchStyle = fill.querySelector("span")?.style.backgroundImage ?? "";
+    expect(swatchStyle).toContain(theme.colors.correct);
+    expect(swatchStyle).toContain(theme.colors.incorrect);
     expect(within(bar).getByRole("button", { name: "Border" })).toBeInTheDocument();
     expect(within(bar).getByRole("button", { name: /^Border width/ })).toBeInTheDocument();
     expect(within(bar).getByRole("button", { name: /^Corners/ })).toBeInTheDocument();
