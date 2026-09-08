@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Page, Route } from "@playwright/test";
-import { expect, type SeededPaths, test } from "./fixtures";
+import { addedElement, elementIds, expect, type SeededPaths, test } from "./fixtures";
 
 /*
  * Images in the lesson editor (TEACH-107 rows 2–7, 9): upload, paste and drop land a downscaled
@@ -94,6 +94,7 @@ test.describe("editor images", () => {
     await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
+    const before = await elementIds(page);
 
     // `i` only opens the panel while the canvas has focus; click the gutter first.
     await page.getByRole("group", { name: "Slide canvas" }).click({ position: { x: 5, y: 5 } });
@@ -106,7 +107,7 @@ test.describe("editor images", () => {
     await expect(elements(page)).toHaveCount(count + 1);
     await expect(panel(page)).toHaveCount(0);
     await expect(page.getByRole("toolbar", { name: "Image" })).toBeVisible();
-    const added = elements(page).last();
+    const added = addedElement(page, before);
     await expectInlined(added.locator("img"));
     const box = await added.boundingBox();
     const slide = await page.locator("[data-slide-frame]").boundingBox();
@@ -128,6 +129,7 @@ test.describe("editor images", () => {
     await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
+    const before = await elementIds(page);
     await page.getByRole("group", { name: "Slide canvas" }).click({ position: { x: 5, y: 5 } });
     await page.evaluate((bytes) => {
       const file = new File([new Uint8Array(bytes)], "paste.png", { type: "image/png" });
@@ -136,7 +138,7 @@ test.describe("editor images", () => {
       window.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true }));
     }, Array.from(PNG));
     await expect(elements(page)).toHaveCount(count + 1);
-    const added = elements(page).last();
+    const added = addedElement(page, before);
     await expectInlined(added.locator("img"));
     const box = await added.boundingBox();
     const slide = await page.locator("[data-slide-frame]").boundingBox();
@@ -150,6 +152,7 @@ test.describe("editor images", () => {
     await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
+    const before = await elementIds(page);
     const slide = await page.locator("[data-slide-frame]").boundingBox();
     if (!slide) throw new Error("no layout");
     // 10px inside the top-left corner: the centred frame would overhang and must be clamped.
@@ -175,7 +178,7 @@ test.describe("editor images", () => {
       { bytes: Array.from(PNG), at },
     );
     await expect(elements(page)).toHaveCount(count + 1);
-    const added = elements(page).last();
+    const added = addedElement(page, before);
     await expectInlined(added.locator("img"));
     const box = await added.boundingBox();
     if (!box) throw new Error("no layout");
@@ -193,6 +196,7 @@ test.describe("editor images", () => {
     await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
+    const before = await elementIds(page);
 
     await openPhotos(page, "river");
     const tile = panel(page).getByRole("button", { name: "River bend by Ada Lovelace, CC BY 2.0" });
@@ -210,7 +214,7 @@ test.describe("editor images", () => {
     await tile.click();
     await expect(elements(page)).toHaveCount(count + 1);
     await expect(panel(page)).toHaveCount(0);
-    const inlined = elements(page).last();
+    const inlined = addedElement(page, before);
     await expect(inlined.locator("img")).toHaveAttribute("src", /^data:image\/svg\+xml/);
     await expect(inlined.locator("img")).toHaveAttribute("alt", "River bend");
     await page
@@ -223,10 +227,11 @@ test.describe("editor images", () => {
     await page.keyboard.press("Escape");
 
     // Row 7: the host refuses CORS → the remote URL, and the toast says exports will not carry it.
+    const beforeDelta = await elementIds(page);
     await openPhotos(page, "river");
     await panel(page).getByRole("button", { name: "Delta by Ada Lovelace, CC BY 2.0" }).click();
     await expect(elements(page)).toHaveCount(count + 2);
-    await expect(elements(page).last().locator("img")).toHaveAttribute(
+    await expect(addedElement(page, beforeDelta).locator("img")).toHaveAttribute(
       "src",
       "https://nocors.test/delta.png",
     );
@@ -266,14 +271,15 @@ test.describe("editor images", () => {
     await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
+    const before = await elementIds(page);
 
     // Start from an uploaded image so the element exists.
     await rail(page).getByRole("button", { name: "Image" }).click();
     await panel(page).locator('input[type="file"]').setInputFiles(FIXTURE);
     await expect(elements(page)).toHaveCount(count + 1);
-    const target = elements(page).last();
+    const target = addedElement(page, before);
     const id = await target.getAttribute("data-element-id");
-    const before = await target.boundingBox();
+    const box = await target.boundingBox();
     const oldSrc = await target.locator("img").getAttribute("src");
 
     await page
@@ -296,10 +302,10 @@ test.describe("editor images", () => {
     expect(newSrc).not.toBe(oldSrc);
     expect(newSrc?.startsWith("data:image/")).toBe(true);
     const frame = await after.boundingBox();
-    if (!before || !frame) throw new Error("no layout");
-    expect(Math.abs(frame.x - before.x)).toBeLessThan(1);
-    expect(Math.abs(frame.width - before.width)).toBeLessThan(1);
-    expect(Math.abs(frame.height - before.height)).toBeLessThan(1);
+    if (!box || !frame) throw new Error("no layout");
+    expect(Math.abs(frame.x - box.x)).toBeLessThan(1);
+    expect(Math.abs(frame.width - box.width)).toBeLessThan(1);
+    expect(Math.abs(frame.height - box.height)).toBeLessThan(1);
   });
 
   test("the panel's Photos tab with results (screenshot)", async ({

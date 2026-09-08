@@ -67,6 +67,24 @@ export async function signIn(
   return email;
 }
 
+/** The `data-element-id`s under the slide frame in DOM order (the slide's draw order). */
+export async function elementIds(page: Page): Promise<string[]> {
+  return page
+    .locator("[data-slide-frame] [data-element-id]")
+    .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-element-id") ?? ""));
+}
+
+/**
+ * The slide elements that were not in `before` (a snapshot from `elementIds`). Use it for "the
+ * element just inserted" instead of `.last()`: a non-text element (shape, line, image) enters the
+ * draw order beneath the slide's lowest text-like element (`insertIndex` in
+ * `packages/editor/src/model/reducers/elements.ts`), so it is not the last `[data-element-id]`.
+ */
+export function addedElement(page: Page, before: string[]) {
+  const not = before.map((id) => `:not([data-element-id="${id}"])`).join("");
+  return page.locator(`[data-slide-frame] [data-element-id]${not}`);
+}
+
 export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
