@@ -349,3 +349,175 @@ export const generatedWorksheet = (): Worksheet => ({
   yearGroup: "Year 4",
   lessonId: "gen-water-cycle",
 });
+
+/* ------------------------------------------------------------------ */
+/* Plan review (prototype, `proto/plan-review`)                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `assignFactIds(plan-skeleton.json, plan-facts.json, 60)` from `packages/generation`, copied
+ * here because `@tj/generation` is server-only (its root export pulls Mastra) and the web app
+ * cannot import `specs.ts` directly. Regenerate by running that call if the fixtures change.
+ */
+export const plannedFacts = (): LessonFacts => ({
+  objectives: [
+    {
+      id: "o1",
+      text: "Describe the arrangement and movement of particles in solids, liquids and gases",
+    },
+    { id: "o2", text: "Explain melting, boiling, condensing and freezing as changes of state" },
+    {
+      id: "o3",
+      text: "Use the particle model to predict what happens when a substance is heated or cooled",
+    },
+  ],
+  vocabulary: [
+    {
+      id: "v1",
+      term: "Particle",
+      definition: "A very small piece of a substance, too small to see.",
+    },
+    {
+      id: "v2",
+      term: "Solid",
+      definition: "A state in which particles are packed closely and only vibrate.",
+    },
+    {
+      id: "v3",
+      term: "Liquid",
+      definition: "A state in which particles touch but can move past each other.",
+    },
+    {
+      id: "v4",
+      term: "Gas",
+      definition: "A state in which particles are far apart and move freely.",
+    },
+    {
+      id: "v5",
+      term: "Melting",
+      definition: "The change of state from solid to liquid on heating.",
+    },
+    {
+      id: "v6",
+      term: "Condensing",
+      definition: "The change of state from gas to liquid on cooling.",
+    },
+  ],
+  workedExamples: [
+    {
+      id: "x1",
+      problem: "Why does an ice cube left on a plate turn into a puddle?",
+      steps: [
+        "Room air is warmer than the ice, so energy passes into the ice.",
+        "The particles gain energy and vibrate more strongly.",
+        "They break free of their fixed positions and can slide past each other.",
+      ],
+      answer: "The ice melts: its particles gain energy and it changes from a solid to a liquid.",
+    },
+  ],
+  questions: [
+    {
+      id: "q1",
+      stem: "In which state of matter are the particles furthest apart?",
+      answer: "Gas",
+      reasoning: "Gas particles have large gaps between them and move freely.",
+    },
+    {
+      id: "q2",
+      stem: "What is the change of state from liquid to gas called?",
+      answer: "Boiling (or evaporating)",
+      reasoning: "Particles gain enough energy to escape the liquid as a gas.",
+    },
+    {
+      id: "q3",
+      stem: "True or false: particles in a solid do not move at all.",
+      answer: "False",
+      reasoning: "They vibrate in fixed positions.",
+    },
+    {
+      id: "q4",
+      stem: "Put these in order of increasing particle energy: gas, solid, liquid.",
+      answer: "Solid, liquid, gas",
+      reasoning: "Energy rises from solid through liquid to gas.",
+    },
+  ],
+  misconceptions: [],
+  outline: [
+    { id: "s1", kind: "title", minutes: 2, factRefs: [] },
+    { id: "s2", kind: "objectives", minutes: 3, factRefs: ["o1", "o2", "o3"] },
+    { id: "s3", kind: "starter", minutes: 5, factRefs: ["o1", "q1"] },
+    { id: "s4", kind: "vocabulary", minutes: 8, factRefs: ["o1", "v1", "v2", "v3", "v4"] },
+    { id: "s5", kind: "content", minutes: 7, factRefs: ["o1"] },
+    { id: "s6", kind: "worked-example", minutes: 8, factRefs: ["o2", "x1"] },
+    { id: "s7", kind: "true-false", minutes: 5, factRefs: ["o1", "q3"] },
+    { id: "s8", kind: "multiple-choice", minutes: 7, factRefs: ["o3", "q1"] },
+    { id: "s9", kind: "sort", minutes: 8, factRefs: ["o3", "q4"] },
+    { id: "s10", kind: "exit-ticket", minutes: 7, factRefs: ["o1", "o2", "o3"] },
+  ],
+  durationMin: 60,
+});
+
+/**
+ * A lesson the pipeline has planned but not yet written: the title and objectives slides, the
+ * facts above, its brief, `generation.stage: "planned"` and no lock. What `/l/$lessonId` shows
+ * the plan review for.
+ */
+export const plannedLesson = (): Lesson => ({
+  version: 1,
+  id: "planned-states-of-matter",
+  title: "States of matter",
+  themeId: "chalk",
+  slides: [
+    {
+      id: "s-title",
+      kind: "title",
+      elements: [
+        generatedText("t1", "States of matter", [], { style: { preset: "title" } }),
+        generatedText("t2", "Year 7 · Science", [], { style: { preset: "subtitle" } }),
+      ],
+    },
+    {
+      id: "s-objectives",
+      kind: "objectives",
+      elements: [
+        generatedText("ob-h", "Today we will", [], { style: { preset: "heading" } }),
+        generatedText(
+          "ob-1",
+          "Describe the arrangement and movement of particles in solids, liquids and gases",
+          ["o1"],
+        ),
+        generatedText(
+          "ob-2",
+          "Explain melting, boiling, condensing and freezing as changes of state",
+          ["o2"],
+        ),
+        generatedText(
+          "ob-3",
+          "Use the particle model to predict what happens when a substance is heated or cooled",
+          ["o3"],
+        ),
+      ],
+    },
+  ],
+  createdAt: "2026-09-08T09:00:00.000Z",
+  updatedAt: "2026-09-08T09:00:12.000Z",
+  fitVersion: 2,
+  subject: "Science",
+  ageBand: "ks3",
+  yearGroup: "Year 7",
+  language: "en-GB",
+  brief: {
+    topic: "States of matter and the particle model",
+    durationMin: 60,
+    answers: { objectiveVerb: "Explain states of matter", priorConfidence: "Some prior knowledge" },
+  },
+  facts: plannedFacts(),
+  generation: {
+    jobId: "0192f7a0-0000-7000-8000-0000000000bb",
+    stage: "planned",
+    startedAt: "2026-09-08T09:00:00.000Z",
+    promptVersions: { planned: "plan.v1" },
+    usage: { calls: 2, inputTokens: 3000, outputTokens: 1200, costUsd: 0.03 },
+    findings: [],
+  },
+});
