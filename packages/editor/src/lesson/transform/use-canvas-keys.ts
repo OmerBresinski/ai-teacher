@@ -162,6 +162,8 @@ export function useCanvasKeys({ enabled, lesson, slide }: CanvasKeysOptions): vo
       actions.copy(made.copies);
     };
 
+    // A handler returns true to let the key fall through to the browser; anything else consumes it.
+    // `unknown` rather than `boolean | void`: Biome's noConfusingVoidType refuses the union.
     type Handler = (e: KeyboardEvent) => unknown;
     const bindings: [string, Handler][] = [
       ["ArrowLeft", (e) => nudge(-NUDGE, 0, e.key)],

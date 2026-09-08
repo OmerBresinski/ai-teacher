@@ -21,7 +21,7 @@ function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimi
         "before:absolute before:top-1/2 before:left-1/2 before:h-8 before:w-[52px] before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']",
         "bg-accent-active shadow-[inset_0_0_0_1px_var(--border-control)] hover:bg-accent",
         "data-[state=checked]:bg-primary data-[state=checked]:shadow-none data-[state=checked]:hover:bg-primary-hover",
-        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "focus-visible:shadow-focus",
         "disabled:cursor-not-allowed disabled:opacity-45",
         className,
       )}

@@ -624,6 +624,10 @@
  * two-tone band (2px paper gap, then 2px solid accent) without a class change at the 25 sites,
  * and `var()` resolves on the focused element, so the stage scope's `--focus-gap` is honoured.
  * An invalid control's band takes the danger colour.
+ *
+ * It relies on Tailwind's internal `--tw-ring-offset-shadow` and `--tw-ring-shadow` variables,
+ * verified against tailwindcss 4.3.3 (re-check the band in /kit after a Tailwind bump). The rule goes away once the remaining ring sites in @tj/editor move to
+ * `focus-visible:shadow-focus` (Tech debt ticket linked from TEACH-150).
  */
 :where(:focus-visible) {
   --tw-ring-offset-shadow: 0 0 0 2px var(--focus-gap);

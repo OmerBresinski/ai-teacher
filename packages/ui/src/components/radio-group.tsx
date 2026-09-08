@@ -35,7 +35,7 @@ function RadioGroupItem({
         "relative inline-flex size-[18px] shrink-0 items-center justify-center rounded-full border border-border-control bg-card align-middle outline-none",
         "before:absolute before:top-1/2 before:left-1/2 before:size-8 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']",
         "hover:bg-accent",
-        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "focus-visible:shadow-focus",
         "disabled:cursor-not-allowed disabled:opacity-45",
         "aria-invalid:border-destructive",
         "data-[state=checked]:border-primary data-[state=checked]:bg-primary-fill-aa data-[state=checked]:text-primary-foreground data-[state=checked]:hover:bg-primary-fill-aa",
