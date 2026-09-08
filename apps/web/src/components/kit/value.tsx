@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
   Slider,
 } from "@tj/ui";
+import { useState } from "react";
 import { KitGroup, Specimen, Variant } from "./frame";
 
 export function Value() {
@@ -82,17 +83,26 @@ export function Value() {
           />
         </Variant>
         <Variant label="Corner radius, with readout">
-          <div className="flex w-64 items-center gap-3">
-            <Slider
-              aria-label="Corner radius"
-              defaultValue={[8]}
-              max={32}
-              valueLabel={(v) => `${v} px`}
-            />
-            <span className="w-8 text-right text-meta text-ink-3 tabular-nums">8</span>
-          </div>
+          <RadiusReadout />
         </Variant>
       </Specimen>
     </KitGroup>
+  );
+}
+
+/** The readout beside the slider follows it: the exhibit is controlled so the number moves too. */
+function RadiusReadout() {
+  const [radius, setRadius] = useState(8);
+  return (
+    <div className="flex w-64 items-center gap-3">
+      <Slider
+        aria-label="Corner radius"
+        value={[radius]}
+        onValueChange={([v]) => setRadius(v ?? 0)}
+        max={32}
+        valueLabel={(v) => `${v} px`}
+      />
+      <span className="w-8 text-right text-meta text-ink-3 tabular-nums">{radius}</span>
+    </div>
   );
 }
