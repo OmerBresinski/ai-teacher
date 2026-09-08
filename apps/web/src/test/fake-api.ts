@@ -136,6 +136,53 @@ export class FakeApi {
       }));
   }
 
+  /** One Pexels hit in the api's shape, for the editor's Photos tab tests. */
+  photoFixture(id: string) {
+    return {
+      id,
+      width: 6000,
+      height: 4000,
+      alt: `Photo ${id}`,
+      photographer: "Ada",
+      photographerUrl: "https://www.pexels.com/@ada/",
+      pageUrl: `https://www.pexels.com/photo/${id}/`,
+      src: {
+        large: `https://images.pexels.com/photos/${id}/large.jpeg`,
+        medium: `https://images.pexels.com/photos/${id}/medium.jpeg`,
+        tiny: `https://images.pexels.com/photos/${id}/tiny.jpeg`,
+      },
+    };
+  }
+
+  private searchImages(): Response {
+    return json(200, {
+      photos: [this.photoFixture("1"), this.photoFixture("2")],
+      nextPage: 2,
+    });
+  }
+
+  private pickImage(input: unknown): Response {
+    const { id } = (input ?? {}) as { id?: string };
+    const photoId = typeof id === "string" && id ? id : "1";
+    const photo = this.photoFixture(photoId);
+    const key = `00000000-0000-4000-8000-000000000001/images/${photoId}.jpg`;
+    return json(201, {
+      key,
+      url: `/files/${key}`,
+      width: photo.width,
+      height: photo.height,
+      bytes: 1024,
+      contentType: "image/jpeg",
+      source: {
+        provider: "pexels",
+        id: photo.id,
+        pageUrl: photo.pageUrl,
+        photographer: photo.photographer,
+        photographerUrl: photo.photographerUrl,
+      },
+    });
+  }
+
   /** Lock a lesson as `POST /lessons` would; `null` unlocks. */
   setGenerating(id: string, jobId: string | null): void {
     const row = this.rows.get(id);
@@ -194,6 +241,12 @@ export class FakeApi {
       method === "POST"
     ) {
       return this.enqueueProposal(segments[1] ?? "");
+    }
+    if (segments[0] === "images" && segments[1] === "search" && method === "GET") {
+      return this.searchImages();
+    }
+    if (segments[0] === "images" && segments[1] === "pick" && method === "POST") {
+      return this.pickImage(body);
     }
     return error(404, "not_found", `fake api: no route for ${method} ${path}`);
   }

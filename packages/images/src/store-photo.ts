@@ -20,7 +20,7 @@ export const RENDITION_FOR_TARGET = {
   worksheet: "medium",
 } as const;
 
-/** A stalled CDN must not hang the request; mirrors the editor's `fetchRemoteImage`. */
+/** A stalled CDN must not hang the request; mirrors the editor's former `fetchRemoteImage` cap. */
 export const FETCH_TIMEOUT_MS = 15_000;
 /** Refuse before or after the read when the body exceeds this. */
 export const MAX_PHOTO_BYTES = 8 * 1024 * 1024;

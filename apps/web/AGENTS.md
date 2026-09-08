@@ -54,8 +54,8 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   `editor-text` (double-click to edit, Escape commits, toolbar, option label, Why? panel),
   `editor-chrome` (toolbar routing, rail inserts, opacity drag, theme dialog), `editor-layout`
   (lint badge + Tidy; the `electricity` seed is stored at `fitVersion: 0` so the fit migration
-  runs once when it is opened), `editor-images` (upload/paste/drop, Openverse search and Replace;
-  `page.route` mocks `api.openverse.org` and the image hosts, never the network; fixture PNG in
+  runs once when it is opened),   `editor-images` (upload/paste/drop, Pexels search and Replace;
+  `page.route` mocks `/images/search`, `/images/pick` and `/files/**`, never the network; fixture PNG in
   `e2e/fixtures/`; the Photos-tab screenshot is opt-in via `TEACH_SCREENSHOTS=1`),
   `worksheet-print` (pages/header/footer, `?auto=1` prints once — `window.print` is stubbed in
   `addInitScript`, `emulateMedia("print")` + `page.pdf()` page count, the lesson-id wrong-kind

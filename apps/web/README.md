@@ -28,12 +28,13 @@ contract in step.
 
 ### Image search
 
-The lesson editor's Add image panel (`@tj/editor` `AddImagePanel`) calls Openverse
-(`https://api.openverse.org/v1/images/`) directly from the browser — no key, no env var, no API
-route; `vercel.json`'s CSP already allows the connect and `data:` images. Tenor GIF search is not
-included (it needs a client-side key). Uploaded and searched images are stored as data URLs until
-the upload endpoint lands (ADR 0021 §5); a searched image whose host refuses CORS stays a remote
-`https:` URL, which is why the CSP's `img-src` allows `https:` (thumbnails in the panel need it too).
+The lesson editor's Add image panel (`@tj/editor` `AddImagePanel`) searches Pexels through the
+api (`GET /images/search`), which holds the key server-side; picking copies the rendition into
+the Workspace bucket (`POST /images/pick`). Tenor GIF search is not
+included (it needs a client-side key). Uploaded images are stored as data URLs until the upload
+endpoint lands (ADR 0021 §5); a picked Pexels photo is copied into the Workspace bucket by
+`POST /images/pick` and stored as our `/files/...` URL with provenance (`source`), which is why
+the CSP's `img-src` allows `https:` (Pexels thumbnails in the panel need it too).
 
 ## Dev proxy decision
 

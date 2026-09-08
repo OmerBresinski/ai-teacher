@@ -1,8 +1,8 @@
 import { SLIDE_W, type SlideElement } from "@tj/domain/documents";
 import { toast } from "@tj/ui";
 import { type RefObject, useEffect, useState } from "react";
+import { UNREADABLE_MESSAGE } from "../../images/ImagePicker";
 import { makeImage } from "../../model/insert";
-import { UNREADABLE_MESSAGE } from "../AddImagePanel";
 import { imageFields, sourceFromFile } from "../image-source";
 import { PASTE_IMAGE_EVENT, type PasteImageDetail } from "../transform/use-canvas-keys";
 

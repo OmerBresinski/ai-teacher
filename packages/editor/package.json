@@ -15,6 +15,7 @@
     "./styles/editor.css": "./src/styles/editor.css",
     "./present": "./src/present/index.ts",
     "./lesson": "./src/lesson/index.ts",
+    "./images": "./src/images/index.ts",
     "./worksheet": "./src/worksheet/index.ts",
     "./styles/print.css": "./src/styles/print.css",
     "./styles/worksheet-edit.css": "./src/styles/worksheet-edit.css",

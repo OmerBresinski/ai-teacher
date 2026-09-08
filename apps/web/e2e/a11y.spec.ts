@@ -4,6 +4,8 @@
  * are reported. The theme is set through `localStorage` before the pre-paint script runs
  * (`addInitScript` precedes every page script), so each scan sees the final colours.
  */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { demoWorkspace } from "@tj/editor/starter";
 import { expectNoSeriousA11yViolations } from "./a11y";
@@ -225,32 +227,39 @@ test.describe("accessibility (axe)", () => {
     await expectNoSeriousA11yViolations(page, "theme dialog", '[role="dialog"]');
     await page.keyboard.press("Escape");
 
-    // The Add image panel on both tabs (TEACH-107 row 12); the search is mocked, never live.
-    await page.route("https://api.openverse.org/**", (route) =>
+    // The Add image panel on both tabs (TEACH-107 row 12, TEACH-158); the search is mocked, never live.
+    await page.route(`${E2E_API_URL}/images/search*`, (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          page_count: 1,
-          results: [
+          photos: [
             {
               id: "a11y",
-              title: "River",
-              url: "https://cors.test/a.png",
-              thumbnail: "https://cors.test/a-thumb.png",
-              creator: "Ada",
-              license: "by",
-              license_version: "2.0",
+              width: 900,
+              height: 600,
+              alt: "River",
+              photographer: "Ada",
+              photographerUrl: "https://www.pexels.com/@ada",
+              pageUrl: "https://www.pexels.com/photo/a11y/",
+              src: {
+                large: "https://images.pexels.com/photos/a11y/large.jpeg",
+                medium: "https://images.pexels.com/photos/a11y/medium.jpeg",
+                tiny: "https://images.pexels.com/photos/a11y/tiny.jpeg",
+              },
             },
           ],
+          nextPage: null,
         }),
       }),
     );
-    await page.route("https://cors.test/**", (route) =>
+    await page.route("https://images.pexels.com/**", (route) =>
       route.fulfill({
         status: 200,
-        contentType: "image/svg+xml",
-        body: '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>',
+        contentType: "image/png",
+        body: readFileSync(
+          fileURLToPath(new URL("./fixtures/photo-3000x2000.png", import.meta.url)),
+        ),
       }),
     );
     await page
@@ -265,7 +274,7 @@ test.describe("accessibility (axe)", () => {
     const field = imagePanel.getByRole("searchbox", { name: "Search images" });
     await field.fill("river");
     await field.press("Enter");
-    await expect(imagePanel.getByRole("button", { name: "River by Ada, CC BY 2.0" })).toBeVisible();
+    await expect(imagePanel.getByRole("button", { name: "River" })).toBeVisible();
     await settled();
     await expectNoSeriousA11yViolations(page, "add image panel (photos)", '[role="dialog"]');
   });

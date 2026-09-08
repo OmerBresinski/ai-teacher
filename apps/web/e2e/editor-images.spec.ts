@@ -1,22 +1,19 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { Page, Route } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { E2E_API_URL } from "../playwright.config";
 import { addedElement, elementIds, expect, type SeededPaths, test } from "./fixtures";
 
 /*
- * Images in the lesson editor (TEACH-107 rows 2–7, 9): upload, paste and drop land a downscaled
- * data-URL image element; the Photos tab searches Openverse (mocked with `page.route` — CI never
- * hits the network), inlines a result the host serves with CORS and falls back to a link with a
- * toast when it does not; Replace keeps the element and its frame.
+ * Images in the lesson editor (TEACH-107 rows 2–4, TEACH-158 rows 5–6, 8–9): upload, paste and
+ * drop land a downscaled data-URL image element; the Photos tab searches Pexels through the api
+ * (mocked with `page.route` — CI never hits the network), picking copies the rendition into the
+ * bucket and stores our `/files` URL with provenance; Replace keeps the element and its frame.
  */
 
 const EDITOR = (paths: SeededPaths) => paths.lesson("demo-water-cycle");
 const FIXTURE = fileURLToPath(new URL("./fixtures/photo-3000x2000.png", import.meta.url));
 const PNG = readFileSync(FIXTURE);
-/** A different picture for the search results, so a replaced `src` can be told from the upload. */
-const SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="900" height="600" fill="#c84"/></svg>';
-const OPENVERSE = "https://api.openverse.org/**";
 /** `fileToDataUrl`'s default long edge. */
 const MAX_EDGE = 1600;
 
@@ -24,45 +21,68 @@ const elements = (page: Page) => page.locator("[data-slide-frame] [data-element-
 const rail = (page: Page) => page.getByRole("toolbar", { name: "Insert" });
 const panel = (page: Page) => page.getByRole("dialog", { name: /Add image|Replace image/ });
 
-const row = (id: string, title: string, host: string) => ({
+const pexelsPhoto = (id: string, alt: string) => ({
   id,
-  title,
-  url: `https://${host}/${id}.png`,
-  thumbnail: `https://${host}/${id}-thumb.png`,
-  creator: "Ada Lovelace",
-  license: "by",
-  license_version: "2.0",
-  foreign_landing_url: `https://${host}/pages/${id}`,
   width: 3000,
   height: 2000,
+  alt,
+  photographer: "Ada Lovelace",
+  photographerUrl: "https://www.pexels.com/@ada",
+  pageUrl: `https://www.pexels.com/photo/${id}/`,
+  src: {
+    large: `https://images.pexels.com/photos/${id}/large.jpeg`,
+    medium: `https://images.pexels.com/photos/${id}/medium.jpeg`,
+    tiny: `https://images.pexels.com/photos/${id}/tiny.jpeg`,
+  },
 });
 
-/** Openverse answers one page; `cors.test` serves the PNG with CORS, `nocors.test` refuses. */
+/**
+ * The api's Pexels routes, mocked: search answers one page, pick copies into the bucket, and the
+ * file proxy serves the picked bytes. CI never hits Pexels.
+ */
 async function mockSearch(page: Page) {
   const asked: string[] = [];
-  await page.route(OPENVERSE, (route) => {
+  await page.route(`${E2E_API_URL}/images/search*`, (route) => {
     asked.push(route.request().url());
     return route.fulfill({
       status: 200,
       contentType: "application/json",
-      headers: { "access-control-allow-origin": "*" },
       body: JSON.stringify({
-        page_count: 1,
-        results: [row("river", "River bend", "cors.test"), row("delta", "Delta", "nocors.test")],
+        photos: [pexelsPhoto("river", "River bend"), pexelsPhoto("delta", "Delta")],
+        nextPage: 2,
       }),
     });
   });
-  const png = (route: Route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "image/svg+xml",
-      headers: { "access-control-allow-origin": "*" },
-      body: SVG,
+  await page.route(`${E2E_API_URL}/images/pick`, (route) => {
+    const id = String((route.request().postDataJSON() as { id?: string })?.id ?? "river");
+    const photo = pexelsPhoto(id, id === "river" ? "River bend" : "Delta");
+    const key = `ws/images/${id}.jpg`;
+    return route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key,
+        url: `/files/${key}`,
+        width: photo.width,
+        height: photo.height,
+        bytes: PNG.length,
+        contentType: "image/png",
+        source: {
+          provider: "pexels",
+          id: photo.id,
+          pageUrl: photo.pageUrl,
+          photographer: photo.photographer,
+          photographerUrl: photo.photographerUrl,
+        },
+      }),
     });
-  await page.route("https://cors.test/**", png);
-  // Thumbnails render in an <img>, which needs no CORS; the full-size fetch is the one that fails.
-  await page.route("https://nocors.test/**", (route) =>
-    route.request().url().includes("-thumb") ? png(route) : route.abort("failed"),
+  });
+  await page.route(`${E2E_API_URL}/files/**`, (route) =>
+    route.fulfill({ status: 200, contentType: "image/png", body: PNG }),
+  );
+  // Thumbnails render in plain <img> tags: serve the fixture so tiles paint.
+  await page.route("https://images.pexels.com/**", (route) =>
+    route.fulfill({ status: 200, contentType: "image/png", body: PNG }),
   );
   return asked;
 }
@@ -189,7 +209,7 @@ test.describe("editor images", () => {
     expect(box.x + box.width).toBeLessThan(slide.x + slide.width / 2);
   });
 
-  test("rows 5–7: Photos searches Openverse, inlines a CORS-served result and links one that is not", async ({
+  test("rows 5–6: Photos searches Pexels and picking stores our URL with provenance", async ({
     signedInPage: { page, paths },
   }) => {
     const asked = await mockSearch(page);
@@ -199,69 +219,54 @@ test.describe("editor images", () => {
     const before = await elementIds(page);
 
     await openPhotos(page, "river");
-    const tile = panel(page).getByRole("button", { name: "River bend by Ada Lovelace, CC BY 2.0" });
+    const tile = panel(page).getByRole("button", { name: "River bend" });
     await expect(tile).toBeVisible();
-    await expect(
-      panel(page).getByRole("button", { name: "Delta by Ada Lovelace, CC BY 2.0" }),
-    ).toBeVisible();
+    await expect(panel(page).getByRole("button", { name: "Delta" })).toBeVisible();
     expect(asked.length).toBeGreaterThan(0);
     const url = new URL(asked[0] ?? "");
-    expect(url.origin + url.pathname).toBe("https://api.openverse.org/v1/images/");
+    expect(url.origin + url.pathname).toBe(`${E2E_API_URL}/images/search`);
     expect(url.searchParams.get("q")).toBe("river");
-    expect(url.searchParams.get("license_type")).toBe("commercial,modification");
+    expect(url.searchParams.get("orientation")).toBe("landscape");
 
-    // Row 6: the host serves the bytes with CORS → inlined, credit stored.
+    // Row 6: picking copies the rendition into the bucket; the element carries our URL + source.
     await tile.click();
     await expect(elements(page)).toHaveCount(count + 1);
     await expect(panel(page)).toHaveCount(0);
-    const inlined = addedElement(page, before);
-    await expect(inlined.locator("img")).toHaveAttribute("src", /^data:image\/svg\+xml/);
-    await expect(inlined.locator("img")).toHaveAttribute("alt", "River bend");
+    const picked = addedElement(page, before);
+    await expect(picked.locator("img")).toHaveAttribute(
+      "src",
+      `${E2E_API_URL}/files/ws/images/river.jpg`,
+    );
+    await expect(picked.locator("img")).toHaveAttribute("alt", "River bend");
     await page
       .getByRole("toolbar", { name: "Image" })
       .getByRole("button", { name: "More" })
       .click();
     await expect(page.getByRole("dialog", { name: "More" })).toContainText(
-      "River bend by Ada Lovelace, CC BY 2.0",
+      "Photo by Ada Lovelace on Pexels",
     );
     await page.keyboard.press("Escape");
-
-    // Row 7: the host refuses CORS → the remote URL, and the toast says exports will not carry it.
-    const beforeDelta = await elementIds(page);
-    await openPhotos(page, "river");
-    await panel(page).getByRole("button", { name: "Delta by Ada Lovelace, CC BY 2.0" }).click();
-    await expect(elements(page)).toHaveCount(count + 2);
-    await expect(addedElement(page, beforeDelta).locator("img")).toHaveAttribute(
-      "src",
-      "https://nocors.test/delta.png",
-    );
-    await expect(page.getByText("Added as a link. It will not appear in exports.")).toBeVisible();
   });
 
-  test("row 8: a 500 from Openverse shows the failure copy and Retry recovers", async ({
+  test("row 8: a 500 from search shows the failure copy and Retry recovers", async ({
     signedInPage: { page, paths },
   }) => {
     let fail = true;
-    await page.route(OPENVERSE, (route) =>
+    await page.route(`${E2E_API_URL}/images/search*`, (route) =>
       fail
         ? route.fulfill({ status: 500, body: "boom" })
         : route.fulfill({
             status: 200,
             contentType: "application/json",
-            body: JSON.stringify({ page_count: 1, results: [row("r", "Rain", "cors.test")] }),
+            body: JSON.stringify({ photos: [pexelsPhoto("rain", "Rain")], nextPage: null }),
           }),
-    );
-    await page.route("https://cors.test/**", (route) =>
-      route.fulfill({ status: 200, contentType: "image/png", body: PNG }),
     );
     await page.goto(EDITOR(paths));
     await openPhotos(page, "rain");
     await expect(panel(page).getByText("Search failed. Try again.")).toBeVisible();
     fail = false;
     await panel(page).getByRole("button", { name: "Retry" }).click();
-    await expect(
-      panel(page).getByRole("button", { name: "Rain by Ada Lovelace, CC BY 2.0" }),
-    ).toBeVisible();
+    await expect(panel(page).getByRole("button", { name: "Rain" })).toBeVisible();
   });
 
   test("row 9: Replace keeps the element and its frame and swaps src and alt", async ({
@@ -291,16 +296,14 @@ test.describe("editor images", () => {
     const field = panel(page).getByRole("searchbox", { name: "Search images" });
     await field.fill("river");
     await field.press("Enter");
-    await panel(page)
-      .getByRole("button", { name: "River bend by Ada Lovelace, CC BY 2.0" })
-      .click();
+    await panel(page).getByRole("button", { name: "River bend" }).click();
 
     await expect(elements(page)).toHaveCount(count + 1);
     const after = page.locator(`[data-slide-frame] [data-element-id="${id}"]`);
     await expect(after.locator("img")).toHaveAttribute("alt", "River bend");
     const newSrc = await after.locator("img").getAttribute("src");
     expect(newSrc).not.toBe(oldSrc);
-    expect(newSrc?.startsWith("data:image/")).toBe(true);
+    expect(newSrc).toBe(`${E2E_API_URL}/files/ws/images/river.jpg`);
     const frame = await after.boundingBox();
     if (!box || !frame) throw new Error("no layout");
     expect(Math.abs(frame.x - box.x)).toBeLessThan(1);
@@ -315,10 +318,8 @@ test.describe("editor images", () => {
     await mockSearch(page);
     await page.goto(EDITOR(paths));
     await openPhotos(page, "river");
-    await expect(
-      panel(page).getByRole("button", { name: "River bend by Ada Lovelace, CC BY 2.0" }),
-    ).toBeVisible();
+    await expect(panel(page).getByRole("button", { name: "River bend" })).toBeVisible();
     await page.waitForTimeout(500);
-    await page.screenshot({ path: "/tmp/teach-107-photos.png" });
+    await page.screenshot({ path: "/tmp/teach-158-photos.png" });
   });
 });

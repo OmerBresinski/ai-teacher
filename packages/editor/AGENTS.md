@@ -73,8 +73,9 @@ src/
               use-autosave (generic over `Lesson | Worksheet`; both top bars read it),
               worksheet-factories, demo-worksheet
   text/       Tiptap extension set + static HTML rendering (renderDocHTML)
-  images/     image-search (Openverse mapping + `searchOpenverse`/`fetchRemoteImage`, pure; no
-              Tenor, no `process.env`), images (`fileToDataUrl` downscale, `isImageFile`)
+  images/     image-search (`ImageSearchClient` types + `SearchError`, injected from the app;
+              no Tenor, no `process.env`), ImagePicker (upload + Pexels photos, reused by
+              worksheets), images (`fileToDataUrl` downscale, `isImageFile`)
   slide/      SlideView (the one renderer), SlideScaler, SlideStatic, elements/*
   kit/        Panel, Segmented, NumberInput, ZoomControl, Color, Rail, SaveIndicator (the live
               region over the autosave store), InlineTitle (the h1 that renames) — no @tj/ui twin
@@ -111,8 +112,8 @@ src/
               hit-test, resize), toolbar/ (ContextualToolbar routing + placement; one file per
               bar: Text, Shape, Line, Image, Other, Multi, Slide, AnswerDrawer, MoreDrawer; shared
               DropTrigger/useElementWrites), insert/ (IconPicker, LessonInfo), InsertRail,
-              AddImagePanel (Upload / Photos popover; open state and replace target are session
-              `imagePanel`), image-source (file/stock → `ImageSource`, `imageFields`),
+              AddImagePanel (popover chrome + lesson pick/replace; open state and replace target
+              are session `imagePanel`), image-source (file/pick → `ImageSource`, `imageFields`),
               canvas/use-image-drop (paste + drop listeners), ThemeDialog, use-editor-session,
               slide-commands, keys, shortcuts; residual-findings (`residualFindings(lesson,
               worksheet)` = stored model findings + live `checkLesson`, deduped; derived in render over

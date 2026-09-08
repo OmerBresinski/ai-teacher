@@ -1,5 +1,5 @@
 import type { ImageElement } from "@tj/domain/documents";
-import { fetchRemoteImage, type StockImage } from "../images/image-search";
+import type { PickedPhoto } from "../images/image-search";
 import { fileToDataUrl } from "../images/images";
 
 /**
@@ -11,9 +11,9 @@ export type ImageSource = {
   src: string;
   /** Natural size in pixels — the aspect the new frame takes. */
   natural: { w: number; h: number };
-} & Pick<ImageElement, "alt" | "credit" | "creditUrl">;
+} & Pick<ImageElement, "alt" | "credit" | "creditUrl" | "source">;
 
-export type ImageFields = Pick<ImageElement, "src" | "alt" | "credit" | "creditUrl">;
+export type ImageFields = Pick<ImageElement, "src" | "alt" | "credit" | "creditUrl" | "source">;
 
 /**
  * The fields a picked image writes onto an element — new or replaced; the frame is the caller's.
@@ -25,6 +25,7 @@ export function imageFields(source: ImageSource): ImageFields {
   if (source.alt) fields.alt = source.alt;
   if (source.credit) fields.credit = source.credit;
   if (source.creditUrl) fields.creditUrl = source.creditUrl;
+  if (source.source) fields.source = source.source;
   return fields;
 }
 
@@ -35,26 +36,14 @@ export async function sourceFromFile(file: File): Promise<ImageSource> {
 }
 
 /**
- * A search result: the full-size file, fetched and inlined when the host allows CORS, otherwise
- * the remote URL as a link (`inlined: false` — the panel toasts that exports will not carry it).
- * Rethrows only when `signal` aborted, so a closed panel inserts nothing.
+ * A Pexels pick, already copied into the Workspace bucket by the api: our URL plus provenance,
+ * never a remote link (Images project — there is no link fallback any more).
  */
-export async function sourceFromStock(
-  item: StockImage,
-  signal?: AbortSignal,
-): Promise<{ source: ImageSource; inlined: boolean }> {
-  const credit = { alt: item.title, credit: item.credit, creditUrl: item.landingUrl };
-  const file = await fetchRemoteImage(item.url, signal);
-  if (file) {
-    try {
-      const { src, w, h } = await fileToDataUrl(file);
-      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-      return { source: { src, natural: { w, h }, ...credit }, inlined: true };
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      // Fall through: the bytes arrived but could not be decoded — the link still can.
-    }
-  }
-  const natural = { w: item.width ?? 640, h: item.height ?? 480 };
-  return { source: { src: item.url, natural, ...credit }, inlined: false };
+export function sourceFromPicked(picked: PickedPhoto, alt: string): ImageSource {
+  return {
+    src: picked.url,
+    natural: { w: picked.width, h: picked.height },
+    alt,
+    source: picked.source,
+  };
 }
