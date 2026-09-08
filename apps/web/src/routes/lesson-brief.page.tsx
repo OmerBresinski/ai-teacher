@@ -162,8 +162,11 @@ export function LessonBriefPage() {
   const [touched, setTouched] = useState<ReadonlySet<GuardedField>>(() => new Set());
   const [serverFields, setServerFields] = useState<ReadonlySet<string>>(() => new Set());
   const [blank, setBlank] = useState({ open: false, session: 0 });
-  // How many clarifying questions the teacher has accepted or skipped; the next one is open.
-  const [settled, setSettled] = useState(0);
+  // Which clarifying questions are settled (accepted or skipped), and how many are on screen.
+  // `revealed` never decreases: reopening the first question keeps the second in view with its
+  // answer, since that answer is still in state and still submitted.
+  const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
+  const [revealed, setRevealed] = useState(1);
   const [revealedByKey, setRevealedByKey] = useState(false);
   const submitRef = useRef<HTMLButtonElement>(null);
 
@@ -212,10 +215,23 @@ export function LessonBriefPage() {
             : (parsed.error.issues[0]?.message ?? "Check the form.");
 
   const settle = (index: number) => {
-    setSettled(index + 1);
-    setRevealedByKey(true);
-    if (index + 1 >= QUESTION_COUNT) submitRef.current?.focus();
+    const next = new Set(settled).add(index);
+    setSettled(next);
+    if (next.size >= QUESTION_COUNT) {
+      submitRef.current?.focus();
+      return;
+    }
+    if (index + 1 >= revealed) {
+      setRevealed(index + 1 + 1);
+      setRevealedByKey(true);
+    }
   };
+  const reopen = (index: number) =>
+    setSettled((current) => {
+      const next = new Set(current);
+      next.delete(index);
+      return next;
+    });
 
   async function submit(): Promise<void> {
     if (!canCreate) return;
@@ -367,22 +383,22 @@ export function LessonBriefPage() {
                 options={objectiveOptions(topic)}
                 answer={state.objective}
                 suggestedIndex={objectiveSuggested}
-                done={settled > 0}
+                done={settled.has(0)}
                 onChange={(objective) => patch({ objective })}
                 onAccept={() => settle(0)}
-                onReopen={() => setSettled(0)}
+                onReopen={() => reopen(0)}
               />
-              {settled >= 1 ? (
+              {revealed > 1 ? (
                 <QuestionBlock
                   question={CONFIDENCE_QUESTION}
                   options={confidenceOptions()}
                   answer={state.confidence}
                   suggestedIndex={SUGGESTED_CONFIDENCE_INDEX}
-                  done={settled > 1}
+                  done={settled.has(1)}
                   autoFocus={revealedByKey}
                   onChange={(confidence) => patch({ confidence })}
                   onAccept={() => settle(1)}
-                  onReopen={() => setSettled(1)}
+                  onReopen={() => reopen(1)}
                 />
               ) : null}
             </div>
@@ -399,7 +415,7 @@ export function LessonBriefPage() {
             </Button>
           </div>
 
-          <ActionBar reason={reason} reasonId={reasonId}>
+          <ActionBar reason={reason} reasonId={reasonId} bleed="page">
             <Button
               ref={submitRef}
               type="submit"
