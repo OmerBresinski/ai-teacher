@@ -31,7 +31,7 @@ const NEW_FACT: Record<FactKind, FactValues> = {
 export function FactsPanel({ onClose }: { onClose: () => void }) {
   const lesson = useLesson();
   const history = useHistory();
-  const { onFactsChanged, busy } = useProposals();
+  const { onFactsChanged, busy, reservedFactIds } = useProposals();
   const session = useEditSession(history);
   const report = useCoalescedIds((ids) => onFactsChanged?.(ids));
   const facts = lesson.facts;
@@ -49,7 +49,7 @@ export function FactsPanel({ onClose }: { onClose: () => void }) {
     [session, report],
   );
   const add = (kind: FactKind) => {
-    const made = history.dispatch(reducers.addFact, NEW_FACT[kind]);
+    const made = history.dispatch(reducers.addFact, NEW_FACT[kind], reservedFactIds);
     if (made?.id) report(made.id);
   };
   const remove = (factId: FactId) => {

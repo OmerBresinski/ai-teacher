@@ -52,6 +52,19 @@ describe("facts reducers", () => {
     // ref can point at the newcomer.
     const noRefs = r.removeFact(added.lesson, "o3");
     expect(r.addFact(noRefs, { kind: "objective", text: "Fresh" }).id).toBe("o3");
+    // …unless a document the reducer cannot see still references it: the worksheet's blocks.
+    expect(r.addFact(noRefs, { kind: "objective", text: "Fresh" }, ["o3"]).id).toBe("o4");
+  });
+
+  test("worksheetFactRefs collects the block refs, deduplicated", () => {
+    expect(r.worksheetFactRefs(undefined)).toEqual([]);
+    const refs = r.worksheetFactRefs(generatedWorksheet());
+    expect(refs.length).toBe(new Set(refs).size);
+    expect(refs.length).toBeGreaterThan(0);
+  });
+
+  test("addFact per kind; a lesson without facts is a no-op", () => {
+    const lesson = generatedLesson();
     const vocab = r.addFact(lesson, { kind: "vocabulary", term: "Cloud", definition: "…" });
     expect(vocab.id).toBe("v3");
     const noFacts = generatedLesson();

@@ -18,10 +18,12 @@ export type ProposalsApi = {
   busySlideIds: ReadonlySet<Id>;
   /** A cascade or regenerate is in flight. */
   busy: boolean;
+  /** Fact ids the worksheet's blocks derive from; `addFact` never mints one of these again. */
+  reservedFactIds: readonly string[];
 };
 
 const EMPTY = new Set<Id>();
-export const NO_PROPOSALS: ProposalsApi = { busySlideIds: EMPTY, busy: false };
+export const NO_PROPOSALS: ProposalsApi = { busySlideIds: EMPTY, busy: false, reservedFactIds: [] };
 
 export const ProposalsContext = createContext<ProposalsApi>(NO_PROPOSALS);
 export const useProposals = (): ProposalsApi => useContext(ProposalsContext);

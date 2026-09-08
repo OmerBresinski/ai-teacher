@@ -27,7 +27,7 @@ mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 const { LessonEditorPage } = await import("./lesson-editor.page");
 const { GENERATION_CANCELLED_MESSAGE, GENERATION_FAILED_MESSAGE, REFETCH_DEBOUNCE_MS } =
   await import("@/components/generating-lesson");
-const { STILL_GENERATING_MESSAGE } = await import("@/hooks/use-proposal-jobs");
+const { SINGLETON_RETRY_MS, STILL_GENERATING_MESSAGE } = await import("@/hooks/use-proposal-jobs");
 const { RELOAD_LABEL } = await import("@/hooks/use-save-with-conflict-toast");
 
 const JOB_ID = "01a06a15-1849-7000-ac6a-c07e27fe308b";
@@ -651,6 +651,38 @@ describe("LessonEditorPage", () => {
       expect(toastSpy.mock.calls.at(-1)?.[0]).toBe(STILL_GENERATING_MESSAGE);
       expect(FakeEventSource.instances).toHaveLength(0);
     });
+
+    it("a singleton 409 holds the request and re-sends it once the slot has passed", async () => {
+      installFakeEventSource();
+      seedGenerated();
+      fakeApi.failNext(
+        (r) => r.path === "/lessons/demo-water-cycle/cascade",
+        () =>
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "conflict",
+                message: "An identical job is already queued.",
+                requestId: "x",
+                retryable: true,
+              },
+            }),
+            { status: 409, headers: { "content-type": "application/json" } },
+          ),
+      );
+      renderPage();
+      await editObjective();
+      const cascades = () =>
+        fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/cascade");
+      await waitFor(() => expect(cascades()).toHaveLength(1), { timeout: 3_000 });
+      expect(toastSpy).not.toHaveBeenCalled();
+      await waitFor(() => expect(cascades()).toHaveLength(2), {
+        timeout: SINGLETON_RETRY_MS + 3_000,
+        interval: 200,
+      });
+      expect(cascades()[1]?.body).toEqual({ changedFactIds: ["o1"] });
+      await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+    }, 15_000);
 
     it("row 10: confirming the regenerate dialog posts one regenerate with the target and instruction", async () => {
       installFakeEventSource();

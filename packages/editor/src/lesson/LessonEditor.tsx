@@ -143,6 +143,7 @@ export function LessonEditor({
   const [themeOpen, setThemeOpen] = useState(false);
   const [factsOpen, setFactsOpen] = useState(false);
   const proposalsEnabled = onFactsChanged !== undefined || onRegenerate !== undefined;
+  const reservedFactIds = useMemo(() => reducers.worksheetFactRefs(worksheet), [worksheet]);
   const proposals = useMemo<ProposalsApi>(
     () =>
       proposalsEnabled
@@ -151,9 +152,10 @@ export function LessonEditor({
             onRegenerate,
             busySlideIds: busySlideIds ?? NO_PROPOSALS.busySlideIds,
             busy: proposalsBusy,
+            reservedFactIds,
           }
         : NO_PROPOSALS,
-    [proposalsEnabled, onFactsChanged, onRegenerate, busySlideIds, proposalsBusy],
+    [proposalsEnabled, onFactsChanged, onRegenerate, busySlideIds, proposalsBusy, reservedFactIds],
   );
   const [canvasFocused, setCanvasFocused] = useState(false);
 

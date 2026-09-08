@@ -16,6 +16,7 @@ import type {
   SlideElement,
   VocabularyItem,
   WorkedExample,
+  Worksheet,
 } from "@tj/domain/documents";
 import { edit, type WithId } from "./core";
 
@@ -76,14 +77,28 @@ export const updateFact = (lesson: Lesson, factId: FactId, patch: FactPatch): Le
     }
   });
 
+/** Every fact id the worksheet's blocks derive from — what `addFact` must not mint again. */
+export function worksheetFactRefs(worksheet: Worksheet | undefined): readonly string[] {
+  if (!worksheet) return [];
+  const refs = new Set<string>();
+  for (const block of worksheet.blocks) {
+    for (const ref of block.generatedFrom?.factRefs ?? []) refs.add(ref);
+  }
+  return [...refs];
+}
+
 /**
- * The next id for a kind: one past the highest number anything in the lesson still points at —
- * the facts themselves, the outline's `factRefs` and every element's `generatedFrom.factRefs`
- * (elements keep their refs when a fact is removed). An id nothing references any more may come
- * round again; that is harmless, since no dangling ref can then be read as pointing at the new
- * fact. The worksheet's blocks are not scanned (a lesson reducer does not see the worksheet).
+ * The next id for a kind: one past the highest number anything still points at — the facts
+ * themselves, the outline's `factRefs`, every element's `generatedFrom.factRefs` (elements keep
+ * their refs when a fact is removed) and `reserved`, the caller's ids from documents the reducer
+ * cannot see (`worksheetFactRefs`). An id nothing references any more may come round again; that
+ * is harmless, since no dangling ref can then be read as pointing at the new fact.
  */
-export function nextFactId(lesson: Lesson, kind: FactKind): FactId {
+export function nextFactId(
+  lesson: Lesson,
+  kind: FactKind,
+  reserved: Iterable<string> = [],
+): FactId {
   const facts = lesson.facts;
   const prefix = FACT_ID_PREFIX[kind];
   let max = 0;
@@ -103,13 +118,21 @@ export function nextFactId(lesson: Lesson, kind: FactKind): FactId {
     }
   };
   for (const slide of lesson.slides) walk(slide.elements);
+  for (const ref of reserved) bump(ref);
   return `${prefix}${max + 1}`;
 }
 
-/** Append a fact of `kind`; returns the id it minted. A lesson without facts is a no-op. */
-export function addFact(lesson: Lesson, values: FactValues): WithId<"id", FactId | null> {
+/**
+ * Append a fact of `kind`; returns the id it minted. `reserved` are ids in use outside the lesson
+ * (the worksheet's block refs). A lesson without facts is a no-op.
+ */
+export function addFact(
+  lesson: Lesson,
+  values: FactValues,
+  reserved: Iterable<string> = [],
+): WithId<"id", FactId | null> {
   if (!lesson.facts) return { lesson, id: null };
-  const id = nextFactId(lesson, values.kind);
+  const id = nextFactId(lesson, values.kind, reserved);
   const next = edit(lesson, (draft) => {
     const facts = draft.facts;
     if (!facts) return;
