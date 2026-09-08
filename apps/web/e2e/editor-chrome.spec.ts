@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, type SeededPaths, test } from "./fixtures";
+import { addedElement, elementIds, expect, type SeededPaths, test } from "./fixtures";
 
 /*
  * The editor's contextual chrome (TEACH-105): the slide and element toolbars route with the
@@ -40,6 +40,7 @@ test.describe("editor chrome", () => {
     await page.goto(EDITOR(paths));
     await expect(elements(page).first()).toBeVisible();
     const count = await elements(page).count();
+    const before = await elementIds(page);
     await page
       .getByRole("toolbar", { name: "Insert" })
       .getByRole("button", { name: "Shape" })
@@ -48,7 +49,7 @@ test.describe("editor chrome", () => {
     await expect(elements(page)).toHaveCount(count + 1);
     await expect(page.getByRole("toolbar", { name: "Shape" })).toBeVisible();
     await expect(page.locator("[data-selection-frame]")).toBeVisible();
-    const shape = await elements(page).last().boundingBox();
+    const shape = await addedElement(page, before).boundingBox();
     const slide = await page.locator("[data-slide-frame]").boundingBox();
     if (!shape || !slide) throw new Error("no layout");
     expect(Math.abs(shape.x + shape.width / 2 - (slide.x + slide.width / 2))).toBeLessThan(2);
@@ -67,6 +68,8 @@ test.describe("editor chrome", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(EDITOR(paths));
+    await expect(elements(page).first()).toBeVisible();
+    const before = await elementIds(page);
     await page
       .getByRole("toolbar", { name: "Insert" })
       .getByRole("button", { name: "Shape" })
@@ -77,7 +80,7 @@ test.describe("editor chrome", () => {
     const swatches = page.getByRole("dialog", { name: "Fill" }).getByRole("button", { name: /^#/ });
     const target = await swatches.nth(4).getAttribute("aria-label");
     await swatches.nth(4).click();
-    const shape = elements(page).last();
+    const shape = addedElement(page, before);
     await expect
       .poll(async () => shape.locator("svg [fill]").first().getAttribute("fill"))
       .toBe(target);
