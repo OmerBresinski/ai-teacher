@@ -57,7 +57,14 @@ function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["
   return {
     search: (query, opts) =>
       images.client.search({ query, ...opts, locale: "en-GB" }).then((page) => page.photos),
-    store: (photo, target) => storePhoto({ photo, target, storage: images.storage, workspaceId }),
+    store: (photo, target) =>
+      storePhoto({
+        photo,
+        target,
+        storage: images.storage,
+        workspaceId,
+        baseUrl: images.filesBaseUrl,
+      }),
   };
 }
 

@@ -21,6 +21,7 @@ describe("worker env", () => {
       AI_LESSON_TOKEN_CAP: 300_000,
       MASTRA_TELEMETRY_DISABLED: undefined,
       PEXELS_API_KEY: undefined,
+      API_PUBLIC_BASE_URL: undefined,
       AI_FAKE_SCRIPT: undefined,
       AI_FAKE_DELAY_MS: 0,
     });

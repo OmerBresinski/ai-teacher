@@ -43,7 +43,12 @@ export class StorePhotoError extends Error {
 
 export interface StoredPhoto {
   key: string;
-  /** Our URL for the bytes: `/files/<key>`, served by the api's file proxy. */
+  /**
+   * Our URL for the bytes, served by the api's file proxy: absolute (`<baseUrl>/files/<key>`)
+   * when the caller passes `baseUrl` (the pipeline, whose URLs the browser resolves directly),
+   * relative (`/files/<key>`) otherwise (the api pick route, whose response the web transport
+   * prefixes with `VITE_API_URL`).
+   */
   url: string;
   /** Native dimensions as Pexels reports them; the rendition keeps the aspect. */
   width: number;
@@ -64,6 +69,12 @@ export interface StorePhotoOptions {
   fetch?: typeof globalThis.fetch;
   /** Tests pass a fixed id; production mints one. */
   ids?: () => string;
+  /**
+   * Public origin of the api (no trailing slash), prefixed onto `url`. The worker passes its
+   * `API_PUBLIC_BASE_URL` so pipeline-placed photos resolve cross-origin; absent stays
+   * relative for the api pick route.
+   */
+  baseUrl?: string;
 }
 
 export async function storePhoto(options: StorePhotoOptions): Promise<StoredPhoto> {
@@ -110,9 +121,10 @@ export async function storePhoto(options: StorePhotoOptions): Promise<StoredPhot
   }
   const key = storageKey(workspaceId, "images", `${(options.ids ?? newId)()}.${ext}`);
   await storage.put(key, bytes, { contentType });
+  const base = options.baseUrl?.replace(/\/$/, "");
   return {
     key,
-    url: `/files/${key}`,
+    url: base ? `${base}/files/${key}` : `/files/${key}`,
     width: photo.width,
     height: photo.height,
     bytes: bytes.length,
