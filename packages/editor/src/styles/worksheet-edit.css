@@ -241,6 +241,12 @@
   position: relative;
 }
 
+/* Accent, muted towards the sheet's ink: the brand fill alone is 3.7:1 on paper, under AA for
+   text; mixed with the ink it reads as the accent and passes. */
+.ws-edit {
+  --ws-answer-ink: color-mix(in srgb, var(--primary) 70%, var(--ws-ink));
+}
+
 .ws-opt-answer {
   position: absolute;
   top: 2.5pt;
@@ -309,7 +315,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--primary);
+  color: var(--ws-answer-ink);
 }
 
 .ws-answer-field {
@@ -319,8 +325,7 @@
 }
 
 .ws-answer-text {
-  color: var(--primary);
-  opacity: 0.8;
+  color: var(--ws-answer-ink);
 }
 
 .ws-answer-empty {
@@ -346,8 +351,7 @@
   line-height: 1;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--primary);
-  opacity: 0.8;
+  color: var(--ws-answer-ink);
 }
 
 /* The matching answer letter inside the left-hand blank. */
@@ -364,8 +368,7 @@
   font-weight: 500;
   line-height: 1;
   text-align: center;
-  color: var(--primary);
-  opacity: 0.8;
+  color: var(--ws-answer-ink);
 }
 
 /* The word search rings the key will print, in accent on screen. */

@@ -40,11 +40,10 @@ test.describe("answers on the sheet (TEACH-195)", () => {
     // Four printed squares, none of them a button, none ticked.
     await expect(mc.locator(".ws-opt-box")).toHaveCount(4);
     await expect(mc.locator("button.ws-opt-box, .ws-opt-check-on")).toHaveCount(0);
-    // The block is selected, so the markers are there; A is the seeded answer.
+    // The block is selected, so the markers are there; a new block starts with no answer.
     await expect(markers(page)).toHaveCount(4);
-    await expect(page.getByRole("button", { name: "Answer: option A" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    await expect(page.getByRole("button", { name: /^Answer: option/, pressed: true })).toHaveCount(
+      0,
     );
     await page.getByRole("button", { name: "Answer: option C" }).click();
     await expect(page.getByRole("button", { name: "Answer: option C" })).toHaveAttribute(
@@ -70,8 +69,9 @@ test.describe("answers on the sheet (TEACH-195)", () => {
     await page.goto(paths.worksheet("fraction-practice", "/print"));
     await expect(page.locator(".ws-print-root")).toHaveCSS("visibility", "visible");
     await expect(page.getByRole("heading", { level: 2, name: "Answer key" })).toBeVisible();
-    await expect(page.getByText("C. Option C")).toBeVisible();
-    await expect(page.getByText("A. Option A")).toHaveCount(0);
+    const keyLines = page.locator(".ws-print-root .ws-page .ws-key-line");
+    await expect(keyLines.filter({ hasText: "C. Option C" })).toHaveCount(1);
+    await expect(keyLines.filter({ hasText: "A. Option A" })).toHaveCount(0);
   });
 
   test("rows 3 and 4: Show answers is a view — the model answer is editable, the pages do not move, print never sees it", async ({
