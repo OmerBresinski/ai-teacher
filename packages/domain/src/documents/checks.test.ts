@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { checkLesson } from "./checks";
+import { checkLesson, objectivesCoveredBy } from "./checks";
 import {
+  generatedFrom,
   generatedLesson,
   generatedText,
   generatedWorksheet,
@@ -9,6 +10,7 @@ import {
   optionElement,
 } from "./fixtures.test-helpers";
 import type { Lesson } from "./lesson";
+import type { LessonFacts } from "./lesson-facts";
 import type { Slide, SlideElement } from "./slide";
 import type { Worksheet, WorksheetBlock } from "./worksheet";
 
@@ -156,6 +158,101 @@ describe("checkLesson", () => {
         target: { factId: "o1" },
       });
       expect(findings[0]?.message).toContain("the worksheet");
+    });
+
+    /*
+     * The production shape (Generation quality, Problem 6): three objectives, eight questions,
+     * outline entries that list an objective beside the questions that practise it, and worksheet
+     * blocks that reference questions only. Ids and refs, no prose.
+     */
+    const rodentsFacts = (): LessonFacts => ({
+      objectives: [
+        { id: "o1", text: "Objective one" },
+        { id: "o2", text: "Objective two" },
+        { id: "o3", text: "Objective three" },
+      ],
+      vocabulary: [{ id: "v1", term: "incisor", definition: "a front tooth" }],
+      workedExamples: [],
+      questions: Array.from({ length: 8 }, (_, i) => ({
+        id: `q${i + 1}`,
+        stem: `Question ${i + 1}`,
+        answer: "a",
+        reasoning: "b",
+      })),
+      misconceptions: [],
+      outline: [
+        { id: "s1", kind: "title", minutes: 2, factRefs: [] },
+        { id: "s2", kind: "objectives", minutes: 3, factRefs: ["o1", "o2", "o3"] },
+        { id: "s3", kind: "multiple-choice", minutes: 15, factRefs: ["o1", "q1", "q2", "q3"] },
+        { id: "s4", kind: "true-false", minutes: 15, factRefs: ["o2", "q4", "q5"] },
+        { id: "s5", kind: "exit-ticket", minutes: 25, factRefs: ["o3", "q6", "q7", "q8"] },
+      ],
+      durationMin: 60,
+    });
+
+    const rodentsLesson = (): Lesson => {
+      const l = generatedLesson();
+      l.facts = rodentsFacts();
+      // The objectives slide names every objective literally, as the recipe does.
+      const objectives = slideOf(l, "s-objectives");
+      objectives.elements = [generatedText("ob-all", "Objectives", ["o1", "o2", "o3"])];
+      return l;
+    };
+
+    /** A worksheet whose blocks reference the given question ids only, one block each. */
+    const worksheetRefs = (refs: string[][]): Worksheet => {
+      const w = generatedWorksheet();
+      w.blocks = refs.map((factRefs, i) => ({
+        id: `wb${i + 1}`,
+        type: "question",
+        doc: { type: "doc", content: [] },
+        answerLines: 2,
+        answer: "an answer",
+        generatedFrom: generatedFrom(factRefs),
+        authoredBy: "ai",
+      }));
+      return w;
+    };
+
+    test("A1: blocks referencing questions cover the objectives the outline links them to", () => {
+      const findings = checkLesson(rodentsLesson(), worksheetRefs([["q1"], ["q4"], ["q8"]]));
+      expect(findings.filter((f) => f.check === "objective-coverage")).toEqual([]);
+    });
+
+    test("A2: an objective none of the blocks' facts link to is one worksheet-side error", () => {
+      const findings = checkLesson(rodentsLesson(), worksheetRefs([["q1"], ["q4"], ["q5"]]));
+      const coverage = findings.filter((f) => f.check === "objective-coverage");
+      expect(coverage).toHaveLength(1);
+      expect(coverage[0]).toMatchObject({ severity: "error", target: { factId: "o3" } });
+      expect(coverage[0]?.message).toContain("the worksheet");
+      expect(coverage[0]?.message).not.toContain("any slide");
+    });
+
+    test("A3: a fact's own objectiveRefs link it to an objective the outline does not", () => {
+      const l = rodentsLesson();
+      const facts = rodentsFacts();
+      // `objectiveRefs` on a question is the richer-facts shape (PR B); the checker reads it already.
+      facts.questions[0] = {
+        ...(facts.questions[0] as LessonFacts["questions"][number]),
+        objectiveRefs: ["o2"],
+      } as LessonFacts["questions"][number];
+      l.facts = facts;
+      const findings = checkLesson(l, worksheetRefs([["q1"], ["q8"]]));
+      expect(findings.filter((f) => f.check === "objective-coverage")).toEqual([]);
+      expect(objectivesCoveredBy(facts).get("q1")).toEqual(new Set(["o1", "o2"]));
+    });
+
+    test("A4: without a worksheet the block side is skipped, whatever the outline says", () => {
+      const findings = checkLesson(rodentsLesson());
+      expect(findings.filter((f) => f.check === "objective-coverage")).toEqual([]);
+    });
+
+    test("objectivesCoveredBy: an objective covers itself; a ref to no objective covers nothing", () => {
+      const covers = objectivesCoveredBy(rodentsFacts());
+      expect(covers.get("o1")).toEqual(new Set(["o1"]));
+      expect(covers.get("q4")).toEqual(new Set(["o2"]));
+      expect(covers.get("v1")).toBeUndefined();
+      expect(covers.get("o9")).toBeUndefined();
     });
 
     test("references inside groups count as slide coverage", () => {
