@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { RichText } from "../slide/elements/RichText";
 import { isDocEmpty, renderDocHTML } from "../text/static";
 import { type AnswerEntry, matchingOrder, optionLetter } from "./answers";
+import { sheetSummary } from "./metrics";
 import { WordSearchView } from "./WordSearch";
 
 /**
@@ -312,6 +313,7 @@ export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
       {header.subtitle !== undefined ? (
         <p className="ws-objective">{header.subtitle || "\u00a0"}</p>
       ) : null}
+      <SheetMeta blocks={worksheet.blocks} />
       <CriteriaList criteria={header.criteria} />
     </header>
   );
@@ -406,4 +408,13 @@ export function FlowItemContent({
   if (item.kind === "rag") return <RagStrip />;
   if (item.kind === "key-title") return <AnswerKeyTitle worksheet={worksheet} />;
   return <AnswerKeyEntry entry={item.entry} />;
+}
+
+/**
+ * "12 marks · about 25 min" under the objective (TEACH-183): the sum of the question marks and
+ * `estimateMinutes`. Nothing on an empty sheet, where "0 marks" would only be noise.
+ */
+export function SheetMeta({ blocks }: { blocks: readonly WorksheetBlock[] }) {
+  if (blocks.length === 0) return null;
+  return <p className="ws-meta">{sheetSummary(blocks)}</p>;
 }

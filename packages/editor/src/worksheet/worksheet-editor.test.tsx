@@ -42,7 +42,7 @@ describe("WorksheetEditor", () => {
     expect(screen.getByRole("toolbar", { name: "Worksheet header" })).toBeInTheDocument();
   });
 
-  test("row 3: the gutter + opens the slash menu listing every block type; picking Question inserts one after", async () => {
+  test("row 3: the gutter + opens Add a block on Sections; Blocks > Question inserts one after", async () => {
     const { container, read } = renderWorksheetEditor();
     const anchor = read().blocks[0];
     if (!anchor) throw new Error("seed");
@@ -50,26 +50,80 @@ describe("WorksheetEditor", () => {
     fireEvent.click(
       within(row(container, anchor.id)).getByRole("button", { name: "Insert a block below" }),
     );
-    const list = await screen.findByRole("listbox", { name: "Block types" });
-    const options = within(list).getAllByRole("option");
-    // Every `WorksheetBlock["type"]`, headings twice (Heading and Subheading).
-    expect(options.length).toBe(16);
-    const input = screen.getByRole("combobox", { name: "Filter blocks" });
-    fireEvent.change(input, { target: { value: "quest" } });
-    const filtered = within(list).getAllByRole("option");
-    expect(filtered.length).toBeLessThan(16);
-    expect(filtered.every((o) => /quest/i.test(o.textContent ?? ""))).toBe(true);
-    fireEvent.pointerDown(within(list).getByRole("option", { name: /^Question/ }));
-    await waitFor(() => expect(read().blocks.length).toBe(before + 1));
-    const inserted = read().blocks[1];
-    expect(inserted?.type).toBe("question");
-    if (inserted?.type === "question") {
-      expect(inserted.answerLines).toBe(2);
-      expect(inserted.number).toBe(1);
-    }
-    // One undo step.
-    undo();
+    const dialog = await screen.findByRole("dialog", { name: "Add a block" });
+    // Sections first: nine cards, each with a minutes pill; the six job chips filter them.
+    const cards = () =>
+      within(dialog).getByRole("list", { name: "Sections" }).querySelectorAll(":scope > li");
+    expect(cards().length).toBe(9);
+    expect(within(dialog).getAllByText(/^about \d+ min$/).length).toBe(9);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Assess", pressed: false }));
+    expect(cards().length).toBe(1);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Assess", pressed: true }));
+    expect(cards().length).toBe(9);
+    // Blocks: the fifteen block types (headings twice) with the slash menu's descriptions.
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Blocks" }));
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Blocks" }));
+    const blocks = await within(dialog).findByRole("region", { name: "Questions" });
+    expect(within(blocks).getByText("Numbered, with marks and ruled lines")).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Question/ }));
+    expect(read().blocks.length).toBe(before + 1);
+    expect(read().blocks[1]?.type).toBe("question");
+    expect(screen.queryByRole("dialog", { name: "Add a block" })).toBeNull();
+  });
+
+  test("the Add block pill appends a section as one undo step and focuses its first block", async () => {
+    const { container, read } = renderWorksheetEditor();
+    const before = read().blocks.length;
+    fireEvent.click(screen.getByRole("button", { name: "Add block" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add a block" });
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Exit ticket\./ }));
+    const after = read().blocks;
+    // Three questions, the answer box and the placeholder, appended in order.
+    expect(after.length).toBe(before + 5);
+    expect(after.slice(before).map((b) => b.type)).toEqual([
+      "question",
+      "question",
+      "question",
+      "answer-box",
+      "paragraph",
+    ]);
+    const first = after[before];
+    if (!first) throw new Error("inserted");
+    expect(row(container, first.id).querySelector(".ws-selected-ring")).not.toBeNull();
+    // The header reads the new total.
+    expect(container.querySelector(".ws-header .ws-meta")?.textContent).toMatch(
+      /marks · about \d+ min/,
+    );
+    // One undo step for the whole section.
+    fireEvent.keyDown(window, { key: "z", metaKey: true });
     expect(read().blocks.length).toBe(before);
+  });
+
+  test("the slash menu lists the nine recipes under Sections; `/exit` finds Exit ticket", async () => {
+    // An empty sheet: its "Add your first block" button is the slash menu's own way in.
+    const { read } = renderWorksheetEditor(withBlocks([]));
+    fireEvent.click(screen.getByRole("button", { name: /Add your first block/ }));
+    const list = await screen.findByRole("listbox", { name: "Block types" });
+    const sections = within(list).getByRole("group", { name: "Sections" });
+    expect(within(sections).getAllByRole("option").length).toBe(9);
+    expect(within(list).getAllByRole("option").length).toBe(25);
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter blocks" }), {
+      target: { value: "exit" },
+    });
+    const left = within(list).getAllByRole("option");
+    expect(left.length).toBe(1);
+    expect(left[0]?.textContent).toContain("Exit ticket");
+    fireEvent.pointerDown(left[0] as HTMLElement, pointer());
+    expect(read().blocks.map((b) => b.type)).toEqual([
+      "question",
+      "question",
+      "question",
+      "answer-box",
+      "paragraph",
+    ]);
+    // One step: undo empties the sheet again.
+    undo();
+    expect(read().blocks.length).toBe(0);
   });
 
   test("row 4: setting marks on a question follows the AQA line rule and renumbers", () => {

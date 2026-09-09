@@ -1,4 +1,10 @@
-import { PAGE_A4, PAGE_LETTER, type PageSize } from "@tj/domain/documents";
+import {
+  PAGE_A4,
+  PAGE_LETTER,
+  type PageSize,
+  type RichDoc,
+  type WorksheetBlock,
+} from "@tj/domain/documents";
 
 /**
  * Worksheet page geometry, in typographic points (TeachDeck `lib/worksheet/metrics.ts`).
@@ -93,4 +99,58 @@ export const ptToPx = (pt: number) => pt * PX_PER_PT;
 /** Editor zoom: the page is 793.7px wide at 1:1, so this fits it to `width`. */
 export function fitScale(width: number, pageW: number = PAGE.w): number {
   return Math.min(1.1, Math.max(0.35, width / ptToPx(pageW)));
+}
+
+/* ---- time on task ------------------------------------------------------------ */
+
+/** The marks a sheet is worth: the sum over its question blocks. */
+export function marksTotal(blocks: readonly WorksheetBlock[]): number {
+  return blocks.reduce((sum, b) => sum + (b.type === "question" ? (b.marks ?? 0) : 0), 0);
+}
+
+const wordCount = (doc: RichDoc): number => {
+  const text = (doc.content ?? [])
+    .flatMap((node) => node.content ?? [])
+    .map((leaf) => (typeof leaf.text === "string" ? leaf.text : ""))
+    .join(" ")
+    .trim();
+  return text ? text.split(/\s+/).length : 0;
+};
+
+/**
+ * How long a sheet takes a pupil, in whole minutes (TEACH-183). Marks at a minute and a half each,
+ * a word search 8, a matching block 4, a paragraph a minute per 80 words, a gap a minute, a
+ * multiple choice item a minute; the sum to the nearest five, and never under five. A rough guide
+ * for the header and the recipe cards, not a timer.
+ */
+export function estimateMinutes(blocks: readonly WorksheetBlock[]): number {
+  let minutes = marksTotal(blocks) * 1.5;
+  for (const block of blocks) {
+    switch (block.type) {
+      case "word-search":
+        minutes += 8;
+        break;
+      case "matching":
+        minutes += 4;
+        break;
+      case "paragraph":
+        minutes += wordCount(block.doc) / 80;
+        break;
+      case "fill-gap":
+        minutes += block.gaps.length;
+        break;
+      case "multiple-choice":
+        minutes += 1;
+        break;
+      default:
+        break;
+    }
+  }
+  return Math.max(5, Math.round(minutes / 5) * 5);
+}
+
+/** "12 marks · about 25 min" for the sheet header and the recipe cards. */
+export function sheetSummary(blocks: readonly WorksheetBlock[]): string {
+  const marks = marksTotal(blocks);
+  return `${marks} ${marks === 1 ? "mark" : "marks"} · about ${estimateMinutes(blocks)} min`;
 }
