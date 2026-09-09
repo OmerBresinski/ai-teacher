@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
+import { imageSearchClient } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
 import { worksheetEditorRoute } from "./documents.route";
@@ -61,6 +62,7 @@ export function WorksheetEditorPage() {
       onBack={onBack}
       onPrint={onPrint}
       facts={facts}
+      images={imageSearchClient}
       exportSlot={
         // `aria-disabled`, not `disabled`: a disabled button swallows pointer and focus events, so
         // its tooltip could never open (the viewer's pattern).

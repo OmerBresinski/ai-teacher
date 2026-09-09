@@ -1,8 +1,11 @@
-import { Label, Switch } from "@tj/ui";
-import { Columns3, Plus, Rows3, X } from "lucide-react";
-import { useId } from "react";
+import { IconButton, Label, Popover, PopoverContent, PopoverTrigger, Switch } from "@tj/ui";
+import { Columns3, Info, Plus, Replace, Rows3, X } from "lucide-react";
+import { useId, useState } from "react";
+import { ImageCreditText } from "../../images/ImageCreditText";
+import { ImagePicker } from "../../images/ImagePicker";
+import type { ImageSource } from "../../images/image-source";
 import { Segmented } from "../../kit/Segmented";
-import { useBlockWrites } from "../worksheet-context";
+import { useBlockWrites, useWorksheetSession } from "../worksheet-context";
 import { BarButton, type BlockOf, ICON_SM, NumberField } from "./shared";
 
 /*
@@ -28,22 +31,74 @@ export function LayoutToolbar({ block }: { block: Heading | Image | Table }) {
       return <HeadingFields block={block} />;
     case "image":
       return (
-        <NumberField<Image>
-          id={block.id}
-          label="Width"
-          unit="%"
-          value={block.widthPct}
-          min={20}
-          max={100}
-          step={5}
-          onValue={(widthPct, b) => {
-            b.widthPct = widthPct;
-          }}
-        />
+        <>
+          <ImageReplace block={block} />
+          <NumberField<Image>
+            id={block.id}
+            label="Width"
+            unit="%"
+            value={block.widthPct}
+            min={20}
+            max={100}
+            step={5}
+            onValue={(widthPct, b) => {
+              b.widthPct = widthPct;
+            }}
+          />
+        </>
       );
     case "table":
       return <TableFields block={block} />;
   }
+}
+
+/**
+ * The image block's picture source (Images project): a Replace popover with the shared
+ * `ImagePicker` (upload or Pexels, `medium` rendition chosen by the api from `target`), plus
+ * the credit button when the block carries provenance. One `commit` per pick: a single undo
+ * step, `widthPct` and `caption` untouched.
+ */
+function ImageReplace({ block }: { block: Image }) {
+  const { commit } = useBlockWrites();
+  const { images } = useWorksheetSession();
+  const [open, setOpen] = useState(false);
+  const onPick = (source: ImageSource) => {
+    commit<Image>(block.id, (b) => {
+      b.src = source.src;
+      // Cleared, not kept: a stale alt describing the previous picture is worse than none.
+      b.alt = source.alt;
+      b.source = source.source;
+      b.authoredBy = "teacher";
+    });
+    setOpen(false);
+  };
+  return (
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <BarButton>
+            <Replace {...ICON_SM} aria-hidden />
+            Replace
+          </BarButton>
+        </PopoverTrigger>
+        <PopoverContent aria-label="Replace image" className="w-[360px] p-0">
+          <ImagePicker images={images} target="worksheet" onPick={onPick} />
+        </PopoverContent>
+      </Popover>
+      {block.source ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <IconButton label="Image credit" noTooltip size="sm">
+              <Info aria-hidden size={16} strokeWidth={1.5} />
+            </IconButton>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="end" className="w-auto max-w-[260px]">
+            <ImageCreditText source={block.source} />
+          </PopoverContent>
+        </Popover>
+      ) : null}
+    </>
+  );
 }
 
 function HeadingFields({ block }: { block: Heading }) {

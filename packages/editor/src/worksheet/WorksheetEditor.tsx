@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { ImageSearchClient } from "../images/image-search";
 import { isInTextField, matchesBinding } from "../lesson/keys";
 import { getTheme } from "../model/themes";
 import { useAutosave } from "../model/use-autosave";
@@ -71,6 +72,8 @@ export type WorksheetEditorProps = {
   onPrint: () => void;
   /** Where the export menu sits once it exists (E1 / E3). */
   exportSlot?: ReactNode;
+  /** Pexels search + pick for the image block's Replace popover, injected by the app. */
+  images?: ImageSearchClient;
   /**
    * The facts of the lesson this sheet belongs to (`worksheet.lessonId`), when the app has them:
    * the "Add a block" sections are built from these. Without them, the placeholder build.
@@ -92,6 +95,7 @@ export function WorksheetEditor({
   onPrint,
   exportSlot,
   facts,
+  images,
 }: WorksheetEditorProps) {
   const autosave = useAutosave(onSave);
   const { worksheet, ...history } = useWorksheetHistory({
@@ -141,6 +145,9 @@ export function WorksheetEditor({
   );
   const typing = useTypingSessionState(historyApi);
   const session = useWorksheetSessionState();
+  // The injected image client rides the session value so block toolbars read it without a new
+  // context; it is stable per app boot, so it never re-renders session consumers by itself.
+  const sessionWithImages = useMemo(() => ({ ...session, images }), [session, images]);
   const theme = useMemo(() => getTheme(worksheet?.themeId), [worksheet?.themeId]);
   const { pages, oversize, measureNode } = useSheetPagination(
     worksheet ?? null,
@@ -419,7 +426,7 @@ export function WorksheetEditor({
     <WorksheetProvider value={worksheet}>
       <WorksheetHistoryProvider value={historyApi}>
         <TypingSessionProvider value={typing}>
-          <WorksheetSessionProvider value={session}>
+          <WorksheetSessionProvider value={sessionWithImages}>
             <ActiveEditorProvider>
               <div
                 className="flex h-dvh flex-col overflow-hidden bg-background"

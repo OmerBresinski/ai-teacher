@@ -1,6 +1,8 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import { PLACEHOLDER_IMAGE } from "@tj/slides";
+import type { ImageSearchClient, PhotoResult, PickedPhoto } from "../images/image-search";
 import { docFromText, uid } from "../model/factories";
 import { newBlock, numberQuestions, starterWorksheet } from "../model/worksheet-factories";
 import { pointer, renderWorksheetEditor, row } from "./editor-test-harness";
@@ -303,5 +305,177 @@ describe("WorksheetEditor", () => {
     if (!para) throw new Error("seed");
     fireEvent.keyDown(window, { key: "Escape" });
     expect(container.querySelector(".ws-selected-ring")).toBeNull();
+  });
+});
+
+describe("WorksheetEditor image Replace (TEACH-160)", () => {
+  const photoSource = {
+    provider: "pexels",
+    id: "leaf",
+    pageUrl: "https://www.pexels.com/photo/leaf/",
+    photographer: "Ada",
+    photographerUrl: "https://www.pexels.com/@ada",
+  } as const;
+
+  const pexelsPhoto = (id: string, alt = `Photo ${id}`): PhotoResult => ({
+    id,
+    width: 6000,
+    height: 4000,
+    alt,
+    photographer: "Ada",
+    photographerUrl: "https://www.pexels.com/@ada/",
+    pageUrl: `https://www.pexels.com/photo/${id}/`,
+    src: {
+      large: `https://images.pexels.com/photos/${id}/large.jpeg`,
+      medium: `https://images.pexels.com/photos/${id}/medium.jpeg`,
+      tiny: `https://images.pexels.com/photos/${id}/tiny.jpeg`,
+    },
+  });
+
+  const pickedPhoto = (id: string): PickedPhoto => ({
+    url: `/files/ws/images/${id}.jpg`,
+    width: 6000,
+    height: 4000,
+    source: { ...photoSource, id, pageUrl: `https://www.pexels.com/photo/${id}/` },
+  });
+
+  function fakeClient(): {
+    client: ImageSearchClient;
+    search: ReturnType<typeof mock>;
+    pick: ReturnType<typeof mock>;
+  } {
+    const search = mock(async (_query: string, _opts: unknown) => ({
+      photos: [pexelsPhoto("leaf", "Leaf")],
+      nextPage: null,
+    }));
+    const pick = mock(async (photo: PhotoResult) => pickedPhoto(photo.id));
+    return { client: { search, pick } as ImageSearchClient, search, pick };
+  }
+
+  const imageSheet = (overrides: Record<string, unknown> = {}) => {
+    const block = { ...newBlock("image"), ...overrides };
+    return withBlocks([block]);
+  };
+
+  const openReplace = async () => {
+    const toolbar = await screen.findByRole("toolbar", { name: "Image block" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Replace" }));
+    return screen.findByRole("dialog", { name: "Replace image" });
+  };
+
+  const searchPhotos = async (term: string) => {
+    const tab = await screen.findByRole("tab", { name: "Photos" });
+    fireEvent.mouseDown(tab);
+    fireEvent.click(tab);
+    const field = await screen.findByRole("searchbox", { name: "Search images" });
+    fireEvent.change(field, { target: { value: term } });
+    fireEvent.keyDown(field, { key: "Enter" });
+  };
+
+  test("the image toolbar shows Width and Replace, and no credit button without source", async () => {
+    const { client } = fakeClient();
+    const sheet = imageSheet();
+    const block = sheet.blocks[0];
+    if (!block) throw new Error("seed");
+    const { container } = renderWorksheetEditor(sheet, { images: client });
+    select(container, block.id);
+    const toolbar = await screen.findByRole("toolbar", { name: "Image block" });
+    expect(within(toolbar).getByRole("spinbutton", { name: "Width" })).toBeTruthy();
+    expect(within(toolbar).getByRole("button", { name: "Replace" })).toBeTruthy();
+    expect(within(toolbar).queryByRole("button", { name: "Image credit" })).toBeNull();
+  });
+
+  test("picking a photo writes src, alt, source and authoredBy in one undo step", async () => {
+    const { client, search: searchMock, pick } = fakeClient();
+    const sheet = imageSheet();
+    const block = sheet.blocks[0];
+    if (block?.type !== "image") throw new Error("seed");
+    const { container, read } = renderWorksheetEditor(sheet, { images: client });
+    select(container, block.id);
+    await openReplace();
+    await searchPhotos("leaf");
+    fireEvent.click(await screen.findByRole("button", { name: "Leaf" }));
+
+    await waitFor(() => {
+      const current = read().blocks[0];
+      expect(current?.type === "image" && current.src).toBe("/files/ws/images/leaf.jpg");
+    });
+    expect(searchMock).toHaveBeenCalledTimes(1);
+    const [, opts] = searchMock.mock.calls[0] as [string, Record<string, unknown>];
+    expect(opts.orientation).toBeUndefined();
+    expect(opts.page).toBe(1);
+    expect(pick).toHaveBeenCalledTimes(1);
+    const picked = read().blocks[0];
+    if (picked?.type !== "image") throw new Error("missing");
+    expect(picked.alt).toBe("Leaf");
+    expect(picked.source).toEqual({
+      ...photoSource,
+      pageUrl: "https://www.pexels.com/photo/leaf/",
+    });
+    expect(picked.authoredBy).toBe("teacher");
+    expect(picked.widthPct).toBe(60);
+    expect(picked.caption).toBe("Figure 1");
+
+    undo();
+    const restored = read().blocks[0];
+    expect(restored?.type === "image" && restored.src).not.toBe("/files/ws/images/leaf.jpg");
+  });
+
+  test("a sourced block shows the credit button with photographer links", async () => {
+    const { client } = fakeClient();
+    const sheet = imageSheet({ source: { ...photoSource } });
+    const block = sheet.blocks[0];
+    if (!block) throw new Error("seed");
+    const { container } = renderWorksheetEditor(sheet, { images: client });
+    select(container, block.id);
+    const toolbar = await screen.findByRole("toolbar", { name: "Image block" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Image credit" }));
+    expect(await screen.findByText(/Photo by/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Ada" }).getAttribute("href")).toBe(
+      "https://www.pexels.com/@ada",
+    );
+    expect(screen.getByRole("link", { name: "Pexels" }).getAttribute("href")).toBe(
+      "https://www.pexels.com/photo/leaf/",
+    );
+  });
+
+  test("uploading over a sourced block clears provenance and flips authoredBy", async () => {
+    const { client } = fakeClient();
+    const sheet = imageSheet({ source: { ...photoSource } });
+    const block = sheet.blocks[0];
+    if (!block) throw new Error("seed");
+    const { container, read } = renderWorksheetEditor(sheet, { images: client });
+    select(container, block.id);
+    await openReplace();
+    const file = new File(["<svg xmlns='http://www.w3.org/2000/svg'/>"], "x.svg", {
+      type: "image/svg+xml",
+    });
+    const input = screen.getByLabelText("Image file") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [file] } });
+
+    // The seed src is itself a data URL (the placeholder), so wait for an actual change.
+    await waitFor(() => {
+      const current = read().blocks[0];
+      expect(current?.type === "image" && current.src).not.toBe(PLACEHOLDER_IMAGE);
+    });
+    const current = read().blocks[0];
+    if (current?.type !== "image") throw new Error("missing");
+    expect(current.source).toBeUndefined();
+    expect(current.alt).toBeUndefined();
+    expect(current.authoredBy).toBe("teacher");
+  });
+
+  test("without a client the Photos tab says search is unavailable but Upload works", async () => {
+    const sheet = imageSheet();
+    const block = sheet.blocks[0];
+    if (!block) throw new Error("seed");
+    const { container } = renderWorksheetEditor(sheet);
+    select(container, block.id);
+    await openReplace();
+    const tab = await screen.findByRole("tab", { name: "Photos" });
+    fireEvent.mouseDown(tab);
+    fireEvent.click(tab);
+    expect(await screen.findByText("Photo search is not available.")).toBeTruthy();
+    expect(screen.queryByRole("searchbox", { name: "Search images" })).toBeNull();
   });
 });

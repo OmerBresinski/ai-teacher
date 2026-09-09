@@ -1,8 +1,8 @@
 import type { ImageElement } from "@tj/domain/documents";
 import { IconButton, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
 import { Info } from "lucide-react";
+import { ImageCreditText } from "../../images/ImageCreditText";
 import type { Rect } from "../../model/geometry";
-import { normaliseHref } from "../../text/links";
 
 /**
  * The "i" attribution badge on a selected image (Images project, editor only).
@@ -56,56 +56,14 @@ export function ImageCreditBadge({
             </IconButton>
           </PopoverTrigger>
           <PopoverContent side="top" align="end" className="w-auto max-w-[260px]">
-            <CreditBody element={element} />
+            <ImageCreditText
+              source={element.source}
+              credit={element.credit}
+              creditUrl={element.creditUrl}
+            />
           </PopoverContent>
         </Popover>
       </div>
-    </div>
-  );
-}
-
-function CreditBody({ element }: { element: ImageElement }) {
-  const source = element.source;
-  if (source) {
-    // Imported lessons are untrusted JSON: both addresses go through the same gate as a
-    // typed link, and a refused one renders as plain text. No href, no anchor.
-    const photographerHref = normaliseHref(source.photographerUrl);
-    const pageHref = normaliseHref(source.pageUrl);
-    return (
-      <p className="m-0 text-body text-ink-2">
-        Photo by{" "}
-        {photographerHref ? (
-          <a href={photographerHref} target="_blank" rel="noopener noreferrer">
-            {source.photographer}
-          </a>
-        ) : (
-          source.photographer
-        )}{" "}
-        on{" "}
-        {pageHref ? (
-          <a href={pageHref} target="_blank" rel="noopener noreferrer">
-            Pexels
-          </a>
-        ) : (
-          "Pexels"
-        )}
-      </p>
-    );
-  }
-  const href = element.creditUrl ? normaliseHref(element.creditUrl) : null;
-  return (
-    <div className="flex flex-col gap-1">
-      <p className="m-0 break-words text-ink-2 text-meta">{element.credit}</p>
-      {href ? (
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-meta text-primary hover:underline"
-        >
-          View the original
-        </a>
-      ) : null}
     </div>
   );
 }

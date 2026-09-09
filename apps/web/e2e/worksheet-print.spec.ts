@@ -4,6 +4,9 @@
  * without an answer key, so its absence is what can be asserted here; the key itself is covered by
  * `packages/editor/src/worksheet/sheet.test.tsx` and `worksheet-library.spec.ts`.
  */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { E2E_API_URL } from "../playwright.config";
 import { expectNoSeriousA11yViolations } from "./a11y";
 import { expect, test } from "./fixtures";
 
@@ -89,6 +92,60 @@ test.describe("worksheet print route", () => {
 
     const pdf = await page.pdf({ preferCSSPageSize: true });
     expect(pdfPageCount(pdf)).toBe(count);
+  });
+
+  test("TEACH-160 row 6: a sourced image prints its picture and no credit text", async ({
+    signedInPage: { page, paths },
+  }) => {
+    await page.route("**/documents/*", async (route) => {
+      const request = route.request();
+      if (
+        request.method() !== "GET" ||
+        !/\/documents\/[^/]+$/.test(new URL(request.url()).pathname)
+      ) {
+        return route.continue();
+      }
+      const response = await route.fetch();
+      const body = (await response.json()) as {
+        document?: { body?: { blocks?: unknown[] } };
+      };
+      body.document?.body?.blocks?.push({
+        id: "wb-img-1",
+        type: "image",
+        src: `${E2E_API_URL}/files/ws/images/leaf.jpg`,
+        alt: "Leaf",
+        widthPct: 60,
+        caption: "Figure 1",
+        source: {
+          provider: "pexels",
+          id: "leaf",
+          pageUrl: "https://www.pexels.com/photo/leaf/",
+          photographer: "Ada",
+          photographerUrl: "https://www.pexels.com/@ada",
+        },
+      });
+      return route.fulfill({
+        status: response.status(),
+        contentType: "application/json",
+        body: JSON.stringify(body),
+      });
+    });
+    await page.route(`${E2E_API_URL}/files/**`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "image/png",
+        body: readFileSync(
+          fileURLToPath(new URL("./fixtures/photo-3000x2000.png", import.meta.url)),
+        ),
+      }),
+    );
+    await page.goto(paths.worksheet("fraction-practice", "/print"));
+    const pages = page.locator(".ws-print-root .ws-page");
+    await expect(pages.first()).toBeVisible();
+    const figure = pages.locator("figure.ws-figure img").first();
+    await expect(figure).toHaveAttribute("src", `${E2E_API_URL}/files/ws/images/leaf.jpg`);
+    await expect(page.getByText("Photo by")).toHaveCount(0);
+    await expect(page.getByText("Pexels")).toHaveCount(0);
   });
 
   test("the starter worksheet prints; a lesson id shows the wrong-kind page without crashing", async ({

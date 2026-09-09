@@ -1,6 +1,11 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
+import { E2E_API_URL } from "../playwright.config";
 import { expectNoSeriousA11yViolations } from "./a11y";
 import { expect, type SeededPaths, test } from "./fixtures";
+
+const PNG = readFileSync(fileURLToPath(new URL("./fixtures/photo-3000x2000.png", import.meta.url)));
 
 /*
  * The worksheet editor on `/w/$worksheetId` (TEACH-109): rows 1, 2, 3, 7 and 9 of the acceptance
@@ -158,5 +163,115 @@ test.describe("worksheet editor", () => {
     await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle")}$`));
     await page.goto(`/l/${paths.id("fraction-practice")}`);
     await expect(page.getByText("This is a worksheet")).toBeVisible();
+  });
+
+  test("TEACH-160 row 7: Replace picks a Pexels photo and autosaves it with provenance", async ({
+    signedInPage: { page, paths },
+  }) => {
+    // The seed has no image block and the UI cannot insert one: merge it into the loaded
+    // document. Pexels and the bucket are mocked; the api itself is real.
+    await page.route("**/documents/*", async (route) => {
+      const request = route.request();
+      if (
+        request.method() !== "GET" ||
+        !/\/documents\/[^/]+$/.test(new URL(request.url()).pathname)
+      ) {
+        return route.continue();
+      }
+      const response = await route.fetch();
+      const body = (await response.json()) as {
+        document?: { body?: { blocks?: unknown[] } };
+      };
+      body.document?.body?.blocks?.push({
+        id: "wb-img-1",
+        type: "image",
+        src: "data:image/svg+xml;utf8,placeholder",
+        alt: "Describe this image for pupils using a screen reader",
+        widthPct: 60,
+        caption: "Figure 1",
+      });
+      return route.fulfill({
+        status: response.status(),
+        contentType: "application/json",
+        body: JSON.stringify(body),
+      });
+    });
+    await page.route(`${E2E_API_URL}/images/search*`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          photos: [
+            {
+              id: "leaf",
+              width: 6000,
+              height: 4000,
+              alt: "Leaf",
+              photographer: "Ada",
+              photographerUrl: "https://www.pexels.com/@ada",
+              pageUrl: "https://www.pexels.com/photo/leaf/",
+              src: {
+                large: "https://images.pexels.com/photos/leaf/large.jpeg",
+                medium: "https://images.pexels.com/photos/leaf/medium.jpeg",
+                tiny: "https://images.pexels.com/photos/leaf/tiny.jpeg",
+              },
+            },
+          ],
+          nextPage: null,
+        }),
+      }),
+    );
+    await page.route(`${E2E_API_URL}/images/pick`, (route) =>
+      route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({
+          key: "ws/images/leaf.jpg",
+          url: "/files/ws/images/leaf.jpg",
+          width: 6000,
+          height: 4000,
+          bytes: 100,
+          contentType: "image/png",
+          source: {
+            provider: "pexels",
+            id: "leaf",
+            pageUrl: "https://www.pexels.com/photo/leaf/",
+            photographer: "Ada",
+            photographerUrl: "https://www.pexels.com/@ada",
+          },
+        }),
+      }),
+    );
+    await page.route("https://images.pexels.com/**", (route) =>
+      route.fulfill({ status: 200, contentType: "image/png", body: PNG }),
+    );
+
+    await page.goto(EDITOR(paths));
+    await expect(blocks(page)).not.toHaveCount(0);
+    const figure = blocks(page).locator("figure.ws-figure").first();
+    await figure.click();
+    const toolbar = page.getByRole("toolbar", { name: "Image block" });
+    await expect(toolbar).toBeVisible();
+    await toolbar.getByRole("button", { name: "Replace" }).click();
+    const dialog = page.getByRole("dialog", { name: "Replace image" });
+    await dialog.getByRole("tab", { name: "Photos" }).click();
+    const field = dialog.getByRole("searchbox", { name: "Search images" });
+    await field.fill("leaf");
+    await field.press("Enter");
+    await dialog.getByRole("button", { name: "Leaf" }).click();
+
+    await expect(figure.locator("img")).toHaveAttribute(
+      "src",
+      `${E2E_API_URL}/files/ws/images/leaf.jpg`,
+    );
+    const put = await page.waitForResponse(
+      (res) => res.request().method() === "PUT" && /\/documents\//.test(res.url()),
+    );
+    const saved = (await put.request().postDataJSON()) as {
+      document?: { blocks?: { id: string; src: string; source?: { provider: string } }[] };
+    };
+    const block = saved.document?.blocks?.find((b) => b.id === "wb-img-1");
+    expect(block?.src).toBe(`${E2E_API_URL}/files/ws/images/leaf.jpg`);
+    expect(block?.source?.provider).toBe("pexels");
   });
 });
