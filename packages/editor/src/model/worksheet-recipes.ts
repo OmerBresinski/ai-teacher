@@ -1,4 +1,6 @@
 import type { Id, LessonFacts, WorksheetBlock } from "@tj/domain/documents";
+import { WORD_SEARCH_MAX_SIZE } from "@tj/domain/documents";
+import { clampSize, normaliseWords } from "../worksheet/word-search";
 import { docFromText, now, uid } from "./factories";
 import { answerLinesForMarks, WORD_SEARCH_DEFAULT_SIZE } from "./worksheet-factories";
 
@@ -285,28 +287,44 @@ const matching: WorksheetRecipe = {
   },
 };
 
+/** How many letters a term takes in the grid (letters only, no blanks). */
+const gridLength = (term: string): number => normaliseWords([term])[0]?.length ?? 0;
+
 const wordSearch: WorksheetRecipe = {
   id: "word-search",
   name: "Word search",
   line: "The lesson's terms hidden in a grid, with the list to find.",
   jobs: ["starter"],
   minutes: [10, 15],
+  // No placeholder: the seeded grid is already exact, so generation has nothing to write here.
   build: (facts) => {
     const vocabRefs = facts ? facts.vocabulary.map((v) => v.id) : undefined;
-    const words = facts ? facts.vocabulary.map((v) => v.term) : ["write", "your", "words", "here"];
+    const terms = facts ? facts.vocabulary : [];
+    // The grid is sized to the longest term (never under the default side). A term longer than
+    // the largest grid stays out of it and is named on the instruction line, so nothing vanishes.
+    const inGrid = terms.filter((v) => gridLength(v.term) <= WORD_SEARCH_MAX_SIZE);
+    const leftOut = terms.filter((v) => gridLength(v.term) > WORD_SEARCH_MAX_SIZE);
+    const size = clampSize(
+      Math.max(WORD_SEARCH_DEFAULT_SIZE, ...inGrid.map((v) => gridLength(v.term))),
+    );
+    const words = facts ? inGrid.map((v) => v.term) : ["write", "your", "words", "here"];
+    const lead = "Find every word in the grid. They run across and down.";
+    const note = leftOut.length
+      ? ` Not in the grid: ${leftOut.map((v) => v.term).join(", ")}.`
+      : "";
     return [
-      instructions("Find every word in the grid. They run across and down.", vocabRefs),
+      instructions(`${lead}${note}`, vocabRefs),
       cite(
         {
           id: uid(),
           type: "word-search",
           words,
-          size: WORD_SEARCH_DEFAULT_SIZE,
+          size,
           directions: "across-down",
           seed: 1,
           showWordBank: true,
         },
-        vocabRefs,
+        facts ? inGrid.map((v) => v.id) : undefined,
       ),
     ];
   },
@@ -331,11 +349,21 @@ const workedExample: WorksheetRecipe = {
     const drawn = questionsFrom(facts, [1, 2, 3]);
     const refs = facts ? [...(exampleRefs ?? []), ...factRefsOf(drawn)] : undefined;
     const tries = citeBare(drawn, refs);
+    // A lesson with fewer than three questions leaves "Now try" for generation to finish.
+    const missing = facts && facts.questions.length < 3;
     return [
       heading("Worked example", exampleRefs),
       paragraph(exampleText, exampleRefs),
       heading("Now try", refs, 2),
       ...tries,
+      ...(missing
+        ? [
+            placeholder(
+              "the remaining Now try questions, in the example's shape, with rising difficulty.",
+              refs,
+            ),
+          ]
+        : []),
     ];
   },
 };
