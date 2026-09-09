@@ -106,7 +106,7 @@ describe("runLessonPipeline", () => {
       factRefs: swapped.factRefs,
       imageBrief: { subject: "river severn" },
     };
-    const script = pipelineScript();
+    const script = pipelineScript({ judges: [JSON.stringify({ pick: "p1", query: null })] });
     script[PLAN_INDEX] = JSON.stringify(skeleton);
     script[SLIDES_INDEX + 2] = JSON.stringify({
       kind: "image-text",
@@ -164,8 +164,12 @@ describe("runLessonPipeline", () => {
     if (element?.type !== "image") throw new Error("no placed image");
     expect(element.src).toBe("/files/ws/images/p1.jpg");
     expect(element.source).toEqual(stored.source);
-    // No model call for illustrate: 1 check + 2 plan + 8 slides + 1 worksheet + 1 evaluate.
-    expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1);
+    // 1 check + 2 plan + 8 slides + 1 worksheet + 1 judge (the one image slide) + 1 evaluate.
+    expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1);
+    const judge = ai.calls.find((call) => call.context?.stage === "illustrate");
+    expect(judge?.modelClass).toBe("small");
+    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v1");
+    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v1");
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
     expect(summary.generation.images).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
     expect(summary.generation.stages).toContain("illustrate");

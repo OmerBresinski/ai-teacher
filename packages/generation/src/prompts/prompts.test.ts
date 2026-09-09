@@ -38,6 +38,22 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
     lessonTitle: "States of matter",
     slideTexts: ["Do now", "Key vocabulary"],
   },
+  "pick-or-requery-photo": {
+    topic: brief.topic,
+    answers: brief.answers,
+    lessonTitle: "States of matter",
+    audience,
+    objectives: ["Describe the three states of matter"],
+    vocabulary: ["particle", "evaporation"],
+    slideText: "Ice melts into water when heated.",
+    subject: "melting ice",
+    mustShow: "water and ice together",
+    queries: ["melting ice", "melting"],
+    candidates: [
+      { id: "1", alt: "Ice cubes melting on a wooden table" },
+      { id: "2", alt: "A dentist examining a patient" },
+    ],
+  },
   evaluate: {
     facts,
     audience,
@@ -94,6 +110,10 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "generate-worksheet": {
     version: "generate-worksheet.v3",
     hash: "d1d5fc280e99447afc89ef63b35b3ebcbc708b604d70fed39ba71bc4ca8f7814",
+  },
+  "pick-or-requery-photo": {
+    version: "pick-or-requery-photo.v1",
+    hash: "ea854cc39411f363a9dd5fe5e431e5a2d3d6b0057e4ccbfd1e387068eea44f4f",
   },
   evaluate: {
     version: "evaluate.v1",

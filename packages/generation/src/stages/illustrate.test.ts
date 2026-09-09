@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createFakeAi } from "@tj/ai/testing";
+import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
 import type { ImageBrief, Lesson } from "@tj/domain/documents";
 import { PexelsError, type PhotoResult, type StoredPhoto } from "@tj/images";
 import {
@@ -128,7 +128,7 @@ function imageLesson(briefs: (ImageBrief | null)[]): Lesson {
       jobId: SAMPLE_JOB_ID,
       stage: "generated",
       startedAt: "2026-09-08T10:00:00.000Z",
-      promptVersions: {},
+      promptVersions: { generated: "generate-slide.v3" },
       usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null },
       findings: [],
     },
@@ -141,61 +141,133 @@ function imageOf(lesson: Lesson, index: number) {
   return element;
 }
 
+/** The judge's answers in call order; `pick(id)`, `requery(q)` and `NONE` build them. */
+function judge(...answers: FakeScriptEntry[]) {
+  return createFakeAi({ script: answers, usage: { inputTokens: 40, outputTokens: 8 } });
+}
+const pick = (id: string) => JSON.stringify({ pick: id, query: null });
+const requery = (query: string) => JSON.stringify({ pick: null, query });
+const NONE = JSON.stringify({ pick: null, query: null });
+const run = (lesson: Lesson, deps: ReturnType<typeof recordingDeps>) =>
+  illustrate({ lesson, worksheetId: "w", worksheet: undefined }, deps);
+
 describe("illustrate", () => {
-  test("places the first portrait photo and patches src, alt and source", async () => {
-    const portrait = pexelsPhoto("p1", true);
+  test("the judge's pick is stored, not the first result", async () => {
+    const first = pexelsPhoto("p1", true);
+    const second = pexelsPhoto("p2", true);
     const { images, searches, stores } = fakeImages(async () => [
       pexelsPhoto("l1", false),
-      portrait,
+      first,
+      second,
     ]);
-    const deps = recordingDeps(fakeAi(), { images });
-    const lesson = imageLesson([{ subject: "river severn dawn" }]);
-    const state = await illustrate({ lesson, worksheetId: "w", worksheet: undefined }, deps);
+    const ai = judge(pick("p2"));
+    const deps = recordingDeps(ai, { images });
+    const state = await run(imageLesson([{ subject: "river severn dawn" }]), deps);
 
-    expect(searches).toEqual(["river severn dawn"]);
-    expect(stores).toEqual(["p1"]);
+    // Both query candidates are searched to gather the pool; one judge call sees both portraits.
+    expect(searches).toEqual(["river severn dawn", "river severn"]);
+    expect(stores).toEqual(["p2"]);
+    expect(ai.calls).toHaveLength(1);
+    expect(ai.calls[0]?.context?.stage).toBe("illustrate");
+    expect(ai.calls[0]?.promptText).toContain("p1");
+    expect(ai.calls[0]?.promptText).not.toContain("l1");
     const element = imageOf(state.lesson, 0);
-    expect(element.src).toBe("/files/ws/images/p1.jpg");
-    expect(element.alt).toBe("Photo p1");
-    expect(element.source).toEqual(storedFor(portrait).source);
+    expect(element.src).toBe("/files/ws/images/p2.jpg");
+    expect(element.alt).toBe("Photo p2");
+    expect(element.source).toEqual(storedFor(second).source);
     expect(element.authoredBy).toBe("ai");
-    expect(element.generatedFrom).toBeDefined();
     expect(deps.persisted).toHaveLength(1);
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
-    const progress = deps.progress[deps.progress.length - 1];
-    expect(progress?.message).toBe("Pictures placed");
+    expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
+    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v1");
+    expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 
-  test("falls back to alt text and retries with the dropped word", async () => {
-    const calls: string[] = [];
-    const photo = { ...pexelsPhoto("p2", true), alt: "" };
-    const { images } = fakeImages(async (query) => {
-      calls.push(query);
-      return query === "river severn" ? [photo] : [];
-    });
-    const retrying: PhotoPlacer = {
-      search: images.search,
-      store: async () => storedFor(photo),
-    };
-    const deps = recordingDeps(fakeAi(), { images: retrying });
-    const state = await illustrate(
-      {
-        lesson: imageLesson([{ subject: "river severn dawn" }]),
-        worksheetId: "w",
-        worksheet: undefined,
-      },
-      deps,
+  test("the judge sees the lesson context, not just the slide", async () => {
+    const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    const ai = judge(pick("p"));
+    const lesson = imageLesson([{ subject: "rodent incisors", mustShow: "front teeth" }]);
+    lesson.brief = { topic: "Rodents and their teeth", durationMin: 60, answers: { q1: "Year 7" } };
+    await run(lesson, recordingDeps(ai, { images }));
+    const prompt = ai.calls[0]?.promptText ?? "";
+    expect(prompt).toContain("Rodents and their teeth");
+    expect(prompt).toContain("Year 7");
+    expect(prompt).toContain("rodent incisors");
+    expect(prompt).toContain("front teeth");
+    expect(prompt).toContain("Heading 0");
+  });
+
+  test("a requery searches once more and stores its first portrait", async () => {
+    const dental = { ...pexelsPhoto("d", true), alt: "Hands holding human teeth" };
+    const rodent = pexelsPhoto("r", true);
+    const { images, searches, stores } = fakeImages(async (query) =>
+      query === "beaver gnawing wood" ? [pexelsPhoto("l", false), rodent] : [dental],
     );
-    expect(calls).toEqual(["river severn dawn", "river severn"]);
-    expect(imageOf(state.lesson, 0).alt).toBe("river severn dawn");
+    const ai = judge(requery("beaver gnawing wood"));
+    const deps = recordingDeps(ai, { images });
+    const state = await run(imageLesson([{ subject: "rodent teeth" }]), deps);
+
+    expect(searches).toEqual(["rodent teeth", "rodent", "beaver gnawing wood"]);
+    expect(stores).toEqual(["r"]);
+    expect(ai.calls).toHaveLength(1);
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/r.jpg");
+    expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
   });
 
-  test("no result keeps the placeholder and records a warning", async () => {
-    const { images } = fakeImages(async () => []);
-    const deps = recordingDeps(fakeAi(), { images });
-    const lesson = imageLesson([{ subject: "nothing anywhere" }]);
-    const state = await illustrate({ lesson, worksheetId: "w", worksheet: undefined }, deps);
+  test("a requery with no portrait result is empty, never a third search", async () => {
+    const { images, searches } = fakeImages(async (query) =>
+      query === "second try" ? [] : [pexelsPhoto("x", true)],
+    );
+    const deps = recordingDeps(judge(requery("second try")), { images });
+    const state = await run(imageLesson([{ subject: "river" }]), deps);
+    expect(searches).toEqual(["river", "second try"]);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+    expect(state.lesson.generation?.findings).toHaveLength(1);
+    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+  });
 
+  test("a requery repeating a searched query is empty with no second search", async () => {
+    const { images, searches } = fakeImages(async () => [pexelsPhoto("x", true)]);
+    const deps = recordingDeps(judge(requery("River Severn!")), { images });
+    const state = await run(imageLesson([{ subject: "river severn dawn" }]), deps);
+    // Both candidates were searched; the judge's "new" query is the second one, re-punctuated.
+    expect(searches).toEqual(["river severn dawn", "river severn"]);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+  });
+
+  test("the judge is told every query searched", async () => {
+    const { images } = fakeImages(async () => [pexelsPhoto("x", true)]);
+    const ai = judge(pick("x"));
+    await run(imageLesson([{ subject: "river severn dawn" }]), recordingDeps(ai, { images }));
+    expect(ai.calls[0]?.promptText).toContain("river severn dawn; river severn");
+  });
+
+  test("a blocklisted requery is empty with no second search", async () => {
+    const { images, searches } = fakeImages(async () => [pexelsPhoto("x", true)]);
+    const deps = recordingDeps(judge(requery("gore")), { images });
+    const state = await run(imageLesson([{ subject: "river" }]), deps);
+    expect(searches).toEqual(["river"]);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+  });
+
+  test("a judge that picks an id not in the pool falls back to its query, else empty", async () => {
+    const { images, stores } = fakeImages(async () => [pexelsPhoto("x", true)]);
+    const deps = recordingDeps(judge(JSON.stringify({ pick: "nope", query: null })), { images });
+    const state = await run(imageLesson([{ subject: "river" }]), deps);
+    expect(stores).toEqual([]);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+    expect(deps.imageCounts?.empty).toBe(1);
+  });
+
+  test("none keeps the placeholder, records a warning and persists the judge's usage", async () => {
+    const { images, stores } = fakeImages(async () => [pexelsPhoto("d", true)]);
+    const deps = recordingDeps(judge(NONE), { images });
+    const lesson = imageLesson([{ subject: "nothing fits" }]);
+    const state = await run(lesson, deps);
+
+    expect(stores).toEqual([]);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
     const findings = state.lesson.generation?.findings ?? [];
     expect(findings).toHaveLength(1);
@@ -205,58 +277,63 @@ describe("illustrate", () => {
       target: { slideId: lesson.slides[0]?.id, elementId: imageOf(lesson, 0).id },
     });
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+    expect(deps.persisted).toHaveLength(1);
+    expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 
-  test("landscape-only results count as empty", async () => {
-    const { images } = fakeImages(async () => [pexelsPhoto("l1", false)]);
-    const deps = recordingDeps(fakeAi(), { images });
-    const state = await illustrate(
-      { lesson: imageLesson([{ subject: "river" }]), worksheetId: "w", worksheet: undefined },
-      deps,
+  test("no portrait results still asks the judge, which may requery", async () => {
+    const { images, searches } = fakeImages(async (query) =>
+      query === "better" ? [pexelsPhoto("b", true)] : [pexelsPhoto("l1", false)],
     );
-    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
-    expect(deps.imageCounts?.empty).toBe(1);
+    const ai = judge(requery("better"));
+    const deps = recordingDeps(ai, { images });
+    const state = await run(imageLesson([{ subject: "river" }]), deps);
+    expect(ai.calls[0]?.promptText).toContain("Results: none.");
+    expect(searches).toEqual(["river", "better"]);
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/b.jpg");
   });
 
-  test("a 429 stops searching and warns every remaining slide", async () => {
+  test("a 429 stops searching and warns every remaining slide without a judge call", async () => {
     const { images, searches } = fakeImages(async () => {
       throw new PexelsError(429, "slow");
     });
-    const deps = recordingDeps(fakeAi(), { images });
-    const lesson = imageLesson([{ subject: "river" }, { subject: "mountain" }]);
-    const state = await illustrate({ lesson, worksheetId: "w", worksheet: undefined }, deps);
+    const ai = judge();
+    const deps = recordingDeps(ai, { images });
+    const state = await run(imageLesson([{ subject: "river" }, { subject: "mountain" }]), deps);
 
     expect(searches).toHaveLength(1);
+    expect(ai.calls).toHaveLength(0);
     const findings = state.lesson.generation?.findings ?? [];
     expect(findings).toHaveLength(2);
-    for (const finding of findings) {
-      expect(finding.check).toBe("image");
-      expect(finding.message).toContain("busy");
-    }
+    for (const finding of findings) expect(finding.message).toContain("busy");
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
     expect(imageOf(state.lesson, 1).src).toBe(PLACEHOLDER_IMAGE);
   });
 
+  test("a judge call that fails counts failed and the next slide still places", async () => {
+    const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    const ai = judge(() => {
+      throw new Error("model down");
+    }, pick("p"));
+    const deps = recordingDeps(ai, { images });
+    const state = await run(imageLesson([{ subject: "first" }, { subject: "second" }]), deps);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+    expect(imageOf(state.lesson, 1).src).toBe("/files/ws/images/p.jpg");
+    expect(deps.imageCounts).toEqual({ requested: 2, placed: 1, empty: 0, failed: 1 });
+  });
+
   test("a failed store counts failed and the next slide still places", async () => {
     const { images } = fakeImages(
-      async () => [pexelsPhoto("p", true)],
+      async (query) =>
+        query.includes("first") ? [pexelsPhoto("a", true)] : [pexelsPhoto("b", true)],
       async (photo) => {
         if (photo.id === "a") throw new Error("disk full");
         return storedFor(photo);
       },
     );
-    const searching: PhotoPlacer = {
-      search: async (query) =>
-        query.includes("first") ? [pexelsPhoto("a", true)] : [pexelsPhoto("b", true)],
-      store: images.store,
-    };
-    const deps = recordingDeps(fakeAi(), { images: searching });
-    const state = await illustrate(
-      {
-        lesson: imageLesson([{ subject: "first thing" }, { subject: "second thing" }]),
-        worksheetId: "w",
-        worksheet: undefined,
-      },
+    const deps = recordingDeps(judge(pick("a"), pick("b")), { images });
+    const state = await run(
+      imageLesson([{ subject: "first thing" }, { subject: "second thing" }]),
       deps,
     );
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
@@ -264,56 +341,54 @@ describe("illustrate", () => {
     expect(deps.imageCounts).toEqual({ requested: 2, placed: 1, empty: 0, failed: 1 });
   });
 
+  test("an exhausted budget leaves every remaining placeholder and is not a failure", async () => {
+    const { images, stores } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    const ai = judge(pick("p"), pick("p"));
+    const deps = recordingDeps(ai, { images });
+    deps.budget.exceeded = () => ({ by: "usd" });
+    const state = await run(imageLesson([{ subject: "first" }, { subject: "second" }]), deps);
+    expect(stores).toEqual([]);
+    expect(ai.calls).toHaveLength(0);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+    expect(imageOf(state.lesson, 1).src).toBe(PLACEHOLDER_IMAGE);
+    expect(deps.imageCounts).toEqual({ requested: 2, placed: 0, empty: 2, failed: 0 });
+    expect(state.lesson.generation?.findings).toHaveLength(2);
+  });
+
   test("a persist failure propagates instead of counting as failed", async () => {
     const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
-    const deps = recordingDeps(fakeAi(), { images });
+    const deps = recordingDeps(judge(pick("p")), { images });
     const boom = new Error("lost lock");
     deps.persist = async () => {
       throw boom;
     };
-    await expect(
-      illustrate(
-        { lesson: imageLesson([{ subject: "river" }]), worksheetId: "w", worksheet: undefined },
-        deps,
-      ),
-    ).rejects.toBe(boom);
+    await expect(run(imageLesson([{ subject: "river" }]), deps)).rejects.toBe(boom);
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 0, failed: 0 });
   });
 
-  test("a blocked first candidate falls through to the clean retry", async () => {
-    const calls: string[] = [];
-    const { images } = fakeImages(async (query) => {
-      calls.push(query);
-      return [pexelsPhoto("p", true)];
-    });
-    const deps = recordingDeps(fakeAi(), { images });
-    const state = await illustrate(
-      {
-        lesson: imageLesson([{ subject: "river severn gore" }]),
-        worksheetId: "w",
-        worksheet: undefined,
-      },
-      deps,
-    );
-    expect(calls).toEqual(["river severn"]);
+  test("a blocked first candidate is skipped; the clean retry feeds the judge", async () => {
+    const { images, searches } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    const deps = recordingDeps(judge(pick("p")), { images });
+    const state = await run(imageLesson([{ subject: "river severn gore" }]), deps);
+    expect(searches).toEqual(["river severn"]);
     expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/p.jpg");
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
   });
 
-  test("fully blocked candidates search nothing and warn", async () => {
-    const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
-    const deps = recordingDeps(fakeAi(), { images });
-    const lesson = imageLesson([{ subject: "gore torture" }]);
-    const state = await illustrate({ lesson, worksheetId: "w", worksheet: undefined }, deps);
+  test("fully blocked candidates search nothing, ask nothing and warn", async () => {
+    const { images, searches } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    const ai = judge();
+    const deps = recordingDeps(ai, { images });
+    const state = await run(imageLesson([{ subject: "gore torture" }]), deps);
+    expect(searches).toEqual([]);
+    expect(ai.calls).toHaveLength(0);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
-    expect(state.lesson.generation?.findings).toHaveLength(1);
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
   });
 
   test("without images the state returns unchanged and nothing persists", async () => {
-    const deps = recordingDeps(fakeAi());
+    const deps = recordingDeps(judge());
     const lesson = imageLesson([{ subject: "river" }]);
-    const state = await illustrate({ lesson, worksheetId: "w", worksheet: undefined }, deps);
+    const state = await run(lesson, deps);
     expect(state.lesson).toBe(lesson);
     expect(deps.persisted).toHaveLength(0);
     expect(deps.progress).toHaveLength(0);
@@ -321,17 +396,8 @@ describe("illustrate", () => {
 
   test("an aborted signal throws AbortError", async () => {
     const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
-    const deps = recordingDeps(fakeAi(), { images });
+    const deps = recordingDeps(judge(pick("p")), { images });
     deps.abort.abort(new DOMException("cancelled", "AbortError"));
-    await expect(
-      illustrate(
-        { lesson: imageLesson([{ subject: "river" }]), worksheetId: "w", worksheet: undefined },
-        deps,
-      ),
-    ).rejects.toThrowError(DOMException);
+    await expect(run(imageLesson([{ subject: "river" }]), deps)).rejects.toThrowError(DOMException);
   });
 });
-
-function fakeAi() {
-  return createFakeAi({ script: [], usage: { inputTokens: 0, outputTokens: 0 } });
-}

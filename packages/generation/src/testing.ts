@@ -69,7 +69,8 @@ export const SLIDES_INDEX = CHECK_INPUT_CALLS + PLAN_CALLS;
 
 /**
  * The script for one full run on the fixture plan: 1 check-input + 2 plan (skeleton, facts) +
- * 8 slides + 1 worksheet + 1 evaluate (+ repair answers when a test injects an `error` finding).
+ * 8 slides + 1 worksheet (+ one illustrate judge per image-text slide, `judges`) + 1 evaluate
+ * (+ repair answers when a test injects an `error` finding).
  * `overrides` replaces entries by index so a test can script a schema miss at a chosen call;
  * `checkInput` replaces the input check's answer.
  */
@@ -78,6 +79,8 @@ export function pipelineScript(
     checkInput?: unknown;
     evaluate?: unknown;
     repairs?: number;
+    /** Illustrate's judge answers, one per image-text slide, between the worksheet and evaluate. */
+    judges?: FakeScriptEntry[];
     overrides?: Record<number, FakeScriptEntry>;
     /** Milliseconds each answer waits before it is returned — for a watcher, not a unit test. */
     pace?: number;
@@ -89,6 +92,7 @@ export function pipelineScript(
     json(FIXTURES.planFacts),
     ...fixtureSlideScript(),
     json(FIXTURES.worksheet),
+    ...(options.judges ?? []),
     json(options.evaluate ?? { findings: [] }),
     ...Array.from({ length: options.repairs ?? 0 }, () => json(FIXTURES.repair)),
   ];

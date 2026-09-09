@@ -12,8 +12,9 @@ import type { Logger } from "pino";
 /**
  * The `lesson.plan` stages, in order (ADR 0025 §5). `check-input` (TEACH-137) runs first and
  * writes no checkpoint: it either lets the brief through or stops the job; `illustrate`
- * (Images project) places photographs deterministically and writes none either — it is cheap,
- * idempotent and makes no model call. The four others each write one.
+ * (Images project) places photographs and writes none either — idempotent, one `small` judge
+ * call per image slide (TEACH-191), a stop on budget like every stage. The four others each
+ * write one.
  */
 export type PipelineStageName =
   | "check-input"

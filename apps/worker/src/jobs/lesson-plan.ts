@@ -31,7 +31,7 @@ import type { WorkerDeps } from "../deps";
  *
  * `POST /lessons` created the `documents` row with `generating_job_id = jobId` and enqueued this
  * job. The handler reads the locked lesson, mints the worksheet row under the same lock, runs
- * Plan → Generate → Evaluate → Repair through `runLessonPipeline`, and persists after every stage
+ * Plan → Generate → Illustrate → Evaluate → Repair through `runLessonPipeline`, and persists after every stage
  * (and every slide) with `putDocumentAsJob`, whose predicate is the lock itself. Each `progress`
  * event carries the lesson's new `updatedAt` so the read-only editor refetches (§7).
  *
