@@ -4,10 +4,12 @@ import {
   SLIDE_W,
   type Slide,
   type SlideElement,
+  type SlideKind,
   type TextElement,
 } from "@tj/domain/documents";
 import { docFromText } from "../model/factories";
-import { layoutSlide } from "../model/layouts";
+import { LAYOUT_CATALOGUE, layoutSlide, variantsFor } from "../model/layouts";
+import { THEMES } from "../model/themes";
 import { findOverflow, findOverlaps, isBleed, isOffSlide, lintSlide } from "./lint";
 import type { MeasureInput } from "./reflow";
 
@@ -228,6 +230,23 @@ describe("isBleed", () => {
     const slide: Slide = { id: "it", kind: "image-text", elements };
     expect(findOverflow(slide)).toEqual([]);
     expect(lintSlide(slide).ok).toBe(true);
+  });
+  test("leaves every catalogue variant on every theme clean (TEACH-214)", () => {
+    for (const theme of THEMES) {
+      for (const kind of Object.keys(LAYOUT_CATALOGUE) as SlideKind[]) {
+        for (const variant of variantsFor(kind)) {
+          const { elements } = layoutSlide(kind, theme.id, variant);
+          const slide: Slide = { id: `${kind}-${variant}`, kind, elements };
+          const lint = lintSlide(slide, undefined, theme);
+          expect(lint, `${kind}/${variant} on ${theme.id}`).toMatchObject({
+            overlaps: [],
+            overflow: [],
+            laneOverflow: [],
+            ok: true,
+          });
+        }
+      }
+    }
   });
   test("still reports a picture pushed off the bottom of the slide", () => {
     expect(findOverflow(slideOf([image({ x: 100, y: 400, w: 200, h: 200 })]))).toEqual(["img"]);

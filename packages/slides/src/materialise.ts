@@ -13,7 +13,7 @@ import type {
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
 import { docFromBullets, docFromText, uid } from "./factories";
-import { docFromNumbered, layoutSlide, vocabularyGrid } from "./layouts";
+import { docFromNumbered, layoutSlide, variantName, vocabularyGrid } from "./layouts";
 import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./specs";
 import { getTheme } from "./themes";
 
@@ -43,14 +43,20 @@ const provenance = (factRefs: string[], meta: MaterialiseMeta): Provenance => ({
 /* Slides                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * `variant` picks a composition from `LAYOUT_CATALOGUE[spec.kind]` by index or name (see
+ * `layoutSlide`); left out, the kind's default. The fillers below find a variant's slots by
+ * `name` where its presets differ from the default recipe's.
+ */
 export function materialiseSlide(
   spec: SlideSpec,
   themeId: string,
   meta: MaterialiseMeta,
   ids: IdSupplier = uid,
+  variant: number | string = 0,
 ): Slide {
-  const laid = reid(layoutSlide(spec.kind, themeId), ids);
-  const filled = fillSlide(spec, themeId, laid, ids);
+  const laid = reid(layoutSlide(spec.kind, themeId, variant), ids);
+  const filled = fillSlide(spec, themeId, laid, ids, variantName(spec.kind, variant));
   const stamp = provenance(spec.factRefs, meta);
   const slide: Slide = {
     id: ids(),
@@ -64,7 +70,13 @@ export function materialiseSlide(
 
 type Layout = { elements: SlideElement[]; question?: QuestionData };
 
-function fillSlide(spec: SlideSpec, themeId: string, laid: Layout, ids: IdSupplier): Layout {
+function fillSlide(
+  spec: SlideSpec,
+  themeId: string,
+  laid: Layout,
+  ids: IdSupplier,
+  variant: string,
+): Layout {
   switch (spec.kind) {
     case "title":
       return fillTitle(spec, laid);
@@ -73,11 +85,11 @@ function fillSlide(spec: SlideSpec, themeId: string, laid: Layout, ids: IdSuppli
     case "instructions":
     case "exit-ticket":
     case "starter":
-      return fillNumbered(spec, laid);
+      return fillNumbered(spec, laid, variant);
     case "vocabulary":
       return fillVocabulary(spec, themeId, laid);
     case "content":
-      return fillContent(spec, laid);
+      return fillContent(spec, laid, variant);
     case "image-text":
       return fillImageText(spec, laid);
     case "worked-example":
@@ -97,15 +109,16 @@ function fillSlide(spec: SlideSpec, themeId: string, laid: Layout, ids: IdSuppli
     case "open-response":
       return fillOpenResponse(spec, laid);
     case "plenary":
-      return fillPlenary(spec, laid);
+      return fillPlenary(spec, laid, variant);
   }
 }
 
 /* --- per-kind fillers --------------------------------------------- */
 
 function fillTitle(spec: SlideSpecOf<"title">, laid: Layout): Layout {
-  setText(textOf(laid, "title"), spec.title);
-  setText(textOf(laid, "subtitle"), spec.subtitle);
+  setText(slotOf(laid, "Title", "title"), spec.title);
+  // The photo-band variant sets the class line in `small`, named so it can be found.
+  setText(slotOf(laid, "Subtitle", "subtitle"), spec.subtitle);
   return laid;
 }
 
@@ -123,12 +136,44 @@ function fillObjectives(spec: SlideSpecOf<"objectives">, laid: Layout): Layout {
 type NumberedSpec = SlideSpecOf<"instructions" | "exit-ticket" | "starter">;
 
 /** Heading, a numbered body and (where the recipe has one) a footnote. */
-function fillNumbered(spec: NumberedSpec, laid: Layout): Layout {
+function fillNumbered(spec: NumberedSpec, laid: Layout, variant: string): Layout {
   if (spec.heading) setText(textOf(laid, "heading"), spec.heading);
   const items = "items" in spec ? spec.items : spec.steps;
-  setDoc(textOf(laid, "body"), docFromNumbered(items));
-  if ("footnote" in spec && spec.footnote) setText(textOf(laid, "small"), spec.footnote);
+  const filled =
+    variant === "numbered"
+      ? setDocOn(laid, "body", docFromNumbered(items))
+      : fillItems(laid, items);
+  if ("footnote" in spec && spec.footnote) setText(textOf(filled, "small"), spec.footnote);
+  return filled;
+}
+
+function setDocOn(laid: Layout, preset: TextPreset, doc: RichDoc): Layout {
+  setDoc(textOf(laid, preset), doc);
   return laid;
+}
+
+/** The slot number an item-per-element variant gave an element: "Item 3", "Card 3", "Step 3". */
+const ITEM_SLOT = /^(?:Item|Card|Step) (\d+)$/;
+
+/**
+ * The `cards` and `stepped` list variants lay one slot per placeholder item ("Item n" and
+ * its "Card n" or "Step n"). Fill the first `items.length` in order and drop the rest, so no
+ * placeholder survives; a spec with more items than slots shows the first slots' worth.
+ */
+function fillItems(laid: Layout, items: string[]): Layout {
+  const kept: SlideElement[] = [];
+  for (const element of laid.elements) {
+    const slot = element.name?.match(ITEM_SLOT);
+    if (!slot) {
+      kept.push(element);
+      continue;
+    }
+    const item = items[Number(slot[1]) - 1];
+    if (item === undefined) continue;
+    if (element.type === "text" && element.name?.startsWith("Item")) setText(element, item);
+    kept.push(element);
+  }
+  return { ...laid, elements: kept };
 }
 
 /**
@@ -172,10 +217,37 @@ function fillVocabulary(spec: SlideSpecOf<"vocabulary">, themeId: string, laid: 
   return { ...laid, elements: kept };
 }
 
-function fillContent(spec: SlideSpecOf<"content">, laid: Layout): Layout {
+function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: string): Layout {
+  if (variant === "statement") {
+    // No heading on a statement: the heading becomes the eyebrow over the sentence.
+    setText(slotOf(laid, "Eyebrow", "caption"), spec.heading);
+    setText(slotOf(laid, "Statement", "subtitle"), spec.body);
+    return laid;
+  }
   setText(textOf(laid, "heading"), spec.heading);
+  if (variant === "two-column") {
+    const [left, right] = splitAtFullStop(spec.body);
+    setText(slotOf(laid, "Body left", "body"), left);
+    const rightSlot = slotOf(laid, "Body right", "body");
+    if (right) {
+      setText(rightSlot, right);
+      return laid;
+    }
+    // One sentence with no full stop to split at: the left column carries it all.
+    return { ...laid, elements: laid.elements.filter((element) => element !== rightSlot) };
+  }
   setText(textOf(laid, "body"), spec.body);
   return laid;
+}
+
+/**
+ * Split a body at its first full stop that is followed by more text: the first sentence
+ * left, the rest right. A body with no such full stop comes back whole with an empty right.
+ */
+export function splitAtFullStop(body: string): [string, string] {
+  const at = body.search(/\.\s+\S/);
+  if (at < 0) return [body.trim(), ""];
+  return [body.slice(0, at + 1).trim(), body.slice(at + 1).trim()];
 }
 
 function fillImageText(spec: SlideSpecOf<"image-text">, laid: Layout): Layout {
@@ -261,8 +333,9 @@ function fillOpenResponse(spec: SlideSpecOf<"open-response">, laid: Layout): Lay
   return { ...laid, question };
 }
 
-function fillPlenary(spec: SlideSpecOf<"plenary">, laid: Layout): Layout {
+function fillPlenary(spec: SlideSpecOf<"plenary">, laid: Layout, variant: string): Layout {
   if (spec.heading) setText(textOf(laid, "heading"), spec.heading);
+  if (variant !== "numbered") return fillItems(laid, spec.items);
   setDoc(textOf(laid, "body"), docFromBullets(spec.items));
   return laid;
 }
@@ -347,6 +420,17 @@ function textOf(laid: Layout, preset: TextPreset): TextElement {
   const element = textsOf(laid, preset)[0];
   if (!element) throw new Error(`recipe has no ${preset} text element`);
   return element;
+}
+
+/**
+ * A slot by `name` where a variant names it, else the first text element in `preset`: the
+ * default recipes name nothing, and a variant names only the slots whose preset differs.
+ */
+function slotOf(laid: Layout, name: string, preset: TextPreset): TextElement {
+  const named = laid.elements.find(
+    (element): element is TextElement => element.type === "text" && element.name === name,
+  );
+  return named ?? textOf(laid, preset);
 }
 
 function optionsOf(laid: Layout): OptionElement[] {

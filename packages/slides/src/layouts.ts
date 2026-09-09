@@ -16,7 +16,7 @@ import type {
 import { OBJECTIVES_SLIDE_HEADING, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { explanationReserve, RESERVED_LINES } from "./explanation-metrics";
 import { docFromBullets, docFromText, newText, uid } from "./factories";
-import { BASELINE, colLeft, GUTTER, SAFE, SPACE, snapY, spanWidth } from "./grid";
+import { BASELINE, colLeft, GUTTER, SAFE, SPACE, snapY, spanWidth, THIRD, TRIM } from "./grid";
 import { OPTION } from "./metrics";
 import { fontFloor, getTheme, type TextRole } from "./themes";
 
@@ -230,35 +230,74 @@ function titleSlide(t: Theme): Layout {
   };
 }
 
+/** The kinds that share the headed-list composition: a heading, a hairline and a short list. */
+export type ListKind = "objectives" | "starter" | "instructions" | "exit-ticket" | "plenary";
+
+type ListCopy = { heading: string; items: string[]; footnote?: string };
+
+/**
+ * Placeholder copy for the headed-list family, one entry per kind. The three list variants
+ * (`numbered`, `cards`, `stepped`) all read from here so a kind says its words once.
+ */
+const LIST_COPY: Record<ListKind, ListCopy> = {
+  // The "I can" stem as the heading, lower-case verb phrases that complete it (UX ruling 64,
+  // TEACH-198); `fillObjectives` writes the same shape on every variant.
+  objectives: {
+    heading: OBJECTIVES_SLIDE_HEADING,
+    items: ["learning objective one", "learning objective two", "learning objective three"],
+  },
+  starter: {
+    heading: "Do now",
+    items: [
+      "Recall question from last lesson",
+      "Recall question from last term",
+      "Stretch question",
+    ],
+    footnote: "5 minutes. Work in silence and answer in your book.",
+  },
+  instructions: {
+    heading: "Task",
+    items: [
+      "What to do first",
+      "What to do next",
+      "Where to write your answer",
+      "If you finish early, extend it",
+    ],
+    footnote: "10 minutes. Work quietly.",
+  },
+  "exit-ticket": {
+    heading: "Exit ticket",
+    items: [
+      "One thing you learnt today",
+      "One question you still have",
+      "One word that sums this up",
+    ],
+    footnote: "Answer on a sticky note and hand it to me on the way out",
+  },
+  plenary: {
+    heading: "What have we learned?",
+    items: [
+      "Something we can now explain",
+      "Something we can now do",
+      "Something to practise next lesson",
+    ],
+  },
+};
+
 /**
  * Learning objectives — the "I can" stem as the heading, a hairline, three numbered verb
  * phrases that complete it (UX ruling 64, TEACH-198).
  */
 function objectivesSlide(t: Theme): Layout {
-  return {
-    elements: [
-      ...headed(t, OBJECTIVES_SLIDE_HEADING),
-      numberedBody(t, [
-        "learning objective one",
-        "learning objective two",
-        "learning objective three",
-      ]),
-    ],
-  };
+  const { heading, items } = LIST_COPY.objectives;
+  return { elements: [...headed(t, heading), numberedBody(t, items)] };
 }
 
 /** Do now — retrieval questions and a time cue. */
 function starterSlide(t: Theme): Layout {
+  const { heading, items, footnote: foot } = LIST_COPY.starter;
   return {
-    elements: [
-      ...headed(t, "Do now"),
-      numberedBody(t, [
-        "Recall question from last lesson",
-        "Recall question from last term",
-        "Stretch question",
-      ]),
-      footnote(t, "5 minutes. Work in silence and answer in your book."),
-    ],
+    elements: [...headed(t, heading), numberedBody(t, items), footnote(t, foot ?? "")],
   };
 }
 
@@ -428,17 +467,9 @@ function workedExampleSlide(t: Theme): Layout {
 
 /** Instructions — the task, numbered steps, and how long it takes. */
 function instructionsSlide(t: Theme): Layout {
+  const { heading, items, footnote: foot } = LIST_COPY.instructions;
   return {
-    elements: [
-      ...headed(t, "Task"),
-      numberedBody(t, [
-        "What to do first",
-        "What to do next",
-        "Where to write your answer",
-        "If you finish early, extend it",
-      ]),
-      footnote(t, "10 minutes. Work quietly."),
-    ],
+    elements: [...headed(t, heading), numberedBody(t, items), footnote(t, foot ?? "")],
   };
 }
 
@@ -691,16 +722,9 @@ function openResponseSlide(t: Theme): Layout {
 
 /** Exit ticket — three quick questions. Never revealed (research §1, decision 5). */
 function exitTicketSlide(t: Theme): Layout {
+  const { heading, items, footnote: foot } = LIST_COPY["exit-ticket"];
   return {
-    elements: [
-      ...headed(t, "Exit ticket"),
-      numberedBody(t, [
-        "One thing you learnt today",
-        "One question you still have",
-        "One word that sums this up",
-      ]),
-      footnote(t, "Answer on a sticky note and hand it to me on the way out"),
-    ],
+    elements: [...headed(t, heading), numberedBody(t, items), footnote(t, foot ?? "")],
   };
 }
 
@@ -721,14 +745,10 @@ function timerSlide(t: Theme): Layout {
 
 /** Plenary — what have we learned? */
 function plenarySlide(t: Theme): Layout {
-  const items = [
-    "Something we can now explain",
-    "Something we can now do",
-    "Something to practise next lesson",
-  ];
+  const { heading, items } = LIST_COPY.plenary;
   return {
     elements: [
-      ...headed(t, "What have we learned?"),
+      ...headed(t, heading),
       text("body", docFromBullets(items), {
         x: SAFE.x,
         y: BODY_Y,
@@ -740,30 +760,431 @@ function plenarySlide(t: Theme): Layout {
 }
 
 /* ------------------------------------------------------------------ */
+/* Variants (TEACH-214)                                                */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A second and third composition for the three families that carry a ten-slide lesson.
+ * Every variant shares `headed`, `stem`, `boxH` and the floors with the recipes above, so
+ * the fit engine and the lint need no change. Elements a filler must find by something
+ * other than its preset carry a `name` ("Subtitle", "Item 2"); the default recipes carry
+ * none, so `layoutSlide(kind, themeId)` stays byte-identical to what it was.
+ */
+
+/** A full-bleed photograph the illustrator replaces; a placeholder until then. */
+function photo(rect: Rect): ImageElement {
+  return {
+    id: uid(),
+    type: "image",
+    ...rect,
+    src: PLACEHOLDER_IMAGE,
+    alt: "Describe this image for pupils using a screen reader",
+    fit: "cover",
+    name: "Photo",
+  };
+}
+
+/**
+ * Title, `photo-band`: the photograph fills the slide and the title sits in an ink band across
+ * its foot. The band is inset to the trim rather than run to the edge: the lint reports any
+ * shape past the trim as pushed off the slide, and only a picture may bleed. Its top is 340
+ * where the theme's type allows and higher where it does not, because a two-line title on the
+ * 48pt floor plus the class line will not fit under 340 inside the safe area on any theme.
+ */
+function titlePhotoBand(t: Theme): Layout {
+  const titleH = boxH(t, "title", 2);
+  const subH = boxH(t, "small");
+  const stackH = titleH + SPACE[1] + subH;
+  const bandY = Math.min(340, snapY(SAFE_BOTTOM - stackH - SPACE[3]));
+  return {
+    elements: [
+      photo({ x: 0, y: 0, w: SLIDE_W, h: SLIDE_H }),
+      shape(
+        "rect",
+        { x: TRIM, y: bandY, w: SLIDE_W - TRIM * 2, h: SLIDE_H - TRIM - bandY },
+        { fill: t.colors.ink, opacity: 0.88, name: "Band" },
+      ),
+      text(
+        "title",
+        "Lesson title",
+        { x: SAFE.x, y: SAFE_BOTTOM - stackH, w: spanWidth(11), h: titleH },
+        { color: t.colors.onAccent, valign: "bottom" },
+        { name: "Title" },
+      ),
+      text(
+        "small",
+        "Year group and class",
+        { x: SAFE.x, y: SAFE_BOTTOM - subH, w: spanWidth(9), h: subH },
+        { color: t.colors.onAccent },
+        { name: "Subtitle" },
+      ),
+    ],
+  };
+}
+
+/** Title, `split`: the stack on the left, a photograph filling the right half. */
+function titleSplit(t: Theme): Layout {
+  const W = SLIDE_W / 2 - SAFE.x - GUTTER; // 403
+  const capH = boxH(t, "caption");
+  const titleH = boxH(t, "title", 3);
+  const subH = boxH(t, "subtitle");
+  const top = centreY(capH + 12 + titleH + 17 + subH);
+  return {
+    elements: [
+      photo({ x: SLIDE_W / 2, y: 0, w: SLIDE_W / 2, h: SLIDE_H }),
+      shape(
+        "rect",
+        { x: SAFE.x, y: top - 29, w: 67, h: 4 },
+        { fill: t.colors.accent, name: "Accent rule" },
+      ),
+      text("caption", "LESSON", { x: SAFE.x, y: top, w: W, h: capH }, { color: t.colors.muted }),
+      text("title", "Lesson title", { x: SAFE.x, y: top + capH + 12, w: W, h: titleH }),
+      text(
+        "subtitle",
+        "Year group and class",
+        { x: SAFE.x, y: top + capH + 12 + titleH + 17, w: W, h: subH },
+        { color: t.colors.muted },
+      ),
+    ],
+  };
+}
+
+/**
+ * Content, `statement`: one sentence at subtitle size, optically centred, with the heading
+ * reduced to an eyebrow above it. For bodies under twenty words; the subtitle stop sits on
+ * the 48pt title floor, so three lines is all the box holds.
+ */
+function contentStatement(t: Theme): Layout {
+  const capH = boxH(t, "caption");
+  const bodyH = boxH(t, "subtitle", 3);
+  const top = centreY(capH + 12 + bodyH);
+  return {
+    elements: [
+      shape(
+        "rect",
+        { x: SAFE.x, y: top - 29, w: 67, h: 4 },
+        { fill: t.colors.accent, name: "Accent rule" },
+      ),
+      text(
+        "caption",
+        "KEY IDEA",
+        { x: SAFE.x, y: top, w: FULL, h: capH },
+        { color: t.colors.muted },
+        { name: "Eyebrow" },
+      ),
+      text(
+        "subtitle",
+        "One idea in a sentence pupils can read from the back.",
+        { x: SAFE.x, y: top + capH + 12, w: spanWidth(10), h: bodyH },
+        {},
+        { name: "Statement" },
+      ),
+    ],
+  };
+}
+
+/**
+ * Content, `two-column`: heading and hairline, the body in two six-column halves. The
+ * columns are a point under `spanWidth(6)`: the grid's right half ends a point past the
+ * safe area, which the lint would report on every such slide.
+ */
+function contentTwoColumn(t: Theme): Layout {
+  const h = boxH(t, "body", 5);
+  const w = Math.floor((SAFE.w - GUTTER) / 2);
+  return {
+    elements: [
+      ...headed(t, "Heading"),
+      text(
+        "body",
+        "The first part of the idea, up to its first full stop.",
+        { x: SAFE.x, y: BODY_Y, w, h },
+        {},
+        { name: "Body left" },
+      ),
+      text(
+        "body",
+        "The rest of the idea, in the second column.",
+        { x: RIGHT_X, y: BODY_Y, w, h },
+        {},
+        { name: "Body right" },
+      ),
+    ],
+  };
+}
+
+/** Where a list variant's last block may reach: above the footnote when the kind has one. */
+function listBottom(foot?: TextElement): number {
+  return foot ? foot.y - SPACE[3] : SAFE_BOTTOM;
+}
+
+/**
+ * Headed list, `cards`: each item on its own surface card, three across for up to three items
+ * and two by two for four. `materialiseSlide` drops the cards a spec does not fill.
+ */
+function cardsList(t: Theme, copy: ListCopy): Layout {
+  const foot = copy.footnote ? footnote(t, copy.footnote) : undefined;
+  const bottom = listBottom(foot);
+  const n = copy.items.length;
+  const PAD = SPACE[3];
+  const grid = n > 3;
+  const cardW = grid ? HALF_W : THIRD.w;
+  const cardH = grid
+    ? Math.floor((bottom - BODY_Y - SPACE[3]) / 2)
+    : Math.min(bottom - BODY_Y, 268);
+  const els: SlideElement[] = headed(t, copy.heading);
+  copy.items.forEach((item, i) => {
+    const x = grid ? (i % 2 === 0 ? SAFE.x : RIGHT_X) : (THIRD.xs[i] ?? SAFE.x);
+    const y = grid && i >= 2 ? BODY_Y + cardH + SPACE[3] : BODY_Y;
+    els.push(
+      shape(
+        "rounded",
+        { x, y, w: cardW, h: cardH },
+        { fill: t.colors.surface, radius: t.radius, name: `Card ${i + 1}` },
+      ),
+      text(
+        "body",
+        item,
+        {
+          x: x + PAD,
+          y: y + PAD,
+          w: cardW - PAD * 2,
+          h: Math.min(boxH(t, "body", 3), cardH - PAD * 2),
+        },
+        {},
+        { name: `Item ${i + 1}` },
+      ),
+    );
+  });
+  if (foot) els.push(foot);
+  return { elements: els };
+}
+
+/** Side of the numeral block on a `stepped` list (research/04 draws 28 at 800x450). */
+const STEP_BLOCK = 40;
+
+/**
+ * Headed list, `stepped`: a numeral block in the accent beside each item, the items spaced
+ * evenly down the slide. Two lines are kept for each item where the theme's type leaves
+ * room, one where it does not, so four steps and a footnote still sit inside the safe area.
+ */
+function steppedList(t: Theme, copy: ListCopy): Layout {
+  const foot = copy.footnote ? footnote(t, copy.footnote) : undefined;
+  const bottom = listBottom(foot);
+  const n = copy.items.length;
+  const room = bottom - BODY_Y;
+  const spacing = (itemH: number) =>
+    n > 1
+      ? Math.min(itemH + SPACE[3], Math.floor((room - itemH) / (n - 1) / BASELINE) * BASELINE)
+      : itemH;
+  let itemH = boxH(t, "body", 2);
+  let pitch = spacing(itemH);
+  if (pitch < itemH) {
+    itemH = boxH(t, "body");
+    pitch = spacing(itemH);
+  }
+  const textX = SAFE.x + STEP_BLOCK + SPACE[3];
+  const els: SlideElement[] = headed(t, copy.heading);
+  copy.items.forEach((item, i) => {
+    const y = BODY_Y + i * pitch;
+    els.push(
+      shape(
+        "rounded",
+        {
+          x: SAFE.x,
+          y: y + Math.round((lineHeight(t, "body") - STEP_BLOCK) / 2),
+          w: STEP_BLOCK,
+          h: STEP_BLOCK,
+        },
+        {
+          fill: t.colors.accent,
+          radius: Math.min(t.radius, 8),
+          doc: docFromText(String(i + 1)),
+          textStyle: { preset: "small", color: t.colors.onAccent, fontWeight: 600, padding: 2 },
+          name: `Step ${i + 1}`,
+        },
+      ),
+      text(
+        "body",
+        item,
+        { x: textX, y, w: spanWidth(10) - STEP_BLOCK - SPACE[3], h: itemH },
+        {},
+        { name: `Item ${i + 1}` },
+      ),
+    );
+  });
+  if (foot) els.push(foot);
+  return { elements: els };
+}
+
+/* ------------------------------------------------------------------ */
+/* Catalogue                                                           */
+/* ------------------------------------------------------------------ */
+
+/** One composition a kind can be laid out in. */
+export type LayoutVariant = {
+  /** The name `layoutSlide` and `chooseVariant` use; the first in a kind's list is the default. */
+  name: string;
+  /**
+   * The composition the variant draws. Two variants with the same composition look alike
+   * from the back of the room, whatever their kind: a content slide's `headed` paragraph and
+   * an objectives slide's `numbered` list are both a heading, a hairline and a block of text.
+   */
+  composition: string;
+  /** One line for a picker. */
+  description: string;
+};
+
+const one = (name: string, description: string): readonly LayoutVariant[] => [
+  { name, composition: name, description },
+];
+
+/** The three compositions every headed-list kind offers. */
+const LIST_VARIANTS: readonly LayoutVariant[] = [
+  {
+    name: "numbered",
+    composition: "headed",
+    description: "A heading, a hairline and a numbered list",
+  },
+  { name: "cards", composition: "cards", description: "Each item on its own card" },
+  {
+    name: "stepped",
+    composition: "stepped",
+    description: "A numeral block in the accent beside each item",
+  },
+];
+
+/**
+ * The layout catalogue: the variants each kind offers, the default first. Question kinds,
+ * vocabulary and the picture slides keep their one composition (research §3.5: the option
+ * cards must be where pupils expect them).
+ */
+export const LAYOUT_CATALOGUE: Record<SlideKind, readonly LayoutVariant[]> = {
+  title: [
+    {
+      name: "stack",
+      composition: "stack",
+      description: "Rule, eyebrow, title and class, stacked left",
+    },
+    {
+      name: "photo-band",
+      composition: "photo-band",
+      description: "A photograph filling the slide, the title in a band across its foot",
+    },
+    {
+      name: "split",
+      composition: "split",
+      description: "The title left, a photograph filling the right half",
+    },
+  ],
+  objectives: LIST_VARIANTS,
+  starter: LIST_VARIANTS,
+  vocabulary: one("grid", "Terms and definitions in two columns"),
+  content: [
+    {
+      name: "headed",
+      composition: "headed",
+      description: "A heading, a hairline and one paragraph",
+    },
+    {
+      name: "statement",
+      composition: "statement",
+      description: "One sentence at subtitle size, no heading",
+    },
+    {
+      name: "two-column",
+      composition: "two-column",
+      description: "A heading and the body in two columns",
+    },
+  ],
+  "image-text": one("photo-left", "A picture down the left, the text beside it"),
+  "worked-example": one("working-card", "The question left, the working on a card right"),
+  instructions: LIST_VARIANTS,
+  discussion: one("prompt", "One big prompt"),
+  "true-false": one("two-cards", "A statement and two cards"),
+  "multiple-choice": one("card-grid", "A stem and four cards two by two"),
+  matching: one("columns", "Terms left, definitions right"),
+  "image-match": one("picture-row", "Pictures in a row, a word under each"),
+  "fill-gap": one("gap-sentence", "A sentence with blanks"),
+  sort: one("card-grid", "A stem and four cards two by two"),
+  "open-response": one("answer-space", "A question and room to answer it"),
+  "exit-ticket": LIST_VARIANTS,
+  timer: one("countdown", "A task reminder and a countdown"),
+  plenary: LIST_VARIANTS,
+  blank: one("blank", "Nothing"),
+};
+
+/** The variant names a kind offers, the default first. */
+export function variantsFor(kind: SlideKind): string[] {
+  return LAYOUT_CATALOGUE[kind].map((v) => v.name);
+}
+
+/**
+ * Resolve a variant given by index or by name to a name the kind offers. Anything the kind
+ * does not offer (an index past the list, a name from another family) resolves to the
+ * default, so a stale choice draws today's composition rather than nothing.
+ */
+export function variantName(kind: SlideKind, variant: number | string = 0): string {
+  const list = LAYOUT_CATALOGUE[kind];
+  const found = typeof variant === "number" ? list[variant] : list.find((v) => v.name === variant);
+  return (found ?? list[0] ?? { name: "default" }).name;
+}
+
+/** The composition a kind draws for a variant (see `LayoutVariant.composition`). */
+export function compositionOf(kind: SlideKind, variant: number | string = 0): string {
+  const name = variantName(kind, variant);
+  return LAYOUT_CATALOGUE[kind].find((v) => v.name === name)?.composition ?? name;
+}
+
+function listVariant(t: Theme, kind: ListKind, name: string, numbered: () => Layout): Layout {
+  switch (name) {
+    case "cards":
+      return cardsList(t, LIST_COPY[kind]);
+    case "stepped":
+      return steppedList(t, LIST_COPY[kind]);
+    default:
+      return numbered();
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
 
-export function layoutSlide(kind: SlideKind, themeId: string): Layout {
+/**
+ * Lay a slide out. `variant` picks a composition from `LAYOUT_CATALOGUE[kind]` by index or
+ * by name; left out (or 0) it is the kind's default, which is the recipe every existing
+ * caller has always had.
+ */
+export function layoutSlide(
+  kind: SlideKind,
+  themeId: string,
+  variant: number | string = 0,
+): Layout {
   const t = getTheme(themeId);
+  const v = variantName(kind, variant);
   switch (kind) {
     case "blank":
       return { elements: [] };
     case "title":
+      if (v === "photo-band") return titlePhotoBand(t);
+      if (v === "split") return titleSplit(t);
       return titleSlide(t);
     case "objectives":
-      return objectivesSlide(t);
+      return listVariant(t, kind, v, () => objectivesSlide(t));
     case "starter":
-      return starterSlide(t);
+      return listVariant(t, kind, v, () => starterSlide(t));
     case "vocabulary":
       return vocabularySlide(t);
     case "content":
+      if (v === "statement") return contentStatement(t);
+      if (v === "two-column") return contentTwoColumn(t);
       return contentSlide(t);
     case "image-text":
       return imageTextSlide(t);
     case "worked-example":
       return workedExampleSlide(t);
     case "instructions":
-      return instructionsSlide(t);
+      return listVariant(t, kind, v, () => instructionsSlide(t));
     case "discussion":
       return discussionSlide(t);
     case "true-false":
@@ -781,11 +1202,11 @@ export function layoutSlide(kind: SlideKind, themeId: string): Layout {
     case "open-response":
       return openResponseSlide(t);
     case "exit-ticket":
-      return exitTicketSlide(t);
+      return listVariant(t, kind, v, () => exitTicketSlide(t));
     case "timer":
       return timerSlide(t);
     case "plenary":
-      return plenarySlide(t);
+      return listVariant(t, kind, v, () => plenarySlide(t));
   }
 }
 
