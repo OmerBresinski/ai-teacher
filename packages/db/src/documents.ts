@@ -130,6 +130,7 @@ function promoted(body: DocumentBody) {
     yearGroup: s.yearGroup ?? null,
     themeId: s.themeId ?? null,
     itemCount: s.itemCount,
+    marks: s.marks ?? null,
     cover: s.cover,
   };
 }

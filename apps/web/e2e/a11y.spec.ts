@@ -49,10 +49,7 @@ test.describe("accessibility (axe)", () => {
     { path: paths.lesson("demo-water-cycle", "/present"), ready: "Start presenting" },
     { path: paths.worksheet("fraction-practice"), ready: "Fractions practice" },
     // The print route paints paper-white pages whatever the theme (print.css forces the sheet).
-    {
-      path: paths.worksheet("fraction-practice", "/print"),
-      ready: "The water cycle: check your understanding",
-    },
+    { path: paths.worksheet("fraction-practice", "/print"), ready: "Fractions practice" },
   ];
 
   for (const theme of THEMES) {

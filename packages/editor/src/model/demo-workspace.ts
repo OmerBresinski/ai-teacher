@@ -1,8 +1,12 @@
 import type { Lesson, Series, Worksheet } from "@tj/domain/documents";
-import { demoWorksheet } from "./demo-worksheet";
+import {
+  fractionsPracticeWorksheet,
+  plantLabelsWorksheet,
+  riverVocabularyWorksheet,
+  romanSourceWorksheet,
+} from "./demo-worksheet";
 import { docFromText, newSlide } from "./factories";
 import { demoLibrary, starterLesson } from "./starter";
-import { starterWorksheet } from "./worksheet-factories";
 
 /**
  * The demo Workspace (ADR 0024 §16): the varied library `bun run db:seed` and the e2e seed route
@@ -75,12 +79,14 @@ function staleLesson(now: Date, meta: Meta): DemoDocument {
   return { key: meta.key, kind: "lesson", body: stamp(now, body, meta) };
 }
 
-function worksheet(now: Date, meta: Meta): DemoDocument {
-  return {
-    key: meta.key,
-    kind: "worksheet",
-    body: stamp(now, starterWorksheet(meta.title, meta.themeId), meta),
-  };
+/**
+ * One of the four real sheets (TEACH-186). `lessonKey` is the key of the lesson it belongs to;
+ * the seeder maps it to that lesson's id, as it does a series' `lessonIds`.
+ */
+function worksheet(now: Date, meta: Meta, body: Worksheet, lessonKey?: string): DemoDocument {
+  const stamped = stamp(now, body, meta);
+  if (lessonKey) stamped.lessonId = lessonKey;
+  return { key: meta.key, kind: "worksheet", body: stamped };
 }
 
 function series(
@@ -114,9 +120,10 @@ const meta = (
 
 /**
  * A stable, suitably varied library: ten lessons, four worksheets, two series. The two demo
- * lessons are TeachDeck's (`demoLibrary()`); everything else is starter content under a different
- * title so every card has a real first slide to paint. Lessons and worksheets come before the
- * series that reference them. `now` fixes every timestamp so the Recent / Earlier split is stable.
+ * lessons are TeachDeck's (`demoLibrary()`); the other lessons are starter content under a
+ * different title so every card has a real first slide to paint; the worksheets are the four real
+ * sheets in `demo-worksheet.ts`, one per job. Lessons come before the worksheets and series that
+ * reference them. `now` fixes every timestamp so the Recent / Earlier split is stable.
  */
 export function demoWorkspace(now: Date): DemoDocument[] {
   const [waterCycle, fractions] = demoLibrary() as [Lesson, Lesson];
@@ -165,26 +172,26 @@ export function demoWorkspace(now: Date): DemoDocument[] {
       2,
     ),
     staleLesson(now, meta("electricity", "Simple circuits", "night-lab", "Science", "Year 6", 960)),
-    {
-      key: "fraction-practice",
-      kind: "worksheet",
-      body: stamp(
-        now,
-        demoWorksheet(),
-        meta("fraction-practice", "Fractions practice", "playground", "Maths", "Year 4", 48),
-      ),
-    },
+    worksheet(
+      now,
+      meta("fraction-practice", "Fractions practice", "playground", "Maths", "Year 4", 48),
+      fractionsPracticeWorksheet(),
+      "demo-fractions",
+    ),
     worksheet(
       now,
       meta("roman-source", "Roman source investigation", "beacon", "History", "Year 4", 168),
+      romanSourceWorksheet(),
     ),
     worksheet(
       now,
       meta("plant-labels", "Label a flowering plant", "chalk", "Science", "Year 3", 480),
+      plantLabelsWorksheet(),
     ),
     worksheet(
       now,
       meta("river-vocabulary", "River vocabulary", "reading-room", "Geography", "Year 5", 840),
+      riverVocabularyWorksheet(),
     ),
     series(now, "series-romans", "The Romans", ["roman-roads", "demo-fractions", "roman-army"], {
       created: 240,

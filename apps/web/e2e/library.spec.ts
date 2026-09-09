@@ -84,7 +84,9 @@ test.describe("library shell", () => {
     const card = page.locator("article", { hasText: "Decimals practice" }).first();
     await expect(card).toBeVisible();
     await page.getByRole("button", { name: "List" }).click();
-    await expect(page.getByRole("row", { name: /Decimals practice/ })).toContainText("5 blocks");
+    await expect(page.getByRole("row", { name: /Decimals practice/ })).toContainText(
+      "6 marks · 10 min",
+    );
   });
 
   test("New series uses the untitled fallback on Enter", async ({ signedInPage: { page } }) => {

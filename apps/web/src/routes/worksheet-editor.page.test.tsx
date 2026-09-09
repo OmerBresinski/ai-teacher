@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { installFakeApi } from "@/test/fake-api";
@@ -8,6 +8,18 @@ import { installFakeApi } from "@/test/fake-api";
 const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let worksheetId = "fraction-practice";
+
+/**
+ * The top bar's h1. The sheet's own title heading reads the same since TEACH-186 (the paper says
+ * what the card says), so the query is scoped to the bar that holds Back to library.
+ */
+async function findTopBarTitle(name = "Fractions practice"): Promise<HTMLElement> {
+  const back = await screen.findByRole("button", { name: "Back to library" });
+  const bar = back.closest('header, [role="banner"]');
+  if (!(bar instanceof HTMLElement)) throw new Error("no top bar");
+  return within(bar).findByRole("heading", { level: 1, name });
+}
+
 const navigate = mock();
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
@@ -44,15 +56,13 @@ describe("WorksheetEditorPage", () => {
 
   it("row 1: mounts the editor with the title, the header, every block and Saved", async () => {
     const { container } = renderPage();
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "Fractions practice" }),
-    ).toBeVisible();
+    expect(await findTopBarTitle()).toBeVisible();
     const worksheet = fakeApi.loadDocument("fraction-practice");
     const count = worksheet && "blocks" in worksheet ? worksheet.blocks.length : 0;
     expect(count).toBeGreaterThan(1);
     // The header strip is on the sheet, editable.
     expect(screen.getByRole("textbox", { name: "Sheet title" })).toHaveTextContent(
-      "The water cycle: check your understanding",
+      "Fractions practice",
     );
     await waitFor(() =>
       expect(container.querySelectorAll(".ws-column .ws-block").length).toBe(count),
@@ -64,7 +74,7 @@ describe("WorksheetEditorPage", () => {
 
   it("an inline rename autosaves to the store and the library list follows", async () => {
     renderPage();
-    await screen.findByRole("heading", { level: 1, name: "Fractions practice" });
+    await findTopBarTitle();
     fireEvent.click(screen.getByRole("button", { name: "Rename worksheet" }));
     const input = screen.getByRole("textbox", { name: "Worksheet title" });
     fireEvent.change(input, { target: { value: "Fractions: a check" } });
@@ -84,7 +94,7 @@ describe("WorksheetEditorPage", () => {
     window.open = open as unknown as typeof window.open;
     try {
       renderPage();
-      await screen.findByRole("heading", { level: 1, name: "Fractions practice" });
+      await findTopBarTitle();
       fireEvent.click(screen.getByRole("button", { name: "Print" }));
       await waitFor(() =>
         expect(open).toHaveBeenCalledWith(

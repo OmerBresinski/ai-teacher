@@ -1,7 +1,10 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { newId, type WorkspaceId } from "@tj/domain";
-import type { Series } from "@tj/domain/documents";
-import { lesson as lessonFixture } from "@tj/domain/documents/fixtures";
+import { type Series, summarise, type Worksheet } from "@tj/domain/documents";
+import {
+  lesson as lessonFixture,
+  worksheet as worksheetFixture,
+} from "@tj/domain/documents/fixtures";
 import { getSeriesWithLessons, listSummaries } from "./documents";
 import { type SeedDocument, seedDocuments } from "./seed";
 import { forWorkspace, type WorkspaceDb } from "./tenant";
@@ -29,6 +32,15 @@ function fixtures(): SeedDocument[] {
     updatedAt: at(2),
   };
   return [lesson("first", 1), lesson("second", 100), { key: "unit", kind: "series", body: series }];
+}
+
+/** A worksheet that names its lesson by key, as the demo workspace does (TEACH-186). */
+function sheetFixture(key: string, lessonId: string | undefined): SeedDocument {
+  const body = worksheetFixture();
+  body.id = key;
+  body.title = key;
+  body.lessonId = lessonId;
+  return { key, kind: "worksheet", body };
 }
 
 describeDb("seedDocuments", () => {
@@ -66,6 +78,22 @@ describeDb("seedDocuments", () => {
     // The dated rows sort by their fixture times, newest first.
     const { items } = await listSummaries(ws, { kind: "lesson" });
     expect(items.map((row) => row.title)).toEqual(["first", "second"]);
+  });
+
+  test("maps a worksheet's lessonId from key to id, drops it when the lesson is missing, and promotes marks", async () => {
+    const result = await seedDocuments(ws, [
+      ...fixtures(),
+      sheetFixture("sheet", "first"),
+      sheetFixture("orphan", "missing"),
+      sheetFixture("loose", undefined),
+    ]);
+    expect(result.skipped).toEqual([]);
+    const bodies = new Map(result.inserted.map((row) => [row.title, row.body as Worksheet]));
+    expect(bodies.get("sheet")?.lessonId).toBe(result.ids.get("first"));
+    expect(bodies.get("orphan")?.lessonId).toBeUndefined();
+    expect(bodies.get("loose")?.lessonId).toBeUndefined();
+    const { items } = await listSummaries(ws, { kind: "worksheet" });
+    for (const row of items) expect(row.marks).toBe(summarise(worksheetFixture()).marks ?? null);
   });
 
   test("a body the parser refuses rolls the whole seed back", async () => {

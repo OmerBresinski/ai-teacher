@@ -87,6 +87,7 @@ export function toSummaryJson(row: DocumentSummaryRow) {
     yearGroup: row.yearGroup ?? undefined,
     themeId: row.themeId ?? undefined,
     itemCount: row.itemCount,
+    marks: row.marks ?? undefined,
     cover: row.cover ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
