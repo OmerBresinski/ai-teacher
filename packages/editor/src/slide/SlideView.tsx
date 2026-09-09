@@ -32,6 +32,8 @@ export type SlideViewProps = {
   step?: number;
   /** Question slides: show the correct answer state. */
   revealAnswer?: boolean;
+  /** Wrong options dimmed so far on a choice question, before the answer fills (TEACH-185). */
+  answerProgress?: number;
   className?: string;
   /**
    * Edit mode: geometry to paint for elements mid-gesture, keyed by element id. The transform layer
@@ -56,6 +58,7 @@ export function SlideView({
   mode,
   step,
   revealAnswer = false,
+  answerProgress = 0,
   className,
   transformOverride,
 }: SlideViewProps) {
@@ -149,6 +152,7 @@ export function SlideView({
           slideId={slide.id}
           step={effectiveStep}
           revealAnswer={revealAnswer}
+          answerProgress={answerProgress}
           question={slide.question}
           zIndex={i + 1}
           staggerIndex={stagger.get(el.id)}

@@ -1,4 +1,9 @@
-import { hasRevealableAnswer, type Lesson, slideStepCount } from "@tj/domain/documents";
+import {
+  answerRevealSteps,
+  hasRevealableAnswer,
+  type Lesson,
+  slideStepCount,
+} from "@tj/domain/documents";
 import { Button, cn, Display, IconButton, Kbd } from "@tj/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getTheme } from "../model/themes";
@@ -393,7 +398,7 @@ function PresentSurface({
           <Controls
             slideCount={lesson.slides.length}
             stepCount={stepCount}
-            isQuestion={slide ? hasRevealableAnswer(slide) : false}
+            answerSteps={slide ? answerRevealSteps(slide) : 0}
             onExit={exit}
           />
         ) : null}

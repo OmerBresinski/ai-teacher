@@ -1,16 +1,15 @@
-import type { SlideElement, SlideKind } from "@tj/domain/documents";
+import type { SlideElement } from "@tj/domain/documents";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   Tooltip,
 } from "@tj/ui";
 import {
   CircleHelp,
-  CircleQuestionMark,
   Image as ImageIcon,
+  ListChecks,
   Minus,
   Square,
   Table as TableIcon,
@@ -31,26 +30,15 @@ import {
   SHAPE_KINDS,
   TEXT_PRESETS,
 } from "../model/insert";
-import { SLIDE_KIND_LABELS } from "../model/layouts";
 import { getTheme } from "../model/themes";
 import { AddImagePanel } from "./AddImagePanel";
+import { AddSlidePicker } from "./AddSlidePicker";
 import { useHistory, useLesson } from "./document-context";
 import { IconPicker } from "./insert/IconPicker";
 import { LessonInfo } from "./insert/LessonInfo";
 import { hint } from "./keys";
-import { addSlideAfter } from "./slide-commands";
+import { addSlideAfter, insertSlideAfter } from "./slide-commands";
 import { useActiveSlide, useSessionActions, useSessionUi } from "./use-editor-session";
-
-/** The question kinds insert a whole slide, not an element (SPEC §7). */
-const QUESTION_KINDS: SlideKind[] = [
-  "true-false",
-  "multiple-choice",
-  "matching",
-  "image-match",
-  "fill-gap",
-  "sort",
-  "open-response",
-];
 
 const ICON = { size: 20, strokeWidth: 1.5 } as const;
 
@@ -62,8 +50,10 @@ export type InsertRailProps = {
 
 /**
  * The insert rail (TeachDeck `components/v2/editor/InsertRail.tsx`): text presets, image, shapes,
- * lines, icons, table, question slides, timer, embed, then Info and Help at the foot. The image
- * button anchors the Add image panel (TEACH-107), which the session opens and closes.
+ * lines, icons, table, activities, timer, embed, then Info and Help at the foot. The image
+ * button anchors the Add image panel (TEACH-107), which the session opens and closes. Activities
+ * opens the one slide picker on its Activities tab (TEACH-185): an activity is a whole slide,
+ * inserted after the one on the canvas, not an element.
  */
 export const InsertRail = memo(function InsertRail({ onInsert, onHelp }: InsertRailProps) {
   const lesson = useLesson();
@@ -139,24 +129,19 @@ export const InsertRail = memo(function InsertRail({ onInsert, onHelp }: InsertR
 
       <RailSeparator />
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <RailButton label="Question slide">
-            <CircleQuestionMark aria-hidden {...ICON} />
+      <AddSlidePicker
+        themeId={lesson.themeId}
+        facts={lesson.facts}
+        side="right"
+        initialTab="activities"
+        onPick={(kind) => addSlideAfter({ history, lesson, session }, activeSlideId, kind)}
+        onInsert={(slide) => insertSlideAfter({ history, lesson, session }, activeSlideId, slide)}
+        trigger={
+          <RailButton label="Activities">
+            <ListChecks aria-hidden {...ICON} />
           </RailButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" align="start" aria-label="Question slide">
-          <DropdownMenuLabel>New slide</DropdownMenuLabel>
-          {QUESTION_KINDS.map((kind) => (
-            <DropdownMenuItem
-              key={kind}
-              onSelect={() => addSlideAfter({ history, lesson, session }, activeSlideId, kind)}
-            >
-              {SLIDE_KIND_LABELS[kind]}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        }
+      />
 
       <RailButton label="Timer" onClick={() => onInsert(makeTimer())}>
         <TimerIcon aria-hidden {...ICON} />

@@ -13,7 +13,13 @@ import { Panel, PanelSeparator } from "../../kit/Panel";
 import { AddSlidePicker } from "../AddSlidePicker";
 import { useHistory, useLesson } from "../document-context";
 import { hint } from "../keys";
-import { addSlideAfter, deleteSlide, duplicateSlide, moveSlideBy } from "../slide-commands";
+import {
+  addSlideAfter,
+  deleteSlide,
+  duplicateSlide,
+  insertSlideAfter,
+  moveSlideBy,
+} from "../slide-commands";
 import { useActiveSlideId, useSessionActions } from "../use-editor-session";
 import { CHROME_MIN_TOP, placeSlideActions } from "./place-slide-actions";
 import { useSlideChrome } from "./use-slide-chrome";
@@ -102,8 +108,10 @@ export function SlideActions({
 
       <AddSlidePicker
         themeId={lesson.themeId}
+        facts={lesson.facts}
         side="bottom"
         onPick={(kind) => addSlideAfter(deps, id, kind)}
+        onInsert={(slide) => insertSlideAfter(deps, id, slide)}
         trigger={
           <PillButton label="Add slide after">
             <Plus aria-hidden {...ICON} />

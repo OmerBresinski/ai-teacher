@@ -202,10 +202,12 @@ export type NextLabel = "Reveal" | "Answer" | null;
 /**
  * What the next control says. A slide with reveal steps left uncovers rather than advances, and
  * the teacher should be able to see which before pressing: "Reveal" for a build, "Answer" for the
- * last step of a question slide, and nothing at all once the slide is fully out, where the plain
- * chevron reads as "on to the next slide".
+ * answer steps of a question slide (`answerSteps` of them, from `answerRevealSteps`; a choice
+ * question dims one wrong option per step, so the label holds through the whole reveal), and
+ * nothing at all once the slide is fully out, where the plain chevron reads as "on to the next
+ * slide".
  */
-export function nextLabel(step: number, stepCount: number, isQuestion: boolean): NextLabel {
+export function nextLabel(step: number, stepCount: number, answerSteps: number): NextLabel {
   if (step >= stepCount) return null;
-  return isQuestion && step === stepCount - 1 ? "Answer" : "Reveal";
+  return step >= stepCount - answerSteps ? "Answer" : "Reveal";
 }
