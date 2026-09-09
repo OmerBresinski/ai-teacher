@@ -31,6 +31,7 @@ import {
 } from "@/routes/library.route";
 import { rootRoute } from "@/routes/root.route";
 import { signInRoute } from "@/routes/sign-in.route";
+import { worksheetCreateRoute } from "@/routes/worksheet-create.route";
 
 export const routeTree = rootRoute.addChildren([
   signInRoute,
@@ -40,6 +41,7 @@ export const routeTree = rootRoute.addChildren([
       lessonsRoute,
       lessonBriefRoute,
       worksheetsRoute,
+      worksheetCreateRoute,
       seriesIndexRoute,
       seriesDetailRoute,
     ]),

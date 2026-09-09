@@ -89,6 +89,8 @@ export type LessonEditorProps = {
   worksheet?: Worksheet;
   /** Opens the worksheet; the top bar shows "Worksheet" only when this and the artefact exist. */
   onOpenWorksheet?: (worksheetId: string) => void;
+  /** Opens the worksheet creation flow for this lesson (TEACH-184); the top bar's "Worksheet". */
+  onNewWorksheet?: () => void;
   /**
    * The proposal jobs (TEACH-134, ADR 0025 §18): the app enqueues a cascade for changed facts and
    * a regenerate for a target, follows the job and applies its result through `editorRef`.
@@ -129,6 +131,7 @@ export function LessonEditor({
   exportSlot,
   worksheet,
   onOpenWorksheet,
+  onNewWorksheet,
   onFactsChanged,
   onRegenerate,
   busySlideIds,
@@ -381,6 +384,7 @@ export function LessonEditor({
                         onOpenTheme={() => setThemeOpen(true)}
                         exportSlot={exportSlot}
                         onOpenWorksheet={onOpenWorksheet}
+                        onNewWorksheet={onNewWorksheet}
                         onToggleFacts={
                           proposalsEnabled && lesson.facts
                             ? () => setFactsOpen((open) => !open)

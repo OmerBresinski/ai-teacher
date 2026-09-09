@@ -57,13 +57,8 @@ export type { LibraryMode } from "./library/library-model";
 // One import promise per chunk: `lazy` and the hover/focus preload below share it, so warming the
 // chunk on intent makes the first open instant instead of a Suspense gap (bundle-preload). A failed
 // warm-up is silent; the click still goes through `lazy`, whose failure reaches the error boundary.
-const loadNewDocumentDialog = () => import("./new-document-dialog");
 const loadNewSeriesDialog = () => import("./new-series-dialog");
-const warmNewDocumentDialog = () => void loadNewDocumentDialog().catch(() => {});
 const warmNewSeriesDialog = () => void loadNewSeriesDialog().catch(() => {});
-const NewDocumentDialog = lazy(() =>
-  loadNewDocumentDialog().then(({ NewDocumentDialog }) => ({ default: NewDocumentDialog })),
-);
 const NewSeriesDialog = lazy(() =>
   loadNewSeriesDialog().then(({ NewSeriesDialog }) => ({ default: NewSeriesDialog })),
 );
@@ -78,13 +73,12 @@ const LIST_ICON = <List aria-hidden size={16} strokeWidth={1.5} />;
 type CreateTarget = "lesson" | "worksheet" | "series";
 
 /**
- * Which create dialog is showing. `target` survives `open: false` so the dialog can play its exit
- * animation with the right copy; `session` bumps on every open and is the dialog's `key`, which
- * remounts it with fresh form state without a reset effect. Neither dialog is mounted (or its
- * chunk requested) before the first open.
+ * Whether the series dialog is showing. `session` bumps on every open and is the dialog's `key`,
+ * which remounts it with fresh form state without a reset effect. The dialog is not mounted (or
+ * its chunk requested) before the first open. Lessons and worksheets have their own screens.
  */
-type CreateState = { target: CreateTarget; open: boolean; session: number };
-const CREATE_IDLE: CreateState = { target: "lesson", open: false, session: 0 };
+type CreateState = { open: boolean; session: number };
+const CREATE_IDLE: CreateState = { open: false, session: 0 };
 
 export function LibraryPage({ mode }: { mode: LibraryMode }) {
   const isHome = mode === "home";
@@ -98,6 +92,8 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
   // The brief is its own chunk: warm it on intent so the click is instant (bundle-preload), the
   // way the dialogs are warmed below. A failed warm-up is silent; the navigation still loads it.
   const warmBrief = () => void router.preloadRoute({ to: "/lessons/new" }).catch(() => {});
+  // The worksheet creation flow (TEACH-184) is a chunk too, warmed the same way.
+  const warmCreate = () => void router.preloadRoute({ to: "/worksheets/new" }).catch(() => {});
   // The page reads the clock for the Recent / Earlier split; cards read it in `EditedTime`.
   const now = useNow();
   // Subscribe to the string, not the search object: a new object arrives on every navigation.
@@ -168,21 +164,25 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
     void Promise.all(active.map((entry) => entry.refetch()));
   }
 
-  /** New lesson is the brief screen (F01, TEACH-122); worksheets and series keep their dialogs. */
+  /**
+   * New lesson is the brief screen (F01, TEACH-122) and New worksheet the creation flow
+   * (TEACH-184); series keep their dialog.
+   */
   function openCreate(target: CreateTarget = isSeries ? "series" : (kind ?? "lesson")): void {
     if (target === "lesson") {
       void navigate({ to: "/lessons/new" });
       return;
     }
-    setCreating((current) => ({ target, open: true, session: current.session + 1 }));
+    if (target === "worksheet") {
+      void navigate({ to: "/worksheets/new", search: { lesson: undefined } });
+      return;
+    }
+    setCreating((current) => ({ open: true, session: current.session + 1 }));
   }
 
   function closeCreate(open: boolean): void {
     if (!open) setCreating((current) => ({ ...current, open: false }));
   }
-
-  const createTarget = creating.target;
-  const documentDialogTarget = createTarget === "series" ? null : createTarget;
 
   return (
     <main className="min-h-dvh px-6 py-8 lg:px-12">
@@ -228,8 +228,8 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
               <Button
                 variant="primary"
                 size="sm"
-                onPointerEnter={warmNewDocumentDialog}
-                onFocus={warmNewDocumentDialog}
+                onPointerEnter={warmCreate}
+                onFocus={warmCreate}
                 onClick={() => openCreate("worksheet")}
               >
                 <FileText aria-hidden size={16} />
@@ -274,8 +274,8 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
           </Tile>
           <Tile
             icon={WORKSHEET_TILE_ICON}
-            onPointerEnter={warmNewDocumentDialog}
-            onFocus={warmNewDocumentDialog}
+            onPointerEnter={warmCreate}
+            onFocus={warmCreate}
             onClick={() => openCreate("worksheet")}
           >
             New worksheet
@@ -382,20 +382,11 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
       </div>
 
       {/*
-        Mounted from the first open onwards and remounted through `key` on every open, so each
+        Mounted from the first open onwards and remounted through `key` on every open, so the
         dialog starts from fresh state and still stays in the tree while its close animation plays.
       */}
       <Suspense fallback={null}>
-        {creating.session > 0 && documentDialogTarget ? (
-          <NewDocumentDialog
-            key={creating.session}
-            open={creating.open}
-            kind={documentDialogTarget}
-            onOpenChange={closeCreate}
-            onCreate={(values) => actions.createNewDocument(documentDialogTarget, values)}
-          />
-        ) : null}
-        {creating.session > 0 && createTarget === "series" ? (
+        {creating.session > 0 ? (
           <NewSeriesDialog
             key={creating.session}
             open={creating.open}

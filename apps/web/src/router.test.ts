@@ -15,6 +15,7 @@ const SHELL_ROUTES = [
   "/lessons",
   "/lessons/new",
   "/worksheets",
+  "/worksheets/new",
   "/series",
   "/series/$seriesId",
   "/l/$lessonId",
@@ -43,8 +44,8 @@ describe("router", () => {
     const ids = Object.keys(router.routesById);
     const authed = ids.filter((id) => id !== "__root__" && id !== "/sign-in" && id !== "/auth");
     expect(authed.every((id) => id.startsWith("/auth/"))).toBe(true);
-    // The six shell pages share the pathless `library` layout (sidebar, dialogs, shell memory).
-    expect(ids.filter((id) => id.startsWith("/auth/library/"))).toHaveLength(6);
+    // The seven shell pages share the pathless `library` layout (sidebar, dialogs, shell memory).
+    expect(ids.filter((id) => id.startsWith("/auth/library/"))).toHaveLength(7);
     // Document routes and dev tools sit beside it: no sidebar.
     expect(ids.filter((id) => /^\/auth\/(l|w|dev)\//.test(id))).toHaveLength(6);
   });

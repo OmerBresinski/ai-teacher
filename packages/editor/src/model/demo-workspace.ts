@@ -1,4 +1,5 @@
 import type { Lesson, Series, Worksheet } from "@tj/domain/documents";
+import { DEMO_FRACTIONS_FACTS, DEMO_LESSON_FACTS } from "./demo-facts";
 import {
   fractionsPracticeWorksheet,
   plantLabelsWorksheet,
@@ -127,6 +128,10 @@ const meta = (
  */
 export function demoWorkspace(now: Date): DemoDocument[] {
   const [waterCycle, fractions] = demoLibrary() as [Lesson, Lesson];
+  // The two demo lessons carry facts (TEACH-184 item 5), so a sheet made from either is built
+  // from real facts on the dev seed rather than the example set.
+  waterCycle.facts = DEMO_LESSON_FACTS;
+  fractions.facts = DEMO_FRACTIONS_FACTS;
   return [
     {
       key: "demo-water-cycle",

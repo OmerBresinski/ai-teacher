@@ -12,7 +12,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@tj/ui";
-import { useMemo, useState } from "react";
+import { type KeyboardEvent, useMemo, useState } from "react";
 import {
   JOBS,
   type Job,
@@ -163,30 +163,54 @@ function AddBlockBody({
   );
 }
 
-function RecipeCard({
+export type RecipeCardProps = {
+  recipe: WorksheetRecipe;
+  blocks: WorksheetBlock[];
+  /** The sheet the miniature borrows its header, theme and paper from. */
+  worksheet: Worksheet;
+  theme: Theme;
+  onPick: () => void;
+  /**
+   * The creation flow (TEACH-184) selects a card and continues from a bar, so a card can be the
+   * chosen one (`aria-pressed`) and one card carries the Suggested pill. The dialog picks at once
+   * and passes neither.
+   */
+  selected?: boolean;
+  suggested?: boolean;
+  onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void;
+};
+
+/** One recipe as a card: the live miniature, the name and line, the minutes pill and the jobs. */
+export function RecipeCard({
   recipe,
   blocks,
   worksheet,
   theme,
   onPick,
-}: {
-  recipe: WorksheetRecipe;
-  blocks: WorksheetBlock[];
-  worksheet: Worksheet;
-  theme: Theme;
-  onPick: () => void;
-}) {
+  selected,
+  suggested = false,
+  onKeyDown,
+}: RecipeCardProps) {
   const minutes = estimateMinutes(blocks);
   const jobs = recipe.jobs.map((id) => JOBS.find((j) => j.id === id)?.label ?? id).join(", ");
+  const label = `${recipe.name}. ${recipe.line} ${jobs}. About ${minutes} minutes.${
+    suggested ? " Suggested." : ""
+  }`;
   return (
-    <li className="ws-recipe-card" data-recipe={recipe.id}>
+    <li
+      className="ws-recipe-card"
+      data-recipe={recipe.id}
+      data-selected={selected === undefined ? undefined : selected}
+    >
       <RecipeMiniature blocks={blocks} worksheet={worksheet} theme={theme} />
       {/* The button is the whole card (its ::after covers it); the miniature is decoration. */}
       <button
         type="button"
         className="ws-recipe-pick"
-        aria-label={`${recipe.name}. ${recipe.line} ${jobs}. About ${minutes} minutes.`}
+        aria-label={label}
+        aria-pressed={selected}
         onClick={onPick}
+        onKeyDown={onKeyDown}
       >
         <span className="block truncate font-semibold text-body text-foreground">
           {recipe.name}
@@ -195,6 +219,12 @@ function RecipeCard({
       </button>
       <span className="ws-recipe-meta">
         <StatusPill>{`about ${minutes} min`}</StatusPill>
+        {/* Opaque: brand text on the card clears 4.5:1; on the tint it does not. */}
+        {suggested ? (
+          <StatusPill tone="accent" opaque>
+            Suggested
+          </StatusPill>
+        ) : null}
         <span className="truncate text-meta text-ink-3">{jobs}</span>
       </span>
     </li>

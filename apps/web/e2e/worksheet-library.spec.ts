@@ -10,8 +10,8 @@ import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 /** Key, title, a phrase only that sheet's paper carries, and the card's marks and minutes. */
 const SHEETS = [
   ["fraction-practice", "Fractions practice", "Worked example", "12 marks · 20 min"],
-  ["roman-source", "Roman source investigation", "Watling Street", "8 marks · 15 min"],
-  ["plant-labels", "Label a flowering plant", "Figure 1: a flowering plant", "4 marks · 10 min"],
+  ["roman-source", "Roman source investigation", "Watling Street", "8 marks · 10 min"],
+  ["plant-labels", "Label a flowering plant", "Figure 1: a flowering plant", "4 marks · 5 min"],
   ["river-vocabulary", "River vocabulary", "tributary", "5 min"],
 ] as const;
 
@@ -84,7 +84,7 @@ test.describe("worksheet library", () => {
     }
   });
 
-  test("row 2: cards carry marks and minutes; New worksheet sits in the header and opens the dialog", async ({
+  test("row 2: cards carry marks and minutes; New worksheet sits in the header and opens the flow", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/worksheets");
@@ -98,9 +98,8 @@ test.describe("worksheet library", () => {
     const create = page.getByRole("button", { name: "New worksheet" });
     await expect(create).toBeVisible();
     await create.click();
-    await expect(page.getByRole("dialog", { name: "New worksheet" })).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/worksheets\/new$/);
+    await expect(page.getByRole("heading", { level: 1, name: "New worksheet" })).toBeVisible();
   });
 
   test("row 3: the card face opens the sheet; Print and the overflow menu do not", async ({

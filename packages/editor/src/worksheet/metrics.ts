@@ -124,7 +124,7 @@ const wordCount = (doc: RichDoc): number => {
  * for the header and the recipe cards, not a timer.
  */
 export function estimateMinutes(blocks: readonly WorksheetBlock[]): number {
-  let minutes = marksTotal(blocks) * 1.5;
+  let minutes = minutesRaw(marksTotal(blocks));
   for (const block of blocks) {
     switch (block.type) {
       case "word-search":
@@ -146,7 +146,24 @@ export function estimateMinutes(blocks: readonly WorksheetBlock[]): number {
         break;
     }
   }
-  return Math.max(5, Math.round(minutes / 5) * 5);
+  return roundMinutes(minutes);
+}
+
+/** A mark and a half per mark, before rounding. */
+const minutesRaw = (marks: number): number => marks * 1.5;
+
+/** To the nearest five minutes, never under five. */
+const roundMinutes = (minutes: number): number => Math.max(5, Math.round(minutes / 5) * 5);
+
+/**
+ * The minutes a sheet takes from its marks alone (TEACH-184 item 7): the same rate and rounding
+ * as `estimateMinutes`, so a library card built from `DocumentSummary.marks` says what the sheet
+ * header says for a sheet of questions. The summary carries no per-block detail (word searches,
+ * matching, gaps), so a sheet with those reads a little short on its card; a `minutes` column on
+ * the summary would close that gap and is a schema change, left for later.
+ */
+export function minutesForMarks(marks: number): number {
+  return roundMinutes(minutesRaw(marks));
 }
 
 /** "12 marks · about 25 min" for the sheet header and the recipe cards. */

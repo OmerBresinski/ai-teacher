@@ -38,6 +38,19 @@ function renderDialog(overrides: Partial<AddBlockDialogProps> = {}) {
 }
 
 describe("AddBlockDialog", () => {
+  test("without facts the miniatures still wear this sheet's own header (TEACH-184 item 6)", () => {
+    const worksheet = starterWorksheet("Fractions practice");
+    worksheet.header.subtitle = "I can find a fraction of an amount";
+    const { dialog } = renderDialog({ worksheet, facts: undefined });
+    const card = dialog.querySelector('[data-recipe="exit-ticket"]');
+    if (!card) throw new Error("no exit ticket card");
+    expect(card.querySelector(".ws-mini .ws-title")?.textContent).toBe("Fractions practice");
+    expect(card.querySelector(".ws-mini .ws-objective")?.textContent).toBe(
+      "I can find a fraction of an amount",
+    );
+    expect(dialog.textContent).not.toContain("The water cycle");
+  });
+
   test("nine cards, each a real sheet in miniature built from the facts, with a minutes pill", () => {
     const { dialog } = renderDialog();
     const cards = within(dialog)

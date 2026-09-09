@@ -8,6 +8,7 @@ import {
   estimateMinutes,
   fitScale,
   marksTotal,
+  minutesForMarks,
   pageMetrics,
   ptToPx,
   pxToPt,
@@ -83,5 +84,25 @@ describe("estimateMinutes", () => {
     expect(estimateMinutes([para, q(6)])).toBe(10); // 2 + 9 = 11 → 10
     expect(estimateMinutes([para, q(8)])).toBe(15); // 2 + 12 = 14 → 15
     expect(sheetSummary([q(1)])).toBe("1 mark · about 5 min");
+  });
+});
+
+describe("minutesForMarks", () => {
+  test("is the one rule the cards and the header share: a sheet of questions agrees (TEACH-184)", () => {
+    const q = (marks: number): WorksheetBlock => ({
+      id: `q${marks}`,
+      type: "question",
+      doc: docFromText("Q"),
+      answerLines: 2,
+      marks,
+    });
+    expect(minutesForMarks(0)).toBe(5);
+    expect(minutesForMarks(1)).toBe(5);
+    expect(minutesForMarks(4)).toBe(5); // 6 → 5
+    expect(minutesForMarks(6)).toBe(10); // 9 → 10
+    expect(minutesForMarks(12)).toBe(20); // 18 → 20
+    for (const marks of [0, 1, 2, 3, 4, 5, 6, 8, 12, 20]) {
+      expect(estimateMinutes(marks === 0 ? [] : [q(marks)])).toBe(minutesForMarks(marks));
+    }
   });
 });
