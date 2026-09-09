@@ -21,6 +21,22 @@ const FORBIDDEN = [
   "@tanstack/react-query",
 ];
 
+describe("the forbidden-module scan", () => {
+  test("sees a package name in a bundle that really carries the editor (negative control)", async () => {
+    const result = await Bun.build({
+      entrypoints: [`${import.meta.dir}/worksheet/editor-index.ts`],
+      target: "browser",
+      external: ["react", "react-dom", "react/jsx-runtime", "*.css"],
+      minify: false,
+      splitting: true,
+    });
+    expect(result.success).toBe(true);
+    const text = (await Promise.all(result.outputs.map((o) => o.text()))).join("\n");
+    expect(text.includes("@tiptap/react")).toBe(true);
+    expect(text.includes("immer")).toBe(true);
+  });
+});
+
 describe.each(["thumb", "worksheet-thumb"])("@tj/editor/%s", (entryName) => {
   test("bundles without any editing module", async () => {
     const result = await Bun.build({

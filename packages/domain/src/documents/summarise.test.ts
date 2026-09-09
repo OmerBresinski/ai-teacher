@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { lesson, text, titleSlide, worksheet } from "./fixtures.test-helpers";
 import type { Series } from "./series";
-import type { Slide, SlideElement } from "./slide";
+import { type Slide, type SlideElement, SlideKindSchema } from "./slide";
 import {
   COVER_BLOCKS,
   COVER_TEXT_CHARS,
@@ -11,6 +11,7 @@ import {
   documentKind,
   isWorksheetCover,
   summarise,
+  WorksheetCoverSchema,
   worksheetCoverOf,
   worksheetMarks,
 } from "./summarise";
@@ -178,6 +179,76 @@ describe("summarise", () => {
     expect(worksheetMarks(doc.blocks)).toBe(4);
     expect(summarise(doc).marks).toBe(4);
     expect(summarise(lesson()).marks).toBeUndefined();
+  });
+
+  test("a worksheet cover clips every collection and stays under a byte budget (TEACH-193)", () => {
+    const cell = "c".repeat(400);
+    const big = Array.from({ length: 40 }, () => Array.from({ length: 12 }, () => cell));
+    const words = Array.from({ length: 80 }, (_, i) => `${"w".repeat(200)}${i}`);
+    const doc = {
+      ...worksheet(),
+      blocks: [
+        { id: "t", type: "table" as const, rows: big, header: true },
+        {
+          id: "s",
+          type: "word-search" as const,
+          words,
+          size: 15,
+          directions: "all" as const,
+          seed: 1,
+          showWordBank: true,
+        },
+        { id: "b", type: "word-bank" as const, words },
+        {
+          id: "m",
+          type: "matching" as const,
+          pairs: Array.from({ length: 30 }, (_, i) => ({ id: `p${i}`, left: cell, right: cell })),
+        },
+        {
+          id: "mc",
+          type: "multiple-choice" as const,
+          doc: text("q"),
+          options: Array.from({ length: 12 }, (_, i) => ({
+            id: `o${i}`,
+            text: cell,
+            correct: i === 0,
+          })),
+        },
+        {
+          id: "g",
+          type: "fill-gap" as const,
+          doc: text("q"),
+          gaps: Array.from({ length: 50 }, (_, i) => ({ id: `g${i}`, answer: cell })),
+        },
+        { id: "q", type: "question" as const, doc: text("q"), answerLines: 2, answer: cell },
+        { id: "i", type: "image" as const, src: "/files/x", widthPct: 100, caption: cell },
+      ],
+    };
+    const cover = worksheetCoverOf(doc);
+    const [t, s, b, m, mc, g, q, i] = cover.blocks;
+    expect(t?.type === "table" && t.rows.length).toBe(8);
+    expect(t?.type === "table" && t.rows[0]?.length).toBe(8);
+    expect(t?.type === "table" && t.rows[0]?.[0]?.length).toBe(60);
+    expect(s?.type === "word-search" && s.words.length).toBe(20);
+    expect(b?.type === "word-bank" && b.words.length).toBe(20);
+    expect(m?.type === "matching" && m.pairs.length).toBe(8);
+    expect(mc?.type === "multiple-choice" && mc.options.length).toBe(6);
+    expect(g?.type === "fill-gap" && g.gaps.length).toBe(20);
+    expect(q?.type === "question" && q.answer?.length).toBe(60);
+    expect(i?.type === "image" && i.caption?.length).toBe(60);
+    // The document is untouched and the cover is small enough for a list row.
+    expect(doc.blocks[0]?.type === "table" && doc.blocks[0].rows.length).toBe(40);
+    expect(new TextEncoder().encode(JSON.stringify(cover)).length).toBeLessThan(12 * 1024);
+    expect(DocumentSummarySchema.safeParse({ ...summarise(doc), cover }).success).toBe(true);
+  });
+
+  test("no slide kind is 'worksheet', which is what the cover union and isWorksheetCover rest on", () => {
+    expect(SlideKindSchema.options).not.toContain("worksheet");
+    for (const kind of SlideKindSchema.options) {
+      const slide = { ...titleSlide(), kind } as Slide;
+      expect(WorksheetCoverSchema.safeParse(slide).success).toBe(false);
+      expect(isWorksheetCover(slide)).toBe(false);
+    }
   });
 
   test("a series: lesson count, null cover, no theme, subject or year group", () => {

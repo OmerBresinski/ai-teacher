@@ -19,6 +19,21 @@ describe("LessonThumb", () => {
   });
 
   it("paints a worksheet cover as the real sheet, greyscale, not the initial (TEACH-193)", () => {
+    // The sheet mounts once the card is near the viewport; happy-dom's observer never fires, so
+    // stand in one that reports the box on screen at once.
+    const RealObserver = globalThis.IntersectionObserver;
+    class OnScreen {
+      constructor(private readonly cb: IntersectionObserverCallback) {}
+      observe() {
+        this.cb([{ isIntersecting: true } as IntersectionObserverEntry], this as never);
+      }
+      disconnect() {}
+      unobserve() {}
+      takeRecords() {
+        return [];
+      }
+    }
+    globalThis.IntersectionObserver = OnScreen as never;
     const sheet = demoWorksheet();
     const summary = summarise(sheet);
     const { container } = render(
@@ -30,6 +45,7 @@ describe("LessonThumb", () => {
     expect(container.querySelector(".font-display")).toBeNull();
     // Marks on for this sheet: the label prints in the miniature as on the page.
     expect(container.querySelectorAll(".ws-marks").length).toBeGreaterThan(0);
+    globalThis.IntersectionObserver = RealObserver;
   });
 
   it("falls back to the theme swatch and initial without a cover", () => {

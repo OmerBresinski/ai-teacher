@@ -268,7 +268,7 @@ export function RecipeMiniature({
   );
   const pageW = pageMetrics(worksheet.pageSize).page.w;
   const ref = useRef<HTMLDivElement>(null);
-  const fitted = useFitScale(ref, pageW);
+  const fitted = useFitScale(ref, pageW, fit);
   const scale = fit && fitted ? fitted : MINIATURE_SCALE;
   const style = fit
     ? { width: "100%", height: `${(MINIATURE_HEIGHT * scale) / MINIATURE_SCALE}px` }

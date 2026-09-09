@@ -14,9 +14,7 @@ import { worksheetEditorRoute } from "./documents.route";
 // only (ADR 0022 §8): Vite ships it with the lazy chunk, so none of it reaches the initial bundle.
 import "@tj/editor/styles/worksheet-edit.css";
 
-import { worksheetPrintHref } from "@/lib/worksheet-print-href";
-
-export { worksheetPrintHref };
+import { openWorksheetPrint } from "@/lib/worksheet-print-href";
 
 /**
  * `/w/$worksheetId` — the worksheet editor (TEACH-109). The loader has already resolved the
@@ -46,7 +44,7 @@ export function WorksheetEditorPage() {
 
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
   const onPrint = useCallback(() => {
-    window.open(worksheetPrintHref(worksheetId), "_blank", "noopener");
+    openWorksheetPrint(worksheetId);
   }, [worksheetId]);
 
   if (!data || !isFullDocument(data)) return <RoutePendingPage />;

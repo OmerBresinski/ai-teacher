@@ -67,11 +67,17 @@ export const WorksheetCoverSchema = z.object({
 export const COVER_BLOCKS = 8;
 /** Characters of rich text a cover block keeps; a card never shows more. */
 export const COVER_TEXT_CHARS = 160;
+/** Rows, words, pairs, options and cell characters a cover block keeps of its collections. */
+export const COVER_ROWS = 8;
+export const COVER_WORDS = 20;
+export const COVER_OPTIONS = 6;
+export const COVER_CELL_CHARS = 60;
 /** A data-URL image longer than this is dropped from the cover (ADR 0021 §5); inline SVGs stay. */
 const COVER_IMAGE_BYTES = 16 * 1024;
 
+/** Rests on no `SlideKind` being "worksheet"; a slide always has `elements`, a cover never. */
 export function isWorksheetCover(cover: DocumentSummary["cover"]): cover is WorksheetCover {
-  return cover !== null && "kind" in cover && cover.kind === "worksheet";
+  return cover !== null && cover.kind === "worksheet" && !("elements" in cover);
 }
 
 export const DocumentSummarySchema = z.object({
@@ -83,8 +89,9 @@ export const DocumentSummarySchema = z.object({
   themeId: z.string().optional(),
   itemCount: z.number().int().nonnegative(),
   marks: z.number().int().nonnegative().optional(),
-  // The tagged worksheet shape first: a slide has no `kind` key, so every stored slide cover
-  // still parses through `SlideSchema`.
+  // The tagged worksheet shape first. A slide carries `kind: SlideKind` too, and no `SlideKind`
+  // is the literal "worksheet" (`summarise.test.ts` pins that), so every stored slide cover fails
+  // the tag and parses through `SlideSchema`.
   cover: z.union([WorksheetCoverSchema, SlideSchema]).nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -160,11 +167,53 @@ function clipDoc<T extends { content?: unknown[] }>(doc: T, budget: number): T {
   return { ...doc, content: kept };
 }
 
+const clipText = (text: string): string => text.slice(0, COVER_CELL_CHARS);
+
+/** Every unbounded field on a block cut to what a card-sized miniature can show. */
+function clipBlock(block: WorksheetBlock): void {
+  if ("doc" in block) block.doc = clipDoc(block.doc, COVER_TEXT_CHARS);
+  switch (block.type) {
+    case "image":
+      if (isDataUrl(block.src) && block.src.length > COVER_IMAGE_BYTES) block.src = "";
+      if (block.caption !== undefined) block.caption = clipText(block.caption);
+      break;
+    case "table":
+      block.rows = block.rows.slice(0, COVER_ROWS).map((r) => r.slice(0, COVER_ROWS).map(clipText));
+      break;
+    case "word-search":
+    case "word-bank":
+      block.words = block.words.slice(0, COVER_WORDS).map(clipText);
+      break;
+    case "matching":
+      block.pairs = block.pairs
+        .slice(0, COVER_ROWS)
+        .map((p) => ({ ...p, left: clipText(p.left), right: clipText(p.right) }));
+      break;
+    case "multiple-choice":
+      block.options = block.options
+        .slice(0, COVER_OPTIONS)
+        .map((o) => ({ ...o, text: clipText(o.text) }));
+      break;
+    case "fill-gap":
+      block.gaps = block.gaps
+        .slice(0, COVER_WORDS)
+        .map((g) => ({ ...g, answer: clipText(g.answer) }));
+      break;
+    case "question":
+      if (block.answer !== undefined) block.answer = clipText(block.answer);
+      break;
+    default:
+      break;
+  }
+}
+
 /**
  * The top of page 1 as the library card paints it (UX ruling 31): the header and the first
- * `COVER_BLOCKS` blocks with their rich text clipped to `COVER_TEXT_CHARS`, page breaks dropped,
- * image blocks kept by `src` unless the src is a large data URL (the promoted column and the list
- * response never carry megabytes, ADR 0021 §5). A deep copy; the document is never touched.
+ * `COVER_BLOCKS` blocks, page breaks dropped, every block cut to what a miniature can show (rich
+ * text to `COVER_TEXT_CHARS`; table rows, words, pairs and options to their caps; a data-URL
+ * image over 16 KB blanked), so the promoted column and the list response stay small (ADR 0021
+ * §5; `summarise.test.ts` holds a serialised cover under a byte budget). A deep copy; the document
+ * is never touched.
  */
 export function worksheetCoverOf(sheet: Worksheet): WorksheetCover {
   const blocks: WorksheetBlock[] = [];
@@ -172,10 +221,7 @@ export function worksheetCoverOf(sheet: Worksheet): WorksheetCover {
     if (blocks.length >= COVER_BLOCKS) break;
     if (source.type === "page-break") continue;
     const block = structuredClone(source);
-    if ("doc" in block) block.doc = clipDoc(block.doc, COVER_TEXT_CHARS);
-    if (block.type === "image" && isDataUrl(block.src) && block.src.length > COVER_IMAGE_BYTES) {
-      block.src = "";
-    }
+    clipBlock(block);
     blocks.push(block);
   }
   return {

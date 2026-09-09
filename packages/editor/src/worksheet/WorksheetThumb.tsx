@@ -13,14 +13,19 @@ import { Sheet } from "./Sheet";
 
 /**
  * The scale that fits a page `pageW` points wide into `ref`'s box, following the box as it
- * resizes. `null` until the first measurement; a test environment without `ResizeObserver`
- * measures once from `getBoundingClientRect`.
+ * resizes. `null` until the first measurement, or while `enabled` is false (no observer is
+ * attached then); a test environment without `ResizeObserver` measures once from
+ * `getBoundingClientRect`.
  */
-export function useFitScale(ref: RefObject<HTMLElement | null>, pageW: number): number | null {
+export function useFitScale(
+  ref: RefObject<HTMLElement | null>,
+  pageW: number,
+  enabled = true,
+): number | null {
   const [width, setWidth] = useState<number | null>(null);
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!enabled || !el) return;
     if (typeof ResizeObserver === "undefined") {
       const rect = el.getBoundingClientRect().width;
       if (rect > 0) setWidth(rect);
@@ -32,8 +37,32 @@ export function useFitScale(ref: RefObject<HTMLElement | null>, pageW: number): 
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [ref]);
-  return width === null ? null : width / ptToPx(pageW);
+  }, [ref, enabled]);
+  return !enabled || width === null ? null : width / ptToPx(pageW);
+}
+
+/** How far outside the viewport a card may sit and still mount its sheet. */
+const NEAR_VIEWPORT = "300px";
+
+/**
+ * Whether `ref`'s box is on screen or within `NEAR_VIEWPORT` of it; once true it stays true.
+ * Without `IntersectionObserver` (tests) it is true at once.
+ */
+function useNearViewport(ref: RefObject<HTMLElement | null>): boolean {
+  const [near, setNear] = useState(() => typeof IntersectionObserver === "undefined");
+  useEffect(() => {
+    const el = ref.current;
+    if (near || !el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setNear(true);
+      },
+      { rootMargin: NEAR_VIEWPORT },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, near]);
+  return near;
 }
 
 /** The scale a thumb paints at before its box has been measured: a 320px card, roughly. */
@@ -70,15 +99,20 @@ export function WorksheetThumb({ cover, title, theme, className }: WorksheetThum
     [sheet],
   );
   const ref = useRef<HTMLDivElement>(null);
-  const scale = useFitScale(ref, pageMetrics(cover.pageSize).page.w) ?? UNMEASURED_SCALE;
+  // Off-screen cards keep their frame (the card reserves the box) but mount no sheet until they
+  // come near the viewport, so a long grid does not lay out every page at once.
+  const near = useNearViewport(ref);
+  const scale = useFitScale(ref, pageMetrics(cover.pageSize).page.w, near) ?? UNMEASURED_SCALE;
   return (
     <div ref={ref} className={className ? `ws-thumb ${className}` : "ws-thumb"} aria-hidden>
-      <div
-        className="ws-thumb-scale"
-        style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}
-      >
-        <Sheet worksheet={sheet} theme={theme} pages={pages} mode="print" />
-      </div>
+      {near ? (
+        <div
+          className="ws-thumb-scale"
+          style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}
+        >
+          <Sheet worksheet={sheet} theme={theme} pages={pages} mode="print" />
+        </div>
+      ) : null}
     </div>
   );
 }
