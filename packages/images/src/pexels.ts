@@ -147,12 +147,20 @@ function searchUrl(
   return url.toString();
 }
 
+/**
+ * Seconds until Pexels' rate-limit window resets. `X-Ratelimit-Reset` carries a Unix epoch
+ * (observed live as `1790741717`, weeks in the future — not a duration), so it is converted
+ * against `Date.now()` and clamped at zero: emitting the raw epoch as `Retry-After` would tell
+ * a client to wait years.
+ */
 function retryAfterSeconds(res: Response): number | undefined {
   if (res.status !== 429) return undefined;
   const raw = res.headers.get("X-Ratelimit-Reset");
-  if (raw === null) return undefined;
+  if (raw === null || raw.trim() === "") return undefined;
   const parsed = Number(raw.trim());
-  return Number.isInteger(parsed) ? parsed : undefined;
+  if (!Number.isFinite(parsed)) return undefined;
+  // Round up: advertising a shorter wait than the reset invites an early retry.
+  return Math.max(0, Math.ceil(parsed - Date.now() / 1000));
 }
 
 export function createPexelsClient(options: CreatePexelsClientOptions): PexelsClient {

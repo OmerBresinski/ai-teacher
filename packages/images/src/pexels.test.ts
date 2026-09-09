@@ -133,17 +133,20 @@ describe("createPexelsClient search", () => {
     expect((error as PexelsError).retryAfterS).toBeUndefined();
   });
 
-  test("a 429 carries retryAfterS from X-Ratelimit-Reset when present", async () => {
+  test("a 429 converts the reset epoch to seconds-until-reset", async () => {
+    const epoch = String(Math.floor(Date.now() / 1000) + 42);
     const withReset = createPexelsClient({
       apiKey: "k",
       fetch: stubFetch(
-        () => new Response("slow", { status: 429, headers: { "X-Ratelimit-Reset": "42" } }),
+        () => new Response("slow", { status: 429, headers: { "X-Ratelimit-Reset": epoch } }),
       ),
     });
     const error = await withReset.search({ query: "river" }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(PexelsError);
     expect((error as PexelsError).status).toBe(429);
-    expect((error as PexelsError).retryAfterS).toBe(42);
+    const retryAfterS = (error as PexelsError).retryAfterS as number;
+    expect(retryAfterS).toBeGreaterThanOrEqual(35);
+    expect(retryAfterS).toBeLessThanOrEqual(45);
 
     const withoutReset = createPexelsClient({
       apiKey: "k",
@@ -151,6 +154,38 @@ describe("createPexelsClient search", () => {
     });
     const bare = await withoutReset.search({ query: "river" }).catch((e: unknown) => e);
     expect((bare as PexelsError).retryAfterS).toBeUndefined();
+  });
+
+  test("an empty reset header stays undefined", async () => {
+    const empty = createPexelsClient({
+      apiKey: "k",
+      fetch: stubFetch(
+        () => new Response("slow", { status: 429, headers: { "X-Ratelimit-Reset": "  " } }),
+      ),
+    });
+    const error = await empty.search({ query: "river" }).catch((e: unknown) => e);
+    expect((error as PexelsError).retryAfterS).toBeUndefined();
+  });
+
+  test("a past reset epoch clamps to zero; garbage stays undefined", async () => {
+    const past = String(Math.floor(Date.now() / 1000) - 60);
+    const pastClient = createPexelsClient({
+      apiKey: "k",
+      fetch: stubFetch(
+        () => new Response("slow", { status: 429, headers: { "X-Ratelimit-Reset": past } }),
+      ),
+    });
+    const pastError = await pastClient.search({ query: "river" }).catch((e: unknown) => e);
+    expect((pastError as PexelsError).retryAfterS).toBe(0);
+
+    const garbage = createPexelsClient({
+      apiKey: "k",
+      fetch: stubFetch(
+        () => new Response("slow", { status: 429, headers: { "X-Ratelimit-Reset": "soon" } }),
+      ),
+    });
+    const garbageError = await garbage.search({ query: "river" }).catch((e: unknown) => e);
+    expect((garbageError as PexelsError).retryAfterS).toBeUndefined();
   });
 
   test("photo(id) maps one photo", async () => {
