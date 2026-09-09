@@ -33,6 +33,8 @@ export type ElementFrameProps = {
   /** Reveal step currently displayed. */
   step: number;
   revealAnswer: boolean;
+  /** Wrong options dimmed so far on a choice question (see `ElementViewProps`). */
+  answerProgress?: number;
   question?: QuestionData;
   zIndex: number;
   /** Position of this element among those revealed at the same step, for the stagger. */
@@ -62,6 +64,7 @@ export function ElementFrame({
   slideId,
   step,
   revealAnswer,
+  answerProgress,
   question,
   zIndex,
   staggerIndex = 0,
@@ -133,6 +136,7 @@ export function ElementFrame({
           hidden={hidden}
           ghost={ghost}
           revealAnswer={revealAnswer}
+          answerProgress={answerProgress}
           question={question}
           step={step}
           optionIndex={optionIndex}

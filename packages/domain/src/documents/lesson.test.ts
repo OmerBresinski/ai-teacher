@@ -9,6 +9,8 @@ import {
 import { GUARD_MESSAGE } from "./identifier-guard";
 import { isLesson, LessonSchema, parseLesson } from "./lesson";
 import {
+  answerRevealSteps,
+  answerStepsTaken,
   hasRevealableAnswer,
   type Slide,
   type SlideElement,
@@ -346,12 +348,31 @@ describe("image source (Images project, Decision 5)", () => {
 });
 
 describe("slide helpers", () => {
-  test("slideStepCount is the max revealStep plus one for a revealable answer", () => {
+  test("slideStepCount is the max revealStep plus the answer's reveal steps", () => {
     expect(slideStepCount(titleSlide())).toBe(0);
-    // true-false: no reveal steps, but the answer adds one.
-    expect(slideStepCount(trueFalseSlide())).toBe(1);
-    // multiple-choice: revealStep 1 on an option, plus the answer.
-    expect(slideStepCount(multipleChoiceSlide())).toBe(2);
+    // true-false: no reveal steps; the wrong card dims, then the right one fills (TEACH-185).
+    expect(slideStepCount(trueFalseSlide())).toBe(2);
+    expect(answerRevealSteps(trueFalseSlide())).toBe(2);
+    // multiple-choice: revealStep 1 on an option, then one dim per wrong option and the fill.
+    expect(slideStepCount(multipleChoiceSlide())).toBe(4);
+    expect(answerRevealSteps(multipleChoiceSlide())).toBe(3);
+    // Every other question kind reveals in one step; nothing to reveal, none.
+    const open: Slide = { ...titleSlide(), question: { type: "open-response" } };
+    expect(answerRevealSteps(open)).toBe(0);
+    open.question = { type: "open-response", modelAnswer: "Because it is cold" };
+    expect(answerRevealSteps(open)).toBe(1);
+    expect(slideStepCount(open)).toBe(1);
+  });
+
+  test("answerStepsTaken counts into the answer reveal and clamps at both ends", () => {
+    const mc = multipleChoiceSlide();
+    expect(answerStepsTaken(mc, 0)).toBe(0);
+    expect(answerStepsTaken(mc, 1)).toBe(0);
+    expect(answerStepsTaken(mc, 2)).toBe(1);
+    expect(answerStepsTaken(mc, 3)).toBe(2);
+    expect(answerStepsTaken(mc, 4)).toBe(3);
+    expect(answerStepsTaken(mc, 9)).toBe(3);
+    expect(answerStepsTaken(titleSlide(), 3)).toBe(0);
   });
 
   test("reveal steps inside groups count", () => {

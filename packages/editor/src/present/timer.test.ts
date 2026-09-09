@@ -94,11 +94,16 @@ describe("timer", () => {
   });
 
   test("nextLabel: Reveal for a build, Answer for a question's last step, null when out", () => {
-    expect(nextLabel(0, 2, false)).toBe("Reveal");
-    expect(nextLabel(1, 2, true)).toBe("Answer");
-    expect(nextLabel(1, 2, false)).toBe("Reveal");
-    expect(nextLabel(2, 2, true)).toBeNull();
-    expect(nextLabel(0, 0, false)).toBeNull();
+    expect(nextLabel(0, 2, 0)).toBe("Reveal");
+    expect(nextLabel(1, 2, 1)).toBe("Answer");
+    expect(nextLabel(1, 2, 0)).toBe("Reveal");
+    expect(nextLabel(2, 2, 1)).toBeNull();
+    // A four-option multiple choice: one build step, then three dims and the fill all say Answer.
+    expect(nextLabel(0, 5, 4)).toBe("Reveal");
+    expect(nextLabel(1, 5, 4)).toBe("Answer");
+    expect(nextLabel(4, 5, 4)).toBe("Answer");
+    expect(nextLabel(5, 5, 4)).toBeNull();
+    expect(nextLabel(0, 0, 0)).toBeNull();
   });
 });
 

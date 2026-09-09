@@ -10,6 +10,7 @@ export function GroupView({
   mode,
   slideId,
   revealAnswer,
+  answerProgress,
   question,
   step = Number.POSITIVE_INFINITY,
 }: ElementViewProps<GroupElement>) {
@@ -41,6 +42,7 @@ export function GroupView({
           slideId={slideId}
           step={step}
           revealAnswer={revealAnswer}
+          answerProgress={answerProgress}
           question={question}
           zIndex={i + 1}
           staggerIndex={stagger.get(child.id)}

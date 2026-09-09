@@ -672,10 +672,43 @@ export function slideStepCount(slide: Slide): number {
     }
   };
   walk(slide.elements);
-  // Question slides get one extra step for "reveal answer" — but only when there is an answer
-  // to reveal.
-  if (hasRevealableAnswer(slide)) max += 1;
-  return max;
+  // Question slides get extra steps for "reveal answer" — but only when there is an answer
+  // to reveal (TEACH-185: a choice question dims one wrong option per step first).
+  return max + answerRevealSteps(slide);
+}
+
+/**
+ * How many of a slide's steps belong to the answer reveal. Multiple choice and true or false
+ * stage it: each step dims one wrong option, and the last fills the right one, so the count is
+ * the wrong options plus one. Every other question kind reveals in a single step; a slide with
+ * nothing to reveal has none.
+ */
+export function answerRevealSteps(slide: Slide): number {
+  if (!hasRevealableAnswer(slide)) return 0;
+  const q = slide.question;
+  if (q?.type === "multiple-choice") return q.options.filter((o) => !o.correct).length + 1;
+  if (q?.type === "true-false") return Math.max(1, countOptions(slide.elements));
+  return 1;
+}
+
+/**
+ * How far into the answer reveal `step` is: 0 before it starts, `answerRevealSteps` once the
+ * answer is fully shown. The renderer dims that many wrong options.
+ */
+export function answerStepsTaken(slide: Slide, step: number): number {
+  const total = answerRevealSteps(slide);
+  if (total === 0) return 0;
+  const start = slideStepCount(slide) - total;
+  return Math.max(0, Math.min(total, step - start));
+}
+
+function countOptions(els: SlideElement[]): number {
+  let n = 0;
+  for (const el of els) {
+    if (el.type === "option") n += 1;
+    if (el.type === "group") n += countOptions(el.children);
+  }
+  return n;
 }
 
 /**

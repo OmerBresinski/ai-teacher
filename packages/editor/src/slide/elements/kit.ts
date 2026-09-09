@@ -39,6 +39,11 @@ export type ElementViewProps<T extends SlideElement = SlideElement> = {
   step?: number;
   /** Position of an `option` element among the slide's options, for order-based answers. */
   optionIndex?: number;
+  /**
+   * Choice questions reveal in stages (TEACH-185): how many wrong options are dimmed so far,
+   * before `revealAnswer` fills the right one. Only `option` reads it.
+   */
+  answerProgress?: number;
 };
 
 /** Modes that must never run timers, observers, iframes or animations. */
