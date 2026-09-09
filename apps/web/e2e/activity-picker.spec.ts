@@ -40,18 +40,17 @@ test.describe("activity picker", () => {
     await expect(menu.getByRole("menuitem")).toHaveCount(12);
     for (const name of ["True or false", "Which are true", "Matching", "Do now", "Timer"]) {
       await expect(
-        menu.getByRole("menuitem", { name }).locator("[data-slide-mode='thumb']"),
+        menu.getByRole("menuitem", { name, exact: true }).locator("[data-slide-mode='thumb']"),
       ).toBeVisible();
     }
-    await expect(menu.getByRole("menuitem", { name: "Multiple choice" })).toHaveAttribute(
-      "aria-description",
-      /Pupils see four options/,
-    );
+    await expect(
+      menu.getByRole("menuitem", { name: "Multiple choice", exact: true }),
+    ).toHaveAttribute("aria-description", /Pupils see four options/);
     // Row 7: every card is reachable from the keyboard; Escape closes.
     const first = menu.getByRole("menuitem").first();
     await first.focus();
     for (let i = 0; i < 11; i++) await page.keyboard.press("ArrowRight");
-    await expect(menu.getByRole("menuitem", { name: "Timer" })).toBeFocused();
+    await expect(menu.getByRole("menuitem", { name: "Timer", exact: true })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
   });
@@ -64,7 +63,7 @@ test.describe("activity picker", () => {
     const rows = page.getByRole("option");
     const before = await rows.count();
     const menu = await openActivities(page);
-    await menu.getByRole("menuitem", { name: "Matching" }).click();
+    await menu.getByRole("menuitem", { name: "Matching", exact: true }).click();
     await expect(menu).toBeHidden();
     await expect(rows).toHaveCount(before + 1);
     const frame = page.locator("[data-slide-frame]");
@@ -85,7 +84,7 @@ test.describe("activity picker", () => {
     await page.goto(EDITOR(paths));
     await expect(page.locator("[data-slide-frame]")).toBeVisible();
     const menu = await openActivities(page);
-    await menu.getByRole("menuitem", { name: "Multiple choice" }).click();
+    await menu.getByRole("menuitem", { name: "Multiple choice", exact: true }).click();
     await expect(menu).toBeHidden();
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
 
