@@ -21,24 +21,6 @@ const FORBIDDEN = [
   "@tanstack/react-query",
 ];
 
-describe("the forbidden-module scan", () => {
-  test("sees a package name in a bundle that really carries the editor (negative control)", async () => {
-    const result = await Bun.build({
-      // The editing surface itself, one chunk: Bun 1.3.6 (CI) cannot resolve `../editor-hooks`
-      // when the whole `worksheet/editor-index` entry is built inside the test runner.
-      entrypoints: [`${import.meta.dir}/worksheet/WorksheetEditor.tsx`],
-      target: "browser",
-      external: ["react", "react-dom", "react/jsx-runtime", "*.css"],
-      minify: false,
-      splitting: false,
-    });
-    expect(result.success).toBe(true);
-    const text = (await Promise.all(result.outputs.map((o) => o.text()))).join("\n");
-    expect(text.includes("@tiptap/react")).toBe(true);
-    expect(text.includes("immer")).toBe(true);
-  });
-});
-
 describe.each(["thumb", "worksheet-thumb"])("@tj/editor/%s", (entryName) => {
   test("bundles without any editing module", async () => {
     const result = await Bun.build({
@@ -81,5 +63,23 @@ describe.each(["thumb", "worksheet-thumb"])("@tj/editor/%s", (entryName) => {
         `${name} reached the thumb chunk via ${[...loaded].join(", ")}`,
       ).toBe(false);
     }
+  });
+});
+
+// Last on purpose: under Bun 1.3.6 (CI) the first `Bun.build` in a test process cannot resolve
+// `../editor-hooks` from the slide elements; every later build can.
+describe("the forbidden-module scan", () => {
+  test("sees a package name in a bundle that really carries the editor (negative control)", async () => {
+    const result = await Bun.build({
+      entrypoints: [`${import.meta.dir}/worksheet/editor-index.ts`],
+      target: "browser",
+      external: ["react", "react-dom", "react/jsx-runtime", "*.css"],
+      minify: false,
+      splitting: true,
+    });
+    expect(result.success).toBe(true);
+    const text = (await Promise.all(result.outputs.map((o) => o.text()))).join("\n");
+    expect(text.includes("@tiptap/react")).toBe(true);
+    expect(text.includes("immer")).toBe(true);
   });
 });
