@@ -106,7 +106,8 @@ describe("worksheetFromRecipe", () => {
     expect(() => parseWorksheet(sheet)).not.toThrow();
     expect(sheet.title).toBe("The water cycle");
     expect(sheet.header.title).toBe("The water cycle");
-    expect(sheet.header.subtitle).toBe(DEMO_LESSON_FACTS.objectives[0]?.text);
+    // The first objective in the pupil's form (TEACH-198).
+    expect(sheet.header.subtitle).toBe("I can name the four stages of the water cycle in order.");
     expect(sheet.lessonId).toBe("lesson-1");
     expect(sheet.themeId).toBe("chalk");
     expect(sheet.subject).toBe("Science");

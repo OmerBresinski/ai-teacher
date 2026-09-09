@@ -11,6 +11,7 @@ import type {
   TextPreset,
   WorksheetBlock,
 } from "@tj/domain/documents";
+import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { docFromNumbered, layoutSlide, vocabularyGrid } from "./layouts";
 import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./specs";
@@ -68,6 +69,7 @@ function fillSlide(spec: SlideSpec, themeId: string, laid: Layout, ids: IdSuppli
     case "title":
       return fillTitle(spec, laid);
     case "objectives":
+      return fillObjectives(spec, laid);
     case "instructions":
     case "exit-ticket":
     case "starter":
@@ -107,7 +109,18 @@ function fillTitle(spec: SlideSpecOf<"title">, laid: Layout): Layout {
   return laid;
 }
 
-type NumberedSpec = SlideSpecOf<"objectives" | "instructions" | "exit-ticket" | "starter">;
+/**
+ * The objectives slide always carries the reader's stem as its heading (UX ruling 64,
+ * TEACH-198): the spec has no heading for the model to get wrong. Objectives are stored as bare
+ * verb phrases; under the stem each line starts lower-case.
+ */
+function fillObjectives(spec: SlideSpecOf<"objectives">, laid: Layout): Layout {
+  setText(textOf(laid, "heading"), OBJECTIVES_SLIDE_HEADING);
+  setDoc(textOf(laid, "body"), docFromNumbered(spec.items.map(objectiveLine)));
+  return laid;
+}
+
+type NumberedSpec = SlideSpecOf<"instructions" | "exit-ticket" | "starter">;
 
 /** Heading, a numbered body and (where the recipe has one) a footnote. */
 function fillNumbered(spec: NumberedSpec, laid: Layout): Layout {

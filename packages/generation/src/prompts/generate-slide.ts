@@ -28,7 +28,7 @@ export type GenerateSlideInput = {
 
 const SHAPES = {
   title: '{ "kind": "title", "title", "subtitle", "factRefs", "notes"? }',
-  objectives: '{ "kind": "objectives", "heading"?, "items": [1–4 strings], "factRefs", "notes"? }',
+  objectives: '{ "kind": "objectives", "items": [1–4 strings], "factRefs", "notes"? }',
   starter:
     '{ "kind": "starter", "heading"?, "items": [1–3 strings], "footnote"?, "factRefs", "notes"? }',
   vocabulary:
@@ -56,7 +56,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v3",
+  version: "generate-slide.v4",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",

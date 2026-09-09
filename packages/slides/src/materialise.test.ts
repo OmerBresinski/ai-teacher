@@ -3,6 +3,7 @@ import {
   GENERATABLE_BLOCK_TYPES,
   GENERATABLE_SLIDE_KINDS,
   type GeneratableSlideKind,
+  OBJECTIVES_SLIDE_HEADING,
   type RichNode,
   richDocToPlainText,
   type Slide,
@@ -176,7 +177,7 @@ describe("materialiseSlide", () => {
     const placeholders = [
       "Lesson title",
       "Year group and class",
-      "Learning objective one",
+      "learning objective one",
       "Recall question",
       "Term",
       "Definition in one sentence",
@@ -353,15 +354,20 @@ describe("materialiseSlide", () => {
 
   test("numbered kinds render their items as an ordered list; plenary as bullets", () => {
     const objectives = materialiseSlide(
-      { kind: "objectives", factRefs, heading: "Today", items: ["A", "B"] },
+      {
+        kind: "objectives",
+        factRefs,
+        items: ["Describe the stages", "I can explain melting"],
+      },
       "chalk",
       meta,
       counter(),
     );
     const body = objectives.elements.find((e) => e.type === "text" && e.style.preset === "body");
     expect(body && "doc" in body ? body.doc?.content?.[0]?.type : undefined).toBe("orderedList");
-    expect(plain(body)).toBe("A\n\nB");
-    expect(plain(objectives.elements[0])).toBe("Today");
+    // Objectives are stored as verb phrases and listed lower-case under the stem (TEACH-198).
+    expect(plain(body)).toBe("describe the stages\n\nexplain melting");
+    expect(plain(objectives.elements[0])).toBe(OBJECTIVES_SLIDE_HEADING);
 
     const plenary = materialiseSlide(minimalSpec("plenary"), "chalk", meta, counter());
     const bullets = plenary.elements.find((e) => e.type === "text" && e.style.preset === "body");
@@ -375,6 +381,14 @@ describe("SlideSpecSchema", () => {
   test("covers exactly the generatable kinds", () => {
     const kinds = SlideSpecSchema.options.map((option) => option.shape.kind.value);
     expect([...kinds].sort()).toEqual([...GENERATABLE_SLIDE_KINDS].sort());
+  });
+
+  test("an objectives spec has no heading: the slide always carries the reader's stem", () => {
+    expect(SlideSpecSchema.safeParse(minimalSpec("objectives")).success).toBe(true);
+    expect(
+      SlideSpecSchema.safeParse({ ...minimalSpec("objectives"), heading: "Learning objectives" })
+        .success,
+    ).toBe(false);
   });
 
   test("rejects blank text, a multiple-choice with two correct options and a gap count mismatch", () => {

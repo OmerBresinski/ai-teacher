@@ -13,7 +13,7 @@ import type { PhotoPlacer } from "../types";
 import { illustrate } from "./illustrate";
 
 const meta: MaterialiseMeta = {
-  promptVersion: "generate-slide.v3",
+  promptVersion: "generate-slide.v4",
   model: "test",
   at: "2026-09-08T10:00:00.000Z",
 };
@@ -128,7 +128,7 @@ function imageLesson(briefs: (ImageBrief | null)[]): Lesson {
       jobId: SAMPLE_JOB_ID,
       stage: "generated",
       startedAt: "2026-09-08T10:00:00.000Z",
-      promptVersions: { generated: "generate-slide.v3" },
+      promptVersions: { generated: "generate-slide.v4" },
       usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null },
       findings: [],
     },

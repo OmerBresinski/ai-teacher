@@ -7,6 +7,7 @@ import type {
   TextElement,
   TextPreset,
 } from "@tj/domain/documents";
+import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
 import { docFromBullets, docFromText, newLesson, newSlide, now } from "./factories";
 import { docFromNumbered } from "./layouts";
 
@@ -95,13 +96,15 @@ export function starterLesson(
   fill(titleSlide, "title", [title]);
   fill(titleSlide, "subtitle", ["Add the class and the date"]);
 
-  fill(objectives, "heading", ["Learning objectives"]);
+  fill(objectives, "heading", [OBJECTIVES_SLIDE_HEADING]);
   fill(objectives, "body", [
-    docFromNumbered([
-      `Explain what ${title.toLowerCase()} means`,
-      "Give an example of it",
-      "Use it to answer a question",
-    ]),
+    docFromNumbered(
+      [
+        `Explain what ${title.toLowerCase()} means`,
+        "Give an example of it",
+        "Use it to answer a question",
+      ].map(objectiveLine),
+    ),
   ]);
 
   withNotes(starter, "Silent start. Circulate and note who is stuck before you take answers.");
@@ -161,11 +164,13 @@ function waterCycle(): Lesson {
   fill(title, "subtitle", ["Year 5. Where rain comes from"]);
 
   fill(objectives, "body", [
-    docFromNumbered([
-      "Name the four stages of the water cycle",
-      "Explain what happens to water when it is heated",
-      "Describe where the water in a cloud came from",
-    ]),
+    docFromNumbered(
+      [
+        "Name the four stages of the water cycle",
+        "Explain what happens to water when it is heated",
+        "Describe where the water in a cloud came from",
+      ].map(objectiveLine),
+    ),
   ]);
 
   fill(starter, "body", [
@@ -244,11 +249,13 @@ function fractionsOfAmounts(): Lesson {
   fill(title, "subtitle", ["Year 4. Finding a fraction of a number"]);
 
   fill(objectives, "body", [
-    docFromNumbered([
-      "Find a unit fraction of an amount by dividing",
-      "Find a non-unit fraction by dividing then multiplying",
-      "Check an answer by adding the parts back together",
-    ]),
+    docFromNumbered(
+      [
+        "Find a unit fraction of an amount by dividing",
+        "Find a non-unit fraction by dividing then multiplying",
+        "Check an answer by adding the parts back together",
+      ].map(objectiveLine),
+    ),
   ]);
 
   fill(worked, "heading", ["Worked example"]);

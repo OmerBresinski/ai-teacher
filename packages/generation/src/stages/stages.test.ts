@@ -89,7 +89,9 @@ describe("plan", () => {
         (e) => e.generatedFrom?.promptVersion === PROMPT_VERSIONS["plan-skeleton"],
       ),
     ).toBe(true);
-    expect(slideText(objectives as never)).toContain("Describe the arrangement");
+    // The slide carries the stem in its heading and lists the phrases lower-case (TEACH-198).
+    expect(slideText(objectives as never)).toStartWith("By the end of this lesson I can\n");
+    expect(slideText(objectives as never)).toContain("\ndescribe the arrangement");
   });
 
   test("a skeleton whose outline refers to vocabulary is a validation issue: one retry", async () => {

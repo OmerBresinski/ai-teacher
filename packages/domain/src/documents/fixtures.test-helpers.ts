@@ -1,6 +1,7 @@
 import type { GeneratedFrom } from "./generated-from";
 import type { Lesson } from "./lesson";
 import type { LessonFacts } from "./lesson-facts";
+import { OBJECTIVES_SLIDE_HEADING } from "./objectives";
 import type { RichDoc } from "./rich-text";
 import type { Slide, SlideElement } from "./slide";
 import type { Worksheet } from "./worksheet";
@@ -227,9 +228,9 @@ export const generatedLesson = (): Lesson => ({
       id: "s-objectives",
       kind: "objectives",
       elements: [
-        generatedText("ob-h", "Today we will", [], { style: { preset: "heading" } }),
-        generatedText("ob-1", "Describe the stages of the water cycle", ["o1"]),
-        generatedText("ob-2", "Explain how evaporation and condensation are linked", ["o2"]),
+        generatedText("ob-h", OBJECTIVES_SLIDE_HEADING, [], { style: { preset: "heading" } }),
+        generatedText("ob-1", "describe the stages of the water cycle", ["o1"]),
+        generatedText("ob-2", "explain how evaporation and condensation are linked", ["o2"]),
       ],
     },
     {

@@ -111,7 +111,7 @@ test.describe("worksheet creation", () => {
     );
     await expect(page.locator(".ws-column")).toContainText("One thing I learned");
     await expect(page.locator(".ws-column .ws-objective")).toHaveText(
-      "Name the four stages of the water cycle in order.",
+      "I can name the four stages of the water cycle in order.",
     );
     // The whole frame is the initial state: nothing to undo.
     await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
