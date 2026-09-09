@@ -30,6 +30,18 @@ export interface PhotoResult {
 export interface PhotoSearchPage {
   photos: PhotoResult[];
   nextPage: number | null;
+  /** Set when the api refused the query itself (blocklist): render the blocked copy. */
+  blocked?: boolean;
+}
+
+export type ReportReason = "unsuitable" | "wrong-subject" | "other";
+export type ReportContext = "search" | "placed";
+
+export interface ImageReport {
+  photo: { provider: "pexels"; id: string };
+  reason: ReportReason;
+  context: ReportContext;
+  lessonId?: string;
 }
 
 /** A resolved pick, as the api's `POST /images/pick` returns it. */
@@ -54,6 +66,8 @@ export type ImageSearchClient = {
     target: "slide" | "worksheet",
     signal?: AbortSignal,
   ): Promise<PickedPhoto>;
+  /** Flag a wrong result in the api log (log only). Rejects with `SearchError` on failure. */
+  report(input: ImageReport): Promise<void>;
 };
 
 /** A search or pick that failed, carrying the HTTP status so the panel can say why. */

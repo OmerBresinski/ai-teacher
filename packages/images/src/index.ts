@@ -1,3 +1,4 @@
+export { isBlockedQuery, QUERY_BLOCKLIST } from "./blocklist";
 export {
   type CreatePexelsClientOptions,
   createPexelsClient,
@@ -8,7 +9,7 @@ export {
   type PhotoResult,
   type PhotoSearchPage,
 } from "./pexels";
-export { queryCandidates } from "./query";
+export { normaliseQuery, queryCandidates } from "./query";
 export {
   FETCH_TIMEOUT_MS,
   MAX_PHOTO_BYTES,

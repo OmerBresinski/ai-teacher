@@ -311,6 +311,40 @@ test.describe("editor images", () => {
     expect(Math.abs(frame.height - box.height)).toBeLessThan(1);
   });
 
+  test("TEACH-162: reporting a tile posts the enums and hides it", async ({
+    signedInPage: { page, paths },
+  }) => {
+    await mockSearch(page);
+    const reported: { url: string; body: unknown }[] = [];
+    await page.route(`${E2E_API_URL}/images/report`, (route) => {
+      reported.push({ url: route.request().url(), body: route.request().postDataJSON() });
+      return route.fulfill({ status: 204 });
+    });
+    await page.goto(EDITOR(paths));
+    await openPhotos(page, "river");
+    const tile = panel(page).getByRole("button", { name: "River bend" });
+    await expect(tile).toBeVisible();
+    const flag = panel(page)
+      .locator("li")
+      .first()
+      .getByRole("button", { name: "Report this image" });
+    await tile.hover();
+    await flag.focus();
+    await flag.press("Enter");
+    // The menu content portals to document.body, outside the dialog.
+    await page.getByRole("menuitem", { name: "Unsuitable" }).click();
+
+    await expect.poll(() => reported.length, { timeout: 5000 }).toBe(1);
+    expect(reported[0]?.body).toEqual({
+      provider: "pexels",
+      id: "river",
+      reason: "unsuitable",
+      context: "search",
+    });
+    await expect(panel(page).getByRole("button", { name: "River bend" })).toHaveCount(0);
+    await expect(page.getByText("Thanks — we've flagged it.")).toBeVisible();
+  });
+
   test("the panel's Photos tab with results (screenshot)", async ({
     signedInPage: { page, paths },
   }) => {

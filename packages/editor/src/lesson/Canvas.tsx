@@ -18,6 +18,7 @@ import {
 } from "@tj/ui";
 import { Minus, MoreHorizontal, Plus } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { ImageSearchClient } from "../images/image-search";
 import { nextStep, ZoomControl } from "../kit/ZoomControl";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
@@ -63,9 +64,21 @@ export type CanvasProps = {
   onScaleChange?: (scale: number) => void;
   /** Add an element to this slide and select it — the shell's `insert`, for paste and drop. */
   onInsert: (el: SlideElement) => void;
+  /** Report action on the credit badge; hidden without a client. */
+  images?: ImageSearchClient;
+  /** Travels as the report context for a placed picture. */
+  lessonId?: string;
 };
 
-export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }: CanvasProps) {
+export function Canvas({
+  slide,
+  theme,
+  onFocusChange,
+  onScaleChange,
+  onInsert,
+  images,
+  lessonId,
+}: CanvasProps) {
   const lesson = useLesson();
   const zoom = useZoom();
   const { previewStep } = useSessionUi();
@@ -332,6 +345,8 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
                 onPreview={setPreview}
                 disabled={spaceDown}
                 marginRef={layer}
+                images={images}
+                lessonId={lessonId}
               />
             </div>
           </SlideScaler>
