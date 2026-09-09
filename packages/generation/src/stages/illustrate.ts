@@ -1,4 +1,4 @@
-import type { Finding, ImageBrief, SlideElement } from "@tj/domain/documents";
+import type { Finding, ImageBrief, Lesson, SlideElement } from "@tj/domain/documents";
 import { PexelsError, type PhotoResult, queryCandidates } from "@tj/images";
 import { PLACEHOLDER_IMAGE } from "@tj/slides";
 import {
@@ -44,6 +44,10 @@ function busyFinding(slideId: string, elementId: string): Finding {
  * `image-text` slide with a brief. No model call, no checkpoint — cheap and idempotent (a slide
  * whose slot is already filled is skipped, so a resume never re-places). A slide the step cannot
  * fill keeps the recipe's placeholder: never a wrong picture.
+ *
+ * Persistence failures are never swallowed: only the search/store work sits inside the
+ * per-slide try, so a lost lock or database error propagates and the job fails loudly instead
+ * of completing with orphaned bucket photos.
  */
 export async function illustrate(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const images = deps.images;
@@ -51,11 +55,18 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     deps.logger.info({ stage: "illustrate" }, "images disabled");
     return state;
   }
-  if (!deps.imageCounts) deps.imageCounts = emptyImageCounts();
-  const counts = deps.imageCounts;
+  // A run reports its own counts; a second run with the same deps starts over.
+  const counts = emptyImageCounts();
+  deps.imageCounts = counts;
   const outline = state.lesson.facts?.outline ?? [];
+  const baseFindings = generationOf(state.lesson).findings;
+  const findings: Finding[] = [];
   let lesson = state.lesson;
-  const findings: Finding[] = [...generationOf(lesson).findings];
+  /** The lesson as it must be persisted: placements plus every warning so far. */
+  const snapshot = (): Lesson => ({
+    ...lesson,
+    generation: { ...generationOf(lesson), findings: [...baseFindings, ...findings] },
+  });
   let busy = false;
   for (let index = 0; index < lesson.slides.length; index++) {
     throwIfAborted(deps.signal);
@@ -72,49 +83,49 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
       counts.empty += 1;
       continue;
     }
+    let placed: PlaceOutcome;
     try {
-      const placed = await placeOne(target, brief, images, deps.signal);
-      if (placed.outcome === "busy") {
-        busy = true;
-        findings.push(busyFinding(slide.id, target.id));
-        counts.empty += 1;
-        continue;
-      }
-      if (placed.outcome === "empty") {
-        findings.push(emptyFinding(slide.id, target.id));
-        counts.empty += 1;
-        continue;
-      }
-      lesson = {
-        ...lesson,
-        slides: lesson.slides.map((candidate, i) =>
-          i === index
-            ? {
-                ...slide,
-                elements: slide.elements.map((element) =>
-                  element.id === target.id ? placed.element : element,
-                ),
-              }
-            : candidate,
-        ),
-      };
-      counts.placed += 1;
-      const { updatedAt } = await deps.persist(lesson);
-      await deps.onProgress(PROGRESS_ILLUSTRATED, "Pictures placed", updatedAt);
+      placed = await placeOne(target, brief, images, deps.signal);
     } catch (error) {
       deps.logger.info({ stage: "illustrate", slideIndex: index, err: error }, "illustrate failed");
       counts.failed += 1;
+      continue;
     }
+    if (placed.outcome === "busy") {
+      busy = true;
+      findings.push(busyFinding(slide.id, target.id));
+      counts.empty += 1;
+      continue;
+    }
+    if (placed.outcome === "empty") {
+      findings.push(emptyFinding(slide.id, target.id));
+      counts.empty += 1;
+      continue;
+    }
+    lesson = {
+      ...lesson,
+      slides: lesson.slides.map((candidate, i) =>
+        i === index
+          ? {
+              ...slide,
+              elements: slide.elements.map((element) =>
+                element.id === target.id ? placed.element : element,
+              ),
+            }
+          : candidate,
+      ),
+    };
+    // After the persist: a lost lock must propagate, not read as a placed picture.
+    const { updatedAt } = await deps.persist(snapshot());
+    await deps.onProgress(PROGRESS_ILLUSTRATED, "Pictures placed", updatedAt);
+    counts.placed += 1;
   }
-  // Warnings with nothing placed still have to reach the database; placements were persisted
-  // as they landed (row 14: what was written stays), so this fires only for warnings-only runs.
-  if (counts.placed === 0 && findings.length > generationOf(lesson).findings.length) {
-    lesson = { ...lesson, generation: { ...generationOf(lesson), findings } };
-    await deps.persist(lesson);
-  } else if (findings.length > generationOf(lesson).findings.length) {
-    lesson = { ...lesson, generation: { ...generationOf(lesson), findings } };
+  // Warnings with no placement still have to reach the database; placements (with the warnings
+  // known so far) were persisted as they landed.
+  if (findings.length > 0 && counts.placed === 0) {
+    await deps.persist(snapshot());
   }
-  return { ...state, lesson };
+  return { ...state, lesson: findings.length > 0 ? snapshot() : lesson };
 }
 
 /**

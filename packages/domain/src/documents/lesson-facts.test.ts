@@ -78,6 +78,17 @@ describe("LessonFactsSchema", () => {
     });
     expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
 
+    const unbriefed = lessonFacts();
+    unbriefed.outline.push({ id: "s9", kind: "image-text", minutes: 5, factRefs: [] });
+    const missing = LessonFactsSchema.safeParse(unbriefed);
+    expect(missing.success).toBe(false);
+    if (missing.success) return;
+    expect(missing.error.issues.map((issue) => issue.path)).toContainEqual([
+      "outline",
+      4,
+      "imageBrief",
+    ]);
+
     const misplaced = lessonFacts();
     misplaced.outline[0] = {
       ...(misplaced.outline[0] as (typeof misplaced.outline)[number]),

@@ -34,8 +34,9 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
   const facts = lesson.facts;
   if (!facts) throw new Error("evaluate: the lesson has no facts; Plan has not run");
   const generation = generationOf(lesson);
-  // Findings Generate recorded (a budget stop) survive; everything else is recomputed here.
-  const carried = generation.findings.filter((f) => f.check === "budget");
+  // Findings Generate recorded (a budget stop) survive, as do illustrate's image warnings —
+  // neither is recomputable here; everything else is recomputed below.
+  const carried = generation.findings.filter((f) => f.check === "budget" || f.check === "image");
   const schema = checkLesson(lesson, worksheet);
 
   let model: Finding[] = [];

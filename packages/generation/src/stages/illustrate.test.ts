@@ -264,6 +264,22 @@ describe("illustrate", () => {
     expect(deps.imageCounts).toEqual({ requested: 2, placed: 1, empty: 0, failed: 1 });
   });
 
+  test("a persist failure propagates instead of counting as failed", async () => {
+    const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    const deps = recordingDeps(fakeAi(), { images });
+    const boom = new Error("lost lock");
+    deps.persist = async () => {
+      throw boom;
+    };
+    await expect(
+      illustrate(
+        { lesson: imageLesson([{ subject: "river" }]), worksheetId: "w", worksheet: undefined },
+        deps,
+      ),
+    ).rejects.toBe(boom);
+    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 0, failed: 0 });
+  });
+
   test("without images the state returns unchanged and nothing persists", async () => {
     const deps = recordingDeps(fakeAi());
     const lesson = imageLesson([{ subject: "river" }]);

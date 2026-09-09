@@ -213,5 +213,13 @@ export const LessonFactsSchema = z
           path: ["outline", i, "imageBrief"],
         });
       }
+      // Without a brief illustrate would silently leave the placeholder: refuse the facts.
+      if (entry.kind === "image-text" && entry.imageBrief === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message: `image-text entries carry an imageBrief`,
+          path: ["outline", i, "imageBrief"],
+        });
+      }
     });
   });
