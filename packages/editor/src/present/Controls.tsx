@@ -76,11 +76,12 @@ export type ControlsProps = {
   /** Reveal steps on the current slide; 0 means the slide advances in one go. */
   stepCount: number;
   /** The current slide asks something, so its last step is the answer. */
-  isQuestion?: boolean;
+  /** How many of those steps are the answer reveal (`answerRevealSteps`); they read "Answer". */
+  answerSteps?: number;
   onExit: () => void;
 };
 
-export function Controls({ slideCount, stepCount, isQuestion = false, onExit }: ControlsProps) {
+export function Controls({ slideCount, stepCount, answerSteps = 0, onExit }: ControlsProps) {
   const { state, dispatch, ink } = usePresent();
   const { index, step, tool, laser, timerOpen, pillCollapsed: collapsed, timer } = state;
   const slideId = state.slideIds[index];
@@ -109,7 +110,7 @@ export function Controls({ slideCount, stepCount, isQuestion = false, onExit }: 
   const now = useNow(timerTicking(timer), 1000);
   const timerDone = timerFinished(timer, now);
 
-  const reveal = nextLabel(step, stepCount, isQuestion);
+  const reveal = nextLabel(step, stepCount, answerSteps);
 
   // Collapsing takes any panel anchored to the pill with it: a popover whose trigger has just
   // unmounted has nothing left to point at.

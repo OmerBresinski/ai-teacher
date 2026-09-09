@@ -1,4 +1,5 @@
 import {
+  answerStepsTaken,
   SLIDE_H,
   SLIDE_W,
   type Slide,
@@ -309,6 +310,7 @@ export function Canvas({ slide, theme, onFocusChange, onScaleChange, onInsert }:
                   step={previewStep}
                   // The final step IS the answer reveal (SPEC §6); the Answer tab is a shortcut.
                   revealAnswer={showingAnswer}
+                  answerProgress={answerStepsTaken(slide, previewStep)}
                   transformOverride={preview ?? undefined}
                 />
               </div>

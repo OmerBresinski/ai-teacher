@@ -1,4 +1,5 @@
 import {
+  answerRevealSteps,
   type GeneratableSlideKind,
   hasRevealableAnswer,
   type Lesson,
@@ -70,7 +71,7 @@ export function LessonViewer({
   const question = slide ? hasRevealableAnswer(slide) : false;
   const total = slide ? slideStepCount(slide) : 0;
   // The answer is its own toggle here, so it is not one of the step dots.
-  const contentSteps = Math.max(0, total - (question ? 1 : 0));
+  const contentSteps = slide ? Math.max(0, total - answerRevealSteps(slide)) : 0;
 
   const goToSlide = useCallback((nextIndex: number) => {
     setIndex(nextIndex);
@@ -91,9 +92,7 @@ export function LessonViewer({
     if (step > 0) setStep(step - 1);
     else if (index > 0) {
       const previous = lesson.slides[index - 1];
-      const steps = previous
-        ? slideStepCount(previous) - (hasRevealableAnswer(previous) ? 1 : 0)
-        : 0;
+      const steps = previous ? slideStepCount(previous) - answerRevealSteps(previous) : 0;
       setIndex(index - 1);
       setStep(Math.max(0, steps));
       setShowAnswer(false);

@@ -2,6 +2,7 @@ import { describe, expect, it, mock } from "bun:test";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@tj/ui";
+import { buildActivity } from "../model/derive-activities";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
 import { type PresentProgress, PresentView } from "./PresentView";
@@ -40,6 +41,39 @@ async function start() {
 }
 
 describe("PresentView", () => {
+  it("stages a four-option multiple choice: three Rights dim the wrong cards, the fourth fills the right one", async () => {
+    const l = lesson();
+    l.slides.splice(0, 0, buildActivity("multiple-choice", l.themeId));
+    const { container } = renderPresent({ lesson: l });
+    await start();
+    expect(status()).toContain("Slide 1 of");
+    const dimmed = () =>
+      Array.from(
+        container.querySelectorAll<HTMLElement>(
+          "[data-slide-mode='present'] [data-element-type='option'] > div > div",
+        ),
+      ).filter((card) => card.style.opacity === "0.45").length;
+    const filled = () => within(container).queryAllByRole("img", { name: "Correct answer" }).length;
+    expect(dimmed()).toBe(0);
+    key("ArrowRight");
+    expect(status()).toContain("step 2 of 5");
+    expect(dimmed()).toBe(1);
+    expect(filled()).toBe(0);
+    key("ArrowRight");
+    key("ArrowRight");
+    expect(dimmed()).toBe(3);
+    expect(filled()).toBe(0);
+    expect(screen.getByRole("button", { name: /Answer/ })).toBeInTheDocument();
+    key("ArrowRight");
+    expect(dimmed()).toBe(3);
+    expect(filled()).toBe(1);
+    expect(status()).toContain("answer shown");
+    // Back off one: the fill goes, the three dims stay.
+    key("ArrowLeft");
+    expect(filled()).toBe(0);
+    expect(dimmed()).toBe(3);
+  });
+
   it("opens on the cover; Start shows slide 1 on the stage scope", async () => {
     const { container, lesson: l } = renderPresent();
     expect(container.querySelector("[data-present-root]")).toHaveClass("tj-stage");
