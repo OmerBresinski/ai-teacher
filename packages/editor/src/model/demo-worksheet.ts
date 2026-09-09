@@ -7,8 +7,9 @@ export const DEMO_WORKSHEET_ID = "demo-fractions-practice-ws";
 
 /**
  * The four seeded worksheets (TEACH-186), one per job: Practise, Homework, Check and Starter.
- * Each is a real sheet a teacher could hand out, with an objective and success criteria in the
- * header, answers on every question so the answer key derives, and content sized to print on one
+ * Each is a real sheet a teacher could hand out, with an objective in the header, success criteria
+ * in the self-assessment strip at the foot, answers on every question so the answer key derives,
+ * and content sized to print on one
  * or two pages of A4 or Letter without a heading stranded at the foot of a page (headings sit
  * early in each sheet; `paginate` has no orphan rule).
  */
@@ -38,6 +39,8 @@ function sheet(meta: Meta, blocks: WorksheetBlock[]): Worksheet {
       criteria: meta.criteria,
     },
     blocks: numberQuestions(blocks),
+    // The criteria print in the self-assessment strip at the foot (TEACH-196), so the strip is on.
+    selfAssessment: true,
     subject: meta.subject,
     yearGroup: meta.yearGroup,
     ageBand: meta.ageBand,
@@ -109,15 +112,19 @@ export function fractionsPracticeWorksheet(): Worksheet {
       question("What is 1/4 of 24?", 1, "6"),
       question("Find 3/4 of 24.", 2, "24 ÷ 4 = 6, then 6 × 3 = 18."),
       question("Find 2/3 of 27.", 2, "27 ÷ 3 = 9, then 9 × 2 = 18."),
+      // Four lines each, not the six three marks would give: with the criteria in the strip at the
+      // foot (TEACH-196) the sheet still prints on two pages of Letter.
       question(
         "A packet holds 30 sweets. Amira eats 2/5 of them. How many sweets does she eat, and how many are left?",
         3,
         "30 ÷ 5 = 6, then 6 × 2 = 12 sweets eaten. 30 − 12 = 18 sweets left.",
+        4,
       ),
       question(
         "Sam says 3/8 of 40 is 5, because 40 ÷ 8 = 5. Explain what Sam has forgotten and give the correct answer.",
         3,
         "Sam has found one eighth but forgotten to multiply by the top number. 5 × 3 = 15, so 3/8 of 40 is 15.",
+        4,
       ),
     ],
   );

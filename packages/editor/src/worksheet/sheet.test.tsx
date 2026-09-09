@@ -67,7 +67,12 @@ describe("Sheet", () => {
     for (const label of ["Name", "Date", "Class"]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
-    expect(container.querySelectorAll(".ws-criterion")).toHaveLength(2);
+    // The criteria print in the strip at the foot, not in the header (TEACH-196).
+    expect(container.querySelectorAll(".ws-header .ws-criterion")).toHaveLength(0);
+    // The fixture's blank criterion is the editor's line to type into; it never prints.
+    expect(container.querySelectorAll(".ws-rag .ws-criterion")).toHaveLength(1);
+    expect(screen.getByText("Tick what you can do now")).toBeInTheDocument();
+    expect(screen.getByText("How confident do you feel?")).toBeInTheDocument();
     // Every block painted once on the sheet; the page break paints nothing in print mode.
     expect(container.querySelectorAll(".ws-page .ws-block")).toHaveLength(
       buildFlow(sheet, true).length,
@@ -166,5 +171,57 @@ describe("Sheet", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Custom title" })).toBeInTheDocument();
     expect(screen.getByText("Nothing here yet")).toBeInTheDocument();
     expect(screen.getByText("Page 1 of 1")).toBeInTheDocument();
+  });
+});
+
+describe("Sheet (TEACH-196)", () => {
+  test("self-assessment off prints no criteria and no strip, whatever the header holds", () => {
+    const sheet = everyBlockSheet();
+    sheet.selfAssessment = false;
+    const pages = paginateFlat(sheet);
+    const { container } = render(
+      <Sheet worksheet={sheet} theme={getTheme(sheet.themeId)} pages={pages} mode="print" />,
+    );
+    expect(container.querySelector(".ws-rag")).toBeNull();
+    expect(container.querySelectorAll(".ws-criterion")).toHaveLength(0);
+  });
+
+  test("the strip with no criteria shows only the confidence scale", () => {
+    const sheet = everyBlockSheet();
+    delete sheet.header.criteria;
+    const pages = paginateFlat(sheet);
+    const { container } = render(
+      <Sheet worksheet={sheet} theme={getTheme(sheet.themeId)} pages={pages} mode="print" />,
+    );
+    expect(container.querySelector(".ws-rag")).not.toBeNull();
+    expect(container.querySelector(".ws-rag-heading")).toBeNull();
+    expect(screen.getByText("How confident do you feel?")).toBeInTheDocument();
+  });
+
+  test("a blank criterion never prints: no heading over an empty box, wherever the document came from", () => {
+    const sheet = everyBlockSheet();
+    sheet.header.criteria = [""];
+    let { container } = render(
+      <Sheet
+        worksheet={sheet}
+        theme={getTheme(sheet.themeId)}
+        pages={paginateFlat(sheet)}
+        mode="print"
+      />,
+    );
+    expect(container.querySelector(".ws-rag-heading")).toBeNull();
+    expect(container.querySelectorAll(".ws-criterion")).toHaveLength(0);
+    cleanup();
+    sheet.header.criteria = ["  ", "I can label the stem."];
+    ({ container } = render(
+      <Sheet
+        worksheet={sheet}
+        theme={getTheme(sheet.themeId)}
+        pages={paginateFlat(sheet)}
+        mode="print"
+      />,
+    ));
+    expect(container.querySelector(".ws-rag-heading")).not.toBeNull();
+    expect(container.querySelectorAll(".ws-criterion")).toHaveLength(1);
   });
 });

@@ -37,12 +37,15 @@ export function SheetField({
   value,
   onChange,
   label,
+  placeholder,
   className,
   style,
 }: {
   value: string;
   onChange: (value: string) => void;
   label: string;
+  /** A hint painted by CSS while the field is empty (`data-placeholder`), read out as one too. */
+  placeholder?: string;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -77,6 +80,8 @@ export function SheetField({
       tabIndex={0}
       aria-multiline="true"
       aria-label={label}
+      aria-placeholder={placeholder}
+      data-placeholder={placeholder}
       spellCheck={false}
       onInput={(e) => onChange(e.currentTarget.textContent ?? "")}
       onKeyDown={onKeyDown}

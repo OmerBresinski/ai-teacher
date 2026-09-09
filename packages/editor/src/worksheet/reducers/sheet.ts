@@ -41,8 +41,3 @@ export const setPageSize = (worksheet: Worksheet, size: PageSize): Worksheet =>
   edit(worksheet, (w) => {
     w.pageSize = size;
   });
-
-export const setSelfAssessment = (worksheet: Worksheet, on: boolean): Worksheet =>
-  edit(worksheet, (w) => {
-    w.selfAssessment = on;
-  });

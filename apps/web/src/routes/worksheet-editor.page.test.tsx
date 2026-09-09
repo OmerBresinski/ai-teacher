@@ -66,7 +66,10 @@ describe("WorksheetEditorPage", () => {
       "Fractions practice",
     );
     await waitFor(() =>
-      expect(container.querySelectorAll(".ws-column .ws-block").length).toBe(count),
+      // The self-assessment strip is a flow item too, not one of the blocks (TEACH-196).
+      expect(container.querySelectorAll(".ws-column .ws-block:not(.ws-rag-slot)").length).toBe(
+        count,
+      ),
     );
     expect(screen.getByText("Saved")).toBeVisible();
     expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("aria-disabled", "true");

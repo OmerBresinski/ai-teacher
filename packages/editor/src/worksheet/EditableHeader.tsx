@@ -1,19 +1,18 @@
-import { IconButton } from "@tj/ui";
-import { X } from "lucide-react";
-import { memo, type PointerEvent as ReactPointerEvent, useRef } from "react";
+import { memo, type PointerEvent as ReactPointerEvent } from "react";
 import { SheetMeta } from "./BlockContent";
 import { SheetField } from "./EditableBlocks";
 import { HEADER_KEY } from "./paginate";
-import { pruneEmptyCriteria, removeCriterion, setCriterion, setHeader, setTitle } from "./reducers";
+import { setHeader, setTitle } from "./reducers";
 import { useTypingSession, useWorksheet, useWorksheetHistoryApi } from "./worksheet-context";
 
 /*
  * The page-1 header, typed into (TeachDeck `components/v2/worksheet/EditableHeader.tsx`). The
  * markup is `SheetHeader`'s — the printed one that the measuring column paginates from — with the
- * three texts (title, objective, criteria) replaced by `SheetField`s so nothing moves when the header
- * is selected. Every control that would add height — the name / date / class rules, the objective
- * line, a new criterion — lives in the `HeaderToolbar`, so the header on screen is always exactly
- * the header the paginator measured; only the per-criterion remove button is here, out of flow.
+ * two texts (title, objective) replaced by `SheetField`s so nothing moves when the header is
+ * selected. Every control that would add height — the name / date / class rules, the objective
+ * line — lives in the `HeaderToolbar`, so the header on screen is always exactly the header the
+ * paginator measured. The success criteria are typed into the self-assessment strip at the foot
+ * (`EditableRagStrip`, TEACH-196), not here.
  *
  * The title on the sheet is `header.title` when the header carries one, else the document's
  * `title` (the library card, the tab); in that case `setTitle` writes both, so a teacher renaming
@@ -42,8 +41,6 @@ export const EditableHeader = memo(function EditableHeader({
   const typing = useTypingSession();
   const { header } = worksheet;
   const fields = HEADER_FIELDS.filter(([flag]) => header[flag]);
-  const criteria = header.criteria ?? [];
-  const rootRef = useRef<HTMLElement | null>(null);
 
   const patchHeader = (patch: Partial<typeof header>) =>
     typing.run(() => dispatch(setHeader, patch));
@@ -55,24 +52,12 @@ export const EditableHeader = memo(function EditableHeader({
       header.title !== undefined ? dispatch(setHeader, { title }) : dispatch(setTitle, title),
     );
 
-  // Blank criteria print as a bare checkbox: when focus leaves the header altogether they go.
-  const onBlurCapture = (e: React.FocusEvent<HTMLElement>) => {
-    const next = e.relatedTarget as Node | null;
-    if (next && rootRef.current?.contains(next)) return;
-    typing.end();
-    dispatch(pruneEmptyCriteria);
-  };
-
   return (
     <header
-      ref={(el) => {
-        rootRef.current = el;
-        registerRef(el);
-      }}
+      ref={registerRef}
       className="ws-header ws-shell"
       data-block-id={HEADER_KEY}
       onPointerDown={onSelect}
-      onBlurCapture={onBlurCapture}
     >
       {selected ? <div className="ws-selected-ring" /> : null}
       {fields.length > 0 ? (
@@ -104,36 +89,6 @@ export const EditableHeader = memo(function EditableHeader({
             onChange={(subtitle) => patchHeader({ subtitle })}
           />
         </p>
-      ) : null}
-      {criteria.length > 0 ? (
-        <ul className="ws-criteria">
-          {criteria.map((text, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: criteria are positional strings; the field at index i edits index i
-            <li key={i} className="ws-criterion">
-              <span className="ws-criterion-box" aria-hidden />
-              <SheetField
-                className="ws-criterion-text"
-                label={`Success criterion ${i + 1}`}
-                value={text}
-                onChange={(next) => typing.run(() => dispatch(setCriterion, i, next))}
-              />
-              {selected ? (
-                <IconButton
-                  label={`Remove criterion ${i + 1}`}
-                  size="sm"
-                  className="ws-criterion-remove"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => {
-                    typing.end();
-                    dispatch(removeCriterion, i);
-                  }}
-                >
-                  <X size={12} strokeWidth={1.5} aria-hidden />
-                </IconButton>
-              ) : null}
-            </li>
-          ))}
-        </ul>
       ) : null}
       <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
     </header>

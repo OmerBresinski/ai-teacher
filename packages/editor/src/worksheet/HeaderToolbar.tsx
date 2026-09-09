@@ -10,18 +10,19 @@ import {
   setHeader,
   setIncludeAnswerKey,
   setPageSize,
-  setSelfAssessment,
   setShowMarks,
+  switchSelfAssessment,
 } from "./reducers";
 import { useTypingSession, useWorksheet, useWorksheetHistoryApi } from "./worksheet-context";
 
 /*
  * The toolbar over the selected header (TeachDeck `components/v2/worksheet/HeaderToolbar.tsx`):
- * which rules print (Name / Date / Class), the objective line, a new success criterion, the paper
- * size, and the sheet-wide switches — the printed answer key, marks (UX ruling 60) and the
- * self-assessment strip. (The on-screen "Show answers" is a view, not a document flag: it lives
- * on the top bar, TEACH-195.) Everything here is
- * a discrete click, so each is its own undo entry; the typing session is closed first.
+ * which rules print (Name / Date / Class), the objective line, the paper size, and the sheet-wide
+ * switches — the printed answer key, marks (UX ruling 60) and the self-assessment strip. (The
+ * on-screen "Show answers" is a view, not a document flag: it lives on the top bar, TEACH-195.) A
+ * new success criterion sits beside the self-assessment switch, since the criteria print in that
+ * strip (TEACH-196). Everything here is a discrete click, so each is its own undo entry; the
+ * typing session is closed first.
  */
 
 const FIELDS = [
@@ -42,6 +43,7 @@ export function HeaderToolbar() {
   const ids = useId();
   const { header } = worksheet;
   const criteria = header.criteria ?? [];
+  const selfAssessment = worksheet.selfAssessment ?? false;
 
   const click = (fn: () => void) => {
     typing.end();
@@ -70,13 +72,6 @@ export function HeaderToolbar() {
         >
           <Plus {...ICON_SM} aria-hidden />
           Objective
-        </BarButton>
-        <BarButton
-          disabled={criteria.length >= MAX_CRITERIA}
-          onClick={() => click(() => dispatch(addCriterion, criteria.length - 1))}
-        >
-          <ListChecks {...ICON_SM} aria-hidden />
-          Criterion
         </BarButton>
         <PanelSeparator />
         <Segmented
@@ -109,13 +104,20 @@ export function HeaderToolbar() {
         <span className="inline-flex items-center gap-1.5 px-1">
           <Switch
             id={`${ids}-rag`}
-            checked={worksheet.selfAssessment ?? false}
-            onCheckedChange={(on) => click(() => dispatch(setSelfAssessment, on))}
+            checked={selfAssessment}
+            onCheckedChange={(on) => click(() => dispatch(switchSelfAssessment, on))}
           />
           <Label htmlFor={`${ids}-rag`} className="text-body">
             Self-assessment
           </Label>
         </span>
+        <BarButton
+          disabled={!selfAssessment || criteria.length >= MAX_CRITERIA}
+          onClick={() => click(() => dispatch(addCriterion, criteria.length - 1))}
+        >
+          <ListChecks {...ICON_SM} aria-hidden />
+          Criterion
+        </BarButton>
       </Panel>
     </div>
   );

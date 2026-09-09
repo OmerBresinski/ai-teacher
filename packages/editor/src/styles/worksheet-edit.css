@@ -156,13 +156,30 @@
   position: relative;
 }
 
-/* Out of flow, to the right of the criterion's text: the row's height is the printed one. */
+/* Out of flow, to the right of the criterion's text: the row's height is the printed one. Shown
+   while the pointer or focus is in the strip, so the margin of a sheet at rest carries no controls. */
 .ws-criterion-remove {
   position: absolute;
   top: 50%;
   right: -28pt;
   transform: translateY(-50%);
   color: var(--ink-4);
+  opacity: 0;
+}
+
+.ws-rag-slot:hover .ws-criterion-remove,
+.ws-rag-slot:focus-within .ws-criterion-remove {
+  opacity: 1;
+}
+
+/* The hint in a blank criterion line: muted and out of flow, so a blank line measures as a filled
+   one (the same shape as the rich-text placeholder in worksheet.css). */
+.ws-criterion-text:empty::before {
+  content: attr(data-placeholder);
+  color: var(--ws-muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }
 
 /* ---- the oversize warning ------------------------------------------------------ */

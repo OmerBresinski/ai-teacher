@@ -343,45 +343,78 @@ export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
         <p className="ws-objective">{header.subtitle || "\u00a0"}</p>
       ) : null}
       <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
-      <CriteriaList criteria={header.criteria} />
     </header>
   );
 }
 
-/** Success criteria, one printed checkbox line each (research/02 decision 15). */
+/**
+ * Success criteria, one printed checkbox line each (research/02 decision 15). They live in the
+ * self-assessment strip (TEACH-196, ruling 63): a box to tick with a pen is for the pupil at the
+ * end, once they know what they can do, so nothing tick-able sits above the first task.
+ */
 export function CriteriaList({ criteria }: { criteria?: string[] }) {
-  if (!criteria || criteria.length === 0) return null;
+  const printable = printableCriteria(criteria);
+  if (printable.length === 0) return null;
   return (
     <ul className="ws-criteria">
-      {criteria.map((text, i) => (
+      {printable.map((text, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: criteria are plain strings; two may be equal
         <li key={i} className="ws-criterion">
           <span className="ws-criterion-box" aria-hidden />
-          <span className="ws-criterion-text">{text || "\u00a0"}</span>
+          <span className="ws-criterion-text">{text}</span>
         </li>
       ))}
     </ul>
   );
 }
 
+/**
+ * The criteria that print. A blank line is the editor's (a line still to be typed into), not the
+ * pupil's: a bare box under the heading says nothing, so it is dropped wherever the document came
+ * from, the API included.
+ */
+export const printableCriteria = (criteria?: string[]): string[] =>
+  (criteria ?? []).filter((text) => text.trim() !== "");
+
 const RAG_STEPS = ["Red", "Amber", "Green"] as const;
 
+export const CRITERIA_HEADING = "Tick what you can do now";
+
 /**
- * The self-assessment strip (research/02 decision 15). The three circles are told apart by outline
- * weight and dash, never by colour: the print route is greyscale-safe, and a photocopy of a
- * colour-only scale says nothing.
+ * The self-assessment strip (research/02 decision 15): the success criteria under "Tick what you
+ * can do now", then the confidence scale. It is one flow item, so the criteria never split from
+ * their label or from the scale. The three circles are told apart by outline weight and dash,
+ * never by colour: the print route is greyscale-safe, and a photocopy of a colour-only scale says
+ * nothing. `renderCriteria` (the same shape as `renderStem`) lets the editor put its typed-into list
+ * where the printed one goes; it sees every line, blank ones included, since a blank line is there
+ * to be typed into, while print shows only the filled ones (`printableCriteria`).
  */
-export function RagStrip() {
+export function RagStrip({
+  criteria,
+  renderCriteria,
+}: {
+  criteria?: string[];
+  renderCriteria?: (criteria: string[]) => ReactNode;
+}) {
+  const shown = renderCriteria ? (criteria ?? []) : printableCriteria(criteria);
   return (
     <section className="ws-rag" aria-label="Self-assessment">
-      <div className="ws-rag-prompt">How confident do you feel?</div>
-      <div className="ws-rag-scale">
-        {RAG_STEPS.map((step) => (
-          <div key={step} className="ws-rag-step">
-            <span className={`ws-rag-dot ws-rag-${step.toLowerCase()}`} aria-hidden />
-            <span className="ws-rag-label">{step}</span>
-          </div>
-        ))}
+      {shown.length > 0 ? (
+        <div className="ws-rag-criteria">
+          <div className="ws-rag-heading">{CRITERIA_HEADING}</div>
+          {renderCriteria ? renderCriteria(shown) : <CriteriaList criteria={shown} />}
+        </div>
+      ) : null}
+      <div className="ws-rag-confidence">
+        <div className="ws-rag-prompt">How confident do you feel?</div>
+        <div className="ws-rag-scale">
+          {RAG_STEPS.map((step) => (
+            <div key={step} className="ws-rag-step">
+              <span className={`ws-rag-dot ws-rag-${step.toLowerCase()}`} aria-hidden />
+              <span className="ws-rag-label">{step}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -441,7 +474,7 @@ export function FlowItemContent({
       />
     );
   }
-  if (item.kind === "rag") return <RagStrip />;
+  if (item.kind === "rag") return <RagStrip criteria={worksheet.header.criteria} />;
   if (item.kind === "key-title") return <AnswerKeyTitle worksheet={worksheet} />;
   return <AnswerKeyEntry entry={item.entry} showMarks={worksheet.showMarks} />;
 }

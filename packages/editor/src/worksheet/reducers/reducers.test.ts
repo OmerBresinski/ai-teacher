@@ -73,7 +73,7 @@ describe("worksheet reducers", () => {
   test("page size, self-assessment, answer key, theme and a header patch", () => {
     let w = sheet();
     w = r.setPageSize(w, "Letter");
-    w = r.setSelfAssessment(w, true);
+    w = r.switchSelfAssessment(w, true);
     w = r.setIncludeAnswerKey(w, true);
     w = r.setTheme(w, "beacon");
     w = r.setHeader(w, { showClass: false });
@@ -85,6 +85,19 @@ describe("worksheet reducers", () => {
       header: { showClass: false, showName: true },
     });
     expect(() => parseWorksheet(w)).not.toThrow();
+  });
+
+  test("TEACH-196: switchSelfAssessment on with no criteria adds one blank line in the same step", () => {
+    const on = r.switchSelfAssessment(sheet(), true);
+    expect(on.selfAssessment).toBe(true);
+    expect(on.header.criteria).toEqual([""]);
+    expect(r.switchSelfAssessment(on, true)).toBe(on);
+    const filled = r.setCriterion(on, 0, "I can add fractions.");
+    const off = r.switchSelfAssessment(filled, false);
+    expect(off.selfAssessment).toBe(false);
+    expect(off.header.criteria).toEqual(["I can add fractions."]);
+    expect(r.switchSelfAssessment(off, true).header.criteria).toEqual(["I can add fractions."]);
+    expect(() => parseWorksheet(on)).not.toThrow();
   });
 
   test("criteria: add up to MAX_CRITERIA, set, remove; the last one going takes the list", () => {

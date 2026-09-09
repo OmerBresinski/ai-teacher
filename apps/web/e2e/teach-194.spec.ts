@@ -9,7 +9,8 @@ import { expect, type SeededPaths, test } from "./fixtures";
  */
 
 const EDITOR = (paths: SeededPaths) => paths.worksheet("fraction-practice");
-const blocks = (page: Page) => page.locator(".ws-column .ws-block");
+/** Content blocks only: the self-assessment strip is a flow item too, pinned to the foot (TEACH-196). */
+const blocks = (page: Page) => page.locator(".ws-column .ws-block:not(.ws-rag-slot)");
 const UNDO = process.platform === "darwin" ? "Meta+z" : "Control+z";
 const MATCHING_LINE =
   "Match each item on the left to one on the right. Write the letter in the box.";
