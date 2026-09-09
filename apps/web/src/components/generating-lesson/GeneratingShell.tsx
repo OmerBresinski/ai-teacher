@@ -162,10 +162,14 @@ export function GeneratingShell({
           className="w-(--rail-width) shrink-0 border-border border-r bg-background"
         />
 
+        {/* Scrolls once the outline is long, so it is in the tab order for keyboard scrolling
+            (axe scrollable-region-focusable); the rows themselves are not controls yet. */}
         <nav
           aria-label="Slides"
           data-navigator-mode={navigatorMode}
-          className="shrink-0 overflow-y-auto border-border border-r bg-background px-1.5 py-3"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: the column scrolls; axe scrollable-region-focusable needs it reachable
+          tabIndex={0}
+          className="shrink-0 overflow-y-auto border-border border-r bg-background px-1.5 py-3 outline-none focus-visible:shadow-focus"
           style={{ width: navigatorWidthVar(navigatorMode) }}
         >
           <ul className="flex flex-col gap-2">
