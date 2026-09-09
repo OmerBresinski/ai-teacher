@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { DocumentSummary } from "@tj/domain/documents";
+import { minutesForMarks } from "@tj/editor/worksheet-metrics";
 import {
   Button,
   Card,
@@ -133,16 +134,13 @@ function DocumentMenu({
 
 const KIND_LABEL = { lesson: "Lesson", worksheet: "Worksheet", series: "Series" } as const;
 
-/**
- * How long a sheet takes, from its marks: a mark and a half each, rounded up to the next five
- * minutes, never under five. TEACH-183 adds `estimateMinutes` to `@tj/editor`'s worksheet
- * metrics; swap this for it once that lands (ruling 55: minutes on every card).
- */
-export function minutesForMarks(marks: number): number {
-  return Math.max(5, Math.ceil((marks * 1.5) / 5) * 5);
-}
+export { minutesForMarks };
 
-/** "12 marks · 20 min" for a worksheet card; a sheet with no marked questions shows the minutes. */
+/**
+ * "12 marks · 20 min" for a worksheet card; a sheet with no marked questions shows the minutes.
+ * The minutes come from `@tj/editor`'s worksheet metrics (TEACH-184 item 7), the one rule the
+ * sheet header uses too, so a card and its sheet agree.
+ */
 export function worksheetEffort(doc: Pick<DocumentSummary, "kind" | "marks">): string | null {
   if (doc.kind !== "worksheet") return null;
   const marks = doc.marks ?? 0;

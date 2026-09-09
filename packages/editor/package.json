@@ -19,7 +19,8 @@
     "./worksheet": "./src/worksheet/index.ts",
     "./styles/print.css": "./src/styles/print.css",
     "./styles/worksheet-edit.css": "./src/styles/worksheet-edit.css",
-    "./worksheet-editor": "./src/worksheet/editor-index.ts"
+    "./worksheet-editor": "./src/worksheet/editor-index.ts",
+    "./worksheet-metrics": "./src/worksheet/metrics.ts"
   },
   "scripts": {
     "lint": "biome check .",

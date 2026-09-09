@@ -12,7 +12,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@tj/ui";
-import { useMemo, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   JOBS,
   type Job,
@@ -20,7 +20,7 @@ import {
   type WorksheetRecipe,
 } from "../model/worksheet-recipes";
 import { BLOCK_GROUPS, BLOCK_SPECS, type BlockSpec } from "./block-types";
-import { estimateMinutes, pageMetrics } from "./metrics";
+import { estimateMinutes, pageMetrics, ptToPx } from "./metrics";
 import { buildFlow, type WorksheetPage } from "./paginate";
 import { Sheet } from "./Sheet";
 
@@ -163,30 +163,57 @@ function AddBlockBody({
   );
 }
 
-function RecipeCard({
+export type RecipeCardProps = {
+  recipe: WorksheetRecipe;
+  blocks: WorksheetBlock[];
+  /** The sheet the miniature borrows its header, theme and paper from. */
+  worksheet: Worksheet;
+  theme: Theme;
+  onPick: () => void;
+  /**
+   * The creation flow (TEACH-184) selects a card and continues from a bar, so a card can be the
+   * chosen one (`aria-pressed`) and one card carries the Suggested pill. The dialog picks at once
+   * and passes neither.
+   */
+  selected?: boolean;
+  suggested?: boolean;
+  onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  /** Size the miniature to the card's inner width (the page's wider cards); the dialog keeps 175px. */
+  fitMiniature?: boolean;
+};
+
+/** One recipe as a card: the live miniature, the name and line, the minutes pill and the jobs. */
+export function RecipeCard({
   recipe,
   blocks,
   worksheet,
   theme,
   onPick,
-}: {
-  recipe: WorksheetRecipe;
-  blocks: WorksheetBlock[];
-  worksheet: Worksheet;
-  theme: Theme;
-  onPick: () => void;
-}) {
+  selected,
+  suggested = false,
+  onKeyDown,
+  fitMiniature = false,
+}: RecipeCardProps) {
   const minutes = estimateMinutes(blocks);
   const jobs = recipe.jobs.map((id) => JOBS.find((j) => j.id === id)?.label ?? id).join(", ");
+  const label = `${recipe.name}. ${recipe.line} ${jobs}. About ${minutes} minutes.${
+    suggested ? " Suggested." : ""
+  }`;
   return (
-    <li className="ws-recipe-card" data-recipe={recipe.id}>
-      <RecipeMiniature blocks={blocks} worksheet={worksheet} theme={theme} />
+    <li
+      className="ws-recipe-card"
+      data-recipe={recipe.id}
+      data-selected={selected === undefined ? undefined : selected}
+    >
+      <RecipeMiniature blocks={blocks} worksheet={worksheet} theme={theme} fit={fitMiniature} />
       {/* The button is the whole card (its ::after covers it); the miniature is decoration. */}
       <button
         type="button"
         className="ws-recipe-pick"
-        aria-label={`${recipe.name}. ${recipe.line} ${jobs}. About ${minutes} minutes.`}
+        aria-label={label}
+        aria-pressed={selected}
         onClick={onPick}
+        onKeyDown={onKeyDown}
       >
         <span className="block truncate font-semibold text-body text-foreground">
           {recipe.name}
@@ -195,27 +222,40 @@ function RecipeCard({
       </button>
       <span className="ws-recipe-meta">
         <StatusPill>{`about ${minutes} min`}</StatusPill>
+        {/* Opaque: brand text on the card clears 4.5:1; on the tint it does not. */}
+        {suggested ? (
+          <StatusPill tone="accent" opaque>
+            Suggested
+          </StatusPill>
+        ) : null}
         <span className="truncate text-meta text-ink-3">{jobs}</span>
       </span>
     </li>
   );
 }
 
+/** The clipped height of a miniature at `MINIATURE_SCALE`; a fitted one keeps the proportion. */
+const MINIATURE_HEIGHT = 150;
+
 /**
  * The real `Sheet`, at `MINIATURE_SCALE`, in greyscale, clipped to the card: the top of the page
  * the recipe would make, with this sheet's own header. One page, unpaginated: a card shows the
- * start of the section, not every page of it.
+ * start of the section, not every page of it. With `fit` the miniature measures its own width
+ * (a `ResizeObserver`) and scales the page to fill it, keeping the same clipped proportion, so
+ * the creation flow's wider cards show the sheet edge to edge (TEACH-184).
  */
 export function RecipeMiniature({
   blocks,
   worksheet,
   theme,
   className,
+  fit = false,
 }: {
   blocks: WorksheetBlock[];
   worksheet: Worksheet;
   theme: Theme;
   className?: string;
+  fit?: boolean;
 }) {
   const sheet = useMemo<Worksheet>(
     () => ({ ...worksheet, blocks, selfAssessment: false }),
@@ -226,15 +266,27 @@ export function RecipeMiniature({
     [sheet],
   );
   const pageW = pageMetrics(worksheet.pageSize).page.w;
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!fit || !el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const next = entries[0]?.contentRect.width;
+      if (next !== undefined) setWidth(next);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fit]);
+  const scale = fit && width ? width / ptToPx(pageW) : MINIATURE_SCALE;
+  const style = fit
+    ? { width: "100%", height: `${(MINIATURE_HEIGHT * scale) / MINIATURE_SCALE}px` }
+    : { width: `${pageW * MINIATURE_SCALE}pt` };
   return (
-    <div
-      className={cn("ws-mini", className)}
-      style={{ width: `${pageW * MINIATURE_SCALE}pt` }}
-      aria-hidden
-    >
+    <div ref={ref} className={cn("ws-mini", className)} style={style} aria-hidden>
       <div
         className="ws-mini-scale"
-        style={{ transform: `scale(${MINIATURE_SCALE})`, transformOrigin: "top left" }}
+        style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}
       >
         <Sheet worksheet={sheet} theme={theme} pages={pages} mode="print" />
       </div>

@@ -39,6 +39,29 @@ describe("demoWorkspace", () => {
     }
   });
 
+  it("gives the two demo lessons their facts, and the other lessons none (TEACH-184)", () => {
+    const facts = new Map(
+      library.filter((d) => d.kind === "lesson").map((d) => [d.key, d.body.facts]),
+    );
+    expect(facts.get("demo-water-cycle")?.misconceptions).toHaveLength(4);
+    expect(facts.get("demo-water-cycle")?.vocabulary).toHaveLength(6);
+    const fractions = facts.get("demo-fractions");
+    expect(fractions?.objectives).toHaveLength(3);
+    expect(fractions?.vocabulary).toHaveLength(4);
+    expect(fractions?.workedExamples).toHaveLength(1);
+    expect(fractions?.questions).toHaveLength(4);
+    expect(fractions?.misconceptions).toHaveLength(2);
+    expect(fractions?.outline.length).toBeGreaterThan(0);
+    // The outline adds up to the duration, as the worker's would.
+    for (const key of ["demo-water-cycle", "demo-fractions"]) {
+      const f = facts.get(key);
+      expect(f?.outline.reduce((sum, entry) => sum + entry.minutes, 0)).toBe(f?.durationMin);
+    }
+    for (const [key, value] of facts) {
+      if (key !== "demo-water-cycle" && key !== "demo-fractions") expect(value).toBeUndefined();
+    }
+  });
+
   it("seeds four real worksheets, one per job, with Fractions practice belonging to its lesson", () => {
     const worksheets = library.filter((d) => d.kind === "worksheet");
     expect(worksheets.map((d) => d.body.title)).toEqual([

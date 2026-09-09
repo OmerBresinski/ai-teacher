@@ -436,7 +436,6 @@ export function LessonBriefPage() {
           <NewDocumentDialog
             key={blank.session}
             open={blank.open}
-            kind="lesson"
             onOpenChange={(open) => {
               if (!open) setBlank((current) => ({ ...current, open: false }));
             }}

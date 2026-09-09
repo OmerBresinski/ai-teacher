@@ -74,6 +74,11 @@ export function LessonEditorPage() {
     (id: string) => void navigate({ to: "/w/$worksheetId", params: { worksheetId: id } }),
     [navigate],
   );
+  // The top bar's Worksheet action (TEACH-184): the creation flow, open on Kind for this lesson.
+  const onNewWorksheet = useCallback(
+    () => void navigate({ to: "/worksheets/new", search: { lesson: lessonId } }),
+    [navigate, lessonId],
+  );
   const onPresent = useCallback(
     () =>
       void navigate({
@@ -119,6 +124,7 @@ export function LessonEditorPage() {
       onPresent={onPresent}
       worksheet={worksheet}
       onOpenWorksheet={onOpenWorksheet}
+      onNewWorksheet={onNewWorksheet}
       editorRef={editorRef}
       onFactsChanged={proposals.onFactsChanged}
       onRegenerate={proposals.onRegenerate}

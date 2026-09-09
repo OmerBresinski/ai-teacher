@@ -44,6 +44,7 @@ test.describe("accessibility (axe)", () => {
     { path: "/lessons", ready: "Lessons" },
     { path: "/lessons/new", ready: "Topic or objective" },
     { path: "/worksheets", ready: "Worksheets" },
+    { path: "/worksheets/new", ready: "From a lesson" },
     { path: "/series", ready: "Series" },
     { path: paths.series("series-romans"), ready: "The Romans" },
     { path: paths.lesson("demo-water-cycle"), ready: "The water cycle" },
@@ -163,9 +164,9 @@ test.describe("accessibility (axe)", () => {
         Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished)),
       );
     };
-    // New lesson is the brief screen since TEACH-122 (scanned in the route list); the dialogs stay
-    // for worksheets and series.
-    for (const label of ["New worksheet", "New series"]) {
+    // New lesson is the brief screen since TEACH-122 and New worksheet the creation flow since
+    // TEACH-184 (both scanned in the route list); the dialog stays for series.
+    for (const label of ["New series"]) {
       await page.getByRole("button", { name: label }).click();
       await expect(page.getByRole("dialog")).toBeVisible();
       await settled();

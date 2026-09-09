@@ -398,6 +398,23 @@
   box-shadow: var(--shadow-focus);
 }
 
+/* The creation flow's tier row (TEACH-184): Core is the one on, drawn as a brand hairline on the
+   card (brand text on the tint sits just under 4.5:1 at 13px); the others are off until
+   generation. */
+.ws-tier-chip[data-selected="true"] {
+  display: inline-flex;
+  align-items: center;
+  border-color: var(--primary);
+  background: var(--card);
+  color: var(--brand-text);
+  cursor: default;
+}
+
+.ws-tier-chip:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .ws-recipe-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -425,6 +442,13 @@
 
 .ws-recipe-card:has(.ws-recipe-pick:focus-visible) {
   box-shadow: var(--shadow-focus);
+}
+
+/* The creation flow's chosen card (TEACH-184): a 2px brand hairline, no tint (the meta line's
+   ink and the pills keep their contrast against the card). */
+.ws-recipe-card[data-selected="true"] {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
 }
 
 .ws-recipe-pick {

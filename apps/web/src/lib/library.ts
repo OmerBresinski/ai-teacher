@@ -514,6 +514,16 @@ export const libraryMutations = {
     onSuccess: () => invalidateLibrary(queryClient),
   }),
   /**
+   * A worksheet the caller has already built (TEACH-184: the creation flow's recipe frame, or the
+   * starter sheet for Blank), posted as it is. The whole frame is the document's initial state.
+   */
+  createWorksheet: (
+    queryClient: QueryClient,
+  ): UseMutationOptions<LibrarySummary, Error, Worksheet> => ({
+    mutationFn: async (body) => summaryOf(await postDocument("worksheet", body)),
+    onSuccess: () => invalidateLibrary(queryClient),
+  }),
+  /**
    * `POST /lessons` (ADR 0024 §6): the brief becomes a locked lesson and a queued `lesson.plan`
    * job; the caller navigates to `/l/$lessonId` and follows the job (TEACH-122).
    */

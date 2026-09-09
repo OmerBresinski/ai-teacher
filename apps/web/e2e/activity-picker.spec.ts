@@ -81,7 +81,9 @@ test.describe("activity picker", () => {
   test("rows 4 and 5: True or false inserts its slide; the Challenge chip adds an Explain why line", async ({
     signedInPage: { page, paths },
   }) => {
-    await page.goto(EDITOR(paths));
+    // A lesson without facts: the water cycle carries facts since TEACH-184, so its True or false
+    // would be built from a misconception rather than the fixture this row asserts.
+    await page.goto(paths.lesson("roman-roads"));
     await expect(page.locator("[data-slide-frame]")).toBeVisible();
     const frame = page.locator("[data-slide-frame]");
     let menu = await openActivities(page);

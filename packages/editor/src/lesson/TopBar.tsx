@@ -28,6 +28,11 @@ export type TopBarProps = {
    * button shows only when the lesson has `artefacts.worksheetId` and the app handles the open.
    */
   onOpenWorksheet?: (worksheetId: string) => void;
+  /**
+   * Opens the worksheet creation flow on Kind for this lesson (TEACH-184). The same "Worksheet"
+   * label as above, shown when the lesson has no generated sheet to open instead.
+   */
+  onNewWorksheet?: () => void;
   /** Toggles the facts panel (TEACH-134); absent when the app has not wired the proposal jobs. */
   onToggleFacts?: () => void;
   factsOpen?: boolean;
@@ -40,6 +45,7 @@ export function TopBar({
   onOpenTheme,
   exportSlot,
   onOpenWorksheet,
+  onNewWorksheet,
   onToggleFacts,
   factsOpen = false,
   autosave,
@@ -104,6 +110,11 @@ export function TopBar({
             data-worksheet-link={worksheetId}
             onClick={() => onOpenWorksheet(worksheetId)}
           >
+            <FileText aria-hidden size={16} strokeWidth={1.5} />
+            Worksheet
+          </Button>
+        ) : onNewWorksheet ? (
+          <Button variant="ghost" size="sm" data-new-worksheet onClick={onNewWorksheet}>
             <FileText aria-hidden size={16} strokeWidth={1.5} />
             Worksheet
           </Button>

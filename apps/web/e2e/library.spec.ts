@@ -64,27 +64,26 @@ test.describe("library shell", () => {
     await expect(page.getByRole("link", { name: /^Lessons\b/ })).toContainText("11");
   });
 
-  test("New worksheet trims the title and opens the worksheet editor", async ({
+  test("New worksheet opens the creation flow; Blank makes the starter sheet (TEACH-184)", async ({
     signedInPage: { page },
   }) => {
     await page.getByRole("button", { name: "New worksheet" }).click();
-    await page.getByRole("textbox", { name: "Title" }).fill("  Decimals practice  ");
-    await page.getByRole("button", { name: "Next" }).click();
-    await page.getByRole("radio", { name: "Playground" }).click();
-    await page.getByRole("button", { name: "Create worksheet" }).click();
+    await expect(page).toHaveURL(/\/worksheets\/new$/);
+    await page.getByRole("button", { name: /^Blank/ }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
 
     await expect(page).toHaveURL(/\/w\/[^/]+$/);
     // The top bar's title; the sheet carries the printed h1 too.
     await expect(
-      page.locator("[data-topbar]").getByRole("heading", { level: 1, name: "Decimals practice" }),
+      page.locator("[data-topbar]").getByRole("heading", { level: 1, name: "Untitled worksheet" }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Back to library" }).click();
     await page.getByRole("link", { name: /^Worksheets\b/ }).click();
     // The count is the starter worksheet's real block count (TeachDeck `starterWorksheet`, 5).
-    const card = page.locator("article", { hasText: "Decimals practice" }).first();
+    const card = page.locator("article", { hasText: "Untitled worksheet" }).first();
     await expect(card).toBeVisible();
     await page.getByRole("button", { name: "List" }).click();
-    await expect(page.getByRole("row", { name: /Decimals practice/ })).toContainText(
+    await expect(page.getByRole("row", { name: /Untitled worksheet/ })).toContainText(
       "6 marks · 10 min",
     );
   });
@@ -283,14 +282,8 @@ test.describe("library shell", () => {
       await page.waitForTimeout(500);
       await expectNoSeriousA11yViolations(page, label, '[role="dialog"]');
     }
+    // New worksheet is the creation flow since TEACH-184 (scanned in `worksheet-create`).
     async function scanAll(theme: string) {
-      await page.getByRole("button", { name: "New worksheet" }).click();
-      await scanDialog(`new worksheet dialog, about (${theme})`);
-      await page.getByRole("button", { name: "Next" }).click();
-      await scanDialog(`new worksheet dialog, theme (${theme})`);
-      await page.getByRole("button", { name: "Back" }).click();
-      await page.getByRole("button", { name: "Cancel" }).click();
-
       await page.getByRole("button", { name: "New series" }).click();
       await scanDialog(`new series dialog (${theme})`);
       await page.getByRole("button", { name: "Cancel" }).click();

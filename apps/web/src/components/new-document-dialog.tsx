@@ -38,10 +38,13 @@ export type NewDocumentValues = {
   start: "starter" | "blank";
 };
 
+/**
+ * Lessons only since TEACH-184: worksheets are made at `/worksheets/new`, and the brief's "Blank
+ * lesson" is this dialog's one remaining door.
+ */
 export type NewDocumentDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  kind: "lesson" | "worksheet";
   onCreate: (values: NewDocumentValues) => void | Promise<void>;
 };
 
@@ -59,7 +62,7 @@ const LANGUAGES = [
 ];
 const THEMES_BY_ID = new Map(LIBRARY_THEMES.map((theme) => [theme.id, theme]));
 
-export function NewDocumentDialog({ open, onOpenChange, kind, onCreate }: NewDocumentDialogProps) {
+export function NewDocumentDialog({ open, onOpenChange, onCreate }: NewDocumentDialogProps) {
   const titleId = useId();
   const yearGroupId = useId();
   const subjectId = useId();
@@ -75,8 +78,8 @@ export function NewDocumentDialog({ open, onOpenChange, kind, onCreate }: NewDoc
   const [themeTag, setThemeTag] = useState<ThemeTag>("All");
   const [start, setStart] = useState<"starter" | "blank">("starter");
   const [busy, setBusy] = useState(false);
-  const noun = kind === "lesson" ? "lesson" : "worksheet";
-  const placeholder = kind === "lesson" ? "The water cycle" : "Fractions practice";
+  const noun = "lesson";
+  const placeholder = "The water cycle";
 
   const themes = useMemo(
     () =>
@@ -217,26 +220,21 @@ export function NewDocumentDialog({ open, onOpenChange, kind, onCreate }: NewDoc
                 </RadioGroupItem>
               ))}
             </RadioGroup>
-            {kind === "lesson" ? (
-              <div className="flex flex-col gap-1.5">
-                <Label className="!text-foreground">Start from</Label>
-                <Tabs
-                  value={start}
-                  onValueChange={(value) => setStart(value as "starter" | "blank")}
-                >
-                  <TabsList aria-label="Start from">
-                    <TabsTrigger value="starter" onClick={() => setStart("starter")}>
-                      Starter lesson
-                    </TabsTrigger>
-                    <TabsTrigger value="blank" onClick={() => setStart("blank")}>
-                      Blank
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="starter" forceMount className="hidden" />
-                  <TabsContent value="blank" forceMount className="hidden" />
-                </Tabs>
-              </div>
-            ) : null}
+            <div className="flex flex-col gap-1.5">
+              <Label className="!text-foreground">Start from</Label>
+              <Tabs value={start} onValueChange={(value) => setStart(value as "starter" | "blank")}>
+                <TabsList aria-label="Start from">
+                  <TabsTrigger value="starter" onClick={() => setStart("starter")}>
+                    Starter lesson
+                  </TabsTrigger>
+                  <TabsTrigger value="blank" onClick={() => setStart("blank")}>
+                    Blank
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="starter" forceMount className="hidden" />
+                <TabsContent value="blank" forceMount className="hidden" />
+              </Tabs>
+            </div>
           </div>
         )}
 
