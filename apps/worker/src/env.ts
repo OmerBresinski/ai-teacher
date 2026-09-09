@@ -7,6 +7,9 @@ const optionalString = z
   .optional()
   .transform((value) => (value === undefined || value.trim() === "" ? undefined : value));
 
+/** Like `optionalString`, but a present value must be a URL (a malformed deployment value fails boot). */
+const optionalUrl = optionalString.pipe(z.string().url().optional());
+
 /**
  * Boot-time environment validation (ADR 0015). Bun loads `apps/worker/.env` from the cwd; on
  * Railway the variables come from the service. A bad value prints one line per problem and
@@ -34,6 +37,11 @@ export const EnvSchema = z
      * (the step logs "images disabled"), never a boot failure.
      */
     PEXELS_API_KEY: optionalString,
+    /**
+     * Public origin of the api (no trailing slash), so pipeline-placed photo URLs resolve in
+     * the browser. Unset degrades to relative `/files` URLs (broken cross-origin, as before).
+     */
+    API_PUBLIC_BASE_URL: optionalUrl,
     // --- test-only: the scripted fake in place of Bedrock (ADR 0025 §22) --------------------
     AI_FAKE_SCRIPT: z.enum(["pipeline"]).optional(),
     AI_FAKE_DELAY_MS: z.coerce.number().int().nonnegative().default(0),

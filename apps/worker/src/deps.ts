@@ -22,7 +22,7 @@ export type WorkerDeps = {
   db: Db;
   caps: { capUsd: number; capTokens: number };
   sources: SourceLoader;
-  images?: { client: PexelsClient; storage: StorageAdapter };
+  images?: { client: PexelsClient; storage: StorageAdapter; filesBaseUrl?: string };
 };
 
 export function createWorkerDeps(
@@ -47,7 +47,11 @@ export function createWorkerDeps(
     caps: { capUsd: env.AI_LESSON_COST_CAP_USD, capTokens: env.AI_LESSON_TOKEN_CAP },
     sources: noSources,
     images: env.PEXELS_API_KEY
-      ? { client: createPexelsClient({ apiKey: env.PEXELS_API_KEY }), storage: storage.adapter }
+      ? {
+          client: createPexelsClient({ apiKey: env.PEXELS_API_KEY }),
+          storage: storage.adapter,
+          filesBaseUrl: env.API_PUBLIC_BASE_URL,
+        }
       : undefined,
     storageKind: storage.kind,
   };

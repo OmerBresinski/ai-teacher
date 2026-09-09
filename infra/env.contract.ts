@@ -600,6 +600,21 @@ const CONTRACT = [
     description:
       "Pexels API key for photo search. Read once at boot; when unset `GET /images/search` answers `503` and the pipeline skips placements instead of failing the boot. Set on Railway, never in git.",
   },
+  {
+    name: "API_PUBLIC_BASE_URL",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "reference",
+    format: "url",
+    files: ["worker"],
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: Railway reference syntax
+    railwayValue: "https://${{api.RAILWAY_PUBLIC_DOMAIN}}",
+    description:
+      "Public origin of the api, used by the worker to write absolute `/files` URLs for pipeline-placed photos (the browser resolves them; no Vite proxy is involved). Locally `http://localhost:3001` (uncomment in `.env` to test pipelines end to end). On Railway a reference to the api service's public domain — verify with `railway variable list` after applying. Unset degrades to relative URLs.",
+  },
 
   // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------------------
   {

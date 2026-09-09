@@ -198,6 +198,7 @@ describeDb("lesson.plan job", () => {
             delete: () => Promise.reject(new Error("unused")),
             list: () => (async function* () {})(),
           },
+          filesBaseUrl: "https://api.example",
         }),
       );
 
@@ -210,7 +211,8 @@ describeDb("lesson.plan job", () => {
     const slide = lesson.slides.find((s) => s.kind === "image-text");
     const element = slide?.elements.find((el) => el.type === "image");
     expect(
-      element?.type === "image" && element.src.startsWith(`/files/${workspaceId}/images/`),
+      element?.type === "image" &&
+        element.src.startsWith(`https://api.example/files/${workspaceId}/images/`),
     ).toBe(true);
     expect(element?.type === "image" && element.source?.provider).toBe("pexels");
     expect(element?.type === "image" && element.authoredBy).toBe("ai");
