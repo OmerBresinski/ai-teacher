@@ -3,13 +3,15 @@ import { type Lesson, lessonFromBrief, type Worksheet } from "@tj/domain/documen
 import pino from "pino";
 import { noSources, type PipelineDeps, runLessonPipeline } from "../src";
 import type { EvalBrief } from "./briefs";
+import type { RubricDimension } from "./rubric-prompt";
 import { type EvalScores, scoreLesson } from "./scorers";
 
 /*
  * One eval brief through the real pipeline (ADR 0025 §23), with the worker's `persist` contract
  * replaced by memory: every persist is counted and stamped, the first one carrying a slide gives
  * `firstSlideMs`. Nothing touches Postgres or storage. Shared by the schema half (scripted fake)
- * and the paid half (Bedrock); only `ai` and `budget` differ.
+ * and the paid half (Bedrock); only `ai`, `budget` and `judge` differ: the paid half scores the
+ * rubric with one extra `frontier` call per brief, the schema half never spends.
  */
 
 export interface BriefResult {
@@ -25,10 +27,22 @@ export interface BriefResult {
   calls: number;
   inputTokens: number;
   outputTokens: number;
-  /** `null` when the model id is unpriced (the token cap applied) or the run failed early. */
+  /**
+   * The lesson's own spend — `null` when the model id is unpriced (the token cap applied) or the
+   * run failed early. The judge's call is not in it (`judgeCostUsd`), so the number is comparable
+   * with the per-lesson target.
+   */
   costUsd: number | null;
+  /** The rubric judge's spend on this brief; `null` when it did not run or its model is unpriced. */
+  judgeCostUsd: number | null;
   findings: { error: number; warning: number };
   scores: EvalScores | null;
+  /**
+   * The judge's one-line rationales, present only when the rubric was scored. Read by nobody:
+   * `formatResultsTable` and `renderComment` never print them (ADR 0015; the results file is
+   * gitignored, the PR comment is not).
+   */
+  rubricRationales?: Record<RubricDimension, string>;
 }
 
 /** What one run hands back: the serialisable row and, in memory only, the documents behind it. */
@@ -43,6 +57,8 @@ export interface RunBriefOptions {
   budget: Budget;
   now?: () => Date;
   signal?: AbortSignal;
+  /** Score the rubric with the `frontier` judge on the same `ai` and `budget` (the paid half only). */
+  judge?: boolean;
 }
 
 let counter = 0;
@@ -61,10 +77,12 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
   let lesson = lessonForBrief(brief, now());
   let worksheet: Worksheet | undefined;
 
+  const signal = options.signal ?? new AbortController().signal;
+  const context = { lessonId: lesson.id, jobId: `eval-job-${brief.id}` };
   const deps: PipelineDeps = {
     ai: options.ai,
     budget: options.budget,
-    signal: options.signal ?? new AbortController().signal,
+    signal,
     logger: pino({ level: "silent" }),
     now,
     ids: nextId,
@@ -76,7 +94,7 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
       return { updatedAt: now().toISOString() };
     },
     onProgress: async () => undefined,
-    context: { lessonId: lesson.id, jobId: `eval-job-${brief.id}` },
+    context,
   };
 
   let ok = true;
@@ -89,27 +107,38 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     ok = false;
     error = e instanceof Error ? e.name : "Error";
   }
+  // The lesson's own time: the judge that follows is measurement, not generation.
+  const durationMs = Date.now() - startedAt;
 
   const after = options.budget.totals();
+  const scored = ok
+    ? await scoreLesson(
+        brief.id,
+        { lesson, worksheet },
+        options.judge ? { ai: options.ai, budget: options.budget, signal, context } : undefined,
+      )
+    : null;
+  const afterJudge = options.budget.totals();
+  const usd = (a: number | null, b: number | null) =>
+    a === null || b === null ? null : Math.round((a - b) * 1e6) / 1e6;
   const findings = { error: 0, warning: 0 };
   for (const f of lesson.generation?.findings ?? []) findings[f.severity] += 1;
   const result: BriefResult = {
     id: brief.id,
     ok,
     ...(error ? { error } : {}),
-    durationMs: Date.now() - startedAt,
+    durationMs,
     firstSlideMs,
     slides: lesson.slides.length,
     blocks: worksheet?.blocks.length ?? 0,
     calls: after.calls - before.calls,
     inputTokens: after.inputTokens - before.inputTokens,
     outputTokens: after.outputTokens - before.outputTokens,
-    costUsd:
-      after.costUsd === null || before.costUsd === null
-        ? null
-        : Math.round((after.costUsd - before.costUsd) * 1e6) / 1e6,
+    costUsd: usd(after.costUsd, before.costUsd),
+    judgeCostUsd: scored?.scores.rubric ? usd(afterJudge.costUsd, after.costUsd) : null,
     findings,
-    scores: ok ? await scoreLesson(brief.id, { lesson, worksheet }) : null,
+    scores: scored?.scores ?? null,
+    ...(scored?.rubricRationales ? { rubricRationales: scored.rubricRationales } : {}),
   };
   return { result, lesson, worksheet };
 }

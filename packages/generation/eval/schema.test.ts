@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FIXTURES, PLAN_INDEX, scriptedPipelineAi } from "../src/testing";
+import { FIXTURES, PLAN_INDEX, pipelineScript, scriptedPipelineAi } from "../src/testing";
 import { evalBriefs } from "./briefs";
 import { formatSchemaTable, runSchemaEval, schemaErrors } from "./schema";
 
@@ -18,6 +18,17 @@ describe("eval:schema", () => {
     }
     expect(formatSchemaTable(rows)).toContain("| y8-science-particles | ");
   }, 20_000);
+
+  test("the schema half never asks the judge: no rubric, and no call beyond the pipeline's own", async () => {
+    const [brief] = evalBriefs();
+    if (!brief) throw new Error("briefs");
+    const ai = scriptedPipelineAi();
+    const rows = await runSchemaEval([brief], () => ai);
+    expect(rows[0]?.result.scores?.rubric).toBeNull();
+    expect(rows[0]?.result.judgeCostUsd).toBeNull();
+    expect(ai.calls.length).toBeLessThanOrEqual(pipelineScript().length);
+    expect(ai.calls.some((c) => c.modelClass === "frontier")).toBe(false);
+  });
 
   test("a fixture whose plan names an objective nothing covers fails, naming the brief and the check", async () => {
     const [brief] = evalBriefs();

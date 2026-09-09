@@ -6,30 +6,62 @@
 // results files, which carry no content (ADR 0015). Used by .github/workflows/eval.yml.
 
 import { readFile } from "node:fs/promises";
+import { RUBRIC_DIMENSIONS, type RubricDimension } from "./rubric-prompt";
 import type { EvalResults, EvalTotals } from "./run";
 
 export const COMMENT_MARKER = "<!-- tj-eval-results -->";
 
-const COLUMNS: { key: keyof EvalTotals; label: string; unit: "usd" | "ms" | "n" }[] = [
-  { key: "costUsd", label: "cost", unit: "usd" },
-  { key: "meanDurationMs", label: "mean duration", unit: "ms" },
-  { key: "p50FirstSlideMs", label: "p50 first slide", unit: "ms" },
-  { key: "calls", label: "calls", unit: "n" },
-  { key: "inputTokens", label: "input tokens", unit: "n" },
-  { key: "outputTokens", label: "output tokens", unit: "n" },
+type Unit = "usd" | "ms" | "n" | "score";
+
+/** One comment row: how to read it off the totals and how to print it. */
+interface Column {
+  label: string;
+  unit: Unit;
+  read: (t: EvalTotals) => number | null | undefined;
+}
+
+const RUBRIC_LABELS: Record<RubricDimension, string> = {
+  correctness: "rubric: correctness",
+  depth: "rubric: depth",
+  pitch: "rubric: pitch",
+  coherence: "rubric: coherence",
+  questionQuality: "rubric: question quality",
+  notes: "rubric: notes",
+  worksheetValueAdd: "rubric: worksheet value-add",
+  imageFit: "rubric: image fit",
+};
+
+const COLUMNS: Column[] = [
+  { label: "cost", unit: "usd", read: (t) => t.costUsd },
+  { label: "judge cost", unit: "usd", read: (t) => t.judgeCostUsd },
+  { label: "mean duration", unit: "ms", read: (t) => t.meanDurationMs },
+  { label: "p50 first slide", unit: "ms", read: (t) => t.p50FirstSlideMs },
+  { label: "calls", unit: "n", read: (t) => t.calls },
+  { label: "input tokens", unit: "n", read: (t) => t.inputTokens },
+  { label: "output tokens", unit: "n", read: (t) => t.outputTokens },
+  // Scores only, never the rationales (ADR 0015; project Decision 5).
+  { label: "rubric mean", unit: "score", read: (t) => t.rubric?.mean },
+  ...RUBRIC_DIMENSIONS.map(
+    (d): Column => ({
+      label: RUBRIC_LABELS[d],
+      unit: "score",
+      read: (t) => t.rubric?.dimensions[d],
+    }),
+  ),
 ];
 
-const format = (value: number | null | undefined, unit: "usd" | "ms" | "n"): string => {
+const format = (value: number | null | undefined, unit: Unit): string => {
   if (value === null || value === undefined) return "-";
   if (unit === "usd") return `$${value.toFixed(4)}`;
   if (unit === "ms") return `${Math.round(value)} ms`;
+  if (unit === "score") return value.toFixed(1);
   return String(value);
 };
 
 const formatDelta = (
   now: number | null | undefined,
   then: number | null | undefined,
-  unit: "usd" | "ms" | "n",
+  unit: Unit,
 ) => {
   if (now === null || now === undefined || then === null || then === undefined) return "-";
   const diff = now - then;
@@ -54,9 +86,9 @@ export function renderComment(now: EvalResults, master?: EvalResults): string {
       : "| | this run |\n| --- | ---: |",
   ];
   for (const column of COLUMNS) {
-    const value = t[column.key] as number | null | undefined;
+    const value = column.read(t);
     if (master) {
-      const then = master.totals[column.key] as number | null | undefined;
+      const then = column.read(master.totals);
       lines.push(
         `| ${column.label} | ${format(value, column.unit)} | ${format(then, column.unit)} | ${formatDelta(value, then, column.unit)} |`,
       );
@@ -74,12 +106,12 @@ export function renderComment(now: EvalResults, master?: EvalResults): string {
   }
   lines.push(
     "",
-    "| brief | ok | ms | first slide | slides | cost | errors | schema | model |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    "| brief | ok | ms | first slide | slides | cost | errors | schema | model | rubric |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
   );
   for (const b of now.briefs) {
     lines.push(
-      `| ${b.id} | ${b.ok ? "yes" : `no (${b.error})`} | ${b.durationMs} | ${b.firstSlideMs ?? "-"} | ${b.slides} | ${format(b.costUsd, "usd")} | ${b.findings.error} | ${b.scores?.schema ?? "-"} | ${b.scores?.modelFindings ?? "-"} |`,
+      `| ${b.id} | ${b.ok ? "yes" : `no (${b.error})`} | ${b.durationMs} | ${b.firstSlideMs ?? "-"} | ${b.slides} | ${format(b.costUsd, "usd")} | ${b.findings.error} | ${b.scores?.schema ?? "-"} | ${b.scores?.modelFindings ?? "-"} | ${format(b.scores?.rubric?.mean, "score")} |`,
     );
   }
   if (!master) lines.push("", "_No `master` baseline artifact yet — no delta._");

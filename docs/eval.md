@@ -36,30 +36,57 @@ The loop stops as soon as the budget is exceeded; whatever ran is reported with
 {
   "sha": "…", "at": "…", "models": { "frontier": "…", "standard": "…", "small": "…" }, "capUsd": 3,
   "briefs": [{ "id": "y8-science-particles", "ok": true, "durationMs": 41200, "firstSlideMs": 7900,
-               "slides": 10, "blocks": 8, "calls": 13, "inputTokens": 13000, "outputTokens": 5200,
-               "costUsd": 0.12, "findings": { "error": 0, "warning": 1 },
-               "scores": { "schema": 1, "modelFindings": 0.9 } }],
+               "slides": 10, "blocks": 8, "calls": 14, "inputTokens": 21000, "outputTokens": 5800,
+               "costUsd": 0.12, "judgeCostUsd": 0.16, "findings": { "error": 0, "warning": 1 },
+               "scores": { "schema": 1, "modelFindings": 0.9,
+                           "rubric": { "mean": 3.6, "dimensions": { "correctness": 4, "depth": 2,
+                             "pitch": 4, "coherence": 3, "questionQuality": 3, "notes": 2,
+                             "worksheetValueAdd": 2, "imageFit": null } } },
+               "rubricRationales": { "correctness": "…", "depth": "…", "…": "…" } }],
   "totals": { "briefs": 8, "completed": 8, "failed": 0, "durationMs": 0, "meanDurationMs": 0,
               "p50FirstSlideMs": 0, "calls": 0, "inputTokens": 0, "outputTokens": 0, "costUsd": 0,
-              "findings": { "error": 0, "warning": 0 } }
+              "judgeCostUsd": 0, "findings": { "error": 0, "warning": 0 },
+              "rubric": { "mean": 3.6, "dimensions": { "correctness": 4, "…": 0 } } }
 }
 ```
 
 Counts, timings, tokens, cost and scores only — no prompt, no generated text, no topic (ADR 0015;
-`eval/run.test.ts` greps for the topics). `firstSlideMs` is the time to the first persist that
-carried a slide, the number the F06 definition of done ("first slide visible in under 10 seconds")
-is about; `durationMs` is the whole brief.
+`eval/run.test.ts` greps for the topics). The one exception is `rubricRationales`: the judge's
+one-line rationale per dimension, kept **only** in this gitignored file (root `.gitignore`,
+`packages/generation/eval/results/`) so a reader can see why a score moved. Neither
+`formatResultsTable` nor `renderComment` reads it; `eval/delta.test.ts` asserts a sentinel
+rationale never reaches the comment. `firstSlideMs` is the time to the first persist that carried a
+slide, the number the F06 definition of done ("first slide visible in under 10 seconds") is about;
+`durationMs` is the whole brief **without** the judge call that follows it. `costUsd` on a brief is
+the lesson's own spend, so it is comparable with the per-lesson target; the judge's spend is
+`judgeCostUsd` beside it. The totals' `costUsd` is the whole budget (lessons plus judge), which is
+what `AI_EVAL_RUN_COST_CAP_USD` caps.
 
 ### Scores
 
-`eval/scorers.ts` builds two function-only scorers with Mastra's `createScorer` from
-`@mastra/core/evals` (read `node_modules/@mastra/core/dist/docs/references/docs-evals-custom-scorers.md`
-before changing them; no `@mastra/evals` dependency is needed and no judge model is configured, so
-a scorer never spends):
+`eval/scorers.ts` builds three scorers with Mastra's `createScorer` from `@mastra/core/evals`
+(read `node_modules/@mastra/core/dist/docs/references/docs-evals-custom-scorers.md` before
+changing them; no `@mastra/evals` dependency is needed and no Mastra judge model is configured):
 
 - `schema` — `checkLesson` over the final lesson and worksheet: `1 − errors / slides`, clamped.
+  Function-only, never spends.
 - `modelFindings` — the model checks left on `Lesson.generation.findings` after Repair (not the
-  schema checks, not the budget stop): `1 − findings / slides`, clamped.
+  schema checks, not the budget stop): `1 − findings / slides`, clamped. Function-only, never
+  spends.
+- `rubric` — the **rubric judge** (`rubricJudgeScorer`, prompt `eval/rubric-prompt.ts`,
+  `rubric-judge.v1`): one structured call on the `frontier` class through the pipeline's own
+  `callStructured` (`stage: "evaluate"`), charged to the run's budget so it counts against
+  `AI_EVAL_RUN_COST_CAP_USD`. It reads the audience block, the brief topic, `factsBlock`, every
+  slide's plain text and notes and every worksheet block, and scores eight dimensions 1–5:
+  `correctness`, `depth`, `pitch`, `coherence`, `questionQuality`, `notes`, `worksheetValueAdd`,
+  `imageFit`. `imageFit` is `null` when no `image-text` slide carries a placed photograph — which
+  is every eval run today, because `run-brief.ts` wires no `PhotoPlacer` into the pipeline; the
+  picture-first ticket changes that. `rubric.mean` is the mean of the non-null dimensions, one
+  decimal. The judge runs **only in the paid half** (`runBrief(…, { judge: true })` from
+  `run.ts`); `eval:schema` never passes `judge`, so it never spends. A cap stop, a schema miss on
+  both attempts or any other failure leaves `rubric: null` — the run still finishes and writes its
+  file. The prompt is eval-only: not in `src/prompts`, not in `PROMPTS`, not pinned by
+  `prompts.test.ts`, never run in production.
 
 They run only in the eval scripts, never in the worker.
 
@@ -82,8 +109,11 @@ Docs-only PRs never carry the label, so they never pay. Each run uploads
 uploads it as `eval-master-latest`. On a PR the workflow downloads the latest successful
 `master` run's `eval-master-latest`, renders `packages/generation/eval/delta.ts <now> [master]` and
 posts one comment (marker `<!-- tj-eval-results -->`, updated in place on later runs) with the
-totals table and, when a baseline exists, a `delta` column: `now − master` for cost, mean duration,
-p50 first slide, calls, tokens and total error findings. `+` is more, `−` less, `±0` unchanged.
+totals table and, when a baseline exists, a `delta` column: `now − master` for cost, judge cost,
+mean duration, p50 first slide, calls, tokens, the rubric mean and each of the eight rubric
+dimensions (one decimal), and total error findings. `+` is more, `−` less, `±0` unchanged. A
+`master` baseline written before the rubric existed shows `-` in the rubric rows. Rationales never
+appear in the comment (ADR 0015).
 
 **Founder action, once:** add the GitHub Actions secret `AWS_BEARER_TOKEN_BEDROCK` to the repo,
 then trigger `Eval` with `workflow_dispatch` on `master`. That first successful run is the
@@ -93,7 +123,9 @@ secret exists the workflow fails at once with exit `2` and writes nothing.
 ## Reading a delta
 
 A prompt-file PR (a bumped `version` in `src/prompts/`) is the case this was built for: label it
-`run-eval`, wait for the comment, and read cost and error findings first — a cheaper run with more
-errors is not a win — then `p50 first slide` and `mean duration`. One run is one sample: Bedrock
-latency varies, so treat a duration delta under ~15 % as noise and re-run before drawing a
-conclusion.
+`run-eval`, wait for the comment, and read the rubric rows first — a cheaper run that scores lower
+on `depth` or `correctness` is not a win — then cost and error findings, then `p50 first slide`
+and `mean duration`. One run is one sample: Bedrock latency varies, so treat a duration delta under
+~15 % as noise, and a rubric delta of ±0.2 on one dimension as within the judge's own variance;
+re-run before drawing a conclusion. When a score moves and the reason is not obvious, download the
+`eval-<sha>` artifact and read `rubricRationales` for the brief — that is what the field is for.

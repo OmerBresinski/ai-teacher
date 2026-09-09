@@ -313,3 +313,20 @@ Nothing at the time of acceptance. Deferred: per-stage model-class overrides (F1
 on manual edits (cost), image generation or search for `image-text` / `image-match` (needs
 `POST /files`), worksheet deletion cascade (F15), a Mastra-persisted run state (only if Studio
 time-travel on production runs is ever wanted).
+
+## Amendment (2026-09-09, project Generation quality — TEACH-206)
+
+§23 said the paid half "posts tokens and cost against the last `master` run". It now also scores
+quality: a **rubric judge** scorer (`packages/generation/eval/scorers.ts` `rubricJudgeScorer`,
+prompt `eval/rubric-prompt.ts`) makes one structured call per brief on the `frontier` class through
+`callStructured` and scores eight dimensions 1–5 (`correctness`, `depth`, `pitch`, `coherence`,
+`questionQuality`, `notes`, `worksheetValueAdd`, `imageFit`; `imageFit` is `null` without a placed
+photograph). The scores and their per-dimension means go to `eval/results/<sha>.json` and to the
+PR comment as `now − master` rows beside cost and duration; the judge's one-line rationales are
+written to the gitignored results file only and never to CI output (ADR 0015). The judge is
+charged to the run's budget (`AI_EVAL_RUN_COST_CAP_USD`), runs in the paid half only — the schema
+half still never spends — and is eval-only: the prompt is not in `PROMPTS`, not pinned by
+`prompts.test.ts` and never runs in production. The first `workflow_dispatch` run on `master`
+after this lands is the project's baseline; the `frontier` model the judge runs on is whatever
+`AI_MODEL_FRONTIER` names (the model-classes ticket moves it to GPT-5.6 Sol and re-baselines).
+
