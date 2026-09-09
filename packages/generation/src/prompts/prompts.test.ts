@@ -80,8 +80,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v3",
-    hash: "da4bf0adeff8bf58741f78d51314fdd6ac663a848094b9825a5a5dc91cd06afd",
+    version: "plan-skeleton.v4",
+    hash: "3ccd840f54f42faf6c53eca3888dd238a13ccdea8e920f34612d914fa21d81d5",
   },
   "plan-facts": {
     version: "plan-facts.v2",

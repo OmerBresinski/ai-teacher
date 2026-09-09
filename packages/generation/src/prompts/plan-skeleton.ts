@@ -66,7 +66,7 @@ export function briefBlock(input: PlanSkeletonInput): string[] {
 }
 
 export const planSkeletonPrompt = {
-  version: "plan-skeleton.v3",
+  version: "plan-skeleton.v4",
   system: [
     "You are an experienced UK teacher planning one lesson from a brief.",
     "Produce only the lesson's skeleton: the learning objectives and an outline of slides with the minutes each takes. The vocabulary, worked examples and questions come in a later step, so do not write them here.",
@@ -78,7 +78,7 @@ export const planSkeletonPrompt = {
     "Outline minutes add up to the lesson length within ten per cent.",
     'Refer to objectives from the outline by position: { "type": "objective", "index": 0-based }. Only objectives can be referenced here. Every outline slide after the first two names at least one objective.',
     "Give 1–4 objectives and 8–10 outline slides for an hour-long lesson (fewer for a shorter one); include at least two slides pupils answer (true-false, multiple-choice, matching, fill-gap, sort or open-response) and one vocabulary slide.",
-    'An "image-text" slide shows one photograph of a real thing beside the text. Give it "imageBrief": { "subject": two to four plain words naming the thing (British English, no adjectives of mood), "mustShow"?: what has to be visible }. Use it for places, objects, organisms, materials, weather, artefacts and everyday scenes — not for diagrams, maps, charts or anything abstract. At most three image-text slides in a lesson.',
+    'An "image-text" slide shows one photograph of a real thing beside the text. Give it "imageBrief": { "subject": the exact query you would type into a stock-photo search engine that knows nothing about this lesson — two to four plain words, British English, no adjectives of mood, carrying the lesson\'s own context from the brief so it stands alone (the topic decides what an ambiguous word means: "rodent incisors", never "teeth"; a part or property alone is never enough), "mustShow"?: what has to be visible }. Use it for places, objects, organisms, materials, weather, artefacts and everyday scenes — not for diagrams, maps, charts or anything abstract. At most three image-text slides in a lesson.',
     limitsBlock({ "each objective": SPEC_LIMITS.item }),
     "",
     "Answer as JSON in exactly this shape:",
