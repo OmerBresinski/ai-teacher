@@ -7,6 +7,7 @@ import type {
   TextElement,
   TextPreset,
 } from "@tj/domain/documents";
+import { OBJECTIVES_SLIDE_HEADING } from "@tj/domain/documents";
 import { docFromBullets, docFromText, newLesson, newSlide, now } from "./factories";
 import { docFromNumbered } from "./layouts";
 
@@ -95,12 +96,12 @@ export function starterLesson(
   fill(titleSlide, "title", [title]);
   fill(titleSlide, "subtitle", ["Add the class and the date"]);
 
-  fill(objectives, "heading", ["Learning objectives"]);
+  fill(objectives, "heading", [OBJECTIVES_SLIDE_HEADING]);
   fill(objectives, "body", [
     docFromNumbered([
-      `Explain what ${title.toLowerCase()} means`,
-      "Give an example of it",
-      "Use it to answer a question",
+      `explain what ${title.toLowerCase()} means`,
+      "give an example of it",
+      "use it to answer a question",
     ]),
   ]);
 
@@ -162,9 +163,9 @@ function waterCycle(): Lesson {
 
   fill(objectives, "body", [
     docFromNumbered([
-      "Name the four stages of the water cycle",
-      "Explain what happens to water when it is heated",
-      "Describe where the water in a cloud came from",
+      "name the four stages of the water cycle",
+      "explain what happens to water when it is heated",
+      "describe where the water in a cloud came from",
     ]),
   ]);
 

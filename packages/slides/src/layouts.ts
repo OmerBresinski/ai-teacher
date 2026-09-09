@@ -13,7 +13,7 @@ import type {
   Theme,
   TimerElement,
 } from "@tj/domain/documents";
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { OBJECTIVES_SLIDE_HEADING, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { explanationReserve, RESERVED_LINES } from "./explanation-metrics";
 import { docFromBullets, docFromText, newText, uid } from "./factories";
 import { BASELINE, colLeft, GUTTER, SAFE, SPACE, snapY, spanWidth } from "./grid";
@@ -230,15 +230,18 @@ function titleSlide(t: Theme): Layout {
   };
 }
 
-/** Learning objectives — heading, hairline, three numbered objectives. */
+/**
+ * Learning objectives — the "I can" stem as the heading, a hairline, three numbered verb
+ * phrases that complete it (UX ruling 64, TEACH-198).
+ */
 function objectivesSlide(t: Theme): Layout {
   return {
     elements: [
-      ...headed(t, "Learning objectives"),
+      ...headed(t, OBJECTIVES_SLIDE_HEADING),
       numberedBody(t, [
-        "Learning objective one",
-        "Learning objective two",
-        "Learning objective three",
+        "learning objective one",
+        "learning objective two",
+        "learning objective three",
       ]),
     ],
   };

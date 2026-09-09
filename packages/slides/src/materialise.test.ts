@@ -176,7 +176,7 @@ describe("materialiseSlide", () => {
     const placeholders = [
       "Lesson title",
       "Year group and class",
-      "Learning objective one",
+      "learning objective one",
       "Recall question",
       "Term",
       "Definition in one sentence",
@@ -353,14 +353,20 @@ describe("materialiseSlide", () => {
 
   test("numbered kinds render their items as an ordered list; plenary as bullets", () => {
     const objectives = materialiseSlide(
-      { kind: "objectives", factRefs, heading: "Today", items: ["A", "B"] },
+      {
+        kind: "objectives",
+        factRefs,
+        heading: "Today",
+        items: ["Describe the stages", "Explain melting"],
+      },
       "chalk",
       meta,
       counter(),
     );
     const body = objectives.elements.find((e) => e.type === "text" && e.style.preset === "body");
     expect(body && "doc" in body ? body.doc?.content?.[0]?.type : undefined).toBe("orderedList");
-    expect(plain(body)).toBe("A\n\nB");
+    // Objectives are stored as verb phrases and listed lower-case under the stem (TEACH-198).
+    expect(plain(body)).toBe("describe the stages\n\nexplain melting");
     expect(plain(objectives.elements[0])).toBe("Today");
 
     const plenary = materialiseSlide(minimalSpec("plenary"), "chalk", meta, counter());

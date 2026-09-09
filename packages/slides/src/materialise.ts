@@ -11,6 +11,7 @@ import type {
   TextPreset,
   WorksheetBlock,
 } from "@tj/domain/documents";
+import { objectiveLine } from "@tj/domain/documents";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { docFromNumbered, layoutSlide, vocabularyGrid } from "./layouts";
 import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./specs";
@@ -113,7 +114,10 @@ type NumberedSpec = SlideSpecOf<"objectives" | "instructions" | "exit-ticket" | 
 function fillNumbered(spec: NumberedSpec, laid: Layout): Layout {
   if (spec.heading) setText(textOf(laid, "heading"), spec.heading);
   const items = "items" in spec ? spec.items : spec.steps;
-  setDoc(textOf(laid, "body"), docFromNumbered(items));
+  // Objectives are stored as bare verb phrases; under the slide's "I can" heading each line
+  // starts lower-case (TEACH-198).
+  const lines = spec.kind === "objectives" ? items.map(objectiveLine) : items;
+  setDoc(textOf(laid, "body"), docFromNumbered(lines));
   if ("footnote" in spec && spec.footnote) setText(textOf(laid, "small"), spec.footnote);
   return laid;
 }

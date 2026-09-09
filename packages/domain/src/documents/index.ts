@@ -23,6 +23,7 @@ export * from "./lesson";
 export * from "./lesson-facts";
 export * from "./links";
 export * from "./migrate";
+export * from "./objectives";
 export * from "./rich-text";
 export * from "./series";
 export * from "./slide";
