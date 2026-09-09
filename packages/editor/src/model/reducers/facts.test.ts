@@ -85,7 +85,9 @@ describe("facts reducers", () => {
       objectiveRefs: ["o1"],
       distractors: [{ text: "Steam", misconceptionRef: "m1" }, { text: "Ice" }],
     };
-    lesson.facts.outline[2]?.factRefs.push("k1", "m1");
+    // A duplicated ref (the outline's and the question's) is gone entirely after the removal.
+    lesson.facts.outline[2]?.factRefs.push("k1", "m1", "m1");
+    lesson.facts.questions[0].objectiveRefs = ["o1", "o1"];
     // Prefixes differ, so a new question is q2 whatever the key ideas hold; `k` is never minted here.
     expect(r.addFact(lesson, { kind: "question", stem: "?", answer: "!", reasoning: "" }).id).toBe(
       "q2",

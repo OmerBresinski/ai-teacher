@@ -364,4 +364,3 @@ listing both), which removes the false "not covered by the worksheet" errors blo
 questions produced. `assignFactIds` mints `k` and `m` and resolves the ordinal links; `factsBlock`
 renders the new lists, so every prompt version is bumped. The prompts that ask Plan for the new
 facts are the Plan-prompts ticket's.
-

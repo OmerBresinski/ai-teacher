@@ -204,20 +204,20 @@ export const removeFact = (lesson: Lesson, factId: FactId): Lesson =>
       }
     }
     if (!removed) return;
-    for (const entry of facts.outline) {
-      const at = entry.factRefs.indexOf(factId);
-      if (at !== -1) entry.factRefs.splice(at, 1);
-    }
+    for (const entry of facts.outline) dropAll(entry.factRefs, factId);
     dropLinksTo(facts, factId);
   });
+
+/** Remove every occurrence of `id` from `refs` in place (a duplicated ref must not survive). */
+function dropAll(refs: FactId[], id: FactId): void {
+  for (let i = refs.length - 1; i >= 0; i--) if (refs[i] === id) refs.splice(i, 1);
+}
 
 /** Drop `factId` from every fact's own links; an empty optional list is removed, not left `[]`. */
 function dropLinksTo(facts: LessonFacts, factId: FactId): void {
   const prune = (fact: { objectiveRefs?: FactId[] }, required: boolean) => {
-    if (!fact.objectiveRefs) return;
-    const at = fact.objectiveRefs.indexOf(factId);
-    if (at === -1) return;
-    fact.objectiveRefs.splice(at, 1);
+    if (!fact.objectiveRefs?.includes(factId)) return;
+    dropAll(fact.objectiveRefs, factId);
     if (!required && fact.objectiveRefs.length === 0) delete fact.objectiveRefs;
   };
   for (const k of facts.keyIdeas ?? []) prune(k, true);
