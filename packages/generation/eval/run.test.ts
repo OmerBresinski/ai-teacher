@@ -1,8 +1,29 @@
 import { describe, expect, test } from "bun:test";
 import { createAi, createBudget } from "@tj/ai";
-import { scriptedPipelineAi } from "../src/testing";
+import { createFakeAi } from "@tj/ai/testing";
+import { pipelineScript, scriptedPipelineAi } from "../src/testing";
 import { evalBriefs } from "./briefs";
-import { formatResultsTable, median, runPaidEval, summarise, UNCONFIGURED_MESSAGE } from "./run";
+import { RUBRIC_DIMENSIONS } from "./rubric-prompt";
+import {
+  formatResultsTable,
+  median,
+  rubricTotals,
+  runPaidEval,
+  summarise,
+  UNCONFIGURED_MESSAGE,
+} from "./run";
+import type { BriefResult } from "./run-brief";
+import type { RubricScores } from "./scorers";
+
+const rubricJson = (score: number) =>
+  JSON.stringify({
+    dimensions: Object.fromEntries(
+      RUBRIC_DIMENSIONS.map((d) => [
+        d,
+        { score: d === "imageFit" ? null : score, rationale: "why" },
+      ]),
+    ),
+  });
 
 /* The paid half's loop and summary, driven on the fake — the shape CI's comment reads. */
 
@@ -32,6 +53,50 @@ describe("eval:paid", () => {
     expect(totals.costUsd).toBeGreaterThan(0.01);
   });
 
+  test("the paid loop judges each brief: one extra frontier call, judge cost split out, rubric means in the totals", async () => {
+    const [brief] = evalBriefs();
+    if (!brief) throw new Error("briefs");
+    const ai = createFakeAi({
+      script: [...pipelineScript(), rubricJson(4)],
+      usage: { inputTokens: 1000, outputTokens: 400 },
+    });
+    const budget = createBudget({ capUsd: 5, capTokens: 10_000_000 });
+    const rows = await runPaidEval(ai, budget, [brief]);
+    const row = rows[0];
+    if (!row) throw new Error("no row");
+    expect(row.ok).toBe(true);
+    expect(ai.calls.at(-1)?.modelClass).toBe("frontier");
+    expect(row.scores?.rubric?.mean).toBe(4);
+    expect(row.rubricRationales?.depth).toBe("why");
+    expect(row.judge?.calls).toBe(1);
+    expect(row.judge?.costUsd).toBeGreaterThan(0);
+    expect(row.costUsd).toBeGreaterThan(0);
+    const totals = summarise(rows, [brief], budget);
+    expect(totals.rubric.mean).toBe(4);
+    expect(totals.rubric.dimensions.imageFit).toBeNull();
+    expect(totals.judgeCostUsd).toBe(row.judge?.costUsd ?? null);
+    expect(totals.costUsd).toBeCloseTo((row.costUsd ?? 0) + (row.judge?.costUsd ?? 0), 6);
+  });
+
+  test("rubricTotals: per-dimension means over the scored briefs, null when none scored", () => {
+    const brief = (rubric: RubricScores | null) =>
+      ({ ok: true, scores: { schema: 1, modelFindings: 1, rubric } }) as unknown as BriefResult;
+    const dims = (n: number | null) =>
+      Object.fromEntries(RUBRIC_DIMENSIONS.map((d) => [d, n])) as Record<
+        (typeof RUBRIC_DIMENSIONS)[number],
+        number | null
+      >;
+    expect(rubricTotals([brief(null), brief(null)]).mean).toBeNull();
+    const t = rubricTotals([
+      brief({ mean: 3, dimensions: dims(3) }),
+      brief({ mean: 4, dimensions: { ...dims(4), imageFit: null } }),
+      brief(null),
+    ]);
+    expect(t.dimensions.depth).toBe(3.5);
+    expect(t.dimensions.imageFit).toBe(3);
+    expect(t.mean).toBe(3.4); // seven at 3.5 and imageFit at 3 → 3.44 → 3.4
+  });
+
   test("the summary and table carry counts, timings, tokens and cost — never a topic", async () => {
     const briefs = evalBriefs().slice(0, 2);
     const budget = createBudget({ capUsd: 5, capTokens: 10_000_000 });
@@ -58,5 +123,11 @@ describe("eval:paid", () => {
     });
     expect(table).toContain("| y3-maths-fractions | yes |");
     expect(table).toContain("Totals: 2/2 briefs");
+    // The fake's fallback is not a rubric answer: the judge fails on both attempts, the rubric is null.
+    expect(totals.rubric.mean).toBeNull();
+    expect(table).toContain("rubric mean -");
+    // …but both paid attempts are still on the brief's judge row.
+    expect(rows[0]?.judge?.calls).toBe(2);
+    expect(rows[0]?.judge?.costUsd).toBeGreaterThan(0);
   });
 });

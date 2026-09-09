@@ -1,6 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { COMMENT_MARKER, renderComment } from "./delta";
+import { RUBRIC_DIMENSIONS, type RubricDimension } from "./rubric-prompt";
 import type { EvalResults } from "./run";
+
+const SENTINEL = "RATIONALE-SENTINEL";
+
+const dims = (score: number | null, over: Partial<Record<RubricDimension, number | null>> = {}) =>
+  Object.fromEntries(RUBRIC_DIMENSIONS.map((d) => [d, d in over ? over[d] : score])) as Record<
+    RubricDimension,
+    number | null
+  >;
+
+const rationales = Object.fromEntries(RUBRIC_DIMENSIONS.map((d) => [d, SENTINEL])) as Record<
+  RubricDimension,
+  string
+>;
 
 const results = (over: Partial<EvalResults["totals"]> = {}, sha = "abcdef0123"): EvalResults => ({
   sha,
@@ -19,8 +33,14 @@ const results = (over: Partial<EvalResults["totals"]> = {}, sha = "abcdef0123"):
       inputTokens: 13000,
       outputTokens: 5200,
       costUsd: 0.12,
+      judge: { calls: 1, inputTokens: 8000, outputTokens: 600, costUsd: 0.16 },
       findings: { error: 0, warning: 1 },
-      scores: { schema: 1, modelFindings: 0.9 },
+      scores: {
+        schema: 1,
+        modelFindings: 0.9,
+        rubric: { mean: 3.6, dimensions: dims(4, { depth: 2, imageFit: null }) },
+      },
+      rubricRationales: rationales,
     },
   ],
   totals: {
@@ -34,7 +54,9 @@ const results = (over: Partial<EvalResults["totals"]> = {}, sha = "abcdef0123"):
     inputTokens: 104000,
     outputTokens: 41600,
     costUsd: 0.96,
+    judgeCostUsd: 1.28,
     findings: { error: 0, warning: 9 },
+    rubric: { mean: 3.6, dimensions: dims(4, { depth: 2, imageFit: null }) },
     ...over,
   },
 });
@@ -59,6 +81,31 @@ describe("eval delta comment", () => {
     expect(body).toContain("| p50 first slide | 8000 ms | 8000 ms | ±0 ms |");
     expect(body).toContain("| error findings | 2 | 0 | +2 |");
     expect(body).toContain("master `0123456`");
+  });
+
+  test("rubric rows: nine of them, one decimal, signed deltas; the rationales never appear", () => {
+    const now = results({
+      rubric: { mean: 3.9, dimensions: dims(4, { depth: 2.3, pitch: 3.8, imageFit: null }) },
+    });
+    const body = renderComment(now, results({}, "0123456789"));
+    expect(body).toContain("| rubric mean | 3.9 | 3.6 | +0.3 |");
+    expect(body).toContain("| rubric: depth | 2.3 | 2.0 | +0.3 |");
+    expect(body).toContain("| rubric: pitch | 3.8 | 4.0 | −0.2 |");
+    expect(body).toContain("| rubric: correctness | 4.0 | 4.0 | ±0.0 |");
+    expect(body).toContain("| rubric: image fit | - | - | - |");
+    expect(body).toContain("| judge cost | $1.2800 | $1.2800 | ±$0.0000 |");
+    expect(body.match(/^\| rubric/gm)).toHaveLength(9);
+    expect(body).toContain("| 0 | 1 | 0.9 | 3.6 |");
+    expect(body).not.toContain(SENTINEL);
+  });
+
+  test("a master results file from before the rubric existed renders '-' for every rubric row", () => {
+    const old = results({}, "0123456789") as unknown as { totals: Record<string, unknown> };
+    delete old.totals.rubric;
+    delete old.totals.judgeCostUsd;
+    const body = renderComment(results(), old as unknown as EvalResults);
+    expect(body).toContain("| rubric mean | 3.6 | - | - |");
+    expect(body).toContain("| judge cost | $1.2800 | - | - |");
   });
 
   test("a capped run says so", () => {

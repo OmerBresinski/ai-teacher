@@ -17,7 +17,9 @@ import { join } from "node:path";
 import { type Budget, type CreatedAi, createAi, createBudget } from "@tj/ai";
 import { z } from "zod";
 import { type EvalBrief, evalBriefs } from "./briefs";
+import { RUBRIC_DIMENSIONS, type RubricDimension } from "./rubric-prompt";
 import { type BriefResult, runBrief } from "./run-brief";
+import { rubricMean } from "./scorers";
 
 const EnvSchema = z.object({
   AWS_BEARER_TOKEN_BEDROCK: z.string().optional(),
@@ -47,8 +49,13 @@ export interface EvalTotals {
   calls: number;
   inputTokens: number;
   outputTokens: number;
+  /** The whole budget's spend, judge included; `null` when any priced call was on an unpriced id. */
   costUsd: number | null;
+  /** The rubric judge's share of `costUsd` (every attempt, paid or not for a score); `null` when it never ran on a priced id. */
+  judgeCostUsd: number | null;
   findings: { error: number; warning: number };
+  /** Means over the completed briefs the judge scored; `null` everywhere when none was. */
+  rubric: { mean: number | null; dimensions: Record<RubricDimension, number | null> };
   /** Set when the shared budget was exceeded: later briefs were skipped (or the last was cut short). */
   stoppedBy?: "usd" | "tokens";
 }
@@ -85,6 +92,9 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
     findings.warning += b.findings.warning;
   }
   const exceeded = budget.exceeded();
+  const judged = completed
+    .map((b) => b.judge?.costUsd ?? null)
+    .filter((c): c is number => c !== null);
   return {
     briefs: all.length,
     completed: completed.length,
@@ -100,26 +110,44 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
     inputTokens: totals.inputTokens,
     outputTokens: totals.outputTokens,
     costUsd: totals.costUsd,
+    judgeCostUsd:
+      judged.length === 0 ? null : Math.round(judged.reduce((sum, c) => sum + c, 0) * 1e6) / 1e6,
     findings,
+    rubric: rubricTotals(completed),
     ...(exceeded ? { stoppedBy: exceeded.by } : {}),
   };
+}
+
+/** Per-dimension means over the briefs whose rubric was scored, one decimal; then their mean. */
+export function rubricTotals(briefs: BriefResult[]): EvalTotals["rubric"] {
+  const dimensions = {} as Record<RubricDimension, number | null>;
+  for (const d of RUBRIC_DIMENSIONS) {
+    const scores = briefs
+      .map((b) => b.scores?.rubric?.dimensions[d] ?? null)
+      .filter((s): s is number => s !== null);
+    dimensions[d] =
+      scores.length === 0
+        ? null
+        : Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
+  }
+  return { mean: rubricMean(dimensions), dimensions };
 }
 
 export function formatResultsTable(results: EvalResults): string {
   const usd = (v: number | null) => (v === null ? "-" : `$${v.toFixed(4)}`);
   const lines = [
-    "| brief | ok | ms | first slide ms | slides | calls | tokens in/out | cost | errors | warnings | schema | model |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    "| brief | ok | ms | first slide ms | slides | calls | tokens in/out | cost | errors | warnings | schema | model | rubric |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
   ];
   for (const b of results.briefs) {
     lines.push(
-      `| ${b.id} | ${b.ok ? "yes" : `no (${b.error})`} | ${b.durationMs} | ${b.firstSlideMs ?? "-"} | ${b.slides} | ${b.calls} | ${b.inputTokens}/${b.outputTokens} | ${usd(b.costUsd)} | ${b.findings.error} | ${b.findings.warning} | ${b.scores?.schema ?? "-"} | ${b.scores?.modelFindings ?? "-"} |`,
+      `| ${b.id} | ${b.ok ? "yes" : `no (${b.error})`} | ${b.durationMs} | ${b.firstSlideMs ?? "-"} | ${b.slides} | ${b.calls} | ${b.inputTokens}/${b.outputTokens} | ${usd(b.costUsd)} | ${b.findings.error} | ${b.findings.warning} | ${b.scores?.schema ?? "-"} | ${b.scores?.modelFindings ?? "-"} | ${b.scores?.rubric?.mean ?? "-"} |`,
     );
   }
   const t = results.totals;
   lines.push(
     "",
-    `Totals: ${t.completed}/${t.briefs} briefs, ${t.calls} calls, ${t.inputTokens}/${t.outputTokens} tokens, ${usd(t.costUsd)} (cap $${results.capUsd.toFixed(2)}), mean ${t.meanDurationMs ?? "-"} ms, p50 first slide ${t.p50FirstSlideMs ?? "-"} ms, ${t.findings.error} errors / ${t.findings.warning} warnings${t.stoppedBy ? ` — stopped at the ${t.stoppedBy} cap` : ""}`,
+    `Totals: ${t.completed}/${t.briefs} briefs, ${t.calls} calls, ${t.inputTokens}/${t.outputTokens} tokens, ${usd(t.costUsd)} (cap $${results.capUsd.toFixed(2)}), mean ${t.meanDurationMs ?? "-"} ms, p50 first slide ${t.p50FirstSlideMs ?? "-"} ms, ${t.findings.error} errors / ${t.findings.warning} warnings, rubric mean ${t.rubric.mean ?? "-"}${t.stoppedBy ? ` — stopped at the ${t.stoppedBy} cap` : ""}`,
   );
   return lines.join("\n");
 }
@@ -133,7 +161,7 @@ export async function runPaidEval(
   const results: BriefResult[] = [];
   for (const brief of briefs) {
     if (budget.exceeded()) break;
-    const run = await runBrief(brief, { ai, budget });
+    const run = await runBrief(brief, { ai, budget, judge: true });
     results.push(run.result);
   }
   return results;
