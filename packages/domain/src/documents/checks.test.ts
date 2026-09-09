@@ -8,6 +8,7 @@ import {
   lesson,
   lessonFacts,
   optionElement,
+  text,
 } from "./fixtures.test-helpers";
 import type { Lesson } from "./lesson";
 import type { LessonFacts } from "./lesson-facts";
@@ -343,6 +344,177 @@ describe("checkLesson", () => {
 
     test("53 minutes for a 60-minute lesson is a warning", () => {
       expect(checkLesson(withMinutes(53, 60)).map((f) => f.check)).toEqual(["timing"]);
+    });
+  });
+
+  describe("quality checks (TEACH-210)", () => {
+    const withPitch = (l: Lesson, sentenceLengthMax = 12, readingAgeTarget = 9) => {
+      if (!l.facts) throw new Error("fixture");
+      l.facts.pitch = { readingAgeTarget, sentenceLengthMax, avoid: [] };
+      return l;
+    };
+    const contentSlide = (id: string, body: string): Slide => ({
+      id,
+      kind: "content",
+      elements: [
+        generatedText(`${id}-h`, "Heading", ["o1"], { style: { preset: "heading" } }),
+        generatedText(`${id}-b`, body, ["o1"]),
+      ],
+    });
+    const of = (findings: ReturnType<typeof checkLesson>, check: string) =>
+      findings.filter((f) => f.check === check);
+    const twentyWords =
+      "The water in the sea is warmed by the sun until it rises into the air as a vapour cloud.";
+
+    test("row 8: a content body averaging 20 words a sentence against sentenceLengthMax 12 is one readability warning naming 20; a 25-word MCQ stem is not", () => {
+      const l = withPitch(generatedLesson());
+      l.slides.push(contentSlide("s-c", `${twentyWords} ${twentyWords}`));
+      const mc = slideOf(l, "s-mc");
+      mc.elements[0] = generatedText(
+        "q",
+        "Which one of the following processes is the one that turns liquid water into vapour when the sun warms the surface of the sea?",
+        ["q1", "o1"],
+        { style: { preset: "heading" } },
+      );
+      const findings = of(checkLesson(l, generatedWorksheet()), "readability");
+      const sentences = findings.filter((f) => f.message.includes("words a sentence"));
+      expect(sentences).toHaveLength(1);
+      expect(sentences[0]).toMatchObject({ severity: "warning", target: { slideId: "s-c" } });
+      expect(sentences[0]?.message).toContain("20 words");
+      expect(findings.some((f) => f.target.slideId === "s-mc")).toBe(false);
+      // The message carries the measure, never the text.
+      for (const f of findings) expect(f.message).not.toContain("invisible vapour");
+    });
+
+    test("readability: a body far above the reading age is a warning with the estimated age", () => {
+      const l = withPitch(generatedLesson(), 40, 9);
+      l.slides.push(
+        contentSlide(
+          "s-c",
+          "Evaporation, condensation and precipitation constitute the fundamental mechanisms whereby atmospheric moisture is continuously redistributed.",
+        ),
+      );
+      const findings = of(checkLesson(l), "readability");
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.message).toMatch(
+        /reads at about age \d+; the pitch is a reading age of 9/,
+      );
+    });
+
+    test("row 9: without facts.pitch there are no readability findings", () => {
+      const l = generatedLesson();
+      l.slides.push(contentSlide("s-c", `${twentyWords} ${twentyWords}`));
+      expect(of(checkLesson(l, generatedWorksheet()), "readability")).toEqual([]);
+    });
+
+    test("row 10: a worksheet block stem equal to a slide stem is one repetition warning targeting the block", () => {
+      const w = generatedWorksheet();
+      const block = blockOf(w, "wb2");
+      if (block.type !== "question") throw new Error("fixture");
+      block.doc = text("Which process turns liquid water into vapour?");
+      const findings = of(checkLesson(generatedLesson(), w), "repetition");
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toMatchObject({ severity: "warning", target: { blockId: "wb2" } });
+      expect(findings[0]?.message).toContain('slide "multiple-choice"');
+      expect(findings[0]?.message).not.toContain("vapour");
+    });
+
+    test("row 11: a five-word phrase repeated across slides and sheet is one warning with the count and not the phrase", () => {
+      const l = generatedLesson();
+      const phrase = "one pair of ever-growing incisors";
+      for (let i = 0; i < 6; i++) l.slides.push(contentSlide(`s-r${i}`, `Rodents have ${phrase}.`));
+      const w = generatedWorksheet();
+      const block = blockOf(w, "wb2");
+      if (block.type !== "question") throw new Error("fixture");
+      block.doc = text(`Explain why rodents have ${phrase}.`);
+      const findings = of(checkLesson(l, w), "repetition").filter((f) => !f.target.blockId);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.message).toMatch(/most repeated 7 times/);
+      expect(findings[0]?.message).not.toContain("incisors");
+      // The clean fixture pair has no repetition.
+      expect(of(checkLesson(generatedLesson(), generatedWorksheet()), "repetition")).toEqual([]);
+    });
+
+    test("row 12: an outline with 8 explain minutes of 60 is one explanation-share warning", () => {
+      const l = generatedLesson();
+      if (!l.facts) throw new Error("fixture");
+      l.facts.outline = [
+        { id: "s1", kind: "title", minutes: 2, factRefs: [] },
+        { id: "s2", kind: "content", minutes: 8, factRefs: ["o1"] },
+        { id: "s3", kind: "multiple-choice", minutes: 50, factRefs: ["q1"] },
+      ];
+      const findings = of(checkLesson(l), "explanation-share");
+      expect(findings).toEqual([expect.objectContaining({ severity: "warning", target: {} })]);
+      expect(findings[0]?.message).toContain("8 of 60 minutes");
+      // 18 of 60 (exactly 30 %) passes.
+      l.facts.outline[1] = { id: "s2", kind: "content", minutes: 18, factRefs: ["o1"] };
+      l.facts.outline[2] = { id: "s3", kind: "multiple-choice", minutes: 40, factRefs: ["q1"] };
+      expect(of(checkLesson(l), "explanation-share")).toEqual([]);
+    });
+
+    test("degenerate-question: equal MCQ options on a slide and on a block are errors with a regenerate hint", () => {
+      const l = generatedLesson();
+      const mc = slideOf(l, "s-mc");
+      mc.elements[2] = {
+        ...optionElement("o2", "evaporation"),
+        generatedFrom: mc.elements[1]?.generatedFrom,
+      } as SlideElement;
+      const w = generatedWorksheet();
+      const block = blockOf(w, "wb3");
+      if (block.type !== "multiple-choice") throw new Error("fixture");
+      block.options = [
+        { id: "wm1", text: "Condensation", correct: true },
+        { id: "wm2", text: "condensation", correct: false },
+      ];
+      const findings = of(checkLesson(l, w), "degenerate-question");
+      expect(findings).toEqual([
+        expect.objectContaining({
+          severity: "error",
+          target: { slideId: "s-mc" },
+          fix: { kind: "regenerate-slide" },
+        }),
+        expect.objectContaining({
+          severity: "error",
+          target: { blockId: "wb3" },
+          fix: { kind: "regenerate-block" },
+        }),
+      ]);
+    });
+
+    test("degenerate-question: a starter footnote that repeats an item", () => {
+      const l = generatedLesson();
+      l.slides.push({
+        id: "s-st",
+        kind: "starter",
+        elements: [
+          generatedText("st-b", "1. Name a rodent.\n2. Why is it a rodent?", ["o1"]),
+          generatedText("st-f", "Why is it a rodent?", [], { style: { preset: "small" } }),
+        ],
+      });
+      const findings = of(checkLesson(l), "degenerate-question");
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.target).toEqual({ slideId: "s-st" });
+    });
+
+    test("leaked-language: house rules in pupil text and repair commentary in notes are errors; the clean fixture has none", () => {
+      const l = generatedLesson();
+      l.slides.push(contentSlide("s-l", "Hand in your answers — no names needed."));
+      const mc = slideOf(l, "s-mc");
+      mc.notes = "Corrected the rodent definition so that it matches the facts.";
+      const w = generatedWorksheet();
+      const block = blockOf(w, "wb2");
+      if (block.type !== "question") throw new Error("fixture");
+      block.doc = text("Answer as JSON.");
+      const findings = of(checkLesson(l, w), "leaked-language");
+      expect(findings.map((f) => [f.target, f.fix?.kind])).toEqual([
+        [{ slideId: "s-mc" }, "regenerate-slide"],
+        [{ slideId: "s-l" }, "regenerate-slide"],
+        [{ blockId: "wb2" }, "regenerate-block"],
+      ]);
+      for (const f of findings) expect(f.message).not.toMatch(/no names|JSON|Corrected/);
+      expect(of(checkLesson(generatedLesson(), generatedWorksheet()), "leaked-language")).toEqual(
+        [],
+      );
     });
   });
 });

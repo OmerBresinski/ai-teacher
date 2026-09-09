@@ -1,6 +1,12 @@
 import { createScorer } from "@mastra/core/evals";
 import type { Budget, CreatedAi } from "@tj/ai";
-import { checkLesson, type Finding, type Lesson, type Worksheet } from "@tj/domain/documents";
+import {
+  checkLesson,
+  SCHEMA_CHECKS as DOMAIN_SCHEMA_CHECKS,
+  type Finding,
+  type Lesson,
+  type Worksheet,
+} from "@tj/domain/documents";
 import { PLACEHOLDER_IMAGE } from "@tj/slides";
 import pino from "pino";
 import { callStructured } from "../src/call";
@@ -65,12 +71,7 @@ export interface ScoredLesson {
 }
 
 /** `checkLesson`'s own check names; everything else on `generation.findings` is a model check. */
-const SCHEMA_CHECKS = new Set([
-  "question-answer",
-  "objective-coverage",
-  "vocabulary-in-facts",
-  "timing",
-]);
+const SCHEMA_CHECKS: ReadonlySet<string> = DOMAIN_SCHEMA_CHECKS;
 
 const perSlide = (problems: number, slides: number) =>
   slides === 0 ? 0 : Math.max(0, Math.min(1, 1 - problems / slides));

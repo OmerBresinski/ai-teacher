@@ -304,6 +304,31 @@ describe("runLessonPipeline", () => {
     expect(lines.some((l) => l.includes("retrying once"))).toBe(true);
   });
 
+  test("TEACH-210 row 7: a degenerate slide reply (equal MCQ options) is a validation issue the retry names; the good reply lands", async () => {
+    // Outline position 7 is the multiple-choice slide; its generated-slide call is SLIDES_INDEX + 5
+    // (positions 0–1 are materialised by Plan).
+    const goodSpec = FIXTURES.slides["multiple-choice"] as {
+      options: { text: string; correct: boolean }[];
+    };
+    const bad = JSON.stringify({
+      ...goodSpec,
+      options: goodSpec.options.map((o, i) =>
+        i === 1 ? { ...o, text: goodSpec.options[0]?.text } : o,
+      ),
+    });
+    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 5, [bad, JSON.stringify(goodSpec)]);
+    const { lesson } = await runLessonPipeline(
+      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
+      recordingDeps(ai),
+    );
+    expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1);
+    const retry = ai.calls[SLIDES_INDEX + 6];
+    expect(retry?.promptText).toContain("did not validate");
+    expect(retry?.promptText).toContain("Every option must be different.");
+    expect(lesson.slides).toHaveLength(TOTAL_SLIDES);
+    expect(lesson.slides.find((s) => s.kind === "multiple-choice")).toBeDefined();
+  });
+
   test("two schema misses on a slide fail Generate with a StageFailure; earlier slides were persisted", async () => {
     const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 2, ["not json", "still not json"]);
     const deps = recordingDeps(ai);

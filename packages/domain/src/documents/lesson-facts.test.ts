@@ -179,7 +179,7 @@ describe("LessonFactsSchema", () => {
     const result = LessonFactsSchema.safeParse(facts);
     expect(result.success).toBe(false);
     if (result.success) return;
-    expect(result.error.issues[0]?.path).toEqual(["outline", 4, "kind"]);
+    expect(result.error.issues[0]?.path).toEqual(["outline", lessonFacts().outline.length, "kind"]);
   });
 
   test("an image-text entry parses with a brief; a brief elsewhere is refused", () => {
@@ -200,7 +200,7 @@ describe("LessonFactsSchema", () => {
     if (missing.success) return;
     expect(missing.error.issues.map((issue) => issue.path)).toContainEqual([
       "outline",
-      4,
+      lessonFacts().outline.length,
       "imageBrief",
     ]);
 
