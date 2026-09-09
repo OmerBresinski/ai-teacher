@@ -375,7 +375,11 @@ export function QuestionAnswer({ block }: { block: Question }) {
   const { patch } = useBlockWrites();
   const answer = block.answer ?? "";
   return (
-    <div className="ws-answer-slot" data-answer-view>
+    <div
+      className="ws-answer-slot"
+      data-answer-view
+      data-reserve={block.answerLines === 0 ? "" : undefined}
+    >
       <div className="ws-answer">
         <span className="ws-answer-label" aria-hidden>
           Answer

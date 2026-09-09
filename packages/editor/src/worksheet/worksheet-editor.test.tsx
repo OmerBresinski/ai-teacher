@@ -576,7 +576,7 @@ describe("answers on the sheet (TEACH-195)", () => {
     expect((read().blocks[0] as Question).answer).toBe("Three quarters");
     expect(screen.queryByText("No answer yet")).toBeNull();
     // Off again from the keyboard: nothing on the sheet says what the answer is.
-    fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: "x", metaKey: true, shiftKey: true });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
     expect(container.querySelector(`.ws-column :is(${VIEW_MARKUP})`)).toBeNull();
     expect(
@@ -585,18 +585,26 @@ describe("answers on the sheet (TEACH-195)", () => {
   });
 
   test("row 3: fill-gap, matching and word search show their answers on the sheet, and the measuring column never sees the view", () => {
-    const blocks = [newBlock("fill-gap"), newBlock("matching"), newBlock("word-search")];
+    const blocks = [
+      newBlock("question"),
+      newBlock("multiple-choice"),
+      newBlock("fill-gap"),
+      newBlock("matching"),
+      newBlock("word-search"),
+    ];
     const { container } = renderWorksheetEditor(withBlocks(blocks));
     const measure = container.querySelector(".ws-measure") as HTMLElement;
     const measured = measure.innerHTML;
     const pages = () => container.querySelectorAll(".ws-column .ws-page").length;
     const pagesBefore = pages();
     expect(container.querySelector(`.ws-column :is(${VIEW_MARKUP})`)).toBeNull();
-    fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: "x", metaKey: true, shiftKey: true });
     const column = container.querySelector(".ws-column") as HTMLElement;
+    expect(column.querySelectorAll(".ws-answer").length).toBe(1);
+    expect(column.querySelectorAll(".ws-opt-answer").length).toBe(4);
     expect(column.querySelectorAll(".ws-gap-answer").length).toBeGreaterThan(0);
     expect(column.querySelectorAll(".ws-match-answer").length).toBe(
-      (blocks[1] as Extract<WorksheetBlock, { type: "matching" }>).pairs.length,
+      (blocks[3] as Extract<WorksheetBlock, { type: "matching" }>).pairs.length,
     );
     expect(column.querySelectorAll(".ws-search-ring").length).toBeGreaterThan(0);
     // The lead the pupil reads stays, so the word search keeps its height.
@@ -607,8 +615,30 @@ describe("answers on the sheet (TEACH-195)", () => {
     expect(pages()).toBe(pagesBefore);
   });
 
-  test("? opens the Keyboard shortcuts sheet, which lists Show answers", async () => {
+  test("an existing answer fills the Model answer field; a question with no lines reserves a line for it", () => {
+    const answered = newBlock("question") as Question;
+    answered.answer = "Nine";
+    const bare = newBlock("question") as Question;
+    bare.answerLines = 0;
+    const { container } = renderWorksheetEditor(withBlocks([answered, bare]));
+    fireEvent.click(screen.getByRole("button", { name: "Show answers" }));
+    const fields = screen.getAllByRole("textbox", { name: "Model answer" });
+    expect(fields[0]).toHaveTextContent("Nine");
+    expect(row(container, answered.id).querySelector(".ws-answer-slot[data-reserve]")).toBeNull();
+    expect(row(container, bare.id).querySelector(".ws-answer-slot[data-reserve]")).not.toBeNull();
+    // The paper's own colours travel on the sheet root, not the app theme's.
+    const root = container.querySelector(".ws-column .ws-sheet") as HTMLElement;
+    expect(root.style.getPropertyValue("--ws-answer-ink")).toMatch(/^#/);
+  });
+
+  test("? opens the Keyboard shortcuts sheet, which lists Show answers; not over an open dialog", async () => {
     renderWorksheetEditor();
+    fireEvent.click(screen.getByRole("button", { name: "Add block" }));
+    await screen.findByRole("dialog", { name: "Add a block" });
+    fireEvent.keyDown(window, { key: "?", shiftKey: true });
+    expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).toBeNull();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add a block" })).toBeNull());
     fireEvent.keyDown(window, { key: "?", shiftKey: true });
     const dialog = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
     expect(within(dialog).getByText("Show answers on / off")).toBeInTheDocument();

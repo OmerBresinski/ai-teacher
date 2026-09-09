@@ -104,7 +104,7 @@ test.describe("answers on the sheet (TEACH-195)", () => {
     await page.waitForTimeout(700);
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5000 });
     // The shortcut turns the view off; the view is not saved, so a reload starts with it off.
-    await page.keyboard.press(`${MOD}+Shift+K`);
+    await page.keyboard.press(`${MOD}+Shift+X`);
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
     await expect(page.locator(".ws-column .ws-answer")).toHaveCount(0);
     await page.reload();
@@ -112,7 +112,7 @@ test.describe("answers on the sheet (TEACH-195)", () => {
       "aria-pressed",
       "false",
     );
-    await page.keyboard.press(`${MOD}+Shift+K`);
+    await page.keyboard.press(`${MOD}+Shift+X`);
     await expect(page.getByRole("textbox", { name: "Model answer" }).first()).toHaveText(
       "Three quarters",
     );

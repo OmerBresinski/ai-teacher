@@ -241,11 +241,9 @@
   position: relative;
 }
 
-/* Accent, muted towards the sheet's ink: the brand fill alone is 3.7:1 on paper, under AA for
-   text; mixed with the ink it reads as the accent and passes. */
-.ws-edit {
-  --ws-answer-ink: color-mix(in srgb, var(--primary) 70%, var(--ws-ink));
-}
+/* The view's colours (`--ws-answer-*`) come from `sheetVars()` as literals chosen against the
+   white paper, never from app theme tokens: the paper does not follow the dark or high-contrast
+   theme, and a token that does can vanish on it. */
 
 .ws-opt-answer {
   position: absolute;
@@ -254,7 +252,7 @@
   width: 12pt;
   height: 12pt;
   padding: 0;
-  border: 1.5px solid var(--ink-4);
+  border: 1.5px solid var(--ws-answer-rule);
   border-radius: 999px;
   background: transparent;
   cursor: pointer;
@@ -275,19 +273,19 @@
 }
 
 .ws-opt-answer:hover {
-  border-color: var(--primary);
-  background: var(--accent);
+  border-color: var(--ws-answer-ink);
+  background: var(--ws-answer-tint);
 }
 
 .ws-opt-answer:focus-visible {
   outline: none;
-  box-shadow: var(--focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .ws-opt-answer-on,
 .ws-opt-answer-on:hover {
-  border-color: var(--primary);
-  background: var(--primary);
+  border-color: var(--ws-answer-ink);
+  background: var(--ws-answer-ink);
 }
 
 /* A question's model answer: a zero-height slot under the stem, the answer drawn over the first
@@ -295,6 +293,13 @@
 .ws-answer-slot {
   position: relative;
   height: 0;
+}
+
+/* No ruled lines to draw over: the slot takes a line of its own on screen instead, so the answer
+   never sits on the next block. The page breaks are still the measured ones. */
+.ws-answer-slot[data-reserve] {
+  height: auto;
+  padding-top: 4pt;
 }
 
 .ws-answer {
@@ -306,6 +311,11 @@
   display: flex;
   align-items: baseline;
   gap: 6pt;
+}
+
+/* In the reserved slot the answer is in flow. */
+.ws-answer-slot[data-reserve] .ws-answer {
+  position: static;
 }
 
 .ws-answer-label {
@@ -373,7 +383,7 @@
 
 /* The word search rings the key will print, in accent on screen. */
 .ws-search-ring-view {
-  border-color: var(--primary);
+  border-color: var(--ws-answer-ink);
 }
 
 /* ---- the empty sheet ------------------------------------------------------------------- */
@@ -520,7 +530,7 @@
 
 .ws-job-chip:focus-visible {
   outline: none;
-  box-shadow: var(--focus);
+  box-shadow: var(--shadow-focus);
 }
 
 /* The creation flow's tier row (TEACH-184): Core is the one on, drawn as a brand hairline on the
@@ -566,7 +576,7 @@
 }
 
 .ws-recipe-card:has(.ws-recipe-pick:focus-visible) {
-  box-shadow: var(--focus);
+  box-shadow: var(--shadow-focus);
 }
 
 /* The creation flow's chosen card (TEACH-184): a 2px brand hairline, no tint (the meta line's
@@ -672,7 +682,7 @@
 }
 
 .ws-block-pick:focus-visible {
-  box-shadow: var(--focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .ws-block-pick-icon {

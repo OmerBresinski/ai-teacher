@@ -6,8 +6,12 @@ import type { HelpShortcut } from "../lesson/shortcuts";
  * this list is what the sheet shows, so it must say only what those handlers do.
  */
 
-/** "Show answers" on / off (TEACH-195). Free in both editors' maps; works from inside a field. */
-export const SHOW_ANSWERS_KEYS = "$mod+Shift+k";
+/**
+ * "Show answers" on / off (TEACH-195). Free in both editors' maps and reserved by no browser
+ * (`$mod` also matches Ctrl, so the binding must be clear on Windows and Linux too: ⌘⇧K is
+ * Firefox's Web Console, ⌘⇧A is Chrome's tab search). Works from inside a field.
+ */
+export const SHOW_ANSWERS_KEYS = "$mod+Shift+x";
 
 export const WORKSHEET_SHORTCUTS: HelpShortcut[] = [
   { id: "slash", label: "Add a block, in an empty paragraph", keys: ["/"], group: "Blocks" },

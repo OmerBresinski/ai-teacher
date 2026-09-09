@@ -194,6 +194,9 @@ export function WorksheetEditor({
   // The "Add a block" dialog: where its blocks go (`null` appends, from the pill).
   const [adder, setAdder] = useState<{ afterId: Id | null } | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  // `?` opens the shortcuts sheet only when no dialog or menu is already up.
+  const overlayOpen = useRef(false);
+  overlayOpen.current = helpOpen || adder !== null || slash !== null;
 
   /* ---- editing intents ------------------------------------------------ */
 
@@ -407,6 +410,7 @@ export function WorksheetEditor({
       }
       if (isInTextField(e.target)) return;
       if (matchesBinding(e, "?")) {
+        if (overlayOpen.current) return;
         e.preventDefault();
         setHelpOpen(true);
         return;
