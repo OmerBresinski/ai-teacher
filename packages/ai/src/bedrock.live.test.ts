@@ -43,10 +43,13 @@ const LIVE_TIMEOUT_MS = 30_000;
         AWS_REGION: process.env.AWS_REGION,
         AI_MODEL_STANDARD: process.env.AI_MODEL_STANDARD,
       });
+      // `maxReasoningEffort` is what `callStructured` sends for every non-Anthropic id (TEACH-207):
+      // a Luna call at `low` must still answer.
       const result = await generateText({
-        model: ai.model("standard"),
+        model: ai.model("standard", { effort: "low" }),
         prompt: "Reply with pong.",
-        maxOutputTokens: 16,
+        maxOutputTokens: 64,
+        providerOptions: { bedrock: { reasoningConfig: { maxReasoningEffort: "low" } } },
       });
       expect(result.text.trim().length).toBeGreaterThan(0);
       expect(result.usage.inputTokens).toBeGreaterThan(0);

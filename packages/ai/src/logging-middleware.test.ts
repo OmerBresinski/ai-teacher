@@ -85,6 +85,7 @@ describe("AI logging middleware", () => {
       jobId: "0192f7a0-0000-7000-8000-0000000000aa",
       stage: "plan",
       promptVersion: "plan.v1",
+      effort: "medium",
     };
 
     await generateText({ model: ai.model("small", context), prompt });

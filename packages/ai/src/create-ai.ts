@@ -147,7 +147,10 @@ export const NO_THINKING = {
   bedrock: { additionalModelRequestFields: { thinking: { type: "disabled" } } },
 } as const;
 
-/** `anthropic.…`, `us.anthropic.…`, `eu.anthropic.…` — any region-prefixed Anthropic id. */
+/**
+ * `anthropic.…` or any inference-profile-prefixed Anthropic id: `us.`, `eu.`, `apac.`, `global.`
+ * — the prefix is one lower-case word, not always two letters.
+ */
 export function isAnthropicModelId(modelId: string): boolean {
-  return /^(?:[a-z]{2}\.)?anthropic\./.test(modelId);
+  return /^(?:[a-z]+\.)?anthropic\./.test(modelId);
 }

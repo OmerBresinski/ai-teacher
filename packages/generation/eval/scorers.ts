@@ -182,6 +182,8 @@ export function rubricJudgeScorer(judge: JudgeDeps) {
           },
           stage: "evaluate",
           cls: "frontier",
+          // Judging is thinking work; `medium` rather than `high` keeps Sol's wall time bounded.
+          effort: "medium",
           prompt: rubricJudgePrompt,
           input: rubricJudgeInput(run.output),
           schema: RubricOutputSchema,

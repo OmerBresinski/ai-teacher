@@ -104,6 +104,8 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
       "anthropic.claude-sonnet-5",
       "us.anthropic.claude-sonnet-5",
       "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "apac.anthropic.claude-sonnet-5",
+      "global.anthropic.claude-opus-5",
       DEFAULT_MODEL_IDS.frontier,
     ]) {
       expect(isAnthropicModelId(id)).toBe(true);

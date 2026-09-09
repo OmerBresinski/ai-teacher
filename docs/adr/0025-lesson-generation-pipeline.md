@@ -330,3 +330,18 @@ half still never spends — and is eval-only: the prompt is not in `PROMPTS`, no
 after this lands is the project's baseline; the `frontier` model the judge runs on is whatever
 `AI_MODEL_FRONTIER` names (the model-classes ticket moves it to GPT-5.6 Sol and re-baselines).
 
+## Amendment (2026-09-09, project Generation quality — TEACH-207)
+
+§13 deferred "per-stage overrides" to F13. The first one lands here, as reasoning effort rather
+than model class: `CallStructuredOptions.effort: "low" | "medium" | "high"` is **required** on
+every call, so no stage runs at the provider's default by omission, and `callStructured` sends it
+to Bedrock as `providerOptions.bedrock.reasoningConfig.maxReasoningEffort` (which
+`@ai-sdk/amazon-bedrock` maps to `reasoning.effort` for an OpenAI id; for an Anthropic id nothing
+is sent, since `@tj/ai` disables thinking there and the `small` Haiku may not accept
+`output_config.effort`). The retry carries the same effort. Values are set at the call sites, never
+in a prompt or in `create-ai.ts`'s per-class middleware: Generate (slides and worksheet),
+check-input, the illustrate judge, Repair, cascade and regenerate run at `low`; plan-skeleton,
+plan-facts and Evaluate at `medium` (the project's §6 table is the hypothesis; its A/B ticket
+decides the contested cells). `AiCallContext.effort` puts the value on every `ai` log line beside
+`durationMs`. This is the fix for the 168-second Luna lesson of 9 Sept 2026 (TEACH-205).
+

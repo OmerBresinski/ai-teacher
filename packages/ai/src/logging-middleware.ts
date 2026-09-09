@@ -39,6 +39,7 @@ function contextFields(context: AiCallContext | undefined): AiCallContext {
   if (context.jobId !== undefined) fields.jobId = context.jobId;
   if (context.stage !== undefined) fields.stage = context.stage;
   if (context.promptVersion !== undefined) fields.promptVersion = context.promptVersion;
+  if (context.effort !== undefined) fields.effort = context.effort;
   return fields;
 }
 

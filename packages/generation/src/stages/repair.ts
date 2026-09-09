@@ -77,6 +77,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           deps,
           stage: "repair",
           cls: "standard",
+          effort: "low",
           prompt: repairPrompt,
           input: {
             facts,
@@ -108,6 +109,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           deps,
           stage: "repair",
           cls: "standard",
+          effort: "low",
           prompt: repairPrompt,
           input: {
             facts,
