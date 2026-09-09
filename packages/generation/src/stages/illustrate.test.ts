@@ -226,6 +226,23 @@ describe("illustrate", () => {
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
   });
 
+  test("a requery repeating a searched query is empty with no second search", async () => {
+    const { images, searches } = fakeImages(async () => [pexelsPhoto("x", true)]);
+    const deps = recordingDeps(judge(requery("River Severn!")), { images });
+    const state = await run(imageLesson([{ subject: "river severn dawn" }]), deps);
+    // Both candidates were searched; the judge's "new" query is the second one, re-punctuated.
+    expect(searches).toEqual(["river severn dawn", "river severn"]);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+  });
+
+  test("the judge is told every query searched", async () => {
+    const { images } = fakeImages(async () => [pexelsPhoto("x", true)]);
+    const ai = judge(pick("x"));
+    await run(imageLesson([{ subject: "river severn dawn" }]), recordingDeps(ai, { images }));
+    expect(ai.calls[0]?.promptText).toContain("river severn dawn; river severn");
+  });
+
   test("a blocklisted requery is empty with no second search", async () => {
     const { images, searches } = fakeImages(async () => [pexelsPhoto("x", true)]);
     const deps = recordingDeps(judge(requery("gore")), { images });

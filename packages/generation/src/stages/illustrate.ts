@@ -1,5 +1,11 @@
 import type { Finding, ImageBrief, Lesson, SlideElement } from "@tj/domain/documents";
-import { isBlockedQuery, PexelsError, type PhotoResult, queryCandidates } from "@tj/images";
+import {
+  isBlockedQuery,
+  normaliseQuery,
+  PexelsError,
+  type PhotoResult,
+  queryCandidates,
+} from "@tj/images";
 import { PLACEHOLDER_IMAGE } from "@tj/slides";
 import { callStructured } from "../call";
 import { PickOrRequerySchema, pickOrRequeryPrompt } from "../prompts/pick-or-requery-photo";
@@ -205,7 +211,8 @@ type PlaceArgs = {
 async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   const { lesson, slide, target, brief, images, deps, index } = args;
   const candidates: PhotoResult[] = [];
-  let firstQuery: string | undefined;
+  /** Every query actually searched, so the judge is told all of them and never repeats one. */
+  const tried: string[] = [];
   for (const query of queryCandidates(brief)) {
     if (candidates.length >= MAX_CANDIDATES) break;
     // Safety (TEACH-162): a blocked candidate searches nothing.
@@ -213,7 +220,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
       continue;
     }
-    firstQuery ??= query;
+    tried.push(query);
     const photos = await searchPortraits(images, query, deps.signal);
     if (photos === "busy") return { outcome: "busy" };
     for (const photo of photos) {
@@ -222,7 +229,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     }
   }
   // Every candidate query was blocked: nothing to judge, nothing to say.
-  if (firstQuery === undefined) return { outcome: "empty" };
+  if (tried.length === 0) return { outcome: "empty" };
 
   const facts = lesson.facts;
   const call = await callStructured({
@@ -240,7 +247,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       slideText: slideText(slide),
       subject: brief.subject,
       mustShow: brief.mustShow,
-      query: firstQuery,
+      queries: tried,
       candidates: candidates.map((c) => ({ id: c.id, alt: c.alt })),
     },
     schema: PickOrRequerySchema,
@@ -258,9 +265,15 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     };
 
   const requery = call.output.query;
-  if (!requery || isBlockedQuery(requery)) {
-    if (requery) deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
-    return { outcome: "empty", judged: requery ? "query" : "none" };
+  if (!requery) return { outcome: "empty", judged: "none" };
+  // A repeat of a query already searched would return the pool the judge just rejected.
+  if (tried.map(normaliseQuery).includes(normaliseQuery(requery))) {
+    deps.logger.info({ stage: "illustrate", slideIndex: index, repeated: true });
+    return { outcome: "empty", judged: "query" };
+  }
+  if (isBlockedQuery(requery)) {
+    deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
+    return { outcome: "empty", judged: "query" };
   }
   const photos = await searchPortraits(images, requery, deps.signal);
   if (photos === "busy") return { outcome: "busy" };

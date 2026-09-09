@@ -23,8 +23,8 @@ export type PickOrRequeryInput = {
   slideText: string;
   subject: string;
   mustShow?: string | undefined;
-  /** The query the candidates came from, so a requery never repeats it. */
-  query: string;
+  /** Every query already searched, so a requery never repeats one. */
+  queries: string[];
   candidates: { id: string; alt: string }[];
 };
 
@@ -51,7 +51,7 @@ export const pickOrRequeryPrompt = {
     "Read the lesson context first: the topic decides what an ambiguous word means (a lesson on rodents wants an animal's teeth, never a person's; a lesson on rivers wants a riverbank, never a bank branch).",
     "Answer with exactly one of:",
     "- `pick`: the id of the ONE caption that clearly depicts the slide's subject as it belongs in this lesson and suits the audience. Prefer the plainest literal depiction of the subject. Reject anything off-topic, decorative, text-heavy, a person or medical scene when the subject is an animal or object, or unsuitable for the year group. When two fit, pick the earlier one.",
-    "- `query`: when no caption fits but a better search plausibly would — two to four plain words, British English, a standalone stock-photo query that carries the lesson's context and is not the query already tried.",
+    "- `query`: when no caption fits but a better search plausibly would — two to four plain words, British English, a standalone stock-photo query that carries the lesson's context and is none of the searches already tried.",
     "- both `null`: when no caption fits and you cannot think of a materially better query. A missing picture is better than a wrong one.",
     "",
     "Answer as JSON in one of these shapes:",
@@ -71,7 +71,7 @@ export const pickOrRequeryPrompt = {
       "",
       `This slide says: ${input.slideText}`,
       `Wanted: ${input.subject}${input.mustShow ? ` (must show: ${input.mustShow})` : ""}`,
-      `Search already tried: ${input.query}`,
+      `Searches already tried: ${input.queries.join("; ")}`,
       "",
       input.candidates.length > 0 ? "Results:" : "Results: none.",
     );

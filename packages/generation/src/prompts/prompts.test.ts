@@ -48,7 +48,7 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
     slideText: "Ice melts into water when heated.",
     subject: "melting ice",
     mustShow: "water and ice together",
-    query: "melting ice",
+    queries: ["melting ice", "melting"],
     candidates: [
       { id: "1", alt: "Ice cubes melting on a wooden table" },
       { id: "2", alt: "A dentist examining a patient" },
@@ -113,7 +113,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "pick-or-requery-photo": {
     version: "pick-or-requery-photo.v1",
-    hash: "f342cb3b935be66fcb52496753c0738027b205f26d97bd0dc75cb2cd4a8d1959",
+    hash: "ea854cc39411f363a9dd5fe5e431e5a2d3d6b0057e4ccbfd1e387068eea44f4f",
   },
   evaluate: {
     version: "evaluate.v1",
