@@ -25,10 +25,6 @@ describe("pupilObjective", () => {
     expect(pupilObjective("I cannot divide fractions")).toBe("I cannot divide fractions");
   });
 
-  test("does not treat a word that starts with can as the stem", () => {
-    expect(pupilObjective("I candle")).toBe("I can I candle");
-  });
-
   test("keeps the first letter of an acronym or proper noun", () => {
     expect(pupilObjective("NASA missions in order")).toBe("I can NASA missions in order");
     expect(pupilObjective("SI units for length")).toBe("I can SI units for length");
@@ -60,6 +56,16 @@ describe("objectiveLine", () => {
   test("drops a stem the text already carries so the heading is not said twice", () => {
     expect(objectiveLine("I can describe the stages")).toBe("describe the stages");
     expect(objectiveLine("i can  Describe the stages")).toBe("describe the stages");
+    expect(objectiveLine("I can")).toBe("");
+  });
+
+  test("leaves a negative stem whole, as pupilObjective does", () => {
+    expect(objectiveLine("I can't yet divide fractions")).toBe("I can't yet divide fractions");
+    expect(objectiveLine("i cannot divide fractions")).toBe("I cannot divide fractions");
+  });
+
+  test("does not treat a word that starts with can as the stem", () => {
+    expect(objectiveLine("I candle")).toBe("I candle");
   });
 
   test("keeps an acronym, a proper noun and the pronoun I", () => {

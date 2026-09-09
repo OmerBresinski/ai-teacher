@@ -66,7 +66,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("objectives"),
     ...specBase,
-    heading: line(SPEC_LIMITS.heading).optional(),
+    // No heading: the slide always carries the reader's stem (TEACH-198).
     items: items(1, 4),
   }),
   z.strictObject({

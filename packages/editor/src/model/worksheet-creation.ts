@@ -128,8 +128,9 @@ export type LessonSource = {
 
 /**
  * The page-1 header a sheet made from this lesson carries: the lesson's title and its first
- * objective in the pupil's form ("I can …", TEACH-198). Only the lesson's own facts name the objective; example facts fill blocks, never
- * the header, so a sheet for a lesson without facts is honest about what it knows.
+ * objective in the pupil's form ("I can …", TEACH-198). Only the lesson's own facts name the
+ * objective; example facts fill blocks, never the header, so a sheet for a lesson without facts
+ * is honest about what it knows.
  */
 function headerFor(lesson: LessonSource): Worksheet["header"] {
   const objective = lesson.facts?.objectives[0]?.text;

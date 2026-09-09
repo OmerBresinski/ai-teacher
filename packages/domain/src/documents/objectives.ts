@@ -9,7 +9,11 @@
 /** The objectives slide heading; the numbered lines under it complete the sentence. */
 export const OBJECTIVES_SLIDE_HEADING = "By the end of this lesson I can";
 
-/** "I can", "I can't" or "I cannot" at the start of the phrase, any case. */
+/**
+ * "I can", "I can't" or "I cannot" at the start of the phrase, any case: the one definition of
+ * "the phrase already carries its stem", shared by both helpers. The word boundary keeps a word
+ * that merely starts with "can" ("I candle") out.
+ */
 const STEM_ALREADY = /^i can(?:'t|not)?\b/i;
 
 /** A phrase that starts with the pronoun "I" ("I can", "I know") keeps its capital. */
@@ -17,9 +21,10 @@ const PRONOUN_I = /^I\b/;
 
 /**
  * The phrase with its first letter lower-cased so it can follow a stem. The first character is
- * left alone when the first word is all capitals or its second character is upper-case (an
- * acronym or a proper noun such as "NASA" or "SI"), or when the phrase starts with the
- * pronoun "I". Trims the text; empty input gives an empty string.
+ * left alone when the second character is upper-case (an acronym or a proper noun such as
+ * "NASA" or "SI"; an all-capitals word is the same case, since its second letter is a capital),
+ * or when the phrase starts with the pronoun "I". Trims the text; empty input gives an empty
+ * string.
  */
 function lowerFirst(text: string): string {
   const phrase = text.trim();
@@ -27,10 +32,8 @@ function lowerFirst(text: string): string {
   if (PRONOUN_I.test(phrase)) return phrase;
   const first = phrase.charAt(0);
   if (first === first.toLowerCase()) return phrase;
-  const word = phrase.split(/\s+/, 1)[0] ?? "";
-  const allCapitals = word.length > 1 && /^[^a-z]+$/.test(word) && /[A-Z]{2}/.test(word);
   const second = phrase.charAt(1);
-  if (allCapitals || (second !== "" && second !== second.toLowerCase())) return phrase;
+  if (second !== "" && second !== second.toLowerCase()) return phrase;
   return first.toLowerCase() + phrase.slice(1);
 }
 
@@ -49,10 +52,15 @@ export function pupilObjective(text: string): string {
 /**
  * One line of a list under a shared stem (the slide heading): the phrase alone, first letter
  * lower-cased by the same rule. A phrase stored with its own "I can " is trimmed back to the
- * verb phrase so the stem is not said twice. Empty or whitespace input gives "".
+ * verb phrase so the stem is not said twice. A negative stem ("I can't", "I cannot") is not the
+ * heading's stem and cannot be cut without changing the meaning, so the phrase is left whole,
+ * capital "I" and all: the teacher sees the stored text and can fix it. Empty or whitespace
+ * input gives "".
  */
 export function objectiveLine(text: string): string {
   const phrase = text.trim();
-  const own = /^i can\s+/i.exec(phrase);
-  return lowerFirst(own ? phrase.slice(own[0].length) : phrase);
+  const own = STEM_ALREADY.exec(phrase);
+  if (!own) return lowerFirst(phrase);
+  if (own[0].toLowerCase() !== "i can") return `I${phrase.slice(1)}`;
+  return lowerFirst(phrase.slice(own[0].length));
 }
