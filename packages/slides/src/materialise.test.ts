@@ -12,11 +12,19 @@ import {
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
 import { z } from "zod";
-import { PLACEHOLDER_IMAGE, vocabularyGrid } from "./layouts";
+import {
+  LIST_SLOTS,
+  LIST_VARIANT_NAMES,
+  type ListKind,
+  PLACEHOLDER_IMAGE,
+  variantsFor,
+  vocabularyGrid,
+} from "./layouts";
 import {
   type IdSupplier,
   materialiseBlock,
   materialiseSlide,
+  splitAtFullStop,
   vocabularySlots,
 } from "./materialise";
 import {
@@ -533,3 +541,215 @@ describe("per-kind spec schemas (structured-output providers need a top-level ob
     expect(blockSpecSchemaFor("image")).toBeUndefined();
   });
 });
+
+/* ---- TEACH-214: variants through materialise ------------------------ */
+
+describe("materialiseSlide with a variant", () => {
+  const plain = (slide: Slide) =>
+    slide.elements
+      .map((el) => ("doc" in el && el.doc ? richDocToPlainText(el.doc) : ""))
+      .join("\n");
+
+  for (const theme of THEMES) {
+    for (const kind of GENERATABLE_SLIDE_KINDS) {
+      for (const variant of variantsFor(kind)) {
+        test(`${kind}/${variant} on ${theme.id}: every slot filled, no placeholder left`, () => {
+          const spec = minimalSpec(kind);
+          const slide = materialiseSlide(spec, theme.id, meta, counter(), variant);
+          expect(SlideSchema.safeParse(slide).success).toBe(true);
+          const text = plain(slide);
+          for (const line of specText(spec))
+            expect(text.toLowerCase(), `${kind}/${variant}`).toContain(line.toLowerCase());
+          expect(text).not.toContain("Lesson title");
+          expect(text).not.toContain("Learning objective one");
+          expect(text).not.toContain("One idea in a sentence");
+          expect(text).not.toContain("What to do first");
+          expect(text).not.toContain("Something we can now");
+          for (const el of slide.elements) expect(el.authoredBy).toBe("ai");
+        });
+      }
+    }
+  }
+
+  const LIST_KINDS = Object.keys(LIST_SLOTS) as ListKind[];
+  const line = (i: number) => `Line ${["one", "two", "three", "four"][i] ?? i} of the list`;
+
+  for (const kind of LIST_KINDS) {
+    for (const variant of LIST_VARIANT_NAMES) {
+      test(`${kind}/${variant}: a spec at its schema maximum shows every line`, () => {
+        const max = LIST_SLOTS[kind];
+        const lines = Array.from({ length: max }, (_, i) => line(i));
+        const schema = slideSpecSchemaFor(kind);
+        if (!schema) throw new Error(`no schema for ${kind}`);
+        const spec = schema.parse(
+          kind === "instructions"
+            ? { kind, factRefs: [], steps: lines }
+            : { kind, factRefs: [], items: lines },
+        ) as SlideSpec;
+        for (const theme of THEMES) {
+          const slide = materialiseSlide(spec, theme.id, meta, counter(), variant);
+          const text = plain(slide);
+          for (const l of lines) {
+            // Objectives are lower-cased to follow the stem (TEACH-198); the words survive.
+            expect(text.toLowerCase(), `${theme.id}: ${l}`).toContain(l.toLowerCase());
+          }
+          if (variant !== "numbered") {
+            const items = slide.elements.filter((el) => el.name?.startsWith("Item"));
+            expect(items, `${theme.id} one slot per line`).toHaveLength(max);
+          }
+        }
+      });
+    }
+  }
+
+  test("refuses a list with more lines than the recipe lays slots for, rather than dropping one", () => {
+    const five = {
+      kind: "objectives",
+      factRefs: [],
+      items: ["a", "b", "c", "d", "e"],
+    } as unknown as SlideSpec;
+    expect(() => materialiseSlide(five, "chalk", meta, counter(), "cards")).toThrow(/slots/);
+    expect(() => materialiseSlide(five, "chalk", meta, counter(), "stepped")).toThrow(/slots/);
+  });
+
+  for (const variant of LIST_VARIANT_NAMES) {
+    test(`objectives/${variant}: the stem is the heading and each line follows it in lower case`, () => {
+      const spec = {
+        kind: "objectives",
+        factRefs: ["o1"],
+        items: ["Describe evaporation", "Explain condensation", "Name the four stages"],
+      } as SlideSpec;
+      const slide = materialiseSlide(spec, "chalk", meta, counter(), variant);
+      const heading = slide.elements.find(
+        (el) => el.type === "text" && el.style.preset === "heading",
+      );
+      expect(heading && "doc" in heading && heading.doc && richDocToPlainText(heading.doc)).toBe(
+        "By the end of this lesson I can",
+      );
+      const text = plain(slide);
+      expect(text).toContain("describe evaporation");
+      expect(text).toContain("explain condensation");
+      expect(text).toContain("name the four stages");
+      expect(text).not.toContain("Describe evaporation");
+      expect(text).not.toContain("learning objective");
+      if (variant !== "numbered") {
+        const items = slide.elements.filter((el) => el.name?.startsWith("Item"));
+        expect(items).toHaveLength(3);
+      }
+    });
+  }
+
+  test("takes the variant by index as well as by name", () => {
+    const spec = minimalSpec("content");
+    const byName = materialiseSlide(spec, "chalk", meta, counter(), "statement");
+    const byIndex = materialiseSlide(spec, "chalk", meta, counter(), 1);
+    expect(byIndex).toEqual(byName);
+    expect(materialiseSlide(spec, "chalk", meta, counter())).toEqual(
+      materialiseSlide(spec, "chalk", meta, counter(), 0),
+    );
+  });
+
+  test("sets a statement from the body and the heading as its eyebrow", () => {
+    const slide = materialiseSlide(minimalSpec("content"), "chalk", meta, counter(), "statement");
+    const texts = slide.elements.filter((el) => el.type === "text");
+    expect(texts.map((el) => el.type === "text" && el.style.preset)).toEqual([
+      "caption",
+      "subtitle",
+    ]);
+    expect(plain(slide)).toContain("Evaporation");
+    expect(plain(slide)).toContain("The sun warms the water.");
+  });
+
+  test("splits a two-column body at its first full stop, or keeps one column", () => {
+    expect(splitAtFullStop("First idea. Second idea. Third.")).toEqual([
+      "First idea.",
+      "Second idea. Third.",
+    ]);
+    expect(splitAtFullStop("Only one sentence.")).toEqual(["Only one sentence.", ""]);
+    expect(splitAtFullStop("No full stop at all")).toEqual(["No full stop at all", ""]);
+    expect(splitAtFullStop("Water at 3.5 degrees. Then ice.")).toEqual([
+      "Water at 3.5 degrees.",
+      "Then ice.",
+    ]);
+    const two = materialiseSlide(
+      {
+        ...minimalSpec("content"),
+        body: "The sun warms the water. It rises as vapour.",
+      } as SlideSpec,
+      "chalk",
+      meta,
+      counter(),
+      "two-column",
+    );
+    const columns = two.elements.filter((el) => el.type === "text" && el.name?.startsWith("Body"));
+    expect(columns.map((el) => el.name)).toEqual(["Body left", "Body right"]);
+    expect(plain(two)).toContain("The sun warms the water.");
+    expect(plain(two)).toContain("It rises as vapour.");
+    const one = materialiseSlide(minimalSpec("content"), "chalk", meta, counter(), "two-column");
+    expect(
+      one.elements.filter((el) => el.type === "text" && el.name?.startsWith("Body")),
+    ).toHaveLength(1);
+  });
+
+  test("drops the cards and steps a list spec does not fill", () => {
+    const oneItem = materialiseSlide(minimalSpec("objectives"), "chalk", meta, counter(), "cards");
+    expect(oneItem.elements.filter((el) => el.name?.startsWith("Card"))).toHaveLength(1);
+    expect(oneItem.elements.filter((el) => el.name?.startsWith("Item"))).toHaveLength(1);
+    const four = materialiseSlide(
+      { ...minimalSpec("instructions"), steps: ["a", "b", "c", "d"] } as SlideSpec,
+      "chalk",
+      meta,
+      counter(),
+      "stepped",
+    );
+    expect(four.elements.filter((el) => el.name?.startsWith("Step"))).toHaveLength(4);
+    expect(plain(four)).toContain("d");
+    const footnote = four.elements.find((el) => el.type === "text" && el.style.preset === "small");
+    expect(footnote).toBeDefined();
+  });
+
+  test("fills the photo-band class line by name, in small", () => {
+    const slide = materialiseSlide(minimalSpec("title"), "chalk", meta, counter(), "photo-band");
+    const sub = slide.elements.find((el) => el.name === "Subtitle");
+    expect(sub?.type === "text" && sub.style.preset).toBe("small");
+    expect(sub && "doc" in sub && sub.doc && richDocToPlainText(sub.doc)).toContain("Year 4");
+    expect(slide.elements[0]?.type).toBe("image");
+  });
+});
+
+/** The lines of a minimal spec that must appear on its slide. */
+function specText(spec: SlideSpec): string[] {
+  switch (spec.kind) {
+    case "title":
+      return [spec.title, spec.subtitle];
+    case "objectives":
+      return spec.items.map((item) => item.toLowerCase());
+    case "starter":
+    case "exit-ticket":
+    case "plenary":
+      return spec.items;
+    case "instructions":
+      return spec.steps;
+    case "vocabulary":
+      return spec.entries.flatMap((e) => [e.term, e.definition]);
+    case "content":
+    case "image-text":
+      return [spec.heading, spec.body];
+    case "worked-example":
+      return [spec.question, ...spec.steps];
+    case "discussion":
+      return [spec.prompt];
+    case "true-false":
+      return [spec.statement];
+    case "multiple-choice":
+      return [spec.stem, ...spec.options.map((o) => o.text)];
+    case "matching":
+      return [spec.stem, ...spec.pairs.flatMap((p) => [p.left, p.right])];
+    case "fill-gap":
+      return [];
+    case "sort":
+      return [spec.stem, ...spec.steps];
+    case "open-response":
+      return [spec.stem];
+  }
+}

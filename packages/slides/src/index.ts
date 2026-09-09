@@ -9,6 +9,8 @@
  * `bundle.test.ts` holds the line.
  */
 
+export * from "./choose-variant";
+export * from "./demo-lesson";
 export * from "./explanation-metrics";
 export * from "./factories";
 export * from "./fonts";

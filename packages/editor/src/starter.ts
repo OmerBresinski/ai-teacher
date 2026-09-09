@@ -7,6 +7,16 @@
  * same functions beside the renderer; this entry exists so a Bun script or a lazy web chunk can
  * import them without TSX or `react` in its own dependency tree.
  */
+
+// The layout catalogue and the ten-slide fixture lesson (TEACH-214), for a Bun script or an e2e
+// spec that seeds a lesson laid out through `chooseVariant` without the renderer.
+export {
+  chooseVariant,
+  DEMO_LESSON_SPECS,
+  demoLessonSlides,
+  LAYOUT_CATALOGUE,
+  variantsFor,
+} from "@tj/slides";
 export { demoWorksheet } from "./model/demo-worksheet";
 export { type DemoDocument, demoWorkspace } from "./model/demo-workspace";
 export { cloneSlide, newLesson, newSlide } from "./model/factories";
