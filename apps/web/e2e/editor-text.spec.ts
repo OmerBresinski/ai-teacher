@@ -17,26 +17,31 @@ const stage = (page: Page) => page.locator("[data-selection-layer]");
  * first layout) or the static `td-rt` is being remounted when the first read lands — so the box
  * is polled until two consecutive reads agree (TEACH-172).
  */
-async function box(locator: Locator) {
+type Box = NonNullable<Awaited<ReturnType<Locator["boundingBox"]>>>;
+const sameBox = (a: Box | null, b: Box | null) =>
+  a !== null &&
+  b !== null &&
+  a.x === b.x &&
+  a.y === b.y &&
+  a.width === b.width &&
+  a.height === b.height;
+
+async function box(locator: Locator): Promise<Box> {
   await expect(locator).toBeVisible();
-  let last: Awaited<ReturnType<Locator["boundingBox"]>> = null;
+  const reads: (Box | null)[] = [];
   await expect
     .poll(
       async () => {
-        const next = await locator.boundingBox();
-        const settled =
-          next !== null &&
-          last !== null &&
-          next.x === last.x &&
-          next.y === last.y &&
-          next.width === last.width &&
-          next.height === last.height;
-        last = next;
-        return settled;
+        reads.push(await locator.boundingBox());
+        return (
+          reads.length >= 2 &&
+          sameBox(reads[reads.length - 1] ?? null, reads[reads.length - 2] ?? null)
+        );
       },
       { message: "element box did not settle" },
     )
     .toBe(true);
+  const last = reads[reads.length - 1];
   if (!last) throw new Error("not on screen");
   return last;
 }
@@ -48,12 +53,13 @@ const richText = (el: Locator) => el.locator(".td-rt").first();
  * Elements sit under the transform layer's pointer catcher, so Playwright's own `dblclick()` waits
  * forever for them to "receive" the event; double-click where the element is, as a hand does.
  */
-async function dblclickAt(page: Page, target: Locator) {
+async function dblclickAt(page: Page, target: Locator, opens: Locator = proseMirror(page)) {
   const b = await box(target);
   await page.mouse.dblclick(b.x + b.width / 2, b.y + b.height / 2);
-  // The canvas can still move under the pointer between the two clicks on a slow runner; when no
-  // editor opened, the box is re-read and the double-click made once more (TEACH-172).
-  const opened = await proseMirror(page)
+  // The canvas can still move under the pointer between the two clicks on a slow runner; when the
+  // editor `opens` did not appear, the box is re-read and the double-click made once more
+  // (TEACH-172).
+  const opened = await opens
     .waitFor({ state: "attached", timeout: 2_000 })
     .then(() => true)
     .catch(() => false);
@@ -181,8 +187,8 @@ test.describe("text editing", () => {
     await page.getByRole("tab", { name: "Answer" }).click();
     const panel = page.locator("[data-explanation-panel]");
     await expect(panel).toBeVisible();
-    await dblclickAt(page, panel);
     const field = page.getByRole("textbox", { name: "Why this is the answer" });
+    await dblclickAt(page, panel, field);
     await expect(field).toBeFocused();
     await page.keyboard.press("End");
     await page.keyboard.type(" Really.");

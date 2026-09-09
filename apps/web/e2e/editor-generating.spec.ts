@@ -136,7 +136,8 @@ test.describe("generating lesson", () => {
             const doc = await page.request.get(`${E2E_API_URL}/documents/${lessonId}`, {
               headers: { origin: E2E_WEB_URL },
             });
-            return ((await doc.json()) as { generatingJobId: string | null }).generatingJobId;
+            const body = (await doc.json()) as { document: { generatingJobId: string | null } };
+            return body.document.generatingJobId;
           },
           { timeout: 20_000, message: "the lesson's lock did not clear after the cancel" },
         )
