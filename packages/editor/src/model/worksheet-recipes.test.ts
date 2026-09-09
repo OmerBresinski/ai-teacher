@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { LessonFactsSchema, WorksheetBlockSchema } from "@tj/domain/documents";
+import {
+  LessonFactsSchema,
+  WORD_SEARCH_MAX_SIZE,
+  WorksheetBlockSchema,
+} from "@tj/domain/documents";
+import { buildWordSearch } from "../worksheet/word-search";
 import { DEMO_LESSON_FACTS } from "./demo-facts";
 import { numberQuestions } from "./worksheet-factories";
 import {
@@ -167,14 +172,70 @@ describe("worksheet recipes", () => {
     expect(bank?.type === "word-bank" && bank.words.length).toBe(6);
   });
 
-  test("word search: the terms in a seeded grid with the bank shown, and no placeholder", () => {
+  test("word search: the terms in a seeded grid sized to the longest, the bank shown, no placeholder", () => {
     const built = recipeById("word-search")?.build(facts) ?? [];
     expect(built.map((b) => b.type)).toEqual(["instructions", "word-search"]);
     const grid = built[1];
     if (grid?.type !== "word-search") throw new Error("grid");
     expect(grid.words).toEqual(facts.vocabulary.map((v) => v.term));
+    // "precipitation" and "transpiration" are 13 letters: the grid grows past the 12 default.
+    expect(grid.size).toBe(13);
     expect(grid.seed).toBe(1);
     expect(grid.showWordBank).toBe(true);
+    // Every term is in the built grid: nothing dropped, nothing overlong.
+    const result = buildWordSearch(grid);
+    expect(result.error).toBeNull();
+    expect(result.grid?.placements.length).toBe(6);
+    expect(result.grid?.unplaced).toEqual([]);
+    expect(JSON.stringify(built[0])).not.toContain("Not in the grid");
+  });
+
+  test("word search: a term longer than the largest grid stays out and is named on the sheet", () => {
+    const longFacts: typeof facts = {
+      ...facts,
+      vocabulary: [
+        ...facts.vocabulary,
+        { id: "v7", term: "photosynthesising", definition: "Seventeen letters, one over the cap." },
+      ],
+    };
+    const built = recipeById("word-search")?.build(longFacts) ?? [];
+    const grid = built[1];
+    if (grid?.type !== "word-search") throw new Error("grid");
+    // Sized to the longest term that fits (13), not to the one left out.
+    expect(grid.size).toBe(13);
+    expect(grid.size).toBeLessThanOrEqual(WORD_SEARCH_MAX_SIZE);
+    expect(grid.words).not.toContain("photosynthesising");
+    expect(grid.words.length).toBe(6);
+    expect(grid.generatedFrom?.factRefs).not.toContain("v7");
+    expect(JSON.stringify(built[0])).toContain("Not in the grid: photosynthesising.");
+    expect(built[0]?.generatedFrom?.factRefs).toContain("v7");
+    expect(buildWordSearch(grid).error).toBeNull();
+    // Short terms keep the default side.
+    const short = recipeById("word-search")?.build({
+      ...facts,
+      vocabulary: facts.vocabulary.slice(0, 2),
+    })?.[1];
+    expect(short?.type === "word-search" && short.size).toBe(12);
+  });
+
+  test("worked example: fewer than three lesson questions leaves the honest placeholder", () => {
+    const built =
+      recipeById("worked-example")?.build({ ...facts, questions: facts.questions.slice(0, 1) }) ??
+      [];
+    expect(built.map((b) => b.type)).toEqual([
+      "heading",
+      "paragraph",
+      "heading",
+      "question",
+      "question",
+      "question",
+      "paragraph",
+    ]);
+    expect(JSON.stringify(built[4])).toContain(PLACEHOLDER_QUESTION);
+    expect(JSON.stringify(built.at(-1))).toContain("remaining Now try questions");
+    expect(built.at(-1)?.generatedFrom?.factRefs).toEqual(expect.arrayContaining(["w1", "q1"]));
+    // With three or more, nothing is left for generation.
+    expect(recipeById("worked-example")?.build(facts).at(-1)?.type).toBe("question");
   });
 
   test("worked example: the problem and steps as one paragraph, then three to try", () => {
