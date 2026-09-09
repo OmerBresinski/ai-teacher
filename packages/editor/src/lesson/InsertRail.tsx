@@ -19,6 +19,7 @@ import {
   Video,
 } from "lucide-react";
 import { memo } from "react";
+import type { ImageSearchClient } from "../images/image-search";
 import { Rail, RailButton, RailSeparator } from "../kit/Rail";
 import {
   LINE_KINDS,
@@ -58,6 +59,8 @@ export type InsertRailProps = {
   /** Add an element to the active slide and select it; `edit` opens the text editor on it. */
   onInsert: (el: SlideElement, options?: { edit?: boolean }) => void;
   onHelp: () => void;
+  /** Pexels search + pick for the Add image panel, injected by the app. */
+  images?: ImageSearchClient;
 };
 
 /**
@@ -65,7 +68,7 @@ export type InsertRailProps = {
  * lines, icons, table, question slides, timer, embed, then Info and Help at the foot. The image
  * button anchors the Add image panel (TEACH-107), which the session opens and closes.
  */
-export const InsertRail = memo(function InsertRail({ onInsert, onHelp }: InsertRailProps) {
+export const InsertRail = memo(function InsertRail({ onInsert, onHelp, images }: InsertRailProps) {
   const lesson = useLesson();
   const theme = getTheme(lesson.themeId);
   const history = useHistory();
@@ -95,7 +98,7 @@ export const InsertRail = memo(function InsertRail({ onInsert, onHelp }: InsertR
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AddImagePanel onInsert={onInsert}>
+      <AddImagePanel onInsert={onInsert} images={images}>
         <RailButton label="Image" shortcut={hint("i")} active={imagePanel !== null}>
           <ImageIcon aria-hidden {...ICON} />
         </RailButton>

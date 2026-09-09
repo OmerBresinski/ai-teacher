@@ -27,6 +27,7 @@ export const ImageToolbar = memo(function ImageToolbar({
   // An imported lesson is untrusted JSON and could carry `javascript:` here, so the address goes
   // through the same gate as a typed link. No href, no anchor.
   const creditHref = element.creditUrl ? normaliseHref(element.creditUrl) : null;
+  const sourcePageHref = element.source?.pageUrl ? normaliseHref(element.source.pageUrl) : null;
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Image" data-image-toolbar>
@@ -98,7 +99,24 @@ export const ImageToolbar = memo(function ImageToolbar({
         slideId={slideId}
         elements={[element]}
         extra={
-          element.credit ? (
+          element.source ? (
+            <div className="flex flex-col gap-1">
+              <span className="text-eyebrow text-ink-3">Credit</span>
+              <p className="m-0 break-words text-ink-2 text-meta">
+                Photo by {element.source.photographer} on Pexels
+              </p>
+              {sourcePageHref ? (
+                <a
+                  href={sourcePageHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-meta text-primary hover:underline"
+                >
+                  View the original
+                </a>
+              ) : null}
+            </div>
+          ) : element.credit ? (
             <div className="flex flex-col gap-1">
               <span className="text-eyebrow text-ink-3">Credit</span>
               <p className="m-0 break-words text-ink-2 text-meta">{element.credit}</p>

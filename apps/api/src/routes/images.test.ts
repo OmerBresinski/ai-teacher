@@ -374,7 +374,7 @@ describe("POST /images/pick", () => {
   test("bad provider, missing target and non-JSON bodies are 400", async () => {
     const { app, state } = await pickSetup();
     state.photoResult = photo("5");
-    const bad = await pick(app, { provider: "openverse", id: "5", target: "slide" });
+    const bad = await pick(app, { provider: "other", id: "5", target: "slide" });
     expect(bad.status).toBe(400);
     expect((await errorBody(bad)).error.code).toBe("validation_failed");
     const missing = await pick(app, { provider: "pexels", id: "5" });

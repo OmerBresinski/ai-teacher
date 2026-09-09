@@ -63,10 +63,10 @@ import {
 } from "./gesture-state";
 import { HoverOutline } from "./HoverOutline";
 import { boxesOf, type ElementBox, hitsBox, marqueeHits } from "./hit-test";
+import { ImageCreditBadge } from "./ImageCreditBadge";
 import {
   AngleLabel,
   CandidateOutlines,
-  CreditBadge,
   Marquee,
   MemberOutlines,
   VISUALLY_HIDDEN,
@@ -747,11 +747,6 @@ export function SelectionLayer({
     crop && selected.length === 1 && first && first.id === crop.id && first.el.type === "image"
       ? first.el
       : null;
-  const credited =
-    selected.length === 1 && first && first.el.type === "image" && first.el.credit
-      ? first.el
-      : null;
-
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: focus tracking only; the pointer catcher is the child below
     <div
@@ -848,12 +843,17 @@ export function SelectionLayer({
         />
       ) : null}
 
-      {credited && first ? (
-        <CreditBadge
+      {selected.length === 1 &&
+      first &&
+      first.el.type === "image" &&
+      (first.el.source ?? first.el.credit) &&
+      !gestureOn &&
+      editingTextId !== first.id ? (
+        <ImageCreditBadge
+          element={first.el}
           rect={first.rect}
+          rotation={first.rotation}
           scale={scale}
-          credit={credited.credit ?? ""}
-          creditUrl={credited.creditUrl}
         />
       ) : null}
 

@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { ImageSearchClient } from "../images/image-search";
 import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
 import { makeLine, makeShape, makeText } from "../model/insert";
 import * as reducers from "../model/reducers";
@@ -77,6 +78,8 @@ export type LessonEditorProps = {
   onBack: () => void;
   /** Called after the autosave has flushed, so present mode opens the deck as it is now. */
   onPresent: () => void;
+  /** Pexels search + pick for the Add image panel, injected by the app. */
+  images?: ImageSearchClient;
   /** Where the export control sits once it exists (E1). */
   exportSlot?: ReactNode;
   /**
@@ -122,6 +125,7 @@ export function LessonEditor({
   onSave,
   onBack,
   onPresent,
+  images,
   exportSlot,
   worksheet,
   onOpenWorksheet,
@@ -386,7 +390,11 @@ export function LessonEditor({
                         autosave={autosave}
                       />
                       <div className="flex min-h-0 flex-1">
-                        <InsertRail onInsert={insert} onHelp={() => setHelpOpen(true)} />
+                        <InsertRail
+                          onInsert={insert}
+                          onHelp={() => setHelpOpen(true)}
+                          images={images}
+                        />
                         <Navigator />
                         <Canvas
                           slide={slide}

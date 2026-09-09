@@ -40,7 +40,7 @@ describe("normaliseHref", () => {
 
 describe("isLinkableHref", () => {
   test("http and https only", () => {
-    expect(isLinkableHref("openverse.org/img")).toBe(true);
+    expect(isLinkableHref("example.test/img")).toBe(true);
     expect(isLinkableHref("http://x.y")).toBe(true);
     expect(isLinkableHref("mailto:a@b.c")).toBe(false);
     expect(isLinkableHref("javascript:alert(1)")).toBe(false);

@@ -9,6 +9,7 @@ import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { useProposalJobs } from "@/hooks/use-proposal-jobs";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
+import { imageSearchClient } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
 import { lessonEditorRoute } from "./documents.route";
@@ -123,6 +124,7 @@ export function LessonEditorPage() {
       onRegenerate={proposals.onRegenerate}
       busySlideIds={proposals.busySlideIds}
       proposalsBusy={proposals.busy}
+      images={imageSearchClient}
       exportSlot={
         // `aria-disabled`, not `disabled`: a disabled button swallows pointer and focus events, so
         // its tooltip could never open (the viewer's pattern).

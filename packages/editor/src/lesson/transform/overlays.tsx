@@ -1,8 +1,5 @@
-import { Tooltip } from "@tj/ui";
-import { Info } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { Rect } from "../../model/geometry";
-import { normaliseHref } from "../../text/links";
 import { TOKENS } from "./constants";
 import type { ElementBox } from "./hit-test";
 
@@ -136,81 +133,3 @@ export const VISUALLY_HIDDEN: CSSProperties = {
   clipPath: "inset(50%)",
   whiteSpace: "nowrap",
 };
-
-/** Badge side, screen px, and its inset from the frame corner. */
-const CREDIT_SIZE = 20;
-const CREDIT_INSET = 6;
-
-/**
- * The attribution affordance on a selected searched image (TEACH-153 §5): a small "i" at the top
- * right of the frame; hover or focus reads the credit as stored ("Title by Creator, licence") under
- * an "Image credit" heading, and with a `creditUrl` it is a link to the source. It stays through crop mode, so the credit is never hidden by adjusting.
- */
-export function CreditBadge({
-  rect,
-  scale,
-  credit,
-  creditUrl,
-}: {
-  rect: Rect;
-  scale: number;
-  credit: string;
-  creditUrl?: string;
-}) {
-  // Untrusted JSON could carry `javascript:` here; the same gate as a typed link.
-  const href = creditUrl ? normaliseHref(creditUrl) : null;
-  const size = CREDIT_SIZE / scale;
-  const style: CSSProperties = {
-    position: "absolute",
-    left: rect.x + rect.w - size - CREDIT_INSET / scale,
-    top: rect.y + CREDIT_INSET / scale,
-    width: size,
-    height: size,
-    display: "grid",
-    placeItems: "center",
-    margin: 0,
-    padding: 0,
-    border: 0,
-    borderRadius: "50%",
-    background: "rgb(27 26 23 / 0.72)",
-    color: "#fff",
-    boxShadow: `0 0 0 ${1 / scale}px rgb(255 255 255 / 0.55)`,
-    cursor: href ? "pointer" : "default",
-    pointerEvents: "auto",
-    outline: "none",
-  };
-  const glyph = <Info size={12 / scale} strokeWidth={2} aria-hidden />;
-  const tip = (
-    <span className="flex flex-col gap-0.5">
-      <span className="text-eyebrow text-ink-3">Image credit</span>
-      <span>{credit}</span>
-    </span>
-  );
-  return (
-    <Tooltip label={tip}>
-      {href ? (
-        <a
-          data-credit-badge
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`${credit}. Opens the source.`}
-          onPointerDown={(e) => e.stopPropagation()}
-          style={style}
-        >
-          {glyph}
-        </a>
-      ) : (
-        <button
-          type="button"
-          data-credit-badge
-          aria-label={credit}
-          onPointerDown={(e) => e.stopPropagation()}
-          style={style}
-        >
-          {glyph}
-        </button>
-      )}
-    </Tooltip>
-  );
-}
