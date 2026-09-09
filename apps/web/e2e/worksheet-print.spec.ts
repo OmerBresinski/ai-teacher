@@ -38,8 +38,9 @@ test.describe("worksheet print route", () => {
     }
     await expect(pages.first().getByText(`Page 1 of ${count}`)).toBeVisible();
     await expect(pages.last().getByText(`Page ${count} of ${count}`)).toBeVisible();
-    // Every block on exactly one page: the sheet has 9 blocks, six of them marked questions.
-    await expect(page.locator(".ws-print-root .ws-block")).toHaveCount(9);
+    // Every block on exactly one page: the sheet has 9 blocks, six of them marked questions. The
+    // self-assessment strip at the foot is a flow item of its own, not a block (TEACH-196).
+    await expect(page.locator(".ws-print-root .ws-block:not(.ws-rag-slot)")).toHaveCount(9);
     await expect(page.locator(".ws-print-root .ws-marks")).toHaveCount(6);
     // No answer key when the sheet does not ask for one; no app chrome; no won't-fit hint.
     await expect(page.getByRole("heading", { level: 2, name: "Answer key" })).toHaveCount(0);

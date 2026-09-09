@@ -258,8 +258,9 @@
 }
 
 /* Pinned to the foot of the page it lands on. Pagination reserved the height,
-   so nothing above it moves. */
-.ws-rag-slot {
+   so nothing above it moves. Two classes, so the block padding below does not
+   win and leave a gap under the strip. */
+.ws-block.ws-rag-slot {
   position: absolute;
   left: 0;
   right: 0;

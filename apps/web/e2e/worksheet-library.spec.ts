@@ -19,15 +19,26 @@ const SHEETS = [
 const contentPages = (page: Page) =>
   page.locator(".ws-print-root .ws-page:not(:has(.ws-key-title)):not(:has(.ws-key-entry))");
 
-/** One or two content pages, no page ending on a heading, nothing reported as not fitting. */
+/**
+ * One or two pages of blocks, no page ending on a heading, nothing reported as not fitting. The
+ * self-assessment strip (TEACH-196) is one flow item that never splits, so where a full sheet
+ * leaves it no room at the foot (Fractions practice on Letter) it takes a page of its own after
+ * the blocks; that page holds nothing else and is the last page before the answer key.
+ */
 async function expectCleanPages(page: Page): Promise<void> {
   await expect(page.locator(".ws-print-root")).toHaveCSS("visibility", "visible");
   const pages = contentPages(page);
   const count = await pages.count();
   expect(count).toBeGreaterThanOrEqual(1);
-  expect(count).toBeLessThanOrEqual(2);
+  const blockPages = await pages
+    .filter({ has: page.locator(".ws-block:not(.ws-rag-slot)") })
+    .count();
+  expect(blockPages).toBeLessThanOrEqual(2);
+  expect(count - blockPages).toBeLessThanOrEqual(1);
+  if (count > blockPages) await expect(pages.last().locator(".ws-rag-slot")).toHaveCount(1);
   for (let i = 0; i < count; i += 1) {
-    const last = pages.nth(i).locator(".ws-block").last();
+    // The last content block; the self-assessment strip sits below it at the foot (TEACH-196).
+    const last = pages.nth(i).locator(".ws-block:not(.ws-rag-slot)").last();
     await expect(last.locator(".ws-h1, .ws-h2")).toHaveCount(0);
   }
   await expect(page.locator(".ws-print-hint")).toHaveCount(0);

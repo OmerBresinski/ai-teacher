@@ -14,7 +14,8 @@ const PNG = readFileSync(fileURLToPath(new URL("./fixtures/photo-3000x2000.png",
  */
 
 const EDITOR = (paths: SeededPaths) => paths.worksheet("fraction-practice");
-const blocks = (page: Page) => page.locator(".ws-column .ws-block");
+/** Content blocks only: the self-assessment strip is a flow item too, pinned to the foot (TEACH-196). */
+const blocks = (page: Page) => page.locator(".ws-column .ws-block:not(.ws-rag-slot)");
 const proseMirror = (page: Page) => page.locator(".ws-column .ProseMirror");
 
 test.describe("worksheet editor", () => {
