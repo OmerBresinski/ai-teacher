@@ -2,12 +2,13 @@
  * TEACH-201: the time estimate exhibit on `/kit`. Runs in the dev-only kit project
  * (`E2E_KIT=1 bunx playwright test --project=kit`); `TEACH_SCREENSHOTS=1` writes the reference
  * PNG for the PR at 1440 by 1000.
+ *
+ * The file name is load-bearing: `playwright.config.ts` routes `*kit.spec.ts` to the kit project
+ * and keeps it out of `chromium`, whose production build has no `/kit`. Keep the suffix.
  */
 import { expect, test } from "./fixtures";
 
 test.describe("/kit time estimate (TEACH-201)", () => {
-  test.skip(process.env.E2E_KIT !== "1", "set E2E_KIT=1 to run the dev-only kit gate");
-
   test("shows the range with history, nothing without, and the late state past the bound", async ({
     signedInPage: { page },
   }) => {

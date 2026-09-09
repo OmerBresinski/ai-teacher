@@ -41,19 +41,33 @@ export const StageEstimateSchema = z.object({
 });
 export type StageEstimate = z.infer<typeof StageEstimateSchema>;
 
+/**
+ * `stages` is partial: a history recorded before a stage was measured (no repair yet, say) still
+ * parses, and the missing stage counts as zero, so the estimate runs a little low rather than
+ * falling silent.
+ */
 export const EstimateHistorySchema = z.object({
   /** Completed runs the figures are drawn from. */
   runs: z.number().int().nonnegative(),
-  stages: z.object({
-    plan: StageEstimateSchema,
-    generateSlide: StageEstimateSchema,
-    worksheet: StageEstimateSchema,
-    illustratePicture: StageEstimateSchema,
-    evaluate: StageEstimateSchema,
-    repair: StageEstimateSchema,
-  }),
+  stages: z
+    .object({
+      plan: StageEstimateSchema,
+      generateSlide: StageEstimateSchema,
+      worksheet: StageEstimateSchema,
+      illustratePicture: StageEstimateSchema,
+      evaluate: StageEstimateSchema,
+      repair: StageEstimateSchema,
+    })
+    .partial(),
 });
 export type EstimateHistory = z.infer<typeof EstimateHistorySchema>;
+
+const NO_TIME: StageEstimate = { p50: 0, p80: 0 };
+
+/** One stage's figures, zero when the history has none for it. */
+export function stageStat(history: EstimateHistory, key: StageKey): StageEstimate {
+  return history.stages[key] ?? NO_TIME;
+}
 
 /** Below this many completed runs the medians mean nothing, so no time is shown (PRD 4.6). */
 export const MIN_HISTORY_RUNS = 5;
@@ -61,7 +75,7 @@ export const MIN_HISTORY_RUNS = 5;
 export const MIN_SHOWN_MS = 20_000;
 
 // ---------------------------------------------------------------------------------------------
-// Stage derivation (TEMPORARY: TEACH-199 ships `stageOf(events)`; replace this with it)
+// Stage derivation. TODO(TEACH-199): replace with the shell's `stageOf(events)` when it lands.
 // ---------------------------------------------------------------------------------------------
 
 /**
@@ -174,23 +188,23 @@ function stageRange(
   history: EstimateHistory,
   slidesToCome: number,
 ): EstimateRange | null {
-  const { stages } = history;
+  const stat = (key: StageKey) => stageStat(history, key);
   switch (stage) {
     case "planning":
-      return { lowMs: stages.plan.p50, highMs: stages.plan.p80 };
+      return { lowMs: stat("plan").p50, highMs: stat("plan").p80 };
     case "writing":
       return {
-        lowMs: stages.generateSlide.p50 * slidesToCome,
-        highMs: stages.generateSlide.p80 * slidesToCome,
+        lowMs: stat("generateSlide").p50 * slidesToCome,
+        highMs: stat("generateSlide").p80 * slidesToCome,
       };
     case "worksheet":
-      return { lowMs: stages.worksheet.p50, highMs: stages.worksheet.p80 };
+      return { lowMs: stat("worksheet").p50, highMs: stat("worksheet").p80 };
     case "pictures":
-      return { lowMs: stages.illustratePicture.p50, highMs: stages.illustratePicture.p80 };
+      return { lowMs: stat("illustratePicture").p50, highMs: stat("illustratePicture").p80 };
     case "checking":
       return {
-        lowMs: stages.evaluate.p50 + stages.repair.p50,
-        highMs: stages.evaluate.p80 + stages.repair.p80,
+        lowMs: stat("evaluate").p50 + stat("repair").p50,
+        highMs: stat("evaluate").p80 + stat("repair").p80,
       };
     case "ready":
       return null;
@@ -288,16 +302,17 @@ const MINUTE_MS = 60_000;
 
 /**
  * The range in friendly units, rounded outwards: the low bound down to whole minutes, the high
- * bound up. "About 2 to 3 minutes left"; "Less than a minute left" when the high bound rounds
- * to one; "Less than 2 minutes left" when the low bound rounds to nothing. Never seconds. `null`
- * under `MIN_SHOWN_MS` or with no range.
+ * bound up. "About 2 to 3 minutes left"; "Less than a minute left" when the high bound is under
+ * a minute; "Less than 2 minutes left" when the low bound rounds to nothing; "About 1 minute
+ * left" or "About 2 minutes left" when both bounds land on the same minute. Never seconds.
+ * `null` under `MIN_SHOWN_MS` or with no range.
  */
 export function estimateText(range: EstimateRange | null): string | null {
   if (range === null || range.highMs < MIN_SHOWN_MS) return null;
+  if (range.highMs < MINUTE_MS) return "Less than a minute left";
   const low = Math.floor(range.lowMs / MINUTE_MS);
-  const high = Math.max(1, Math.ceil(range.highMs / MINUTE_MS));
-  if (high <= 1) return "Less than a minute left";
+  const high = Math.ceil(range.highMs / MINUTE_MS);
+  if (low >= high || high === 1) return `About ${high} ${high === 1 ? "minute" : "minutes"} left`;
   if (low < 1) return `Less than ${high} minutes left`;
-  if (low >= high) return `About ${high} minutes left`;
   return `About ${low} to ${high} minutes left`;
 }

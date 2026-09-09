@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { JobEvent } from "@tj/domain/jobs";
 import {
   currentStageHighMs,
+  EstimateHistorySchema,
   estimateRemaining,
   estimateText,
   MIN_SHOWN_MS,
@@ -114,6 +115,15 @@ describe("estimateRemaining", () => {
     }
   });
 
+  test("a stage missing from the history counts as zero rather than silencing the estimate", () => {
+    const { repair: _repair, ...rest } = HISTORY.stages;
+    const noRepair = EstimateHistorySchema.parse({ runs: HISTORY.runs, stages: rest });
+    expect(estimateRemaining(noRepair, upTo(14), landedAt(14), SLIDES)).toEqual({
+      lowMs: 12_000,
+      highMs: 18_000,
+    });
+  });
+
   test("nothing under five runs of history, nothing without a run, nothing once Ready", () => {
     expect(estimateRemaining(THIN_HISTORY_FIXTURE, upTo(2), T0, SLIDES)).toBeNull();
     expect(estimateRemaining(null, upTo(2), T0, SLIDES)).toBeNull();
@@ -168,6 +178,9 @@ describe("estimateText", () => {
     expect(estimateText({ lowMs: 120_000, highMs: 180_000 })).toBe("About 2 to 3 minutes left");
     expect(estimateText({ lowMs: 119_000, highMs: 181_000 })).toBe("About 1 to 4 minutes left");
     expect(estimateText({ lowMs: 120_000, highMs: 120_000 })).toBe("About 2 minutes left");
+    // Exactly a minute is a minute, not less than one (rounding outwards, never inwards).
+    expect(estimateText({ lowMs: 60_000, highMs: 60_000 })).toBe("About 1 minute left");
+    expect(estimateText({ lowMs: 30_000, highMs: 60_000 })).toBe("About 1 minute left");
     expect(estimateText({ lowMs: 30_000, highMs: 59_000 })).toBe("Less than a minute left");
     expect(estimateText({ lowMs: 30_000, highMs: 90_000 })).toBe("Less than 2 minutes left");
     expect(estimateText({ lowMs: 20_000, highMs: 20_000 })).toBe("Less than a minute left");

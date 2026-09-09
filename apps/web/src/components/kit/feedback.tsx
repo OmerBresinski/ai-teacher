@@ -28,12 +28,13 @@ import { KitGroup, Specimen, Variant } from "./frame";
 
 /**
  * TEACH-201: the time-left line for the generating view, on the recorded run at "Slide 3 of 8".
- * The events are stamped against the page's load time so the reading is fresh; the late variant
- * is stamped two minutes back so its stage is already past its high bound.
+ * The live variant's events are stamped an hour ahead of the page's load: time spent floors at
+ * zero, so the reading is the fresh one, and the late timer cannot fall due while the page is
+ * open. The late variant is stamped two minutes back so its stage is already past its high bound.
  */
 const KIT_LOADED_AT = Date.now();
 const WRITING_STEPS = RUN_STEPS.slice(0, 6);
-const WRITING_NOW = runEvents(KIT_LOADED_AT - WRITING_STEPS.length * 1_000, WRITING_STEPS);
+const WRITING_NOW = runEvents(KIT_LOADED_AT + 3_600_000, WRITING_STEPS);
 const WRITING_STALLED = runEvents(KIT_LOADED_AT - 120_000, WRITING_STEPS);
 
 function StageLine({ children }: { children: ReactNode }) {

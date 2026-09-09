@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { render, screen, waitFor } from "@testing-library/react";
+import type { JobEvent } from "@tj/domain/jobs";
 import { TAKING_LONGER_TEXT } from "@/lib/generation-estimate";
 import {
   ESTIMATE_HISTORY_FIXTURE as HISTORY,
@@ -76,6 +77,55 @@ describe("EstimateText", () => {
     set(landedAt(15));
     view.rerender(<EstimateText history={HISTORY} events={upTo(15)} slides={8} clock={clock} />);
     expect(view.container).toBeEmptyDOMElement();
+  });
+
+  test("moves up when the outline's slide count replaces the brief's, then narrows on it", () => {
+    // Three slides in the brief, eight in the outline: the honest reading rises at "Slide 1 of 8".
+    const { clock, set } = fakeClock(landedAt(3));
+    const view = render(
+      <EstimateText history={HISTORY} events={upTo(3)} slides={3} clock={clock} />,
+    );
+    expect(screen.getByTestId("generation-estimate")).toHaveTextContent(
+      "About 1 to 2 minutes left",
+    );
+    set(landedAt(4));
+    view.rerender(<EstimateText history={HISTORY} events={upTo(4)} slides={3} clock={clock} />);
+    expect(screen.getByTestId("generation-estimate")).toHaveTextContent(
+      "About 1 to 3 minutes left",
+    );
+    set(landedAt(6));
+    view.rerender(<EstimateText history={HISTORY} events={upTo(6)} slides={3} clock={clock} />);
+    expect(screen.getByTestId("generation-estimate")).toHaveTextContent(
+      "About 1 to 2 minutes left",
+    );
+  });
+
+  test("the late timer waits for the bound and is cleared by any event, even a tick", async () => {
+    // A slide's high bound of 400 ms, real timers: still the range at 150 ms, late by 400 ms.
+    const quick = {
+      ...HISTORY,
+      stages: { ...HISTORY.stages, generateSlide: { p50: 300, p80: 400 } },
+    };
+    const { clock, set } = fakeClock(landedAt(SLIDE_6));
+    const view = render(
+      <EstimateText history={quick} events={upTo(SLIDE_6)} slides={8} clock={clock} />,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(screen.getByTestId("generation-estimate").dataset.state).toBe("range");
+    await waitFor(() =>
+      expect(screen.getByTestId("generation-estimate").dataset.state).toBe("late"),
+    );
+    // A message-only tick in the same stage is an event: it clears the late state and re-reads.
+    const tick = {
+      ...upTo(SLIDE_6)[SLIDE_6],
+      at: new Date(landedAt(SLIDE_6) + 600).toISOString(),
+      progress: { percent: 63, message: "Still on slide 7" },
+    } as JobEvent;
+    set(landedAt(SLIDE_6) + 600);
+    view.rerender(
+      <EstimateText history={quick} events={[...upTo(SLIDE_6), tick]} slides={8} clock={clock} />,
+    );
+    expect(screen.getByTestId("generation-estimate").dataset.state).toBe("range");
   });
 
   test("says Taking longer than usual past the high bound, until the next event (acceptance 3)", async () => {

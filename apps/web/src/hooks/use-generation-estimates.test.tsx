@@ -3,7 +3,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ESTIMATE_HISTORY_FIXTURE } from "@/lib/generation-estimate.fixture";
-import { estimatesUrl, useGenerationEstimates } from "./use-generation-estimates";
+import {
+  estimatesQueryKey,
+  estimatesUrl,
+  useGenerationEstimates,
+} from "./use-generation-estimates";
 
 const realFetch = globalThis.fetch;
 const calls: string[] = [];
@@ -40,6 +44,12 @@ describe("useGenerationEstimates", () => {
     );
   });
 
+  test("the fallback is part of the key, so a fixture never feeds a mount without one", () => {
+    expect(estimatesQueryKey("lesson.plan", 8, null)).not.toEqual(
+      estimatesQueryKey("lesson.plan", 8, ESTIMATE_HISTORY_FIXTURE),
+    );
+  });
+
   test("returns the parsed history from a 200", async () => {
     answerWith(200, ESTIMATE_HISTORY_FIXTURE);
     const { result } = renderHook(() => useGenerationEstimates("lesson.plan", 8), { wrapper });
@@ -65,9 +75,12 @@ describe("useGenerationEstimates", () => {
     expect(result.current.history).toBe(ESTIMATE_HISTORY_FIXTURE);
   });
 
-  test("a body the schema does not know is treated as no history", async () => {
+  test("a body the schema does not know is no history, fallback or not", async () => {
     answerWith(200, { runs: "many" });
-    const { result } = renderHook(() => useGenerationEstimates("lesson.plan", 8), { wrapper });
+    const { result } = renderHook(
+      () => useGenerationEstimates("lesson.plan", 8, { fallback: ESTIMATE_HISTORY_FIXTURE }),
+      { wrapper },
+    );
     await waitFor(() => expect(result.current.isPending).toBe(false));
     expect(result.current.history).toBeNull();
   });

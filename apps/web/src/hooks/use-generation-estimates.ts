@@ -8,11 +8,12 @@ import { apiErrorFromResponse } from "@/lib/query";
  * "Generating view" section 4; the endpoint is Omer's, TEACH-203). Until it exists the API
  * answers 404 and the hook resolves to `fallback`, which is `null` in the app (no history, no
  * time shown; the stage line still carries the counts) and the fixture on `/kit` and in tests.
+ * The fallback is part of the query key, so a mount with a fixture never feeds one without.
  *
  * The figures move slowly, so one fetch per mount is plenty; nothing here polls or ticks.
  */
-export const estimatesQueryKey = (name: string, slides: number) =>
-  ["jobs", "estimates", name, slides] as const;
+export const estimatesQueryKey = (name: string, slides: number, fallback: EstimateHistory | null) =>
+  ["jobs", "estimates", name, slides, fallback] as const;
 
 export function estimatesUrl(baseUrl: string, name: string, slides: number): string {
   const params = new URLSearchParams({ name, slides: String(slides) });
@@ -33,7 +34,7 @@ export async function fetchGenerationEstimates(
   const parsed = EstimateHistorySchema.safeParse(await res.json());
   if (!parsed.success) {
     console.warn("jobs/estimates: ignoring a body the schema does not know", parsed.error.issues);
-    return fallback;
+    return null;
   }
   return parsed.data;
 }
@@ -41,15 +42,14 @@ export async function fetchGenerationEstimates(
 export function useGenerationEstimates(
   name: string,
   slides: number,
-  options: { fallback?: EstimateHistory | null; enabled?: boolean } = {},
+  options: { fallback?: EstimateHistory | null } = {},
 ): { history: EstimateHistory | null; isPending: boolean } {
   const fallback = options.fallback ?? null;
   const query = useQuery({
-    queryKey: estimatesQueryKey(name, slides),
+    queryKey: estimatesQueryKey(name, slides, fallback),
     queryFn: () => fetchGenerationEstimates(name, slides, fallback),
     staleTime: 5 * 60_000,
     retry: false,
-    enabled: options.enabled ?? true,
   });
   return { history: query.data ?? null, isPending: query.isPending };
 }
