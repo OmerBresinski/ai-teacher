@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ImageElement, Slide } from "@tj/domain/documents";
+import type { ImageSearchClient } from "../../images/image-search";
 import { uid } from "../../model/factories";
 import { getTheme } from "../../model/themes";
 import { SlideView } from "../../slide/SlideView";
@@ -95,6 +96,37 @@ describe("ImageCreditBadge", () => {
     expect(screen.queryByRole("button", { name: "Image credit" })).toBeNull();
     fireEvent.pointerUp(window, pointer(220, 150));
     await screen.findByRole("button", { name: "Image credit" });
+  });
+
+  test("reporting a placed picture calls report with the lesson id and changes nothing", async () => {
+    const report = mock(async (_input: unknown) => {});
+    const images = { report } as unknown as ImageSearchClient;
+    const lesson = seededImage(image({ source: { ...source } }));
+    const { container, read } = renderEditor(lesson, { images });
+    const badge = await selectImage(container);
+    fireEvent.click(badge);
+    const trigger = await screen.findByRole("button", { name: "Report this image" });
+    fireEvent.keyDown(trigger, { key: "Enter" });
+    const item = await screen.findByRole("menuitem", { name: "Wrong subject" });
+    fireEvent.click(item);
+
+    await waitFor(() => expect(report).toHaveBeenCalledTimes(1));
+    expect(report.mock.calls[0]?.[0]).toEqual({
+      photo: { provider: "pexels", id: "a" },
+      reason: "wrong-subject",
+      context: "placed",
+      lessonId: lesson.id,
+    });
+    const el = read().slides[0]?.elements[0];
+    expect(el?.type === "image" && el.src).toBe("https://example.test/a.jpg");
+  });
+
+  test("without a client the badge has no report item", async () => {
+    const { container } = renderEditor(seededImage(image({ source: { ...source } })));
+    const badge = await selectImage(container);
+    fireEvent.click(badge);
+    await screen.findByText(/Photo by/);
+    expect(screen.queryByRole("button", { name: "Report this image" })).toBeNull();
   });
 
   test("SlideView in view, present, thumb and capture modes renders no badge", () => {

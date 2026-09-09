@@ -1,5 +1,5 @@
 import type { Finding, ImageBrief, Lesson, SlideElement } from "@tj/domain/documents";
-import { PexelsError, type PhotoResult, queryCandidates } from "@tj/images";
+import { isBlockedQuery, PexelsError, type PhotoResult, queryCandidates } from "@tj/images";
 import { PLACEHOLDER_IMAGE } from "@tj/slides";
 import {
   emptyImageCounts,
@@ -85,7 +85,7 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     }
     let placed: PlaceOutcome;
     try {
-      placed = await placeOne(target, brief, images, deps.signal);
+      placed = await placeOne(target, brief, images, deps.logger, index, deps.signal);
     } catch (error) {
       deps.logger.info({ stage: "illustrate", slideIndex: index, err: error }, "illustrate failed");
       counts.failed += 1;
@@ -137,9 +137,16 @@ async function placeOne(
   target: SlideElement & { type: "image" },
   brief: ImageBrief,
   images: PhotoPlacer,
+  logger: PipelineDeps["logger"],
+  slideIndex: number,
   signal: AbortSignal,
 ): Promise<PlaceOutcome> {
   for (const query of queryCandidates(brief)) {
+    // Safety (TEACH-162): a blocked candidate searches nothing and reads as empty.
+    if (isBlockedQuery(query)) {
+      logger.info({ stage: "illustrate", slideIndex, blocked: true });
+      continue;
+    }
     let photos: PhotoResult[];
     try {
       photos = await images.search(query, { orientation: "portrait", perPage: 5, signal });

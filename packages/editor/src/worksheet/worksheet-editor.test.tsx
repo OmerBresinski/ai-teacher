@@ -339,18 +339,20 @@ describe("WorksheetEditor image Replace (TEACH-160)", () => {
     source: { ...photoSource, id, pageUrl: `https://www.pexels.com/photo/${id}/` },
   });
 
-  function fakeClient(): {
+  const fakeClient = (): {
     client: ImageSearchClient;
     search: ReturnType<typeof mock>;
     pick: ReturnType<typeof mock>;
-  } {
+    report: ReturnType<typeof mock>;
+  } => {
     const search = mock(async (_query: string, _opts: unknown) => ({
       photos: [pexelsPhoto("leaf", "Leaf")],
       nextPage: null,
     }));
     const pick = mock(async (photo: PhotoResult) => pickedPhoto(photo.id));
-    return { client: { search, pick } as ImageSearchClient, search, pick };
-  }
+    const report = mock(async (_input: unknown) => {});
+    return { client: { search, pick, report } as ImageSearchClient, search, pick, report };
+  };
 
   const imageSheet = (overrides: Record<string, unknown> = {}) => {
     const block = { ...newBlock("image"), ...overrides };

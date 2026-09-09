@@ -97,6 +97,24 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 403,
     },
     {
+      name: "app origin, POST /images/report JSON, reaches the session guard",
+      method: "POST",
+      path: "/images/report",
+      headers: { ...browser, "Content-Type": "application/json" },
+      expect: 401,
+    },
+    {
+      name: "foreign origin POST /images/report is rejected before the session guard",
+      method: "POST",
+      path: "/images/report",
+      headers: {
+        Origin: "https://evil.example",
+        "Sec-Fetch-Site": "cross-site",
+        "Content-Type": "application/json",
+      },
+      expect: 403,
+    },
+    {
       name: "foreign origin GET /images/search is rejected before the session guard",
       path: "/images/search?q=river",
       headers: {

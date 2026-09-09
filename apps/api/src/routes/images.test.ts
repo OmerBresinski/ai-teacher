@@ -14,7 +14,7 @@ import { type PexelsClient, PexelsError, type PhotoResult, type PhotoSearchPage 
 import { LocalDiskStorage } from "@tj/storage";
 import { createApp } from "../app";
 import type { RateLimitConfig } from "../rate-limit";
-import { fakeSql, silentLogger, TEST_ENV } from "../test-helpers";
+import { captureLogger, fakeSql, silentLogger, TEST_ENV } from "../test-helpers";
 import { WORKSPACE_HEADER } from "../workspace";
 import { IMAGE_RATE_LIMIT_MESSAGE } from "./images";
 
@@ -69,11 +69,12 @@ function appWith(
   client: PexelsClient | undefined,
   imageRateLimit?: Partial<RateLimitConfig>,
   storage?: LocalDiskStorage,
+  logger = silentLogger,
 ) {
   return createApp({
     env: TEST_ENV,
     db: fakeSql(true),
-    logger: silentLogger,
+    logger,
     images: client,
     imageRateLimit,
     storage,
@@ -111,6 +112,23 @@ describe("GET /images/search", () => {
     expect(state.calls).toEqual([
       { query: "river", orientation: "landscape", page: 1, perPage: 24 },
     ]);
+    expect("blocked" in body).toBe(false);
+  });
+
+  test("a blocklisted query answers without calling upstream and logs blocked", async () => {
+    const { client, state } = makeFake();
+    const { logger, lines } = captureLogger();
+    const res = await appWith(client, undefined, undefined, logger).request(
+      "/images/search?q=%20GORE%20",
+      { headers },
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ photos: [], nextPage: null, blocked: true });
+    expect(state.calls).toHaveLength(0);
+    const search = lines.map((line) => JSON.parse(line)).find((l) => l.msg === "image search");
+    expect(search?.blocked).toBe(true);
+    expect(JSON.stringify(search)).not.toContain("gore");
+    expect(JSON.stringify(search)).not.toContain("GORE");
   });
 
   test("the same query twice costs one upstream call", async () => {
@@ -421,5 +439,71 @@ describe("POST /images/pick", () => {
     });
     expect(res.status).toBe(403);
     expect(state.photoCalls).toHaveLength(0);
+  });
+});
+
+describe("POST /images/report", () => {
+  const report = { provider: "pexels", id: "9", reason: "unsuitable", context: "search" };
+
+  function reportApp(logger = silentLogger) {
+    const { client } = makeFake();
+    return appWith(client, undefined, undefined, logger);
+  }
+
+  function postReport(
+    app: ReturnType<typeof appWith>,
+    body: unknown,
+    extraHeaders: Record<string, string> = {},
+  ) {
+    return app.request("/images/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", [WORKSPACE_HEADER]: ws, ...extraHeaders },
+      body: JSON.stringify(body),
+    });
+  }
+
+  test("logs one warn line with ids and enums and answers 204", async () => {
+    const { logger, lines } = captureLogger();
+    const res = await postReport(reportApp(logger), {
+      ...report,
+      lessonId: "0192f7a0-0000-7000-8000-000000000042",
+    });
+    expect(res.status).toBe(204);
+    const reported = lines.map((line) => JSON.parse(line)).find((l) => l.msg === "image reported");
+    expect(reported?.level).toBe(40);
+    expect(reported?.provider).toBe("pexels");
+    expect(reported?.photoId).toBe("9");
+    expect(reported?.reason).toBe("unsuitable");
+    expect(reported?.context).toBe("search");
+    expect(reported?.lessonId).toBe("0192f7a0-0000-7000-8000-000000000042");
+    expect(reported?.workspaceId).toBe(ws);
+    const text = JSON.stringify(reported);
+    expect(text).not.toContain("Ada");
+    expect(text).not.toContain("river");
+  });
+
+  test("bad reason and non-JSON bodies are 400", async () => {
+    const app = reportApp();
+    const bad = await postReport(app, { ...report, reason: "meh" });
+    expect(bad.status).toBe(400);
+    expect((await errorBody(bad)).error.code).toBe("validation_failed");
+    const plain = await app.request("/images/report", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain", [WORKSPACE_HEADER]: ws },
+      body: "{}",
+    });
+    expect(plain.status).toBe(400);
+  });
+
+  test("foreign Origin is 403 and no session is 401", async () => {
+    const app = reportApp();
+    const evil = await postReport(app, report, { Origin: "https://evil.example" });
+    expect(evil.status).toBe(403);
+    const anon = await app.request("/images/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(report),
+    });
+    expect(anon.status).toBe(401);
   });
 });

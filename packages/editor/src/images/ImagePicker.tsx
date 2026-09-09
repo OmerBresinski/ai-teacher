@@ -2,6 +2,11 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   Button,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
   SearchInput,
   Spinner,
   Tabs,
@@ -10,12 +15,14 @@ import {
   TabsTrigger,
   toast,
 } from "@tj/ui";
-import { Upload } from "lucide-react";
+import { Flag, Upload } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { REPORT_FAILED_MESSAGE, REPORT_REASONS, REPORTED_MESSAGE } from "./image-report";
 import {
   type ImageSearchClient,
   type PhotoOrientation,
   type PhotoResult,
+  type ReportReason,
   SearchError,
 } from "./image-search";
 import { type ImageSource, sourceFromFile, sourceFromPicked } from "./image-source";
@@ -32,6 +39,7 @@ export type { ImageSearchClient };
 export const UNREADABLE_MESSAGE = "That image could not be read.";
 export const SEARCH_FAILED_MESSAGE = "Search failed. Try again.";
 export const RATE_LIMITED_MESSAGE = "Too many searches. Try again in a minute.";
+export const BLOCKED_MESSAGE = "Try a different search.";
 /** A search fires this long after the last keystroke; Enter fires it at once. */
 const DEBOUNCE_MS = 400;
 
@@ -158,6 +166,8 @@ function PhotosTab({
   const [busy, setBusy] = useState<string | null>(null);
   // A tile with a broken-image glyph in it is worse than one fewer result.
   const [broken, setBroken] = useState<ReadonlySet<string>>(new Set());
+  // Reported tiles stay hidden for the rest of the session.
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   // Closing the panel while a pick is in flight must not insert into the slide.
   const inflight = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -223,12 +233,28 @@ function PhotosTab({
   const items: PhotoResult[] = [];
   for (const page of search.data?.pages ?? []) {
     for (const item of page.photos) {
-      if (seen.has(item.id) || broken.has(item.id)) continue;
+      if (seen.has(item.id) || broken.has(item.id) || hidden.has(item.id)) continue;
       seen.add(item.id);
       items.push(item);
     }
   }
   const total = search.data?.pages.reduce((n, p) => n + p.photos.length, 0) ?? 0;
+  const blocked = search.data?.pages.some((page) => page.blocked) ?? false;
+
+  const report = async (item: PhotoResult, reason: ReportReason) => {
+    if (!images) return;
+    try {
+      await images.report({
+        photo: { provider: "pexels", id: item.id },
+        reason,
+        context: "search",
+      });
+      setHidden((prev) => new Set(prev).add(item.id));
+      toast(REPORTED_MESSAGE);
+    } catch {
+      toast(REPORT_FAILED_MESSAGE);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-2 p-3 pt-1">
@@ -263,7 +289,7 @@ function PhotosTab({
           </Button>
         </Note>
       ) : !search.data ? null : total === 0 ? (
-        <Note>No photos found.</Note>
+        <Note>{blocked ? BLOCKED_MESSAGE : "No photos found."}</Note>
       ) : (
         <>
           {/* Every thumbnail in the page can 404 while the search itself worked. That is a
@@ -275,7 +301,7 @@ function PhotosTab({
               {items.map((item) => {
                 const label = item.alt || `Photo by ${item.photographer}`;
                 return (
-                  <li key={item.id} className="m-0">
+                  <li key={item.id} className="group relative m-0">
                     <button
                       type="button"
                       title={label}
@@ -303,6 +329,30 @@ function PhotosTab({
                         </span>
                       ) : null}
                     </button>
+                    {images ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            label="Report this image"
+                            noTooltip
+                            size="sm"
+                            className="absolute top-1 right-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100"
+                          >
+                            <Flag aria-hidden size={14} strokeWidth={1.5} />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" aria-label="Report this image">
+                          {REPORT_REASONS.map((reason) => (
+                            <DropdownMenuItem
+                              key={reason.value}
+                              onSelect={() => void report(item, reason.value)}
+                            >
+                              {reason.label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
                   </li>
                 );
               })}

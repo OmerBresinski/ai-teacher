@@ -17,6 +17,20 @@ export const TEST_ENV = {
 
 export const silentLogger = pino({ level: "silent" });
 
+/** A pino logger writing JSON lines into memory, for asserting log output in tests. */
+export function captureLogger() {
+  const lines: string[] = [];
+  const logger = pino(
+    { level: "trace" },
+    {
+      write(line: string) {
+        lines.push(line);
+      },
+    },
+  );
+  return { logger, lines };
+}
+
 export type TestDb = Pick<DbHandle, "sql" | "unsafeDb">;
 
 /**

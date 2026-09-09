@@ -46,6 +46,7 @@ export const imageSearchClient: ImageSearchClient = {
         }),
       ),
       nextPage: body.nextPage,
+      blocked: body.blocked,
     };
   },
 
@@ -65,5 +66,21 @@ export const imageSearchClient: ImageSearchClient = {
       height: body.height,
       source: body.source,
     };
+  },
+
+  async report(input): Promise<void> {
+    const res = await api.images.report.$post({
+      json: {
+        provider: input.photo.provider,
+        id: input.photo.id,
+        reason: input.reason,
+        context: input.context,
+        ...(input.lessonId === undefined ? {} : { lessonId: input.lessonId }),
+      },
+    });
+    if (!res.ok) {
+      const error = await apiErrorFromResponse(res);
+      throw new SearchError(error.message, error.status);
+    }
   },
 };

@@ -37,6 +37,11 @@ export interface PhotoSearchPage {
   photos: PhotoResult[];
   /** `page + 1` when Pexels sent `next_page`, else `null`. */
   nextPage: number | null;
+  /**
+   * Set only by the api's blocklist gate (never by Pexels): the query was refused without an
+   * upstream call. Optional so `AppType` stays one shape across the search responses.
+   */
+  blocked?: boolean;
 }
 
 export interface PexelsSearchParams {

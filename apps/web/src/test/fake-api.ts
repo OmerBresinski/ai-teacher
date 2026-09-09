@@ -248,6 +248,9 @@ export class FakeApi {
     if (segments[0] === "images" && segments[1] === "pick" && method === "POST") {
       return this.pickImage(body);
     }
+    if (segments[0] === "images" && segments[1] === "report" && method === "POST") {
+      return new Response(null, { status: 204 });
+    }
     return error(404, "not_found", `fake api: no route for ${method} ${path}`);
   }
 

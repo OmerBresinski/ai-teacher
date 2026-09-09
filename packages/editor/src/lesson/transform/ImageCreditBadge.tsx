@@ -1,7 +1,19 @@
 import type { ImageElement } from "@tj/domain/documents";
-import { IconButton, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  toast,
+} from "@tj/ui";
 import { Info } from "lucide-react";
 import { ImageCreditText } from "../../images/ImageCreditText";
+import { REPORT_FAILED_MESSAGE, REPORT_REASONS, REPORTED_MESSAGE } from "../../images/image-report";
+import type { ImageSearchClient, ReportReason } from "../../images/image-search";
 import type { Rect } from "../../model/geometry";
 
 /**
@@ -17,12 +29,31 @@ export function ImageCreditBadge({
   rect,
   rotation = 0,
   scale,
+  images,
+  lessonId,
 }: {
   element: ImageElement;
   rect: Rect;
   rotation?: number;
   scale: number;
+  /** Report action: hidden without a client; the lesson id travels as report context. */
+  images?: ImageSearchClient;
+  lessonId?: string;
 }) {
+  const report = async (reason: ReportReason) => {
+    if (!images || !element.source) return;
+    try {
+      await images.report({
+        photo: { provider: "pexels", id: element.source.id },
+        reason,
+        context: "placed",
+        ...(lessonId === undefined ? {} : { lessonId }),
+      });
+      toast(REPORTED_MESSAGE);
+    } catch {
+      toast(REPORT_FAILED_MESSAGE);
+    }
+  };
   const size = 20 / scale;
   const inset = 8 / scale;
   return (
@@ -61,6 +92,22 @@ export function ImageCreditBadge({
               credit={element.credit}
               creditUrl={element.creditUrl}
             />
+            {element.source && images ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className="mt-1 text-meta text-primary hover:underline">
+                    Report this image
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" aria-label="Report this image">
+                  {REPORT_REASONS.map((reason) => (
+                    <DropdownMenuItem key={reason.value} onSelect={() => void report(reason.value)}>
+                      {reason.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </PopoverContent>
         </Popover>
       </div>

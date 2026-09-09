@@ -280,6 +280,36 @@ describe("illustrate", () => {
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 0, failed: 0 });
   });
 
+  test("a blocked first candidate falls through to the clean retry", async () => {
+    const calls: string[] = [];
+    const { images } = fakeImages(async (query) => {
+      calls.push(query);
+      return [pexelsPhoto("p", true)];
+    });
+    const deps = recordingDeps(fakeAi(), { images });
+    const state = await illustrate(
+      {
+        lesson: imageLesson([{ subject: "river severn gore" }]),
+        worksheetId: "w",
+        worksheet: undefined,
+      },
+      deps,
+    );
+    expect(calls).toEqual(["river severn"]);
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/p.jpg");
+    expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
+  });
+
+  test("fully blocked candidates search nothing and warn", async () => {
+    const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    const deps = recordingDeps(fakeAi(), { images });
+    const lesson = imageLesson([{ subject: "gore torture" }]);
+    const state = await illustrate({ lesson, worksheetId: "w", worksheet: undefined }, deps);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+    expect(state.lesson.generation?.findings).toHaveLength(1);
+    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+  });
+
   test("without images the state returns unchanged and nothing persists", async () => {
     const deps = recordingDeps(fakeAi());
     const lesson = imageLesson([{ subject: "river" }]);

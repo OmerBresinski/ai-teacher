@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { ImageSearchClient } from "../../images/image-search";
 import {
   EXPLANATION_PLACEHOLDER,
   explanationLane,
@@ -95,6 +96,10 @@ export type SelectionLayerProps = {
   theme: Theme;
   preview: PreviewMap | null;
   onPreview: (next: PreviewMap | null) => void;
+  /** Report action on the credit badge; hidden without a client. */
+  images?: ImageSearchClient;
+  /** Travels as the report context for a placed picture. */
+  lessonId?: string;
   /** True while the canvas is panning (Space held): the stage takes no gestures. */
   disabled?: boolean;
   /**
@@ -130,6 +135,8 @@ export function SelectionLayer({
   disabled = false,
   marginRef,
   className,
+  images,
+  lessonId,
 }: SelectionLayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const scale = useSlideScale();
@@ -854,6 +861,8 @@ export function SelectionLayer({
           rect={first.rect}
           rotation={first.rotation}
           scale={scale}
+          images={images}
+          lessonId={lessonId}
         />
       ) : null}
 

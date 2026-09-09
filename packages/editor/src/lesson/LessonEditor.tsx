@@ -406,6 +406,8 @@ export function LessonEditor({
                           onFocusChange={setCanvasFocused}
                           onScaleChange={onScaleChange}
                           onInsert={insert}
+                          images={images}
+                          lessonId={lessonId}
                         />
                         {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
                       </div>

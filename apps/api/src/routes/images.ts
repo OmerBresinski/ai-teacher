@@ -1,5 +1,7 @@
 /**
- * `GET /images/search` — the Pexels search proxy (Images project, "Search and the API").
+ * `GET /images/search` — the Pexels search proxy (Images project, "Search and the API") — plus
+ * `POST /images/pick` and the safety pair (TEACH-162): a query blocklist gate on search and a
+ * log-only `POST /images/report`.
  *
  * The browser never sees the key: `apps/api` holds a server-only `@tj/images` client, injected
  * here in the factory style of `fileRoutes(storage)` (absent collaborator → `503`). The short
@@ -8,11 +10,12 @@
  *
  * Logging (ADR 0015): one `image search` line per search carries the query *length*, never the
  * query text — a search term can name a pupil. `429`s reach the existing `request error` line
- * with `code: "rate_limited"`.
+ * with `code: "rate_limited"`. Reports log ids and enums only, at `warn`.
  */
 import { zValidator } from "@hono/zod-validator";
 import type { StorageAdapter } from "@tj/domain";
 import {
+  isBlockedQuery,
   type PexelsClient,
   PexelsError,
   type PhotoResult,
@@ -81,6 +84,14 @@ const PickBody = z.strictObject({
   target: z.enum(["slide", "worksheet"]),
 });
 
+const ReportBody = z.strictObject({
+  provider: z.literal("pexels"),
+  id: z.string().min(1).max(32),
+  reason: z.enum(["unsuitable", "wrong-subject", "other"]),
+  context: z.enum(["search", "placed"]),
+  lessonId: z.uuid().optional(),
+});
+
 export function imageRoutes(
   images: PexelsClient | undefined,
   limiter: RateLimiter,
@@ -100,6 +111,22 @@ export function imageRoutes(
         const logger = c.get("logger");
         const start = performance.now();
         const durationMs = () => Math.round((performance.now() - start) * 100) / 100;
+        // Safety (TEACH-162): a blocklisted query never reaches Pexels — or the cache.
+        if (isBlockedQuery(q)) {
+          logger.info(
+            {
+              workspace_id: workspaceId,
+              q_len: q.length,
+              orientation,
+              page,
+              cached: false,
+              blocked: true,
+              duration_ms: durationMs(),
+            },
+            "image search",
+          );
+          return c.json({ photos: [], nextPage: null, blocked: true }, 200);
+        }
         const key = cacheKey(q, orientation, page);
         const now = Date.now();
         const hit = readCache(key, now);
@@ -199,6 +226,22 @@ export function imageRoutes(
           }
           throw error;
         }
+      },
+    )
+    .post(
+      "/images/report",
+      requireJsonBody(),
+      zValidator("json", ReportBody, validationHook),
+      async (c) => {
+        // Deliberately outside the image limiter: a safety report must never 429 because the
+        // teacher searched a lot first. Nothing is stored or fetched — one log line.
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+        const { provider, id, reason, context, lessonId } = c.req.valid("json");
+        c.get("logger").warn(
+          { provider, photoId: id, reason, context, lessonId, workspaceId },
+          "image reported",
+        );
+        return c.body(null, 204);
       },
     );
 }

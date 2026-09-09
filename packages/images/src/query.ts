@@ -10,12 +10,19 @@
 // row-4 expectation ("river severn dawn") could never hold.
 const STOP_WORDS = new Set(["a", "an", "the", "of", "in", "on", "and", "with", "at"]);
 
-/** Lower-case ASCII words of a subject, stop words dropped, order kept. */
-function contentWords(subject: string): string[] {
-  return subject
+/** Lower-case, punctuation stripped, whitespace collapsed — shared with the blocklist. */
+export function normaliseQuery(query: string): string {
+  return query
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Lower-case ASCII words of a subject, stop words dropped, order kept. */
+function contentWords(subject: string): string[] {
+  return normaliseQuery(subject)
+    .split(" ")
     .filter((word) => word.length > 0 && !STOP_WORDS.has(word));
 }
 

@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { ImageElement } from "@tj/domain/documents";
-import { RATE_LIMITED_MESSAGE, SEARCH_FAILED_MESSAGE } from "../images/ImagePicker";
+import {
+  BLOCKED_MESSAGE,
+  RATE_LIMITED_MESSAGE,
+  SEARCH_FAILED_MESSAGE,
+} from "../images/ImagePicker";
+import { REPORT_FAILED_MESSAGE, REPORTED_MESSAGE } from "../images/image-report";
 import type { ImageSearchClient, PhotoResult, PickedPhoto } from "../images/image-search";
 import { SearchError } from "../images/image-search";
 import { uid } from "../model/factories";
@@ -62,10 +67,12 @@ function fakeClient(page: { photos: PhotoResult[]; nextPage: number | null }): {
   client: ImageSearchClient;
   search: ReturnType<typeof mock>;
   pick: ReturnType<typeof mock>;
+  report: ReturnType<typeof mock>;
 } {
   const search = mock(async (_query: string, _opts: unknown) => page);
   const pick = mock(async (photo: PhotoResult) => pickedPhoto(photo.id));
-  return { client: { search, pick } as ImageSearchClient, search, pick };
+  const report = mock(async (_input: unknown) => {});
+  return { client: { search, pick, report } as ImageSearchClient, search, pick, report };
 }
 
 /** Type into the search field and press Enter, so the search runs without the debounce. */
@@ -249,7 +256,11 @@ describe("AddImagePanel", () => {
     });
     const pickMock = mock(async (photo: PhotoResult) => pickedPhoto(photo.id));
     renderEditor(seededLesson(), {
-      images: { search: searchMock, pick: pickMock } as ImageSearchClient,
+      images: {
+        search: searchMock,
+        pick: pickMock,
+        report: mock(async () => {}),
+      } as ImageSearchClient,
     });
     fireEvent.click(imageButton());
     await photosTab();
@@ -267,7 +278,11 @@ describe("AddImagePanel", () => {
       throw new SearchError("Down", 503);
     });
     const { read } = renderEditor(seededLesson(), {
-      images: { search: searchMock, pick: pickMock } as ImageSearchClient,
+      images: {
+        search: searchMock,
+        pick: pickMock,
+        report: mock(async () => {}),
+      } as ImageSearchClient,
     });
     fireEvent.click(imageButton());
     await photosTab();
@@ -287,5 +302,73 @@ describe("AddImagePanel", () => {
     await photosTab();
     expect(await screen.findByText("Photo search is not available.")).toBeTruthy();
     expect(screen.queryByRole("searchbox", { name: "Search images" })).toBeNull();
+  });
+
+  test("reporting a tile flags it, hides it and inserts nothing", async () => {
+    const { client, report } = fakeClient({ photos: [pexelsPhoto("a", "River")], nextPage: null });
+    const { read } = renderEditor(seededLesson(), { images: client });
+    fireEvent.click(imageButton());
+    await photosTab();
+    await search("river");
+    const tile = await screen.findByRole("button", { name: "River" });
+    const flag = within(tile.parentElement as HTMLElement).getByRole("button", {
+      name: "Report this image",
+    });
+    fireEvent.keyDown(flag, { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Unsuitable" }));
+
+    await waitFor(() => expect(report).toHaveBeenCalledTimes(1));
+    expect(report.mock.calls[0]?.[0]).toEqual({
+      photo: { provider: "pexels", id: "a" },
+      reason: "unsuitable",
+      context: "search",
+    });
+    expect(toastSpy.mock.calls[0]?.[0]).toBe(REPORTED_MESSAGE);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "River" })).toBeNull());
+    expect(read().slides[0]?.elements).toHaveLength(2);
+  });
+
+  test("a failed report keeps the tile and says so", async () => {
+    const searchMock = mock(async () => ({ photos: [pexelsPhoto("a", "River")], nextPage: null }));
+    const reportMock = mock(async (): Promise<never> => {
+      throw new SearchError("Down", 503);
+    });
+    renderEditor(seededLesson(), {
+      images: {
+        search: searchMock,
+        pick: mock(async () => pickedPhoto("a")),
+        report: reportMock,
+      } as ImageSearchClient,
+    });
+    fireEvent.click(imageButton());
+    await photosTab();
+    await search("river");
+    const tile = await screen.findByRole("button", { name: "River" });
+    const flag = within(tile.parentElement as HTMLElement).getByRole("button", {
+      name: "Report this image",
+    });
+    fireEvent.keyDown(flag, { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Unsuitable" }));
+
+    await waitFor(() =>
+      expect(toastSpy.mock.calls.map((call) => call[0])).toContain(REPORT_FAILED_MESSAGE),
+    );
+    expect(await screen.findByRole("button", { name: "River" })).toBeTruthy();
+  });
+
+  test("a blocked search says to try a different search", async () => {
+    const searchMock = mock(async () => ({ photos: [], nextPage: null, blocked: true }));
+    renderEditor(seededLesson(), {
+      images: {
+        search: searchMock,
+        pick: mock(async () => pickedPhoto("a")),
+        report: mock(async () => {}),
+      } as ImageSearchClient,
+    });
+    fireEvent.click(imageButton());
+    await photosTab();
+    await search("gore");
+    expect(await screen.findByText(BLOCKED_MESSAGE)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
   });
 });
