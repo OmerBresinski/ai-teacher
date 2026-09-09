@@ -122,8 +122,33 @@ describe("InsertRail", () => {
       expect(document.activeElement === cards[i + 1]).toBe(true);
     }
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Timer");
-    fireEvent.keyDown(document.activeElement as HTMLElement, { key: "ArrowUp" });
-    expect(document.activeElement?.getAttribute("aria-label")).toBe("Discussion");
+    // Up and Down keep the column across group boundaries, clamped on a ragged last row.
+    const focused = () => document.activeElement?.getAttribute("aria-label");
+    const press = (key: string) =>
+      fireEvent.keyDown(document.activeElement as HTMLElement, { key });
+    const walk: [string, string][] = [
+      ["ArrowUp", "Discussion"], // Structure col 2 -> Apply last row, clamped to its end
+      ["ArrowUp", "Image matching"], // Apply row 1 col 1 -> row 0 col 1
+      ["ArrowUp", "Fill the gap"], // Apply row 0 col 1 -> Check last row, clamped
+      ["ArrowDown", "Matching"], // Check last row col 0 -> Apply row 0 col 0
+      ["ArrowRight", "Image matching"],
+      ["ArrowRight", "Sort"],
+      ["ArrowUp", "Fill the gap"], // Apply row 0 col 2 -> Check last row, clamped
+      ["ArrowUp", "True or false"], // Check row 1 col 0 -> row 0 col 0
+      ["ArrowUp", "True or false"], // nothing above the first group
+      ["ArrowRight", "Multiple choice"],
+      ["ArrowRight", "Which are true"],
+      ["ArrowDown", "Fill the gap"], // Check row 0 col 2 -> row 1, clamped
+      ["ArrowDown", "Matching"],
+      ["ArrowDown", "Open response"], // Apply row 0 col 0 -> row 1 col 0
+      ["ArrowRight", "Discussion"],
+      ["ArrowDown", "Exit ticket"], // Apply last row col 1 -> Structure row 0 col 1
+      ["ArrowDown", "Exit ticket"], // nothing below the last group
+    ];
+    for (const [key, expected] of walk) {
+      press(key);
+      expect(focused()).toBe(expected);
+    }
     fireEvent.keyDown(document.activeElement as HTMLElement, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("menu", { name: "Activities" })).toBeNull());
   });

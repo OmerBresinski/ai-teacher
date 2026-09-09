@@ -105,7 +105,9 @@ export function AddSlidePicker({
 
 /**
  * Roving tabindex over the cards inside `grid`: one card is ever a Tab stop, so the others do not
- * queue up behind it, and the arrows walk the grid.
+ * queue up behind it, and the arrows walk the grid. Left and Right walk the flat list; Up and Down
+ * keep the column and move a row, crossing from one group's last row into the next group's first
+ * (and back), clamped to the row's length when it is ragged.
  */
 function useRovingGrid() {
   const grid = useRef<HTMLDivElement>(null);
@@ -126,12 +128,52 @@ function useRovingGrid() {
     const items = Array.from(
       grid.current?.querySelectorAll<HTMLButtonElement>("button[role='menuitem']") ?? [],
     );
-    const i = items.indexOf(document.activeElement as HTMLButtonElement);
-    const next = Math.min(items.length - 1, Math.max(0, (i < 0 ? 0 : i) + step));
+    const i = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement));
+    const next =
+      Math.abs(step) === 1
+        ? Math.min(items.length - 1, Math.max(0, i + step))
+        : verticalTarget(items, i, step > 0 ? 1 : -1);
     setActive(next);
     items[next]?.focus();
   };
   return { grid, active, setActive, onKeyDown };
+}
+
+/** The index of the card one row down (+1) or up (-1) from `i`, group by group. */
+function verticalTarget(items: HTMLButtonElement[], i: number, dir: 1 | -1): number {
+  // A group is the cards under one `role="group"`; the layouts grid is one group of its own.
+  const groups: HTMLButtonElement[][] = [];
+  let last: Element | null | undefined;
+  for (const item of items) {
+    const owner = item.closest("[role='group']");
+    if (groups.length === 0 || owner !== last) groups.push([]);
+    groups[groups.length - 1]?.push(item);
+    last = owner;
+  }
+  const current = items[i];
+  const g = groups.findIndex((cards) => current !== undefined && cards.includes(current));
+  const cards = groups[g];
+  if (!cards || !current) return i;
+  const pos = cards.indexOf(current);
+  const row = Math.floor(pos / COLS);
+  const col = pos % COLS;
+  const rows = Math.ceil(cards.length / COLS);
+  let target: HTMLButtonElement | undefined;
+  if (dir === 1) {
+    if (row < rows - 1) target = cards[Math.min(cards.length - 1, pos + COLS)];
+    else {
+      const below = groups[g + 1];
+      if (below) target = below[Math.min(below.length - 1, col)];
+    }
+  } else if (row > 0) target = cards[pos - COLS];
+  else {
+    const above = groups[g - 1];
+    if (above) {
+      const lastRow = Math.ceil(above.length / COLS) - 1;
+      target = above[Math.min(above.length - 1, lastRow * COLS + col)];
+    }
+  }
+  return target ? items.indexOf(target) : i;
 }
 
 function LayoutGrid({ themeId, onPick }: { themeId: string; onPick: (kind: SlideKind) => void }) {
@@ -273,9 +315,10 @@ function Card({
       {...rest}
     >
       <span className="flex w-full flex-col items-stretch gap-1 self-start">
+        {/* The preview is a picture of the slide, never a target: a click anywhere on the card is the button's. */}
         <span
           aria-hidden
-          className="block overflow-hidden rounded-chip shadow-[0_0_0_1px_var(--border)] group-hover/kind:shadow-[0_0_0_1px_var(--border-strong)]"
+          className="pointer-events-none block overflow-hidden rounded-chip shadow-[0_0_0_1px_var(--border)] group-hover/kind:shadow-[0_0_0_1px_var(--border-strong)]"
           style={{ width: PREVIEW_W, height: PREVIEW_H }}
         >
           {children}
