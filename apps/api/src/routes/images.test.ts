@@ -283,13 +283,17 @@ describe("POST /images/pick", () => {
     return { fetch, seen };
   }
 
-  async function pickSetup() {
+  async function pickSetup(logger = silentLogger) {
     const root = await mkdtemp(join(tmpdir(), "tj-api-pick-"));
     roots.push(root);
     const storage = new LocalDiskStorage(root);
     const { client, state } = makeFake();
-    const app = appWith(client, undefined, storage);
+    const app = appWith(client, undefined, storage, logger);
     return { app, root, storage, state };
+  }
+
+  function pickedLine(lines: string[]) {
+    return lines.map((line) => JSON.parse(line)).find((l) => l.msg === "image picked");
   }
 
   function pick(
@@ -338,6 +342,62 @@ describe("POST /images/pick", () => {
     expect(file.status).toBe(200);
     expect(file.headers.get("content-type")).toBe("image/jpeg");
     expect(new Uint8Array(await file.arrayBuffer())).toEqual(bytes);
+  });
+
+  test("telemetry fields land on the image picked line", async () => {
+    const { app, state } = await pickSetup();
+    state.photoResult = photo("1");
+    const { fetch } = cdnFetch({
+      large: { bytes: new Uint8Array([1]), contentType: "image/jpeg" },
+    });
+    globalThis.fetch = fetch;
+    const plain = await pick(app, { provider: "pexels", id: "1", target: "slide" });
+    expect(plain.status).toBe(201);
+    // Without the fields the line carries explicit nulls (pino would drop undefined).
+    const { logger, lines } = captureLogger();
+    const logged = await pickSetup(logger);
+    logged.state.photoResult = photo("1");
+    globalThis.fetch = fetch;
+    const res = await pick(logged.app, {
+      provider: "pexels",
+      id: "1",
+      target: "slide",
+      replaces: "ai",
+      msSinceOpen: 4200,
+    });
+    expect(res.status).toBe(201);
+    const line = pickedLine(lines);
+    expect(line?.replaced).toBe("ai");
+    expect(line?.ms_since_open).toBe(4200);
+    expect(line?.bytes).toBe(1);
+  });
+
+  test("a pick without telemetry logs nulls", async () => {
+    const { logger, lines } = captureLogger();
+    const { app, state } = await pickSetup(logger);
+    state.photoResult = photo("2");
+    const { fetch } = cdnFetch({
+      large: { bytes: new Uint8Array([1]), contentType: "image/jpeg" },
+    });
+    globalThis.fetch = fetch;
+    const res = await pick(app, { provider: "pexels", id: "2", target: "slide" });
+    expect(res.status).toBe(201);
+    const line = pickedLine(lines);
+    expect(line?.replaced).toBeNull();
+    expect(line?.ms_since_open).toBeNull();
+  });
+
+  test("out-of-range telemetry is a validation failure", async () => {
+    const { app } = await pickSetup();
+    for (const body of [
+      { provider: "pexels", id: "1", target: "slide", msSinceOpen: -1 },
+      { provider: "pexels", id: "1", target: "slide", msSinceOpen: 3_600_001 },
+      { provider: "pexels", id: "1", target: "slide", msSinceOpen: "fast" },
+    ]) {
+      const res = await pick(app, body);
+      expect(res.status).toBe(400);
+      expect((await errorBody(res)).error.code).toBe("validation_failed");
+    }
   });
 
   test("a worksheet pick fetches medium, never original", async () => {

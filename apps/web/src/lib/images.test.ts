@@ -112,6 +112,22 @@ describe("imageSearchClient", () => {
     expect((error as SearchError).status).toBe(500);
   });
 
+  test("pick forwards telemetry fields when given", async () => {
+    await imageSearchClient.pick(fakeApi.photoFixture("7"), "slide", {
+      replaces: "ai",
+      msSinceOpen: 4200,
+    });
+    const request = lastRequest();
+    expect(request?.path).toBe("/images/pick");
+    expect(request?.body).toEqual({
+      provider: "pexels",
+      id: "7",
+      target: "slide",
+      replaces: "ai",
+      msSinceOpen: 4200,
+    });
+  });
+
   test("a 503 pick becomes SearchError with the status", async () => {
     fakeApi.failNext(
       (request) => request.path === "/images/pick",

@@ -33,6 +33,8 @@ export function AddImagePanel({ children, onInsert, images }: AddImagePanelProps
   const history = useHistory();
   const slide = useActiveSlide(lesson.slides);
   const replacing = imagePanel?.mode === "replace" ? imagePanel.elementId : null;
+  const replacingEl =
+    replacing && slide ? slide.elements.find((el) => el.id === replacing) : undefined;
   // When this open began. The content stays mounted through its fade-out and a pointer down in
   // that window is reported by Radix a tick later — after a click on Replace has already opened
   // the panel again — so a dismiss whose pointer down predates the open is not about this open.
@@ -89,7 +91,15 @@ export function AddImagePanel({ children, onInsert, images }: AddImagePanelProps
             <X aria-hidden size={16} strokeWidth={1.5} />
           </IconButton>
         </div>
-        <ImagePicker images={images} target="slide" onPick={pick} />
+        <ImagePicker
+          images={images}
+          target="slide"
+          onPick={pick}
+          telemetry={{
+            replaces: replacingEl ? (replacingEl.authoredBy ?? "teacher") : undefined,
+            openedAt: openedAt.current,
+          }}
+        />
       </PopoverContent>
     </Popover>
   );

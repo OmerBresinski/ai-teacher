@@ -7,6 +7,7 @@ export {
   type PhotoResult,
   type PhotoSearchPage,
   type PickedPhoto,
+  type PickTelemetry,
   type ReportContext,
   type ReportReason,
   SearchError,

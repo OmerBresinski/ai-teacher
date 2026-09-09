@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { ImageElement } from "@tj/domain/documents";
 import {
@@ -354,6 +354,93 @@ describe("AddImagePanel", () => {
       expect(toastSpy.mock.calls.map((call) => call[0])).toContain(REPORT_FAILED_MESSAGE),
     );
     expect(await screen.findByRole("button", { name: "River" })).toBeTruthy();
+  });
+
+  test("Replace on an ai-authored element sends replaces and the open duration", async () => {
+    const { client, pick } = fakeClient({ photos: [pexelsPhoto("a", "River")], nextPage: null });
+    const lesson = seededLesson();
+    const image: ImageElement = {
+      id: uid(),
+      type: "image",
+      x: 100,
+      y: 80,
+      w: 300,
+      h: 200,
+      src: "https://example.test/old.jpg",
+      fit: "contain",
+      authoredBy: "ai",
+    };
+    const first = lesson.slides[0];
+    if (first) first.elements = [image];
+    const now = spyOn(performance, "now");
+    try {
+      now.mockReturnValue(100_000);
+      const { container, read } = renderEditor(lesson, { images: client });
+      fireEvent.pointerDown(catcher(container), pointer(200, 150));
+      fireEvent.pointerUp(window, pointer(200, 150));
+      const toolbar = await screen.findByRole("toolbar", { name: "Image" });
+      fireEvent.click(within(toolbar).getByRole("button", { name: "Replace" }));
+      expect(await screen.findByRole("dialog", { name: "Replace image" })).toBeTruthy();
+      now.mockReturnValue(101_500);
+      await photosTab();
+      await search("river");
+      fireEvent.click(await screen.findByRole("button", { name: "River" }));
+      await waitFor(() => expect(pick).toHaveBeenCalledTimes(1));
+      const [, target, telemetry] = pick.mock.calls[0] as [
+        unknown,
+        string,
+        Record<string, unknown>,
+      ];
+      expect(target).toBe("slide");
+      expect(telemetry.replaces).toBe("ai");
+      expect(telemetry.msSinceOpen).toBe(1500);
+      expect(telemetry.signal).toBeInstanceOf(AbortSignal);
+      expect(read().slides[0]?.elements).toHaveLength(1);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  test("Replace on an element without authoredBy sends replaces teacher", async () => {
+    const { client, pick } = fakeClient({ photos: [pexelsPhoto("a", "River")], nextPage: null });
+    const lesson = seededLesson();
+    const image: ImageElement = {
+      id: uid(),
+      type: "image",
+      x: 100,
+      y: 80,
+      w: 300,
+      h: 200,
+      src: "https://example.test/old.jpg",
+      fit: "contain",
+    };
+    const first = lesson.slides[0];
+    if (first) first.elements = [image];
+    const { container } = renderEditor(lesson, { images: client });
+    fireEvent.pointerDown(catcher(container), pointer(200, 150));
+    fireEvent.pointerUp(window, pointer(200, 150));
+    const toolbar = await screen.findByRole("toolbar", { name: "Image" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Replace" }));
+    expect(await screen.findByRole("dialog", { name: "Replace image" })).toBeTruthy();
+    await photosTab();
+    await search("river");
+    fireEvent.click(await screen.findByRole("button", { name: "River" }));
+    await waitFor(() => expect(pick).toHaveBeenCalledTimes(1));
+    const [, , telemetry] = pick.mock.calls[0] as [unknown, unknown, Record<string, unknown>];
+    expect(telemetry.replaces).toBe("teacher");
+  });
+
+  test("a new insert sends no replaces but sends the open duration", async () => {
+    const { client, pick } = fakeClient({ photos: [pexelsPhoto("a", "River")], nextPage: null });
+    renderEditor(seededLesson(), { images: client });
+    fireEvent.click(imageButton());
+    await photosTab();
+    await search("river");
+    fireEvent.click(await screen.findByRole("button", { name: "River" }));
+    await waitFor(() => expect(pick).toHaveBeenCalledTimes(1));
+    const [, , telemetry] = pick.mock.calls[0] as [unknown, unknown, Record<string, unknown>];
+    expect(telemetry.replaces).toBeUndefined();
+    expect(typeof telemetry.msSinceOpen).toBe("number");
   });
 
   test("a blocked search says to try a different search", async () => {

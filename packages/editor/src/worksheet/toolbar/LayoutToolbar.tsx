@@ -62,6 +62,7 @@ function ImageReplace({ block }: { block: Image }) {
   const { commit } = useBlockWrites();
   const { images } = useWorksheetSession();
   const [open, setOpen] = useState(false);
+  const [openedAt, setOpenedAt] = useState<number | null>(null);
   const onPick = (source: ImageSource) => {
     commit<Image>(block.id, (b) => {
       b.src = source.src;
@@ -74,7 +75,13 @@ function ImageReplace({ block }: { block: Image }) {
   };
   return (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (next) setOpenedAt(performance.now());
+        }}
+      >
         <PopoverTrigger asChild>
           <BarButton>
             <Replace {...ICON_SM} aria-hidden />
@@ -82,7 +89,15 @@ function ImageReplace({ block }: { block: Image }) {
           </BarButton>
         </PopoverTrigger>
         <PopoverContent aria-label="Replace image" className="w-[360px] p-0">
-          <ImagePicker images={images} target="worksheet" onPick={onPick} />
+          <ImagePicker
+            images={images}
+            target="worksheet"
+            onPick={onPick}
+            telemetry={{
+              replaces: block.authoredBy ?? "teacher",
+              openedAt: openedAt ?? undefined,
+            }}
+          />
         </PopoverContent>
       </Popover>
       {block.source ? (
