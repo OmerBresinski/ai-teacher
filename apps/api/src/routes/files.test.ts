@@ -43,6 +43,12 @@ async function errorCode(res: Response) {
 }
 
 describe("GET /files/:key", () => {
+  test("non-file routes keep the default same-origin CORP", async () => {
+    const res = await app.request("/health");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cross-origin-resource-policy")).toBe("same-origin");
+  });
+
   test("streams inline-safe objects with safe headers, content-length and no-store", async () => {
     const res = await app.request(`/files/${ws}/exports/lesson%201.pdf`, {
       headers: { [WORKSPACE_HEADER]: ws },
@@ -56,6 +62,7 @@ describe("GET /files/:key", () => {
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("content-length")).toBe(String(bytes.byteLength));
     expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
   });
 

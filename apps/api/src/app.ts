@@ -148,8 +148,20 @@ function buildApp({
     return corsMiddleware(c, next);
   });
 
-  // 4. Security headers.
-  app.use(secureHeaders());
+  // 4. Security headers. CORP is disabled in the global set and re-applied selectively
+  // below: hono's secure-headers `.set`s unconditionally after `await next()`, so a route
+  // handler can never override it — the narrowing middleware (inner, runs first on the way
+  // back out) is the only layer that can differ per path.
+  app.use(secureHeaders({ crossOriginResourcePolicy: false }));
+  app.use(async (c, next) => {
+    await next();
+    // The file proxy serves bytes the editor embeds cross-origin (TEACH-189); everything else
+    // keeps the default. The proxy still authorises per request, so this controls render
+    // embedding, not access.
+    if (!c.req.path.startsWith("/files/")) {
+      c.res.headers.set("Cross-Origin-Resource-Policy", "same-origin");
+    }
+  });
 
   // TEACH-20: better-auth at /auth/* and guards on every protected path prefix.
   if (auth) app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
