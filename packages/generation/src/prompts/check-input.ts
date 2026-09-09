@@ -29,7 +29,7 @@ const EXAMPLE = {
 };
 
 export const checkInputPrompt = {
-  version: "check-input.v2",
+  version: "check-input.v3",
   system: [
     "You screen a teacher's lesson brief before it is turned into a lesson. You do not plan or write anything; you only report whether the brief may go forward.",
     "",

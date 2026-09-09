@@ -140,7 +140,7 @@ describe("proposeFor", () => {
     factRefs: ["o2", "v2"],
   };
 
-  test("cascade: one call per distinct slide and per block; proposals carry cascade.v1 and parse", async () => {
+  test("cascade: one call per distinct slide and per block; proposals carry the cascade prompt version and parse", async () => {
     const { lesson, worksheet, term, def } = fixturePairWithRecipeVocab();
     // s-vocab has no `question`, so element targets stay element-level.
     const targets: ProposalTarget[] = [
@@ -188,7 +188,7 @@ describe("proposeFor", () => {
         authoredBy: "ai",
       });
       expect(p.element?.id).not.toBe(original.id);
-      expect(p.generatedFrom.promptVersion).toBe("cascade.v1");
+      expect(p.generatedFrom.promptVersion).toBe("cascade.v2");
     }
     const blockProposal = proposals.find((p) => p.block);
     expect(blockProposal?.target).toEqual({ blockId: "wb3" });
@@ -201,7 +201,7 @@ describe("proposeFor", () => {
     );
   });
 
-  test("regenerate: a slide-only target yields every element of the new slide, with regenerate.v1 and the instruction in the prompt", async () => {
+  test("regenerate: a slide-only target yields every element of the new slide, with the regenerate prompt version and the instruction in the prompt", async () => {
     const { lesson } = fixturePair();
     const ai = createFakeAi({ script: [json(mcSpec)], usage });
     const deps = recordingDeps(ai);
@@ -218,7 +218,7 @@ describe("proposeFor", () => {
         (p) => p.target.slideId === "s-mc" && p.target.elementId === undefined && p.element,
       ),
     ).toBe(true);
-    expect(proposals.every((p) => p.generatedFrom.promptVersion === "regenerate.v1")).toBe(true);
+    expect(proposals.every((p) => p.generatedFrom.promptVersion === "regenerate.v2")).toBe(true);
     // Every proposal of the slide carries the same fresh question and notes, and together they
     // form a valid slide whose answer data names the new element ids.
     const question = proposals[0]?.question;

@@ -1,13 +1,59 @@
 import { describe, expect, test } from "bun:test";
-import { lessonFacts } from "./fixtures.test-helpers";
+import { generatedLesson, lessonFacts } from "./fixtures.test-helpers";
+import { parseLesson } from "./lesson";
 import {
   FactIdSchema,
   GENERATABLE_BLOCK_TYPES,
   GENERATABLE_SLIDE_KINDS,
   GeneratableBlockTypeSchema,
   GeneratableSlideKindSchema,
+  type LessonFacts,
   LessonFactsSchema,
 } from "./lesson-facts";
+
+/** The richer shape (Generation quality §1) on top of the fixture: every new field set once. */
+const richFacts = (): LessonFacts => ({
+  ...lessonFacts(),
+  keyIdeas: [
+    {
+      id: "k1",
+      statement: "Water changes state as it warms and cools",
+      explanation: "Heat from the sun turns liquid water into vapour; cooling turns it back.",
+      example: "A puddle shrinks on a sunny day.",
+      analogy: "Like steam from a kettle turning to drops on a cold window.",
+      objectiveRefs: ["o1"],
+    },
+  ],
+  vocabulary: lessonFacts().vocabulary.map((v) => ({ ...v, objectiveRefs: ["o2"] })),
+  workedExamples: lessonFacts().workedExamples.map((x) => ({ ...x, misconceptionRef: "m1" })),
+  questions: lessonFacts().questions.map((q) => ({
+    ...q,
+    objectiveRefs: ["o1"],
+    distractors: [{ text: "Condensation", misconceptionRef: "m1" }, { text: "Freezing" }],
+    use: "slide" as const,
+    tier: "core" as const,
+  })),
+  misconceptions: [
+    {
+      id: "m1",
+      belief: "Clouds are made of water vapour",
+      correction: "Clouds are tiny liquid drops; vapour is invisible.",
+      objectiveRefs: ["o2"],
+    },
+  ],
+  pitch: { readingAgeTarget: 9, sentenceLengthMax: 14, avoid: ["precipitate"] },
+  outline: lessonFacts().outline.map((entry) => ({
+    ...entry,
+    brief: { adds: "One thing", avoids: "Repeating the definition" },
+  })),
+});
+
+const issuesOf = (facts: unknown) => {
+  const result = LessonFactsSchema.safeParse(facts);
+  if (result.success) throw new Error("expected a parse failure");
+  return result.error.issues.map((i) => ({ path: i.path, message: i.message }));
+};
+
 import { SlideKindSchema } from "./slide";
 import { WorksheetBlockSchema } from "./worksheet";
 
@@ -15,6 +61,75 @@ describe("LessonFactsSchema", () => {
   test("round-trips the fixture through JSON unchanged", () => {
     const input = lessonFacts();
     expect(LessonFactsSchema.parse(JSON.parse(JSON.stringify(input)))).toEqual(input);
+  });
+
+  test("B1: the richer shape round-trips through JSON unchanged, and so does the pre-rich generated lesson", () => {
+    const input = richFacts();
+    expect(LessonFactsSchema.parse(JSON.parse(JSON.stringify(input)))).toEqual(input);
+    const lesson = generatedLesson();
+    expect(parseLesson(JSON.parse(JSON.stringify(lesson)))).toEqual(lesson);
+  });
+
+  test("B2: a key idea's objectiveRefs must name an existing objective, at its path", () => {
+    const facts = richFacts();
+    const k1 = facts.keyIdeas?.[0];
+    if (!k1) throw new Error("fixture");
+    k1.objectiveRefs = ["o9"];
+    expect(issuesOf(facts)).toContainEqual({
+      path: ["keyIdeas", 0, "objectiveRefs", 0],
+      message: 'references missing an objective "o9"',
+    });
+  });
+
+  test("B2b: an objectiveRefs entry that exists but is not an objective is the wrong kind", () => {
+    const facts = richFacts();
+    const m1 = facts.misconceptions[0];
+    if (!m1) throw new Error("fixture");
+    m1.objectiveRefs = ["q1"];
+    expect(issuesOf(facts)).toContainEqual({
+      path: ["misconceptions", 0, "objectiveRefs", 0],
+      message: '"q1" is not an objective id',
+    });
+  });
+
+  test("B3: a misconceptionRef pointing at a question is the wrong kind; at a missing id, missing", () => {
+    const facts = richFacts();
+    const x1 = facts.workedExamples[0];
+    if (!x1) throw new Error("fixture");
+    x1.misconceptionRef = "q1";
+    expect(issuesOf(facts)).toContainEqual({
+      path: ["workedExamples", 0, "misconceptionRef"],
+      message: '"q1" is not a misconception id',
+    });
+    const again = richFacts();
+    const q = again.questions[0];
+    if (!q?.distractors?.[0]) throw new Error("fixture");
+    q.distractors[0].misconceptionRef = "m7";
+    expect(issuesOf(again)).toContainEqual({
+      path: ["questions", 0, "distractors", 0, "misconceptionRef"],
+      message: 'references missing a misconception "m7"',
+    });
+  });
+
+  test("B4: k1 beside q1 is fine; k1 twice is a duplicate at the second's path", () => {
+    const facts = richFacts();
+    expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
+    const k1 = facts.keyIdeas?.[0];
+    if (!k1) throw new Error("fixture");
+    facts.keyIdeas = [k1, { ...k1 }];
+    expect(issuesOf(facts)).toContainEqual({
+      path: ["keyIdeas", 1, "id"],
+      message: 'duplicate fact id "k1"',
+    });
+  });
+
+  test("an outline factRef may point at a key idea or a misconception", () => {
+    const facts = richFacts();
+    facts.outline[2] = {
+      ...(facts.outline[2] as (typeof facts.outline)[number]),
+      factRefs: ["k1", "m1"],
+    };
+    expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
   });
 
   test("a duplicate id across objectives and vocabulary fails with a custom issue naming it", () => {

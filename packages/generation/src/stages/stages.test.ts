@@ -218,7 +218,14 @@ describe("plan", () => {
         ...afterSkeleton,
         facts: {
           ...afterSkeleton.facts,
-          misconceptions: [{ id: "m1", text: "Heat is a substance." }],
+          misconceptions: [
+            {
+              id: "m1",
+              belief: "Heat is a substance.",
+              correction: "Heat is energy transferred.",
+              objectiveRefs: [],
+            },
+          ],
         },
       },
     };

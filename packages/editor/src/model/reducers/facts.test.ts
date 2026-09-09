@@ -56,6 +56,64 @@ describe("facts reducers", () => {
     expect(r.addFact(noRefs, { kind: "objective", text: "Fresh" }, ["o3"]).id).toBe("o4");
   });
 
+  test("B7: key ideas and misconceptions are facts too — found, never re-minted, and removing one clears the links to it", () => {
+    const lesson = generatedLesson();
+    if (!lesson.facts) throw new Error("fixture");
+    lesson.facts.keyIdeas = [
+      {
+        id: "k1",
+        statement: "Water changes state",
+        explanation: "Heat turns liquid to vapour.",
+        example: "A puddle dries.",
+        objectiveRefs: ["o1"],
+      },
+    ];
+    lesson.facts.misconceptions = [
+      {
+        id: "m1",
+        belief: "Clouds are vapour",
+        correction: "They are drops.",
+        objectiveRefs: ["o1"],
+      },
+    ];
+    lesson.facts.workedExamples[0] = {
+      ...(lesson.facts.workedExamples[0] as NonNullable<(typeof lesson.facts.workedExamples)[0]>),
+      misconceptionRef: "m1",
+    };
+    lesson.facts.questions[0] = {
+      ...(lesson.facts.questions[0] as NonNullable<(typeof lesson.facts.questions)[0]>),
+      objectiveRefs: ["o1"],
+      distractors: [{ text: "Steam", misconceptionRef: "m1" }, { text: "Ice" }],
+    };
+    // A duplicated ref (the outline's and the question's) is gone entirely after the removal.
+    lesson.facts.outline[2]?.factRefs.push("k1", "m1", "m1");
+    lesson.facts.questions[0].objectiveRefs = ["o1", "o1"];
+    // Prefixes differ, so a new question is q2 whatever the key ideas hold; `k` is never minted here.
+    expect(r.addFact(lesson, { kind: "question", stem: "?", answer: "!", reasoning: "" }).id).toBe(
+      "q2",
+    );
+    expect(r.nextFactId(lesson, "keyIdea")).toBe("k2");
+    expect(r.nextFactId(lesson, "misconception")).toBe("m2");
+    // Removing m1 drops it from the outline, the worked example and the distractor.
+    const withoutM1 = r.removeFact(lesson, "m1");
+    expect(withoutM1.facts?.misconceptions).toEqual([]);
+    expect(withoutM1.facts?.outline[2]?.factRefs).not.toContain("m1");
+    expect("misconceptionRef" in (withoutM1.facts?.workedExamples[0] ?? {})).toBe(false);
+    expect(withoutM1.facts?.questions[0]?.distractors).toEqual([
+      { text: "Steam" },
+      { text: "Ice" },
+    ]);
+    // Removing o1 clears the key idea's and the question's objectiveRefs; the question's
+    // optional list goes away rather than staying `[]`, the key idea's required list stays.
+    const withoutO1 = r.removeFact(lesson, "o1");
+    expect(withoutO1.facts?.keyIdeas?.[0]?.objectiveRefs).toEqual([]);
+    expect("objectiveRefs" in (withoutO1.facts?.questions[0] ?? {})).toBe(false);
+    // Removing a key idea works like any fact.
+    expect(r.removeFact(lesson, "k1").facts?.keyIdeas).toEqual([]);
+    // Unchanged when the id is unknown.
+    expect(r.removeFact(lesson, "k9")).toBe(lesson);
+  });
+
   test("worksheetFactRefs collects the block refs, deduplicated", () => {
     expect(r.worksheetFactRefs(undefined)).toEqual([]);
     const refs = r.worksheetFactRefs(generatedWorksheet());

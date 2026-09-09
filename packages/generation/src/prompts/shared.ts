@@ -45,19 +45,41 @@ export function audienceBlock(a: Audience): string {
   return lines.join("\n");
 }
 
-/** The facts with their ids, in the compact form the Generate/Evaluate/Repair prompts embed. */
+/**
+ * The facts with their ids, in the compact form the Generate/Evaluate/Repair prompts embed. A
+ * fact's own links are shown in brackets after it (`[o1, o2]`, `[heads off m1]`) so the model can
+ * follow them; lists a lesson does not have are left out.
+ */
 export function factsBlock(facts: LessonFacts): string {
   const out: string[] = [];
+  const refs = (ids: string[] | undefined) => (ids && ids.length > 0 ? ` [${ids.join(", ")}]` : "");
+  const headsOff = (id: string | undefined) => (id ? ` [heads off ${id}]` : "");
   out.push("Objectives:");
   for (const o of facts.objectives) out.push(`  ${o.id}: ${o.text}`);
+  if (facts.keyIdeas && facts.keyIdeas.length > 0) {
+    out.push("Key ideas:");
+    for (const k of facts.keyIdeas) {
+      out.push(`  ${k.id}: ${k.statement} — ${k.explanation}${refs(k.objectiveRefs)}`);
+      out.push(`    Example: ${k.example}`);
+      if (k.analogy) out.push(`    Analogy: ${k.analogy}`);
+    }
+  }
+  if (facts.misconceptions.length > 0) {
+    out.push("Misconceptions:");
+    for (const m of facts.misconceptions) {
+      out.push(`  ${m.id}: believes ${m.belief}; correct: ${m.correction}${refs(m.objectiveRefs)}`);
+    }
+  }
   if (facts.vocabulary.length > 0) {
     out.push("Vocabulary:");
-    for (const v of facts.vocabulary) out.push(`  ${v.id}: ${v.term} — ${v.definition}`);
+    for (const v of facts.vocabulary) {
+      out.push(`  ${v.id}: ${v.term} — ${v.definition}${refs(v.objectiveRefs)}`);
+    }
   }
   if (facts.workedExamples.length > 0) {
     out.push("Worked examples:");
     for (const x of facts.workedExamples) {
-      out.push(`  ${x.id}: ${x.problem}`);
+      out.push(`  ${x.id}: ${x.problem}${headsOff(x.misconceptionRef)}`);
       x.steps.forEach((s, i) => {
         out.push(`    ${i + 1}. ${s}`);
       });
@@ -67,9 +89,23 @@ export function factsBlock(facts: LessonFacts): string {
   if (facts.questions.length > 0) {
     out.push("Questions:");
     for (const q of facts.questions) {
-      out.push(`  ${q.id}: ${q.stem}`);
+      const tags = [q.tier, q.use ? `use: ${q.use}` : undefined].filter(Boolean).join(", ");
+      out.push(`  ${q.id}: ${q.stem}${tags ? ` (${tags})` : ""}${refs(q.objectiveRefs)}`);
       out.push(`    Answer: ${q.answer} (${q.reasoning})`);
+      if (q.distractors && q.distractors.length > 0) {
+        out.push(
+          `    Distractors: ${q.distractors
+            .map((d) => `${d.text}${headsOff(d.misconceptionRef)}`)
+            .join("; ")}`,
+        );
+      }
     }
+  }
+  if (facts.pitch) {
+    const avoid = facts.pitch.avoid.length > 0 ? `; avoid: ${facts.pitch.avoid.join(", ")}` : "";
+    out.push(
+      `Pitch: reading age ${facts.pitch.readingAgeTarget}, sentences of at most ${facts.pitch.sentenceLengthMax} words${avoid}.`,
+    );
   }
   out.push(`Lesson length: ${facts.durationMin} minutes.`);
   return out.join("\n");

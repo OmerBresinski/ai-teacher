@@ -115,6 +115,46 @@ describe("facts panel", () => {
     expect(onFactsChanged.mock.calls[0]?.[0]).toEqual(["o3", "v2"]);
   });
 
+  test("B7: key ideas and misconceptions render read-only sections; removing one reports its id", async () => {
+    const lesson = generatedLesson();
+    if (!lesson.facts) throw new Error("fixture");
+    lesson.facts.keyIdeas = [
+      {
+        id: "k1",
+        statement: "Water changes state as it warms and cools",
+        explanation: "Heat turns liquid water into vapour; cooling turns it back.",
+        example: "A puddle shrinks on a sunny day.",
+        analogy: "Steam on a cold window.",
+        objectiveRefs: ["o1"],
+      },
+    ];
+    lesson.facts.misconceptions = [
+      {
+        id: "m1",
+        belief: "Clouds are made of water vapour",
+        correction: "They are tiny liquid drops.",
+        objectiveRefs: ["o1"],
+      },
+    ];
+    const onFactsChanged = mock((_ids: string[]) => {});
+    const { read } = renderEditor(lesson, { onFactsChanged, worksheet: generatedWorksheet() });
+    openPanel();
+    const p = panel();
+    expect(within(p).getByRole("heading", { name: "Key ideas" })).toBeTruthy();
+    expect(within(p).getByRole("heading", { name: "Misconceptions" })).toBeTruthy();
+    expect(within(p).getByText("Water changes state as it warms and cools")).toBeTruthy();
+    expect(within(p).getByText("Analogy: Steam on a cold window.")).toBeTruthy();
+    expect(within(p).getByText("Correct: They are tiny liquid drops.")).toBeTruthy();
+    // No field edits them and no Add button exists for them.
+    expect(within(p).queryByRole("textbox", { name: /Key idea/ })).toBeNull();
+    expect(within(p).queryByRole("button", { name: /Add key idea|Add misconception/ })).toBeNull();
+    fireEvent.click(within(p).getByRole("button", { name: "Remove misconception 1" }));
+    expect(read().facts?.misconceptions).toEqual([]);
+    expect(within(p).queryByRole("heading", { name: "Misconceptions" })).toBeNull();
+    await waitFor(() => expect(onFactsChanged).toHaveBeenCalledTimes(1), { timeout: 3_000 });
+    expect(onFactsChanged.mock.calls[0]?.[0]).toEqual(["m1"]);
+  });
+
   test("busy: the panel shows Updating slides… and the busy slides a changing… overlay", () => {
     const lesson = generatedLesson();
     renderEditor(lesson, {

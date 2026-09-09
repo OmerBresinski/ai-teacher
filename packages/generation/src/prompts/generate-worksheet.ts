@@ -37,7 +37,7 @@ const BLOCK_SHAPES = {
 } as const;
 
 export const generateWorksheetPrompt = {
-  version: "generate-worksheet.v3",
+  version: "generate-worksheet.v4",
   system: [
     "You write the practice worksheet that goes with a classroom lesson, from the lesson's facts.",
     "You supply the blocks' text and answers only; a layout recipe paginates them.",

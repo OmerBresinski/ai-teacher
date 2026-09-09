@@ -42,7 +42,7 @@ const EXAMPLE: PickOrRequery = { pick: "27147699", query: null };
 const EXAMPLE_REQUERY: PickOrRequery = { pick: null, query: "beaver gnawing wood" };
 
 export const pickOrRequeryPrompt = {
-  version: "pick-or-requery-photo.v1",
+  version: "pick-or-requery-photo.v2",
   system: [
     "You choose the photograph for one slide of a school lesson from a list of stock-photo search results. You see each result's caption, never the picture.",
     "",

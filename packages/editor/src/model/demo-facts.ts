@@ -93,10 +93,30 @@ export const DEMO_LESSON_FACTS: LessonFacts = {
     },
   ],
   misconceptions: [
-    { id: "m1", text: "Clouds are made of water vapour." },
-    { id: "m2", text: "Water disappears when a puddle dries up." },
-    { id: "m3", text: "Rain comes from the sea being pulled up into the sky." },
-    { id: "m4", text: "The water cycle only happens when it is sunny." },
+    {
+      id: "m1",
+      belief: "Clouds are made of water vapour.",
+      correction: "Clouds are tiny drops of liquid water; water vapour is an invisible gas.",
+      objectiveRefs: ["o1"],
+    },
+    {
+      id: "m2",
+      belief: "Water disappears when a puddle dries up.",
+      correction: "The water evaporates into the air as vapour; it has not gone.",
+      objectiveRefs: ["o1"],
+    },
+    {
+      id: "m3",
+      belief: "Rain comes from the sea being pulled up into the sky.",
+      correction: "Water evaporates, rises as vapour, condenses into clouds and falls as rain.",
+      objectiveRefs: ["o2"],
+    },
+    {
+      id: "m4",
+      belief: "The water cycle only happens when it is sunny.",
+      correction: "Evaporation is slower in the cold but the cycle never stops.",
+      objectiveRefs: ["o3"],
+    },
   ],
   outline: [
     { id: "s1", kind: "title", minutes: 2, factRefs: [] },
@@ -163,8 +183,18 @@ export const DEMO_FRACTIONS_FACTS: LessonFacts = {
     },
   ],
   misconceptions: [
-    { id: "m1", text: "To find a fraction of an amount you only divide by the bottom number." },
-    { id: "m2", text: "A bigger denominator means a bigger share." },
+    {
+      id: "m1",
+      belief: "To find a fraction of an amount you only divide by the bottom number.",
+      correction: "Divide by the denominator, then multiply by the numerator.",
+      objectiveRefs: ["o2"],
+    },
+    {
+      id: "m2",
+      belief: "A bigger denominator means a bigger share.",
+      correction: "A bigger denominator means the whole is split into more, smaller parts.",
+      objectiveRefs: ["o1"],
+    },
   ],
   outline: [
     { id: "s1", kind: "title", minutes: 2, factRefs: [] },

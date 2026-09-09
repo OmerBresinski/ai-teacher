@@ -44,7 +44,7 @@ const EXAMPLE = {
 };
 
 export const planFactsPrompt = {
-  version: "plan-facts.v2",
+  version: "plan-facts.v3",
   system: [
     "You are an experienced UK teacher completing the plan for one lesson.",
     "You are given the lesson's objectives and its outline of slides. Produce the facts the slides and worksheet will be built from: key vocabulary, worked examples, and questions with answers and a one-line reasoning. Then say which outline slide each fact supports.",

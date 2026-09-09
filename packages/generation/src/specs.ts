@@ -5,6 +5,8 @@ import {
   ImageBriefSchema,
   type LessonFacts,
   LessonFactsSchema,
+  QUESTION_TIERS,
+  QUESTION_USES,
 } from "@tj/domain/documents";
 import { BlockSpecSchema, SlideSpecSchema, SPEC_LIMITS } from "@tj/slides";
 import { z } from "zod";
@@ -45,7 +47,14 @@ export type CheckInputOutput = z.infer<typeof CheckInputOutputSchema>;
 /* ------------------------------------------------------------------ */
 
 /** The fact lists a model may refer to from the outline, by ordinal. */
-export const FACT_LIST_TYPES = ["objective", "vocabulary", "workedExample", "question"] as const;
+export const FACT_LIST_TYPES = [
+  "objective",
+  "keyIdea",
+  "vocabulary",
+  "workedExample",
+  "question",
+  "misconception",
+] as const;
 export type FactListType = (typeof FACT_LIST_TYPES)[number];
 
 /** An ordinal reference into one of the fact lists: `{ type: "objective", index: 0 }`. */
@@ -70,21 +79,31 @@ function refineOutlineRefs(
   sizes: Partial<Record<FactListType, number>>,
 ) {
   refs.forEach((ref, j) => {
-    const size = sizes[ref.type];
-    if (size === undefined) {
-      ctx.addIssue({
-        code: "custom",
-        message: `only ${Object.keys(sizes).join(", ")} references are allowed here`,
-        path: [...path, j, "type"],
-      });
-    } else if (ref.index >= size) {
-      ctx.addIssue({
-        code: "custom",
-        message: `${ref.type} index ${ref.index} is out of range (${size} given)`,
-        path: [...path, j, "index"],
-      });
-    }
+    refineRef(ctx, [...path, j], ref, sizes);
   });
+}
+
+/** One ordinal reference must name an allowed list and land inside it. */
+function refineRef(
+  ctx: z.RefinementCtx,
+  path: (string | number)[],
+  ref: OrdinalRef,
+  sizes: Partial<Record<FactListType, number>>,
+) {
+  const size = sizes[ref.type];
+  if (size === undefined) {
+    ctx.addIssue({
+      code: "custom",
+      message: `only ${Object.keys(sizes).join(", ")} references are allowed here`,
+      path: [...path, "type"],
+    });
+  } else if (ref.index >= size) {
+    ctx.addIssue({
+      code: "custom",
+      message: `${ref.type} index ${ref.index} is out of range (${size} given)`,
+      path: [...path, "index"],
+    });
+  }
 }
 
 /**
@@ -141,12 +160,51 @@ export type PlanSkeleton = z.infer<typeof PlanSkeletonSchema>;
  * references each outline entry draws on. `planFactsSchemaFor(skeleton)` adds the range checks
  * that need the skeleton; this is the shape.
  */
+/** An ordinal reference that must name an objective (`assignFactIds` resolves it to `o<n>`). */
+const ObjectiveOrdinalSchema = z.strictObject({
+  type: z.literal("objective"),
+  index: z.number().int().nonnegative(),
+});
+/** An ordinal reference that must name a misconception (resolved to `m<n>`). */
+const MisconceptionOrdinalSchema = z.strictObject({
+  type: z.literal("misconception"),
+  index: z.number().int().nonnegative(),
+});
+
 const PlanFactsShape = z.strictObject({
+  /**
+   * The richer facts (Generation quality §1; TEACH-209): accepted and merged by `assignFactIds`
+   * from here on, asked for by the Plan-prompts ticket (which makes them required and lifts the
+   * caps). Optional so today's prompt and fixtures still validate.
+   */
+  keyIdeas: z
+    .array(
+      z.strictObject({
+        statement: line(SPEC_LIMITS.item),
+        explanation: line(SPEC_LIMITS.body),
+        example: line(SPEC_LIMITS.body),
+        analogy: line(SPEC_LIMITS.item).optional(),
+        objectiveRefs: z.array(ObjectiveOrdinalSchema),
+      }),
+    )
+    .max(5)
+    .optional(),
+  misconceptions: z
+    .array(
+      z.strictObject({
+        belief: line(SPEC_LIMITS.item),
+        correction: line(SPEC_LIMITS.body),
+        objectiveRefs: z.array(ObjectiveOrdinalSchema),
+      }),
+    )
+    .max(4)
+    .optional(),
   vocabulary: z
     .array(
       z.strictObject({
         term: line(SPEC_LIMITS.term),
         definition: line(SPEC_LIMITS.definition),
+        objectiveRefs: z.array(ObjectiveOrdinalSchema).optional(),
       }),
     )
     .max(6),
@@ -156,6 +214,7 @@ const PlanFactsShape = z.strictObject({
         problem: line(SPEC_LIMITS.body),
         steps: z.array(line(SPEC_LIMITS.item)).min(1).max(4),
         answer: line(SPEC_LIMITS.answer),
+        misconceptionRef: MisconceptionOrdinalSchema.optional(),
       }),
     )
     .max(3),
@@ -165,9 +224,28 @@ const PlanFactsShape = z.strictObject({
         stem: line(SPEC_LIMITS.stem),
         answer: line(SPEC_LIMITS.answer),
         reasoning: line(SPEC_LIMITS.footnote),
+        objectiveRefs: z.array(ObjectiveOrdinalSchema).optional(),
+        distractors: z
+          .array(
+            z.strictObject({
+              text: line(SPEC_LIMITS.option),
+              misconceptionRef: MisconceptionOrdinalSchema.optional(),
+            }),
+          )
+          .max(3)
+          .optional(),
+        use: z.enum(QUESTION_USES).optional(),
+        tier: z.enum(QUESTION_TIERS).optional(),
       }),
     )
     .max(8),
+  pitch: z
+    .strictObject({
+      readingAgeTarget: z.number().int().min(1),
+      sentenceLengthMax: z.number().int().min(1),
+      avoid: z.array(line(SPEC_LIMITS.word)).max(6),
+    })
+    .optional(),
   /** Per outline entry (by position), the facts from these lists it covers. */
   outlineFactRefs: z
     .array(
@@ -200,10 +278,44 @@ const FIRST_FACT_SLIDE = 2;
 export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts> {
   return PlanFactsShape.superRefine((facts, ctx) => {
     const sizes = {
+      keyIdea: facts.keyIdeas?.length ?? 0,
       vocabulary: facts.vocabulary.length,
       workedExample: facts.workedExamples.length,
       question: facts.questions.length,
+      misconception: facts.misconceptions?.length ?? 0,
     };
+    // A fact's own links: objectives are the skeleton's, misconceptions this call's.
+    const objectives = { objective: skeleton.learningObjectives.length };
+    const misconceptions = { misconception: sizes.misconception };
+    for (const key of ["keyIdeas", "misconceptions", "vocabulary", "questions"] as const) {
+      (facts[key] ?? []).forEach((fact, i) => {
+        if (fact.objectiveRefs) {
+          refineOutlineRefs(ctx, [key, i, "objectiveRefs"], fact.objectiveRefs, objectives);
+        }
+      });
+    }
+    facts.workedExamples.forEach((x, i) => {
+      if (x.misconceptionRef) {
+        refineRef(
+          ctx,
+          ["workedExamples", i, "misconceptionRef"],
+          x.misconceptionRef,
+          misconceptions,
+        );
+      }
+    });
+    facts.questions.forEach((q, i) => {
+      q.distractors?.forEach((d, j) => {
+        if (d.misconceptionRef) {
+          refineRef(
+            ctx,
+            ["questions", i, "distractors", j, "misconceptionRef"],
+            d.misconceptionRef,
+            misconceptions,
+          );
+        }
+      });
+    });
     facts.outlineFactRefs.forEach((entry, i) => {
       if (entry.index < FIRST_FACT_SLIDE || entry.index >= skeleton.outline.length) {
         ctx.addIssue({
@@ -217,9 +329,10 @@ export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts>
   });
 }
 
-/** The id prefix each fact list gets (ADR 0025 §1: `o1`, `v3`, `x1`, `q2`, `m1`, `s4`). */
-const ID_PREFIX: Record<FactListType | "misconception" | "outline", string> = {
+/** The id prefix each fact list gets (ADR 0025 §1: `o1`, `k1`, `v3`, `x1`, `q2`, `m1`, `s4`). */
+const ID_PREFIX: Record<FactListType | "outline", string> = {
   objective: "o",
+  keyIdea: "k",
   vocabulary: "v",
   workedExample: "x",
   question: "q",
@@ -228,10 +341,11 @@ const ID_PREFIX: Record<FactListType | "misconception" | "outline", string> = {
 };
 
 /**
- * Merge the skeleton and the facts, mint the stable fact ids and rewrite the outline's ordinal
- * references to them. Pure; the result validates against `LessonFactsSchema` (asserted here so a
- * bug fails loudly, not later). With `EMPTY_PLAN_FACTS` it yields the skeleton-only facts the
- * objectives slide is built from.
+ * Merge the skeleton and the facts, mint the stable fact ids and rewrite every ordinal reference
+ * (the outline's `factRefs`, each fact's `objectiveRefs` / `misconceptionRef`) to them. Pure; the
+ * result validates against `LessonFactsSchema` (asserted here so a bug fails loudly, not later).
+ * With `EMPTY_PLAN_FACTS` it yields the skeleton-only facts the objectives slide is built from.
+ * A list or field the facts call did not produce is left out, never written empty.
  */
 export function assignFactIds(
   skeleton: PlanSkeleton,
@@ -240,22 +354,62 @@ export function assignFactIds(
 ): LessonFacts {
   const id = (type: keyof typeof ID_PREFIX, index: number): FactId =>
     `${ID_PREFIX[type]}${index + 1}`;
+  const refId = (ref: OrdinalRef): FactId => id(ref.type, ref.index);
+  const objectiveRefs = (refs: OrdinalRef[] | undefined) =>
+    refs === undefined ? {} : { objectiveRefs: dedupe(refs.map(refId)) };
+  const misconceptionRef = (ref: OrdinalRef | undefined) =>
+    ref === undefined ? {} : { misconceptionRef: refId(ref) };
+  const optional = <K extends string, V>(key: K, value: V | undefined) =>
+    value === undefined ? {} : ({ [key]: value } as Record<K, V>);
   const added = new Map<number, OrdinalRef[]>();
   for (const entry of facts.outlineFactRefs)
     added.set(entry.index, [...(added.get(entry.index) ?? []), ...entry.factRefs]);
   return LessonFactsSchema.parse({
     objectives: skeleton.learningObjectives.map((o, i) => ({ id: id("objective", i), ...o })),
-    vocabulary: facts.vocabulary.map((v, i) => ({ id: id("vocabulary", i), ...v })),
-    workedExamples: facts.workedExamples.map((x, i) => ({ id: id("workedExample", i), ...x })),
-    questions: facts.questions.map((q, i) => ({ id: id("question", i), ...q })),
-    misconceptions: [],
+    ...optional(
+      "keyIdeas",
+      facts.keyIdeas?.map((k, i) => ({
+        id: id("keyIdea", i),
+        statement: k.statement,
+        explanation: k.explanation,
+        example: k.example,
+        ...optional("analogy", k.analogy),
+        objectiveRefs: dedupe(k.objectiveRefs.map(refId)),
+      })),
+    ),
+    vocabulary: facts.vocabulary.map(({ objectiveRefs: refs, ...v }, i) => ({
+      id: id("vocabulary", i),
+      ...v,
+      ...objectiveRefs(refs),
+    })),
+    workedExamples: facts.workedExamples.map(({ misconceptionRef: ref, ...x }, i) => ({
+      id: id("workedExample", i),
+      ...x,
+      ...misconceptionRef(ref),
+    })),
+    questions: facts.questions.map(({ objectiveRefs: refs, distractors, use, tier, ...q }, i) => ({
+      id: id("question", i),
+      ...q,
+      ...objectiveRefs(refs),
+      ...optional(
+        "distractors",
+        distractors?.map((d) => ({ text: d.text, ...misconceptionRef(d.misconceptionRef) })),
+      ),
+      ...optional("use", use),
+      ...optional("tier", tier),
+    })),
+    misconceptions: (facts.misconceptions ?? []).map((m, i) => ({
+      id: id("misconception", i),
+      belief: m.belief,
+      correction: m.correction,
+      objectiveRefs: dedupe(m.objectiveRefs.map(refId)),
+    })),
+    ...optional("pitch", facts.pitch),
     outline: skeleton.outline.map((entry, i) => ({
       id: id("outline", i),
       kind: entry.kind,
       minutes: entry.minutes,
-      factRefs: dedupe(
-        [...entry.factRefs, ...(added.get(i) ?? [])].map((ref) => id(ref.type, ref.index)),
-      ),
+      factRefs: dedupe([...entry.factRefs, ...(added.get(i) ?? [])].map(refId)),
       ...(entry.imageBrief !== undefined ? { imageBrief: entry.imageBrief } : {}),
     })),
     durationMin,

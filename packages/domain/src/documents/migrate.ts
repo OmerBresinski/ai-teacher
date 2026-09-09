@@ -32,12 +32,37 @@ export function migrate(json: unknown): unknown {
       // Pre-versioned exports never shipped; assume the current shape.
       return { ...doc, version: CURRENT_VERSION };
     case 1:
-      return doc;
+      return migrateMisconceptions(doc);
     default:
       throw new DocumentParseError(
         `This file was made with a newer version of TeachDeck (document version ${String(doc.version)}).`,
       );
   }
+}
+
+/**
+ * `Misconception` was `{ id, text }` until Generation quality (TEACH-209) made it
+ * `{ id, belief, correction, objectiveRefs }`. No stored lesson had a non-empty list (the
+ * production lessons and every fixture carried `misconceptions: []`), so the document version does
+ * not bump; this maps the old shape if one ever turns up. Byte-identical for anything else.
+ */
+function migrateMisconceptions(doc: Record<string, unknown>): unknown {
+  const facts = doc.facts;
+  if (!facts || typeof facts !== "object") return doc;
+  const list = (facts as { misconceptions?: unknown }).misconceptions;
+  if (!Array.isArray(list)) return doc;
+  const old = (m: unknown): m is { id: unknown; text: string } =>
+    !!m && typeof m === "object" && typeof (m as { text?: unknown }).text === "string";
+  if (!list.some(old)) return doc;
+  return {
+    ...doc,
+    facts: {
+      ...facts,
+      misconceptions: list.map((m) =>
+        old(m) ? { id: m.id, belief: m.text, correction: "", objectiveRefs: [] } : m,
+      ),
+    },
+  };
 }
 
 /** Human-readable message naming the first three problems. */

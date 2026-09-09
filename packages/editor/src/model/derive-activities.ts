@@ -329,7 +329,7 @@ export function deriveTrueFalse(facts: LessonFacts, themeId: string): Slide | nu
   const misconception = facts.misconceptions[0];
   const vocab = facts.vocabulary[0];
   const source = misconception
-    ? { text: misconception.text, correct: false, ref: misconception.id }
+    ? { text: misconception.belief, correct: false, ref: misconception.id }
     : vocab
       ? { text: `${vocab.term}: ${vocab.definition}`, correct: true, ref: vocab.id }
       : null;
@@ -374,7 +374,7 @@ function distractorsFor(
   count: number,
 ): { text: string; refs: string[] }[] {
   const pool: { text: string; refs: string[] }[] = [
-    ...facts.misconceptions.map((m) => ({ text: m.text, refs: [m.id] })),
+    ...facts.misconceptions.map((m) => ({ text: m.belief, refs: [m.id] })),
     ...facts.questions
       .filter((o) => o.id !== questionId)
       .map((o) => ({ text: o.answer, refs: [o.id] })),
@@ -394,7 +394,7 @@ export function deriveWhichAreTrue(facts: LessonFacts, themeId: string): Slide |
     .map((v) => ({ text: `${v.term}: ${v.definition}`, refs: [v.id] }));
   const falsehoods: { text: string; refs: string[] }[] = facts.misconceptions
     .slice(0, 2)
-    .map((m) => ({ text: m.text, refs: [m.id] }));
+    .map((m) => ({ text: m.belief, refs: [m.id] }));
   // A term paired with another's definition is false and reads like the true ones.
   for (let i = 0; falsehoods.length < 2 && i < vocab.length; i++) {
     const term = vocab[i];

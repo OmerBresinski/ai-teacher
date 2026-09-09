@@ -63,9 +63,9 @@ const FACTS: LessonFacts = {
     },
   ],
   misconceptions: [
-    { id: "m1", text: "Clouds are made of steam" },
-    { id: "m2", text: "Water disappears when it evaporates" },
-    { id: "m3", text: "Rain comes straight from the sea" },
+    { id: "m1", belief: "Clouds are made of steam", correction: "", objectiveRefs: [] },
+    { id: "m2", belief: "Water disappears when it evaporates", correction: "", objectiveRefs: [] },
+    { id: "m3", belief: "Rain comes straight from the sea", correction: "", objectiveRefs: [] },
   ],
   outline: [
     { id: "s1", kind: "starter", minutes: 5, factRefs: ["o1"] },

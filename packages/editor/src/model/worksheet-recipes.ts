@@ -217,7 +217,7 @@ const misconceptionCheck: WorksheetRecipe = {
   build: (facts) => {
     const claims: WorksheetBlock[] = [];
     if (facts) {
-      for (const m of facts.misconceptions) claims.push(claim(m.text, false, [m.id]));
+      for (const m of facts.misconceptions) claims.push(claim(m.belief, false, [m.id]));
       // As many true claims as false ones, so the answer is not always the same box.
       const trueCount = Math.max(2, facts.misconceptions.length);
       for (const v of facts.vocabulary.slice(0, trueCount)) {
