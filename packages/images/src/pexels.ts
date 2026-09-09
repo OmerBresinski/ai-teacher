@@ -156,10 +156,11 @@ function searchUrl(
 function retryAfterSeconds(res: Response): number | undefined {
   if (res.status !== 429) return undefined;
   const raw = res.headers.get("X-Ratelimit-Reset");
-  if (raw === null) return undefined;
+  if (raw === null || raw.trim() === "") return undefined;
   const parsed = Number(raw.trim());
   if (!Number.isFinite(parsed)) return undefined;
-  return Math.max(0, Math.round(parsed - Date.now() / 1000));
+  // Round up: advertising a shorter wait than the reset invites an early retry.
+  return Math.max(0, Math.ceil(parsed - Date.now() / 1000));
 }
 
 export function createPexelsClient(options: CreatePexelsClientOptions): PexelsClient {

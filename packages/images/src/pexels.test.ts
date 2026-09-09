@@ -156,6 +156,17 @@ describe("createPexelsClient search", () => {
     expect((bare as PexelsError).retryAfterS).toBeUndefined();
   });
 
+  test("an empty reset header stays undefined", async () => {
+    const empty = createPexelsClient({
+      apiKey: "k",
+      fetch: stubFetch(
+        () => new Response("slow", { status: 429, headers: { "X-Ratelimit-Reset": "  " } }),
+      ),
+    });
+    const error = await empty.search({ query: "river" }).catch((e: unknown) => e);
+    expect((error as PexelsError).retryAfterS).toBeUndefined();
+  });
+
   test("a past reset epoch clamps to zero; garbage stays undefined", async () => {
     const past = String(Math.floor(Date.now() / 1000) - 60);
     const pastClient = createPexelsClient({
