@@ -10,7 +10,8 @@ import { expect, type SeededPaths, test } from "./fixtures";
  */
 
 const EDITOR = (paths: SeededPaths) => paths.worksheet("fraction-practice");
-const blocks = (page: Page) => page.locator(".ws-column .ws-block");
+/** Content blocks only: the self-assessment strip is a flow item too, pinned to the foot (TEACH-196). */
+const blocks = (page: Page) => page.locator(".ws-column .ws-block:not(.ws-rag-slot)");
 const markers = (page: Page) => page.getByRole("button", { name: /^Answer: option/ });
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 

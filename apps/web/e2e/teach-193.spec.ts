@@ -118,7 +118,9 @@ test.describe("TEACH-193", () => {
     // The editor: the Marks switch beside Answer key; off hides the labels and keeps the key.
     await page.goto(paths.worksheet("fraction-practice"));
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
-    await page.locator(".ws-column .ws-header").first().click();
+    // Select the header by its Name rule: a click on a field inside it is the field's, not the
+    // row's, and with the criteria gone to the foot (TEACH-196) the header's centre is a field.
+    await page.locator(".ws-column .ws-header").first().getByText("Name", { exact: true }).click();
     const marks = page.getByRole("switch", { name: "Marks" });
     await expect(marks).toBeVisible();
     await expect(marks).toHaveAttribute("aria-checked", "true");
