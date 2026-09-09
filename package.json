@@ -60,7 +60,7 @@
     "@tj/db": "workspace:*",
     "@tj/domain": "workspace:*",
     "@tj/editor": "workspace:*",
-    "@types/bun": "1.4.0",
+    "@types/bun": "1.4.1",
     "lefthook": "2.1.12",
     "railway": "3.11.0",
     "turbo": "2.10.12",
