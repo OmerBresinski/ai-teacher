@@ -2,7 +2,7 @@ import { Plus, X } from "lucide-react";
 import { uid } from "../../model/factories";
 import { answerLinesForMarks } from "../../model/worksheet-factories";
 import { docToPlainText } from "../../text/static";
-import { useBlockWrites } from "../worksheet-context";
+import { useBlockWrites, useWorksheetSession } from "../worksheet-context";
 import { BarButton, type BlockOf, ICON_SM, LinesPopover, NumberField } from "./shared";
 
 /*
@@ -31,6 +31,7 @@ export function QuestionToolbar({ block }: { block: Question | MC | FillGap | Ma
 }
 
 function QuestionFields({ block }: { block: Question }) {
+  const { showAnswers } = useWorksheetSession();
   return (
     <>
       <NumberField<Question>
@@ -56,6 +57,11 @@ function QuestionFields({ block }: { block: Question }) {
           b.answerLines = answerLines;
         }}
       />
+      <span className="pl-1 text-meta text-ink-3">
+        {showAnswers
+          ? "The model answer is under the question"
+          : "Turn on Show answers to see and edit the model answer"}
+      </span>
     </>
   );
 }
@@ -89,7 +95,7 @@ function OptionFields({ block }: { block: MC }) {
         <X {...ICON_SM} aria-hidden />
         Option
       </BarButton>
-      <span className="pl-1 text-meta text-ink-3">Tick the correct answer on the sheet</span>
+      <span className="pl-1 text-meta text-ink-3">Click the marker beside the correct option</span>
     </>
   );
 }

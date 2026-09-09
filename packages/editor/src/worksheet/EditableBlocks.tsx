@@ -1,5 +1,4 @@
 import type { RichDoc, WorksheetBlock } from "@tj/domain/documents";
-import { Check } from "lucide-react";
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -8,9 +7,10 @@ import {
   useRef,
 } from "react";
 import { isDocEmpty } from "../text/static";
-import { matchingOrder, optionLetter } from "./answers";
+import { matchingLetters, matchingOrder, optionLetter } from "./answers";
 import { SheetText, type StemRenderer } from "./BlockContent";
-import { useBlockWrites, useTypingSession } from "./worksheet-context";
+import { setCorrectOption } from "./reducers";
+import { useBlockWrites, useTypingSession, useWorksheetHistoryApi } from "./worksheet-context";
 
 /**
  * Edit-mode variants of the blocks whose content is plain strings rather than rich text (TeachDeck
@@ -96,6 +96,7 @@ export const INLINE_EDIT_TYPES: WorksheetBlock["type"][] = [
   "image",
 ];
 
+type Question = Extract<WorksheetBlock, { type: "question" }>;
 type MC = Extract<WorksheetBlock, { type: "multiple-choice" }>;
 type Matching = Extract<WorksheetBlock, { type: "matching" }>;
 type WordBank = Extract<WorksheetBlock, { type: "word-bank" }>;
@@ -110,12 +111,20 @@ type ImageBlock = Extract<WorksheetBlock, { type: "image" }>;
 export function EditableBlock({
   block,
   renderStem,
+  selected = false,
+  showAnswers = false,
 }: {
   block: WorksheetBlock;
   /** The mounted editor for the rich-text run, when this block is the one being edited. */
   renderStem?: StemRenderer;
+  /** The block is the selected one: a multiple-choice block shows its answer markers. */
+  selected?: boolean;
+  /** The top bar's "Show answers" (TEACH-195). */
+  showAnswers?: boolean;
 }): ReactNode | null {
-  const { patch, commit } = useBlockWrites();
+  const { patch } = useBlockWrites();
+  const { dispatch } = useWorksheetHistoryApi();
+  const typing = useTypingSession();
   const stem = (doc: RichDoc, className: string, emptyLabel: string) => {
     if (renderStem) return renderStem({ doc, className });
     if (isDocEmpty(doc)) {
@@ -140,28 +149,8 @@ export function EditableBlock({
             <div className="ws-options">
               {block.options.map((option, i) => (
                 <div key={option.id} className="ws-opt">
-                  {/* The box BlockContent prints, and the paginator measures that height. A kit
-                      IconButton brings its own square and padding, which would reflow every
-                      multiple-choice question and desync the page breaks. */}
-                  <button
-                    type="button"
-                    className={
-                      option.correct
-                        ? "ws-opt-box ws-opt-check ws-opt-check-on"
-                        : "ws-opt-box ws-opt-check"
-                    }
-                    aria-pressed={option.correct}
-                    aria-label={`Mark option ${optionLetter(i)} as correct`}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() =>
-                      commit<MC>(block.id, (b) => {
-                        const target = b.options.find((o) => o.id === option.id);
-                        if (target) target.correct = !target.correct;
-                      })
-                    }
-                  >
-                    {option.correct ? <Check aria-hidden /> : null}
-                  </button>
+                  {/* The pupil's box, empty on screen as on paper (TEACH-195). */}
+                  <div className="ws-opt-box" />
                   <div className="ws-opt-letter">{optionLetter(i)}</div>
                   <SheetField
                     className="ws-opt-text"
@@ -174,6 +163,24 @@ export function EditableBlock({
                       })
                     }
                   />
+                  {/* The answer marker: outside the printed markup, in the row's margin, and
+                      absolutely positioned so the row keeps the height the paginator measured.
+                      Exactly one option is correct: the reducer clears the others. */}
+                  {selected || showAnswers ? (
+                    <button
+                      type="button"
+                      className={
+                        option.correct ? "ws-opt-answer ws-opt-answer-on" : "ws-opt-answer"
+                      }
+                      aria-pressed={option.correct}
+                      aria-label={`Answer: option ${optionLetter(i)}`}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => {
+                        typing.end();
+                        dispatch(setCorrectOption, block.id, option.id);
+                      }}
+                    />
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -183,13 +190,14 @@ export function EditableBlock({
 
     case "matching": {
       const order = matchingOrder(block.id, block.pairs.length);
+      const letters = matchingLetters(block.id, block.pairs.length);
       return (
         <div className="ws-q">
           <div className="ws-q-no">{block.number}.</div>
           <div className="ws-q-main">
             <div className="ws-match">
               <div className="ws-match-col">
-                {block.pairs.map((pair) => (
+                {block.pairs.map((pair, i) => (
                   <div key={pair.id} className="ws-match-row">
                     <SheetField
                       className="ws-match-term"
@@ -202,7 +210,10 @@ export function EditableBlock({
                         })
                       }
                     />
-                    <div className="ws-match-blank" />
+                    <div className="ws-match-blank">
+                      {/* The answer letter, inside the blank and out of flow (TEACH-195). */}
+                      {showAnswers ? <span className="ws-match-answer">{letters[i]}</span> : null}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -352,6 +363,43 @@ export function EditableBlock({
     default:
       return null;
   }
+}
+
+/**
+ * A question block's model answer, shown and edited on the sheet while "Show answers" is on
+ * (TEACH-195). The slot is zero height and the answer is drawn over the first ruled line, so the
+ * row measures as the printed one and the page breaks stay where they are. The key prints
+ * "No answer recorded." for a blank; here the blank reads "No answer yet".
+ */
+export function QuestionAnswer({ block }: { block: Question }) {
+  const { patch } = useBlockWrites();
+  const answer = block.answer ?? "";
+  return (
+    <div className="ws-answer-slot" data-answer-view>
+      <div className="ws-answer">
+        <span className="ws-answer-label" aria-hidden>
+          Answer
+        </span>
+        <span className="ws-answer-field">
+          <SheetField
+            className="ws-answer-text"
+            label="Model answer"
+            value={answer}
+            onChange={(next) =>
+              patch<Question>(block.id, (b) => {
+                b.answer = next || undefined;
+              })
+            }
+          />
+          {answer ? null : (
+            <span className="ws-answer-empty" aria-hidden>
+              No answer yet
+            </span>
+          )}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 /** The rich-text doc of a block that carries one, for callers holding the union. */

@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, Kbd } from "@tj/ui";
 import { formatShortcut } from "./keys";
-import { ALL_SHORTCUTS, HELP_GROUP_NOTES, HELP_GROUPS } from "./shortcuts";
+import { ALL_SHORTCUTS, HELP_GROUP_NOTES, HELP_GROUPS, type HelpShortcut } from "./shortcuts";
 
 // `duplicate` (element duplicate, Edit group) reads as a bare "Duplicate" next to Slides'
 // "Duplicate slide"; relabel it for display only so the sheet disambiguates the two ⌘D's.
@@ -8,8 +8,23 @@ const LABEL_OVERRIDES: Partial<Record<string, string>> = {
   duplicate: "Duplicate element",
 };
 
-/** The `?` sheet (TeachDeck `components/v2/editor/HelpDialog.tsx`), generated from the key maps. */
-export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+/**
+ * The `?` sheet (TeachDeck `components/v2/editor/HelpDialog.tsx`), generated from the key maps.
+ * The lesson editor's maps by default; the worksheet editor passes its own (`worksheet/shortcuts.ts`).
+ */
+export function HelpDialog({
+  open,
+  onClose,
+  shortcuts = ALL_SHORTCUTS,
+  groups = HELP_GROUPS,
+  notes = HELP_GROUP_NOTES,
+}: {
+  open: boolean;
+  onClose: () => void;
+  shortcuts?: readonly HelpShortcut[];
+  groups?: readonly string[];
+  notes?: Partial<Record<string, string>>;
+}) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent size="xl">
@@ -17,10 +32,10 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           <DialogTitle>Keyboard shortcuts</DialogTitle>
         </DialogHeader>
         <div className="mt-1 grid grid-cols-2 gap-x-6 gap-y-4">
-          {HELP_GROUPS.map((group) => {
-            const items = ALL_SHORTCUTS.filter((s) => s.group === group);
+          {groups.map((group) => {
+            const items = shortcuts.filter((s) => s.group === group);
             if (items.length === 0) return null;
-            const note = HELP_GROUP_NOTES[group];
+            const note = notes[group];
             return (
               <section key={group} className="flex flex-col gap-1">
                 <h3 className="m-0 font-semibold text-eyebrow text-ink-3 uppercase tracking-[0.08em]">

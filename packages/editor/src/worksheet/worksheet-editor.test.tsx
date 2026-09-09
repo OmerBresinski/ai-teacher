@@ -5,8 +5,12 @@ import { PLACEHOLDER_IMAGE } from "@tj/slides";
 import type { ImageSearchClient, PhotoResult, PickedPhoto } from "../images/image-search";
 import { docFromText, uid } from "../model/factories";
 import { newBlock, numberQuestions, starterWorksheet } from "../model/worksheet-factories";
+import { answerKey } from "./answers";
 import { pointer, renderWorksheetEditor, row } from "./editor-test-harness";
 import { HEADER_KEY } from "./paginate";
+
+type Question = Extract<WorksheetBlock, { type: "question" }>;
+type MC = Extract<WorksheetBlock, { type: "multiple-choice" }>;
 
 /*
  * The worksheet editor on the real shell (TEACH-109 rows 3–8): the slash menu inserts a block, the
@@ -157,14 +161,14 @@ describe("WorksheetEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Option" }));
     const grown = read().blocks.find((b) => b.id === mc.id);
     expect(grown?.type === "multiple-choice" && grown.options.length).toBe(count + 1);
-    // Tick B on the sheet: the teacher's own mark.
-    const tickB = within(row(container, mc.id)).getByRole("button", {
-      name: "Mark option B as correct",
-    });
-    fireEvent.click(tickB);
+    // The marker beside B, outside the pupil's box (TEACH-195): B becomes the one answer.
+    const markB = within(row(container, mc.id)).getByRole("button", { name: "Answer: option B" });
+    fireEvent.click(markB);
     const marked = read().blocks.find((b) => b.id === mc.id);
-    expect(marked?.type === "multiple-choice" && marked.options[1]?.correct).toBe(true);
-    expect(tickB).toHaveAttribute("aria-pressed", "true");
+    expect(marked?.type === "multiple-choice" && marked.options.map((o) => o.correct)).toEqual(
+      marked?.type === "multiple-choice" ? marked.options.map((_, i) => i === 1) : [],
+    );
+    expect(markB).toHaveAttribute("aria-pressed", "true");
   });
 
   test("row 6: word-search size is clamped to 8–15 and the words come from the popover", async () => {
@@ -241,7 +245,7 @@ describe("WorksheetEditor", () => {
     const { container, read } = renderWorksheetEditor();
     fireEvent.pointerDown(row(container, HEADER_KEY), pointer(10, 10));
     fireEvent.click(screen.getByRole("radio", { name: "Letter" }));
-    fireEvent.click(screen.getByRole("switch", { name: "Answer key" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Print answer key" }));
     fireEvent.click(screen.getByRole("switch", { name: "Self-assessment" }));
     expect(read().pageSize).toBe("Letter");
     expect(read().includeAnswerKey).toBe(true);
@@ -496,5 +500,118 @@ describe("WorksheetEditor image Replace (TEACH-160)", () => {
     fireEvent.click(tab);
     expect(await screen.findByText("Photo search is not available.")).toBeTruthy();
     expect(screen.queryByRole("searchbox", { name: "Search images" })).toBeNull();
+  });
+});
+
+/*
+ * TEACH-195: the answer marker outside the pupil's box, one correct option, and the "Show answers"
+ * view — editor state that reaches neither the document nor the measuring column.
+ */
+describe("answers on the sheet (TEACH-195)", () => {
+  const VIEW_MARKUP =
+    ".ws-answer, .ws-opt-answer, .ws-gap-answer, .ws-match-answer, .ws-search-ring";
+  const markers = (el: HTMLElement) =>
+    within(el).queryAllByRole("button", { name: /^Answer: option/ });
+
+  test("rows 1 and 2: a selected multiple-choice block shows the marker, not a tick in the box; the marker makes one option the answer", () => {
+    const mc = newBlock("multiple-choice") as MC;
+    for (const option of mc.options.slice(0, 2)) option.correct = true;
+    const { container, read } = renderWorksheetEditor(withBlocks([mc]));
+    const r = row(container, mc.id);
+    // The pupil's boxes are plain printed squares: no button, no tick.
+    expect(r.querySelectorAll(".ws-opt-box").length).toBe(4);
+    expect(r.querySelector("button.ws-opt-box, .ws-opt-check-on")).toBeNull();
+    // Markers appear with the selection.
+    expect(markers(r).length).toBe(0);
+    select(container, mc.id);
+    expect(markers(r).length).toBe(4);
+    expect(within(r).getByRole("button", { name: "Answer: option A" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(within(r).getByRole("button", { name: "Answer: option C" }));
+    const options = (read().blocks[0] as MC).options;
+    expect(options.map((o) => o.correct)).toEqual([false, false, true, false]);
+    expect(within(r).getByRole("button", { name: "Answer: option C" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(r).getByRole("button", { name: "Answer: option A" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    // The key lists only it, and the click was one undo step.
+    expect(answerKey(read().blocks)[0]?.lines).toEqual(["C. Option C"]);
+    undo();
+    expect((read().blocks[0] as MC).options.map((o) => o.correct)).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  test("row 4: Show answers is off by default; on, a question's model answer is editable and a blank one reads No answer yet", () => {
+    const q = newBlock("question") as Question;
+    const mc = newBlock("multiple-choice") as MC;
+    const { container, read } = renderWorksheetEditor(withBlocks([q, mc]));
+    const toggle = screen.getByRole("button", { name: "Show answers" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(container.querySelector(".ws-column .ws-answer")).toBeNull();
+    expect(screen.queryByText("No answer yet")).toBeNull();
+    const before = read();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    // A view, not the document.
+    expect(read()).toBe(before);
+    expect(screen.getByText("No answer yet")).toBeInTheDocument();
+    // Every multiple-choice block shows its markers, selected or not.
+    expect(markers(row(container, mc.id)).length).toBe(4);
+    // The hint on the question toolbar follows the view.
+    select(container, q.id);
+    expect(screen.getByText("The model answer is under the question")).toBeInTheDocument();
+    const field = screen.getByRole("textbox", { name: "Model answer" });
+    field.textContent = "Three quarters";
+    fireEvent.input(field);
+    expect((read().blocks[0] as Question).answer).toBe("Three quarters");
+    expect(screen.queryByText("No answer yet")).toBeNull();
+    // Off again from the keyboard: nothing on the sheet says what the answer is.
+    fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(container.querySelector(`.ws-column :is(${VIEW_MARKUP})`)).toBeNull();
+    expect(
+      screen.getByText("Turn on Show answers to see and edit the model answer"),
+    ).toBeInTheDocument();
+  });
+
+  test("row 3: fill-gap, matching and word search show their answers on the sheet, and the measuring column never sees the view", () => {
+    const blocks = [newBlock("fill-gap"), newBlock("matching"), newBlock("word-search")];
+    const { container } = renderWorksheetEditor(withBlocks(blocks));
+    const measure = container.querySelector(".ws-measure") as HTMLElement;
+    const measured = measure.innerHTML;
+    const pages = () => container.querySelectorAll(".ws-column .ws-page").length;
+    const pagesBefore = pages();
+    expect(container.querySelector(`.ws-column :is(${VIEW_MARKUP})`)).toBeNull();
+    fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+    const column = container.querySelector(".ws-column") as HTMLElement;
+    expect(column.querySelectorAll(".ws-gap-answer").length).toBeGreaterThan(0);
+    expect(column.querySelectorAll(".ws-match-answer").length).toBe(
+      (blocks[1] as Extract<WorksheetBlock, { type: "matching" }>).pairs.length,
+    );
+    expect(column.querySelectorAll(".ws-search-ring").length).toBeGreaterThan(0);
+    // The lead the pupil reads stays, so the word search keeps its height.
+    expect(column.querySelector(".ws-search-lead")).not.toBeNull();
+    // The measuring column renders the printed markup exactly as before: same pages.
+    expect(measure.innerHTML).toBe(measured);
+    expect(measure.querySelector(VIEW_MARKUP)).toBeNull();
+    expect(pages()).toBe(pagesBefore);
+  });
+
+  test("? opens the Keyboard shortcuts sheet, which lists Show answers", async () => {
+    renderWorksheetEditor();
+    fireEvent.keyDown(window, { key: "?", shiftKey: true });
+    const dialog = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+    expect(within(dialog).getByText("Show answers on / off")).toBeInTheDocument();
+    expect(within(dialog).getByText("Delete the selected block")).toBeInTheDocument();
   });
 });

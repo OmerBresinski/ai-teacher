@@ -20,6 +20,12 @@ export type WorksheetSessionState = {
   activeBlockId: string | null;
   editingId: string | null;
   caret: CaretIntent;
+  /**
+   * "Show answers" (TEACH-195): the answers drawn on the sheet on screen. A view, never the
+   * document (ruling 62): not saved, and the print route and the measuring column never render
+   * it, so the page breaks do not move with it.
+   */
+  showAnswers: boolean;
 };
 
 export type WorksheetSession = WorksheetSessionState & {
@@ -29,11 +35,18 @@ export type WorksheetSession = WorksheetSessionState & {
   select: (id: string | null) => void;
   /** Open (or close, with `null`) the text editor on a block, placing the caret. */
   setEditing: (id: string | null, caret?: CaretIntent) => void;
+  /** Turn the answers view on or off; no argument toggles it. */
+  setShowAnswers: (on?: boolean) => void;
   /** The latest state without subscribing — for window key handlers and pointer callbacks. */
   read: () => WorksheetSessionState;
 };
 
-const INITIAL: WorksheetSessionState = { activeBlockId: null, editingId: null, caret: "end" };
+const INITIAL: WorksheetSessionState = {
+  activeBlockId: null,
+  editingId: null,
+  caret: "end",
+  showAnswers: false,
+};
 
 export function useWorksheetSessionState(): WorksheetSession {
   const [state, setState] = useState<WorksheetSessionState>(INITIAL);
@@ -48,7 +61,16 @@ export function useWorksheetSessionState(): WorksheetSession {
       prev.editingId === editingId && prev.caret === caret ? prev : { ...prev, editingId, caret },
     );
   }, []);
+  const setShowAnswers = useCallback((on?: boolean) => {
+    setState((prev) => {
+      const showAnswers = on ?? !prev.showAnswers;
+      return prev.showAnswers === showAnswers ? prev : { ...prev, showAnswers };
+    });
+  }, []);
   const read = useCallback(() => latest.current, []);
 
-  return useMemo(() => ({ ...state, select, setEditing, read }), [state, select, setEditing, read]);
+  return useMemo(
+    () => ({ ...state, select, setEditing, setShowAnswers, read }),
+    [state, select, setEditing, setShowAnswers, read],
+  );
 }

@@ -227,28 +227,150 @@
   display: block;
 }
 
-/* The teacher's own tick on a multiple-choice option: `ws-opt-box` is the printed square, and
-   the button keeps its exact box so the option row never moves. Accent ink and an accent ring say
-   "this is the answer being recorded"; none of it prints. */
-.ws-opt-check {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ---- the answers view (TEACH-195) ------------------------------------------------------- */
+
+/* Answers are a view, never the page (ruling 62). Everything in this section is out of flow or
+   paint on a box that already exists: the measuring column renders none of it, so a page break
+   cannot move when the view is turned on. */
+
+/* The answer marker is not the pupil's box: the printed square stays empty on screen as on paper.
+   The marker sits in the row's right margin, outside the printed markup, a 12pt accent ring that
+   fills when the option is the answer. It exists only while the block is selected or the view is
+   on, so Tab reaches it exactly then. */
+.ws-edit .ws-opt {
+  position: relative;
+}
+
+.ws-opt-answer {
+  position: absolute;
+  top: 2.5pt;
+  right: -22pt;
+  width: 12pt;
+  height: 12pt;
   padding: 0;
+  border: 1.5px solid var(--ink-4);
+  border-radius: 999px;
   background: transparent;
-  color: var(--ws-ink);
   cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft);
 }
 
-.ws-opt-check-on {
+/* The drawn ring stays 12pt; the 28px pointer target is a pseudo-element centred on it. */
+.ws-opt-answer::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+}
+
+.ws-opt-answer:hover {
+  border-color: var(--primary);
+  background: var(--accent);
+}
+
+.ws-opt-answer:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.ws-opt-answer-on,
+.ws-opt-answer-on:hover {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+/* A question's model answer: a zero-height slot under the stem, the answer drawn over the first
+   ruled line in accent, muted, with the field that edits it. */
+.ws-answer-slot {
+  position: relative;
+  height: 0;
+}
+
+.ws-answer {
+  position: absolute;
+  top: 5pt;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 6pt;
+}
+
+.ws-answer-label {
+  flex: 0 0 auto;
+  font-family: var(--font-ui);
+  font-size: 8pt;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--primary);
-  box-shadow: inset 0 0 0 1.5px var(--primary);
 }
 
-.ws-opt-check svg {
-  width: 9pt;
-  height: 9pt;
-  stroke-width: 2.5;
+.ws-answer-field {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ws-answer-text {
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+.ws-answer-empty {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--ws-muted);
+  pointer-events: none;
+}
+
+/* A gap's answer inside its blank, on the rule the pupil writes on. */
+.ws-edit .ws-gap {
+  position: relative;
+}
+
+.ws-gap-answer {
+  position: absolute;
+  right: 2pt;
+  bottom: 1pt;
+  left: 2pt;
+  overflow: hidden;
+  font-size: 9.5pt;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+/* The matching answer letter inside the left-hand blank. */
+.ws-edit .ws-match-blank {
+  position: relative;
+}
+
+.ws-match-answer {
+  position: absolute;
+  right: 0;
+  bottom: 1pt;
+  left: 0;
+  font-size: 10pt;
+  font-weight: 500;
+  line-height: 1;
+  text-align: center;
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+/* The word search rings the key will print, in accent on screen. */
+.ws-search-ring-view {
+  border-color: var(--primary);
 }
 
 /* ---- the empty sheet ------------------------------------------------------------------- */
@@ -395,7 +517,7 @@
 
 .ws-job-chip:focus-visible {
   outline: none;
-  box-shadow: var(--shadow-focus);
+  box-shadow: var(--focus);
 }
 
 /* The creation flow's tier row (TEACH-184): Core is the one on, drawn as a brand hairline on the
@@ -441,7 +563,7 @@
 }
 
 .ws-recipe-card:has(.ws-recipe-pick:focus-visible) {
-  box-shadow: var(--shadow-focus);
+  box-shadow: var(--focus);
 }
 
 /* The creation flow's chosen card (TEACH-184): a 2px brand hairline, no tint (the meta line's
@@ -547,7 +669,7 @@
 }
 
 .ws-block-pick:focus-visible {
-  box-shadow: var(--shadow-focus);
+  box-shadow: var(--focus);
 }
 
 .ws-block-pick-icon {

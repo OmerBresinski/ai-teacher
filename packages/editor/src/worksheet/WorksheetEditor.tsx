@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import type { ImageSearchClient } from "../images/image-search";
+import { HelpDialog } from "../lesson/HelpDialog";
 import { isInTextField, matchesBinding } from "../lesson/keys";
 import { getTheme } from "../model/themes";
 import { useAutosave } from "../model/use-autosave";
@@ -31,6 +32,12 @@ import { HEADER_KEY } from "./paginate";
 import { deleteBlock, duplicateBlock, insertBlock, moveBlock, updateBlock } from "./reducers";
 import { flowItemClass, Sheet } from "./Sheet";
 import { SlashMenu } from "./SlashMenu";
+import {
+  SHOW_ANSWERS_KEYS,
+  WORKSHEET_HELP_GROUPS,
+  WORKSHEET_HELP_NOTES,
+  WORKSHEET_SHORTCUTS,
+} from "./shortcuts";
 import type { SlashItem } from "./slash-items";
 import { BlockToolbar } from "./toolbar/BlockToolbar";
 import { useTypingSessionState } from "./typing-session";
@@ -186,6 +193,7 @@ export function WorksheetEditor({
   const slashAnchor = useRef<HTMLElement | null>(null);
   // The "Add a block" dialog: where its blocks go (`null` appends, from the pill).
   const [adder, setAdder] = useState<{ afterId: Id | null } | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   /* ---- editing intents ------------------------------------------------ */
 
@@ -391,7 +399,18 @@ export function WorksheetEditor({
         typingRef.current.redo();
         return;
       }
+      // The answers view is a view: it toggles from inside a field too (TEACH-195).
+      if (matchesBinding(e, SHOW_ANSWERS_KEYS)) {
+        e.preventDefault();
+        sessionRef.current.setShowAnswers();
+        return;
+      }
       if (isInTextField(e.target)) return;
+      if (matchesBinding(e, "?")) {
+        e.preventDefault();
+        setHelpOpen(true);
+        return;
+      }
       const s = sessionRef.current;
       const id = s.activeBlockId;
       if (!id || id === HEADER_KEY) return;
@@ -484,6 +503,7 @@ export function WorksheetEditor({
                           editing={session.editingId === item.block.id}
                           caret={session.caret}
                           oversize={oversizeSet.has(item.block.id)}
+                          showAnswers={session.showAnswers}
                           actions={rowActions}
                         />
                       ) : (
@@ -537,6 +557,13 @@ export function WorksheetEditor({
                   anchorRef={slashAnchor}
                   onClose={() => setSlash(null)}
                   onPick={pickFromSlash}
+                />
+                <HelpDialog
+                  open={helpOpen}
+                  onClose={() => setHelpOpen(false)}
+                  shortcuts={WORKSHEET_SHORTCUTS}
+                  groups={WORKSHEET_HELP_GROUPS}
+                  notes={WORKSHEET_HELP_NOTES}
                 />
               </div>
               {measureNode}

@@ -36,7 +36,7 @@ export function isDocEmpty(doc: RichDoc | undefined): boolean {
   return !doc || docToPlainText(doc).trim().length === 0;
 }
 
-function escapeHtml(s: string) {
+export function escapeHtml(s: string) {
   return s.replace(
     /[&<>"']/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
