@@ -17,6 +17,7 @@ import {
 } from "@tj/ui";
 import { Flag, Upload } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { REPORT_FAILED_MESSAGE, REPORT_REASONS, REPORTED_MESSAGE } from "./image-report";
 import {
   type ImageSearchClient,
   type PhotoOrientation,
@@ -38,15 +39,7 @@ export type { ImageSearchClient };
 export const UNREADABLE_MESSAGE = "That image could not be read.";
 export const SEARCH_FAILED_MESSAGE = "Search failed. Try again.";
 export const RATE_LIMITED_MESSAGE = "Too many searches. Try again in a minute.";
-export const REPORTED_MESSAGE = "Thanks — we've flagged it.";
-export const REPORT_FAILED_MESSAGE = "Could not send the report.";
 export const BLOCKED_MESSAGE = "Try a different search.";
-
-const REPORT_REASONS: { value: ReportReason; label: string }[] = [
-  { value: "unsuitable", label: "Unsuitable" },
-  { value: "wrong-subject", label: "Wrong subject" },
-  { value: "other", label: "Other" },
-];
 /** A search fires this long after the last keystroke; Enter fires it at once. */
 const DEBOUNCE_MS = 400;
 

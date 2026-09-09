@@ -46,6 +46,7 @@ export const imageSearchClient: ImageSearchClient = {
         }),
       ),
       nextPage: body.nextPage,
+      blocked: body.blocked,
     };
   },
 

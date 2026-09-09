@@ -12,15 +12,9 @@ import {
 } from "@tj/ui";
 import { Info } from "lucide-react";
 import { ImageCreditText } from "../../images/ImageCreditText";
-import { REPORT_FAILED_MESSAGE, REPORTED_MESSAGE } from "../../images/ImagePicker";
+import { REPORT_FAILED_MESSAGE, REPORT_REASONS, REPORTED_MESSAGE } from "../../images/image-report";
 import type { ImageSearchClient, ReportReason } from "../../images/image-search";
 import type { Rect } from "../../model/geometry";
-
-const REPORT_REASONS: { value: ReportReason; label: string }[] = [
-  { value: "unsuitable", label: "Unsuitable" },
-  { value: "wrong-subject", label: "Wrong subject" },
-  { value: "other", label: "Other" },
-];
 
 /**
  * The "i" attribution badge on a selected image (Images project, editor only).

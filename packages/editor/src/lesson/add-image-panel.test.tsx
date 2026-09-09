@@ -4,10 +4,9 @@ import type { ImageElement } from "@tj/domain/documents";
 import {
   BLOCKED_MESSAGE,
   RATE_LIMITED_MESSAGE,
-  REPORT_FAILED_MESSAGE,
-  REPORTED_MESSAGE,
   SEARCH_FAILED_MESSAGE,
 } from "../images/ImagePicker";
+import { REPORT_FAILED_MESSAGE, REPORTED_MESSAGE } from "../images/image-report";
 import type { ImageSearchClient, PhotoResult, PickedPhoto } from "../images/image-search";
 import { SearchError } from "../images/image-search";
 import { uid } from "../model/factories";

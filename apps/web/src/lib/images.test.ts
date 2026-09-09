@@ -26,6 +26,20 @@ describe("imageSearchClient", () => {
     expect(page.photos[0]?.src.tiny).toContain("tiny.jpeg");
   });
 
+  test("a blocked search carries the flag through", async () => {
+    fakeApi.failNext(
+      (request) => request.path === "/images/search",
+      () =>
+        new Response(JSON.stringify({ photos: [], nextPage: null, blocked: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    const page = await imageSearchClient.search("gore", {});
+    expect(page.photos).toEqual([]);
+    expect(page.blocked).toBe(true);
+  });
+
   test("a 429 search becomes SearchError with the status", async () => {
     fakeApi.failNext(
       (request) => request.path === "/images/search",
