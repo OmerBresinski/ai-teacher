@@ -1,5 +1,7 @@
 import type { QueryKey } from "@tanstack/react-query";
-import type { Id, RichDoc, Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import type { Id, LessonFacts, RichDoc, Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import { Button } from "@tj/ui";
+import { Plus } from "lucide-react";
 import {
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
@@ -13,8 +15,10 @@ import { isInTextField, matchesBinding } from "../lesson/keys";
 import { getTheme } from "../model/themes";
 import { useAutosave } from "../model/use-autosave";
 import { newBlock } from "../model/worksheet-factories";
+import type { WorksheetRecipe } from "../model/worksheet-recipes";
 import { ActiveEditorProvider } from "../text/active-editor";
 import { isDocEmpty } from "../text/static";
+import { AddBlockDialog } from "./AddBlockDialog";
 import { FlowItemContent } from "./BlockContent";
 import { type BlockRowActions, BlockShell } from "./BlockShell";
 import { type BlockSpec, blankStem, isRich } from "./block-types";
@@ -26,6 +30,7 @@ import { HEADER_KEY } from "./paginate";
 import { deleteBlock, duplicateBlock, insertBlock, moveBlock, updateBlock } from "./reducers";
 import { flowItemClass, Sheet } from "./Sheet";
 import { SlashMenu } from "./SlashMenu";
+import type { SlashItem } from "./slash-items";
 import { BlockToolbar } from "./toolbar/BlockToolbar";
 import { useTypingSessionState } from "./typing-session";
 import { useBlockDrag } from "./use-block-drag";
@@ -66,6 +71,11 @@ export type WorksheetEditorProps = {
   onPrint: () => void;
   /** Where the export menu sits once it exists (E1 / E3). */
   exportSlot?: ReactNode;
+  /**
+   * The facts of the lesson this sheet belongs to (`worksheet.lessonId`), when the app has them:
+   * the "Add a block" sections are built from these. Without them, the placeholder build.
+   */
+  facts?: LessonFacts;
 };
 
 type RichBlock = Extract<WorksheetBlock, { doc: RichDoc }>;
@@ -81,6 +91,7 @@ export function WorksheetEditor({
   onBack,
   onPrint,
   exportSlot,
+  facts,
 }: WorksheetEditorProps) {
   const autosave = useAutosave(onSave);
   const { worksheet, ...history } = useWorksheetHistory({
@@ -166,6 +177,8 @@ export function WorksheetEditor({
   const rowEls = useRef(new Map<Id, HTMLElement>());
   const [slash, setSlash] = useState<{ afterId: Id | null; replaceId: Id | null } | null>(null);
   const slashAnchor = useRef<HTMLElement | null>(null);
+  // The "Add a block" dialog: where its blocks go (`null` appends, from the pill).
+  const [adder, setAdder] = useState<{ afterId: Id | null } | null>(null);
 
   /* ---- editing intents ------------------------------------------------ */
 
@@ -183,24 +196,63 @@ export function WorksheetEditor({
     setSlash({ afterId, replaceId });
   }, []);
 
-  const pickFromSlash = useCallback(
-    (spec: BlockSpec) => {
-      const target = slash;
-      setSlash(null);
-      if (!target) return;
-      const block = blankStem(spec.create());
+  /**
+   * Insert `blocks` in order after `afterId` (`null` appends) as one undo step, then select the
+   * first and open its editor when it has text. `replaceId` is the empty paragraph a `/` was typed
+   * in: it goes in the same step, after the new blocks have taken its place.
+   */
+  const insertBlocks = useCallback(
+    (blocks: WorksheetBlock[], afterId: Id | null, replaceId: Id | null = null) => {
+      const first = blocks[0];
+      if (!first) return;
       const h = historyRef.current;
       typingRef.current.end();
       const token = h.beginTransaction();
-      // `/` in an empty paragraph replaces it; the `+` in the gutter inserts below.
-      if (target.replaceId) h.dispatch(deleteBlock, target.replaceId);
-      h.dispatch(insertBlock, block, target.afterId);
+      let anchor = afterId;
+      for (const block of blocks) {
+        h.dispatch(insertBlock, block, anchor);
+        anchor = block.id;
+      }
+      if (replaceId) h.dispatch(deleteBlock, replaceId);
       h.endTransaction(token);
-      sessionRef.current.select(block.id);
-      if (isRich(block)) sessionRef.current.setEditing(block.id, "start");
+      sessionRef.current.select(first.id);
+      if (isRich(first)) sessionRef.current.setEditing(first.id, "start");
       else sessionRef.current.setEditing(null);
     },
-    [slash],
+    [],
+  );
+
+  const pickFromSlash = useCallback(
+    (item: SlashItem) => {
+      const target = slash;
+      setSlash(null);
+      if (!target) return;
+      // `/` in an empty paragraph replaces it; a section's blocks land where the paragraph was.
+      const blocks =
+        item.pick.kind === "block"
+          ? [blankStem(item.pick.spec.create())]
+          : item.pick.recipe.build(facts);
+      insertBlocks(blocks, target.afterId, target.replaceId);
+    },
+    [slash, facts, insertBlocks],
+  );
+
+  const pickRecipe = useCallback(
+    (_recipe: WorksheetRecipe, blocks: WorksheetBlock[]) => {
+      const target = adder;
+      setAdder(null);
+      if (target) insertBlocks(blocks, target.afterId);
+    },
+    [adder, insertBlocks],
+  );
+
+  const pickBlock = useCallback(
+    (spec: BlockSpec) => {
+      const target = adder;
+      setAdder(null);
+      if (target) insertBlocks([blankStem(spec.create())], target.afterId);
+    },
+    [adder, insertBlocks],
   );
 
   const order = useRef<Id[]>([]);
@@ -234,7 +286,7 @@ export function WorksheetEditor({
           s.setEditing(null);
         }
       },
-      onPlus: (anchor, id) => openSlash(anchor, id, null),
+      onPlus: (_anchor, id) => setAdder({ afterId: id }),
       onHandleDown: (block, event) => {
         event.stopPropagation();
         typingRef.current.end();
@@ -451,7 +503,28 @@ export function WorksheetEditor({
                   {drag.dropLine ? (
                     <div className="ws-drop-line" style={drag.dropLine} aria-hidden />
                   ) : null}
+                  {/* The one way in that needs no hover and no key: sticks to the foot of the column. */}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="ws-add-pill"
+                    onClick={() => setAdder({ afterId: null })}
+                  >
+                    <Plus aria-hidden size={16} strokeWidth={1.5} />
+                    Add block
+                  </Button>
                 </div>
+                <AddBlockDialog
+                  open={adder !== null}
+                  onOpenChange={(next) => {
+                    if (!next) setAdder(null);
+                  }}
+                  worksheet={worksheet}
+                  theme={theme}
+                  facts={facts}
+                  onPickRecipe={pickRecipe}
+                  onPickBlock={pickBlock}
+                />
                 <SlashMenu
                   open={slash !== null}
                   anchorRef={slashAnchor}

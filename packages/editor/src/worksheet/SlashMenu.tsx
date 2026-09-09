@@ -7,12 +7,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { BLOCK_GROUPS, type BlockSpec, filterSpecs } from "./block-types";
+import { filterSlashItems, SLASH_GROUPS, type SlashItem } from "./slash-items";
 
 /*
  * The insert menu (TeachDeck `components/v2/worksheet/SlashMenu.tsx`), reached by `/` in an empty
- * block or the `+` in the gutter. A `@tj/ui` Popover anchored to the block that asked for it, with
- * the filter box, four titled groups and a footer of keys. Filtering is BlockNote's substring rule
+ * block. A `@tj/ui` Popover anchored to the block that asked for it, with the filter box, the four
+ * block groups plus the nine recipes under Sections (`slash-items.tsx`) and a footer of keys. Filtering is BlockNote's substring rule
  * (`filterSpecs`) over `useState` query — derived during render, never in an effect.
  *
  * Keyboard: type to filter, ↑↓ to move, Enter to insert, Esc to close. `aria-activedescendant`
@@ -24,7 +24,7 @@ export type SlashMenuProps = {
   /** The block row that owns the menu; the popover is anchored to it. */
   anchorRef: RefObject<HTMLElement | null>;
   onClose: () => void;
-  onPick: (spec: BlockSpec) => void;
+  onPick: (item: SlashItem) => void;
 };
 
 export function SlashMenu({ open, anchorRef, onClose, onPick }: SlashMenuProps) {
@@ -42,23 +42,23 @@ function SlashMenuBody({
   onPick,
 }: {
   onClose: () => void;
-  onPick: (spec: BlockSpec) => void;
+  onPick: (item: SlashItem) => void;
 }) {
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const specs = filterSpecs(query);
+  const specs = filterSlashItems(query);
   const active = specs[Math.min(index, Math.max(0, specs.length - 1))];
-  const optionId = (spec: BlockSpec) => `${listId}-${spec.id}`;
+  const optionId = (spec: SlashItem) => `${listId}-${spec.id}`;
 
   useEffect(() => {
     // Radix moves focus to the content on open; the filter box is the control that should have it.
     inputRef.current?.focus();
   }, []);
 
-  const pick = (spec: BlockSpec | undefined) => {
+  const pick = (spec: SlashItem | undefined) => {
     if (spec) onPick(spec);
   };
 
@@ -125,7 +125,7 @@ function SlashMenuBody({
         {specs.length === 0 ? (
           <p className="m-0 px-2 py-3 text-body text-ink-3">No blocks match “{query}”.</p>
         ) : (
-          BLOCK_GROUPS.map((group) => {
+          SLASH_GROUPS.map((group) => {
             const rows = specs.filter((s) => s.group === group);
             if (rows.length === 0) return null;
             return (
