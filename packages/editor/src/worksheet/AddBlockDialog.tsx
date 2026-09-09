@@ -12,7 +12,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@tj/ui";
-import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useMemo, useRef, useState } from "react";
 import {
   JOBS,
   type Job,
@@ -20,9 +20,10 @@ import {
   type WorksheetRecipe,
 } from "../model/worksheet-recipes";
 import { BLOCK_GROUPS, BLOCK_SPECS, type BlockSpec } from "./block-types";
-import { estimateMinutes, pageMetrics, ptToPx } from "./metrics";
+import { estimateMinutes, pageMetrics } from "./metrics";
 import { buildFlow, type WorksheetPage } from "./paginate";
 import { Sheet } from "./Sheet";
+import { useFitScale } from "./WorksheetThumb";
 
 /*
  * "Add a block" (TEACH-183; Worksheets and activities rulings 46 to 55): one dialog from the
@@ -267,18 +268,8 @@ export function RecipeMiniature({
   );
   const pageW = pageMetrics(worksheet.pageSize).page.w;
   const ref = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState<number | null>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!fit || !el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver((entries) => {
-      const next = entries[0]?.contentRect.width;
-      if (next !== undefined) setWidth(next);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [fit]);
-  const scale = fit && width ? width / ptToPx(pageW) : MINIATURE_SCALE;
+  const fitted = useFitScale(ref, pageW);
+  const scale = fit && fitted ? fitted : MINIATURE_SCALE;
   const style = fit
     ? { width: "100%", height: `${(MINIATURE_HEIGHT * scale) / MINIATURE_SCALE}px` }
     : { width: `${pageW * MINIATURE_SCALE}pt` };

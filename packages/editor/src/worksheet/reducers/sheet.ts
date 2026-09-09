@@ -31,6 +31,12 @@ export const setIncludeAnswerKey = (worksheet: Worksheet, include: boolean): Wor
     w.includeAnswerKey = include;
   });
 
+/** UX ruling 60: the per-sheet marks switch. Off is stored as `false`, never unset again. */
+export const setShowMarks = (worksheet: Worksheet, on: boolean): Worksheet =>
+  edit(worksheet, (w) => {
+    w.showMarks = on;
+  });
+
 export const setPageSize = (worksheet: Worksheet, size: PageSize): Worksheet =>
   edit(worksheet, (w) => {
     w.pageSize = size;

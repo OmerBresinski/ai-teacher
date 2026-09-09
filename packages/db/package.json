@@ -14,6 +14,7 @@
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun src/migrate.ts",
+    "db:backfill-summaries": "bun src/backfill-summaries.ts",
     "db:studio": "drizzle-kit studio",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

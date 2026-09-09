@@ -60,7 +60,9 @@ function Card({
           {meta ? (
             <div
               data-slot="card-meta"
-              className="flex items-center gap-1.5 truncate text-meta tabular-nums text-ink-3"
+              // Not `truncate` on the row: a child chooses to truncate (`min-w-0 truncate`) so the
+              // last item is never the one clipped.
+              className="flex min-w-0 items-center gap-1.5 text-meta tabular-nums text-ink-3"
             >
               {meta}
             </div>

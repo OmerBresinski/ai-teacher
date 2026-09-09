@@ -62,7 +62,12 @@ describe("AddBlockDialog", () => {
     // The miniature is the printed sheet: this sheet's title, then the six pairs.
     expect(matching.querySelector(".ws-mini .ws-title")?.textContent).toBe("The water cycle");
     expect(matching.querySelectorAll(".ws-mini .ws-match-blank").length).toBe(6);
-    expect(within(matching as HTMLElement).getByText(/^about \d+ min$/)).toBeInTheDocument();
+    // The pill, not the miniature's own header line (which reads the minutes too).
+    expect(
+      within(matching as HTMLElement)
+        .getAllByText(/^about \d+ min$/)
+        .filter((el) => !el.classList.contains("ws-meta")),
+    ).toHaveLength(1);
     expect(
       within(dialog).getByText("Sections are built from this lesson. Blocks are empty."),
     ).toBeInTheDocument();

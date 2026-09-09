@@ -1,4 +1,4 @@
-import type { Lesson, Series, Slide, Worksheet } from "@tj/domain/documents";
+import type { Lesson, Series, Slide, Worksheet, WorksheetCover } from "@tj/domain/documents";
 import { index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { tenantColumns, tenantIndexes } from "./_columns";
 
@@ -15,7 +15,8 @@ import { tenantColumns, tenantIndexes } from "./_columns";
  * - `title`, `subject`, `year_group`, `theme_id`, `item_count`, `marks`, `cover` are **promoted
  *   columns**: copies of `summarise(body)` written on every insert and update, so the Library list
  *   reads them without touching `body`. `cover` is the first slide with data-URL images stripped
- *   (ADR 0021 §5), `null` for worksheets and series. `marks` is a worksheet's total, `null` for
+ *   (ADR 0021 §5) for a lesson, the top of page 1 for a worksheet (`WorksheetCover`, UX ruling 31),
+ *   `null` for series. `marks` is a worksheet's total, `null` for
  *   the other kinds (TEACH-186).
  * - `updated_at` has `DEFAULT now()` but no trigger: the repository sets it explicitly on update
  *   and compares it for optimistic concurrency (§4), so the value must be the one a client saw.
@@ -42,7 +43,7 @@ export const documents = pgTable(
     themeId: text("theme_id"),
     itemCount: integer("item_count").notNull(),
     marks: integer("marks"),
-    cover: jsonb("cover").$type<Slide>(),
+    cover: jsonb("cover").$type<Slide | WorksheetCover>(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     generatingJobId: uuid("generating_job_id"),
   },

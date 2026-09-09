@@ -14,8 +14,9 @@ import { worksheetEditorRoute } from "./documents.route";
 // only (ADR 0022 §8): Vite ships it with the lazy chunk, so none of it reaches the initial bundle.
 import "@tj/editor/styles/worksheet-edit.css";
 
-/** TeachDeck `worksheetPrintHref(id, { auto: true })`. */
-export const worksheetPrintHref = (id: string) => `/w/${encodeURIComponent(id)}/print?auto=1`;
+import { worksheetPrintHref } from "@/lib/worksheet-print-href";
+
+export { worksheetPrintHref };
 
 /**
  * `/w/$worksheetId` — the worksheet editor (TEACH-109). The loader has already resolved the

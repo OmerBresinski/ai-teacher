@@ -41,6 +41,12 @@ export type Worksheet = {
   pageSize: PageSize;
   /** Red / Amber / Green strip at the foot of the last content page. */
   selfAssessment?: boolean;
+  /**
+   * Whether "(2 marks)" prints beside the questions and the header counts marks (UX ruling 60).
+   * Marks are an assessment convention: on for a sheet whose job is Assess, otherwise unset, which
+   * means off. The minutes are computed the same either way.
+   */
+  showMarks?: boolean;
   ageBand?: AgeBand;
   yearGroup?: string;
   subject?: string;
@@ -242,6 +248,8 @@ export const WorksheetSchema = z.object({
   // code can read `worksheet.pageSize` without a fallback.
   pageSize: z.enum(["A4", "Letter"]).default("A4"),
   selfAssessment: z.boolean().optional(),
+  // UX ruling 60: absent means off, so no migration.
+  showMarks: z.boolean().optional(),
   ageBand: AgeBandSchema.optional(),
   yearGroup: z.string().optional(),
   subject: z.string().optional(),

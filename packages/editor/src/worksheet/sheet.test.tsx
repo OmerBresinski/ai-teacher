@@ -93,6 +93,37 @@ describe("Sheet", () => {
     expect(root.style.getPropertyValue("--ws-print-w")).toBe("210mm");
   });
 
+  test("marks print only with the sheet's Marks switch on; the answer key lists answers either way (TEACH-193)", () => {
+    const sheet = everyBlockSheet();
+    const off = { ...sheet, showMarks: undefined };
+    const printOff = render(
+      <Sheet
+        worksheet={off}
+        theme={getTheme(off.themeId)}
+        pages={paginateFlat(off)}
+        mode="print"
+      />,
+    );
+    expect(printOff.container.querySelectorAll(".ws-marks")).toHaveLength(0);
+    expect(printOff.container.querySelector(".ws-meta")?.textContent).toMatch(/^about \d+ min$/);
+    expect(printOff.getByRole("heading", { level: 2, name: "Answer key" })).toBeInTheDocument();
+    expect(printOff.container.querySelectorAll(".ws-key-entry").length).toBeGreaterThan(0);
+    cleanup();
+    const editOff = render(
+      <Sheet worksheet={off} theme={getTheme(off.themeId)} pages={paginateFlat(off)} mode="edit" />,
+    );
+    expect(editOff.container.querySelectorAll(".ws-marks")).toHaveLength(0);
+    cleanup();
+    const on = { ...sheet, showMarks: true };
+    const printOn = render(
+      <Sheet worksheet={on} theme={getTheme(on.themeId)} pages={paginateFlat(on)} mode="print" />,
+    );
+    expect(printOn.container.querySelectorAll(".ws-marks").length).toBeGreaterThan(0);
+    expect(printOn.container.querySelector(".ws-meta")?.textContent).toMatch(
+      /^\d+ marks? · about \d+ min$/,
+    );
+  });
+
   test("edit mode shows the page-break marker and empty-stem hints; print mode leaves a blank", () => {
     const sheet = starterWorksheet("Hints");
     const empty: WorksheetBlock = { id: "e", type: "paragraph", doc: docFromText("") };

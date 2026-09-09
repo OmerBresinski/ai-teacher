@@ -166,8 +166,13 @@ export function minutesForMarks(marks: number): number {
   return roundMinutes(minutesRaw(marks));
 }
 
-/** "12 marks · about 25 min" for the sheet header and the recipe cards. */
-export function sheetSummary(blocks: readonly WorksheetBlock[]): string {
+/**
+ * The header line and the recipe cards: "12 marks · about 25 min" with the marks switch on,
+ * "about 25 min" alone with it off (UX ruling 60). The minutes are the same either way.
+ */
+export function sheetSummary(blocks: readonly WorksheetBlock[], showMarks = false): string {
+  const minutes = `about ${estimateMinutes(blocks)} min`;
+  if (!showMarks) return minutes;
   const marks = marksTotal(blocks);
-  return `${marks} ${marks === 1 ? "mark" : "marks"} · about ${estimateMinutes(blocks)} min`;
+  return `${marks} ${marks === 1 ? "mark" : "marks"} · ${minutes}`;
 }

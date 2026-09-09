@@ -165,5 +165,7 @@ export function worksheetFromRecipe(
   const sheet = previewWorksheet(lesson);
   sheet.blocks = numberQuestions(recipe.build(facts));
   sheet.lessonId = lesson.id;
+  // UX ruling 60: marks are an assessment convention. Unset means off.
+  if (recipe.jobs.includes("assess")) sheet.showMarks = true;
   return sheet;
 }

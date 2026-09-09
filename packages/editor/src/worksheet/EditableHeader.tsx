@@ -135,7 +135,7 @@ export const EditableHeader = memo(function EditableHeader({
           ))}
         </ul>
       ) : null}
-      <SheetMeta blocks={worksheet.blocks} />
+      <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
     </header>
   );
 });

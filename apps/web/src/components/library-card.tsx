@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import type { DocumentSummary } from "@tj/domain/documents";
 import { minutesForMarks } from "@tj/editor/worksheet-metrics";
 import {
@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { memo, type ReactNode, useRef } from "react";
 import { sizeOf, yearAndSubject } from "@/lib/format";
+import { openWorksheetPrint } from "@/lib/worksheet-print-href";
 import { EditedTime } from "./edited-time";
 import { LessonThumb } from "./lesson-thumb";
 
@@ -137,16 +138,13 @@ const KIND_LABEL = { lesson: "Lesson", worksheet: "Worksheet", series: "Series" 
 export { minutesForMarks };
 
 /**
- * "12 marks · 20 min" for a worksheet card; a sheet with no marked questions shows the minutes.
- * The minutes come from `@tj/editor`'s worksheet metrics (TEACH-184 item 7), the one rule the
- * sheet header uses too, so a card and its sheet agree.
+ * "20 min" for a worksheet card: minutes only (UX ruling 60; marks are a per-sheet switch and the
+ * cards never show them). The minutes come from `@tj/editor`'s worksheet metrics (TEACH-184 item
+ * 7), the one rule the sheet header uses too, so a card and its sheet agree.
  */
 export function worksheetEffort(doc: Pick<DocumentSummary, "kind" | "marks">): string | null {
   if (doc.kind !== "worksheet") return null;
-  const marks = doc.marks ?? 0;
-  const minutes = `${minutesForMarks(marks)} min`;
-  if (marks === 0) return minutes;
-  return `${marks} mark${marks === 1 ? "" : "s"} · ${minutes}`;
+  return `${minutesForMarks(doc.marks ?? 0)} min`;
 }
 
 /** The kind as a 16px glyph in the meta line, with the word in a tooltip (TeachDeck `KindIcon`). */
@@ -176,7 +174,6 @@ export const LibraryCard = memo(function LibraryCard({
   onAction,
   onRename,
 }: LibraryCardProps) {
-  const navigate = useNavigate();
   const linkRef = useRef<HTMLAnchorElement>(null);
   const rename = useInlineRename(doc.title, {
     onCommit: (title) => onRename(doc, title),
@@ -194,7 +191,7 @@ export const LibraryCard = memo(function LibraryCard({
 
   function primaryAction(): void {
     if (doc.kind === "lesson") onAction("present", doc);
-    else void navigate({ to: "/w/$worksheetId/print", params: { worksheetId: doc.id } });
+    else openWorksheetPrint(doc.id);
   }
 
   const title = rename.editing ? (
@@ -263,23 +260,25 @@ export const LibraryCard = memo(function LibraryCard({
     );
   }
 
+  // The subject is the one span that truncates; the effort and the time stay whole, so the
+  // edited time is never what disappears from a narrow card (TEACH-193 item 2).
   const meta = hero ? (
     <>
       <KindIcon kind={doc.kind} />
-      {subject ? <span>{subject}</span> : null}
+      {subject ? <span className="min-w-0 truncate">{subject}</span> : null}
       {subject ? <span aria-hidden>·</span> : null}
-      <span>{effort ?? sizeOf(doc)}</span>
+      <span className="shrink-0">{effort ?? sizeOf(doc)}</span>
       <span aria-hidden>·</span>
-      <EditedTime updatedAt={doc.updatedAt} prefix="Edited " />
+      <EditedTime updatedAt={doc.updatedAt} prefix="Edited " className="shrink-0" />
     </>
   ) : (
     <>
       <KindIcon kind={doc.kind} />
-      {subject ? <span>{subject}</span> : null}
+      {subject ? <span className="min-w-0 truncate">{subject}</span> : null}
       {subject ? <span aria-hidden>·</span> : null}
-      {effort ? <span>{effort}</span> : null}
+      {effort ? <span className="shrink-0">{effort}</span> : null}
       {effort ? <span aria-hidden>·</span> : null}
-      <EditedTime updatedAt={doc.updatedAt} />
+      <EditedTime updatedAt={doc.updatedAt} className="shrink-0" />
     </>
   );
 

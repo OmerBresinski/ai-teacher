@@ -7,11 +7,11 @@ import type { Page } from "@playwright/test";
 import { demoWorkspace } from "@tj/editor/starter";
 import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 
-/** Key, title, a phrase only that sheet's paper carries, and the card's marks and minutes. */
+/** Key, title, a phrase only that sheet's paper carries, and the card's minutes (UX ruling 60). */
 const SHEETS = [
-  ["fraction-practice", "Fractions practice", "Worked example", "12 marks · 20 min"],
-  ["roman-source", "Roman source investigation", "Watling Street", "8 marks · 10 min"],
-  ["plant-labels", "Label a flowering plant", "Figure 1: a flowering plant", "4 marks · 5 min"],
+  ["fraction-practice", "Fractions practice", "Worked example", "20 min"],
+  ["roman-source", "Roman source investigation", "Watling Street", "10 min"],
+  ["plant-labels", "Label a flowering plant", "Figure 1: a flowering plant", "5 min"],
   ["river-vocabulary", "River vocabulary", "tributary", "5 min"],
 ] as const;
 
@@ -84,7 +84,7 @@ test.describe("worksheet library", () => {
     }
   });
 
-  test("row 2: cards carry marks and minutes; New worksheet sits in the header and opens the flow", async ({
+  test("row 2: cards carry the minutes; New worksheet sits in the header and opens the flow", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/worksheets");
@@ -104,6 +104,7 @@ test.describe("worksheet library", () => {
 
   test("row 3: the card face opens the sheet; Print and the overflow menu do not", async ({
     signedInPage: { page, paths },
+    context,
   }) => {
     await page.goto("/worksheets");
     const card = page.locator("article", {
@@ -127,8 +128,16 @@ test.describe("worksheet library", () => {
     await expect(page).toHaveURL(/\/worksheets$/);
 
     await card.hover();
-    await card.getByRole("button", { name: "Print" }).click();
-    await expect(page).toHaveURL(new RegExp(`${paths.worksheet("fraction-practice", "/print")}$`));
+    // Print opens the print route with `?auto=1` in a new tab (TEACH-193 item 3); the library stays.
+    const [printed] = await Promise.all([
+      context.waitForEvent("page"),
+      card.getByRole("button", { name: "Print" }).click(),
+    ]);
+    await expect(printed).toHaveURL(
+      new RegExp(`${paths.worksheet("fraction-practice", "/print")}\\?auto=(%22)?1(%22)?$`),
+    );
+    await expect(page).toHaveURL(/\/worksheets$/);
+    await printed.close();
   });
 
   test("row 4: Fractions practice belongs to Fractions of amounts", async ({

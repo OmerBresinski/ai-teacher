@@ -94,19 +94,22 @@ describe("LibraryCard", () => {
     expect(minutesForMarks(1)).toBe(5);
     expect(minutesForMarks(4)).toBe(5);
     expect(minutesForMarks(12)).toBe(20);
-    expect(worksheetEffort({ kind: "worksheet", marks: 4 })).toBe("4 marks · 5 min");
-    expect(worksheetEffort({ kind: "worksheet", marks: 1 })).toBe("1 mark · 5 min");
+    // UX ruling 60: cards show the minutes only; the marks still drive them.
+    expect(worksheetEffort({ kind: "worksheet", marks: 12 })).toBe("20 min");
+    expect(worksheetEffort({ kind: "worksheet", marks: 4 })).toBe("5 min");
+    expect(worksheetEffort({ kind: "worksheet", marks: 1 })).toBe("5 min");
     expect(worksheetEffort({ kind: "worksheet", marks: 0 })).toBe("5 min");
     expect(worksheetEffort({ kind: "lesson" })).toBeNull();
 
     const worksheet = { ...lesson, id: "w1", kind: "worksheet" as const, itemCount: 9, marks: 4 };
     const grid = renderCard(worksheet);
-    expect(grid.container).toHaveTextContent("4 marks · 5 min");
+    expect(grid.container).toHaveTextContent("5 min");
+    expect(grid.container).not.toHaveTextContent("marks");
     expect(grid.container).not.toHaveTextContent("9 blocks");
     cleanup();
 
     const hero = renderCard(worksheet, true);
-    expect(hero.container).toHaveTextContent(/4 marks · 5 min.*Edited/);
+    expect(hero.container).toHaveTextContent(/5 min.*Edited/);
     cleanup();
 
     const list = render(
@@ -118,7 +121,7 @@ describe("LibraryCard", () => {
         </table>
       </TooltipProvider>,
     );
-    expect(screen.getByText("4 marks · 5 min")).toBeVisible();
+    expect(screen.getByText("5 min")).toBeVisible();
     // The list thumbnail opens the sheet like the title, out of the tab order and the a11y tree.
     const anchors = list.container.querySelectorAll("a");
     expect(anchors).toHaveLength(2);

@@ -18,6 +18,8 @@ type Meta = Pick<Worksheet, "subject" | "yearGroup" | "ageBand"> & {
   themeId: string;
   objective: string;
   criteria: string[];
+  /** UX ruling 60: the sheets that count marks; the others leave it unset. */
+  showMarks?: boolean;
 };
 
 function sheet(meta: Meta, blocks: WorksheetBlock[]): Worksheet {
@@ -39,6 +41,7 @@ function sheet(meta: Meta, blocks: WorksheetBlock[]): Worksheet {
     subject: meta.subject,
     yearGroup: meta.yearGroup,
     ageBand: meta.ageBand,
+    ...(meta.showMarks ? { showMarks: true } : {}),
   };
 }
 
@@ -81,6 +84,7 @@ export function fractionsPracticeWorksheet(): Worksheet {
     {
       title: "Fractions practice",
       themeId: "playground",
+      showMarks: true,
       subject: "Maths",
       yearGroup: "Year 4",
       ageBand: "ks2",
@@ -129,6 +133,7 @@ export function romanSourceWorksheet(): Worksheet {
     {
       title: "Roman source investigation",
       themeId: "beacon",
+      showMarks: true,
       subject: "History",
       yearGroup: "Year 4",
       ageBand: "ks2",

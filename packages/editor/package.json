@@ -10,6 +10,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./thumb": "./src/thumb.ts",
+    "./worksheet-thumb": "./src/worksheet-thumb.ts",
+    "./styles/worksheet-thumb.css": "./src/styles/worksheet-thumb.css",
     "./starter": "./src/starter.ts",
     "./autosave": "./src/model/use-autosave.ts",
     "./styles/editor.css": "./src/styles/editor.css",

@@ -10,7 +10,7 @@ import {
   visibleRecipes,
   worksheetFromRecipe,
 } from "./worksheet-creation";
-import { recipeById } from "./worksheet-recipes";
+import { recipeById, WORKSHEET_RECIPES } from "./worksheet-recipes";
 
 /*
  * The creation flow's pure half (TEACH-184): the suggestion rule, the Source → Kind reducer and
@@ -91,6 +91,14 @@ describe("createReducer", () => {
 });
 
 describe("worksheetFromRecipe", () => {
+  test("marks are on for an Assess recipe and unset for the others (UX ruling 60, TEACH-193)", () => {
+    const exitTicket = recipeById("exit-ticket");
+    const exam = WORKSHEET_RECIPES.find((r) => r.jobs.includes("assess"));
+    if (!exitTicket || !exam) throw new Error("recipes missing");
+    expect(worksheetFromRecipe(exitTicket, lesson, DEMO_LESSON_FACTS).showMarks).toBeUndefined();
+    expect(worksheetFromRecipe(exam, lesson, DEMO_LESSON_FACTS).showMarks).toBe(true);
+  });
+
   test("the frame is the sheet: numbered blocks, the lesson's header, lessonId, year, subject, theme", () => {
     const recipe = recipeById("exit-ticket");
     if (!recipe) throw new Error("no exit ticket");

@@ -11,14 +11,16 @@ import {
   setIncludeAnswerKey,
   setPageSize,
   setSelfAssessment,
+  setShowMarks,
 } from "./reducers";
 import { useTypingSession, useWorksheet, useWorksheetHistoryApi } from "./worksheet-context";
 
 /*
  * The toolbar over the selected header (TeachDeck `components/v2/worksheet/HeaderToolbar.tsx`):
  * which rules print (Name / Date / Class), the objective line, a new success criterion, the paper
- * size, and the two sheet-wide switches — the printed answer key and self-assessment strip. (The
- * on-screen "Show answers" is a view, not a document flag: it lives on the top bar, TEACH-195.) Everything here is
+ * size, and the sheet-wide switches — the printed answer key, marks (UX ruling 60) and the
+ * self-assessment strip. (The on-screen "Show answers" is a view, not a document flag: it lives
+ * on the top bar, TEACH-195.) Everything here is
  * a discrete click, so each is its own undo entry; the typing session is closed first.
  */
 
@@ -92,6 +94,16 @@ export function HeaderToolbar() {
           />
           <Label htmlFor={`${ids}-key`} className="text-body">
             Print answer key
+          </Label>
+        </span>
+        <span className="inline-flex items-center gap-1.5 px-1">
+          <Switch
+            id={`${ids}-marks`}
+            checked={worksheet.showMarks ?? false}
+            onCheckedChange={(on) => click(() => dispatch(setShowMarks, on))}
+          />
+          <Label htmlFor={`${ids}-marks`} className="text-body">
+            Marks
           </Label>
         </span>
         <span className="inline-flex items-center gap-1.5 px-1">

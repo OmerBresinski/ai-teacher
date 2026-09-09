@@ -59,6 +59,9 @@ test.describe("accessibility (axe)", () => {
     test(`every route is clean in the ${theme} theme`, async ({
       signedInPage: { page, paths },
     }) => {
+      // Twelve routes under one axe pass each; the Worksheets library and the creation flow now
+      // paint whole sheets in their cards (TEACH-193, TEACH-184), which takes axe past 30 s.
+      test.setTimeout(90_000);
       await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
       for (const route of ROUTES(paths)) {
         await page.goto(route.path);

@@ -122,7 +122,8 @@ export function parseDocumentBody(kind: DocumentKind, input: unknown): DocumentB
   }
 }
 
-function promoted(body: DocumentBody) {
+/** The promoted list columns for `body` (`summarise()`); `db:backfill-summaries` rewrites them. */
+export function promotedColumns(body: DocumentBody) {
   const s = summarise(body);
   return {
     title: s.title,
@@ -298,7 +299,7 @@ export async function createDocument(
       id,
       kind,
       body: parsed,
-      ...promoted(parsed),
+      ...promotedColumns(parsed),
       createdAt: now,
       updatedAt: now,
       generatingJobId: opts.generatingJobId ?? null,
@@ -327,7 +328,7 @@ async function replaceBody(
   }
   const rows = await ws
     .update(documents, and(eq(documents.id, current.id), predicate))
-    .set({ body: parsed, ...promoted(parsed), updatedAt: nextUpdatedAt(current.updatedAt) })
+    .set({ body: parsed, ...promotedColumns(parsed), updatedAt: nextUpdatedAt(current.updatedAt) })
     .returning();
   return rows[0];
 }
