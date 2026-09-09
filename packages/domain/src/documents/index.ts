@@ -30,3 +30,4 @@ export * from "./source-ref";
 export * from "./summarise";
 export * from "./theme";
 export * from "./worksheet";
+export * from "./worksheet-guides";

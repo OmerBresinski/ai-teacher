@@ -103,15 +103,16 @@ describe("worksheetFromRecipe", () => {
     expect(sheet.themeId).toBe("chalk");
     expect(sheet.subject).toBe("Science");
     expect(sheet.yearGroup).toBe("Year 4");
-    // Three questions, the answer box and the placeholder, numbered as they print.
+    // The instruction, three questions, the answer box and the placeholder, numbered as they print.
     expect(sheet.blocks.map((b) => b.type)).toEqual([
+      "instructions",
       "question",
       "question",
       "question",
       "answer-box",
       "paragraph",
     ]);
-    const first = sheet.blocks[0];
+    const first = sheet.blocks[1];
     expect(first?.type === "question" ? first.number : undefined).toBe(1);
     expect(JSON.stringify(sheet.blocks)).toContain(DEMO_LESSON_FACTS.questions[0]?.stem ?? "");
   });

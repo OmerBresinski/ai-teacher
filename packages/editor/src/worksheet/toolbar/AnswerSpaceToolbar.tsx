@@ -1,3 +1,4 @@
+import { BLOCK_GUIDES } from "@tj/domain/documents";
 import { Plus, X } from "lucide-react";
 import { useBlockWrites } from "../worksheet-context";
 import { BarButton, type BlockOf, ICON_SM, NumberField } from "./shared";
@@ -11,7 +12,8 @@ type AnswerBox = BlockOf<"answer-box">;
 type Lines = BlockOf<"lines">;
 type WordBank = BlockOf<"word-bank">;
 
-const MAX_WORDS = 16;
+// The guide's shape (TEACH-194): 3 to 10 words.
+const MAX_WORDS = BLOCK_GUIDES["word-bank"].shape.words?.[1] ?? 10;
 
 export function AnswerSpaceToolbar({ block }: { block: AnswerBox | Lines | WordBank }) {
   const { commit } = useBlockWrites();

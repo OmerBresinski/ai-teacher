@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
+  BLOCK_GUIDES,
   LessonFactsSchema,
+  TASK_BLOCK_TYPES,
   WORD_SEARCH_MAX_SIZE,
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
@@ -71,6 +73,26 @@ describe("worksheet recipes", () => {
     },
   );
 
+  test("acceptance 5 (TEACH-194): every task block has an instruction since its last heading; the word search has one lead", () => {
+    for (const recipe of WORKSHEET_RECIPES) {
+      for (const withFacts of [true, false]) {
+        const built = recipe.build(withFacts ? facts : undefined);
+        let instructed = false;
+        for (const block of built) {
+          if (block.type === "heading") instructed = false;
+          if (block.type === "instructions") instructed = true;
+          if (TASK_BLOCK_TYPES.includes(block.type) || block.type === "question") {
+            expect(instructed, `${recipe.id}: ${block.type} without an instruction`).toBe(true);
+          }
+        }
+        // A word search prints its own lead; no instructions block doubles it.
+        if (built.some((b) => b.type === "word-search")) {
+          expect(built.filter((b) => b.type === "instructions")).toEqual([]);
+        }
+      }
+    }
+  });
+
   test("acceptance 1: matching from the water cycle facts", () => {
     const built = recipeById("matching")?.build(facts) ?? [];
     const matching = built.find((b) => b.type === "matching");
@@ -78,9 +100,9 @@ describe("worksheet recipes", () => {
     expect(matching.pairs.length).toBe(6);
     expect(matching.pairs[0]).toMatchObject({ left: "evaporation" });
     expect(matching.pairs[0]?.right).toBe(facts.vocabulary[0]?.definition);
-    const bank = built.find((b) => b.type === "word-bank");
-    if (bank?.type !== "word-bank") throw new Error("no word bank");
-    expect(bank.words).toEqual(facts.vocabulary.map((v) => v.term));
+    // The guide's line before it, and no word bank after it (TEACH-194).
+    expect(built.map((b) => b.type)).toEqual(["instructions", "matching", "paragraph"]);
+    expect(JSON.stringify(built[0])).toContain(BLOCK_GUIDES.matching.instruction ?? "");
     for (const block of built) {
       expect(block.generatedFrom?.factRefs).toEqual(
         expect.arrayContaining(matching.generatedFrom?.factRefs ?? []),
@@ -90,6 +112,7 @@ describe("worksheet recipes", () => {
 
   test("acceptance 2: no facts gives the same shapes with placeholder copy", () => {
     expect(shape(recipeById("exit-ticket") as WorksheetRecipe, false)).toEqual([
+      "instructions",
       "question",
       "question",
       "question",
@@ -106,23 +129,25 @@ describe("worksheet recipes", () => {
     expect(exam.at(-1)?.type).toBe("page-break");
   });
 
-  test("exit ticket: three questions from the facts and the answer box", () => {
+  test("exit ticket: the instruction, three questions from the facts and the answer box", () => {
     const built = recipeById("exit-ticket")?.build(facts) ?? [];
     expect(shape(recipeById("exit-ticket") as WorksheetRecipe, true)).toEqual([
+      "instructions",
       "question",
       "question",
       "question",
       "answer-box",
       "paragraph",
     ]);
-    expect(built.slice(0, 3).map((b) => b.generatedFrom?.factRefs)).toEqual([
+    expect(JSON.stringify(built[0])).toContain("Answer each question in one or two sentences.");
+    expect(built.slice(1, 4).map((b) => b.generatedFrom?.factRefs)).toEqual([
       ["q1"],
       ["q2"],
       ["q3"],
     ]);
-    const box = built[3];
+    const box = built[4];
     expect(box?.type === "answer-box" && box.label).toBe("One thing I learned");
-    const q = built[0];
+    const q = built[1];
     expect(q?.type === "question" && q.answer).toBe(facts.questions[0]?.answer);
   });
 
@@ -174,8 +199,9 @@ describe("worksheet recipes", () => {
 
   test("word search: the terms in a seeded grid sized to the longest, the bank shown, no placeholder", () => {
     const built = recipeById("word-search")?.build(facts) ?? [];
-    expect(built.map((b) => b.type)).toEqual(["instructions", "word-search"]);
-    const grid = built[1];
+    // The block prints its own lead, so there is no instructions block (TEACH-194).
+    expect(built.map((b) => b.type)).toEqual(["word-search"]);
+    const grid = built[0];
     if (grid?.type !== "word-search") throw new Error("grid");
     expect(grid.words).toEqual(facts.vocabulary.map((v) => v.term));
     // "precipitation" and "transpiration" are 13 letters: the grid grows past the 12 default.
@@ -187,7 +213,7 @@ describe("worksheet recipes", () => {
     expect(result.error).toBeNull();
     expect(result.grid?.placements.length).toBe(6);
     expect(result.grid?.unplaced).toEqual([]);
-    expect(JSON.stringify(built[0])).not.toContain("Not in the grid");
+    expect(JSON.stringify(built)).not.toContain("Not in the grid");
   });
 
   test("word search: a term longer than the largest grid stays out and is named on the sheet", () => {
@@ -199,7 +225,8 @@ describe("worksheet recipes", () => {
       ],
     };
     const built = recipeById("word-search")?.build(longFacts) ?? [];
-    const grid = built[1];
+    expect(built.map((b) => b.type)).toEqual(["word-search", "paragraph"]);
+    const grid = built[0];
     if (grid?.type !== "word-search") throw new Error("grid");
     // Sized to the longest term that fits (13), not to the one left out.
     expect(grid.size).toBe(13);
@@ -207,14 +234,14 @@ describe("worksheet recipes", () => {
     expect(grid.words).not.toContain("photosynthesising");
     expect(grid.words.length).toBe(6);
     expect(grid.generatedFrom?.factRefs).not.toContain("v7");
-    expect(JSON.stringify(built[0])).toContain("Not in the grid: photosynthesising.");
-    expect(built[0]?.generatedFrom?.factRefs).toContain("v7");
+    expect(JSON.stringify(built[1])).toContain("Not in the grid: photosynthesising.");
+    expect(built[1]?.generatedFrom?.factRefs).toContain("v7");
     expect(buildWordSearch(grid).error).toBeNull();
     // Short terms keep the default side.
     const short = recipeById("word-search")?.build({
       ...facts,
       vocabulary: facts.vocabulary.slice(0, 2),
-    })?.[1];
+    })?.[0];
     expect(short?.type === "word-search" && short.size).toBe(12);
   });
 
@@ -226,12 +253,13 @@ describe("worksheet recipes", () => {
       "heading",
       "paragraph",
       "heading",
+      "instructions",
       "question",
       "question",
       "question",
       "paragraph",
     ]);
-    expect(JSON.stringify(built[4])).toContain(PLACEHOLDER_QUESTION);
+    expect(JSON.stringify(built[5])).toContain(PLACEHOLDER_QUESTION);
     expect(JSON.stringify(built.at(-1))).toContain("remaining Now try questions");
     expect(built.at(-1)?.generatedFrom?.factRefs).toEqual(expect.arrayContaining(["w1", "q1"]));
     // With three or more, nothing is left for generation.
@@ -244,10 +272,12 @@ describe("worksheet recipes", () => {
       "heading",
       "paragraph",
       "heading",
+      "instructions",
       "question",
       "question",
       "question",
     ]);
+    expect(JSON.stringify(built[3])).toContain("Use the example above to answer these.");
     const text = JSON.stringify(built[1]);
     expect(text).toContain("Problem: A puddle");
     expect(text).toContain("Step 3:");

@@ -1,3 +1,4 @@
+import { BLOCK_GUIDES } from "@tj/domain/documents";
 import { Plus, X } from "lucide-react";
 import { uid } from "../../model/factories";
 import { answerLinesForMarks } from "../../model/worksheet-factories";
@@ -66,7 +67,8 @@ function QuestionFields({ block }: { block: Question }) {
   );
 }
 
-const MAX_OPTIONS = 6;
+// The guide's shape (TEACH-194): 2 to 4 options, 3 to 6 pairs.
+const MAX_OPTIONS = BLOCK_GUIDES["multiple-choice"].shape.options?.[1] ?? 4;
 
 function OptionFields({ block }: { block: MC }) {
   const { commit } = useBlockWrites();
@@ -146,7 +148,7 @@ function GapFields({ block }: { block: FillGap }) {
   );
 }
 
-const MAX_PAIRS = 8;
+const MAX_PAIRS = BLOCK_GUIDES.matching.shape.pairs?.[1] ?? 6;
 
 function PairFields({ block }: { block: Matching }) {
   const { commit } = useBlockWrites();

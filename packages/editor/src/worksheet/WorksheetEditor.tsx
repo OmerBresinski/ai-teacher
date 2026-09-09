@@ -23,7 +23,8 @@ import { isDocEmpty } from "../text/static";
 import { AddBlockDialog } from "./AddBlockDialog";
 import { FlowItemContent } from "./BlockContent";
 import { type BlockRowActions, BlockShell } from "./BlockShell";
-import { type BlockSpec, blankStem, isRich } from "./block-types";
+import { blockProblems } from "./block-problems";
+import { type BlockSpec, blankStem, instructionBefore, isRich } from "./block-types";
 import { EditableHeader } from "./EditableHeader";
 import { HeaderToolbar } from "./HeaderToolbar";
 import { useSheetPagination } from "./measure";
@@ -216,12 +217,17 @@ export function WorksheetEditor({
 
   /**
    * Insert `blocks` in order after `afterId` (`null` appends) as one undo step, then select the
-   * first and open its editor when it has text. `replaceId` is the empty paragraph a `/` was typed
-   * in: it goes in the same step, after the new blocks have taken its place.
+   * first (or `focusId`) and open its editor when it has text. `replaceId` is the empty paragraph
+   * a `/` was typed in: it goes in the same step, after the new blocks have taken its place.
    */
   const insertBlocks = useCallback(
-    (blocks: WorksheetBlock[], afterId: Id | null, replaceId: Id | null = null) => {
-      const first = blocks[0];
+    (
+      blocks: WorksheetBlock[],
+      afterId: Id | null,
+      replaceId: Id | null = null,
+      focusId: Id | null = null,
+    ) => {
+      const first = blocks.find((b) => b.id === focusId) ?? blocks[0];
       if (!first) return;
       const h = historyRef.current;
       typingRef.current.end();
@@ -240,19 +246,31 @@ export function WorksheetEditor({
     [],
   );
 
+  /**
+   * A spec's block, with its default instruction before it when no instructions block stands
+   * since the last heading (TEACH-194, ruling 61). Both go in one undo step; the task block is the
+   * one selected.
+   */
+  const blocksFor = useCallback((spec: BlockSpec, afterId: Id | null) => {
+    const block = blankStem(spec.create());
+    const lead = instructionBefore(spec, worksheetRef.current?.blocks ?? [], afterId);
+    return { blocks: lead ? [lead, block] : [block], focusId: block.id };
+  }, []);
+
   const pickFromSlash = useCallback(
     (item: SlashItem) => {
       const target = slash;
       setSlash(null);
       if (!target) return;
       // `/` in an empty paragraph replaces it; a section's blocks land where the paragraph was.
-      const blocks =
-        item.pick.kind === "block"
-          ? [blankStem(item.pick.spec.create())]
-          : item.pick.recipe.build(facts);
-      insertBlocks(blocks, target.afterId, target.replaceId);
+      if (item.pick.kind === "block") {
+        const { blocks, focusId } = blocksFor(item.pick.spec, target.afterId);
+        insertBlocks(blocks, target.afterId, target.replaceId, focusId);
+      } else {
+        insertBlocks(item.pick.recipe.build(facts), target.afterId, target.replaceId);
+      }
     },
-    [slash, facts, insertBlocks],
+    [slash, facts, insertBlocks, blocksFor],
   );
 
   const pickRecipe = useCallback(
@@ -268,9 +286,11 @@ export function WorksheetEditor({
     (spec: BlockSpec) => {
       const target = adder;
       setAdder(null);
-      if (target) insertBlocks([blankStem(spec.create())], target.afterId);
+      if (!target) return;
+      const { blocks, focusId } = blocksFor(spec, target.afterId);
+      insertBlocks(blocks, target.afterId, null, focusId);
     },
-    [adder, insertBlocks],
+    [adder, insertBlocks, blocksFor],
   );
 
   const order = useRef<Id[]>([]);
@@ -508,6 +528,9 @@ export function WorksheetEditor({
                           caret={session.caret}
                           oversize={oversizeSet.has(item.block.id)}
                           showAnswers={session.showAnswers}
+                          problems={
+                            active === item.block.id ? blockProblems(item.block) : undefined
+                          }
                           actions={rowActions}
                         />
                       ) : (

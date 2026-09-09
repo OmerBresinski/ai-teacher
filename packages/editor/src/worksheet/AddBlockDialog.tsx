@@ -29,7 +29,7 @@ import { Sheet } from "./Sheet";
  * "Add block" pill and the gutter plus, with two tabs. Sections are the nine recipes as cards,
  * each with a live miniature of the sheet it would add, built from the lesson's facts when the
  * sheet has them and from placeholder copy when it does not; the six job chips filter them. Blocks
- * are the sixteen block rows (fifteen types, headings twice) with the slash menu's descriptions. Picking hands the blocks back to
+ * are the eighteen block rows (fifteen types, headings twice, True or false and Sorting table) with the slash menu's descriptions. Picking hands the blocks back to
  * the editor, which inserts them as one undo step.
  */
 

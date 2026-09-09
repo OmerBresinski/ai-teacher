@@ -112,6 +112,7 @@ describe("AddBlockDialog", () => {
     ];
     expect(recipe.id).toBe("exit-ticket");
     expect(blocks.map((b) => b.type)).toEqual([
+      "instructions",
       "question",
       "question",
       "question",
@@ -122,12 +123,12 @@ describe("AddBlockDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  test("Blocks tab: the fifteen block types with their descriptions; picking one calls back", async () => {
+  test("Blocks tab: the eighteen block rows with their descriptions; picking one calls back", async () => {
     const { dialog, onPickBlock } = renderDialog({ initialTab: "blocks" });
     const picks = within(dialog)
       .getAllByRole("button")
       .filter((b) => b.classList.contains("ws-block-pick"));
-    expect(picks.length).toBe(16);
+    expect(picks.length).toBe(18);
     expect(within(dialog).getByText("A letter grid with the words to find")).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: /^Word search/ }));
     expect(onPickBlock).toHaveBeenCalledTimes(1);
