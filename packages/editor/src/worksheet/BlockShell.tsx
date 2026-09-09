@@ -83,6 +83,8 @@ export type BlockShellProps = {
   showAnswers: boolean;
   /** What is wrong with the block (`blockProblems`), shown on the selected block only. */
   problems?: string[];
+  /** `Worksheet.showMarks`, handed down so the printed markup matches `FlowItemContent`. */
+  showMarks?: boolean;
   actions: BlockRowActions;
 };
 
@@ -100,6 +102,7 @@ export const BlockShell = memo(function BlockShell({
   oversize,
   showAnswers,
   problems,
+  showMarks,
   actions,
 }: BlockShellProps) {
   const keyHandlers = useMemo<BlockKeyHandlers>(
@@ -194,6 +197,7 @@ export const BlockShell = memo(function BlockShell({
           renderStem={renderStem}
           showAnswers={showAnswers}
           renderAnswer={renderAnswer}
+          showMarks={showMarks}
         />
       )}
     </div>

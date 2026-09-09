@@ -531,6 +531,7 @@ export function WorksheetEditor({
                           problems={
                             active === item.block.id ? blockProblems(item.block) : undefined
                           }
+                          showMarks={worksheet.showMarks}
                           actions={rowActions}
                         />
                       ) : (

@@ -61,7 +61,12 @@ describe("WorksheetEditor", () => {
     const cards = () =>
       within(dialog).getByRole("list", { name: "Sections" }).querySelectorAll(":scope > li");
     expect(cards().length).toBe(9);
-    expect(within(dialog).getAllByText(/^about \d+ min$/).length).toBe(9);
+    // The pills only: each miniature's header line reads the minutes too (UX ruling 60).
+    expect(
+      within(dialog)
+        .getAllByText(/^about \d+ min$/)
+        .filter((el) => !el.classList.contains("ws-meta")).length,
+    ).toBe(9);
     fireEvent.click(within(dialog).getByRole("button", { name: "Assess", pressed: false }));
     expect(cards().length).toBe(1);
     fireEvent.click(within(dialog).getByRole("button", { name: "Assess", pressed: true }));
@@ -98,9 +103,7 @@ describe("WorksheetEditor", () => {
     if (!first) throw new Error("inserted");
     expect(row(container, first.id).querySelector(".ws-selected-ring")).not.toBeNull();
     // The header reads the new total.
-    expect(container.querySelector(".ws-header .ws-meta")?.textContent).toMatch(
-      /marks · about \d+ min/,
-    );
+    expect(container.querySelector(".ws-header .ws-meta")?.textContent).toMatch(/^about \d+ min$/);
     // One undo step for the whole section.
     fireEvent.keyDown(window, { key: "z", metaKey: true });
     expect(read().blocks.length).toBe(before);
@@ -255,6 +258,13 @@ describe("WorksheetEditor", () => {
     expect(read().pageSize).toBe("Letter");
     expect(read().includeAnswerKey).toBe(true);
     expect(read().selfAssessment).toBe(true);
+    // UX ruling 60: the Marks switch sits beside Answer key; unset reads as off.
+    const marks = screen.getByRole("switch", { name: "Marks" });
+    expect(marks).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(marks);
+    expect(read().showMarks).toBe(true);
+    fireEvent.click(screen.getByRole("switch", { name: "Marks" }));
+    expect(read().showMarks).toBe(false);
     const add = screen.getByRole("button", { name: "Criterion" });
     for (let i = 0; i < 5; i++) fireEvent.click(add);
     expect(read().header.criteria?.length).toBe(4);

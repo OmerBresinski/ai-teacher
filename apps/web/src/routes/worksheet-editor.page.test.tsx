@@ -29,7 +29,8 @@ mock.module("@tanstack/react-router", () => ({
   useParams: () => ({ worksheetId }),
 }));
 
-const { WorksheetEditorPage, worksheetPrintHref } = await import("./worksheet-editor.page");
+const { WorksheetEditorPage } = await import("./worksheet-editor.page");
+const { worksheetPrintHref } = await import("@/lib/worksheet-print-href");
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

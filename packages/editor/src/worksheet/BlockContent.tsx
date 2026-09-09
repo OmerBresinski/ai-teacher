@@ -130,6 +130,7 @@ export function BlockContent({
   renderStem,
   showAnswers = false,
   renderAnswer,
+  showMarks = false,
 }: {
   block: WorksheetBlock;
   mode: SheetMode;
@@ -137,6 +138,8 @@ export function BlockContent({
   /** The editor's answers view (TEACH-195). Edit mode only: print and the measuring column never pass it. */
   showAnswers?: boolean;
   renderAnswer?: AnswerRenderer;
+  /** `Worksheet.showMarks`: the "(2 marks)" label prints only when the sheet counts marks. */
+  showMarks?: boolean;
 }) {
   const rich = (doc: RichDoc, className?: string, emptyLabel?: string) => {
     if (renderStem) return renderStem({ doc, className });
@@ -161,7 +164,9 @@ export function BlockContent({
         <QuestionRow number={block.number}>
           <div className="ws-q-head">
             {rich(block.doc, "ws-q-stem", "Write your question here")}
-            {block.marks ? <div className="ws-marks">{marksLabel(block.marks)}</div> : null}
+            {showMarks && block.marks ? (
+              <div className="ws-marks">{marksLabel(block.marks)}</div>
+            ) : null}
           </div>
           {showAnswers && renderAnswer ? renderAnswer(block) : null}
           <Lines count={block.answerLines} />
@@ -337,7 +342,7 @@ export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
       {header.subtitle !== undefined ? (
         <p className="ws-objective">{header.subtitle || "\u00a0"}</p>
       ) : null}
-      <SheetMeta blocks={worksheet.blocks} />
+      <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
       <CriteriaList criteria={header.criteria} />
     </header>
   );
@@ -392,7 +397,7 @@ export function AnswerKeyTitle({ worksheet }: { worksheet: Worksheet }) {
   );
 }
 
-export function AnswerKeyEntry({ entry }: { entry: AnswerEntry }) {
+export function AnswerKeyEntry({ entry, showMarks }: { entry: AnswerEntry; showMarks?: boolean }) {
   return (
     <div className="ws-key-entry">
       <div className="ws-q-no">{entry.number}.</div>
@@ -405,7 +410,7 @@ export function AnswerKeyEntry({ entry }: { entry: AnswerEntry }) {
           </div>
         ))}
       </div>
-      {entry.marks ? <div className="ws-marks">{marksLabel(entry.marks)}</div> : null}
+      {showMarks && entry.marks ? <div className="ws-marks">{marksLabel(entry.marks)}</div> : null}
     </div>
   );
 }
@@ -427,18 +432,31 @@ export function FlowItemContent({
   renderStem?: StemRenderer;
 }) {
   if (item.kind === "block") {
-    return <BlockContent block={item.block} mode={mode} renderStem={renderStem} />;
+    return (
+      <BlockContent
+        block={item.block}
+        mode={mode}
+        renderStem={renderStem}
+        showMarks={worksheet.showMarks}
+      />
+    );
   }
   if (item.kind === "rag") return <RagStrip />;
   if (item.kind === "key-title") return <AnswerKeyTitle worksheet={worksheet} />;
-  return <AnswerKeyEntry entry={item.entry} />;
+  return <AnswerKeyEntry entry={item.entry} showMarks={worksheet.showMarks} />;
 }
 
 /**
- * "12 marks · about 25 min" under the objective (TEACH-183): the sum of the question marks and
- * `estimateMinutes`. Nothing on an empty sheet, where "0 marks" would only be noise.
+ * "12 marks · about 25 min" under the objective (TEACH-183), or "about 25 min" alone when the
+ * sheet does not count marks (UX ruling 60). Nothing on an empty sheet, where it would only be noise.
  */
-export function SheetMeta({ blocks }: { blocks: readonly WorksheetBlock[] }) {
+export function SheetMeta({
+  blocks,
+  showMarks,
+}: {
+  blocks: readonly WorksheetBlock[];
+  showMarks?: boolean;
+}) {
   if (blocks.length === 0) return null;
-  return <p className="ws-meta">{sheetSummary(blocks)}</p>;
+  return <p className="ws-meta">{sheetSummary(blocks, showMarks ?? false)}</p>;
 }

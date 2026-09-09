@@ -21,10 +21,10 @@ const FORBIDDEN = [
   "@tanstack/react-query",
 ];
 
-describe("@tj/editor/thumb", () => {
+describe.each(["thumb", "worksheet-thumb"])("@tj/editor/%s", (entryName) => {
   test("bundles without any editing module", async () => {
     const result = await Bun.build({
-      entrypoints: [`${import.meta.dir}/thumb.ts`],
+      entrypoints: [`${import.meta.dir}/${entryName}.ts`],
       target: "browser",
       external: ["react", "react-dom", "react/jsx-runtime", "*.css"],
       minify: false,
@@ -53,8 +53,9 @@ describe("@tj/editor/thumb", () => {
       }
     }
     expect(loaded.size).toBeGreaterThan(0);
-    // The lazy editor chunks exist, but off the static graph.
-    expect(byName.size).toBeGreaterThan(loaded.size);
+    // The lazy editor chunks exist, but off the static graph (the slide thumb reaches them through
+    // `React.lazy`; the worksheet thumb never reaches them at all).
+    if (entryName === "thumb") expect(byName.size).toBeGreaterThan(loaded.size);
     const text = [...loaded].map((n) => byName.get(n) ?? "").join("\n");
     for (const name of FORBIDDEN) {
       expect(
@@ -62,5 +63,23 @@ describe("@tj/editor/thumb", () => {
         `${name} reached the thumb chunk via ${[...loaded].join(", ")}`,
       ).toBe(false);
     }
+  });
+});
+
+// Last on purpose: under Bun 1.3.6 (CI) the first `Bun.build` in a test process cannot resolve
+// `../editor-hooks` from the slide elements; every later build can.
+describe("the forbidden-module scan", () => {
+  test("sees a package name in a bundle that really carries the editor (negative control)", async () => {
+    const result = await Bun.build({
+      entrypoints: [`${import.meta.dir}/worksheet/editor-index.ts`],
+      target: "browser",
+      external: ["react", "react-dom", "react/jsx-runtime", "*.css"],
+      minify: false,
+      splitting: true,
+    });
+    expect(result.success).toBe(true);
+    const text = (await Promise.all(result.outputs.map((o) => o.text()))).join("\n");
+    expect(text.includes("@tiptap/react")).toBe(true);
+    expect(text.includes("immer")).toBe(true);
   });
 });

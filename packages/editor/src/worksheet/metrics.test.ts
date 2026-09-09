@@ -61,7 +61,8 @@ describe("estimateMinutes", () => {
   test("an empty sheet is five minutes and no marks", () => {
     expect(estimateMinutes([])).toBe(5);
     expect(marksTotal([])).toBe(0);
-    expect(sheetSummary([])).toBe("0 marks · about 5 min");
+    expect(sheetSummary([])).toBe("about 5 min");
+    expect(sheetSummary([], true)).toBe("0 marks · about 5 min");
   });
 
   test("acceptance 3: twelve marks and a word search read as 25 minutes", () => {
@@ -69,7 +70,10 @@ describe("estimateMinutes", () => {
     expect(marksTotal(blocks)).toBe(12);
     // 12 × 1.5 + 8 = 26, to the nearest five.
     expect(estimateMinutes(blocks)).toBe(25);
-    expect(sheetSummary(blocks)).toBe("12 marks · about 25 min");
+    expect(sheetSummary(blocks, true)).toBe("12 marks · about 25 min");
+    // UX ruling 60: with the marks switch off the line is the minutes alone, computed the same.
+    expect(sheetSummary(blocks)).toBe("about 25 min");
+    expect(sheetSummary(blocks, false)).toBe("about 25 min");
   });
 
   test("matching, gaps, multiple choice and paragraphs each add their share", () => {
@@ -83,7 +87,7 @@ describe("estimateMinutes", () => {
     const para: WorksheetBlock = { id: "p", type: "paragraph", doc: docFromText(words) };
     expect(estimateMinutes([para, q(6)])).toBe(10); // 2 + 9 = 11 → 10
     expect(estimateMinutes([para, q(8)])).toBe(15); // 2 + 12 = 14 → 15
-    expect(sheetSummary([q(1)])).toBe("1 mark · about 5 min");
+    expect(sheetSummary([q(1)], true)).toBe("1 mark · about 5 min");
   });
 });
 

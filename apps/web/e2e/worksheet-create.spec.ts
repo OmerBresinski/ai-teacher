@@ -50,7 +50,10 @@ test.describe("worksheet creation", () => {
     await expect(page.locator('[data-create-step="kind"]')).toHaveAttribute("data-facts", "lesson");
     await expect(page.locator("[data-example-facts-hint]")).toHaveCount(0);
     await expect(page.locator(".ws-mini .ws-page")).toHaveCount(9);
-    await expect(page.getByText(/^about \d+ min$/)).toHaveCount(9);
+    // The nine pills; each miniature's own header line reads the minutes too (UX ruling 60).
+    await expect(page.getByText(/^about \d+ min$/).and(page.locator(":not(.ws-meta)"))).toHaveCount(
+      9,
+    );
     // The miniatures are the lesson's own facts: its vocabulary, its questions, its header.
     const cloze = page.locator('[data-recipe="cloze"]');
     await expect(cloze).toContainText("evaporation");
@@ -199,7 +202,7 @@ test.describe("worksheet creation", () => {
     await page.getByRole("button", { name: "List" }).click();
     const row = page.getByRole("row", { name: /Untitled worksheet/ });
     await expect(row).toContainText("Year 4 Science");
-    await expect(row).toContainText("6 marks · 10 min");
+    await expect(row).toContainText("10 min");
   });
 
   test("a lesson without facts says its miniatures are built from example facts", async ({

@@ -97,7 +97,8 @@ describeDb("documents repository", () => {
       expect(w).toMatchObject({
         kind: "worksheet",
         itemCount: 5,
-        cover: null,
+        // The top of page 1 (TEACH-193): the header and the blocks, tagged.
+        cover: { kind: "worksheet", pageSize: "A4" },
         themeId: "playground",
       });
       const s = await createDocument(wsA, "series", series(["a", "b", "c"]));

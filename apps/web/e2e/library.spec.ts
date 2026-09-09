@@ -83,9 +83,8 @@ test.describe("library shell", () => {
     const card = page.locator("article", { hasText: "Untitled worksheet" }).first();
     await expect(card).toBeVisible();
     await page.getByRole("button", { name: "List" }).click();
-    await expect(page.getByRole("row", { name: /Untitled worksheet/ })).toContainText(
-      "6 marks · 10 min",
-    );
+    // Minutes only on the cards (UX ruling 60).
+    await expect(page.getByRole("row", { name: /Untitled worksheet/ })).toContainText("10 min");
   });
 
   test("New series uses the untitled fallback on Enter", async ({ signedInPage: { page } }) => {
@@ -219,8 +218,16 @@ test.describe("library shell", () => {
     await page.goto("/worksheets");
     const worksheet = page.locator("article").filter({ hasText: "Fractions practice" }).first();
     await worksheet.hover();
-    await worksheet.getByRole("button", { name: "Print" }).click();
-    await expect(page).toHaveURL(new RegExp(`${paths.worksheet("fraction-practice", "/print")}$`));
+    // Print opens the print route with `?auto=1` in a new tab (TEACH-193); the library stays put.
+    const [printed] = await Promise.all([
+      page.context().waitForEvent("page"),
+      worksheet.getByRole("button", { name: "Print" }).click(),
+    ]);
+    await expect(printed).toHaveURL(
+      new RegExp(`${paths.worksheet("fraction-practice", "/print")}\\?auto=(%22)?1(%22)?$`),
+    );
+    await expect(page).toHaveURL(/\/worksheets$/);
+    await printed.close();
   });
 
   test("Delete can be undone from a card menu", async ({ signedInPage: { page } }) => {

@@ -1,0 +1,21 @@
+/*
+ * `@tj/editor/styles/worksheet-thumb.css` — the paper (`worksheet.css`) and the frame a library
+ * card puts round the top of page 1 (UX ruling 31). The card gives the thumb its box; the thumb
+ * fills the width, clips the rest and paints in greyscale, as the recipe miniatures do.
+ */
+@import "./fonts.css";
+@import "./worksheet.css";
+
+.ws-thumb {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #fff;
+  filter: grayscale(1);
+  pointer-events: none;
+  user-select: none;
+}
+
+.ws-thumb .ws-page {
+  box-shadow: none;
+}
