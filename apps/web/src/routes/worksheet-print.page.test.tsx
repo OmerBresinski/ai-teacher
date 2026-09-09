@@ -67,10 +67,7 @@ describe("WorksheetPrintPage", () => {
     const { container } = renderPage();
     await whenSheetShown();
     expect(
-      screen.getByRole("heading", {
-        level: 1,
-        name: "The water cycle: check your understanding",
-      }),
+      screen.getByRole("heading", { level: 1, name: "Fractions practice" }),
     ).toBeInTheDocument();
     expect(container.querySelectorAll(".ws-print-root .ws-page").length).toBeGreaterThan(0);
     expect(screen.getByText(/^Page 1 of \d+$/)).toBeInTheDocument();
