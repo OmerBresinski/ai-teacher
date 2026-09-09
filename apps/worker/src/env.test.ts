@@ -27,6 +27,26 @@ describe("worker env", () => {
     });
   });
 
+  test("a malformed API_PUBLIC_BASE_URL fails boot; a good one parses", () => {
+    expect(
+      parseEnv({ DATABASE_URL: DB, API_PUBLIC_BASE_URL: "https://api.example" })
+        .API_PUBLIC_BASE_URL,
+    ).toBe("https://api.example");
+    const exit = spyOn(process, "exit").mockImplementation((() => {
+      throw new Error("exit");
+    }) as never);
+    const error = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(() => parseEnv({ DATABASE_URL: DB, API_PUBLIC_BASE_URL: "not a url" })).toThrow(
+        "exit",
+      );
+      expect(error).toHaveBeenCalledWith(expect.stringContaining("API_PUBLIC_BASE_URL"));
+    } finally {
+      exit.mockRestore();
+      error.mockRestore();
+    }
+  });
+
   test("the scripted fake is accepted in test and refused in production (ADR 0025 §22)", () => {
     const env = parseEnv({
       DATABASE_URL: DB,
