@@ -98,6 +98,9 @@ describe("createAi", () => {
   });
 });
 
+/** A Claude id an env may still set; the defaults are all GPT-5.6 (TEACH-208). */
+const CLAUDE = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
+
 describe("thinking is off for Anthropic models on Bedrock", () => {
   test("isAnthropicModelId matches bare and region-prefixed Anthropic ids only", () => {
     for (const id of [
@@ -106,7 +109,7 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
       "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
       "apac.anthropic.claude-sonnet-5",
       "global.anthropic.claude-opus-5",
-      DEFAULT_MODEL_IDS.frontier,
+      "us.anthropic.claude-opus-5",
     ]) {
       expect(isAnthropicModelId(id)).toBe(true);
     }
@@ -114,8 +117,10 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
       "us.amazon.nova-micro-v1:0",
       "meta.llama3-70b-instruct-v1:0",
       "anthropicx.y",
-      // The standard class (TEACH-205): an OpenAI model must not receive Anthropic settings.
+      // Every default is a GPT-5.6 id (TEACH-205, TEACH-208): none may receive Anthropic settings.
+      DEFAULT_MODEL_IDS.small,
       DEFAULT_MODEL_IDS.standard,
+      DEFAULT_MODEL_IDS.frontier,
     ]) {
       expect(isAnthropicModelId(id)).toBe(false);
     }
@@ -131,8 +136,8 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
     const realFetch = globalThis.fetch;
     globalThis.fetch = fetch;
     try {
-      const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
-      // `small` is the Anthropic class; `standard` is GPT-5.6 Luna (TEACH-205).
+      // No default is Anthropic any more (TEACH-208); an env that sets a Claude id still gets it.
+      const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key", AI_MODEL_SMALL: CLAUDE });
       await generateText({ model: ai.model("small"), prompt: "x", maxRetries: 0 }).catch(
         () => undefined,
       );
@@ -150,7 +155,7 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
       return new Response("{}", { status: 500 });
     }) as unknown as typeof globalThis.fetch;
     try {
-      const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
+      const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key", AI_MODEL_SMALL: CLAUDE });
       await generateText({
         model: ai.model("small"),
         prompt: "x",
@@ -169,7 +174,7 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
     });
   });
 
-  test("a non-Anthropic class (standard, GPT-5.6 Luna) is sent no Anthropic fields", async () => {
+  test("a default class (GPT-5.6, TEACH-208) is sent no Anthropic fields", async () => {
     let body: Record<string, unknown> | undefined;
     const realFetch = globalThis.fetch;
     globalThis.fetch = (async (_url: string, init: RequestInit) => {

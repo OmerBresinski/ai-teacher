@@ -324,6 +324,11 @@ three in `us-east-1`):
 | `standard` | `us.openai.gpt-5.6-luna: in=17 out=4 finish=stop` |
 | `frontier` | `us.anthropic.claude-opus-5: in=17 out=4 finish=stop` |
 
+**Verification recorded (2026-09-09, TEACH-208):** the three classes moved to the GPT-5.6 family
+(`small` → `us.openai.gpt-5.6-luna`, `standard` → `us.openai.gpt-5.6-terra`, `frontier` → `us.openai.gpt-5.6-sol`). Structured output on each `us.` id was verified on the account before the change (the bare
+`openai.` ids are not invocable on-demand); the three-class smoke test after the redeploy is
+recorded on the ticket.
+
 ## Topology
 
 ```

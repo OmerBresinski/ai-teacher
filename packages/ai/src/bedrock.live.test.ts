@@ -33,8 +33,8 @@ const LIVE_TIMEOUT_MS = 30_000;
     LIVE_TIMEOUT_MS,
   );
 
-  // A wrong `standard` id (a bare id for a model that is inference-profile only, say) fails
-  // here before it fails every lesson in production.
+  // A wrong id (a bare `openai.` id for a model that is inference-profile only, say) fails here
+  // before it fails every lesson in production (TEACH-208 verified all three `us.` ids).
   test(
     "generates a short response with the standard model",
     async () => {
@@ -55,5 +55,26 @@ const LIVE_TIMEOUT_MS = 30_000;
       expect(result.usage.inputTokens).toBeGreaterThan(0);
     },
     LIVE_TIMEOUT_MS,
+  );
+
+  // The eval judge's class (TEACH-206); Sol answered a 20-token prompt in 12–50 s on 9 Sept.
+  test(
+    "generates a short response with the frontier model",
+    async () => {
+      const ai = createAi({
+        AWS_BEARER_TOKEN_BEDROCK: apiKey,
+        AWS_REGION: process.env.AWS_REGION,
+        AI_MODEL_FRONTIER: process.env.AI_MODEL_FRONTIER,
+      });
+      const result = await generateText({
+        model: ai.model("frontier", { effort: "low" }),
+        prompt: "Reply with pong.",
+        maxOutputTokens: 64,
+        providerOptions: { bedrock: { reasoningConfig: { maxReasoningEffort: "low" } } },
+      });
+      expect(result.text.trim().length).toBeGreaterThan(0);
+      expect(result.usage.inputTokens).toBeGreaterThan(0);
+    },
+    LIVE_TIMEOUT_MS * 3,
   );
 });

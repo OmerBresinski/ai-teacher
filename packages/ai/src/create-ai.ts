@@ -17,10 +17,16 @@ import type {
 
 export const DEFAULT_REGION = "us-east-1";
 
+/**
+ * The GPT-5.6 family on Bedrock (founder decision 9 Sept 2026; Generation quality §6; TEACH-208).
+ * Inference-profile (`us.`) ids: the bare `openai.` ids are not invocable on-demand in
+ * `us-east-1`, and structured output was verified on each of these before they were written.
+ * `frontier` is the eval judge only; no production stage calls it.
+ */
 export const DEFAULT_MODEL_IDS = {
-  [ModelClass.frontier]: "us.anthropic.claude-opus-5",
-  [ModelClass.standard]: "us.openai.gpt-5.6-luna",
-  [ModelClass.small]: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+  [ModelClass.frontier]: "us.openai.gpt-5.6-sol",
+  [ModelClass.standard]: "us.openai.gpt-5.6-terra",
+  [ModelClass.small]: "us.openai.gpt-5.6-luna",
 } as const satisfies Record<ModelClassType, string>;
 
 type ModelIds = Record<ModelClassType, string>;

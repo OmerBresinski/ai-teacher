@@ -46,11 +46,11 @@ jobs:
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           AWS_REGION: us-east-1
           # The env contract defaults (infra/env.contract.ts); change there first.
-          AI_MODEL_FRONTIER: us.anthropic.claude-opus-5
-          AI_MODEL_STANDARD: us.openai.gpt-5.6-luna
-          AI_MODEL_SMALL: us.anthropic.claude-haiku-4-5-20251001-v1:0
+          AI_MODEL_FRONTIER: us.openai.gpt-5.6-sol
+          AI_MODEL_STANDARD: us.openai.gpt-5.6-terra
+          AI_MODEL_SMALL: us.openai.gpt-5.6-luna
           # Above the env contract default (3.00): eight lessons plus eight rubric-judge calls on
-          # the frontier model (~$1.30 on Opus, double if a judge answer needs the retry) must
+          # the frontier model (Sol ≈ $0.15 each, double if a judge answer needs the retry) must
           # finish, or the baseline has no rubric (TEACH-206).
           AI_EVAL_RUN_COST_CAP_USD: "5.00"
           AI_LESSON_TOKEN_CAP: "300000"
