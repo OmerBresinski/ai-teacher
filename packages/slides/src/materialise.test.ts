@@ -12,7 +12,14 @@ import {
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
 import { z } from "zod";
-import { PLACEHOLDER_IMAGE, variantsFor, vocabularyGrid } from "./layouts";
+import {
+  LIST_SLOTS,
+  LIST_VARIANT_NAMES,
+  type ListKind,
+  PLACEHOLDER_IMAGE,
+  variantsFor,
+  vocabularyGrid,
+} from "./layouts";
 import {
   type IdSupplier,
   materialiseBlock,
@@ -551,7 +558,8 @@ describe("materialiseSlide with a variant", () => {
           const slide = materialiseSlide(spec, theme.id, meta, counter(), variant);
           expect(SlideSchema.safeParse(slide).success).toBe(true);
           const text = plain(slide);
-          for (const line of specText(spec)) expect(text, `${kind}/${variant}`).toContain(line);
+          for (const line of specText(spec))
+            expect(text.toLowerCase(), `${kind}/${variant}`).toContain(line.toLowerCase());
           expect(text).not.toContain("Lesson title");
           expect(text).not.toContain("Learning objective one");
           expect(text).not.toContain("One idea in a sentence");
@@ -561,6 +569,74 @@ describe("materialiseSlide with a variant", () => {
         });
       }
     }
+  }
+
+  const LIST_KINDS = Object.keys(LIST_SLOTS) as ListKind[];
+  const line = (i: number) => `Line ${["one", "two", "three", "four"][i] ?? i} of the list`;
+
+  for (const kind of LIST_KINDS) {
+    for (const variant of LIST_VARIANT_NAMES) {
+      test(`${kind}/${variant}: a spec at its schema maximum shows every line`, () => {
+        const max = LIST_SLOTS[kind];
+        const lines = Array.from({ length: max }, (_, i) => line(i));
+        const schema = slideSpecSchemaFor(kind);
+        if (!schema) throw new Error(`no schema for ${kind}`);
+        const spec = schema.parse(
+          kind === "instructions"
+            ? { kind, factRefs: [], steps: lines }
+            : { kind, factRefs: [], items: lines },
+        ) as SlideSpec;
+        for (const theme of THEMES) {
+          const slide = materialiseSlide(spec, theme.id, meta, counter(), variant);
+          const text = plain(slide);
+          for (const l of lines) {
+            // Objectives are lower-cased to follow the stem (TEACH-198); the words survive.
+            expect(text.toLowerCase(), `${theme.id}: ${l}`).toContain(l.toLowerCase());
+          }
+          if (variant !== "numbered") {
+            const items = slide.elements.filter((el) => el.name?.startsWith("Item"));
+            expect(items, `${theme.id} one slot per line`).toHaveLength(max);
+          }
+        }
+      });
+    }
+  }
+
+  test("refuses a list with more lines than the recipe lays slots for, rather than dropping one", () => {
+    const five = {
+      kind: "objectives",
+      factRefs: [],
+      items: ["a", "b", "c", "d", "e"],
+    } as unknown as SlideSpec;
+    expect(() => materialiseSlide(five, "chalk", meta, counter(), "cards")).toThrow(/slots/);
+    expect(() => materialiseSlide(five, "chalk", meta, counter(), "stepped")).toThrow(/slots/);
+  });
+
+  for (const variant of LIST_VARIANT_NAMES) {
+    test(`objectives/${variant}: the stem is the heading and each line follows it in lower case`, () => {
+      const spec = {
+        kind: "objectives",
+        factRefs: ["o1"],
+        items: ["Describe evaporation", "Explain condensation", "Name the four stages"],
+      } as SlideSpec;
+      const slide = materialiseSlide(spec, "chalk", meta, counter(), variant);
+      const heading = slide.elements.find(
+        (el) => el.type === "text" && el.style.preset === "heading",
+      );
+      expect(heading && "doc" in heading && heading.doc && richDocToPlainText(heading.doc)).toBe(
+        "By the end of this lesson I can",
+      );
+      const text = plain(slide);
+      expect(text).toContain("describe evaporation");
+      expect(text).toContain("explain condensation");
+      expect(text).toContain("name the four stages");
+      expect(text).not.toContain("Describe evaporation");
+      expect(text).not.toContain("learning objective");
+      if (variant !== "numbered") {
+        const items = slide.elements.filter((el) => el.name?.startsWith("Item"));
+        expect(items).toHaveLength(3);
+      }
+    });
   }
 
   test("takes the variant by index as well as by name", () => {
@@ -647,6 +723,7 @@ function specText(spec: SlideSpec): string[] {
     case "title":
       return [spec.title, spec.subtitle];
     case "objectives":
+      return spec.items.map((item) => item.toLowerCase());
     case "starter":
     case "exit-ticket":
     case "plenary":

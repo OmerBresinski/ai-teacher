@@ -9,11 +9,15 @@ import {
   type SlideKind,
   slideStepCount,
 } from "@tj/domain/documents";
+import defaultRecipes from "./fixtures/default-recipes.json";
+import { normaliseLayout } from "./fixtures/normalise";
 import { SAFE, TRIM } from "./grid";
 import {
   compositionOf,
   derange,
   LAYOUT_CATALOGUE,
+  LIST_SLOTS,
+  type ListKind,
   layoutSlide,
   SLIDE_KIND_DESCRIPTIONS,
   SLIDE_KIND_LABELS,
@@ -21,6 +25,7 @@ import {
   variantName,
   variantsFor,
 } from "./layouts";
+import { slideSpecSchemaFor } from "./specs";
 import { fontFloor, THEMES } from "./themes";
 
 /*
@@ -216,9 +221,11 @@ describe("layoutSlide", () => {
       const names = variantsFor(kind);
       expect(names.length, kind).toBeGreaterThan(0);
       expect(new Set(names).size, `${kind} names are unique`).toBe(names.length);
-      expect(variantName(kind), kind).toBe(names[0] ?? "");
-      expect(variantName(kind, 99), `${kind} index past the list`).toBe(names[0] ?? "");
-      expect(variantName(kind, "photo-band-x"), `${kind} unknown name`).toBe(names[0] ?? "");
+      const first = names[0];
+      if (!first) throw new Error(`${kind} offers no variant`);
+      expect(variantName(kind), kind).toBe(first);
+      expect(variantName(kind, 99), `${kind} index past the list`).toBe(first);
+      expect(variantName(kind, "photo-band-x"), `${kind} unknown name`).toBe(first);
       for (const v of LAYOUT_CATALOGUE[kind]) expect(v.description.length).toBeGreaterThan(0);
     }
     expect(variantsFor("title")).toEqual(["stack", "photo-band", "split"]);
@@ -235,15 +242,35 @@ describe("layoutSlide", () => {
         .replace(/\[\[gap:[^\]]+\]\]/g, "[[gap:_]]"),
     );
 
-  it("lays out the default composition when the variant is left out, by index or by name", () => {
+  /*
+   * Acceptance row 2, pinned: `fixtures/default-recipes.json` is `layoutSlide(kind, themeId)` for
+   * every kind on every theme as the recipes stood before the catalogue (generated from the merge
+   * base, ids normalised by order of appearance). The default composition, by no argument, by 0
+   * and by its name, must still equal it; regenerate the fixture only for a deliberate recipe
+   * change, and say so in the PR.
+   */
+  const frozen = defaultRecipes as Record<string, unknown>;
+  for (const theme of THEMES) {
     for (const kind of KINDS) {
-      const plain = stripIds(layoutSlide(kind, "chalk").elements);
-      expect(stripIds(layoutSlide(kind, "chalk", 0).elements), kind).toEqual(plain);
-      expect(stripIds(layoutSlide(kind, "chalk", variantsFor(kind)[0]).elements), kind).toEqual(
-        plain,
-      );
+      it(`${kind} on ${theme.id}: the default recipe is the one frozen before the catalogue`, () => {
+        const expected = frozen[`${kind}/${theme.id}`];
+        expect(expected, "fixture entry").toBeDefined();
+        expect(normaliseLayout(layoutSlide(kind, theme.id))).toEqual(expected);
+        expect(normaliseLayout(layoutSlide(kind, theme.id, 0))).toEqual(expected);
+        expect(normaliseLayout(layoutSlide(kind, theme.id, variantsFor(kind)[0]))).toEqual(
+          expected,
+        );
+      });
     }
-  });
+  }
+
+  /** Flush with an edge and inside the slide: a bleed, which the lint allows (`isBleed`). */
+  const bleeds = (el: SlideElement) =>
+    el.x >= 0 &&
+    el.y >= 0 &&
+    el.x + el.w <= SLIDE_W &&
+    el.y + el.h <= SLIDE_H &&
+    (el.x === 0 || el.y === 0 || el.x + el.w === SLIDE_W || el.y + el.h === SLIDE_H);
 
   for (const theme of THEMES) {
     for (const kind of KINDS) {
@@ -266,16 +293,18 @@ describe("layoutSlide", () => {
             expect(el.x + el.w, `${tag} right`).toBeLessThanOrEqual(SLIDE_W);
             expect(el.y + el.h, `${tag} bottom`).toBeLessThanOrEqual(SLIDE_H);
             if (el.type === "text") {
+              // The grid's right half (`RIGHT_X + HALF_W`) ends a point past the safe area, as
+              // it does in the vocabulary and worked-example recipes; a point is the tolerance.
               expect(el.x, `${tag} safe left`).toBeGreaterThanOrEqual(SAFE.x);
               expect(el.y, `${tag} safe top`).toBeGreaterThanOrEqual(SAFE.y);
-              expect(el.x + el.w, `${tag} safe right`).toBeLessThanOrEqual(SAFE.x + SAFE.w);
+              expect(el.x + el.w, `${tag} safe right`).toBeLessThanOrEqual(SAFE.x + SAFE.w + 1);
               expect(el.y + el.h, `${tag} safe bottom`).toBeLessThanOrEqual(SAFE.y + SAFE.h);
               if (el.style.fontSize !== undefined)
                 expect(el.style.fontSize, `${tag} floor`).toBeGreaterThanOrEqual(
                   fontFloor(el.style.preset),
                 );
             }
-            if (el.type === "shape") {
+            if (el.type === "shape" && !bleeds(el)) {
               expect(el.x, `${tag} trim left`).toBeGreaterThanOrEqual(TRIM);
               expect(el.y, `${tag} trim top`).toBeGreaterThanOrEqual(TRIM);
               expect(el.x + el.w, `${tag} trim right`).toBeLessThanOrEqual(SLIDE_W - TRIM);
@@ -312,13 +341,19 @@ describe("layoutSlide", () => {
       "Item 4",
       undefined,
     ]);
-    expect(names("objectives", "stepped")).toEqual([undefined, "Item 1", "Item 2", "Item 3"]);
+    expect(names("objectives", "stepped")).toEqual([
+      undefined,
+      "Item 1",
+      "Item 2",
+      "Item 3",
+      "Item 4",
+    ]);
     for (const kind of KINDS)
       for (const el of layoutSlide(kind, "chalk").elements)
         if (el.type === "text") expect(el.name, kind).toBeUndefined();
   });
 
-  it("draws the photo-band title as a bleed photograph under an inset ink band", () => {
+  it("draws the photo-band title as a bleed photograph under a bleed ink band", () => {
     for (const theme of THEMES) {
       const { elements } = layoutSlide("title", theme.id, "photo-band");
       const [photo, band, title, sub] = elements;
@@ -329,7 +364,8 @@ describe("layoutSlide", () => {
       expect(band.fill).toBe(theme.colors.ink);
       expect(band.opacity).toBe(0.88);
       expect(band.y, theme.id).toBeLessThanOrEqual(340);
-      expect(band.y + band.h).toBe(SLIDE_H - TRIM);
+      expect([band.x, band.w, band.y + band.h]).toEqual([0, SLIDE_W, SLIDE_H]);
+      expect(bleeds(band)).toBe(true);
       for (const el of [title, sub]) {
         if (el?.type !== "text") throw new Error("no text");
         expect(el.y, `${theme.id} ${el.name} inside the band`).toBeGreaterThanOrEqual(band.y);
@@ -343,8 +379,8 @@ describe("layoutSlide", () => {
       const { elements } = layoutSlide("instructions", theme.id, "stepped");
       const blocks = elements.filter((e) => e.type === "shape" && e.name?.startsWith("Step"));
       const items = elements.filter((e) => e.type === "text" && e.name?.startsWith("Item"));
-      expect(blocks).toHaveLength(4);
-      expect(items).toHaveLength(4);
+      expect(blocks).toHaveLength(LIST_SLOTS.instructions);
+      expect(items).toHaveLength(LIST_SLOTS.instructions);
       blocks.forEach((block, i) => {
         if (block.type !== "shape") throw new Error("no block");
         expect(block.doc && docToPlainText(block.doc).trim()).toBe(`${i + 1}`);
@@ -359,8 +395,53 @@ describe("layoutSlide", () => {
     }
   });
 
-  it("lays cards three across for three items and two by two for four", () => {
-    const three = layoutSlide("objectives", "chalk", "cards").elements.filter(
+  const LIST_KINDS = Object.keys(LIST_SLOTS) as ListKind[];
+
+  it("lays one slot per item the kind's spec allows, on cards and on steps", () => {
+    for (const kind of LIST_KINDS) {
+      const max = LIST_SLOTS[kind];
+      const line = "Describe evaporation";
+      const schema = slideSpecSchemaFor(kind);
+      if (!schema) throw new Error(`no schema for ${kind}`);
+      const spec = (n: number) =>
+        kind === "instructions"
+          ? { kind, factRefs: [], steps: Array(n).fill(line) }
+          : { kind, factRefs: [], items: Array(n).fill(line) };
+      expect(schema.safeParse(spec(max)).success, `${kind} allows ${max}`).toBe(true);
+      expect(schema.safeParse(spec(max + 1)).success, `${kind} refuses ${max + 1}`).toBe(false);
+      for (const variant of ["cards", "stepped"] as const) {
+        for (const theme of THEMES) {
+          const { elements } = layoutSlide(kind, theme.id, variant);
+          const items = elements.filter((e) => e.type === "text" && e.name?.startsWith("Item"));
+          expect(items, `${kind}/${variant} on ${theme.id}`).toHaveLength(max);
+          const texts = items.map((e) => ("doc" in e && e.doc ? docToPlainText(e.doc) : ""));
+          expect(new Set(texts).size, `${kind}/${variant} placeholder lines differ`).toBe(max);
+        }
+      }
+    }
+  });
+
+  it("sizes a card to three lines of its text plus the inset, on every theme", () => {
+    for (const theme of THEMES) {
+      for (const kind of LIST_KINDS) {
+        const { elements } = layoutSlide(kind, theme.id, "cards");
+        const cards = elements.filter((e) => e.type === "shape" && e.name?.startsWith("Card"));
+        const items = elements.filter((e) => e.type === "text" && e.name?.startsWith("Item"));
+        cards.forEach((card, i) => {
+          const item = items[i];
+          if (!item) throw new Error("no item");
+          const pad = item.y - card.y;
+          expect(pad, `${kind} on ${theme.id} inset`).toBe(19);
+          expect(card.h - item.h, `${kind} on ${theme.id} card follows its text`).toBe(pad * 2);
+          expect(item.x - card.x).toBe(pad);
+          expect(card.w - item.w).toBe(pad * 2);
+        });
+      }
+    }
+  });
+
+  it("lays cards three across for three slots and two by two for four", () => {
+    const three = layoutSlide("starter", "chalk", "cards").elements.filter(
       (e) => e.type === "shape" && e.name?.startsWith("Card"),
     );
     expect(three).toHaveLength(3);

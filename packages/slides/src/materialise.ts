@@ -13,7 +13,16 @@ import type {
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
 import { docFromBullets, docFromText, uid } from "./factories";
-import { docFromNumbered, layoutSlide, variantName, vocabularyGrid } from "./layouts";
+import {
+  type ContentVariant,
+  docFromNumbered,
+  LIST_SLOTS,
+  type ListVariant,
+  layoutSlide,
+  type TitleVariant,
+  variantName,
+  vocabularyGrid,
+} from "./layouts";
 import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./specs";
 import { getTheme } from "./themes";
 
@@ -56,7 +65,7 @@ export function materialiseSlide(
   variant: number | string = 0,
 ): Slide {
   const laid = reid(layoutSlide(spec.kind, themeId, variant), ids);
-  const filled = fillSlide(spec, themeId, laid, ids, variantName(spec.kind, variant));
+  const filled = fillSlide(spec, themeId, laid, ids, variant);
   const stamp = provenance(spec.factRefs, meta);
   const slide: Slide = {
     id: ids(),
@@ -75,21 +84,21 @@ function fillSlide(
   themeId: string,
   laid: Layout,
   ids: IdSupplier,
-  variant: string,
+  variant: number | string,
 ): Layout {
   switch (spec.kind) {
     case "title":
-      return fillTitle(spec, laid);
+      return fillTitle(spec, laid, variantName(spec.kind, variant));
     case "objectives":
-      return fillObjectives(spec, laid);
+      return fillObjectives(spec, laid, variantName(spec.kind, variant));
     case "instructions":
     case "exit-ticket":
     case "starter":
-      return fillNumbered(spec, laid, variant);
+      return fillNumbered(spec, laid, variantName(spec.kind, variant));
     case "vocabulary":
       return fillVocabulary(spec, themeId, laid);
     case "content":
-      return fillContent(spec, laid, variant);
+      return fillContent(spec, laid, variantName(spec.kind, variant));
     case "image-text":
       return fillImageText(spec, laid);
     case "worked-example":
@@ -109,16 +118,19 @@ function fillSlide(
     case "open-response":
       return fillOpenResponse(spec, laid);
     case "plenary":
-      return fillPlenary(spec, laid, variant);
+      return fillPlenary(spec, laid, variantName(spec.kind, variant));
   }
 }
 
 /* --- per-kind fillers --------------------------------------------- */
 
-function fillTitle(spec: SlideSpecOf<"title">, laid: Layout): Layout {
-  setText(slotOf(laid, "Title", "title"), spec.title);
+function fillTitle(spec: SlideSpecOf<"title">, laid: Layout, variant: TitleVariant): Layout {
+  setText(textOf(laid, "title"), spec.title);
   // The photo-band variant sets the class line in `small`, named so it can be found.
-  setText(slotOf(laid, "Subtitle", "subtitle"), spec.subtitle);
+  setText(
+    variant === "photo-band" ? slot(laid, "Subtitle") : textOf(laid, "subtitle"),
+    spec.subtitle,
+  );
   return laid;
 }
 
@@ -127,28 +139,34 @@ function fillTitle(spec: SlideSpecOf<"title">, laid: Layout): Layout {
  * TEACH-198): the spec has no heading for the model to get wrong. Objectives are stored as bare
  * verb phrases; under the stem each line starts lower-case.
  */
-function fillObjectives(spec: SlideSpecOf<"objectives">, laid: Layout): Layout {
+/**
+ * The stem as the heading and the lower-cased phrases under it (TEACH-198) on every variant:
+ * one numbered doc, or one phrase per card or step.
+ */
+function fillObjectives(
+  spec: SlideSpecOf<"objectives">,
+  laid: Layout,
+  variant: ListVariant,
+): Layout {
   setText(textOf(laid, "heading"), OBJECTIVES_SLIDE_HEADING);
-  setDoc(textOf(laid, "body"), docFromNumbered(spec.items.map(objectiveLine)));
+  const lines = spec.items.map(objectiveLine);
+  if (variant !== "numbered") return fillItems(laid, lines, LIST_SLOTS.objectives);
+  setDoc(textOf(laid, "body"), docFromNumbered(lines));
   return laid;
 }
 
 type NumberedSpec = SlideSpecOf<"instructions" | "exit-ticket" | "starter">;
 
 /** Heading, a numbered body and (where the recipe has one) a footnote. */
-function fillNumbered(spec: NumberedSpec, laid: Layout, variant: string): Layout {
+function fillNumbered(spec: NumberedSpec, laid: Layout, variant: ListVariant): Layout {
   if (spec.heading) setText(textOf(laid, "heading"), spec.heading);
   const items = "items" in spec ? spec.items : spec.steps;
-  const filled =
-    variant === "numbered"
-      ? setDocOn(laid, "body", docFromNumbered(items))
-      : fillItems(laid, items);
-  if ("footnote" in spec && spec.footnote) setText(textOf(filled, "small"), spec.footnote);
-  return filled;
-}
-
-function setDocOn(laid: Layout, preset: TextPreset, doc: RichDoc): Layout {
-  setDoc(textOf(laid, preset), doc);
+  if (variant !== "numbered") {
+    laid = fillItems(laid, items, LIST_SLOTS[spec.kind]);
+  } else {
+    setDoc(textOf(laid, "body"), docFromNumbered(items));
+  }
+  if ("footnote" in spec && spec.footnote) setText(textOf(laid, "small"), spec.footnote);
   return laid;
 }
 
@@ -156,11 +174,15 @@ function setDocOn(laid: Layout, preset: TextPreset, doc: RichDoc): Layout {
 const ITEM_SLOT = /^(?:Item|Card|Step) (\d+)$/;
 
 /**
- * The `cards` and `stepped` list variants lay one slot per placeholder item ("Item n" and
- * its "Card n" or "Step n"). Fill the first `items.length` in order and drop the rest, so no
- * placeholder survives; a spec with more items than slots shows the first slots' worth.
+ * The `cards` and `stepped` list variants lay one slot per item the kind's spec may carry
+ * ("Item n" and its "Card n" or "Step n", `LIST_SLOTS`). Fill the first `items.length` in
+ * order and drop the rest, so no placeholder survives. More items than slots is refused, not
+ * trimmed: a line of a lesson must never vanish from a slide without a word.
  */
-function fillItems(laid: Layout, items: string[]): Layout {
+function fillItems(laid: Layout, items: string[], slots: number): Layout {
+  if (items.length > slots) {
+    throw new Error(`recipe lays ${slots} item slots and the spec fills ${items.length}`);
+  }
   const kept: SlideElement[] = [];
   for (const element of laid.elements) {
     const slot = element.name?.match(ITEM_SLOT);
@@ -217,18 +239,18 @@ function fillVocabulary(spec: SlideSpecOf<"vocabulary">, themeId: string, laid: 
   return { ...laid, elements: kept };
 }
 
-function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: string): Layout {
+function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: ContentVariant): Layout {
   if (variant === "statement") {
     // No heading on a statement: the heading becomes the eyebrow over the sentence.
-    setText(slotOf(laid, "Eyebrow", "caption"), spec.heading);
-    setText(slotOf(laid, "Statement", "subtitle"), spec.body);
+    setText(slot(laid, "Eyebrow"), spec.heading);
+    setText(slot(laid, "Statement"), spec.body);
     return laid;
   }
   setText(textOf(laid, "heading"), spec.heading);
   if (variant === "two-column") {
     const [left, right] = splitAtFullStop(spec.body);
-    setText(slotOf(laid, "Body left", "body"), left);
-    const rightSlot = slotOf(laid, "Body right", "body");
+    setText(slot(laid, "Body left"), left);
+    const rightSlot = slot(laid, "Body right");
     if (right) {
       setText(rightSlot, right);
       return laid;
@@ -333,9 +355,9 @@ function fillOpenResponse(spec: SlideSpecOf<"open-response">, laid: Layout): Lay
   return { ...laid, question };
 }
 
-function fillPlenary(spec: SlideSpecOf<"plenary">, laid: Layout, variant: string): Layout {
+function fillPlenary(spec: SlideSpecOf<"plenary">, laid: Layout, variant: ListVariant): Layout {
   if (spec.heading) setText(textOf(laid, "heading"), spec.heading);
-  if (variant !== "numbered") return fillItems(laid, spec.items);
+  if (variant !== "numbered") return fillItems(laid, spec.items, LIST_SLOTS.plenary);
   setDoc(textOf(laid, "body"), docFromBullets(spec.items));
   return laid;
 }
@@ -422,15 +444,13 @@ function textOf(laid: Layout, preset: TextPreset): TextElement {
   return element;
 }
 
-/**
- * A slot by `name` where a variant names it, else the first text element in `preset`: the
- * default recipes name nothing, and a variant names only the slots whose preset differs.
- */
-function slotOf(laid: Layout, name: string, preset: TextPreset): TextElement {
+/** A text slot a variant names ("Statement", "Body left"); missing is a recipe bug, not a default. */
+function slot(laid: Layout, name: string): TextElement {
   const named = laid.elements.find(
     (element): element is TextElement => element.type === "text" && element.name === name,
   );
-  return named ?? textOf(laid, preset);
+  if (!named) throw new Error(`recipe has no text element named "${name}"`);
+  return named;
 }
 
 function optionsOf(laid: Layout): OptionElement[] {

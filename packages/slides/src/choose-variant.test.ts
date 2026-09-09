@@ -20,10 +20,10 @@ describe("chooseVariant", () => {
   it("keeps every kind with one composition on it", () => {
     for (const kind of KINDS) {
       if (variantsFor(kind).length > 1) continue;
-      for (const previousVariant of [null, "headed", variantsFor(kind)[0] ?? null]) {
-        expect(chooseVariant(kind, { index: 5, total: 10, previousVariant }), kind).toBe(
-          variantsFor(kind)[0] ?? "",
-        );
+      const only = variantsFor(kind)[0];
+      if (!only) throw new Error(`${kind} offers no variant`);
+      for (const previousVariant of [null, "headed", only]) {
+        expect(chooseVariant(kind, { index: 5, total: 10, previousVariant }), kind).toBe(only);
       }
     }
   });
@@ -45,12 +45,20 @@ describe("chooseVariant", () => {
     }
   });
 
-  it("sets a short content body as a statement, unless it follows the objectives", () => {
+  it("sets a short content body as a statement, unless it is the first idea or follows the objectives", () => {
     const ctx = { index: 4, total: 10, textLength: wordCount(short) };
     expect(chooseVariant("content", { ...ctx, previousKind: "vocabulary" })).toBe("statement");
     expect(chooseVariant("content", { ...ctx, index: 2, previousKind: "objectives" })).toBe(
       "headed",
     );
+    // The deck's first content slide, with a starter and the vocabulary between it and the
+    // objectives, still keeps its heading.
+    expect(
+      chooseVariant("content", { ...ctx, previousKind: "vocabulary", firstContent: true }),
+    ).toBe("headed");
+    expect(
+      chooseVariant("content", { ...ctx, previousKind: "vocabulary", firstContent: false }),
+    ).toBe("statement");
   });
 
   it("splits a body over forty words into two columns and keeps the middle headed", () => {
@@ -133,7 +141,8 @@ describe("chooseVariant", () => {
   });
 
   it("falls back to an offered variant when the name is not one the kind has", () => {
-    expect(variantsFor("title")).toContain(chooseVariant("title", { index: 0, total: 1 }));
+    const offered: string[] = variantsFor("title");
+    expect(offered).toContain(chooseVariant("title", { index: 0, total: 1 }));
     expect(compositionOf("title", "nonsense")).toBe("stack");
     expect(compositionOf("title", 99)).toBe("stack");
   });
@@ -157,7 +166,9 @@ describe("the demo lesson through chooseVariant", () => {
           .join("\n");
         const spec = DEMO_LESSON_SPECS[i];
         if (!spec) throw new Error("missing spec");
-        for (const line of specLines(spec)) expect(text, `${spec.kind} ${i}`).toContain(line);
+        // Objectives are lower-cased to follow their stem (TEACH-198): compare case-folded.
+        for (const line of specLines(spec))
+          expect(text.toLowerCase(), `${spec.kind} ${i}`).toContain(line.toLowerCase());
         expect(text).not.toContain("Learning objective one");
         expect(text).not.toContain("Lesson title");
         expect(text).not.toContain("One idea in a sentence");
@@ -192,8 +203,10 @@ function specLines(spec: (typeof DEMO_LESSON_SPECS)[number]): string[] {
     case "vocabulary":
       return spec.entries.flatMap((e) => [e.term, e.definition]);
     case "content":
+      // Every sentence of the body, so a two-column split that lost text would show.
+      return [spec.heading, ...spec.body.split(/(?<=\.)\s+/)];
     case "image-text":
-      return [spec.heading];
+      return [spec.heading, spec.body];
     case "worked-example":
       return [spec.question, ...spec.steps];
     case "true-false":

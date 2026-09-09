@@ -1,5 +1,11 @@
 import type { SlideKind } from "@tj/domain/documents";
-import { compositionOf, LAYOUT_CATALOGUE, variantsFor } from "./layouts";
+import {
+  compositionOf,
+  LAYOUT_CATALOGUE,
+  type LayoutVariant,
+  type VariantName,
+  variantsFor,
+} from "./layouts";
 
 /*
  * The variety rules (research §3.5), as one pure function over a slide's place in the deck.
@@ -26,9 +32,14 @@ export type VariantContext = {
   /**
    * The kind of the slide before this one. Needed for the composition of `previousVariant`
    * (the same name can mean two things on two kinds) and for the rule that keeps a heading
-   * on the first content slide after the objectives.
+   * on a content slide directly after the objectives.
    */
   previousKind?: SlideKind | null;
+  /**
+   * Whether this is the deck's first content slide, wherever it sits after the objectives
+   * (research §3.5): the first idea needs a heading to anchor it, so it is never a statement.
+   */
+  firstContent?: boolean;
   personality?: Personality;
 };
 
@@ -46,12 +57,14 @@ export function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+type ListVariantOrder = ("numbered" | "cards" | "stepped")[];
+
 /**
  * The variants a slide may take, best first, before the adjacency rule is applied.
  * Only the families in the catalogue with more than one variant are ranked; every other
  * kind has one composition and keeps it.
  */
-function ranked(kind: SlideKind, ctx: VariantContext): string[] {
+function ranked(kind: SlideKind, ctx: VariantContext): VariantName[] {
   const words = ctx.textLength ?? 0;
   switch (kind) {
     case "title":
@@ -60,9 +73,11 @@ function ranked(kind: SlideKind, ctx: VariantContext): string[] {
         ? ["split", "photo-band", "stack"]
         : ["photo-band", "split", "stack"];
     case "content": {
-      // A statement has no heading to anchor it, which the first idea after the objectives
-      // needs; and a body over twenty words runs past three lines at subtitle size.
-      const statement = words < STATEMENT_MAX_WORDS && ctx.previousKind !== "objectives";
+      // A statement has no heading to anchor it, which the deck's first idea needs (and any
+      // content slide directly after the objectives); and a body over twenty words runs past
+      // three lines at subtitle size.
+      const statement =
+        words < STATEMENT_MAX_WORDS && !ctx.firstContent && ctx.previousKind !== "objectives";
       if (statement) return ["statement", "headed"];
       return words > TWO_COLUMN_MIN_WORDS ? ["two-column", "headed"] : ["headed", "two-column"];
     }
@@ -70,7 +85,7 @@ function ranked(kind: SlideKind, ctx: VariantContext): string[] {
     case "starter":
     case "instructions":
     case "plenary": {
-      const order =
+      const order: ListVariantOrder =
         ctx.personality === "playful"
           ? ["cards", "stepped", "numbered"]
           : ctx.personality === "bold"
@@ -79,7 +94,7 @@ function ranked(kind: SlideKind, ctx: VariantContext): string[] {
       return words > CARDS_MAX_WORDS ? order.filter((v) => v !== "cards") : order;
     }
     default:
-      return variantsFor(kind).slice(0, 1);
+      return (variantsFor(kind) as VariantName[]).slice(0, 1);
   }
 }
 
@@ -90,7 +105,8 @@ function ranked(kind: SlideKind, ctx: VariantContext): string[] {
 function previousComposition(ctx: VariantContext): string | null {
   if (ctx.previousVariant == null) return null;
   if (ctx.previousKind) return compositionOf(ctx.previousKind, ctx.previousVariant);
-  for (const variants of Object.values(LAYOUT_CATALOGUE)) {
+  const catalogue: readonly (readonly LayoutVariant[])[] = Object.values(LAYOUT_CATALOGUE);
+  for (const variants of catalogue) {
     const found = variants.find((v) => v.name === ctx.previousVariant);
     if (found) return found.composition;
   }
@@ -104,8 +120,9 @@ function previousComposition(ctx: VariantContext): string | null {
  * 2. The exit ticket is always `numbered`: pupils write from it, so it stays plain.
  * 3. A title takes a photograph only when it has one: `split` for a title of up to five
  *    words, `photo-band` for a longer one, `stack` otherwise.
- * 4. A content body under twenty words is a `statement`, unless the slide follows the
- *    objectives; over forty words it is `two-column`; between, `headed`.
+ * 4. A content body under twenty words is a `statement`, unless it is the deck's first content
+ *    slide or follows the objectives directly; over forty words it is `two-column`; between,
+ *    `headed`.
  * 5. A headed list is `numbered`, then `stepped`, then `cards` when the lesson is calm or
  *    has no personality; `cards` first when playful, `stepped` first when bold. A list over
  *    forty-five words never goes on cards.
@@ -113,9 +130,10 @@ function previousComposition(ctx: VariantContext): string | null {
  *    from the previous slide's wins. A content `headed` paragraph and a list's `numbered`
  *    body are the same composition. When every choice would repeat it, the first stands.
  */
-export function chooseVariant(kind: SlideKind, ctx: VariantContext): string {
-  const first = LAYOUT_CATALOGUE[kind][0]?.name ?? "default";
-  if (LAYOUT_CATALOGUE[kind].length <= 1 || kind === "exit-ticket") return first;
+export function chooseVariant(kind: SlideKind, ctx: VariantContext): VariantName {
+  const list: readonly { name: VariantName }[] = LAYOUT_CATALOGUE[kind];
+  const first = list[0]?.name ?? "blank";
+  if (list.length <= 1 || kind === "exit-ticket") return first;
   const previous = previousComposition(ctx);
   const candidates = ranked(kind, ctx);
   return (

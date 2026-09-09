@@ -7,11 +7,13 @@ import {
   type SlideKind,
   type TextElement,
 } from "@tj/domain/documents";
+import { demoLessonSlides } from "@tj/slides";
 import { docFromText } from "../model/factories";
 import { LAYOUT_CATALOGUE, layoutSlide, variantsFor } from "../model/layouts";
 import { THEMES } from "../model/themes";
 import { findOverflow, findOverlaps, isBleed, isOffSlide, lintSlide } from "./lint";
 import type { MeasureInput } from "./reflow";
+import { rulerFor } from "./test-ruler";
 
 /* TeachDeck `lib/__tests__/layout-lint.test.ts` (22 cases). */
 
@@ -212,18 +214,23 @@ describe("isBleed", () => {
   test("is not a picture that has been pushed off the slide", () => {
     expect(isBleed(image({ x: 100, y: 400, w: 200, h: 200 }))).toBe(false);
   });
-  test("is only ever an image: a shape or a text box past the trim is still overflow", () => {
-    const shape: SlideElement = {
+  test("is any element flush with an edge and inside the slide: a band under a title bleeds too", () => {
+    const band: SlideElement = {
       id: "s",
       type: "shape",
       shape: "rect",
       x: 0,
-      y: 0,
-      w: 422,
-      h: SLIDE_H,
+      y: 340,
+      w: SLIDE_W,
+      h: SLIDE_H - 340,
     };
-    expect(isBleed(shape)).toBe(false);
-    expect(isOffSlide(shape)).toBe(true);
+    expect(isBleed(band)).toBe(true);
+    expect(isOffSlide(band)).toBe(true);
+    expect(findOverflow(slideOf([band]))).toEqual([]);
+    // Pushed past the trim without reaching an edge is still overflow, shape or text alike.
+    const pushed: SlideElement = { ...band, x: 100, y: 400, w: 200, h: 200 };
+    expect(isBleed(pushed)).toBe(false);
+    expect(findOverflow(slideOf([pushed]))).toEqual(["s"]);
   });
   test("leaves the image-text recipe clean, so a fresh slide carries no warning dot", () => {
     const { elements } = layoutSlide("image-text", "chalk");
@@ -246,6 +253,25 @@ describe("isBleed", () => {
           });
         }
       }
+    }
+  });
+  test("leaves the ten-slide fixture lesson clean under the ruler on two themes (TEACH-214)", () => {
+    for (const themeId of ["chalk", "playground"] as const) {
+      const theme = THEMES.find((t) => t.id === themeId);
+      if (!theme) throw new Error(themeId);
+      const { slides, variants } = demoLessonSlides(themeId, {
+        personality: themeId === "playground" ? "playful" : undefined,
+        titleImage: themeId === "playground",
+      });
+      slides.forEach((slide, i) => {
+        const lint = lintSlide(slide, rulerFor(theme), theme);
+        expect(lint, `${themeId} slide ${i + 1} ${slide.kind}/${variants[i]}`).toMatchObject({
+          overlaps: [],
+          overflow: [],
+          laneOverflow: [],
+          ok: true,
+        });
+      });
     }
   });
   test("still reports a picture pushed off the bottom of the slide", () => {

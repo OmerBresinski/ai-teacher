@@ -1,6 +1,7 @@
 import type { Slide } from "@tj/domain/documents";
 import { chooseVariant, type Personality, wordCount } from "./choose-variant";
 import { uid } from "./factories";
+import type { VariantName } from "./layouts";
 import { type IdSupplier, type MaterialiseMeta, materialiseSlide } from "./materialise";
 import type { SlideSpec } from "./specs";
 
@@ -140,15 +141,19 @@ const DEMO_META: MaterialiseMeta = {
 export function demoLessonSlides(
   themeId: string,
   options: DemoLessonOptions = {},
-): { slides: Slide[]; variants: string[] } {
+): { slides: Slide[]; variants: VariantName[] } {
   const specs = options.specs ?? DEMO_LESSON_SPECS;
   const ids = options.ids ?? uid;
   const meta = options.meta ?? DEMO_META;
   const slides: Slide[] = [];
-  const variants: string[] = [];
+  const variants: VariantName[] = [];
+  let contentSeen = false;
   specs.forEach((spec, index) => {
     const previous = specs[index - 1];
+    const firstContent = spec.kind === "content" && !contentSeen;
+    if (spec.kind === "content") contentSeen = true;
     const variant = chooseVariant(spec.kind, {
+      firstContent,
       index,
       total: specs.length,
       hasImage: spec.kind === "image-text" || (spec.kind === "title" && !!options.titleImage),

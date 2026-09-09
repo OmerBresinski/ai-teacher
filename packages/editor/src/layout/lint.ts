@@ -103,11 +103,12 @@ export function isOffSlide(el: SlideElement): boolean {
 }
 
 /**
- * A picture run deliberately to the edge of the slide: flush with at least one edge and inside the
- * slide on every side. A box that has been *pushed* off ends outside it, which is still reported.
+ * An element run deliberately to the edge of the slide: flush with at least one edge and inside
+ * the slide on every side. A picture down the left, or a band across the foot under a title
+ * (TEACH-214), is laid that way on purpose. A box that has been *pushed* off ends outside the
+ * slide, which is still reported.
  */
 export function isBleed(el: SlideElement): boolean {
-  if (el.type !== "image") return false;
   const inside =
     el.x >= -EPS && el.y >= -EPS && el.x + el.w <= SLIDE_W + EPS && el.y + el.h <= SLIDE_H + EPS;
   if (!inside) return false;
