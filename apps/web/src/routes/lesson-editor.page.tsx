@@ -1,8 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { LessonEditor, type LessonEditorHandle } from "@tj/editor/lesson";
-import { Button, IconButton, Tooltip } from "@tj/ui";
-import { ArrowLeft } from "lucide-react";
+import { Button, Tooltip } from "@tj/ui";
 import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import { EmptyLesson } from "@/components/empty-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
@@ -17,8 +16,8 @@ import { lessonEditorRoute } from "./documents.route";
 // paints a slide (ADR 0022 §7): a direct load of `/l/…` must not depend on the library chunk.
 import "@tj/editor/styles/editor.css";
 
-// The generating view renders the read-only viewer (`@tj/editor/present`), a chunk most editor
-// loads never need: only a lesson still under its `lesson.plan` lock reaches it (bundle-conditional).
+// The generating view renders the editor's shell geometry with the slide renderer, a chunk most
+// editor loads never need: only a lesson still under its `lesson.plan` lock reaches it (bundle-conditional).
 const GeneratingLesson = lazy(() =>
   import("@/components/generating-lesson").then(({ GeneratingLesson }) => ({
     default: GeneratingLesson,
@@ -102,11 +101,6 @@ export function LessonEditorPage() {
           jobId={generatingJobId}
           onBack={onBack}
           onStopped={setStoppedJobId}
-          leading={
-            <IconButton label="Back to the library" onClick={onBack}>
-              <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
-            </IconButton>
-          }
         />
       </Suspense>
     );

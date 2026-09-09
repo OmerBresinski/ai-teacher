@@ -55,14 +55,27 @@ type Geometry = typeof FULL;
 /** Browser preference: whether the rail is collapsed to the compact thumbs. */
 export const NAVIGATOR_MODE_KEY = "tj:navigator";
 
-type Mode = "full" | "compact";
+export type NavigatorMode = "full" | "compact";
+type Mode = NavigatorMode;
 
-function readMode(): Mode {
+/** The persisted preference, read once at mount; `full` where storage is unavailable. */
+export function readNavigatorMode(): NavigatorMode {
   try {
     return window.localStorage.getItem(NAVIGATOR_MODE_KEY) === "compact" ? "compact" : "full";
   } catch {
     return "full";
   }
+}
+const readMode = readNavigatorMode;
+
+/** The column's width for a mode, as the CSS variable the kit defines (218px full, 90px compact). */
+export function navigatorWidthVar(mode: NavigatorMode): string {
+  return mode === "full" ? "var(--navigator-width)" : "var(--navigator-width-sm)";
+}
+
+/** The thumb width for a mode (`FULL.thumbW` / `COMPACT.thumbW`). */
+export function navigatorThumbWidth(mode: NavigatorMode): number {
+  return mode === "full" ? FULL.thumbW : COMPACT.thumbW;
 }
 
 /** A theme colour at `pct` percent over whatever is behind it. */
@@ -380,7 +393,7 @@ export function Navigator() {
     <aside
       data-navigator
       className="flex shrink-0 flex-col border-border border-r bg-background"
-      style={{ width: mode === "full" ? "var(--navigator-width)" : "var(--navigator-width-sm)" }}
+      style={{ width: navigatorWidthVar(mode) }}
     >
       <div
         ref={scroller}

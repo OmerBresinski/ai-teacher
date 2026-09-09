@@ -1,0 +1,144 @@
+{
+  "$comment": "One lesson.plan run over the fake worker (AI_FAKE_SCRIPT=pipeline), as the job_events rows the API replays: the event type, the progress payload and the offset from the queued row. `slides` is how many of the demo lesson's slides the worker had persisted by that event and `facts` whether Plan's outline was on the row; playRun slices the lesson to match before it emits the event. Offsets follow the 250ms-per-answer pacing of the e2e worker.",
+  "lesson": "demo-water-cycle",
+  "jobId": "01a06a15-1849-7000-ac6a-c07e27fe308b",
+  "workspaceId": "01a06a15-1849-7000-ac6a-c07e27fe3000",
+  "startedAt": "2026-09-09T09:00:00.000Z",
+  "events": [
+    { "offsetMs": 0, "type": "queued", "slides": 0, "facts": false },
+    { "offsetMs": 480, "type": "started", "slides": 0, "facts": false },
+    {
+      "offsetMs": 530,
+      "type": "progress",
+      "progress": {
+        "percent": 2,
+        "message": "Starting",
+        "documentUpdatedAt": "2026-09-09T09:00:00.530Z"
+      },
+      "slides": 1,
+      "facts": false
+    },
+    {
+      "offsetMs": 1090,
+      "type": "progress",
+      "progress": {
+        "percent": 6,
+        "message": "Planned the lesson",
+        "documentUpdatedAt": "2026-09-09T09:00:01.090Z"
+      },
+      "slides": 2,
+      "facts": true
+    },
+    {
+      "offsetMs": 1620,
+      "type": "progress",
+      "progress": {
+        "percent": 10,
+        "message": "Planned",
+        "documentUpdatedAt": "2026-09-09T09:00:01.620Z"
+      },
+      "slides": 2,
+      "facts": true
+    },
+    {
+      "offsetMs": 2210,
+      "type": "progress",
+      "progress": {
+        "percent": 24,
+        "message": "Slide 1 of 5",
+        "documentUpdatedAt": "2026-09-09T09:00:02.210Z"
+      },
+      "slides": 3,
+      "facts": true
+    },
+    {
+      "offsetMs": 2790,
+      "type": "progress",
+      "progress": {
+        "percent": 38,
+        "message": "Slide 2 of 5",
+        "documentUpdatedAt": "2026-09-09T09:00:02.790Z"
+      },
+      "slides": 4,
+      "facts": true
+    },
+    {
+      "offsetMs": 3350,
+      "type": "progress",
+      "progress": {
+        "percent": 52,
+        "message": "Slide 3 of 5",
+        "documentUpdatedAt": "2026-09-09T09:00:03.350Z"
+      },
+      "slides": 5,
+      "facts": true
+    },
+    {
+      "offsetMs": 3930,
+      "type": "progress",
+      "progress": {
+        "percent": 66,
+        "message": "Slide 4 of 5",
+        "documentUpdatedAt": "2026-09-09T09:00:03.930Z"
+      },
+      "slides": 6,
+      "facts": true
+    },
+    {
+      "offsetMs": 4500,
+      "type": "progress",
+      "progress": {
+        "percent": 80,
+        "message": "Slide 5 of 5",
+        "documentUpdatedAt": "2026-09-09T09:00:04.500Z"
+      },
+      "slides": 7,
+      "facts": true
+    },
+    {
+      "offsetMs": 5080,
+      "type": "progress",
+      "progress": {
+        "percent": 85,
+        "message": "Worksheet ready",
+        "documentUpdatedAt": "2026-09-09T09:00:05.080Z"
+      },
+      "slides": 7,
+      "facts": true
+    },
+    {
+      "offsetMs": 5640,
+      "type": "progress",
+      "progress": {
+        "percent": 88,
+        "message": "Pictures placed",
+        "documentUpdatedAt": "2026-09-09T09:00:05.640Z"
+      },
+      "slides": 7,
+      "facts": true
+    },
+    {
+      "offsetMs": 6210,
+      "type": "progress",
+      "progress": {
+        "percent": 90,
+        "message": "Reviewed",
+        "documentUpdatedAt": "2026-09-09T09:00:06.210Z"
+      },
+      "slides": 7,
+      "facts": true
+    },
+    {
+      "offsetMs": 6790,
+      "type": "progress",
+      "progress": {
+        "percent": 100,
+        "message": "Done",
+        "documentUpdatedAt": "2026-09-09T09:00:06.790Z"
+      },
+      "slides": 7,
+      "facts": true
+    },
+    { "offsetMs": 6810, "type": "completed", "slides": 7, "facts": true }
+  ]
+}

@@ -97,7 +97,7 @@ test.describe("accessibility (axe)", () => {
     for (const theme of THEMES) {
       await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
       await page.goto(`/l/${ids.locked}`);
-      await expect(page.getByTestId("generating-banner")).toBeVisible();
+      await expect(page.getByTestId("generating-shell")).toBeVisible();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await expectNoSeriousA11yViolations(page, `generating view (${theme})`);
 

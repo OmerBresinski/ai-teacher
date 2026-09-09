@@ -42,7 +42,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   only the list a page reads and never depend on `q` — the search box writes the URL per
   keystroke and the page's 250 ms debounce owns the fetch. A `409` arrives as
   `ApiError.reason` (`stale` → `useSaveWithConflictToast` offers Reload; `generating` →
-  `GeneratingLesson` renders the read-only banner over SSE). Unit tests stub the transport with
+  `GeneratingLesson` renders the generating shell over SSE). Unit tests stub the transport with
   `src/test/fake-api.ts` (`installFakeApi()`), seeded with `demoWorkspace()` under its keys
   (`demo-water-cycle`, `series-romans`, …) as ids.
 - `vercel-react-best-practices` includes Next.js-specific advice (RSC, `next/*`); it does not
@@ -68,7 +68,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   pins token contrast. Workspaces start empty (ADR 0024 §16): `signedInPage` seeds `demoWorkspace()`
   through `POST /__test/seed-library` and hands back `ids` / `paths` (`paths.lesson("demo-water-cycle")`,
   `paths.key(uuid)`); `test.use({ seed: false })` opts a spec out. Ids are server-minted uuids, so
-  no spec hard-codes a document path. `editor-generating` covers the locked lesson (banner, no
+  no spec hard-codes a document path. `editor-generating` covers the locked lesson (the generating shell, no
   editor, one skeleton rail row per `facts.outline` entry still to come, axe in the three themes —
   the route needs a locked seed so it is not in `a11y`) and the brief → `/l/:id` flow;
   `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation.
