@@ -16,9 +16,9 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@ai-sdk/amazon-bedrock": "5.0.74",
+    "@ai-sdk/amazon-bedrock": "5.0.76",
     "@tj/domain": "workspace:*",
-    "ai": "7.0.92",
+    "ai": "7.0.93",
     "pino": "10.3.1",
     "zod": "4.5.4"
   },
