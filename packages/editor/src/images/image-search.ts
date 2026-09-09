@@ -56,6 +56,13 @@ export interface PickedPhoto {
  * The search transport. `search` lists hits; `pick` copies one into the Workspace bucket and
  * returns our URL. Both reject with `SearchError` carrying the HTTP status.
  */
+/** Client-measured pick telemetry (TEACH-163): who is being replaced, how fast. */
+export interface PickTelemetry {
+  replaces?: "ai" | "teacher";
+  msSinceOpen?: number;
+  signal?: AbortSignal;
+}
+
 export type ImageSearchClient = {
   search(
     query: string,
@@ -64,7 +71,7 @@ export type ImageSearchClient = {
   pick(
     photo: PhotoResult,
     target: "slide" | "worksheet",
-    signal?: AbortSignal,
+    telemetry?: PickTelemetry,
   ): Promise<PickedPhoto>;
   /** Flag a wrong result in the api log (log only). Rejects with `SearchError` on failure. */
   report(input: ImageReport): Promise<void>;

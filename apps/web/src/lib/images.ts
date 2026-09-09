@@ -50,10 +50,18 @@ export const imageSearchClient: ImageSearchClient = {
     };
   },
 
-  async pick(photo, target, signal): Promise<PickedPhoto> {
+  async pick(photo, target, telemetry = {}): Promise<PickedPhoto> {
     const res = await api.images.pick.$post(
-      { json: { provider: "pexels", id: photo.id, target } },
-      { init: { signal } },
+      {
+        json: {
+          provider: "pexels",
+          id: photo.id,
+          target,
+          ...(telemetry.replaces === undefined ? {} : { replaces: telemetry.replaces }),
+          ...(telemetry.msSinceOpen === undefined ? {} : { msSinceOpen: telemetry.msSinceOpen }),
+        },
+      },
+      { init: { signal: telemetry.signal } },
     );
     if (!res.ok) {
       const error = await apiErrorFromResponse(res);

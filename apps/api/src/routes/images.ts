@@ -11,6 +11,9 @@
  * Logging (ADR 0015): one `image search` line per search carries the query *length*, never the
  * query text — a search term can name a pupil. `429`s reach the existing `request error` line
  * with `code: "rate_limited"`. Reports log ids and enums only, at `warn`.
+ *
+ * Image measures: how each project measure is read from these lines is documented in
+ * `infra/README.md` ("Image measures").
  */
 import { zValidator } from "@hono/zod-validator";
 import type { StorageAdapter } from "@tj/domain";
@@ -82,6 +85,12 @@ const PickBody = z.strictObject({
   provider: z.literal("pexels"),
   id: z.string().min(1).max(32),
   target: z.enum(["slide", "worksheet"]),
+  /**
+   * Telemetry only (TEACH-163): the `authoredBy` of the element being replaced, and ms from
+   * panel open to the pick. Neither affects the response; both land on the log line.
+   */
+  replaces: z.enum(["ai", "teacher"]).optional(),
+  msSinceOpen: z.number().int().nonnegative().max(3_600_000).optional(),
 });
 
 const ReportBody = z.strictObject({
@@ -192,7 +201,7 @@ export function imageRoutes(
         if (!images || !storage) {
           throw new HTTPException(503, { message: "Photo search is not available right now." });
         }
-        const { id, target } = c.req.valid("json");
+        const { id, target, replaces, msSinceOpen } = c.req.valid("json");
         const logger = c.get("logger");
         const start = performance.now();
         const durationMs = () => Math.round((performance.now() - start) * 100) / 100;
@@ -212,7 +221,14 @@ export function imageRoutes(
         try {
           const stored = await storePhoto({ photo, target, storage, workspaceId });
           logger.info(
-            { provider: "pexels", target, bytes: stored.bytes, duration_ms: durationMs() },
+            {
+              provider: "pexels",
+              target,
+              bytes: stored.bytes,
+              replaced: replaces ?? null,
+              ms_since_open: msSinceOpen ?? null,
+              duration_ms: durationMs(),
+            },
             "image picked",
           );
           return c.json(stored, 201);

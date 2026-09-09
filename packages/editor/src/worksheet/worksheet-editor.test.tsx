@@ -467,6 +467,23 @@ describe("WorksheetEditor image Replace (TEACH-160)", () => {
     expect(current.authoredBy).toBe("teacher");
   });
 
+  test("Replace on an ai-authored block sends replaces ai", async () => {
+    const { client, pick } = fakeClient();
+    const sheet = imageSheet({ authoredBy: "ai" });
+    const block = sheet.blocks[0];
+    if (block?.type !== "image") throw new Error("seed");
+    const { container } = renderWorksheetEditor(sheet, { images: client });
+    select(container, block.id);
+    await openReplace();
+    await searchPhotos("leaf");
+    fireEvent.click(await screen.findByRole("button", { name: "Leaf" }));
+    await waitFor(() => expect(pick).toHaveBeenCalledTimes(1));
+    const [, target, telemetry] = pick.mock.calls[0] as [unknown, string, Record<string, unknown>];
+    expect(target).toBe("worksheet");
+    expect(telemetry.replaces).toBe("ai");
+    expect(typeof telemetry.msSinceOpen).toBe("number");
+  });
+
   test("without a client the Photos tab says search is unavailable but Upload works", async () => {
     const sheet = imageSheet();
     const block = sheet.blocks[0];

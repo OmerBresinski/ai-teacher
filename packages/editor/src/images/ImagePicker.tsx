@@ -40,6 +40,9 @@ export const UNREADABLE_MESSAGE = "That image could not be read.";
 export const SEARCH_FAILED_MESSAGE = "Search failed. Try again.";
 export const RATE_LIMITED_MESSAGE = "Too many searches. Try again in a minute.";
 export const BLOCKED_MESSAGE = "Try a different search.";
+
+/** Mirrors the api's `msSinceOpen` bound (`PickBody`): the measure saturates, the pick survives. */
+export const MAX_MS_SINCE_OPEN = 3_600_000;
 /** A search fires this long after the last keystroke; Enter fires it at once. */
 const DEBOUNCE_MS = 400;
 
@@ -47,9 +50,14 @@ export type ImagePickerProps = {
   images?: ImageSearchClient;
   target: "slide" | "worksheet";
   onPick: (source: ImageSource) => void;
+  /**
+   * Pick telemetry (TEACH-163): who is being replaced, and the panel-open timestamp the
+   * `msSinceOpen` duration is measured from. The picker never invents these.
+   */
+  telemetry?: { replaces?: "ai" | "teacher"; openedAt?: number };
 };
 
-export function ImagePicker({ images, target, onPick }: ImagePickerProps) {
+export function ImagePicker({ images, target, onPick, telemetry }: ImagePickerProps) {
   return (
     <Tabs defaultValue="upload" className="gap-1">
       <TabsList aria-label="Image source" className="mx-3">
@@ -60,7 +68,7 @@ export function ImagePicker({ images, target, onPick }: ImagePickerProps) {
         <UploadTab onPick={onPick} />
       </TabsContent>
       <TabsContent value="photos">
-        <PhotosTab images={images} target={target} onPick={onPick} />
+        <PhotosTab images={images} target={target} onPick={onPick} telemetry={telemetry} />
       </TabsContent>
     </Tabs>
   );
@@ -154,10 +162,12 @@ function PhotosTab({
   images,
   target,
   onPick,
+  telemetry,
 }: {
   images?: ImageSearchClient;
   target: "slide" | "worksheet";
   onPick: (source: ImageSource) => void;
+  telemetry?: ImagePickerProps["telemetry"];
 }) {
   const [query, setQuery] = useState("");
   // The term the search runs on: `query` a debounce later, or at once on Enter.
@@ -209,7 +219,19 @@ function PhotosTab({
     if (!images) return;
     setBusy(item.id);
     try {
-      const picked = await images.pick(item, target, inflight.current?.signal);
+      const picked = await images.pick(item, target, {
+        signal: inflight.current?.signal,
+        replaces: telemetry?.replaces,
+        msSinceOpen:
+          telemetry?.openedAt === undefined
+            ? undefined
+            : // Capped like the api's `msSinceOpen` bound: a stale tab must skew the
+              // measure, never lose the pick to a 400.
+              Math.min(
+                MAX_MS_SINCE_OPEN,
+                Math.max(0, Math.round(performance.now() - telemetry.openedAt)),
+              ),
+      });
       onPick(sourceFromPicked(picked, item.alt));
     } catch (error) {
       // An abort means the panel closed: nothing to insert into, and no toast either.

@@ -247,19 +247,41 @@ railway redeploy -p <project> -e production -s worker -y
 ### Pexels (Images project)
 
 `PEXELS_API_KEY` (contract: [`infra/env.contract.ts`](env.contract.ts) "images (Pexels)") holds
-the Pexels API key on the **api** service only — the worker gains it in TEACH-159. Never echo the
+the Pexels API key on the **api** and **worker** services. Never echo the
 key or pass it as an argument:
 
 ```sh
 printf '%s' "$PEXELS_API_KEY" | railway variable set PEXELS_API_KEY --stdin -p <project> -e production -s api --skip-deploys
+printf '%s' "$PEXELS_API_KEY" | railway variable set PEXELS_API_KEY --stdin -p <project> -e production -s worker --skip-deploys
 ```
 
-No manual redeploy is needed afterwards: the api service watches `apps/api/**` and
-`packages/images/**` (`.railway/railway.ts`), so the merge that ships the route deploys on its
+No manual redeploy is needed afterwards: both services watch `packages/images/**`
+(`.railway/railway.ts`), so the merge that ships the route deploys on its
 own. Until the key is set, `GET /images/search` answers `503` in production — acceptable, not a
 failed deploy. Free-plan budget (200 requests/hour, 20,000/month, shared by editor and worker):
 visible in the api log as `image search` lines and `request error` lines with
 `code: "rate_limited"`.
+
+### Image measures (Images project)
+
+The project's five measures, read off structured JSON logs (ADR 0015: counts, durations, ids
+and enums only — never content). These lines are operational logs under Railway's retention, not
+a metrics store. Base command (flags verified against `railway logs --help`):
+
+```sh
+railway logs -p <project> -e production -s api --json -n 5000 | jq '...'
+```
+
+The worker's `generation summary` lines come from `-s worker` instead.
+
+| # | Measure | Line (`msg`) | Fields | Filter & arithmetic |
+| -- | -- | -- | -- | -- |
+| 1 | Share of generated slides photographed without teacher action | `generation summary` (worker) | `images: { requested, placed, empty, failed }` | `select(.msg == "generation summary") \| [.generation.images] \| add` → `placed ÷ requested` |
+| 2 | Share of pipeline picks the teacher replaces | `image picked` (api) | `replaced: "ai" \| "teacher" \| null` | count `replaced == "ai"` ÷ generation-summary `placed` over the same window |
+| 3 | Searches per lesson | `image search` (api) ÷ `lesson created from brief` (api) | `q_len`, `cached`, `blocked` | count `msg == "image search"` ÷ count `msg == "lesson created from brief"`. Approximation: a search is not tied to a lesson id (deliberately — tying even the query *length* to a lesson was not asked for) |
+| 4a | Our 429s per day | `request error` (api) | `code: "rate_limited"`, `path` | `select(.msg == "request error" and .code == "rate_limited" and (.path \| startswith("/images/")))` counted per day |
+| 4b | Pexels' own 429s | `image search` (api) | `upstream_status: 429` | `select(.msg == "image search" and .upstream_status == 429)` — upstream exhaustion, distinct from 4a |
+| 5 | Time from Add image to placed picture | `image picked` (api) | `ms_since_open` (client-measured, capped at an hour), `replaced` | distribution of `ms_since_open` where not null; split by `replaced` |
 
 ### Change a model
 
