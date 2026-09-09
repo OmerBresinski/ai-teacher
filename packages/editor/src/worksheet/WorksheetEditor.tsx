@@ -26,6 +26,7 @@ import { type BlockRowActions, BlockShell } from "./BlockShell";
 import { blockProblems } from "./block-problems";
 import { type BlockSpec, blankStem, instructionBefore, isRich } from "./block-types";
 import { EditableHeader } from "./EditableHeader";
+import { EditableRagStrip } from "./EditableRagStrip";
 import { HeaderToolbar } from "./HeaderToolbar";
 import { useSheetPagination } from "./measure";
 import { fitScale, pageMetrics } from "./metrics";
@@ -534,6 +535,8 @@ export function WorksheetEditor({
                           showMarks={worksheet.showMarks}
                           actions={rowActions}
                         />
+                      ) : item.kind === "rag" ? (
+                        <EditableRagStrip key={item.key} />
                       ) : (
                         <div className={flowItemClass(item)} key={item.key}>
                           <FlowItemContent item={item} worksheet={worksheet} mode="edit" />

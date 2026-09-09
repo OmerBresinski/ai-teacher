@@ -67,7 +67,7 @@ function estimateHeight(block: WorksheetBlock, contentW: number): number {
   }
 }
 
-/** Title, objective, four criteria lines and the name / date / class row. */
+/** Title, objective and the name / date / class row. */
 const HEADER_HEIGHT = 120;
 
 function pagesOf(sheet: Worksheet, size: PageSize) {
@@ -88,6 +88,8 @@ describe("seeded worksheets", () => {
       expect(sheet.header.subtitle).toMatch(/^I can /);
       expect(sheet.header.criteria?.length).toBeGreaterThanOrEqual(2);
       expect(sheet.header.criteria?.length).toBeLessThanOrEqual(4);
+      // The criteria print in the self-assessment strip at the foot (TEACH-196).
+      expect(sheet.selfAssessment).toBe(true);
       expect(sheet.includeAnswerKey).toBe(false);
       const copy = sheet.blocks.map(text).join(" ");
       expect(copy).not.toContain("Write your first question here");

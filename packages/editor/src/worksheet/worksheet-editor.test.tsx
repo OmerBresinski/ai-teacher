@@ -7,7 +7,7 @@ import { docFromText, uid } from "../model/factories";
 import { newBlock, numberQuestions, starterWorksheet } from "../model/worksheet-factories";
 import { answerKey } from "./answers";
 import { pointer, renderWorksheetEditor, row } from "./editor-test-harness";
-import { HEADER_KEY } from "./paginate";
+import { HEADER_KEY, RAG_KEY } from "./paginate";
 
 type Question = Extract<WorksheetBlock, { type: "question" }>;
 type MC = Extract<WorksheetBlock, { type: "multiple-choice" }>;
@@ -254,6 +254,10 @@ describe("WorksheetEditor", () => {
     fireEvent.pointerDown(row(container, HEADER_KEY), pointer(10, 10));
     fireEvent.click(screen.getByRole("radio", { name: "Letter" }));
     fireEvent.click(screen.getByRole("switch", { name: "Print answer key" }));
+    // Criterion sits beside the switch and waits for it (TEACH-196).
+    const add = screen.getByRole("button", { name: "Criterion" });
+    expect(add).toBeDisabled();
+    expect(container.querySelector('[data-block-id="__rag__"]')).toBeNull();
     fireEvent.click(screen.getByRole("switch", { name: "Self-assessment" }));
     expect(read().pageSize).toBe("Letter");
     expect(read().includeAnswerKey).toBe(true);
@@ -265,18 +269,47 @@ describe("WorksheetEditor", () => {
     expect(read().showMarks).toBe(true);
     fireEvent.click(screen.getByRole("switch", { name: "Marks" }));
     expect(read().showMarks).toBe(false);
-    const add = screen.getByRole("button", { name: "Criterion" });
+    // Switching on with no criteria opens the strip with one blank "I can …" line, focused.
+    expect(read().header.criteria).toEqual([""]);
+    const strip = row(container, RAG_KEY);
+    expect(within(strip).getByText("Tick what you can do now")).toBeInTheDocument();
+    expect(within(strip).getByText("I can …")).toBeInTheDocument();
+    const field = within(strip).getByRole("textbox", { name: "Success criterion 1" });
+    expect(document.activeElement).toBe(field);
     for (let i = 0; i < 5; i++) fireEvent.click(add);
     expect(read().header.criteria?.length).toBe(4);
     expect(add).toBeDisabled();
-    // Blank rows go when focus leaves the header.
-    const field = screen.getByRole("textbox", { name: "Success criterion 1" });
+    // Nothing tick-able in the header.
+    expect(row(container, HEADER_KEY).querySelectorAll(".ws-criterion")).toHaveLength(0);
+    // Blank rows go when focus leaves the strip.
     field.textContent = "I can add fractions.";
     fireEvent.input(field);
     act(() => {
       fireEvent.blur(field, { relatedTarget: document.body });
     });
     expect(read().header.criteria).toEqual(["I can add fractions."]);
+    expect(within(strip).queryByText("I can …")).toBeNull();
+  });
+
+  test("TEACH-196 row 4: a criterion is edited and removed in the strip, in place, undoable", () => {
+    const sheet = starterWorksheet("Seed sheet");
+    sheet.selfAssessment = true;
+    sheet.header.criteria = ["I can add fractions.", "I can simplify."];
+    const { container, read } = renderWorksheetEditor(sheet);
+    const strip = row(container, RAG_KEY);
+    // A sheet that opens with its criteria filled in takes no focus.
+    expect(document.activeElement).toBe(document.body);
+    const field = within(strip).getByRole("textbox", { name: "Success criterion 2" });
+    expect(field).toHaveTextContent("I can simplify.");
+    field.textContent = "I can simplify a fraction.";
+    fireEvent.input(field);
+    expect(read().header.criteria).toEqual(["I can add fractions.", "I can simplify a fraction."]);
+    fireEvent.click(within(strip).getByRole("button", { name: "Remove criterion 1" }));
+    expect(read().header.criteria).toEqual(["I can simplify a fraction."]);
+    undo();
+    expect(read().header.criteria).toEqual(["I can add fractions.", "I can simplify a fraction."]);
+    undo();
+    expect(read().header.criteria).toEqual(["I can add fractions.", "I can simplify."]);
   });
 
   test("empty fields keep the same room on the sheet as in the measuring column (page breaks agree)", () => {

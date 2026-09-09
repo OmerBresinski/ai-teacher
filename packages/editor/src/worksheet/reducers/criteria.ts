@@ -1,4 +1,7 @@
-/** Success criteria (research/02 decision 15): up to `MAX_CRITERIA` "I can…" lines in the header. */
+/**
+ * Success criteria (research/02 decision 15): up to `MAX_CRITERIA` "I can …" lines, kept on
+ * `header.criteria` and printed in the self-assessment strip at the foot (TEACH-196).
+ */
 
 import { MAX_CRITERIA, type Worksheet } from "@tj/domain/documents";
 import { edit } from "./core";
@@ -44,3 +47,14 @@ export const pruneEmptyCriteria = (worksheet: Worksheet): Worksheet => {
     else w.header.criteria = kept;
   });
 };
+
+/**
+ * The Self-assessment switch. Turning it on with no criteria adds one blank line to type into, in
+ * the same undo step, so the strip never appears with nothing above the scale to fill in.
+ */
+export const switchSelfAssessment = (worksheet: Worksheet, on: boolean): Worksheet =>
+  edit(worksheet, (w) => {
+    if ((w.selfAssessment ?? false) === on) return;
+    w.selfAssessment = on;
+    if (on && !w.header.criteria?.length) w.header.criteria = [""];
+  });

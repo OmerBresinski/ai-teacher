@@ -106,6 +106,21 @@ describe("paginate", () => {
     ]);
   });
 
+  test("TEACH-196: the strip with criteria is one item, so it moves whole rather than parting from its label", () => {
+    const base = newWorksheet("Test");
+    const sheet: Worksheet = {
+      ...base,
+      blocks: [question],
+      selfAssessment: true,
+      header: { ...base.header, criteria: ["I can add fractions.", "I can simplify one."] },
+    };
+    const items = buildFlow(sheet, false);
+    expect(keys(items)).toEqual(["q1", RAG_KEY]);
+    const { pages, oversize } = paginate(items, { q1: 300, [RAG_KEY]: 150 }, 0, 400);
+    expect(pages.map((p) => keys(p.items))).toEqual([["q1"], [RAG_KEY]]);
+    expect(oversize).toEqual([]);
+  });
+
   test("leaves the answer key and the RAG strip out unless the sheet asks for them", () => {
     const sheet: Worksheet = { ...newWorksheet("Test"), blocks: [question] };
     expect(keys(buildFlow(sheet, false))).toEqual(["q1"]);

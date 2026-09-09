@@ -146,10 +146,32 @@
   color: var(--ws-muted);
 }
 
+/* ------------------------------------------------------------------ */
+/* Self-assessment strip                                               */
+/* ------------------------------------------------------------------ */
+
+/* The success criteria under "Tick what you can do now", then Red / Amber /
+   Green (TEACH-196). One flow item: the criteria never part from their label
+   or from the scale. */
+
+.ws-rag {
+  display: flex;
+  flex-direction: column;
+  gap: 8pt;
+  padding-top: 8pt;
+  border-top: 0.75pt solid var(--ws-rule);
+}
+
+.ws-rag-heading {
+  font-size: 10.5pt;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
 /* Success criteria: one checkbox line each, sized to be ticked with a pen. */
 
 .ws-criteria {
-  margin: 8pt 0 0;
+  margin: 5pt 0 0;
   padding: 0;
   list-style: none;
   display: flex;
@@ -178,20 +200,14 @@
   min-width: 0;
 }
 
-/* ------------------------------------------------------------------ */
-/* Self-assessment strip                                               */
-/* ------------------------------------------------------------------ */
-
 /* Red / Amber / Green, told apart by outline weight and dash rather than by
    colour, so it survives a greyscale print and a photocopy. */
 
-.ws-rag {
+.ws-rag-confidence {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18pt;
-  padding-top: 8pt;
-  border-top: 0.75pt solid var(--ws-rule);
 }
 
 .ws-rag-prompt {

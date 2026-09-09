@@ -343,12 +343,15 @@ export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
         <p className="ws-objective">{header.subtitle || "\u00a0"}</p>
       ) : null}
       <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
-      <CriteriaList criteria={header.criteria} />
     </header>
   );
 }
 
-/** Success criteria, one printed checkbox line each (research/02 decision 15). */
+/**
+ * Success criteria, one printed checkbox line each (research/02 decision 15). They live in the
+ * self-assessment strip (TEACH-196, ruling 63): a box to tick with a pen is for the pupil at the
+ * end, once they know what they can do, so nothing tick-able sits above the first task.
+ */
 export function CriteriaList({ criteria }: { criteria?: string[] }) {
   if (!criteria || criteria.length === 0) return null;
   return (
@@ -366,22 +369,35 @@ export function CriteriaList({ criteria }: { criteria?: string[] }) {
 
 const RAG_STEPS = ["Red", "Amber", "Green"] as const;
 
+export const CRITERIA_HEADING = "Tick what you can do now";
+
 /**
- * The self-assessment strip (research/02 decision 15). The three circles are told apart by outline
- * weight and dash, never by colour: the print route is greyscale-safe, and a photocopy of a
- * colour-only scale says nothing.
+ * The self-assessment strip (research/02 decision 15): the success criteria under "Tick what you
+ * can do now", then the confidence scale. It is one flow item, so the criteria never split from
+ * their label or from the scale. The three circles are told apart by outline weight and dash,
+ * never by colour: the print route is greyscale-safe, and a photocopy of a colour-only scale says
+ * nothing. `children` replaces the printed criteria list with the editor's typed-into one.
  */
-export function RagStrip() {
+export function RagStrip({ criteria, children }: { criteria?: string[]; children?: ReactNode }) {
+  const hasCriteria = (criteria?.length ?? 0) > 0;
   return (
     <section className="ws-rag" aria-label="Self-assessment">
-      <div className="ws-rag-prompt">How confident do you feel?</div>
-      <div className="ws-rag-scale">
-        {RAG_STEPS.map((step) => (
-          <div key={step} className="ws-rag-step">
-            <span className={`ws-rag-dot ws-rag-${step.toLowerCase()}`} aria-hidden />
-            <span className="ws-rag-label">{step}</span>
-          </div>
-        ))}
+      {hasCriteria ? (
+        <div className="ws-rag-criteria">
+          <div className="ws-rag-heading">{CRITERIA_HEADING}</div>
+          {children ?? <CriteriaList criteria={criteria} />}
+        </div>
+      ) : null}
+      <div className="ws-rag-confidence">
+        <div className="ws-rag-prompt">How confident do you feel?</div>
+        <div className="ws-rag-scale">
+          {RAG_STEPS.map((step) => (
+            <div key={step} className="ws-rag-step">
+              <span className={`ws-rag-dot ws-rag-${step.toLowerCase()}`} aria-hidden />
+              <span className="ws-rag-label">{step}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -441,7 +457,7 @@ export function FlowItemContent({
       />
     );
   }
-  if (item.kind === "rag") return <RagStrip />;
+  if (item.kind === "rag") return <RagStrip criteria={worksheet.header.criteria} />;
   if (item.kind === "key-title") return <AnswerKeyTitle worksheet={worksheet} />;
   return <AnswerKeyEntry entry={item.entry} showMarks={worksheet.showMarks} />;
 }

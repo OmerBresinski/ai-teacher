@@ -7,8 +7,9 @@ export const DEMO_WORKSHEET_ID = "demo-fractions-practice-ws";
 
 /**
  * The four seeded worksheets (TEACH-186), one per job: Practise, Homework, Check and Starter.
- * Each is a real sheet a teacher could hand out, with an objective and success criteria in the
- * header, answers on every question so the answer key derives, and content sized to print on one
+ * Each is a real sheet a teacher could hand out, with an objective in the header, success criteria
+ * in the self-assessment strip at the foot, answers on every question so the answer key derives,
+ * and content sized to print on one
  * or two pages of A4 or Letter without a heading stranded at the foot of a page (headings sit
  * early in each sheet; `paginate` has no orphan rule).
  */
@@ -38,6 +39,8 @@ function sheet(meta: Meta, blocks: WorksheetBlock[]): Worksheet {
       criteria: meta.criteria,
     },
     blocks: numberQuestions(blocks),
+    // The criteria print in the self-assessment strip at the foot (TEACH-196), so the strip is on.
+    selfAssessment: true,
     subject: meta.subject,
     yearGroup: meta.yearGroup,
     ageBand: meta.ageBand,
