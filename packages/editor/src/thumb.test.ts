@@ -24,11 +24,13 @@ const FORBIDDEN = [
 describe("the forbidden-module scan", () => {
   test("sees a package name in a bundle that really carries the editor (negative control)", async () => {
     const result = await Bun.build({
-      entrypoints: [`${import.meta.dir}/worksheet/editor-index.ts`],
+      // The editing surface itself, one chunk: Bun 1.3.6 (CI) cannot resolve `../editor-hooks`
+      // when the whole `worksheet/editor-index` entry is built inside the test runner.
+      entrypoints: [`${import.meta.dir}/worksheet/WorksheetEditor.tsx`],
       target: "browser",
       external: ["react", "react-dom", "react/jsx-runtime", "*.css"],
       minify: false,
-      splitting: true,
+      splitting: false,
     });
     expect(result.success).toBe(true);
     const text = (await Promise.all(result.outputs.map((o) => o.text()))).join("\n");
