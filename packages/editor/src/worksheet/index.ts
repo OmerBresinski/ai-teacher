@@ -11,7 +11,6 @@ export {
   AnswerKeyEntry,
   AnswerKeyTitle,
   BlockContent,
-  CriteriaList,
   FlowItemContent,
   RagStrip,
   SheetHeader,

@@ -87,10 +87,13 @@ test.describe("TEACH-196 success criteria in the self-assessment strip", () => {
     const field = strip(page).getByRole("textbox", { name: "Success criterion 1" });
     await expect(field).toBeFocused();
     await expect(field).toHaveText("");
-    await expect(strip(page).getByText("I can …")).toBeVisible();
+    // The "I can …" hint is CSS on the empty field, not text a pupil could read off the sheet.
+    const hint = () => field.evaluate((el) => getComputedStyle(el, "::before").content);
+    expect(await hint()).toBe('"I can …"');
+    await expect(field).toHaveAttribute("aria-placeholder", "I can …");
     await expect(strip(page).locator(".ws-rag-heading")).toHaveText("Tick what you can do now");
     await page.keyboard.type("I can add fractions.", { delay: 20 });
-    await expect(strip(page).getByText("I can …")).toHaveCount(0);
+    expect(await hint()).toBe("none");
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
     // A blank line is pruned when focus leaves the strip.
     await add.click();
@@ -121,9 +124,14 @@ test.describe("TEACH-196 success criteria in the self-assessment strip", () => {
     await expect(field).toHaveText(`${original} Yes.`);
     await page.waitForTimeout(700);
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+    // The remove controls show only while the pointer or focus is in the strip.
+    const remove = strip(page).getByRole("button", { name: "Remove criterion 1" });
+    await header(page).getByText("Name", { exact: true }).click();
+    await expect(remove).toHaveCSS("opacity", "0");
     await strip(page).hover();
+    await expect(remove).toHaveCSS("opacity", "1");
     const before = await strip(page).locator(".ws-criterion").count();
-    await strip(page).getByRole("button", { name: "Remove criterion 1" }).click();
+    await remove.click();
     await expect(strip(page).locator(".ws-criterion")).toHaveCount(before - 1);
     await page.keyboard.press(undoKey);
     await expect(strip(page).locator(".ws-criterion")).toHaveCount(before);

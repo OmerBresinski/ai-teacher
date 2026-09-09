@@ -257,15 +257,21 @@
   color: var(--ws-muted);
 }
 
-/* Pinned to the foot of the page it lands on. Pagination reserved the height,
-   so nothing above it moves. Two classes, so the block padding below does not
-   win and leave a gap under the strip. */
+/* The last thing on its page, so no block padding under it. Two classes, so
+   the `.ws-block` rule below does not win; the measuring column shares the
+   class and so measures what the page paints. */
 .ws-block.ws-rag-slot {
+  padding-bottom: 0;
+}
+
+/* Pinned to the foot of the page it lands on. Pagination reserved the height,
+   so nothing above it moves. Scoped to the page: the measuring column keeps
+   the strip in flow. */
+.ws-page .ws-block.ws-rag-slot {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  padding-bottom: 0;
 }
 
 /* ------------------------------------------------------------------ */

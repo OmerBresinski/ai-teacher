@@ -11,8 +11,8 @@ import { useTypingSession, useWorksheet, useWorksheetHistoryApi } from "./worksh
  * The self-assessment strip, typed into (TEACH-196). The markup is `RagStrip`'s — the printed one
  * the measuring column paginates from — with each criterion's text replaced by a `SheetField`, so
  * the strip on screen is exactly the strip the paginator measured. The per-criterion remove button
- * is out of flow and shows while the pointer or focus is in the strip; a new line comes from the
- * "Criterion" button beside the Self-assessment switch in the header toolbar.
+ * is out of flow and shows while the pointer or focus is in the strip (`worksheet-edit.css`); a new
+ * line comes from the "Criterion" button beside the Self-assessment switch in the header toolbar.
  */
 
 export const CRITERION_PLACEHOLDER = "I can …";
@@ -27,10 +27,10 @@ export const EditableRagStrip = memo(function EditableRagStrip() {
 
   // A line the teacher just added (the switch going on, or the Criterion button) takes the caret,
   // so they type straight into it. Only a fresh blank line is focused: a sheet that opens with its
-  // criteria filled in is left alone.
+  // criteria filled in is left alone. New lines append, so the last blank is the one just added.
   useEffect(() => {
     if (criteria.length > seen.current) {
-      const blank = criteria.indexOf("");
+      const blank = criteria.lastIndexOf("");
       if (blank >= 0) {
         rootRef.current?.querySelectorAll<HTMLElement>(".ws-criterion-text")[blank]?.focus();
       }
@@ -53,39 +53,38 @@ export const EditableRagStrip = memo(function EditableRagStrip() {
       data-block-id={RAG_KEY}
       onBlurCapture={onBlurCapture}
     >
-      <RagStrip criteria={criteria}>
-        <ul className="ws-criteria">
-          {criteria.map((text, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: criteria are positional strings; the field at index i edits index i
-            <li key={i} className="ws-criterion">
-              <span className="ws-criterion-box" aria-hidden />
-              <SheetField
-                className="ws-criterion-text"
-                label={`Success criterion ${i + 1}`}
-                value={text}
-                onChange={(next) => typing.run(() => dispatch(setCriterion, i, next))}
-              />
-              {text === "" ? (
-                <span className="ws-criterion-placeholder" aria-hidden>
-                  {CRITERION_PLACEHOLDER}
-                </span>
-              ) : null}
-              <IconButton
-                label={`Remove criterion ${i + 1}`}
-                size="sm"
-                className="ws-criterion-remove"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => {
-                  typing.end();
-                  dispatch(removeCriterion, i);
-                }}
-              >
-                <X size={12} strokeWidth={1.5} aria-hidden />
-              </IconButton>
-            </li>
-          ))}
-        </ul>
-      </RagStrip>
+      <RagStrip
+        criteria={criteria}
+        renderCriteria={(lines) => (
+          <ul className="ws-criteria">
+            {lines.map((text, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: criteria are positional strings; the field at index i edits index i
+              <li key={i} className="ws-criterion">
+                <span className="ws-criterion-box" aria-hidden />
+                <SheetField
+                  className="ws-criterion-text"
+                  label={`Success criterion ${i + 1}`}
+                  placeholder={CRITERION_PLACEHOLDER}
+                  value={text}
+                  onChange={(next) => typing.run(() => dispatch(setCriterion, i, next))}
+                />
+                <IconButton
+                  label={`Remove criterion ${i + 1}`}
+                  size="sm"
+                  className="ws-criterion-remove"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    typing.end();
+                    dispatch(removeCriterion, i);
+                  }}
+                >
+                  <X size={12} strokeWidth={1.5} aria-hidden />
+                </IconButton>
+              </li>
+            ))}
+          </ul>
+        )}
+      />
     </div>
   );
 });

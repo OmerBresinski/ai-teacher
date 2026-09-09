@@ -4,7 +4,7 @@ import { whenFontsReady } from "../layout/measure";
 import { FlowItemContent, SheetHeader } from "./BlockContent";
 import { pageMetrics, pxToPt } from "./metrics";
 import { buildFlow, type FlowItem, HEADER_KEY, type Pagination, paginate } from "./paginate";
-import { sheetVars } from "./Sheet";
+import { flowItemClass, sheetVars } from "./Sheet";
 
 /**
  * Pagination needs real heights, and the only honest source of a rendered height is the browser
@@ -96,7 +96,9 @@ function MeasureColumn({
         <SheetHeader worksheet={worksheet} />
       </div>
       {items.map((item) => (
-        <div className="ws-block" key={item.key} data-measure-key={item.key}>
+        // The same wrapper class as the page, so the strip measures without the block padding it
+        // does not paint with (TEACH-196).
+        <div className={flowItemClass(item)} key={item.key} data-measure-key={item.key}>
           <FlowItemContent item={item} worksheet={worksheet} mode="print" />
         </div>
       ))}

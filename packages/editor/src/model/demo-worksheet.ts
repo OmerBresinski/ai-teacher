@@ -112,15 +112,19 @@ export function fractionsPracticeWorksheet(): Worksheet {
       question("What is 1/4 of 24?", 1, "6"),
       question("Find 3/4 of 24.", 2, "24 ÷ 4 = 6, then 6 × 3 = 18."),
       question("Find 2/3 of 27.", 2, "27 ÷ 3 = 9, then 9 × 2 = 18."),
+      // Four lines each, not the six three marks would give: with the criteria in the strip at the
+      // foot (TEACH-196) the sheet still prints on two pages of Letter.
       question(
         "A packet holds 30 sweets. Amira eats 2/5 of them. How many sweets does she eat, and how many are left?",
         3,
         "30 ÷ 5 = 6, then 6 × 2 = 12 sweets eaten. 30 − 12 = 18 sweets left.",
+        4,
       ),
       question(
         "Sam says 3/8 of 40 is 5, because 40 ÷ 8 = 5. Explain what Sam has forgotten and give the correct answer.",
         3,
         "Sam has found one eighth but forgotten to multiply by the top number. 5 × 3 = 15, so 3/8 of 40 is 15.",
+        4,
       ),
     ],
   );

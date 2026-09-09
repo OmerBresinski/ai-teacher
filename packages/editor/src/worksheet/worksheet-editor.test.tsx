@@ -273,12 +273,19 @@ describe("WorksheetEditor", () => {
     expect(read().header.criteria).toEqual([""]);
     const strip = row(container, RAG_KEY);
     expect(within(strip).getByText("Tick what you can do now")).toBeInTheDocument();
-    expect(within(strip).getByText("I can …")).toBeInTheDocument();
     const field = within(strip).getByRole("textbox", { name: "Success criterion 1" });
+    // The hint is painted by CSS from the attribute and read out as a placeholder, never typed text.
+    expect(field).toHaveAttribute("data-placeholder", "I can …");
+    expect(field).toHaveAttribute("aria-placeholder", "I can …");
+    expect(within(strip).queryByText("I can …")).toBeNull();
     expect(document.activeElement).toBe(field);
     for (let i = 0; i < 5; i++) fireEvent.click(add);
     expect(read().header.criteria?.length).toBe(4);
     expect(add).toBeDisabled();
+    // Each Criterion click appends, so the caret goes to the line just added, not the first blank.
+    expect(document.activeElement).toBe(
+      within(strip).getByRole("textbox", { name: "Success criterion 4" }),
+    );
     // Nothing tick-able in the header.
     expect(row(container, HEADER_KEY).querySelectorAll(".ws-criterion")).toHaveLength(0);
     // Blank rows go when focus leaves the strip.
@@ -288,7 +295,7 @@ describe("WorksheetEditor", () => {
       fireEvent.blur(field, { relatedTarget: document.body });
     });
     expect(read().header.criteria).toEqual(["I can add fractions."]);
-    expect(within(strip).queryByText("I can …")).toBeNull();
+    expect(within(strip).getAllByRole("textbox")).toHaveLength(1);
   });
 
   test("TEACH-196 row 4: a criterion is edited and removed in the strip, in place, undoable", () => {

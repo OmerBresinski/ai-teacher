@@ -3,7 +3,7 @@ import type { PageSize, Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import { parseWorksheet, worksheetMarks } from "@tj/domain/documents";
 import { answerKey } from "../worksheet/answers";
 import { BLOCK_GAP, LINE_GAP, pageMetrics } from "../worksheet/metrics";
-import { buildFlow, HEADER_KEY, paginate } from "../worksheet/paginate";
+import { buildFlow, HEADER_KEY, paginate, RAG_KEY } from "../worksheet/paginate";
 import { generateWordSearch } from "../worksheet/word-search";
 import {
   fractionsPracticeWorksheet,
@@ -67,13 +67,24 @@ function estimateHeight(block: WorksheetBlock, contentW: number): number {
   }
 }
 
-/** Title, objective and the name / date / class row. */
+/**
+ * The name / date / class row, the title, the objective and the marks line, with the criteria gone
+ * to the foot (TEACH-196): 115pt on paper, measured on the seeds.
+ */
 const HEADER_HEIGHT = 120;
+
+/**
+ * The self-assessment strip at the foot (TEACH-196): the "Tick what you can do now" heading, one
+ * 10.5pt line per criterion, then the confidence scale. 66pt plus 20.5pt a criterion on paper (107pt,
+ * 127pt and 147pt for two, three and four, measured), read generously here like the blocks.
+ */
+const stripHeight = (sheet: Worksheet) => 72 + 22 * (sheet.header.criteria?.length ?? 0);
 
 function pagesOf(sheet: Worksheet, size: PageSize) {
   const metrics = pageMetrics(size);
   const heights: Record<string, number> = { [HEADER_KEY]: HEADER_HEIGHT };
   for (const block of sheet.blocks) heights[block.id] = estimateHeight(block, metrics.contentW);
+  if (sheet.selfAssessment) heights[RAG_KEY] = stripHeight(sheet);
   return paginate(buildFlow(sheet, false), heights, HEADER_HEIGHT, metrics.contentH);
 }
 
