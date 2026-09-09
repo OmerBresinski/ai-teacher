@@ -412,6 +412,31 @@ describe("evaluate", () => {
     ]);
   });
 
+  test("illustrate image warnings survive the review", async () => {
+    const state = await generated();
+    const slideId = state.lesson.slides[4]?.id as string;
+    const generation = state.lesson.generation;
+    if (!generation) throw new Error("no generation");
+    const warning: Finding = {
+      check: "image",
+      severity: "warning",
+      target: { slideId, elementId: "e1" },
+      message: "No photograph was found for this slide. Add one from the image panel.",
+    };
+    const withWarning = {
+      ...state,
+      lesson: {
+        ...state.lesson,
+        generation: { ...generation, findings: [...generation.findings, warning] },
+      },
+    };
+    const ai = createFakeAi({ script: [json({ findings: [] })], usage });
+    const next = await evaluate(withWarning, recordingDeps(ai));
+    expect(
+      next.lesson.generation?.findings.filter((f) => f.check === "image").map((f) => f.severity),
+    ).toEqual(["warning"]);
+  });
+
   test("a review that fails twice becomes a warning; the schema checks still run", async () => {
     const state = await generated();
     const broken = {

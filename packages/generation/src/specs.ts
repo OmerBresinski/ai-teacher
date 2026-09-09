@@ -2,6 +2,7 @@ import {
   type FactId,
   FindingSchema,
   GENERATABLE_SLIDE_KINDS,
+  ImageBriefSchema,
   type LessonFacts,
   LessonFactsSchema,
 } from "@tj/domain/documents";
@@ -58,6 +59,7 @@ const outlineEntry = z.strictObject({
   kind: z.enum(GENERATABLE_SLIDE_KINDS),
   minutes: z.number().int().min(1),
   factRefs: z.array(OrdinalRefSchema),
+  imageBrief: ImageBriefSchema.optional(),
 });
 
 /** Which fact lists an outline entry may refer to, checked against the lists actually given. */
@@ -106,6 +108,21 @@ export const PlanSkeletonSchema = z
       refineOutlineRefs(ctx, ["outline", i, "factRefs"], entry.factRefs, {
         objective: skeleton.learningObjectives.length,
       });
+      // The brief rides exactly on picture slides: illustrate reads it, nothing else does.
+      if (entry.kind === "image-text" && entry.imageBrief === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message: `image-text entries carry an imageBrief`,
+          path: ["outline", i, "imageBrief"],
+        });
+      }
+      if (entry.kind !== "image-text" && entry.imageBrief !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message: `imageBrief is only allowed on image-text entries`,
+          path: ["outline", i, "imageBrief"],
+        });
+      }
     });
     // The deck opens with the two slides Plan materialises itself (ADR 0025 §7).
     if (skeleton.outline[0]?.kind !== "title" || skeleton.outline[1]?.kind !== "objectives") {
@@ -239,6 +256,7 @@ export function assignFactIds(
       factRefs: dedupe(
         [...entry.factRefs, ...(added.get(i) ?? [])].map((ref) => id(ref.type, ref.index)),
       ),
+      ...(entry.imageBrief !== undefined ? { imageBrief: entry.imageBrief } : {}),
     })),
     durationMin,
   });

@@ -70,7 +70,7 @@ describe("check-input", () => {
     );
     const generated = first.persisted.find((p) => p.lesson.generation?.stage === "generated");
     if (!generated) throw new Error("no generated checkpoint recorded");
-    expect(resumeFrom(generated.lesson)).toBe("evaluate");
+    expect(resumeFrom(generated.lesson)).toBe("illustrate");
 
     const ai = createFakeAi({ script: [json({ findings: [] })], usage });
     await runLessonPipeline(

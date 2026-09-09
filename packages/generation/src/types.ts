@@ -1,5 +1,6 @@
 import type { AiCallContext, Budget, CreatedAi } from "@tj/ai";
 import type { Finding, GenerationStage, Lesson, SourceRef, Worksheet } from "@tj/domain/documents";
+import type { PhotoResult, StoredPhoto } from "@tj/images";
 import type { Logger } from "pino";
 
 /*
@@ -10,10 +11,17 @@ import type { Logger } from "pino";
 
 /**
  * The `lesson.plan` stages, in order (ADR 0025 §5). `check-input` (TEACH-137) runs first and
- * writes no checkpoint: it either lets the brief through or stops the job; the four after it each
- * write one.
+ * writes no checkpoint: it either lets the brief through or stops the job; `illustrate`
+ * (Images project) places photographs deterministically and writes none either — it is cheap,
+ * idempotent and makes no model call. The four others each write one.
  */
-export type PipelineStageName = "check-input" | "plan" | "generate" | "evaluate" | "repair";
+export type PipelineStageName =
+  | "check-input"
+  | "plan"
+  | "generate"
+  | "illustrate"
+  | "evaluate"
+  | "repair";
 
 /**
  * Every stage a model call can belong to, as it appears in call contexts and failures: the
@@ -29,6 +37,7 @@ export const STAGE_CHECKPOINT: Record<PipelineStageName, GenerationStage | null>
   "check-input": null,
   plan: "planned",
   generate: "generated",
+  illustrate: null,
   evaluate: "evaluated",
   repair: "repaired",
 };
@@ -37,6 +46,7 @@ export const STAGE_ORDER: readonly PipelineStageName[] = [
   "check-input",
   "plan",
   "generate",
+  "illustrate",
   "evaluate",
   "repair",
 ];
@@ -54,6 +64,35 @@ export type SourceLoader = (refs: SourceRef[]) => Promise<SourceText[]>;
 export const noSources: SourceLoader = async () => [];
 
 export type PipelineContext = { lessonId: string; jobId: string };
+
+/**
+ * The image collaborator illustrate talks to (Images project). Injected so `@tj/generation`
+ * still makes no HTTP call itself; the worker closes it over the Pexels client, storage and
+ * Workspace. Types only from `@tj/images` — never a value import.
+ */
+export interface PhotoPlacer {
+  search(
+    query: string,
+    opts: {
+      orientation: "landscape" | "portrait" | "square";
+      perPage: number;
+      signal: AbortSignal;
+    },
+  ): Promise<PhotoResult[]>;
+  store(photo: PhotoResult, target: "slide"): Promise<StoredPhoto>;
+}
+
+/** What the `generation summary` line reports for illustrate (TEACH-159). */
+export interface ImageCounts {
+  requested: number;
+  placed: number;
+  empty: number;
+  failed: number;
+}
+
+export function emptyImageCounts(): ImageCounts {
+  return { requested: 0, placed: 0, empty: 0, failed: 0 };
+}
 
 export interface PipelineDeps {
   ai: CreatedAi;
@@ -73,6 +112,14 @@ export interface PipelineDeps {
   persist: (lesson: Lesson, worksheet?: Worksheet) => Promise<{ updatedAt: string }>;
   onProgress: (percent: number, message: string, documentUpdatedAt?: string) => Promise<void>;
   context: PipelineContext;
+  /** Pexels + bucket behind illustrate; absent → the step logs and returns the state. */
+  images?: PhotoPlacer;
+  /**
+   * Where illustrate reports its counts for the summary line. Stages cannot see the
+   * `RequestContext`, so the per-run counts ride here instead (the same shape of channel as
+   * `budget`, which stages charge the same way). Created by illustrate when absent.
+   */
+  imageCounts?: ImageCounts;
 }
 
 /** What flows between stages: the documents and the id the worker minted for the worksheet row. */

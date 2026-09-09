@@ -28,6 +28,12 @@ export const EnvSchema = z
     AI_LESSON_COST_CAP_USD: z.coerce.number().nonnegative().default(0.5),
     AI_LESSON_TOKEN_CAP: z.coerce.number().int().positive().default(300_000),
     MASTRA_TELEMETRY_DISABLED: optionalString,
+    // --- Images (Pexels, Images project) -------------------------------------------------
+    /**
+     * Pexels API key. Not required in production: an unset key skips illustrate's placements
+     * (the step logs "images disabled"), never a boot failure.
+     */
+    PEXELS_API_KEY: optionalString,
     // --- test-only: the scripted fake in place of Bedrock (ADR 0025 §22) --------------------
     AI_FAKE_SCRIPT: z.enum(["pipeline"]).optional(),
     AI_FAKE_DELAY_MS: z.coerce.number().int().nonnegative().default(0),

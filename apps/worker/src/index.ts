@@ -82,6 +82,8 @@ logger.info(
     ai: deps.ai.kind,
     costCapUsd: deps.caps.capUsd,
     tokenCap: deps.caps.capTokens,
+    images: deps.images ? "pexels" : "disabled",
+    storage: deps.storageKind,
   },
   "worker ready",
 );

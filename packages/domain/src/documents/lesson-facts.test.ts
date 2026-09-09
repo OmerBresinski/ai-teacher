@@ -58,13 +58,50 @@ describe("LessonFactsSchema", () => {
     expect(LessonFactsSchema.safeParse(facts).success).toBe(false);
   });
 
-  test("an outline entry of a non-generatable kind fails (image-text needs an image source)", () => {
+  test("an outline entry of a non-generatable kind fails (image-match still waits)", () => {
     const facts = lessonFacts();
-    facts.outline.push({ id: "s9", kind: "image-text" as never, minutes: 5, factRefs: [] });
+    facts.outline.push({ id: "s9", kind: "image-match" as never, minutes: 5, factRefs: [] });
     const result = LessonFactsSchema.safeParse(facts);
     expect(result.success).toBe(false);
     if (result.success) return;
     expect(result.error.issues[0]?.path).toEqual(["outline", 4, "kind"]);
+  });
+
+  test("an image-text entry parses with a brief; a brief elsewhere is refused", () => {
+    const facts = lessonFacts();
+    facts.outline.push({
+      id: "s9",
+      kind: "image-text",
+      minutes: 5,
+      factRefs: [],
+      imageBrief: { subject: "Roman road" },
+    });
+    expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
+
+    const unbriefed = lessonFacts();
+    unbriefed.outline.push({ id: "s9", kind: "image-text", minutes: 5, factRefs: [] });
+    const missing = LessonFactsSchema.safeParse(unbriefed);
+    expect(missing.success).toBe(false);
+    if (missing.success) return;
+    expect(missing.error.issues.map((issue) => issue.path)).toContainEqual([
+      "outline",
+      4,
+      "imageBrief",
+    ]);
+
+    const misplaced = lessonFacts();
+    misplaced.outline[0] = {
+      ...(misplaced.outline[0] as (typeof misplaced.outline)[number]),
+      imageBrief: { subject: "Roman road" },
+    };
+    const result = LessonFactsSchema.safeParse(misplaced);
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues.map((issue) => issue.path)).toContainEqual([
+      "outline",
+      0,
+      "imageBrief",
+    ]);
   });
 
   test("an outline entry id is unique too, but factRefs may not point at an outline entry", () => {
@@ -129,11 +166,12 @@ describe("FactIdSchema", () => {
 });
 
 describe("generatable kinds (ADR 0025 §8)", () => {
-  test("every generatable slide kind is a SlideKind, and the image/timer/blank kinds are excluded", () => {
+  test("every generatable slide kind is a SlideKind, and image-match/timer/blank are excluded", () => {
+    expect(GENERATABLE_SLIDE_KINDS).toContain("image-text");
     for (const kind of GENERATABLE_SLIDE_KINDS) {
       expect(SlideKindSchema.safeParse(kind).success).toBe(true);
     }
-    for (const excluded of ["image-text", "image-match", "timer", "blank"]) {
+    for (const excluded of ["image-match", "timer", "blank"]) {
       expect(GeneratableSlideKindSchema.safeParse(excluded).success).toBe(false);
     }
     expect(GeneratableSlideKindSchema.options).toEqual([...GENERATABLE_SLIDE_KINDS]);

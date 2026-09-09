@@ -21,8 +21,8 @@ export const FactIdSchema = z.string().regex(FACT_ID_PATTERN, {
 });
 
 /**
- * The slide kinds the pipeline may generate (ADR 0025 §8). `image-text` and `image-match` wait for
- * an image source; `timer`, `blank` and `embed` have no content spec.
+ * The slide kinds the pipeline may generate (ADR 0025 §8). `image-match` still waits for an
+ * image source; `timer`, `blank` and `embed` have no content spec.
  */
 export const GENERATABLE_SLIDE_KINDS = [
   "title",
@@ -41,6 +41,7 @@ export const GENERATABLE_SLIDE_KINDS = [
   "open-response",
   "exit-ticket",
   "plenary",
+  "image-text",
 ] as const;
 export type GeneratableSlideKind = (typeof GENERATABLE_SLIDE_KINDS)[number];
 export const GeneratableSlideKindSchema = z.enum(GENERATABLE_SLIDE_KINDS);
@@ -76,6 +77,16 @@ export type WorkedExample = { id: FactId; problem: string; steps: string[]; answ
 export type FactQuestion = { id: FactId; stem: string; answer: string; reasoning: string };
 export type Misconception = { id: FactId; text: string };
 
+/**
+ * What the pipeline should photograph for an `image-text` slide (Images project). No
+ * orientation: the slot's geometry decides it (ADR 0025 §8, the model never produces geometry).
+ */
+export const ImageBriefSchema = z.strictObject({
+  subject: z.string().trim().min(1).max(60),
+  mustShow: z.string().trim().min(1).max(120).optional(),
+});
+export type ImageBrief = z.infer<typeof ImageBriefSchema>;
+
 /** One slide of the lesson structure Plan decides and Generate follows, in order. */
 export type OutlineEntry = {
   id: FactId;
@@ -84,6 +95,8 @@ export type OutlineEntry = {
   minutes: number;
   /** The facts this slide covers. */
   factRefs: FactId[];
+  /** Required exactly on `image-text` entries; forbidden elsewhere (checked below). */
+  imageBrief?: ImageBrief;
 };
 
 export type LessonFacts = {
@@ -140,6 +153,7 @@ export const OutlineEntrySchema = z.strictObject({
   kind: GeneratableSlideKindSchema,
   minutes: z.number().int().min(1),
   factRefs: z.array(FactIdSchema),
+  imageBrief: ImageBriefSchema.optional(),
 });
 
 /** The arrays whose ids `factRefs` may point at. Outline entries are structure, not facts. */
@@ -192,5 +206,20 @@ export const LessonFactsSchema = z
           });
         }
       });
+      if (entry.kind !== "image-text" && entry.imageBrief !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message: `imageBrief is only allowed on image-text entries`,
+          path: ["outline", i, "imageBrief"],
+        });
+      }
+      // Without a brief illustrate would silently leave the placeholder: refuse the facts.
+      if (entry.kind === "image-text" && entry.imageBrief === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message: `image-text entries carry an imageBrief`,
+          path: ["outline", i, "imageBrief"],
+        });
+      }
     });
   });

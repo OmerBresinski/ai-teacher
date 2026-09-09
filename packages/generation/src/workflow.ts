@@ -5,9 +5,11 @@ import { z } from "zod";
 import { checkInput } from "./stages/check-input";
 import { evaluate } from "./stages/evaluate";
 import { generate } from "./stages/generate";
+import { illustrate } from "./stages/illustrate";
 import { plan } from "./stages/plan";
 import { repair } from "./stages/repair";
 import {
+  emptyImageCounts,
   type PipelineDeps,
   type PipelineStageName,
   type PipelineState,
@@ -115,18 +117,21 @@ function stageStep(
 export const checkInputStep = stageStep("check-input", checkInput);
 export const planStep = stageStep("plan", plan);
 export const generateStep = stageStep("generate", generate);
+export const illustrateStep = stageStep("illustrate", illustrate);
 export const evaluateStep = stageStep("evaluate", evaluate);
 export const repairStep = stageStep("repair", repair);
 
 export const lessonWorkflow = createWorkflow({
   id: "lesson-plan",
-  description: "Check input → Plan → Generate → Evaluate → Repair for one lesson (ADR 0025)",
+  description:
+    "Check input → Plan → Generate → Illustrate → Evaluate → Repair for one lesson (ADR 0025)",
   inputSchema: StateSchema,
   outputSchema: StateSchema,
 })
   .then(checkInputStep)
   .then(planStep)
   .then(generateStep)
+  .then(illustrateStep)
   .then(evaluateStep)
   .then(repairStep)
   .commit();
@@ -194,6 +199,7 @@ export async function runLessonPipeline(
           stages: (requestContext.getRaw(ENTERED_KEY) as PipelineStageName[] | undefined) ?? [],
           ...deps.budget.totals(),
           findings,
+          images: deps.imageCounts ?? emptyImageCounts(),
           durationMs: Date.now() - startedAt,
         },
       },

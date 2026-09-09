@@ -589,16 +589,16 @@ const CONTRACT = [
   // --- images (Pexels, Images project) ----------------------------------------------------------
   {
     name: "PEXELS_API_KEY",
-    services: ["api"],
+    services: ["api", "worker"],
     scope: "secret",
     local: null,
     railway: "prod",
     vercel: "n/a",
     setBy: "manual",
     format: "string",
-    files: ["api"],
+    files: ["api", "worker"],
     description:
-      "Pexels API key for photo search. Read once at boot; when unset `GET /images/search` answers `503` instead of failing the boot. Set on Railway, never in git.",
+      "Pexels API key for photo search. Read once at boot; when unset `GET /images/search` answers `503` and the pipeline skips placements instead of failing the boot. Set on Railway, never in git.",
   },
 
   // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------------------

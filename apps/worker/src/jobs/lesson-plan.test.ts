@@ -11,7 +11,13 @@ import {
   parseStoredWorksheet,
 } from "@tj/domain/documents";
 import { INPUT_CHECK_MESSAGES, noSources } from "@tj/generation";
-import { FIXTURES, pipelineScript, SLIDES_INDEX, scriptedPipelineAi } from "@tj/generation/testing";
+import {
+  FIXTURES,
+  PLAN_INDEX,
+  pipelineScript,
+  SLIDES_INDEX,
+  scriptedPipelineAi,
+} from "@tj/generation/testing";
 import { NonRetryableError } from "@tj/jobs";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
@@ -33,11 +39,16 @@ describeDb("lesson.plan job", () => {
   const ws = () => forWorkspace(unsafeDb, workspaceId);
   const quiet = pino({ level: "silent" });
 
-  const depsWith = (ai: WorkerDeps["ai"], caps?: WorkerDeps["caps"]): WorkerDeps => ({
+  const depsWith = (
+    ai: WorkerDeps["ai"],
+    caps?: WorkerDeps["caps"],
+    images?: WorkerDeps["images"],
+  ): WorkerDeps => ({
     ai,
     db: unsafeDb,
     caps: caps ?? { capUsd: 5, capTokens: 1_000_000 },
     sources: noSources,
+    images,
   });
 
   beforeEach(async () => {
@@ -121,6 +132,100 @@ describeDb("lesson.plan job", () => {
     expect(stamped.at(-1)?.[2]).toBe(row?.updatedAt.toISOString());
     const ats = stamped.map(([, , at]) => Date.parse(at ?? ""));
     expect([...ats].sort((a, b) => a - b)).toEqual(ats);
+  });
+
+  test("illustrate places a pexels photo with provenance on the image-text slide", async () => {
+    const jobId = newId<JobId>();
+    const lessonId = await briefLesson(jobId);
+    const skeleton = structuredClone(FIXTURES.planSkeleton);
+    const swapped = skeleton.outline[4];
+    if (swapped?.kind !== "content") throw new Error("fixture outline moved");
+    skeleton.outline[4] = {
+      kind: "image-text",
+      minutes: swapped.minutes,
+      factRefs: swapped.factRefs,
+      imageBrief: { subject: "river severn" },
+    };
+    const ai = scriptedPipelineAi({
+      overrides: {
+        [PLAN_INDEX]: JSON.stringify(skeleton),
+        [SLIDES_INDEX + 2]: JSON.stringify({
+          kind: "image-text",
+          factRefs: ["o1"],
+          heading: "Rivers",
+          body: "Rivers flow to the sea.",
+        }),
+      },
+    });
+    const photo = {
+      id: "p1",
+      width: 4000,
+      height: 6000,
+      alt: "River",
+      photographer: "Ada",
+      photographerUrl: "https://www.pexels.com/@ada/",
+      pageUrl: "https://www.pexels.com/photo/p1/",
+      src: {
+        large: "https://images.pexels.com/photos/p1/large.jpeg",
+        medium: "https://images.pexels.com/photos/p1/medium.jpeg",
+        tiny: "https://images.pexels.com/photos/p1/tiny.jpeg",
+      },
+    };
+    const puts: { key: string; contentType: string }[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      const bytes = new Uint8Array([1, 2, 3]);
+      return new Response(bytes, {
+        status: 200,
+        headers: { "content-type": "image/jpeg", "content-length": "3" },
+      });
+    }) as unknown as typeof globalThis.fetch;
+    try {
+      const h = ctx(
+        jobId,
+        lessonId,
+        depsWith(ai, undefined, {
+          client: {
+            search: async () => ({ photos: [photo], nextPage: null }),
+            photo: async () => null,
+          },
+          storage: {
+            put: async (key: string, _body: Uint8Array, opts: { contentType: string }) => {
+              puts.push({ key, contentType: opts.contentType });
+              return { key };
+            },
+            getSignedUrl: () => Promise.reject(new Error("unused")),
+            delete: () => Promise.reject(new Error("unused")),
+            list: () => (async function* () {})(),
+          },
+        }),
+      );
+
+      await lessonPlanJob(h.ctx);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+
+    const lesson = parseLesson((await getDocument(ws(), lessonId))?.body);
+    const slide = lesson.slides.find((s) => s.kind === "image-text");
+    const element = slide?.elements.find((el) => el.type === "image");
+    expect(
+      element?.type === "image" && element.src.startsWith(`/files/${workspaceId}/images/`),
+    ).toBe(true);
+    expect(element?.type === "image" && element.source?.provider).toBe("pexels");
+    expect(element?.type === "image" && element.authoredBy).toBe("ai");
+  });
+
+  test("without a pexels key the image deps are disabled and the pipeline still runs", async () => {
+    const { createWorkerDeps } = await import("../deps");
+    const { parseEnv } = await import("../env");
+    const deps = createWorkerDeps(
+      parseEnv({ DATABASE_URL: "postgres://postgres:postgres@localhost:5432/teaching_journey" }),
+      quiet,
+      unsafeDb,
+    );
+    expect(deps.images).toBeUndefined();
+    expect(deps.storageKind).toBeDefined();
   });
 
   test("a row locked by another job is a NonRetryableError: no write, no model call", async () => {
