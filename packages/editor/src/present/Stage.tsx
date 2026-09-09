@@ -1,5 +1,11 @@
 import type { Lesson, Slide, SlideElement, Theme, TransitionId } from "@tj/domain/documents";
-import { hasRevealableAnswer, SLIDE_H, SLIDE_W, slideStepCount } from "@tj/domain/documents";
+import {
+  answerStepsTaken,
+  hasRevealableAnswer,
+  SLIDE_H,
+  SLIDE_W,
+  slideStepCount,
+} from "@tj/domain/documents";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
@@ -187,7 +193,16 @@ export function Stage({ lesson, theme }: StageProps) {
 
 function SlideLayer({ slide, theme, step }: { slide: Slide; theme: Theme; step: number }) {
   const reveal = hasRevealableAnswer(slide) && step >= slideStepCount(slide);
-  return <SlideView slide={slide} theme={theme} mode="present" step={step} revealAnswer={reveal} />;
+  return (
+    <SlideView
+      slide={slide}
+      theme={theme}
+      mode="present"
+      step={step}
+      revealAnswer={reveal}
+      answerProgress={answerStepsTaken(slide, step)}
+    />
+  );
 }
 
 /* ------------------------------------------------------------------ */

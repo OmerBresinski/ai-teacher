@@ -44,6 +44,7 @@ export function OptionView({
   mode,
   slideId,
   revealAnswer,
+  answerProgress = 0,
   question,
   optionIndex,
 }: ElementViewProps<OptionElement>) {
@@ -53,7 +54,10 @@ export function OptionView({
   const showing = revealAnswer && state !== null;
 
   const correct = showing && state === "correct";
-  const wrong = showing && state === "incorrect";
+  // A wrong card dims on its own step before the answer fills (TEACH-185): the nth wrong option
+  // goes at the nth step, in the order the question lists them.
+  const wrong =
+    state === "incorrect" && (revealAnswer || answerProgress > wrongRank(element.id, question));
 
   // research/04 §4 sets option cards at small/1.35, tighter than the theme's body copy.
   // The `option` role carries the 31pt projector floor the `small` stop does not.
@@ -170,5 +174,14 @@ export function OptionView({
         render={({ editor }) => card(editor)}
       />
     </Suspense>
+  );
+}
+
+/** Position of a wrong option among the wrong options; a true-or-false slide has one. */
+function wrongRank(id: string, question: ElementViewProps["question"]): number {
+  if (question?.type !== "multiple-choice") return 0;
+  return Math.max(
+    0,
+    question.options.filter((o) => !o.correct).findIndex((o) => o.id === id),
   );
 }

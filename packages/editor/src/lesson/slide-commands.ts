@@ -1,4 +1,4 @@
-import type { Id, Lesson, SlideKind } from "@tj/domain/documents";
+import type { Id, Lesson, Slide, SlideKind } from "@tj/domain/documents";
 import * as reducers from "../model/reducers";
 import type { HistoryApi } from "./document-context";
 import type { SessionActions } from "./use-editor-session";
@@ -38,6 +38,17 @@ export function addSlideAfter(
   const id = made?.id ?? null;
   if (id) session.setActiveSlide(id);
   return id;
+}
+
+/** Insert a slide the activity picker built (TEACH-185) after `afterId` and make it active. */
+export function insertSlideAfter(
+  { history, session }: SlideCommandDeps,
+  afterId: Id | null,
+  slide: Slide,
+): Id {
+  history.dispatch(reducers.insertSlide, slide, afterId);
+  session.setActiveSlide(slide.id);
+  return slide.id;
 }
 
 /** Deleting the active slide moves to its neighbour; the last slide never goes. */

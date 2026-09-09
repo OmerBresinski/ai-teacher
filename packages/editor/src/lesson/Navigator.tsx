@@ -33,7 +33,7 @@ import { hint } from "./keys";
 import { useProposals } from "./proposals-context";
 import { useResidualFindings } from "./residual-findings";
 import { SlideBadge } from "./SlideBadge";
-import { addSlideAfter, duplicateSlide, regenerateSlide } from "./slide-commands";
+import { addSlideAfter, duplicateSlide, insertSlideAfter, regenerateSlide } from "./slide-commands";
 import { useActiveSlideId, useSessionActions, useSessionUi } from "./use-editor-session";
 
 /*
@@ -226,6 +226,10 @@ export function Navigator() {
   const addAfterCurrent = (kind: SlideKind) => {
     const made = addSlideAfter(deps, activeId, kind);
     if (made) setPicked({ ids: [made], forActive: made });
+  };
+  const insertAfterCurrent = (slide: Slide) => {
+    const made = insertSlideAfter(deps, activeId, slide);
+    setPicked({ ids: [made], forActive: made });
   };
 
   const goTo = (i: number, extend = false) => {
@@ -455,7 +459,9 @@ export function Navigator() {
       <div className="flex h-8 shrink-0 items-center gap-1 border-border border-t px-1.5">
         <AddSlidePicker
           themeId={lesson.themeId}
+          facts={lesson.facts}
           onPick={addAfterCurrent}
+          onInsert={insertAfterCurrent}
           side="top"
           trigger={
             <Button variant="ghost" size="sm" className="h-6 flex-1 justify-start px-1.5">
