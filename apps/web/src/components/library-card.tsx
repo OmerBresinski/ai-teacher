@@ -53,6 +53,7 @@ function DocumentLink({
   children,
   onDoubleClick,
   ref,
+  decorative = false,
 }: {
   doc: DocumentSummary;
   className?: string;
@@ -60,8 +61,12 @@ function DocumentLink({
   children?: ReactNode;
   onDoubleClick?: React.MouseEventHandler<HTMLAnchorElement>;
   ref?: React.Ref<HTMLAnchorElement>;
+  /** A second click target for the same document: out of the tab order and the accessibility tree. */
+  decorative?: boolean;
 }) {
-  const props = { className, hidden, onDoubleClick, ref, "aria-label": `Open ${doc.title}` };
+  const props = decorative
+    ? { className, hidden, ref, tabIndex: -1, "aria-hidden": true }
+    : { className, hidden, onDoubleClick, ref, "aria-label": `Open ${doc.title}` };
   return doc.kind === "lesson" ? (
     <Link to="/l/$lessonId" params={{ lessonId: doc.id }} {...props}>
       {children}
@@ -128,6 +133,24 @@ function DocumentMenu({
 
 const KIND_LABEL = { lesson: "Lesson", worksheet: "Worksheet", series: "Series" } as const;
 
+/**
+ * How long a sheet takes, from its marks: a mark and a half each, rounded up to the next five
+ * minutes, never under five. TEACH-183 adds `estimateMinutes` to `@tj/editor`'s worksheet
+ * metrics; swap this for it once that lands (ruling 55: minutes on every card).
+ */
+export function minutesForMarks(marks: number): number {
+  return Math.max(5, Math.ceil((marks * 1.5) / 5) * 5);
+}
+
+/** "12 marks · 20 min" for a worksheet card; a sheet with no marked questions shows the minutes. */
+export function worksheetEffort(doc: Pick<DocumentSummary, "kind" | "marks">): string | null {
+  if (doc.kind !== "worksheet") return null;
+  const marks = doc.marks ?? 0;
+  const minutes = `${minutesForMarks(marks)} min`;
+  if (marks === 0) return minutes;
+  return `${marks} mark${marks === 1 ? "" : "s"} · ${minutes}`;
+}
+
 /** The kind as a 16px glyph in the meta line, with the word in a tooltip (TeachDeck `KindIcon`). */
 function KindIcon({ kind }: { kind: DocumentSummary["kind"] }) {
   const Glyph = kind === "lesson" ? Presentation : FileText;
@@ -168,6 +191,7 @@ export const LibraryCard = memo(function LibraryCard({
       }),
   });
   const subject = yearAndSubject(doc);
+  const effort = worksheetEffort(doc);
   const primaryLabel = doc.kind === "lesson" ? "Present" : "Print";
 
   function primaryAction(): void {
@@ -189,9 +213,14 @@ export const LibraryCard = memo(function LibraryCard({
     return (
       <ListSurfaceRow onKeyDown={rename.onCardKeyDown} className={className}>
         <ListSurfaceCell className="w-16">
-          <div className="h-9 w-16 overflow-hidden rounded-chip">
+          {/* The thumbnail opens the document like the title; the title link is the tab stop. */}
+          <DocumentLink
+            doc={doc}
+            decorative
+            className="relative z-2 block h-9 w-16 overflow-hidden rounded-chip"
+          >
             <LessonThumb lesson={doc} />
-          </div>
+          </DocumentLink>
         </ListSurfaceCell>
         <ListSurfaceCell className="min-w-0">
           {rename.editing ? (
@@ -211,7 +240,9 @@ export const LibraryCard = memo(function LibraryCard({
           )}
         </ListSurfaceCell>
         <ListSurfaceCell className="w-32 truncate text-meta text-ink-3">{subject}</ListSurfaceCell>
-        <ListSurfaceCell className="w-[152px] text-meta text-ink-3">{sizeOf(doc)}</ListSurfaceCell>
+        <ListSurfaceCell className="w-[152px] text-meta text-ink-3">
+          {effort ?? sizeOf(doc)}
+        </ListSurfaceCell>
         <ListSurfaceCell className="w-24 text-meta text-ink-3">
           <EditedTime updatedAt={doc.updatedAt} />
         </ListSurfaceCell>
@@ -239,7 +270,7 @@ export const LibraryCard = memo(function LibraryCard({
       <KindIcon kind={doc.kind} />
       {subject ? <span>{subject}</span> : null}
       {subject ? <span aria-hidden>·</span> : null}
-      <span>{sizeOf(doc)}</span>
+      <span>{effort ?? sizeOf(doc)}</span>
       <span aria-hidden>·</span>
       <EditedTime updatedAt={doc.updatedAt} prefix="Edited " />
     </>
@@ -248,6 +279,8 @@ export const LibraryCard = memo(function LibraryCard({
       <KindIcon kind={doc.kind} />
       {subject ? <span>{subject}</span> : null}
       {subject ? <span aria-hidden>·</span> : null}
+      {effort ? <span>{effort}</span> : null}
+      {effort ? <span aria-hidden>·</span> : null}
       <EditedTime updatedAt={doc.updatedAt} />
     </>
   );

@@ -12,10 +12,11 @@ import { tenantColumns, tenantIndexes } from "./_columns";
  *   repository rewrites `body.id` to the row id on create (§11), so the two never disagree.
  * - `kind` is a Postgres enum so a list query can filter on it with an index and a bad value fails
  *   at the database boundary too.
- * - `title`, `subject`, `year_group`, `theme_id`, `item_count`, `cover` are **promoted columns**:
- *   copies of `summarise(body)` written on every insert and update, so the Library list reads them
- *   without touching `body`. `cover` is the first slide with data-URL images stripped (ADR 0021
- *   §5), `null` for worksheets and series.
+ * - `title`, `subject`, `year_group`, `theme_id`, `item_count`, `marks`, `cover` are **promoted
+ *   columns**: copies of `summarise(body)` written on every insert and update, so the Library list
+ *   reads them without touching `body`. `cover` is the first slide with data-URL images stripped
+ *   (ADR 0021 §5), `null` for worksheets and series. `marks` is a worksheet's total, `null` for
+ *   the other kinds (TEACH-186).
  * - `updated_at` has `DEFAULT now()` but no trigger: the repository sets it explicitly on update
  *   and compares it for optimistic concurrency (§4), so the value must be the one a client saw.
  * - `deleted_at` is the soft-delete flag (§5); lists exclude it, `restore` clears it, and there is
@@ -40,6 +41,7 @@ export const documents = pgTable(
     yearGroup: text("year_group"),
     themeId: text("theme_id"),
     itemCount: integer("item_count").notNull(),
+    marks: integer("marks"),
     cover: jsonb("cover").$type<Slide>(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     generatingJobId: uuid("generating_job_id"),

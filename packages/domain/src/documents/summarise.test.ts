@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { lesson, titleSlide, worksheet } from "./fixtures.test-helpers";
+import { lesson, text, titleSlide, worksheet } from "./fixtures.test-helpers";
 import type { Series } from "./series";
 import type { Slide, SlideElement } from "./slide";
 import {
@@ -8,6 +8,7 @@ import {
   DocumentSummarySchema,
   documentKind,
   summarise,
+  worksheetMarks,
 } from "./summarise";
 
 const series = (): Series => ({
@@ -95,11 +96,33 @@ describe("summarise", () => {
       yearGroup: "Year 3",
       themeId: "playground",
       itemCount: 7,
+      marks: 0,
       cover: null,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     });
     expect(DocumentSummarySchema.safeParse(summary).success).toBe(true);
+  });
+
+  test("a worksheet's marks are the sum of its question blocks' marks (TEACH-186)", () => {
+    const doc = worksheet();
+    const question = (id: string, marks?: number) =>
+      ({ id, type: "question", doc: text("Q"), answerLines: 2, marks }) as const;
+    doc.blocks = [
+      question("a", 1),
+      question("b", 3),
+      question("c"),
+      { id: "d", type: "divider" },
+      {
+        id: "e",
+        type: "multiple-choice",
+        doc: text("Which?"),
+        options: [{ id: "o", text: "A", correct: true }],
+      },
+    ];
+    expect(worksheetMarks(doc.blocks)).toBe(4);
+    expect(summarise(doc).marks).toBe(4);
+    expect(summarise(lesson()).marks).toBeUndefined();
   });
 
   test("a series: lesson count, null cover, no theme, subject or year group", () => {

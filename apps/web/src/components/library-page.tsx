@@ -224,6 +224,18 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
+            {kind === "worksheet" ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onPointerEnter={warmNewDocumentDialog}
+                onFocus={warmNewDocumentDialog}
+                onClick={() => openCreate("worksheet")}
+              >
+                <FileText aria-hidden size={16} />
+                New worksheet
+              </Button>
+            ) : null}
             {isSeries ? null : (
               <IconGroup aria-label="View">
                 <IconButton

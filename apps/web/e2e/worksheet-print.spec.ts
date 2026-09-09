@@ -1,8 +1,8 @@
 /**
  * `/w/$worksheetId/print` (TEACH-108): the paginated sheet, `?auto=1`, print media and the PDF
- * page count. The demo (`fraction-practice`) and starter (`roman-source`) worksheets both ship
+ * page count. The seeded `fraction-practice` and `roman-source` worksheets (TEACH-186) both ship
  * without an answer key, so its absence is what can be asserted here; the key itself is covered by
- * `packages/editor/src/worksheet/sheet.test.tsx`.
+ * `packages/editor/src/worksheet/sheet.test.tsx` and `worksheet-library.spec.ts`.
  */
 import { expectNoSeriousA11yViolations } from "./a11y";
 import { expect, test } from "./fixtures";
@@ -29,17 +29,15 @@ test.describe("worksheet print route", () => {
     await expect(page.locator(".ws-print-root")).toHaveCSS("visibility", "visible");
     const count = await pages.count();
     expect(count).toBeGreaterThanOrEqual(1);
-    await expect(
-      page.getByRole("heading", { level: 1, name: "The water cycle: check your understanding" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Fractions practice" })).toBeVisible();
     for (const label of ["Name", "Date", "Class"]) {
       await expect(pages.first().getByText(label, { exact: true })).toBeVisible();
     }
     await expect(pages.first().getByText(`Page 1 of ${count}`)).toBeVisible();
     await expect(pages.last().getByText(`Page ${count} of ${count}`)).toBeVisible();
-    // Every block on exactly one page: the demo has 8 blocks.
-    await expect(page.locator(".ws-print-root .ws-block")).toHaveCount(8);
-    await expect(page.locator(".ws-print-root .ws-wordbank-label")).toHaveText("Word bank");
+    // Every block on exactly one page: the sheet has 9 blocks, six of them marked questions.
+    await expect(page.locator(".ws-print-root .ws-block")).toHaveCount(9);
+    await expect(page.locator(".ws-print-root .ws-marks")).toHaveCount(6);
     // No answer key when the sheet does not ask for one; no app chrome; no won't-fit hint.
     await expect(page.getByRole("heading", { level: 2, name: "Answer key" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Back to the library" })).toHaveCount(0);
@@ -101,7 +99,7 @@ test.describe("worksheet print route", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Roman source investigation" }),
     ).toBeVisible();
-    await expect(page.getByText("Page 1 of 1")).toBeVisible();
+    await expect(page.getByText(/^Page 1 of [12]$/)).toBeVisible();
 
     await page.goto(`/w/${paths.id("demo-water-cycle")}/print`);
     await expect(page.getByText("This is a lesson")).toBeVisible();
