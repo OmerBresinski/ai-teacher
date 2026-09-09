@@ -101,8 +101,11 @@ test.describe("worksheet creation", () => {
       page.locator("[data-topbar]").getByRole("heading", { level: 1, name: "The water cycle" }),
     ).toBeVisible();
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
-    // The exit ticket frame: three questions, the answer box, the placeholder.
-    await expect(page.locator(".ws-column .ws-block")).toHaveCount(5);
+    // The exit ticket frame: the instruction line, three questions, the answer box, the placeholder.
+    await expect(page.locator(".ws-column .ws-block")).toHaveCount(6);
+    await expect(page.locator(".ws-column .ws-instructions").first()).toHaveText(
+      "Answer each question in one or two sentences.",
+    );
     await expect(page.locator(".ws-column")).toContainText("One thing I learned");
     await expect(page.locator(".ws-column .ws-objective")).toHaveText(
       "Name the four stages of the water cycle in order.",

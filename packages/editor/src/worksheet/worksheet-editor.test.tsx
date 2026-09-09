@@ -84,9 +84,10 @@ describe("WorksheetEditor", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add a block" });
     fireEvent.click(within(dialog).getByRole("button", { name: /^Exit ticket\./ }));
     const after = read().blocks;
-    // Three questions, the answer box and the placeholder, appended in order.
-    expect(after.length).toBe(before + 5);
+    // The instruction, three questions, the answer box and the placeholder, appended in order.
+    expect(after.length).toBe(before + 6);
     expect(after.slice(before).map((b) => b.type)).toEqual([
+      "instructions",
       "question",
       "question",
       "question",
@@ -112,7 +113,7 @@ describe("WorksheetEditor", () => {
     const list = await screen.findByRole("listbox", { name: "Block types" });
     const sections = within(list).getByRole("group", { name: "Sections" });
     expect(within(sections).getAllByRole("option").length).toBe(9);
-    expect(within(list).getAllByRole("option").length).toBe(25);
+    expect(within(list).getAllByRole("option").length).toBe(27);
     fireEvent.change(screen.getByRole("combobox", { name: "Filter blocks" }), {
       target: { value: "exit" },
     });
@@ -121,6 +122,7 @@ describe("WorksheetEditor", () => {
     expect(left[0]?.textContent).toContain("Exit ticket");
     fireEvent.pointerDown(left[0] as HTMLElement, pointer());
     expect(read().blocks.map((b) => b.type)).toEqual([
+      "instructions",
       "question",
       "question",
       "question",
@@ -158,9 +160,12 @@ describe("WorksheetEditor", () => {
     if (mc?.type !== "multiple-choice") throw new Error("seed");
     select(container, mc.id);
     const count = mc.options.length;
+    // The seed has the guide's maximum of four options (TEACH-194): Add is off until one goes.
+    expect(screen.getByRole("button", { name: "Option" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Remove last option" }));
     fireEvent.click(screen.getByRole("button", { name: "Option" }));
     const grown = read().blocks.find((b) => b.id === mc.id);
-    expect(grown?.type === "multiple-choice" && grown.options.length).toBe(count + 1);
+    expect(grown?.type === "multiple-choice" && grown.options.length).toBe(count);
     // The marker beside B, outside the pupil's box (TEACH-195): B becomes the one answer.
     const markB = within(row(container, mc.id)).getByRole("button", { name: "Answer: option B" });
     fireEvent.click(markB);

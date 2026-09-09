@@ -98,9 +98,9 @@ export function newBlock(type: WorksheetBlockType): WorksheetBlock {
         id,
         type: "matching",
         pairs: [
-          { id: uid(), left: "Term one", right: "Definition in one sentence" },
-          { id: uid(), left: "Term two", right: "Definition in one sentence" },
-          { id: uid(), left: "Term three", right: "Definition in one sentence" },
+          { id: uid(), left: "Term one", right: "Definition of term one" },
+          { id: uid(), left: "Term two", right: "Definition of term two" },
+          { id: uid(), left: "Term three", right: "Definition of term three" },
         ],
       };
     case "word-search":

@@ -1,5 +1,9 @@
 import type { Id, LessonFacts, WorksheetBlock } from "@tj/domain/documents";
-import { WORD_SEARCH_MAX_SIZE } from "@tj/domain/documents";
+import {
+  BLOCK_GUIDES,
+  FILL_GAP_BANK_INSTRUCTION,
+  WORD_SEARCH_MAX_SIZE,
+} from "@tj/domain/documents";
 import { clampSize, normaliseWords } from "../worksheet/word-search";
 import { docFromText, now, uid } from "./factories";
 import { answerLinesForMarks, WORD_SEARCH_DEFAULT_SIZE } from "./worksheet-factories";
@@ -155,6 +159,13 @@ function fillGap(
 const wordBank = (words: string[], refs?: string[]): WorksheetBlock =>
   cite({ id: uid(), type: "word-bank", words }, refs);
 
+/** The guide's default instruction for a task block (TEACH-194); every task type has one. */
+function guideLine(type: WorksheetBlock["type"]): string {
+  const line = BLOCK_GUIDES[type].instruction;
+  if (!line) throw new Error(`No default instruction for ${type}`);
+  return line;
+}
+
 const PLACEHOLDER_TERMS = ["Term one", "Term two", "Term three", "Term four"];
 
 /* ---- the nine ---------------------------------------------------------------- */
@@ -169,6 +180,7 @@ const exitTicket: WorksheetRecipe = {
     const questions = questionsFrom(facts, [1, 1, 1]);
     const refs = facts ? factRefsOf(questions) : undefined;
     return [
+      instructions("Answer each question in one or two sentences.", refs),
       ...questions,
       cite({ id: uid(), type: "answer-box", heightPt: 90, label: "One thing I learned" }, refs),
       placeholder("a fourth question on the objective the class found hardest.", refs),
@@ -219,7 +231,12 @@ const misconceptionCheck: WorksheetRecipe = {
     return [
       instructions("Tick True or False for each claim.", refs),
       ...claims,
-      question("Choose one false claim. Explain why it is wrong.", 2, undefined, refs),
+      question(
+        "Choose one false claim. Explain why it is wrong.",
+        2,
+        "Any false claim above, with the reason it is wrong taken from the lesson.",
+        refs,
+      ),
       placeholder(
         "each claim again in pupil language, and one more for any objective not covered.",
         refs,
@@ -253,7 +270,7 @@ const cloze: WorksheetRecipe = {
           ]);
         });
     return [
-      instructions("Fill each gap with a word from the bank. Each word is used once.", vocabRefs),
+      instructions(FILL_GAP_BANK_INSTRUCTION, vocabRefs),
       wordBank(terms, vocabRefs),
       ...sentences,
       placeholder(
@@ -274,14 +291,16 @@ const matching: WorksheetRecipe = {
     const vocabRefs = facts ? facts.vocabulary.map((v) => v.id) : undefined;
     const pairs = facts
       ? facts.vocabulary.map((v) => ({ id: uid(), left: v.term, right: v.definition }))
-      : PLACEHOLDER_TERMS.map((term) => ({ id: uid(), left: term, right: "Write its definition" }));
+      : PLACEHOLDER_TERMS.map((term) => ({
+          id: uid(),
+          left: term,
+          // Distinct placeholders: the right column is shuffled and lettered, so two identical
+          // rights would be the fault ruling 61 was raised for (`blockProblems` names it).
+          right: `Definition of ${term.toLowerCase()}`,
+        }));
     return [
-      instructions("Match each term to its definition. Write the letter in the box.", vocabRefs),
+      instructions(guideLine("matching"), vocabRefs),
       cite({ id: uid(), type: "matching", pairs }, vocabRefs),
-      wordBank(
-        pairs.map((p) => p.left),
-        vocabRefs,
-      ),
       placeholder("a second matching block: cause to effect, or example to idea.", vocabRefs),
     ];
   },
@@ -308,12 +327,12 @@ const wordSearch: WorksheetRecipe = {
       Math.max(WORD_SEARCH_DEFAULT_SIZE, ...inGrid.map((v) => gridLength(v.term))),
     );
     const words = facts ? inGrid.map((v) => v.term) : ["write", "your", "words", "here"];
-    const lead = "Find every word in the grid. They run across and down.";
+    // The block prints its own lead, so the recipe adds no instruction line (TEACH-194); a term
+    // left out is named in a note under the grid.
     const note = leftOut.length
-      ? ` Not in the grid: ${leftOut.map((v) => v.term).join(", ")}.`
-      : "";
+      ? [paragraph(`Not in the grid: ${leftOut.map((v) => v.term).join(", ")}.`, vocabRefs)]
+      : [];
     return [
-      instructions(`${lead}${note}`, vocabRefs),
       cite(
         {
           id: uid(),
@@ -326,6 +345,7 @@ const wordSearch: WorksheetRecipe = {
         },
         facts ? inGrid.map((v) => v.id) : undefined,
       ),
+      ...note,
     ];
   },
 };
@@ -355,6 +375,7 @@ const workedExample: WorksheetRecipe = {
       heading("Worked example", exampleRefs),
       paragraph(exampleText, exampleRefs),
       heading("Now try", refs, 2),
+      instructions("Use the example above to answer these.", refs),
       ...tries,
       ...(missing
         ? [

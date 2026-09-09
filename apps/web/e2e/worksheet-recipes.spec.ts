@@ -64,14 +64,23 @@ test.describe("worksheet recipes", () => {
     await expect(exit).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(d).toBeHidden();
-    await expect(blocks(page)).toHaveCount(before + 5);
-    // The first inserted block (a question) is selected and its editor has the caret.
+    // Six blocks (TEACH-194): the instruction line, three questions, the answer box, the placeholder.
+    await expect(blocks(page)).toHaveCount(before + 6);
+    // The first inserted block (the instruction line) is selected and its editor has the caret.
     const first = blocks(page).nth(before);
+    await expect(first.locator(".ws-instructions")).toHaveText(
+      "Answer each question in one or two sentences.",
+    );
     await expect(first.locator(".ws-selected-ring")).toBeVisible();
     await expect(first.locator(".ProseMirror")).toBeFocused();
     await expect(
       blocks(page)
-        .nth(before + 3)
+        .nth(before + 1)
+        .locator(".ws-q-stem"),
+    ).toBeVisible();
+    await expect(
+      blocks(page)
+        .nth(before + 4)
         .locator(".ws-answerbox-label"),
     ).toHaveText("One thing I learned");
     await page.keyboard.press(undoKey);
@@ -94,12 +103,17 @@ test.describe("worksheet recipes", () => {
     await d.getByRole("button", { name: /^Matching\./ }).click();
     await expect(d).toBeHidden();
     const after = await ids();
-    expect(after.length).toBe(before.length + 4);
+    // Three blocks (TEACH-194 dropped the trailing word bank): the instruction line, the matching
+    // block and the placeholder, right after block 2.
+    expect(after.length).toBe(before.length + 3);
     expect(after.slice(0, 2)).toEqual(before.slice(0, 2));
-    expect(after.slice(6)).toEqual(before.slice(2));
-    // Instructions, the matching block, the word bank and the placeholder, right after block 2.
+    expect(after.slice(5)).toEqual(before.slice(2));
+    await expect(blocks(page).nth(2).locator(".ws-instructions")).toHaveText(
+      "Match each item on the left to one on the right. Write the letter in the box.",
+    );
     await expect(blocks(page).nth(3).locator(".ws-match")).toBeVisible();
-    await expect(blocks(page).nth(4).locator(".ws-wordbank")).toBeVisible();
+    await expect(blocks(page).nth(4)).toContainText("Generation writes this part");
+    await expect(blocks(page).nth(4).locator(".ws-wordbank")).toHaveCount(0);
   });
 
   test("row 7: `/exit` in the slash menu lists Exit ticket under Sections", async ({
@@ -125,8 +139,8 @@ test.describe("worksheet recipes", () => {
     await expect(options.first()).toContainText("Exit ticket");
     await expect(list.getByRole("group", { name: "Sections" })).toBeVisible();
     await page.keyboard.press("Enter");
-    // The empty paragraph is replaced by the five blocks.
-    await expect(blocks(page)).toHaveCount(before + 5);
+    // The empty paragraph is replaced by the recipe's six blocks (instruction line first).
+    await expect(blocks(page)).toHaveCount(before + 6);
     await page.keyboard.press(undoKey);
     await expect(blocks(page)).toHaveCount(before + 1);
   });

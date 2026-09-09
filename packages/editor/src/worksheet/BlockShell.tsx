@@ -81,6 +81,8 @@ export type BlockShellProps = {
   oversize: boolean;
   /** The top bar's "Show answers" (TEACH-195): answers drawn on the sheet, nothing measured. */
   showAnswers: boolean;
+  /** What is wrong with the block (`blockProblems`), shown on the selected block only. */
+  problems?: string[];
   actions: BlockRowActions;
 };
 
@@ -97,6 +99,7 @@ export const BlockShell = memo(function BlockShell({
   caret,
   oversize,
   showAnswers,
+  problems,
   actions,
 }: BlockShellProps) {
   const keyHandlers = useMemo<BlockKeyHandlers>(
@@ -146,6 +149,13 @@ export const BlockShell = memo(function BlockShell({
           This question won’t fit on one page. Shorten it or cut its answer lines.
         </p>
       ) : null}
+      {/* The same hint for a block a pupil could not act on (TEACH-194, ruling 61). */}
+      {problems?.map((problem) => (
+        <p key={problem} className="ws-warning" role="status">
+          <TriangleAlert style={{ width: "10pt", height: "10pt" }} aria-hidden />
+          {problem}
+        </p>
+      ))}
 
       <IconButton
         label="Insert a block below"

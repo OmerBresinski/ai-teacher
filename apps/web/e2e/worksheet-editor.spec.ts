@@ -86,8 +86,8 @@ test.describe("worksheet editor", () => {
     await page.keyboard.type("/");
     const list = page.getByRole("listbox", { name: "Block types" });
     await expect(list).toBeVisible();
-    // Fifteen block types (headings twice) and the nine sections.
-    await expect(list.getByRole("option")).toHaveCount(25);
+    // Fifteen block types (headings twice, True or false and Sorting table) and the nine sections.
+    await expect(list.getByRole("option")).toHaveCount(27);
     // The popover arrives over a fade; axe reads contrast through it, so let the motion finish.
     await page
       .locator('[role="dialog"]')
