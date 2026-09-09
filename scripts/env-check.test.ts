@@ -170,7 +170,7 @@ describe("targets and reports", () => {
       "railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin --service worker --skip-deploys  < /path/to/secret",
       "railway variable set --service worker --skip-deploys 'AWS_REGION=us-east-1'",
       "railway variable set --service worker --skip-deploys 'AI_MODEL_FRONTIER=us.anthropic.claude-opus-5'",
-      "railway variable set --service worker --skip-deploys 'AI_MODEL_STANDARD=us.anthropic.claude-sonnet-5'",
+      "railway variable set --service worker --skip-deploys 'AI_MODEL_STANDARD=us.openai.gpt-5.6-luna'",
       "railway variable set --service worker --skip-deploys 'AI_MODEL_SMALL=us.anthropic.claude-haiku-4-5-20251001-v1:0'",
       "railway variable set PEXELS_API_KEY --stdin --service worker --skip-deploys  < /path/to/secret",
       "railway variable set --service worker --skip-deploys 'API_PUBLIC_BASE_URL=https://${{api.RAILWAY_PUBLIC_DOMAIN}}'",

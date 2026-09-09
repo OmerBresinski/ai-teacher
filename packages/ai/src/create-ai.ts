@@ -19,7 +19,7 @@ export const DEFAULT_REGION = "us-east-1";
 
 export const DEFAULT_MODEL_IDS = {
   [ModelClass.frontier]: "us.anthropic.claude-opus-5",
-  [ModelClass.standard]: "us.anthropic.claude-sonnet-5",
+  [ModelClass.standard]: "us.openai.gpt-5.6-luna",
   [ModelClass.small]: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
 } as const satisfies Record<ModelClassType, string>;
 

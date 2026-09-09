@@ -2,8 +2,10 @@
  * Static list prices per model id (ADR 0025 §15). Data only: `costUsd` is the one function.
  *
  * Source: Anthropic's published per-model list prices (https://www.anthropic.com/pricing#api),
- * which Bedrock on-demand inference mirrors for the Claude family, read on 2026-09-06 for the
- * three `DEFAULT_MODEL_IDS` in `create-ai.ts`. A configured model id with no row here is
+ * which Bedrock on-demand inference mirrors for the Claude family, read on 2026-09-06; the
+ * `standard` class (GPT-5.6 Luna, TEACH-205) from the models.dev registry's Bedrock entry
+ * (https://models.dev, `us.openai.gpt-5.6-luna`), read on 2026-09-09. One row per
+ * `DEFAULT_MODEL_IDS` entry in `create-ai.ts`. A configured model id with no row here is
  * unpriced: `costUsd` returns `null` and the budget falls back to its token cap. A price change is
  * a data edit here and nowhere else.
  */
@@ -21,7 +23,7 @@ export interface ModelPrice {
 // stays import-free so `logging-middleware.ts` can read it without a cycle through `create-ai.ts`.
 export const PRICES: Record<string, ModelPrice> = {
   "us.anthropic.claude-opus-5": { inputPerMTok: 15, outputPerMTok: 75, cachedInputPerMTok: 1.5 },
-  "us.anthropic.claude-sonnet-5": { inputPerMTok: 3, outputPerMTok: 15, cachedInputPerMTok: 0.3 },
+  "us.openai.gpt-5.6-luna": { inputPerMTok: 0.22, outputPerMTok: 1.32, cachedInputPerMTok: 0.022 },
   "us.anthropic.claude-haiku-4-5-20251001-v1:0": {
     inputPerMTok: 1,
     outputPerMTok: 5,

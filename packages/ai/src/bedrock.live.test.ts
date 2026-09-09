@@ -26,4 +26,21 @@ const liveSuiteName = apiKey
       `Bedrock live usage: input=${result.usage.inputTokens}, output=${result.usage.outputTokens}`,
     );
   });
+
+  // A wrong `standard` id (a bare id for a model that is inference-profile only, say) fails
+  // here before it fails every lesson in production.
+  test("generates a short response with the standard model", async () => {
+    const ai = createAi({
+      AWS_BEARER_TOKEN_BEDROCK: apiKey,
+      AWS_REGION: process.env.AWS_REGION,
+      AI_MODEL_STANDARD: process.env.AI_MODEL_STANDARD,
+    });
+    const result = await generateText({
+      model: ai.model("standard"),
+      prompt: "Reply with pong.",
+      maxOutputTokens: 16,
+    });
+    expect(result.text.trim().length).toBeGreaterThan(0);
+    expect(result.usage.inputTokens).toBeGreaterThan(0);
+  });
 });

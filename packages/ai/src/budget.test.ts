@@ -29,10 +29,11 @@ describe("createBudget", () => {
   });
 
   test("the cap is exceeded only when spend passes it, not when it lands on it", () => {
-    // 200 000 standard input tokens are exactly 0.60 USD at the 3 USD/MTok list price.
-    const budget = createBudget({ capUsd: 0.6, capTokens: 300_000 });
+    // The cap is set to exactly what 200 000 standard input tokens cost at the list price.
+    const capUsd = (200_000 / 1_000_000) * price.inputPerMTok;
+    const budget = createBudget({ capUsd, capTokens: 300_000 });
     budget.charge(STANDARD, { inputTokens: 200_000, outputTokens: 0 });
-    expect(budget.totals().costUsd).toBe(0.6);
+    expect(budget.totals().costUsd).toBeCloseTo(capUsd, 10);
     expect(budget.exceeded()).toBeNull();
   });
 
