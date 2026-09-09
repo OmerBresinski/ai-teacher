@@ -4,7 +4,7 @@ import { WORKSHEET_RECIPES, type WorksheetRecipe } from "../model/worksheet-reci
 import { BLOCK_GROUPS, BLOCK_SPECS, type BlockGroup, type BlockSpec } from "./block-types";
 
 /**
- * What the slash menu lists (TEACH-183): the fifteen block types in their four groups, then the
+ * What the slash menu lists (TEACH-183): the sixteen block rows (fifteen types, headings twice) in their four groups, then the
  * nine recipes under "Sections". One row shape for both, so the menu's filter, highlight and keys
  * do not care which they are; `pick` says what inserting one means.
  */
