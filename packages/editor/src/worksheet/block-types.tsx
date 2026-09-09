@@ -1,5 +1,10 @@
 import type { Id, RichDoc, WorksheetBlock } from "@tj/domain/documents";
-import { BLOCK_GUIDES, defaultInstruction, SORTING_TABLE_INSTRUCTION } from "@tj/domain/documents";
+import {
+  BLOCK_GUIDES,
+  defaultInstruction,
+  SORTING_TABLE_INSTRUCTION,
+  TASK_BLOCK_TYPES,
+} from "@tj/domain/documents";
 import {
   AlignJustify,
   ArrowLeftRight,
@@ -337,6 +342,13 @@ export function filterSpecs(query: string): BlockSpec[] {
  * last heading (ruling 61: a task block never prints without an instruction). A word bank inserted
  * directly above a fill-gap block needs none either: the fill-gap line covers it.
  */
+/** A block a pupil acts on, by the guides' list; a table is not (it may be reference). */
+const isTaskBlock = (block: WorksheetBlock): boolean => TASK_BLOCK_TYPES.includes(block.type);
+
+/** Word bank and fill-gap share one instruction line, so they count as one kind of task. */
+const taskKind = (type: WorksheetBlock["type"]): WorksheetBlock["type"] =>
+  type === "word-bank" ? "fill-gap" : type;
+
 export function instructionBefore(
   spec: BlockSpec,
   blocks: WorksheetBlock[],
@@ -350,6 +362,10 @@ export function instructionBefore(
     const block = blocks[i];
     if (!block || block.type === "heading") break;
     if (block.type === "instructions") return null;
+    // A task block of another kind between the line and the insert point: that line was written
+    // for it, not for the new block, so the new block brings its own. The same kind (a second
+    // matching block, a fill-gap under its word bank) is still covered by the standing line.
+    if (isTaskBlock(block) && taskKind(block.type) !== taskKind(spec.type)) break;
   }
   if (spec.type === "word-bank" && blocks[insertAt]?.type === "fill-gap") return null;
   return { id: uid(), type: "instructions", doc: docFromText(spec.instruction) };

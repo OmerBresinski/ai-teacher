@@ -102,6 +102,37 @@ describe("instructionBefore", () => {
     );
   });
 
+  test("an instruction written for another kind of task does not cover the new block", () => {
+    const mc = newBlock("multiple-choice");
+    // "Tick one box for each question." then a matching block: the pupil needs the matching line.
+    const lead = instructionBefore(spec("matching"), [heading, instructions, mc], mc.id);
+    expect(lead?.type === "instructions" ? docToPlainText(lead.doc) : null).toBe(
+      BLOCK_GUIDES.matching.instruction,
+    );
+    // A table is not a task block for this rule (a plain table may be reference), so a line
+    // before it still covers the insert; a question block is not one either.
+    const table = newBlock("table");
+    expect(
+      instructionBefore(spec("matching"), [heading, instructions, table], table.id),
+    ).toBeNull();
+    expect(
+      instructionBefore(spec("matching"), [heading, instructions, question], question.id),
+    ).toBeNull();
+  });
+
+  test("a second task of the same kind is still covered by the standing line", () => {
+    const first = newBlock("matching");
+    expect(
+      instructionBefore(spec("matching"), [heading, instructions, first], first.id),
+    ).toBeNull();
+    // A word bank and its fill-gap share one line, so a second fill-gap needs none.
+    const bank = newBlock("word-bank");
+    const gap = newBlock("fill-gap");
+    expect(
+      instructionBefore(spec("fill-gap"), [heading, instructions, bank, gap], gap.id),
+    ).toBeNull();
+  });
+
   test("appending to an empty sheet, or after an unknown id, still gets one", () => {
     expect(instructionBefore(spec("multiple-choice"), [], null)?.type).toBe("instructions");
     expect(instructionBefore(spec("fill-gap"), [question], "nope")?.type).toBe("instructions");
