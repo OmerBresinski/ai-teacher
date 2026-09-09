@@ -40,6 +40,9 @@ export const UNREADABLE_MESSAGE = "That image could not be read.";
 export const SEARCH_FAILED_MESSAGE = "Search failed. Try again.";
 export const RATE_LIMITED_MESSAGE = "Too many searches. Try again in a minute.";
 export const BLOCKED_MESSAGE = "Try a different search.";
+
+/** Mirrors the api's `msSinceOpen` bound (`PickBody`): the measure saturates, the pick survives. */
+export const MAX_MS_SINCE_OPEN = 3_600_000;
 /** A search fires this long after the last keystroke; Enter fires it at once. */
 const DEBOUNCE_MS = 400;
 
@@ -222,7 +225,12 @@ function PhotosTab({
         msSinceOpen:
           telemetry?.openedAt === undefined
             ? undefined
-            : Math.max(0, Math.round(performance.now() - telemetry.openedAt)),
+            : // Capped like the api's `msSinceOpen` bound: a stale tab must skew the
+              // measure, never lose the pick to a 400.
+              Math.min(
+                MAX_MS_SINCE_OPEN,
+                Math.max(0, Math.round(performance.now() - telemetry.openedAt)),
+              ),
       });
       onPick(sourceFromPicked(picked, item.alt));
     } catch (error) {
