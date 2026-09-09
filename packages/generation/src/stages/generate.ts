@@ -58,6 +58,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         deps,
         stage: "generate",
         cls: "standard",
+        effort: "low",
         prompt: generateSlidePrompt,
         input: {
           facts,
@@ -98,6 +99,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         deps,
         stage: "generate",
         cls: "standard",
+        effort: "low",
         prompt: generateWorksheetPrompt,
         input: {
           facts,

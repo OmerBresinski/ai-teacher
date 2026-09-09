@@ -45,6 +45,7 @@ const call = (d: ReturnType<typeof deps>, input = "hi") =>
     deps: d,
     stage: "plan",
     cls: "standard",
+    effort: "medium",
     prompt,
     input,
     schema,
@@ -58,6 +59,7 @@ const callList = (d: ReturnType<typeof deps>) =>
     deps: d,
     stage: "plan",
     cls: "standard",
+    effort: "medium",
     prompt,
     input: "hi",
     schema: listSchema,
@@ -137,6 +139,7 @@ describe("callStructured repairs the text before validating it", () => {
       deps: d,
       stage: "plan",
       cls: "standard",
+      effort: "medium",
       prompt,
       input: "hi",
       schema: twice,
@@ -184,7 +187,47 @@ describe("callStructured", () => {
       jobId: "j1",
       stage: "plan",
       promptVersion: "test.v1",
+      effort: "medium",
     });
+  });
+
+  test("the effort travels to the provider as Bedrock's reasoningConfig and into the call context", async () => {
+    const ai = createFakeAi({ script: [JSON.stringify({ answer: "42" })] });
+    const d = deps(ai);
+    await callStructured({
+      deps: d,
+      stage: "generate",
+      cls: "standard",
+      effort: "low",
+      prompt,
+      input: "hi",
+      schema,
+      maxOutputTokens: 100,
+    });
+    expect(ai.calls[0]?.providerOptions).toEqual({
+      bedrock: { reasoningConfig: { maxReasoningEffort: "low" } },
+    });
+    expect(ai.calls[0]?.context?.effort).toBe("low");
+  });
+
+  test("an Anthropic id gets no reasoningConfig (thinking is off there); the context still says the effort", async () => {
+    const ai = createFakeAi({
+      script: [JSON.stringify({ answer: "42" })],
+      modelIds: { standard: "us.anthropic.claude-sonnet-5" },
+    });
+    const d = deps(ai);
+    await callStructured({
+      deps: d,
+      stage: "generate",
+      cls: "standard",
+      effort: "low",
+      prompt,
+      input: "hi",
+      schema,
+      maxOutputTokens: 100,
+    });
+    expect(ai.calls[0]?.providerOptions).toBeUndefined();
+    expect(ai.calls[0]?.context?.effort).toBe("low");
   });
 
   test("retries once on a schema miss with the issues in the prompt, and both attempts are charged", async () => {
@@ -198,6 +241,11 @@ describe("callStructured", () => {
     expect(result.output).toEqual({ answer: "ok" });
     expect(d.budget.totals().calls).toBe(2);
     expect(ai.calls).toHaveLength(2);
+    // The retry is the same call with the issues appended: same effort, same provider options.
+    expect(ai.calls[1]?.providerOptions).toEqual(ai.calls[0]?.providerOptions);
+    expect(ai.calls[1]?.providerOptions).toEqual({
+      bedrock: { reasoningConfig: { maxReasoningEffort: "medium" } },
+    });
     expect(log.text()).toContain("retrying once");
     // The validation issues (path + message) are logged so a production miss is diagnosable…
     expect(log.text()).toContain("answer: Invalid input: expected string, received number");

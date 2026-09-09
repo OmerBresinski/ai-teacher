@@ -1,3 +1,4 @@
+import { isAnthropicModelId } from "@tj/ai";
 import type { ModelClass } from "@tj/domain";
 import { generateText, NoObjectGeneratedError, Output, type OutputInterface } from "ai";
 import type { z } from "zod";
@@ -25,10 +26,21 @@ export interface StructuredPrompt<I> {
   user(input: I): string;
 }
 
+/**
+ * How hard the model may think on one call (Generation quality §6). Required on every call so no
+ * stage is left at the provider's default by omission; the per-stage values are the project's
+ * table, set at the call sites, never in a prompt. Carried to Bedrock as
+ * `providerOptions.bedrock.reasoningConfig.maxReasoningEffort`, which `@ai-sdk/amazon-bedrock`
+ * maps to `reasoning.effort` for an OpenAI id and `output_config.effort` for an Anthropic one.
+ * `xhigh` / `max` are not offered: nothing in the pipeline needs them.
+ */
+export type ReasoningEffort = "low" | "medium" | "high";
+
 export interface CallStructuredOptions<I, T> {
   deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context">;
   stage: StageName;
   cls: ModelClass;
+  effort: ReasoningEffort;
   prompt: StructuredPrompt<I>;
   input: I;
   schema: z.ZodType<T>;
@@ -110,14 +122,14 @@ function repairingObjectOutput<T>(
 export async function callStructured<I, T>(
   options: CallStructuredOptions<I, T>,
 ): Promise<CallResult<T>> {
-  const { deps, stage, cls, prompt, input, schema, maxOutputTokens } = options;
+  const { deps, stage, cls, effort, prompt, input, schema, maxOutputTokens } = options;
   // Cancel is checked between model calls (ADR 0025 §5); the fake ignores `abortSignal`, so the
   // check is here rather than trusted to the provider.
   throwIfAborted(deps.signal);
   const exceeded = deps.budget.exceeded();
   if (exceeded) throw new BudgetExceeded(exceeded.by);
   const modelId = deps.ai.modelId(cls);
-  const model = deps.ai.model(cls, callContext(deps, stage, prompt.version));
+  const model = deps.ai.model(cls, callContext(deps, stage, prompt.version, effort));
   const userText = prompt.user(input);
   const output = repairingObjectOutput(schema, (repairs) => {
     // Repair kinds only — never the text (ADR 0015). Counted so a model change that makes the
@@ -136,6 +148,8 @@ export async function callStructured<I, T>(
       output,
       abortSignal: deps.signal,
       maxOutputTokens,
+      // The same effort on the retry: a schema miss is a shape problem, not a thinking one.
+      ...providerOptionsFor(modelId, effort),
     });
     const usage = usageOf(result.usage);
     deps.budget.charge(modelId, usage);
@@ -179,6 +193,19 @@ export async function callStructured<I, T>(
       );
     }
   }
+}
+
+/**
+ * The provider options one call sends. For an OpenAI id `@ai-sdk/amazon-bedrock` maps
+ * `reasoningConfig.maxReasoningEffort` to `reasoning.effort`. For an Anthropic id it would write
+ * `output_config.effort`, which the Haiku the `small` class still runs on may not accept, and
+ * `@tj/ai` already disables thinking on those ids (`NO_THINKING`) so effort has nothing to act on:
+ * nothing is sent and the call runs as it did before. The `effort` still reaches the log through
+ * the call context. Dead for the pipeline once every class is a GPT-5.6 id (Generation quality §6).
+ */
+function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
+  if (isAnthropicModelId(modelId)) return {};
+  return { providerOptions: { bedrock: { reasoningConfig: { maxReasoningEffort: effort } } } };
 }
 
 function usageOf(usage: {

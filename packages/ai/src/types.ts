@@ -23,6 +23,8 @@ export interface AiCallContext {
   jobId?: string | undefined;
   stage?: string | undefined;
   promptVersion?: string | undefined;
+  /** The reasoning effort the call asked for (`low` / `medium` / `high`), a string for the log. */
+  effort?: string | undefined;
 }
 
 export interface ConfiguredAi {

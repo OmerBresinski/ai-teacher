@@ -21,6 +21,8 @@ export interface FakeCall {
   context?: AiCallContext | undefined;
   /** The usage the fake reported for this call. */
   usage: FakeAiUsage;
+  /** The `providerOptions` the caller sent (e.g. Bedrock's `reasoningConfig`), if any. */
+  providerOptions?: unknown;
   /**
    * The user-role text of the prompt, joined. For a *function entry* that must answer in the
    * shape the caller asked for (the e2e worker's cascade fake reads the slide kind off it); tests
@@ -113,6 +115,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
     modelId: string,
     context: AiCallContext | undefined,
     prompt: FakePrompt,
+    providerOptions: unknown,
   ) => {
     const call: FakeCall = {
       index: calls.length,
@@ -121,6 +124,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
       context,
       usage: {},
       promptText: userText(prompt),
+      ...(providerOptions !== undefined ? { providerOptions } : {}),
     };
     calls.push(call);
     const entry = script.shift() ?? fallback;
@@ -140,7 +144,13 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
         modelId,
         doGenerate: async (call) => {
           if (options.error !== undefined) throw options.error;
-          const { text, usage } = await nextReply(modelClass, modelId, context, call.prompt);
+          const { text, usage } = await nextReply(
+            modelClass,
+            modelId,
+            context,
+            call.prompt,
+            call.providerOptions,
+          );
           return {
             content: [{ type: "text", text }],
             finishReason: { unified: "stop", raw: undefined },
@@ -155,7 +165,13 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
                 controller.error(options.error);
                 return;
               }
-              const { text, usage } = await nextReply(modelClass, modelId, context, call.prompt);
+              const { text, usage } = await nextReply(
+                modelClass,
+                modelId,
+                context,
+                call.prompt,
+                call.providerOptions,
+              );
               controller.enqueue({ type: "text-start", id: "fake-text" });
               controller.enqueue({ type: "text-delta", id: "fake-text", delta: text });
               controller.enqueue({ type: "text-end", id: "fake-text" });

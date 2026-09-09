@@ -45,6 +45,7 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       deps,
       stage: "evaluate",
       cls: "small",
+      effort: "medium",
       prompt: evaluatePrompt,
       input: {
         facts,

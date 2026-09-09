@@ -236,6 +236,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     deps,
     stage: "illustrate",
     cls: "small",
+    effort: "low",
     prompt: pickOrRequeryPrompt,
     input: {
       topic: lesson.brief?.topic ?? lesson.title,

@@ -203,6 +203,24 @@ describe("runLessonPipeline", () => {
       expect(ai.calls.slice(PLAN_INDEX, SLIDES_INDEX).map((c) => c.context?.promptVersion)).toEqual(
         [PROMPT_VERSIONS["plan-skeleton"], PROMPT_VERSIONS["plan-facts"]],
       );
+      // Effort per stage (Generation quality §6, TEACH-207): Generate at low, Plan and Evaluate at
+      // medium, the input check at low; every call says so to the provider and in its context.
+      expect(ai.calls.map((c) => c.context?.effort)).toEqual([
+        "low",
+        "medium",
+        "medium",
+        ...Array.from({ length: GENERATED_SLIDES + 1 }, () => "low"),
+        "medium",
+      ]);
+      // The provider option itself goes to the non-Anthropic ids (the fake's `standard` is Luna);
+      // the Haiku `small` calls carry the effort in their context only.
+      for (const call of ai.calls) {
+        if (call.modelClass === "small") expect(call.providerOptions).toBeUndefined();
+        else
+          expect(call.providerOptions).toEqual({
+            bedrock: { reasoningConfig: { maxReasoningEffort: call.context?.effort } },
+          });
+      }
       for (const call of ai.calls) {
         expect(call.context?.lessonId).toBeDefined();
         expect(call.context?.jobId).toBeDefined();

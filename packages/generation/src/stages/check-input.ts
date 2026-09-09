@@ -53,6 +53,7 @@ export async function checkInput(state: PipelineState, deps: PipelineDeps): Prom
       deps,
       stage: "check-input",
       cls: "small",
+      effort: "low",
       prompt: checkInputPrompt,
       input: { topic: brief.topic, answers: brief.answers, audience: audienceOf(state.lesson) },
       schema: CheckInputOutputSchema,

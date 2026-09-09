@@ -188,6 +188,7 @@ export async function proposeFor(
       deps,
       stage,
       cls: "standard",
+      effort: "low",
       prompt,
       input: proposeInput(
         { kind: "slide", slideKind: slide.kind, slideId: slide.id, text: slideText(slide) },
@@ -248,6 +249,7 @@ export async function proposeFor(
       deps,
       stage,
       cls: "standard",
+      effort: "low",
       prompt,
       input: proposeInput(
         { kind: "block", blockType: block.type, blockId: block.id, text: blockText(block) },

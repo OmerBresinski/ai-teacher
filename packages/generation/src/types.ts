@@ -193,13 +193,14 @@ export class BudgetExceeded extends Error {
   }
 }
 
-/** The `AiCallContext` for a stage's calls (ADR 0025 §16). */
+/** The `AiCallContext` for a stage's calls (ADR 0025 §16): ids, stage, prompt version, effort. */
 export function callContext(
   deps: Pick<PipelineDeps, "context">,
   stage: StageName,
   promptVersion: string,
+  effort?: string,
 ): AiCallContext {
-  return { ...deps.context, stage, promptVersion };
+  return { ...deps.context, stage, promptVersion, ...(effort !== undefined ? { effort } : {}) };
 }
 
 /** The error a cancelled stage throws: the signal's own reason when it is one, else an AbortError. */
