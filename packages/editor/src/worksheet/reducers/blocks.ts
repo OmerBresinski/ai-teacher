@@ -29,6 +29,21 @@ export function updateBlock<T extends WorksheetBlock>(
   });
 }
 
+type MultipleChoice = Extract<WorksheetBlock, { type: "multiple-choice" }>;
+
+/**
+ * Make `optionId` the one correct option of a multiple-choice block (TEACH-195): the editor
+ * enforces exactly one correct, so the answer key lists one line. Unknown block or option → no-op.
+ */
+export const setCorrectOption = (worksheet: Worksheet, blockId: Id, optionId: string): Worksheet =>
+  edit(worksheet, (w) => {
+    const block = w.blocks.find((b) => b.id === blockId);
+    if (block?.type !== "multiple-choice") return;
+    const options = (block as MultipleChoice).options;
+    if (!options.some((o) => o.id === optionId)) return;
+    for (const option of options) option.correct = option.id === optionId;
+  });
+
 /**
  * Apply a job's block proposals (ADR 0025 §19): each replaces the block with `target.blockId` in
  * place, keeping its position. Slide proposals are ignored here (`applyProposals` on the lesson).

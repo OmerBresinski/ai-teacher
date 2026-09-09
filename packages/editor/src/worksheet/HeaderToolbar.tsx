@@ -17,7 +17,8 @@ import { useTypingSession, useWorksheet, useWorksheetHistoryApi } from "./worksh
 /*
  * The toolbar over the selected header (TeachDeck `components/v2/worksheet/HeaderToolbar.tsx`):
  * which rules print (Name / Date / Class), the objective line, a new success criterion, the paper
- * size, and the two sheet-wide switches — answer key and self-assessment strip. Everything here is
+ * size, and the two sheet-wide switches — the printed answer key and self-assessment strip. (The
+ * on-screen "Show answers" is a view, not a document flag: it lives on the top bar, TEACH-195.) Everything here is
  * a discrete click, so each is its own undo entry; the typing session is closed first.
  */
 
@@ -90,7 +91,7 @@ export function HeaderToolbar() {
             onCheckedChange={(on) => click(() => dispatch(setIncludeAnswerKey, on))}
           />
           <Label htmlFor={`${ids}-key`} className="text-body">
-            Answer key
+            Print answer key
           </Label>
         </span>
         <span className="inline-flex items-center gap-1.5 px-1">

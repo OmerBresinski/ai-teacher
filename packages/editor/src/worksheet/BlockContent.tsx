@@ -1,7 +1,7 @@
 import type { RichDoc, Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import type { CSSProperties, ReactNode } from "react";
 import { RichText } from "../slide/elements/RichText";
-import { isDocEmpty, renderDocHTML } from "../text/static";
+import { escapeHtml, isDocEmpty, renderDocHTML } from "../text/static";
 import { type AnswerEntry, matchingOrder, optionLetter } from "./answers";
 import { sheetSummary } from "./metrics";
 import { WordSearchView } from "./WordSearch";
@@ -19,6 +19,13 @@ export type SheetMode = "edit" | "print";
  * number, marks and ruled lines exactly where they were.
  */
 export type StemRenderer = (args: { doc: RichDoc; className?: string }) => ReactNode;
+
+/**
+ * The editor's "Show answers" view for a question block (TEACH-195): the model answer under the
+ * stem, with the field that edits it. Injected by `BlockShell`, so this static renderer — shared
+ * with the print route and the measuring column — never imports the editing pieces.
+ */
+export type AnswerRenderer = (block: Extract<WorksheetBlock, { type: "question" }>) => ReactNode;
 
 /** Static rich text on the sheet: `RichText` (the slide's static path) under the `ws-rt` rules. */
 export function SheetText({
@@ -69,12 +76,19 @@ function BankWord({ word }: { word: string }) {
   return word ? <span>{word}</span> : <span className="ws-word-empty">{"\u00a0"}</span>;
 }
 
-/** Blanks are sized to the answer, as on a printed cloze exercise. */
-function gapMarkup(block: Extract<WorksheetBlock, { type: "fill-gap" }>): string {
+/**
+ * Blanks are sized to the answer, as on a printed cloze exercise. With the answers view on, the
+ * answer sits inside its blank, out of flow (`.ws-gap-answer`), so the line keeps its height.
+ */
+function gapMarkup(block: Extract<WorksheetBlock, { type: "fill-gap" }>, showAnswers = false) {
   return renderDocHTML(block.doc).replace(/\[\[gap:([A-Za-z0-9_-]+)\]\]/g, (_match, id: string) => {
     const gap = block.gaps.find((g) => g.id === id);
     const width = Math.max(56, Math.round((gap?.answer.length ?? 8) * 6.4));
-    return `<span class="ws-gap" style="width:${width}pt"></span>`;
+    const answer =
+      showAnswers && gap?.answer
+        ? `<span class="ws-gap-answer">${escapeHtml(gap.answer)}</span>`
+        : "";
+    return `<span class="ws-gap" style="width:${width}pt">${answer}</span>`;
   });
 }
 
@@ -114,10 +128,15 @@ export function BlockContent({
   block,
   mode,
   renderStem,
+  showAnswers = false,
+  renderAnswer,
 }: {
   block: WorksheetBlock;
   mode: SheetMode;
   renderStem?: StemRenderer;
+  /** The editor's answers view (TEACH-195). Edit mode only: print and the measuring column never pass it. */
+  showAnswers?: boolean;
+  renderAnswer?: AnswerRenderer;
 }) {
   const rich = (doc: RichDoc, className?: string, emptyLabel?: string) => {
     if (renderStem) return renderStem({ doc, className });
@@ -144,6 +163,7 @@ export function BlockContent({
             {rich(block.doc, "ws-q-stem", "Write your question here")}
             {block.marks ? <div className="ws-marks">{marksLabel(block.marks)}</div> : null}
           </div>
+          {showAnswers && renderAnswer ? renderAnswer(block) : null}
           <Lines count={block.answerLines} />
         </QuestionRow>
       );
@@ -169,7 +189,11 @@ export function BlockContent({
     case "fill-gap":
       return (
         <QuestionRow number={block.number}>
-          {renderStem ? renderStem({ doc: block.doc }) : <SheetText html={gapMarkup(block)} />}
+          {renderStem ? (
+            renderStem({ doc: block.doc })
+          ) : (
+            <SheetText html={gapMarkup(block, showAnswers)} />
+          )}
         </QuestionRow>
       );
 
@@ -206,7 +230,7 @@ export function BlockContent({
     case "word-search":
       return (
         <QuestionRow number={block.number}>
-          <WordSearchView block={block} />
+          <WordSearchView block={block} rings={showAnswers} />
         </QuestionRow>
       );
 

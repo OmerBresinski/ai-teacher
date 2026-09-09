@@ -4,6 +4,7 @@ import { newBlock, starterWorksheet } from "../../model/worksheet-factories";
 import * as r from "./index";
 
 type QuestionBlock = Extract<WorksheetBlock, { type: "question" }>;
+type MCBlock = Extract<WorksheetBlock, { type: "multiple-choice" }>;
 
 const sheet = () => starterWorksheet("Fractions practice", "chalk");
 const numbers = (blocks: WorksheetBlock[]) =>
@@ -129,5 +130,29 @@ describe("worksheet reducers", () => {
     expect(r.pruneEmptyCriteria(none)).toBe(none);
     const empty = r.pruneEmptyCriteria(r.setHeader(w, { criteria: ["", ""] }));
     expect(empty.header.criteria).toBeUndefined();
+  });
+
+  test("setCorrectOption makes exactly one option correct (TEACH-195); unknown ids are no-ops", () => {
+    let w = sheet();
+    const mc = newBlock("multiple-choice") as MCBlock;
+    // Two correct, as an older sheet could have recorded.
+    for (const option of mc.options.slice(0, 2)) option.correct = true;
+    w = r.insertBlock(w, mc);
+    const options = () => (w.blocks.find((b) => b.id === mc.id) as MCBlock).options;
+    const [a, b] = options();
+    if (!a || !b) throw new Error("seed");
+    w = r.setCorrectOption(w, mc.id, b.id);
+    expect(options().map((o) => o.correct)).toEqual(options().map((o) => o.id === b.id));
+    w = r.setCorrectOption(w, mc.id, a.id);
+    expect(
+      options()
+        .filter((o) => o.correct)
+        .map((o) => o.id),
+    ).toEqual([a.id]);
+    expect(() => parseWorksheet(w)).not.toThrow();
+    // Already the answer, an unknown option and an unknown block: no-ops by identity.
+    expect(r.setCorrectOption(w, mc.id, a.id)).toBe(w);
+    expect(r.setCorrectOption(w, mc.id, "missing")).toBe(w);
+    expect(r.setCorrectOption(w, "missing", a.id)).toBe(w);
   });
 });

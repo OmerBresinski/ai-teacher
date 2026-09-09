@@ -28,7 +28,16 @@ const GRID_MAX_W = pageMetrics("A4").contentW - QUESTION_GUTTER;
  * The ring drawn round a found word on the answer key. It is an outline, never a fill or a colour,
  * so a photocopy still shows the answer.
  */
-function Ring({ placement, cell }: { placement: WordSearchPlacement; cell: number }) {
+function Ring({
+  placement,
+  cell,
+  view,
+}: {
+  placement: WordSearchPlacement;
+  cell: number;
+  /** The editor's answers view draws the ring in accent; the printed key keeps ink. */
+  view?: boolean;
+}) {
   const length = placement.word.length;
   const startX = (placement.col + 0.5) * cell;
   const startY = (placement.row + 0.5) * cell;
@@ -40,7 +49,7 @@ function Ring({ placement, cell }: { placement: WordSearchPlacement; cell: numbe
   const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
   return (
     <span
-      className="ws-search-ring"
+      className={view ? "ws-search-ring ws-search-ring-view" : "ws-search-ring"}
       aria-hidden
       style={{
         left: `${(startX + endX) / 2}pt`,
@@ -57,10 +66,16 @@ function Ring({ placement, cell }: { placement: WordSearchPlacement; cell: numbe
 export function WordSearchView({
   block,
   solved = false,
+  rings = solved,
 }: {
   block: WordSearchBlock;
   /** The answer key rings every word it placed. */
   solved?: boolean;
+  /**
+   * Ring the words without dropping the lead: the editor's "Show answers" view (TEACH-195). The
+   * rings are out of flow, so the block keeps the height the paginator measured.
+   */
+  rings?: boolean;
 }) {
   const { grid, error } = buildWordSearch(block);
 
@@ -106,8 +121,10 @@ export function WordSearchView({
             ))}
           </tbody>
         </table>
-        {solved
-          ? grid.placements.map((p) => <Ring key={p.word} placement={p} cell={cell} />)
+        {rings
+          ? grid.placements.map((p) => (
+              <Ring key={p.word} placement={p} cell={cell} view={!solved} />
+            ))
           : null}
       </div>
 

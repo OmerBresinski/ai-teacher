@@ -10,6 +10,16 @@ import type { FlowItem, WorksheetPage } from "./paginate";
  */
 
 /**
+ * The editor's answers view (TEACH-195) paints on the paper, which is always white, so its colours
+ * are literals chosen against `#ffffff` rather than app theme tokens (which follow the dark and
+ * high-contrast themes and can vanish on paper). Ink 5.4:1 (AA text), rule 5.5:1 (AA component),
+ * the tint is an opaque wash for the marker's hover.
+ */
+const ANSWER_INK = "#b04a33";
+const ANSWER_RULE = "#6e6860";
+const ANSWER_TINT = "#fbf0ed";
+
+/**
  * The theme and the paper, as custom properties on the sheet root. The page box is a variable
  * rather than a fixed rule so switching to Letter reflows the same DOM; `--ws-print-*` is the same
  * page in real-world units, which is what the print media query needs.
@@ -18,6 +28,9 @@ export function sheetVars(theme: Theme, size: PageSize = "A4"): CSSProperties {
   const m = pageMetrics(size);
   return {
     "--ws-ink": theme.colors.ink,
+    "--ws-answer-ink": ANSWER_INK,
+    "--ws-answer-rule": ANSWER_RULE,
+    "--ws-answer-tint": ANSWER_TINT,
     "--ws-font-title": theme.fonts.title,
     "--ws-font-body": theme.fonts.body,
     "--ws-page-w": `${m.page.w}pt`,

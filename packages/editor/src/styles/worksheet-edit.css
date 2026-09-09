@@ -227,28 +227,163 @@
   display: block;
 }
 
-/* The teacher's own tick on a multiple-choice option: `ws-opt-box` is the printed square, and
-   the button keeps its exact box so the option row never moves. Accent ink and an accent ring say
-   "this is the answer being recorded"; none of it prints. */
-.ws-opt-check {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ---- the answers view (TEACH-195) ------------------------------------------------------- */
+
+/* Answers are a view, never the page (ruling 62). Everything in this section is out of flow or
+   paint on a box that already exists: the measuring column renders none of it, so a page break
+   cannot move when the view is turned on. */
+
+/* The answer marker is not the pupil's box: the printed square stays empty on screen as on paper.
+   The marker sits in the row's right margin, outside the printed markup, a 12pt accent ring that
+   fills when the option is the answer. It exists only while the block is selected or the view is
+   on, so Tab reaches it exactly then. */
+.ws-edit .ws-opt {
+  position: relative;
+}
+
+/* The view's colours (`--ws-answer-*`) come from `sheetVars()` as literals chosen against the
+   white paper, never from app theme tokens: the paper does not follow the dark or high-contrast
+   theme, and a token that does can vanish on it. */
+
+.ws-opt-answer {
+  position: absolute;
+  top: 2.5pt;
+  right: -22pt;
+  width: 12pt;
+  height: 12pt;
   padding: 0;
+  border: 1.5px solid var(--ws-answer-rule);
+  border-radius: 999px;
   background: transparent;
-  color: var(--ws-ink);
   cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft);
 }
 
-.ws-opt-check-on {
-  color: var(--primary);
-  box-shadow: inset 0 0 0 1.5px var(--primary);
+/* The drawn ring stays 12pt; the 28px pointer target is a pseudo-element centred on it. */
+.ws-opt-answer::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
 }
 
-.ws-opt-check svg {
-  width: 9pt;
-  height: 9pt;
-  stroke-width: 2.5;
+.ws-opt-answer:hover {
+  border-color: var(--ws-answer-ink);
+  background: var(--ws-answer-tint);
+}
+
+.ws-opt-answer:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ws-opt-answer-on,
+.ws-opt-answer-on:hover {
+  border-color: var(--ws-answer-ink);
+  background: var(--ws-answer-ink);
+}
+
+/* A question's model answer: a zero-height slot under the stem, the answer drawn over the first
+   ruled line in accent, muted, with the field that edits it. */
+.ws-answer-slot {
+  position: relative;
+  height: 0;
+}
+
+/* No ruled lines to draw over: the slot takes a line of its own on screen instead, so the answer
+   never sits on the next block. The page breaks are still the measured ones. */
+.ws-answer-slot[data-reserve] {
+  height: auto;
+  padding-top: 4pt;
+}
+
+.ws-answer {
+  position: absolute;
+  top: 5pt;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 6pt;
+}
+
+/* In the reserved slot the answer is in flow. */
+.ws-answer-slot[data-reserve] .ws-answer {
+  position: static;
+}
+
+.ws-answer-label {
+  flex: 0 0 auto;
+  font-family: var(--font-ui);
+  font-size: 8pt;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ws-answer-ink);
+}
+
+.ws-answer-field {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ws-answer-text {
+  color: var(--ws-answer-ink);
+}
+
+.ws-answer-empty {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--ws-muted);
+  pointer-events: none;
+}
+
+/* A gap's answer inside its blank, on the rule the pupil writes on. */
+.ws-edit .ws-gap {
+  position: relative;
+}
+
+.ws-gap-answer {
+  position: absolute;
+  right: 2pt;
+  bottom: 1pt;
+  left: 2pt;
+  overflow: hidden;
+  font-size: 9.5pt;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ws-answer-ink);
+}
+
+/* The matching answer letter inside the left-hand blank. */
+.ws-edit .ws-match-blank {
+  position: relative;
+}
+
+.ws-match-answer {
+  position: absolute;
+  right: 0;
+  bottom: 1pt;
+  left: 0;
+  font-size: 10pt;
+  font-weight: 500;
+  line-height: 1;
+  text-align: center;
+  color: var(--ws-answer-ink);
+}
+
+/* The word search rings the key will print, in accent on screen. */
+.ws-search-ring-view {
+  border-color: var(--ws-answer-ink);
 }
 
 /* ---- the empty sheet ------------------------------------------------------------------- */

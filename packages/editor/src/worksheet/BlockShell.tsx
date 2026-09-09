@@ -9,9 +9,9 @@ import {
   useCallback,
   useMemo,
 } from "react";
-import { BlockContent, SheetText, type StemRenderer } from "./BlockContent";
+import { type AnswerRenderer, BlockContent, SheetText, type StemRenderer } from "./BlockContent";
 import type { BlockKeyHandlers } from "./BlockTextEditor";
-import { EditableBlock, INLINE_EDIT_TYPES } from "./EditableBlocks";
+import { EditableBlock, INLINE_EDIT_TYPES, QuestionAnswer } from "./EditableBlocks";
 import { HANDLE_X, PLUS_X } from "./metrics";
 import type { CaretIntent } from "./use-worksheet-session";
 
@@ -53,6 +53,9 @@ const GLYPH = { width: "11pt", height: "11pt" } as const;
 /** Tiptap and ProseMirror load only when a block is actually being typed into (ADR 0022 §8). */
 const BlockTextEditor = lazy(() => import("./BlockTextEditor"));
 
+/** The question block's model answer in the answers view (TEACH-195). */
+const renderAnswer: AnswerRenderer = (block) => <QuestionAnswer block={block} />;
+
 /**
  * What a block row can ask the editor to do, addressed by block so one stable object serves every
  * row (and `memo` below holds). `WorksheetEditor` builds it once over refs to its latest state.
@@ -76,6 +79,8 @@ export type BlockShellProps = {
   editing: boolean;
   caret: CaretIntent;
   oversize: boolean;
+  /** The top bar's "Show answers" (TEACH-195): answers drawn on the sheet, nothing measured. */
+  showAnswers: boolean;
   actions: BlockRowActions;
 };
 
@@ -91,6 +96,7 @@ export const BlockShell = memo(function BlockShell({
   editing,
   caret,
   oversize,
+  showAnswers,
   actions,
 }: BlockShellProps) {
   const keyHandlers = useMemo<BlockKeyHandlers>(
@@ -165,9 +171,20 @@ export const BlockShell = memo(function BlockShell({
       {selected ? <div className="ws-selected-ring" /> : null}
 
       {INLINE_EDIT_TYPES.includes(block.type) ? (
-        <EditableBlock block={block} renderStem={renderStem} />
+        <EditableBlock
+          block={block}
+          renderStem={renderStem}
+          selected={selected}
+          showAnswers={showAnswers}
+        />
       ) : (
-        <BlockContent block={block} mode="edit" renderStem={renderStem} />
+        <BlockContent
+          block={block}
+          mode="edit"
+          renderStem={renderStem}
+          showAnswers={showAnswers}
+          renderAnswer={renderAnswer}
+        />
       )}
     </div>
   );
