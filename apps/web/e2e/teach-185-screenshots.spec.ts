@@ -30,7 +30,7 @@ test("captures the picker on Activities, a matching slide and present mid-reveal
   await page.waitForTimeout(500);
   await page.screenshot({ path: shot("picker-activities") });
 
-  await menu.getByRole("menuitem", { name: "Matching" }).click();
+  await menu.getByRole("menuitem", { name: "Matching", exact: true }).click();
   await expect(menu).toBeHidden();
   await expect(page.locator("[data-slide-frame]")).toContainText("Match each term");
   await page.mouse.move(1300, 900);
@@ -38,7 +38,7 @@ test("captures the picker on Activities, a matching slide and present mid-reveal
   await page.screenshot({ path: shot("matching-slide") });
 
   menu = await openActivities(page);
-  await menu.getByRole("menuitem", { name: "Multiple choice" }).click();
+  await menu.getByRole("menuitem", { name: "Multiple choice", exact: true }).click();
   await expect(menu).toBeHidden();
   await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
 
