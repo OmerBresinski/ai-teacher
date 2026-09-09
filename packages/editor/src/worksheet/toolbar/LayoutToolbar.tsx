@@ -65,7 +65,8 @@ function ImageReplace({ block }: { block: Image }) {
   const onPick = (source: ImageSource) => {
     commit<Image>(block.id, (b) => {
       b.src = source.src;
-      if (source.alt) b.alt = source.alt;
+      // Cleared, not kept: a stale alt describing the previous picture is worse than none.
+      b.alt = source.alt;
       b.source = source.source;
       b.authoredBy = "teacher";
     });

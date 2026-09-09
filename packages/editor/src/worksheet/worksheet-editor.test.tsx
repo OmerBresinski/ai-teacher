@@ -461,6 +461,7 @@ describe("WorksheetEditor image Replace (TEACH-160)", () => {
     const current = read().blocks[0];
     if (current?.type !== "image") throw new Error("missing");
     expect(current.source).toBeUndefined();
+    expect(current.alt).toBeUndefined();
     expect(current.authoredBy).toBe("teacher");
   });
 
