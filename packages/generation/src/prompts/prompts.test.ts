@@ -92,44 +92,44 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
 
 const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "check-input": {
-    version: "check-input.v2",
+    version: "check-input.v3",
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v4",
+    version: "plan-skeleton.v5",
     hash: "3ccd840f54f42faf6c53eca3888dd238a13ccdea8e920f34612d914fa21d81d5",
   },
   "plan-facts": {
-    version: "plan-facts.v2",
+    version: "plan-facts.v3",
     hash: "bceccf73b9a30f7a19f48f42ee1c0bbc810aebd82adb0d8083daca6bce70f2e0",
   },
   "generate-slide": {
-    version: "generate-slide.v4",
-    hash: "cf035f608ac4c6a4f9b67455e0fb3fdcbcad5cea10fc676ba43af5f9ae39df01",
+    version: "generate-slide.v5",
+    hash: "a576402042cc7fd5741eba7d0fbfd7878af62d396ef0c2c9b2693a80c2f31179",
   },
   "generate-worksheet": {
-    version: "generate-worksheet.v3",
-    hash: "d1d5fc280e99447afc89ef63b35b3ebcbc708b604d70fed39ba71bc4ca8f7814",
+    version: "generate-worksheet.v4",
+    hash: "27af53556063fc3a54201edc3ea52554c83a07d727446d29aa43ce7e7f5ec1f5",
   },
   "pick-or-requery-photo": {
-    version: "pick-or-requery-photo.v1",
+    version: "pick-or-requery-photo.v2",
     hash: "ea854cc39411f363a9dd5fe5e431e5a2d3d6b0057e4ccbfd1e387068eea44f4f",
   },
   evaluate: {
-    version: "evaluate.v1",
-    hash: "82c1332b6a4d17927598c3eeaefc477d866602d8a814d66d2a07dc9409f24083",
+    version: "evaluate.v2",
+    hash: "cfc2def8594c4bdf6eef7b1d2c66e564e2d15bc7fca6a3d4496fa1c7e431941f",
   },
   repair: {
-    version: "repair.v1",
-    hash: "69044a8fb8d5c888ef35ae3d5910a23f82b8446af175dd073c01952648e9666b",
+    version: "repair.v2",
+    hash: "c5daa1ec876b4629130f83bce2b0b1b8e954baf867fc2553811cfbcecf9e23e1",
   },
   cascade: {
-    version: "cascade.v1",
-    hash: "283d85851eb9ed2907f3a84cea214e0ce883438deab5c1e5607416a98dc113d6",
+    version: "cascade.v2",
+    hash: "11be5f91ba0b1bff67db4dd692ccb9319a5f8cf368f22d624985b0a59182d99c",
   },
   regenerate: {
-    version: "regenerate.v1",
-    hash: "f0e545aa74a5b033d8a199d7f891b55f31efe335d91c116e8889f99444c9d8bc",
+    version: "regenerate.v2",
+    hash: "99fa070108751ddbae761f0afb52a2540ba12ef09393cbfff690a1dfd8017aef",
   },
 };
 

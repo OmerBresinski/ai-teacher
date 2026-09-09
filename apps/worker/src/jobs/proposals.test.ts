@@ -120,7 +120,7 @@ describeDb("lesson.cascade / lesson.regenerate jobs", () => {
     expect(result.flagged).toEqual([
       { slideId: "s-objectives", elementId: "ob-2", reason: "teacher" },
     ]);
-    expect(result.proposals.every((p) => p.generatedFrom.promptVersion === "cascade.v1")).toBe(
+    expect(result.proposals.every((p) => p.generatedFrom.promptVersion === "cascade.v2")).toBe(
       true,
     );
     expect(ai.calls).toHaveLength(2);
@@ -170,7 +170,7 @@ describeDb("lesson.cascade / lesson.regenerate jobs", () => {
       h: term.h,
       authoredBy: "ai",
     });
-    expect(one?.proposals[0]?.generatedFrom.promptVersion).toBe("regenerate.v1");
+    expect(one?.proposals[0]?.generatedFrom.promptVersion).toBe("regenerate.v2");
     expect(ai.calls).toHaveLength(1);
 
     const whole = await lessonRegenerateJob(

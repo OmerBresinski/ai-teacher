@@ -170,10 +170,11 @@ export function objectivesCoveredBy(facts: LessonFacts): Map<FactId, Set<FactId>
   return covers;
 }
 
-/** Every fact that declares the objectives it serves. Reads only what the schema has today. */
+/** Every fact that declares the objectives it serves. */
 function factsWithObjectiveRefs(facts: LessonFacts): { id: FactId; objectiveRefs: FactId[] }[] {
   const out: { id: FactId; objectiveRefs: FactId[] }[] = [];
   const lists: { id: FactId; objectiveRefs?: FactId[] | undefined }[][] = [
+    facts.keyIdeas ?? [],
     facts.vocabulary,
     facts.workedExamples,
     facts.questions,

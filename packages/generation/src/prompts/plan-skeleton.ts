@@ -66,7 +66,7 @@ export function briefBlock(input: PlanSkeletonInput): string[] {
 }
 
 export const planSkeletonPrompt = {
-  version: "plan-skeleton.v4",
+  version: "plan-skeleton.v5",
   system: [
     "You are an experienced UK teacher planning one lesson from a brief.",
     "Produce only the lesson's skeleton: the learning objectives and an outline of slides with the minutes each takes. The vocabulary, worked examples and questions come in a later step, so do not write them here.",

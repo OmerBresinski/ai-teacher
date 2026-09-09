@@ -3,7 +3,7 @@ import { Button, cn, IconButton, Input, Spinner, Textarea } from "@tj/ui";
 import { Plus, X } from "lucide-react";
 import { type ReactNode, useCallback, useRef } from "react";
 import * as reducers from "../model/reducers";
-import type { FactKind, FactPatch, FactValues } from "../model/reducers/facts";
+import type { EditableFactKind, FactPatch, FactValues } from "../model/reducers/facts";
 import { useEditSession } from "../model/use-edit-session";
 import { useHistory, useLesson } from "./document-context";
 import { useProposals } from "./proposals-context";
@@ -12,7 +12,8 @@ import { useCoalescedIds } from "./use-coalesced-ids";
 
 /*
  * The facts panel (TEACH-134, ADR 0025 §1, §18, §25): the teacher edits objectives, vocabulary,
- * worked examples and questions in place. Every keystroke is a reducer over the Query cache
+ * worked examples and questions in place; key ideas and misconceptions (Generation quality §1)
+ * are shown read-only and can be removed. Every keystroke is a reducer over the Query cache
  * inside one edit session per typing burst (one undo step, like a typed slide edit); a commit
  * (blur or Enter) whose value differs from the value at focus reports the fact id, and ids
  * reported within a second are one `onFactsChanged` — the app enqueues one cascade for them.
@@ -21,7 +22,7 @@ import { useCoalescedIds } from "./use-coalesced-ids";
 
 export const FACTS_PANEL_LABEL = "Facts";
 
-const NEW_FACT: Record<FactKind, FactValues> = {
+const NEW_FACT: Record<EditableFactKind, FactValues> = {
   objective: { kind: "objective", text: "New objective" },
   vocabulary: { kind: "vocabulary", term: "New term", definition: "" },
   workedExample: { kind: "workedExample", problem: "New problem", steps: [], answer: "" },
@@ -51,7 +52,7 @@ export function FactsPanel({ onClose }: { onClose: () => void }) {
   // Adding waits for the worksheet's refs (`reservedFactIds === null`): a fresh id must not
   // collide with one a worksheet block still derives from.
   const canAdd = reservedFactIds !== null;
-  const add = (kind: FactKind) => {
+  const add = (kind: EditableFactKind) => {
     if (!canAdd) return;
     const made = history.dispatch(reducers.addFact, NEW_FACT[kind], reservedFactIds);
     if (made?.id) report(made.id);
@@ -105,6 +106,44 @@ export function FactsPanel({ onClose }: { onClose: () => void }) {
               </Row>
             ))}
           </Section>
+          {facts.keyIdeas && facts.keyIdeas.length > 0 ? (
+            <PanelSection title="Key ideas">
+              <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                {facts.keyIdeas.map((k, i) => (
+                  <Row
+                    key={k.id}
+                    onRemove={() => remove(k.id)}
+                    removeLabel={`Remove key idea ${i + 1}`}
+                  >
+                    <ReadOnlyFact label={`Key idea ${i + 1}`} title={k.statement}>
+                      <p className="m-0">{k.explanation}</p>
+                      <p className="m-0 text-ink-3">Example: {k.example}</p>
+                      {k.analogy ? <p className="m-0 text-ink-3">Analogy: {k.analogy}</p> : null}
+                    </ReadOnlyFact>
+                  </Row>
+                ))}
+              </ul>
+            </PanelSection>
+          ) : null}
+          {facts.misconceptions.length > 0 ? (
+            <PanelSection title="Misconceptions">
+              <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                {facts.misconceptions.map((m, i) => (
+                  <Row
+                    key={m.id}
+                    onRemove={() => remove(m.id)}
+                    removeLabel={`Remove misconception ${i + 1}`}
+                  >
+                    <ReadOnlyFact label={`Misconception ${i + 1}`} title={m.belief}>
+                      {m.correction ? (
+                        <p className="m-0 text-ink-3">Correct: {m.correction}</p>
+                      ) : null}
+                    </ReadOnlyFact>
+                  </Row>
+                ))}
+              </ul>
+            </PanelSection>
+          ) : null}
           <Section
             title="Vocabulary"
             canAdd={canAdd}
@@ -260,6 +299,27 @@ function Row({
         <X aria-hidden size={14} strokeWidth={1.5} />
       </IconButton>
     </li>
+  );
+}
+
+/** A fact the panel shows but does not yet edit: the statement, then its supporting lines. */
+function ReadOnlyFact({
+  label,
+  title,
+  children,
+}: {
+  label: string;
+  title: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 text-body">
+      <p className="m-0 font-medium">
+        <span className="sr-only">{label}: </span>
+        {title}
+      </p>
+      {children}
+    </div>
   );
 }
 

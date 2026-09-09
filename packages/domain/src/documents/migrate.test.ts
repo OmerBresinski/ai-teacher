@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { lesson } from "./fixtures.test-helpers";
+import { generatedLesson, lesson } from "./fixtures.test-helpers";
 import { parseLesson } from "./lesson";
 import { CURRENT_VERSION, DocumentParseError, migrate } from "./migrate";
 
@@ -12,6 +12,19 @@ describe("migrate", () => {
   test("the current version passes through untouched", () => {
     const doc = lesson();
     expect(migrate(doc)).toBe(doc);
+  });
+
+  test("a version-1 lesson with the old { id, text } misconception shape is mapped to the new one", () => {
+    const doc = generatedLesson() as unknown as { facts: Record<string, unknown> };
+    doc.facts.misconceptions = [{ id: "m1", text: "Clouds are vapour." }];
+    const migrated = migrate(doc) as { facts: { misconceptions: unknown[] } };
+    expect(migrated.facts.misconceptions).toEqual([
+      { id: "m1", belief: "Clouds are vapour.", correction: "", objectiveRefs: [] },
+    ]);
+    expect(parseLesson(migrated).facts?.misconceptions).toHaveLength(1);
+    // An empty list, the shape every stored lesson has, is untouched: identity.
+    const clean = generatedLesson();
+    expect(migrate(clean)).toBe(clean);
   });
 
   test("a document from a future version is refused with TeachDeck's message", () => {

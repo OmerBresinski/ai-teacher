@@ -10,8 +10,10 @@ import type {
   FactId,
   FactQuestion,
   Id,
+  KeyIdea,
   Lesson,
   LessonFacts,
+  Misconception,
   Objective,
   SlideElement,
   VocabularyItem,
@@ -20,21 +22,37 @@ import type {
 } from "@tj/domain/documents";
 import { edit, type WithId } from "./core";
 
-export type FactKind = "objective" | "vocabulary" | "workedExample" | "question";
+/**
+ * Every fact kind the panel knows. Key ideas and misconceptions (Generation quality §1) are shown
+ * read-only and can be removed; adding or editing them is not yet a panel feature, so
+ * `FactValues` covers the four `EditableFactKind`s only.
+ */
+export type FactKind =
+  | "objective"
+  | "keyIdea"
+  | "vocabulary"
+  | "workedExample"
+  | "question"
+  | "misconception";
+export type EditableFactKind = Exclude<FactKind, "keyIdea" | "misconception">;
 
-/** The one-letter prefix each kind's ids carry (`o1`, `v3`, `x2`, `q4`), as the worker mints them. */
+/** The one-letter prefix each kind's ids carry (`o1`, `k1`, `v3`, `x2`, `q4`, `m1`), as the worker mints them. */
 export const FACT_ID_PREFIX: Record<FactKind, string> = {
   objective: "o",
+  keyIdea: "k",
   vocabulary: "v",
   workedExample: "x",
   question: "q",
+  misconception: "m",
 };
 
 const LIST_OF: Record<FactKind, keyof LessonFacts> = {
   objective: "objectives",
+  keyIdea: "keyIdeas",
   vocabulary: "vocabulary",
   workedExample: "workedExamples",
   question: "questions",
+  misconception: "misconceptions",
 };
 
 export type FactPatch =
@@ -49,11 +67,15 @@ export type FactValues =
   | { kind: "workedExample"; problem: string; steps: string[]; answer: string }
   | { kind: "question"; stem: string; answer: string; reasoning: string };
 
-type AnyFact = Objective | VocabularyItem | WorkedExample | FactQuestion;
+type AnyFact = Objective | KeyIdea | VocabularyItem | WorkedExample | FactQuestion | Misconception;
+
+/** The fact list under `key`; `keyIdeas` is optional on the document, so absent reads as empty. */
+const listOf = (facts: LessonFacts, key: keyof LessonFacts): AnyFact[] =>
+  (facts[key] as AnyFact[] | undefined) ?? [];
 
 function findFact(facts: LessonFacts, factId: FactId): AnyFact | undefined {
   for (const key of Object.values(LIST_OF)) {
-    const found = (facts[key] as AnyFact[]).find((f) => f.id === factId);
+    const found = listOf(facts, key).find((f) => f.id === factId);
     if (found) return found;
   }
   return undefined;
@@ -108,7 +130,7 @@ export function nextFactId(
     if (Number.isInteger(n) && n > max) max = n;
   };
   if (facts) {
-    for (const key of Object.values(LIST_OF)) for (const f of facts[key] as AnyFact[]) bump(f.id);
+    for (const key of Object.values(LIST_OF)) for (const f of listOf(facts, key)) bump(f.id);
     for (const entry of facts.outline) for (const ref of entry.factRefs) bump(ref);
   }
   const walk = (elements: readonly SlideElement[]) => {
@@ -164,14 +186,17 @@ export function addFact(
   return { lesson: next, id };
 }
 
-/** Remove a fact and every outline reference to it. Elements are untouched. */
+/**
+ * Remove a fact, every outline reference to it and every link another fact holds to it
+ * (`objectiveRefs`, `misconceptionRef` on worked examples and distractors). Elements are untouched.
+ */
 export const removeFact = (lesson: Lesson, factId: FactId): Lesson =>
   edit(lesson, (draft) => {
     const facts = draft.facts;
     if (!facts) return;
     let removed = false;
     for (const key of Object.values(LIST_OF)) {
-      const list = facts[key] as AnyFact[];
+      const list = listOf(facts, key);
       const index = list.findIndex((f) => f.id === factId);
       if (index !== -1) {
         list.splice(index, 1);
@@ -183,7 +208,29 @@ export const removeFact = (lesson: Lesson, factId: FactId): Lesson =>
       const at = entry.factRefs.indexOf(factId);
       if (at !== -1) entry.factRefs.splice(at, 1);
     }
+    dropLinksTo(facts, factId);
   });
+
+/** Drop `factId` from every fact's own links; an empty optional list is removed, not left `[]`. */
+function dropLinksTo(facts: LessonFacts, factId: FactId): void {
+  const prune = (fact: { objectiveRefs?: FactId[] }, required: boolean) => {
+    if (!fact.objectiveRefs) return;
+    const at = fact.objectiveRefs.indexOf(factId);
+    if (at === -1) return;
+    fact.objectiveRefs.splice(at, 1);
+    if (!required && fact.objectiveRefs.length === 0) delete fact.objectiveRefs;
+  };
+  for (const k of facts.keyIdeas ?? []) prune(k, true);
+  for (const m of facts.misconceptions) prune(m, true);
+  for (const v of facts.vocabulary) prune(v, false);
+  for (const q of facts.questions) {
+    prune(q, false);
+    for (const d of q.distractors ?? [])
+      if (d.misconceptionRef === factId) delete d.misconceptionRef;
+  }
+  for (const x of facts.workedExamples)
+    if (x.misconceptionRef === factId) delete x.misconceptionRef;
+}
 
 /* ------------------------------------------------------------------ */
 /* Proposals                                                           */

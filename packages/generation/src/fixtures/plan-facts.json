@@ -1,4 +1,30 @@
 {
+  "keyIdeas": [
+    {
+      "statement": "Everything is made of tiny particles that are always moving.",
+      "explanation": "The particles are far too small to see, but their arrangement and movement decide whether a substance is a solid, a liquid or a gas.",
+      "example": "A drop of ink spreads through still water because water particles are moving and jostle the ink particles apart.",
+      "analogy": "Pupils standing still in rows are a solid; walking around a room a liquid; running around the playground a gas.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
+    }
+  ],
+  "misconceptions": [
+    {
+      "belief": "Particles in a solid do not move at all.",
+      "correction": "They vibrate on the spot; only a gas has particles that move freely.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
+    }
+  ],
   "vocabulary": [
     {
       "term": "Particle",
@@ -50,7 +76,24 @@
     {
       "stem": "True or false: particles in a solid do not move at all.",
       "answer": "False",
-      "reasoning": "They vibrate in fixed positions."
+      "reasoning": "They vibrate in fixed positions.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ],
+      "distractors": [
+        {
+          "text": "True",
+          "misconceptionRef": {
+            "type": "misconception",
+            "index": 0
+          }
+        }
+      ],
+      "use": "slide",
+      "tier": "easy"
     },
     {
       "stem": "Put these in order of increasing particle energy: gas, solid, liquid.",

@@ -345,3 +345,23 @@ plan-facts and Evaluate at `medium` (the project's §6 table is the hypothesis; 
 decides the contested cells). `AiCallContext.effort` puts the value on every `ai` log line beside
 `durationMs`. This is the fix for the 168-second Luna lesson of 9 Sept 2026 (TEACH-205).
 
+## Amendment (2026-09-09, project Generation quality — TEACH-209)
+
+§1's `LessonFacts` grows so depth, correctness and coherence can be properties of the facts rather
+than of slide wording. New, all optional on a stored lesson (ADR 0021 §2): `keyIdeas[]`
+(`{ id: k<n>, statement, explanation, example, analogy?, objectiveRefs }`, the teaching points
+`content` slides are built from); `misconceptions[]` changes shape from `{ id, text }` to
+`{ id: m<n>, belief, correction, objectiveRefs }` (`migrate()` maps the old shape; no stored lesson
+carried one); `questions[]` gain `objectiveRefs?`, `distractors?[{ text, misconceptionRef? }]`,
+`use?: slide | worksheet | exit | any` and `tier?: easy | core | stretch`;
+`workedExamples[].misconceptionRef?`; `vocabulary[].objectiveRefs?`; `outline[].brief?
+{ adds, avoids? }`; `facts.pitch? { readingAgeTarget, sentenceLengthMax, avoid[] }`.
+`LessonFactsSchema` checks that every `objectiveRefs` entry is an existing `o` id and every
+`misconceptionRef` an existing `m` id, and `factRefs` may point at `k` and `m` ids. §10's
+`objective-coverage` resolves through this graph: a slide or block covers an objective when its
+`factRefs` name it or name a fact linked to it (by the fact's `objectiveRefs` or by an outline entry
+listing both), which removes the false "not covered by the worksheet" errors blocks referencing
+questions produced. `assignFactIds` mints `k` and `m` and resolves the ordinal links; `factsBlock`
+renders the new lists, so every prompt version is bumped. The prompts that ask Plan for the new
+facts are the Plan-prompts ticket's.
+

@@ -179,7 +179,7 @@ describe("illustrate", () => {
     expect(deps.persisted).toHaveLength(1);
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
-    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v1");
+    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v2");
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 

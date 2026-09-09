@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { assignFactIds, PlanSkeletonSchema } from "./specs";
+import { assignFactIds, EMPTY_PLAN_FACTS, PlanSkeletonSchema, planFactsSchemaFor } from "./specs";
 import { FIXTURES } from "./testing";
 
 const skeletonWith = (outline: unknown[]) =>
@@ -76,5 +76,78 @@ describe("PlanSkeletonSchema imageBrief", () => {
       kind: "image-text",
       imageBrief: { subject: "river severn" },
     });
+  });
+
+  test("B5: assignFactIds mints k<n> and m<n>, resolves objectiveRefs and misconceptionRef ordinals to ids", () => {
+    const facts = assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
+    expect(facts.keyIdeas?.map((k) => k.id)).toEqual(["k1"]);
+    expect(facts.keyIdeas?.[0]?.objectiveRefs).toEqual(["o1"]);
+    expect(facts.misconceptions.map((m) => m.id)).toEqual(["m1"]);
+    expect(facts.misconceptions[0]).toMatchObject({ objectiveRefs: ["o1"] });
+    const tagged = facts.questions[2];
+    expect(tagged).toMatchObject({
+      id: "q3",
+      objectiveRefs: ["o1"],
+      distractors: [{ text: "True", misconceptionRef: "m1" }],
+      use: "slide",
+      tier: "easy",
+    });
+    // Fields the facts call did not write are absent, not `undefined` or empty (jsonb round-trip).
+    const plain = facts.questions[0];
+    expect(plain && "objectiveRefs" in plain).toBe(false);
+    expect("pitch" in facts).toBe(false);
+    expect(JSON.parse(JSON.stringify(facts))).toEqual(facts);
+  });
+
+  test("assignFactIds with the empty plan facts writes no key ideas and an empty misconceptions list", () => {
+    const facts = assignFactIds(FIXTURES.planSkeleton, EMPTY_PLAN_FACTS, 60);
+    expect("keyIdeas" in facts).toBe(false);
+    expect(facts.misconceptions).toEqual([]);
+  });
+
+  test("planFactsSchemaFor: a fact's own objectiveRefs must land in the skeleton's objectives; a misconceptionRef in this call's list", () => {
+    const schema = planFactsSchemaFor(FIXTURES.planSkeleton);
+    const objectives = FIXTURES.planSkeleton.learningObjectives.length;
+    const bad = {
+      ...FIXTURES.planFacts,
+      keyIdeas: [
+        {
+          ...(FIXTURES.planFacts.keyIdeas?.[0] as NonNullable<
+            typeof FIXTURES.planFacts.keyIdeas
+          >[number]),
+          objectiveRefs: [{ type: "objective" as const, index: objectives }],
+        },
+      ],
+      workedExamples: FIXTURES.planFacts.workedExamples.map((x) => ({
+        ...x,
+        misconceptionRef: { type: "misconception" as const, index: 4 },
+      })),
+    };
+    const result = schema.safeParse(bad);
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const paths = result.error.issues.map((i) => i.path);
+    expect(paths).toContainEqual(["keyIdeas", 0, "objectiveRefs", 0, "index"]);
+    expect(paths).toContainEqual(["workedExamples", 0, "misconceptionRef", "index"]);
+  });
+
+  test("planFactsSchemaFor: the outline may reference key ideas and misconceptions by ordinal", () => {
+    const schema = planFactsSchemaFor(FIXTURES.planSkeleton);
+    const facts = {
+      ...FIXTURES.planFacts,
+      outlineFactRefs: [
+        ...FIXTURES.planFacts.outlineFactRefs,
+        {
+          index: 3,
+          factRefs: [
+            { type: "keyIdea" as const, index: 0 },
+            { type: "misconception" as const, index: 0 },
+          ],
+        },
+      ],
+    };
+    expect(schema.safeParse(facts).success).toBe(true);
+    const ids = assignFactIds(FIXTURES.planSkeleton, facts, 60);
+    expect(ids.outline[3]?.factRefs).toEqual(expect.arrayContaining(["k1", "m1"]));
   });
 });

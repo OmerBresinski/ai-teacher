@@ -172,8 +172,8 @@ describe("runLessonPipeline", () => {
     expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1);
     const judge = ai.calls.find((call) => call.context?.stage === "illustrate");
     expect(judge?.modelClass).toBe("small");
-    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v1");
-    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v1");
+    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v2");
+    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v2");
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
     expect(summary.generation.images).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
     expect(summary.generation.stages).toContain("illustrate");
