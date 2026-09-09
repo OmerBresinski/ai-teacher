@@ -13,7 +13,7 @@ test.describe("/kit time estimate (TEACH-201)", () => {
   }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/kit#feedback");
-    const specimen = page.getByRole("heading", { name: "Time estimate" }).locator("..");
+    const specimen = page.getByRole("heading", { name: "Time estimate" }).locator("xpath=../..");
     await specimen.scrollIntoViewIfNeeded();
 
     const estimates = specimen.getByTestId("generation-estimate");
