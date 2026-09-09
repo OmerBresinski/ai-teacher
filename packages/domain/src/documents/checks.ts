@@ -1,5 +1,6 @@
 import type { Finding } from "./finding";
 import type { Lesson } from "./lesson";
+import type { FactId, LessonFacts } from "./lesson-facts";
 import { richDocToPlainText } from "./rich-text";
 import { hasRevealableAnswer, type Slide, type SlideElement } from "./slide";
 import type { Worksheet, WorksheetBlock } from "./worksheet";
@@ -103,19 +104,26 @@ function blockAnswerProblem(block: WorksheetBlock): string | undefined {
 /* objective-coverage                                                  */
 /* ------------------------------------------------------------------ */
 
-/** Every objective is taught on at least one slide and practised in at least one block. */
+/**
+ * Every objective is taught on at least one slide and practised in at least one block. Coverage
+ * resolves through the fact graph, not by literal id: a block whose `factRefs` name `q1` covers
+ * `o1` when `q1` is linked to `o1` — by the question's own `objectiveRefs`, or by an outline entry
+ * that lists both. Worksheet blocks reference questions, not objectives, so the literal check
+ * reported "not covered by the worksheet" on every production lesson (Generation quality, Problem 6).
+ */
 function checkObjectiveCoverage(lesson: Lesson, worksheet?: Worksheet): Finding[] {
   const facts = lesson.facts;
   if (!facts) return [];
+  const covers = objectivesCoveredBy(facts);
   const onSlides = new Set<string>();
   for (const slide of lesson.slides) {
     walkElements(slide.elements, (element) => {
-      for (const ref of element.generatedFrom?.factRefs ?? []) onSlides.add(ref);
+      for (const ref of element.generatedFrom?.factRefs ?? []) addCovered(onSlides, ref, covers);
     });
   }
   const onWorksheet = new Set<string>();
   for (const block of worksheet?.blocks ?? []) {
-    for (const ref of block.generatedFrom?.factRefs ?? []) onWorksheet.add(ref);
+    for (const ref of block.generatedFrom?.factRefs ?? []) addCovered(onWorksheet, ref, covers);
   }
   const findings: Finding[] = [];
   for (const objective of facts.objectives) {
@@ -132,6 +140,57 @@ function checkObjectiveCoverage(lesson: Lesson, worksheet?: Worksheet): Finding[
     });
   }
   return findings;
+}
+
+/**
+ * Which objectives each non-objective fact stands for: its own `objectiveRefs` when the fact
+ * carries them, plus every objective an outline entry lists beside it. Objectives are keyed to
+ * themselves so one lookup serves every ref.
+ */
+export function objectivesCoveredBy(facts: LessonFacts): Map<FactId, Set<FactId>> {
+  const objectiveIds = new Set(facts.objectives.map((o) => o.id));
+  const covers = new Map<FactId, Set<FactId>>();
+  const link = (factId: FactId, objectiveId: FactId) => {
+    if (!objectiveIds.has(objectiveId)) return;
+    const set = covers.get(factId) ?? new Set<FactId>();
+    set.add(objectiveId);
+    covers.set(factId, set);
+  };
+  for (const id of objectiveIds) link(id, id);
+  for (const entry of facts.outline) {
+    const objectives = entry.factRefs.filter((ref) => objectiveIds.has(ref));
+    for (const ref of entry.factRefs) {
+      if (objectiveIds.has(ref)) continue;
+      for (const objective of objectives) link(ref, objective);
+    }
+  }
+  for (const fact of factsWithObjectiveRefs(facts)) {
+    for (const objective of fact.objectiveRefs) link(fact.id, objective);
+  }
+  return covers;
+}
+
+/** Every fact that declares the objectives it serves. Reads only what the schema has today. */
+function factsWithObjectiveRefs(facts: LessonFacts): { id: FactId; objectiveRefs: FactId[] }[] {
+  const out: { id: FactId; objectiveRefs: FactId[] }[] = [];
+  const lists: { id: FactId; objectiveRefs?: FactId[] | undefined }[][] = [
+    facts.vocabulary,
+    facts.workedExamples,
+    facts.questions,
+    facts.misconceptions,
+  ];
+  for (const list of lists) {
+    for (const fact of list) {
+      if (fact.objectiveRefs && fact.objectiveRefs.length > 0) {
+        out.push({ id: fact.id, objectiveRefs: fact.objectiveRefs });
+      }
+    }
+  }
+  return out;
+}
+
+function addCovered(into: Set<string>, ref: string, covers: Map<FactId, Set<FactId>>): void {
+  for (const objective of covers.get(ref) ?? []) into.add(objective);
 }
 
 /* ------------------------------------------------------------------ */
