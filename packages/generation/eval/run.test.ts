@@ -68,13 +68,14 @@ describe("eval:paid", () => {
     expect(ai.calls.at(-1)?.modelClass).toBe("frontier");
     expect(row.scores?.rubric?.mean).toBe(4);
     expect(row.rubricRationales?.depth).toBe("why");
-    expect(row.judgeCostUsd).toBeGreaterThan(0);
+    expect(row.judge?.calls).toBe(1);
+    expect(row.judge?.costUsd).toBeGreaterThan(0);
     expect(row.costUsd).toBeGreaterThan(0);
     const totals = summarise(rows, [brief], budget);
     expect(totals.rubric.mean).toBe(4);
     expect(totals.rubric.dimensions.imageFit).toBeNull();
-    expect(totals.judgeCostUsd).toBe(row.judgeCostUsd);
-    expect(totals.costUsd).toBeCloseTo((row.costUsd ?? 0) + (row.judgeCostUsd ?? 0), 6);
+    expect(totals.judgeCostUsd).toBe(row.judge?.costUsd ?? null);
+    expect(totals.costUsd).toBeCloseTo((row.costUsd ?? 0) + (row.judge?.costUsd ?? 0), 6);
   });
 
   test("rubricTotals: per-dimension means over the scored briefs, null when none scored", () => {
@@ -125,5 +126,8 @@ describe("eval:paid", () => {
     // The fake's fallback is not a rubric answer: the judge fails on both attempts, the rubric is null.
     expect(totals.rubric.mean).toBeNull();
     expect(table).toContain("rubric mean -");
+    // …but both paid attempts are still on the brief's judge row.
+    expect(rows[0]?.judge?.calls).toBe(2);
+    expect(rows[0]?.judge?.costUsd).toBeGreaterThan(0);
   });
 });

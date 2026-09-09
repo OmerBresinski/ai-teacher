@@ -33,7 +33,7 @@ const results = (over: Partial<EvalResults["totals"]> = {}, sha = "abcdef0123"):
       inputTokens: 13000,
       outputTokens: 5200,
       costUsd: 0.12,
-      judgeCostUsd: 0.16,
+      judge: { calls: 1, inputTokens: 8000, outputTokens: 600, costUsd: 0.16 },
       findings: { error: 0, warning: 1 },
       scores: {
         schema: 1,

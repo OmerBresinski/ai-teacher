@@ -37,7 +37,9 @@ The loop stops as soon as the budget is exceeded; whatever ran is reported with
   "sha": "…", "at": "…", "models": { "frontier": "…", "standard": "…", "small": "…" }, "capUsd": 3,
   "briefs": [{ "id": "y8-science-particles", "ok": true, "durationMs": 41200, "firstSlideMs": 7900,
                "slides": 10, "blocks": 8, "calls": 14, "inputTokens": 21000, "outputTokens": 5800,
-               "costUsd": 0.12, "judgeCostUsd": 0.16, "findings": { "error": 0, "warning": 1 },
+               "costUsd": 0.12,
+               "judge": { "calls": 1, "inputTokens": 8000, "outputTokens": 600, "costUsd": 0.16 },
+               "findings": { "error": 0, "warning": 1 },
                "scores": { "schema": 1, "modelFindings": 0.9,
                            "rubric": { "mean": 3.6, "dimensions": { "correctness": 4, "depth": 2,
                              "pitch": 4, "coherence": 3, "questionQuality": 3, "notes": 2,
@@ -57,10 +59,12 @@ one-line rationale per dimension, kept **only** in this gitignored file (root `.
 `formatResultsTable` nor `renderComment` reads it; `eval/delta.test.ts` asserts a sentinel
 rationale never reaches the comment. `firstSlideMs` is the time to the first persist that carried a
 slide, the number the F06 definition of done ("first slide visible in under 10 seconds") is about;
-`durationMs` is the whole brief **without** the judge call that follows it. `costUsd` on a brief is
-the lesson's own spend, so it is comparable with the per-lesson target; the judge's spend is
-`judgeCostUsd` beside it. The totals' `costUsd` is the whole budget (lessons plus judge), which is
-what `AI_EVAL_RUN_COST_CAP_USD` caps.
+`durationMs` is the whole brief **without** the judge call that follows it. `calls`, the tokens and
+`costUsd` on a brief are the lesson's own, so the cost is comparable with the per-lesson target;
+the judge's usage is the `judge` object beside them, taken from the budget's deltas so a judge
+attempt that was paid for but failed validation still counts. The totals' `costUsd` is the whole
+budget (lessons plus judge), which is what `AI_EVAL_RUN_COST_CAP_USD` caps; `judgeCostUsd` is the
+judge's share.
 
 ### Scores
 
@@ -79,7 +83,8 @@ changing them; no `@mastra/evals` dependency is needed and no Mastra judge model
   `AI_EVAL_RUN_COST_CAP_USD`. It reads the audience block, the brief topic, `factsBlock`, every
   slide's plain text and notes and every worksheet block, and scores eight dimensions 1–5:
   `correctness`, `depth`, `pitch`, `coherence`, `questionQuality`, `notes`, `worksheetValueAdd`,
-  `imageFit`. `imageFit` is `null` when no `image-text` slide carries a placed photograph — which
+  `imageFit`. The first seven must carry an integer score (a `null` there is a schema miss and goes
+to `callStructured`'s one retry); `imageFit` is `null` when no `image-text` slide carries a placed photograph — which
   is every eval run today, because `run-brief.ts` wires no `PhotoPlacer` into the pipeline; the
   picture-first ticket changes that. `rubric.mean` is the mean of the non-null dimensions, one
   decimal. The judge runs **only in the paid half** (`runBrief(…, { judge: true })` from

@@ -118,6 +118,15 @@ describe("rubric judge", () => {
     expect(budget.totals().calls).toBe(2);
   });
 
+  test("a null score on any dimension but imageFit is a schema miss: retried, then rubric null", async () => {
+    const ai = createFakeAi({
+      script: [rubricJson(4, { depth: null }), rubricJson(4, { notes: null })],
+    });
+    const scored = await scoreLesson("fixture", { lesson: generatedLesson() }, judgeOn(ai));
+    expect(ai.calls).toHaveLength(2);
+    expect(scored.scores.rubric).toBeNull();
+  });
+
   test("a budget already exceeded: rubric null and no call", async () => {
     const ai = createFakeAi({ script: [rubricJson(5)] });
     const budget = createBudget({ capUsd: 0.000001, capTokens: 1e6 });

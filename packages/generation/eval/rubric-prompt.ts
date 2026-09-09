@@ -29,21 +29,27 @@ export const RUBRIC_DIMENSIONS = [
 
 export type RubricDimension = (typeof RUBRIC_DIMENSIONS)[number];
 
-const DimensionScoreSchema = z.strictObject({
-  score: z.number().int().min(1).max(5).nullable(),
-  rationale: z.string().max(300),
+const ScoreSchema = z.number().int().min(1).max(5);
+const Rationale = z.string().max(300);
+
+/** Seven dimensions always carry a score; a `null` there would be a dimension quietly dropped. */
+const ScoredDimensionSchema = z.strictObject({ score: ScoreSchema, rationale: Rationale });
+/** `imageFit` alone may be `null`: a lesson without a placed photograph has nothing to score. */
+const OptionalDimensionSchema = z.strictObject({
+  score: ScoreSchema.nullable(),
+  rationale: Rationale,
 });
 
 export const RubricOutputSchema = z.strictObject({
   dimensions: z.strictObject({
-    correctness: DimensionScoreSchema,
-    depth: DimensionScoreSchema,
-    pitch: DimensionScoreSchema,
-    coherence: DimensionScoreSchema,
-    questionQuality: DimensionScoreSchema,
-    notes: DimensionScoreSchema,
-    worksheetValueAdd: DimensionScoreSchema,
-    imageFit: DimensionScoreSchema,
+    correctness: ScoredDimensionSchema,
+    depth: ScoredDimensionSchema,
+    pitch: ScoredDimensionSchema,
+    coherence: ScoredDimensionSchema,
+    questionQuality: ScoredDimensionSchema,
+    notes: ScoredDimensionSchema,
+    worksheetValueAdd: ScoredDimensionSchema,
+    imageFit: OptionalDimensionSchema,
   }),
 });
 

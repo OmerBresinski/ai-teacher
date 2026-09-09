@@ -25,7 +25,7 @@ describe("eval:schema", () => {
     const ai = scriptedPipelineAi();
     const rows = await runSchemaEval([brief], () => ai);
     expect(rows[0]?.result.scores?.rubric).toBeNull();
-    expect(rows[0]?.result.judgeCostUsd).toBeNull();
+    expect(rows[0]?.result.judge).toBeNull();
     expect(ai.calls.length).toBeLessThanOrEqual(pipelineScript().length);
     expect(ai.calls.some((c) => c.modelClass === "frontier")).toBe(false);
   });

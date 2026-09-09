@@ -29,12 +29,21 @@ export interface BriefResult {
   outputTokens: number;
   /**
    * The lesson's own spend — `null` when the model id is unpriced (the token cap applied) or the
-   * run failed early. The judge's call is not in it (`judgeCostUsd`), so the number is comparable
-   * with the per-lesson target.
+   * run failed early. `calls`, the tokens and this are the pipeline's alone; the rubric judge's
+   * usage is under `judge`, so the number is comparable with the per-lesson target.
    */
   costUsd: number | null;
-  /** The rubric judge's spend on this brief; `null` when it did not run or its model is unpriced. */
-  judgeCostUsd: number | null;
+  /**
+   * What the rubric judge used on this brief, from the budget's deltas — so a judge attempt that
+   * was paid for but failed validation or hit the cap is still counted. `null` when the judge was
+   * not asked (the schema half, or a brief that failed).
+   */
+  judge: {
+    calls: number;
+    inputTokens: number;
+    outputTokens: number;
+    costUsd: number | null;
+  } | null;
   findings: { error: number; warning: number };
   scores: EvalScores | null;
   /**
@@ -135,7 +144,15 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     inputTokens: after.inputTokens - before.inputTokens,
     outputTokens: after.outputTokens - before.outputTokens,
     costUsd: usd(after.costUsd, before.costUsd),
-    judgeCostUsd: scored?.scores.rubric ? usd(afterJudge.costUsd, after.costUsd) : null,
+    judge:
+      ok && options.judge
+        ? {
+            calls: afterJudge.calls - after.calls,
+            inputTokens: afterJudge.inputTokens - after.inputTokens,
+            outputTokens: afterJudge.outputTokens - after.outputTokens,
+            costUsd: usd(afterJudge.costUsd, after.costUsd),
+          }
+        : null,
     findings,
     scores: scored?.scores ?? null,
     ...(scored?.rubricRationales ? { rubricRationales: scored.rubricRationales } : {}),

@@ -51,7 +51,7 @@ export interface EvalTotals {
   outputTokens: number;
   /** The whole budget's spend, judge included; `null` when any priced call was on an unpriced id. */
   costUsd: number | null;
-  /** The rubric judge's share of `costUsd`; `null` when it never ran on a priced id. */
+  /** The rubric judge's share of `costUsd` (every attempt, paid or not for a score); `null` when it never ran on a priced id. */
   judgeCostUsd: number | null;
   findings: { error: number; warning: number };
   /** Means over the completed briefs the judge scored; `null` everywhere when none was. */
@@ -92,7 +92,9 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
     findings.warning += b.findings.warning;
   }
   const exceeded = budget.exceeded();
-  const judged = completed.map((b) => b.judgeCostUsd).filter((c): c is number => c !== null);
+  const judged = completed
+    .map((b) => b.judge?.costUsd ?? null)
+    .filter((c): c is number => c !== null);
   return {
     briefs: all.length,
     completed: completed.length,
