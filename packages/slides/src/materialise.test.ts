@@ -11,7 +11,7 @@ import {
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
 import { z } from "zod";
-import { vocabularyGrid } from "./layouts";
+import { PLACEHOLDER_IMAGE, vocabularyGrid } from "./layouts";
 import {
   type IdSupplier,
   materialiseBlock,
@@ -106,6 +106,8 @@ function minimalSpec(kind: GeneratableSlideKind): SlideSpec {
       return { kind, factRefs, items: ["One thing", "One question", "One word"] };
     case "plenary":
       return { kind, factRefs, items: ["We can explain evaporation"] };
+    case "image-text":
+      return { kind, factRefs, heading: "Roman roads", body: "The Romans built straight roads." };
   }
 }
 
@@ -148,6 +150,26 @@ describe("materialiseSlide", () => {
         });
       },
     );
+  });
+
+  test("image-text keeps the recipe's placeholder slot for illustrate", () => {
+    const slide = materialiseSlide(
+      SlideSpecSchema.parse(minimalSpec("image-text")),
+      "chalk",
+      meta,
+      counter(),
+    );
+    expect(slide.kind).toBe("image-text");
+    const images = slide.elements.filter((el) => el.type === "image");
+    expect(images).toHaveLength(1);
+    expect(images[0]).toMatchObject({
+      x: 0,
+      y: 0,
+      w: 422,
+      h: 540,
+      src: PLACEHOLDER_IMAGE,
+      authoredBy: "ai",
+    });
   });
 
   test("no placeholder copy survives on any kind", () => {
@@ -492,7 +514,7 @@ describe("per-kind spec schemas (structured-output providers need a top-level ob
   });
 
   test("a kind the pipeline cannot generate has no schema", () => {
-    expect(slideSpecSchemaFor("image-text")).toBeUndefined();
+    expect(slideSpecSchemaFor("image-text")).toBeDefined();
     expect(slideSpecSchemaFor("blank")).toBeUndefined();
     expect(blockSpecSchemaFor("image")).toBeUndefined();
   });

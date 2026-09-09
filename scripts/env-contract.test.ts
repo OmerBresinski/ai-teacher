@@ -82,6 +82,7 @@ describe("infra/env.contract.ts", () => {
       "AI_MODEL_FRONTIER",
       "AI_MODEL_STANDARD",
       "AI_MODEL_SMALL",
+      "PEXELS_API_KEY",
       "AI_LESSON_COST_CAP_USD",
       "AI_LESSON_TOKEN_CAP",
       "MASTRA_TELEMETRY_DISABLED",

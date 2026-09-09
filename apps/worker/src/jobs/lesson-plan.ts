@@ -7,7 +7,7 @@ import {
   putDocumentAsJob,
   type WorkspaceDb,
 } from "@tj/db";
-import { type JobId, type LessonId, newId } from "@tj/domain";
+import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
 import {
   type Lesson,
   parseLesson,
@@ -20,6 +20,7 @@ import {
   type PipelineInput,
   runLessonPipeline,
 } from "@tj/generation";
+import { storePhoto } from "@tj/images";
 import { defineJob, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { Logger } from "pino";
@@ -46,6 +47,20 @@ import type { WorkerDeps } from "../deps";
  * `clearGenerating` only clears a lock still held by **this** job, so a late finisher never
  * unlocks a lesson a newer job has since locked.
  */
+/**
+ * The pipeline's image collaborator (Images project): Pexels search plus bucket store, closed
+ * over the job's Workspace. Absent without a Pexels key — illustrate then skips placements.
+ */
+function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["images"] {
+  const images = deps.images;
+  if (!images) return undefined;
+  return {
+    search: (query, opts) =>
+      images.client.search({ query, ...opts, locale: "en-GB" }).then((page) => page.photos),
+    store: (photo, target) => storePhoto({ photo, target, storage: images.storage, workspaceId }),
+  };
+}
+
 export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan", async (ctx) => {
   const { payload, workspaceId, jobId, signal, deps, logger } = ctx;
   const ws = forWorkspace(deps.db, workspaceId);
@@ -74,6 +89,7 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
       onProgress: (percent, message, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt }),
       context: { lessonId, jobId },
+      images: imagePlacer(deps, workspaceId),
     };
     try {
       await runLessonPipeline(loaded.input, pipelineDeps);

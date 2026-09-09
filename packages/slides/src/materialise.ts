@@ -76,6 +76,8 @@ function fillSlide(spec: SlideSpec, themeId: string, laid: Layout, ids: IdSuppli
       return fillVocabulary(spec, themeId, laid);
     case "content":
       return fillContent(spec, laid);
+    case "image-text":
+      return fillImageText(spec, laid);
     case "worked-example":
       return fillWorkedExample(spec, laid);
     case "discussion":
@@ -160,6 +162,14 @@ function fillVocabulary(spec: SlideSpecOf<"vocabulary">, themeId: string, laid: 
 function fillContent(spec: SlideSpecOf<"content">, laid: Layout): Layout {
   setText(textOf(laid, "heading"), spec.heading);
   setText(textOf(laid, "body"), spec.body);
+  return laid;
+}
+
+function fillImageText(spec: SlideSpecOf<"image-text">, laid: Layout): Layout {
+  setText(textOf(laid, "heading"), spec.heading);
+  setText(textOf(laid, "body"), spec.body);
+  // The image slot stays as the recipe made it: PLACEHOLDER_IMAGE until `illustrate` places a
+  // photograph (or leaves it, with a warning finding, when Pexels has nothing).
   return laid;
 }
 

@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
 import { createBudget } from "@tj/ai";
+import { createFakeAi } from "@tj/ai/testing";
 import { parseLesson, parseWorksheet } from "@tj/domain/documents";
+import type { StoredPhoto } from "@tj/images";
 import pino from "pino";
 import { PROMPT_VERSIONS } from "./prompts";
 import { TITLE_PROMPT_VERSION } from "./stages/plan";
@@ -11,6 +13,7 @@ import {
   FIXTURES,
   PLAN_CALLS,
   PLAN_INDEX,
+  pipelineScript,
   recordingDeps,
   SAMPLE_WORKSHEET_ID,
   sampleBriefLesson,
@@ -26,7 +29,7 @@ const GENERATED_SLIDES = TOTAL_SLIDES - 2; // 8
 const PLAN_PERSISTS = 3;
 /** Script index of the first slide answer: after the input check and Plan's two answers. */
 const SLIDES_INDEX = CHECK_INPUT_CALLS + PLAN_CALLS;
-const ALL_STAGES = ["check-input", "plan", "generate", "evaluate", "repair"];
+const ALL_STAGES = ["check-input", "plan", "generate", "illustrate", "evaluate", "repair"];
 const PLANNED_VERSION = `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}`;
 
 function memoryLogger() {
@@ -89,6 +92,84 @@ describe("runLessonPipeline", () => {
     expect(parseWorksheet(JSON.parse(JSON.stringify(worksheet)))).toEqual(worksheet as never);
     // The fixture pair is clean: no residual findings.
     expect(lesson.generation?.findings).toEqual([]);
+  });
+
+  test("illustrate places one photo in a full run and the summary counts it", async () => {
+    // The fixture skeleton with its content slide swapped for a picture slide: same length, so
+    // the fixture facts and every script index still line up.
+    const skeleton = structuredClone(FIXTURES.planSkeleton);
+    const swapped = skeleton.outline[4];
+    if (swapped?.kind !== "content") throw new Error("fixture outline moved");
+    skeleton.outline[4] = {
+      kind: "image-text",
+      minutes: swapped.minutes,
+      factRefs: swapped.factRefs,
+      imageBrief: { subject: "river severn" },
+    };
+    const script = pipelineScript();
+    script[PLAN_INDEX] = JSON.stringify(skeleton);
+    script[SLIDES_INDEX + 2] = JSON.stringify({
+      kind: "image-text",
+      factRefs: ["o1"],
+      heading: "Rivers",
+      body: "Rivers flow to the sea.",
+    });
+    const ai = createFakeAi({
+      script,
+      usage: { inputTokens: 1000, outputTokens: 400 },
+    });
+    const photo = {
+      id: "p1",
+      width: 4000,
+      height: 6000,
+      alt: "River",
+      photographer: "Ada",
+      photographerUrl: "https://www.pexels.com/@ada",
+      pageUrl: "https://www.pexels.com/photo/p1/",
+      src: {
+        large: "https://images.pexels.com/photos/p1/large.jpeg",
+        medium: "https://images.pexels.com/photos/p1/medium.jpeg",
+        tiny: "https://images.pexels.com/photos/p1/tiny.jpeg",
+      },
+    };
+    const stored: StoredPhoto = {
+      key: "ws/images/p1.jpg",
+      url: "/files/ws/images/p1.jpg",
+      width: 4000,
+      height: 6000,
+      bytes: 100,
+      contentType: "image/jpeg",
+      source: {
+        provider: "pexels",
+        id: "p1",
+        pageUrl: photo.pageUrl,
+        photographer: photo.photographer,
+        photographerUrl: photo.photographerUrl,
+      },
+    };
+    const { lines, logger } = memoryLogger();
+    const deps = recordingDeps(ai, {
+      logger,
+      images: {
+        search: async () => [photo],
+        store: async () => stored,
+      },
+    });
+    const { lesson } = await runLessonPipeline(
+      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
+      deps,
+    );
+    const imageSlide = lesson.slides.find((slide) => slide.kind === "image-text");
+    const element = imageSlide?.elements.find((el) => el.type === "image");
+    if (element?.type !== "image") throw new Error("no placed image");
+    expect(element.src).toBe("/files/ws/images/p1.jpg");
+    expect(element.source).toEqual(stored.source);
+    // No model call for illustrate: 1 check + 2 plan + 8 slides + 1 worksheet + 1 evaluate.
+    expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1);
+    const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
+    expect(summary.generation.images).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
+    expect(summary.generation.stages).toContain("illustrate");
+    expect(deps.progress.some((p) => p.message === "Pictures placed")).toBe(true);
   });
 
   test("every call carries a stage context and the classes follow the stage plan", () => {
@@ -161,7 +242,7 @@ describe("runLessonPipeline", () => {
     );
     const generated = first.persisted.find((p) => p.lesson.generation?.stage === "generated");
     if (!generated) throw new Error("no generated checkpoint recorded");
-    expect(resumeFrom(generated.lesson)).toBe("evaluate");
+    expect(resumeFrom(generated.lesson)).toBe("illustrate");
 
     // Only Evaluate's answer is consumed on resume.
     const deps = recordingDeps(answeringAi([JSON.stringify({ findings: [] })]));
@@ -427,7 +508,7 @@ describe("resumeFrom", () => {
       },
     });
     expect(resumeFrom(at("planned"))).toBe("generate");
-    expect(resumeFrom(at("generated"))).toBe("evaluate");
+    expect(resumeFrom(at("generated"))).toBe("illustrate");
     expect(resumeFrom(at("evaluated"))).toBe("repair");
     expect(resumeFrom(at("repaired"))).toBeNull();
   });

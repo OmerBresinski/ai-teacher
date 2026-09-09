@@ -34,6 +34,7 @@ const SHAPES = {
   vocabulary:
     '{ "kind": "vocabulary", "entries": [{ "term", "definition" }] (1–slots), "factRefs", "notes"? }',
   content: '{ "kind": "content", "heading", "body" (≤ 40 words), "factRefs", "notes"? }',
+  "image-text": '{ "kind": "image-text", "heading", "body" (≤ 40 words), "factRefs", "notes"? }',
   "worked-example":
     '{ "kind": "worked-example", "heading"?, "question", "steps": [1–4 strings], "factRefs", "notes"? }',
   instructions:
@@ -55,7 +56,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v2",
+  version: "generate-slide.v3",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",

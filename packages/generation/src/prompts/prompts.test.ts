@@ -80,18 +80,16 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v2",
-    hash: "5563f0edae79cbd3e25de7f6f1d68f69d81914f5d83bcc5d0da1082c2dfec642",
+    version: "plan-skeleton.v3",
+    hash: "da4bf0adeff8bf58741f78d51314fdd6ac663a848094b9825a5a5dc91cd06afd",
   },
   "plan-facts": {
     version: "plan-facts.v2",
     hash: "bceccf73b9a30f7a19f48f42ee1c0bbc810aebd82adb0d8083daca6bce70f2e0",
   },
   "generate-slide": {
-    version: "generate-slide.v2",
-    // Re-pinned in TEACH-138 without a bump: the wording is unchanged, the sample `entry`
-    // (`facts.outline[3]`) gained an objective ref when the fixture plan was split.
-    hash: "9b6b5b037c2fa7bb56697a4870afa327d23d9e2593606ff205a20b2134096a10",
+    version: "generate-slide.v3",
+    hash: "8a6ce029f5eef046f61802c997d133cde29a874dad8f2a4a782cd1dab3817a25",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v3",

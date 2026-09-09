@@ -96,6 +96,12 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
     body: line(SPEC_LIMITS.body),
   }),
   z.strictObject({
+    kind: z.literal("image-text"),
+    ...specBase,
+    heading: line(SPEC_LIMITS.heading),
+    body: line(SPEC_LIMITS.body),
+  }),
+  z.strictObject({
     kind: z.literal("worked-example"),
     ...specBase,
     heading: line(SPEC_LIMITS.heading).optional(),

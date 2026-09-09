@@ -8,6 +8,7 @@ export {
   type PhotoResult,
   type PhotoSearchPage,
 } from "./pexels";
+export { queryCandidates } from "./query";
 export {
   FETCH_TIMEOUT_MS,
   MAX_PHOTO_BYTES,

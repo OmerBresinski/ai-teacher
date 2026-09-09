@@ -37,6 +37,12 @@
     "factRefs": ["o1"],
     "notes": "Draw the three particle diagrams on the board."
   },
+  "image-text": {
+    "kind": "image-text",
+    "heading": "Rivers",
+    "body": "Rivers flow to the sea.",
+    "factRefs": ["o1"]
+  },
   "worked-example": {
     "kind": "worked-example",
     "heading": "Worked example",

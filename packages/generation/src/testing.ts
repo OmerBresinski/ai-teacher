@@ -11,7 +11,7 @@ import repairFixture from "./fixtures/repair.json";
 import slidesFixture from "./fixtures/slides.json";
 import worksheetFixture from "./fixtures/worksheet.json";
 import type { PlanFacts, PlanSkeleton, WorksheetSpec } from "./specs";
-import { noSources, type PipelineDeps, type PipelineState } from "./types";
+import { noSources, type PhotoPlacer, type PipelineDeps, type PipelineState } from "./types";
 
 /*
  * Test helpers for the pipeline and its consumers (ADR 0025 §22): the fixtures as typed values,
@@ -138,7 +138,12 @@ export interface RecordedDeps extends PipelineDeps {
 /** `PipelineDeps` over a fake with a recording `persist` / `onProgress` and a counting `ids`. */
 export function recordingDeps(
   ai: FakeAi,
-  options: { budget?: Budget; logger?: pino.Logger; abortAfterPersist?: number } = {},
+  options: {
+    budget?: Budget;
+    logger?: pino.Logger;
+    abortAfterPersist?: number;
+    images?: PhotoPlacer;
+  } = {},
 ): RecordedDeps {
   const abort = new AbortController();
   const persisted: RecordedDeps["persisted"] = [];
@@ -168,6 +173,7 @@ export function recordingDeps(
       progress.push({ percent, message, documentUpdatedAt });
     },
     context: { lessonId: SAMPLE_LESSON_ID, jobId: SAMPLE_JOB_ID },
+    images: options.images,
     persisted,
     progress,
     abort,
