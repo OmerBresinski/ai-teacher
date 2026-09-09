@@ -78,6 +78,26 @@ test.describe("activity picker", () => {
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
   });
 
+  test("rows 4 and 5: True or false inserts its slide; the Challenge chip adds an Explain why line", async ({
+    signedInPage: { page, paths },
+  }) => {
+    await page.goto(EDITOR(paths));
+    await expect(page.locator("[data-slide-frame]")).toBeVisible();
+    const frame = page.locator("[data-slide-frame]");
+    let menu = await openActivities(page);
+    await menu.getByRole("menuitem", { name: "True or false", exact: true }).click();
+    await expect(menu).toBeHidden();
+    await expect(frame).toContainText("Write a statement that is clearly true or clearly false.");
+    await expect(frame.locator("[data-element-type='option']")).toHaveCount(2);
+    menu = await openActivities(page);
+    const challenge = page.getByRole("radio", { name: "Challenge" });
+    await challenge.click();
+    await expect(challenge).toBeChecked();
+    await menu.getByRole("menuitem", { name: "Multiple choice", exact: true }).click();
+    await expect(frame).toContainText("Explain why.");
+    await expect(frame.locator("[data-element-type='option']")).toHaveCount(4);
+  });
+
   test("row 6: present, four-option multiple choice, Right x3 dims the wrong options, then the right one fills", async ({
     signedInPage: { page, paths },
   }) => {

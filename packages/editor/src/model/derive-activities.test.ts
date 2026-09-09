@@ -2,13 +2,16 @@ import { describe, expect, test } from "bun:test";
 import {
   answerRevealSteps,
   type LessonFacts,
+  LessonSchema,
   type OptionElement,
   type Slide,
+  SlideSchema,
   type TextElement,
 } from "@tj/domain/documents";
 import { docToPlainText } from "../text/static";
 import {
   ACTIVITY_GROUPS,
+  ACTIVITY_TIERS,
   applyTier,
   buildActivity,
   deriveFillGap,
@@ -21,6 +24,7 @@ import {
   fixtureActivity,
   slideFactRefs,
 } from "./derive-activities";
+import { newLesson } from "./factories";
 
 /* TEACH-185: every derivation, the fixture fallback and the tier shaping. */
 
@@ -245,5 +249,20 @@ describe("derive-activities", () => {
     expect(timer.elements.some((el) => el.type === "text" && plain(el) === "Explain why.")).toBe(
       false,
     );
+  });
+
+  test("every derived slide, at every tier, parses as a Slide and together as a Lesson", () => {
+    const slides: Slide[] = [];
+    for (const group of ACTIVITY_GROUPS)
+      for (const id of group.activities)
+        for (const { value: tier } of ACTIVITY_TIERS) {
+          const slide = buildActivity(id, THEME, { facts: FACTS, tier });
+          const parsed = SlideSchema.safeParse(slide);
+          expect(parsed.success, `${id} / ${tier}: ${parsed.error?.message ?? ""}`).toBe(true);
+          slides.push(slide);
+        }
+    const lesson = { ...newLesson("Round trip", THEME), slides, facts: FACTS };
+    const parsed = LessonSchema.safeParse(lesson);
+    expect(parsed.success, parsed.error?.message ?? "").toBe(true);
   });
 });
