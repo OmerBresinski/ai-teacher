@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Lesson } from "./lesson";
 import type { Series } from "./series";
 import { type Slide, type SlideElement, SlideSchema } from "./slide";
-import type { Worksheet } from "./worksheet";
+import type { Worksheet, WorksheetBlock } from "./worksheet";
 
 /*
  * Document summary (ADR 0024 §3; glossary "Document summary"). The list-endpoint shape of a
@@ -24,6 +24,8 @@ export type DocumentSummary = {
   themeId?: string;
   /** Slides for a lesson, blocks for a worksheet, lessons for a series. */
   itemCount: number;
+  /** Worksheets only: the sum of the question blocks' marks, as the sheet prints them. */
+  marks?: number;
   /** The first slide of a lesson for the card thumbnail; `null` for the other kinds. */
   cover: Slide | null;
   createdAt: string;
@@ -38,6 +40,7 @@ export const DocumentSummarySchema = z.object({
   yearGroup: z.string().optional(),
   themeId: z.string().optional(),
   itemCount: z.number().int().nonnegative(),
+  marks: z.number().int().nonnegative().optional(),
   cover: SlideSchema.nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -78,6 +81,17 @@ export function coverOf(lesson: Lesson): Slide | null {
   return cover;
 }
 
+/**
+ * The marks a sheet is out of: the `marks` on its question blocks, which is what the paper prints
+ * in brackets. The other numbered blocks (multiple choice, gaps, matching, word search) carry no
+ * marks field and count for nothing here, exactly as they print.
+ */
+export function worksheetMarks(blocks: WorksheetBlock[]): number {
+  let total = 0;
+  for (const block of blocks) if (block.type === "question") total += block.marks ?? 0;
+  return total;
+}
+
 export function summarise(doc: Document): DocumentSummary {
   const base = { id: doc.id, title: doc.title, createdAt: doc.createdAt, updatedAt: doc.updatedAt };
   if ("slides" in doc) {
@@ -101,6 +115,7 @@ export function summarise(doc: Document): DocumentSummary {
       yearGroup: doc.yearGroup,
       themeId: doc.themeId,
       itemCount: doc.blocks.length,
+      marks: worksheetMarks(doc.blocks),
       cover: null,
     };
   }

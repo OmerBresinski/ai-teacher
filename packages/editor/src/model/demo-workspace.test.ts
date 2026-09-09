@@ -39,6 +39,32 @@ describe("demoWorkspace", () => {
     }
   });
 
+  it("seeds four real worksheets, one per job, with Fractions practice belonging to its lesson", () => {
+    const worksheets = library.filter((d) => d.kind === "worksheet");
+    expect(worksheets.map((d) => d.body.title)).toEqual([
+      "Fractions practice",
+      "Roman source investigation",
+      "Label a flowering plant",
+      "River vocabulary",
+    ]);
+    const lessonKeys = new Set(library.filter((d) => d.kind === "lesson").map((d) => d.key));
+    for (const document of worksheets) {
+      if (document.kind !== "worksheet") continue;
+      // The paper says what the card says, and nothing is the placeholder starter.
+      expect(document.body.header.title).toBe(document.body.title);
+      const copy = JSON.stringify(document.body.blocks);
+      expect(copy).not.toContain("Write your first question here");
+      expect(document.body.blocks.length).toBeGreaterThanOrEqual(3);
+      expect(summarise(document.body).marks).toBeGreaterThanOrEqual(0);
+      // A worksheet's `lessonId` is a lesson key until the seeder maps it (TEACH-186).
+      if (document.body.lessonId !== undefined)
+        expect(lessonKeys.has(document.body.lessonId)).toBe(true);
+    }
+    const fractions = worksheets.find((d) => d.key === "fraction-practice");
+    expect(fractions?.kind === "worksheet" ? fractions.body.lessonId : null).toBe("demo-fractions");
+    expect(fractions?.kind === "worksheet" ? summarise(fractions.body).marks : 0).toBe(12);
+  });
+
   it("lists every lesson before the series that reference it", () => {
     const seen = new Set<string>();
     for (const document of library) {

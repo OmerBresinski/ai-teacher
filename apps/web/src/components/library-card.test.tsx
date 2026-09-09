@@ -13,7 +13,7 @@ mock.module("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
 }));
 
-const { LibraryCard } = await import("./library-card");
+const { LibraryCard, minutesForMarks, worksheetEffort } = await import("./library-card");
 
 afterEach(cleanup);
 
@@ -80,11 +80,57 @@ describe("LibraryCard", () => {
     const worksheet = { ...lesson, id: "worksheet-1", kind: "worksheet" as const, itemCount: 4 };
     renderCard(worksheet);
     expect(screen.getByRole("button", { name: "Print" })).toBeVisible();
+    cleanup();
 
     const hero = renderCard(lesson, true);
     expect(hero.container.querySelector("article")).toHaveClass("col-span-2");
     expect(hero.container).toHaveTextContent(/7 slides.*Edited/);
     expect(screen.getAllByRole("button", { name: "Present" })).not.toHaveLength(0);
+  });
+
+  it("shows marks and minutes on worksheet cards, in the grid, the list and the hero (TEACH-186)", () => {
+    // A mark and a half each, up to the next five minutes, never under five.
+    expect(minutesForMarks(0)).toBe(5);
+    expect(minutesForMarks(1)).toBe(5);
+    expect(minutesForMarks(4)).toBe(10);
+    expect(minutesForMarks(12)).toBe(20);
+    expect(worksheetEffort({ kind: "worksheet", marks: 4 })).toBe("4 marks · 10 min");
+    expect(worksheetEffort({ kind: "worksheet", marks: 1 })).toBe("1 mark · 5 min");
+    expect(worksheetEffort({ kind: "worksheet", marks: 0 })).toBe("5 min");
+    expect(worksheetEffort({ kind: "lesson" })).toBeNull();
+
+    const worksheet = { ...lesson, id: "w1", kind: "worksheet" as const, itemCount: 9, marks: 4 };
+    const grid = renderCard(worksheet);
+    expect(grid.container).toHaveTextContent("4 marks · 10 min");
+    expect(grid.container).not.toHaveTextContent("9 blocks");
+    cleanup();
+
+    const hero = renderCard(worksheet, true);
+    expect(hero.container).toHaveTextContent(/4 marks · 10 min.*Edited/);
+    cleanup();
+
+    const list = render(
+      <TooltipProvider>
+        <table>
+          <tbody>
+            <LibraryCard doc={worksheet} view="list" onAction={mock()} onRename={mock()} />
+          </tbody>
+        </table>
+      </TooltipProvider>,
+    );
+    expect(screen.getByText("4 marks · 10 min")).toBeVisible();
+    // The list thumbnail opens the sheet like the title, out of the tab order and the a11y tree.
+    const anchors = list.container.querySelectorAll("a");
+    expect(anchors).toHaveLength(2);
+    expect(anchors[0]).toHaveAttribute("aria-hidden", "true");
+    expect(anchors[0]).toHaveAttribute("tabindex", "-1");
+    expect(anchors[0]).not.toHaveAttribute("aria-label");
+    expect(anchors[1]).toHaveAttribute("aria-label", "Open Water cycle");
+    cleanup();
+
+    // A lesson keeps its slide count.
+    const lessonCard = renderCard(lesson, true);
+    expect(lessonCard.container).toHaveTextContent("7 slides");
   });
 
   it("handles inline rename lifecycle in grid and list views", async () => {
