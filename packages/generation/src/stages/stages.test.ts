@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createBudget } from "@tj/ai";
+import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
 import { PROMPT_VERSIONS } from "../prompts";
@@ -13,6 +13,8 @@ import { BUDGET_FINDING, blockText, slideText } from "./shared";
 
 const json = (v: unknown) => JSON.stringify(v);
 const usage = { inputTokens: 1000, outputTokens: 400 };
+/** One fake call's cost on the standard class at the current list price (not hard-coded dollars). */
+const STANDARD_CALL_USD = costUsd(DEFAULT_MODEL_IDS.standard, usage) ?? 0;
 
 const planScript = () => [json(FIXTURES.planSkeleton), json(FIXTURES.planFacts)];
 const fullFacts = () => assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
@@ -228,9 +230,10 @@ describe("plan", () => {
 
   test("a budget stop on the facts call keeps the skeleton facts, records the finding, reaches planned", async () => {
     const ai = createFakeAi({ script: planScript(), usage });
-    // One call's worth of standard-class tokens at list price: the second is refused.
+    // Below one call's worth of standard-class tokens: the budget is checked before each call,
+    // so the first goes ahead at zero spend and the second is refused.
     const deps = recordingDeps(ai, {
-      budget: createBudget({ capUsd: 0.005, capTokens: 1_000_000 }),
+      budget: createBudget({ capUsd: STANDARD_CALL_USD / 2, capTokens: 1_000_000 }),
     });
     const state = await plan(initialState(), deps);
     expect(ai.calls).toHaveLength(1);
@@ -317,8 +320,8 @@ describe("generate", () => {
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
     const ai = createFakeAi({ script: [...slides, json(FIXTURES.worksheet)], usage });
-    // Roughly two slides' worth of standard-class tokens at list price.
-    const budget = createBudget({ capUsd: 0.02, capTokens: 1_000_000 });
+    // Between two and three slides' worth of standard-class tokens at list price.
+    const budget = createBudget({ capUsd: STANDARD_CALL_USD * 2.5, capTokens: 1_000_000 });
     const deps = recordingDeps(ai, { budget });
     const state = await generate(start, deps);
     expect(ai.calls.length).toBeLessThan(slides.length);

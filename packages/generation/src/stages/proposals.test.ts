@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createBudget } from "@tj/ai";
+import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { ProposalSchema, type ProposalTarget } from "@tj/domain";
 import { type SlideElement, SlideSchema, WorksheetBlockSchema } from "@tj/domain/documents";
@@ -17,6 +17,8 @@ import {
 
 const json = (v: unknown) => JSON.stringify(v);
 const usage = { inputTokens: 1000, outputTokens: 400 };
+/** One fake call's cost on the standard class at the current list price (not hard-coded dollars). */
+const STANDARD_CALL_USD = costUsd(DEFAULT_MODEL_IDS.standard, usage) ?? 0;
 
 /** The domain fixture pair: `o2` is on the objectives slide (ob-2), the vocab-free slides, and block wb3. */
 function fixturePair() {
@@ -296,9 +298,9 @@ describe("proposeFor", () => {
     const base = lesson.slides.find((s) => s.id === "s-mc") as (typeof lesson.slides)[number];
     lesson.slides = Array.from({ length: 6 }, (_, i) => ({ ...base, id: `mc${i}` }));
     const ai = createFakeAi({ script: Array.from({ length: 6 }, () => json(mcSpec)), usage });
-    // Two standard calls' worth at list price.
+    // Between one and two standard calls' worth at list price.
     const deps = recordingDeps(ai, {
-      budget: createBudget({ capUsd: 0.015, capTokens: 1_000_000 }),
+      budget: createBudget({ capUsd: STANDARD_CALL_USD * 1.5, capTokens: 1_000_000 }),
     });
     const result = await proposeFor(
       lesson.slides.map((s) => ({ slideId: s.id })),

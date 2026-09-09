@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
-import { createBudget } from "@tj/ai";
+import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { parseLesson, parseWorksheet } from "@tj/domain/documents";
 import type { StoredPhoto } from "@tj/images";
@@ -25,6 +25,10 @@ import { resumeFrom, runLessonPipeline } from "./workflow";
 
 const TOTAL_SLIDES = FIXTURES.planSkeleton.outline.length; // 10
 const GENERATED_SLIDES = TOTAL_SLIDES - 2; // 8
+/** What one fake call (1 000 in / 400 out) costs on a class at the current list price. */
+function callUsd(cls: "small" | "standard"): number {
+  return costUsd(DEFAULT_MODEL_IDS[cls], { inputTokens: 1000, outputTokens: 400 }) ?? 0;
+}
 /** Plan persists three times: the title slide, the skeleton, the planned checkpoint. */
 const PLAN_PERSISTS = 3;
 /** Script index of the first slide answer: after the input check and Plan's two answers. */
@@ -304,9 +308,11 @@ describe("runLessonPipeline", () => {
     expect(deps.persisted.at(-1)?.lesson.slides).toHaveLength(4);
   });
 
-  // The fake's usage (1 000 in / 400 out) costs $0.003 on `small` and $0.009 on `standard` at list
-  // price: this cap admits the input check and Plan's skeleton call, then refuses the facts call.
-  const TINY_CAP = { capUsd: 0.005, capTokens: 1_000_000 };
+  // Derived from the price table rather than hard-coded dollars (a model change must not silently
+  // retune these): the cap admits the input check (`small`) and Plan's skeleton call
+  // (`standard`), then refuses the facts call — the budget is checked *before* each call, so a
+  // cap between one and two standard calls' spend refuses the second.
+  const TINY_CAP = { capUsd: callUsd("small") + callUsd("standard") / 2, capTokens: 1_000_000 };
 
   test("a tiny USD cap stops after Plan's skeleton call, records one budget finding and still completes", async () => {
     const ai = scriptedPipelineAi();

@@ -23,7 +23,7 @@ const result = await generateText({
 | `AWS_BEARER_TOKEN_BEDROCK` | Bedrock bearer API key. A blank value is unset; without it the client is `unconfigured`. |
 | `AWS_REGION` | Bedrock region. Defaults to `us-east-1`. |
 | `AI_MODEL_FRONTIER` | `frontier` model ID. Default `us.anthropic.claude-opus-5`. |
-| `AI_MODEL_STANDARD` | `standard` model ID. Default `us.anthropic.claude-sonnet-5`. |
+| `AI_MODEL_STANDARD` | `standard` model ID. Default `us.openai.gpt-5.6-luna` (TEACH-205). |
 | `AI_MODEL_SMALL` | `small` model ID. Default `us.anthropic.claude-haiku-4-5-20251001-v1:0`. |
 
 Model classes are defined in `@tj/domain`: `frontier` is for planning and adaptation, `standard`

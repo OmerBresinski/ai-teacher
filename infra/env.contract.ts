@@ -104,7 +104,7 @@ const PG_LOCAL_TEST = "postgres://postgres:postgres@localhost:5432/teaching_jour
 const AI_DEFAULT_REGION = "us-east-1";
 const AI_DEFAULT_MODEL_IDS = {
   frontier: "us.anthropic.claude-opus-5",
-  standard: "us.anthropic.claude-sonnet-5",
+  standard: "us.openai.gpt-5.6-luna",
   small: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
 } as const;
 /** Railway reference syntax (`${"{{"}service.VAR}}`), resolved by Railway, not a JS template. */

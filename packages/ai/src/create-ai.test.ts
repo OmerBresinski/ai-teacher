@@ -112,6 +112,8 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
       "us.amazon.nova-micro-v1:0",
       "meta.llama3-70b-instruct-v1:0",
       "anthropicx.y",
+      // The standard class (TEACH-205): an OpenAI model must not receive Anthropic settings.
+      DEFAULT_MODEL_IDS.standard,
     ]) {
       expect(isAnthropicModelId(id)).toBe(false);
     }
@@ -128,7 +130,8 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
     globalThis.fetch = fetch;
     try {
       const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
-      await generateText({ model: ai.model("standard"), prompt: "x", maxRetries: 0 }).catch(
+      // `small` is the Anthropic class; `standard` is GPT-5.6 Luna (TEACH-205).
+      await generateText({ model: ai.model("small"), prompt: "x", maxRetries: 0 }).catch(
         () => undefined,
       );
     } finally {
@@ -147,7 +150,7 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
     try {
       const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
       await generateText({
-        model: ai.model("standard"),
+        model: ai.model("small"),
         prompt: "x",
         maxRetries: 0,
         providerOptions: {
@@ -162,5 +165,24 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
     expect(body?.additionalModelRequestFields).toEqual({
       thinking: { type: "enabled", budget_tokens: 2048 },
     });
+  });
+
+  test("a non-Anthropic class (standard, GPT-5.6 Luna) is sent no Anthropic fields", async () => {
+    let body: Record<string, unknown> | undefined;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return new Response(JSON.stringify({ message: "captured" }), { status: 500 });
+    }) as unknown as typeof globalThis.fetch;
+    try {
+      const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
+      await generateText({ model: ai.model("standard"), prompt: "x", maxRetries: 0 }).catch(
+        () => undefined,
+      );
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(body).toBeDefined();
+    expect(body?.additionalModelRequestFields).toBeUndefined();
   });
 });

@@ -44,7 +44,9 @@ not this decision; this ADR settles only the client layer everything else will c
    `small` — each an env var holding a Bedrock model ID, defaulted in the env contract and
    overridable per environment:
    `AI_MODEL_FRONTIER=us.anthropic.claude-opus-5`,
-   `AI_MODEL_STANDARD=us.anthropic.claude-sonnet-5`,
+   `AI_MODEL_STANDARD=us.openai.gpt-5.6-luna` (Claude Sonnet 5 until TEACH-205, 2026-09-09:
+   repeated schema misses on slide/worksheet output; Luna is served by the same Bedrock account,
+   so the provider decision is unchanged),
    `AI_MODEL_SMALL=us.anthropic.claude-haiku-4-5-20251001-v1:0`
    (cross-region `us.` inference profiles). Callers ask for a class, never a model ID. Embedding
    and STT classes are added when F03/F05 need them.

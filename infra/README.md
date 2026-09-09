@@ -321,7 +321,7 @@ three in `us-east-1`):
 | class | progress message |
 | ----- | ---------------- |
 | `small` | `us.anthropic.claude-haiku-4-5-20251001-v1:0: in=16 out=5 finish=stop` |
-| `standard` | `us.anthropic.claude-sonnet-5: in=17 out=4 finish=stop` |
+| `standard` | `us.openai.gpt-5.6-luna: in=17 out=4 finish=stop` |
 | `frontier` | `us.anthropic.claude-opus-5: in=17 out=4 finish=stop` |
 
 ## Topology

@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import { createAi } from "@tj/ai";
+import { costUsd, createAi, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi, type FakeAi } from "@tj/ai/testing";
 import { createDocument, deleteDocument, forWorkspace, getDocument } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
@@ -396,11 +396,14 @@ describeDb("lesson.plan job", () => {
     const lessonId = await briefLesson(jobId);
     const ai = scriptedPipelineAi();
 
-    // The fake's usage costs $0.003 on `small` and $0.009 on `standard`: the cap admits the input
-    // check and Plan's skeleton call and refuses the facts call, which Plan records as a finding.
-    await lessonPlanJob(
-      ctx(jobId, lessonId, depsWith(ai, { capUsd: 0.005, capTokens: 1_000_000 })).ctx,
-    );
+    // Derived from the price table, not hard-coded dollars: the cap admits the input check
+    // (`small`) and Plan's skeleton call (`standard`) and refuses the facts call, which Plan
+    // records as a finding. The budget is checked before each call, so anything between one and
+    // two standard calls' spend (plus the small one) refuses the second.
+    const fakeUsage = { inputTokens: 1000, outputTokens: 400 };
+    const callUsd = (cls: "small" | "standard") => costUsd(DEFAULT_MODEL_IDS[cls], fakeUsage) ?? 0;
+    const capUsd = callUsd("small") + callUsd("standard") / 2;
+    await lessonPlanJob(ctx(jobId, lessonId, depsWith(ai, { capUsd, capTokens: 1_000_000 })).ctx);
 
     expect(ai.calls.length).toBeLessThanOrEqual(3);
     const lesson = await storedLesson(lessonId);

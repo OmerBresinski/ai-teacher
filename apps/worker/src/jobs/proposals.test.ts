@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { costUsd, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi, type FakeAi } from "@tj/ai/testing";
 import { createDocument, forWorkspace, getDocument } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
@@ -248,13 +249,14 @@ describeDb("lesson.cascade / lesson.regenerate jobs", () => {
             factRefs: ["o1"],
           };
     });
-    const ai = createFakeAi({
-      script: Array.from({ length: 8 }, () => json(mcSpec)),
-      usage: { inputTokens: 1000, outputTokens: 400 },
-    });
+    const usage = { inputTokens: 1000, outputTokens: 400 };
+    const ai = createFakeAi({ script: Array.from({ length: 8 }, () => json(mcSpec)), usage });
+    // Between one and two standard calls' worth at the current list price (not hard-coded
+    // dollars, so a model change cannot silently retune the test).
+    const capUsd = (costUsd(DEFAULT_MODEL_IDS.standard, usage) ?? 0) * 1.5;
     const result = await lessonCascadeJob(
       ctx({ lessonId, changedFactIds: ["o1"] }, ai, {
-        caps: { capUsd: 0.015, capTokens: 1_000_000 },
+        caps: { capUsd, capTokens: 1_000_000 },
       }).ctx as never,
     );
     expect(result).toBeDefined();
