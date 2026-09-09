@@ -42,7 +42,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   only the list a page reads and never depend on `q` — the search box writes the URL per
   keystroke and the page's 250 ms debounce owns the fetch. A `409` arrives as
   `ApiError.reason` (`stale` → `useSaveWithConflictToast` offers Reload; `generating` →
-  `GeneratingLesson` renders the read-only banner over SSE). Unit tests stub the transport with
+  `GeneratingLesson` renders the generating shell over SSE). Unit tests stub the transport with
   `src/test/fake-api.ts` (`installFakeApi()`), seeded with `demoWorkspace()` under its keys
   (`demo-water-cycle`, `series-romans`, …) as ids.
 - `vercel-react-best-practices` includes Next.js-specific advice (RSC, `next/*`); it does not
