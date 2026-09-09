@@ -418,6 +418,7 @@ function KindStep({
               theme={theme}
               selected={selected?.id === recipe.id}
               suggested={recipe.id === suggestedId}
+              fitMiniature
               onPick={() => onRecipe(recipe.id)}
               onKeyDown={(event) => {
                 if (event.key !== "Enter") return;
