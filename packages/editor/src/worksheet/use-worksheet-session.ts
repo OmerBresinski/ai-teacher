@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import type { ImageSearchClient } from "../images/image-search";
 
 /**
  * The worksheet editor's transient UI state (ADR 0022 §4: React state, never in the Query cache):
@@ -22,6 +23,8 @@ export type WorksheetSessionState = {
 };
 
 export type WorksheetSession = WorksheetSessionState & {
+  /** Pexels search + pick, injected by the app through `WorksheetEditorProps.images`. */
+  images?: ImageSearchClient;
   /** Select a block (or the header, `HEADER_KEY`); `null` clears the selection. */
   select: (id: string | null) => void;
   /** Open (or close, with `null`) the text editor on a block, placing the caret. */

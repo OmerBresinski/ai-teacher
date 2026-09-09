@@ -106,7 +106,9 @@ src/
               EditableHeader + HeaderToolbar (rules, objective, criteria, paper, key, RAG),
               SlashMenu (`@tj/ui` Popover on a virtual anchor; combobox + listbox), toolbar/
               (BlockToolbar routes to Question / WordSearch / AnswerSpace / Layout, one file per
-              family; shared NumberField + LinesPopover), WorksheetTopBar
+              family; shared NumberField + LinesPopover; LayoutToolbar's image case has the
+              Replace popover with the shared `ImagePicker` plus the credit button),
+              WorksheetTopBar
   lesson/     LessonEditor shell (`@tj/editor/lesson`): TopBar, InsertRail, Navigator, Canvas,
               canvas/ (SlideActions, SlideTabs, placement), transform/ (SelectionLayer, keys,
               hit-test, resize), toolbar/ (ContextualToolbar routing + placement; one file per

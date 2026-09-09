@@ -1,3 +1,4 @@
+export { ImageCreditText } from "./ImageCreditText";
 export { ImagePicker, type ImagePickerProps } from "./ImagePicker";
 export {
   type ImageSearchClient,
