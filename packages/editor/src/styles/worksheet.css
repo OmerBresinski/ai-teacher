@@ -138,6 +138,14 @@
   color: var(--ws-muted);
 }
 
+/* "12 marks · about 25 min" (TEACH-183): the sheet's weight and time, printed like an exam paper's. */
+.ws-meta {
+  margin: 4pt 0 0;
+  font-size: 9.5pt;
+  line-height: 1.4;
+  color: var(--ws-muted);
+}
+
 /* Success criteria: one checkbox line each, sized to be ticked with a pen. */
 
 .ws-criteria {
