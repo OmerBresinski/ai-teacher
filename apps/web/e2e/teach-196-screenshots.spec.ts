@@ -13,7 +13,7 @@ test("captures a seeded sheet's foot in print view and the header toolbar with t
   await expect(root).toHaveCSS("visibility", "visible");
   await expect(root.locator(".ws-rag-heading")).toHaveText("Tick what you can do now");
   await page.waitForTimeout(500);
-  await root.locator(".ws-page", { has: root.locator(".ws-rag") }).screenshot({
+  await root.locator(".ws-page", { has: page.locator(".ws-rag") }).screenshot({
     path: "/tmp/teach-196-print-foot.png",
   });
 
@@ -21,13 +21,17 @@ test("captures a seeded sheet's foot in print view and the header toolbar with t
   await expect(page.locator(".ws-column .ws-page").first()).toBeVisible();
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   await page.locator(".ws-column .ws-header").getByText("Name", { exact: true }).click();
-  await expect(page.getByRole("button", { name: "Criterion" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Criterion", exact: true })).toBeVisible();
   await page.waitForTimeout(500);
   await page.screenshot({ path: "/tmp/teach-196-header-toolbar.png" });
 
-  // The strip in edit mode with a fresh blank line and its placeholder.
-  await page.getByRole("button", { name: "Criterion" }).click();
-  const field = page.locator('.ws-column [data-block-id="__rag__"]').getByRole("textbox").last();
+  // The strip in edit mode with a fresh blank line and its placeholder. The seeded sheet is at
+  // the cap of four, so one goes first.
+  const strip = page.locator('.ws-column [data-block-id="__rag__"]');
+  await strip.hover();
+  await strip.getByRole("button", { name: "Remove criterion 4" }).click();
+  await page.getByRole("button", { name: "Criterion", exact: true }).click();
+  const field = strip.getByRole("textbox").last();
   await expect(field).toBeFocused();
   await field.scrollIntoViewIfNeeded();
   await page.waitForTimeout(500);

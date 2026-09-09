@@ -40,7 +40,7 @@ test.describe("TEACH-196 success criteria in the self-assessment strip", () => {
       .evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().top));
     for (let i = 1; i < tops.length; i++) expect(tops[i]).toBeGreaterThan(tops[i - 1] ?? 0);
     // Below every task: the first box to tick sits under the last block on its page.
-    const stripPage = root.locator(".ws-page", { has: rag });
+    const stripPage = root.locator(".ws-page", { has: page.locator(".ws-rag") });
     const lastBlock = stripPage.locator(".ws-block:not(.ws-rag-slot)").last();
     const blockBox = await lastBlock.boundingBox();
     const boxBox = await rag.locator(".ws-criterion-box").first().boundingBox();
@@ -69,15 +69,17 @@ test.describe("TEACH-196 success criteria in the self-assessment strip", () => {
   }) => {
     await page.goto(paths.worksheet(SHEET));
     await selectHeader(page);
-    // Criterion sits beside the switch. Clear the seeded criteria, then switch off and on.
-    const add = page.getByRole("button", { name: "Criterion" });
-    await expect(add).toBeEnabled();
+    // Criterion sits beside the switch; the seeded sheet is at the cap of four. Clear the seeded
+    // criteria, then switch off and on.
+    const add = page.getByRole("button", { name: "Criterion", exact: true });
+    await expect(add).toBeDisabled();
     const remove = strip(page).getByRole("button", { name: /^Remove criterion 1$/ });
     while ((await strip(page).locator(".ws-criterion").count()) > 0) {
       await strip(page).hover();
       await remove.click();
     }
     await expect(strip(page).locator(".ws-rag-heading")).toHaveCount(0);
+    await expect(add).toBeEnabled();
     const sw = page.getByRole("switch", { name: "Self-assessment" });
     await sw.click();
     await expect(strip(page)).toHaveCount(0);
@@ -106,7 +108,15 @@ test.describe("TEACH-196 success criteria in the self-assessment strip", () => {
     expect(original.length).toBeGreaterThan(0);
     await field.click();
     await expect(field).toBeFocused();
-    await page.keyboard.press("End");
+    // The caret at the very end of the text, past any wrapped line.
+    await field.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    });
     await page.keyboard.type(" Yes.", { delay: 20 });
     await expect(field).toHaveText(`${original} Yes.`);
     await page.waitForTimeout(700);
