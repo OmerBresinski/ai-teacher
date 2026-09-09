@@ -1,12 +1,13 @@
 import type { Lesson } from "@tj/domain/documents";
 import type { JobEvent } from "@tj/domain/jobs";
 import { getTheme, SlideScaler, SlideView } from "@tj/editor";
+import { navigatorThumbWidth, navigatorWidthVar, readNavigatorMode } from "@tj/editor/lesson";
 import { SlideStatic } from "@tj/editor/thumb";
 import { AppBar, AppBarGroup, Button, cn, Display, IconButton, Skeleton } from "@tj/ui";
 import { ArrowLeft, Check, Lock, Square } from "lucide-react";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { pendingSlides } from "@/lib/pending-slides";
-import { STAGES, type StageState, stageLine, stageOf, stageStatus } from "./stage";
+import { announcedLine, STAGES, type StageState, stageLine, stageOf, stageStatus } from "./stage";
 
 /*
  * The generating screen is the editor's shell with the work happening inside it (generating-state
@@ -25,15 +26,16 @@ export const GENERATION_CANCELLED_MESSAGE = "Generation stopped.";
 export const LOCK_LINE = "Read only until the lesson is ready";
 export const STOPPED_LOCK_LINE = "Stopped. What was written is kept.";
 
-/** The navigator's thumb width (ruling 20: 168 by 94). */
-const THUMB = 168;
 /** Thumbs that land in the same refetch fade in one after another. */
 const ARRIVE_STAGGER_MS = 80;
 
 export type GeneratingShellProps = {
   lesson: Lesson;
   events: readonly JobEvent[];
-  /** The estimate text, a 13/500 meta line before Stop (TEACH-201 fills it). */
+  /**
+   * The estimate before Stop (TEACH-201's `EstimateText`, which owns its markup and renders
+   * nothing when there is no honest number).
+   */
   estimate?: ReactNode;
   onBack: () => void;
   onStop: () => void;
@@ -56,6 +58,10 @@ export function GeneratingShell({
   const stopped = state.terminal === "failed" || state.terminal === "cancelled";
   const running = state.terminal === null;
   const theme = getTheme(lesson.themeId);
+  // The editor's persisted navigator preference, so the column is the width the editor will
+  // mount at and nothing reflows at Ready.
+  const [navigatorMode] = useState(readNavigatorMode);
+  const thumbWidth = navigatorThumbWidth(navigatorMode);
   const newest = lesson.slides.at(-1);
   const arrivals = useArrivals(lesson.slides.length, running);
   const pending = running ? pendingSlides(lesson) : [];
@@ -94,24 +100,36 @@ export function GeneratingShell({
           {/* Read-only: no rename and no save state until the editor takes over (ruling 28). */}
           <h1 className="truncate px-1 text-lead font-semibold">{lesson.title}</h1>
         </AppBarGroup>
-        {/* The one polite live region on the page; a failure is the one assertive message. */}
-        <output
-          aria-live={state.terminal === "failed" ? undefined : "polite"}
-          role={state.terminal === "failed" ? "alert" : undefined}
-          data-testid="generating-stage"
-          className={cn(
-            "truncate text-body font-medium",
-            state.terminal === "failed" ? "text-destructive" : "text-ink-2",
-          )}
-        >
-          {line}
-        </output>
-        <AppBarGroup className="justify-end gap-2">
-          {estimate ? (
-            <span data-testid="generating-estimate" className="text-meta font-medium text-ink-3">
-              {estimate}
+        {/*
+         * The visible stage line, with the one polite live region beside it announcing only at
+         * a stage boundary and every fourth slide. A failure mounts its own `role="alert"` node:
+         * a node that appears is announced, a node that changes its role is not.
+         */}
+        <div className="min-w-0">
+          {state.terminal === "failed" ? (
+            <p
+              role="alert"
+              data-testid="generating-stage"
+              className="truncate text-body font-medium text-destructive"
+            >
+              {line}
+            </p>
+          ) : (
+            <span
+              data-testid="generating-stage"
+              className="block truncate text-body font-medium text-ink-2"
+            >
+              {line}
             </span>
+          )}
+          {state.terminal === null ? (
+            <output aria-live="polite" className="sr-only" data-testid="generating-announcement">
+              {announcedLine(state)}
+            </output>
           ) : null}
+        </div>
+        <AppBarGroup className="justify-end gap-2">
+          {estimate}
           {stop?.error ? (
             <span role="alert" className="text-destructive text-meta">
               Could not stop the job.
@@ -146,8 +164,9 @@ export function GeneratingShell({
 
         <nav
           aria-label="Slides"
+          data-navigator-mode={navigatorMode}
           className="shrink-0 overflow-y-auto border-border border-r bg-background px-1.5 py-3"
-          style={{ width: "var(--navigator-width)" }}
+          style={{ width: navigatorWidthVar(navigatorMode) }}
         >
           <ul className="flex flex-col gap-2">
             {lesson.slides.map((slide, i) => (
@@ -157,12 +176,14 @@ export function GeneratingShell({
                 current={i === lesson.slides.length - 1}
                 arriveDelay={arrivals(i)}
               >
-                <SlideStatic slide={slide} theme={theme} width={THUMB} />
+                <SlideStatic slide={slide} theme={theme} width={thumbWidth} />
               </ThumbRow>
             ))}
             {pending.map((_, i) => {
               const position = lesson.slides.length + i;
-              return <SkeletonRow key={`slot-${position}`} number={position + 1} />;
+              return (
+                <SkeletonRow key={`slot-${position}`} number={position + 1} width={thumbWidth} />
+              );
             })}
           </ul>
         </nav>
@@ -349,8 +370,12 @@ function ThumbRow({
   );
 }
 
-/** The box a slide still to be written will take; hidden from the tree until it is real. */
-function SkeletonRow({ number }: { number: number }) {
+/**
+ * The box a slide still to be written will take; hidden from the tree until it is real. The
+ * placeholders named by kind (`aria-disabled` options a screen reader hears as "Slide 4,
+ * Content, not written yet") and the danger hairline on a stopped run are TEACH-200's.
+ */
+function SkeletonRow({ number, width }: { number: number; width: number }) {
   return (
     <li aria-hidden="true" className="flex w-full items-center px-1 py-0.5">
       <span className="w-[18px] shrink-0 pr-1 text-right text-meta text-ink-3 tabular-nums">
@@ -358,7 +383,7 @@ function SkeletonRow({ number }: { number: number }) {
       </span>
       <Skeleton
         className="aspect-video shrink-0 rounded-chip ring-1 ring-border"
-        style={{ width: THUMB }}
+        style={{ width }}
       />
     </li>
   );

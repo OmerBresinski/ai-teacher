@@ -32,8 +32,12 @@ export interface RunFixture {
 
 export const generationRun: RunFixture = recorded as RunFixture;
 
-/** The index of the first row at which the run reaches each of the shell's stages. */
-export const RUN_STATES = {
+/**
+ * How many rows to replay (`upTo`, exclusive) to land the run on each of the shell's stages: the
+ * count that includes the first row of that stage. `runEvent(fixture, RUN_UP_TO.checking - 1)`
+ * is the row that starts Checking.
+ */
+export const RUN_UP_TO = {
   planning: 3,
   writing: 6,
   worksheet: 11,
@@ -116,6 +120,16 @@ export function outlineFacts(full: Lesson): LessonFacts {
   };
 }
 
+/**
+ * The gap before row `index` at `speed` (0 for the first row): one schedule for `playRun` and
+ * the kit exhibit.
+ */
+export function waitBefore(fixture: RunFixture, index: number, speed: number): number {
+  if (index <= 0 || speed <= 0) return 0;
+  const previous = fixture.events[index - 1]?.offsetMs ?? 0;
+  return Math.max(0, ((fixture.events[index]?.offsetMs ?? 0) - previous) / speed);
+}
+
 export interface PlayRunOptions {
   /** Playback rate: `1` is the recorded pace, `4` four times as fast, `0` everything at once. */
   speed?: number;
@@ -170,8 +184,8 @@ export function playRun(fixture: RunFixture, options: PlayRunOptions = {}): Play
       resolveDone();
       return;
     }
-    const previous = index === 0 ? 0 : (rows[index - 1]?.row.offsetMs ?? 0);
-    const wait = Math.max(0, ((rows[index]?.row.offsetMs ?? 0) - previous) / speed);
+    // A run continued with `from` waits the gap since the previous row, not its absolute offset.
+    const wait = waitBefore(fixture, rows[index]?.index ?? 0, speed);
     timer = setTimeout(() => {
       emit(index);
       schedule(index + 1);

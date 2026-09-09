@@ -10,7 +10,7 @@ import {
   bodyAt,
   generationRun,
   playRun,
-  RUN_STATES,
+  RUN_UP_TO,
   runEvents,
   withTerminal,
 } from "@/test/play-run";
@@ -77,7 +77,7 @@ describe("GeneratingShell", () => {
   });
 
   it("row 2: 2, 6, 10 then 'Slide 1 of 5' ticks Planning and goes live on Writing with the count", () => {
-    const { rerender } = renderAt(RUN_STATES.planning);
+    const { rerender } = renderAt(RUN_UP_TO.planning);
     expect(stripStatuses()).toBe(
       "planning:live writing:todo pictures:todo checking:todo ready:todo",
     );
@@ -97,8 +97,8 @@ describe("GeneratingShell", () => {
     rerender(
       <TooltipProvider>
         <GeneratingShell
-          lesson={bodyAt(generationRun, RUN_STATES.writing - 1, full)}
-          events={runEvents(generationRun, RUN_STATES.writing)}
+          lesson={bodyAt(generationRun, RUN_UP_TO.writing - 1, full)}
+          events={runEvents(generationRun, RUN_UP_TO.writing)}
           onBack={noop}
           onStop={noop}
         />
@@ -108,6 +108,9 @@ describe("GeneratingShell", () => {
       "planning:done writing:live pictures:todo checking:todo ready:todo",
     );
     expect(screen.getByTestId("generating-stage")).toHaveTextContent("Writing the slides, 1 of 5");
+    // The live region says less: the boundary now, the count at every fourth slide.
+    expect(screen.getByTestId("generating-announcement")).toHaveTextContent("Writing the slides");
+    expect(screen.getByTestId("generating-announcement")).not.toHaveTextContent("1 of 5");
     expect(document.querySelector('[data-stage="writing"]')).toHaveAttribute(
       "aria-current",
       "step",
@@ -124,18 +127,18 @@ describe("GeneratingShell", () => {
   });
 
   it("row 3: 85 keeps Writing; 88 Adding pictures; 90 Checking; 100 Ready ticked", () => {
-    renderAt(RUN_STATES.worksheet);
+    renderAt(RUN_UP_TO.worksheet);
     expect(stripStatuses()).toBe(
       "planning:done writing:live pictures:todo checking:todo ready:todo",
     );
     expect(screen.getByTestId("generating-stage")).toHaveTextContent("Writing the worksheet");
     cleanup();
-    renderAt(RUN_STATES.pictures);
+    renderAt(RUN_UP_TO.pictures);
     expect(stripStatuses()).toBe(
       "planning:done writing:done pictures:live checking:todo ready:todo",
     );
     cleanup();
-    renderAt(RUN_STATES.checking);
+    renderAt(RUN_UP_TO.checking);
     expect(stripStatuses()).toBe(
       "planning:done writing:done pictures:done checking:live ready:todo",
     );
@@ -149,7 +152,7 @@ describe("GeneratingShell", () => {
   });
 
   it("row 4: with no 88, Adding pictures is ticked when 90 arrives and never live", () => {
-    const events = runEvents(generationRun, RUN_STATES.checking).filter(
+    const events = runEvents(generationRun, RUN_UP_TO.checking).filter(
       (e) => !(e.type === "progress" && e.progress.percent === 88),
     );
     render(
@@ -164,7 +167,7 @@ describe("GeneratingShell", () => {
   });
 
   it("row 5: exactly one ghost Stop at 32px, no primary, and the strip is the only progress element", () => {
-    renderAt(RUN_STATES.writing, { estimate: "About 1 to 2 minutes left" });
+    renderAt(RUN_UP_TO.writing, { estimate: "About 1 to 2 minutes left" });
     const bar = document.querySelector("[data-topbar]") as HTMLElement;
     const buttons = within(bar).getAllByRole("button");
     // Back (an icon button) and Stop; nothing filled.
@@ -176,15 +179,13 @@ describe("GeneratingShell", () => {
     expect(stop.className).toContain("h-(--button-height)");
     expect(stop.className).toContain("text-ink-2");
     expect(bar.querySelector(".bg-primary-fill")).toBeNull();
-    expect(screen.getByTestId("generating-estimate")).toHaveTextContent(
-      "About 1 to 2 minutes left",
-    );
+    expect(within(bar).getByText("About 1 to 2 minutes left")).toBeVisible();
     expect(document.querySelectorAll("progress, [role='progressbar']")).toHaveLength(0);
     expect(document.querySelectorAll("[data-testid='generating-strip']")).toHaveLength(1);
   });
 
   it("row 6: the live dot breathes under motion-safe only", () => {
-    renderAt(RUN_STATES.writing);
+    renderAt(RUN_UP_TO.writing);
     const dot = liveDot();
     expect(dot).not.toBeNull();
     expect(dot?.className).toContain("motion-safe:animate-pulse");
@@ -195,7 +196,7 @@ describe("GeneratingShell", () => {
   it("renders in the three themes with the same structure", () => {
     for (const theme of ["light", "dark", "high-contrast"]) {
       document.documentElement.dataset.theme = theme;
-      renderAt(RUN_STATES.checking);
+      renderAt(RUN_UP_TO.checking);
       expect(stripStatuses()).toBe(
         "planning:done writing:done pictures:done checking:live ready:todo",
       );
@@ -205,11 +206,11 @@ describe("GeneratingShell", () => {
   });
 
   it("a failed run keeps the live stage in the danger tone, says so once and offers the way back", () => {
-    const events = withTerminal(generationRun, RUN_STATES.writing + 1, "failed");
+    const events = withTerminal(generationRun, RUN_UP_TO.writing + 1, "failed");
     render(
       <TooltipProvider>
         <GeneratingShell
-          lesson={bodyAt(generationRun, RUN_STATES.writing, full)}
+          lesson={bodyAt(generationRun, RUN_UP_TO.writing, full)}
           events={events}
           onBack={noop}
           onStop={noop}
@@ -217,6 +218,9 @@ describe("GeneratingShell", () => {
       </TooltipProvider>,
     );
     expect(screen.getByTestId("generating-shell")).toHaveAttribute("data-state", "failed");
+    // One assertive node, mounted on failure; the polite region is gone.
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.queryByTestId("generating-announcement")).toBeNull();
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Generation stopped before the lesson was finished. The model timed out.",
     );
@@ -232,9 +236,25 @@ describe("GeneratingShell", () => {
     ).toHaveLength(0);
   });
 
+  it("honours the editor's compact navigator preference so nothing reflows at Ready", () => {
+    window.localStorage.setItem("tj:navigator", "compact");
+    try {
+      renderAt(RUN_UP_TO.writing);
+      const nav = document.querySelector('nav[aria-label="Slides"]') as HTMLElement;
+      expect(nav.dataset.navigatorMode).toBe("compact");
+      expect(nav.style.width).toBe("var(--navigator-width-sm)");
+    } finally {
+      window.localStorage.removeItem("tj:navigator");
+    }
+    cleanup();
+    renderAt(RUN_UP_TO.writing);
+    const nav = document.querySelector('nav[aria-label="Slides"]') as HTMLElement;
+    expect(nav.style.width).toBe("var(--navigator-width)");
+  });
+
   it("Cmd+Period stops the run", () => {
     const onStop = mock();
-    renderAt(RUN_STATES.writing, { onStop });
+    renderAt(RUN_UP_TO.writing, { onStop });
     fireEvent.keyDown(window, { key: ".", metaKey: true });
     expect(onStop).toHaveBeenCalledTimes(1);
   });
@@ -269,11 +289,11 @@ describe("GeneratingLesson over playRun", () => {
     expect(screen.getByTestId("generating-stage")).toHaveTextContent("Planning");
     act(() => FakeEventSource.latest.open());
     act(() => {
-      playRun(generationRun, { upTo: RUN_STATES.writing, persist, lesson: full });
+      playRun(generationRun, { upTo: RUN_UP_TO.writing, persist, lesson: full });
     });
     expect(screen.getByTestId("generating-stage")).toHaveTextContent("Writing the slides, 1 of 5");
     act(() => {
-      playRun(generationRun, { from: RUN_STATES.writing, persist, lesson: full });
+      playRun(generationRun, { from: RUN_UP_TO.writing, persist, lesson: full });
     });
     await waitFor(() =>
       expect(screen.getByTestId("generating-shell")).toHaveAttribute("data-state", "completed"),

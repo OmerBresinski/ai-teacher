@@ -1,4 +1,4 @@
-import type { JobEvent } from "@tj/domain/jobs";
+import type { JobEvent, JobProgress } from "@tj/domain/jobs";
 
 /**
  * The five stages a teacher sees while a lesson is generated (generating-state PRD §3), in the
@@ -33,8 +33,15 @@ export interface StageState {
 
 const ORDER: readonly StageId[] = STAGES.map((s) => s.id);
 
-/** The worker's `progress.stage`, once it exists (PRD §8); read here so nothing else has to. */
-const PIPELINE_STAGES: Record<string, StageId> = {
+/** The pipeline's own stage names, as `progress.stage` will carry them (PRD §8). */
+export type PipelineStage = "plan" | "generate" | "illustrate" | "evaluate" | "repair";
+
+/**
+ * The worker's `progress.stage`, once it exists (PRD §8); read here so nothing else has to. Dead
+ * until `JobProgressSchema` gains the field and `lesson-plan.ts`'s `onProgress` sets it: the
+ * schema is strict, so today no event can carry it.
+ */
+const PIPELINE_STAGES: Record<PipelineStage, StageId> = {
   plan: "planning",
   generate: "writing",
   illustrate: "pictures",
@@ -85,7 +92,9 @@ export function stageOf(events: readonly JobEvent[]): StageState {
     if (count && stage === "writing") {
       slide = { n: Number(count[1]), total: Number(count[2]) };
     }
-    if (stage === "writing" && progress.percent === 85) worksheet = true;
+    // The worksheet is a message fact, not a percent fact: 85 is emitted with "Slides ready" too,
+    // when the lesson already had a sheet or the budget stopped before it.
+    if (stage === "writing" && progress.message === "Worksheet ready") worksheet = true;
     if (stage !== "writing") {
       slide = null;
       worksheet = false;
@@ -95,11 +104,7 @@ export function stageOf(events: readonly JobEvent[]): StageState {
   return { stage, slide, worksheet, message, terminal, failure };
 }
 
-function stageFromProgress(progress: {
-  percent?: number;
-  message?: string;
-  stage?: string;
-}): StageId | null {
+function stageFromProgress(progress: JobProgress & { stage?: PipelineStage }): StageId | null {
   if (progress.stage !== undefined) return PIPELINE_STAGES[progress.stage] ?? null;
   const percent = progress.percent;
   if (percent === undefined) return null;
@@ -118,6 +123,18 @@ export function stageStatus(id: StageId, state: StageState): StageStatus {
   if (own < current) return "done";
   if (own === current) return "live";
   return "todo";
+}
+
+/**
+ * What the polite live region says (PRD §3): the stage line, but changing only at a stage
+ * boundary and every fourth slide, so a twenty-slide lesson is five announcements, not twenty.
+ * Pure over the state: between fourth slides the line is the last one announced.
+ */
+export function announcedLine(state: StageState): string {
+  if (state.stage !== "writing" || state.worksheet || !state.slide) return stageLine(state);
+  const announced = Math.floor(state.slide.n / 4) * 4;
+  if (announced === 0) return "Writing the slides";
+  return stageLine({ ...state, slide: { ...state.slide, n: announced } });
 }
 
 /** The one line in the top bar (PRD §3): the stage, with the count while there is one. */

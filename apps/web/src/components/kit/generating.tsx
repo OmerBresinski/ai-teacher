@@ -5,7 +5,14 @@ import { Button, Tabs, TabsList, TabsTrigger } from "@tj/ui";
 import { Pause, Play } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { GeneratingShell } from "@/components/generating-lesson";
-import { bodyAt, generationRun, RUN_STATES, runEvents, withTerminal } from "@/test/play-run";
+import {
+  bodyAt,
+  generationRun,
+  RUN_UP_TO,
+  runEvents,
+  waitBefore,
+  withTerminal,
+} from "@/test/play-run";
 import { Specimen } from "./frame";
 
 /*
@@ -14,7 +21,7 @@ import { Specimen } from "./frame";
  * demo and the visual test surface; the page itself is `/l/:id` under a lock.
  */
 
-type RunState = keyof typeof RUN_STATES | "failed" | "cancelled";
+type RunState = keyof typeof RUN_UP_TO | "failed" | "cancelled";
 
 const STATE_LABELS: Record<RunState, string> = {
   planning: "Planning",
@@ -44,7 +51,7 @@ export function GeneratingExhibit() {
   const [state, setState] = useState<RunState>("writing");
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]["value"]>("4");
   const [playing, setPlaying] = useState(false);
-  const [cursor, setCursor] = useState<number>(RUN_STATES.writing);
+  const [cursor, setCursor] = useState<number>(RUN_UP_TO.writing);
 
   // Play steps the cursor through the rows at the recorded offsets, scaled by the speed.
   useEffect(() => {
@@ -54,8 +61,7 @@ export function GeneratingExhibit() {
       setPlaying(false);
       return;
     }
-    const previous = rows[cursor - 1]?.offsetMs ?? 0;
-    const wait = Math.max(0, ((rows[cursor]?.offsetMs ?? 0) - previous) / Number(speed));
+    const wait = waitBefore(generationRun, cursor, Number(speed));
     const timer = window.setTimeout(() => setCursor((c) => c + 1), wait);
     return () => window.clearTimeout(timer);
   }, [playing, cursor, speed]);
@@ -63,9 +69,7 @@ export function GeneratingExhibit() {
   const pick = (next: RunState) => {
     setState(next);
     setPlaying(false);
-    setCursor(
-      next === "failed" || next === "cancelled" ? RUN_STATES.writing + 1 : RUN_STATES[next],
-    );
+    setCursor(next === "failed" || next === "cancelled" ? RUN_UP_TO.writing + 1 : RUN_UP_TO[next]);
   };
 
   const events: JobEvent[] =

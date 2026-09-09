@@ -1,8 +1,8 @@
 /**
  * The generating state on `/l/$lessonId` (ADR 0024 §18, TEACH-121, TEACH-199): while a
  * `lesson.plan` job holds the row's lock the page shows the generating shell (the editor's
- * geometry, the five-stage strip, no editor); once the lock is released the editor takes over. The spec cancels the job itself before it starts and asserts the hand-over —
- * the "clears" half. The "shows" half seeds a lesson locked by a job that never ran, which stays
+ * geometry, the five-stage strip, no editor); once the lock is released the editor takes over.
+ * The spec cancels the job itself before it starts and asserts the hand-over — the "clears" half. The "shows" half seeds a lesson locked by a job that never ran, which stays
  * locked (no terminal event, not yet stale). The full run over the fake worker is
  * `generation.spec.ts` (TEACH-133).
  */
@@ -73,9 +73,16 @@ test.describe("generating lesson", () => {
     const rail = page.getByRole("navigation", { name: "Slides" });
     await expect(rail.locator("[data-slide-thumb]")).toHaveCount(3);
     await expect(rail.locator('li[aria-hidden="true"]')).toHaveCount(2);
-    // The editor's columns: the rail's width with nothing in it, the navigator's width.
+    // The editor's columns: the rail's width with nothing in it, the navigator at the persisted
+    // preference (full by default, compact when the teacher keeps it so), so nothing reflows.
     await expect(page.locator("[data-insert-rail-placeholder]")).toHaveCSS("width", "56px");
     await expect(rail).toHaveCSS("width", "218px");
+    await page.evaluate(() => localStorage.setItem("tj:navigator", "compact"));
+    await page.reload();
+    await expect(page.getByRole("navigation", { name: "Slides" })).toHaveCSS("width", "90px");
+    await page.evaluate(() => localStorage.removeItem("tj:navigator"));
+    await page.reload();
+    await expect(page.getByRole("navigation", { name: "Slides" })).toHaveCSS("width", "218px");
 
     // The live dot is still under reduced motion.
     await page.emulateMedia({ reducedMotion: "reduce" });

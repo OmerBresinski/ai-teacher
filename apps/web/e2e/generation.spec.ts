@@ -1,10 +1,11 @@
 /**
  * TEACH-133: a lesson generated end to end over the fake worker (`AI_FAKE_SCRIPT=pipeline`, paced
  * 250 ms per model answer, ADR 0025 §22). From the brief screen to `/l/$lessonId`: the generating
- * shell and its stage strip, slides arriving before the job ends (the `documentUpdatedAt` refetch, §7), the editor
- * taking over in place with no reload, the residual entry fed by the fake review's warning (§12)
+ * shell and its stage strip, slides arriving before the job ends (the `documentUpdatedAt`
+ * refetch, §7), the editor taking over in place with no reload, the residual entry fed by the fake review's warning (§12)
  * and the Worksheet link to the generated sheet (§4). Stop is covered on a second lesson.
  */
+import { expectNoSeriousA11yViolations } from "./a11y";
 import { expect, test } from "./fixtures";
 
 test.use({ seed: false });
@@ -91,6 +92,7 @@ test.describe("lesson generation over the fake worker", () => {
     );
     await expect(banner.getByRole("button", { name: "Stop" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Rename lesson" })).toHaveCount(0);
+    await expectNoSeriousA11yViolations(page, "generating shell (cancelled)");
     await banner.getByRole("button", { name: "Back to library" }).click();
     await expect(page).toHaveURL(/\/(lessons)?$/);
   });

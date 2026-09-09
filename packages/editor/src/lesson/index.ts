@@ -4,6 +4,13 @@ export { AUTOSAVE_MS, SaveRefusedError, type SaveState } from "../model/use-auto
 export { GUTTER, stepZoom, ZOOM_STEPS } from "./Canvas";
 export { impactPreview, impactSentence, slidesReferencing } from "./impact-preview";
 export { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
+export {
+  NAVIGATOR_MODE_KEY,
+  type NavigatorMode,
+  navigatorThumbWidth,
+  navigatorWidthVar,
+  readNavigatorMode,
+} from "./Navigator";
 export { ALL_SHORTCUTS, HELP_GROUPS, type HelpShortcut, SHELL_SHORTCUTS } from "./shortcuts";
 export { CropBar, type CropBarProps } from "./toolbar/CropToolbar";
 export {

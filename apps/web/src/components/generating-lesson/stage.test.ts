@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { generationRun, RUN_STATES, runEvent, runEvents, withTerminal } from "@/test/play-run";
-import { STAGES, stageLine, stageOf, stageStatus } from "./stage";
+import { generationRun, RUN_UP_TO, runEvent, runEvents, withTerminal } from "@/test/play-run";
+import { announcedLine, STAGES, stageLine, stageOf, stageStatus } from "./stage";
 
 const strip = (events: Parameters<typeof stageOf>[0]) => {
   const state = stageOf(events);
@@ -20,34 +20,61 @@ describe("stageOf", () => {
   });
 
   it("row 2: 'Slide 1 of 5' ticks Planning and goes live on Writing with the count", () => {
-    const state = stageOf(runEvents(generationRun, RUN_STATES.writing));
+    const state = stageOf(runEvents(generationRun, RUN_UP_TO.writing));
     expect(state.stage).toBe("writing");
     expect(state.slide).toEqual({ n: 1, total: 5 });
     expect(stageLine(state)).toBe("Writing the slides, 1 of 5");
-    expect(strip(runEvents(generationRun, RUN_STATES.writing))).toBe(
+    expect(strip(runEvents(generationRun, RUN_UP_TO.writing))).toBe(
       "planning:done writing:live pictures:todo checking:todo ready:todo",
     );
   });
 
   it("85 is the worksheet, still inside Writing", () => {
-    const state = stageOf(runEvents(generationRun, RUN_STATES.worksheet));
+    const state = stageOf(runEvents(generationRun, RUN_UP_TO.worksheet));
     expect(state.stage).toBe("writing");
     expect(state.worksheet).toBe(true);
     expect(stageLine(state)).toBe("Writing the worksheet");
   });
 
+  it("85 with 'Slides ready' is not the worksheet: the line keeps the last count", () => {
+    const events = runEvents(generationRun, RUN_UP_TO.worksheet);
+    const last = events.at(-1);
+    if (last?.type !== "progress") throw new Error("expected the 85 row");
+    events[events.length - 1] = {
+      ...last,
+      progress: { ...last.progress, message: "Slides ready" },
+    };
+    const state = stageOf(events);
+    expect(state.stage).toBe("writing");
+    expect(state.worksheet).toBe(false);
+    expect(stageLine(state)).toBe("Writing the slides, 5 of 5");
+  });
+
+  it("announces at a stage boundary and every fourth slide only", () => {
+    const at = (upTo: number) => announcedLine(stageOf(runEvents(generationRun, upTo)));
+    expect(at(RUN_UP_TO.planning)).toBe("Planning");
+    // Slides 1 to 3: the boundary line, no count yet.
+    expect(at(RUN_UP_TO.writing)).toBe("Writing the slides");
+    expect(at(RUN_UP_TO.writing + 2)).toBe("Writing the slides");
+    // Slide 4 is announced; slide 5 repeats it.
+    expect(at(RUN_UP_TO.writing + 3)).toBe("Writing the slides, 4 of 5");
+    expect(at(RUN_UP_TO.writing + 4)).toBe("Writing the slides, 4 of 5");
+    expect(at(RUN_UP_TO.worksheet)).toBe("Writing the worksheet");
+    expect(at(RUN_UP_TO.checking)).toBe("Checking");
+  });
+
   it("row 3: 88 is Adding pictures, 90 Checking, 100 Ready and completed ticks everything", () => {
-    expect(strip(runEvents(generationRun, RUN_STATES.pictures))).toBe(
+    expect(strip(runEvents(generationRun, RUN_UP_TO.pictures))).toBe(
       "planning:done writing:done pictures:live checking:todo ready:todo",
     );
-    expect(stageLine(stageOf(runEvents(generationRun, RUN_STATES.pictures)))).toBe(
+    expect(stageLine(stageOf(runEvents(generationRun, RUN_UP_TO.pictures)))).toBe(
       "Adding pictures",
     );
-    expect(strip(runEvents(generationRun, RUN_STATES.checking))).toBe(
+    expect(strip(runEvents(generationRun, RUN_UP_TO.checking))).toBe(
       "planning:done writing:done pictures:done checking:live ready:todo",
     );
-    expect(stageLine(stageOf(runEvents(generationRun, RUN_STATES.checking)))).toBe("Checking");
-    expect(strip(runEvents(generationRun, RUN_STATES.checking + 1))).toBe(
+    expect(stageLine(stageOf(runEvents(generationRun, RUN_UP_TO.checking)))).toBe("Checking");
+    expect(strip(runEvents(generationRun, RUN_UP_TO.checking + 1))).toBe(
       "planning:done writing:done pictures:done checking:done ready:live",
     );
     const done = stageOf(runEvents(generationRun));
@@ -59,15 +86,15 @@ describe("stageOf", () => {
   });
 
   it("row 4: a run with no 88 ticks Adding pictures through when 90 arrives", () => {
-    const events = runEvents(generationRun, RUN_STATES.checking).filter(
+    const events = runEvents(generationRun, RUN_UP_TO.checking).filter(
       (e) => !(e.type === "progress" && e.progress.percent === 88),
     );
     expect(strip(events)).toBe("planning:done writing:done pictures:done checking:live ready:todo");
   });
 
   it("never goes backwards: a late lower percent keeps the stage reached", () => {
-    const events = runEvents(generationRun, RUN_STATES.checking);
-    const late = runEvent(generationRun, RUN_STATES.writing);
+    const events = runEvents(generationRun, RUN_UP_TO.checking);
+    const late = runEvent(generationRun, RUN_UP_TO.writing);
     expect(stageOf([...events, late]).stage).toBe("checking");
   });
 
@@ -83,11 +110,11 @@ describe("stageOf", () => {
   });
 
   it("keeps the failure text and the terminal for the stopped states", () => {
-    const failed = stageOf(withTerminal(generationRun, RUN_STATES.writing + 1, "failed"));
+    const failed = stageOf(withTerminal(generationRun, RUN_UP_TO.writing + 1, "failed"));
     expect(failed.terminal).toBe("failed");
     expect(failed.failure).toBe("The model timed out.");
     expect(failed.stage).toBe("writing");
-    const cancelled = stageOf(withTerminal(generationRun, RUN_STATES.writing + 1, "cancelled"));
+    const cancelled = stageOf(withTerminal(generationRun, RUN_UP_TO.writing + 1, "cancelled"));
     expect(cancelled.terminal).toBe("cancelled");
     expect(stageStatus("writing", cancelled)).toBe("live");
   });
