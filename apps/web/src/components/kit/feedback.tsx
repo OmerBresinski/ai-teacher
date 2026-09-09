@@ -21,8 +21,30 @@ import {
   Skeleton,
   toast,
 } from "@tj/ui";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
+import { EstimateText } from "@/components/generation-estimate/estimate-text";
+import { ESTIMATE_HISTORY_FIXTURE, RUN_STEPS, runEvents } from "@/lib/generation-estimate.fixture";
 import { KitGroup, Specimen, Variant } from "./frame";
+
+/**
+ * TEACH-201: the time-left line for the generating view, on the recorded run at "Slide 3 of 8".
+ * The live variant's events are stamped an hour ahead of the page's load: time spent floors at
+ * zero, so the reading is the fresh one, and the late timer cannot fall due while the page is
+ * open. The late variant is stamped two minutes back so its stage is already past its high bound.
+ */
+const KIT_LOADED_AT = Date.now();
+const WRITING_STEPS = RUN_STEPS.slice(0, 6);
+const WRITING_NOW = runEvents(KIT_LOADED_AT + 3_600_000, WRITING_STEPS);
+const WRITING_STALLED = runEvents(KIT_LOADED_AT - 120_000, WRITING_STEPS);
+
+function StageLine({ children }: { children: ReactNode }) {
+  return (
+    <span className="flex items-baseline gap-3 text-body">
+      <span className="font-medium">Writing the slides, 3 of 8</span>
+      {children}
+    </span>
+  );
+}
 
 const dialogs = [
   ["sm", "Rename lesson", "Rename lesson", "The new name shows in the library and the top bar."],
@@ -151,6 +173,26 @@ export function Feedback() {
         >
           Delete lesson
         </Button>
+      </Specimen>
+      <Specimen
+        name="Time estimate"
+        note="A range from stage history, rounded outwards. It changes only when an event arrives; with no history the stage line carries the counts on its own."
+      >
+        <Variant label="With history">
+          <StageLine>
+            <EstimateText history={ESTIMATE_HISTORY_FIXTURE} events={WRITING_NOW} slides={8} />
+          </StageLine>
+        </Variant>
+        <Variant label="No history">
+          <StageLine>
+            <EstimateText history={null} events={WRITING_NOW} slides={8} />
+          </StageLine>
+        </Variant>
+        <Variant label="Past the high bound">
+          <StageLine>
+            <EstimateText history={ESTIMATE_HISTORY_FIXTURE} events={WRITING_STALLED} slides={8} />
+          </StageLine>
+        </Variant>
       </Specimen>
       <Specimen name="Skeleton" note="A title line while the library loads.">
         <Variant label="Loading a title">
