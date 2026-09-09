@@ -1,24 +1,34 @@
 import type { Finding, ImageBrief, Lesson, SlideElement } from "@tj/domain/documents";
 import { isBlockedQuery, PexelsError, type PhotoResult, queryCandidates } from "@tj/images";
 import { PLACEHOLDER_IMAGE } from "@tj/slides";
+import { callStructured } from "../call";
+import { PickOrRequerySchema, pickOrRequeryPrompt } from "../prompts/pick-or-requery-photo";
 import {
+  BudgetExceeded,
   emptyImageCounts,
   type PhotoPlacer,
   type PipelineDeps,
   type PipelineState,
   throwIfAborted,
 } from "../types";
-import { generationOf } from "./shared";
+import { withUsage } from "./generate";
+import { audienceOf, generationOf, slideText } from "./shared";
 
 /** Between Generate's last (85) and Evaluate's first (90). */
 export const PROGRESS_ILLUSTRATED = 88;
 
 const EMPTY_MESSAGE = "No photograph was found for this slide. Add one from the image panel.";
 const BUSY_MESSAGE = "Photo search was busy; add a picture from the image panel.";
+/** Portrait hits gathered across the query candidates before the judge sees them. */
+const MAX_CANDIDATES = 6;
+/** The judge answers one id or a few words. */
+const MAX_JUDGE_TOKENS = 120;
+
+type Judged = "pick" | "query" | "none";
 
 type PlaceOutcome =
-  | { outcome: "placed"; element: SlideElement }
-  | { outcome: "empty" }
+  | { outcome: "placed"; element: SlideElement; judged: Judged }
+  | { outcome: "empty"; judged?: Judged }
   | { outcome: "busy" };
 
 function emptyFinding(slideId: string, elementId: string): Finding {
@@ -40,14 +50,17 @@ function busyFinding(slideId: string, elementId: string): Finding {
 }
 
 /**
- * Deterministic illustration (Images project): after Generate, one Pexels photograph per
- * `image-text` slide with a brief. No model call, no checkpoint — cheap and idempotent (a slide
- * whose slot is already filled is skipped, so a resume never re-places). A slide the step cannot
- * fill keeps the recipe's placeholder: never a wrong picture.
+ * Illustration (Images project): after Generate, one Pexels photograph per `image-text` slide
+ * with a brief. Search is deterministic; one `small` model call per slide then judges the
+ * candidates' captions against the lesson (TEACH-191) — Pexels ranks `rodent incisors` with a
+ * hand holding human teeth first, and nothing else in the chain can tell. No checkpoint, and
+ * idempotent: a slide whose slot is already filled is skipped, so a resume never re-places. A
+ * slide the step cannot fill keeps the recipe's placeholder: a missing picture beats a wrong one.
  *
- * Persistence failures are never swallowed: only the search/store work sits inside the
+ * Persistence failures are never swallowed: only the search/judge/store work sits inside the
  * per-slide try, so a lost lock or database error propagates and the job fails loudly instead
- * of completing with orphaned bucket photos.
+ * of completing with orphaned bucket photos. A budget stop is not a per-slide failure either: it
+ * ends the step for every remaining slide, like the other stages.
  */
 export async function illustrate(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const images = deps.images;
@@ -62,11 +75,33 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
   const baseFindings = generationOf(state.lesson).findings;
   const findings: Finding[] = [];
   let lesson = state.lesson;
-  /** The lesson as it must be persisted: placements plus every warning so far. */
-  const snapshot = (): Lesson => ({
-    ...lesson,
-    generation: { ...generationOf(lesson), findings: [...baseFindings, ...findings] },
-  });
+  let judged = false;
+  /** The lesson as it must be persisted: placements, usage and every warning so far. */
+  const snapshot = (): Lesson => {
+    const generation = generationOf(lesson);
+    return withUsage(
+      {
+        ...lesson,
+        generation: {
+          ...generation,
+          findings: [...baseFindings, ...findings],
+          // No checkpoint of its own (`GenerationStage` has none), so the judge's version rides
+          // on `generated` the way Plan joins its two prompts under `planned`.
+          promptVersions:
+            judged && generation.promptVersions.generated !== undefined
+              ? {
+                  ...generation.promptVersions,
+                  generated: joinVersions(
+                    generation.promptVersions.generated,
+                    pickOrRequeryPrompt.version,
+                  ),
+                }
+              : generation.promptVersions,
+        },
+      },
+      deps,
+    );
+  };
   let busy = false;
   for (let index = 0; index < lesson.slides.length; index++) {
     throwIfAborted(deps.signal);
@@ -85,8 +120,16 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     }
     let placed: PlaceOutcome;
     try {
-      placed = await placeOne(target, brief, images, deps.logger, index, deps.signal);
+      placed = await placeOne({ lesson, slide, target, brief, images, deps, index });
     } catch (error) {
+      if (error instanceof BudgetExceeded) {
+        deps.logger.info({ stage: "illustrate", slideIndex: index }, "illustrate budget stop");
+        findings.push(emptyFinding(slide.id, target.id));
+        counts.empty += 1;
+        // Nothing more can be judged; the remaining slides keep their placeholders.
+        busy = true;
+        continue;
+      }
       deps.logger.info({ stage: "illustrate", slideIndex: index, err: error }, "illustrate failed");
       counts.failed += 1;
       continue;
@@ -97,6 +140,16 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
       counts.empty += 1;
       continue;
     }
+    if (placed.judged !== undefined) judged = true;
+    deps.logger.info(
+      {
+        stage: "illustrate",
+        slideIndex: index,
+        judged: placed.judged ?? null,
+        outcome: placed.outcome,
+      },
+      "illustrate judged",
+    );
     if (placed.outcome === "empty") {
       findings.push(emptyFinding(slide.id, target.id));
       counts.empty += 1;
@@ -120,52 +173,122 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     await deps.onProgress(PROGRESS_ILLUSTRATED, "Pictures placed", updatedAt);
     counts.placed += 1;
   }
-  // Warnings with no placement still have to reach the database; placements (with the warnings
-  // known so far) were persisted as they landed.
-  if (findings.length > 0 && counts.placed === 0) {
+  // Warnings (and the judge's usage) with no placement still have to reach the database;
+  // placements were persisted as they landed.
+  if ((findings.length > 0 || judged) && counts.placed === 0) {
     await deps.persist(snapshot());
   }
-  return { ...state, lesson: findings.length > 0 ? snapshot() : lesson };
+  return { ...state, lesson: findings.length > 0 || judged ? snapshot() : lesson };
 }
 
+function joinVersions(existing: string, added: string): string {
+  return existing.split("+").includes(added) ? existing : `${existing}+${added}`;
+}
+
+type PlaceArgs = {
+  lesson: Lesson;
+  slide: Lesson["slides"][number];
+  target: SlideElement & { type: "image" };
+  brief: ImageBrief;
+  images: PhotoPlacer;
+  deps: PipelineDeps;
+  index: number;
+};
+
 /**
- * One slide: each query candidate in order, the first portrait photo wins and is stored.
- * A 429 reports `busy` (the caller stops searching for every remaining slide); any other
- * failure throws for the caller to count as `failed`.
+ * One slide: portrait candidates gathered across the query candidates, then one judge call:
+ * `pick` stores that candidate; `query` runs exactly one more (blocklist-checked) search and
+ * stores its first portrait; neither leaves the placeholder. A 429 anywhere reports `busy` (the
+ * caller stops searching for every remaining slide); a `BudgetExceeded` and any other failure
+ * propagate for the caller to classify.
  */
-async function placeOne(
-  target: SlideElement & { type: "image" },
-  brief: ImageBrief,
-  images: PhotoPlacer,
-  logger: PipelineDeps["logger"],
-  slideIndex: number,
-  signal: AbortSignal,
-): Promise<PlaceOutcome> {
+async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
+  const { lesson, slide, target, brief, images, deps, index } = args;
+  const candidates: PhotoResult[] = [];
+  let firstQuery: string | undefined;
   for (const query of queryCandidates(brief)) {
-    // Safety (TEACH-162): a blocked candidate searches nothing and reads as empty.
+    if (candidates.length >= MAX_CANDIDATES) break;
+    // Safety (TEACH-162): a blocked candidate searches nothing.
     if (isBlockedQuery(query)) {
-      logger.info({ stage: "illustrate", slideIndex, blocked: true });
+      deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
       continue;
     }
-    let photos: PhotoResult[];
-    try {
-      photos = await images.search(query, { orientation: "portrait", perPage: 5, signal });
-    } catch (error) {
-      if (error instanceof PexelsError && error.status === 429) return { outcome: "busy" };
-      throw error;
+    firstQuery ??= query;
+    const photos = await searchPortraits(images, query, deps.signal);
+    if (photos === "busy") return { outcome: "busy" };
+    for (const photo of photos) {
+      if (candidates.length >= MAX_CANDIDATES) break;
+      if (!candidates.some((seen) => seen.id === photo.id)) candidates.push(photo);
     }
-    const photo = photos.find((candidate) => candidate.height > candidate.width);
-    if (!photo) continue;
-    const stored = await images.store(photo, "slide");
+  }
+  // Every candidate query was blocked: nothing to judge, nothing to say.
+  if (firstQuery === undefined) return { outcome: "empty" };
+
+  const facts = lesson.facts;
+  const call = await callStructured({
+    deps,
+    stage: "illustrate",
+    cls: "small",
+    prompt: pickOrRequeryPrompt,
+    input: {
+      topic: lesson.brief?.topic ?? lesson.title,
+      answers: lesson.brief?.answers,
+      lessonTitle: lesson.title,
+      audience: audienceOf(lesson),
+      objectives: facts?.objectives.map((o) => o.text) ?? [],
+      vocabulary: facts?.vocabulary.map((v) => v.term) ?? [],
+      slideText: slideText(slide),
+      subject: brief.subject,
+      mustShow: brief.mustShow,
+      query: firstQuery,
+      candidates: candidates.map((c) => ({ id: c.id, alt: c.alt })),
+    },
+    schema: PickOrRequerySchema,
+    maxOutputTokens: MAX_JUDGE_TOKENS,
+  });
+
+  const picked = call.output.pick
+    ? candidates.find((candidate) => candidate.id === call.output.pick)
+    : undefined;
+  if (picked)
     return {
       outcome: "placed",
-      element: {
-        ...target,
-        src: stored.url,
-        alt: photo.alt || brief.subject,
-        source: stored.source,
-      },
+      element: await place(images, target, picked, brief),
+      judged: "pick",
     };
+
+  const requery = call.output.query;
+  if (!requery || isBlockedQuery(requery)) {
+    if (requery) deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
+    return { outcome: "empty", judged: requery ? "query" : "none" };
   }
-  return { outcome: "empty" };
+  const photos = await searchPortraits(images, requery, deps.signal);
+  if (photos === "busy") return { outcome: "busy" };
+  const first = photos[0];
+  if (!first) return { outcome: "empty", judged: "query" };
+  return { outcome: "placed", element: await place(images, target, first, brief), judged: "query" };
+}
+
+async function searchPortraits(
+  images: PhotoPlacer,
+  query: string,
+  signal: AbortSignal,
+): Promise<PhotoResult[] | "busy"> {
+  try {
+    const photos = await images.search(query, { orientation: "portrait", perPage: 5, signal });
+    return photos.filter((candidate) => candidate.height > candidate.width);
+  } catch (error) {
+    if (error instanceof PexelsError && error.status === 429) return "busy";
+    throw error;
+  }
+}
+
+async function place(
+  images: PhotoPlacer,
+  target: SlideElement & { type: "image" },
+  photo: PhotoResult,
+  brief: ImageBrief,
+): Promise<SlideElement> {
+  const stored = await images.store(photo, "slide");
+  return { ...target, src: stored.url, alt: photo.alt || brief.subject, source: stored.source };
 }

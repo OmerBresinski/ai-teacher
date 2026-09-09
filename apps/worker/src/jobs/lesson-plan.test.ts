@@ -147,6 +147,7 @@ describeDb("lesson.plan job", () => {
       imageBrief: { subject: "river severn" },
     };
     const ai = scriptedPipelineAi({
+      judges: [JSON.stringify({ pick: "p1", query: null })],
       overrides: {
         [PLAN_INDEX]: JSON.stringify(skeleton),
         [SLIDES_INDEX + 2]: JSON.stringify({
