@@ -8,6 +8,10 @@
  *   `404` — never `403`, so the existence of other tenants' objects is not leaked.
  * - The body is streamed (never buffered) with a safe `content-type`, `content-disposition`,
  *   `content-length` and `cache-control: private, no-store`.
+ * - `Cross-Origin-Resource-Policy: cross-origin`: the editor embeds these bytes cross-origin, so
+ *   the default `same-origin` (which the browser enforces at render time, after a 200) would show
+ *   a broken image. Safe to relax here: the browser still sends cookies per SameSite rules and
+ *   this route still authorises per request — CORP controls render embedding, not access.
  */
 import { zValidator } from "@hono/zod-validator";
 import {
@@ -57,6 +61,7 @@ export function fileRoutes(storage: ReadableStorageAdapter | undefined) {
       }
       try {
         const object = await storage.get(key);
+        c.header("Cross-Origin-Resource-Policy", "cross-origin");
         return c.body(object.body, 200, {
           ...downloadHeaders({ key, contentType: object.contentType }),
           "content-length": String(object.size),
