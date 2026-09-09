@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { WorksheetBlock } from "@tj/domain/documents";
+import { docFromText } from "../model/factories";
 import { newBlock } from "../model/worksheet-factories";
+import { PLACEHOLDER_QUESTION } from "../model/worksheet-recipes";
 import { blockProblems } from "./block-problems";
+import { blankStem } from "./block-types";
 
 /* One rule per test (TEACH-194 item 5). The factories' defaults are all clean. */
 
@@ -37,6 +40,14 @@ describe("blockProblems", () => {
     for (const type of types) expect(blockProblems(newBlock(type)), type).toEqual([]);
   });
 
+  test("question: an unwritten stem (fresh insert or recipe placeholder) carries no hint yet", () => {
+    const block = newBlock("question");
+    expect(blockProblems(blankStem(structuredClone(block)))).toEqual([]);
+    expect(
+      blockProblems({ ...block, doc: docFromText(PLACEHOLDER_QUESTION) } as WorksheetBlock),
+    ).toEqual([]);
+  });
+
   test("question: no answer, or a blank one", () => {
     const block = newBlock("question");
     expect(blockProblems(block)).toEqual(["No answer for the key. Add one in the toolbar."]);
@@ -44,10 +55,12 @@ describe("blockProblems", () => {
     expect(blockProblems({ ...block, answer: "9" } as WorksheetBlock)).toEqual([]);
   });
 
-  test("multiple choice: none correct", () => {
+  test("multiple choice: none correct, once there is a stem", () => {
     const block = mc();
     for (const option of block.options) option.correct = false;
     expect(blockProblems(block)).toEqual(["No option is marked correct. Tick one on the sheet."]);
+    // A fresh insert (`blankStem`) has no stem yet: nothing to mark, so no hint.
+    expect(blockProblems(blankStem(structuredClone(block)))).toEqual([]);
   });
 
   test("multiple choice: more than one correct", () => {

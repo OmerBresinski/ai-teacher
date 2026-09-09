@@ -34,6 +34,7 @@ describe("BLOCK_SPECS", () => {
       instruction: SORTING_TABLE_INSTRUCTION,
     });
     expect(spec("word-search").instruction).toBeNull();
+    expect(spec("table").instruction).toBeNull();
     expect(spec("word-bank").instruction).toBe("Use these words in the sentences below.");
   });
 
@@ -88,6 +89,17 @@ describe("instructionBefore", () => {
     expect(instructionBefore(spec("matching"), [instructions], null)).toBeNull();
     expect(instructionBefore(spec("paragraph"), [heading], heading.id)).toBeNull();
     expect(instructionBefore(spec("word-search"), [heading], heading.id)).toBeNull();
+  });
+
+  test("a subheading counts as the last heading; a plain Table gets no line", () => {
+    const sub = { ...newBlock("heading"), level: 2 as const };
+    expect(
+      instructionBefore(spec("matching"), [instructions, sub, question], question.id)?.type,
+    ).toBe("instructions");
+    expect(instructionBefore(spec("table"), [heading], heading.id)).toBeNull();
+    expect(instructionBefore(spec("sorting-table"), [heading], heading.id)?.type).toBe(
+      "instructions",
+    );
   });
 
   test("appending to an empty sheet, or after an unknown id, still gets one", () => {

@@ -1,5 +1,7 @@
 import type { WorksheetBlock } from "@tj/domain/documents";
 import { BLOCK_GUIDES } from "@tj/domain/documents";
+import { PLACEHOLDER_QUESTION } from "../model/worksheet-recipes";
+import { docToPlainText } from "../text/static";
 import { wordSearchProblems } from "./word-search";
 
 /*
@@ -13,17 +15,31 @@ const quote = (text: string) => `“${text}”`;
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
+/**
+ * A stem the teacher has not written yet: empty (a fresh insert, `blankStem`) or a recipe's
+ * placeholder question. The answer rules wait until there is a question to answer, so a block the
+ * teacher is still typing into does not carry a hint about the key.
+ */
+function unwritten(doc: Parameters<typeof docToPlainText>[0]): boolean {
+  const text = docToPlainText(doc).trim();
+  return text === "" || text === PLACEHOLDER_QUESTION;
+}
+
 export function blockProblems(block: WorksheetBlock): string[] {
   const problems: string[] = [];
   switch (block.type) {
     case "question": {
+      if (unwritten(block.doc)) break;
       if (!block.answer?.trim()) problems.push("No answer for the key. Add one in the toolbar.");
       break;
     }
     case "multiple-choice": {
       const [min, max] = BLOCK_GUIDES["multiple-choice"].shape.options ?? [2, 4];
       const correct = block.options.filter((option) => option.correct).length;
-      if (correct === 0) problems.push("No option is marked correct. Tick one on the sheet.");
+      if (correct === 0 && unwritten(block.doc)) {
+        // Nothing to mark yet.
+      } else if (correct === 0)
+        problems.push("No option is marked correct. Tick one on the sheet.");
       else if (correct > 1) {
         problems.push(`${correct} options are marked correct. Only one should be.`);
       }

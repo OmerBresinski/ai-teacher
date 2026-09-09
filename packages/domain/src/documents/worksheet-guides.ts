@@ -216,14 +216,15 @@ export const BLOCK_GUIDES: Record<WorksheetBlock["type"], BlockGuide> = {
 /**
  * Block types a pupil acts on that never print without an instruction line (ruling 61). Every
  * one has a non-null `instruction` in `BLOCK_GUIDES`, except the word bank, whose line belongs to
- * the fill-gap sentences it feeds (`WORD_BANK_INSTRUCTION` covers a bank on its own).
+ * the fill-gap sentences it feeds (`WORD_BANK_INSTRUCTION` covers a bank on its own). A table is a
+ * task only when its cells are blank (the editor's Sorting table entry), so it is not listed; its
+ * guide keeps "Complete the table." for the generator.
  */
 export const TASK_BLOCK_TYPES: WorksheetBlock["type"][] = [
   "multiple-choice",
   "fill-gap",
   "matching",
   "word-bank",
-  "table",
 ];
 
 /** The default instruction a task block of this type needs before it, or `null`. */

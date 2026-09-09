@@ -70,8 +70,8 @@ function heading(level: 1 | 2): WorksheetBlock {
 /** A statement with True and False to tick; none correct until the teacher marks one. */
 function trueFalse(): WorksheetBlock {
   const block = newBlock("multiple-choice");
+  // No stem of its own: `blankStem` empties it on insert, as for any multiple choice block.
   if (block.type === "multiple-choice") {
-    block.doc = docFromText("Write a statement that is true or false.");
     block.options = [
       { id: uid(), text: "True", correct: false },
       { id: uid(), text: "False", correct: false },
@@ -229,6 +229,9 @@ export const BLOCK_SPECS: BlockSpec[] = [
   {
     id: "table",
     ...guided("table"),
+    // A plain table may be reference (all cells filled), so no line is inserted before it; the
+    // guide's "Complete the table." is for the generator. Sorting table carries its own.
+    instruction: null,
     group: "Layout",
     icon: <TableIcon {...size} />,
     keywords: ["grid", "columns"],

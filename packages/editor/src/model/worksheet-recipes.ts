@@ -231,7 +231,12 @@ const misconceptionCheck: WorksheetRecipe = {
     return [
       instructions("Tick True or False for each claim.", refs),
       ...claims,
-      question("Choose one false claim. Explain why it is wrong.", 2, undefined, refs),
+      question(
+        "Choose one false claim. Explain why it is wrong.",
+        2,
+        "Any false claim above, with the reason it is wrong taken from the lesson.",
+        refs,
+      ),
       placeholder(
         "each claim again in pupil language, and one more for any objective not covered.",
         refs,
@@ -286,7 +291,13 @@ const matching: WorksheetRecipe = {
     const vocabRefs = facts ? facts.vocabulary.map((v) => v.id) : undefined;
     const pairs = facts
       ? facts.vocabulary.map((v) => ({ id: uid(), left: v.term, right: v.definition }))
-      : PLACEHOLDER_TERMS.map((term) => ({ id: uid(), left: term, right: "Write its definition" }));
+      : PLACEHOLDER_TERMS.map((term) => ({
+          id: uid(),
+          left: term,
+          // Distinct placeholders: the right column is shuffled and lettered, so two identical
+          // rights would be the fault ruling 61 was raised for (`blockProblems` names it).
+          right: `Definition of ${term.toLowerCase()}`,
+        }));
     return [
       instructions(guideLine("matching"), vocabRefs),
       cite({ id: uid(), type: "matching", pairs }, vocabRefs),

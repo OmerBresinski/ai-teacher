@@ -6,6 +6,7 @@ import {
   WORD_SEARCH_MAX_SIZE,
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
+import { blockProblems } from "../worksheet/block-problems";
 import { buildWordSearch } from "../worksheet/word-search";
 import { DEMO_LESSON_FACTS } from "./demo-facts";
 import { numberQuestions } from "./worksheet-factories";
@@ -88,6 +89,16 @@ describe("worksheet recipes", () => {
         // A word search prints its own lead; no instructions block doubles it.
         if (built.some((b) => b.type === "word-search")) {
           expect(built.filter((b) => b.type === "instructions")).toEqual([]);
+        }
+      }
+    }
+  });
+
+  test("every block of every recipe, with and without facts, is free of blockProblems", () => {
+    for (const recipe of WORKSHEET_RECIPES) {
+      for (const withFacts of [true, false]) {
+        for (const block of recipe.build(withFacts ? facts : undefined)) {
+          expect(blockProblems(block), `  facts=`).toEqual([]);
         }
       }
     }
