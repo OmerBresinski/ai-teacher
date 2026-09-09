@@ -4,9 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { NewDocumentDialog } from "./new-document-dialog";
 
 function renderDialog(onCreate = mock()) {
-  return render(
-    <NewDocumentDialog open onOpenChange={() => {}} kind="lesson" onCreate={onCreate} />,
-  );
+  return render(<NewDocumentDialog open onOpenChange={() => {}} onCreate={onCreate} />);
 }
 
 afterEach(cleanup);
@@ -44,7 +42,6 @@ describe("NewDocumentDialog", () => {
       <NewDocumentDialog
         open
         onOpenChange={onOpenChange}
-        kind="lesson"
         onCreate={() => new Promise<void>(() => {})}
       />,
     );

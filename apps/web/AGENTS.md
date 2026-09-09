@@ -110,8 +110,9 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   `@tj/editor/worksheet-editor`. Continue posts the built sheet through
   `libraryMutations.createWorksheet` and opens `/w/$worksheetId`. Blank makes `starterWorksheet`
   with the class from `lib/brief-memory.ts`. "New worksheet" in the library and Home's tile, and
-  the lesson editor's "Worksheet" action (`?lesson=`), all come here. Cards and sheet headers
-  share `minutesForMarks` from `@tj/editor/worksheet-metrics`. e2e: `worksheet-create` spec;
+  the lesson editor's "Worksheet" action (`?lesson=`), all come here. Sheet headers call
+  `estimateMinutes` and cards `minutesForMarks` (`@tj/editor/worksheet-metrics`), the same
+  rate and rounding, so a sheet of questions reads the same in both. e2e: `worksheet-create` spec;
   `teach-184-screenshots` (opt-in); `/worksheets/new` is in the a11y route list.
 - Document routes: `/l/$lessonId` is the editor (`lesson-editor.page.tsx`, `LessonEditor` from
   `@tj/editor/lesson`), `/l/$lessonId/view` the read-only viewer, `/l/$lessonId/present` present

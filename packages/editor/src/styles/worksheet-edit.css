@@ -401,10 +401,13 @@
 /* The creation flow's tier row (TEACH-184): Core is the one on, drawn as a brand hairline on the
    card (brand text on the tint sits just under 4.5:1 at 13px); the others are off until
    generation. */
-.ws-tier-chip[aria-pressed="true"] {
+.ws-tier-chip[data-selected="true"] {
+  display: inline-flex;
+  align-items: center;
   border-color: var(--primary);
   background: var(--card);
   color: var(--brand-text);
+  cursor: default;
 }
 
 .ws-tier-chip:disabled {

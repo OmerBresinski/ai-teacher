@@ -66,7 +66,8 @@ test.describe("worksheet creation", () => {
       page.locator('[data-recipe="misconception-check"] .ws-recipe-pick'),
     ).toHaveAttribute("aria-pressed", "true");
     // Row 7: the tier row.
-    await expect(page.locator('[data-tier="core"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator('[data-tier="core"]')).toHaveAttribute("data-selected", "true");
+    await expect(page.locator('button[data-tier="core"]')).toHaveCount(0);
     await expect(page.locator('[data-tier="support"]')).toBeDisabled();
     await expect(page.locator('[data-tier="challenge"]')).toBeDisabled();
     await expect(page.getByText("Support and Challenge: arrive with generation.")).toBeVisible();
@@ -139,6 +140,30 @@ test.describe("worksheet creation", () => {
     await page.getByRole("button", { name: /^The water cycle\./ }).focus();
     await page.keyboard.press("Enter");
     await expect(page.locator('[data-create-step="kind"]')).toBeVisible();
+  });
+
+  test("row 8: Enter on an unselected card chooses and continues in one press; Enter on Blank after a lesson goes Blank", async ({
+    signedInPage: { page },
+  }) => {
+    await page.goto("/worksheets/new");
+    // One press on a card nothing has chosen yet.
+    await page.getByRole("button", { name: /^Roman roads\./ }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator('[data-create-step="kind"]')).toBeVisible();
+    await expect(page.getByText("For Roman roads.")).toBeVisible();
+    // Back, then Blank by keyboard while the lesson is still the chosen source.
+    await page.keyboard.press("Escape");
+    await expect(page.locator('[data-create-step="source"]')).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Roman roads\./ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await page.getByRole("button", { name: /^Blank/ }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/w\/[^/]+$/);
+    await expect(
+      page.locator("[data-topbar]").getByRole("heading", { level: 1, name: "Untitled worksheet" }),
+    ).toBeVisible();
   });
 
   test("row 6: Blank, Continue: the starter sheet with the class from the last brief", async ({

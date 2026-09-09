@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { DocumentSummary, LessonFacts, Worksheet } from "@tj/domain/documents";
 import { starterWorksheet } from "@tj/editor/starter";
 import {
+  type CreateSource,
   type CreateState,
   createReducer,
   DEMO_LESSON_FACTS,
@@ -23,7 +24,7 @@ import {
 } from "@tj/editor/worksheet-editor";
 import { Button, cn, Display, SearchInput, Spinner, toast } from "@tj/ui";
 import { FileText } from "lucide-react";
-import { type KeyboardEvent, useId, useMemo, useReducer } from "react";
+import { type KeyboardEvent, useEffect, useId, useMemo, useReducer } from "react";
 import { ActionBar } from "@/components/brief/action-bar";
 import { LessonThumb } from "@/components/lesson-thumb";
 import { RoutePendingPage } from "@/components/route-pending-page";
@@ -77,17 +78,21 @@ export function WorksheetCreatePage() {
     ...libraryQueries.document(lessonId ?? "", queryClient),
     enabled: lessonId !== undefined,
   });
-  const lesson: LessonSource | null =
-    lessonData && isFullDocument(lessonData) && kindOf(lessonData) === "lesson"
-      ? {
-          id: lessonData.id,
-          title: lessonData.title,
-          themeId: lessonData.themeId,
-          subject: lessonData.subject,
-          yearGroup: lessonData.yearGroup,
-          facts: "facts" in lessonData ? lessonData.facts : undefined,
-        }
-      : null;
+  // Memoised on the query data, so the Kind step's preview sheet is built once per lesson.
+  const lesson = useMemo<LessonSource | null>(
+    () =>
+      lessonData && isFullDocument(lessonData) && kindOf(lessonData) === "lesson"
+        ? {
+            id: lessonData.id,
+            title: lessonData.title,
+            themeId: lessonData.themeId,
+            subject: lessonData.subject,
+            yearGroup: lessonData.yearGroup,
+            facts: "facts" in lessonData ? lessonData.facts : undefined,
+          }
+        : null,
+    [lessonData],
+  );
 
   async function create(body: Worksheet): Promise<void> {
     try {
@@ -111,10 +116,19 @@ export function WorksheetCreatePage() {
     void create(sheet);
   }
 
-  function continueFromSource(): void {
-    if (isPending || !state.source) return;
-    if (state.source.kind === "blank") createBlank();
-    else dispatch({ type: "continue" });
+  /**
+   * Continue with the source given, not the one in this render's state: a card's Enter chooses
+   * and continues in one press, and the reducer has not re-rendered between the two.
+   */
+  function continueWith(source: CreateSource): void {
+    if (isPending) return;
+    if (source.kind === "blank") {
+      dispatch({ type: "choose-blank" });
+      createBlank();
+      return;
+    }
+    dispatch({ type: "choose-lesson", lessonId: source.lessonId });
+    dispatch({ type: "continue" });
   }
 
   if (state.step === "source") {
@@ -125,9 +139,14 @@ export function WorksheetCreatePage() {
         loading={lessonsQuery.isPending}
         pending={isPending}
         onSearch={(query) => dispatch({ type: "search", query })}
-        onChooseLesson={(id) => dispatch({ type: "choose-lesson", lessonId: id })}
-        onChooseBlank={() => dispatch({ type: "choose-blank" })}
-        onContinue={continueFromSource}
+        onChoose={(source) =>
+          dispatch(
+            source.kind === "blank"
+              ? { type: "choose-blank" }
+              : { type: "choose-lesson", lessonId: source.lessonId },
+          )
+        }
+        onContinue={continueWith}
       />
     );
   }
@@ -167,8 +186,7 @@ function SourceStep({
   loading,
   pending,
   onSearch,
-  onChooseLesson,
-  onChooseBlank,
+  onChoose,
   onContinue,
 }: {
   state: CreateState;
@@ -176,9 +194,9 @@ function SourceStep({
   loading: boolean;
   pending: boolean;
   onSearch: (query: string) => void;
-  onChooseLesson: (id: string) => void;
-  onChooseBlank: () => void;
-  onContinue: () => void;
+  onChoose: (source: CreateSource) => void;
+  /** Takes the source to continue with, so Enter on a card needs no second render. */
+  onContinue: (source: CreateSource) => void;
 }) {
   const reasonId = useId();
   const query = state.query.trim().toLowerCase();
@@ -197,12 +215,11 @@ function SourceStep({
   const blankChosen = state.source?.kind === "blank";
   const reason = state.source ? null : "Choose a lesson or Blank.";
 
-  /** Enter on a card chooses it and continues; a click only chooses. */
-  const enterContinues = (choose: () => void) => (event: KeyboardEvent<HTMLButtonElement>) => {
+  /** Enter on a card chooses it and continues in one press; a click only chooses. */
+  const enterContinues = (source: CreateSource) => (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
-    choose();
-    onContinue();
+    onContinue(source);
   };
 
   return (
@@ -258,8 +275,8 @@ function SourceStep({
                         "hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
                         selected && "border-primary ring-1 ring-primary",
                       )}
-                      onClick={() => onChooseLesson(doc.id)}
-                      onKeyDown={enterContinues(() => onChooseLesson(doc.id))}
+                      onClick={() => onChoose({ kind: "lesson", lessonId: doc.id })}
+                      onKeyDown={enterContinues({ kind: "lesson", lessonId: doc.id })}
                     >
                       <span className="block overflow-hidden rounded-chip">
                         <LessonThumb lesson={doc} />
@@ -289,8 +306,8 @@ function SourceStep({
               "hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
               blankChosen && "border-primary ring-1 ring-primary",
             )}
-            onClick={onChooseBlank}
-            onKeyDown={enterContinues(onChooseBlank)}
+            onClick={() => onChoose({ kind: "blank" })}
+            onKeyDown={enterContinues({ kind: "blank" })}
           >
             <span className="mt-0.5 shrink-0 text-ink-3">
               <FileText aria-hidden size={20} strokeWidth={1.5} />
@@ -315,7 +332,7 @@ function SourceStep({
             size="lg"
             disabled={!state.source || pending}
             aria-describedby={reason ? reasonId : undefined}
-            onClick={onContinue}
+            onClick={() => state.source && onContinue(state.source)}
           >
             {pending ? <Spinner /> : null}
             Continue
@@ -350,7 +367,7 @@ function KindStep({
   const facts: LessonFacts = lesson.facts ?? DEMO_LESSON_FACTS;
   const usingExample = lesson.facts === undefined;
   const worksheet = useMemo(() => previewWorksheet(lesson), [lesson]);
-  const theme = useMemo(() => getTheme(lesson.themeId), [lesson.themeId]);
+  const theme = getTheme(lesson.themeId);
   const built = useMemo(
     () => WORKSHEET_RECIPES.map((recipe) => ({ recipe, blocks: recipe.build(facts) })),
     [facts],
@@ -361,22 +378,24 @@ function KindStep({
   const selected = selectedRecipe(state, lesson.facts);
   const reason = selected ? null : "Choose a kind of sheet.";
 
-  function onKeyDown(event: KeyboardEvent<HTMLElement>): void {
-    // Escape returns to Source, as Back does; the chips and cards are plain buttons, so nothing
-    // else on the page claims the key.
-    if (event.key === "Escape") {
+  // Escape returns to Source, as Back does, from anywhere on the step: after Enter on a Source
+  // card the focus is on the body, so the listener sits on the window. The chips and cards are
+  // plain buttons and nothing else on the page claims the key.
+  useEffect(() => {
+    function onKeyDown(event: globalThis.KeyboardEvent): void {
+      if (event.key !== "Escape") return;
       event.preventDefault();
       onBack();
     }
-  }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onBack]);
 
   return (
-    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape returns to Source from anywhere on the step.
     <main
       className="min-h-dvh px-6 py-8 lg:px-12"
       data-create-step="kind"
       data-facts={usingExample ? "example" : "lesson"}
-      onKeyDown={onKeyDown}
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-6">
         <div className="flex flex-col gap-1">
@@ -430,21 +449,34 @@ function KindStep({
           ))}
         </ul>
 
+        {/* Not a control yet: Core is the one tier a frame makes, shown as the current state; the
+            other two are buttons that are off until generation, so their hint is reachable. */}
         <fieldset className="flex flex-wrap items-center gap-2">
           <legend className="mb-2 text-meta font-semibold text-ink-2">Tier</legend>
-          {TIERS.map((tier) => (
-            <button
-              key={tier.id}
-              type="button"
-              className="ws-job-chip ws-tier-chip"
-              aria-pressed={tier.available}
-              disabled={!tier.available}
-              aria-describedby={tier.available ? undefined : tierHintId}
-              data-tier={tier.id}
-            >
-              {tier.label}
-            </button>
-          ))}
+          {TIERS.map((tier) =>
+            tier.available ? (
+              <span
+                key={tier.id}
+                className="ws-job-chip ws-tier-chip"
+                data-tier={tier.id}
+                data-selected="true"
+              >
+                {tier.label}
+                <span className="sr-only">, selected</span>
+              </span>
+            ) : (
+              <button
+                key={tier.id}
+                type="button"
+                className="ws-job-chip ws-tier-chip"
+                disabled
+                aria-describedby={tierHintId}
+                data-tier={tier.id}
+              >
+                {tier.label}
+              </button>
+            ),
+          )}
           <span id={tierHintId} className="text-meta text-ink-3">
             Support and Challenge: {TIER_HINT.toLowerCase()}.
           </span>
