@@ -14,12 +14,19 @@ const blocks = (page: Page) => page.locator(".ws-column .ws-block");
 const dialog = (page: Page) => page.getByRole("dialog", { name: "Add a block" });
 const undoKey = process.platform === "darwin" ? "Meta+z" : "Control+z";
 
+/** The seeded sheet's block count once it has rendered; the seed decides it, not this spec. */
+async function seeded(page: Page): Promise<number> {
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(blocks(page).first()).toBeVisible();
+  return blocks(page).count();
+}
+
 test.describe("worksheet recipes", () => {
   test("row 4: Add block opens the dialog on Sections with nine cards, miniatures, minutes and chips", async ({
     signedInPage: { page, paths },
   }) => {
     await page.goto(EDITOR(paths));
-    await expect(blocks(page)).toHaveCount(8);
+    expect(await seeded(page)).toBeGreaterThan(0);
     await expect(page.locator(".ws-column .ws-header .ws-meta")).toHaveText(
       /^\d+ marks · about \d+ min$/,
     );
@@ -48,7 +55,7 @@ test.describe("worksheet recipes", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(EDITOR(paths));
-    await expect(blocks(page)).toHaveCount(8);
+    const before = await seeded(page);
     await page.getByRole("button", { name: "Add block" }).click();
     const d = dialog(page);
     // Keyboard only: Tab lands on the first card's button, Enter picks it.
@@ -57,23 +64,25 @@ test.describe("worksheet recipes", () => {
     await expect(exit).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(d).toBeHidden();
-    await expect(blocks(page)).toHaveCount(13);
+    await expect(blocks(page)).toHaveCount(before + 5);
     // The first inserted block (a question) is selected and its editor has the caret.
-    const first = blocks(page).nth(8);
+    const first = blocks(page).nth(before);
     await expect(first.locator(".ws-selected-ring")).toBeVisible();
     await expect(first.locator(".ProseMirror")).toBeFocused();
-    await expect(blocks(page).nth(11).locator(".ws-answerbox-label")).toHaveText(
-      "One thing I learned",
-    );
+    await expect(
+      blocks(page)
+        .nth(before + 3)
+        .locator(".ws-answerbox-label"),
+    ).toHaveText("One thing I learned");
     await page.keyboard.press(undoKey);
-    await expect(blocks(page)).toHaveCount(8);
+    await expect(blocks(page)).toHaveCount(before);
   });
 
   test("row 6: the gutter plus opens the same dialog and inserts after that block", async ({
     signedInPage: { page, paths },
   }) => {
     await page.goto(EDITOR(paths));
-    await expect(blocks(page)).toHaveCount(8);
+    await seeded(page);
     const ids = () =>
       blocks(page).evaluateAll((els) => els.map((el) => el.getAttribute("data-block-id")));
     const before = await ids();
@@ -85,8 +94,9 @@ test.describe("worksheet recipes", () => {
     await d.getByRole("button", { name: /^Matching\./ }).click();
     await expect(d).toBeHidden();
     const after = await ids();
+    expect(after.length).toBe(before.length + 4);
     expect(after.slice(0, 2)).toEqual(before.slice(0, 2));
-    expect(after.slice(-6)).toEqual(before.slice(-6));
+    expect(after.slice(6)).toEqual(before.slice(2));
     // Instructions, the matching block, the word bank and the placeholder, right after block 2.
     await expect(blocks(page).nth(3).locator(".ws-match")).toBeVisible();
     await expect(blocks(page).nth(4).locator(".ws-wordbank")).toBeVisible();
@@ -96,13 +106,13 @@ test.describe("worksheet recipes", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(EDITOR(paths));
-    await expect(blocks(page)).toHaveCount(8);
+    const before = await seeded(page);
     // An empty paragraph to type `/` into, from the dialog's Blocks tab.
     await page.getByRole("button", { name: "Add block" }).click();
     const d = dialog(page);
     await d.getByRole("tab", { name: "Blocks" }).click();
     await d.getByRole("button", { name: /^Paragraph/ }).click();
-    await expect(blocks(page)).toHaveCount(9);
+    await expect(blocks(page)).toHaveCount(before + 1);
     const pm = page.locator(".ws-column .ProseMirror");
     await expect(pm).toBeFocused();
     await page.keyboard.type("/");
@@ -115,9 +125,9 @@ test.describe("worksheet recipes", () => {
     await expect(options.first()).toContainText("Exit ticket");
     await expect(list.getByRole("group", { name: "Sections" })).toBeVisible();
     await page.keyboard.press("Enter");
-    // The empty paragraph is replaced by the five blocks: 8 - 1 + 5.
-    await expect(blocks(page)).toHaveCount(13);
+    // The empty paragraph is replaced by the five blocks.
+    await expect(blocks(page)).toHaveCount(before + 5);
     await page.keyboard.press(undoKey);
-    await expect(blocks(page)).toHaveCount(9);
+    await expect(blocks(page)).toHaveCount(before + 1);
   });
 });

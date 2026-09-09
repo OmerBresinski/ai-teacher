@@ -9,7 +9,8 @@ test("captures Add a block on Sections, on Blocks, and a sheet after inserting M
 }) => {
   await page.addInitScript(() => localStorage.setItem("tj-theme", "light"));
   await page.goto(paths.worksheet("fraction-practice"));
-  await expect(page.locator(".ws-column .ws-block")).toHaveCount(8);
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.locator(".ws-column .ws-block").first()).toBeVisible();
   await page.getByRole("button", { name: "Add block" }).click();
   const dialog = page.getByRole("dialog", { name: "Add a block" });
   await expect(dialog.locator(".ws-mini .ws-page")).toHaveCount(9);
