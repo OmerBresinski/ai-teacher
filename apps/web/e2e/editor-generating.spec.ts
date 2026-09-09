@@ -124,6 +124,25 @@ test.describe("generating lesson", () => {
       headers: { origin: E2E_WEB_URL },
     });
     expect(cancelled.status(), await cancelled.text()).toBe(202);
+    // `"cancelled"` means the terminal event is already written. `"cancelling"` means the worker had
+    // the job: it notices within its 250 ms cancel poll but only between fake model calls, so the
+    // unlock is a worker race the UI wait must not carry (TEACH-172). Wait for the lock to clear
+    // through the api — the same read the page makes — before asserting the page itself.
+    const { status } = (await cancelled.json()) as { status: string };
+    if (status !== "cancelled") {
+      await expect
+        .poll(
+          async () => {
+            const doc = await page.request.get(`${E2E_API_URL}/documents/${lessonId}`, {
+              headers: { origin: E2E_WEB_URL },
+            });
+            const body = (await doc.json()) as { document: { generatingJobId: string | null } };
+            return body.document.generatingJobId;
+          },
+          { timeout: 20_000, message: "the lesson's lock did not clear after the cancel" },
+        )
+        .toBeNull();
+    }
 
     await page.goto(`/l/${lessonId}`);
     await expect(page.getByRole("heading", { level: 1, name: "Fractions of amounts" })).toBeVisible(

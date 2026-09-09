@@ -11,11 +11,39 @@ const elements = (page: Page) => page.locator("[data-slide-frame] [data-element-
 const proseMirror = (page: Page) => page.locator("[data-slide-frame] .ProseMirror");
 const stage = (page: Page) => page.locator("[data-selection-layer]");
 
-async function box(locator: Locator) {
+/**
+ * The element's box once it has settled. `toBeVisible` retries but `boundingBox()` does not, and on
+ * a loaded CI runner the canvas is still being scaled (`SlideScaler` rewrites the scale after its
+ * first layout) or the static `td-rt` is being remounted when the first read lands — so the box
+ * is polled until two consecutive reads agree (TEACH-172).
+ */
+type Box = NonNullable<Awaited<ReturnType<Locator["boundingBox"]>>>;
+const sameBox = (a: Box | null, b: Box | null) =>
+  a !== null &&
+  b !== null &&
+  a.x === b.x &&
+  a.y === b.y &&
+  a.width === b.width &&
+  a.height === b.height;
+
+async function box(locator: Locator): Promise<Box> {
   await expect(locator).toBeVisible();
-  const b = await locator.boundingBox();
-  if (!b) throw new Error("not on screen");
-  return b;
+  const reads: (Box | null)[] = [];
+  await expect
+    .poll(
+      async () => {
+        reads.push(await locator.boundingBox());
+        return (
+          reads.length >= 2 &&
+          sameBox(reads[reads.length - 1] ?? null, reads[reads.length - 2] ?? null)
+        );
+      },
+      { message: "element box did not settle" },
+    )
+    .toBe(true);
+  const last = reads[reads.length - 1];
+  if (!last) throw new Error("not on screen");
+  return last;
 }
 
 /** The rendered text block inside an element: the `td-rt` node, static or editable. */
@@ -25,9 +53,20 @@ const richText = (el: Locator) => el.locator(".td-rt").first();
  * Elements sit under the transform layer's pointer catcher, so Playwright's own `dblclick()` waits
  * forever for them to "receive" the event; double-click where the element is, as a hand does.
  */
-async function dblclickAt(page: Page, target: Locator) {
+async function dblclickAt(page: Page, target: Locator, opens: Locator = proseMirror(page)) {
   const b = await box(target);
   await page.mouse.dblclick(b.x + b.width / 2, b.y + b.height / 2);
+  // The canvas can still move under the pointer between the two clicks on a slow runner; when the
+  // editor `opens` did not appear, the box is re-read and the double-click made once more
+  // (TEACH-172).
+  const opened = await opens
+    .waitFor({ state: "attached", timeout: 2_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!opened) {
+    const again = await box(target);
+    await page.mouse.dblclick(again.x + again.width / 2, again.y + again.height / 2);
+  }
 }
 
 test.describe("text editing", () => {
@@ -148,8 +187,8 @@ test.describe("text editing", () => {
     await page.getByRole("tab", { name: "Answer" }).click();
     const panel = page.locator("[data-explanation-panel]");
     await expect(panel).toBeVisible();
-    await dblclickAt(page, panel);
     const field = page.getByRole("textbox", { name: "Why this is the answer" });
+    await dblclickAt(page, panel, field);
     await expect(field).toBeFocused();
     await page.keyboard.press("End");
     await page.keyboard.type(" Really.");
