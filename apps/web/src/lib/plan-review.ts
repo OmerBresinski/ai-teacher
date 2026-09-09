@@ -91,6 +91,7 @@ export const SLIDE_KIND_LABELS: Record<GeneratableSlideKind, string> = {
   starter: "Starter",
   vocabulary: "Vocabulary",
   content: "Explain",
+  "image-text": "Picture and text",
   "worked-example": "Worked example",
   instructions: "Instructions",
   discussion: "Discussion",
