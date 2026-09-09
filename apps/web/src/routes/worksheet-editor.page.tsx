@@ -32,6 +32,15 @@ export function WorksheetEditorPage() {
   const options = libraryQueries.document(worksheetId, queryClient);
   const { data } = useQuery(options);
   const save = useSaveWithConflictToast(worksheetId);
+  // The sheet's lesson, for the facts the "Add a block" sections are built from (TEACH-183). The
+  // same document query the lesson editor uses; nothing is fetched until the sheet names a lesson.
+  const lessonId = data && isFullDocument(data) && "lessonId" in data ? data.lessonId : undefined;
+  const lessonOptions = libraryQueries.document(lessonId ?? "", queryClient);
+  const { data: lesson } = useQuery({ ...lessonOptions, enabled: lessonId !== undefined });
+  const facts =
+    lesson && isFullDocument(lesson) && kindOf(lesson) === "lesson" && "facts" in lesson
+      ? lesson.facts
+      : undefined;
 
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
   const onPrint = useCallback(() => {
@@ -51,6 +60,7 @@ export function WorksheetEditorPage() {
       onSave={save}
       onBack={onBack}
       onPrint={onPrint}
+      facts={facts}
       exportSlot={
         // `aria-disabled`, not `disabled`: a disabled button swallows pointer and focus events, so
         // its tooltip could never open (the viewer's pattern).

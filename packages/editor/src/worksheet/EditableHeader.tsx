@@ -1,6 +1,7 @@
 import { IconButton } from "@tj/ui";
 import { X } from "lucide-react";
 import { memo, type PointerEvent as ReactPointerEvent, useRef } from "react";
+import { SheetMeta } from "./BlockContent";
 import { SheetField } from "./EditableBlocks";
 import { HEADER_KEY } from "./paginate";
 import { pruneEmptyCriteria, removeCriterion, setCriterion, setHeader, setTitle } from "./reducers";
@@ -134,6 +135,7 @@ export const EditableHeader = memo(function EditableHeader({
           ))}
         </ul>
       ) : null}
+      <SheetMeta blocks={worksheet.blocks} />
     </header>
   );
 });

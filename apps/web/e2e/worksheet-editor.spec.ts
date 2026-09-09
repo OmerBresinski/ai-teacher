@@ -69,22 +69,26 @@ test.describe("worksheet editor", () => {
     const first = blocks(page).first();
     await first.hover();
     await first.getByRole("button", { name: "Insert a block below" }).click();
+    // The gutter + opens "Add a block" (TEACH-183); Blocks > Paragraph inserts an empty one.
+    const dialog = page.getByRole("dialog", { name: "Add a block" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("tab", { name: "Blocks" }).click();
+    await dialog.getByRole("button", { name: /^Paragraph/ }).click();
+    await expect(dialog).toBeHidden();
+    await expect(blocks(page)).toHaveCount(count + 1);
+    const pm = proseMirror(page);
+    await expect(pm).toBeFocused();
+    await page.keyboard.type("/");
     const list = page.getByRole("listbox", { name: "Block types" });
     await expect(list).toBeVisible();
-    await expect(list.getByRole("option")).toHaveCount(16);
+    // Fifteen block types (headings twice) and the nine sections.
+    await expect(list.getByRole("option")).toHaveCount(25);
     // The popover arrives over a fade; axe reads contrast through it, so let the motion finish.
     await page
       .locator('[role="dialog"]')
       .last()
       .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
     await expectNoSeriousA11yViolations(page, "/w/:id (slash menu open)");
-    await page.getByRole("combobox", { name: "Filter blocks" }).fill("para");
-    await page.keyboard.press("Enter");
-    await expect(blocks(page)).toHaveCount(count + 1);
-    const pm = proseMirror(page);
-    await expect(pm).toBeFocused();
-    await page.keyboard.type("/");
-    await expect(list).toBeVisible();
     await page.getByRole("combobox", { name: "Filter blocks" }).fill("question");
     await page.keyboard.press("Enter");
     // The empty paragraph was replaced by a question: same count, a new numbered stem with the
