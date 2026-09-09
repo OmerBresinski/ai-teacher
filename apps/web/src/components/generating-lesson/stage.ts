@@ -1,0 +1,140 @@
+import type { JobEvent } from "@tj/domain/jobs";
+
+/**
+ * The five stages a teacher sees while a lesson is generated (generating-state PRD §3), in the
+ * order the strip shows them. The pipeline's own stages (plan → generate → illustrate → evaluate
+ * → repair, ADR 0025) fold into these: the worksheet is written inside "Writing the slides" and
+ * Repair is part of "Checking".
+ */
+export const STAGES = [
+  { id: "planning", label: "Planning" },
+  { id: "writing", label: "Writing the slides" },
+  { id: "pictures", label: "Adding pictures" },
+  { id: "checking", label: "Checking" },
+  { id: "ready", label: "Ready" },
+] as const;
+
+export type StageId = (typeof STAGES)[number]["id"];
+
+export type StageStatus = "done" | "live" | "todo";
+
+export interface StageState {
+  stage: StageId;
+  /** "Slide n of N" while Generate writes the content slides. */
+  slide: { n: number; total: number } | null;
+  /** The worksheet call at the end of Writing (`85 "Worksheet ready"`), still inside Writing. */
+  worksheet: boolean;
+  /** The last progress message, for the stopped states. */
+  message: string | undefined;
+  terminal: "completed" | "failed" | "cancelled" | null;
+  /** The worker's fixed text on a `failed` event. */
+  failure: string | undefined;
+}
+
+const ORDER: readonly StageId[] = STAGES.map((s) => s.id);
+
+/** The worker's `progress.stage`, once it exists (PRD §8); read here so nothing else has to. */
+const PIPELINE_STAGES: Record<string, StageId> = {
+  plan: "planning",
+  generate: "writing",
+  illustrate: "pictures",
+  evaluate: "checking",
+  repair: "checking",
+};
+
+const SLIDE_COUNT = /^Slide (\d+) of (\d+)$/;
+
+/**
+ * Which stage a run is in, from its events alone (PRD §4). `percent` today: 2, 6 and 10 are
+ * Planning; over 10 up to 85 is Writing (85 is the worksheet, still Writing); 88 is Adding
+ * pictures (emitted only when a picture is placed, so a run with no 88 goes straight from
+ * Writing to Checking and the strip ticks pictures through); 90 is Checking; 100 is Ready. A
+ * `progress.stage` field wins over the percent when the worker sends one. Stages never go
+ * backwards: a late event with a lower percent (the worker coalesces at 250ms) cannot undo a
+ * stage already reached.
+ */
+export function stageOf(events: readonly JobEvent[]): StageState {
+  let stage: StageId = "planning";
+  let slide: StageState["slide"] = null;
+  let worksheet = false;
+  let message: string | undefined;
+  let terminal: StageState["terminal"] = null;
+  let failure: string | undefined;
+
+  for (const event of events) {
+    if (event.type === "completed") {
+      terminal = "completed";
+      stage = "ready";
+      continue;
+    }
+    if (event.type === "failed") {
+      terminal = "failed";
+      failure = event.error.message;
+      continue;
+    }
+    if (event.type === "cancelled") {
+      terminal = "cancelled";
+      continue;
+    }
+    if (event.type !== "progress") continue;
+    const { progress } = event;
+    if (progress.message !== undefined) message = progress.message;
+    const next = stageFromProgress(progress);
+    if (next !== null && ORDER.indexOf(next) > ORDER.indexOf(stage)) stage = next;
+    const count = progress.message?.match(SLIDE_COUNT);
+    if (count && stage === "writing") {
+      slide = { n: Number(count[1]), total: Number(count[2]) };
+    }
+    if (stage === "writing" && progress.percent === 85) worksheet = true;
+    if (stage !== "writing") {
+      slide = null;
+      worksheet = false;
+    }
+  }
+
+  return { stage, slide, worksheet, message, terminal, failure };
+}
+
+function stageFromProgress(progress: {
+  percent?: number;
+  message?: string;
+  stage?: string;
+}): StageId | null {
+  if (progress.stage !== undefined) return PIPELINE_STAGES[progress.stage] ?? null;
+  const percent = progress.percent;
+  if (percent === undefined) return null;
+  if (percent >= 100) return "ready";
+  if (percent >= 90) return "checking";
+  if (percent > 85) return "pictures";
+  if (percent > 10) return "writing";
+  return "planning";
+}
+
+/** Ticked, live or still to come, for one strip item. */
+export function stageStatus(id: StageId, state: StageState): StageStatus {
+  if (state.terminal === "completed") return "done";
+  const current = ORDER.indexOf(state.stage);
+  const own = ORDER.indexOf(id);
+  if (own < current) return "done";
+  if (own === current) return "live";
+  return "todo";
+}
+
+/** The one line in the top bar (PRD §3): the stage, with the count while there is one. */
+export function stageLine(state: StageState): string {
+  switch (state.stage) {
+    case "planning":
+      return "Planning";
+    case "writing":
+      if (state.worksheet) return "Writing the worksheet";
+      return state.slide
+        ? `Writing the slides, ${state.slide.n} of ${state.slide.total}`
+        : "Writing the slides";
+    case "pictures":
+      return "Adding pictures";
+    case "checking":
+      return "Checking";
+    case "ready":
+      return "Ready to edit";
+  }
+}

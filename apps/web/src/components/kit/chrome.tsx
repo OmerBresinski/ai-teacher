@@ -14,6 +14,7 @@ import {
 import { FileText, House, Presentation } from "lucide-react";
 import { useState } from "react";
 import { KitGroup, Specimen, Variant } from "./frame";
+import { GeneratingExhibit } from "./generating";
 
 export function Chrome() {
   const [collapsed, setCollapsed] = useState(false);
@@ -116,6 +117,7 @@ export function Chrome() {
           </ListSurfaceRow>
         </ListSurface>
       </Specimen>
+      <GeneratingExhibit />
     </KitGroup>
   );
 }

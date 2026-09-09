@@ -1,7 +1,7 @@
 /**
- * The generating state on `/l/$lessonId` (ADR 0024 §18, TEACH-121): while a `lesson.plan` job
- * holds the row's lock the page shows the banner and no editor; once the lock is released the
- * editor takes over. The spec cancels the job itself before it starts and asserts the hand-over —
+ * The generating state on `/l/$lessonId` (ADR 0024 §18, TEACH-121, TEACH-199): while a
+ * `lesson.plan` job holds the row's lock the page shows the generating shell (the editor's
+ * geometry, the five-stage strip, no editor); once the lock is released the editor takes over. The spec cancels the job itself before it starts and asserts the hand-over —
  * the "clears" half. The "shows" half seeds a lesson locked by a job that never ran, which stays
  * locked (no terminal event, not yet stale). The full run over the fake worker is
  * `generation.spec.ts` (TEACH-133).
@@ -26,7 +26,7 @@ const FACTS: LessonFacts = {
 };
 
 test.describe("generating lesson", () => {
-  test("a locked lesson shows the read-only banner instead of the editor, with a skeleton per slide to come", async ({
+  test("a locked lesson shows the generating shell instead of the editor, with a skeleton per slide to come", async ({
     signedInPage: { page },
   }) => {
     const jobId = "01a06a15-1849-7000-ac6a-c07e27fe308b";
@@ -48,18 +48,46 @@ test.describe("generating lesson", () => {
     const { ids } = (await res.json()) as { ids: Record<string, string> };
 
     await page.goto(`/l/${ids["demo-water-cycle"]}`);
-    const banner = page.getByTestId("generating-banner");
-    await expect(banner).toBeVisible();
-    await expect(banner).toContainText("Generating your lesson…");
-    // Read-only: the slides render through the viewer, the editor chrome is absent.
+    const shell = page.getByTestId("generating-shell");
+    await expect(shell).toBeVisible();
+    await expect(shell).toHaveAttribute("data-state", "running");
+    // No event has arrived for a job that never ran, so the run reads as Planning.
+    await expect(page.getByTestId("generating-stage")).toHaveText("Planning");
+    const strip = page.getByTestId("generating-strip");
+    await expect(strip.locator("li")).toHaveCount(5);
+    await expect(strip.locator('[data-stage="planning"]')).toHaveAttribute("data-status", "live");
+    await expect(strip.locator('[data-stage="planning"]')).toHaveAttribute("aria-current", "step");
+    // Read-only: the newest slide is on the canvas, the editor chrome is absent, the lock line
+    // says so. One ghost Stop in the bar and nothing filled.
     await expect(page.getByRole("button", { name: "Rename lesson" })).toHaveCount(0);
-    await expect(page.locator("[data-slide-root]").first()).toBeVisible();
+    await expect(page.locator("[data-canvas] [data-slide-root]")).toBeVisible();
+    await expect(page.getByTestId("generating-lock")).toHaveText(
+      "Read only until the lesson is ready",
+    );
+    const bar = page.locator("[data-topbar]");
+    await expect(bar.getByRole("button", { name: "Stop" })).toHaveCount(1);
+    await expect(bar.locator(".bg-primary-fill")).toHaveCount(0);
+    await expect(page.locator("progress")).toHaveCount(0);
     await expect(page).toHaveTitle("The water cycle · Teaching Journey");
 
     const rail = page.getByRole("navigation", { name: "Slides" });
-    await expect(rail.getByRole("button", { name: /^Slide \d+$/ })).toHaveCount(3);
+    await expect(rail.locator("[data-slide-thumb]")).toHaveCount(3);
     await expect(rail.locator('li[aria-hidden="true"]')).toHaveCount(2);
-    await expect(page.getByText("3 of 5 slides")).toBeVisible();
+    // The editor's columns: the rail's width with nothing in it, the navigator's width.
+    await expect(page.locator("[data-insert-rail-placeholder]")).toHaveCSS("width", "56px");
+    await expect(rail).toHaveCSS("width", "218px");
+
+    // The live dot is still under reduced motion.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(strip.locator('[data-status="live"] [data-dot]')).toHaveCSS(
+      "animation-name",
+      "none",
+    );
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await expect(strip.locator('[data-status="live"] [data-dot]')).not.toHaveCSS(
+      "animation-name",
+      "none",
+    );
 
     // The generating route is not in the a11y sweep (it needs a locked seed), so it is scanned
     // here in each theme.
@@ -94,7 +122,7 @@ test.describe("generating lesson", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Fractions of amounts" })).toBeVisible(
       { timeout: 20_000 },
     );
-    await expect(page.getByTestId("generating-banner")).toHaveCount(0);
+    await expect(page.getByTestId("generating-shell")).toHaveCount(0);
     // Usually the job wrote no slide, so the page offers the first one; the editor mounts on it.
     const empty = page.getByRole("button", { name: "Add a title slide" });
     if (await empty.isVisible()) await empty.click();

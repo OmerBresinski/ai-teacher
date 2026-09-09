@@ -169,8 +169,8 @@ describe("LessonEditorPage", () => {
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     renderPage();
 
-    const banner = await screen.findByTestId("generating-banner");
-    expect(banner).toHaveTextContent("Generating your lesson…");
+    const banner = await screen.findByTestId("generating-shell");
+    expect(screen.getByTestId("generating-stage")).toHaveTextContent("Planning");
     expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
     const source = FakeEventSource.latest;
     expect(source.url).toBe(`/api/jobs/${JOB_ID}/events`);
@@ -183,15 +183,17 @@ describe("LessonEditorPage", () => {
         "1",
       );
     });
-    expect(banner).toHaveTextContent("40%");
-    expect(banner).toHaveTextContent("Planning");
+    // 40 is inside Writing; the strip ticks Planning and the stage line says where the run is.
+    expect(screen.getByTestId("generating-stage")).toHaveTextContent("Writing the slides");
+    expect(banner.querySelector('[data-stage="planning"]')).toHaveAttribute("data-status", "done");
+    expect(banner.querySelector('[data-stage="writing"]')).toHaveAttribute("data-status", "live");
 
     fakeApi.setGenerating("demo-water-cycle", null);
     act(() => {
       source.emit("completed", jobEvent("completed"), "2");
     });
     expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
-    expect(screen.queryByTestId("generating-banner")).toBeNull();
+    expect(screen.queryByTestId("generating-shell")).toBeNull();
   });
 
   it("a locked lesson shows a skeleton per slide to come and fades each thumb in as it lands", async () => {
@@ -214,13 +216,12 @@ describe("LessonEditorPage", () => {
     row.body.slides = written.slice(0, 2);
     renderPage();
 
-    await screen.findByTestId("generating-banner");
+    await screen.findByTestId("generating-shell");
     const skeletons = () =>
       document.querySelectorAll('nav[aria-label="Slides"] li[aria-hidden="true"]');
-    const thumbs = () => screen.getAllByRole("button", { name: /^Slide \d+$/ });
+    const thumbs = () => Array.from(document.querySelectorAll("[data-slide-thumb]"));
     await waitFor(() => expect(skeletons()).toHaveLength(2));
     expect(thumbs()).toHaveLength(2);
-    expect(screen.getByText("2 of 4 slides")).toBeVisible();
 
     // The worker writes the third slide and says so.
     row.body.slides = written.slice(0, 3);
@@ -239,7 +240,11 @@ describe("LessonEditorPage", () => {
     expect(skeletons()).toHaveLength(1);
     expect(thumbs()[2]).toHaveClass("motion-safe:animate-arrive");
     expect(thumbs()[0]).not.toHaveClass("motion-safe:animate-arrive");
-    expect(screen.getByText("3 of 4 slides")).toBeVisible();
+    // The canvas follows the newest finished slide.
+    expect(document.querySelector("[data-canvas] [data-slide-root]")).toHaveAttribute(
+      "data-slide-id",
+      written[2]?.id ?? "",
+    );
 
     // A stopped run promises nothing more; what was written stays.
     act(() => {
@@ -247,14 +252,13 @@ describe("LessonEditorPage", () => {
     });
     await waitFor(() => expect(skeletons()).toHaveLength(0));
     expect(thumbs()).toHaveLength(3);
-    expect(screen.getByText("3 slides")).toBeVisible();
   });
 
   it("row 1: three progress events with distinct documentUpdatedAt refetch the body 3 + 1 times and the editor mounts after the unlock", async () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     const { queryClient } = renderPage();
-    await screen.findByTestId("generating-banner");
+    await screen.findByTestId("generating-shell");
     const spy = mock(queryClient.invalidateQueries.bind(queryClient));
     queryClient.invalidateQueries = spy as typeof queryClient.invalidateQueries;
     const source = FakeEventSource.latest;
@@ -289,7 +293,7 @@ describe("LessonEditorPage", () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     const { queryClient } = renderPage();
-    await screen.findByTestId("generating-banner");
+    await screen.findByTestId("generating-shell");
     const spy = mock(queryClient.invalidateQueries.bind(queryClient));
     queryClient.invalidateQueries = spy as typeof queryClient.invalidateQueries;
     const source = FakeEventSource.latest;
@@ -326,7 +330,7 @@ describe("LessonEditorPage", () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     renderPage();
-    const banner = await screen.findByTestId("generating-banner");
+    const banner = await screen.findByTestId("generating-shell");
     const source = FakeEventSource.latest;
     act(() => source.open());
     // The api releases the lock on the terminal event; the view must not hand over regardless.
@@ -353,7 +357,7 @@ describe("LessonEditorPage", () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     renderPage();
-    const banner = await screen.findByTestId("generating-banner");
+    const banner = await screen.findByTestId("generating-shell");
     const source = FakeEventSource.latest;
     act(() => source.open());
     act(() => source.emit("cancelled", jobEvent("cancelled"), "1"));
@@ -365,7 +369,7 @@ describe("LessonEditorPage", () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     renderPage();
-    const banner = await screen.findByTestId("generating-banner");
+    const banner = await screen.findByTestId("generating-shell");
     fireEvent.click(within(banner).getByRole("button", { name: "Stop" }));
     await waitFor(() =>
       expect(

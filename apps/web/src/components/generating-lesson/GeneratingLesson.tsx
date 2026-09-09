@@ -1,0 +1,99 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Lesson } from "@tj/domain/documents";
+import { type ReactNode, useEffect } from "react";
+import { useJobEvents } from "@/hooks/use-job-events";
+import { api } from "@/lib/api";
+import { apiErrorFromResponse, queryKeys } from "@/lib/query";
+import { GeneratingShell } from "./GeneratingShell";
+
+/**
+ * `/l/$lessonId` while a `lesson.plan` job holds the generating lock (ADR 0024 §18, ADR 0025 §7):
+ * the shell over SSE with the lesson read-only inside it. Every `progress` event that names a new
+ * `documentUpdatedAt` refetches the body, debounced by `REFETCH_DEBOUNCE_MS` to match the worker's
+ * emitter, so slides appear as they are written; the terminal event refetches the row state,
+ * which clears the lock and hands the page back to the editor in place. `failed` and `cancelled`
+ * keep the partial slides visible under their message with a way back to the library; Stop
+ * cancels the job through `POST /jobs/:id/cancel`.
+ */
+
+/** The worker coalesces persist → progress at this cadence; a burst of events is one refetch. */
+export const REFETCH_DEBOUNCE_MS = 250;
+
+export function GeneratingLesson({
+  lesson,
+  jobId,
+  estimate,
+  onBack,
+  onStopped,
+}: {
+  lesson: Lesson;
+  jobId: string;
+  /** The estimate text for the top bar's slot (TEACH-201). */
+  estimate?: ReactNode;
+  onBack: () => void;
+  /** The job ended without completing; the page keeps this view for `jobId` once the lock clears. */
+  onStopped: (jobId: string) => void;
+}) {
+  const queryClient = useQueryClient();
+  const stream = useJobEvents(jobId);
+  // The last `documentUpdatedAt` the stream carried, whichever event it rode in on: a `progress`
+  // without one (a message-only tick) must not reset the value and re-trigger a refetch.
+  const documentUpdatedAt = lastDocumentUpdatedAt(stream.events);
+  const terminal = stream.terminal;
+
+  // The stream is the external subscription; these invalidations are its side effects on the
+  // cache (ADR 0012), not derived state. The body refetch waits `REFETCH_DEBOUNCE_MS` so a burst
+  // of persists is one request; the terminal refetch goes at once.
+  useEffect(() => {
+    if (documentUpdatedAt === undefined) return;
+    const timer = window.setTimeout(
+      () => void queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocument(lesson.id) }),
+      REFETCH_DEBOUNCE_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [documentUpdatedAt, lesson.id, queryClient]);
+  // The terminal event refetches the row state too: the released lock is what hands the page to
+  // the editor. A `failed` / `cancelled` outcome is reported to the page first, so it keeps this
+  // view — the message, the partial slides, the way back — rather than opening the editor on the
+  // unlocked row; the next visit reads the row afresh and edits what was written.
+  useEffect(() => {
+    if (terminal === null) return;
+    if (terminal.type !== "completed") onStopped(jobId);
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocument(lesson.id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocumentMeta(lesson.id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments }),
+    ]);
+  }, [terminal, lesson.id, jobId, queryClient, onStopped]);
+
+  const cancel = useMutation({
+    mutationFn: async () => {
+      const res = await api.jobs[":id"].cancel.$post({ param: { id: jobId } });
+      if (res.status !== 202) throw await apiErrorFromResponse(res);
+      return res.json();
+    },
+  });
+
+  return (
+    <GeneratingShell
+      lesson={lesson}
+      events={stream.events.map((record) => record.event)}
+      estimate={estimate}
+      onBack={onBack}
+      onStop={() => {
+        if (!cancel.isPending && !cancel.isSuccess) cancel.mutate();
+      }}
+      stop={{ pending: cancel.isPending, sent: cancel.isSuccess, error: cancel.isError }}
+    />
+  );
+}
+
+function lastDocumentUpdatedAt(events: ReturnType<typeof useJobEvents>["events"]) {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i]?.event;
+    if (event?.type === "progress" && event.progress.documentUpdatedAt !== undefined) {
+      return event.progress.documentUpdatedAt;
+    }
+  }
+  return undefined;
+}

@@ -1,7 +1,7 @@
 /**
  * TEACH-133: a lesson generated end to end over the fake worker (`AI_FAKE_SCRIPT=pipeline`, paced
- * 250 ms per model answer, ADR 0025 §22). From the brief screen to `/l/$lessonId`: the progress
- * banner, slides arriving before the job ends (the `documentUpdatedAt` refetch, §7), the editor
+ * 250 ms per model answer, ADR 0025 §22). From the brief screen to `/l/$lessonId`: the generating
+ * shell and its stage strip, slides arriving before the job ends (the `documentUpdatedAt` refetch, §7), the editor
  * taking over in place with no reload, the residual entry fed by the fake review's warning (§12)
  * and the Worksheet link to the generated sheet (§4). Stop is covered on a second lesson.
  */
@@ -10,7 +10,7 @@ import { expect, test } from "./fixtures";
 test.use({ seed: false });
 
 test.describe("lesson generation over the fake worker", () => {
-  test("brief → banner → slides arrive → editor unlocks in place with residuals and a worksheet", async ({
+  test("brief → shell → slides arrive → editor unlocks in place with residuals and a worksheet", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");
@@ -20,11 +20,16 @@ test.describe("lesson generation over the fake worker", () => {
     await page.getByRole("button", { name: "Plan it" }).click();
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
 
-    // The progress strip is up while the job runs.
-    const banner = page.getByTestId("generating-banner");
+    // The shell is up while the job runs: the strip, the stage line and one ghost Stop.
+    const banner = page.getByTestId("generating-shell");
     await expect(banner).toBeVisible();
-    await expect(banner).toContainText("Generating your lesson…");
+    await expect(page.getByTestId("generating-strip").locator("li")).toHaveCount(5);
     await expect(banner.getByRole("button", { name: "Stop" })).toBeVisible();
+    // Planning ticks and Writing goes live as the first content slide lands.
+    await expect(page.getByTestId("generating-stage")).toContainText(/Writing the slides/, {
+      timeout: 20_000,
+    });
+    await expect(page.locator('[data-stage="planning"]')).toHaveAttribute("data-status", "done");
 
     // Slides appear one by one: the count grows at least once before the terminal event.
     const slides = page.locator("[data-slide-root]");
@@ -74,12 +79,17 @@ test.describe("lesson generation over the fake worker", () => {
     await page.getByRole("textbox", { name: "Topic or objective" }).fill("Forces and motion");
     await page.getByRole("button", { name: "Plan it" }).click();
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
-    const banner = page.getByTestId("generating-banner");
-    // Let the job start before stopping it, so the cancel exercises the running path.
-    await expect(banner).toContainText("%", { timeout: 20_000 });
+    const banner = page.getByTestId("generating-shell");
+    // Let the job start before stopping it, so the cancel exercises the running path: the title
+    // slide is the first persist, so its thumb means the worker has the job.
+    await expect(banner.locator("[data-slide-thumb]").first()).toBeVisible({ timeout: 20_000 });
     await banner.getByRole("button", { name: "Stop" }).click();
     await expect(banner).toHaveAttribute("data-state", "cancelled", { timeout: 20_000 });
-    await expect(banner).toContainText("Generation cancelled.");
+    await expect(page.getByTestId("generating-stage")).toHaveText("Generation stopped.");
+    await expect(page.getByTestId("generating-lock")).toHaveText(
+      "Stopped. What was written is kept.",
+    );
+    await expect(banner.getByRole("button", { name: "Stop" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Rename lesson" })).toHaveCount(0);
     await banner.getByRole("button", { name: "Back to library" }).click();
     await expect(page).toHaveURL(/\/(lessons)?$/);
