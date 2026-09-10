@@ -3,10 +3,11 @@ import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
 import { PLACEHOLDER_IMAGE } from "@tj/slides";
-import { RUBRIC_DIMENSIONS, type RubricDimension } from "./rubric-prompt";
+import { RUBRIC_DIMENSIONS, type RubricDimension, rubricJudgePrompt } from "./rubric-prompt";
 import {
   hasPlacedPhoto,
   type JudgeDeps,
+  judgeImages,
   modelFindingsScorer,
   rubricJudgeInput,
   rubricMean,
@@ -178,6 +179,45 @@ describe("rubric judge", () => {
     if (image?.type !== "image") throw new Error("fixture");
     image.src = "https://example.test/photo.jpg";
     expect(hasPlacedPhoto(lesson)).toBe(true);
+  });
+
+  test("row 10 (TEACH-220): a placed photo with a thumbnail reaches the judge as an image part, numbered on its slide", () => {
+    const lesson = generatedLesson();
+    const slide = lesson.slides[1];
+    if (!slide) throw new Error("fixture");
+    slide.kind = "image-text";
+    slide.elements.push({
+      id: "img",
+      type: "image",
+      src: "https://example.test/photo.jpg",
+      fit: "cover",
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+      source: {
+        provider: "pexels",
+        id: "p1",
+        pageUrl: "https://www.pexels.com/photo/p1/",
+        photographer: "Ada",
+        photographerUrl: "https://www.pexels.com/@ada",
+        evidence: {
+          visible: [],
+          count: "one",
+          alt: "River",
+          promptVersion: "pick-or-requery-photo.v3",
+          thumbnail: "https://images.pexels.com/photos/p1/tiny.jpeg",
+        },
+      },
+    });
+    expect(judgeImages(lesson)).toEqual([
+      { id: slide.id, url: "https://images.pexels.com/photos/p1/tiny.jpeg" },
+    ]);
+    const input = rubricJudgeInput({ lesson, worksheet: generatedWorksheet() });
+    expect(input.slides[1]?.photo).toBe(1);
+    expect(input.slides[0]?.photo).toBeUndefined();
+    expect(input.hasPlacedPhoto).toBe(true);
+    expect(rubricJudgePrompt.user(input)).toContain("[slide 2, image-text, photo 1]");
   });
 
   test("rubricMean: one decimal over the non-null scores, null when none", () => {

@@ -125,10 +125,25 @@ export function hasPlacedPhoto(lesson: Lesson): boolean {
   );
 }
 
+/**
+ * The photographs the judge is shown (TEACH-220): each placed `image-text` slide's thumbnail — the
+ * picture the pipeline's judge chose — as an image part, numbered in slide order.
+ */
+export function judgeImages(lesson: Lesson): { id: string; url: string }[] {
+  const images: { id: string; url: string }[] = [];
+  for (const slide of lesson.slides) {
+    const image = slide.elements.find((e) => e.type === "image");
+    const thumbnail = image?.type === "image" ? image.source?.evidence?.thumbnail : undefined;
+    if (slide.kind === "image-text" && thumbnail) images.push({ id: slide.id, url: thumbnail });
+  }
+  return images;
+}
+
 /** What the judge reads: the same plain-text projections Evaluate uses (ADR 0025 §11). */
 export function rubricJudgeInput(output: ScorerOutput): RubricJudgeInput {
   const { lesson, worksheet } = output;
   if (!lesson.facts) throw new Error("rubric judge: the lesson has no facts; Plan has not run");
+  const photos = judgeImages(lesson).map((i) => i.id);
   return {
     audience: audienceOf(lesson),
     topic: lesson.brief?.topic ?? lesson.title,
@@ -138,6 +153,7 @@ export function rubricJudgeInput(output: ScorerOutput): RubricJudgeInput {
       kind: slide.kind,
       text: slideText(slide),
       notes: slide.notes ?? "",
+      ...(photos.indexOf(slide.id) === -1 ? {} : { photo: photos.indexOf(slide.id) + 1 }),
     })),
     blocks: (worksheet?.blocks ?? []).map((block) => ({
       type: block.type,
@@ -189,6 +205,7 @@ export function rubricJudgeScorer(judge: JudgeDeps) {
           input: rubricJudgeInput(run.output),
           schema: RubricOutputSchema,
           maxOutputTokens: 1500,
+          images: judgeImages(run.output.lesson),
         });
         return { ok: true, output: result.output };
       } catch (error) {

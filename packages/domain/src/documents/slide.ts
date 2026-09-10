@@ -150,7 +150,14 @@ export type PhotoSource = {
   /** The photographer's page on the provider, http(s). */
   photographerUrl: string;
   /** What the picker saw in the photo (TEACH-220); absent on older placements. */
-  evidence?: { visible: string[]; count: "one" | "several"; alt: string; promptVersion: string };
+  evidence?: {
+    visible: string[];
+    count: "one" | "several";
+    alt: string;
+    promptVersion: string;
+    /** The thumbnail the judge looked at (a URL, like `src`), for a later look at the same picture. */
+    thumbnail?: string;
+  };
 };
 
 export type ImageElement = ElementBase & {
@@ -370,6 +377,11 @@ export const PhotoEvidenceSchema = z.strictObject({
   count: z.enum(["one", "several"]),
   alt: z.string(),
   promptVersion: z.string().min(1),
+  /**
+   * The thumbnail the judge looked at (the provider's public preview URL), so a later check can
+   * look at the same picture (`image-fit`, TEACH-220); absent on a placement judged from captions.
+   */
+  thumbnail: z.string().min(1).optional(),
 });
 export type PhotoEvidence = z.infer<typeof PhotoEvidenceSchema>;
 

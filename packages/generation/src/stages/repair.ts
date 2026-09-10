@@ -25,7 +25,14 @@ import {
   throwIfAborted,
 } from "../types";
 import { BUDGET_FINDING, withUsage } from "./generate";
-import { audienceOf, blockText, generationOf, imageTextPhotoOf, slideText } from "./shared";
+import {
+  audienceOf,
+  blockText,
+  generationOf,
+  imageTextPhotoOf,
+  slidePhotoOf,
+  slideText,
+} from "./shared";
 import { applyVerifyPatch, verifyFinding } from "./verify";
 
 /*
@@ -113,6 +120,9 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
               slideKind: slide.kind,
               slideId: slide.id,
               text: slideText(slide),
+              ...(slide.kind === "image-text"
+                ? { photo: slidePhotoOf(slide, lesson.facts?.outline[index]) }
+                : {}),
             },
             findings: target.findings,
             shape: `a "${slide.kind}" slide spec`,
@@ -122,10 +132,10 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         });
         commitFacts();
         repaired.add(target.key);
-        const fresh: Slide = {
+        const fresh: Slide = keepPhoto(slide, {
           ...materialiseSlide(call.output, lesson.themeId, meta(call.modelId, deps), deps.ids),
           id: slide.id,
-        };
+        });
         lesson = { ...lesson, slides: lesson.slides.map((s, i) => (i === index ? fresh : s)) };
       } else if (target.blockId !== undefined && worksheet) {
         const index = worksheet.blocks.findIndex((b) => b.id === target.blockId);
@@ -257,6 +267,19 @@ function factsAround(facts: LessonFacts, factId: string): LessonFacts {
   const keyIdeas = only(facts.keyIdeas ?? []);
   if (keyIdeas.length > 0) out.keyIdeas = keyIdeas;
   return out;
+}
+
+/**
+ * The regenerated slide with the original's image element in place of the recipe's fresh
+ * placeholder: Repair rewrites the text of an `image-text` slide, never its photograph.
+ */
+function keepPhoto(original: Slide, fresh: Slide): Slide {
+  const image = original.elements.find((e) => e.type === "image");
+  if (!image) return fresh;
+  return {
+    ...fresh,
+    elements: fresh.elements.map((e) => (e.type === "image" ? image : e)),
+  };
 }
 
 /** A model `error` finding whose target was regenerated in this pass. */

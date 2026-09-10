@@ -10,22 +10,32 @@ import { type Audience, audienceBlock, example, factsBlock, HOUSE_RULES } from "
 export type EvaluateInput = {
   facts: LessonFacts;
   audience: Audience;
-  /** `{ id, kind, text }` per slide: the plain-text projection, ids for `target.slideId`. */
-  /** `{ id, kind, text, notes }` per slide; notes are shown apart so `notes-quality` can judge them. */
-  slides: { id: string; kind: string; text: string; notes?: string | undefined }[];
+  /**
+   * `{ id, kind, text, notes, photo }` per slide; notes are shown apart so `notes-quality` can
+   * judge them. `photo` is the 1-based number of the image part carrying the slide's photograph
+   * (an `image-text` slide with a placed photo, TEACH-220), so `image-fit` can look at it.
+   */
+  slides: {
+    id: string;
+    kind: string;
+    text: string;
+    notes?: string | undefined;
+    photo?: number | undefined;
+  }[];
   /** `{ id, type, text }` per worksheet block. */
   blocks: { id: string; type: string; text: string }[];
 };
 
 export const evaluatePrompt = {
-  version: "evaluate.v3",
+  version: "evaluate.v4",
   system: [
     "You review a generated classroom lesson against the facts it was built from.",
     "Report problems only; do not praise, rewrite or add content.",
     "",
     "Rules:",
     HOUSE_RULES,
-    'Each finding has a `check` from this list and nothing else: "answer-correctness" (a stated answer is wrong or does not follow from the facts); "fact-consistency" (the slide or block says something the facts contradict, or uses a term the facts do not); "kind-misuse" (the slide kind does not fit the task — a sort with no order, a matching with identical right-hand sides, a true-false with two claims); "repetition" (the same stem or the same key phrase on two items); "pitch" (language or examples above or below the reading level — say which); "notes-quality" (notes that do not say what to say, what misconception to watch for, or what to ask).',
+    'Each finding has a `check` from this list and nothing else: "answer-correctness" (a stated answer is wrong or does not follow from the facts); "fact-consistency" (the slide or block says something the facts contradict, or uses a term the facts do not); "kind-misuse" (the slide kind does not fit the task — a sort with no order, a matching with identical right-hand sides, a true-false with two claims); "repetition" (the same stem or the same key phrase on two items); "pitch" (language or examples above or below the reading level — say which); "notes-quality" (notes that do not say what to say, what misconception to watch for, or what to ask); "image-fit" (a photographed slide sets a task — spot, find, count, point to, identify, circle, label — that does not work with the photograph shown, or describes the photograph wrongly).',
+    "Some slides carry a photograph: `[slideId …, image-text, photo N]` means the N-th image given is that slide's photograph. Look at it and check every task the text sets against it; if one does not work, report `image-fit` (a warning) with the task phrase as `evidence`.",
     '`severity` is "error" only for "answer-correctness" and "fact-consistency", where a pupil would be taught something wrong; every other check is a "warning".',
     "`evidence` is the exact span of the slide or block text the finding is about, copied word for word — a finding you cannot quote is not a finding. `message` says what is wrong with it.",
     "`target` names the slide (`slideId`) or worksheet block (`blockId`) the finding is about, using the ids given. When the fact itself is wrong, name it too in `target.factId` and put the wrong fact text in `evidence`. Leave `fix` out.",
@@ -60,7 +70,7 @@ export const evaluatePrompt = {
       "Slides:",
       ...input.slides.map(
         (s) =>
-          `[slideId ${s.id}, ${s.kind}] ${s.text}${s.notes ? `\nTeacher notes: ${s.notes}` : ""}`,
+          `[slideId ${s.id}, ${s.kind}${s.photo !== undefined ? `, photo ${s.photo}` : ""}] ${s.text}${s.notes ? `\nTeacher notes: ${s.notes}` : ""}`,
       ),
       "",
       "Worksheet blocks:",

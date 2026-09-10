@@ -1,6 +1,6 @@
 import type { Finding, Lesson, OutlineEntry, Slide } from "@tj/domain/documents";
 import { type ImageTextPhoto, PLACEHOLDER_IMAGE } from "@tj/slides";
-import type { Audience } from "../prompts";
+import type { Audience, SlidePhoto } from "../prompts";
 
 // The plain-text projections moved to `@tj/domain/documents/text` so `checkLesson` can measure the
 // same text Evaluate reads (TEACH-210); re-exported so the stages' import paths stand.
@@ -37,6 +37,22 @@ export function imageTextPhotoOf(
     visible: evidence.visible,
     count: evidence.count,
     mustShow: entry?.imageBrief?.mustShow ?? [],
+  };
+}
+
+/** The same evidence in the prompt's shape (what the photograph shows and does not). */
+export function slidePhotoOf(slide: Slide, entry: OutlineEntry | undefined): SlidePhoto | "none" {
+  const photo = imageTextPhotoOf(slide, entry);
+  if (photo === "none") return "none";
+  const image = slide.elements.find((e) => e.type === "image");
+  const evidence = image?.type === "image" ? image.source?.evidence : undefined;
+  const seen = new Set(photo.visible.map((v) => v.trim().toLowerCase()));
+  return {
+    alt: evidence?.alt ?? "",
+    visible: photo.visible,
+    notVisible: photo.mustShow.filter((m) => !seen.has(m.trim().toLowerCase())),
+    count: photo.count,
+    purpose: entry?.imageBrief?.purpose ?? "context",
   };
 }
 

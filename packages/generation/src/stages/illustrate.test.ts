@@ -200,6 +200,7 @@ describe("illustrate", () => {
         count: "one",
         alt: "Photo p2",
         promptVersion: "pick-or-requery-photo.v3",
+        thumbnail: second.src.tiny,
       },
     });
     expect(element.authoredBy).toBe("ai");
@@ -326,6 +327,7 @@ describe("illustrate", () => {
       count: "one",
       alt: "Photo B",
       promptVersion: "pick-or-requery-photo.v3",
+      thumbnail: `data:image/png;base64,${PNG}`,
     });
 
     // The same first verdict with no query: empty, one call, nothing stored.

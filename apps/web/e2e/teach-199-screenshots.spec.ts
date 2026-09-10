@@ -44,6 +44,8 @@ test("writing, caught from a run over the fake worker", async ({ signedInPage: {
   await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
 
   const stage = page.getByTestId("generating-stage");
-  await expect(stage).toContainText(/Writing the slides, [2-9] of/, { timeout: 30_000 });
+  await expect(stage).toContainText(/Writing the slides and pictures, [2-9] of/, {
+    timeout: 30_000,
+  });
   await page.screenshot({ path: "/tmp/teach-199-writing.png" });
 });

@@ -65,8 +65,11 @@ export type RubricJudgeInput = {
   audience: Audience;
   topic: string;
   facts: LessonFacts;
-  /** Every slide in order: the plain-text projection and the teacher notes. */
-  slides: { index: number; kind: string; text: string; notes: string }[];
+  /**
+   * Every slide in order: the plain-text projection and the teacher notes; `photo` is the 1-based
+   * number of the image part carrying that slide's photograph (TEACH-220).
+   */
+  slides: { index: number; kind: string; text: string; notes: string; photo?: number }[];
   /** Every worksheet block in order. */
   blocks: { type: string; text: string }[];
   /** Whether any `image-text` slide carries a placed photograph; `imageFit` is scored only then. */
@@ -188,7 +191,7 @@ export const rubricJudgePrompt = {
       "Slides (in order):",
       ...input.slides.map(
         (s) =>
-          `[slide ${s.index}, ${s.kind}]\n${s.text}${s.notes ? `\nTeacher notes: ${s.notes}` : ""}`,
+          `[slide ${s.index}, ${s.kind}${s.photo !== undefined ? `, photo ${s.photo}` : ""}]\n${s.text}${s.notes ? `\nTeacher notes: ${s.notes}` : ""}`,
       ),
       "",
       "Worksheet blocks (in order):",
@@ -197,7 +200,7 @@ export const rubricJudgePrompt = {
         : ["(no worksheet)"]),
       "",
       input.hasPlacedPhoto
-        ? "At least one image-text slide carries a photograph; score `imageFit` from its text."
+        ? "At least one image-text slide carries a photograph: `photo N` names the N-th image given; score `imageFit` by checking the slide's text and tasks against that picture."
         : "No image-text slide carries a photograph: `imageFit` must have `score: null`.",
       "",
       "Answer with the rubric JSON.",

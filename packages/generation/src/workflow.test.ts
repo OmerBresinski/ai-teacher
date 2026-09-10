@@ -168,6 +168,7 @@ describe("runLessonPipeline", () => {
         count: "one",
         alt: "River",
         promptVersion: "pick-or-requery-photo.v3",
+        thumbnail: photo.src.tiny,
       },
     });
     // Picture first: the judge ran inside Generate and the slide's text was written to the photo.

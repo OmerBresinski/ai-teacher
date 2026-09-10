@@ -340,6 +340,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         count: verdict.count ?? "one",
         alt: picked.alt,
         promptVersion: pickOrRequeryPrompt.version,
+        thumbnail: picked.src.tiny,
       };
       return {
         outcome: "placed",

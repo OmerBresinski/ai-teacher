@@ -1,7 +1,7 @@
 import type { Budget, CreatedAi } from "@tj/ai";
 import { type Lesson, lessonFromBrief, type Worksheet } from "@tj/domain/documents";
 import pino from "pino";
-import { noSources, type PipelineDeps, runLessonPipeline } from "../src";
+import { noSources, type PhotoPlacer, type PipelineDeps, runLessonPipeline } from "../src";
 import type { EvalBrief } from "./briefs";
 import type { RubricDimension } from "./rubric-prompt";
 import { type EvalScores, scoreLesson } from "./scorers";
@@ -70,6 +70,8 @@ export interface RunBriefOptions {
   signal?: AbortSignal;
   /** Score the rubric with the `frontier` judge on the same `ai` and `budget` (the paid half only). */
   judge?: boolean;
+  /** Place photographs (TEACH-220): absent, `image-text` slides keep the placeholder. */
+  images?: PhotoPlacer | undefined;
 }
 
 let counter = 0;
@@ -110,6 +112,7 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     },
     onProgress: async () => undefined,
     context,
+    ...(options.images ? { images: options.images } : {}),
   };
 
   let ok = true;

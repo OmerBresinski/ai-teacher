@@ -95,6 +95,16 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
   const carried = generation.findings.filter((f) => CARRIED_CHECKS.has(f.check));
   const schema = checkLesson(lesson, worksheet);
 
+  // Photographed slides (TEACH-220): each placed image-text slide's thumbnail — the picture the
+  // judge chose — goes in as an image part so `image-fit` can look at it; numbered in slide order.
+  const thumbnails = new Map<string, string>();
+  for (const slide of lesson.slides) {
+    const image = slide.elements.find((e) => e.type === "image");
+    const thumbnail = image?.type === "image" ? image.source?.evidence?.thumbnail : undefined;
+    if (slide.kind === "image-text" && thumbnail) thumbnails.set(slide.id, thumbnail);
+  }
+  const photos = [...thumbnails.keys()];
+
   let model: Finding[] = [];
   try {
     const call = await callStructured({
@@ -111,6 +121,7 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
           kind: s.kind,
           text: slideText(s),
           notes: s.notes,
+          ...(photos.indexOf(s.id) === -1 ? {} : { photo: photos.indexOf(s.id) + 1 }),
         })),
         blocks: (worksheet?.blocks ?? []).map((b) => ({
           id: b.id,
@@ -120,6 +131,7 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       },
       schema: EvaluateOutputSchema,
       maxOutputTokens: MAX_OUTPUT_TOKENS.evaluate,
+      images: photos.map((slideId) => ({ id: slideId, url: thumbnails.get(slideId) as string })),
     });
     const filtered = knownTargetsWithEvidence(call.output.findings, state);
     model = filtered.kept;

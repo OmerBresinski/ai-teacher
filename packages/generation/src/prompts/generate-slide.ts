@@ -52,6 +52,23 @@ export type SlidePhoto = {
   purpose: ImagePurpose;
 };
 
+/** The evidence block an `image-text` slide's writer (Generate or Repair) is given. */
+export function photoBlock(photo: SlidePhoto | "none"): string[] {
+  if (photo === "none") {
+    return ["There is no photograph on this slide: write it as plain content."];
+  }
+  return [
+    `The photograph on this slide shows: ${photo.alt || "(no caption)"} (${photo.count === "one" ? "one" : "several"}).`,
+    `Visible: ${photo.visible.length > 0 ? photo.visible.join("; ") : "(none of the required items)"}`,
+    `Not visible: ${photo.notVisible.length > 0 ? photo.notVisible.join("; ") : "(nothing missing)"}`,
+    `Purpose: ${photo.purpose}`,
+  ];
+}
+
+/** The rule the writer follows for an `image-text` slide; shared with Repair. */
+export const IMAGE_TEXT_RULE =
+  "An `image-text` slide is written to its photograph. Say 'the photograph' (singular when there is one). A task — spot, find, count, point to, look for, identify, circle, label — may name only items listed as visible. If the purpose is identify-parts and something required is not visible, describe what is there and tell the teacher in `notes` what the picture cannot show. If there is no photograph, do not mention a picture at all.";
+
 const SHAPES = {
   title: '{ "kind": "title", "title", "subtitle", "factRefs", "notes"? }',
   objectives: '{ "kind": "objectives", "items": [1–4 strings], "factRefs", "notes"? }',
@@ -92,7 +109,7 @@ export const generateSlidePrompt = {
     "You are given what this slide must add and what its neighbours add; do not repeat a neighbour. Use the facts listed and no others, and put the ids of the facts the slide draws on in `factRefs` (the outline entry's ids at least).",
     "A `content` slide explains one key idea: its statement as the heading, the explanation in plain words and its example in the body; if an analogy is given, use it. A question slide uses one of the questions given, its answer and — for multiple-choice and true-false — its distractors verbatim as the wrong options. Never use a stem from the reserved list.",
     "`notes` is a short paragraph of presenter notes for the teacher: what to say, the misconception to watch for (in its own words, never by id), and one question to ask the class.",
-    "An `image-text` slide is written to its photograph. Say 'the photograph' (singular when there is one). A task — spot, find, count, point to, look for, identify, circle, label — may name only items listed as visible. If the purpose is identify-parts and something required is not visible, describe what is there and tell the teacher in `notes` what the picture cannot show. If there is no photograph, do not mention a picture at all.",
+    IMAGE_TEXT_RULE,
     "Keep text short enough to read from the back of a classroom: one idea per slide, no paragraph over forty words.",
     "Answers must be correct and unambiguous; a multiple-choice has exactly one correct option and three plausible distractors.",
     limitsBlock({
@@ -138,17 +155,7 @@ export const generateSlidePrompt = {
     if (input.neighbours.previous)
       parts.push(`The slide before adds: ${input.neighbours.previous}`);
     if (input.neighbours.next) parts.push(`The slide after adds: ${input.neighbours.next}`);
-    if (input.photo === "none") {
-      parts.push("There is no photograph on this slide: write it as plain content.");
-    } else if (input.photo) {
-      const p = input.photo;
-      parts.push(
-        `The photograph on this slide shows: ${p.alt || "(no caption)"} (${p.count === "one" ? "one" : "several"}).`,
-        `Visible: ${p.visible.length > 0 ? p.visible.join("; ") : "(none of the required items)"}`,
-        `Not visible: ${p.notVisible.length > 0 ? p.notVisible.join("; ") : "(nothing missing)"}`,
-        `Purpose: ${p.purpose}`,
-      );
-    }
+    if (input.photo !== undefined) parts.push(...photoBlock(input.photo));
     if (input.entry.kind === "vocabulary") {
       parts.push(`This theme shows at most ${input.vocabularySlots} vocabulary entries.`);
     }

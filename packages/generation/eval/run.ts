@@ -16,7 +16,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Budget, type CreatedAi, createAi, createBudget } from "@tj/ai";
 import { z } from "zod";
+import type { PhotoPlacer } from "../src";
 import { type EvalBrief, evalBriefs } from "./briefs";
+import { evalPhotoPlacer } from "./photo-placer";
 import { RUBRIC_DIMENSIONS, type RubricDimension } from "./rubric-prompt";
 import { type BriefResult, runBrief } from "./run-brief";
 import { rubricMean } from "./scorers";
@@ -31,6 +33,8 @@ const EnvSchema = z.object({
   AI_EVAL_RUN_COST_CAP_USD: z.coerce.number().nonnegative().default(3),
   /** Per-lesson token cap; the run's token cap is eight of these (one per brief). */
   AI_LESSON_TOKEN_CAP: z.coerce.number().int().positive().default(300_000),
+  /** Set: photographs are placed (in memory) so the rubric's `imageFit` is scored (TEACH-220). */
+  PEXELS_API_KEY: z.string().optional(),
   GITHUB_SHA: z.string().optional(),
 });
 
@@ -166,11 +170,12 @@ export async function runPaidEval(
   ai: CreatedAi,
   budget: Budget,
   briefs = evalBriefs(),
+  images?: PhotoPlacer,
 ): Promise<BriefResult[]> {
   const results: BriefResult[] = [];
   for (const brief of briefs) {
     if (budget.exceeded()) break;
-    const run = await runBrief(brief, { ai, budget, judge: true });
+    const run = await runBrief(brief, { ai, budget, judge: true, images });
     results.push(run.result);
   }
   return results;
@@ -194,7 +199,8 @@ if (import.meta.main) {
     capTokens: 8 * env.AI_LESSON_TOKEN_CAP,
   });
   const briefs = evalBriefs();
-  const rows = await runPaidEval(ai, budget, briefs);
+  const images = env.PEXELS_API_KEY ? evalPhotoPlacer(env.PEXELS_API_KEY) : undefined;
+  const rows = await runPaidEval(ai, budget, briefs, images);
   const results: EvalResults = {
     sha: env.GITHUB_SHA ?? (await gitSha()),
     at: new Date().toISOString(),

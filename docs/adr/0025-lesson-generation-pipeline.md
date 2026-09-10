@@ -524,3 +524,21 @@ is `s3://` only, so the AI SDK downloads an `https` thumbnail in the worker proc
 and Terra), and unit tests give the fake thumbnails as data URLs; and sending Pexels thumbnails to
 a model for selection is use of the API results within its terms — no pupil data is involved.
 `image-fit` in Evaluate, the eval's `PhotoPlacer` and the merged progress strip are part 2.
+
+## Amendment (2026-09-10, project Generation quality — TEACH-220, part 2)
+
+§11 gains the `image-fit` check TEACH-216 reserved: Evaluate (`evaluate.v4`) receives each placed
+`image-text` slide's photograph as an image part — the thumbnail the pick judge looked at, kept on
+the element as `PhotoSource.evidence.thumbnail`, since the api's `/files/*` proxy authorises per
+request and cannot be fetched by the model — and lists the slide as `[slideId …, image-text,
+photo N]`; a task the text sets that does not work with the picture is an `image-fit` warning with
+the task phrase as evidence. §12: Repair (`repair.v4`) on an `image-text` slide is given the same
+evidence block Generate had and the rule that the photograph cannot change; the regenerated slide
+keeps the original image element (`keepPhoto`), so only text is rewritten. `knownTargetsWithEvidence`
+also removes a `target.factId` that names no patchable fact instead of dropping the finding, and
+Repair commits a fact patch only together with the artefact regenerated from it. The eval places
+photographs when `PEXELS_API_KEY` is set (`eval/photo-placer.ts`: Pexels search plus a `put` that
+keeps nothing) and shows them to the rubric judge the same way, so `imageFit` is scored; the
+generating strip merges "Adding pictures" into "Writing the slides and pictures" (founder
+decision), since the picture now lands with its slide and the `illustrate` step reports 88 only on
+the resume path.

@@ -135,12 +135,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "d2f8c84a8317cff4095099a9ce51abdadff35b6c5c0ca8385803efa4b2a7adc1",
   },
   evaluate: {
-    version: "evaluate.v3",
-    hash: "9ee366c1eff077ca0d6d24414c2cb2f984ba0f93c005577b3cd2cf3fdd35a21e",
+    version: "evaluate.v4",
+    hash: "2898eb315cf4afe67d95cbeb88ebb4c3093f57687e9dcf482f03bb2c115a1a37",
   },
   repair: {
-    version: "repair.v3",
-    hash: "ad76db1f19986804bf6253912d494a401723935d290e3325b65c01a792874048",
+    version: "repair.v4",
+    hash: "680a14eeb2e600d1b736a8ead839cebe12fc0ca863fc04f30ce74bd63b2b3244",
   },
   "repair-fact": {
     version: "repair-fact.v1",

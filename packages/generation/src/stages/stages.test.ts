@@ -728,6 +728,79 @@ describe("generate", () => {
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
   });
 
+  test("row 8: Evaluate shows the photographed slide as an image part and keeps an image-fit warning; Repair rewrites its text and keeps the photo", async () => {
+    const start = await plannedWithImage();
+    const ai = imageRunAi(
+      json({ pick: "p1", visible: ["river water"], count: "one", query: null }),
+    );
+    const generated = await generate(start, recordingDeps(ai, { images: riverImages }));
+    const imageIndex = start.lesson.facts?.outline.findIndex((e) => e.kind === "image-text") ?? -1;
+    const slide = generated.lesson.slides[imageIndex];
+    if (!slide) throw new Error("no image slide");
+    const before = slide.elements.find((e) => e.type === "image");
+
+    const review = createFakeAi({
+      script: [
+        json({
+          findings: [
+            {
+              check: "image-fit",
+              severity: "warning",
+              target: { slideId: slide.id },
+              evidence: "Rivers flow to the sea.",
+              message: "The photograph shows a river at dawn, not the sea.",
+            },
+          ],
+        }),
+      ],
+      usage,
+    });
+    const evaluated = await evaluate(generated, recordingDeps(review));
+    expect(review.calls[0]?.imageParts).toBe(1);
+    expect(review.calls[0]?.promptText).toContain(`[slideId ${slide.id}, image-text, photo 1]`);
+    expect(evaluated.lesson.generation?.findings.map((f) => f.check)).toEqual(["image-fit"]);
+
+    // Force the finding to an error so Repair targets it (image-fit is a warning in production).
+    const errored = {
+      ...evaluated,
+      lesson: {
+        ...evaluated.lesson,
+        generation: {
+          ...(evaluated.lesson.generation as NonNullable<typeof evaluated.lesson.generation>),
+          findings:
+            evaluated.lesson.generation?.findings.map((f) => ({
+              ...f,
+              severity: "error" as const,
+            })) ?? [],
+        },
+      },
+    };
+    const fixer = createFakeAi({
+      script: [
+        json({
+          kind: "image-text",
+          heading: "Rivers",
+          body: "Look at the photograph: the river water flows downhill.",
+          factRefs: ["o1"],
+        }),
+      ],
+      usage,
+    });
+    const repaired = await repair(errored, recordingDeps(fixer));
+    expect(fixer.calls[0]?.promptText).toContain(
+      "The photograph on this slide shows: River at dawn",
+    );
+    expect(fixer.calls[0]?.promptText).toContain("Visible: river water");
+    const after = repaired.lesson.slides[imageIndex];
+    expect(after?.elements.find((e) => e.type === "image")).toEqual(before);
+    expect(
+      after?.elements.some(
+        (e) => e.type === "text" && JSON.stringify(e).includes("flows downhill"),
+      ),
+    ).toBe(true);
+    expect(repaired.lesson.generation?.findings.some((f) => f.check === "image-fit")).toBe(false);
+  });
+
   test("resumes: slides already present are not regenerated", async () => {
     const start = await planned();
     const slides = FIXTURES.planSkeleton.outline

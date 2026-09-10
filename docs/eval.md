@@ -86,9 +86,12 @@ changing them; no `@mastra/evals` dependency is needed and no Mastra judge model
   slide's plain text and notes and every worksheet block, and scores eight dimensions 1–5:
   `correctness`, `depth`, `pitch`, `coherence`, `questionQuality`, `notes`, `worksheetValueAdd`,
   `imageFit`. The first seven must carry an integer score (a `null` there is a schema miss and goes
-to `callStructured`'s one retry); `imageFit` is `null` when no `image-text` slide carries a placed photograph — which
-  is every eval run today, because `run-brief.ts` wires no `PhotoPlacer` into the pipeline; the
-  picture-first ticket changes that. `rubric.mean` is the mean of the non-null dimensions, one
+  to `callStructured`'s one retry); `imageFit` is `null` when no `image-text` slide carries a
+  placed photograph. Photographs are placed only when `PEXELS_API_KEY` is set for the run
+  (TEACH-220): `run.ts` then wires `eval/photo-placer.ts` — Pexels search through `@tj/images`
+  and a `put` that keeps nothing, so no byte is written anywhere — and the judge receives each
+  placed slide's thumbnail as an image part, numbered `photo N` on its slide line. Without the key
+  the pipeline runs as before and `imageFit` stays `null`. `rubric.mean` is the mean of the non-null dimensions, one
   decimal. The judge runs **only in the paid half** (`runBrief(…, { judge: true })` from
   `run.ts`); `eval:schema` never passes `judge`, so it never spends. A cap stop, a schema miss on
   both attempts or any other failure leaves `rubric: null` — the run still finishes and writes its
