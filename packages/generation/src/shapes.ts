@@ -139,7 +139,7 @@ function union<T>(a: T[], b: T[]): T[] {
 
 export function objectiveVerbOf(answers: Record<string, string> | undefined): ObjectiveVerb {
   const raw = answers?.objectiveVerb?.trim();
-  const found = OBJECTIVE_VERBS.find((v) => raw !== undefined && raw.startsWith(v));
+  const found = OBJECTIVE_VERBS.find((v) => raw?.startsWith(v));
   return found ?? DEFAULT_VERB;
 }
 
@@ -149,11 +149,15 @@ export function priorConfidenceOf(answers: Record<string, string> | undefined): 
   return found ?? DEFAULT_CONFIDENCE;
 }
 
-/** Year 1–4 count as young; `eyfs`/`ks1` bands too; ks2 with no year group is not. */
+/**
+ * Year 1–4 count as young; Reception and the `eyfs`/`ks1` bands too; ks2 with no year label is
+ * not. Only a year label ("Year 4", "Y4", "P4") is read as a year — "Key Stage 3" is not.
+ */
 export function isYoungClass(yearGroup: string | undefined, ageBand: AgeBand | undefined): boolean {
-  const year = /(\d{1,2})/.exec(yearGroup ?? "")?.[1];
+  const label = (yearGroup ?? "").trim();
+  const year = /^(?:year|y|p|primary)\s*(\d{1,2})\b/i.exec(label)?.[1];
   if (year !== undefined) return Number(year) < 5;
-  if (/reception|nursery|eyfs/i.test(yearGroup ?? "")) return true;
+  if (/^(reception|nursery|eyfs)\b/i.test(label)) return true;
   return ageBand === "eyfs" || ageBand === "ks1";
 }
 

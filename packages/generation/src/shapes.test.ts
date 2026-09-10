@@ -96,5 +96,7 @@ describe("lessonShapeOf (project: Lesson shape by objective verb)", () => {
     expect(isYoungClass(undefined, "ks1")).toBe(true);
     expect(isYoungClass(undefined, "ks2")).toBe(false);
     expect(isYoungClass("Y10", "ks4")).toBe(false);
+    expect(isYoungClass("Key Stage 3", "ks3")).toBe(false);
+    expect(isYoungClass("Key Stage 1", "ks1")).toBe(true);
   });
 });

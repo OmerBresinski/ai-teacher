@@ -80,7 +80,7 @@ changing them; no `@mastra/evals` dependency is needed and no Mastra judge model
   schema checks, not the budget stop): `1 − findings / slides`, clamped. Function-only, never
   spends.
 - `rubric` — the **rubric judge** (`rubricJudgeScorer`, prompt `eval/rubric-prompt.ts`,
-  `rubric-judge.v1`): one structured call on the `frontier` class through the pipeline's own
+  `rubric-judge.v2`): one structured call on the `frontier` class through the pipeline's own
   `callStructured` (`stage: "evaluate"`), charged to the run's budget so it counts against
   `AI_EVAL_RUN_COST_CAP_USD`. It reads the audience block, the brief topic, `factsBlock`, every
   slide's plain text and notes and every worksheet block, and scores nine dimensions 1–5:
@@ -122,7 +122,7 @@ uploads it as `eval-master-latest`. On a PR the workflow downloads the latest su
 `master` run's `eval-master-latest`, renders `packages/generation/eval/delta.ts <now> [master]` and
 posts one comment (marker `<!-- tj-eval-results -->`, updated in place on later runs) with the
 totals table and, when a baseline exists, a `delta` column: `now − master` for cost, judge cost,
-mean duration, p50 first slide, calls, tokens, the rubric mean and each of the eight rubric
+mean duration, p50 first slide, calls, tokens, the rubric mean and each of the nine rubric
 dimensions (one decimal), and total error findings. `+` is more, `−` less, `±0` unchanged. A
 `master` baseline written before the rubric existed shows `-` in the rubric rows. Rationales never
 appear in the comment (ADR 0015).
