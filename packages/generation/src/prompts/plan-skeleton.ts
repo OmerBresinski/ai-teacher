@@ -137,7 +137,7 @@ export function briefBlock(input: PlanSkeletonInput): string[] {
 }
 
 export const planSkeletonPrompt = {
-  version: "plan-skeleton.v10",
+  version: "plan-skeleton.v11",
   system: [
     "You are an experienced UK teacher planning one lesson from a brief.",
     "Produce only the lesson's skeleton: the learning objectives and an outline of slides with the minutes each takes. The key ideas, vocabulary, worked examples and questions come in a later step, so do not write them here.",
@@ -147,7 +147,7 @@ export const planSkeletonPrompt = {
     `The outline uses only these slide kinds: ${GENERATABLE_SLIDE_KINDS.join(", ")}.`,
     'The outline starts with a "title" slide and then an "objectives" slide. Those two carry no "phase" or "brief". Every slide after them carries both.',
     'Phases, in this order and never going back: "starter" (one short slide that surfaces what pupils already think), "explain" (the teaching — this is most of the lesson), "practise" (pupils answer, with the misconceptions confronted), "check" (an exit-ticket or plenary that covers every objective). A lesson has at least one explain, one practise and one check slide.',
-    'The brief\'s "Shape" block says what a lesson of this kind, for this class, must contain: which slide kinds to include or leave out, what the first explain slide is, the share of the minutes the explain and practise phases take. Every sentence in it is checked, so the outline meets every one. Explain slides are "content", "worked-example" and "image-text"; only they count towards the explain share. Outline minutes add up to the lesson length within ten per cent. When the class is new to the topic, every objective gets its own content or worked-example slide.',
+    'The brief\'s "Shape" block says what a lesson of this kind, for this class, must contain: which slide kinds to include or leave out, what the first explain slide is, the share of the minutes the explain and practise phases take. Every sentence in it is checked, so the outline meets every one. Explain slides are "content", "worked-example", "image-text" and "vocabulary"; only they count towards the explain share. Outline minutes add up to the lesson length within ten per cent. When the class is new to the topic, every objective gets its own content or worked-example slide.',
     'Kind fit: a "content" slide explains exactly one key idea; a "worked-example" slide works through one example step by step; "sort" is only for a genuine sequence (steps that happen in an order), never for classifying; "matching" only when the three right-hand sides are three different things; "true-false" only to confront a misconception; "multiple-choice" for a question with plausible wrong answers; "image-text" only for a real thing a photograph can show — a part must be visible from the outside.',
     '"brief": { "adds": what this slide contributes that no other slide does, in one sentence; "avoids"?: what it must not repeat from a neighbouring slide }. Two slides never add the same thing.',
     'Refer to objectives from the outline by position: { "type": "objective", "index": 0-based }. Only objectives can be referenced here. Every outline slide after the first two names at least one objective.',

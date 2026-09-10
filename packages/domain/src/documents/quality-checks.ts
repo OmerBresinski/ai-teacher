@@ -65,7 +65,13 @@ const STEM_BLOCK_TYPES: ReadonlySet<string> = new Set(["question", "multiple-cho
 const FOOTNOTE_KINDS: ReadonlySet<string> = new Set(["starter", "instructions", "exit-ticket"]);
 
 /** Explain-phase kinds: the minutes that teach rather than test. */
-const EXPLAIN_KINDS: ReadonlySet<string> = new Set(["content", "worked-example", "image-text"]);
+/** The kinds that teach; the same set Plan's explain-share rule counts (`@tj/generation` specs). */
+const EXPLAIN_KINDS: ReadonlySet<string> = new Set([
+  "content",
+  "worked-example",
+  "image-text",
+  "vocabulary",
+]);
 export const EXPLANATION_SHARE_MIN_PERCENT = 30;
 
 /** How many times a five-word phrase may recur across a lesson before it is repetition. */
@@ -206,7 +212,7 @@ function checkExplanationShare(lesson: Lesson): Finding[] {
       check: "explanation-share",
       severity: "warning",
       target: {},
-      message: `Only ${explain} of ${facts.durationMin} minutes explain (content, worked example, picture); at least ${EXPLANATION_SHARE_MIN_PERCENT}% should.`,
+      message: `Only ${explain} of ${facts.durationMin} minutes explain (content, worked example, picture, vocabulary); at least ${EXPLANATION_SHARE_MIN_PERCENT}% should.`,
     },
   ];
 }

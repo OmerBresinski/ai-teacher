@@ -24,7 +24,7 @@ const PHASE_OF_KIND: Record<string, string> = {
   content: "explain",
   "worked-example": "explain",
   "image-text": "explain",
-  vocabulary: "starter",
+  vocabulary: "starter or explain",
 };
 export function phaseOfKind(kind: string): string {
   return PHASE_OF_KIND[kind] ?? "practise";
@@ -93,8 +93,8 @@ export function contentSentence(shape: LessonShape): string {
     : `At least ${shape.minContent} content slides, each explaining one mechanism (how or why)`;
 }
 
-/** The two-cases requirement (Evaluate), shared by the Shape block and its validation message. */
-export const TWO_CASES = "a matching or sort slide, or two worked-example slides";
+/** The two-cases requirement (Evaluate): a prompt rule since TEACH-237, not a validation. */
+const TWO_CASES = "a matching or sort slide, or two worked-example slides";
 
 /** The question-tier target line the facts call gets (`plan-facts`). */
 export function tierLine(shape: LessonShape): string {
