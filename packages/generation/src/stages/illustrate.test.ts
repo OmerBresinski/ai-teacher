@@ -76,12 +76,24 @@ function fakeImages(
 }
 
 /** One image-text slide per brief (`null` = a content slide), outlines aligned by index. */
-function imageLesson(briefs: (ImageBrief | null)[]): Lesson {
+/** A plan-time brief: `mustShow`/`purpose` take the schema defaults (TEACH-211). */
+type BriefInput = {
+  subject: string;
+  mustShow?: string | string[];
+  purpose?: ImageBrief["purpose"];
+};
+const brief = (b: BriefInput): ImageBrief => ({
+  subject: b.subject,
+  mustShow: b.mustShow === undefined ? [] : Array.isArray(b.mustShow) ? b.mustShow : [b.mustShow],
+  purpose: b.purpose ?? "context",
+});
+
+function imageLesson(inputs: (BriefInput | null)[]): Lesson {
   const base = sampleBriefLesson();
   let n = 0;
   const ids = () => `e${++n}`;
-  const slides = briefs.map((brief, i) => {
-    if (brief === null) {
+  const slides = inputs.map((b, i) => {
+    if (b === null) {
       return materialiseSlide(
         SlideSpecSchema.parse({
           kind: "content",
@@ -115,12 +127,12 @@ function imageLesson(briefs: (ImageBrief | null)[]): Lesson {
       workedExamples: [],
       questions: [],
       misconceptions: [],
-      outline: briefs.map((brief, i) => ({
+      outline: inputs.map((b, i) => ({
         id: `s${i + 1}`,
-        kind: (brief === null ? "content" : "image-text") as "content" | "image-text",
+        kind: (b === null ? "content" : "image-text") as "content" | "image-text",
         minutes: 5,
         factRefs: [],
-        ...(brief === null ? {} : { imageBrief: brief }),
+        ...(b === null ? {} : { imageBrief: brief(b) }),
       })),
       durationMin: 60,
     },

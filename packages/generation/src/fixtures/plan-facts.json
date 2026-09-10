@@ -11,6 +11,21 @@
           "index": 0
         }
       ]
+    },
+    {
+      "statement": "Heating gives particles energy; cooling takes it away, and that is what changes the state.",
+      "explanation": "Energy makes particles move more and spread out; losing energy lets them settle closer together. Melting, boiling, condensing and freezing are the same particles with more or less energy.",
+      "example": "Steam from a kettle turns back to water drops on a cold window because the gas particles lose energy and gather together.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
     }
   ],
   "misconceptions": [
@@ -23,32 +38,78 @@
           "index": 0
         }
       ]
+    },
+    {
+      "belief": "When water boils, the bubbles are made of air.",
+      "correction": "The bubbles are water as a gas; the liquid's own particles have gained enough energy to escape.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        }
+      ]
     }
   ],
   "vocabulary": [
     {
       "term": "Particle",
-      "definition": "A very small piece of a substance, too small to see."
+      "definition": "A very small piece of a substance, too small to see.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
     },
     {
       "term": "Solid",
-      "definition": "A state in which particles are packed closely and only vibrate."
+      "definition": "A state in which particles are packed closely and only vibrate.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
     },
     {
       "term": "Liquid",
-      "definition": "A state in which particles touch but can move past each other."
+      "definition": "A state in which particles touch but can move past each other.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
     },
     {
       "term": "Gas",
-      "definition": "A state in which particles are far apart and move freely."
+      "definition": "A state in which particles are far apart and move freely.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
     },
     {
       "term": "Melting",
-      "definition": "The change of state from solid to liquid on heating."
+      "definition": "The change of state from solid to liquid on heating.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        }
+      ]
     },
     {
       "term": "Condensing",
-      "definition": "The change of state from gas to liquid on cooling."
+      "definition": "The change of state from gas to liquid on cooling.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        }
+      ]
     }
   ],
   "workedExamples": [
@@ -59,19 +120,54 @@
         "The particles gain energy and vibrate more strongly.",
         "They break free of their fixed positions and can slide past each other."
       ],
-      "answer": "The ice melts: its particles gain energy and it changes from a solid to a liquid."
+      "answer": "The ice melts: its particles gain energy and it changes from a solid to a liquid.",
+      "misconceptionRef": {
+        "type": "misconception",
+        "index": 0
+      }
     }
   ],
   "questions": [
     {
       "stem": "In which state of matter are the particles furthest apart?",
       "answer": "Gas",
-      "reasoning": "Gas particles have large gaps between them and move freely."
+      "reasoning": "Gas particles have large gaps between them and move freely.",
+      "tier": "easy",
+      "use": "slide",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ],
+      "distractors": [
+        {
+          "text": "Solid",
+          "misconceptionRef": {
+            "type": "misconception",
+            "index": 0
+          }
+        },
+        {
+          "text": "Liquid"
+        },
+        {
+          "text": "They are the same in every state"
+        }
+      ]
     },
     {
       "stem": "What is the change of state from liquid to gas called?",
       "answer": "Boiling (or evaporating)",
-      "reasoning": "Particles gain enough energy to escape the liquid as a gas."
+      "reasoning": "Particles gain enough energy to escape the liquid as a gas.",
+      "tier": "easy",
+      "use": "any",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        }
+      ]
     },
     {
       "stem": "True or false: particles in a solid do not move at all.",
@@ -98,9 +194,165 @@
     {
       "stem": "Put these in order of increasing particle energy: gas, solid, liquid.",
       "answer": "Solid, liquid, gas",
-      "reasoning": "Energy rises from solid through liquid to gas."
+      "reasoning": "Energy rises from solid through liquid to gas.",
+      "tier": "core",
+      "use": "slide",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "stem": "What happens to the particles in a liquid when it is heated to boiling?",
+      "answer": "They gain energy and move far apart to become a gas.",
+      "reasoning": "Boiling is the liquid-to-gas change; particles escape the liquid.",
+      "tier": "core",
+      "use": "worksheet",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        }
+      ]
+    },
+    {
+      "stem": "Describe how particles are arranged in a solid.",
+      "answer": "Packed closely in fixed positions, vibrating.",
+      "reasoning": "The fixed arrangement is why a solid keeps its shape.",
+      "tier": "easy",
+      "use": "worksheet",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "stem": "Why can you pour a liquid but not a solid?",
+      "answer": "Liquid particles can slide past each other; solid particles cannot.",
+      "reasoning": "Movement of particles decides whether the substance flows.",
+      "tier": "core",
+      "use": "worksheet",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "stem": "What are the bubbles in boiling water made of?",
+      "answer": "Water as a gas (steam).",
+      "reasoning": "The liquid's own particles have gained enough energy to escape.",
+      "tier": "core",
+      "use": "exit",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        }
+      ],
+      "distractors": [
+        {
+          "text": "Air",
+          "misconceptionRef": {
+            "type": "misconception",
+            "index": 1
+          }
+        },
+        {
+          "text": "Oxygen"
+        },
+        {
+          "text": "Nothing"
+        }
+      ]
+    },
+    {
+      "stem": "Name the change of state from gas to liquid.",
+      "answer": "Condensing.",
+      "reasoning": "Cooling takes energy from gas particles so they gather together.",
+      "tier": "easy",
+      "use": "exit",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        }
+      ]
+    },
+    {
+      "stem": "A sealed balloon is warmed in the sun. What happens to the gas particles inside and to the balloon?",
+      "answer": "The particles move faster and spread out, so the balloon expands.",
+      "reasoning": "More energy means faster particles pushing on the balloon skin.",
+      "tier": "stretch",
+      "use": "worksheet",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "stem": "Why does a puddle disappear on a warm day even though the water never boils?",
+      "answer": "Particles at the surface gain enough energy to escape as a gas, a little at a time.",
+      "reasoning": "Evaporation happens below the boiling point at the surface.",
+      "tier": "stretch",
+      "use": "any",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "stem": "Explain why a metal spoon stays solid in hot tea but butter melts.",
+      "answer": "Metal particles need far more energy to break from their positions than butter particles do.",
+      "reasoning": "Different substances change state at different temperatures.",
+      "tier": "stretch",
+      "use": "exit",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "stem": "Which change of state happens when a gas cools down?",
+      "answer": "Condensing.",
+      "reasoning": "Losing energy lets gas particles gather into a liquid.",
+      "tier": "core",
+      "use": "worksheet",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        }
+      ],
+      "distractors": [
+        {
+          "text": "Melting"
+        },
+        {
+          "text": "Boiling"
+        },
+        {
+          "text": "Freezing"
+        }
+      ]
     }
   ],
+  "pitch": {
+    "readingAgeTarget": 12,
+    "sentenceLengthMax": 16,
+    "avoid": ["kinetic", "thermal equilibrium"]
+  },
   "outlineFactRefs": [
     {
       "index": 2,
@@ -133,6 +385,19 @@
       ]
     },
     {
+      "index": 4,
+      "factRefs": [
+        {
+          "type": "keyIdea",
+          "index": 0
+        },
+        {
+          "type": "keyIdea",
+          "index": 1
+        }
+      ]
+    },
+    {
       "index": 5,
       "factRefs": [
         {
@@ -147,6 +412,10 @@
         {
           "type": "question",
           "index": 2
+        },
+        {
+          "type": "misconception",
+          "index": 0
         }
       ]
     },
@@ -165,6 +434,23 @@
         {
           "type": "question",
           "index": 3
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "factRefs": [
+        {
+          "type": "question",
+          "index": 7
+        },
+        {
+          "type": "question",
+          "index": 8
+        },
+        {
+          "type": "question",
+          "index": 11
         }
       ]
     }

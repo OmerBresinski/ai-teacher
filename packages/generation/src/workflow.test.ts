@@ -105,10 +105,9 @@ describe("runLessonPipeline", () => {
     const swapped = skeleton.outline[4];
     if (swapped?.kind !== "content") throw new Error("fixture outline moved");
     skeleton.outline[4] = {
+      ...swapped,
       kind: "image-text",
-      minutes: swapped.minutes,
-      factRefs: swapped.factRefs,
-      imageBrief: { subject: "river severn" },
+      imageBrief: { subject: "river severn", mustShow: ["river water"], purpose: "observe" },
     };
     const script = pipelineScript({ judges: [JSON.stringify({ pick: "p1", query: null })] });
     script[PLAN_INDEX] = JSON.stringify(skeleton);

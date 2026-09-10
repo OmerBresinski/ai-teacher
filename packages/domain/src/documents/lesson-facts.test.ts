@@ -7,6 +7,7 @@ import {
   GENERATABLE_SLIDE_KINDS,
   GeneratableBlockTypeSchema,
   GeneratableSlideKindSchema,
+  ImageBriefSchema,
   type LessonFacts,
   LessonFactsSchema,
 } from "./lesson-facts";
@@ -123,6 +124,41 @@ describe("LessonFactsSchema", () => {
     });
   });
 
+  test("row 3 (TEACH-211): a string mustShow is coerced to a one-item list and purpose defaults to context; the list form parses as is", () => {
+    const old = ImageBriefSchema.parse({ subject: "river flooding", mustShow: "water" });
+    expect(old).toEqual({ subject: "river flooding", mustShow: ["water"], purpose: "context" });
+    expect(ImageBriefSchema.parse({ subject: "river" })).toEqual({
+      subject: "river",
+      mustShow: [],
+      purpose: "context",
+    });
+    const rich = {
+      subject: "buttercup flower close-up",
+      mustShow: ["open flower head", "petals", "stamens"],
+      purpose: "identify-parts" as const,
+      avoid: ["bee"],
+    };
+    expect(ImageBriefSchema.parse(rich)).toEqual(rich);
+    expect(
+      ImageBriefSchema.safeParse({ ...rich, mustShow: ["a", "b", "c", "d", "e"] }).success,
+    ).toBe(false);
+    // A stored lesson with the string form still parses through the lesson parser.
+    const lesson = generatedLesson() as unknown as { facts: { outline: unknown[] } };
+    lesson.facts.outline.push({
+      id: "s9",
+      kind: "image-text",
+      minutes: 5,
+      factRefs: [],
+      imageBrief: { subject: "river flooding", mustShow: "water over the banks" },
+    });
+    const parsed = parseLesson(lesson);
+    expect(parsed.facts?.outline.at(-1)?.imageBrief).toEqual({
+      subject: "river flooding",
+      mustShow: ["water over the banks"],
+      purpose: "context",
+    });
+  });
+
   test("an outline factRef may point at a key idea or a misconception", () => {
     const facts = richFacts();
     facts.outline[2] = {
@@ -189,7 +225,7 @@ describe("LessonFactsSchema", () => {
       kind: "image-text",
       minutes: 5,
       factRefs: [],
-      imageBrief: { subject: "Roman road" },
+      imageBrief: { subject: "Roman road", mustShow: ["paving stones"], purpose: "observe" },
     });
     expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
 
@@ -207,7 +243,7 @@ describe("LessonFactsSchema", () => {
     const misplaced = lessonFacts();
     misplaced.outline[0] = {
       ...(misplaced.outline[0] as (typeof misplaced.outline)[number]),
-      imageBrief: { subject: "Roman road" },
+      imageBrief: { subject: "Roman road", mustShow: [], purpose: "context" },
     };
     const result = LessonFactsSchema.safeParse(misplaced);
     expect(result.success).toBe(false);

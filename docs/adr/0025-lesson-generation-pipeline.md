@@ -412,3 +412,24 @@ is the single source the eval's scorer reads. The fixtures were made clean again
 (the worksheet fixture repeated the multiple-choice slide's stem — Problem 2 in miniature — and the
 skeleton fixture explained for 15 of 60 minutes).
 
+## Amendment (2026-09-10, project Generation quality — TEACH-211)
+
+§7's two Plan calls now produce the richer `LessonFacts` of the TEACH-209 amendment and a lesson
+shape that teaches before it tests. `plan-skeleton` (v6) writes a `phase` on every outline entry
+after the two Plan materialises itself — `starter` → `explain` → `practise` → `check`, in order,
+each present at least once — and a `brief { adds, avoids? }` saying what the slide contributes
+that no other does; explain-phase minutes are at least 30 % of the lesson, and a class the teacher
+marked "New to it" gets a content or worked-example slide per objective. The schema is a factory,
+`planSkeletonSchemaFor({ durationMin, answers })`, because those two rules read the brief. The
+picture brief becomes concrete: `mustShow` is a list of one to four nouns a camera captures,
+`purpose` one of `identify-parts | observe | compare | context`, `avoid?` a list; the stored
+`ImageBriefSchema` coerces the older string form and defaults the purpose, so earlier lessons
+parse unchanged. `plan-facts` (v4) asks for 2–5 key ideas, 2–4 misconceptions, up to 8 terms and
+4 worked examples, 12–20 questions each with `tier`, `use`, `objectiveRefs` and distractors tied to
+misconceptions, and the `pitch`; a content entry must receive a key idea and a worked-example
+entry a worked example, checked in `planFactsSchemaFor`. `MAX_OUTPUT_TOKENS` rises to 2 500 / 7 000.
+The TEACH-138 caps (6 / 3 / 8) are lifted: the facts call is the substance of the lesson and is
+allowed to be long; its wall time on Terra `medium` is the number to watch (the project's fallback
+is the skeleton at `low` first). Generate does not yet read the briefs or key ideas — that is the
+Generate ticket; the resume path (`existingSkeleton`) rebuilds phase, brief and picture brief.
+

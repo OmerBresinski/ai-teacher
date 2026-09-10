@@ -130,11 +130,12 @@ describe("plan", () => {
     const objectiveRef = structuredClone(FIXTURES.planFacts);
     objectiveRef.outlineFactRefs.push({ index: 2, factRefs: [{ type: "objective", index: 0 }] });
     expect(schema.safeParse(FIXTURES.planFacts).success).toBe(true);
+    const last = FIXTURES.planFacts.outlineFactRefs.length;
     expect(schema.safeParse(onObjectivesSlide).error?.issues.map((i) => i.path)).toEqual([
-      ["outlineFactRefs", 6, "index"],
+      ["outlineFactRefs", last, "index"],
     ]);
     expect(schema.safeParse(objectiveRef).error?.issues.map((i) => i.path)).toEqual([
-      ["outlineFactRefs", 6, "factRefs", 0, "type"],
+      ["outlineFactRefs", last, "factRefs", 0, "type"],
     ]);
   });
 
