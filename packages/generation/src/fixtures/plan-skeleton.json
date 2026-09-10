@@ -71,6 +71,10 @@
         {
           "type": "objective",
           "index": 0
+        },
+        {
+          "type": "objective",
+          "index": 1
         }
       ],
       "phase": "explain",
@@ -86,6 +90,10 @@
         {
           "type": "objective",
           "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
         }
       ],
       "phase": "explain",
