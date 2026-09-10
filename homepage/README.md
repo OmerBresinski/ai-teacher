@@ -55,14 +55,17 @@ keep their existing rewrite and security headers. Only the embedded lesson anima
 
 Before landing, verify the homepage and a nested example, the embedded animation, mobile menu,
 example tabs/printing and an unknown URL. The config regression tests cover SPA isolation,
-framing, preview indexing and cache policy. After deployment, verify the same URLs and run the
+framing, preview indexing and cache policy. `apps/web/e2e/homepage-preview.spec.ts` checks both
+forms with JavaScript enabled/disabled, including mouse clicks, Enter and a request audit. After deployment, verify the same URLs and run the
 repository's production smoke check.
 
 ## Preview and release boundaries
 
 The supplied copy describes intended capabilities. The main action opens an authored sample.
 No accounts, uploads, AI requests, PowerPoint generation, form delivery or mailing-list storage
-are connected. Valid forms explicitly say nothing was sent or saved. Printing the authored
+are connected. Submit buttons start disabled and only become active after the local validation
+handler is registered. Without JavaScript, a visible explanation replaces that interaction and
+both button clicks and Enter leave details unsent. Valid forms explicitly say nothing was sent or saved. Printing the authored
 worksheet or answer sheet does work. Review corrections are illustrative, not live AI checks.
 
 The policy pages preserve unresolved production details rather than inventing legal text or

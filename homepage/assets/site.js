@@ -25,6 +25,8 @@
         status.focus();
       }
     });
+    // Native submission stays disabled until the network-free handler is registered.
+    form.querySelector('button[type="submit"]').disabled = false;
   });
   let motionPaused = false;
   const frames = [...document.querySelectorAll('iframe[src*="lesson-building"]')];
