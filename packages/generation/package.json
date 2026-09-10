@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@tj/config": "workspace:*",
-    "@types/bun": "1.4.0",
+    "@types/bun": "1.4.1",
     "mastra": "1.27.3",
     "typescript": "5.9.3"
   },
@@ -29,7 +29,7 @@
     "@tj/domain": "workspace:*",
     "@tj/images": "workspace:*",
     "@tj/slides": "workspace:*",
-    "ai": "7.0.92",
+    "ai": "7.0.93",
     "pino": "10.3.1",
     "zod": "4.5.4"
   }
