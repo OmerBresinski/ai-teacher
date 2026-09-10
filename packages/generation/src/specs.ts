@@ -233,14 +233,16 @@ export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<P
         issue("imageBrief is only allowed on image-text entries", ["outline", i, "imageBrief"]);
       }
       // mustShow lists what must be visible *in* the subject, never the subject itself
-      // (TEACH-224: "rodent" cannot be seen or missed; "front teeth" can). Only an item made of
-      // nothing but subject words is refused — "river water" for "river severn" is a real thing to
-      // see; the judge's `onSubject` answer covers the rest.
+      // (TEACH-224: "rodent" cannot be seen or missed; "front teeth" can). Only an item that is
+      // the subject's head noun alone — its first content word, the kind of thing — is refused:
+      // "front teeth" for "rodent front teeth close-up" names a part and is exactly what the
+      // list is for (production, 2026-09-10: the stricter rule failed every Plan). The judge's
+      // `onSubject` answer covers the rest.
       if (entry.imageBrief) {
-        const subjectWords = new Set(contentWordsOf(entry.imageBrief.subject));
+        const head = contentWordsOf(entry.imageBrief.subject)[0];
         entry.imageBrief.mustShow.forEach((item, j) => {
           const words = contentWordsOf(item);
-          if (words.length > 0 && words.every((w) => subjectWords.has(w))) {
+          if (head !== undefined && words.length === 1 && words[0] === head) {
             issue(
               `mustShow names the subject ("${item}"); list what must be visible in it — parts and objects a camera captures.`,
               ["outline", i, "imageBrief", "mustShow", j],
