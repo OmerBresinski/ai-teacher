@@ -7,6 +7,7 @@ import {
   factsBlock,
   HOUSE_RULES,
 } from "../src/prompts/shared";
+import type { ObjectiveVerb, PriorConfidence } from "../src/shapes";
 
 /*
  * The eval's rubric judge (ADR 0025 §23 amendment, project "Generation quality" §7): one
@@ -25,6 +26,7 @@ export const RUBRIC_DIMENSIONS = [
   "notes",
   "worksheetValueAdd",
   "imageFit",
+  "verbFit",
 ] as const;
 
 export type RubricDimension = (typeof RUBRIC_DIMENSIONS)[number];
@@ -56,6 +58,7 @@ export const RubricOutputSchema = z.strictObject({
     notes: ScoredDimensionSchema,
     worksheetValueAdd: ScoredDimensionSchema,
     imageFit: OptionalDimensionSchema,
+    verbFit: ScoredDimensionSchema,
   }),
 });
 
@@ -74,6 +77,9 @@ export type RubricJudgeInput = {
   blocks: { type: string; text: string }[];
   /** Whether any `image-text` slide carries a placed photograph; `imageFit` is scored only then. */
   hasPlacedPhoto: boolean;
+  /** The teacher's objective verb and the class's prior confidence (TEACH-228), for `verbFit`. */
+  verb: ObjectiveVerb;
+  confidence: PriorConfidence;
 };
 
 const ANCHORS: Record<RubricDimension, { what: string; one: string; three: string; five: string }> =
@@ -123,6 +129,13 @@ const ANCHORS: Record<RubricDimension, { what: string; one: string; three: strin
       three: "some new items, but most blocks reuse slide or exit-ticket questions",
       five: "new practice at three tiers that extends what the slides taught",
     },
+    verbFit: {
+      what: "the lesson does what the objective verb asks — Recall: remember the facts and words; Explain: say how it works and why; Apply: use a method on new problems; Evaluate: weigh up and judge with reasons — at the depth the class's prior confidence allows",
+      one: "the lesson does a different job from the verb (an Explain lesson that only identifies, an Apply lesson with no method to apply, a Recall lesson demanding a judgement)",
+      three:
+        "the verb's job is done on some slides but a definition, method or judgement the class needed is missing or comes too late",
+      five: "every phase serves the verb: a new class is given the definition and examples first, a revisiting class goes straight to the mechanism, method or judgement",
+    },
     imageFit: {
       what: "each image-text slide's text sets tasks that can be done from its photograph",
       one: "the text asks pupils to spot things the photograph does not show, or says 'pictures' when there is one",
@@ -138,10 +151,10 @@ const rubricLines = (): string[] =>
   });
 
 export const rubricJudgePrompt = {
-  version: "rubric-judge.v1",
+  version: "rubric-judge.v2",
   system: [
     "You are an experienced UK head of department reviewing one generated lesson: its slides, teacher notes and worksheet, against the facts it was built from and the class it is for.",
-    "Score the lesson on eight dimensions, each from 1 (poor) to 5 (excellent), with one sentence of rationale each that names the evidence you used. Be strict: a competent teacher's own lesson scores 4; 5 is reserved for lessons with nothing you would change.",
+    "Score the lesson on nine dimensions, each from 1 (poor) to 5 (excellent), with one sentence of rationale each that names the evidence you used. Be strict: a competent teacher's own lesson scores 4; 5 is reserved for lessons with nothing you would change.",
     "",
     "Rules:",
     HOUSE_RULES,
@@ -178,6 +191,11 @@ export const rubricJudgePrompt = {
         notes: { score: 2, rationale: "Notes restate the slide text and name no question to ask." },
         worksheetValueAdd: { score: 2, rationale: "Six of eight blocks copy slide stems." },
         imageFit: { score: null, rationale: "No image-text slide carries a photograph." },
+        verbFit: {
+          score: 3,
+          rationale:
+            "An Explain lesson: the mechanism is on slide 4, but nothing defines the topic first for a class new to it.",
+        },
       },
     }),
   ].join("\n"),
@@ -185,6 +203,7 @@ export const rubricJudgePrompt = {
     return [
       audienceBlock(input.audience),
       `Topic: ${input.topic}`,
+      `Objective verb: ${input.verb}. Prior confidence: ${input.confidence}.`,
       "",
       factsBlock(input.facts),
       "",

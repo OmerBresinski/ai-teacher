@@ -43,7 +43,7 @@ The loop stops as soon as the budget is exceeded; whatever ran is reported with
                "scores": { "schema": 1, "modelFindings": 0.9,
                            "rubric": { "mean": 3.6, "dimensions": { "correctness": 4, "depth": 2,
                              "pitch": 4, "coherence": 3, "questionQuality": 3, "notes": 2,
-                             "worksheetValueAdd": 2, "imageFit": null } } },
+                             "worksheetValueAdd": 2, "imageFit": null, "verbFit": 3 } } },
                "rubricRationales": { "correctness": "…", "depth": "…", "…": "…" } }],
   "totals": { "briefs": 8, "completed": 8, "failed": 0, "durationMs": 0, "meanDurationMs": 0,
               "p50FirstSlideMs": 0, "calls": 0, "inputTokens": 0, "outputTokens": 0, "costUsd": 0,
@@ -80,12 +80,14 @@ changing them; no `@mastra/evals` dependency is needed and no Mastra judge model
   schema checks, not the budget stop): `1 − findings / slides`, clamped. Function-only, never
   spends.
 - `rubric` — the **rubric judge** (`rubricJudgeScorer`, prompt `eval/rubric-prompt.ts`,
-  `rubric-judge.v1`): one structured call on the `frontier` class through the pipeline's own
+  `rubric-judge.v2`): one structured call on the `frontier` class through the pipeline's own
   `callStructured` (`stage: "evaluate"`), charged to the run's budget so it counts against
   `AI_EVAL_RUN_COST_CAP_USD`. It reads the audience block, the brief topic, `factsBlock`, every
-  slide's plain text and notes and every worksheet block, and scores eight dimensions 1–5:
+  slide's plain text and notes and every worksheet block, and scores nine dimensions 1–5:
   `correctness`, `depth`, `pitch`, `coherence`, `questionQuality`, `notes`, `worksheetValueAdd`,
-  `imageFit`. The first seven must carry an integer score (a `null` there is a schema miss and goes
+  `imageFit`, `verbFit` (TEACH-228: does the lesson do what the brief's objective verb asks, at the
+  depth the class's prior confidence allows — the judge is told both). The eight other than
+  `imageFit` must carry an integer score (a `null` there is a schema miss and goes
   to `callStructured`'s one retry); `imageFit` is `null` when no `image-text` slide carries a
   placed photograph. Photographs are placed only when `PEXELS_API_KEY` is set for the run
   (TEACH-220): `run.ts` then wires `eval/photo-placer.ts` — Pexels search through `@tj/images`
@@ -120,7 +122,7 @@ uploads it as `eval-master-latest`. On a PR the workflow downloads the latest su
 `master` run's `eval-master-latest`, renders `packages/generation/eval/delta.ts <now> [master]` and
 posts one comment (marker `<!-- tj-eval-results -->`, updated in place on later runs) with the
 totals table and, when a baseline exists, a `delta` column: `now − master` for cost, judge cost,
-mean duration, p50 first slide, calls, tokens, the rubric mean and each of the eight rubric
+mean duration, p50 first slide, calls, tokens, the rubric mean and each of the nine rubric
 dimensions (one decimal), and total error findings. `+` is more, `−` less, `±0` unchanged. A
 `master` baseline written before the rubric existed shows `-` in the rubric rows. Rationales never
 appear in the comment (ADR 0015).

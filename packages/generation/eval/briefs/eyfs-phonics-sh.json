@@ -1,7 +1,11 @@
 {
   "brief": {
     "topic": "The sh digraph: hearing, saying and blending it in words",
-    "durationMin": 20
+    "durationMin": 20,
+    "answers": {
+      "objectiveVerb": "Recall the sh digraph: hearing, saying and blending it in words",
+      "priorConfidence": "New to it"
+    }
   },
   "subject": "Phonics",
   "yearGroup": "Reception"

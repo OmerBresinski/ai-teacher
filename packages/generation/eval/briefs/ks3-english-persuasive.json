@@ -6,6 +6,10 @@
       "needs": {
         "eal": 6
       }
+    },
+    "answers": {
+      "objectiveVerb": "Apply persuasive writing: rhetorical questions and rule of three",
+      "priorConfidence": "Some prior knowledge"
     }
   },
   "subject": "English",

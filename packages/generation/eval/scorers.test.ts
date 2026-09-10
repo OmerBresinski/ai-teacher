@@ -92,9 +92,9 @@ describe("rubric judge", () => {
     expect(ai.calls).toHaveLength(1);
     expect(ai.calls[0]?.modelClass).toBe("frontier");
     expect(ai.calls[0]?.context?.stage).toBe("evaluate");
-    expect(ai.calls[0]?.context?.promptVersion).toBe("rubric-judge.v1");
+    expect(ai.calls[0]?.context?.promptVersion).toBe("rubric-judge.v2");
     expect(scored.scores.schema).toBe(1);
-    expect(scored.scores.rubric?.mean).toBe(3.8); // (4 × 7 + 2) / 8 = 3.75 → 3.8
+    expect(scored.scores.rubric?.mean).toBe(3.8); // (4 × 8 + 2) / 9 = 3.78 → 3.8
     expect(scored.scores.rubric?.dimensions.imageFit).toBe(2);
     expect(Object.keys(scored.rubricRationales ?? {})).toEqual([...RUBRIC_DIMENSIONS]);
     for (const r of Object.values(scored.rubricRationales ?? {})) expect(r).toBe(SENTINEL);
@@ -112,7 +112,7 @@ describe("rubric judge", () => {
     expect(scored.scores.rubric?.mean).toBe(4);
   });
 
-  test("imageFit null (no placed photo): the mean is over the other seven", async () => {
+  test("imageFit null (no placed photo): the mean is over the other eight", async () => {
     const ai = createFakeAi({ script: [rubricJson(3, { depth: 5 })] });
     const scored = await scoreLesson("fixture", { lesson: generatedLesson() }, judgeOn(ai));
     expect(scored.scores.rubric?.dimensions.imageFit).toBeNull();

@@ -1,7 +1,11 @@
 {
   "brief": {
     "topic": "Price elasticity of demand and its determinants",
-    "durationMin": 60
+    "durationMin": 60,
+    "answers": {
+      "objectiveVerb": "Evaluate price elasticity of demand and its determinants",
+      "priorConfidence": "New to it"
+    }
   },
   "subject": "Economics",
   "yearGroup": "Year 12"

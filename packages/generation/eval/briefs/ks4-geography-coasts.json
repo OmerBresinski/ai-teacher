@@ -1,7 +1,11 @@
 {
   "brief": {
     "topic": "Coastal erosion processes and landforms",
-    "durationMin": 50
+    "durationMin": 50,
+    "answers": {
+      "objectiveVerb": "Explain coastal erosion processes and landforms",
+      "priorConfidence": "Revisiting"
+    }
   },
   "subject": "Geography",
   "yearGroup": "Year 11"
