@@ -621,3 +621,9 @@ img {
     color: black;
   }
 }
+
+.arrow-icon {
+  flex: none;
+  overflow: visible;
+  vertical-align: -0.06em;
+}
