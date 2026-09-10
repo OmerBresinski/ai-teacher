@@ -364,3 +364,30 @@ listing both), which removes the false "not covered by the worksheet" errors blo
 questions produced. `assignFactIds` mints `k` and `m` and resolves the ordinal links; `factsBlock`
 renders the new lists, so every prompt version is bumped. The prompts that ask Plan for the new
 facts are the Plan-prompts ticket's.
+
+## Amendment (2026-09-09, project Generation quality — TEACH-208)
+
+§13's class table is superseded by the project's per-stage table (Generation quality §6), read
+with ADR 0018's amendment of the same date (Luna / Terra / Sol). Class and reasoning effort per
+stage:
+
+| Stage | Class | Effort | Why |
+| -- | -- | -- | -- |
+| check-input | small (Luna) | low | form check |
+| plan-skeleton | standard (Terra) | medium | decides the lesson's shape |
+| plan-facts | standard (Terra) | medium | the substance; where depth comes from |
+| verify (TEACH-212) | standard (Terra) | high | correctness, one call |
+| generate (slides, worksheet) | small (Luna) | low | fills a given shape; latency-critical |
+| illustrate judge | small (Luna) | low | unchanged |
+| evaluate | standard (Terra) | medium | must be right to be trusted |
+| repair | small (Luna) | low | targeted rewrite |
+| cascade / regenerate | small (Luna) | low | unchanged behaviour |
+
+Effort is per call (TEACH-207 amendment). **Class routing is not all in place yet:** this
+amendment lands the ids; Generate, Repair and the proposal jobs still call `standard` until the
+Generate ticket (TEACH-213) moves them to `small`, so in the interim a lesson runs Plan, Generate
+and Repair on Terra (≈ $0.12–0.20 a lesson) — accepted for the days between the two tickets.
+`frontier` (Sol) is the eval judge only and never a pipeline stage. The two contested cells
+(Generate on Luna vs Terra; Evaluate on Terra vs Luna-high) are decided by the project's A/B
+ticket (TEACH-221) with eval data; the table is the hypothesis.
+

@@ -130,7 +130,7 @@ describe("rubric judge", () => {
   test("a budget already exceeded: rubric null and no call", async () => {
     const ai = createFakeAi({ script: [rubricJson(5)] });
     const budget = createBudget({ capUsd: 0.000001, capTokens: 1e6 });
-    budget.charge("us.anthropic.claude-opus-5", { inputTokens: 100000, outputTokens: 10000 });
+    budget.charge("us.openai.gpt-5.6-sol", { inputTokens: 100000, outputTokens: 10000 });
     expect(budget.exceeded()).not.toBeNull();
     const scored = await scoreLesson("fixture", { lesson: generatedLesson() }, judgeOn(ai, budget));
     expect(ai.calls).toHaveLength(0);

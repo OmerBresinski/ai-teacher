@@ -97,3 +97,19 @@ derived later from tokens" is now. Of the items the Consequences deferred to F13
 harness starts with F06's eval set (ADR 0025 §23, `@mastra/evals` scorers in the eval script
 only); the second provider, failover, routing policy, prompt caching and per-Journey budgets stay
 with F13.
+
+## Amendment (2026-09-09, project Generation quality — TEACH-208)
+
+§4's class → model table is replaced. Every class is the GPT-5.6 family on Bedrock (founder
+decision 9 Sept 2026): `small` → `us.openai.gpt-5.6-luna`, `standard` → `us.openai.gpt-5.6-terra`,
+`frontier` → `us.openai.gpt-5.6-sol`. The ids are the cross-region `us.` inference profiles — the
+bare `openai.` ids are not invocable on-demand in `us-east-1` — and structured output
+(`Output.object`) was verified on each on the account before the ids were written (the TEACH-205
+stop-gate). Prices per MTok in / out / cached-in: Luna 0.22 / 1.32 / 0.022, Terra 2.20 / 13.20 /
+0.22, Sol 4.40 / 22.00 / 0.44 (models.dev Bedrock entries, 9 Sept; the AWS page has no
+machine-readable OpenAI table). `frontier` has no production call site: it is the eval's rubric
+judge only (ADR 0025 §23 amendment). No Claude model is in the pipeline; `isAnthropicModelId` and
+`NO_THINKING` stay for any env that still sets a Claude id, and are otherwise never applied in
+production — that is the intended state, not an oversight. Provider and mechanism are unchanged:
+Bedrock via `createAmazonBedrock`, one bearer key, classes as configuration.
+

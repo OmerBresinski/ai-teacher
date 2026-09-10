@@ -212,14 +212,11 @@ describe("runLessonPipeline", () => {
         ...Array.from({ length: GENERATED_SLIDES + 1 }, () => "low"),
         "medium",
       ]);
-      // The provider option itself goes to the non-Anthropic ids (the fake's `standard` is Luna);
-      // the Haiku `small` calls carry the effort in their context only.
+      // Every default is a GPT-5.6 id (TEACH-208), so every call carries the provider option.
       for (const call of ai.calls) {
-        if (call.modelClass === "small") expect(call.providerOptions).toBeUndefined();
-        else
-          expect(call.providerOptions).toEqual({
-            bedrock: { reasoningConfig: { maxReasoningEffort: call.context?.effort } },
-          });
+        expect(call.providerOptions).toEqual({
+          bedrock: { reasoningConfig: { maxReasoningEffort: call.context?.effort } },
+        });
       }
       for (const call of ai.calls) {
         expect(call.context?.lessonId).toBeDefined();

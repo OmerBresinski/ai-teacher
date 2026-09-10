@@ -1,13 +1,13 @@
 /*
  * Static list prices per model id (ADR 0025 §15). Data only: `costUsd` is the one function.
  *
- * Source: Anthropic's published per-model list prices (https://www.anthropic.com/pricing#api),
- * which Bedrock on-demand inference mirrors for the Claude family, read on 2026-09-06; the
- * `standard` class (GPT-5.6 Luna, TEACH-205) from the models.dev registry's Bedrock entry
- * (https://models.dev, `us.openai.gpt-5.6-luna`), read on 2026-09-09. One row per
- * `DEFAULT_MODEL_IDS` entry in `create-ai.ts`. A configured model id with no row here is
- * unpriced: `costUsd` returns `null` and the budget falls back to its token cap. A price change is
- * a data edit here and nowhere else.
+ * Source: the models.dev registry's Bedrock entries (https://models.dev, `us.openai.gpt-5.6-*`),
+ * read on 2026-09-09 (TEACH-205 for Luna, TEACH-208 for Terra and Sol), cross-checked against the
+ * Bedrock pricing page (https://aws.amazon.com/bedrock/pricing/, OpenAI models, US East) — that
+ * page renders its table client-side and the public Price List API does not carry these models,
+ * so there is no machine-readable AWS source. One row per `DEFAULT_MODEL_IDS` entry in
+ * `create-ai.ts`. A configured model id with no row here is unpriced: `costUsd` returns `null`
+ * and the budget falls back to its token cap. A price change is a data edit here and nowhere else.
  */
 
 export interface ModelPrice {
@@ -22,13 +22,9 @@ export interface ModelPrice {
 // Keys are the `DEFAULT_MODEL_IDS` values; `prices.test.ts` pins that they match, and this file
 // stays import-free so `logging-middleware.ts` can read it without a cycle through `create-ai.ts`.
 export const PRICES: Record<string, ModelPrice> = {
-  "us.anthropic.claude-opus-5": { inputPerMTok: 15, outputPerMTok: 75, cachedInputPerMTok: 1.5 },
   "us.openai.gpt-5.6-luna": { inputPerMTok: 0.22, outputPerMTok: 1.32, cachedInputPerMTok: 0.022 },
-  "us.anthropic.claude-haiku-4-5-20251001-v1:0": {
-    inputPerMTok: 1,
-    outputPerMTok: 5,
-    cachedInputPerMTok: 0.1,
-  },
+  "us.openai.gpt-5.6-terra": { inputPerMTok: 2.2, outputPerMTok: 13.2, cachedInputPerMTok: 0.22 },
+  "us.openai.gpt-5.6-sol": { inputPerMTok: 4.4, outputPerMTok: 22, cachedInputPerMTok: 0.44 },
 };
 
 export interface TokenUsage {
