@@ -215,8 +215,15 @@ describe("planSkeletonSchemaFor", () => {
     expect(two.success).toBe(false);
     if (two.success) return;
     expect(two.error.issues.map((i) => i.message)).toEqual([
-      "The class is new to this: objective 1 needs a content or worked-example slide that names it.",
+      "The class is new to this: objective 1 needs a content, worked-example or image-text slide that names it.",
     ]);
+    // An image-text slide that names the objective teaches it too (TEACH-237).
+    const pictured = structuredClone(entries);
+    pictured[6] = { ...pictured[6], kind: "image-text", imageBrief: RIVER, factRefs: [O(1)] };
+    expect(
+      schema.safeParse({ learningObjectives: [{ text: "A" }, { text: "B" }], outline: pictured })
+        .success,
+    ).toBe(true);
     // Any other confidence: the rule does not apply.
     expect(
       planSkeletonSchemaFor({ durationMin: 60, shape: EXPLAIN_SOME }).safeParse({

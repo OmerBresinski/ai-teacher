@@ -440,18 +440,19 @@ function refineShape(
   }
   // requireTwoCases is a prompt rule, not a rejection (TEACH-237): two cases can be set against
   // each other on a discussion, content or open-response slide, which a kind check cannot see.
-  // A class new to the topic gets a content or worked-example slide for every objective
-  // (TEACH-211; the confidence override the shape table keeps).
+  // A class new to the topic gets a teaching slide — content, worked-example or image-text (a
+  // content slide with a photograph, TEACH-237) — for every objective (TEACH-211; the confidence
+  // override the shape table keeps).
   if (shape.confidence === "New to it") {
     const explained = new Set<number>();
     for (const entry of outline) {
-      if (entry.kind !== "content" && entry.kind !== "worked-example") continue;
+      if (!EXPLAIN_KINDS.has(entry.kind) || entry.kind === "vocabulary") continue;
       for (const ref of entry.factRefs) if (ref.type === "objective") explained.add(ref.index);
     }
     skeleton.learningObjectives.forEach((_, i) => {
       if (!explained.has(i)) {
         issue(
-          `The class is new to this: objective ${i} needs a content or worked-example slide that names it.`,
+          `The class is new to this: objective ${i} needs a content, worked-example or image-text slide that names it.`,
           ["outline"],
         );
       }
