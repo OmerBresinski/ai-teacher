@@ -352,8 +352,9 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     // rejected wholesale does not — none of it was the subject.
     if (pool.length > 0 && shortlisted.length === 0) return { outcome: "empty", judged: "none" };
     const verdict = await judge(args, shortlisted, tried);
+    // Only a photograph the judge was shown can be placed.
     const picked = verdict.pick
-      ? pool.find((candidate) => candidate.id === verdict.pick)
+      ? shortlisted.find((candidate) => candidate.id === verdict.pick)
       : undefined;
     if (picked && gatePasses(brief, verdict)) {
       const evidence: PhotoEvidence = {

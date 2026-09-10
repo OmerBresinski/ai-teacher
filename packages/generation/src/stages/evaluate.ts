@@ -66,6 +66,19 @@ export function knownTargetsWithEvidence(
   return { kept, dropped: findings.length - kept.length };
 }
 
+/**
+ * A picture task pupils cannot do (TEACH-227): on a slide whose purpose is to look at the
+ * photograph (`identify-parts`, `observe`), an `image-fit` finding is an error with a regenerate
+ * fix, so Repair rewrites the text to what is visible. Any other finding is returned as is.
+ */
+function imageFitAsError(finding: Finding, state: PipelineState): Finding {
+  if (finding.check !== "image-fit" || finding.target.slideId === undefined) return finding;
+  const index = state.lesson.slides.findIndex((s) => s.id === finding.target.slideId);
+  const purpose = state.lesson.facts?.outline[index]?.imageBrief?.purpose;
+  if (purpose !== "identify-parts" && purpose !== "observe") return finding;
+  return { ...finding, severity: "error", fix: { kind: "regenerate-slide" } };
+}
+
 /** Ids `applyVerifyPatch` can correct: every fact array except the objectives. */
 function patchableFactIds(facts: LessonFacts | undefined): Set<string> {
   const ids = new Set<string>();
@@ -130,17 +143,7 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       images,
     });
     const filtered = knownTargetsWithEvidence(call.output.findings, state);
-    // A picture task pupils cannot do (TEACH-227): on a slide whose purpose is to look at the
-    // photograph, an image-fit finding is repaired — the text is rewritten to what is visible.
-    for (const f of filtered.kept) {
-      if (f.check !== "image-fit" || f.target.slideId === undefined) continue;
-      const index = lesson.slides.findIndex((s) => s.id === f.target.slideId);
-      const purpose = lesson.facts?.outline[index]?.imageBrief?.purpose;
-      if (purpose === "identify-parts" || purpose === "observe") {
-        f.severity = "error";
-        f.fix = { kind: "regenerate-slide" };
-      }
-    }
+    filtered.kept = filtered.kept.map((f) => imageFitAsError(f, state));
     model = filtered.kept;
     if (filtered.dropped > 0) {
       deps.logger.info({ stage: "evaluate", dropped: filtered.dropped }, "findings dropped");

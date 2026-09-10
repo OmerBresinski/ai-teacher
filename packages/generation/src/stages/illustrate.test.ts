@@ -478,6 +478,16 @@ describe("illustrate", () => {
     expect(stores).toEqual(["p2"]);
     expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/p2.jpg");
 
+    // A pick of an id the judge was not shown is not placed, however good the caption looked.
+    const unseen = fakeImages(async () => ten);
+    const ai3 = judge(JSON.stringify({ ids: ["p0", "p1"] }), pick("p7"));
+    const state3 = await run(
+      imageLesson([{ subject: "river" }]),
+      recordingDeps(ai3, { images: unseen.images }),
+    );
+    expect(unseen.stores).toEqual([]);
+    expect(imageOf(state3.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+
     const none = fakeImages(async () => ten);
     const ai2 = judge(JSON.stringify({ ids: [] }));
     const state2 = await run(
