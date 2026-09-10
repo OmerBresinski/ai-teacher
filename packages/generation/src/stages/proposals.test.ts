@@ -7,13 +7,8 @@ import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtur
 import { materialiseSlide } from "@tj/slides";
 import { PROMPT_VERSIONS } from "../prompts";
 import { FIXTURES, recordingDeps } from "../testing";
-import {
-  impactSet,
-  MAX_REDO_TARGETS,
-  PROPOSE_CONCURRENCY,
-  proposeFor,
-  runBounded,
-} from "./proposals";
+import { impactSet, MAX_REDO_TARGETS, PROPOSE_CONCURRENCY, proposeFor } from "./proposals";
+import { runBounded } from "./shared";
 
 const json = (v: unknown) => JSON.stringify(v);
 const usage = { inputTokens: 1000, outputTokens: 400 };

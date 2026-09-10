@@ -29,10 +29,9 @@ export {
   type ProposeContext,
   type ProposeResult,
   proposeFor,
-  runBounded,
 } from "./stages/proposals";
 export { MAX_TARGETS, repair, repairTargets } from "./stages/repair";
-export { audienceOf, blockText, slideText } from "./stages/shared";
+export { audienceOf, blockText, runBounded, slideText } from "./stages/shared";
 export * from "./types";
 export {
   checkInputStep,

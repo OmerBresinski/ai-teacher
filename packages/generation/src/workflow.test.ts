@@ -6,15 +6,18 @@ import { parseLesson, parseWorksheet } from "@tj/domain/documents";
 import type { StoredPhoto } from "@tj/images";
 import pino from "pino";
 import { PROMPT_VERSIONS } from "./prompts";
+import { GENERATE_CONCURRENCY } from "./stages/generate";
 import { TITLE_PROMPT_VERSION } from "./stages/plan";
 import {
   answeringAi,
   CHECK_INPUT_CALLS,
   FIXTURES,
+  miss,
   PLAN_CALLS,
   PLAN_INDEX,
   pipelineScript,
   recordingDeps,
+  routed,
   SAMPLE_WORKSHEET_ID,
   sampleBriefLesson,
   scriptedPipelineAi,
@@ -118,7 +121,7 @@ describe("runLessonPipeline", () => {
       body: "Rivers flow to the sea.",
     });
     const ai = createFakeAi({
-      script,
+      script: routed(script),
       usage: { inputTokens: 1000, outputTokens: 400 },
     });
     const photo = {
@@ -187,9 +190,11 @@ describe("runLessonPipeline", () => {
         recordingDeps(ai),
       );
       expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1);
+      // Generate is on the small class (TEACH-213); Plan and Evaluate on standard.
       expect(ai.calls.map((c) => c.modelClass)).toEqual([
         "small",
-        ...Array.from({ length: PLAN_CALLS + GENERATED_SLIDES + 1 }, () => "standard" as const),
+        ...Array.from({ length: PLAN_CALLS }, () => "standard" as const),
+        ...Array.from({ length: GENERATED_SLIDES + 1 }, () => "small" as const),
         "small",
       ]);
       expect(ai.calls.map((c) => c.context?.stage)).toEqual([
@@ -333,13 +338,18 @@ describe("runLessonPipeline", () => {
         i === 1 ? { ...o, text: goodSpec.options[0]?.text } : o,
       ),
     });
-    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 5, [bad, JSON.stringify(goodSpec)]);
+    // The bad reply is a scripted miss: the routed fake hands it to whichever slide call is next,
+    // and that call's retry finds the good multiple-choice spec by kind (TEACH-213).
+    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 5, [
+      miss(bad),
+      JSON.stringify(goodSpec),
+    ]);
     const { lesson } = await runLessonPipeline(
       { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
       recordingDeps(ai),
     );
     expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1);
-    const retry = ai.calls[SLIDES_INDEX + 6];
+    const retry = ai.calls.find((c) => c.promptText.includes("did not validate"));
     expect(retry?.promptText).toContain("did not validate");
     expect(retry?.promptText).toContain("Every option must be different.");
     expect(lesson.slides).toHaveLength(TOTAL_SLIDES);
@@ -399,8 +409,9 @@ describe("runLessonPipeline", () => {
     ).catch((e) => e);
     expect((error as Error).name).toBe("AbortError");
     expect(deps.persisted.at(-1)?.lesson.generation?.stage).toBe("planned");
+    // One batch (four slides) and the worksheet were in flight; nothing started after the abort.
     const generateCalls = ai.calls.filter((c) => c.context?.stage === "generate");
-    expect(generateCalls).toHaveLength(2);
+    expect(generateCalls.length).toBeLessThanOrEqual(GENERATE_CONCURRENCY + 1);
     expect(deps.persisted.at(-1)?.lesson.slides).toHaveLength(4);
     expect(ai.calls.some((c) => c.context?.stage === "evaluate")).toBe(false);
   });
@@ -514,8 +525,13 @@ describe("runLessonPipeline", () => {
     expect(summary.generation).toMatchObject({
       outcome: "failed",
       stages: ["check-input", "plan", "generate"],
-      calls: CHECK_INPUT_CALLS + PLAN_CALLS + 2 + 2,
     });
+    // Both misses were paid for, as were the slides other workers had in flight while the retry
+    // ran; every worker settled before the stage failed, so the summary counts each call made and
+    // nothing was started once the failure was known: Evaluate's call never happened.
+    expect(summary.generation.calls).toBeGreaterThanOrEqual(CHECK_INPUT_CALLS + PLAN_CALLS + 2);
+    expect(summary.generation.calls).toBe(ai.calls.length);
+    expect(ai.calls.some((c) => c.context?.stage === "evaluate")).toBe(false);
   });
 
   test("a failed run's summary counts the findings of the last persisted checkpoint", async () => {

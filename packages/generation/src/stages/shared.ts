@@ -35,3 +35,26 @@ export function generationOf(lesson: Lesson): NonNullable<Lesson["generation"]> 
   if (!lesson.generation) throw new Error("lesson has no generation state; Plan has not run");
   return lesson.generation;
 }
+
+/**
+ * Run `items` through `fn` with at most `limit` in flight; rejects on the first thrown error.
+ * Shared by the proposal jobs and Generate (TEACH-213).
+ */
+export async function runBounded<T>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const item = items[next++] as T;
+      await fn(item);
+    }
+  });
+  // Every worker settles before the first error propagates, so a caller never sees a rejection
+  // while other items are still in flight.
+  const settled = await Promise.allSettled(workers);
+  const rejected = settled.find((r) => r.status === "rejected");
+  if (rejected) throw rejected.reason;
+}

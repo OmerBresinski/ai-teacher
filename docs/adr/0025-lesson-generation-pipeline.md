@@ -452,3 +452,25 @@ skips it (one budget finding at most); two schema misses leave the facts as they
 is not re-verified, because Plan is skipped whole. Plan's wall time gains one Terra `high` call
 (~$0.017 a lesson); the project's A/B ticket owns the fallback if Plan's 30 s p50 is exceeded.
 
+## Amendment (2026-09-10, project Generation quality — TEACH-213)
+
+§7 rejected parallel Generate because coherence needed the previous slide's text. The TEACH-211
+amendment removed that reason: every outline entry carries a `brief { adds, avoids? }`, so a slide
+can be written from the plan alone. Generate now runs its slide calls four at a time
+(`GENERATE_CONCURRENCY`, `runBounded` moved to `stages/shared.ts`), each given its own brief, its
+neighbours' `adds`, the facts its entry references (`referencedFacts`: only those, plus every
+misconception and the pitch), its phase and the stems reserved for other slides or the sheet
+(`stemPlan`); a `content` slide is built from its key idea, a question slide from its question with
+the distractors verbatim, and `notes` name the misconception and a question to ask. Slides are
+**persisted in outline order** as each lands — slide *i* waits for slide *i − 1*'s persist — so one
+persist is in flight at a time, `slides.length` grows by exactly one per write and the read-only
+editor's `pendingSlides` still holds. The worksheet call runs concurrently from its own question
+pool (`use: worksheet | any`) in three tiers, with the slide and exit-ticket stems excluded, and each
+block's `factRefs` names its question and objectives; it is persisted with the final `generated`
+write as before. Both calls move to the `small` class at `low` effort (§13: the cost model depends
+on it). A budget stop lets in-flight calls finish, starts none, keeps what was written and names
+the first slide that could not be generated; a slide that fails twice still fails the stage (§14) and
+stops the other workers from starting more — graceful per-slide failure is a follow-up. The
+`content` recipe has no free `small` slot for an example, so the key idea's example goes into
+`body`; no `example` spec slot was added.
+

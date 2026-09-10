@@ -1,4 +1,4 @@
-import type { LessonFacts, OutlineEntry } from "@tj/domain/documents";
+import type { LessonFacts, LessonPhase, OutlineEntry } from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
 import {
   type Audience,
@@ -10,16 +10,27 @@ import {
 } from "./shared";
 
 /*
- * Generate — one slide (ADR 0025 §8): the outline entry becomes a per-kind spec; geometry is the
- * recipe's business. The previous slide's text is passed for coherence.
+ * Generate — one slide (ADR 0025 §8; Generation quality §3, TEACH-213): the outline entry becomes
+ * a per-kind spec; geometry is the recipe's business. Coherence comes from the plan, not from the
+ * previous slide's text: the slide is given its own brief (what it adds, what it must not repeat),
+ * its neighbours' briefs, the facts it references in full, every misconception, and the stems
+ * reserved for other slides and the worksheet — so slides can be written in parallel.
  */
 
 export type GenerateSlideInput = {
-  facts: LessonFacts;
+  /**
+   * The facts this slide draws on: only those its entry's `factRefs` name, plus every
+   * misconception and the pitch (`factsBlock` renders it). Never the whole lesson.
+   */
+  referenced: LessonFacts;
   entry: OutlineEntry;
   /** 1-based position and the total, for the model's sense of pacing. */
   position: { index: number; total: number };
-  previousSlideText?: string | undefined;
+  /** The `adds` line of the neighbouring entries, so this slide does not repeat them. */
+  neighbours: { previous?: string | undefined; next?: string | undefined };
+  /** Stems assigned to other slides or to the worksheet; never used here. */
+  reservedStems: string[];
+  phase?: LessonPhase | undefined;
   audience: Audience;
   /** How many vocabulary entries the theme's grid shows (`vocabularySlots`). */
   vocabularySlots: number;
@@ -56,15 +67,16 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v5",
+  version: "generate-slide.v6",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
     "",
     "Rules:",
     HOUSE_RULES,
-    "Use only the facts given, and put the ids of the facts the slide draws on in `factRefs` (the outline entry's ids at least).",
-    "`notes` is a short paragraph of presenter notes for the teacher: what to say, what to ask, what misconception to watch for.",
+    "You are given what this slide must add and what its neighbours add; do not repeat a neighbour. Use the facts listed and no others, and put the ids of the facts the slide draws on in `factRefs` (the outline entry's ids at least).",
+    "A `content` slide explains one key idea: its statement as the heading, the explanation in plain words and its example in the body; if an analogy is given, use it. A question slide uses one of the questions given, its answer and — for multiple-choice and true-false — its distractors verbatim as the wrong options. Never use a stem from the reserved list.",
+    "`notes` is a short paragraph of presenter notes for the teacher: what to say, the misconception to watch for (in its own words, never by id), and one question to ask the class.",
     "Keep text short enough to read from the back of a classroom: one idea per slide, no paragraph over forty words.",
     "Answers must be correct and unambiguous; a multiple-choice has exactly one correct option and three plausible distractors.",
     limitsBlock({
@@ -99,15 +111,23 @@ export const generateSlidePrompt = {
       `Lesson: ${input.lessonTitle}`,
       audienceBlock(input.audience),
       "",
-      factsBlock(input.facts),
+      factsBlock(input.referenced),
       "",
-      `Slide ${input.position.index} of ${input.position.total}: kind "${input.entry.kind}", ${input.entry.minutes} minutes, covering facts ${input.entry.factRefs.join(", ") || "(none named)"}.`,
+      `Slide ${input.position.index} of ${input.position.total}: kind "${input.entry.kind}", ${input.entry.minutes} minutes${input.phase ? `, ${input.phase} phase` : ""}, covering facts ${input.entry.factRefs.join(", ") || "(none named)"}.`,
     ];
+    if (input.entry.brief) {
+      parts.push(`This slide adds: ${input.entry.brief.adds}`);
+      if (input.entry.brief.avoids) parts.push(`It must not: ${input.entry.brief.avoids}`);
+    }
+    if (input.neighbours.previous)
+      parts.push(`The slide before adds: ${input.neighbours.previous}`);
+    if (input.neighbours.next) parts.push(`The slide after adds: ${input.neighbours.next}`);
     if (input.entry.kind === "vocabulary") {
       parts.push(`This theme shows at most ${input.vocabularySlots} vocabulary entries.`);
     }
-    if (input.previousSlideText) {
-      parts.push("", "The previous slide says:", input.previousSlideText);
+    if (input.reservedStems.length > 0) {
+      parts.push("", "Reserved for other slides or the worksheet — do not use these stems:");
+      for (const stem of input.reservedStems) parts.push(`  - ${stem}`);
     }
     parts.push("", `Answer with the JSON for a "${input.entry.kind}" slide.`);
     return parts.join("\n");

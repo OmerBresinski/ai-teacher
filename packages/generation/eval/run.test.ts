@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createAi, createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
-import { pipelineScript, scriptedPipelineAi } from "../src/testing";
+import { pipelineScript, routed, scriptedPipelineAi } from "../src/testing";
 import { evalBriefs } from "./briefs";
 import { RUBRIC_DIMENSIONS } from "./rubric-prompt";
 import {
@@ -57,7 +57,7 @@ describe("eval:paid", () => {
     const [brief] = evalBriefs();
     if (!brief) throw new Error("briefs");
     const ai = createFakeAi({
-      script: [...pipelineScript(), rubricJson(4)],
+      script: routed([...pipelineScript(), rubricJson(4)]),
       usage: { inputTokens: 1000, outputTokens: 400 },
     });
     const budget = createBudget({ capUsd: 5, capTokens: 10_000_000 });
