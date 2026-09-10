@@ -22,6 +22,8 @@ export interface BriefResult {
   durationMs: number;
   /** Time to the first persisted lesson with at least one slide; `null` when none arrived. */
   firstSlideMs: number | null;
+  /** Time to the `planned` checkpoint — Plan's wall time, the number the Plan tickets watch. */
+  planMs: number | null;
   slides: number;
   blocks: number;
   calls: number;
@@ -83,6 +85,7 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
   const startedAt = Date.now();
   const before = options.budget.totals();
   let firstSlideMs: number | null = null;
+  let planMs: number | null = null;
   let lesson = lessonForBrief(brief, now());
   let worksheet: Worksheet | undefined;
 
@@ -92,7 +95,9 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     ai: options.ai,
     budget: options.budget,
     signal,
-    logger: pino({ level: "silent" }),
+    // Warnings only: a schema miss logs its issue paths and messages (content-free, ADR 0015) and
+    // nothing else, so a failed brief can be read from the run's output.
+    logger: pino({ level: "warn" }),
     now,
     ids: nextId,
     sources: noSources,
@@ -100,6 +105,7 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
       lesson = l;
       worksheet = w;
       if (firstSlideMs === null && l.slides.length > 0) firstSlideMs = Date.now() - startedAt;
+      if (planMs === null && l.generation?.stage === "planned") planMs = Date.now() - startedAt;
       return { updatedAt: now().toISOString() };
     },
     onProgress: async () => undefined,
@@ -138,6 +144,7 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     ...(error ? { error } : {}),
     durationMs,
     firstSlideMs,
+    planMs,
     slides: lesson.slides.length,
     blocks: worksheet?.blocks.length ?? 0,
     calls: after.calls - before.calls,

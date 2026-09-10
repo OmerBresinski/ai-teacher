@@ -59,7 +59,9 @@ one-line rationale per dimension, kept **only** in this gitignored file (root `.
 `formatResultsTable` nor `renderComment` reads it; `eval/delta.test.ts` asserts a sentinel
 rationale never reaches the comment. `firstSlideMs` is the time to the first persist that carried a
 slide, the number the F06 definition of done ("first slide visible in under 10 seconds") is about;
-`durationMs` is the whole brief **without** the judge call that follows it. `calls`, the tokens and
+`planMs` is the time to the `planned` checkpoint (Plan's wall time, the Plan tickets' budget, with
+`p50PlanMs` in the totals and a `p50 plan` row in the comment); `durationMs` is the whole brief
+**without** the judge call that follows it. `calls`, the tokens and
 `costUsd` on a brief are the lesson's own, so the cost is comparable with the per-lesson target;
 the judge's usage is the `judge` object beside them, taken from the budget's deltas so a judge
 attempt that was paid for but failed validation still counts. The totals' `costUsd` is the whole
