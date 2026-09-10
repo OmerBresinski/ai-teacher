@@ -291,10 +291,9 @@ const PlanFactsShape = z.strictObject({
         objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
       }),
     )
-    .min(
-      2,
-      "Give at least 2 key ideas: the things a pupil must understand, each explained with an example.",
-    )
+    // The prompt asks for 2–5; the floor is 1 because a narrow lesson (an EYFS phonics sound) has
+    // one honest key idea, and Terra held to one through the retry on the first paid run.
+    .min(1, "Give at least one key idea: what a pupil must understand, explained with an example.")
     .max(5),
   misconceptions: z
     .array(

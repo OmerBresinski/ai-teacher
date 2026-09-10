@@ -163,6 +163,17 @@ describe("planFactsSchemaFor", () => {
     expect(schema().safeParse(facts()).success).toBe(true);
   });
 
+  test("one key idea is enough (a narrow lesson has one); none is not", () => {
+    const f = facts();
+    f.keyIdeas = f.keyIdeas.slice(0, 1);
+    f.outlineFactRefs = f.outlineFactRefs.map((e) =>
+      e.index === 4 ? { ...e, factRefs: [{ type: "keyIdea" as const, index: 0 }] } : e,
+    );
+    expect(schema().safeParse(f).success).toBe(true);
+    f.keyIdeas = [];
+    expect(schema().safeParse(f).success).toBe(false);
+  });
+
   test("row 4: nine questions is an issue naming twelve", () => {
     const f = facts();
     f.questions = f.questions.slice(0, 9);
