@@ -526,11 +526,11 @@ describe("runLessonPipeline", () => {
       stages: ["check-input", "plan", "generate"],
     });
     // Both misses were paid for, as were the slides other workers had in flight while the retry
-    // ran; nothing was started once the failure was known, so Evaluate's call never happened.
+    // ran; every worker settled before the stage failed, so the summary counts each call made and
+    // nothing was started once the failure was known: Evaluate's call never happened.
     expect(summary.generation.calls).toBeGreaterThanOrEqual(CHECK_INPUT_CALLS + PLAN_CALLS + 2);
-    expect(summary.generation.calls).toBeLessThan(
-      CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1,
-    );
+    expect(summary.generation.calls).toBe(ai.calls.length);
+    expect(ai.calls.some((c) => c.context?.stage === "evaluate")).toBe(false);
   });
 
   test("a failed run's summary counts the findings of the last persisted checkpoint", async () => {

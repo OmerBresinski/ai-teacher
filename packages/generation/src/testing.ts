@@ -86,8 +86,6 @@ export function pipelineScript(
     /** Illustrate's judge answers, one per image-text slide, between the worksheet and evaluate. */
     judges?: FakeScriptEntry[];
     overrides?: Record<number, FakeScriptEntry>;
-    /** Milliseconds each answer waits before it is returned — for a watcher, not a unit test. */
-    pace?: number;
   } = {},
 ): FakeScriptEntry[] {
   const script: FakeScriptEntry[] = [
@@ -103,40 +101,41 @@ export function pipelineScript(
   ];
   for (const [index, entry] of Object.entries(options.overrides ?? {}))
     script[Number(index)] = entry;
-  const pace = options.pace ?? 0;
-  return pace > 0 ? script.map((entry) => paced(entry, pace)) : script;
+  return script;
 }
-
-const paced =
-  (entry: FakeScriptEntry, ms: number): FakeScriptEntry =>
-  async (call) => {
-    await new Promise((resolve) => setTimeout(resolve, ms));
-    return typeof entry === "function" ? entry(call) : entry;
-  };
 
 /**
  * Route a positional script for the parallel Generate (TEACH-213). Slide calls start in outline
  * order but a retry, or the worksheet call running alongside them, moves the call order away from
  * the list order, so entries are matched rather than counted: a `generate-worksheet` call takes the
- * first pending worksheet spec (a JSON string with `blocks`); a `generate-slide` call for kind K
- * takes the first pending entry that is either a scripted miss (a non-JSON string or a function —
- * consumed in list order, so a test's "bad reply at slide n" lands on the next slide call) or a
- * slide spec of kind K; every other call takes the next entry. When nothing matches, the next
- * entry is taken as it always was.
+ * first pending worksheet spec (a string or `FakeReply` whose JSON has `blocks`); a
+ * `generate-slide` call for kind K takes the first pending entry that is either a scripted miss (a
+ * non-JSON string or a function — consumed in list order, so a test's "bad reply at slide n" lands
+ * on the next slide call) or a slide spec of kind K; every other call takes the next entry. When
+ * nothing matches, the next entry is taken as it always was.
+ *
+ * `pace` (milliseconds each answer waits before it is returned — for a watcher, not a unit test)
+ * is applied here, after routing, so a paced entry is still matched by its shape.
  */
-export function routed(script: FakeScriptEntry[]): FakeScriptEntry[] {
+export function routed(
+  script: FakeScriptEntry[],
+  options: { pace?: number } = {},
+): FakeScriptEntry[] {
   const pending = [...script];
+  const textOf = (entry: FakeScriptEntry): string | undefined =>
+    typeof entry === "string" ? entry : typeof entry === "function" ? undefined : entry.text;
   const parsed = (entry: FakeScriptEntry): Record<string, unknown> | undefined => {
-    if (typeof entry !== "string") return undefined;
+    const text = textOf(entry);
+    if (text === undefined) return undefined;
     try {
-      const value = JSON.parse(entry) as unknown;
+      const value = JSON.parse(text) as unknown;
       return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
     } catch {
       return undefined;
     }
   };
   const isMiss = (entry: FakeScriptEntry) =>
-    typeof entry === "function" || (typeof entry === "string" && parsed(entry) === undefined);
+    typeof entry === "function" || (textOf(entry) !== undefined && parsed(entry) === undefined);
   const takeAt = (at: number) => (at === -1 ? pending.shift() : pending.splice(at, 1)[0]);
   const take = (call: FakeCall): FakeScriptEntry | undefined => {
     const version = call.context?.promptVersion ?? "";
@@ -151,8 +150,10 @@ export function routed(script: FakeScriptEntry[]): FakeScriptEntry[] {
     }
     return pending.shift();
   };
+  const pace = options.pace ?? 0;
   return script.map(() => async (call: FakeCall) => {
     const entry = take(call);
+    if (pace > 0) await new Promise((resolve) => setTimeout(resolve, pace));
     if (entry === undefined) return "";
     return typeof entry === "function" ? entry(call) : entry;
   });
@@ -173,10 +174,12 @@ export function answeringAi(script: FakeScriptEntry[]): FakeAi {
 export function scriptedPipelineAi(
   options: Parameters<typeof pipelineScript>[0] & {
     usage?: { inputTokens: number; outputTokens: number };
+    /** Milliseconds each answer waits before it is returned — for a watcher, not a unit test. */
+    pace?: number;
   } = {},
 ): FakeAi {
   return createFakeAi({
-    script: routed(pipelineScript(options)),
+    script: routed(pipelineScript(options), { pace: options.pace ?? 0 }),
     usage: options.usage ?? { inputTokens: 1000, outputTokens: 400 },
   });
 }

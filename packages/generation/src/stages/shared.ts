@@ -52,5 +52,9 @@ export async function runBounded<T>(
       await fn(item);
     }
   });
-  await Promise.all(workers);
+  // Every worker settles before the first error propagates, so a caller never sees a rejection
+  // while other items are still in flight.
+  const settled = await Promise.allSettled(workers);
+  const rejected = settled.find((r) => r.status === "rejected");
+  if (rejected) throw rejected.reason;
 }

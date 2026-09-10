@@ -130,8 +130,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     }
     await turnOf(i);
     // A slide landing after an earlier one stopped would leave a gap in the outline order; after a
-    // cancel nothing more is written (the stage throws once the workers settle).
-    if (slide && lesson.slides.length === i && !deps.signal.aborted) {
+    // cancel or another worker's failure nothing more is written (the stage throws once every
+    // worker has settled, so no persist races the job's failure write).
+    if (slide && lesson.slides.length === i && !deps.signal.aborted && !failed) {
       lesson = withUsage({ ...lesson, slides: [...lesson.slides, slide] }, deps);
       const { updatedAt } = await deps.persist(lesson);
       await deps.onProgress(
@@ -177,10 +178,15 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   };
 
   throwIfAborted(deps.signal);
-  const [, worksheet] = await Promise.all([
+  // Every worker settles before the stage fails: a rejection must not leave the others writing or
+  // charging the budget after the job has recorded the failure.
+  const settled = await Promise.allSettled([
     runBounded(indices, GENERATE_CONCURRENCY, slideWork),
     worksheetWork(),
   ]);
+  const rejected = settled.find((r) => r.status === "rejected");
+  if (rejected) throw rejected.reason;
+  const worksheet = settled[1].status === "fulfilled" ? settled[1].value : undefined;
 
   throwIfAborted(deps.signal);
   // One budget residual per lesson: when Plan's facts call was already the stop, this is the same
