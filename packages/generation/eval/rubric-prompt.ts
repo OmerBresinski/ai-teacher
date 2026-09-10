@@ -34,9 +34,15 @@ const Rationale = z.string().max(300);
 
 /** Seven dimensions always carry a score; a `null` there would be a dimension quietly dropped. */
 const ScoredDimensionSchema = z.strictObject({ score: ScoreSchema, rationale: Rationale });
-/** `imageFit` alone may be `null`: a lesson without a placed photograph has nothing to score. */
+/**
+ * `imageFit` alone may be unscored: a lesson without a placed photograph has nothing to score. The
+ * judge is asked for `score: null` but Sol leaves the key out instead (every brief of the first
+ * paid run, 10 Sept), so a missing score is read as `null` rather than refused.
+ */
 const OptionalDimensionSchema = z.strictObject({
-  score: ScoreSchema.nullable(),
+  score: ScoreSchema.nullable()
+    .optional()
+    .transform((score) => score ?? null),
   rationale: Rationale,
 });
 

@@ -46,6 +46,8 @@ export interface EvalTotals {
   meanDurationMs: number | null;
   /** Median over briefs that reached a first slide. */
   p50FirstSlideMs: number | null;
+  /** Median Plan wall time over the briefs that reached `planned`. */
+  p50PlanMs: number | null;
   calls: number;
   inputTokens: number;
   outputTokens: number;
@@ -85,6 +87,12 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
     .map((b) => b.firstSlideMs)
     .filter((ms): ms is number => ms !== null)
     .sort((a, b) => a - b);
+  // Every brief that reached `planned`, whether or not it went on to complete: Plan's time is
+  // Plan's, as `firstSlideMs` is.
+  const plans = briefs
+    .map((b) => b.planMs)
+    .filter((n): n is number => n !== null)
+    .sort((a, b) => a - b);
   const totals = budget.totals();
   const findings = { error: 0, warning: 0 };
   for (const b of briefs) {
@@ -106,6 +114,7 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
         : Math.round(completed.reduce((sum, b) => sum + b.durationMs, 0) / completed.length),
     p50FirstSlideMs:
       firsts.length === 0 ? null : (firsts[Math.floor((firsts.length - 1) / 2)] ?? null),
+    p50PlanMs: median(plans),
     calls: totals.calls,
     inputTokens: totals.inputTokens,
     outputTokens: totals.outputTokens,
@@ -136,18 +145,18 @@ export function rubricTotals(briefs: BriefResult[]): EvalTotals["rubric"] {
 export function formatResultsTable(results: EvalResults): string {
   const usd = (v: number | null) => (v === null ? "-" : `$${v.toFixed(4)}`);
   const lines = [
-    "| brief | ok | ms | first slide ms | slides | calls | tokens in/out | cost | errors | warnings | schema | model | rubric |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    "| brief | ok | ms | plan ms | first slide ms | slides | calls | tokens in/out | cost | errors | warnings | schema | model | rubric |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
   ];
   for (const b of results.briefs) {
     lines.push(
-      `| ${b.id} | ${b.ok ? "yes" : `no (${b.error})`} | ${b.durationMs} | ${b.firstSlideMs ?? "-"} | ${b.slides} | ${b.calls} | ${b.inputTokens}/${b.outputTokens} | ${usd(b.costUsd)} | ${b.findings.error} | ${b.findings.warning} | ${b.scores?.schema ?? "-"} | ${b.scores?.modelFindings ?? "-"} | ${b.scores?.rubric?.mean ?? "-"} |`,
+      `| ${b.id} | ${b.ok ? "yes" : `no (${b.error})`} | ${b.durationMs} | ${b.planMs ?? "-"} | ${b.firstSlideMs ?? "-"} | ${b.slides} | ${b.calls} | ${b.inputTokens}/${b.outputTokens} | ${usd(b.costUsd)} | ${b.findings.error} | ${b.findings.warning} | ${b.scores?.schema ?? "-"} | ${b.scores?.modelFindings ?? "-"} | ${b.scores?.rubric?.mean ?? "-"} |`,
     );
   }
   const t = results.totals;
   lines.push(
     "",
-    `Totals: ${t.completed}/${t.briefs} briefs, ${t.calls} calls, ${t.inputTokens}/${t.outputTokens} tokens, ${usd(t.costUsd)} (cap $${results.capUsd.toFixed(2)}), mean ${t.meanDurationMs ?? "-"} ms, p50 first slide ${t.p50FirstSlideMs ?? "-"} ms, ${t.findings.error} errors / ${t.findings.warning} warnings, rubric mean ${t.rubric.mean ?? "-"}${t.stoppedBy ? ` — stopped at the ${t.stoppedBy} cap` : ""}`,
+    `Totals: ${t.completed}/${t.briefs} briefs, ${t.calls} calls, ${t.inputTokens}/${t.outputTokens} tokens, ${usd(t.costUsd)} (cap $${results.capUsd.toFixed(2)}), mean ${t.meanDurationMs ?? "-"} ms, p50 plan ${t.p50PlanMs ?? "-"} ms, p50 first slide ${t.p50FirstSlideMs ?? "-"} ms, ${t.findings.error} errors / ${t.findings.warning} warnings, rubric mean ${t.rubric.mean ?? "-"}${t.stoppedBy ? ` — stopped at the ${t.stoppedBy} cap` : ""}`,
   );
   return lines.join("\n");
 }

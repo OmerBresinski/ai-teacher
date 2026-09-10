@@ -101,6 +101,16 @@ describe("rubric judge", () => {
     expect(JSON.stringify(scored.scores)).not.toContain(SENTINEL);
   });
 
+  test("imageFit with no score key at all (what Sol writes without a photo) reads as null", async () => {
+    const dims = JSON.parse(rubricJson(4)) as { dimensions: Record<string, { score?: unknown }> };
+    delete dims.dimensions.imageFit?.score;
+    const ai = createFakeAi({ script: [JSON.stringify(dims)] });
+    const scored = await scoreLesson("fixture", { lesson: generatedLesson() }, judgeOn(ai));
+    expect(ai.calls).toHaveLength(1);
+    expect(scored.scores.rubric?.dimensions.imageFit).toBeNull();
+    expect(scored.scores.rubric?.mean).toBe(4);
+  });
+
   test("imageFit null (no placed photo): the mean is over the other seven", async () => {
     const ai = createFakeAi({ script: [rubricJson(3, { depth: 5 })] });
     const scored = await scoreLesson("fixture", { lesson: generatedLesson() }, judgeOn(ai));

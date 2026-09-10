@@ -40,8 +40,39 @@ describe("eval:schema", () => {
         { text: "An objective no slide or block teaches" },
       ],
     };
+    // The facts serve and check the extra objective (or the facts schema refuses them, TEACH-211),
+    // through a key idea and a question that no outline entry references — so the plan parses and
+    // the coverage check is what fails.
+    const extra = FIXTURES.planSkeleton.learningObjectives.length;
+    const first = FIXTURES.planFacts.keyIdeas[0];
+    const firstQ = FIXTURES.planFacts.questions[0];
+    if (!first || !firstQ) throw new Error("fixture");
+    const planFacts = {
+      ...FIXTURES.planFacts,
+      keyIdeas: [
+        ...FIXTURES.planFacts.keyIdeas,
+        {
+          ...first,
+          statement: "Another idea",
+          objectiveRefs: [{ type: "objective" as const, index: extra }],
+        },
+      ],
+      questions: [
+        ...FIXTURES.planFacts.questions,
+        {
+          ...firstQ,
+          stem: "Another question?",
+          objectiveRefs: [{ type: "objective" as const, index: extra }],
+        },
+      ],
+    };
     const rows = await runSchemaEval([brief], () =>
-      scriptedPipelineAi({ overrides: { [PLAN_INDEX]: JSON.stringify(skeleton) } }),
+      scriptedPipelineAi({
+        overrides: {
+          [PLAN_INDEX]: JSON.stringify(skeleton),
+          [PLAN_INDEX + 1]: JSON.stringify(planFacts),
+        },
+      }),
     );
     expect(rows[0]?.result.id).toBe(brief.id);
     expect(rows[0]?.errors).toEqual(["objective-coverage"]);

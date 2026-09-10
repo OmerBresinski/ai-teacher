@@ -65,11 +65,12 @@ export interface CallResult<T> {
 export const MAX_OUTPUT_TOKENS = {
   // At most three one-sentence findings.
   checkInput: 400,
-  // The skeleton (4 objectives, 16 outline entries) is a few hundred tokens; the facts (6 terms,
-  // 3 worked examples, 8 questions, the outline refs) ~2 500 pretty-printed. Room left so the cap
-  // is never the reason a call fails.
-  planSkeleton: 1500,
-  planFacts: 4000,
+  // The skeleton (4 objectives, up to 16 outline entries each with a brief and a phase) is under
+  // a thousand tokens; the facts (5 key ideas, 4 misconceptions, 8 terms, 4 worked examples, up to
+  // 20 questions with distractors, the pitch, the outline refs) ~5 000 pretty-printed. Room left
+  // so the cap is never the reason a call fails (TEACH-211).
+  planSkeleton: 2500,
+  planFacts: 7000,
   slide: 1500,
   worksheet: 4000,
   evaluate: 2000,

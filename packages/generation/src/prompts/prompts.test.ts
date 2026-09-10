@@ -96,20 +96,20 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v5",
-    hash: "3ccd840f54f42faf6c53eca3888dd238a13ccdea8e920f34612d914fa21d81d5",
+    version: "plan-skeleton.v6",
+    hash: "ec62b3d86918d27a22ce3ad9d5c73d7a0be1737b3661caa080b393c82bc30476",
   },
   "plan-facts": {
-    version: "plan-facts.v3",
-    hash: "6b7ccdf3150f9a475114db99ce81f124500cd93fd2281397bc679db17dff6e61",
+    version: "plan-facts.v4",
+    hash: "13e6c3305e205c3901509ed5552d92b5810f80376bcb355441910bb76217f3c7",
   },
   "generate-slide": {
     version: "generate-slide.v5",
-    hash: "a576402042cc7fd5741eba7d0fbfd7878af62d396ef0c2c9b2693a80c2f31179",
+    hash: "414f0148f4a6fd63f9887a7a48bd6b9759d15d6afc47638a7037e7f2f1f237d0",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v4",
-    hash: "27af53556063fc3a54201edc3ea52554c83a07d727446d29aa43ce7e7f5ec1f5",
+    hash: "833d99e9fb76b620bc0a9420b44c50c36f24e1d6d907486d0f46a5811bd26c9b",
   },
   "pick-or-requery-photo": {
     version: "pick-or-requery-photo.v2",
@@ -117,19 +117,19 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   evaluate: {
     version: "evaluate.v2",
-    hash: "cfc2def8594c4bdf6eef7b1d2c66e564e2d15bc7fca6a3d4496fa1c7e431941f",
+    hash: "37513673804ae3edb1eba97dc16d3d37f89af3cbd8b8607c498500a6d5d34382",
   },
   repair: {
     version: "repair.v2",
-    hash: "c5daa1ec876b4629130f83bce2b0b1b8e954baf867fc2553811cfbcecf9e23e1",
+    hash: "72f2192b2ddc98b065fbf5dddd78f53247d9cddb539d40c54638d07859e23686",
   },
   cascade: {
     version: "cascade.v2",
-    hash: "11be5f91ba0b1bff67db4dd692ccb9319a5f8cf368f22d624985b0a59182d99c",
+    hash: "cb2a59345961aef8ca048fc5dc4a7b6dd0637ba82381c60a410e82a034ccb28d",
   },
   regenerate: {
     version: "regenerate.v2",
-    hash: "99fa070108751ddbae761f0afb52a2540ba12ef09393cbfff690a1dfd8017aef",
+    hash: "453859a1e9e81f6a15349f5232372ee1dbd51fe6a02f8f2c1ea1648a8213685c",
   },
 };
 

@@ -247,7 +247,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       vocabulary: facts?.vocabulary.map((v) => v.term) ?? [],
       slideText: slideText(slide),
       subject: brief.subject,
-      mustShow: brief.mustShow,
+      mustShow: brief.mustShow.length > 0 ? brief.mustShow.join(", ") : undefined,
       queries: tried,
       candidates: candidates.map((c) => ({ id: c.id, alt: c.alt })),
     },

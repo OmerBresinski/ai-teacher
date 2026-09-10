@@ -138,15 +138,33 @@ export type Misconception = {
 /** Plan's own statement of the reading target, checked deterministically by `checkLesson`. */
 export type Pitch = { readingAgeTarget: number; sentenceLengthMax: number; avoid: string[] };
 
+/** What the picture is for; decides what `mustShow` has to make possible (Generation quality §4). */
+export const IMAGE_PURPOSES = ["identify-parts", "observe", "compare", "context"] as const;
+export type ImagePurpose = (typeof IMAGE_PURPOSES)[number];
+
 /**
- * What the pipeline should photograph for an `image-text` slide (Images project). No
- * orientation: the slot's geometry decides it (ADR 0025 §8, the model never produces geometry).
+ * What the pipeline should photograph for an `image-text` slide (Images project; Generation
+ * quality §4, TEACH-211). `mustShow` lists the concrete things a pupil must be able to see for the
+ * slide's task to be possible — nouns a camera captures. No orientation: the slot's geometry
+ * decides it (ADR 0025 §8, the model never produces geometry). Lessons stored before the list form
+ * carried `mustShow` as one string and no `purpose`: the schema coerces the string to a one-item
+ * list and defaults the purpose to `context`, so they still parse (ADR 0021 §2; no version bump).
  */
+const MustShowItem = z.string().trim().min(1).max(120);
 export const ImageBriefSchema = z.strictObject({
   subject: z.string().trim().min(1).max(60),
-  mustShow: z.string().trim().min(1).max(120).optional(),
+  mustShow: z
+    .union([MustShowItem.transform((one) => [one]), z.array(MustShowItem).max(4)])
+    .optional()
+    .default([]),
+  purpose: z.enum(IMAGE_PURPOSES).default("context"),
+  avoid: z.array(MustShowItem).max(3).optional(),
 });
 export type ImageBrief = z.infer<typeof ImageBriefSchema>;
+
+/** The teaching phase an outline entry belongs to; title and objectives carry none. */
+export const LESSON_PHASES = ["starter", "explain", "practise", "check"] as const;
+export type LessonPhase = (typeof LESSON_PHASES)[number];
 
 /** One slide of the lesson structure Plan decides and Generate follows, in order. */
 export type OutlineEntry = {
@@ -160,6 +178,8 @@ export type OutlineEntry = {
   imageBrief?: ImageBrief;
   /** What this slide adds that no other does, and what it must not repeat from a neighbour. */
   brief?: OutlineBrief;
+  /** Starter → explain → practise → check; absent on title/objectives and on older lessons. */
+  phase?: LessonPhase;
 };
 
 export type OutlineBrief = { adds: string; avoids?: string };
@@ -256,6 +276,7 @@ export const OutlineEntrySchema = z.strictObject({
   factRefs: z.array(FactIdSchema),
   imageBrief: ImageBriefSchema.optional(),
   brief: OutlineBriefSchema.optional(),
+  phase: z.enum(LESSON_PHASES).optional(),
 });
 
 /** The arrays whose ids `factRefs` may point at. Outline entries are structure, not facts. */

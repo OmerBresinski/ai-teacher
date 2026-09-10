@@ -42,7 +42,12 @@
           "type": "objective",
           "index": 0
         }
-      ]
+      ],
+      "phase": "starter",
+      "brief": {
+        "adds": "Hooks the topic with one everyday question pupils can already argue about.",
+        "avoids": "Do not define the states yet."
+      }
     },
     {
       "kind": "vocabulary",
@@ -52,7 +57,12 @@
           "type": "objective",
           "index": 0
         }
-      ]
+      ],
+      "phase": "starter",
+      "brief": {
+        "adds": "Names the four terms the lesson uses, each in one sentence.",
+        "avoids": "No examples of changes of state here."
+      }
     },
     {
       "kind": "content",
@@ -61,8 +71,17 @@
         {
           "type": "objective",
           "index": 0
+        },
+        {
+          "type": "objective",
+          "index": 1
         }
-      ]
+      ],
+      "phase": "explain",
+      "brief": {
+        "adds": "Explains the particle model: arrangement and movement decide the state.",
+        "avoids": "Do not repeat the vocabulary definitions."
+      }
     },
     {
       "kind": "worked-example",
@@ -71,8 +90,17 @@
         {
           "type": "objective",
           "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
         }
-      ]
+      ],
+      "phase": "explain",
+      "brief": {
+        "adds": "Walks through one change of state step by step with the particle model.",
+        "avoids": "Not the ink example from the content slide."
+      }
     },
     {
       "kind": "true-false",
@@ -82,7 +110,11 @@
           "type": "objective",
           "index": 0
         }
-      ]
+      ],
+      "phase": "practise",
+      "brief": {
+        "adds": "Confronts the misconception that solid particles do not move."
+      }
     },
     {
       "kind": "multiple-choice",
@@ -92,7 +124,12 @@
           "type": "objective",
           "index": 2
         }
-      ]
+      ],
+      "phase": "practise",
+      "brief": {
+        "adds": "Checks recall of which state has particles furthest apart.",
+        "avoids": "Not the true-false statement again."
+      }
     },
     {
       "kind": "sort",
@@ -102,7 +139,11 @@
           "type": "objective",
           "index": 2
         }
-      ]
+      ],
+      "phase": "practise",
+      "brief": {
+        "adds": "Orders the states by particle energy."
+      }
     },
     {
       "kind": "exit-ticket",
@@ -120,7 +161,12 @@
           "type": "objective",
           "index": 2
         }
-      ]
+      ],
+      "phase": "check",
+      "brief": {
+        "adds": "Three short questions covering all three objectives.",
+        "avoids": "Do not reuse a stem from the practise slides."
+      }
     }
   ]
 }

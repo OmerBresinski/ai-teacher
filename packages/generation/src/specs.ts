@@ -2,7 +2,8 @@ import {
   type FactId,
   FindingSchema,
   GENERATABLE_SLIDE_KINDS,
-  ImageBriefSchema,
+  IMAGE_PURPOSES,
+  LESSON_PHASES,
   type LessonFacts,
   LessonFactsSchema,
   QUESTION_TIERS,
@@ -64,12 +65,47 @@ export const OrdinalRefSchema = z.strictObject({
 });
 export type OrdinalRef = z.infer<typeof OrdinalRefSchema>;
 
+/**
+ * The picture brief as Plan writes it (Generation quality §4): the list form is required here,
+ * where the stored schema still accepts the older string for lessons written before it.
+ */
+const PlanImageBriefSchema = z.strictObject({
+  subject: line(60),
+  mustShow: z.array(line(40)).min(1).max(4),
+  purpose: z.enum(IMAGE_PURPOSES),
+  avoid: z.array(line(40)).max(3).optional(),
+});
+
+const OutlineBriefSpec = z.strictObject({
+  adds: line(SPEC_LIMITS.item),
+  avoids: line(SPEC_LIMITS.item).optional(),
+});
+
 const outlineEntry = z.strictObject({
   kind: z.enum(GENERATABLE_SLIDE_KINDS),
   minutes: z.number().int().min(1),
   factRefs: z.array(OrdinalRefSchema),
-  imageBrief: ImageBriefSchema.optional(),
+  imageBrief: PlanImageBriefSchema.optional(),
+  /** Required from position 2 (checked in the skeleton's refinement, so the message can say so). */
+  brief: OutlineBriefSpec.optional(),
+  phase: z.enum(LESSON_PHASES).optional(),
 });
+
+/** The share of a lesson that must explain (content, worked example, picture): 30 %. */
+export const EXPLAIN_SHARE_MIN_PERCENT = 30;
+/** The kinds that explain; the same set `checkLesson`'s `explanation-share` counts. */
+const EXPLAIN_KINDS: ReadonlySet<string> = new Set(["content", "worked-example", "image-text"]);
+/** The fewest questions of each tier a plan gives (the prompt asks for 4 / 5 / 3). */
+const TIER_MINIMUMS = { easy: 3, core: 3, stretch: 2 } as const;
+/** The brief answer that asks for an explain slide per objective (`brief-questions.ts`). */
+export const PRIOR_CONFIDENCE_KEY = "priorConfidence";
+export const PRIOR_CONFIDENCE_NEW = "New to it";
+const PHASE_ORDER: Record<(typeof LESSON_PHASES)[number], number> = {
+  starter: 0,
+  explain: 1,
+  practise: 2,
+  check: 3,
+};
 
 /** Which fact lists an outline entry may refer to, checked against the lists actually given. */
 function refineOutlineRefs(
@@ -106,53 +142,136 @@ function refineRef(
   }
 }
 
+const PlanSkeletonShape = z.strictObject({
+  // Not `objectives`: with that key first, Sonnet 5 behind Bedrock's `json` tool returns the
+  // whole answer as a string under it (reproduced 12/12 on 2026-09-07); `learningObjectives`,
+  // like the five-key schema before it, does not.
+  learningObjectives: z
+    .array(z.strictObject({ text: line(SPEC_LIMITS.item) }))
+    .min(1)
+    .max(4),
+  outline: z.array(outlineEntry).min(2).max(16),
+});
+
+/** What the skeleton's refinements need from the brief. */
+export type PlanSkeletonContext = {
+  durationMin: number;
+  /** The teacher's clarifying answers; `priorConfidence: "New to it"` asks for one explain slide per objective. */
+  answers?: Record<string, string> | undefined;
+};
+
 /**
- * Plan's first call (ADR 0025 §7, TEACH-138): the objectives and the outline, so the objectives
- * slide can be shown while the rest of the facts are still being written. The other fact lists
- * do not exist yet, so the outline may refer to objectives only; the facts call adds the rest.
+ * Plan's first call (ADR 0025 §7, TEACH-138; Generation quality §2, TEACH-211): the objectives
+ * and the outline, so the objectives slide can be shown while the rest of the facts are still
+ * being written. The other fact lists do not exist yet, so the outline may refer to objectives
+ * only; the facts call adds the rest. The outline is a lesson that teaches before it tests: a
+ * `phase` on every entry after the two Plan materialises itself, in order starter → explain →
+ * practise → check, with explain minutes at least 30 % of the lesson, and a `brief` saying what
+ * each slide adds. Every message here is what the retry shows the model.
  */
-export const PlanSkeletonSchema = z
-  .strictObject({
-    // Not `objectives`: with that key first, Sonnet 5 behind Bedrock's `json` tool returns the
-    // whole answer as a string under it (reproduced 12/12 on 2026-09-07); `learningObjectives`,
-    // like the five-key schema before it, does not.
-    learningObjectives: z
-      .array(z.strictObject({ text: line(SPEC_LIMITS.item) }))
-      .min(1)
-      .max(4),
-    outline: z.array(outlineEntry).min(2).max(16),
-  })
-  .superRefine((skeleton, ctx) => {
+export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<PlanSkeleton> {
+  return PlanSkeletonShape.superRefine((skeleton, ctx) => {
+    const issue = (message: string, path: (string | number)[]) =>
+      ctx.addIssue({ code: "custom", message, path });
     skeleton.outline.forEach((entry, i) => {
       refineOutlineRefs(ctx, ["outline", i, "factRefs"], entry.factRefs, {
         objective: skeleton.learningObjectives.length,
       });
-      // The brief rides exactly on picture slides: illustrate reads it, nothing else does.
+      // The picture brief rides exactly on picture slides: illustrate reads it, nothing else does.
       if (entry.kind === "image-text" && entry.imageBrief === undefined) {
-        ctx.addIssue({
-          code: "custom",
-          message: `image-text entries carry an imageBrief`,
-          path: ["outline", i, "imageBrief"],
-        });
+        issue("image-text entries carry an imageBrief", ["outline", i, "imageBrief"]);
       }
       if (entry.kind !== "image-text" && entry.imageBrief !== undefined) {
-        ctx.addIssue({
-          code: "custom",
-          message: `imageBrief is only allowed on image-text entries`,
-          path: ["outline", i, "imageBrief"],
-        });
+        issue("imageBrief is only allowed on image-text entries", ["outline", i, "imageBrief"]);
+      }
+      if (i >= 2) {
+        if (entry.brief === undefined) {
+          issue(
+            `Outline position ${i} needs a brief: "adds" says what this slide contributes that no other slide does.`,
+            ["outline", i, "brief"],
+          );
+        }
+        if (entry.phase === undefined) {
+          issue(`Outline position ${i} needs a phase: starter, explain, practise or check.`, [
+            "outline",
+            i,
+            "phase",
+          ]);
+        }
+      } else if (entry.phase !== undefined || entry.brief !== undefined) {
+        issue("The title and objectives slides carry no phase or brief.", ["outline", i]);
       }
     });
     // The deck opens with the two slides Plan materialises itself (ADR 0025 §7).
     if (skeleton.outline[0]?.kind !== "title" || skeleton.outline[1]?.kind !== "objectives") {
-      ctx.addIssue({
-        code: "custom",
-        message: 'The outline starts with a "title" slide then an "objectives" slide.',
-        path: ["outline"],
+      issue('The outline starts with a "title" slide then an "objectives" slide.', ["outline"]);
+    }
+    // Phases run starter → explain → practise → check and never go back.
+    let last = -1;
+    let lastPhase: string | undefined;
+    let explainMinutes = 0;
+    const phases = new Set<string>();
+    skeleton.outline.forEach((entry, i) => {
+      if (entry.phase === undefined) return;
+      phases.add(entry.phase);
+      // Only slides that teach count towards the explain share — the same kinds `checkLesson`
+      // counts — so a vocabulary or question slide tagged "explain" does not pad it.
+      if (entry.phase === "explain" && EXPLAIN_KINDS.has(entry.kind)) {
+        explainMinutes += entry.minutes;
+      }
+      if (entry.phase === "explain" && !EXPLAIN_KINDS.has(entry.kind)) {
+        issue(
+          `Outline position ${i} is a ${entry.kind} slide in the explain phase; explain slides are content, worked-example or image-text. Give it the phase it belongs to, or change its kind.`,
+          ["outline", i, "phase"],
+        );
+      }
+      const rank = PHASE_ORDER[entry.phase];
+      if (rank < last) {
+        issue(
+          `Outline position ${i} is a "${entry.phase}" slide but position ${i - 1} is already "${lastPhase}"; phases run starter, explain, practise, check and never go back. Move this slide before the first "${lastPhase}" slide, or give it the phase "${lastPhase}".`,
+          ["outline", i, "phase"],
+        );
+      }
+      last = Math.max(last, rank);
+      lastPhase = entry.phase;
+    });
+    for (const needed of ["explain", "practise", "check"] as const) {
+      if (!phases.has(needed)) {
+        issue(`The lesson needs at least one "${needed}" slide.`, ["outline"]);
+      }
+    }
+    const minExplain = Math.ceil((context.durationMin * EXPLAIN_SHARE_MIN_PERCENT) / 100);
+    if (explainMinutes < minExplain) {
+      issue(
+        `The explain phase needs at least ${minExplain} minutes (${EXPLAIN_SHARE_MIN_PERCENT}% of ${context.durationMin}); it has ${explainMinutes}. Add or lengthen content, worked-example or image-text slides.`,
+        ["outline"],
+      );
+    }
+    // A class new to the topic gets a content or worked-example slide for every objective.
+    if (context.answers?.[PRIOR_CONFIDENCE_KEY] === PRIOR_CONFIDENCE_NEW) {
+      const explained = new Set<number>();
+      for (const entry of skeleton.outline) {
+        if (entry.kind !== "content" && entry.kind !== "worked-example") continue;
+        for (const ref of entry.factRefs) if (ref.type === "objective") explained.add(ref.index);
+      }
+      skeleton.learningObjectives.forEach((_, i) => {
+        if (!explained.has(i)) {
+          issue(
+            `The class is new to this: objective ${i} needs a content or worked-example slide that names it.`,
+            ["outline"],
+          );
+        }
       });
     }
   });
-export type PlanSkeleton = z.infer<typeof PlanSkeletonSchema>;
+}
+
+/**
+ * The skeleton shape without the brief-dependent refinements: for tests and the resume path,
+ * which parse a skeleton the pipeline has already accepted once.
+ */
+export const PlanSkeletonSchema = planSkeletonSchemaFor({ durationMin: 1 });
+export type PlanSkeleton = z.infer<typeof PlanSkeletonShape>;
 
 /**
  * Plan's second call: the remaining fact lists, kept lean so the call stays short (`reasoning` a
@@ -173,9 +292,10 @@ const MisconceptionOrdinalSchema = z.strictObject({
 
 const PlanFactsShape = z.strictObject({
   /**
-   * The richer facts (Generation quality §1; TEACH-209): accepted and merged by `assignFactIds`
-   * from here on, asked for by the Plan-prompts ticket (which makes them required and lifts the
-   * caps). Optional so today's prompt and fixtures still validate.
+   * The richer facts (Generation quality §1; TEACH-209 shape, TEACH-211 asks for them): key
+   * ideas first, then misconceptions, then vocabulary, worked examples and at least twelve
+   * tiered questions, then the pitch and the outline references. Order matters to the model —
+   * every ordinal it writes must already exist.
    */
   keyIdeas: z
     .array(
@@ -184,47 +304,54 @@ const PlanFactsShape = z.strictObject({
         explanation: line(SPEC_LIMITS.body),
         example: line(SPEC_LIMITS.body),
         analogy: line(SPEC_LIMITS.item).optional(),
-        objectiveRefs: z.array(ObjectiveOrdinalSchema),
+        objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
       }),
     )
-    .max(5)
-    .optional(),
+    // The prompt asks for 2–5; the floor is 1 because a narrow lesson (an EYFS phonics sound) has
+    // one honest key idea, and Terra held to one through the retry on the first paid run.
+    .min(1, "Give at least one key idea: what a pupil must understand, explained with an example.")
+    .max(5),
   misconceptions: z
     .array(
       z.strictObject({
         belief: line(SPEC_LIMITS.item),
         correction: line(SPEC_LIMITS.body),
-        objectiveRefs: z.array(ObjectiveOrdinalSchema),
+        objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
       }),
     )
-    .max(4)
-    .optional(),
+    .min(
+      2,
+      "Give at least 2 misconceptions: what pupils at this level typically get wrong, with the correction.",
+    )
+    .max(4),
   vocabulary: z
     .array(
       z.strictObject({
         term: line(SPEC_LIMITS.term),
         definition: line(SPEC_LIMITS.definition),
-        objectiveRefs: z.array(ObjectiveOrdinalSchema).optional(),
+        objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
       }),
     )
-    .max(6),
+    .max(8),
   workedExamples: z
     .array(
       z.strictObject({
         problem: line(SPEC_LIMITS.body),
-        steps: z.array(line(SPEC_LIMITS.item)).min(1).max(4),
+        steps: z.array(line(SPEC_LIMITS.item)).min(1).max(6),
         answer: line(SPEC_LIMITS.answer),
         misconceptionRef: MisconceptionOrdinalSchema.optional(),
       }),
     )
-    .max(3),
+    .max(4),
   questions: z
     .array(
       z.strictObject({
         stem: line(SPEC_LIMITS.stem),
         answer: line(SPEC_LIMITS.answer),
         reasoning: line(SPEC_LIMITS.footnote),
-        objectiveRefs: z.array(ObjectiveOrdinalSchema).optional(),
+        tier: z.enum(QUESTION_TIERS),
+        use: z.enum(QUESTION_USES),
+        objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
         distractors: z
           .array(
             z.strictObject({
@@ -234,18 +361,18 @@ const PlanFactsShape = z.strictObject({
           )
           .max(3)
           .optional(),
-        use: z.enum(QUESTION_USES).optional(),
-        tier: z.enum(QUESTION_TIERS).optional(),
       }),
     )
-    .max(8),
-  pitch: z
-    .strictObject({
-      readingAgeTarget: z.number().int().min(1),
-      sentenceLengthMax: z.number().int().min(1),
-      avoid: z.array(line(SPEC_LIMITS.word)).max(6),
-    })
-    .optional(),
+    .min(
+      12,
+      "Give at least 12 questions: four easy, five core, three stretch, each tagged with a use.",
+    )
+    .max(20),
+  pitch: z.strictObject({
+    readingAgeTarget: z.number().int().min(5).max(18),
+    sentenceLengthMax: z.number().int().min(6).max(30),
+    avoid: z.array(line(SPEC_LIMITS.word)).max(6),
+  }),
   /** Per outline entry (by position), the facts from these lists it covers. */
   outlineFactRefs: z
     .array(
@@ -259,7 +386,15 @@ const PlanFactsShape = z.strictObject({
 export type PlanFacts = z.infer<typeof PlanFactsShape>;
 
 /** What the intermediate persist after the skeleton call carries: the lists still to come. */
-export const EMPTY_PLAN_FACTS: PlanFacts = {
+/**
+ * What `assignFactIds` merges: the facts call's answer, or the skeleton-only stand-in below, which
+ * has no pitch yet (a lesson's facts are `pitch`-less until the facts call lands).
+ */
+export type PlanFactsLike = Omit<PlanFacts, "pitch"> & { pitch?: PlanFacts["pitch"] | undefined };
+
+export const EMPTY_PLAN_FACTS: PlanFactsLike = {
+  keyIdeas: [],
+  misconceptions: [],
   vocabulary: [],
   workedExamples: [],
   questions: [],
@@ -278,20 +413,18 @@ const FIRST_FACT_SLIDE = 2;
 export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts> {
   return PlanFactsShape.superRefine((facts, ctx) => {
     const sizes = {
-      keyIdea: facts.keyIdeas?.length ?? 0,
+      keyIdea: facts.keyIdeas.length,
       vocabulary: facts.vocabulary.length,
       workedExample: facts.workedExamples.length,
       question: facts.questions.length,
-      misconception: facts.misconceptions?.length ?? 0,
+      misconception: facts.misconceptions.length,
     };
     // A fact's own links: objectives are the skeleton's, misconceptions this call's.
     const objectives = { objective: skeleton.learningObjectives.length };
     const misconceptions = { misconception: sizes.misconception };
     for (const key of ["keyIdeas", "misconceptions", "vocabulary", "questions"] as const) {
-      (facts[key] ?? []).forEach((fact, i) => {
-        if (fact.objectiveRefs) {
-          refineOutlineRefs(ctx, [key, i, "objectiveRefs"], fact.objectiveRefs, objectives);
-        }
+      facts[key].forEach((fact, i) => {
+        refineOutlineRefs(ctx, [key, i, "objectiveRefs"], fact.objectiveRefs, objectives);
       });
     }
     facts.workedExamples.forEach((x, i) => {
@@ -326,6 +459,64 @@ export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts>
       }
       refineOutlineRefs(ctx, ["outlineFactRefs", i, "factRefs"], entry.factRefs, sizes);
     });
+    // Every objective is served by a key idea and checked by a question (the prompt's rule; the
+    // objectives slide alone does not teach it).
+    const served = new Set<number>();
+    const checked = new Set<number>();
+    for (const k of facts.keyIdeas) for (const ref of k.objectiveRefs) served.add(ref.index);
+    for (const q of facts.questions) for (const ref of q.objectiveRefs) checked.add(ref.index);
+    skeleton.learningObjectives.forEach((_, i) => {
+      if (!served.has(i)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Objective ${i} is served by no key idea; add one with { "type": "objective", "index": ${i} } in its objectiveRefs, or add the objective to an existing key idea.`,
+          path: ["keyIdeas"],
+        });
+      }
+      if (!checked.has(i)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Objective ${i} is checked by no question; give at least one question objectiveRefs that include index ${i}.`,
+          path: ["questions"],
+        });
+      }
+    });
+    // Three tiers, each present in numbers a sheet and an exit ticket can draw on.
+    const tiers = { easy: 0, core: 0, stretch: 0 };
+    for (const q of facts.questions) tiers[q.tier] += 1;
+    for (const tier of ["easy", "core", "stretch"] as const) {
+      if (tiers[tier] < TIER_MINIMUMS[tier]) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Only ${tiers[tier]} "${tier}" questions; give at least ${TIER_MINIMUMS[tier]} (the target is four easy, five core, three stretch).`,
+          path: ["questions"],
+        });
+      }
+    }
+    // Kind fit: a content slide is built from a key idea, a worked-example slide from a worked
+    // example. Both refs may also come from the skeleton, but the skeleton could only name
+    // objectives, so they have to be given here.
+    const given = new Map<number, Set<FactListType>>();
+    for (const entry of facts.outlineFactRefs) {
+      const types = given.get(entry.index) ?? new Set<FactListType>();
+      for (const ref of entry.factRefs) types.add(ref.type);
+      given.set(entry.index, types);
+    }
+    skeleton.outline.forEach((entry, i) => {
+      const needs: FactListType | undefined =
+        entry.kind === "content"
+          ? "keyIdea"
+          : entry.kind === "worked-example"
+            ? "workedExample"
+            : undefined;
+      if (needs && !given.get(i)?.has(needs)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Outline position ${i} is a ${entry.kind} slide and needs at least one ${needs} reference in outlineFactRefs.`,
+          path: ["outlineFactRefs"],
+        });
+      }
+    });
   });
 }
 
@@ -349,7 +540,7 @@ const ID_PREFIX: Record<FactListType | "outline", string> = {
  */
 export function assignFactIds(
   skeleton: PlanSkeleton,
-  facts: PlanFacts,
+  facts: PlanFactsLike,
   durationMin: number,
 ): LessonFacts {
   const id = (type: keyof typeof ID_PREFIX, index: number): FactId =>
@@ -368,14 +559,16 @@ export function assignFactIds(
     objectives: skeleton.learningObjectives.map((o, i) => ({ id: id("objective", i), ...o })),
     ...optional(
       "keyIdeas",
-      facts.keyIdeas?.map((k, i) => ({
-        id: id("keyIdea", i),
-        statement: k.statement,
-        explanation: k.explanation,
-        example: k.example,
-        ...optional("analogy", k.analogy),
-        objectiveRefs: dedupe(k.objectiveRefs.map(refId)),
-      })),
+      facts.keyIdeas.length === 0
+        ? undefined
+        : facts.keyIdeas.map((k, i) => ({
+            id: id("keyIdea", i),
+            statement: k.statement,
+            explanation: k.explanation,
+            example: k.example,
+            ...optional("analogy", k.analogy),
+            objectiveRefs: dedupe(k.objectiveRefs.map(refId)),
+          })),
     ),
     vocabulary: facts.vocabulary.map(({ objectiveRefs: refs, ...v }, i) => ({
       id: id("vocabulary", i),
@@ -398,7 +591,7 @@ export function assignFactIds(
       ...optional("use", use),
       ...optional("tier", tier),
     })),
-    misconceptions: (facts.misconceptions ?? []).map((m, i) => ({
+    misconceptions: facts.misconceptions.map((m, i) => ({
       id: id("misconception", i),
       belief: m.belief,
       correction: m.correction,
@@ -410,7 +603,9 @@ export function assignFactIds(
       kind: entry.kind,
       minutes: entry.minutes,
       factRefs: dedupe([...entry.factRefs, ...(added.get(i) ?? [])].map(refId)),
-      ...(entry.imageBrief !== undefined ? { imageBrief: entry.imageBrief } : {}),
+      ...optional("imageBrief", entry.imageBrief),
+      ...optional("brief", entry.brief),
+      ...optional("phase", entry.phase),
     })),
     durationMin,
   });

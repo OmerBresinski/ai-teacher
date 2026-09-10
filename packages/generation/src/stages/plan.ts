@@ -5,10 +5,11 @@ import { planFactsPrompt, planSkeletonPrompt } from "../prompts";
 import {
   assignFactIds,
   EMPTY_PLAN_FACTS,
-  type PlanFacts,
+  type PlanFactsLike,
   type PlanSkeleton,
   PlanSkeletonSchema,
   planFactsSchemaFor,
+  planSkeletonSchemaFor,
 } from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState } from "../types";
 import { audienceOf, BUDGET_FINDING } from "./shared";
@@ -82,7 +83,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
       effort: "medium",
       prompt: planSkeletonPrompt,
       input: briefInput,
-      schema: PlanSkeletonSchema,
+      schema: planSkeletonSchemaFor({ durationMin: brief.durationMin, answers: brief.answers }),
       maxOutputTokens: MAX_OUTPUT_TOKENS.planSkeleton,
     });
     skeleton = skeletonCall.output;
@@ -100,7 +101,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   // 3. The remaining facts and which outline entry each supports; then the checkpoint.
   deps.logger.info({ stage: "plan", call: "facts" }, "plan call");
   const findings: Finding[] = [];
-  let planFacts: PlanFacts = EMPTY_PLAN_FACTS;
+  let planFacts: PlanFactsLike = EMPTY_PLAN_FACTS;
   try {
     const factsCall = await callStructured({
       deps,
@@ -143,9 +144,12 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
  * never mistaken for a checkpoint:
  *   - exactly two slides, `title` then `objectives`, every element of slide two stamped by the
  *     current `plan-skeleton` version and authored by the model;
- *   - facts with objectives and an outline of at least two entries, every other list empty;
+ *   - facts with objectives and an outline of at least two entries, every other list empty and
+ *     no pitch (the facts call writes it);
  *   - every outline reference resolves to an objective (anything else is not skeleton output);
- *   - the rebuilt skeleton passes `PlanSkeletonSchema`.
+ *   - the rebuilt skeleton — briefs, phases and picture briefs included — passes
+ *     `PlanSkeletonSchema` (the shape and structural rules; the brief-dependent minutes rule was
+ *     already met when this skeleton was accepted).
  */
 function existingSkeleton(
   lesson: Lesson,
@@ -161,11 +165,17 @@ function existingSkeleton(
   );
   if (!stamped) return undefined;
   const laterLists =
+    (facts.keyIdeas?.length ?? 0) +
     facts.vocabulary.length +
     facts.workedExamples.length +
     facts.questions.length +
     facts.misconceptions.length;
-  if (laterLists > 0 || facts.objectives.length === 0 || facts.outline.length < 2) {
+  if (
+    laterLists > 0 ||
+    facts.pitch !== undefined ||
+    facts.objectives.length === 0 ||
+    facts.outline.length < 2
+  ) {
     return undefined;
   }
   const objectiveIndex = new Map(facts.objectives.map((o, i) => [o.id, i]));
@@ -181,6 +191,9 @@ function existingSkeleton(
         type: "objective" as const,
         index: objectiveIndex.get(ref) as number,
       })),
+      ...(entry.imageBrief !== undefined ? { imageBrief: entry.imageBrief } : {}),
+      ...(entry.brief !== undefined ? { brief: entry.brief } : {}),
+      ...(entry.phase !== undefined ? { phase: entry.phase } : {}),
     })),
   });
   return skeleton.success ? { skeleton: skeleton.data, facts, objectivesSlide } : undefined;
