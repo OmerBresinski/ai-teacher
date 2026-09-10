@@ -112,8 +112,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v7",
-    hash: "f43fdce20930ae7a70d12237776af1e325a338d2306d36c4652f88029eeb60af",
+    version: "plan-skeleton.v8",
+    hash: "678e98cbdae612dee5c40046cb8a28f5cfec2cb713c6b73f8fcc5fb60e5b32ea",
   },
   "plan-facts": {
     version: "plan-facts.v5",
@@ -132,16 +132,16 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "6c944003c98d57c18bc5fc584f338d8a2e16e8321c18740f98fda13b578fe2a3",
   },
   "pick-or-requery-photo": {
-    version: "pick-or-requery-photo.v4",
-    hash: "5562ae9003c36f36dc70e418fe8d425975e4363b5d424778d2d49bb81df213e9",
+    version: "pick-or-requery-photo.v5",
+    hash: "6b04f791296e1b07787530676e8b74887382a9bc9102ba23ae66ceece65341f5",
   },
   evaluate: {
     version: "evaluate.v4",
     hash: "2898eb315cf4afe67d95cbeb88ebb4c3093f57687e9dcf482f03bb2c115a1a37",
   },
   repair: {
-    version: "repair.v6",
-    hash: "e199a8d17ee670405dac36cef7d551b9a9ff5dd254dbf7098e69e96e34f74182",
+    version: "repair.v7",
+    hash: "521fc1be7492cf5801f0f964577f5e181ef54788f5d381872d70ee7a4cfbd30e",
   },
   "repair-fact": {
     version: "repair-fact.v2",

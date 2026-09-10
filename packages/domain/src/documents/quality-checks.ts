@@ -272,12 +272,12 @@ function checkDegenerateQuestions(lesson: Lesson, worksheet?: Worksheet): Findin
       if (verdict === "no-question") {
         degenerate(target, `Slide "${slide.kind}" sets a task that asks nothing: "${stem}"`, false);
       } else if (verdict === "no-referent") {
-        findings.push({
-          check: "degenerate-question",
-          severity: "warning",
+        // An error since TEACH-226: Repair writes the question the task leans on.
+        degenerate(
           target,
-          message: `Slide "${slide.kind}" refers to a decision or answer no question posed: "${stem}"`,
-        });
+          `Slide "${slide.kind}" refers to a decision or answer no question posed: "${stem}"`,
+          false,
+        );
       }
     }
     if (FOOTNOTE_KINDS.has(slide.kind)) {
@@ -300,12 +300,11 @@ function checkDegenerateQuestions(lesson: Lesson, worksheet?: Worksheet): Findin
       if (verdict === "no-question") {
         degenerate(target, `Worksheet question asks nothing: "${stem}"`, true);
       } else if (verdict === "no-referent") {
-        findings.push({
-          check: "degenerate-question",
-          severity: "warning",
+        degenerate(
           target,
-          message: `Worksheet question refers to a decision or answer no question posed: "${stem}"`,
-        });
+          `Worksheet question refers to a decision or answer no question posed: "${stem}"`,
+          true,
+        );
       }
     }
     if (block.type === "multiple-choice" && !allDistinct(block.options.map((o) => o.text))) {

@@ -152,6 +152,7 @@ describeDb("lesson.plan job", () => {
         JSON.stringify({
           pick: "p1",
           onSubject: true,
+          clear: true,
           visible: ["river water"],
           count: "one",
           query: null,

@@ -34,7 +34,7 @@ export type RepairInput = {
 };
 
 export const repairPrompt = {
-  version: "repair.v6",
+  version: "repair.v7",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Rewrite the whole item as a fresh spec of the same kind; keep everything that was right, change only what the findings require. The current text is shown field by field; put each field's content back in the same field.",
@@ -44,6 +44,7 @@ export const repairPrompt = {
     "The kind/type cannot change. Every answer must be correct and consistent with the facts. Put the ids of the facts the item draws on in `factRefs`.",
     "Each finding quotes the exact text it is about (`evidence`); change that and what depends on it, keep the rest. Never describe what you changed — `notes` are for the teacher in the room, not a change log.",
     `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`,
+    "A task that says 'your decision', 'your answer' or 'it' with no question before it: write the question first (\"Is a guinea pig a rodent?\"), then the task.",
     "",
     "Example answer for a multiple-choice slide:",
     example({
