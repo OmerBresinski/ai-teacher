@@ -679,7 +679,7 @@ describe("generate", () => {
       release = resolve;
     });
     const ai = imageRunAi(
-      json({ pick: "p1", visible: ["river water"], count: "one", query: null }),
+      json({ pick: "p1", onSubject: true, visible: ["river water"], count: "one", query: null }),
       { release: () => release(), wait },
     );
     const deps = recordingDeps(ai, { images: riverImages });
@@ -749,7 +749,7 @@ describe("generate", () => {
   test("row 8: Evaluate shows the photographed slide as an image part and keeps an image-fit warning; Repair rewrites its text and keeps the photo", async () => {
     const start = await plannedWithImage();
     const ai = imageRunAi(
-      json({ pick: "p1", visible: ["river water"], count: "one", query: null }),
+      json({ pick: "p1", onSubject: true, visible: ["river water"], count: "one", query: null }),
     );
     const generated = await generate(start, recordingDeps(ai, { images: riverImages }));
     const imageIndex = start.lesson.facts?.outline.findIndex((e) => e.kind === "image-text") ?? -1;

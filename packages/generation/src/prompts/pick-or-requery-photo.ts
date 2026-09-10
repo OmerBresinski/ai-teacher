@@ -45,6 +45,12 @@ export type PickOrRequeryInput = {
 export const PickOrRequerySchema = z
   .object({
     pick: z.string().min(1).nullable().optional(),
+    /**
+     * Whether the main thing in the picked photograph is an example of the subject (TEACH-224: a
+     * llama's snout was picked for "rodent incisors" — every required part was visible, on the
+     * wrong animal). Omitted reads as false, so a pick that does not say so is never placed.
+     */
+    onSubject: z.boolean().optional(),
     visible: z.array(z.string().trim().min(1).max(40)).max(4).optional(),
     count: z.enum(["one", "several"]).nullable().optional(),
     query: z.string().trim().min(2).max(60).nullable().optional(),
@@ -52,6 +58,7 @@ export const PickOrRequerySchema = z
   .strict()
   .transform((a) => ({
     pick: a.pick ?? null,
+    onSubject: a.onSubject ?? false,
     visible: a.visible ?? [],
     count: a.count ?? null,
     query: a.query ?? null,
@@ -80,19 +87,21 @@ export const normaliseItem = (item: string) => item.trim().toLowerCase().replace
 
 const EXAMPLE: PickOrRequery = {
   pick: "27147699",
+  onSubject: true,
   visible: ["open flower head", "petals", "stamens"],
   count: "one",
   query: null,
 };
 const EXAMPLE_REQUERY: PickOrRequery = {
   pick: null,
+  onSubject: false,
   visible: [],
   count: null,
   query: "buttercup flower macro",
 };
 
 export const pickOrRequeryPrompt = {
-  version: "pick-or-requery-photo.v3",
+  version: "pick-or-requery-photo.v4",
   system: [
     "You choose the photograph for one slide of a school lesson from stock-photo search results. You see each candidate photograph (numbered to match its id) and its caption.",
     "",
@@ -101,8 +110,9 @@ export const pickOrRequeryPrompt = {
     "Read the lesson context first: the topic decides what an ambiguous word means (a lesson on rodents wants an animal's teeth, never a person's; a lesson on rivers wants a riverbank, never a bank branch).",
     "Answer with exactly one of:",
     "- `pick`: the id of the ONE photograph that clearly shows the slide's subject as it belongs in this lesson, shows every required item, and suits the audience. Prefer the plainest literal depiction. Reject anything off-topic, decorative, text-heavy, a person or medical scene when the subject is an animal or object, anything listed to avoid, or anything unsuitable for the year group. When two fit, pick the earlier one.",
+    "- `onSubject`: true only when the main thing in the photograph you pick is an example of the wanted subject itself — the same kind of animal, plant, object or place. A different animal with similar parts is not the subject (a llama's teeth are not rodent incisors; a rabbit is not a rodent). When in doubt, false. A pick with `onSubject` false is never used.",
     "- `visible`: for the photo you pick, which of the required items you can actually see in it — only those, spelt as given. Look at the picture, not the caption. `count`: whether the photo shows one of the subject or several.",
-    "- Pick nothing if no candidate shows every required item; then suggest a `query` that would — two to four plain words, British English, a standalone stock-photo query that carries the lesson's context and is none of the searches already tried.",
+    "- Pick nothing if no candidate is the subject and shows every required item; then suggest a `query` that would — one that names the subject itself exactly: two to four plain words, British English, a standalone stock-photo query that carries the lesson's context and is none of the searches already tried.",
     "- `pick`, `query` both `null` (and `visible` empty): when nothing fits and you cannot think of a materially better query. A missing picture is better than a wrong one.",
     "",
     "Answer as JSON in one of these shapes:",

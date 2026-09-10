@@ -8,7 +8,7 @@ import {
   PLACEHOLDER_IMAGE,
   SlideSpecSchema,
 } from "@tj/slides";
-import { recordingDeps, SAMPLE_JOB_ID, sampleBriefLesson } from "../testing";
+import { memoryLogger, recordingDeps, SAMPLE_JOB_ID, sampleBriefLesson } from "../testing";
 import type { PhotoPlacer } from "../types";
 import { illustrate } from "./illustrate";
 
@@ -164,7 +164,7 @@ function judge(...answers: FakeScriptEntry[]) {
 }
 /** A pick that passes the gate for a brief with the given `mustShow` (none by default). */
 const pick = (id: string, visible: string[] = [], count: "one" | "several" = "one") =>
-  JSON.stringify({ pick: id, visible, count, query: null });
+  JSON.stringify({ pick: id, onSubject: true, visible, count, query: null });
 const requery = (query: string) => JSON.stringify({ pick: null, visible: [], count: null, query });
 const NONE = JSON.stringify({ pick: null, visible: [], count: null, query: null });
 const run = (lesson: Lesson, deps: ReturnType<typeof recordingDeps>) =>
@@ -179,7 +179,7 @@ describe("illustrate", () => {
     );
     const ai = judge(
       JSON.stringify({ query: "beaver gnawing", visible: [] }),
-      JSON.stringify({ pick: "r", visible: [], count: "one" }),
+      JSON.stringify({ pick: "r", onSubject: true, visible: [], count: "one" }),
     );
     const state = await run(
       imageLesson([{ subject: "rodent teeth" }]),
@@ -227,7 +227,7 @@ describe("illustrate", () => {
         visible: [],
         count: "one",
         alt: "Photo p2",
-        promptVersion: "pick-or-requery-photo.v3",
+        promptVersion: "pick-or-requery-photo.v4",
         thumbnail: second.src.tiny,
       },
     });
@@ -238,7 +238,7 @@ describe("illustrate", () => {
     expect(deps.persisted).toHaveLength(1);
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
-    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v3");
+    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v4");
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 
@@ -337,6 +337,7 @@ describe("illustrate", () => {
     // Second judge over the new pool: picks B with everything visible.
     const gatedThenQuery = JSON.stringify({
       pick: "A",
+      onSubject: true,
       visible: ["petals"],
       count: "one",
       query: "buttercup macro",
@@ -354,13 +355,14 @@ describe("illustrate", () => {
       visible: ["open flower head", "petals", "stamens"],
       count: "one",
       alt: "Photo B",
-      promptVersion: "pick-or-requery-photo.v3",
+      promptVersion: "pick-or-requery-photo.v4",
       thumbnail: `data:image/png;base64,${PNG}`,
     });
 
     // The same first verdict with no query: empty, one call, nothing stored.
     const gatedNoQuery = JSON.stringify({
       pick: "A",
+      onSubject: true,
       visible: ["petals"],
       count: "one",
       query: null,
@@ -375,6 +377,42 @@ describe("illustrate", () => {
     expect(deps2.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
   });
 
+  test("TEACH-224: a pick that is not the subject fails the gate however much is visible — its query is followed, else nothing is placed", async () => {
+    // The production case: a llama's snout for "rodent incisors close-up", every part visible.
+    const { images, searches, stores } = fakeImages(async (query) =>
+      query === "brown rat teeth" ? [pexelsPhoto("rat", true)] : [pexelsPhoto("llama", true)],
+    );
+    const brief = { subject: "rodent incisors close-up", mustShow: ["front teeth", "mouth"] };
+    const offSubject = JSON.stringify({
+      pick: "llama",
+      onSubject: false,
+      visible: ["front teeth", "mouth"],
+      count: "one",
+      query: "brown rat teeth",
+    });
+    const { lines, logger } = memoryLogger();
+    const ai = judge(offSubject, pick("rat", brief.mustShow));
+    const state = await run(imageLesson([brief]), recordingDeps(ai, { images, logger }));
+    expect(ai.calls).toHaveLength(2);
+    expect(searches).toEqual(["rodent incisors close", "rodent incisors", "brown rat teeth"]);
+    expect(stores).toEqual(["rat"]);
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/rat.jpg");
+    const gated = lines.map((l) => JSON.parse(l)).find((r) => r.gated === true);
+    expect(gated).toMatchObject({ stage: "illustrate", offSubject: true });
+
+    // A reply that omits onSubject is a pick that never said it was the subject: not placed.
+    const silent = JSON.stringify({
+      pick: "llama",
+      visible: ["front teeth", "mouth"],
+      count: "one",
+    });
+    const again = fakeImages(async () => [pexelsPhoto("llama", true)]);
+    const ai2 = judge(silent);
+    const state2 = await run(imageLesson([brief]), recordingDeps(ai2, { images: again.images }));
+    expect(again.stores).toEqual([]);
+    expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+  });
+
   test("row 3: a visible item outside mustShow is a validation issue the retry names", async () => {
     const flower = {
       subject: "buttercup",
@@ -384,6 +422,7 @@ describe("illustrate", () => {
     const { images } = fakeImages(async () => [pexelsPhoto("A", true)]);
     const bad = JSON.stringify({
       pick: "A",
+      onSubject: true,
       visible: ["stamens", "bee"],
       count: "one",
       query: null,

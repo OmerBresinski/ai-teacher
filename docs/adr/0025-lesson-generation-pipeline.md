@@ -569,3 +569,20 @@ any field including `notes`: a worked example said "A photo shows an animal…" 
 stems, exit-ticket items and worksheet questions — no `?` and no sentence opening with an
 imperative or question word is an `error` (regenerate); a task about "your decision"/"the
 animal"/"it" with nothing before it that posed the decision is a `warning`.
+
+## Amendment (2026-09-10, TEACH-224 — the picture is the subject)
+
+§7. The first production lesson on the picture-first pipeline placed a llama's snout for "rodent
+incisors close-up": the brief's `mustShow` included "rodent head" (a classification, not a thing a
+camera captures), the small-class judge said every item was visible, and the text was then written
+to the wrong animal. Changes: the judge (`pick-or-requery-photo.v4`) answers `onSubject` — whether
+the main thing in the picked photograph is an example of the subject — and the gate requires it as
+well as `visible ⊇ mustShow`; an omitted `onSubject` reads as false, so a pick that does not say
+so is never placed; a gated pick logs `offSubject`. The ticket's lexical alt-vs-subject guard was
+dropped after checking Pexels: captions for "rodent incisors" say rat, hamster, mouse, prairie dog
+— never "rodent" — so word overlap would have removed every good candidate. Plan
+(`plan-skeleton.v7`) refuses a `mustShow` item made only of the subject's own words;
+`plan-facts.v5` refuses a worked-example problem or question stem that presumes a picture ("a
+photo shows", "the diagram", "pictured above"), a `pitch.avoid` entry the vocabulary defines, and —
+when the outline has no vocabulary slide — a term no key idea uses. `generate-slide.v8` and
+`repair.v6` may name only the kind of thing the caption names.

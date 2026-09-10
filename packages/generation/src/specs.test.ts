@@ -120,6 +120,31 @@ describe("planSkeletonSchemaFor", () => {
     ).toBe(true);
   });
 
+  test("TEACH-224 row 3: a mustShow item made only of the subject's words is refused; one naming a visible part is not", () => {
+    const entries = outline();
+    entries[3] = {
+      kind: "image-text",
+      minutes: 10,
+      factRefs: [O(0)],
+      phase: "explain",
+      brief,
+      imageBrief: {
+        subject: "rodent incisors close-up",
+        mustShow: ["rodent", "front teeth", "mouth"],
+        purpose: "identify-parts",
+      },
+    };
+    expect(messagesOf(parse(entries))).toEqual([
+      expect.stringMatching(
+        /^outline\.3\.imageBrief\.mustShow\.0: mustShow names the subject \("rodent"\)/,
+      ),
+    ]);
+    // "river water" for "river severn" shares a word but names something you can see.
+    const river = outline();
+    river[3] = { ...entries[3], imageBrief: RIVER };
+    expect(parse(river).success).toBe(true);
+  });
+
   test("image-text needs a list-form picture brief; a brief on a content entry is refused", () => {
     const missing = outline();
     missing[3] = {
@@ -175,6 +200,58 @@ describe("planFactsSchemaFor", () => {
 
   test("the fixture facts parse", () => {
     expect(schema().safeParse(facts()).success).toBe(true);
+  });
+
+  test("TEACH-224 rows 4–6: pitch.avoid may not list a vocabulary term; a problem or stem may not presume a picture; without a vocabulary slide every term is used in a key idea", () => {
+    const issues = (f: ReturnType<typeof facts>, s = FIXTURES.planSkeleton) => {
+      const r = planFactsSchemaFor(s).safeParse(f);
+      return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+    };
+    const avoid = facts();
+    avoid.pitch.avoid = ["kinetic", "Particle"];
+    expect(issues(avoid)).toEqual([
+      expect.stringMatching(
+        /^pitch\.avoid\.1: pitch\.avoid lists "Particle", which the vocabulary defines/,
+      ),
+    ]);
+
+    const photo = facts();
+    const x = photo.workedExamples[0];
+    const q = photo.questions[0];
+    if (!x || !q) throw new Error("fixture");
+    x.problem = "A photo shows an ice cube on a plate. Why does it melt?";
+    q.stem = "Look at the diagram above. Which state is it?";
+    expect(issues(photo).sort()).toEqual([
+      expect.stringMatching(/^questions\.0\.stem: Problems and question stems are self-contained/),
+      expect.stringMatching(
+        /^workedExamples\.0\.problem: Problems and question stems are self-contained/,
+      ),
+    ]);
+    // "the picture" alone, as a subject noun, is fine: "Describe the picture a scientist draws…"
+    const fine = facts();
+    const q2 = fine.questions[0];
+    if (!q2) throw new Error("fixture");
+    q2.stem = "Why do scientists draw particle diagrams?";
+    expect(issues(fine)).toEqual([]);
+
+    // The fixture skeleton has a vocabulary slide, so an unexplained term passes; without one it
+    // does not.
+    const noVocabSlide = structuredClone(FIXTURES.planSkeleton);
+    noVocabSlide.outline = noVocabSlide.outline.map((e) =>
+      e.kind === "vocabulary" ? { ...e, kind: "content" as const } : e,
+    );
+    const unexplained = facts();
+    unexplained.vocabulary.push({
+      term: "Diastema",
+      definition: "A gap between teeth.",
+      objectiveRefs: [O(0)],
+    });
+    expect(issues(unexplained)).toEqual([]);
+    const withoutSlide = issues(unexplained, noVocabSlide);
+    expect(withoutSlide.some((m) => m.startsWith('vocabulary.6.term: Vocabulary "Diastema"'))).toBe(
+      true,
+    );
+    expect(withoutSlide.some((m) => m.includes('"Melting"'))).toBe(false);
   });
 
   test("one key idea is enough (a narrow lesson has one); none is not", () => {
