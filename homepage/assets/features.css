@@ -1,0 +1,556 @@
+/* Feature proofs share the site type and colour tokens; paper changes with the material. */
+.ft-sample {
+  padding: clamp(56px, 7vw, 104px) max(6%, calc((100vw - 1160px) / 2));
+  background: var(--paper, #f7f3e5);
+}
+.ft-sample-sage {
+  background: #e7ecd9;
+}
+.ft-sample-yellow {
+  background: #f3e8cb;
+}
+.ft-sample-salmon {
+  background: #f3e4db;
+}
+.ft-sample-heading {
+  max-width: 770px;
+  margin: 0 auto 40px;
+  text-align: center;
+}
+.ft-sample-heading h2 {
+  font-size: clamp(34px, 4vw, 54px);
+  line-height: 1.08;
+}
+.ft-caption {
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted, #516357);
+  margin-top: 26px !important;
+}
+.ft-paper-label {
+  display: block;
+  font-size: 14px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.ft-plan,
+.ft-worksheet,
+.ft-slide-main {
+  background: #fffdf6;
+  border: 1px solid #ccd0bc;
+  border-radius: 5px;
+  box-shadow: 0 12px 30px #293b3208;
+}
+.ft-plan {
+  max-width: 840px;
+  margin: auto;
+  padding: clamp(24px, 4vw, 48px);
+}
+.ft-plan header {
+  border-bottom: 1px solid #d3d9c5;
+  padding-bottom: 26px;
+}
+.ft-plan h3 {
+  font-size: clamp(25px, 3vw, 35px);
+  max-width: 610px;
+  line-height: 1.15;
+  margin: 14px 0;
+}
+.ft-plan header p {
+  font-size: 16px;
+  color: var(--muted, #516357);
+}
+.ft-timeline {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+.ft-timeline li {
+  display: grid;
+  grid-template-columns: 66px 1fr;
+  gap: 24px;
+  padding: 22px 0;
+  border-bottom: 1px solid #e4e6d9;
+}
+.ft-timeline li:last-child {
+  border: 0;
+  padding-bottom: 0;
+}
+.ft-time {
+  font-size: 15px;
+  color: var(--muted, #516357);
+  padding-top: 3px;
+}
+.ft-timeline h4 {
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.3;
+  margin: 0 0 7px;
+}
+.ft-timeline p {
+  font-size: 17px;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 570px;
+}
+.ft-note {
+  position: relative;
+  min-height: 320px;
+  padding: 38px 38px 120px;
+  background: #f5edce;
+  border-radius: 3px;
+  transform: rotate(-1deg);
+}
+.ft-note > p {
+  font-size: clamp(25px, 3vw, 34px);
+  line-height: 1.3;
+  margin-top: 23px;
+  letter-spacing: -0.02em;
+}
+.ft-note-character {
+  position: absolute !important;
+  width: 125px !important;
+  right: 20px;
+  bottom: 0;
+}
+.ft-note-character svg {
+  width: 100%;
+}
+.ft-note-rule,
+.ft-hand-rule {
+  display: block;
+  width: 110px;
+  border-top: 2px solid #9b654f;
+  transform: rotate(-3deg);
+  margin-top: 25px;
+}
+.ft-slide-set {
+  max-width: 950px;
+  margin: auto;
+}
+.ft-slide-main {
+  padding: clamp(22px, 4vw, 44px);
+}
+.ft-slide-main h3 {
+  font-size: clamp(28px, 3.6vw, 46px);
+  line-height: 1.12;
+  max-width: 650px;
+  margin: 20px 0;
+}
+.ft-shadow-diagram {
+  display: block;
+  width: 100%;
+  max-height: 250px;
+  margin: 12px auto 25px;
+}
+.ft-shadow-diagram text {
+  font:
+    16px Gather,
+    Arial,
+    sans-serif;
+  fill: #516357;
+}
+.ft-discuss {
+  font-size: clamp(18px, 2vw, 22px);
+  border-top: 1px solid #e1decf;
+  padding-top: 22px;
+  margin: 0;
+}
+.ft-slide-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+.ft-slide-strip > div {
+  padding: 14px 16px;
+  border: 1px solid #c4bea6;
+  border-radius: 3px;
+  font-size: 16px;
+  background: #ffffff44;
+}
+.ft-slide-strip span {
+  font-size: 14px;
+  display: block;
+  margin-bottom: 7px;
+  color: #586350;
+}
+.ft-slide-strip .ft-slide-current {
+  border-color: #536447;
+  background: #fffdf6;
+}
+.ft-teacher-note {
+  border-left: 3px solid #93a77c;
+  padding: 15px 0 15px 32px;
+  max-width: 470px;
+}
+.ft-teacher-note h3 {
+  font-size: clamp(30px, 4vw, 46px);
+  line-height: 1.12;
+  margin: 21px 0;
+}
+.ft-teacher-note p {
+  font-size: 20px;
+  line-height: 1.55;
+  margin-top: 18px;
+}
+.ft-teacher-note ul {
+  padding-left: 22px;
+  font-size: 19px;
+  line-height: 1.6;
+}
+.ft-teacher-note li + li {
+  margin-top: 13px;
+}
+.ft-teacher-note a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 20px;
+  font-size: 16px;
+  margin-top: 15px;
+}
+.ft-worksheet {
+  max-width: 740px;
+  margin: auto;
+  padding: clamp(24px, 4vw, 48px);
+}
+.ft-worksheet header {
+  padding-bottom: 24px;
+  border-bottom: 1px solid #d8daca;
+}
+.ft-worksheet h3 {
+  font-size: clamp(30px, 3.5vw, 44px);
+  margin: 16px 0 12px;
+  line-height: 1.1;
+}
+.ft-worksheet header p {
+  font-size: 18px;
+  line-height: 1.5;
+}
+.ft-question {
+  display: grid;
+  grid-template-columns: 27px 1fr;
+  gap: 15px;
+  margin-top: 30px;
+}
+.ft-question-number {
+  font-size: 18px;
+  font-weight: 600;
+}
+.ft-question h4 {
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.45;
+  margin: 0;
+}
+.ft-writing-lines {
+  height: 71px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 34px,
+    #d5d8cb 34px,
+    #d5d8cb 35px
+  );
+  margin-top: 8px;
+}
+.ft-word-bank {
+  background: #edf0e3;
+  padding: 19px 22px;
+  margin-top: 30px;
+}
+.ft-word-bank p {
+  font-size: 18px;
+  margin-top: 10px;
+}
+.ft-word-bank p span {
+  padding: 0 9px;
+  color: #899a78;
+}
+.ft-support-samples {
+  display: grid;
+  gap: 18px;
+}
+.ft-support-samples article {
+  padding: 28px;
+  background: #fffdf6;
+  border-radius: 3px;
+}
+.ft-support-samples article + article {
+  background: #dce5cd;
+}
+.ft-support-samples h3 {
+  font-size: 27px;
+  line-height: 1.22;
+  margin: 17px 0 13px;
+}
+.ft-support-samples p {
+  font-size: 18px;
+  line-height: 1.5;
+}
+.ft-answer-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.ft-question-card,
+.ft-answer-card {
+  background: #fffdf6;
+  border: 1px solid #d0c9b9;
+  border-radius: 4px;
+  padding: clamp(24px, 3vw, 38px);
+}
+.ft-question-card {
+  margin-top: 30px;
+}
+.ft-answer-pair h3 {
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.2;
+  margin: 22px 0;
+}
+.ft-answer-card {
+  background: #fdf4e9;
+}
+.ft-answer-card > p {
+  font-size: 20px;
+  line-height: 1.5;
+}
+.ft-answer-note {
+  border-top: 1px solid #d6cabb;
+  margin-top: 28px;
+  padding-top: 22px;
+  font-size: 17px;
+  line-height: 1.5;
+}
+.ft-answer-note strong {
+  font-weight: 500;
+}
+.ft-answer-note p {
+  margin-top: 8px;
+}
+.ft-review {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.ft-review-item {
+  background: #fffdf6;
+  padding: clamp(24px, 3vw, 36px);
+  border-radius: 4px;
+  border: 1px solid #d1d6c3;
+}
+.ft-review-state {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  color: #4e6643;
+}
+.ft-review-state span {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  background: #e7ecd9;
+}
+.ft-review-item h3 {
+  font-size: 30px;
+  line-height: 1.14;
+  margin: 22px 0 12px;
+}
+.ft-review-location {
+  font-size: 14px;
+  color: #657060;
+}
+.ft-revision {
+  margin-top: 25px;
+  display: grid;
+  gap: 20px;
+}
+.ft-revision > div {
+  border-left: 2px solid #c2cab1;
+  padding-left: 17px;
+}
+.ft-revision > div:last-child {
+  border-color: #72915d;
+}
+.ft-revision p {
+  font-size: 18px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+.ft-review-attention {
+  background: #f5edd9;
+}
+.ft-review-attention > p {
+  font-size: 18px;
+  line-height: 1.55;
+}
+.ft-review-attention a {
+  display: inline-flex;
+  align-items: center;
+  gap: 15px;
+  min-height: 44px;
+  font-size: 16px;
+  margin-top: 20px;
+}
+.ft-review-attention .ft-review-state {
+  color: #755b2c;
+}
+.ft-review-attention .ft-review-state span {
+  background: #e8d7b0;
+}
+.ft-related {
+  max-width: 1160px;
+  width: 88%;
+  margin: clamp(60px, 7vw, 100px) auto;
+}
+.ft-related h2 {
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.1;
+  max-width: 640px;
+}
+.ft-related nav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-top: 32px;
+}
+.ft-related nav a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  border-bottom: 1px solid #bcc5b1;
+  padding: 16px 0;
+  font-size: 19px;
+  text-decoration: none;
+  min-height: 54px;
+}
+.ft-related nav a:hover {
+  border-color: #293b32;
+}
+.ft-related nav a span {
+  transition: transform 0.2s;
+}
+.ft-related nav a:hover span {
+  transform: translate(2px, -2px);
+}
+@media (max-width: 700px) {
+  .ft-sample {
+    padding: 56px 6%;
+  }
+  .ft-sample-heading {
+    margin-bottom: 30px;
+  }
+  .ft-timeline li {
+    grid-template-columns: 49px 1fr;
+    gap: 13px;
+    padding: 18px 0;
+  }
+  .ft-timeline h4 {
+    font-size: 19px;
+  }
+  .ft-timeline p {
+    font-size: 16px;
+  }
+  .ft-time {
+    font-size: 14px;
+  }
+  .ft-note {
+    padding: 27px 27px 112px;
+    min-height: 300px;
+  }
+  .ft-slide-strip {
+    gap: 7px;
+  }
+  .ft-slide-strip > div {
+    font-size: 14px;
+    padding: 10px;
+  }
+  .ft-shadow-diagram text {
+    font-size: 20px;
+  }
+  .ft-teacher-note {
+    padding-left: 24px;
+  }
+  .ft-answer-pair,
+  .ft-review {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .ft-question-card {
+    margin-top: 0;
+  }
+  .ft-answer-pair h3 {
+    font-size: 29px;
+  }
+  .ft-related nav {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 24px;
+  }
+  .ft-related nav a {
+    font-size: 17px;
+  }
+  .ft-caption {
+    font-size: 14px;
+  }
+  .ft-word-bank p {
+    font-size: 16px;
+  }
+  .ft-word-bank p span {
+    padding: 0 4px;
+  }
+  .ft-worksheet header p {
+    font-size: 16px;
+  }
+  .ft-question h4 {
+    font-size: 17px;
+  }
+  .ft-related {
+    margin: 60px auto;
+  }
+  .ft-worksheet,
+  .ft-plan {
+    padding: 25px;
+  }
+  .ft-review-item h3 {
+    font-size: 28px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ft-related nav a span {
+    transition: none;
+  }
+}
+
+.ft-slide-main .ex-diagram {
+  display: block;
+  width: 100%;
+  max-height: 270px;
+  margin: 20px auto 26px;
+}
+.ft-answer-card .ft-answer-response {
+  font-size: clamp(23px, 2.7vw, 30px);
+  line-height: 1.35;
+  margin-top: 24px;
+}
+.ft-review-reason {
+  font-size: 17px;
+  line-height: 1.5;
+  margin-top: 24px;
+}
+@media (max-width: 700px) {
+  .ft-slide-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ft-slide-main .ex-diagram {
+    max-height: none;
+  }
+}

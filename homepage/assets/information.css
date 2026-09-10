@@ -1,0 +1,395 @@
+.info-link {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  font-weight: 600;
+}
+.info-link:hover {
+  text-decoration-thickness: 2px;
+}
+.info-note {
+  font-size: 1rem;
+  color: var(--muted, #617066);
+  text-align: center;
+  max-width: 36rem;
+  margin: 1rem auto 5rem;
+}
+.info-contained {
+  max-width: 80rem;
+  margin: auto;
+}
+.info-single-friend {
+  width: 11rem;
+  margin: -1rem auto 0;
+}
+.info-single-friend svg {
+  width: 100%;
+  height: auto;
+}
+.info-lesson-map {
+  max-width: 28rem;
+  margin: auto;
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 2rem;
+}
+.info-lesson-map span {
+  padding: 1.25rem 2rem;
+  border: 1px solid var(--line, #ccd3c4);
+  background: var(--cream, #fcf8ec);
+  border-radius: 0.45rem;
+  width: 100%;
+  text-align: center;
+  font-size: 1.2rem;
+}
+.info-lesson-map span:nth-of-type(2) {
+  background: #f7d689;
+  transform: rotate(-2deg);
+}
+.info-lesson-map i {
+  font-size: 1.5rem;
+  font-style: normal;
+  color: var(--muted, #617066);
+}
+.info-school-notes {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: clamp(2rem, 7vw, 7rem);
+  max-width: 72rem;
+  margin: 5rem auto 7rem;
+  padding: 0 1.5rem;
+}
+.info-school-notes h2 {
+  max-width: 20rem;
+}
+.info-school-list article + article {
+  margin-top: 2.5rem;
+  padding-top: 2.5rem;
+  border-top: 1px solid var(--line, #ccd3c4);
+}
+.info-school-list h3 {
+  font-size: 1.65rem;
+  line-height: 1.15;
+  margin: 0 0 1rem;
+}
+.info-school-list p {
+  font-size: 1.15rem;
+  line-height: 1.65;
+  max-width: 38rem;
+}
+.info-about {
+  max-width: 70rem;
+  margin: 1rem auto 7rem;
+  padding: 0 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: center;
+}
+.info-about-art {
+  display: flex;
+  align-items: center;
+}
+.info-about-art > * {
+  width: 57%;
+  flex: none;
+}
+.info-about-art > * + * {
+  margin-left: -14%;
+  margin-top: 6rem;
+}
+.info-about-art svg {
+  width: 100%;
+  height: auto;
+}
+.info-about p {
+  font-size: 1.2rem;
+  line-height: 1.7;
+}
+.info-about .info-link {
+  display: inline-block;
+  margin-top: 1rem;
+}
+.info-faq {
+  max-width: 52rem;
+  margin: 0 auto 4rem;
+  padding: 0 1.5rem;
+}
+.info-faq details {
+  border-bottom: 1px solid var(--line, #ccd3c4);
+}
+.info-faq details:first-child {
+  border-top: 1px solid var(--line, #ccd3c4);
+}
+.info-faq summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem 0;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  font-weight: 600;
+  list-style: none;
+}
+.info-faq summary::-webkit-details-marker {
+  display: none;
+}
+.info-faq summary > span {
+  font-size: 1.8rem;
+  font-weight: 400;
+  transition: transform 0.2s;
+}
+.info-faq details[open] summary > span {
+  transform: rotate(45deg);
+}
+.info-faq details > div {
+  padding: 0 2.5rem 1.4rem 0;
+  max-width: 44rem;
+}
+.info-faq p {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  margin: 0;
+}
+.info-help-end {
+  text-align: center;
+  margin: 0 auto 6rem;
+  font-size: 1.25rem;
+}
+.info-help-end p {
+  margin-bottom: 0.75rem;
+}
+.info-principles {
+  max-width: 57rem;
+  padding: 0 1.5rem;
+  margin: 0 auto 7rem;
+}
+.info-principles article {
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  gap: 1.5rem;
+  border-top: 1px solid var(--line, #ccd3c4);
+  padding: 3rem 0;
+}
+.info-number {
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  padding-top: 0.55rem;
+  color: var(--muted, #617066);
+}
+.info-principles h2 {
+  font-size: clamp(1.8rem, 3.3vw, 2.6rem);
+  margin: 0 0 1rem;
+}
+.info-principles p {
+  font-size: 1.2rem;
+  line-height: 1.7;
+}
+.info-principles blockquote {
+  margin: 2rem 0 0;
+  padding: 1.6rem;
+  background: #e7ecd9;
+  border-radius: 0.5rem;
+  font-size: 1.45rem;
+  line-height: 1.45;
+}
+.info-principles blockquote small {
+  display: block;
+  font-size: 0.95rem;
+  margin-top: 0.7rem;
+  color: var(--muted, #617066);
+}
+.info-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.75rem;
+  margin-top: 1.5rem;
+}
+.info-contact,
+.info-access {
+  max-width: 72rem;
+  margin: clamp(3rem, 7vw, 7rem) auto;
+  padding: 0 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(3rem, 8vw, 8rem);
+  align-items: start;
+}
+.info-contact h1,
+.info-access h1 {
+  font-size: var(--h1);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  margin: 1.25rem 0 1.75rem;
+}
+.info-contact-copy > p:not(.eyebrow),
+.info-access > div > p:not(.eyebrow) {
+  font-size: 1.2rem;
+  line-height: 1.65;
+  max-width: 30rem;
+}
+.info-contact-copy .info-link {
+  display: inline-block;
+  margin-top: 1.1rem;
+}
+.info-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+}
+.info-form label {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 1rem;
+}
+.info-form label:first-child {
+  margin-top: 0;
+}
+.info-form label span {
+  font-weight: 400;
+  color: var(--muted, #617066);
+}
+.info-form input,
+.info-form select,
+.info-form textarea {
+  font: inherit;
+  color: inherit;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  padding: 0.9rem 1rem;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 3.2rem;
+}
+.info-form textarea {
+  resize: vertical;
+}
+.info-form input:focus-visible,
+.info-form select:focus-visible,
+.info-form textarea:focus-visible,
+.info-faq summary:focus-visible {
+  outline: 2px solid var(--ink, #293d32);
+  outline-offset: 4px;
+}
+.info-submit {
+  align-self: flex-start;
+  margin-top: 1rem;
+  cursor: pointer;
+}
+.info-form-notice {
+  font-size: 0.93rem;
+  line-height: 1.5;
+  max-width: 29rem;
+  color: var(--muted, #617066);
+  margin: 0.5rem 0;
+}
+.info-form-status {
+  font-size: 1rem;
+  line-height: 1.5;
+  min-height: 3rem;
+  margin: 0.25rem 0;
+}
+.info-access > div + div {
+  padding-top: 1rem;
+}
+.info-access h2 {
+  font-size: 2.2rem;
+  margin: 0 0 1rem;
+}
+.info-access .info-form {
+  margin-top: 2rem;
+}
+.info-access-friend {
+  width: 12rem;
+  margin: 1.5rem 0 0 2rem;
+}
+.info-access-friend svg {
+  width: 100%;
+  height: auto;
+}
+.info-privacy-link {
+  font-size: 0.95rem !important;
+}
+.info-lost-friend {
+  transform: rotate(-6deg);
+}
+@media (max-width: 700px) {
+  .info-school-notes,
+  .info-about,
+  .info-contact,
+  .info-access {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    margin-bottom: 4rem;
+  }
+  .info-about-art {
+    max-width: 23rem;
+    margin: auto;
+  }
+  .info-school-notes {
+    margin-top: 3rem;
+  }
+  .info-school-notes h2 {
+    max-width: none;
+  }
+  .info-principles article {
+    grid-template-columns: 2rem 1fr;
+    gap: 0.65rem;
+    padding: 2rem 0;
+  }
+  .info-principles p {
+    font-size: 1.1rem;
+  }
+  .info-principles blockquote {
+    padding: 1.2rem;
+    font-size: 1.25rem;
+  }
+  .info-access-friend {
+    display: none;
+  }
+  .info-contact h1 br,
+  .info-access h1 br {
+    display: none;
+  }
+  .info-single-friend {
+    width: 9rem;
+  }
+  .info-faq summary {
+    padding: 1.25rem 0;
+  }
+  .info-faq details > div {
+    padding-right: 0.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .info-faq summary > span {
+    transition: none;
+  }
+}
+
+.info-about p + p,
+.info-principles p + p {
+  margin-top: 1.2rem;
+}
+.info-about h2 {
+  margin-bottom: 1.4rem;
+}
+.info-school-list p {
+  margin-bottom: 1rem;
+}
+.info-contact-copy > p:not(.eyebrow) {
+  margin-bottom: 1rem;
+}
+.info-contained > .info-note {
+  text-align: left;
+  width: 88%;
+  max-width: 1200px;
+  margin: 0 auto 5rem;
+}
+.info-access .info-privacy-link {
+  margin-top: 0.8rem;
+}

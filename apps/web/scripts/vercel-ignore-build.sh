@@ -16,6 +16,7 @@ cd "$(dirname "$0")/../../.." || exit 1
 # source, the lockfile and the turbo/root manifests). Keep in sync with infra/README.md.
 PATHS=(
   apps/web
+  homepage
   packages/ui
   packages/api-client
   packages/domain

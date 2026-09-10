@@ -20,6 +20,7 @@ interface VercelConfig {
   installCommand: string;
   outputDirectory: string;
   ignoreCommand: string;
+  redirects: { source: string; destination: string; permanent: boolean }[];
   rewrites: { source: string; destination: string }[];
   headers: { source: string; headers: Header[] }[];
 }
@@ -59,6 +60,7 @@ describe("vercel.json", () => {
     );
     expect(config.buildCommand).toContain("bun scripts/vercel-env.ts exec");
     expect(config.buildCommand).toContain("turbo run build --filter=@tj/web");
+    expect(config.buildCommand).toEndWith("&& bun run homepage:stage");
     expect(config.ignoreCommand).toBe("bash scripts/vercel-ignore-build.sh");
   });
 
@@ -70,6 +72,39 @@ describe("vercel.json", () => {
     expect(matches(src, "/sign-in")).toBe(true);
     expect(matches(src, "/assets/index-abc.js")).toBe(false);
     expect(matches(src, "/_vercel/speed-insights/script.js")).toBe(false);
+  });
+
+  test("homepage pages and missing paths bypass the application shell", () => {
+    const source = config.rewrites[0]?.source ?? "";
+    for (const path of [
+      "/homepage",
+      "/homepage/",
+      "/homepage/examples/shadows/",
+      "/homepage/missing",
+      "/homepage/assets/system.css",
+    ]) {
+      expect(matches(source, path)).toBe(false);
+    }
+    expect(matches(source, "/homepage-other")).toBe(true);
+    expect(config.redirects).toContainEqual({
+      source: "/homepage",
+      destination: "/homepage/",
+      permanent: true,
+    });
+    const ignore = readFileSync(resolve(__dirname, "../scripts/vercel-ignore-build.sh"), "utf8");
+    expect(ignore).toMatch(/\n {2}homepage\n/);
+  });
+
+  test("only the embedded homepage demo permits same-origin framing", () => {
+    const demo = headersFor("/homepage/lesson-building/");
+    expect(demo["X-Frame-Options"]).toBe("SAMEORIGIN");
+    expect(demo["Content-Security-Policy-Report-Only"]).toContain("frame-ancestors 'self'");
+    for (const path of ["/homepage/", "/homepage/examples/shadows/", "/l/example", "/sign-in"]) {
+      expect(headersFor(path)["X-Frame-Options"]).toBe("DENY");
+    }
+    expect(headersFor("/homepage/")["X-Robots-Tag"]).toBe("noindex, nofollow");
+    expect(headersFor("/")["X-Robots-Tag"]).toBeUndefined();
+    expect(headersFor("/homepage/assets/system.css")["Cache-Control"]).toBe("no-cache");
   });
 
   test("immutable assets, no-cache shell, security headers everywhere", () => {
