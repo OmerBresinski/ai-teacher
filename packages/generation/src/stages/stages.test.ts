@@ -690,6 +690,20 @@ describe("evaluate", () => {
         evidence: "Particle",
         message: "Untargeted: a fact, kept.",
       },
+      {
+        check: "fact-consistency",
+        severity: "error",
+        target: { slideId, factId: "v99" },
+        evidence: slide.notes ?? "",
+        message: "Kept, but v99 names no fact: the id is removed so Repair patches nothing.",
+      },
+      {
+        check: "fact-consistency",
+        severity: "error",
+        target: { slideId, factId: "o1" },
+        evidence: slide.notes ?? "",
+        message: "Kept; an objective cannot be patched, so its id is removed too.",
+      },
     ];
     const { lines, logger } = memoryLogger();
     const ai = createFakeAi({ script: [json({ findings })], usage });
@@ -703,6 +717,12 @@ describe("evaluate", () => {
       "pitch",
       "notes-quality",
       "fact-consistency",
+      "fact-consistency",
+      "fact-consistency",
+    ]);
+    expect(next.lesson.generation?.findings.slice(-2).map((f) => f.target)).toEqual([
+      { slideId },
+      { slideId },
     ]);
     const dropped = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "findings dropped");
     expect(dropped).toMatchObject({ stage: "evaluate", dropped: 2 });
@@ -975,6 +995,60 @@ describe("repair", () => {
     expect(state.lesson.generation?.findings.some((f) => f.check === "fact-consistency")).toBe(
       false,
     );
+  });
+
+  test("a fact patch is committed only with its regenerated artefact: a slide call that fails leaves the facts as they were", async () => {
+    const script = [
+      ...planScript(),
+      ...FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((e) => json(FIXTURES.slides[e.kind])),
+      json(FIXTURES.worksheet),
+    ];
+    const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const vocab = generated.lesson.slides.find((s) => s.kind === "vocabulary");
+    const v1 = generated.lesson.facts?.vocabulary[0];
+    if (!vocab || !v1) throw new Error("fixture");
+    const findings: Finding[] = [
+      {
+        check: "fact-consistency",
+        severity: "error",
+        target: { slideId: vocab.id, factId: "v1" },
+        evidence: v1.term,
+        message: "Not the accepted term for this year group.",
+      },
+    ];
+    const evaluated = {
+      ...generated,
+      lesson: {
+        ...generated.lesson,
+        generation: {
+          ...(generated.lesson.generation as NonNullable<typeof generated.lesson.generation>),
+          stage: "evaluated" as const,
+          findings,
+        },
+      },
+    };
+    // The fact call succeeds; the slide call misses twice.
+    const ai = createFakeAi({
+      script: [
+        json({
+          corrections: [{ factId: "v1", field: "term", value: "Corpuscle", reason: "wrong-term" }],
+        }),
+        "not json",
+        "still not json",
+      ],
+      usage,
+    });
+    const state = await repair(evaluated, recordingDeps(ai));
+    expect(ai.calls).toHaveLength(3);
+    expect(state.lesson.facts?.vocabulary[0]?.term).toBe(v1.term);
+    const checks = state.lesson.generation?.findings.map((f) => f.check) ?? [];
+    expect(checks).not.toContain("fact-verify");
+    // The error stays, with the repair warning, as for any target that could not be repaired.
+    expect(checks).toContain("fact-consistency");
+    expect(checks).toContain("repair");
   });
 
   test("row 7: seven error targets — six repaired (the cap), the seventh's error stays a residual", async () => {

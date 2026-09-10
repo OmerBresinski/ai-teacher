@@ -1,4 +1,10 @@
-import { checkLesson, type Finding, type Slide } from "@tj/domain/documents";
+import {
+  checkLesson,
+  FACT_ARRAYS,
+  type Finding,
+  type LessonFacts,
+  type Slide,
+} from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { evaluatePrompt } from "../prompts";
 import { EvaluateOutputSchema } from "../specs";
@@ -24,8 +30,10 @@ import { audienceOf, blockText, generationOf, slideText } from "./shared";
 
 /**
  * Findings a model may return are trusted only where they point at something that exists and quote
- * text that is really there (case and whitespace aside). Returns the kept findings and the count
- * dropped — the count is logged, never the text (ADR 0015).
+ * text that is really there (case and whitespace aside). A `target.factId` that names no patchable
+ * fact (unknown, or an objective) is removed from the finding rather than dropping it: the
+ * artefact finding stands, Repair just has no fact to patch. Returns the kept findings and the
+ * count dropped — the count is logged, never the text (ADR 0015).
  */
 export function knownTargetsWithEvidence(
   findings: Finding[],
@@ -35,18 +43,36 @@ export function knownTargetsWithEvidence(
   const blockText_ = new Map(
     (state.worksheet?.blocks ?? []).map((b) => [b.id, normalise(blockText(b))]),
   );
-  const kept = findings.filter((f) => {
-    const { slideId, blockId } = f.target;
-    if (slideId !== undefined && !slideText_.has(slideId)) return false;
-    if (blockId !== undefined && !blockText_.has(blockId)) return false;
-    if (f.evidence === undefined) return true;
-    const needle = normalise(f.evidence);
-    if (slideId !== undefined) return slideText_.get(slideId)?.includes(needle) ?? false;
-    if (blockId !== undefined) return blockText_.get(blockId)?.includes(needle) ?? false;
-    // A lesson-level finding (no target) may quote a fact.
-    return normalise(factsText(state)).includes(needle);
-  });
+  const patchable = patchableFactIds(state.lesson.facts);
+  const kept = findings
+    .filter((f) => {
+      const { slideId, blockId } = f.target;
+      if (slideId !== undefined && !slideText_.has(slideId)) return false;
+      if (blockId !== undefined && !blockText_.has(blockId)) return false;
+      if (f.evidence === undefined) return true;
+      const needle = normalise(f.evidence);
+      if (slideId !== undefined) return slideText_.get(slideId)?.includes(needle) ?? false;
+      if (blockId !== undefined) return blockText_.get(blockId)?.includes(needle) ?? false;
+      // A lesson-level finding (no target) may quote a fact.
+      return normalise(factsText(state)).includes(needle);
+    })
+    .map((f) => {
+      const { factId, ...rest } = f.target;
+      if (factId === undefined || patchable.has(factId)) return f;
+      return { ...f, target: rest };
+    });
   return { kept, dropped: findings.length - kept.length };
+}
+
+/** Ids `applyVerifyPatch` can correct: every fact array except the objectives. */
+function patchableFactIds(facts: LessonFacts | undefined): Set<string> {
+  const ids = new Set<string>();
+  if (!facts) return ids;
+  for (const key of FACT_ARRAYS) {
+    if (key === "objectives") continue;
+    for (const fact of facts[key] ?? []) ids.add(fact.id);
+  }
+  return ids;
 }
 
 const normalise = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();

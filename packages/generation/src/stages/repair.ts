@@ -69,14 +69,23 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
 
   for (const target of repairTargets(generation.findings)) {
     throwIfAborted(deps.signal);
+    // Facts first (TEACH-216): a `fact-consistency` finding that names the wrong fact patches the
+    // fact before the artefact is regenerated from it, so the two do not drift apart again. The
+    // patch is staged on this target's copy and committed with the regenerated artefact: a target
+    // that could not be repaired leaves the facts as they were, never corrected facts beside an
+    // artefact still built on the old ones.
+    let staged = facts;
+    const stagedFindings: Finding[] = [];
+    const commitFacts = () => {
+      facts = staged;
+      lesson = { ...lesson, facts };
+      extra.push(...stagedFindings);
+    };
     try {
-      // Facts first (TEACH-216): a `fact-consistency` finding that names the wrong fact patches the
-      // fact before the artefact is regenerated from it, so the two do not drift apart again.
       for (const factId of wrongFacts(target.findings)) {
-        const patched = await repairFact(facts, factId, target.findings, audience, deps);
-        facts = patched.facts;
-        lesson = { ...lesson, facts };
-        extra.push(...patched.applied.map(verifyFinding));
+        const patched = await repairFact(staged, factId, target.findings, audience, deps);
+        staged = patched.facts;
+        stagedFindings.push(...patched.applied.map(verifyFinding));
       }
       if (target.slideId !== undefined) {
         const index = lesson.slides.findIndex((s) => s.id === target.slideId);
@@ -91,7 +100,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           effort: "low",
           prompt: repairPrompt,
           input: {
-            facts,
+            facts: staged,
             audience,
             target: {
               kind: "slide",
@@ -105,6 +114,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           schema,
           maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
         });
+        commitFacts();
         repaired.add(target.key);
         const fresh: Slide = {
           ...materialiseSlide(call.output, lesson.themeId, meta(call.modelId, deps), deps.ids),
@@ -123,7 +133,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           effort: "low",
           prompt: repairPrompt,
           input: {
-            facts,
+            facts: staged,
             audience,
             target: {
               kind: "block",
@@ -137,6 +147,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           schema,
           maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
         });
+        commitFacts();
         repaired.add(target.key);
         const fresh = {
           ...materialiseBlock(call.output, meta(call.modelId, deps), deps.ids),
