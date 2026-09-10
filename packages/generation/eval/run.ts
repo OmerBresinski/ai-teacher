@@ -87,7 +87,9 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
     .map((b) => b.firstSlideMs)
     .filter((ms): ms is number => ms !== null)
     .sort((a, b) => a - b);
-  const plans = completed
+  // Every brief that reached `planned`, whether or not it went on to complete: Plan's time is
+  // Plan's, as `firstSlideMs` is.
+  const plans = briefs
     .map((b) => b.planMs)
     .filter((n): n is number => n !== null)
     .sort((a, b) => a - b);
@@ -112,7 +114,7 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
         : Math.round(completed.reduce((sum, b) => sum + b.durationMs, 0) / completed.length),
     p50FirstSlideMs:
       firsts.length === 0 ? null : (firsts[Math.floor((firsts.length - 1) / 2)] ?? null),
-    p50PlanMs: plans.length === 0 ? null : (plans[Math.floor((plans.length - 1) / 2)] ?? null),
+    p50PlanMs: median(plans),
     calls: totals.calls,
     inputTokens: totals.inputTokens,
     outputTokens: totals.outputTokens,

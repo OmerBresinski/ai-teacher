@@ -93,6 +93,10 @@ const outlineEntry = z.strictObject({
 
 /** The share of a lesson that must explain (content, worked example, picture): 30 %. */
 export const EXPLAIN_SHARE_MIN_PERCENT = 30;
+/** The kinds that explain; the same set `checkLesson`'s `explanation-share` counts. */
+const EXPLAIN_KINDS: ReadonlySet<string> = new Set(["content", "worked-example", "image-text"]);
+/** The fewest questions of each tier a plan gives (the prompt asks for 4 / 5 / 3). */
+const TIER_MINIMUMS = { easy: 3, core: 3, stretch: 2 } as const;
 /** The brief answer that asks for an explain slide per objective (`brief-questions.ts`). */
 export const PRIOR_CONFIDENCE_KEY = "priorConfidence";
 export const PRIOR_CONFIDENCE_NEW = "New to it";
@@ -204,20 +208,32 @@ export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<P
     }
     // Phases run starter → explain → practise → check and never go back.
     let last = -1;
+    let lastPhase: string | undefined;
     let explainMinutes = 0;
     const phases = new Set<string>();
     skeleton.outline.forEach((entry, i) => {
       if (entry.phase === undefined) return;
       phases.add(entry.phase);
-      if (entry.phase === "explain") explainMinutes += entry.minutes;
+      // Only slides that teach count towards the explain share — the same kinds `checkLesson`
+      // counts — so a vocabulary or question slide tagged "explain" does not pad it.
+      if (entry.phase === "explain" && EXPLAIN_KINDS.has(entry.kind)) {
+        explainMinutes += entry.minutes;
+      }
+      if (entry.phase === "explain" && !EXPLAIN_KINDS.has(entry.kind)) {
+        issue(
+          `Outline position ${i} is a ${entry.kind} slide in the explain phase; explain slides are content, worked-example or image-text. Give it the phase it belongs to, or change its kind.`,
+          ["outline", i, "phase"],
+        );
+      }
       const rank = PHASE_ORDER[entry.phase];
       if (rank < last) {
         issue(
-          `Outline position ${i} is a "${entry.phase}" slide after a later phase; phases run starter, explain, practise, check.`,
+          `Outline position ${i} is a "${entry.phase}" slide but position ${i - 1} is already "${lastPhase}"; phases run starter, explain, practise, check and never go back. Move this slide before the first "${lastPhase}" slide, or give it the phase "${lastPhase}".`,
           ["outline", i, "phase"],
         );
       }
       last = Math.max(last, rank);
+      lastPhase = entry.phase;
     });
     for (const needed of ["explain", "practise", "check"] as const) {
       if (!phases.has(needed)) {
@@ -443,6 +459,40 @@ export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts>
       }
       refineOutlineRefs(ctx, ["outlineFactRefs", i, "factRefs"], entry.factRefs, sizes);
     });
+    // Every objective is served by a key idea and checked by a question (the prompt's rule; the
+    // objectives slide alone does not teach it).
+    const served = new Set<number>();
+    const checked = new Set<number>();
+    for (const k of facts.keyIdeas) for (const ref of k.objectiveRefs) served.add(ref.index);
+    for (const q of facts.questions) for (const ref of q.objectiveRefs) checked.add(ref.index);
+    skeleton.learningObjectives.forEach((_, i) => {
+      if (!served.has(i)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Objective ${i} is served by no key idea; add one with { "type": "objective", "index": ${i} } in its objectiveRefs, or add the objective to an existing key idea.`,
+          path: ["keyIdeas"],
+        });
+      }
+      if (!checked.has(i)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Objective ${i} is checked by no question; give at least one question objectiveRefs that include index ${i}.`,
+          path: ["questions"],
+        });
+      }
+    });
+    // Three tiers, each present in numbers a sheet and an exit ticket can draw on.
+    const tiers = { easy: 0, core: 0, stretch: 0 };
+    for (const q of facts.questions) tiers[q.tier] += 1;
+    for (const tier of ["easy", "core", "stretch"] as const) {
+      if (tiers[tier] < TIER_MINIMUMS[tier]) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Only ${tiers[tier]} "${tier}" questions; give at least ${TIER_MINIMUMS[tier]} (the target is four easy, five core, three stretch).`,
+          path: ["questions"],
+        });
+      }
+    }
     // Kind fit: a content slide is built from a key idea, a worked-example slide from a worked
     // example. Both refs may also come from the skeleton, but the skeleton could only name
     // objectives, so they have to be given here.

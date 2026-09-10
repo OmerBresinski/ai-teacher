@@ -64,9 +64,7 @@ describe("planSkeletonSchemaFor", () => {
     entries.splice(3, 0, practise);
     const messages = messagesOf(parse(entries));
     expect(messages).toContainEqual(
-      expect.stringContaining(
-        'outline.4.phase: Outline position 4 is a "explain" slide after a later phase',
-      ),
+      'outline.4.phase: Outline position 4 is a "explain" slide but position 3 is already "practise"; phases run starter, explain, practise, check and never go back. Move this slide before the first "practise" slide, or give it the phase "practise".',
     );
   });
 
@@ -153,6 +151,19 @@ describe("planSkeletonSchemaFor", () => {
         .success,
     ).toBe(true);
   });
+  test("a vocabulary slide tagged explain is refused and does not count towards the explain share", () => {
+    const entries = outline();
+    entries[3] = { kind: "vocabulary", minutes: 10, factRefs: [O(0)], phase: "explain", brief };
+    const messages = messagesOf(parse(entries));
+    expect(messages).toContainEqual(
+      expect.stringContaining(
+        "outline.3.phase: Outline position 3 is a vocabulary slide in the explain phase",
+      ),
+    );
+    expect(messages).toContainEqual(
+      expect.stringContaining("explain phase needs at least 18 minutes"),
+    );
+  });
 });
 
 describe("planFactsSchemaFor", () => {
@@ -166,6 +177,9 @@ describe("planFactsSchemaFor", () => {
   test("one key idea is enough (a narrow lesson has one); none is not", () => {
     const f = facts();
     f.keyIdeas = f.keyIdeas.slice(0, 1);
+    const only = f.keyIdeas[0];
+    if (!only) throw new Error("fixture");
+    only.objectiveRefs = [O(0), O(1), O(2)];
     f.outlineFactRefs = f.outlineFactRefs.map((e) =>
       e.index === 4 ? { ...e, factRefs: [{ type: "keyIdea" as const, index: 0 }] } : e,
     );
@@ -225,6 +239,29 @@ describe("planFactsSchemaFor", () => {
     expect(schema().safeParse(f).success).toBe(true);
     const ids = assignFactIds(FIXTURES.planSkeleton, f, 60);
     expect(ids.outline[3]?.factRefs).toEqual(expect.arrayContaining(["k1", "m1"]));
+  });
+  test("every objective is served by a key idea and checked by a question; tiers have their minimums", () => {
+    const f = facts();
+    for (const k of f.keyIdeas) k.objectiveRefs = [O(0)];
+    for (const q of f.questions) q.objectiveRefs = [O(0)];
+    const r = schema().safeParse(f);
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    const messages = r.error.issues.map((i) => i.message);
+    expect(messages).toContainEqual(
+      expect.stringContaining("Objective 1 is served by no key idea"),
+    );
+    expect(messages).toContainEqual(
+      expect.stringContaining("Objective 2 is checked by no question"),
+    );
+    const flat = facts();
+    for (const q of flat.questions) q.tier = "core";
+    const t = schema().safeParse(flat);
+    expect(t.success).toBe(false);
+    if (t.success) return;
+    expect(t.error.issues.map((i) => i.message)).toContainEqual(
+      'Only 0 "easy" questions; give at least 3 (the target is four easy, five core, three stretch).',
+    );
   });
 });
 
