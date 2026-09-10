@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { LessonFactsSchema } from "@tj/domain/documents";
 import { lessonShapeOf, OBJECTIVE_VERBS, PRIOR_CONFIDENCES } from "./shapes";
 import {
   assignFactIds,
@@ -73,9 +74,90 @@ describe("planSkeletonSchemaFor", () => {
     expect(messages).toContainEqual(
       expect.stringContaining("explain phase needs at least 18 minutes (30% of 60)"),
     );
-    expect(messages).toContainEqual(expect.stringContaining("it has 8"));
+    expect(messages).toContainEqual(
+      expect.stringContaining(
+        "it has 8. Add 10 minutes to content, worked-example, image-text or vocabulary slides.",
+      ),
+    );
     // Without a shape (the structural schema) the share is not checked.
     expect(parse(entries).success).toBe(true);
+  });
+
+  describe("TEACH-237: the rules that rejected a good outline in production", () => {
+    const EXPLAIN_NEW = shapeOf("Explain", "New to it", "Year 5");
+    /** The rodents outline the worker rejected twice on 2026-09-10 (reconstructed from the messages). */
+    const rodents = (): Record<string, unknown>[] => [
+      { kind: "title", minutes: 2, factRefs: [] },
+      { kind: "objectives", minutes: 3, factRefs: [O(0)] },
+      { kind: "starter", minutes: 5, factRefs: [O(0)], phase: "starter", brief },
+      { kind: "content", minutes: 8, factRefs: [O(0)], phase: "explain", brief },
+      { kind: "vocabulary", minutes: 5, factRefs: [O(0)], phase: "explain", brief },
+      { kind: "content", minutes: 8, factRefs: [O(0)], phase: "explain", brief },
+      { kind: "worked-example", minutes: 7, factRefs: [O(0)], phase: "explain", brief },
+      { kind: "multiple-choice", minutes: 6, factRefs: [O(0)], phase: "practise", brief },
+      { kind: "open-response", minutes: 8, factRefs: [O(0)], phase: "practise", brief },
+      { kind: "exit-ticket", minutes: 8, factRefs: [O(0)], phase: "check", brief },
+    ];
+
+    test("row 1: the production outline — vocabulary in the explain phase, 23 + 5 explain minutes of 60 — parses for Explain / New to it", () => {
+      expect(messagesOf(parse(rodents(), { durationMin: 60, shape: EXPLAIN_NEW }))).toEqual([]);
+    });
+
+    test("vocabulary counts towards the explain share and may open the explain phase before the definition", () => {
+      const entries = rodents();
+      // Vocabulary first, then the definition: the opener check looks past it.
+      const [vocab] = entries.splice(4, 1);
+      if (!vocab) throw new Error("fixture");
+      entries.splice(3, 0, vocab);
+      expect(messagesOf(parse(entries, { durationMin: 60, shape: EXPLAIN_NEW }))).toEqual([]);
+      // But a worked-example after the vocabulary is still not the definition.
+      const wrong = rodents();
+      wrong[5] = { ...wrong[5], kind: "worked-example" };
+      wrong[3] = { ...wrong[3], kind: "worked-example" };
+      expect(messagesOf(parse(wrong, { durationMin: 60, shape: EXPLAIN_NEW }))).toContainEqual(
+        expect.stringMatching(
+          /^outline\.3\.kind: Outline position 3 is the first explain-phase slide \(after any vocabulary\) and is a worked-example/,
+        ),
+      );
+    });
+
+    test("row 2: a phase two minutes under its share passes; three under names the minutes to add", () => {
+      // 24 needed (40 % of 60). 22 passes.
+      const short2 = rodents();
+      short2[6] = { ...short2[6], minutes: 1 };
+      expect(messagesOf(parse(short2, { durationMin: 60, shape: EXPLAIN_NEW }))).toEqual([]);
+      // 21 fails, asking for 3 (back to the full share), not 1.
+      const short3 = rodents();
+      short3[6] = { ...short3[6], minutes: 0 };
+      short3[4] = { ...short3[4], minutes: 5 };
+      expect(messagesOf(parse(short3, { durationMin: 60, shape: EXPLAIN_NEW }))).toContainEqual(
+        "outline: The explain phase needs at least 24 minutes (40% of 60); it has 21. Add 3 minutes to content, worked-example, image-text or vocabulary slides.",
+      );
+      // The practise share tolerates the same two minutes (Apply: 24 of 60; 22 passes, 21 fails).
+      const apply = (practise: number) => {
+        const e = rodents();
+        e[7] = { ...e[7], minutes: practise - 8 };
+        return messagesOf(
+          parse(e, { durationMin: 60, shape: shapeOf("Apply", "Some prior knowledge") }),
+        );
+      };
+      expect(apply(22)).not.toContainEqual(expect.stringContaining("practise phase needs"));
+      expect(apply(21)).toContainEqual(
+        "outline: The practise phase needs at least 24 minutes (40% of 60); it has 21. Add 3 minutes to practise slides.",
+      );
+    });
+
+    test("row 3: an imageBrief with six avoid items passes the Plan schema and then the domain schema (assignFactIds)", () => {
+      const entries = rodents();
+      const avoid = ["cage", "fence", "bars", "glass", "hands", "toys"];
+      entries[5] = { ...entries[5], kind: "image-text", imageBrief: { ...RIVER, avoid } };
+      const result = parse(entries, { durationMin: 60, shape: EXPLAIN_NEW });
+      expect(messagesOf(result)).toEqual([]);
+      if (!result.success) return;
+      const facts = assignFactIds(result.data, EMPTY_PLAN_FACTS, 60);
+      expect(facts.outline[5]?.imageBrief?.avoid).toEqual(avoid);
+      expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
+    });
   });
 
   test("row 2: practise before explain is an issue naming the position", () => {
@@ -164,7 +246,7 @@ describe("planSkeletonSchemaFor", () => {
       const messages = withShape(entries, "Explain", "New to it");
       expect(messages).toContainEqual(
         expect.stringMatching(
-          /^outline\.4\.kind: Outline position 4 is the first explain-phase slide and is a worked-example; for this lesson it is a content slide that defines the topic/,
+          /^outline\.4\.kind: Outline position 4 is the first explain-phase slide \(after any vocabulary\) and is a worked-example; for this lesson it is a content slide that defines the topic/,
         ),
       );
       // The same outline with the content first passes the cell.
@@ -190,7 +272,7 @@ describe("planSkeletonSchemaFor", () => {
         "outline.7.kind: Outline position 7 is an open-response slide; a Recall lesson has none. Make it matching, fill-gap, multiple-choice or true-false.",
       );
       expect(messages).toContainEqual(
-        "outline: The outline has no vocabulary slide and this lesson needs one; add it in the starter phase.",
+        "outline: The outline has no vocabulary slide and this lesson needs one; add it in the starter or explain phase.",
       );
       // The Recall fixture passes both Recall cells the eval uses.
       for (const confidence of ["New to it", "Some prior knowledge"]) {
@@ -218,11 +300,8 @@ describe("planSkeletonSchemaFor", () => {
       );
     });
 
-    test("row 4: Evaluate / Some with no matching, sort or second worked-example is an issue naming all three", () => {
-      const messages = withShape(outline(), "Evaluate", "Some prior knowledge");
-      expect(messages).toEqual([
-        "outline: Nothing here sets two cases against each other; add a matching or sort slide, or two worked-example slides.",
-      ]);
+    test("row 4 (withdrawn by TEACH-237): Evaluate / Some with no matching, sort or second worked-example is a prompt rule, not an issue", () => {
+      expect(withShape(outline(), "Evaluate", "Some prior knowledge")).toEqual([]);
       const paired = outline();
       paired[6] = { ...paired[6], kind: "matching" };
       expect(withShape(paired, "Evaluate", "Some prior knowledge")).toEqual([]);
@@ -233,13 +312,17 @@ describe("planSkeletonSchemaFor", () => {
 
     test("minContent and minCheckEntries name the count found and the count needed", () => {
       const entries = outline();
+      // An image-text slide is a content slide with a picture: it counts (TEACH-237).
       entries[4] = { ...entries[4], kind: "image-text", imageBrief: RIVER };
+      expect(withShape(entries, "Explain", "Some prior knowledge")).toEqual([]);
+      // A second worked-example instead: only one content-like slide remains.
+      entries[4] = { ...entries[4], kind: "worked-example", imageBrief: undefined };
       expect(withShape(entries, "Explain", "Some prior knowledge")).toEqual([
-        "outline: The outline has 1 content slide. At least 2 content slides: the definition first, then the mechanism (how or why) on its own slide; add one in the explain phase.",
+        "outline: The outline has 1 content or image-text slide. At least 2 content slides: the definition first, then the mechanism (how or why) on its own slide; add one in the explain phase.",
       ]);
       // Revisiting has no definition slide, so the message does not ask for one.
       expect(withShape(entries, "Explain", "Revisiting")).toContainEqual(
-        "outline: The outline has 1 content slide. At least 2 content slides, each explaining one mechanism (how or why); add one in the explain phase.",
+        "outline: The outline has 1 content or image-text slide. At least 2 content slides, each explaining one mechanism (how or why); add one in the explain phase.",
       );
       const recall = outline_new();
       recall.splice(7, 1);
@@ -369,14 +452,18 @@ describe("planSkeletonSchemaFor", () => {
         .success,
     ).toBe(true);
   });
-  test("a vocabulary slide tagged explain is refused and does not count towards the explain share", () => {
+  test("a question slide tagged explain is refused and does not count towards the explain share", () => {
     const entries = outline();
-    entries[3] = { kind: "vocabulary", minutes: 10, factRefs: [O(0)], phase: "explain", brief };
+    entries[3] = {
+      kind: "multiple-choice",
+      minutes: 10,
+      factRefs: [O(0)],
+      phase: "explain",
+      brief,
+    };
     const messages = messagesOf(parse(entries, { durationMin: 60, shape: EXPLAIN_SOME }));
     expect(messages).toContainEqual(
-      expect.stringContaining(
-        "outline.3.phase: Outline position 3 is a vocabulary slide in the explain phase",
-      ),
+      "outline.3.phase: Outline position 3 is a multiple-choice slide in the explain phase; explain slides are content, worked-example, image-text or vocabulary. Give it the phase it belongs to, or change its kind.",
     );
     expect(messages).toContainEqual(
       expect.stringContaining("explain phase needs at least 18 minutes"),
@@ -565,30 +652,16 @@ describe("planFactsSchemaFor", () => {
     );
   });
 
-  test("an Explain lesson confronts its misconception: a true-false slide or a distractor with a misconceptionRef (TEACH-229)", () => {
+  test("the misconception rule is a prompt rule, not a rejection (TEACH-237): no true-false and no misconceptionRef still parses", () => {
     const noTrueFalse = structuredClone(FIXTURES.planSkeleton);
     noTrueFalse.outline = noTrueFalse.outline.map((e) =>
       e.kind === "true-false" ? { ...e, kind: "multiple-choice" as const } : e,
     );
     const f = facts();
-    // Distractors still tie to misconceptions: fine.
-    expect(planFactsSchemaFor(noTrueFalse, EXPLAIN_SOME).safeParse(f).success).toBe(true);
     for (const q of f.questions) {
       q.distractors = q.distractors?.map(({ text }) => ({ text }));
     }
-    const r = planFactsSchemaFor(noTrueFalse, EXPLAIN_SOME).safeParse(f);
-    expect(r.success).toBe(false);
-    if (r.success) return;
-    expect(r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`)).toEqual([
-      expect.stringMatching(
-        /^questions: This lesson confronts a misconception and nothing here does/,
-      ),
-    ]);
-    // A Recall lesson has no such rule.
-    expect(
-      planFactsSchemaFor(noTrueFalse, shapeOf("Recall", "Some prior knowledge")).safeParse(f)
-        .success,
-    ).toBe(true);
+    expect(planFactsSchemaFor(noTrueFalse, EXPLAIN_SOME).safeParse(f).success).toBe(true);
   });
 });
 

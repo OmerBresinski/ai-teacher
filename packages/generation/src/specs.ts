@@ -15,7 +15,7 @@ import {
 } from "@tj/domain/documents";
 import { BlockSpecSchema, noPictureReference, SlideSpecSchema, SPEC_LIMITS } from "@tj/slides";
 import { z } from "zod";
-import { contentSentence, phaseOfKind, TWO_CASES } from "./prompts/shape";
+import { contentSentence, phaseOfKind } from "./prompts/shape";
 import type { LessonShape, TierWeights } from "./shapes";
 import { INPUT_CHECKS } from "./types";
 
@@ -97,8 +97,24 @@ const outlineEntry = z.strictObject({
   phase: z.enum(LESSON_PHASES).optional(),
 });
 
-/** The kinds that explain; the same set `checkLesson`'s `explanation-share` counts. */
-const EXPLAIN_KINDS: ReadonlySet<string> = new Set(["content", "worked-example", "image-text"]);
+/**
+ * The kinds that teach, so may sit in the explain phase and count towards its share; the same set
+ * `checkLesson`'s `explanation-share` counts. `vocabulary` is teaching, not practice (TEACH-237: a
+ * "New to it" lesson must have one and must explain for 40 %, so refusing it in the explain phase
+ * rejected a good outline twice in production).
+ */
+const EXPLAIN_KINDS: ReadonlySet<string> = new Set([
+  "content",
+  "worked-example",
+  "image-text",
+  "vocabulary",
+]);
+/**
+ * A phase-share rule tolerates rounding (TEACH-237): the model writes whole minutes to a total
+ * that is itself allowed to be ten per cent out, so a phase two minutes under its share is not a
+ * Terra retry. The prompt still asks for the full share.
+ */
+const SHARE_TOLERANCE_MIN = 2;
 /** The kinds a Recall lesson checks with when `open-response` is forbidden (the Shape sentence). */
 const RETRIEVAL_KINDS = "matching, fill-gap, multiple-choice or true-false";
 const PHASE_ORDER: Record<(typeof LESSON_PHASES)[number], number> = {
@@ -283,7 +299,7 @@ export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<P
       phases.add(entry.phase);
       if (entry.phase === "explain" && !EXPLAIN_KINDS.has(entry.kind)) {
         issue(
-          `Outline position ${i} is a ${entry.kind} slide in the explain phase; explain slides are content, worked-example or image-text. Give it the phase it belongs to, or change its kind.`,
+          `Outline position ${i} is a ${entry.kind} slide in the explain phase; explain slides are content, worked-example, image-text or vocabulary. Give it the phase it belongs to, or change its kind.`,
           ["outline", i, "phase"],
         );
       }
@@ -309,10 +325,10 @@ export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<P
 /**
  * The shape's deterministic column (`shapes.ts`, project "Lesson shape by objective verb") as
  * refinements, one per field, in the order the Shape block states them. Each message says what to
- * add and where. Two of the table's rows are left to the prompt on purpose: a content brief that
- * "mentions defining" or "mentions criteria" is wording the model chooses, and a rejection on it
- * would cost a Terra retry for a good outline (the TEACH-227 lesson). `requireMisconceptionConfronted`
- * needs the facts (a distractor's `misconceptionRef`), so it lives in `planFactsSchemaFor`.
+ * add and where. Four of the table's rows are left to the prompt on purpose, by the TEACH-227 rule
+ * that a rejection must buy quality worth a Terra retry: a content brief that "mentions defining"
+ * or "mentions criteria" is wording the model chooses; `requireTwoCases` and
+ * `requireMisconceptionConfronted` (TEACH-237) can be met on slides a kind check cannot see.
  */
 function refineShape(
   skeleton: PlanSkeleton,
@@ -327,14 +343,22 @@ function refineShape(
     outline
       .filter((e) => e.phase === phase && (only === undefined || only.has(e.kind)))
       .reduce((sum, e) => sum + e.minutes, 0);
-  const share = (percent: number) => Math.ceil((durationMin * percent) / 100);
+  const share = (percent: number) => Math.floor((durationMin * percent) / 100);
+  /** The phase's minutes are under its share by more than the tolerance: how many to add. */
+  const shortBy = (minutes: number, percent: number) => {
+    const missing = share(percent) - minutes;
+    return missing > SHARE_TOLERANCE_MIN ? missing : 0;
+  };
+  const plural = (n: number) => (n === 1 ? "minute" : "minutes");
 
-  // firstExplainKind: the explain phase opens with the definition.
-  const firstExplain = outline.findIndex((e) => e.phase === "explain");
+  // firstExplainKind: the explain phase opens with the definition. A vocabulary slide may come
+  // first — the terms, then the definition that uses them — so the opener is the first explain
+  // slide that is not vocabulary.
+  const firstExplain = outline.findIndex((e) => e.phase === "explain" && e.kind !== "vocabulary");
   const opener = outline[firstExplain];
   if (shape.firstExplainKind !== null && opener && opener.kind !== shape.firstExplainKind) {
     issue(
-      `Outline position ${firstExplain} is the first explain-phase slide and is a ${opener.kind}; for this lesson it is a content slide that defines the topic and names two or three examples. Put that content slide at position ${firstExplain} and move this one after it.`,
+      `Outline position ${firstExplain} is the first explain-phase slide (after any vocabulary) and is a ${opener.kind}; for this lesson it is a content slide that defines the topic and names two or three examples. Put that content slide at position ${firstExplain} and move this one after it.`,
       ["outline", firstExplain, "kind"],
     );
   }
@@ -360,11 +384,14 @@ function refineShape(
       );
     }
   });
-  // minContent: the definition (when the shape opens with one), then the mechanism on its own slide.
-  const content = count("content");
+  // minContent: the definition (when the shape opens with one), then the mechanism on its own
+  // slide. An image-text slide is a content slide with a photograph (heading and body over the
+  // picture), so it counts (TEACH-237): a definition, a picture that shows the mechanism and a
+  // worked example is a good Explain outline.
+  const content = count("content") + count("image-text");
   if (content < shape.minContent) {
     issue(
-      `The outline has ${content} content slide${content === 1 ? "" : "s"}. ${contentSentence(shape)}; add one in the explain phase.`,
+      `The outline has ${content} content or image-text slide${content === 1 ? "" : "s"}. ${contentSentence(shape)}; add one in the explain phase.`,
       ["outline"],
     );
   }
@@ -377,19 +404,22 @@ function refineShape(
     );
   }
   // explainMinPercent: only slides that teach count — the same kinds `checkLesson` counts — so a
-  // vocabulary or question slide tagged "explain" does not pad it.
+  // question slide tagged "explain" does not pad it.
   const explainMinutes = minutesIn("explain", EXPLAIN_KINDS);
-  if (explainMinutes < share(shape.explainMinPercent)) {
+  const explainShort = shortBy(explainMinutes, shape.explainMinPercent);
+  if (explainShort > 0) {
     issue(
-      `The explain phase needs at least ${share(shape.explainMinPercent)} minutes (${shape.explainMinPercent}% of ${durationMin}); it has ${explainMinutes}. Add or lengthen content, worked-example or image-text slides.`,
+      `The explain phase needs at least ${share(shape.explainMinPercent)} minutes (${shape.explainMinPercent}% of ${durationMin}); it has ${explainMinutes}. Add ${explainShort} ${plural(explainShort)} to content, worked-example, image-text or vocabulary slides.`,
       ["outline"],
     );
   }
   // practiseMinPercent: every practise-phase slide counts.
   const practiseMinutes = minutesIn("practise");
-  if (shape.practiseMinPercent > 0 && practiseMinutes < share(shape.practiseMinPercent)) {
+  const practiseShort =
+    shape.practiseMinPercent > 0 ? shortBy(practiseMinutes, shape.practiseMinPercent) : 0;
+  if (practiseShort > 0) {
     issue(
-      `The practise phase needs at least ${share(shape.practiseMinPercent)} minutes (${shape.practiseMinPercent}% of ${durationMin}); it has ${practiseMinutes}. Add or lengthen practise slides.`,
+      `The practise phase needs at least ${share(shape.practiseMinPercent)} minutes (${shape.practiseMinPercent}% of ${durationMin}); it has ${practiseMinutes}. Add ${practiseShort} ${plural(practiseShort)} to practise slides.`,
       ["outline"],
     );
   }
@@ -408,15 +438,8 @@ function refineShape(
       ["outline", firstPractise, "phase"],
     );
   }
-  // requireTwoCases: a matching or sort, or two worked examples.
-  if (
-    shape.requireTwoCases &&
-    !kinds.has("matching") &&
-    !kinds.has("sort") &&
-    count("worked-example") < 2
-  ) {
-    issue(`Nothing here sets two cases against each other; add ${TWO_CASES}.`, ["outline"]);
-  }
+  // requireTwoCases is a prompt rule, not a rejection (TEACH-237): two cases can be set against
+  // each other on a discussion, content or open-response slide, which a kind check cannot see.
   // A class new to the topic gets a content or worked-example slide for every objective
   // (TEACH-211; the confidence override the shape table keeps).
   if (shape.confidence === "New to it") {
@@ -589,7 +612,7 @@ export function tierMinimumsOf(weights: TierWeights): TierWeights {
  * every outline position exists and is one of the slides the facts feed (not `title` /
  * `objectives`, whose objective references the skeleton fixed), only the three lists this call
  * produces may be referenced — the objectives are already wired by the skeleton — the tiers meet
- * the shape's floor, and an Explain lesson confronts its misconception.
+ * the shape's floor.
  */
 export function planFactsSchemaFor(
   skeleton: PlanSkeleton,
@@ -709,22 +732,10 @@ export function planFactsSchemaFor(
         });
       }
     }
-    // requireMisconceptionConfronted (the shape's one facts-level check): a true-false slide in
-    // the outline, or any question whose distractor is tied to a misconception.
-    if (shape.requireMisconceptionConfronted) {
-      const trueFalse = skeleton.outline.some((e) => e.kind === "true-false");
-      const distractor = facts.questions.some((q) =>
-        q.distractors?.some((d) => d.misconceptionRef !== undefined),
-      );
-      if (!trueFalse && !distractor) {
-        ctx.addIssue({
-          code: "custom",
-          message:
-            "This lesson confronts a misconception and nothing here does: give one multiple-choice question a distractor with a misconceptionRef (the answer a pupil holding that misconception would give).",
-          path: ["questions"],
-        });
-      }
-    }
+    // requireMisconceptionConfronted is a prompt rule, not a rejection (TEACH-237): the facts
+    // prompt asks for distractors tied to misconceptions, but `misconceptionRef` is optional and a
+    // good answer that names the belief in the distractor text without the ref would be sent back.
+
     // Kind fit: a content slide is built from a key idea, a worked-example slide from a worked
     // example. Both refs may also come from the skeleton, but the skeleton could only name
     // objectives, so they have to be given here.

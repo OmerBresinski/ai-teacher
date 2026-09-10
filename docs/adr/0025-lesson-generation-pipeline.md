@@ -654,3 +654,25 @@ eval cells (Recall forbids the `open-response` Explain requires), so there are f
 `fixtures/plan-skeleton.{recall,explain,apply,evaluate}.json`, the same lesson with positions 0–6
 identical so the one `plan-facts.json` fits each — and `eval:schema` picks the fixture by the
 brief's verb (`fixtureAiFor`); `FIXTURES.planSkeleton` is the Explain one, the default cell.
+
+## Amendment (2026-09-10, TEACH-237 — the shape rules rejected a good outline)
+
+§7. Forty minutes after TEACH-229 deployed, the first production lesson (Explain / New to it,
+60 min) was rejected on both attempts of its first job — one failed job, a pg-boss retry, ~90 s of
+"Planning" — by two rules of our own making: the "New to it" row requires a `vocabulary` slide and
+40 % explain, and the TEACH-211 phase check then refused vocabulary in the explain phase; and the
+explain share was 23 of 24 minutes. Changes: `vocabulary` is an explain-phase kind (teaching, not
+practice) in both `EXPLAIN_KINDS` sets — Plan's and `checkLesson`'s `explanation-share` — and
+`firstExplainKind` looks past a leading vocabulary slide to the definition (`plan-skeleton.v11`
+says so). Every phase-share rule passes a phase within two minutes of `floor(percent × duration /
+100)` and otherwise names the minutes to add. `ImageBriefSchema.avoid` in `@tj/domain` is `max(6)`,
+as Plan's has been since TEACH-227: a skeleton `callStructured` accepted had been refused by the
+bare `LessonFactsSchema.parse` in `assignFactIds` with a `ZodError` and no retry. Two TEACH-229
+rules are withdrawn to prompt rules by the TEACH-227 test — would it fire on a good outline?:
+`requireTwoCases` (two cases can be set against each other on a discussion, content or
+open-response slide) and `requireMisconceptionConfronted` (`misconceptionRef` is optional, and a
+distractor that names the belief in its text is a good answer). `minContent` counts `image-text`
+as a content slide (it is one, with a photograph). The rest of the column stands: `forbiddenKinds`
+and `requireWorkedExampleBeforePractise` are founder decisions; `requiredKinds`, `minCheckEntries`
+and the shares are what the table means by the shape.
+

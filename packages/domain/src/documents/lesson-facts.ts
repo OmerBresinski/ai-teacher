@@ -158,7 +158,9 @@ export const ImageBriefSchema = z.strictObject({
     .optional()
     .default([]),
   purpose: z.enum(IMAGE_PURPOSES).default("context"),
-  avoid: z.array(MustShowItem).max(3).optional(),
+  // The same ceiling as Plan's `PlanImageBriefSchema` (TEACH-227 raised it to six; TEACH-237
+  // aligned this one after a skeleton Plan accepted was refused here with a bare ZodError).
+  avoid: z.array(MustShowItem).max(6).optional(),
 });
 export type ImageBrief = z.infer<typeof ImageBriefSchema>;
 

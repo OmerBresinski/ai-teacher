@@ -131,8 +131,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v10",
-    hash: "3b5f5b9580a89a8ead77b55cc04810743dbdb88e8312339a6fee6943a41a1e46",
+    version: "plan-skeleton.v11",
+    hash: "1ecfb61d6e2cc260175e9ec343ea4a011985b7d97d1b216e9753b7aaf52bc0a2",
   },
   "plan-facts": {
     version: "plan-facts.v6",
