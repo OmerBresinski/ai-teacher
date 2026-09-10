@@ -45,6 +45,16 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
     audience,
     lessonTitle: "States of matter",
   },
+  "shortlist-photos": {
+    topic: brief.topic,
+    subject: "melting ice",
+    mustShow: ["ice", "liquid water"],
+    purpose: "observe",
+    candidates: [
+      { id: "1", alt: "Ice cubes melting on a wooden table" },
+      { id: "2", alt: "A dentist examining a patient" },
+    ],
+  },
   "pick-or-requery-photo": {
     topic: brief.topic,
     answers: brief.answers,
@@ -112,8 +122,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v8",
-    hash: "678e98cbdae612dee5c40046cb8a28f5cfec2cb713c6b73f8fcc5fb60e5b32ea",
+    version: "plan-skeleton.v9",
+    hash: "e6416c389c99cb49dded52ce85b5039a84d7df0baed15084d79dbabf83bed2bc",
   },
   "plan-facts": {
     version: "plan-facts.v5",
@@ -131,6 +141,10 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     version: "generate-worksheet.v5",
     hash: "6c944003c98d57c18bc5fc584f338d8a2e16e8321c18740f98fda13b578fe2a3",
   },
+  "shortlist-photos": {
+    version: "shortlist-photos.v1",
+    hash: "bf8fb22fe9ee429ca0ddba567f8fa96a1a31ab997cd93adfd603f33dc0971aaf",
+  },
   "pick-or-requery-photo": {
     version: "pick-or-requery-photo.v5",
     hash: "6b04f791296e1b07787530676e8b74887382a9bc9102ba23ae66ceece65341f5",
@@ -140,8 +154,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "2898eb315cf4afe67d95cbeb88ebb4c3093f57687e9dcf482f03bb2c115a1a37",
   },
   repair: {
-    version: "repair.v7",
-    hash: "c98c0757ccb728be07f2d9961d5f92f5b9ba19538712271177b1327ec35e0cdf",
+    version: "repair.v8",
+    hash: "1a74f13afd3c0622cee44f57b43c3eab71bbb9e81aa41dbb511b5fd920e871cb",
   },
   "repair-fact": {
     version: "repair-fact.v2",

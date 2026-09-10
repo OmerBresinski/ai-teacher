@@ -430,13 +430,22 @@ describe("illustrate", () => {
         : Array.from({ length: 10 }, (_, i) => pexelsPhoto(i === 0 ? "fence" : `p${i}`, true)),
     );
     const { lines, logger } = memoryLogger();
-    const ai = judge(fenced, pick("rat", ["front teeth"]));
+    // Ten results: the caption shortlist (TEACH-227) runs first and names four; the judge sees
+    // those four as pictures. The requery's single result needs no shortlist.
+    const shortlisted = JSON.stringify({ ids: ["fence", "p1", "p2", "p3"] });
+    const ai = judge(shortlisted, fenced, pick("rat", ["front teeth"]));
     const brief = { subject: "rodent incisors", mustShow: ["front teeth"] };
     const state = await run(imageLesson([brief]), recordingDeps(ai, { images, logger }));
-    expect(ai.calls).toHaveLength(2);
-    expect(ai.calls[0]?.imageParts).toBe(8);
-    // The first query filled the pool of eight, so the fallback query was never needed.
-    expect(searches).toEqual(["rodent incisors", "brown rat close up"]);
+    expect(ai.calls).toHaveLength(3);
+    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v1");
+    expect(ai.calls[0]?.modelClass).toBe("small");
+    expect(ai.calls[0]?.imageParts).toBeUndefined();
+    expect(ai.calls[0]?.promptText).toContain("id p9");
+    expect(ai.calls[1]?.imageParts).toBe(4);
+    expect(ai.calls[1]?.promptText).not.toContain("id p9");
+    expect(searches).toEqual(["rodent incisors", "rodent", "brown rat close up"]);
+    const counts = lines.map((l) => JSON.parse(l)).find((r) => r.pool !== undefined);
+    expect(counts).toMatchObject({ pool: 10, shortlisted: 4 });
     expect(stores).toEqual(["rat"]);
     expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/rat.jpg");
     const gated = lines.map((l) => JSON.parse(l)).find((r) => r.gated === true);
@@ -454,6 +463,39 @@ describe("illustrate", () => {
       recordingDeps(judge(silent), { images: again.images }),
     );
     expect(again.stores).toEqual([]);
+    expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+  });
+
+  test("TEACH-227: a shortlist that misses twice falls back to the first six; one that names nothing ends the slide without a judge call", async () => {
+    const ten = Array.from({ length: 10 }, (_, i) => pexelsPhoto(`p${i}`, true));
+    const { images, stores } = fakeImages(async () => ten);
+    const ai = judge("not json", "still not json", pick("p2"));
+    const state = await run(imageLesson([{ subject: "river" }]), recordingDeps(ai, { images }));
+    expect(ai.calls).toHaveLength(3);
+    expect(ai.calls[2]?.imageParts).toBe(6);
+    expect(ai.calls[2]?.promptText).toContain("id p5");
+    expect(ai.calls[2]?.promptText).not.toContain("id p6");
+    expect(stores).toEqual(["p2"]);
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/p2.jpg");
+
+    // A pick of an id the judge was not shown is not placed, however good the caption looked.
+    const unseen = fakeImages(async () => ten);
+    const ai3 = judge(JSON.stringify({ ids: ["p0", "p1"] }), pick("p7"));
+    const state3 = await run(
+      imageLesson([{ subject: "river" }]),
+      recordingDeps(ai3, { images: unseen.images }),
+    );
+    expect(unseen.stores).toEqual([]);
+    expect(imageOf(state3.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+
+    const none = fakeImages(async () => ten);
+    const ai2 = judge(JSON.stringify({ ids: [] }));
+    const state2 = await run(
+      imageLesson([{ subject: "river" }]),
+      recordingDeps(ai2, { images: none.images }),
+    );
+    expect(ai2.calls).toHaveLength(1);
+    expect(none.stores).toEqual([]);
     expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
   });
 

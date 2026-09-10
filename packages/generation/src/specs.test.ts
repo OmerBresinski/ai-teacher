@@ -215,7 +215,7 @@ describe("planFactsSchemaFor", () => {
     expect(schema().safeParse(facts()).success).toBe(true);
   });
 
-  test("TEACH-224 rows 4–6: pitch.avoid may not list a vocabulary term; a problem or stem may not presume a picture; without a vocabulary slide every term is used in a key idea", () => {
+  test("TEACH-224 rows 4–6: pitch.avoid may not list a vocabulary term; a problem or stem may not presume a picture; an unexplained term is not a rejection", () => {
     const issues = (f: ReturnType<typeof facts>, s = FIXTURES.planSkeleton) => {
       const r = planFactsSchemaFor(s).safeParse(f);
       return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
@@ -265,29 +265,22 @@ describe("planFactsSchemaFor", () => {
       expect({ stem, presumes: presumes(stem) }).toEqual({ stem, presumes: false });
     }
 
-    // The fixture skeleton has a vocabulary slide, so an unexplained term passes; without one it
-    // does not.
+    // Whether a term is taught before it is asked about is a prompt rule, not a rejection
+    // (TEACH-227); `usesTerm` stays for whole-word matching elsewhere.
+    expect(usesTerm("tiny particles move", "particle")).toBe(true);
+    expect(usesTerm("tiny particles move", "art")).toBe(false);
     const noVocabSlide = structuredClone(FIXTURES.planSkeleton);
     noVocabSlide.outline = noVocabSlide.outline.map((e) =>
       e.kind === "vocabulary" ? { ...e, kind: "content" as const } : e,
     );
-    // Whole words with inflections, never substrings: "art" is not in "particle".
-    expect(usesTerm("tiny particles move", "particle")).toBe(true);
-    expect(usesTerm("tiny particles move", "art")).toBe(false);
-    expect(usesTerm("gnawing wears them down", "gnaw")).toBe(true);
-    expect(usesTerm("the tooth gap behind", "tooth gap")).toBe(true);
     const unexplained = facts();
     unexplained.vocabulary.push({
       term: "Diastema",
       definition: "A gap between teeth.",
       objectiveRefs: [O(0)],
     });
-    expect(issues(unexplained)).toEqual([]);
-    const withoutSlide = issues(unexplained, noVocabSlide);
-    expect(withoutSlide.some((m) => m.startsWith('vocabulary.6.term: Vocabulary "Diastema"'))).toBe(
-      true,
-    );
-    expect(withoutSlide.some((m) => m.includes('"Melting"'))).toBe(false);
+    // The only issue is the unrelated kind-fit one the swapped slide creates: no vocabulary issue.
+    expect(issues(unexplained, noVocabSlide).filter((m) => m.startsWith("vocabulary"))).toEqual([]);
   });
 
   test("one key idea is enough (a narrow lesson has one); none is not", () => {

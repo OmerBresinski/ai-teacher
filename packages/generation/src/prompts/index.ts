@@ -8,6 +8,7 @@ import { planSkeletonPrompt } from "./plan-skeleton";
 import { cascadePrompt, regeneratePrompt } from "./propose";
 import { repairPrompt } from "./repair";
 import { repairFactPrompt } from "./repair-fact";
+import { shortlistPhotosPrompt } from "./shortlist-photos";
 import { verifyFactsPrompt } from "./verify-facts";
 
 /*
@@ -41,6 +42,7 @@ export {
   regeneratePrompt,
   repairFactPrompt,
   repairPrompt,
+  shortlistPhotosPrompt,
   verifyFactsPrompt,
 };
 
@@ -52,6 +54,7 @@ export const PROMPTS = {
   "generate-slide": generateSlidePrompt,
   "generate-worksheet": generateWorksheetPrompt,
   "pick-or-requery-photo": pickOrRequeryPrompt,
+  "shortlist-photos": shortlistPhotosPrompt,
   evaluate: evaluatePrompt,
   repair: repairPrompt,
   "repair-fact": repairFactPrompt,
@@ -68,6 +71,7 @@ export const PROMPT_VERSIONS = {
   "generate-slide": generateSlidePrompt.version,
   "generate-worksheet": generateWorksheetPrompt.version,
   "pick-or-requery-photo": pickOrRequeryPrompt.version,
+  "shortlist-photos": shortlistPhotosPrompt.version,
   evaluate: evaluatePrompt.version,
   repair: repairPrompt.version,
   "repair-fact": repairFactPrompt.version,

@@ -77,7 +77,7 @@ const PlanImageBriefSchema = z.strictObject({
   subject: line(60),
   mustShow: z.array(line(40)).min(1).max(4),
   purpose: z.enum(IMAGE_PURPOSES),
-  avoid: z.array(line(40)).max(3).optional(),
+  avoid: z.array(line(40)).max(6).optional(),
 });
 
 const OutlineBriefSpec = z.strictObject({
@@ -564,23 +564,8 @@ export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts>
         ctx.addIssue({ code: "custom", message: SELF_CONTAINED, path: ["questions", i, "stem"] });
       }
     });
-    // A term is taught either on a vocabulary slide (the outline has one) or inside a key idea;
-    // a lesson with neither would ask about a word it never showed (rodents: "diastema").
-    if (!skeleton.outline.some((entry) => entry.kind === "vocabulary")) {
-      const explained = facts.keyIdeas
-        .map((k) => `${k.statement} ${k.explanation} ${k.example ?? ""} ${k.analogy ?? ""}`)
-        .join(" ");
-      facts.vocabulary.forEach((v, i) => {
-        const term = v.term.trim();
-        if (term && !usesTerm(explained, term)) {
-          ctx.addIssue({
-            code: "custom",
-            message: `Vocabulary "${v.term}" is used in no key idea and the outline has no vocabulary slide; use it in a statement, explanation or example so the lesson teaches it before a question asks about it.`,
-            path: ["vocabulary", i, "term"],
-          });
-        }
-      });
-    }
+    // Whether every vocabulary term is taught before it is asked about is left to the prompt rule
+    // (TEACH-227): the schema rejection cost a 25 s Terra retry for "evidence" in production.
     const defined = new Set(facts.vocabulary.map((v) => v.term.trim().toLowerCase()));
     facts.pitch.avoid.forEach((word, i) => {
       if (defined.has(word.trim().toLowerCase())) {

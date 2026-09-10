@@ -598,3 +598,19 @@ required items large, sharp and unobstructed enough for a projector — and the 
 `plan-skeleton.v8` tells Plan to list cage, fence, bars, glass and hands in `avoid` for a living
 subject. The pool is eight candidates from ten a query (was six from five) — about $0.002 more per
 judge call on the standard class.
+
+## Amendment (2026-09-10, TEACH-227 — captions first, then pictures)
+
+§7. The picture pick is two stages (founder direction): a `small`-class **shortlist** call
+(`shortlist-photos.v1`) reads the captions of up to thirty portrait results and names at most six
+that are the subject itself — captions are cheap text and reliable for *what* a photograph is of,
+useless for what is visible — and the `standard`-class judge (`pick-or-requery-photo.v5`) looks
+only at those. A shortlist that fails falls back to the first six; one that names nothing ends the
+slide without a judge call; an empty pool still reaches the judge, which may requery. Both stages
+run again on a requery. §11: an `image-fit` finding on a slide whose `imageBrief.purpose` is
+`identify-parts` or `observe` becomes an `error` with a regenerate fix — the third rodents lesson
+set "find the squirrel's front teeth" on a squirrel whose paws hid its mouth — and `repair.v8` is
+told to rewrite the task to what is visible. Two Plan rejections added earlier the same day are
+withdrawn as costing a Terra retry each for no quality gain: `imageBrief.avoid` allows six items
+(`plan-skeleton.v9` asks for spoilers softly) and an unexplained vocabulary term is a prompt rule,
+not a rejection.
