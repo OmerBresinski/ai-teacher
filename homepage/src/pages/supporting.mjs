@@ -112,7 +112,7 @@ const guideIndex = page(
 const design = page(
   "/design-system/",
   "Good Company design system",
-  "The palette, typography, components and page blocks behind Gather.",
+  "The palette, typography, components and page blocks behind LessonCo.",
   pageHero({
     eyebrow: "Working design system",
     title: "Good company, consistently.",

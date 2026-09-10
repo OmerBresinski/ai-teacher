@@ -16,8 +16,8 @@ const accessForm = `<form class="info-form" data-preview-form>
 
 const faqs = [
   [
-    "What does Gather create?",
-    "We’re building Gather to create a lesson plan, teaching slides, a worksheet and an answer key from a topic and class details. This website lets you explore prepared samples; live lesson generation is not available here.",
+    "What does LessonCo create?",
+    "We’re building LessonCo to create a lesson plan, teaching slides, a worksheet and an answer key from a topic and class details. This website lets you explore prepared samples; live lesson generation is not available here.",
   ],
   [
     "Can I use my own teaching material?",
@@ -29,7 +29,7 @@ const faqs = [
   ],
   [
     "Can I use PowerPoint?",
-    "PowerPoint export and presenting from Gather are planned, alongside downloadable worksheets and separate answers. These export tools are not connected in this preview.",
+    "PowerPoint export and presenting from LessonCo are planned, alongside downloadable worksheets and separate answers. These export tools are not connected in this preview.",
   ],
   [
     "Does it use AI?",
@@ -45,7 +45,7 @@ const faqs = [
   ],
   [
     "Do pupils need accounts?",
-    "Gather is being built for teacher preparation. Pupils use the materials a teacher chooses to present or print.",
+    "LessonCo is being built for teacher preparation. Pupils use the materials a teacher chooses to present or print.",
   ],
   [
     "Can I use it at school?",
@@ -68,8 +68,8 @@ const faqs = [
 export default [
   page(
     "/for-schools/",
-    "Gather for schools",
-    "Explore a complete lesson and the information your school needs to assess Gather for teacher use.",
+    "LessonCo for schools",
+    "Explore a complete lesson and the information your school needs to assess LessonCo for teacher use.",
     pageHero({
       eyebrow: "FOR SCHOOLS",
       title: "A closer look.<br>A considered decision.",
@@ -96,26 +96,26 @@ export default [
   page(
     "/pricing/",
     "Pricing and availability",
-    "Find out about access to Gather and updates on pricing.",
-    `<div class="info-contained">${pageHero({ eyebrow: "PRICING & AVAILABILITY", title: "Good things<br>take a little preparation.", description: "We’re preparing Gather for teacher testing. Pricing will be published before paid access opens.", character: "support", actions: actions("Get access updates", "/early-access/", "Explore a sample lesson", "/examples/") })}${note("For now, meet the materials in our prepared sample lessons.")}</div>`,
+    "Find out about access to LessonCo and updates on pricing.",
+    `<div class="info-contained">${pageHero({ eyebrow: "PRICING & AVAILABILITY", title: "Good things<br>take a little preparation.", description: "We’re preparing LessonCo for teacher testing. Pricing will be published before paid access opens.", character: "support", actions: actions("Get access updates", "/early-access/", "Explore a sample lesson", "/examples/") })}${note("For now, meet the materials in our prepared sample lessons.")}</div>`,
   ),
 
   page(
     "/about/",
-    "About Gather",
-    "Why we’re building Gather to help teachers prepare complete, editable lessons.",
+    "About LessonCo",
+    "Why we’re building LessonCo to help teachers prepare complete, editable lessons.",
     pageHero({
-      eyebrow: "WHY GATHER",
+      eyebrow: "WHY LESSONCO",
       title: "Good company<br>for a good lesson.",
       description: "A little help with the preparation. Plenty of room for the teacher.",
     }) +
-      `<section class="info-about"><div class="info-about-art">${character("slides", { className: "info-about-friend" })}${character("support", { className: "info-about-friend" })}</div><div><h2>The parts should work together.</h2><p>Preparing a lesson means getting the explanation, practice and answers to follow the same idea. It means thinking about the class in front of you, too.</p><p>We’re building Gather to help with that preparation: a complete set of materials, with room to change the wording, the examples and the way the lesson runs.</p><p>You choose what reaches your classroom.</p>${link("Explore a sample lesson", "/examples/")}</div></section>`,
+      `<section class="info-about"><div class="info-about-art">${character("slides", { className: "info-about-friend" })}${character("support", { className: "info-about-friend" })}</div><div><h2>The parts should work together.</h2><p>Preparing a lesson means getting the explanation, practice and answers to follow the same idea. It means thinking about the class in front of you, too.</p><p>We’re building LessonCo to help with that preparation: a complete set of materials, with room to change the wording, the examples and the way the lesson runs.</p><p>You choose what reaches your classroom.</p>${link("Explore a sample lesson", "/examples/")}</div></section>`,
   ),
 
   page(
     "/help/",
-    "Questions about Gather",
-    "Answers about lesson creation, editing, exports, AI and access to Gather.",
+    "Questions about LessonCo",
+    "Answers about lesson creation, editing, exports, AI and access to LessonCo.",
     pageHero({
       eyebrow: "A LITTLE HELP",
       title: "Good questions.",
@@ -133,29 +133,29 @@ export default [
       eyebrow: "AI & YOUR DATA",
       title: "Know what you’re using.",
       description:
-        "Gather is being built to help teachers prepare lessons. Teachers choose what reaches their class.",
+        "LessonCo is being built to help teachers prepare lessons. Teachers choose what reaches their class.",
     }) +
       `<section class="info-principles"><article><span class="info-number">01</span><div><h2>Review before teaching.</h2><p>AI can make mistakes. Check subject facts, worked answers and whether the lesson suits your pupils. Review practical activities under your school’s usual safety process.</p></div></article><article><span class="info-number">02</span><div><h2>Keep pupil information out.</h2><p>Use descriptions such as “Year 7, new to the particle model”. Do not enter pupil names, identifiable pupil work, assessment records or other identifying details.</p><blockquote>“Year 7, new to the particle model.”<small>Useful class context. No identifying information.</small></blockquote></div></article><article><span class="info-number">03</span><div><h2>Understand the data arrangements.</h2><p>Before using a connected service, your school will need published information about data handling, service providers and account controls. Those operational details are not confirmed by this website preview.</p><div class="info-links">${link("Privacy information", "/privacy/")}${link("Service providers", "/service-providers/")}${link("Ask a question", "/contact/")}</div></div></article></section>`,
   ),
 
   page(
     "/contact/",
-    "Contact Gather",
-    "Ask about Gather, school use or the proposed service.",
-    `<section class="info-contact"><div class="info-contact-copy"><p class="eyebrow">GET IN TOUCH</p><h1>How can<br>we help?</h1><p>Tell us what you need to know. Please leave pupil names and confidential information out of your message.</p>${link("You might find an answer here", "/help/")}</div><form class="info-form" data-preview-form><label for="contact-name">Your name <span>(optional)</span></label><input id="contact-name" name="name" autocomplete="name"><label for="contact-email">Email address</label><input id="contact-email" name="email" type="email" autocomplete="email" required><label for="contact-subject">What can we help with?</label><select id="contact-subject" name="subject"><option>Using Gather</option><option>School use</option><option>Privacy</option><option>Something else</option></select><label for="contact-message">Message</label><textarea id="contact-message" name="message" rows="5" required></textarea><button class="button primary info-submit" type="submit" disabled>Preview message <span aria-hidden="true">${arrowIcon}</span></button><p class="info-form-notice">This is a form preview. Your message and contact details will not be sent or saved.</p><noscript><p>This form preview needs JavaScript to check your details. Nothing can be submitted here.</p></noscript><p class="info-form-status" data-form-status role="status"></p></form></section>`,
+    "Contact LessonCo",
+    "Ask about LessonCo, school use or the proposed service.",
+    `<section class="info-contact"><div class="info-contact-copy"><p class="eyebrow">GET IN TOUCH</p><h1>How can<br>we help?</h1><p>Tell us what you need to know. Please leave pupil names and confidential information out of your message.</p>${link("You might find an answer here", "/help/")}</div><form class="info-form" data-preview-form><label for="contact-name">Your name <span>(optional)</span></label><input id="contact-name" name="name" autocomplete="name"><label for="contact-email">Email address</label><input id="contact-email" name="email" type="email" autocomplete="email" required><label for="contact-subject">What can we help with?</label><select id="contact-subject" name="subject"><option>Using LessonCo</option><option>School use</option><option>Privacy</option><option>Something else</option></select><label for="contact-message">Message</label><textarea id="contact-message" name="message" rows="5" required></textarea><button class="button primary info-submit" type="submit" disabled>Preview message <span aria-hidden="true">${arrowIcon}</span></button><p class="info-form-notice">This is a form preview. Your message and contact details will not be sent or saved.</p><noscript><p>This form preview needs JavaScript to check your details. Nothing can be submitted here.</p></noscript><p class="info-form-status" data-form-status role="status"></p></form></section>`,
   ),
 
   page(
     "/early-access/",
     "Get access updates",
-    "See how access updates will work when Gather opens for teacher testing.",
-    `<section class="info-access"><div><p class="eyebrow">SOMETHING IN THE MAKING</p><h1>Be here<br>for the beginning.</h1><p>Teacher testing is on its way. Access updates will cover when you can try Gather and what it costs.</p><div class="info-access-friend">${character("activity", { className: "info-access-character" })}</div></div><div><h2>A little heads-up.</h2><p>The signup below is a preview of the future access list.</p>${accessForm}<p class="info-privacy-link">${link("Privacy information", "/privacy/")}</p></div></section>`,
+    "See how access updates will work when LessonCo opens for teacher testing.",
+    `<section class="info-access"><div><p class="eyebrow">SOMETHING IN THE MAKING</p><h1>Be here<br>for the beginning.</h1><p>Teacher testing is on its way. Access updates will cover when you can try LessonCo and what it costs.</p><div class="info-access-friend">${character("activity", { className: "info-access-character" })}</div></div><div><h2>A little heads-up.</h2><p>The signup below is a preview of the future access list.</p>${accessForm}<p class="info-privacy-link">${link("Privacy information", "/privacy/")}</p></div></section>`,
   ),
 
   page(
     "/404/",
     "Page not found",
-    "This Gather page could not be found.",
+    "This LessonCo page could not be found.",
     `<div class="info-contained">${pageHero({ eyebrow: "404 · A MISSING PAGE", title: "This one’s<br>gone wandering.", description: "The link may have changed. You can return home or explore a sample lesson.", character: "activity", actions: actions("Go home", "/", "Explore a sample lesson", "/examples/") })}</div>`,
   ),
 ];

@@ -200,7 +200,7 @@ function lesson(slug, d) {
 const pages = [
   {
     route: "/examples/",
-    title: "Sample lesson plans, slides and worksheets | Gather",
+    title: "Sample lesson plans, slides and worksheets | LessonCo",
     description:
       "Explore prepared Year 3 and Year 7 science lessons, from the plan through to worksheet answers.",
     body:
@@ -220,7 +220,7 @@ const pages = [
         )}</section><p class="ex-index-note">These are prepared sample lessons, not live AI results.</p>` +
       cta({
         title: "A starting point for your class.",
-        body: "Gather is preparing for teacher testing. Hear when you can try it.",
+        body: "LessonCo is preparing for teacher testing. Hear when you can try it.",
         actions:
           button("Access and availability", "/pricing/") +
           button("Explore the Year 7 lesson", "/examples/states-of-matter/", { secondary: true }),
@@ -228,7 +228,7 @@ const pages = [
   },
   ...Object.entries(data).map(([slug, d]) => ({
     route: `/examples/${slug}/`,
-    title: `${d.title} — ${d.year} sample lesson | Gather`,
+    title: `${d.title} — ${d.year} sample lesson | LessonCo`,
     description: d.intro,
     body: lesson(slug, d),
   })),

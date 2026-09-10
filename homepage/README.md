@@ -1,6 +1,6 @@
-# Gather homepage
+# LessonCo homepage
 
-This is the existing Gather / Good Company website migrated from
+This is the existing website, provisionally branded LessonCo, migrated from
 `teachdeck/landing-lab/gather/site`, with its original visual design, authored examples and
 motion preserved. It is independent static HTML/CSS/JavaScript, with no backend calls.
 

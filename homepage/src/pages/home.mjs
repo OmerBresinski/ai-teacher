@@ -25,9 +25,9 @@ const team = [
 
 const home = {
   route: "/",
-  title: "Gather | Editable lesson plans, slides and worksheets",
+  title: "LessonCo | Editable lesson plans, slides and worksheets",
   description:
-    "Meet Gather: lesson preparation for teachers, with plans, slides, worksheets and answers that work together.",
+    "Meet LessonCo: lesson preparation for teachers, with plans, slides, worksheets and answers that work together.",
   body: `
 <section class="hm-hero" aria-labelledby="home-title"><p class="eyebrow">A LITTLE HELP FOR TEACHERS.</p><h1 id="home-title">Good company<br>for a good lesson.</h1><p class="hm-promise">Turn a topic or your own material into a lesson plan,<br class="hm-wide"> slides, a worksheet and answers you can edit.</p><div class="actions">${button("Try a sample lesson", "/examples/")}${link("How it works", "/how-it-works/")}</div><p class="hm-preview-note">In development. Come and explore a prepared lesson.</p>
 <div class="hm-team" aria-label="Meet the lesson team">${team.map(([kind, name, desc, url]) => `<a href="${href(url)}" class="hm-teammate">${character(kind)}<h2>${name}</h2><p>${desc}</p></a>`).join("")}</div></section>
@@ -36,21 +36,21 @@ ${split({ eyebrow: "ONE LESSON, ALL TOGETHER", title: "Materials that<br>work to
 ${split({ eyebrow: "A THOUGHTFUL SECOND LOOK", title: "See what the<br>lesson review finds.", body: `<p>The example review shows a clarified question and a point for your attention.</p>${link("See an example review", "/features/lesson-checks/")}`, visual: review, reverse: true })}
 ${split({ eyebrow: "START WHERE YOU ARE", title: "Bring what<br>you already have.", body: `<p>A topic, a page of notes or a resource you want to reuse. Tell us the year group and what the class needs to learn.</p>${link("From brief to lesson", "/how-it-works/")}`, visual: note, tone: "peach" })}
 ${split({ eyebrow: "YOU’RE STILL THE TEACHER", title: "Make room<br>for your class.", body: `<p>A word bank for someone finding their feet. A further question for someone ready to go deeper.</p><p>Edit the materials and choose how the lesson runs. You know the people in the room.</p>${link("Explore the worksheet", "/features/worksheets/")}`, visual: edit, reverse: true })}
-${split({ eyebrow: "FROM YOUR DESK TO THEIRS", title: "Take it into<br>the classroom.", body: `<p>We’re building Gather so you can present your slides or export them to PowerPoint, with the worksheet and answers kept separate for printing.</p>${link("See what’s included", "/examples/")}`, visual: outputs, tone: "sage" })}
+${split({ eyebrow: "FROM YOUR DESK TO THEIRS", title: "Take it into<br>the classroom.", body: `<p>We’re building LessonCo so you can present your slides or export them to PowerPoint, with the worksheet and answers kept separate for printing.</p>${link("See what’s included", "/examples/")}`, visual: outputs, tone: "sage" })}
 ${cta({ title: "You bring the teaching.<br>We’ll bring good company.", body: "Take a look around a complete sample lesson. See how the explanation, practice and answers fit together." })}`,
 };
 const how = {
   route: "/how-it-works/",
-  title: "How Gather works | From a topic to an editable lesson",
+  title: "How LessonCo works | From a topic to an editable lesson",
   description:
-    "See the Gather workflow: start with a brief, review the materials and make the lesson yours.",
+    "See the LessonCo workflow: start with a brief, review the materials and make the lesson yours.",
   body: `
-${pageHero({ eyebrow: "FROM YOUR IDEA TO THEIR “I GET IT”", title: "A little context.<br>A lesson to make yours.", description: "Gather is being built to use AI for the preparation around your teaching. You choose the class, the learning goal and what to change.", actions: button("Explore a sample lesson", "/examples/") })}
+${pageHero({ eyebrow: "FROM YOUR IDEA TO THEIR “I GET IT”", title: "A little context.<br>A lesson to make yours.", description: "LessonCo is being built to use AI for the preparation around your teaching. You choose the class, the learning goal and what to change.", actions: button("Explore a sample lesson", "/examples/") })}
 <div class="hm-how">
 ${split({ eyebrow: "01 / YOUR STARTING POINT", title: "Tell us what<br>you’re teaching.", body: "<p>Start with a topic or your own material. Add the year group, lesson length and anything useful about the class’s prior knowledge.</p><p>Class-level context is enough. Leave out pupil names and records.</p>", visual: note })}
-<section class="hm-teamwork"><div class="hm-teamwork-copy"><p class="eyebrow">02 / A LITTLE TEAMWORK</p><h2>The whole lesson<br>comes along.</h2><p>A plan to follow. Slides to explain. Questions to try. Answers to work through.</p><p>Open the materials together and follow the same idea from explanation to practice.</p></div><div class="hm-teamwork-stage"><iframe src="${href("/lesson-building/?embed=1")}" title="Animated preview of the Gather team assembling a lesson" loading="lazy"></iframe><p>Workflow animation · not live generation</p></div></section>
+<section class="hm-teamwork"><div class="hm-teamwork-copy"><p class="eyebrow">02 / A LITTLE TEAMWORK</p><h2>The whole lesson<br>comes along.</h2><p>A plan to follow. Slides to explain. Questions to try. Answers to work through.</p><p>Open the materials together and follow the same idea from explanation to practice.</p></div><div class="hm-teamwork-stage"><iframe src="${href("/lesson-building/?embed=1")}" title="Animated preview of the LessonCo team assembling a lesson" loading="lazy"></iframe><p>Workflow animation · not live generation</p></div></section>
 ${split({ eyebrow: "03 / A SECOND LOOK", title: "Read the<br>lesson review.", body: `<p>Check is designed to show corrections made during generation and issues that remain.</p><p>Open the review to see what needs a closer look before teaching. It can miss errors; your judgement still matters.</p>${link("Explore lesson checks", "/features/lesson-checks/")}`, visual: review, reverse: true, tone: "sage" })}
-${split({ eyebrow: "04 / YOUR WAY FROM HERE", title: "Make it yours.", body: `<p>Edit the wording, swap an example or change the order. Add support or a question that asks a little more.</p><p>The planned workflow includes presenting from Gather and exporting the materials for your usual teaching setup.</p>${link("Look around the sample", "/examples/")}`, visual: edit })}
+${split({ eyebrow: "04 / YOUR WAY FROM HERE", title: "Make it yours.", body: `<p>Edit the wording, swap an example or change the order. Add support or a question that asks a little more.</p><p>The planned workflow includes presenting from LessonCo and exporting the materials for your usual teaching setup.</p>${link("Look around the sample", "/examples/")}`, visual: edit })}
 </div>${cta({ title: "Meet your next<br>little starting point.", body: "Explore a prepared lesson, from the plan through to the answers." })}`,
 };
 export default [home, how];
