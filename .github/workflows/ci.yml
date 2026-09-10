@@ -52,6 +52,9 @@ jobs:
       - name: bun run lint
         run: bun run lint
 
+      - name: homepage source and generated links
+        run: bun run homepage:lint && bun run homepage:check
+
       - name: bun run typecheck
         run: bun run typecheck
 
@@ -163,6 +166,9 @@ jobs:
 
       - name: bun run build
         run: bun run build
+
+      - name: Stage homepage into the production web output
+        run: bun run homepage:stage
 
       - name: Bundle budget (F18-R05, 250 KB gzip)
         id: budget

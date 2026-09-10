@@ -1,0 +1,33 @@
+/* Explicit SVG pivots are encoded in the rig, never inherited from prior CSS motion. */
+[data-cast-ready] .body,
+[data-cast-ready] .arm-left,
+[data-cast-ready] .arm-right,
+[data-cast-ready] .glasses {
+  transform-origin: 0 0 !important;
+  transform-box: view-box;
+  transition: none !important;
+}
+[data-cast-ready] .eye {
+  stroke: none;
+  transition: none !important;
+}
+[data-cast-ready] .mouth {
+  opacity: 1 !important;
+  transition: none !important;
+}
+[data-cast-size="tiny"] .fine-detail {
+  display: none;
+}
+[data-cast-size="tiny"] .limb {
+  stroke-width: inherit;
+}
+[data-cast-size="small"] .fine-detail {
+  opacity: 0.7;
+}
+[data-cast-ready] svg {
+  display: block;
+  flex-shrink: 0;
+}
+.loading-props {
+  pointer-events: none;
+}

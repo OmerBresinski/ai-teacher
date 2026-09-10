@@ -454,3 +454,11 @@ gh api -X PUT repos/OmerBresinski/ai-teacher/branches/master/protection --input 
   minor/patch grouped into one PR, plus `github-actions` (SHA-pinned actions with `# vX.Y.Z`
   comments). [`CODEOWNERS`](.github/CODEOWNERS) requests a review from `@OmerBresinski` on every
   PR; the [PR template](.github/pull_request_template.md) carries the merge checklist.
+
+## Homepage
+
+The Gather website source lives in [`homepage/`](homepage/README.md). Run `bun run homepage:dev`
+for the standalone preview at <http://localhost:4186/homepage/>. The existing Vercel web build
+stages it under `/homepage/` after building the application; a merge to `master` deploys both
+through the current GitHub integration. Product availability and form behaviour remain explicitly
+preview-only. See the homepage README for source ownership, checks and release boundaries.

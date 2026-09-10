@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gather — Your lesson, in good hands</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<a class="skip" href="#main">Skip to lesson progress</a>
+<header><a class="brand" href="../" aria-label="Gather home">gather<span aria-hidden="true">✳</span></a><span class="preview-label">A little preview</span></header>
+<main id="main">
+  <section class="intro" aria-labelledby="page-title"><h1 id="page-title">Light &amp; shadows</h1><p>Year 5 science</p></section>
+  <section class="workspace" aria-label="Lesson generation preview">
+    <div class="scene-wrap"><div id="scene"></div></div>
+    <div class="live-copy" role="status" aria-live="polite" aria-atomic="true"><h2 id="loading-title">Planning your lesson.</h2></div>
+    <div class="progress-area"><div class="progress-track" role="progressbar" aria-label="Lesson stages complete" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" aria-valuetext="Plan in progress. 0 of 4 stages complete.">
+      <span><span class="rail"><i></i></span><span class="stage-label"><b aria-hidden="true">✓</b>Plan</span></span>
+      <span><span class="rail"><i></i></span><span class="stage-label"><b aria-hidden="true">✓</b>Slides</span></span>
+      <span><span class="rail"><i></i></span><span class="stage-label"><b aria-hidden="true">✓</b>Worksheet</span></span>
+      <span><span class="rail"><i></i></span><span class="stage-label"><b aria-hidden="true">✓</b>Answers</span></span>
+    </div></div>
+    <div class="next-area"><a id="sample-link" class="primary" href="../examples/shadows/" tabindex="-1" >Explore the sample lesson <span aria-hidden="true">↗</span></a></div>
+  </section>
+  <div class="underneath"><button type="button" id="pause" aria-pressed="false">Pause</button></div>
+  <nav id="cast" hidden aria-hidden="true"></nav>
+  <details class="preview-tools"><summary>Preview controls <span aria-hidden="true">+</span></summary><p>This is a motion prototype, with simulated generation. Try a longer stage to see how the team waits.</p><div class="controls"><label>Generation pace <select id="pace"><option value="normal">Normal preview</option><option value="long">Long stages</option><option value="manual">Manual readiness</option></select></label><button type="button" id="ready">Mark stage ready</button><button type="button" id="restart">Start again ↺</button><label class="loop"><input type="checkbox" id="loop"> Loop selected beat</label></div><fieldset class="motion-controls"><legend>Ambient movement</legend><p>Try the defaults first. Movement eases down during precise work and handoffs.</p>
+<label>Overall intensity <output id="value-intensity">165%</output><input type="range" data-motion="intensity" min="0" max="2" step="0.05" value="1.65"></label>
+<label>Breathing <output id="value-breathing">120%</output><input type="range" data-motion="breathing" min="0" max="2" step="0.05" value="1.2"></label>
+<label>Body sway <output id="value-sway">125%</output><input type="range" data-motion="sway" min="0" max="2" step="0.05" value="1.25"></label>
+<label>Tempo <output id="value-tempo">1.25×</output><input type="range" data-motion="tempo" min="0.4" max="1.8" step="0.05" value="1.25"></label>
+<button type="button" id="reset-motion">Reset movement</button></fieldset><p id="readiness-note"></p><div class="beat-details"><p id="step" class="eyebrow"></p><h3 id="title">Lesson preview</h3><p id="description"></p><span id="status"></span></div><div id="beats"></div></details>
+</main>
+
+<script src="../motion/vendor/gsap.min.js"></script><script src="../motion/characters.js"></script><script src="../loading-refined/actions.js"></script><script src="../production/production.js"></script><script src="page.js"></script>
+</body></html>

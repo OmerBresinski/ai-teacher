@@ -1,0 +1,592 @@
+/* Good Company home blocks. Layout and artwork use the shared type/palette system. */
+.hm-hero {
+  max-width: 1280px;
+  margin: auto;
+  padding: 66px 32px 70px;
+  text-align: center;
+}
+.hm-hero h1 {
+  font-size: var(--h1, clamp(52px, 6vw, 84px));
+  line-height: 1.01;
+  letter-spacing: -0.045em;
+  max-width: 1040px;
+  margin: 22px auto 28px;
+  font-weight: 600;
+}
+.hm-promise {
+  font-size: clamp(19px, 1.7vw, 23px);
+  line-height: 1.48;
+  max-width: 750px;
+  margin: 0 auto 26px;
+  color: var(--ink, #293b32);
+}
+.hm-hero .actions {
+  justify-content: center;
+}
+.hm-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 48px;
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  font-size: 17px;
+  font-weight: 500;
+}
+.hm-link span {
+  font-size: 23px;
+}
+.hm-preview-note {
+  font-size: 14px !important;
+  color: var(--muted, #516357);
+  margin: 18px auto 0;
+}
+.hm-team {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+  margin: 38px auto 0;
+  max-width: 1090px;
+}
+.hm-teammate {
+  display: block;
+  text-decoration: none;
+  padding: 0 3px;
+}
+.hm-teammate h2 {
+  font-size: 23px;
+  letter-spacing: -0.02em;
+  margin: 0 0 7px;
+  line-height: 1.2;
+}
+.hm-teammate p {
+  font-size: 16px;
+  line-height: 1.4;
+  max-width: 200px;
+  margin: auto;
+  color: var(--muted, #516357);
+}
+.hm-teammate:hover h2 {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.hm-teammate .site-character {
+  max-width: 250px;
+  width: 100%;
+  margin: auto;
+}
+.hm-teammate svg {
+  width: 100%;
+  display: block;
+}
+.hm-sample-label {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 20px 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line, #c7cebe);
+  font-size: 14px;
+  letter-spacing: 0.07em;
+}
+.hm-sample-label span:last-child {
+  letter-spacing: 0;
+  color: var(--muted, #516357);
+}
+.hm-meta {
+  display: block;
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: 0.105em;
+  font-weight: 600;
+}
+.hm-materials {
+  position: relative;
+  min-height: 490px;
+  padding: 0 0 50px;
+  max-width: 590px;
+  margin: auto;
+}
+.hm-slide {
+  background: #fcf3cf;
+  padding: 25px 28px 22px;
+  border: 1px solid #aaaf8d;
+  box-shadow: 0 3px 0 #c2c8ac;
+  border-radius: 3px;
+  width: 88%;
+  transform: rotate(-3deg);
+}
+.hm-slide h3 {
+  font-size: 31px;
+  line-height: 1.08;
+  margin: 20px 0 0;
+  letter-spacing: -0.03em;
+}
+.hm-slide p {
+  font-size: 14px;
+  line-height: 1.4;
+  max-width: 290px;
+  margin: 14px 0 0;
+}
+.hm-shadow-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 165px;
+  margin: 12px 0 0;
+  overflow: visible;
+}
+.hm-shadow-diagram text {
+  font-family: inherit;
+  font-size: 14px;
+  fill: #293b32;
+}
+.hm-worksheet {
+  position: relative;
+  margin: -68px 0 0 auto;
+  transform: rotate(3deg);
+  width: 64%;
+  padding: 26px;
+  background: #fffdf5;
+  border: 1px solid #afb7a5;
+  box-shadow: 0 12px 20px #293b3208;
+  border-radius: 2px;
+}
+.hm-worksheet h3 {
+  font-size: 25px;
+  line-height: 1.1;
+  margin: 18px 0;
+}
+.hm-worksheet p {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 14px 0 0;
+}
+.hm-answer-line {
+  height: 18px;
+  border-bottom: 1px solid #bfc7b4;
+  margin: 4px 0 12px;
+}
+.hm-wordbank {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 22px 0 0;
+}
+.hm-wordbank span {
+  font-size: 14px;
+  padding: 5px 9px;
+  background: #e7ecd9;
+  border-radius: 3px;
+}
+.hm-material-note {
+  display: block;
+  font-size: 14px;
+  font-style: italic;
+  text-align: center;
+  margin: 27px 0 0;
+  color: var(--muted, #516357);
+}
+.hm-review {
+  background: #fffdf6;
+  border: 1px solid #c2cbbb;
+  padding: 30px;
+  border-radius: 6px;
+  box-shadow: 0 10px 26px #293b3205;
+  max-width: 510px;
+  margin: auto;
+}
+.hm-review-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.hm-review-badge {
+  background: #f4ddd2;
+  font-size: 14px;
+  padding: 5px 12px;
+  border-radius: 99px;
+}
+.hm-review h3 {
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin: 26px 0 28px;
+}
+.hm-review-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-top: 1px solid #d7ddcf;
+  padding: 20px 0;
+}
+.hm-review-icon {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #dce6cc;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.hm-review-item b {
+  font-size: 17px;
+  font-weight: 500;
+}
+.hm-review-item p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #516357;
+  margin: 4px 0 10px;
+}
+.hm-review-item del,
+.hm-review-item ins {
+  display: block;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.hm-review-item del {
+  color: #75665b;
+  margin-bottom: 8px;
+}
+.hm-review-item ins {
+  text-decoration: none;
+  background: #edf2e4;
+  padding: 9px 12px;
+  border-left: 2px solid #92a47f;
+}
+.hm-review-attention .hm-review-icon {
+  background: #f9e7b5;
+}
+.hm-review-attention {
+  padding-bottom: 4px;
+}
+.hm-review-attention p {
+  font-size: 14px;
+  max-width: 350px;
+}
+.hm-review-note {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  color: #516357;
+  margin: 17px 0 0 !important;
+}
+.hm-note-scene {
+  padding: 30px 12px;
+  max-width: 500px;
+  margin: auto;
+}
+.hm-note {
+  background: #fffdf6;
+  border: 1px solid #c6c7b5;
+  transform: rotate(-2deg);
+  padding: 35px 35px 28px;
+  box-shadow: 5px 6px 0 #e5dbc4;
+  border-radius: 2px;
+}
+.hm-note > p {
+  font-size: 27px;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  margin: 24px 0 28px;
+}
+.hm-note-sign {
+  font-size: 14px;
+  color: #67735e;
+}
+.hm-note-tags {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 35px;
+}
+.hm-note-tags span {
+  font-size: 14px;
+  border-bottom: 1px solid #b4b9a6;
+  padding: 5px 3px;
+}
+.hm-edit {
+  background: #fffdf6;
+  border: 1px solid #c6cebc;
+  border-radius: 4px;
+  padding: 32px;
+  max-width: 510px;
+  margin: auto;
+  transform: rotate(1deg);
+}
+.hm-edit-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+.hm-edit-bar > span:last-child {
+  font-size: 26px;
+  color: #7b9061;
+}
+.hm-edit h3 {
+  font-size: 35px;
+  line-height: 1.07;
+  letter-spacing: -0.03em;
+  margin: 25px 0;
+}
+.hm-edit > p {
+  font-size: 21px;
+  line-height: 1.6;
+}
+.hm-blank {
+  display: inline-block;
+  width: 48px;
+  border-bottom: 1px solid #87987a;
+}
+.hm-edit .hm-wordbank {
+  margin: 24px 0 28px;
+}
+.hm-edit .hm-wordbank span {
+  font-size: 16px;
+  padding: 6px 12px;
+}
+.hm-edit-add {
+  border-top: 1px solid #d4dccb;
+  padding-top: 23px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+}
+.hm-edit-add > span {
+  border: 1px solid #b4c1a5;
+  border-radius: 50%;
+  height: 25px;
+  width: 25px;
+  display: grid;
+  place-items: center;
+}
+.hm-edit .hm-edit-extension {
+  font-size: 17px;
+  line-height: 1.5;
+  margin: 12px 0 0;
+  color: #516357;
+}
+.hm-outputs {
+  max-width: 465px;
+  margin: auto;
+  padding: 14px 0;
+}
+.hm-outputs > div {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  padding: 24px 0;
+  border-bottom: 1px solid #b8c5ac;
+}
+.hm-outputs > div:first-child {
+  border-top: 1px solid #b8c5ac;
+}
+.hm-file {
+  width: 62px;
+  height: 74px;
+  border: 1px solid #6b795f;
+  border-radius: 2px;
+  display: grid;
+  place-items: center;
+  font-size: 23px;
+  transform: rotate(-4deg);
+  flex-shrink: 0;
+}
+.hm-file.yellow {
+  background: #f5c054;
+}
+.hm-file.green {
+  background: #d6e2bd;
+  transform: rotate(4deg);
+}
+.hm-file.coral {
+  background: #efa991;
+}
+.hm-outputs p {
+  margin: 0;
+}
+.hm-outputs b {
+  display: block;
+  font-size: 23px;
+  font-weight: 500;
+}
+.hm-outputs p span {
+  display: block;
+  font-size: 16px;
+  line-height: 1.4;
+  margin-top: 6px;
+  color: #516357;
+}
+.hm-output-note {
+  text-align: center;
+  font-size: 14px !important;
+  color: #516357;
+  margin: 25px 0 0 !important;
+}
+.hm-teamwork {
+  max-width: 1180px;
+  margin: auto;
+  padding: 80px 0 105px;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 70px;
+  align-items: center;
+}
+.hm-teamwork h2 {
+  font-size: clamp(38px, 4vw, 58px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  margin: 0 0 24px;
+}
+.hm-teamwork-copy > p:not(.eyebrow) {
+  font-size: 20px;
+  line-height: 1.5;
+  margin: 14px 0;
+  max-width: 430px;
+}
+.hm-teamwork-stage {
+  min-width: 0;
+}
+.hm-teamwork iframe {
+  width: 100%;
+  aspect-ratio: 640 / 360;
+  display: block;
+  border: 0;
+  background: transparent;
+}
+.hm-teamwork-stage > p {
+  text-align: center;
+  font-size: 14px;
+  color: #67735e;
+  margin: 10px 0 0;
+}
+@media (max-width: 1240px) {
+  .hm-sample-label,
+  .hm-teamwork {
+    margin-left: 5%;
+    margin-right: 5%;
+  }
+  .hm-team {
+    gap: 18px;
+  }
+  .hm-teamwork {
+    gap: 35px;
+  }
+}
+@media (max-width: 760px) {
+  .hm-hero {
+    padding: 40px 22px 50px;
+  }
+  .hm-hero h1 {
+    font-size: clamp(49px, 10.5vw, 70px);
+    margin: 20px auto 25px;
+  }
+  .hm-promise {
+    font-size: 19px;
+  }
+  .hm-wide {
+    display: none;
+  }
+  .hm-team {
+    grid-template-columns: 1fr 1fr;
+    gap: 25px 10px;
+    max-width: 470px;
+    margin-top: 30px;
+  }
+  .hm-teammate .site-character {
+    max-width: 205px;
+  }
+  .hm-teammate h2 {
+    font-size: 21px;
+  }
+  .hm-teammate p {
+    font-size: 14px;
+    max-width: 165px;
+  }
+  .hm-preview-note {
+    max-width: 300px;
+    line-height: 1.5;
+  }
+  .hm-sample-label {
+    flex-direction: column;
+    font-size: 14px;
+    gap: 5px;
+    padding: 18px 0;
+  }
+  .hm-materials {
+    max-width: 480px;
+    min-height: 0;
+    padding-bottom: 0;
+  }
+  .hm-slide {
+    padding: 23px;
+    width: 91%;
+  }
+  .hm-slide h3 {
+    font-size: 28px;
+  }
+  .hm-worksheet {
+    width: 68%;
+    padding: 22px;
+    margin-top: -40px;
+  }
+  .hm-worksheet h3 {
+    font-size: 23px;
+  }
+  .hm-review {
+    padding: 25px;
+  }
+  .hm-note-scene {
+    padding: 15px 6px;
+  }
+  .hm-note {
+    padding: 27px;
+  }
+  .hm-note > p {
+    font-size: 25px;
+  }
+  .hm-edit {
+    padding: 26px;
+  }
+  .hm-edit h3 {
+    font-size: 32px;
+  }
+  .hm-edit > p {
+    font-size: 20px;
+  }
+  .hm-teamwork {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 55px 0 65px;
+  }
+  .hm-teamwork-copy > p:not(.eyebrow) {
+    font-size: 19px;
+  }
+  .hm-teamwork h2 {
+    font-size: 40px;
+  }
+  .hm-outputs > div {
+    gap: 22px;
+  }
+  .hm-file {
+    width: 54px;
+    height: 66px;
+  }
+  .hm-outputs b {
+    font-size: 21px;
+  }
+  .hm-outputs p span {
+    font-size: 15px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-teammate * {
+    animation: none !important;
+  }
+}

@@ -49,8 +49,8 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | Team / project         | `omerbresinskis-projects` (personal) / **`teaching-journey-web`**                                  |
 | Root Directory         | `apps/web` (`vercel project update teaching-journey-web --root-directory apps/web`); "Include source files outside of the Root Directory" is on (API `sourceFilesOutsideRootDirectory: true`, the default) |
 | Framework preset       | Vite (project setting and `apps/web/vercel.json#framework`)                                         |
-| Install / build        | from `apps/web/vercel.json`: `cd ../.. && bun install --frozen-lockfile --ignore-scripts` (skips the root `prepare` → `lefthook install`, which has no git repo on Vercel) and `cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web`; output `dist` |
-| Ignored Build Step     | `bash scripts/vercel-ignore-build.sh` (relative to `apps/web`): skips when nothing under `apps/web`, `packages/{ui,api-client,domain,config}`, `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`; always builds when that SHA is missing |
+| Install / build        | from `apps/web/vercel.json`: `cd ../.. && bun install --frozen-lockfile --ignore-scripts` (skips the root `prepare` → `lefthook install`, which has no git repo on Vercel) and `cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web && bun run homepage:stage`; output `dist` |
+| Ignored Build Step     | `bash scripts/vercel-ignore-build.sh` (relative to `apps/web`): skips when nothing under `apps/web`, `homepage`, `packages/{ui,api-client,domain,config}`, `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`; always builds when that SHA is missing |
 | Git                    | `vercel git connect https://github.com/OmerBresinski/ai-teacher.git`; production branch **`master`** (set via `PATCH /v1/projects/teaching-journey-web/branch {"branch":"master"}`). Pushes to `master` deploy production. **Preview deployments are disabled since 2026-09-05** (`apps/web/vercel.json` `git.deploymentEnabled: { "master": true, "*": false }`): PRs hit the Hobby-plan build rate limit and the previews were not being used. Re-enable by deleting that key; the pairing recipe below still applies then |
 | Domains                | `teaching-journey-web.vercel.app` (auto). `app.<domain>` — `TODO(domain)`, domain follow-up              |
 | Deployment protection  | Vercel Authentication (SSO) — Hobby default "Standard Protection": previews ask for a Vercel login. Whether to also protect **production** (`teaching-journey-web.vercel.app`) is a founder decision (dashboard-only); since 2026-09-04 the site works end-to-end against the Railway api, so this is low urgency — see "Dashboard-only (Vercel)". A Protection Bypass for Automation secret exists (curl/e2e: `x-vercel-protection-bypass: <secret>`, read it in *Settings → Deployment Protection*; never commit it) |
@@ -81,9 +81,24 @@ loudly. The `vercel-env:` line in the build log shows which rule fired. `turbo.j
 `VITE_API_URL` / `VITE_APP_ENV` under `@tj/web#build.env`, so the turbo cache key changes with
 them (Vercel's build uses its own remote cache: "Detected Turbo").
 
+### Homepage in the existing web deployment
+
+The standalone source in `homepage/` is built and checked by `bun run homepage:stage` after the
+Vite build, then copied into `apps/web/dist/homepage/`. The existing GitHub → Vercel deployment
+serves it at `https://teaching-journey-web.vercel.app/homepage/`; no new Vercel project, Railway
+service, API route or credentials are needed. `homepage/` changes trigger the existing web build.
+The application still occupies `/` and its existing deep links. The homepage is an explicitly
+non-indexed preview with authored examples and non-submitting forms; see `homepage/README.md`.
+
+The homepage namespace bypasses the SPA fallback so its assets and directory indexes resolve
+as static files. `homepage/stage.mjs` also installs the authored `404.html` at the web output root
+for Vercel's static 404 handling. Missing homepage paths return 404 instead of the app shell.
+Only `/homepage/lesson-building/*` allows same-origin framing for the homepage's animation;
+the rest of the application keeps `X-Frame-Options: DENY`.
+
 ### Headers and rewrites (`apps/web/vercel.json`)
 
-- Rewrite `/((?!assets/|_vercel/).*)` → `/index.html` (SPA deep links); missing `/assets/*` files
+- Rewrite `/((?!assets/|_vercel/|homepage(?:/|$)).*)` → `/index.html` (SPA deep links); missing `/assets/*` files
   stay 404 instead of returning HTML.
 - `/assets/*` → `public, max-age=31536000, immutable` (hashed filenames); everything else
   (`/`, `/index.html`, deep links) → `no-cache`. Note: a 404 under `/assets/` also carries the

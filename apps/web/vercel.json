@@ -2,18 +2,37 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "cd ../.. && bun install --frozen-lockfile --ignore-scripts",
-  "buildCommand": "cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web",
+  "buildCommand": "cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web && bun run homepage:stage",
   "outputDirectory": "dist",
   "ignoreCommand": "bash scripts/vercel-ignore-build.sh",
-  "git": { "deploymentEnabled": { "master": true, "*": false } },
-  "rewrites": [{ "source": "/((?!assets/|_vercel/).*)", "destination": "/index.html" }],
+  "git": {
+    "deploymentEnabled": {
+      "master": true,
+      "*": false
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!assets/|_vercel/|homepage(?:/|$)).*)",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
         {
           "key": "Permissions-Policy",
           "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
@@ -26,11 +45,50 @@
     },
     {
       "source": "/assets/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     },
     {
       "source": "/((?!assets/).*)",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/homepage/lesson-building/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'self'; script-src 'self' 'sha256-S0zeEjWyDLVengQkAwgQqQfSARiMyhLo0UCZvDgxArc='; style-src 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/homepage/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/homepage",
+      "destination": "/homepage/",
+      "permanent": true
     }
   ]
 }
