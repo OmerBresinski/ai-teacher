@@ -1,8 +1,10 @@
 import type { Finding } from "./finding";
 import type { Lesson } from "./lesson";
 import type { FactId, LessonFacts } from "./lesson-facts";
+import { QUALITY_CHECKS, qualityChecks } from "./quality-checks";
 import { richDocToPlainText } from "./rich-text";
-import { hasRevealableAnswer, type Slide, type SlideElement } from "./slide";
+import { hasRevealableAnswer, type Slide } from "./slide";
+import { walkElements } from "./text";
 import type { Worksheet, WorksheetBlock } from "./worksheet";
 
 export * from "./finding";
@@ -21,14 +23,16 @@ export * from "./finding";
 export const TIMING_TOLERANCE_PERCENT = 10;
 
 /**
- * The `check` names `checkLesson` produces. Anything else on `Lesson.generation.findings` is a
- * model check (or the budget stop) and is shown as stored; these four are always recomputed.
+ * The `check` names `checkLesson` produces: the four schema checks here and the deterministic
+ * quality checks in `quality-checks.ts` (TEACH-210). Anything else on `Lesson.generation.findings`
+ * is a model check (or the budget stop) and is shown as stored; these are always recomputed.
  */
 export const SCHEMA_CHECKS: ReadonlySet<string> = new Set([
   "question-answer",
   "objective-coverage",
   "vocabulary-in-facts",
   "timing",
+  ...QUALITY_CHECKS,
 ]);
 export const isSchemaCheck = (check: string): boolean => SCHEMA_CHECKS.has(check);
 
@@ -39,6 +43,7 @@ export function checkLesson(lesson: Lesson, worksheet?: Worksheet): Finding[] {
     ...checkObjectiveCoverage(lesson, worksheet),
     ...checkVocabularyInFacts(lesson),
     ...checkTiming(lesson),
+    ...qualityChecks(lesson, worksheet),
   ];
 }
 
@@ -252,14 +257,6 @@ function checkTiming(lesson: Lesson): Finding[] {
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
-
-/** Visit every element on a slide, descending into groups the way `slideStepCount` does. */
-function walkElements(elements: SlideElement[], visit: (element: SlideElement) => void): void {
-  for (const element of elements) {
-    visit(element);
-    if (element.type === "group") walkElements(element.children, visit);
-  }
-}
 
 function isBlank(value: string | undefined): boolean {
   return !value || value.trim().length === 0;

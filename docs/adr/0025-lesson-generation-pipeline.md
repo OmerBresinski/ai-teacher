@@ -391,3 +391,24 @@ and Repair on Terra (≈ $0.12–0.20 a lesson) — accepted for the days betwee
 (Generate on Luna vs Terra; Evaluate on Terra vs Luna-high) are decided by the project's A/B
 ticket (TEACH-221) with eval data; the table is the hypothesis.
 
+## Amendment (2026-09-09, project Generation quality — TEACH-210)
+
+§10's shared checker grows from four schema checks to nine, and §8's spec schemas become a
+sanitiser. In `@tj/slides` `specs.ts`, every text slot decodes HTML entities before its length cap
+and refuses house-rule or prompt vocabulary; `notes` refuses repair commentary; `multiple-choice`
+options, `matching` sides and `sort` steps must be distinct; a `footnote` may not repeat an item;
+`sort` refuses a classify stem or same-first-word steps; `true-false` refuses two long claims joined
+by "and". Each is a validation issue with a message written for the model, so `callStructured`'s one
+retry (§14) sees it. In `@tj/domain`, `checkLesson` adds `readability` (warning; prose kinds only,
+against `facts.pitch`, sentence length and a Flesch–Kincaid reading age), `repetition` (warning; a
+stem asked twice across slides and sheet, or a five-word phrase recurring four or more times —
+counts only, never the phrase), `explanation-share` (warning; explain-kind minutes under 30 %),
+`degenerate-question` and `leaked-language` (errors, with `regenerate-slide` / `regenerate-block`
+hints) — the sanitiser's rules re-applied to a stored document. The rules live in
+`documents/text-guards.ts` and `text-metrics.ts`; the checks in `documents/quality-checks.ts`; the
+plain-text projections `slideText` / `blockText` moved from `@tj/generation` to
+`@tj/domain/documents/text.ts` so the checker measures the text Evaluate reads. `SCHEMA_CHECKS`
+is the single source the eval's scorer reads. The fixtures were made clean against the new checks
+(the worksheet fixture repeated the multiple-choice slide's stem — Problem 2 in miniature — and the
+skeleton fixture explained for 15 of 60 minutes).
+

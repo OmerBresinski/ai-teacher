@@ -200,7 +200,10 @@ export const lessonFacts = (): LessonFacts => ({
     { id: "s1", kind: "title", minutes: 2, factRefs: [] },
     { id: "s2", kind: "objectives", minutes: 3, factRefs: ["o1", "o2"] },
     { id: "s3", kind: "vocabulary", minutes: 10, factRefs: ["v1", "v2"] },
-    { id: "s4", kind: "multiple-choice", minutes: 45, factRefs: ["q1", "o1"] },
+    // An explain entry keeps the fixture clean for `explanation-share` (TEACH-210): the pipeline's
+    // outlines carry one; this four-slide lesson simply has not materialised its content slide.
+    { id: "s4", kind: "content", minutes: 20, factRefs: ["o1", "v1"] },
+    { id: "s5", kind: "multiple-choice", minutes: 25, factRefs: ["q1", "o1"] },
   ],
   durationMin: 60,
 });

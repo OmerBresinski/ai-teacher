@@ -24,11 +24,19 @@ export * from "./lesson-facts";
 export * from "./links";
 export * from "./migrate";
 export * from "./objectives";
+export {
+  EXPLANATION_SHARE_MIN_PERCENT,
+  PHRASE_REPEAT_LIMIT,
+  QUALITY_CHECKS,
+} from "./quality-checks";
 export * from "./rich-text";
 export * from "./series";
 export * from "./slide";
 export * from "./source-ref";
 export * from "./summarise";
+export * from "./text";
+export * from "./text-guards";
+export * from "./text-metrics";
 export * from "./theme";
 export * from "./worksheet";
 export * from "./worksheet-guides";
