@@ -18,6 +18,10 @@ const meta: MaterialiseMeta = {
   at: "2026-09-08T10:00:00.000Z",
 };
 
+/** A 1×1 PNG, the thumbnail every fake photo carries. */
+const PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
 function pexelsPhoto(id: string, portrait: boolean): PhotoResult {
   return {
     id,
@@ -30,7 +34,8 @@ function pexelsPhoto(id: string, portrait: boolean): PhotoResult {
     src: {
       large: `https://images.pexels.com/photos/${id}/large.jpeg`,
       medium: `https://images.pexels.com/photos/${id}/medium.jpeg`,
-      tiny: `https://images.pexels.com/photos/${id}/tiny.jpeg`,
+      // A data URL: the SDK fetches https images in-process before the call, which a test must not.
+      tiny: `data:image/png;base64,${PNG}`,
     },
   };
 }
@@ -157,9 +162,11 @@ function imageOf(lesson: Lesson, index: number) {
 function judge(...answers: FakeScriptEntry[]) {
   return createFakeAi({ script: answers, usage: { inputTokens: 40, outputTokens: 8 } });
 }
-const pick = (id: string) => JSON.stringify({ pick: id, query: null });
-const requery = (query: string) => JSON.stringify({ pick: null, query });
-const NONE = JSON.stringify({ pick: null, query: null });
+/** A pick that passes the gate for a brief with the given `mustShow` (none by default). */
+const pick = (id: string, visible: string[] = [], count: "one" | "several" = "one") =>
+  JSON.stringify({ pick: id, visible, count, query: null });
+const requery = (query: string) => JSON.stringify({ pick: null, visible: [], count: null, query });
+const NONE = JSON.stringify({ pick: null, visible: [], count: null, query: null });
 const run = (lesson: Lesson, deps: ReturnType<typeof recordingDeps>) =>
   illustrate({ lesson, worksheetId: "w", worksheet: undefined }, deps);
 
@@ -186,18 +193,30 @@ describe("illustrate", () => {
     const element = imageOf(state.lesson, 0);
     expect(element.src).toBe("/files/ws/images/p2.jpg");
     expect(element.alt).toBe("Photo p2");
-    expect(element.source).toEqual(storedFor(second).source);
+    expect(element.source).toEqual({
+      ...storedFor(second).source,
+      evidence: {
+        visible: [],
+        count: "one",
+        alt: "Photo p2",
+        promptVersion: "pick-or-requery-photo.v3",
+        thumbnail: second.src.tiny,
+      },
+    });
     expect(element.authoredBy).toBe("ai");
+    // The judge saw the two portrait thumbnails as image parts, numbered to match their ids.
+    expect(ai.calls[0]?.imageParts).toBe(2);
+    expect(ai.calls[0]?.promptText).toContain("photo 1 — id p1");
     expect(deps.persisted).toHaveLength(1);
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
-    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v2");
+    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v3");
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 
   test("the judge sees the lesson context, not just the slide", async () => {
     const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
-    const ai = judge(pick("p"));
+    const ai = judge(pick("p", ["front teeth"]));
     const lesson = imageLesson([{ subject: "rodent incisors", mustShow: "front teeth" }]);
     lesson.brief = { topic: "Rodents and their teeth", durationMin: 60, answers: { q1: "Year 7" } };
     await run(lesson, recordingDeps(ai, { images }));
@@ -209,19 +228,23 @@ describe("illustrate", () => {
     expect(prompt).toContain("Heading 0");
   });
 
-  test("a requery searches once more and stores its first portrait", async () => {
+  test("a requery searches once more and the second judge call decides; its result is never placed blind", async () => {
     const dental = { ...pexelsPhoto("d", true), alt: "Hands holding human teeth" };
     const rodent = pexelsPhoto("r", true);
     const { images, searches, stores } = fakeImages(async (query) =>
       query === "beaver gnawing wood" ? [pexelsPhoto("l", false), rodent] : [dental],
     );
-    const ai = judge(requery("beaver gnawing wood"));
+    const ai = judge(requery("beaver gnawing wood"), pick("r"));
     const deps = recordingDeps(ai, { images });
     const state = await run(imageLesson([{ subject: "rodent teeth" }]), deps);
 
     expect(searches).toEqual(["rodent teeth", "rodent", "beaver gnawing wood"]);
     expect(stores).toEqual(["r"]);
-    expect(ai.calls).toHaveLength(1);
+    expect(ai.calls).toHaveLength(2);
+    // The second judge is told every search so far and sees only the new pool.
+    expect(ai.calls[1]?.promptText).toContain("beaver gnawing wood");
+    expect(ai.calls[1]?.promptText).toContain("id r");
+    expect(ai.calls[1]?.promptText).not.toContain("id d");
     expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/r.jpg");
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
   });
@@ -266,11 +289,92 @@ describe("illustrate", () => {
 
   test("a judge that picks an id not in the pool falls back to its query, else empty", async () => {
     const { images, stores } = fakeImages(async () => [pexelsPhoto("x", true)]);
-    const deps = recordingDeps(judge(JSON.stringify({ pick: "nope", query: null })), { images });
+    const deps = recordingDeps(judge(pick("nope")), { images });
     const state = await run(imageLesson([{ subject: "river" }]), deps);
     expect(stores).toEqual([]);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
     expect(deps.imageCounts?.empty).toBe(1);
+  });
+
+  test("row 2 (TEACH-220): a pick whose visible list misses a required item fails the gate — a query earns one more judge call, else empty; nothing placed blind", async () => {
+    const flower = {
+      subject: "buttercup flower close-up",
+      mustShow: ["open flower head", "petals", "stamens"],
+      purpose: "identify-parts" as const,
+    };
+    const { images, searches, stores } = fakeImages(async (query) =>
+      query === "buttercup macro" ? [pexelsPhoto("B", true)] : [pexelsPhoto("A", true)],
+    );
+    // First judge: picks A but sees only the ladybird's worth — gate fails; it offers a query.
+    // Second judge over the new pool: picks B with everything visible.
+    const gatedThenQuery = JSON.stringify({
+      pick: "A",
+      visible: ["petals"],
+      count: "one",
+      query: "buttercup macro",
+    });
+    const ai = judge(gatedThenQuery, pick("B", flower.mustShow));
+    const deps = recordingDeps(ai, { images });
+    const state = await run(imageLesson([flower]), deps);
+    expect(ai.calls).toHaveLength(2);
+    expect(searches).toEqual(["buttercup flower close", "buttercup flower", "buttercup macro"]);
+    expect(stores).toEqual(["B"]);
+    const element = imageOf(state.lesson, 0);
+    expect(element.src).toBe("/files/ws/images/B.jpg");
+    // Row 4: the evidence on the element is what the judge saw.
+    expect(element.source?.evidence).toEqual({
+      visible: ["open flower head", "petals", "stamens"],
+      count: "one",
+      alt: "Photo B",
+      promptVersion: "pick-or-requery-photo.v3",
+      thumbnail: `data:image/png;base64,${PNG}`,
+    });
+
+    // The same first verdict with no query: empty, one call, nothing stored.
+    const gatedNoQuery = JSON.stringify({
+      pick: "A",
+      visible: ["petals"],
+      count: "one",
+      query: null,
+    });
+    const again = fakeImages(async () => [pexelsPhoto("A", true)]);
+    const ai2 = judge(gatedNoQuery);
+    const deps2 = recordingDeps(ai2, { images: again.images });
+    const state2 = await run(imageLesson([flower]), deps2);
+    expect(ai2.calls).toHaveLength(1);
+    expect(again.stores).toEqual([]);
+    expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+    expect(deps2.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+  });
+
+  test("row 3: a visible item outside mustShow is a validation issue the retry names", async () => {
+    const flower = {
+      subject: "buttercup",
+      mustShow: ["stamens"],
+      purpose: "identify-parts" as const,
+    };
+    const { images } = fakeImages(async () => [pexelsPhoto("A", true)]);
+    const bad = JSON.stringify({
+      pick: "A",
+      visible: ["stamens", "bee"],
+      count: "one",
+      query: null,
+    });
+    const ai = judge(bad, pick("A", ["stamens"]));
+    const state = await run(imageLesson([flower]), recordingDeps(ai, { images }));
+    expect(ai.calls).toHaveLength(2);
+    expect(ai.calls[1]?.promptText).toContain("visible lists only items from mustShow: stamens");
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/A.jpg");
+  });
+
+  test("at most two judge calls per slide: a second requery is not followed", async () => {
+    const { images, searches } = fakeImages(async () => [pexelsPhoto("A", true)]);
+    const ai = judge(requery("try two"), requery("try three"));
+    const deps = recordingDeps(ai, { images });
+    const state = await run(imageLesson([{ subject: "river" }]), deps);
+    expect(ai.calls).toHaveLength(2);
+    expect(searches).toEqual(["river", "try two"]);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
   });
 
   test("none keeps the placeholder, records a warning and persists the judge's usage", async () => {
@@ -297,10 +401,11 @@ describe("illustrate", () => {
     const { images, searches } = fakeImages(async (query) =>
       query === "better" ? [pexelsPhoto("b", true)] : [pexelsPhoto("l1", false)],
     );
-    const ai = judge(requery("better"));
+    const ai = judge(requery("better"), pick("b"));
     const deps = recordingDeps(ai, { images });
     const state = await run(imageLesson([{ subject: "river" }]), deps);
-    expect(ai.calls[0]?.promptText).toContain("Results: none.");
+    expect(ai.calls[0]?.promptText).toContain("Candidates: none.");
+    expect(ai.calls[0]?.imageParts).toBeUndefined();
     expect(searches).toEqual(["river", "better"]);
     expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/b.jpg");
   });

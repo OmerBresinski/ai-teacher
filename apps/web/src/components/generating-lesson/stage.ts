@@ -1,15 +1,16 @@
 import type { JobEvent, JobProgress } from "@tj/domain/jobs";
 
 /**
- * The five stages a teacher sees while a lesson is generated (generating-state PRD §3), in the
+ * The four stages a teacher sees while a lesson is generated (generating-state PRD §3), in the
  * order the strip shows them. The pipeline's own stages (plan → generate → illustrate → evaluate
- * → repair, ADR 0025) fold into these: the worksheet is written inside "Writing the slides" and
+ * → repair, ADR 0025) fold into these: the worksheet and, since TEACH-220, the pictures are
+ * placed inside "Writing the slides and pictures" (the photograph is chosen before its slide's
+ * text and lands with it; the illustrate step only fills a slot a resumed run left empty), and
  * Repair is part of "Checking".
  */
 export const STAGES = [
   { id: "planning", label: "Planning" },
-  { id: "writing", label: "Writing the slides" },
-  { id: "pictures", label: "Adding pictures" },
+  { id: "writing", label: "Writing the slides and pictures" },
   { id: "checking", label: "Checking" },
   { id: "ready", label: "Ready" },
 ] as const;
@@ -44,7 +45,7 @@ export type PipelineStage = "plan" | "generate" | "illustrate" | "evaluate" | "r
 const PIPELINE_STAGES: Record<PipelineStage, StageId> = {
   plan: "planning",
   generate: "writing",
-  illustrate: "pictures",
+  illustrate: "writing",
   evaluate: "checking",
   repair: "checking",
 };
@@ -53,9 +54,8 @@ const SLIDE_COUNT = /^Slide (\d+) of (\d+)$/;
 
 /**
  * Which stage a run is in, from its events alone (PRD §4). `percent` today: 2, 6 and 10 are
- * Planning; over 10 up to 85 is Writing (85 is the worksheet, still Writing); 88 is Adding
- * pictures (emitted only when a picture is placed, so a run with no 88 goes straight from
- * Writing to Checking and the strip ticks pictures through); 90 is Checking; 100 is Ready. A
+ * Planning; over 10 up to 88 is Writing (85 is the worksheet and 88 a picture the illustrate step
+ * placed on resume, both still Writing); 90 is Checking; 100 is Ready. A
  * `progress.stage` field wins over the percent when the worker sends one. Stages never go
  * backwards: a late event with a lower percent (the worker coalesces at 250ms) cannot undo a
  * stage already reached.
@@ -95,6 +95,12 @@ export function stageOf(events: readonly JobEvent[]): StageState {
     // The worksheet is a message fact, not a percent fact: 85 is emitted with "Slides ready" too,
     // when the lesson already had a sheet or the budget stopped before it.
     if (stage === "writing" && progress.message === "Worksheet ready") worksheet = true;
+    // A picture the illustrate step placed on resume (88) comes after the slides and the worksheet:
+    // the plain Writing line, with neither the count nor the worksheet.
+    if (stage === "writing" && progress.message === "Pictures placed") {
+      worksheet = false;
+      slide = null;
+    }
     if (stage !== "writing") {
       slide = null;
       worksheet = false;
@@ -110,7 +116,6 @@ function stageFromProgress(progress: JobProgress & { stage?: PipelineStage }): S
   if (percent === undefined) return null;
   if (percent >= 100) return "ready";
   if (percent >= 90) return "checking";
-  if (percent > 85) return "pictures";
   if (percent > 10) return "writing";
   return "planning";
 }
@@ -133,7 +138,7 @@ export function stageStatus(id: StageId, state: StageState): StageStatus {
 export function announcedLine(state: StageState): string {
   if (state.stage !== "writing" || state.worksheet || !state.slide) return stageLine(state);
   const announced = Math.floor(state.slide.n / 4) * 4;
-  if (announced === 0) return "Writing the slides";
+  if (announced === 0) return "Writing the slides and pictures";
   return stageLine({ ...state, slide: { ...state.slide, n: announced } });
 }
 
@@ -145,10 +150,8 @@ export function stageLine(state: StageState): string {
     case "writing":
       if (state.worksheet) return "Writing the worksheet";
       return state.slide
-        ? `Writing the slides, ${state.slide.n} of ${state.slide.total}`
-        : "Writing the slides";
-    case "pictures":
-      return "Adding pictures";
+        ? `Writing the slides and pictures, ${state.slide.n} of ${state.slide.total}`
+        : "Writing the slides and pictures";
     case "checking":
       return "Checking";
     case "ready":

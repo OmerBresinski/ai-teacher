@@ -96,7 +96,7 @@ const SLIDE_MESSAGE = /\bslide\s+(\d+)\s+of\s+(\d+)\b/i;
 
 /**
  * Where a run is, from `percent` and the message: 2, 6 and 10 are Planning; over 10 up to 80 is
- * Writing with "Slide n of N"; 85 is the worksheet; 88 Adding pictures; 90 Checking; 100 Ready.
+ * Writing with "Slide n of N"; 85 is the worksheet; 88 a picture placed on resume (the strip shows it inside Writing since TEACH-220); 90 Checking; 100 Ready.
  * Marked for replacement by TEACH-199's `stageOf`, which owns the table and reads
  * `progress.stage` once the worker sends it; keep the two in step until then.
  *
@@ -179,7 +179,7 @@ const STAGE_ORDER: readonly Stage[] = [
 
 /**
  * One stage's low and high in milliseconds for this run. Writing is the per-slide figure times
- * the slides still to come; Adding pictures is one placement (the count is not known ahead of the
+ * the slides still to come; the picture step is one placement (the count is not known ahead of the
  * run, and the stage is skipped entirely when no picture is placed); Checking is Reviewed to
  * Done, which includes Repair.
  */

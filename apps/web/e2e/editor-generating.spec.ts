@@ -54,7 +54,7 @@ test.describe("generating lesson", () => {
     // No event has arrived for a job that never ran, so the run reads as Planning.
     await expect(page.getByTestId("generating-stage")).toHaveText("Planning");
     const strip = page.getByTestId("generating-strip");
-    await expect(strip.locator("li")).toHaveCount(5);
+    await expect(strip.locator("li")).toHaveCount(4);
     await expect(strip.locator('[data-stage="planning"]')).toHaveAttribute("data-status", "live");
     await expect(strip.locator('[data-stage="planning"]')).toHaveAttribute("aria-current", "step");
     // Read-only: the newest slide is on the canvas, the editor chrome is absent, the lock line

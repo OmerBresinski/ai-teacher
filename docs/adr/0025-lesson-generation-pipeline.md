@@ -495,3 +495,50 @@ to the facts before the artefact is regenerated from them, with one `fact-verify
 applied correction; a fact patch is not one of the six targets. A better Evaluate may raise the
 eval's `modelFindings` count (more real findings); the rubric is the quality signal.
 
+
+## Amendment (2026-09-10, project Generation quality — TEACH-220, part 1)
+
+§7 and §8: the picture comes before the text for an `image-text` slide, and the picker looks at
+the pictures (project §3b, Decision 6). Generate starts one `pickPhoto` per `image-text` outline
+entry as soon as it starts, alongside the first slide batch; that entry's slide call waits for its
+own pick and no other, and the chosen photograph lands in the slide's image slot in the same
+persist as the slide's text — no placeholder is ever written for a slide that has a photo. The
+judge (`pick-or-requery-photo.v3`, `small` class) receives the candidates' thumbnails as image
+parts, numbered to match their ids, and answers `{ pick, visible, count, query }`; a deterministic
+gate places only when `visible ⊇ mustShow` (the TEACH-211 list of concrete nouns). A pick that
+fails the gate is treated as its `query` when one is given — the requery's pool goes through a
+second judge call with the same gate, never placed blind — else as none; at most two judge calls
+per slide. What the judge saw is stored on the element (`PhotoSource.evidence`: `visible`,
+`count`, `alt`, `promptVersion`) and given to the slide prompt (`generate-slide.v7`: "The
+photograph on this slide shows … Visible … Not visible … Purpose"), whose rules let a task name
+only visible items; a slide with no photograph is told so and may mention no picture. The
+sanitiser enforces the same contract (`imageTextSpecSchemaFor(photo)` in `@tj/slides`: plural
+picture words with one photo, a task verb on a hidden `mustShow` item, any picture word on a
+`none` slide are validation issues the retry names); Repair re-checks an `image-text` slide against
+the evidence on its element. The `illustrate` stage step stays for the resume path (a lesson
+resumed at `generated` with a placeholder is still placed; a filled slot is skipped) and its counts
+add to the picks Generate already counted. Superseded: TEACH-191's captions-only judge ("alt text
+is the whole evidence"). Two caveats found at the stop-gate: the Bedrock provider's `supportedUrls`
+is `s3://` only, so the AI SDK downloads an `https` thumbnail in the worker process before the call
+(`downloadAssets`) — the model is billed for the image as input tokens (~550 per thumbnail on Luna
+and Terra), and unit tests give the fake thumbnails as data URLs; and sending Pexels thumbnails to
+a model for selection is use of the API results within its terms — no pupil data is involved.
+`image-fit` in Evaluate, the eval's `PhotoPlacer` and the merged progress strip are part 2.
+
+## Amendment (2026-09-10, project Generation quality — TEACH-220, part 2)
+
+§11 gains the `image-fit` check TEACH-216 reserved: Evaluate (`evaluate.v4`) receives each placed
+`image-text` slide's photograph as an image part — the thumbnail the pick judge looked at, kept on
+the element as `PhotoSource.evidence.thumbnail`, since the api's `/files/*` proxy authorises per
+request and cannot be fetched by the model — and lists the slide as `[slideId …, image-text,
+photo N]`; a task the text sets that does not work with the picture is an `image-fit` warning with
+the task phrase as evidence. §12: Repair (`repair.v4`) on an `image-text` slide is given the same
+evidence block Generate had and the rule that the photograph cannot change; the regenerated slide
+keeps the original image element (`keepPhoto`), so only text is rewritten. `knownTargetsWithEvidence`
+also removes a `target.factId` that names no patchable fact instead of dropping the finding, and
+Repair commits a fact patch only together with the artefact regenerated from it. The eval places
+photographs when `PEXELS_API_KEY` is set (`eval/photo-placer.ts`: Pexels search plus a `put` that
+keeps nothing) and shows them to the rubric judge the same way, so `imageFit` is scored; the
+generating strip merges "Adding pictures" into "Writing the slides and pictures" (founder
+decision), since the picture now lands with its slide and the `illustrate` step reports 88 only on
+the resume path.

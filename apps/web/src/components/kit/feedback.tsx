@@ -40,7 +40,7 @@ const WRITING_STALLED = runEvents(KIT_LOADED_AT - 120_000, WRITING_STEPS);
 function StageLine({ children }: { children: ReactNode }) {
   return (
     <span className="flex items-baseline gap-3 text-body">
-      <span className="font-medium">Writing the slides, 3 of 8</span>
+      <span className="font-medium">Writing the slides and pictures, 3 of 8</span>
       {children}
     </span>
   );

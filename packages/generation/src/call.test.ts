@@ -4,7 +4,7 @@ import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import pino from "pino";
 import { z } from "zod";
-import { callStructured } from "./call";
+import { callStructured, imageMediaType } from "./call";
 import { BudgetExceeded, type PipelineDeps, StageFailure } from "./types";
 
 const schema = z.strictObject({ answer: z.string() });
@@ -167,6 +167,10 @@ describe("callStructured repairs the text before validating it", () => {
   });
 });
 
+/** A 1×1 PNG. */
+const PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
 describe("callStructured", () => {
   test("returns the parsed object, charges the budget and carries the stage context", async () => {
     const ai = createFakeAi({
@@ -208,6 +212,38 @@ describe("callStructured", () => {
       bedrock: { reasoningConfig: { maxReasoningEffort: "low" } },
     });
     expect(ai.calls[0]?.context?.effort).toBe("low");
+  });
+
+  test("row 1 (TEACH-220): images ride as image parts on the user turn, on the retry too", async () => {
+    const ai = createFakeAi({ script: ["not json", JSON.stringify({ answer: "42" })] });
+    const d = deps(ai);
+    await callStructured({
+      deps: d,
+      stage: "illustrate",
+      cls: "small",
+      effort: "low",
+      prompt,
+      input: "hi",
+      schema,
+      maxOutputTokens: 100,
+      // Data URLs: the SDK fetches an https image in-process before the call (Bedrock takes bytes
+      // or s3:// only), which a unit test must not do.
+      images: [
+        { id: "a", url: `data:image/png;base64,${PNG}` },
+        { id: "b", url: `data:image/png;base64,${PNG}` },
+      ],
+    });
+    expect(ai.calls.map((c) => c.imageParts)).toEqual([2, 2]);
+    expect(ai.calls[0]?.promptText).toContain("hi");
+  });
+
+  test("image parts go as `file` parts with the image's media type (the SDK's `image` part is deprecated)", () => {
+    expect(imageMediaType(`data:image/png;base64,${PNG}`)).toBe("image/png");
+    expect(imageMediaType("https://images.pexels.com/photos/1/tiny.jpeg?auto=compress")).toBe(
+      "image/jpeg",
+    );
+    expect(imageMediaType("https://images.pexels.com/photos/1/tiny.webp")).toBe("image/webp");
+    expect(imageMediaType("https://images.pexels.com/photos/1/tiny")).toBe("image/jpeg");
   });
 
   test("an Anthropic id gets no reasoningConfig (thinking is off there); the context still says the effort", async () => {

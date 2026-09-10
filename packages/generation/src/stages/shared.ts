@@ -1,5 +1,12 @@
-import type { Finding, Lesson } from "@tj/domain/documents";
-import type { Audience } from "../prompts";
+import {
+  type Finding,
+  isTrustedThumbnail,
+  type Lesson,
+  type OutlineEntry,
+  type Slide,
+} from "@tj/domain/documents";
+import { type ImageTextPhoto, PLACEHOLDER_IMAGE } from "@tj/slides";
+import type { Audience, SlidePhoto } from "../prompts";
 
 // The plain-text projections moved to `@tj/domain/documents/text` so `checkLesson` can measure the
 // same text Evaluate reads (TEACH-210); re-exported so the stages' import paths stand.
@@ -18,6 +25,59 @@ export const BUDGET_FINDING = (by: "usd" | "tokens", where: string): Finding => 
   target: {},
   message: `Generation stopped at ${where}: the lesson's ${by === "usd" ? "cost" : "token"} cap was reached. What was written is kept.`,
 });
+
+/**
+ * What an existing `image-text` slide's text may rely on (TEACH-220): the evidence the photo judge
+ * left on its image element, or `"none"` when the slot is still the placeholder or was placed
+ * before the judge recorded evidence (then the text may set no picture task at all).
+ */
+export function imageTextPhotoOf(
+  slide: Slide,
+  entry: OutlineEntry | undefined,
+): ImageTextPhoto | "none" {
+  const image = slide.elements.find((e) => e.type === "image");
+  if (image?.type !== "image" || image.src === PLACEHOLDER_IMAGE) return "none";
+  const evidence = image.source?.evidence;
+  if (!evidence) return "none";
+  return {
+    visible: evidence.visible,
+    count: evidence.count,
+    mustShow: entry?.imageBrief?.mustShow ?? [],
+  };
+}
+
+/**
+ * The photographs a reviewer may be shown (TEACH-220): each placed `image-text` slide's thumbnail
+ * — the picture the pick judge looked at — keyed by slide id, in slide order. Only a trusted
+ * thumbnail (the provider's CDN or an inline data URL) is handed on: the model SDK fetches it from
+ * the worker, so the check is repeated here for documents written before the schema had it.
+ */
+export function photoThumbnails(lesson: Lesson): { id: string; url: string }[] {
+  const out: { id: string; url: string }[] = [];
+  for (const slide of lesson.slides) {
+    if (slide.kind !== "image-text") continue;
+    const image = slide.elements.find((e) => e.type === "image");
+    const url = image?.type === "image" ? image.source?.evidence?.thumbnail : undefined;
+    if (url && isTrustedThumbnail(url)) out.push({ id: slide.id, url });
+  }
+  return out;
+}
+
+/** The same evidence in the prompt's shape (what the photograph shows and does not). */
+export function slidePhotoOf(slide: Slide, entry: OutlineEntry | undefined): SlidePhoto | "none" {
+  const photo = imageTextPhotoOf(slide, entry);
+  if (photo === "none") return "none";
+  const image = slide.elements.find((e) => e.type === "image");
+  const evidence = image?.type === "image" ? image.source?.evidence : undefined;
+  const seen = new Set(photo.visible.map((v) => v.trim().toLowerCase()));
+  return {
+    alt: evidence?.alt ?? "",
+    visible: photo.visible,
+    notVisible: photo.mustShow.filter((m) => !seen.has(m.trim().toLowerCase())),
+    count: photo.count,
+    purpose: entry?.imageBrief?.purpose ?? "context",
+  };
+}
 
 export function audienceOf(lesson: Lesson): Audience {
   return {

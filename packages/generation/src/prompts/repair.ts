@@ -1,4 +1,5 @@
 import type { Finding, LessonFacts } from "@tj/domain/documents";
+import { IMAGE_TEXT_RULE, photoBlock, type SlidePhoto } from "./generate-slide";
 import { type Audience, audienceBlock, example, factsBlock, HOUSE_RULES } from "./shared";
 
 /*
@@ -12,7 +13,14 @@ export type RepairInput = {
   facts: LessonFacts;
   audience: Audience;
   target:
-    | { kind: "slide"; slideKind: string; slideId: string; text: string }
+    | {
+        kind: "slide";
+        slideKind: string;
+        slideId: string;
+        text: string;
+        /** An `image-text` slide's photograph (TEACH-220): the picture stays, only the text changes. */
+        photo?: SlidePhoto | "none" | undefined;
+      }
     | { kind: "block"; blockType: string; blockId: string; text: string };
   findings: Finding[];
   /** The JSON shape wanted, copied from the Generate prompt's shape list for this kind/type. */
@@ -20,7 +28,7 @@ export type RepairInput = {
 };
 
 export const repairPrompt = {
-  version: "repair.v3",
+  version: "repair.v4",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Rewrite the whole item as a fresh spec of the same kind; keep everything that was right, change only what the findings require.",
@@ -29,6 +37,7 @@ export const repairPrompt = {
     HOUSE_RULES,
     "The kind/type cannot change. Every answer must be correct and consistent with the facts. Put the ids of the facts the item draws on in `factRefs`.",
     "Each finding quotes the exact text it is about (`evidence`); change that and what depends on it, keep the rest. Never describe what you changed — `notes` are for the teacher in the room, not a change log.",
+    `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`,
     "",
     "Example answer for a multiple-choice slide:",
     example({
@@ -57,6 +66,7 @@ export const repairPrompt = {
       "",
       `${what} currently says:`,
       t.text,
+      ...(t.kind === "slide" && t.photo !== undefined ? ["", ...photoBlock(t.photo)] : []),
       "",
       "Problems reported:",
       ...input.findings.map(

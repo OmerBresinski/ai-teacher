@@ -24,7 +24,7 @@ test.describe("/kit time estimate (TEACH-201)", () => {
     await expect(estimates.nth(0)).toHaveText(/^(About|Less than) .* left$/);
     await expect(estimates.nth(1)).toHaveAttribute("data-state", "late");
     await expect(estimates.nth(1)).toHaveText("Taking longer than usual");
-    await expect(specimen.getByText("Writing the slides, 3 of 8")).toHaveCount(3);
+    await expect(specimen.getByText("Writing the slides and pictures, 3 of 8")).toHaveCount(3);
 
     if (process.env.TEACH_SCREENSHOTS === "1") {
       await specimen.screenshot({ path: "/tmp/teach-201-kit-estimate.png" });

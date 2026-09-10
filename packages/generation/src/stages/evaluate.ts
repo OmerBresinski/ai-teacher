@@ -16,7 +16,7 @@ import {
   throwIfAborted,
 } from "../types";
 import { BUDGET_FINDING, withUsage } from "./generate";
-import { audienceOf, blockText, generationOf, slideText } from "./shared";
+import { audienceOf, blockText, generationOf, photoThumbnails, slideText } from "./shared";
 
 /*
  * Evaluate (ADR 0025 §10, §11, §14; Generation quality §4, TEACH-216): the shared schema checks,
@@ -95,6 +95,11 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
   const carried = generation.findings.filter((f) => CARRIED_CHECKS.has(f.check));
   const schema = checkLesson(lesson, worksheet);
 
+  // Photographed slides (TEACH-220): each placed image-text slide's thumbnail — the picture the
+  // judge chose — goes in as an image part so `image-fit` can look at it; numbered in slide order.
+  const images = photoThumbnails(lesson);
+  const photos = images.map((i) => i.id);
+
   let model: Finding[] = [];
   try {
     const call = await callStructured({
@@ -111,6 +116,7 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
           kind: s.kind,
           text: slideText(s),
           notes: s.notes,
+          ...(photos.indexOf(s.id) === -1 ? {} : { photo: photos.indexOf(s.id) + 1 }),
         })),
         blocks: (worksheet?.blocks ?? []).map((b) => ({
           id: b.id,
@@ -120,6 +126,7 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       },
       schema: EvaluateOutputSchema,
       maxOutputTokens: MAX_OUTPUT_TOKENS.evaluate,
+      images,
     });
     const filtered = knownTargetsWithEvidence(call.output.findings, state);
     model = filtered.kept;

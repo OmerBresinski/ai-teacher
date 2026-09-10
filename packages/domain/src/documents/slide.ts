@@ -149,6 +149,15 @@ export type PhotoSource = {
   photographer: string;
   /** The photographer's page on the provider, http(s). */
   photographerUrl: string;
+  /** What the picker saw in the photo (TEACH-220); absent on older placements. */
+  evidence?: {
+    visible: string[];
+    count: "one" | "several";
+    alt: string;
+    promptVersion: string;
+    /** The thumbnail the judge looked at (a URL, like `src`), for a later look at the same picture. */
+    thumbnail?: string;
+  };
 };
 
 export type ImageElement = ElementBase & {
@@ -361,12 +370,47 @@ const TextElementSchema = z.object({
 
 // Strict, like `GeneratedFromSchema`: an imported document with an extra key inside `source` is
 // refused rather than silently trimmed. Both URLs render as anchors, hence the http(s) gate.
+/** What the picker saw in the photograph it chose (TEACH-220): the text is written to this. */
+/** Hosts a photo thumbnail may be fetched from on the pipeline's behalf, per provider. */
+export const THUMBNAIL_HOSTS: readonly string[] = ["images.pexels.com"];
+
+export function isTrustedThumbnail(value: string): boolean {
+  if (/^data:image\/[a-z0-9.+-]+[;,]/i.test(value)) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && THUMBNAIL_HOSTS.includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+export const PhotoEvidenceSchema = z.strictObject({
+  /** The `mustShow` items visible in the photo, as the judge listed them. */
+  visible: z.array(z.string().min(1)).max(4),
+  count: z.enum(["one", "several"]),
+  alt: z.string(),
+  promptVersion: z.string().min(1),
+  /**
+   * The thumbnail the judge looked at, so a later check can look at the same picture (`image-fit`,
+   * TEACH-220); absent on a placement judged from captions. Only the provider's own CDN, or an
+   * inline `data:image/…` URL: a later stage hands this URL to the model SDK, which fetches it
+   * from the worker, so an imported document must not be able to point it anywhere else.
+   */
+  thumbnail: z
+    .string()
+    .refine(isTrustedThumbnail, "thumbnail must be a Pexels CDN or data:image URL")
+    .optional(),
+});
+export type PhotoEvidence = z.infer<typeof PhotoEvidenceSchema>;
+
 export const PhotoSourceSchema = z.strictObject({
   provider: z.enum(["pexels"]),
   id: z.string().min(1),
   pageUrl: z.string().refine(isLinkableHref, "pageUrl must be an http(s) address"),
   photographer: z.string(),
   photographerUrl: z.string().refine(isLinkableHref, "photographerUrl must be an http(s) address"),
+  /** Present on a photo the pipeline's judge chose by looking at it; absent on older placements. */
+  evidence: PhotoEvidenceSchema.optional(),
 });
 
 const ImageElementSchema = z.object({

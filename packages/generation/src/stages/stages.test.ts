@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
+import { PexelsError } from "@tj/images";
 import { PROMPT_VERSIONS } from "../prompts";
 import { assignFactIds, planFactsSchemaFor } from "../specs";
 import {
@@ -600,6 +601,221 @@ describe("generate", () => {
     expect(state.lesson.slides.map((s) => s.kind)).toEqual(
       FIXTURES.planSkeleton.outline.map((e) => e.kind),
     );
+  });
+
+  /** The planned state with the `content` entry turned into an image-text one (TEACH-220). */
+  async function plannedWithImage(mustShow: string[] = ["river water"]) {
+    const start = await planned();
+    const facts = start.lesson.facts;
+    if (!facts) throw new Error("no facts");
+    const outline = facts.outline.map((e) =>
+      e.kind === "content"
+        ? {
+            ...e,
+            kind: "image-text" as const,
+            imageBrief: { subject: "river severn", mustShow, purpose: "observe" as const },
+          }
+        : e,
+    );
+    return { ...start, lesson: { ...start.lesson, facts: { ...facts, outline } } };
+  }
+  const PNG =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+  const riverPhoto = {
+    id: "p1",
+    width: 4000,
+    height: 6000,
+    alt: "River at dawn",
+    photographer: "Ada",
+    photographerUrl: "https://www.pexels.com/@ada",
+    pageUrl: "https://www.pexels.com/photo/p1/",
+    src: {
+      large: "https://images.pexels.com/photos/p1/large.jpeg",
+      medium: "https://images.pexels.com/photos/p1/medium.jpeg",
+      tiny: `data:image/png;base64,${PNG}`,
+    },
+  };
+  const riverImages = {
+    search: async () => [riverPhoto],
+    store: async () => ({
+      key: "ws/images/p1.jpg",
+      url: "/files/ws/images/p1.jpg",
+      width: 4000,
+      height: 6000,
+      bytes: 100,
+      contentType: "image/jpeg",
+      source: {
+        provider: "pexels" as const,
+        id: "p1",
+        pageUrl: riverPhoto.pageUrl,
+        photographer: "Ada",
+        photographerUrl: "https://www.pexels.com/@ada",
+      },
+    }),
+  };
+  /** Every generate call by shape; the judge's reply is `judge`, held until `release` is called. */
+  const imageRunAi = (judge: string, hold?: { release: () => void; wait: Promise<void> }) =>
+    createFakeAi({
+      fallback: async (call) => {
+        const version = call.context?.promptVersion ?? "";
+        if (version.startsWith("pick-or-requery-photo")) {
+          if (hold) await hold.wait;
+          return judge;
+        }
+        if (version.startsWith("generate-worksheet")) return json(FIXTURES.worksheet);
+        const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "";
+        const spec = FIXTURES.slides[kind as keyof typeof FIXTURES.slides];
+        if (!spec) throw new Error(`no fixture for ${kind}`);
+        return json(spec);
+      },
+      usage,
+    });
+
+  test("row 5 (TEACH-220): the image-text slide waits for its own pick only; its text is written to the photo and the photo lands in the same persist", async () => {
+    const start = await plannedWithImage();
+    let release = () => {};
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const ai = imageRunAi(
+      json({ pick: "p1", visible: ["river water"], count: "one", query: null }),
+      { release: () => release(), wait },
+    );
+    const deps = recordingDeps(ai, { images: riverImages });
+    const run = generate(start, deps);
+    // Slides before the image one land while the pick is still out.
+    await new Promise((r) => setTimeout(r, 5));
+    const imageIndex = start.lesson.facts?.outline.findIndex((e) => e.kind === "image-text") ?? -1;
+    expect(deps.persisted.length).toBe(imageIndex - PLANNED_SLIDES);
+    release();
+    const state = await run;
+
+    const slideCall = ai.calls.find((c) => c.promptText.includes("The photograph on this slide"));
+    expect(slideCall?.promptText).toContain("Visible: river water");
+    expect(slideCall?.promptText).toContain("Purpose: observe");
+    const judge = ai.calls.find((c) => c.context?.stage === "illustrate");
+    expect(judge?.imageParts).toBe(1);
+    const slide = state.lesson.slides[imageIndex];
+    const image = slide?.elements.find((e) => e.type === "image");
+    if (image?.type !== "image") throw new Error("no image element");
+    expect(image.src).toBe("/files/ws/images/p1.jpg");
+    expect(image.source?.evidence?.visible).toEqual(["river water"]);
+    // The persist that added the slide already carried the photo: no placeholder was ever written.
+    const persisted = deps.persisted.find((p) => p.lesson.slides.length === imageIndex + 1);
+    const persistedImage = persisted?.lesson.slides[imageIndex]?.elements.find(
+      (e) => e.type === "image",
+    );
+    expect(persistedImage?.type === "image" && persistedImage.src).toBe("/files/ws/images/p1.jpg");
+    expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
+    expect(state.lesson.generation?.promptVersions.generated).toBe(
+      `${PROMPT_VERSIONS["generate-slide"]}+${PROMPT_VERSIONS["pick-or-requery-photo"]}`,
+    );
+    expect(state.lesson.generation?.findings).toEqual([]);
+  });
+
+  test("a Pexels rate limit during the pick is the busy warning, not 'no photograph found'", async () => {
+    const start = await plannedWithImage();
+    const ai = imageRunAi(json({ pick: null, visible: [], count: null, query: null }));
+    const busyImages = {
+      ...riverImages,
+      search: async () => {
+        throw new PexelsError(429, "slow");
+      },
+    };
+    const state = await generate(start, recordingDeps(ai, { images: busyImages }));
+    expect(ai.calls.some((c) => c.context?.stage === "illustrate")).toBe(false);
+    const findings = state.lesson.generation?.findings ?? [];
+    expect(findings.map((f) => f.check)).toEqual(["image"]);
+    expect(findings[0]?.message).toContain("busy");
+  });
+
+  test("row 6: an empty pick writes the slide as plain content with the image warning", async () => {
+    const start = await plannedWithImage();
+    const ai = imageRunAi(json({ pick: null, visible: [], count: null, query: null }));
+    const deps = recordingDeps(ai, { images: riverImages });
+    const state = await generate(start, deps);
+    const slideCall = ai.calls.find((c) =>
+      c.promptText.includes("There is no photograph on this slide"),
+    );
+    expect(slideCall).toBeDefined();
+    const imageIndex = start.lesson.facts?.outline.findIndex((e) => e.kind === "image-text") ?? -1;
+    const image = state.lesson.slides[imageIndex]?.elements.find((e) => e.type === "image");
+    expect(image?.type === "image" && image.src.startsWith("data:image/svg+xml")).toBe(true);
+    expect(state.lesson.generation?.findings.map((f) => f.check)).toEqual(["image"]);
+    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+  });
+
+  test("row 8: Evaluate shows the photographed slide as an image part and keeps an image-fit warning; Repair rewrites its text and keeps the photo", async () => {
+    const start = await plannedWithImage();
+    const ai = imageRunAi(
+      json({ pick: "p1", visible: ["river water"], count: "one", query: null }),
+    );
+    const generated = await generate(start, recordingDeps(ai, { images: riverImages }));
+    const imageIndex = start.lesson.facts?.outline.findIndex((e) => e.kind === "image-text") ?? -1;
+    const slide = generated.lesson.slides[imageIndex];
+    if (!slide) throw new Error("no image slide");
+    const before = slide.elements.find((e) => e.type === "image");
+
+    const review = createFakeAi({
+      script: [
+        json({
+          findings: [
+            {
+              check: "image-fit",
+              severity: "warning",
+              target: { slideId: slide.id },
+              evidence: "Rivers flow to the sea.",
+              message: "The photograph shows a river at dawn, not the sea.",
+            },
+          ],
+        }),
+      ],
+      usage,
+    });
+    const evaluated = await evaluate(generated, recordingDeps(review));
+    expect(review.calls[0]?.imageParts).toBe(1);
+    expect(review.calls[0]?.promptText).toContain(`[slideId ${slide.id}, image-text, photo 1]`);
+    expect(evaluated.lesson.generation?.findings.map((f) => f.check)).toEqual(["image-fit"]);
+
+    // Force the finding to an error so Repair targets it (image-fit is a warning in production).
+    const errored = {
+      ...evaluated,
+      lesson: {
+        ...evaluated.lesson,
+        generation: {
+          ...(evaluated.lesson.generation as NonNullable<typeof evaluated.lesson.generation>),
+          findings:
+            evaluated.lesson.generation?.findings.map((f) => ({
+              ...f,
+              severity: "error" as const,
+            })) ?? [],
+        },
+      },
+    };
+    const fixer = createFakeAi({
+      script: [
+        json({
+          kind: "image-text",
+          heading: "Rivers",
+          body: "Look at the photograph: the river water flows downhill.",
+          factRefs: ["o1"],
+        }),
+      ],
+      usage,
+    });
+    const repaired = await repair(errored, recordingDeps(fixer));
+    expect(fixer.calls[0]?.promptText).toContain(
+      "The photograph on this slide shows: River at dawn",
+    );
+    expect(fixer.calls[0]?.promptText).toContain("Visible: river water");
+    const after = repaired.lesson.slides[imageIndex];
+    expect(after?.elements.find((e) => e.type === "image")).toEqual(before);
+    expect(
+      after?.elements.some(
+        (e) => e.type === "text" && JSON.stringify(e).includes("flows downhill"),
+      ),
+    ).toBe(true);
+    expect(repaired.lesson.generation?.findings.some((f) => f.check === "image-fit")).toBe(false);
   });
 
   test("resumes: slides already present are not regenerated", async () => {

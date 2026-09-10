@@ -66,9 +66,7 @@ describe("GeneratingShell", () => {
     expect(display).toHaveClass("text-[28px]");
     expect(within(canvas as HTMLElement).getByText("Planning your lesson")).toBeVisible();
     expect(screen.getByRole("heading", { level: 1, name: full.title })).toBeVisible();
-    expect(stripStatuses()).toBe(
-      "planning:live writing:todo pictures:todo checking:todo ready:todo",
-    );
+    expect(stripStatuses()).toBe("planning:live writing:todo checking:todo ready:todo");
     expect(screen.getByTestId("generating-stage")).toHaveTextContent("Planning");
     expect(document.querySelector("progress")).toBeNull();
     expect(document.querySelector("[data-spinner], .animate-spin")).toBeNull();
@@ -78,9 +76,7 @@ describe("GeneratingShell", () => {
 
   it("row 2: 2, 6, 10 then 'Slide 1 of 5' ticks Planning and goes live on Writing with the count", () => {
     const { rerender } = renderAt(RUN_UP_TO.planning);
-    expect(stripStatuses()).toBe(
-      "planning:live writing:todo pictures:todo checking:todo ready:todo",
-    );
+    expect(stripStatuses()).toBe("planning:live writing:todo checking:todo ready:todo");
     for (const upTo of [4, 5]) {
       rerender(
         <TooltipProvider>
@@ -104,12 +100,14 @@ describe("GeneratingShell", () => {
         />
       </TooltipProvider>,
     );
-    expect(stripStatuses()).toBe(
-      "planning:done writing:live pictures:todo checking:todo ready:todo",
+    expect(stripStatuses()).toBe("planning:done writing:live checking:todo ready:todo");
+    expect(screen.getByTestId("generating-stage")).toHaveTextContent(
+      "Writing the slides and pictures, 1 of 5",
     );
-    expect(screen.getByTestId("generating-stage")).toHaveTextContent("Writing the slides, 1 of 5");
     // The live region says less: the boundary now, the count at every fourth slide.
-    expect(screen.getByTestId("generating-announcement")).toHaveTextContent("Writing the slides");
+    expect(screen.getByTestId("generating-announcement")).toHaveTextContent(
+      "Writing the slides and pictures",
+    );
     expect(screen.getByTestId("generating-announcement")).not.toHaveTextContent("1 of 5");
     expect(document.querySelector('[data-stage="writing"]')).toHaveAttribute(
       "aria-current",
@@ -126,32 +124,24 @@ describe("GeneratingShell", () => {
     );
   });
 
-  it("row 3: 85 keeps Writing; 88 Adding pictures; 90 Checking; 100 Ready ticked", () => {
+  it("row 3: 85 keeps Writing; 88 too (TEACH-220); 90 Checking; 100 Ready ticked", () => {
     renderAt(RUN_UP_TO.worksheet);
-    expect(stripStatuses()).toBe(
-      "planning:done writing:live pictures:todo checking:todo ready:todo",
-    );
+    expect(stripStatuses()).toBe("planning:done writing:live checking:todo ready:todo");
     expect(screen.getByTestId("generating-stage")).toHaveTextContent("Writing the worksheet");
     cleanup();
     renderAt(RUN_UP_TO.pictures);
-    expect(stripStatuses()).toBe(
-      "planning:done writing:done pictures:live checking:todo ready:todo",
-    );
+    expect(stripStatuses()).toBe("planning:done writing:live checking:todo ready:todo");
     cleanup();
     renderAt(RUN_UP_TO.checking);
-    expect(stripStatuses()).toBe(
-      "planning:done writing:done pictures:done checking:live ready:todo",
-    );
+    expect(stripStatuses()).toBe("planning:done writing:done checking:live ready:todo");
     cleanup();
     renderAt(generationRun.events.length);
-    expect(stripStatuses()).toBe(
-      "planning:done writing:done pictures:done checking:done ready:done",
-    );
+    expect(stripStatuses()).toBe("planning:done writing:done checking:done ready:done");
     expect(screen.getByTestId("generating-stage")).toHaveTextContent("Ready to edit");
     expect(screen.getByTestId("generating-lock")).toHaveTextContent("Ready to edit");
   });
 
-  it("row 4: with no 88, Adding pictures is ticked when 90 arrives and never live", () => {
+  it("row 4: with no 88 (the photo landed with its slide), Writing is ticked when 90 arrives", () => {
     const events = runEvents(generationRun, RUN_UP_TO.checking).filter(
       (e) => !(e.type === "progress" && e.progress.percent === 88),
     );
@@ -160,10 +150,8 @@ describe("GeneratingShell", () => {
         <GeneratingShell lesson={full} events={events} onBack={noop} onStop={noop} />
       </TooltipProvider>,
     );
-    expect(document.querySelector('[data-stage="pictures"]')).toHaveAttribute(
-      "data-status",
-      "done",
-    );
+    expect(document.querySelector('[data-stage="writing"]')).toHaveAttribute("data-status", "done");
+    expect(document.querySelector('[data-stage="pictures"]')).toBeNull();
   });
 
   it("row 5: exactly one ghost Stop at 32px, no primary, and the strip is the only progress element", () => {
@@ -197,9 +185,7 @@ describe("GeneratingShell", () => {
     for (const theme of ["light", "dark", "high-contrast"]) {
       document.documentElement.dataset.theme = theme;
       renderAt(RUN_UP_TO.checking);
-      expect(stripStatuses()).toBe(
-        "planning:done writing:done pictures:done checking:live ready:todo",
-      );
+      expect(stripStatuses()).toBe("planning:done writing:done checking:live ready:todo");
       expect(document.querySelectorAll("[data-slide-thumb]")).toHaveLength(7);
       cleanup();
     }
@@ -291,16 +277,16 @@ describe("GeneratingLesson over playRun", () => {
     act(() => {
       playRun(generationRun, { upTo: RUN_UP_TO.writing, persist, lesson: full });
     });
-    expect(screen.getByTestId("generating-stage")).toHaveTextContent("Writing the slides, 1 of 5");
+    expect(screen.getByTestId("generating-stage")).toHaveTextContent(
+      "Writing the slides and pictures, 1 of 5",
+    );
     act(() => {
       playRun(generationRun, { from: RUN_UP_TO.writing, persist, lesson: full });
     });
     await waitFor(() =>
       expect(screen.getByTestId("generating-shell")).toHaveAttribute("data-state", "completed"),
     );
-    expect(stripStatuses()).toBe(
-      "planning:done writing:done pictures:done checking:done ready:done",
-    );
+    expect(stripStatuses()).toBe("planning:done writing:done checking:done ready:done");
     expect(onStopped).not.toHaveBeenCalled();
     expect(FakeEventSource.latest.closed).toBe(true);
     restore();

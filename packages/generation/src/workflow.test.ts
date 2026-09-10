@@ -101,7 +101,9 @@ describe("runLessonPipeline", () => {
       kind: "image-text",
       imageBrief: { subject: "river severn", mustShow: ["river water"], purpose: "observe" },
     };
-    const script = pipelineScript({ judges: [JSON.stringify({ pick: "p1", query: null })] });
+    const script = pipelineScript({
+      judges: [JSON.stringify({ pick: "p1", visible: ["river water"], count: "one", query: null })],
+    });
     script[PLAN_INDEX] = JSON.stringify(skeleton);
     script[SLIDES_INDEX + 2] = JSON.stringify({
       kind: "image-text",
@@ -124,7 +126,8 @@ describe("runLessonPipeline", () => {
       src: {
         large: "https://images.pexels.com/photos/p1/large.jpeg",
         medium: "https://images.pexels.com/photos/p1/medium.jpeg",
-        tiny: "https://images.pexels.com/photos/p1/tiny.jpeg",
+        // A data URL: the SDK downloads https image parts in-process before the call (ADR 0018).
+        tiny: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
       },
     };
     const stored: StoredPhoto = {
@@ -158,17 +161,32 @@ describe("runLessonPipeline", () => {
     const element = imageSlide?.elements.find((el) => el.type === "image");
     if (element?.type !== "image") throw new Error("no placed image");
     expect(element.src).toBe("/files/ws/images/p1.jpg");
-    expect(element.source).toEqual(stored.source);
+    expect(element.source).toEqual({
+      ...stored.source,
+      evidence: {
+        visible: ["river water"],
+        count: "one",
+        alt: "River",
+        promptVersion: "pick-or-requery-photo.v3",
+        thumbnail: photo.src.tiny,
+      },
+    });
+    // Picture first: the judge ran inside Generate and the slide's text was written to the photo.
+    const slideCall = ai.calls.find((c) => c.promptText?.includes("The photograph on this slide"));
+    expect(slideCall?.promptText).toContain("Visible: river water");
     // 1 check + 2 plan + 8 slides + 1 worksheet + 1 judge (the one image slide) + 1 evaluate.
     expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1);
     const judge = ai.calls.find((call) => call.context?.stage === "illustrate");
     expect(judge?.modelClass).toBe("small");
-    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v2");
-    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v2");
+    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v3");
+    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v3");
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
     expect(summary.generation.images).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
     expect(summary.generation.stages).toContain("illustrate");
-    expect(deps.progress.some((p) => p.message === "Pictures placed")).toBe(true);
+    // Picture first: the photograph landed with its slide's persist, so the illustrate step had
+    // nothing left to place and reported no 88 progress event (the strip tolerates that).
+    expect(deps.progress.some((p) => p.message === "Pictures placed")).toBe(false);
+    expect(ai.calls.filter((c) => c.context?.stage === "illustrate")).toHaveLength(1);
   });
 
   test("every call carries a stage context and the classes follow the stage plan", () => {

@@ -7,10 +7,9 @@ import {
   type Lesson,
   type Worksheet,
 } from "@tj/domain/documents";
-import { PLACEHOLDER_IMAGE } from "@tj/slides";
 import pino from "pino";
 import { callStructured } from "../src/call";
-import { audienceOf, blockText, slideText } from "../src/stages/shared";
+import { audienceOf, blockText, photoThumbnails, slideText } from "../src/stages/shared";
 import { BudgetExceeded, type PipelineContext, StageFailure } from "../src/types";
 import {
   RUBRIC_DIMENSIONS,
@@ -116,19 +115,26 @@ export const modelFindingsScorer = createScorer<string, ScorerOutput>({
       `${results.analyzeStepResult.model} model findings over ${results.analyzeStepResult.slides} slides; score ${score}.`,
   );
 
-/** True when any `image-text` slide carries a photograph rather than the local placeholder. */
+/**
+ * The photographs the judge is shown (TEACH-220): each placed `image-text` slide's thumbnail — the
+ * picture the pipeline's judge chose — as an image part, numbered in slide order.
+ */
+export const judgeImages = photoThumbnails;
+
+/**
+ * True when the judge can see at least one photograph: `imageFit` is scored only then. A placement
+ * without a thumbnail on its evidence (judged from captions, before TEACH-220) is not scored — the
+ * judge cannot look at it.
+ */
 export function hasPlacedPhoto(lesson: Lesson): boolean {
-  return lesson.slides.some(
-    (slide) =>
-      slide.kind === "image-text" &&
-      slide.elements.some((e) => e.type === "image" && e.src !== PLACEHOLDER_IMAGE),
-  );
+  return judgeImages(lesson).length > 0;
 }
 
 /** What the judge reads: the same plain-text projections Evaluate uses (ADR 0025 §11). */
 export function rubricJudgeInput(output: ScorerOutput): RubricJudgeInput {
   const { lesson, worksheet } = output;
   if (!lesson.facts) throw new Error("rubric judge: the lesson has no facts; Plan has not run");
+  const photos = judgeImages(lesson).map((i) => i.id);
   return {
     audience: audienceOf(lesson),
     topic: lesson.brief?.topic ?? lesson.title,
@@ -138,6 +144,7 @@ export function rubricJudgeInput(output: ScorerOutput): RubricJudgeInput {
       kind: slide.kind,
       text: slideText(slide),
       notes: slide.notes ?? "",
+      ...(photos.indexOf(slide.id) === -1 ? {} : { photo: photos.indexOf(slide.id) + 1 }),
     })),
     blocks: (worksheet?.blocks ?? []).map((block) => ({
       type: block.type,
@@ -189,6 +196,7 @@ export function rubricJudgeScorer(judge: JudgeDeps) {
           input: rubricJudgeInput(run.output),
           schema: RubricOutputSchema,
           maxOutputTokens: 1500,
+          images: judgeImages(run.output.lesson),
         });
         return { ok: true, output: result.output };
       } catch (error) {

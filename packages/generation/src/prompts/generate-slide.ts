@@ -1,4 +1,4 @@
-import type { LessonFacts, LessonPhase, OutlineEntry } from "@tj/domain/documents";
+import type { ImagePurpose, LessonFacts, LessonPhase, OutlineEntry } from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
 import {
   type Audience,
@@ -31,11 +31,43 @@ export type GenerateSlideInput = {
   /** Stems assigned to other slides or to the worksheet; never used here. */
   reservedStems: string[];
   phase?: LessonPhase | undefined;
+  /**
+   * For an `image-text` entry (TEACH-220): what the chosen photograph shows, so the text is written
+   * to it — or `"none"` when no photograph passed the gate, so the text mentions no picture.
+   */
+  photo?: SlidePhoto | "none" | undefined;
   audience: Audience;
   /** How many vocabulary entries the theme's grid shows (`vocabularySlots`). */
   vocabularySlots: number;
   lessonTitle: string;
 };
+
+export type SlidePhoto = {
+  alt: string;
+  /** The brief's `mustShow` items the judge could see in the photo. */
+  visible: string[];
+  /** The brief's `mustShow` items it could not. */
+  notVisible: string[];
+  count: "one" | "several";
+  purpose: ImagePurpose;
+};
+
+/** The evidence block an `image-text` slide's writer (Generate or Repair) is given. */
+export function photoBlock(photo: SlidePhoto | "none"): string[] {
+  if (photo === "none") {
+    return ["There is no photograph on this slide: write it as plain content."];
+  }
+  return [
+    `The photograph on this slide shows: ${photo.alt || "(no caption)"} (${photo.count === "one" ? "one" : "several"}).`,
+    `Visible: ${photo.visible.length > 0 ? photo.visible.join("; ") : "(none of the required items)"}`,
+    `Not visible: ${photo.notVisible.length > 0 ? photo.notVisible.join("; ") : "(nothing missing)"}`,
+    `Purpose: ${photo.purpose}`,
+  ];
+}
+
+/** The rule the writer follows for an `image-text` slide; shared with Repair. */
+export const IMAGE_TEXT_RULE =
+  "An `image-text` slide is written to its photograph. Say 'the photograph' (singular when there is one). A task — spot, find, count, point to, look for, identify, circle, label — may name only items listed as visible. If the purpose is identify-parts and something required is not visible, describe what is there and tell the teacher in `notes` what the picture cannot show. If there is no photograph, do not mention a picture at all.";
 
 const SHAPES = {
   title: '{ "kind": "title", "title", "subtitle", "factRefs", "notes"? }',
@@ -67,7 +99,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v6",
+  version: "generate-slide.v7",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
@@ -77,6 +109,7 @@ export const generateSlidePrompt = {
     "You are given what this slide must add and what its neighbours add; do not repeat a neighbour. Use the facts listed and no others, and put the ids of the facts the slide draws on in `factRefs` (the outline entry's ids at least).",
     "A `content` slide explains one key idea: its statement as the heading, the explanation in plain words and its example in the body; if an analogy is given, use it. A question slide uses one of the questions given, its answer and — for multiple-choice and true-false — its distractors verbatim as the wrong options. Never use a stem from the reserved list.",
     "`notes` is a short paragraph of presenter notes for the teacher: what to say, the misconception to watch for (in its own words, never by id), and one question to ask the class.",
+    IMAGE_TEXT_RULE,
     "Keep text short enough to read from the back of a classroom: one idea per slide, no paragraph over forty words.",
     "Answers must be correct and unambiguous; a multiple-choice has exactly one correct option and three plausible distractors.",
     limitsBlock({
@@ -122,6 +155,7 @@ export const generateSlidePrompt = {
     if (input.neighbours.previous)
       parts.push(`The slide before adds: ${input.neighbours.previous}`);
     if (input.neighbours.next) parts.push(`The slide after adds: ${input.neighbours.next}`);
+    if (input.photo !== undefined) parts.push(...photoBlock(input.photo));
     if (input.entry.kind === "vocabulary") {
       parts.push(`This theme shows at most ${input.vocabularySlots} vocabulary entries.`);
     }
