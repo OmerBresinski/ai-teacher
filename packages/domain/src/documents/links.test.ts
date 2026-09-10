@@ -46,3 +46,18 @@ describe("isLinkableHref", () => {
     expect(isLinkableHref("javascript:alert(1)")).toBe(false);
   });
 });
+
+describe("isTrustedThumbnail (TEACH-220)", () => {
+  test("accepts the provider's CDN over https and inline image data URLs, nothing else", async () => {
+    const { isTrustedThumbnail } = await import("./slide");
+    expect(isTrustedThumbnail("https://images.pexels.com/photos/1/tiny.jpeg?auto=compress")).toBe(
+      true,
+    );
+    expect(isTrustedThumbnail("data:image/png;base64,iVBORw0KGgo=")).toBe(true);
+    expect(isTrustedThumbnail("http://images.pexels.com/photos/1/tiny.jpeg")).toBe(false);
+    expect(isTrustedThumbnail("https://evil.test/images.pexels.com/x.jpg")).toBe(false);
+    expect(isTrustedThumbnail("https://images.pexels.com.evil.test/x.jpg")).toBe(false);
+    expect(isTrustedThumbnail("data:text/html,<script>")).toBe(false);
+    expect(isTrustedThumbnail("/files/ws/x.jpg")).toBe(false);
+  });
+});

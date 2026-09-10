@@ -158,7 +158,7 @@ describe("rubric judge", () => {
     expect(input.hasPlacedPhoto).toBe(false);
   });
 
-  test("hasPlacedPhoto is true only for an image-text slide whose image is not the placeholder", () => {
+  test("hasPlacedPhoto is true only for an image-text slide whose photo the judge can see (a trusted thumbnail on its evidence)", () => {
     const lesson = generatedLesson();
     expect(hasPlacedPhoto(lesson)).toBe(false);
     const slide = lesson.slides[0];
@@ -178,6 +178,28 @@ describe("rubric judge", () => {
     const image = slide.elements.at(-1);
     if (image?.type !== "image") throw new Error("fixture");
     image.src = "https://example.test/photo.jpg";
+    // A placement judged from captions (no thumbnail) is not scored: the judge cannot look at it.
+    expect(hasPlacedPhoto(lesson)).toBe(false);
+    const evidence = {
+      visible: [],
+      count: "one" as const,
+      alt: "Photo",
+      promptVersion: "pick-or-requery-photo.v3",
+    };
+    const source = {
+      provider: "pexels" as const,
+      id: "p",
+      pageUrl: "https://www.pexels.com/photo/p/",
+      photographer: "Ada",
+      photographerUrl: "https://www.pexels.com/@ada",
+    };
+    // A thumbnail off the provider's CDN is never handed to the model, so it is not scored either.
+    image.source = { ...source, evidence: { ...evidence, thumbnail: "https://evil.test/x.jpg" } };
+    expect(hasPlacedPhoto(lesson)).toBe(false);
+    image.source = {
+      ...source,
+      evidence: { ...evidence, thumbnail: "https://images.pexels.com/photos/p/tiny.jpeg" },
+    };
     expect(hasPlacedPhoto(lesson)).toBe(true);
   });
 

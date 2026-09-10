@@ -4,7 +4,7 @@ import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import pino from "pino";
 import { z } from "zod";
-import { callStructured } from "./call";
+import { callStructured, imageMediaType } from "./call";
 import { BudgetExceeded, type PipelineDeps, StageFailure } from "./types";
 
 const schema = z.strictObject({ answer: z.string() });
@@ -235,6 +235,15 @@ describe("callStructured", () => {
     });
     expect(ai.calls.map((c) => c.imageParts)).toEqual([2, 2]);
     expect(ai.calls[0]?.promptText).toContain("hi");
+  });
+
+  test("image parts go as `file` parts with the image's media type (the SDK's `image` part is deprecated)", () => {
+    expect(imageMediaType(`data:image/png;base64,${PNG}`)).toBe("image/png");
+    expect(imageMediaType("https://images.pexels.com/photos/1/tiny.jpeg?auto=compress")).toBe(
+      "image/jpeg",
+    );
+    expect(imageMediaType("https://images.pexels.com/photos/1/tiny.webp")).toBe("image/webp");
+    expect(imageMediaType("https://images.pexels.com/photos/1/tiny")).toBe("image/jpeg");
   });
 
   test("an Anthropic id gets no reasoningConfig (thinking is off there); the context still says the effort", async () => {

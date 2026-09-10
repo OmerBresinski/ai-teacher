@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
+import { PexelsError } from "@tj/images";
 import { PROMPT_VERSIONS } from "../prompts";
 import { assignFactIds, planFactsSchemaFor } from "../specs";
 import {
@@ -710,6 +711,22 @@ describe("generate", () => {
       `${PROMPT_VERSIONS["generate-slide"]}+${PROMPT_VERSIONS["pick-or-requery-photo"]}`,
     );
     expect(state.lesson.generation?.findings).toEqual([]);
+  });
+
+  test("a Pexels rate limit during the pick is the busy warning, not 'no photograph found'", async () => {
+    const start = await plannedWithImage();
+    const ai = imageRunAi(json({ pick: null, visible: [], count: null, query: null }));
+    const busyImages = {
+      ...riverImages,
+      search: async () => {
+        throw new PexelsError(429, "slow");
+      },
+    };
+    const state = await generate(start, recordingDeps(ai, { images: busyImages }));
+    expect(ai.calls.some((c) => c.context?.stage === "illustrate")).toBe(false);
+    const findings = state.lesson.generation?.findings ?? [];
+    expect(findings.map((f) => f.check)).toEqual(["image"]);
+    expect(findings[0]?.message).toContain("busy");
   });
 
   test("row 6: an empty pick writes the slide as plain content with the image warning", async () => {

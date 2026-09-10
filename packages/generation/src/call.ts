@@ -211,7 +211,10 @@ export async function callStructured<I, T>(
   }
 }
 
-/** The user turn: plain `prompt` text, or one message with the text and the image parts. */
+/**
+ * The user turn: plain `prompt` text, or one message with the text and the image parts. Images go
+ * as `file` parts with an image media type (the SDK's `image` part is deprecated in v7).
+ */
 function userTurn(
   text: string,
   images: { id: string; url: string }[] | undefined,
@@ -223,11 +226,24 @@ function userTurn(
         role: "user",
         content: [
           { type: "text", text },
-          ...images.map((image) => ({ type: "image" as const, image: new URL(image.url) })),
+          ...images.map((image) => ({
+            type: "file" as const,
+            data: new URL(image.url),
+            mediaType: imageMediaType(image.url),
+          })),
         ],
       },
     ],
   };
+}
+
+/** The media type of an image URL: a data URL says it; otherwise the extension, JPEG by default. */
+export function imageMediaType(url: string): string {
+  const data = /^data:(image\/[a-z0-9.+-]+)[;,]/i.exec(url);
+  if (data?.[1]) return data[1].toLowerCase();
+  const ext = /\.(png|webp|gif|jpe?g)(?:[?#]|$)/i.exec(url)?.[1]?.toLowerCase();
+  if (ext === "png" || ext === "webp" || ext === "gif") return `image/${ext}`;
+  return "image/jpeg";
 }
 
 /**

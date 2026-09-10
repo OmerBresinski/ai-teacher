@@ -16,7 +16,7 @@ import {
   throwIfAborted,
 } from "../types";
 import { BUDGET_FINDING, withUsage } from "./generate";
-import { audienceOf, blockText, generationOf, slideText } from "./shared";
+import { audienceOf, blockText, generationOf, photoThumbnails, slideText } from "./shared";
 
 /*
  * Evaluate (ADR 0025 §10, §11, §14; Generation quality §4, TEACH-216): the shared schema checks,
@@ -97,13 +97,8 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
 
   // Photographed slides (TEACH-220): each placed image-text slide's thumbnail — the picture the
   // judge chose — goes in as an image part so `image-fit` can look at it; numbered in slide order.
-  const thumbnails = new Map<string, string>();
-  for (const slide of lesson.slides) {
-    const image = slide.elements.find((e) => e.type === "image");
-    const thumbnail = image?.type === "image" ? image.source?.evidence?.thumbnail : undefined;
-    if (slide.kind === "image-text" && thumbnail) thumbnails.set(slide.id, thumbnail);
-  }
-  const photos = [...thumbnails.keys()];
+  const images = photoThumbnails(lesson);
+  const photos = images.map((i) => i.id);
 
   let model: Finding[] = [];
   try {
@@ -131,7 +126,7 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       },
       schema: EvaluateOutputSchema,
       maxOutputTokens: MAX_OUTPUT_TOKENS.evaluate,
-      images: photos.map((slideId) => ({ id: slideId, url: thumbnails.get(slideId) as string })),
+      images,
     });
     const filtered = knownTargetsWithEvidence(call.output.findings, state);
     model = filtered.kept;

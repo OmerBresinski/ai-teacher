@@ -73,7 +73,7 @@ export function emptyFinding(slideId: string, elementId: string): Finding {
   };
 }
 
-function busyFinding(slideId: string, elementId: string): Finding {
+export function busyFinding(slideId: string, elementId: string): Finding {
   return {
     check: "image",
     severity: "warning",

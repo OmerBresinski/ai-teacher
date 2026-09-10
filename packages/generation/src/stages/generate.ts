@@ -27,6 +27,7 @@ import {
 import { type WorksheetSpec, WorksheetSpecSchema } from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
 import {
+  busyFinding,
   emptyFinding,
   joinVersions,
   type PickedPhoto,
@@ -159,7 +160,14 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       if (picked?.outcome === "placed") slide = slideWithPhoto(slide, picked.photo);
       else if (picked && !deps.signal.aborted) {
         const slot = slide.elements.find((e) => e.type === "image");
-        if (slot) findings.push(emptyFinding(slide.id, slot.id));
+        // A provider rate limit is told apart from "nothing fitted", as the illustrate step does.
+        if (slot) {
+          findings.push(
+            picked.outcome === "busy"
+              ? busyFinding(slide.id, slot.id)
+              : emptyFinding(slide.id, slot.id),
+          );
+        }
       }
     } catch (error) {
       if (!(error instanceof BudgetExceeded)) {

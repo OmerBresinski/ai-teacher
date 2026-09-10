@@ -1,4 +1,10 @@
-import type { Finding, Lesson, OutlineEntry, Slide } from "@tj/domain/documents";
+import {
+  type Finding,
+  isTrustedThumbnail,
+  type Lesson,
+  type OutlineEntry,
+  type Slide,
+} from "@tj/domain/documents";
 import { type ImageTextPhoto, PLACEHOLDER_IMAGE } from "@tj/slides";
 import type { Audience, SlidePhoto } from "../prompts";
 
@@ -38,6 +44,23 @@ export function imageTextPhotoOf(
     count: evidence.count,
     mustShow: entry?.imageBrief?.mustShow ?? [],
   };
+}
+
+/**
+ * The photographs a reviewer may be shown (TEACH-220): each placed `image-text` slide's thumbnail
+ * — the picture the pick judge looked at — keyed by slide id, in slide order. Only a trusted
+ * thumbnail (the provider's CDN or an inline data URL) is handed on: the model SDK fetches it from
+ * the worker, so the check is repeated here for documents written before the schema had it.
+ */
+export function photoThumbnails(lesson: Lesson): { id: string; url: string }[] {
+  const out: { id: string; url: string }[] = [];
+  for (const slide of lesson.slides) {
+    if (slide.kind !== "image-text") continue;
+    const image = slide.elements.find((e) => e.type === "image");
+    const url = image?.type === "image" ? image.source?.evidence?.thumbnail : undefined;
+    if (url && isTrustedThumbnail(url)) out.push({ id: slide.id, url });
+  }
+  return out;
 }
 
 /** The same evidence in the prompt's shape (what the photograph shows and does not). */

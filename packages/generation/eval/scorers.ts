@@ -7,10 +7,9 @@ import {
   type Lesson,
   type Worksheet,
 } from "@tj/domain/documents";
-import { PLACEHOLDER_IMAGE } from "@tj/slides";
 import pino from "pino";
 import { callStructured } from "../src/call";
-import { audienceOf, blockText, slideText } from "../src/stages/shared";
+import { audienceOf, blockText, photoThumbnails, slideText } from "../src/stages/shared";
 import { BudgetExceeded, type PipelineContext, StageFailure } from "../src/types";
 import {
   RUBRIC_DIMENSIONS,
@@ -116,27 +115,19 @@ export const modelFindingsScorer = createScorer<string, ScorerOutput>({
       `${results.analyzeStepResult.model} model findings over ${results.analyzeStepResult.slides} slides; score ${score}.`,
   );
 
-/** True when any `image-text` slide carries a photograph rather than the local placeholder. */
-export function hasPlacedPhoto(lesson: Lesson): boolean {
-  return lesson.slides.some(
-    (slide) =>
-      slide.kind === "image-text" &&
-      slide.elements.some((e) => e.type === "image" && e.src !== PLACEHOLDER_IMAGE),
-  );
-}
-
 /**
  * The photographs the judge is shown (TEACH-220): each placed `image-text` slide's thumbnail — the
  * picture the pipeline's judge chose — as an image part, numbered in slide order.
  */
-export function judgeImages(lesson: Lesson): { id: string; url: string }[] {
-  const images: { id: string; url: string }[] = [];
-  for (const slide of lesson.slides) {
-    const image = slide.elements.find((e) => e.type === "image");
-    const thumbnail = image?.type === "image" ? image.source?.evidence?.thumbnail : undefined;
-    if (slide.kind === "image-text" && thumbnail) images.push({ id: slide.id, url: thumbnail });
-  }
-  return images;
+export const judgeImages = photoThumbnails;
+
+/**
+ * True when the judge can see at least one photograph: `imageFit` is scored only then. A placement
+ * without a thumbnail on its evidence (judged from captions, before TEACH-220) is not scored — the
+ * judge cannot look at it.
+ */
+export function hasPlacedPhoto(lesson: Lesson): boolean {
+  return judgeImages(lesson).length > 0;
 }
 
 /** What the judge reads: the same plain-text projections Evaluate uses (ADR 0025 §11). */
