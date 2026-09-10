@@ -144,6 +144,18 @@ describe("planSkeletonSchemaFor", () => {
     const river = outline();
     river[3] = { ...entries[3], imageBrief: RIVER };
     expect(parse(river).success).toBe(true);
+    // Parts made of subject words are what the list is for: "front teeth" for "rodent front
+    // teeth close-up" passes (the production brief the stricter rule refused).
+    const teeth = outline();
+    teeth[3] = {
+      ...entries[3],
+      imageBrief: {
+        subject: "rodent front teeth close-up",
+        mustShow: ["front teeth", "mouth"],
+        purpose: "identify-parts",
+      },
+    };
+    expect(parse(teeth).success).toBe(true);
   });
 
   test("image-text needs a list-form picture brief; a brief on a content entry is refused", () => {
