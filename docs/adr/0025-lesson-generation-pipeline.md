@@ -586,3 +586,15 @@ dropped after checking Pexels: captions for "rodent incisors" say rat, hamster, 
 photo shows", "the diagram", "pictured above"), a `pitch.avoid` entry the vocabulary defines, and —
 when the outline has no vocabulary slide — a term no key idea uses. `generate-slide.v8` and
 `repair.v6` may name only the kind of thing the caption names.
+
+## Amendment (2026-09-10, TEACH-226 — the second rodents lesson)
+
+The lesson generated after TEACH-222/223/224 placed a real rodent, but a nutria behind a wire
+fence, and left two "explain your decision" tasks as warnings. §10: a `degenerate-question`
+"no-referent" finding is an `error` with a regenerate fix, so Repair (`repair.v7`, told to write
+the question first) rewrites it. §7: the judge (`pick-or-requery-photo.v5`) also answers `clear` —
+required items large, sharp and unobstructed enough for a projector — and the gate requires it
+(`onSubject && clear && visible ⊇ mustShow`; omitted reads as false; gated picks log `unclear`);
+`plan-skeleton.v8` tells Plan to list cage, fence, bars, glass and hands in `avoid` for a living
+subject. The pool is eight candidates from ten a query (was six from five) — about $0.002 more per
+judge call on the standard class.

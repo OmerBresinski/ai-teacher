@@ -534,7 +534,7 @@ describe("checkLesson", () => {
       expect(findings[0]?.target).toEqual({ slideId: "s-st" });
     });
 
-    test("degenerate-question (TEACH-223): a stem that asks nothing is an error; a task about a decision no question posed is a warning; a real question is fine", () => {
+    test("degenerate-question (TEACH-223/226): a stem that asks nothing, or a task about a decision no question posed, is an error; a real question is fine", () => {
       const l = generatedLesson();
       const open = (id: string, stem: string): Slide => ({
         id,
@@ -575,14 +575,19 @@ describe("checkLesson", () => {
       const by = (id: string) =>
         findings.filter((f) => f.target.slideId === id || f.target.blockId === id);
       expect(by("s-none").map((f) => f.severity)).toEqual(["error"]);
-      expect(by("s-anaphor").map((f) => f.severity)).toEqual(["warning"]);
+      // An error since TEACH-226, so Repair rewrites it with the question first.
+      expect(by("s-anaphor").map((f) => [f.severity, f.fix?.kind])).toEqual([
+        ["error", "regenerate-slide"],
+      ]);
       expect(by("s-anaphor")[0]?.message).toContain("no question posed");
       expect(by("s-ok")).toEqual([]);
       // Only the second exit-ticket item asks nothing.
       expect(by("s-exit").map((f) => [f.severity, f.message.includes("Rodent teeth")])).toEqual([
         ["error", true],
       ]);
-      expect(by("b-q").map((f) => f.severity)).toEqual(["warning"]);
+      expect(by("b-q").map((f) => [f.severity, f.fix?.kind])).toEqual([
+        ["error", "regenerate-block"],
+      ]);
     });
 
     test("leaked-language: house rules in pupil text and repair commentary in notes are errors; the clean fixture has none", () => {

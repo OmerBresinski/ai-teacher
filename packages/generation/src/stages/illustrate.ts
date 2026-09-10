@@ -31,7 +31,9 @@ export const PROGRESS_ILLUSTRATED = 88;
 const EMPTY_MESSAGE = "No photograph was found for this slide. Add one from the image panel.";
 const BUSY_MESSAGE = "Photo search was busy; add a picture from the image panel.";
 /** Portrait hits gathered across the query candidates before the judge sees them. */
-const MAX_CANDIDATES = 6;
+// Eight from ten a query (TEACH-226): with six the judge missed a clean rat portrait Pexels ranked
+// eighth. Two more thumbnails cost ≈ $0.002 a call on the standard class.
+const MAX_CANDIDATES = 8;
 /** The judge answers one id or a few words. */
 /** `{ pick, visible (≤ 4), count, query }`: room for the list (TEACH-220). */
 const MAX_JUDGE_TOKENS = 200;
@@ -354,6 +356,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         slideIndex: index,
         gated: true,
         offSubject: !verdict.onSubject,
+        unclear: !verdict.clear,
       });
     }
     const requery = verdict.query;
@@ -417,7 +420,7 @@ async function judge(
 
 /** The deterministic gate: every `mustShow` item is among what the judge saw. */
 export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery): boolean {
-  if (!verdict.onSubject) return false;
+  if (!verdict.onSubject || !verdict.clear) return false;
   const seen = new Set(verdict.visible.map(normaliseItem));
   return brief.mustShow.every((item) => seen.has(normaliseItem(item)));
 }
@@ -428,7 +431,7 @@ async function searchPortraits(
   signal: AbortSignal,
 ): Promise<PhotoResult[] | "busy"> {
   try {
-    const photos = await images.search(query, { orientation: "portrait", perPage: 5, signal });
+    const photos = await images.search(query, { orientation: "portrait", perPage: 10, signal });
     return photos.filter((candidate) => candidate.height > candidate.width);
   } catch (error) {
     if (error instanceof PexelsError && error.status === 429) return "busy";

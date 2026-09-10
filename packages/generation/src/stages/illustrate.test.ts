@@ -164,7 +164,7 @@ function judge(...answers: FakeScriptEntry[]) {
 }
 /** A pick that passes the gate for a brief with the given `mustShow` (none by default). */
 const pick = (id: string, visible: string[] = [], count: "one" | "several" = "one") =>
-  JSON.stringify({ pick: id, onSubject: true, visible, count, query: null });
+  JSON.stringify({ pick: id, onSubject: true, clear: true, visible, count, query: null });
 const requery = (query: string) => JSON.stringify({ pick: null, visible: [], count: null, query });
 const NONE = JSON.stringify({ pick: null, visible: [], count: null, query: null });
 const run = (lesson: Lesson, deps: ReturnType<typeof recordingDeps>) =>
@@ -179,7 +179,7 @@ describe("illustrate", () => {
     );
     const ai = judge(
       JSON.stringify({ query: "beaver gnawing", visible: [] }),
-      JSON.stringify({ pick: "r", onSubject: true, visible: [], count: "one" }),
+      JSON.stringify({ pick: "r", onSubject: true, clear: true, visible: [], count: "one" }),
     );
     const state = await run(
       imageLesson([{ subject: "rodent teeth" }]),
@@ -227,7 +227,7 @@ describe("illustrate", () => {
         visible: [],
         count: "one",
         alt: "Photo p2",
-        promptVersion: "pick-or-requery-photo.v4",
+        promptVersion: "pick-or-requery-photo.v5",
         thumbnail: second.src.tiny,
       },
     });
@@ -238,7 +238,7 @@ describe("illustrate", () => {
     expect(deps.persisted).toHaveLength(1);
     expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
-    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v4");
+    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v5");
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 
@@ -338,6 +338,7 @@ describe("illustrate", () => {
     const gatedThenQuery = JSON.stringify({
       pick: "A",
       onSubject: true,
+      clear: true,
       visible: ["petals"],
       count: "one",
       query: "buttercup macro",
@@ -355,7 +356,7 @@ describe("illustrate", () => {
       visible: ["open flower head", "petals", "stamens"],
       count: "one",
       alt: "Photo B",
-      promptVersion: "pick-or-requery-photo.v4",
+      promptVersion: "pick-or-requery-photo.v5",
       thumbnail: `data:image/png;base64,${PNG}`,
     });
 
@@ -363,6 +364,7 @@ describe("illustrate", () => {
     const gatedNoQuery = JSON.stringify({
       pick: "A",
       onSubject: true,
+      clear: true,
       visible: ["petals"],
       count: "one",
       query: null,
@@ -413,6 +415,48 @@ describe("illustrate", () => {
     expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
   });
 
+  test("TEACH-226: a pick that is not clear fails the gate; its query is followed; omitted clear is not placed; the judge sees up to eight", async () => {
+    const fenced = JSON.stringify({
+      pick: "fence",
+      onSubject: true,
+      clear: false,
+      visible: ["front teeth"],
+      count: "one",
+      query: "brown rat close up",
+    });
+    const { images, searches, stores } = fakeImages(async (query) =>
+      query === "brown rat close up"
+        ? [pexelsPhoto("rat", true)]
+        : Array.from({ length: 10 }, (_, i) => pexelsPhoto(i === 0 ? "fence" : `p${i}`, true)),
+    );
+    const { lines, logger } = memoryLogger();
+    const ai = judge(fenced, pick("rat", ["front teeth"]));
+    const brief = { subject: "rodent incisors", mustShow: ["front teeth"] };
+    const state = await run(imageLesson([brief]), recordingDeps(ai, { images, logger }));
+    expect(ai.calls).toHaveLength(2);
+    expect(ai.calls[0]?.imageParts).toBe(8);
+    // The first query filled the pool of eight, so the fallback query was never needed.
+    expect(searches).toEqual(["rodent incisors", "brown rat close up"]);
+    expect(stores).toEqual(["rat"]);
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/rat.jpg");
+    const gated = lines.map((l) => JSON.parse(l)).find((r) => r.gated === true);
+    expect(gated).toMatchObject({ unclear: true, offSubject: false });
+
+    const silent = JSON.stringify({
+      pick: "p1",
+      onSubject: true,
+      visible: ["front teeth"],
+      count: "one",
+    });
+    const again = fakeImages(async () => [pexelsPhoto("p1", true)]);
+    const state2 = await run(
+      imageLesson([brief]),
+      recordingDeps(judge(silent), { images: again.images }),
+    );
+    expect(again.stores).toEqual([]);
+    expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+  });
+
   test("row 3: a visible item outside mustShow is a validation issue the retry names", async () => {
     const flower = {
       subject: "buttercup",
@@ -423,6 +467,7 @@ describe("illustrate", () => {
     const bad = JSON.stringify({
       pick: "A",
       onSubject: true,
+      clear: true,
       visible: ["stamens", "bee"],
       count: "one",
       query: null,
