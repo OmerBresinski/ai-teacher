@@ -147,7 +147,8 @@ describeDb("lesson.plan job", () => {
       imageBrief: { subject: "river severn", mustShow: ["river water"], purpose: "observe" },
     };
     const ai = scriptedPipelineAi({
-      judges: [JSON.stringify({ pick: "p1", query: null })],
+      // The v3 judge (TEACH-220): the pick passes the gate when every mustShow item is visible.
+      judges: [JSON.stringify({ pick: "p1", visible: ["river water"], count: "one", query: null })],
       overrides: {
         [PLAN_INDEX]: JSON.stringify(skeleton),
         [SLIDES_INDEX + 2]: JSON.stringify({
@@ -216,6 +217,7 @@ describeDb("lesson.plan job", () => {
         element.src.startsWith(`https://api.example/files/${workspaceId}/images/`),
     ).toBe(true);
     expect(element?.type === "image" && element.source?.provider).toBe("pexels");
+    expect(element?.type === "image" && element.source?.evidence?.visible).toEqual(["river water"]);
     expect(element?.type === "image" && element.authoredBy).toBe("ai");
   });
 
