@@ -33,4 +33,4 @@ await writeFile(
     2,
   ),
 );
-console.log(`Built ${pages.length} Gather pages into homepage/dist.`);
+console.log(`Built ${pages.length} LessonCo pages into homepage/dist.`);
