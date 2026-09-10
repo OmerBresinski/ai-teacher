@@ -78,7 +78,25 @@ const specBase = {
   notes: notesLine(SPEC_LIMITS.notes).optional(),
 };
 
-const items = (min: number, max: number) => z.array(line(SPEC_LIMITS.item)).min(min).max(max);
+/**
+ * A leading enumerator the model wrote into a list member ("1. ", "2) ", "a) ", "- ") — the layout
+ * numbers or bullets the list itself, so it would render twice (TEACH-223). Stripped, not refused.
+ */
+const ENUMERATOR = /^\s*(?:\d{1,2}[.)]|[a-z][.)]|[-•*])\s+/i;
+export const stripEnumerator = (text: string) => text.replace(ENUMERATOR, "");
+
+/** One member of a list the layout numbers or bullets: `line`, with any enumerator stripped. */
+const listLine = (max: number) =>
+  z
+    .string()
+    .trim()
+    .overwrite(decodeEntities)
+    .overwrite(stripEnumerator)
+    .min(1)
+    .max(max)
+    .refine((text) => !hasLeakedPupilPhrase(text), { message: LEAKED_PUPIL });
+
+const items = (min: number, max: number) => z.array(listLine(SPEC_LIMITS.item)).min(min).max(max);
 
 const exactlyOneCorrect = (options: { correct: boolean }[]) =>
   options.filter((option) => option.correct).length === 1;
@@ -209,7 +227,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
       ...specBase,
       stem: line(SPEC_LIMITS.stem),
       options: z
-        .array(z.strictObject({ text: line(SPEC_LIMITS.option), correct: z.boolean() }))
+        .array(z.strictObject({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
         .length(4),
       explanation: line(SPEC_LIMITS.body).optional(),
     })
@@ -245,7 +263,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
       ...specBase,
       stem: line(SPEC_LIMITS.stem),
       /** In the correct order; the recipe shows them in reading order. */
-      steps: z.array(line(SPEC_LIMITS.option)).length(4),
+      steps: z.array(listLine(SPEC_LIMITS.option)).length(4),
     })
     .refine((spec) => allDistinct(spec.steps), {
       message: "sort: every step must be different.",
@@ -321,7 +339,7 @@ export const BlockSpecSchema = z.discriminatedUnion("type", [
       ...blockBase,
       text: line(SPEC_LIMITS.body),
       options: z
-        .array(z.strictObject({ text: line(SPEC_LIMITS.option), correct: z.boolean() }))
+        .array(z.strictObject({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
         .length(4),
     })
     .refine((spec) => exactlyOneCorrect(spec.options), {
@@ -373,8 +391,42 @@ void _blockTypes;
  */
 export function slideSpecSchemaFor(kind: string): z.ZodType<SlideSpec> | undefined {
   const option = SlideSpecSchema.options.find((o) => o.shape.kind.value === kind);
-  return option as unknown as z.ZodType<SlideSpec> | undefined;
+  if (!option) return undefined;
+  // Only an image-text slide has a photograph; every other kind may not refer to one
+  // (TEACH-223 — a worked example that said "A photo shows an animal…" beside no photo).
+  if (kind === "image-text") return option as unknown as z.ZodType<SlideSpec>;
+  return option.superRefine(noPictureReference) as unknown as z.ZodType<SlideSpec>;
 }
+
+/**
+ * Every string field of a spec (pupil-facing and `notes`) checked for a reference to a picture
+ * that is not there; each offending field is its own issue so the retry names it.
+ */
+function noPictureReference(spec: Record<string, unknown>, ctx: z.RefinementCtx): void {
+  const visit = (value: unknown, path: (string | number)[]): void => {
+    if (typeof value === "string") {
+      const root = path[0];
+      if (root !== "kind" && root !== "type" && root !== "factRefs" && NO_PHOTO_REF.test(value)) {
+        ctx.addIssue({ code: "custom", message: PICTURE_NONE_ANY, path });
+      }
+    } else if (Array.isArray(value)) {
+      value.forEach((v, i) => {
+        visit(v, [...path, i]);
+      });
+    } else if (value && typeof value === "object") {
+      for (const [k, v] of Object.entries(value)) visit(v, [...path, k]);
+    }
+  };
+  visit(spec, []);
+}
+
+/**
+ * A picture word on a slide or block that has no photograph. `diagram` is deliberately not here: a
+ * teacher drawing "the three particle diagrams on the board" is a normal note.
+ */
+const NO_PHOTO_REF = /\b(photo|photos|photograph|photographs|picture|pictures|image|images)\b/i;
+export const PICTURE_NONE_ANY =
+  "This slide has no photograph: do not refer to a picture, photo or image (in the text or the notes).";
 
 /* ------------------------------------------------------------------ */
 /* image-text: written to its photograph (TEACH-220)                    */
@@ -447,5 +499,7 @@ export function imageTextSpecSchemaFor(photo: ImageTextPhoto | "none" | undefine
 
 export function blockSpecSchemaFor(type: string): z.ZodType<BlockSpec> | undefined {
   const option = BlockSpecSchema.options.find((o) => o.shape.type.value === type);
-  return option as unknown as z.ZodType<BlockSpec> | undefined;
+  if (!option) return undefined;
+  // A worksheet has no photographs at all.
+  return option.superRefine(noPictureReference) as unknown as z.ZodType<BlockSpec>;
 }

@@ -534,6 +534,57 @@ describe("checkLesson", () => {
       expect(findings[0]?.target).toEqual({ slideId: "s-st" });
     });
 
+    test("degenerate-question (TEACH-223): a stem that asks nothing is an error; a task about a decision no question posed is a warning; a real question is fine", () => {
+      const l = generatedLesson();
+      const open = (id: string, stem: string): Slide => ({
+        id,
+        kind: "open-response",
+        elements: [generatedText(`${id}-h`, stem, ["o1"], { style: { preset: "heading" } })],
+        question: { type: "open-response" },
+      });
+      l.slides.push(
+        open("s-none", "The rodent family."),
+        open(
+          "s-anaphor",
+          "An animal has one pair of upper incisors, one lower pair and a diastema. Explain your decision using these shared features.",
+        ),
+        open("s-ok", "Is it a rodent? Explain your decision."),
+        {
+          id: "s-exit",
+          kind: "exit-ticket",
+          elements: [
+            generatedText("ex-h", "Show what you know", ["o1"], { style: { preset: "heading" } }),
+            generatedText("ex-b", "1. Give two features of rodents.\n2. Rodent teeth.", ["o1"]),
+          ],
+        },
+      );
+      const w = generatedWorksheet();
+      w.blocks.push({
+        id: "b-q",
+        type: "question",
+        doc: {
+          type: "doc",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "Explain why it melts." }] },
+          ],
+        },
+        answerLines: 2,
+        authoredBy: "ai",
+      } as WorksheetBlock);
+      const findings = of(checkLesson(l, w), "degenerate-question");
+      const by = (id: string) =>
+        findings.filter((f) => f.target.slideId === id || f.target.blockId === id);
+      expect(by("s-none").map((f) => f.severity)).toEqual(["error"]);
+      expect(by("s-anaphor").map((f) => f.severity)).toEqual(["warning"]);
+      expect(by("s-anaphor")[0]?.message).toContain("no question posed");
+      expect(by("s-ok")).toEqual([]);
+      // Only the second exit-ticket item asks nothing.
+      expect(by("s-exit").map((f) => [f.severity, f.message.includes("Rodent teeth")])).toEqual([
+        ["error", true],
+      ]);
+      expect(by("b-q").map((f) => f.severity)).toEqual(["warning"]);
+    });
+
     test("leaked-language: house rules in pupil text and repair commentary in notes are errors; the clean fixture has none", () => {
       const l = generatedLesson();
       l.slides.push(contentSlide("s-l", "Hand in your answers — no names needed."));

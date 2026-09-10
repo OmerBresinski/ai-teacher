@@ -556,3 +556,16 @@ each element's text preset; captions excluded) and told to put each field back i
 (3) `repair-fact.v2` names the fields the fact's array allows (`VERIFY_FIELDS_BY_ARRAY`) after the
 model invented `statement` on a misconception. §13: the photo judge moves to the `standard` class
 (founder decision, same day) — see the table.
+
+## Amendment (2026-09-10, TEACH-223 — three deterministic guards)
+
+§14 sanitiser: (1) every list member the layout numbers or bullets (`items`, `steps`, option
+texts) has a leading enumerator stripped ("1. ", "2) ", "a) ", "- ") — the model wrote them and the
+exit ticket rendered "1. 1. …"; (2) `slideSpecSchemaFor(kind)` for every kind but `image-text`,
+and `blockSpecSchemaFor` for every block, refuse a picture word (`photo`, `picture`, `image`) in
+any field including `notes`: a worked example said "A photo shows an animal…" beside no photo.
+`diagram` is not in the list — "draw the three particle diagrams on the board" is a normal note.
+§10 `checkLesson`: `degenerate-question` gains a stem test (`questionless`) for open-response
+stems, exit-ticket items and worksheet questions — no `?` and no sentence opening with an
+imperative or question word is an `error` (regenerate); a task about "your decision"/"the
+animal"/"it" with nothing before it that posed the decision is a `warning`.

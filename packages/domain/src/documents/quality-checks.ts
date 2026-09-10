@@ -260,6 +260,26 @@ function checkDegenerateQuestions(lesson: Lesson, worksheet?: Worksheet): Findin
     if (q?.type === "true-false" && isDoubleStatement(stemOf(slide))) {
       degenerate(target, `Slide "${slide.kind}" joins two claims into one statement.`, false);
     }
+    // A task must ask something (TEACH-223): an open-response stem, or each exit-ticket item.
+    const stems =
+      slide.kind === "open-response"
+        ? [stemOf(slide)]
+        : slide.kind === "exit-ticket"
+          ? lines(textsByPreset(slide, "body"))
+          : [];
+    for (const stem of stems) {
+      const verdict = questionless(stem);
+      if (verdict === "no-question") {
+        degenerate(target, `Slide "${slide.kind}" sets a task that asks nothing: "${stem}"`, false);
+      } else if (verdict === "no-referent") {
+        findings.push({
+          check: "degenerate-question",
+          severity: "warning",
+          target,
+          message: `Slide "${slide.kind}" refers to a decision or answer no question posed: "${stem}"`,
+        });
+      }
+    }
     if (FOOTNOTE_KINDS.has(slide.kind)) {
       const items = lines(textsByPreset(slide, "body"));
       const footnotes = textsByPreset(slide, "small");
@@ -274,6 +294,20 @@ function checkDegenerateQuestions(lesson: Lesson, worksheet?: Worksheet): Findin
   }
   for (const block of worksheet?.blocks ?? []) {
     const target = { blockId: block.id };
+    if (block.type === "question") {
+      const stem = richDocToPlainText(block.doc).trim();
+      const verdict = questionless(stem);
+      if (verdict === "no-question") {
+        degenerate(target, `Worksheet question asks nothing: "${stem}"`, true);
+      } else if (verdict === "no-referent") {
+        findings.push({
+          check: "degenerate-question",
+          severity: "warning",
+          target,
+          message: `Worksheet question refers to a decision or answer no question posed: "${stem}"`,
+        });
+      }
+    }
     if (block.type === "multiple-choice" && !allDistinct(block.options.map((o) => o.text))) {
       degenerate(
         target,
@@ -347,6 +381,39 @@ function elementText(element: SlideElement): string | undefined {
   if ("doc" in element && element.doc) return richDocToPlainText(element.doc as RichDoc).trim();
   if (element.type === "table") return element.rows.map((r) => r.join(" ")).join("\n");
   return undefined;
+}
+
+/** The words a task may open a sentence with and still be a task. */
+const IMPERATIVE_OPENERS =
+  /^(explain|describe|give|name|state|list|write|compare|contrast|suggest|calculate|work out|identify|decide|choose|select|complete|show|draw|sketch|label|predict|justify|evaluate|discuss|define|outline|summarise|summarize|use|find|match|sort|order|put|circle|tick|underline|fill|add|count|measure|estimate|solve|prove|convert|read|look|think|imagine|plan|design|create|make|say|tell|record|note|why|how|what|which|when|where|who|is|are|does|do|can|could|should|would|will)\b/i;
+/** A task that leans on a decision or answer only an earlier question could have set up. */
+const ANAPHORIC_TASK =
+  /\b(your (decision|answer|choice)|(this|the) animal|\bit\b|these|this one)\b/i;
+/** Text that poses the decision such a task refers back to. */
+const POSES_DECISION = /\?|\b(whether|decide|is it|are they|which|what)\b/i;
+
+/**
+ * Whether a stem asks anything (TEACH-223). "no-question": no `?` and no sentence opens with an
+ * imperative or question word — e.g. "The rodent family." "no-referent": it does set a task, but
+ * one about "your decision"/"the animal"/"it" with nothing before it that posed the decision —
+ * "An animal has X. Explain your decision." Otherwise "ok".
+ */
+export function questionless(stem: string): "ok" | "no-question" | "no-referent" {
+  const sentences = stem
+    .split(/(?<=[.?!])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (sentences.length === 0) return "ok";
+  if (!stem.includes("?") && !sentences.some((s) => IMPERATIVE_OPENERS.test(s))) {
+    return "no-question";
+  }
+  for (let i = 0; i < sentences.length; i++) {
+    const s = sentences[i] as string;
+    if (!IMPERATIVE_OPENERS.test(s) || !ANAPHORIC_TASK.test(s)) continue;
+    const before = sentences.slice(0, i).join(" ");
+    if (!POSES_DECISION.test(before) && !POSES_DECISION.test(s)) return "no-referent";
+  }
+  return "ok";
 }
 
 /** The plain text of every `text` element with the given preset, in slide order. */
