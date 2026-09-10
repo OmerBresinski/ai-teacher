@@ -10,7 +10,7 @@ From the repository root:
 
 ```sh
 bun run homepage:dev    # build, check, then http://localhost:4186/homepage/
-bun run homepage:check # build 27 pages and validate links, assets, anchors and preview markers
+bun run homepage:check # build 28 pages and validate links, assets, anchors and preview markers
 bun run homepage:lint  # root Biome conventions; vendored GSAP excluded
 bun run homepage:stage # after a web build: copy homepage output into apps/web/dist/homepage
 ```
@@ -21,6 +21,9 @@ bun run homepage:stage # after a web build: copy homepage output into apps/web/d
 Output is in ignored `homepage/dist/`; never edit or commit generated HTML. No installation or
 network call is required to build this site. Scripts also work with Node.
 
+The preserved visual rules are in `DESIGN-SYSTEM.md`; `REVIEW.md` distinguishes the original
+source-site audit from verification performed on this repository.
+
 ## Source ownership
 
 - `src/components.mjs`: shared navigation, footer, characters and page shell. Decorative diagonal
@@ -28,6 +31,11 @@ network call is required to build this site. Scripts also work with Node.
   lesson animation carries the same inline artwork; keep both in sync.
 - `src/pages/{home,features,examples,information,supporting}.mjs`: page copy and markup. Examples
   are canonical authored data, reused by home/features so excerpts stay consistent.
+- `src/pages/home-samples.mjs`: compact Year 3, Year 7 and Year 9 previews read from the same
+  lesson data as the full examples. `upper-year-lessons.mjs` owns the authored Year 9 sample.
+  `assets/home-samples.js` progressively enhances example links into keyboard-accessible tabs;
+  without JavaScript, Year 3 stays visible and the links open the full lessons. Answers use
+  native disclosure controls. Keep previews, complete lessons and their questions/answers in sync.
 - `assets/`: styles, accessible example interactions, preview form behaviour, font and favicon.
 - `motion/`: original character artwork and animation. `vendor/gsap.min.js` is the original
   GSAP 3.14.2 distribution with its copyright/license header retained. Do not hand-edit it.
