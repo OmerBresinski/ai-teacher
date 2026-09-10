@@ -348,7 +348,14 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         judged: round === 0 ? "pick" : "query",
       };
     }
-    if (picked) deps.logger.info({ stage: "illustrate", slideIndex: index, gated: true });
+    if (picked) {
+      deps.logger.info({
+        stage: "illustrate",
+        slideIndex: index,
+        gated: true,
+        offSubject: !verdict.onSubject,
+      });
+    }
     const requery = verdict.query;
     if (!requery || round === MAX_JUDGE_CALLS - 1) return { outcome: "empty", judged: "none" };
     // A repeat of a query already searched would return the pool the judge just rejected.
@@ -410,6 +417,7 @@ async function judge(
 
 /** The deterministic gate: every `mustShow` item is among what the judge saw. */
 export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery): boolean {
+  if (!verdict.onSubject) return false;
   const seen = new Set(verdict.visible.map(normaliseItem));
   return brief.mustShow.every((item) => seen.has(normaliseItem(item)));
 }

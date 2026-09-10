@@ -148,7 +148,15 @@ describeDb("lesson.plan job", () => {
     };
     const ai = scriptedPipelineAi({
       // The v3 judge (TEACH-220): the pick passes the gate when every mustShow item is visible.
-      judges: [JSON.stringify({ pick: "p1", visible: ["river water"], count: "one", query: null })],
+      judges: [
+        JSON.stringify({
+          pick: "p1",
+          onSubject: true,
+          visible: ["river water"],
+          count: "one",
+          query: null,
+        }),
+      ],
       overrides: {
         [PLAN_INDEX]: JSON.stringify(skeleton),
         [SLIDES_INDEX + 2]: JSON.stringify({

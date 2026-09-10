@@ -184,7 +184,7 @@ describe("rubric judge", () => {
       visible: [],
       count: "one" as const,
       alt: "Photo",
-      promptVersion: "pick-or-requery-photo.v3",
+      promptVersion: "pick-or-requery-photo.v4",
     };
     const source = {
       provider: "pexels" as const,
@@ -227,7 +227,7 @@ describe("rubric judge", () => {
           visible: [],
           count: "one",
           alt: "River",
-          promptVersion: "pick-or-requery-photo.v3",
+          promptVersion: "pick-or-requery-photo.v4",
           thumbnail: "https://images.pexels.com/photos/p1/tiny.jpeg",
         },
       },

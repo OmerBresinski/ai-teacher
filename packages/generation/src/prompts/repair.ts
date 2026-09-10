@@ -34,7 +34,7 @@ export type RepairInput = {
 };
 
 export const repairPrompt = {
-  version: "repair.v5",
+  version: "repair.v6",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Rewrite the whole item as a fresh spec of the same kind; keep everything that was right, change only what the findings require. The current text is shown field by field; put each field's content back in the same field.",

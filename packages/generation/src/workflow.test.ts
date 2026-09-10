@@ -102,7 +102,15 @@ describe("runLessonPipeline", () => {
       imageBrief: { subject: "river severn", mustShow: ["river water"], purpose: "observe" },
     };
     const script = pipelineScript({
-      judges: [JSON.stringify({ pick: "p1", visible: ["river water"], count: "one", query: null })],
+      judges: [
+        JSON.stringify({
+          pick: "p1",
+          onSubject: true,
+          visible: ["river water"],
+          count: "one",
+          query: null,
+        }),
+      ],
     });
     script[PLAN_INDEX] = JSON.stringify(skeleton);
     script[SLIDES_INDEX + 2] = JSON.stringify({
@@ -167,7 +175,7 @@ describe("runLessonPipeline", () => {
         visible: ["river water"],
         count: "one",
         alt: "River",
-        promptVersion: "pick-or-requery-photo.v3",
+        promptVersion: "pick-or-requery-photo.v4",
         thumbnail: photo.src.tiny,
       },
     });
@@ -178,8 +186,8 @@ describe("runLessonPipeline", () => {
     expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1);
     const judge = ai.calls.find((call) => call.context?.stage === "illustrate");
     expect(judge?.modelClass).toBe("standard");
-    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v3");
-    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v3");
+    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v4");
+    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v4");
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
     expect(summary.generation.images).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
     expect(summary.generation.stages).toContain("illustrate");

@@ -173,6 +173,50 @@ export type PlanSkeletonContext = {
  * practise → check, with explain minutes at least 30 % of the lesson, and a `brief` saying what
  * each slide adds. Every message here is what the retry shows the model.
  */
+/** Lower-case content words of a short phrase (stop words and plural `s` dropped). */
+function contentWordsOf(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/[\s-]+/)
+    .map((w) => w.replace(/s$/, ""))
+    .filter((w) => w.length > 2 && !STOP.has(w));
+}
+const STOP = new Set(["the", "and", "with", "close", "up", "closeup", "shot", "photo", "view"]);
+
+/**
+ * Whether `text` uses `term` as a whole word or phrase, allowing the usual English inflections
+ * (`particle` → `particles`, `melt` → `melting`/`melted`, `gnaw` → `gnaws`/`gnawing`); a term
+ * inside another word ("art" in "particle") does not count.
+ */
+export function usesTerm(text: string, term: string): boolean {
+  const escaped = term
+    .trim()
+    .toLowerCase()
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\s+/g, "\\s+")
+    .replace(/e$/, "e?");
+  return new RegExp(`\\b${escaped}(?:e?s|es|ed|ing|d)?\\b`, "i").test(text);
+}
+
+/**
+ * A problem or stem that leans on a picture the slide may not have: a picture noun after a
+ * determiner or an "at/in/from/on" pointer ("a photo shows", "look at the diagram", "in the
+ * picture", "this image"), or "shown/pictured above/below/here". A picture noun as a plain
+ * subject ("why do scientists draw particle diagrams?") is not a reference to one.
+ */
+const PICTURE_NOUN = "(?:photo|photograph|picture|image|diagram)s?";
+const PRESUMES_PICTURE = new RegExp(
+  [
+    `\\b(?:a|an|the|this|that|these|those|each|its)\\s+(?:\\w+\\s+)?${PICTURE_NOUN}\\b`,
+    `\\b(?:at|in|from|on)\\s+${PICTURE_NOUN}\\b`,
+    `\\b(?:shown|pictured|drawn)\\s+(?:above|below|here|opposite)\\b`,
+  ].join("|"),
+  "i",
+);
+const SELF_CONTAINED =
+  "Problems and question stems are self-contained: never 'a photo shows', 'the diagram', 'pictured above' — name the thing and its features in words.";
+
 export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<PlanSkeleton> {
   return PlanSkeletonShape.superRefine((skeleton, ctx) => {
     const issue = (message: string, path: (string | number)[]) =>
@@ -187,6 +231,22 @@ export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<P
       }
       if (entry.kind !== "image-text" && entry.imageBrief !== undefined) {
         issue("imageBrief is only allowed on image-text entries", ["outline", i, "imageBrief"]);
+      }
+      // mustShow lists what must be visible *in* the subject, never the subject itself
+      // (TEACH-224: "rodent" cannot be seen or missed; "front teeth" can). Only an item made of
+      // nothing but subject words is refused — "river water" for "river severn" is a real thing to
+      // see; the judge's `onSubject` answer covers the rest.
+      if (entry.imageBrief) {
+        const subjectWords = new Set(contentWordsOf(entry.imageBrief.subject));
+        entry.imageBrief.mustShow.forEach((item, j) => {
+          const words = contentWordsOf(item);
+          if (words.length > 0 && words.every((w) => subjectWords.has(w))) {
+            issue(
+              `mustShow names the subject ("${item}"); list what must be visible in it — parts and objects a camera captures.`,
+              ["outline", i, "imageBrief", "mustShow", j],
+            );
+          }
+        });
       }
       if (i >= 2) {
         if (entry.brief === undefined) {
@@ -482,6 +542,50 @@ export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts>
           code: "custom",
           message: `Objective ${i} is checked by no question; give at least one question objectiveRefs that include index ${i}.`,
           path: ["questions"],
+        });
+      }
+    });
+    // Self-contained facts (TEACH-224): a problem or stem that presumes a picture cannot be used
+    // on a slide that has none; a vocabulary term nobody explains cannot be asked about; and the
+    // pitch cannot forbid a word the lesson defines.
+    facts.workedExamples.forEach((x, i) => {
+      if (PRESUMES_PICTURE.test(x.problem)) {
+        ctx.addIssue({
+          code: "custom",
+          message: SELF_CONTAINED,
+          path: ["workedExamples", i, "problem"],
+        });
+      }
+    });
+    facts.questions.forEach((q, i) => {
+      if (PRESUMES_PICTURE.test(q.stem)) {
+        ctx.addIssue({ code: "custom", message: SELF_CONTAINED, path: ["questions", i, "stem"] });
+      }
+    });
+    // A term is taught either on a vocabulary slide (the outline has one) or inside a key idea;
+    // a lesson with neither would ask about a word it never showed (rodents: "diastema").
+    if (!skeleton.outline.some((entry) => entry.kind === "vocabulary")) {
+      const explained = facts.keyIdeas
+        .map((k) => `${k.statement} ${k.explanation} ${k.example ?? ""} ${k.analogy ?? ""}`)
+        .join(" ");
+      facts.vocabulary.forEach((v, i) => {
+        const term = v.term.trim();
+        if (term && !usesTerm(explained, term)) {
+          ctx.addIssue({
+            code: "custom",
+            message: `Vocabulary "${v.term}" is used in no key idea and the outline has no vocabulary slide; use it in a statement, explanation or example so the lesson teaches it before a question asks about it.`,
+            path: ["vocabulary", i, "term"],
+          });
+        }
+      });
+    }
+    const defined = new Set(facts.vocabulary.map((v) => v.term.trim().toLowerCase()));
+    facts.pitch.avoid.forEach((word, i) => {
+      if (defined.has(word.trim().toLowerCase())) {
+        ctx.addIssue({
+          code: "custom",
+          message: `pitch.avoid lists "${word}", which the vocabulary defines; a lesson cannot avoid a word it teaches.`,
+          path: ["pitch", "avoid", i],
         });
       }
     });
