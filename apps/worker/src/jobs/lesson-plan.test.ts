@@ -138,10 +138,12 @@ describeDb("lesson.plan job", () => {
   test("illustrate places a pexels photo with provenance on the image-text slide", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
+    // The multiple-choice slide becomes the picture slide, so the Explain shape's two content
+    // slides stay (TEACH-229).
     const skeleton = structuredClone(FIXTURES.planSkeleton);
-    const swapped = skeleton.outline[4];
-    if (swapped?.kind !== "content") throw new Error("fixture outline moved");
-    skeleton.outline[4] = {
+    const swapped = skeleton.outline[8];
+    if (swapped?.kind !== "multiple-choice") throw new Error("fixture outline moved");
+    skeleton.outline[8] = {
       ...swapped,
       kind: "image-text",
       imageBrief: { subject: "river severn", mustShow: ["river water"], purpose: "observe" },
@@ -160,7 +162,7 @@ describeDb("lesson.plan job", () => {
       ],
       overrides: {
         [PLAN_INDEX]: JSON.stringify(skeleton),
-        [SLIDES_INDEX + 2]: JSON.stringify({
+        [SLIDES_INDEX + 6]: JSON.stringify({
           kind: "image-text",
           factRefs: ["o1"],
           heading: "Rivers",

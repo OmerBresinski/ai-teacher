@@ -43,7 +43,9 @@ src/
   stages/         plan, generate, evaluate, repair (+ shared text projections)
   workflow.ts     lessonWorkflow, resumeFrom, runLessonPipeline
   testing.ts      fixtures as values, scripted fake, recording deps (`@tj/generation/testing`)
-  fixtures/       plan.json, slides.json, worksheet.json, evaluate.json, repair.json
+  shapes.ts       lessonShapeOf: the decision table by verb × confidence (data; consumed, not edited)
+  fixtures/       plan-skeleton.<verb>.json (one per verb, same positions 0–6), plan-facts.json,
+                  slides.json, worksheet.json, evaluate.json, repair.json, verify.json
   mastra.dev.ts   Studio entry (`bun run studio:generation`: Bedrock from apps/worker/.env;
                   `AI_FAKE_SCRIPT=1` for the fixture fake); src/mastra/index.ts re-exports it
 ```

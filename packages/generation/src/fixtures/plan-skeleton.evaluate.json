@@ -1,0 +1,186 @@
+{
+  "learningObjectives": [
+    {
+      "text": "Describe the arrangement and movement of particles in solids, liquids and gases"
+    },
+    {
+      "text": "Explain melting, boiling, condensing and freezing as changes of state"
+    },
+    {
+      "text": "Use the particle model to predict what happens when a substance is heated or cooled"
+    }
+  ],
+  "outline": [
+    {
+      "kind": "title",
+      "minutes": 2,
+      "factRefs": []
+    },
+    {
+      "kind": "objectives",
+      "minutes": 3,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        },
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "kind": "starter",
+      "minutes": 3,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ],
+      "phase": "starter",
+      "brief": {
+        "adds": "Hooks the topic with one everyday question pupils can already argue about.",
+        "avoids": "Do not define the states yet."
+      }
+    },
+    {
+      "kind": "vocabulary",
+      "minutes": 4,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ],
+      "phase": "starter",
+      "brief": {
+        "adds": "Names the four terms the lesson uses, each in one sentence.",
+        "avoids": "No examples of changes of state here."
+      }
+    },
+    {
+      "kind": "content",
+      "minutes": 8,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ],
+      "phase": "explain",
+      "brief": {
+        "adds": "Defines the three states of matter and names an everyday example of each.",
+        "avoids": "Do not repeat the vocabulary definitions."
+      }
+    },
+    {
+      "kind": "content",
+      "minutes": 6,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ],
+      "phase": "explain",
+      "brief": {
+        "adds": "Explains the particle model: arrangement and movement decide the state, and energy changes it.",
+        "avoids": "Not the examples from the definition slide."
+      }
+    },
+    {
+      "kind": "worked-example",
+      "minutes": 10,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ],
+      "phase": "explain",
+      "brief": {
+        "adds": "Walks through one change of state step by step with the particle model.",
+        "avoids": "Not the ink example from the content slide."
+      }
+    },
+    {
+      "kind": "matching",
+      "minutes": 6,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ],
+      "phase": "practise",
+      "brief": {
+        "adds": "Sets two substances against each other: which changes state first, and by which criterion."
+      }
+    },
+    {
+      "kind": "true-false",
+      "minutes": 5,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        }
+      ],
+      "phase": "practise",
+      "brief": {
+        "adds": "Confronts the misconception that solid particles do not move."
+      }
+    },
+    {
+      "kind": "open-response",
+      "minutes": 7,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ],
+      "phase": "practise",
+      "brief": {
+        "adds": "Pupils judge which explanation of boiling is better and say why."
+      }
+    },
+    {
+      "kind": "exit-ticket",
+      "minutes": 6,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 0
+        },
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ],
+      "phase": "check",
+      "brief": {
+        "adds": "Three short questions covering all three objectives.",
+        "avoids": "Do not reuse a stem from the practise slides."
+      }
+    }
+  ]
+}

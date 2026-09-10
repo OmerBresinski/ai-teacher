@@ -52,8 +52,8 @@ describe("check-input", () => {
       { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
       deps,
     );
-    // 1 check-input + 3 plan (skeleton, facts, verify) + 8 slides + 1 worksheet + 1 evaluate
-    expect(ai.calls).toHaveLength(1 + 3 + 8 + 1 + 1);
+    // 1 check-input + 3 plan (skeleton, facts, verify) + 9 slides + 1 worksheet + 1 evaluate
+    expect(ai.calls).toHaveLength(1 + 3 + 9 + 1 + 1);
     expect(ai.calls[0]).toMatchObject({
       modelClass: "small",
       context: { stage: "check-input", promptVersion: PROMPT_VERSIONS["check-input"] },

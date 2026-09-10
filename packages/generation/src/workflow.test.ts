@@ -26,8 +26,8 @@ import {
 import { StageFailure } from "./types";
 import { resumeFrom, runLessonPipeline } from "./workflow";
 
-const TOTAL_SLIDES = FIXTURES.planSkeleton.outline.length; // 10
-const GENERATED_SLIDES = TOTAL_SLIDES - 2; // 8
+const TOTAL_SLIDES = FIXTURES.planSkeleton.outline.length; // 11
+const GENERATED_SLIDES = TOTAL_SLIDES - 2; // 9
 /** What one fake call (1 000 in / 400 out) costs on a class at the current list price. */
 function callUsd(cls: "small" | "standard"): number {
   return costUsd(DEFAULT_MODEL_IDS[cls], { inputTokens: 1000, outputTokens: 400 }) ?? 0;
@@ -91,12 +91,13 @@ describe("runLessonPipeline", () => {
   });
 
   test("illustrate places one photo in a full run and the summary counts it", async () => {
-    // The fixture skeleton with its content slide swapped for a picture slide: same length, so
-    // the fixture facts and every script index still line up.
+    // The fixture skeleton with its multiple-choice slide swapped for a picture slide (an observe
+    // task in the practise phase): same length, so the fixture facts and every script index still
+    // line up, and the Explain shape's two content slides stay.
     const skeleton = structuredClone(FIXTURES.planSkeleton);
-    const swapped = skeleton.outline[4];
-    if (swapped?.kind !== "content") throw new Error("fixture outline moved");
-    skeleton.outline[4] = {
+    const swapped = skeleton.outline[8];
+    if (swapped?.kind !== "multiple-choice") throw new Error("fixture outline moved");
+    skeleton.outline[8] = {
       ...swapped,
       kind: "image-text",
       imageBrief: { subject: "river severn", mustShow: ["river water"], purpose: "observe" },
@@ -114,7 +115,7 @@ describe("runLessonPipeline", () => {
       ],
     });
     script[PLAN_INDEX] = JSON.stringify(skeleton);
-    script[SLIDES_INDEX + 2] = JSON.stringify({
+    script[SLIDES_INDEX + 6] = JSON.stringify({
       kind: "image-text",
       factRefs: ["o1"],
       heading: "Rivers",
@@ -343,7 +344,7 @@ describe("runLessonPipeline", () => {
   });
 
   test("TEACH-210 row 7: a degenerate slide reply (equal MCQ options) is a validation issue the retry names; the good reply lands", async () => {
-    // Outline position 7 is the multiple-choice slide; its generated-slide call is SLIDES_INDEX + 5
+    // Outline position 8 is the multiple-choice slide; its generated-slide call is SLIDES_INDEX + 6
     // (positions 0–1 are materialised by Plan).
     const goodSpec = FIXTURES.slides["multiple-choice"] as {
       options: { text: string; correct: boolean }[];
@@ -356,7 +357,7 @@ describe("runLessonPipeline", () => {
     });
     // The bad reply is a scripted miss: the routed fake hands it to whichever slide call is next,
     // and that call's retry finds the good multiple-choice spec by kind (TEACH-213).
-    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 5, [
+    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 6, [
       miss(bad),
       JSON.stringify(goodSpec),
     ]);
@@ -373,7 +374,9 @@ describe("runLessonPipeline", () => {
   });
 
   test("two schema misses on a slide fail Generate with a StageFailure; earlier slides were persisted", async () => {
-    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 2, ["not json", "still not json"]);
+    // The second content slide (position 5): with two misses in place of its spec, no other
+    // content spec is left for its retry to find.
+    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 3, ["not json", "still not json"]);
     const deps = recordingDeps(ai);
     await expect(
       runLessonPipeline({ lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID }, deps),
@@ -381,14 +384,14 @@ describe("runLessonPipeline", () => {
     try {
       await runLessonPipeline(
         { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
-        recordingDeps(scriptedPipelineAiWithInserted(SLIDES_INDEX + 2, ["x", "y"])),
+        recordingDeps(scriptedPipelineAiWithInserted(SLIDES_INDEX + 3, ["x", "y"])),
       );
     } catch (error) {
       expect((error as StageFailure).stage).toBe("generate");
     }
-    // Plan's three persists + two slides landed before the failing third slide.
-    expect(deps.persisted).toHaveLength(PLAN_PERSISTS + 2);
-    expect(deps.persisted.at(-1)?.lesson.slides).toHaveLength(4);
+    // Plan's three persists + three slides landed before the failing fourth slide.
+    expect(deps.persisted).toHaveLength(PLAN_PERSISTS + 3);
+    expect(deps.persisted.at(-1)?.lesson.slides).toHaveLength(5);
   });
 
   // Derived from the price table rather than hard-coded dollars (a model change must not silently

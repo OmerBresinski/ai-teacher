@@ -2,8 +2,8 @@
 // bun run eval:schema
 //
 // The free half of the eval set (ADR 0025 §23): every eval brief through the real pipeline on
-// the scripted fake (`scriptedPipelineAi`, fixtures only, no network), then `checkLesson` over
-// the result. Exercises the recipes, materialise and the schema checks on real geometry for
+// the scripted fake (`scriptedPipelineAi` on the skeleton fixture for the brief's verb, no
+// network), then `checkLesson` over the result. Exercises the recipes, materialise and the schema checks on real geometry for
 // eight different briefs. Runs in CI's `test` job on every PR.
 //
 //   exit 0  every brief produced a lesson with zero `error` schema findings
@@ -11,8 +11,9 @@
 
 import { createBudget } from "@tj/ai";
 import { checkLesson, type Finding } from "@tj/domain/documents";
-import { scriptedPipelineAi } from "../src/testing";
-import { evalBriefs } from "./briefs";
+import { objectiveVerbOf } from "../src/shapes";
+import { PLAN_SKELETONS, scriptedPipelineAi } from "../src/testing";
+import { type EvalBrief, evalBriefs } from "./briefs";
 import { type BriefResult, runBrief } from "./run-brief";
 
 export interface SchemaEvalRow {
@@ -21,15 +22,26 @@ export interface SchemaEvalRow {
   errors: string[];
 }
 
+/**
+ * The fake for one brief: the skeleton fixture written to the brief's verb (TEACH-229), since a
+ * Recall brief's shape forbids the open-response an Explain brief's requires — one skeleton
+ * cannot satisfy all eight cells.
+ */
+export function fixtureAiFor(brief: EvalBrief): ReturnType<typeof scriptedPipelineAi> {
+  return scriptedPipelineAi({
+    skeleton: PLAN_SKELETONS[objectiveVerbOf(brief.input.brief.answers)],
+  });
+}
+
 /** Run the schema half over the fake; exported so a test can drive it with its own fixtures. */
 export async function runSchemaEval(
   briefs = evalBriefs(),
-  makeAi: () => Parameters<typeof runBrief>[1]["ai"] = () => scriptedPipelineAi(),
+  makeAi: (brief: EvalBrief) => Parameters<typeof runBrief>[1]["ai"] = fixtureAiFor,
 ): Promise<SchemaEvalRow[]> {
   const rows: SchemaEvalRow[] = [];
   for (const brief of briefs) {
     const budget = createBudget({ capUsd: 5, capTokens: 5_000_000 });
-    const run = await runBrief(brief, { ai: makeAi(), budget });
+    const run = await runBrief(brief, { ai: makeAi(brief), budget });
     const errors = run.result.ok
       ? schemaErrors(checkLesson(run.lesson, run.worksheet))
       : [run.result.error ?? "failed"];

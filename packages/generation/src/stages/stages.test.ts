@@ -5,6 +5,7 @@ import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
 import { PROMPT_VERSIONS } from "../prompts";
+import { lessonShapeOf } from "../shapes";
 import { assignFactIds, planFactsSchemaFor } from "../specs";
 import {
   FIXTURES,
@@ -164,7 +165,7 @@ describe("plan", () => {
 
   test("facts that touch the objectives slide or reference an objective are validation issues", async () => {
     const skeleton = FIXTURES.planSkeleton;
-    const schema = planFactsSchemaFor(skeleton);
+    const schema = planFactsSchemaFor(skeleton, lessonShapeOf(undefined));
     const onObjectivesSlide = structuredClone(FIXTURES.planFacts);
     onObjectivesSlide.outlineFactRefs.push({
       index: 1,
@@ -433,11 +434,11 @@ describe("generate", () => {
     expect(state.lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(deps.persisted).toHaveLength(slides.length + 1);
     expect(deps.persisted.map((p) => p.lesson.slides.length)).toEqual([
-      3, 4, 5, 6, 7, 8, 9, 10, 10,
+      3, 4, 5, 6, 7, 8, 9, 10, 11, 11,
     ]);
     expect(deps.progress.map((p) => p.message).slice(0, 2)).toEqual([
-      "Slide 3 of 10",
-      "Slide 4 of 10",
+      "Slide 3 of 11",
+      "Slide 4 of 11",
     ]);
     expect(deps.progress.at(-1)).toMatchObject({ percent: 85, message: "Worksheet ready" });
     expect(state.worksheet).toMatchObject({
@@ -496,7 +497,7 @@ describe("generate", () => {
       expect.objectContaining({
         check: "budget",
         severity: "error",
-        message: expect.stringContaining("slide 7 of 10"),
+        message: expect.stringContaining("slide 7 of 11"),
       }),
     ]);
     expect(deps.progress.at(-1)?.message).toBe("Worksheet ready");
@@ -570,9 +571,14 @@ describe("generate", () => {
       inFlight -= 1;
       return text;
     };
-    const byKind = new Map(
-      entries.map((e, i) => [e.kind, delayed(i, json(FIXTURES.slides[e.kind]))]),
-    );
+    // One queue of replies per kind (the outline has two content slides), taken in outline order.
+    const byKind = new Map<string, (() => Promise<string>)[]>();
+    entries.forEach((e, i) => {
+      byKind.set(e.kind, [
+        ...(byKind.get(e.kind) ?? []),
+        delayed(i, json(FIXTURES.slides[e.kind])),
+      ]);
+    });
     // One dispatcher answers every call by what it asks for: the worksheet at once, each slide by
     // its kind with the scripted delay.
     const ai = createFakeAi({
@@ -581,7 +587,7 @@ describe("generate", () => {
           return json(FIXTURES.worksheet);
         }
         const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "";
-        const reply = byKind.get(kind as (typeof entries)[number]["kind"]);
+        const reply = byKind.get(kind)?.shift();
         if (!reply) throw new Error(`no scripted reply for ${kind}`);
         return reply();
       },
@@ -591,9 +597,9 @@ describe("generate", () => {
     const state = await generate(start, deps);
     expect(maxInFlight).toBeLessThanOrEqual(GENERATE_CONCURRENCY + 1);
     const lengths = deps.persisted.map((p) => p.lesson.slides.length);
-    expect(lengths).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 10]);
-    expect(deps.progress.map((p) => p.message).slice(0, 8)).toEqual(
-      entries.map((_, i) => `Slide ${i + PLANNED_SLIDES + 1} of 10`),
+    expect(lengths).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 11]);
+    expect(deps.progress.map((p) => p.message).slice(0, 9)).toEqual(
+      entries.map((_, i) => `Slide ${i + PLANNED_SLIDES + 1} of 11`),
     );
     // The worksheet is on the final write only.
     expect(deps.persisted.slice(0, -1).every((p) => p.worksheet === undefined)).toBe(true);
@@ -604,13 +610,14 @@ describe("generate", () => {
     );
   });
 
-  /** The planned state with the `content` entry turned into an image-text one (TEACH-220). */
+  /** The planned state with the first `content` entry turned into an image-text one (TEACH-220). */
   async function plannedWithImage(mustShow: string[] = ["river water"]) {
     const start = await planned();
     const facts = start.lesson.facts;
     if (!facts) throw new Error("no facts");
-    const outline = facts.outline.map((e) =>
-      e.kind === "content"
+    const firstContent = facts.outline.findIndex((e) => e.kind === "content");
+    const outline = facts.outline.map((e, i) =>
+      i === firstContent
         ? {
             ...e,
             kind: "image-text" as const,
@@ -897,7 +904,7 @@ describe("generate", () => {
     const slideCalls = ai.calls.filter(
       (c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-slide"],
     );
-    expect(slideCalls[0]?.promptText).toContain("Slide 6 of 10");
+    expect(slideCalls[0]?.promptText).toContain("Slide 6 of 11");
     expect(state.lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(state.lesson.slides.slice(0, 5)).toEqual(full.lesson.slides.slice(0, 5));
   });

@@ -36,7 +36,7 @@
     },
     {
       "kind": "starter",
-      "minutes": 5,
+      "minutes": 4,
       "factRefs": [
         {
           "type": "objective",
@@ -51,7 +51,7 @@
     },
     {
       "kind": "vocabulary",
-      "minutes": 8,
+      "minutes": 5,
       "factRefs": [
         {
           "type": "objective",
@@ -66,26 +66,41 @@
     },
     {
       "kind": "content",
-      "minutes": 10,
+      "minutes": 9,
       "factRefs": [
         {
           "type": "objective",
           "index": 0
-        },
-        {
-          "type": "objective",
-          "index": 1
         }
       ],
       "phase": "explain",
       "brief": {
-        "adds": "Explains the particle model: arrangement and movement decide the state.",
+        "adds": "Defines the three states of matter and names an everyday example of each.",
         "avoids": "Do not repeat the vocabulary definitions."
       }
     },
     {
+      "kind": "content",
+      "minutes": 5,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ],
+      "phase": "explain",
+      "brief": {
+        "adds": "Explains the particle model: arrangement and movement decide the state, and energy changes it.",
+        "avoids": "Not the examples from the definition slide."
+      }
+    },
+    {
       "kind": "worked-example",
-      "minutes": 10,
+      "minutes": 7,
       "factRefs": [
         {
           "type": "objective",
@@ -104,7 +119,7 @@
     },
     {
       "kind": "true-false",
-      "minutes": 5,
+      "minutes": 6,
       "factRefs": [
         {
           "type": "objective",
@@ -127,12 +142,12 @@
       ],
       "phase": "practise",
       "brief": {
-        "adds": "Checks recall of which state has particles furthest apart.",
+        "adds": "Checks which state has particles furthest apart.",
         "avoids": "Not the true-false statement again."
       }
     },
     {
-      "kind": "sort",
+      "kind": "open-response",
       "minutes": 6,
       "factRefs": [
         {
@@ -142,12 +157,12 @@
       ],
       "phase": "practise",
       "brief": {
-        "adds": "Orders the states by particle energy."
+        "adds": "Pupils explain in their own words why a puddle disappears on a warm day."
       }
     },
     {
       "kind": "exit-ticket",
-      "minutes": 5,
+      "minutes": 7,
       "factRefs": [
         {
           "type": "objective",

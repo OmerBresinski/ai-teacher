@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { FIXTURES, PLAN_INDEX, pipelineScript, scriptedPipelineAi } from "../src/testing";
 import { evalBriefs } from "./briefs";
-import { formatSchemaTable, runSchemaEval, schemaErrors } from "./schema";
+import { fixtureAiFor, formatSchemaTable, runSchemaEval, schemaErrors } from "./schema";
 
 /* The free half (ADR 0025 §23): fixtures through the real pipeline for every brief, then checkLesson. */
 
@@ -22,7 +22,7 @@ describe("eval:schema", () => {
   test("the schema half never asks the judge: no rubric, and no call beyond the pipeline's own", async () => {
     const [brief] = evalBriefs();
     if (!brief) throw new Error("briefs");
-    const ai = scriptedPipelineAi();
+    const ai = fixtureAiFor(brief);
     const rows = await runSchemaEval([brief], () => ai);
     expect(rows[0]?.result.scores?.rubric).toBeNull();
     expect(rows[0]?.result.judge).toBeNull();

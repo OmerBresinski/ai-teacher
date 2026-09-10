@@ -327,7 +327,7 @@
       "stem": "Which change of state happens when a gas cools down?",
       "answer": "Condensing.",
       "reasoning": "Losing energy lets gas particles gather into a liquid.",
-      "tier": "core",
+      "tier": "easy",
       "use": "worksheet",
       "objectiveRefs": [
         {
@@ -390,7 +390,12 @@
         {
           "type": "keyIdea",
           "index": 0
-        },
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "factRefs": [
         {
           "type": "keyIdea",
           "index": 1
@@ -398,7 +403,7 @@
       ]
     },
     {
-      "index": 5,
+      "index": 6,
       "factRefs": [
         {
           "type": "workedExample",
@@ -407,7 +412,7 @@
       ]
     },
     {
-      "index": 6,
+      "index": 7,
       "factRefs": [
         {
           "type": "question",
@@ -420,7 +425,7 @@
       ]
     },
     {
-      "index": 7,
+      "index": 8,
       "factRefs": [
         {
           "type": "question",
@@ -429,7 +434,7 @@
       ]
     },
     {
-      "index": 8,
+      "index": 9,
       "factRefs": [
         {
           "type": "question",
@@ -438,7 +443,7 @@
       ]
     },
     {
-      "index": 9,
+      "index": 10,
       "factRefs": [
         {
           "type": "question",

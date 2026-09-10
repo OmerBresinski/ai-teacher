@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { createAi, createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
-import { pipelineScript, routed, scriptedPipelineAi } from "../src/testing";
+import { objectiveVerbOf } from "../src/shapes";
+import { PLAN_SKELETONS, pipelineScript, routed, scriptedPipelineAi } from "../src/testing";
 import { evalBriefs } from "./briefs";
 import { RUBRIC_DIMENSIONS } from "./rubric-prompt";
 import {
@@ -13,6 +14,7 @@ import {
   UNCONFIGURED_MESSAGE,
 } from "./run";
 import type { BriefResult } from "./run-brief";
+import { fixtureAiFor } from "./schema";
 import type { RubricScores } from "./scorers";
 
 const rubricJson = (score: number) =>
@@ -56,8 +58,10 @@ describe("eval:paid", () => {
   test("the paid loop judges each brief: one extra frontier call, judge cost split out, rubric means in the totals", async () => {
     const [brief] = evalBriefs();
     if (!brief) throw new Error("briefs");
+    // The skeleton fixture for the brief's verb (TEACH-229): the first brief is an Apply one.
+    const skeleton = PLAN_SKELETONS[objectiveVerbOf(brief.input.brief.answers)];
     const ai = createFakeAi({
-      script: routed([...pipelineScript(), rubricJson(4)]),
+      script: routed([...pipelineScript({ skeleton }), rubricJson(4)]),
       usage: { inputTokens: 1000, outputTokens: 400 },
     });
     const budget = createBudget({ capUsd: 5, capTokens: 10_000_000 });
@@ -100,11 +104,13 @@ describe("eval:paid", () => {
   test("the summary and table carry counts, timings, tokens and cost — never a topic", async () => {
     const briefs = evalBriefs().slice(0, 2);
     const budget = createBudget({ capUsd: 5, capTokens: 10_000_000 });
-    const ai = scriptedPipelineAi();
-    // One fake answers in call order; both briefs get the whole script from a fresh fake each.
+    const [first, second] = briefs;
+    if (!first || !second) throw new Error("briefs");
+    // One fake answers in call order; both briefs get the whole script from a fresh fake each,
+    // on the skeleton fixture for their verb.
     const rows = [
-      ...(await runPaidEval(ai, budget, briefs.slice(0, 1))),
-      ...(await runPaidEval(scriptedPipelineAi(), budget, briefs.slice(1))),
+      ...(await runPaidEval(fixtureAiFor(first), budget, [first])),
+      ...(await runPaidEval(fixtureAiFor(second), budget, [second])),
     ];
     const totals = summarise(rows, briefs, budget);
     expect(totals.completed).toBe(2);

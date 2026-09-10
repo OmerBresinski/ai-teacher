@@ -1,12 +1,16 @@
 import { describe, expect, test } from "bun:test";
+import { lessonShapeOf } from "../shapes";
 import { assignFactIds } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
 import { PROMPT_VERSIONS, PROMPTS, type PromptName, promptHash } from "./index";
+import { planSkeletonPrompt } from "./plan-skeleton";
 
 /*
  * ADR 0025 §17: every prompt's wording is pinned to its version. Change the text → change the
- * version → update the hash here. A wording change without a bump fails this file.
+ * version → update the hash here. A wording change without a bump fails this file. The hash covers
+ * the rendered user turn too, so a change to the sample inputs below (the plan fixtures, since
+ * TEACH-229 eleven outline entries) re-pins every prompt that renders the facts without a bump.
  */
 
 const facts = assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
@@ -16,10 +20,15 @@ const brief = {
   audience: audienceOf(sampleBriefLesson()),
   sourceTexts: [],
   answers: { q1: "yes" },
+  /** Explain / New to it: the cell with the most Shape sentences. */
+  shape: lessonShapeOf(
+    { objectiveVerb: "Explain states of matter", priorConfidence: "New to it" },
+    { yearGroup: "Year 8" },
+  ),
 };
 const audience = audienceOf(sampleBriefLesson());
 
-const SAMPLE_INPUTS: Record<PromptName, unknown> = {
+export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   "check-input": { topic: brief.topic, answers: brief.answers, audience: brief.audience },
   "plan-skeleton": brief,
   "plan-facts": { ...brief, skeleton: FIXTURES.planSkeleton },
@@ -122,24 +131,24 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v9",
-    hash: "e6416c389c99cb49dded52ce85b5039a84d7df0baed15084d79dbabf83bed2bc",
+    version: "plan-skeleton.v10",
+    hash: "09a93f9f9bd3d14f50cb0aecbbac90a148bd8830f2587407c42823b242210a60",
   },
   "plan-facts": {
-    version: "plan-facts.v5",
-    hash: "c45c07097c8a916b8151007d896b1d90b01505c25adbef95c43f1e8be068bde8",
+    version: "plan-facts.v6",
+    hash: "a8a0c26efc64ea88e431582d86103fd95aac55ad464787d2ccf43599ec1444ac",
   },
   "verify-facts": {
     version: "verify-facts.v1",
-    hash: "3d78a0d2f29bdddc5d0d5e83a785143d6c0b795da03f0b08b13d0cc965926748",
+    hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
   },
   "generate-slide": {
     version: "generate-slide.v8",
-    hash: "e6c73979c6d652f5c23786213fa7c10cbe794e87cafc8ee4501808cf6ebfd157",
+    hash: "fb0e73a3cf5d060aa6bab2c4c30031d56cd6a42516e41a026430f776cf39ec5d",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v5",
-    hash: "6c944003c98d57c18bc5fc584f338d8a2e16e8321c18740f98fda13b578fe2a3",
+    hash: "06364e30395e7e2a59c5f1a875d87765d436389f28830c0fbff505ec1f19f345",
   },
   "shortlist-photos": {
     version: "shortlist-photos.v1",
@@ -151,23 +160,23 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   evaluate: {
     version: "evaluate.v4",
-    hash: "2898eb315cf4afe67d95cbeb88ebb4c3093f57687e9dcf482f03bb2c115a1a37",
+    hash: "6f4ed075c06072645f8e1de21caedd382398cd6fdf4a0b5260f3ce56d24a8f13",
   },
   repair: {
     version: "repair.v8",
-    hash: "1a74f13afd3c0622cee44f57b43c3eab71bbb9e81aa41dbb511b5fd920e871cb",
+    hash: "8df7121fe6a273df27fd19f087981018163bae505f7be44bb7573b53b44e0697",
   },
   "repair-fact": {
     version: "repair-fact.v2",
-    hash: "d59321734b369ba28d90e9d5bfee62c4a8d5846bfc45c11c92032457415086c8",
+    hash: "8f156fb5f6d9ad596b271de7d50a2f1ba500a75e1e7b63855bd2ff135a3ab9f6",
   },
   cascade: {
     version: "cascade.v2",
-    hash: "cb2a59345961aef8ca048fc5dc4a7b6dd0637ba82381c60a410e82a034ccb28d",
+    hash: "8111e79f21a141c7947e8c148d7a1fdb8956764cd1ea53d41ffda729851df476",
   },
   regenerate: {
     version: "regenerate.v2",
-    hash: "453859a1e9e81f6a15349f5232372ee1dbd51fe6a02f8f2c1ea1648a8213685c",
+    hash: "53cd60826e8944cd65e473c1500fb50c9493ed3822c32105f3c652a269be0dd1",
   },
 };
 
@@ -190,6 +199,36 @@ describe("prompt versions", () => {
       expect(prompt.system).toContain("Never invent or include the name of any pupil");
       expect(prompt.system).toMatch(/JSON/);
     }
+  });
+
+  test("TEACH-229 row 6: the Shape block reaches both Plan prompts; the raw answers do not", () => {
+    const skeleton = PROMPTS["plan-skeleton"].user(SAMPLE_INPUTS["plan-skeleton"] as never);
+    expect(skeleton).toContain("Shape:");
+    expect(skeleton).toContain("This is an Explain lesson for a class new to the topic.");
+    expect(skeleton).toContain(
+      "The first explain-phase slide is a content slide that defines the topic and names two or three examples.",
+    );
+    expect(skeleton).toContain(
+      "Include at least one of each: worked-example (explain phase), open-response (practise phase), vocabulary (starter phase).",
+    );
+    expect(skeleton).toContain("Explain slides take at least 40% of the minutes.");
+    expect(skeleton).toContain(
+      "Confront the misconception on a true-false slide or as a multiple-choice distractor.",
+    );
+    expect(skeleton).not.toContain("The teacher also said");
+    expect(skeleton).not.toContain("Question tiers");
+    // The facts call adds the tier target from the shape's weights (Explain / New: 5 / 5 / 2).
+    const facts = PROMPTS["plan-facts"].user(SAMPLE_INPUTS["plan-facts"] as never);
+    expect(facts).toContain("This is an Explain lesson for a class new to the topic.");
+    expect(facts).toContain("Question tiers: 5 easy, 5 core, 2 stretch (at least 12 in all).");
+    // The prompt's own example has the default shape: a content slide opens the explain phase.
+    const example = /"outline": (\[[\s\S]*?\n {2}\])/.exec(planSkeletonPrompt.system)?.[1];
+    if (!example) throw new Error("no example outline in the system prompt");
+    const outline = JSON.parse(example) as { kind: string; phase?: string }[];
+    expect(outline.find((e) => e.phase === "explain")?.kind).toBe("content");
+    expect(outline.map((e) => e.kind)).toEqual(
+      expect.arrayContaining(["open-response", "worked-example"]),
+    );
   });
 
   test("the audience and fact ids reach the user prompt", () => {

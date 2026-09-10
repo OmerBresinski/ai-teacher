@@ -1,6 +1,7 @@
 import { SPEC_LIMITS } from "@tj/slides";
 import type { PlanSkeleton } from "../specs";
 import { briefBlock, type PlanSkeletonInput } from "./plan-skeleton";
+import { tierLine } from "./shape";
 import { example, HOUSE_RULES, limitsBlock } from "./shared";
 
 /*
@@ -8,9 +9,11 @@ import { example, HOUSE_RULES, limitsBlock } from "./shared";
  * skeleton the first call produced, write the facts every slide and block is built from — key
  * ideas with explanations and examples, misconceptions with corrections, vocabulary, worked
  * examples, at least twelve tiered questions with distractors, and the pitch — and say which
- * outline slide each supports. Ordinal references, ids minted after (`assignFactIds`). This call
- * is what the teacher waits on before the slides start; it is the substance of the lesson, so it
- * is allowed to be long. Bump `version` whenever `system` or `user` changes wording.
+ * outline slide each supports. The question tiers follow the lesson's shape (`tierWeights`,
+ * TEACH-229): a Recall lesson for a new class leans easy, a Revisiting one leans stretch. Ordinal
+ * references, ids minted after (`assignFactIds`). This call is what the teacher waits on before
+ * the slides start; it is the substance of the lesson, so it is allowed to be long. Bump
+ * `version` whenever `system` or `user` changes wording (`shape.ts` included).
  */
 
 export type PlanFactsInput = PlanSkeletonInput & {
@@ -84,7 +87,7 @@ const EXAMPLE = {
 };
 
 export const planFactsPrompt = {
-  version: "plan-facts.v5",
+  version: "plan-facts.v6",
   system: [
     "You are an experienced UK teacher completing the plan for one lesson.",
     "You are given the lesson's objectives and its outline of slides, each with a brief saying what it adds. Produce the facts the slides and worksheet will be built from, then say which outline slide each fact supports.",
@@ -96,7 +99,7 @@ export const planFactsPrompt = {
     "Then misconceptions: 2–4 things pupils at this level typically get wrong, each with the correction. A true-false slide confronts one of these.",
     "Then up to 8 vocabulary terms with pupil-level definitions, and up to 4 worked examples with at most 6 short steps each; where a worked example heads off a misconception, say which.",
     "Every fact is self-contained: a worked-example problem or question stem never says 'a photo shows', 'the diagram', 'pictured above' or 'this animal' — name the thing and its features in words, because no slide is guaranteed a picture. Every vocabulary term is used in at least one key idea's explanation or example, so the lesson teaches it before a question asks about it. \"pitch.avoid\" never lists a vocabulary term.",
-    'Then at least 12 questions: four "easy", five "core", three "stretch". Tag each "use": "slide" for a whole-class question, "worksheet" for independent practice, "exit" for the exit ticket, "any" — so no stem is used twice across slides, sheet and exit ticket. Each has the answer and a one-sentence reasoning. For every question that will be a multiple-choice or true-false slide, give three distractors, each the answer a pupil holding a named misconception would give.',
+    'Then at least 12 questions, split across "easy", "core" and "stretch" in the counts the brief\'s "Question tiers" line gives. Tag each "use": "slide" for a whole-class question, "worksheet" for independent practice, "exit" for the exit ticket, "any" — so no stem is used twice across slides, sheet and exit ticket. Each has the answer and a one-sentence reasoning. For every question that will be a multiple-choice or true-false slide, give three distractors, each the answer a pupil holding a named misconception would give.',
     'Then "pitch": the reading age to write for, the longest sentence in words, and up to 6 words to avoid, all judged from the year group and reading level given.',
     'Every fact names the objectives it serves: "objectiveRefs": [{ "type": "objective", "index": 0-based }]. Every objective is served by at least one key idea and checked by at least one question.',
     'Refer to facts by list and position: { "type": "keyIdea" | "misconception" | "vocabulary" | "workedExample" | "question", "index": 0-based }. In "outlineFactRefs", "index" is the 0-based position of the outline slide; list only slides from position 2 onwards and only the facts that slide draws on. A content slide needs its key idea; a worked-example slide needs its worked example; a question slide needs a question; a vocabulary slide needs vocabulary; a true-false slide names the misconception it confronts.',
@@ -121,7 +124,7 @@ export const planFactsPrompt = {
   ].join("\n"),
   user(input: PlanFactsInput): string {
     const parts = briefBlock(input);
-    parts.push("", "Objectives:");
+    parts.push(tierLine(input.shape), "", "Objectives:");
     input.skeleton.learningObjectives.forEach((o, i) => {
       parts.push(`  ${i}: ${o.text}`);
     });
