@@ -391,8 +391,9 @@ function refineShape(
       ["photographable"],
     );
   } else if (skeleton.photographable.yes && !kinds.has("image-text")) {
+    // The message does not quote `why`: issue messages are logged on a retry (ADR 0015).
     issue(
-      `You said this topic can be photographed ("${skeleton.photographable.why}"); add one image-text slide in the explain phase with an imageBrief.`,
+      'You said this topic can be photographed ("photographable": true); add one image-text slide in the explain phase with an imageBrief.',
       ["outline"],
     );
   }

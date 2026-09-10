@@ -250,10 +250,12 @@ describe("planSkeletonSchemaFor", () => {
     const EXPLAIN_NEW = { durationMin: 60, shape: shapeOf("Explain", "New to it", "Year 5") };
     const yes = { yes: true, why: "A rodent is a real animal a camera captures." };
 
-    test("row 1: a yes with no image-text slide is one issue at outline quoting the why", () => {
-      expect(messagesOf(parse(outline_new(), EXPLAIN_NEW, yes))).toEqual([
-        'outline: You said this topic can be photographed ("A rodent is a real animal a camera captures."); add one image-text slide in the explain phase with an imageBrief.',
+    test("row 1: a yes with no image-text slide is one issue at outline; the why is never in the message (it is logged on a retry)", () => {
+      const messages = messagesOf(parse(outline_new(), EXPLAIN_NEW, yes));
+      expect(messages).toEqual([
+        'outline: You said this topic can be photographed ("photographable": true); add one image-text slide in the explain phase with an imageBrief.',
       ]);
+      expect(messages.join()).not.toContain(yes.why);
       const pictured = outline_new();
       pictured[5] = { ...pictured[5], kind: "image-text", imageBrief: RIVER };
       expect(messagesOf(parse(pictured, EXPLAIN_NEW, yes))).toEqual([]);
