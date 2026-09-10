@@ -16,11 +16,15 @@ const usage = { inputTokens: 1000, outputTokens: 400 };
 /** One fake call's cost on the standard class at the current list price (not hard-coded dollars). */
 const STANDARD_CALL_USD = costUsd(DEFAULT_MODEL_IDS.standard, usage) ?? 0;
 
-const planScript = () => [json(FIXTURES.planSkeleton), json(FIXTURES.planFacts)];
+const planScript = () => [
+  json(FIXTURES.planSkeleton),
+  json(FIXTURES.planFacts),
+  json(FIXTURES.verify),
+];
 const fullFacts = () => assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
 
 describe("plan", () => {
-  test("title slide first, then the skeleton, then the facts: three persists, two calls, one checkpoint", async () => {
+  test("title slide first, then the skeleton, then the facts and verify: three persists, three calls, one checkpoint", async () => {
     const ai = createFakeAi({ script: planScript(), usage });
     const deps = recordingDeps(ai);
     const state = await plan(initialState(), deps);
@@ -52,21 +56,39 @@ describe("plan", () => {
     expect(second?.lesson.generation).toBeUndefined();
     expect(deps.progress[1]).toMatchObject({ percent: 6, documentUpdatedAt: second?.updatedAt });
 
-    // 3. After the facts call: the checkpoint, the complete facts.
+    // 3. Verify announces itself before its call, carrying the skeleton persist; no persist of
+    //    its own. Then the checkpoint with the complete facts (an empty patch: unchanged) and the
+    //    three-version stamp (row 4).
+    expect(deps.progress[2]).toEqual({
+      percent: 8,
+      message: "Checking the facts",
+      documentUpdatedAt: second?.updatedAt,
+    });
     expect(third?.lesson.generation?.stage).toBe("planned");
     expect(third?.lesson.facts).toEqual(fullFacts());
-    expect(deps.progress[2]).toEqual({
+    expect(third?.lesson.generation?.findings).toEqual([]);
+    expect(third?.lesson.generation?.promptVersions.planned).toBe(
+      `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}+${PROMPT_VERSIONS["verify-facts"]}`,
+    );
+    expect(deps.progress[3]).toEqual({
       percent: 10,
       message: "Planned",
       documentUpdatedAt: third?.updatedAt,
     });
     expect(deps.persisted).toHaveLength(3);
-    expect(ai.calls.map((c) => [c.modelClass, c.context?.stage, c.context?.promptVersion])).toEqual(
-      [
-        ["standard", "plan", PROMPT_VERSIONS["plan-skeleton"]],
-        ["standard", "plan", PROMPT_VERSIONS["plan-facts"]],
-      ],
-    );
+    // Row 8: the verify call is the third plan call, standard class at high effort.
+    expect(
+      ai.calls.map((c) => [
+        c.modelClass,
+        c.context?.stage,
+        c.context?.promptVersion,
+        c.context?.effort,
+      ]),
+    ).toEqual([
+      ["standard", "plan", PROMPT_VERSIONS["plan-skeleton"], "medium"],
+      ["standard", "plan", PROMPT_VERSIONS["plan-facts"], "medium"],
+      ["standard", "plan", PROMPT_VERSIONS["verify-facts"], "high"],
+    ]);
 
     expect(state.lesson.facts).toEqual(fullFacts());
     expect(state.lesson.slides.map((s) => s.kind)).toEqual(["title", "objectives"]);
@@ -76,9 +98,9 @@ describe("plan", () => {
       jobId: deps.context.jobId,
       stage: "planned",
       promptVersions: {
-        planned: `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}`,
+        planned: `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}+${PROMPT_VERSIONS["verify-facts"]}`,
       },
-      usage: { calls: 2, inputTokens: 2000, outputTokens: 800 },
+      usage: { calls: 3, inputTokens: 3000, outputTokens: 1200 },
       findings: [],
     });
     // The objectives slide references the objectives and carries the skeleton prompt's version.
@@ -99,11 +121,16 @@ describe("plan", () => {
     const entry = broken.outline[2];
     if (entry) entry.factRefs = [{ type: "vocabulary", index: 0 }];
     const ai = createFakeAi({
-      script: [json(broken), json(FIXTURES.planSkeleton), json(FIXTURES.planFacts)],
+      script: [
+        json(broken),
+        json(FIXTURES.planSkeleton),
+        json(FIXTURES.planFacts),
+        json(FIXTURES.verify),
+      ],
       usage,
     });
     const state = await plan(initialState(), recordingDeps(ai));
-    expect(ai.calls).toHaveLength(3);
+    expect(ai.calls).toHaveLength(4);
     expect(state.lesson.facts).toEqual(fullFacts());
   });
 
@@ -111,11 +138,16 @@ describe("plan", () => {
     const broken = structuredClone(FIXTURES.planFacts);
     broken.outlineFactRefs.push({ index: 99, factRefs: [{ type: "question", index: 0 }] });
     const ai = createFakeAi({
-      script: [json(FIXTURES.planSkeleton), json(broken), json(FIXTURES.planFacts)],
+      script: [
+        json(FIXTURES.planSkeleton),
+        json(broken),
+        json(FIXTURES.planFacts),
+        json(FIXTURES.verify),
+      ],
       usage,
     });
     const state = await plan(initialState(), recordingDeps(ai));
-    expect(ai.calls).toHaveLength(3);
+    expect(ai.calls).toHaveLength(4);
     expect(state.lesson.facts).toEqual(fullFacts());
   });
 
@@ -139,7 +171,7 @@ describe("plan", () => {
     ]);
   });
 
-  test("resumed with the title slide and no generation: both calls run, the title is not duplicated", async () => {
+  test("resumed with the title slide and no generation: all three calls run, the title is not duplicated", async () => {
     const first = recordingDeps(createFakeAi({ script: planScript(), usage }));
     await plan(initialState(), first);
     const titleOnly = first.persisted[0]?.lesson;
@@ -148,23 +180,23 @@ describe("plan", () => {
     const ai = createFakeAi({ script: planScript(), usage });
     const deps = recordingDeps(ai);
     const state = await plan(initialState(titleOnly), deps);
-    expect(ai.calls).toHaveLength(2);
+    expect(ai.calls).toHaveLength(3);
     expect(state.lesson.slides.map((s) => s.kind)).toEqual(["title", "objectives"]);
     expect(state.lesson.slides[0]).toEqual(titleOnly.slides[0]);
     expect(deps.persisted[0]?.lesson.slides).toEqual(titleOnly.slides);
   });
 
-  test("resumed after the skeleton persist: the skeleton call is skipped, the objectives slide stays, only the facts call runs", async () => {
+  test("resumed after the skeleton persist: the skeleton call is skipped, the objectives slide stays, facts and verify run", async () => {
     const first = recordingDeps(createFakeAi({ script: planScript(), usage }));
     await plan(initialState(), first);
     const afterSkeleton = first.persisted[1]?.lesson;
     if (!afterSkeleton?.facts) throw new Error("no skeleton persist");
     expect(afterSkeleton.slides.map((s) => s.kind)).toEqual(["title", "objectives"]);
 
-    const ai = createFakeAi({ script: [json(FIXTURES.planFacts)], usage });
+    const ai = createFakeAi({ script: [json(FIXTURES.planFacts), json(FIXTURES.verify)], usage });
     const deps = recordingDeps(ai);
     const state = await plan(initialState(afterSkeleton), deps);
-    expect(ai.calls).toHaveLength(1);
+    expect(ai.calls).toHaveLength(2);
     expect(ai.calls[0]?.context?.promptVersion).toBe(PROMPT_VERSIONS["plan-facts"]);
     // No persist ever drops slide two: the first persist already carries both slides.
     for (const p of deps.persisted) {
@@ -233,7 +265,7 @@ describe("plan", () => {
     for (const [name, lesson] of Object.entries(variants)) {
       const ai = createFakeAi({ script: planScript(), usage });
       const state = await plan(initialState(lesson), recordingDeps(ai));
-      expect(ai.calls, name).toHaveLength(2);
+      expect(ai.calls, name).toHaveLength(3);
       expect(state.lesson.generation?.stage, name).toBe("planned");
     }
   });
@@ -253,6 +285,87 @@ describe("plan", () => {
     expect(state.lesson.generation?.findings).toEqual([
       expect.objectContaining({ check: "budget", severity: "error" }),
     ]);
+  });
+
+  describe("verify (TEACH-212)", () => {
+    const withCorrection = (corrections: unknown[]) =>
+      createFakeAi({
+        script: [json(FIXTURES.planSkeleton), json(FIXTURES.planFacts), json({ corrections })],
+        usage,
+      });
+
+    test("row 1: a term correction lands in the persisted facts with one content-free fact-verify warning", async () => {
+      const ai = withCorrection([
+        { factId: "v1", field: "term", value: "Clan", reason: "wrong-term" },
+      ]);
+      const deps = recordingDeps(ai);
+      const state = await plan(initialState(), deps);
+      const facts = deps.persisted.at(-1)?.lesson.facts;
+      expect(facts?.vocabulary[0]?.term).toBe("Clan");
+      expect(facts?.vocabulary[0]?.definition).toBe(fullFacts().vocabulary[0]?.definition);
+      const findings = state.lesson.generation?.findings ?? [];
+      expect(findings).toEqual([
+        {
+          check: "fact-verify",
+          severity: "warning",
+          target: { factId: "v1" },
+          message: "Vocabulary term corrected: not the accepted term.",
+        },
+      ]);
+      expect(JSON.stringify(findings)).not.toContain("Clan");
+    });
+
+    test("row 2: an unknown fact id is a validation issue the retry names; the second reply is applied", async () => {
+      const ai = createFakeAi({
+        script: [
+          json(FIXTURES.planSkeleton),
+          json(FIXTURES.planFacts),
+          json({
+            corrections: [{ factId: "v9", field: "term", value: "Clan", reason: "wrong-term" }],
+          }),
+          json({
+            corrections: [{ factId: "v1", field: "term", value: "Clan", reason: "wrong-term" }],
+          }),
+        ],
+        usage,
+      });
+      const state = await plan(initialState(), recordingDeps(ai));
+      expect(ai.calls).toHaveLength(4);
+      expect(ai.calls[3]?.promptText).toContain("unknown fact id v9");
+      expect(state.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
+    });
+
+    test("row 5: the budget spent before Verify skips it; planned is reached with one budget finding", async () => {
+      const ai = createFakeAi({ script: planScript(), usage });
+      // Two calls' worth and a little: skeleton and facts go ahead, Verify is refused.
+      const deps = recordingDeps(ai, {
+        budget: createBudget({ capUsd: STANDARD_CALL_USD * 1.5, capTokens: 1_000_000 }),
+      });
+      const state = await plan(initialState(), deps);
+      expect(ai.calls).toHaveLength(2);
+      expect(state.lesson.generation?.stage).toBe("planned");
+      expect(state.lesson.facts).toEqual(fullFacts());
+      expect(state.lesson.generation?.findings.filter((f) => f.check === "budget")).toHaveLength(1);
+    });
+
+    test("row 6: two schema misses on Verify leave the facts as they were and one fact-verify warning; the job goes on", async () => {
+      const ai = createFakeAi({
+        script: [json(FIXTURES.planSkeleton), json(FIXTURES.planFacts), "not json", "{}"],
+        usage,
+      });
+      const state = await plan(initialState(), recordingDeps(ai));
+      expect(ai.calls).toHaveLength(4);
+      expect(state.lesson.generation?.stage).toBe("planned");
+      expect(state.lesson.facts).toEqual(fullFacts());
+      expect(state.lesson.generation?.findings).toEqual([
+        {
+          check: "fact-verify",
+          severity: "warning",
+          target: {},
+          message: "Fact verification could not be completed.",
+        },
+      ]);
+    });
   });
 
   test("a lesson without a brief cannot be planned", async () => {
@@ -448,6 +561,28 @@ describe("evaluate", () => {
     expect(
       next.lesson.generation?.findings.filter((f) => f.check === "image").map((f) => f.severity),
     ).toEqual(["warning"]);
+  });
+
+  test("row 7 (TEACH-212): a fact-verify finding from Plan survives the review", async () => {
+    const state = await generated();
+    const generation = state.lesson.generation;
+    if (!generation) throw new Error("no generation");
+    const verify: Finding = {
+      check: "fact-verify",
+      severity: "warning",
+      target: { factId: "v1" },
+      message: "Vocabulary term corrected: not the accepted term.",
+    };
+    const withVerify = {
+      ...state,
+      lesson: {
+        ...state.lesson,
+        generation: { ...generation, findings: [...generation.findings, verify] },
+      },
+    };
+    const ai = createFakeAi({ script: [json({ findings: [] })], usage });
+    const next = await evaluate(withVerify, recordingDeps(ai));
+    expect(next.lesson.generation?.findings).toContainEqual(verify);
   });
 
   test("a review that fails twice becomes a warning; the schema checks still run", async () => {

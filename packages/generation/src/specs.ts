@@ -1,8 +1,11 @@
 import {
+  type FactArray,
   type FactId,
+  FactIdSchema,
   FindingSchema,
   GENERATABLE_SLIDE_KINDS,
   IMAGE_PURPOSES,
+  isFactIdOf,
   LESSON_PHASES,
   type LessonFacts,
   LessonFactsSchema,
@@ -642,3 +645,143 @@ export type EvaluateOutput = z.infer<typeof EvaluateOutputSchema>;
 /** Repair asks for the same spec the target was generated from, one target at a time. */
 export const RepairSlideOutputSchema = SlideSpecSchema;
 export const RepairBlockOutputSchema = BlockSpecSchema;
+
+/* ------------------------------------------------------------------ */
+/* Verify                                                              */
+/* ------------------------------------------------------------------ */
+
+/** The string fields Verify may correct, by fact kind (Generation quality, Decision 1; TEACH-212). */
+export const VERIFY_FIELDS = [
+  "term",
+  "definition",
+  "problem",
+  "steps",
+  "answer",
+  "stem",
+  "reasoning",
+  "statement",
+  "explanation",
+  "example",
+  "analogy",
+  "belief",
+  "correction",
+] as const;
+export type VerifyField = (typeof VERIFY_FIELDS)[number];
+
+export const VERIFY_REASONS = [
+  "wrong-term",
+  "invented",
+  "wrong-answer",
+  "arithmetic",
+  "false-statement",
+  "off-topic",
+  "ambiguous",
+] as const;
+export type VerifyReason = (typeof VERIFY_REASONS)[number];
+
+/** Which fields each fact array carries, so a correction can be checked against its kind. */
+export const VERIFY_FIELDS_BY_ARRAY: Record<
+  Exclude<FactArray, "objectives">,
+  readonly VerifyField[]
+> = {
+  keyIdeas: ["statement", "explanation", "example", "analogy"],
+  vocabulary: ["term", "definition"],
+  workedExamples: ["problem", "steps", "answer"],
+  questions: ["stem", "answer", "reasoning"],
+  misconceptions: ["belief", "correction"],
+};
+
+/** The cap each field's value is held to: the same limits the facts schema uses. */
+export const VERIFY_LIMITS: Record<VerifyField, number> = {
+  term: SPEC_LIMITS.term,
+  definition: SPEC_LIMITS.definition,
+  problem: SPEC_LIMITS.body,
+  steps: SPEC_LIMITS.item,
+  answer: SPEC_LIMITS.answer,
+  stem: SPEC_LIMITS.stem,
+  reasoning: SPEC_LIMITS.footnote,
+  statement: SPEC_LIMITS.item,
+  explanation: SPEC_LIMITS.body,
+  example: SPEC_LIMITS.body,
+  analogy: SPEC_LIMITS.item,
+  belief: SPEC_LIMITS.item,
+  correction: SPEC_LIMITS.body,
+};
+
+export const VerifyCorrectionSchema = z.strictObject({
+  factId: FactIdSchema,
+  field: z.enum(VERIFY_FIELDS),
+  /** For `steps`: which step. */
+  index: z.number().int().nonnegative().optional(),
+  value: line(SPEC_LIMITS.body),
+  reason: z.enum(VERIFY_REASONS),
+});
+export type VerifyCorrection = z.infer<typeof VerifyCorrectionSchema>;
+
+export const VerifyOutputSchema = z.strictObject({
+  corrections: z.array(VerifyCorrectionSchema).max(12),
+});
+export type VerifyOutput = z.infer<typeof VerifyOutputSchema>;
+
+/** The fact array `id` was minted for, or `undefined` for an objective or an unknown id. */
+export function verifiableArrayOf(id: FactId): Exclude<FactArray, "objectives"> | undefined {
+  for (const key of Object.keys(VERIFY_FIELDS_BY_ARRAY) as Exclude<FactArray, "objectives">[]) {
+    if (isFactIdOf(key, id)) return key;
+  }
+  return undefined;
+}
+
+/**
+ * `VerifyOutputSchema` checked against the facts it patches: every `factId` exists and is not an
+ * objective (objectives are the teacher's brief, not the model's to correct), every `field` exists
+ * on that fact's kind, a `steps` correction names a step that exists, and the value fits the
+ * field's own limit. Messages name the id and the field so the retry can fix them.
+ */
+export function verifyOutputSchemaFor(facts: LessonFacts): z.ZodType<VerifyOutput> {
+  const byId = new Map<FactId, { array: Exclude<FactArray, "objectives">; steps?: number }>();
+  for (const key of Object.keys(VERIFY_FIELDS_BY_ARRAY) as Exclude<FactArray, "objectives">[]) {
+    for (const fact of facts[key] ?? []) {
+      byId.set(fact.id, {
+        array: key,
+        ...("steps" in fact ? { steps: fact.steps.length } : {}),
+      });
+    }
+  }
+  return VerifyOutputSchema.superRefine((output, ctx) => {
+    output.corrections.forEach((c, i) => {
+      const issue = (message: string, path: (string | number)[]) =>
+        ctx.addIssue({ code: "custom", message, path: ["corrections", i, ...path] });
+      const fact = byId.get(c.factId);
+      if (!fact) {
+        issue(
+          `unknown fact id ${c.factId}: correct only the facts listed, by their id (objectives cannot be changed)`,
+          ["factId"],
+        );
+        return;
+      }
+      if (!VERIFY_FIELDS_BY_ARRAY[fact.array].includes(c.field)) {
+        issue(
+          `${c.factId} has no field "${c.field}"; its fields are ${VERIFY_FIELDS_BY_ARRAY[fact.array].join(", ")}`,
+          ["field"],
+        );
+        return;
+      }
+      if (c.field === "steps") {
+        if (c.index === undefined)
+          issue(`a steps correction on ${c.factId} needs an index`, ["index"]);
+        else if (c.index >= (fact.steps ?? 0)) {
+          issue(`${c.factId} has ${fact.steps ?? 0} steps; index ${c.index} does not exist`, [
+            "index",
+          ]);
+        }
+      } else if (c.index !== undefined) {
+        issue(`index is only for steps corrections`, ["index"]);
+      }
+      if (c.value.length > VERIFY_LIMITS[c.field]) {
+        issue(`the value for ${c.field} must be at most ${VERIFY_LIMITS[c.field]} characters`, [
+          "value",
+        ]);
+      }
+    });
+  });
+}

@@ -9,8 +9,9 @@ import planFactsFixture from "./fixtures/plan-facts.json";
 import planSkeletonFixture from "./fixtures/plan-skeleton.json";
 import repairFixture from "./fixtures/repair.json";
 import slidesFixture from "./fixtures/slides.json";
+import verifyFixture from "./fixtures/verify.json";
 import worksheetFixture from "./fixtures/worksheet.json";
-import type { PlanFacts, PlanSkeleton, WorksheetSpec } from "./specs";
+import type { PlanFacts, PlanSkeleton, VerifyOutput, WorksheetSpec } from "./specs";
 import { noSources, type PhotoPlacer, type PipelineDeps, type PipelineState } from "./types";
 
 /*
@@ -27,6 +28,7 @@ export const FIXTURES = {
   worksheet: worksheetFixture as WorksheetSpec,
   evaluate: evaluateFixture as { findings: Finding[] },
   repair: repairFixture as SlideSpec,
+  verify: verifyFixture as VerifyOutput,
 } as const;
 
 export const SAMPLE_LESSON_ID = "0192f7a0-0000-7000-8000-000000000042";
@@ -59,16 +61,16 @@ export function fixtureSlideScript(): string[] {
   return FIXTURES.planSkeleton.outline.slice(2).map((entry) => json(FIXTURES.slides[entry.kind]));
 }
 
-/** The input check's one answer (a clean brief), then Plan's two: the skeleton, then the facts. */
+/** The input check's one answer (a clean brief), then Plan's three: skeleton, facts, verify. */
 export const CHECK_INPUT_CALLS = 1;
-export const PLAN_CALLS = 2;
+export const PLAN_CALLS = 3;
 /** Script index of the first Plan answer. */
 export const PLAN_INDEX = CHECK_INPUT_CALLS;
 /** Script index of the first slide answer. */
 export const SLIDES_INDEX = CHECK_INPUT_CALLS + PLAN_CALLS;
 
 /**
- * The script for one full run on the fixture plan: 1 check-input + 2 plan (skeleton, facts) +
+ * The script for one full run on the fixture plan: 1 check-input + 3 plan (skeleton, facts, verify) +
  * 8 slides + 1 worksheet (+ one illustrate judge per image-text slide, `judges`) + 1 evaluate
  * (+ repair answers when a test injects an `error` finding).
  * `overrides` replaces entries by index so a test can script a schema miss at a chosen call;
@@ -77,6 +79,8 @@ export const SLIDES_INDEX = CHECK_INPUT_CALLS + PLAN_CALLS;
 export function pipelineScript(
   options: {
     checkInput?: unknown;
+    /** Verify's answer; the fixture's empty patch by default. */
+    verify?: unknown;
     evaluate?: unknown;
     repairs?: number;
     /** Illustrate's judge answers, one per image-text slide, between the worksheet and evaluate. */
@@ -90,6 +94,7 @@ export function pipelineScript(
     json(options.checkInput ?? { findings: [] }),
     json(FIXTURES.planSkeleton),
     json(FIXTURES.planFacts),
+    json(options.verify ?? FIXTURES.verify),
     ...fixtureSlideScript(),
     json(FIXTURES.worksheet),
     ...(options.judges ?? []),

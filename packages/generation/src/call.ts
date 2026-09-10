@@ -71,6 +71,8 @@ export const MAX_OUTPUT_TOKENS = {
   // so the cap is never the reason a call fails (TEACH-211).
   planSkeleton: 2500,
   planFacts: 7000,
+  // At most twelve short corrections.
+  verify: 1500,
   slide: 1500,
   worksheet: 4000,
   evaluate: 2000,

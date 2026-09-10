@@ -29,14 +29,17 @@ function knownTargetsOnly(findings: Finding[], state: PipelineState): Finding[] 
   });
 }
 
+/** Checks an earlier stage recorded that Evaluate keeps as they are. */
+const CARRIED_CHECKS: ReadonlySet<string> = new Set(["budget", "image", "fact-verify"]);
+
 export async function evaluate(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const { lesson, worksheet } = state;
   const facts = lesson.facts;
   if (!facts) throw new Error("evaluate: the lesson has no facts; Plan has not run");
   const generation = generationOf(lesson);
-  // Findings Generate recorded (a budget stop) survive, as do illustrate's image warnings —
-  // neither is recomputable here; everything else is recomputed below.
-  const carried = generation.findings.filter((f) => f.check === "budget" || f.check === "image");
+  // Findings Generate recorded (a budget stop) survive, as do illustrate's image warnings and
+  // Verify's fact corrections — none is recomputable here; everything else is recomputed below.
+  const carried = generation.findings.filter((f) => CARRIED_CHECKS.has(f.check));
   const schema = checkLesson(lesson, worksheet);
 
   let model: Finding[] = [];

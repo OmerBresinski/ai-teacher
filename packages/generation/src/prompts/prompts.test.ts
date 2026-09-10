@@ -23,6 +23,7 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   "check-input": { topic: brief.topic, answers: brief.answers, audience: brief.audience },
   "plan-skeleton": brief,
   "plan-facts": { ...brief, skeleton: FIXTURES.planSkeleton },
+  "verify-facts": { audience, topic: brief.topic, facts },
   "generate-slide": {
     facts,
     entry: facts.outline[3],
@@ -102,6 +103,10 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "plan-facts": {
     version: "plan-facts.v4",
     hash: "13e6c3305e205c3901509ed5552d92b5810f80376bcb355441910bb76217f3c7",
+  },
+  "verify-facts": {
+    version: "verify-facts.v1",
+    hash: "3d78a0d2f29bdddc5d0d5e83a785143d6c0b795da03f0b08b13d0cc965926748",
   },
   "generate-slide": {
     version: "generate-slide.v5",

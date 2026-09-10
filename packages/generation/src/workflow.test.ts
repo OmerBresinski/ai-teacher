@@ -34,7 +34,7 @@ const PLAN_PERSISTS = 3;
 /** Script index of the first slide answer: after the input check and Plan's two answers. */
 const SLIDES_INDEX = CHECK_INPUT_CALLS + PLAN_CALLS;
 const ALL_STAGES = ["check-input", "plan", "generate", "illustrate", "evaluate", "repair"];
-const PLANNED_VERSION = `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}`;
+const PLANNED_VERSION = `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}+${PROMPT_VERSIONS["verify-facts"]}`;
 
 function memoryLogger() {
   const lines: string[] = [];
@@ -196,18 +196,25 @@ describe("runLessonPipeline", () => {
         "check-input",
         "plan",
         "plan",
+        "plan",
         ...Array.from({ length: GENERATED_SLIDES + 1 }, () => "generate"),
         "evaluate",
       ]);
       expect(ai.calls.slice(PLAN_INDEX, SLIDES_INDEX).map((c) => c.context?.promptVersion)).toEqual(
-        [PROMPT_VERSIONS["plan-skeleton"], PROMPT_VERSIONS["plan-facts"]],
+        [
+          PROMPT_VERSIONS["plan-skeleton"],
+          PROMPT_VERSIONS["plan-facts"],
+          PROMPT_VERSIONS["verify-facts"],
+        ],
       );
       // Effort per stage (Generation quality §6, TEACH-207): Generate at low, Plan and Evaluate at
-      // medium, the input check at low; every call says so to the provider and in its context.
+      // medium, Verify at high (TEACH-212), the input check at low; every call says so to the
+      // provider and in its context.
       expect(ai.calls.map((c) => c.context?.effort)).toEqual([
         "low",
         "medium",
         "medium",
+        "high",
         ...Array.from({ length: GENERATED_SLIDES + 1 }, () => "low"),
         "medium",
       ]);
@@ -225,17 +232,23 @@ describe("runLessonPipeline", () => {
     })();
   });
 
-  test("progress: (2, Starting), (6, Planned the lesson), (10, Planned) … (100, Done); every documentUpdatedAt is the preceding persist", async () => {
+  test("progress: (2, Starting), (6, Planned the lesson), (8, Checking the facts), (10, Planned) … (100, Done); every documentUpdatedAt is the preceding persist", async () => {
     const deps = recordingDeps(scriptedPipelineAi());
     await runLessonPipeline(
       { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
       deps,
     );
-    expect(deps.progress.slice(0, 3)).toEqual([
+    expect(deps.progress.slice(0, 4)).toEqual([
       { percent: 2, message: "Starting", documentUpdatedAt: deps.persisted[0]?.updatedAt },
       {
         percent: 6,
         message: "Planned the lesson",
+        documentUpdatedAt: deps.persisted[1]?.updatedAt,
+      },
+      // Verify persists nothing of its own: it carries the skeleton persist (TEACH-212).
+      {
+        percent: 8,
+        message: "Checking the facts",
         documentUpdatedAt: deps.persisted[1]?.updatedAt,
       },
       { percent: 10, message: "Planned", documentUpdatedAt: deps.persisted[2]?.updatedAt },
@@ -249,8 +262,13 @@ describe("runLessonPipeline", () => {
       message: "Done",
       documentUpdatedAt: deps.persisted.at(-1)?.updatedAt,
     });
+    // Every progress message carries the latest persist; only "Checking the facts" (index 2)
+    // repeats one, because Verify persists nothing itself.
+    const persistedAt = new Set(deps.persisted.map((p) => p.updatedAt));
     deps.progress.forEach((p, i) => {
-      expect(p.documentUpdatedAt).toBe(deps.persisted[i]?.updatedAt);
+      const expected = deps.persisted[i < 2 ? i : i - 1]?.updatedAt;
+      expect(p.documentUpdatedAt).toBe(expected);
+      expect(persistedAt.has(p.documentUpdatedAt ?? "")).toBe(true);
     });
     const percents = deps.progress.map((p) => p.percent);
     expect([...percents].sort((a, b) => a - b)).toEqual(percents);
