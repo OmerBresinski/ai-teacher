@@ -10,6 +10,10 @@
       "text": "Use the particle model to predict what happens when a substance is heated or cooled"
     }
   ],
+  "photographable": {
+    "yes": true,
+    "why": "Ice, water and steam are things a camera captures."
+  },
   "outline": [
     {
       "kind": "title",
@@ -80,7 +84,7 @@
       }
     },
     {
-      "kind": "content",
+      "kind": "image-text",
       "minutes": 7,
       "factRefs": [
         {
@@ -94,8 +98,14 @@
       ],
       "phase": "explain",
       "brief": {
-        "adds": "Explains the particle model: arrangement and movement decide the state, and energy changes it.",
+        "adds": "Pupils watch ice become water and describe what the particles are doing.",
         "avoids": "Not the examples from the definition slide."
+      },
+      "imageBrief": {
+        "subject": "ice cubes melting",
+        "mustShow": ["ice cubes", "meltwater"],
+        "purpose": "observe",
+        "avoid": ["hands", "glass"]
       }
     },
     {

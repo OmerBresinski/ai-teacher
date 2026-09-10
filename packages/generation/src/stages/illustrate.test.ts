@@ -236,7 +236,13 @@ describe("illustrate", () => {
     expect(ai.calls[0]?.imageParts).toBe(2);
     expect(ai.calls[0]?.promptText).toContain("photo 1 — id p1");
     expect(deps.persisted).toHaveLength(1);
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 1,
+      empty: 0,
+      failed: 0,
+    });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
     expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v5");
     expect(state.lesson.generation?.usage.calls).toBe(1);
@@ -274,7 +280,13 @@ describe("illustrate", () => {
     expect(ai.calls[1]?.promptText).toContain("id r");
     expect(ai.calls[1]?.promptText).not.toContain("id d");
     expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/r.jpg");
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 1,
+      empty: 0,
+      failed: 0,
+    });
   });
 
   test("a requery with no portrait result is empty, never a third search", async () => {
@@ -286,7 +298,13 @@ describe("illustrate", () => {
     expect(searches).toEqual(["river", "second try"]);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
     expect(state.lesson.generation?.findings).toHaveLength(1);
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 0,
+      empty: 1,
+      failed: 0,
+    });
   });
 
   test("a requery repeating a searched query is empty with no second search", async () => {
@@ -296,7 +314,13 @@ describe("illustrate", () => {
     // Both candidates were searched; the judge's "new" query is the second one, re-punctuated.
     expect(searches).toEqual(["river severn dawn", "river severn"]);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 0,
+      empty: 1,
+      failed: 0,
+    });
   });
 
   test("the judge is told every query searched", async () => {
@@ -312,7 +336,13 @@ describe("illustrate", () => {
     const state = await run(imageLesson([{ subject: "river" }]), deps);
     expect(searches).toEqual(["river"]);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 0,
+      empty: 1,
+      failed: 0,
+    });
   });
 
   test("a judge that picks an id not in the pool falls back to its query, else empty", async () => {
@@ -376,7 +406,13 @@ describe("illustrate", () => {
     expect(ai2.calls).toHaveLength(1);
     expect(again.stores).toEqual([]);
     expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
-    expect(deps2.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+    expect(deps2.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 0,
+      empty: 1,
+      failed: 0,
+    });
   });
 
   test("TEACH-224: a pick that is not the subject fails the gate however much is visible — its query is followed, else nothing is placed", async () => {
@@ -546,7 +582,13 @@ describe("illustrate", () => {
       severity: "warning",
       target: { slideId: lesson.slides[0]?.id, elementId: imageOf(lesson, 0).id },
     });
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 0,
+      empty: 1,
+      failed: 0,
+    });
     expect(deps.persisted).toHaveLength(1);
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
@@ -590,7 +632,13 @@ describe("illustrate", () => {
     const state = await run(imageLesson([{ subject: "first" }, { subject: "second" }]), deps);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
     expect(imageOf(state.lesson, 1).src).toBe("/files/ws/images/p.jpg");
-    expect(deps.imageCounts).toEqual({ requested: 2, placed: 1, empty: 0, failed: 1 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 2,
+      placed: 1,
+      empty: 0,
+      failed: 1,
+    });
   });
 
   test("a failed store counts failed and the next slide still places", async () => {
@@ -609,7 +657,13 @@ describe("illustrate", () => {
     );
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
     expect(imageOf(state.lesson, 1).src).toBe("/files/ws/images/b.jpg");
-    expect(deps.imageCounts).toEqual({ requested: 2, placed: 1, empty: 0, failed: 1 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 2,
+      placed: 1,
+      empty: 0,
+      failed: 1,
+    });
   });
 
   test("an exhausted budget leaves every remaining placeholder and is not a failure", async () => {
@@ -622,7 +676,13 @@ describe("illustrate", () => {
     expect(ai.calls).toHaveLength(0);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
     expect(imageOf(state.lesson, 1).src).toBe(PLACEHOLDER_IMAGE);
-    expect(deps.imageCounts).toEqual({ requested: 2, placed: 0, empty: 2, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 2,
+      placed: 0,
+      empty: 2,
+      failed: 0,
+    });
     expect(state.lesson.generation?.findings).toHaveLength(2);
   });
 
@@ -634,7 +694,13 @@ describe("illustrate", () => {
       throw boom;
     };
     await expect(run(imageLesson([{ subject: "river" }]), deps)).rejects.toBe(boom);
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 0, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 0,
+      empty: 0,
+      failed: 0,
+    });
   });
 
   test("a blocked first candidate is skipped; the clean retry feeds the judge", async () => {
@@ -653,7 +719,13 @@ describe("illustrate", () => {
     expect(searches).toEqual([]);
     expect(ai.calls).toHaveLength(0);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 0,
+      empty: 1,
+      failed: 0,
+    });
   });
 
   test("without images the state returns unchanged and nothing persists", async () => {

@@ -13,7 +13,13 @@ import {
   planSkeletonSchemaFor,
   verifyOutputSchemaFor,
 } from "../specs";
-import { BudgetExceeded, type PipelineDeps, type PipelineState, StageFailure } from "../types";
+import {
+  BudgetExceeded,
+  emptyImageCounts,
+  type PipelineDeps,
+  type PipelineState,
+  StageFailure,
+} from "../types";
 import { audienceOf, BUDGET_FINDING } from "./shared";
 import { applyVerifyPatch, VERIFY_FAILED_FINDING, verifyFinding } from "./verify";
 
@@ -104,6 +110,10 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
       maxOutputTokens: MAX_OUTPUT_TOKENS.planSkeleton,
     });
     skeleton = skeletonCall.output;
+    // The flag only, never `why` (ADR 0015); the summary line carries it as images.photographable.
+    const photographable = skeleton.photographable?.yes ?? null;
+    deps.logger.info({ stage: "plan", call: "skeleton", photographable }, "skeleton accepted");
+    deps.imageCounts = { ...(deps.imageCounts ?? emptyImageCounts()), photographable };
     const skeletonFacts = assignFactIds(skeleton, EMPTY_PLAN_FACTS, brief.durationMin);
     const objectives = materialiseObjectives(lesson, skeletonFacts, deps, {
       promptVersion: planSkeletonPrompt.version,

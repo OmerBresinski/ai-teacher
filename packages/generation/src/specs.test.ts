@@ -40,13 +40,19 @@ const outline = (): Record<string, unknown>[] => [
   { kind: "exit-ticket", minutes: 11, factRefs: [O(0)], phase: "check", brief },
 ];
 
+/** The skeleton's own answer on the topic (TEACH-238); "no" so the test outlines need no picture. */
+const NOT_PHOTOGRAPHABLE = { yes: false, why: "River processes are a diagram, not a photograph." };
+
 /** Structural rules only unless a shape is given. */
 const parse = (
   entries: unknown[],
   context: Parameters<typeof planSkeletonSchemaFor>[0] = { durationMin: 60 },
+  /** `null` omits the field (a model answer that forgot it; the resume path). */
+  photographable: { yes: boolean; why: string } | null = NOT_PHOTOGRAPHABLE,
 ) =>
   planSkeletonSchemaFor(context).safeParse({
     learningObjectives: [{ text: "Describe rivers" }],
+    ...(photographable ? { photographable } : {}),
     outline: entries,
   });
 
@@ -210,6 +216,7 @@ describe("planSkeletonSchemaFor", () => {
     });
     const two = schema.safeParse({
       learningObjectives: [{ text: "A" }, { text: "B" }],
+      photographable: NOT_PHOTOGRAPHABLE,
       outline: entries,
     });
     expect(two.success).toBe(false);
@@ -222,16 +229,65 @@ describe("planSkeletonSchemaFor", () => {
     pictured[5] = { ...pictured[5], kind: "image-text", imageBrief: RIVER, factRefs: [O(1)] };
     expect(
       messagesOf(
-        schema.safeParse({ learningObjectives: [{ text: "A" }, { text: "B" }], outline: pictured }),
+        schema.safeParse({
+          learningObjectives: [{ text: "A" }, { text: "B" }],
+          photographable: NOT_PHOTOGRAPHABLE,
+          outline: pictured,
+        }),
       ),
     ).toEqual([]);
     // Any other confidence: the rule does not apply.
     expect(
       planSkeletonSchemaFor({ durationMin: 60, shape: EXPLAIN_SOME }).safeParse({
         learningObjectives: [{ text: "A" }, { text: "B" }],
+        photographable: NOT_PHOTOGRAPHABLE,
         outline: outline(),
       }).success,
     ).toBe(true);
+  });
+
+  describe("TEACH-238: the model says whether the topic can be photographed", () => {
+    const EXPLAIN_NEW = { durationMin: 60, shape: shapeOf("Explain", "New to it", "Year 5") };
+    const yes = { yes: true, why: "A rodent is a real animal a camera captures." };
+
+    test("row 1: a yes with no image-text slide is one issue at outline quoting the why", () => {
+      expect(messagesOf(parse(outline_new(), EXPLAIN_NEW, yes))).toEqual([
+        'outline: You said this topic can be photographed ("A rodent is a real animal a camera captures."); add one image-text slide in the explain phase with an imageBrief.',
+      ]);
+      const pictured = outline_new();
+      pictured[5] = { ...pictured[5], kind: "image-text", imageBrief: RIVER };
+      expect(messagesOf(parse(pictured, EXPLAIN_NEW, yes))).toEqual([]);
+    });
+
+    test("row 2: a no needs no picture", () => {
+      expect(
+        messagesOf(parse(outline_new(), EXPLAIN_NEW, { yes: false, why: "Abstract." })),
+      ).toEqual([]);
+    });
+
+    test("row 3: a live answer without the flag is asked for it; row 4: the shape-less schema (resume) does not require it", () => {
+      expect(messagesOf(parse(outline_new(), EXPLAIN_NEW, null))).toEqual([
+        'photographable: Say whether this topic can be photographed: "photographable": { "yes": true|false, "why": one sentence }.',
+      ]);
+      expect(parse(outline_new(), { durationMin: 60 }, null).success).toBe(true);
+      expect(
+        PlanSkeletonSchema.safeParse({ ...FIXTURES.planSkeleton, photographable: undefined })
+          .success,
+      ).toBe(true);
+    });
+
+    /** The default outline made valid for a "New to it" cell: a vocabulary slide added. */
+    function outline_new(): Record<string, unknown>[] {
+      const entries = outline();
+      entries.splice(3, 0, {
+        kind: "vocabulary",
+        minutes: 4,
+        factRefs: [O(0)],
+        phase: "starter",
+        brief,
+      });
+      return entries;
+    }
   });
 
   describe("the lesson shape's deterministic column (TEACH-229)", () => {

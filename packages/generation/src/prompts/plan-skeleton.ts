@@ -31,6 +31,7 @@ const EXAMPLE = {
     { text: "Name the parts of a flower and say what each is for" },
     { text: "Explain how pollination leads to seeds" },
   ],
+  photographable: { yes: true, why: "A buttercup is a real thing a camera captures." },
   outline: [
     { kind: "title", minutes: 2, factRefs: [] },
     {
@@ -137,7 +138,7 @@ export function briefBlock(input: PlanSkeletonInput): string[] {
 }
 
 export const planSkeletonPrompt = {
-  version: "plan-skeleton.v11",
+  version: "plan-skeleton.v12",
   system: [
     "You are an experienced UK teacher planning one lesson from a brief.",
     "Produce only the lesson's skeleton: the learning objectives and an outline of slides with the minutes each takes. The key ideas, vocabulary, worked examples and questions come in a later step, so do not write them here.",
@@ -152,7 +153,7 @@ export const planSkeletonPrompt = {
     '"brief": { "adds": what this slide contributes that no other slide does, in one sentence; "avoids"?: what it must not repeat from a neighbouring slide }. Two slides never add the same thing.',
     'Refer to objectives from the outline by position: { "type": "objective", "index": 0-based }. Only objectives can be referenced here. Every outline slide after the first two names at least one objective.',
     "Give 1–4 objectives and 8–12 outline slides for an hour-long lesson (fewer for a shorter one).",
-    'An "image-text" slide shows one photograph of a real thing beside the text. Give it "imageBrief": { "subject": the exact query you would type into a stock-photo search engine that knows nothing about this lesson — two to four plain words, British English, no adjectives of mood, carrying the lesson\'s own context from the brief so it stands alone (the topic decides what an ambiguous word means: "rodent incisors", never "teeth"; a part or property alone is never enough), "mustShow": one to four concrete things a pupil must be able to see for the slide\'s task to be possible — nouns a camera captures ("front teeth", "open flower", "river bank"), never a process, an internal part, or the kind of thing itself ("rodent", "flower", "river" belong in "subject"); "avoid": what would spoil the picture for pupils — for a living subject usually a cage, fence, bars, glass or hands in front of it, "purpose": "identify-parts" | "observe" | "compare" | "context", "avoid"?: things the photograph must not show }. Use it for places, objects, organisms, materials, weather, artefacts and everyday scenes — not for diagrams, maps, charts or anything abstract. At most three image-text slides in a lesson.',
+    'Say whether the topic can be photographed — "photographable": { "yes", "why": one sentence } — by this test: a real place, object, organism, material, weather, artefact or everyday scene is; a diagram, map, chart, process or abstract idea is not. When it is, one explain slide is an "image-text" slide. An "image-text" slide shows one photograph of a real thing beside the text. Give it "imageBrief": { "subject": the exact query you would type into a stock-photo search engine that knows nothing about this lesson — two to four plain words, British English, no adjectives of mood, carrying the lesson\'s own context from the brief so it stands alone (the topic decides what an ambiguous word means: "rodent incisors", never "teeth"; a part or property alone is never enough), "mustShow": one to four concrete things a pupil must be able to see for the slide\'s task to be possible — nouns a camera captures ("front teeth", "open flower", "river bank"), never a process, an internal part, or the kind of thing itself ("rodent", "flower", "river" belong in "subject"); "avoid": what would spoil the picture for pupils — for a living subject usually a cage, fence, bars, glass or hands in front of it, "purpose": "identify-parts" | "observe" | "compare" | "context", "avoid"?: things the photograph must not show }. Use it for places, objects, organisms, materials, weather, artefacts and everyday scenes — not for diagrams, maps, charts or anything abstract. At most three image-text slides in a lesson.',
     limitsBlock({ "each objective": SPEC_LIMITS.item }),
     "",
     "Answer as JSON in exactly this shape:",

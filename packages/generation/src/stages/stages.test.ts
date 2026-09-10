@@ -610,14 +610,17 @@ describe("generate", () => {
     );
   });
 
-  /** The planned state with the first `content` entry turned into an image-text one (TEACH-220). */
+  /**
+   * The planned state with the fixture's image-text entry (position 5, TEACH-238) given the river
+   * brief these tests judge against (TEACH-220), so the lesson has exactly one picture slide.
+   */
   async function plannedWithImage(mustShow: string[] = ["river water"]) {
     const start = await planned();
     const facts = start.lesson.facts;
     if (!facts) throw new Error("no facts");
-    const firstContent = facts.outline.findIndex((e) => e.kind === "content");
+    const pictured = facts.outline.findIndex((e) => e.kind === "image-text");
     const outline = facts.outline.map((e, i) =>
-      i === firstContent
+      i === pictured
         ? {
             ...e,
             kind: "image-text" as const,
@@ -721,7 +724,13 @@ describe("generate", () => {
       (e) => e.type === "image",
     );
     expect(persistedImage?.type === "image" && persistedImage.src).toBe("/files/ws/images/p1.jpg");
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 1,
+      empty: 0,
+      failed: 0,
+    });
     expect(state.lesson.generation?.promptVersions.generated).toBe(
       `${PROMPT_VERSIONS["generate-slide"]}+${PROMPT_VERSIONS["pick-or-requery-photo"]}`,
     );
@@ -757,7 +766,13 @@ describe("generate", () => {
     const image = state.lesson.slides[imageIndex]?.elements.find((e) => e.type === "image");
     expect(image?.type === "image" && image.src.startsWith("data:image/svg+xml")).toBe(true);
     expect(state.lesson.generation?.findings.map((f) => f.check)).toEqual(["image"]);
-    expect(deps.imageCounts).toEqual({ requested: 1, placed: 0, empty: 1, failed: 0 });
+    expect(deps.imageCounts).toEqual({
+      photographable: null,
+      requested: 1,
+      placed: 0,
+      empty: 1,
+      failed: 0,
+    });
   });
 
   test("row 8: Evaluate shows the photographed slide as an image part and keeps an image-fit warning; Repair rewrites its text and keeps the photo", async () => {
