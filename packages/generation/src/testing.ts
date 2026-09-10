@@ -1,9 +1,10 @@
+import { Writable } from "node:stream";
 import { type Budget, createBudget } from "@tj/ai";
 import { createFakeAi, type FakeAi, type FakeCall, type FakeScriptEntry } from "@tj/ai/testing";
 import type { Finding, Lesson, Worksheet } from "@tj/domain/documents";
 import { parseLesson } from "@tj/domain/documents";
 import type { SlideSpec } from "@tj/slides";
-import pino from "pino";
+import pino, { type Logger } from "pino";
 import evaluateFixture from "./fixtures/evaluate.json";
 import planFactsFixture from "./fixtures/plan-facts.json";
 import planSkeletonFixture from "./fixtures/plan-skeleton.json";
@@ -251,4 +252,16 @@ export function recordingDeps(
 
 export function initialState(lesson: Lesson = sampleBriefLesson()): PipelineState {
   return { lesson, worksheetId: SAMPLE_WORKSHEET_ID };
+}
+
+/** A pino logger writing JSON lines into memory, so a test can assert what was — and was not — logged. */
+export function memoryLogger(): { lines: string[]; logger: Logger } {
+  const lines: string[] = [];
+  const destination = new Writable({
+    write(chunk, _enc, cb) {
+      lines.push(chunk.toString());
+      cb();
+    },
+  });
+  return { lines, logger: pino({ level: "info" }, destination) };
 }

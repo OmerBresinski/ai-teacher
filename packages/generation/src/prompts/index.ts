@@ -7,6 +7,7 @@ import { planFactsPrompt } from "./plan-facts";
 import { planSkeletonPrompt } from "./plan-skeleton";
 import { cascadePrompt, regeneratePrompt } from "./propose";
 import { repairPrompt } from "./repair";
+import { repairFactPrompt } from "./repair-fact";
 import { verifyFactsPrompt } from "./verify-facts";
 
 /*
@@ -24,6 +25,7 @@ export type { PlanFactsInput } from "./plan-facts";
 export type { PlanSkeletonInput } from "./plan-skeleton";
 export type { ProposeInput } from "./propose";
 export type { RepairInput } from "./repair";
+export type { RepairFactInput } from "./repair-fact";
 export type { Audience } from "./shared";
 export type { VerifyFactsInput } from "./verify-facts";
 export {
@@ -36,6 +38,7 @@ export {
   planFactsPrompt,
   planSkeletonPrompt,
   regeneratePrompt,
+  repairFactPrompt,
   repairPrompt,
   verifyFactsPrompt,
 };
@@ -50,6 +53,7 @@ export const PROMPTS = {
   "pick-or-requery-photo": pickOrRequeryPrompt,
   evaluate: evaluatePrompt,
   repair: repairPrompt,
+  "repair-fact": repairFactPrompt,
   cascade: cascadePrompt,
   regenerate: regeneratePrompt,
 } as const;
@@ -65,6 +69,7 @@ export const PROMPT_VERSIONS = {
   "pick-or-requery-photo": pickOrRequeryPrompt.version,
   evaluate: evaluatePrompt.version,
   repair: repairPrompt.version,
+  "repair-fact": repairFactPrompt.version,
   cascade: cascadePrompt.version,
   regenerate: regeneratePrompt.version,
 } as const satisfies Record<PromptName, string>;

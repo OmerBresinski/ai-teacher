@@ -1,20 +1,3 @@
 {
-  "findings": [
-    {
-      "check": "age-fit",
-      "severity": "warning",
-      "target": {
-        "slideId": "__SLIDE_5__"
-      },
-      "message": "\"regular pattern\" may need a diagram for Year 8 pupils who have not met lattices."
-    },
-    {
-      "check": "terminology",
-      "severity": "warning",
-      "target": {
-        "blockId": "__BLOCK_6__"
-      },
-      "message": "The sheet says \"steam\" where the vocabulary uses \"gas\"; say which is meant."
-    }
-  ]
+  "findings": []
 }

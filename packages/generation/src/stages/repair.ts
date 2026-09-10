@@ -2,6 +2,7 @@ import {
   checkLesson,
   type Finding,
   isSchemaCheck,
+  type LessonFacts,
   type Slide,
   type Worksheet,
 } from "@tj/domain/documents";
@@ -13,7 +14,8 @@ import {
   slideSpecSchemaFor,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
-import { repairPrompt } from "../prompts";
+import { repairFactPrompt, repairPrompt } from "../prompts";
+import { verifyOutputSchemaFor } from "../specs";
 import {
   BudgetExceeded,
   type PipelineDeps,
@@ -23,6 +25,7 @@ import {
 } from "../types";
 import { BUDGET_FINDING, withUsage } from "./generate";
 import { audienceOf, blockText, generationOf, slideText } from "./shared";
+import { applyVerifyPatch, verifyFinding } from "./verify";
 
 /*
  * Repair (ADR 0025 §12, §14): one targeted pass. Every `error` finding that names a slide or a
@@ -53,7 +56,7 @@ export function repairTargets(findings: Finding[]): Target[] {
 
 export async function repair(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   let { lesson, worksheet } = state;
-  const facts = lesson.facts;
+  let facts = lesson.facts;
   if (!facts) throw new Error("repair: the lesson has no facts; Plan has not run");
   const generation = generationOf(lesson);
   const audience = audienceOf(lesson);
@@ -66,7 +69,24 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
 
   for (const target of repairTargets(generation.findings)) {
     throwIfAborted(deps.signal);
+    // Facts first (TEACH-216): a `fact-consistency` finding that names the wrong fact patches the
+    // fact before the artefact is regenerated from it, so the two do not drift apart again. The
+    // patch is staged on this target's copy and committed with the regenerated artefact: a target
+    // that could not be repaired leaves the facts as they were, never corrected facts beside an
+    // artefact still built on the old ones.
+    let staged = facts;
+    const stagedFindings: Finding[] = [];
+    const commitFacts = () => {
+      facts = staged;
+      lesson = { ...lesson, facts };
+      extra.push(...stagedFindings);
+    };
     try {
+      for (const factId of wrongFacts(target.findings)) {
+        const patched = await repairFact(staged, factId, target.findings, audience, deps);
+        staged = patched.facts;
+        stagedFindings.push(...patched.applied.map(verifyFinding));
+      }
       if (target.slideId !== undefined) {
         const index = lesson.slides.findIndex((s) => s.id === target.slideId);
         const slide = lesson.slides[index];
@@ -76,11 +96,11 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         const call = await callStructured({
           deps,
           stage: "repair",
-          cls: "standard",
+          cls: "small",
           effort: "low",
           prompt: repairPrompt,
           input: {
-            facts,
+            facts: staged,
             audience,
             target: {
               kind: "slide",
@@ -94,6 +114,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           schema,
           maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
         });
+        commitFacts();
         repaired.add(target.key);
         const fresh: Slide = {
           ...materialiseSlide(call.output, lesson.themeId, meta(call.modelId, deps), deps.ids),
@@ -108,11 +129,11 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         const call = await callStructured({
           deps,
           stage: "repair",
-          cls: "standard",
+          cls: "small",
           effort: "low",
           prompt: repairPrompt,
           input: {
-            facts,
+            facts: staged,
             audience,
             target: {
               kind: "block",
@@ -126,6 +147,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           schema,
           maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
         });
+        commitFacts();
         repaired.add(target.key);
         const fresh = {
           ...materialiseBlock(call.output, meta(call.modelId, deps), deps.ids),
@@ -170,6 +192,65 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   const { updatedAt } = await deps.persist(next, worksheet);
   await deps.onProgress(100, "Done", updatedAt);
   return { ...state, lesson: next, worksheet };
+}
+
+/** The fact ids the target's `fact-consistency` findings name, first-seen order, deduplicated. */
+function wrongFacts(findings: Finding[]): string[] {
+  const ids: string[] = [];
+  for (const f of findings) {
+    const id = f.target.factId;
+    if (f.check === "fact-consistency" && id !== undefined && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+/**
+ * One `small` call that corrects the fact Evaluate found wrong, in Verify's correction shape, and
+ * applies it. A cap stop or two schema misses propagate to the caller's handling like any repair
+ * call; nothing is written on failure.
+ */
+async function repairFact(
+  facts: LessonFacts,
+  factId: string,
+  findings: Finding[],
+  audience: ReturnType<typeof audienceOf>,
+  deps: PipelineDeps,
+): Promise<ReturnType<typeof applyVerifyPatch>> {
+  const about = findings
+    .filter((f) => f.target.factId === factId)
+    .map((f) => ({ message: f.message, evidence: f.evidence }));
+  const call = await callStructured({
+    deps,
+    stage: "repair",
+    cls: "small",
+    effort: "low",
+    prompt: repairFactPrompt,
+    input: { audience, facts: factsAround(facts, factId), factId, findings: about },
+    schema: verifyOutputSchemaFor(facts),
+    maxOutputTokens: MAX_OUTPUT_TOKENS.verify,
+  });
+  // Only corrections to the fact in question: the review was about that fact and no other.
+  return applyVerifyPatch(
+    facts,
+    call.output.corrections.filter((c) => c.factId === factId),
+  );
+}
+
+/** The fact in question with the objectives and misconceptions it links to; nothing else. */
+function factsAround(facts: LessonFacts, factId: string): LessonFacts {
+  const only = <T extends { id: string }>(list: T[]) => list.filter((f) => f.id === factId);
+  const out: LessonFacts = {
+    objectives: facts.objectives,
+    vocabulary: only(facts.vocabulary),
+    workedExamples: only(facts.workedExamples),
+    questions: only(facts.questions),
+    misconceptions: facts.misconceptions,
+    outline: [],
+    durationMin: facts.durationMin,
+  };
+  const keyIdeas = only(facts.keyIdeas ?? []);
+  if (keyIdeas.length > 0) out.keyIdeas = keyIdeas;
+  return out;
 }
 
 /** A model `error` finding whose target was regenerated in this pass. */

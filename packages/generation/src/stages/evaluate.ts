@@ -1,4 +1,10 @@
-import { checkLesson, type Finding } from "@tj/domain/documents";
+import {
+  checkLesson,
+  FACT_ARRAYS,
+  type Finding,
+  type LessonFacts,
+  type Slide,
+} from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { evaluatePrompt } from "../prompts";
 import { EvaluateOutputSchema } from "../specs";
@@ -13,20 +19,67 @@ import { BUDGET_FINDING, withUsage } from "./generate";
 import { audienceOf, blockText, generationOf, slideText } from "./shared";
 
 /*
- * Evaluate (ADR 0025 §10, §11, §14): the shared schema checks, then one `small` call over the
- * facts and the plain-text projection of every slide and block. Model findings are appended;
- * a schema miss twice, or the budget, is recorded as a finding — Evaluate never fails the job.
+ * Evaluate (ADR 0025 §10, §11, §14; Generation quality §4, TEACH-216): the shared schema checks,
+ * then one `standard` call over the facts and the plain-text projection of every slide (with its
+ * notes) and block. The model's findings name a check from a closed set and quote the text they
+ * are about; a finding whose target does not exist, or whose evidence is not in that target's
+ * text, is dropped rather than retried (a vague finding is the failure this guards against).
+ * Model findings are appended; a schema miss twice, or the budget, is recorded as a finding —
+ * Evaluate never fails the job.
  */
 
-/** Findings a model may return are trusted only where they point at something that exists. */
-function knownTargetsOnly(findings: Finding[], state: PipelineState): Finding[] {
-  const slideIds = new Set(state.lesson.slides.map((s) => s.id));
-  const blockIds = new Set(state.worksheet?.blocks.map((b) => b.id) ?? []);
-  return findings.filter((f) => {
-    if (f.target.slideId !== undefined && !slideIds.has(f.target.slideId)) return false;
-    if (f.target.blockId !== undefined && !blockIds.has(f.target.blockId)) return false;
-    return true;
-  });
+/**
+ * Findings a model may return are trusted only where they point at something that exists and quote
+ * text that is really there (case and whitespace aside). A `target.factId` that names no patchable
+ * fact (unknown, or an objective) is removed from the finding rather than dropping it: the
+ * artefact finding stands, Repair just has no fact to patch. Returns the kept findings and the
+ * count dropped — the count is logged, never the text (ADR 0015).
+ */
+export function knownTargetsWithEvidence(
+  findings: Finding[],
+  state: PipelineState,
+): { kept: Finding[]; dropped: number } {
+  const slideText_ = new Map(state.lesson.slides.map((s) => [s.id, haystack(s)]));
+  const blockText_ = new Map(
+    (state.worksheet?.blocks ?? []).map((b) => [b.id, normalise(blockText(b))]),
+  );
+  const patchable = patchableFactIds(state.lesson.facts);
+  const kept = findings
+    .filter((f) => {
+      const { slideId, blockId } = f.target;
+      if (slideId !== undefined && !slideText_.has(slideId)) return false;
+      if (blockId !== undefined && !blockText_.has(blockId)) return false;
+      if (f.evidence === undefined) return true;
+      const needle = normalise(f.evidence);
+      if (slideId !== undefined) return slideText_.get(slideId)?.includes(needle) ?? false;
+      if (blockId !== undefined) return blockText_.get(blockId)?.includes(needle) ?? false;
+      // A lesson-level finding (no target) may quote a fact.
+      return normalise(factsText(state)).includes(needle);
+    })
+    .map((f) => {
+      const { factId, ...rest } = f.target;
+      if (factId === undefined || patchable.has(factId)) return f;
+      return { ...f, target: rest };
+    });
+  return { kept, dropped: findings.length - kept.length };
+}
+
+/** Ids `applyVerifyPatch` can correct: every fact array except the objectives. */
+function patchableFactIds(facts: LessonFacts | undefined): Set<string> {
+  const ids = new Set<string>();
+  if (!facts) return ids;
+  for (const key of FACT_ARRAYS) {
+    if (key === "objectives") continue;
+    for (const fact of facts[key] ?? []) ids.add(fact.id);
+  }
+  return ids;
+}
+
+const normalise = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
+/** What a slide finding may quote: the slide's text, its notes and the facts (a wrong fact). */
+const haystack = (slide: Slide) => normalise(`${slideText(slide)}\n${slide.notes ?? ""}`);
+function factsText(state: PipelineState): string {
+  return JSON.stringify(state.lesson.facts ?? {});
 }
 
 /** Checks an earlier stage recorded that Evaluate keeps as they are. */
@@ -47,13 +100,18 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
     const call = await callStructured({
       deps,
       stage: "evaluate",
-      cls: "small",
+      cls: "standard",
       effort: "medium",
       prompt: evaluatePrompt,
       input: {
         facts,
         audience: audienceOf(lesson),
-        slides: lesson.slides.map((s) => ({ id: s.id, kind: s.kind, text: slideText(s) })),
+        slides: lesson.slides.map((s) => ({
+          id: s.id,
+          kind: s.kind,
+          text: slideText(s),
+          notes: s.notes,
+        })),
         blocks: (worksheet?.blocks ?? []).map((b) => ({
           id: b.id,
           type: b.type,
@@ -63,7 +121,11 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       schema: EvaluateOutputSchema,
       maxOutputTokens: MAX_OUTPUT_TOKENS.evaluate,
     });
-    model = knownTargetsOnly(call.output.findings, state);
+    const filtered = knownTargetsWithEvidence(call.output.findings, state);
+    model = filtered.kept;
+    if (filtered.dropped > 0) {
+      deps.logger.info({ stage: "evaluate", dropped: filtered.dropped }, "findings dropped");
+    }
   } catch (error) {
     if (error instanceof BudgetExceeded) {
       // One budget finding per job: Generate's already says the cap was hit.

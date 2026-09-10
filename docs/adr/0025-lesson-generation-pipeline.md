@@ -474,3 +474,24 @@ stops the other workers from starting more — graceful per-slide failure is a f
 `content` recipe has no free `small` slot for an example, so the key idea's example goes into
 `body`; no `example` spec slot was added.
 
+## Amendment (2026-09-10, project Generation quality — TEACH-216)
+
+§11's model half of Evaluate becomes a closed rubric with evidence. `evaluate.v3` names one of
+seven checks — `answer-correctness`, `fact-consistency` (the only two that may be `error`),
+`kind-misuse`, `repetition`, `pitch`, `notes-quality`, and `image-fit` reserved for the
+picture-first ticket; `terminology` and `age-fit` are retired as subsumed — and every finding
+carries `evidence`, the exact span of slide or block text it is about (`Finding.evidence?` in
+`@tj/domain`, optional, never set by schema checks, never rendered by the badge, never logged). The
+call moves to the `standard` class at `medium` effort and sees each slide's notes beside its text
+so `notes-quality` can judge them. `knownTargetsWithEvidence` drops a finding whose target does
+not exist or whose evidence is not in that target's text (case and whitespace aside; a lesson-level
+finding may quote a fact) and logs only the count — dropping is cheaper than a retry, and the
+false-positive rate is the point. §12's Repair runs on the `small` class at `low` effort with each
+finding's evidence in context and the rule that `notes` are for the teacher, not a change log (the
+TEACH-210 sanitiser refuses commentary at validation). Facts first: a `fact-consistency` finding
+that names `target.factId` triggers one `repair-fact.v1` call — Verify's correction shape,
+`verifyOutputSchemaFor` and `applyVerifyPatch` reused, corrections filtered to that fact — applied
+to the facts before the artefact is regenerated from them, with one `fact-verify` warning per
+applied correction; a fact patch is not one of the six targets. A better Evaluate may raise the
+eval's `modelFindings` count (more real findings); the rubric is the quality signal.
+
