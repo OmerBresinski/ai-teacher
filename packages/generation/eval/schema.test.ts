@@ -31,7 +31,9 @@ describe("eval:schema", () => {
   });
 
   test("a fixture whose plan names an objective nothing covers fails, naming the brief and the check", async () => {
-    const [brief] = evalBriefs();
+    // The second brief: "Some prior knowledge", so the "New to it" rule (one explain slide per
+    // objective) does not reject the extra objective before the coverage check can see it.
+    const brief = evalBriefs()[1];
     if (!brief) throw new Error("briefs");
     const skeleton = {
       ...FIXTURES.planSkeleton,

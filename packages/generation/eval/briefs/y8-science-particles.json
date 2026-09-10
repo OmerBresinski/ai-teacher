@@ -1,7 +1,11 @@
 {
   "brief": {
     "topic": "States of matter and the particle model",
-    "durationMin": 60
+    "durationMin": 60,
+    "answers": {
+      "objectiveVerb": "Explain states of matter and the particle model",
+      "priorConfidence": "Some prior knowledge"
+    }
   },
   "subject": "Science",
   "yearGroup": "Year 8"

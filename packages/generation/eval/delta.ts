@@ -29,6 +29,7 @@ const RUBRIC_LABELS: Record<RubricDimension, string> = {
   notes: "rubric: notes",
   worksheetValueAdd: "rubric: worksheet value-add",
   imageFit: "rubric: image fit",
+  verbFit: "rubric: verb fit",
 };
 
 const COLUMNS: Column[] = [

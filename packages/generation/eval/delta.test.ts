@@ -85,7 +85,7 @@ describe("eval delta comment", () => {
     expect(body).toContain("master `0123456`");
   });
 
-  test("rubric rows: nine of them, one decimal, signed deltas; the rationales never appear", () => {
+  test("rubric rows: ten of them, one decimal, signed deltas; the rationales never appear", () => {
     const now = results({
       rubric: { mean: 3.9, dimensions: dims(4, { depth: 2.3, pitch: 3.8, imageFit: null }) },
     });
@@ -96,7 +96,7 @@ describe("eval delta comment", () => {
     expect(body).toContain("| rubric: correctness | 4.0 | 4.0 | ±0.0 |");
     expect(body).toContain("| rubric: image fit | - | - | - |");
     expect(body).toContain("| judge cost | $1.2800 | $1.2800 | ±$0.0000 |");
-    expect(body.match(/^\| rubric/gm)).toHaveLength(9);
+    expect(body.match(/^\| rubric/gm)).toHaveLength(10);
     expect(body).toContain("| 0 | 1 | 0.9 | 3.6 |");
     expect(body).not.toContain(SENTINEL);
   });

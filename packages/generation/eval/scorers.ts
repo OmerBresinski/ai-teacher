@@ -9,6 +9,7 @@ import {
 } from "@tj/domain/documents";
 import pino from "pino";
 import { callStructured } from "../src/call";
+import { lessonShapeOf } from "../src/shapes";
 import { audienceOf, blockText, photoThumbnails, slideText } from "../src/stages/shared";
 import { BudgetExceeded, type PipelineContext, StageFailure } from "../src/types";
 import {
@@ -135,6 +136,10 @@ export function rubricJudgeInput(output: ScorerOutput): RubricJudgeInput {
   const { lesson, worksheet } = output;
   if (!lesson.facts) throw new Error("rubric judge: the lesson has no facts; Plan has not run");
   const photos = judgeImages(lesson).map((i) => i.id);
+  const shape = lessonShapeOf(lesson.brief?.answers, {
+    yearGroup: lesson.yearGroup,
+    ageBand: lesson.ageBand,
+  });
   return {
     audience: audienceOf(lesson),
     topic: lesson.brief?.topic ?? lesson.title,
@@ -151,6 +156,8 @@ export function rubricJudgeInput(output: ScorerOutput): RubricJudgeInput {
       text: blockText(block),
     })),
     hasPlacedPhoto: hasPlacedPhoto(lesson),
+    verb: shape.verb,
+    confidence: shape.confidence,
   };
 }
 

@@ -614,3 +614,16 @@ told to rewrite the task to what is visible. Two Plan rejections added earlier t
 withdrawn as costing a Terra retry each for no quality gain: `imageBrief.avoid` allows six items
 (`plan-skeleton.v9` asks for spoilers softly) and an unexplained vocabulary term is a prompt rule,
 not a rejection.
+## Amendment (2026-09-10, project Lesson shape by objective verb — TEACH-228)
+
+§7 and §23. The brief's two clarifying answers — `objectiveVerb` (Recall / Explain / Apply /
+Evaluate) and `priorConfidence` (New to it / Some prior knowledge / Revisiting) — now have a
+**lesson shape**: `packages/generation/src/shapes.ts` encodes the project's decision table (what a
+lesson for each cell must contain, and which of that a schema can check) as data, with the
+founder's decisions of the same day (Recall forbids `open-response`; Apply's method slide is a
+`worked-example` in every subject; Evaluate softens below Year 5 — the judgement stem becomes
+"which … and one reason"). `lessonShapeOf(answers, { yearGroup, ageBand })` is pure and defaults
+to Explain / Some prior knowledge, the values the brief screen suggests. This amendment changes no
+pipeline behaviour: Plan (TEACH-229) and the writers (TEACH-230) read the shape next. The eval's
+eight briefs now carry a verb and a confidence covering every value, and the rubric judge
+(`rubric-judge.v2`) scores a ninth dimension, `verbFit`, told both.
