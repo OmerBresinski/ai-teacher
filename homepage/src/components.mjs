@@ -74,5 +74,5 @@ export function shell(page) {
     .map(([l, p]) => `<a href="${href(`/${p}/`)}">${l}</a>`)
     .join(
       "",
-    )}<button data-pause-cast aria-pressed="false">Pause motion</button></div></div></div></footer><script src="${href("/motion/vendor/gsap.min.js")}"></script><script src="${href("/motion/cast.js")}"></script><script src="${href("/assets/site.js")}"></script><script src="${href("/assets/examples.js")}"></script></body></html>`;
+    )}<button data-pause-cast aria-pressed="false">Pause motion</button></div></div></div></footer><script src="${href("/motion/vendor/gsap.min.js")}"></script><script src="${href("/motion/cast.js")}"></script><script src="${href("/assets/site.js")}"></script><script src="${href("/assets/examples.js")}"></script>${(page.scripts || []).map((src) => `<script src="${href(src)}"></script>`).join("")}</body></html>`;
 }
