@@ -24,7 +24,7 @@ test.describe("lesson generation over the fake worker", () => {
     // The shell is up while the job runs: the strip, the stage line and one ghost Stop.
     const banner = page.getByTestId("generating-shell");
     await expect(banner).toBeVisible();
-    await expect(page.getByTestId("generating-strip").locator("li")).toHaveCount(5);
+    await expect(page.getByTestId("generating-strip").locator("li")).toHaveCount(4);
     await expect(banner.getByRole("button", { name: "Stop" })).toBeVisible();
     // Planning ticks and Writing goes live as the first content slide lands.
     await expect(page.getByTestId("generating-stage")).toContainText(/Writing the slides/, {
