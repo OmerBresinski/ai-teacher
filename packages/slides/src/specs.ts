@@ -376,6 +376,75 @@ export function slideSpecSchemaFor(kind: string): z.ZodType<SlideSpec> | undefin
   return option as unknown as z.ZodType<SlideSpec> | undefined;
 }
 
+/* ------------------------------------------------------------------ */
+/* image-text: written to its photograph (TEACH-220)                    */
+/* ------------------------------------------------------------------ */
+
+/** What an `image-text` slide's text may rely on: the photograph's evidence, or none at all. */
+export type ImageTextPhoto = { visible: string[]; count: "one" | "several"; mustShow: string[] };
+
+const TASK_VERBS =
+  /\b(spot|find|count|point (?:to|at)|look (?:for|at)|identify|circle|label|see|notice)\b/gi;
+const PLURAL_PICTURE = /\b(pictures|images|photos|photographs)\b/i;
+const ANY_PICTURE = /\b(photo|photos|photograph|photographs|picture|pictures|image|images)\b/i;
+
+export const PICTURE_PLURAL = "There is one photograph: say 'the photograph', never 'pictures'.";
+export const PICTURE_NONE =
+  "This slide has no photograph: write it as plain content and mention no picture, photo or image.";
+export const TASK_NOT_VISIBLE = (item: string) =>
+  `The photograph does not show "${item}": a task (spot, find, count, point to, identify, circle, label) may name only visible items.`;
+
+/** Words after a task verb, so "spot four flower parts: petals, sepals" is caught within reach. */
+const TASK_REACH = 12;
+
+/** The first required item a task names that the photograph does not show, if any. */
+export function taskOnHiddenItem(text: string, photo: ImageTextPhoto): string | undefined {
+  const seen = new Set(photo.visible.map((v) => v.trim().toLowerCase()));
+  const hidden = photo.mustShow.filter((m) => !seen.has(m.trim().toLowerCase()));
+  if (hidden.length === 0) return undefined;
+  const lower = text.toLowerCase();
+  for (const match of lower.matchAll(TASK_VERBS)) {
+    const from = (match.index ?? 0) + match[0].length;
+    const reach = lower
+      .slice(from)
+      .split(/\s+/)
+      .slice(0, TASK_REACH + 1)
+      .join(" ");
+    const named = hidden.find((item) => reach.includes(item.trim().toLowerCase()));
+    if (named) return named;
+  }
+  return undefined;
+}
+
+/**
+ * The `image-text` spec schema written to a photograph: with `"none"` the text may mention no
+ * picture; with evidence it says "the photograph" for one and sets no task on an item the picture
+ * does not show. Each failure is a validation issue the retry names (ADR 0025 §14).
+ */
+export function imageTextSpecSchemaFor(photo: ImageTextPhoto | "none" | undefined) {
+  const base = slideSpecSchemaFor("image-text");
+  if (!base || photo === undefined) return base;
+  return base.superRefine((spec, ctx) => {
+    if (spec.kind !== "image-text") return;
+    const slots: ["heading" | "body", string][] = [
+      ["heading", spec.heading],
+      ["body", spec.body],
+    ];
+    for (const [path, text] of slots) {
+      if (photo === "none") {
+        if (ANY_PICTURE.test(text))
+          ctx.addIssue({ code: "custom", message: PICTURE_NONE, path: [path] });
+        continue;
+      }
+      if (photo.count === "one" && PLURAL_PICTURE.test(text)) {
+        ctx.addIssue({ code: "custom", message: PICTURE_PLURAL, path: [path] });
+      }
+      const hidden = taskOnHiddenItem(text, photo);
+      if (hidden) ctx.addIssue({ code: "custom", message: TASK_NOT_VISIBLE(hidden), path: [path] });
+    }
+  }) as unknown as z.ZodType<SlideSpec>;
+}
+
 export function blockSpecSchemaFor(type: string): z.ZodType<BlockSpec> | undefined {
   const option = BlockSpecSchema.options.find((o) => o.shape.type.value === type);
   return option as unknown as z.ZodType<BlockSpec> | undefined;

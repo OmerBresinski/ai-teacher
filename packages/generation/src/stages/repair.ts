@@ -8,6 +8,7 @@ import {
 } from "@tj/domain/documents";
 import {
   blockSpecSchemaFor,
+  imageTextSpecSchemaFor,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
@@ -24,7 +25,7 @@ import {
   throwIfAborted,
 } from "../types";
 import { BUDGET_FINDING, withUsage } from "./generate";
-import { audienceOf, blockText, generationOf, slideText } from "./shared";
+import { audienceOf, blockText, generationOf, imageTextPhotoOf, slideText } from "./shared";
 import { applyVerifyPatch, verifyFinding } from "./verify";
 
 /*
@@ -91,7 +92,12 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         const index = lesson.slides.findIndex((s) => s.id === target.slideId);
         const slide = lesson.slides[index];
         // A kind the pipeline cannot generate (an image slide the teacher added) cannot be repaired.
-        const schema = slide ? slideSpecSchemaFor(slide.kind) : undefined;
+        // An image-text slide keeps its photograph: its text is re-checked against the same evidence.
+        const schema = !slide
+          ? undefined
+          : slide.kind === "image-text"
+            ? imageTextSpecSchemaFor(imageTextPhotoOf(slide, lesson.facts?.outline[index]))
+            : slideSpecSchemaFor(slide.kind);
         if (!slide || !schema) continue;
         const call = await callStructured({
           deps,

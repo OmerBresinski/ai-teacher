@@ -8,16 +8,32 @@ import type {
   Worksheet,
 } from "@tj/domain/documents";
 import {
+  type ImageTextPhoto,
+  imageTextSpecSchemaFor,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
+  PLACEHOLDER_IMAGE,
   slideSpecSchemaFor,
   vocabularySlots,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
-import { generateSlidePrompt, generateWorksheetPrompt } from "../prompts";
+import {
+  generateSlidePrompt,
+  generateWorksheetPrompt,
+  pickOrRequeryPrompt,
+  type SlidePhoto,
+} from "../prompts";
 import { type WorksheetSpec, WorksheetSpecSchema } from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
+import {
+  emptyFinding,
+  joinVersions,
+  type PickedPhoto,
+  type PlacedPhoto,
+  pickPhoto,
+  withPhoto,
+} from "./illustrate";
 import { audienceOf, BUDGET_FINDING, generationOf, runBounded } from "./shared";
 
 /*
@@ -60,6 +76,11 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   });
   const stems = stemPlan(facts);
   let stopped: Finding | null = null;
+  // Picture first (TEACH-220): the photograph for every image-text entry is searched and judged as
+  // soon as Generate starts, alongside the first slide batch; that entry's slide call waits for its
+  // own pick and no other. Nothing here fails the lesson.
+  const picks = new Map<number, Promise<PickedPhoto>>();
+  let judged = false;
   // A worker that failed (two schema misses) fails the stage; the others start nothing more, so a
   // failed lesson does not keep paying for slides it will never write.
   let failed = false;
@@ -67,6 +88,12 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   // Resume support: slides already present (Plan's two, or a partial earlier attempt) stay.
   const first = lesson.slides.length;
   const indices = Array.from({ length: Math.max(0, total - first) }, (_, k) => first + k);
+  for (const i of indices) {
+    const entry = entries[i];
+    if (entry?.kind === "image-text" && entry.imageBrief && deps.images) {
+      picks.set(i, pickPhoto(lesson, i, deps));
+    }
+  }
 
   // Persist in order: slide i writes only after slide i-1 has (one persist at a time, and the
   // document's `slides.length` grows by exactly one per write — `pendingSlides` relies on it).
@@ -90,11 +117,18 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       return;
     }
     const entry = entries[i] as (typeof entries)[number];
-    // `OutlineEntrySchema` only admits generatable kinds, so this never fires; it keeps the type.
-    const schema = slideSpecSchemaFor(entry.kind);
-    if (!schema) throw new Error(`generate: no spec schema for slide kind "${entry.kind}"`);
     let slide: Slide | undefined;
+    let picked: PickedPhoto | undefined;
     try {
+      picked = await picks.get(i);
+      if (picked && picked.outcome !== "busy") judged = true;
+      const photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
+      // `OutlineEntrySchema` only admits generatable kinds, so this never fires; it keeps the type.
+      const schema =
+        entry.kind === "image-text"
+          ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo))
+          : slideSpecSchemaFor(entry.kind);
+      if (!schema) throw new Error(`generate: no spec schema for slide kind "${entry.kind}"`);
       const call = await callStructured({
         deps,
         stage: "generate",
@@ -111,6 +145,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
           },
           reservedStems: stems.reservedFor(i),
           phase: entry.phase,
+          ...(photo !== undefined ? { photo } : {}),
           audience,
           vocabularySlots: vocabularySlots(lesson.themeId),
           lessonTitle: lesson.title,
@@ -119,6 +154,13 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
       });
       slide = materialiseSlide(call.output, lesson.themeId, meta(call.modelId), deps.ids);
+      // The photograph goes in with the text, in the same persist; a slide with no photograph keeps
+      // the placeholder and records the same warning the illustrate step would.
+      if (picked?.outcome === "placed") slide = slideWithPhoto(slide, picked.photo);
+      else if (picked && !deps.signal.aborted) {
+        const slot = slide.elements.find((e) => e.type === "image");
+        if (slot) findings.push(emptyFinding(slide.id, slot.id));
+      }
     } catch (error) {
       if (!(error instanceof BudgetExceeded)) {
         failed = true;
@@ -199,7 +241,13 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       generation: {
         ...generationOf(lesson),
         stage: "generated",
-        promptVersions: { ...generation.promptVersions, generated: generateSlidePrompt.version },
+        promptVersions: {
+          ...generation.promptVersions,
+          // The photo judge has no checkpoint of its own; its version rides on `generated`.
+          generated: judged
+            ? joinVersions(generateSlidePrompt.version, pickOrRequeryPrompt.version)
+            : generateSlidePrompt.version,
+        },
         findings,
       },
     },
@@ -212,6 +260,42 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     updatedAt,
   );
   return { ...state, lesson, worksheet };
+}
+
+/** What the slide prompt is told about its photograph (TEACH-220). */
+function photoFor(entry: OutlineEntry, picked: PickedPhoto | undefined): SlidePhoto | "none" {
+  if (picked?.outcome !== "placed") return "none";
+  const mustShow = entry.imageBrief?.mustShow ?? [];
+  const visible = picked.photo.evidence.visible;
+  const seen = new Set(visible.map((v) => v.trim().toLowerCase()));
+  return {
+    alt: picked.photo.alt,
+    visible,
+    notVisible: mustShow.filter((m) => !seen.has(m.trim().toLowerCase())),
+    count: picked.photo.evidence.count,
+    purpose: entry.imageBrief?.purpose ?? "context",
+  };
+}
+
+/** The same evidence in the sanitiser's shape (what is required, what is visible). */
+function sanitiserPhoto(
+  entry: OutlineEntry,
+  photo: SlidePhoto | undefined,
+): ImageTextPhoto | "none" {
+  if (!photo) return "none";
+  return { visible: photo.visible, count: photo.count, mustShow: entry.imageBrief?.mustShow ?? [] };
+}
+
+/** The materialised slide with the picked photograph in its image slot. */
+function slideWithPhoto(slide: Slide, photo: PlacedPhoto): Slide {
+  return {
+    ...slide,
+    elements: slide.elements.map((element) =>
+      element.type === "image" && element.src === PLACEHOLDER_IMAGE
+        ? withPhoto(element, photo)
+        : element,
+    ),
+  };
 }
 
 /**

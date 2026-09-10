@@ -145,6 +145,11 @@ export function routed(
     if (version.startsWith("generate-worksheet")) {
       return takeAt(pending.findIndex((e) => Array.isArray(parsed(e)?.blocks)));
     }
+    // The photo judge runs inside Generate alongside the slide calls (TEACH-220), so its reply is
+    // found by shape too, not by position.
+    if (version.startsWith("pick-or-requery-photo")) {
+      return takeAt(pending.findIndex((e) => "pick" in (parsed(e) ?? {})));
+    }
     if (version.startsWith("generate-slide")) {
       const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1];
       return takeAt(

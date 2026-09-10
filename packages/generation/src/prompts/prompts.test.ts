@@ -52,13 +52,14 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
     audience,
     objectives: ["Describe the three states of matter"],
     vocabulary: ["particle", "evaporation"],
-    slideText: "Ice melts into water when heated.",
+    slideBrief: "Shows ice melting into water when heated.",
     subject: "melting ice",
-    mustShow: "water and ice together",
+    mustShow: ["ice", "liquid water"],
+    purpose: "observe",
     queries: ["melting ice", "melting"],
     candidates: [
-      { id: "1", alt: "Ice cubes melting on a wooden table" },
-      { id: "2", alt: "A dentist examining a patient" },
+      { id: "1", alt: "Ice cubes melting on a wooden table", thumbnail: "https://x/1.jpg" },
+      { id: "2", alt: "A dentist examining a patient", thumbnail: "https://x/2.jpg" },
     ],
   },
   evaluate: {
@@ -122,16 +123,16 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "3d78a0d2f29bdddc5d0d5e83a785143d6c0b795da03f0b08b13d0cc965926748",
   },
   "generate-slide": {
-    version: "generate-slide.v6",
-    hash: "f7d50c8804902efc4a0d5a8ceaa9803af5d07094a701d50b09696755882ea4a5",
+    version: "generate-slide.v7",
+    hash: "ee89af9d676f5fe79653a4276c714a47c367d3f8e1f6d9b21922ba66a01884b3",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v5",
     hash: "6c944003c98d57c18bc5fc584f338d8a2e16e8321c18740f98fda13b578fe2a3",
   },
   "pick-or-requery-photo": {
-    version: "pick-or-requery-photo.v2",
-    hash: "ea854cc39411f363a9dd5fe5e431e5a2d3d6b0057e4ccbfd1e387068eea44f4f",
+    version: "pick-or-requery-photo.v3",
+    hash: "d2f8c84a8317cff4095099a9ce51abdadff35b6c5c0ca8385803efa4b2a7adc1",
   },
   evaluate: {
     version: "evaluate.v3",

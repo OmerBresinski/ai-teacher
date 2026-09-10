@@ -1,4 +1,4 @@
-import type { Finding, ImageBrief, Lesson, SlideElement } from "@tj/domain/documents";
+import type { Finding, ImageBrief, Lesson, PhotoSource, SlideElement } from "@tj/domain/documents";
 import {
   isBlockedQuery,
   normaliseQuery,
@@ -8,7 +8,12 @@ import {
 } from "@tj/images";
 import { PLACEHOLDER_IMAGE } from "@tj/slides";
 import { callStructured } from "../call";
-import { PickOrRequerySchema, pickOrRequeryPrompt } from "../prompts/pick-or-requery-photo";
+import {
+  normaliseItem,
+  type PickOrRequery,
+  pickOrRequeryPrompt,
+  pickOrRequerySchemaFor,
+} from "../prompts/pick-or-requery-photo";
 import {
   BudgetExceeded,
   emptyImageCounts,
@@ -28,16 +33,38 @@ const BUSY_MESSAGE = "Photo search was busy; add a picture from the image panel.
 /** Portrait hits gathered across the query candidates before the judge sees them. */
 const MAX_CANDIDATES = 6;
 /** The judge answers one id or a few words. */
-const MAX_JUDGE_TOKENS = 120;
+/** `{ pick, visible (≤ 4), count, query }`: room for the list (TEACH-220). */
+const MAX_JUDGE_TOKENS = 200;
+/** Judge calls per slide: the first pick, and one more after a requery. */
+const MAX_JUDGE_CALLS = 2;
 
 type Judged = "pick" | "query" | "none";
 
 type PlaceOutcome =
-  | { outcome: "placed"; element: SlideElement; judged: Judged }
+  | { outcome: "placed"; photo: PlacedPhoto; judged: Judged }
   | { outcome: "empty"; judged?: Judged }
   | { outcome: "busy" };
 
-function emptyFinding(slideId: string, elementId: string): Finding {
+/** What the picker saw; written onto the element's `source` and given to the slide's text. */
+export type PhotoEvidence = NonNullable<PhotoSource["evidence"]>;
+
+/** A stored, gated photograph: what goes onto the slide's image element. */
+export type PlacedPhoto = {
+  src: string;
+  alt: string;
+  source: PhotoSource;
+  evidence: PhotoEvidence;
+};
+
+/** The image element with the photograph on it; geometry and id are the placeholder's. */
+export function withPhoto(
+  target: SlideElement & { type: "image" },
+  photo: PlacedPhoto,
+): SlideElement {
+  return { ...target, src: photo.src, alt: photo.alt, source: photo.source };
+}
+
+export function emptyFinding(slideId: string, elementId: string): Finding {
   return {
     check: "image",
     severity: "warning",
@@ -74,8 +101,9 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     deps.logger.info({ stage: "illustrate" }, "images disabled");
     return state;
   }
-  // A run reports its own counts; a second run with the same deps starts over.
-  const counts = emptyImageCounts();
+  // Picture-first picks (Generate, TEACH-220) already counted into `deps.imageCounts`; this step
+  // adds the slides it still has to place (the resume path).
+  const counts = deps.imageCounts ?? emptyImageCounts();
   deps.imageCounts = counts;
   const outline = state.lesson.facts?.outline ?? [];
   const baseFindings = generationOf(state.lesson).findings;
@@ -126,7 +154,7 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     }
     let placed: PlaceOutcome;
     try {
-      placed = await placeOne({ lesson, slide, target, brief, images, deps, index });
+      placed = await placeOne({ lesson, slide, brief, images, deps, index });
     } catch (error) {
       if (error instanceof BudgetExceeded) {
         deps.logger.info({ stage: "illustrate", slideIndex: index }, "illustrate budget stop");
@@ -168,7 +196,7 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
           ? {
               ...slide,
               elements: slide.elements.map((element) =>
-                element.id === target.id ? placed.element : element,
+                element.id === target.id ? withPhoto(target, placed.photo) : element,
               ),
             }
           : candidate,
@@ -187,19 +215,86 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
   return { ...state, lesson: findings.length > 0 || judged ? snapshot() : lesson };
 }
 
-function joinVersions(existing: string, added: string): string {
+export function joinVersions(existing: string, added: string): string {
   return existing.split("+").includes(added) ? existing : `${existing}+${added}`;
 }
 
 type PlaceArgs = {
   lesson: Lesson;
-  slide: Lesson["slides"][number];
-  target: SlideElement & { type: "image" };
+  /** The slide, when it exists already (the resume path); picture-first picks have none yet. */
+  slide: Lesson["slides"][number] | undefined;
+  /** The outline entry's brief, used as the judge's "this slide" line when no slide exists yet. */
+  slideBrief?: string | undefined;
   brief: ImageBrief;
   images: PhotoPlacer;
   deps: PipelineDeps;
   index: number;
 };
+
+/**
+ * The outcome of one picture-first pick (TEACH-220): the photograph to put on the slide's image
+ * slot with what the judge saw, or `empty` / `busy`. No persist: Generate writes it into the slide
+ * in the same persist as the slide's text.
+ */
+export type PickedPhoto =
+  | { outcome: "placed"; photo: PlacedPhoto }
+  | { outcome: "empty" }
+  | { outcome: "busy" };
+
+/**
+ * Picture first: search and judge for one `image-text` outline entry before its slide exists, so the
+ * slide's text can be written to the photograph. Returns `empty` for a budget stop or any failure —
+ * nothing here fails a lesson; the slide is then written as plain content with the `image` warning.
+ */
+export async function pickPhoto(
+  lesson: Lesson,
+  index: number,
+  deps: PipelineDeps,
+): Promise<PickedPhoto> {
+  const images = deps.images;
+  const entry = lesson.facts?.outline[index];
+  const brief = entry?.imageBrief;
+  if (!images || !entry || !brief) return { outcome: "empty" };
+  const counts = deps.imageCounts ?? emptyImageCounts();
+  deps.imageCounts = counts;
+  counts.requested += 1;
+  try {
+    const placed = await placeOne({
+      lesson,
+      slide: undefined,
+      slideBrief: entry.brief?.adds,
+      brief,
+      images,
+      deps,
+      index,
+    });
+    deps.logger.info(
+      {
+        stage: "illustrate",
+        slideIndex: index,
+        judged: placed.outcome === "busy" ? null : (placed.judged ?? null),
+        outcome: placed.outcome,
+      },
+      "illustrate judged",
+    );
+    if (placed.outcome === "placed") {
+      counts.placed += 1;
+      return { outcome: "placed", photo: placed.photo };
+    }
+    counts.empty += 1;
+    return { outcome: placed.outcome };
+  } catch (error) {
+    if (error instanceof BudgetExceeded) {
+      deps.logger.info({ stage: "illustrate", slideIndex: index }, "illustrate budget stop");
+      counts.empty += 1;
+      return { outcome: "empty" };
+    }
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    deps.logger.info({ stage: "illustrate", slideIndex: index, err: error }, "illustrate failed");
+    counts.failed += 1;
+    return { outcome: "empty" };
+  }
+}
 
 /**
  * One slide: portrait candidates gathered across the query candidates, then one judge call:
@@ -209,7 +304,7 @@ type PlaceArgs = {
  * propagate for the caller to classify.
  */
 async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
-  const { lesson, slide, target, brief, images, deps, index } = args;
+  const { brief, images, deps, index } = args;
   const candidates: PhotoResult[] = [];
   /** Every query actually searched, so the judge is told all of them and never repeats one. */
   const tried: string[] = [];
@@ -231,6 +326,55 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   // Every candidate query was blocked: nothing to judge, nothing to say.
   if (tried.length === 0) return { outcome: "empty" };
 
+  // The judge looks at the candidates; the gate decides. A requery earns exactly one more judge
+  // call over the new pool — its first result is never placed blind (TEACH-220).
+  let pool = candidates;
+  for (let round = 0; round < MAX_JUDGE_CALLS; round++) {
+    const verdict = await judge(args, pool, tried);
+    const picked = verdict.pick
+      ? pool.find((candidate) => candidate.id === verdict.pick)
+      : undefined;
+    if (picked && gatePasses(brief, verdict)) {
+      const evidence: PhotoEvidence = {
+        visible: verdict.visible,
+        count: verdict.count ?? "one",
+        alt: picked.alt,
+        promptVersion: pickOrRequeryPrompt.version,
+      };
+      return {
+        outcome: "placed",
+        photo: await store(images, picked, brief, evidence),
+        judged: round === 0 ? "pick" : "query",
+      };
+    }
+    if (picked) deps.logger.info({ stage: "illustrate", slideIndex: index, gated: true });
+    const requery = verdict.query;
+    if (!requery || round === MAX_JUDGE_CALLS - 1) return { outcome: "empty", judged: "none" };
+    // A repeat of a query already searched would return the pool the judge just rejected.
+    if (tried.map(normaliseQuery).includes(normaliseQuery(requery))) {
+      deps.logger.info({ stage: "illustrate", slideIndex: index, repeated: true });
+      return { outcome: "empty", judged: "query" };
+    }
+    if (isBlockedQuery(requery)) {
+      deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
+      return { outcome: "empty", judged: "query" };
+    }
+    tried.push(requery);
+    const photos = await searchPortraits(images, requery, deps.signal);
+    if (photos === "busy") return { outcome: "busy" };
+    if (photos.length === 0) return { outcome: "empty", judged: "query" };
+    pool = photos.slice(0, MAX_CANDIDATES);
+  }
+  return { outcome: "empty", judged: "none" };
+}
+
+/** One judge call over `pool`: the thumbnails as image parts, the captions and brief as text. */
+async function judge(
+  args: PlaceArgs,
+  pool: PhotoResult[],
+  tried: string[],
+): Promise<PickOrRequery> {
+  const { lesson, slide, brief, deps } = args;
   const facts = lesson.facts;
   const call = await callStructured({
     deps,
@@ -245,42 +389,25 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       audience: audienceOf(lesson),
       objectives: facts?.objectives.map((o) => o.text) ?? [],
       vocabulary: facts?.vocabulary.map((v) => v.term) ?? [],
-      slideText: slideText(slide),
+      slideBrief: args.slideBrief ?? (slide ? slideText(slide) : brief.subject),
       subject: brief.subject,
-      mustShow: brief.mustShow.length > 0 ? brief.mustShow.join(", ") : undefined,
+      mustShow: brief.mustShow,
+      purpose: brief.purpose,
+      avoid: brief.avoid,
       queries: tried,
-      candidates: candidates.map((c) => ({ id: c.id, alt: c.alt })),
+      candidates: pool.map((c) => ({ id: c.id, alt: c.alt, thumbnail: c.src.tiny })),
     },
-    schema: PickOrRequerySchema,
+    schema: pickOrRequerySchemaFor(brief),
     maxOutputTokens: MAX_JUDGE_TOKENS,
+    images: pool.map((c) => ({ id: c.id, url: c.src.tiny })),
   });
+  return call.output;
+}
 
-  const picked = call.output.pick
-    ? candidates.find((candidate) => candidate.id === call.output.pick)
-    : undefined;
-  if (picked)
-    return {
-      outcome: "placed",
-      element: await place(images, target, picked, brief),
-      judged: "pick",
-    };
-
-  const requery = call.output.query;
-  if (!requery) return { outcome: "empty", judged: "none" };
-  // A repeat of a query already searched would return the pool the judge just rejected.
-  if (tried.map(normaliseQuery).includes(normaliseQuery(requery))) {
-    deps.logger.info({ stage: "illustrate", slideIndex: index, repeated: true });
-    return { outcome: "empty", judged: "query" };
-  }
-  if (isBlockedQuery(requery)) {
-    deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
-    return { outcome: "empty", judged: "query" };
-  }
-  const photos = await searchPortraits(images, requery, deps.signal);
-  if (photos === "busy") return { outcome: "busy" };
-  const first = photos[0];
-  if (!first) return { outcome: "empty", judged: "query" };
-  return { outcome: "placed", element: await place(images, target, first, brief), judged: "query" };
+/** The deterministic gate: every `mustShow` item is among what the judge saw. */
+export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery): boolean {
+  const seen = new Set(verdict.visible.map(normaliseItem));
+  return brief.mustShow.every((item) => seen.has(normaliseItem(item)));
 }
 
 async function searchPortraits(
@@ -297,12 +424,17 @@ async function searchPortraits(
   }
 }
 
-async function place(
+async function store(
   images: PhotoPlacer,
-  target: SlideElement & { type: "image" },
   photo: PhotoResult,
   brief: ImageBrief,
-): Promise<SlideElement> {
+  evidence: PhotoEvidence,
+): Promise<PlacedPhoto> {
   const stored = await images.store(photo, "slide");
-  return { ...target, src: stored.url, alt: photo.alt || brief.subject, source: stored.source };
+  return {
+    src: stored.url,
+    alt: photo.alt || brief.subject,
+    source: { ...stored.source, evidence },
+    evidence,
+  };
 }

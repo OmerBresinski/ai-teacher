@@ -1,6 +1,12 @@
 import { isAnthropicModelId } from "@tj/ai";
 import type { ModelClass } from "@tj/domain";
-import { generateText, NoObjectGeneratedError, Output, type OutputInterface } from "ai";
+import {
+  generateText,
+  type ModelMessage,
+  NoObjectGeneratedError,
+  Output,
+  type OutputInterface,
+} from "ai";
 import type { z } from "zod";
 import { type JsonRepairKind, repairJsonText } from "./repair-json";
 import {
@@ -45,6 +51,12 @@ export interface CallStructuredOptions<I, T> {
   input: I;
   schema: z.ZodType<T>;
   maxOutputTokens: number;
+  /**
+   * Photographs the model must look at (TEACH-220): sent as image parts beside the user text, by
+   * public URL, so the provider fetches them — `@tj/generation` still makes no HTTP call. The retry
+   * carries them again. Billed as input tokens on the GPT-5.6 family (stop-gate, 10 Sept).
+   */
+  images?: { id: string; url: string }[] | undefined;
 }
 
 export interface CallUsage {
@@ -126,7 +138,7 @@ function repairingObjectOutput<T>(
 export async function callStructured<I, T>(
   options: CallStructuredOptions<I, T>,
 ): Promise<CallResult<T>> {
-  const { deps, stage, cls, effort, prompt, input, schema, maxOutputTokens } = options;
+  const { deps, stage, cls, effort, prompt, input, schema, maxOutputTokens, images } = options;
   // Cancel is checked between model calls (ADR 0025 §5); the fake ignores `abortSignal`, so the
   // check is here rather than trusted to the provider.
   throwIfAborted(deps.signal);
@@ -148,7 +160,7 @@ export async function callStructured<I, T>(
     const result = await generateText({
       model,
       system: prompt.system,
-      prompt: text,
+      ...userTurn(text, images),
       output,
       abortSignal: deps.signal,
       maxOutputTokens,
@@ -197,6 +209,25 @@ export async function callStructured<I, T>(
       );
     }
   }
+}
+
+/** The user turn: plain `prompt` text, or one message with the text and the image parts. */
+function userTurn(
+  text: string,
+  images: { id: string; url: string }[] | undefined,
+): { prompt: string } | { messages: ModelMessage[] } {
+  if (!images || images.length === 0) return { prompt: text };
+  return {
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text },
+          ...images.map((image) => ({ type: "image" as const, image: new URL(image.url) })),
+        ],
+      },
+    ],
+  };
 }
 
 /**

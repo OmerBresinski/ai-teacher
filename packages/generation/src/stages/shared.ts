@@ -1,4 +1,5 @@
-import type { Finding, Lesson } from "@tj/domain/documents";
+import type { Finding, Lesson, OutlineEntry, Slide } from "@tj/domain/documents";
+import { type ImageTextPhoto, PLACEHOLDER_IMAGE } from "@tj/slides";
 import type { Audience } from "../prompts";
 
 // The plain-text projections moved to `@tj/domain/documents/text` so `checkLesson` can measure the
@@ -18,6 +19,26 @@ export const BUDGET_FINDING = (by: "usd" | "tokens", where: string): Finding => 
   target: {},
   message: `Generation stopped at ${where}: the lesson's ${by === "usd" ? "cost" : "token"} cap was reached. What was written is kept.`,
 });
+
+/**
+ * What an existing `image-text` slide's text may rely on (TEACH-220): the evidence the photo judge
+ * left on its image element, or `"none"` when the slot is still the placeholder or was placed
+ * before the judge recorded evidence (then the text may set no picture task at all).
+ */
+export function imageTextPhotoOf(
+  slide: Slide,
+  entry: OutlineEntry | undefined,
+): ImageTextPhoto | "none" {
+  const image = slide.elements.find((e) => e.type === "image");
+  if (image?.type !== "image" || image.src === PLACEHOLDER_IMAGE) return "none";
+  const evidence = image.source?.evidence;
+  if (!evidence) return "none";
+  return {
+    visible: evidence.visible,
+    count: evidence.count,
+    mustShow: entry?.imageBrief?.mustShow ?? [],
+  };
+}
 
 export function audienceOf(lesson: Lesson): Audience {
   return {

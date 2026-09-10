@@ -23,6 +23,8 @@ export interface FakeCall {
   usage: FakeAiUsage;
   /** The `providerOptions` the caller sent (e.g. Bedrock's `reasoningConfig`), if any. */
   providerOptions?: unknown;
+  /** How many image parts the user turn carried (a multimodal call, TEACH-220). */
+  imageParts?: number;
   /**
    * The user-role text of the prompt, joined. For a *function entry* that must answer in the
    * shape the caller asked for (the e2e worker's cascade fake reads the slide kind off it); tests
@@ -78,6 +80,16 @@ function userText(prompt: FakePrompt): string {
   return parts.join("\n");
 }
 
+/** The user turns' image (file) parts, counted. */
+function imageParts(prompt: FakePrompt): number {
+  let n = 0;
+  for (const message of prompt) {
+    if (message.role !== "user") continue;
+    for (const part of message.content) if (part.type === "file") n += 1;
+  }
+  return n;
+}
+
 function usageForFake(usage: FakeAiUsage) {
   return {
     inputTokens: {
@@ -125,6 +137,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
       usage: {},
       promptText: userText(prompt),
       ...(providerOptions !== undefined ? { providerOptions } : {}),
+      ...(imageParts(prompt) > 0 ? { imageParts: imageParts(prompt) } : {}),
     };
     calls.push(call);
     const entry = script.shift() ?? fallback;

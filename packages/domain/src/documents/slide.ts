@@ -149,6 +149,8 @@ export type PhotoSource = {
   photographer: string;
   /** The photographer's page on the provider, http(s). */
   photographerUrl: string;
+  /** What the picker saw in the photo (TEACH-220); absent on older placements. */
+  evidence?: { visible: string[]; count: "one" | "several"; alt: string; promptVersion: string };
 };
 
 export type ImageElement = ElementBase & {
@@ -361,12 +363,24 @@ const TextElementSchema = z.object({
 
 // Strict, like `GeneratedFromSchema`: an imported document with an extra key inside `source` is
 // refused rather than silently trimmed. Both URLs render as anchors, hence the http(s) gate.
+/** What the picker saw in the photograph it chose (TEACH-220): the text is written to this. */
+export const PhotoEvidenceSchema = z.strictObject({
+  /** The `mustShow` items visible in the photo, as the judge listed them. */
+  visible: z.array(z.string().min(1)).max(4),
+  count: z.enum(["one", "several"]),
+  alt: z.string(),
+  promptVersion: z.string().min(1),
+});
+export type PhotoEvidence = z.infer<typeof PhotoEvidenceSchema>;
+
 export const PhotoSourceSchema = z.strictObject({
   provider: z.enum(["pexels"]),
   id: z.string().min(1),
   pageUrl: z.string().refine(isLinkableHref, "pageUrl must be an http(s) address"),
   photographer: z.string(),
   photographerUrl: z.string().refine(isLinkableHref, "photographerUrl must be an http(s) address"),
+  /** Present on a photo the pipeline's judge chose by looking at it; absent on older placements. */
+  evidence: PhotoEvidenceSchema.optional(),
 });
 
 const ImageElementSchema = z.object({

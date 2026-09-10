@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { BlockSpecSchema, SlideSpecSchema, slideSpecSchemaFor } from "./specs";
+import {
+  BlockSpecSchema,
+  imageTextSpecSchemaFor,
+  PICTURE_NONE,
+  PICTURE_PLURAL,
+  SlideSpecSchema,
+  slideSpecSchemaFor,
+  TASK_NOT_VISIBLE,
+} from "./specs";
 
 /*
  * The spec sanitiser (Generation quality §3; TEACH-210): a degenerate or leaking spec is a
@@ -235,5 +243,47 @@ describe("spec sanitiser", () => {
     ]) {
       expect(slideSpecSchemaFor(kind)).toBeDefined();
     }
+  });
+});
+
+describe("image-text written to its photograph (TEACH-220)", () => {
+  const flower = {
+    visible: ["petals", "sepals"],
+    count: "one" as const,
+    mustShow: ["petals", "sepals", "stamens", "carpel"],
+  };
+  const spec = (body: string, heading = "Flower parts") => ({
+    kind: "image-text",
+    ...base,
+    heading,
+    body,
+  });
+  const messages = (photo: Parameters<typeof imageTextSpecSchemaFor>[0], body: string) => {
+    const result = imageTextSpecSchemaFor(photo)?.safeParse(spec(body));
+    return result?.success ? [] : (result?.error.issues.map((i) => i.message) ?? []);
+  };
+
+  test("row 7: a plural picture word with one photo and a task on a hidden item are two issues", () => {
+    expect(messages(flower, "Use the pictures to spot the carpel.")).toEqual([
+      PICTURE_PLURAL,
+      TASK_NOT_VISIBLE("carpel"),
+    ]);
+  });
+
+  test("a task that names only visible items passes; a description of a hidden item is not a task", () => {
+    expect(messages(flower, "Look at the photograph and find the petals and sepals.")).toEqual([]);
+    expect(
+      messages(flower, "The carpel sits in the middle; the photograph shows the petals."),
+    ).toEqual([]);
+  });
+
+  test("with no photograph any picture reference is rejected; plain content passes", () => {
+    expect(messages("none", "Look at the picture of the flower.")).toEqual([PICTURE_NONE]);
+    expect(messages("none", "A flower has four main parts.")).toEqual([]);
+  });
+
+  test("several photos may be called pictures; undefined evidence keeps the base schema", () => {
+    expect(messages({ ...flower, count: "several" }, "The photos show the petals.")).toEqual([]);
+    expect(messages(undefined, "Use the pictures to spot the carpel.")).toEqual([]);
   });
 });
