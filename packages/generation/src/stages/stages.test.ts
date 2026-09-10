@@ -792,21 +792,13 @@ describe("generate", () => {
     expect(review.calls[0]?.promptText).toContain(`[slideId ${slide.id}, image-text, photo 1]`);
     expect(evaluated.lesson.generation?.findings.map((f) => f.check)).toEqual(["image-fit"]);
 
-    // Force the finding to an error so Repair targets it (image-fit is a warning in production).
-    const errored = {
-      ...evaluated,
-      lesson: {
-        ...evaluated.lesson,
-        generation: {
-          ...(evaluated.lesson.generation as NonNullable<typeof evaluated.lesson.generation>),
-          findings:
-            evaluated.lesson.generation?.findings.map((f) => ({
-              ...f,
-              severity: "error" as const,
-            })) ?? [],
-        },
-      },
-    };
+    // The slide's purpose is "observe" (plannedWithImage), so the image-fit finding is an error with
+    // a regenerate fix (TEACH-227): Repair rewrites the text to what the picture shows.
+    expect(evaluated.lesson.generation?.findings[0]).toMatchObject({
+      severity: "error",
+      fix: { kind: "regenerate-slide" },
+    });
+    const errored = evaluated;
     const fixer = createFakeAi({
       script: [
         json({
@@ -835,6 +827,50 @@ describe("generate", () => {
       ),
     ).toBe(true);
     expect(repaired.lesson.generation?.findings.some((f) => f.check === "image-fit")).toBe(false);
+  });
+
+  test("TEACH-227: an image-fit finding on a context-purpose picture stays a warning", async () => {
+    const start = await plannedWithImage();
+    const facts = start.lesson.facts;
+    if (!facts) throw new Error("fixture");
+    const outline = facts.outline.map((e) =>
+      e.kind === "image-text" && e.imageBrief
+        ? { ...e, imageBrief: { ...e.imageBrief, purpose: "context" as const } }
+        : e,
+    );
+    const contextStart = { ...start, lesson: { ...start.lesson, facts: { ...facts, outline } } };
+    const ai = imageRunAi(
+      json({
+        pick: "p1",
+        onSubject: true,
+        clear: true,
+        visible: ["river water"],
+        count: "one",
+        query: null,
+      }),
+    );
+    const generated = await generate(contextStart, recordingDeps(ai, { images: riverImages }));
+    const slide = generated.lesson.slides.find((s) => s.kind === "image-text");
+    if (!slide) throw new Error("no image slide");
+    const review = createFakeAi({
+      script: [
+        json({
+          findings: [
+            {
+              check: "image-fit",
+              severity: "warning",
+              target: { slideId: slide.id },
+              evidence: "Rivers flow to the sea.",
+              message: "The photograph shows a river at dawn, not the sea.",
+            },
+          ],
+        }),
+      ],
+      usage,
+    });
+    const evaluated = await evaluate(generated, recordingDeps(review));
+    expect(evaluated.lesson.generation?.findings[0]).toMatchObject({ severity: "warning" });
+    expect(evaluated.lesson.generation?.findings[0]?.fix).toBeUndefined();
   });
 
   test("resumes: slides already present are not regenerated", async () => {

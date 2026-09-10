@@ -7,13 +7,18 @@ import {
   queryCandidates,
 } from "@tj/images";
 import { PLACEHOLDER_IMAGE } from "@tj/slides";
-import { callStructured } from "../call";
+import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import {
   normaliseItem,
   type PickOrRequery,
   pickOrRequeryPrompt,
   pickOrRequerySchemaFor,
 } from "../prompts/pick-or-requery-photo";
+import {
+  SHORTLIST_MAX,
+  shortlistPhotosPrompt,
+  shortlistSchemaFor,
+} from "../prompts/shortlist-photos";
 import {
   BudgetExceeded,
   emptyImageCounts,
@@ -30,10 +35,13 @@ export const PROGRESS_ILLUSTRATED = 88;
 
 const EMPTY_MESSAGE = "No photograph was found for this slide. Add one from the image panel.";
 const BUSY_MESSAGE = "Photo search was busy; add a picture from the image panel.";
-/** Portrait hits gathered across the query candidates before the judge sees them. */
-// Eight from ten a query (TEACH-226): with six the judge missed a clean rat portrait Pexels ranked
-// eighth. Two more thumbnails cost ≈ $0.002 a call on the standard class.
-const MAX_CANDIDATES = 8;
+/**
+ * Portrait hits gathered across the query candidates: the caption shortlist (TEACH-227) reads all
+ * of them as text, then the picture judge looks at the few it names (`SHORTLIST_MAX`). Thirty
+ * captions cost less than one thumbnail.
+ */
+const MAX_CANDIDATES = 30;
+const PER_PAGE = 30;
 /** The judge answers one id or a few words. */
 /** `{ pick, visible (≤ 4), count, query }`: room for the list (TEACH-220). */
 const MAX_JUDGE_TOKENS = 200;
@@ -328,11 +336,22 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   // Every candidate query was blocked: nothing to judge, nothing to say.
   if (tried.length === 0) return { outcome: "empty" };
 
-  // The judge looks at the candidates; the gate decides. A requery earns exactly one more judge
-  // call over the new pool — its first result is never placed blind (TEACH-220).
+  // Captions first, pictures second (TEACH-227): the shortlist names the candidates that are the
+  // subject; the judge looks at those and the gate decides. A requery earns exactly one more
+  // shortlist + judge round over the new pool — its first result is never placed blind (TEACH-220).
   let pool = candidates;
   for (let round = 0; round < MAX_JUDGE_CALLS; round++) {
-    const verdict = await judge(args, pool, tried);
+    const shortlisted = await shortlist(args, pool);
+    deps.logger.info({
+      stage: "illustrate",
+      slideIndex: index,
+      pool: pool.length,
+      shortlisted: shortlisted.length,
+    });
+    // An empty pool still reaches the judge, which may requery; a non-empty pool the shortlist
+    // rejected wholesale does not — none of it was the subject.
+    if (pool.length > 0 && shortlisted.length === 0) return { outcome: "empty", judged: "none" };
+    const verdict = await judge(args, shortlisted, tried);
     const picked = verdict.pick
       ? pool.find((candidate) => candidate.id === verdict.pick)
       : undefined;
@@ -377,6 +396,51 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     pool = photos.slice(0, MAX_CANDIDATES);
   }
   return { outcome: "empty", judged: "none" };
+}
+
+/**
+ * The few candidates worth a look, by caption alone: one `small` call over the whole pool. When
+ * the call fails or names nothing the first `SHORTLIST_MAX` stand in — the judge still looks, so a
+ * shortlist miss never loses a photo. Nothing here fails a lesson except the budget or an abort.
+ */
+async function shortlist(args: PlaceArgs, pool: PhotoResult[]): Promise<PhotoResult[]> {
+  const { lesson, brief, deps } = args;
+  if (pool.length <= SHORTLIST_MAX) return pool;
+  const fallback = pool.slice(0, SHORTLIST_MAX);
+  try {
+    const call = await callStructured({
+      deps,
+      stage: "illustrate",
+      cls: "small",
+      effort: "low",
+      prompt: shortlistPhotosPrompt,
+      input: {
+        topic: lesson.brief?.topic ?? lesson.title,
+        subject: brief.subject,
+        mustShow: brief.mustShow,
+        purpose: brief.purpose,
+        avoid: brief.avoid,
+        candidates: pool.map((c) => ({ id: c.id, alt: c.alt })),
+      },
+      schema: shortlistSchemaFor(pool.map((c) => c.id)),
+      maxOutputTokens: MAX_OUTPUT_TOKENS.shortlist,
+    });
+    const byId = new Map(pool.map((c) => [c.id, c]));
+    const chosen = call.output.ids.flatMap((id) => {
+      const c = byId.get(id);
+      return c ? [c] : [];
+    });
+    // An empty answer means "none of these is the subject": the judge is not asked to look.
+    return chosen;
+  } catch (error) {
+    if (error instanceof BudgetExceeded) throw error;
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    deps.logger.info(
+      { stage: "illustrate", slideIndex: args.index, err: error },
+      "shortlist failed",
+    );
+    return fallback;
+  }
 }
 
 /** One judge call over `pool`: the thumbnails as image parts, the captions and brief as text. */
@@ -431,7 +495,11 @@ async function searchPortraits(
   signal: AbortSignal,
 ): Promise<PhotoResult[] | "busy"> {
   try {
-    const photos = await images.search(query, { orientation: "portrait", perPage: 10, signal });
+    const photos = await images.search(query, {
+      orientation: "portrait",
+      perPage: PER_PAGE,
+      signal,
+    });
     return photos.filter((candidate) => candidate.height > candidate.width);
   } catch (error) {
     if (error instanceof PexelsError && error.status === 429) return "busy";

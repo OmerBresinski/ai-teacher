@@ -89,6 +89,8 @@ export const MAX_OUTPUT_TOKENS = {
   worksheet: 4000,
   // Up to twenty findings, each with its evidence span (TEACH-216).
   evaluate: 2500,
+  // Six ids (TEACH-227).
+  shortlist: 200,
   repair: 1500,
 } as const;
 

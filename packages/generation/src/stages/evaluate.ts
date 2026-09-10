@@ -130,6 +130,17 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       images,
     });
     const filtered = knownTargetsWithEvidence(call.output.findings, state);
+    // A picture task pupils cannot do (TEACH-227): on a slide whose purpose is to look at the
+    // photograph, an image-fit finding is repaired — the text is rewritten to what is visible.
+    for (const f of filtered.kept) {
+      if (f.check !== "image-fit" || f.target.slideId === undefined) continue;
+      const index = lesson.slides.findIndex((s) => s.id === f.target.slideId);
+      const purpose = lesson.facts?.outline[index]?.imageBrief?.purpose;
+      if (purpose === "identify-parts" || purpose === "observe") {
+        f.severity = "error";
+        f.fix = { kind: "regenerate-slide" };
+      }
+    }
     model = filtered.kept;
     if (filtered.dropped > 0) {
       deps.logger.info({ stage: "evaluate", dropped: filtered.dropped }, "findings dropped");
