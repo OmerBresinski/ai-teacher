@@ -16,7 +16,7 @@ import {
   type StageName,
   throwIfAborted,
 } from "../types";
-import { audienceOf, blockText, slideText } from "./shared";
+import { audienceOf, blockText, runBounded, slideText } from "./shared";
 
 /*
  * Proposal stages (ADR 0025 §18): the impact set of a fact change, and the re-derivation of an
@@ -290,20 +290,4 @@ export async function proposeFor(
     }
   });
   return stoppedBy ? { proposals, stoppedBy } : { proposals };
-}
-
-/** Run `items` through `fn` with at most `limit` in flight; rejects on the first thrown error. */
-export async function runBounded<T>(
-  items: readonly T[],
-  limit: number,
-  fn: (item: T) => Promise<void>,
-): Promise<void> {
-  let next = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const item = items[next++] as T;
-      await fn(item);
-    }
-  });
-  await Promise.all(workers);
 }

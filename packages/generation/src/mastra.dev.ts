@@ -4,7 +4,7 @@ import { createAi, createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { CreateLessonSchema, lessonFromBrief } from "@tj/domain/documents";
 import pino from "pino";
-import { pipelineScript } from "./testing";
+import { pipelineScript, routed } from "./testing";
 import { noSources, type PipelineDeps } from "./types";
 import { lessonWorkflow, registerDevDeps, StateSchema } from "./workflow";
 
@@ -26,7 +26,7 @@ import { lessonWorkflow, registerDevDeps, StateSchema } from "./workflow";
 const logger = pino({ level: process.env.LOG_LEVEL ?? "info" });
 
 export function devAi() {
-  if (process.env.AI_FAKE_SCRIPT) return createFakeAi({ script: pipelineScript() });
+  if (process.env.AI_FAKE_SCRIPT) return createFakeAi({ script: routed(pipelineScript()) });
   const {
     AWS_BEARER_TOKEN_BEDROCK,
     AWS_REGION,
