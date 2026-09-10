@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
+import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
 import { PROMPT_VERSIONS } from "../prompts";
 import { assignFactIds, planFactsSchemaFor } from "../specs";
@@ -18,7 +19,7 @@ import { evaluate } from "./evaluate";
 import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
 import { MAX_TARGETS, repair, repairTargets } from "./repair";
-import { BUDGET_FINDING, blockText, slideText } from "./shared";
+import { BUDGET_FINDING, blockText, slideText, specFieldsCover, specFieldsOf } from "./shared";
 
 const json = (v: unknown) => JSON.stringify(v);
 const usage = { inputTokens: 1000, outputTokens: 400 };
@@ -804,6 +805,10 @@ describe("generate", () => {
       usage,
     });
     const repaired = await repair(errored, recordingDeps(fixer));
+    // Row 2 (TEACH-222): the KEY IDEA caption is not part of the current text the model is shown,
+    // so it cannot be copied into `heading`.
+    expect(fixer.calls[0]?.promptText).not.toContain("KEY IDEA");
+    expect(fixer.calls[0]?.promptText).toMatch(/heading: .+\nbody: .+/);
     expect(fixer.calls[0]?.promptText).toContain(
       "The photograph on this slide shows: River at dawn",
     );
@@ -1094,6 +1099,22 @@ describe("repair", () => {
         target: { blockId: block.id },
         message: "Wrong answer.",
       },
+      // Warnings on the regenerated slide (TEACH-222): one quoting text the rewrite keeps, one
+      // quoting text it removes, one with no evidence at all.
+      {
+        check: "pitch",
+        severity: "warning",
+        target: { slideId: mc.id },
+        evidence: "Repaired.",
+        message: "Kept: its evidence is in the new notes.",
+      },
+      {
+        check: "pitch",
+        severity: "warning",
+        target: { slideId: mc.id },
+        evidence: "words that the rewrite removed",
+        message: "Dropped: stale.",
+      },
       { check: "age-fit", severity: "warning", target: { slideId: mc.id }, message: "Long." },
     ];
     const evaluated = {
@@ -1140,8 +1161,16 @@ describe("repair", () => {
     });
     expect(state.lesson.generation?.completedAt).toBeDefined();
     expect(state.lesson.generation?.findings).toEqual([
-      expect.objectContaining({ check: "age-fit", severity: "warning" }),
+      expect.objectContaining({
+        check: "pitch",
+        message: "Kept: its evidence is in the new notes.",
+      }),
     ]);
+    // Row 2 (TEACH-222): the slide's current text is shown field by field, never the caption line.
+    const slidePrompt = ai.calls[0]?.promptText ?? "";
+    expect(slidePrompt).toContain("heading: ");
+    expect(slidePrompt).toContain("option A");
+    expect(slidePrompt).toContain("(correct)");
     expect(deps.progress).toEqual([
       { percent: 100, message: "Done", documentUpdatedAt: deps.persisted[0]?.updatedAt },
     ]);
@@ -1198,6 +1227,8 @@ describe("repair", () => {
     ]);
     // The fact call saw v1 and the review's words; the slide call saw the patched fact.
     expect(ai.calls[0]?.promptText).toContain("v1:");
+    // Row 3 (TEACH-222): and the fields it may correct on a vocabulary fact.
+    expect(ai.calls[0]?.promptText).toContain("Fields you may correct on v1: term, definition.");
     expect(ai.calls[0]?.promptText).toContain("Not the accepted term");
     expect(ai.calls[1]?.promptText).toContain("Corpuscle");
     expect(state.lesson.facts?.vocabulary[0]?.term).toBe("Corpuscle");
@@ -1397,5 +1428,70 @@ describe("repair", () => {
       ["repair", "warning"],
     ]);
     expect(state.lesson.generation?.stage).toBe("repaired");
+  });
+});
+
+describe("specFieldsOf (TEACH-222)", () => {
+  test("covers every generatable kind's text: nothing slideText shows is missing from the fields, and captions are excluded", async () => {
+    const setupDeps = recordingDeps(
+      createFakeAi({
+        script: routed([
+          ...planScript(),
+          ...FIXTURES.planSkeleton.outline
+            .slice(PLANNED_SLIDES)
+            .map((e) => json(FIXTURES.slides[e.kind])),
+          json(FIXTURES.worksheet),
+        ]),
+        usage,
+      }),
+    );
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    for (const slide of generated.lesson.slides) {
+      expect({ kind: slide.kind, covered: specFieldsCover(slide) }).toEqual({
+        kind: slide.kind,
+        covered: true,
+      });
+      const fields = specFieldsOf(slide);
+      expect(fields.map((f) => f.text)).not.toContain("KEY IDEA");
+      expect(fields.map((f) => f.text)).not.toContain("QUESTION");
+    }
+  });
+
+  test("a slide whose text the projection cannot label is not covered, so Repair shows the flat text", () => {
+    const slide = generatedLesson().slides[0];
+    if (!slide) throw new Error("fixture");
+    // A text element with no preset is still shown, labelled "text", so it is covered…
+    const noPreset = {
+      ...slide,
+      elements: slide.elements.map((e) =>
+        e.type === "text" ? { ...e, style: { ...e.style, preset: undefined } } : e,
+      ),
+    } as typeof slide;
+    expect(specFieldsCover(noPreset)).toBe(true);
+    expect(specFieldsOf(noPreset).some((f) => f.field === "text")).toBe(true);
+    // …but a table slideText renders that the projection did not would not be: prove the guard
+    // reads slideText by adding text only slideText sees (a fill-gap answer line is filtered, a
+    // caption is filtered; an unknown element carrying a doc is not).
+    const odd = {
+      ...slide,
+      elements: [
+        ...slide.elements,
+        {
+          id: "x",
+          type: "sticker",
+          x: 0,
+          y: 0,
+          w: 1,
+          h: 1,
+          doc: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "Only slideText sees me" }] },
+            ],
+          },
+        },
+      ],
+    } as unknown as typeof slide;
+    expect(specFieldsCover(odd)).toBe(false);
   });
 });

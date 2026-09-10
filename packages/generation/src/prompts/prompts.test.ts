@@ -87,6 +87,7 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
     audience,
     facts,
     factId: "v1",
+    fields: ["term", "definition"],
     findings: [{ message: "Not the accepted term.", evidence: "Particle" }],
   },
   cascade: {
@@ -139,12 +140,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "2898eb315cf4afe67d95cbeb88ebb4c3093f57687e9dcf482f03bb2c115a1a37",
   },
   repair: {
-    version: "repair.v4",
-    hash: "680a14eeb2e600d1b736a8ead839cebe12fc0ca863fc04f30ce74bd63b2b3244",
+    version: "repair.v5",
+    hash: "0a9139b9465a11ac4d6b98957643472c8d3bce321697e3c754104287d90d2dd9",
   },
   "repair-fact": {
-    version: "repair-fact.v1",
-    hash: "f1bf22861746630ff3046829e7272dcce5351a844d221bed93219a0d6a72c2af",
+    version: "repair-fact.v2",
+    hash: "d59321734b369ba28d90e9d5bfee62c4a8d5846bfc45c11c92032457415086c8",
   },
   cascade: {
     version: "cascade.v2",

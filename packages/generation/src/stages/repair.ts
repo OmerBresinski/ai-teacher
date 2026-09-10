@@ -2,6 +2,7 @@ import {
   checkLesson,
   type Finding,
   isSchemaCheck,
+  type Lesson,
   type LessonFacts,
   type Slide,
   type Worksheet,
@@ -16,7 +17,7 @@ import {
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { repairFactPrompt, repairPrompt } from "../prompts";
-import { verifyOutputSchemaFor } from "../specs";
+import { VERIFY_FIELDS_BY_ARRAY, verifiableArrayOf, verifyOutputSchemaFor } from "../specs";
 import {
   BudgetExceeded,
   type PipelineDeps,
@@ -30,8 +31,12 @@ import {
   blockText,
   generationOf,
   imageTextPhotoOf,
+  normaliseText,
+  slideHaystack,
   slidePhotoOf,
   slideText,
+  specFieldsCover,
+  specFieldsOf,
 } from "./shared";
 import { applyVerifyPatch, verifyFinding } from "./verify";
 
@@ -120,6 +125,8 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
               slideKind: slide.kind,
               slideId: slide.id,
               text: slideText(slide),
+              // The labelled fields, when they carry everything the flat text does; else the text.
+              ...(specFieldsCover(slide) ? { fields: specFieldsOf(slide) } : {}),
               ...(slide.kind === "image-text"
                 ? { photo: slidePhotoOf(slide, lesson.facts?.outline[index]) }
                 : {}),
@@ -200,7 +207,11 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         stage: "repaired",
         completedAt: deps.now().toISOString(),
         promptVersions: { ...generation.promptVersions, repaired: repairPrompt.version },
-        findings: [...schema, ...modelFindings.filter((f) => !wasRepaired(f, repaired)), ...extra],
+        findings: [
+          ...schema,
+          ...modelFindings.filter((f) => !staleAfterRepair(f, repaired, lesson, worksheet)),
+          ...extra,
+        ],
       },
     },
     deps,
@@ -241,7 +252,13 @@ async function repairFact(
     cls: "small",
     effort: "low",
     prompt: repairFactPrompt,
-    input: { audience, facts: factsAround(facts, factId), factId, findings: about },
+    input: {
+      audience,
+      facts: factsAround(facts, factId),
+      factId,
+      fields: fieldsOf(factId),
+      findings: about,
+    },
     schema: verifyOutputSchemaFor(facts),
     maxOutputTokens: MAX_OUTPUT_TOKENS.verify,
   });
@@ -250,6 +267,12 @@ async function repairFact(
     facts,
     call.output.corrections.filter((c) => c.factId === factId),
   );
+}
+
+/** The fields the fact's array allows a correction on, as `verifyOutputSchemaFor` enforces. */
+function fieldsOf(factId: string): readonly string[] {
+  const array = verifiableArrayOf(factId as Parameters<typeof verifiableArrayOf>[0]);
+  return array ? VERIFY_FIELDS_BY_ARRAY[array] : [];
 }
 
 /** The fact in question with the objectives and misconceptions it links to; nothing else. */
@@ -282,13 +305,30 @@ function keepPhoto(original: Slide, fresh: Slide): Slide {
   };
 }
 
-/** A model `error` finding whose target was regenerated in this pass. */
-function wasRepaired(finding: Finding, repaired: Set<string>): boolean {
-  if (finding.severity !== "error") return false;
+/**
+ * A model finding whose target was regenerated in this pass and that no longer applies: every
+ * `error` (the regeneration was its repair), and a warning whose quoted `evidence` is not in the
+ * new text — the teacher must never read a check about a sentence that has been deleted
+ * (TEACH-222). A warning whose evidence survived the rewrite stays.
+ */
+function staleAfterRepair(
+  finding: Finding,
+  repaired: Set<string>,
+  lesson: Lesson,
+  worksheet: Worksheet | undefined,
+): boolean {
   const { slideId, blockId } = finding.target;
   const key =
     slideId !== undefined ? `slide:${slideId}` : blockId !== undefined ? `block:${blockId}` : null;
-  return key !== null && repaired.has(key);
+  if (key === null || !repaired.has(key)) return false;
+  if (finding.severity === "error" || finding.evidence === undefined) return true;
+  const needle = normaliseText(finding.evidence);
+  if (slideId !== undefined) {
+    const slide = lesson.slides.find((s) => s.id === slideId);
+    return !slide || !slideHaystack(slide).includes(needle);
+  }
+  const block = worksheet?.blocks.find((b) => b.id === blockId);
+  return !block || !normaliseText(blockText(block)).includes(needle);
 }
 
 const meta = (modelId: string, deps: Pick<PipelineDeps, "now">): MaterialiseMeta => ({

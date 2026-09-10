@@ -15,12 +15,14 @@ export type RepairFactInput = {
   /** Only the fact in question and what it links to, as `factsBlock` renders them. */
   facts: LessonFacts;
   factId: string;
+  /** The fields `applyVerifyPatch` may correct on this fact (`VERIFY_FIELDS_BY_ARRAY`). */
+  fields: readonly string[];
   /** What Evaluate said, and the text it quoted. */
   findings: { message: string; evidence?: string | undefined }[];
 };
 
 export const repairFactPrompt = {
-  version: "repair-fact.v1",
+  version: "repair-fact.v2",
   system: [
     "You correct one fact in a lesson plan that a review found wrong. The fact is given with its id and fields; return only the corrections needed to make it right.",
     "",
@@ -44,6 +46,8 @@ export const repairFactPrompt = {
       ...input.findings.map(
         (f) => `- ${f.message}${f.evidence ? ` — about: "${f.evidence}"` : ""}`,
       ),
+      "",
+      `Fields you may correct on ${input.factId}: ${input.fields.join(", ")}.`,
       "",
       "Answer with the corrections JSON.",
     ].join("\n");

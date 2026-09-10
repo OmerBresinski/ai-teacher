@@ -18,6 +18,12 @@ export type RepairInput = {
         slideKind: string;
         slideId: string;
         text: string;
+        /**
+         * The slide's text as labelled spec fields (TEACH-222), shown instead of `text` when
+         * present: the recipe's fixed captions are not among them, so the model cannot copy
+         * "KEY IDEA" into `heading`.
+         */
+        fields?: { field: string; text: string }[] | undefined;
         /** An `image-text` slide's photograph (TEACH-220): the picture stays, only the text changes. */
         photo?: SlidePhoto | "none" | undefined;
       }
@@ -28,10 +34,10 @@ export type RepairInput = {
 };
 
 export const repairPrompt = {
-  version: "repair.v4",
+  version: "repair.v5",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
-    "Rewrite the whole item as a fresh spec of the same kind; keep everything that was right, change only what the findings require.",
+    "Rewrite the whole item as a fresh spec of the same kind; keep everything that was right, change only what the findings require. The current text is shown field by field; put each field's content back in the same field.",
     "",
     "Rules:",
     HOUSE_RULES,
@@ -65,7 +71,9 @@ export const repairPrompt = {
       factsBlock(input.facts),
       "",
       `${what} currently says:`,
-      t.text,
+      ...(t.kind === "slide" && t.fields && t.fields.length > 0
+        ? t.fields.map((f) => `${f.field}: ${f.text}`)
+        : [t.text]),
       ...(t.kind === "slide" && t.photo !== undefined ? ["", ...photoBlock(t.photo)] : []),
       "",
       "Problems reported:",
