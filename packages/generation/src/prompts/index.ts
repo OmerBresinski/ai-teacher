@@ -7,6 +7,7 @@ import { planFactsPrompt } from "./plan-facts";
 import { planSkeletonPrompt } from "./plan-skeleton";
 import { cascadePrompt, regeneratePrompt } from "./propose";
 import { repairPrompt } from "./repair";
+import { verifyFactsPrompt } from "./verify-facts";
 
 /*
  * The prompt registry (ADR 0025 §17). Every prompt is a TypeScript module exporting
@@ -24,6 +25,7 @@ export type { PlanSkeletonInput } from "./plan-skeleton";
 export type { ProposeInput } from "./propose";
 export type { RepairInput } from "./repair";
 export type { Audience } from "./shared";
+export type { VerifyFactsInput } from "./verify-facts";
 export {
   cascadePrompt,
   checkInputPrompt,
@@ -35,12 +37,14 @@ export {
   planSkeletonPrompt,
   regeneratePrompt,
   repairPrompt,
+  verifyFactsPrompt,
 };
 
 export const PROMPTS = {
   "check-input": checkInputPrompt,
   "plan-skeleton": planSkeletonPrompt,
   "plan-facts": planFactsPrompt,
+  "verify-facts": verifyFactsPrompt,
   "generate-slide": generateSlidePrompt,
   "generate-worksheet": generateWorksheetPrompt,
   "pick-or-requery-photo": pickOrRequeryPrompt,
@@ -55,6 +59,7 @@ export const PROMPT_VERSIONS = {
   "check-input": checkInputPrompt.version,
   "plan-skeleton": planSkeletonPrompt.version,
   "plan-facts": planFactsPrompt.version,
+  "verify-facts": verifyFactsPrompt.version,
   "generate-slide": generateSlidePrompt.version,
   "generate-worksheet": generateWorksheetPrompt.version,
   "pick-or-requery-photo": pickOrRequeryPrompt.version,

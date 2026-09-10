@@ -5,6 +5,7 @@ import {
   PlanSkeletonSchema,
   planFactsSchemaFor,
   planSkeletonSchemaFor,
+  verifyOutputSchemaFor,
 } from "./specs";
 import { FIXTURES } from "./testing";
 
@@ -317,5 +318,46 @@ describe("assignFactIds", () => {
     expect("keyIdeas" in facts).toBe(false);
     expect("pitch" in facts).toBe(false);
     expect(facts.misconceptions).toEqual([]);
+  });
+});
+
+describe("verifyOutputSchemaFor (TEACH-212)", () => {
+  const facts = () => assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
+  const messages = (corrections: unknown[]) => {
+    const r = verifyOutputSchemaFor(facts()).safeParse({ corrections });
+    return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+  };
+  const ok = { factId: "v1", field: "term", value: "Clan", reason: "wrong-term" };
+
+  test("a valid correction and an empty list parse", () => {
+    expect(messages([])).toEqual([]);
+    expect(messages([ok])).toEqual([]);
+    expect(
+      messages([{ factId: "x1", field: "steps", index: 0, value: "Step", reason: "arithmetic" }]),
+    ).toEqual([]);
+  });
+
+  test("row 2: an unknown fact id names the id; an objective is refused the same way", () => {
+    expect(messages([{ ...ok, factId: "v9" }])).toEqual([
+      expect.stringContaining("corrections.0.factId: unknown fact id v9"),
+    ]);
+    expect(messages([{ ...ok, factId: "o1" }])[0]).toContain("unknown fact id o1");
+  });
+
+  test("a field the kind lacks names both; a steps index out of range or missing is refused; index elsewhere is refused", () => {
+    expect(messages([{ ...ok, field: "stem" }])).toEqual([
+      'corrections.0.field: v1 has no field "stem"; its fields are term, definition',
+    ]);
+    expect(
+      messages([{ factId: "x1", field: "steps", index: 7, value: "S", reason: "arithmetic" }])[0],
+    ).toContain("x1 has 3 steps; index 7 does not exist");
+    expect(
+      messages([{ factId: "x1", field: "steps", value: "S", reason: "arithmetic" }])[0],
+    ).toContain("needs an index");
+    expect(messages([{ ...ok, index: 0 }])[0]).toContain("index is only for steps");
+  });
+
+  test("a value over the field's own limit is refused even though it fits the body cap", () => {
+    expect(messages([{ ...ok, value: "x".repeat(61) }])[0]).toContain("at most 60 characters");
   });
 });

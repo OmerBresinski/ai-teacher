@@ -433,3 +433,22 @@ allowed to be long; its wall time on Terra `medium` is the number to watch (the 
 is the skeleton at `low` first). Generate does not yet read the briefs or key ideas — that is the
 Generate ticket; the resume path (`existingSkeleton`) rebuilds phase, brief and picture brief.
 
+## Amendment (2026-09-10, project Generation quality — TEACH-212)
+
+§7's Plan is three calls, not two. After the facts call and `assignFactIds`, **Verify** — one
+`standard` call at `high` effort, prompt `verify-facts.v1` — reads the merged facts as a subject
+specialist and returns a patch of at most twelve corrections (`factId`, `field`, optional step
+`index`, `value`, `reason` from a closed set); `verifyOutputSchemaFor(facts)` refuses an unknown or
+objective id, a field the fact's kind lacks, a step that does not exist or a value over that
+field's own limit, with messages the retry can act on; `applyVerifyPatch` applies it immutably and
+re-parses the facts. Each applied correction leaves a content-free `fact-verify` warning
+(`"<Kind> <field> corrected: <reason>."`) on `generation.findings`, which Evaluate now carries with
+`budget` and `image`. Verify is inside Plan (project Decision 1: a separate call, not a self-check
+inside plan-facts) and is not a stage: no checkpoint, no persist of its own — it announces itself
+as progress `8 "Checking the facts"` on the skeleton persist and the `planned` persist carries the
+result with `promptVersions.planned = plan-skeleton.vN+plan-facts.vN+verify-facts.v1`. A cap stop
+skips it (one budget finding at most); two schema misses leave the facts as they were and one
+`fact-verify` warning with no target; the job never fails on Verify. A lesson resumed at `planned`
+is not re-verified, because Plan is skipped whole. Plan's wall time gains one Terra `high` call
+(~$0.017 a lesson); the project's A/B ticket owns the fallback if Plan's 30 s p50 is exceeded.
+

@@ -1,7 +1,7 @@
 import type { Finding, Lesson, LessonFacts, Slide } from "@tj/domain/documents";
 import { type MaterialiseMeta, materialiseSlide } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
-import { planFactsPrompt, planSkeletonPrompt } from "../prompts";
+import { type Audience, planFactsPrompt, planSkeletonPrompt, verifyFactsPrompt } from "../prompts";
 import {
   assignFactIds,
   EMPTY_PLAN_FACTS,
@@ -10,20 +10,25 @@ import {
   PlanSkeletonSchema,
   planFactsSchemaFor,
   planSkeletonSchemaFor,
+  verifyOutputSchemaFor,
 } from "../specs";
-import { BudgetExceeded, type PipelineDeps, type PipelineState } from "../types";
+import { BudgetExceeded, type PipelineDeps, type PipelineState, StageFailure } from "../types";
 import { audienceOf, BUDGET_FINDING } from "./shared";
+import { applyVerifyPatch, VERIFY_FAILED_FINDING, verifyFinding } from "./verify";
 
 /*
- * Plan (ADR 0025 §1, §7, §13; TEACH-138): three persists, two `standard` calls, one checkpoint.
+ * Plan (ADR 0025 §1, §7, §13; TEACH-138, TEACH-212): three persists, three `standard` calls, one
+ * checkpoint.
  *
  *   1. Before any model call the `title` slide is materialised from the Brief alone and persisted
  *      (`2 "Starting"`), so the editor has something to show at once.
  *   2. The skeleton call returns the objectives and the outline; the `objectives` slide is
  *      materialised from it and persisted with the skeleton-only facts (`6 "Planned the lesson"`).
- *   3. The facts call returns vocabulary, worked examples and questions plus the outline entries
- *      each supports; the merged `LessonFacts` are persisted with `generation.stage: "planned"`
- *      (`10 "Planned"`).
+ *   3. The facts call returns key ideas, misconceptions, vocabulary, worked examples and questions
+ *      plus the outline entries each supports (`8 "Checking the facts"` follows, no persist).
+ *   4. The verify call reads the merged facts as a specialist and returns a patch, applied before
+ *      anything is built on them; the result is persisted with `generation.stage: "planned"`
+ *      (`10 "Planned"`). A lesson resumed at `planned` is not re-verified: Plan is skipped whole.
  *
  * Only the third persist carries `generation`: `stage` is the checkpoint, and a retry that finds
  * a lesson without one re-runs Plan (`resumeFrom`), re-using what the earlier attempt left: the
@@ -38,6 +43,7 @@ export const TITLE_PROMPT_VERSION = "brief";
 
 const PROGRESS_STARTING = 2;
 const PROGRESS_SKELETON = 6;
+const PROGRESS_VERIFYING = 8;
 const PROGRESS_PLANNED = 10;
 
 export async function plan(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
@@ -56,6 +62,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   };
   const first = await deps.persist(withTitle);
   await deps.onProgress(PROGRESS_STARTING, "Starting", first.updatedAt);
+  let lastPersistedAt = first.updatedAt;
 
   const sourceTexts = lesson.sources ? await deps.sources(lesson.sources) : [];
   const briefInput = {
@@ -95,6 +102,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     });
     withSkeleton = { ...withTitle, facts: skeletonFacts, slides: [title, objectives] };
     const second = await deps.persist(withSkeleton);
+    lastPersistedAt = second.updatedAt;
     await deps.onProgress(PROGRESS_SKELETON, "Planned the lesson", second.updatedAt);
   }
 
@@ -118,14 +126,28 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     if (!(error instanceof BudgetExceeded)) throw error;
     findings.push(BUDGET_FINDING(error.by, "the lesson facts"));
   }
+  const merged = assignFactIds(skeleton, planFacts, brief.durationMin);
+
+  // 4. Verify (Generation quality Decision 1; TEACH-212): one specialist read of the merged facts,
+  //    its patch applied before anything is built on them. Skipped when the facts call did not
+  //    happen (nothing to verify) or the budget is spent; a failed call is a finding, never a
+  //    failed job. No persist of its own — the checkpoint below carries the result.
+  let facts = merged;
+  if (planFacts !== EMPTY_PLAN_FACTS) {
+    await deps.onProgress(PROGRESS_VERIFYING, "Checking the facts", lastPersistedAt);
+    facts = await verifyFacts(merged, briefInput, deps, findings);
+  }
+
   const planned: Lesson = {
     ...withSkeleton,
-    facts: assignFactIds(skeleton, planFacts, brief.durationMin),
+    facts,
     generation: {
       jobId: deps.context.jobId,
       stage: "planned",
       startedAt,
-      promptVersions: { planned: `${planSkeletonPrompt.version}+${planFactsPrompt.version}` },
+      promptVersions: {
+        planned: `${planSkeletonPrompt.version}+${planFactsPrompt.version}+${verifyFactsPrompt.version}`,
+      },
       // The budget is per job, so its totals are the job's usage so far (every stage refreshes).
       usage: deps.budget.totals(),
       findings,
@@ -134,6 +156,55 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   const third = await deps.persist(planned);
   await deps.onProgress(PROGRESS_PLANNED, "Planned", third.updatedAt);
   return { ...state, lesson: planned };
+}
+
+/**
+ * The Verify call and its patch. A cap stop records the budget finding (once) and leaves the facts
+ * as they are; two schema misses record `VERIFY_FAILED_FINDING`; anything else propagates. One
+ * `fact-verify` warning per applied correction, content-free.
+ */
+async function verifyFacts(
+  facts: LessonFacts,
+  briefInput: { topic: string; audience: Audience },
+  deps: PipelineDeps,
+  findings: Finding[],
+): Promise<LessonFacts> {
+  deps.logger.info({ stage: "plan", call: "verify" }, "plan call");
+  try {
+    const call = await callStructured({
+      deps,
+      stage: "plan",
+      cls: "standard",
+      effort: "high",
+      prompt: verifyFactsPrompt,
+      input: { audience: briefInput.audience, topic: briefInput.topic, facts },
+      schema: verifyOutputSchemaFor(facts),
+      maxOutputTokens: MAX_OUTPUT_TOKENS.verify,
+    });
+    const patched = applyVerifyPatch(facts, call.output.corrections);
+    for (const c of patched.applied) findings.push(verifyFinding(c));
+    deps.logger.info(
+      { stage: "plan", call: "verify", corrections: patched.applied.length },
+      "facts verified",
+    );
+    return patched.facts;
+  } catch (error) {
+    if (error instanceof BudgetExceeded) {
+      if (!findings.some((f) => f.check === "budget")) {
+        findings.push(BUDGET_FINDING(error.by, "fact verification"));
+      }
+      return facts;
+    }
+    // A cancel is the caller's to see; anything else (two schema misses, a provider fault) keeps
+    // the facts as they were and says so — Verify never fails the job.
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    deps.logger.warn(
+      { stage: "plan", call: "verify", err: error instanceof StageFailure ? undefined : error },
+      "fact verification failed; facts kept",
+    );
+    findings.push(VERIFY_FAILED_FINDING);
+    return facts;
+  }
 }
 
 /**
