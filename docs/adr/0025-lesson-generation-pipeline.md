@@ -654,4 +654,3 @@ eval cells (Recall forbids the `open-response` Explain requires), so there are f
 `fixtures/plan-skeleton.{recall,explain,apply,evaluate}.json`, the same lesson with positions 0–6
 identical so the one `plan-facts.json` fits each — and `eval:schema` picks the fixture by the
 brief's verb (`fixtureAiFor`); `FIXTURES.planSkeleton` is the Explain one, the default cell.
-

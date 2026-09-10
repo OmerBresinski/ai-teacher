@@ -221,7 +221,7 @@ describe("planSkeletonSchemaFor", () => {
     test("row 4: Evaluate / Some with no matching, sort or second worked-example is an issue naming all three", () => {
       const messages = withShape(outline(), "Evaluate", "Some prior knowledge");
       expect(messages).toEqual([
-        "outline: The lesson sets no two cases against each other: add a matching or sort slide in the practise phase, or a second worked-example in the explain phase.",
+        "outline: Nothing here sets two cases against each other; add a matching or sort slide, or two worked-example slides.",
       ]);
       const paired = outline();
       paired[6] = { ...paired[6], kind: "matching" };
@@ -235,8 +235,12 @@ describe("planSkeletonSchemaFor", () => {
       const entries = outline();
       entries[4] = { ...entries[4], kind: "image-text", imageBrief: RIVER };
       expect(withShape(entries, "Explain", "Some prior knowledge")).toEqual([
-        "outline: The outline has 1 content slide; this lesson needs at least 2: the definition first, then the mechanism (how or why) on its own slide. Add one in the explain phase.",
+        "outline: The outline has 1 content slide. At least 2 content slides: the definition first, then the mechanism (how or why) on its own slide; add one in the explain phase.",
       ]);
+      // Revisiting has no definition slide, so the message does not ask for one.
+      expect(withShape(entries, "Explain", "Revisiting")).toContainEqual(
+        "outline: The outline has 1 content slide. At least 2 content slides, each explaining one mechanism (how or why); add one in the explain phase.",
+      );
       const recall = outline_new();
       recall.splice(7, 1);
       recall[7] = { ...recall[7], kind: "exit-ticket" };

@@ -132,11 +132,11 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "plan-skeleton": {
     version: "plan-skeleton.v10",
-    hash: "09a93f9f9bd3d14f50cb0aecbbac90a148bd8830f2587407c42823b242210a60",
+    hash: "3b5f5b9580a89a8ead77b55cc04810743dbdb88e8312339a6fee6943a41a1e46",
   },
   "plan-facts": {
     version: "plan-facts.v6",
-    hash: "a8a0c26efc64ea88e431582d86103fd95aac55ad464787d2ccf43599ec1444ac",
+    hash: "60e7aebe710c79ceea031364138bedabfe655515079f7c32956242e7793639c5",
   },
   "verify-facts": {
     version: "verify-facts.v1",
@@ -209,8 +209,18 @@ describe("prompt versions", () => {
       "The first explain-phase slide is a content slide that defines the topic and names two or three examples.",
     );
     expect(skeleton).toContain(
-      "Include at least one of each: worked-example (explain phase), open-response (practise phase), vocabulary (starter phase).",
+      "Include at least one of each: worked-example, open-response, vocabulary.",
     );
+    // A revisiting class has no definition slide, so the content sentence asks for mechanism only.
+    const revisiting = PROMPTS["plan-skeleton"].user({
+      ...(SAMPLE_INPUTS["plan-skeleton"] as object),
+      shape: lessonShapeOf({ objectiveVerb: "Explain x", priorConfidence: "Revisiting" }),
+    } as never);
+    expect(revisiting).toContain("revisiting the topic, so no definition slide");
+    expect(revisiting).toContain(
+      "At least 2 content slides, each explaining one mechanism (how or why).",
+    );
+    expect(revisiting).not.toContain("the definition first");
     expect(skeleton).toContain("Explain slides take at least 40% of the minutes.");
     expect(skeleton).toContain(
       "Confront the misconception on a true-false slide or as a multiple-choice distractor.",

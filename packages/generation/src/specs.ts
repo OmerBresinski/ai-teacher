@@ -15,7 +15,7 @@ import {
 } from "@tj/domain/documents";
 import { BlockSpecSchema, noPictureReference, SlideSpecSchema, SPEC_LIMITS } from "@tj/slides";
 import { z } from "zod";
-import { phaseOfKind } from "./prompts/shape";
+import { contentSentence, phaseOfKind, TWO_CASES } from "./prompts/shape";
 import type { LessonShape, TierWeights } from "./shapes";
 import { INPUT_CHECKS } from "./types";
 
@@ -338,7 +338,8 @@ function refineShape(
       ["outline", firstExplain, "kind"],
     );
   }
-  // requiredKinds and requireVocabulary: each present at least once.
+  // requiredKinds and requireVocabulary: each present at least once, in any phase — the table names
+  // kinds, not phases; the message's phase is where the slide usually goes.
   const required = shape.requireVocabulary
     ? [...new Set([...shape.requiredKinds, "vocabulary" as const])]
     : shape.requiredKinds;
@@ -359,11 +360,11 @@ function refineShape(
       );
     }
   });
-  // minContent: the definition, then the mechanism on its own slide.
+  // minContent: the definition (when the shape opens with one), then the mechanism on its own slide.
   const content = count("content");
   if (content < shape.minContent) {
     issue(
-      `The outline has ${content} content slide${content === 1 ? "" : "s"}; this lesson needs at least ${shape.minContent}: the definition first, then the mechanism (how or why) on its own slide. Add one in the explain phase.`,
+      `The outline has ${content} content slide${content === 1 ? "" : "s"}. ${contentSentence(shape)}; add one in the explain phase.`,
       ["outline"],
     );
   }
@@ -414,10 +415,7 @@ function refineShape(
     !kinds.has("sort") &&
     count("worked-example") < 2
   ) {
-    issue(
-      "The lesson sets no two cases against each other: add a matching or sort slide in the practise phase, or a second worked-example in the explain phase.",
-      ["outline"],
-    );
+    issue(`Nothing here sets two cases against each other; add ${TWO_CASES}.`, ["outline"]);
   }
   // A class new to the topic gets a content or worked-example slide for every objective
   // (TEACH-211; the confidence override the shape table keeps).

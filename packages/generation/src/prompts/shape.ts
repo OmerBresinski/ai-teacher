@@ -15,7 +15,11 @@ const CLASS_OF: Record<PriorConfidence, string> = {
     "a class revisiting the topic, so no definition slide: go straight to the mechanism, method or judgement",
 };
 
-/** Where a required kind belongs, so the "add it" sentence says where. */
+/**
+ * Where a required kind usually goes, so a validation message can say where to add it. A hint,
+ * not a rule: the table's deterministic column names kinds, and a `matching` plenary in the check
+ * phase or a vocabulary recap in practise is a plausible outline no schema should send back.
+ */
 const PHASE_OF_KIND: Record<string, string> = {
   content: "explain",
   "worked-example": "explain",
@@ -40,20 +44,14 @@ export function shapeBlock(shape: LessonShape): string[] {
     ? [...new Set([...shape.requiredKinds, "vocabulary"])]
     : shape.requiredKinds;
   if (required.length > 0) {
-    lines.push(
-      `Include at least one of each: ${required.map((k) => `${k} (${phaseOfKind(k)} phase)`).join(", ")}.`,
-    );
+    lines.push(`Include at least one of each: ${required.join(", ")}.`);
   }
   if (shape.forbiddenKinds.length > 0) {
     lines.push(
       `Do not include: ${shape.forbiddenKinds.join(", ")}; check with retrieval kinds (matching, fill-gap, multiple-choice, true-false) instead.`,
     );
   }
-  if (shape.minContent > 1) {
-    lines.push(
-      `At least ${shape.minContent} content slides: the definition first, then the mechanism (how or why) on its own slide.`,
-    );
-  }
+  if (shape.minContent > 1) lines.push(`${contentSentence(shape)}.`);
   lines.push(
     `At least ${shape.minCheckEntries} slides where pupils answer (the practise and check phases together).`,
   );
@@ -71,11 +69,10 @@ export function shapeBlock(shape: LessonShape): string[] {
       "Confront the misconception on a true-false slide or as a multiple-choice distractor.",
     );
   }
-  if (shape.requireTwoCases) {
+  if (shape.requireTwoCases)
     lines.push(
-      "Teach the criteria for the judgement on a content slide, then set two cases against each other: a matching or sort slide, or two worked-example slides.",
+      `Teach the criteria for the judgement on a content slide, then set two cases against each other: ${TWO_CASES}.`,
     );
-  }
   if (shape.judgementStem !== null) {
     lines.push(
       shape.young
@@ -85,6 +82,19 @@ export function shapeBlock(shape: LessonShape): string[] {
   }
   return lines;
 }
+
+/**
+ * What the content slides are for, by whether the explain phase opens with a definition: a class
+ * revisiting the topic gets no definition slide, so its content slides are all mechanism.
+ */
+export function contentSentence(shape: LessonShape): string {
+  return shape.firstExplainKind === "content"
+    ? `At least ${shape.minContent} content slides: the definition first, then the mechanism (how or why) on its own slide`
+    : `At least ${shape.minContent} content slides, each explaining one mechanism (how or why)`;
+}
+
+/** The two-cases requirement (Evaluate), shared by the Shape block and its validation message. */
+export const TWO_CASES = "a matching or sort slide, or two worked-example slides";
 
 /** The question-tier target line the facts call gets (`plan-facts`). */
 export function tierLine(shape: LessonShape): string {
