@@ -1,4 +1,4 @@
-import { button, character, cta, href, pageHero, split } from "../components.mjs";
+import { arrowIcon, button, character, cta, href, pageHero, split } from "../components.mjs";
 import { lessonData } from "./examples.mjs";
 
 const shadows = lessonData.shadows;
@@ -17,7 +17,7 @@ function related(current) {
     .filter(([slug]) => slug !== current)
     .map(
       ([slug, label]) =>
-        `<a href="${href(`/features/${slug}/`)}">${label}<span aria-hidden="true">↗</span></a>`,
+        `<a href="${href(`/features/${slug}/`)}">${label}<span aria-hidden="true">${arrowIcon}</span></a>`,
     )
     .join("")}</nav></section>`;
 }
@@ -40,7 +40,7 @@ const worksheet = `<article class="ft-worksheet"><header><span class="ft-paper-l
 
 const answers = `<div class="ft-answer-pair"><article class="ft-question-card"><span class="ft-paper-label">Pupil question / 03</span><h3>${shadows.questions[2]}</h3><div class="ft-writing-lines" aria-hidden="true"></div></article><article class="ft-answer-card"><span class="ft-paper-label">Teacher answer / 03</span><p class="ft-answer-response">${shadows.answers[2]}</p><div class="ft-answer-note"><strong>Room for their own words</strong><p>Accept equivalent explanations that demonstrate the learning goal. Review the material for your class before teaching.</p></div></article></div>`;
 
-const review = `<div class="ft-review"><article class="ft-review-item"><div class="ft-review-state"><span aria-hidden="true">✓</span> Clarified</div><h3>Make the investigation precise.</h3><p class="ft-review-location">Slide 3 · ${shadows.slides[2][0]}</p><div class="ft-revision"><div><span class="ft-paper-label">Before</span><p>${shadows.reviewBefore}</p></div><div><span class="ft-paper-label">After</span><p>${shadows.reviewAfter}</p></div></div><p class="ft-review-reason">${shadows.reviewWhy}</p></article><article class="ft-review-item ft-review-attention"><div class="ft-review-state"><span aria-hidden="true">↗</span> Teacher review</div><h3>Check the practical setup.</h3><p>${shadows.reviewAttention}</p><a href="${href("/examples/shadows/#review")}">See the issue in the sample <span aria-hidden="true">↗</span></a></article></div>`;
+const review = `<div class="ft-review"><article class="ft-review-item"><div class="ft-review-state"><span aria-hidden="true">✓</span> Clarified</div><h3>Make the investigation precise.</h3><p class="ft-review-location">Slide 3 · ${shadows.slides[2][0]}</p><div class="ft-revision"><div><span class="ft-paper-label">Before</span><p>${shadows.reviewBefore}</p></div><div><span class="ft-paper-label">After</span><p>${shadows.reviewAfter}</p></div></div><p class="ft-review-reason">${shadows.reviewWhy}</p></article><article class="ft-review-item ft-review-attention"><div class="ft-review-state"><span aria-hidden="true">${arrowIcon}</span> Teacher review</div><h3>Check the practical setup.</h3><p>${shadows.reviewAttention}</p><a href="${href("/examples/shadows/#review")}">See the issue in the sample <span aria-hidden="true">${arrowIcon}</span></a></article></div>`;
 
 const pages = [
   {
@@ -184,7 +184,7 @@ const pages = [
         eyebrow: "A second look, not the final word",
         title: "You decide what reaches your class.",
         body: "<p>We’re building Check to review generated lessons for factual errors, unclear questions and gaps in the materials. The review will show corrections and issues left for your attention.</p><p>Check can miss things. Review the content, answers and practical activities before teaching.</p>",
-        visual: `<div class="ft-teacher-note"><span class="ft-paper-label">Your final look</span><h3>Right for this class?</h3><ul><li>Does the explanation make sense?</li><li>Do the questions practise the goal?</li><li>Is the practical activity suitable?</li></ul><a href="${href("/trust/")}">How we approach AI <span aria-hidden="true">↗</span></a></div>`,
+        visual: `<div class="ft-teacher-note"><span class="ft-paper-label">Your final look</span><h3>Right for this class?</h3><ul><li>Does the explanation make sense?</li><li>Do the questions practise the goal?</li><li>Is the practical activity suitable?</li></ul><a href="${href("/trust/")}">How we approach AI <span aria-hidden="true">${arrowIcon}</span></a></div>`,
         reverse: true,
       }) +
       related("lesson-checks") +

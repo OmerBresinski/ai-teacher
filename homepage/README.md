@@ -23,7 +23,9 @@ network call is required to build this site. Scripts also work with Node.
 
 ## Source ownership
 
-- `src/components.mjs`: shared navigation, footer, characters and page shell.
+- `src/components.mjs`: shared navigation, footer, characters and page shell. Decorative diagonal
+  arrows use `arrowIcon` SVG artwork so browser emoji fonts cannot replace them. The standalone
+  lesson animation carries the same inline artwork; keep both in sync.
 - `src/pages/{home,features,examples,information,supporting}.mjs`: page copy and markup. Examples
   are canonical authored data, reused by home/features so excerpts stay consistent.
 - `assets/`: styles, accessible example interactions, preview form behaviour, font and favicon.

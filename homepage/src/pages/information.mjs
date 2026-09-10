@@ -1,7 +1,7 @@
-import { button, character, href, pageHero, split } from "../components.mjs";
+import { arrowIcon, button, character, href, pageHero, split } from "../components.mjs";
 
 const link = (label, route) =>
-  `<a class="info-link" href="${href(route)}">${label}<span aria-hidden="true"> ↗</span></a>`;
+  `<a class="info-link" href="${href(route)}">${label}<span aria-hidden="true"> ${arrowIcon}</span></a>`;
 const actions = (primary, route, secondary, secondaryRoute) =>
   button(primary, route) +
   (secondary ? button(secondary, secondaryRoute, { secondary: true }) : "");
@@ -9,7 +9,7 @@ const page = (route, title, description, body) => ({ route, title, description, 
 const note = (text) => `<p class="info-note">${text}</p>`;
 const accessForm = `<form class="info-form" data-preview-form>
   <label for="access-email">Email address</label><input id="access-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
-  <button class="button primary info-submit" type="submit" disabled>Preview signup <span aria-hidden="true">↗</span></button>
+  <button class="button primary info-submit" type="submit" disabled>Preview signup <span aria-hidden="true">${arrowIcon}</span></button>
   <p class="info-form-notice">This is a form preview. Your email will not be sent, saved or added to a mailing list.</p>
   <noscript><p>This form preview needs JavaScript to check your details. Nothing can be submitted here.</p></noscript><p class="info-form-status" data-form-status role="status"></p>
 </form>`;
@@ -142,7 +142,7 @@ export default [
     "/contact/",
     "Contact Gather",
     "Ask about Gather, school use or the proposed service.",
-    `<section class="info-contact"><div class="info-contact-copy"><p class="eyebrow">GET IN TOUCH</p><h1>How can<br>we help?</h1><p>Tell us what you need to know. Please leave pupil names and confidential information out of your message.</p>${link("You might find an answer here", "/help/")}</div><form class="info-form" data-preview-form><label for="contact-name">Your name <span>(optional)</span></label><input id="contact-name" name="name" autocomplete="name"><label for="contact-email">Email address</label><input id="contact-email" name="email" type="email" autocomplete="email" required><label for="contact-subject">What can we help with?</label><select id="contact-subject" name="subject"><option>Using Gather</option><option>School use</option><option>Privacy</option><option>Something else</option></select><label for="contact-message">Message</label><textarea id="contact-message" name="message" rows="5" required></textarea><button class="button primary info-submit" type="submit" disabled>Preview message <span aria-hidden="true">↗</span></button><p class="info-form-notice">This is a form preview. Your message and contact details will not be sent or saved.</p><noscript><p>This form preview needs JavaScript to check your details. Nothing can be submitted here.</p></noscript><p class="info-form-status" data-form-status role="status"></p></form></section>`,
+    `<section class="info-contact"><div class="info-contact-copy"><p class="eyebrow">GET IN TOUCH</p><h1>How can<br>we help?</h1><p>Tell us what you need to know. Please leave pupil names and confidential information out of your message.</p>${link("You might find an answer here", "/help/")}</div><form class="info-form" data-preview-form><label for="contact-name">Your name <span>(optional)</span></label><input id="contact-name" name="name" autocomplete="name"><label for="contact-email">Email address</label><input id="contact-email" name="email" type="email" autocomplete="email" required><label for="contact-subject">What can we help with?</label><select id="contact-subject" name="subject"><option>Using Gather</option><option>School use</option><option>Privacy</option><option>Something else</option></select><label for="contact-message">Message</label><textarea id="contact-message" name="message" rows="5" required></textarea><button class="button primary info-submit" type="submit" disabled>Preview message <span aria-hidden="true">${arrowIcon}</span></button><p class="info-form-notice">This is a form preview. Your message and contact details will not be sent or saved.</p><noscript><p>This form preview needs JavaScript to check your details. Nothing can be submitted here.</p></noscript><p class="info-form-status" data-form-status role="status"></p></form></section>`,
   ),
 
   page(
