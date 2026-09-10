@@ -7,11 +7,15 @@ import type { SlideSpec } from "@tj/slides";
 import pino, { type Logger } from "pino";
 import evaluateFixture from "./fixtures/evaluate.json";
 import planFactsFixture from "./fixtures/plan-facts.json";
-import planSkeletonFixture from "./fixtures/plan-skeleton.json";
+import planSkeletonApply from "./fixtures/plan-skeleton.apply.json";
+import planSkeletonEvaluate from "./fixtures/plan-skeleton.evaluate.json";
+import planSkeletonExplain from "./fixtures/plan-skeleton.explain.json";
+import planSkeletonRecall from "./fixtures/plan-skeleton.recall.json";
 import repairFixture from "./fixtures/repair.json";
 import slidesFixture from "./fixtures/slides.json";
 import verifyFixture from "./fixtures/verify.json";
 import worksheetFixture from "./fixtures/worksheet.json";
+import type { ObjectiveVerb } from "./shapes";
 import type { PlanFacts, PlanSkeleton, VerifyOutput, WorksheetSpec } from "./specs";
 import { noSources, type PhotoPlacer, type PipelineDeps, type PipelineState } from "./types";
 
@@ -22,8 +26,24 @@ import { noSources, type PhotoPlacer, type PipelineDeps, type PipelineState } fr
  * empty lesson `POST /lessons` creates, and a `PipelineDeps` recorder. Network-free.
  */
 
+/**
+ * One skeleton fixture per objective verb (TEACH-229): the same states-of-matter lesson, positions
+ * 0–6 identical (title, objectives, starter, vocabulary, content, content, worked-example) so the
+ * one `plan-facts.json` fits every one of them, positions 7–10 written to the verb's shape. Each
+ * satisfies the shape of every eval brief with that verb; `eval:schema` picks by the brief's verb.
+ * The Explain one satisfies all three confidences: it is also the e2e worker's script
+ * (`apps/worker/src/fake-ai.ts`), and the brief screen pre-selects Explain / New to it.
+ */
+export const PLAN_SKELETONS: Record<ObjectiveVerb, PlanSkeleton> = {
+  Recall: planSkeletonRecall as PlanSkeleton,
+  Explain: planSkeletonExplain as PlanSkeleton,
+  Apply: planSkeletonApply as PlanSkeleton,
+  Evaluate: planSkeletonEvaluate as PlanSkeleton,
+};
+
 export const FIXTURES = {
-  planSkeleton: planSkeletonFixture as PlanSkeleton,
+  /** The default cell's skeleton (Explain / Some prior knowledge — what a brief without answers gets). */
+  planSkeleton: PLAN_SKELETONS.Explain,
   planFacts: planFactsFixture as PlanFacts,
   slides: slidesFixture as Record<SlideSpec["kind"], SlideSpec>,
   worksheet: worksheetFixture as WorksheetSpec,
@@ -58,8 +78,8 @@ export function sampleBriefLesson(patch: Partial<Lesson> = {}): Lesson {
 const json = (value: unknown) => JSON.stringify(value);
 
 /** The slide answers for the fixture plan's outline entries after `title` and `objectives`. */
-export function fixtureSlideScript(): string[] {
-  return FIXTURES.planSkeleton.outline.slice(2).map((entry) => json(FIXTURES.slides[entry.kind]));
+export function fixtureSlideScript(skeleton: PlanSkeleton = FIXTURES.planSkeleton): string[] {
+  return skeleton.outline.slice(2).map((entry) => json(FIXTURES.slides[entry.kind]));
 }
 
 /** The input check's one answer (a clean brief), then Plan's three: skeleton, facts, verify. */
@@ -80,6 +100,8 @@ export const SLIDES_INDEX = CHECK_INPUT_CALLS + PLAN_CALLS;
 export function pipelineScript(
   options: {
     checkInput?: unknown;
+    /** The skeleton answer (and the slide answers that follow it); the default cell's by default. */
+    skeleton?: PlanSkeleton;
     /** Verify's answer; the fixture's empty patch by default. */
     verify?: unknown;
     evaluate?: unknown;
@@ -89,12 +111,13 @@ export function pipelineScript(
     overrides?: Record<number, FakeScriptEntry>;
   } = {},
 ): FakeScriptEntry[] {
+  const skeleton = options.skeleton ?? FIXTURES.planSkeleton;
   const script: FakeScriptEntry[] = [
     json(options.checkInput ?? { findings: [] }),
-    json(FIXTURES.planSkeleton),
+    json(skeleton),
     json(FIXTURES.planFacts),
     json(options.verify ?? FIXTURES.verify),
-    ...fixtureSlideScript(),
+    ...fixtureSlideScript(skeleton),
     json(FIXTURES.worksheet),
     ...(options.judges ?? []),
     json(options.evaluate ?? { findings: [] }),

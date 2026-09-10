@@ -36,7 +36,7 @@
     },
     {
       "kind": "starter",
-      "minutes": 5,
+      "minutes": 3,
       "factRefs": [
         {
           "type": "objective",
@@ -51,7 +51,7 @@
     },
     {
       "kind": "vocabulary",
-      "minutes": 8,
+      "minutes": 4,
       "factRefs": [
         {
           "type": "objective",
@@ -66,21 +66,36 @@
     },
     {
       "kind": "content",
-      "minutes": 10,
+      "minutes": 8,
       "factRefs": [
         {
           "type": "objective",
           "index": 0
-        },
-        {
-          "type": "objective",
-          "index": 1
         }
       ],
       "phase": "explain",
       "brief": {
-        "adds": "Explains the particle model: arrangement and movement decide the state.",
+        "adds": "Defines the three states of matter and names an everyday example of each.",
         "avoids": "Do not repeat the vocabulary definitions."
+      }
+    },
+    {
+      "kind": "content",
+      "minutes": 6,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ],
+      "phase": "explain",
+      "brief": {
+        "adds": "Explains the particle model: arrangement and movement decide the state, and energy changes it.",
+        "avoids": "Not the examples from the definition slide."
       }
     },
     {
@@ -103,6 +118,20 @@
       }
     },
     {
+      "kind": "matching",
+      "minutes": 6,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ],
+      "phase": "practise",
+      "brief": {
+        "adds": "Sets two substances against each other: which changes state first, and by which criterion."
+      }
+    },
+    {
       "kind": "true-false",
       "minutes": 5,
       "factRefs": [
@@ -117,8 +146,8 @@
       }
     },
     {
-      "kind": "multiple-choice",
-      "minutes": 6,
+      "kind": "open-response",
+      "minutes": 7,
       "factRefs": [
         {
           "type": "objective",
@@ -127,27 +156,12 @@
       ],
       "phase": "practise",
       "brief": {
-        "adds": "Checks recall of which state has particles furthest apart.",
-        "avoids": "Not the true-false statement again."
-      }
-    },
-    {
-      "kind": "sort",
-      "minutes": 6,
-      "factRefs": [
-        {
-          "type": "objective",
-          "index": 2
-        }
-      ],
-      "phase": "practise",
-      "brief": {
-        "adds": "Orders the states by particle energy."
+        "adds": "Pupils judge which explanation of boiling is better and say why."
       }
     },
     {
       "kind": "exit-ticket",
-      "minutes": 5,
+      "minutes": 6,
       "factRefs": [
         {
           "type": "objective",

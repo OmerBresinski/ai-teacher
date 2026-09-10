@@ -627,3 +627,30 @@ to Explain / Some prior knowledge, the values the brief screen suggests. This am
 pipeline behaviour: Plan (TEACH-229) and the writers (TEACH-230) read the shape next. The eval's
 eight briefs now carry a verb and a confidence covering every value, and the rubric judge
 (`rubric-judge.v2`) scores a ninth dimension, `verbFit`, told both.
+
+## Amendment (2026-09-10, project Lesson shape by objective verb — TEACH-229)
+
+§7. Plan writes the outline to the lesson shape, and an outline without that shape is a validation
+issue the retry names. `plan-skeleton.v10` no longer appends the brief's answers as "The teacher
+also said" lines: `PlanSkeletonInput.shape` (from `lessonShapeOf(answers, { yearGroup, ageBand })`,
+computed once in `stages/plan.ts`) is rendered as a **Shape** block of plain sentences, one per
+`LessonShape` field that applies (`prompts/shape.ts`), and the prompt's own example opens its
+explain phase with a definition slide. `planSkeletonSchemaFor({ durationMin, shape })` enforces
+the table's deterministic column: `firstExplainKind`, `requiredKinds` (+ `requireVocabulary`),
+`forbiddenKinds`, `minContent`, `minCheckEntries` (slides in the practise and check phases — the
+slides where pupils answer; the base of 2 is the phase rule already in force), `explainMinPercent`
+(replacing the fixed 30 %), `practiseMinPercent`, `requireWorkedExampleBeforePractise` and
+`requireTwoCases`; the "New to it" one-explain-slide-per-objective rule (TEACH-211) is kept as
+`shape.confidence`. Without a shape the schema is structural only (`PlanSkeletonSchema`, the resume
+path). `requireMisconceptionConfronted` needs the facts, so `planFactsSchemaFor(skeleton, shape)`
+checks it (a `true-false` in the outline, or any distractor with a `misconceptionRef`); the same
+call's tier floor is the shape's `tierWeights` less one, and `plan-facts.v6` states the target
+from the shape ("Question tiers: 5 easy, 5 core, 2 stretch") instead of the fixed 4 / 5 / 3. Two
+rows of the table stay prompt-only, by the TEACH-227 rule that a rejection must buy quality worth a
+Terra retry: that the definition slide's brief "mentions defining" and that Evaluate's criteria
+slide "mentions criteria" are wording the model chooses, and the position and kind checks catch
+the lesson that never defines its subject. §23: one skeleton fixture cannot satisfy all eight
+eval cells (Recall forbids the `open-response` Explain requires), so there are four —
+`fixtures/plan-skeleton.{recall,explain,apply,evaluate}.json`, the same lesson with positions 0–6
+identical so the one `plan-facts.json` fits each — and `eval:schema` picks the fixture by the
+brief's verb (`fixtureAiFor`); `FIXTURES.planSkeleton` is the Explain one, the default cell.

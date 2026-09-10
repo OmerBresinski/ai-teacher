@@ -16,6 +16,7 @@ export {
   type StructuredPrompt,
 } from "./call";
 export * from "./prompts";
+export * from "./shapes";
 export * from "./specs";
 export { checkInput } from "./stages/check-input";
 export { evaluate } from "./stages/evaluate";

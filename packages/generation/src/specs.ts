@@ -15,6 +15,8 @@ import {
 } from "@tj/domain/documents";
 import { BlockSpecSchema, noPictureReference, SlideSpecSchema, SPEC_LIMITS } from "@tj/slides";
 import { z } from "zod";
+import { contentSentence, phaseOfKind, TWO_CASES } from "./prompts/shape";
+import type { LessonShape, TierWeights } from "./shapes";
 import { INPUT_CHECKS } from "./types";
 
 /*
@@ -95,15 +97,10 @@ const outlineEntry = z.strictObject({
   phase: z.enum(LESSON_PHASES).optional(),
 });
 
-/** The share of a lesson that must explain (content, worked example, picture): 30 %. */
-export const EXPLAIN_SHARE_MIN_PERCENT = 30;
 /** The kinds that explain; the same set `checkLesson`'s `explanation-share` counts. */
 const EXPLAIN_KINDS: ReadonlySet<string> = new Set(["content", "worked-example", "image-text"]);
-/** The fewest questions of each tier a plan gives (the prompt asks for 4 / 5 / 3). */
-const TIER_MINIMUMS = { easy: 3, core: 3, stretch: 2 } as const;
-/** The brief answer that asks for an explain slide per objective (`brief-questions.ts`). */
-export const PRIOR_CONFIDENCE_KEY = "priorConfidence";
-export const PRIOR_CONFIDENCE_NEW = "New to it";
+/** The kinds a Recall lesson checks with when `open-response` is forbidden (the Shape sentence). */
+const RETRIEVAL_KINDS = "matching, fill-gap, multiple-choice or true-false";
 const PHASE_ORDER: Record<(typeof LESSON_PHASES)[number], number> = {
   starter: 0,
   explain: 1,
@@ -160,18 +157,23 @@ const PlanSkeletonShape = z.strictObject({
 /** What the skeleton's refinements need from the brief. */
 export type PlanSkeletonContext = {
   durationMin: number;
-  /** The teacher's clarifying answers; `priorConfidence: "New to it"` asks for one explain slide per objective. */
-  answers?: Record<string, string> | undefined;
+  /**
+   * The lesson's shape (`lessonShapeOf`): its deterministic column becomes the refinements below.
+   * Absent, only the structural rules apply (`PlanSkeletonSchema`: tests and the resume path).
+   */
+  shape?: LessonShape | undefined;
 };
 
 /**
- * Plan's first call (ADR 0025 §7, TEACH-138; Generation quality §2, TEACH-211): the objectives
- * and the outline, so the objectives slide can be shown while the rest of the facts are still
- * being written. The other fact lists do not exist yet, so the outline may refer to objectives
- * only; the facts call adds the rest. The outline is a lesson that teaches before it tests: a
- * `phase` on every entry after the two Plan materialises itself, in order starter → explain →
- * practise → check, with explain minutes at least 30 % of the lesson, and a `brief` saying what
- * each slide adds. Every message here is what the retry shows the model.
+ * Plan's first call (ADR 0025 §7, TEACH-138; Generation quality §2, TEACH-211; Lesson shape,
+ * TEACH-229): the objectives and the outline, so the objectives slide can be shown while the rest
+ * of the facts are still being written. The other fact lists do not exist yet, so the outline may
+ * refer to objectives only; the facts call adds the rest. The outline is a lesson that teaches
+ * before it tests: a `phase` on every entry after the two Plan materialises itself, in order
+ * starter → explain → practise → check, and a `brief` saying what each slide adds; then the
+ * lesson's shape — which kinds it must and must not have, what opens the explain phase, the
+ * explain and practise shares — every sentence of the prompt's Shape block as one check. Every
+ * message here is what the retry shows the model.
  */
 /** Lower-case content words of a short phrase (stop words and plural `s` dropped). */
 function contentWordsOf(text: string): string[] {
@@ -275,16 +277,10 @@ export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<P
     // Phases run starter → explain → practise → check and never go back.
     let last = -1;
     let lastPhase: string | undefined;
-    let explainMinutes = 0;
     const phases = new Set<string>();
     skeleton.outline.forEach((entry, i) => {
       if (entry.phase === undefined) return;
       phases.add(entry.phase);
-      // Only slides that teach count towards the explain share — the same kinds `checkLesson`
-      // counts — so a vocabulary or question slide tagged "explain" does not pad it.
-      if (entry.phase === "explain" && EXPLAIN_KINDS.has(entry.kind)) {
-        explainMinutes += entry.minutes;
-      }
       if (entry.phase === "explain" && !EXPLAIN_KINDS.has(entry.kind)) {
         issue(
           `Outline position ${i} is a ${entry.kind} slide in the explain phase; explain slides are content, worked-example or image-text. Give it the phase it belongs to, or change its kind.`,
@@ -306,35 +302,147 @@ export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<P
         issue(`The lesson needs at least one "${needed}" slide.`, ["outline"]);
       }
     }
-    const minExplain = Math.ceil((context.durationMin * EXPLAIN_SHARE_MIN_PERCENT) / 100);
-    if (explainMinutes < minExplain) {
-      issue(
-        `The explain phase needs at least ${minExplain} minutes (${EXPLAIN_SHARE_MIN_PERCENT}% of ${context.durationMin}); it has ${explainMinutes}. Add or lengthen content, worked-example or image-text slides.`,
-        ["outline"],
-      );
-    }
-    // A class new to the topic gets a content or worked-example slide for every objective.
-    if (context.answers?.[PRIOR_CONFIDENCE_KEY] === PRIOR_CONFIDENCE_NEW) {
-      const explained = new Set<number>();
-      for (const entry of skeleton.outline) {
-        if (entry.kind !== "content" && entry.kind !== "worked-example") continue;
-        for (const ref of entry.factRefs) if (ref.type === "objective") explained.add(ref.index);
-      }
-      skeleton.learningObjectives.forEach((_, i) => {
-        if (!explained.has(i)) {
-          issue(
-            `The class is new to this: objective ${i} needs a content or worked-example slide that names it.`,
-            ["outline"],
-          );
-        }
-      });
-    }
+    if (context.shape) refineShape(skeleton, context.shape, context.durationMin, issue);
   });
 }
 
 /**
- * The skeleton shape without the brief-dependent refinements: for tests and the resume path,
- * which parse a skeleton the pipeline has already accepted once.
+ * The shape's deterministic column (`shapes.ts`, project "Lesson shape by objective verb") as
+ * refinements, one per field, in the order the Shape block states them. Each message says what to
+ * add and where. Two of the table's rows are left to the prompt on purpose: a content brief that
+ * "mentions defining" or "mentions criteria" is wording the model chooses, and a rejection on it
+ * would cost a Terra retry for a good outline (the TEACH-227 lesson). `requireMisconceptionConfronted`
+ * needs the facts (a distractor's `misconceptionRef`), so it lives in `planFactsSchemaFor`.
+ */
+function refineShape(
+  skeleton: PlanSkeleton,
+  shape: LessonShape,
+  durationMin: number,
+  issue: (message: string, path: (string | number)[]) => void,
+) {
+  const outline = skeleton.outline;
+  const kinds = new Set<string>(outline.map((e) => e.kind));
+  const count = (kind: string) => outline.filter((e) => e.kind === kind).length;
+  const minutesIn = (phase: string, only?: ReadonlySet<string>) =>
+    outline
+      .filter((e) => e.phase === phase && (only === undefined || only.has(e.kind)))
+      .reduce((sum, e) => sum + e.minutes, 0);
+  const share = (percent: number) => Math.ceil((durationMin * percent) / 100);
+
+  // firstExplainKind: the explain phase opens with the definition.
+  const firstExplain = outline.findIndex((e) => e.phase === "explain");
+  const opener = outline[firstExplain];
+  if (shape.firstExplainKind !== null && opener && opener.kind !== shape.firstExplainKind) {
+    issue(
+      `Outline position ${firstExplain} is the first explain-phase slide and is a ${opener.kind}; for this lesson it is a content slide that defines the topic and names two or three examples. Put that content slide at position ${firstExplain} and move this one after it.`,
+      ["outline", firstExplain, "kind"],
+    );
+  }
+  // requiredKinds and requireVocabulary: each present at least once, in any phase — the table names
+  // kinds, not phases; the message's phase is where the slide usually goes.
+  const required = shape.requireVocabulary
+    ? [...new Set([...shape.requiredKinds, "vocabulary" as const])]
+    : shape.requiredKinds;
+  for (const kind of required) {
+    if (!kinds.has(kind)) {
+      issue(
+        `The outline has no ${kind} slide and this lesson needs one; add it in the ${phaseOfKind(kind)} phase.`,
+        ["outline"],
+      );
+    }
+  }
+  // forbiddenKinds: none present.
+  outline.forEach((entry, i) => {
+    if (shape.forbiddenKinds.includes(entry.kind)) {
+      issue(
+        `Outline position ${i} is ${anOf(entry.kind)} slide; ${anOf(shape.verb)} lesson has none. Make it ${RETRIEVAL_KINDS}.`,
+        ["outline", i, "kind"],
+      );
+    }
+  });
+  // minContent: the definition (when the shape opens with one), then the mechanism on its own slide.
+  const content = count("content");
+  if (content < shape.minContent) {
+    issue(
+      `The outline has ${content} content slide${content === 1 ? "" : "s"}. ${contentSentence(shape)}; add one in the explain phase.`,
+      ["outline"],
+    );
+  }
+  // minCheckEntries: slides where pupils answer — the practise and check phases together.
+  const answering = outline.filter((e) => e.phase === "practise" || e.phase === "check").length;
+  if (answering < shape.minCheckEntries) {
+    issue(
+      `Only ${answering} slide${answering === 1 ? "" : "s"} where pupils answer (practise and check phases); this lesson needs at least ${shape.minCheckEntries}. Add a practise slide.`,
+      ["outline"],
+    );
+  }
+  // explainMinPercent: only slides that teach count — the same kinds `checkLesson` counts — so a
+  // vocabulary or question slide tagged "explain" does not pad it.
+  const explainMinutes = minutesIn("explain", EXPLAIN_KINDS);
+  if (explainMinutes < share(shape.explainMinPercent)) {
+    issue(
+      `The explain phase needs at least ${share(shape.explainMinPercent)} minutes (${shape.explainMinPercent}% of ${durationMin}); it has ${explainMinutes}. Add or lengthen content, worked-example or image-text slides.`,
+      ["outline"],
+    );
+  }
+  // practiseMinPercent: every practise-phase slide counts.
+  const practiseMinutes = minutesIn("practise");
+  if (shape.practiseMinPercent > 0 && practiseMinutes < share(shape.practiseMinPercent)) {
+    issue(
+      `The practise phase needs at least ${share(shape.practiseMinPercent)} minutes (${shape.practiseMinPercent}% of ${durationMin}); it has ${practiseMinutes}. Add or lengthen practise slides.`,
+      ["outline"],
+    );
+  }
+  // requireWorkedExampleBeforePractise: the method before any practice (index order). A missing
+  // worked-example is the requiredKinds issue above, not a second one here.
+  const firstPractise = outline.findIndex((e) => e.phase === "practise");
+  const method = outline.findIndex((e) => e.kind === "worked-example");
+  if (
+    shape.requireWorkedExampleBeforePractise &&
+    method !== -1 &&
+    firstPractise !== -1 &&
+    method > firstPractise
+  ) {
+    issue(
+      `Outline position ${firstPractise} is a practise slide but the worked-example (the method) is at position ${method}; pupils practise only after the method. Move the worked-example before position ${firstPractise}, in the explain phase.`,
+      ["outline", firstPractise, "phase"],
+    );
+  }
+  // requireTwoCases: a matching or sort, or two worked examples.
+  if (
+    shape.requireTwoCases &&
+    !kinds.has("matching") &&
+    !kinds.has("sort") &&
+    count("worked-example") < 2
+  ) {
+    issue(`Nothing here sets two cases against each other; add ${TWO_CASES}.`, ["outline"]);
+  }
+  // A class new to the topic gets a content or worked-example slide for every objective
+  // (TEACH-211; the confidence override the shape table keeps).
+  if (shape.confidence === "New to it") {
+    const explained = new Set<number>();
+    for (const entry of outline) {
+      if (entry.kind !== "content" && entry.kind !== "worked-example") continue;
+      for (const ref of entry.factRefs) if (ref.type === "objective") explained.add(ref.index);
+    }
+    skeleton.learningObjectives.forEach((_, i) => {
+      if (!explained.has(i)) {
+        issue(
+          `The class is new to this: objective ${i} needs a content or worked-example slide that names it.`,
+          ["outline"],
+        );
+      }
+    });
+  }
+}
+
+function anOf(word: string): string {
+  return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
+}
+
+/**
+ * The skeleton shape without the brief-dependent refinements (no lesson shape): for tests and the
+ * resume path, which parse a skeleton the pipeline has already accepted once.
  */
 export const PlanSkeletonSchema = planSkeletonSchemaFor({ durationMin: 1 });
 export type PlanSkeleton = z.infer<typeof PlanSkeletonShape>;
@@ -429,10 +537,7 @@ const PlanFactsShape = z.strictObject({
           .optional(),
       }),
     )
-    .min(
-      12,
-      "Give at least 12 questions: four easy, five core, three stretch, each tagged with a use.",
-    )
+    .min(12, "Give at least 12 questions across the three tiers, each tagged with a use.")
     .max(20),
   pitch: z.strictObject({
     readingAgeTarget: z.number().int().min(5).max(18),
@@ -470,13 +575,27 @@ export const EMPTY_PLAN_FACTS: PlanFactsLike = {
 /** The first outline positions Plan materialises itself; the facts call may not touch them. */
 const FIRST_FACT_SLIDE = 2;
 
+/** The fewest questions of each tier: one under the shape's target (`tierWeights`, TEACH-229). */
+export function tierMinimumsOf(weights: TierWeights): TierWeights {
+  return {
+    easy: Math.max(weights.easy - 1, 1),
+    core: Math.max(weights.core - 1, 1),
+    stretch: Math.max(weights.stretch - 1, 1),
+  };
+}
+
 /**
- * The facts schema for one skeleton: every reference lands inside its list, every outline
- * position exists and is one of the slides the facts feed (not `title` / `objectives`, whose
- * objective references the skeleton fixed), and only the three lists this call produces may be
- * referenced — the objectives are already wired by the skeleton.
+ * The facts schema for one skeleton and its lesson shape: every reference lands inside its list,
+ * every outline position exists and is one of the slides the facts feed (not `title` /
+ * `objectives`, whose objective references the skeleton fixed), only the three lists this call
+ * produces may be referenced — the objectives are already wired by the skeleton — the tiers meet
+ * the shape's floor, and an Explain lesson confronts its misconception.
  */
-export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts> {
+export function planFactsSchemaFor(
+  skeleton: PlanSkeleton,
+  shape: LessonShape,
+): z.ZodType<PlanFacts> {
+  const minimums = tierMinimumsOf(shape.tierWeights);
   return PlanFactsShape.superRefine((facts, ctx) => {
     const sizes = {
       keyIdea: facts.keyIdeas.length,
@@ -576,14 +695,32 @@ export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts>
         });
       }
     });
-    // Three tiers, each present in numbers a sheet and an exit ticket can draw on.
+    // Three tiers, each present in numbers a sheet and an exit ticket can draw on: the shape's
+    // weights less one.
     const tiers = { easy: 0, core: 0, stretch: 0 };
     for (const q of facts.questions) tiers[q.tier] += 1;
+    const { easy, core, stretch } = shape.tierWeights;
     for (const tier of ["easy", "core", "stretch"] as const) {
-      if (tiers[tier] < TIER_MINIMUMS[tier]) {
+      if (tiers[tier] < minimums[tier]) {
         ctx.addIssue({
           code: "custom",
-          message: `Only ${tiers[tier]} "${tier}" questions; give at least ${TIER_MINIMUMS[tier]} (the target is four easy, five core, three stretch).`,
+          message: `Only ${tiers[tier]} "${tier}" questions; give at least ${minimums[tier]} (the target is ${easy} easy, ${core} core, ${stretch} stretch).`,
+          path: ["questions"],
+        });
+      }
+    }
+    // requireMisconceptionConfronted (the shape's one facts-level check): a true-false slide in
+    // the outline, or any question whose distractor is tied to a misconception.
+    if (shape.requireMisconceptionConfronted) {
+      const trueFalse = skeleton.outline.some((e) => e.kind === "true-false");
+      const distractor = facts.questions.some((q) =>
+        q.distractors?.some((d) => d.misconceptionRef !== undefined),
+      );
+      if (!trueFalse && !distractor) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "This lesson confronts a misconception and nothing here does: give one multiple-choice question a distractor with a misconceptionRef (the answer a pupil holding that misconception would give).",
           path: ["questions"],
         });
       }

@@ -2,6 +2,7 @@ import type { Finding, Lesson, LessonFacts, Slide } from "@tj/domain/documents";
 import { type MaterialiseMeta, materialiseSlide } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { type Audience, planFactsPrompt, planSkeletonPrompt, verifyFactsPrompt } from "../prompts";
+import { lessonShapeOf } from "../shapes";
 import {
   assignFactIds,
   EMPTY_PLAN_FACTS,
@@ -65,10 +66,16 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   let lastPersistedAt = first.updatedAt;
 
   const sourceTexts = lesson.sources ? await deps.sources(lesson.sources) : [];
+  // The lesson's shape (TEACH-229): computed once from the brief's answers and the class, rendered
+  // into both Plan prompts and enforced by both Plan schemas.
+  const shape = lessonShapeOf(brief.answers, {
+    yearGroup: lesson.yearGroup,
+    ageBand: lesson.ageBand,
+  });
   const briefInput = {
     topic: brief.topic,
     durationMin: brief.durationMin,
-    answers: brief.answers,
+    shape,
     audience: audienceOf(lesson),
     sourceTexts: sourceTexts.map((s) => ({ sourceId: s.sourceId, text: s.text })),
   };
@@ -82,7 +89,10 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     skeleton = resumed.skeleton;
     withSkeleton = { ...withTitle, facts: resumed.facts };
   } else {
-    deps.logger.info({ stage: "plan", call: "skeleton" }, "plan call");
+    deps.logger.info(
+      { stage: "plan", call: "skeleton", verb: shape.verb, confidence: shape.confidence },
+      "plan call",
+    );
     const skeletonCall = await callStructured({
       deps,
       stage: "plan",
@@ -90,7 +100,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
       effort: "medium",
       prompt: planSkeletonPrompt,
       input: briefInput,
-      schema: planSkeletonSchemaFor({ durationMin: brief.durationMin, answers: brief.answers }),
+      schema: planSkeletonSchemaFor({ durationMin: brief.durationMin, shape }),
       maxOutputTokens: MAX_OUTPUT_TOKENS.planSkeleton,
     });
     skeleton = skeletonCall.output;
@@ -118,7 +128,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
       effort: "medium",
       prompt: planFactsPrompt,
       input: { ...briefInput, skeleton },
-      schema: planFactsSchemaFor(skeleton),
+      schema: planFactsSchemaFor(skeleton, shape),
       maxOutputTokens: MAX_OUTPUT_TOKENS.planFacts,
     });
     planFacts = factsCall.output;

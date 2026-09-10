@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { lessonShapeOf, OBJECTIVE_VERBS, PRIOR_CONFIDENCES } from "./shapes";
 import {
   assignFactIds,
   EMPTY_PLAN_FACTS,
@@ -10,25 +11,35 @@ import {
   verifyOutputSchemaFor,
   WorksheetSpecSchema,
 } from "./specs";
-import { FIXTURES } from "./testing";
+import { FIXTURES, PLAN_SKELETONS } from "./testing";
 
-/* The Plan schemas (ADR 0025 §7; Generation quality §1–§2, TEACH-211). */
+/* The Plan schemas (ADR 0025 §7; Generation quality §1–§2, TEACH-211; Lesson shape, TEACH-229). */
 
 const O = (index: number) => ({ type: "objective" as const, index });
 const RIVER = { subject: "river severn", mustShow: ["river water"], purpose: "observe" as const };
 const brief = { adds: "One thing" };
+/** The shape of a cell, for an older class unless a year is given. */
+const shapeOf = (verb: string, confidence: string, yearGroup = "Year 8") =>
+  lessonShapeOf({ objectiveVerb: verb, priorConfidence: confidence }, { yearGroup });
+const EXPLAIN_SOME = shapeOf("Explain", "Some prior knowledge");
 
-/** A valid 60-minute skeleton: 20 explain minutes of 60, phases in order. */
+/**
+ * A valid 60-minute skeleton for the default cell (Explain / Some): 24 explain minutes of 60, two
+ * content slides, a worked example, an open-response, phases in order.
+ */
 const outline = (): Record<string, unknown>[] => [
   { kind: "title", minutes: 2, factRefs: [] },
   { kind: "objectives", minutes: 3, factRefs: [O(0)] },
   { kind: "starter", minutes: 5, factRefs: [O(0)], phase: "starter", brief },
   { kind: "content", minutes: 10, factRefs: [O(0)], phase: "explain", brief },
-  { kind: "worked-example", minutes: 10, factRefs: [O(0)], phase: "explain", brief },
-  { kind: "multiple-choice", minutes: 15, factRefs: [O(0)], phase: "practise", brief },
-  { kind: "exit-ticket", minutes: 15, factRefs: [O(0)], phase: "check", brief },
+  { kind: "content", minutes: 6, factRefs: [O(0)], phase: "explain", brief },
+  { kind: "worked-example", minutes: 8, factRefs: [O(0)], phase: "explain", brief },
+  { kind: "multiple-choice", minutes: 8, factRefs: [O(0)], phase: "practise", brief },
+  { kind: "open-response", minutes: 7, factRefs: [O(0)], phase: "practise", brief },
+  { kind: "exit-ticket", minutes: 11, factRefs: [O(0)], phase: "check", brief },
 ];
 
+/** Structural rules only unless a shape is given. */
 const parse = (
   entries: unknown[],
   context: Parameters<typeof planSkeletonSchemaFor>[0] = { durationMin: 60 },
@@ -42,28 +53,34 @@ const messagesOf = (result: ReturnType<typeof parse>) =>
   result.success ? [] : result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
 
 describe("planSkeletonSchemaFor", () => {
-  test("the fixture skeleton and a well-formed outline parse", () => {
+  test("the fixture skeleton and a well-formed outline parse, with and without the default shape", () => {
     expect(parse(outline()).success).toBe(true);
+    expect(parse(outline(), { durationMin: 60, shape: EXPLAIN_SOME }).success).toBe(true);
     expect(
-      planSkeletonSchemaFor({ durationMin: 60 }).safeParse(FIXTURES.planSkeleton).success,
+      planSkeletonSchemaFor({ durationMin: 60, shape: EXPLAIN_SOME }).safeParse(
+        FIXTURES.planSkeleton,
+      ).success,
     ).toBe(true);
   });
 
-  test("row 1: explain minutes 8 of 60 is an issue that names the 18 needed", () => {
+  test("row 1: explain minutes 8 of 60 is an issue that names the 18 needed (the shape's 30 %)", () => {
     const entries = outline();
     entries[3] = { ...entries[3], minutes: 4 };
-    entries[4] = { ...entries[4], minutes: 4 };
-    entries[5] = { ...entries[5], minutes: 27 };
-    const messages = messagesOf(parse(entries));
+    entries[4] = { ...entries[4], minutes: 2 };
+    entries[5] = { ...entries[5], minutes: 2 };
+    entries[6] = { ...entries[6], minutes: 20 };
+    const messages = messagesOf(parse(entries, { durationMin: 60, shape: EXPLAIN_SOME }));
     expect(messages).toContainEqual(
-      expect.stringContaining("explain phase needs at least 18 minutes"),
+      expect.stringContaining("explain phase needs at least 18 minutes (30% of 60)"),
     );
     expect(messages).toContainEqual(expect.stringContaining("it has 8"));
+    // Without a shape (the structural schema) the share is not checked.
+    expect(parse(entries).success).toBe(true);
   });
 
   test("row 2: practise before explain is an issue naming the position", () => {
     const entries = outline();
-    const [practise] = entries.splice(5, 1);
+    const [practise] = entries.splice(6, 1);
     if (!practise) throw new Error("fixture");
     entries.splice(3, 0, practise);
     const messages = messagesOf(parse(entries));
@@ -91,34 +108,194 @@ describe("planSkeletonSchemaFor", () => {
 
   test("a lesson with no check slide is an issue", () => {
     const entries = outline();
-    entries[6] = { ...entries[6], phase: "practise" };
+    entries[8] = { ...entries[8], phase: "practise" };
     expect(messagesOf(parse(entries))).toContainEqual(
       'outline: The lesson needs at least one "check" slide.',
     );
   });
 
   test("a class new to the topic needs an explain slide per objective", () => {
-    const context = { durationMin: 60, answers: { priorConfidence: "New to it" } };
+    const context = { durationMin: 60, shape: shapeOf("Explain", "New to it") };
     const schema = planSkeletonSchemaFor(context);
+    const entries = outline();
+    entries[3] = { kind: "vocabulary", minutes: 4, factRefs: [O(0)], phase: "starter", brief };
+    entries.splice(4, 0, {
+      kind: "content",
+      minutes: 10,
+      factRefs: [O(0)],
+      phase: "explain",
+      brief,
+    });
     const two = schema.safeParse({
       learningObjectives: [{ text: "A" }, { text: "B" }],
-      outline: [...outline().slice(0, 2), ...outline().slice(2)],
+      outline: entries,
     });
     expect(two.success).toBe(false);
     if (two.success) return;
-    expect(two.error.issues.map((i) => i.message)).toContainEqual(
+    expect(two.error.issues.map((i) => i.message)).toEqual([
       "The class is new to this: objective 1 needs a content or worked-example slide that names it.",
-    );
-    // Any other answer, or none: the rule does not apply.
+    ]);
+    // Any other confidence: the rule does not apply.
     expect(
-      planSkeletonSchemaFor({
-        durationMin: 60,
-        answers: { priorConfidence: "Seen it before" },
-      }).safeParse({
+      planSkeletonSchemaFor({ durationMin: 60, shape: EXPLAIN_SOME }).safeParse({
         learningObjectives: [{ text: "A" }, { text: "B" }],
         outline: outline(),
       }).success,
     ).toBe(true);
+  });
+
+  describe("the lesson shape's deterministic column (TEACH-229)", () => {
+    const withShape = (entries: unknown[], verb: string, confidence: string, year?: string) =>
+      messagesOf(parse(entries, { durationMin: 60, shape: shapeOf(verb, confidence, year) }));
+
+    test("row 1: Explain / New to it with a worked-example opening the explain phase names the position and the content slide that defines", () => {
+      const entries = outline();
+      entries.splice(3, 0, {
+        kind: "vocabulary",
+        minutes: 4,
+        factRefs: [O(0)],
+        phase: "starter",
+        brief,
+      });
+      // The worked-example moves to the front of the explain phase.
+      const [method] = entries.splice(6, 1);
+      if (!method) throw new Error("fixture");
+      entries.splice(4, 0, method);
+      const messages = withShape(entries, "Explain", "New to it");
+      expect(messages).toContainEqual(
+        expect.stringMatching(
+          /^outline\.4\.kind: Outline position 4 is the first explain-phase slide and is a worked-example; for this lesson it is a content slide that defines the topic/,
+        ),
+      );
+      // The same outline with the content first passes the cell.
+      expect(withShape(outline_new(), "Explain", "New to it")).toEqual([]);
+    });
+
+    /** The default outline made valid for a "New to it" cell: a vocabulary slide added. */
+    function outline_new(): Record<string, unknown>[] {
+      const entries = outline();
+      entries.splice(3, 0, {
+        kind: "vocabulary",
+        minutes: 4,
+        factRefs: [O(0)],
+        phase: "starter",
+        brief,
+      });
+      return entries;
+    }
+
+    test("row 2: Recall forbids open-response, and names the retrieval kinds to use; the missing vocabulary slide is named too", () => {
+      const messages = withShape(outline(), "Recall", "Some prior knowledge");
+      expect(messages).toContainEqual(
+        "outline.7.kind: Outline position 7 is an open-response slide; a Recall lesson has none. Make it matching, fill-gap, multiple-choice or true-false.",
+      );
+      expect(messages).toContainEqual(
+        "outline: The outline has no vocabulary slide and this lesson needs one; add it in the starter phase.",
+      );
+      // The Recall fixture passes both Recall cells the eval uses.
+      for (const confidence of ["New to it", "Some prior knowledge"]) {
+        expect(
+          planSkeletonSchemaFor({
+            durationMin: 20,
+            shape: shapeOf("Recall", confidence, "Reception"),
+          }).safeParse(PLAN_SKELETONS.Recall).success,
+        ).toBe(true);
+      }
+    });
+
+    test("row 3: Apply / Revisiting with a practise slide before the worked-example names both positions", () => {
+      const entries = outline();
+      const [practise] = entries.splice(6, 1);
+      if (!practise) throw new Error("fixture");
+      entries.splice(5, 0, practise);
+      const messages = withShape(entries, "Apply", "Revisiting");
+      expect(messages).toContainEqual(
+        "outline.5.phase: Outline position 5 is a practise slide but the worked-example (the method) is at position 6; pupils practise only after the method. Move the worked-example before position 5, in the explain phase.",
+      );
+      // Apply wants 40 % practise: the default outline's 15 of 60 is named too.
+      expect(messages).toContainEqual(
+        expect.stringContaining("practise phase needs at least 24 minutes (40% of 60); it has 15"),
+      );
+    });
+
+    test("row 4: Evaluate / Some with no matching, sort or second worked-example is an issue naming all three", () => {
+      const messages = withShape(outline(), "Evaluate", "Some prior knowledge");
+      expect(messages).toEqual([
+        "outline: Nothing here sets two cases against each other; add a matching or sort slide, or two worked-example slides.",
+      ]);
+      const paired = outline();
+      paired[6] = { ...paired[6], kind: "matching" };
+      expect(withShape(paired, "Evaluate", "Some prior knowledge")).toEqual([]);
+      const twoExamples = outline();
+      twoExamples[4] = { ...twoExamples[4], kind: "worked-example" };
+      expect(withShape(twoExamples, "Evaluate", "Some prior knowledge")).toEqual([]);
+    });
+
+    test("minContent and minCheckEntries name the count found and the count needed", () => {
+      const entries = outline();
+      entries[4] = { ...entries[4], kind: "image-text", imageBrief: RIVER };
+      expect(withShape(entries, "Explain", "Some prior knowledge")).toEqual([
+        "outline: The outline has 1 content slide. At least 2 content slides: the definition first, then the mechanism (how or why) on its own slide; add one in the explain phase.",
+      ]);
+      // Revisiting has no definition slide, so the message does not ask for one.
+      expect(withShape(entries, "Explain", "Revisiting")).toContainEqual(
+        "outline: The outline has 1 content slide. At least 2 content slides, each explaining one mechanism (how or why); add one in the explain phase.",
+      );
+      const recall = outline_new();
+      recall.splice(7, 1);
+      recall[7] = { ...recall[7], kind: "exit-ticket" };
+      expect(withShape(recall, "Recall", "Some prior knowledge")).toEqual([
+        "outline: Only 2 slides where pupils answer (practise and check phases); this lesson needs at least 3. Add a practise slide.",
+      ]);
+    });
+
+    test("every verb's fixture satisfies every eval cell of that verb, for the eval's durations", () => {
+      const cells: Record<string, [string, number, string][]> = {
+        Recall: [
+          ["New to it", 20, "Reception"],
+          ["Some prior knowledge", 60, "Year 5"],
+        ],
+        // The Explain fixture also serves the e2e worker, whose brief screen pre-selects "New to it".
+        Explain: [
+          ["New to it", 60, "Year 8"],
+          ["Some prior knowledge", 60, "Year 8"],
+          ["Revisiting", 50, "Year 11"],
+        ],
+        Apply: [
+          ["New to it", 60, "Year 3"],
+          ["Some prior knowledge", 60, "Year 7"],
+        ],
+        Evaluate: [
+          ["New to it", 60, "Year 12"],
+          ["Revisiting", 60, "Year 10"],
+        ],
+      };
+      for (const verb of OBJECTIVE_VERBS) {
+        for (const [confidence, durationMin, year] of cells[verb] ?? []) {
+          const result = planSkeletonSchemaFor({
+            durationMin,
+            shape: shapeOf(verb, confidence, year),
+          }).safeParse(PLAN_SKELETONS[verb]);
+          expect({ verb, confidence, issues: messagesOf(result) }).toEqual({
+            verb,
+            confidence,
+            issues: [],
+          });
+        }
+      }
+      // Every fixture parses structurally, and the facts fixture fits each one.
+      for (const verb of OBJECTIVE_VERBS) {
+        expect(PlanSkeletonSchema.safeParse(PLAN_SKELETONS[verb]).success).toBe(true);
+        for (const confidence of PRIOR_CONFIDENCES) {
+          const facts = planFactsSchemaFor(PLAN_SKELETONS[verb], shapeOf(verb, confidence));
+          expect({ verb, confidence, ok: facts.safeParse(FIXTURES.planFacts).success }).toEqual({
+            verb,
+            confidence,
+            ok: true,
+          });
+        }
+      }
+    });
   });
 
   test("TEACH-224 row 3: a mustShow item made only of the subject's words is refused; one naming a visible part is not", () => {
@@ -195,7 +372,7 @@ describe("planSkeletonSchemaFor", () => {
   test("a vocabulary slide tagged explain is refused and does not count towards the explain share", () => {
     const entries = outline();
     entries[3] = { kind: "vocabulary", minutes: 10, factRefs: [O(0)], phase: "explain", brief };
-    const messages = messagesOf(parse(entries));
+    const messages = messagesOf(parse(entries, { durationMin: 60, shape: EXPLAIN_SOME }));
     expect(messages).toContainEqual(
       expect.stringContaining(
         "outline.3.phase: Outline position 3 is a vocabulary slide in the explain phase",
@@ -208,7 +385,7 @@ describe("planSkeletonSchemaFor", () => {
 });
 
 describe("planFactsSchemaFor", () => {
-  const schema = () => planFactsSchemaFor(FIXTURES.planSkeleton);
+  const schema = (shape = EXPLAIN_SOME) => planFactsSchemaFor(FIXTURES.planSkeleton, shape);
   const facts = () => structuredClone(FIXTURES.planFacts);
 
   test("the fixture facts parse", () => {
@@ -217,7 +394,7 @@ describe("planFactsSchemaFor", () => {
 
   test("TEACH-224 rows 4–6: pitch.avoid may not list a vocabulary term; a problem or stem may not presume a picture; an unexplained term is not a rejection", () => {
     const issues = (f: ReturnType<typeof facts>, s = FIXTURES.planSkeleton) => {
-      const r = planFactsSchemaFor(s).safeParse(f);
+      const r = planFactsSchemaFor(s, EXPLAIN_SOME).safeParse(f);
       return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
     };
     const avoid = facts();
@@ -290,7 +467,9 @@ describe("planFactsSchemaFor", () => {
     if (!only) throw new Error("fixture");
     only.objectiveRefs = [O(0), O(1), O(2)];
     f.outlineFactRefs = f.outlineFactRefs.map((e) =>
-      e.index === 4 ? { ...e, factRefs: [{ type: "keyIdea" as const, index: 0 }] } : e,
+      e.index === 4 || e.index === 5
+        ? { ...e, factRefs: [{ type: "keyIdea" as const, index: 0 }] }
+        : e,
     );
     expect(schema().safeParse(f).success).toBe(true);
     f.keyIdeas = [];
@@ -369,8 +548,47 @@ describe("planFactsSchemaFor", () => {
     expect(t.success).toBe(false);
     if (t.success) return;
     expect(t.error.issues.map((i) => i.message)).toContainEqual(
-      'Only 0 "easy" questions; give at least 3 (the target is four easy, five core, three stretch).',
+      'Only 0 "easy" questions; give at least 3 (the target is 4 easy, 5 core, 3 stretch).',
     );
+    // The floor follows the shape: Recall / New to it weights 7 easy, so six are needed.
+    const recall = schema(shapeOf("Recall", "New to it")).safeParse(facts());
+    expect(recall.success).toBe(true);
+    const five = facts();
+    const sixthEasy = five.questions.find((q, i) => i > 4 && q.tier === "easy");
+    if (!sixthEasy) throw new Error("fixture");
+    sixthEasy.tier = "core";
+    const r2 = schema(shapeOf("Recall", "New to it")).safeParse(five);
+    expect(r2.success).toBe(false);
+    if (r2.success) return;
+    expect(r2.error.issues.map((i) => i.message)).toContainEqual(
+      'Only 5 "easy" questions; give at least 6 (the target is 7 easy, 4 core, 2 stretch).',
+    );
+  });
+
+  test("an Explain lesson confronts its misconception: a true-false slide or a distractor with a misconceptionRef (TEACH-229)", () => {
+    const noTrueFalse = structuredClone(FIXTURES.planSkeleton);
+    noTrueFalse.outline = noTrueFalse.outline.map((e) =>
+      e.kind === "true-false" ? { ...e, kind: "multiple-choice" as const } : e,
+    );
+    const f = facts();
+    // Distractors still tie to misconceptions: fine.
+    expect(planFactsSchemaFor(noTrueFalse, EXPLAIN_SOME).safeParse(f).success).toBe(true);
+    for (const q of f.questions) {
+      q.distractors = q.distractors?.map(({ text }) => ({ text }));
+    }
+    const r = planFactsSchemaFor(noTrueFalse, EXPLAIN_SOME).safeParse(f);
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    expect(r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`)).toEqual([
+      expect.stringMatching(
+        /^questions: This lesson confronts a misconception and nothing here does/,
+      ),
+    ]);
+    // A Recall lesson has no such rule.
+    expect(
+      planFactsSchemaFor(noTrueFalse, shapeOf("Recall", "Some prior knowledge")).safeParse(f)
+        .success,
+    ).toBe(true);
   });
 });
 
