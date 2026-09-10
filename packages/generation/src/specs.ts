@@ -184,9 +184,36 @@ function contentWordsOf(text: string): string[] {
 }
 const STOP = new Set(["the", "and", "with", "close", "up", "closeup", "shot", "photo", "view"]);
 
-/** A problem or stem that leans on a picture, diagram or "this" thing the slide may not have. */
-const PRESUMES_PICTURE =
-  /\b(a |the |this )?(photo|photograph|picture|image|diagram)s? (shows|of|above|below)\b|\bin the (photo|photograph|picture|image|diagram)\b|\b(shown|pictured) (above|below|here)\b/i;
+/**
+ * Whether `text` uses `term` as a whole word or phrase, allowing the usual English inflections
+ * (`particle` → `particles`, `melt` → `melting`/`melted`, `gnaw` → `gnaws`/`gnawing`); a term
+ * inside another word ("art" in "particle") does not count.
+ */
+export function usesTerm(text: string, term: string): boolean {
+  const escaped = term
+    .trim()
+    .toLowerCase()
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\s+/g, "\\s+")
+    .replace(/e$/, "e?");
+  return new RegExp(`\\b${escaped}(?:e?s|es|ed|ing|d)?\\b`, "i").test(text);
+}
+
+/**
+ * A problem or stem that leans on a picture the slide may not have: a picture noun after a
+ * determiner or an "at/in/from/on" pointer ("a photo shows", "look at the diagram", "in the
+ * picture", "this image"), or "shown/pictured above/below/here". A picture noun as a plain
+ * subject ("why do scientists draw particle diagrams?") is not a reference to one.
+ */
+const PICTURE_NOUN = "(?:photo|photograph|picture|image|diagram)s?";
+const PRESUMES_PICTURE = new RegExp(
+  [
+    `\\b(?:a|an|the|this|that|these|those|each|its)\\s+(?:\\w+\\s+)?${PICTURE_NOUN}\\b`,
+    `\\b(?:at|in|from|on)\\s+${PICTURE_NOUN}\\b`,
+    `\\b(?:shown|pictured|drawn)\\s+(?:above|below|here|opposite)\\b`,
+  ].join("|"),
+  "i",
+);
 const SELF_CONTAINED =
   "Problems and question stems are self-contained: never 'a photo shows', 'the diagram', 'pictured above' — name the thing and its features in words.";
 
@@ -540,11 +567,10 @@ export function planFactsSchemaFor(skeleton: PlanSkeleton): z.ZodType<PlanFacts>
     if (!skeleton.outline.some((entry) => entry.kind === "vocabulary")) {
       const explained = facts.keyIdeas
         .map((k) => `${k.statement} ${k.explanation} ${k.example ?? ""} ${k.analogy ?? ""}`)
-        .join(" ")
-        .toLowerCase();
+        .join(" ");
       facts.vocabulary.forEach((v, i) => {
-        const term = v.term.trim().toLowerCase();
-        if (term && !explained.includes(term)) {
+        const term = v.term.trim();
+        if (term && !usesTerm(explained, term)) {
           ctx.addIssue({
             code: "custom",
             message: `Vocabulary "${v.term}" is used in no key idea and the outline has no vocabulary slide; use it in a statement, explanation or example so the lesson teaches it before a question asks about it.`,

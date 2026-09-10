@@ -6,6 +6,7 @@ import {
   PlanSkeletonSchema,
   planFactsSchemaFor,
   planSkeletonSchemaFor,
+  usesTerm,
   verifyOutputSchemaFor,
   WorksheetSpecSchema,
 } from "./specs";
@@ -227,12 +228,30 @@ describe("planFactsSchemaFor", () => {
         /^workedExamples\.0\.problem: Problems and question stems are self-contained/,
       ),
     ]);
-    // "the picture" alone, as a subject noun, is fine: "Describe the picture a scientist draws…"
-    const fine = facts();
-    const q2 = fine.questions[0];
-    if (!q2) throw new Error("fixture");
-    q2.stem = "Why do scientists draw particle diagrams?";
-    expect(issues(fine)).toEqual([]);
+    // Every common form of pointing at a picture is caught; a picture noun as a plain subject is not.
+    const presumes = (stem: string) => {
+      const f = facts();
+      const q0 = f.questions[0];
+      if (!q0) throw new Error("fixture");
+      q0.stem = stem;
+      return issues(f).some((m) => m.startsWith("questions.0.stem"));
+    };
+    for (const stem of [
+      "Look at the diagram. Which state is shown?",
+      "Look at the photo and name the animal.",
+      "In the picture, which particles are closest?",
+      "This image shows a solid. Why does it keep its shape?",
+      "Use the particle diagram to explain melting.",
+      "Which state is pictured above?",
+    ]) {
+      expect({ stem, presumes: presumes(stem) }).toEqual({ stem, presumes: true });
+    }
+    for (const stem of [
+      "Why do scientists draw particle diagrams?",
+      "Describe how particles are arranged in a solid.",
+    ]) {
+      expect({ stem, presumes: presumes(stem) }).toEqual({ stem, presumes: false });
+    }
 
     // The fixture skeleton has a vocabulary slide, so an unexplained term passes; without one it
     // does not.
@@ -240,6 +259,11 @@ describe("planFactsSchemaFor", () => {
     noVocabSlide.outline = noVocabSlide.outline.map((e) =>
       e.kind === "vocabulary" ? { ...e, kind: "content" as const } : e,
     );
+    // Whole words with inflections, never substrings: "art" is not in "particle".
+    expect(usesTerm("tiny particles move", "particle")).toBe(true);
+    expect(usesTerm("tiny particles move", "art")).toBe(false);
+    expect(usesTerm("gnawing wears them down", "gnaw")).toBe(true);
+    expect(usesTerm("the tooth gap behind", "tooth gap")).toBe(true);
     const unexplained = facts();
     unexplained.vocabulary.push({
       term: "Diastema",
