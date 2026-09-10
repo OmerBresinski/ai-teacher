@@ -481,6 +481,44 @@ describe("checkLesson", () => {
       ]);
     });
 
+    test("degenerate-question: a stored sort slide with a classify stem, and a true-false double statement", () => {
+      const l = generatedLesson();
+      l.slides.push({
+        id: "s-sort",
+        kind: "sort",
+        elements: [
+          generatedText("so-h", "Classify these animals", ["q1"], { style: { preset: "heading" } }),
+          generatedText("so-1", "Rat", ["q1"]),
+          generatedText("so-2", "Mouse", ["q1"]),
+          generatedText("so-3", "Rabbit", ["q1"]),
+        ],
+        question: { type: "sort", order: ["so-1", "so-2", "so-3"] },
+      });
+      const half =
+        "the Orcish clans first crossed into Azeroth through the Dark Portal opened by Medivh";
+      l.slides.push({
+        id: "s-tf2",
+        kind: "true-false",
+        elements: [
+          generatedText("tf-h", `${half} and ${half.replace("first", "later")}`, ["q1"], {
+            style: { preset: "heading" },
+          }),
+        ],
+        question: { type: "true-false", correct: true },
+      });
+      const findings = of(checkLesson(l), "degenerate-question");
+      expect(findings.map((f) => f.target.slideId)).toEqual(["s-sort", "s-tf2"]);
+      for (const f of findings) expect(f.message).not.toMatch(/Classify|Azeroth/);
+    });
+
+    test("leaked-language: a worksheet answer key containing a guarded word is not a pupil-facing leak", () => {
+      const w = generatedWorksheet();
+      const block = blockOf(w, "wb2");
+      if (block.type !== "question") throw new Error("fixture");
+      block.answer = "The data is sent as JSON.";
+      expect(of(checkLesson(generatedLesson(), w), "leaked-language")).toEqual([]);
+    });
+
     test("degenerate-question: a starter footnote that repeats an item", () => {
       const l = generatedLesson();
       l.slides.push({

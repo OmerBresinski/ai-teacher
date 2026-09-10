@@ -7,8 +7,11 @@ import {
   allDistinct,
   hasLeakedPupilPhrase,
   hasLeakedRepairPhrase,
+  isClassifyStem,
+  isDoubleStatement,
   isOneOf,
   normaliseText,
+  sameLeadingToken,
 } from "./text-guards";
 import { meanSentenceLength, ngrams, readingAge } from "./text-metrics";
 import type { Worksheet, WorksheetBlock } from "./worksheet";
@@ -243,9 +246,19 @@ function checkDegenerateQuestions(lesson: Lesson, worksheet?: Worksheet): Findin
     }
     if (q?.type === "sort") {
       const byId = elementTexts(slide);
-      if (!allDistinct(q.order.map((id) => byId.get(id) ?? ""))) {
+      const steps = q.order.map((id) => byId.get(id) ?? "");
+      if (!allDistinct(steps)) {
         degenerate(target, `Slide "${slide.kind}" has the same step more than once.`, false);
+      } else if (isClassifyStem(stemOf(slide)) || sameLeadingToken(steps)) {
+        degenerate(
+          target,
+          `Slide "${slide.kind}" sets a classify task as a sequence; it wants matching or multiple-choice.`,
+          false,
+        );
       }
+    }
+    if (q?.type === "true-false" && isDoubleStatement(stemOf(slide))) {
+      degenerate(target, `Slide "${slide.kind}" joins two claims into one statement.`, false);
     }
     if (FOOTNOTE_KINDS.has(slide.kind)) {
       const items = lines(textsByPreset(slide, "body"));
@@ -312,7 +325,7 @@ function checkLeakedLanguage(lesson: Lesson, worksheet?: Worksheet): Finding[] {
     }
   }
   for (const block of worksheet?.blocks ?? []) {
-    if (hasLeakedPupilPhrase(blockText(block))) {
+    if (hasLeakedPupilPhrase(blockPupilText(block))) {
       findings.push({
         check: "leaked-language",
         severity: "error",
@@ -381,6 +394,26 @@ function lines(texts: string[]): string[] {
   return texts
     .flatMap((t) => t.split("\n").map((l) => l.replace(/^\s*(?:\d+[.)]|[-•*])\s+/, "").trim()))
     .filter((l) => l.length > 0);
+}
+
+/** What a pupil sees on a block: its doc, options, words and pairs — never the answer key. */
+function blockPupilText(block: WorksheetBlock): string {
+  const parts = [blockDocText(block)];
+  switch (block.type) {
+    case "multiple-choice":
+      parts.push(...block.options.map((o) => o.text));
+      break;
+    case "matching":
+      parts.push(...block.pairs.flatMap((p) => [p.left, p.right]));
+      break;
+    case "word-bank":
+    case "word-search":
+      parts.push(...block.words);
+      break;
+    default:
+      break;
+  }
+  return parts.join("\n");
 }
 
 function blockDocText(block: WorksheetBlock): string {
