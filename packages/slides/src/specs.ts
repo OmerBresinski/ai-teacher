@@ -402,7 +402,7 @@ export function slideSpecSchemaFor(kind: string): z.ZodType<SlideSpec> | undefin
  * Every string field of a spec (pupil-facing and `notes`) checked for a reference to a picture
  * that is not there; each offending field is its own issue so the retry names it.
  */
-function noPictureReference(spec: Record<string, unknown>, ctx: z.RefinementCtx): void {
+export function noPictureReference(spec: Record<string, unknown>, ctx: z.RefinementCtx): void {
   const visit = (value: unknown, path: (string | number)[]): void => {
     if (typeof value === "string") {
       const root = path[0];

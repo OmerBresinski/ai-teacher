@@ -7,6 +7,7 @@ import {
   planFactsSchemaFor,
   planSkeletonSchemaFor,
   verifyOutputSchemaFor,
+  WorksheetSpecSchema,
 } from "./specs";
 import { FIXTURES } from "./testing";
 
@@ -402,5 +403,32 @@ describe("EvaluateOutputSchema (TEACH-216)", () => {
     expect(messages([finding({ evidence: "" })])[0]).toContain("findings.0.evidence");
     const { evidence: _dropped, ...noEvidence } = finding({});
     expect(messages([noEvidence])[0]).toContain("findings.0.evidence");
+  });
+});
+
+describe("WorksheetSpecSchema (TEACH-223)", () => {
+  test("a block that refers to a picture is refused on initial generation, naming the block and field", () => {
+    const sheet = {
+      title: "The Rodent Family",
+      criteria: [],
+      blocks: [
+        { type: "heading", text: "Rodents", level: 1, factRefs: ["o1"] },
+        { type: "paragraph", text: "Rodents gnaw.", factRefs: ["o1"] },
+        { type: "paragraph", text: "Rodents have incisors.", factRefs: ["o1"] },
+        {
+          type: "question",
+          text: "Look at the photo. Is it a rodent?",
+          answer: "Yes.",
+          answerLines: 1,
+          marks: 1,
+          factRefs: ["o1"],
+        },
+      ],
+    };
+    const result = WorksheetSpecSchema.safeParse(sheet);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((i) => i.path.join("."))).toEqual(["blocks.3.text"]);
+    }
   });
 });
