@@ -1,10 +1,4 @@
-import {
-  checkLesson,
-  FACT_ARRAYS,
-  type Finding,
-  type LessonFacts,
-  type Slide,
-} from "@tj/domain/documents";
+import { checkLesson, FACT_ARRAYS, type Finding, type LessonFacts } from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { evaluatePrompt } from "../prompts";
 import { EvaluateOutputSchema } from "../specs";
@@ -16,7 +10,15 @@ import {
   throwIfAborted,
 } from "../types";
 import { BUDGET_FINDING, withUsage } from "./generate";
-import { audienceOf, blockText, generationOf, photoThumbnails, slideText } from "./shared";
+import {
+  audienceOf,
+  blockText,
+  generationOf,
+  normaliseText,
+  photoThumbnails,
+  slideHaystack,
+  slideText,
+} from "./shared";
 
 /*
  * Evaluate (ADR 0025 §10, §11, §14; Generation quality §4, TEACH-216): the shared schema checks,
@@ -75,9 +77,8 @@ function patchableFactIds(facts: LessonFacts | undefined): Set<string> {
   return ids;
 }
 
-const normalise = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
-/** What a slide finding may quote: the slide's text, its notes and the facts (a wrong fact). */
-const haystack = (slide: Slide) => normalise(`${slideText(slide)}\n${slide.notes ?? ""}`);
+const normalise = normaliseText;
+const haystack = slideHaystack;
 function factsText(state: PipelineState): string {
   return JSON.stringify(state.lesson.facts ?? {});
 }

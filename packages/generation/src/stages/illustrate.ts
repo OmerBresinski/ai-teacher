@@ -377,10 +377,13 @@ async function judge(
 ): Promise<PickOrRequery> {
   const { lesson, slide, brief, deps } = args;
   const facts = lesson.facts;
+  // The judge decides what the slide is written to, and the small class told a llama from a
+  // rodent's incisors apart wrongly in production (2026-09-10): this is the one picture call whose
+  // judgement is worth the standard class (≈ $0.02 a photo, at most six a lesson; founder decision).
   const call = await callStructured({
     deps,
     stage: "illustrate",
-    cls: "small",
+    cls: "standard",
     effort: "low",
     prompt: pickOrRequeryPrompt,
     input: {

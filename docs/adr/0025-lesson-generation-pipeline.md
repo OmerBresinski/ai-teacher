@@ -378,7 +378,7 @@ stage:
 | plan-facts | standard (Terra) | medium | the substance; where depth comes from |
 | verify (TEACH-212) | standard (Terra) | high | correctness, one call |
 | generate (slides, worksheet) | small (Luna) | low | fills a given shape; latency-critical |
-| illustrate judge | small (Luna) | low | unchanged |
+| illustrate judge | standard (Terra) | low | small → standard, 2026-09-10 (TEACH-222): the small class passed a llama as a rodent; ≈ +$0.02 a photo |
 | evaluate | standard (Terra) | medium | must be right to be trusted |
 | repair | small (Luna) | low | targeted rewrite |
 | cascade / regenerate | small (Luna) | low | unchanged behaviour |
@@ -542,3 +542,17 @@ keeps nothing) and shows them to the rubric judge the same way, so `imageFit` is
 generating strip merges "Adding pictures" into "Writing the slides and pictures" (founder
 decision), since the picture now lands with its slide and the `illustrate` step reports 88 only on
 the resume path.
+
+## Amendment (2026-09-10, TEACH-222 — Repair after the rodents lesson)
+
+§12. Three defects from the first production lesson generated on the picture-first pipeline:
+(1) `wasRepaired` dropped only `error` findings on a regenerated target, so a teacher read an
+`image-fit` warning quoting a sentence Repair had deleted — now `staleAfterRepair` drops every
+model finding on a regenerated target whose evidence is no longer in the new text (a warning whose
+evidence survived stays); (2) Repair was shown the slide's flattened `slideText`, whose first line
+for `image-text` is the recipe's fixed caption `KEY IDEA`, and the small model copied it into
+`heading` — Repair (`repair.v5`) is now shown the slide field by field (`specFieldsOf`, keyed on
+each element's text preset; captions excluded) and told to put each field back in its own field;
+(3) `repair-fact.v2` names the fields the fact's array allows (`VERIFY_FIELDS_BY_ARRAY`) after the
+model invented `statement` on a misconception. §13: the photo judge moves to the `standard` class
+(founder decision, same day) — see the table.

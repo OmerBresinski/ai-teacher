@@ -804,6 +804,10 @@ describe("generate", () => {
       usage,
     });
     const repaired = await repair(errored, recordingDeps(fixer));
+    // Row 2 (TEACH-222): the KEY IDEA caption is not part of the current text the model is shown,
+    // so it cannot be copied into `heading`.
+    expect(fixer.calls[0]?.promptText).not.toContain("KEY IDEA");
+    expect(fixer.calls[0]?.promptText).toMatch(/heading: .+\nbody: .+/);
     expect(fixer.calls[0]?.promptText).toContain(
       "The photograph on this slide shows: River at dawn",
     );
@@ -1094,6 +1098,22 @@ describe("repair", () => {
         target: { blockId: block.id },
         message: "Wrong answer.",
       },
+      // Warnings on the regenerated slide (TEACH-222): one quoting text the rewrite keeps, one
+      // quoting text it removes, one with no evidence at all.
+      {
+        check: "pitch",
+        severity: "warning",
+        target: { slideId: mc.id },
+        evidence: "Repaired.",
+        message: "Kept: its evidence is in the new notes.",
+      },
+      {
+        check: "pitch",
+        severity: "warning",
+        target: { slideId: mc.id },
+        evidence: "words that the rewrite removed",
+        message: "Dropped: stale.",
+      },
       { check: "age-fit", severity: "warning", target: { slideId: mc.id }, message: "Long." },
     ];
     const evaluated = {
@@ -1140,8 +1160,16 @@ describe("repair", () => {
     });
     expect(state.lesson.generation?.completedAt).toBeDefined();
     expect(state.lesson.generation?.findings).toEqual([
-      expect.objectContaining({ check: "age-fit", severity: "warning" }),
+      expect.objectContaining({
+        check: "pitch",
+        message: "Kept: its evidence is in the new notes.",
+      }),
     ]);
+    // Row 2 (TEACH-222): the slide's current text is shown field by field, never the caption line.
+    const slidePrompt = ai.calls[0]?.promptText ?? "";
+    expect(slidePrompt).toContain("heading: ");
+    expect(slidePrompt).toContain("option A");
+    expect(slidePrompt).toContain("(correct)");
     expect(deps.progress).toEqual([
       { percent: 100, message: "Done", documentUpdatedAt: deps.persisted[0]?.updatedAt },
     ]);
@@ -1198,6 +1226,8 @@ describe("repair", () => {
     ]);
     // The fact call saw v1 and the review's words; the slide call saw the patched fact.
     expect(ai.calls[0]?.promptText).toContain("v1:");
+    // Row 3 (TEACH-222): and the fields it may correct on a vocabulary fact.
+    expect(ai.calls[0]?.promptText).toContain("Fields you may correct on v1: term, definition.");
     expect(ai.calls[0]?.promptText).toContain("Not the accepted term");
     expect(ai.calls[1]?.promptText).toContain("Corpuscle");
     expect(state.lesson.facts?.vocabulary[0]?.term).toBe("Corpuscle");
