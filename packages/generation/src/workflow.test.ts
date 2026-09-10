@@ -12,6 +12,7 @@ import {
   answeringAi,
   CHECK_INPUT_CALLS,
   FIXTURES,
+  miss,
   PLAN_CALLS,
   PLAN_INDEX,
   pipelineScript,
@@ -340,7 +341,7 @@ describe("runLessonPipeline", () => {
     // The bad reply is a scripted miss: the routed fake hands it to whichever slide call is next,
     // and that call's retry finds the good multiple-choice spec by kind (TEACH-213).
     const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 5, [
-      () => bad,
+      miss(bad),
       JSON.stringify(goodSpec),
     ]);
     const { lesson } = await runLessonPipeline(

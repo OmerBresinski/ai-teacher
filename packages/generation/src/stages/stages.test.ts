@@ -4,7 +4,7 @@ import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
 import { PROMPT_VERSIONS } from "../prompts";
 import { assignFactIds, planFactsSchemaFor } from "../specs";
-import { FIXTURES, initialState, recordingDeps, routed, sampleBriefLesson } from "../testing";
+import { FIXTURES, initialState, miss, recordingDeps, routed, sampleBriefLesson } from "../testing";
 import { evaluate } from "./evaluate";
 import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
@@ -456,7 +456,7 @@ describe("generate", () => {
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
     // A scripted reply of the wrong kind for the first slide call (outline[2] is a starter).
-    const wrongKind = () => json(FIXTURES.slides.content);
+    const wrongKind = miss(json(FIXTURES.slides.content));
     const ai = createFakeAi({
       script: routed([wrongKind, ...slides, json(FIXTURES.worksheet)]),
       usage,

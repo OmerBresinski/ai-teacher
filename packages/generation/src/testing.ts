@@ -110,9 +110,10 @@ export function pipelineScript(
  * the list order, so entries are matched rather than counted: a `generate-worksheet` call takes the
  * first pending worksheet spec (a string or `FakeReply` whose JSON has `blocks`); a
  * `generate-slide` call for kind K takes the first pending entry that is either a scripted miss (a
- * non-JSON string or a function — consumed in list order, so a test's "bad reply at slide n" lands
- * on the next slide call) or a slide spec of kind K; every other call takes the next entry. When
- * nothing matches, the next entry is taken as it always was.
+ * non-JSON string, or any entry wrapped in `miss()` — consumed in list order, so a test's "bad
+ * reply at slide n" lands on the next slide call) or a slide spec of kind K; every other call,
+ * and any other function entry, is taken in list order. When nothing matches, the next entry is
+ * taken as it always was.
  *
  * `pace` (milliseconds each answer waits before it is returned — for a watcher, not a unit test)
  * is applied here, after routing, so a paced entry is still matched by its shape.
@@ -135,7 +136,8 @@ export function routed(
     }
   };
   const isMiss = (entry: FakeScriptEntry) =>
-    typeof entry === "function" || (textOf(entry) !== undefined && parsed(entry) === undefined);
+    (typeof entry === "function" && MISS in entry) ||
+    (textOf(entry) !== undefined && parsed(entry) === undefined);
   const takeAt = (at: number) => (at === -1 ? pending.shift() : pending.splice(at, 1)[0]);
   const take = (call: FakeCall): FakeScriptEntry | undefined => {
     const version = call.context?.promptVersion ?? "";
@@ -157,6 +159,17 @@ export function routed(
     if (entry === undefined) return "";
     return typeof entry === "function" ? entry(call) : entry;
   });
+}
+
+const MISS = Symbol("routed.miss");
+
+/**
+ * A scripted reply the routed fake hands to the next `generate-slide` call whatever its kind: for
+ * a well-formed but wrong answer (a degenerate spec) that a test wants to land as a miss.
+ */
+export function miss(entry: FakeScriptEntry): FakeScriptEntry {
+  const fn = async (call: FakeCall) => (typeof entry === "function" ? entry(call) : entry);
+  return Object.assign(fn, { [MISS]: true });
 }
 
 /** `scriptedPipelineAi` with `entries` spliced in at `index` in place of the entry there. */

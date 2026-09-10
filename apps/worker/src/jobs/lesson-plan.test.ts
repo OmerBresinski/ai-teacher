@@ -15,6 +15,7 @@ import {
   FIXTURES,
   PLAN_INDEX,
   pipelineScript,
+  routed,
   SLIDES_INDEX,
   scriptedPipelineAi,
 } from "@tj/generation/testing";
@@ -262,17 +263,20 @@ describeDb("lesson.plan job", () => {
   test("a failed Evaluate keeps the locks; the retry resumes after `generated` without re-planning", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
-    // Evaluate is the 13th call (check + 2 plan + 8 slides + worksheet); make it blow up as the
-    // provider.
+    // Evaluate is the call after check + plan + 8 slides + worksheet; make it blow up as the
+    // provider. The script is routed: slide and worksheet replies are matched by shape, since
+    // Generate runs them in parallel (TEACH-213), and the throwing entry is left for Evaluate.
     const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2 + 1;
     const first: FakeAi = createFakeAi({
-      script: pipelineScript({
-        overrides: {
-          [evaluateIndex]: () => {
-            throw new Error("provider unreachable");
+      script: routed(
+        pipelineScript({
+          overrides: {
+            [evaluateIndex]: () => {
+              throw new Error("provider unreachable");
+            },
           },
-        },
-      }),
+        }),
+      ),
     });
 
     // `@tj/ai` wraps provider failures as a retryable `AiError`; the handler rethrows it as-is.
@@ -285,7 +289,7 @@ describeDb("lesson.plan job", () => {
     const worksheetId = mid.artefacts?.worksheetId ?? "";
     expect((await getDocument(ws(), worksheetId))?.generatingJobId).toBe(jobId);
 
-    const second = createFakeAi({ script: pipelineScript().slice(evaluateIndex) });
+    const second = createFakeAi({ script: routed(pipelineScript().slice(evaluateIndex)) });
     await lessonPlanJob(ctx(jobId, lessonId, depsWith(second)).ctx);
 
     expect(second.calls.map((c) => c.context?.stage)).toEqual(["evaluate"]);
@@ -301,13 +305,15 @@ describeDb("lesson.plan job", () => {
     const lessonId = await briefLesson(jobId);
     const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2 + 1;
     const first = createFakeAi({
-      script: pipelineScript({
-        overrides: {
-          [evaluateIndex]: () => {
-            throw new Error("provider unreachable");
+      script: routed(
+        pipelineScript({
+          overrides: {
+            [evaluateIndex]: () => {
+              throw new Error("provider unreachable");
+            },
           },
-        },
-      }),
+        }),
+      ),
     });
     await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(first)).ctx)).rejects.toThrow();
     const mid = await storedLesson(lessonId);
@@ -317,7 +323,7 @@ describeDb("lesson.plan job", () => {
     expect(await deleteDocument(ws(), worksheetId)).toBe(true);
 
     // Generate re-runs for the worksheet only (every slide is already on the row), then Evaluate.
-    const second = createFakeAi({ script: pipelineScript().slice(evaluateIndex - 1) });
+    const second = createFakeAi({ script: routed(pipelineScript().slice(evaluateIndex - 1)) });
     await lessonPlanJob(ctx(jobId, lessonId, depsWith(second)).ctx);
 
     expect(second.calls.map((c) => c.context?.stage)).toEqual(["generate", "evaluate"]);
