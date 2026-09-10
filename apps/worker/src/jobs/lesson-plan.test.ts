@@ -141,10 +141,9 @@ describeDb("lesson.plan job", () => {
     const swapped = skeleton.outline[4];
     if (swapped?.kind !== "content") throw new Error("fixture outline moved");
     skeleton.outline[4] = {
+      ...swapped,
       kind: "image-text",
-      minutes: swapped.minutes,
-      factRefs: swapped.factRefs,
-      imageBrief: { subject: "river severn" },
+      imageBrief: { subject: "river severn", mustShow: ["river water"], purpose: "observe" },
     };
     const ai = scriptedPipelineAi({
       judges: [JSON.stringify({ pick: "p1", query: null })],
