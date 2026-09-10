@@ -255,7 +255,9 @@ describe("planSkeletonSchemaFor", () => {
           ["New to it", 20, "Reception"],
           ["Some prior knowledge", 60, "Year 5"],
         ],
+        // The Explain fixture also serves the e2e worker, whose brief screen pre-selects "New to it".
         Explain: [
+          ["New to it", 60, "Year 8"],
           ["Some prior knowledge", 60, "Year 8"],
           ["Revisiting", 50, "Year 11"],
         ],

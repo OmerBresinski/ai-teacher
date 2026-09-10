@@ -31,6 +31,8 @@ import { noSources, type PhotoPlacer, type PipelineDeps, type PipelineState } fr
  * 0–6 identical (title, objectives, starter, vocabulary, content, content, worked-example) so the
  * one `plan-facts.json` fits every one of them, positions 7–10 written to the verb's shape. Each
  * satisfies the shape of every eval brief with that verb; `eval:schema` picks by the brief's verb.
+ * The Explain one satisfies all three confidences: it is also the e2e worker's script
+ * (`apps/worker/src/fake-ai.ts`), and the brief screen pre-selects Explain / New to it.
  */
 export const PLAN_SKELETONS: Record<ObjectiveVerb, PlanSkeleton> = {
   Recall: planSkeletonRecall as PlanSkeleton,

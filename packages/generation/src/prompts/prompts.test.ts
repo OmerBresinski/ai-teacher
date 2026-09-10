@@ -136,7 +136,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "plan-facts": {
     version: "plan-facts.v6",
-    hash: "60e7aebe710c79ceea031364138bedabfe655515079f7c32956242e7793639c5",
+    hash: "cc4a17d1bab4a1365677ec61d424e86918d1257b8aa99b4c83d2dd41d7261ce9",
   },
   "verify-facts": {
     version: "verify-facts.v1",
