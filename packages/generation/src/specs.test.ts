@@ -219,11 +219,12 @@ describe("planSkeletonSchemaFor", () => {
     ]);
     // An image-text slide that names the objective teaches it too (TEACH-237).
     const pictured = structuredClone(entries);
-    pictured[6] = { ...pictured[6], kind: "image-text", imageBrief: RIVER, factRefs: [O(1)] };
+    pictured[5] = { ...pictured[5], kind: "image-text", imageBrief: RIVER, factRefs: [O(1)] };
     expect(
-      schema.safeParse({ learningObjectives: [{ text: "A" }, { text: "B" }], outline: pictured })
-        .success,
-    ).toBe(true);
+      messagesOf(
+        schema.safeParse({ learningObjectives: [{ text: "A" }, { text: "B" }], outline: pictured }),
+      ),
+    ).toEqual([]);
     // Any other confidence: the rule does not apply.
     expect(
       planSkeletonSchemaFor({ durationMin: 60, shape: EXPLAIN_SOME }).safeParse({
