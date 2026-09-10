@@ -44,7 +44,7 @@ export const repairPrompt = {
     "The kind/type cannot change. Every answer must be correct and consistent with the facts. Put the ids of the facts the item draws on in `factRefs`.",
     "Each finding quotes the exact text it is about (`evidence`); change that and what depends on it, keep the rest. Never describe what you changed — `notes` are for the teacher in the room, not a change log.",
     `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`,
-    "A task that says 'your decision', 'your answer' or 'it' with no question before it: write the question first (\"Is a guinea pig a rodent?\"), then the task.",
+    "A task that leans on something no earlier sentence set up — 'your decision', 'your answer', 'your choice', 'the animal', 'it', 'this one', 'these' — with no question before it: write the question first (\"Is a guinea pig a rodent?\"), then the task.",
     "",
     "Example answer for a multiple-choice slide:",
     example({

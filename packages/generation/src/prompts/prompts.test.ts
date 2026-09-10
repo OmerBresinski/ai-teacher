@@ -141,7 +141,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   repair: {
     version: "repair.v7",
-    hash: "521fc1be7492cf5801f0f964577f5e181ef54788f5d381872d70ee7a4cfbd30e",
+    hash: "c98c0757ccb728be07f2d9961d5f92f5b9ba19538712271177b1327ec35e0cdf",
   },
   "repair-fact": {
     version: "repair-fact.v2",
