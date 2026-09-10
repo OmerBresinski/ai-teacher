@@ -171,6 +171,34 @@ const run = (lesson: Lesson, deps: ReturnType<typeof recordingDeps>) =>
   illustrate({ lesson, worksheetId: "w", worksheet: undefined }, deps);
 
 describe("illustrate", () => {
+  test("the judge may omit the fields it has nothing to say for (the shapes Luna sends in production)", async () => {
+    // A pick without `query`; a requery without `pick`/`count`/`visible`. Both were rejected by a
+    // strict schema on 2026-09-10 and no photo was ever placed.
+    const { images, stores } = fakeImages(async (query) =>
+      query === "beaver gnawing" ? [pexelsPhoto("r", true)] : [pexelsPhoto("d", true)],
+    );
+    const ai = judge(
+      JSON.stringify({ query: "beaver gnawing", visible: [] }),
+      JSON.stringify({ pick: "r", visible: [], count: "one" }),
+    );
+    const state = await run(
+      imageLesson([{ subject: "rodent teeth" }]),
+      recordingDeps(ai, { images }),
+    );
+    expect(ai.calls).toHaveLength(2);
+    expect(stores).toEqual(["r"]);
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/r.jpg");
+  });
+
+  test("an empty object from the judge means none, not a schema miss", async () => {
+    const { images, stores } = fakeImages(async () => [pexelsPhoto("d", true)]);
+    const ai = judge("{}");
+    const state = await run(imageLesson([{ subject: "river" }]), recordingDeps(ai, { images }));
+    expect(ai.calls).toHaveLength(1);
+    expect(stores).toEqual([]);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+  });
+
   test("the judge's pick is stored, not the first result", async () => {
     const first = pexelsPhoto("p1", true);
     const second = pexelsPhoto("p2", true);

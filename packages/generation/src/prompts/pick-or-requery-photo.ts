@@ -37,15 +37,26 @@ export type PickOrRequeryInput = {
 /**
  * Flat rather than a union: small models answer with nulls far more reliably than a tagged union.
  * `pick` wins when both are set; both null means "leave the placeholder". `visible` is the gate's
- * input; `count` is a hint for the slide text's grammar.
+ * input; `count` is a hint for the slide text's grammar. Every field the model has nothing to say
+ * for may be omitted as well as null — in production Luna leaves out `query` when it picks and
+ * `pick`/`count` when it requeries, and a strict schema rejected every reply (rodents lesson,
+ * 2026-09-10). Omitted reads as null / empty.
  */
-export const PickOrRequerySchema = z.strictObject({
-  pick: z.string().min(1).nullable(),
-  visible: z.array(z.string().trim().min(1).max(40)).max(4),
-  count: z.enum(["one", "several"]).nullable(),
-  query: z.string().trim().min(2).max(60).nullable(),
-});
-export type PickOrRequery = z.infer<typeof PickOrRequerySchema>;
+export const PickOrRequerySchema = z
+  .object({
+    pick: z.string().min(1).nullable().optional(),
+    visible: z.array(z.string().trim().min(1).max(40)).max(4).optional(),
+    count: z.enum(["one", "several"]).nullable().optional(),
+    query: z.string().trim().min(2).max(60).nullable().optional(),
+  })
+  .strict()
+  .transform((a) => ({
+    pick: a.pick ?? null,
+    visible: a.visible ?? [],
+    count: a.count ?? null,
+    query: a.query ?? null,
+  }));
+export type PickOrRequery = z.output<typeof PickOrRequerySchema>;
 
 /** The schema for one brief: `visible` may list only the brief's own `mustShow` items. */
 export function pickOrRequerySchemaFor(
