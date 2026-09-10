@@ -2,7 +2,8 @@ import {
   type FactArray,
   type FactId,
   FactIdSchema,
-  FindingSchema,
+  FindingSeveritySchema,
+  FindingTargetSchema,
   GENERATABLE_SLIDE_KINDS,
   IMAGE_PURPOSES,
   isFactIdOf,
@@ -637,8 +638,48 @@ export type WorksheetSpec = z.infer<typeof WorksheetSpecSchema>;
 /* Evaluate / Repair                                                   */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Evaluate's model checks (Generation quality §4; TEACH-216): a closed set, each finding with the
+ * exact text it is about, and `error` only where a pupil would be taught something wrong. `image-fit`
+ * is reserved for the picture-first ticket.
+ */
+export const EVALUATE_CHECKS = [
+  "answer-correctness",
+  "fact-consistency",
+  "kind-misuse",
+  "repetition",
+  "pitch",
+  "notes-quality",
+  "image-fit",
+] as const;
+export type EvaluateCheck = (typeof EVALUATE_CHECKS)[number];
+/** The checks that may carry `severity: "error"`. */
+export const EVALUATE_ERROR_CHECKS: ReadonlySet<EvaluateCheck> = new Set([
+  "answer-correctness",
+  "fact-consistency",
+]);
+
+export const EvaluateFindingSchema = z
+  .strictObject({
+    check: z.enum(EVALUATE_CHECKS),
+    severity: FindingSeveritySchema,
+    target: FindingTargetSchema,
+    message: line(SPEC_LIMITS.body),
+    /** The exact span of slide or block text the finding is about; a finding without one is dropped. */
+    evidence: line(SPEC_LIMITS.body),
+  })
+  .superRefine((finding, ctx) => {
+    if (finding.severity === "error" && !EVALUATE_ERROR_CHECKS.has(finding.check)) {
+      ctx.addIssue({
+        code: "custom",
+        message: `${finding.check} findings are warnings: only answer-correctness and fact-consistency may be errors. Set severity to "warning".`,
+        path: ["severity"],
+      });
+    }
+  });
+
 export const EvaluateOutputSchema = z.strictObject({
-  findings: z.array(FindingSchema).max(20),
+  findings: z.array(EvaluateFindingSchema).max(20),
 });
 export type EvaluateOutput = z.infer<typeof EvaluateOutputSchema>;
 

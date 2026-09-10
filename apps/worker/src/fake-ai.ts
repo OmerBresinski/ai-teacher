@@ -17,12 +17,16 @@ import type { Env } from "./env";
  * are visibly written one at a time. Never constructed in production (`env.ts` refuses it).
  */
 
-/** The residual the fake's Evaluate answer reports: a lesson-level warning `knownTargetsOnly` keeps. */
+/**
+ * The residual the fake's Evaluate answer reports: a lesson-level `pitch` warning that
+ * `knownTargetsWithEvidence` keeps — its evidence is a term from the fixture facts (TEACH-216).
+ */
 export const FAKE_REVIEW_WARNING = {
-  check: "age-fit",
+  check: "pitch",
   severity: "warning" as const,
   target: {},
-  message: FIXTURES.evaluate.findings[0]?.message ?? "Consider a diagram for this age group.",
+  evidence: FIXTURES.planFacts.vocabulary[0]?.term ?? "Particle",
+  message: "Consider a diagram for this age group.",
 };
 
 /** What the fake writes into a re-derived slide's first text so a test can see the cascade landed. */

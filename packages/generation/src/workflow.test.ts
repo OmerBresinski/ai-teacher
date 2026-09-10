@@ -1,17 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { Writable } from "node:stream";
 import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { parseLesson, parseWorksheet } from "@tj/domain/documents";
 import type { StoredPhoto } from "@tj/images";
-import pino from "pino";
 import { PROMPT_VERSIONS } from "./prompts";
 import { GENERATE_CONCURRENCY } from "./stages/generate";
 import { TITLE_PROMPT_VERSION } from "./stages/plan";
+import { slideText } from "./stages/shared";
 import {
   answeringAi,
   CHECK_INPUT_CALLS,
   FIXTURES,
+  memoryLogger,
   miss,
   PLAN_CALLS,
   PLAN_INDEX,
@@ -38,17 +38,6 @@ const PLAN_PERSISTS = 3;
 const SLIDES_INDEX = CHECK_INPUT_CALLS + PLAN_CALLS;
 const ALL_STAGES = ["check-input", "plan", "generate", "illustrate", "evaluate", "repair"];
 const PLANNED_VERSION = `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}+${PROMPT_VERSIONS["verify-facts"]}`;
-
-function memoryLogger() {
-  const lines: string[] = [];
-  const destination = new Writable({
-    write(chunk, _enc, cb) {
-      lines.push(chunk.toString());
-      cb();
-    },
-  });
-  return { lines, logger: pino({ level: "info" }, destination) };
-}
 
 describe("runLessonPipeline", () => {
   test("a full run on the fixture script: persists per stage and slide, documents are valid", async () => {
@@ -190,12 +179,12 @@ describe("runLessonPipeline", () => {
         recordingDeps(ai),
       );
       expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1);
-      // Generate is on the small class (TEACH-213); Plan and Evaluate on standard.
+      // Generate is on the small class (TEACH-213); Plan and Evaluate (TEACH-216) on standard.
       expect(ai.calls.map((c) => c.modelClass)).toEqual([
         "small",
         ...Array.from({ length: PLAN_CALLS }, () => "standard" as const),
         ...Array.from({ length: GENERATED_SLIDES + 1 }, () => "small" as const),
-        "small",
+        "standard",
       ]);
       expect(ai.calls.map((c) => c.context?.stage)).toEqual([
         "check-input",
@@ -486,12 +475,14 @@ describe("runLessonPipeline", () => {
           check: "answer-correctness",
           severity: "error",
           target: { slideId: mcSlide.id },
+          evidence: slideText(mcSlide).split("\n")[0],
           message: "Wrong option marked correct.",
         },
         {
-          check: "age-fit",
+          check: "pitch",
           severity: "warning",
           target: { slideId: mcSlide.id },
+          evidence: slideText(mcSlide).split("\n")[0],
           message: "Long stem.",
         },
       ],

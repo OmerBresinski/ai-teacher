@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   assignFactIds,
   EMPTY_PLAN_FACTS,
+  EvaluateOutputSchema,
   PlanSkeletonSchema,
   planFactsSchemaFor,
   planSkeletonSchemaFor,
@@ -359,5 +360,47 @@ describe("verifyOutputSchemaFor (TEACH-212)", () => {
 
   test("a value over the field's own limit is refused even though it fits the body cap", () => {
     expect(messages([{ ...ok, value: "x".repeat(61) }])[0]).toContain("at most 60 characters");
+  });
+});
+
+describe("EvaluateOutputSchema (TEACH-216)", () => {
+  const finding = (over: Record<string, unknown>) => ({
+    check: "pitch",
+    severity: "warning",
+    target: { slideId: "s1" },
+    evidence: "the quoted span",
+    message: "Too hard.",
+    ...over,
+  });
+  const messages = (findings: unknown[]) => {
+    const r = EvaluateOutputSchema.safeParse({ findings });
+    return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+  };
+
+  test("a warning with evidence parses; an error is allowed for the two correctness checks", () => {
+    expect(messages([finding({})])).toEqual([]);
+    expect(messages([finding({ check: "answer-correctness", severity: "error" })])).toEqual([]);
+    expect(
+      messages([
+        finding({
+          check: "fact-consistency",
+          severity: "error",
+          target: { slideId: "s1", factId: "v1" },
+        }),
+      ]),
+    ).toEqual([]);
+  });
+
+  test("row 1: an error on any other check names the rule", () => {
+    expect(messages([finding({ severity: "error" })])).toEqual([
+      'findings.0.severity: pitch findings are warnings: only answer-correctness and fact-consistency may be errors. Set severity to "warning".',
+    ]);
+  });
+
+  test("row 3: a check outside the set is refused; so is a finding without evidence", () => {
+    expect(messages([finding({ check: "terminology" })])[0]).toContain("findings.0.check");
+    expect(messages([finding({ evidence: "" })])[0]).toContain("findings.0.evidence");
+    const { evidence: _dropped, ...noEvidence } = finding({});
+    expect(messages([noEvidence])[0]).toContain("findings.0.evidence");
   });
 });

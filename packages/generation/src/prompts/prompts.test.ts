@@ -64,7 +64,7 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   evaluate: {
     facts,
     audience,
-    slides: [{ id: "s1", kind: "content", text: "The particle model" }],
+    slides: [{ id: "s1", kind: "content", text: "The particle model", notes: "Ask why." }],
     blocks: [{ id: "b1", type: "question", text: "Why?\nAnswer: Because." }],
   },
   repair: {
@@ -77,9 +77,16 @@ const SAMPLE_INPUTS: Record<PromptName, unknown> = {
         severity: "error",
         target: { slideId: "s7" },
         message: "Wrong.",
+        evidence: "Which state?",
       },
     ],
     shape: 'a "multiple-choice" slide spec',
+  },
+  "repair-fact": {
+    audience,
+    facts,
+    factId: "v1",
+    findings: [{ message: "Not the accepted term.", evidence: "Particle" }],
   },
   cascade: {
     facts,
@@ -127,12 +134,16 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "ea854cc39411f363a9dd5fe5e431e5a2d3d6b0057e4ccbfd1e387068eea44f4f",
   },
   evaluate: {
-    version: "evaluate.v2",
-    hash: "37513673804ae3edb1eba97dc16d3d37f89af3cbd8b8607c498500a6d5d34382",
+    version: "evaluate.v3",
+    hash: "9ee366c1eff077ca0d6d24414c2cb2f984ba0f93c005577b3cd2cf3fdd35a21e",
   },
   repair: {
-    version: "repair.v2",
-    hash: "72f2192b2ddc98b065fbf5dddd78f53247d9cddb539d40c54638d07859e23686",
+    version: "repair.v3",
+    hash: "ad76db1f19986804bf6253912d494a401723935d290e3325b65c01a792874048",
+  },
+  "repair-fact": {
+    version: "repair-fact.v1",
+    hash: "f1bf22861746630ff3046829e7272dcce5351a844d221bed93219a0d6a72c2af",
   },
   cascade: {
     version: "cascade.v2",

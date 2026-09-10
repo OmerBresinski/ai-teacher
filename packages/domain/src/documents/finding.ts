@@ -27,6 +27,11 @@ export type Finding = {
   target: FindingTarget;
   message: string;
   fix?: RepairHint;
+  /**
+   * The exact text span the finding is about (Evaluate's model checks, TEACH-216). For Repair,
+   * never for the badge; it is content, so it is never logged (ADR 0015). Schema checks set none.
+   */
+  evidence?: string;
 };
 
 export const FindingSeveritySchema = z.enum(["error", "warning"]);
@@ -48,4 +53,5 @@ export const FindingSchema = z.strictObject({
   target: FindingTargetSchema,
   message: z.string(),
   fix: RepairHintSchema.optional(),
+  evidence: z.string().optional(),
 });

@@ -4,7 +4,15 @@ import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
 import { PROMPT_VERSIONS } from "../prompts";
 import { assignFactIds, planFactsSchemaFor } from "../specs";
-import { FIXTURES, initialState, miss, recordingDeps, routed, sampleBriefLesson } from "../testing";
+import {
+  FIXTURES,
+  initialState,
+  memoryLogger,
+  miss,
+  recordingDeps,
+  routed,
+  sampleBriefLesson,
+} from "../testing";
 import { evaluate } from "./evaluate";
 import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
@@ -640,28 +648,66 @@ describe("evaluate", () => {
     return generate(await plan(initialState(), deps), deps);
   }
 
-  test("schema checks plus one small call; findings with unknown targets are dropped", async () => {
+  test("schema checks plus one standard call; findings with unknown targets or absent evidence are dropped (rows 2, 6)", async () => {
     const state = await generated();
-    const slideId = state.lesson.slides[4]?.id as string;
+    const slide = state.lesson.slides[4];
+    if (!slide) throw new Error("fixture");
+    const slideId = slide.id;
+    const quoted = slideText(slide).split("\n")[0] ?? "";
     const findings: Finding[] = [
-      { check: "age-fit", severity: "warning", target: { slideId }, message: "Hard word." },
       {
-        check: "terminology",
+        check: "pitch",
+        severity: "warning",
+        target: { slideId },
+        evidence: quoted.toUpperCase(),
+        message: "Hard word.",
+      },
+      {
+        check: "pitch",
         severity: "warning",
         target: { slideId: "ghost" },
+        evidence: quoted,
         message: "Dropped.",
       },
-      { check: "answer-correctness", severity: "error", target: {}, message: "Untargeted, kept." },
+      {
+        check: "pitch",
+        severity: "warning",
+        target: { slideId },
+        evidence: "Words that are on no slide at all",
+        message: "Dropped too.",
+      },
+      {
+        check: "notes-quality",
+        severity: "warning",
+        target: { slideId },
+        evidence: slide.notes ?? "",
+        message: "Notes kept: evidence is in the notes.",
+      },
+      {
+        check: "fact-consistency",
+        severity: "error",
+        target: {},
+        evidence: "Particle",
+        message: "Untargeted: a fact, kept.",
+      },
     ];
+    const { lines, logger } = memoryLogger();
     const ai = createFakeAi({ script: [json({ findings })], usage });
-    const deps = recordingDeps(ai);
+    const deps = recordingDeps(ai, { logger });
     const next = await evaluate(state, deps);
-    expect(ai.calls.map((c) => [c.modelClass, c.context?.stage])).toEqual([["small", "evaluate"]]);
+    expect(ai.calls.map((c) => [c.modelClass, c.context?.stage, c.context?.effort])).toEqual([
+      ["standard", "evaluate", "medium"],
+    ]);
     expect(next.lesson.generation?.stage).toBe("evaluated");
     expect(next.lesson.generation?.findings.map((f) => f.check)).toEqual([
-      "age-fit",
-      "answer-correctness",
+      "pitch",
+      "notes-quality",
+      "fact-consistency",
     ]);
+    const dropped = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "findings dropped");
+    expect(dropped).toMatchObject({ stage: "evaluate", dropped: 2 });
+    expect(lines.join("\n")).not.toContain("Dropped");
+    expect(lines.join("\n")).not.toContain(quoted);
     expect(deps.persisted).toHaveLength(1);
     expect(deps.progress).toEqual([
       { percent: 90, message: "Reviewed", documentUpdatedAt: deps.persisted[0]?.updatedAt },
@@ -836,9 +882,10 @@ describe("repair", () => {
     const ai = createFakeAi({ script: [json(FIXTURES.repair), json(repairedBlock)], usage });
     const deps = recordingDeps(ai);
     const state = await repair(evaluated, deps);
-    expect(ai.calls.map((c) => [c.modelClass, c.context?.stage])).toEqual([
-      ["standard", "repair"],
-      ["standard", "repair"],
+    // Row 6 (TEACH-216): Repair runs on the small class at low effort.
+    expect(ai.calls.map((c) => [c.modelClass, c.context?.stage, c.context?.effort])).toEqual([
+      ["small", "repair", "low"],
+      ["small", "repair", "low"],
     ]);
     const newMc = state.lesson.slides.find((s) => s.id === mc.id);
     expect(newMc?.notes).toBe("Repaired.");
@@ -862,6 +909,161 @@ describe("repair", () => {
     expect(deps.progress).toEqual([
       { percent: 100, message: "Done", documentUpdatedAt: deps.persisted[0]?.updatedAt },
     ]);
+  });
+
+  test("row 4: a fact-consistency error naming the fact patches the fact first, then regenerates the slide from the patched facts; one fact-verify warning", async () => {
+    const script = [
+      ...planScript(),
+      ...FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((e) => json(FIXTURES.slides[e.kind])),
+      json(FIXTURES.worksheet),
+    ];
+    const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const vocab = generated.lesson.slides.find((s) => s.kind === "vocabulary");
+    const v1 = generated.lesson.facts?.vocabulary[0];
+    if (!vocab || !v1) throw new Error("fixture");
+    const findings: Finding[] = [
+      {
+        check: "fact-consistency",
+        severity: "error",
+        target: { slideId: vocab.id, factId: "v1" },
+        evidence: v1.term,
+        message: "Not the accepted term for this year group.",
+      },
+    ];
+    const evaluated = {
+      ...generated,
+      lesson: {
+        ...generated.lesson,
+        generation: {
+          ...(generated.lesson.generation as NonNullable<typeof generated.lesson.generation>),
+          stage: "evaluated" as const,
+          findings,
+        },
+      },
+    };
+    const ai = createFakeAi({
+      script: [
+        json({
+          corrections: [{ factId: "v1", field: "term", value: "Corpuscle", reason: "wrong-term" }],
+        }),
+        json(FIXTURES.slides.vocabulary),
+      ],
+      usage,
+    });
+    const state = await repair(evaluated, recordingDeps(ai));
+    expect(
+      ai.calls.map((c) => [c.context?.promptVersion, c.modelClass, c.context?.effort]),
+    ).toEqual([
+      [PROMPT_VERSIONS["repair-fact"], "small", "low"],
+      [PROMPT_VERSIONS.repair, "small", "low"],
+    ]);
+    // The fact call saw v1 and the review's words; the slide call saw the patched fact.
+    expect(ai.calls[0]?.promptText).toContain("v1:");
+    expect(ai.calls[0]?.promptText).toContain("Not the accepted term");
+    expect(ai.calls[1]?.promptText).toContain("Corpuscle");
+    expect(state.lesson.facts?.vocabulary[0]?.term).toBe("Corpuscle");
+    expect(state.lesson.generation?.findings).toContainEqual({
+      check: "fact-verify",
+      severity: "warning",
+      target: { factId: "v1" },
+      message: "Vocabulary term corrected: not the accepted term.",
+    });
+    // The error was repaired: no fact-consistency error remains.
+    expect(state.lesson.generation?.findings.some((f) => f.check === "fact-consistency")).toBe(
+      false,
+    );
+  });
+
+  test("row 7: seven error targets — six repaired (the cap), the seventh's error stays a residual", async () => {
+    const script = [
+      ...planScript(),
+      ...FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((e) => json(FIXTURES.slides[e.kind])),
+      json(FIXTURES.worksheet),
+    ];
+    const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const targets = generated.lesson.slides.slice(2, 9); // seven generated slides
+    expect(targets).toHaveLength(7);
+    const findings: Finding[] = targets.map((s) => ({
+      check: "answer-correctness",
+      severity: "error" as const,
+      target: { slideId: s.id },
+      evidence: slideText(s).split("\n")[0] ?? "",
+      message: "Wrong.",
+    }));
+    const evaluated = {
+      ...generated,
+      lesson: {
+        ...generated.lesson,
+        generation: {
+          ...(generated.lesson.generation as NonNullable<typeof generated.lesson.generation>),
+          stage: "evaluated" as const,
+          findings,
+        },
+      },
+    };
+    // One answer per repaired slide, by kind.
+    const ai = createFakeAi({
+      fallback: (call) => {
+        const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "content";
+        return json(FIXTURES.slides[kind as keyof typeof FIXTURES.slides]);
+      },
+      usage,
+    });
+    const state = await repair(evaluated, recordingDeps(ai));
+    expect(ai.calls).toHaveLength(MAX_TARGETS);
+    const residual = state.lesson.generation?.findings.filter(
+      (f) => f.check === "answer-correctness" && f.severity === "error",
+    );
+    expect(residual).toHaveLength(1);
+    expect(residual?.[0]?.target.slideId).toBe(targets[6]?.id);
+  });
+
+  test("row 5: a repair reply whose notes are a change log is a validation issue; the retry lands", async () => {
+    const script = [
+      ...planScript(),
+      ...FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((e) => json(FIXTURES.slides[e.kind])),
+      json(FIXTURES.worksheet),
+    ];
+    const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const mc = generated.lesson.slides.find((s) => s.kind === "multiple-choice");
+    if (!mc) throw new Error("fixture");
+    const evaluated = {
+      ...generated,
+      lesson: {
+        ...generated.lesson,
+        generation: {
+          ...(generated.lesson.generation as NonNullable<typeof generated.lesson.generation>),
+          stage: "evaluated" as const,
+          findings: [
+            {
+              check: "answer-correctness",
+              severity: "error" as const,
+              target: { slideId: mc.id },
+              evidence: slideText(mc).split("\n")[0] ?? "",
+              message: "Wrong option.",
+            },
+          ],
+        },
+      },
+    };
+    const commentary = {
+      ...FIXTURES.repair,
+      notes: "Corrected the marked option so that it matches the facts.",
+    };
+    const ai = createFakeAi({ script: [json(commentary), json(FIXTURES.repair)], usage });
+    const state = await repair(evaluated, recordingDeps(ai));
+    expect(ai.calls).toHaveLength(2);
+    expect(ai.calls[1]?.promptText).toContain("Notes are for the teacher");
+    expect(state.lesson.slides.find((s) => s.id === mc.id)?.notes).toBe(FIXTURES.repair.notes);
   });
 
   test("a target that cannot be repaired keeps its error and gains a repair warning", async () => {
