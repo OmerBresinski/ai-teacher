@@ -1,11 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import {
   BlockSpecSchema,
+  blockSpecSchemaFor,
   imageTextSpecSchemaFor,
   PICTURE_NONE,
+  PICTURE_NONE_ANY,
   PICTURE_PLURAL,
   SlideSpecSchema,
   slideSpecSchemaFor,
+  stripEnumerator,
   TASK_NOT_VISIBLE,
 } from "./specs";
 
@@ -285,5 +288,80 @@ describe("image-text written to its photograph (TEACH-220)", () => {
   test("several photos may be called pictures; undefined evidence keeps the base schema", () => {
     expect(messages({ ...flower, count: "several" }, "The photos show the petals.")).toEqual([]);
     expect(messages(undefined, "Use the pictures to spot the carpel.")).toEqual([]);
+  });
+});
+
+describe("list enumerators and picture references (TEACH-223)", () => {
+  test("row 1: a leading enumerator on a list member is stripped, whatever its style", () => {
+    expect(stripEnumerator("1. Explain how")).toBe("Explain how");
+    expect(stripEnumerator("2) Name one")).toBe("Name one");
+    expect(stripEnumerator("a) List two")).toBe("List two");
+    expect(stripEnumerator("- Give three")).toBe("Give three");
+    expect(stripEnumerator("• Four")).toBe("Four");
+    expect(stripEnumerator("10 is a number")).toBe("10 is a number");
+    expect(stripEnumerator("Explain 1. then 2.")).toBe("Explain 1. then 2.");
+    const parsed = slideSpecSchemaFor("exit-ticket")?.safeParse({
+      kind: "exit-ticket",
+      ...base,
+      heading: "Show what you know",
+      items: ["1. Explain how its teeth help.", "2) Name two features.", "- List one more."],
+    });
+    expect(parsed?.success).toBe(true);
+    if (parsed?.success && parsed.data.kind === "exit-ticket") {
+      expect(parsed.data.items).toEqual([
+        "Explain how its teeth help.",
+        "Name two features.",
+        "List one more.",
+      ]);
+    }
+  });
+
+  test("row 2: a picture word on any slide that is not image-text, in the text or the notes, is an issue naming the field", () => {
+    const worked = slideSpecSchemaFor("worked-example")?.safeParse({
+      kind: "worked-example",
+      ...base,
+      heading: "Decide whether this animal is a rodent",
+      question: "A photo shows an animal with one pair of large upper incisors. Is it a rodent?",
+      steps: ["Look at the front teeth.", "Find one pair at the top."],
+      notes: "Point to the evidence in the photo.",
+    });
+    expect(worked?.success).toBe(false);
+    if (!worked?.success) {
+      expect(worked?.error.issues.map((i) => [i.path.join("."), i.message]).sort()).toEqual([
+        ["notes", PICTURE_NONE_ANY],
+        ["question", PICTURE_NONE_ANY],
+      ]);
+    }
+    const block = blockSpecSchemaFor("question")?.safeParse({
+      type: "question",
+      ...base,
+      text: "Look at the picture. What is it?",
+      answer: "A rat.",
+      answerLines: 1,
+      marks: 1,
+    });
+    expect(block?.success).toBe(false);
+    // "diagram" is a word a teacher draws on the board: not a picture reference.
+    const content = slideSpecSchemaFor("content")?.safeParse({
+      kind: "content",
+      ...base,
+      heading: "States of matter",
+      body: "Draw the three particle diagrams.",
+    });
+    expect(content?.success).toBe(true);
+  });
+
+  test("row 3: an image-text slide with its photograph may say 'the photograph'", () => {
+    const withPhoto = imageTextSpecSchemaFor({
+      visible: ["front teeth"],
+      count: "one",
+      mustShow: ["front teeth"],
+    })?.safeParse({
+      kind: "image-text",
+      ...base,
+      heading: "Look closely",
+      body: "The photograph shows the front teeth. Find them.",
+    });
+    expect(withPhoto?.success).toBe(true);
   });
 });

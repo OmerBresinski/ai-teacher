@@ -13,7 +13,7 @@ import {
   QUESTION_TIERS,
   QUESTION_USES,
 } from "@tj/domain/documents";
-import { BlockSpecSchema, SlideSpecSchema, SPEC_LIMITS } from "@tj/slides";
+import { BlockSpecSchema, noPictureReference, SlideSpecSchema, SPEC_LIMITS } from "@tj/slides";
 import { z } from "zod";
 import { INPUT_CHECKS } from "./types";
 
@@ -623,15 +623,19 @@ function dedupe<T>(values: T[]): T[] {
 /* Generate — worksheet                                                */
 /* ------------------------------------------------------------------ */
 
-export const WorksheetSpecSchema = z.strictObject({
-  title: line(SPEC_LIMITS.title),
-  /** The objective line under the title ("I can …"). */
-  subtitle: line(SPEC_LIMITS.heading).optional(),
-  /** Success criteria; the worksheet header shows at most four. */
-  criteria: z.array(line(SPEC_LIMITS.item)).max(4),
-  // The prompt asks for 4–10; the schema allows two more so an eleventh block is not a retry.
-  blocks: z.array(BlockSpecSchema).min(4).max(12),
-});
+export const WorksheetSpecSchema = z
+  .strictObject({
+    title: line(SPEC_LIMITS.title),
+    /** The objective line under the title ("I can …"). */
+    subtitle: line(SPEC_LIMITS.heading).optional(),
+    /** Success criteria; the worksheet header shows at most four. */
+    criteria: z.array(line(SPEC_LIMITS.item)).max(4),
+    // The prompt asks for 4–10; the schema allows two more so an eleventh block is not a retry.
+    blocks: z.array(BlockSpecSchema).min(4).max(12),
+  })
+  // A worksheet has no photographs: no block may refer to one (TEACH-223); same rule Repair's
+  // `blockSpecSchemaFor` applies, so a sheet is held to it whichever path wrote it.
+  .superRefine(noPictureReference);
 export type WorksheetSpec = z.infer<typeof WorksheetSpecSchema>;
 
 /* ------------------------------------------------------------------ */

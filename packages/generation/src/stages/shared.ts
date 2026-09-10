@@ -142,11 +142,8 @@ export function specFieldsOf(slide: Slide): { field: string; text: string }[] {
  * (a teacher-added element type, a future kind) fails it, and Repair falls back to the flat text.
  */
 export function specFieldsCover(slide: Slide): boolean {
-  const shown = normaliseText(
-    specFieldsOf(slide)
-      .map((f) => f.text)
-      .join("\n"),
-  );
+  // Whole lines, not substrings: a one-letter line must not count as covered by a longer field.
+  const shown = new Set(specFieldsOf(slide).flatMap((f) => f.text.split("\n").map(normaliseText)));
   // The recipe's fixed captions are excluded from the fields on purpose.
   const captions = new Set(
     slide.elements
@@ -162,7 +159,7 @@ export function specFieldsCover(slide: Slide): boolean {
         !captions.has(line) &&
         !/^(answer|answers|correct|model answer):/.test(line),
     )
-    .every((line) => shown.includes(line));
+    .every((line) => shown.has(line));
 }
 
 export function audienceOf(lesson: Lesson): Audience {
