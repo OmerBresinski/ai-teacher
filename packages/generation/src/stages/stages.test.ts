@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
+import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
 import { PROMPT_VERSIONS } from "../prompts";
 import { assignFactIds, planFactsSchemaFor } from "../specs";
@@ -18,7 +19,7 @@ import { evaluate } from "./evaluate";
 import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
 import { MAX_TARGETS, repair, repairTargets } from "./repair";
-import { BUDGET_FINDING, blockText, slideText } from "./shared";
+import { BUDGET_FINDING, blockText, slideText, specFieldsCover, specFieldsOf } from "./shared";
 
 const json = (v: unknown) => JSON.stringify(v);
 const usage = { inputTokens: 1000, outputTokens: 400 };
@@ -1427,5 +1428,70 @@ describe("repair", () => {
       ["repair", "warning"],
     ]);
     expect(state.lesson.generation?.stage).toBe("repaired");
+  });
+});
+
+describe("specFieldsOf (TEACH-222)", () => {
+  test("covers every generatable kind's text: nothing slideText shows is missing from the fields, and captions are excluded", async () => {
+    const setupDeps = recordingDeps(
+      createFakeAi({
+        script: routed([
+          ...planScript(),
+          ...FIXTURES.planSkeleton.outline
+            .slice(PLANNED_SLIDES)
+            .map((e) => json(FIXTURES.slides[e.kind])),
+          json(FIXTURES.worksheet),
+        ]),
+        usage,
+      }),
+    );
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    for (const slide of generated.lesson.slides) {
+      expect({ kind: slide.kind, covered: specFieldsCover(slide) }).toEqual({
+        kind: slide.kind,
+        covered: true,
+      });
+      const fields = specFieldsOf(slide);
+      expect(fields.map((f) => f.text)).not.toContain("KEY IDEA");
+      expect(fields.map((f) => f.text)).not.toContain("QUESTION");
+    }
+  });
+
+  test("a slide whose text the projection cannot label is not covered, so Repair shows the flat text", () => {
+    const slide = generatedLesson().slides[0];
+    if (!slide) throw new Error("fixture");
+    // A text element with no preset is still shown, labelled "text", so it is covered…
+    const noPreset = {
+      ...slide,
+      elements: slide.elements.map((e) =>
+        e.type === "text" ? { ...e, style: { ...e.style, preset: undefined } } : e,
+      ),
+    } as typeof slide;
+    expect(specFieldsCover(noPreset)).toBe(true);
+    expect(specFieldsOf(noPreset).some((f) => f.field === "text")).toBe(true);
+    // …but a table slideText renders that the projection did not would not be: prove the guard
+    // reads slideText by adding text only slideText sees (a fill-gap answer line is filtered, a
+    // caption is filtered; an unknown element carrying a doc is not).
+    const odd = {
+      ...slide,
+      elements: [
+        ...slide.elements,
+        {
+          id: "x",
+          type: "sticker",
+          x: 0,
+          y: 0,
+          w: 1,
+          h: 1,
+          doc: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "Only slideText sees me" }] },
+            ],
+          },
+        },
+      ],
+    } as unknown as typeof slide;
+    expect(specFieldsCover(odd)).toBe(false);
   });
 });

@@ -35,6 +35,7 @@ import {
   slideHaystack,
   slidePhotoOf,
   slideText,
+  specFieldsCover,
   specFieldsOf,
 } from "./shared";
 import { applyVerifyPatch, verifyFinding } from "./verify";
@@ -124,7 +125,8 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
               slideKind: slide.kind,
               slideId: slide.id,
               text: slideText(slide),
-              fields: specFieldsOf(slide),
+              // The labelled fields, when they carry everything the flat text does; else the text.
+              ...(specFieldsCover(slide) ? { fields: specFieldsOf(slide) } : {}),
               ...(slide.kind === "image-text"
                 ? { photo: slidePhotoOf(slide, lesson.facts?.outline[index]) }
                 : {}),

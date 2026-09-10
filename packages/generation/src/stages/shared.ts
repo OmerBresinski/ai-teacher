@@ -3,6 +3,7 @@ import {
   isTrustedThumbnail,
   type Lesson,
   type OutlineEntry,
+  type RichDoc,
   richDocToPlainText,
   type Slide,
 } from "@tj/domain/documents";
@@ -114,11 +115,17 @@ export function specFieldsOf(slide: Slide): { field: string; text: string }[] {
         field: `option ${element.label}${correct.has(element.id) ? " (correct)" : ""}`,
         text,
       });
+    } else if (element.type === "gap-text") {
+      const text = richDocToPlainText(element.doc).trim();
+      if (text) out.push({ field: "sentence", text });
     } else if (element.type === "table") {
       out.push({ field: "table", text: element.rows.map((r) => r.join(" | ")).join("\n") });
     }
   }
   const q = slide.question;
+  if ((q?.type === "true-false" || q?.type === "multiple-choice") && q.explanation) {
+    out.push({ field: "explanation", text: q.explanation });
+  }
   if (q?.type === "true-false") out.push({ field: "correct", text: q.correct ? "True" : "False" });
   if (q?.type === "open-response" && q.modelAnswer) {
     out.push({ field: "modelAnswer", text: q.modelAnswer });
@@ -127,6 +134,35 @@ export function specFieldsOf(slide: Slide): { field: string; text: string }[] {
     out.push({ field: "answers", text: q.gaps.map((g) => g.answer).join(", ") });
   if (slide.notes) out.push({ field: "notes", text: slide.notes });
   return out;
+}
+
+/**
+ * True when every line `slideText` would show is also in `specFieldsOf`'s projection — the
+ * guarantee Repair relies on to prefer the labelled fields. A kind the projection does not cover
+ * (a teacher-added element type, a future kind) fails it, and Repair falls back to the flat text.
+ */
+export function specFieldsCover(slide: Slide): boolean {
+  const shown = normaliseText(
+    specFieldsOf(slide)
+      .map((f) => f.text)
+      .join("\n"),
+  );
+  // The recipe's fixed captions are excluded from the fields on purpose.
+  const captions = new Set(
+    slide.elements
+      .filter((e) => e.type === "text" && e.style?.preset === "caption")
+      .map((e) => normaliseText(richDocToPlainText((e as { doc: RichDoc }).doc))),
+  );
+  return slideText(slide)
+    .split("\n")
+    .map(normaliseText)
+    .filter(
+      (line) =>
+        line.length > 0 &&
+        !captions.has(line) &&
+        !/^(answer|answers|correct|model answer):/.test(line),
+    )
+    .every((line) => shown.includes(line));
 }
 
 export function audienceOf(lesson: Lesson): Audience {
