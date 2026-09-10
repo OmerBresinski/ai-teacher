@@ -348,6 +348,24 @@ describe("plan", () => {
       expect(state.lesson.generation?.findings.filter((f) => f.check === "budget")).toHaveLength(1);
     });
 
+    test("a provider fault on Verify is a fact-verify warning too, never a failed job; a cancel still propagates", async () => {
+      const faulty = createFakeAi({
+        script: [
+          json(FIXTURES.planSkeleton),
+          json(FIXTURES.planFacts),
+          () => {
+            throw new Error("boom");
+          },
+        ],
+        usage,
+      });
+      const state = await plan(initialState(), recordingDeps(faulty));
+      expect(state.lesson.generation?.stage).toBe("planned");
+      expect(state.lesson.generation?.findings).toEqual([
+        expect.objectContaining({ check: "fact-verify", target: {} }),
+      ]);
+    });
+
     test("row 6: two schema misses on Verify leave the facts as they were and one fact-verify warning; the job goes on", async () => {
       const ai = createFakeAi({
         script: [json(FIXTURES.planSkeleton), json(FIXTURES.planFacts), "not json", "{}"],

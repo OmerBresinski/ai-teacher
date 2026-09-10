@@ -5,6 +5,7 @@ import {
   type VerifyField,
   type VerifyReason,
   verifiableArrayOf,
+  verifyOutputSchemaFor,
 } from "../specs";
 
 /*
@@ -72,9 +73,10 @@ export const VERIFY_FAILED_FINDING: Finding = {
 };
 
 /**
- * Apply the corrections in order. A correction naming an unknown id, a field its kind lacks or a
- * step that does not exist is skipped (the schema factory refuses them before this runs; skipping
- * keeps the function total). Returns the parsed facts and the corrections that took effect.
+ * Apply the corrections in order. Every correction is first checked against the facts with the same
+ * factory the model's answer went through (`verifyOutputSchemaFor`), so a direct caller cannot
+ * bypass the field, index and per-field limit rules: an invalid correction is skipped, never
+ * applied. Returns the parsed facts and the corrections that took effect.
  */
 export function applyVerifyPatch(
   facts: LessonFacts,
@@ -82,7 +84,9 @@ export function applyVerifyPatch(
 ): { facts: LessonFacts; applied: VerifyCorrection[] } {
   const next: LessonFacts = structuredClone(facts);
   const applied: VerifyCorrection[] = [];
+  const schema = verifyOutputSchemaFor(facts);
   for (const c of corrections) {
+    if (!schema.safeParse({ corrections: [c] }).success) continue;
     const array = verifiableArrayOf(c.factId);
     if (!array) continue;
     const list = next[array] as { id: string }[] | undefined;

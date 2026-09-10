@@ -78,13 +78,14 @@ describe("applyVerifyPatch", () => {
     expect(applied).toHaveLength(5);
   });
 
-  test("an unknown id, an objective, a wrong field or a missing step are skipped, not applied", () => {
+  test("an unknown id, an objective, a wrong field, a missing step or an over-limit value are skipped, not applied", () => {
     const before = facts();
     const { facts: after, applied } = applyVerifyPatch(before, [
       c({ factId: "v9" }),
       c({ factId: "o1", field: "statement" }),
       c({ factId: "v1", field: "stem" }),
       c({ factId: "x1", field: "steps", index: 9 }),
+      c({ factId: "v1", field: "term", value: "x".repeat(61) }),
     ]);
     expect(after).toEqual(before);
     expect(applied).toEqual([]);

@@ -195,12 +195,15 @@ async function verifyFacts(
       }
       return facts;
     }
-    if (error instanceof StageFailure) {
-      deps.logger.warn({ stage: "plan", call: "verify" }, "fact verification failed; facts kept");
-      findings.push(VERIFY_FAILED_FINDING);
-      return facts;
-    }
-    throw error;
+    // A cancel is the caller's to see; anything else (two schema misses, a provider fault) keeps
+    // the facts as they were and says so — Verify never fails the job.
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    deps.logger.warn(
+      { stage: "plan", call: "verify", err: error instanceof StageFailure ? undefined : error },
+      "fact verification failed; facts kept",
+    );
+    findings.push(VERIFY_FAILED_FINDING);
+    return facts;
   }
 }
 
