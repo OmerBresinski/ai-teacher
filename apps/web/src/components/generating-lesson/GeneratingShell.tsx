@@ -1,11 +1,17 @@
-import type { Lesson } from "@tj/domain/documents";
+import type { Id, Lesson } from "@tj/domain/documents";
 import type { JobEvent } from "@tj/domain/jobs";
 import { getTheme, SlideScaler, SlideView } from "@tj/editor";
 import { navigatorThumbWidth, navigatorWidthVar, readNavigatorMode } from "@tj/editor/lesson";
 import { SlideStatic } from "@tj/editor/thumb";
 import { AppBar, AppBarGroup, Button, cn, Display, IconButton, Skeleton } from "@tj/ui";
-import { ArrowLeft, Check, Lock, Square } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowLeft, Check, Lock, Square } from "lucide-react";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { pendingSlides } from "@/lib/pending-slides";
 import { announcedLine, STAGES, type StageState, stageLine, stageOf, stageStatus } from "./stage";
 
@@ -16,6 +22,12 @@ import { announcedLine, STAGES, type StageState, stageLine, stageOf, stageStatus
  * with nothing in it, the navigator's column and the canvas, at the editor's widths, so the editor
  * mounts on top at Ready without a reflow. Under the canvas the lock line says, in words, that the
  * slides can be read and not edited.
+ *
+ * The finished thumbs are buttons (TEACH-252): the canvas follows the newest slide until the
+ * teacher picks an earlier one, then stays on their pick while new slides land; picking the newest
+ * again — by click, by arrow, or with the footer's "Newest" — returns it to following. One roving
+ * tab stop (the shown slide's button), arrows and Home/End move it, as in the editor's rail.
+ * Viewing only: the lock line stands and nothing here writes.
  *
  * Presentational: the events and the lesson come in, the stage is derived by `stageOf`. The
  * stream, the refetches and the cancel request live in `GeneratingLesson`.
@@ -43,6 +55,11 @@ export type GeneratingShellProps = {
   stop?: { pending?: boolean; sent?: boolean; error?: boolean };
   /** The height of the shell; `h-dvh` on the page, a fixed box in the kit. */
   className?: string;
+  /**
+   * The slide the teacher chose to look at, or `null` when the canvas follows the newest. Reported
+   * on every pick so the editor can open on it at Ready.
+   */
+  onViewSlide?: (slideId: Id | null) => void;
 };
 
 export function GeneratingShell({
@@ -53,6 +70,7 @@ export function GeneratingShell({
   onStop,
   stop,
   className,
+  onViewSlide,
 }: GeneratingShellProps) {
   const state = stageOf(events);
   const stopped = state.terminal === "failed" || state.terminal === "cancelled";
@@ -63,8 +81,38 @@ export function GeneratingShell({
   const [navigatorMode] = useState(readNavigatorMode);
   const thumbWidth = navigatorThumbWidth(navigatorMode);
   const newest = lesson.slides.at(-1);
+  // `null` follows the newest slide; an id pins the canvas to that slide while more arrive.
+  const [selectedId, setSelectedId] = useState<Id | null>(null);
+  const selected = selectedId === null ? undefined : lesson.slides.find((s) => s.id === selectedId);
+  const shown = selected ?? newest;
+  const following = selected === undefined;
   const arrivals = useArrivals(lesson.slides.length, running);
   const pending = running ? pendingSlides(lesson) : [];
+
+  // Picking the newest slide is a return to following, so the next arrival is shown as before.
+  const view = (id: Id) => {
+    const next = id === newest?.id ? null : id;
+    setSelectedId(next);
+    onViewSlide?.(next);
+    document.getElementById(thumbButtonId(id))?.focus({ preventScroll: true });
+  };
+  // Roving focus over the finished thumbs: arrows move the shown slide and the tab stop together.
+  const onThumbsKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (!shown) return;
+    const at = lesson.slides.findIndex((s) => s.id === shown.id);
+    const last = lesson.slides.length - 1;
+    const to: Record<string, number> = {
+      ArrowDown: Math.min(last, at + 1),
+      ArrowUp: Math.max(0, at - 1),
+      Home: 0,
+      End: last,
+    };
+    const index = to[event.key];
+    if (index === undefined) return;
+    event.preventDefault();
+    const target = lesson.slides[index];
+    if (target) view(target.id);
+  };
 
   // Cmd or Ctrl+Period stops the run, the convention for cancelling one. Nothing else is bound.
   useEffect(() => {
@@ -162,13 +210,13 @@ export function GeneratingShell({
           className="w-(--rail-width) shrink-0 border-border border-r bg-background"
         />
 
-        {/* Scrolls once the outline is long, so it is in the tab order for keyboard scrolling
-            (axe scrollable-region-focusable); the rows themselves are not controls yet. */}
+        {/* Scrolls once the outline is long. With finished slides the shown thumb's button is the
+            column's tab stop (axe scrollable-region-focusable); before the first one lands the
+            column itself is, so the skeleton rows can still be scrolled from the keyboard. */}
         <nav
           aria-label="Slides"
           data-navigator-mode={navigatorMode}
-          // biome-ignore lint/a11y/noNoninteractiveTabindex: the column scrolls; axe scrollable-region-focusable needs it reachable
-          tabIndex={0}
+          tabIndex={lesson.slides.length === 0 ? 0 : -1}
           className="shrink-0 overflow-y-auto border-border border-r bg-background px-1.5 py-3 outline-none focus-visible:shadow-focus"
           style={{ width: navigatorWidthVar(navigatorMode) }}
         >
@@ -176,9 +224,12 @@ export function GeneratingShell({
             {lesson.slides.map((slide, i) => (
               <ThumbRow
                 key={slide.id}
+                id={slide.id}
                 number={i + 1}
-                current={i === lesson.slides.length - 1}
+                current={slide.id === shown?.id}
                 arriveDelay={arrivals(i)}
+                onView={view}
+                onKeyDown={onThumbsKeyDown}
               >
                 <SlideStatic slide={slide} theme={theme} width={thumbWidth} />
               </ThumbRow>
@@ -194,17 +245,21 @@ export function GeneratingShell({
 
         <main className="flex min-w-0 flex-1 flex-col bg-canvas" data-canvas>
           <div className="min-h-0 flex-1 p-10">
-            {newest ? (
+            {shown ? (
               <SlideScaler zoom="fit">
                 <div
-                  key={newest.id}
-                  data-canvas-slide={newest.id}
+                  key={shown.id}
+                  data-canvas-slide={shown.id}
                   className={cn(
                     "overflow-hidden rounded-dialog shadow-3",
-                    arrivals(lesson.slides.length - 1) !== null && "motion-safe:animate-arrive",
+                    // The arrival fade belongs to a slide that has just landed; a slide the
+                    // teacher is looking at has not.
+                    following &&
+                      arrivals(lesson.slides.length - 1) !== null &&
+                      "motion-safe:animate-arrive",
                   )}
                 >
-                  <SlideView slide={newest} theme={theme} mode="view" />
+                  <SlideView slide={shown} theme={theme} mode="view" />
                 </div>
               </SlideScaler>
             ) : (
@@ -219,10 +274,11 @@ export function GeneratingShell({
               </div>
             )}
           </div>
-          {/* Where the editor's zoom group sits, so the swap at Ready is a text change. */}
+          {/* Where the editor's zoom group sits, so the swap at Ready is a text change. While the
+              teacher is on an earlier slide, the way back to the newest sits beside the line. */}
           <div
             data-testid="generating-lock"
-            className="flex h-12 shrink-0 items-center justify-center gap-1.5 text-meta font-medium text-ink-3"
+            className="relative flex h-12 shrink-0 items-center justify-center gap-1.5 text-meta font-medium text-ink-3"
           >
             {state.terminal === "completed" ? (
               <span aria-hidden className="size-[5px] rounded-full bg-success" />
@@ -230,6 +286,18 @@ export function GeneratingShell({
               <Lock aria-hidden size={14} strokeWidth={1.5} />
             )}
             <span>{lockLine(state)}</span>
+            {!following && newest ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-3"
+                data-generating-newest
+                onClick={() => view(newest.id)}
+              >
+                <ArrowDown aria-hidden size={14} strokeWidth={1.5} />
+                Newest slide
+              </Button>
+            ) : null}
           </div>
         </main>
       </div>
@@ -331,20 +399,29 @@ function useArrivals(count: number, live: boolean): (index: number) => number | 
   };
 }
 
+/** The DOM id of a finished thumb's button, for the roving focus. */
+const thumbButtonId = (id: Id) => `generating-slide-${id}`;
+
 /**
- * A finished slide in the navigator column: the editor's number column and 168px thumb, the
- * newest one ringed in the accent. Not a control yet: following and pinning arrive with the
- * navigator work (TEACH-200); this is the geometry.
+ * A finished slide in the navigator column: the editor's number column and 168px thumb as one
+ * button, the shown one ringed in the accent and the column's one tab stop. Pressing it puts that
+ * slide on the canvas; the rows never edit anything.
  */
 function ThumbRow({
+  id,
   number,
   current,
   arriveDelay,
+  onView,
+  onKeyDown,
   children,
 }: {
+  id: Id;
   number: number;
   current: boolean;
   arriveDelay: number | null;
+  onView: (id: Id) => void;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => void;
   children: ReactNode;
 }) {
   return (
@@ -352,24 +429,39 @@ function ThumbRow({
       data-slide-thumb={number - 1}
       data-current={current || undefined}
       className={cn(
-        "flex w-full items-center rounded-chip px-1 py-0.5",
-        current && "bg-brand-quiet",
+        "w-full",
         arriveDelay !== null && "[--tj-arrive-distance:4px] motion-safe:animate-arrive",
       )}
       style={arriveDelay !== null ? { animationDelay: `${arriveDelay}ms` } : undefined}
     >
-      <span className="w-[18px] shrink-0 pr-1 text-right text-meta text-ink-3 tabular-nums">
-        {number}
-      </span>
-      <span
+      <button
+        type="button"
+        id={thumbButtonId(id)}
+        aria-label={`Slide ${number}`}
+        aria-current={current ? "true" : undefined}
+        tabIndex={current ? 0 : -1}
+        onClick={() => onView(id)}
+        onKeyDown={onKeyDown}
         className={cn(
-          "block shrink-0 overflow-hidden rounded-chip bg-card",
-          current ? "ring-2 ring-primary" : "ring-1 ring-border",
+          "flex w-full cursor-default items-center rounded-chip px-1 py-0.5 text-left outline-none",
+          "transition-colors duration-(--duration-fast) ease-(--ease-out-soft)",
+          current ? "bg-brand-quiet" : "hover:bg-accent active:bg-accent-active",
         )}
       >
-        {children}
-      </span>
-      <span className="sr-only">Slide {number}</span>
+        <span className="w-[18px] shrink-0 pr-1 text-right text-meta text-ink-3 tabular-nums">
+          {number}
+        </span>
+        <span
+          className={cn(
+            "block shrink-0 overflow-hidden rounded-chip bg-card",
+            current ? "ring-2 ring-primary" : "ring-1 ring-border",
+            // Keyboard focus draws the band on the thumbnail, not around the row.
+            "[button:focus-visible>&]:shadow-focus",
+          )}
+        >
+          {children}
+        </span>
+      </button>
     </li>
   );
 }
