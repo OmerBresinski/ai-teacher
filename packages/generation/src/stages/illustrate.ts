@@ -341,16 +341,19 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   // shortlist + judge round over the new pool — its first result is never placed blind (TEACH-220).
   let pool = candidates;
   for (let round = 0; round < MAX_JUDGE_CALLS; round++) {
-    const shortlisted = await shortlist(args, pool);
+    const named = await shortlist(args, pool);
+    // The shortlist narrows, it does not veto (TEACH-239): one low-effort caption call over a pool
+    // full of the subject answered [] in production and the slide landed empty unjudged. An empty
+    // answer over a non-empty pool sends the first few to the judge, who sees the pictures.
+    const fallback = pool.length > 0 && named.length === 0;
+    const shortlisted = fallback ? firstFew(pool) : named;
     deps.logger.info({
       stage: "illustrate",
       slideIndex: index,
       pool: pool.length,
-      shortlisted: shortlisted.length,
+      shortlisted: named.length,
+      ...(fallback ? { judged: "fallback" } : {}),
     });
-    // An empty pool still reaches the judge, which may requery; a non-empty pool the shortlist
-    // rejected wholesale does not — none of it was the subject.
-    if (pool.length > 0 && shortlisted.length === 0) return { outcome: "empty", judged: "none" };
     const verdict = await judge(args, shortlisted, tried);
     // Only a photograph the judge was shown can be placed.
     const picked = verdict.pick
@@ -399,15 +402,20 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   return { outcome: "empty", judged: "none" };
 }
 
+/** The candidates the judge sees when the shortlist cannot choose: the first `SHORTLIST_MAX`. */
+function firstFew(pool: PhotoResult[]): PhotoResult[] {
+  return pool.slice(0, SHORTLIST_MAX);
+}
+
 /**
  * The few candidates worth a look, by caption alone: one `small` call over the whole pool. When
- * the call fails or names nothing the first `SHORTLIST_MAX` stand in — the judge still looks, so a
- * shortlist miss never loses a photo. Nothing here fails a lesson except the budget or an abort.
+ * the call fails the first `SHORTLIST_MAX` stand in; when it names nothing the caller does the
+ * same (TEACH-239) — the judge still looks, so a shortlist miss never loses a photo. Nothing here
+ * fails a lesson except the budget or an abort.
  */
 async function shortlist(args: PlaceArgs, pool: PhotoResult[]): Promise<PhotoResult[]> {
   const { lesson, brief, deps } = args;
   if (pool.length <= SHORTLIST_MAX) return pool;
-  const fallback = pool.slice(0, SHORTLIST_MAX);
   try {
     const call = await callStructured({
       deps,
@@ -431,7 +439,6 @@ async function shortlist(args: PlaceArgs, pool: PhotoResult[]): Promise<PhotoRes
       const c = byId.get(id);
       return c ? [c] : [];
     });
-    // An empty answer means "none of these is the subject": the judge is not asked to look.
     return chosen;
   } catch (error) {
     if (error instanceof BudgetExceeded) throw error;
@@ -440,7 +447,7 @@ async function shortlist(args: PlaceArgs, pool: PhotoResult[]): Promise<PhotoRes
       { stage: "illustrate", slideIndex: args.index, err: error },
       "shortlist failed",
     );
-    return fallback;
+    return firstFew(pool);
   }
 }
 

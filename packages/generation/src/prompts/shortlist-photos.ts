@@ -2,7 +2,9 @@
  * Caption shortlist (TEACH-227): before any thumbnail is fetched, a small-class call reads the
  * captions of up to thirty search results and names the few worth looking at. Captions are cheap
  * text and reliable for *what* a photograph is of (a llama's snout says "llama"); they say nothing
- * about what is visible or how clear it is — that is the picture judge's job (`pick-or-requery`).
+ * about what is visible or how clear it is — that is the picture judge's job (`pick-or-requery`),
+ * so the shortlist tests subject identity only (TEACH-239: v1 asked for the required items and
+ * emptied a pool of thirty rats). Bump `version` whenever `system` or `user` changes wording.
  */
 import type { ImagePurpose } from "@tj/domain/documents";
 import { z } from "zod";
@@ -44,13 +46,13 @@ export type ShortlistInput = {
 const EXAMPLE: Shortlist = { ids: ["27147699", "1043111", "5622340"] };
 
 export const shortlistPhotosPrompt = {
-  version: "shortlist-photos.v1",
+  version: "shortlist-photos.v2",
   system: [
     "You read the captions of stock-photo search results for one slide of a school lesson and name the few photographs worth looking at. You see captions only, not the pictures.",
     "",
     "Rules:",
     HOUSE_RULES,
-    `List up to ${SHORTLIST_MAX} ids, best first. A photograph is worth looking at when its caption says it is of the wanted subject itself — the same kind of animal, plant, object or place — and it is likely to show the required items close and unobstructed.`,
+    `List up to ${SHORTLIST_MAX} ids, best first. A photograph is worth looking at when its caption says it is of the wanted subject itself — the same kind of animal, plant, object or place. Prefer close-ups and clear views when the caption says so, but a caption that does not mention the required items is still worth looking at: captions rarely name parts, and the picture judge sees the photographs.`,
     "Never list a caption that names a different kind of thing (a llama is not a rodent; a rabbit is not a rodent; a person's hand holding the thing is not the thing), a drawing, illustration, toy, statue or logo, text or diagrams, anything in the avoid list, or anything unsuitable for pupils.",
     "When no caption fits, answer with an empty list.",
     "",
@@ -61,7 +63,7 @@ export const shortlistPhotosPrompt = {
     const parts = [
       `Lesson topic: ${input.topic}`,
       `Wanted: ${input.subject} (purpose: ${input.purpose})`,
-      `Required items, all of which must be visible: ${input.mustShow.join("; ")}`,
+      `The picture judge will check these are visible — do not reject a caption for not mentioning them: ${input.mustShow.join("; ")}`,
     ];
     if (input.avoid && input.avoid.length > 0) parts.push(`Avoid: ${input.avoid.join("; ")}`);
     parts.push(
