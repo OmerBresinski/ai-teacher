@@ -58,6 +58,7 @@ export const LEAKED_REPAIR =
 
 export const SPEC_LIMITS = {
   title: 80,
+  caption: 24,
   heading: 80,
   item: 160,
   body: 400,
@@ -184,6 +185,8 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("image-text"),
     ...specBase,
+    /** The small label over the heading; the recipe's "KEY IDEA" when absent (TEACH-243). */
+    caption: line(SPEC_LIMITS.caption).optional(),
     heading: line(SPEC_LIMITS.heading),
     body: line(SPEC_LIMITS.body),
   }),

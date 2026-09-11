@@ -748,3 +748,15 @@ concrete things, each a different external feature, so that an ordinary photogra
 subject is likely to show at least one; the slide's text is written to whichever are visible.
 The close-up / internal-part exclusion stands.
 
+## Amendment (2026-09-11, TEACH-243 — no recipe sample text reaches a pupil)
+
+§9. Reading a production lesson slide by slide found two recipe placeholders on the finished
+deck: a starter whose body said "With a partner…" over the layout's sample footnote "5 minutes.
+Work in silence and answer in your book", and an `observe` picture slide captioned "KEY IDEA".
+`materialise` had only overwritten the `small` element when the spec gave a footnote, and never
+touched the image-text caption. Now a `starter`, `exit-ticket`, `instructions` or `discussion`
+spec without a footnote loses the element; the `image-text` spec has an optional `caption` that
+`@tj/generation` sets from the outline entry's `imageBrief.purpose` (`imageTextCaption`: "LOOK
+CLOSELY" for identify-parts and observe, "COMPARE", "KEY IDEA" only for context) on every path
+that materialises a slide — Generate, Repair, proposals. The model is not asked for it.
+

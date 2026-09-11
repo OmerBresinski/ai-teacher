@@ -704,8 +704,43 @@ describe("materialiseSlide with a variant", () => {
     );
     expect(four.elements.filter((el) => el.name?.startsWith("Step"))).toHaveLength(4);
     expect(plain(four)).toContain("d");
-    const footnote = four.elements.find((el) => el.type === "text" && el.style.preset === "small");
-    expect(footnote).toBeDefined();
+    // No footnote given: the recipe's sample footnote does not survive (TEACH-243).
+    expect(
+      four.elements.find((el) => el.type === "text" && el.style.preset === "small"),
+    ).toBeUndefined();
+  });
+
+  test("TEACH-243: the recipe's sample footnote goes out only when the spec gives one", () => {
+    const small = (slide: { elements: { type: string; style?: { preset?: string } }[] }) =>
+      slide.elements.filter((el) => el.type === "text" && el.style?.preset === "small");
+    for (const kind of ["starter", "exit-ticket", "instructions", "discussion"] as const) {
+      const { footnote: _drop, ...spec } = minimalSpec(kind) as SlideSpec & { footnote?: string };
+      const bare = materialiseSlide(spec as SlideSpec, "chalk", meta, counter());
+      expect({ kind, small: small(bare).length }).toEqual({ kind, small: 0 });
+      expect(plain(bare)).not.toContain("Work in silence");
+      expect(plain(bare)).not.toContain("sticky note");
+      const noted = materialiseSlide(
+        { ...minimalSpec(kind), footnote: "5 minutes" } as SlideSpec,
+        "chalk",
+        meta,
+        counter(),
+      );
+      expect(small(noted)).toHaveLength(1);
+      expect(plain(noted)).toContain("5 minutes");
+    }
+  });
+
+  test("TEACH-243: an image-text caption replaces KEY IDEA when given", () => {
+    const plainSlide = materialiseSlide(minimalSpec("image-text"), "chalk", meta, counter());
+    expect(plain(plainSlide)).toContain("KEY IDEA");
+    const looked = materialiseSlide(
+      { ...minimalSpec("image-text"), caption: "LOOK CLOSELY" } as SlideSpec,
+      "chalk",
+      meta,
+      counter(),
+    );
+    expect(plain(looked)).toContain("LOOK CLOSELY");
+    expect(plain(looked)).not.toContain("KEY IDEA");
   });
 
   test("fills the photo-band class line by name, in small", () => {
