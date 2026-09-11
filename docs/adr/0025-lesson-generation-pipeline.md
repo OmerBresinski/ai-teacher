@@ -724,3 +724,17 @@ belongs in the slide's text, not in `mustShow`. Founder decision, 2026-09-11: th
 first; a gate that distinguishes the defining item from the rest is the fallback if a brief with
 external-only items still places nothing. Gate, schema and judge unchanged.
 
+## Amendment (2026-09-11, TEACH-241 — the gate needs one required item, not all)
+
+§8 (TEACH-220 amendment). With the slide requested (TEACH-238), the shortlist narrowing rather
+than vetoing (TEACH-239) and Plan asking for external features (TEACH-240: "brown rat outdoors",
+`["long tail", "small ears"]`), the judge was shown three to six rat photographs a round and picked
+none: `pick-or-requery-photo.v5` wanted "every required item" and `gatePasses` enforced
+`visible ⊇ mustShow`. Stock photography rarely has a whole tail and both ears clear in one frame.
+Founder decision, 2026-09-11 ("at least one item", over "first item mandatory" and "subject
+only"): the gate is `onSubject && clear && (mustShow empty || some item visible)`, and v6 asks the
+judge for the photograph that shows the subject clearly with as many required items as any
+candidate does — at least one. This is safe because the slide's text has been written to the
+photograph's `visible` list since TEACH-220: the words never claim more than the picture shows.
+A gated pick now logs `noneVisible` beside `offSubject` and `unclear`.
+

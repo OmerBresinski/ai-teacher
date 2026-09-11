@@ -160,7 +160,7 @@ describe("runLessonPipeline", () => {
         visible: ["ice cubes", "meltwater"],
         count: "one",
         alt: "River",
-        promptVersion: "pick-or-requery-photo.v5",
+        promptVersion: "pick-or-requery-photo.v6",
         thumbnail: photo.src.tiny,
       },
     });
@@ -171,8 +171,8 @@ describe("runLessonPipeline", () => {
     expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1);
     const judge = ai.calls.find((call) => call.context?.stage === "illustrate");
     expect(judge?.modelClass).toBe("standard");
-    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v5");
-    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v5");
+    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v6");
+    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v6");
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
     expect(summary.generation.images).toEqual({
       photographable: true,
