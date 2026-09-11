@@ -143,8 +143,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
   },
   "generate-slide": {
-    version: "generate-slide.v11",
-    hash: "782b2e531a84130be70532a1b218677bc7b445cbd7dfaabd870162f63de789cb",
+    version: "generate-slide.v12",
+    hash: "608baf003ddad7b14ba29749783bf74970bd248acf7f68990c7e7173ee2953e5",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v5",
@@ -264,7 +264,7 @@ describe("prompt versions", () => {
     // TEACH-246: footnote is for pupils; teacher text belongs in notes.
     expect(system).toContain("`footnote` is one short line pupils read");
     // TEACH-247: steps are capped to what the working card holds.
-    expect(system).toContain("each ≤ 56 characters");
+    expect(system).toContain("about 56 characters and never over 120");
     const vocab = PROMPTS["generate-slide"].user({
       ...(SAMPLE_INPUTS["generate-slide"] as object),
       entry: { kind: "vocabulary", minutes: 5, factRefs: ["v1"] },

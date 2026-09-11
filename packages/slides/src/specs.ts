@@ -61,8 +61,12 @@ export const SPEC_LIMITS = {
   caption: 24,
   heading: 80,
   item: 160,
-  /** A worked-example step: the WORKING card holds four two-line steps at the body floor (TEACH-247). */
-  step: 56,
+  /**
+   * A worked-example step. The card holds four one-line steps (~56 characters) at the body floor;
+   * this is the tolerant ceiling — two lines — so a sentence-long step never fails the job
+   * (TEACH-248: a 56 cap failed a production lesson twice). The prompt asks for 56.
+   */
+  step: 120,
   /** A worked-example question: two body lines at the floor across the slide (TEACH-247). */
   question: 120,
   body: 400,
