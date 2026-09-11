@@ -120,7 +120,7 @@ export function limitsBlock(limits: Record<string, number>): string {
     .map(([k, v]) => `${k} ≤ ${v}`)
     .join(
       ", ",
-    )}. They are what fits on one line: go a little over rather than fail, never past one and a half times.`;
+    )}. They are what fits on one line; a little over is accepted, one and a half times is not.`;
 }
 
 /** One JSON example, pretty-printed, for a prompt to show the exact shape wanted. */

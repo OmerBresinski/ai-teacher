@@ -373,7 +373,7 @@ describe("TEACH-247: worked-example steps fit the working card", () => {
     question: "Why does a puddle vanish?",
     steps: [step, "Second", "Third", "Fourth"],
   });
-  test("a 120-character step is accepted (TEACH-248: 56 is the aim, not the cap); 121 is refused at the step", () => {
+  test("an 84-character step (1.5 × the 56 aim) is accepted; 85 is refused at the step", () => {
     const schema = slideSpecSchemaFor("worked-example");
     if (!schema) throw new Error("schema");
     expect(schema.safeParse(spec("x".repeat(56))).success).toBe(true);
@@ -387,13 +387,13 @@ describe("TEACH-247: worked-example steps fit the working card", () => {
         ),
       }).success,
     ).toBe(true);
-    expect(schema.safeParse(spec("x".repeat(120))).success).toBe(true);
-    const long = schema.safeParse(spec("x".repeat(121)));
+    expect(schema.safeParse(spec("x".repeat(84))).success).toBe(true);
+    const long = schema.safeParse(spec("x".repeat(85)));
     expect(long.success).toBe(false);
     if (long.success) return;
     expect(long.error.issues[0]?.path).toEqual(["steps", 0]);
   });
-  test("the question is capped at 120 characters — two lines at the floor", () => {
+  test("the question is capped at 120 characters (1.5 × the 80 aim) — two lines at the floor", () => {
     const schema = slideSpecSchemaFor("worked-example");
     if (!schema) throw new Error("schema");
     expect(schema.safeParse({ ...spec("x"), question: "q".repeat(120) }).success).toBe(true);
@@ -423,13 +423,13 @@ describe("TEACH-255: option and term caps are ceilings, not one-line ideals", ()
       { left: "C", right: "three" },
     ],
   });
-  test("an option of 120 characters is accepted; 121 refused", () => {
+  test("an option of 120 characters (1.5 × the 80 aim) is accepted; 121 refused", () => {
     const schema = slideSpecSchemaFor("multiple-choice");
     if (!schema) throw new Error("schema");
     expect(schema.safeParse(mc("x".repeat(120))).success).toBe(true);
     expect(schema.safeParse(mc("x".repeat(121))).success).toBe(false);
   });
-  test("a matching term of 90 characters is accepted; 91 refused; a collided side is named", () => {
+  test("a matching term of 90 characters (1.5 × the 60 aim) is accepted; 91 refused; a collided side is named", () => {
     const schema = slideSpecSchemaFor("matching");
     if (!schema) throw new Error("schema");
     expect(schema.safeParse(matching("x".repeat(90))).success).toBe(true);

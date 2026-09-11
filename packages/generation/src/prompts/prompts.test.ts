@@ -132,11 +132,11 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "plan-skeleton": {
     version: "plan-skeleton.v15",
-    hash: "56a9553c95ce1cb59e5abcb384ccfcaea8b3a98803ea9ef013b59fd91238015f",
+    hash: "703eadbca5dd93b53ae98d8032754ff31f0e100e25055b8854cda2ecf414f75a",
   },
   "plan-facts": {
     version: "plan-facts.v7",
-    hash: "764f35f96bfca2fb7a819379a7c2df1ed560518eff0d2e2fe7a8400a53d8daaa",
+    hash: "7f31a4e4e8eb79631c947269f28693b17325bfd076e30706caf30dde6992eeb9",
   },
   "verify-facts": {
     version: "verify-facts.v1",
@@ -144,11 +144,11 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "generate-slide": {
     version: "generate-slide.v14",
-    hash: "8b6dc1504c68a9b6ce12633bdc9f02d1eb9236b0a6ab2c54fa98c3ebaeb43361",
+    hash: "5853a2f039c72793cf3ec79ed07bbb68c8948c0ff08ab284433f01dbb6004144",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v6",
-    hash: "fd99377969fcbdae033246cd21d9b0fb86cf52d11b5807bfa0b85e96d6b38ee2",
+    hash: "07363710875402aab11893e45b35a450398d89ebba3e70fa5bc932f8bd543835",
   },
   "shortlist-photos": {
     version: "shortlist-photos.v2",
@@ -264,11 +264,11 @@ describe("prompt versions", () => {
     // TEACH-246: footnote is for pupils; teacher text belongs in notes.
     expect(system).toContain("`footnote` is one short line pupils read");
     // TEACH-247: steps are capped to what the working card holds.
-    expect(system).toContain("about 56 characters and never over 120");
+    expect(system).toContain("each one short line of about 56 characters");
     // TEACH-255: the limits are aims; the schema ceiling is higher and not advertised.
     expect(system).toContain("option ≤ 80");
     expect(system).toContain("term ≤ 60");
-    expect(system).toContain("go a little over rather than fail");
+    expect(system).toContain("a little over is accepted, one and a half times is not");
     // TEACH-249: the prompt shows what four short steps look like.
     expect(system).toContain("Example for a worked-example slide");
     const shown = /"steps": (\[\s*"[^\]]*\])/.exec(

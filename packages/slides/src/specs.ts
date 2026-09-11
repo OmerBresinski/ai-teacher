@@ -38,7 +38,7 @@ const line = (max: number) =>
     .trim()
     .overwrite(decodeEntities)
     .min(1)
-    .max(max)
+    .max(ceilingOf(max))
     .refine((text) => !hasLeakedPupilPhrase(text), { message: LEAKED_PUPIL });
 
 /** Teacher notes: the same decoding and cap, but the leak test is for repair commentary. */
@@ -48,7 +48,7 @@ const notesLine = (max: number) =>
     .trim()
     .overwrite(decodeEntities)
     .min(1)
-    .max(max)
+    .max(ceilingOf(max))
     .refine((text) => !hasLeakedRepairPhrase(text), { message: LEAKED_REPAIR });
 
 export const LEAKED_PUPIL =
@@ -62,13 +62,13 @@ export const SPEC_LIMITS = {
   heading: 80,
   item: 160,
   /**
-   * A worked-example step. The card holds four one-line steps (~56 characters) at the body floor;
-   * this is the tolerant ceiling — two lines — so a sentence-long step never fails the job
-   * (TEACH-248: a 56 cap failed a production lesson twice). The prompt asks for 56.
+   * A worked-example step: one line (~56 characters) at the body floor across the card. The schema
+   * accepts `ceilingOf` this — two lines — so a sentence-long step never fails the job (TEACH-248:
+   * a hard 56 cap failed a production lesson twice).
    */
-  step: 120,
+  step: 56,
   /** A worked-example question: two body lines at the floor across the slide (TEACH-247). */
-  question: 120,
+  question: 80,
   body: 400,
   stem: 200,
   option: 80,
@@ -81,16 +81,13 @@ export const SPEC_LIMITS = {
 } as const;
 
 /**
- * What the schemas enforce for the caps a model most often overruns (TEACH-255; the TEACH-248
- * pattern for every text cap): `SPEC_LIMITS` is the one-line ideal the prompts advertise, this is
- * the ceiling — about 1.5× — past which no recipe can lay the text out. Between the two the fit
- * engine steps the type down and the residual badge reports; the job never fails. The TEACH-253
- * eval lost three of twenty-four lessons to `option` and `term` at their ideals.
+ * What a schema enforces for a cap of `aim` characters (TEACH-255; the TEACH-248 pattern for every
+ * text cap): `SPEC_LIMITS` is the one-line ideal the prompts advertise; the ceiling is one and a
+ * half times it, past which no recipe can lay the text out. Between the two the fit engine steps
+ * the type down and the residual badge reports — the job never fails. The TEACH-253 eval lost
+ * three of twenty-four lessons to `option` and `term` enforced at their ideals.
  */
-export const SPEC_CEILINGS = {
-  option: 120,
-  term: 90,
-} as const;
+export const ceilingOf = (aim: number) => Math.ceil(aim * 1.5);
 
 const specBase = {
   /** `LessonFacts` ids this slide or block covers; copied to every element's `generatedFrom`. */
@@ -114,7 +111,7 @@ const listLine = (max: number) =>
     .overwrite(decodeEntities)
     .overwrite(stripEnumerator)
     .min(1)
-    .max(max)
+    .max(ceilingOf(max))
     .refine((text) => !hasLeakedPupilPhrase(text), { message: LEAKED_PUPIL });
 
 const items = (min: number, max: number) => z.array(listLine(SPEC_LIMITS.item)).min(min).max(max);
@@ -194,7 +191,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
     entries: z
       .array(
         z.strictObject({
-          term: line(SPEC_CEILINGS.term),
+          term: line(SPEC_LIMITS.term),
           definition: line(SPEC_LIMITS.definition),
         }),
       )
@@ -255,7 +252,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
       ...specBase,
       stem: line(SPEC_LIMITS.stem),
       options: z
-        .array(z.strictObject({ text: listLine(SPEC_CEILINGS.option), correct: z.boolean() }))
+        .array(z.strictObject({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
         .length(4),
       explanation: line(SPEC_LIMITS.body).optional(),
     })
@@ -271,7 +268,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
       stem: line(SPEC_LIMITS.stem),
       pairs: z
         .array(
-          z.strictObject({ left: line(SPEC_CEILINGS.term), right: line(SPEC_LIMITS.definition) }),
+          z.strictObject({ left: line(SPEC_LIMITS.term), right: line(SPEC_LIMITS.definition) }),
         )
         .length(3),
     })
@@ -291,7 +288,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
       ...specBase,
       stem: line(SPEC_LIMITS.stem),
       /** In the correct order; the recipe shows them in reading order. */
-      steps: z.array(listLine(SPEC_CEILINGS.option)).length(4),
+      steps: z.array(listLine(SPEC_LIMITS.option)).length(4),
     })
     .refine((spec) => allDistinct(spec.steps), {
       message: "sort: every step must be different.",
@@ -367,7 +364,7 @@ export const BlockSpecSchema = z.discriminatedUnion("type", [
       ...blockBase,
       text: line(SPEC_LIMITS.body),
       options: z
-        .array(z.strictObject({ text: listLine(SPEC_CEILINGS.option), correct: z.boolean() }))
+        .array(z.strictObject({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
         .length(4),
     })
     .refine((spec) => exactlyOneCorrect(spec.options), {
@@ -389,7 +386,7 @@ export const BlockSpecSchema = z.discriminatedUnion("type", [
       ...blockBase,
       pairs: z
         .array(
-          z.strictObject({ left: line(SPEC_CEILINGS.term), right: line(SPEC_LIMITS.definition) }),
+          z.strictObject({ left: line(SPEC_LIMITS.term), right: line(SPEC_LIMITS.definition) }),
         )
         .min(3)
         .max(5),
