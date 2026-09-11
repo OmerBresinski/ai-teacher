@@ -131,8 +131,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v12",
-    hash: "fef032357e8292aa07c82b7a4d74aa16e4b6cc348d676c4e9a17473842c687b2",
+    version: "plan-skeleton.v13",
+    hash: "9c4452f13d365ef76701ca55d237b4e8d63a410db82829478efdbb3054d906ef",
   },
   "plan-facts": {
     version: "plan-facts.v6",
@@ -231,6 +231,10 @@ describe("prompt versions", () => {
     const facts = PROMPTS["plan-facts"].user(SAMPLE_INPUTS["plan-facts"] as never);
     expect(facts).toContain("This is an Explain lesson for a class new to the topic.");
     expect(facts).toContain("Question tiers: 5 easy, 5 core, 2 stretch (at least 12 in all).");
+    // TEACH-240: mustShow names what an ordinary photograph shows; our own example used to be "front teeth".
+    expect(planSkeletonPrompt.system).toContain("a stranger would take it");
+    expect(planSkeletonPrompt.system).not.toContain('"front teeth"');
+    expect(planSkeletonPrompt.system).not.toContain('"rodent incisors"');
     // TEACH-238: the system prompt asks for the photographable flag; the user turn is unchanged.
     expect(planSkeletonPrompt.system).toContain('"photographable": { "yes", "why"');
     expect(skeleton).not.toContain("photographable");
