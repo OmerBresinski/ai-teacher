@@ -137,7 +137,8 @@ export const generateSlidePrompt = {
       correct: false,
       explanation: "Gas particles are far apart and move freely.",
       factRefs: ["q1", "o1"],
-      notes: "Ask for a show of hands before revealing.",
+      notes:
+        "Ask for a show of hands before revealing. Watch for pupils who picture a gas as a crowd of particles pressed together. Ask: What would happen to the balloon if the particles inside were as close as in a liquid?",
     }),
   ].join("\n"),
   user(input: GenerateSlideInput): string {
