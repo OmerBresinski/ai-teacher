@@ -144,7 +144,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "generate-slide": {
     version: "generate-slide.v11",
-    hash: "c32153d0bcc110d1e55cb38304d603c79ef1c114b8e51a6aca8e9f406e6d3cbb",
+    hash: "782b2e531a84130be70532a1b218677bc7b445cbd7dfaabd870162f63de789cb",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v5",

@@ -115,8 +115,9 @@ describe("TEACH-247: a worked-example at the spec's limits fits its card", () =>
       {
         kind: "worked-example",
         heading: "Why does a mouse gnaw a hard seed?",
+        // At the spec's cap (120 characters) to within a word.
         question:
-          "A mouse's front incisors have grown longer. Explain why it needs to gnaw a hard seed.",
+          "A mouse's front incisors have grown longer than they were last month. Explain in two sentences why it gnaws hard nuts.",
         steps: [step, step, step, step],
         factRefs: ["x1"],
       },

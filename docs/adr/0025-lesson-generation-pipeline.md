@@ -797,7 +797,7 @@ a card-bound body. Two changes make the contract and the recipe agree. The recip
 question full-width under the heading (which frames it, so the QUESTION label goes), the working
 on a full-width card below, its text box filling the card so the engine measures against the room
 there is, the card ending a cushion short of the safe edge so it is never itself reported as an
-overflow. The spec caps a worked-example step at `SPEC_LIMITS.step = 56` characters — one line
+overflow. The spec caps the question at `SPEC_LIMITS.question = 120` (two lines at the floor) and a worked-example step at `SPEC_LIMITS.step = 56` characters — one line
 at the floor across the card — and `generate-slide.v11` says so ("each step is one short line; the
 fuller working goes in `notes`"). `fixtures/default-recipes.json` is regenerated for
 `worked-example` only. The fit engine's split-to-continuation not applying inside a card is noted,
