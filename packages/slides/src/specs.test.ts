@@ -365,3 +365,27 @@ describe("list enumerators and picture references (TEACH-223)", () => {
     expect(withPhoto?.success).toBe(true);
   });
 });
+
+describe("TEACH-247: worked-example steps fit the working card", () => {
+  const spec = (step: string) => ({
+    kind: "worked-example",
+    factRefs: ["x1"],
+    question: "Why does a puddle vanish?",
+    steps: [step, "Second", "Third", "Fourth"],
+  });
+  test("a 56-character step is accepted; 57 is refused at the step", () => {
+    const schema = slideSpecSchemaFor("worked-example");
+    if (!schema) throw new Error("schema");
+    expect(schema.safeParse(spec("x".repeat(56))).success).toBe(true);
+    const long = schema.safeParse(spec("x".repeat(57)));
+    expect(long.success).toBe(false);
+    if (long.success) return;
+    expect(long.error.issues[0]?.path).toEqual(["steps", 0]);
+  });
+  test("the question is capped at 120 characters — two lines at the floor", () => {
+    const schema = slideSpecSchemaFor("worked-example");
+    if (!schema) throw new Error("schema");
+    expect(schema.safeParse({ ...spec("x"), question: "q".repeat(120) }).success).toBe(true);
+    expect(schema.safeParse({ ...spec("x"), question: "q".repeat(121) }).success).toBe(false);
+  });
+});

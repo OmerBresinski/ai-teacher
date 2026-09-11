@@ -73,8 +73,8 @@ export const DEMO_LESSON_SPECS: readonly SlideSpec[] = [
     question: "Why does a puddle disappear on a sunny day?",
     steps: [
       "The sun warms the water in the puddle.",
-      "Some of it turns into water vapour and rises into the air.",
-      "The puddle gets smaller until it has all evaporated.",
+      "Some of it becomes water vapour and rises into the air.",
+      "The puddle shrinks until it has all evaporated.",
     ],
   },
   {

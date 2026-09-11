@@ -826,35 +826,8 @@
         "type": "text",
         "x": 58,
         "y": 140,
-        "w": 413,
-        "h": 22,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "QUESTION"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "caption",
-          "autoHeight": true,
-          "color": "#6E6656"
-        }
-      },
-      {
-        "id": "_4",
-        "type": "text",
-        "x": 58,
-        "y": 174,
-        "w": 413,
-        "h": 180,
+        "w": 844,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -875,23 +848,23 @@
         }
       },
       {
-        "id": "_5",
+        "id": "_4",
         "type": "shape",
         "shape": "rounded",
-        "x": 490,
-        "y": 140,
-        "w": 413,
-        "h": 357,
+        "x": 58,
+        "y": 245,
+        "w": 844,
+        "h": 242,
         "fill": "#FFFBF0",
         "radius": 14,
         "name": "Working card"
       },
       {
-        "id": "_6",
+        "id": "_5",
         "type": "text",
-        "x": 514,
-        "y": 164,
-        "w": 365,
+        "x": 77,
+        "y": 264,
+        "w": 806,
         "h": 22,
         "doc": {
           "type": "doc",
@@ -914,12 +887,12 @@
         }
       },
       {
-        "id": "_7",
+        "id": "_6",
         "type": "text",
-        "x": 514,
-        "y": 198,
-        "w": 365,
-        "h": 216,
+        "x": 77,
+        "y": 298,
+        "w": 806,
+        "h": 170,
         "doc": {
           "type": "doc",
           "content": [
@@ -3192,35 +3165,8 @@
         "type": "text",
         "x": 58,
         "y": 140,
-        "w": 413,
-        "h": 23,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "QUESTION"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "caption",
-          "autoHeight": true,
-          "color": "#7A6656"
-        }
-      },
-      {
-        "id": "_4",
-        "type": "text",
-        "x": 58,
-        "y": 175,
-        "w": 413,
-        "h": 186,
+        "w": 844,
+        "h": 93,
         "doc": {
           "type": "doc",
           "content": [
@@ -3241,23 +3187,23 @@
         }
       },
       {
-        "id": "_5",
+        "id": "_4",
         "type": "shape",
         "shape": "rounded",
-        "x": 490,
-        "y": 140,
-        "w": 413,
-        "h": 357,
+        "x": 58,
+        "y": 245,
+        "w": 844,
+        "h": 242,
         "fill": "#FFFFFF",
         "radius": 18,
         "name": "Working card"
       },
       {
-        "id": "_6",
+        "id": "_5",
         "type": "text",
-        "x": 514,
-        "y": 164,
-        "w": 365,
+        "x": 77,
+        "y": 264,
+        "w": 806,
         "h": 23,
         "doc": {
           "type": "doc",
@@ -3280,12 +3226,12 @@
         }
       },
       {
-        "id": "_7",
+        "id": "_6",
         "type": "text",
-        "x": 514,
-        "y": 199,
-        "w": 365,
-        "h": 224,
+        "x": 77,
+        "y": 299,
+        "w": 806,
+        "h": 169,
         "doc": {
           "type": "doc",
           "content": [
@@ -5558,35 +5504,8 @@
         "type": "text",
         "x": 58,
         "y": 140,
-        "w": 413,
-        "h": 21,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "QUESTION"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "caption",
-          "autoHeight": true,
-          "color": "#656C77"
-        }
-      },
-      {
-        "id": "_4",
-        "type": "text",
-        "x": 58,
-        "y": 173,
-        "w": 413,
-        "h": 169,
+        "w": 844,
+        "h": 85,
         "doc": {
           "type": "doc",
           "content": [
@@ -5607,23 +5526,23 @@
         }
       },
       {
-        "id": "_5",
+        "id": "_4",
         "type": "shape",
         "shape": "rounded",
-        "x": 490,
-        "y": 140,
-        "w": 413,
-        "h": 357,
+        "x": 58,
+        "y": 238,
+        "w": 844,
+        "h": 249,
         "fill": "#FFFFFF",
         "radius": 10,
         "name": "Working card"
       },
       {
-        "id": "_6",
+        "id": "_5",
         "type": "text",
-        "x": 514,
-        "y": 164,
-        "w": 365,
+        "x": 77,
+        "y": 257,
+        "w": 806,
         "h": 21,
         "doc": {
           "type": "doc",
@@ -5646,12 +5565,12 @@
         }
       },
       {
-        "id": "_7",
+        "id": "_6",
         "type": "text",
-        "x": 514,
-        "y": 197,
-        "w": 365,
-        "h": 202,
+        "x": 77,
+        "y": 290,
+        "w": 806,
+        "h": 178,
         "doc": {
           "type": "doc",
           "content": [
@@ -7924,35 +7843,8 @@
         "type": "text",
         "x": 58,
         "y": 140,
-        "w": 413,
-        "h": 20,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "QUESTION"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "caption",
-          "autoHeight": true,
-          "color": "#5C646D"
-        }
-      },
-      {
-        "id": "_4",
-        "type": "text",
-        "x": 58,
-        "y": 172,
-        "w": 413,
-        "h": 163,
+        "w": 844,
+        "h": 82,
         "doc": {
           "type": "doc",
           "content": [
@@ -7973,23 +7865,23 @@
         }
       },
       {
-        "id": "_5",
+        "id": "_4",
         "type": "shape",
         "shape": "rounded",
-        "x": 490,
-        "y": 140,
-        "w": 413,
-        "h": 357,
+        "x": 58,
+        "y": 238,
+        "w": 844,
+        "h": 249,
         "fill": "#FFFFFF",
         "radius": 8,
         "name": "Working card"
       },
       {
-        "id": "_6",
+        "id": "_5",
         "type": "text",
-        "x": 514,
-        "y": 164,
-        "w": 365,
+        "x": 77,
+        "y": 257,
+        "w": 806,
         "h": 20,
         "doc": {
           "type": "doc",
@@ -8012,12 +7904,12 @@
         }
       },
       {
-        "id": "_7",
+        "id": "_6",
         "type": "text",
-        "x": 514,
-        "y": 196,
-        "w": 365,
-        "h": 195,
+        "x": 77,
+        "y": 289,
+        "w": 806,
+        "h": 179,
         "doc": {
           "type": "doc",
           "content": [
@@ -10290,35 +10182,8 @@
         "type": "text",
         "x": 58,
         "y": 140,
-        "w": 413,
-        "h": 21,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "QUESTION"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "caption",
-          "autoHeight": true,
-          "color": "#99A0AB"
-        }
-      },
-      {
-        "id": "_4",
-        "type": "text",
-        "x": 58,
-        "y": 173,
-        "w": 413,
-        "h": 174,
+        "w": 844,
+        "h": 87,
         "doc": {
           "type": "doc",
           "content": [
@@ -10339,23 +10204,23 @@
         }
       },
       {
-        "id": "_5",
+        "id": "_4",
         "type": "shape",
         "shape": "rounded",
-        "x": 490,
-        "y": 140,
-        "w": 413,
-        "h": 357,
+        "x": 58,
+        "y": 238,
+        "w": 844,
+        "h": 249,
         "fill": "#1C1F25",
         "radius": 12,
         "name": "Working card"
       },
       {
-        "id": "_6",
+        "id": "_5",
         "type": "text",
-        "x": 514,
-        "y": 164,
-        "w": 365,
+        "x": 77,
+        "y": 257,
+        "w": 806,
         "h": 21,
         "doc": {
           "type": "doc",
@@ -10378,12 +10243,12 @@
         }
       },
       {
-        "id": "_7",
+        "id": "_6",
         "type": "text",
-        "x": 514,
-        "y": 197,
-        "w": 365,
-        "h": 209,
+        "x": 77,
+        "y": 290,
+        "w": 806,
+        "h": 178,
         "doc": {
           "type": "doc",
           "content": [
@@ -12656,35 +12521,8 @@
         "type": "text",
         "x": 58,
         "y": 140,
-        "w": 413,
-        "h": 23,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "QUESTION"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "caption",
-          "autoHeight": true,
-          "color": "#4A4A46"
-        }
-      },
-      {
-        "id": "_4",
-        "type": "text",
-        "x": 58,
-        "y": 175,
-        "w": 413,
-        "h": 193,
+        "w": 844,
+        "h": 97,
         "doc": {
           "type": "doc",
           "content": [
@@ -12705,23 +12543,23 @@
         }
       },
       {
-        "id": "_5",
+        "id": "_4",
         "type": "shape",
         "shape": "rounded",
-        "x": 490,
-        "y": 140,
-        "w": 413,
-        "h": 357,
+        "x": 58,
+        "y": 252,
+        "w": 844,
+        "h": 235,
         "fill": "#FFFFFF",
         "radius": 6,
         "name": "Working card"
       },
       {
-        "id": "_6",
+        "id": "_5",
         "type": "text",
-        "x": 514,
-        "y": 164,
-        "w": 365,
+        "x": 77,
+        "y": 271,
+        "w": 806,
         "h": 23,
         "doc": {
           "type": "doc",
@@ -12744,12 +12582,12 @@
         }
       },
       {
-        "id": "_7",
+        "id": "_6",
         "type": "text",
-        "x": 514,
-        "y": 199,
-        "w": 365,
-        "h": 231,
+        "x": 77,
+        "y": 306,
+        "w": 806,
+        "h": 162,
         "doc": {
           "type": "doc",
           "content": [

@@ -259,7 +259,7 @@ function fractionsOfAmounts(): Lesson {
   ]);
 
   fill(worked, "heading", ["Worked example"]);
-  fill(worked, "caption", ["QUESTION", "WORKING"]);
+  fill(worked, "caption", ["WORKING"]);
   fill(worked, "body", [
     "Find three quarters of 20 sweets.",
     docFromNumbered([
