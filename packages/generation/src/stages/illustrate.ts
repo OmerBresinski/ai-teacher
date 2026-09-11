@@ -380,6 +380,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         gated: true,
         offSubject: !verdict.onSubject,
         unclear: !verdict.clear,
+        noneVisible: brief.mustShow.length > 0 && itemsSeen(brief, verdict).length === 0,
       });
     }
     const requery = verdict.query;
@@ -490,11 +491,21 @@ async function judge(
   return call.output;
 }
 
-/** The deterministic gate: every `mustShow` item is among what the judge saw. */
+/** Which `mustShow` items the judge saw, spelt as the brief spells them. */
+function itemsSeen(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery): string[] {
+  const seen = new Set(verdict.visible.map(normaliseItem));
+  return brief.mustShow.filter((item) => seen.has(normaliseItem(item)));
+}
+
+/**
+ * The deterministic gate: the subject, clearly, with at least one `mustShow` item in view
+ * (TEACH-241; TEACH-220 required every item, and stock photography rarely has a whole tail and
+ * both ears clear in one frame). The slide's text is written to `visible`, so the picture never
+ * shows less than the words claim. A brief with no items (pre-TEACH-159) needs the subject only.
+ */
 export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery): boolean {
   if (!verdict.onSubject || !verdict.clear) return false;
-  const seen = new Set(verdict.visible.map(normaliseItem));
-  return brief.mustShow.every((item) => seen.has(normaliseItem(item)));
+  return brief.mustShow.length === 0 || itemsSeen(brief, verdict).length > 0;
 }
 
 async function searchPortraits(

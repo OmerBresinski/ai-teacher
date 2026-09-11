@@ -155,8 +155,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "1bca44f4c61f12113e44be1ec038d596c4dba84dafd8cbb0ffa0807240f2d081",
   },
   "pick-or-requery-photo": {
-    version: "pick-or-requery-photo.v5",
-    hash: "6b04f791296e1b07787530676e8b74887382a9bc9102ba23ae66ceece65341f5",
+    version: "pick-or-requery-photo.v6",
+    hash: "ac53a5430127832c86af261d0e69b5a0fcd5197cd8a481f7bb0c4193f3b7861e",
   },
   evaluate: {
     version: "evaluate.v4",
@@ -250,6 +250,12 @@ describe("prompt versions", () => {
     expect(outline.map((e) => e.kind)).toEqual(
       expect.arrayContaining(["open-response", "worked-example"]),
     );
+  });
+
+  test("TEACH-241: the judge picks a photo showing at least one required item, not all of them", () => {
+    const system = PROMPTS["pick-or-requery-photo"].system;
+    expect(system).toContain("at least one");
+    expect(system).not.toContain("shows every required item");
   });
 
   test("TEACH-239: the shortlist asks for the subject only; the required items are the judge's", () => {

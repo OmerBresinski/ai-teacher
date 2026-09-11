@@ -227,7 +227,7 @@ describe("illustrate", () => {
         visible: [],
         count: "one",
         alt: "Photo p2",
-        promptVersion: "pick-or-requery-photo.v5",
+        promptVersion: "pick-or-requery-photo.v6",
         thumbnail: second.src.tiny,
       },
     });
@@ -244,7 +244,7 @@ describe("illustrate", () => {
       failed: 0,
     });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
-    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v5");
+    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v6");
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 
@@ -354,18 +354,15 @@ describe("illustrate", () => {
     expect(deps.imageCounts?.empty).toBe(1);
   });
 
-  test("row 2 (TEACH-220): a pick whose visible list misses a required item fails the gate — a query earns one more judge call, else empty; nothing placed blind", async () => {
+  test("row 2 (TEACH-220 / TEACH-241): a pick showing one required item of three passes the gate and is placed with that evidence; one showing none fails — a query earns one more judge call, else empty", async () => {
     const flower = {
       subject: "buttercup flower close-up",
       mustShow: ["open flower head", "petals", "stamens"],
       purpose: "identify-parts" as const,
     };
-    const { images, searches, stores } = fakeImages(async (query) =>
-      query === "buttercup macro" ? [pexelsPhoto("B", true)] : [pexelsPhoto("A", true)],
-    );
-    // First judge: picks A but sees only the ladybird's worth — gate fails; it offers a query.
-    // Second judge over the new pool: picks B with everything visible.
-    const gatedThenQuery = JSON.stringify({
+    // TEACH-241: one item in view is enough — the slide's text is written to what is visible.
+    const oneOfThree = fakeImages(async () => [pexelsPhoto("A", true)]);
+    const partial = JSON.stringify({
       pick: "A",
       onSubject: true,
       clear: true,
@@ -373,29 +370,52 @@ describe("illustrate", () => {
       count: "one",
       query: "buttercup macro",
     });
+    const aiPartial = judge(partial);
+    const statePartial = await run(
+      imageLesson([flower]),
+      recordingDeps(aiPartial, { images: oneOfThree.images }),
+    );
+    expect(aiPartial.calls).toHaveLength(1);
+    expect(oneOfThree.stores).toEqual(["A"]);
+    const placed = imageOf(statePartial.lesson, 0);
+    expect(placed.src).toBe("/files/ws/images/A.jpg");
+    // Row 4: the evidence on the element is what the judge saw, not what was asked for.
+    expect(placed.source?.evidence).toEqual({
+      visible: ["petals"],
+      count: "one",
+      alt: "Photo A",
+      promptVersion: "pick-or-requery-photo.v6",
+      thumbnail: `data:image/png;base64,${PNG}`,
+    });
+
+    // Nothing required in view: gate fails, its query is followed, B is placed.
+    const { images, searches, stores } = fakeImages(async (query) =>
+      query === "buttercup macro" ? [pexelsPhoto("B", true)] : [pexelsPhoto("A", true)],
+    );
+    const gatedThenQuery = JSON.stringify({
+      pick: "A",
+      onSubject: true,
+      clear: true,
+      visible: [],
+      count: "one",
+      query: "buttercup macro",
+    });
+    const { lines, logger } = memoryLogger();
     const ai = judge(gatedThenQuery, pick("B", flower.mustShow));
-    const deps = recordingDeps(ai, { images });
-    const state = await run(imageLesson([flower]), deps);
+    const state = await run(imageLesson([flower]), recordingDeps(ai, { images, logger }));
     expect(ai.calls).toHaveLength(2);
     expect(searches).toEqual(["buttercup flower close", "buttercup flower", "buttercup macro"]);
     expect(stores).toEqual(["B"]);
-    const element = imageOf(state.lesson, 0);
-    expect(element.src).toBe("/files/ws/images/B.jpg");
-    // Row 4: the evidence on the element is what the judge saw.
-    expect(element.source?.evidence).toEqual({
-      visible: ["open flower head", "petals", "stamens"],
-      count: "one",
-      alt: "Photo B",
-      promptVersion: "pick-or-requery-photo.v5",
-      thumbnail: `data:image/png;base64,${PNG}`,
-    });
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/B.jpg");
+    const gated = lines.map((l) => JSON.parse(l)).find((r) => r.gated === true);
+    expect(gated).toMatchObject({ noneVisible: true, offSubject: false, unclear: false });
 
     // The same first verdict with no query: empty, one call, nothing stored.
     const gatedNoQuery = JSON.stringify({
       pick: "A",
       onSubject: true,
       clear: true,
-      visible: ["petals"],
+      visible: [],
       count: "one",
       query: null,
     });
