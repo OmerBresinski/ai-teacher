@@ -1,16 +1,31 @@
 import { describe, expect, test } from "bun:test";
 import pino from "pino";
 import { silentLogger, TEST_ENV } from "../test-helpers";
-import { CaptureMailSender, ConsoleMailSender, createMailSender, extractFirstUrl } from "./index";
+import {
+  CaptureMailSender,
+  ConsoleMailSender,
+  createMailSender,
+  extractFirstUrl,
+  ResendMailSender,
+} from "./index";
 
 describe("mail", () => {
   test("createMailSender: console → ConsoleMailSender", () => {
     expect(createMailSender(TEST_ENV, silentLogger)).toBeInstanceOf(ConsoleMailSender);
   });
 
-  test("createMailSender: anything else fails readably", () => {
-    expect(() => createMailSender({ ...TEST_ENV, MAIL_PROVIDER: "smtp" }, silentLogger)).toThrow(
-      'MAIL_PROVIDER: only "console" is supported until F17 (got "smtp")',
+  test("createMailSender: resend → ResendMailSender", () => {
+    expect(
+      createMailSender(
+        { ...TEST_ENV, MAIL_PROVIDER: "resend", RESEND_API_KEY: "re_x", MAIL_FROM: "a <a@b.test>" },
+        silentLogger,
+      ),
+    ).toBeInstanceOf(ResendMailSender);
+  });
+
+  test("createMailSender: resend without its key or sender fails readably", () => {
+    expect(() => createMailSender({ ...TEST_ENV, MAIL_PROVIDER: "resend" }, silentLogger)).toThrow(
+      "MAIL_PROVIDER=resend needs RESEND_API_KEY and MAIL_FROM",
     );
   });
 

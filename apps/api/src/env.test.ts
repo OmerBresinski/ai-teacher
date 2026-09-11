@@ -185,6 +185,38 @@ describe("parseEnv", () => {
     expect(parseEnv({ ...base, MAIL_PROVIDER: "console" }).ok).toBe(true);
   });
 
+  test("MAIL_PROVIDER=resend requires RESEND_API_KEY and MAIL_FROM, in any NODE_ENV", () => {
+    const missing = parseEnv({ ...base, MAIL_PROVIDER: "resend" });
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) {
+      expect(missing.errors.map((e) => e.variable).sort()).toEqual(["MAIL_FROM", "RESEND_API_KEY"]);
+      expect(missing.errors.every((e) => e.message.includes("MAIL_PROVIDER=resend"))).toBe(true);
+    }
+
+    // Reported alongside other errors too (superRefine is skipped when the object is invalid).
+    const alsoBroken = parseEnv({ ...base, MAIL_PROVIDER: "resend", DATABASE_URL: undefined });
+    expect(alsoBroken.ok).toBe(false);
+    if (!alsoBroken.ok) {
+      expect(alsoBroken.errors.map((e) => e.variable)).toEqual(
+        expect.arrayContaining(["DATABASE_URL", "RESEND_API_KEY", "MAIL_FROM"]),
+      );
+    }
+
+    const ok = parseEnv({
+      ...base,
+      NODE_ENV: "production",
+      AWS_BEARER_TOKEN_BEDROCK: "test-key",
+      MAIL_PROVIDER: "resend",
+      RESEND_API_KEY: "re_x",
+      MAIL_FROM: "Teaching Journey <sign-in@mail.test>",
+    });
+    expect(ok.ok).toBe(true);
+
+    const unknown = parseEnv({ ...base, MAIL_PROVIDER: "smtp" });
+    expect(unknown.ok).toBe(false);
+    if (!unknown.ok) expect(unknown.errors[0]?.variable).toBe("MAIL_PROVIDER");
+  });
+
   test("coerces PORT and splits WEB_ORIGIN", () => {
     const r = parseEnv({
       ...base,

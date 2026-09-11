@@ -29,10 +29,8 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 
 | Gap | Today | Target | Tracked / documented |
 | --- | ----- | ------ | -------------------- |
-| **Sign-in mail is console-only** | `MAIL_PROVIDER=console` in production: magic links are printed to the api log (`railway logs --service api`), never sent. | A real mail provider (Resend/Postmark) behind the existing `MailSender` interface, `MAIL_PROVIDER=resend` + API key on Railway. | TEACH-35; ADR 0008; `apps/api/src/mail/` |
-| **Console mail production acknowledgement** | `ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1` is set on the production api, accepting that sign-in URLs are written to the log. | Remove the variable when TEACH-29 configures real mail delivery. | TEACH-76; TEACH-29 |
 | **Cross-site session cookie** | `COOKIE_SAMESITE=none` on the production api because `*.vercel.app` and `*.up.railway.app` share no parent domain. | Buy `<domain>`; `app.<domain>` → Vercel, `api.<domain>` → Railway; `COOKIE_SAMESITE=lax`, `COOKIE_DOMAIN=.<domain>`, `WEB_ORIGIN`/`BETTER_AUTH_URL`/`VITE_API_URL` updated. | TEACH-36; "Cookie stopgap" below; ADR 0008 amendment |
-| **Vercel production is public** | `teaching-journey-web.vercel.app` has no Deployment Protection; sign-in links are in the Railway api log for anyone with Railway project access or a log drain, opted in via `ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1`. | Founder decision once mail works: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
+| **Vercel production is public** | `teaching-journey-web.vercel.app` has no Deployment Protection; anyone can request a sign-in link (delivered by Resend since TEACH-35). | Founder decision: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
 | **OAuth disabled** | Google/Microsoft sign-in off (no client credentials); magic link only. | Set the four `*_CLIENT_ID`/`*_CLIENT_SECRET` variables when the OAuth apps exist. | TEACH-39; `docs/env.md` |
 | **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
@@ -540,6 +538,11 @@ printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_
 # domain (open, TODO(domain)): once app.<domain> / api.<domain> exist,
 railway variable set COOKIE_DOMAIN=.<domain> --service api --skip-deploys
 railway variable set COOKIE_SAMESITE=lax --service api --skip-deploys              # switch from the `none` stopgap
+# Sign-in mail via Resend (done 2026-09-11, TEACH-35; domain mail.bresinski.org verified in Resend's eu-west-1,
+# DNS on Vercel: `vercel dns ls bresinski.org`). The key is a send-only key from resend.com → API Keys.
+printf '%s' "$RESEND_API_KEY" | railway variable set RESEND_API_KEY --stdin --service api --skip-deploys
+railway variable set --service api --skip-deploys 'MAIL_FROM=Teaching Journey <sign-in@mail.bresinski.org>' MAIL_PROVIDER=resend
+railway variable delete ALLOW_CONSOLE_MAIL_IN_PRODUCTION --service api --skip-deploys   # console acknowledgement no longer needed
 # OAuth (optional, F17):
 railway variable set GOOGLE_CLIENT_ID=<id> --service api --skip-deploys
 railway variable set GOOGLE_CLIENT_SECRET --stdin --service api --skip-deploys < /tmp/secret

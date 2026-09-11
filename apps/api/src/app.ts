@@ -218,7 +218,7 @@ function buildApp({
   }
   if (env.NODE_ENV === "production" && env.MAIL_PROVIDER === "console") {
     logger.warn(
-      "ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1: magic-link sign-in URLs are printed to this log. Remove the variable once a real MailSender (TEACH-29) is configured.",
+      "ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1: magic-link sign-in URLs are printed to this log. Set MAIL_PROVIDER=resend (with RESEND_API_KEY and MAIL_FROM) and remove the variable.",
     );
   }
 

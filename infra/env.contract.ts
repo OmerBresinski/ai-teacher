@@ -319,11 +319,37 @@ const CONTRACT = [
     vercel: "n/a",
     setBy: "template",
     format: "enum",
-    values: ["console"],
+    values: ["console", "resend"],
     files: ["api"],
     railwayValue: "console",
     description:
-      "Magic-link delivery. Only `console` exists until TEACH-29 configures a real provider. In production it is refused unless ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1; each link is printed in the api log at warn level.",
+      "Magic-link delivery. `resend` (production, TEACH-35) sends through Resend and needs RESEND_API_KEY + MAIL_FROM; `console` (local, PR environments) prints each link in the api log. In production `console` is refused unless ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1. Production is set to `resend` by hand; provision.sh seeds `console`.",
+  },
+  {
+    name: "RESEND_API_KEY",
+    services: ["api"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api"],
+    description:
+      "Resend send-only API key (resend.com → API Keys, permission 'Sending access'). Required when MAIL_PROVIDER=resend; the api refuses to boot without it. Set on Railway, never in git.",
+  },
+  {
+    name: "MAIL_FROM",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api"],
+    description:
+      "Sender of the magic-link email, RFC 5322 (`Teaching Journey <sign-in@mail.bresinski.org>`). The domain must be verified in Resend (EU region, ADR 0016). Required when MAIL_PROVIDER=resend.",
   },
   {
     name: "ALLOW_CONSOLE_MAIL_IN_PRODUCTION",
@@ -338,7 +364,7 @@ const CONTRACT = [
     files: ["api"],
     railwayValue: "1",
     description:
-      "Acknowledges that with MAIL_PROVIDER=console in production every magic-link URL is printed to the api log. Required for console mail in production; delete when TEACH-29 lands.",
+      "Acknowledges that with MAIL_PROVIDER=console in production every magic-link URL is printed to the api log. Only for environments without a real provider (PR environments); production runs MAIL_PROVIDER=resend and does not need it.",
   },
   {
     name: "GOOGLE_CLIENT_ID",
