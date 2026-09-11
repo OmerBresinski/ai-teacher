@@ -2,6 +2,7 @@ import {
   type InfiniteData,
   infiniteQueryOptions,
   keepPreviousData,
+  notifyManager,
   type QueryClient,
   queryOptions,
   type UseMutationOptions,
@@ -240,6 +241,24 @@ export const libraryCache = {
       }
     }
     return undefined;
+  },
+  /**
+   * The finished document, in one step (TEACH-251): the generating view calls this at the job's
+   * terminal event. Any debounced body refetch still in flight is cancelled, the row is read once,
+   * and the body and its row state are written in a single notification batch, so the page sees
+   * the released lock and the finished body in the same render. Two refetches side by side could
+   * land the row state first and mount the editor on the last debounced copy; the fit migration
+   * then stamped that copy and the body refetch replaced it with the stored `fitVersion: 0`
+   * lesson — un-tidied, and never re-fitted because the one run had been spent.
+   */
+  handOverDocument: async (queryClient: QueryClient, id: string): Promise<void> => {
+    await queryClient.cancelQueries({ queryKey: queryKeys.libraryDocument(id) });
+    const document = await fetchDocument(id);
+    if (document === null || document.deletedAt !== null || document.kind === "series") return;
+    notifyManager.batch(() => {
+      queryClient.setQueryData(queryKeys.libraryDocument(id), document.body as LibraryDocument);
+      queryClient.setQueryData(queryKeys.libraryDocumentMeta(id), metaOf(document));
+    });
   },
 };
 

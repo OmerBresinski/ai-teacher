@@ -2,11 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { notifyManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { Lesson, Slide, TextElement } from "@tj/domain/documents";
+import { materialiseSlide } from "@tj/slides";
 import type { ReactNode } from "react";
 import { docFromText, newLesson } from "../model/factories";
-import { FIT_VERSION } from "../model/themes";
+import { FIT_VERSION, getTheme } from "../model/themes";
 import { useDocumentHistory } from "../model/use-document-history";
+import { isFitStale, renderedHeights } from "./fit-plan";
+import { lintSlide } from "./lint";
 import type { Measurer } from "./reflow";
+import { rulerFor } from "./test-ruler";
 import { tidySlideReducer } from "./tidy";
 import {
   createRunGate,
@@ -205,6 +209,41 @@ describe("runFitMigration", () => {
     expect(read().fitVersion).toBe(FIT_VERSION);
   });
 
+  test("row 3: a worker-shaped worked-example with four 64-character steps has no lint left after the first open", () => {
+    const step = "Gnawing scrapes the incisors down, so they never grow past the lip.";
+    expect(step.length).toBeGreaterThanOrEqual(64);
+    const slide = materialiseSlide(
+      {
+        kind: "worked-example",
+        heading: "Why does a mouse gnaw a hard seed?",
+        question: "Explain why a mouse gnaws hard nuts even when it is not hungry.",
+        steps: [step, step, step, step],
+        factRefs: ["x1"],
+      },
+      "chalk",
+      { promptVersion: "test", model: "test", at: "2026-09-11T00:00:00.000Z" },
+      (() => {
+        let n = 0;
+        return () => `e${++n}`;
+      })(),
+    );
+    // As the worker writes it: laid out by the recipe, never fitted in a browser.
+    const { read, deps } = setup(stale([slide]));
+    const theme = getTheme("chalk");
+    const ruler = rulerFor(theme);
+    let out: ReturnType<typeof runFitMigration> | undefined;
+    act(() => {
+      out = runFitMigration(deps({ measurer: () => ruler }));
+    });
+    // Under the test ruler the steps wrap to two lines each and run past the card: the migration
+    // flags the slide and the tidy carries the tail onto a continuation slide (`continued: 1`).
+    expect(out).toEqual({ ran: true, tidied: 1 });
+    const after = read().slides[0];
+    if (!after) throw new Error("slide");
+    expect(read().fitVersion).toBe(FIT_VERSION);
+    expect(lintSlide(renderedHeights(after, ruler), ruler, theme).ok).toBe(true);
+  });
+
   test("never tidies a continuation slide the tidy itself added (ids captured up front)", () => {
     // A tall list on a flat ruler never splits; the plan is fixed before any tidy runs regardless.
     const { read, deps } = setup(stale([brokenSlide("b")]));
@@ -225,6 +264,7 @@ describe("useFitMigration", () => {
       () =>
         useFitMigration({
           lessonId: read().id,
+          stale: true,
           getDeps: () => ({
             lesson: read(),
             dispatch: hook.result.current.dispatch as FitMigrationDeps["dispatch"],
@@ -259,6 +299,7 @@ describe("useFitMigration", () => {
       () =>
         useFitMigration({
           lessonId: read().id,
+          stale: true,
           getDeps: () => ({
             lesson: read(),
             dispatch: hook.result.current.dispatch as FitMigrationDeps["dispatch"],
@@ -281,6 +322,65 @@ describe("useFitMigration", () => {
     await new Promise((r) => setTimeout(r, 200));
     expect(attempts).toBe(MAX_ATTEMPTS);
     expect(read().fitVersion).toBe(0);
+  });
+});
+
+describe("useFitMigration re-arms", () => {
+  /** The hook as `LessonEditor` renders it: `stale` follows the document in the cache. */
+  function renderMigration(s: ReturnType<typeof setup>, notes: string[], attempts: { n: number }) {
+    const { read, hook, wrapper } = s;
+    return renderHook(
+      ({ stale }: { stale: boolean }) =>
+        useFitMigration({
+          lessonId: read().id,
+          stale,
+          getDeps: () => ({
+            lesson: read(),
+            dispatch: hook.result.current.dispatch as FitMigrationDeps["dispatch"],
+            beginTransaction: hook.result.current.beginTransaction,
+            endTransaction: hook.result.current.endTransaction,
+            rollbackTransaction: hook.result.current.rollbackTransaction,
+            isIdle: () => {
+              attempts.n += 1;
+              return true;
+            },
+            measurer: () => flatRuler,
+            warm: () => {},
+          }),
+          notify: (m) => notes.push(m),
+          fontsReady: () => Promise.resolve(),
+        }),
+      { wrapper, initialProps: { stale: isFitStale(read()) } },
+    );
+  }
+  test("row 2: a lesson at the current version is left alone — no idle check, no dispatch", async () => {
+    const s = setup({ ...newLesson("Current", "chalk"), slides: [brokenSlide("b")] });
+    const notes: string[] = [];
+    const attempts = { n: 0 };
+    const before = s.read();
+    renderMigration(s, notes, attempts);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(attempts.n).toBe(0);
+    expect(s.read()).toBe(before);
+    expect(notes).toEqual([]);
+  });
+
+  test("runs again when the cached lesson is swapped for a stale copy after the first run (the handoff)", async () => {
+    const s = setup(stale([brokenSlide("b")]));
+    const notes: string[] = [];
+    const attempts = { n: 0 };
+    const hook = renderMigration(s, notes, attempts);
+    await waitFor(() => expect(s.read().fitVersion).toBe(FIT_VERSION));
+    expect(notes).toHaveLength(1);
+    // The editor re-renders with the stamped lesson: the effect ends and nothing else runs.
+    hook.rerender({ stale: false });
+    // A refetch puts the stored copy back — behind, and laid out as it arrived.
+    act(() => s.client.setQueryData(KEY, stale([brokenSlide("b")])));
+    expect(s.read().fitVersion).toBe(0);
+    hook.rerender({ stale: true });
+    await waitFor(() => expect(s.read().fitVersion).toBe(FIT_VERSION));
+    expect(notes).toHaveLength(2);
+    expect(attempts.n).toBe(2);
   });
 });
 

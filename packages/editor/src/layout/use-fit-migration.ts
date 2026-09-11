@@ -18,7 +18,8 @@ import { tidySlideReducer } from "./tidy";
  * Text fitting engine — the migration, bound to the editor (TeachDeck `use-fit-migration.ts`).
  *
  * `./fit-plan.ts` decides *what* to re-fit; this is the half that needs a browser. It runs once
- * per lesson, in the editor, and:
+ * per lesson, in the editor — and once more if the cached document is swapped for a copy that is
+ * behind — and:
  *
  * 1. warms the ruler for the whole deck in one batch, then lints every slide as the renderer will
  *    draw it;
@@ -155,6 +156,13 @@ export function createRunGate() {
 
 export type UseFitMigrationOptions = {
   lessonId: Id | null | undefined;
+  /**
+   * `isFitStale(lesson)` for the document currently in the cache. The run is armed while this is
+   * true and re-armed when it turns true again — the cache entry was replaced by a copy that is
+   * behind (a refetch after a 409 Reload, the generating → editor handoff), so the new copy is
+   * fitted too rather than left as it arrived because the one run had been spent on the old one.
+   */
+  stale: boolean;
   /** The latest deps, read at run time (the lesson moves on while fonts load). */
   getDeps: () => FitMigrationDeps | null;
   /** Shown once, when a slide actually moved. */
@@ -163,9 +171,15 @@ export type UseFitMigrationOptions = {
   fontsReady?: () => Promise<void>;
 };
 
-/** Run the migration once, after mount, for the lesson the editor has open. */
+/**
+ * Run the migration once, after mount, for the lesson the editor has open — and once more each
+ * time the open lesson is swapped for a stale copy. A run that stamps the lesson flips `stale` to
+ * false, which ends this effect after the work is done; a run put off for the teacher keeps its
+ * idle retries, since nothing has changed the version yet.
+ */
 export function useFitMigration({
   lessonId,
+  stale,
   getDeps,
   notify,
   fontsReady = whenFontsReady,
@@ -181,7 +195,7 @@ export function useFitMigration({
 
   useEffect(() => {
     const run = gate.current;
-    if (!lessonId || !run?.claim(lessonId)) return;
+    if (!lessonId || !stale || !run?.claim(lessonId)) return;
     let cancelled = false;
     let handle = 0;
     let attempts = 0;
@@ -208,5 +222,5 @@ export function useFitMigration({
       if (handle) cancelIdle(handle);
       run.release(lessonId);
     };
-  }, [lessonId]);
+  }, [lessonId, stale]);
 }

@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import type { ImageSearchClient } from "../images/image-search";
+import { isFitStale } from "../layout/fit-plan";
 import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
 import { makeLine, makeShape, makeText } from "../model/insert";
 import * as reducers from "../model/reducers";
@@ -242,8 +243,10 @@ export function LessonEditor({
     [editingTextId, editingExplanation],
   );
 
-  // The fit migration (ADR 0021 §3): a lesson laid out under an older floor table is re-fitted
-  // once, on open, when the editor is quiet. Reads the latest lesson/history/session at run time.
+  // The fit migration (ADR 0021 §3, ADR 0022 amendment TEACH-251): a lesson laid out under an
+  // older floor table — a freshly generated one arrives at `fitVersion: 0` — is re-fitted once, on
+  // open, when the editor is quiet, and again if the cache hands the editor a stale copy. Reads the
+  // latest lesson/history/session at run time.
   const lessonRef = useRef(lesson);
   lessonRef.current = lesson;
   const historyRef = useRef(history);
@@ -270,7 +273,12 @@ export function LessonEditor({
       },
     };
   }, [session]);
-  useFitMigration({ lessonId: lesson?.id, getDeps: getFitDeps, notify: (m) => toast(m) });
+  useFitMigration({
+    lessonId: lesson?.id,
+    stale: lesson !== undefined && isFitStale(lesson),
+    getDeps: getFitDeps,
+    notify: (m) => toast(m),
+  });
 
   // The app's seam for proposal jobs (ADR 0025 §19). Reads history and session through refs so the
   // handle is stable and always acts on the current document.
