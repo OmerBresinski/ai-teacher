@@ -73,6 +73,31 @@ test.describe("generating lesson", () => {
     const rail = page.getByRole("navigation", { name: "Slides" });
     await expect(rail.locator("[data-slide-thumb]")).toHaveCount(3);
     await expect(rail.locator('li[aria-hidden="true"]')).toHaveCount(2);
+
+    // The finished thumbs are viewable (TEACH-252): the newest is shown and is the tab stop; a
+    // click on an earlier one puts it on the canvas, read-only; the footer's "Newest slide" and the
+    // arrow keys move between them; the skeleton rows are not controls.
+    const thumbs = rail.getByRole("button", { name: /^Slide \d+$/ });
+    await expect(thumbs).toHaveCount(3);
+    await expect(thumbs.nth(2)).toHaveAttribute("aria-current", "true");
+    await expect(page.locator("[data-canvas] [data-slide-root]")).toHaveAttribute(
+      "data-slide-id",
+      body.slides[2]?.id ?? "",
+    );
+    await thumbs.nth(0).click();
+    await expect(thumbs.nth(0)).toHaveAttribute("aria-current", "true");
+    await expect(thumbs.nth(2)).not.toHaveAttribute("aria-current", "true");
+    await expect(page.locator("[data-canvas] [data-slide-root]")).toHaveAttribute(
+      "data-slide-id",
+      body.slides[0]?.id ?? "",
+    );
+    await expect(page.getByRole("button", { name: "Rename lesson" })).toHaveCount(0);
+    await page.keyboard.press("ArrowDown");
+    await expect(thumbs.nth(1)).toHaveAttribute("aria-current", "true");
+    await expect(thumbs.nth(1)).toBeFocused();
+    await page.getByRole("button", { name: "Newest slide" }).click();
+    await expect(thumbs.nth(2)).toHaveAttribute("aria-current", "true");
+    await expect(page.getByRole("button", { name: "Newest slide" })).toHaveCount(0);
     // The editor's columns: the rail's width with nothing in it, the navigator at the persisted
     // preference (full by default, compact when the teacher keeps it so), so nothing reflows.
     await expect(page.locator("[data-insert-rail-placeholder]")).toHaveCSS("width", "56px");

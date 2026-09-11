@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Lesson } from "@tj/domain/documents";
+import type { Id, Lesson } from "@tj/domain/documents";
 import { type ReactNode, useEffect } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
 import { api } from "@/lib/api";
@@ -27,6 +27,7 @@ export function GeneratingLesson({
   estimate,
   onBack,
   onStopped,
+  onViewSlide,
 }: {
   lesson: Lesson;
   jobId: string;
@@ -35,6 +36,8 @@ export function GeneratingLesson({
   onBack: () => void;
   /** The job ended without completing; the page keeps this view for `jobId` once the lock clears. */
   onStopped: (jobId: string) => void;
+  /** The slide the teacher is looking at (`null` = the newest), so the editor opens on it at Ready. */
+  onViewSlide?: (slideId: Id | null) => void;
 }) {
   const queryClient = useQueryClient();
   const stream = useJobEvents(jobId);
@@ -87,6 +90,7 @@ export function GeneratingLesson({
         if (!cancel.isPending && !cancel.isSuccess) cancel.mutate();
       }}
       stop={{ pending: cancel.isPending, sent: cancel.isSuccess, error: cancel.isError }}
+      onViewSlide={onViewSlide}
     />
   );
 }

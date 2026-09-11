@@ -51,6 +51,9 @@ export function LessonEditorPage() {
   // A job that failed or was cancelled releases the lock, yet the page stays on the generating
   // view for it (the outcome, the partial slides, Back to library) until the teacher leaves.
   const [stoppedJobId, setStoppedJobId] = useState<string | null>(null);
+  // The slide the teacher was looking at in the generating view (TEACH-252), so the editor opens
+  // on it at Ready; `null` while the canvas followed the newest, which opens on the first slide.
+  const [viewedSlideId, setViewedSlideId] = useState<string | null>(null);
   // The generated worksheet (ADR 0025 §4), so the editor's objective-coverage check sees both
   // halves (§10). Its own row; a lesson without the artefact never asks.
   const worksheetId =
@@ -101,6 +104,7 @@ export function LessonEditorPage() {
           jobId={generatingJobId}
           onBack={onBack}
           onStopped={setStoppedJobId}
+          onViewSlide={setViewedSlideId}
         />
       </Suspense>
     );
@@ -120,6 +124,7 @@ export function LessonEditorPage() {
       onOpenWorksheet={onOpenWorksheet}
       onNewWorksheet={onNewWorksheet}
       editorRef={editorRef}
+      initialSlideId={viewedSlideId ?? undefined}
       onFactsChanged={proposals.onFactsChanged}
       onRegenerate={proposals.onRegenerate}
       busySlideIds={proposals.busySlideIds}

@@ -71,7 +71,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   no spec hard-codes a document path. `editor-generating` covers the locked lesson (the generating shell, no
   editor, one skeleton rail row per `facts.outline` entry still to come, axe in the three themes —
   the route needs a locked seed so it is not in `a11y`) and the brief → `/l/:id` flow;
-  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation.
+  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation; `teach-252-screenshots` (opt-in) the shell with an earlier slide chosen — the finished thumbs are buttons the canvas follows (TEACH-252).
   `generation` runs a lesson end to end over the fake
   worker (`playwright.config.ts` sets `AI_FAKE_SCRIPT=pipeline` and `AI_FAKE_DELAY_MS=250` on the
   e2e worker, so `POST /lessons` really generates — banner, slides arriving before the terminal

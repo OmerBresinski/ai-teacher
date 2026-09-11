@@ -103,6 +103,11 @@ export type LessonEditorProps = {
   busySlideIds?: ReadonlySet<Id>;
   proposalsBusy?: boolean;
   editorRef?: Ref<LessonEditorHandle>;
+  /**
+   * The slide to open on (TEACH-252: the one the teacher was looking at while the lesson
+   * generated). Read once at mount; an id not in the deck opens the first slide as usual.
+   */
+  initialSlideId?: Id;
 };
 
 /**
@@ -138,6 +143,7 @@ export function LessonEditor({
   busySlideIds,
   proposalsBusy = false,
   editorRef,
+  initialSlideId,
 }: LessonEditorProps) {
   const autosave = useAutosave(onSave);
   const { lesson, ...history } = useDocumentHistory({
@@ -147,7 +153,7 @@ export function LessonEditor({
   });
   // The residual findings (ADR 0025 §12), derived at the autosave cadence rather than per edit.
   const residuals = useComputedResidualFindings(lesson, worksheet, autosave);
-  const session = useEditorSessionState();
+  const session = useEditorSessionState({ activeSlideId: initialSlideId ?? null });
   const [helpOpen, setHelpOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [factsOpen, setFactsOpen] = useState(false);

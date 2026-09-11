@@ -215,7 +215,10 @@ describe("GeneratingShell", () => {
     expect(screen.getByTestId("generating-lock")).toHaveTextContent(STOPPED_LOCK_LINE);
     expect(screen.getByRole("button", { name: "Back to library" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
-    expect(screen.getAllByRole("button")).toHaveLength(1);
+    // Back is the only action; the finished thumbs are viewing controls, not actions.
+    expect(
+      screen.getAllByRole("button").filter((b) => !b.closest("[data-slide-thumb]")),
+    ).toHaveLength(1);
     // A stopped run promises no more slides.
     expect(
       document.querySelectorAll('nav[aria-label="Slides"] li[aria-hidden="true"]'),
@@ -243,6 +246,132 @@ describe("GeneratingShell", () => {
     renderAt(RUN_UP_TO.writing, { onStop });
     fireEvent.keyDown(window, { key: ".", metaKey: true });
     expect(onStop).toHaveBeenCalledTimes(1);
+  });
+});
+
+/** The shell with the first `count` slides of the demo lesson, mid-run; `rerender` lands more. */
+function renderShell(count: number, onViewSlide?: (id: string | null) => void) {
+  const events = runEvents(generationRun, RUN_UP_TO.writing + 1);
+  const at = (n: number) => ({ ...full, slides: full.slides.slice(0, n) });
+  const view = render(
+    <TooltipProvider>
+      <GeneratingShell
+        lesson={at(count)}
+        events={events}
+        onBack={noop}
+        onStop={noop}
+        onViewSlide={onViewSlide}
+      />
+    </TooltipProvider>,
+  );
+  const land = (n: number) =>
+    view.rerender(
+      <TooltipProvider>
+        <GeneratingShell
+          lesson={at(n)}
+          events={events}
+          onBack={noop}
+          onStop={noop}
+          onViewSlide={onViewSlide}
+        />
+      </TooltipProvider>,
+    );
+  const thumb = (n: number) => screen.getByRole("button", { name: `Slide ${n}` });
+  const canvasSlide = () =>
+    document.querySelector("[data-canvas] [data-slide-root]")?.getAttribute("data-slide-id");
+  return { land, thumb, canvasSlide };
+}
+
+describe("GeneratingShell: finished slides are viewable (TEACH-252)", () => {
+  it("row 1: a click on thumb 2 of 4 puts slide 2 on the canvas and marks the thumb current", () => {
+    const viewed: (string | null)[] = [];
+    const { thumb, canvasSlide } = renderShell(4, (id) => viewed.push(id));
+    expect(thumb(4)).toHaveAttribute("aria-current", "true");
+    expect(thumb(4)).toHaveAttribute("tabindex", "0");
+    expect(thumb(2)).toHaveAttribute("tabindex", "-1");
+    fireEvent.click(thumb(2));
+    expect(canvasSlide()).toBe(full.slides[1]?.id);
+    expect(thumb(2)).toHaveAttribute("aria-current", "true");
+    expect(thumb(4)).not.toHaveAttribute("aria-current");
+    expect(document.querySelectorAll('[data-slide-thumb][data-current="true"]')).toHaveLength(1);
+    expect(viewed).toEqual([full.slides[1]?.id ?? ""]);
+    // The lock line stands: viewing, not editing.
+    expect(screen.getByTestId("generating-lock")).toHaveTextContent(LOCK_LINE);
+    expect(screen.getByRole("button", { name: "Newest slide" })).toBeVisible();
+  });
+
+  it("row 2: slide 5 lands while slide 2 is chosen — the canvas stays on 2, thumb 5 fades in, the canvas does not", () => {
+    const { land, thumb, canvasSlide } = renderShell(4);
+    fireEvent.click(thumb(2));
+    land(5);
+    expect(canvasSlide()).toBe(full.slides[1]?.id);
+    expect(thumb(2)).toHaveAttribute("aria-current", "true");
+    const row5 = document.querySelector('[data-slide-thumb="4"]');
+    expect(row5?.className).toContain("motion-safe:animate-arrive");
+    expect(document.querySelector("[data-canvas-slide]")?.className).not.toContain(
+      "animate-arrive",
+    );
+  });
+
+  it("row 3: choosing the newest thumb restores following, so the next slide takes the canvas", () => {
+    const viewed: (string | null)[] = [];
+    const { land, thumb, canvasSlide } = renderShell(4, (id) => viewed.push(id));
+    fireEvent.click(thumb(2));
+    land(5);
+    fireEvent.click(thumb(5));
+    expect(viewed).toEqual([full.slides[1]?.id ?? "", null]);
+    expect(screen.queryByRole("button", { name: "Newest slide" })).toBeNull();
+    land(6);
+    expect(canvasSlide()).toBe(full.slides[5]?.id);
+    expect(thumb(6)).toHaveAttribute("aria-current", "true");
+    expect(document.querySelector("[data-canvas-slide]")?.className).toContain(
+      "motion-safe:animate-arrive",
+    );
+  });
+
+  it("row 3b: the footer's Newest slide returns to following too", () => {
+    const { land, thumb, canvasSlide } = renderShell(4);
+    fireEvent.click(thumb(1));
+    land(5);
+    fireEvent.click(screen.getByRole("button", { name: "Newest slide" }));
+    expect(canvasSlide()).toBe(full.slides[4]?.id);
+    land(6);
+    expect(canvasSlide()).toBe(full.slides[5]?.id);
+  });
+
+  it("row 4: with no click the canvas follows every arrival, as before", () => {
+    const { land, thumb, canvasSlide } = renderShell(2);
+    expect(canvasSlide()).toBe(full.slides[1]?.id);
+    land(3);
+    expect(canvasSlide()).toBe(full.slides[2]?.id);
+    expect(thumb(3)).toHaveAttribute("aria-current", "true");
+    expect(screen.queryByRole("button", { name: "Newest slide" })).toBeNull();
+    expect(document.querySelector("[data-canvas-slide]")?.className).toContain(
+      "motion-safe:animate-arrive",
+    );
+  });
+
+  it("keyboard: ArrowUp/Down and Home/End move the shown slide and the tab stop together; skeletons stay inert", () => {
+    const { thumb, canvasSlide } = renderShell(4);
+    thumb(4).focus();
+    fireEvent.keyDown(thumb(4), { key: "ArrowUp" });
+    expect(canvasSlide()).toBe(full.slides[2]?.id);
+    expect(thumb(3)).toHaveAttribute("aria-current", "true");
+    expect(document.activeElement).toBe(thumb(3));
+    fireEvent.keyDown(thumb(3), { key: "Home" });
+    expect(canvasSlide()).toBe(full.slides[0]?.id);
+    fireEvent.keyDown(thumb(1), { key: "ArrowUp" });
+    expect(canvasSlide()).toBe(full.slides[0]?.id);
+    fireEvent.keyDown(thumb(1), { key: "End" });
+    expect(canvasSlide()).toBe(full.slides[3]?.id);
+    fireEvent.keyDown(thumb(4), { key: "ArrowDown" });
+    expect(canvasSlide()).toBe(full.slides[3]?.id);
+    // Every finished thumb is a named button; no skeleton row is.
+    expect(screen.getAllByRole("button", { name: /^Slide \d+$/ })).toHaveLength(4);
+    for (const row of document.querySelectorAll('nav[aria-label="Slides"] li[aria-hidden="true"]'))
+      expect(row.querySelector("button")).toBeNull();
+    // The column is not a tab stop while a thumb is.
+    expect(document.querySelector('nav[aria-label="Slides"]')).toHaveAttribute("tabindex", "-1");
   });
 });
 
