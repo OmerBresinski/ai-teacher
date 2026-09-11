@@ -99,7 +99,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v12",
+  version: "generate-slide.v13",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
@@ -108,7 +108,7 @@ export const generateSlidePrompt = {
     HOUSE_RULES,
     "You are given what this slide must add and what its neighbours add; do not repeat a neighbour. Use the facts listed and no others, and put the ids of the facts the slide draws on in `factRefs` (the outline entry's ids at least).",
     "A `content` slide explains one key idea: its statement as the heading, the explanation in plain words and its example in the body; if an analogy is given, use it. A question slide uses one of the questions given, its answer and — for multiple-choice and true-false — its distractors verbatim as the wrong options. Never use a stem from the reserved list.",
-    "A `worked-example` slide shows every step of its worked example: when there are more steps than the slide holds, merge neighbouring steps so the last step — the conclusion — is always on the slide; never drop it. Each step is one short line; the fuller working goes in `notes`.",
+    "A `worked-example` slide shows every step of its worked example: when there are more steps than the slide holds, merge neighbouring steps into fewer, still-short steps so the last step — the conclusion — is always on the slide; never drop it and never lengthen a step past one line. Each step is one short line; the fuller working goes in `notes`.",
     "`notes` is a short paragraph of presenter notes for the teacher: what to say, the misconception to watch for (in its own words, never by id), and one question to ask the class whose answer is not already on the slide.",
     "`footnote` is one short line pupils read — how long they have, where to write, what to do when finished. Anything addressed to the teacher goes in `notes`; leave `footnote` out rather than fill it.",
     IMAGE_TEXT_RULE,
@@ -142,6 +142,22 @@ export const generateSlidePrompt = {
       factRefs: ["q1", "o1"],
       notes:
         "Ask for a show of hands before revealing. Watch for pupils who picture a gas as a crowd of particles pressed together. Ask: What would happen to the balloon if the particles inside were as close as in a liquid?",
+    }),
+    "",
+    "Example for a worked-example slide (four short steps, the last the conclusion):",
+    example({
+      kind: "worked-example",
+      heading: "Is this animal a rodent?",
+      question: "An animal has fur, two large front teeth in each jaw and is seen gnawing a nut.",
+      steps: [
+        "Fur means it is a mammal.",
+        "Two large front incisors in each jaw.",
+        "It gnaws hard food with them.",
+        "So it is very likely a rodent.",
+      ],
+      factRefs: ["x1", "o2"],
+      notes:
+        "Reveal one step at a time and ask pupils to predict the next. Watch for pupils who decide from size or a tail alone. Ask: Which one observation would change your answer?",
     }),
   ].join("\n"),
   user(input: GenerateSlideInput): string {

@@ -143,8 +143,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
   },
   "generate-slide": {
-    version: "generate-slide.v12",
-    hash: "608baf003ddad7b14ba29749783bf74970bd248acf7f68990c7e7173ee2953e5",
+    version: "generate-slide.v13",
+    hash: "b47aebaaa13b1f8dbbb31dc84490086147c682190727054f8429dd9c4f6296ab",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v5",
@@ -265,6 +265,16 @@ describe("prompt versions", () => {
     expect(system).toContain("`footnote` is one short line pupils read");
     // TEACH-247: steps are capped to what the working card holds.
     expect(system).toContain("about 56 characters and never over 120");
+    // TEACH-249: the prompt shows what four short steps look like.
+    expect(system).toContain("Example for a worked-example slide");
+    const shown = /"steps": (\[\s*"[^\]]*\])/.exec(
+      system.slice(system.indexOf("Example for a worked-example slide")),
+    )?.[1];
+    if (!shown) throw new Error("no worked-example steps in the system prompt");
+    const steps = JSON.parse(shown) as string[];
+    expect(steps).toHaveLength(4);
+    for (const step of steps) expect(step.length).toBeLessThanOrEqual(56);
+    expect(steps[3]).toMatch(/^So /);
     const vocab = PROMPTS["generate-slide"].user({
       ...(SAMPLE_INPUTS["generate-slide"] as object),
       entry: { kind: "vocabulary", minutes: 5, factRefs: ["v1"] },
