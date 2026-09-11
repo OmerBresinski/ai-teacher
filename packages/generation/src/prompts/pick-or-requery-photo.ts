@@ -11,7 +11,8 @@ import { type Audience, audienceBlock, example, HOUSE_RULES } from "./shared";
  * themselves** (thumbnails as image parts, numbered to match their ids) beside their captions. It
  * answers a `pick` with `visible` — which of the brief's `mustShow` items it can actually see in
  * that photo — and `count`, or a `query` (one better standalone search), or neither. A
- * deterministic gate places only when every `mustShow` item is visible; the text is then written
+ * deterministic gate places only when the subject is clear and at least one `mustShow` item is
+ * visible (TEACH-241; TEACH-220 required every item); the text is then written
  * to what the photo shows. Bump `version` whenever the wording changes.
  */
 
@@ -141,7 +142,7 @@ export const pickOrRequeryPrompt = {
       "",
       `This slide: ${input.slideBrief}`,
       `Wanted: ${input.subject} (purpose: ${input.purpose})`,
-      `Required items, all of which must be visible: ${input.mustShow.join("; ")}`,
+      `Required items — prefer the photograph that shows the most of them; at least one must be visible: ${input.mustShow.join("; ")}`,
     );
     if (input.avoid && input.avoid.length > 0) parts.push(`Avoid: ${input.avoid.join("; ")}`);
     parts.push(

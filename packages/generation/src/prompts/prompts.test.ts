@@ -156,7 +156,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "pick-or-requery-photo": {
     version: "pick-or-requery-photo.v6",
-    hash: "ac53a5430127832c86af261d0e69b5a0fcd5197cd8a481f7bb0c4193f3b7861e",
+    hash: "f3ac118e19b5ff1051618ca4823658c778e38d0c076d292c3e15b8a5cd9b6b26",
   },
   evaluate: {
     version: "evaluate.v4",
@@ -256,6 +256,11 @@ describe("prompt versions", () => {
     const system = PROMPTS["pick-or-requery-photo"].system;
     expect(system).toContain("at least one");
     expect(system).not.toContain("shows every required item");
+    const user = PROMPTS["pick-or-requery-photo"].user(
+      SAMPLE_INPUTS["pick-or-requery-photo"] as never,
+    );
+    expect(user).toContain("at least one must be visible");
+    expect(user).not.toContain("all of which must be visible");
   });
 
   test("TEACH-239: the shortlist asks for the subject only; the required items are the judge's", () => {
