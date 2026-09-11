@@ -315,8 +315,7 @@ the smoke test below: its progress message names the model ID that actually answ
 
 ### Smoke test
 
-1. Sign in on production. Magic links are console-logged because of Known gap TEACH-35:
-   `railway logs -s api -e production`.
+1. Sign in on production. The magic link arrives by email (Resend, TEACH-35).
 2. `POST /jobs/ai-ping` with `{"class":"small"}`, `{"class":"standard"}`, or
    `{"class":"frontier"}`.
 3. Follow `GET /jobs/:id/events` until `completed`. The second `progress` message carries
@@ -504,7 +503,7 @@ The per-service matrix (which name, which environment, who sets it) is generated
 source of truth; this section only says how the values get there.
 
 - **Seeded by `provision.sh`** (step 4) from the contract via `bun scripts/railway-vars.ts api|worker`:
-  plain config (`NODE_ENV`, `PORT`, `LOG_LEVEL`, `MAIL_PROVIDER`, `COOKIE_SAMESITE`,
+  plain config (`NODE_ENV`, `PORT`, `LOG_LEVEL`, `COOKIE_SAMESITE`,
   `WORKER_CONCURRENCY`, `WEB_ORIGIN`) and the references
   `DATABASE_URL=postgres://${{postgres.POSTGRES_USER}}:${{postgres.POSTGRES_PASSWORD}}@${{postgres.RAILWAY_PRIVATE_DOMAIN}}:5432/${{postgres.POSTGRES_DB}}`
   and `BETTER_AUTH_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}` (resolve per environment, PR envs included).
@@ -540,6 +539,8 @@ railway variable set COOKIE_DOMAIN=.<domain> --service api --skip-deploys
 railway variable set COOKIE_SAMESITE=lax --service api --skip-deploys              # switch from the `none` stopgap
 # Sign-in mail via Resend (done 2026-09-11, TEACH-35; domain mail.bresinski.org verified in Resend's eu-west-1,
 # DNS on Vercel: `vercel dns ls bresinski.org`). The key is a send-only key from resend.com → API Keys.
+# provision.sh does not seed MAIL_PROVIDER: a fresh api refuses to boot until these three are set.
+# PR environments are copies of production and deliver sign-in mail the same way.
 printf '%s' "$RESEND_API_KEY" | railway variable set RESEND_API_KEY --stdin --service api --skip-deploys
 railway variable set --service api --skip-deploys 'MAIL_FROM=Teaching Journey <sign-in@mail.bresinski.org>' MAIL_PROVIDER=resend
 railway variable delete ALLOW_CONSOLE_MAIL_IN_PRODUCTION --service api --skip-deploys   # console acknowledgement no longer needed
