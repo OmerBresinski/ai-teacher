@@ -543,7 +543,7 @@ railway variable set COOKIE_SAMESITE=lax --service api --skip-deploys           
 # PR environments are copies of production and deliver sign-in mail the same way.
 printf '%s' "$RESEND_API_KEY" | railway variable set RESEND_API_KEY --stdin --service api --skip-deploys
 railway variable set --service api --skip-deploys 'MAIL_FROM=Teaching Journey <sign-in@mail.bresinski.org>' MAIL_PROVIDER=resend
-railway variable delete ALLOW_CONSOLE_MAIL_IN_PRODUCTION --service api --skip-deploys   # console acknowledgement no longer needed
+railway variable delete ALLOW_CONSOLE_MAIL_IN_PRODUCTION --service api   # after the resend-capable api is deployed (no --skip-deploys on delete; it redeploys)
 # OAuth (optional, F17):
 railway variable set GOOGLE_CLIENT_ID=<id> --service api --skip-deploys
 railway variable set GOOGLE_CLIENT_SECRET --stdin --service api --skip-deploys < /tmp/secret
