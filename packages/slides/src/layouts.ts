@@ -472,38 +472,43 @@ function imageTextSlide(t: Theme): Layout {
 
 /** Worked example — the problem left, the teacher's working right on a tinted card. */
 function workedExampleSlide(t: Theme): Layout {
+  // Question on top, the working on a full-width card below (TEACH-247). Side by side, the card's
+  // 365pt column held six body lines at the floor — three two-line steps — while the spec allows
+  // four; stacked, four steps of `SPEC_LIMITS.step` characters are one line each at the floor and
+  // fit the card with the two-line question above. The heading frames the question, so it needs
+  // no label; the working keeps its caption.
   const capH = boxH(t, "caption");
-  const top = BODY_Y;
+  const questionH = boxH(t, "body", 2);
+  const pad = SPACE[3];
+  const cardY = snapY(BODY_Y + questionH + SPACE[2]);
+  // Short of the safe edge by the fit engine's cushion (`SAFETY`), so the card itself is never
+  // reported as an overflow.
+  const cardBottom = SAFE_BOTTOM - SPACE[1];
+  const workingY = cardY + pad + capH + 12;
   return {
     elements: [
       ...headed(t, "Worked example"),
-      text(
-        "caption",
-        "QUESTION",
-        { x: SAFE.x, y: top, w: HALF_W, h: capH },
-        { color: t.colors.muted },
-      ),
       text("body", "Write the question exactly as pupils will see it.", {
         x: SAFE.x,
-        y: top + capH + 12,
-        w: HALF_W,
-        h: boxH(t, "body", 4),
+        y: BODY_Y,
+        w: FULL,
+        h: questionH,
       }),
       shape(
         "rounded",
-        { x: RIGHT_X, y: top, w: HALF_W, h: SAFE_BOTTOM - top },
+        { x: SAFE.x, y: cardY, w: FULL, h: cardBottom - cardY },
         { fill: t.colors.surface, radius: t.radius, name: "Working card" },
       ),
       text(
         "caption",
         "WORKING",
-        { x: RIGHT_X + 24, y: top + 24, w: HALF_W - 48, h: capH },
+        { x: SAFE.x + pad, y: cardY + pad, w: FULL - 2 * pad, h: capH },
         { color: t.colors.muted },
       ),
       text(
         "body",
         docFromNumbered(["First step, and why", "Second step, and why", "The answer"]),
-        { x: RIGHT_X + 24, y: top + 24 + capH + 12, w: HALF_W - 48, h: boxH(t, "body", 4.8) },
+        { x: SAFE.x + pad, y: workingY, w: FULL - 2 * pad, h: cardBottom - pad - workingY },
         {},
         { revealStep: 1, reveal: "rise" },
       ),
@@ -1171,7 +1176,7 @@ export const LAYOUT_CATALOGUE: {
     },
   ],
   "image-text": one("photo-left", "A picture down the left, the text beside it"),
-  "worked-example": one("working-card", "The question left, the working on a card right"),
+  "worked-example": one("working-card", "The question on top, the working on a card below"),
   instructions: LIST_VARIANTS,
   discussion: one("prompt", "One big prompt"),
   "true-false": one("two-cards", "A statement and two cards"),

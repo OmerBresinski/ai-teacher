@@ -61,6 +61,8 @@ export const SPEC_LIMITS = {
   caption: 24,
   heading: 80,
   item: 160,
+  /** A worked-example step: the WORKING card holds four two-line steps at the body floor (TEACH-247). */
+  step: 56,
   body: 400,
   stem: 200,
   option: 80,
@@ -195,7 +197,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
     ...specBase,
     heading: line(SPEC_LIMITS.heading).optional(),
     question: line(SPEC_LIMITS.body),
-    steps: items(1, 4),
+    steps: z.array(listLine(SPEC_LIMITS.step)).min(1).max(4),
   }),
   z
     .strictObject({

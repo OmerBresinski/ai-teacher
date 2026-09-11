@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Lesson, TextElement } from "@tj/domain/documents";
+import { materialiseSlide } from "@tj/slides";
 import { docFromText, newLesson, newSlide } from "../model/factories";
 import { getTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";
@@ -103,6 +104,36 @@ describe("tidySlide", () => {
     expect(once.outcome.overflow).toEqual([]);
     expect(once.outcome.continued).toBe(0);
     expect(tidySlide(once.lesson, sid, ruler).outcome.changed).toBe(false);
+  });
+});
+
+describe("TEACH-247: a worked-example at the spec's limits fits its card", () => {
+  test("four 56-character steps and a two-line question leave no overflow after tidy", () => {
+    const step = "Gnawing scrapes and wears the incisors down to length.";
+    expect(step.length).toBeLessThanOrEqual(56);
+    const slide = materialiseSlide(
+      {
+        kind: "worked-example",
+        heading: "Why does a mouse gnaw a hard seed?",
+        question:
+          "A mouse's front incisors have grown longer. Explain why it needs to gnaw a hard seed.",
+        steps: [step, step, step, step],
+        factRefs: ["x1"],
+      },
+      "chalk",
+      { promptVersion: "test", model: "test", at: "2026-09-11T00:00:00.000Z" },
+      (() => {
+        let n = 0;
+        return () => `e${++n}`;
+      })(),
+    );
+    const lesson = newLesson("W", "chalk");
+    lesson.slides = [slide];
+    const out = tidySlide(lesson, slide.id, ruler);
+    expect(out.outcome.overflow).toEqual([]);
+    const after = out.lesson.slides[0];
+    if (!after) throw new Error("slide");
+    expect(lintSlide(after, ruler, theme).ok).toBe(true);
   });
 });
 

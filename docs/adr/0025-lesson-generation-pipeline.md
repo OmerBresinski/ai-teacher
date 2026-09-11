@@ -787,3 +787,19 @@ whether pupils can…"). The prompt had never said what `footnote` was for. `gen
 one short line pupils read — time, where to write, what to do when finished; anything for the
 teacher goes in `notes`; leave it out rather than fill it.
 
+## Amendment (2026-09-11, TEACH-247 — the worked example fits its card)
+
+§9. A production deck's worked-example slide ran its fourth step off the bottom of the slide.
+Reproduced with the editor's fit engine (`tidySlide` on the real steps): the WORKING card's
+365pt column held six body lines at the 26pt floor — three two-line steps — while the spec
+allowed four steps of 160 characters, and step-down stops at the floor with no continuation for
+a card-bound body. Two changes make the contract and the recipe agree. The recipe stacks: the
+question full-width under the heading (which frames it, so the QUESTION label goes), the working
+on a full-width card below, its text box filling the card so the engine measures against the room
+there is, the card ending a cushion short of the safe edge so it is never itself reported as an
+overflow. The spec caps a worked-example step at `SPEC_LIMITS.step = 56` characters — one line
+at the floor across the card — and `generate-slide.v11` says so ("each step is one short line; the
+fuller working goes in `notes`"). `fixtures/default-recipes.json` is regenerated for
+`worked-example` only. The fit engine's split-to-continuation not applying inside a card is noted,
+not changed.
+

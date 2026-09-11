@@ -48,9 +48,9 @@
     "heading": "Worked example",
     "question": "Why does an ice cube left on a plate turn into a puddle?",
     "steps": [
-      "Room air is warmer than the ice, so energy passes into it.",
+      "Room air is warmer than the ice, so energy passes in.",
       "The particles vibrate more strongly.",
-      "They break free and slide past each other: the ice melts."
+      "They break free and slide past each other: it melts."
     ],
     "factRefs": ["x1", "o2"],
     "notes": "Reveal one step at a time."
@@ -109,7 +109,7 @@
   "title": {
     "kind": "title",
     "title": "States of matter",
-    "subtitle": "Year 8 \u00b7 Science",
+    "subtitle": "Year 8 · Science",
     "factRefs": []
   },
   "objectives": {
