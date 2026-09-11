@@ -131,8 +131,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v12",
-    hash: "fef032357e8292aa07c82b7a4d74aa16e4b6cc348d676c4e9a17473842c687b2",
+    version: "plan-skeleton.v13",
+    hash: "03f5822999cfbd316caef2a640b146d6c212b1822f4872c5fa26444201778675",
   },
   "plan-facts": {
     version: "plan-facts.v6",
@@ -231,13 +231,21 @@ describe("prompt versions", () => {
     const facts = PROMPTS["plan-facts"].user(SAMPLE_INPUTS["plan-facts"] as never);
     expect(facts).toContain("This is an Explain lesson for a class new to the topic.");
     expect(facts).toContain("Question tiers: 5 easy, 5 core, 2 stretch (at least 12 in all).");
+    // TEACH-240: mustShow names what an ordinary photograph shows; our own example used to be "front teeth".
+    expect(planSkeletonPrompt.system).toContain("a stranger would take it");
+    expect(planSkeletonPrompt.system).not.toContain('"front teeth"');
+    expect(planSkeletonPrompt.system).not.toContain('"rodent incisors"');
+    // The example follows its own rule: two external items, no close-up in the subject.
+    const pictured = outlineOfExample().find((e) => e.kind === "image-text") as
+      | { imageBrief?: { subject: string; mustShow: string[] } }
+      | undefined;
+    expect(pictured?.imageBrief?.mustShow).toEqual(["open flower head", "petals"]);
+    expect(pictured?.imageBrief?.subject).not.toContain("close-up");
     // TEACH-238: the system prompt asks for the photographable flag; the user turn is unchanged.
     expect(planSkeletonPrompt.system).toContain('"photographable": { "yes", "why"');
     expect(skeleton).not.toContain("photographable");
     // The prompt's own example has the default shape: a content slide opens the explain phase.
-    const example = /"outline": (\[[\s\S]*?\n {2}\])/.exec(planSkeletonPrompt.system)?.[1];
-    if (!example) throw new Error("no example outline in the system prompt");
-    const outline = JSON.parse(example) as { kind: string; phase?: string }[];
+    const outline = outlineOfExample();
     expect(outline.find((e) => e.phase === "explain")?.kind).toBe("content");
     expect(outline.map((e) => e.kind)).toEqual(
       expect.arrayContaining(["open-response", "worked-example"]),
@@ -249,6 +257,13 @@ describe("prompt versions", () => {
     expect(text).toContain("do not reject a caption for not mentioning them");
     expect(text).not.toContain("all of which must be visible");
   });
+
+  /** The example outline embedded in the skeleton system prompt. */
+  function outlineOfExample(): { kind: string; phase?: string }[] {
+    const example = /"outline": (\[[\s\S]*?\n {2}\])/.exec(planSkeletonPrompt.system)?.[1];
+    if (!example) throw new Error("no example outline in the system prompt");
+    return JSON.parse(example) as { kind: string; phase?: string }[];
+  }
 
   test("the audience and fact ids reach the user prompt", () => {
     const text = PROMPTS["generate-slide"].user(SAMPLE_INPUTS["generate-slide"] as never);

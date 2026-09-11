@@ -710,3 +710,17 @@ low-effort `small` call was a verdict; now it is the same as a failed call: the 
 `SHORTLIST_MAX` candidates go to the judge, logged as `judged: "fallback"` so the rate is
 measurable. The judge and the gate are unchanged; `MAX_JUDGE_CALLS` stays two.
 
+## Amendment (2026-09-11, TEACH-240 — `mustShow` names what a photograph shows)
+
+§7, §8. With the picture slide back (TEACH-238) and the shortlist fixed (TEACH-239), two rodent
+lessons still placed nothing: the judge saw six good photographs a round and said none, because
+the gate (TEACH-220) needs every `mustShow` item visible and Plan had asked for "front teeth". The
+prompt had offered that very phrase as its first `mustShow` example, and "rodent incisors" as its
+`subject` example; the model copied them. `plan-skeleton.v13` gives external examples ("bushy
+tail", "open flower", "river bank"), asks for one or two items — the fewest the task needs, each
+something an ordinary photograph of the whole subject shows as a stranger would take it — and
+says a part seen only in a close-up or in action (teeth, tongue, roots, the inside of anything)
+belongs in the slide's text, not in `mustShow`. Founder decision, 2026-09-11: this prompt change
+first; a gate that distinguishes the defining item from the rest is the fallback if a brief with
+external-only items still places nothing. Gate, schema and judge unchanged.
+
