@@ -55,7 +55,7 @@ describe("boot warnings", () => {
     const line = JSON.parse(lines[0] ?? "") as { level: number; msg: string };
     expect(line.level).toBe(40);
     expect(line.msg).toBe(
-      "ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1: magic-link sign-in URLs are printed to this log. Remove the variable once a real MailSender (TEACH-29) is configured.",
+      "ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1: magic-link sign-in URLs are printed to this log. Set MAIL_PROVIDER=resend (with RESEND_API_KEY and MAIL_FROM) and remove the variable.",
     );
   });
 

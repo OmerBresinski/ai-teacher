@@ -44,6 +44,12 @@ regex = '''(?i)\bBETTER_AUTH_SECRET\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{2
 keywords = ["BETTER_AUTH_SECRET"]
 
 [[rules]]
+id = "tj-resend-api-key"
+description = "Teaching Journey secret RESEND_API_KEY assigned a literal value (infra/env.contract.ts)"
+regex = '''(?i)\bRESEND_API_KEY\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''
+keywords = ["RESEND_API_KEY"]
+
+[[rules]]
 id = "tj-google-client-secret"
 description = "Teaching Journey secret GOOGLE_CLIENT_SECRET assigned a literal value (infra/env.contract.ts)"
 regex = '''(?i)\bGOOGLE_CLIENT_SECRET\b[ \t]*[:=][ \t]*["']?([A-Za-z0-9+/_=.:@-]{20,})["']?'''

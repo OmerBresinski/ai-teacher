@@ -56,6 +56,15 @@ const CONSOLE_MAIL_IN_PRODUCTION_ERROR =
 
 export const COOKIE_SAMESITE_VALUES = ["lax", "none", "strict"] as const;
 
+export const MAIL_PROVIDERS = ["console", "resend"] as const;
+export type MailProvider = (typeof MAIL_PROVIDERS)[number];
+
+const RESEND_NEEDS: Record<"RESEND_API_KEY" | "MAIL_FROM", string> = {
+  RESEND_API_KEY: "required when MAIL_PROVIDER=resend (send-only key from resend.com)",
+  MAIL_FROM:
+    "required when MAIL_PROVIDER=resend, e.g. `Teaching Journey <sign-in@mail.example.org>` on a verified Resend domain",
+};
+
 export const EnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -94,8 +103,12 @@ export const EnvSchema = z
     COOKIE_DOMAIN: optionalString,
     /** `none` is needed when web and api are on unrelated origins (Vercel ↔ Railway previews). */
     COOKIE_SAMESITE: z.enum(COOKIE_SAMESITE_VALUES).default("lax"),
-    /** Only `console` exists until F17 wires a real provider. */
-    MAIL_PROVIDER: z.string().default("console"),
+    /** `console` prints magic links to the log; `resend` delivers them (TEACH-35). */
+    MAIL_PROVIDER: z.enum(MAIL_PROVIDERS).default("console"),
+    /** Resend send-only API key. Required when `MAIL_PROVIDER=resend`. */
+    RESEND_API_KEY: optionalString,
+    /** Sender address, e.g. `Teaching Journey <sign-in@mail.example.org>`. Required for `resend`. */
+    MAIL_FROM: optionalString,
     GOOGLE_CLIENT_ID: optionalString,
     GOOGLE_CLIENT_SECRET: optionalString,
     MICROSOFT_CLIENT_ID: optionalString,
@@ -164,6 +177,11 @@ export const EnvSchema = z
         message: CONSOLE_MAIL_IN_PRODUCTION_ERROR,
       });
     }
+    if (env.MAIL_PROVIDER === "resend") {
+      for (const key of ["RESEND_API_KEY", "MAIL_FROM"] as const) {
+        if (!env[key]) ctx.addIssue({ code: "custom", path: [key], message: RESEND_NEEDS[key] });
+      }
+    }
   });
 
 export type Env = z.output<typeof EnvSchema>;
@@ -218,6 +236,13 @@ export function parseEnv(source: Record<string, string | undefined> = process.en
       variable: "MAIL_PROVIDER",
       message: CONSOLE_MAIL_IN_PRODUCTION_ERROR,
     });
+  }
+  if (source.MAIL_PROVIDER === "resend") {
+    for (const key of ["RESEND_API_KEY", "MAIL_FROM"] as const) {
+      if ((source[key] ?? "").trim() === "" && !errors.some((e) => e.variable === key)) {
+        errors.unshift({ variable: key, message: RESEND_NEEDS[key] });
+      }
+    }
   }
   if (
     source.NODE_ENV === "production" &&

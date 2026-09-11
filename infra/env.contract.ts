@@ -317,13 +317,38 @@ const CONTRACT = [
     local: "console",
     railway: "both",
     vercel: "n/a",
-    setBy: "template",
+    setBy: "manual",
     format: "enum",
-    values: ["console"],
+    values: ["console", "resend"],
     files: ["api"],
-    railwayValue: "console",
     description:
-      "Magic-link delivery. Only `console` exists until TEACH-29 configures a real provider. In production it is refused unless ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1; each link is printed in the api log at warn level.",
+      "Magic-link delivery. `resend` (Railway, TEACH-35) sends through Resend and needs RESEND_API_KEY + MAIL_FROM; `console` (local) prints each link in the api log and is refused in production unless ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1. Set by hand on production (PR environments are copies of it); provision.sh deliberately does not seed it, so a freshly provisioned api refuses to boot until mail is configured rather than falling back to links in the log.",
+  },
+  {
+    name: "RESEND_API_KEY",
+    services: ["api"],
+    scope: "secret",
+    local: null,
+    railway: "both",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api"],
+    description:
+      "Resend send-only API key (resend.com → API Keys, permission 'Sending access'). Required when MAIL_PROVIDER=resend; the api refuses to boot without it. Set on Railway production, inherited by PR environments (they deliver sign-in mail the same way), never in git.",
+  },
+  {
+    name: "MAIL_FROM",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "both",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api"],
+    description:
+      "Sender of the magic-link email, RFC 5322 (`Teaching Journey <sign-in@mail.bresinski.org>`). The domain must be verified in Resend (EU region, ADR 0016). Required when MAIL_PROVIDER=resend.",
   },
   {
     name: "ALLOW_CONSOLE_MAIL_IN_PRODUCTION",
@@ -336,9 +361,8 @@ const CONTRACT = [
     format: "enum",
     values: ["1"],
     files: ["api"],
-    railwayValue: "1",
     description:
-      "Acknowledges that with MAIL_PROVIDER=console in production every magic-link URL is printed to the api log. Required for console mail in production; delete when TEACH-29 lands.",
+      "Acknowledges that with MAIL_PROVIDER=console in production every magic-link URL is printed to the api log. Not set anywhere since TEACH-35 (Railway runs MAIL_PROVIDER=resend) and never seeded by provision.sh; only for an emergency fallback to console mail.",
   },
   {
     name: "GOOGLE_CLIENT_ID",

@@ -5,7 +5,7 @@ import { createApp } from "./app";
 export const TEST_ENV_NO_SHIM = {
   NODE_ENV: "test" as const,
   LOG_LEVEL: "silent" as const,
-  MAIL_PROVIDER: "console",
+  MAIL_PROVIDER: "console" as const,
   WEB_ORIGIN: ["http://localhost:5173", "https://app.example.test"],
   WEB_ORIGIN_PATTERNS: ["https://*-preview.example.test"],
 };
