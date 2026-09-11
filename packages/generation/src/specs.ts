@@ -164,7 +164,7 @@ const PlanSkeletonShape = z.strictObject({
   // whole answer as a string under it (reproduced 12/12 on 2026-09-07); `learningObjectives`,
   // like the five-key schema before it, does not.
   learningObjectives: z
-    .array(z.strictObject({ text: line(SPEC_LIMITS.item) }))
+    .array(z.object({ text: line(SPEC_LIMITS.item) }))
     .min(1)
     .max(4),
   outline: z.array(outlineEntry).min(2).max(16),
@@ -510,6 +510,12 @@ const MisconceptionOrdinalSchema = z.strictObject({
   index: z.number().int().nonnegative(),
 });
 
+/*
+ * The top level is strict — an unknown list is a real shape error worth a retry — but every fact
+ * item is `z.object`, which strips unknown keys (TEACH-256): a model that adds `explanation` to a
+ * worked example gives us nothing we would keep and nothing worth failing a lesson over. Two eval
+ * briefs died on exactly that, on both attempts.
+ */
 const PlanFactsShape = z.strictObject({
   /**
    * The richer facts (Generation quality §1; TEACH-209 shape, TEACH-211 asks for them): key
@@ -519,7 +525,7 @@ const PlanFactsShape = z.strictObject({
    */
   keyIdeas: z
     .array(
-      z.strictObject({
+      z.object({
         statement: line(SPEC_LIMITS.item),
         explanation: line(SPEC_LIMITS.body),
         example: line(SPEC_LIMITS.body),
@@ -533,7 +539,7 @@ const PlanFactsShape = z.strictObject({
     .max(5),
   misconceptions: z
     .array(
-      z.strictObject({
+      z.object({
         belief: line(SPEC_LIMITS.item),
         correction: line(SPEC_LIMITS.body),
         objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
@@ -546,7 +552,7 @@ const PlanFactsShape = z.strictObject({
     .max(4),
   vocabulary: z
     .array(
-      z.strictObject({
+      z.object({
         term: line(SPEC_LIMITS.term),
         definition: line(SPEC_LIMITS.definition),
         objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
@@ -555,7 +561,7 @@ const PlanFactsShape = z.strictObject({
     .max(8),
   workedExamples: z
     .array(
-      z.strictObject({
+      z.object({
         problem: line(SPEC_LIMITS.body),
         steps: z.array(line(SPEC_LIMITS.item)).min(1).max(6),
         answer: line(SPEC_LIMITS.answer),
@@ -565,7 +571,7 @@ const PlanFactsShape = z.strictObject({
     .max(4),
   questions: z
     .array(
-      z.strictObject({
+      z.object({
         stem: line(SPEC_LIMITS.stem),
         answer: line(SPEC_LIMITS.answer),
         reasoning: line(SPEC_LIMITS.footnote),
@@ -574,7 +580,7 @@ const PlanFactsShape = z.strictObject({
         objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
         distractors: z
           .array(
-            z.strictObject({
+            z.object({
               text: line(SPEC_LIMITS.option),
               misconceptionRef: MisconceptionOrdinalSchema.optional(),
             }),
@@ -585,7 +591,7 @@ const PlanFactsShape = z.strictObject({
     )
     .min(12, "Give at least 12 questions across the three tiers, each tagged with a use.")
     .max(20),
-  pitch: z.strictObject({
+  pitch: z.object({
     readingAgeTarget: z.number().int().min(5).max(18),
     sentenceLengthMax: z.number().int().min(6).max(30),
     avoid: z.array(line(SPEC_LIMITS.word)).max(6),
@@ -593,7 +599,7 @@ const PlanFactsShape = z.strictObject({
   /** Per outline entry (by position), the facts from these lists it covers. */
   outlineFactRefs: z
     .array(
-      z.strictObject({
+      z.object({
         index: z.number().int().nonnegative(),
         factRefs: z.array(OrdinalRefSchema),
       }),
