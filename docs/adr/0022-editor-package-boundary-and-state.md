@@ -144,3 +144,23 @@ need move there and are re-exported from their old paths (ADR 0025 §9). §4 gai
 proposals from `lesson.cascade` / `lesson.regenerate` are applied through one reducer inside
 `beginTransaction`/`endTransaction`, so a fact change and everything it re-derives is one undo
 step (ADR 0025 §18).
+
+## Amendment (2026-09-11, TEACH-251) — auto-tidy runs in the editor, once, on the finished body
+
+A generated lesson is written by the worker with `fitVersion: 0`, so the fit migration
+(`layout/use-fit-migration.ts`) is what tidies every slide the linter flags the first time the
+editor opens it: it needs the DOM ruler (`createMeasurer`, real font metrics), so it runs in the
+browser and never in the worker. Two rules keep that one run landing on the right document:
+
+1. **The handoff writes the body and the lock together.** At the job's terminal event the
+   generating view calls `libraryCache.handOverDocument` (`apps/web/src/lib/library.ts`), which
+   cancels any debounced body refetch in flight, reads the row once and writes the body and its
+   released `generatingJobId` in one `notifyManager.batch`. The editor therefore mounts on the
+   finished lesson in a single render — never on the last debounced copy, as it could when the
+   body and the row state were refetched side by side and the row state landed first.
+2. **The migration re-arms when the cache regresses.** `useFitMigration` takes
+   `stale: isFitStale(lesson)` for the document currently in the cache and runs again whenever it
+   turns true after a run (a Reload after a 409, any refetch that replaces the entry with a stored
+   copy that is behind). The run gate still stops React's development double mount from running
+   twice; `fitVersion` stays the only stamp, so a lesson the teacher has edited (and so saved at
+   the current version) is never re-tidied.

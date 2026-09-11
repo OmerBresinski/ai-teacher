@@ -70,6 +70,11 @@ const documentInvalidations = (spy: ReturnType<typeof mock>) =>
       JSON.stringify((call[0] as { queryKey: unknown }).queryKey) === JSON.stringify(DOCUMENT_KEY),
   ).length;
 
+/** `GET /documents/demo-water-cycle` calls served so far. */
+const documentReads = () =>
+  fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/documents/demo-water-cycle")
+    .length;
+
 describe("LessonEditorPage", () => {
   beforeEach(async () => {
     lessonId = "demo-water-cycle";
@@ -254,7 +259,7 @@ describe("LessonEditorPage", () => {
     expect(thumbs()).toHaveLength(3);
   });
 
-  it("row 1: three progress events with distinct documentUpdatedAt refetch the body 3 + 1 times and the editor mounts after the unlock", async () => {
+  it("row 1: three progress events with distinct documentUpdatedAt refetch the body 3 times; the terminal event reads it once more and the editor mounts on it", async () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     const { queryClient } = renderPage();
@@ -284,9 +289,12 @@ describe("LessonEditorPage", () => {
     expect(documentInvalidations(spy)).toBe(3);
 
     fakeApi.setGenerating("demo-water-cycle", null);
+    const readsBefore = documentReads();
     act(() => source.emit("completed", jobEvent("completed"), "5"));
     expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
-    expect(documentInvalidations(spy)).toBe(4);
+    // The handoff is one direct read written with the released lock (TEACH-251), not a refetch.
+    expect(documentInvalidations(spy)).toBe(3);
+    expect(documentReads()).toBe(readsBefore + 1);
   });
 
   it("row 2: two progress events with the same documentUpdatedAt are one refetch", async () => {

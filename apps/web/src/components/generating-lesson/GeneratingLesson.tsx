@@ -3,6 +3,7 @@ import type { Lesson } from "@tj/domain/documents";
 import { type ReactNode, useEffect } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
 import { api } from "@/lib/api";
+import { libraryCache } from "@/lib/library";
 import { apiErrorFromResponse, queryKeys } from "@/lib/query";
 import { GeneratingShell } from "./GeneratingShell";
 
@@ -10,8 +11,9 @@ import { GeneratingShell } from "./GeneratingShell";
  * `/l/$lessonId` while a `lesson.plan` job holds the generating lock (ADR 0024 §18, ADR 0025 §7):
  * the shell over SSE with the lesson read-only inside it. Every `progress` event that names a new
  * `documentUpdatedAt` refetches the body, debounced by `REFETCH_DEBOUNCE_MS` to match the worker's
- * emitter, so slides appear as they are written; the terminal event refetches the row state,
- * which clears the lock and hands the page back to the editor in place. `failed` and `cancelled`
+ * emitter, so slides appear as they are written; the terminal event reads the finished row once
+ * and writes the body with its released lock, which hands the page back to the editor in place.
+ * `failed` and `cancelled`
  * keep the partial slides visible under their message with a way back to the library; Stop
  * cancels the job through `POST /jobs/:id/cancel`.
  */
@@ -52,18 +54,19 @@ export function GeneratingLesson({
     );
     return () => window.clearTimeout(timer);
   }, [documentUpdatedAt, lesson.id, queryClient]);
-  // The terminal event refetches the row state too: the released lock is what hands the page to
-  // the editor. A `failed` / `cancelled` outcome is reported to the page first, so it keeps this
-  // view — the message, the partial slides, the way back — rather than opening the editor on the
-  // unlocked row; the next visit reads the row afresh and edits what was written.
+  // The terminal event hands the page to the editor: `handOverDocument` reads the finished row
+  // once and writes the body and its released lock together, so the editor mounts on the finished
+  // document and never on the last debounced copy (TEACH-251 — the fit migration used to run on
+  // that copy and be spent when the real body landed at `fitVersion: 0`). A `failed` /
+  // `cancelled` outcome is reported to the page first, so it keeps this view — the message, the
+  // partial slides, the way back — rather than opening the editor on the unlocked row; the next
+  // visit reads the row afresh and edits what was written.
   useEffect(() => {
     if (terminal === null) return;
     if (terminal.type !== "completed") onStopped(jobId);
-    void Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocument(lesson.id) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocumentMeta(lesson.id) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments }),
-    ]);
+    void libraryCache
+      .handOverDocument(queryClient, lesson.id)
+      .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments }));
   }, [terminal, lesson.id, jobId, queryClient, onStopped]);
 
   const cancel = useMutation({
