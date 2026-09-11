@@ -813,3 +813,10 @@ the floor, the tolerant ceiling — and `generate-slide.v12` asks for "one short
 characters and never over 120". A step over one line is the fit engine's to step down and the
 residual badge's to report, never the job's to fail.
 
+## Amendment (2026-09-11, TEACH-249 — show, do not tell, the short step)
+
+§10. With the cap tolerant (TEACH-248) the writer read "about 56 characters" as advice and wrote
+60–90. `generate-slide.v13` adds a worked-example example — four steps of under 56 characters,
+the last the conclusion — beside the true-false one, and says the merge is into fewer short steps,
+never a longer one. Prompt only.
+
