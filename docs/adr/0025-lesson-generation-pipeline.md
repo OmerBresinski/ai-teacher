@@ -820,3 +820,15 @@ residual badge's to report, never the job's to fail.
 the last the conclusion — beside the true-false one, and says the merge is into fewer short steps,
 never a longer one. Prompt only.
 
+## Amendment (2026-09-11, TEACH-255 — every text cap is an aim, with a ceiling)
+
+§9, §10. The TEACH-253 eval lost three of twenty-four lessons to `generate-slide` double misses on
+`option` (80) and `term` (60) — the caps the recipes were sized to, enforced as fatal, the same
+mistake TEACH-248 corrected for worked-example steps. Under Sol none occurred, which made a 4×
+model look like the fix; it is ours. `@tj/slides` now has two tables: `SPEC_LIMITS`, the one-line
+ideal every prompt advertises, and `SPEC_CEILINGS` (`option` 120, `term` 90), what the schemas
+enforce — about 1.5×, past which no recipe can lay the text out. Between them the fit engine and
+the residual badge do their work; the job does not fail. `limitsBlock` says so ("go a little over
+rather than fail"), which bumps the four prompts that share it. A matching slide with a collided
+side is still refused, and the message now names the side.
+

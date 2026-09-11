@@ -80,6 +80,18 @@ export const SPEC_LIMITS = {
   word: 40,
 } as const;
 
+/**
+ * What the schemas enforce for the caps a model most often overruns (TEACH-255; the TEACH-248
+ * pattern for every text cap): `SPEC_LIMITS` is the one-line ideal the prompts advertise, this is
+ * the ceiling — about 1.5× — past which no recipe can lay the text out. Between the two the fit
+ * engine steps the type down and the residual badge reports; the job never fails. The TEACH-253
+ * eval lost three of twenty-four lessons to `option` and `term` at their ideals.
+ */
+export const SPEC_CEILINGS = {
+  option: 120,
+  term: 90,
+} as const;
+
 const specBase = {
   /** `LessonFacts` ids this slide or block covers; copied to every element's `generatedFrom`. */
   factRefs: z.array(z.string()),
@@ -132,10 +144,15 @@ const OPTIONS_DIFFER = { message: "Every option must be different.", path: ["opt
 
 const distinctPairs = (spec: { pairs: { left: string; right: string }[] }) =>
   allDistinct(spec.pairs.map((p) => p.left)) && allDistinct(spec.pairs.map((p) => p.right));
-const PAIRS_DIFFER = {
-  message:
-    "matching: every left-hand side and every right-hand side must be different, or there is nothing to match.",
-  path: ["pairs"],
+/** Which side collided, so the retry names it (TEACH-255). */
+const pairsDiffer = (spec: { pairs: { left: string; right: string }[] }, ctx: z.RefinementCtx) => {
+  if (distinctPairs(spec)) return;
+  const side = allDistinct(spec.pairs.map((p) => p.left)) ? "right-hand" : "left-hand";
+  ctx.addIssue({
+    code: "custom",
+    message: `matching: two pairs have the same ${side} side; every ${side} side must be different, or there is nothing to match.`,
+    path: ["pairs"],
+  });
 };
 
 const oneMarkerPerAnswer = {
@@ -177,7 +194,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
     entries: z
       .array(
         z.strictObject({
-          term: line(SPEC_LIMITS.term),
+          term: line(SPEC_CEILINGS.term),
           definition: line(SPEC_LIMITS.definition),
         }),
       )
@@ -238,7 +255,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
       ...specBase,
       stem: line(SPEC_LIMITS.stem),
       options: z
-        .array(z.strictObject({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
+        .array(z.strictObject({ text: listLine(SPEC_CEILINGS.option), correct: z.boolean() }))
         .length(4),
       explanation: line(SPEC_LIMITS.body).optional(),
     })
@@ -254,11 +271,11 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
       stem: line(SPEC_LIMITS.stem),
       pairs: z
         .array(
-          z.strictObject({ left: line(SPEC_LIMITS.term), right: line(SPEC_LIMITS.definition) }),
+          z.strictObject({ left: line(SPEC_CEILINGS.term), right: line(SPEC_LIMITS.definition) }),
         )
         .length(3),
     })
-    .refine(distinctPairs, PAIRS_DIFFER),
+    .superRefine(pairsDiffer),
   z
     .strictObject({
       kind: z.literal("fill-gap"),
@@ -274,7 +291,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
       ...specBase,
       stem: line(SPEC_LIMITS.stem),
       /** In the correct order; the recipe shows them in reading order. */
-      steps: z.array(listLine(SPEC_LIMITS.option)).length(4),
+      steps: z.array(listLine(SPEC_CEILINGS.option)).length(4),
     })
     .refine((spec) => allDistinct(spec.steps), {
       message: "sort: every step must be different.",
@@ -350,7 +367,7 @@ export const BlockSpecSchema = z.discriminatedUnion("type", [
       ...blockBase,
       text: line(SPEC_LIMITS.body),
       options: z
-        .array(z.strictObject({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
+        .array(z.strictObject({ text: listLine(SPEC_CEILINGS.option), correct: z.boolean() }))
         .length(4),
     })
     .refine((spec) => exactlyOneCorrect(spec.options), {
@@ -372,12 +389,12 @@ export const BlockSpecSchema = z.discriminatedUnion("type", [
       ...blockBase,
       pairs: z
         .array(
-          z.strictObject({ left: line(SPEC_LIMITS.term), right: line(SPEC_LIMITS.definition) }),
+          z.strictObject({ left: line(SPEC_CEILINGS.term), right: line(SPEC_LIMITS.definition) }),
         )
         .min(3)
         .max(5),
     })
-    .refine(distinctPairs, PAIRS_DIFFER),
+    .superRefine(pairsDiffer),
   z.strictObject({
     type: z.literal("word-bank"),
     ...blockBase,

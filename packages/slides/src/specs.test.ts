@@ -400,3 +400,43 @@ describe("TEACH-247: worked-example steps fit the working card", () => {
     expect(schema.safeParse({ ...spec("x"), question: "q".repeat(121) }).success).toBe(false);
   });
 });
+
+describe("TEACH-255: option and term caps are ceilings, not one-line ideals", () => {
+  const mc = (text: string) => ({
+    kind: "multiple-choice",
+    factRefs: ["q1"],
+    stem: "Which?",
+    options: [
+      { text, correct: true },
+      { text: "b", correct: false },
+      { text: "c", correct: false },
+      { text: "d", correct: false },
+    ],
+  });
+  const matching = (left: string) => ({
+    kind: "matching",
+    factRefs: ["v1"],
+    stem: "Match",
+    pairs: [
+      { left, right: "one" },
+      { left: "B", right: "two" },
+      { left: "C", right: "three" },
+    ],
+  });
+  test("an option of 120 characters is accepted; 121 refused", () => {
+    const schema = slideSpecSchemaFor("multiple-choice");
+    if (!schema) throw new Error("schema");
+    expect(schema.safeParse(mc("x".repeat(120))).success).toBe(true);
+    expect(schema.safeParse(mc("x".repeat(121))).success).toBe(false);
+  });
+  test("a matching term of 90 characters is accepted; 91 refused; a collided side is named", () => {
+    const schema = slideSpecSchemaFor("matching");
+    if (!schema) throw new Error("schema");
+    expect(schema.safeParse(matching("x".repeat(90))).success).toBe(true);
+    expect(schema.safeParse(matching("x".repeat(91))).success).toBe(false);
+    const dup = schema.safeParse(matching("B"));
+    expect(dup.success).toBe(false);
+    if (dup.success) return;
+    expect(dup.error.issues.map((i) => i.message).join()).toContain("same left-hand side");
+  });
+});

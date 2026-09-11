@@ -131,24 +131,24 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v14",
-    hash: "b9eee1a3da756625f7e4fb64aee23c656d9674d602ff74f56a607646ca0be990",
+    version: "plan-skeleton.v15",
+    hash: "56a9553c95ce1cb59e5abcb384ccfcaea8b3a98803ea9ef013b59fd91238015f",
   },
   "plan-facts": {
-    version: "plan-facts.v6",
-    hash: "040d10ec64718a9c2711496ba22d8f74a39cd4e6274b79ccc2ffa06313706698",
+    version: "plan-facts.v7",
+    hash: "764f35f96bfca2fb7a819379a7c2df1ed560518eff0d2e2fe7a8400a53d8daaa",
   },
   "verify-facts": {
     version: "verify-facts.v1",
     hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
   },
   "generate-slide": {
-    version: "generate-slide.v13",
-    hash: "b47aebaaa13b1f8dbbb31dc84490086147c682190727054f8429dd9c4f6296ab",
+    version: "generate-slide.v14",
+    hash: "8b6dc1504c68a9b6ce12633bdc9f02d1eb9236b0a6ab2c54fa98c3ebaeb43361",
   },
   "generate-worksheet": {
-    version: "generate-worksheet.v5",
-    hash: "06364e30395e7e2a59c5f1a875d87765d436389f28830c0fbff505ec1f19f345",
+    version: "generate-worksheet.v6",
+    hash: "fd99377969fcbdae033246cd21d9b0fb86cf52d11b5807bfa0b85e96d6b38ee2",
   },
   "shortlist-photos": {
     version: "shortlist-photos.v2",
@@ -265,6 +265,10 @@ describe("prompt versions", () => {
     expect(system).toContain("`footnote` is one short line pupils read");
     // TEACH-247: steps are capped to what the working card holds.
     expect(system).toContain("about 56 characters and never over 120");
+    // TEACH-255: the limits are aims; the schema ceiling is higher and not advertised.
+    expect(system).toContain("option ≤ 80");
+    expect(system).toContain("term ≤ 60");
+    expect(system).toContain("go a little over rather than fail");
     // TEACH-249: the prompt shows what four short steps look like.
     expect(system).toContain("Example for a worked-example slide");
     const shown = /"steps": (\[\s*"[^\]]*\])/.exec(

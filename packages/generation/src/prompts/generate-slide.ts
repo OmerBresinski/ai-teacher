@@ -99,7 +99,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v13",
+  version: "generate-slide.v14",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
