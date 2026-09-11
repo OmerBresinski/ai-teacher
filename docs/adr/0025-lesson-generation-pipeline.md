@@ -779,3 +779,11 @@ steps rather than drop the last; when terms exceed slots keep the ones other sho
 then the ones the objectives name, and put the rest in notes; the notes' question is one the
 slide does not answer. Prompt only.
 
+## Amendment (2026-09-11, TEACH-246 — `footnote` is for pupils)
+
+§10. Once the recipe's sample footnotes stopped filling the slot (TEACH-243), the model filled
+it itself, and the first exit ticket's footer addressed the teacher ("Use the answers to check
+whether pupils can…"). The prompt had never said what `footnote` was for. `generate-slide.v10`:
+one short line pupils read — time, where to write, what to do when finished; anything for the
+teacher goes in `notes`; leave it out rather than fill it.
+
