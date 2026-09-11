@@ -65,9 +65,10 @@ const EXAMPLE = {
       phase: "explain",
       factRefs: [{ type: "objective", index: 0 }],
       imageBrief: {
-        subject: "buttercup flower close-up",
-        mustShow: ["open flower head", "petals", "stamens"],
+        subject: "buttercup flower",
+        mustShow: ["open flower head", "petals"],
         purpose: "identify-parts",
+        avoid: ["hands", "vase"],
       },
       brief: {
         adds: "Pupils find and name petal, stamen and carpel on a real flower.",

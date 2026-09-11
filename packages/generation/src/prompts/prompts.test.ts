@@ -132,7 +132,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "plan-skeleton": {
     version: "plan-skeleton.v13",
-    hash: "9c4452f13d365ef76701ca55d237b4e8d63a410db82829478efdbb3054d906ef",
+    hash: "03f5822999cfbd316caef2a640b146d6c212b1822f4872c5fa26444201778675",
   },
   "plan-facts": {
     version: "plan-facts.v6",
@@ -235,13 +235,17 @@ describe("prompt versions", () => {
     expect(planSkeletonPrompt.system).toContain("a stranger would take it");
     expect(planSkeletonPrompt.system).not.toContain('"front teeth"');
     expect(planSkeletonPrompt.system).not.toContain('"rodent incisors"');
+    // The example follows its own rule: two external items, no close-up in the subject.
+    const pictured = outlineOfExample().find((e) => e.kind === "image-text") as
+      | { imageBrief?: { subject: string; mustShow: string[] } }
+      | undefined;
+    expect(pictured?.imageBrief?.mustShow).toEqual(["open flower head", "petals"]);
+    expect(pictured?.imageBrief?.subject).not.toContain("close-up");
     // TEACH-238: the system prompt asks for the photographable flag; the user turn is unchanged.
     expect(planSkeletonPrompt.system).toContain('"photographable": { "yes", "why"');
     expect(skeleton).not.toContain("photographable");
     // The prompt's own example has the default shape: a content slide opens the explain phase.
-    const example = /"outline": (\[[\s\S]*?\n {2}\])/.exec(planSkeletonPrompt.system)?.[1];
-    if (!example) throw new Error("no example outline in the system prompt");
-    const outline = JSON.parse(example) as { kind: string; phase?: string }[];
+    const outline = outlineOfExample();
     expect(outline.find((e) => e.phase === "explain")?.kind).toBe("content");
     expect(outline.map((e) => e.kind)).toEqual(
       expect.arrayContaining(["open-response", "worked-example"]),
@@ -253,6 +257,13 @@ describe("prompt versions", () => {
     expect(text).toContain("do not reject a caption for not mentioning them");
     expect(text).not.toContain("all of which must be visible");
   });
+
+  /** The example outline embedded in the skeleton system prompt. */
+  function outlineOfExample(): { kind: string; phase?: string }[] {
+    const example = /"outline": (\[[\s\S]*?\n {2}\])/.exec(planSkeletonPrompt.system)?.[1];
+    if (!example) throw new Error("no example outline in the system prompt");
+    return JSON.parse(example) as { kind: string; phase?: string }[];
+  }
 
   test("the audience and fact ids reach the user prompt", () => {
     const text = PROMPTS["generate-slide"].user(SAMPLE_INPUTS["generate-slide"] as never);
