@@ -143,8 +143,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
   },
   "generate-slide": {
-    version: "generate-slide.v8",
-    hash: "fb0e73a3cf5d060aa6bab2c4c30031d56cd6a42516e41a026430f776cf39ec5d",
+    version: "generate-slide.v9",
+    hash: "efbf20a9957d22f03c65a88bc8676a9f5255ce41bc5bdc508dbc5caaff27d94a",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v5",
@@ -254,6 +254,20 @@ describe("prompt versions", () => {
     expect(outline.map((e) => e.kind)).toEqual(
       expect.arrayContaining(["open-response", "worked-example"]),
     );
+  });
+
+  test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {
+    const system = PROMPTS["generate-slide"].system;
+    expect(system).toContain("merge neighbouring steps");
+    expect(system).toContain("never drop it");
+    expect(system).toContain("not already on the slide");
+    const vocab = PROMPTS["generate-slide"].user({
+      ...(SAMPLE_INPUTS["generate-slide"] as object),
+      entry: { kind: "vocabulary", minutes: 5, factRefs: ["v1"] },
+      vocabularySlots: 4,
+    } as never);
+    expect(vocab).toContain("at most 4 vocabulary entries");
+    expect(vocab).toContain("keep every term another shown definition uses");
   });
 
   test("TEACH-241: the judge picks a photo showing at least one required item, not all of them", () => {

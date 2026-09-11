@@ -99,7 +99,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v8",
+  version: "generate-slide.v9",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
@@ -108,7 +108,8 @@ export const generateSlidePrompt = {
     HOUSE_RULES,
     "You are given what this slide must add and what its neighbours add; do not repeat a neighbour. Use the facts listed and no others, and put the ids of the facts the slide draws on in `factRefs` (the outline entry's ids at least).",
     "A `content` slide explains one key idea: its statement as the heading, the explanation in plain words and its example in the body; if an analogy is given, use it. A question slide uses one of the questions given, its answer and — for multiple-choice and true-false — its distractors verbatim as the wrong options. Never use a stem from the reserved list.",
-    "`notes` is a short paragraph of presenter notes for the teacher: what to say, the misconception to watch for (in its own words, never by id), and one question to ask the class.",
+    "A `worked-example` slide shows every step of its worked example: when there are more steps than the slide holds, merge neighbouring steps so the last step — the conclusion — is always on the slide; never drop it.",
+    "`notes` is a short paragraph of presenter notes for the teacher: what to say, the misconception to watch for (in its own words, never by id), and one question to ask the class whose answer is not already on the slide.",
     IMAGE_TEXT_RULE,
     "Keep text short enough to read from the back of a classroom: one idea per slide, no paragraph over forty words.",
     "Answers must be correct and unambiguous; a multiple-choice has exactly one correct option and three plausible distractors.",
@@ -136,7 +137,8 @@ export const generateSlidePrompt = {
       correct: false,
       explanation: "Gas particles are far apart and move freely.",
       factRefs: ["q1", "o1"],
-      notes: "Ask for a show of hands before revealing.",
+      notes:
+        "Ask for a show of hands before revealing. Watch for pupils who picture a gas as a crowd of particles pressed together. Ask: What would happen to the balloon if the particles inside were as close as in a liquid?",
     }),
   ].join("\n"),
   user(input: GenerateSlideInput): string {
@@ -157,7 +159,9 @@ export const generateSlidePrompt = {
     if (input.neighbours.next) parts.push(`The slide after adds: ${input.neighbours.next}`);
     if (input.photo !== undefined) parts.push(...photoBlock(input.photo));
     if (input.entry.kind === "vocabulary") {
-      parts.push(`This theme shows at most ${input.vocabularySlots} vocabulary entries.`);
+      parts.push(
+        `This theme shows at most ${input.vocabularySlots} vocabulary entries. When there are more terms than that, keep every term another shown definition uses, then the terms the objectives name; put the rest in \`notes\` with their definitions.`,
+      );
     }
     if (input.reservedStems.length > 0) {
       parts.push("", "Reserved for other slides or the worksheet — do not use these stems:");
