@@ -759,4 +759,13 @@ spec without a footnote loses the element; the `image-text` spec has an optional
 `@tj/generation` sets from the outline entry's `imageBrief.purpose` (`imageTextCaption`: "LOOK
 CLOSELY" for identify-parts and observe, "COMPARE", "KEY IDEA" only for context) on every path
 that materialises a slide — Generate, Repair, proposals. The model is not asked for it.
+## Amendment (2026-09-11, TEACH-244 — a question has one home)
+
+Generation quality §3 (stem ownership). In a production lesson the exit ticket's third item was
+the worksheet's ninth question reworded, and the one question the facts had tagged `use: "exit"`
+appeared nowhere. Reserved stems are advice the writer may paraphrase around, so ownership is now
+enforced in code: `stemPlan` drops from the worksheet pool any `worksheet` question an outline
+entry claims (`any` stays open to both), and `assignFactIds` attaches every unclaimed `exit`
+question to the first check-phase entry, so its writer sees it. Both deterministic; no schema
+issue, no retry.
 
