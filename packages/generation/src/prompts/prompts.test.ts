@@ -143,8 +143,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
   },
   "generate-slide": {
-    version: "generate-slide.v9",
-    hash: "efbf20a9957d22f03c65a88bc8676a9f5255ce41bc5bdc508dbc5caaff27d94a",
+    version: "generate-slide.v10",
+    hash: "fc21599298db6d1e0ae810033abe3afaec31d3df02bbbea413fdfad644e16a5b",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v5",
@@ -261,6 +261,8 @@ describe("prompt versions", () => {
     expect(system).toContain("merge neighbouring steps");
     expect(system).toContain("never drop it");
     expect(system).toContain("not already on the slide");
+    // TEACH-246: footnote is for pupils; teacher text belongs in notes.
+    expect(system).toContain("`footnote` is one short line pupils read");
     const vocab = PROMPTS["generate-slide"].user({
       ...(SAMPLE_INPUTS["generate-slide"] as object),
       entry: { kind: "vocabulary", minutes: 5, factRefs: ["v1"] },

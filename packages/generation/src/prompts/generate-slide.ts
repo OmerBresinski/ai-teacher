@@ -99,7 +99,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v9",
+  version: "generate-slide.v10",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
@@ -110,6 +110,7 @@ export const generateSlidePrompt = {
     "A `content` slide explains one key idea: its statement as the heading, the explanation in plain words and its example in the body; if an analogy is given, use it. A question slide uses one of the questions given, its answer and — for multiple-choice and true-false — its distractors verbatim as the wrong options. Never use a stem from the reserved list.",
     "A `worked-example` slide shows every step of its worked example: when there are more steps than the slide holds, merge neighbouring steps so the last step — the conclusion — is always on the slide; never drop it.",
     "`notes` is a short paragraph of presenter notes for the teacher: what to say, the misconception to watch for (in its own words, never by id), and one question to ask the class whose answer is not already on the slide.",
+    "`footnote` is one short line pupils read — how long they have, where to write, what to do when finished. Anything addressed to the teacher goes in `notes`; leave `footnote` out rather than fill it.",
     IMAGE_TEXT_RULE,
     "Keep text short enough to read from the back of a classroom: one idea per slide, no paragraph over forty words.",
     "Answers must be correct and unambiguous; a multiple-choice has exactly one correct option and three plausible distractors.",
