@@ -118,7 +118,9 @@ export function factsBlock(facts: LessonFacts): string {
 export function limitsBlock(limits: Record<string, number>): string {
   return `Length limits (characters): ${Object.entries(limits)
     .map(([k, v]) => `${k} ≤ ${v}`)
-    .join(", ")}. Stay well under them.`;
+    .join(
+      ", ",
+    )}. They are what fits on one line; a little over is accepted, one and a half times is not.`;
 }
 
 /** One JSON example, pretty-printed, for a prompt to show the exact shape wanted. */

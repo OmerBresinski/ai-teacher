@@ -38,7 +38,7 @@ const line = (max: number) =>
     .trim()
     .overwrite(decodeEntities)
     .min(1)
-    .max(max)
+    .max(ceilingOf(max))
     .refine((text) => !hasLeakedPupilPhrase(text), { message: LEAKED_PUPIL });
 
 /** Teacher notes: the same decoding and cap, but the leak test is for repair commentary. */
@@ -48,7 +48,7 @@ const notesLine = (max: number) =>
     .trim()
     .overwrite(decodeEntities)
     .min(1)
-    .max(max)
+    .max(ceilingOf(max))
     .refine((text) => !hasLeakedRepairPhrase(text), { message: LEAKED_REPAIR });
 
 export const LEAKED_PUPIL =
@@ -62,13 +62,13 @@ export const SPEC_LIMITS = {
   heading: 80,
   item: 160,
   /**
-   * A worked-example step. The card holds four one-line steps (~56 characters) at the body floor;
-   * this is the tolerant ceiling — two lines — so a sentence-long step never fails the job
-   * (TEACH-248: a 56 cap failed a production lesson twice). The prompt asks for 56.
+   * A worked-example step: one line (~56 characters) at the body floor across the card. The schema
+   * accepts `ceilingOf` this — two lines — so a sentence-long step never fails the job (TEACH-248:
+   * a hard 56 cap failed a production lesson twice).
    */
-  step: 120,
+  step: 56,
   /** A worked-example question: two body lines at the floor across the slide (TEACH-247). */
-  question: 120,
+  question: 80,
   body: 400,
   stem: 200,
   option: 80,
@@ -79,6 +79,15 @@ export const SPEC_LIMITS = {
   notes: 2000,
   word: 40,
 } as const;
+
+/**
+ * What a schema enforces for a cap of `aim` characters (TEACH-255; the TEACH-248 pattern for every
+ * text cap): `SPEC_LIMITS` is the one-line ideal the prompts advertise; the ceiling is one and a
+ * half times it, past which no recipe can lay the text out. Between the two the fit engine steps
+ * the type down and the residual badge reports — the job never fails. The TEACH-253 eval lost
+ * three of twenty-four lessons to `option` and `term` enforced at their ideals.
+ */
+export const ceilingOf = (aim: number) => Math.ceil(aim * 1.5);
 
 const specBase = {
   /** `LessonFacts` ids this slide or block covers; copied to every element's `generatedFrom`. */
@@ -102,7 +111,7 @@ const listLine = (max: number) =>
     .overwrite(decodeEntities)
     .overwrite(stripEnumerator)
     .min(1)
-    .max(max)
+    .max(ceilingOf(max))
     .refine((text) => !hasLeakedPupilPhrase(text), { message: LEAKED_PUPIL });
 
 const items = (min: number, max: number) => z.array(listLine(SPEC_LIMITS.item)).min(min).max(max);
@@ -132,10 +141,15 @@ const OPTIONS_DIFFER = { message: "Every option must be different.", path: ["opt
 
 const distinctPairs = (spec: { pairs: { left: string; right: string }[] }) =>
   allDistinct(spec.pairs.map((p) => p.left)) && allDistinct(spec.pairs.map((p) => p.right));
-const PAIRS_DIFFER = {
-  message:
-    "matching: every left-hand side and every right-hand side must be different, or there is nothing to match.",
-  path: ["pairs"],
+/** Which side collided, so the retry names it (TEACH-255). */
+const pairsDiffer = (spec: { pairs: { left: string; right: string }[] }, ctx: z.RefinementCtx) => {
+  if (distinctPairs(spec)) return;
+  const side = allDistinct(spec.pairs.map((p) => p.left)) ? "right-hand" : "left-hand";
+  ctx.addIssue({
+    code: "custom",
+    message: `matching: two pairs have the same ${side} side; every ${side} side must be different, or there is nothing to match.`,
+    path: ["pairs"],
+  });
 };
 
 const oneMarkerPerAnswer = {
@@ -258,7 +272,7 @@ export const SlideSpecSchema = z.discriminatedUnion("kind", [
         )
         .length(3),
     })
-    .refine(distinctPairs, PAIRS_DIFFER),
+    .superRefine(pairsDiffer),
   z
     .strictObject({
       kind: z.literal("fill-gap"),
@@ -377,7 +391,7 @@ export const BlockSpecSchema = z.discriminatedUnion("type", [
         .min(3)
         .max(5),
     })
-    .refine(distinctPairs, PAIRS_DIFFER),
+    .superRefine(pairsDiffer),
   z.strictObject({
     type: z.literal("word-bank"),
     ...blockBase,

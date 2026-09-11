@@ -79,7 +79,7 @@ const SHAPES = {
   content: '{ "kind": "content", "heading", "body" (≤ 40 words), "factRefs", "notes"? }',
   "image-text": '{ "kind": "image-text", "heading", "body" (≤ 40 words), "factRefs", "notes"? }',
   "worked-example":
-    '{ "kind": "worked-example", "heading"?, "question" (≤ 120 characters), "steps": [1–4 strings, each one short line of about 56 characters and never over 120], "factRefs", "notes"? }',
+    '{ "kind": "worked-example", "heading"?, "question" (one or two lines), "steps": [1–4 strings, each one short line of about 56 characters], "factRefs", "notes"? }',
   instructions:
     '{ "kind": "instructions", "heading"?, "steps": [1–4 strings], "footnote"?, "factRefs", "notes"? }',
   discussion: '{ "kind": "discussion", "prompt", "footnote"?, "factRefs", "notes"? }',
@@ -99,7 +99,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v13",
+  version: "generate-slide.v14",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
