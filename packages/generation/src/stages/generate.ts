@@ -35,7 +35,7 @@ import {
   pickPhoto,
   withPhoto,
 } from "./illustrate";
-import { audienceOf, BUDGET_FINDING, generationOf, runBounded } from "./shared";
+import { audienceOf, BUDGET_FINDING, generationOf, runBounded, withImageCaption } from "./shared";
 
 /*
  * Generate (ADR 0025 §4, §7, §8, §15; Generation quality §3, TEACH-213): one `small` call per
@@ -154,7 +154,12 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         schema,
         maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
       });
-      slide = materialiseSlide(call.output, lesson.themeId, meta(call.modelId), deps.ids);
+      slide = materialiseSlide(
+        withImageCaption(call.output, entry),
+        lesson.themeId,
+        meta(call.modelId),
+        deps.ids,
+      );
       // The photograph goes in with the text, in the same persist; a slide with no photograph keeps
       // the placeholder and records the same warning the illustrate step would.
       if (picked?.outcome === "placed") slide = slideWithPhoto(slide, picked.photo);

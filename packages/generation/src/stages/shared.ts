@@ -1,5 +1,6 @@
 import {
   type Finding,
+  type ImagePurpose,
   isTrustedThumbnail,
   type Lesson,
   type OutlineEntry,
@@ -35,6 +36,31 @@ export const BUDGET_FINDING = (by: "usd" | "tokens", where: string): Finding => 
  * left on its image element, or `"none"` when the slot is still the placeholder or was placed
  * before the judge recorded evidence (then the text may set no picture task at all).
  */
+/**
+ * The small label over a picture slide's heading, by what the picture is for (TEACH-243): a slide
+ * that asks pupils to look says so; only a `context` picture is a "KEY IDEA", the recipe's default.
+ */
+export function imageTextCaption(purpose: ImagePurpose | undefined): string {
+  switch (purpose) {
+    case "identify-parts":
+    case "observe":
+      return "LOOK CLOSELY";
+    case "compare":
+      return "COMPARE";
+    default:
+      return "KEY IDEA";
+  }
+}
+
+/** A model's slide spec with the picture caption set from its outline entry (`image-text` only). */
+export function withImageCaption<S extends { kind: string }>(
+  spec: S,
+  entry: OutlineEntry | undefined,
+): S {
+  if (spec.kind !== "image-text") return spec;
+  return { ...spec, caption: imageTextCaption(entry?.imageBrief?.purpose) };
+}
+
 export function imageTextPhotoOf(
   slide: Slide,
   entry: OutlineEntry | undefined,

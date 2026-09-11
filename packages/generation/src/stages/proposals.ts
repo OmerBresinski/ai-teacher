@@ -16,7 +16,7 @@ import {
   type StageName,
   throwIfAborted,
 } from "../types";
-import { audienceOf, blockText, runBounded, slideText } from "./shared";
+import { audienceOf, blockText, runBounded, slideText, withImageCaption } from "./shared";
 
 /*
  * Proposal stages (ADR 0025 §18): the impact set of a fact change, and the re-derivation of an
@@ -197,7 +197,13 @@ export async function proposeFor(
       schema,
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
-    const fresh = materialiseSlide(call.output, lesson.themeId, meta(call.modelId), deps.ids);
+    const index = lesson.slides.findIndex((s) => s.id === job.slideId);
+    const fresh = materialiseSlide(
+      withImageCaption(call.output, lesson.facts?.outline[index]),
+      lesson.themeId,
+      meta(call.modelId),
+      deps.ids,
+    );
     const generatedFrom = { factRefs: call.output.factRefs, ...meta(call.modelId) };
     if (job.elementIds === null) {
       // The same `question`/`notes` on every element proposal: the editor applies them once the

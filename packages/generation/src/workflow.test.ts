@@ -151,6 +151,13 @@ describe("runLessonPipeline", () => {
       deps,
     );
     const imageSlide = lesson.slides.find((slide) => slide.kind === "image-text");
+    // TEACH-243: the fixture's picture is for "observe", so its caption says to look, not KEY IDEA.
+    const caption = imageSlide?.elements.find(
+      (el) => el.type === "text" && el.style.preset === "caption",
+    );
+    expect(caption && "doc" in caption ? JSON.stringify(caption.doc) : "").toContain(
+      "LOOK CLOSELY",
+    );
     const element = imageSlide?.elements.find((el) => el.type === "image");
     if (element?.type !== "image") throw new Error("no placed image");
     expect(element.src).toBe("/files/ws/images/p1.jpg");

@@ -166,8 +166,25 @@ function fillNumbered(spec: NumberedSpec, laid: Layout, variant: ListVariant): L
   } else {
     setDoc(textOf(laid, "body"), docFromNumbered(items));
   }
-  if ("footnote" in spec && spec.footnote) setText(textOf(laid, "small"), spec.footnote);
-  return laid;
+  return withFootnote(laid, "footnote" in spec ? spec.footnote : undefined);
+}
+
+/**
+ * The recipe's `small` text is a sample footnote ("5 minutes. Work in silence…"). A spec that
+ * gives one replaces it; a spec that gives none loses the element, so no sample text reaches a
+ * pupil (TEACH-243: a pair task went out over "Work in silence and answer in your book").
+ */
+function withFootnote(laid: Layout, footnote: string | undefined): Layout {
+  if (footnote) {
+    setText(textOf(laid, "small"), footnote);
+    return laid;
+  }
+  return {
+    ...laid,
+    elements: laid.elements.filter(
+      (element) => !(element.type === "text" && element.style.preset === "small"),
+    ),
+  };
 }
 
 /** The slot number an item-per-element variant gave an element: "Item 3", "Card 3", "Step 3". */
@@ -273,6 +290,8 @@ export function splitAtFullStop(body: string): [string, string] {
 }
 
 function fillImageText(spec: SlideSpecOf<"image-text">, laid: Layout): Layout {
+  // The recipe's caption is "KEY IDEA"; a picture slide that asks pupils to look says so (TEACH-243).
+  if (spec.caption) setText(textOf(laid, "caption"), spec.caption);
   setText(textOf(laid, "heading"), spec.heading);
   setText(textOf(laid, "body"), spec.body);
   // The image slot stays as the recipe made it: PLACEHOLDER_IMAGE until `illustrate` places a
@@ -290,8 +309,7 @@ function fillWorkedExample(spec: SlideSpecOf<"worked-example">, laid: Layout): L
 
 function fillDiscussion(spec: SlideSpecOf<"discussion">, laid: Layout): Layout {
   setText(textOf(laid, "subtitle"), spec.prompt);
-  if (spec.footnote) setText(textOf(laid, "small"), spec.footnote);
-  return laid;
+  return withFootnote(laid, spec.footnote);
 }
 
 function fillTrueFalse(spec: SlideSpecOf<"true-false">, laid: Layout): Layout {

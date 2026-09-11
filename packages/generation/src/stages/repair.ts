@@ -37,6 +37,7 @@ import {
   slideText,
   specFieldsCover,
   specFieldsOf,
+  withImageCaption,
 } from "./shared";
 import { applyVerifyPatch, verifyFinding } from "./verify";
 
@@ -140,7 +141,12 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         commitFacts();
         repaired.add(target.key);
         const fresh: Slide = keepPhoto(slide, {
-          ...materialiseSlide(call.output, lesson.themeId, meta(call.modelId, deps), deps.ids),
+          ...materialiseSlide(
+            withImageCaption(call.output, lesson.facts?.outline[index]),
+            lesson.themeId,
+            meta(call.modelId, deps),
+            deps.ids,
+          ),
           id: slide.id,
         });
         lesson = { ...lesson, slides: lesson.slides.map((s, i) => (i === index ? fresh : s)) };
