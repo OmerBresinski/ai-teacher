@@ -91,35 +91,18 @@ describe("runLessonPipeline", () => {
   });
 
   test("illustrate places one photo in a full run and the summary counts it", async () => {
-    // The fixture skeleton with its multiple-choice slide swapped for a picture slide (an observe
-    // task in the practise phase): same length, so the fixture facts and every script index still
-    // line up, and the Explain shape's two content slides stay.
-    const skeleton = structuredClone(FIXTURES.planSkeleton);
-    const swapped = skeleton.outline[8];
-    if (swapped?.kind !== "multiple-choice") throw new Error("fixture outline moved");
-    skeleton.outline[8] = {
-      ...swapped,
-      kind: "image-text",
-      imageBrief: { subject: "river severn", mustShow: ["river water"], purpose: "observe" },
-    };
+    // The fixture skeleton's own image-text slide (position 5, TEACH-238): one judge answers for it.
     const script = pipelineScript({
       judges: [
         JSON.stringify({
           pick: "p1",
           onSubject: true,
           clear: true,
-          visible: ["river water"],
+          visible: ["ice cubes", "meltwater"],
           count: "one",
           query: null,
         }),
       ],
-    });
-    script[PLAN_INDEX] = JSON.stringify(skeleton);
-    script[SLIDES_INDEX + 6] = JSON.stringify({
-      kind: "image-text",
-      factRefs: ["o1"],
-      heading: "Rivers",
-      body: "Rivers flow to the sea.",
     });
     const ai = createFakeAi({
       script: routed(script),
@@ -174,7 +157,7 @@ describe("runLessonPipeline", () => {
     expect(element.source).toEqual({
       ...stored.source,
       evidence: {
-        visible: ["river water"],
+        visible: ["ice cubes", "meltwater"],
         count: "one",
         alt: "River",
         promptVersion: "pick-or-requery-photo.v5",
@@ -183,7 +166,7 @@ describe("runLessonPipeline", () => {
     });
     // Picture first: the judge ran inside Generate and the slide's text was written to the photo.
     const slideCall = ai.calls.find((c) => c.promptText?.includes("The photograph on this slide"));
-    expect(slideCall?.promptText).toContain("Visible: river water");
+    expect(slideCall?.promptText).toContain("Visible: ice cubes");
     // 1 check + 2 plan + 8 slides + 1 worksheet + 1 judge (the one image slide) + 1 evaluate.
     expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1 + 1);
     const judge = ai.calls.find((call) => call.context?.stage === "illustrate");
@@ -191,7 +174,16 @@ describe("runLessonPipeline", () => {
     expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v5");
     expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v5");
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
-    expect(summary.generation.images).toEqual({ requested: 1, placed: 1, empty: 0, failed: 0 });
+    expect(summary.generation.images).toEqual({
+      photographable: true,
+      requested: 1,
+      placed: 1,
+      empty: 0,
+      failed: 0,
+    });
+    const accepted = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "skeleton accepted");
+    expect(accepted).toMatchObject({ stage: "plan", photographable: true });
+    expect(JSON.stringify(accepted)).not.toContain("camera captures");
     expect(summary.generation.stages).toContain("illustrate");
     // Picture first: the photograph landed with its slide's persist, so the illustrate step had
     // nothing left to place and reported no 88 progress event (the strip tolerates that).

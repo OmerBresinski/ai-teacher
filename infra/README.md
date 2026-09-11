@@ -291,7 +291,7 @@ The worker's `generation summary` lines come from `-s worker` instead.
 
 | # | Measure | Line (`msg`) | Fields | Filter & arithmetic |
 | -- | -- | -- | -- | -- |
-| 1 | Share of generated slides photographed without teacher action | `generation summary` (worker) | `images: { requested, placed, empty, failed }` | `select(.msg == "generation summary") \| [.generation.images] \| add` → `placed ÷ requested` |
+| 1 | Share of photographable lessons that got a picture without teacher action | `generation summary` (worker) | `images: { photographable, requested, placed, empty, failed }` | `select(.msg == "generation summary" and .generation.images.photographable == true)` → count where `placed ≥ 1` ÷ count. `photographable` is Plan's own answer on the topic (TEACH-238; `null` when Plan did not finish); `placed ÷ requested` is the older per-slide rate |
 | 2 | Share of pipeline picks the teacher replaces | `image picked` (api) | `replaced: "ai" \| "teacher" \| null` | count `replaced == "ai"` ÷ generation-summary `placed` over the same window |
 | 3 | Searches per lesson | `image search` (api) ÷ `lesson created from brief` (api) | `q_len`, `cached`, `blocked` | count `msg == "image search"` ÷ count `msg == "lesson created from brief"`. Approximation: a search is not tied to a lesson id (deliberately — tying even the query *length* to a lesson was not asked for) |
 | 4a | Our 429s per day | `request error` (api) | `code: "rate_limited"`, `path` | `select(.msg == "request error" and .code == "rate_limited" and (.path \| startswith("/images/")))` counted per day |

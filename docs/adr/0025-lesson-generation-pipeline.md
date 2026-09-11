@@ -676,3 +676,22 @@ as a content slide (it is one, with a photograph). The rest of the column stands
 and `requireWorkedExampleBeforePractise` are founder decisions; `requiredKinds`, `minCheckEntries`
 and the shares are what the table means by the shape.
 
+## Amendment (2026-09-10, TEACH-238 — the skeleton says whether the topic can be photographed)
+
+§7. After TEACH-229 the first four production lessons had no `image-text` slide at all
+(`images.requested: 0`), two of them on rodents. Nothing required one: `plan-skeleton` had a
+ceiling ("at most three") and a fitness rule, the shape table never names `image-text`, and the
+new Shape block's explicit kind list reads to the model as the whole menu. Three founder decisions
+(chat, 2026-09-10): enforce now rather than prompt-and-measure; keep a one-line reason; the
+skeleton call answers it. `plan-skeleton.v12` returns `photographable: { yes, why }` by the test
+the picture sentence already states (a real place, object, organism, material, weather, artefact
+or everyday scene is; a diagram, map, chart, process or abstract idea is not), and a "yes" needs
+one `image-text` slide. The rule passes the TEACH-227 test because it fires only on the model's
+own contradiction — it said yes and wrote no picture — never on a good abstract outline; a subject
+heuristic (Science → picture) was rejected for exactly that reason. `photographable` is optional
+in the Zod shape and required by the refinement: the resume path rebuilds a skeleton from
+`LessonFacts`, which does not keep it. Only the boolean is logged (`skeleton accepted`, and
+`images.photographable` on the summary line; ADR 0015), so the Images measure #1 becomes
+placed ÷ photographable. The four skeleton fixtures carry the flag and an `image-text` slide at
+position 5.
+

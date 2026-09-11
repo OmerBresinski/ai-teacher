@@ -168,6 +168,13 @@ const PlanSkeletonShape = z.strictObject({
     .min(1)
     .max(4),
   outline: z.array(outlineEntry).min(2).max(16),
+  /**
+   * Whether the topic is something a camera captures (TEACH-238). Optional here because the resume
+   * path rebuilds a skeleton from `LessonFacts`, which does not keep it; `refineShape` requires it
+   * of a live model answer, and a "yes" without an `image-text` slide is the model contradicting
+   * itself — the one picture rule the TEACH-227 test allows.
+   */
+  photographable: z.strictObject({ yes: z.boolean(), why: line(SPEC_LIMITS.item) }).optional(),
 });
 
 /** What the skeleton's refinements need from the brief. */
@@ -374,6 +381,21 @@ function refineShape(
         ["outline"],
       );
     }
+  }
+  // photographable (TEACH-238): the model says whether the topic can be photographed, and a "yes"
+  // needs the picture slide it implies. No subject heuristic — that would fire on a good abstract
+  // outline; this fires only on the model's own contradiction.
+  if (skeleton.photographable === undefined) {
+    issue(
+      'Say whether this topic can be photographed: "photographable": { "yes": true|false, "why": one sentence }.',
+      ["photographable"],
+    );
+  } else if (skeleton.photographable.yes && !kinds.has("image-text")) {
+    // The message does not quote `why`: issue messages are logged on a retry (ADR 0015).
+    issue(
+      'You said this topic can be photographed ("photographable": true); add one image-text slide in the explain phase with an imageBrief.',
+      ["outline"],
+    );
   }
   // forbiddenKinds: none present.
   outline.forEach((entry, i) => {

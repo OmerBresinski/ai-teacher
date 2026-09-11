@@ -131,12 +131,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v11",
-    hash: "1ecfb61d6e2cc260175e9ec343ea4a011985b7d97d1b216e9753b7aaf52bc0a2",
+    version: "plan-skeleton.v12",
+    hash: "fef032357e8292aa07c82b7a4d74aa16e4b6cc348d676c4e9a17473842c687b2",
   },
   "plan-facts": {
     version: "plan-facts.v6",
-    hash: "cc4a17d1bab4a1365677ec61d424e86918d1257b8aa99b4c83d2dd41d7261ce9",
+    hash: "040d10ec64718a9c2711496ba22d8f74a39cd4e6274b79ccc2ffa06313706698",
   },
   "verify-facts": {
     version: "verify-facts.v1",
@@ -231,6 +231,9 @@ describe("prompt versions", () => {
     const facts = PROMPTS["plan-facts"].user(SAMPLE_INPUTS["plan-facts"] as never);
     expect(facts).toContain("This is an Explain lesson for a class new to the topic.");
     expect(facts).toContain("Question tiers: 5 easy, 5 core, 2 stretch (at least 12 in all).");
+    // TEACH-238: the system prompt asks for the photographable flag; the user turn is unchanged.
+    expect(planSkeletonPrompt.system).toContain('"photographable": { "yes", "why"');
+    expect(skeleton).not.toContain("photographable");
     // The prompt's own example has the default shape: a content slide opens the explain phase.
     const example = /"outline": (\[[\s\S]*?\n {2}\])/.exec(planSkeletonPrompt.system)?.[1];
     if (!example) throw new Error("no example outline in the system prompt");

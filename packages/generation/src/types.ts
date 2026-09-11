@@ -83,8 +83,13 @@ export interface PhotoPlacer {
   store(photo: PhotoResult, target: "slide"): Promise<StoredPhoto>;
 }
 
-/** What the `generation summary` line reports for illustrate (TEACH-159). */
+/**
+ * What the `generation summary` line reports for pictures (TEACH-159): the illustrate counts, and
+ * whether Plan said the topic could be photographed at all (TEACH-238; `null` until Plan answers),
+ * so the Images measure is placed ÷ photographable, not placed ÷ every lesson.
+ */
 export interface ImageCounts {
+  photographable: boolean | null;
   requested: number;
   placed: number;
   empty: number;
@@ -92,7 +97,7 @@ export interface ImageCounts {
 }
 
 export function emptyImageCounts(): ImageCounts {
-  return { requested: 0, placed: 0, empty: 0, failed: 0 };
+  return { photographable: null, requested: 0, placed: 0, empty: 0, failed: 0 };
 }
 
 export interface PipelineDeps {

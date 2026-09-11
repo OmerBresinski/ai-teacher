@@ -13,7 +13,6 @@ import {
 import { INPUT_CHECK_MESSAGES, noSources } from "@tj/generation";
 import {
   FIXTURES,
-  PLAN_INDEX,
   pipelineScript,
   routed,
   SLIDES_INDEX,
@@ -138,16 +137,7 @@ describeDb("lesson.plan job", () => {
   test("illustrate places a pexels photo with provenance on the image-text slide", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
-    // The multiple-choice slide becomes the picture slide, so the Explain shape's two content
-    // slides stay (TEACH-229).
-    const skeleton = structuredClone(FIXTURES.planSkeleton);
-    const swapped = skeleton.outline[8];
-    if (swapped?.kind !== "multiple-choice") throw new Error("fixture outline moved");
-    skeleton.outline[8] = {
-      ...swapped,
-      kind: "image-text",
-      imageBrief: { subject: "river severn", mustShow: ["river water"], purpose: "observe" },
-    };
+    // The fixture's own image-text slide (position 5, TEACH-238): its judge answers for ice cubes.
     const ai = scriptedPipelineAi({
       // The v3 judge (TEACH-220): the pick passes the gate when every mustShow item is visible.
       judges: [
@@ -155,20 +145,11 @@ describeDb("lesson.plan job", () => {
           pick: "p1",
           onSubject: true,
           clear: true,
-          visible: ["river water"],
+          visible: ["ice cubes", "meltwater"],
           count: "one",
           query: null,
         }),
       ],
-      overrides: {
-        [PLAN_INDEX]: JSON.stringify(skeleton),
-        [SLIDES_INDEX + 6]: JSON.stringify({
-          kind: "image-text",
-          factRefs: ["o1"],
-          heading: "Rivers",
-          body: "Rivers flow to the sea.",
-        }),
-      },
     });
     const photo = {
       id: "p1",
@@ -228,7 +209,10 @@ describeDb("lesson.plan job", () => {
         element.src.startsWith(`https://api.example/files/${workspaceId}/images/`),
     ).toBe(true);
     expect(element?.type === "image" && element.source?.provider).toBe("pexels");
-    expect(element?.type === "image" && element.source?.evidence?.visible).toEqual(["river water"]);
+    expect(element?.type === "image" && element.source?.evidence?.visible).toEqual([
+      "ice cubes",
+      "meltwater",
+    ]);
     expect(element?.type === "image" && element.authoredBy).toBe("ai");
   });
 
