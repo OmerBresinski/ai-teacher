@@ -732,6 +732,32 @@ describe("planFactsSchemaFor", () => {
 });
 
 describe("assignFactIds", () => {
+  test("TEACH-244: an exit question no entry claims is attached to the first check-phase slide", () => {
+    const f = structuredClone(FIXTURES.planFacts);
+    // The fixture's exit-ticket entry (index 10) claims questions 7, 8 and 11 (all `exit`). Unclaim 11.
+    f.outlineFactRefs = f.outlineFactRefs.map((e) =>
+      e.index === 10
+        ? { ...e, factRefs: e.factRefs.filter((r) => !(r.type === "question" && r.index === 11)) }
+        : e,
+    );
+    const facts = assignFactIds(FIXTURES.planSkeleton, f, 60);
+    expect(facts.questions[11]?.use).toBe("exit");
+    expect(facts.outline[10]?.factRefs).toContain("q12");
+    // Claimed elsewhere: left alone. A worksheet question is never moved.
+    const claimed = structuredClone(f);
+    claimed.outlineFactRefs.push({ index: 9, factRefs: [{ type: "question", index: 11 }] });
+    const facts2 = assignFactIds(FIXTURES.planSkeleton, claimed, 60);
+    expect(facts2.outline[10]?.factRefs).not.toContain("q12");
+    expect(facts2.outline[9]?.factRefs).toContain("q12");
+    // No check-phase entry: nothing added.
+    const noCheck = structuredClone(FIXTURES.planSkeleton);
+    noCheck.outline = noCheck.outline.map((e) =>
+      e.phase === "check" ? { ...e, phase: "practise" as const } : e,
+    );
+    const facts3 = assignFactIds(noCheck, f, 60);
+    expect(facts3.outline[10]?.factRefs).not.toContain("q12");
+  });
+
   test("row 6: the fixtures merge into valid LessonFacts with k/m ids, briefs, phases and pitch", () => {
     const facts = assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
     expect(facts.keyIdeas?.map((k) => k.id)).toEqual(["k1", "k2"]);

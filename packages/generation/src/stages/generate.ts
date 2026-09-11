@@ -350,7 +350,11 @@ export function stemPlan(facts: LessonFacts): {
   facts.outline.forEach((entry, i) => {
     for (const ref of entry.factRefs) if (byId.has(ref) && !owner.has(ref)) owner.set(ref, i);
   });
-  const pool = facts.questions.filter((q) => q.use === "worksheet" || q.use === "any");
+  // A `worksheet` question an outline entry claims is that slide's (TEACH-244: the sheet had
+  // paraphrased one the plan gave the exit ticket); only `any` stays open to both.
+  const pool = facts.questions.filter(
+    (q) => (q.use === "worksheet" || q.use === "any") && !(owner.has(q.id) && q.use !== "any"),
+  );
   const mine = (index: number) => new Set(facts.outline[index]?.factRefs ?? []);
   const reservedFor = (index: number) => {
     const own = mine(index);

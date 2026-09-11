@@ -17,7 +17,7 @@ import {
   sampleBriefLesson,
 } from "../testing";
 import { evaluate } from "./evaluate";
-import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
+import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES, stemPlan } from "./generate";
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
 import { MAX_TARGETS, repair, repairTargets } from "./repair";
 import { BUDGET_FINDING, blockText, slideText, specFieldsCover, specFieldsOf } from "./shared";
@@ -543,16 +543,41 @@ describe("generate", () => {
     for (const q of facts.questions.filter((q) => q.id !== "q1" && q.use !== "any")) {
       expect(mc.promptText).toContain(`  - ${q.stem}`);
     }
-    // The worksheet sees exactly the worksheet/any pool, and the slide/exit stems as reserved.
+    // The worksheet sees exactly the worksheet/any pool — less any worksheet question an outline
+    // entry claims (TEACH-244) — and the slide/exit/claimed stems as reserved.
+    const claimed = new Set(facts.outline.flatMap((e) => e.factRefs));
     for (const q of facts.questions) {
-      const inPool = q.use === "worksheet" || q.use === "any";
-      expect(worksheetCall?.promptText.includes(`${q.id}: ${q.stem}`)).toBe(inPool);
-      const reserved = q.use === "slide" || q.use === "exit";
+      const owned = claimed.has(q.id) && q.use !== "any";
+      const inPool = (q.use === "worksheet" || q.use === "any") && !owned;
+      expect({
+        id: q.id,
+        inPool: worksheetCall?.promptText.includes(`${q.id}: ${q.stem}`),
+      }).toEqual({
+        id: q.id,
+        inPool,
+      });
+      const reserved = q.use === "slide" || q.use === "exit" || owned;
       expect(worksheetCall?.promptText.includes(`  - ${q.stem}`)).toBe(reserved);
     }
     // Filtered facts: the slide sees only what its entry references (plus misconceptions).
     expect(mc.promptText).not.toContain("Key ideas:");
     expect(mc.promptText).toContain("Misconceptions:");
+  });
+
+  test("TEACH-244: stemPlan drops a worksheet question a slide claims from the sheet's pool; `any` stays", () => {
+    const facts = assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
+    const sheetQ = facts.questions.find((q) => q.use === "worksheet");
+    const anyQ = facts.questions.find((q) => q.use === "any");
+    if (!sheetQ || !anyQ) throw new Error("fixture");
+    const claim = (id: string) => ({
+      ...facts,
+      outline: facts.outline.map((e, i) => (i === 5 ? { ...e, factRefs: [...e.factRefs, id] } : e)),
+    });
+    const owned = stemPlan(claim(sheetQ.id));
+    expect(owned.pool.map((q) => q.id)).not.toContain(sheetQ.id);
+    expect(owned.reservedForWorksheet).toContain(sheetQ.stem);
+    expect(stemPlan(claim(anyQ.id)).pool.map((q) => q.id)).toContain(anyQ.id);
+    expect(stemPlan(facts).pool.map((q) => q.id)).toContain(sheetQ.id);
   });
 
   test("rows 2–4: slides resolving out of order are persisted in outline order, one at a time, at most four in flight; the worksheet lands only with the final write", async () => {

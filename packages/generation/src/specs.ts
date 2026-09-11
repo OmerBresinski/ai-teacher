@@ -821,6 +821,22 @@ export function assignFactIds(
   const added = new Map<number, OrdinalRef[]>();
   for (const entry of facts.outlineFactRefs)
     added.set(entry.index, [...(added.get(entry.index) ?? []), ...entry.factRefs]);
+  // A question written for the exit ticket (`use: "exit"`) that no entry claims goes to the first
+  // check-phase slide (TEACH-244): otherwise its writer never sees it and reaches for a worksheet
+  // question instead. Deterministic — no schema issue, no retry.
+  const check = skeleton.outline.findIndex((entry) => entry.phase === "check");
+  if (check !== -1) {
+    const claimed = new Set(
+      [...skeleton.outline.flatMap((e) => e.factRefs), ...added.values()]
+        .flat()
+        .filter((ref) => ref.type === "question")
+        .map((ref) => ref.index),
+    );
+    facts.questions.forEach((q, index) => {
+      if (q.use !== "exit" || claimed.has(index)) return;
+      added.set(check, [...(added.get(check) ?? []), { type: "question", index }]);
+    });
+  }
   return LessonFactsSchema.parse({
     objectives: skeleton.learningObjectives.map((o, i) => ({ id: id("objective", i), ...o })),
     ...optional(
