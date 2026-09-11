@@ -833,3 +833,14 @@ the job does not fail. `step` and `question` return to their aims (56, 80), thei
 ceilings now following from the rule. `limitsBlock` says so ("a little over is accepted, one and a
 half times is not"), which bumps the four prompts that share it. A matching slide with a collided
 side is still refused, and the message names the side.
+
+## Amendment (2026-09-11, TEACH-256 — an unknown key on a fact is not a reason to fail a lesson)
+
+§7. With the length caps tolerant (TEACH-255), the next A-config eval still lost two of eight
+briefs: `plan-facts` refused `workedExamples.n: 1 unrecognized key(s)` on both attempts — Terra
+added a field we would have thrown away, and repeated it when told. Every Plan fact item (key idea,
+misconception, vocabulary entry, worked example, question, distractor, pitch, outline reference,
+learning objective) is now `z.object`, which strips unknown keys; the top-level lists and the
+outline entries stay strict, because an invented list or outline field is a shape error worth a
+retry. The TEACH-227 test, applied once more: a rejection has to buy something.
+

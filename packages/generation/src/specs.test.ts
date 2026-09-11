@@ -541,6 +541,22 @@ describe("planFactsSchemaFor", () => {
   const schema = (shape = EXPLAIN_SOME) => planFactsSchemaFor(FIXTURES.planSkeleton, shape);
   const facts = () => structuredClone(FIXTURES.planFacts);
 
+  test("TEACH-256: an unknown key on a fact item is stripped, not fatal; an unknown top-level key still is", () => {
+    const f = facts() as Record<string, unknown> & { workedExamples: Record<string, unknown>[] };
+    f.workedExamples[0] = { ...f.workedExamples[0], explanation: "extra" };
+    const r = schema().safeParse(f);
+    expect(r.success).toBe(true);
+    if (!r.success) return;
+    expect("explanation" in (r.data.workedExamples[0] ?? {})).toBe(false);
+    expect(
+      LessonFactsSchema.safeParse(assignFactIds(FIXTURES.planSkeleton, r.data, 60)).success,
+    ).toBe(true);
+    const top = schema().safeParse({ ...facts(), summary: "no such list" });
+    expect(top.success).toBe(false);
+    if (top.success) return;
+    expect(top.error.issues.some((i) => i.code === "unrecognized_keys")).toBe(true);
+  });
+
   test("the fixture facts parse", () => {
     expect(schema().safeParse(facts()).success).toBe(true);
   });
