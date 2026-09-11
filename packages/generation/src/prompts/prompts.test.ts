@@ -131,8 +131,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v13",
-    hash: "03f5822999cfbd316caef2a640b146d6c212b1822f4872c5fa26444201778675",
+    version: "plan-skeleton.v14",
+    hash: "b9eee1a3da756625f7e4fb64aee23c656d9674d602ff74f56a607646ca0be990",
   },
   "plan-facts": {
     version: "plan-facts.v6",
@@ -235,11 +235,15 @@ describe("prompt versions", () => {
     expect(planSkeletonPrompt.system).toContain("a stranger would take it");
     expect(planSkeletonPrompt.system).not.toContain('"front teeth"');
     expect(planSkeletonPrompt.system).not.toContain('"rodent incisors"');
-    // The example follows its own rule: two external items, no close-up in the subject.
+    // TEACH-242: two or three different external features, so "at least one visible" has room.
+    expect(planSkeletonPrompt.system).toContain("two or three concrete things");
+    expect(planSkeletonPrompt.system).toContain("at least one of them");
+    expect(planSkeletonPrompt.system).not.toContain("one or two concrete things");
+    // The example follows its own rule: three external items, no close-up in the subject.
     const pictured = outlineOfExample().find((e) => e.kind === "image-text") as
       | { imageBrief?: { subject: string; mustShow: string[] } }
       | undefined;
-    expect(pictured?.imageBrief?.mustShow).toEqual(["open flower head", "petals"]);
+    expect(pictured?.imageBrief?.mustShow).toEqual(["open flower head", "petals", "stem"]);
     expect(pictured?.imageBrief?.subject).not.toContain("close-up");
     // TEACH-238: the system prompt asks for the photographable flag; the user turn is unchanged.
     expect(planSkeletonPrompt.system).toContain('"photographable": { "yes", "why"');

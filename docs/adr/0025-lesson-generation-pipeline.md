@@ -738,3 +738,13 @@ candidate does — at least one. This is safe because the slide's text has been 
 photograph's `visible` list since TEACH-220: the words never claim more than the picture shows.
 A gated pick now logs `noneVisible` beside `offSubject` and `unclear`.
 
+## Amendment (2026-09-11, TEACH-242 — two or three features, so one can be visible)
+
+§7. TEACH-241's "at least one `mustShow` item" gate met TEACH-240's "one or two items, the fewest
+the task needs": Plan wrote one (`["long tail"]`), the Pexels rat pool is head-and-shoulders
+close-ups, and "at least one" was "all" again. Founder decision, 2026-09-11 (over "the subject
+alone is enough" and "an empty slide is fine"): `plan-skeleton.v14` asks for two or three
+concrete things, each a different external feature, so that an ordinary photograph of the whole
+subject is likely to show at least one; the slide's text is written to whichever are visible.
+The close-up / internal-part exclusion stands.
+
