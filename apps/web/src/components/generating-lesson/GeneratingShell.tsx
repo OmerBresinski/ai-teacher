@@ -94,7 +94,9 @@ export function GeneratingShell({
     const next = id === newest?.id ? null : id;
     setSelectedId(next);
     onViewSlide?.(next);
-    document.getElementById(thumbButtonId(id))?.focus({ preventScroll: true });
+    // Focus scrolls the row into view: arrowing down a long column must not leave the tab stop
+    // off screen. A clicked row is already in view, so the scroll is a no-op there.
+    document.getElementById(thumbButtonId(id))?.focus();
   };
   // Roving focus over the finished thumbs: arrows move the shown slide and the tab stop together.
   const onThumbsKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
