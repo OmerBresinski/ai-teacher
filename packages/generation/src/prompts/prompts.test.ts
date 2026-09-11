@@ -151,8 +151,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "06364e30395e7e2a59c5f1a875d87765d436389f28830c0fbff505ec1f19f345",
   },
   "shortlist-photos": {
-    version: "shortlist-photos.v1",
-    hash: "bf8fb22fe9ee429ca0ddba567f8fa96a1a31ab997cd93adfd603f33dc0971aaf",
+    version: "shortlist-photos.v2",
+    hash: "1bca44f4c61f12113e44be1ec038d596c4dba84dafd8cbb0ffa0807240f2d081",
   },
   "pick-or-requery-photo": {
     version: "pick-or-requery-photo.v5",
@@ -242,6 +242,12 @@ describe("prompt versions", () => {
     expect(outline.map((e) => e.kind)).toEqual(
       expect.arrayContaining(["open-response", "worked-example"]),
     );
+  });
+
+  test("TEACH-239: the shortlist asks for the subject only; the required items are the judge's", () => {
+    const text = PROMPTS["shortlist-photos"].user(SAMPLE_INPUTS["shortlist-photos"] as never);
+    expect(text).toContain("do not reject a caption for not mentioning them");
+    expect(text).not.toContain("all of which must be visible");
   });
 
   test("the audience and fact ids reach the user prompt", () => {

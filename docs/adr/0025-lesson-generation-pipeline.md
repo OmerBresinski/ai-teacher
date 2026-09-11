@@ -605,8 +605,9 @@ judge call on the standard class.
 (`shortlist-photos.v1`) reads the captions of up to thirty portrait results and names at most six
 that are the subject itself — captions are cheap text and reliable for *what* a photograph is of,
 useless for what is visible — and the `standard`-class judge (`pick-or-requery-photo.v5`) looks
-only at those. A shortlist that fails falls back to the first six; one that names nothing ends the
-slide without a judge call; an empty pool still reaches the judge, which may requery. Both stages
+only at those. A shortlist that fails falls back to the first six; one that names nothing ~~ends the
+slide without a judge call~~ (withdrawn 2026-09-11, TEACH-239: it too falls back to the first six);
+an empty pool still reaches the judge, which may requery. Both stages
 run again on a requery. §11: an `image-fit` finding on a slide whose `imageBrief.purpose` is
 `identify-parts` or `observe` becomes an `error` with a regenerate fix — the third rodents lesson
 set "find the squirrel's front teeth" on a squirrel whose paws hid its mouth — and `repair.v8` is
@@ -694,4 +695,18 @@ in the Zod shape and required by the refinement: the resume path rebuilds a skel
 `images.photographable` on the summary line; ADR 0015), so the Images measure #1 becomes
 placed ÷ photographable. The four skeleton fixtures carry the flag and an `image-text` slide at
 position 5.
+
+## Amendment (2026-09-11, TEACH-239 — the shortlist narrows, it does not veto)
+
+§8 (TEACH-227 amendment). The first rodent lesson after TEACH-238 asked for its picture and got
+none: `shortlist-photos.v1` answered `[]` over thirty captions, twenty of them rats, and
+`placePhoto` took that as "none of these is the subject" and ended the slide without a judge call
+— twice, pick and requery. Reproduced locally: one run in three of the same call returned `[]`.
+Two causes, both ours. The v1 prompt listed the `mustShow` items as "required, all of which must
+be visible" — a test a caption cannot pass, since no stock caption says "teeth" — against the
+module's own statement that visibility is the judge's job; `shortlist-photos.v2` asks for subject
+identity only and tells the model the judge will check the items. And an empty answer from one
+low-effort `small` call was a verdict; now it is the same as a failed call: the first
+`SHORTLIST_MAX` candidates go to the judge, logged as `judged: "fallback"` so the rate is
+measurable. The judge and the gate are unchanged; `MAX_JUDGE_CALLS` stays two.
 

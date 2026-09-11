@@ -473,7 +473,10 @@ describe("illustrate", () => {
     const brief = { subject: "rodent incisors", mustShow: ["front teeth"] };
     const state = await run(imageLesson([brief]), recordingDeps(ai, { images, logger }));
     expect(ai.calls).toHaveLength(3);
-    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v1");
+    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v2");
+    expect(ai.calls[0]?.promptText).toContain(
+      "do not reject a caption for not mentioning them: front teeth",
+    );
     expect(ai.calls[0]?.modelClass).toBe("small");
     expect(ai.calls[0]?.imageParts).toBeUndefined();
     expect(ai.calls[0]?.promptText).toContain("id p9");
@@ -502,7 +505,7 @@ describe("illustrate", () => {
     expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
   });
 
-  test("TEACH-227: a shortlist that misses twice falls back to the first six; one that names nothing ends the slide without a judge call", async () => {
+  test("TEACH-227 / TEACH-239: a shortlist that misses twice falls back to the first six; one that names nothing sends the first six to the judge too", async () => {
     const ten = Array.from({ length: 10 }, (_, i) => pexelsPhoto(`p${i}`, true));
     const { images, stores } = fakeImages(async () => ten);
     const ai = judge("not json", "still not json", pick("p2"));
@@ -524,15 +527,34 @@ describe("illustrate", () => {
     expect(unseen.stores).toEqual([]);
     expect(imageOf(state3.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
 
-    const none = fakeImages(async () => ten);
-    const ai2 = judge(JSON.stringify({ ids: [] }));
+    // TEACH-239 row 1: an empty shortlist over a full pool is not a verdict — the judge sees the
+    // first six and may place one of them.
+    const emptied = fakeImages(async () => ten);
+    const { lines, logger } = memoryLogger();
+    const ai2 = judge(JSON.stringify({ ids: [] }), pick("p3"));
     const state2 = await run(
       imageLesson([{ subject: "river" }]),
-      recordingDeps(ai2, { images: none.images }),
+      recordingDeps(ai2, { images: emptied.images, logger }),
     );
-    expect(ai2.calls).toHaveLength(1);
+    expect(ai2.calls).toHaveLength(2);
+    expect(ai2.calls[1]?.imageParts).toBe(6);
+    expect(ai2.calls[1]?.promptText).toContain("id p5");
+    expect(ai2.calls[1]?.promptText).not.toContain("id p6");
+    expect(emptied.stores).toEqual(["p3"]);
+    expect(imageOf(state2.lesson, 0).src).toBe("/files/ws/images/p3.jpg");
+    const counts = lines.map((l) => JSON.parse(l)).find((r) => r.pool !== undefined);
+    expect(counts).toMatchObject({ pool: 10, shortlisted: 0, judged: "fallback" });
+
+    // Row 2: the judge may still say none — one judge call, the slide stays empty.
+    const none = fakeImages(async () => ten);
+    const ai4 = judge(JSON.stringify({ ids: [] }), NONE);
+    const state4 = await run(
+      imageLesson([{ subject: "river" }]),
+      recordingDeps(ai4, { images: none.images }),
+    );
+    expect(ai4.calls).toHaveLength(2);
     expect(none.stores).toEqual([]);
-    expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+    expect(imageOf(state4.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
   });
 
   test("row 3: a visible item outside mustShow is a validation issue the retry names", async () => {
