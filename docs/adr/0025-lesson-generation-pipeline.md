@@ -769,3 +769,13 @@ entry claims (`any` stays open to both), and `assignFactIds` attaches every uncl
 question to the first check-phase entry, so its writer sees it. Both deterministic; no schema
 issue, no retry.
 
+## Amendment (2026-09-11, TEACH-245 — three slide-writer habits)
+
+§10. The same production read found a worked-example slide that showed four of its five steps
+and dropped the conclusion (the slide holds four; the facts allow six), a vocabulary slide that
+dropped "mammal" while its definition of "rodent" used the word (five terms, four slots), and
+presenter notes whose question the slide itself answered. `generate-slide.v9`: merge neighbouring
+steps rather than drop the last; when terms exceed slots keep the ones other shown definitions use,
+then the ones the objectives name, and put the rest in notes; the notes' question is one the
+slide does not answer. Prompt only.
+
