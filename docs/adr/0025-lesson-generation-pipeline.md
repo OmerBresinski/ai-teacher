@@ -803,3 +803,13 @@ fuller working goes in `notes`"). `fixtures/default-recipes.json` is regenerated
 `worked-example` only. The fit engine's split-to-continuation not applying inside a card is noted,
 not changed.
 
+## Amendment (2026-09-11, TEACH-248 — the step cap is an aim, not a gate)
+
+§9, §10. Thirty minutes after TEACH-247 deployed, a Year 6 English lesson stopped at slide six:
+the worked-example writer produced sentence-long steps twice and the 56-character cap refused both,
+so `generate-slide` failed the job. The TEACH-227 rule applies to slide specs as it does to Plan:
+a schema rejection must not fire on a plausible answer. `SPEC_LIMITS.step` is 120 — two lines at
+the floor, the tolerant ceiling — and `generate-slide.v12` asks for "one short line of about 56
+characters and never over 120". A step over one line is the fit engine's to step down and the
+residual badge's to report, never the job's to fail.
+

@@ -373,11 +373,22 @@ describe("TEACH-247: worked-example steps fit the working card", () => {
     question: "Why does a puddle vanish?",
     steps: [step, "Second", "Third", "Fourth"],
   });
-  test("a 56-character step is accepted; 57 is refused at the step", () => {
+  test("a 120-character step is accepted (TEACH-248: 56 is the aim, not the cap); 121 is refused at the step", () => {
     const schema = slideSpecSchemaFor("worked-example");
     if (!schema) throw new Error("schema");
     expect(schema.safeParse(spec("x".repeat(56))).success).toBe(true);
-    const long = schema.safeParse(spec("x".repeat(57)));
+    // The shape the production model wrote and the 56 cap refused: four ~70-character sentences.
+    expect(
+      schema.safeParse({
+        ...spec("x"),
+        steps: Array.from(
+          { length: 4 },
+          () => "A claim tells the reader what you want, and a reason explains why it makes sense.",
+        ),
+      }).success,
+    ).toBe(true);
+    expect(schema.safeParse(spec("x".repeat(120))).success).toBe(true);
+    const long = schema.safeParse(spec("x".repeat(121)));
     expect(long.success).toBe(false);
     if (long.success) return;
     expect(long.error.issues[0]?.path).toEqual(["steps", 0]);

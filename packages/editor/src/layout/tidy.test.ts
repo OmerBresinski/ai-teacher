@@ -138,6 +138,30 @@ describe("TEACH-247: a worked-example at the spec's limits fits its card", () =>
   });
 });
 
+describe("TEACH-248: steps at the tolerant ceiling never throw", () => {
+  test("four 120-character steps materialise and tidy; any overflow is reported, not thrown", () => {
+    const step = "s".repeat(120);
+    const slide = materialiseSlide(
+      {
+        kind: "worked-example",
+        heading: "Long steps",
+        question: "Why?",
+        steps: [step, step, step, step],
+        factRefs: ["x1"],
+      },
+      "chalk",
+      { promptVersion: "test", model: "test", at: "2026-09-11T00:00:00.000Z" },
+      (() => {
+        let n = 0;
+        return () => `e${++n}`;
+      })(),
+    );
+    const lesson = newLesson("L", "chalk");
+    lesson.slides = [slide];
+    expect(() => tidySlide(lesson, slide.id, ruler)).not.toThrow();
+  });
+});
+
 describe("tidyMessage", () => {
   test("names what happened, and what still will not fit", () => {
     expect(
