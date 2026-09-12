@@ -25,7 +25,7 @@ if (!t.ok) console.warn(`skipping /sources tests: ${t.reason}`);
 
 describeDb("POST /sources and DELETE /sources/:id", () => {
   if (!t.ok) return;
-  const { unsafeDb, truncateTenantTables, close } = t.db;
+  const { unsafeDb, sql, truncateTenantTables, close } = t.db;
   let root: string;
   let storage: LocalDiskStorage;
   let app: ReturnType<typeof createApp>;
@@ -202,6 +202,26 @@ describeDb("POST /sources and DELETE /sources/:id", () => {
     expect(res.status).toBe(422);
     expect(await errorOf(res)).toMatchObject({ reason: "unreadable" });
   });
+
+  test("a 301-slide deck is too-long, with the count in the message; nothing stored, no row", async () => {
+    const deck = await pptxWith(
+      Array.from({ length: 301 }, (_, i) => ({
+        paragraphs: [`Slide ${i + 1}: ${PHOTOSYNTHESIS[0]}`],
+      })),
+    );
+    const res = await upload(wsA, { file: { bytes: deck, name: "long.pptx" } });
+    expect(res.status).toBe(422);
+    expect(await errorOf(res)).toMatchObject({
+      code: "unprocessable",
+      reason: "too-long",
+      message: REFUSAL_MESSAGES.tooLong(301),
+    });
+    const listed: string[] = [];
+    for await (const o of storage.list(`${wsA}/`)) listed.push(o.key);
+    expect(listed).toEqual([]);
+    const rows = await sql`select count(*)::int as n from sources where workspace_id = ${wsA}`;
+    expect(rows[0]?.n).toBe(0);
+  }, 20_000);
 
   test("neither file nor text, or both, is a validation error", async () => {
     expect((await upload(wsA, {})).status).toBe(400);
