@@ -15,6 +15,7 @@ import { magicLink } from "better-auth/plugins";
 import type { Env } from "../env";
 import type { Logger } from "../logger";
 import type { MailSender } from "../mail";
+import { magicLinkMail } from "./magic-link-mail";
 import { createPersonalWorkspace } from "./workspace-hook";
 
 export const AUTH_BASE_PATH = "/auth";
@@ -60,22 +61,6 @@ function socialProviders(env: AuthEnv, logger: Logger) {
   if (!("microsoft" in microsoft)) logger.info("Microsoft sign-in disabled (no credentials)");
 
   return { ...google, ...microsoft };
-}
-
-function magicLinkMail(url: string): { subject: string; text: string; html: string } {
-  return {
-    subject: "Your sign-in link for Teaching Journey",
-    text: [
-      "Hi,",
-      "",
-      "Click the link below to sign in to Teaching Journey. It works once and expires in 5 minutes.",
-      "",
-      url,
-      "",
-      "If you did not request this, you can ignore this email.",
-    ].join("\n"),
-    html: `<p>Hi,</p><p>Click the link below to sign in to Teaching Journey. It works once and expires in 5 minutes.</p><p><a href="${url}">${url}</a></p><p>If you did not request this, you can ignore this email.</p>`,
-  };
 }
 
 /**
