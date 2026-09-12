@@ -17,7 +17,7 @@ import {
   routed,
   sampleBriefLesson,
 } from "../testing";
-import { evaluate } from "./evaluate";
+import { evaluate, verbFitApplies } from "./evaluate";
 import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES, stemPlan } from "./generate";
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
 import { MAX_TARGETS, repair, repairTargets } from "./repair";
@@ -1145,6 +1145,33 @@ describe("evaluate", () => {
     );
     expect(next.lesson.generation?.findings.map((f) => f.check)).toEqual(["budget"]);
   });
+
+  test("TEACH-262: verbFitApplies drops verb-fit on title, objectives, starter and vocabulary only", async () => {
+    const state = await generated();
+    const slides = state.lesson.slides;
+    const kindOf = (kind: string) => slides.find((s) => s.kind === kind)?.id;
+    const finding = (check: string, target: Finding["target"]): Finding => ({
+      check,
+      severity: "warning",
+      target,
+      message: "m",
+    });
+    for (const kind of ["title", "objectives", "starter", "vocabulary"]) {
+      const id = kindOf(kind);
+      if (!id) throw new Error(`fixture changed: no ${kind} slide`);
+      expect(verbFitApplies(finding("verb-fit", { slideId: id }), state)).toBe(false);
+      // Any other check on the same slide stands.
+      expect(verbFitApplies(finding("pitch", { slideId: id }), state)).toBe(true);
+    }
+    for (const kind of ["content", "true-false", "exit-ticket"]) {
+      const id = kindOf(kind);
+      if (!id) throw new Error(`fixture changed: no ${kind} slide`);
+      expect(verbFitApplies(finding("verb-fit", { slideId: id }), state)).toBe(true);
+    }
+    // Worksheet blocks and untargeted findings are the model's call.
+    expect(verbFitApplies(finding("verb-fit", { blockId: "b1" }), state)).toBe(true);
+    expect(verbFitApplies(finding("verb-fit", {}), state)).toBe(true);
+  });
 });
 
 describe("repair", () => {
@@ -1262,6 +1289,61 @@ describe("repair", () => {
       "column addition",
     );
     expect(repaired.lesson.generation?.findings.some((f) => f.check === "verb-fit")).toBe(false);
+  });
+
+  test("TEACH-262 row 1: a verb-fit finding on the starter slide is dropped and counted; one on a content slide is kept", async () => {
+    const lesson = sampleBriefLesson({
+      brief: {
+        topic: "Column addition",
+        durationMin: 60,
+        answers: {
+          objectiveVerb: "Apply column addition",
+          priorConfidence: "Some prior knowledge",
+        },
+      },
+    });
+    const skeleton = PLAN_SKELETONS.Apply;
+    const setupAi = createFakeAi({
+      script: routed([
+        json(skeleton),
+        json(FIXTURES.planFacts),
+        json(FIXTURES.verify),
+        ...skeleton.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
+        json(FIXTURES.worksheet),
+      ]),
+      usage,
+    });
+    const setupDeps = recordingDeps(setupAi);
+    const generated = await generate(await plan(initialState(lesson), setupDeps), setupDeps);
+    const starter = generated.lesson.slides.find((s) => s.kind === "starter");
+    const content = generated.lesson.slides.find((s) => s.kind === "content");
+    if (!starter || !content) throw new Error("fixture changed: no starter or content slide");
+    const verbFit = (slideId: string, evidence: string): Finding => ({
+      check: "verb-fit",
+      severity: "warning",
+      target: { slideId },
+      evidence,
+      message: "Does not use the method.",
+    });
+    const review = createFakeAi({
+      script: [
+        json({
+          findings: [
+            verbFit(starter.id, slideText(starter).split("\n")[0] ?? ""),
+            verbFit(content.id, slideText(content).split("\n")[0] ?? ""),
+          ],
+        }),
+      ],
+      usage,
+    });
+    const { lines, logger } = memoryLogger();
+    const evaluated = await evaluate(generated, recordingDeps(review, { logger }));
+    expect(evaluated.lesson.generation?.findings).toEqual([
+      expect.objectContaining({ check: "verb-fit", target: { slideId: content.id } }),
+    ]);
+    const dropped = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "findings dropped");
+    expect(dropped).toMatchObject({ stage: "evaluate", dropped: 1 });
+    expect(lines.join("\n")).not.toContain("Does not use the method.");
   });
 
   test("repairTargets groups error findings per target, skips warnings and untargeted, caps at MAX_TARGETS", () => {

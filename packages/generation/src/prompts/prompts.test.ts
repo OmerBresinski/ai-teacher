@@ -156,12 +156,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
   },
   "generate-slide": {
-    version: "generate-slide.v15",
-    hash: "8a9338687c9ca58d9058e81fe2217450064f5dbbdea0693d084a51d7160dd8cb",
+    version: "generate-slide.v16",
+    hash: "8880684049dafec2419a13aa49fd1accad68b26d05ce4b2c12e76aa50e008c80",
   },
   "generate-worksheet": {
-    version: "generate-worksheet.v7",
-    hash: "3c7424a8269d370b008865a433ac2e60693dd07fa1bb06504b43942e00916ee5",
+    version: "generate-worksheet.v8",
+    hash: "bb00f85f94001fbeb7f6781bf497301d240409bdcbdc497a9d9536f9afece10d",
   },
   "shortlist-photos": {
     version: "shortlist-photos.v2",
@@ -172,12 +172,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "f3ac118e19b5ff1051618ca4823658c778e38d0c076d292c3e15b8a5cd9b6b26",
   },
   evaluate: {
-    version: "evaluate.v5",
-    hash: "57eb53cba998e0aa7b9049deb74374d0d1a92986a5221e271c3f9dd0b117e7b4",
+    version: "evaluate.v6",
+    hash: "e12329a1427665290602ee85bb5fb720fe2ebe33467c07fb16974cd312a9b037",
   },
   repair: {
-    version: "repair.v9",
-    hash: "927d26133cc0ed93912b003f05660f68f970b36f326b58b18d421f3f1523045f",
+    version: "repair.v10",
+    hash: "ed623e0ae2ad2e0f51e40d63c6b9c6092b73b13147ff3f433e7af8db346d7f0c",
   },
   "repair-fact": {
     version: "repair-fact.v2",
@@ -366,6 +366,26 @@ describe("prompt versions", () => {
     expect(PROMPTS.evaluate.system).toContain(
       "a slide or block that does what another verb would ask for is a `verb-fit` finding",
     );
+    // TEACH-262 row 2: the reviewer is told the scope and what is exempt.
+    expect(PROMPTS.evaluate.system).toContain(
+      "`verb-fit` is for the slides that teach the mechanism, method or judgement and for the core and stretch tasks.",
+    );
+    for (const exempt of [
+      "the title, objectives, starter and vocabulary slides",
+      "the first content slide when the class is new to the topic or the lesson is Recall",
+      "a true-false or multiple-choice that confronts a misconception",
+      "the easy tier of the worksheet",
+      "the number of items on an exit-ticket",
+    ]) {
+      expect(PROMPTS.evaluate.system).toContain(exempt);
+    }
+    // TEACH-262 row 3: exit-ticket sentences read per item; the recipe fixes the item count.
+    expect(VERB_WRITING.Explain).toContain("Each `exit-ticket` item asks pupils to explain");
+    expect(VERB_WRITING.Explain).not.toContain("explain one thing");
+    expect(VERB_WRITING.Evaluate).toContain("Each `exit-ticket` item");
+    expect(VERB_WRITING.Evaluate).not.toContain("one judgement");
+    expect(VERB_WRITING.Recall).toContain("three things");
+    expect(VERB_WRITING.Apply).toContain("three short problems");
     expect(PROMPTS.repair.system).toContain("A verb-fit problem is fixed by changing the task");
     // Every verb has a paragraph naming the four kinds the ticket names.
     for (const paragraph of Object.values(VERB_WRITING)) {
