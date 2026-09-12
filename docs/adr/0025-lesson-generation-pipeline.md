@@ -898,12 +898,13 @@ wrote an Apply `content` slide exactly as it would an Explain one. `prompts/shar
 and `exit-ticket` slide and the worksheet are *for* under Recall (definition and examples, state
 from memory), Explain (mechanism — how, then why), Apply (the method — steps, then when to use
 them; problems to work) and Evaluate (criteria, then a judgement with reasons), plus one line per
-prior confidence; `verbBlock({ verb, confidence })` renders them after the audience block.
+prior confidence — verb-aware for Revisiting, since "no definitions" would contradict a Recall
+lesson, which for a revisiting class stops re-teaching them and makes the retrieval harder; `verbBlock({ verb, confidence })` renders them after the audience block.
 `GenerateSlideInput.shape`, `GenerateWorksheetInput.shape` and `EvaluateInput.shape` take
 `Pick<LessonShape, "verb" | "confidence">` (`WritingShape`); `RepairInput.lessonShape` does too,
 named apart from its existing `shape` (the JSON shape wanted). The stages read it through one
 helper, `shapeOf(lesson)` in `stages/shared.ts`, which Plan now uses as well. §11: `evaluate.v5`
-gains the `verb-fit` check — "a slide whose task does not serve the objective verb — a Recall
+gains the `verb-fit` check — "a slide or worksheet block whose task does not serve the objective verb — a Recall
 lesson asking for a judgement, an Apply lesson with no method, an Explain content slide that lists
 facts without how or why" — a warning only (`EVALUATE_ERROR_CHECKS` is unchanged, so an `error`
 is a schema miss the retry names). §12: `repair.v9` is given the same verb block, so a slide

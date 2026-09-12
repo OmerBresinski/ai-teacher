@@ -28,19 +28,26 @@ export const VERB_WRITING: Record<ObjectiveVerb, string> = {
     "This is an Evaluate lesson: pupils must make a judgement and defend it. A `content` slide teaches the criteria the judgement uses. A `worked-example` applies the criteria to one case and reaches a verdict. An `open-response` asks which — and why — a judgement with reasons, never a recall question. Questions and worksheet blocks set cases against the criteria. An `exit-ticket` asks for one judgement and its reason.",
 };
 
-/** How the class's prior confidence changes the writing, one line each. */
-const CONFIDENCE_WRITING: Record<PriorConfidence, string> = {
-  "New to it":
+/**
+ * How the class's prior confidence changes the writing, one line each. Revisiting is verb-aware:
+ * "no definitions, straight to the mechanism" is what Explain, Apply and Evaluate need, but a
+ * Recall lesson *is* the definitions — for a revisiting class it stops re-teaching them and makes
+ * the retrieval harder instead.
+ */
+const CONFIDENCE_WRITING: Record<PriorConfidence, (verb: ObjectiveVerb) => string> = {
+  "New to it": () =>
     "The class is new to the topic: define a word before you use it and keep every example concrete.",
-  "Some prior knowledge":
+  "Some prior knowledge": () =>
     "The class has some prior knowledge: remind in a line, then move on; do not re-teach what a reminder covers.",
-  Revisiting:
-    "The class is revisiting the topic: no definitions; go straight to the mechanism, method or judgement and pitch the questions at the harder end.",
+  Revisiting: (verb) =>
+    verb === "Recall"
+      ? "The class is revisiting the topic and has met the definitions: do not re-teach them — a content slide recaps in one line and spends the rest on examples and near misses; pitch the retrieval at the harder end (sort, classify, odd one out, tell an example from a near miss)."
+      : "The class is revisiting the topic: no definitions; go straight to the mechanism, method or judgement and pitch the questions at the harder end.",
 };
 
 /** The verb block a writer or reviewer embeds: the verb's paragraph, then the confidence line. */
 export function verbBlock(shape: WritingShape): string {
-  return `Objective verb: ${shape.verb}. ${VERB_WRITING[shape.verb]}\n${CONFIDENCE_WRITING[shape.confidence]}`;
+  return `Objective verb: ${shape.verb}. ${VERB_WRITING[shape.verb]}\n${CONFIDENCE_WRITING[shape.confidence](shape.verb)}`;
 }
 
 /** Rules stated in every system prompt (ADR 0024 §2: no learner names; F06: British English). */

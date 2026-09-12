@@ -3,7 +3,14 @@ import { lessonShapeOf } from "../shapes";
 import { assignFactIds } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
-import { PROMPT_VERSIONS, PROMPTS, type PromptName, promptHash, VERB_WRITING } from "./index";
+import {
+  PROMPT_VERSIONS,
+  PROMPTS,
+  type PromptName,
+  promptHash,
+  VERB_WRITING,
+  verbBlock,
+} from "./index";
 import { planSkeletonPrompt } from "./plan-skeleton";
 
 /*
@@ -166,11 +173,11 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   evaluate: {
     version: "evaluate.v5",
-    hash: "ef52307cea21c7ce0319e87eed46d053ec8073706fcba489a7a16e041c1bf43c",
+    hash: "57eb53cba998e0aa7b9049deb74374d0d1a92986a5221e271c3f9dd0b117e7b4",
   },
   repair: {
     version: "repair.v9",
-    hash: "a97c99786c8360f5ac7442711d1cff22ad3b16c589a55f1286127e8123ae5be6",
+    hash: "927d26133cc0ed93912b003f05660f68f970b36f326b58b18d421f3f1523045f",
   },
   "repair-fact": {
     version: "repair-fact.v2",
@@ -354,7 +361,10 @@ describe("prompt versions", () => {
     }
     expect(PROMPTS.evaluate.system).toContain('"verb-fit"');
     expect(PROMPTS.evaluate.system).toContain(
-      "a Recall lesson asking for a judgement, an Apply lesson with no method, an Explain content slide that lists facts without how or why",
+      "a slide or worksheet block whose task does not serve the objective verb — a Recall lesson asking for a judgement, an Apply lesson with no method, an Explain content slide that lists facts without how or why",
+    );
+    expect(PROMPTS.evaluate.system).toContain(
+      "a slide or block that does what another verb would ask for is a `verb-fit` finding",
     );
     expect(PROMPTS.repair.system).toContain("A verb-fit problem is fixed by changing the task");
     // Every verb has a paragraph naming the four kinds the ticket names.
@@ -368,5 +378,20 @@ describe("prompt versions", () => {
     }
     // Recall forbids open-response (shapes.ts), so its paragraph does not describe one.
     expect(VERB_WRITING.Recall).not.toContain("`open-response`");
+  });
+
+  test("TEACH-230: a revisiting Recall class is not told 'no definitions'; the other verbs are", () => {
+    const line = (verb: string) =>
+      verbBlock(lessonShapeOf({ objectiveVerb: `${verb} x`, priorConfidence: "Revisiting" })).split(
+        "\n",
+      )[1] ?? "";
+    expect(line("Recall")).toContain("has met the definitions: do not re-teach them");
+    expect(line("Recall")).toContain("odd one out");
+    expect(line("Recall")).not.toContain("no definitions");
+    for (const verb of ["Explain", "Apply", "Evaluate"]) {
+      expect(line(verb)).toContain(
+        "no definitions; go straight to the mechanism, method or judgement",
+      );
+    }
   });
 });

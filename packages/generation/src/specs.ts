@@ -1048,8 +1048,8 @@ export const WorksheetSpecSchema = worksheetSpecSchemaFor();
 /**
  * Evaluate's model checks (Generation quality §4; TEACH-216): a closed set, each finding with the
  * exact text it is about, and `error` only where a pupil would be taught something wrong. `image-fit`
- * came with the picture-first ticket (TEACH-220); `verb-fit` — a task that does not serve the
- * objective verb — with TEACH-230. Both are warnings.
+ * came with the picture-first ticket (TEACH-220); `verb-fit` — a slide or block whose task does
+ * not serve the objective verb — with TEACH-230. Both are warnings.
  */
 export const EVALUATE_CHECKS = [
   "answer-correctness",

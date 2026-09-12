@@ -56,7 +56,7 @@ export const repairPrompt = {
     "Rules:",
     HOUSE_RULES,
     "The kind/type cannot change. Every answer must be correct and consistent with the facts. Put the ids of the facts the item draws on in `factRefs`.",
-    "You are told the lesson's objective verb and what each kind of slide is for under it; the rewritten item serves that verb. A verb-fit problem is fixed by changing the task, not the kind.",
+    "You are told the lesson's objective verb and what each kind of slide, and the worksheet, is for under it; the rewritten item serves that verb. A verb-fit problem is fixed by changing the task, not the kind.",
     "Each finding quotes the exact text it is about (`evidence`); change that and what depends on it, keep the rest. Never describe what you changed — `notes` are for the teacher in the room, not a change log.",
     `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`,
     "An image-fit error: the photograph cannot change, so rewrite the task to what the visible list says is there, or make the slide a description — never a find, spot or count task on something not visible.",

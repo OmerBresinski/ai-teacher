@@ -1184,7 +1184,9 @@ describe("repair", () => {
     }
 
     const content = generated.lesson.slides.find((s) => s.kind === "content");
-    if (!content) throw new Error("fixture changed: no content slide");
+    const block = generated.worksheet?.blocks.find((b) => b.type === "question");
+    if (!content || !block) throw new Error("fixture changed: no content slide or question block");
+    // The check covers the worksheet too: a block that recalls where the verb says to apply.
     const review = createFakeAi({
       script: [
         json({
@@ -1196,6 +1198,13 @@ describe("repair", () => {
               evidence: slideText(content).split("\n")[0],
               message: "Lists facts; an Apply content slide is the method.",
             },
+            {
+              check: "verb-fit",
+              severity: "warning",
+              target: { blockId: block.id },
+              evidence: blockText(block).split("\n")[0],
+              message: "Asks for a definition; an Apply worksheet sets problems to work.",
+            },
           ],
         }),
       ],
@@ -1204,7 +1213,16 @@ describe("repair", () => {
     const evaluated = await evaluate(generated, recordingDeps(review));
     expect(review.calls[0]?.promptText).toContain(VERB_WRITING.Apply);
     expect(evaluated.lesson.generation?.findings).toEqual([
-      expect.objectContaining({ check: "verb-fit", severity: "warning" }),
+      expect.objectContaining({
+        check: "verb-fit",
+        severity: "warning",
+        target: { slideId: content.id },
+      }),
+      expect.objectContaining({
+        check: "verb-fit",
+        severity: "warning",
+        target: { blockId: block.id },
+      }),
     ]);
 
     // Row 3: the schema keeps verb-fit a warning, so the test forces the error Repair acts on.
@@ -1221,12 +1239,28 @@ describe("repair", () => {
         },
       },
     };
-    const fixer = createFakeAi({ script: [json(FIXTURES.slides.content)], usage });
+    const repairedBlock = {
+      type: "question",
+      text: "Work out 347 + 285 using column addition.",
+      answer: "632",
+      answerLines: 3,
+      marks: 2,
+      factRefs: ["o1"],
+    };
+    const fixer = createFakeAi({
+      script: [json(FIXTURES.slides.content), json(repairedBlock)],
+      usage,
+    });
     const repaired = await repair(forced, recordingDeps(fixer));
-    expect(fixer.calls).toHaveLength(1);
-    expect(fixer.calls[0]?.promptText).toContain("Objective verb: Apply.");
-    expect(fixer.calls[0]?.promptText).toContain(VERB_WRITING.Apply);
-    expect(fixer.calls[0]?.promptText).toContain("[verb-fit]");
+    expect(fixer.calls).toHaveLength(2);
+    for (const call of fixer.calls) {
+      expect(call.promptText).toContain("Objective verb: Apply.");
+      expect(call.promptText).toContain(VERB_WRITING.Apply);
+      expect(call.promptText).toContain("[verb-fit]");
+    }
+    expect(blockText(repaired.worksheet?.blocks.find((b) => b.id === block.id) as never)).toContain(
+      "column addition",
+    );
     expect(repaired.lesson.generation?.findings.some((f) => f.check === "verb-fit")).toBe(false);
   });
 
