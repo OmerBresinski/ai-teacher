@@ -80,6 +80,7 @@ export class FakeApi {
   /** Back to the demo Workspace, keys as ids. */
   reset(): void {
     this.rows.clear();
+    this.sources.clear();
     this.requests.length = 0;
     this.failures = [];
     this.nextProposalJobId = null;
@@ -198,6 +199,10 @@ export class FakeApi {
     }
     const file = body.get("file");
     const text = body.get("text");
+    // The API takes exactly one of the two (ADR 0027 §5).
+    if (file instanceof File === (typeof text === "string" && text.length > 0)) {
+      return error(400, "validation_failed", "Send either a file or text.", { fields: ["file"] });
+    }
     const id = newId();
     if (file instanceof File) {
       if (file.name.toLowerCase().includes("roster")) {

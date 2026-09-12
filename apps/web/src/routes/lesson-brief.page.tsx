@@ -280,7 +280,9 @@ export function LessonBriefPage() {
         >
           <SourceDropZone
             sources={state.sources}
-            onChange={(sources) => patch({ sources })}
+            onChange={(update) =>
+              setState((current) => ({ ...current, sources: update(current.sources) }))
+            }
             onBusyChange={setSourcesBusy}
             disabled={isPending}
           />

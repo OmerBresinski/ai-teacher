@@ -133,6 +133,39 @@ describe("SourceDropZone", () => {
     );
   });
 
+  it("a removal that lands while an upload is in flight keeps the newly uploaded Source", async () => {
+    renderZone();
+    fireEvent.change(fileInput(), { target: { files: [pdf("first.pdf")] } });
+    await screen.findByRole("button", { name: "Remove first.pdf" });
+    // Hold the second upload's response until after the first chip has been removed.
+    let release: (() => void) | undefined;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input, init) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.endsWith("/sources") && init?.method === "POST") {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      }
+      return realFetch(input, init);
+    }) as typeof fetch;
+    try {
+      fireEvent.change(fileInput(), { target: { files: [pdf("second.pdf")] } });
+      // The request is parked in the shim once the queue effect has called the mutation.
+      await screen.findByText(/second\.pdf/);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(release).toBeDefined();
+      fireEvent.click(screen.getByRole("button", { name: "Remove first.pdf" }));
+      await waitFor(() => expect(ids()).toBe(""));
+      release?.();
+      await screen.findByRole("button", { name: "Remove second.pdf" });
+      // Only the second remains — the removal did not clobber the upload that landed after it.
+      expect(ids().split(",").filter(Boolean)).toHaveLength(1);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  }, 15_000);
+
   it("a drop on the zone uploads the files", async () => {
     renderZone();
     const zone = screen.getByTestId("source-drop-zone");

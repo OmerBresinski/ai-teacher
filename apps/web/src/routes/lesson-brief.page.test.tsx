@@ -104,6 +104,40 @@ describe("LessonBriefPage", () => {
     expect(lastPost()?.body).toMatchObject({ sourceIds: [sourceId] });
   });
 
+  it("Plan it waits for an upload in flight and says why (ADR 0027 §7)", async () => {
+    renderPage();
+    fireEvent.change(topicBox(), { target: { value: "Photosynthesis" } });
+    expect(createButton()).toBeEnabled();
+    let release: (() => void) | undefined;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input, init) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.endsWith("/sources") && init?.method === "POST") {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      }
+      return realFetch(input, init);
+    }) as typeof fetch;
+    try {
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Paste text instead" }));
+      fireEvent.change(screen.getByRole("textbox", { name: "Text to use as material" }), {
+        target: { value: "Chlorophyll is the green pigment in leaves." },
+      });
+      await user.click(screen.getByRole("button", { name: "Add" }));
+      await waitFor(() => expect(createButton()).toBeDisabled());
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Wait for your files to finish uploading.",
+      );
+      release?.();
+      await screen.findByRole("button", { name: "Remove Pasted text" });
+      await waitFor(() => expect(createButton()).toBeEnabled());
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
   it("posts the brief with the default answers and no durationMin, then opens the lesson", async () => {
     const { queryClient } = renderPage();
     fireEvent.change(topicBox(), { target: { value: "Fractions of amounts" } });

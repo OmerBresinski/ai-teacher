@@ -33,7 +33,12 @@ export function SourceDropZone({
   disabled = false,
 }: {
   sources: SourceRef[];
-  onChange: (next: SourceRef[]) => void;
+  /**
+   * Receives an updater, not a list: an upload finishing while a removal is in flight (or the
+   * other way round) must each apply to the list as it is *then*, never to the render they started
+   * in. The brief passes it straight to `setState`-style `patch`.
+   */
+  onChange: (update: (current: SourceRef[]) => SourceRef[]) => void;
   /** Called with `true` while an upload or removal is in flight; Generate is disabled meanwhile. */
   onBusyChange?: (busy: boolean) => void;
   disabled?: boolean;
@@ -57,9 +62,9 @@ export function SourceDropZone({
   const busy = queue.length > 0 || remove.isPending;
   useEffect(() => onBusyChange?.(busy), [busy, onBusyChange]);
 
-  // The upload effect reads the latest list and callback when it settles, without re-running.
-  const latest = useRef({ sources, onChange });
-  latest.current = { sources, onChange };
+  // The upload effect reads the latest callback when it settles, without re-running.
+  const latestOnChange = useRef(onChange);
+  latestOnChange.current = onChange;
 
   const full = sources.length + queue.length >= MAX_SOURCES;
   const inert = disabled || full;
@@ -89,7 +94,7 @@ export function SourceDropZone({
     running.current = head.key;
     uploadOne(head.input)
       .then((source) => {
-        latest.current.onChange([...latest.current.sources, source]);
+        latestOnChange.current((current) => [...current, source]);
         setAnnouncement(`Added ${source.name}`);
       })
       .catch((error: unknown) => {
@@ -133,7 +138,7 @@ export function SourceDropZone({
   const removeSource = async (source: SourceRef) => {
     try {
       await remove.mutateAsync(source.id);
-      onChange(sources.filter((s) => s.id !== source.id));
+      onChange((current) => current.filter((s) => s.id !== source.id));
       setAnnouncement(`Removed ${source.name}`);
     } catch (error) {
       notify(error instanceof Error ? error.message : "Could not remove that file.");
