@@ -273,27 +273,28 @@ const CONTRACT = [
     local: "http://localhost:3001",
     railway: "both",
     vercel: "n/a",
-    setBy: "template",
+    setBy: "reference",
     format: "url",
     files: ["api"],
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Railway reference syntax
-    railwayValue: "https://api.bresinski.org",
+    railwayValue: "https://${{RAILWAY_PUBLIC_DOMAIN}}",
     description:
-      "Public origin of this API; magic links are `<BETTER_AUTH_URL>/auth/magic-link/verify?...`. Production is the custom domain (TEACH-36); `RAILWAY_PUBLIC_DOMAIN` only ever names the `*.up.railway.app` host, so the value is explicit. PR environments inherit it; override with `https://api-ai-teacher-pr-<n>.up.railway.app` if Vercel previews come back.",
+      "Public origin of this API; magic links are `<BETTER_AUTH_URL>/auth/magic-link/verify?...`. On Railway the reference `https://$" +
+      "{{RAILWAY_PUBLIC_DOMAIN}}` resolves per environment: the custom domain `api.bresinski.org` in production (Railway swaps it in once a custom domain is attached, TEACH-36), `api-ai-teacher-pr-<n>.up.railway.app` in a PR environment. Keep the reference; an explicit value would be copied into PR environments and point their magic links at production.",
   },
   {
     name: "COOKIE_DOMAIN",
     services: ["api"],
     scope: "config",
     local: null,
-    railway: "prod",
+    railway: "both",
     vercel: "n/a",
     setBy: "template",
     format: "string",
     files: ["api"],
     railwayValue: ".bresinski.org",
     description:
-      "Parent domain of the session cookie (`.bresinski.org`) so app.bresinski.org and api.bresinski.org share it (TEACH-36, ADR 0010). Unset locally (the Vite proxy makes web and api same-origin). The api ignores it with a boot warning when BETTER_AUTH_URL is not under it (a PR environment on `*.up.railway.app` inheriting the production value).",
+      "Parent domain of the session cookie (`.bresinski.org`) so app.bresinski.org and api.bresinski.org share it (TEACH-36, ADR 0010). Unset locally (the Vite proxy makes web and api same-origin). PR environments inherit it (hence `both`); their api is on `*.up.railway.app`, not under it, so `effectiveCookieDomain()` ignores it with a boot warning and the cookie is host-only.",
   },
   {
     name: "COOKIE_SAMESITE",

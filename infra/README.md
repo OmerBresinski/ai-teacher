@@ -157,7 +157,9 @@ What exists now (DNS for `bresinski.org` is on Vercel, `vercel dns ls bresinski.
 | `mail.bresinski.org` | Resend sending domain (TEACH-35) | DKIM/SPF records, see "Sign-in mail" |
 
 Variables: Railway `api` production `WEB_ORIGIN=https://app.bresinski.org`,
-`BETTER_AUTH_URL=https://api.bresinski.org`, `COOKIE_DOMAIN=.bresinski.org`, `COOKIE_SAMESITE=lax`;
+`BETTER_AUTH_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}` (Railway resolves the reference to the custom
+domain once one is attached — verified: `api.bresinski.org`), `COOKIE_DOMAIN=.bresinski.org`,
+`COOKIE_SAMESITE=lax`;
 Vercel Production `VITE_API_URL=https://api.bresinski.org` (rebuild required). The contract
 (`infra/env.contract.ts`) carries these as `railwayValue`s so `provision.sh` seeds them.
 Cross-site requests are still rejected by `rejectCrossSiteRequests` (403) using the origin
@@ -552,7 +554,7 @@ done; rm /tmp/creds.json
 printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s api --skip-deploys
 printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s worker --skip-deploys
 # domain (done 2026-09-12, TEACH-36; seeded from the contract by provision.sh, listed for a re-run by hand):
-railway variable set --service api --skip-deploys WEB_ORIGIN=https://app.bresinski.org BETTER_AUTH_URL=https://api.bresinski.org COOKIE_DOMAIN=.bresinski.org COOKIE_SAMESITE=lax
+railway variable set --service api --skip-deploys WEB_ORIGIN=https://app.bresinski.org COOKIE_DOMAIN=.bresinski.org COOKIE_SAMESITE=lax
 # Sign-in mail via Resend (done 2026-09-11, TEACH-35; domain mail.bresinski.org verified in Resend's eu-west-1,
 # DNS on Vercel: `vercel dns ls bresinski.org`). The key is a send-only key from resend.com → API Keys.
 # provision.sh does not seed MAIL_PROVIDER: a fresh api refuses to boot until these three are set.
@@ -569,7 +571,7 @@ railway redeploy --service api --yes && railway redeploy --service worker --yes
 # per PR environment (after the first PR deploy; the environment is named after the GitHub repo):
 railway variable set --service api --environment ai-teacher-pr-<n> --skip-deploys \
   'WEB_ORIGIN_PATTERNS=https://teaching-journey-web-*-omerbresinskis-projects.vercel.app' \
-  COOKIE_SAMESITE=none BETTER_AUTH_URL=https://api-ai-teacher-pr-<n>.up.railway.app
+  COOKIE_SAMESITE=none      # BETTER_AUTH_URL is a ${{RAILWAY_PUBLIC_DOMAIN}} reference and already resolves per environment
 bun run env:check --pr <n>
 ```
 
