@@ -32,7 +32,7 @@ export async function extractPptx(bytes: Uint8Array): Promise<Extraction> {
     const ref = { slide: n };
     const xml = await reader.text(path);
     if (xml === null) continue;
-    const tree = parseXml(xml);
+    const tree = parseXml(xml, "pptx");
 
     const paragraphs = findAll(tree, "a:p")
       .map((p) => collectText(childrenOf(p, "a:p"), "a:t").join("").trim())
@@ -41,7 +41,7 @@ export async function extractPptx(bytes: Uint8Array): Promise<Extraction> {
 
     const notesXml = await reader.text(`ppt/notesSlides/notesSlide${n}.xml`);
     if (notesXml !== null) {
-      const notes = findAll(parseXml(notesXml), "a:p")
+      const notes = findAll(parseXml(notesXml, "pptx"), "a:p")
         .map((p) => collectText(childrenOf(p, "a:p"), "a:t").join("").trim())
         .filter((t) => t.length > 0)
         .join("\n");
@@ -58,7 +58,7 @@ export async function extractPptx(bytes: Uint8Array): Promise<Extraction> {
 
     const rels = await reader.text(`ppt/slides/_rels/slide${n}.xml.rels`);
     if (rels !== null) {
-      for (const target of imageTargets(parseXml(rels))) {
+      for (const target of imageTargets(parseXml(rels, "pptx"))) {
         const mime = IMAGE_MIME[target.split(".").pop()?.toLowerCase() ?? ""];
         if (mime === undefined) continue;
         const data = await reader.bytes(`ppt/${target.replace(/^\.\.\//, "")}`);

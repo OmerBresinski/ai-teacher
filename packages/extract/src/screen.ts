@@ -7,8 +7,13 @@ import { type ExtractedTable, type Extraction, LIMITS, type Refusal } from "./ty
  * one (F03-D5: err toward refusal). Nothing here logs; the caller logs the reason only.
  */
 
-/** Two or more capitalised words: "Amelia Jones", "Jean-Luc Picard", "Siobhán O'Neill". */
-const NAME = /^[A-Z][a-zà-ÿ'’-]+(\s[A-Z][a-zà-ÿ'’-]+)+$/;
+/**
+ * Two or more capitalised words, Unicode-aware: "Amelia Jones", "Jean-Luc Picard",
+ * "Siobhán O'Neill", "Émile Zola". A word is an uppercase letter followed by letters, marks,
+ * apostrophes or hyphens, optionally with a capitalised particle after an apostrophe or hyphen.
+ */
+const NAME_WORD = "\\p{Lu}[\\p{L}\\p{M}'’-]*";
+const NAME = new RegExp(`^${NAME_WORD}(\\s${NAME_WORD})+$`, "u");
 const ATTRIBUTE = [
   /^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$/, // date d/m/y
   /^\d{4}-\d{2}-\d{2}$/, // ISO date
@@ -66,12 +71,15 @@ const isName = (cell: string) => NAME.test(cell);
 
 /**
  * (a) a name column beside a personal-attribute column, or (b) a single column that is mostly
- * names, five rows or more. The first row is treated as a header and ignored when the table has
- * more than one row.
+ * names, five rows or more. The first row is dropped only when it **looks like a header** — no cell
+ * in it is a name or an attribute — so a headerless list of exactly five names still counts.
  */
 export function isRoster(rows: string[][]): boolean {
   if (rows.length === 0) return false;
-  const body = rows.length > 1 ? rows.slice(1) : rows;
+  const first = rows[0] ?? [];
+  const headerLike =
+    rows.length > 1 && !first.some((c) => isName(c.trim()) || isAttribute(c.trim()));
+  const body = headerLike ? rows.slice(1) : rows;
   if (body.length === 0) return false;
   const width = Math.max(...rows.map((r) => r.length));
   const columns = Array.from({ length: width }, (_, i) =>

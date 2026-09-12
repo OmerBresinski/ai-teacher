@@ -17,8 +17,8 @@ export async function extractPdf(bytes: Uint8Array): Promise<Extraction> {
   let doc: Awaited<ReturnType<typeof getDocumentProxy>>;
   try {
     doc = await getDocumentProxy(bytes);
-  } catch (cause) {
-    throw new ExtractError("malformed", "pdf", { cause });
+  } catch {
+    throw new ExtractError("malformed", "pdf");
   }
   let pages: string[];
   let totalPages: number;
@@ -26,8 +26,8 @@ export async function extractPdf(bytes: Uint8Array): Promise<Extraction> {
     const result = await extractText(doc, { mergePages: false });
     pages = result.text;
     totalPages = result.totalPages;
-  } catch (cause) {
-    throw new ExtractError("malformed", "pdf", { cause });
+  } catch {
+    throw new ExtractError("malformed", "pdf");
   }
 
   const chunks = pages

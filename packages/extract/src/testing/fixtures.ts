@@ -191,6 +191,21 @@ export async function pptxBomb(uncompressedBytes: number): Promise<Uint8Array> {
   return zip.generateAsync({ type: "uint8array" });
 }
 
+/** A DOCX whose `word/document.xml` inflates past `uncompressedBytes`; mammoth must never see it. */
+export async function docxBomb(uncompressedBytes: number): Promise<Uint8Array> {
+  const zip = new JSZip();
+  zip.file("word/document.xml", new Uint8Array(uncompressedBytes), { compression: "DEFLATE" });
+  return zip.generateAsync({ type: "uint8array" });
+}
+
+/** A PPTX whose slide XML is the given raw string (for malformed and entity cases). */
+export async function pptxWithRawSlide(slideXml: string): Promise<Uint8Array> {
+  const zip = new JSZip();
+  zip.file("ppt/presentation.xml", `<p:presentation ${NS}/>`);
+  zip.file("ppt/slides/slide1.xml", slideXml);
+  return zip.generateAsync({ type: "uint8array" });
+}
+
 /** A class-list table: header then six rows of full names with dates of birth. */
 export const ROSTER_ROWS: string[][] = [
   ["Name", "DoB", "Class"],

@@ -32,8 +32,8 @@ export async function sniffMime(bytes: Uint8Array): Promise<SourceMime | null> {
 export async function openZip(bytes: Uint8Array, format: "pptx" | "docx" | "unknown") {
   try {
     return await JSZip.loadAsync(bytes);
-  } catch (cause) {
-    throw new ExtractError("malformed", format, { cause });
+  } catch {
+    throw new ExtractError("malformed", format);
   }
 }
 
@@ -59,6 +59,15 @@ export class ZipReader {
     return Object.keys(this.zip.files).filter((p) => pattern.test(p) && !this.zip.files[p]?.dir);
   }
 
+  /**
+   * Inflate every entry once, counting towards the cap, and return nothing. For a container a
+   * library will re-read on its own (mammoth opens the DOCX itself), this is the only way to know
+   * the whole archive stays under `LIMITS.maxUncompressedBytes` before handing it over.
+   */
+  async readAll(): Promise<void> {
+    for (const path of this.paths(/./)) await this.bytes(path);
+  }
+
   async text(path: string): Promise<string | null> {
     const bytes = await this.bytes(path);
     return bytes === null ? null : new TextDecoder().decode(bytes);
@@ -70,8 +79,8 @@ export class ZipReader {
     let data: Uint8Array;
     try {
       data = await entry.async("uint8array");
-    } catch (cause) {
-      throw new ExtractError("malformed", this.format, { cause });
+    } catch {
+      throw new ExtractError("malformed", this.format);
     }
     this.read += data.byteLength;
     if (this.read > LIMITS.maxUncompressedBytes) throw new ExtractError("too-large", this.format);

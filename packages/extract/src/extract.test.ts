@@ -1,12 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { ExtractError, extract, LIMITS, MIME, PASTE_SECTION, sniffMime } from "./index";
 import {
+  docxBomb,
   docxWith,
   PHOTOSYNTHESIS,
   pdfWithPages,
   plainZip,
   pptxBomb,
   pptxWith,
+  pptxWithRawSlide,
   ROSTER_ROWS,
   squarePng,
   TINY_PNG,
@@ -51,13 +53,17 @@ describe("extract pdf", () => {
     expect(Array.from(out.images[0]?.bytes.slice(0, 4) ?? [])).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
 
-  test("garbage with a PDF header is malformed", async () => {
-    const bytes = new TextEncoder().encode("%PDF-1.7 nonsense");
-    await expect(extract({ bytes, mime: MIME.pdf, name: "x.pdf" })).rejects.toMatchObject({
-      name: "ExtractError",
+  test("garbage with a PDF header is malformed and carries no cause or input text", async () => {
+    const bytes = new TextEncoder().encode("%PDF-1.7 nonsense SECRET-TOKEN");
+    const error = await extract({ bytes, mime: MIME.pdf, name: "x.pdf" }).catch((e) => e);
+    expect(error).toBeInstanceOf(ExtractError);
+    expect(error).toMatchObject({
       code: "malformed",
       format: "pdf",
+      message: "extract(pdf): malformed",
     });
+    expect((error as Error).cause).toBeUndefined();
+    expect(JSON.stringify(error)).not.toContain("SECRET");
   });
 });
 
@@ -98,6 +104,26 @@ describe("extract pptx", () => {
   }, 30_000);
 });
 
+describe("extract pptx: hostile input", () => {
+  test("malformed slide XML is malformed, with no parser message or input text", async () => {
+    const bytes = await pptxWithRawSlide("<p:sld><a:t>SECRET-TOKEN</a:t><unclosed");
+    const error = await extract({ bytes, mime: MIME.pptx, name: "x.pptx" }).catch((e) => e);
+    expect(error).toMatchObject({ name: "ExtractError", code: "malformed", format: "pptx" });
+    expect((error as Error).cause).toBeUndefined();
+    expect((error as Error).message).not.toContain("SECRET");
+  });
+
+  test("DTD entities are never expanded; the built-ins are", async () => {
+    const bytes = await pptxWithRawSlide(
+      `<?xml version="1.0"?><!DOCTYPE p [<!ENTITY lol "lollollol"><!ENTITY lol2 "&lol;&lol;&lol;">]>` +
+        `<p:sld><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>&lol2; a &amp; b &lt;c&gt; &#233;</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>`,
+    );
+    const out = await extract({ bytes, mime: MIME.pptx, name: "x.pptx" });
+    expect(out.chunks[0]?.text).not.toContain("lollollol");
+    expect(out.chunks[0]?.text).toContain("a & b <c> é");
+  });
+});
+
 describe("extract docx", () => {
   test("headings start sections; tables and images sit under their section", async () => {
     const png = await squarePng();
@@ -135,6 +161,14 @@ describe("extract docx", () => {
     expect(out.images).toHaveLength(1);
     expect(out.images[0]).toMatchObject({ ref: { section: "Membrane" }, mime: "image/png" });
   });
+
+  test("an archive that inflates past the cap is too-large before mammoth runs", async () => {
+    const bytes = await docxBomb(LIMITS.maxUncompressedBytes + 1);
+    await expect(extract({ bytes, mime: MIME.docx, name: "bomb.docx" })).rejects.toMatchObject({
+      code: "too-large",
+      format: "docx",
+    });
+  }, 30_000);
 
   test("a zip without word/document.xml is malformed", async () => {
     await expect(

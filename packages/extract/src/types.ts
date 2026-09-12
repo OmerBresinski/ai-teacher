@@ -72,17 +72,16 @@ export const LIMITS = {
 export type ExtractErrorCode = "too-large" | "malformed" | "unsupported";
 
 /**
- * A document that could not be extracted. The message names the format and the cause class
- * only — never a byte of the document (ADR 0015). The API maps every code to the `unreadable`
- * refusal.
+ * A document that could not be extracted. The message names the format and the code only, and
+ * the library's error is **not** kept as `cause`: parser messages quote the offending input, which
+ * is document text (ADR 0015). The API maps every code to the `unreadable` refusal.
  */
 export class ExtractError extends Error {
   override readonly name = "ExtractError";
   constructor(
     readonly code: ExtractErrorCode,
     readonly format: ExtractionKind | "unknown",
-    options: { cause?: unknown } = {},
   ) {
-    super(`extract(${format}): ${code}`, options);
+    super(`extract(${format}): ${code}`);
   }
 }

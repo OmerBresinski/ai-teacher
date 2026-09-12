@@ -22,9 +22,24 @@ describe("isRoster", () => {
     expect(isRoster(SCIENTISTS_ROWS)).toBe(false);
   });
 
-  test("a single column of five or more full names is a roster", () => {
+  test("a single column of five or more full names is a roster, header or not", () => {
     expect(isRoster(ROSTER_ROWS.slice(1).map((r) => [r[0] ?? ""]))).toBe(true);
+    // Exactly five, no header: the first row is a name, so it is not dropped.
+    expect(isRoster(ROSTER_ROWS.slice(1, 6).map((r) => [r[0] ?? ""]))).toBe(true);
+    expect(isRoster([["Name"], ...ROSTER_ROWS.slice(1, 6).map((r) => [r[0] ?? ""])])).toBe(true);
     expect(isRoster(ROSTER_ROWS.slice(1, 4).map((r) => [r[0] ?? ""]))).toBe(false);
+  });
+
+  test("names with accents, apostrophes and hyphens count as names", () => {
+    const names = [
+      "Siobhán O'Neill",
+      "Émile Zola",
+      "Jean-Luc Picard",
+      "Zoë D'Arcy",
+      "Ólafur Árnason",
+    ];
+    expect(isRoster(names.map((n) => [n, "01/02/2014"]))).toBe(true);
+    expect(isRoster(names.map((n) => [n]))).toBe(true);
   });
 
   test("names beside emails, ids, grades or gender tokens are rosters", () => {

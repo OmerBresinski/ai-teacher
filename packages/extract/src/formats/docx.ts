@@ -15,8 +15,10 @@ import {
  * list items become lines; `<table>` rows become `tables[]` under the current section; `<img>`
  * data URLs (mammoth's default) become `images[]`. `pages` is 1: Word has no fixed pagination.
  *
- * Mammoth reads the whole zip itself, so the zip-bomb cap is applied first by opening the
- * container with `ZipReader` and reading `word/document.xml` once (the entry that can be huge).
+ * Mammoth opens the zip itself and takes only bytes, so the zip-bomb cap cannot be threaded
+ * through it: `ZipReader.readAll()` inflates **every** entry first, counting towards
+ * `LIMITS.maxUncompressedBytes`, and mammoth runs only once the whole archive is known to fit
+ * (ADR 0027 §5). One extra pass over a legitimate file; a bomb never reaches mammoth.
  */
 const SECTION_MAX = 120;
 const START_SECTION = "Start";
@@ -25,14 +27,13 @@ const IMAGE_MIMES = new Set<string>(["image/png", "image/jpeg", "image/gif", "im
 export async function extractDocx(bytes: Uint8Array): Promise<Extraction> {
   const reader = new ZipReader(await openZip(bytes, "docx"), "docx");
   if (!reader.has("word/document.xml")) throw new ExtractError("malformed", "docx");
-  await reader.bytes("word/document.xml"); // counts against the uncompressed cap
-  for (const media of reader.paths(/^word\/media\//)) await reader.bytes(media);
+  await reader.readAll();
 
   let html: string;
   try {
     html = (await mammoth.convertToHtml({ buffer: Buffer.from(bytes) })).value;
-  } catch (cause) {
-    throw new ExtractError("malformed", "docx", { cause });
+  } catch {
+    throw new ExtractError("malformed", "docx");
   }
   const { chunks, tables, images } = walkHtml(html);
   return { kind: "docx", pages: 1, chunks, tables, images };
