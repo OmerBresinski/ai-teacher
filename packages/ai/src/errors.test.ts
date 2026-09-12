@@ -13,6 +13,27 @@ class FakeApiCallError extends Error {
 }
 
 describe("toProviderError", () => {
+  test.each(["flagged as potentially violating our usage policy", "CONTENT FILTER blocked it"])(
+    "classifies a Bedrock 400 moderation refusal: %s",
+    (message) => {
+      const wrapped = toProviderError(
+        new FakeApiCallError(`validation_error: ${message}; private prompt text`),
+      );
+      expect(isAiError(wrapped, "moderated")).toBe(true);
+      expect(wrapped.cause).toMatchObject({ statusCode: 400, isRetryable: false });
+      expect(String(wrapped)).not.toContain("private");
+      expect(String(wrapped.cause)).not.toContain("private");
+      expect(wrapped.cause).not.toHaveProperty("responseBody");
+    },
+  );
+
+  test("a policy phrase without HTTP 400 remains an ordinary provider error", () => {
+    expect(
+      toProviderError(Object.assign(new Error("usage policy"), { statusCode: 500 })).code,
+    ).toBe("provider");
+    expect(toProviderError(new Error("content filter")).code).toBe("provider");
+  });
+
   test("wraps unknown failures with a content-free cause", () => {
     const wrapped = toProviderError(new FakeApiCallError("model call rejected"));
     expect(isAiError(wrapped, "provider")).toBe(true);

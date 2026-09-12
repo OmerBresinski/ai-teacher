@@ -1,11 +1,31 @@
 import { describe, expect, test } from "bun:test";
+import { createBudget } from "@tj/ai";
 import { FIXTURES, PLAN_INDEX, pipelineScript, scriptedPipelineAi } from "../src/testing";
+import { StageFailure } from "../src/types";
 import { evalBriefs } from "./briefs";
+import { runBrief } from "./run-brief";
 import { fixtureAiFor, formatSchemaTable, runSchemaEval, schemaErrors } from "./schema";
 
 /* The free half (ADR 0025 §23): fixtures through the real pipeline for every brief, then checkLesson. */
 
 describe("eval:schema", () => {
+  test("a timeout failure is visible in the result without its error message", async () => {
+    const brief = evalBriefs()[0];
+    if (!brief) throw new Error("fixture");
+    const result = await runBrief(brief, {
+      ai: {
+        ...fixtureAiFor(brief),
+        model: () => {
+          throw new StageFailure("check-input", "private input", { reason: "timeout" });
+        },
+      },
+      budget: createBudget({ capUsd: 2, capTokens: 1_000_000 }),
+    });
+    expect(result.result.ok).toBe(false);
+    expect(result.result.error).toBe("StageFailure:timeout");
+    expect(JSON.stringify(result.result)).not.toContain("private input");
+  });
+
   test("every brief produces a lesson with zero error findings on the fixtures", async () => {
     const rows = await runSchemaEval();
     expect(rows).toHaveLength(8);

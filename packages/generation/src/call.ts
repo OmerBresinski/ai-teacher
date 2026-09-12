@@ -1,4 +1,4 @@
-import { isAnthropicModelId } from "@tj/ai";
+import { isAiError, isAnthropicModelId } from "@tj/ai";
 import type { ModelClass } from "@tj/domain";
 import type { Finding, FindingSeverity, FindingTarget } from "@tj/domain/documents";
 import { isEditorialIssue, logMessageOf } from "@tj/slides";
@@ -10,6 +10,8 @@ import {
   type OutputInterface,
 } from "ai";
 import type { z } from "zod";
+import { CallTimeout, withCallDeadline } from "./call-deadline";
+import type { PromptName } from "./prompts";
 import { type JsonRepairKind, repairJsonText } from "./repair-json";
 import {
   BudgetExceeded,
@@ -65,6 +67,8 @@ export interface CallStructuredOptions<I, T> {
    */
   soft?: z.ZodType<T> | undefined;
   maxOutputTokens: number;
+  /** Per attempt; defaults to the bound for this prompt (TEACH-235). */
+  timeoutMs?: number;
   /**
    * Photographs the model must look at (TEACH-220): sent as image parts beside the user text, by
    * public URL, so the provider fetches them — `@tj/generation` still makes no HTTP call. The retry
@@ -143,6 +147,28 @@ export const MAX_OUTPUT_TOKENS = {
   repair: 1500,
 } as const;
 
+/** Per-attempt deadlines; a new prompt must choose its bound. Eval/custom prompts get 60 s. */
+export const CALL_TIMEOUT_MS = {
+  "check-input": 20_000,
+  "plan-skeleton": 60_000,
+  "plan-facts": 90_000,
+  "verify-facts": 45_000,
+  "generate-slide": 30_000,
+  "generate-worksheet": 60_000,
+  "shortlist-photos": 15_000,
+  "pick-or-requery-photo": 30_000,
+  evaluate: 60_000,
+  repair: 30_000,
+  "repair-fact": 30_000,
+  cascade: 60_000,
+  regenerate: 60_000,
+} satisfies Record<PromptName, number>;
+
+export function callTimeoutMs(version: string): number {
+  const name = version.replace(/\.v\d+$/, "");
+  return Object.hasOwn(CALL_TIMEOUT_MS, name) ? CALL_TIMEOUT_MS[name as PromptName] : 60_000;
+}
+
 const RETRY_PREFIX = "\n\nYour previous answer did not validate:\n";
 /**
  * The retry's closing instruction. The misses seen in production are shape misses (a list or the
@@ -200,6 +226,7 @@ export async function callStructured<I, T>(
 ): Promise<CallResult<T>> {
   const { deps, stage, cls, effort, prompt, input, schema, soft, maxOutputTokens, images } =
     options;
+  const timeoutMs = options.timeoutMs ?? callTimeoutMs(prompt.version);
   // Cancel is checked between model calls (ADR 0025 §5); the fake ignores `abortSignal`, so the
   // check is here rather than trusted to the provider.
   throwIfAborted(deps.signal);
@@ -218,47 +245,73 @@ export async function callStructured<I, T>(
   });
 
   const attempt = async (text: string): Promise<CallResult<T>> => {
-    const result = await generateText({
-      model,
-      system: prompt.system,
-      ...userTurn(text, images),
-      output,
-      abortSignal: deps.signal,
-      maxOutputTokens,
-      // The same effort on the retry: a schema miss is a shape problem, not a thinking one.
-      ...providerOptionsFor(modelId, effort),
-    });
-    const usage = usageOf(result.usage);
-    deps.budget.charge(modelId, usage);
-    return { output: result.output, usage, attempts: 1, modelId, editorialMisses: [] };
+    try {
+      const result = await withCallDeadline(deps.signal, timeoutMs, (abortSignal) =>
+        generateText({
+          model,
+          system: prompt.system,
+          ...userTurn(text, images),
+          output,
+          abortSignal,
+          maxOutputTokens,
+          // The same effort on the retry: a schema miss is a shape problem, not a thinking one.
+          ...providerOptionsFor(modelId, effort),
+        }),
+      );
+      const usage = usageOf(result.usage);
+      deps.budget.charge(modelId, usage);
+      return { output: result.output, usage, attempts: 1, modelId, editorialMisses: [] };
+    } catch (error) {
+      if (error instanceof CallTimeout) {
+        deps.logger.warn(
+          { stage, promptVersion: prompt.version, timeoutMs },
+          "model call timed out",
+        );
+        throw new StageFailure(stage, `${stage}: model call timeout after ${timeoutMs} ms`, {
+          reason: "timeout",
+        });
+      }
+      if (isAiError(error, "moderated")) {
+        deps.logger.warn(
+          { stage, promptVersion: prompt.version, moderated: true },
+          "model call moderated",
+        );
+      }
+      throw error;
+    }
   };
 
   try {
     return await attempt(userText);
   } catch (error) {
-    if (!NoObjectGeneratedError.isInstance(error)) throw error;
-    // The failed attempt was still paid for. `error.text` (the model's words) is never logged.
-    if (error.usage) deps.budget.charge(modelId, usageOf(error.usage));
-    const issues = issuesOf(error);
-    // The issues are logged in full: zod paths and messages (`workedExamples.1.steps.2: Too big …`),
-    // with the one message that would echo the model's words redacted (see `issuesOf`). Without
-    // them a schema miss in production cannot be diagnosed (the 2026-09-07 derivatives lesson
-    // failed Plan twice with only `issues=5` on record).
-    deps.logger.info(
-      {
-        stage,
-        promptVersion: prompt.version,
-        issues: issuesOf(error, "log"),
-        editorialOnly: editorialMissesOf(error) !== null,
-      },
-      "structured output did not validate; retrying once",
-    );
+    const timedOut = error instanceof StageFailure && error.reason === "timeout";
+    if (!timedOut && !NoObjectGeneratedError.isInstance(error)) throw error;
+    let retryText = userText;
+    if (NoObjectGeneratedError.isInstance(error)) {
+      // The failed attempt was still paid for. `error.text` (the model's words) is never logged.
+      if (error.usage) deps.budget.charge(modelId, usageOf(error.usage));
+      const issues = issuesOf(error);
+      // The issues are logged in full: zod paths and messages (`workedExamples.1.steps.2: Too big …`),
+      // with the one message that would echo the model's words redacted (see `issuesOf`). Without
+      // them a schema miss in production cannot be diagnosed (the 2026-09-07 derivatives lesson
+      // failed Plan twice with only `issues=5` on record).
+      deps.logger.info(
+        {
+          stage,
+          promptVersion: prompt.version,
+          issues: issuesOf(error, "log"),
+          editorialOnly: editorialMissesOf(error) !== null,
+        },
+        "structured output did not validate; retrying once",
+      );
+      retryText = `${userText}${RETRY_PREFIX}${issues.join("\n")}${RETRY_SUFFIX}`;
+    }
     // The retry is a second model call: the same two gates apply before it.
     throwIfAborted(deps.signal);
     const exceededNow = deps.budget.exceeded();
     if (exceededNow) throw new BudgetExceeded(exceededNow.by);
     try {
-      const second = await attempt(`${userText}${RETRY_PREFIX}${issues.join("\n")}${RETRY_SUFFIX}`);
+      const second = await attempt(retryText);
       return { ...second, attempts: 2 };
     } catch (again) {
       if (!NoObjectGeneratedError.isInstance(again)) throw again;

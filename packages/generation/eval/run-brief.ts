@@ -7,6 +7,7 @@ import {
   type PipelineDeps,
   runLessonPipeline,
   SPEC_RULE_CHECK,
+  StageFailure,
 } from "../src";
 import type { EvalBrief } from "./briefs";
 import type { RubricDimension } from "./rubric-prompt";
@@ -23,7 +24,7 @@ import { type EvalScores, scoreLesson } from "./scorers";
 export interface BriefResult {
   id: string;
   ok: boolean;
-  /** The stage's error name when `ok` is false — never its message (it may echo the brief). */
+  /** The error name (plus a timeout reason) when failed; never content-bearing messages. */
   error?: string;
   durationMs: number;
   /** Time to the first persisted lesson with at least one slide; `null` when none arrived. */
@@ -130,7 +131,12 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     worksheet = final.worksheet;
   } catch (e) {
     ok = false;
-    error = e instanceof Error ? e.name : "Error";
+    error =
+      e instanceof StageFailure && e.reason === "timeout"
+        ? "StageFailure:timeout"
+        : e instanceof Error
+          ? e.name
+          : "Error";
   }
   // The lesson's own time: the judge that follows is measurement, not generation.
   const durationMs = Date.now() - startedAt;
