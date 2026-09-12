@@ -24,3 +24,7 @@ export {
   worksheetPrintHref,
 } from "./pdf";
 export { ALL_SLIDES, parseSlideRange, type SlideRangeResult, slideRangeParam } from "./range";
+export { docToRuns, type Run, type RunParagraph, runsToText } from "./runs";
+// `./pptx` and `./png` are deliberately not re-exported: they are reached only through
+// `await import()` from `ExportControl`, so pptxgenjs and modern-screenshot stay out of every
+// route chunk (ADR 0023 §4).

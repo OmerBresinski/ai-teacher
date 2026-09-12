@@ -6,6 +6,7 @@ import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import { EmptyLesson } from "@/components/empty-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
+import { env } from "@/env";
 import { useProposalJobs } from "@/hooks/use-proposal-jobs";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { imageSearchClient } from "@/lib/images";
@@ -99,7 +100,9 @@ export function LessonEditorPage() {
   // The export dialog reads the document from the same cache entry the editor writes (ADR 0023
   // amendment 2026-09-12), so it exports what is on screen — including a locked lesson's partial
   // body while `lesson.plan` runs; the app opens the print tab.
-  const exportSlot = <ExportControl document={data} onOpenPrint={openPrintTab} />;
+  const exportSlot = (
+    <ExportControl document={data} imageOrigin={env.VITE_API_URL} onOpenPrint={openPrintTab} />
+  );
   const generatingJobId = meta?.generatingJobId ?? stoppedJobId;
   if (generatingJobId) {
     return (

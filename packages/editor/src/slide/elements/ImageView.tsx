@@ -16,6 +16,11 @@ import type { ElementViewProps } from "./kit";
  * window crop mode will open on. Until then the wrapper may not have the picture's aspect, and
  * `object-fit: cover` keeps the bitmap unstretched. Any adjustment renders as cover whatever `fit`
  * says (`renderedFit`): a crop implies Fill.
+ *
+ * Capture mode alone asks for `crossorigin="use-credentials"` (TEACH-272 §1): a `/files/:key`
+ * picture then arrives as a CORS response the canvas may read, so a PNG capture is not tainted
+ * and the print route paints the same bytes. Edit, present and thumb keep the plain `<img>` so
+ * their cache entries are not split by credentials mode.
  */
 export function ImageView({ element, theme, mode }: ElementViewProps<ImageElement>) {
   const radius = element.radius ?? 0;
@@ -62,6 +67,7 @@ export function ImageView({ element, theme, mode }: ElementViewProps<ImageElemen
           draggable={false}
           loading={mode === "thumb" ? "lazy" : "eager"}
           decoding={mode === "capture" ? "sync" : "async"}
+          crossOrigin={mode === "capture" ? "use-credentials" : undefined}
           style={{
             display: "block",
             position: "absolute",
