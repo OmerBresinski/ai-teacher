@@ -145,7 +145,8 @@ export function ExportControl({
   const [answers, setAnswers] = useState(false);
   const [notes, setNotes] = useState(false);
   const [pngScale, setPngScale] = useState<PngScale>(2);
-  // Word keeps the worksheet's own answer-key setting as its default (ADR 0023 §7).
+  // Word keeps the worksheet's own answer-key setting as its default (ADR 0023 §7); re-read each
+  // time the dialog opens (below), so a sheet toggled since the last export is followed.
   const [answerKey, setAnswerKey] = useState(worksheet ? document.includeAnswerKey : false);
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<Run | null>(null);
@@ -307,8 +308,12 @@ export function ExportControl({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (next) setOpen(true);
-        else close();
+        if (next) {
+          if (worksheet) setAnswerKey(document.includeAnswerKey);
+          setOpen(true);
+        } else {
+          close();
+        }
       }}
     >
       <DialogTrigger asChild>

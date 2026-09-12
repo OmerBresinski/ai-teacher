@@ -157,10 +157,27 @@ function everyBlockSheet(): Worksheet {
   };
 }
 
+/**
+ * The every-block sheet carries one remote picture (`https://example.com/cloud.png`) so the
+ * "left out" line is exercised; its fetch is answered here with a 404, so no test touches the
+ * network.
+ */
+async function withOfflineFetch<T>(run: () => Promise<T>): Promise<T> {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(null, { status: 404 })) as unknown as typeof fetch;
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
 async function xmlFor(
   worksheet: Worksheet,
 ): Promise<{ xml: string; buffer: Buffer; names: string[] }> {
-  const buffer = await Packer.toBuffer(await buildWorksheetDocx(worksheet));
+  const buffer = await withOfflineFetch(async () =>
+    Packer.toBuffer(await buildWorksheetDocx(worksheet)),
+  );
   const node = Buffer.from(buffer);
   return { xml: readZipEntry(node, "word/document.xml"), buffer: node, names: zipEntryNames(node) };
 }
@@ -299,6 +316,10 @@ describe("worksheet Word export", () => {
     expect(png).toMatchObject({ width: 1, height: 1 });
     expect(decodeImage("https://example.com/a.png")).toBeNull();
     expect(decodeImage("data:image/svg+xml;base64,PHN2Zy8+")).toBeNull();
+  });
+
+  it("refuses a data URL whose base64 does not decode, without throwing", () => {
+    expect(decodeImage("data:image/png;base64,%%%not-base64%%%")).toBeNull();
   });
 
   it("refuses an image whose size cannot be read rather than guessing one", () => {
