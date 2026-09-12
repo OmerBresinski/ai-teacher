@@ -12,6 +12,7 @@ import {
   type Lesson,
   lessonFromBrief,
   type Series,
+  type SourceRef,
   summarise,
   type Worksheet,
 } from "@tj/domain/documents";
@@ -79,6 +80,7 @@ export class FakeApi {
   /** Back to the demo Workspace, keys as ids. */
   reset(): void {
     this.rows.clear();
+    this.sources.clear();
     this.requests.length = 0;
     this.failures = [];
     this.nextProposalJobId = null;
@@ -183,6 +185,63 @@ export class FakeApi {
     });
   }
 
+  /** Sources accepted by `POST /sources` (ADR 0027 §5), by id. */
+  readonly sources = new Map<string, SourceRef>();
+
+  /**
+   * `POST /sources`: a paste or a file becomes a `SourceRef`. The fake does no extraction; a file
+   * whose name contains `roster` is refused the way the API refuses a class list, so screens can
+   * exercise the refusal path.
+   */
+  private uploadSource(body: unknown): Response {
+    if (!(body instanceof FormData)) {
+      return error(400, "validation_failed", "Invalid body.", { fields: ["file"] });
+    }
+    const file = body.get("file");
+    const text = body.get("text");
+    // The API takes exactly one of the two (ADR 0027 §5).
+    if (file instanceof File === (typeof text === "string" && text.length > 0)) {
+      return error(400, "validation_failed", "Send either a file or text.", { fields: ["file"] });
+    }
+    const id = newId();
+    if (file instanceof File) {
+      if (file.name.toLowerCase().includes("roster")) {
+        return error(
+          422,
+          "unprocessable",
+          'This looks like a class list (the section "Class 5B"). We don\'t take documents with pupil names. Upload only the non-personal parts.',
+          { reason: "roster" },
+        );
+      }
+      const pages = file.name.toLowerCase().endsWith(".pptx") ? 30 : 2;
+      const source: SourceRef = {
+        id,
+        kind: "file",
+        name: file.name,
+        storageKey: `ws/sources/${id}/original`,
+        pages,
+      };
+      this.sources.set(id, source);
+      return json(201, { source });
+    }
+    if (typeof text === "string" && text.length > 0) {
+      const name =
+        typeof body.get("name") === "string" && body.get("name")
+          ? String(body.get("name"))
+          : "Pasted text";
+      const source: SourceRef = {
+        id,
+        kind: "paste",
+        name,
+        storageKey: `ws/sources/${id}/original.txt`,
+        pages: 1,
+      };
+      this.sources.set(id, source);
+      return json(201, { source });
+    }
+    return error(400, "validation_failed", "Send either a file or text.", { fields: ["file"] });
+  }
+
   /** Lock a lesson as `POST /lessons` would; `null` unlocks. */
   setGenerating(id: string, jobId: string | null): void {
     const row = this.rows.get(id);
@@ -203,10 +262,13 @@ export class FakeApi {
       return error(404, "not_found", `fake api: no route for ${url.pathname}`);
     }
     const path = url.pathname.slice(API_PREFIX.length);
+    const multipart = (request.headers.get("content-type") ?? "").startsWith("multipart/form-data");
     const body =
       request.method === "GET" || request.method === "DELETE"
         ? undefined
-        : await request.json().catch(() => undefined);
+        : multipart
+          ? await request.formData().catch(() => undefined)
+          : await request.json().catch(() => undefined);
     const record: FakeRequest = { method: request.method, path, query: url.searchParams, body };
     this.requests.push(record);
     const failure = this.failures.findIndex((entry) => entry.match(record));
@@ -231,6 +293,14 @@ export class FakeApi {
     }
     if (segments[0] === "lessons" && segments.length === 1 && method === "POST") {
       return this.createLesson(body);
+    }
+    if (segments[0] === "sources" && segments.length === 1 && method === "POST") {
+      return this.uploadSource(body);
+    }
+    if (segments[0] === "sources" && segments.length === 2 && method === "DELETE") {
+      return this.sources.delete(segments[1] ?? "")
+        ? new Response(null, { status: 204 })
+        : error(404, "not_found", "That document does not exist.");
     }
     if (segments[0] === "jobs" && segments[2] === "cancel" && method === "POST") {
       return json(202, { status: "cancelled" });

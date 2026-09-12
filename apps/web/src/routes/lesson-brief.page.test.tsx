@@ -84,6 +84,60 @@ describe("LessonBriefPage", () => {
     await waitFor(() => expect(duration).toHaveAttribute("placeholder", "30"));
   });
 
+  it("a pasted Source rides along as sourceIds; without one the key is absent (ADR 0027 §7)", async () => {
+    renderPage();
+    fireEvent.change(topicBox(), { target: { value: "Photosynthesis" } });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Paste text instead" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Text to use as material" }), {
+      target: { value: "Chlorophyll is the green pigment in leaves." },
+    });
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await screen.findByRole("button", { name: "Remove Pasted text" });
+    expect(screen.getByText("text")).toBeTruthy();
+    const uploaded = fakeApi.requests.find((r) => r.path === "/sources" && r.method === "POST");
+    expect(uploaded?.body).toBeInstanceOf(FormData);
+    const [sourceId] = [...fakeApi.sources.keys()];
+
+    fireEvent.click(createButton());
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(lastPost()?.body).toMatchObject({ sourceIds: [sourceId] });
+  });
+
+  it("Plan it waits for an upload in flight and says why (ADR 0027 §7)", async () => {
+    renderPage();
+    fireEvent.change(topicBox(), { target: { value: "Photosynthesis" } });
+    expect(createButton()).toBeEnabled();
+    let release: (() => void) | undefined;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input, init) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.endsWith("/sources") && init?.method === "POST") {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      }
+      return realFetch(input, init);
+    }) as typeof fetch;
+    try {
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Paste text instead" }));
+      fireEvent.change(screen.getByRole("textbox", { name: "Text to use as material" }), {
+        target: { value: "Chlorophyll is the green pigment in leaves." },
+      });
+      await user.click(screen.getByRole("button", { name: "Add" }));
+      await waitFor(() => expect(createButton()).toBeDisabled());
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Wait for your files to finish uploading.",
+      );
+      release?.();
+      await screen.findByRole("button", { name: "Remove Pasted text" });
+      await waitFor(() => expect(createButton()).toBeEnabled());
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
   it("posts the brief with the default answers and no durationMin, then opens the lesson", async () => {
     const { queryClient } = renderPage();
     fireEvent.change(topicBox(), { target: { value: "Fractions of amounts" } });
@@ -308,12 +362,23 @@ describe("LessonBriefPage", () => {
     await waitFor(() => expect(screen.getAllByText("From your last lesson")).toHaveLength(1));
   });
 
-  it("renders empty with nothing stored, or with a corrupt value; there is no upload tab", () => {
+  it("renders empty with nothing stored, or with a corrupt value; the drop zone sits above the topic", () => {
     localStorage.setItem(LAST_CLASS_KEY, "{not json");
     renderPage();
     expect(screen.getByRole("combobox", { name: "Subject" })).toHaveTextContent("Not set");
     expect(screen.queryByText("From your last lesson")).toBeNull();
+    // ADR 0027 §7: one page, no upload tab — the material block is part of the same form.
     expect(screen.queryByRole("tab")).toBeNull();
+    const zone = screen.getByRole("region", { name: /Start from your material/ });
+    expect(zone).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Choose files" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Paste text instead" })).toBeEnabled();
+    expect(
+      screen.getByText("Only upload material you may use for your own teaching."),
+    ).toBeTruthy();
+    expect(
+      zone.compareDocumentPosition(topicBox()) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Blank lesson" })).toBeEnabled();
     // Six theme tiles as a radio group, arrow keys included by the native control.
     expect(screen.getAllByRole("radio")).toHaveLength(6);
