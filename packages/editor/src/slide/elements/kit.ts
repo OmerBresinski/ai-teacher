@@ -143,6 +143,17 @@ export function optionState(
   return null;
 }
 
+/**
+ * The chip an option card shows, or null. A chip is a position marker (A, B, T), so when it only
+ * repeats the card's own words — a `true-false` card labelled "True" — it is noise, and on a narrow
+ * card the two collide. One rule for the renderer (`OptionView`) and the PPTX exporter.
+ */
+export function optionChipLabel(element: { label?: string }, text: string): string | null {
+  return element.label && element.label.trim().toLowerCase() !== text.trim().toLowerCase()
+    ? element.label
+    : null;
+}
+
 /** Reveal copy shown beneath the options, if the question carries any. */
 export function explanationText(question: QuestionData | undefined): string | null {
   if (!question) return null;

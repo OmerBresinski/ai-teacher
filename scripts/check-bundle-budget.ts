@@ -74,6 +74,43 @@ export function collectInitialFiles(manifest: Manifest): string[] {
   return [...files].sort();
 }
 
+/**
+ * Chunks that must only ever be reached through `dynamicImports` (ADR 0023 §4, TEACH-111 row 8):
+ * the exporter libraries and the `@tj/editor/export` modules that wrap them. A key is matched
+ * against the manifest's source path; `pptxgenjs` is its own vendor chunk, `modern-screenshot` is
+ * folded into `export/png.ts`'s. E3 adds `docx` and `export/docx.ts`.
+ */
+export const CLICK_LOADED_CHUNKS: readonly RegExp[] = [
+  /node_modules\/(\.bun\/)?pptxgenjs/,
+  /node_modules\/(\.bun\/)?modern-screenshot/,
+  /packages\/editor\/src\/export\/pptx\.ts$/,
+  /packages\/editor\/src\/export\/png\.ts$/,
+];
+
+/**
+ * Every click-loaded chunk that some other chunk imports *statically* (or that is an entry),
+ * as `"<importer> -> <chunk>"` lines. Empty when the exporters are correctly split: reached only
+ * through `dynamicImports`, so no route pays for them.
+ */
+export function findClickLoadedLeaks(
+  manifest: Manifest,
+  patterns: readonly RegExp[] = CLICK_LOADED_CHUNKS,
+): string[] {
+  const guarded = new Set(
+    Object.keys(manifest).filter((key) => patterns.some((pattern) => pattern.test(key))),
+  );
+  const leaks: string[] = [];
+  for (const key of guarded) {
+    if (manifest[key]?.isEntry) leaks.push(`entry -> ${key}`);
+  }
+  for (const [importer, chunk] of Object.entries(manifest)) {
+    for (const dep of chunk.imports ?? []) {
+      if (guarded.has(dep) && !guarded.has(importer)) leaks.push(`${importer} -> ${dep}`);
+    }
+  }
+  return leaks.sort();
+}
+
 export async function measureFiles(distDir: string, files: string[]): Promise<FileSize[]> {
   const sizes: FileSize[] = [];
   for (const file of files) {
@@ -190,6 +227,14 @@ export async function run(
   }
 
   const manifest = (await manifestFile.json()) as Manifest;
+  const leaks = findClickLoadedLeaks(manifest);
+  if (leaks.length > 0) {
+    const lines = leaks.map((leak) => `  ${leak}`).join("\n");
+    const message = `Exporter chunks must load on click only (ADR 0023 §4); statically imported by:\n${lines}`;
+    out(message);
+    if (options.markdownOut) await Bun.write(options.markdownOut, `${message}\n`);
+    return ExitCode.Failure;
+  }
   const dist = options.dist ?? distFromManifest(options.manifest);
   const files = await measureFiles(dist, collectInitialFiles(manifest));
   const report = buildReport(

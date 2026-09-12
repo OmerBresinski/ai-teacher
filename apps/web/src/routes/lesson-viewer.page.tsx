@@ -6,6 +6,7 @@ import { IconButton, toast } from "@tj/ui";
 import { ArrowLeft } from "lucide-react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
+import { env } from "@/env";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryMutations, libraryQueries } from "@/lib/library";
 import { openPrintTab } from "@/lib/print-tab";
@@ -49,7 +50,9 @@ export function LessonViewerPage() {
           <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
         </IconButton>
       }
-      exportSlot={<ExportControl document={data} onOpenPrint={openPrintTab} />}
+      exportSlot={
+        <ExportControl document={data} imageOrigin={env.VITE_API_URL} onOpenPrint={openPrintTab} />
+      }
       onPresent={(slide) =>
         void navigate({
           to: "/l/$lessonId/present",

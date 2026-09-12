@@ -6,6 +6,7 @@ import {
   buildReport,
   collectInitialFiles,
   distFromManifest,
+  findClickLoadedLeaks,
   type Manifest,
   parseArgs,
   readThreshold,
@@ -51,6 +52,66 @@ describe("collectInitialFiles", () => {
 
   test("returns nothing when no chunk is an entry", () => {
     expect(collectInitialFiles({ a: { file: "a.js" } })).toEqual([]);
+  });
+});
+
+describe("findClickLoadedLeaks (TEACH-111 row 8)", () => {
+  const exporters: Manifest = {
+    "index.html": { file: "assets/index.js", isEntry: true, imports: ["_dialog.js"] },
+    "_dialog.js": {
+      file: "assets/dialog.js",
+      dynamicImports: [
+        "../../packages/editor/src/export/pptx.ts",
+        "../../packages/editor/src/export/png.ts",
+      ],
+    },
+    "../../packages/editor/src/export/pptx.ts": {
+      file: "assets/pptx.js",
+      dynamicImports: [
+        "../../node_modules/.bun/pptxgenjs@4.0.1/node_modules/pptxgenjs/dist/pptxgen.es.js",
+      ],
+    },
+    "../../packages/editor/src/export/png.ts": { file: "assets/png.js" },
+    "../../node_modules/.bun/pptxgenjs@4.0.1/node_modules/pptxgenjs/dist/pptxgen.es.js": {
+      file: "assets/pptxgen.es.js",
+    },
+  };
+
+  test("is empty when the exporters are reached only through dynamicImports", () => {
+    expect(findClickLoadedLeaks(exporters)).toEqual([]);
+  });
+
+  test("names the importer when a route chunk imports an exporter statically", () => {
+    const leaky: Manifest = {
+      ...exporters,
+      "_dialog.js": {
+        file: "assets/dialog.js",
+        imports: ["../../packages/editor/src/export/png.ts"],
+      },
+      "_route.js": {
+        file: "assets/route.js",
+        imports: [
+          "../../node_modules/.bun/pptxgenjs@4.0.1/node_modules/pptxgenjs/dist/pptxgen.es.js",
+        ],
+      },
+    };
+    expect(findClickLoadedLeaks(leaky)).toEqual([
+      "_dialog.js -> ../../packages/editor/src/export/png.ts",
+      "_route.js -> ../../node_modules/.bun/pptxgenjs@4.0.1/node_modules/pptxgenjs/dist/pptxgen.es.js",
+    ]);
+  });
+
+  test("an exporter importing another exporter statically is not a leak", () => {
+    const chained: Manifest = {
+      ...exporters,
+      "../../packages/editor/src/export/pptx.ts": {
+        file: "assets/pptx.js",
+        imports: [
+          "../../node_modules/.bun/pptxgenjs@4.0.1/node_modules/pptxgenjs/dist/pptxgen.es.js",
+        ],
+      },
+    };
+    expect(findClickLoadedLeaks(chained)).toEqual([]);
   });
 });
 
