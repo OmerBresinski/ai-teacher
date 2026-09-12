@@ -10,8 +10,10 @@ import {
   ListSurfaceRow,
   Sidebar,
   SidebarItem,
+  selectionCardVariants,
+  toolbarButtonVariants,
 } from "@tj/ui";
-import { FileText, House, Presentation } from "lucide-react";
+import { ChevronDown, FileText, House, Presentation } from "lucide-react";
 import { useState } from "react";
 import { KitGroup, Specimen, Variant } from "./frame";
 import { GeneratingExhibit } from "./generating";
@@ -22,7 +24,7 @@ export function Chrome() {
     <KitGroup
       id="chrome"
       title="Chrome"
-      rule="Bars are 48px on white with a hairline below, one primary at the right. The sidebar is sticky and full height; its active item takes the accent tint with an accent-text glyph."
+      rule="Bars are 48px on the card surface with a hairline below, one primary at the right. The sidebar is sticky and full height; its active item takes the accent tint with an accent-text glyph."
     >
       <Specimen name="AppBar" note="The lesson name at the left, Present at the right." bleed>
         <div className="w-full overflow-hidden rounded-card border border-border">
@@ -51,6 +53,46 @@ export function Chrome() {
           </AppBar>
         </div>
       </Specimen>
+      <Specimen
+        name="Editor controls"
+        note="Shared recipes used by the lesson toolbar and worksheet source selection."
+      >
+        <div className="flex flex-col items-start gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className={toolbarButtonVariants()}>
+              Bold
+            </button>
+            <button type="button" className={toolbarButtonVariants({ kind: "dropdown" })}>
+              Paragraph
+              <ChevronDown aria-hidden />
+            </button>
+          </div>
+          <div className="grid w-full grid-cols-2 gap-3">
+            <button
+              type="button"
+              aria-pressed
+              className={selectionCardVariants({
+                selected: true,
+                className: "min-w-40 flex-col gap-1 p-3",
+              })}
+            >
+              <span className="font-semibold">Selected lesson</span>
+              <span className="text-meta text-ink-3">Year 7 · Science</span>
+            </button>
+            <button
+              type="button"
+              aria-pressed="false"
+              className={selectionCardVariants({
+                selected: false,
+                className: "min-w-40 flex-col gap-1 p-3",
+              })}
+            >
+              <span className="font-semibold">Available lesson</span>
+              <span className="text-meta text-ink-3">Year 8 · Geography</span>
+            </button>
+          </div>
+        </div>
+      </Specimen>
       <Specimen name="Sidebar, expanded and collapsed" bleed>
         <div className="flex flex-wrap gap-6">
           <Variant label="Expanded">
@@ -62,12 +104,12 @@ export function Chrome() {
                 onCollapsedChange={setCollapsed}
                 wordmark={
                   <Display as="span" size="md">
-                    TeachDeck
+                    Workspace
                   </Display>
                 }
                 mark={
                   <Display as="span" size="md">
-                    T
+                    W
                   </Display>
                 }
                 foot={<SidebarItem icon={<FileText aria-hidden />}>Import</SidebarItem>}
@@ -87,7 +129,7 @@ export function Chrome() {
                 collapsed
                 mark={
                   <Display as="span" size="md">
-                    T
+                    W
                   </Display>
                 }
               >

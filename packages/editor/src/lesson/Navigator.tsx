@@ -698,10 +698,13 @@ const NavigatorRow = memo(function NavigatorRow({
               <SlideBadge label={warning} tone="warning" testAttribute="data-lint-badge" />
             ) : null}
             {hasNotes ? (
-              <span aria-hidden className="block size-2 rounded-full bg-[#2E9465]" />
+              <span aria-hidden className="block size-2 rounded-full bg-success-bright" />
             ) : null}
             {hasSteps ? (
-              <span aria-hidden className="block size-2 rounded-full border border-[#2E9465]" />
+              <span
+                aria-hidden
+                className="block size-2 rounded-full border border-success-bright"
+              />
             ) : null}
           </span>
         ) : null}

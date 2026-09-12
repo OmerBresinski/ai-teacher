@@ -23,7 +23,7 @@ export function KitFrame({ children }: { children: ReactNode }) {
   const current = useCurrentSection();
 
   return (
-    <main className="mx-auto max-w-[1240px] px-12 py-10">
+    <main data-kit-frame className="mx-auto max-w-[1240px] px-12 py-10">
       <div className="grid grid-cols-[168px_minmax(0,1fr)] gap-x-12">
         <nav aria-label="Sections" className="sticky top-10 self-start">
           <ul className="flex flex-col gap-1">
@@ -52,7 +52,7 @@ export function KitFrame({ children }: { children: ReactNode }) {
 
 export function KitHeader({ children }: { children: ReactNode }) {
   return (
-    <header className="mb-12 flex flex-wrap items-start justify-between gap-6">
+    <header data-kit-header className="mb-12 flex flex-wrap items-start justify-between gap-6">
       <div>
         <p className={eyebrowClass}>@tj/ui</p>
         <Display as="h1" size="lg" className="mt-2">
@@ -81,7 +81,7 @@ export function KitGroup({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-24">
+    <section data-kit-group id={id} className="scroll-mt-24">
       <SectionHeading>{title}</SectionHeading>
       <p className="mb-5 max-w-[72ch] text-meta text-ink-3">{rule}</p>
       <Card className="gap-0 overflow-hidden py-0">{children}</Card>
@@ -105,6 +105,7 @@ export function Specimen({
   const Heading = `h${headingLevel}` as const;
   return (
     <div
+      data-kit-specimen
       className={`px-6 py-6 [&+&]:border-t [&+&]:border-border-faint ${bleed ? "" : "grid grid-cols-[200px_minmax(0,1fr)] gap-x-8"}`}
     >
       <div className={bleed ? "mb-4" : ""}>

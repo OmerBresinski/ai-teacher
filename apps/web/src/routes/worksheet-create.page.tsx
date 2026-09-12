@@ -22,7 +22,7 @@ import {
   WORKSHEET_RECIPES,
   worksheetFromRecipe,
 } from "@tj/editor/worksheet-editor";
-import { Button, cn, Display, SearchInput, Spinner, toast } from "@tj/ui";
+import { Button, cn, Display, SearchInput, Spinner, selectionCardVariants, toast } from "@tj/ui";
 import { FileText } from "lucide-react";
 import { type KeyboardEvent, useEffect, useId, useMemo, useReducer } from "react";
 import { ActionBar } from "@/components/brief/action-bar";
@@ -270,11 +270,8 @@ function SourceStep({
                       aria-pressed={selected}
                       aria-label={`${doc.title}. ${meta}.`}
                       data-lesson-card={doc.id}
-                      className={cn(
-                        "flex w-full flex-col gap-2 rounded-card border border-border bg-card p-2 text-left outline-none",
-                        "hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
-                        selected && "border-primary ring-1 ring-primary",
-                      )}
+                      data-slot="selection-card"
+                      className={cn(selectionCardVariants({ selected }), "flex-col gap-2 p-2")}
                       onClick={() => onChoose({ kind: "lesson", lessonId: doc.id })}
                       onKeyDown={enterContinues({ kind: "lesson", lessonId: doc.id })}
                     >
@@ -300,11 +297,11 @@ function SourceStep({
           <button
             type="button"
             aria-pressed={blankChosen}
+            data-slot="selection-card"
             data-blank-card
             className={cn(
-              "flex w-full max-w-md items-start gap-3 rounded-card border border-border bg-card p-3 text-left outline-none",
-              "hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
-              blankChosen && "border-primary ring-1 ring-primary",
+              selectionCardVariants({ selected: blankChosen }),
+              "max-w-md items-start gap-3 p-3",
             )}
             onClick={() => onChoose({ kind: "blank" })}
             onKeyDown={enterContinues({ kind: "blank" })}

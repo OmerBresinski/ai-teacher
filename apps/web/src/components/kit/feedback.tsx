@@ -103,7 +103,7 @@ export function Feedback() {
     <KitGroup
       id="feedback"
       title="Feedback"
-      rule="Dialog titles are Lora 20 at radius 12. One primary in the footer, the rest text. A toast carries at most one action, and it is Undo."
+      rule="Dialog titles use the display face and dialog radius. One primary sits in the footer, the rest are text. A toast carries at most one action, and it is Undo."
     >
       <Specimen name="Dialog, four widths" note="Rename, settings, template and import." bleed>
         {dialogs.map(([size, trigger, title, body]) => (

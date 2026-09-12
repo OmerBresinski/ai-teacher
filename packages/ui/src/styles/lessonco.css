@@ -1,0 +1,226 @@
+/* Optional Good Company clone. Loaded by the development preview only.
+ * data-theme keeps ownership of accessibility modes; this light-only overlay
+ * does not change lesson slide recipes, worksheet output or the presentation stage.
+ */
+@font-face {
+  font-family: "LessonCo Gabarito";
+  src: url("./lessonco/gabarito.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+}
+
+html[data-design="lessonco"][data-theme="light"] {
+  --font-ui: "LessonCo Gabarito", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "LessonCo Gabarito", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-ui);
+  --text-body: 16px;
+  --text-body--line-height: 24px;
+  --text-lead: 18px;
+  --text-lead--line-height: 26px;
+  --text-meta: 14px;
+  --text-meta--line-height: 20px;
+  --text-eyebrow: 14px;
+  --text-eyebrow--line-height: 20px;
+  --background: #fcf9ee;
+  --foreground: #293b32;
+  --card: #fffef8;
+  --card-foreground: #293b32;
+  --popover: #fffef8;
+  --popover-foreground: #293b32;
+  --primary: #293b32;
+  --primary-hover: #3c5043;
+  --primary-press: #1d2c24;
+  --primary-foreground: #fcf9ee;
+  --primary-fill: #293b32;
+  --primary-fill-hover: #3c5043;
+  --primary-fill-press: #1d2c24;
+  --primary-fill-aa: #293b32;
+  --secondary: #fffef8;
+  --secondary-foreground: #526052;
+  --muted: #f3f1e6;
+  --muted-foreground: #526052;
+  --accent: #edf0e2;
+  --accent-foreground: #293b32;
+  --accent-active: #e5ecd8;
+  --scrim: rgb(41 59 50 / 0.28);
+  --border: #d5dacb;
+  --border-faint: #e9ebdf;
+  --border-strong: #b9c3b0;
+  --border-control: #7d8b76;
+  --input: #7d8b76;
+  --ring: #293b32;
+  --canvas: #edeedf;
+  --sidebar: #fcf9ee;
+  --sidebar-foreground: #293b32;
+  --sidebar-accent: #e5ecd8;
+  --sidebar-accent-foreground: #293b32;
+  --sidebar-border: #d5dacb;
+  --ink-2: #526052;
+  --ink-3: #526052;
+  --ink-4: #7d8b76;
+  --brand-text: #293b32;
+  --brand-tint: #e5ecd8;
+  --brand-tint-line: #b9c3b0;
+  --brand-quiet: #edf0e2;
+  --inverse: #293b32;
+  --inverse-hover: #3c5043;
+  --inverse-press: #1d2c24;
+  --inverse-foreground: #fcf9ee;
+  --focus-gap: #fcf9ee;
+  --shadow-1: 0 0 0 1px rgb(41 59 50 / 0.1);
+  --shadow-2: 0 3px 12px rgb(41 59 50 / 0.08), 0 0 0 1px rgb(41 59 50 / 0.12);
+  --shadow-3: 0 8px 28px rgb(41 59 50 / 0.12), 0 0 0 1px rgb(41 59 50 / 0.12);
+  --shadow-lift: 0 5px 18px rgb(41 59 50 / 0.1), 0 0 0 1px rgb(41 59 50 / 0.15);
+  --radius-key: 3px;
+  --radius-chip: 6px;
+  --radius-control: 6px;
+  --radius-card: 12px;
+  --radius-dialog: 12px;
+  --radius-face: 12px;
+  --radius-panel: 12px;
+  --duration-arrive: 300ms;
+  --arrive-rise: 6px;
+}
+
+html[data-design="lessonco"][data-theme="light"] {
+  body,
+  .font-ui:not(
+      :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
+    ),
+  .font-display:not(
+      :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
+    ) {
+    font-family: "LessonCo Gabarito", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .font-display:not(
+      :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
+    ) {
+    font-weight: 500;
+    letter-spacing: -0.025em;
+  }
+
+  /* Role-specific type keeps reading copy separate from compact editor controls. */
+  .text-body:not(
+      :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
+    ) {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .text-lead:not(
+      :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
+    ) {
+    font-size: 18px;
+    line-height: 26px;
+  }
+
+  .text-meta:not(
+      :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
+    ),
+  .text-xs:not(
+      :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
+    ) {
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .text-eyebrow:not(
+      :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
+    ) {
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.04em;
+  }
+
+  [data-slot="toolbar-button"] {
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  [data-slot="selection-card"] {
+    border-color: var(--border-control);
+  }
+
+  [data-slot="selection-card"][aria-pressed="true"] {
+    border-color: var(--primary);
+    background: var(--brand-quiet);
+  }
+
+  [data-sidebar-item] {
+    border-radius: var(--radius-pill);
+    font-weight: 400;
+  }
+
+  [data-sidebar-item][aria-current="page"] {
+    font-weight: 600;
+  }
+
+  [data-slot="button"][data-variant="primary"],
+  [data-slot="button"][data-variant="inverse"] {
+    border-radius: var(--radius-pill);
+  }
+
+  [data-slot="button"][data-variant="default"],
+  [data-slot="button"][data-variant="outline"],
+  [data-slot="button"][data-variant="secondary"] {
+    border-color: var(--border-control);
+    font-weight: 500;
+  }
+
+  [data-slot="card"] {
+    box-shadow: none;
+    outline: 1px solid var(--border);
+    outline-offset: -1px;
+  }
+
+  [data-slot="card"]:focus-within,
+  [data-slot="card"]:hover {
+    outline-color: var(--border-strong);
+  }
+}
+
+/* The kit is the same inventory; its comparison layout must also work on a phone. */
+@media (max-width: 760px) {
+  html[data-design="lessonco"][data-theme="light"] {
+    .ws-recipe-grid,
+    [data-library-create-actions] {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-library-create-actions] > * {
+      grid-column: auto;
+    }
+    .ws-recipe-meta {
+      flex-wrap: wrap;
+    }
+    [data-kit-heading],
+    [data-kit-frame] {
+      padding: 24px 20px;
+    }
+    [data-kit-header] {
+      margin-bottom: 0;
+    }
+    [data-kit-frame] > div {
+      display: block;
+    }
+    [data-kit-frame] nav {
+      position: static;
+      margin-bottom: 28px;
+    }
+    [data-kit-frame] nav ul {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    [data-kit-specimen] {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 20px;
+    }
+    [data-kit-specimen] > div {
+      max-width: 100%;
+    }
+  }
+}
