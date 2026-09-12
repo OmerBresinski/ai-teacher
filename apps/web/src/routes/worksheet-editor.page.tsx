@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { ExportControl } from "@tj/editor/export";
 import { WorksheetEditor } from "@tj/editor/worksheet-editor";
-import { Button, Tooltip } from "@tj/ui";
 import { useCallback } from "react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
@@ -14,6 +14,7 @@ import { worksheetEditorRoute } from "./documents.route";
 // only (ADR 0022 §8): Vite ships it with the lazy chunk, so none of it reaches the initial bundle.
 import "@tj/editor/styles/worksheet-edit.css";
 
+import { openPrintTab } from "@/lib/print-tab";
 import { openWorksheetPrint } from "@/lib/worksheet-print-href";
 
 /**
@@ -62,15 +63,9 @@ export function WorksheetEditorPage() {
       onPrint={onPrint}
       facts={facts}
       images={imageSearchClient}
-      exportSlot={
-        // `aria-disabled`, not `disabled`: a disabled button swallows pointer and focus events, so
-        // its tooltip could never open (the viewer's pattern).
-        <Tooltip label="Export arrives with the export phase">
-          <Button variant="ghost" size="sm" aria-disabled="true" className="opacity-50">
-            Export
-          </Button>
-        </Tooltip>
-      }
+      // Print stays the one-click path; the dialog is where JSON (and, from E3, DOCX) live. Its
+      // PDF tab opens the same print route (TEACH-272 §5).
+      exportSlot={<ExportControl document={data} onOpenPrint={openPrintTab} />}
     />
   );
 }

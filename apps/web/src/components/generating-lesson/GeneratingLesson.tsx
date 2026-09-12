@@ -28,11 +28,14 @@ export function GeneratingLesson({
   onBack,
   onStopped,
   onViewSlide,
+  exportSlot,
 }: {
   lesson: Lesson;
   jobId: string;
   /** The estimate text for the top bar's slot (TEACH-201). */
   estimate?: ReactNode;
+  /** The export control (TEACH-110): the locked lesson exports its current body. */
+  exportSlot?: ReactNode;
   onBack: () => void;
   /** The job ended without completing; the page keeps this view for `jobId` once the lock clears. */
   onStopped: (jobId: string) => void;
@@ -91,6 +94,7 @@ export function GeneratingLesson({
       }}
       stop={{ pending: cancel.isPending, sent: cancel.isSuccess, error: cancel.isError }}
       onViewSlide={onViewSlide}
+      exportSlot={exportSlot}
     />
   );
 }

@@ -22,7 +22,11 @@
     "./styles/print.css": "./src/styles/print.css",
     "./styles/worksheet-edit.css": "./src/styles/worksheet-edit.css",
     "./worksheet-editor": "./src/worksheet/editor-index.ts",
-    "./worksheet-metrics": "./src/worksheet/metrics.ts"
+    "./worksheet-metrics": "./src/worksheet/metrics.ts",
+    "./export": "./src/export/index.ts",
+    "./export/pdf": "./src/export/pdf.ts",
+    "./lesson-print": "./src/present/LessonPrint.tsx",
+    "./styles/lesson-print.css": "./src/styles/lesson-print.css"
   },
   "scripts": {
     "lint": "biome check .",

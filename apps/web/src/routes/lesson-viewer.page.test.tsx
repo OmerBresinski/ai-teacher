@@ -46,11 +46,11 @@ describe("LessonViewerPage", () => {
     restoreFetch();
   });
 
-  it("renders the lesson in the viewer with Present, Export (disabled) and Make a copy", async () => {
+  it("renders the lesson in the viewer with Present, Export and Make a copy", async () => {
     renderPage();
     expect((await screen.findAllByText("The water cycle"))[0]).toBeVisible();
     expect(screen.getByText(/\d+ slides/)).toBeVisible();
-    expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
     fireEvent.keyDown(window, { key: "ArrowRight" });
     fireEvent.click(screen.getByRole("button", { name: "Present" }));
     expect(navigate).toHaveBeenCalledWith({

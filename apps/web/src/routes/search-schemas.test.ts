@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { defaultParseSearch } from "@tanstack/react-router";
 import { devJobsSearchSchema } from "./dev-jobs.route";
-import { presentSearchSchema, worksheetPrintSearchSchema } from "./documents.route";
+import {
+  lessonPrintSearchSchema,
+  presentSearchSchema,
+  worksheetPrintSearchSchema,
+} from "./documents.route";
 import { librarySearchSchema } from "./library.route";
 import { signInSearchSchema } from "./sign-in.route";
 
@@ -74,5 +78,31 @@ describe("search schemas drop malformed params", () => {
     expect(parse("?auto=true")).toEqual({ auto: undefined });
     expect(parse("?auto=%5B%221%22%5D")).toEqual({ auto: undefined });
     expect(parse("")).toEqual({ auto: undefined });
+  });
+
+  it("lessonPrintSearchSchema: the params `printViewHref` writes, numbers or strings", () => {
+    const parse = (qs: string) => lessonPrintSearchSchema.parse(defaultParseSearch(qs));
+    const none = { auto: undefined, answers: undefined, notes: undefined, handout: undefined };
+    expect(parse("?auto=1&answers=1&notes=1&handout=3&slides=1-3%2C+5")).toEqual({
+      auto: "1",
+      answers: "1",
+      notes: "1",
+      handout: "3",
+      slides: "1-3, 5",
+    });
+    // A single slide number decodes to a number; the range is a string to the print page.
+    expect(parse("?slides=4")).toEqual({ ...none, slides: "4" });
+    expect(parse("?auto=%221%22&handout=%223%22")).toEqual({
+      ...none,
+      auto: "1",
+      handout: "3",
+      slides: undefined,
+    });
+    // Anything else is dropped, never thrown.
+    expect(parse("?auto=0&handout=2&notes=true&slides=%5B%221%22%5D")).toEqual({
+      ...none,
+      slides: undefined,
+    });
+    expect(parse("")).toEqual({ ...none, slides: undefined });
   });
 });

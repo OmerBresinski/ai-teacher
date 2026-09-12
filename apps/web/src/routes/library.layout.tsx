@@ -1,8 +1,14 @@
 import { Outlet } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Kbd } from "@tj/ui";
-import { useCallback, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { LibraryShellContext } from "@/components/library-shell-context";
 import { LibrarySidebar } from "@/components/library-sidebar";
+
+// The Import dialog carries the document parsers and `@tj/editor/export`; most shell visits never
+// open it, so it loads on first open rather than with the shell (ADR 0022 §8).
+const ImportDialog = lazy(() =>
+  import("@/components/import-dialog").then(({ ImportDialog }) => ({ default: ImportDialog })),
+);
 
 export function LibraryLayout() {
   const [importOpen, setImportOpen] = useState(false);
@@ -19,14 +25,11 @@ export function LibraryLayout() {
         <div className="min-w-0 flex-1">
           <Outlet />
         </div>
-        <Dialog open={importOpen} onOpenChange={setImportOpen}>
-          <DialogContent size="sm">
-            <DialogHeader>
-              <DialogTitle>Import</DialogTitle>
-              <DialogDescription>Import arrives with the editor.</DialogDescription>
-            </DialogHeader>
-          </DialogContent>
-        </Dialog>
+        {importOpen ? (
+          <Suspense fallback={null}>
+            <ImportDialog open onOpenChange={setImportOpen} />
+          </Suspense>
+        ) : null}
         <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
           <DialogContent size="md">
             <DialogHeader>

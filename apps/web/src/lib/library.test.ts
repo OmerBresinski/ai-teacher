@@ -232,6 +232,26 @@ describe("library mutations", () => {
     expect(blank.kind).toBe("worksheet");
   });
 
+  it("importDocument posts the parsed body under its kind and takes the server's id (TEACH-110)", async () => {
+    const queryClient = newClient();
+    const lesson = fakeApi.loadDocument("demo-water-cycle");
+    const sheet = fakeApi.loadDocument("fraction-practice");
+    if (!lesson || !sheet || !("slides" in lesson) || !("blocks" in sheet))
+      throw new Error("fixture");
+    const importedLesson = await run(libraryMutations.importDocument(queryClient), lesson);
+    expect(lastRequest()?.method).toBe("POST");
+    expect(lastRequest()?.path).toBe("/documents");
+    expect((lastRequest()?.body as { kind?: string } | undefined)?.kind).toBe("lesson");
+    // The file's id is not reused: importing the same document twice yields two rows.
+    expect(importedLesson.id).not.toBe(lesson.id);
+    expect(importedLesson.title).toBe(lesson.title);
+    const again = await run(libraryMutations.importDocument(queryClient), lesson);
+    expect(again.id).not.toBe(importedLesson.id);
+    const importedSheet = await run(libraryMutations.importDocument(queryClient), sheet);
+    expect((lastRequest()?.body as { kind?: string } | undefined)?.kind).toBe("worksheet");
+    expect(importedSheet.kind).toBe("worksheet");
+  });
+
   it("rename and save PUT the whole document with the row's expectedUpdatedAt", async () => {
     const queryClient = newClient();
     const before = fakeApi.get("demo-water-cycle")?.updatedAt;

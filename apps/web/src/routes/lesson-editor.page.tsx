@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { ExportControl } from "@tj/editor/export";
 import { LessonEditor, type LessonEditorHandle } from "@tj/editor/lesson";
-import { Button, Tooltip } from "@tj/ui";
 import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import { EmptyLesson } from "@/components/empty-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
@@ -11,6 +11,7 @@ import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { imageSearchClient } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
+import { openPrintTab } from "@/lib/print-tab";
 import { lessonEditorRoute } from "./documents.route";
 // The slide stylesheet (theme fonts, rich-text rules, reveal motion) travels with every route that
 // paints a slide (ADR 0022 §7): a direct load of `/l/…` must not depend on the library chunk.
@@ -95,6 +96,10 @@ export function LessonEditorPage() {
   if (kindOf(data) !== "lesson" || !("slides" in data)) {
     return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
   }
+  // The export dialog reads the document from the same cache entry the editor writes (ADR 0023
+  // amendment 2026-09-12), so it exports what is on screen — including a locked lesson's partial
+  // body while `lesson.plan` runs; the app opens the print tab.
+  const exportSlot = <ExportControl document={data} onOpenPrint={openPrintTab} />;
   const generatingJobId = meta?.generatingJobId ?? stoppedJobId;
   if (generatingJobId) {
     return (
@@ -105,6 +110,7 @@ export function LessonEditorPage() {
           onBack={onBack}
           onStopped={setStoppedJobId}
           onViewSlide={setViewedSlideId}
+          exportSlot={exportSlot}
         />
       </Suspense>
     );
@@ -130,15 +136,7 @@ export function LessonEditorPage() {
       busySlideIds={proposals.busySlideIds}
       proposalsBusy={proposals.busy}
       images={imageSearchClient}
-      exportSlot={
-        // `aria-disabled`, not `disabled`: a disabled button swallows pointer and focus events, so
-        // its tooltip could never open (the viewer's pattern).
-        <Tooltip label="Export arrives with the export phase">
-          <Button variant="ghost" size="sm" aria-disabled="true" className="opacity-50">
-            Export
-          </Button>
-        </Tooltip>
-      }
+      exportSlot={exportSlot}
     />
   );
 }

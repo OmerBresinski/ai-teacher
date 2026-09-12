@@ -21,6 +21,7 @@ const SHELL_ROUTES = [
   "/l/$lessonId",
   "/l/$lessonId/view",
   "/l/$lessonId/present",
+  "/l/$lessonId/print",
   "/w/$worksheetId",
   "/w/$worksheetId/print",
   "/dev/jobs",
@@ -47,6 +48,6 @@ describe("router", () => {
     // The seven shell pages share the pathless `library` layout (sidebar, dialogs, shell memory).
     expect(ids.filter((id) => id.startsWith("/auth/library/"))).toHaveLength(7);
     // Document routes and dev tools sit beside it: no sidebar.
-    expect(ids.filter((id) => /^\/auth\/(l|w|dev)\//.test(id))).toHaveLength(6);
+    expect(ids.filter((id) => /^\/auth\/(l|w|dev)\//.test(id))).toHaveLength(7);
   });
 });
