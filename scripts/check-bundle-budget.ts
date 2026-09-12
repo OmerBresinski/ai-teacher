@@ -77,14 +77,16 @@ export function collectInitialFiles(manifest: Manifest): string[] {
 /**
  * Chunks that must only ever be reached through `dynamicImports` (ADR 0023 §4, TEACH-111 row 8):
  * the exporter libraries and the `@tj/editor/export` modules that wrap them. A key is matched
- * against the manifest's source path; `pptxgenjs` is its own vendor chunk, `modern-screenshot` is
- * folded into `export/png.ts`'s. E3 adds `docx` and `export/docx.ts`.
+ * against the manifest's source path; `pptxgenjs` and `docx` are their own vendor chunks,
+ * `modern-screenshot` is folded into `export/png.ts`'s.
  */
 export const CLICK_LOADED_CHUNKS: readonly RegExp[] = [
   /node_modules\/(\.bun\/)?pptxgenjs/,
   /node_modules\/(\.bun\/)?modern-screenshot/,
+  /node_modules\/(\.bun\/)?docx@/,
   /packages\/editor\/src\/export\/pptx\.ts$/,
   /packages\/editor\/src\/export\/png\.ts$/,
+  /packages\/editor\/src\/export\/docx\.ts$/,
 ];
 
 /**

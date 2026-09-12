@@ -293,11 +293,9 @@ describe("layoutSlide", () => {
             expect(el.x + el.w, `${tag} right`).toBeLessThanOrEqual(SLIDE_W);
             expect(el.y + el.h, `${tag} bottom`).toBeLessThanOrEqual(SLIDE_H);
             if (el.type === "text") {
-              // The grid's right half (`RIGHT_X + HALF_W`) ends a point past the safe area, as
-              // it does in the vocabulary and worked-example recipes; a point is the tolerance.
               expect(el.x, `${tag} safe left`).toBeGreaterThanOrEqual(SAFE.x);
               expect(el.y, `${tag} safe top`).toBeGreaterThanOrEqual(SAFE.y);
-              expect(el.x + el.w, `${tag} safe right`).toBeLessThanOrEqual(SAFE.x + SAFE.w + 1);
+              expect(el.x + el.w, `${tag} safe right`).toBeLessThanOrEqual(SAFE.x + SAFE.w);
               expect(el.y + el.h, `${tag} safe bottom`).toBeLessThanOrEqual(SAFE.y + SAFE.h);
               if (el.style.fontSize !== undefined)
                 expect(el.style.fontSize, `${tag} floor`).toBeGreaterThanOrEqual(
@@ -324,6 +322,39 @@ describe("layoutSlide", () => {
       }
     }
   }
+
+  /*
+   * TD item 4 leftover (TEACH-112 row 5): every element of every recipe, on every theme, lies
+   * inside the safe area — the grid's last column used to end on 903, a point past `SAFE`'s 902
+   * (`lastColLeft` in `grid.ts`). Backdrops (≥ 85% of the slide) and bleeds (flush with an edge)
+   * are the layout lint's own exemptions; a group is checked through its children.
+   */
+  const backdrop = (el: SlideElement) =>
+    (el.type === "shape" || el.type === "image") && (el.w * el.h) / (SLIDE_W * SLIDE_H) >= 0.85;
+  it("keeps every recipe element inside the safe area, on every theme and variant", () => {
+    const outside: string[] = [];
+    for (const theme of THEMES) {
+      for (const kind of KINDS) {
+        for (const variant of variantsFor(kind)) {
+          for (const el of flatten(layoutSlide(kind, theme.id, variant).elements)) {
+            if (el.type === "group" || backdrop(el) || bleeds(el)) continue;
+            const inside =
+              el.x >= SAFE.x &&
+              el.y >= SAFE.y &&
+              el.x + el.w <= SAFE.x + SAFE.w &&
+              el.y + el.h <= SAFE.y + SAFE.h;
+            if (!inside) {
+              outside.push(
+                `${theme.id} ${kind}/${variant} ${el.type}${el.name ? ` "${el.name}"` : ""} ` +
+                  `x=${el.x} y=${el.y} right=${el.x + el.w} bottom=${el.y + el.h}`,
+              );
+            }
+          }
+        }
+      }
+    }
+    expect(outside).toEqual([]);
+  });
 
   it("names the slots a variant's filler finds, and the default recipes name none", () => {
     const names = (kind: SlideKind, variant: string) =>

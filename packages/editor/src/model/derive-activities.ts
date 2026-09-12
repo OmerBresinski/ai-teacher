@@ -10,7 +10,7 @@ import type {
 } from "@tj/domain/documents";
 import { docToPlainText } from "../text/static";
 import { docFromText, newSlide, newText, now, uid } from "./factories";
-import { colLeft, SAFE } from "./grid";
+import { HALF, SAFE } from "./grid";
 import { boxH, derange, SLIDE_KIND_LABELS } from "./layouts";
 import { getTheme } from "./themes";
 
@@ -203,7 +203,8 @@ export function slideFactRefs(slide: Slide): string[] {
 /* Derivations                                                         */
 /* ------------------------------------------------------------------ */
 
-const RIGHT_X = colLeft(6);
+/** The matching recipe's right column: the grid's last half, which ends on the safe edge. */
+const RIGHT_X = HALF.xs[1];
 
 /** Matching from the first four vocabulary pairs; definitions deranged so no row gives itself away. */
 export function deriveMatching(facts: LessonFacts, themeId: string): Slide | null {
