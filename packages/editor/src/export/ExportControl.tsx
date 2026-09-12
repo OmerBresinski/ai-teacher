@@ -18,7 +18,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Tooltip,
   toast,
 } from "@tj/ui";
 import { ChevronDown } from "lucide-react";
