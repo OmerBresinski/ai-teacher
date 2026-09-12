@@ -889,6 +889,23 @@ measurable. Prompts are unchanged; the rules stay in them as aims. Deliberately 
 accepted with editorial misses does not pass the resume path's strict `PlanSkeletonSchema`, so a
 pg-boss retry of that job re-runs Plan from the top.
 
+## Amendment (2026-09-12, TEACH-263 — slide and block specs strip unknown keys)
+
+§7, §8, §14. A production Generate attempt failed twice on one unknown slide-spec key after
+TEACH-257: fifteen calls and $0.070 discarded, with roughly 45 seconds added to the teacher's
+wait by the job retry. Unknown keys are stripped wherever the consumer reads named fields;
+validation stays strict where an invented key could mean an invented structure (Plan top level,
+outline entries, worksheet top level). Slide and block specs, including their vocabulary entries,
+options and matching pairs, therefore use `z.object` rather than `z.strictObject`, following
+TEACH-256's fact items. This applies to both editorial builds and the image-text photo wrapper.
+An extra key is accepted on the first call and dropped, with no retry or finding. Kind/type
+literals, required fields, field types, recipe slot counts and editorial rules are unchanged.
+
+Accepted risk: the model may put useful content in an unknown key, such as `steps` on a content
+slide, and that content is dropped. Evaluate's depth and verb-fit checks assess the resulting
+slide; a thinner slide is preferable to failing a Lesson over data the materialiser never reads.
+`callStructured`, prompts and logging are unchanged.
+
 ## Amendment (2026-09-12, project Lesson shape by objective verb — TEACH-230)
 
 §8, §11, §12. The writers and the reviewer learn the verb. Plan (TEACH-229) decides *which* kinds

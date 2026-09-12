@@ -32,6 +32,10 @@ import { z } from "zod";
  * miss on the retry is accepted and becomes a `spec-rule` finding for Repair. The `soft` build of
  * a schema leaves every editorial rule out; it exists so the accepted answer can still be parsed
  * (trimmed, decoded, enumerators stripped) and never goes to a model.
+ *
+ * Unknown keys are stripped from specs and their item objects (TEACH-263): materialisers read
+ * named fields only. Required fields, kind/type literals and their shape rules still validate;
+ * an extra field is neither a shape miss nor an editorial finding.
  */
 
 /** The `___` marker a fill-gap sentence uses for each blank. */
@@ -277,20 +281,20 @@ function buildSpecs(soft: boolean) {
   /* ---------------------------------------------------------------- */
 
   const slide = z.discriminatedUnion("kind", [
-    z.strictObject({
+    z.object({
       kind: z.literal("title"),
       ...specBase,
       title: line(SPEC_LIMITS.title),
       subtitle: line(SPEC_LIMITS.heading),
     }),
-    z.strictObject({
+    z.object({
       kind: z.literal("objectives"),
       ...specBase,
       // No heading: the slide always carries the reader's stem (TEACH-198).
       items: items(1, 4),
     }),
     rule(
-      z.strictObject({
+      z.object({
         kind: z.literal("starter"),
         ...specBase,
         heading: line(SPEC_LIMITS.heading).optional(),
@@ -300,7 +304,7 @@ function buildSpecs(soft: boolean) {
       footnoteNotAnItem,
       FOOTNOTE_REPEATS,
     ),
-    z.strictObject({
+    z.object({
       kind: z.literal("vocabulary"),
       ...specBase,
       // The recipe shows `vocabularySlots(themeId)` entries and drops the rest, so the cap is
@@ -308,7 +312,7 @@ function buildSpecs(soft: boolean) {
       entries: rule(
         z
           .array(
-            z.strictObject({
+            z.object({
               term: line(SPEC_LIMITS.term),
               definition: line(SPEC_LIMITS.definition),
             }),
@@ -318,13 +322,13 @@ function buildSpecs(soft: boolean) {
         atMost(6, "entries"),
       ),
     }),
-    z.strictObject({
+    z.object({
       kind: z.literal("content"),
       ...specBase,
       heading: line(SPEC_LIMITS.heading),
       body: line(SPEC_LIMITS.body),
     }),
-    z.strictObject({
+    z.object({
       kind: z.literal("image-text"),
       ...specBase,
       /** The small label over the heading; the recipe's "KEY IDEA" when absent (TEACH-243). */
@@ -332,7 +336,7 @@ function buildSpecs(soft: boolean) {
       heading: line(SPEC_LIMITS.heading),
       body: line(SPEC_LIMITS.body),
     }),
-    z.strictObject({
+    z.object({
       kind: z.literal("worked-example"),
       ...specBase,
       heading: line(SPEC_LIMITS.heading).optional(),
@@ -346,7 +350,7 @@ function buildSpecs(soft: boolean) {
       ),
     }),
     rule(
-      z.strictObject({
+      z.object({
         kind: z.literal("instructions"),
         ...specBase,
         heading: line(SPEC_LIMITS.heading).optional(),
@@ -356,14 +360,14 @@ function buildSpecs(soft: boolean) {
       footnoteNotAnItem,
       FOOTNOTE_REPEATS,
     ),
-    z.strictObject({
+    z.object({
       kind: z.literal("discussion"),
       ...specBase,
       prompt: line(SPEC_LIMITS.stem),
       footnote: line(SPEC_LIMITS.footnote).optional(),
     }),
     rule(
-      z.strictObject({
+      z.object({
         kind: z.literal("true-false"),
         ...specBase,
         statement: line(SPEC_LIMITS.stem),
@@ -378,13 +382,13 @@ function buildSpecs(soft: boolean) {
     ),
     rule(
       rule(
-        z.strictObject({
+        z.object({
           kind: z.literal("multiple-choice"),
           ...specBase,
           stem: line(SPEC_LIMITS.stem),
           // Four option elements on the recipe: exactly four is shape.
           options: z
-            .array(z.strictObject({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
+            .array(z.object({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
             .length(4),
           explanation: line(SPEC_LIMITS.body).optional(),
         }),
@@ -395,21 +399,19 @@ function buildSpecs(soft: boolean) {
       OPTIONS_DIFFER,
     ),
     rules(
-      z.strictObject({
+      z.object({
         kind: z.literal("matching"),
         ...specBase,
         stem: line(SPEC_LIMITS.stem),
         // Three term cards and three definition cards on the recipe: exactly three is shape.
         pairs: z
-          .array(
-            z.strictObject({ left: line(SPEC_LIMITS.term), right: line(SPEC_LIMITS.definition) }),
-          )
+          .array(z.object({ left: line(SPEC_LIMITS.term), right: line(SPEC_LIMITS.definition) }))
           .length(3),
       }),
       pairsDiffer,
     ),
     rule(
-      z.strictObject({
+      z.object({
         kind: z.literal("fill-gap"),
         ...specBase,
         stem: line(SPEC_LIMITS.stem),
@@ -426,7 +428,7 @@ function buildSpecs(soft: boolean) {
     rule(
       rule(
         rule(
-          z.strictObject({
+          z.object({
             kind: z.literal("sort"),
             ...specBase,
             stem: line(SPEC_LIMITS.stem),
@@ -448,14 +450,14 @@ function buildSpecs(soft: boolean) {
         ["steps"],
       ),
     ),
-    z.strictObject({
+    z.object({
       kind: z.literal("open-response"),
       ...specBase,
       stem: line(SPEC_LIMITS.stem),
       modelAnswer: line(SPEC_LIMITS.body).optional(),
     }),
     rule(
-      z.strictObject({
+      z.object({
         kind: z.literal("exit-ticket"),
         ...specBase,
         heading: line(SPEC_LIMITS.heading).optional(),
@@ -465,7 +467,7 @@ function buildSpecs(soft: boolean) {
       footnoteNotAnItem,
       FOOTNOTE_REPEATS,
     ),
-    z.strictObject({
+    z.object({
       kind: z.literal("plenary"),
       ...specBase,
       heading: line(SPEC_LIMITS.heading).optional(),
@@ -482,19 +484,19 @@ function buildSpecs(soft: boolean) {
   };
 
   const block = z.discriminatedUnion("type", [
-    z.strictObject({
+    z.object({
       type: z.literal("heading"),
       ...blockBase,
       text: line(SPEC_LIMITS.heading),
       level: z.union([z.literal(1), z.literal(2)]),
     }),
-    z.strictObject({
+    z.object({
       type: z.literal("instructions"),
       ...blockBase,
       text: line(SPEC_LIMITS.body),
     }),
-    z.strictObject({ type: z.literal("paragraph"), ...blockBase, text: line(SPEC_LIMITS.body) }),
-    z.strictObject({
+    z.object({ type: z.literal("paragraph"), ...blockBase, text: line(SPEC_LIMITS.body) }),
+    z.object({
       type: z.literal("question"),
       ...blockBase,
       text: line(SPEC_LIMITS.body),
@@ -504,12 +506,12 @@ function buildSpecs(soft: boolean) {
     }),
     rule(
       rule(
-        z.strictObject({
+        z.object({
           type: z.literal("multiple-choice"),
           ...blockBase,
           text: line(SPEC_LIMITS.body),
           options: z
-            .array(z.strictObject({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
+            .array(z.object({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
             .length(4),
         }),
         (spec) => exactlyOneCorrect(spec.options),
@@ -519,7 +521,7 @@ function buildSpecs(soft: boolean) {
       OPTIONS_DIFFER,
     ),
     rule(
-      z.strictObject({
+      z.object({
         type: z.literal("fill-gap"),
         ...blockBase,
         sentence: line(SPEC_LIMITS.body),
@@ -533,7 +535,7 @@ function buildSpecs(soft: boolean) {
       oneMarkerPerAnswer,
     ),
     rules(
-      z.strictObject({
+      z.object({
         type: z.literal("matching"),
         ...blockBase,
         // A block has no fixed cards: the floor is shape (two pairs is not a matching task), the
@@ -541,7 +543,7 @@ function buildSpecs(soft: boolean) {
         pairs: rule(
           z
             .array(
-              z.strictObject({
+              z.object({
                 left: line(SPEC_LIMITS.term),
                 right: line(SPEC_LIMITS.definition),
               }),
@@ -553,7 +555,7 @@ function buildSpecs(soft: boolean) {
       }),
       pairsDiffer,
     ),
-    z.strictObject({
+    z.object({
       type: z.literal("word-bank"),
       ...blockBase,
       words: rule(

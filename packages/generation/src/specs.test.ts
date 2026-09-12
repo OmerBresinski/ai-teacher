@@ -921,6 +921,24 @@ describe("EvaluateOutputSchema (TEACH-216)", () => {
 });
 
 describe("WorksheetSpecSchema (TEACH-223)", () => {
+  test("TEACH-263: extra block fields are stripped, but extra worksheet fields stay shape errors", () => {
+    for (const schema of [WorksheetSpecSchema, worksheetSpecSchemaFor({ soft: true })]) {
+      const sheet = schema.parse(FIXTURES.worksheet);
+      expect(
+        schema.parse({
+          ...FIXTURES.worksheet,
+          blocks: FIXTURES.worksheet.blocks.map((block) => ({ ...block, hint: "Extra." })),
+        }),
+      ).toEqual(sheet);
+      const result = schema.safeParse({ ...FIXTURES.worksheet, notes: "An invented structure." });
+      expect(result.success).toBe(false);
+      if (result.success) throw new Error("expected a shape error");
+      expect(result.error.issues).toHaveLength(1);
+      expect(result.error.issues[0]?.code).toBe("unrecognized_keys");
+      expect(isEditorialIssue(result.error.issues[0] ?? {})).toBe(false);
+    }
+  });
+
   test("a block that refers to a picture is refused on initial generation, naming the block and field", () => {
     const sheet = {
       title: "The Rodent Family",

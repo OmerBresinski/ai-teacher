@@ -451,7 +451,7 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
 
   test("a mixed second miss (one shape issue beside editorial ones) still fails the call", async () => {
     const ai = createFakeAi({
-      script: [worked([longStep]), JSON.stringify({ ...JSON.parse(worked([longStep])), extra: 1 })],
+      script: [worked([longStep]), worked([longStep, ""])],
     });
     const log = capturingLogger();
     await expect(run(ai, log)).rejects.toBeInstanceOf(StageFailure);
