@@ -71,8 +71,9 @@ async function seedPictureLesson(page: import("@playwright/test").Page): Promise
 /** Serve the mocked picture and record whether each request carried the session cookie. */
 async function mockFileProxy(page: import("@playwright/test").Page) {
   const cookies: boolean[] = [];
-  await page.route(`${E2E_API_URL}/files/**`, (route) => {
-    cookies.push(Boolean(route.request().headers().cookie));
+  await page.route(`${E2E_API_URL}/files/**`, async (route) => {
+    // `headers()` leaves out cookie headers; `allHeaders()` reports the request as sent.
+    cookies.push(Boolean((await route.request().allHeaders()).cookie));
     return route.fulfill({
       status: 200,
       contentType: "image/png",
@@ -135,18 +136,21 @@ test.describe("PNG export", () => {
     const dialog = await openExport(page, "PNG");
     await expect(dialog.getByRole("radio", { name: "2x" })).toHaveAttribute("aria-checked", "true");
     await dialog.getByRole("textbox", { name: "Slides" }).fill("1-2");
-    const downloads: Promise<import("@playwright/test").Download>[] = [
-      page.waitForEvent("download"),
-    ];
+    // Both listeners are on before the click: the second file can land while the first is read.
+    const downloads: import("@playwright/test").Download[] = [];
+    const twoFiles = new Promise<void>((resolve) => {
+      page.on("download", (d) => {
+        downloads.push(d);
+        if (downloads.length === 2) resolve();
+      });
+    });
     await dialog.getByRole("button", { name: "Export PNG" }).click();
-    const first = await downloads[0];
-    const second = await page.waitForEvent("download");
-    expect([first?.suggestedFilename(), second.suggestedFilename()]).toEqual([
+    await twoFiles;
+    expect(downloads.map((d) => d.suggestedFilename())).toEqual([
       "the-water-cycle-1.png",
       "the-water-cycle-2.png",
     ]);
-    for (const d of [first, second]) {
-      if (!d) throw new Error("download");
+    for (const d of downloads) {
       const bytes = readFileSync(await d.path());
       expect(bytes.subarray(1, 4).toString("latin1")).toBe("PNG");
       expect(pngSize(bytes)).toEqual({ width: 1920, height: 1080 });

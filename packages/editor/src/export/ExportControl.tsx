@@ -193,7 +193,6 @@ export function ExportControl({
 
   const exportPng = async (deck: Lesson, indices: number[]) => {
     const { captureSlidePng, pngFilename } = await exportLoaders.png();
-    cancelRef.current = false;
     const total = indices.length;
     let failed = 0;
     for (let n = 0; n < total; n += 1) {
@@ -230,6 +229,9 @@ export function ExportControl({
   const run_ = async () => {
     if (run) return;
     setError(null);
+    // Armed before the first await, so a close during the exporter's own `import()` still stops
+    // the run rather than being wiped by a reset that came after it.
+    cancelRef.current = false;
     if (rangeApplies) {
       if (!range.ok) {
         setError(range.error);
@@ -301,7 +303,14 @@ export function ExportControl({
           <ChevronDown aria-hidden size={16} strokeWidth={1.5} />
         </Button>
       </DialogTrigger>
-      <DialogContent size="md" data-export-dialog>
+      {/* A run that cannot be stopped (the PowerPoint build) keeps its dialog until it is done; a
+          PNG run can be cancelled, and closing is how it is. */}
+      <DialogContent
+        size="md"
+        data-export-dialog
+        dismissible={!run || run.cancellable}
+        showCloseButton={!run || run.cancellable}
+      >
         <DialogHeader>
           <DialogTitle>Export</DialogTitle>
           <DialogDescription>
