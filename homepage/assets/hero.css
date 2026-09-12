@@ -1,0 +1,412 @@
+/* The approved gathering is isolated from other marketing and loading artwork. */
+.hm-gather-hero {
+  max-width: 1440px;
+  margin: auto;
+  padding: 28px 24px 42px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 64%, #fffdf7 0, transparent 67%);
+}
+.hm-hero-intro {
+  position: relative;
+  z-index: 6;
+  text-align: center;
+}
+.hm-hero-intro h1 {
+  margin: 0;
+  font-size: clamp(48px, 5.2vw, 76px);
+  line-height: 1.01;
+  letter-spacing: -0.042em;
+  font-weight: 750;
+}
+.hm-hero-intro p {
+  margin: 20px auto 0;
+  font-size: 22px;
+  line-height: 1.4;
+  max-width: 690px;
+}
+.hm-gathering {
+  position: relative;
+  width: min(1200px, 100%);
+  height: 370px;
+  margin: 0 auto;
+}
+.hm-actor {
+  position: absolute;
+  isolation: isolate;
+  color: #344638;
+}
+.hm-actor svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.hm-actor .limb {
+  stroke-width: 3;
+}
+.hm-actor .body {
+  filter: drop-shadow(1px 2px 1px #716b4824);
+}
+.hm-actor .eye {
+  stroke: none;
+}
+.hm-actor:after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 22%;
+  right: 18%;
+  bottom: 6%;
+  height: 6%;
+  border-radius: 50%;
+  background: #776b3a26;
+  filter: blur(9px);
+}
+.hm-slides {
+  width: 268px;
+  left: 250px;
+  top: -20px;
+  z-index: 1;
+}
+.hm-worksheet {
+  width: 252px;
+  right: 245px;
+  top: -16px;
+  z-index: 1;
+}
+.hm-plan {
+  width: 317px;
+  left: -20px;
+  top: 70px;
+  z-index: 5;
+}
+.hm-answers {
+  width: 329px;
+  right: -50px;
+  top: 64px;
+  z-index: 5;
+}
+.hm-slides:after {
+  bottom: 16%;
+  transform: rotate(-5deg);
+}
+.hm-worksheet:after {
+  bottom: 8%;
+}
+.hm-plan:after {
+  bottom: 7.5%;
+  transform: rotate(-5deg);
+}
+.hm-answers:after {
+  bottom: 7%;
+  transform: rotate(5deg);
+}
+.hm-brief {
+  position: absolute;
+  left: 50%;
+  top: 165px;
+  transform: translateX(-50%);
+  width: 760px;
+  padding: 26px 27px 27px;
+  border: 1px solid #d4ccb3;
+  border-radius: 25px;
+  z-index: 6;
+  text-align: left;
+  background: #fffdf4;
+  box-shadow:
+    0 15px 28px -17px #8475444d,
+    0 2px 3px #cfc3a51a,
+    inset 0 1px 0 #fffefb;
+}
+.hm-brief label {
+  display: block;
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+.hm-brief-row {
+  display: flex;
+  gap: 13px;
+  align-items: stretch;
+}
+.hm-brief input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #87937b;
+  border-radius: 14px;
+  height: 60px;
+  padding: 0 16px;
+  background: #fffefa;
+  color: var(--ink);
+  font: inherit;
+  font-size: 17px;
+}
+.hm-brief input::placeholder {
+  color: #687160;
+  opacity: 1;
+}
+.hm-brief input:focus {
+  outline: 2px solid #526b48;
+  outline-offset: 3px;
+}
+.hm-brief button {
+  border: 1px solid #293b32;
+  border-radius: 15px;
+  padding: 0 20px;
+  background: #293b32;
+  color: #fffef8;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.hm-brief button:hover {
+  background: #3d5343;
+}
+.hm-brief button:active {
+  transform: translateY(1px);
+}
+.hm-brief button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.hm-brief button:focus-visible,
+.hm-hero-pause:focus-visible {
+  outline: 3px solid #526b48;
+  outline-offset: 4px;
+}
+.hm-brief-status:empty {
+  display: none;
+}
+.hm-brief-status,
+.hm-brief noscript p {
+  margin: 17px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.hm-hero-pause {
+  display: block;
+  margin: 8px auto 0;
+  padding: 7px 0;
+  min-height: 36px;
+  border: 0;
+  border-bottom: 1px solid #aab3a1;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.hm-hero-pause[hidden] {
+  display: none;
+}
+.hm-gather-hero:has(.hm-brief-status:not(:empty)) .hm-gathering {
+  height: 430px;
+}
+@media (max-width: 1100px) {
+  .hm-gather-hero {
+    padding: 24px 16px 36px;
+  }
+  .hm-hero-intro h1 {
+    font-size: 46px;
+    line-height: 1.04;
+    letter-spacing: -1.7px;
+  }
+  .hm-hero-intro p {
+    font-size: 18px;
+    line-height: 1.42;
+    margin-top: 17px;
+    max-width: 350px;
+  }
+  .hm-hero-wide {
+    display: none;
+  }
+  .hm-gathering {
+    width: 358px;
+    max-width: 100%;
+    height: 440px;
+    margin-top: 9px;
+  }
+  .hm-slides {
+    width: 155px;
+    left: 36px;
+    top: 0;
+  }
+  .hm-worksheet {
+    width: 144px;
+    right: 22px;
+    top: 1px;
+  }
+  .hm-plan {
+    width: 176px;
+    left: 0;
+    top: 78px;
+  }
+  .hm-answers {
+    width: 187px;
+    right: -9px;
+    top: 75px;
+  }
+  .hm-actor:after {
+    filter: blur(5px);
+    height: 5%;
+  }
+  .hm-brief {
+    top: 242px;
+    width: 100%;
+    padding: 20px 17px;
+    border-radius: 20px;
+  }
+  .hm-brief label {
+    font-size: 21px;
+    margin-bottom: 15px;
+  }
+  .hm-brief-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .hm-brief input {
+    flex: auto;
+    width: 100%;
+    height: 53px;
+    font-size: 16px;
+    border-radius: 11px;
+    padding: 0 12px;
+  }
+  .hm-brief button {
+    height: 53px;
+    border-radius: 12px;
+    font-size: 18px;
+  }
+  .hm-hero-pause {
+    margin-top: 14px;
+  }
+  .hm-gather-hero:has(.hm-brief-status:not(:empty)) .hm-gathering {
+    height: 570px;
+  }
+}
+@media (min-width: 701px) and (max-width: 1100px) {
+  .hm-hero-intro h1 {
+    font-size: 60px;
+  }
+  .hm-hero-intro p {
+    max-width: 580px;
+    font-size: 21px;
+  }
+  .hm-gathering {
+    width: 460px;
+    height: 510px;
+  }
+  .hm-slides {
+    width: 186px;
+    left: 51px;
+  }
+  .hm-worksheet {
+    width: 172px;
+    right: 37px;
+  }
+  .hm-plan {
+    width: 202px;
+    left: 14px;
+    top: 100px;
+  }
+  .hm-answers {
+    width: 219px;
+    right: -5px;
+    top: 96px;
+  }
+  .hm-brief {
+    top: 307px;
+  }
+  .hm-gather-hero:has(.hm-brief-status:not(:empty)) .hm-gathering {
+    height: 610px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-brief button {
+    transition: none;
+  }
+  .hm-hero-pause {
+    display: none;
+  }
+}
+/* Respect the shared heading measure while centering this hero. */
+.hm-hero-intro h1 {
+  margin-inline: auto;
+}
+@media (min-width: 1101px) {
+  .hm-brief {
+    top: 145px;
+  }
+  .hm-slides {
+    top: -35px;
+  }
+  .hm-worksheet {
+    top: -31px;
+  }
+}
+/* The mobile invitation sits between the rear and front pairs. */
+@media (max-width: 1100px) {
+  .hm-gathering {
+    height: 530px;
+  }
+  .hm-brief {
+    top: 144px;
+  }
+  .hm-plan {
+    top: 342px;
+  }
+  .hm-answers {
+    top: 339px;
+  }
+  .hm-gather-hero:has(.hm-brief-status:not(:empty)) .hm-gathering {
+    height: 660px;
+  }
+  .hm-gather-hero:has(.hm-brief-status:not(:empty)) .hm-plan {
+    top: 472px;
+  }
+  .hm-gather-hero:has(.hm-brief-status:not(:empty)) .hm-answers {
+    top: 469px;
+  }
+}
+@media (min-width: 701px) and (max-width: 1100px) {
+  .hm-gathering {
+    height: 595px;
+  }
+  .hm-brief {
+    top: 174px;
+  }
+  .hm-plan {
+    top: 372px;
+  }
+  .hm-answers {
+    top: 368px;
+  }
+  .hm-gather-hero:has(.hm-brief-status:not(:empty)) .hm-gathering {
+    height: 695px;
+  }
+  .hm-gather-hero:has(.hm-brief-status:not(:empty)) .hm-plan {
+    top: 472px;
+  }
+  .hm-gather-hero:has(.hm-brief-status:not(:empty)) .hm-answers {
+    top: 468px;
+  }
+}
+@media (min-width: 1101px) {
+  .hm-plan {
+    left: -35px;
+  }
+}
