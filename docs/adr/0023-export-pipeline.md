@@ -76,12 +76,14 @@ safe area by 1pt. The shell's Import dialog is a placeholder ("Import arrives wi
 This ADR was decided when the web ran on the in-memory mock store with data-URL images (ADR 0020).
 Since then the mock store is gone (ADR 0024 §9, TEACH-121) and images are stored objects served by
 `GET /files/:key` on the api origin behind the session cookie (ADR 0026, TEACH-189). The decisions
-above stand; three details change.
+above stand; three details change. The export phase is not built yet: the bullets below, like the
+Decision section above, describe what TEACH-110 (E1), TEACH-111 (E2) and TEACH-112 (E3) implement,
+and cite the existing code they rely on.
 
-- **§6 — the import mutation is `libraryMutations.importDocument`**, posting the parsed body to
+- **§6 — the Import mutation is `libraryMutations.importDocument`**, posting the parsed body to
   `POST /documents` through `postDocument(kind, body)` in `apps/web/src/lib/library.ts` (the
-  `createWorksheet` shape), then `invalidateLibrary`. `libraryMutations.createDocument` builds a
-  starter body from a title and is not what Import needs. The server assigns the id:
+  `createWorksheet` shape), then `invalidateLibrary`. The existing `libraryMutations.createDocument`
+  builds a starter body from a title and is not what Import needs. The server assigns the id:
   `createDocument` in `packages/db/src/documents.ts` writes `opts.id ?? newId()` into `body.id`,
   so importing one file twice yields two documents with no client-side id handling.
 - **Consequences — the "Remote images depend on CORS at capture time" bullet is replaced.** Every
@@ -93,16 +95,18 @@ above stand; three details change.
   `credentials: "include"` for a `src` on the api origin, `credentials: "omit"` for any other
   origin (an imported document's foreign URL; our cookie must not go to a third party and CORS
   would reject `include` anyway). The api origin reaches `@tj/editor` as the `imageOrigin` prop
-  of `ExportControl`, never from `import.meta.env`. `<img crossorigin="use-credentials">` is
-  rendered only in `SlideView` `mode="capture"`, threaded as a prop to `ImageView`; edit, present
-  and thumb keep the plain `<img>` so their cache entries are not split by credentials mode. The
-  PDF path needs nothing: the print route is a new tab and the browser's own request carries the
-  cookie. A failed fetch or a tainted capture toasts once per slide and continues.
-- **Consequences — imported `/files/` references stay as written.** JSON export writes `src`
-  exactly as stored. A document imported into another Workspace keeps `/files/<key>` references
+  of `ExportControl` (E1), never from `import.meta.env`. `ImageView` renders a plain `<img>` today;
+  E2 adds `crossorigin="use-credentials"` in `SlideView` `mode="capture"` only, threaded as a prop
+  to `ImageView` — edit, present and thumb keep the plain `<img>` so their cache entries are not
+  split by credentials mode. The PDF path needs nothing: the print route is a new tab and the
+  browser's own request carries the cookie. A failed fetch or a tainted capture toasts once per
+  slide and continues.
+- **Consequences — imported `/files/` references stay as written.** JSON Export writes `src`
+  exactly as stored. A Document imported into another Workspace keeps `/files/<key>` references
   the reader cannot see; they render as broken images and the teacher replaces them. No inlining
-  on export, no re-upload on import, by design. Revisit only if sharing between Workspaces becomes
+  on Export, no re-upload on Import, by design. Revisit only if sharing between Workspaces becomes
   a feature.
-- **Consequences — locked lessons export their current state.** Export stays available while
-  `generatingJobId` is set (ADR 0025 §24) and exports the document as held in the Query cache, the
-  same thing the read-only editor shows. No disabled state, no tooltip.
+- **Consequences — locked Lessons export their current state.** Export stays available while
+  `generatingJobId` is set (ADR 0025 §24) and exports the Lesson body as held in the Query cache,
+  the same body the generating shell (`GeneratingLesson`, rendered in place of the editor by
+  `apps/web/src/routes/lesson-editor.page.tsx`) shows. No disabled state, no tooltip.
