@@ -4,6 +4,7 @@
  * spec asserts the hand-over to the lesson page and the request shape, not a finished deck.
  */
 import { expect, test } from "./fixtures";
+import { MATERIAL, tinyPdf } from "./source-fixtures";
 
 test.use({ seed: false });
 
@@ -194,6 +195,59 @@ test.describe("lesson brief", () => {
       },
       themeId: "chalk",
     });
+    await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
+  });
+});
+
+test.describe("lesson brief: start from your material (ADR 0027 §7)", () => {
+  test("a PDF and a paste upload through POST /sources, show as chips, and travel as sourceIds", async ({
+    signedInPage: { page },
+  }) => {
+    await page.goto("/lessons/new");
+    const zone = page.getByRole("region", { name: /Start from your material/ });
+    await expect(zone).toBeVisible();
+    await expect(
+      zone.getByText("Only upload material you may use for your own teaching."),
+    ).toBeVisible();
+
+    // A real PDF through the real API: extracted, screened, stored, registered.
+    const uploaded = page.waitForResponse(
+      (res) => res.url().endsWith("/sources") && res.request().method() === "POST",
+    );
+    await zone.locator('input[type="file"]').setInputFiles({
+      name: "plants.pdf",
+      mimeType: "application/pdf",
+      buffer: tinyPdf(MATERIAL),
+    });
+    expect((await uploaded).status()).toBe(201);
+    await expect(page.getByRole("button", { name: "Remove plants.pdf" })).toBeVisible();
+    await expect(zone.getByText("1 page")).toBeVisible();
+
+    // Pasted text is a second Source.
+    await zone.getByRole("button", { name: "Paste text instead" }).click();
+    await page.getByRole("textbox", { name: "Text to use as material" }).fill(MATERIAL);
+    await zone.getByRole("button", { name: "Add" }).click();
+    await expect(page.getByRole("button", { name: "Remove Pasted text" })).toBeVisible();
+
+    // A class list is refused before anything is stored, with the API's sentence on screen.
+    await zone.locator('input[type="file"]').setInputFiles({
+      name: "register.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from(
+        "Amelia Jones\t12/03/2014\nOliver Smith\t03/07/2014\nIsla Brown\t21/11/2013\nGeorge Taylor\t08/01/2014\nAva Wilson\t30/05/2014\n",
+      ),
+    });
+    await expect(page.getByRole("list", { name: "Files we could not take" })).toContainText(
+      /Upload a PDF, PowerPoint/,
+    );
+
+    await page.getByRole("textbox", { name: "Topic or objective" }).fill("Photosynthesis");
+    const posted = page.waitForRequest(
+      (request) => request.method() === "POST" && request.url().endsWith("/lessons"),
+    );
+    await page.getByRole("button", { name: "Plan it" }).click();
+    const body = (await posted).postDataJSON() as { sourceIds?: string[] };
+    expect(body.sourceIds).toHaveLength(2);
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
   });
 });

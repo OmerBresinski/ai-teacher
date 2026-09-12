@@ -28,6 +28,7 @@ import { Field, GuardHint } from "@/components/brief/field";
 import { QuestionBlock } from "@/components/brief/question-block";
 import { ThemeTiles } from "@/components/brief/theme-tiles";
 import { useLibraryActions } from "@/components/library/use-library-actions";
+import { SourceDropZone } from "@/components/source-drop-zone/SourceDropZone";
 import {
   type BriefState,
   briefInputOf,
@@ -78,6 +79,7 @@ const NewDocumentDialog = lazy(() =>
 
 const DURATION_HINT = "Between 5 and 180 minutes.";
 const DURATION_REASON = "Duration must be between 5 and 180 minutes.";
+const SOURCES_BUSY_REASON = "Wait for your files to finish uploading.";
 const REMEMBERED_HINT = "From your last lesson";
 const QUESTION_COUNT = 2;
 
@@ -168,6 +170,7 @@ export function LessonBriefPage() {
   const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
   const [revealed, setRevealed] = useState(1);
   const [revealedByKey, setRevealedByKey] = useState(false);
+  const [sourcesBusy, setSourcesBusy] = useState(false);
   const submitRef = useRef<HTMLButtonElement>(null);
 
   // An edit clears the API's field marks: they describe the request that was sent, not this one.
@@ -193,7 +196,8 @@ export function LessonBriefPage() {
   const durationInvalid =
     state.duration.trim() !== "" &&
     parsed.error?.issues.some((issue) => issue.path.join(".") === "brief.durationMin");
-  const canCreate = parsed.success && topic.length > 0 && !hasGuardHits(state) && !isPending;
+  const canCreate =
+    parsed.success && topic.length > 0 && !hasGuardHits(state) && !isPending && !sourcesBusy;
   const topicHit = touched.has("topic") && findNamePatterns(state.topic).length > 0;
   const invalid = (field: string) => serverFields.has(field) || undefined;
   const askQuestions = shouldAskQuestions(topic);
@@ -204,15 +208,17 @@ export function LessonBriefPage() {
   // Why "Plan it" is disabled, in one line under the bar (TEACH-177 item 4).
   const reason = isPending
     ? null
-    : topic.length === 0
-      ? "Type a topic to plan the lesson."
-      : hasGuardHits(state)
-        ? GUARD_MESSAGE
-        : durationInvalid
-          ? DURATION_REASON
-          : parsed.success
-            ? null
-            : (parsed.error.issues[0]?.message ?? "Check the form.");
+    : sourcesBusy
+      ? SOURCES_BUSY_REASON
+      : topic.length === 0
+        ? "Type a topic to plan the lesson."
+        : hasGuardHits(state)
+          ? GUARD_MESSAGE
+          : durationInvalid
+            ? DURATION_REASON
+            : parsed.success
+              ? null
+              : (parsed.error.issues[0]?.message ?? "Check the form.");
 
   const settle = (index: number) => {
     const next = new Set(settled).add(index);
@@ -272,6 +278,13 @@ export function LessonBriefPage() {
             void submit();
           }}
         >
+          <SourceDropZone
+            sources={state.sources}
+            onChange={(sources) => patch({ sources })}
+            onBusyChange={setSourcesBusy}
+            disabled={isPending}
+          />
+
           <Field
             id={topicId}
             label="Topic or objective"

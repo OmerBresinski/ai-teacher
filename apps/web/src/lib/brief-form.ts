@@ -8,6 +8,7 @@ import {
   NEED_CATEGORIES,
   type NeedCategory,
   type SizeBand,
+  type SourceRef,
 } from "@tj/domain/documents";
 import {
   CONFIDENCE_QUESTION,
@@ -88,6 +89,8 @@ export type BriefState = {
   notes: string;
   objective: Answer;
   confidence: Answer;
+  /** Accepted Sources from the drop zone (ADR 0027 §7); their ids travel as `sourceIds`. */
+  sources: SourceRef[];
 };
 
 export const INITIAL_BRIEF: BriefState = {
@@ -104,6 +107,7 @@ export const INITIAL_BRIEF: BriefState = {
   notes: "",
   objective: DEFAULT_ANSWER,
   confidence: DEFAULT_ANSWER,
+  sources: [],
 };
 
 /** The free-text fields the identifier guard watches, with the state key each reads. */
@@ -165,6 +169,7 @@ export function briefInputOf(state: BriefState): CreateLessonInput {
   const input: CreateLessonInput = { brief, themeId: state.themeId };
   if (subject !== undefined) input.subject = subject;
   if (state.yearGroup) input.yearGroup = state.yearGroup;
+  if (state.sources.length > 0) input.sourceIds = state.sources.map((s) => s.id);
   return input;
 }
 
