@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
-import { E2E_API_URL } from "../playwright.config";
+import { E2E_API_URL, E2E_WEB_URL } from "../playwright.config";
 import { addedElement, elementIds, expect, type SeededPaths, test } from "./fixtures";
 
 /*
@@ -246,6 +246,20 @@ test.describe("editor images", () => {
       "Photo by Ada Lovelace on Pexels",
     );
     await page.keyboard.press("Escape");
+
+    // TEACH-275 row 8: the rendered `src` is absolute (resolved against the api origin), but what
+    // the document saves is the relative path — the origin is never written.
+    await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+    const saved = await page.request.get(
+      `${E2E_API_URL}/documents/${paths.id("demo-water-cycle")}`,
+      {
+        headers: { origin: E2E_WEB_URL },
+      },
+    );
+    expect(saved.ok(), await saved.text()).toBe(true);
+    const body = JSON.stringify(await saved.json());
+    expect(body).toContain('"src":"/files/ws/images/river.jpg"');
+    expect(body).not.toContain(`${E2E_API_URL}/files/`);
   });
 
   test("row 8: a 500 from search shows the failure copy and Retry recovers", async ({

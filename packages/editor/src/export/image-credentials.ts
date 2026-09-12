@@ -4,11 +4,14 @@
  * that origin gets `include`; any other URL (an imported document's foreign picture) gets `omit` —
  * our cookie must not go to a third party, and CORS would refuse `include` there anyway. The api
  * origin reaches the exporters as a prop (`imageOrigin`), never from the environment (ADR 0022).
- * Shared by the PPTX and PNG exporters; E3's DOCX joins them.
+ * Shared by the PPTX, PNG and DOCX exporters. Since TEACH-275 a stored src is normally the relative
+ * `/files/<key>` (`isOwnFile`); the fetch itself goes to `resolveImageSrc(src, imageOrigin)`.
  */
+import { isOwnFile } from "../images/resolve-src";
+
 export function imageCredentials(src: string, imageOrigin: string | undefined): RequestCredentials {
+  // A relative `/files/` path cannot be fetched at all without the origin; `omit` is the safe
+  // answer for a caller that has none.
   if (!imageOrigin) return "omit";
-  // A path boundary, so `https://api.example` does not also match `https://api.example.evil`.
-  const base = `${imageOrigin.replace(/\/+$/, "")}/`;
-  return src.startsWith(base) ? "include" : "omit";
+  return isOwnFile(src, imageOrigin) ? "include" : "omit";
 }

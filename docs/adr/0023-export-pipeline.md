@@ -91,6 +91,8 @@ and cite the existing code they rely on.
   authorises per request from the session cookie and sets `Cross-Origin-Resource-Policy:
   cross-origin` (`apps/api/src/routes/files.ts`), which is why a plain `<img>` renders today; CORS
   in `apps/api/src/app.ts` is `credentials: true` for `WEB_ORIGIN` and `WEB_ORIGIN_PATTERNS` only.
+  Since TEACH-275 the stored `src` is the relative `/files/<key>` and exporters resolve it against
+  `imageOrigin` before fetching (ADR 0026 amendment); the credentials rule below is unchanged.
   Exporters fetch image bytes with the cookie, not through a backend rewrite or a pre-fetch layer:
   `credentials: "include"` for a `src` on the api origin, `credentials: "omit"` for any other
   origin (an imported document's foreign URL; our cookie must not go to a third party and CORS

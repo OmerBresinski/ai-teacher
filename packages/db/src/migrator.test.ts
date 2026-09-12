@@ -1,6 +1,8 @@
 import { afterAll, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { newId } from "@tj/domain";
 import { migrateDatabase } from "./migrator";
-import { withTestDb } from "./testing";
+import { createTestUserWithWorkspace, withTestDb } from "./testing";
 
 const t = await withTestDb();
 const describeDb = t.ok ? describe : describe.skip;
@@ -8,7 +10,7 @@ if (!t.ok) console.warn(`skipping migrator tests: ${t.reason}`);
 
 describeDb("migrations", () => {
   if (!t.ok) return;
-  const { sql, url, close } = t.db;
+  const { sql, unsafeDb, url, close } = t.db;
   afterAll(() => close());
 
   test("running the migrator again is a no-op", async () => {
@@ -49,5 +51,46 @@ describeDb("migrations", () => {
       "documents_workspace_id_kind_title_idx",
       "documents_workspace_id_kind_updated_at_idx",
     ]);
+  });
+
+  test("0006 rewrites absolute /files/ picture URLs to the relative path and nothing else (TEACH-275)", async () => {
+    // The migration has already run on this database; run its statement again on a seeded row —
+    // it is written to be idempotent, so the file itself is what is tested.
+    const statement = readFileSync(
+      new URL("../drizzle/0006_relative_file_urls.sql", import.meta.url).pathname,
+      "utf8",
+    ).replace(/^--.*$/gm, "");
+    const { workspaceId } = await createTestUserWithWorkspace(unsafeDb);
+    const id = newId();
+    const body = {
+      id,
+      version: 1,
+      title: "Pictures",
+      slides: [
+        {
+          id: "s1",
+          background: { image: "https://api-production-903f.up.railway.app/files/ws/bg.png" },
+          elements: [
+            { id: "i1", type: "image", src: "https://api.bresinski.org/files/ws/a.png" },
+            { id: "i2", type: "image", src: "https://images.pexels.com/photos/1/a.jpeg" },
+            { id: "i3", type: "image", src: "/files/ws/already.png" },
+            { id: "i4", type: "image", src: "data:image/png;base64,AAAA" },
+          ],
+        },
+      ],
+    };
+    await sql`insert into documents (id, workspace_id, kind, body, title, item_count)
+      values (${id}, ${workspaceId}, 'lesson', ${JSON.stringify(body)}::jsonb, 'Pictures', 1)`;
+    await sql.unsafe(statement);
+    const [row] = await sql<{ body: typeof body }[]>`select body from documents where id = ${id}`;
+    const slide = row?.body.slides[0];
+    expect(slide?.background.image).toBe("/files/ws/bg.png");
+    expect(slide?.elements.map((e) => e.src)).toEqual([
+      "/files/ws/a.png",
+      "https://images.pexels.com/photos/1/a.jpeg",
+      "/files/ws/already.png",
+      "data:image/png;base64,AAAA",
+    ]);
+    await sql`delete from documents where id = ${id}`;
   });
 });

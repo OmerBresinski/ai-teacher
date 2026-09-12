@@ -272,7 +272,8 @@ test.describe("worksheet editor", () => {
       document?: { blocks?: { id: string; src: string; source?: { provider: string } }[] };
     };
     const block = saved.document?.blocks?.find((b) => b.id === "wb-img-1");
-    expect(block?.src).toBe(`${E2E_API_URL}/files/ws/images/leaf.jpg`);
+    // Rendered absolute, saved relative (TEACH-275): the origin never enters the document.
+    expect(block?.src).toBe("/files/ws/images/leaf.jpg");
     expect(block?.source?.provider).toBe("pexels");
   });
 });

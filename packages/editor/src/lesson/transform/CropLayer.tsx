@@ -7,6 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { useResolvedImageSrc } from "../../images/image-origin";
+import { StoredImage } from "../../images/StoredImage";
 import { type Point, type Rect, rectOf } from "../../model/geometry";
 import * as reducers from "../../model/reducers";
 import { useHistory } from "../document-context";
@@ -105,6 +107,7 @@ export function CropLayer({
   onPointerFocus,
 }: CropLayerProps) {
   const history = useHistory();
+  const resolvedSrc = useResolvedImageSrc(element.src);
   const actions = useSessionActions();
   const read = useSessionRead();
   const { crop: session } = useSessionUi();
@@ -132,8 +135,8 @@ export function CropLayer({
       const crop = seedCrop({ ...element, ...d, w: b.w, h: b.h }, natural);
       actions.updateCrop({ natural, crop }, true);
     };
-    img.src = element.src;
-  }, [actions, draft.natural, element, read]);
+    img.src = resolvedSrc;
+  }, [actions, draft.natural, element, read, resolvedSrc]);
 
   useEffect(() => {
     announce(
@@ -482,7 +485,7 @@ export function CropLayer({
             background: "rgb(27 26 23 / 0.08)",
           }}
         >
-          <img
+          <StoredImage
             src={element.src}
             alt=""
             draggable={false}

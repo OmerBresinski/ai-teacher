@@ -691,6 +691,9 @@ describe("image credentials (TEACH-272 §1)", () => {
     expect(imageCredentials(`${origin}/files/ws/img/a.png`, origin)).toBe("include");
     expect(imageCredentials("https://elsewhere.example/pic.png", origin)).toBe("omit");
     expect(imageCredentials(`${origin}/files/x`, undefined)).toBe("omit");
+    // A stored path is relative since TEACH-275: ours whatever the origin, but only fetchable with one.
+    expect(imageCredentials("/files/ws/a.png", origin)).toBe("include");
+    expect(imageCredentials("/files/ws/a.png", undefined)).toBe("omit");
     // A path boundary: a look-alike host sharing the prefix is not the api.
     expect(imageCredentials("https://api.example.test.evil/files/x", origin)).toBe("omit");
     expect(imageCredentials(`${origin}/files/x`, `${origin}/`)).toBe("include");

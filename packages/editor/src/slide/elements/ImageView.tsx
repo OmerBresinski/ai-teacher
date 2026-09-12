@@ -1,5 +1,6 @@
 import type { ImageElement } from "@tj/domain/documents";
 import { useEffect, useRef, useState } from "react";
+import { useResolvedImageSrc } from "../../images/image-origin";
 import { pictureStyle, renderedFit, type Size } from "../../lesson/image-adjust";
 import type { ElementViewProps } from "./kit";
 
@@ -27,7 +28,10 @@ export function ImageView({ element, theme, mode }: ElementViewProps<ImageElemen
   const ref = useRef<HTMLImageElement>(null);
   const [measured, setMeasured] = useState<(Size & { src: string }) | null>(null);
   const natural = measured?.src === element.src ? measured : undefined;
+  // The stored `/files/<key>` path, resolved against the api origin (TEACH-275); `measured` keys
+  // on the stored value so a re-resolve is not a new picture.
   const src = element.src;
+  const resolved = useResolvedImageSrc(src);
   useEffect(() => {
     const img = ref.current;
     if (!img) return;
@@ -62,7 +66,7 @@ export function ImageView({ element, theme, mode }: ElementViewProps<ImageElemen
       <div style={{ position: "absolute", ...style.wrapper }}>
         <img
           ref={ref}
-          src={element.src}
+          src={resolved}
           alt={element.alt ?? ""}
           draggable={false}
           loading={mode === "thumb" ? "lazy" : "eager"}

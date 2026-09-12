@@ -20,6 +20,10 @@ reference; nothing is pasted from it without reading the file it came from.
   ZoomControl, Rail, Color, SaveIndicator, InlineTitle). TeachDeck's `components/ui2/floating.ts` is
   never ported: Radix owns the one floating layer. A `@tj/ui` surface opened from the present-mode stage carries
   `className="tj-stage"` (`tooltipClassName` / `contentClassName` on `IconButton` / `Tooltip`).
+- **Pictures are `/files/<key>` (ADR 0026 amendment, TEACH-275).** A document never carries the
+  api origin. Write an `<img>` through `StoredImage` or `useResolvedImageSrc` (`src/images/`), and
+  fetch through `resolveImageSrc(src, imageOrigin)`; the app provides the origin once with
+  `ImageOriginProvider`, and the package never reads `import.meta.env`.
 - **ADR 0022 §4 — TanStack Query is the only store.** No `zustand`, `zundo`, `immer`-as-store or
   `idb-keyval`. The document lives in the Query cache under the key the app passes in; edits are
   pure reducers in `src/model/reducers/` applied through `useDocumentHistory` (lessons) and
