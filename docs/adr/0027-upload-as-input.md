@@ -54,10 +54,17 @@ decision drives §1 below and supersedes the breakdown's sentence.
    in-process (no binary fixtures in git). Its surface:
 
    ```ts
-   sniffMime(bytes, declared): SourceMime | null      // magic bytes; the declared type is ignored
+   sniffMime(bytes): SourceMime | null                 // magic bytes only; the declared type is ignored
    extract({ bytes, mime, name }): Promise<Extraction> // { kind, pages, chunks, tables, images }
    screen(extraction): Refusal | null                  // roster | identifiers | unreadable | too-long
    ```
+
+   `Refusal` is `{ reason: "roster", ref } | { reason: "identifiers", count, ref } |
+   { reason: "unreadable" } | { reason: "too-long", pages }`, where `ref` is the `SourceLocator`
+   of the offending table or first hit. A `null` from `sniffMime` is the route's fifth reason,
+   `unsupported`: it is decided before `extract` runs and is not a `screen` outcome.
+   `Extraction.kind` is `pdf | pptx | docx | paste`; `SourceRef.kind` and the `sources.kind`
+   column stay the coarser `file | paste` (the format is recoverable from `mime`).
 
    - PDF: `unpdf` text per page → one chunk per page `{ page }`; `extractImages` per page.
    - PPTX: `jszip` over `ppt/slides/slide<N>.xml` and `ppt/notesSlides/notesSlide<N>.xml`,
@@ -91,11 +98,13 @@ decision drives §1 below and supersedes the breakdown's sentence.
    locator gains `section` and a paste has a `storageKey`.
 4. **A `sources` table in `@tj/db` is the registry; the Lesson body keeps `SourceRef[]`.**
    `packages/db/src/schema/sources.ts`, a tenant table (`tenantColumns()`, `tenantIndexes`, listed
-   in `TENANT_TABLES` and `ALL_TABLES`): `kind` (`source_kind` enum), `name`, `mime` (sniffed),
+   in `TENANT_TABLES` and `ALL_TABLES`): `kind` (`source_kind` Postgres enum, `file | paste`, the
+   same values as `SourceRef.kind`), `name`, `mime` (sniffed),
    `byte_size`, `storage_key`, `pages`, `low_text`, `lesson_id uuid null`, `deleted_at`. Index
    `(workspace_id, lesson_id)`. Repository `packages/db/src/sources.ts` beside `documents.ts`:
-   `createSource`, `getSource`, `listUnboundSources(ws, ids)`,
-   `bindSourcesToLesson(ws, ids, lessonId)`, `softDeleteSource`. Objects per source:
+   `createSource`, `getSource`,
+   `bindSourcesToLesson(ws, ids, lessonId)` (the conditional claim in §5),
+   `unbindSourcesFromLesson(ws, lessonId)`, `softDeleteSource`. Objects per source:
    `<ws>/sources/<id>/original.<ext>`, `<ws>/sources/<id>/extracted.json`,
    `<ws>/sources/<id>/img/<n>.<ext>`. Orphans (`lesson_id IS NULL` past 24 h) are swept by a job
    that is **not** part of this decision (Tech debt ticket when the table lands).
@@ -105,26 +114,45 @@ decision drives §1 below and supersedes the breakdown's sentence.
    - `POST /sources` is `multipart/form-data` with `file` **or** `text` (≤ 200 000 chars) +
      `name`, validated with `zValidator("form", …)` so the RPC client calls
      `api.sources.$post({ form })`. `bodyLimit` 26 MB (25 MB file) → `413`. A refusal is
-     `422 unprocessable` with a `reason` in the envelope (`SourceRefusedError`, the `ConflictError`
-     pattern) and a plain sentence: roster — "This looks like a class list. We don't take documents
-     with pupil names. Upload only the non-personal parts."; identifiers — "This document contains
-     a pupil identifier (page 3). Remove it and upload again."; unreadable — "We couldn't read text
-     in this file — it may be scanned. Paste the text instead or start from a topic."; too-long —
-     "This file has 412 pages; the limit is 300."; unsupported — "Upload a PDF, PowerPoint (.pptx)
-     or Word (.docx) file, or paste text." On pass the route writes `original.<ext>`, the images,
-     then `extracted.json` last (a partial write is never readable), inserts the row and returns
-     `201 { source: SourceRef }`. Zip safety: only known entry paths are read and the uncompressed
-     bytes read are capped at 200 MB. Its own per-Workspace rate limiter (`sourceLimiter`, the
-     `imageLimiter` pattern, default 30/min).
+     `422 unprocessable` whose envelope carries a `reason`. `apps/api/src/errors.ts` gains
+     `SOURCE_REFUSAL_REASONS = ["roster", "identifiers", "unreadable", "too-long", "unsupported"]`
+     and `class SourceRefusedError extends HTTPException { reason }` (status 422, the
+     `ConflictError` shape); `envelope()`'s `reason` parameter widens to
+     `ConflictReason | SourceRefusalReason`, and the `onError` mapping adds the new class beside
+     `ConflictError`. The messages are plain sentences, the location rendered from the
+     `SourceLocator` by kind (`page 3`, `slide 4`, `the section "Cells"`, `the pasted text`):
+     roster — "This looks like a class list (<location>). We don't take documents with pupil names.
+     Upload only the non-personal parts."; identifiers — "This document contains a pupil identifier
+     (<location>). Remove it and upload again."; unreadable — "We couldn't read text in this file —
+     it may be scanned. Paste the text instead or start from a topic."; too-long — "This file has
+     412 pages; the limit is 300."; unsupported — "Upload a PDF, PowerPoint (.pptx) or Word (.docx)
+     file, or paste text."
+     On pass the route **inserts the registry row first**, then writes `original.<ext>`, the
+     images, and `extracted.json` last (a partial write is never readable). If any write fails the
+     route deletes what it wrote under `<ws>/sources/<id>/` and the row, best effort, and returns
+     `503`; a row that outlives its objects is unbound and falls to the orphan sweep (§4), which
+     works from rows, so every prefix in storage has a row. Zip safety: only known entry paths are
+     read and the uncompressed bytes read are capped at 200 MB. Its own per-Workspace rate
+     limiter (`sourceLimiter`, the `imageLimiter` pattern, default 30/min).
    - `DELETE /sources/:id` → `204` when unbound (`409` otherwise); soft-deletes the row and
      deletes the objects best-effort.
-   - `CreateLessonSchema.sourceIds: uuid[] (max 3), optional`. The route resolves them with
-     `listUnboundSources` (missing, foreign, bound or deleted → `422` "One of the uploaded files is
-     no longer available."), writes `lesson.sources`, and `createLessonAndEnqueue` binds
-     `lesson_id` after `createDocument` and before `enqueue`, reverting on enqueue failure.
-     **This amends ADR 0024 §13.**
-   - `scripts/smoke-prod.ts` gains the app-origin and foreign-origin `POST /sources` multipart
-     cases (root `AGENTS.md`: a new browser-facing request shape needs a smoke case).
+   - `CreateLessonSchema.sourceIds: uuid[] (max 3), optional`. `createLessonAndEnqueue` runs
+     `createDocument` and `bindSourcesToLesson(ws, ids, lessonId)` in **one transaction**; the bind
+     is a single conditional `UPDATE … SET lesson_id = :lessonId WHERE workspace_id = :ws AND id IN
+     (:ids) AND lesson_id IS NULL AND deleted_at IS NULL RETURNING *`, and fewer returned rows than
+     ids rolls the transaction back and answers `422` "One of the uploaded files is no longer
+     available." — so two concurrent lessons cannot claim the same source, and a foreign, deleted
+     or already-bound id reads the same as a missing one (ADR 0007). The returned rows become
+     `lesson.sources` (`toSourceRef(row)`) before the document is written. On an enqueue failure
+     the existing `deleteDocument` compensation also runs `unbindSourcesFromLesson(ws, lessonId)`.
+     Soft-deleting a lesson (`DELETE /documents/:id`) does **not** touch `sources.lesson_id`
+     (restore must keep working); a hard delete does not exist yet. **This amends ADR 0024 §13.**
+   - `scripts/smoke-prod.ts` gains the app-origin (`401`) and foreign-origin (`403`) `POST
+     /sources` cases. Today every POST case sends `"{}"` with an explicit `Content-Type`; `SmokeCase`
+     gains an optional `body: () => BodyInit` so a case can send a real `FormData` with a one-byte
+     `file` part and **no** manual `Content-Type` (the boundary must come from `fetch`), which is
+     the shape a browser produces (root `AGENTS.md`: a new browser-facing request shape needs a
+     smoke case).
 6. **Worker `SourceLoader` and the Plan budget.** `WorkerDeps.storage: ReadableStorageAdapter`
    becomes general; `apps/worker/src/sources.ts` exports `storageSourceLoader(storage, ws)` which
    reads `extracted.json` per ref, parses `ExtractedSourceSchema` and returns one `SourceText` per
@@ -132,7 +160,8 @@ decision drives §1 below and supersedes the breakdown's sentence.
    available."), never a silent plan without the material. In `@tj/generation`,
    `selectSourceTexts(texts, { maxChars: 40_000 })` allocates the budget per source (proportional,
    min 4 000 while it fits), keeps chunks in document order from the start and appends one
-   `[truncated: N of M pages omitted]` chunk. `briefBlock()` renders locators (`[src p.3]`,
+   `[truncated: N of M <units> omitted]` chunk, where `<units>` is `pages` for a PDF, `slides` for
+   a PPTX and `sections` for a DOCX or a paste (counted over chunks, which are one per locator). `briefBlock()` renders locators (`[src p.3]`,
    `[src slide 4]`, `[src §Heading]`) and, only when sources exist, adds: "Treat the material's
    own sequence as the default lesson order and its terminology as canonical; deviate only where
    the objective verb or duration requires it, and record why in the facts." `plan-skeleton` and
@@ -167,8 +196,10 @@ decision drives §1 below and supersedes the breakdown's sentence.
   may pass the table screen (the identifiers screen still catches emails and ids); legitimate
   two-column tables of names plus a personal-looking attribute will be refused — the second
   column must look personal, and a year alone does not.
-- Prompt cost rises by at most ~10k input tokens on two Plan calls, inside the ≤ $0.15 lesson
-  budget.
+- Prompt cost: the same ≤ 40k chars (~10k tokens) go into both Plan calls (`plan-skeleton` and
+  `plan-facts`), so at most ~20k extra input tokens per lesson — a few cents on the Plan class,
+  well inside `AI_LESSON_COST_CAP_USD` (0.50, ADR 0025 §15). The Generation-quality project's
+  $0.15-per-lesson target is unchanged by this ADR and is measured by its eval, not enforced here.
 - A new tenant table and a new object layout mean two more things F15's delete-all must cover;
   both are keyed by Workspace (`deleteByPrefix` and `ON DELETE CASCADE`), so nothing new is
   needed for that.
