@@ -14,7 +14,7 @@ test("captures the export dialog, the print route and the import dialog", async 
   signedInPage: { page, paths },
 }) => {
   await page.goto(paths.lesson("demo-water-cycle"));
-  await page.getByRole("button", { name: "Export" }).click();
+  await page.getByRole("button", { name: "Export", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Export" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("textbox", { name: "Slides" }).fill("1-3, 5");

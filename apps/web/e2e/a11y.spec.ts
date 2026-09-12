@@ -235,7 +235,7 @@ test.describe("accessibility (axe)", () => {
     await page.keyboard.press("Escape");
 
     // The export dialog (TEACH-110 row 12), on the PDF tab it opens on and on JSON.
-    await page.getByRole("button", { name: "Export" }).click();
+    await page.getByRole("button", { name: "Export", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Export" })).toBeVisible();
     await settled();
     await expectNoSeriousA11yViolations(page, "export dialog", '[role="dialog"]');

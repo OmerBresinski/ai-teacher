@@ -98,7 +98,7 @@ test.describe("export dialog", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(paths.lesson("demo-water-cycle"));
-    await page.getByRole("button", { name: "Export" }).click();
+    await page.getByRole("button", { name: "Export", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Export" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("tab", { name: "PowerPoint" })).toBeDisabled();
@@ -117,7 +117,7 @@ test.describe("export dialog", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(paths.lesson("demo-water-cycle", "/view"));
-    await page.getByRole("button", { name: "Export" }).click();
+    await page.getByRole("button", { name: "Export", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Export" });
     await dialog.getByRole("tab", { name: "JSON" }).click();
     const download = page.waitForEvent("download");
@@ -136,16 +136,17 @@ test.describe("export dialog", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(paths.worksheet("fraction-practice"));
-    await page.getByRole("button", { name: "Export" }).click();
+    await page.getByRole("button", { name: "Export", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Export" });
     await expect(dialog.getByRole("tab", { name: "Word" })).toBeDisabled();
     await dialog.getByRole("tab", { name: "JSON" }).click();
     const download = page.waitForEvent("download");
     await dialog.getByRole("button", { name: "Export JSON" }).click();
     expect((await download).suggestedFilename()).toBe("fractions-practice.worksheet.json");
+    await expect(dialog).toHaveCount(0);
 
     // The dialog remembers its tab between opens; PDF is chosen again explicitly.
-    await page.getByRole("button", { name: "Export" }).click();
+    await page.getByRole("button", { name: "Export", exact: true }).click();
     const reopened = page.getByRole("dialog", { name: "Export" });
     await reopened.getByRole("tab", { name: "PDF" }).click();
     await reopened.getByRole("button", { name: "Export PDF" }).click();
