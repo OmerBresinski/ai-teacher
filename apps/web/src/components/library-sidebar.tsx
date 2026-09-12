@@ -11,6 +11,7 @@ import {
   SwatchBook,
   Upload,
 } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { authClient } from "@/lib/auth";
 import { libraryQueries, librarySelectors } from "@/lib/library";
 import { queryKeys } from "@/lib/query";
@@ -41,6 +42,12 @@ const MARK = (
     T
   </Display>
 );
+
+const PreviewWordmark = import.meta.env.DEV
+  ? lazy(() =>
+      import("./design-preview/design-preview").then((m) => ({ default: m.DesignWordmark })),
+    )
+  : () => null;
 
 function isActive(pathname: string, href: "/" | "/lessons" | "/worksheets" | "/series"): boolean {
   return href === "/" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
@@ -90,8 +97,24 @@ export function LibrarySidebar({
       aria-label="Library"
       collapsed={collapsed}
       onCollapsedChange={setCollapsed}
-      wordmark={WORDMARK}
-      mark={MARK}
+      wordmark={
+        import.meta.env.DEV ? (
+          <Suspense fallback={WORDMARK}>
+            <PreviewWordmark />
+          </Suspense>
+        ) : (
+          WORDMARK
+        )
+      }
+      mark={
+        import.meta.env.DEV ? (
+          <Suspense fallback={MARK}>
+            <PreviewWordmark compact />
+          </Suspense>
+        ) : (
+          MARK
+        )
+      }
       foot={
         <>
           <SidebarItem icon={IMPORT_ICON} onClick={onImport}>

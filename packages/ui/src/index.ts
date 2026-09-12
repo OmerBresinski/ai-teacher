@@ -25,6 +25,7 @@ export {
 } from "./components/card";
 export { Checkbox } from "./components/checkbox";
 export { ConfirmDialog, type ConfirmDialogProps } from "./components/confirm-dialog";
+export { selectionCardVariants, toolbarButtonVariants } from "./components/control-recipes";
 export {
   Dialog,
   DialogClose,

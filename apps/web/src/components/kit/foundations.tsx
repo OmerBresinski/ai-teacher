@@ -10,6 +10,7 @@ import {
   Switch,
 } from "@tj/ui";
 import { Pencil } from "lucide-react";
+import { tokenLabel, useDesignValues } from "./design-values";
 import { eyebrowClass, KitGroup, Specimen, Variant } from "./frame";
 
 const swatches = [
@@ -26,11 +27,28 @@ const swatches = [
 ] as const;
 
 export function Foundations() {
+  const values = useDesignValues();
+  const typeLabel = (token: "eyebrow" | "meta" | "body" | "lead", fallback: string) => {
+    const [fallbackSize = "", fallbackLineHeight = ""] = fallback.split("/");
+    return `${tokenLabel(values?.[`--text-${token}`], fallbackSize)}/${tokenLabel(
+      values?.[`--text-${token}--line-height`],
+      fallbackLineHeight,
+    )}`;
+  };
+  const radii = [
+    ["Key", "rounded-key", "--radius-key", "4px"],
+    ["Chip", "rounded-chip", "--radius-chip", "6px"],
+    ["Control", "rounded-control", "--radius-control", "8px"],
+    ["Card", "rounded-card", "--radius-card", "10px"],
+    ["Dialog", "rounded-dialog", "--radius-dialog", "12px"],
+    ["Face", "rounded-face", "--radius-face", "16px"],
+  ] as const;
+
   return (
     <KitGroup
       id="foundations"
       title="Foundations"
-      rule="Terracotta #D2644B is the only saturated colour in the chrome: fills, rings, frames and glyphs. Under 18px the accent as text is #B04A33. Eyebrows are 12/500, tracked 0.08em, ink-3."
+      rule={`The active semantic palette is the source of truth: background ${tokenLabel(values?.["--background"], "var(--background)")}, ink ${tokenLabel(values?.["--foreground"], "var(--foreground)")}, paper ${tokenLabel(values?.["--card"], "var(--card)")} and tint ${tokenLabel(values?.["--brand-tint"], "var(--brand-tint)")}. Change the development design preview or theme to inspect the applied tokens.`}
     >
       <Specimen
         name="Surfaces, primary and status"
@@ -74,18 +92,9 @@ export function Foundations() {
           <Separator className="bg-border-control" />
         </div>
       </Specimen>
-      <Specimen name="Radii" note="Key through face, labelled in pixels.">
-        {(
-          [
-            ["Key 4px", "rounded-key"],
-            ["Chip 6px", "rounded-chip"],
-            ["Control 8px", "rounded-control"],
-            ["Card 10px", "rounded-card"],
-            ["Dialog 12px", "rounded-dialog"],
-            ["Face 16px", "rounded-face"],
-          ] as const
-        ).map(([label, className]) => (
-          <Variant key={label} label={label}>
+      <Specimen name="Radii" note="The named ladder, labelled from the applied CSS tokens.">
+        {radii.map(([name, className, property, fallback]) => (
+          <Variant key={name} label={`${name} ${tokenLabel(values?.[property], fallback)}`}>
             <span aria-hidden className={`block size-14 bg-brand-tint ${className}`} />
           </Variant>
         ))}
@@ -105,16 +114,25 @@ export function Foundations() {
           </Variant>
         ))}
       </Specimen>
-      <Specimen name="Type ladder" note="Eyebrow through display type.">
-        <div className="space-y-2">
-          <p className={eyebrowClass}>Eyebrow, 12 tracked</p>
-          <p className="text-meta text-ink-3">Meta 13, the row under a title</p>
-          <p className="text-body">Body 14, labels and prose</p>
-          <p className="text-lead text-ink-2">Lead 15, a dialog body</p>
-          <p className="font-ui text-lead font-semibold">Section heading 15/600</p>
-          <p className="font-display text-title">Dialog title, Lora 20</p>
+      <Specimen
+        name="Type ladder"
+        note={`UI: ${tokenLabel(values?.["--font-ui"], "system UI")}. Display: ${tokenLabel(values?.["--font-display"], "serif display")}. The preview preserves each design’s actual type tokens.`}
+      >
+        <div className="flex flex-col gap-2">
+          <p className={eyebrowClass}>Eyebrow {typeLabel("eyebrow", "12px/16px")}, tracked</p>
+          <p className="text-meta text-ink-3">
+            Meta {typeLabel("meta", "13px/18px")}, the row under a title
+          </p>
+          <p className="text-body">Body {typeLabel("body", "14px/20px")}, labels and prose</p>
+          <p className="text-lead text-ink-2">
+            Lead {typeLabel("lead", "15px/22px")}, a dialog body
+          </p>
+          <p className="font-ui text-lead font-semibold">
+            Section heading {typeLabel("lead", "15px/22px")}, semibold
+          </p>
+          <p className="font-display text-title">Dialog title, display 20</p>
           <p className="font-display text-[28px] leading-9 tracking-[-0.015em]">
-            Page title, Lora 28
+            Page title, display 28
           </p>
         </div>
       </Specimen>

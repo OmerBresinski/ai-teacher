@@ -13,6 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   Tooltip,
+  toolbarButtonVariants,
 } from "@tj/ui";
 import {
   AlignCenter,
@@ -482,7 +483,8 @@ function DropTrigger({
         <button
           type="button"
           aria-label={text ? `${label}, ${text}` : label}
-          className="inline-flex h-8 items-center gap-0.5 rounded-control px-1.5 text-body text-foreground outline-none transition-colors duration-(--duration-fast) ease-(--ease-out-soft) hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=open]:bg-accent-active"
+          data-slot="toolbar-button"
+          className={toolbarButtonVariants({ kind: "dropdown" })}
         >
           {icon ?? <span className="px-0.5">{text}</span>}
           <ChevronDown aria-hidden size={14} strokeWidth={1.5} className="text-ink-3" />

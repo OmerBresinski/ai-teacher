@@ -14,6 +14,7 @@ import {
   PopoverTrigger,
   Slider,
   Tooltip,
+  toolbarButtonVariants,
 } from "@tj/ui";
 import { ChevronDown } from "lucide-react";
 import { type ComponentProps, type ReactNode, useId, useMemo, useRef, useState } from "react";
@@ -100,12 +101,10 @@ export function DropTrigger({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
+          data-slot="toolbar-button"
           type="button"
           aria-label={text ? `${label}, ${typeof text === "string" ? text : ""}`.trim() : label}
-          className={cn(
-            "inline-flex h-8 items-center gap-0.5 rounded-control px-1.5 text-body text-foreground outline-none transition-colors duration-(--duration-fast) ease-(--ease-out-soft) hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=open]:bg-accent-active",
-            className,
-          )}
+          className={cn(toolbarButtonVariants({ kind: "dropdown" }), className)}
         >
           {icon ?? <span className="px-0.5">{text}</span>}
           {chevron ? (
@@ -124,12 +123,10 @@ export function DropTrigger({
 export function BarButton({ className, ...rest }: ComponentProps<"button">) {
   return (
     <button
+      data-slot="toolbar-button"
       type="button"
       {...rest}
-      className={cn(
-        "inline-flex h-8 items-center gap-1 rounded-control px-2 text-body text-foreground outline-none transition-colors duration-(--duration-fast) ease-(--ease-out-soft) hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=open]:bg-accent-active",
-        className,
-      )}
+      className={cn(toolbarButtonVariants(), className)}
     />
   );
 }

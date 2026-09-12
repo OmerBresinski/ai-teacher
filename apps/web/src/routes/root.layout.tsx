@@ -13,6 +13,14 @@ const Devtools = import.meta.env.DEV
   ? lazy(() => import("@/components/devtools").then((m) => ({ default: m.Devtools })))
   : () => null;
 
+const DesignPreview = import.meta.env.DEV
+  ? lazy(() =>
+      import("@/components/design-preview/design-preview").then((m) => ({
+        default: m.DesignPreview,
+      })),
+    )
+  : () => null;
+
 export function RootLayout() {
   return (
     <>
@@ -20,6 +28,7 @@ export function RootLayout() {
       <Outlet />
       <Suspense fallback={null}>
         <Devtools />
+        <DesignPreview />
       </Suspense>
     </>
   );

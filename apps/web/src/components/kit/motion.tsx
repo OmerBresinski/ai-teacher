@@ -1,14 +1,16 @@
 import { Button } from "@tj/ui";
 import { useState } from "react";
+import { tokenLabel, useDesignValues } from "./design-values";
 import { KitGroup, Specimen } from "./frame";
 
 export function Motion() {
   const [key, setKey] = useState(0);
+  const values = useDesignValues();
   return (
     <KitGroup
       id="motion"
       title="Motion"
-      rule="One entrance: 450ms on a single ease-out curve with a 16px rise. Reduced motion keeps the fade and drops the rise. Nothing in the chrome rotates."
+      rule={`One entrance uses the applied motion tokens: ${tokenLabel(values?.["--duration-arrive"], "var(--duration-arrive)")} on a single ease-out curve with a ${tokenLabel(values?.["--arrive-rise"], "var(--arrive-rise)")} rise. Reduced motion shortens the fade and drops the rise. Nothing in the chrome rotates.`}
     >
       <Specimen
         name="Arrival"

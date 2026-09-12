@@ -26,7 +26,7 @@ export function Actions() {
     >
       <Specimen
         name="Button, every variant and size"
-        note="Terracotta fill, ink pill, quiet hairline, ghost, link, destructive. The same verb at the bar, control and dialog rungs, then with a glyph."
+        note="Semantic primary, inverse, quiet hairline, ghost, link and destructive treatments. The same verb at the bar, control and dialog rungs, then with a glyph."
       >
         <div className="space-y-4">
           {buttonRows.map(([variant, label, copy]) => (

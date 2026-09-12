@@ -32,7 +32,7 @@ export function Content() {
     <KitGroup
       id="content"
       title="Content"
-      rule="Lora 500 stays on page titles, dialog titles, empty-state headlines and Display. Section headings are the UI face at 15/600 with the count in ink-3. A pill is 12/500 with one boundary: tint or hairline, never both."
+      rule="The active display face stays on page titles, dialog titles, empty-state headlines and Display. Section headings use the UI face with the count in ink-3. A pill has one boundary: tint or hairline, never both."
     >
       <Specimen
         name="StatusPill, one per context"
@@ -164,7 +164,7 @@ export function Content() {
           {title}
         </PageTitle>
       </Specimen>
-      <Specimen name="Display, where Lora lands" headingLevel={2}>
+      <Specimen name="Display type" headingLevel={2}>
         {(
           [
             ["sm", "Dialog title, 20"],

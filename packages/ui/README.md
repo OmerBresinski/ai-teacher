@@ -200,3 +200,30 @@ Radix overlay tests also rely on the package setup's minimal `ResizeObserver`, `
 - **Build.** There is no build step; apps compile the source. To smoke-test the CSS pipeline
   without an app: `bunx --package @tailwindcss/cli tailwindcss -i src/styles/globals.css -o /tmp/ui.css`
   and grep for `.bg-background`, `.motion-safe\:transition-all`, `[data-theme="dark"]`.
+
+## LessonCo comparison (development only)
+
+`src/styles/lessonco.css` is an optional Good Company treatment of the existing semantic tokens
+and shared components. The app's **Design preview** disclosure hot swaps `data-design` between
+`current` and `lessonco` without remounting the app. The preference is `tj:design-preview`.
+It is lazy loaded only in Vite development; production includes neither the switch nor its CSS/font.
+
+LessonCo uses the website's locally licensed Gabarito font, cream `#fcf9ee`, ink `#293b32`, paper
+`#fffef8`, sage `#e5ecd8` and control edge `#7d8b76`. App type starts at 14/20 for compact labels,
+16/24 for body and 18/26 for lead copy; toolbar text is 14/20. Its geometry uses 3px keys, 6px
+chips and controls, and 12px cards, dialogs and faces. Primary actions are pills, elevation is
+restrained, and arrival motion is 300ms over 6px. Website sources are
+`homepage/assets/system.css` and the original Good Company design documentation. The copied font's
+OFL accompanies it in `styles/lessonco/`.
+
+The overlay is deliberately light only. Dark and high-contrast retain the established palette
+and geometry, so they are an honest fallback rather than an unfinished LessonCo variant. Use the
+normal Theme menu or kit tabs to choose Light. The design switch never changes the saved
+colour-mode preference. Slide recipes, worksheet content
+and presentation stage tokens remain owned by their existing systems. Characters and animation
+are retained in the homepage; none are added to teaching content. Kit annotations read the
+currently applied CSS variables, so the values shown for palette, type, radii and arrival motion
+follow the selected development preview instead of duplicating either design's constants.
+
+When changing shared components, verify Current and LessonCo in the real library, brief, editor
+and dialogs as well as `/kit`. Keep the original tokens untouched so switching back is exact.

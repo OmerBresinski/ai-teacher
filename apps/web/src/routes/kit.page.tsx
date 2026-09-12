@@ -21,7 +21,7 @@ export function KitPage() {
 
   return (
     <>
-      <div className="mx-auto max-w-[1240px] px-12 pt-10">
+      <div data-kit-heading className="mx-auto max-w-[1240px] px-12 pt-10">
         <KitHeader>
           <Tabs value={theme} onValueChange={(value) => setTheme(value as typeof theme)}>
             <TabsList aria-label="Theme">

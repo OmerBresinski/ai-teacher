@@ -261,7 +261,7 @@ export function LibraryPage({ mode }: { mode: LibraryMode }) {
       </div>
 
       {isHome && !failed ? (
-        <div className={`${GRID} mt-6`}>
+        <div data-library-create-actions className={`${GRID} mt-6`}>
           <Tile
             tone="primary"
             icon={LESSON_TILE_ICON}
