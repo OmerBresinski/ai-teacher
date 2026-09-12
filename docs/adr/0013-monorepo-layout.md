@@ -98,3 +98,15 @@ packages/
 
 Server-only (`zod` only besides `@tj/domain`) and consumed by `apps/api` and `apps/worker`;
 never by `apps/web`.
+
+## Amendment (2026-09-12, ADR 0027 — F03 Upload as input)
+
+```
+packages/
+  extract/      @tj/extract    Document extraction and screening: PDF, PPTX, DOCX, paste to located
+                                chunks, tables and images; sniffMime; roster/identifier screens
+```
+
+Server-only (`unpdf`, `mammoth`, `jszip`, `fast-xml-parser` besides `@tj/domain`) and consumed by
+`apps/api` inside `POST /sources`; never by `apps/web` (`bundle.test.ts` guards it) or the worker,
+which reads the extraction result from storage (ADR 0027 §1, §6).

@@ -18,7 +18,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0010 | Hosting: Vercel (web) + Railway (api, worker, PG)  | Accepted |
 | 0011 | Vercel Blob for object storage                     | Superseded by 0026 (2026-09-07) |
 | 0012 | Server-sent events for generation progress         | Accepted (amended 2026-09-06) |
-| 0013 | Monorepo layout and @tj/* package scope            | Accepted (amended 2026-09-06) |
+| 0013 | Monorepo layout and @tj/* package scope            | Accepted (amended 2026-09-06, 2026-09-12) |
 | 0014 | Testing: bun test, Playwright (Vitest retired)     | Accepted |
 | 0015 | Env validation, logging, commit conventions        | Accepted |
 | 0016 | Deviations from PRD accepted for MVP scaffolding   | Accepted (amended 2026-09-04) |
@@ -61,3 +61,4 @@ Template: `0000-template.md`.
 - 2026-09-12 — ADR 0024 §13: `POST /lessons` gains `sourceIds` (≤ 3), resolved against the `sources` table and written to `Lesson.sources` (ADR 0027 §5). See the second amendment in `0024-document-persistence-and-lesson-brief.md`.
 - 2026-09-12 — ADR 0025 §20: `SourceLocator` gains `section`; a paste has a `storageKey`; the `SourceLoader` reads `extracted.json` and Plan caps source text at 40k chars (ADR 0027 §3, §6). See the amendment in `0025-lesson-generation-pipeline.md`.
 - 2026-09-12 — ADR 0023 §6, Consequences: Import posts to `POST /documents` through `libraryMutations.importDocument` (server-assigned id); exporters fetch `/files/` images with the session cookie (`include` for the api origin, `omit` elsewhere, `crossorigin` only in capture mode); imported `/files/` references from another Workspace render broken by design; locked lessons export their current state (TEACH-272). See the amendment in `0023-export-pipeline.md`.
+- 2026-09-12 — ADR 0013: `packages/extract` (`@tj/extract`) added to the package map (ADR 0027 §2). See the fifth amendment in `0013-monorepo-layout.md`.
