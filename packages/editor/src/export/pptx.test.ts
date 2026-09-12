@@ -517,7 +517,7 @@ describe("exportLessonPptx", () => {
     expect(blob.size).toBeGreaterThan(1_000);
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     expect(Object.keys(zip.files).some((name) => name.endsWith(".gif"))).toBe(true);
-    const xml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+    const xml = await zip.file("ppt/slides/slide1.xml")?.async("string");
     expect(xml).toContain("A GIF that could not be fetched");
   }, 30_000);
 });
@@ -537,8 +537,8 @@ describe("the emitted slide XML", () => {
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     const names = Object.keys(zip.files)
       .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
-      .sort((a, b) => Number(/(\d+)/.exec(a)![1]) - Number(/(\d+)/.exec(b)![1]));
-    return Promise.all(names.map((name) => zip.file(name)!.async("string")));
+      .sort((a, b) => Number(/(\d+)/.exec(a)?.[1]) - Number(/(\d+)/.exec(b)?.[1]));
+    return Promise.all(names.map((name) => zip.file(name)?.async("string") ?? ""));
   };
 
   const occurrences = (haystack: string, needle: string) => haystack.split(needle).length - 1;
