@@ -16,7 +16,9 @@ const MAX_IMAGES = 40;
 export async function extractPdf(bytes: Uint8Array): Promise<Extraction> {
   let doc: Awaited<ReturnType<typeof getDocumentProxy>>;
   try {
-    doc = await getDocumentProxy(bytes);
+    // pdfjs transfers the buffer to its worker and leaves the caller's detached (byteLength 0);
+    // the API still has to store the original, so it gets a copy.
+    doc = await getDocumentProxy(new Uint8Array(bytes));
   } catch {
     throw new ExtractError("malformed", "pdf");
   }

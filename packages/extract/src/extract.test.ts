@@ -44,6 +44,13 @@ describe("extract pdf", () => {
     expect(out.images).toEqual([]);
   });
 
+  test("the caller's bytes survive extraction (pdfjs would otherwise detach the buffer)", async () => {
+    const bytes = await pdfWithPages(PHOTOSYNTHESIS);
+    const before = bytes.byteLength;
+    await extract({ bytes, mime: MIME.pdf, name: "plants.pdf" });
+    expect(bytes.byteLength).toBe(before);
+  });
+
   test("embedded pictures come out as PNGs with the page locator", async () => {
     const bytes = await pdfWithPages(["Look at this", ""], { imageOnPage: 2 });
     const out = await extract({ bytes, mime: MIME.pdf, name: "pic.pdf" });
