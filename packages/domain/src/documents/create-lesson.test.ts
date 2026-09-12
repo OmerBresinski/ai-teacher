@@ -74,11 +74,26 @@ describe("CreateLessonSchema", () => {
     expect(CreateLessonSchema.parse(input)).toEqual(input);
   });
 
+  test("accepts up to three sourceIds and rejects a fourth or a non-uuid", () => {
+    const ids = [
+      "0192b6e0-0000-7000-8000-000000000001",
+      "0192b6e0-0000-7000-8000-000000000002",
+      "0192b6e0-0000-7000-8000-000000000003",
+    ];
+    const parsed = CreateLessonSchema.parse({ brief: { topic: "x" }, sourceIds: ids.slice(0, 2) });
+    expect(parsed.sourceIds).toEqual(ids.slice(0, 2));
+    expect(
+      CreateLessonSchema.safeParse({ brief: { topic: "x" }, sourceIds: [...ids, ids[0]] }).success,
+    ).toBe(false);
+    expect(
+      CreateLessonSchema.safeParse({ brief: { topic: "x" }, sourceIds: ["not-a-uuid"] }).success,
+    ).toBe(false);
+  });
+
   test.each([
     ["no brief", {}, "brief"],
     ["an empty topic", { brief: { topic: "" } }, "brief"],
     ["a duration under 5", { brief: { topic: "x", durationMin: 4 } }, "brief"],
-    ["sourceIds (F03)", { brief: { topic: "x" }, sourceIds: [] }, undefined],
     ["a bad ageBand", { brief: { topic: "x" }, ageBand: "ks9" }, "ageBand"],
     ["a long subject", { brief: { topic: "x" }, subject: "a".repeat(81) }, "subject"],
   ])("rejects %s", (_label, input, field) => {

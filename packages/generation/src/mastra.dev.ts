@@ -90,9 +90,10 @@ export const STUDIO_PORT = Number(process.env.PORT ?? 4111);
  * minted here since nothing is persisted. The inner `lessonWorkflow` takes a whole `PipelineState`,
  * which is not something to type into a form.
  */
-export const StudioInputSchema = CreateLessonSchema.extend({
+export const StudioInputSchema = CreateLessonSchema.omit({ sourceIds: true }).extend({
   // `.describe()` on the domain schemas themselves: the identifier guard and length caps on
-  // `topic` stay exactly as `POST /lessons` applies them (ADR 0024 §2).
+  // `topic` stay exactly as `POST /lessons` applies them (ADR 0024 §2). `sourceIds` is omitted:
+  // Studio has no object storage to load a Source from (ADR 0027 §6).
   brief: CreateLessonSchema.shape.brief.extend({
     topic: CreateLessonSchema.shape.brief.shape.topic.describe(
       "Topic or objective, e.g. 'The water cycle'",
