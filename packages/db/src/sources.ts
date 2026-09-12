@@ -49,26 +49,28 @@ export async function getSource(ws: WorkspaceDb, id: string): Promise<SourceRow 
 /**
  * Claim `ids` for `lessonId` in one conditional `UPDATE … RETURNING` (§5): only live, unbound rows
  * of this Workspace are touched, so two concurrent lessons cannot claim the same Source. Returns
- * the claimed rows in the order of `ids`; **fewer rows than ids means the claim failed** and the
- * caller rolls its transaction back — a missing, foreign, deleted or already-bound id all read the
- * same. An empty `ids` returns `[]` without a query.
+ * the claimed rows in the order of `ids` (duplicates collapsed, so a repeated id yields one row
+ * and one `SourceRef`); **fewer rows than distinct ids means the claim failed** and the caller
+ * rolls its transaction back — a missing, foreign, deleted or already-bound id all read the same.
+ * An empty `ids` returns `[]` without a query.
  */
 export async function bindSourcesToLesson(
   ws: WorkspaceDb,
   ids: readonly string[],
   lessonId: string,
 ): Promise<SourceRow[]> {
-  if (ids.length === 0) return [];
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return [];
   const rows = await ws
     .update(
       sources,
-      and(inArray(sources.id, [...ids]), isNull(sources.lessonId), isNull(sources.deletedAt)),
+      and(inArray(sources.id, unique), isNull(sources.lessonId), isNull(sources.deletedAt)),
     )
     .set({ lessonId, updatedAt: new Date() })
     .returning();
   const byId = new Map(rows.map((row) => [row.id, row]));
   const ordered: SourceRow[] = [];
-  for (const id of ids) {
+  for (const id of unique) {
     const row = byId.get(id);
     if (row !== undefined) ordered.push(row);
   }
@@ -100,7 +102,10 @@ export async function softDeleteSource(
     .update(sources, and(eq(sources.id, id), isNull(sources.lessonId), isNull(sources.deletedAt)))
     .set({ deletedAt: now, updatedAt: now })
     .returning({ id: sources.id });
-  return rows.length > 0 ? "ok" : "missing";
+  if (rows.length > 0) return "ok";
+  // Lost a race between the read and the update: a lesson claimed it, or it was deleted meanwhile.
+  const after = await getSource(ws, id);
+  return after !== null && after.lessonId !== null ? "bound" : "missing";
 }
 
 /** The `SourceRef` a row becomes in `Lesson.sources` (ADR 0025 §20). */

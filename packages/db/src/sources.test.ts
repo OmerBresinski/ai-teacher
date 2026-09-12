@@ -96,6 +96,13 @@ describeDb("sources repository", () => {
       expect(await bindSourcesToLesson(wsA, [], newId())).toEqual([]);
     });
 
+    test("a repeated id is claimed once and returned once", async () => {
+      const a = newSource(wsAId);
+      await createSource(wsA, a);
+      const rows = await bindSourcesToLesson(wsA, [a.id, a.id], newId());
+      expect(rows.map((r) => r.id)).toEqual([a.id]);
+    });
+
     test("a soft-deleted or unknown id is not claimed", async () => {
       const a = newSource(wsAId);
       await createSource(wsA, a);
@@ -142,6 +149,28 @@ describeDb("sources repository", () => {
       expect(await softDeleteSource(wsA, a.id)).toBe("ok");
       expect(await getSource(wsA, a.id)).toBeNull();
       expect(await softDeleteSource(wsA, a.id)).toBe("missing");
+    });
+
+    test("a claim that lands between the read and the update reports bound", async () => {
+      const a = newSource(wsAId);
+      await createSource(wsA, a);
+      // Simulate the race: the row is unbound when read, bound by the time the update runs.
+      const racing = {
+        ...wsA,
+        update: ((
+          table: Parameters<WorkspaceDb["update"]>[0],
+          where?: Parameters<WorkspaceDb["update"]>[1],
+        ) => ({
+          set: (values: Parameters<ReturnType<WorkspaceDb["update"]>["set"]>[0]) => ({
+            returning: async () => {
+              await bindSourcesToLesson(wsA, [a.id], newId());
+              return wsA.update(table, where).set(values).returning();
+            },
+          }),
+        })) as WorkspaceDb["update"],
+      } as WorkspaceDb;
+      expect(await softDeleteSource(racing, a.id)).toBe("bound");
+      expect((await getSource(wsA, a.id))?.deletedAt).toBeNull();
     });
 
     test("bound for a claimed row, which stays as it is", async () => {
