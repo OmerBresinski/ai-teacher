@@ -934,6 +934,21 @@ the original finding remains. Generate still propagates the refusal because it h
 to fall back to. Other stage handling is unchanged. The separate worker `ai.ping` timeout remains
 TEACH-83; this amendment bounds generation calls, not every SDK caller.
 
+### Deadline correction (2026-09-12, TEACH-235 / TEACH-258 baseline)
+
+The first real eval after TEACH-235 completed 0/8 briefs: six failed at the 30-second slide
+deadline, two at the 20-second input deadline. A Generate-only probe with a 120-second limit
+returned valid slide answers in 86.7, 99.9 and 92.1 seconds; other attempts still timed out.
+These limits had treated a desired response time as proof that a request was stuck.
+
+The founder approved conservative 3–5 minute per-attempt bounds before retrying the evaluation.
+This supersedes the table above: check-input, skeleton, Verify, slides, photo shortlist/pick and
+Repair/repair-fact use **180 seconds**; facts, worksheets, Evaluate, proposals and eval/custom
+calls use **300 seconds**. The single retry, cancellation precedence and timeout classification
+stay as implemented. A slow provider can still exceed these bounds; that remains an explicit
+failure, not an unlimited wait. This is a reliability correction, not a change to the product's
+generation-latency target.
+
 ## Amendment (2026-09-12, project Lesson shape by objective verb — TEACH-230)
 
 §8, §11, §12. The writers and the reviewer learn the verb. Plan (TEACH-229) decides *which* kinds

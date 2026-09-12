@@ -108,11 +108,11 @@ test("late provider success cannot overwrite the retry or charge the budget agai
 });
 
 test("each registered prompt uses its stage-specific deadline across version bumps", () => {
-  const expected = [20, 60, 90, 45, 30, 60, 30, 15, 60, 30, 30, 60, 60];
+  const expected = [180, 180, 300, 180, 180, 300, 180, 180, 300, 180, 180, 300, 300];
   expect(Object.values(PROMPTS).map((prompt) => callTimeoutMs(prompt.version))).toEqual(
     expected.map((seconds) => seconds * 1000),
   );
-  expect(callTimeoutMs("plan-facts.v99")).toBe(90_000);
-  expect(callTimeoutMs("rubric-judge.v2")).toBe(60_000);
-  expect(callTimeoutMs("constructor")).toBe(60_000);
+  expect(callTimeoutMs("plan-facts.v99")).toBe(300_000);
+  expect(callTimeoutMs("rubric-judge.v2")).toBe(300_000);
+  expect(callTimeoutMs("constructor")).toBe(300_000);
 });
