@@ -2,8 +2,7 @@ import { escapeHtml } from "./components.mjs";
 
 // The approved hero silhouettes are independent of the original loading cast.
 const artwork = {
-  support: `<svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="hero-support-paper-1" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#fbf6e0"/><stop offset="100.0%" stop-color="#f7f1db"/></linearGradient><linearGradient id="hero-support-paper-6" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#dbe5c2"/><stop offset="50.0%" stop-color="#d8e3bf"/><stop offset="100.0%" stop-color="#d2dfb9"/></linearGradient><linearGradient id="hero-support-paper-7" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#859973"/><stop offset="100.0%" stop-color="#7d926c"/></linearGradient></defs><g class="body">
-  <path class="limb" d="M91 229 80 277 59 282 M198 228 199 266 222 270"/>
+  support: `<svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="hero-support-paper-1" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#fbf6e0"/><stop offset="100.0%" stop-color="#f7f1db"/></linearGradient><linearGradient id="hero-support-paper-6" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#dbe5c2"/><stop offset="50.0%" stop-color="#d8e3bf"/><stop offset="100.0%" stop-color="#d2dfb9"/></linearGradient><linearGradient id="hero-support-paper-7" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#859973"/><stop offset="100.0%" stop-color="#7d926c"/></linearGradient></defs><path class="hero-legs limb" d="M90.7877811146455 238.3035033938028 Q85.39389055732275 257.6517516969014 80 277 L59 282 M196.313999093285 220.57732729390295 Q197.6569995466425 243.28866364695148 199 266 L222 270"/><g class="body" transform="translate(150 235) rotate(-9) translate(-150 -235)">
   <g class="arm-right"><path class="limb" d="M238 158 Q259 157 273 131"/><ellipse cx="273" cy="131" rx="3.8" ry="5.2" transform="rotate(31 273 131)" fill="currentColor" stroke="none"/><path d="m274 128 5-3" stroke-width="2.1"/></g>
   <path d="M43 67 145 63 245 67 246 236 Q192 231 145 233 Q94 234 43 239Z" fill="url(#hero-support-paper-7)"/>
   <path d="M49 62 Q127 54 145 65 Q166 57 240 61 L240 230 Q185 224 145 230 Q103 224 49 233Z" fill="url(#hero-support-paper-1)"/>
@@ -15,8 +14,7 @@ const artwork = {
   <path d="M76 189h42 M171 191h38"/>
   <g class="arm-left"><path class="limb" d="M49 162 C25 185 45 199 79 172"/><ellipse cx="79" cy="172" rx="3.8" ry="5.2" transform="rotate(35 79 172)" fill="currentColor" stroke="none"/></g>
 </g></svg>`,
-  slides: `<svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="hero-slides-paper-0" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#f7c55d"/><stop offset="50.0%" stop-color="#f5c156"/><stop offset="100.0%" stop-color="#f3bd51"/></linearGradient><linearGradient id="hero-slides-paper-1" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#fbf6e0"/><stop offset="100.0%" stop-color="#f7f1db"/></linearGradient><linearGradient id="hero-slides-paper-2" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#e99458"/><stop offset="100.0%" stop-color="#e79054"/></linearGradient></defs><g class="body">
-  <path class="limb" d="M82 211 73 251 55 256 M213 205 217 239 234 242"/>
+  slides: `<svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="hero-slides-paper-0" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#f7c55d"/><stop offset="50.0%" stop-color="#f5c156"/><stop offset="100.0%" stop-color="#f3bd51"/></linearGradient><linearGradient id="hero-slides-paper-1" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#fbf6e0"/><stop offset="100.0%" stop-color="#f7f1db"/></linearGradient><linearGradient id="hero-slides-paper-2" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#e99458"/><stop offset="100.0%" stop-color="#e79054"/></linearGradient></defs><path class="hero-legs limb" d="M82 211 Q77.5 231 73 251 L55 256 M213 205 Q215 222 217 239 L234 242"/><g class="body" transform="translate(150 235) rotate(0) translate(-150 -235)">
   <g class="arm-left"><path class="limb" d="M48 132 Q15 130 8 160"/><ellipse cx="8" cy="160" rx="3.6" ry="5" transform="rotate(27 8 160)" fill="currentColor" stroke="none"/></g>
   <g class="arm-right"><path class="limb" d="M248 135 Q277 138 284 101"/><ellipse cx="284" cy="101" rx="3.8" ry="5.5" transform="rotate(14 284 101)" fill="currentColor" stroke="none"/><path d="m282 100-1-5" stroke-width="1.7"/></g>
   <path d="M40 62 237 53 245 211 45 218Z" fill="url(#hero-slides-paper-1)"/>
@@ -28,8 +26,7 @@ const artwork = {
   <path d="m80 185 30-31 24 16 32-36 51 45Z" fill="url(#hero-slides-paper-2)"/>
   <circle cx="199" cy="107" r="14" fill="#fff3cb"/>
 </g></svg>`,
-  activity: `<svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="hero-activity-paper-1" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#fbf6e0"/><stop offset="100.0%" stop-color="#f7f1db"/></linearGradient><linearGradient id="hero-activity-paper-3" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#faf7eb"/><stop offset="50.0%" stop-color="#f9f6e9"/><stop offset="100.0%" stop-color="#f7f4e6"/></linearGradient><linearGradient id="hero-activity-paper-4" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#d0dfec"/><stop offset="100.0%" stop-color="#c9dae7"/></linearGradient><linearGradient id="hero-activity-paper-5" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#cddab0"/><stop offset="100.0%" stop-color="#c7d6aa"/></linearGradient></defs><g class="body">
-  <path class="limb" d="M99 229 92 267 74 271 M190 235 195 270 213 274"/>
+  activity: `<svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="hero-activity-paper-1" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#fbf6e0"/><stop offset="100.0%" stop-color="#f7f1db"/></linearGradient><linearGradient id="hero-activity-paper-3" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#faf7eb"/><stop offset="50.0%" stop-color="#f9f6e9"/><stop offset="100.0%" stop-color="#f7f4e6"/></linearGradient><linearGradient id="hero-activity-paper-4" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#d0dfec"/><stop offset="100.0%" stop-color="#c9dae7"/></linearGradient><linearGradient id="hero-activity-paper-5" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#cddab0"/><stop offset="100.0%" stop-color="#c7d6aa"/></linearGradient></defs><path class="hero-legs limb" d="M99 229 Q95.5 248 92 267 L74 271 M190 235 Q192.5 252.5 195 270 L213 274"/><g class="body" transform="translate(150 235) rotate(0) translate(-150 -235)">
   <g class="arm-left"><path class="limb" d="M66 143 Q32 145 36 174"/><ellipse cx="36" cy="174" rx="3.5" ry="5" transform="rotate(-16 36 174)" fill="currentColor" stroke="none"/></g>
   <g class="arm-right"><path class="limb" d="M235 143 Q266 147 272 105"/><ellipse cx="272" cy="105" rx="3.8" ry="5.4" transform="rotate(15 272 105)" fill="currentColor" stroke="none"/><path d="m270 104-1-4" stroke-width="1.7"/></g>
   <path d="M71 46 209 51 239 91 226 238 59 230Z" fill="url(#hero-activity-paper-1)"/>
@@ -41,8 +38,7 @@ const artwork = {
   <path d="M92 149 117 150 115 175 89 174Z" fill="url(#hero-activity-paper-5)"/>
   <path d="M133 156l57 2 M133 169l40 1 M91 191l90 4 M91 205l67 3"/>
 </g></svg>`,
-  answers: `<svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="hero-answers-paper-8" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#f1b098"/><stop offset="50.0%" stop-color="#efaa92"/><stop offset="100.0%" stop-color="#eca68e"/></linearGradient><linearGradient id="hero-answers-paper-9" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#d98a72"/><stop offset="100.0%" stop-color="#d3836b"/></linearGradient></defs><g class="body">
-  <path class="limb" d="M115 232 120 269 101 273 M180 232 192 279 209 283"/>
+  answers: `<svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="hero-answers-paper-8" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#f1b098"/><stop offset="50.0%" stop-color="#efaa92"/><stop offset="100.0%" stop-color="#eca68e"/></linearGradient><linearGradient id="hero-answers-paper-9" x1="0%" y1="0%" x2="95%" y2="85%"><stop offset="0.0%" stop-color="#d98a72"/><stop offset="100.0%" stop-color="#d3836b"/></linearGradient></defs><path class="hero-legs limb" d="M115.62649272276917 227.75693452589587 Q117.81324636138459 248.37846726294794 120 269 L101 273 M180.1419925794551 235.67844184723046 Q186.07099628972753 257.33922092361524 192 279 L209 283"/><g class="body" transform="translate(150 235) rotate(7) translate(-150 -235)">
   <g class="arm-left"><path class="limb" d="M77 151 Q50 164 28 135"/><ellipse cx="28" cy="135" rx="3.8" ry="5.4" transform="rotate(-37 28 135)" fill="currentColor" stroke="none"/><path d="m26 132-5-3" stroke-width="1.8"/></g>
   <path d="M84 66H224V239H84Z" fill="url(#hero-answers-paper-9)"/>
   <path d="M77 58H217V232H77Z" fill="url(#hero-answers-paper-8)"/>
@@ -112,19 +108,5 @@ const poses = {
 
 export function heroCharacter(kind, className) {
   const pose = poses[kind];
-  const angle = (pose.angle * Math.PI) / 180;
-  const legs = pose.feet
-    .map(([hx, hy, ax, ay, tx, ty]) => {
-      const x = 150 + (hx - 150) * Math.cos(angle) - (hy - 235) * Math.sin(angle);
-      const y = 235 + (hx - 150) * Math.sin(angle) + (hy - 235) * Math.cos(angle);
-      return `M${x} ${y} Q${(x + ax) / 2} ${(y + ay) / 2} ${ax} ${ay} L${tx} ${ty}`;
-    })
-    .join(" ");
-  const svg = artwork[kind]
-    .replace(/<path class="limb" d="[^"]*"\/>/, "")
-    .replace(
-      '<g class="body">',
-      `<path class="hero-legs limb" d="${legs}"/><g class="body" transform="translate(150 235) rotate(${pose.angle}) translate(-150 -235)">`,
-    );
-  return `<div class="hm-actor hm-${className}" data-hero-actor="${kind}" data-hero-pose="${escapeHtml(JSON.stringify(pose))}" aria-hidden="true">${svg}</div>`;
+  return `<div class="hm-actor hm-${className}" data-hero-actor="${kind}" data-hero-pose="${escapeHtml(JSON.stringify(pose))}" aria-hidden="true">${artwork[kind]}</div>`;
 }
