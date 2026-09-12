@@ -235,7 +235,7 @@ const CONTRACT = [
     setBy: "manual",
     format: "origin-list",
     files: ["api"],
-    railwayValue: "https://teaching-journey-web.vercel.app",
+    railwayValue: "https://app.bresinski.org",
     description:
       "Comma-separated exact browser origins allowed by CORS (credentials on) and trusted by better-auth. Locally the Vite dev server; on Railway the Vercel production origin (`https://teaching-journey-web.vercel.app`, later `https://app.<domain>`).",
   },
@@ -273,14 +273,13 @@ const CONTRACT = [
     local: "http://localhost:3001",
     railway: "both",
     vercel: "n/a",
-    setBy: "reference",
+    setBy: "template",
     format: "url",
     files: ["api"],
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Railway reference syntax
-    railwayValue: "https://${{RAILWAY_PUBLIC_DOMAIN}}",
+    railwayValue: "https://api.bresinski.org",
     description:
-      "Public origin of this API; magic links are `<BETTER_AUTH_URL>/auth/magic-link/verify?...`. On Railway the reference `https://$" +
-      "{{RAILWAY_PUBLIC_DOMAIN}}` resolves per environment (PR envs included).",
+      "Public origin of this API; magic links are `<BETTER_AUTH_URL>/auth/magic-link/verify?...`. Production is the custom domain (TEACH-36); `RAILWAY_PUBLIC_DOMAIN` only ever names the `*.up.railway.app` host, so the value is explicit. PR environments inherit it; override with `https://api-ai-teacher-pr-<n>.up.railway.app` if Vercel previews come back.",
   },
   {
     name: "COOKIE_DOMAIN",
@@ -289,11 +288,12 @@ const CONTRACT = [
     local: null,
     railway: "prod",
     vercel: "n/a",
-    setBy: "manual",
+    setBy: "template",
     format: "string",
     files: ["api"],
+    railwayValue: ".bresinski.org",
     description:
-      "Parent domain of the session cookie (`.<domain>`) so app.<domain> and api.<domain> share it. Unset locally (the Vite proxy makes web and api same-origin) and until custom domains exist (ADR 0010).",
+      "Parent domain of the session cookie (`.bresinski.org`) so app.bresinski.org and api.bresinski.org share it (TEACH-36, ADR 0010). Unset locally (the Vite proxy makes web and api same-origin). The api ignores it with a boot warning when BETTER_AUTH_URL is not under it (a PR environment on `*.up.railway.app` inheriting the production value).",
   },
   {
     name: "COOKIE_SAMESITE",
@@ -306,9 +306,9 @@ const CONTRACT = [
     format: "enum",
     values: ["lax", "none", "strict"],
     files: ["api"],
-    railwayValue: "none",
+    railwayValue: "lax",
     description:
-      "lax (default) | none | strict. `none` makes the cookie `SameSite=None; Secure` (Secure forced whatever NODE_ENV, boot warning) for web and api on unrelated origins — Vercel preview <-> Railway PR api, and **production today** (`*.vercel.app` <-> `*.up.railway.app`, set 2026-09-04). Once `app.<d>`/`api.<d>` exist, switch production to `lax` + COOKIE_DOMAIN (ADR 0008).",
+      "lax (default) | none | strict. Production is `lax` with COOKIE_DOMAIN since TEACH-36 (app.bresinski.org / api.bresinski.org are first-party; WebKit blocks third-party cookies, which is why the earlier `none` stopgap failed on every iOS browser). `none` makes the cookie `SameSite=None; Secure` (boot warning) and is only for a Vercel preview <-> Railway PR api pair on unrelated origins.",
   },
   {
     name: "MAIL_PROVIDER",
@@ -840,7 +840,7 @@ const CONTRACT = [
     format: "string",
     files: ["web"],
     description:
-      "Base URL the browser uses for the API. Locally `/api`: the Vite dev server proxies `/api/*` to the api and strips the prefix so cookies stay same-origin. A production build requires an absolute URL — Vercel Production holds the Railway api origin (`https://api-production-903f.up.railway.app` today, `https://api.<domain>` once a domain exists); previews derive it (see RAILWAY_PR_API_URL_TEMPLATE).",
+      "Base URL the browser uses for the API. Locally `/api`: the Vite dev server proxies `/api/*` to the api and strips the prefix so cookies stay same-origin. A production build requires an absolute URL — Vercel Production holds `https://api.bresinski.org` (TEACH-36); previews derive it (see RAILWAY_PR_API_URL_TEMPLATE).",
   },
   {
     name: "VITE_APP_ENV",

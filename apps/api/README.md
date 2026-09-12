@@ -266,16 +266,18 @@ NODE_ENV=test ENABLE_TEST_ROUTES=1 PORT=3811 DATABASE_URL=$TEST_DATABASE_URL \
 
 - **Local development**: web and api are made same-origin by the Vite dev proxy, so no
   `COOKIE_DOMAIN`, `SameSite=Lax`, not `Secure`.
-- **Production (target)**: `app.<parent>` (Vercel) and `api.<parent>` (Railway) share the cookie
-  via `COOKIE_DOMAIN=.<parent>` (`advanced.crossSubDomainCookies`); cookies are `Secure` whenever
-  `NODE_ENV=production`. **Today (since 2026-09-04)** there is no parent domain —
-  `teaching-journey-web.vercel.app` ↔ `api-production-903f.up.railway.app` — so production runs the
-  unrelated-origins mode below (`COOKIE_SAMESITE=none`, `COOKIE_DOMAIN` unset); switch to `lax` +
-  `COOKIE_DOMAIN` once the domain exists (ADR 0008 amendment, `infra/README.md`).
-- **Unrelated origins** (Vercel preview ↔ Railway PR environment `ai-teacher-pr-<n>`, and
-  production until the domain): `COOKIE_SAMESITE=none` — `sessionCookieAttributes()` then emits
-  `SameSite=None; Secure` (Secure forced, since browsers drop `None` without it) and `createAuth`
-  logs a warning at boot. Leave `COOKIE_DOMAIN` unset.
+- **Production** (since TEACH-36, 2026-09-12): `app.bresinski.org` (Vercel) and
+  `api.bresinski.org` (Railway) share the cookie via `COOKIE_DOMAIN=.bresinski.org`
+  (`advanced.crossSubDomainCookies`), `COOKIE_SAMESITE=lax`; cookies are `Secure` whenever
+  `NODE_ENV=production`. First-party, so WebKit (every iOS browser) stores it — the earlier
+  `SameSite=None` stopgap across `*.vercel.app` ↔ `*.up.railway.app` was dropped by ITP and every
+  mobile sign-in bounced back to `/sign-in`.
+- **Unrelated origins** (Vercel preview ↔ Railway PR environment `ai-teacher-pr-<n>`):
+  `COOKIE_SAMESITE=none` — `sessionCookieAttributes()` then emits `SameSite=None; Secure` (Secure
+  forced, since browsers drop `None` without it) and `createAuth` logs a warning at boot. Leave
+  `COOKIE_DOMAIN` unset; when a PR environment inherits production's value anyway,
+  `effectiveCookieDomain()` ignores it with a boot warning because `BETTER_AUTH_URL` is not under
+  it (a `Domain=` that does not cover the host would be dropped by the browser).
 - Cookie names are prefixed `tj.`; `trustedOrigins` is `WEB_ORIGIN` + `WEB_ORIGIN_PATTERNS`
   (better-auth understands the same `*` globs), so requests carrying an `Origin` outside those
   are rejected by better-auth's CSRF check.

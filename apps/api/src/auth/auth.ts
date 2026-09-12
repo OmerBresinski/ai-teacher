@@ -67,7 +67,7 @@ function socialProviders(env: AuthEnv, logger: Logger) {
  * Session cookie attributes (ADR 0008). `Lax` by default; `COOKIE_SAMESITE=none` is the
  * *preview* exception (Vercel preview ↔ Railway PR api on unrelated origins) and browsers only
  * accept `SameSite=None` together with `Secure`, so it forces `secure` regardless of `NODE_ENV`.
- * Production keeps `Lax` and shares the cookie via `COOKIE_DOMAIN` (ADR 0010).
+ * Production keeps `Lax` and shares the cookie via `COOKIE_DOMAIN` (ADR 0010, TEACH-36).
  */
 export function sessionCookieAttributes(env: Pick<AuthEnv, "NODE_ENV" | "COOKIE_SAMESITE">): {
   sameSite: "lax" | "strict" | "none";
@@ -82,7 +82,29 @@ export function sessionCookieAttributes(env: Pick<AuthEnv, "NODE_ENV" | "COOKIE_
   };
 }
 
+/**
+ * `COOKIE_DOMAIN` only when this api is actually under it. A browser drops a `Domain=` that does
+ * not cover the responding host, so an api at `api-ai-teacher-pr-7.up.railway.app` that inherited
+ * production's `.bresinski.org` would set a cookie nobody stores; better to fall back to a
+ * host-only cookie and say so once at boot.
+ */
+export function effectiveCookieDomain(
+  env: Pick<AuthEnv, "COOKIE_DOMAIN" | "BETTER_AUTH_URL">,
+  logger: Pick<Logger, "warn">,
+): string | undefined {
+  if (!env.COOKIE_DOMAIN) return undefined;
+  const host = new URL(env.BETTER_AUTH_URL).hostname;
+  const parent = env.COOKIE_DOMAIN.replace(/^\./, "");
+  if (host === parent || host.endsWith(`.${parent}`)) return env.COOKIE_DOMAIN;
+  logger.warn(
+    { cookieDomain: env.COOKIE_DOMAIN, host },
+    "COOKIE_DOMAIN ignored: BETTER_AUTH_URL is not under it (inherited production value in a PR environment?); session cookie is host-only",
+  );
+  return undefined;
+}
+
 export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
+  const cookieDomain = effectiveCookieDomain(env, logger);
   if (env.COOKIE_SAMESITE === "none") {
     logger.warn(
       "COOKIE_SAMESITE=none: session cookie is SameSite=None; Secure (cross-site preview mode). " +
@@ -111,8 +133,8 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
     },
     advanced: {
       cookiePrefix: "tj",
-      crossSubDomainCookies: env.COOKIE_DOMAIN
-        ? { enabled: true, domain: env.COOKIE_DOMAIN }
+      crossSubDomainCookies: cookieDomain
+        ? { enabled: true, domain: cookieDomain }
         : { enabled: false },
       defaultCookieAttributes: sessionCookieAttributes(env),
       useSecureCookies: env.NODE_ENV === "production" || env.COOKIE_SAMESITE === "none",

@@ -12,11 +12,11 @@ EU-West), [0016](../docs/adr/0016-prd-deviations.md) (EU not UK residency).
 > **`teaching-journey`** (`a79752e1-8bf5-41d0-b832-f1b64aaf6d2f`), environment `production`
 > (`d595bbf8-dc4b-494f-b1f7-0023dd2dc25d`), region `europe-west4-drams3a`, services `postgres`
 > (`5c408f9c-b1f2-4820-8a0b-a888391dfa02`), `api` (`ef433c66-c762-4c21-890e-c69856a09a39`, public
-> domain **`https://api-production-903f.up.railway.app`**) and `worker`
+> domain **`https://api.bresinski.org`**, Railway host `api-production-903f.up.railway.app`) and `worker`
 > (`5d7a3bc8-a02d-44b8-83ca-ea11c20a1676`, no domain). GitHub source is connected for api + worker
 > on `master`, PR environments are on and **verified with PR #30** (see "PR environments").
 > Production is wired end-to-end to the Vercel web app (CORS preflight → 204, magic link → `302`
-> back to `https://teaching-journey-web.vercel.app` with the session cookie → `/me` 200; pre-deploy
+> back to `https://app.bresinski.org` with the session cookie → `/me` 200; pre-deploy
 > `db:migrate: DATABASE_URL up to date`). Since TEACH-142 (2026-09-07) object storage is the
 > Railway Bucket **`files`** (`c161038f-1fd4-496b-84a3-301a74d18401`, region `ams`) and the
 > `S3_*` variables are set on api + worker: the api boots with `storage="s3"` (see "Railway
@@ -29,8 +29,8 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 
 | Gap | Today | Target | Tracked / documented |
 | --- | ----- | ------ | -------------------- |
-| **Cross-site session cookie** | `COOKIE_SAMESITE=none` on the production api because `*.vercel.app` and `*.up.railway.app` share no parent domain. | Buy `<domain>`; `app.<domain>` → Vercel, `api.<domain>` → Railway; `COOKIE_SAMESITE=lax`, `COOKIE_DOMAIN=.<domain>`, `WEB_ORIGIN`/`BETTER_AUTH_URL`/`VITE_API_URL` updated. | TEACH-36; "Cookie stopgap" below; ADR 0008 amendment |
-| **Vercel production is public** | `teaching-journey-web.vercel.app` has no Deployment Protection; anyone can request a sign-in link (delivered by Resend since TEACH-35). | Founder decision: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
+| **Founder's domain, not a product domain** | `app.bresinski.org` / `api.bresinski.org` (TEACH-36) run on Omer's personal domain. | Buy the product domain; swap: two CNAMEs + `mail.<d>` records in Resend, then `WEB_ORIGIN`, `BETTER_AUTH_URL`, `COOKIE_DOMAIN`, `MAIL_FROM` on Railway and `VITE_API_URL` on Vercel. | ADR 0010 amendment (TEACH-36); "Domain" below |
+| **Vercel production is public** | `app.bresinski.org` has no Deployment Protection; anyone can request a sign-in link (delivered by Resend since TEACH-35). | Founder decision: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
 | **OAuth disabled** | Google/Microsoft sign-in off (no client credentials); magic link only. | Set the four `*_CLIENT_ID`/`*_CLIENT_SECRET` variables when the OAuth apps exist. | TEACH-39; `docs/env.md` |
 | **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
@@ -50,7 +50,7 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | Install / build        | from `apps/web/vercel.json`: `cd ../.. && bun install --frozen-lockfile --ignore-scripts` (skips the root `prepare` → `lefthook install`, which has no git repo on Vercel) and `cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web && bun run homepage:stage`; output `dist` |
 | Ignored Build Step     | `bash scripts/vercel-ignore-build.sh` (relative to `apps/web`): skips when nothing under `apps/web`, `homepage`, `packages/{ui,api-client,domain,config}`, `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`; always builds when that SHA is missing |
 | Git                    | `vercel git connect https://github.com/OmerBresinski/ai-teacher.git`; production branch **`master`** (set via `PATCH /v1/projects/teaching-journey-web/branch {"branch":"master"}`). Pushes to `master` deploy production. **Preview deployments are disabled since 2026-09-05** (`apps/web/vercel.json` `git.deploymentEnabled: { "master": true, "*": false }`): PRs hit the Hobby-plan build rate limit and the previews were not being used. Re-enable by deleting that key; the pairing recipe below still applies then |
-| Domains                | `teaching-journey-web.vercel.app` (auto). `app.<domain>` — `TODO(domain)`, domain follow-up              |
+| Domains                | **`app.bresinski.org`** (TEACH-36, `vercel domains add app.bresinski.org teaching-journey-web`; DNS is on Vercel so no record was needed) + `teaching-journey-web.vercel.app` (auto) |
 | Deployment protection  | Vercel Authentication (SSO) — Hobby default "Standard Protection": previews ask for a Vercel login. Whether to also protect **production** (`teaching-journey-web.vercel.app`) is a founder decision (dashboard-only); since 2026-09-04 the site works end-to-end against the Railway api, so this is low urgency — see "Dashboard-only (Vercel)". A Protection Bypass for Automation secret exists (curl/e2e: `x-vercel-protection-bypass: <secret>`, read it in *Settings → Deployment Protection*; never commit it) |
 | Speed Insights         | `@vercel/speed-insights` is loaded **only** when `VITE_APP_ENV=production` (`apps/web/src/lib/speed-insights.ts`, dynamic import, verified absent from preview `dist/`). Enabling the *feature* on the project is dashboard-only (CLI refuses: "incurs charges") |
 | Verified preview       | `https://teaching-journey-5v1umubdb-omerbresinskis-projects.vercel.app` (2026-09-04): `/dev/jobs` → 200 HTML, `/assets/does-not-exist.js` → 404, `/assets/*` `Cache-Control: public, max-age=31536000, immutable`, `/` and deep links `no-cache`, security headers present, no speed-insights code |
@@ -63,14 +63,14 @@ truth (Vercel `production`: `VITE_API_URL`, `VITE_APP_ENV`; `preview`: `VITE_APP
 the project (`vercel env ls <env> --json`, values discarded) and `--fix` prints the `vercel env add`
 commands. Current non-secret values (all set 2026-09-04, production redeployed and verified):
 
-- `VITE_API_URL` (Production) = `https://api-production-903f.up.railway.app` — the live Railway
-  api. **`TODO(domain)`**: change to `https://api.<domain>` via `vercel env rm VITE_API_URL
-  production && vercel env add VITE_API_URL production` once the api has a custom domain.
+- `VITE_API_URL` (Production) = `https://api.bresinski.org` (TEACH-36, 2026-09-12; was the
+  Railway host). Changing it needs `vercel env rm VITE_API_URL production && vercel env add
+  VITE_API_URL production` and a redeploy — the value is inlined at build time.
 - `RAILWAY_PR_API_URL_TEMPLATE` (Preview) = `https://api-ai-teacher-pr-{pr}.up.railway.app` —
   **confirmed** against PR #30 (Railway names the PR environment after the *GitHub repository*,
   `ai-teacher-pr-<n>`, not after the Railway project; see "PR environments").
-- `VITE_API_URL_FALLBACK` (Preview) = `https://api-production-903f.up.railway.app` (branch previews
-  without a PR number talk to the production api).
+- `VITE_API_URL_FALLBACK` (Preview) = `https://api.bresinski.org` (branch previews without a PR
+  number talk to the production api).
 
 `scripts/vercel-env.ts` (repo root, `bun test scripts/`) turns these into the two `VITE_*` values
 the bundle sees: production → the explicit `VITE_API_URL`; preview → `RAILWAY_PR_API_URL_TEMPLATE`
@@ -127,8 +127,10 @@ the rest of the application keeps `X-Frame-Options: DENY`.
 2. Vercel builds the PR with `VITE_API_URL` = that domain (see above).
 3. The api in the PR env must accept the preview origin and set a cross-site cookie:
    `COOKIE_SAMESITE=none` (`apps/api`: cookie becomes `SameSite=None; Secure`, boot logs a
-   warning) — PR environments inherit it from production, where it is **currently also `none`**
-   (see "Cookie stopgap" below) — and
+   warning). Production is `lax` since TEACH-36, so a PR environment needs the override
+   `railway variable set COOKIE_SAMESITE=none --service api --environment ai-teacher-pr-<n>`
+   (it also inherits `COOKIE_DOMAIN=.bresinski.org`, which the api ignores with a boot warning
+   because its host is not under it — see "Domain" below) — and
    `WEB_ORIGIN_PATTERNS=https://teaching-journey-web-*-omerbresinskis-projects.vercel.app`
    (glob, `*` = one DNS label — covers `…-git-<branch>-…` and `…-<hash>-…` preview URLs; also
    fed to better-auth `trustedOrigins`). `WEB_ORIGIN` keeps the exact production/alias origins.
@@ -138,17 +140,32 @@ the rest of the application keeps `X-Frame-Options: DENY`.
    instead of a silent CORS failure.
 4. Vercel's SSO protection does not affect the page's own XHR/SSE to the api once the page loaded.
 
-### Cookie stopgap: `COOKIE_SAMESITE=none` in production
+### Domain: `app.bresinski.org` / `api.bresinski.org` (TEACH-36, 2026-09-12)
 
-`https://teaching-journey-web.vercel.app` and `https://api-production-903f.up.railway.app` share no
-parent domain, so the ADR 0008 target (`SameSite=Lax` + `COOKIE_DOMAIN=.<domain>`) cannot work yet.
-Since 2026-09-04 production runs **`COOKIE_SAMESITE=none`** (session cookie
-`__Secure-tj.session_token …; Secure; SameSite=None`, verified: magic link → 302 to the Vercel
-origin → `/me` 200). Cross-site requests are rejected by `rejectCrossSiteRequests` (403) using the
-same origin allow-list as CORS; CORS alone does not prevent CSRF. Plan: once a domain exists, point
-`app.<domain>` at Vercel and
-`api.<domain>` at Railway, then `COOKIE_DOMAIN=.<domain>` + `COOKIE_SAMESITE=lax` on the api
-(post-provisioning checklist). Recorded as dated amendments in ADR 0008 and ADR 0010.
+The ADR 0008 target: web and api under one parent, `COOKIE_DOMAIN=.bresinski.org`,
+`COOKIE_SAMESITE=lax`. From 2026-09-04 to 2026-09-12 production ran the cross-site stopgap
+(`COOKIE_SAMESITE=none` across `teaching-journey-web.vercel.app` ↔
+`api-production-903f.up.railway.app`); it worked in desktop Chrome and failed on every iOS browser,
+because WebKit blocks third-party cookies outright and `/me` after the magic-link redirect was 401.
+
+What exists now (DNS for `bresinski.org` is on Vercel, `vercel dns ls bresinski.org`):
+
+| Host | Points at | How |
+| --- | --- | --- |
+| `app.bresinski.org` | Vercel `teaching-journey-web` | `vercel domains add app.bresinski.org teaching-journey-web` |
+| `api.bresinski.org` | Railway `api` (production) | `railway domain api.bresinski.org --project <id> -e production -s api` → CNAME `d31e6csj.up.railway.app` and the `_railway-verify.api` TXT it prints (`railway domain status`), both added with `vercel dns add`; the certificate issues a few minutes after the TXT resolves |
+| `mail.bresinski.org` | Resend sending domain (TEACH-35) | DKIM/SPF records, see "Sign-in mail" |
+
+Variables: Railway `api` production `WEB_ORIGIN=https://app.bresinski.org`,
+`BETTER_AUTH_URL=https://api.bresinski.org`, `COOKIE_DOMAIN=.bresinski.org`, `COOKIE_SAMESITE=lax`;
+Vercel Production `VITE_API_URL=https://api.bresinski.org` (rebuild required). The contract
+(`infra/env.contract.ts`) carries these as `railwayValue`s so `provision.sh` seeds them.
+Cross-site requests are still rejected by `rejectCrossSiteRequests` (403) using the origin
+allow-list; CORS alone does not prevent CSRF. The old hosts keep resolving but are not in
+`WEB_ORIGIN`, so a page loaded from `teaching-journey-web.vercel.app` gets 403 from the api.
+
+`bresinski.org` is the founder's domain. Moving to a product domain later is: the three rows above
+on the new domain, the Resend domain re-verified, and the five variables above plus `MAIL_FROM`.
 
 ### Turbo remote cache (TEACH-23 phase 2)
 
@@ -534,9 +551,8 @@ done; rm /tmp/creds.json
 # Bedrock bearer token (done 2026-09-04; use stdin so it is never printed or passed as argv):
 printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s api --skip-deploys
 printf '%s' "$AWS_BEARER_TOKEN_BEDROCK" | railway variable set AWS_BEARER_TOKEN_BEDROCK --stdin -p <project> -e production -s worker --skip-deploys
-# domain (open, TODO(domain)): once app.<domain> / api.<domain> exist,
-railway variable set COOKIE_DOMAIN=.<domain> --service api --skip-deploys
-railway variable set COOKIE_SAMESITE=lax --service api --skip-deploys              # switch from the `none` stopgap
+# domain (done 2026-09-12, TEACH-36; seeded from the contract by provision.sh, listed for a re-run by hand):
+railway variable set --service api --skip-deploys WEB_ORIGIN=https://app.bresinski.org BETTER_AUTH_URL=https://api.bresinski.org COOKIE_DOMAIN=.bresinski.org COOKIE_SAMESITE=lax
 # Sign-in mail via Resend (done 2026-09-11, TEACH-35; domain mail.bresinski.org verified in Resend's eu-west-1,
 # DNS on Vercel: `vercel dns ls bresinski.org`). The key is a send-only key from resend.com → API Keys.
 # provision.sh does not seed MAIL_PROVIDER: a fresh api refuses to boot until these three are set.
@@ -552,7 +568,8 @@ railway variable set MICROSOFT_CLIENT_SECRET --stdin --service api --skip-deploy
 railway redeploy --service api --yes && railway redeploy --service worker --yes
 # per PR environment (after the first PR deploy; the environment is named after the GitHub repo):
 railway variable set --service api --environment ai-teacher-pr-<n> --skip-deploys \
-  'WEB_ORIGIN_PATTERNS=https://teaching-journey-web-*-omerbresinskis-projects.vercel.app'
+  'WEB_ORIGIN_PATTERNS=https://teaching-journey-web-*-omerbresinskis-projects.vercel.app' \
+  COOKIE_SAMESITE=none BETTER_AUTH_URL=https://api-ai-teacher-pr-<n>.up.railway.app
 bun run env:check --pr <n>
 ```
 
@@ -564,9 +581,9 @@ Never set `ENABLE_TEST_ROUTES` on Railway (the api refuses it with `NODE_ENV=pro
 ## Provision, deploy, roll back
 
 After every production deploy run `bun run smoke:prod` (`scripts/smoke-prod.ts`). It probes the
-api unauthenticated with the exact headers a browser sends from `https://teaching-journey-web.vercel.app`
-(`Origin` + `Sec-Fetch-Site: cross-site` — the web and api are different sites until the parent
-domain exists) and asserts the guards answer correctly: app origin → 401 (reached the session
+api unauthenticated with the exact headers a browser sends from `https://app.bresinski.org`
+(`Origin`, plus `Sec-Fetch-Site: cross-site` — since TEACH-36 a real browser sends `same-site`, but
+the cross-site marking is what the 2026-09-05 regression mishandled, so the probe keeps it) and asserts the guards answer correctly: app origin → 401 (reached the session
 guard), foreign origin → 403, cross-site without Origin → 403, preflight → 204, `/health` → 200.
 `--api <url> --web-origin <origin>` targets a PR environment. Added after the 2026-09-05 incident
 (PR #66) in which a CSRF guard returned 403 to every real request while local e2e stayed green.
@@ -629,13 +646,13 @@ environment is deleted when the PR closes.
 
 API preview URL pattern (Vercel preview → Railway preview): Railway generates
 `https://<service>-<environment>.up.railway.app`, i.e. **`https://api-ai-teacher-pr-<number>.up.railway.app`**
-— the production one is `https://api-production-903f.up.railway.app` (rename with
-`railway domain update` if ever wanted). TEACH-25 does **not** hard-code it: the Vercel Preview
+— production answers on `https://api.bresinski.org` (custom domain, TEACH-36) as well as its Railway
+host `api-production-903f.up.railway.app`. TEACH-25 does **not** hard-code it: the Vercel Preview
 variable `RAILWAY_PR_API_URL_TEMPLATE=https://api-ai-teacher-pr-{pr}.up.railway.app` feeds
 `scripts/vercel-env.ts`. If the pattern ever changes, `railway domain list --service api
 --environment ai-teacher-pr-<n> --json` shows the generated name. The PR environment's api needs
-`WEB_ORIGIN_PATTERNS` (Vercel preview origins) and `COOKIE_SAMESITE=none` (inherited from
-production today) — see "Vercel (web)".
+`WEB_ORIGIN_PATTERNS` (Vercel preview origins) and a `COOKIE_SAMESITE=none` override (production is
+`lax` since TEACH-36) — see "Vercel (web)".
 
 ## Networking notes
 
@@ -669,9 +686,8 @@ Done:
 
 Open:
 
-- [ ] **Buy a domain** (`TODO(domain)`): `app.<domain>` → Vercel, `api.<domain>` → Railway
-      (`railway domain add api.<domain> --service api` + CNAME), then `COOKIE_DOMAIN` /
-      `COOKIE_SAMESITE=lax`, Vercel `VITE_API_URL` / `VITE_API_URL_FALLBACK`, narrower CSP `connect-src`.
+- [ ] **Product domain** (today `bresinski.org`, TEACH-36 — see "Domain"): repeat the three DNS rows
+      and the variables on the new name; narrow CSP `connect-src` to the api origin at the same time.
 - [ ] Vercel: Deployment Protection decision for production; *Speed Insights → Enable*.
 - [ ] GitHub: `TURBO_TOKEN` secret + `TURBO_TEAM` variable for the CI remote cache (see "Turbo remote cache").
 - [ ] Optional: Google / Microsoft OAuth credentials (F17); `railway ssh keys` for `railway ssh` /

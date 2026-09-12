@@ -15,8 +15,8 @@ import { parseArgs } from "node:util";
 import { ExitCode, runMain, UserFacingError } from "./lib/exit";
 import { log } from "./lib/log";
 
-export const PRODUCTION_API = "https://api-production-903f.up.railway.app";
-export const PRODUCTION_WEB_ORIGIN = "https://teaching-journey-web.vercel.app";
+export const PRODUCTION_API = "https://api.bresinski.org";
+export const PRODUCTION_WEB_ORIGIN = "https://app.bresinski.org";
 /** Per-request ceiling: a hung origin must fail the smoke check, not park `bun run land`. */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -47,7 +47,7 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expectHeaders: { "content-type": "image/png" },
     },
     {
-      name: "app origin reaches the session guard (browser is cross-site until TEACH-30)",
+      name: "app origin reaches the session guard (even when marked cross-site)",
       path: "/me",
       headers: browser,
       expect: 401,

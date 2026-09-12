@@ -24,9 +24,8 @@ export function requestOrigin(c: Context<AppEnv>): string | undefined {
  *
  * The allow-list is the decision when an origin is known. `Sec-Fetch-Site: cross-site` is only a
  * fallback for requests that carry no Origin/Referer (an `<img src>` under a strict Referrer-Policy):
- * it must never override an allowed Origin, because until TEACH-30 lands the production web app
- * (`*.vercel.app`) and api (`*.up.railway.app`) are different sites and every legitimate request
- * is marked `cross-site`.
+ * it must never override an allowed Origin: Vercel previews talk to Railway PR apis across sites,
+ * and production itself did until TEACH-36 (the 2026-09-05 incident, PR #66).
  */
 export function rejectCrossSiteRequests(allowed: OriginMatcher): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
