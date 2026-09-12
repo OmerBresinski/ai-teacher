@@ -1,6 +1,6 @@
 # 0023 — Export pipeline: client-side exporters, SPA print routes, in-dialog capture, JSON import
 
-- Status: Accepted
+- Status: Accepted (amended 2026-09-12)
 - Date: 2026-09-06
 - Related PRD decisions: TD project items 3 (print and capture routes) and 4 (export leftovers), F12 (archived, built as TeachDeck export); ADRs 0004, 0005, 0021, 0022
 
@@ -70,3 +70,39 @@ safe area by 1pt. The shell's Import dialog is a placeholder ("Import arrives wi
   always work.
 - Revisit when sharing needs a hosted PDF: the print route already renders headless, so a Playwright
   worker job is the natural next step, not a Next service.
+
+## Amendment (2026-09-12, TDD TEACH-272)
+
+This ADR was decided when the web ran on the in-memory mock store with data-URL images (ADR 0020).
+Since then the mock store is gone (ADR 0024 §9, TEACH-121) and images are stored objects served by
+`GET /files/:key` on the api origin behind the session cookie (ADR 0026, TEACH-189). The decisions
+above stand; three details change.
+
+- **§6 — the import mutation is `libraryMutations.importDocument`**, posting the parsed body to
+  `POST /documents` through `postDocument(kind, body)` in `apps/web/src/lib/library.ts` (the
+  `createWorksheet` shape), then `invalidateLibrary`. `libraryMutations.createDocument` builds a
+  starter body from a title and is not what Import needs. The server assigns the id:
+  `createDocument` in `packages/db/src/documents.ts` writes `opts.id ?? newId()` into `body.id`,
+  so importing one file twice yields two documents with no client-side id handling.
+- **Consequences — the "Remote images depend on CORS at capture time" bullet is replaced.** Every
+  stored image `src` is `${VITE_API_URL}/files/<key>` (`apps/web/src/lib/images.ts`). `/files/:key`
+  authorises per request from the session cookie and sets `Cross-Origin-Resource-Policy:
+  cross-origin` (`apps/api/src/routes/files.ts`), which is why a plain `<img>` renders today; CORS
+  in `apps/api/src/app.ts` is `credentials: true` for `WEB_ORIGIN` and `WEB_ORIGIN_PATTERNS` only.
+  Exporters fetch image bytes with the cookie, not through a backend rewrite or a pre-fetch layer:
+  `credentials: "include"` for a `src` on the api origin, `credentials: "omit"` for any other
+  origin (an imported document's foreign URL; our cookie must not go to a third party and CORS
+  would reject `include` anyway). The api origin reaches `@tj/editor` as the `imageOrigin` prop
+  of `ExportControl`, never from `import.meta.env`. `<img crossorigin="use-credentials">` is
+  rendered only in `SlideView` `mode="capture"`, threaded as a prop to `ImageView`; edit, present
+  and thumb keep the plain `<img>` so their cache entries are not split by credentials mode. The
+  PDF path needs nothing: the print route is a new tab and the browser's own request carries the
+  cookie. A failed fetch or a tainted capture toasts once per slide and continues.
+- **Consequences — imported `/files/` references stay as written.** JSON export writes `src`
+  exactly as stored. A document imported into another Workspace keeps `/files/<key>` references
+  the reader cannot see; they render as broken images and the teacher replaces them. No inlining
+  on export, no re-upload on import, by design. Revisit only if sharing between Workspaces becomes
+  a feature.
+- **Consequences — locked lessons export their current state.** Export stays available while
+  `generatingJobId` is set (ADR 0025 §24) and exports the document as held in the Query cache, the
+  same thing the read-only editor shows. No disabled state, no tooltip.
