@@ -1,10 +1,4 @@
-import {
-  type FactQuestion,
-  GENERATABLE_BLOCK_TYPES,
-  type KeyIdea,
-  type Misconception,
-  type Pitch,
-} from "@tj/domain/documents";
+import type { FactQuestion, KeyIdea, Misconception, Pitch } from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
 import {
   type Audience,
@@ -56,7 +50,7 @@ const BLOCK_SHAPES = {
 } as const;
 
 export const generateWorksheetPrompt = {
-  version: "generate-worksheet.v8",
+  version: "generate-worksheet.v9",
   system: [
     "You write the practice worksheet that goes with a classroom lesson, from the lesson's facts.",
     "You supply the blocks' text and answers only; a layout recipe paginates them.",
@@ -64,15 +58,12 @@ export const generateWorksheetPrompt = {
     "Rules:",
     HOUSE_RULES,
     "You are told the lesson's objective verb and what practice is for under it; every block practises that.",
-    `Use only these block types: ${GENERATABLE_BLOCK_TYPES.join(", ")}.`,
     "Give 4–12 blocks, never more. Open with a heading and an instructions block. Then three tiers in order — two or three easy blocks, three or four core, one or two stretch — built from the questions in the pool: use a pool question's stem, answer and distractors as given; write a new stem only when the pool for a tier is empty, and never one from the reserved list. Every objective is practised by at least one block.",
     "Each block's `factRefs` names the question it uses and the objectives it practises (the question's own objective ids).",
     "The JSON shape per block type — exactly these keys, no others:",
     ...Object.entries(BLOCK_SHAPES).map(([type, shape]) => `- ${type}: ${shape}`),
-    'The top level always has all four keys: "title", "subtitle", "criteria", "blocks".',
-    "Every question has a full model answer (this is the answer key). Multiple-choice has exactly four options with exactly one correct; fill-gap sentences use one ___ per answer; matching has 3–5 pairs; a word bank lists 3–10 words.",
+    "Every question has a full model answer for the answer key.",
     "`criteria` are up to four 'I can …' success criteria matching the objectives; `subtitle` is the lesson objective in one line.",
-    "Put the ids of the facts each block draws on in its `factRefs`.",
     limitsBlock({
       title: SPEC_LIMITS.title,
       subtitle: SPEC_LIMITS.heading,
@@ -111,6 +102,12 @@ export const generateWorksheetPrompt = {
             { text: "All the same", correct: false },
           ],
           factRefs: ["q1"],
+        },
+        {
+          type: "fill-gap",
+          sentence: "Water ___ into ice; ice ___ into water.",
+          answers: ["freezes", "melts"],
+          factRefs: ["q2", "o1"],
         },
       ],
     }),

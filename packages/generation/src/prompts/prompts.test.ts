@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { blockSpecSchemaFor, slideSpecSchemaFor } from "@tj/slides";
 import { lessonShapeOf } from "../shapes";
-import { assignFactIds } from "../specs";
+import { assignFactIds, WorksheetSpecSchema } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
 import {
@@ -161,12 +162,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
   },
   "generate-slide": {
-    version: "generate-slide.v16",
-    hash: "8880684049dafec2419a13aa49fd1accad68b26d05ce4b2c12e76aa50e008c80",
+    version: "generate-slide.v17",
+    hash: "93f1e7176083f7c6582ad25ceee1f8ae6e6fed1513c870024ba6c18ab2e95e96",
   },
   "generate-worksheet": {
-    version: "generate-worksheet.v8",
-    hash: "bb00f85f94001fbeb7f6781bf497301d240409bdcbdc497a9d9536f9afece10d",
+    version: "generate-worksheet.v9",
+    hash: "939c884f8b07fbf14a493887ec89df5b829ac7e3592370a7efd67c6ed474ce08",
   },
   "shortlist-photos": {
     version: "shortlist-photos.v2",
@@ -181,8 +182,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "e12329a1427665290602ee85bb5fb720fe2ebe33467c07fb16974cd312a9b037",
   },
   repair: {
-    version: "repair.v10",
-    hash: "ed623e0ae2ad2e0f51e40d63c6b9c6092b73b13147ff3f433e7af8db346d7f0c",
+    version: "repair.v11",
+    hash: "bdedd08451aca8165e8ecfb7d4a5796108f62871ca57f75198215c0f04d17a87",
   },
   "repair-fact": {
     version: "repair-fact.v2",
@@ -199,6 +200,37 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
 };
 
 describe("prompt versions", () => {
+  test("TEACH-258: every embedded slide, block and worksheet example passes its editorial schema", () => {
+    // Pretty-printed example() objects have unindented braces; shape sketches are inline.
+    const examples = (system: string) =>
+      Array.from(
+        system.matchAll(/^\{\n[\s\S]*?^\}/gm),
+        (match) => JSON.parse(match[0]) as Record<string, unknown>,
+      );
+    for (const name of ["generate-slide", "repair"] as const) {
+      const shown = examples(PROMPTS[name].system);
+      expect(shown).toHaveLength(3);
+      for (const spec of shown) {
+        const schema =
+          typeof spec.kind === "string"
+            ? slideSpecSchemaFor(spec.kind)
+            : blockSpecSchemaFor(String(spec.type));
+        expect(schema).toBeDefined();
+        expect(() => schema?.parse(spec), `${name}: ${spec.kind ?? spec.type}`).not.toThrow();
+      }
+    }
+    const sheets = examples(PROMPTS["generate-worksheet"].system);
+    expect(sheets).toHaveLength(1);
+    expect(WorksheetSpecSchema.safeParse(sheets[0]).success).toBe(true);
+  });
+
+  test("TEACH-258: examples replace prose within each prompt's baseline word budget", () => {
+    const budgets = { "generate-slide": 1009, "generate-worksheet": 639, repair: 503 } as const;
+    for (const name of Object.keys(budgets) as (keyof typeof budgets)[]) {
+      expect(PROMPTS[name].system.trim().split(/\s+/).length, name).toBeLessThan(budgets[name]);
+    }
+  });
+
   test.each(Object.keys(PROMPTS) as PromptName[])(
     "%s: text hash matches its pinned version",
     (name) => {

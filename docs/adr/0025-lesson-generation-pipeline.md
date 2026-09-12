@@ -949,6 +949,28 @@ stay as implemented. A slow provider can still exceed these bounds; that remains
 failure, not an unlimited wait. This is a reliability correction, not a change to the product's
 generation-latency target.
 
+## Amendment (2026-09-12, TEACH-258 — examples over repeated rules)
+
+§8, §12, §14. The usable baseline after the deadline correction completed 8/8 briefs with a 4.5
+rubric mean. Accepted editorial misses named two rule families: fill-gap markers (four issues
+across Generate and Repair, two residual warnings) and worked-example step length (three issues,
+subsequently repaired). Other previously reported rules were not reproduced; this change targets
+the measured offenders instead of adding five speculative examples.
+
+`generate-slide.v17` shows the literal `___` marker inside a word and compresses a five-step source
+calculation into four short lines without losing its conclusion. `generate-worksheet.v9` shows
+two blanks paired with two answers. `repair.v11` shows both a single-underscore word fragment and
+internal `[[gap:id]]` text converted back to a fresh `___` spec, rather than copying storage markup.
+Repeated instructions are removed or shortened to make room: system word counts fall from
+1009 → 923 (slide), 639 → 597 (worksheet), and 503 → 427 (Repair). Every embedded example in
+these prompts is extracted from the rendered system text and checked against its schema with
+editorial rules enabled; the slide example's former figurative "picture a gas" becomes "imagine"
+so it satisfies the existing no-picture-reference rule. Prompt hashes and versions are pinned.
+
+The before/after paid comparison uses the same eight briefs, Terra/Luna writers and Sol judge,
+with no Pexels key in either run. Findings and rubric results are recorded on TEACH-258. Schema
+rules, thresholds, model routing and the generation workflow are unchanged.
+
 ## Amendment (2026-09-12, project Lesson shape by objective verb — TEACH-230)
 
 §8, §11, §12. The writers and the reviewer learn the verb. Plan (TEACH-229) decides *which* kinds
