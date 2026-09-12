@@ -1,0 +1,371 @@
+/* The approved gathering is isolated from other marketing and loading artwork. */
+.hm-gather-hero {
+  --hero-feedback-space: 0px;
+  max-width: 1440px;
+  margin: auto;
+  padding: 22px 24px 42px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 64%, #fffdf7 0, transparent 67%);
+}
+.hm-hero-intro {
+  position: relative;
+  z-index: 6;
+  text-align: center;
+}
+.hm-hero-intro h1 {
+  margin: 0 auto;
+  font-size: clamp(48px, 5.2vw, 72px);
+  line-height: 1.01;
+  letter-spacing: -0.042em;
+  font-weight: 750;
+}
+.hm-hero-intro p {
+  margin: 20px auto 0;
+  font-size: 22px;
+  line-height: 1.4;
+  max-width: 690px;
+}
+.hm-gathering {
+  position: relative;
+  width: min(1120px, 100%);
+  height: calc(370px + var(--hero-feedback-space));
+  margin: 0 auto;
+}
+.hm-actor {
+  position: absolute;
+  isolation: isolate;
+  color: #344638;
+}
+.hm-actor svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.hm-actor .limb {
+  stroke-width: 3;
+}
+.hm-actor .body {
+  filter: drop-shadow(1px 2px 1px #716b4824);
+}
+.hm-actor .eye {
+  stroke: none;
+}
+.hm-actor:after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 22%;
+  right: 18%;
+  bottom: 6%;
+  height: 6%;
+  border-radius: 50%;
+  background: #776b3a26;
+  filter: blur(9px);
+}
+.hm-slides {
+  width: 228px;
+  left: 240px;
+  top: -16px;
+  z-index: 1;
+}
+.hm-worksheet {
+  width: 216px;
+  right: 225px;
+  top: -10px;
+  z-index: 1;
+}
+.hm-plan {
+  width: 297px;
+  left: -35px;
+  top: 70px;
+  z-index: 5;
+}
+.hm-answers {
+  width: 310px;
+  right: -25px;
+  top: 64px;
+  z-index: 5;
+}
+.hm-slides:after {
+  bottom: 16%;
+  transform: rotate(-5deg);
+}
+.hm-worksheet:after {
+  bottom: 8%;
+}
+.hm-plan:after {
+  bottom: 7.5%;
+  transform: rotate(-5deg);
+}
+.hm-answers:after {
+  bottom: 7%;
+  transform: rotate(5deg);
+}
+.hm-brief {
+  position: absolute;
+  left: 50%;
+  top: 165px;
+  transform: translateX(-50%);
+  width: 700px;
+  padding: 22px 23px 23px;
+  border: 1px solid #d4ccb3;
+  border-radius: 25px;
+  z-index: 6;
+  text-align: left;
+  background: #fffdf4;
+  box-shadow:
+    0 15px 28px -17px #8475444d,
+    0 2px 3px #cfc3a51a,
+    inset 0 1px 0 #fffefb;
+}
+.hm-brief label {
+  display: block;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+.hm-brief-row {
+  display: flex;
+  gap: 13px;
+  align-items: stretch;
+}
+.hm-brief input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #87937b;
+  border-radius: 14px;
+  height: 56px;
+  padding: 0 16px;
+  background: #fffefa;
+  color: var(--ink);
+  font: inherit;
+  font-size: 17px;
+}
+.hm-brief input::placeholder {
+  color: #687160;
+  opacity: 1;
+}
+.hm-brief input:focus {
+  outline: 2px solid #526b48;
+  outline-offset: 3px;
+}
+.hm-brief button {
+  border: 1px solid #293b32;
+  border-radius: 15px;
+  padding: 0 20px;
+  background: #293b32;
+  color: #fffef8;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.hm-brief button:hover {
+  background: #3d5343;
+}
+.hm-brief button:active {
+  transform: translateY(1px);
+}
+.hm-brief button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.hm-brief button:focus-visible,
+.hm-hero-pause:focus-visible {
+  outline: 3px solid #526b48;
+  outline-offset: 4px;
+}
+.hm-brief-status:empty {
+  display: none;
+}
+.hm-brief-status,
+.hm-brief noscript p {
+  margin: 17px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.hm-hero-pause {
+  display: block;
+  margin: 8px auto 0;
+  padding: 7px 0;
+  min-height: 36px;
+  border: 0;
+  border-bottom: 1px solid #aab3a1;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.hm-hero-pause[hidden] {
+  display: none;
+}
+.hm-gather-hero:has(.hm-brief-status:not(:empty)) {
+  --hero-feedback-space: 60px;
+}
+
+/* Intermediate screens retain the gathering's width and staggered depth. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  .hm-gather-hero {
+    padding: 24px 20px 36px;
+  }
+  .hm-hero-intro h1 {
+    font-size: 60px;
+  }
+  .hm-hero-intro p {
+    max-width: 640px;
+    font-size: 21px;
+  }
+  .hm-hero-wide {
+    display: none;
+  }
+  .hm-gathering {
+    height: calc(465px + var(--hero-feedback-space));
+    margin-top: 12px;
+  }
+  .hm-slides {
+    width: 220px;
+    left: 12%;
+    top: -8px;
+  }
+  .hm-worksheet {
+    width: 194px;
+    right: 10%;
+    top: 13px;
+  }
+  .hm-plan {
+    width: 235px;
+    left: -24px;
+    top: calc(205px + var(--hero-feedback-space));
+  }
+  .hm-answers {
+    width: 247px;
+    right: -32px;
+    top: calc(227px + var(--hero-feedback-space));
+  }
+  .hm-brief {
+    width: min(700px, calc(100% - 170px));
+    top: 135px;
+    padding: 24px;
+  }
+  .hm-brief label {
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+  .hm-brief input {
+    height: 60px;
+    font-size: 16px;
+    padding-inline: 13px;
+  }
+  .hm-brief button {
+    font-size: 17px;
+    padding-inline: 16px;
+  }
+  .hm-gather-hero:has(.hm-brief-status:not(:empty)) {
+    --hero-feedback-space: 90px;
+  }
+}
+/* On phones, the characters gather around the paper's four corners. */
+@media (max-width: 760px) {
+  .hm-gather-hero {
+    padding: 24px 16px 32px;
+  }
+  .hm-hero-intro h1 {
+    font-size: clamp(36px, 11.8vw, 46px);
+    line-height: 1.04;
+    letter-spacing: -1.7px;
+  }
+  .hm-hero-intro p {
+    font-size: 18px;
+    line-height: 1.42;
+    margin-top: 17px;
+    max-width: 350px;
+  }
+  .hm-hero-wide {
+    display: none;
+  }
+  .hm-gathering {
+    width: min(540px, 100%);
+    height: calc(495px + var(--hero-feedback-space));
+    margin-top: 9px;
+  }
+  .hm-slides {
+    width: 164px;
+    left: -12px;
+    top: -4px;
+  }
+  .hm-worksheet {
+    width: 145px;
+    right: -1px;
+    top: 23px;
+  }
+  .hm-plan {
+    width: 175px;
+    left: -22px;
+    top: calc(276px + var(--hero-feedback-space));
+  }
+  .hm-answers {
+    width: 193px;
+    right: -24px;
+    top: calc(301px + var(--hero-feedback-space));
+  }
+  .hm-actor:after {
+    filter: blur(5px);
+    height: 5%;
+  }
+  .hm-brief {
+    top: 114px;
+    width: 100%;
+    padding: 20px 17px;
+    border-radius: 20px;
+  }
+  .hm-brief label {
+    font-size: 21px;
+    margin-bottom: 15px;
+  }
+  .hm-brief-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .hm-brief input {
+    flex: auto;
+    width: 100%;
+    height: 53px;
+    font-size: 16px;
+    border-radius: 11px;
+    padding: 0 12px;
+  }
+  .hm-brief button {
+    height: 53px;
+    border-radius: 12px;
+    font-size: 18px;
+  }
+  .hm-hero-pause {
+    margin-top: 10px;
+  }
+  .hm-gather-hero:has(.hm-brief-status:not(:empty)) {
+    --hero-feedback-space: 130px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-brief button {
+    transition: none;
+  }
+  .hm-hero-pause {
+    display: none;
+  }
+}
