@@ -96,6 +96,10 @@ export function LessonEditorPage() {
   if (kindOf(data) !== "lesson" || !("slides" in data)) {
     return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
   }
+  // The export dialog reads the document from the same cache entry the editor writes (ADR 0023
+  // amendment 2026-09-12), so it exports what is on screen — including a locked lesson's partial
+  // body while `lesson.plan` runs; the app opens the print tab.
+  const exportSlot = <ExportControl document={data} onOpenPrint={openPrintTab} />;
   const generatingJobId = meta?.generatingJobId ?? stoppedJobId;
   if (generatingJobId) {
     return (
@@ -106,6 +110,7 @@ export function LessonEditorPage() {
           onBack={onBack}
           onStopped={setStoppedJobId}
           onViewSlide={setViewedSlideId}
+          exportSlot={exportSlot}
         />
       </Suspense>
     );
@@ -131,9 +136,7 @@ export function LessonEditorPage() {
       busySlideIds={proposals.busySlideIds}
       proposalsBusy={proposals.busy}
       images={imageSearchClient}
-      // The export dialog reads the document from the same cache entry the editor writes (ADR 0023
-      // amendment 2026-09-12), so it exports what is on screen; the app opens the print tab.
-      exportSlot={<ExportControl document={data} onOpenPrint={openPrintTab} />}
+      exportSlot={exportSlot}
     />
   );
 }

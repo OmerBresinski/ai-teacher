@@ -203,6 +203,9 @@ function SlideBackground({ theme, background }: { theme: Theme; background: Slid
   return (
     <div
       aria-hidden
+      // The export paint gate (`waitForSlidePaint`) cannot see a CSS background through `<img>`
+      // queries; it reads this attribute and preloads the picture before printing or capturing.
+      data-background-image={image}
       style={{
         position: "absolute",
         inset: 0,

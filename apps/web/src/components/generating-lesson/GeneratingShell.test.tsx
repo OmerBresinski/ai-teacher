@@ -172,6 +172,21 @@ describe("GeneratingShell", () => {
     expect(document.querySelectorAll("[data-testid='generating-strip']")).toHaveLength(1);
   });
 
+  it("TEACH-110: the export slot sits before Stop, so a locked lesson still exports", () => {
+    renderAt(RUN_UP_TO.writing, {
+      exportSlot: (
+        <button type="button" data-export>
+          Export
+        </button>
+      ),
+    });
+    const bar = document.querySelector("[data-topbar]") as HTMLElement;
+    const names = within(bar)
+      .getAllByRole("button")
+      .map((b) => b.getAttribute("aria-label") ?? b.textContent?.trim());
+    expect(names).toEqual(["Back to library", "Export", "Stop"]);
+  });
+
   it("row 6: the live dot breathes under motion-safe only", () => {
     renderAt(RUN_UP_TO.writing);
     const dot = liveDot();

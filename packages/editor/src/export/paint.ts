@@ -16,8 +16,13 @@ export async function waitForSlidePaint(root: ParentNode = document): Promise<vo
     }
   }
   const images = Array.from(root.querySelectorAll("img"));
-  await Promise.all(
-    images.map(async (img) => {
+  // A slide's own background is a CSS `background-image` (`SlideBackground`), invisible to the
+  // `<img>` query; it announces its URL on `data-background-image` so it can be preloaded here.
+  const backgrounds = Array.from(root.querySelectorAll<HTMLElement>("[data-background-image]"))
+    .map((el) => el.dataset.backgroundImage)
+    .filter((src): src is string => !!src);
+  await Promise.all([
+    ...images.map(async (img) => {
       if (img.complete) return;
       try {
         await img.decode();
@@ -25,7 +30,16 @@ export async function waitForSlidePaint(root: ParentNode = document): Promise<vo
         /* A broken image must not block the rest of the slide. */
       }
     }),
-  );
+    ...backgrounds.map(async (src) => {
+      const img = new Image();
+      img.src = src;
+      try {
+        await img.decode();
+      } catch {
+        /* Same: a broken background must not block the print. */
+      }
+    }),
+  ]);
   // One more frame so the browser has actually painted what we just measured.
   await new Promise<void>((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(() => resolve())),

@@ -4,6 +4,12 @@ import { expect, test } from "./fixtures";
 test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 } });
 
+/** Wait for the dialog's arrival motion, not a fixed time. */
+const settled = (page: import("@playwright/test").Page) =>
+  page
+    .getByRole("dialog")
+    .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+
 test("captures the export dialog, the print route and the import dialog", async ({
   signedInPage: { page, paths },
 }) => {
@@ -12,7 +18,7 @@ test("captures the export dialog, the print route and the import dialog", async 
   const dialog = page.getByRole("dialog", { name: "Export" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("textbox", { name: "Slides" }).fill("1-3, 5");
-  await page.waitForTimeout(500);
+  await settled(page);
   await page.screenshot({ path: "/tmp/teach-110-export-dialog.png" });
   await page.keyboard.press("Escape");
 
@@ -27,6 +33,6 @@ test("captures the export dialog, the print route and the import dialog", async 
   await page.goto("/lessons");
   await page.getByRole("button", { name: "Import" }).click();
   await expect(page.getByRole("dialog", { name: "Import" })).toBeVisible();
-  await page.waitForTimeout(500);
+  await settled(page);
   await page.screenshot({ path: "/tmp/teach-110-import-dialog.png" });
 });

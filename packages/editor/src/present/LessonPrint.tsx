@@ -55,7 +55,11 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
   }, [lesson.slides, slides]);
 
   // Ready only once the type and the pictures have landed, or the first page prints with fallback
-  // fonts and empty image boxes. The one external subscription here: the document's paint.
+  // fonts and empty image boxes. The one external subscription here: the document's paint. It
+  // re-arms whenever what is on the page changes (a refetched lesson, another range or layout on
+  // the same route), so the ready marker never describes a previous render; `printed` still holds,
+  // so the dialog opens once per mount.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the pages and options are the trigger (what was painted), not a read
   useEffect(() => {
     let cancelled = false;
     const settle = async () => {
@@ -72,7 +76,7 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
       cancelled = true;
       document.documentElement.removeAttribute(CAPTURE_READY_ATTR);
     };
-  }, [auto]);
+  }, [auto, pages, answers, notes, handout3]);
 
   const a4 = notes || handout3;
   const pageCss = a4

@@ -51,6 +51,11 @@ export type GeneratingShellProps = {
   estimate?: ReactNode;
   onBack: () => void;
   onStop: () => void;
+  /**
+   * The export control (TEACH-110): a locked lesson exports the body held in the cache — the same
+   * body this shell shows (ADR 0023 amendment 2026-09-12). Rendered before Stop.
+   */
+  exportSlot?: ReactNode;
   /** Stop is off while the cancel request runs and after it is sent; an error shows beside it. */
   stop?: { pending?: boolean; sent?: boolean; error?: boolean };
   /** The height of the shell; `h-dvh` on the page, a fixed box in the kit. */
@@ -69,6 +74,7 @@ export function GeneratingShell({
   onBack,
   onStop,
   stop,
+  exportSlot,
   className,
   onViewSlide,
 }: GeneratingShellProps) {
@@ -185,6 +191,7 @@ export function GeneratingShell({
               Could not stop the job.
             </span>
           ) : null}
+          {exportSlot}
           {/* A stopped run has nothing to stop; the arrow is the way back (the end-state actions
               come with the Ready, stopped, reloaded ticket, PRD §9 TEACH-D). */}
           {stopped ? null : (
