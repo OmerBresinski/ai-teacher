@@ -9,13 +9,13 @@ describe("magicLinkMail", () => {
     const text = magicLinkText(url);
     expect(text).toContain(url);
     expect(text).toContain("expires in 5 minutes");
-    expect(text).toContain("If that was not you");
+    expect(text).toContain("You can ignore this email");
   });
 
-  test("html escapes the URL in both the button and the fallback link", () => {
+  test("html escapes the URL in the button and carries no second link", () => {
     const html = magicLinkHtml(url, "https://api.test/");
     const escaped = url.replaceAll("&", "&amp;");
-    expect(html.split(`href="${escaped}"`)).toHaveLength(3);
+    expect(html.split(`href="${escaped}"`)).toHaveLength(2);
     expect(html).not.toContain(`href="${url}"`);
     expect(html).toContain("Sign in to Teaching Journey");
     expect(html).toContain('<meta charset="utf-8">');
