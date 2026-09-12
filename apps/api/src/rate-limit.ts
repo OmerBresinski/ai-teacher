@@ -30,6 +30,8 @@ export const RateLimitConfigSchema = z.object({
   AI_RATE_LIMIT_WINDOW_S: z.coerce.number().int().positive().default(60),
   IMAGE_RATE_LIMIT_PER_WORKSPACE: z.coerce.number().int().positive().default(30),
   IMAGE_RATE_LIMIT_WINDOW_S: z.coerce.number().int().positive().default(60),
+  SOURCE_RATE_LIMIT_PER_WORKSPACE: z.coerce.number().int().positive().default(30),
+  SOURCE_RATE_LIMIT_WINDOW_S: z.coerce.number().int().positive().default(60),
 });
 
 export function loadRateLimitConfig(
@@ -53,6 +55,19 @@ export function loadImageRateLimitConfig(
   return {
     limit: parsed.IMAGE_RATE_LIMIT_PER_WORKSPACE,
     windowMs: parsed.IMAGE_RATE_LIMIT_WINDOW_S * 1_000,
+    ...overrides,
+  };
+}
+
+/** `POST /sources` uploads per Workspace per window (ADR 0027 §5): CPU-bound extraction. */
+export function loadSourceRateLimitConfig(
+  source: Record<string, string | undefined> = process.env,
+  overrides: Partial<RateLimitConfig> = {},
+): RateLimitConfig {
+  const parsed = RateLimitConfigSchema.parse(source);
+  return {
+    limit: parsed.SOURCE_RATE_LIMIT_PER_WORKSPACE,
+    windowMs: parsed.SOURCE_RATE_LIMIT_WINDOW_S * 1_000,
     ...overrides,
   };
 }

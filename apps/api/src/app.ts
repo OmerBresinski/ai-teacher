@@ -30,6 +30,7 @@ import {
   createRateLimiter,
   loadImageRateLimitConfig,
   loadRateLimitConfig,
+  loadSourceRateLimitConfig,
   type RateLimitConfig,
   rateLimitByWorkspace,
 } from "./rate-limit";
@@ -43,6 +44,7 @@ import { jobRoutes } from "./routes/jobs";
 import { lessonRoutes } from "./routes/lessons";
 import { MAIL_ASSETS_PREFIX, mailAssetRoutes } from "./routes/mail-assets";
 import { meRoutes } from "./routes/me";
+import { sourceRoutes } from "./routes/sources";
 import { testRoutes, testRoutesEnabled } from "./routes/test-routes";
 
 export interface CreateAppOptions {
@@ -86,6 +88,8 @@ export interface CreateAppOptions {
   images?: PexelsClient;
   /** Per-Workspace photo-search request limit; tests override the default config. */
   imageRateLimit?: Partial<RateLimitConfig>;
+  /** `POST /sources` per-Workspace limit (ADR 0027 §5); tests lower it. */
+  sourceRateLimit?: Partial<RateLimitConfig>;
 }
 
 function buildApp({
@@ -100,12 +104,14 @@ function buildApp({
   rateLimit,
   images,
   imageRateLimit,
+  sourceRateLimit,
 }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
   const allowHeaderShim = env.ALLOW_WORKSPACE_HEADER_SHIM === "1";
   const eventsRuntime = events ?? (jobs ? createEventsRuntime({ jobs, logger }) : undefined);
   const aiLimiter = createRateLimiter(loadRateLimitConfig(process.env, rateLimit));
   const imageLimiter = createRateLimiter(loadImageRateLimitConfig(process.env, imageRateLimit));
+  const sourceLimiter = createRateLimiter(loadSourceRateLimitConfig(process.env, sourceRateLimit));
   const app = new Hono<AppEnv>();
 
   // 1. request-id: honour an incoming `x-request-id`, otherwise crypto.randomUUID(); echoed back.
@@ -180,6 +186,8 @@ function buildApp({
     "/documents/*",
     "/lessons",
     "/lessons/*",
+    "/sources",
+    "/sources/*",
   ] as const;
   for (const path of PROTECTED_PATHS) {
     app.use(path, csrf);
@@ -203,6 +211,7 @@ function buildApp({
     .route("/", eventRoutes(eventsRuntime))
     .route("/", fileRoutes(storage))
     .route("/", imageRoutes(images, imageLimiter, storage))
+    .route("/", sourceRoutes(db.unsafeDb, storage, sourceLimiter))
     .route("/", documentRoutes(db.unsafeDb))
     .route("/", lessonRoutes(db.unsafeDb, eventsRuntime));
 

@@ -216,9 +216,11 @@ describe("createLessonAndEnqueue when the enqueue fails", () => {
   const lessonId = newId<LessonId>();
   const lesson = lessonFromBrief(validBrief, lessonId, new Date());
 
-  function fakes(sendResult: "throws" | "null") {
+  function fakes(sendResult: "throws" | "null", sourceIds: string[] = []) {
     const created: unknown[] = [];
     const deleted: string[] = [];
+    /** Every `UPDATE sources … SET` value seen: the claim (`lessonId` set) then the release (`null`). */
+    const sourceUpdates: unknown[] = [];
     const scoped = {
       workspaceId: ws,
       insert: () => ({
@@ -229,12 +231,28 @@ describe("createLessonAndEnqueue when the enqueue fails", () => {
           },
         }),
       }),
+      update: () => ({
+        set: (values: { lessonId: string | null }) => ({
+          returning: async () => {
+            sourceUpdates.push(values);
+            return sourceIds.map((id) => ({
+              id,
+              kind: "file",
+              name: `${id}.pdf`,
+              storageKey: `${ws}/sources/${id}/original.pdf`,
+              pages: 1,
+              lessonId: values.lessonId,
+            }));
+          },
+        }),
+      }),
       delete: () => ({
         returning: async () => {
           deleted.push(lessonId);
           return [{ id: lessonId }];
         },
       }),
+      tx: (fn: (scoped: WorkspaceDb) => Promise<unknown>) => fn(scoped),
     } as unknown as WorkspaceDb;
     const send = mock(async (_name: string, _data: unknown, _opts: { id: string }) => {
       if (sendResult === "throws") throw new Error("pg-boss down");
@@ -246,7 +264,7 @@ describe("createLessonAndEnqueue when the enqueue fails", () => {
       sql: {},
     } as unknown as JobsContext;
     const runtime = createEventsRuntime({ jobs, logger: silentLogger });
-    return { ws: scoped, runtime, send, created, deleted };
+    return { ws: scoped, runtime, send, created, deleted, sourceUpdates };
   }
 
   test("removes the just-inserted row and rethrows when pg-boss is down", async () => {
@@ -265,6 +283,47 @@ describe("createLessonAndEnqueue when the enqueue fails", () => {
       status: 409,
     });
     expect(f.deleted).toEqual([lessonId]);
+  });
+
+  test("with sourceIds the claimed rows become lesson.sources, and a failed enqueue releases them (ADR 0027 §5)", async () => {
+    const a = newId();
+    const b = newId();
+    const f = fakes("throws", [a, b]);
+    await expect(createLessonAndEnqueue(f.ws, f.runtime, lesson, [a, b, a])).rejects.toThrow(
+      "pg-boss down",
+    );
+    const body = (f.created[0] as { body: { sources?: unknown[] } }).body;
+    expect(body.sources).toEqual([
+      {
+        id: a,
+        kind: "file",
+        name: `${a}.pdf`,
+        storageKey: `${ws}/sources/${a}/original.pdf`,
+        pages: 1,
+      },
+      {
+        id: b,
+        kind: "file",
+        name: `${b}.pdf`,
+        storageKey: `${ws}/sources/${b}/original.pdf`,
+        pages: 1,
+      },
+    ]);
+    expect(f.sourceUpdates.map((u) => (u as { lessonId: string | null }).lessonId)).toEqual([
+      lessonId,
+      null,
+    ]);
+    expect(f.deleted).toEqual([lessonId]);
+  });
+
+  test("a short claim is 422 and nothing is inserted", async () => {
+    const a = newId();
+    const f = fakes("null", [a]);
+    await expect(
+      createLessonAndEnqueue(f.ws, f.runtime, lesson, [a, newId()]),
+    ).rejects.toMatchObject({ status: 422 });
+    expect(f.created).toEqual([]);
+    expect(f.send).not.toHaveBeenCalled();
   });
 
   test("enqueue is given the same job id the row was locked with", async () => {
