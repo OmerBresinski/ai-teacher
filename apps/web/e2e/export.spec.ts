@@ -101,8 +101,9 @@ test.describe("export dialog", () => {
     await page.getByRole("button", { name: "Export", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Export" });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("tab", { name: "PowerPoint" })).toBeDisabled();
-    await expect(dialog.getByRole("tab", { name: "PNG" })).toBeDisabled();
+    // PowerPoint and PNG are live since E2 (TEACH-111); `export-pptx-png.spec.ts` covers them.
+    await expect(dialog.getByRole("tab", { name: "PowerPoint" })).toBeEnabled();
+    await expect(dialog.getByRole("tab", { name: "PNG" })).toBeEnabled();
     await dialog.getByRole("textbox", { name: "Slides" }).fill("1-3, 5");
     await dialog.getByRole("switch", { name: "Include answers" }).click();
     await dialog.getByRole("button", { name: "Export PDF" }).click();

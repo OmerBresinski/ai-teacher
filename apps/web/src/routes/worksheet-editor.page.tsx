@@ -5,6 +5,7 @@ import { WorksheetEditor } from "@tj/editor/worksheet-editor";
 import { useCallback } from "react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
+import { env } from "@/env";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { imageSearchClient } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
@@ -65,7 +66,9 @@ export function WorksheetEditorPage() {
       images={imageSearchClient}
       // Print stays the one-click path; the dialog is where JSON (and, from E3, DOCX) live. Its
       // PDF tab opens the same print route (TEACH-272 §5).
-      exportSlot={<ExportControl document={data} onOpenPrint={openPrintTab} />}
+      exportSlot={
+        <ExportControl document={data} imageOrigin={env.VITE_API_URL} onOpenPrint={openPrintTab} />
+      }
     />
   );
 }

@@ -241,6 +241,11 @@ test.describe("accessibility (axe)", () => {
     await expectNoSeriousA11yViolations(page, "export dialog", '[role="dialog"]');
     await page.getByRole("tab", { name: "JSON" }).click();
     await expectNoSeriousA11yViolations(page, "export dialog (JSON)", '[role="dialog"]');
+    // E2 (TEACH-111 row 9): the PowerPoint and PNG tabs.
+    await page.getByRole("tab", { name: "PowerPoint" }).click();
+    await expectNoSeriousA11yViolations(page, "export dialog (PowerPoint)", '[role="dialog"]');
+    await page.getByRole("tab", { name: "PNG" }).click();
+    await expectNoSeriousA11yViolations(page, "export dialog (PNG)", '[role="dialog"]');
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog", { name: "Export" })).toHaveCount(0);
 
