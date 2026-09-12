@@ -912,3 +912,17 @@ regenerated for any reason is written to the verb; a `verb-fit` finding is fixed
 task, never the kind. Versions: `generate-slide.v15`, `generate-worksheet.v7`, `evaluate.v5`,
 `repair.v9`. §23: the eval's `verbFit` rubric dimension (TEACH-228) now measures a pipeline that
 was told the verb; TEACH-231 runs the delta.
+
+## Amendment (2026-09-12, ADR 0027 — F03 Upload as input)
+
+§20: `SourceText.ref` is the `SourceLocator` from `@tj/domain` — `{ page?, slide?, section? }` —
+so DOCX and pasted text get stable locators by heading; `SourceRef.storageKey` is set for a paste
+too (`original.txt`). The `SourceLoader` the worker injects (`storageSourceLoader`) reads a
+pre-computed `<ws>/sources/<id>/extracted.json` (`ExtractedSourceSchema`); it never parses a
+document, and a missing object is a non-retryable failure rather than a silent plan without the
+material. Plan passes the texts through `selectSourceTexts(texts, { maxChars: 40_000 })`
+(proportional per source, document order, one `[truncated: …]` chunk) before `briefBlock()`,
+which renders locators as `[src p.3]` / `[src slide 4]` / `[src §Heading]` and, when sources
+exist, instructs the model to treat the material's sequence as the default lesson order and its
+terminology as canonical. `plan-skeleton` and `plan-facts` bump `version`. `check-input` is
+unchanged: document text is screened at upload (ADR 0027 §2).

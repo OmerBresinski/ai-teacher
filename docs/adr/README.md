@@ -29,9 +29,10 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0021 | Tie-in document contract: TeachDeck schemas in @tj/domain | Accepted (amended 2026-09-06) |
 | 0022 | @tj/editor: package boundary, kit rule, state model and fonts | Accepted (amended 2026-09-06) |
 | 0023 | Export pipeline: client-side exporters, SPA print routes, JSON import | Accepted |
-| 0024 | Document persistence and the lesson brief: `documents` table, document API, `POST /lessons` | Accepted (amended 2026-09-06) |
-| 0025 | Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair | Accepted |
+| 0024 | Document persistence and the lesson brief: `documents` table, document API, `POST /lessons` | Accepted (amended 2026-09-06, 2026-09-12) |
+| 0025 | Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair | Accepted (amended 2026-09-12) |
 | 0026 | Railway Bucket (S3-compatible) for object storage  | Accepted |
+| 0027 | Upload as input: `POST /sources`, `@tj/extract`, `sources` table, `SourceLoader` | Accepted |
 
 Template: `0000-template.md`.
 
@@ -57,3 +58,5 @@ Template: `0000-template.md`.
 - 2026-09-06 — ADR 0022 §1, §4: `@tj/slides` dependency; cascade proposals apply as one transaction (ADR 0025 §9, §18). See the second amendment in `0022-editor-package-boundary-and-state.md`.
 - 2026-09-06 — ADR 0024 §13, §14, §18: `Lesson.sources` reserved as references; one `lesson.plan` job with checkpoints; the worker writes through `putDocumentAsJob` keyed on the lock; stale locks released on read (ADR 0025 §5–§7, §24). See the amendment in `0024-document-persistence-and-lesson-brief.md`.
 - 2026-09-07 — ADR 0016 §1: files move from Vercel Blob (`fra1`) to a Railway Bucket in `ams` (ADR 0026); the residency statement is now "Railway EU-West" for compute, Postgres and files. See `0016-prd-deviations.md`.
+- 2026-09-12 — ADR 0024 §13: `POST /lessons` gains `sourceIds` (≤ 3), resolved against the `sources` table and written to `Lesson.sources` (ADR 0027 §5). See the second amendment in `0024-document-persistence-and-lesson-brief.md`.
+- 2026-09-12 — ADR 0025 §20: `SourceLocator` gains `section`; a paste has a `storageKey`; the `SourceLoader` reads `extracted.json` and Plan caps source text at 40k chars (ADR 0027 §3, §6). See the amendment in `0025-lesson-generation-pipeline.md`.
