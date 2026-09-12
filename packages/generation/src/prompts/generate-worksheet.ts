@@ -6,19 +6,30 @@ import {
   type Pitch,
 } from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
-import { type Audience, audienceBlock, example, HOUSE_RULES, limitsBlock } from "./shared";
+import {
+  type Audience,
+  audienceBlock,
+  example,
+  HOUSE_RULES,
+  limitsBlock,
+  verbBlock,
+  type WritingShape,
+} from "./shared";
 
 /*
  * Generate — the worksheet (ADR 0025 §4, §8; Generation quality §3, TEACH-213): one call for the
  * whole sheet's block specs; the answers become the answer key. The sheet is written from its own
  * question pool — the plan's `use: worksheet | any` questions, in three tiers — concurrently with
  * the slides, with the stems the slides took as an exclusion list, so it practises rather than
- * repeats.
+ * repeats. Since TEACH-230 it is told the objective verb too (`verbBlock`): what the practice is
+ * for — stating, explaining, working a method or judging.
  */
 
 export type GenerateWorksheetInput = {
   /** The objectives, by id, so each block can name the ones it practises. */
   objectives: { id: string; text: string }[];
+  /** The lesson's objective verb and the class's prior confidence (`lessonShapeOf`, TEACH-230). */
+  shape: WritingShape;
   keyIdeas: KeyIdea[];
   misconceptions: Misconception[];
   /** The questions the plan set aside for the sheet (`use: worksheet | any`). */
@@ -45,13 +56,14 @@ const BLOCK_SHAPES = {
 } as const;
 
 export const generateWorksheetPrompt = {
-  version: "generate-worksheet.v6",
+  version: "generate-worksheet.v7",
   system: [
     "You write the practice worksheet that goes with a classroom lesson, from the lesson's facts.",
     "You supply the blocks' text and answers only; a layout recipe paginates them.",
     "",
     "Rules:",
     HOUSE_RULES,
+    "You are told the lesson's objective verb and what practice is for under it; every block practises that.",
     `Use only these block types: ${GENERATABLE_BLOCK_TYPES.join(", ")}.`,
     "Give 4–12 blocks, never more. Open with a heading and an instructions block. Then three tiers in order — two or three easy blocks, three or four core, one or two stretch — built from the questions in the pool: use a pool question's stem, answer and distractors as given; write a new stem only when the pool for a tier is empty, and never one from the reserved list. Every objective is practised by at least one block.",
     "Each block's `factRefs` names the question it uses and the objectives it practises (the question's own objective ids).",
@@ -107,6 +119,7 @@ export const generateWorksheetPrompt = {
     const parts = [
       `Lesson: ${input.lessonTitle}`,
       audienceBlock(input.audience),
+      verbBlock(input.shape),
       "",
       "Objectives:",
     ];

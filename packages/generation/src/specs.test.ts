@@ -911,6 +911,13 @@ describe("EvaluateOutputSchema (TEACH-216)", () => {
     const { evidence: _dropped, ...noEvidence } = finding({});
     expect(messages([noEvidence])[0]).toContain("findings.0.evidence");
   });
+
+  test("TEACH-230 row 2: verb-fit is a check, and a warning only", () => {
+    expect(messages([finding({ check: "verb-fit" })])).toEqual([]);
+    expect(messages([finding({ check: "verb-fit", severity: "error" })])).toEqual([
+      'findings.0.severity: verb-fit findings are warnings: only answer-correctness and fact-consistency may be errors. Set severity to "warning".',
+    ]);
+  });
 });
 
 describe("WorksheetSpecSchema (TEACH-223)", () => {

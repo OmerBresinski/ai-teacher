@@ -35,7 +35,14 @@ import {
   pickPhoto,
   withPhoto,
 } from "./illustrate";
-import { audienceOf, BUDGET_FINDING, generationOf, runBounded, withImageCaption } from "./shared";
+import {
+  audienceOf,
+  BUDGET_FINDING,
+  generationOf,
+  runBounded,
+  shapeOf,
+  withImageCaption,
+} from "./shared";
 
 /*
  * Generate (ADR 0025 §4, §7, §8, §15; Generation quality §3, TEACH-213): one `small` call per
@@ -69,6 +76,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   if (!facts) throw new Error("generate: the lesson has no facts; Plan has not run");
   const generation = generationOf(lesson);
   const audience = audienceOf(lesson);
+  // The writers are told the verb and the confidence (TEACH-230); Plan enforced the rest.
+  const { verb, confidence } = shapeOf(lesson);
+  const shape = { verb, confidence };
   const findings: Finding[] = [...generation.findings];
   const entries = facts.outline;
   const total = entries.length;
@@ -144,6 +154,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         input: {
           referenced: referencedFacts(facts, entry),
           entry,
+          shape,
           position: { index: i + 1, total },
           neighbours: {
             previous: entries[i - 1]?.brief?.adds,
@@ -220,6 +231,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         prompt: generateWorksheetPrompt,
         input: {
           objectives: facts.objectives.map((o) => ({ id: o.id, text: o.text })),
+          shape,
           keyIdeas: facts.keyIdeas ?? [],
           misconceptions: facts.misconceptions,
           pool: stems.pool,

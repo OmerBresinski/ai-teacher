@@ -16,6 +16,7 @@ import {
   generationOf,
   normaliseText,
   photoThumbnails,
+  shapeOf,
   slideHaystack,
   slideText,
 } from "./shared";
@@ -121,6 +122,7 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
   // judge chose — goes in as an image part so `image-fit` can look at it; numbered in slide order.
   const images = photoThumbnails(lesson);
   const photos = images.map((i) => i.id);
+  const { verb, confidence } = shapeOf(lesson);
 
   let model: Finding[] = [];
   try {
@@ -133,6 +135,7 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       input: {
         facts,
         audience: audienceOf(lesson),
+        shape: { verb, confidence },
         slides: lesson.slides.map((s) => ({
           id: s.id,
           kind: s.kind,

@@ -2,7 +2,6 @@ import type { Finding, Lesson, LessonFacts, Slide } from "@tj/domain/documents";
 import { type MaterialiseMeta, materialiseSlide } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import { type Audience, planFactsPrompt, planSkeletonPrompt, verifyFactsPrompt } from "../prompts";
-import { lessonShapeOf } from "../shapes";
 import {
   assignFactIds,
   EMPTY_PLAN_FACTS,
@@ -20,7 +19,7 @@ import {
   type PipelineState,
   StageFailure,
 } from "../types";
-import { audienceOf, BUDGET_FINDING } from "./shared";
+import { audienceOf, BUDGET_FINDING, shapeOf } from "./shared";
 import { applyVerifyPatch, VERIFY_FAILED_FINDING, verifyFinding } from "./verify";
 
 /*
@@ -78,10 +77,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   const sourceTexts = lesson.sources ? await deps.sources(lesson.sources) : [];
   // The lesson's shape (TEACH-229): computed once from the brief's answers and the class, rendered
   // into both Plan prompts and enforced by both Plan schemas.
-  const shape = lessonShapeOf(brief.answers, {
-    yearGroup: lesson.yearGroup,
-    ageBand: lesson.ageBand,
-  });
+  const shape = shapeOf(lesson);
   const briefInput = {
     topic: brief.topic,
     durationMin: brief.durationMin,
