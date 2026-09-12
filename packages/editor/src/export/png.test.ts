@@ -30,6 +30,20 @@ describe("captureFetch (TEACH-272 §1)", () => {
     }
   });
 
+  it("resolves a relative /files/ path against the origin before fetching (TEACH-275)", async () => {
+    const original = globalThis.fetch;
+    const fetchSpy = mock(async () => new Response(new Blob(["x"], { type: "image/png" })));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    try {
+      expect(await captureFetch("https://api.test")("/files/ws/a.png")).toMatch(/^data:/);
+      const [url, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+      expect(url).toBe("https://api.test/files/ws/a.png");
+      expect(init.credentials).toBe("include");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
   it("leaves a foreign image to the library's own fetch", async () => {
     const original = globalThis.fetch;
     const fetchSpy = mock(async () => new Response("never"));

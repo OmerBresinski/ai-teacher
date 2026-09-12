@@ -1,6 +1,6 @@
 # 0026 — Railway Bucket (S3-compatible) for object storage
 
-- Status: Accepted (supersedes ADR 0011)
+- Status: Accepted (supersedes ADR 0011; amended 2026-09-12)
 - Date: 2026-09-07
 - Related PRD decisions: F03 (Sources), F12 (export files), F15-D5 / F15 §4 #8 (data residency),
   F15-R02 (deletion destroys originals)
@@ -81,3 +81,22 @@ preferred one vendor for web and files. Since then:
   (`apps/api/src/routes/files.ts` imports only from `@tj/domain`); nothing new leaks.
 - Objects are keyed exactly as before (`<workspaceId>/<segment>/…`), so F15-R02 delete-all
   (`deleteByPrefix`) is unchanged.
+
+## Amendment (2026-09-12, TEACH-275)
+
+Documents store their own pictures as the api path `/files/<key>`, never as an absolute URL. The
+api origin is a deployment fact — it changed once already (TEACH-36) and every stored picture
+broke, because `apps/web/src/lib/images.ts` and the worker's `storePhoto` had written
+`<origin>/files/<key>` into `ImageElement.src`, `background.image` and worksheet image blocks.
+
+- Writers emit `/files/<key>`: the api pick route and `storePhoto` return it, the web stores it as
+  received, the pipeline stores it as received. `API_PUBLIC_BASE_URL` is gone.
+- Readers resolve at use. `@tj/editor` exposes `resolveImageSrc(src, imageOrigin)` and an
+  `ImageOriginProvider`; `apps/web` provides `VITE_API_URL` once in `router.tsx` and every `<img>`
+  in the package reads it (`ImageView`, `StoredImage`, the slide background). Exporters resolve
+  before they fetch and decide `credentials` with `isOwnFile`, which accepts the relative form and,
+  for documents written before this amendment or imported from another deployment, the absolute
+  form on the same origin. `@tj/editor` never reads the environment (ADR 0022).
+- Migration `0006_relative_file_urls` rewrites every `<scheme>://<host>/files/` in
+  `documents.body` to `/files/`; it is idempotent and touches no third-party URL.
+

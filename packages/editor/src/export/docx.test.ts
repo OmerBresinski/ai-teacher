@@ -415,6 +415,24 @@ describe("resolveImage (TEACH-272 §1)", () => {
     }
   });
 
+  it("resolves a relative /files/ path against the origin and sends the cookie (TEACH-275)", async () => {
+    const original = globalThis.fetch;
+    const calls: [string, RequestInit | undefined][] = [];
+    globalThis.fetch = mock(async (url: string, init?: RequestInit) => {
+      calls.push([url, init]);
+      return new Response(pngBytes, { headers: { "content-type": "image/png" } });
+    }) as unknown as typeof fetch;
+    try {
+      expect(await resolveImage("/files/ws/a.png", "https://api.test")).toMatchObject({
+        type: "png",
+      });
+      expect(calls[0]?.[0]).toBe("https://api.test/files/ws/a.png");
+      expect(calls[0]?.[1]?.credentials).toBe("include");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
   it("is null for a failed fetch, an unknown type, or a src that is not a URL", async () => {
     const original = globalThis.fetch;
     globalThis.fetch = mock(async (url: string) =>

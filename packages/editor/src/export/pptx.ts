@@ -52,6 +52,7 @@ import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
+import { resolveImageSrc } from "../images/resolve-src";
 import {
   clamp,
   GAP_TOKEN,
@@ -483,7 +484,8 @@ async function toDataUrl(src: string, imageOrigin: string | undefined): Promise<
   if (cached !== undefined) return cached;
   let result: string | null = null;
   try {
-    const response = await fetch(src, {
+    // A stored `/files/<key>` is relative (TEACH-275): resolved against the api origin here.
+    const response = await fetch(resolveImageSrc(src, imageOrigin), {
       mode: "cors",
       credentials: imageCredentials(src, imageOrigin),
     });

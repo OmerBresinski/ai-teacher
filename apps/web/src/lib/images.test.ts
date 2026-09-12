@@ -1,6 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { SearchError } from "@tj/editor/images";
-import { env } from "@/env";
 import { imageSearchClient } from "@/lib/images";
 import { installFakeApi } from "@/test/fake-api";
 
@@ -54,16 +53,14 @@ describe("imageSearchClient", () => {
     expect((error as SearchError).status).toBe(429);
   });
 
-  test("pick posts the id and prefixes the relative url", async () => {
+  test("pick posts the id and stores the relative url as received (TEACH-275)", async () => {
     const photo = fakeApi.photoFixture("7");
     const picked = await imageSearchClient.pick(photo, "slide");
     const request = lastRequest();
     expect(request?.method).toBe("POST");
     expect(request?.path).toBe("/images/pick");
     expect(request?.body).toEqual({ provider: "pexels", id: "7", target: "slide" });
-    expect(picked.url).toBe(
-      `${env.VITE_API_URL}/files/00000000-0000-4000-8000-000000000001/images/7.jpg`,
-    );
+    expect(picked.url).toBe("/files/00000000-0000-4000-8000-000000000001/images/7.jpg");
     expect(picked.width).toBe(6000);
     expect(picked.source).toEqual({
       provider: "pexels",

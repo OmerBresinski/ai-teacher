@@ -1,5 +1,6 @@
 import type { RichDoc, Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import type { CSSProperties, ReactNode } from "react";
+import { StoredImage } from "../images/StoredImage";
 import { RichText } from "../slide/elements/RichText";
 import { escapeHtml, isDocEmpty, renderDocHTML } from "../text/static";
 import { type AnswerEntry, matchingOrder, optionLetter } from "./answers";
@@ -268,7 +269,7 @@ export function BlockContent({
     case "image":
       return (
         <figure className="ws-figure" style={{ width: `${block.widthPct}%` }}>
-          <img src={block.src} alt={block.alt ?? ""} />
+          <StoredImage src={block.src} alt={block.alt ?? ""} />
           {block.caption !== undefined ? (
             <figcaption className="ws-caption">{fieldText(block.caption)}</figcaption>
           ) : null}

@@ -5,9 +5,11 @@
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
+import { ImageOriginProvider } from "@tj/editor/images";
 import { ThemeProvider, Toaster, TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { RoutePendingPage } from "@/components/route-pending-page";
+import { env } from "@/env";
 import { rememberShell } from "@/lib/last-shell";
 import { queryClient } from "@/lib/query";
 import { authLayoutRoute } from "@/routes/auth.route";
@@ -67,8 +69,11 @@ function Wrap({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          {children}
-          <Toaster />
+          {/* Stored pictures are `/files/<key>`; the api origin is resolved here, once (TEACH-275). */}
+          <ImageOriginProvider origin={env.VITE_API_URL}>
+            {children}
+            <Toaster />
+          </ImageOriginProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

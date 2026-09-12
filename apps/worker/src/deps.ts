@@ -23,7 +23,7 @@ export type WorkerDeps = {
   db: Db;
   caps: { capUsd: number; capTokens: number };
   storage: ReadableStorageAdapter;
-  images?: { client: PexelsClient; storage: StorageAdapter; filesBaseUrl?: string };
+  images?: { client: PexelsClient; storage: StorageAdapter };
 };
 
 export function createWorkerDeps(
@@ -51,7 +51,6 @@ export function createWorkerDeps(
       ? {
           client: createPexelsClient({ apiKey: env.PEXELS_API_KEY }),
           storage: storage.adapter,
-          filesBaseUrl: env.API_PUBLIC_BASE_URL,
         }
       : undefined,
     storageKind: storage.kind,

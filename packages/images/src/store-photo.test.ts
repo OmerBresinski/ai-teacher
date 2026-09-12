@@ -71,32 +71,11 @@ describe("storePhoto", () => {
     expect(stored.key).toBe(`${ws}/images/fixed-id.jpg`);
     expect(stored.url).toBe(`/files/${ws}/images/fixed-id.jpg`);
 
-    const absolute = await storePhoto({
-      photo: photo(),
-      target: "slide",
-      storage,
-      workspaceId: ws,
-      fetch,
-      ids: () => "fixed-id",
-      baseUrl: "https://api.example",
-    });
-    expect(absolute.key).toBe(`${ws}/images/fixed-id.jpg`);
-    expect(absolute.url).toBe(`https://api.example/files/${ws}/images/fixed-id.jpg`);
-
-    const slashed = await storePhoto({
-      photo: photo(),
-      target: "slide",
-      storage,
-      workspaceId: ws,
-      fetch,
-      ids: () => "fixed-id",
-      baseUrl: "https://api.example/",
-    });
-    expect(slashed.url).toBe(`https://api.example/files/${ws}/images/fixed-id.jpg`);
     expect(stored.contentType).toBe("image/jpeg");
     expect(stored.width).toBe(6000);
     expect(stored.height).toBe(4000);
-    expect(puts).toHaveLength(3);
+    // One store, one relative URL (TEACH-275): the api origin is never written into a document.
+    expect(puts).toHaveLength(1);
     expect(puts[0]?.bytes).toEqual(threeHundredKb);
     const parsed = parseStorageKey(stored.key);
     expect(parsed.ok).toBe(true);

@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
+import { StoredImage } from "../images/StoredImage";
 import { isDocEmpty } from "../text/static";
 import { matchingLetters, matchingOrder, optionLetter } from "./answers";
 import { SheetText, type StemRenderer } from "./BlockContent";
@@ -348,7 +349,7 @@ export function EditableBlock({
     case "image":
       return (
         <figure className="ws-figure" style={{ width: `${block.widthPct}%` }}>
-          <img src={block.src} alt={block.alt ?? ""} />
+          <StoredImage src={block.src} alt={block.alt ?? ""} />
           {block.caption !== undefined ? (
             <figcaption className="ws-caption">
               <SheetField

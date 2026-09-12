@@ -11,6 +11,7 @@
  */
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { domToBlob } from "modern-screenshot";
+import { resolveImageSrc } from "../images/resolve-src";
 import { imageCredentials } from "./image-credentials";
 import { slugify } from "./json";
 
@@ -41,7 +42,12 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
 export function captureFetch(imageOrigin: string | undefined) {
   return async (url: string): Promise<string | false> => {
     if (imageCredentials(url, imageOrigin) !== "include") return false;
-    const response = await fetch(url, { mode: "cors", credentials: "include" });
+    // The DOM already carries the resolved URL (`ImageView`); a bare `/files/` path from a CSS
+    // background is resolved here the same way.
+    const response = await fetch(resolveImageSrc(url, imageOrigin), {
+      mode: "cors",
+      credentials: "include",
+    });
     if (!response.ok) return false;
     return blobToDataUrl(await response.blob());
   };

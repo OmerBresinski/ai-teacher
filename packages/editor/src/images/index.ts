@@ -1,5 +1,6 @@
 export { ImageCreditText } from "./ImageCreditText";
 export { ImagePicker, type ImagePickerProps } from "./ImagePicker";
+export { ImageOriginProvider, useImageOrigin, useResolvedImageSrc } from "./image-origin";
 export {
   type ImageReport,
   type ImageSearchClient,
@@ -12,3 +13,5 @@ export {
   type ReportReason,
   SearchError,
 } from "./image-search";
+export { isOwnFile, resolveImageSrc } from "./resolve-src";
+export { StoredImage } from "./StoredImage";

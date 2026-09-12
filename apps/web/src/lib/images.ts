@@ -5,15 +5,14 @@ import type {
   PickedPhoto,
 } from "@tj/editor/images";
 import { SearchError } from "@tj/editor/images";
-import { env } from "@/env";
 import { api } from "@/lib/api";
 import { apiErrorFromResponse } from "@/lib/query";
 
 /**
  * The editor's `ImageSearchClient` over the api's Pexels routes (Images project). Non-2xx
- * answers become `SearchError` carrying the status, so the panel can say why. The pick
- * response's relative `url` is prefixed with `VITE_API_URL` (locally `/api` through the Vite
- * proxy, the Railway origin in production), so the stored `src` is absolute in production.
+ * answers become `SearchError` carrying the status, so the panel can say why. The pick response's
+ * relative `url` (`/files/<key>`) is stored as it is (TEACH-275): the api origin is a deployment
+ * fact, resolved at render by `ImageOriginProvider` in `router.tsx`, never written into a document.
  */
 export const imageSearchClient: ImageSearchClient = {
   async search(query, opts): Promise<PhotoSearchPage> {
@@ -69,7 +68,7 @@ export const imageSearchClient: ImageSearchClient = {
     }
     const body = await res.json();
     return {
-      url: `${env.VITE_API_URL}${body.url}`,
+      url: body.url,
       width: body.width,
       height: body.height,
       source: body.source,

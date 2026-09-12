@@ -64,7 +64,6 @@ function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["
         target,
         storage: images.storage,
         workspaceId,
-        baseUrl: images.filesBaseUrl,
       }),
   };
 }

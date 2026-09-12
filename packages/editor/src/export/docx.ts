@@ -35,6 +35,7 @@ import {
   TextRun,
   WidthType,
 } from "docx";
+import { resolveImageSrc } from "../images/resolve-src";
 import { answerKey, matchingOrder, optionLetter } from "../worksheet/answers";
 import { LINE_GAP, PAGE_PAD, pageMetrics } from "../worksheet/metrics";
 import { buildWordSearch, solutionMask, wordSearchLead } from "../worksheet/word-search";
@@ -294,7 +295,8 @@ export async function resolveImage(
   if (/^data:/i.test(trimmed)) return decodeImage(trimmed);
   if (!/^(https?:)?\//i.test(trimmed)) return null;
   try {
-    const response = await fetch(trimmed, {
+    // A stored `/files/<key>` is relative (TEACH-275): resolved against the api origin here.
+    const response = await fetch(resolveImageSrc(trimmed, imageOrigin), {
       mode: "cors",
       credentials: imageCredentials(trimmed, imageOrigin),
     });

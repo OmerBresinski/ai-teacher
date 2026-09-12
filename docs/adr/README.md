@@ -31,7 +31,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0023 | Export pipeline: client-side exporters, SPA print routes, JSON import | Accepted (amended 2026-09-12) |
 | 0024 | Document persistence and the lesson brief: `documents` table, document API, `POST /lessons` | Accepted (amended 2026-09-06, 2026-09-12) |
 | 0025 | Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair | Accepted (amended 2026-09-12) |
-| 0026 | Railway Bucket (S3-compatible) for object storage  | Accepted |
+| 0026 | Railway Bucket (S3-compatible) for object storage  | Accepted (amended 2026-09-12) |
 | 0027 | Upload as input: `POST /sources`, `@tj/extract`, `sources` table, `SourceLoader` | Accepted |
 
 Template: `0000-template.md`.
@@ -62,3 +62,4 @@ Template: `0000-template.md`.
 - 2026-09-12 — ADR 0025 §20: `SourceLocator` gains `section`; a paste has a `storageKey`; the `SourceLoader` reads `extracted.json` and Plan caps source text at 40k chars (ADR 0027 §3, §6). See the amendment in `0025-lesson-generation-pipeline.md`.
 - 2026-09-12 — ADR 0023 §6, Consequences: Import posts to `POST /documents` through `libraryMutations.importDocument` (server-assigned id); exporters fetch `/files/` images with the session cookie (`include` for the api origin, `omit` elsewhere, `crossorigin` only in capture mode); imported `/files/` references from another Workspace render broken by design; locked lessons export their current state (TEACH-272). See the amendment in `0023-export-pipeline.md`.
 - 2026-09-12 — ADR 0013: `packages/extract` (`@tj/extract`) added to the package map (ADR 0027 §2). See the fifth amendment in `0013-monorepo-layout.md`.
+- 2026-09-12 — ADR 0026: documents store pictures as the api path `/files/<key>`; the origin is resolved at render (`ImageOriginProvider`) and export (`resolveImageSrc`), `API_PUBLIC_BASE_URL` removed, migration 0006 rewrites stored absolute URLs (TEACH-275). See the amendment in `0026-railway-bucket-storage.md`.

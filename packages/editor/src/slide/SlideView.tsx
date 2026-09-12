@@ -1,6 +1,7 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { type CSSProperties, lazy, Suspense, useMemo, useState } from "react";
+import { ImageOriginProvider, useResolvedImageSrc } from "../images/image-origin";
 import { hasExplanationPanel } from "../layout/explanation";
 import { SAFE } from "../model/grid";
 import { docToPlainText } from "../text/static";
@@ -41,6 +42,11 @@ export type SlideViewProps = {
    * every other subscriber — is untouched while the pointer moves.
    */
   transformOverride?: ReadonlyMap<string, ElementTransform>;
+  /**
+   * The api origin stored `/files/<key>` pictures are loaded from (TEACH-275). Set by an entry
+   * that mounts a slide outside an `ImageOriginProvider` (the export stage); otherwise inherited.
+   */
+  imageOrigin?: string;
 };
 
 export type { ElementTransform };
@@ -61,6 +67,7 @@ export function SlideView({
   answerProgress = 0,
   className,
   transformOverride,
+  imageOrigin,
 }: SlideViewProps) {
   /**
    * `step` unset means "show the finished slide" — what a thumbnail, an export and the
@@ -134,59 +141,66 @@ export function SlideView({
   const rootClass = [className, still ? "no-anim" : null].filter(Boolean).join(" ") || undefined;
 
   return (
-    <div
-      data-slide-root
-      data-slide-id={slide.id}
-      data-slide-mode={mode}
-      className={rootClass}
-      style={rootStyle}
-    >
-      <SlideBackground theme={theme} background={bg} />
+    <ImageOriginProvider origin={imageOrigin}>
+      <div
+        data-slide-root
+        data-slide-id={slide.id}
+        data-slide-mode={mode}
+        className={rootClass}
+        style={rootStyle}
+      >
+        <SlideBackground theme={theme} background={bg} />
 
-      {slide.elements.map((el, i) => (
-        <ElementFrame
-          key={el.id}
-          element={el}
-          theme={theme}
-          mode={mode}
-          slideId={slide.id}
-          step={effectiveStep}
-          revealAnswer={revealAnswer}
-          answerProgress={answerProgress}
-          question={slide.question}
-          zIndex={i + 1}
-          staggerIndex={stagger.get(el.id)}
-          sortIndex={sortIndex.get(el.id)}
-          optionIndex={optionIndex.get(el.id)}
-          animateReveals={forward}
-          override={mode === "edit" ? transformOverride?.get(el.id) : undefined}
-        />
-      ))}
+        {slide.elements.map((el, i) => (
+          <ElementFrame
+            key={el.id}
+            element={el}
+            theme={theme}
+            mode={mode}
+            slideId={slide.id}
+            step={effectiveStep}
+            revealAnswer={revealAnswer}
+            answerProgress={answerProgress}
+            question={slide.question}
+            zIndex={i + 1}
+            staggerIndex={stagger.get(el.id)}
+            sortIndex={sortIndex.get(el.id)}
+            optionIndex={optionIndex.get(el.id)}
+            animateReveals={forward}
+            override={mode === "edit" ? transformOverride?.get(el.id) : undefined}
+          />
+        ))}
 
-      {revealAnswer && slide.question?.type === "matching" ? (
-        <MatchingLines slide={slide} theme={theme} question={slide.question} animate={!still} />
-      ) : null}
+        {revealAnswer && slide.question?.type === "matching" ? (
+          <MatchingLines slide={slide} theme={theme} question={slide.question} animate={!still} />
+        ) : null}
 
-      {revealAnswer && slide.question?.type === "image-match" ? (
-        <ImageMatchAnswers slide={slide} theme={theme} question={slide.question} />
-      ) : null}
+        {revealAnswer && slide.question?.type === "image-match" ? (
+          <ImageMatchAnswers slide={slide} theme={theme} question={slide.question} />
+        ) : null}
 
-      {panel ? (
-        mode === "edit" ? (
-          <Suspense
-            fallback={
-              <ExplanationPanel slide={slide} theme={theme} text={explanation ?? ""} mode={mode} />
-            }
-          >
-            <ExplanationEditor slide={slide} theme={theme} text={explanation ?? ""} />
-          </Suspense>
+        {panel ? (
+          mode === "edit" ? (
+            <Suspense
+              fallback={
+                <ExplanationPanel
+                  slide={slide}
+                  theme={theme}
+                  text={explanation ?? ""}
+                  mode={mode}
+                />
+              }
+            >
+              <ExplanationEditor slide={slide} theme={theme} text={explanation ?? ""} />
+            </Suspense>
+          ) : explanation ? (
+            <ExplanationPanel slide={slide} theme={theme} text={explanation} mode={mode} />
+          ) : null
         ) : explanation ? (
-          <ExplanationPanel slide={slide} theme={theme} text={explanation} mode={mode} />
-        ) : null
-      ) : explanation ? (
-        <Explanation slide={slide} theme={theme} text={explanation} mode={mode} />
-      ) : null}
-    </div>
+          <Explanation slide={slide} theme={theme} text={explanation} mode={mode} />
+        ) : null}
+      </div>
+    </ImageOriginProvider>
   );
 }
 
@@ -195,7 +209,7 @@ export function SlideView({
 /* ------------------------------------------------------------------ */
 
 function SlideBackground({ theme, background }: { theme: Theme; background: Slide["background"] }) {
-  const image = background?.image;
+  const image = useResolvedImageSrc(background?.image ?? "") || undefined;
   // A slide's own background wins outright: theme art must never paint over a colour
   // the teacher chose, or there would be no way to switch it off.
   const themeImage = background?.color || image ? undefined : theme.backgroundImage;
