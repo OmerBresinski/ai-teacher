@@ -25,6 +25,7 @@ import { defineJob, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { Logger } from "pino";
 import type { WorkerDeps } from "../deps";
+import { SourceUnavailable, storageSourceLoader } from "../sources";
 
 /**
  * `lesson.plan` — the F06 pipeline under the generating lock (ADR 0025 §4–§7, §12, §15, §24).
@@ -91,7 +92,7 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
       logger,
       now: () => new Date(),
       ids: uid,
-      sources: deps.sources,
+      sources: storageSourceLoader(deps.storage, workspaceId, logger),
       persist: makePersist(ws, lessonId, jobId, loaded),
       onProgress: (percent, message, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt }),
@@ -118,6 +119,12 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
           { lessonId, findings: error.findings.map((f) => f.check) },
           "lesson brief rejected by the input check",
         );
+        throw new NonRetryableError(error.message);
+      }
+      // A Source's `extracted.json` is gone or unreadable (ADR 0027 §6): a re-run cannot bring it
+      // back, and planning without the material would silently give the teacher the wrong lesson.
+      if (error instanceof SourceUnavailable) {
+        logger.warn({ lessonId, sourceId: error.sourceId }, "source unavailable");
         throw new NonRetryableError(error.message);
       }
       if (!(error instanceof NonRetryableError)) keepLocksForRetry = true;

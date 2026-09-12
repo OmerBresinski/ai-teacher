@@ -24,12 +24,13 @@ export { IMAGE_TEXT_RULE, photoBlock } from "./generate-slide";
 export type { GenerateWorksheetInput } from "./generate-worksheet";
 export type { PickOrRequeryInput } from "./pick-or-requery-photo";
 export type { PlanFactsInput } from "./plan-facts";
-export type { PlanSkeletonInput } from "./plan-skeleton";
+export { type PlanSkeletonInput, SOURCE_INSTRUCTION } from "./plan-skeleton";
 export type { ProposeInput } from "./propose";
 export type { RepairInput } from "./repair";
 export type { RepairFactInput } from "./repair-fact";
 export type { Audience, WritingShape } from "./shared";
 export { VERB_WRITING, verbBlock } from "./shared";
+export { describeRef } from "./source-ref";
 export type { VerifyFactsInput } from "./verify-facts";
 export {
   cascadePrompt,

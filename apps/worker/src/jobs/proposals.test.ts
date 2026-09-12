@@ -6,12 +6,13 @@ import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, JobResultSchema, type LessonId, newId, type WorkspaceId } from "@tj/domain";
 import type { Lesson, SlideElement } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
-import { noSources, PROPOSE_CONCURRENCY } from "@tj/generation";
+import { PROPOSE_CONCURRENCY } from "@tj/generation";
 import { FIXTURES } from "@tj/generation/testing";
 import { NonRetryableError } from "@tj/jobs";
 import { materialiseSlide } from "@tj/slides";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
+import { memoryStorage } from "../testing/memory-storage";
 import { lessonCascadeJob } from "./lesson-cascade";
 import { lessonRegenerateJob } from "./lesson-regenerate";
 
@@ -43,7 +44,7 @@ describeDb("lesson.cascade / lesson.regenerate jobs", () => {
     ai,
     db: unsafeDb,
     caps,
-    sources: noSources,
+    storage: memoryStorage(),
   });
 
   beforeEach(async () => {

@@ -1,8 +1,9 @@
-import { GENERATABLE_SLIDE_KINDS } from "@tj/domain/documents";
+import { GENERATABLE_SLIDE_KINDS, type SourceLocator } from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
 import type { LessonShape } from "../shapes";
 import { shapeBlock } from "./shape";
 import { type Audience, audienceBlock, example, HOUSE_RULES, limitsBlock } from "./shared";
+import { describeRef } from "./source-ref";
 
 /*
  * Plan, first call (ADR 0025 §1, §7, §13; TEACH-138; Generation quality §2, TEACH-211; Lesson
@@ -22,9 +23,13 @@ export type PlanSkeletonInput = {
   /** The lesson's shape, from the brief's answers and the class (`lessonShapeOf`). */
   shape: LessonShape;
   audience: Audience;
-  /** Extracted Source passages (F03); empty until then. */
-  sourceTexts: { sourceId: string; text: string }[];
+  /** Extracted Source passages (F03, ADR 0027 §6), already capped by `selectSourceTexts`. */
+  sourceTexts: { sourceId: string; ref: SourceLocator; text: string }[];
 };
+
+/** What the model is told when the lesson has material to follow (ADR 0027 §6). */
+export const SOURCE_INSTRUCTION =
+  "Ground the lesson in the teacher's material below. Treat the material's own sequence as the default lesson order and its terminology as canonical; deviate only where the objective verb or the lesson length requires it, and record why in the facts.";
 
 const EXAMPLE = {
   learningObjectives: [
@@ -132,14 +137,17 @@ export function briefBlock(input: PlanSkeletonInput): string[] {
     ...shapeBlock(input.shape).map((line) => `  ${line}`),
   ];
   if (input.sourceTexts.length > 0) {
-    parts.push("Ground the lesson in these source passages where they apply:");
-    for (const s of input.sourceTexts) parts.push(`[${s.sourceId}] ${s.text}`);
+    parts.push(SOURCE_INSTRUCTION);
+    for (const s of input.sourceTexts) {
+      const where = describeRef(s.ref);
+      parts.push(`[${s.sourceId}${where ? ` ${where}` : ""}] ${s.text}`);
+    }
   }
   return parts;
 }
 
 export const planSkeletonPrompt = {
-  version: "plan-skeleton.v15",
+  version: "plan-skeleton.v16",
   system: [
     "You are an experienced UK teacher planning one lesson from a brief.",
     "Produce only the lesson's skeleton: the learning objectives and an outline of slides with the minutes each takes. The key ideas, vocabulary, worked examples and questions come in a later step, so do not write them here.",

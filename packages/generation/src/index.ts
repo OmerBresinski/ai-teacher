@@ -36,6 +36,14 @@ export {
 } from "./stages/proposals";
 export { MAX_TARGETS, repair, repairTargets } from "./stages/repair";
 export { audienceOf, blockText, runBounded, slideText } from "./stages/shared";
+export {
+  type SelectedSourceTexts,
+  SOURCE_TEXT_MIN_CHARS,
+  type SourceUnit,
+  selectSourceTexts,
+  sourceUnitOf,
+  type TruncatedSource,
+} from "./stages/source-texts";
 export * from "./types";
 export {
   checkInputStep,

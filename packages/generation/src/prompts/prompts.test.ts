@@ -11,7 +11,8 @@ import {
   VERB_WRITING,
   verbBlock,
 } from "./index";
-import { planSkeletonPrompt } from "./plan-skeleton";
+import { planFactsPrompt } from "./plan-facts";
+import { planSkeletonPrompt, SOURCE_INSTRUCTION } from "./plan-skeleton";
 
 /*
  * ADR 0025 §17: every prompt's wording is pinned to its version. Change the text → change the
@@ -25,7 +26,11 @@ const brief = {
   topic: "States of matter",
   durationMin: 60,
   audience: audienceOf(sampleBriefLesson()),
-  sourceTexts: [],
+  /** Two Sources (ADR 0027 §6) so the source instruction and locators are part of the hash. */
+  sourceTexts: [
+    { sourceId: "src1", ref: { page: 3 }, text: "Solids keep their shape; liquids flow." },
+    { sourceId: "src2", ref: { section: "Particles" }, text: "Particles vibrate in a solid." },
+  ],
   answers: { q1: "yes" },
   /** Explain / New to it: the cell with the most Shape sentences. */
   shape: lessonShapeOf(
@@ -144,12 +149,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v15",
-    hash: "703eadbca5dd93b53ae98d8032754ff31f0e100e25055b8854cda2ecf414f75a",
+    version: "plan-skeleton.v16",
+    hash: "e67567ac2067aeb025fba19d1f53b0a7adcfc036a775df15696651478a59afc7",
   },
   "plan-facts": {
-    version: "plan-facts.v7",
-    hash: "7f31a4e4e8eb79631c947269f28693b17325bfd076e30706caf30dde6992eeb9",
+    version: "plan-facts.v8",
+    hash: "8703491b17d88e7f5be78294a7a2f1a8c4e315a65898abd4dc766d078c4dd597",
   },
   "verify-facts": {
     version: "verify-facts.v1",
@@ -205,6 +210,19 @@ describe("prompt versions", () => {
       expect(actual).toEqual(PINNED[name]);
     },
   );
+
+  test("plan prompts render the source instruction and locators only when sources exist", () => {
+    const withSources = planSkeletonPrompt.user(brief);
+    expect(withSources.split(SOURCE_INSTRUCTION)).toHaveLength(2);
+    expect(withSources).toContain("[src1 p.3] Solids keep their shape");
+    expect(withSources).toContain("[src2 §Particles] Particles vibrate");
+    const without = planSkeletonPrompt.user({ ...brief, sourceTexts: [] });
+    expect(without).not.toContain(SOURCE_INSTRUCTION);
+    expect(without).not.toContain("[src");
+    expect(planFactsPrompt.user({ ...brief, skeleton: FIXTURES.planSkeleton })).toContain(
+      "[src1 p.3]",
+    );
+  });
 
   test("every prompt states the house rules and asks for JSON", () => {
     for (const prompt of Object.values(PROMPTS)) {
