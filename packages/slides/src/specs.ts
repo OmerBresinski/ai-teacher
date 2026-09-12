@@ -40,25 +40,56 @@ export const GAP_MARKER = "___";
 /** The `params` key an editorial issue carries (Zod keeps `params` on custom issues). */
 export const EDITORIAL_PARAM = "editorial";
 
+/** The `params` key carrying the log-safe form of a message that quotes a model value. */
+export const LOG_PARAM = "log";
+
 /** What `editorialIssue` returns: the one object both `.refine(fn, …)` and `ctx.addIssue(…)` take. */
 export type EditorialIssue = {
   code: "custom";
   message: string;
   path?: PropertyKey[] | undefined;
-  params: { [EDITORIAL_PARAM]: true };
+  params: { [EDITORIAL_PARAM]: true; [LOG_PARAM]?: string };
+};
+
+/** A shape rule's custom issue whose message quotes a model value, with its log-safe form. */
+export type ShapeIssue = {
+  code: "custom";
+  message: string;
+  path?: PropertyKey[] | undefined;
+  params: { [LOG_PARAM]: string };
 };
 
 /**
  * The tag every editorial rule carries. Use it as the second argument of `.refine` or as the
  * argument of `ctx.addIssue` in a `superRefine`; a rule written any other way is a shape rule.
+ * `log` is required whenever `message` interpolates a value the model wrote (ADR 0015): it is the
+ * same sentence with that value left out, and it is what reaches the log; a message built only
+ * from our own words and numbers needs none.
  */
-export function editorialIssue(message: string, path?: PropertyKey[]): EditorialIssue {
+export function editorialIssue(
+  message: string,
+  path?: PropertyKey[],
+  log?: string,
+): EditorialIssue {
   return {
     code: "custom",
     message,
     ...(path === undefined ? {} : { path }),
-    params: { [EDITORIAL_PARAM]: true },
+    params: { [EDITORIAL_PARAM]: true, ...(log === undefined ? {} : { [LOG_PARAM]: log }) },
   };
+}
+
+/** A shape rule that quotes a model value: untagged, with the log-safe form of its message. */
+export function shapeIssue(message: string, path: PropertyKey[], log: string): ShapeIssue {
+  return { code: "custom", message, path, params: { [LOG_PARAM]: log } };
+}
+
+/** The log-safe form of a custom issue's message, when the rule declared one. */
+export function logMessageOf(issue: object): string | undefined {
+  const params: unknown = (issue as { params?: unknown }).params;
+  if (typeof params !== "object" || params === null) return undefined;
+  const log = (params as Record<string, unknown>)[LOG_PARAM];
+  return typeof log === "string" ? log : undefined;
 }
 
 /** Whether one Zod issue came from an editorial rule (see `editorialIssue`). */
@@ -627,6 +658,8 @@ export const PICTURE_NONE =
   "This slide has no photograph: write it as plain content and mention no picture, photo or image.";
 export const TASK_NOT_VISIBLE = (item: string) =>
   `The photograph does not show "${item}": a task (spot, find, count, point to, identify, circle, label) may name only visible items.`;
+/** The same rule for the log: the item is a `mustShow` word the model wrote (ADR 0015). */
+const TASK_NOT_VISIBLE_LOG = TASK_NOT_VISIBLE("…");
 
 /** Words after a task verb, so "spot four flower parts: petals, sepals" is caught within reach. */
 const TASK_REACH = 12;
@@ -676,7 +709,9 @@ export function imageTextSpecSchemaFor(
         ctx.addIssue(editorialIssue(PICTURE_PLURAL, [path]));
       }
       const hidden = taskOnHiddenItem(text, photo);
-      if (hidden) ctx.addIssue(editorialIssue(TASK_NOT_VISIBLE(hidden), [path]));
+      if (hidden) {
+        ctx.addIssue(editorialIssue(TASK_NOT_VISIBLE(hidden), [path], TASK_NOT_VISIBLE_LOG));
+      }
     }
   }) as unknown as z.ZodType<SlideSpec>;
 }

@@ -1,4 +1,5 @@
 import type { ImageBrief } from "@tj/domain/documents";
+import { shapeIssue } from "@tj/slides";
 import { z } from "zod";
 import { type Audience, audienceBlock, example, HOUSE_RULES } from "./shared";
 
@@ -80,11 +81,14 @@ export function pickOrRequerySchemaFor(
   return PickOrRequerySchema.superRefine((answer, ctx) => {
     answer.visible.forEach((item, i) => {
       if (!allowed.has(normaliseItem(item))) {
-        ctx.addIssue({
-          code: "custom",
-          message: `visible lists only items from mustShow: ${brief.mustShow.join(", ")}`,
-          path: ["visible", i],
-        });
+        // The `mustShow` items are Plan's model output (ADR 0015): the log form leaves them out.
+        ctx.addIssue(
+          shapeIssue(
+            `visible lists only items from mustShow: ${brief.mustShow.join(", ")}`,
+            ["visible", i],
+            `visible lists only items from mustShow (${brief.mustShow.length} given)`,
+          ),
+        );
       }
     });
   });

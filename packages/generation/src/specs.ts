@@ -21,6 +21,7 @@ import {
   SlideSpecSchema,
   SPEC_LIMITS,
   type SpecSchemaOptions,
+  shapeIssue,
 } from "@tj/slides";
 import { z } from "zod";
 import { contentSentence, phaseOfKind } from "./prompts/shape";
@@ -320,7 +321,8 @@ export function planSkeletonSchemaFor(
     // references and the deck's two opening slides are shape (`ctx.addIssue` directly).
     const issue = soft
       ? () => undefined
-      : (message: string, path: (string | number)[]) => ctx.addIssue(editorialIssue(message, path));
+      : (message: string, path: (string | number)[], log?: string) =>
+          ctx.addIssue(editorialIssue(message, path, log));
     skeleton.outline.forEach((entry, i) => {
       refineOutlineRefs(ctx, ["outline", i, "factRefs"], entry.factRefs, {
         objective: skeleton.learningObjectives.length,
@@ -343,10 +345,9 @@ export function planSkeletonSchemaFor(
         entry.imageBrief.mustShow.forEach((item, j) => {
           const words = contentWordsOf(item);
           if (head !== undefined && words.length === 1 && words[0] === head) {
-            issue(
-              `mustShow names the subject ("${item}"); list what must be visible in it — parts and objects a camera captures.`,
-              ["outline", i, "imageBrief", "mustShow", j],
-            );
+            const names = (what: string) =>
+              `mustShow names the subject (${what}); list what must be visible in it — parts and objects a camera captures.`;
+            issue(names(`"${item}"`), ["outline", i, "imageBrief", "mustShow", j], names("…"));
           }
         });
       }
@@ -770,7 +771,8 @@ export function planFactsSchemaFor(
     // and left out of the soft build.
     const issue = soft
       ? () => undefined
-      : (message: string, path: (string | number)[]) => ctx.addIssue(editorialIssue(message, path));
+      : (message: string, path: (string | number)[], log?: string) =>
+          ctx.addIssue(editorialIssue(message, path, log));
     const sizes = {
       keyIdea: facts.keyIdeas.length,
       vocabulary: facts.vocabulary.length,
@@ -852,10 +854,9 @@ export function planFactsSchemaFor(
     const defined = new Set(facts.vocabulary.map((v) => v.term.trim().toLowerCase()));
     facts.pitch.avoid.forEach((word, i) => {
       if (defined.has(word.trim().toLowerCase())) {
-        issue(
-          `pitch.avoid lists "${word}", which the vocabulary defines; a lesson cannot avoid a word it teaches.`,
-          ["pitch", "avoid", i],
-        );
+        const lists = (what: string) =>
+          `pitch.avoid lists ${what}, which the vocabulary defines; a lesson cannot avoid a word it teaches.`;
+        issue(lists(`"${word}"`), ["pitch", "avoid", i], lists("…"));
       }
     });
     // Three tiers, each present in numbers a sheet and an exit ticket can draw on: the shape's
@@ -1196,38 +1197,44 @@ export function verifyOutputSchemaFor(facts: LessonFacts): z.ZodType<VerifyOutpu
   }
   return VerifyOutputSchema.superRefine((output, ctx) => {
     output.corrections.forEach((c, i) => {
-      const issue = (message: string, path: (string | number)[]) =>
-        ctx.addIssue({ code: "custom", message, path: ["corrections", i, ...path] });
+      // Every message names the id the model wrote, so each carries its log form (ADR 0015);
+      // `field` is enum-checked before this runs and is ours to print.
+      const issue = (say: (id: string) => string, path: (string | number)[]) =>
+        ctx.addIssue(shapeIssue(say(c.factId), ["corrections", i, ...path], say("…")));
       const fact = byId.get(c.factId);
       if (!fact) {
         issue(
-          `unknown fact id ${c.factId}: correct only the facts listed, by their id (objectives cannot be changed)`,
+          (id) =>
+            `unknown fact id ${id}: correct only the facts listed, by their id (objectives cannot be changed)`,
           ["factId"],
         );
         return;
       }
       if (!VERIFY_FIELDS_BY_ARRAY[fact.array].includes(c.field)) {
         issue(
-          `${c.factId} has no field "${c.field}"; its fields are ${VERIFY_FIELDS_BY_ARRAY[fact.array].join(", ")}`,
+          (id) =>
+            `${id} has no field "${c.field}"; its fields are ${VERIFY_FIELDS_BY_ARRAY[fact.array].join(", ")}`,
           ["field"],
         );
         return;
       }
       if (c.field === "steps") {
-        if (c.index === undefined)
-          issue(`a steps correction on ${c.factId} needs an index`, ["index"]);
-        else if (c.index >= (fact.steps ?? 0)) {
-          issue(`${c.factId} has ${fact.steps ?? 0} steps; index ${c.index} does not exist`, [
-            "index",
-          ]);
+        if (c.index === undefined) {
+          issue((id) => `a steps correction on ${id} needs an index`, ["index"]);
+        } else if (c.index >= (fact.steps ?? 0)) {
+          issue(
+            (id) => `${id} has ${fact.steps ?? 0} steps; index ${c.index} does not exist`,
+            ["index"],
+          );
         }
       } else if (c.index !== undefined) {
-        issue(`index is only for steps corrections`, ["index"]);
+        issue(() => "index is only for steps corrections", ["index"]);
       }
       if (c.value.length > VERIFY_LIMITS[c.field]) {
-        issue(`the value for ${c.field} must be at most ${VERIFY_LIMITS[c.field]} characters`, [
-          "value",
-        ]);
+        issue(
+          () => `the value for ${c.field} must be at most ${VERIFY_LIMITS[c.field]} characters`,
+          ["value"],
+        );
       }
     });
   });

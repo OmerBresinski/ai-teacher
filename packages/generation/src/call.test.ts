@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
 import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
-import { slideSpecSchemaFor } from "@tj/slides";
+import { shapeIssue, slideSpecSchemaFor } from "@tj/slides";
 import pino from "pino";
 import { z } from "zod";
 import { callStructured, imageMediaType, specRuleFinding } from "./call";
@@ -484,16 +484,21 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
     expect(ai.calls[1]?.promptText).not.toContain("expected array");
   });
 
-  test("a custom message that quotes the model's words keeps them for the retry and elides them in the log (ADR 0015)", async () => {
-    const quoting = z.strictObject({
-      word: z.string().refine((w) => w !== "evidence", {
-        error: (issue) =>
-          `pitch.avoid lists "${String(issue.input)}", which the vocabulary defines.`,
-      }),
+  test("a custom message that quotes the model's words keeps them for the retry and logs its declared log form (ADR 0015)", async () => {
+    // A value with an embedded quote and one with none: the log form is declared by the rule,
+    // never derived from the rendered message, so neither can leak.
+    const quoting = z.strictObject({ word: z.string(), id: z.string() }).superRefine((v, ctx) => {
+      if (v.word !== "ok") {
+        ctx.addIssue(shapeIssue(`pitch.avoid lists "${v.word}"`, ["word"], "pitch.avoid lists …"));
+      }
+      if (v.id !== "ok") {
+        ctx.addIssue(
+          shapeIssue(`${v.id} is not a candidate id`, ["id"], "… is not a candidate id"),
+        );
+      }
     });
-    const ai = createFakeAi({
-      script: [JSON.stringify({ word: "evidence" }), JSON.stringify({ word: "evidence" })],
-    });
+    const bad = JSON.stringify({ word: 'a"secret', id: "q9secret" });
+    const ai = createFakeAi({ script: [bad, bad] });
     const log = capturingLogger();
     const error = await callStructured({
       deps: deps(ai, { logger: log.logger }),
@@ -506,12 +511,15 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
       maxOutputTokens: 100,
     }).catch((e) => e);
     expect(error).toBeInstanceOf(StageFailure);
-    expect(ai.calls[1]?.promptText).toContain('lists "evidence"');
+    expect(ai.calls[1]?.promptText).toContain('lists "a"secret"');
+    expect(ai.calls[1]?.promptText).toContain("q9secret is not a candidate id");
     expect((error as StageFailure).cause).toEqual([
-      '- word: pitch.avoid lists "evidence", which the vocabulary defines.',
+      '- word: pitch.avoid lists "a"secret"',
+      "- id: q9secret is not a candidate id",
     ]);
-    expect(log.text()).toContain('pitch.avoid lists \\"…\\", which the vocabulary defines.');
-    expect(log.text()).not.toContain("evidence");
+    expect(log.text()).toContain("word: pitch.avoid lists …");
+    expect(log.text()).toContain("id: … is not a candidate id");
+    expect(log.text()).not.toContain("secret");
   });
 
   test("the model's text never reaches the log on the accepted path either", async () => {
