@@ -182,3 +182,13 @@ through `putDocumentAsJob(ws, id, body, jobId)` keyed on `generating_job_id = :j
 "with its own `expectedUpdatedAt`"; the worksheet row the job creates carries the same lock; and a
 lock whose job is terminal or never queued is released on read (ADR 0025 §6, §4, §24).
 Consequences: `LessonFacts` is an optional document field (ADR 0025 §1).
+
+## Amendment (2026-09-12, ADR 0027)
+
+§13: `POST /lessons` takes `sourceIds: uuid[]` (at most 3, optional). The route resolves them
+against the `sources` registry table with `listUnboundSources` — a missing, foreign, deleted or
+already-bound id is `422` — writes the rows as `Lesson.sources` (`SourceRef[]`) and binds
+`sources.lesson_id` inside `createLessonAndEnqueue`, after `createDocument` and before `enqueue`,
+reverting the binding with the document delete on an enqueue failure. §8's "`POST /files` upload"
+is not what shipped: uploads are `POST /sources` (multipart, parsed and screened in the request),
+and `ImageElement.src` data URLs are untouched by ADR 0027.
