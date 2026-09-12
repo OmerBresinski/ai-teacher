@@ -16,10 +16,12 @@ describe("GET /mail-assets/:file", () => {
     expect(Array.from(bytes.subarray(1, 4))).toEqual([0x50, 0x4e, 0x47]); // "PNG"
   });
 
-  test("unknown asset is a 404 envelope", async () => {
+  test("unknown assets, including prototype keys, are a 404 envelope", async () => {
     const app = createApp({ env: TEST_ENV, db: fakeSql(true) });
-    const res = await app.request("/mail-assets/nope.png");
-    expect(res.status).toBe(404);
-    expect(await res.json()).toMatchObject({ error: { code: "not_found" } });
+    for (const file of ["nope.png", "constructor", "toString", "__proto__"]) {
+      const res = await app.request(`/mail-assets/${file}`);
+      expect(res.status).toBe(404);
+      expect(await res.json()).toMatchObject({ error: { code: "not_found" } });
+    }
   });
 });

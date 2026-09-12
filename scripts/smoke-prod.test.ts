@@ -11,6 +11,12 @@ function fakeApi(): typeof fetch {
     const origin = headers.get("origin");
     const crossSite = headers.get("sec-fetch-site") === "cross-site";
     if (url.pathname === "/health") return new Response("ok", { status: 200 });
+    if (url.pathname.startsWith("/mail-assets/")) {
+      return new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      });
+    }
     if (init?.method === "OPTIONS" && origin === WEB) {
       const wantsHeaders = headers.get("access-control-request-headers") ?? "";
       if (!wantsHeaders.includes("content-type")) return new Response(null, { status: 204 });
@@ -33,7 +39,7 @@ describe("smoke-prod", () => {
   test("every case passes against a correctly guarded api", async () => {
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), fakeApi());
     expect(results.every((r) => r.ok)).toBe(true);
-    expect(results.length).toBe(16);
+    expect(results.length).toBe(17);
   });
 
   test("catches the 2026-09-05 regression: cross-site header rejected despite allowed Origin", async () => {
