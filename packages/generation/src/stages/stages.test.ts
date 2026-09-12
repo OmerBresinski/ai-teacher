@@ -462,6 +462,26 @@ describe("generate", () => {
     expect(checkLesson(state.lesson, state.worksheet)).toEqual([]);
   });
 
+  test("TEACH-263: an extra field on the first slide is stripped without retrying Generate", async () => {
+    const start = await planned();
+    const slides = FIXTURES.planSkeleton.outline
+      .slice(PLANNED_SLIDES)
+      .map((e, i) =>
+        json({ ...FIXTURES.slides[e.kind], ...(i === 0 ? { steps: ["Extra."] } : {}) }),
+      );
+    const ai = createFakeAi({ script: routed([...slides, json(FIXTURES.worksheet)]), usage });
+    const deps = recordingDeps(ai);
+    const state = await generate(start, deps);
+    expect(ai.calls).toHaveLength(slides.length + 1);
+    expect(ai.calls.filter((call) => call.promptText.includes('kind "starter"'))).toHaveLength(1);
+    const firstSlide = SlideSchema.parse(state.lesson.slides[PLANNED_SLIDES]);
+    expect(firstSlide.kind).toBe("starter");
+    expect(slideText(firstSlide)).not.toContain("Extra.");
+    expect(deps.persisted[0]?.lesson.slides[PLANNED_SLIDES]).toEqual(firstSlide);
+    expect(state.lesson.generation?.stage).toBe("generated");
+    expect(state.lesson.generation?.findings).toEqual([]);
+  });
+
   test("a spec of the wrong kind is a validation issue: retried once with the right kind", async () => {
     const start = await planned();
     const slides = FIXTURES.planSkeleton.outline

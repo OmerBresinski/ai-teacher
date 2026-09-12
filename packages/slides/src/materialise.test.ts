@@ -392,11 +392,11 @@ describe("SlideSpecSchema", () => {
   });
 
   test("an objectives spec has no heading: the slide always carries the reader's stem", () => {
-    expect(SlideSpecSchema.safeParse(minimalSpec("objectives")).success).toBe(true);
-    expect(
-      SlideSpecSchema.safeParse({ ...minimalSpec("objectives"), heading: "Learning objectives" })
-        .success,
-    ).toBe(false);
+    const spec = minimalSpec("objectives");
+    const parsed = SlideSpecSchema.parse({ ...spec, heading: "Learning objectives" });
+    expect(parsed).toEqual(spec);
+    const slide = materialiseSlide(parsed, "chalk", meta, counter());
+    expect(plain(slide.elements[0])).toBe(OBJECTIVES_SLIDE_HEADING);
   });
 
   test("rejects blank text, a multiple-choice with two correct options and a gap count mismatch", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  type BlockSpec,
   BlockSpecSchema,
   blockSpecSchemaFor,
   editorialIssue,
@@ -8,6 +9,7 @@ import {
   PICTURE_NONE,
   PICTURE_NONE_ANY,
   PICTURE_PLURAL,
+  type SlideSpec,
   SlideSpecSchema,
   slideSpecSchemaFor,
   stripEnumerator,
@@ -580,7 +582,9 @@ describe("TEACH-257: every editorial rule carries the tag and the soft build lea
     ],
     ["three options", "multiple-choice", mc(four("a", "b", "c", "d").slice(0, 3))],
     ["a missing stem", "open-response", { kind: "open-response", ...base }],
-    ["an unknown key", "content", { kind: "content", ...base, heading: "H", body: "B", x: 1 }],
+    ["a wrong kind", "content", { kind: "contnt", ...base, heading: "H", body: "B" }],
+    ["a missing kind", "content", { ...base, heading: "H", body: "B" }],
+    ["a mistyped body", "content", { kind: "content", ...base, heading: "H", body: ["B"] }],
     [
       "five objectives",
       "objectives",
@@ -623,4 +627,68 @@ describe("TEACH-257: every editorial rule carries the tag and the soft build lea
     if (!parsed?.success || parsed.data.kind !== "starter") return;
     expect(parsed.data.items).toEqual(["Salt & pepper"]);
   });
+});
+
+describe("TEACH-263: unknown spec keys are stripped without relaxing shape rules", () => {
+  for (const soft of [false, true]) {
+    test(`slide, block and image-text schemas strip extra fields (soft: ${soft})`, () => {
+      const content: SlideSpec = {
+        kind: "content",
+        ...base,
+        heading: "Method",
+        body: "Add the tens first.",
+      };
+      expect(slideSpecSchemaFor("content", { soft })?.parse({ ...content, steps: ["a"] })).toEqual(
+        content,
+      );
+      const question: BlockSpec = {
+        type: "question",
+        ...base,
+        text: "What is 20 + 30?",
+        answer: "50",
+        answerLines: 1,
+      };
+      const block = blockSpecSchemaFor("question", { soft });
+      expect(block?.parse({ ...question, hint: "Add the tens." })).toEqual(question);
+      expect(block?.safeParse({ ...question, type: "queston" }).success).toBe(false);
+      expect(block?.safeParse({ ...question, answer: undefined }).success).toBe(false);
+      const image: SlideSpec = { ...content, kind: "image-text" };
+      expect(imageTextSpecSchemaFor("none", { soft })?.parse({ ...image, steps: ["a"] })).toEqual(
+        image,
+      );
+    });
+
+    test(`nested item objects strip extra fields too (soft: ${soft})`, () => {
+      const entries = [{ term: "Evaporation", definition: "Liquid becomes gas." }];
+      const vocabulary: SlideSpec = { kind: "vocabulary", ...base, entries };
+      expect(
+        slideSpecSchemaFor("vocabulary", { soft })?.parse({
+          ...vocabulary,
+          entries: entries.map((entry) => ({ ...entry, example: "A puddle dries." })),
+        }),
+      ).toEqual(vocabulary);
+      const options = ["50", "40", "60", "70"].map((text, i) => ({ text, correct: i === 0 }));
+      const pairs = [
+        { left: "20 + 30", right: "50" },
+        { left: "10 + 30", right: "40" },
+        { left: "30 + 30", right: "60" },
+      ];
+      for (const type of ["multiple-choice", "matching"] as const) {
+        const extras =
+          type === "multiple-choice"
+            ? { options: options.map((option) => ({ ...option, hint: "Extra." })) }
+            : { pairs: pairs.map((pair) => ({ ...pair, hint: "Extra." })) };
+        const slide: SlideSpec =
+          type === "multiple-choice"
+            ? { kind: type, ...base, stem: "Choose the answer.", options }
+            : { kind: type, ...base, stem: "Match the answers.", pairs };
+        const block: BlockSpec =
+          type === "multiple-choice"
+            ? { type, ...base, text: "Choose the answer.", options }
+            : { type, ...base, pairs };
+        expect(slideSpecSchemaFor(type, { soft })?.parse({ ...slide, ...extras })).toEqual(slide);
+        expect(blockSpecSchemaFor(type, { soft })?.parse({ ...block, ...extras })).toEqual(block);
+      }
+    });
+  }
 });
