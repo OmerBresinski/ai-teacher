@@ -18,7 +18,7 @@ describe("StudioInputSchema", () => {
     expect(StudioInputSchema.safeParse({ brief: { topic: "" } }).success).toBe(false);
   });
 
-  test("is strict like POST /lessons and describes the form fields", () => {
+  test("is strict like POST /lessons, takes no sourceIds, and describes the form fields", () => {
     expect(StudioInputSchema.safeParse({ brief: { topic: "legos" }, sourceIds: [] }).success).toBe(
       false,
     );

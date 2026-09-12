@@ -10,9 +10,10 @@ import { DEFAULT_THEME_ID } from "./theme";
 
 /**
  * The request `POST /lessons` accepts and the brief screen submits: the brief (duration optional,
- * defaulted by key stage) plus the canonical Lesson fields the teacher may set. Strict, so a
- * `sourceIds` key is rejected until F03 adds it (§13). Lives here so the form and the API share
- * one schema and one guard message (F01 item 1).
+ * defaulted by key stage) plus the canonical Lesson fields the teacher may set, and up to three
+ * `sourceIds` — Sources uploaded through `POST /sources` that the route binds to the new lesson
+ * (ADR 0027 §5). Strict. Lives here so the form and the API share one schema and one guard
+ * message (F01 item 1).
  */
 export const CreateLessonSchema = z.strictObject({
   brief: BriefSchema.omit({ durationMin: true }).extend({
@@ -24,6 +25,7 @@ export const CreateLessonSchema = z.strictObject({
   readingLevel: z.string().max(40).optional(),
   language: z.string().max(16).optional(),
   themeId: z.string().optional(),
+  sourceIds: z.array(z.uuid()).max(3).optional(),
 });
 export type CreateLesson = z.infer<typeof CreateLessonSchema>;
 export type CreateLessonInput = z.input<typeof CreateLessonSchema>;

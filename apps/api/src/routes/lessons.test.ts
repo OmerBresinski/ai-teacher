@@ -51,7 +51,12 @@ describe("POST /lessons validation", () => {
       { brief: { topic: "Help a pupil called Amir" } },
       ["brief"],
     ],
-    ["sourceIds (Sources are F03; strict)", { ...validBrief, sourceIds: [] }, ["(root)"]],
+    [
+      "four sourceIds (ADR 0027 §5: at most three)",
+      { ...validBrief, sourceIds: Array(4).fill("0192b6e0-0000-7000-8000-000000000001") },
+      ["sourceIds"],
+    ],
+    ["a non-uuid sourceId", { ...validBrief, sourceIds: ["nope"] }, ["sourceIds"]],
     ["a bad ageBand", { ...validBrief, ageBand: "ks9" }, ["ageBand"]],
     ["a duration under 5", { brief: { topic: "x", durationMin: 1 } }, ["brief"]],
   ])("400 validation_failed for %s", async (_label, body, fields) => {

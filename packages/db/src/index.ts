@@ -49,6 +49,18 @@ export { MIGRATIONS_FOLDER, migrateDatabase } from "./migrator";
 export * from "./schema/index";
 export { type SeedDocument, type SeedResult, seedDocuments } from "./seed";
 export {
+  bindSourcesToLesson,
+  createSource,
+  getSource,
+  listSourcesOfLesson,
+  type NewSource,
+  type SoftDeleteSourceResult,
+  type SourceRow,
+  softDeleteSource,
+  toSourceRef,
+  unbindSourcesFromLesson,
+} from "./sources";
+export {
   forWorkspace,
   type ScopableDb,
   type TenantInsert,
