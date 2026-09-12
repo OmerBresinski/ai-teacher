@@ -11,7 +11,14 @@ import { bindSourcesToLesson, forWorkspace, getSource } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { newId, storageKey, type WorkspaceId } from "@tj/domain";
 import { ExtractedSourceSchema, type SourceRef } from "@tj/domain/documents";
-import { docxWith, PHOTOSYNTHESIS, pdfWithPages, ROSTER_ROWS, TINY_PNG } from "@tj/extract/testing";
+import {
+  docxWith,
+  PHOTOSYNTHESIS,
+  pdfWithPages,
+  pptxWith,
+  ROSTER_ROWS,
+  TINY_PNG,
+} from "@tj/extract/testing";
 import { LocalDiskStorage } from "@tj/storage";
 import { createApp } from "../app";
 import type { ErrorEnvelope } from "../errors";
