@@ -39,8 +39,10 @@ export function magicLinkText(url: string): string {
   ].join("\n");
 }
 
-export function magicLinkHtml(url: string): string {
+/** `assetOrigin` is the api's public origin (`BETTER_AUTH_URL`); it serves `/mail-assets/*`. */
+export function magicLinkHtml(url: string, assetOrigin: string): string {
   const href = escapeHtml(url);
+  const arrow = escapeHtml(`${assetOrigin.replace(/\/$/, "")}/mail-assets/arrow-up-right.png`);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -83,10 +85,20 @@ export function magicLinkHtml(url: string): string {
 
             <div style="height:36px;line-height:36px;font-size:0;">&nbsp;</div>
 
+            <!-- The button: Greg's pill (510x110 at 22px text) scaled to 17px text; the arrow is
+                 a thin long shaft with short arms, served as a PNG because Gmail drops inline SVG. -->
             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td style="border-radius:999px;background:${INK};">
-                  <a href="${href}" style="display:inline-block;padding:18px 34px;font-family:${FONT};font-size:17px;line-height:22px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px;">Sign in to Teaching Journey&nbsp;&nbsp;<span style="font-weight:500;">&#8599;</span></a>
+                  <a href="${href}" style="display:block;padding:30px 34px 30px 36px;border-radius:999px;text-decoration:none;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="font-family:${FONT};font-size:17px;line-height:24px;font-weight:600;color:#ffffff;white-space:nowrap;">Sign in to Teaching Journey</td>
+                        <td width="38" style="width:38px;font-size:0;line-height:0;">&nbsp;</td>
+                        <td width="30" style="width:30px;vertical-align:middle;"><img src="${arrow}" width="30" height="30" alt="&#8599;" style="display:block;width:30px;height:30px;border:0;"></td>
+                      </tr>
+                    </table>
+                  </a>
                 </td>
               </tr>
             </table>
@@ -111,6 +123,13 @@ export function magicLinkHtml(url: string): string {
 </html>`;
 }
 
-export function magicLinkMail(url: string): { subject: string; text: string; html: string } {
-  return { subject: MAGIC_LINK_SUBJECT, text: magicLinkText(url), html: magicLinkHtml(url) };
+export function magicLinkMail(
+  url: string,
+  assetOrigin: string,
+): { subject: string; text: string; html: string } {
+  return {
+    subject: MAGIC_LINK_SUBJECT,
+    text: magicLinkText(url),
+    html: magicLinkHtml(url, assetOrigin),
+  };
 }

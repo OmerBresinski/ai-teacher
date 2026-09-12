@@ -39,6 +39,14 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
   return [
     { name: "health is public", path: "/health", expect: 200 },
     {
+      // Email clients fetch the button arrow with no cookie and no Origin; Apple Mail renders it
+      // from another origin, so CORP must not be `same-origin` here (it is everywhere else).
+      name: "mail asset is public and embeddable",
+      path: "/mail-assets/arrow-up-right.png",
+      expect: 200,
+      expectHeaders: { "content-type": "image/png" },
+    },
+    {
       name: "app origin reaches the session guard (browser is cross-site until TEACH-30)",
       path: "/me",
       headers: browser,

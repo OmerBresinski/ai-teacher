@@ -13,22 +13,23 @@ describe("magicLinkMail", () => {
   });
 
   test("html escapes the URL in both the button and the fallback link", () => {
-    const html = magicLinkHtml(url);
+    const html = magicLinkHtml(url, "https://api.test/");
     const escaped = url.replaceAll("&", "&amp;");
     expect(html.split(`href="${escaped}"`)).toHaveLength(3);
     expect(html).not.toContain(`href="${url}"`);
     expect(html).toContain("Sign in to Teaching Journey");
     expect(html).toContain('<meta charset="utf-8">');
+    expect(html).toContain('src="https://api.test/mail-assets/arrow-up-right.png"');
   });
 
   test("html does not let markup through the URL", () => {
-    const html = magicLinkHtml('https://x.test/?a="><script>alert(1)</script>');
+    const html = magicLinkHtml('https://x.test/?a="><script>alert(1)</script>', "https://api.test");
     expect(html).not.toContain("<script>");
     expect(html).toContain("&lt;script&gt;");
   });
 
   test("bundle", () => {
-    const m = magicLinkMail(url);
+    const m = magicLinkMail(url, "https://api.test");
     expect(m.subject).toBe(MAGIC_LINK_SUBJECT);
     expect(m.text).toContain(url);
     expect(m.html).toContain("<!doctype html>");
