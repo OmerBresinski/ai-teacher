@@ -1,5 +1,5 @@
 import { checkLesson, FACT_ARRAYS, type Finding, type LessonFacts } from "@tj/domain/documents";
-import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { callStructured, MAX_OUTPUT_TOKENS, SPEC_RULE_CHECK } from "../call";
 import { evaluatePrompt } from "../prompts";
 import { EvaluateOutputSchema } from "../specs";
 import {
@@ -96,8 +96,16 @@ function factsText(state: PipelineState): string {
   return JSON.stringify(state.lesson.facts ?? {});
 }
 
-/** Checks an earlier stage recorded that Evaluate keeps as they are. */
-const CARRIED_CHECKS: ReadonlySet<string> = new Set(["budget", "image", "fact-verify"]);
+/**
+ * Checks an earlier stage recorded that Evaluate keeps as they are: none is recomputable here, and
+ * a `spec-rule` finding (TEACH-257) is what Repair rewrites its slide or block against.
+ */
+const CARRIED_CHECKS: ReadonlySet<string> = new Set([
+  "budget",
+  "image",
+  "fact-verify",
+  SPEC_RULE_CHECK,
+]);
 
 export async function evaluate(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const { lesson, worksheet } = state;

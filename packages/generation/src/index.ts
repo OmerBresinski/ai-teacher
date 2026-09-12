@@ -12,8 +12,11 @@ export {
   type CallStructuredOptions,
   type CallUsage,
   callStructured,
+  type EditorialMiss,
   MAX_OUTPUT_TOKENS,
+  SPEC_RULE_CHECK,
   type StructuredPrompt,
+  specRuleFinding,
 } from "./call";
 export * from "./prompts";
 export * from "./shapes";

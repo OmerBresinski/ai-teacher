@@ -15,7 +15,7 @@ import {
   materialiseSlide,
   slideSpecSchemaFor,
 } from "@tj/slides";
-import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import { repairFactPrompt, repairPrompt } from "../prompts";
 import { VERIFY_FIELDS_BY_ARRAY, verifiableArrayOf, verifyOutputSchemaFor } from "../specs";
 import {
@@ -47,6 +47,11 @@ import { applyVerifyPatch, verifyFinding } from "./verify";
  * target's spec with the findings in context, and the slide/block is re-materialised in place
  * (same slide id, new element ids). `checkLesson` runs again; what remains, plus the model's
  * findings, are the residuals. Never runs twice; the job completes whatever is left.
+ *
+ * A `spec-rule` error from Generate (TEACH-257) is repaired like any other: the target is
+ * regenerated against the full schema. A repair answer that itself still misses an editorial rule
+ * on both attempts is accepted, and each miss is recorded as a `spec-rule` **warning** — the
+ * residual badge says so; there is no second pass.
  */
 
 export const MAX_TARGETS = 6;
@@ -106,11 +111,15 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         const slide = lesson.slides[index];
         // A kind the pipeline cannot generate (an image slide the teacher added) cannot be repaired.
         // An image-text slide keeps its photograph: its text is re-checked against the same evidence.
-        const schema = !slide
-          ? undefined
-          : slide.kind === "image-text"
-            ? imageTextSpecSchemaFor(imageTextPhotoOf(slide, lesson.facts?.outline[index]))
-            : slideSpecSchemaFor(slide.kind);
+        const specSchema = (soft: boolean) =>
+          !slide
+            ? undefined
+            : slide.kind === "image-text"
+              ? imageTextSpecSchemaFor(imageTextPhotoOf(slide, lesson.facts?.outline[index]), {
+                  soft,
+                })
+              : slideSpecSchemaFor(slide.kind, { soft });
+        const schema = specSchema(false);
         if (!slide || !schema) continue;
         const call = await callStructured({
           deps,
@@ -136,10 +145,14 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
             shape: `a "${slide.kind}" slide spec`,
           },
           schema,
+          soft: specSchema(true),
           maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
         });
         commitFacts();
         repaired.add(target.key);
+        for (const miss of call.editorialMisses) {
+          extra.push(specRuleFinding(miss, { slideId: slide.id }, "warning"));
+        }
         const fresh: Slide = keepPhoto(slide, {
           ...materialiseSlide(
             withImageCaption(call.output, lesson.facts?.outline[index]),
@@ -155,6 +168,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         const block = worksheet.blocks[index];
         const schema = block ? blockSpecSchemaFor(block.type) : undefined;
         if (!block || !schema) continue;
+        const soft = blockSpecSchemaFor(block.type, { soft: true });
         const call = await callStructured({
           deps,
           stage: "repair",
@@ -174,10 +188,14 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
             shape: `a "${block.type}" block spec`,
           },
           schema,
+          soft,
           maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
         });
         commitFacts();
         repaired.add(target.key);
+        for (const miss of call.editorialMisses) {
+          extra.push(specRuleFinding(miss, { blockId: block.id }, "warning"));
+        }
         const fresh = {
           ...materialiseBlock(call.output, meta(call.modelId, deps), deps.ids),
           id: block.id,

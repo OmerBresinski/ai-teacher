@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import {
   BlockSpecSchema,
   blockSpecSchemaFor,
+  editorialIssue,
   imageTextSpecSchemaFor,
+  isEditorialIssue,
   PICTURE_NONE,
   PICTURE_NONE_ANY,
   PICTURE_PLURAL,
@@ -438,5 +440,187 @@ describe("TEACH-255: option and term caps are ceilings, not one-line ideals", ()
     expect(dup.success).toBe(false);
     if (dup.success) return;
     expect(dup.error.issues.map((i) => i.message).join()).toContain("same left-hand side");
+  });
+});
+
+describe("TEACH-257: every editorial rule carries the tag and the soft build leaves it out", () => {
+  const mc = (options: { text: string; correct: boolean }[]) => ({
+    kind: "multiple-choice",
+    ...base,
+    stem: "Which?",
+    options,
+  });
+  const four = (a: string, b: string, c: string, d: string) =>
+    [a, b, c, d].map((text, i) => ({ text, correct: i === 0 }));
+  /** Each case: the schema to use, a spec that breaks exactly the editorial rule named. */
+  const editorial: [string, string, Record<string, unknown>][] = [
+    [
+      "a worked-example step over its ceiling",
+      "worked-example",
+      { kind: "worked-example", ...base, question: "Why?", steps: ["x".repeat(85)] },
+    ],
+    [
+      "a fifth worked-example step",
+      "worked-example",
+      { kind: "worked-example", ...base, question: "Why?", steps: ["a", "b", "c", "d", "e"] },
+    ],
+    [
+      "a house-rule phrase in pupil text",
+      "content",
+      { kind: "content", ...base, heading: "H", body: "Answer in JSON." },
+    ],
+    [
+      "repair commentary in notes",
+      "content",
+      { kind: "content", ...base, heading: "H", body: "Body.", notes: "Corrected the definition." },
+    ],
+    ["two equal options", "multiple-choice", mc(four("a", "a", "c", "d"))],
+    [
+      "two correct options",
+      "multiple-choice",
+      mc(four("a", "b", "c", "d").map((o) => ({ ...o, correct: true }))),
+    ],
+    [
+      "a fill-gap sentence with no marker",
+      "fill-gap",
+      { kind: "fill-gap", ...base, stem: "Fill.", sentence: "Ice melts.", answers: ["water"] },
+    ],
+    [
+      "a double true/false statement",
+      "true-false",
+      {
+        kind: "true-false",
+        ...base,
+        statement: `${"Ice melts when the particles gain enough energy to slide past each other"} and ${"steam rises because the particles spread out and move freely through the air"}.`,
+        correct: true,
+      },
+    ],
+    [
+      "a classify task as sort",
+      "sort",
+      { kind: "sort", ...base, stem: "Sort into groups.", steps: ["a", "b", "c", "d"] },
+    ],
+    [
+      "a footnote that repeats an item",
+      "starter",
+      { kind: "starter", ...base, items: ["Think."], footnote: "Think." },
+    ],
+    [
+      "a picture word on a slide with no photograph",
+      "content",
+      { kind: "content", ...base, heading: "H", body: "Look at the photo." },
+    ],
+    [
+      "a matching pair with a collided side",
+      "matching",
+      {
+        kind: "matching",
+        ...base,
+        stem: "Match.",
+        pairs: [
+          { left: "A", right: "1" },
+          { left: "A", right: "2" },
+          { left: "C", right: "3" },
+        ],
+      },
+    ],
+  ];
+  for (const [name, kind, spec] of editorial) {
+    test(`${name}: every issue is editorial; the soft schema accepts it`, () => {
+      const strict = slideSpecSchemaFor(kind);
+      const soft = slideSpecSchemaFor(kind, { soft: true });
+      if (!strict || !soft) throw new Error(kind);
+      const result = strict.safeParse(spec);
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(result.error.issues.length).toBeGreaterThan(0);
+      expect(result.error.issues.every((issue) => isEditorialIssue(issue))).toBe(true);
+      expect(soft.safeParse(spec).success).toBe(true);
+    });
+  }
+
+  test("the image-text photo rules are editorial too", () => {
+    const strict = imageTextSpecSchemaFor("none");
+    const soft = imageTextSpecSchemaFor("none", { soft: true });
+    const spec = { kind: "image-text", ...base, heading: "H", body: "Look at the pictures." };
+    const result = strict?.safeParse(spec);
+    expect(result?.success).toBe(false);
+    expect(result?.error?.issues.every((issue) => isEditorialIssue(issue))).toBe(true);
+    expect(soft?.safeParse(spec).success).toBe(true);
+  });
+
+  test("a block's rules: the option cap is editorial, the picture word is editorial, the fourth option is shape", () => {
+    const strict = blockSpecSchemaFor("multiple-choice");
+    const soft = blockSpecSchemaFor("multiple-choice", { soft: true });
+    const long = {
+      type: "multiple-choice",
+      ...base,
+      text: "Which? See the picture.",
+      options: four("x".repeat(121), "b", "c", "d"),
+    };
+    const result = strict?.safeParse(long);
+    expect(result?.success).toBe(false);
+    expect(result?.error?.issues.map((i) => isEditorialIssue(i))).toEqual([true, true]);
+    expect(soft?.safeParse(long).success).toBe(true);
+    const three = { ...long, options: long.options.slice(0, 3) };
+    expect(soft?.safeParse(three).success).toBe(false);
+  });
+
+  /** Shape misses: the soft schema refuses them too, and none is tagged. */
+  const shape: [string, string, Record<string, unknown>][] = [
+    [
+      "steps as a string",
+      "worked-example",
+      { kind: "worked-example", ...base, question: "Why?", steps: "not an array" },
+    ],
+    [
+      "an empty step",
+      "worked-example",
+      { kind: "worked-example", ...base, question: "Why?", steps: [""] },
+    ],
+    ["three options", "multiple-choice", mc(four("a", "b", "c", "d").slice(0, 3))],
+    ["a missing stem", "open-response", { kind: "open-response", ...base }],
+    ["an unknown key", "content", { kind: "content", ...base, heading: "H", body: "B", x: 1 }],
+    [
+      "five objectives",
+      "objectives",
+      { kind: "objectives", ...base, items: ["a", "b", "c", "d", "e"] },
+    ],
+  ];
+  for (const [name, kind, spec] of shape) {
+    test(`${name} is shape: untagged, and the soft schema refuses it too`, () => {
+      const strict = slideSpecSchemaFor(kind);
+      const soft = slideSpecSchemaFor(kind, { soft: true });
+      if (!strict || !soft) throw new Error(kind);
+      const result = strict.safeParse(spec);
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(result.error.issues.some((issue) => !isEditorialIssue(issue))).toBe(true);
+      expect(soft.safeParse(spec).success).toBe(false);
+    });
+  }
+
+  test("editorialIssue is the one shape both refine and addIssue take", () => {
+    expect(editorialIssue("m", ["a", 0])).toEqual({
+      code: "custom",
+      message: "m",
+      path: ["a", 0],
+      params: { editorial: true },
+    });
+    expect(isEditorialIssue(editorialIssue("m"))).toBe(true);
+    expect(isEditorialIssue({ params: {} })).toBe(false);
+    expect(isEditorialIssue({})).toBe(false);
+  });
+
+  test("the soft build still trims, decodes and strips enumerators", () => {
+    const soft = slideSpecSchemaFor("starter", { soft: true });
+    const parsed = soft?.safeParse({
+      kind: "starter",
+      ...base,
+      items: ["1. Salt &amp; pepper "],
+    });
+    expect(parsed?.success).toBe(true);
+    if (!parsed?.success || parsed.data.kind !== "starter") return;
+    expect(parsed.data.items).toEqual(["Salt & pepper"]);
   });
 });

@@ -616,3 +616,101 @@ describe("resumeFrom", () => {
     expect(resumeFrom(at("repaired"))).toBeNull();
   });
 });
+
+describe("TEACH-257: an editorial miss on both attempts does not lose the lesson", () => {
+  const longStep = "x".repeat(90);
+  const TOO_LONG = "steps.0: Too long: at most 84 characters.";
+  const workedExample = FIXTURES.slides["worked-example"];
+  const badWorked = JSON.stringify({ ...workedExample, steps: [longStep, "Second step."] });
+  /** Script index of the worked-example slide's answer. */
+  const WORKED_INDEX =
+    SLIDES_INDEX + FIXTURES.planSkeleton.outline.findIndex((e) => e.kind === "worked-example") - 2;
+
+  const runWith = async (repairAnswers: string[]) => {
+    const script = pipelineScript();
+    // Both attempts of the worked-example slide break the step cap; Repair then answers.
+    script.splice(WORKED_INDEX, 1, badWorked, badWorked);
+    script.push(...repairAnswers);
+    const ai = answeringAi(script);
+    const deps = recordingDeps(ai);
+    const result = await runLessonPipeline(
+      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
+      deps,
+    );
+    return { ...result, ai, deps };
+  };
+
+  test("row 5: the slide is written as returned with a spec-rule error; Repair rewrites it and the finding is gone", async () => {
+    const { lesson, ai, deps } = await runWith([JSON.stringify(workedExample)]);
+    expect(lesson.generation?.stage).toBe("repaired");
+    expect(lesson.slides).toHaveLength(TOTAL_SLIDES);
+    // The retry named the rule; the second miss was accepted, not a StageFailure.
+    const retries = ai.calls.filter(
+      (c) => c.context?.stage === "generate" && c.promptText.includes("Too long: at most 84"),
+    );
+    expect(retries).toHaveLength(1);
+    const generated = deps.persisted.find((p) => p.lesson.generation?.stage === "generated");
+    const worked = generated?.lesson.slides.find((s) => s.kind === "worked-example");
+    expect(worked).toBeDefined();
+    expect(generated?.lesson.generation?.findings).toContainEqual({
+      check: "spec-rule",
+      severity: "error",
+      target: { slideId: worked?.id },
+      message: TOO_LONG,
+    });
+    // Evaluate carried it; Repair was called once, for that slide, and the rewrite passed.
+    const evaluated = deps.persisted.find((p) => p.lesson.generation?.stage === "evaluated");
+    expect(evaluated?.lesson.generation?.findings.map((f) => f.check)).toContain("spec-rule");
+    const repairs = ai.calls.filter((c) => c.context?.stage === "repair");
+    expect(repairs).toHaveLength(1);
+    expect(repairs[0]?.promptText).toContain(TOO_LONG);
+    expect(lesson.generation?.findings.filter((f) => f.check === "spec-rule")).toEqual([]);
+    const final = lesson.slides.find((s) => s.kind === "worked-example");
+    expect(final?.id).toBe(worked?.id);
+    expect(slideText(final as never)).not.toContain(longStep);
+  });
+
+  test("row 5, Repair misses too: the slide is rewritten as returned and one spec-rule warning remains; no second pass", async () => {
+    const { lesson, ai } = await runWith([badWorked, badWorked]);
+    expect(lesson.generation?.stage).toBe("repaired");
+    expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(2);
+    const worked = lesson.slides.find((s) => s.kind === "worked-example");
+    expect(lesson.generation?.findings.filter((f) => f.check === "spec-rule")).toEqual([
+      {
+        check: "spec-rule",
+        severity: "warning",
+        target: { slideId: worked?.id },
+        message: TOO_LONG,
+      },
+    ]);
+    // Never `StageFailure`, never the "could not be repaired" warning: the answer was taken.
+    expect(lesson.generation?.findings.filter((f) => f.check === "repair")).toEqual([]);
+  });
+
+  test("row 6: plan-facts with ten questions twice completes with a spec-rule warning on the facts; the worksheet still generates", async () => {
+    const ten = structuredClone(FIXTURES.planFacts);
+    ten.questions = ten.questions.slice(0, 10);
+    ten.outlineFactRefs = ten.outlineFactRefs.map((e) => ({
+      ...e,
+      factRefs: e.factRefs.filter((r) => !(r.type === "question" && r.index >= 10)),
+    }));
+    const script = pipelineScript();
+    script.splice(PLAN_INDEX + 1, 1, JSON.stringify(ten), JSON.stringify(ten));
+    const ai = answeringAi(script);
+    const { lesson, worksheet } = await runLessonPipeline(
+      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
+      recordingDeps(ai),
+    );
+    expect(lesson.generation?.stage).toBe("repaired");
+    expect(lesson.facts?.questions).toHaveLength(10);
+    expect(worksheet?.blocks.length).toBeGreaterThan(0);
+    const specRule = lesson.generation?.findings.filter((f) => f.check === "spec-rule") ?? [];
+    expect(specRule.length).toBeGreaterThan(0);
+    for (const f of specRule) expect(f).toMatchObject({ severity: "warning", target: {} });
+    expect(specRule.map((f) => f.message)).toContainEqual(
+      "questions: Give at least 12 questions across the three tiers, each tagged with a use.",
+    );
+    // Nothing else changed: no error findings, no repair call.
+    expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
+  });
+});

@@ -13,7 +13,15 @@ import {
   QUESTION_TIERS,
   QUESTION_USES,
 } from "@tj/domain/documents";
-import { BlockSpecSchema, noPictureReference, SlideSpecSchema, SPEC_LIMITS } from "@tj/slides";
+import {
+  BlockSpecSchema,
+  blockSpecUnion,
+  editorialIssue,
+  noPictureReference,
+  SlideSpecSchema,
+  SPEC_LIMITS,
+  type SpecSchemaOptions,
+} from "@tj/slides";
 import { z } from "zod";
 import { contentSentence, phaseOfKind } from "./prompts/shape";
 import type { LessonShape, TierWeights } from "./shapes";
@@ -27,7 +35,53 @@ import { INPUT_CHECKS } from "./types";
 
 export { BlockSpecSchema, SlideSpecSchema };
 
-const line = (max: number) => z.string().trim().min(1).max(max);
+/*
+ * Shape and editorial rules (ADR 0025 §7, TEACH-257; the tag and the two builds are `@tj/slides`'
+ * `editorialIssue` / `SpecSchemaOptions`). Here the shape rules are the field types, the non-empty
+ * strings, the list floors, every ordinal reference (a dangling id would fail `LessonFactsSchema`
+ * in `assignFactIds` with no retry) and the caps `@tj/domain` re-checks on the stored facts
+ * (`PlanImageBriefSchema`). Everything else we ask of the content — text caps, list ceilings,
+ * counts, coverage, wording, phases, the lesson shape — is editorial: `callStructured` accepts a
+ * retry that misses only those and Plan records them as `spec-rule` warnings.
+ */
+
+/** A text slot: non-empty (shape) and, in the strict build, capped (editorial). */
+const lineFor =
+  (soft: boolean) =>
+  (max: number): z.ZodString => {
+    const base = z.string().trim().min(1);
+    return soft
+      ? base
+      : base.refine(
+          (text) => text.length <= max,
+          editorialIssue(`Too long: at most ${max} characters.`),
+        );
+  };
+/** The strict text slot, for the schemas that have no soft build (input check, Evaluate, Verify). */
+const line = lineFor(false);
+/** A text slot whose cap `@tj/domain` enforces too, so it stays shape in both builds. */
+const hardLine = (max: number) => z.string().trim().min(1).max(max);
+
+/** A list ceiling the pipeline tolerates (it takes what it needs): editorial in the strict build. */
+const atMost = <S extends z.ZodArray<z.ZodType>>(
+  soft: boolean,
+  schema: S,
+  n: number,
+  what: string,
+): S =>
+  soft
+    ? schema
+    : (schema.refine(
+        (list) => list.length <= n,
+        editorialIssue(`Too many ${what}: at most ${n}.`),
+      ) as S);
+/** A list floor the prompt asks for (a count, not a slot): editorial in the strict build. */
+const atLeast = <S extends z.ZodArray<z.ZodType>>(
+  soft: boolean,
+  schema: S,
+  n: number,
+  message: string,
+): S => (soft ? schema : (schema.refine((list) => list.length >= n, editorialIssue(message)) as S));
 
 /* ------------------------------------------------------------------ */
 /* Check input                                                         */
@@ -75,27 +129,34 @@ export type OrdinalRef = z.infer<typeof OrdinalRefSchema>;
  * The picture brief as Plan writes it (Generation quality §4): the list form is required here,
  * where the stored schema still accepts the older string for lessons written before it.
  */
-const PlanImageBriefSchema = z.strictObject({
-  subject: line(60),
-  mustShow: z.array(line(40)).min(1).max(4),
-  purpose: z.enum(IMAGE_PURPOSES),
-  avoid: z.array(line(40)).max(6).optional(),
-});
+function planImageBriefSchema(soft: boolean) {
+  const line = lineFor(soft);
+  return z.strictObject({
+    // `subject` and the two list ceilings are `ImageBriefSchema`'s too (`@tj/domain`): shape.
+    subject: hardLine(60),
+    mustShow: z.array(line(40)).min(1).max(4),
+    purpose: z.enum(IMAGE_PURPOSES),
+    avoid: z.array(line(40)).max(6).optional(),
+  });
+}
 
-const OutlineBriefSpec = z.strictObject({
-  adds: line(SPEC_LIMITS.item),
-  avoids: line(SPEC_LIMITS.item).optional(),
-});
-
-const outlineEntry = z.strictObject({
-  kind: z.enum(GENERATABLE_SLIDE_KINDS),
-  minutes: z.number().int().min(1),
-  factRefs: z.array(OrdinalRefSchema),
-  imageBrief: PlanImageBriefSchema.optional(),
-  /** Required from position 2 (checked in the skeleton's refinement, so the message can say so). */
-  brief: OutlineBriefSpec.optional(),
-  phase: z.enum(LESSON_PHASES).optional(),
-});
+function outlineEntrySchema(soft: boolean) {
+  const line = lineFor(soft);
+  return z.strictObject({
+    kind: z.enum(GENERATABLE_SLIDE_KINDS),
+    minutes: z.number().int().min(1),
+    factRefs: z.array(OrdinalRefSchema),
+    imageBrief: planImageBriefSchema(soft).optional(),
+    /** Required from position 2 (checked in the skeleton's refinement, so the message can say so). */
+    brief: z
+      .strictObject({
+        adds: line(SPEC_LIMITS.item),
+        avoids: line(SPEC_LIMITS.item).optional(),
+      })
+      .optional(),
+    phase: z.enum(LESSON_PHASES).optional(),
+  });
+}
 
 /**
  * The kinds that teach, so may sit in the explain phase and count towards its share; the same set
@@ -159,23 +220,30 @@ function refineRef(
   }
 }
 
-const PlanSkeletonShape = z.strictObject({
-  // Not `objectives`: with that key first, Sonnet 5 behind Bedrock's `json` tool returns the
-  // whole answer as a string under it (reproduced 12/12 on 2026-09-07); `learningObjectives`,
-  // like the five-key schema before it, does not.
-  learningObjectives: z
-    .array(z.object({ text: line(SPEC_LIMITS.item) }))
-    .min(1)
-    .max(4),
-  outline: z.array(outlineEntry).min(2).max(16),
-  /**
-   * Whether the topic is something a camera captures (TEACH-238). Optional here because the resume
-   * path rebuilds a skeleton from `LessonFacts`, which does not keep it; `refineShape` requires it
-   * of a live model answer, and a "yes" without an `image-text` slide is the model contradicting
-   * itself — the one picture rule the TEACH-227 test allows.
-   */
-  photographable: z.strictObject({ yes: z.boolean(), why: line(SPEC_LIMITS.item) }).optional(),
-});
+function planSkeletonShape(soft: boolean) {
+  const line = lineFor(soft);
+  return z.strictObject({
+    // Not `objectives`: with that key first, Sonnet 5 behind Bedrock's `json` tool returns the
+    // whole answer as a string under it (reproduced 12/12 on 2026-09-07); `learningObjectives`,
+    // like the five-key schema before it, does not. The objectives slide shows four: the ceiling
+    // is editorial.
+    learningObjectives: atMost(
+      soft,
+      z.array(z.object({ text: line(SPEC_LIMITS.item) })).min(1),
+      4,
+      "learning objectives",
+    ),
+    outline: z.array(outlineEntrySchema(soft)).min(2).max(16),
+    /**
+     * Whether the topic is something a camera captures (TEACH-238). Optional here because the resume
+     * path rebuilds a skeleton from `LessonFacts`, which does not keep it; `refineShape` requires it
+     * of a live model answer, and a "yes" without an `image-text` slide is the model contradicting
+     * itself — the one picture rule the TEACH-227 test allows.
+     */
+    photographable: z.strictObject({ yes: z.boolean(), why: line(SPEC_LIMITS.item) }).optional(),
+  });
+}
+const PlanSkeletonShape = planSkeletonShape(false);
 
 /** What the skeleton's refinements need from the brief. */
 export type PlanSkeletonContext = {
@@ -242,10 +310,17 @@ const PRESUMES_PICTURE = new RegExp(
 const SELF_CONTAINED =
   "Problems and question stems are self-contained: never 'a photo shows', 'the diagram', 'pictured above' — name the thing and its features in words.";
 
-export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<PlanSkeleton> {
-  return PlanSkeletonShape.superRefine((skeleton, ctx) => {
-    const issue = (message: string, path: (string | number)[]) =>
-      ctx.addIssue({ code: "custom", message, path });
+export function planSkeletonSchemaFor(
+  context: PlanSkeletonContext,
+  options: SpecSchemaOptions = {},
+): z.ZodType<PlanSkeleton> {
+  const soft = options.soft === true;
+  return planSkeletonShape(soft).superRefine((skeleton, ctx) => {
+    // Every rule below written with `issue` is editorial: left out of the soft build. The ordinal
+    // references and the deck's two opening slides are shape (`ctx.addIssue` directly).
+    const issue = soft
+      ? () => undefined
+      : (message: string, path: (string | number)[]) => ctx.addIssue(editorialIssue(message, path));
     skeleton.outline.forEach((entry, i) => {
       refineOutlineRefs(ctx, ["outline", i, "factRefs"], entry.factRefs, {
         objective: skeleton.learningObjectives.length,
@@ -293,9 +368,15 @@ export function planSkeletonSchemaFor(context: PlanSkeletonContext): z.ZodType<P
         issue("The title and objectives slides carry no phase or brief.", ["outline", i]);
       }
     });
-    // The deck opens with the two slides Plan materialises itself (ADR 0025 §7).
+    // The deck opens with the two slides Plan materialises itself (ADR 0025 §7): shape — slide i is
+    // built from outline entry i, so an outline that opens otherwise is a deck out of step with
+    // its own plan.
     if (skeleton.outline[0]?.kind !== "title" || skeleton.outline[1]?.kind !== "objectives") {
-      issue('The outline starts with a "title" slide then an "objectives" slide.', ["outline"]);
+      ctx.addIssue({
+        code: "custom",
+        message: 'The outline starts with a "title" slide then an "objectives" slide.',
+        path: ["outline"],
+      });
     }
     // Phases run starter → explain → practise → check and never go back.
     let last = -1;
@@ -516,96 +597,129 @@ const MisconceptionOrdinalSchema = z.strictObject({
  * worked example gives us nothing we would keep and nothing worth failing a lesson over. Two eval
  * briefs died on exactly that, on both attempts.
  */
-const PlanFactsShape = z.strictObject({
-  /**
-   * The richer facts (Generation quality §1; TEACH-209 shape, TEACH-211 asks for them): key
-   * ideas first, then misconceptions, then vocabulary, worked examples and at least twelve
-   * tiered questions, then the pitch and the outline references. Order matters to the model —
-   * every ordinal it writes must already exist.
-   */
-  keyIdeas: z
-    .array(
-      z.object({
-        statement: line(SPEC_LIMITS.item),
-        explanation: line(SPEC_LIMITS.body),
-        example: line(SPEC_LIMITS.body),
-        analogy: line(SPEC_LIMITS.item).optional(),
-        objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
-      }),
-    )
-    // The prompt asks for 2–5; the floor is 1 because a narrow lesson (an EYFS phonics sound) has
-    // one honest key idea, and Terra held to one through the retry on the first paid run.
-    .min(1, "Give at least one key idea: what a pupil must understand, explained with an example.")
-    .max(5),
-  misconceptions: z
-    .array(
-      z.object({
-        belief: line(SPEC_LIMITS.item),
-        correction: line(SPEC_LIMITS.body),
-        objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
-      }),
-    )
-    .min(
-      2,
-      "Give at least 2 misconceptions: what pupils at this level typically get wrong, with the correction.",
-    )
-    .max(4),
-  vocabulary: z
-    .array(
-      z.object({
-        term: line(SPEC_LIMITS.term),
-        definition: line(SPEC_LIMITS.definition),
-        objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
-      }),
-    )
-    .max(8),
-  workedExamples: z
-    .array(
-      z.object({
-        problem: line(SPEC_LIMITS.body),
-        steps: z.array(line(SPEC_LIMITS.item)).min(1).max(6),
-        answer: line(SPEC_LIMITS.answer),
-        misconceptionRef: MisconceptionOrdinalSchema.optional(),
-      }),
-    )
-    .max(4),
-  questions: z
-    .array(
-      z.object({
-        stem: line(SPEC_LIMITS.stem),
-        answer: line(SPEC_LIMITS.answer),
-        reasoning: line(SPEC_LIMITS.footnote),
-        tier: z.enum(QUESTION_TIERS),
-        use: z.enum(QUESTION_USES),
-        objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
-        distractors: z
-          .array(
-            z.object({
-              text: line(SPEC_LIMITS.option),
-              misconceptionRef: MisconceptionOrdinalSchema.optional(),
-            }),
-          )
-          .max(3)
-          .optional(),
-      }),
-    )
-    .min(12, "Give at least 12 questions across the three tiers, each tagged with a use.")
-    .max(20),
-  pitch: z.object({
-    readingAgeTarget: z.number().int().min(5).max(18),
-    sentenceLengthMax: z.number().int().min(6).max(30),
-    avoid: z.array(line(SPEC_LIMITS.word)).max(6),
-  }),
-  /** Per outline entry (by position), the facts from these lists it covers. */
-  outlineFactRefs: z
-    .array(
-      z.object({
-        index: z.number().int().nonnegative(),
-        factRefs: z.array(OrdinalRefSchema),
-      }),
-    )
-    .max(16),
-});
+function planFactsShape(soft: boolean) {
+  const line = lineFor(soft);
+  return z.strictObject({
+    /**
+     * The richer facts (Generation quality §1; TEACH-209 shape, TEACH-211 asks for them): key
+     * ideas first, then misconceptions, then vocabulary, worked examples and at least twelve
+     * tiered questions, then the pitch and the outline references. Order matters to the model —
+     * every ordinal it writes must already exist. Every list ceiling here is editorial: the
+     * pipeline takes what it needs from a longer list. The floors that are counts the prompt asks
+     * for (two misconceptions, twelve questions) are editorial too; "at least one key idea" is
+     * shape — a lesson with none has nothing to build a content slide from.
+     */
+    keyIdeas: atMost(
+      soft,
+      z
+        .array(
+          z.object({
+            statement: line(SPEC_LIMITS.item),
+            explanation: line(SPEC_LIMITS.body),
+            example: line(SPEC_LIMITS.body),
+            analogy: line(SPEC_LIMITS.item).optional(),
+            objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
+          }),
+        )
+        // The prompt asks for 2–5; the floor is 1 because a narrow lesson (an EYFS phonics sound)
+        // has one honest key idea, and Terra held to one through the retry on the first paid run.
+        .min(
+          1,
+          "Give at least one key idea: what a pupil must understand, explained with an example.",
+        ),
+      5,
+      "key ideas",
+    ),
+    misconceptions: atMost(
+      soft,
+      atLeast(
+        soft,
+        z.array(
+          z.object({
+            belief: line(SPEC_LIMITS.item),
+            correction: line(SPEC_LIMITS.body),
+            objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
+          }),
+        ),
+        2,
+        "Give at least 2 misconceptions: what pupils at this level typically get wrong, with the correction.",
+      ),
+      4,
+      "misconceptions",
+    ),
+    vocabulary: atMost(
+      soft,
+      z.array(
+        z.object({
+          term: line(SPEC_LIMITS.term),
+          definition: line(SPEC_LIMITS.definition),
+          objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
+        }),
+      ),
+      8,
+      "vocabulary terms",
+    ),
+    workedExamples: atMost(
+      soft,
+      z.array(
+        z.object({
+          problem: line(SPEC_LIMITS.body),
+          steps: atMost(soft, z.array(line(SPEC_LIMITS.item)).min(1), 6, "steps"),
+          answer: line(SPEC_LIMITS.answer),
+          misconceptionRef: MisconceptionOrdinalSchema.optional(),
+        }),
+      ),
+      4,
+      "worked examples",
+    ),
+    questions: atMost(
+      soft,
+      atLeast(
+        soft,
+        z.array(
+          z.object({
+            stem: line(SPEC_LIMITS.stem),
+            answer: line(SPEC_LIMITS.answer),
+            reasoning: line(SPEC_LIMITS.footnote),
+            tier: z.enum(QUESTION_TIERS),
+            use: z.enum(QUESTION_USES),
+            objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1),
+            distractors: atMost(
+              soft,
+              z.array(
+                z.object({
+                  text: line(SPEC_LIMITS.option),
+                  misconceptionRef: MisconceptionOrdinalSchema.optional(),
+                }),
+              ),
+              3,
+              "distractors",
+            ).optional(),
+          }),
+        ),
+        12,
+        "Give at least 12 questions across the three tiers, each tagged with a use.",
+      ),
+      20,
+      "questions",
+    ),
+    pitch: z.object({
+      readingAgeTarget: z.number().int().min(5).max(18),
+      sentenceLengthMax: z.number().int().min(6).max(30),
+      avoid: atMost(soft, z.array(line(SPEC_LIMITS.word)), 6, "words to avoid"),
+    }),
+    /** Per outline entry (by position), the facts from these lists it covers. */
+    outlineFactRefs: z
+      .array(
+        z.object({
+          index: z.number().int().nonnegative(),
+          factRefs: z.array(OrdinalRefSchema),
+        }),
+      )
+      .max(16),
+  });
+}
+const PlanFactsShape = planFactsShape(false);
 export type PlanFacts = z.infer<typeof PlanFactsShape>;
 
 /** What the intermediate persist after the skeleton call carries: the lists still to come. */
@@ -646,9 +760,17 @@ export function tierMinimumsOf(weights: TierWeights): TierWeights {
 export function planFactsSchemaFor(
   skeleton: PlanSkeleton,
   shape: LessonShape,
+  options: SpecSchemaOptions = {},
 ): z.ZodType<PlanFacts> {
+  const soft = options.soft === true;
   const minimums = tierMinimumsOf(shape.tierWeights);
-  return PlanFactsShape.superRefine((facts, ctx) => {
+  return planFactsShape(soft).superRefine((facts, ctx) => {
+    // The ordinal references (below, `refineRef`) are shape; everything written with `issue` —
+    // coverage, self-containment, the pitch's own words, the tier floors, kind fit — is editorial
+    // and left out of the soft build.
+    const issue = soft
+      ? () => undefined
+      : (message: string, path: (string | number)[]) => ctx.addIssue(editorialIssue(message, path));
     const sizes = {
       keyIdea: facts.keyIdeas.length,
       vocabulary: facts.vocabulary.length,
@@ -704,47 +826,36 @@ export function planFactsSchemaFor(
     for (const q of facts.questions) for (const ref of q.objectiveRefs) checked.add(ref.index);
     skeleton.learningObjectives.forEach((_, i) => {
       if (!served.has(i)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Objective ${i} is served by no key idea; add one with { "type": "objective", "index": ${i} } in its objectiveRefs, or add the objective to an existing key idea.`,
-          path: ["keyIdeas"],
-        });
+        issue(
+          `Objective ${i} is served by no key idea; add one with { "type": "objective", "index": ${i} } in its objectiveRefs, or add the objective to an existing key idea.`,
+          ["keyIdeas"],
+        );
       }
       if (!checked.has(i)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Objective ${i} is checked by no question; give at least one question objectiveRefs that include index ${i}.`,
-          path: ["questions"],
-        });
+        issue(
+          `Objective ${i} is checked by no question; give at least one question objectiveRefs that include index ${i}.`,
+          ["questions"],
+        );
       }
     });
     // Self-contained facts (TEACH-224): a problem or stem that presumes a picture cannot be used
     // on a slide that has none; a vocabulary term nobody explains cannot be asked about; and the
     // pitch cannot forbid a word the lesson defines.
     facts.workedExamples.forEach((x, i) => {
-      if (PRESUMES_PICTURE.test(x.problem)) {
-        ctx.addIssue({
-          code: "custom",
-          message: SELF_CONTAINED,
-          path: ["workedExamples", i, "problem"],
-        });
-      }
+      if (PRESUMES_PICTURE.test(x.problem)) issue(SELF_CONTAINED, ["workedExamples", i, "problem"]);
     });
     facts.questions.forEach((q, i) => {
-      if (PRESUMES_PICTURE.test(q.stem)) {
-        ctx.addIssue({ code: "custom", message: SELF_CONTAINED, path: ["questions", i, "stem"] });
-      }
+      if (PRESUMES_PICTURE.test(q.stem)) issue(SELF_CONTAINED, ["questions", i, "stem"]);
     });
     // Whether every vocabulary term is taught before it is asked about is left to the prompt rule
     // (TEACH-227): the schema rejection cost a 25 s Terra retry for "evidence" in production.
     const defined = new Set(facts.vocabulary.map((v) => v.term.trim().toLowerCase()));
     facts.pitch.avoid.forEach((word, i) => {
       if (defined.has(word.trim().toLowerCase())) {
-        ctx.addIssue({
-          code: "custom",
-          message: `pitch.avoid lists "${word}", which the vocabulary defines; a lesson cannot avoid a word it teaches.`,
-          path: ["pitch", "avoid", i],
-        });
+        issue(
+          `pitch.avoid lists "${word}", which the vocabulary defines; a lesson cannot avoid a word it teaches.`,
+          ["pitch", "avoid", i],
+        );
       }
     });
     // Three tiers, each present in numbers a sheet and an exit ticket can draw on: the shape's
@@ -754,11 +865,10 @@ export function planFactsSchemaFor(
     const { easy, core, stretch } = shape.tierWeights;
     for (const tier of ["easy", "core", "stretch"] as const) {
       if (tiers[tier] < minimums[tier]) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Only ${tiers[tier]} "${tier}" questions; give at least ${minimums[tier]} (the target is ${easy} easy, ${core} core, ${stretch} stretch).`,
-          path: ["questions"],
-        });
+        issue(
+          `Only ${tiers[tier]} "${tier}" questions; give at least ${minimums[tier]} (the target is ${easy} easy, ${core} core, ${stretch} stretch).`,
+          ["questions"],
+        );
       }
     }
     // requireMisconceptionConfronted is a prompt rule, not a rejection (TEACH-237): the facts
@@ -782,11 +892,10 @@ export function planFactsSchemaFor(
             ? "workedExample"
             : undefined;
       if (needs && !given.get(i)?.has(needs)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Outline position ${i} is a ${entry.kind} slide and needs at least one ${needs} reference in outlineFactRefs.`,
-          path: ["outlineFactRefs"],
-        });
+        issue(
+          `Outline position ${i} is a ${entry.kind} slide and needs at least one ${needs} reference in outlineFactRefs.`,
+          ["outlineFactRefs"],
+        );
       }
     });
   });
@@ -907,20 +1016,29 @@ function dedupe<T>(values: T[]): T[] {
 /* Generate — worksheet                                                */
 /* ------------------------------------------------------------------ */
 
-export const WorksheetSpecSchema = z
-  .strictObject({
+function worksheetShape(soft: boolean) {
+  const line = lineFor(soft);
+  return z.strictObject({
     title: line(SPEC_LIMITS.title),
     /** The objective line under the title ("I can …"). */
     subtitle: line(SPEC_LIMITS.heading).optional(),
-    /** Success criteria; the worksheet header shows at most four. */
-    criteria: z.array(line(SPEC_LIMITS.item)).max(4),
+    /** Success criteria; the worksheet header shows at most four (editorial: it slices). */
+    criteria: atMost(soft, z.array(line(SPEC_LIMITS.item)), 4, "criteria"),
     // The prompt asks for 4–10; the schema allows two more so an eleventh block is not a retry.
-    blocks: z.array(BlockSpecSchema).min(4).max(12),
-  })
+    // Fewer than four is not a worksheet (shape); more than twelve is editorial.
+    blocks: atMost(soft, z.array(blockSpecUnion({ soft })).min(4), 12, "blocks"),
+  });
+}
+export type WorksheetSpec = z.infer<ReturnType<typeof worksheetShape>>;
+
+export function worksheetSpecSchemaFor(options: SpecSchemaOptions = {}): z.ZodType<WorksheetSpec> {
+  const sheet = worksheetShape(options.soft === true);
+  if (options.soft) return sheet;
   // A worksheet has no photographs: no block may refer to one (TEACH-223); same rule Repair's
   // `blockSpecSchemaFor` applies, so a sheet is held to it whichever path wrote it.
-  .superRefine(noPictureReference);
-export type WorksheetSpec = z.infer<typeof WorksheetSpecSchema>;
+  return sheet.superRefine(noPictureReference);
+}
+export const WorksheetSpecSchema = worksheetSpecSchemaFor();
 
 /* ------------------------------------------------------------------ */
 /* Evaluate / Repair                                                   */

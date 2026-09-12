@@ -1,7 +1,13 @@
 import type { Budget, CreatedAi } from "@tj/ai";
 import { type Lesson, lessonFromBrief, type Worksheet } from "@tj/domain/documents";
 import pino from "pino";
-import { noSources, type PhotoPlacer, type PipelineDeps, runLessonPipeline } from "../src";
+import {
+  noSources,
+  type PhotoPlacer,
+  type PipelineDeps,
+  runLessonPipeline,
+  SPEC_RULE_CHECK,
+} from "../src";
 import type { EvalBrief } from "./briefs";
 import type { RubricDimension } from "./rubric-prompt";
 import { type EvalScores, scoreLesson } from "./scorers";
@@ -46,7 +52,8 @@ export interface BriefResult {
     outputTokens: number;
     costUsd: number | null;
   } | null;
-  findings: { error: number; warning: number };
+  /** By severity; `specRule` counts the `spec-rule` findings of either severity (TEACH-257). */
+  findings: { error: number; warning: number; specRule: number };
   scores: EvalScores | null;
   /**
    * The judge's one-line rationales, present only when the rubric was scored. Read by nobody:
@@ -139,8 +146,11 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
   const afterJudge = options.budget.totals();
   const usd = (a: number | null, b: number | null) =>
     a === null || b === null ? null : Math.round((a - b) * 1e6) / 1e6;
-  const findings = { error: 0, warning: 0 };
-  for (const f of lesson.generation?.findings ?? []) findings[f.severity] += 1;
+  const findings = { error: 0, warning: 0, specRule: 0 };
+  for (const f of lesson.generation?.findings ?? []) {
+    findings[f.severity] += 1;
+    if (f.check === SPEC_RULE_CHECK) findings.specRule += 1;
+  }
   const result: BriefResult = {
     id: brief.id,
     ok,

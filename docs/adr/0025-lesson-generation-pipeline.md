@@ -844,3 +844,47 @@ learning objective) is now `z.object`, which strips unknown keys; the top-level 
 outline entries stay strict, because an invented list or outline field is a shape error worth a
 retry. The TEACH-227 test, applied once more: a rejection has to buy something.
 
+
+## Amendment (2026-09-12, TEACH-257 — editorial schema rules become findings; only shape misses fail a call)
+
+§7, §14. Five paid eval runs on 2026-09-11 (forty briefs) lost 2, 1, 0, 2 and 4 of 8 lessons.
+Every loss was `did not produce a valid <prompt> answer in two attempts`, and every one was a rule
+of ours about the content — a step over 56 characters, an option over 80, a term over 60, fewer
+than twelve questions, a stem saying "the diagram", a fill-gap sentence with no `___` — not a
+shape error. TEACH-247/248/255/256 widened four of these one at a time and each fix revealed the
+next; Bedrock's structured-output mode already holds the shape server-side, so the loss mode was
+ours. The TEACH-227 rule, applied to the mechanism rather than to one threshold: a rejection has to
+buy quality worth a 10–25 s retry. An editorial rule buys that on the first retry and a dead lesson
+on the second.
+
+Every Zod issue is now one of two kinds. A **shape** issue says the model did not give us the
+thing: a type, a required field, the kind literal, an unknown key on the top level or an outline
+entry, an empty string, a list the recipe has exactly N slots for (`items(1, 4)`, four options,
+three pairs), an ordinal reference that does not resolve (a dangling id would fail
+`LessonFactsSchema` in `assignFactIds` with no retry), a cap `@tj/domain` re-checks on the stored
+facts (`PlanImageBriefSchema.subject`), invalid JSON. A shape miss keeps today's path: one retry,
+then `StageFailure`. An **editorial** issue is a rule we wrote about the content — a text cap, a
+list ceiling the pipeline tolerates, a count the prompt asks for, wording, ordering, distinctness,
+coverage, the lesson shape — and carries `params: { editorial: true }` through one helper,
+`editorialIssue(message, path)` in `@tj/slides`, which both `.refine` and `ctx.addIssue` take; a
+rule written any other way is shape. Zod v4 keeps `params` on custom issues only, so the string
+caps that were `.max(ceiling)` are now editorial refinements (`Too long: at most N characters.`);
+the thresholds are unchanged. Every spec factory has a `{ soft: true }` build with the editorial
+rules left out (`slideSpecSchemaFor`, `blockSpecSchemaFor`, `imageTextSpecSchemaFor`,
+`planSkeletonSchemaFor`, `planFactsSchemaFor`, `worksheetSpecSchemaFor`); it never goes to a model.
+
+`callStructured` takes the soft build as `soft`. When the retry's issues are all editorial and a
+soft build was given, the answer is parsed with it, accepted, and returned with `editorialMisses`
+(path and message per issue); the stage records each as a `Finding` with `check: "spec-rule"`
+(`specRuleFinding`). Generate records them as `error` on the slide or block the answer became, so
+Repair — which already rewrites one target per `error` finding, capped by `MAX_TARGETS` — rewrites
+it against the full schema; Evaluate carries `spec-rule` through unchanged. A Repair answer that
+itself still misses on both attempts is accepted too, and its misses are `warning`s: the residual
+badge says so and there is no second pass. Plan's misses (skeleton, facts) are `warning`s on the
+lesson from the start — nothing downstream rewrites the facts. Verify, Evaluate, check-input and
+the proposal jobs give no soft build, so a second miss there fails the call as before (each already
+records or reports its failure without failing the job). The `did not validate` log lines carry
+`editorialOnly: true|false`, and the eval table counts `spec-rule` findings, so both kinds are
+measurable. Prompts are unchanged; the rules stay in them as aims. Deliberately open: a skeleton
+accepted with editorial misses does not pass the resume path's strict `PlanSkeletonSchema`, so a
+pg-boss retry of that job re-runs Plan from the top.
