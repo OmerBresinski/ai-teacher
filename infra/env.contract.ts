@@ -537,7 +537,7 @@ const CONTRACT = [
     runtimeOnly: true,
     files: ["api", "worker"],
     description:
-      "Local-disk adapter only: directory that holds stored objects. Defaults to `.data/storage` (gitignored) when unset.",
+      "Local-disk adapter only: directory that holds stored objects. Defaults to `.data/storage` relative to the process cwd when unset — the api and the worker must point at the **same** directory (the worker reads what `POST /sources` wrote, ADR 0027 §6); `bun run dev` and the e2e config set it for both.",
   },
 
   // --- AI provider (ADR 0018) ---------------------------------------------------------------------

@@ -45,7 +45,12 @@ await runMain(async () => {
   const child = Bun.spawn(command, {
     cwd: ROOT,
     stdio: ["inherit", "inherit", "inherit"],
-    env: process.env,
+    // The api writes Source objects and the worker reads them (ADR 0027 §6); with the local-disk
+    // adapter both must resolve `.data/storage` against the same directory, not each app's cwd.
+    env: {
+      ...process.env,
+      STORAGE_ROOT: process.env.STORAGE_ROOT || path.join(ROOT, ".data/storage"),
+    },
   });
 
   const forward = (signal: NodeJS.Signals) => {
