@@ -50,6 +50,8 @@ test.describe("accessibility (axe)", () => {
     { path: paths.lesson("demo-water-cycle"), ready: "The water cycle" },
     { path: paths.lesson("demo-water-cycle", "/view"), ready: /\d+ slides/ },
     { path: paths.lesson("demo-water-cycle", "/present"), ready: "Start presenting" },
+    // The lesson print route (TEACH-110) paints paper-white pages whatever the theme.
+    { path: paths.lesson("demo-water-cycle", "/print"), ready: /Slide 1 of \d+|The water cycle/ },
     { path: paths.worksheet("fraction-practice"), ready: "Fractions practice" },
     // The print route paints paper-white pages whatever the theme (print.css forces the sheet).
     { path: paths.worksheet("fraction-practice", "/print"), ready: "Fractions practice" },
@@ -59,7 +61,7 @@ test.describe("accessibility (axe)", () => {
     test(`every route is clean in the ${theme} theme`, async ({
       signedInPage: { page, paths },
     }) => {
-      // Twelve routes under one axe pass each. The Worksheets library and the creation flow paint
+      // Thirteen routes under one axe pass each. The Worksheets library and the creation flow paint
       // whole sheets in their cards (TEACH-193, TEACH-184); the walk takes about 30 s on an idle
       // machine, so the default budget has no headroom.
       test.setTimeout(60_000);
@@ -231,6 +233,26 @@ test.describe("accessibility (axe)", () => {
     await settled();
     await expectNoSeriousA11yViolations(page, "theme dialog", '[role="dialog"]');
     await page.keyboard.press("Escape");
+
+    // The export dialog (TEACH-110 row 12), on the PDF tab it opens on and on JSON.
+    await page.getByRole("button", { name: "Export" }).click();
+    await expect(page.getByRole("dialog", { name: "Export" })).toBeVisible();
+    await settled();
+    await expectNoSeriousA11yViolations(page, "export dialog", '[role="dialog"]');
+    await page.getByRole("tab", { name: "JSON" }).click();
+    await expectNoSeriousA11yViolations(page, "export dialog (JSON)", '[role="dialog"]');
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: "Export" })).toHaveCount(0);
+
+    // The library Import dialog (TEACH-110), reached from the sidebar.
+    await page.goto("/lessons");
+    await page.getByRole("button", { name: "Import" }).click();
+    await expect(page.getByRole("dialog", { name: "Import" })).toBeVisible();
+    await settled();
+    await expectNoSeriousA11yViolations(page, "import dialog", '[role="dialog"]');
+    await page.keyboard.press("Escape");
+    await page.goto(paths.lesson("demo-water-cycle"));
+    await expect(page.getByRole("toolbar", { name: "Insert" })).toBeVisible();
 
     // The Add image panel on both tabs (TEACH-107 row 12, TEACH-158); the search is mocked, never live.
     await page.route(`${E2E_API_URL}/images/search*`, (route) =>

@@ -72,7 +72,7 @@ describe("WorksheetEditorPage", () => {
       ),
     );
     expect(screen.getByText("Saved")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Print" })).toBeEnabled();
   });
 

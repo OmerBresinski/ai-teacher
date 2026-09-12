@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { ExportControl } from "@tj/editor/export";
 import { LessonViewer } from "@tj/editor/present";
-import { Button, IconButton, Tooltip, toast } from "@tj/ui";
+import { IconButton, toast } from "@tj/ui";
 import { ArrowLeft } from "lucide-react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryMutations, libraryQueries } from "@/lib/library";
+import { openPrintTab } from "@/lib/print-tab";
 import { lessonViewRoute } from "./documents.route";
 import "@tj/editor/styles/editor.css";
 
@@ -47,15 +49,7 @@ export function LessonViewerPage() {
           <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
         </IconButton>
       }
-      exportSlot={
-        // `aria-disabled`, not `disabled`: a disabled button swallows pointer and focus events, so
-        // its tooltip could never open. This one announces as disabled, stays focusable and does nothing.
-        <Tooltip label="Export arrives with the export phase">
-          <Button variant="ghost" size="sm" aria-disabled="true" className="opacity-50">
-            Export
-          </Button>
-        </Tooltip>
-      }
+      exportSlot={<ExportControl document={data} onOpenPrint={openPrintTab} />}
       onPresent={(slide) =>
         void navigate({
           to: "/l/$lessonId/present",

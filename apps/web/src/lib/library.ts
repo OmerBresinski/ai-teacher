@@ -543,6 +543,19 @@ export const libraryMutations = {
     onSuccess: () => invalidateLibrary(queryClient),
   }),
   /**
+   * Import (ADR 0023 §6, amended 2026-09-12): a `Lesson` or `Worksheet` the import dialog has
+   * already run through `migrate()` and the parser, posted whole to `POST /documents`. The server
+   * mints the row id and writes it into `body.id` (`createDocument`), so importing the same file
+   * twice yields two documents and the file's own `id` is never reused.
+   */
+  importDocument: (
+    queryClient: QueryClient,
+  ): UseMutationOptions<LibrarySummary, Error, Lesson | Worksheet> => ({
+    mutationFn: async (body) =>
+      summaryOf(await postDocument("blocks" in body ? "worksheet" : "lesson", body)),
+    onSuccess: () => invalidateLibrary(queryClient),
+  }),
+  /**
    * `POST /lessons` (ADR 0024 §6): the brief becomes a locked lesson and a queued `lesson.plan`
    * job; the caller navigates to `/l/$lessonId` and follows the job (TEACH-122).
    */

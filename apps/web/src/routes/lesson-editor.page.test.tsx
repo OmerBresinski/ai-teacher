@@ -104,7 +104,10 @@ describe("LessonEditorPage", () => {
       lesson && "slides" in lesson ? lesson.slides[0]?.id : "",
     );
     expect(screen.getByText("Saved")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("aria-disabled", "true");
+    // The export dialog (TEACH-110): one click opens it on the PDF tab.
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    expect(await screen.findByRole("dialog", { name: "Export" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "PDF", selected: true })).toBeVisible();
   });
 
   it("row 11: an inline rename autosaves to the store and the library list follows", async () => {

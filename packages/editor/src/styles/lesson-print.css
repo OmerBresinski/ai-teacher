@@ -1,0 +1,231 @@
+/*
+ * `@tj/editor/styles/lesson-print.css` — everything the lesson print route paints with: the theme
+ * fonts, the slide renderer and the print layout (TeachDeck `app/l/[id]/print/print.css`; ADR 0023
+ * §2: "Print produces exactly N pages for N slides").
+ *
+ * The slide renders at 960x540 CSS pixels in every mode. A CSS pixel is 1/96in and a point is
+ * 1/72in, so the page box is 960x540pt and the slide is scaled by 96/72 to fill it exactly. Nothing
+ * is re-laid-out for print; it is the same DOM. `@page` (size and margin) is written by
+ * `LessonPrint`, because it follows the layout chosen.
+ *
+ * Imported by the lesson print page only (ADR 0022 §8): Vite ships it with that lazy chunk.
+ */
+@import "./fonts.css";
+@import "./slide.css";
+
+.td-print {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
+/* One slide, one page. */
+.td-print-page {
+  position: relative;
+  flex: none;
+  width: 960pt;
+  height: 540pt;
+  overflow: hidden;
+  break-after: page;
+  page-break-after: always;
+  break-inside: avoid;
+}
+
+.td-print-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+/* 96/72: CSS pixels to points. */
+.td-print-scale {
+  width: 960px;
+  height: 540px;
+  transform: scale(1.33333333);
+  transform-origin: top left;
+}
+
+/* Handout: A4 portrait, the slide over its presenter notes. */
+.td-handout-page {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 18pt;
+  width: 194mm;
+  min-height: 273mm;
+  break-after: page;
+  page-break-after: always;
+  break-inside: avoid;
+}
+
+.td-handout-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.td-handout-slide {
+  /* content-box, so the frame sits outside the render. A border-box frame would crop 1.5pt off. */
+  box-sizing: content-box;
+  width: 537.6pt; /* 56% of 960pt: the widest that fits A4 with a usable margin */
+  height: 302.4pt;
+  overflow: hidden;
+  border: 0.75pt solid #d8d5cd;
+}
+
+.td-handout-scale {
+  width: 960px;
+  height: 540px;
+  transform: scale(0.74666667); /* 537.6pt / 960px */
+  transform-origin: top left;
+}
+
+.td-handout-meta {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 9pt;
+  line-height: 14pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6c6960;
+}
+
+.td-handout-notes {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 11pt;
+  line-height: 17pt;
+  color: #1b1a17;
+  white-space: pre-wrap;
+}
+
+.td-handout-notes[data-empty="true"] {
+  color: #8f8b82;
+}
+
+/* Ruled space for the teacher's own annotations. */
+.td-handout-lines {
+  flex: 1 1 auto;
+  min-height: 60pt;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 23pt,
+    #e2e0da 23pt,
+    #e2e0da 23.75pt
+  );
+}
+
+/* Handout: A4 portrait, three slides to a page with note lines beside each. */
+.td-handout3-page {
+  --td-h3-slide-h: 168.75pt;
+  --td-h3-frame: 0.75pt;
+  --td-h3-gap: 12pt;
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--td-h3-gap);
+  width: 194mm;
+  height: 273mm;
+  break-after: page;
+  page-break-after: always;
+  break-inside: avoid;
+}
+
+.td-handout3-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+/* Every row is a fixed third of the page, never a share of what is left, so the single slide of a
+   3 + 3 + 1 lesson sits exactly where the first slide sits on a full page. */
+.td-handout3-row {
+  display: flex;
+  flex: 0 0 calc((100% - var(--td-h3-gap) * 2) / 3);
+  align-items: flex-start;
+  gap: 18pt;
+  min-height: 0;
+  break-inside: avoid;
+}
+
+.td-handout3-slide {
+  flex: none;
+  box-sizing: content-box;
+  width: 300pt; /* 400px of the slide's 960px */
+  height: var(--td-h3-slide-h);
+  overflow: hidden;
+  border: var(--td-h3-frame) solid #d8d5cd;
+}
+
+.td-handout3-scale {
+  width: 960px;
+  height: 540px;
+  transform: scale(0.41666667); /* 400px / 960px */
+  transform-origin: top left;
+}
+
+/* The note column is the slide's neighbour, not the page's: exactly as tall as the framed slide. */
+.td-handout3-side {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6pt;
+  min-width: 0;
+  height: calc(var(--td-h3-slide-h) + var(--td-h3-frame) * 2);
+}
+
+.td-handout3-lines {
+  flex: 1 1 auto;
+  min-height: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 23pt,
+    #e2e0da 23pt,
+    #e2e0da 23.75pt
+  );
+}
+
+@media print {
+  /* A root pinned to one page box drops everything after the first slide. Paged layout needs an
+     auto height to fragment into N pages. (No `!important`: unlike TeachDeck's globals, ours never
+     pin `html` to 100%; the shell's `min-h-dvh` wrappers are not on this route.) */
+  html,
+  body {
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    background: #fff;
+  }
+
+  /* Theme backgrounds are the point of the slide; never let the browser drop them. */
+  html,
+  body,
+  .td-print * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* On screen the print route is a preview, so give the pages a ground to sit on. */
+@media screen {
+  .td-print {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 24px 0;
+    background: #e9e8e3;
+  }
+
+  .td-print-page,
+  .td-handout-page,
+  .td-handout3-page {
+    background: #fff;
+    box-shadow:
+      0 1px 2px rgb(27 26 23 / 0.08),
+      0 8px 24px -6px rgb(27 26 23 / 0.12);
+  }
+}

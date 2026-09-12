@@ -44,6 +44,29 @@ export const worksheetPrintSearchSchema = z.object({
     .optional()
     .catch(undefined),
 });
+/**
+ * `/l/$lessonId/print` (ADR 0023 §2; TeachDeck `lib/export/pdf.ts` writes exactly these):
+ * `auto=1`, `answers=1`, `notes=1`, `handout=3`, `slides=<range>`. The parser JSON-decodes bare
+ * digits, so `1` / `3` arrive as numbers and a range like `slides=4` as `4`; each is normalised to
+ * its string and anything else is dropped rather than thrown.
+ */
+const flag = <T extends string>(value: T) =>
+  z
+    .union([z.literal(value), z.literal(Number(value))])
+    .transform((): T => value)
+    .optional()
+    .catch(undefined);
+export const lessonPrintSearchSchema = z.object({
+  auto: flag("1"),
+  answers: flag("1"),
+  notes: flag("1"),
+  handout: flag("3"),
+  slides: z
+    .union([z.string(), z.number()])
+    .transform((v) => String(v))
+    .optional()
+    .catch(undefined),
+});
 const titleFrom = ({ loaderData }: { loaderData?: { title: string } }) =>
   pageTitle(loaderData?.title ?? "Document");
 
@@ -73,6 +96,16 @@ export const lessonPresentRoute = createRoute({
   head: ({ loaderData }) => pageTitle(`${loaderData?.title ?? "Lesson"} · Presenting`),
   // Present mode (TEACH-101).
   component: lazyRouteComponent(() => import("./lesson-present.page"), "LessonPresentPage"),
+});
+
+/** The lesson print layout (TEACH-110; ADR 0023 §2): one page per slide, no app chrome. */
+export const lessonPrintRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: "/l/$lessonId/print",
+  loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
+  validateSearch: (search) => lessonPrintSearchSchema.parse(search),
+  head: titleFrom,
+  component: lazyRouteComponent(() => import("./lesson-print.page"), "LessonPrintPage"),
 });
 
 /** The worksheet editor (TEACH-109). */

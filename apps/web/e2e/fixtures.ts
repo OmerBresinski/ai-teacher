@@ -121,7 +121,8 @@ export function seededPaths(ids: SeedIds) {
     id,
     /** The demo key for a seeded id (`data-lesson-id` attributes carry ids), or the id itself. */
     key: (value: string | null): string => (value === null ? "" : (keys.get(value) ?? value)),
-    lesson: (key: string, suffix: "" | "/view" | "/present" = "") => `/l/${id(key)}${suffix}`,
+    lesson: (key: string, suffix: "" | "/view" | "/present" | "/print" = "") =>
+      `/l/${id(key)}${suffix}`,
     worksheet: (key: string, suffix: "" | "/print" = "") => `/w/${id(key)}${suffix}`,
     series: (key: string) => `/series/${id(key)}`,
   };

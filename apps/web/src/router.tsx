@@ -15,6 +15,7 @@ import { devJobsRoute } from "@/routes/dev-jobs.route";
 import {
   lessonEditorRoute,
   lessonPresentRoute,
+  lessonPrintRoute,
   lessonViewRoute,
   worksheetEditorRoute,
   worksheetPrintRoute,
@@ -48,6 +49,7 @@ export const routeTree = rootRoute.addChildren([
     lessonEditorRoute,
     lessonViewRoute,
     lessonPresentRoute,
+    lessonPrintRoute,
     worksheetEditorRoute,
     worksheetPrintRoute,
     devJobsRoute,
