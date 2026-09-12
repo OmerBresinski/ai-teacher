@@ -81,32 +81,43 @@ export function selectSourceTexts(
 }
 
 /**
- * Proportional shares with a floor: every Source gets `max(floor, share)`, then the largest
- * allocations are trimmed until the sum fits `maxChars`. A Source smaller than its allocation
- * simply keeps its size; the surplus is not redistributed (whole chunks rarely fill a budget
- * exactly anyway).
+ * Floor first, then proportional: every Source gets `min(size, floor)`; what is left of `maxChars`
+ * is shared among the Sources still short of their size in proportion to their remaining size.
+ * When even the floors do not fit, `maxChars` is split evenly. No Source is ever allocated zero
+ * while the budget is positive, and the sum never exceeds `maxChars`.
  */
 function allocate(sizes: Map<string, number>, maxChars: number): Map<string, number> {
-  const total = [...sizes.values()].reduce((a, b) => a + b, 0);
+  const ids = [...sizes.keys()];
   const out = new Map<string, number>();
-  for (const [id, chars] of sizes) {
-    const share = Math.floor((maxChars * chars) / total);
-    out.set(id, Math.min(chars, Math.max(SOURCE_TEXT_MIN_CHARS, share)));
+  if (ids.length === 0 || maxChars <= 0) return out;
+
+  const floorTotal = ids.reduce(
+    (n, id) => n + Math.min(sizes.get(id) ?? 0, SOURCE_TEXT_MIN_CHARS),
+    0,
+  );
+  if (floorTotal >= maxChars) {
+    const each = Math.floor(maxChars / ids.length);
+    for (const id of ids) out.set(id, Math.min(sizes.get(id) ?? 0, each));
+    return out;
   }
-  let sum = [...out.values()].reduce((a, b) => a + b, 0);
-  while (sum > maxChars) {
-    let largestId: string | undefined;
-    let largest = -1;
-    for (const [id, b] of out) {
-      if (b > largest) {
-        largest = b;
-        largestId = id;
-      }
-    }
-    if (largestId === undefined || largest <= 0) break;
-    const cut = Math.min(sum - maxChars, largest);
-    out.set(largestId, largest - cut);
-    sum -= cut;
+
+  for (const id of ids) out.set(id, Math.min(sizes.get(id) ?? 0, SOURCE_TEXT_MIN_CHARS));
+  let remaining = maxChars - floorTotal;
+  const wanting = ids.filter((id) => (sizes.get(id) ?? 0) > (out.get(id) ?? 0));
+  const wantTotal = wanting.reduce((n, id) => n + (sizes.get(id) ?? 0) - (out.get(id) ?? 0), 0);
+  for (const id of wanting) {
+    const want = (sizes.get(id) ?? 0) - (out.get(id) ?? 0);
+    const share = Math.min(want, Math.floor((remaining * want) / wantTotal));
+    out.set(id, (out.get(id) ?? 0) + share);
+  }
+  // Rounding leaves a few characters; give them to the first Source still short, in order.
+  remaining = maxChars - [...out.values()].reduce((a, b) => a + b, 0);
+  for (const id of wanting) {
+    if (remaining <= 0) break;
+    const room = (sizes.get(id) ?? 0) - (out.get(id) ?? 0);
+    const give = Math.min(room, remaining);
+    out.set(id, (out.get(id) ?? 0) + give);
+    remaining -= give;
   }
   return out;
 }

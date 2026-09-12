@@ -62,6 +62,25 @@ describe("selectSourceTexts", () => {
     expect(total(smallKept)).toBeGreaterThanOrEqual(4_000);
   });
 
+  test("many equal sources under a tight cap all keep something (no source is starved)", () => {
+    const texts = ["a", "b", "c", "d", "e"].flatMap((id) => pdf(id, 5, 1_000));
+    const out = selectSourceTexts(texts, { maxChars: 20_000 });
+    const kept = out.selected.filter((t) => !t.text.startsWith("["));
+    for (const id of ["a", "b", "c", "d", "e"]) {
+      expect(total(kept.filter((t) => t.sourceId === id))).toBeGreaterThanOrEqual(4_000);
+    }
+    expect(total(kept)).toBeLessThanOrEqual(20_000);
+  });
+
+  test("when even the floors do not fit, the cap is split evenly", () => {
+    const texts = ["a", "b", "c"].flatMap((id) => pdf(id, 10, 1_000));
+    const out = selectSourceTexts(texts, { maxChars: 6_000 });
+    const kept = out.selected.filter((t) => !t.text.startsWith("["));
+    for (const id of ["a", "b", "c"]) {
+      expect(total(kept.filter((t) => t.sourceId === id))).toBe(2_000);
+    }
+  });
+
   test("units: pages, slides, sections; marker wording per unit", () => {
     expect(sourceUnitOf([{ page: 1 }, { section: "x" }])).toBe("pages");
     expect(sourceUnitOf([{ slide: 2 }])).toBe("slides");
