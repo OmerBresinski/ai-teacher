@@ -139,7 +139,7 @@ test.describe("export dialog", () => {
     await page.goto(paths.worksheet("fraction-practice"));
     await page.getByRole("button", { name: "Export", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Export" });
-    await expect(dialog.getByRole("tab", { name: "Word" })).toBeDisabled();
+    await expect(dialog.getByRole("tab", { name: "Word" })).toBeEnabled();
     await dialog.getByRole("tab", { name: "JSON" }).click();
     const download = page.waitForEvent("download");
     await dialog.getByRole("button", { name: "Export JSON" }).click();

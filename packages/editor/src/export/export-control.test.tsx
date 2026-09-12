@@ -5,7 +5,7 @@ import type { Lesson, Worksheet } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import { demoWorksheet } from "../model/demo-worksheet";
 import { demoLibrary } from "../model/starter";
-import { ExportControl, exportLoaders, PENDING_FORMAT_TIP, PPTX_FONT_NOTE } from "./ExportControl";
+import { ExportControl, exportLoaders, PPTX_FONT_NOTE } from "./ExportControl";
 
 const water = () => {
   const lesson = demoLibrary().find((l) => l.title === "The water cycle");
@@ -65,14 +65,6 @@ describe("ExportControl (TEACH-110)", () => {
     );
     expect(screen.getByRole("switch", { name: "Include presenter notes" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Export PDF" })).toBeEnabled();
-  });
-
-  it("names the phase a disabled tab is waiting for (Word, until E3)", async () => {
-    const user = userEvent.setup();
-    renderControl(demoWorksheet());
-    await openDialog(user);
-    await user.hover(pickTab("Word").parentElement as HTMLElement);
-    await waitFor(() => expect(screen.getAllByText(PENDING_FORMAT_TIP)[0]).toBeVisible());
   });
 
   it("row 2: PDF with a range and answers opens the print route with exactly those params", async () => {
@@ -159,14 +151,14 @@ describe("ExportControl (TEACH-110)", () => {
     }
   });
 
-  it("row 7: a worksheet offers PDF / Word (disabled) / JSON and prints through its own route", async () => {
+  it("row 7: a worksheet offers PDF / Word / JSON and prints through its own route", async () => {
     const user = userEvent.setup();
     const sheet = demoWorksheet();
     const { onOpenPrint } = renderControl(sheet);
     await openDialog(user);
 
     expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["PDF", "Word", "JSON"]);
-    expect(pickTab("Word")).toBeDisabled();
+    expect(pickTab("Word")).toBeEnabled();
     expect(screen.queryByRole("textbox", { name: "Slides" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Export PDF" }));
     expect(onOpenPrint.mock.calls[0]?.[0]).toBe(`/w/${sheet.id}/print?auto=1`);
@@ -308,6 +300,53 @@ describe("ExportControl (TEACH-111)", () => {
     } finally {
       HTMLAnchorElement.prototype.click = original;
       exportLoaders.png = realPng;
+    }
+  });
+});
+
+/* E3 (TEACH-112): the Word tab, its answer-key default, and the `import()` boundary. */
+describe("ExportControl (TEACH-112)", () => {
+  it("Word: answer key defaults to the sheet's own setting; one download named <slug>.docx", async () => {
+    const user = userEvent.setup();
+    const worksheetDocxBlob = mock(async () => new Blob(["pk"], { type: "application/zip" }));
+    const realDocx = exportLoaders.docx;
+    exportLoaders.docx = async () =>
+      ({
+        worksheetDocxBlob,
+        docxFilename: (w: { title: string }) =>
+          `${w.title.toLowerCase().replaceAll(" ", "-")}.docx`,
+      }) as unknown as Awaited<ReturnType<typeof realDocx>>;
+    const downloads: string[] = [];
+    const original = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      downloads.push(this.download);
+    };
+    Object.assign(URL, { createObjectURL: () => "blob:x", revokeObjectURL: () => {} });
+    try {
+      const sheet = { ...demoWorksheet(), includeAnswerKey: true };
+      render(
+        <TooltipProvider>
+          <ExportControl document={sheet} imageOrigin="https://api.test" onOpenPrint={() => {}} />
+        </TooltipProvider>,
+      );
+      await openDialog(user);
+      await user.click(pickTab("Word"));
+      expect(screen.getByRole("switch", { name: "Include answer key" })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      await user.click(screen.getByRole("switch", { name: "Include answer key" }));
+      await user.click(screen.getByRole("button", { name: "Export Word" }));
+      await waitFor(() => expect(downloads).toEqual(["fractions-practice.docx"]));
+      const [, options] = worksheetDocxBlob.mock.calls[0] as unknown as [
+        unknown,
+        { includeAnswerKey: boolean; imageOrigin: string },
+      ];
+      expect(options).toEqual({ includeAnswerKey: false, imageOrigin: "https://api.test" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    } finally {
+      HTMLAnchorElement.prototype.click = original;
+      exportLoaders.docx = realDocx;
     }
   });
 });

@@ -38,8 +38,8 @@ import { ALL_SLIDES, parseSlideRange } from "./range";
  * The export dialog (TeachDeck `components/v2/export/ExportControl.tsx`; ADR 0023 §3–§7). One
  * control for lessons and worksheets: a format tab strip over that format's options and one
  * "Export …" button. E1 shipped PDF (the print route in a new tab) and JSON; E2 adds PowerPoint and
- * PNG for lessons, each loaded with `await import()` on click (ADR 0023 §4) from its own `case` in
- * the one `switch (format)` in `run()`. E3 adds DOCX for worksheets the same way.
+ * PNG for lessons and E3 Word for worksheets, each loaded with `await import()` on click (ADR 0023
+ * §4) from its own `case` in the one `switch (format)` in `run()`.
  *
  * Opening the print tab is the app's job (`onOpenPrint`): the package never touches `window.open`
  * or knows an origin (ADR 0022 §6). The click on Export is the user gesture browsers require for
@@ -76,7 +76,7 @@ const ACTION_LABEL: Record<ExportFormat, string> = {
   json: "Export JSON",
 };
 
-type FormatTab = { value: ExportFormat; label: string; disabled?: boolean };
+type FormatTab = { value: ExportFormat; label: string };
 
 const LESSON_FORMATS: FormatTab[] = [
   { value: "pdf", label: "PDF" },
@@ -87,11 +87,10 @@ const LESSON_FORMATS: FormatTab[] = [
 
 const WORKSHEET_FORMATS: FormatTab[] = [
   { value: "pdf", label: "PDF" },
-  { value: "docx", label: "Word", disabled: true },
+  { value: "docx", label: "Word" },
   { value: "json", label: "JSON" },
 ];
 
-export const PENDING_FORMAT_TIP = "Arrives in the next export phase";
 /** TeachDeck's one-line caveat on the PowerPoint tab (ADR 0023 §7): fonts go by family name. */
 export const PPTX_FONT_NOTE =
   "Uses the theme's fonts by name; install them for full fidelity, or PowerPoint substitutes.";
@@ -114,6 +113,7 @@ const isWorksheet = (document: Lesson | Worksheet): document is Worksheet => "bl
 export const exportLoaders = {
   pptx: () => import("./pptx"),
   png: () => import("./png"),
+  docx: () => import("./docx"),
 };
 
 /** A live export. `cancellable` is the truth about the exporter, not a wish. */
@@ -145,6 +145,8 @@ export function ExportControl({
   const [answers, setAnswers] = useState(false);
   const [notes, setNotes] = useState(false);
   const [pngScale, setPngScale] = useState<PngScale>(2);
+  // Word keeps the worksheet's own answer-key setting as its default (ADR 0023 §7).
+  const [answerKey, setAnswerKey] = useState(worksheet ? document.includeAnswerKey : false);
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   /** The slide on the offscreen stage, by index; `null` between and after runs. */
@@ -189,6 +191,15 @@ export function ExportControl({
     });
     downloadBlob(blob, pptxFilename(deck));
     finish("Lesson exported as PowerPoint");
+  };
+
+  const exportDocx = async (sheet: Worksheet) => {
+    // `docx` packs the whole file in one call: there is nothing to stop.
+    setRun({ label: "Building the Word file", cancellable: false });
+    const { worksheetDocxBlob, docxFilename } = await exportLoaders.docx();
+    const blob = await worksheetDocxBlob(sheet, { includeAnswerKey: answerKey, imageOrigin });
+    downloadBlob(blob, docxFilename(sheet));
+    finish("Worksheet exported as Word");
   };
 
   const exportPng = async (deck: Lesson, indices: number[]) => {
@@ -274,8 +285,11 @@ export function ExportControl({
           if (lesson && range.ok) await exportPng(lesson, range.indices);
           return;
         }
+        case "docx": {
+          if (worksheet) await exportDocx(document as Worksheet);
+          return;
+        }
         default:
-          // DOCX arrives with E3; its tab cannot be selected until then.
           return;
       }
     } catch {
@@ -322,23 +336,11 @@ export function ExportControl({
 
         <Tabs value={format} onValueChange={(v) => setFormat(v as ExportFormat)}>
           <TabsList aria-label="Format" className="w-full">
-            {formats.map((tab) =>
-              tab.disabled ? (
-                // A disabled Radix trigger has no pointer events, so the tooltip hangs off a
-                // wrapper that still receives the hover (the placeholder buttons' pattern).
-                <Tooltip key={tab.value} label={PENDING_FORMAT_TIP}>
-                  <span className="flex-1">
-                    <TabsTrigger value={tab.value} disabled className="w-full">
-                      {tab.label}
-                    </TabsTrigger>
-                  </span>
-                </Tooltip>
-              ) : (
-                <TabsTrigger key={tab.value} value={tab.value} className="flex-1">
-                  {tab.label}
-                </TabsTrigger>
-              ),
-            )}
+            {formats.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value} className="flex-1">
+                {tab.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           {/* One height for the formats with options, so switching between them does not walk
@@ -424,6 +426,15 @@ export function ExportControl({
                 ) : null}
               </TabsContent>
             </>
+          ) : null}
+          {worksheet ? (
+            <TabsContent value="docx" className="flex min-h-[180px] flex-col gap-3 pt-2">
+              <SwitchRow label="Include answer key" checked={answerKey} onChange={setAnswerKey} />
+              <Note>
+                Every question, box and line as real Word text and tables, in Calibri. The answer
+                key goes on a page of its own at the end.
+              </Note>
+            </TabsContent>
           ) : null}
           <TabsContent value="json" className="pt-2">
             <Note>

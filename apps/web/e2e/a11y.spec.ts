@@ -249,6 +249,15 @@ test.describe("accessibility (axe)", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog", { name: "Export" })).toHaveCount(0);
 
+    // The worksheet editor's export dialog on the Word tab (TEACH-112 row 4).
+    await page.goto(paths.worksheet("fraction-practice"));
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Export" })).toBeVisible();
+    await page.getByRole("tab", { name: "Word" }).click();
+    await settled();
+    await expectNoSeriousA11yViolations(page, "export dialog (Word)", '[role="dialog"]');
+    await page.keyboard.press("Escape");
+
     // The library Import dialog (TEACH-110), reached from the sidebar.
     await page.goto("/lessons");
     await page.getByRole("button", { name: "Import" }).click();

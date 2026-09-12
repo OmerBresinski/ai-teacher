@@ -101,6 +101,27 @@ describe("findClickLoadedLeaks (TEACH-111 row 8)", () => {
     ]);
   });
 
+  test("docx and export/docx.ts are guarded too (E3)", () => {
+    const leaky: Manifest = {
+      ...exporters,
+      "_route.js": {
+        file: "assets/route.js",
+        imports: [
+          "../../packages/editor/src/export/docx.ts",
+          "../../node_modules/.bun/docx@9.7.1/node_modules/docx/dist/index.mjs",
+        ],
+      },
+      "../../packages/editor/src/export/docx.ts": { file: "assets/docx.js" },
+      "../../node_modules/.bun/docx@9.7.1/node_modules/docx/dist/index.mjs": {
+        file: "assets/docx-vendor.js",
+      },
+    };
+    expect(findClickLoadedLeaks(leaky)).toEqual([
+      "_route.js -> ../../node_modules/.bun/docx@9.7.1/node_modules/docx/dist/index.mjs",
+      "_route.js -> ../../packages/editor/src/export/docx.ts",
+    ]);
+  });
+
   test("an exporter importing another exporter statically is not a leak", () => {
     const chained: Manifest = {
       ...exporters,
