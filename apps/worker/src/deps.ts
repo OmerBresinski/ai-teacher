@@ -1,7 +1,6 @@
 import { type CreatedAi, createAi } from "@tj/ai";
 import type { Db } from "@tj/db";
-import type { StorageAdapter } from "@tj/domain";
-import { noSources, type SourceLoader } from "@tj/generation";
+import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
 import { createPexelsClient, type PexelsClient } from "@tj/images";
 import { createStorage, type StorageKind } from "@tj/storage";
 import type { Logger } from "pino";
@@ -12,16 +11,18 @@ import { createPerJobFakeAi } from "./fake-ai";
  * Boot-owned dependencies every handler receives as `ctx.deps`. `db` is the same pooled Drizzle
  * client the `JobsContext` holds (one pool per process); handlers reach tenant tables through
  * `forWorkspace(deps.db, workspaceId)` only (ADR 0007). `caps` are the per-job budget limits
- * (ADR 0025 §15); `sources` is the Source loader, `noSources` until F03. `AI_FAKE_SCRIPT` swaps
- * Bedrock for the scripted fake (test and development only; `env.ts` refuses it in production).
- * `images` is the Pexels client + object storage behind illustrate (Images project); absent
- * without a key, and the step skips placements instead of failing.
+ * (ADR 0025 §15); `storage` is the object store the Source loader reads `extracted.json` from
+ * (ADR 0027 §6) — the loader itself is built per job because it is scoped to a Workspace
+ * (`storageSourceLoader` in `sources.ts`). `AI_FAKE_SCRIPT` swaps Bedrock for the scripted fake
+ * (test and development only; `env.ts` refuses it in production). `images` is the Pexels client +
+ * the same object storage behind illustrate (Images project); absent without a key, and the step
+ * skips placements instead of failing.
  */
 export type WorkerDeps = {
   ai: CreatedAi;
   db: Db;
   caps: { capUsd: number; capTokens: number };
-  sources: SourceLoader;
+  storage: ReadableStorageAdapter;
   images?: { client: PexelsClient; storage: StorageAdapter; filesBaseUrl?: string };
 };
 
@@ -45,7 +46,7 @@ export function createWorkerDeps(
     ai: env.AI_FAKE_SCRIPT === "pipeline" ? createPerJobFakeAi(env) : createAi(env, { logger }),
     db,
     caps: { capUsd: env.AI_LESSON_COST_CAP_USD, capTokens: env.AI_LESSON_TOKEN_CAP },
-    sources: noSources,
+    storage: storage.adapter,
     images: env.PEXELS_API_KEY
       ? {
           client: createPexelsClient({ apiKey: env.PEXELS_API_KEY }),

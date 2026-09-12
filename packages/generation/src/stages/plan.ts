@@ -17,9 +17,11 @@ import {
   emptyImageCounts,
   type PipelineDeps,
   type PipelineState,
+  SOURCE_TEXT_MAX_CHARS,
   StageFailure,
 } from "../types";
 import { audienceOf, BUDGET_FINDING, shapeOf } from "./shared";
+import { selectSourceTexts } from "./source-texts";
 import { applyVerifyPatch, VERIFY_FAILED_FINDING, verifyFinding } from "./verify";
 
 /*
@@ -74,7 +76,24 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   await deps.onProgress(PROGRESS_STARTING, "Starting", first.updatedAt);
   let lastPersistedAt = first.updatedAt;
 
-  const sourceTexts = lesson.sources ? await deps.sources(lesson.sources) : [];
+  // Source text (ADR 0027 §6): loaded by the worker, capped here so two Plan calls stay inside the
+  // lesson budget; the log carries counts only (ADR 0015).
+  const loaded = lesson.sources ? await deps.sources(lesson.sources) : [];
+  const { selected: sourceTexts, truncated } = selectSourceTexts(loaded, {
+    maxChars: SOURCE_TEXT_MAX_CHARS,
+  });
+  if (loaded.length > 0) {
+    deps.logger.info(
+      {
+        stage: "plan",
+        sources: new Set(loaded.map((s) => s.sourceId)).size,
+        sourceChunks: loaded.length,
+        sourceChars: loaded.reduce((n, s) => n + s.text.length, 0),
+        truncated: truncated.length,
+      },
+      "source text loaded",
+    );
+  }
   // The lesson's shape (TEACH-229): computed once from the brief's answers and the class, rendered
   // into both Plan prompts and enforced by both Plan schemas.
   const shape = shapeOf(lesson);
@@ -83,7 +102,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     durationMin: brief.durationMin,
     shape,
     audience: audienceOf(lesson),
-    sourceTexts: sourceTexts.map((s) => ({ sourceId: s.sourceId, text: s.text })),
+    sourceTexts: sourceTexts.map((s) => ({ sourceId: s.sourceId, ref: s.ref, text: s.text })),
   };
 
   const findings: Finding[] = [];

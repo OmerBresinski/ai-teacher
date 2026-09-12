@@ -1,5 +1,12 @@
 import type { AiCallContext, Budget, CreatedAi } from "@tj/ai";
-import type { Finding, GenerationStage, Lesson, SourceRef, Worksheet } from "@tj/domain/documents";
+import type {
+  Finding,
+  GenerationStage,
+  Lesson,
+  SourceLocator,
+  SourceRef,
+  Worksheet,
+} from "@tj/domain/documents";
 import type { PhotoResult, StoredPhoto } from "@tj/images";
 import type { Logger } from "pino";
 
@@ -52,16 +59,22 @@ export const STAGE_ORDER: readonly PipelineStageName[] = [
   "repair",
 ];
 
-/** One extracted passage of a teacher-provided Source (ADR 0025 §20); loaded by the worker. */
+/**
+ * One extracted passage of a teacher-provided Source (ADR 0025 §20, ADR 0027 §3, §6): a chunk of
+ * `extracted.json`, located by page, slide or heading section. Loaded by the worker.
+ */
 export type SourceText = {
   sourceId: string;
-  ref: { page?: number; slide?: number };
+  ref: SourceLocator;
   text: string;
 };
 
+/** Characters of Source text Plan will show the model per lesson (ADR 0027 §6). */
+export const SOURCE_TEXT_MAX_CHARS = 40_000;
+
 export type SourceLoader = (refs: SourceRef[]) => Promise<SourceText[]>;
 
-/** The loader until F03 ships one: no Source text. */
+/** A loader with no Source text: for lessons without Sources, Studio and tests. */
 export const noSources: SourceLoader = async () => [];
 
 export type PipelineContext = { lessonId: string; jobId: string };

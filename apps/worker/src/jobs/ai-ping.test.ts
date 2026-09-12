@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
 import { AiError, createAi, isAiError } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
-import { noSources } from "@tj/generation";
 import { NonRetryableError } from "@tj/jobs";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
+import { memoryStorage } from "../testing/memory-storage";
 import { aiPingJob } from "./ai-ping";
 
 const ids = {
@@ -31,7 +31,7 @@ function ctx(deps: Pick<WorkerDeps, "ai">, ac = new AbortController()) {
         calls.push([percent, message]);
       },
       logger: pino({ level: "silent" }),
-      deps: { ...deps, db: fakeDb, caps: TEST_CAPS, sources: noSources },
+      deps: { ...deps, db: fakeDb, caps: TEST_CAPS, storage: memoryStorage() },
     },
   };
 }

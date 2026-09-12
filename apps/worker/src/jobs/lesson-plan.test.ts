@@ -3,14 +3,14 @@ import { costUsd, createAi, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi, type FakeAi } from "@tj/ai/testing";
 import { createDocument, deleteDocument, forWorkspace, getDocument } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
-import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
+import { type JobId, type LessonId, newId, storageKey, type WorkspaceId } from "@tj/domain";
 import {
   type Lesson,
   lessonFromBrief,
   parseLesson,
   parseStoredWorksheet,
 } from "@tj/domain/documents";
-import { INPUT_CHECK_MESSAGES, noSources } from "@tj/generation";
+import { INPUT_CHECK_MESSAGES } from "@tj/generation";
 import {
   FIXTURES,
   pipelineScript,
@@ -21,6 +21,8 @@ import {
 import { NonRetryableError } from "@tj/jobs";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
+import { SOURCE_UNAVAILABLE_MESSAGE } from "../sources";
+import { memoryStorage } from "../testing/memory-storage";
 import { lessonPlanJob } from "./lesson-plan";
 
 // Integration test against the compose Postgres (ADR 0014): the lock, the worksheet row and the
@@ -47,7 +49,7 @@ describeDb("lesson.plan job", () => {
     ai,
     db: unsafeDb,
     caps: caps ?? { capUsd: 5, capTokens: 1_000_000 },
-    sources: noSources,
+    storage: memoryStorage(),
     images,
   });
 
@@ -369,6 +371,58 @@ describeDb("lesson.plan job", () => {
     const after = await getDocument(ws(), lessonId);
     expect(after?.updatedAt.toISOString()).toBe(before?.updatedAt.toISOString());
     expect(after?.generatingJobId).toBeNull();
+  });
+
+  test("a lesson whose Source has no extracted.json fails non-retryably before any model call; locks released", async () => {
+    const jobId = newId<JobId>();
+    const sourceId = newId();
+    const lessonId = await briefLesson(jobId, {
+      sources: [{ id: sourceId, kind: "file", name: "plants.pdf", pages: 2 }],
+    });
+    const before = await getDocument(ws(), lessonId);
+    const ai = scriptedPipelineAi();
+
+    await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(ai)).ctx)).rejects.toThrow(
+      new NonRetryableError(SOURCE_UNAVAILABLE_MESSAGE),
+    );
+
+    // Check input runs first (the brief), then Plan asks for the Source and stops.
+    expect(ai.calls.map((c) => c.context?.stage)).toEqual(["check-input"]);
+    const after = await getDocument(ws(), lessonId);
+    expect(after?.generatingJobId).toBeNull();
+    expect(after?.updatedAt.getTime()).toBeGreaterThanOrEqual(before?.updatedAt.getTime() ?? 0);
+  });
+
+  test("a lesson with a Source reads its extracted.json and Plan sees the passages", async () => {
+    const jobId = newId<JobId>();
+    const sourceId = newId();
+    const lessonId = await briefLesson(jobId, {
+      sources: [{ id: sourceId, kind: "file", name: "plants.pdf", pages: 1 }],
+    });
+    const storage = memoryStorage({
+      [storageKey(workspaceId, "sources", sourceId, "extracted.json")]: JSON.stringify({
+        version: 1,
+        sourceId,
+        kind: "pdf",
+        pages: 1,
+        lowText: false,
+        chunks: [
+          {
+            ref: { page: 1 },
+            text: "Solids keep their shape; liquids take the shape of their container.",
+          },
+        ],
+        images: [],
+      }),
+    });
+    const ai = scriptedPipelineAi();
+    const deps = { ...depsWith(ai), storage };
+
+    await lessonPlanJob(ctx(jobId, lessonId, deps).ctx);
+
+    const planCall = ai.calls.find((c) => c.context?.stage === "plan");
+    expect(planCall?.promptText).toContain(`[${sourceId} p.1] Solids keep their shape`);
+    expect((await storedLesson(lessonId)).slides.length).toBeGreaterThan(2);
   });
 
   test("a cancel during Generate keeps the slides so far and releases the locks", async () => {

@@ -11,6 +11,7 @@ import { type PipelineDeps, type ProposeContext, proposeFor } from "@tj/generati
 import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
+import { storageSourceLoader } from "../sources";
 
 /*
  * What `lesson.cascade` and `lesson.regenerate` share (ADR 0025 §18, §19): read the lesson and
@@ -75,7 +76,7 @@ export async function runProposalJob<J extends JobResult["job"]>(
     logger,
     now: () => new Date(),
     ids: uid,
-    sources: deps.sources,
+    sources: storageSourceLoader(deps.storage, workspaceId, logger),
     // Proposal jobs never write; these are unreachable by construction (`proposeFor` calls neither).
     persist: async () => {
       throw new Error("proposal jobs do not persist");

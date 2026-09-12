@@ -9,7 +9,6 @@ import { createDocument, forWorkspace, getDocument, listJobEvents } from "@tj/db
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
 import { lessonFromBrief, parseLesson, parseStoredWorksheet } from "@tj/domain/documents";
-import { noSources } from "@tj/generation";
 import { FIXTURES, scriptedPipelineAi } from "@tj/generation/testing";
 import {
   type BossJob,
@@ -23,6 +22,7 @@ import {
 import type { PgBoss } from "pg-boss";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
+import { memoryStorage } from "../testing/memory-storage";
 import { registry } from "./index";
 
 const t = await withTestDb({ max: 4 });
@@ -51,7 +51,7 @@ describeDb("lesson.plan on pg-boss", () => {
     ai: scriptedPipelineAi(),
     db: unsafeDb,
     caps: { capUsd: 5, capTokens: 1_000_000 },
-    sources: noSources,
+    storage: memoryStorage(),
   };
 
   async function waitFor(pred: () => Promise<boolean>, timeoutMs: number): Promise<boolean> {
