@@ -913,6 +913,29 @@ task, never the kind. Versions: `generate-slide.v15`, `generate-worksheet.v7`, `
 `repair.v9`. §23: the eval's `verbFit` rubric dimension (TEACH-228) now measures a pipeline that
 was told the verb; TEACH-231 runs the delta.
 
+## Amendment (2026-09-12, project Lesson shape by objective verb — TEACH-262)
+
+§11. `verb-fit` is scoped. TEACH-231's founder read of an Explain / New to it lesson found seven
+`verb-fit` warnings on parts the shape *requires*: the definition slide (`firstExplainKind:
+"content"`), the misconception true-false (`requireMisconceptionConfronted`), an exit ticket's
+three items (`items(3, 3)`), and the easy tier of the worksheet (`tierWeights`). The check is for
+the slides that teach the mechanism, method or judgement and for the core and stretch tasks, and
+for nothing else. Two mechanisms: `evaluate.v6`'s rule line names the exempt parts — the title,
+objectives, starter and vocabulary slides; the first content slide when the class is new to the
+topic or the lesson is Recall; a true-false or multiple-choice that confronts a misconception; the
+easy tier of the worksheet; an exit ticket's item count — and `stages/evaluate.ts` drops a
+`verb-fit` finding deterministically when its `target.slideId` is a `title`, `objectives`,
+`starter` or `vocabulary` slide (`verbFitApplies`, next to `imageFitAsError`), counting it in the
+existing `dropped` log line — never the text (ADR 0015). `content`, `true-false` and worksheet
+findings are not dropped: those need the model's judgement, which the prompt now frames.
+`VERB_WRITING.Explain`'s exit-ticket sentence read literally ("explain one thing") against a
+three-item recipe; it and Evaluate's now read per item ("Each `exit-ticket` item …"). Because
+`verbBlock` is embedded by four prompts, all four bump: `generate-slide.v16`,
+`generate-worksheet.v8`, `evaluate.v6`, `repair.v10`. No schema change; `EvaluateInput` gains
+no `phase` field — `kind` is what the deterministic part needs. The shape table (`shapes.ts`) is
+unchanged. Risk accepted: the exemptions may make the model lenient on the core tier; the next
+paid eval's `verb-fit` count per lesson measures it.
+
 ## Amendment (2026-09-12, ADR 0027 — F03 Upload as input)
 
 §20: `SourceText.ref` is the `SourceLocator` from `@tj/domain` — `{ page?, slide?, section? }` —

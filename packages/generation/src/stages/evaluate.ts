@@ -26,7 +26,8 @@ import {
  * then one `standard` call over the facts and the plain-text projection of every slide (with its
  * notes) and block. The model's findings name a check from a closed set and quote the text they
  * are about; a finding whose target does not exist, or whose evidence is not in that target's
- * text, is dropped rather than retried (a vague finding is the failure this guards against).
+ * text, is dropped rather than retried (a vague finding is the failure this guards against), as is
+ * a `verb-fit` finding on a slide kind the verb never reaches (`verbFitApplies`, TEACH-262).
  * Model findings are appended; a schema miss twice, or the budget, is recorded as a finding —
  * Evaluate never fails the job.
  */
@@ -78,6 +79,26 @@ function imageFitAsError(finding: Finding, state: PipelineState): Finding {
   const purpose = state.lesson.facts?.outline[index]?.imageBrief?.purpose;
   if (purpose !== "identify-parts" && purpose !== "observe") return finding;
   return { ...finding, severity: "error", fix: { kind: "regenerate-slide" } };
+}
+
+/** Slide kinds every lesson has whatever its verb: the shape never asks them to serve it. */
+const VERB_FIT_EXEMPT_KINDS: ReadonlySet<string> = new Set([
+  "title",
+  "objectives",
+  "starter",
+  "vocabulary",
+]);
+
+/**
+ * Whether a `verb-fit` finding can be right about its target (TEACH-262): on a title, objectives,
+ * starter or vocabulary slide it never can — those slides serve no verb — so it is dropped and
+ * counted with the other dropped findings. A `content`, `true-false` or worksheet finding needs
+ * the model's judgement and stands; the prompt's exemptions cover those. Any other check applies.
+ */
+export function verbFitApplies(finding: Finding, state: PipelineState): boolean {
+  if (finding.check !== "verb-fit" || finding.target.slideId === undefined) return true;
+  const slide = state.lesson.slides.find((s) => s.id === finding.target.slideId);
+  return slide === undefined || !VERB_FIT_EXEMPT_KINDS.has(slide.kind);
 }
 
 /** Ids `applyVerifyPatch` can correct: every fact array except the objectives. */
@@ -154,10 +175,11 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       images,
     });
     const filtered = knownTargetsWithEvidence(call.output.findings, state);
-    filtered.kept = filtered.kept.map((f) => imageFitAsError(f, state));
-    model = filtered.kept;
-    if (filtered.dropped > 0) {
-      deps.logger.info({ stage: "evaluate", dropped: filtered.dropped }, "findings dropped");
+    const applicable = filtered.kept.filter((f) => verbFitApplies(f, state));
+    model = applicable.map((f) => imageFitAsError(f, state));
+    const dropped = filtered.dropped + (filtered.kept.length - applicable.length);
+    if (dropped > 0) {
+      deps.logger.info({ stage: "evaluate", dropped }, "findings dropped");
     }
   } catch (error) {
     if (error instanceof BudgetExceeded) {
