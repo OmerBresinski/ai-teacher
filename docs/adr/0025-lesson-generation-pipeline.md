@@ -906,6 +906,34 @@ slide, and that content is dropped. Evaluate's depth and verb-fit checks assess 
 slide; a thinner slide is preferable to failing a Lesson over data the materialiser never reads.
 `callStructured`, prompts and logging are unchanged.
 
+## Amendment (2026-09-12, TEACH-235 — bounded model attempts and moderation refusals)
+
+§14, §16. A Bedrock call hung for 97 minutes in an eval, and a moderation false positive during
+Repair failed a job that already had a usable Lesson. `callStructured` now bounds each attempt:
+check-input 20 s; Plan skeleton 60 s; Plan facts 90 s; Verify 45 s; slide 30 s; worksheet 60 s;
+photo shortlist 15 s; photo pick 30 s; Evaluate 60 s; Repair and repair-fact 30 s. Proposal and
+eval/custom calls use 60 s. Callers may override `timeoutMs`; registered prompts must choose a
+default in `CALL_TIMEOUT_MS`.
+
+Each attempt combines the job signal with a fresh deadline signal, passed to the provider, and
+races the result against abort so even an unresponsive provider cannot hold the caller open.
+Cancellation wins over timeout. A timeout shares the existing one-retry allowance with schema
+misses (at most two attempts total), reuses the original request rather than claiming a validation
+miss, and becomes a `StageFailure` with `reason: "timeout"`. Budget and cancellation gates apply
+before retry. Late results cannot be persisted or charged as a new completed attempt; usage for
+an aborted request is unknown and may still be billed by the provider. The eval reports
+`StageFailure:timeout`, never the error message. Logs say `model call timed out` with stage,
+prompt version and timeout only.
+
+`@tj/ai` classifies an HTTP 400 containing `usage policy` or `content filter` as `moderated`.
+The observed response was `validation_error: flagged as potentially violating our usage policy`.
+Both the error and its sanitized cause carry fixed wording, never the raw provider response.
+The call log names `moderated: true`. Repair skips the refused target with a `repair` warning,
+retains the original artefact, discards any uncommitted fact patch, and continues to the next target;
+the original finding remains. Generate still propagates the refusal because it has no artefact
+to fall back to. Other stage handling is unchanged. The separate worker `ai.ping` timeout remains
+TEACH-83; this amendment bounds generation calls, not every SDK caller.
+
 ## Amendment (2026-09-12, project Lesson shape by objective verb — TEACH-230)
 
 §8, §11, §12. The writers and the reviewer learn the verb. Plan (TEACH-229) decides *which* kinds

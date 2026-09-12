@@ -32,6 +32,8 @@ export interface FakeCall {
    * out of the fake that stands in for the model).
    */
   promptText: string;
+  /** The provider's signal, for signal-aware scripts and deadline assertions. */
+  abortSignal?: AbortSignal | undefined;
 }
 
 /** A scripted answer: the text, optionally with its own usage. */
@@ -128,6 +130,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
     context: AiCallContext | undefined,
     prompt: FakePrompt,
     providerOptions: unknown,
+    abortSignal: AbortSignal | undefined,
   ) => {
     const call: FakeCall = {
       index: calls.length,
@@ -136,6 +139,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
       context,
       usage: {},
       promptText: userText(prompt),
+      abortSignal,
       ...(providerOptions !== undefined ? { providerOptions } : {}),
       ...(imageParts(prompt) > 0 ? { imageParts: imageParts(prompt) } : {}),
     };
@@ -163,6 +167,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
             context,
             call.prompt,
             call.providerOptions,
+            call.abortSignal,
           );
           return {
             content: [{ type: "text", text }],
@@ -184,6 +189,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
                 context,
                 call.prompt,
                 call.providerOptions,
+                call.abortSignal,
               );
               controller.enqueue({ type: "text-start", id: "fake-text" });
               controller.enqueue({ type: "text-delta", id: "fake-text", delta: text });

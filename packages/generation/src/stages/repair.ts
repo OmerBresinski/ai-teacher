@@ -1,3 +1,4 @@
+import { isAiError } from "@tj/ai";
 import {
   checkLesson,
   type Finding,
@@ -209,16 +210,20 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         worksheet = { ...worksheet, blocks } as Worksheet;
       }
     } catch (error) {
+      throwIfAborted(deps.signal);
       if (error instanceof BudgetExceeded) {
         extra.push(BUDGET_FINDING(error.by, "the repair pass"));
         break;
       }
-      if (error instanceof StageFailure) {
+      const moderated = isAiError(error, "moderated");
+      if (error instanceof StageFailure || moderated) {
         extra.push({
           check: "repair",
           severity: "warning",
           target: { slideId: target.slideId, blockId: target.blockId },
-          message: "This item could not be repaired automatically; please check it.",
+          message: moderated
+            ? `The review could not rewrite this ${target.slideId !== undefined ? "slide" : "block"}; check it yourself.`
+            : "This item could not be repaired automatically; please check it.",
         });
         continue;
       }

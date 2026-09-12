@@ -156,12 +156,14 @@ export interface PipelineState {
  */
 export class StageFailure extends Error {
   override readonly name = "StageFailure";
+  readonly reason: "timeout" | undefined;
   constructor(
     readonly stage: StageName,
     message: string,
-    options: { cause?: unknown } = {},
+    options: { cause?: unknown; reason?: "timeout" } = {},
   ) {
     super(message, options);
+    this.reason = options.reason;
   }
 }
 

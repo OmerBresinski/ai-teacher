@@ -1,4 +1,4 @@
-export type AiErrorCode = "unconfigured" | "provider" | "invalid_model";
+export type AiErrorCode = "unconfigured" | "provider" | "invalid_model" | "moderated";
 
 /** Error raised by `@tj/ai` for configuration and provider failures. */
 export class AiError extends Error {
@@ -47,17 +47,33 @@ function pick<T>(source: object, key: string, guard: (v: unknown) => v is T): T 
 const isNumber = (v: unknown): v is number => typeof v === "number";
 const isBoolean = (v: unknown): v is boolean => typeof v === "boolean";
 
+const MODERATED_MESSAGE = "Bedrock refused the model call under its content policy";
+function isModeration(cause: unknown): boolean {
+  return (
+    cause instanceof Error &&
+    pick(cause, "statusCode", isNumber) === 400 &&
+    /usage policy|content filter/i.test(cause.message)
+  );
+}
+
 export function toProviderFailure(cause: unknown): ProviderFailure {
   if (cause instanceof Error) {
-    return new ProviderFailure(cause.name, cause.message.slice(0, MESSAGE_MAX), {
-      statusCode: pick(cause, "statusCode", isNumber),
-      isRetryable: pick(cause, "isRetryable", isBoolean),
-    });
+    return new ProviderFailure(
+      cause.name,
+      isModeration(cause) ? MODERATED_MESSAGE : cause.message.slice(0, MESSAGE_MAX),
+      {
+        statusCode: pick(cause, "statusCode", isNumber),
+        isRetryable: pick(cause, "isRetryable", isBoolean),
+      },
+    );
   }
   return new ProviderFailure("UnknownError", String(cause).slice(0, MESSAGE_MAX), {});
 }
 
 export function toProviderError(cause: unknown): AiError {
   if (isAiError(cause)) return cause;
+  if (isModeration(cause)) {
+    return new AiError("moderated", MODERATED_MESSAGE, { cause: toProviderFailure(cause) });
+  }
   return new AiError("provider", "Bedrock model call failed", { cause: toProviderFailure(cause) });
 }
