@@ -138,6 +138,41 @@ test.describe("homepage sample lessons", () => {
   });
 });
 
+for (const javaScriptEnabled of [false, true]) {
+  test.describe(`homepage hero preview with JavaScript ${javaScriptEnabled ? "enabled" : "disabled"}`, () => {
+    test.use({ javaScriptEnabled });
+
+    test("keeps the topic local and does not generate or navigate", async ({ page }) => {
+      const requests: string[] = [];
+      await serveHomepage(page, requests);
+      const url = "http://homepage.test/homepage/";
+      await page.goto(url);
+      const topic = page.getByRole("textbox", { name: "What would you like to teach?" });
+      await topic.fill("Year 7 science — solids, liquids and gases");
+      const submit = page.getByRole("button", { name: "Create a lesson" });
+
+      if (javaScriptEnabled) {
+        await expect(submit).toBeEnabled();
+        await submit.click();
+        await expect(page.getByRole("status")).toContainText("nothing has been sent or saved");
+      } else {
+        await expect(submit).toBeDisabled();
+        await expect(page.locator("noscript p")).toContainText("Nothing is sent or saved");
+      }
+
+      await topic.press("Enter");
+      await page.waitForTimeout(150);
+      expect(page.url()).toBe(url);
+      expect(
+        requests.filter((request) => request.includes("?") || !request.startsWith("GET ")),
+      ).toEqual([]);
+      expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([
+        0, 0,
+      ]);
+    });
+  });
+}
+
 test.describe("homepage sample lessons without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
   test("keeps the default sample and navigable full-lesson choices", async ({ page }) => {
