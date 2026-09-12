@@ -4,6 +4,7 @@ import { lazy, type ReactNode, Suspense } from "react";
 import { docToPlainText } from "../../text/static";
 import {
   type ElementViewProps,
+  optionChipLabel,
   optionState,
   resolveTextStyle,
   textTypeCss,
@@ -70,13 +71,9 @@ export function OptionView({
 
   const correctColor = theme.colors.correct;
 
-  // A chip is a position marker (A, B, T). When it just repeats the card's own words —
-  // a `true-false` card labelled "True" — it is noise, and on a narrow card the two
-  // collide. Drop it and let the text speak.
-  const label =
-    element.label && element.label.trim().toLowerCase() !== text.trim().toLowerCase()
-      ? element.label
-      : null;
+  // A chip that only repeats the card's own words is dropped (`optionChipLabel`, shared with the
+  // PPTX exporter so the two never drift).
+  const label = optionChipLabel(element, text);
 
   /** The one card, drawn either with its rendered text or with the editor in that slot. */
   const card = (editor: ReactNode) => (

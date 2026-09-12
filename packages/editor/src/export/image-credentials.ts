@@ -7,5 +7,8 @@
  * Shared by the PPTX and PNG exporters; E3's DOCX joins them.
  */
 export function imageCredentials(src: string, imageOrigin: string | undefined): RequestCredentials {
-  return imageOrigin && src.startsWith(imageOrigin) ? "include" : "omit";
+  if (!imageOrigin) return "omit";
+  // A path boundary, so `https://api.example` does not also match `https://api.example.evil`.
+  const base = `${imageOrigin.replace(/\/+$/, "")}/`;
+  return src.startsWith(base) ? "include" : "omit";
 }

@@ -56,6 +56,7 @@ import {
   clamp,
   GAP_TOKEN,
   gapAnswers,
+  optionChipLabel,
   optionPositions,
   optionState,
   type ResolvedText,
@@ -542,11 +543,15 @@ async function iconDataUrl(
     const strokeWidth = element.strokeWidth ?? clamp(size / 28, 2, 6);
     const host = document.createElement("div");
     const root = createRoot(host);
-    flushSync(() =>
-      root.render(createElement(Icon, { size, color, strokeWidth, absoluteStrokeWidth: true })),
-    );
-    const markup = host.innerHTML;
-    root.unmount();
+    let markup: string;
+    try {
+      flushSync(() =>
+        root.render(createElement(Icon, { size, color, strokeWidth, absoluteStrokeWidth: true })),
+      );
+      markup = host.innerHTML;
+    } finally {
+      root.unmount();
+    }
     const svg = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
     const scale = 4;
     const image = await loadImage(svg);
@@ -738,19 +743,6 @@ const OPTION_GAP = 19;
 /** Reserved on the right for the tick, so nothing reflows on reveal. */
 const OPTION_TICK_LANE = 44;
 
-/**
- * The chip a card shows, or null. Mirrors `OptionView.tsx`: a chip is a position
- * marker (A, B, T), so when it only repeats the card's own words — a `true-false`
- * card labelled "True" — it is noise, and on a narrow card the two collide.
- * (Both copies of this rule should become one helper in `kit.ts`; that file
- * belongs to the slide renderer, so it is raised rather than moved here.)
- */
-export function optionChipLabel(element: OptionElement, text: string): string | null {
-  return element.label && element.label.trim().toLowerCase() !== text.trim().toLowerCase()
-    ? element.label
-    : null;
-}
-
 /** The revealed badge: `OptionView`'s `BADGE` / `BADGE_INSET`, in slide points. */
 const OPTION_BADGE = 32;
 const OPTION_BADGE_INSET = 10;
@@ -825,9 +817,10 @@ function drawOption(
       fontSize: 19,
       bold: true,
       color: (revealed ? correct : undefined) ?? hexColor(theme.colors.accent),
+      // `OptionView`: the chip's tint is 12% at rest and 22% once the card is revealed.
       fill: {
         color: (revealed ? correct : undefined) ?? hexColor(theme.colors.accent) ?? "000000",
-        transparency: 88,
+        transparency: revealed ? 78 : 88,
       },
       shape: "roundRect",
       rectRadius: inches(10),
