@@ -466,6 +466,54 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
     expect(log.text()).toContain('"editorialOnly":true');
   });
 
+  test("a list sent as a JSON string whose unwrapped items miss only a cap is repaired, then accepted", async () => {
+    // The Bedrock quirk (`repair-json.ts`) on top of an editorial miss: the original text is a
+    // shape miss (a string where a list goes), the repaired text an editorial one. The repaired
+    // reading is the one judged, on both attempts.
+    const wrapped = worked(JSON.stringify([longStep, "Second."]));
+    const ai = createFakeAi({ script: [wrapped, wrapped] });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(result.attempts).toBe(2);
+    expect(result.output).toMatchObject({ steps: [longStep, "Second."] });
+    expect(result.editorialMisses.map((m) => m.path)).toEqual([["steps", 0]]);
+    expect(log.text()).toContain('"repairs":["parsed-string"]');
+    expect(log.text()).toContain('"editorialOnly":true');
+    // The retry was told about the cap, not about a string where a list goes.
+    expect(ai.calls[1]?.promptText).toContain("Too long: at most 84");
+    expect(ai.calls[1]?.promptText).not.toContain("expected array");
+  });
+
+  test("a custom message that quotes the model's words keeps them for the retry and elides them in the log (ADR 0015)", async () => {
+    const quoting = z.strictObject({
+      word: z.string().refine((w) => w !== "evidence", {
+        error: (issue) =>
+          `pitch.avoid lists "${String(issue.input)}", which the vocabulary defines.`,
+      }),
+    });
+    const ai = createFakeAi({
+      script: [JSON.stringify({ word: "evidence" }), JSON.stringify({ word: "evidence" })],
+    });
+    const log = capturingLogger();
+    const error = await callStructured({
+      deps: deps(ai, { logger: log.logger }),
+      stage: "plan",
+      cls: "standard",
+      effort: "medium",
+      prompt,
+      input: "hi",
+      schema: quoting,
+      maxOutputTokens: 100,
+    }).catch((e) => e);
+    expect(error).toBeInstanceOf(StageFailure);
+    expect(ai.calls[1]?.promptText).toContain('lists "evidence"');
+    expect((error as StageFailure).cause).toEqual([
+      '- word: pitch.avoid lists "evidence", which the vocabulary defines.',
+    ]);
+    expect(log.text()).toContain('pitch.avoid lists \\"…\\", which the vocabulary defines.');
+    expect(log.text()).not.toContain("evidence");
+  });
+
   test("the model's text never reaches the log on the accepted path either", async () => {
     const ai = createFakeAi({ script: [worked([longStep]), worked([longStep])] });
     const log = capturingLogger();

@@ -156,7 +156,9 @@ const RETRY_SUFFIX =
  * `Output.object` with a repair pass: when the text fails to parse or validate, `repairJsonText`
  * is tried once and, if the repaired text validates, that answer is returned and `onRepair` told
  * what was done. A repaired text that still fails rethrows the *original* error, so the retry
- * prompt describes what the model actually sent.
+ * prompt describes what the model actually sent — unless what the repaired text still fails is
+ * editorial only: then that error is thrown (its `text` is the repaired text), so the second-miss
+ * path can accept the answer the model meant rather than fail on the wrapping it came in.
  */
 function repairingObjectOutput<T>(
   schema: z.ZodType<T>,
@@ -178,7 +180,14 @@ function repairingObjectOutput<T>(
           const output = await inner.parseCompleteOutput({ text: repaired.text }, context);
           onRepair(repaired.repairs);
           return output;
-        } catch {
+        } catch (afterRepair) {
+          if (
+            NoObjectGeneratedError.isInstance(afterRepair) &&
+            editorialMissesOf(afterRepair) !== null
+          ) {
+            onRepair(repaired.repairs);
+            throw afterRepair;
+          }
           throw error;
         }
       }
@@ -395,14 +404,19 @@ export function editorialMissesOf(error: NoObjectGeneratedError): EditorialMiss[
  *
  * `audience: "log"` is the ADR 0015 variant: every zod message is schema-derived (limits, expected
  * types, our own refinement text) except `unrecognized_keys`, whose message repeats the key names
- * the model invented — those are replaced by a count. The retry prompt keeps them: the model needs
- * to know which keys to drop.
+ * the model invented — those are replaced by a count — and our own `custom` messages, some of
+ * which quote the model's words back at it (`mustShow names the subject ("front teeth")`,
+ * `pitch.avoid lists "evidence"`); every double-quoted span of a custom message is elided. The
+ * retry prompt keeps both: the model needs to know which keys to drop and which words it wrote.
  *
  * After a wrong type on a path, the follow-on checks on that path are dropped: zod keeps checking
  * a mistyped value as if it were right (`expected array, received string` followed by `Too big:
  * expected string to have <=4 characters` for the same field), and the second line would send
  * the model the wrong way. Distinct refinement failures on one path are all kept.
  */
+/** A double-quoted span in one of our messages: where a model's word is quoted back to it. */
+const QUOTED = /"[^"]*"/g;
+
 export function issuesOf(
   error: NoObjectGeneratedError,
   audience: "retry" | "log" = "retry",
@@ -417,8 +431,12 @@ export function issuesOf(
       if (i.code === "invalid_type") mistyped.add(pathKey);
       const path = pathKey.length > 0 ? `${pathKey}: ` : "";
       const message =
-        audience === "log" && i.code === "unrecognized_keys"
-          ? `${i.keys?.length ?? "some"} unrecognized key(s)`
+        audience === "log"
+          ? i.code === "unrecognized_keys"
+            ? `${i.keys?.length ?? "some"} unrecognized key(s)`
+            : i.code === "custom"
+              ? i.message.replace(QUOTED, '"…"')
+              : i.message
           : i.message;
       lines.push(`- ${path}${message}`);
     }
