@@ -3,6 +3,7 @@
  * The e2e worker has no Bedrock token (or a developer's has one and spends real money), so the
  * spec asserts the hand-over to the lesson page and the request shape, not a finished deck.
  */
+import { E2E_API_URL } from "../playwright.config";
 import { expect, test } from "./fixtures";
 import { MATERIAL, tinyPdf } from "./source-fixtures";
 
@@ -249,5 +250,20 @@ test.describe("lesson brief: start from your material (ADR 0027 §7)", () => {
     const body = (await posted).postDataJSON() as { sourceIds?: string[] };
     expect(body.sourceIds).toHaveLength(2);
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
+
+    // The worker reads the Sources' extracted.json and plans from it: the lesson finishes and the
+    // stored body carries both references (TEACH-273 keeps api and worker on one storage root).
+    await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible({
+      timeout: 60_000,
+    });
+    const lessonId = page.url().split("/").pop() ?? "";
+    const doc = await page.request.get(`${E2E_API_URL}/documents/${lessonId}`);
+    const lesson = (
+      (await doc.json()) as {
+        document: { body: { sources?: unknown[]; slides: unknown[] } };
+      }
+    ).document.body;
+    expect(lesson.sources).toHaveLength(2);
+    expect(lesson.slides.length).toBeGreaterThan(2);
   });
 });

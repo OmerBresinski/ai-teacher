@@ -14,6 +14,7 @@
  * database works. Locally `reuseExistingServer` lets you keep the three processes running between
  * runs; in CI every run starts them.
  */
+import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 const CI = process.env.CI === "true";
@@ -31,6 +32,12 @@ const TEST_DATABASE_URL =
   "postgres://postgres:postgres@localhost:5432/teaching_journey_test";
 // Deliberately not a secret: the e2e api only ever talks to the throwaway test database.
 const E2E_AUTH_SECRET = "e2e-only-secret-not-used-anywhere-else-0123456789";
+/**
+ * One local-disk storage root for api **and** worker (ADR 0027 §6): `POST /sources` writes
+ * `extracted.json` and the worker reads it back, so the two services must share a directory — the
+ * default `.data/storage` is relative to each service's own cwd. Gitignored (`.data/`).
+ */
+const E2E_STORAGE_ROOT = path.resolve(import.meta.dirname, "../../.data/e2e-storage");
 const stdout: "pipe" | "ignore" = process.env.E2E_VERBOSE ? "pipe" : "ignore";
 
 export default defineConfig({
@@ -90,6 +97,7 @@ export default defineConfig({
         BETTER_AUTH_URL: E2E_API_URL,
         BETTER_AUTH_SECRET: E2E_AUTH_SECRET,
         MAIL_PROVIDER: "console",
+        STORAGE_ROOT: E2E_STORAGE_ROOT,
         LOG_LEVEL: process.env.E2E_VERBOSE ? "info" : "warn",
       },
     },
@@ -109,6 +117,7 @@ export default defineConfig({
         WORKER_CONCURRENCY: "2",
         AI_FAKE_SCRIPT: "pipeline",
         AI_FAKE_DELAY_MS: "250",
+        STORAGE_ROOT: E2E_STORAGE_ROOT,
         LOG_LEVEL: process.env.E2E_VERBOSE ? "info" : "warn",
       },
     },
