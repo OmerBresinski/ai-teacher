@@ -10,6 +10,7 @@ import {
 } from "@tj/domain/documents";
 import { type ImageTextPhoto, PLACEHOLDER_IMAGE } from "@tj/slides";
 import type { Audience, SlidePhoto } from "../prompts";
+import { type LessonShape, lessonShapeOf } from "../shapes";
 
 // The plain-text projections moved to `@tj/domain/documents/text` so `checkLesson` can measure the
 // same text Evaluate reads (TEACH-210); re-exported so the stages' import paths stand.
@@ -197,6 +198,17 @@ export function audienceOf(lesson: Lesson): Audience {
     language: lesson.language,
     classContext: lesson.brief?.classContext,
   };
+}
+
+/**
+ * The lesson's shape from its brief's answers and its class (TEACH-229, TEACH-230): Plan renders
+ * and enforces all of it; Generate, Evaluate and Repair are told its verb and confidence.
+ */
+export function shapeOf(lesson: Lesson): LessonShape {
+  return lessonShapeOf(lesson.brief?.answers, {
+    yearGroup: lesson.yearGroup,
+    ageBand: lesson.ageBand,
+  });
 }
 
 /** The generation record a later stage extends; Plan writes it, so it is present from then on. */

@@ -888,3 +888,27 @@ records or reports its failure without failing the job). The `did not validate` 
 measurable. Prompts are unchanged; the rules stay in them as aims. Deliberately open: a skeleton
 accepted with editorial misses does not pass the resume path's strict `PlanSkeletonSchema`, so a
 pg-boss retry of that job re-runs Plan from the top.
+
+## Amendment (2026-09-12, project Lesson shape by objective verb — TEACH-230)
+
+§8, §11, §12. The writers and the reviewer learn the verb. Plan (TEACH-229) decides *which* kinds
+the outline has; until now `generate-slide` knew a slide's `kind`, `phase` and `brief.adds` and
+wrote an Apply `content` slide exactly as it would an Explain one. `prompts/shared.ts` gains
+`VERB_WRITING`, one paragraph per verb saying what a `content`, `worked-example`, `open-response`
+and `exit-ticket` slide and the worksheet are *for* under Recall (definition and examples, state
+from memory), Explain (mechanism — how, then why), Apply (the method — steps, then when to use
+them; problems to work) and Evaluate (criteria, then a judgement with reasons), plus one line per
+prior confidence — verb-aware for Revisiting, since "no definitions" would contradict a Recall
+lesson, which for a revisiting class stops re-teaching them and makes the retrieval harder; `verbBlock({ verb, confidence })` renders them after the audience block.
+`GenerateSlideInput.shape`, `GenerateWorksheetInput.shape` and `EvaluateInput.shape` take
+`Pick<LessonShape, "verb" | "confidence">` (`WritingShape`); `RepairInput.lessonShape` does too,
+named apart from its existing `shape` (the JSON shape wanted). The stages read it through one
+helper, `shapeOf(lesson)` in `stages/shared.ts`, which Plan now uses as well. §11: `evaluate.v5`
+gains the `verb-fit` check — "a slide or worksheet block whose task does not serve the objective verb — a Recall
+lesson asking for a judgement, an Apply lesson with no method, an Explain content slide that lists
+facts without how or why" — a warning only (`EVALUATE_ERROR_CHECKS` is unchanged, so an `error`
+is a schema miss the retry names). §12: `repair.v9` is given the same verb block, so a slide
+regenerated for any reason is written to the verb; a `verb-fit` finding is fixed by changing the
+task, never the kind. Versions: `generate-slide.v15`, `generate-worksheet.v7`, `evaluate.v5`,
+`repair.v9`. §23: the eval's `verbFit` rubric dimension (TEACH-228) now measures a pipeline that
+was told the verb; TEACH-231 runs the delta.

@@ -86,7 +86,9 @@ changing them; no `@mastra/evals` dependency is needed and no Mastra judge model
   slide's plain text and notes and every worksheet block, and scores nine dimensions 1–5:
   `correctness`, `depth`, `pitch`, `coherence`, `questionQuality`, `notes`, `worksheetValueAdd`,
   `imageFit`, `verbFit` (TEACH-228: does the lesson do what the brief's objective verb asks, at the
-  depth the class's prior confidence allows — the judge is told both). The eight other than
+  depth the class's prior confidence allows — the judge is told both; since TEACH-230 the pipeline
+  has a counterpart, Evaluate's `verb-fit` warning, and the writers are told the verb, so a
+  `verbFit` delta measures the shaped pipeline against the TEACH-228 baseline). The eight other than
   `imageFit` must carry an integer score (a `null` there is a schema miss and goes
   to `callStructured`'s one retry); `imageFit` is `null` when no `image-text` slide carries a
   placed photograph. Photographs are placed only when `PEXELS_API_KEY` is set for the run

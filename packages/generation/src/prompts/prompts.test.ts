@@ -3,7 +3,14 @@ import { lessonShapeOf } from "../shapes";
 import { assignFactIds } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
-import { PROMPT_VERSIONS, PROMPTS, type PromptName, promptHash } from "./index";
+import {
+  PROMPT_VERSIONS,
+  PROMPTS,
+  type PromptName,
+  promptHash,
+  VERB_WRITING,
+  verbBlock,
+} from "./index";
 import { planSkeletonPrompt } from "./plan-skeleton";
 
 /*
@@ -27,6 +34,8 @@ const brief = {
   ),
 };
 const audience = audienceOf(sampleBriefLesson());
+/** The verb and confidence the writers and the reviewer are told (TEACH-230). */
+const shape = { verb: brief.shape.verb, confidence: brief.shape.confidence };
 
 export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   "check-input": { topic: brief.topic, answers: brief.answers, audience: brief.audience },
@@ -36,6 +45,7 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   "generate-slide": {
     referenced: facts,
     entry: facts.outline[3],
+    shape,
     position: { index: 4, total: 10 },
     neighbours: { previous: "Hooks the topic", next: "Explains the particle model" },
     reservedStems: ["What is a particle?"],
@@ -46,6 +56,7 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   },
   "generate-worksheet": {
     objectives: facts.objectives,
+    shape,
     keyIdeas: facts.keyIdeas ?? [],
     misconceptions: facts.misconceptions,
     pool: facts.questions.filter((q) => q.use === "worksheet" || q.use === "any"),
@@ -84,12 +95,14 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   evaluate: {
     facts,
     audience,
+    shape,
     slides: [{ id: "s1", kind: "content", text: "The particle model", notes: "Ask why." }],
     blocks: [{ id: "b1", type: "question", text: "Why?\nAnswer: Because." }],
   },
   repair: {
     facts,
     audience,
+    lessonShape: shape,
     target: { kind: "slide", slideKind: "multiple-choice", slideId: "s7", text: "Which state?" },
     findings: [
       {
@@ -143,12 +156,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
   },
   "generate-slide": {
-    version: "generate-slide.v14",
-    hash: "5853a2f039c72793cf3ec79ed07bbb68c8948c0ff08ab284433f01dbb6004144",
+    version: "generate-slide.v15",
+    hash: "8a9338687c9ca58d9058e81fe2217450064f5dbbdea0693d084a51d7160dd8cb",
   },
   "generate-worksheet": {
-    version: "generate-worksheet.v6",
-    hash: "07363710875402aab11893e45b35a450398d89ebba3e70fa5bc932f8bd543835",
+    version: "generate-worksheet.v7",
+    hash: "3c7424a8269d370b008865a433ac2e60693dd07fa1bb06504b43942e00916ee5",
   },
   "shortlist-photos": {
     version: "shortlist-photos.v2",
@@ -159,12 +172,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "f3ac118e19b5ff1051618ca4823658c778e38d0c076d292c3e15b8a5cd9b6b26",
   },
   evaluate: {
-    version: "evaluate.v4",
-    hash: "6f4ed075c06072645f8e1de21caedd382398cd6fdf4a0b5260f3ce56d24a8f13",
+    version: "evaluate.v5",
+    hash: "57eb53cba998e0aa7b9049deb74374d0d1a92986a5221e271c3f9dd0b117e7b4",
   },
   repair: {
-    version: "repair.v8",
-    hash: "8df7121fe6a273df27fd19f087981018163bae505f7be44bb7573b53b44e0697",
+    version: "repair.v9",
+    hash: "927d26133cc0ed93912b003f05660f68f970b36f326b58b18d421f3f1523045f",
   },
   "repair-fact": {
     version: "repair-fact.v2",
@@ -317,5 +330,68 @@ describe("prompt versions", () => {
     expect(text).toContain("Year 8");
     expect(text).toContain("o1:");
     expect(text).toContain('kind "vocabulary"');
+  });
+
+  test("TEACH-230 row 1: an Apply content slide is told the Apply paragraph and not the Explain one", () => {
+    const apply = lessonShapeOf({
+      objectiveVerb: "Apply column addition",
+      priorConfidence: "Some prior knowledge",
+    });
+    const text = PROMPTS["generate-slide"].user({
+      ...(SAMPLE_INPUTS["generate-slide"] as object),
+      entry: { kind: "content", minutes: 5, factRefs: ["k1"] },
+      shape: { verb: apply.verb, confidence: apply.confidence },
+    } as never);
+    expect(text).toContain("Objective verb: Apply.");
+    expect(text).toContain(VERB_WRITING.Apply);
+    expect(text).not.toContain(VERB_WRITING.Explain);
+    expect(text).not.toContain("This is an Explain lesson");
+    expect(text).toContain("The class has some prior knowledge");
+    // The default sample is Explain / New to it: its block says so.
+    const explain = PROMPTS["generate-slide"].user(SAMPLE_INPUTS["generate-slide"] as never);
+    expect(explain).toContain(VERB_WRITING.Explain);
+    expect(explain).toContain("The class is new to the topic");
+  });
+
+  test("TEACH-230: the verb block reaches the worksheet writer, the reviewer and Repair; Evaluate names verb-fit", () => {
+    for (const name of ["generate-worksheet", "evaluate", "repair"] as const) {
+      const text = PROMPTS[name].user(SAMPLE_INPUTS[name] as never);
+      expect(text).toContain("Objective verb: Explain.");
+      expect(text).toContain(VERB_WRITING.Explain);
+    }
+    expect(PROMPTS.evaluate.system).toContain('"verb-fit"');
+    expect(PROMPTS.evaluate.system).toContain(
+      "a slide or worksheet block whose task does not serve the objective verb — a Recall lesson asking for a judgement, an Apply lesson with no method, an Explain content slide that lists facts without how or why",
+    );
+    expect(PROMPTS.evaluate.system).toContain(
+      "a slide or block that does what another verb would ask for is a `verb-fit` finding",
+    );
+    expect(PROMPTS.repair.system).toContain("A verb-fit problem is fixed by changing the task");
+    // Every verb has a paragraph naming the four kinds the ticket names.
+    for (const paragraph of Object.values(VERB_WRITING)) {
+      for (const kind of ["`content`", "`worked-example`", "`exit-ticket`"]) {
+        expect(paragraph).toContain(kind);
+      }
+    }
+    for (const verb of ["Explain", "Apply", "Evaluate"] as const) {
+      expect(VERB_WRITING[verb]).toContain("`open-response`");
+    }
+    // Recall forbids open-response (shapes.ts), so its paragraph does not describe one.
+    expect(VERB_WRITING.Recall).not.toContain("`open-response`");
+  });
+
+  test("TEACH-230: a revisiting Recall class is not told 'no definitions'; the other verbs are", () => {
+    const line = (verb: string) =>
+      verbBlock(lessonShapeOf({ objectiveVerb: `${verb} x`, priorConfidence: "Revisiting" })).split(
+        "\n",
+      )[1] ?? "";
+    expect(line("Recall")).toContain("has met the definitions: do not re-teach them");
+    expect(line("Recall")).toContain("odd one out");
+    expect(line("Recall")).not.toContain("no definitions");
+    for (const verb of ["Explain", "Apply", "Evaluate"]) {
+      expect(line(verb)).toContain(
+        "no definitions; go straight to the mechanism, method or judgement",
+      );
+    }
   });
 });

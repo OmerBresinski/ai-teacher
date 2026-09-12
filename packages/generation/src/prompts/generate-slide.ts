@@ -7,6 +7,8 @@ import {
   factsBlock,
   HOUSE_RULES,
   limitsBlock,
+  verbBlock,
+  type WritingShape,
 } from "./shared";
 
 /*
@@ -14,7 +16,9 @@ import {
  * a per-kind spec; geometry is the recipe's business. Coherence comes from the plan, not from the
  * previous slide's text: the slide is given its own brief (what it adds, what it must not repeat),
  * its neighbours' briefs, the facts it references in full, every misconception, and the stems
- * reserved for other slides and the worksheet — so slides can be written in parallel.
+ * reserved for other slides and the worksheet — so slides can be written in parallel. Since
+ * TEACH-230 it is also told the lesson's objective verb (`verbBlock`): what a content, worked-example,
+ * open-response or exit-ticket slide is *for* under Recall, Explain, Apply or Evaluate.
  */
 
 export type GenerateSlideInput = {
@@ -24,6 +28,8 @@ export type GenerateSlideInput = {
    */
   referenced: LessonFacts;
   entry: OutlineEntry;
+  /** The lesson's objective verb and the class's prior confidence (`lessonShapeOf`, TEACH-230). */
+  shape: WritingShape;
   /** 1-based position and the total, for the model's sense of pacing. */
   position: { index: number; total: number };
   /** The `adds` line of the neighbouring entries, so this slide does not repeat them. */
@@ -99,7 +105,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v14",
+  version: "generate-slide.v15",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
@@ -107,7 +113,7 @@ export const generateSlidePrompt = {
     "Rules:",
     HOUSE_RULES,
     "You are given what this slide must add and what its neighbours add; do not repeat a neighbour. Use the facts listed and no others, and put the ids of the facts the slide draws on in `factRefs` (the outline entry's ids at least).",
-    "A `content` slide explains one key idea: its statement as the heading, the explanation in plain words and its example in the body; if an analogy is given, use it. A question slide uses one of the questions given, its answer and — for multiple-choice and true-false — its distractors verbatim as the wrong options. Never use a stem from the reserved list.",
+    "You are told the lesson's objective verb and what each kind of slide is for under it; write the slide to that. A `content` slide explains one key idea: its statement as the heading, the explanation in plain words and its example in the body; if an analogy is given, use it. A question slide uses one of the questions given, its answer and — for multiple-choice and true-false — its distractors verbatim as the wrong options. Never use a stem from the reserved list.",
     "A `worked-example` slide shows every step of its worked example: when there are more steps than the slide holds, merge neighbouring steps into fewer, still-short steps so the last step — the conclusion — is always on the slide; never drop it and never lengthen a step past one line. Each step is one short line; the fuller working goes in `notes`.",
     "`notes` is a short paragraph of presenter notes for the teacher: what to say, the misconception to watch for (in its own words, never by id), and one question to ask the class whose answer is not already on the slide.",
     "`footnote` is one short line pupils read — how long they have, where to write, what to do when finished. Anything addressed to the teacher goes in `notes`; leave `footnote` out rather than fill it.",
@@ -164,6 +170,7 @@ export const generateSlidePrompt = {
     const parts = [
       `Lesson: ${input.lessonTitle}`,
       audienceBlock(input.audience),
+      verbBlock(input.shape),
       "",
       factsBlock(input.referenced),
       "",

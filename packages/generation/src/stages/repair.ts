@@ -32,6 +32,7 @@ import {
   generationOf,
   imageTextPhotoOf,
   normaliseText,
+  shapeOf,
   slideHaystack,
   slidePhotoOf,
   slideText,
@@ -79,6 +80,8 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   if (!facts) throw new Error("repair: the lesson has no facts; Plan has not run");
   const generation = generationOf(lesson);
   const audience = audienceOf(lesson);
+  const { verb, confidence } = shapeOf(lesson);
+  const lessonShape = { verb, confidence };
   // Schema findings are recomputed at the end. Model warnings stay as residuals; a model `error`
   // drops once its target has been regenerated (Repair never re-asks the model, §12) and stays
   // when the target could not be repaired, so the badge still says so.
@@ -130,6 +133,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           input: {
             facts: staged,
             audience,
+            lessonShape,
             target: {
               kind: "slide",
               slideKind: slide.kind,
@@ -178,6 +182,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           input: {
             facts: staged,
             audience,
+            lessonShape,
             target: {
               kind: "block",
               blockType: block.type,

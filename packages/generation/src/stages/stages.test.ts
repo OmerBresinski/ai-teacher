@@ -4,7 +4,7 @@ import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
-import { PROMPT_VERSIONS } from "../prompts";
+import { PROMPT_VERSIONS, VERB_WRITING } from "../prompts";
 import { lessonShapeOf } from "../shapes";
 import { assignFactIds, planFactsSchemaFor } from "../specs";
 import {
@@ -12,6 +12,7 @@ import {
   initialState,
   memoryLogger,
   miss,
+  PLAN_SKELETONS,
   recordingDeps,
   routed,
   sampleBriefLesson,
@@ -1147,6 +1148,122 @@ describe("evaluate", () => {
 });
 
 describe("repair", () => {
+  test("TEACH-230 rows 1 and 3: Generate, Evaluate and Repair are told the lesson's verb; a verb-fit slide forced to error is rewritten with the verb block in context", async () => {
+    // An Apply / Some prior knowledge lesson: Plan is fed the Apply skeleton so its shape passes.
+    const lesson = sampleBriefLesson({
+      brief: {
+        topic: "Column addition",
+        durationMin: 60,
+        answers: {
+          objectiveVerb: "Apply column addition",
+          priorConfidence: "Some prior knowledge",
+        },
+      },
+    });
+    const skeleton = PLAN_SKELETONS.Apply;
+    const setupAi = createFakeAi({
+      script: routed([
+        json(skeleton),
+        json(FIXTURES.planFacts),
+        json(FIXTURES.verify),
+        ...skeleton.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
+        json(FIXTURES.worksheet),
+      ]),
+      usage,
+    });
+    const setupDeps = recordingDeps(setupAi);
+    const generated = await generate(await plan(initialState(lesson), setupDeps), setupDeps);
+    // Row 1: every slide call and the worksheet call carry the Apply paragraph, never Explain's.
+    const writerCalls = setupAi.calls.filter((c) => c.context?.stage === "generate");
+    expect(writerCalls.length).toBeGreaterThan(1);
+    for (const call of writerCalls) {
+      expect(call.promptText).toContain("Objective verb: Apply.");
+      expect(call.promptText).toContain(VERB_WRITING.Apply);
+      expect(call.promptText).not.toContain(VERB_WRITING.Explain);
+      expect(call.promptText).toContain("The class has some prior knowledge");
+    }
+
+    const content = generated.lesson.slides.find((s) => s.kind === "content");
+    const block = generated.worksheet?.blocks.find((b) => b.type === "question");
+    if (!content || !block) throw new Error("fixture changed: no content slide or question block");
+    // The check covers the worksheet too: a block that recalls where the verb says to apply.
+    const review = createFakeAi({
+      script: [
+        json({
+          findings: [
+            {
+              check: "verb-fit",
+              severity: "warning",
+              target: { slideId: content.id },
+              evidence: slideText(content).split("\n")[0],
+              message: "Lists facts; an Apply content slide is the method.",
+            },
+            {
+              check: "verb-fit",
+              severity: "warning",
+              target: { blockId: block.id },
+              evidence: blockText(block).split("\n")[0],
+              message: "Asks for a definition; an Apply worksheet sets problems to work.",
+            },
+          ],
+        }),
+      ],
+      usage,
+    });
+    const evaluated = await evaluate(generated, recordingDeps(review));
+    expect(review.calls[0]?.promptText).toContain(VERB_WRITING.Apply);
+    expect(evaluated.lesson.generation?.findings).toEqual([
+      expect.objectContaining({
+        check: "verb-fit",
+        severity: "warning",
+        target: { slideId: content.id },
+      }),
+      expect.objectContaining({
+        check: "verb-fit",
+        severity: "warning",
+        target: { blockId: block.id },
+      }),
+    ]);
+
+    // Row 3: the schema keeps verb-fit a warning, so the test forces the error Repair acts on.
+    const forced = {
+      ...evaluated,
+      lesson: {
+        ...evaluated.lesson,
+        generation: {
+          ...(evaluated.lesson.generation as NonNullable<typeof evaluated.lesson.generation>),
+          findings: (evaluated.lesson.generation?.findings ?? []).map((f) => ({
+            ...f,
+            severity: "error" as const,
+          })),
+        },
+      },
+    };
+    const repairedBlock = {
+      type: "question",
+      text: "Work out 347 + 285 using column addition.",
+      answer: "632",
+      answerLines: 3,
+      marks: 2,
+      factRefs: ["o1"],
+    };
+    const fixer = createFakeAi({
+      script: [json(FIXTURES.slides.content), json(repairedBlock)],
+      usage,
+    });
+    const repaired = await repair(forced, recordingDeps(fixer));
+    expect(fixer.calls).toHaveLength(2);
+    for (const call of fixer.calls) {
+      expect(call.promptText).toContain("Objective verb: Apply.");
+      expect(call.promptText).toContain(VERB_WRITING.Apply);
+      expect(call.promptText).toContain("[verb-fit]");
+    }
+    expect(blockText(repaired.worksheet?.blocks.find((b) => b.id === block.id) as never)).toContain(
+      "column addition",
+    );
+    expect(repaired.lesson.generation?.findings.some((f) => f.check === "verb-fit")).toBe(false);
+  });
+
   test("repairTargets groups error findings per target, skips warnings and untargeted, caps at MAX_TARGETS", () => {
     const f = (severity: "error" | "warning", target: Finding["target"]): Finding => ({
       check: "x",

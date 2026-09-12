@@ -28,7 +28,8 @@ export type { PlanSkeletonInput } from "./plan-skeleton";
 export type { ProposeInput } from "./propose";
 export type { RepairInput } from "./repair";
 export type { RepairFactInput } from "./repair-fact";
-export type { Audience } from "./shared";
+export type { Audience, WritingShape } from "./shared";
+export { VERB_WRITING, verbBlock } from "./shared";
 export type { VerifyFactsInput } from "./verify-facts";
 export {
   cascadePrompt,

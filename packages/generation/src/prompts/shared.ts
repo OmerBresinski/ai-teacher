@@ -1,10 +1,54 @@
 import type { Brief, LessonFacts } from "@tj/domain/documents";
+import type { LessonShape, ObjectiveVerb, PriorConfidence } from "../shapes";
 
 /*
  * Wording every stage prompt shares (ADR 0025 §17). Pure string builders: nothing here reads the
  * environment or logs. Changing any text here changes every prompt's hash, so every `version`
  * must be bumped together — `prompts.test.ts` enforces it.
  */
+
+/** The two shape fields the writers and the reviewer are told (TEACH-230); Plan sees the whole shape. */
+export type WritingShape = Pick<LessonShape, "verb" | "confidence">;
+
+/**
+ * What each slide kind and the worksheet are for under each objective verb (project "Lesson shape
+ * by objective verb", TEACH-230). One paragraph per verb, read by Generate (slide and worksheet),
+ * Evaluate (its `verb-fit` check) and Repair, so a slide rewritten after a `verb-fit` finding is
+ * written to the same rule. Plan's Shape block (`prompts/shape.ts`) decides *which* kinds the
+ * outline has; this decides what the text on them says.
+ */
+export const VERB_WRITING: Record<ObjectiveVerb, string> = {
+  Recall:
+    "This is a Recall lesson: pupils must remember and state. A `content` slide gives the definition and two or three examples, in the words pupils will be asked to reproduce. A `worked-example` shows how to tell an example from a non-example. Questions and worksheet blocks ask for the term, the definition, the example or the sorting — never for a judgement or an explanation of why. An `exit-ticket` asks for three things pupils should now be able to state from memory.",
+  Explain:
+    "This is an Explain lesson: pupils must say how and why. A `content` slide is a mechanism — how it happens, then why — with the example showing the mechanism at work; a list of facts is not an explanation. A `worked-example` walks through one explanation step by step. An `open-response` asks pupils to explain a case in their own words, and its model answer gives the how and the why. Questions and worksheet blocks ask how and why, and confront the misconception. An `exit-ticket` asks pupils to explain one thing, not to name it.",
+  Apply:
+    "This is an Apply lesson: pupils must use a method. A `content` slide is the method — the steps in order, then when to use it — not background. A `worked-example` does one problem with the method, one step a line, the answer last. Questions and worksheet blocks are problems to work with the method, varied on the surface and rising in difficulty; an `open-response` sets a problem to solve, not a reflection. An `exit-ticket` gives three short problems.",
+  Evaluate:
+    "This is an Evaluate lesson: pupils must make a judgement and defend it. A `content` slide teaches the criteria the judgement uses. A `worked-example` applies the criteria to one case and reaches a verdict. An `open-response` asks which — and why — a judgement with reasons, never a recall question. Questions and worksheet blocks set cases against the criteria. An `exit-ticket` asks for one judgement and its reason.",
+};
+
+/**
+ * How the class's prior confidence changes the writing, one line each. Revisiting is verb-aware:
+ * "no definitions, straight to the mechanism" is what Explain, Apply and Evaluate need, but a
+ * Recall lesson *is* the definitions — for a revisiting class it stops re-teaching them and makes
+ * the retrieval harder instead.
+ */
+const CONFIDENCE_WRITING: Record<PriorConfidence, (verb: ObjectiveVerb) => string> = {
+  "New to it": () =>
+    "The class is new to the topic: define a word before you use it and keep every example concrete.",
+  "Some prior knowledge": () =>
+    "The class has some prior knowledge: remind in a line, then move on; do not re-teach what a reminder covers.",
+  Revisiting: (verb) =>
+    verb === "Recall"
+      ? "The class is revisiting the topic and has met the definitions: do not re-teach them — a content slide recaps in one line and spends the rest on examples and near misses; pitch the retrieval at the harder end (sort, classify, odd one out, tell an example from a near miss)."
+      : "The class is revisiting the topic: no definitions; go straight to the mechanism, method or judgement and pitch the questions at the harder end.",
+};
+
+/** The verb block a writer or reviewer embeds: the verb's paragraph, then the confidence line. */
+export function verbBlock(shape: WritingShape): string {
+  return `Objective verb: ${shape.verb}. ${VERB_WRITING[shape.verb]}\n${CONFIDENCE_WRITING[shape.confidence](shape.verb)}`;
+}
 
 /** Rules stated in every system prompt (ADR 0024 §2: no learner names; F06: British English). */
 export const HOUSE_RULES = [
