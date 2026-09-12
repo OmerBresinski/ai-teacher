@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@tj/domain": "workspace:*",
-    "nanoid": "5.1.16",
+    "nanoid": "6.0.1",
     "zod": "4.5.4"
   }
 }
