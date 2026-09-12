@@ -41,6 +41,7 @@ import { helloRoutes } from "./routes/hello";
 import { imageRoutes } from "./routes/images";
 import { jobRoutes } from "./routes/jobs";
 import { lessonRoutes } from "./routes/lessons";
+import { MAIL_ASSETS_PREFIX, mailAssetRoutes } from "./routes/mail-assets";
 import { meRoutes } from "./routes/me";
 import { testRoutes, testRoutesEnabled } from "./routes/test-routes";
 
@@ -155,10 +156,11 @@ function buildApp({
   app.use(secureHeaders({ crossOriginResourcePolicy: false }));
   app.use(async (c, next) => {
     await next();
-    // The file proxy serves bytes the editor embeds cross-origin (TEACH-189); everything else
-    // keeps the default. The proxy still authorises per request, so this controls render
-    // embedding, not access.
-    if (!c.req.path.startsWith("/files/")) {
+    // The file proxy serves bytes the editor embeds cross-origin (TEACH-189) and the mail
+    // assets are images email clients render from another origin; everything else keeps the
+    // default. The proxy still authorises per request, so this controls render embedding, not
+    // access.
+    if (!c.req.path.startsWith("/files/") && !c.req.path.startsWith(`${MAIL_ASSETS_PREFIX}/`)) {
       c.res.headers.set("Cross-Origin-Resource-Policy", "same-origin");
     }
   });
@@ -194,6 +196,7 @@ function buildApp({
   // 5. Routes — chained so the RPC types survive (ADR 0005).
   const routes = app
     .route("/", healthRoutes(db))
+    .route("/", mailAssetRoutes())
     .route("/", helloRoutes)
     .route("/", meRoutes())
     .route("/", jobRoutes(eventsRuntime))

@@ -101,7 +101,7 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
     plugins: [
       magicLink({
         sendMagicLink: async ({ email, url }) => {
-          await mail.send({ to: email, ...magicLinkMail(url) });
+          await mail.send({ to: email, ...magicLinkMail(url, env.BETTER_AUTH_URL) });
         },
       }),
     ],
