@@ -269,7 +269,13 @@ export function decodeImage(src: string): DecodedImage | null {
   if (!match) return null;
   const type = IMAGE_TYPES[(match[1] ?? "").toLowerCase()];
   if (!type) return null;
-  const bytes = base64ToBytes(match[2] ?? "");
+  let bytes: Uint8Array;
+  try {
+    bytes = base64ToBytes(match[2] ?? "");
+  } catch {
+    // Not base64 after all: one bad picture is a line on the sheet, never a lost export.
+    return null;
+  }
   const size = pixelSize(bytes, type);
   if (!size) return null;
   return { bytes, type, ...size };

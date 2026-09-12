@@ -16,7 +16,7 @@ import type {
 import { OBJECTIVES_SLIDE_HEADING, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { explanationReserve, RESERVED_LINES } from "./explanation-metrics";
 import { docFromBullets, docFromText, newText, uid } from "./factories";
-import { BASELINE, colLeft, GUTTER, HALF, SAFE, SPACE, snapY, spanWidth, THIRD } from "./grid";
+import { BASELINE, GUTTER, HALF, SAFE, SPACE, snapY, spanWidth, THIRD } from "./grid";
 import { OPTION } from "./metrics";
 import { fontFloor, getTheme, type TextRole } from "./themes";
 
