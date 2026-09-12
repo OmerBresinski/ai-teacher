@@ -17,8 +17,8 @@
   },
   "dependencies": {
     "@tj/api": "workspace:*",
-    "better-auth": "1.7.2",
-    "hono": "4.13.5"
+    "better-auth": "1.7.3",
+    "hono": "4.13.7"
   },
   "devDependencies": {
     "@tj/config": "workspace:*",
