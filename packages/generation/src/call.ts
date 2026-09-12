@@ -147,26 +147,29 @@ export const MAX_OUTPUT_TOKENS = {
   repair: 1500,
 } as const;
 
-/** Per-attempt deadlines; a new prompt must choose its bound. Eval/custom prompts get 60 s. */
+/**
+ * Failure bounds, not latency targets: valid Bedrock slide responses took 87–100 s in the
+ * TEACH-258 probe. Short calls get 3 minutes, larger outputs/judges 5; never an unbounded wait.
+ */
 export const CALL_TIMEOUT_MS = {
-  "check-input": 20_000,
-  "plan-skeleton": 60_000,
-  "plan-facts": 90_000,
-  "verify-facts": 45_000,
-  "generate-slide": 30_000,
-  "generate-worksheet": 60_000,
-  "shortlist-photos": 15_000,
-  "pick-or-requery-photo": 30_000,
-  evaluate: 60_000,
-  repair: 30_000,
-  "repair-fact": 30_000,
-  cascade: 60_000,
-  regenerate: 60_000,
+  "check-input": 180_000,
+  "plan-skeleton": 180_000,
+  "plan-facts": 300_000,
+  "verify-facts": 180_000,
+  "generate-slide": 180_000,
+  "generate-worksheet": 300_000,
+  "shortlist-photos": 180_000,
+  "pick-or-requery-photo": 180_000,
+  evaluate: 300_000,
+  repair: 180_000,
+  "repair-fact": 180_000,
+  cascade: 300_000,
+  regenerate: 300_000,
 } satisfies Record<PromptName, number>;
 
 export function callTimeoutMs(version: string): number {
   const name = version.replace(/\.v\d+$/, "");
-  return Object.hasOwn(CALL_TIMEOUT_MS, name) ? CALL_TIMEOUT_MS[name as PromptName] : 60_000;
+  return Object.hasOwn(CALL_TIMEOUT_MS, name) ? CALL_TIMEOUT_MS[name as PromptName] : 300_000;
 }
 
 const RETRY_PREFIX = "\n\nYour previous answer did not validate:\n";
