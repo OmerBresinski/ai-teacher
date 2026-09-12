@@ -317,6 +317,7 @@ packages/
   slides/       @tj/slides     Pure slide recipes, theme catalogue, materialise   ADR 0025
   generation/   @tj/generation Pipeline stages, prompts, in-process Mastra workflow ADR 0025
   images/       @tj/images     Pexels client: search, fetch-to-storage, query rewrite; server-only
+  extract/      @tj/extract    PDF/PPTX/DOCX/paste extraction + upload screens; server-only     ADR 0027
   config/       @tj/config     Shared tsconfig bases, Tailwind preset           TEACH-11
 docs/
   adr/          Architecture decision records

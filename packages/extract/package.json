@@ -1,0 +1,32 @@
+{
+  "name": "@tj/extract",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Document extraction and screening for Teaching Journey Sources (ADR 0027 §2): PDF, PPTX, DOCX and pasted text to located chunks, tables and images; MIME sniffing; roster, identifier, unreadable and too-long screens. Server-only (apps/api); never imported by apps/web.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/fixtures.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@tj/domain": "workspace:*",
+    "fast-xml-parser": "5.11.1",
+    "jszip": "3.10.2",
+    "mammoth": "1.12.3",
+    "unpdf": "1.8.1"
+  },
+  "devDependencies": {
+    "@tj/config": "workspace:*",
+    "docx": "9.7.1",
+    "pdf-lib": "1.17.1",
+    "typescript": "5.9.3"
+  }
+}
