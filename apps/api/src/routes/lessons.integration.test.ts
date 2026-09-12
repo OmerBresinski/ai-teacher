@@ -4,9 +4,17 @@
  * `apps/worker` (progress, then `clearGenerating`). Skips visibly when the database is unreachable.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { clearGenerating, createDocument, forWorkspace, getDocument, listJobEvents } from "@tj/db";
+import {
+  clearGenerating,
+  createDocument,
+  createSource,
+  forWorkspace,
+  getDocument,
+  getSource,
+  listJobEvents,
+} from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
-import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
+import { type JobId, type LessonId, newId, storageKey, type WorkspaceId } from "@tj/domain";
 import type { Lesson } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
 import {
@@ -38,6 +46,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
   let runtime: EventsRuntime;
   let app: ReturnType<typeof createApp>;
   let wsA: WorkspaceId;
+  let wsB: WorkspaceId;
   const shutdown = new AbortController();
   const released: LessonId[] = [];
 
@@ -115,7 +124,9 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
 
   beforeEach(async () => {
     wsA = newId<WorkspaceId>();
+    wsB = newId<WorkspaceId>();
     await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsA, workspaceName: "A" });
+    await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsB, workspaceName: "B" });
     runtime = createEventsRuntime({
       jobs: jobsCtx,
       databaseUrl: url,
@@ -198,6 +209,67 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       topic: "Phonics warm-up",
       durationMin: 45,
       classContext: { sizeBand: "25to30" },
+    });
+  });
+
+  describe("sourceIds (ADR 0027 §5)", () => {
+    async function source(ws: WorkspaceId) {
+      const id = newId();
+      await createSource(forWorkspace(unsafeDb, ws), {
+        id,
+        kind: "file",
+        name: "plants.pdf",
+        mime: "application/pdf",
+        byteSize: 10,
+        storageKey: storageKey(ws, "sources", id, "original.pdf"),
+        pages: 2,
+        lowText: false,
+      });
+      return id;
+    }
+
+    test("claims the Sources in the same transaction and writes them as lesson.sources", async () => {
+      const a = await source(wsA);
+      const b = await source(wsA);
+      const res = await postLesson(wsA, { brief: { topic: "Plants" }, sourceIds: [a, b] });
+      expect(res.status).toBe(202);
+      const { lessonId } = (await res.json()) as { lessonId: LessonId };
+      const ws = forWorkspace(unsafeDb, wsA);
+      const body = (await getDocument(ws, lessonId))?.body as Lesson;
+      expect(body.sources?.map((s) => s.id)).toEqual([a, b]);
+      expect(body.sources?.[0]).toMatchObject({ kind: "file", name: "plants.pdf", pages: 2 });
+      expect((await getSource(ws, a))?.lessonId).toBe(lessonId);
+      expect((await getSource(ws, b))?.lessonId).toBe(lessonId);
+    });
+
+    test.each([
+      [
+        "already bound",
+        async () => {
+          const a = await source(wsA);
+          await postLesson(wsA, { brief: { topic: "First" }, sourceIds: [a] });
+          return a;
+        },
+      ],
+      ["another Workspace's", () => source(wsB)],
+      ["unknown", async () => newId()],
+    ])("a %s id is 422 and nothing is written", async (_label, make) => {
+      const id = await make();
+      const ok = await source(wsA);
+      const before = (
+        await sql`select count(*)::int as n from documents where workspace_id = ${wsA}`
+      )[0]?.n;
+      const res = await postLesson(wsA, { brief: { topic: "Plants" }, sourceIds: [ok, id] });
+      expect(res.status).toBe(422);
+      expect((await errorOf(res)).message).toBe(
+        "One of the uploaded files is no longer available.",
+      );
+      const after = (
+        await sql`select count(*)::int as n from documents where workspace_id = ${wsA}`
+      )[0]?.n;
+      expect(after).toBe(before);
+      // The good Source was not claimed either: the transaction rolled back.
+      expect((await getSource(forWorkspace(unsafeDb, wsA), ok))?.lessonId).toBeNull();
     });
   });
 

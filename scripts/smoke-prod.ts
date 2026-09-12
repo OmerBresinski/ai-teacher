@@ -25,6 +25,12 @@ export interface SmokeCase {
   method?: string;
   path: string;
   headers?: Record<string, string>;
+  /**
+   * A request body other than the `{}` every POST sends by default — a `FormData` for the
+   * multipart routes. Built per call so a `FormData` is never reused; when set, no `Content-Type`
+   * is added by hand so `fetch` writes the multipart boundary the way a browser does.
+   */
+  body?: () => FormData | string;
   expect: number;
   /** Response headers that must be present with exactly this value. */
   expectHeaders?: Record<string, string>;
@@ -123,6 +129,24 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 403,
     },
     {
+      // ADR 0027 §5: the first multipart route. The body is a real FormData with a one-byte file
+      // part — the shape a browser drop zone produces — and no manual Content-Type.
+      name: "app origin, POST /sources multipart, reaches the session guard",
+      method: "POST",
+      path: "/sources",
+      headers: browser,
+      body: pdfUploadBody,
+      expect: 401,
+    },
+    {
+      name: "foreign origin POST /sources is rejected before the session guard",
+      method: "POST",
+      path: "/sources",
+      headers: { Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" },
+      body: pdfUploadBody,
+      expect: 403,
+    },
+    {
       name: "foreign origin GET /images/search is rejected before the session guard",
       path: "/images/search?q=river",
       headers: {
@@ -199,6 +223,13 @@ function headerMismatch(res: Response, want: Record<string, string> | undefined)
   return null;
 }
 
+/** One byte that is not a PDF: the guards answer before any parsing would. */
+function pdfUploadBody(): FormData {
+  const form = new FormData();
+  form.set("file", new File([new Uint8Array([0x25])], "a.pdf", { type: "application/pdf" }));
+  return form;
+}
+
 export async function runSmoke(
   api: string,
   cases: SmokeCase[],
@@ -210,7 +241,7 @@ export async function runSmoke(
         const res = await fetchImpl(`${api}${c.path}`, {
           method: c.method ?? "GET",
           headers: c.headers,
-          body: c.method === "POST" ? "{}" : undefined,
+          body: c.body ? c.body() : c.method === "POST" ? "{}" : undefined,
           redirect: "manual",
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });

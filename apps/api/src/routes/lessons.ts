@@ -23,11 +23,14 @@
  */
 import { zValidator } from "@hono/zod-validator";
 import {
+  bindSourcesToLesson,
   createDocument,
   deleteDocument,
   forWorkspace,
   getDocument,
   type ScopableDb,
+  toSourceRef,
+  unbindSourcesFromLesson,
   type WorkspaceDb,
 } from "@tj/db";
 import {
@@ -56,18 +59,35 @@ import { requireRuntime } from "./jobs";
 // because `lessons.test.ts` and the brief screen import it from here.
 export { lessonFromBrief };
 
+export const SOURCES_UNAVAILABLE_MESSAGE = "One of the uploaded files is no longer available.";
+
 /**
  * Insert the locked lesson, then queue its Plan job under the pre-minted id. On an enqueue failure
  * the row is removed so the Library never shows a lesson no job will ever fill.
+ *
+ * Sources (ADR 0027 §5): the claim and the insert run in **one transaction**. `bindSourcesToLesson`
+ * is a single conditional `UPDATE … RETURNING`; fewer rows than distinct ids means a Source is
+ * missing, another Workspace's, deleted or already bound — the transaction rolls back and the
+ * teacher is told, and two concurrent lessons can never claim the same Source. The claimed rows
+ * become `lesson.sources` before the document is written.
  */
 export async function createLessonAndEnqueue(
   ws: WorkspaceDb,
   runtime: EventsRuntime,
   lesson: Lesson,
+  sourceIds: readonly string[] = [],
 ): Promise<{ lessonId: LessonId; jobId: JobId }> {
   const lessonId = lesson.id as LessonId;
   const jobId = newId<JobId>();
-  await createDocument(ws, "lesson", lesson, { id: lessonId, generatingJobId: jobId });
+  const distinct = [...new Set(sourceIds)];
+  await ws.tx(async (scoped) => {
+    const rows = await bindSourcesToLesson(scoped, distinct, lessonId);
+    if (rows.length !== distinct.length) {
+      throw new HTTPException(422, { message: SOURCES_UNAVAILABLE_MESSAGE });
+    }
+    const body: Lesson = rows.length > 0 ? { ...lesson, sources: rows.map(toSourceRef) } : lesson;
+    await createDocument(scoped, "lesson", body, { id: lessonId, generatingJobId: jobId });
+  });
   let queued: JobId | null;
   try {
     queued = await enqueue(
@@ -80,14 +100,20 @@ export async function createLessonAndEnqueue(
       },
     );
   } catch (error) {
-    await deleteDocument(ws, lessonId).catch(() => undefined);
+    await undoCreate(ws, lessonId, distinct.length > 0);
     throw error;
   }
   if (queued === null) {
-    await deleteDocument(ws, lessonId).catch(() => undefined);
+    await undoCreate(ws, lessonId, distinct.length > 0);
     throw new HTTPException(409, { message: "An identical job is already queued." });
   }
   return { lessonId, jobId };
+}
+
+/** The enqueue-failure compensation: drop the row and release any Sources it had claimed. */
+async function undoCreate(ws: WorkspaceDb, lessonId: LessonId, hadSources: boolean): Promise<void> {
+  await deleteDocument(ws, lessonId).catch(() => undefined);
+  if (hadSources) await unbindSourcesFromLesson(ws, lessonId).catch(() => undefined);
 }
 
 const lessonParam = z.object({ id: z.uuid() });
@@ -140,10 +166,15 @@ export function lessonRoutes(unsafeDb: ScopableDb, runtime: EventsRuntime | unde
       async (c) => {
         const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
         const rt = requireRuntime(runtime);
-        const lesson = lessonFromBrief(c.req.valid("json"), newId<LessonId>(), new Date());
+        const input = c.req.valid("json");
+        const lesson = lessonFromBrief(input, newId<LessonId>(), new Date());
         const ws = forWorkspace(unsafeDb, workspaceId);
-        const { lessonId, jobId } = await createLessonAndEnqueue(ws, rt, lesson);
-        c.get("logger")?.info({ lessonId, jobId }, "lesson created from brief");
+        const sourceIds = input.sourceIds ?? [];
+        const { lessonId, jobId } = await createLessonAndEnqueue(ws, rt, lesson, sourceIds);
+        c.get("logger")?.info(
+          { lessonId, jobId, sources: sourceIds.length },
+          "lesson created from brief",
+        );
         return c.json({ lessonId, jobId }, 202);
       },
     )

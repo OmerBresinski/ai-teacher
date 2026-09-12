@@ -40,8 +40,8 @@ export interface ErrorEnvelope {
     retryable: boolean;
     /** Only for `validation_failed`: the top-level field names that failed. */
     fields?: string[];
-    /** Only for `conflict` from the document routes. */
-    reason?: ConflictReason;
+    /** `conflict` from the document routes, or `unprocessable` from `POST /sources`. */
+    reason?: ConflictReason | SourceRefusalReason;
   };
 }
 
@@ -69,11 +69,34 @@ export class ValidationError extends Error {
   }
 }
 
+/**
+ * Why `POST /sources` refused a document (ADR 0027 §2, §5): the deterministic screens plus
+ * `unsupported` for bytes that are not a PDF, PPTX or DOCX. The client shows `message` verbatim
+ * and may branch on `reason` (e.g. offer the paste box for `unreadable`).
+ */
+export const SOURCE_REFUSAL_REASONS = [
+  "roster",
+  "identifiers",
+  "unreadable",
+  "too-long",
+  "unsupported",
+] as const;
+export type SourceRefusalReason = (typeof SOURCE_REFUSAL_REASONS)[number];
+
 /** A `409` whose envelope carries a `reason`; thrown by the document routes. */
 export class ConflictError extends HTTPException {
   readonly reason: ConflictReason;
   constructor(reason: ConflictReason, message: string) {
     super(409, { message });
+    this.reason = reason;
+  }
+}
+
+/** A `422` whose envelope carries a `reason`; thrown by `POST /sources` (ADR 0027 §5). */
+export class SourceRefusedError extends HTTPException {
+  readonly reason: SourceRefusalReason;
+  constructor(reason: SourceRefusalReason, message: string) {
+    super(422, { message });
     this.reason = reason;
   }
 }
@@ -91,7 +114,7 @@ export function envelope(
   message: string,
   retryable: boolean,
   fields?: string[],
-  reason?: ConflictReason,
+  reason?: ConflictReason | SourceRefusalReason,
 ): ErrorEnvelope {
   const requestId = c.get("requestId") ?? c.res.headers.get("x-request-id") ?? "";
   return {
@@ -129,7 +152,7 @@ export interface ClassifiedError {
   message: string;
   retryable: boolean;
   fields?: string[];
-  reason?: ConflictReason;
+  reason?: ConflictReason | SourceRefusalReason;
   /** True when the original error must be logged with its stack (unexpected failure). */
   unexpected: boolean;
 }
@@ -166,7 +189,9 @@ export function classifyError(err: unknown): ClassifiedError {
       code,
       message,
       retryable: RETRYABLE_STATUSES.has(status),
-      ...(err instanceof ConflictError ? { reason: err.reason } : {}),
+      ...(err instanceof ConflictError || err instanceof SourceRefusedError
+        ? { reason: err.reason }
+        : {}),
       unexpected: status >= 500,
     };
   }

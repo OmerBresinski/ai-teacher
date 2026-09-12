@@ -828,6 +828,31 @@ const CONTRACT = [
     files: ["api"],
     description: "Window length in seconds for `IMAGE_RATE_LIMIT_PER_WORKSPACE` (default 60).",
   },
+  {
+    name: "SOURCE_RATE_LIMIT_PER_WORKSPACE",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["api"],
+    description:
+      "Uploads per Workspace per window on `POST /sources` before `429 rate_limited` (default 30). Extraction runs in the request (ADR 0027 §1).",
+  },
+  {
+    name: "SOURCE_RATE_LIMIT_WINDOW_S",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["api"],
+    description: "Window length in seconds for `SOURCE_RATE_LIMIT_PER_WORKSPACE` (default 60).",
+  },
 
   // --- web (Vite / Vercel, ADR 0004 / 0010) ---------------------------------------------------------
   {

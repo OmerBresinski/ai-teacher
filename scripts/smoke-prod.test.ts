@@ -39,7 +39,7 @@ describe("smoke-prod", () => {
   test("every case passes against a correctly guarded api", async () => {
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), fakeApi());
     expect(results.every((r) => r.ok)).toBe(true);
-    expect(results.length).toBe(17);
+    expect(results.length).toBe(19);
   });
 
   test("catches the 2026-09-05 regression: cross-site header rejected despite allowed Origin", async () => {
@@ -58,7 +58,27 @@ describe("smoke-prod", () => {
       "/images/search?q=river",
       "/images/pick",
       "/images/report",
+      "/sources",
     ]);
+  });
+
+  test("the multipart case sends a real FormData and no manual Content-Type (ADR 0027 §5)", async () => {
+    const seen: { contentType: string | null; isForm: boolean }[] = [];
+    const spy: typeof fetch = (async (input, init) => {
+      if (String(input).endsWith("/sources")) {
+        seen.push({
+          contentType: new Headers(init?.headers).get("content-type"),
+          isForm: init?.body instanceof FormData,
+        });
+      }
+      return fakeApi()(input, init);
+    }) as typeof fetch;
+    await runSmoke("https://api.example.test", smokeCases(WEB), spy);
+    expect(seen).toHaveLength(2);
+    for (const s of seen) {
+      expect(s.isForm).toBe(true);
+      expect(s.contentType).toBeNull();
+    }
   });
 
   test("a 204 preflight without CORS allow headers fails the case", async () => {

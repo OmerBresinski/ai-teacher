@@ -22,6 +22,7 @@
     "@tj/ai": "workspace:*",
     "@tj/db": "workspace:*",
     "@tj/domain": "workspace:*",
+    "@tj/extract": "workspace:*",
     "@tj/images": "workspace:*",
     "@tj/jobs": "workspace:*",
     "@tj/storage": "workspace:*",
