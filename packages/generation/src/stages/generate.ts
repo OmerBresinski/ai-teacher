@@ -17,14 +17,14 @@ import {
   slideSpecSchemaFor,
   vocabularySlots,
 } from "@tj/slides";
-import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { callStructured, type EditorialMiss, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import {
   generateSlidePrompt,
   generateWorksheetPrompt,
   pickOrRequeryPrompt,
   type SlidePhoto,
 } from "../prompts";
-import { type WorksheetSpec, WorksheetSpecSchema } from "../specs";
+import { type WorksheetSpec, WorksheetSpecSchema, worksheetSpecSchemaFor } from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
 import {
   busyFinding,
@@ -45,7 +45,9 @@ import { audienceOf, BUDGET_FINDING, generationOf, runBounded, withImageCaption 
  * order** as each lands, so the read-only editor still fills in one by one. The worksheet call
  * runs alongside the slides from its own question pool. Cancel is checked before every call; a
  * budget stop lets in-flight calls finish, starts no new ones, keeps what was written, records a
- * `budget` finding and moves on to `generated`.
+ * `budget` finding and moves on to `generated`. An answer accepted with editorial misses
+ * (TEACH-257) is materialised like any other; each miss is a `spec-rule` error on the slide or
+ * block it became, which Repair rewrites.
  */
 
 /** The number of slides Plan materialises itself (`title`, `objectives`). */
@@ -125,10 +127,13 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       if (picked && picked.outcome !== "busy") judged = true;
       const photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
       // `OutlineEntrySchema` only admits generatable kinds, so this never fires; it keeps the type.
-      const schema =
+      const specSchema = (soft: boolean) =>
         entry.kind === "image-text"
-          ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo))
-          : slideSpecSchemaFor(entry.kind);
+          ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
+              soft,
+            })
+          : slideSpecSchemaFor(entry.kind, { soft });
+      const schema = specSchema(false);
       if (!schema) throw new Error(`generate: no spec schema for slide kind "${entry.kind}"`);
       const call = await callStructured({
         deps,
@@ -152,6 +157,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
           lessonTitle: lesson.title,
         },
         schema,
+        soft: specSchema(true),
         maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
       });
       slide = materialiseSlide(
@@ -160,6 +166,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         meta(call.modelId),
         deps.ids,
       );
+      for (const miss of call.editorialMisses) {
+        findings.push(specRuleFinding(miss, { slideId: slide.id }));
+      }
       // The photograph goes in with the text, in the same persist; a slide with no photograph keeps
       // the placeholder and records the same warning the illustrate step would.
       if (picked?.outcome === "placed") slide = slideWithPhoto(slide, picked.photo);
@@ -220,9 +229,18 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
           lessonTitle: lesson.title,
         },
         schema: WorksheetSpecSchema,
+        soft: worksheetSpecSchemaFor({ soft: true }),
         maxOutputTokens: MAX_OUTPUT_TOKENS.worksheet,
       });
-      return materialiseWorksheet(call.output, call.modelId, lesson, state.worksheetId, deps);
+      const sheet = materialiseWorksheet(
+        call.output,
+        call.modelId,
+        lesson,
+        state.worksheetId,
+        deps,
+      );
+      for (const miss of call.editorialMisses) findings.push(worksheetSpecRuleFinding(miss, sheet));
+      return sheet;
     } catch (error) {
       if (error instanceof BudgetExceeded) {
         if (!stopped) stopped = BUDGET_FINDING(error.by, "the worksheet");
@@ -273,6 +291,20 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     updatedAt,
   );
   return { ...state, lesson, worksheet };
+}
+
+/**
+ * A worksheet's editorial miss as a finding: on the block the issue's path names (`blocks.<i>…`),
+ * which Repair can rewrite, so an `error`; a miss on the sheet itself (its title, its criteria)
+ * has no repair path and is a `warning`.
+ */
+function worksheetSpecRuleFinding(miss: EditorialMiss, worksheet: Worksheet): Finding {
+  const [root, index] = miss.path;
+  const block =
+    root === "blocks" && typeof index === "number" ? worksheet.blocks[index] : undefined;
+  return block
+    ? specRuleFinding({ ...miss, path: miss.path.slice(2) }, { blockId: block.id })
+    : specRuleFinding(miss, {}, "warning");
 }
 
 /** What the slide prompt is told about its photograph (TEACH-220). */

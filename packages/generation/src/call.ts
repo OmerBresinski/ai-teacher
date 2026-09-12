@@ -1,5 +1,7 @@
 import { isAnthropicModelId } from "@tj/ai";
 import type { ModelClass } from "@tj/domain";
+import type { Finding, FindingSeverity, FindingTarget } from "@tj/domain/documents";
+import { isEditorialIssue, logMessageOf } from "@tj/slides";
 import {
   generateText,
   type ModelMessage,
@@ -22,8 +24,14 @@ import {
  * One structured model call (ADR 0025 §14): `generateText` with `Output.object`, the budget
  * consulted before and charged after every attempt, a deterministic repair of the text before
  * validation (`repair-json.ts`), one retry on a schema miss with the validation issues in
- * context, and a typed `StageFailure` on the second miss. Nothing about the prompt or the model's
- * text is logged (ADR 0015); only the issue messages travel back into the retry prompt.
+ * context, and a typed `StageFailure` on the second miss — unless the second miss is **editorial
+ * only** (ADR 0025 §7, TEACH-257): every issue carries the `editorialIssue` tag and the caller gave
+ * a `soft` build of the schema. Then the retry's answer is parsed with the soft schema, accepted,
+ * and each issue comes back as an `EditorialMiss` for the stage to record as a `spec-rule` finding
+ * (`specRuleFinding`), which Repair acts on. A shape miss — a type, a missing field, a list the
+ * recipe has no slot for, invalid JSON — still fails the call: the model did not give us the thing.
+ * Nothing about the prompt or the model's text is logged (ADR 0015); only the issue messages
+ * travel back into the retry prompt.
  */
 
 export interface StructuredPrompt<I> {
@@ -50,6 +58,12 @@ export interface CallStructuredOptions<I, T> {
   prompt: StructuredPrompt<I>;
   input: I;
   schema: z.ZodType<T>;
+  /**
+   * The same schema with every editorial rule left out (`{ soft: true }` from the spec factories).
+   * With it, a retry that misses only editorial rules is accepted and its misses returned; without
+   * it every second miss is a `StageFailure`, as before.
+   */
+  soft?: z.ZodType<T> | undefined;
   maxOutputTokens: number;
   /**
    * Photographs the model must look at (TEACH-220): sent as image parts beside the user text, by
@@ -65,12 +79,47 @@ export interface CallUsage {
   cachedInputTokens?: number | undefined;
 }
 
+/** One editorial rule the accepted answer still breaks: the issue's path and its message. */
+export interface EditorialMiss {
+  path: (string | number)[];
+  message: string;
+}
+
 export interface CallResult<T> {
   output: T;
   usage: CallUsage;
   /** 1 or 2: how many attempts the call took. */
   attempts: number;
   modelId: string;
+  /**
+   * Empty when the answer validated. Otherwise the editorial rules the accepted retry breaks (see
+   * `soft`); the stage turns each into a `spec-rule` finding with `specRuleFinding`.
+   */
+  editorialMisses: EditorialMiss[];
+}
+
+/** The check name a finding from an accepted editorial miss carries. */
+export const SPEC_RULE_CHECK = "spec-rule";
+
+/**
+ * The `Finding` for one editorial miss. The stage supplies the target — the slide or block the
+ * answer became, which is not known until it is materialised — and the severity: `error` where
+ * Repair can rewrite the target, `warning` where nothing downstream can (Plan's facts, or a Repair
+ * answer that itself still misses — never a second pass). The message keeps the issue's path so
+ * the reader knows which field.
+ */
+export function specRuleFinding(
+  miss: EditorialMiss,
+  target: FindingTarget,
+  severity: FindingSeverity = "error",
+): Finding {
+  const at = miss.path.join(".");
+  return {
+    check: SPEC_RULE_CHECK,
+    severity,
+    target,
+    message: at.length > 0 ? `${at}: ${miss.message}` : miss.message,
+  };
 }
 
 /** The token caps per stage (ticket guidance); a slide or repair answer is small by design. */
@@ -107,7 +156,9 @@ const RETRY_SUFFIX =
  * `Output.object` with a repair pass: when the text fails to parse or validate, `repairJsonText`
  * is tried once and, if the repaired text validates, that answer is returned and `onRepair` told
  * what was done. A repaired text that still fails rethrows the *original* error, so the retry
- * prompt describes what the model actually sent.
+ * prompt describes what the model actually sent — unless what the repaired text still fails is
+ * editorial only: then that error is thrown (its `text` is the repaired text), so the second-miss
+ * path can accept the answer the model meant rather than fail on the wrapping it came in.
  */
 function repairingObjectOutput<T>(
   schema: z.ZodType<T>,
@@ -129,7 +180,14 @@ function repairingObjectOutput<T>(
           const output = await inner.parseCompleteOutput({ text: repaired.text }, context);
           onRepair(repaired.repairs);
           return output;
-        } catch {
+        } catch (afterRepair) {
+          if (
+            NoObjectGeneratedError.isInstance(afterRepair) &&
+            editorialMissesOf(afterRepair) !== null
+          ) {
+            onRepair(repaired.repairs);
+            throw afterRepair;
+          }
           throw error;
         }
       }
@@ -140,7 +198,8 @@ function repairingObjectOutput<T>(
 export async function callStructured<I, T>(
   options: CallStructuredOptions<I, T>,
 ): Promise<CallResult<T>> {
-  const { deps, stage, cls, effort, prompt, input, schema, maxOutputTokens, images } = options;
+  const { deps, stage, cls, effort, prompt, input, schema, soft, maxOutputTokens, images } =
+    options;
   // Cancel is checked between model calls (ADR 0025 §5); the fake ignores `abortSignal`, so the
   // check is here rather than trusted to the provider.
   throwIfAborted(deps.signal);
@@ -171,7 +230,7 @@ export async function callStructured<I, T>(
     });
     const usage = usageOf(result.usage);
     deps.budget.charge(modelId, usage);
-    return { output: result.output, usage, attempts: 1, modelId };
+    return { output: result.output, usage, attempts: 1, modelId, editorialMisses: [] };
   };
 
   try {
@@ -186,7 +245,12 @@ export async function callStructured<I, T>(
     // them a schema miss in production cannot be diagnosed (the 2026-09-07 derivatives lesson
     // failed Plan twice with only `issues=5` on record).
     deps.logger.info(
-      { stage, promptVersion: prompt.version, issues: issuesOf(error, "log") },
+      {
+        stage,
+        promptVersion: prompt.version,
+        issues: issuesOf(error, "log"),
+        editorialOnly: editorialMissesOf(error) !== null,
+      },
       "structured output did not validate; retrying once",
     );
     // The retry is a second model call: the same two gates apply before it.
@@ -199,11 +263,28 @@ export async function callStructured<I, T>(
     } catch (again) {
       if (!NoObjectGeneratedError.isInstance(again)) throw again;
       if (again.usage) deps.budget.charge(modelId, usageOf(again.usage));
+      const misses = editorialMissesOf(again);
+      const logged = {
+        stage,
+        promptVersion: prompt.version,
+        issues: issuesOf(again, "log"),
+        editorialOnly: misses !== null,
+      };
+      // Only our own content rules were broken, and the stage can carry them as findings: the
+      // answer is taken as returned (TEACH-257 — five eval runs lost every dead lesson here).
+      const accepted = misses && soft ? softParse(soft, again.text) : undefined;
+      if (misses && accepted !== undefined) {
+        deps.logger.warn(logged, "structured output did not validate on the retry; accepted");
+        return {
+          output: accepted,
+          usage: usageOf(again.usage ?? {}),
+          attempts: 2,
+          modelId,
+          editorialMisses: misses,
+        };
+      }
       // pino's `err` serializer drops a non-Error `cause`, so the second miss is logged here.
-      deps.logger.warn(
-        { stage, promptVersion: prompt.version, issues: issuesOf(again, "log") },
-        "structured output did not validate on the retry; giving up",
-      );
+      deps.logger.warn(logged, "structured output did not validate on the retry; giving up");
       throw new StageFailure(
         stage,
         `${stage}: the model did not produce a valid ${prompt.version} answer in two attempts`,
@@ -274,13 +355,60 @@ function usageOf(usage: {
 }
 
 /**
+ * The answer's JSON parsed with the soft schema, or `undefined` when even that refuses it (a rule
+ * tagged editorial that the soft build still applies — a bug in a spec factory, so the caller
+ * falls back to the failure path rather than guess). Zod issues exist only for text that parsed as
+ * JSON, so no repair pass is needed here. The text is parsed, never logged.
+ */
+function softParse<T>(soft: z.ZodType<T>, text: string | undefined): T | undefined {
+  if (text === undefined) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  const parsed = soft.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+type RawIssue = {
+  path?: (string | number)[];
+  message: string;
+  code?: string;
+  keys?: unknown[];
+  params?: Record<string, unknown>;
+};
+
+/** The zod issues behind a schema miss, or `undefined` when the text was not even JSON. */
+function zodIssuesOf(error: NoObjectGeneratedError): RawIssue[] | undefined {
+  const cause = error.cause as { issues?: unknown[]; cause?: { issues?: unknown[] } } | undefined;
+  const issues = cause?.issues ?? cause?.cause?.issues;
+  return Array.isArray(issues) && issues.length > 0 ? (issues as RawIssue[]) : undefined;
+}
+
+/**
+ * The misses when every issue is an editorial rule (`editorialIssue`), else `null`: one shape
+ * issue — or no zod issues at all (invalid JSON) — and the miss is the model's, not ours.
+ */
+export function editorialMissesOf(error: NoObjectGeneratedError): EditorialMiss[] | null {
+  const issues = zodIssuesOf(error);
+  if (issues === undefined) return null;
+  if (!issues.every((issue) => isEditorialIssue(issue))) return null;
+  return issues.map((issue) => ({ path: issue.path ?? [], message: issue.message }));
+}
+
+/**
  * The validation issues from a schema miss as plain messages with paths — what the retry prompt
  * shows the model. A JSON parse failure yields one line. Never the model's text.
  *
  * `audience: "log"` is the ADR 0015 variant: every zod message is schema-derived (limits, expected
  * types, our own refinement text) except `unrecognized_keys`, whose message repeats the key names
- * the model invented — those are replaced by a count. The retry prompt keeps them: the model needs
- * to know which keys to drop.
+ * the model invented — those are replaced by a count — and our own `custom` messages that quote
+ * the model's words back at it (`mustShow names the subject ("front teeth")`, `pitch.avoid lists
+ * "evidence"`, `q9 is not a candidate id`): each such rule declares a log form of its message
+ * (`editorialIssue` / `shapeIssue`'s `log`), which is used here. The retry prompt keeps both: the
+ * model needs to know which keys to drop and which words it wrote.
  *
  * After a wrong type on a path, the follow-on checks on that path are dropped: zod keeps checking
  * a mistyped value as if it were right (`expected array, received string` followed by `Too big:
@@ -291,28 +419,20 @@ export function issuesOf(
   error: NoObjectGeneratedError,
   audience: "retry" | "log" = "retry",
 ): string[] {
-  const cause = error.cause as
-    | { issues?: { path?: (string | number)[]; message: string }[]; message?: string }
-    | undefined;
-  const zodIssues =
-    cause?.issues ?? (cause as { cause?: { issues?: unknown[] } } | undefined)?.cause?.issues;
-  if (Array.isArray(zodIssues) && zodIssues.length > 0) {
+  const zodIssues = zodIssuesOf(error);
+  if (zodIssues) {
     const mistyped = new Set<string>();
     const lines: string[] = [];
-    for (const issue of zodIssues) {
-      const i = issue as {
-        path?: (string | number)[];
-        message: string;
-        code?: string;
-        keys?: unknown[];
-      };
+    for (const i of zodIssues) {
       const pathKey = (i.path ?? []).join(".");
       if (mistyped.has(pathKey)) continue;
       if (i.code === "invalid_type") mistyped.add(pathKey);
       const path = pathKey.length > 0 ? `${pathKey}: ` : "";
       const message =
-        audience === "log" && i.code === "unrecognized_keys"
-          ? `${i.keys?.length ?? "some"} unrecognized key(s)`
+        audience === "log"
+          ? i.code === "unrecognized_keys"
+            ? `${i.keys?.length ?? "some"} unrecognized key(s)`
+            : (logMessageOf(i) ?? i.message)
           : i.message;
       lines.push(`- ${path}${message}`);
     }

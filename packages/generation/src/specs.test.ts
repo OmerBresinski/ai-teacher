@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { LessonFactsSchema } from "@tj/domain/documents";
+import { isEditorialIssue } from "@tj/slides";
 import { lessonShapeOf, OBJECTIVE_VERBS, PRIOR_CONFIDENCES } from "./shapes";
 import {
   assignFactIds,
@@ -11,6 +12,7 @@ import {
   usesTerm,
   verifyOutputSchemaFor,
   WorksheetSpecSchema,
+  worksheetSpecSchemaFor,
 } from "./specs";
 import { FIXTURES, PLAN_SKELETONS } from "./testing";
 
@@ -935,5 +937,151 @@ describe("WorksheetSpecSchema (TEACH-223)", () => {
     if (!result.success) {
       expect(result.error.issues.map((i) => i.path.join("."))).toEqual(["blocks.3.text"]);
     }
+  });
+});
+
+describe("TEACH-257: editorial and shape rules in the Plan and worksheet schemas", () => {
+  const SKELETON = { durationMin: 60, shape: EXPLAIN_SOME };
+  const skeleton = (entries: unknown[], patch: Record<string, unknown> = {}) => ({
+    learningObjectives: [{ text: "Describe rivers" }],
+    photographable: NOT_PHOTOGRAPHABLE,
+    outline: entries,
+    ...patch,
+  });
+  const facts = () => structuredClone(FIXTURES.planFacts);
+  const factsSchema = (soft: boolean) =>
+    planFactsSchemaFor(FIXTURES.planSkeleton, EXPLAIN_SOME, { soft });
+
+  const expectEditorial = (
+    strict: { safeParse: (v: unknown) => { success: boolean; error?: { issues: unknown[] } } },
+    soft: { safeParse: (v: unknown) => { success: boolean } },
+    value: unknown,
+  ) => {
+    const result = strict.safeParse(value);
+    expect(result.success).toBe(false);
+    const issues = (result.error?.issues ?? []) as { params?: Record<string, unknown> }[];
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.every((issue) => isEditorialIssue(issue))).toBe(true);
+    expect(soft.safeParse(value).success).toBe(true);
+  };
+  const expectShape = (
+    strict: { safeParse: (v: unknown) => { success: boolean; error?: { issues: unknown[] } } },
+    soft: { safeParse: (v: unknown) => { success: boolean } },
+    value: unknown,
+  ) => {
+    const result = strict.safeParse(value);
+    expect(result.success).toBe(false);
+    const issues = (result.error?.issues ?? []) as { params?: Record<string, unknown> }[];
+    expect(issues.some((issue) => !isEditorialIssue(issue))).toBe(true);
+    expect(soft.safeParse(value).success).toBe(false);
+  };
+
+  test("skeleton: a phase out of order, a missing brief and a broken shape rule are editorial", () => {
+    const strict = planSkeletonSchemaFor(SKELETON);
+    const soft = planSkeletonSchemaFor(SKELETON, { soft: true });
+    const entries = outline();
+    // Practise before explain; position 2 without its brief; explain share far short.
+    entries[3] = { ...entries[3], phase: "practise" };
+    const { brief: _dropped, ...noBrief } = entries[2] as { brief: unknown };
+    entries[2] = noBrief;
+    expectEditorial(strict, soft, skeleton(entries));
+    // A learning objective over its cap, and five of them.
+    expectEditorial(
+      strict,
+      soft,
+      skeleton(outline(), {
+        learningObjectives: Array.from({ length: 5 }, () => ({ text: "x".repeat(161) })),
+      }),
+    );
+  });
+
+  test("skeleton: an outline that does not open title, objectives and a dangling reference are shape", () => {
+    const strict = planSkeletonSchemaFor(SKELETON);
+    const soft = planSkeletonSchemaFor(SKELETON, { soft: true });
+    const swapped = outline();
+    [swapped[0], swapped[1]] = [swapped[1] as never, swapped[0] as never];
+    expectShape(strict, soft, skeleton(swapped));
+    const dangling = outline();
+    dangling[3] = { ...dangling[3], factRefs: [O(4)] };
+    expectShape(strict, soft, skeleton(dangling));
+    // The picture brief's subject cap is `@tj/domain`'s too: shape.
+    const picture = outline();
+    picture[3] = {
+      kind: "image-text",
+      minutes: 10,
+      factRefs: [O(0)],
+      phase: "explain",
+      brief,
+      imageBrief: { ...RIVER, subject: "x".repeat(61) },
+    };
+    expectShape(
+      strict,
+      soft,
+      skeleton(picture, { photographable: { yes: true, why: "A river." } }),
+    );
+  });
+
+  test("facts: ten questions, a stem that presumes a picture, a long term and a ninth term are editorial", () => {
+    const ten = facts();
+    ten.questions = ten.questions.slice(0, 10);
+    ten.outlineFactRefs = ten.outlineFactRefs.map((e) => ({
+      ...e,
+      factRefs: e.factRefs.filter((r) => !(r.type === "question" && r.index >= 10)),
+    }));
+    expectEditorial(factsSchema(false), factsSchema(true), ten);
+    const diagram = facts();
+    (diagram.questions[0] as { stem: string }).stem = "Look at the diagram. What melts first?";
+    expectEditorial(factsSchema(false), factsSchema(true), diagram);
+    const terms = facts();
+    (terms.vocabulary[0] as { term: string }).term = "x".repeat(61);
+    terms.vocabulary.push(
+      ...Array.from({ length: 9 - terms.vocabulary.length }, () => terms.vocabulary[1] as never),
+    );
+    expectEditorial(factsSchema(false), factsSchema(true), terms);
+  });
+
+  test("facts: a reference out of range, no key idea and an unknown list are shape", () => {
+    const out = facts();
+    (out.outlineFactRefs[0] as { factRefs: unknown[] }).factRefs = [
+      { type: "question", index: 99 },
+    ];
+    expectShape(factsSchema(false), factsSchema(true), out);
+    const none = facts();
+    none.keyIdeas = [];
+    expectShape(factsSchema(false), factsSchema(true), none);
+    expectShape(factsSchema(false), factsSchema(true), { ...facts(), summary: "no such list" });
+  });
+
+  test("facts: the soft build still yields LessonFacts `assignFactIds` accepts", () => {
+    const ten = facts();
+    ten.questions = ten.questions.slice(0, 10);
+    ten.outlineFactRefs = ten.outlineFactRefs.map((e) => ({
+      ...e,
+      factRefs: e.factRefs.filter((r) => !(r.type === "question" && r.index >= 10)),
+    }));
+    const parsed = factsSchema(true).safeParse(ten);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(
+      LessonFactsSchema.safeParse(assignFactIds(FIXTURES.planSkeleton, parsed.data, 60)).success,
+    ).toBe(true);
+  });
+
+  test("worksheet: a picture word, a long title and a fifth criterion are editorial; three blocks is shape", () => {
+    const strict = worksheetSpecSchemaFor();
+    const soft = worksheetSpecSchemaFor({ soft: true });
+    const block = (text: string) => ({ type: "paragraph", text, factRefs: ["o1"] });
+    const sheet = {
+      title: "x".repeat(81),
+      criteria: ["a", "b", "c", "d", "e"],
+      blocks: [block("Look at the photo."), block("B."), block("C."), block("D.")],
+    };
+    expectEditorial(strict, soft, sheet);
+    expectShape(strict, soft, {
+      ...sheet,
+      title: "T",
+      criteria: [],
+      blocks: sheet.blocks.slice(1),
+    });
   });
 });

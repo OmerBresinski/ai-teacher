@@ -2,9 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
 import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
+import { shapeIssue, slideSpecSchemaFor } from "@tj/slides";
 import pino from "pino";
 import { z } from "zod";
-import { callStructured, imageMediaType } from "./call";
+import { callStructured, imageMediaType, specRuleFinding } from "./call";
 import { BudgetExceeded, type PipelineDeps, StageFailure } from "./types";
 
 const schema = z.strictObject({ answer: z.string() });
@@ -184,6 +185,7 @@ describe("callStructured", () => {
       usage: { inputTokens: 10, outputTokens: 5 },
       attempts: 1,
       modelId: ai.modelId("standard"),
+      editorialMisses: [],
     });
     expect(d.budget.totals()).toMatchObject({ calls: 1, inputTokens: 10, outputTokens: 5 });
     expect(ai.calls[0]?.context).toEqual({
@@ -360,5 +362,171 @@ describe("callStructured", () => {
     const error = await call(deps(ai)).catch((e) => e);
     expect(error).not.toBeInstanceOf(StageFailure);
     expect(ai.calls).toHaveLength(0);
+  });
+});
+
+describe("callStructured: editorial misses are accepted, shape misses fail (TEACH-257)", () => {
+  const strict = slideSpecSchemaFor("worked-example");
+  const soft = slideSpecSchemaFor("worked-example", { soft: true });
+  if (!strict || !soft) throw new Error("worked-example schema");
+  const worked = (step: unknown) =>
+    JSON.stringify({
+      kind: "worked-example",
+      factRefs: ["x1"],
+      question: "Why does a puddle vanish?",
+      steps: Array.isArray(step) || typeof step === "string" ? step : [step],
+    });
+  const longStep = "x".repeat(90);
+  const good = worked(["Warm air passes energy in.", "Particles speed up."]);
+  const run = (
+    ai: ReturnType<typeof createFakeAi>,
+    log: ReturnType<typeof capturingLogger>,
+    withSoft = true,
+  ) =>
+    callStructured({
+      deps: deps(ai, { logger: log.logger }),
+      stage: "generate",
+      cls: "small",
+      effort: "low",
+      prompt,
+      input: "hi",
+      schema: strict,
+      ...(withSoft ? { soft } : {}),
+      maxOutputTokens: 100,
+    });
+
+  test("row 1: a 90-character step twice resolves with one editorial miss naming steps.0; the warn line says editorialOnly", async () => {
+    const ai = createFakeAi({ script: [worked([longStep]), worked([longStep])] });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(result.attempts).toBe(2);
+    expect(result.editorialMisses).toEqual([
+      { path: ["steps", 0], message: "Too long: at most 84 characters." },
+    ]);
+    // The accepted answer is the retry's, parsed (trimmed, decoded) by the soft schema.
+    expect(result.output).toMatchObject({ kind: "worked-example", steps: [longStep] });
+    expect(ai.calls).toHaveLength(2);
+    expect(log.text()).toContain("did not validate on the retry; accepted");
+    expect(log.text()).toContain('"editorialOnly":true');
+    expect(log.text()).not.toContain("giving up");
+    // The finding a stage records from it: spec-rule, on the target it names, path in the message.
+    const finding = specRuleFinding(result.editorialMisses[0] as never, { slideId: "s7" });
+    expect(finding).toEqual({
+      check: "spec-rule",
+      severity: "error",
+      target: { slideId: "s7" },
+      message: "steps.0: Too long: at most 84 characters.",
+    });
+  });
+
+  test('row 2: `steps: "not an array"` twice is a StageFailure as before; the warn line says editorialOnly: false', async () => {
+    const ai = createFakeAi({ script: [worked("not an array"), worked("not an array")] });
+    const log = capturingLogger();
+    const error = await run(ai, log).catch((e) => e);
+    expect(error).toBeInstanceOf(StageFailure);
+    expect(log.text()).toContain("giving up");
+    expect(log.text()).toContain('"editorialOnly":false');
+  });
+
+  test("row 3: a shape miss then an editorial-only miss resolves with the misses (the retry fixed the shape)", async () => {
+    const ai = createFakeAi({ script: [worked("not an array"), worked([longStep])] });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(result.attempts).toBe(2);
+    expect(result.editorialMisses.map((m) => m.path)).toEqual([["steps", 0]]);
+    // The first miss was a shape miss, the second was not: the two log lines say which.
+    expect(log.text()).toContain('"editorialOnly":false');
+    expect(log.text()).toContain('"editorialOnly":true');
+  });
+
+  test("row 4: an editorial miss then a clean answer resolves with no misses (today's happy retry)", async () => {
+    const ai = createFakeAi({ script: [worked([longStep]), good] });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(result.attempts).toBe(2);
+    expect(result.editorialMisses).toEqual([]);
+    expect(log.text()).toContain("retrying once");
+    expect(log.text()).not.toContain("did not validate on the retry");
+  });
+
+  test("a mixed second miss (one shape issue beside editorial ones) still fails the call", async () => {
+    const ai = createFakeAi({
+      script: [worked([longStep]), JSON.stringify({ ...JSON.parse(worked([longStep])), extra: 1 })],
+    });
+    const log = capturingLogger();
+    await expect(run(ai, log)).rejects.toBeInstanceOf(StageFailure);
+    expect(log.text()).toContain('"editorialOnly":false');
+  });
+
+  test("without a soft schema an editorial-only second miss fails as before, logged editorialOnly: true", async () => {
+    const ai = createFakeAi({ script: [worked([longStep]), worked([longStep])] });
+    const log = capturingLogger();
+    await expect(run(ai, log, false)).rejects.toBeInstanceOf(StageFailure);
+    expect(log.text()).toContain("giving up");
+    expect(log.text()).toContain('"editorialOnly":true');
+  });
+
+  test("a list sent as a JSON string whose unwrapped items miss only a cap is repaired, then accepted", async () => {
+    // The Bedrock quirk (`repair-json.ts`) on top of an editorial miss: the original text is a
+    // shape miss (a string where a list goes), the repaired text an editorial one. The repaired
+    // reading is the one judged, on both attempts.
+    const wrapped = worked(JSON.stringify([longStep, "Second."]));
+    const ai = createFakeAi({ script: [wrapped, wrapped] });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(result.attempts).toBe(2);
+    expect(result.output).toMatchObject({ steps: [longStep, "Second."] });
+    expect(result.editorialMisses.map((m) => m.path)).toEqual([["steps", 0]]);
+    expect(log.text()).toContain('"repairs":["parsed-string"]');
+    expect(log.text()).toContain('"editorialOnly":true');
+    // The retry was told about the cap, not about a string where a list goes.
+    expect(ai.calls[1]?.promptText).toContain("Too long: at most 84");
+    expect(ai.calls[1]?.promptText).not.toContain("expected array");
+  });
+
+  test("a custom message that quotes the model's words keeps them for the retry and logs its declared log form (ADR 0015)", async () => {
+    // A value with an embedded quote and one with none: the log form is declared by the rule,
+    // never derived from the rendered message, so neither can leak.
+    const quoting = z.strictObject({ word: z.string(), id: z.string() }).superRefine((v, ctx) => {
+      if (v.word !== "ok") {
+        ctx.addIssue(shapeIssue(`pitch.avoid lists "${v.word}"`, ["word"], "pitch.avoid lists …"));
+      }
+      if (v.id !== "ok") {
+        ctx.addIssue(
+          shapeIssue(`${v.id} is not a candidate id`, ["id"], "… is not a candidate id"),
+        );
+      }
+    });
+    const bad = JSON.stringify({ word: 'a"secret', id: "q9secret" });
+    const ai = createFakeAi({ script: [bad, bad] });
+    const log = capturingLogger();
+    const error = await callStructured({
+      deps: deps(ai, { logger: log.logger }),
+      stage: "plan",
+      cls: "standard",
+      effort: "medium",
+      prompt,
+      input: "hi",
+      schema: quoting,
+      maxOutputTokens: 100,
+    }).catch((e) => e);
+    expect(error).toBeInstanceOf(StageFailure);
+    expect(ai.calls[1]?.promptText).toContain('lists "a"secret"');
+    expect(ai.calls[1]?.promptText).toContain("q9secret is not a candidate id");
+    expect((error as StageFailure).cause).toEqual([
+      '- word: pitch.avoid lists "a"secret"',
+      "- id: q9secret is not a candidate id",
+    ]);
+    expect(log.text()).toContain("word: pitch.avoid lists …");
+    expect(log.text()).toContain("id: … is not a candidate id");
+    expect(log.text()).not.toContain("secret");
+  });
+
+  test("the model's text never reaches the log on the accepted path either", async () => {
+    const ai = createFakeAi({ script: [worked([longStep]), worked([longStep])] });
+    const log = capturingLogger();
+    await run(ai, log);
+    expect(log.text()).not.toContain("puddle");
+    expect(log.text()).not.toContain(longStep);
   });
 });

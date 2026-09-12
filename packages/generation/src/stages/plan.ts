@@ -1,6 +1,6 @@
 import type { Finding, Lesson, LessonFacts, Slide } from "@tj/domain/documents";
 import { type MaterialiseMeta, materialiseSlide } from "@tj/slides";
-import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import { type Audience, planFactsPrompt, planSkeletonPrompt, verifyFactsPrompt } from "../prompts";
 import { lessonShapeOf } from "../shapes";
 import {
@@ -43,6 +43,10 @@ import { applyVerifyPatch, VERIFY_FAILED_FINDING, verifyFinding } from "./verify
  * facts, so the skeleton call is not paid twice and the teacher does not watch slide two vanish
  * (2026-09-08: the facts call failed twice, pg-boss retried, Plan restarted from the title). A budget stop on the facts call keeps the skeleton facts,
  * records the `budget` finding and still reaches `planned` (§15): Generate then stops in turn.
+ *
+ * A skeleton or facts answer accepted with editorial misses (TEACH-257) is used as returned; each
+ * miss is a `spec-rule` **warning** on the lesson — nothing downstream rewrites the facts, so
+ * Repair is not asked to, and the badge says what the plan fell short of.
  */
 
 /** The prompt version written on the title slide's elements: it comes from the Brief, not a model. */
@@ -86,6 +90,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     sourceTexts: sourceTexts.map((s) => ({ sourceId: s.sourceId, text: s.text })),
   };
 
+  const findings: Finding[] = [];
   // 2. The skeleton: objectives and outline, enough for the objectives slide. A resumed lesson
   //    that already has both skips the call.
   let skeleton: PlanSkeleton;
@@ -107,9 +112,13 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
       prompt: planSkeletonPrompt,
       input: briefInput,
       schema: planSkeletonSchemaFor({ durationMin: brief.durationMin, shape }),
+      soft: planSkeletonSchemaFor({ durationMin: brief.durationMin, shape }, { soft: true }),
       maxOutputTokens: MAX_OUTPUT_TOKENS.planSkeleton,
     });
     skeleton = skeletonCall.output;
+    for (const miss of skeletonCall.editorialMisses) {
+      findings.push(specRuleFinding(miss, {}, "warning"));
+    }
     // The flag only, never `why` (ADR 0015); the summary line carries it as images.photographable.
     const photographable = skeleton.photographable?.yes ?? null;
     deps.logger.info({ stage: "plan", call: "skeleton", photographable }, "skeleton accepted");
@@ -128,7 +137,6 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
 
   // 3. The remaining facts and which outline entry each supports; then the checkpoint.
   deps.logger.info({ stage: "plan", call: "facts" }, "plan call");
-  const findings: Finding[] = [];
   let planFacts: PlanFactsLike = EMPTY_PLAN_FACTS;
   try {
     const factsCall = await callStructured({
@@ -139,9 +147,13 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
       prompt: planFactsPrompt,
       input: { ...briefInput, skeleton },
       schema: planFactsSchemaFor(skeleton, shape),
+      soft: planFactsSchemaFor(skeleton, shape, { soft: true }),
       maxOutputTokens: MAX_OUTPUT_TOKENS.planFacts,
     });
     planFacts = factsCall.output;
+    for (const miss of factsCall.editorialMisses) {
+      findings.push(specRuleFinding(miss, {}, "warning"));
+    }
   } catch (error) {
     if (!(error instanceof BudgetExceeded)) throw error;
     findings.push(BUDGET_FINDING(error.by, "the lesson facts"));

@@ -35,7 +35,7 @@ const results = (over: Partial<EvalResults["totals"]> = {}, sha = "abcdef0123"):
       outputTokens: 5200,
       costUsd: 0.12,
       judge: { calls: 1, inputTokens: 8000, outputTokens: 600, costUsd: 0.16 },
-      findings: { error: 0, warning: 1 },
+      findings: { error: 0, warning: 1, specRule: 0 },
       scores: {
         schema: 1,
         modelFindings: 0.9,
@@ -57,7 +57,7 @@ const results = (over: Partial<EvalResults["totals"]> = {}, sha = "abcdef0123"):
     outputTokens: 41600,
     costUsd: 0.96,
     judgeCostUsd: 1.28,
-    findings: { error: 0, warning: 9 },
+    findings: { error: 0, warning: 9, specRule: 0 },
     rubric: { mean: 3.6, dimensions: dims(4, { depth: 2, imageFit: null }) },
     ...over,
   },
@@ -75,7 +75,11 @@ describe("eval delta comment", () => {
 
   test("with a master run: a delta per column, signed", () => {
     const body = renderComment(
-      results({ costUsd: 1.2, meanDurationMs: 38000, findings: { error: 2, warning: 9 } }),
+      results({
+        costUsd: 1.2,
+        meanDurationMs: 38000,
+        findings: { error: 2, warning: 9, specRule: 0 },
+      }),
       results({}, "0123456789"),
     );
     expect(body).toContain("| cost | $1.2000 | $0.9600 | +$0.2400 |");

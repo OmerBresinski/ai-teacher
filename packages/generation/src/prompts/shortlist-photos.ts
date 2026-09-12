@@ -7,6 +7,7 @@
  * emptied a pool of thirty rats). Bump `version` whenever `system` or `user` changes wording.
  */
 import type { ImagePurpose } from "@tj/domain/documents";
+import { shapeIssue } from "@tj/slides";
 import { z } from "zod";
 import { example, HOUSE_RULES } from "./shared";
 
@@ -24,10 +25,13 @@ export function shortlistSchemaFor(candidateIds: readonly string[]): z.ZodType<S
   return ShortlistSchema.superRefine((answer, ctx) => {
     const seen = new Set<string>();
     answer.ids.forEach((id, i) => {
+      // The id is the model's text (ADR 0015): the log form leaves it out.
       if (!allowed.has(id)) {
-        ctx.addIssue({ code: "custom", message: `${id} is not a candidate id`, path: ["ids", i] });
+        ctx.addIssue(
+          shapeIssue(`${id} is not a candidate id`, ["ids", i], "… is not a candidate id"),
+        );
       } else if (seen.has(id)) {
-        ctx.addIssue({ code: "custom", message: `${id} is listed twice`, path: ["ids", i] });
+        ctx.addIssue(shapeIssue(`${id} is listed twice`, ["ids", i], "… is listed twice"));
       }
       seen.add(id);
     });
