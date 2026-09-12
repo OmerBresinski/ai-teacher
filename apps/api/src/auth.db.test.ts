@@ -159,7 +159,12 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       db,
       logger: silentLogger,
       auth: createAuth({
-        env: { ...AUTH_ENV, COOKIE_DOMAIN: ".example.test" },
+        // The api must be under the cookie domain, or `effectiveCookieDomain` drops it (TEACH-36).
+        env: {
+          ...AUTH_ENV,
+          BETTER_AUTH_URL: "http://api.example.test:3001",
+          COOKIE_DOMAIN: ".example.test",
+        },
         db,
         mail: scopedMail,
         logger: silentLogger,
