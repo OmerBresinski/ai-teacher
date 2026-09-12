@@ -1,0 +1,11 @@
+{
+  "name": "image-size",
+  "version": "99.0.0-stub",
+  "private": true,
+  "description": "Stands in for `image-size` under the root `overrides`. pptxgenjs lists image-size for its Node-only file-path branch and excludes it from browser builds; every published image-size carries two unpatched HIGH advisories (GHSA-w3rx-r6r6-pgpr, GHSA-5p2g-fcmc-qvqq) that CI's audit refuses. The export runs in the browser and never reaches that branch, so the real package is replaced by this throwing stub. Drop it when image-size ships a fix.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  }
+}

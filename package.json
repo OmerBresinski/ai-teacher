@@ -6,6 +6,9 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "image-size": "workspace:*"
+  },
   "engines": {
     "bun": ">=1.3.0"
   },
