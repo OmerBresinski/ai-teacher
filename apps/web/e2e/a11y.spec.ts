@@ -6,10 +6,19 @@
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import type { Page } from "@playwright/test";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { demoWorkspace } from "@tj/editor/starter";
 import { expectNoSeriousA11yViolations } from "./a11y";
 import { E2E_API_URL, E2E_WEB_URL, expect, type SeededPaths, test } from "./fixtures";
+
+// axe reads contrast through the arrival fade: wait for animations, not a fixed delay.
+async function settled(page: Page) {
+  const surface = page.locator('[role="dialog"], [role="menu"]').last();
+  await surface.evaluate((el) =>
+    Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished)),
+  );
+}
 
 test.describe("accessibility (axe)", () => {
   test("/sign-in has no serious or critical violations", async ({ page }) => {
@@ -159,23 +168,16 @@ test.describe("accessibility (axe)", () => {
     }
   });
 
-  test("open overlays are clean: create dialogs, card menu, series row menu", async ({
+  // Keep overlay groups independent: the combined walk outgrew CI's 30-second test budget.
+  test("open overlays are clean: library dialogs and card menu", async ({
     signedInPage: { page, paths },
   }) => {
-    // Dialogs and menus arrive over 450 ms; axe reads contrast through the fade, so wait for every
-    // running animation on the surface (or its inner wrapper) to finish rather than for a fixed time.
-    const settled = async () => {
-      const surface = page.locator('[role="dialog"], [role="menu"]').last();
-      await surface.evaluate((el) =>
-        Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished)),
-      );
-    };
     // New lesson is the brief screen since TEACH-122 and New worksheet the creation flow since
     // TEACH-184 (both scanned in the route list); the dialog stays for series.
     for (const label of ["New series"]) {
       await page.getByRole("button", { name: label }).click();
       await expect(page.getByRole("dialog")).toBeVisible();
-      await settled();
+      await settled(page);
       await expectNoSeriousA11yViolations(page, `${label} dialog`, '[role="dialog"]');
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -186,17 +188,19 @@ test.describe("accessibility (axe)", () => {
     await card.hover();
     await card.getByRole("button", { name: "More actions" }).click();
     await expect(page.getByRole("menu")).toBeVisible();
-    await settled();
+    await settled(page);
     await expectNoSeriousA11yViolations(page, "card menu", '[role="menu"]');
     await page.keyboard.press("Escape");
 
     await page.goto(paths.series("series-romans"));
     await page.getByRole("button", { name: "Add lesson" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await settled();
+    await settled(page);
     await expectNoSeriousA11yViolations(page, "Add lessons dialog", '[role="dialog"]');
     await page.keyboard.press("Escape");
+  });
 
+  test("open overlays are clean: editor controls", async ({ signedInPage: { page, paths } }) => {
     // The editor with a text element being typed into: Tiptap's contenteditable plus the text
     // toolbar over it (TEACH-104 row 12).
     await page.goto(paths.lesson("demo-water-cycle"));
@@ -225,19 +229,24 @@ test.describe("accessibility (axe)", () => {
       .getByRole("button", { name: "More" })
       .click();
     await expect(page.getByRole("dialog", { name: "More" })).toBeVisible();
-    await settled();
+    await settled(page);
     await expectNoSeriousA11yViolations(page, "shape toolbar + More drawer");
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Theme" }).click();
     await expect(page.getByRole("dialog", { name: "Theme" })).toBeVisible();
-    await settled();
+    await settled(page);
     await expectNoSeriousA11yViolations(page, "theme dialog", '[role="dialog"]');
     await page.keyboard.press("Escape");
+  });
 
+  test("open overlays are clean: export and import dialogs", async ({
+    signedInPage: { page, paths },
+  }) => {
+    await page.goto(paths.lesson("demo-water-cycle"));
     // The export dialog (TEACH-110 row 12), on the PDF tab it opens on and on JSON.
     await page.getByRole("button", { name: "Export", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Export" })).toBeVisible();
-    await settled();
+    await settled(page);
     await expectNoSeriousA11yViolations(page, "export dialog", '[role="dialog"]');
     await page.getByRole("tab", { name: "JSON" }).click();
     await expectNoSeriousA11yViolations(page, "export dialog (JSON)", '[role="dialog"]');
@@ -254,7 +263,7 @@ test.describe("accessibility (axe)", () => {
     await page.getByRole("button", { name: "Export", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Export" })).toBeVisible();
     await page.getByRole("tab", { name: "Word" }).click();
-    await settled();
+    await settled(page);
     await expectNoSeriousA11yViolations(page, "export dialog (Word)", '[role="dialog"]');
     await page.keyboard.press("Escape");
 
@@ -262,9 +271,14 @@ test.describe("accessibility (axe)", () => {
     await page.goto("/lessons");
     await page.getByRole("button", { name: "Import" }).click();
     await expect(page.getByRole("dialog", { name: "Import" })).toBeVisible();
-    await settled();
+    await settled(page);
     await expectNoSeriousA11yViolations(page, "import dialog", '[role="dialog"]');
     await page.keyboard.press("Escape");
+  });
+
+  test("open overlays are clean: image upload and photo search", async ({
+    signedInPage: { page, paths },
+  }) => {
     await page.goto(paths.lesson("demo-water-cycle"));
     await expect(page.getByRole("toolbar", { name: "Insert" })).toBeVisible();
 
@@ -309,14 +323,14 @@ test.describe("accessibility (axe)", () => {
       .click();
     const imagePanel = page.getByRole("dialog", { name: "Add image" });
     await expect(imagePanel).toBeVisible();
-    await settled();
+    await settled(page);
     await expectNoSeriousA11yViolations(page, "add image panel (upload)", '[role="dialog"]');
     await imagePanel.getByRole("tab", { name: "Photos" }).click();
     const field = imagePanel.getByRole("searchbox", { name: "Search images" });
     await field.fill("river");
     await field.press("Enter");
     await expect(imagePanel.getByRole("button", { name: "River" })).toBeVisible();
-    await settled();
+    await settled(page);
     await expectNoSeriousA11yViolations(page, "add image panel (photos)", '[role="dialog"]');
   });
 });
