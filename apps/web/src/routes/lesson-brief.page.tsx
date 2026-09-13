@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   CreateLessonSchema,
   defaultDurationMin,
@@ -21,7 +21,7 @@ import {
   Textarea,
   toast,
 } from "@tj/ui";
-import { lazy, type ReactNode, Suspense, useId, useMemo, useRef, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ActionBar } from "@/components/brief/action-bar";
 import { ClassContextFields } from "@/components/brief/class-context-fields";
 import { Field, GuardHint } from "@/components/brief/field";
@@ -53,6 +53,7 @@ import {
 import { libraryMutations } from "@/lib/library";
 import { LIBRARY_THEMES } from "@/lib/library-themes";
 import { ApiError } from "@/lib/query";
+import { lessonBriefRoute } from "./lesson-brief.route";
 
 /**
  * `/lessons/new` — the lesson brief (F01 item 2; TEACH-122, TEACH-177). One screen: topic,
@@ -125,22 +126,31 @@ function SelectField({
   );
 }
 
-/** The brief with the last lesson's class filled in, and which fields that covered. */
-function initialBrief(): { state: BriefState; remembered: ReadonlySet<"subject" | "yearGroup"> } {
+/**
+ * The brief with the last lesson's class filled in, and which fields that covered. `topicFromUrl`
+ * (the marketing homepage's `?topic=`, TEACH-309) wins for `topic` only — the remembered subject
+ * and year group are unaffected.
+ */
+function initialBrief(topicFromUrl?: string): {
+  state: BriefState;
+  remembered: ReadonlySet<"subject" | "yearGroup">;
+} {
   const last = readLastClass();
-  if (!last) return { state: INITIAL_BRIEF, remembered: new Set() };
   const remembered = new Set<"subject" | "yearGroup">();
   const state = { ...INITIAL_BRIEF };
-  if (last.subject && SUBJECTS.includes(last.subject)) {
-    state.subject = last.subject;
-    state.subjectOther = last.subject === OTHER_SUBJECT ? last.subjectOther : "";
-    remembered.add("subject");
+  if (last) {
+    if (last.subject && SUBJECTS.includes(last.subject)) {
+      state.subject = last.subject;
+      state.subjectOther = last.subject === OTHER_SUBJECT ? last.subjectOther : "";
+      remembered.add("subject");
+    }
+    if (last.yearGroup && YEAR_GROUPS.includes(last.yearGroup)) {
+      state.yearGroup = last.yearGroup;
+      remembered.add("yearGroup");
+    }
+    if (LIBRARY_THEMES.some((theme) => theme.id === last.themeId)) state.themeId = last.themeId;
   }
-  if (last.yearGroup && YEAR_GROUPS.includes(last.yearGroup)) {
-    state.yearGroup = last.yearGroup;
-    remembered.add("yearGroup");
-  }
-  if (LIBRARY_THEMES.some((theme) => theme.id === last.themeId)) state.themeId = last.themeId;
+  if (topicFromUrl) state.topic = topicFromUrl;
   return { state, remembered };
 }
 
@@ -158,10 +168,17 @@ export function LessonBriefPage() {
   const { mutateAsync: createLesson, isPending } = useMutation(
     libraryMutations.createLesson(queryClient),
   );
-  const [initial] = useState(initialBrief);
+  const { topic: topicParam, source } = useSearch({ from: lessonBriefRoute.id });
+  const topicFromUrl = topicParam?.trim() || undefined;
+  const focusSources = source === "1";
+  const [initial] = useState(() => initialBrief(topicFromUrl));
   const [state, setState] = useState<BriefState>(initial.state);
   const [remembered, setRemembered] = useState(initial.remembered);
-  const [touched, setTouched] = useState<ReadonlySet<GuardedField>>(() => new Set());
+  // A prefilled topic runs through the identifier guard exactly as a typed-and-blurred one would
+  // (TEACH-309 acceptance 6): only its length is silently altered.
+  const [touched, setTouched] = useState<ReadonlySet<GuardedField>>(
+    () => new Set<GuardedField>(topicFromUrl ? ["topic"] : []),
+  );
   const [serverFields, setServerFields] = useState<ReadonlySet<string>>(() => new Set());
   const [blank, setBlank] = useState({ open: false, session: 0 });
   // Which clarifying questions are settled (accepted or skipped), and how many are on screen.
@@ -239,6 +256,16 @@ export function LessonBriefPage() {
       return next;
     });
 
+  // `?topic=` moves focus to Subject, so a stray Enter cannot submit the form (TEACH-309
+  // acceptance 1). `?source=1` takes priority and hands focus to the drop zone instead
+  // (SourceDropZone owns that scroll-and-focus, acceptance 4). Runs once, on mount, from the
+  // URL the page opened with.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only.
+  useEffect(() => {
+    if (focusSources || !topicFromUrl) return;
+    document.getElementById(subjectId)?.focus();
+  }, []);
+
   async function submit(): Promise<void> {
     if (!canCreate) return;
     try {
@@ -285,6 +312,7 @@ export function LessonBriefPage() {
             }
             onBusyChange={setSourcesBusy}
             disabled={isPending}
+            focusChooseFiles={focusSources}
           />
 
           <Field
@@ -302,7 +330,7 @@ export function LessonBriefPage() {
           >
             <Textarea
               id={topicId}
-              autoFocus
+              autoFocus={!topicFromUrl}
               required
               rows={3}
               value={state.topic}

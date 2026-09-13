@@ -31,6 +31,7 @@ export function SourceDropZone({
   onChange,
   onBusyChange,
   disabled = false,
+  focusChooseFiles = false,
 }: {
   sources: SourceRef[];
   /**
@@ -42,11 +43,15 @@ export function SourceDropZone({
   /** Called with `true` while an upload or removal is in flight; Generate is disabled meanwhile. */
   onBusyChange?: (busy: boolean) => void;
   disabled?: boolean;
+  /** `?source=1` (TEACH-309): scroll this zone into view and focus "Choose files" once, on mount. */
+  focusChooseFiles?: boolean;
 }) {
   const inputId = useId();
   const pasteId = useId();
   const liveId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const chooseFilesRef = useRef<HTMLButtonElement>(null);
   const [queue, setQueue] = useState<{ key: number; label: string; input: UploadSourceInput }[]>(
     [],
   );
@@ -68,6 +73,14 @@ export function SourceDropZone({
 
   const full = sources.length + queue.length >= MAX_SOURCES;
   const inert = disabled || full;
+
+  // Runs once, on mount, from the URL the page opened with (`?source=1`, TEACH-309).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only.
+  useEffect(() => {
+    if (!focusChooseFiles) return;
+    sectionRef.current?.scrollIntoView({ block: "nearest" });
+    chooseFilesRef.current?.focus();
+  }, []);
 
   const notify = (message: string) => {
     setNotices((current) => [...current, { id: nextKey.current++, message }]);
@@ -146,7 +159,7 @@ export function SourceDropZone({
   };
 
   return (
-    <section aria-labelledby={`${inputId}-title`} className="flex flex-col gap-3">
+    <section ref={sectionRef} aria-labelledby={`${inputId}-title`} className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <h2 id={`${inputId}-title`} className="text-body font-medium text-foreground">
           Start from your material
@@ -180,6 +193,7 @@ export function SourceDropZone({
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button
+            ref={chooseFilesRef}
             type="button"
             variant="outline"
             size="sm"

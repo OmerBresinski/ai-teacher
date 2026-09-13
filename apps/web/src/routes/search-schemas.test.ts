@@ -6,6 +6,7 @@ import {
   presentSearchSchema,
   worksheetPrintSearchSchema,
 } from "./documents.route";
+import { lessonBriefSearchSchema } from "./lesson-brief.route";
 import { librarySearchSchema } from "./library.route";
 import { signInSearchSchema } from "./sign-in.route";
 
@@ -104,5 +105,30 @@ describe("search schemas drop malformed params", () => {
       slides: undefined,
     });
     expect(parse("")).toEqual({ ...none, slides: undefined });
+  });
+
+  it("lessonBriefSearchSchema.topic: the marketing homepage's ?topic= (TEACH-309)", () => {
+    const parse = (qs: string) => lessonBriefSearchSchema.parse(defaultParseSearch(qs));
+    expect(parse("?topic=Fractions%20of%20amounts")).toEqual({
+      topic: "Fractions of amounts",
+      source: undefined,
+    });
+    // Over-long is truncated, never rejected (BRIEF_TOPIC_MAX = 500).
+    const longTopic = "a".repeat(600);
+    expect(parse(`?topic=${longTopic}`)).toEqual({ topic: "a".repeat(500), source: undefined });
+    // A purely numeric value decodes to a number and is dropped.
+    expect(parse("?topic=123")).toEqual({ topic: undefined, source: undefined });
+    // An array-looking value is dropped too.
+    expect(parse("?topic=%5B%22a%22%5D")).toEqual({ topic: undefined, source: undefined });
+    expect(parse("")).toEqual({ topic: undefined, source: undefined });
+  });
+
+  it('lessonBriefSearchSchema.source: the upload icon\'s ?source=1 (TEACH-309), reusing flag("1")', () => {
+    const parse = (qs: string) => lessonBriefSearchSchema.parse(defaultParseSearch(qs));
+    expect(parse("?source=1")).toEqual({ topic: undefined, source: "1" });
+    expect(parse("?source=%221%22")).toEqual({ topic: undefined, source: "1" });
+    expect(parse("?source=0")).toEqual({ topic: undefined, source: undefined });
+    expect(parse("?source=true")).toEqual({ topic: undefined, source: undefined });
+    expect(parse("")).toEqual({ topic: undefined, source: undefined });
   });
 });

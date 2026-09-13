@@ -50,7 +50,8 @@ export const worksheetPrintSearchSchema = z.object({
  * digits, so `1` / `3` arrive as numbers and a range like `slides=4` as `4`; each is normalised to
  * its string and anything else is dropped rather than thrown.
  */
-const flag = <T extends string>(value: T) =>
+/** Shared with `lessonBriefSearchSchema` (`lesson-brief.route.ts`, TEACH-309). */
+export const flag = <T extends string>(value: T) =>
   z
     .union([z.literal(value), z.literal(Number(value))])
     .transform((): T => value)
