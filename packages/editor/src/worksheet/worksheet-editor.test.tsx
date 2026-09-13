@@ -188,31 +188,35 @@ describe("WorksheetEditor", () => {
     const bank = { ...newBlock("word-bank"), id: "bank" } as WorksheetBlock;
     sheet.blocks = [...sheet.blocks, box, lines, bank];
     const { container, read } = renderWorksheetEditor(sheet);
-    const at = (id: string) => read().blocks.find((b) => b.id === id);
+    const at = <T extends WorksheetBlock["type"]>(id: string, type: T) => {
+      const found = read().blocks.find((b) => b.id === id);
+      if (found?.type !== type) throw new Error(`no ${type} block ${id}`);
+      return found as Extract<WorksheetBlock, { type: T }>;
+    };
+    const spin = (name: string, value: string) => {
+      const field = screen.getByRole("spinbutton", { name });
+      fireEvent.focus(field);
+      fireEvent.change(field, { target: { value } });
+      fireEvent.blur(field);
+    };
 
     select(container, "box");
-    const height = screen.getByRole("spinbutton", { name: "Height" });
-    fireEvent.focus(height);
-    fireEvent.change(height, { target: { value: "120" } });
-    fireEvent.blur(height);
-    expect(at("box")?.type === "answer-box" && at("box")?.heightPt).toBe(120);
+    spin("Height", "120");
+    expect(at("box", "answer-box").heightPt).toBe(120);
 
     select(container, "lines");
-    const count = screen.getByRole("spinbutton", { name: "Lines" });
-    fireEvent.focus(count);
-    fireEvent.change(count, { target: { value: "99" } });
-    fireEvent.blur(count);
-    expect(at("lines")?.type === "lines" && at("lines")?.count).toBe(30); // clamped
+    spin("Lines", "99");
+    expect(at("lines", "lines").count).toBe(30); // clamped to the field's max
 
     select(container, "bank");
-    const words = () => (at("bank")?.type === "word-bank" ? at("bank")?.words.length : -1);
+    const words = () => at("bank", "word-bank").words.length;
     const before = words();
-    fireEvent.click(screen.getByRole("button", { name: "Word", exact: true }));
-    expect(words()).toBe((before ?? 0) + 1);
+    fireEvent.click(screen.getByRole("button", { name: "Word" }));
+    expect(words()).toBe(before + 1);
     fireEvent.click(screen.getByRole("button", { name: "Remove last word" }));
     expect(words()).toBe(before);
     undo();
-    expect(words()).toBe((before ?? 0) + 1);
+    expect(words()).toBe(before + 1);
   });
 
   test("row 6: word-search size is clamped to 8–15 and the words come from the popover", async () => {
