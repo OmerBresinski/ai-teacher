@@ -1,5 +1,11 @@
 import type { SourceLocator } from "@tj/domain/documents";
-import type { ExtractErrorCode, Extraction, ImageMime } from "@tj/extract";
+import type {
+  ExtractErrorCode,
+  Extraction,
+  ExtractionKind,
+  ImageMime,
+  SourceMime,
+} from "@tj/extract";
 
 /** `Extraction` as it crosses the child's stdout: image bytes base64, everything else as is. */
 export interface WireExtraction extends Omit<Extraction, "images"> {
@@ -7,8 +13,8 @@ export interface WireExtraction extends Omit<Extraction, "images"> {
 }
 
 export type ChildAnswer =
-  | { ok: true; extraction: WireExtraction }
-  | { ok: false; code: ExtractErrorCode | "crashed" };
+  | { ok: true; mime: SourceMime; extraction: WireExtraction }
+  | { ok: false; code: ExtractErrorCode | "crashed"; format: ExtractionKind | "unknown" };
 
 export function encodeExtraction(extraction: Extraction): WireExtraction {
   return {

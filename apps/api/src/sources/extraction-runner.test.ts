@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ExtractError, MIME } from "@tj/extract";
-import { docxWith, pdfWithPages, pptxBomb } from "@tj/extract/testing";
+import { docxWith, pdfWithPages, plainZip, pptxBomb } from "@tj/extract/testing";
 import {
   CHILD_RUNNER_DEFAULTS,
   ChildProcessExtractionRunner,
@@ -30,7 +30,8 @@ const input = { bytes: new TextEncoder().encode("hello"), mime: MIME.paste, name
 describe("ChildProcessExtractionRunner (fake child)", () => {
   test("an answering child yields the decoded extraction; stdin carried the bytes", async () => {
     const out = await runner().run(input);
-    expect(out.chunks[0]?.text).toBe(`bytes:5 ${MIME.paste}`);
+    expect(out.mime).toBe(MIME.paste);
+    expect(out.extraction.chunks[0]?.text).toBe(`bytes:5 ${MIME.paste}`);
   });
 
   test("a hung child is killed at the deadline and the slot is reclaimed", async () => {
@@ -126,30 +127,36 @@ describe("ChildProcessExtractionRunner (real child)", () => {
     maxQueue: 2,
     maxOutputBytes: CHILD_RUNNER_DEFAULTS.maxOutputBytes,
   });
+  test("a zip that is neither PPTX nor DOCX is `unsupported` from the child's sniff", async () => {
+    await expect(real.run({ bytes: await plainZip(), name: "z" })).rejects.toMatchObject({
+      name: "ExtractError",
+      code: "unsupported",
+    });
+  }, 30_000);
 
   test("a DOCX and a PDF extract through the child exactly as in-process", async () => {
     const docx = await real.run({
       bytes: await docxWith([{ paragraphs: ["Photosynthesis makes sugar."] }]),
-      mime: MIME.docx,
+      // No mime: the child sniffs it, as in production.
       name: "d",
     });
-    expect(docx.kind).toBe("docx");
-    expect(docx.chunks[0]?.text).toContain("Photosynthesis");
+    expect(docx.mime).toBe(MIME.docx);
+    expect(docx.extraction.kind).toBe("docx");
+    expect(docx.extraction.chunks[0]?.text).toContain("Photosynthesis");
     const pdf = await real.run({
       bytes: await pdfWithPages(["Rivers flow downhill."], { imageOnPage: 1 }),
-      mime: MIME.pdf,
       name: "p",
     });
-    expect(pdf.kind).toBe("pdf");
-    expect(pdf.images).toHaveLength(1);
-    expect(pdf.images[0]?.bytes.subarray(1, 4)).toEqual(new TextEncoder().encode("PNG"));
+    expect(pdf.mime).toBe(MIME.pdf);
+    expect(pdf.extraction.kind).toBe("pdf");
+    expect(pdf.extraction.images).toHaveLength(1);
+    expect(pdf.extraction.images[0]?.bytes.subarray(1, 4)).toEqual(new TextEncoder().encode("PNG"));
   }, 30_000);
 
   test("a zip bomb is refused by the child as too-large with no message text", async () => {
     await expect(
       real.run({
         bytes: await pptxBomb(1024 * 1024),
-        mime: MIME.pptx,
         name: "b",
         limits: { maxUncompressedBytes: 64 * 1024 },
       }),

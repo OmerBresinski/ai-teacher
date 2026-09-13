@@ -5,7 +5,7 @@ import { extractPptx } from "./formats/pptx";
 import { ExtractError, type ExtractInput, type Extraction, MIME, resolveLimits } from "./types";
 
 export { PASTE_SECTION } from "./formats/paste";
-export { sniffMime } from "./mime";
+export { sniffContainer, sniffMime } from "./mime";
 export { isLowText, isRoster, lineTables, screen } from "./screen";
 export {
   ExtractError,

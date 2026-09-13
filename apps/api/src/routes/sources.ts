@@ -29,7 +29,7 @@ import {
   type Refusal,
   type SourceMime,
   screen,
-  sniffMime,
+  sniffContainer,
 } from "@tj/extract";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -145,11 +145,17 @@ const sourceBodyLimit = () =>
     },
   });
 
-/** What the request resolved to before extraction: bytes plus how they are described. */
+/**
+ * What the request resolved to before extraction: bytes plus how they are described. A file's
+ * MIME is known only after the child has sniffed it (`Upload.mime` undefined until then); the
+ * API itself reads nothing but the magic bytes (`sniffContainer`), so no parser — not even the zip
+ * central directory — runs in the request process (TEACH-278).
+ */
 interface Upload {
   bytes: Uint8Array;
-  mime: SourceMime;
+  mime: SourceMime | undefined;
   kind: SourceRow["kind"];
+  /** The teacher's name for it, or empty: the default needs the sniffed MIME. */
   name: string;
 }
 
@@ -158,12 +164,10 @@ async function readUpload(form: z.infer<typeof uploadForm>): Promise<Upload> {
     if (form.file.size > MAX_FILE_BYTES)
       throw new HTTPException(413, { message: TOO_LARGE_MESSAGE });
     const bytes = new Uint8Array(await form.file.arrayBuffer());
-    const mime = await sniffMime(bytes).catch(() => null);
-    if (mime === null) {
+    if (sniffContainer(bytes) === null) {
       throw new SourceRefusedError("unsupported", REFUSAL_MESSAGES.unsupported());
     }
-    const name = (form.name || form.file.name || `upload.${EXT[mime]}`).slice(0, SOURCE_NAME_MAX);
-    return { bytes, mime, kind: "file", name };
+    return { bytes, mime: undefined, kind: "file", name: form.name || form.file.name || "" };
   }
   return {
     bytes: new TextEncoder().encode(form.text ?? ""),
@@ -196,6 +200,10 @@ async function extractOrRefuse(
       c.header("Retry-After", String(error.retryAfterSeconds));
       throw new HTTPException(503, { message: EXTRACTION_BUSY_MESSAGE });
     }
+    if (error instanceof ExtractError && error.code === "unsupported") {
+      // A zip that is neither a PPTX nor a DOCX: the child sniffed it.
+      throw new SourceRefusedError("unsupported", REFUSAL_MESSAGES.unsupported());
+    }
     const code =
       error instanceof ExtractError
         ? error.code
@@ -215,7 +223,7 @@ async function writeObjects(
   storage: StorageAdapter,
   workspaceId: WorkspaceId,
   sourceId: string,
-  upload: Upload,
+  upload: Upload & { mime: SourceMime },
   extraction: Extraction,
   lowText: boolean,
 ): Promise<string[]> {
@@ -302,7 +310,15 @@ export function sourceRoutes(
         const sourceId = newId();
 
         const upload = await readUpload(c.req.valid("form"));
-        const extracted = await extractOrRefuse(extraction, upload, log, sourceId, c);
+        const { mime, extraction: extracted } = await extractOrRefuse(
+          extraction,
+          upload,
+          log,
+          sourceId,
+          c,
+        );
+        upload.mime = mime;
+        upload.name = (upload.name || `upload.${EXT[mime]}`).slice(0, SOURCE_NAME_MAX);
         const refusal = screen(extracted);
         if (refusal !== null) {
           log?.info({ sourceId, kind: extracted.kind, refused: refusal.reason }, "source refused");
@@ -314,14 +330,14 @@ export function sourceRoutes(
           id: sourceId,
           kind: upload.kind,
           name: upload.name,
-          mime: upload.mime,
+          mime,
           byteSize: upload.bytes.byteLength,
-          storageKey: storageKey(workspaceId, "sources", sourceId, `original.${EXT[upload.mime]}`),
+          storageKey: storageKey(workspaceId, "sources", sourceId, `original.${EXT[mime]}`),
           pages: extracted.pages,
           lowText,
         });
         try {
-          await writeObjects(store, workspaceId, sourceId, upload, extracted, lowText);
+          await writeObjects(store, workspaceId, sourceId, { ...upload, mime }, extracted, lowText);
         } catch (error) {
           log?.error({ sourceId, err: error }, "source objects could not be written");
           await deleteSourceObjects(store, workspaceId, sourceId, log);

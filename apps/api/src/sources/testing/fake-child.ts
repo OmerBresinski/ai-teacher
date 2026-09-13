@@ -30,6 +30,7 @@ if (mode === "garbage") {
 process.stdout.write(
   `${JSON.stringify({
     ok: true,
+    mime: process.env.EXTRACT_MIME ?? "text/plain",
     extraction: {
       kind: "paste",
       pages: 1,

@@ -236,9 +236,15 @@ decoded, and that the pdfjs proxy was never destroyed. The decision is amended a
    `503` with `Retry-After` before anything is spawned. `EXTRACT_CHILD_MAX_VMEM_MB` optionally adds
    `ulimit -v` (Linux only; see infra/README.md "Source extraction" for the verified value). The
    child's stderr is discarded and its answer carries an `ExtractErrorCode` only, so a failure is
-   content-free. The request remains synchronous (§1): the teacher still waits for extract →
-   screen → store; only the process boundary is new.
+   content-free. The API itself reads nothing but the magic bytes (`sniffContainer`); the zip
+   central-directory parse (`sniffMime`, now bounded by `maxZipEntries`) runs in the child, whose
+   answer carries the sniffed MIME. The request remains synchronous (§1): the teacher still waits
+   for extract → screen → store; only the process boundary is new.
 3. **What this does not do.** A Promise timeout cannot stop synchronous deflation or parsing — only
-   the process kill does. Memory is bounded by the caps in (1) plus the optional address-space
-   limit, not by RSS supervision. Concurrency is per api replica (in-memory), like the rate
-   limiter (ADR 0027 §5; the durable admission design is TEACH-279).
+   the process kill does. Two allocations happen inside libraries before our caps can see them and
+   are bounded only by the child boundary (deadline, optional address-space limit): pdfjs decodes
+   an image's pixels before `extractImages` reports its dimensions, and mammoth builds a DOCX's
+   whole HTML (bounded by the container's already-counted uncompressed bytes × ~1.4 for base64
+   images) before `maxTextChars` is checked. Memory is otherwise bounded by the caps in (1), not by
+   RSS supervision. Concurrency is per api replica (in-memory), like the rate limiter (ADR 0027
+   §5; the durable admission design is TEACH-279).

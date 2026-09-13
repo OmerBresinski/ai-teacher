@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import JSZip from "jszip";
 import { encodePng } from "./formats/png";
-import { extract, MIME } from "./index";
+import { extract, MIME, sniffContainer, sniffMime } from "./index";
 import { openZip, ZipReader } from "./mime";
 import { docxBomb, docxWith, pdfWithPages, pptxBomb } from "./testing/fixtures";
 import { LIMITS, resolveLimits } from "./types";
@@ -193,5 +193,25 @@ describe("encodePng refuses giant dimensions before allocating", () => {
     const forged = { data: new Uint8Array(16), width: 100_000, height: 100_000, channels: 4 };
     expect(encodePng(forged, LIMITS.maxImagePixels)).toBeNull();
     expect(encodePng({ ...tiny, width: 2.5 })).toBeNull();
+  });
+});
+
+describe("sniffMime bounds the central directory", () => {
+  test("a zip with more entries than maxZipEntries is too-large at sniff time", async () => {
+    const zip = new JSZip();
+    zip.file("ppt/presentation.xml", "<p/>");
+    for (let i = 0; i < 30; i++) zip.file(`ppt/media/${i}.bin`, "x");
+    const bytes = await zip.generateAsync({ type: "uint8array" });
+    await expect(sniffMime(bytes, resolveLimits({ maxZipEntries: 10 }))).rejects.toMatchObject({
+      code: "too-large",
+    });
+    expect(await sniffMime(bytes)).toBe(MIME.pptx);
+  });
+
+  test("sniffContainer reads magic bytes only", async () => {
+    expect(sniffContainer(new TextEncoder().encode("%PDF-1.4"))).toBe("pdf");
+    expect(sniffContainer(await docxWith([{ paragraphs: ["a"] }]))).toBe("zip");
+    expect(sniffContainer(new TextEncoder().encode("hello"))).toBeNull();
+    expect(sniffContainer(new Uint8Array())).toBeNull();
   });
 });

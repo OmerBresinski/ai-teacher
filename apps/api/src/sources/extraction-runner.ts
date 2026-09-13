@@ -17,20 +17,16 @@
  */
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  ExtractError,
-  type ExtractInput,
-  type Extraction,
-  type ExtractionKind,
-  MIME,
-} from "@tj/extract";
+import { ExtractError, type ExtractInput } from "@tj/extract";
 import { z } from "zod";
 import { type ChildAnswer, decodeExtraction } from "./protocol";
 import {
   ExtractionBusyError,
   ExtractionFailedError,
   type ExtractionRunner,
+  type RunInput,
   type RunOptions,
+  type RunResult,
 } from "./runner";
 
 export {
@@ -38,7 +34,9 @@ export {
   ExtractionFailedError,
   type ExtractionRunner,
   InProcessExtractionRunner,
+  type RunInput,
   type RunOptions,
+  type RunResult,
 } from "./runner";
 
 export interface ChildRunnerConfig {
@@ -111,10 +109,6 @@ export function loadChildRunnerConfig(
   };
 }
 
-const kindOf = (mime: ExtractInput["mime"]): ExtractionKind | "unknown" =>
-  (Object.entries(MIME) as [ExtractionKind, string][]).find(([, m]) => m === mime)?.[0] ??
-  "unknown";
-
 /** A counting semaphore with a bounded wait queue. */
 class Slots {
   private running = 0;
@@ -179,7 +173,7 @@ export class ChildProcessExtractionRunner implements ExtractionRunner {
     return { running: this.slots.inUse, queued: this.slots.queued };
   }
 
-  async run(input: ExtractInput, options: RunOptions = {}): Promise<Extraction> {
+  async run(input: RunInput, options: RunOptions = {}): Promise<RunResult> {
     if (options.signal?.aborted) throw new ExtractionFailedError("aborted");
     const release = await this.slots.acquire(options.signal);
     try {
@@ -206,7 +200,7 @@ export class ChildProcessExtractionRunner implements ExtractionRunner {
     ];
   }
 
-  private spawn(input: ExtractInput, signal?: AbortSignal): Promise<Extraction> {
+  private spawn(input: RunInput, signal?: AbortSignal): Promise<RunResult> {
     const limits = { ...this.config.limits, ...input.limits };
     const proc = Bun.spawn(this.command(), {
       stdin: input.bytes,
@@ -216,13 +210,13 @@ export class ChildProcessExtractionRunner implements ExtractionRunner {
         PATH: process.env.PATH ?? "",
         HOME: process.env.HOME ?? "/tmp",
         NODE_ENV: process.env.NODE_ENV ?? "production",
-        EXTRACT_MIME: input.mime,
+        ...(input.mime ? { EXTRACT_MIME: input.mime } : {}),
         ...(Object.keys(limits).length > 0 ? { EXTRACT_LIMITS: JSON.stringify(limits) } : {}),
         ...this.config.childEnv,
       },
     });
 
-    return new Promise<Extraction>((resolve, reject) => {
+    return new Promise<RunResult>((resolve, reject) => {
       let settled = false;
       let why: ExtractionFailedError["why"] | null = null;
       const finish = (fn: () => void) => {
@@ -280,15 +274,19 @@ export class ChildProcessExtractionRunner implements ExtractionRunner {
               return;
             }
             if (parsed.ok === true) {
-              resolve(decodeExtraction(parsed.extraction));
+              resolve({ mime: parsed.mime, extraction: decodeExtraction(parsed.extraction) });
             } else if (parsed.code === "crashed") {
               reject(new ExtractionFailedError("crashed", exitCode));
             } else {
-              reject(new ExtractError(parsed.code, kindOf(input.mime)));
+              reject(new ExtractError(parsed.code, parsed.format));
             }
           });
         })
-        .catch(() => finish(() => reject(new ExtractionFailedError(why ?? "crashed"))));
+        .catch(() => {
+          // A reader or pipe failure must not leave the child working after the slot is freed.
+          kill("crashed");
+          finish(() => reject(new ExtractionFailedError(why ?? "crashed")));
+        });
     });
   }
 }

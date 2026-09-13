@@ -10,16 +10,34 @@ function startsWith(bytes: Uint8Array, magic: number[]): boolean {
 }
 
 /**
+ * The container from the magic bytes alone: `pdf`, `zip` (a PPTX or DOCX candidate) or `null`.
+ * Constant work, so the API can answer `unsupported` for anything else without touching a
+ * parser; the zip's central directory is read by `sniffMime`, in the extraction child.
+ */
+export function sniffContainer(bytes: Uint8Array): "pdf" | "zip" | null {
+  if (startsWith(bytes, PDF_MAGIC)) return "pdf";
+  if (startsWith(bytes, ZIP_MAGIC)) return "zip";
+  return null;
+}
+
+/**
  * The document's real type from its bytes (ADR 0027 §2, §5): the type the browser declared is
  * never consulted. A zip is a PPTX when it carries `ppt/presentation.xml`, a DOCX when
  * `word/document.xml`; anything else is `null` and the route answers `unsupported`. Pasted text is
- * never sniffed — the route passes `text/plain` itself. Sniffing reads the central directory only;
- * no entry is inflated.
+ * never sniffed — the route passes `text/plain` itself. Sniffing reads the central directory only
+ * (no entry is inflated) and refuses one with more than `maxZipEntries` entries.
  */
-export async function sniffMime(bytes: Uint8Array): Promise<SourceMime | null> {
-  if (startsWith(bytes, PDF_MAGIC)) return "application/pdf";
-  if (!startsWith(bytes, ZIP_MAGIC)) return null;
+export async function sniffMime(
+  bytes: Uint8Array,
+  limits: ExtractLimits = LIMITS,
+): Promise<SourceMime | null> {
+  const container = sniffContainer(bytes);
+  if (container === "pdf") return "application/pdf";
+  if (container !== "zip") return null;
   const zip = await openZip(bytes, "unknown");
+  if (Object.keys(zip.files).length > limits.maxZipEntries) {
+    throw new ExtractError("too-large", "unknown");
+  }
   if (zip.file("ppt/presentation.xml") !== null) {
     return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
   }

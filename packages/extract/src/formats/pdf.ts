@@ -1,4 +1,4 @@
-import { extractImages, extractText, getDocumentProxy } from "unpdf";
+import { extractImages, getDocumentProxy } from "unpdf";
 import {
   ExtractError,
   type ExtractedImage,
@@ -69,19 +69,21 @@ async function readPdf(
     return { kind: "pdf", pages: totalPages, chunks: [], tables: [], images: [] };
   }
 
-  let pages: string[];
-  try {
-    pages = (await extractText(doc, { mergePages: false })).text;
-  } catch {
-    throw new ExtractError("malformed", "pdf");
-  }
+  // One page at a time (what unpdf's `extractText` does for all pages at once, minus the
+  // `Promise.all`): the running total is checked before the next page's text is materialised.
   let textChars = 0;
   const chunks: Extraction["chunks"] = [];
-  for (const [i, raw] of pages.entries()) {
-    const text = normalise(raw);
-    textChars += text.length;
+  for (let page = 1; page <= totalPages; page++) {
+    let raw: string;
+    try {
+      raw = await pageText(doc, page);
+    } catch {
+      throw new ExtractError("malformed", "pdf");
+    }
+    textChars += raw.length;
     if (textChars > limits.maxTextChars) throw new ExtractError("too-large", "pdf");
-    if (text.length > 0) chunks.push({ ref: { page: i + 1 }, text });
+    const text = normalise(raw);
+    if (text.length > 0) chunks.push({ ref: { page }, text });
   }
 
   const images: ExtractedImage[] = [];
@@ -95,7 +97,9 @@ async function readPdf(
     }
     for (const img of raw) {
       if (img.width < MIN_IMAGE_SIDE || img.height < MIN_IMAGE_SIDE) continue;
-      // Bounded before the PNG buffer exists: pixels here, encoded total below.
+      // pdfjs has decoded the pixels by now (its display API exposes no pre-decode dimensions);
+      // that allocation is what the child process boundary is for. What is bounded here is ours:
+      // the PNG scanline buffer, the deflate and the encoded total.
       if (img.width * img.height > limits.maxImagePixels) continue;
       const png = encodePng(img, limits.maxImagePixels);
       if (png === null) continue;
@@ -108,6 +112,20 @@ async function readPdf(
   }
 
   return { kind: "pdf", pages: totalPages, chunks, tables: [], images };
+}
+
+/** A page's text as unpdf 1.8.1 `getPageText` builds it: item strings, a newline where `hasEOL`. */
+async function pageText(
+  doc: Awaited<ReturnType<typeof getDocumentProxy>>,
+  pageNumber: number,
+): Promise<string> {
+  const content = await (await doc.getPage(pageNumber)).getTextContent();
+  let out = "";
+  for (const item of content.items) {
+    if (!("str" in item) || item.str == null) continue;
+    out += item.str + (item.hasEOL ? "\n" : "");
+  }
+  return out;
 }
 
 function normalise(text: string): string {
