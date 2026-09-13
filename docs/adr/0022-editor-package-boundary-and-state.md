@@ -125,8 +125,11 @@ client; abort signals and post-await checks discard late results and prevent a d
 from dispatching with the next session. Proposal Undo/View toasts are cleared too.
 
 Cross-tab notifications contain only opaque user/Workspace IDs and a revision, never credentials or
-Document content. They trigger a fresh `/me` check, not authorization. Route navigation revalidates
-`/me`; active sessions also check on focus/reconnect and every 30 seconds. Sign-out clears local
+Document content. They retire private state into an undecided epoch and trigger a fresh `/me`
+check; only that response establishes identity. BFCache restoration follows the same revalidation
+path. Route navigation revalidates `/me`; active sessions also check on focus/reconnect and every
+30 seconds. Transient background transport failures retain the current epoch and retry later;
+they are not treated as confirmed revocation. Sign-out clears local
 private state immediately; a failed server response is explicitly reported on the sign-in page,
 with a retry action. Theme/layout preferences stay; the remembered class context is removed.
 Server-side authoritative revocation and open-stream authorization remain TEACH-283: this browser

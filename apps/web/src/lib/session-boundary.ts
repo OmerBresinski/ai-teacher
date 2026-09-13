@@ -85,7 +85,7 @@ type State = {
   locked: boolean;
   notice: string | null;
 };
-type Announcement = { identity: string | null; failed?: boolean };
+type Announcement = { identity: string | null };
 
 /** Each identity gets a new QueryClient; protected React/router trees are replaced with it. */
 export class SessionBoundary {
@@ -136,6 +136,19 @@ export class SessionBoundary {
     this.notify();
   }
 
+  /** Forget private state, but leave identity undecided until this new client's /me completes. */
+  revalidate(): void {
+    retireSessionClient(this.state.client);
+    this.state = {
+      epoch: this.state.epoch + 1,
+      client: this.newClient(),
+      identity: undefined,
+      locked: false,
+      notice: null,
+    };
+    this.notify();
+  }
+
   confirm(client: QueryClient, identity: string | null): void {
     assertCurrentSession(client);
     if (client !== this.state.client) return; // isolated component-test clients
@@ -154,23 +167,20 @@ export class SessionBoundary {
     if (!value || typeof value !== "object" || !("identity" in value)) return;
     const { identity } = value;
     if (identity !== null && (typeof identity !== "string" || identity.length > 256)) return;
-    const failed = "failed" in value && value.failed === true;
-    if (identity === null || identity !== this.state.identity) {
-      this.reset(identity, identity === null, failed ? SIGN_OUT_FAILED : null);
-    }
+    if (identity !== this.state.identity) this.revalidate();
   }
 
   async signOut(send: () => Promise<{ error?: unknown }>): Promise<void> {
     this.reset(null, true);
-    this.announce({ identity: null });
     const epoch = this.state.epoch;
     try {
       const result = await send();
       if (result.error) throw new Error("Sign-out failed");
+      // Other tabs revalidate only after the server has answered, not while revocation is pending.
+      this.announce({ identity: null });
     } catch {
       if (this.state.epoch !== epoch) return;
       this.state = { ...this.state, notice: SIGN_OUT_FAILED };
-      this.announce({ identity: null, failed: true });
       this.notify();
     }
   }

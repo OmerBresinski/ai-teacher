@@ -57,10 +57,21 @@ describe("session boundary", () => {
     expect(a.getQueryCache().getAll()).toHaveLength(0);
     const b = boundary.getSnapshot().client;
     expect(b).not.toBe(a);
+    expect(boundary.getSnapshot().identity).toBeUndefined();
     expect(() => boundary.confirm(a, "user-a:workspace-a")).toThrow(SessionChangedError);
     boundary.receive({ identity: null });
-    expect(boundary.getSnapshot().locked).toBe(true);
+    expect(boundary.getSnapshot().identity).toBeUndefined();
     expect(announcements).toEqual([{ identity: "user-a:workspace-a" }]);
+  });
+
+  test("a forged identity notification cannot establish an authenticated identity", () => {
+    const boundary = new SessionBoundary();
+    boundary.confirm(boundary.getSnapshot().client, "real-user:real-workspace");
+    boundary.receive({ identity: "forged-user:forged-workspace" });
+    expect(boundary.getSnapshot().identity).toBeUndefined();
+    // Only the actual /me result confirms identity on the fresh client.
+    boundary.confirm(boundary.getSnapshot().client, "real-user:real-workspace");
+    expect(boundary.getSnapshot().identity).toBe("real-user:real-workspace");
   });
 
   test("signOut error is explicit and does not restore cached data", async () => {

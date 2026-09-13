@@ -2,6 +2,51 @@ import { E2E_WEB_URL, expect, signIn, test, uniqueEmail } from "./fixtures";
 
 test.use({ screenshot: "off" });
 
+test("transient /me failures preserve an active editor and pending local work", async ({
+  signedInPage: { page, paths },
+}) => {
+  const path = paths.lesson("demo-water-cycle");
+  await page.goto(path);
+  await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
+  let failures = 0;
+  let failedTwice!: () => void;
+  const retried = new Promise<void>((resolve) => {
+    failedTwice = resolve;
+  });
+  await page.route("**/me", async (route) => {
+    await route.fulfill({
+      status: 500,
+      headers: {
+        "access-control-allow-origin": E2E_WEB_URL,
+        "access-control-allow-credentials": "true",
+      },
+      json: { error: { code: "internal", message: "Synthetic outage" } },
+    });
+    if (++failures >= 2) failedTwice();
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await retried;
+  await expect(page).toHaveURL(`${E2E_WEB_URL}${path}`);
+  await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
+});
+
+test("BFCache restoration revalidates a valid session and preserves the route", async ({
+  signedInPage: { page, paths },
+}) => {
+  const path = paths.lesson("demo-water-cycle");
+  await page.goto(path);
+  await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
+  const checked = page.waitForResponse(
+    (response) => response.url().endsWith("/me") && response.status() === 200,
+  );
+  await page.evaluate(() =>
+    window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })),
+  );
+  await checked;
+  await expect(page).toHaveURL(`${E2E_WEB_URL}${path}`);
+  await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
+});
+
 test("logout in another tab clears the editor; B signs in without reloading A's tab", async ({
   signedInPage: { page, paths },
   context,
@@ -23,6 +68,9 @@ test("logout in another tab clears the editor; B signs in without reloading A's 
   await expect(page).toHaveURL(/\/lessons$/);
   await expect(page.getByRole("heading", { name: "Lessons", exact: true })).toBeVisible();
   await expect(page.locator("article")).toHaveCount(0);
+  await page.getByRole("link", { name: /^Worksheets/ }).click();
+  await expect(page.getByRole("heading", { name: "Worksheets", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => sessionStorage.getItem("tj:last-shell"))).toBe("/worksheets");
   expect(
     await page.evaluate(
       () => (window as unknown as { sessionTestMarker: string }).sessionTestMarker,
