@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
@@ -8,6 +7,7 @@ import { PROMPT_VERSIONS, VERB_WRITING } from "../prompts";
 import { lessonShapeOf } from "../shapes";
 import { assignFactIds, planFactsSchemaFor } from "../specs";
 import {
+  callLimitedBudget,
   FIXTURES,
   initialState,
   memoryLogger,
@@ -25,9 +25,6 @@ import { BUDGET_FINDING, blockText, slideText, specFieldsCover, specFieldsOf } f
 
 const json = (v: unknown) => JSON.stringify(v);
 const usage = { inputTokens: 1000, outputTokens: 400 };
-/** One fake call's cost on the standard class at the current list price (not hard-coded dollars). */
-const STANDARD_CALL_USD = costUsd(DEFAULT_MODEL_IDS.standard, usage) ?? 0;
-const SMALL_CALL_USD = costUsd(DEFAULT_MODEL_IDS.small, usage) ?? 0;
 
 const planScript = () => [
   json(FIXTURES.planSkeleton),
@@ -297,10 +294,9 @@ describe("plan", () => {
 
   test("a budget stop on the facts call keeps the skeleton facts, records the finding, reaches planned", async () => {
     const ai = createFakeAi({ script: planScript(), usage });
-    // Below one call's worth of standard-class tokens: the budget is checked before each call,
-    // so the first goes ahead at zero spend and the second is refused.
+    // Stage behavior on refusal is separate from the real monetary admission tests in @tj/ai.
     const deps = recordingDeps(ai, {
-      budget: createBudget({ capUsd: STANDARD_CALL_USD / 2, capTokens: 1_000_000 }),
+      budget: callLimitedBudget(1),
     });
     const state = await plan(initialState(), deps);
     expect(ai.calls).toHaveLength(1);
@@ -366,9 +362,9 @@ describe("plan", () => {
 
     test("row 5: the budget spent before Verify refuses it; planned is reached and the result carries one budget finding", async () => {
       const ai = createFakeAi({ script: planScript(), usage });
-      // Two calls' worth and a little: skeleton and facts go ahead, Verify is refused.
+      // Skeleton and facts reserve successfully; Verify's reservation is refused.
       const deps = recordingDeps(ai, {
-        budget: createBudget({ capUsd: STANDARD_CALL_USD * 1.5, capTokens: 1_000_000 }),
+        budget: callLimitedBudget(2),
       });
       const { state, verify } = await planVerified(initialState(), deps);
       expect(ai.calls).toHaveLength(2);
@@ -597,9 +593,8 @@ describe("generate", () => {
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
     const ai = createFakeAi({ script: routed([...slides, json(FIXTURES.worksheet)]), usage });
-    // Under one batch's worth of small-class tokens at list price: the first four slide calls and
-    // the worksheet start together at zero spend, the fifth slide is refused (row 5).
-    const budget = createBudget({ capUsd: SMALL_CALL_USD * 2.5, capTokens: 1_000_000 });
+    // The batch and worksheet must each be admitted; the next reservation is refused.
+    const budget = callLimitedBudget(GENERATE_CONCURRENCY + 1);
     const deps = recordingDeps(ai, { budget });
     const state = await generate(start, deps);
     expect(ai.calls).toHaveLength(GENERATE_CONCURRENCY + 1);
@@ -1214,7 +1209,7 @@ describe("generate", () => {
       const ai = createFakeAi({ script: generateScript(), usage });
       // One batch's worth plus the worksheet: the first four slide calls go ahead; the vocabulary
       // slide's second call (and every later slide) is refused.
-      const budget = createBudget({ capUsd: SMALL_CALL_USD * 3.5, capTokens: 1_000_000 });
+      const budget = callLimitedBudget(GENERATE_CONCURRENCY + 1);
       const deps = recordingDeps(ai, { budget });
       const run = generate(state, deps);
       await new Promise((r) => setTimeout(r, 5));
@@ -1233,7 +1228,7 @@ describe("generate", () => {
 
     test("skeleton-only facts (the facts call was refused at the cap) are not verified on resume", async () => {
       const planAi = createFakeAi({ script: planScript(), usage });
-      const budget = createBudget({ capUsd: STANDARD_CALL_USD / 2, capTokens: 1_000_000 });
+      const budget = callLimitedBudget(1);
       const start = await plan(initialState(), recordingDeps(planAi, { budget }));
       expect(start.pendingVerify).toBeUndefined();
       expect(start.lesson.facts?.questions).toEqual([]);
@@ -1250,7 +1245,7 @@ describe("generate", () => {
     test("row 5: a budget stop during Verify — one budget finding, no regeneration, slides from the unpatched facts, the lesson completes", async () => {
       const planAi = createFakeAi({ script: planScript(), usage });
       // Skeleton and facts go ahead; Verify is refused at the cap.
-      const budget = createBudget({ capUsd: STANDARD_CALL_USD * 1.5, capTokens: 1_000_000 });
+      const budget = callLimitedBudget(2);
       const start = await plan(initialState(), recordingDeps(planAi, { budget }));
       expect(planAi.calls).toHaveLength(2);
       // Generate gets a fresh budget: the stop was Verify's alone.

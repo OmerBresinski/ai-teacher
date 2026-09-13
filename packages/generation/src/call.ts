@@ -1,4 +1,9 @@
-import { isAiError, isAnthropicModelId } from "@tj/ai";
+import {
+  BudgetReservationError,
+  isAiError,
+  isAnthropicModelId,
+  withGenerationBudget,
+} from "@tj/ai";
 import { type ModelClass, safeValidationIssues } from "@tj/domain";
 import type { Finding, FindingSeverity, FindingTarget } from "@tj/domain/documents";
 import { isEditorialIssue } from "@tj/slides";
@@ -78,8 +83,8 @@ export interface CallStructuredOptions<I, T> {
 }
 
 export interface CallUsage {
-  inputTokens: number;
-  outputTokens: number;
+  inputTokens: number | undefined;
+  outputTokens: number | undefined;
   cachedInputTokens?: number | undefined;
 }
 
@@ -236,7 +241,11 @@ export async function callStructured<I, T>(
   const exceeded = deps.budget.exceeded();
   if (exceeded) throw new BudgetExceeded(exceeded.by);
   const modelId = deps.ai.modelId(cls);
-  const model = deps.ai.model(cls, callContext(deps, stage, prompt.version, effort));
+  const model = withGenerationBudget(
+    deps.ai.model(cls, callContext(deps, stage, prompt.version, effort)),
+    modelId,
+    deps.budget,
+  );
   const userText = prompt.user(input);
   const output = repairingObjectOutput(schema, (repairs) => {
     // Repair kinds only — never the text (ADR 0015). Counted so a model change that makes the
@@ -257,14 +266,15 @@ export async function callStructured<I, T>(
           output,
           abortSignal,
           maxOutputTokens,
+          maxRetries: 0,
           // The same effort on the retry: a schema miss is a shape problem, not a thinking one.
           ...providerOptionsFor(modelId, effort),
         }),
       );
       const usage = usageOf(result.usage);
-      deps.budget.charge(modelId, usage);
       return { output: result.output, usage, attempts: 1, modelId, editorialMisses: [] };
     } catch (error) {
+      if (error instanceof BudgetReservationError) throw new BudgetExceeded(error.by);
       if (error instanceof CallTimeout) {
         deps.logger.warn(
           { stage, promptVersion: prompt.version, timeoutMs },
@@ -292,7 +302,6 @@ export async function callStructured<I, T>(
     let retryText = userText;
     if (NoObjectGeneratedError.isInstance(error)) {
       // The failed attempt was still paid for. `error.text` (the model's words) is never logged.
-      if (error.usage) deps.budget.charge(modelId, usageOf(error.usage));
       const issues = issuesOf(error);
       // Log finite issue codes/counts; even paths and custom messages may echo model content.
       deps.logger.info(
@@ -315,7 +324,6 @@ export async function callStructured<I, T>(
       return { ...second, attempts: 2 };
     } catch (again) {
       if (!NoObjectGeneratedError.isInstance(again)) throw again;
-      if (again.usage) deps.budget.charge(modelId, usageOf(again.usage));
       const misses = editorialMissesOf(again);
       const logged = {
         stage,
@@ -398,12 +406,12 @@ function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
 function usageOf(usage: {
   inputTokens?: number | undefined;
   outputTokens?: number | undefined;
-  cachedInputTokens?: number | undefined;
+  inputTokenDetails?: { cacheReadTokens?: number | undefined };
 }): CallUsage {
   return {
-    inputTokens: usage.inputTokens ?? 0,
-    outputTokens: usage.outputTokens ?? 0,
-    cachedInputTokens: usage.cachedInputTokens,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    cachedInputTokens: usage.inputTokenDetails?.cacheReadTokens,
   };
 }
 

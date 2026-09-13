@@ -26,6 +26,7 @@ interface AiLogFields extends AiCallContext {
   inputTokens: number | null;
   outputTokens: number | null;
   cachedInputTokens?: number;
+  cacheWriteInputTokens?: number;
   /** ADR 0025 §15: list price of this call, `null` for an unpriced model id. */
   costUsd: number | null;
   finishReason: string;
@@ -48,12 +49,17 @@ function logSuccess(
   options: LoggingMiddlewareOptions,
   startedAt: number,
   usage: {
-    inputTokens: { total: number | undefined; cacheRead: number | undefined };
+    inputTokens: {
+      total: number | undefined;
+      cacheRead: number | undefined;
+      cacheWrite?: number | undefined;
+    };
     outputTokens: { total: number | undefined };
   },
   finishReason: string,
 ) {
   const cachedInputTokens = usage.inputTokens.cacheRead;
+  const cacheWriteInputTokens = usage.inputTokens.cacheWrite;
   const inputTokens = usage.inputTokens.total ?? null;
   const outputTokens = usage.outputTokens.total ?? null;
   const ai: AiLogFields = {
@@ -67,10 +73,16 @@ function logSuccess(
     costUsd:
       inputTokens === null || outputTokens === null
         ? null
-        : costUsd(options.modelId, { inputTokens, outputTokens, cachedInputTokens }),
+        : costUsd(options.modelId, {
+            inputTokens,
+            outputTokens,
+            cachedInputTokens,
+            cacheWriteInputTokens,
+          }),
     finishReason,
   };
   if (cachedInputTokens !== undefined) ai.cachedInputTokens = cachedInputTokens;
+  if (cacheWriteInputTokens !== undefined) ai.cacheWriteInputTokens = cacheWriteInputTokens;
   logger.info({ ai });
 }
 

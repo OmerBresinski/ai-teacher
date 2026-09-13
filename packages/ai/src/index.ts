@@ -1,4 +1,17 @@
-export { type Budget, type BudgetOptions, type BudgetTotals, createBudget } from "./budget";
+export {
+  type Budget,
+  type BudgetLimit,
+  type BudgetOptions,
+  type BudgetReservation,
+  type BudgetTotals,
+  type BudgetUsage,
+  createBudget,
+} from "./budget";
+export {
+  BudgetReservationError,
+  UnestimableCallError,
+  withGenerationBudget,
+} from "./budget-middleware";
 export {
   createAi,
   DEFAULT_MODEL_IDS,

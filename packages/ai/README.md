@@ -22,9 +22,9 @@ const result = await generateText({
 | --- | --- |
 | `AWS_BEARER_TOKEN_BEDROCK` | Bedrock bearer API key. A blank value is unset; without it the client is `unconfigured`. |
 | `AWS_REGION` | Bedrock region. Defaults to `us-east-1`. |
-| `AI_MODEL_FRONTIER` | `frontier` model ID. Default `us.anthropic.claude-opus-5`. |
-| `AI_MODEL_STANDARD` | `standard` model ID. Default `us.openai.gpt-5.6-luna` (TEACH-205). |
-| `AI_MODEL_SMALL` | `small` model ID. Default `us.anthropic.claude-haiku-4-5-20251001-v1:0`. |
+| `AI_MODEL_FRONTIER` | `frontier` model ID. Default `us.openai.gpt-5.6-sol`. |
+| `AI_MODEL_STANDARD` | `standard` model ID. Default `us.openai.gpt-5.6-terra`. |
+| `AI_MODEL_SMALL` | `small` model ID. Default `us.openai.gpt-5.6-luna`. |
 
 Model classes are defined in `@tj/domain`: `frontier` is for planning and adaptation, `standard`
 for plans and outlines, and `small` for items, variants, and summaries. Callers select a class, not
@@ -43,14 +43,33 @@ Each `generateText` or consumed `streamText` call through `ai.model(class)` emit
 contains only model class, model ID, provider, duration, input/output/cache token counts, and finish
 reason. Prompts, messages, completion text, and API keys are never logged.
 
-`AiError` codes are `"unconfigured"`, `"provider"`, and `"invalid_model"`; use
+`AiError` codes are `"unconfigured"`, `"provider"`, `"moderated"`, and `"invalid_model"`; use
 `isAiError(error, code?)` to identify them. Provider failures are wrapped as `AiError("provider")`
-and carry a content-free `ProviderFailure` summary (`name`, truncated `message`, `statusCode`,
+and carry a content-free `ProviderFailure` summary (allow-listed `name`, fixed `message`, `statusCode`,
 `isRetryable`) as `cause`. The raw AI SDK error is dropped on purpose: it exposes the request body
 (the prompt) and response body, which must never reach a logger (ADR 0015).
 
 There is no package retry layer. Pass an `abortSignal` (for example `ctx.signal` from a Job) to the
 AI SDK call. The SDK's default `maxRetries` is 2; callers can override it per call when necessary.
+
+## Budget admission (TEACH-280)
+
+`@tj/generation` `callStructured` wraps its model with
+`withGenerationBudget(model, modelId, budget)` and sets `maxRetries: 0`. Each provider dispatch
+reserves synchronously from the shared Budget, including schema/deadline retries. The wrapper
+settles complete usage before structured-output validation and retains an uncertain estimate on
+timeouts, aborts and incomplete usage; late complete usage settles at most once.
+
+`createBudget(caps, { spent })` copies confirmed prior aggregates exactly. `totals()` keeps them
+separate from optional `reserved`/`uncertain` aggregates; both participate in admission. Saved
+pending reservations become uncertain on resume. `lastRefusal()` is diagnostic: a denied large
+request does not prevent a cheaper request from fitting. Eval stops after any reservation refusal.
+
+Estimation includes UTF-8 text/schema bytes, protocol headroom, image dimensions (a bounded raster
+header read via `image-meta@0.2.2`, no pixel decoding), and maximum output. Known GPT-5.6 image
+bounds cover missing dimensions; unsupported model/image combinations fail closed. Prices include
+long-context and cache-write rates. See ADR 0025 for sources and the uncertainty policy: this is
+conservative in-process admission, not an exact invoice guarantee or an authoritative global ledger.
 
 ## Testing
 

@@ -1,19 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { ProposalSchema, type ProposalTarget } from "@tj/domain";
 import { type SlideElement, SlideSchema, WorksheetBlockSchema } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
 import { materialiseSlide } from "@tj/slides";
 import { PROMPT_VERSIONS } from "../prompts";
-import { FIXTURES, recordingDeps } from "../testing";
+import { callLimitedBudget, FIXTURES, recordingDeps } from "../testing";
 import { impactSet, MAX_REDO_TARGETS, PROPOSE_CONCURRENCY, proposeFor } from "./proposals";
 import { runBounded } from "./shared";
 
 const json = (v: unknown) => JSON.stringify(v);
 const usage = { inputTokens: 1000, outputTokens: 400 };
-/** One fake call's cost on the standard class at the current list price (not hard-coded dollars). */
-const STANDARD_CALL_USD = costUsd(DEFAULT_MODEL_IDS.standard, usage) ?? 0;
 
 /** The domain fixture pair: `o2` is on the objectives slide (ob-2), the vocab-free slides, and block wb3. */
 function fixturePair() {
@@ -293,9 +290,9 @@ describe("proposeFor", () => {
     const base = lesson.slides.find((s) => s.id === "s-mc") as (typeof lesson.slides)[number];
     lesson.slides = Array.from({ length: 6 }, (_, i) => ({ ...base, id: `mc${i}` }));
     const ai = createFakeAi({ script: Array.from({ length: 6 }, () => json(mcSpec)), usage });
-    // Between one and two standard calls' worth at list price.
+    // Refuse after two admitted calls, independently of prompt-size/price changes.
     const deps = recordingDeps(ai, {
-      budget: createBudget({ capUsd: STANDARD_CALL_USD * 1.5, capTokens: 1_000_000 }),
+      budget: callLimitedBudget(2),
     });
     const result = await proposeFor(
       lesson.slides.map((s) => ({ slideId: s.id })),

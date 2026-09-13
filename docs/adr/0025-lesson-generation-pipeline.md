@@ -209,6 +209,45 @@ What the code says today, read on `master` at `9752445`:
     either active cap (`>=`) admits no next call; the cap is per Lesson, not per attempt. This is
     checkpoint accounting, not an authoritative account/global ledger; concurrent reservations and
     unknown provider billing remain TEACH-280, durable admission remains TEACH-279.
+    **TEACH-280 amendment (2026-09-13):** each provider dispatch synchronously acquires an opaque
+    reservation from the shared in-process Budget. The model middleware sees the SDK's prepared
+    system/user prompt, response schema and downloaded image bytes, before `doGenerate` runs.
+    It reserves conservative input plus the requested maximum output; every schema/deadline retry
+    goes through the same gate. `generateText.maxRetries = 0` prevents hidden transport retries.
+    SDK 7 usage is settled at the provider boundary, before output validation, including cached
+    reads and output reasoning already included in the provider's output total.
+
+    Confirmed usage remains `calls/inputTokens/outputTokens/costUsd`. Optional `reserved` and
+    `uncertain` aggregates are separate, participate in admission, and accompany checkpoints and
+    summaries. A timeout/abort or missing complete usage moves its reservation to uncertain,
+    never to free allowance. A late complete usage report can settle it once, but cannot return
+    late content to the pipeline. On resume, saved pending reservations become uncertain; prior
+    aggregate USD is copied exactly, never re-priced using synthetic tokens. This remains
+    checkpoint accounting: an authoritative crash-safe/global ledger is TEACH-279.
+
+    Estimation is deliberately not an exact provider invoice guarantee. Text and response-schema
+    UTF-8 bytes are an upper-biased token estimate with 4,096 tokens of protocol headroom. Image
+    dimensions are read from at most 4 KiB of a recognized raster header without decoding pixels
+    (`image-meta` pinned at 0.2.2, no dependencies); an incomplete header uses the full image bound.
+    For the configured GPT-5.6 models, reserve 32-pixel patches × 1.2, rounded up plus one token;
+    absent usable dimensions use the 30,000-patch maximum (36,001 tokens). Unknown model/image
+    combinations and unsupported prompt parts fail closed rather than guessing. Images are not
+    priced from base64 length or URL query parameters. Actual usage is never clamped to the
+    estimate. Long-context pricing (>272,000 input tokens) is included, not the short-context
+    rate applied to every request. Reservations assume the higher cache-write input rate; confirmed
+    usage applies actual cache read/write counts. The maximum output is not reduced to fit remaining capacity;
+    a refused reservation follows the existing visible partial-Lesson budget-stop behavior.
+    If no skeleton exists yet, the worker keeps the title already written, releases the lock and
+    reports a non-retryable budget refusal rather than inventing a certified checkpoint. Eval
+    stops on a recorded reservation refusal even when a smaller amount remains unspent.
+
+    Sources checked on 2026-09-13: AWS [Luna](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-openai-gpt-56-luna.html),
+    [Terra](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-openai-gpt-56-terra.html),
+    [Sol](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-openai-gpt-56-sol.html)
+    cards (all explicitly lack CountTokens; short/long-context price tables), and OpenAI's
+    [vision sizing/billing rules](https://developers.openai.com/api/docs/guides/images-vision).
+    The earlier ~550-token thumbnail observation is a measurement, not an image upper bound.
+    No new paid benchmark is authorized by this amendment.
 16. **Logging (ADR 0015).** Never prompts, model output or document content. The existing `ai`
     pino line from `@tj/ai`'s middleware gains, when the caller supplies them, `lessonId`,
     `jobId`, `stage`, `promptVersion`, `costUsd`; one `generation summary` info line per job

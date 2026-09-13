@@ -14,11 +14,26 @@ describe("PRICES", () => {
 });
 
 describe("costUsd", () => {
-  test("a million uncached input tokens cost exactly the input list price", () => {
+  test("a million input tokens use the long-context price", () => {
     const price = PRICES[DEFAULT_MODEL_IDS.standard];
     expect(costUsd(DEFAULT_MODEL_IDS.standard, { inputTokens: 1_000_000, outputTokens: 0 })).toBe(
-      price?.inputPerMTok as number,
+      price?.longContext?.inputPerMTok as number,
     );
+  });
+
+  test("the long-context threshold applies to the whole call, including output and cache writes", () => {
+    const model = DEFAULT_MODEL_IDS.standard;
+    expect(costUsd(model, { inputTokens: 272_000, outputTokens: 1000 })).toBeCloseTo(
+      (272_000 * 2.2 + 1000 * 13.2) / 1_000_000,
+      12,
+    );
+    expect(costUsd(model, { inputTokens: 272_001, outputTokens: 1000 })).toBeCloseTo(
+      (272_001 * 4.4 + 1000 * 19.8) / 1_000_000,
+      12,
+    );
+    expect(
+      costUsd(model, { inputTokens: 1000, outputTokens: 0, cacheWriteInputTokens: 1000 }),
+    ).toBe(0.00275);
   });
 
   test("bills cached input at the cached rate and output at the output rate", () => {

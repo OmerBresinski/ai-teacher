@@ -11,12 +11,17 @@ import { type Finding, FindingSchema } from "./finding";
 export const GENERATION_STAGES = ["planned", "generated", "evaluated", "repaired"] as const;
 export type GenerationStage = (typeof GENERATION_STAGES)[number];
 
-export type GenerationUsage = {
+export type GenerationUsageTotals = {
   calls: number;
   inputTokens: number;
   outputTokens: number;
-  /** `null` when the model id has no price and the job was capped by tokens (ADR 0025 §15). */
+  /** Confirmed cost; `null` if confirmed usage includes an unpriced model (ADR 0025 §15). */
   costUsd: number | null;
+};
+
+export type GenerationUsage = GenerationUsageTotals & {
+  reserved?: GenerationUsageTotals;
+  uncertain?: GenerationUsageTotals;
 };
 
 export type Generation = {
@@ -33,11 +38,16 @@ export type Generation = {
 
 export const GenerationStageSchema = z.enum(GENERATION_STAGES);
 
-export const GenerationUsageSchema = z.strictObject({
+const GenerationUsageTotalsSchema = z.strictObject({
   calls: z.number().int().nonnegative(),
   inputTokens: z.number().int().nonnegative(),
   outputTokens: z.number().int().nonnegative(),
   costUsd: z.number().nonnegative().nullable(),
+});
+
+export const GenerationUsageSchema = GenerationUsageTotalsSchema.extend({
+  reserved: GenerationUsageTotalsSchema.optional(),
+  uncertain: GenerationUsageTotalsSchema.optional(),
 });
 
 export const GenerationSchema = z.strictObject({

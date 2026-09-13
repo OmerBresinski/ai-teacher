@@ -113,6 +113,7 @@
         "@ai-sdk/amazon-bedrock": "5.0.74",
         "@tj/domain": "workspace:*",
         "ai": "7.0.92",
+        "image-meta": "0.2.2",
         "pino": "10.3.1",
         "zod": "4.5.4",
       },
@@ -1469,6 +1470,8 @@
     "ieee754": ["ieee754@1.2.1", "", {}, "sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA=="],
 
     "ignore": ["ignore@7.0.8", "", {}, "sha512-YYNsSlXBjMk92SKnkwvB5LOVSa6OznlFUGcsvrFgNJbJCd0M1XKeFVRc8ZByeCqz32FivYNHJVooLmdqrmvp/Q=="],
+
+    "image-meta": ["image-meta@0.2.2", "", {}, "sha512-3MOLanc3sb3LNGWQl1RlQlNWURE5g32aUphrDyFeCsxBTk08iE3VNe4CwsUZ0Qs1X+EfX0+r29Sxdpza4B+yRA=="],
 
     "image-size": ["image-size@workspace:packages/image-size-stub"],
 
