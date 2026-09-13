@@ -31,29 +31,11 @@ import {
   volume,
 } from "railway/iac";
 import { railwayNames } from "../infra/env.contract.ts";
+// Image inputs + the transitive `@tj/*` closure of api and worker, read from the manifests
+// (TEACH-276): a runtime package the image bundles can never be missing from the watch.
+import { IMAGE_WATCH } from "./watch.ts";
 
 const REGION = "europe-west4-drams3a"; // EU-West (Amsterdam), ADR 0010 / 0016
-
-/** Watch patterns shared by api and worker: the image inputs (`.dockerignore` is the allow-list). */
-const IMAGE_WATCH = [
-  "Dockerfile",
-  ".dockerignore",
-  "infra/docker/**",
-  ".railway/**",
-  "package.json",
-  "bun.lock",
-  "bunfig.toml",
-  "turbo.json",
-  "packages/db/**",
-  "packages/domain/**",
-  "packages/jobs/**",
-  "packages/config/**",
-  "packages/storage/**",
-  "packages/ai/**",
-  "packages/slides/**",
-  "packages/generation/**",
-  "packages/images/**",
-];
 
 /**
  * Pre-deploy (migration) timeout. The CLI engine and `railway config pull` know the field, but the

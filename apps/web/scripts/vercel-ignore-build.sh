@@ -12,12 +12,16 @@ set -u
 
 cd "$(dirname "$0")/../../.." || exit 1
 
-# Paths whose changes can alter apps/web's output (apps/web itself, the packages it consumes from
-# source, the lockfile and the turbo/root manifests). Keep in sync with infra/README.md.
+# Paths whose changes can alter apps/web's output: apps/web itself, the packages it consumes from
+# source (its transitive @tj/* closure -- editor pulls in slides, TEACH-276), the lockfile and the
+# turbo/root manifests. scripts/deploy-watch.test.ts pins this list against the workspace
+# manifests; keep infra/README.md in sync.
 PATHS=(
   apps/web
   homepage
   packages/ui
+  packages/editor
+  packages/slides
   packages/api-client
   packages/domain
   packages/config
