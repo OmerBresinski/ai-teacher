@@ -84,14 +84,18 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
     if (deps.ai.kind === "unconfigured") {
       throw new NonRetryableError("AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)");
     }
+    const priorUsage = loaded.input.lesson.generation?.usage;
     const pipelineDeps: PipelineDeps = {
       ai: deps.ai,
-      budget: createBudget(deps.caps),
+      budget: createBudget(deps.caps, { spent: priorUsage }),
       ...(deps.planFrontierFromYear !== undefined
         ? { planFrontierFromYear: deps.planFrontierFromYear }
         : {}),
       signal,
-      logger,
+      logger: logger.child({
+        resumed: priorUsage !== undefined,
+        usagePriorUsd: priorUsage === undefined ? 0 : priorUsage.costUsd,
+      }),
       now: () => new Date(),
       ids: uid,
       sources: storageSourceLoader(deps.storage, workspaceId, logger),
