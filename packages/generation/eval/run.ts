@@ -97,11 +97,17 @@ export interface BandTotals {
   rubric: EvalTotals["rubric"];
 }
 
-export function bandTotals(briefs: BriefResult[]): BandTotals {
+/**
+ * @param rows the band's results — only the briefs the run reached (a cap stop skips the rest)
+ * @param planned how many briefs the band holds, so `completed/briefs` reads against the sample
+ *   the comparison was designed on, not against what the cap allowed
+ */
+export function bandTotals(rows: BriefResult[], planned: number = rows.length): BandTotals {
+  const briefs = rows;
   const completed = briefs.filter((b) => b.ok);
   const costs = completed.map((b) => b.costUsd).filter((c): c is number => c !== null);
   return {
-    briefs: briefs.length,
+    briefs: planned,
     completed: completed.length,
     p50PlanMs: median(numbers(briefs.map((b) => b.planMs))),
     p50VerifyMs: median(numbers(briefs.map((b) => b.verifyMs ?? null))),
@@ -311,8 +317,14 @@ if (import.meta.main) {
     briefs: rows,
     totals: summarise(rows, briefs, budget),
     bands: {
-      secondary: bandTotals(rows.filter((r) => secondaryIds.has(r.id))),
-      primary: bandTotals(rows.filter((r) => !secondaryIds.has(r.id))),
+      secondary: bandTotals(
+        rows.filter((r) => secondaryIds.has(r.id)),
+        secondaryIds.size,
+      ),
+      primary: bandTotals(
+        rows.filter((r) => !secondaryIds.has(r.id)),
+        briefs.length - secondaryIds.size,
+      ),
     },
   };
   const dir = join(import.meta.dir, "results");

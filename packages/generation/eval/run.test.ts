@@ -115,18 +115,24 @@ describe("eval:paid", () => {
     expect(judge.calls).toHaveLength(2);
     expect(judge.calls.every((c) => c.modelClass === "frontier")).toBe(true);
     expect(rows.map((r) => r.scores?.rubric?.mean)).toEqual([4, 3]);
+    // The band denominators are the sample as designed (9 / 3), not the rows the cap let through.
+    expect(isSecondaryBrief(secondary)).toBe(true);
     const bands = {
       secondary: bandTotals(
-        rows.filter((r) => isSecondaryBrief(secondary) && r.id === secondary.id),
+        rows.filter((r) => r.id === secondary.id),
+        9,
       ),
-      primary: bandTotals(rows.filter((r) => r.id === primary.id)),
+      primary: bandTotals(
+        rows.filter((r) => r.id === primary.id),
+        3,
+      ),
     };
     expect(bands.secondary.rubric.mean).toBe(4);
     expect(bands.primary.rubric.mean).toBe(3);
     expect(bands.secondary.meanCostUsd).toBeGreaterThan(0);
     const table = formatBandsTable(bands);
     expect(table).toContain("| rubric mean | 4.0 | 3.0 |");
-    expect(table).toContain("| briefs | 1/1 | 1/1 |");
+    expect(table).toContain("| briefs | 1/9 | 1/3 |");
     expect(table).not.toContain("lectrolysis");
   });
 
