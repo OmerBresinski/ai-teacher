@@ -35,6 +35,7 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | **OAuth disabled** | Google/Microsoft sign-in off (no client credentials); magic link only. | Set the four `*_CLIENT_ID`/`*_CLIENT_SECRET` variables when the OAuth apps exist. | TEACH-39; `docs/env.md` |
 | **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
 | **AI rate limit is per api replica (in memory)** | One Railway api replica applies the per-Workspace limit locally. | Use Postgres or Redis before scaling the api horizontally. | TEACH-75; `apps/api/src/rate-limit.ts` |
+| **No durable storage / queue / spend ceilings** | Nothing bounds a Workspace's total bytes, documents, outstanding jobs or daily spend; one Workspace's four Lessons can occupy every worker slot while another waits (verified locally, TEACH-279). Per-Lesson spend admission exists in process (TEACH-280) but is not authoritative across crashes or replicas. | Implement ADR 0028: `resource_usage` ledger, admission in the same transaction as each side effect, and pg-boss `groupConcurrency` keyed on the Workspace for fairness. | ADR 0028; TEACH-279 (design) + its follow-on implementation issues |
 
 ## Vercel (web) — TEACH-25
 
