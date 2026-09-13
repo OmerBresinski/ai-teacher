@@ -59,6 +59,18 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 401,
     },
     {
+      name: "workspace event stream requires a current session",
+      path: "/events",
+      headers: { ...browser, Accept: "text/event-stream" },
+      expect: 401,
+    },
+    {
+      name: "job event reconnect requires a current session before replay",
+      path: "/jobs/0192f7a0-0000-7000-8000-000000000042/events",
+      headers: { ...browser, Accept: "text/event-stream", "Last-Event-ID": "1" },
+      expect: 401,
+    },
+    {
       // TEACH-81 (audit F05): the diagnostic ping routes are not mounted in production. The 404
       // comes before the session guard, so a 401 here means the dev-only routes are back.
       name: "dev-only ping route is absent in production (404, not 401)",

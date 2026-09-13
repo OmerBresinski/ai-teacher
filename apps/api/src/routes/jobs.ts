@@ -62,12 +62,16 @@ export function jobRoutes(runtime: EventsRuntime | undefined) {
     })
     .get("/jobs/:id/events", zValidator("param", jobParam, validationHook), async (c) => {
       const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+      const authorization = c.get("streamAuthorization");
+      if (!authorization)
+        throw new HTTPException(401, { message: "You need to sign in to do that." });
       const rt = requireRuntime(runtime);
       const { id } = c.req.valid("param");
       await assertJobInWorkspace(rt, workspaceId, id);
       const release = acquireStreamOr429(rt, workspaceId);
       return streamJobEvents(c, rt, {
         workspaceId,
+        authorization,
         jobId: id,
         lastEventId: parseLastEventId(c.req.header("Last-Event-ID")),
         closeOnTerminal: true,

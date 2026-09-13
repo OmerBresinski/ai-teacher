@@ -13,11 +13,15 @@ import { type JobEventRow, listJobEvents } from "@tj/db";
 import { JOB_TERMINAL_EVENT_TYPES, type JobId, type WorkspaceId } from "@tj/domain";
 import type { Context } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
+import { type StreamAuthorization, streamAuthorizationLease } from "../auth/stream-authorization";
 import type { AppEnv } from "../context";
 import type { EventsRuntime } from "./runtime";
 
 export interface StreamJobEventsOptions {
   workspaceId: WorkspaceId;
+  authorization: StreamAuthorization;
+  /** Test seam for scaled timing; the lease clamps its maximum to 30 seconds. */
+  authorizationTiming?: { recheckMs?: number; maxAgeMs?: number };
   /** Per-job stream when set; workspace firehose otherwise. */
   jobId?: JobId;
   /** Parsed `Last-Event-ID`; replay starts after it. */
@@ -62,13 +66,23 @@ export function streamJobEvents(
         finished = true;
         resolveDone();
       };
+      const abort = () => {
+        finish();
+        stream.abort();
+      };
+      const lease = streamAuthorizationLease(opts.authorization, abort, opts.authorizationTiming);
 
       stream.onAbort(finish);
-      c.req.raw.signal.addEventListener("abort", finish, { once: true });
-      runtime.shutdown.addEventListener("abort", finish, { once: true });
+      c.req.raw.signal.addEventListener("abort", abort, { once: true });
+      runtime.shutdown.addEventListener("abort", abort, { once: true });
+      if (c.req.raw.signal.aborted || runtime.shutdown.aborted) abort();
 
       async function send(row: JobEventRow): Promise<boolean> {
         if (finished) return false;
+        if (!lease.valid()) {
+          abort();
+          return false;
+        }
         await stream.writeSSE({
           id: String(row.id),
           event: row.type,
@@ -124,7 +138,10 @@ export function streamJobEvents(
         })();
         return draining;
       };
-      const scheduleDrain = () => void runDrain(Number.MAX_SAFE_INTEGER);
+      let replayStarted = false;
+      const scheduleDrain = () => {
+        if (replayStarted) void runDrain(Number.MAX_SAFE_INTEGER);
+      };
 
       // Subscribe before replaying so nothing slips between the replay read and the first
       // notification; the id cursor dedupes whatever both paths see.
@@ -135,22 +152,31 @@ export function streamJobEvents(
       );
 
       const heartbeat = setInterval(() => {
-        if (!finished) void writeComment(stream, "ping");
+        if (!finished) void writeComment(stream, "ping").catch(abort);
       }, config.heartbeatMs);
       const poll = setInterval(() => {
         if (!finished && hub.isDegraded()) scheduleDrain();
       }, config.pollMs);
 
       try {
-        await runDrain(config.replayLimit);
+        const authorized = await Promise.race([lease.revalidate(), done.then(() => false)]);
+        if (!authorized || finished) {
+          abort();
+          return;
+        }
+        replayStarted = true;
+        await Promise.race([runDrain(config.replayLimit), done]);
         // A `Last-Event-ID` past the terminal row would otherwise leave a per-job stream open
         // forever: check whether the job already finished before waiting for live rows.
         if (!finished && opts.closeOnTerminal && opts.jobId !== undefined) {
-          const all = await listJobEvents(jobs.db, {
-            workspaceId: opts.workspaceId,
-            jobId: opts.jobId,
-            limit: config.replayLimit,
-          });
+          const all = await Promise.race([
+            listJobEvents(jobs.db, {
+              workspaceId: opts.workspaceId,
+              jobId: opts.jobId,
+              limit: config.replayLimit,
+            }),
+            done.then(() => []),
+          ]);
           if (all.some((row) => terminal.has(row.type))) finish();
         }
         await done;
@@ -158,11 +184,12 @@ export function streamJobEvents(
         log.warn({ err }, "sse stream failed");
       } finally {
         finished = true;
+        lease.stop();
         clearInterval(heartbeat);
         clearInterval(poll);
         unsubscribe();
-        c.req.raw.signal.removeEventListener("abort", finish);
-        runtime.shutdown.removeEventListener("abort", finish);
+        c.req.raw.signal.removeEventListener("abort", abort);
+        runtime.shutdown.removeEventListener("abort", abort);
         opts.onClose?.();
       }
     },
