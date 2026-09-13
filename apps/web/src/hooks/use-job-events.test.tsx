@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { QueryClient } from "@tanstack/react-query";
 import { act, render, screen } from "@testing-library/react";
 import type { JobEvent } from "@tj/domain/jobs";
 import { JobEventList } from "@/components/job-event-list";
+import { retireSessionClient } from "@/lib/session-boundary";
 import { FakeEventSource, installFakeEventSource } from "@/test/fake-event-source";
 import { useJobEvents } from "./use-job-events";
 
@@ -21,8 +23,8 @@ function event<T extends JobEvent["type"]>(
   };
 }
 
-function Harness({ jobId }: { jobId: string | undefined }) {
-  const state = useJobEvents(jobId);
+function Harness({ jobId, client }: { jobId: string | undefined; client?: QueryClient }) {
+  const state = useJobEvents(jobId, client);
   return (
     <div>
       <output data-testid="status">{state.status}</output>
@@ -126,5 +128,24 @@ describe("useJobEvents", () => {
     const source = FakeEventSource.latest;
     act(() => source.fail());
     expect(screen.getByTestId("status")).toHaveTextContent("error");
+  });
+
+  it("session retirement closes the source and discards late terminal events", () => {
+    const client = new QueryClient();
+    render(<Harness jobId={JOB_ID} client={client} />);
+    const source = FakeEventSource.latest;
+    act(() =>
+      source.emit(
+        "progress",
+        event("progress", { progress: { percent: 40, message: "Private A" } }),
+      ),
+    );
+    act(() => retireSessionClient(client));
+    expect(source.closed).toBe(true);
+    act(() =>
+      source.emit("failed", event("failed", { error: { message: "Late A", retryable: false } })),
+    );
+    expect(screen.queryByText(/Private A|Late A/)).toBeNull();
+    expect(screen.getByTestId("status")).toHaveTextContent("idle");
   });
 });

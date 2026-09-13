@@ -1,36 +1,45 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@tj/ui";
 import { JobEventList } from "@/components/job-event-list";
 import { useJobEvents } from "@/hooks/use-job-events";
 import { api } from "@/lib/api";
 import { apiErrorFromResponse } from "@/lib/query";
+import { sessionMutation, sessionRequest } from "@/lib/session-boundary";
 
 // Route *id* (the pathless `auth` layout prefixes it), not the URL path.
 const route = getRouteApi("/auth/dev/jobs");
 
 /** Development aid for the ADR 0012 SSE demo (TEACH-19/21). Not a product screen. */
 export function DevJobsPage() {
+  const client = useQueryClient();
   const { jobId } = route.useSearch();
   const navigate = route.useNavigate();
-  const stream = useJobEvents(jobId);
+  const stream = useJobEvents(jobId, client);
 
-  const ping = useMutation({
-    mutationFn: async () => {
-      const res = await api.jobs.ping.$post({ json: { message: "hello", steps: 5 } });
-      if (res.status !== 202) throw await apiErrorFromResponse(res);
-      return res.json();
-    },
-    onSuccess: ({ jobId: id }) => void navigate({ search: { jobId: id } }),
-  });
+  const ping = useMutation(
+    sessionMutation(client, {
+      mutationFn: async () => {
+        const res = await api.jobs.ping.$post(
+          { json: { message: "hello", steps: 5 } },
+          sessionRequest(client),
+        );
+        if (res.status !== 202) throw await apiErrorFromResponse(res);
+        return res.json();
+      },
+      onSuccess: ({ jobId: id }) => void navigate({ search: { jobId: id } }),
+    }),
+  );
 
-  const cancel = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await api.jobs[":id"].cancel.$post({ param: { id } });
-      if (res.status !== 202) throw await apiErrorFromResponse(res);
-      return res.json();
-    },
-  });
+  const cancel = useMutation(
+    sessionMutation(client, {
+      mutationFn: async (id: string) => {
+        const res = await api.jobs[":id"].cancel.$post({ param: { id } }, sessionRequest(client));
+        if (res.status !== 202) throw await apiErrorFromResponse(res);
+        return res.json();
+      },
+    }),
+  );
 
   const running = Boolean(jobId) && stream.terminal === null && stream.status !== "error";
 

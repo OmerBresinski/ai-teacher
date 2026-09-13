@@ -114,6 +114,24 @@ have restyled Radix twins in `@tj/ui`.
 
 ## Consequences
 
+### Session boundary (TEACH-284, 2026-09-13)
+
+TanStack Query remains the only Document store, but a client belongs to one browser-session epoch.
+`apps/web/src/lib/session-boundary.ts` replaces it on logout, expiry or a user/Workspace change;
+the old client is cancelled, cleared and retired. `session-runtime.ts` replaces the router instance
+and the epoch-keyed React tree, so loaders, editor history, proposal state and event streams do not
+survive into another identity. Mutation factories and every multi-step write pin their originating
+client; abort signals and post-await checks discard late results and prevent a delayed copy/save
+from dispatching with the next session. Proposal Undo/View toasts are cleared too.
+
+Cross-tab notifications contain only opaque user/Workspace IDs and a revision, never credentials or
+Document content. They trigger a fresh `/me` check, not authorization. Route navigation revalidates
+`/me`; active sessions also check on focus/reconnect and every 30 seconds. Sign-out clears local
+private state immediately; a failed server response is explicitly reported on the sign-in page,
+with a retry action. Theme/layout preferences stay; the remembered class context is removed.
+Server-side authoritative revocation and open-stream authorization remain TEACH-283: this browser
+boundary does not establish that a server cookie is revoked.
+
 - The port is a rewrite of the state layer and a translation of everything else. The reducers are
   the first phase-C ticket so the model is proven before any canvas UI is built on it.
 - One floating layer, one Escape model, one token owner. Two rules to review against: no
@@ -194,4 +212,3 @@ found missing were added as `bun test` files (`layout/reflow`, `layout/explanati
 `lesson/canvas/place-slide-actions`, `lesson/slide-commands`), the handoff acceptance lines as
 `apps/web/e2e/handoff.spec.ts`, and every editor route and overlay is under axe in the three themes
 (`a11y.spec.ts`).
-

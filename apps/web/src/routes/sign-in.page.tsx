@@ -9,9 +9,10 @@ import {
   CardTitle,
   Input,
 } from "@tj/ui";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useState, useSyncExternalStore } from "react";
 import { authClient } from "@/lib/auth";
 import { sanitiseRedirectPath } from "@/lib/auth-redirect";
+import { sessionBoundary } from "@/lib/session-boundary";
 
 const route = getRouteApi("/sign-in");
 
@@ -50,6 +51,7 @@ export function verifyErrorMessage(code: string): string {
 type Status = { kind: "idle" } | { kind: "sending" } | { kind: "sent" } | { kind: "error" };
 
 export function SignInPage() {
+  const { notice } = useSyncExternalStore(sessionBoundary.subscribe, sessionBoundary.getSnapshot);
   const { redirect, error: verifyError } = route.useSearch();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -74,6 +76,19 @@ export function SignInPage() {
           <CardTitle>Sign in to Teaching Journey</CardTitle>
           <CardDescription>We will email you a link. No password needed.</CardDescription>
         </CardHeader>
+        {notice ? (
+          <CardContent>
+            <p role="alert" className="text-sm text-destructive">
+              {notice}
+            </p>
+            <Button
+              type="button"
+              onClick={() => void sessionBoundary.signOut(() => authClient.signOut())}
+            >
+              Retry sign out
+            </Button>
+          </CardContent>
+        ) : null}
         {status.kind === "sent" ? (
           <CardContent>
             <p role="status">Check your inbox (or the api console in development).</p>

@@ -25,6 +25,12 @@ import {
   withLessonIds,
 } from "./library-optimistic";
 import { ApiError, apiErrorFromResponse, queryKeys } from "./query";
+import {
+  assertCurrentSession,
+  sessionIsCurrent,
+  sessionMutation,
+  sessionRequest,
+} from "./session-boundary";
 
 /*
  * The library's data seam (ADR 0020, retired in favour of the documents API by ADR 0024 §9):
@@ -104,6 +110,7 @@ function seriesOf(json: SeriesJson): SeriesWithLessons {
 }
 
 async function fetchPage(
+  client: QueryClient,
   kind: DocumentKind,
   sort: Sort,
   q: string,
@@ -120,38 +127,54 @@ async function fetchPage(
         limit: String(PAGE_SIZE),
       },
     },
-    { init: { signal } },
+    sessionRequest(client, signal),
   );
   if (res.status !== 200) throw await apiErrorFromResponse(res);
   return res.json();
 }
 
 /** `GET /documents/:id`; a missing id (or another Workspace's) is `null`, anything else throws. */
-async function fetchDocument(id: string, signal?: AbortSignal): Promise<DocumentJson | null> {
-  const res = await api.documents[":id"].$get({ param: { id } }, { init: { signal } });
+async function fetchDocument(
+  client: QueryClient,
+  id: string,
+  signal?: AbortSignal,
+): Promise<DocumentJson | null> {
+  const res = await api.documents[":id"].$get({ param: { id } }, sessionRequest(client, signal));
   if (res.status === 200) return (await res.json()).document;
   if (res.status === 404) return null;
   throw await apiErrorFromResponse(res);
 }
 
 /** `fetchDocument` for a write path: a missing document is an error the caller reports. */
-async function requireDocument(id: string): Promise<DocumentJson> {
-  const document = await fetchDocument(id);
+async function requireDocument(client: QueryClient, id: string): Promise<DocumentJson> {
+  const document = await fetchDocument(client, id);
+  assertCurrentSession(client);
   if (document === null) {
     throw new ApiError(404, { code: "not_found", message: "That document does not exist." });
   }
   return document;
 }
 
-async function fetchSeries(id: string, signal?: AbortSignal): Promise<SeriesWithLessons | null> {
-  const res = await api.documents[":id"].lessons.$get({ param: { id } }, { init: { signal } });
+async function fetchSeries(
+  client: QueryClient,
+  id: string,
+  signal?: AbortSignal,
+): Promise<SeriesWithLessons | null> {
+  const res = await api.documents[":id"].lessons.$get(
+    { param: { id } },
+    sessionRequest(client, signal),
+  );
   if (res.status === 200) return seriesOf(await res.json());
   if (res.status === 404) return null;
   throw await apiErrorFromResponse(res);
 }
 
-async function postDocument(kind: DocumentKind, body: unknown): Promise<DocumentJson> {
-  const res = await api.documents.$post({ json: { kind, body } });
+async function postDocument(
+  client: QueryClient,
+  kind: DocumentKind,
+  body: unknown,
+): Promise<DocumentJson> {
+  const res = await api.documents.$post({ json: { kind, body } }, sessionRequest(client));
   if (res.status !== 201) throw await apiErrorFromResponse(res);
   return (await res.json()).document;
 }
@@ -167,10 +190,14 @@ async function putDocument(
   document: Lesson | Worksheet | Series,
   expectedUpdatedAt: string,
 ): Promise<DocumentJson> {
-  const res = await api.documents[":id"].$put({
-    param: { id: document.id },
-    json: { document, expectedUpdatedAt },
-  });
+  const res = await api.documents[":id"].$put(
+    {
+      param: { id: document.id },
+      json: { document, expectedUpdatedAt },
+    },
+    sessionRequest(queryClient),
+  );
+  assertCurrentSession(queryClient);
   if (res.status !== 200) {
     const error = await apiErrorFromResponse(res);
     if (error.status === 409) {
@@ -187,15 +214,17 @@ async function putDocument(
     throw error;
   }
   const saved = (await res.json()).document;
+  assertCurrentSession(queryClient);
   queryClient.setQueryData(queryKeys.libraryDocumentMeta(document.id), metaOf(saved));
   return saved;
 }
 
 /** The `expectedUpdatedAt` for a save: the cached row state, or a read when nothing is cached. */
 async function expectedUpdatedAtFor(queryClient: QueryClient, id: string): Promise<string> {
+  assertCurrentSession(queryClient);
   const cached = queryClient.getQueryData<DocumentMeta>(queryKeys.libraryDocumentMeta(id));
   if (cached) return cached.updatedAt;
-  return (await requireDocument(id)).updatedAt;
+  return (await requireDocument(queryClient, id)).updatedAt;
 }
 
 /** Read, modify, write: the series mutations and rename all take this shape. */
@@ -204,7 +233,7 @@ async function updateDocument<T extends Lesson | Worksheet | Series>(
   id: string,
   change: (body: T) => T,
 ): Promise<DocumentJson> {
-  const current = await requireDocument(id);
+  const current = await requireDocument(queryClient, id);
   return putDocument(queryClient, change(current.body as T), current.updatedAt);
 }
 
@@ -253,7 +282,8 @@ export const libraryCache = {
    */
   handOverDocument: async (queryClient: QueryClient, id: string): Promise<void> => {
     await queryClient.cancelQueries({ queryKey: queryKeys.libraryDocument(id) });
-    const document = await fetchDocument(id);
+    const document = await fetchDocument(queryClient, id);
+    assertCurrentSession(queryClient);
     if (document === null || document.deletedAt !== null || document.kind === "series") return;
     notifyManager.batch(() => {
       queryClient.setQueryData(queryKeys.libraryDocument(id), document.body as LibraryDocument);
@@ -277,7 +307,8 @@ export const libraryQueries = {
   documents: (kind: DocumentKind, { sort = "edited", q = "" }: ListOptions = {}) =>
     infiniteQueryOptions({
       queryKey: [...queryKeys.libraryDocuments, kind, sort, q.trim()] as const,
-      queryFn: ({ pageParam, signal }) => fetchPage(kind, sort, q, pageParam, signal),
+      queryFn: ({ client, pageParam, signal }) =>
+        fetchPage(client, kind, sort, q, pageParam, signal),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (last) => last.nextCursor ?? undefined,
       placeholderData: keepPreviousData,
@@ -292,7 +323,8 @@ export const libraryQueries = {
     queryOptions<LibraryDocumentOrSummary | null>({
       queryKey: queryKeys.libraryDocument(id),
       queryFn: async ({ client, signal }): Promise<LibraryDocumentOrSummary | null> => {
-        const document = await fetchDocument(id, signal);
+        const document = await fetchDocument(client, id, signal);
+        assertCurrentSession(client);
         if (document === null || document.deletedAt !== null || document.kind === "series") {
           return null;
         }
@@ -314,8 +346,8 @@ export const libraryQueries = {
   documentMeta: (id: string) =>
     queryOptions({
       queryKey: queryKeys.libraryDocumentMeta(id),
-      queryFn: async ({ signal }): Promise<DocumentMeta | null> => {
-        const document = await fetchDocument(id, signal);
+      queryFn: async ({ client, signal }): Promise<DocumentMeta | null> => {
+        const document = await fetchDocument(client, id, signal);
         return document === null ? null : metaOf(document);
       },
       staleTime: Number.POSITIVE_INFINITY,
@@ -328,11 +360,11 @@ export const libraryQueries = {
   series: ({ sort = "edited", q = "" }: ListOptions = {}) =>
     infiniteQueryOptions({
       queryKey: [...queryKeys.librarySeries, sort, q.trim()] as const,
-      queryFn: async ({ pageParam, signal }): Promise<SeriesPage> => {
-        const page = await fetchPage("series", sort, q, pageParam, signal);
+      queryFn: async ({ client, pageParam, signal }): Promise<SeriesPage> => {
+        const page = await fetchPage(client, "series", sort, q, pageParam, signal);
         const items = await Promise.all(
           page.items.map(async (row) => {
-            const detail = await fetchSeries(row.id, signal);
+            const detail = await fetchSeries(client, row.id, signal);
             return (
               detail ?? {
                 series: {
@@ -356,7 +388,7 @@ export const libraryQueries = {
   seriesDetail: (id: string, queryClient?: QueryClient) =>
     queryOptions<SeriesWithLessons | null>({
       queryKey: queryKeys.librarySeriesDetail(id),
-      queryFn: ({ signal }) => fetchSeries(id, signal),
+      queryFn: ({ client, signal }) => fetchSeries(client, id, signal),
       placeholderData: () => (queryClient ? libraryCache.seriesDetail(queryClient, id) : undefined),
     }),
 };
@@ -380,6 +412,7 @@ export const librarySelectors = {
 // --- mutations ----------------------------------------------------------------------------------
 
 function invalidateLibrary(queryClient: QueryClient): Promise<void> {
+  if (!sessionIsCurrent(queryClient)) return Promise.resolve();
   return queryClient.invalidateQueries({ queryKey: queryKeys.library });
 }
 
@@ -422,6 +455,7 @@ async function applyRename(queryClient: QueryClient, id: string, title: string):
 
 /** Refresh the lists only — the document working copies stay as the editor left them. */
 function invalidateLists(queryClient: QueryClient): Promise<void> {
+  if (!sessionIsCurrent(queryClient)) return Promise.resolve();
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments }),
     queryClient.invalidateQueries({ queryKey: queryKeys.librarySeries }),
@@ -485,7 +519,7 @@ async function updateSeries(
   id: string,
   change: (series: Series) => Series,
 ): Promise<Series> {
-  const current = await requireDocument(id);
+  const current = await requireDocument(queryClient, id);
   const before = current.body as Series;
   const after = change(before);
   if (after === before) return before;
@@ -511,37 +545,39 @@ function applySeriesLessons(
 export const libraryMutations = {
   createDocument: (
     queryClient: QueryClient,
-  ): UseMutationOptions<LibrarySummary, Error, CreateDocumentInput> => ({
-    mutationFn: async (input) => {
-      const { newLesson, newWorksheet, starterLesson, starterWorksheet } = await factories();
-      const title = input.title.trim();
-      const starter = input.start !== "blank";
-      const body: Lesson | Worksheet =
-        input.kind === "lesson"
-          ? starter
-            ? starterLesson(title, input.themeId)
-            : newLesson(title, input.themeId)
-          : starter
-            ? starterWorksheet(title, input.themeId)
-            : newWorksheet(title, input.themeId);
-      if (input.subject) body.subject = input.subject;
-      if (input.yearGroup) body.yearGroup = input.yearGroup;
-      if (input.readingLevel) body.readingLevel = input.readingLevel;
-      if (input.language) body.language = input.language;
-      return summaryOf(await postDocument(input.kind, body));
-    },
-    onSuccess: () => invalidateLibrary(queryClient),
-  }),
+  ): UseMutationOptions<LibrarySummary, Error, CreateDocumentInput> =>
+    sessionMutation(queryClient, {
+      mutationFn: async (input) => {
+        const { newLesson, newWorksheet, starterLesson, starterWorksheet } = await factories();
+        const title = input.title.trim();
+        const starter = input.start !== "blank";
+        const body: Lesson | Worksheet =
+          input.kind === "lesson"
+            ? starter
+              ? starterLesson(title, input.themeId)
+              : newLesson(title, input.themeId)
+            : starter
+              ? starterWorksheet(title, input.themeId)
+              : newWorksheet(title, input.themeId);
+        if (input.subject) body.subject = input.subject;
+        if (input.yearGroup) body.yearGroup = input.yearGroup;
+        if (input.readingLevel) body.readingLevel = input.readingLevel;
+        if (input.language) body.language = input.language;
+        return summaryOf(await postDocument(queryClient, input.kind, body));
+      },
+      onSuccess: () => invalidateLibrary(queryClient),
+    }),
   /**
    * A worksheet the caller has already built (TEACH-184: the creation flow's recipe frame, or the
    * starter sheet for Blank), posted as it is. The whole frame is the document's initial state.
    */
   createWorksheet: (
     queryClient: QueryClient,
-  ): UseMutationOptions<LibrarySummary, Error, Worksheet> => ({
-    mutationFn: async (body) => summaryOf(await postDocument("worksheet", body)),
-    onSuccess: () => invalidateLibrary(queryClient),
-  }),
+  ): UseMutationOptions<LibrarySummary, Error, Worksheet> =>
+    sessionMutation(queryClient, {
+      mutationFn: async (body) => summaryOf(await postDocument(queryClient, "worksheet", body)),
+      onSuccess: () => invalidateLibrary(queryClient),
+    }),
   /**
    * Import (ADR 0023 §6, amended 2026-09-12): a `Lesson` or `Worksheet` the import dialog has
    * already run through `migrate()` and the parser, posted whole to `POST /documents`. The server
@@ -550,35 +586,38 @@ export const libraryMutations = {
    */
   importDocument: (
     queryClient: QueryClient,
-  ): UseMutationOptions<LibrarySummary, Error, Lesson | Worksheet> => ({
-    mutationFn: async (body) =>
-      summaryOf(await postDocument("blocks" in body ? "worksheet" : "lesson", body)),
-    onSuccess: () => invalidateLibrary(queryClient),
-  }),
+  ): UseMutationOptions<LibrarySummary, Error, Lesson | Worksheet> =>
+    sessionMutation(queryClient, {
+      mutationFn: async (body) =>
+        summaryOf(await postDocument(queryClient, "blocks" in body ? "worksheet" : "lesson", body)),
+      onSuccess: () => invalidateLibrary(queryClient),
+    }),
   /**
    * `POST /lessons` (ADR 0024 §6): the brief becomes a locked lesson and a queued `lesson.plan`
    * job; the caller navigates to `/l/$lessonId` and follows the job (TEACH-122).
    */
   createLesson: (
     queryClient: QueryClient,
-  ): UseMutationOptions<{ lessonId: string; jobId: string }, Error, CreateLessonInput> => ({
-    mutationFn: async (input) => {
-      const res = await api.lessons.$post({ json: input });
-      if (res.status !== 202) throw await apiErrorFromResponse(res);
-      return res.json();
-    },
-    onSuccess: () => invalidateLibrary(queryClient),
-  }),
-  saveDocument: (queryClient: QueryClient): UseMutationOptions<void, Error, LibraryDocument> => ({
-    mutationFn: async (document) => {
-      await putDocument(
-        queryClient,
-        document,
-        await expectedUpdatedAtFor(queryClient, document.id),
-      );
-    },
-    onSuccess: () => invalidateLists(queryClient),
-  }),
+  ): UseMutationOptions<{ lessonId: string; jobId: string }, Error, CreateLessonInput> =>
+    sessionMutation(queryClient, {
+      mutationFn: async (input): Promise<{ lessonId: string; jobId: string }> => {
+        const res = await api.lessons.$post({ json: input }, sessionRequest(queryClient));
+        if (res.status !== 202) throw await apiErrorFromResponse(res);
+        return res.json();
+      },
+      onSuccess: () => invalidateLibrary(queryClient),
+    }),
+  saveDocument: (queryClient: QueryClient): UseMutationOptions<void, Error, LibraryDocument> =>
+    sessionMutation(queryClient, {
+      mutationFn: async (document) => {
+        await putDocument(
+          queryClient,
+          document,
+          await expectedUpdatedAtFor(queryClient, document.id),
+        );
+      },
+      onSuccess: () => invalidateLists(queryClient),
+    }),
   /**
    * The editor's autosave (ADR 0022 §5). The document's own cache entry is the editor's working
    * copy and is *not* refetched on success: a save that resolves after the next edit would put the
@@ -586,168 +625,193 @@ export const libraryMutations = {
    * library shows the new title and `updatedAt` when the teacher returns. A `409` rejects with
    * `ApiError.reason` (`stale` → the page offers Reload; `generating` → read-only), see `putDocument`.
    */
-  autosaveDocument: (
-    queryClient: QueryClient,
-  ): UseMutationOptions<void, Error, LibraryDocument> => ({
-    mutationFn: async (document) => {
-      await putDocument(
-        queryClient,
-        document,
-        await expectedUpdatedAtFor(queryClient, document.id),
-      );
-    },
-    onSuccess: () => invalidateLists(queryClient),
-  }),
+  autosaveDocument: (queryClient: QueryClient): UseMutationOptions<void, Error, LibraryDocument> =>
+    sessionMutation(queryClient, {
+      mutationFn: async (document) => {
+        await putDocument(
+          queryClient,
+          document,
+          await expectedUpdatedAtFor(queryClient, document.id),
+        );
+      },
+      onSuccess: () => invalidateLists(queryClient),
+    }),
   renameDocument: (
     queryClient: QueryClient,
-  ): UseMutationOptions<boolean, Error, [string, string], Rollback> => ({
-    mutationFn: async ([id, title]) => {
-      const trimmed = title.trim();
-      if (!trimmed) return false;
-      await updateDocument<LibraryDocument>(queryClient, id, (body) => ({
-        ...body,
-        title: trimmed,
-        updatedAt: now(),
-      }));
-      return true;
-    },
-    ...optimistic(queryClient, ([id, title]) => applyRename(queryClient, id, title.trim())),
-  }),
+  ): UseMutationOptions<boolean, Error, [string, string], Rollback> =>
+    sessionMutation(queryClient, {
+      mutationFn: async ([id, title]) => {
+        const trimmed = title.trim();
+        if (!trimmed) return false;
+        await updateDocument<LibraryDocument>(queryClient, id, (body) => ({
+          ...body,
+          title: trimmed,
+          updatedAt: now(),
+        }));
+        return true;
+      },
+      ...optimistic(queryClient, ([id, title]) => applyRename(queryClient, id, title.trim())),
+    }),
   duplicateDocument: (
     queryClient: QueryClient,
-  ): UseMutationOptions<LibrarySummary | null, Error, [string, string?]> => ({
-    mutationFn: async ([id, title]) => {
-      const source = await fetchDocument(id);
-      if (source === null || source.deletedAt !== null || source.kind === "series") return null;
-      const { cloneSlide } = await factories();
-      const at = now();
-      const body = structuredClone(source.body) as LibraryDocument;
-      body.title = (title ?? `${body.title} (copy)`).trim();
-      body.createdAt = at;
-      body.updatedAt = at;
-      // Fresh element ids too, so a copy can later sit beside its source in one document safely.
-      if ("slides" in body) body.slides = body.slides.map(cloneSlide);
-      return summaryOf(await postDocument(source.kind, body));
-    },
-    onSuccess: () => invalidateLibrary(queryClient),
-  }),
+  ): UseMutationOptions<LibrarySummary | null, Error, [string, string?]> =>
+    sessionMutation(queryClient, {
+      mutationFn: async ([id, title]) => {
+        const source = await fetchDocument(queryClient, id);
+        if (source === null || source.deletedAt !== null || source.kind === "series") return null;
+        const { cloneSlide } = await factories();
+        const at = now();
+        const body = structuredClone(source.body) as LibraryDocument;
+        body.title = (title ?? `${body.title} (copy)`).trim();
+        body.createdAt = at;
+        body.updatedAt = at;
+        // Fresh element ids too, so a copy can later sit beside its source in one document safely.
+        if ("slides" in body) body.slides = body.slides.map(cloneSlide);
+        return summaryOf(await postDocument(queryClient, source.kind, body));
+      },
+      onSuccess: () => invalidateLibrary(queryClient),
+    }),
   softDeleteDocument: (
     queryClient: QueryClient,
-  ): UseMutationOptions<boolean, Error, string, Rollback> => ({
-    mutationFn: async (id) => {
-      const res = await api.documents[":id"].$delete({ param: { id } });
-      if (res.status !== 204) throw await apiErrorFromResponse(res);
-      return true;
-    },
-    ...optimistic(queryClient, (id) =>
-      editDocumentSummaries(queryClient, (row) => (row.id === id ? null : row)),
-    ),
-  }),
-  restoreDocument: (queryClient: QueryClient): UseMutationOptions<boolean, Error, string> => ({
-    mutationFn: async (id) => {
-      const res = await api.documents[":id"].restore.$post({ param: { id } });
-      if (res.status !== 200) throw await apiErrorFromResponse(res);
-      return true;
-    },
-    onSuccess: () => invalidateLibrary(queryClient),
-  }),
+  ): UseMutationOptions<boolean, Error, string, Rollback> =>
+    sessionMutation(queryClient, {
+      mutationFn: async (id) => {
+        const res = await api.documents[":id"].$delete(
+          { param: { id } },
+          sessionRequest(queryClient),
+        );
+        if (res.status !== 204) throw await apiErrorFromResponse(res);
+        return true;
+      },
+      ...optimistic(queryClient, (id) =>
+        editDocumentSummaries(queryClient, (row) => (row.id === id ? null : row)),
+      ),
+    }),
+  restoreDocument: (queryClient: QueryClient): UseMutationOptions<boolean, Error, string> =>
+    sessionMutation(queryClient, {
+      mutationFn: async (id) => {
+        const res = await api.documents[":id"].restore.$post(
+          { param: { id } },
+          sessionRequest(queryClient),
+        );
+        if (res.status !== 200) throw await apiErrorFromResponse(res);
+        return true;
+      },
+      onSuccess: () => invalidateLibrary(queryClient),
+    }),
   createSeries: (
     queryClient: QueryClient,
-  ): UseMutationOptions<Series, Error, [string, string[]?]> => ({
-    mutationFn: async ([title, lessonIds = []]) => {
-      const at = now();
-      const body: Series = {
-        id: "new",
-        title: title.trim(),
-        lessonIds,
-        createdAt: at,
-        updatedAt: at,
-      };
-      return (await postDocument("series", body)).body as Series;
-    },
-    onSuccess: () => invalidateLibrary(queryClient),
-  }),
+  ): UseMutationOptions<Series, Error, [string, string[]?]> =>
+    sessionMutation(queryClient, {
+      mutationFn: async ([title, lessonIds = []]) => {
+        const at = now();
+        const body: Series = {
+          id: "new",
+          title: title.trim(),
+          lessonIds,
+          createdAt: at,
+          updatedAt: at,
+        };
+        return (await postDocument(queryClient, "series", body)).body as Series;
+      },
+      onSuccess: () => invalidateLibrary(queryClient),
+    }),
   renameSeries: (
     queryClient: QueryClient,
-  ): UseMutationOptions<boolean, Error, [string, string], Rollback> => ({
-    mutationFn: async ([id, title]) => {
-      const trimmed = title.trim();
-      if (!trimmed) return false;
-      await updateSeries(queryClient, id, (series) => ({ ...series, title: trimmed }));
-      return true;
-    },
-    ...optimistic(queryClient, ([id, title]) =>
-      editSeries(queryClient, (item) =>
-        item.series.id === id ? { ...item, series: { ...item.series, title: title.trim() } } : item,
+  ): UseMutationOptions<boolean, Error, [string, string], Rollback> =>
+    sessionMutation(queryClient, {
+      mutationFn: async ([id, title]) => {
+        const trimmed = title.trim();
+        if (!trimmed) return false;
+        await updateSeries(queryClient, id, (series) => ({ ...series, title: trimmed }));
+        return true;
+      },
+      ...optimistic(queryClient, ([id, title]) =>
+        editSeries(queryClient, (item) =>
+          item.series.id === id
+            ? { ...item, series: { ...item.series, title: title.trim() } }
+            : item,
+        ),
       ),
-    ),
-  }),
+    }),
   duplicateSeries: (
     queryClient: QueryClient,
-  ): UseMutationOptions<Series | null, Error, [string, string?]> => ({
-    mutationFn: async ([id, title]) => {
-      const source = await fetchDocument(id);
-      if (source === null || source.deletedAt !== null || source.kind !== "series") return null;
-      const from = source.body as Series;
-      const at = now();
-      const body: Series = {
-        id: "new",
-        title: (title ?? `${from.title} (copy)`).trim(),
-        lessonIds: [...from.lessonIds],
-        createdAt: at,
-        updatedAt: at,
-      };
-      return (await postDocument("series", body)).body as Series;
-    },
-    onSuccess: () => invalidateLibrary(queryClient),
-  }),
+  ): UseMutationOptions<Series | null, Error, [string, string?]> =>
+    sessionMutation(queryClient, {
+      mutationFn: async ([id, title]) => {
+        const source = await fetchDocument(queryClient, id);
+        if (source === null || source.deletedAt !== null || source.kind !== "series") return null;
+        const from = source.body as Series;
+        const at = now();
+        const body: Series = {
+          id: "new",
+          title: (title ?? `${from.title} (copy)`).trim(),
+          lessonIds: [...from.lessonIds],
+          createdAt: at,
+          updatedAt: at,
+        };
+        return (await postDocument(queryClient, "series", body)).body as Series;
+      },
+      onSuccess: () => invalidateLibrary(queryClient),
+    }),
   addLessonsToSeries: (
     queryClient: QueryClient,
-  ): UseMutationOptions<Series, Error, [string, string[], number?], Rollback> => ({
-    mutationFn: ([id, lessonIds, at]) =>
-      updateSeries(queryClient, id, (series) => seriesOps.add(series, lessonIds, at)),
-    ...optimistic(queryClient, ([id, lessonIds, at]) =>
-      applySeriesLessons(queryClient, id, (series) => seriesOps.add(series, lessonIds, at)),
-    ),
-  }),
+  ): UseMutationOptions<Series, Error, [string, string[], number?], Rollback> =>
+    sessionMutation(queryClient, {
+      mutationFn: ([id, lessonIds, at]) =>
+        updateSeries(queryClient, id, (series) => seriesOps.add(series, lessonIds, at)),
+      ...optimistic(queryClient, ([id, lessonIds, at]) =>
+        applySeriesLessons(queryClient, id, (series) => seriesOps.add(series, lessonIds, at)),
+      ),
+    }),
   removeLessonFromSeries: (
     queryClient: QueryClient,
-  ): UseMutationOptions<Series, Error, [string, string], Rollback> => ({
-    mutationFn: ([id, lessonId]) =>
-      updateSeries(queryClient, id, (series) => seriesOps.remove(series, lessonId)),
-    ...optimistic(queryClient, ([id, lessonId]) =>
-      applySeriesLessons(queryClient, id, (series) => seriesOps.remove(series, lessonId)),
-    ),
-  }),
+  ): UseMutationOptions<Series, Error, [string, string], Rollback> =>
+    sessionMutation(queryClient, {
+      mutationFn: ([id, lessonId]) =>
+        updateSeries(queryClient, id, (series) => seriesOps.remove(series, lessonId)),
+      ...optimistic(queryClient, ([id, lessonId]) =>
+        applySeriesLessons(queryClient, id, (series) => seriesOps.remove(series, lessonId)),
+      ),
+    }),
   setSeriesLessons: (
     queryClient: QueryClient,
-  ): UseMutationOptions<Series, Error, [string, string[]], Rollback> => ({
-    mutationFn: ([id, lessonIds]) =>
-      updateSeries(queryClient, id, (series) => seriesOps.set(series, lessonIds)),
-    ...optimistic(queryClient, ([id, lessonIds]) =>
-      applySeriesLessons(queryClient, id, (series) => seriesOps.set(series, lessonIds)),
-    ),
-  }),
+  ): UseMutationOptions<Series, Error, [string, string[]], Rollback> =>
+    sessionMutation(queryClient, {
+      mutationFn: ([id, lessonIds]) =>
+        updateSeries(queryClient, id, (series) => seriesOps.set(series, lessonIds)),
+      ...optimistic(queryClient, ([id, lessonIds]) =>
+        applySeriesLessons(queryClient, id, (series) => seriesOps.set(series, lessonIds)),
+      ),
+    }),
   softDeleteSeries: (
     queryClient: QueryClient,
-  ): UseMutationOptions<boolean, Error, string, Rollback> => ({
-    mutationFn: async (id) => {
-      const res = await api.documents[":id"].$delete({ param: { id } });
-      if (res.status !== 204) throw await apiErrorFromResponse(res);
-      return true;
-    },
-    ...optimistic(queryClient, (id) =>
-      editSeries(queryClient, (item) => (item.series.id === id ? null : item)),
-    ),
-  }),
-  restoreSeries: (queryClient: QueryClient): UseMutationOptions<boolean, Error, string> => ({
-    mutationFn: async (id) => {
-      const res = await api.documents[":id"].restore.$post({ param: { id } });
-      if (res.status !== 200) throw await apiErrorFromResponse(res);
-      return true;
-    },
-    onSuccess: () => invalidateLibrary(queryClient),
-  }),
+  ): UseMutationOptions<boolean, Error, string, Rollback> =>
+    sessionMutation(queryClient, {
+      mutationFn: async (id) => {
+        const res = await api.documents[":id"].$delete(
+          { param: { id } },
+          sessionRequest(queryClient),
+        );
+        if (res.status !== 204) throw await apiErrorFromResponse(res);
+        return true;
+      },
+      ...optimistic(queryClient, (id) =>
+        editSeries(queryClient, (item) => (item.series.id === id ? null : item)),
+      ),
+    }),
+  restoreSeries: (queryClient: QueryClient): UseMutationOptions<boolean, Error, string> =>
+    sessionMutation(queryClient, {
+      mutationFn: async (id) => {
+        const res = await api.documents[":id"].restore.$post(
+          { param: { id } },
+          sessionRequest(queryClient),
+        );
+        if (res.status !== 200) throw await apiErrorFromResponse(res);
+        return true;
+      },
+      onSuccess: () => invalidateLibrary(queryClient),
+    }),
 };
 
 const collator = new Intl.Collator("en-GB", { numeric: true, sensitivity: "base" });
