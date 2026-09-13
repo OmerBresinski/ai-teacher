@@ -153,9 +153,11 @@ requires. Every wait it logs is timestamped and every wait is bounded by `--time
 20): if the process is still alive past that, something outside the script is stuck (a hung `gh`,
 `vercel` or `railway` call) — kill it, read the log to see the last stamped line, and land by hand
 from that point. Do not `sleep` and re-read the log on a schedule; the script exits when it is
-done or when its deadline passes, and a log without a summary block means it has not finished. Prefer a fresh session per feature over one long session: state lives in Linear and
-GitHub, not in the chat. Every edit goes through the branch → PR → review → CI path; never commit
-to `master` directly.
+done or when its deadline passes, and a log without a summary block means it has not finished.
+Prefer a fresh session per feature over one long session: state lives in Linear and GitHub, not in
+the chat. A build session handles one Linear issue and one PR only; after opening that PR, end the
+session with a handoff instead of continuing to another issue. Every edit goes through the branch
+→ PR → review → CI path; never commit to `master` directly.
 
 1. **Implement.** One PR per independent unit of work, done sequentially — finish and land one
    before starting the next when they touch the same files (e.g. `infra/README.md`). Open the PR
