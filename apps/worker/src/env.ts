@@ -27,6 +27,8 @@ export const EnvSchema = z
     // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------
     AI_LESSON_COST_CAP_USD: z.coerce.number().nonnegative().default(0.5),
     AI_LESSON_TOKEN_CAP: z.coerce.number().int().positive().default(300_000),
+    /** Plan on the frontier class from this year group up (TEACH-259); unset keeps every Plan call `standard`. */
+    AI_PLAN_FRONTIER_FROM_YEAR: z.coerce.number().int().min(1).max(13).optional(),
     MASTRA_TELEMETRY_DISABLED: optionalString,
     // --- Images (Pexels, Images project) -------------------------------------------------
     /**

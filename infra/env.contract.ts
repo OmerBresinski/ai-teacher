@@ -670,6 +670,33 @@ const CONTRACT = [
       "Spend cap in USD for one paid run of the `@tj/generation` eval set (ADR 0025 §23). Read by the eval script only, never by the worker's boot schema.",
   },
   {
+    name: "AI_PLAN_FRONTIER_FROM_YEAR",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "int",
+    files: ["worker"],
+    description:
+      "Plan's three calls (skeleton, facts, Verify) run on the `frontier` class for a lesson whose year group is this number or above — e.g. `7` routes Year 7+ to Sol and keeps primary on Terra (TEACH-259). Unset: every Plan call is `standard`. Generate never reads it. Not set on Railway until the Sol eval says where the line goes.",
+  },
+  {
+    name: "AI_MODEL_JUDGE",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["worker"],
+    runtimeOnly: true,
+    description:
+      "Bedrock model ID the paid eval's rubric judge runs on (TEACH-259). Unset: the `standard` id, so the judge is never the model under test when `AI_PLAN_FRONTIER_FROM_YEAR` puts Plan on the frontier class. Read by the eval script only, never by the worker's boot schema.",
+  },
+  {
     name: "AI_FAKE_SCRIPT",
     services: ["worker"],
     scope: "config",

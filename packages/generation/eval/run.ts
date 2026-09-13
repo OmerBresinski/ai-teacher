@@ -17,7 +17,7 @@ import { join } from "node:path";
 import { type Budget, type CreatedAi, createAi, createBudget } from "@tj/ai";
 import { z } from "zod";
 import type { PhotoPlacer } from "../src";
-import { type EvalBrief, evalBriefs } from "./briefs";
+import { type EvalBrief, evalBriefs, isSecondaryBrief } from "./briefs";
 import { evalPhotoPlacer } from "./photo-placer";
 import { RUBRIC_DIMENSIONS, type RubricDimension } from "./rubric-prompt";
 import { type BriefResult, runBrief } from "./run-brief";
@@ -29,6 +29,10 @@ const EnvSchema = z.object({
   AI_MODEL_FRONTIER: z.string().optional(),
   AI_MODEL_STANDARD: z.string().optional(),
   AI_MODEL_SMALL: z.string().optional(),
+  /** The rubric judge's model id (TEACH-259); unset → the `standard` id, never the plan model. */
+  AI_MODEL_JUDGE: z.string().optional(),
+  /** Plan on the `frontier` class from this year group (TEACH-259); unset → today's Terra everywhere. */
+  AI_PLAN_FRONTIER_FROM_YEAR: z.coerce.number().int().min(1).max(13).optional(),
   /** Spend cap for the whole run (env contract default 3.00). */
   AI_EVAL_RUN_COST_CAP_USD: z.coerce.number().nonnegative().default(3),
   /** Per-lesson token cap; the run's token cap is eight of these (one per brief). */
@@ -71,10 +75,76 @@ export interface EvalTotals {
 export interface EvalResults {
   sha: string;
   at: string;
-  models: { frontier: string; standard: string; small: string };
+  models: { frontier: string; standard: string; small: string; judge?: string };
+  /** `AI_PLAN_FRONTIER_FROM_YEAR` for the run, when set (TEACH-259). */
+  planFrontierFromYear?: number;
   capUsd: number;
   briefs: BriefResult[];
   totals: EvalTotals;
+  /** The same totals over the secondary (Year 7+) and primary briefs (TEACH-259). */
+  bands?: { secondary: BandTotals; primary: BandTotals };
+}
+
+/** What the Plan-model question is read from, per year band (TEACH-259 FR3). */
+export interface BandTotals {
+  briefs: number;
+  completed: number;
+  p50PlanMs: number | null;
+  p50VerifyMs: number | null;
+  /** Mean spend per completed lesson (the lesson's own, judge excluded). */
+  meanCostUsd: number | null;
+  specRule: number;
+  rubric: EvalTotals["rubric"];
+}
+
+/**
+ * @param rows the band's results — only the briefs the run reached (a cap stop skips the rest)
+ * @param planned how many briefs the band holds, so `completed/briefs` reads against the sample
+ *   the comparison was designed on, not against what the cap allowed
+ */
+export function bandTotals(rows: BriefResult[], planned: number = rows.length): BandTotals {
+  const briefs = rows;
+  const completed = briefs.filter((b) => b.ok);
+  const costs = completed.map((b) => b.costUsd).filter((c): c is number => c !== null);
+  return {
+    briefs: planned,
+    completed: completed.length,
+    p50PlanMs: median(numbers(briefs.map((b) => b.planMs))),
+    p50VerifyMs: median(numbers(briefs.map((b) => b.verifyMs ?? null))),
+    meanCostUsd:
+      costs.length === 0
+        ? null
+        : Math.round((costs.reduce((sum, c) => sum + c, 0) / costs.length) * 1e6) / 1e6,
+    specRule: briefs.reduce((sum, b) => sum + (b.findings.specRule ?? 0), 0),
+    rubric: rubricTotals(completed),
+  };
+}
+
+const numbers = (values: (number | null)[]) =>
+  values.filter((n): n is number => n !== null).sort((a, b) => a - b);
+
+export function formatBandsTable(bands: NonNullable<EvalResults["bands"]>): string {
+  const ms = (v: number | null) => (v === null ? "-" : `${Math.round(v)}`);
+  const usd = (v: number | null) => (v === null ? "-" : `$${v.toFixed(4)}`);
+  const score = (v: number | null) => (v === null ? "-" : v.toFixed(1));
+  const rows = [
+    ["briefs", (b: BandTotals) => `${b.completed}/${b.briefs}`],
+    ["p50 plan ms", (b: BandTotals) => ms(b.p50PlanMs)],
+    ["p50 verify ms", (b: BandTotals) => ms(b.p50VerifyMs)],
+    ["cost / lesson", (b: BandTotals) => usd(b.meanCostUsd)],
+    ["spec-rule", (b: BandTotals) => String(b.specRule)],
+    ["rubric mean", (b: BandTotals) => score(b.rubric.mean)],
+    ...RUBRIC_DIMENSIONS.map(
+      (d) => [`rubric: ${d}`, (b: BandTotals) => score(b.rubric.dimensions[d])] as const,
+    ),
+  ] as const;
+  return [
+    "| | secondary (Year 7+) | primary |",
+    "| --- | ---: | ---: |",
+    ...rows.map(
+      ([label, read]) => `| ${label} | ${read(bands.secondary)} | ${read(bands.primary)} |`,
+    ),
+  ].join("\n");
 }
 
 /** The median of a sorted sample: the middle value, or the mean of the two middles. */
@@ -179,11 +249,20 @@ export async function runPaidEval(
   budget: Budget,
   briefs = evalBriefs(),
   images?: PhotoPlacer,
+  options: { judge?: CreatedAi; planFrontierFromYear?: number } = {},
 ): Promise<BriefResult[]> {
   const results: BriefResult[] = [];
   for (const brief of briefs) {
     if (budget.exceeded()) break;
-    const run = await runBrief(brief, { ai, budget, judge: true, images });
+    const run = await runBrief(brief, {
+      ai,
+      budget,
+      judge: options.judge ?? true,
+      images,
+      ...(options.planFrontierFromYear !== undefined
+        ? { planFrontierFromYear: options.planFrontierFromYear }
+        : {}),
+    });
     results.push(run.result);
   }
   return results;
@@ -202,13 +281,26 @@ if (import.meta.main) {
     console.error(UNCONFIGURED_MESSAGE);
     process.exit(2);
   }
+  const briefs = evalBriefs();
   const budget = createBudget({
     capUsd: env.AI_EVAL_RUN_COST_CAP_USD,
-    capTokens: 8 * env.AI_LESSON_TOKEN_CAP,
+    capTokens: briefs.length * env.AI_LESSON_TOKEN_CAP,
   });
-  const briefs = evalBriefs();
+  // The judge is never the model under test (TEACH-259): its own `CreatedAi` whose `frontier`
+  // class — the one the scorer asks for — is `AI_MODEL_JUDGE`, or the `standard` id by default.
+  const judge = createAi({
+    ...env,
+    AI_MODEL_FRONTIER: env.AI_MODEL_JUDGE ?? ai.modelId("standard"),
+  });
+  if (judge.kind === "unconfigured") throw new Error("eval:paid: judge model is not configured");
   const images = env.PEXELS_API_KEY ? evalPhotoPlacer(env.PEXELS_API_KEY) : undefined;
-  const rows = await runPaidEval(ai, budget, briefs, images);
+  const rows = await runPaidEval(ai, budget, briefs, images, {
+    judge,
+    ...(env.AI_PLAN_FRONTIER_FROM_YEAR !== undefined
+      ? { planFrontierFromYear: env.AI_PLAN_FRONTIER_FROM_YEAR }
+      : {}),
+  });
+  const secondaryIds = new Set(briefs.filter(isSecondaryBrief).map((b) => b.id));
   const results: EvalResults = {
     sha: env.GITHUB_SHA ?? (await gitSha()),
     at: new Date().toISOString(),
@@ -216,16 +308,31 @@ if (import.meta.main) {
       frontier: ai.modelId("frontier"),
       standard: ai.modelId("standard"),
       small: ai.modelId("small"),
+      judge: judge.modelId("frontier"),
     },
+    ...(env.AI_PLAN_FRONTIER_FROM_YEAR !== undefined
+      ? { planFrontierFromYear: env.AI_PLAN_FRONTIER_FROM_YEAR }
+      : {}),
     capUsd: env.AI_EVAL_RUN_COST_CAP_USD,
     briefs: rows,
     totals: summarise(rows, briefs, budget),
+    bands: {
+      secondary: bandTotals(
+        rows.filter((r) => secondaryIds.has(r.id)),
+        secondaryIds.size,
+      ),
+      primary: bandTotals(
+        rows.filter((r) => !secondaryIds.has(r.id)),
+        briefs.length - secondaryIds.size,
+      ),
+    },
   };
   const dir = join(import.meta.dir, "results");
   await mkdir(dir, { recursive: true });
   const file = join(dir, `${results.sha}.json`);
   await writeFile(file, `${JSON.stringify(results, null, 2)}\n`);
   console.log(formatResultsTable(results));
+  if (results.bands) console.log(`\n${formatBandsTable(results.bands)}`);
   console.log(`\nwrote ${file}`);
   // A brief the cap stopped mid-Plan surfaces as `BudgetExceeded`; that is the cap working, not a
   // failure of the pipeline.

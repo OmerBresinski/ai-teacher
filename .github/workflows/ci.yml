@@ -137,7 +137,7 @@ jobs:
       - name: bun run test:db
         run: bun run test:db
 
-      # The free half of the F06 eval set (ADR 0025 §23, docs/eval.md): eight briefs through the
+      # The free half of the F06 eval set (ADR 0025 §23, docs/eval.md): twelve briefs through the
       # pipeline on the scripted fake, then the schema checks. No network, no model, < 30 s.
       - name: bun run eval:schema
         run: bun run eval:schema

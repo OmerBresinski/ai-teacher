@@ -18,7 +18,7 @@ import {
   type PipelineState,
   SOURCE_TEXT_MAX_CHARS,
 } from "../types";
-import { audienceOf, BUDGET_FINDING, shapeOf } from "./shared";
+import { audienceOf, BUDGET_FINDING, planClassFor, shapeOf } from "./shared";
 import { selectSourceTexts } from "./source-texts";
 import { runVerify, type VerifyResult } from "./verify";
 
@@ -100,6 +100,9 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   // The lesson's shape (TEACH-229): computed once from the brief's answers and the class, rendered
   // into both Plan prompts and enforced by both Plan schemas.
   const shape = shapeOf(lesson);
+  // The class Plan's calls run on (TEACH-259): `standard` unless the host routes this year group
+  // to the frontier model; Verify below is given the same class.
+  const cls = planClassFor(lesson, deps);
   const briefInput = {
     topic: brief.topic,
     durationMin: brief.durationMin,
@@ -119,13 +122,13 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     withSkeleton = { ...withTitle, facts: resumed.facts };
   } else {
     deps.logger.info(
-      { stage: "plan", call: "skeleton", verb: shape.verb, confidence: shape.confidence },
+      { stage: "plan", call: "skeleton", cls, verb: shape.verb, confidence: shape.confidence },
       "plan call",
     );
     const skeletonCall = await callStructured({
       deps,
       stage: "plan",
-      cls: "standard",
+      cls,
       effort: "medium",
       prompt: planSkeletonPrompt,
       input: briefInput,
@@ -153,13 +156,13 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   }
 
   // 3. The remaining facts and which outline entry each supports; then the checkpoint.
-  deps.logger.info({ stage: "plan", call: "facts" }, "plan call");
+  deps.logger.info({ stage: "plan", call: "facts", cls }, "plan call");
   let planFacts: PlanFactsLike = EMPTY_PLAN_FACTS;
   try {
     const factsCall = await callStructured({
       deps,
       stage: "plan",
-      cls: "standard",
+      cls,
       effort: "medium",
       prompt: planFactsPrompt,
       input: { ...briefInput, skeleton },
@@ -184,7 +187,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   //    when the facts call did not happen (nothing to verify) or the budget is spent; a failed call
   //    is a finding, never a failed job (`runVerify` never rejects).
   const pendingVerify: Promise<VerifyResult> | undefined =
-    planFacts !== EMPTY_PLAN_FACTS ? runVerify(merged, briefInput, deps) : undefined;
+    planFacts !== EMPTY_PLAN_FACTS ? runVerify(merged, briefInput, deps, cls) : undefined;
 
   const planned: Lesson = {
     ...withSkeleton,

@@ -45,6 +45,7 @@ import {
   audienceOf,
   BUDGET_FINDING,
   generationOf,
+  planClassFor,
   runBounded,
   shapeOf,
   withImageCaption,
@@ -125,7 +126,12 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   // Plan: Verify is not started for them.
   const resumedVerify =
     state.pendingVerify === undefined && !verifyStamped(lesson) && facts.questions.length > 0
-      ? runVerify(facts, { topic: lesson.brief?.topic ?? lesson.title, audience }, deps)
+      ? runVerify(
+          facts,
+          { topic: lesson.brief?.topic ?? lesson.title, audience },
+          deps,
+          planClassFor(lesson, deps),
+        )
       : undefined;
   const pendingVerify = state.pendingVerify ?? resumedVerify;
   let corrected = new Set<string>();

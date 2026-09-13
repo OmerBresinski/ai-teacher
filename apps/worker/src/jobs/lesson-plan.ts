@@ -87,6 +87,9 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
     const pipelineDeps: PipelineDeps = {
       ai: deps.ai,
       budget: createBudget(deps.caps),
+      ...(deps.planFrontierFromYear !== undefined
+        ? { planFrontierFromYear: deps.planFrontierFromYear }
+        : {}),
       signal,
       logger,
       now: () => new Date(),

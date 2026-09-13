@@ -136,6 +136,12 @@ export interface PipelineDeps {
   /** Pexels + bucket behind illustrate; absent → the step logs and returns the state. */
   images?: PhotoPlacer;
   /**
+   * Plan (skeleton, facts, Verify) runs on the `frontier` class for a lesson whose year group is
+   * this number or above (TEACH-259; `AI_PLAN_FRONTIER_FROM_YEAR`). Unset: every Plan call is
+   * `standard`, as before. Generate and the later stages never read it.
+   */
+  planFrontierFromYear?: number;
+  /**
    * Where illustrate reports its counts for the summary line. Stages cannot see the
    * `RequestContext`, so the per-run counts ride here instead (the same shape of channel as
    * `budget`, which stages charge the same way). Created by illustrate when absent.

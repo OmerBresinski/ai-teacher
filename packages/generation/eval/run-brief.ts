@@ -86,10 +86,16 @@ export interface RunBriefOptions {
   budget: Budget;
   now?: () => Date;
   signal?: AbortSignal;
-  /** Score the rubric with the `frontier` judge on the same `ai` and `budget` (the paid half only). */
-  judge?: boolean;
+  /**
+   * Score the rubric (the paid half only): `true` uses `ai`'s `frontier` class; a `CreatedAi` is
+   * a judge pinned separately (`AI_MODEL_JUDGE`, TEACH-259) so it is never the model under test.
+   * Either way on the same `budget`.
+   */
+  judge?: boolean | CreatedAi;
   /** Place photographs (TEACH-220): absent, `image-text` slides keep the placeholder. */
   images?: PhotoPlacer | undefined;
+  /** Plan on the `frontier` class from this year group (TEACH-259, `AI_PLAN_FRONTIER_FROM_YEAR`). */
+  planFrontierFromYear?: number;
 }
 
 let counter = 0;
@@ -146,6 +152,9 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     onProgress: async () => undefined,
     context,
     ...(options.images ? { images: options.images } : {}),
+    ...(options.planFrontierFromYear !== undefined
+      ? { planFrontierFromYear: options.planFrontierFromYear }
+      : {}),
   };
 
   let ok = true;
@@ -171,7 +180,14 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     ? await scoreLesson(
         brief.id,
         { lesson, worksheet },
-        options.judge ? { ai: options.ai, budget: options.budget, signal, context } : undefined,
+        options.judge
+          ? {
+              ai: typeof options.judge === "object" ? options.judge : options.ai,
+              budget: options.budget,
+              signal,
+              context,
+            }
+          : undefined,
       )
     : null;
   const afterJudge = options.budget.totals();

@@ -7,10 +7,12 @@ import {
   type RichDoc,
   richDocToPlainText,
   type Slide,
+  yearNumberOf,
 } from "@tj/domain/documents";
 import { type ImageTextPhoto, PLACEHOLDER_IMAGE } from "@tj/slides";
 import type { Audience, SlidePhoto } from "../prompts";
 import { type LessonShape, lessonShapeOf } from "../shapes";
+import type { PipelineDeps } from "../types";
 
 // The plain-text projections moved to `@tj/domain/documents/text` so `checkLesson` can measure the
 // same text Evaluate reads (TEACH-210); re-exported so the stages' import paths stand.
@@ -187,6 +189,22 @@ export function specFieldsCover(slide: Slide): boolean {
         !/^(answer|answers|correct|model answer):/.test(line),
     )
     .every((line) => shown.has(line));
+}
+
+/**
+ * The model class Plan's three calls run on (TEACH-259): `frontier` when the host set
+ * `planFrontierFromYear` and the lesson's year group reads as that number or above; `standard`
+ * otherwise — including EYFS, Reception and any label without a year number, whatever the
+ * setting, and always when it is unset.
+ */
+export function planClassFor(
+  lesson: Pick<Lesson, "yearGroup">,
+  deps: Pick<PipelineDeps, "planFrontierFromYear">,
+): "frontier" | "standard" {
+  const from = deps.planFrontierFromYear;
+  if (from === undefined) return "standard";
+  const year = yearNumberOf(lesson.yearGroup);
+  return year !== undefined && year >= from ? "frontier" : "standard";
 }
 
 export function audienceOf(lesson: Lesson): Audience {

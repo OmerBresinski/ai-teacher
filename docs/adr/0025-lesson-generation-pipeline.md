@@ -1060,3 +1060,20 @@ invariant holds by construction for resumes. Expected extra cost is at most a co
 calls a lesson (~$0.0015) against 6–8 s taken out of the critical path; the eval reports
 `verifyMs` beside `planMs` (`p50 verify` in the PR comment) so the saving is visible and the 30 s
 Plan budget is measured on skeleton + facts alone.
+
+## Amendment (2026-09-13, project Generation quality — TEACH-259)
+
+§16, §23. TEACH-253's Sol eval scored the frontier model ahead of Terra only on the harder,
+older-year-group briefs, at about twice the cost and +27 s on Plan. Rather than decide from n = 7,
+the pipeline gains one **routing hook** and the eval the sample to read it with. `PipelineDeps`
+gains `planFrontierFromYear?: number` (worker env `AI_PLAN_FRONTIER_FROM_YEAR`, optional, not set
+on Railway by this change); `planClassFor(lesson, deps)` returns `frontier` when it is set and the
+lesson's year group (`yearNumberOf`, the one parser of the label, shared with `deriveAgeBand`)
+reads as that number or above, else `standard`. Plan's three calls — skeleton, facts and Verify,
+wherever Verify is awaited — take that class; Generate, Evaluate and Repair never read it. Unset,
+every call is what it was. The eval set grows from eight briefs to twelve (KS3 maths, KS4 science,
+KS4 English literature, KS5 history), nine of them Year 7+, and the results file gains `bands`
+(secondary vs primary: p50 plan and verify, cost per lesson, `spec-rule` count, the rubric). The
+rubric judge is pinned separately — `AI_MODEL_JUDGE`, the `standard` id by default — through its
+own `CreatedAi`, so it is never the model under test. Whether to set the year (and at which year)
+is the founder's call from the A (unset) vs D (`7`) run recorded on the ticket.

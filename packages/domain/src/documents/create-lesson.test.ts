@@ -4,6 +4,7 @@ import {
   CreateLessonSchema,
   defaultDurationMin,
   deriveAgeBand,
+  yearNumberOf,
 } from "./create-lesson";
 import { GUARD_MESSAGE } from "./identifier-guard";
 
@@ -113,5 +114,20 @@ describe("CreateLessonSchema", () => {
       path: ["brief", "topic"],
       message: GUARD_MESSAGE,
     });
+  });
+});
+
+describe("yearNumberOf", () => {
+  test("reads the number from the label forms deriveAgeBand accepts, and nothing else", () => {
+    expect(yearNumberOf("Year 9")).toBe(9);
+    expect(yearNumberOf(" y13 ")).toBe(13);
+    expect(yearNumberOf("Yr 1 (mixed)")).toBe(1);
+    expect(yearNumberOf("Year 0")).toBeUndefined();
+    expect(yearNumberOf("Year 14")).toBeUndefined();
+    expect(yearNumberOf("Reception")).toBeUndefined();
+    expect(yearNumberOf("EYFS")).toBeUndefined();
+    expect(yearNumberOf("P5")).toBeUndefined();
+    expect(yearNumberOf("")).toBeUndefined();
+    expect(yearNumberOf(undefined)).toBeUndefined();
   });
 });

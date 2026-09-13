@@ -22,6 +22,8 @@ export type WorkerDeps = {
   ai: CreatedAi;
   db: Db;
   caps: { capUsd: number; capTokens: number };
+  /** `AI_PLAN_FRONTIER_FROM_YEAR` (TEACH-259): Plan on `frontier` from this year group; unset → `standard`. */
+  planFrontierFromYear?: number;
   storage: ReadableStorageAdapter;
   images?: { client: PexelsClient; storage: StorageAdapter };
 };
@@ -46,6 +48,9 @@ export function createWorkerDeps(
     ai: env.AI_FAKE_SCRIPT === "pipeline" ? createPerJobFakeAi(env) : createAi(env, { logger }),
     db,
     caps: { capUsd: env.AI_LESSON_COST_CAP_USD, capTokens: env.AI_LESSON_TOKEN_CAP },
+    ...(env.AI_PLAN_FRONTIER_FROM_YEAR !== undefined
+      ? { planFrontierFromYear: env.AI_PLAN_FRONTIER_FROM_YEAR }
+      : {}),
     storage: storage.adapter,
     images: env.PEXELS_API_KEY
       ? {

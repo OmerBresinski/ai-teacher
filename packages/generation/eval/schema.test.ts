@@ -28,7 +28,7 @@ describe("eval:schema", () => {
 
   test("every brief produces a lesson with zero error findings on the fixtures", async () => {
     const rows = await runSchemaEval();
-    expect(rows).toHaveLength(8);
+    expect(rows).toHaveLength(12);
     for (const row of rows) {
       expect(row.errors, row.result.id).toEqual([]);
       expect(row.result.ok).toBe(true);

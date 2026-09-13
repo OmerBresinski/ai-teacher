@@ -434,6 +434,57 @@ describe("plan", () => {
     });
   });
 
+  describe("plan class by year group (TEACH-259)", () => {
+    const planClasses = (ai: ReturnType<typeof createFakeAi>) =>
+      ai.calls.filter((c) => c.context?.stage === "plan").map((c) => c.modelClass);
+
+    test("row 1: unset — every Plan call is standard, as before", async () => {
+      const ai = createFakeAi({ script: planScript(), usage });
+      await planVerified(initialState(), recordingDeps(ai));
+      expect(planClasses(ai)).toEqual(["standard", "standard", "standard"]);
+    });
+
+    test("row 2: from year 7 — Year 5 plans on standard, Year 9 on frontier (skeleton, facts and Verify); Generate is unchanged", async () => {
+      for (const [yearGroup, cls] of [
+        ["Year 5", "standard"],
+        ["Year 9", "frontier"],
+        ["Year 7", "frontier"],
+        ["Reception", "standard"],
+      ] as const) {
+        const ai = createFakeAi({ script: planScript(), usage });
+        const deps = { ...recordingDeps(ai), planFrontierFromYear: 7 };
+        const { state } = await planVerified(initialState(sampleBriefLesson({ yearGroup })), deps);
+        expect(planClasses(ai), yearGroup).toEqual([cls, cls, cls]);
+        if (cls !== "frontier") continue;
+        const genAi = createFakeAi({ script: generateScript(), usage });
+        await generate(state, { ...recordingDeps(genAi), planFrontierFromYear: 7 });
+        expect(genAi.calls.every((c) => c.modelClass === "small")).toBe(true);
+      }
+    });
+
+    test("a resumed Generate starts Verify on the same class Plan would have used", async () => {
+      const ai = createFakeAi({ script: planScript(), usage });
+      const { state } = await planVerified(
+        initialState(sampleBriefLesson({ yearGroup: "Year 11" })),
+        recordingDeps(ai),
+      );
+      const { pendingVerify: _dropped, ...resumed } = state;
+      const genAi = createFakeAi({
+        script: routed([
+          json(FIXTURES.verify),
+          ...FIXTURES.planSkeleton.outline
+            .slice(PLANNED_SLIDES)
+            .map((e) => json(FIXTURES.slides[e.kind])),
+          json(FIXTURES.worksheet),
+        ]),
+        usage,
+      });
+      await generate(resumed, { ...recordingDeps(genAi), planFrontierFromYear: 10 });
+      expect(genAi.calls[0]?.context?.promptVersion).toBe(PROMPT_VERSIONS["verify-facts"]);
+      expect(genAi.calls[0]?.modelClass).toBe("frontier");
+    });
+  });
+
   test("a lesson without a brief cannot be planned", async () => {
     const { brief: _b, ...lesson } = sampleBriefLesson();
     await expect(
