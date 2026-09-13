@@ -233,9 +233,11 @@ name them separately:
   on physical removal: `POST /lessons`' failure-path `deleteDocument`, or a future purge.
 - **Sources.** `DELETE /sources/:id` soft-deletes the registry row **and physically deletes every
   object under `<ws>/sources/<id>/`** (`deleteSourceObjects`). The bytes really are gone, so that
-  path **does** credit `storage_bytes` — in the same transaction as the row update, for the byte
-  count the row records. The same applies to the `POST /sources` rollback and the orphan sweep
-  (TEACH-271).
+  path **does** credit `storage_bytes` — in the same transaction as the row update, for the **summed
+  `StorageObject.size` of the objects whose delete actually succeeded**. Not `sources.byte_size`:
+  that records the upload alone, so crediting it would permanently undercount. Objects whose delete
+  failed are not credited — they are still stored, and §6's reconciler finds them. The same applies
+  to the `POST /sources` rollback and the orphan sweep (TEACH-271).
 
 So `document_count` is a count of rows that still exist (soft-deleted included), and `storage_bytes`
 tracks bytes that are still stored. The consequence, stated plainly: a Workspace at its *document*
@@ -244,6 +246,12 @@ ceiling must have rows purged, which today means support intervention — which 
 purge path is worth building.
 
 
+**A zero-sized write reserves nothing.** The same rule that governs a non-growing `PUT` governs an
+empty upload: pasted text can be 0 bytes, and `amount > 0` forbids a zero hold. `POST /sources`
+therefore skips the upload reservation when the body is empty and admits only the measured
+extraction output. (Whether an empty paste should be rejected outright at validation is a separate
+question and not this ADR's to answer.)
+
 **A reservation is always positive; a shrink is a delta.** `resource_reservations.amount` is
 `> 0` by constraint, so a write that does not grow must not ask for a zero-sized hold. `PUT` therefore
 reserves only when `newLen > oldLen`; otherwise it skips admission entirely and applies the signed
@@ -251,8 +259,11 @@ reserves only when `newLen > oldLen`; otherwise it skips admission entirely and 
 
 **Extraction output is admitted separately, because the upload does not bound it.** `POST /sources`
 stores the original *plus* the extracted images and `extracted.json`, so reserving only the upload's
-bytes would let a Workspace exceed `storage_bytes` by whatever extraction adds (bounded by the
-runner's `EXTRACT_MAX_OUTPUT_BYTES`, 128 MiB by default — far too pessimistic to reserve up front).
+bytes would let a Workspace exceed `storage_bytes` by whatever extraction adds. There is no usable
+*a priori* bound: the only existing cap is `ChildRunnerConfig.maxOutputBytes`
+(`CHILD_RUNNER_DEFAULTS.maxOutputBytes`, 128 MiB), and it limits the child's **JSON stdout including
+base64 overhead**, not the bytes finally stored — so it is both the wrong quantity and far too
+pessimistic to reserve up front.
 The extraction result is in memory before anything is written, so its size is *known* at that point:
 admit it as a second reservation **before** `writeObjects`, and deny before any object exists. Both
 reservations then commit to the bytes actually written. That keeps the ceiling a real ceiling without
@@ -305,6 +316,14 @@ changing that shape, so this ADR changes it:
   the hub, so it must mark the hub degraded itself on failure — one call, and the existing polling
   path (which has an integration test) then delivers the committed row. Without that call this is a
   hang, not a best-effort degradation; TEACH-304 must test the notifier-failure case specifically.
+
+  **This fix only covers the api.** `EventsRuntime.hub` exists in the api process, so an enqueue
+  caller can degrade it. Terminal settlement runs in the **worker**, whose `JobsContext` holds no
+  hub reference and no route to one, so a worker-side notify failure cannot degrade the api's hub at
+  all: the terminal row is committed and an open stream waits indefinitely. This ADR does **not**
+  solve that — it needs either a durable outbox drained by a poller, or an api-side floor that polls
+  for terminal rows regardless of hub state. It is listed in §7 as unresolved, and TEACH-304 must not
+  claim the transactional settle is complete without it.
 - `createLessonAndEnqueue` passes its `scoped` handle, so the Source claim, the document row, the
   reservation, the pg-boss row and the `queued` event are one atomic unit. `undoCreate` and
   `enqueue`'s `boss.cancel` compensation both **disappear**: there is no window in which one exists
@@ -383,6 +402,15 @@ event), and that is deliberately out of scope here. `WORKER_GROUP_CONCURRENCY: 2
   bound (§5.2); no per-user ceiling inside a Workspace; no protection against a single upload that
   is under every ceiling; no purge path for soft-deleted documents (§4).
 
+**Workspace deletion must adjust the global counters before the cascade.** `resource_usage` rows and
+Workspace-keyed reservations are tenant-scoped and cascade away with the Workspace, but
+`resource_usage_global` is not keyed by Workspace, so a delete would silently leave the global
+counters overstated forever — and the next reconciliation pass cannot repair them, because the rows
+that recorded those amounts are gone and the object prefixes are no longer enumerable from any
+surviving row. Deletion therefore decrements the global counters by that Workspace's committed
+amounts **in the same transaction**, before the cascade fires. A reconciler cannot be the safety net
+here; the adjustment has to happen while the evidence still exists.
+
 ### 7. Thresholds: defaults, and what only the founder can decide
 
 New env in `infra/env.contract.ts` (so `docs/env.md`, `.env.example` and the per-app contract tests
@@ -404,11 +432,19 @@ follow), all config, all defaulted:
 1. Both spend numbers above are a *shape* to confirm; only the founder can say what a day's Bedrock
    spend may be, and §6 explains why it is not a hard invoice cap.
 2. Whether hitting `LIMIT_GLOBAL_*` alerts (and where), or only logs.
-3. Whether a Workspace at its storage ceiling may still *generate* (this ADR says yes: generation
-   writes documents and is bounded by spend instead).
+3. Whether a Workspace at its storage ceiling may still *generate*. This ADR's "yes, generation is
+   bounded by spend instead" is **not sufficient as written**: the worker's `lesson-plan` path
+   creates and repeatedly updates JSONB documents, which are exactly the bytes §4 charges. So the
+   real question is what a worker document write does at the ceiling — deny it and fail the job
+   mid-pipeline, or let it through and treat the ceiling as advisory for worker writes. Until the
+   founder answers, the worker write path stays outside enforcement (`ADMISSION_ENFORCE=0` for it),
+   because failing a half-finished generation is worse than a small overshoot.
 4. Retention for `resource_reservations` rows after commit (this ADR deletes them; an audit trail is
    a product/compliance decision).
 5. Whether a purge path for soft-deleted documents is worth building, given §4's consequence.
+6. How a **worker**-side notify failure is recovered (durable outbox vs an api-side polling floor),
+   per §5.1 — an engineering choice this ADR deliberately leaves open rather than guessing, and a
+   prerequisite for TEACH-304's transactional settle.
 
 ### 8. Rollout
 
