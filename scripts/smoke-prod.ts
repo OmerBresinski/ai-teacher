@@ -59,11 +59,25 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 401,
     },
     {
-      name: "app origin, POST JSON, reaches the session guard",
+      name: "workspace event stream requires a current session",
+      path: "/events",
+      headers: { ...browser, Accept: "text/event-stream" },
+      expect: 401,
+    },
+    {
+      name: "job event reconnect requires a current session before replay",
+      path: "/jobs/0192f7a0-0000-7000-8000-000000000042/events",
+      headers: { ...browser, Accept: "text/event-stream", "Last-Event-ID": "1" },
+      expect: 401,
+    },
+    {
+      // TEACH-81 (audit F05): the diagnostic ping routes are not mounted in production. The 404
+      // comes before the session guard, so a 401 here means the dev-only routes are back.
+      name: "dev-only ping route is absent in production (404, not 401)",
       method: "POST",
       path: "/jobs/ai-ping",
       headers: { ...browser, "Content-Type": "application/json" },
-      expect: 401,
+      expect: 404,
     },
     {
       // The first browser-facing POST that creates data and ends in a model call (ADR 0024 §6, §15):
@@ -190,9 +204,10 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 403,
     },
     {
-      // The full exchange the JSON POST above triggers; 204 alone would pass while the browser
-      // still blocks the request for a missing/wrong allow header.
-      name: "preflight from the app origin allows the JSON POST with credentials",
+      // CORS runs before routing, so a preflight is answered for any path — including one that is
+      // not mounted (TEACH-81). What this asserts is the allow headers a credentialed JSON POST
+      // needs; 204 alone would pass while the browser still blocks the request.
+      name: "preflight from the app origin carries the credentialed JSON POST allow headers",
       method: "OPTIONS",
       path: "/jobs/ai-ping",
       headers: {

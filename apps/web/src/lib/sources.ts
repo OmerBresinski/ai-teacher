@@ -1,7 +1,8 @@
-import type { UseMutationOptions } from "@tanstack/react-query";
+import type { QueryClient, UseMutationOptions } from "@tanstack/react-query";
 import type { SourceRef } from "@tj/domain/documents";
 import { api } from "./api";
 import { apiErrorFromResponse } from "./query";
+import { sessionBoundary, sessionMutation, sessionRequest } from "./session-boundary";
 
 /*
  * Sources (ADR 0027 §7): the drop zone's two calls. `POST /sources` takes one file or one paste
@@ -19,20 +20,27 @@ export const FILE_TOO_LARGE_MESSAGE = "This file is over 25 MB.";
 export const SOURCE_ACCEPT = ".pdf,.pptx,.docx";
 
 export const sourceMutations = {
-  upload: (): UseMutationOptions<SourceRef, Error, UploadSourceInput> => ({
-    mutationFn: async (input) => {
-      const form = "file" in input ? { file: input.file } : { text: input.text, name: input.name };
-      const res = await api.sources.$post({ form });
-      if (res.status !== 201) throw await apiErrorFromResponse(res);
-      return (await res.json()).source;
-    },
-  }),
-  remove: (): UseMutationOptions<void, Error, string> => ({
-    mutationFn: async (id) => {
-      const res = await api.sources[":id"].$delete({ param: { id } });
-      if (res.status !== 204) throw await apiErrorFromResponse(res);
-    },
-  }),
+  upload: (
+    client: QueryClient = sessionBoundary.getSnapshot().client,
+  ): UseMutationOptions<SourceRef, Error, UploadSourceInput> =>
+    sessionMutation(client, {
+      mutationFn: async (input) => {
+        const form =
+          "file" in input ? { file: input.file } : { text: input.text, name: input.name };
+        const res = await api.sources.$post({ form }, sessionRequest(client));
+        if (res.status !== 201) throw await apiErrorFromResponse(res);
+        return (await res.json()).source;
+      },
+    }),
+  remove: (
+    client: QueryClient = sessionBoundary.getSnapshot().client,
+  ): UseMutationOptions<void, Error, string> =>
+    sessionMutation(client, {
+      mutationFn: async (id) => {
+        const res = await api.sources[":id"].$delete({ param: { id } }, sessionRequest(client));
+        if (res.status !== 204) throw await apiErrorFromResponse(res);
+      },
+    }),
 };
 
 /** The chip's second line: "12 pages", "30 slides", "1 page" or "text". */

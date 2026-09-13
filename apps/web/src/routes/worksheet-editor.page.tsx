@@ -2,12 +2,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ExportControl } from "@tj/editor/export";
 import { WorksheetEditor } from "@tj/editor/worksheet-editor";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { env } from "@/env";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
-import { imageSearchClient } from "@/lib/images";
+import { imageSearchFor } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
 import { worksheetEditorRoute } from "./documents.route";
@@ -29,6 +29,7 @@ import { openWorksheetPrint } from "@/lib/worksheet-print-href";
 export function WorksheetEditorPage() {
   const { worksheetId } = useParams({ from: worksheetEditorRoute.id });
   const queryClient = useQueryClient();
+  const images = useMemo(() => imageSearchFor(queryClient), [queryClient]);
   const navigate = useNavigate();
   const shellReturn = useShellReturn();
   const options = libraryQueries.document(worksheetId, queryClient);
@@ -63,7 +64,7 @@ export function WorksheetEditorPage() {
       onBack={onBack}
       onPrint={onPrint}
       facts={facts}
-      images={imageSearchClient}
+      images={images}
       // Print stays the one-click path; the dialog is where JSON (and, from E3, DOCX) live. Its
       // PDF tab opens the same print route (TEACH-272 §5).
       exportSlot={

@@ -204,6 +204,11 @@ What the code says today, read on `master` at `9752445`:
     price logs a `warn` at boot and is capped by tokens instead — the cap is never silently absent.
     Exceeding the cap stops generation between calls, keeps what was written, records a
     `budget` finding and completes the job; the teacher is told.
+    **TEACH-265 amendment (2026-09-13):** retries seed `createBudget(caps, { spent })` from the
+    checkpoint's exact aggregate calls/tokens/USD. Null USD preserves the token fallback. Reaching
+    either active cap (`>=`) admits no next call; the cap is per Lesson, not per attempt. This is
+    checkpoint accounting, not an authoritative account/global ledger; concurrent reservations and
+    unknown provider billing remain TEACH-280, durable admission remains TEACH-279.
 16. **Logging (ADR 0015).** Never prompts, model output or document content. The existing `ai`
     pino line from `@tj/ai`'s middleware gains, when the caller supplies them, `lessonId`,
     `jobId`, `stage`, `promptVersion`, `costUsd`; one `generation summary` info line per job

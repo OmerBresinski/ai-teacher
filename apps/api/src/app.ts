@@ -34,6 +34,12 @@ import {
   type RateLimitConfig,
   rateLimitByWorkspace,
 } from "./rate-limit";
+import {
+  DEV_JOB_PATHS,
+  devJobRoutes,
+  devJobRoutesEnabled,
+  devJobsNotFound,
+} from "./routes/dev-jobs";
 import { documentRoutes } from "./routes/documents";
 import { eventRoutes } from "./routes/events";
 import { fileRoutes } from "./routes/files";
@@ -182,6 +188,11 @@ function buildApp({
   if (auth) app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
   const csrf = rejectCrossSiteRequests(allowed);
   const guard = requireSession(auth, db, { allowHeaderShim });
+  // TEACH-81: the diagnostic ping routes do not exist in production. Registered before the
+  // `/jobs/*` guards so the answer is 404, not a 401 that says the route is there.
+  if (!devJobRoutesEnabled(env)) {
+    for (const path of DEV_JOB_PATHS) app.use(path, devJobsNotFound);
+  }
   const PROTECTED_PATHS = [
     "/me",
     "/me/*",
@@ -214,6 +225,7 @@ function buildApp({
     .route("/", mailAssetRoutes())
     .route("/", helloRoutes)
     .route("/", meRoutes())
+    .route("/", devJobRoutes(eventsRuntime))
     .route("/", jobRoutes(eventsRuntime))
     .route("/", eventRoutes(eventsRuntime))
     .route("/", fileRoutes(storage))

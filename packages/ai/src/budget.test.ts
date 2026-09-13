@@ -28,13 +28,13 @@ describe("createBudget", () => {
     expect(budget.totals().costUsd).toBeCloseTo(0.51, 4);
   });
 
-  test("the cap is exceeded only when spend passes it, not when it lands on it", () => {
+  test("reaching the cap leaves no allowance for another call", () => {
     // The cap is set to exactly what 200 000 standard input tokens cost at the list price.
     const capUsd = (200_000 / 1_000_000) * price.inputPerMTok;
     const budget = createBudget({ capUsd, capTokens: 300_000 });
     budget.charge(STANDARD, { inputTokens: 200_000, outputTokens: 0 });
     expect(budget.totals().costUsd).toBeCloseTo(capUsd, 10);
-    expect(budget.exceeded()).toBeNull();
+    expect(budget.exceeded()).toEqual({ by: "usd" });
   });
 
   test("an unpriced model id switches the cap to tokens for the rest of the budget", () => {
@@ -66,9 +66,51 @@ describe("createBudget", () => {
   test("charge never throws and a fresh budget has zero totals", () => {
     const budget = createBudget({ capUsd: 0, capTokens: 0 });
     expect(budget.totals()).toEqual({ calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 });
-    expect(budget.exceeded()).toBeNull();
+    expect(budget.exceeded()).toEqual({ by: "usd" });
     expect(() => budget.charge("made-up", { inputTokens: 1, outputTokens: 0 })).not.toThrow();
     expect(budget.exceeded()).toEqual({ by: "tokens" });
+  });
+
+  test("resume seeds exact aggregates and adds each new call without repricing prior USD", () => {
+    const spent = { calls: 15, inputTokens: 20_000, outputTokens: 3000, costUsd: 0.07 };
+    const budget = createBudget({ capUsd: 0.5, capTokens: 300_000 }, { spent });
+    expect(budget.totals()).toEqual(spent);
+    for (let i = 0; i < 5; i++) budget.charge(STANDARD, { inputTokens: 1000, outputTokens: 0 });
+    expect(budget.totals()).toEqual({
+      calls: 20,
+      inputTokens: 25_000,
+      outputTokens: 3000,
+      costUsd: expect.closeTo(0.07 + (5 * price.inputPerMTok) / 1000, 10),
+    });
+    expect(spent.calls).toBe(15);
+    expect(spent.costUsd).toBe(0.07);
+  });
+
+  test.each([0.5, 0.6])("prior USD %s at or above the cap blocks the first new call", (costUsd) => {
+    const budget = createBudget(
+      { capUsd: 0.5, capTokens: 300_000 },
+      { spent: { calls: 15, inputTokens: 20_000, outputTokens: 3000, costUsd } },
+    );
+    expect(budget.exceeded()).toEqual({ by: "usd" });
+    expect(budget.remaining().usd).toBe(0);
+  });
+
+  test("null prior cost preserves token fallback, including exact exhaustion", () => {
+    const budget = createBudget(
+      { capUsd: 0.5, capTokens: 1000 },
+      { spent: { calls: 2, inputTokens: 700, outputTokens: 200, costUsd: null } },
+    );
+    expect(budget.remaining()).toEqual({ usd: null, tokens: 100 });
+    budget.charge(STANDARD, { inputTokens: 100, outputTokens: 0 });
+    expect(budget.exceeded()).toEqual({ by: "tokens" });
+    expect(budget.totals()).toEqual({
+      calls: 3,
+      inputTokens: 800,
+      outputTokens: 200,
+      costUsd: null,
+    });
+    const exhausted = createBudget({ capUsd: 0.5, capTokens: 1000 }, { spent: budget.totals() });
+    expect(exhausted.exceeded()).toEqual({ by: "tokens" });
   });
 
   test("cached input is billed at the cached rate", () => {

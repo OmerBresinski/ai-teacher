@@ -14,6 +14,12 @@ Teacher identity (email, name) is the only personal data the product holds by de
 
 ## Consequences
 
+- **Amendment (TEACH-283, 2026-09-13): authoritative protected requests.** `requireSession`
+  always calls `getSession` with `query: { disableCookieCache: true }`. The cookie cache may serve
+  non-authoritative display lookups; it cannot authorize protected reads, writes or SSE. A deleted
+  session row invalidates even a replayed, correctly signed cache cookie. SSE retains its initial
+  session id/expiry and a server-owned authoritative revalidator (ADR 0012 amendment below).
+
 - Identity data stays in our database, in the same region as everything else.
 - The web app is on a different origin from the API (ADR 0010); cookies must be `Secure; SameSite=None` or both apps must share a parent domain. The scaffold uses a shared parent domain (`app.<domain>` and `api.<domain>`) and sets the cookie domain accordingly; local development uses a Vite dev proxy so both appear same-origin.
 - Passkeys are a plugin addition in V1 with no architectural change.

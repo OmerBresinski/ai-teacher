@@ -1,7 +1,9 @@
+import type { QueryClient } from "@tanstack/react-query";
 import { jobEventsUrl } from "@tj/api-client";
 import { isTerminalJobEvent, type JobEvent, JobEventSchema } from "@tj/domain/jobs";
 import { useEffect, useReducer } from "react";
 import { env } from "@/env";
+import { sessionBoundary, sessionSignal } from "@/lib/session-boundary";
 
 export type JobStreamStatus = "idle" | "connecting" | "open" | "closed" | "error";
 
@@ -64,11 +66,15 @@ export function reduceJobEvents(state: JobEventsState, action: Action): JobEvent
  * The API names its SSE events by type (`event: progress`), so we listen to every known type
  * rather than only the default `message` event.
  */
-export function useJobEvents(jobId: string | undefined): JobEventsState {
+export function useJobEvents(
+  jobId: string | undefined,
+  client: QueryClient = sessionBoundary.getSnapshot().client,
+): JobEventsState {
   const [state, dispatch] = useReducer(reduceJobEvents, INITIAL);
 
   useEffect(() => {
-    if (!jobId) {
+    const signal = sessionSignal(client);
+    if (!jobId || signal.aborted) {
       dispatch({ type: "reset", status: "idle" });
       return;
     }
@@ -76,8 +82,19 @@ export function useJobEvents(jobId: string | undefined): JobEventsState {
     const source = new EventSource(jobEventsUrl(env.VITE_API_URL, jobId), {
       withCredentials: true,
     });
+    let closed = false;
+    const close = () => {
+      closed = true;
+      source.close();
+    };
+    const onAbort = () => {
+      close();
+      dispatch({ type: "reset", status: "idle" });
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
 
     const onMessage = (message: MessageEvent<string>) => {
+      if (closed || signal.aborted) return;
       let raw: unknown;
       try {
         raw = JSON.parse(message.data);
@@ -91,20 +108,26 @@ export function useJobEvents(jobId: string | undefined): JobEventsState {
         return;
       }
       dispatch({ type: "event", event: parsed.data, id: message.lastEventId });
-      if (isTerminalJobEvent(parsed.data)) source.close();
+      if (isTerminalJobEvent(parsed.data)) close();
     };
 
     for (const type of EVENT_TYPES) source.addEventListener(type, onMessage as EventListener);
     source.addEventListener("message", onMessage as EventListener);
-    source.onopen = () => dispatch({ type: "status", status: "open" });
+    source.onopen = () => {
+      if (!closed) dispatch({ type: "status", status: "open" });
+    };
     source.onerror = () => {
+      if (closed) return;
       // `EventSource` retries automatically while `readyState` is CONNECTING; only a CLOSED
       // stream (e.g. 401/404) is a real error for the UI.
       if (source.readyState === EventSource.CLOSED) dispatch({ type: "status", status: "error" });
     };
 
-    return () => source.close();
-  }, [jobId]);
+    return () => {
+      signal.removeEventListener("abort", onAbort);
+      close();
+    };
+  }, [jobId, client]);
 
   return state;
 }

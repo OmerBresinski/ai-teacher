@@ -24,15 +24,17 @@ const SHELL_ROUTES = [
   "/l/$lessonId/print",
   "/w/$worksheetId",
   "/w/$worksheetId/print",
-  "/dev/jobs",
   "/kit",
 ];
 
 describe("router", () => {
-  it("registers exactly the shell, document and dev routes", () => {
-    // `import.meta.env.DEV` is unset under `bun test`, so this is the production route set.
+  it("registers exactly the shell and document routes — no /dev/jobs in a production build", () => {
+    // `import.meta.env.DEV` is unset and VITE_APP_ENV is not "preview" under `bun test`, so this
+    // is the production route set (TEACH-81): the Jobs / SSE demo is not registered at all.
     expect(import.meta.env.DEV).toBeFalsy();
+    expect(import.meta.env.VITE_APP_ENV).not.toBe("preview");
     expect(Object.keys(router.routesByPath).sort()).toEqual([...SHELL_ROUTES].sort());
+    expect(router.routesByPath).not.toHaveProperty("/dev/jobs");
   });
 
   it("ships /kit in production, behind the auth guard", () => {
@@ -47,7 +49,7 @@ describe("router", () => {
     expect(authed.every((id) => id.startsWith("/auth/"))).toBe(true);
     // The seven shell pages share the pathless `library` layout (sidebar, dialogs, shell memory).
     expect(ids.filter((id) => id.startsWith("/auth/library/"))).toHaveLength(7);
-    // Document routes and dev tools sit beside it: no sidebar.
-    expect(ids.filter((id) => /^\/auth\/(l|w|dev)\//.test(id))).toHaveLength(7);
+    // Document routes sit beside it: no sidebar. (`/auth/dev/jobs` joins them in dev/preview only.)
+    expect(ids.filter((id) => /^\/auth\/(l|w)\//.test(id))).toHaveLength(6);
   });
 });

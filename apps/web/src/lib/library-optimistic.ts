@@ -1,6 +1,7 @@
 import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import type { DocumentSummary, Series } from "@tj/domain/documents";
 import { queryKeys } from "./query";
+import { assertCurrentSession, sessionIsCurrent } from "./session-boundary";
 
 /*
  * Optimistic edits over the library's cached lists (TanStack Query v5 `onMutate` pattern). A
@@ -55,11 +56,12 @@ const LIST_KEYS = [
  */
 async function prepare(queryClient: QueryClient): Promise<Rollback> {
   await Promise.all(LIST_KEYS.map((queryKey) => queryClient.cancelQueries({ queryKey })));
+  assertCurrentSession(queryClient);
   const entries = LIST_KEYS.flatMap((queryKey) =>
     queryClient.getQueriesData<unknown>({ queryKey }),
   );
   return () => {
-    if (queryClient.isMutating() > 1) return;
+    if (!sessionIsCurrent(queryClient) || queryClient.isMutating() > 1) return;
     for (const [key, data] of entries) queryClient.setQueryData(key, data);
   };
 }

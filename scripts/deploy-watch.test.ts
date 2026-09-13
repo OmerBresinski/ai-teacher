@@ -75,11 +75,15 @@ async function commitFile(dir: string, path: string): Promise<void> {
 async function runScript(
   dir: string,
   previousSha: string | undefined,
+  /** `null` leaves VERCEL_ENV unset (a local `vercel build`); default is a production deploy. */
+  vercelEnv: string | null = "production",
 ): Promise<{ code: number; out: string }> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v;
   delete env.VERCEL_GIT_PREVIOUS_SHA;
+  delete env.VERCEL_ENV;
   if (previousSha !== undefined) env.VERCEL_GIT_PREVIOUS_SHA = previousSha;
+  if (vercelEnv !== null) env.VERCEL_ENV = vercelEnv;
   const proc = Bun.spawn(["bash", join(dir, SCRIPT)], {
     cwd: join(dir, "apps/web"),
     env,
@@ -146,6 +150,27 @@ describe("vercel-ignore-build.sh (real script, throwaway repo)", () => {
     repos.push(dir);
     const { code } = await runScript(dir, base);
     expect(code).toBe(0);
+  });
+
+  test.each(["preview", null])(
+    "VERCEL_ENV=%s skips even when web files changed (previews are disabled)",
+    async (vercelEnv) => {
+      const { dir, base } = await makeRepo();
+      repos.push(dir);
+      await commitFile(dir, "apps/web/src/main.tsx");
+      const { code, out } = await runScript(dir, base, vercelEnv);
+      expect(out).toContain("previews are disabled");
+      expect(code).toBe(0);
+    },
+  );
+
+  test("VERCEL_ENV=production still builds when web files changed", async () => {
+    const { dir, base } = await makeRepo();
+    repos.push(dir);
+    await commitFile(dir, "apps/web/src/main.tsx");
+    const { code, out } = await runScript(dir, base, "production");
+    expect(out).not.toContain("previews are disabled");
+    expect(code).toBe(1);
   });
 });
 

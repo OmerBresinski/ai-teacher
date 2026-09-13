@@ -5,12 +5,6 @@
   "buildCommand": "cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web && bun run homepage:stage",
   "outputDirectory": "dist",
   "ignoreCommand": "bash scripts/vercel-ignore-build.sh",
-  "git": {
-    "deploymentEnabled": {
-      "master": true,
-      "*": false
-    }
-  },
   "rewrites": [
     {
       "source": "/((?!assets/|_vercel/|homepage(?:/|$)).*)",

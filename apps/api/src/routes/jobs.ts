@@ -6,15 +6,15 @@
  */
 import { zValidator } from "@hono/zod-validator";
 import { listJobEvents } from "@tj/db";
-import { AiPingPayloadSchema, JobId, PingPayloadSchema, type WorkspaceId } from "@tj/domain";
-import { cancel, enqueue } from "@tj/jobs";
+import { JobId, type WorkspaceId } from "@tj/domain";
+import { cancel } from "@tj/jobs";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { AppEnv } from "../context";
 import type { EventsRuntime } from "../events/runtime";
 import { parseLastEventId, streamJobEvents } from "../events/stream";
-import { requireJsonBody, validationHook } from "../validation";
+import { validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
 
 const jobParam = z.object({ id: JobId });
@@ -52,36 +52,6 @@ export function acquireStreamOr429(runtime: EventsRuntime, workspaceId: Workspac
 
 export function jobRoutes(runtime: EventsRuntime | undefined) {
   return new Hono<AppEnv>()
-    .post(
-      "/jobs/ping",
-      requireJsonBody(),
-      zValidator("json", PingPayloadSchema, validationHook),
-      async (c) => {
-        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-        const rt = requireRuntime(runtime);
-        const body = c.req.valid("json");
-        const jobId = await enqueue(rt.jobs, "ping", body, { workspaceId });
-        if (jobId === null) {
-          throw new HTTPException(409, { message: "An identical job is already queued." });
-        }
-        return c.json({ jobId }, 202);
-      },
-    )
-    .post(
-      "/jobs/ai-ping",
-      requireJsonBody(),
-      zValidator("json", AiPingPayloadSchema, validationHook),
-      async (c) => {
-        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-        const rt = requireRuntime(runtime);
-        const body = c.req.valid("json");
-        const jobId = await enqueue(rt.jobs, "ai.ping", body, { workspaceId });
-        if (jobId === null) {
-          throw new HTTPException(409, { message: "An identical job is already queued." });
-        }
-        return c.json({ jobId }, 202);
-      },
-    )
     .post("/jobs/:id/cancel", zValidator("param", jobParam, validationHook), async (c) => {
       const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
       const rt = requireRuntime(runtime);
@@ -92,12 +62,16 @@ export function jobRoutes(runtime: EventsRuntime | undefined) {
     })
     .get("/jobs/:id/events", zValidator("param", jobParam, validationHook), async (c) => {
       const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+      const authorization = c.get("streamAuthorization");
+      if (!authorization)
+        throw new HTTPException(401, { message: "You need to sign in to do that." });
       const rt = requireRuntime(runtime);
       const { id } = c.req.valid("param");
       await assertJobInWorkspace(rt, workspaceId, id);
       const release = acquireStreamOr429(rt, workspaceId);
       return streamJobEvents(c, rt, {
         workspaceId,
+        authorization,
         jobId: id,
         lastEventId: parseLastEventId(c.req.header("Last-Event-ID")),
         closeOnTerminal: true,

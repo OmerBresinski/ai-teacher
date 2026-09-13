@@ -5,6 +5,7 @@ import { useJobEvents } from "@/hooks/use-job-events";
 import { api } from "@/lib/api";
 import { libraryCache } from "@/lib/library";
 import { apiErrorFromResponse, queryKeys } from "@/lib/query";
+import { sessionIsCurrent, sessionMutation, sessionRequest } from "@/lib/session-boundary";
 import { GeneratingShell } from "./GeneratingShell";
 
 /**
@@ -43,7 +44,7 @@ export function GeneratingLesson({
   onViewSlide?: (slideId: Id | null) => void;
 }) {
   const queryClient = useQueryClient();
-  const stream = useJobEvents(jobId);
+  const stream = useJobEvents(jobId, queryClient);
   // The last `documentUpdatedAt` the stream carried, whichever event it rode in on: a `progress`
   // without one (a message-only tick) must not reset the value and re-trigger a refetch.
   const documentUpdatedAt = lastDocumentUpdatedAt(stream.events);
@@ -68,20 +69,31 @@ export function GeneratingLesson({
   // partial slides, the way back — rather than opening the editor on the unlocked row; the next
   // visit reads the row afresh and edits what was written.
   useEffect(() => {
-    if (terminal === null) return;
+    if (terminal === null || !sessionIsCurrent(queryClient)) return;
     if (terminal.type !== "completed") onStopped(jobId);
     void libraryCache
       .handOverDocument(queryClient, lesson.id)
-      .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments }));
+      .then(() => {
+        if (sessionIsCurrent(queryClient))
+          return queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments });
+      })
+      .catch(() => {
+        /* The session may have ended while handing over the document. */
+      });
   }, [terminal, lesson.id, jobId, queryClient, onStopped]);
 
-  const cancel = useMutation({
-    mutationFn: async () => {
-      const res = await api.jobs[":id"].cancel.$post({ param: { id: jobId } });
-      if (res.status !== 202) throw await apiErrorFromResponse(res);
-      return res.json();
-    },
-  });
+  const cancel = useMutation(
+    sessionMutation(queryClient, {
+      mutationFn: async () => {
+        const res = await api.jobs[":id"].cancel.$post(
+          { param: { id: jobId } },
+          sessionRequest(queryClient),
+        );
+        if (res.status !== 202) throw await apiErrorFromResponse(res);
+        return res.json();
+      },
+    }),
+  );
 
   return (
     <GeneratingShell

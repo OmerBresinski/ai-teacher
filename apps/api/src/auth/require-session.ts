@@ -32,11 +32,17 @@ export function requireSession(
   opts: { allowHeaderShim: boolean },
 ): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
-    const result = auth ? await auth.api.getSession({ headers: c.req.raw.headers }) : null;
+    const lookup = () =>
+      auth?.api.getSession({
+        headers: c.req.raw.headers,
+        query: { disableCookieCache: true },
+      });
+    const result = await lookup();
     if (!result) {
       // An enabled shim validates a present header (400 if malformed); an absent header is 401.
       if (opts.allowHeaderShim && c.req.header(WORKSPACE_HEADER) !== undefined) {
         c.set("workspaceId", getWorkspaceId(c, opts));
+        c.set("streamAuthorization", { kind: "development-shim" });
         await next();
         return;
       }
@@ -50,6 +56,19 @@ export function requireSession(
     c.set("user", result.user);
     c.set("session", result.session);
     c.set("workspaceId", workspaceId);
+    c.set("streamAuthorization", {
+      kind: "session",
+      sessionId: result.session.id,
+      expiresAt: new Date(result.session.expiresAt).getTime(),
+      revalidate: async () => {
+        const current = await lookup();
+        return (
+          current?.session.id === result.session.id &&
+          current.user.id === result.user.id &&
+          new Date(current.session.expiresAt).getTime() > Date.now()
+        );
+      },
+    });
     await next();
   };
 }

@@ -1,5 +1,6 @@
 import type { WorkspaceId } from "@tj/domain";
 import type { Auth } from "./auth/auth";
+import type { StreamAuthorization } from "./auth/stream-authorization";
 import type { Logger } from "./logger";
 
 /** The `user` / `session` shapes better-auth returns from `auth.api.getSession()`. */
@@ -15,6 +16,7 @@ export type AppEnv = {
     /** Set by `requireSession` (TEACH-20); absent on public routes. */
     user: SessionUser;
     session: Session;
+    streamAuthorization?: StreamAuthorization;
     /** The caller's personal Workspace (TEACH-20); `getWorkspaceId(c)` reads it (TEACH-19). */
     workspaceId?: WorkspaceId;
   };

@@ -36,6 +36,9 @@ import { rootRoute } from "@/routes/root.route";
 import { signInRoute } from "@/routes/sign-in.route";
 import { worksheetCreateRoute } from "@/routes/worksheet-create.route";
 
+// `/dev/jobs` is null in a production build (TEACH-81, see `dev-jobs.route.ts`).
+const DEV_ROUTES = devJobsRoute ? [devJobsRoute] : [];
+
 export const routeTree = rootRoute.addChildren([
   signInRoute,
   authLayoutRoute.addChildren([
@@ -54,7 +57,7 @@ export const routeTree = rootRoute.addChildren([
     lessonPrintRoute,
     worksheetEditorRoute,
     worksheetPrintRoute,
-    devJobsRoute,
+    ...DEV_ROUTES,
     kitRoute,
   ]),
 ]);
