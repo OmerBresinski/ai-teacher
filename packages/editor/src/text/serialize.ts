@@ -1,4 +1,11 @@
-import type { RichDoc, RichNode } from "@tj/domain/documents";
+import {
+  type RichDoc,
+  type RichNode,
+  safeCssColor,
+  safeLinkHref,
+  safeLinkRel,
+  safeTextAlign,
+} from "@tj/domain/documents";
 
 /*
  * Pure HTML serialiser for the rich-text schema `baseExtensions` produces (ADR 0022 §8, amended
@@ -12,6 +19,12 @@ import type { RichDoc, RichNode } from "@tj/domain/documents";
  * underline, textStyle. Inline marks are serialised the way ProseMirror's `DOMSerializer` does it:
  * a mark that continues unchanged onto the next inline node stays open, so `<strong>a<br>b</strong>`
  * rather than one wrapper per node. Anything unknown throws so the caller falls back.
+ *
+ * Security (TEACH-277, audit F01): this is the last line before `dangerouslySetInnerHTML`, so it
+ * does not trust stored attributes even though `RichDocSchema` validates them on the way in — a
+ * Document stored before that schema existed may carry `href: "javascript:…"`. A link whose href
+ * is not an http(s)/mailto address renders as its text with no `<a>`; `target` is always `_blank`;
+ * `rel` and `color`/`text-align` values outside their allow-lists are dropped.
  */
 
 export class UnknownRichNodeError extends Error {
@@ -35,14 +48,23 @@ type Mark = NonNullable<RichNode["marks"]>[number];
  */
 const MARK_ORDER = ["link", "bold", "italic", "strike", "code", "underline", "textStyle"];
 
-/** Link attributes in the order Tiptap writes them; `undefined` falls back, `null` is omitted. */
-const LINK_ATTRS: [name: string, fallback: string | null][] = [
-  ["target", "_blank"],
-  ["rel", "noopener noreferrer"],
-  ["class", null],
-  ["href", null],
-  ["title", null],
-];
+const DEFAULT_REL = "noopener noreferrer";
+
+/**
+ * `<a …>` for a link mark, in the attribute order Tiptap writes (target, rel, class, href, title),
+ * or null when the href is not safe to emit. `undefined` falls back, `null` is omitted.
+ */
+function linkOpenTag(attrs: Record<string, unknown>): string | null {
+  const href = safeLinkHref(attrs.href);
+  if (href === null) return null;
+  const parts = [`target="_blank"`];
+  const rel = "rel" in attrs ? attrs.rel : DEFAULT_REL;
+  if (rel !== null) parts.push(`rel="${escapeAttr(safeLinkRel(rel) ?? DEFAULT_REL)}"`);
+  if (typeof attrs.class === "string") parts.push(`class="${escapeAttr(attrs.class)}"`);
+  parts.push(`href="${escapeAttr(href)}"`);
+  if (typeof attrs.title === "string") parts.push(`title="${escapeAttr(attrs.title)}"`);
+  return `<a ${parts.join(" ")}>`;
+}
 
 function markTag(mark: Mark): [open: string, close: string] {
   const attrs = mark.attrs ?? {};
@@ -59,15 +81,14 @@ function markTag(mark: Mark): [open: string, close: string] {
       return ["<code>", "</code>"];
     case "textStyle": {
       // Tiptap emits the span even with no colour set.
-      const color = typeof attrs.color === "string" ? attrs.color : null;
+      const color = safeCssColor(attrs.color);
       return [color ? `<span style="color: ${escapeAttr(color)};">` : "<span>", "</span>"];
     }
     case "link": {
-      const parts = LINK_ATTRS.flatMap(([name, fallback]) => {
-        const raw = name in attrs ? attrs[name] : fallback;
-        return typeof raw === "string" ? [`${name}="${escapeAttr(raw)}"`] : [];
-      });
-      return [`<a ${parts.join(" ")}>`, "</a>"];
+      const open = linkOpenTag(attrs);
+      // An unsafe address (javascript:, data:, a control character in the scheme, …) is not a
+      // link: the text stays, the anchor goes.
+      return open === null ? ["", ""] : [open, "</a>"];
     }
     default:
       throw new UnknownRichNodeError(mark.type);
@@ -128,15 +149,18 @@ function render(node: RichNode): string {
   switch (node.type) {
     case "paragraph": {
       // Tiptap writes the attribute whenever it is set, `left` included.
-      const align = node.attrs?.textAlign;
-      const style = typeof align === "string" ? ` style="text-align: ${escapeAttr(align)};"` : "";
+      const align = safeTextAlign(node.attrs?.textAlign);
+      const style = align ? ` style="text-align: ${align};"` : "";
       return `<p${style}>${inline(node.content ?? [])}</p>`;
     }
     case "bulletList":
       return `<ul>${blocks(node)}</ul>`;
     case "orderedList": {
       const start = node.attrs?.start;
-      const attr = typeof start === "number" && start !== 1 ? ` start="${start}"` : "";
+      const attr =
+        typeof start === "number" && Number.isInteger(start) && start !== 1
+          ? ` start="${start}"`
+          : "";
       return `<ol${attr}>${blocks(node)}</ol>`;
     }
     case "listItem":
