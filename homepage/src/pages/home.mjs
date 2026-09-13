@@ -13,27 +13,27 @@ const edit = `<div class="hm-edit"><div class="hm-edit-bar"><span class="hm-meta
 
 const home = {
   route: "/",
-  title: "LessonCo | Editable lesson plans, slides and worksheets",
+  title: "DayBack | Editable lesson slides for teachers",
   description:
-    "Meet LessonCo: lesson preparation for teachers, with plans, slides, worksheets and answers that work together.",
-  scripts: ["/assets/home-samples.js", "/assets/hero-motion.js", "/assets/hero-preview.js"],
+    "Meet DayBack: turn a topic or your own materials into lesson slides you can review and edit.",
+  scripts: ["/assets/hero-motion.js", "/assets/hero-preview.js"],
   body: `
 <section class="hm-gather-hero" aria-labelledby="home-title">
-  <div class="hm-hero-intro"><h1 id="home-title">Good company<br>for a good lesson.</h1><p>Turn a topic or your own material into a lesson plan,<br class="hm-hero-wide"> slides, a worksheet and answers you can edit.</p></div>
+  <div class="hm-hero-intro"><h1 id="home-title">Outstanding lessons.<br>Without losing your evening.</h1></div>
   <div class="hm-gathering">
     ${heroCharacter("slides", "slides")}${heroCharacter("activity", "worksheet")}${heroCharacter("support", "plan")}${heroCharacter("answers", "answers")}
-    <form class="hm-brief" data-hero-preview>
+    <form class="hm-brief" id="start" data-hero-preview>
       <label for="hero-topic">What would you like to teach?</label>
-      <div class="hm-brief-row"><input id="hero-topic" data-brief-topic required maxlength="500" placeholder="e.g. Year 7 science — solids, liquids and gases" autocomplete="off"><button type="submit" disabled>Create a lesson ${arrowIcon}</button></div>
+      <div class="hm-brief-row"><input id="hero-topic" data-brief-topic required maxlength="500" placeholder="e.g. Year 4 science — how sound travels" autocomplete="off"><button type="submit" disabled>Create a lesson ${arrowIcon}</button></div>
       <p class="hm-brief-status" data-brief-status role="status" aria-live="polite"></p>
       <noscript><p>This local preview needs JavaScript. Nothing is sent or saved.</p></noscript>
     </form>
+    <p class="hm-grounded-subtitle">Your topic or materials. A complete lesson, ready to edit.</p>
   </div>
   <button class="hm-hero-pause" data-pause-hero aria-pressed="false" hidden>Pause motion</button>
 </section>
 ${homeSamples()}
-<section class="hm-preparation container" aria-labelledby="preparation-title"><p class="eyebrow">FROM YOUR DESK TO THEIRS</p><h2 id="preparation-title">A starting point.<br>Still your lesson.</h2><ol><li><h3>Bring your brief</h3><p>A topic, your notes or a resource to reuse. Add the class and learning goal.</p></li><li><h3>Take a second look</h3><p>Review the explanation, questions and suggested corrections. Your judgement matters.</p></li><li><h3>Make it yours</h3><p>Adapt the materials for your class and choose what reaches the classroom.</p></li></ol></section>
-${cta({ title: "You bring the teaching.<br>We’ll bring good company.", body: "Take a look around a complete sample lesson. See how the explanation, practice and answers fit together." })}`,
+`,
 };
 const how = {
   route: "/how-it-works/",

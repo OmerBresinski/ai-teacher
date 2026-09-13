@@ -40,21 +40,29 @@ export function cta({
   return `<section class="section closing-block"><div class="container closing-inner"><div><h2>${title}</h2><p>${body}</p><div class="actions">${actions || button("Explore a sample lesson", "/examples/") + button("Access and availability", "/pricing/", { secondary: true })}</div></div>${character("answers")}</div></section>`;
 }
 export function shell(page) {
-  const nav = [
-    ["How it works", "/how-it-works/"],
-    ["Examples", "/examples/"],
-    ["For schools", "/for-schools/"],
-    ["Pricing", "/pricing/"],
-  ];
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(page.title.replace(/^LessonCo \| /, "").replace(/ \| LessonCo$/, ""))} | LessonCo</title><meta name="description" content="${escapeHtml(page.description)}"><link rel="icon" href="${href("/assets/favicon.svg")}" type="image/svg+xml"><link rel="stylesheet" href="${href("/assets/system.css")}">${["home", "features", "examples", "information"].map((n) => `<link rel="stylesheet" href="${href(`/assets/${n}.css`)}">`).join("")}<link rel="stylesheet" href="${href("/motion/cast.css")}"></head><body data-living-cast><a class="skip" href="#main">Skip to content</a><header class="site-header container"><a class="brand" href="${href("/")}" aria-label="LessonCo home">LessonCo<span aria-hidden="true">✳︎</span></a><button class="menu-toggle" aria-expanded="false" aria-controls="main-nav">Menu <span aria-hidden="true">+</span></button><nav id="main-nav" aria-label="Main navigation">${nav.map(([label, route]) => `<a href="${href(route)}" ${page.route === route ? 'aria-current="page"' : ""}>${label}</a>`).join("")}<a class="nav-cta" href="${href("/examples/shadows/")}">Explore a lesson <span aria-hidden="true">${arrowIcon}</span></a></nav></header><main id="main">${page.body}</main><footer class="site-footer"><div class="container"><div class="footer-top"><div><a class="brand" href="${href("/")}">LessonCo<span aria-hidden="true">✳︎</span></a><p>Lesson preparation for teachers.</p><p class="preview-note">A working preview. Explore prepared lessons;<br>live creation and accounts aren’t connected yet.</p></div><div class="footer-group"><h2>The materials</h2>${[
-    ["Lesson plans", "lesson-plans"],
-    ["Slides", "slides"],
-    ["Worksheets", "worksheets"],
-    ["Answers", "answers"],
-    ["Lesson checks", "lesson-checks"],
-  ]
-    .map(([l, p]) => `<a href="${href(`/features/${p}/`)}">${l}</a>`)
-    .join("")}</div><div class="footer-group"><h2>A little more</h2>${[
+  const nav =
+    page.route === "/"
+      ? [["Prepared lesson", "#example"]]
+      : [
+          ["How it works", "/how-it-works/"],
+          ["Examples", "/examples/"],
+          ["For schools", "/for-schools/"],
+          ["Pricing", "/pricing/"],
+        ];
+  const footerMaterials =
+    page.route === "/"
+      ? [
+          ["Sample lesson", "#example"],
+          ["Try your own topic", "#start"],
+        ]
+      : [
+          ["Lesson plans", "/features/lesson-plans/"],
+          ["Slides", "/features/slides/"],
+          ["Worksheets", "/features/worksheets/"],
+          ["Answers", "/features/answers/"],
+          ["Lesson checks", "/features/lesson-checks/"],
+        ];
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(page.title.replace(/^LessonCo \| |^DayBack \| /, "").replace(/ \| (LessonCo|DayBack)$/, ""))} | DayBack</title><meta name="description" content="${escapeHtml(page.description)}"><link rel="icon" href="${href("/assets/favicon.svg")}" type="image/svg+xml"><link rel="stylesheet" href="${href("/assets/system.css")}">${["home", "features", "examples", "information"].map((n) => `<link rel="stylesheet" href="${href(`/assets/${n}.css`)}">`).join("")}<link rel="stylesheet" href="${href("/motion/cast.css")}"></head><body data-living-cast><a class="skip" href="#main">Skip to content</a><header class="site-header container"><a class="brand" href="${href("/")}" aria-label="DayBack home">DayBack<span aria-hidden="true">✳︎</span></a><button class="menu-toggle" aria-expanded="false" aria-controls="main-nav">Menu <span aria-hidden="true">+</span></button><nav id="main-nav" aria-label="Main navigation">${nav.map(([label, route]) => `<a href="${href(route)}" ${page.route === route ? 'aria-current="page"' : ""}>${label}</a>`).join("")}<a class="nav-cta" href="${href(page.route === "/" ? "#start" : "/examples/shadows/")}">${page.route === "/" ? "Try a topic" : "Explore a lesson"} <span aria-hidden="true">${arrowIcon}</span></a></nav></header><main id="main">${page.body}</main><footer class="site-footer"><div class="container"><div class="footer-top"><div><a class="brand" href="${href("/")}">DayBack<span aria-hidden="true">✳︎</span></a><p>Editable lesson slides for teachers.</p><p class="preview-note">A working preview. Explore a prepared lesson;<br>live creation and accounts aren’t connected yet.</p></div><div class="footer-group"><h2>${page.route === "/" ? "Explore DayBack" : "The materials"}</h2>${footerMaterials.map(([l, p]) => `<a href="${href(p)}">${l}</a>`).join("")}</div><div class="footer-group"><h2>A little more</h2>${[
     ["About", "about"],
     ["Guides", "guides"],
     ["Help", "help"],
@@ -64,7 +72,7 @@ export function shell(page) {
     .map(([l, p]) => `<a href="${href(`/${p}/`)}">${l}</a>`)
     .join(
       "",
-    )}</div></div><div class="footer-bottom"><span>Good company for a good lesson.</span><div>${[
+    )}</div></div><div class="footer-bottom"><span>Outstanding lessons. Evenings intact.</span><div>${[
     ["Privacy", "privacy"],
     ["Terms", "terms"],
     ["Cookies", "cookies"],

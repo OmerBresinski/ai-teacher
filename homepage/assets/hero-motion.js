@@ -29,13 +29,19 @@
       eyes,
       visible: false,
       gesture: 0,
+      leftGesture: 0,
+      rightGesture: 0,
+      lean: 0,
+      rise: 0,
+      glassesLift: 0,
+      glasses: svg.querySelector(".glasses"),
     };
   });
   function paint(actor, resting) {
     const { pose, index } = actor;
     const phase = (elapsed * Math.PI * 2) / [4.7, 5.4, 6.1, 6.8][index] + index * 1.7;
-    const lift = resting ? 0 : Math.sin(phase * 1.17) * 0.65;
-    const angle = pose.angle + (resting ? 0 : Math.sin(phase) * 0.45);
+    const lift = resting ? 0 : Math.sin(phase * 1.17) * 1.25 + actor.rise;
+    const angle = pose.angle + (resting ? 0 : Math.sin(phase) * 0.85 + actor.lean);
     const arm = resting ? 0 : Math.sin(phase * 0.7) * 0.65 + actor.gesture;
     actor.body.setAttribute(
       "transform",
@@ -52,8 +58,15 @@
         })
         .join(" "),
     );
-    actor.left.setAttribute("transform", `rotate(${arm * 0.5} ${pose.pivots[0].join(" ")})`);
-    actor.right.setAttribute("transform", `rotate(${-arm} ${pose.pivots[1].join(" ")})`);
+    actor.left.setAttribute(
+      "transform",
+      `rotate(${arm * 0.5 + (resting ? 0 : actor.leftGesture)} ${pose.pivots[0].join(" ")})`,
+    );
+    actor.right.setAttribute(
+      "transform",
+      `rotate(${-arm + (resting ? 0 : actor.rightGesture)} ${pose.pivots[1].join(" ")})`,
+    );
+    actor.glasses?.setAttribute("transform", `translate(0 ${resting ? 0 : actor.glassesLift})`);
     const blinkTime = (elapsed + index * 1.3) % (5.2 + index * 0.8);
     const blink = resting || blinkTime > 0.18 ? 1 : Math.abs(blinkTime - 0.09) / 0.09;
     for (const eye of actor.eyes) eye.element.setAttribute("ry", Math.max(0.2, eye.radius * blink));
@@ -62,7 +75,13 @@
   function reset() {
     for (const actor of actors) {
       gsap.killTweensOf(actor);
-      actor.gesture = 0;
+      actor.gesture =
+        actor.leftGesture =
+        actor.rightGesture =
+        actor.lean =
+        actor.rise =
+        actor.glassesLift =
+          0;
       paint(actor, true);
     }
   }
@@ -73,7 +92,13 @@
         actor.visible = entry.isIntersecting && entry.intersectionRatio >= 0.25;
         if (!actor.visible) {
           gsap.killTweensOf(actor);
-          actor.gesture = 0;
+          actor.gesture =
+            actor.leftGesture =
+            actor.rightGesture =
+            actor.lean =
+            actor.rise =
+            actor.glassesLift =
+              0;
           paint(actor, true);
         }
       }
@@ -84,14 +109,29 @@
     observer.observe(actor.host);
     actor.host.addEventListener("pointerenter", (event) => {
       if (event.pointerType === "touch" || blocked() || !actor.visible) return;
-      gsap.to(actor, {
-        gesture: 2,
-        duration: 0.6,
-        yoyo: true,
-        repeat: 1,
-        ease: "sine.inOut",
-        overwrite: true,
-      });
+      gsap.killTweensOf(actor);
+      const t = gsap.timeline();
+      const to = (values, at, duration) =>
+        t.to(actor, { ...values, duration, ease: "sine.inOut" }, at);
+      const kind = actor.host.dataset.heroActor;
+      if (kind === "slides") {
+        to({ lean: -3, rise: -1.5, rightGesture: -22, leftGesture: 4 }, 0, 0.45);
+        to({ rightGesture: -8 }, 0.45, 0.18);
+        to({ rightGesture: -20 }, 0.63, 0.2);
+        to({ rightGesture: -12 }, 0.83, 0.2);
+      } else if (kind === "activity") {
+        to({ rise: 2, lean: -1 }, 0, 0.14);
+        to({ rise: -3, lean: 2, rightGesture: 20, leftGesture: 6 }, 0.14, 0.42);
+        to({ rightGesture: 15 }, 0.56, 0.35);
+      } else if (kind === "support") {
+        to({ rise: 1.5, lean: -1 }, 0, 0.27);
+        to({ rise: -1, leftGesture: 18, rightGesture: -18 }, 0.27, 0.65);
+      } else {
+        to({ lean: 2.8, rise: 1 }, 0, 0.4);
+        to({ glassesLift: -3.2, rightGesture: -9 }, 0.25, 0.4);
+        to({ rise: 2.5, lean: 1.8 }, 0.7, 0.22);
+      }
+      to({ leftGesture: 0, rightGesture: 0, lean: 0, rise: 0, glassesLift: 0 }, 1.05, 0.8);
     });
   }
   function tick(_time, delta) {

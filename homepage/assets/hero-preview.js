@@ -11,7 +11,7 @@
       return;
     }
     status.textContent =
-      "Your topic is ready to try. This is a local preview: no lesson has been generated, and nothing has been sent or saved.";
+      "Your topic is ready to try. DayBack’s lesson creation is not connected in this preview yet, so nothing was sent or saved.";
   });
   form.querySelector('button[type="submit"]').disabled = false;
 })();
