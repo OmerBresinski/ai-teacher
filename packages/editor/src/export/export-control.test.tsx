@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Lesson, Worksheet } from "@tj/domain/documents";
@@ -6,6 +6,7 @@ import { TooltipProvider } from "@tj/ui";
 import { demoWorksheet } from "../model/demo-worksheet";
 import { demoLibrary } from "../model/starter";
 import { ExportControl, exportLoaders, PPTX_FONT_NOTE } from "./ExportControl";
+import * as paint from "./paint";
 
 const water = () => {
   const lesson = demoLibrary().find((l) => l.title === "The water cycle");
@@ -217,6 +218,9 @@ describe("ExportControl (TEACH-111)", () => {
   });
 
   it("PNG: size 1x/2x/3x with the pixel hint, the range, and one file per slide in range", async () => {
+    // Capture is faked; fonts/image decode/two animation frames are a browser boundary too.
+    // Keep real mounting and export sequencing, without waiting on happy-dom's paint scheduler.
+    const painted = spyOn(paint, "waitForSlidePaint").mockResolvedValue(undefined);
     const user = userEvent.setup();
     const captured: number[] = [];
     const realPng = exportLoaders.png;
@@ -251,6 +255,7 @@ describe("ExportControl (TEACH-111)", () => {
         expect(downloads).toEqual(["the-water-cycle-1.png", "the-water-cycle-2.png"]),
       );
       expect(captured).toEqual([3, 3]);
+      expect(painted).toHaveBeenCalledTimes(2);
       // The stage is gone with the run.
       await waitFor(() => expect(document.querySelector("[data-capture-stage]")).toBeNull());
     } finally {
@@ -260,6 +265,7 @@ describe("ExportControl (TEACH-111)", () => {
   });
 
   it("PNG: closing the dialog mid-run stops the loop after the file in hand (row 7)", async () => {
+    spyOn(paint, "waitForSlidePaint").mockResolvedValue(undefined);
     const user = userEvent.setup();
     let release: () => void = () => {};
     const gate = new Promise<void>((r) => {
@@ -288,16 +294,20 @@ describe("ExportControl (TEACH-111)", () => {
       await user.click(pickTab("PNG"));
       await user.click(screen.getByRole("button", { name: "Export PNG" }));
       await waitFor(() => expect(screen.getByText(/Exporting 1 of \d+/)).toBeVisible());
+      // The progress label is set BEFORE paint. Wait until capture actually holds the file;
+      // closing at the label alone races the pre-capture cancellation check and downloads none.
+      await waitFor(() => expect(calls).toBe(1));
       expect(document.querySelector("[data-capture-stage]")).not.toBeNull();
       await user.keyboard("{Escape}");
       release();
       await waitFor(() => expect(downloads).toEqual(["s-1.png"]));
-      // Give a second iteration every chance to run: it must not.
-      await new Promise((r) => setTimeout(r, 200));
+      // Wait for the loop's finally/cleanup, rather than guessing how long its gap timer takes.
+      await waitFor(() => expect(document.querySelector("[data-capture-stage]")).toBeNull());
       expect(downloads).toEqual(["s-1.png"]);
       expect(calls).toBe(1);
       expect(document.querySelector("[data-capture-stage]")).toBeNull();
     } finally {
+      release();
       HTMLAnchorElement.prototype.click = original;
       exportLoaders.png = realPng;
     }
