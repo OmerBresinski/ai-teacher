@@ -121,8 +121,10 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   // it did not, Verify runs first, before any slide call. Once the patch lands: the facts and the
   // stem plan are replaced, the findings recorded, the stamp completed — and any slide already
   // written from a corrected fact is regenerated below (`slideWork`) before it is persisted.
+  // Skeleton-only facts (Plan's facts call was refused at the cap) have nothing to verify, as in
+  // Plan: Verify is not started for them.
   const resumedVerify =
-    state.pendingVerify === undefined && !verifyStamped(lesson)
+    state.pendingVerify === undefined && !verifyStamped(lesson) && facts.questions.length > 0
       ? runVerify(facts, { topic: lesson.brief?.topic ?? lesson.title, audience }, deps)
       : undefined;
   const pendingVerify = state.pendingVerify ?? resumedVerify;
@@ -238,20 +240,16 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       const photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
       let written = await writeSlide(i, entry, photo);
       // The patch landed while this slide was being written: a slide built from a fact Verify
-      // corrected is written again from the corrected facts (TEACH-233). A cap stop here keeps
-      // the first version — the budget finding says so — rather than dropping a finished slide.
+      // corrected is written again from the corrected facts (TEACH-233). A cap stop on that second
+      // call drops the slide — it was built from unverified facts and may not reach the checkpoint;
+      // the lesson stops here as it does for any slide the cap refuses.
       await verified;
       if (written.builtFrom !== facts && touchesCorrected(entry, written.slide, corrected)) {
         deps.logger.info(
           { stage: "generate", call: "slide", index: i, reason: "fact-verify" },
           "slide regenerated from corrected facts",
         );
-        try {
-          written = await writeSlide(i, entry, photo);
-        } catch (error) {
-          if (!(error instanceof BudgetExceeded)) throw error;
-          if (!stopped) stopped = BUDGET_FINDING(error.by, `slide ${i + 1} of ${total}`);
-        }
+        written = await writeSlide(i, entry, photo);
       }
       slide = written.slide;
       for (const miss of written.misses) {
@@ -418,7 +416,9 @@ function withVerifyStamp(lesson: Lesson): Lesson {
 /**
  * Whether a slide written before Verify's patch landed was built from a fact it corrected: the
  * entry's references, the references its elements were stamped with, and every misconception —
- * `referencedFacts` shows all of those to every slide for its notes.
+ * `referencedFacts` shows all of those to every slide for its notes. The stems *reserved* from a
+ * slide (`stemPlan`) are not content it was built from: they tell the writer what not to use, so a
+ * stem corrected elsewhere leaves this slide's facts as verified as they were.
  */
 function touchesCorrected(entry: OutlineEntry, slide: Slide, corrected: Set<string>): boolean {
   if (corrected.size === 0) return false;

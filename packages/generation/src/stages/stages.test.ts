@@ -1154,6 +1154,48 @@ describe("generate", () => {
       ).toBe(false);
     });
 
+    test("a cap hit on the regeneration call drops the slide built from unverified facts and stops there", async () => {
+      const { state, release } = await plannedWithHeldVerify([
+        { factId: "v1", field: "term", value: "Clan", reason: "wrong-term" },
+      ]);
+      const facts = fullFacts();
+      const touched = facts.outline.findIndex((e) => e.factRefs.includes("v1"));
+      const ai = createFakeAi({ script: generateScript(), usage });
+      // One batch's worth plus the worksheet: the first four slide calls go ahead; the vocabulary
+      // slide's second call (and every later slide) is refused.
+      const budget = createBudget({ capUsd: SMALL_CALL_USD * 3.5, capTokens: 1_000_000 });
+      const deps = recordingDeps(ai, { budget });
+      const run = generate(state, deps);
+      await new Promise((r) => setTimeout(r, 5));
+      release();
+      const result = await run;
+      expect(result.lesson.generation?.stage).toBe("generated");
+      // Slides before the touched one landed; the touched one and everything after did not.
+      expect(result.lesson.slides).toHaveLength(touched);
+      // The worksheet, which also waited for the patch, may be the first call the cap refused.
+      expect(result.lesson.generation?.findings).toEqual([
+        expect.objectContaining({ check: "fact-verify", target: { factId: "v1" } }),
+        expect.objectContaining({ check: "budget" }),
+      ]);
+      expect(result.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
+    });
+
+    test("skeleton-only facts (the facts call was refused at the cap) are not verified on resume", async () => {
+      const planAi = createFakeAi({ script: planScript(), usage });
+      const budget = createBudget({ capUsd: STANDARD_CALL_USD / 2, capTokens: 1_000_000 });
+      const start = await plan(initialState(), recordingDeps(planAi, { budget }));
+      expect(start.pendingVerify).toBeUndefined();
+      expect(start.lesson.facts?.questions).toEqual([]);
+      const ai = createFakeAi({ script: generateScript(), usage });
+      const result = await generate(start, recordingDeps(ai));
+      expect(
+        ai.calls.some((c) => c.context?.promptVersion === PROMPT_VERSIONS["verify-facts"]),
+      ).toBe(false);
+      expect(result.lesson.generation?.findings.filter((f) => f.check === "budget")).toHaveLength(
+        1,
+      );
+    });
+
     test("row 5: a budget stop during Verify — one budget finding, no regeneration, slides from the unpatched facts, the lesson completes", async () => {
       const planAi = createFakeAi({ script: planScript(), usage });
       // Skeleton and facts go ahead; Verify is refused at the cap.
