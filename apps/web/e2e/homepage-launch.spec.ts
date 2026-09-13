@@ -173,9 +173,17 @@ test.describe("example lessons", () => {
     )) {
       expect(alt.trim().length).toBeGreaterThan(0);
     }
-    await expect(page.locator(".ex-answers img").first()).toBeHidden();
-    await page.locator(".ex-answers > summary").click();
-    await expect(page.locator(".ex-answers img").first()).toBeVisible();
+    // A lesson may ship with slides only; when it has a worksheet the answers stay hidden until
+    // the disclosure is opened, and no worksheet heading appears when it has none.
+    const answers = page.locator(".ex-answers");
+    if ((await answers.count()) > 0) {
+      await expect(page.locator(".ex-answers img").first()).toBeHidden();
+      await answers.locator("summary").click();
+      await expect(page.locator(".ex-answers img").first()).toBeVisible();
+    } else {
+      await expect(page.getByRole("heading", { name: "Worksheet" })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Answer key" })).toHaveCount(0);
+    }
   });
 });
 

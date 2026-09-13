@@ -6,13 +6,17 @@ const image = (slug, item, extra = "") =>
 
 const count = examples.length;
 const subjects = [...new Set(examples.map((example) => `${example.year} ${example.subject}`))];
+// A lesson can ship with slides only, so nothing on the page may promise a worksheet that is not
+// there. Every count and every list of materials is read from the manifests.
+const anyWorksheet = examples.some((example) => example.worksheet);
+const materials = (example) => (example.worksheet ? "slides, worksheet and answer key" : "slides");
 
 const indexPage = {
   route: "/examples/",
   title: "Example lessons | DayBack",
   description: count
-    ? `${count === 1 ? "A lesson" : `${inWords(count)[0].toUpperCase() + inWords(count).slice(1)} lessons`} made in DayBack from one line of brief: slides, worksheet and answer key, for ${subjects.join(" and ")}.`
-    : "Lessons made in DayBack: slides, worksheet and answer key from one line of brief.",
+    ? `${count === 1 ? "A lesson" : `${inWords(count)[0].toUpperCase() + inWords(count).slice(1)} lessons`} made in DayBack from one line of brief: ${anyWorksheet ? "slides, worksheet and answer key" : "the slides"}, for ${subjects.join(" and ")}.`
+    : "Lessons made in DayBack from one line of brief.",
   body:
     `<section class="ex-index-head">
       <h1>${count === 1 ? "A lesson made in DayBack." : "Lessons made in DayBack."}</h1>
@@ -25,7 +29,7 @@ const indexPage = {
         <p class="ex-index-brief">“${example.brief}”</p>
         <p class="eyebrow">${example.year} ${example.subject}</p>
         <h2><a href="${href(`/examples/${example.slug}/`)}">${example.title}</a></h2>
-        <p>${example.slides.length} slides, worksheet with answer key</p>
+        <p>${example.slides.length} slides${example.worksheet ? ", worksheet with answer key" : ""}</p>
         <a class="hm-link" href="${href(`/examples/${example.slug}/`)}">Open this lesson <span aria-hidden="true">${arrowIcon}</span></a>
       </article>`,
       )
@@ -40,7 +44,7 @@ const indexPage = {
 const lessonPage = (example) => ({
   route: `/examples/${example.slug}/`,
   title: `${example.title} | ${example.year} ${example.subject} lesson | DayBack`,
-  description: `A ${example.year} ${example.subject} lesson made in DayBack from the brief “${example.brief}”: ${example.slides.length} slides, a worksheet and the answer key.`,
+  description: `A ${example.year} ${example.subject} lesson made in DayBack from the brief “${example.brief}”: ${example.slides.length} slides${example.worksheet ? ", a worksheet and the answer key" : ""}.`,
   body:
     `<section class="ex-lesson-head">
       <a class="ex-back" href="${href("/examples/")}">← All example lessons</a>
@@ -52,18 +56,28 @@ const lessonPage = (example) => ({
       <h2 id="slides-heading">Slides</h2>
       <div class="ex-shots">${example.slides.map((slide) => `<figure>${image(example.slug, slide, 'width="1440" height="810"')}</figure>`).join("")}</div>
     </section>
-    <section class="ex-material" aria-labelledby="worksheet-heading">
+    ${
+      example.worksheet
+        ? `<section class="ex-material" aria-labelledby="worksheet-heading">
       <h2 id="worksheet-heading">Worksheet</h2>
       <div class="ex-shots ex-shots-paper">${example.worksheet.pages.map((page) => `<figure>${image(example.slug, page)}</figure>`).join("")}</div>
     </section>
-    <section class="ex-material" aria-labelledby="answers-heading">
+    ${
+      example.worksheet.answers.length > 0
+        ? `<section class="ex-material" aria-labelledby="answers-heading">
       <h2 id="answers-heading">Answer key</h2>
       <details class="ex-answers"><summary>Show answers<span aria-hidden="true">+</span></summary>
         <div class="ex-shots ex-shots-paper">${example.worksheet.answers.map((page) => `<figure>${image(example.slug, page)}</figure>`).join("")}</div>
       </details>
-    </section>` +
+    </section>`
+        : ""
+    }`
+        : ""
+    }` +
     cta({
-      title: "Your topic makes the same<br>three things for your class.",
+      title: example.worksheet
+        ? "Your topic makes the same<br>three things for your class."
+        : "Your topic makes a whole<br>lesson for your class.",
       body: "Type the year group and the topic. The whole lesson comes back checked.",
       actions:
         appButton("Create a lesson") +

@@ -21,6 +21,7 @@ const readManifest = (slug) => {
       throw new Error(`examples/${slug}/manifest.json: every slide needs a src and a real alt`);
     }
   }
+  // A lesson may ship with slides only; a worksheet is never borrowed from another lesson.
   const worksheet = manifest.worksheet ?? {};
   // A worksheet page may be a bare path or a {src, alt} pair; a bare path gets a positional alt.
   const sheet = (list, label) =>
@@ -39,7 +40,7 @@ const readManifest = (slug) => {
     brief: manifest.brief,
     provisional: manifest.provisional === true,
     slides,
-    worksheet: { pages, answers },
+    worksheet: pages.length > 0 ? { pages, answers } : null,
   };
 };
 
@@ -58,8 +59,8 @@ const slugs = readdirSync(fileURLToPath(root), { withFileTypes: true })
 export const examples = [];
 for (const slug of slugs) {
   const manifest = readManifest(slug);
-  if (manifest.slides.length === 0 || manifest.worksheet.pages.length === 0) {
-    console.warn(`Skipping example ${slug}: no slide or worksheet assets yet.`);
+  if (manifest.slides.length === 0) {
+    console.warn(`Skipping example ${slug}: no slide assets yet.`);
     continue;
   }
   if (manifest.provisional && !allowProvisional) {

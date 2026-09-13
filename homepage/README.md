@@ -71,11 +71,15 @@ plus a `manifest.json`:
 }
 ```
 
+`worksheet` is optional. A lesson that ships with slides only omits it, and the page then omits the
+Worksheet and Answer key sections and the "worksheet and answer key" half of every caption. Never
+borrow a worksheet from a different lesson to fill the gap.
+
 Slides are PNG, 1440 wide at most, and every slide needs real `alt` text or the build throws. A
 worksheet page may also be a bare path string, in which case a positional alt is generated. The
-build skips a lesson with no slide or worksheet assets and logs why, so the index only ever lists
-lessons whose images exist, and the headings and counts on home and `/examples/` follow the number
-of lessons actually emitted. A manifest marked `"provisional": true` carries stand-in assets and is
+build skips a lesson with no slide assets and logs why, so the index only ever lists lessons whose
+images exist, and the headings, counts and lists of materials on home and `/examples/` follow the
+manifests actually emitted. A manifest marked `"provisional": true` carries stand-in assets and is
 emitted only with `--allow-provisional`. Dropping real exports into the folder and removing that
 flag is the whole swap.
 

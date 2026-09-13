@@ -25,19 +25,5 @@
       "src": "slides/05.png",
       "alt": "Slide 5: Predict, test, explain. Pupils shorten the free end of the ruler, predict how the sound will change, then explain the result."
     }
-  ],
-  "worksheet": {
-    "pages": [
-      {
-        "src": "worksheet/01.png",
-        "alt": "Worksheet page 1: four written questions with space to answer and a word bank of useful terms."
-      }
-    ],
-    "answers": [
-      {
-        "src": "answers/01.png",
-        "alt": "Answer key page 1: a suggested answer under each of the four worksheet questions."
-      }
-    ]
-  }
+  ]
 }

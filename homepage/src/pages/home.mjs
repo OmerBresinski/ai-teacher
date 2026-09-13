@@ -33,14 +33,14 @@ const exampleStrip = count
   <div class="hm-examples-heading">
     <p class="eyebrow">MADE IN DAYBACK</p>
     <h2 id="examples-title">${count === 1 ? "A lesson,<br>start to finish." : `${inWords(count)[0].toUpperCase() + inWords(count).slice(1)} lessons,<br>start to finish.`}</h2>
-    <p>Every slide, question and answer below came back from a one-line brief.</p>
+    <p>${examples.some((example) => example.worksheet) ? "Every slide, question and answer below came back from a one-line brief." : "Every slide below came back from a one-line brief."}</p>
   </div>
   <div class="hm-example-list">${examples
     .map(
       (example) => `<article class="hm-example-card">
       <a class="hm-example-shot" href="${href(`/examples/${example.slug}/`)}" tabindex="-1" aria-hidden="true"><img src="${href(assetHref(example.slug, example.slides[0].src))}" alt="" loading="lazy" width="1440" height="810"></a>
       <p class="hm-example-brief">“${example.brief}”</p>
-      <p class="hm-example-caption">${example.year} ${example.subject} · ${example.slides.length} slides, worksheet and answer key</p>
+      <p class="hm-example-caption">${example.year} ${example.subject} · ${example.slides.length} slides${example.worksheet ? ", worksheet and answer key" : ""}</p>
       <a class="hm-link" href="${href(`/examples/${example.slug}/`)}">Open this lesson <span aria-hidden="true">${arrowIcon}</span></a>
     </article>`,
     )
