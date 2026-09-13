@@ -204,6 +204,15 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 403,
     },
     {
+      // Malformed JSON contains no address and cannot send mail even if the byte guard regresses.
+      name: "auth rejects an oversized body before parsing or mail delivery",
+      method: "POST",
+      path: "/auth/sign-in/magic-link",
+      headers: { ...browser, "Content-Type": "application/json" },
+      body: () => "x".repeat(64 * 1024 + 1),
+      expect: 413,
+    },
+    {
       // CORS runs before routing, so a preflight is answered for any path — including one that is
       // not mounted (TEACH-81). What this asserts is the allow headers a credentialed JSON POST
       // needs; 204 alone would pass while the browser still blocks the request.

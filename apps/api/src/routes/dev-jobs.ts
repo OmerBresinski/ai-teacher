@@ -13,6 +13,7 @@ import { AiPingPayloadSchema, PingPayloadSchema } from "@tj/domain";
 import { enqueue } from "@tj/jobs";
 import { Hono, type MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { smallJsonBodyLimit } from "../body-limits";
 import type { AppEnv } from "../context";
 import type { Env } from "../env";
 import { envelope } from "../errors";
@@ -41,6 +42,7 @@ export function devJobRoutes(runtime: EventsRuntime | undefined) {
   return new Hono<AppEnv>()
     .post(
       "/jobs/ping",
+      smallJsonBodyLimit(),
       requireJsonBody(),
       zValidator("json", PingPayloadSchema, validationHook),
       async (c) => {
@@ -56,6 +58,7 @@ export function devJobRoutes(runtime: EventsRuntime | undefined) {
     )
     .post(
       "/jobs/ai-ping",
+      smallJsonBodyLimit(),
       requireJsonBody(),
       zValidator("json", AiPingPayloadSchema, validationHook),
       async (c) => {

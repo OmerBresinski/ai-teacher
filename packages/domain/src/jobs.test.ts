@@ -61,6 +61,7 @@ describe("JobPayloadSchemas.ping", () => {
   test.each([
     ["missing message", {}],
     ["empty message", { message: "" }],
+    ["oversized message", { message: "x".repeat(201) }],
     ["non-integer steps", { message: "x", steps: 1.5 }],
     ["zero steps", { message: "x", steps: 0 }],
     ["too many steps", { message: "x", steps: 101 }],
@@ -69,6 +70,38 @@ describe("JobPayloadSchemas.ping", () => {
   ])("rejects %s", (_label, input) => {
     expect(PingPayloadSchema.safeParse(input).success).toBe(false);
   });
+
+  test("accepts the 200-character diagnostic boundary", () => {
+    expect(PingPayloadSchema.safeParse({ message: "x".repeat(200) }).success).toBe(true);
+  });
+});
+
+describe("bounded proposal identifiers", () => {
+  test("cascade fact ids allow 128 characters and reject 129", () => {
+    for (const length of [128, 129]) {
+      expect(
+        JobPayloadSchemas["lesson.cascade"].safeParse({
+          lessonId: newId(),
+          changedFactIds: ["x".repeat(length)],
+        }).success,
+      ).toBe(length === 128);
+    }
+  });
+  test.each(["slideId", "elementId", "blockId"] as const)(
+    "%s has a 128-character ceiling",
+    (field) => {
+      for (const length of [128, 129]) {
+        const target = {
+          [field]: "x".repeat(length),
+          ...(field === "elementId" ? { slideId: "slide" } : {}),
+        };
+        expect(
+          JobPayloadSchemas["lesson.regenerate"].safeParse({ lessonId: newId(), targets: [target] })
+            .success,
+        ).toBe(length === 128);
+      }
+    },
+  );
 });
 
 describe("JobPayloadSchemas.ai.ping", () => {

@@ -92,6 +92,24 @@ document routes: `"stale"` when the `expectedUpdatedAt` a client sent is behind 
 retryable)` from `src/errors.ts` to return an envelope from a handler; throw `HTTPException` for the
 common cases.
 
+## Request body limits (TEACH-281)
+
+`src/body-limits.ts` counts actual emitted bytes before parsing, even when Content-Length is
+present. It cancels over-limit streams and retains one bounded growing buffer, so tiny chunks
+cannot amplify memory through an unbounded chunk list. Protected paths still run CSRF/session
+guards first. Auth requests use the same byte transport guard without requiring JSON, preserving
+URL-encoded OAuth callbacks. GET, HEAD and OPTIONS are unaffected.
+
+| Operation | Application cap |
+| --- | --- |
+| Auth writes, proposal jobs, image pick/report, diagnostic jobs, cancel/restore/delete | 64 KiB |
+| Document create/PUT and Lesson create | 10 MiB |
+| Source multipart upload | 26 MiB (file remains 25 MiB) |
+
+Application refusals are `413 payload_too_large`. Bun additionally has an explicit 32 MiB
+`maxRequestBodySize` ceiling, above the multipart cap. Diagnostic messages are limited to 200
+characters and proposal/fact identifiers to 128. Production diagnostic routes remain absent.
+
 ## Adding a route
 
 Routers must be **chained** so Hono RPC keeps the types (ADR 0005). Every input is validated with
@@ -103,6 +121,7 @@ validator's raw body).
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
+import { smallJsonBodyLimit } from "../body-limits";
 import type { AppEnv } from "../context";
 import { validationHook } from "../validation";
 
@@ -110,8 +129,11 @@ export const journeyRoutes = new Hono<AppEnv>()
   .get("/journeys/:id", zValidator("param", z.object({ id: z.string() }), validationHook), (c) =>
     c.json({ id: c.req.valid("param").id }, 200),
   )
-  .post("/journeys", zValidator("json", z.object({ goal: z.string().min(1) }), validationHook), (c) =>
-    c.json({ ok: true }, 201),
+  .post(
+    "/journeys",
+    smallJsonBodyLimit(),
+    zValidator("json", z.object({ goal: z.string().min(1) }), validationHook),
+    (c) => c.json({ ok: true }, 201),
   );
 ```
 
@@ -168,7 +190,7 @@ validated twice: the request shape with `zValidator`, the document itself in the
 becomes `422` with the parser's message. `POST` mints the row id and rewrites `body.id` (§11).
 `PUT` is a whole-document write with optimistic concurrency: `expectedUpdatedAt` must equal the
 row's `updatedAt` and no job may hold `generatingJobId`, otherwise `409` with `reason`. `POST` and
-`PUT` are capped at `DOCUMENT_BODY_LIMIT_BYTES` (10 MB, `hono/body-limit`) while images are data
+`PUT` are capped at `DOCUMENT_BODY_LIMIT_BYTES` (10 MiB, `boundedBodyLimit`) while images are data
 URLs (§8). Lists never read `body`: `toSummaryJson` maps the promoted columns to the domain
 `DocumentSummary` shape (ISO strings, `null` → absent) plus `deletedAt` and `generatingJobId`;
 `sort` is `updated | title | created`, `q` is an `ILIKE` on title and subject, and `cursor` is the

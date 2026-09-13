@@ -29,6 +29,7 @@ import {
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
+import { smallJsonBodyLimit } from "../body-limits";
 import type { AppEnv } from "../context";
 import { type RateLimiter, rateLimitByWorkspace } from "../rate-limit";
 import { requireJsonBody, validationHook } from "../validation";
@@ -193,6 +194,7 @@ export function imageRoutes(
     )
     .post(
       "/images/pick",
+      smallJsonBodyLimit(),
       rateLimitByWorkspace(limiter, IMAGE_RATE_LIMIT_MESSAGE),
       requireJsonBody(),
       zValidator("json", PickBody, validationHook),
@@ -246,6 +248,7 @@ export function imageRoutes(
     )
     .post(
       "/images/report",
+      smallJsonBodyLimit(),
       requireJsonBody(),
       zValidator("json", ReportBody, validationHook),
       async (c) => {

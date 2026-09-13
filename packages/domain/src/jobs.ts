@@ -31,7 +31,7 @@ export const JobNameSchema = z.enum(JobName);
  * failing at step `failAt` when set. Strict so unknown fields fail loudly.
  */
 export const PingPayloadSchema = z.strictObject({
-  message: z.string().min(1),
+  message: z.string().min(1).max(200),
   /** Number of progress steps to emit. Defaults to 5 when omitted. */
   steps: z.number().int().positive().max(100).default(5),
   /** When set, the worker fails (retryable) at this step. Used to exercise the failure path. */
@@ -65,6 +65,7 @@ export const CASCADE_MAX_FACTS = 50;
 /** How many slides/elements/blocks one regenerate may name. */
 export const REGENERATE_MAX_TARGETS = 20;
 export const REGENERATE_INSTRUCTION_MAX = 500;
+export const PROPOSAL_ID_MAX = 128;
 
 /**
  * One slide, element or block a proposal job targets or returns (ADR 0025 §18). Exactly one
@@ -73,9 +74,9 @@ export const REGENERATE_INSTRUCTION_MAX = 500;
  */
 export const ProposalTargetSchema = z
   .strictObject({
-    slideId: z.string().optional(),
-    elementId: z.string().optional(),
-    blockId: z.string().optional(),
+    slideId: z.string().max(PROPOSAL_ID_MAX).optional(),
+    elementId: z.string().max(PROPOSAL_ID_MAX).optional(),
+    blockId: z.string().max(PROPOSAL_ID_MAX).optional(),
     /**
      * Why a target is in `flagged` rather than re-derived: `teacher` (its `authoredBy` is not
      * `"ai"`, F07 asks the teacher) or `too_many` (past the per-job cap on re-derived targets).
@@ -98,7 +99,7 @@ export type ProposalTarget = z.infer<typeof ProposalTargetSchema>;
  */
 export const LessonCascadePayloadSchema = z.strictObject({
   lessonId: LessonId,
-  changedFactIds: z.array(z.string()).min(1).max(CASCADE_MAX_FACTS),
+  changedFactIds: z.array(z.string().max(PROPOSAL_ID_MAX)).min(1).max(CASCADE_MAX_FACTS),
 });
 export type LessonCascadePayload = z.infer<typeof LessonCascadePayloadSchema>;
 export type LessonCascadePayloadInput = z.input<typeof LessonCascadePayloadSchema>;

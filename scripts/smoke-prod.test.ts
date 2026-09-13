@@ -31,6 +31,13 @@ function fakeApi(): typeof fetch {
     }
     if (origin !== null && origin !== WEB) return new Response("forbidden", { status: 403 });
     if (origin === null && crossSite) return new Response("forbidden", { status: 403 });
+    if (
+      url.pathname === "/auth/sign-in/magic-link" &&
+      typeof init?.body === "string" &&
+      new TextEncoder().encode(init.body).byteLength > 64 * 1024
+    ) {
+      return new Response("too large", { status: 413 });
+    }
     // TEACH-81: the dev-only ping routes answer 404 before the session guard in production.
     if (url.pathname === "/jobs/ai-ping" || url.pathname === "/jobs/ping") {
       return new Response("not found", { status: 404 });
@@ -43,7 +50,7 @@ describe("smoke-prod", () => {
   test("every case passes against a correctly guarded api", async () => {
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), fakeApi());
     expect(results.every((r) => r.ok)).toBe(true);
-    expect(results.length).toBe(21);
+    expect(results.length).toBe(22);
   });
 
   test("catches the 2026-09-05 regression: cross-site header rejected despite allowed Origin", async () => {
@@ -65,6 +72,7 @@ describe("smoke-prod", () => {
       "/images/pick",
       "/images/report",
       "/sources",
+      "/auth/sign-in/magic-link",
     ]);
   });
 
