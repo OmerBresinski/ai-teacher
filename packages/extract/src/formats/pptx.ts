@@ -29,7 +29,7 @@ export async function extractPptx(
   bytes: Uint8Array,
   limits: ExtractLimits = LIMITS,
 ): Promise<Extraction> {
-  const reader = new ZipReader(await openZip(bytes, "pptx"), "pptx", limits);
+  const reader = new ZipReader(await openZip(bytes, "pptx", limits), "pptx", limits);
   const slides = reader
     .paths(SLIDE_PATH)
     .map((path) => ({ path, n: Number(SLIDE_PATH.exec(path)?.[1]) }))

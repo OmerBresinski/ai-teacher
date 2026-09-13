@@ -31,7 +31,7 @@ export async function extractDocx(
   bytes: Uint8Array,
   limits: ExtractLimits = LIMITS,
 ): Promise<Extraction> {
-  const reader = new ZipReader(await openZip(bytes, "docx"), "docx", limits);
+  const reader = new ZipReader(await openZip(bytes, "docx", limits), "docx", limits);
   if (!reader.has("word/document.xml")) throw new ExtractError("malformed", "docx");
   await reader.readAll();
 

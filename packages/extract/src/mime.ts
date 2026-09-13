@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import { ExtractError, type ExtractLimits, LIMITS, type SourceMime } from "./types";
+import { checkZipDirectory } from "./zip-directory";
 
 const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
 const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04]; // PK\x03\x04
@@ -34,7 +35,7 @@ export async function sniffMime(
   const container = sniffContainer(bytes);
   if (container === "pdf") return "application/pdf";
   if (container !== "zip") return null;
-  const zip = await openZip(bytes, "unknown");
+  const zip = await openZip(bytes, "unknown", limits);
   if (Object.keys(zip.files).length > limits.maxZipEntries) {
     throw new ExtractError("too-large", "unknown");
   }
@@ -48,7 +49,12 @@ export async function sniffMime(
 }
 
 /** Open a zip container; a corrupt one is `malformed`, never the library's message. */
-export async function openZip(bytes: Uint8Array, format: "pptx" | "docx" | "unknown") {
+export async function openZip(
+  bytes: Uint8Array,
+  format: "pptx" | "docx" | "unknown",
+  limits: ExtractLimits = LIMITS,
+) {
+  checkZipDirectory(bytes, limits.maxZipEntries, format);
   try {
     return await JSZip.loadAsync(bytes);
   } catch {
