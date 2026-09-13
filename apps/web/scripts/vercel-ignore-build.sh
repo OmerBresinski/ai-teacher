@@ -10,6 +10,18 @@
 # branch, force-push, shallow clone) must never silently skip a deploy.
 set -u
 
+# Preview deployments are off: only `master` (VERCEL_ENV=production) is ever built. The
+# `git.deploymentEnabled: { "master": true, "*": false }` key that vercel.json carried from
+# 2026-09-05 did not take effect for this project (43 PR previews built 2026-09-10..12 with it in
+# place), and those builds consumed the Hobby-plan build quota that production deploys need. Vercel
+# runs this script for every Git-triggered deployment with VERCEL_ENV set to `production` or
+# `preview` (it is the documented "Only build production" behaviour); a manual `vercel deploy` from
+# a laptop bypasses the Ignored Build Step entirely. Re-enable previews by deleting this block.
+if [[ "${VERCEL_ENV:-}" != "production" ]]; then
+  echo "vercel-ignore-build: VERCEL_ENV=${VERCEL_ENV:-unset} is not production -> skip (previews are disabled)"
+  exit 0
+fi
+
 cd "$(dirname "$0")/../../.." || exit 1
 
 # Paths whose changes can alter apps/web's output: apps/web itself, the packages it consumes from

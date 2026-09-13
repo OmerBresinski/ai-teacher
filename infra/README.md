@@ -48,12 +48,12 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | Root Directory         | `apps/web` (`vercel project update teaching-journey-web --root-directory apps/web`); "Include source files outside of the Root Directory" is on (API `sourceFilesOutsideRootDirectory: true`, the default) |
 | Framework preset       | Vite (project setting and `apps/web/vercel.json#framework`)                                         |
 | Install / build        | from `apps/web/vercel.json`: `cd ../.. && bun install --frozen-lockfile --ignore-scripts` (skips the root `prepare` → `lefthook install`, which has no git repo on Vercel) and `cd ../.. && bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web && bun run homepage:stage`; output `dist` |
-| Ignored Build Step     | `bash scripts/vercel-ignore-build.sh` (relative to `apps/web`): skips when nothing under `apps/web`, `homepage`, `packages/{ui,editor,slides,api-client,domain,config}` (the web's transitive `@tj/*` closure, pinned against the manifests by `scripts/deploy-watch.test.ts` — TEACH-276), `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`; always builds when that SHA is missing. After a package-only merge, confirm the Production deployment's commit is the merge SHA (`vercel ls teaching-journey-web --prod`), not that CI was green |
-| Git                    | `vercel git connect https://github.com/OmerBresinski/ai-teacher.git`; production branch **`master`** (set via `PATCH /v1/projects/teaching-journey-web/branch {"branch":"master"}`). Pushes to `master` deploy production. **Preview deployments are disabled since 2026-09-05** (`apps/web/vercel.json` `git.deploymentEnabled: { "master": true, "*": false }`): PRs hit the Hobby-plan build rate limit and the previews were not being used. Re-enable by deleting that key; the pairing recipe below still applies then |
+| Ignored Build Step     | `bash scripts/vercel-ignore-build.sh` (relative to `apps/web`): skips every non-production deployment (`VERCEL_ENV != production`, see the Git row), and on `master` skips when nothing under `apps/web`, `homepage`, `packages/{ui,editor,slides,api-client,domain,config}` (the web's transitive `@tj/*` closure, pinned against the manifests by `scripts/deploy-watch.test.ts` — TEACH-276), `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`; always builds when that SHA is missing. After a package-only merge, confirm the Production deployment's commit is the merge SHA (`vercel ls teaching-journey-web --prod`), not that CI was green |
+| Git                    | `vercel git connect https://github.com/OmerBresinski/ai-teacher.git`; production branch **`master`** (set via `PATCH /v1/projects/teaching-journey-web/branch {"branch":"master"}`). Pushes to `master` deploy production. **Preview deployments are disabled** (since 2026-09-13, effectively): `apps/web/scripts/vercel-ignore-build.sh` exits 0 whenever `VERCEL_ENV` is not `production`, so PR pushes show a skipped Vercel check and never enter the build queue. The earlier attempt (PR #64, `vercel.json` `git.deploymentEnabled: { "master": true, "*": false }`) did not take effect for this project -- 43 PR previews were built 2026-09-10..12 with it in place -- burning the Hobby-plan build quota that production deploys need. Re-enable by deleting the `VERCEL_ENV` block at the top of the script; the pairing recipe below still applies then |
 | Domains                | **`app.bresinski.org`** (TEACH-36, `vercel domains add app.bresinski.org teaching-journey-web`; DNS is on Vercel so no record was needed). `teaching-journey-web.vercel.app` (auto, cannot be removed) **308-redirects** to it, path preserved: `PATCH /v9/projects/<id>/domains/teaching-journey-web.vercel.app {"redirect":"app.bresinski.org","redirectStatusCode":308}` (set 2026-09-12) |
 | Deployment protection  | Vercel Authentication (SSO) — Hobby default "Standard Protection": previews ask for a Vercel login. Whether to also protect **production** (`teaching-journey-web.vercel.app`) is a founder decision (dashboard-only); since 2026-09-04 the site works end-to-end against the Railway api, so this is low urgency — see "Dashboard-only (Vercel)". A Protection Bypass for Automation secret exists (curl/e2e: `x-vercel-protection-bypass: <secret>`, read it in *Settings → Deployment Protection*; never commit it) |
 | Speed Insights         | `@vercel/speed-insights` is loaded **only** when `VITE_APP_ENV=production` (`apps/web/src/lib/speed-insights.ts`, dynamic import, verified absent from preview `dist/`). Enabling the *feature* on the project is dashboard-only (CLI refuses: "incurs charges") |
-| Verified preview       | `https://teaching-journey-5v1umubdb-omerbresinskis-projects.vercel.app` (2026-09-04): `/dev/jobs` → 200 HTML, `/assets/does-not-exist.js` → 404, `/assets/*` `Cache-Control: public, max-age=31536000, immutable`, `/` and deep links `no-cache`, security headers present, no speed-insights code |
+| Verified preview       | Historical (2026-09-04, before previews were disabled; the URL is gone). `https://teaching-journey-5v1umubdb-omerbresinskis-projects.vercel.app`: `/dev/jobs` → 200 HTML, `/assets/does-not-exist.js` → 404, `/assets/*` `Cache-Control: public, max-age=31536000, immutable`, `/` and deep links `no-cache`, security headers present, no speed-insights code |
 
 ### Environment variables
 
@@ -184,7 +184,7 @@ reuses the Vercel CLI login; `.turbo/config.json` holds only the team id and is 
 ```sh
 export PATH="$HOME/.bun/bin:$PATH"                     # vercel CLI logged in
 vercel link --yes --project teaching-journey-web --scope omerbresinskis-projects   # from the repo ROOT
-vercel deploy --yes --target=preview                   # preview; Root Directory applies server-side
+vercel deploy --yes --target=preview                   # manual preview from a laptop (CLI deploys bypass the Ignored Build Step, so this still builds)
 vercel deploy --yes --prod                             # production (master) — avoid; let Git do it
 ```
 
@@ -195,7 +195,7 @@ read `.gitignore`. Delete `.env.local` if `vercel link` creates one.
 
 ### Dashboard-only (Vercel)
 
-- [ ] Decide on *Deployment Protection* for **production** (previews are SSO-protected by default;
+- [ ] Decide on *Deployment Protection* for **production** (previews, when enabled, are SSO-protected by default;
       production is functional against the Railway api since 2026-09-04, so low urgency).
 - [ ] *Speed Insights → Enable* on `teaching-journey-web` (charges; CLI refuses non-interactively).
       The client code is already in the production bundle.
