@@ -1,4 +1,4 @@
-/* Optional DayBack v2 app design. Loaded by the development preview only.
+/* Default DayBack light app design. Loaded with the app stylesheet before first paint.
  * data-theme keeps ownership of accessibility modes; this light-only overlay
  * does not change lesson slide recipes, worksheet output or the presentation stage.
  */

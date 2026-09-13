@@ -1,4 +1,3 @@
-import "@tj/ui/styles/lessonco.css";
 import "./design-preview.css";
 import { Display, useTheme } from "@tj/ui";
 import { useEffect } from "react";
@@ -7,7 +6,7 @@ import { usePreference } from "@/lib/use-preference";
 const storageKey = "tj:design-preview";
 const designs = ["current", "lessonco"] as const;
 export function DesignWordmark({ compact = false }: { compact?: boolean }) {
-  const [design] = usePreference(storageKey, designs, "current");
+  const [design] = usePreference(storageKey, designs, "lessonco");
   return (
     <Display as="span" size="md" className="whitespace-nowrap">
       {design === "lessonco" ? (compact ? "D" : "DayBack") : compact ? "T" : "TeachDeck"}
@@ -17,13 +16,13 @@ export function DesignWordmark({ compact = false }: { compact?: boolean }) {
 
 /** Development-only: compare the same component tree without resetting route or form state. */
 export function DesignPreview() {
-  const [design, setDesign] = usePreference(storageKey, designs, "current");
+  const [design, setDesign] = usePreference(storageKey, designs, "lessonco");
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     document.documentElement.dataset.design = design;
     return () => {
-      delete document.documentElement.dataset.design;
+      document.documentElement.dataset.design = "lessonco";
     };
   }, [design]);
 
@@ -51,13 +50,13 @@ export function DesignPreview() {
       </fieldset>
       {design === "lessonco" && resolvedTheme !== "light" ? (
         <p>
-          DayBack v2 previews in Light. Choose Light in the normal Theme menu, or the kit’s theme
-          tabs. Switching app design does not change your colour-mode preference.
+          DayBack uses its cream palette in Light. Dark and High contrast use the established
+          accessible themes. Switching app design does not change your colour-mode preference.
         </p>
       ) : null}
       {design === "lessonco" ? (
         <p>
-          DayBack v2 · cream, green ink and paper surfaces. The kit shows the active design tokens.
+          DayBack · cream, green ink and paper surfaces. The kit shows the active design tokens.
         </p>
       ) : null}
       <a href="/kit">Open component kit</a>

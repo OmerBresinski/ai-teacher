@@ -23,7 +23,7 @@ test.describe("library shell", () => {
     signedInPage: { page },
   }) => {
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
-    await expect(page.getByText("TeachDeck", { exact: true })).toBeVisible();
+    await expect(page.getByText("DayBack", { exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Library" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Home/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Lessons/ })).toBeVisible();

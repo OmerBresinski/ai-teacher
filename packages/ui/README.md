@@ -201,13 +201,15 @@ Radix overlay tests also rely on the package setup's minimal `ResizeObserver`, `
   without an app: `bunx --package @tailwindcss/cli tailwindcss -i src/styles/globals.css -o /tmp/ui.css`
   and grep for `.bg-background`, `.motion-safe\:transition-all`, `[data-theme="dark"]`.
 
-## DayBack v2 comparison (development only)
+## DayBack app design
 
-`src/styles/lessonco.css` is the optional DayBack v2 treatment of the existing semantic tokens
-and shared components. The app's **Design preview** disclosure hot swaps `data-design` between
+`src/styles/lessonco.css` is the default light treatment of the existing semantic tokens
+and shared components. The app HTML sets `data-design="lessonco"` before first paint and the
+main stylesheet imports its CSS/font in both development and production. The app's **Design preview** disclosure hot swaps `data-design` between
 `current` and `lessonco` without remounting the app. The UI labels the latter **DayBack v2**;
 `lessonco` remains the stable internal value. The preference is `tj:design-preview`.
-It is lazy loaded only in Vite development; production includes neither the switch nor its CSS/font.
+The comparison switch is development-only and defaults to DayBack v2. Production ignores that
+diagnostic preference and always uses DayBack; it includes the CSS/font but no comparison switch.
 
 DayBack v2 uses the website's locally licensed Gabarito font, cream `#fcf9ee`, ink `#293b32`, paper
 `#fffef8`, sage `#e5ecd8` and control edge `#7d8b76`. App type starts at 14/20 for compact labels,
@@ -228,7 +230,7 @@ colour-mode preference. Slide recipes, worksheet content
 and presentation stage tokens remain owned by their existing systems. Characters and animation
 are retained in the homepage; none are added to teaching content. Kit annotations read the
 currently applied CSS variables, so the values shown for palette, type, radii and arrival motion
-follow the selected development preview instead of duplicating either design's constants.
+follow the active design instead of duplicating either design's constants.
 
 When changing shared components, verify Current and DayBack v2 in the real library, brief, editor
 and dialogs as well as `/kit`. Keep the original tokens untouched so switching back is exact.
@@ -238,7 +240,7 @@ so the tablet layout gets the same complete inventory as desktop. Standard actio
 unavailable reasons and pending labels alongside enabled variants. Use Tab and arrow keys to
 inspect live focus and selection; examples retain their real Radix behavior. The crop toolbar wraps its controls rather than
 clipping its final action on narrow screens. The contrast suite
-checks the optional palette as well as the three shipped themes.
+checks the DayBack palette as well as the three shipped themes.
 
 On phones, `--editor-compact: 1` asks the editor and generating shell to use their existing
 compact navigator geometry. `useCompactChrome` subscribes to viewport and design/theme changes;
@@ -248,4 +250,4 @@ and exposes contextual controls through Slide settings / Selection settings. A n
 rail can expand thumbnails on demand without changing the desktop preference. Framing gutters
 reduce to 16px, and the footer wraps without clipping controls. Dialogs stay within the viewport and scroll; the theme
 picker adapts its existing fixed-size previews into fewer columns. Toasts use the same inverse
-ink/paper tokens as the rest of the comparison.
+ink/paper tokens as the rest of the light design.

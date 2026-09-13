@@ -52,6 +52,14 @@ async function sha256Base64(text: string): Promise<string> {
 }
 
 describe("vercel.json", () => {
+  test("HTML selects DayBack before the theme bootstrap and app bundle run", () => {
+    const html = readFileSync(resolve(__dirname, "..", "index.html"), "utf8");
+    expect(html).toMatch(/<html[^>]*data-design="lessonco"/);
+    expect(html.indexOf('data-design="lessonco"')).toBeLessThan(html.indexOf("<!--theme-init-->"));
+    const styles = readFileSync(resolve(__dirname, "styles.css"), "utf8");
+    expect(styles).toContain('@import "@tj/ui/styles/lessonco.css";');
+  });
+
   test("static Vite build from the monorepo root", () => {
     expect(config.framework).toBe("vite");
     expect(config.outputDirectory).toBe("dist");
