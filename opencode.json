@@ -12,7 +12,6 @@
   },
   "compaction": {
     "prune": true,
-    "tail_turns": 8,
-    "preserve_recent_tokens": 60000
+    "tail_turns": 8
   }
 }
