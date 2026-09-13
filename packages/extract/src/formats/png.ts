@@ -48,11 +48,20 @@ export interface RawImage {
   channels: number;
 }
 
-/** Encode 8-bit grey / grey+alpha / RGB / RGBA pixels as a PNG. `null` when the shape is not one of those. */
-export function encodePng(image: RawImage): Uint8Array | null {
+/**
+ * Encode 8-bit grey / grey+alpha / RGB / RGBA pixels as a PNG. `null` when the shape is not one of
+ * those, or when `width × height` exceeds `maxPixels` — checked before the `(stride + 1) × height`
+ * scanline buffer is allocated and deflated (TEACH-278).
+ */
+export function encodePng(
+  image: RawImage,
+  maxPixels = Number.POSITIVE_INFINITY,
+): Uint8Array | null {
   const { width, height, channels } = image;
   const colorType = COLOR_TYPE[channels];
   if (colorType === undefined || width <= 0 || height <= 0) return null;
+  if (!Number.isInteger(width) || !Number.isInteger(height)) return null;
+  if (width * height > maxPixels) return null;
   const stride = width * channels;
   if (image.data.length < stride * height) return null;
 

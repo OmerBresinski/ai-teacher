@@ -14,6 +14,10 @@
 # Pin matches `.bun-version` / root package.json `packageManager` -- bump them together.
 ARG BUN_VERSION=1.3.6
 
+# Bun/JSC cannot boot under a useful Linux address-space ceiling. Only untrusted extraction
+# runs on this pinned Node runtime, with RLIMIT_AS and V8 heap ceilings (TEACH-278).
+FROM node:24.14.1-alpine AS extraction-runtime
+
 # ---------------------------------------------------------------------------------------------
 FROM oven/bun:${BUN_VERSION}-alpine AS base
 WORKDIR /app
@@ -44,12 +48,13 @@ COPY --from=pruner /pruned/full/ ./
 # `bun build --target=bun` bundles every dependency into one file per entry point
 # (apps/*/package.json "build"); the only unbundled imports are Bun/Node built-ins.
 RUN bunx turbo run build --filter=@tj/api --filter=@tj/worker \
- && bun build packages/db/src/migrate.ts --target=bun --outdir packages/db/dist
+ && bun build packages/db/src/migrate.ts --target=bun --outdir packages/db/dist \
+ && bun build apps/api/src/sources/testing/resource-probe.ts --target=bun --outfile=/tmp/extraction-resource-probe.mjs
 # Prove the bundles are self-contained: with node_modules gone, re-bundling fails on any bare
 # import that was left unresolved ("Could not resolve"). Cheap, and it keeps the runtime stage
 # free of node_modules on purpose (bundle size is the only thing that ships).
 RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules \
- && bun build apps/api/dist/index.js apps/worker/dist/index.js packages/db/dist/migrate.js \
+ && bun build apps/api/dist/index.js apps/api/dist/sources/extract-child.mjs apps/worker/dist/index.js packages/db/dist/migrate.js \
       --target=bun --outdir /tmp/selfcontained-check >/dev/null \
  && rm -rf /tmp/selfcontained-check
 
@@ -59,7 +64,12 @@ WORKDIR /app
 ENV NODE_ENV=production \
     DO_NOT_TRACK=1
 
+COPY --from=extraction-runtime /usr/local/bin/node /usr/local/bin/node
+COPY --from=extraction-runtime /usr/lib/libstdc++.so.6 /usr/lib/libstdc++.so.6
+COPY --from=extraction-runtime /usr/lib/libgcc_s.so.1 /usr/lib/libgcc_s.so.1
+
 COPY --chown=bun:bun infra/docker/entrypoint.sh /app/entrypoint.sh
+# apps/api/dist also holds sources/extract-child.mjs, the isolated extraction child (TEACH-278).
 COPY --from=build --chown=bun:bun /app/apps/api/dist       /app/apps/api/dist
 COPY --from=build --chown=bun:bun /app/apps/worker/dist    /app/apps/worker/dist
 COPY --from=build --chown=bun:bun /app/packages/db/dist    /app/packages/db/dist
@@ -75,3 +85,13 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["api"]
+
+# Build-time verification uses only generated fixtures, with no database/model/storage access.
+# The final stage depends on the result but carries neither the fixture runner nor its inputs.
+FROM runtime AS verify-extraction
+COPY --from=build /tmp/extraction-resource-probe.mjs /tmp/extraction-resource-probe.mjs
+RUN bun /tmp/extraction-resource-probe.mjs /app/apps/api/dist/sources/extract-child.mjs \
+ && touch /tmp/extraction-resource-verified
+
+FROM runtime AS final
+COPY --from=verify-extraction /tmp/extraction-resource-verified /app/.extraction-resource-verified

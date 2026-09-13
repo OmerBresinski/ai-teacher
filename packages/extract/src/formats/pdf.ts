@@ -1,5 +1,12 @@
-import { extractImages, extractText, getDocumentProxy } from "unpdf";
-import { ExtractError, type ExtractedImage, type Extraction } from "../types";
+import { extractImages, getDocumentProxy } from "unpdf";
+import {
+  ExtractError,
+  type ExtractedImage,
+  type Extraction,
+  type ExtractLimits,
+  LIMITS,
+} from "../types";
+import { boundedPdfText } from "./pdf-text";
 import { encodePng } from "./png";
 
 /**
@@ -8,48 +15,112 @@ import { encodePng } from "./png";
  * channels, key }` (verified on unpdf 1.8.1, 2026-09-12), not an encoded file — so each is
  * re-encoded as PNG here. Tiny images (icons, rules) under `MIN_IMAGE_SIDE` are dropped. PDFs have
  * no table model; a roster PDF is caught by the identifiers screen and the line-table heuristic.
+ *
+ * Resource order (TEACH-278, audit F03): the page count is read from the proxy before any page is
+ * parsed — over `maxPages` returns an empty extraction carrying the count so `screen` answers
+ * `too-long` without a byte of text or image work; text is capped at `maxTextChars`; an image is
+ * decoded at all only under `maxImagePixels` (pdfjs `maxImageSize`, read from the XObject
+ * dictionary before decoding) and kept while the encoded total stays under `maxImageBytesTotal`;
+ * the proxy is destroyed in `finally` on every path (unpdf 1.8.1 leaves caller-supplied proxies
+ * alive).
  */
 const MIN_IMAGE_SIDE = 64;
 /** Enough for phase 2 captions; the rest of a picture-heavy PDF is not worth the bucket space. */
 const MAX_IMAGES = 40;
 
-export async function extractPdf(bytes: Uint8Array): Promise<Extraction> {
+export async function extractPdf(
+  bytes: Uint8Array,
+  limits: ExtractLimits = LIMITS,
+): Promise<Extraction> {
   let doc: Awaited<ReturnType<typeof getDocumentProxy>>;
   try {
     // pdfjs transfers the buffer to its worker and leaves the caller's detached (byteLength 0);
-    // the API still has to store the original, so it gets a copy.
-    doc = await getDocumentProxy(new Uint8Array(bytes));
+    // the API still has to store the original, so it gets a copy. `maxImageSize` (total pixels)
+    // makes pdfjs skip an image XObject from its dictionary's /Width × /Height, before decoding.
+    doc = await getDocumentProxy(new Uint8Array(bytes), { maxImageSize: limits.maxImagePixels });
   } catch {
     throw new ExtractError("malformed", "pdf");
   }
-  let pages: string[];
-  let totalPages: number;
   try {
-    const result = await extractText(doc, { mergePages: false });
-    pages = result.text;
-    totalPages = result.totalPages;
+    return await readPdf(doc, limits);
+  } finally {
+    await destroyProxy(doc);
+  }
+}
+
+/**
+ * pdfjs frees a document through its loading task (`withDocument` in unpdf 1.8.1 does the same for
+ * proxies it created itself). Never throws: teardown must not mask the extraction's own outcome.
+ */
+async function destroyProxy(doc: Awaited<ReturnType<typeof getDocumentProxy>>): Promise<void> {
+  const task = (doc as { loadingTask?: { destroy?: () => Promise<void> } }).loadingTask;
+  try {
+    await task?.destroy?.();
   } catch {
-    throw new ExtractError("malformed", "pdf");
+    // nothing left to release
+  }
+}
+
+async function readPdf(
+  doc: Awaited<ReturnType<typeof getDocumentProxy>>,
+  limits: ExtractLimits,
+): Promise<Extraction> {
+  const totalPages = doc.numPages;
+  if (!Number.isFinite(totalPages) || totalPages < 0) throw new ExtractError("malformed", "pdf");
+  if (totalPages > limits.maxPages) {
+    // `screen` turns the count into the `too-long` refusal; no page is parsed.
+    return { kind: "pdf", pages: totalPages, chunks: [], tables: [], images: [] };
   }
 
-  const chunks = pages
-    .map((text, i) => ({ ref: { page: i + 1 }, text: normalise(text) }))
-    .filter((c) => c.text.length > 0);
+  // One page at a time (what unpdf's `extractText` does for all pages at once, minus the
+  // `Promise.all`): the running total is checked before the next page's text is materialised.
+  let textChars = 0;
+  const chunks: Extraction["chunks"] = [];
+  for (let page = 1; page <= totalPages; page++) {
+    let raw: string;
+    try {
+      const proxy = await doc.getPage(page);
+      try {
+        raw = await boundedPdfText(proxy.streamTextContent(), limits.maxTextChars - textChars);
+      } finally {
+        proxy.cleanup();
+      }
+    } catch (error) {
+      if (error instanceof ExtractError) throw error;
+      throw new ExtractError("malformed", "pdf");
+    }
+    textChars += raw.length;
+    if (textChars > limits.maxTextChars) throw new ExtractError("too-large", "pdf");
+    const text = normalise(raw);
+    if (text.length > 0) chunks.push({ ref: { page }, text });
+  }
 
   const images: ExtractedImage[] = [];
+  let imageBytes = 0;
   for (let page = 1; page <= totalPages && images.length < MAX_IMAGES; page++) {
-    let raw: Awaited<ReturnType<typeof extractImages>>;
+    const pageProxy = await doc.getPage(page);
     try {
-      raw = await extractImages(doc, page);
-    } catch {
-      continue; // a page whose images cannot be decoded still contributes its text
-    }
-    for (const img of raw) {
-      if (img.width < MIN_IMAGE_SIDE || img.height < MIN_IMAGE_SIDE) continue;
-      const png = encodePng(img);
-      if (png === null) continue;
-      images.push({ ref: { page }, mime: "image/png", bytes: png });
-      if (images.length >= MAX_IMAGES) break;
+      let raw: Awaited<ReturnType<typeof extractImages>>;
+      try {
+        raw = await extractImages(doc, page);
+      } catch {
+        continue; // a page whose images cannot be decoded still contributes its text
+      }
+      for (const img of raw) {
+        if (img.width < MIN_IMAGE_SIDE || img.height < MIN_IMAGE_SIDE) continue;
+        // pdfjs checks each XObject before decode. Aggregate page decoding is additionally
+        // contained by the extraction child's OS memory limit; never run this on API's heap.
+        if (img.width * img.height > limits.maxImagePixels) continue;
+        const png = encodePng(img, limits.maxImagePixels);
+        if (png === null) continue;
+        imageBytes += png.byteLength;
+        if (imageBytes > limits.maxImageBytesTotal) break;
+        images.push({ ref: { page }, mime: "image/png", bytes: png });
+        if (images.length >= MAX_IMAGES) break;
+      }
+      if (imageBytes > limits.maxImageBytesTotal) break;
+    } finally {
+      pageProxy.cleanup();
     }
   }
 

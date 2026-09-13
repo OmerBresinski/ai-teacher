@@ -419,7 +419,7 @@ Multi-stage, pinned to `oven/bun:1.3.6-alpine` (matches `.bun-version`; bump tog
 | --------- | ------------------------------------------------------------------------------------------------------- |
 | `pruner`  | `turbo prune @tj/api @tj/worker --docker` → `json/` (manifests + pruned `bun.lock`), `full/` (sources)  |
 | `deps`    | `bun install --frozen-lockfile --ignore-scripts` from `json/` (layer cached until a manifest changes)     |
-| `build`   | `turbo run build` → `apps/{api,worker}/dist/index.js`; `bun build packages/db/src/migrate.ts` → `packages/db/dist/migrate.js`; then deletes `node_modules` and re-bundles the three files to **prove they are self-contained** |
+| `build`   | `turbo run build` → `apps/{api,worker}/dist/index.js` + `apps/api/dist/sources/extract-child.mjs` (the Node extraction child, TEACH-278); `bun build packages/db/src/migrate.ts` → `packages/db/dist/migrate.js`; then deletes `node_modules` and re-bundles the four files to **prove they are self-contained**. The final image also depends on a synthetic native extraction/memory probe. |
 | `runtime` | non-root `bun` user, `/app/apps/*/dist`, `/app/packages/db/{dist,drizzle}`, `entrypoint.sh`. No sources, no `node_modules`. **~155 MB** (`docker images tj:local`) |
 
 `infra/docker/entrypoint.sh` (`ENTRYPOINT`, default `CMD ["api"]`) `exec`s Bun so SIGTERM reaches
@@ -443,6 +443,50 @@ bun run docker:run:worker    # GET :3002/health -> {"ok":true,"activeJobs":0,"bo
 `.dockerignore` keeps the context to manifests, sources, `packages/db/drizzle/**` and
 `infra/docker/`; `apps/web`, `packages/ui`, docs, tests, CI and env files never reach the daemon.
 CI job `docker-build-smoke` runs `docker build .` on every PR.
+
+## Source extraction (TEACH-278)
+
+`POST /sources` parses uploads in a **memory-limited Node child process**
+(`apps/api/dist/sources/extract-child.mjs`, spawned by `ChildProcessExtractionRunner`, ADR 0027).
+The API and worker remain on Bun. Knobs have defaults
+(`infra/env.contract.ts`): `EXTRACT_DEADLINE_MS` (30000), `EXTRACT_MAX_CONCURRENT` (2),
+`EXTRACT_MAX_QUEUE` (8), `EXTRACT_CHILD_MAX_VMEM_MB` (1536, allowed range 1536–2048 MiB). A child past the deadline, aborted by
+the client or over 128 MiB of output is `SIGKILL`ed and the upload answers the `unreadable`
+refusal; a full queue answers `503` + `Retry-After: 5` before anything is spawned (log line
+`source extraction capacity full`).
+
+`EXTRACT_CHILD_MAX_VMEM_MB` applies Linux `RLIMIT_AS` through `ulimit -v`; it cannot be disabled in
+the production bundle. Node additionally runs with a 256 MiB old-space and 8 MiB semi-space ceiling;
+the OS limit also bounds external buffers. Core dumps are disabled, stderr is discarded and child
+output is capped before parsing. Source-mode local Bun has no portable OS memory limit.
+
+Native Railway x64 verification on 2026-09-13 (isolated project, 1 vCPU / 2 GB container,
+no production variables, synthetic fixtures only):
+
+| Runtime / ceiling | Result |
+| --- | --- |
+| Bun 1.3.6, 512/1024/2048 MiB address space | Boot refused: executable-memory reservation |
+| Bun 1.3.6, 512/1024 MiB data size | Boot refused: executable-memory reservation |
+| Node 24.14.1, 768/1024 MiB address space | Boot refused: V8 CodeRange reservation |
+| **Node 24.14.1, 1536 MiB address space** | Boots; PDF/DOCX/PPTX with embedded images parse; scaled ZIP bomb refused |
+| Node allocation beyond that ceiling | Refused after 469,762,048 allocated buffer bytes, RSS 519,766,016 bytes in the bare-runtime probe; actual runner reports child crash, releases slot, and serves the next valid request |
+
+Deployments `0ce12313-06b5-4293-a378-d8188f9b92c6` (runtime limits) and
+`159816b8-8ac8-452d-acba-03db8e72667b` (actual bundled child/runner) carried the evidence. The
+temporary service had restart policy NEVER and a bounded probe lifetime. Docker now runs the
+checked-in `apps/api/src/sources/testing/resource-probe.ts` against the actual runtime bundle on
+every build; the final image contains its success marker, not the fixture runner.
+
+To reproduce locally in the production image build:
+
+```sh
+docker build -t tj:local .
+# verify-extraction must log resource-probe-passed; any refusal of a legitimate fixture fails build
+```
+
+The production API resource limit inspected during validation was 8 GB; default parser concurrency
+is two, each with at most 1536 MiB of address space, plus bounded queue/input/output buffers.
+Changing either runtime version or the resource configuration requires rerunning the probe.
 
 ## Config-as-code (`.railway/railway.ts`, infrastructure-as-code)
 

@@ -43,9 +43,11 @@ never point a local `.env` at production.
 ### Prerequisites
 
 - **Bun 1.3.6** — pinned in `package.json#packageManager` and `.bun-version`; `bun upgrade` if older.
-- **No Node.js.** Everything runs on Bun: `vite` and `playwright` are invoked with `bun --bun` so
+- **Local tooling needs Bun only.** `vite` and `playwright` are invoked with `bun --bun` so
   their `#!/usr/bin/env node` shebangs are ignored, and React unit tests run under `bun test` with
-  happy-dom (ADR 0014, amended). A Node on `PATH` is neither needed nor used.
+  happy-dom (ADR 0014, amended). The production Docker image additionally bundles pinned Node
+  24.14.1 solely for the memory-isolated extraction child (TEACH-278, ADR 0027). Source-mode dev
+  extraction uses Bun with deadline/parser limits; use Docker for the production memory boundary.
 - **Docker** with Compose v2 (Docker Desktop on macOS; Docker Engine + compose plugin on Linux),
   running. The scripts call `docker compose`, not `docker-compose`.
 - macOS, Linux or **WSL2**. Windows without WSL is not supported (the scripts rely on `lsof`,

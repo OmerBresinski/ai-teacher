@@ -866,6 +866,59 @@ const CONTRACT = [
     description: "Window length in seconds for `SOURCE_RATE_LIMIT_PER_WORKSPACE` (default 60).",
   },
 
+  // --- api: Source extraction child (TEACH-278, ADR 0027 §5) --------------------------------------
+  {
+    name: "EXTRACT_DEADLINE_MS",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["api"],
+    description:
+      "Wall-clock budget for parsing one uploaded document in the extraction child process before it is killed (default 30000).",
+  },
+  {
+    name: "EXTRACT_MAX_CONCURRENT",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["api"],
+    description: "Extraction child processes running at once per api replica (default 2).",
+  },
+  {
+    name: "EXTRACT_MAX_QUEUE",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["api"],
+    description:
+      "Uploads waiting for an extraction slot before `POST /sources` answers 503 with Retry-After (default 8).",
+  },
+  {
+    name: "EXTRACT_CHILD_MAX_VMEM_MB",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "int",
+    files: ["api"],
+    description:
+      'Linux address-space ceiling in MiB for the production Node extraction child (default 1536, range 1536–2048). Cannot be disabled. Source-mode Bun development has deadline/parser caps only. See infra/README.md "Source extraction".',
+  },
+
   // --- web (Vite / Vercel, ADR 0004 / 0010) ---------------------------------------------------------
   {
     name: "VITE_API_URL",

@@ -205,3 +205,65 @@ decision drives §1 below and supersedes the breakdown's sentence.
   needed for that.
 - ADR 0024 §13 and ADR 0025 §20 are amended as stated in §3 and §5; the glossary gains
   **Upload**, **Extraction**, **Locator** and **Roster refusal**.
+
+## Amendment (TEACH-278, 2026-09-13): resource ceilings before allocation; a killable child
+
+Audit findings F02/F03 (Security audit — 13 September 2026) showed the §5 "uncompressed bytes
+read are capped at 200 MB" check ran **after** each zip entry had been inflated in full, that a
+PDF's 300-page rule ran only in `screen()` after every page had been parsed and every image
+decoded, and that the pdfjs proxy was never destroyed. The decision is amended as follows.
+
+1. **Ceilings are enforced before the allocation they bound**, in `@tj/extract`
+   (`LIMITS: ExtractLimits`, `packages/extract/src/types.ts`; `ExtractInput.limits` scales them in
+   tests). `ZipReader` streams each entry through JSZip's chunked inflater and stops at the first
+   chunk past `maxEntryBytes` (64 MiB) or the running `maxUncompressedBytes` (200 MiB); the
+   central-directory size is a cheap early refusal, never the limit that holds. A constant-space
+   classic-ZIP preflight counts actual central-directory records against `maxZipEntries` (5 000)
+   before JSZip creates entry objects, regardless of forged count metadata. ZIP64, multi-disk and
+   ambiguous offset layouts are refused. `extractPdf` reads `numPages` before parsing a page and returns an
+   empty extraction carrying the count when over `maxPages`, so `screen()` still answers
+   `too-long` without any text or image work; text is streamed in pdfjs batches and capped at
+   `maxTextChars` (5 M chars); pdfjs is opened with `maxImageSize = maxImagePixels` (20 M), so an
+   image XObject over it is skipped from its dictionary's /Width × /Height before any decode, and
+   kept images count against `maxImageBytesTotal` (64 MiB); `encodePng` refuses before allocating
+   its scanline buffer; per-page objects and the proxy's loading task are released in `finally`.
+   DOCX ZIP entries are verified before Mammoth reads them. Its `transformDocument` hook then
+   bounds conversion before generating HTML: a 64-level / 50,000-node maximum, six characters per
+   string character for escaping plus 1024 per model node against `maxTextChars`, counting repeated
+   note references as repeated work. Only the pinned default style map is used (embedded maps are
+   ignored). Each image reference reserves the largest verified archive entry against the image
+   byte budget; Mammoth does not expose the image's entry path. This is conservative and can refuse
+   image-heavy files before their actual output reaches the limit. Images are read as buffers and
+   represented by short placeholders in HTML; no base64 HTML copy is built. These engineering
+   ceilings pass the generated legitimate PDF/DOCX/PPTX fixtures, not a benchmark of teacher data.
+2. **Parsing runs in a child process the API can kill.** `apps/api/src/sources/extraction-runner.ts`
+   (`ChildProcessExtractionRunner`, injected through `CreateAppOptions.extraction` /
+   `sourceRoutes(unsafeDb, storage, limiter, extraction)`) spawns
+   `apps/api/src/sources/extract-child.ts` (`dist/sources/extract-child.mjs` in the image, a second
+   entry of the api build and of the Dockerfile's self-contained check) per upload, pipes the bytes
+   in, reads one JSON answer out and `SIGKILL`s the child at `EXTRACT_DEADLINE_MS` (30 s), on
+   client abort, or when its stdout passes 128 MiB. `EXTRACT_MAX_CONCURRENT` (2) children run at
+   once per replica and `EXTRACT_MAX_QUEUE` (8) uploads may wait; beyond that `POST /sources` is
+   `503` with `Retry-After` before anything is spawned. Production uses pinned Node 24.14.1 with
+   Linux `ulimit -v` (RLIMIT_AS), default 1536 MiB, plus V8 256 MiB old-space / 8 MiB semi-space
+   limits. `EXTRACT_CHILD_MAX_VMEM_MB` accepts 1536–2048 and cannot disable the ceiling. Native
+   Railway x64 verified valid PDF/DOCX/PPTX fixtures plus a refused over-limit allocation and a
+   still-operational parent. Bun remains the API/worker runtime; see ADR 0001's exception and the
+   measurements in infra/README.md. Core dumps are disabled. The
+   child's stderr is discarded and its answer carries an `ExtractErrorCode` only, so a failure is
+   content-free. The API itself reads nothing but the magic bytes (`sniffContainer`); the zip
+   central-directory parse (`sniffMime`, now bounded by `maxZipEntries`) runs in the child, whose
+   answer carries the sniffed MIME. The request remains synchronous (§1): the teacher still waits
+   for extract → screen → store; only the process boundary is new. Child replies are schema-checked;
+   every exit path reaps the child before releasing its concurrency slot, and stdout is flushed
+   before the child exits. Missing runner injection is 503 in production, never an in-process
+   fallback. Local source-mode Bun retains deadline/parser caps; Docker is required to reproduce
+   the production OS boundary. The final Docker image depends on a synthetic resource-probe stage,
+   without shipping that stage's fixture runner.
+3. **Scope of the boundary.** A Promise timeout cannot stop synchronous parsing; the process kill
+   does. Per-entry/per-image caps do not by themselves bound aggregate decoder allocations:
+   pdfjs may decode every image on a page at once. The mandatory child address-space ceiling
+   contains that work, and a child that exhausts memory becomes the content-free `unreadable`
+   refusal without storing a Source. This is resource isolation, not a general code-execution
+   sandbox. Concurrency is per API replica; durable admission and cross-Workspace fairness remain
+   TEACH-279. No new always-on parsing service or paid model call is required.

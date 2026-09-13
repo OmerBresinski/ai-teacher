@@ -6,14 +6,17 @@ import {
   type ExtractedImage,
   type ExtractedTable,
   type Extraction,
+  type ExtractLimits,
   type ImageMime,
+  LIMITS,
 } from "../types";
+import { boundDocxConversion } from "./docx-limits";
 
 /**
  * DOCX → chunks by heading: every `<h1>`–`<h6>` mammoth emits starts a new chunk
  * `{ section: heading }` (text before the first heading is `{ section: "Start" }`); paragraphs and
  * list items become lines; `<table>` rows become `tables[]` under the current section; `<img>`
- * data URLs (mammoth's default) become `images[]`. `pages` is 1: Word has no fixed pagination.
+ * placeholders resolve to bounded image buffers. `pages` is 1: Word has no fixed pagination.
  *
  * Mammoth opens the zip itself and takes only bytes, so the zip-bomb cap cannot be threaded
  * through it: `ZipReader.readAll()` inflates **every** entry first, counting towards
@@ -24,25 +27,60 @@ const SECTION_MAX = 120;
 const START_SECTION = "Start";
 const IMAGE_MIMES = new Set<string>(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
-export async function extractDocx(bytes: Uint8Array): Promise<Extraction> {
-  const reader = new ZipReader(await openZip(bytes, "docx"), "docx");
+export async function extractDocx(
+  bytes: Uint8Array,
+  limits: ExtractLimits = LIMITS,
+): Promise<Extraction> {
+  const reader = new ZipReader(await openZip(bytes, "docx", limits), "docx", limits);
   if (!reader.has("word/document.xml")) throw new ExtractError("malformed", "docx");
   await reader.readAll();
 
   let html: string;
+  const imageBuffers = new Map<string, Omit<ExtractedImage, "ref">>();
+  let imageFailure = false;
   try {
-    html = (await mammoth.convertToHtml({ buffer: Buffer.from(bytes) })).value;
-  } catch {
+    html = (
+      await mammoth.convertToHtml(
+        { buffer: Buffer.from(bytes) },
+        {
+          includeEmbeddedStyleMap: false,
+          externalFileAccess: false,
+          transformDocument: (doc: unknown) =>
+            boundDocxConversion(doc, limits, reader.largestEntryBytes),
+          convertImage: mammoth.images.imgElement(async (image) => {
+            const src = `extracted:${imageBuffers.size}`;
+            if (!IMAGE_MIMES.has(image.contentType)) return { src: "" };
+            try {
+              // The transform reserved the largest verified ZIP entry for EVERY occurrence.
+              const bytes = new Uint8Array(await image.readAsArrayBuffer());
+              imageBuffers.set(src, { mime: image.contentType as ImageMime, bytes });
+              return { src };
+            } catch {
+              // Mammoth swallows converter errors. Remember the refusal outside its recovery.
+              imageFailure = true;
+              return { src: "" };
+            }
+          }),
+        },
+      )
+    ).value;
+  } catch (error) {
+    if (error instanceof ExtractError) throw error;
     throw new ExtractError("malformed", "docx");
   }
-  const { chunks, tables, images } = walkHtml(html);
+  if (imageFailure) throw new ExtractError("malformed", "docx");
+  if (html.length > limits.maxTextChars) throw new ExtractError("too-large", "docx");
+  const { chunks, tables, images } = walkHtml(html, (src) => imageBuffers.get(src) ?? null);
   return { kind: "docx", pages: 1, chunks, tables, images };
 }
 
 const TOKEN = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)([^>]*)>|([^<]+)/g;
 
 /** A tiny tokenizer over mammoth's tidy HTML subset; not a DOM, and not for arbitrary HTML. */
-export function walkHtml(html: string): Pick<Extraction, "chunks" | "tables" | "images"> {
+export function walkHtml(
+  html: string,
+  imageOf: (src: string) => Omit<ExtractedImage, "ref"> | null = dataUrlImage,
+): Pick<Extraction, "chunks" | "tables" | "images"> {
   const chunks: ExtractedChunk[] = [];
   const tables: ExtractedTable[] = [];
   const images: ExtractedImage[] = [];
@@ -107,7 +145,7 @@ export function walkHtml(html: string): Pick<Extraction, "chunks" | "tables" | "
       }
     } else if (tag === "img") {
       const src = /src="([^"]*)"/.exec(attrs ?? "")?.[1];
-      const image = src ? dataUrlImage(src) : null;
+      const image = src ? imageOf(src) : null;
       if (image) images.push({ ref: { section }, ...image });
     } else if (tag === "p" || tag === "li" || tag === "br") {
       if (!opening || tag === "br") flushLine();
