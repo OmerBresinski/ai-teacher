@@ -11,11 +11,12 @@
 set -u
 
 # Preview deployments are off: only `master` (VERCEL_ENV=production) is ever built. The
-# `git.deploymentEnabled` key in vercel.json cannot express this -- it takes literal branch names,
-# no wildcard -- so PR pushes still reached the build queue and burned the Hobby-plan build quota
-# that production deploys need (2026-09-05 .. 2026-09-13, 40+ previews). Vercel runs this script
-# for every Git-triggered deployment with VERCEL_ENV set to `production` or `preview`; a manual
-# `vercel deploy` from a laptop sets it too. Re-enable previews by deleting this block.
+# `git.deploymentEnabled: { "master": true, "*": false }` key that vercel.json carried from
+# 2026-09-05 did not take effect for this project (43 PR previews built 2026-09-10..12 with it in
+# place), and those builds consumed the Hobby-plan build quota that production deploys need. Vercel
+# runs this script for every Git-triggered deployment with VERCEL_ENV set to `production` or
+# `preview` (it is the documented "Only build production" behaviour); a manual `vercel deploy` from
+# a laptop bypasses the Ignored Build Step entirely. Re-enable previews by deleting this block.
 if [[ "${VERCEL_ENV:-}" != "production" ]]; then
   echo "vercel-ignore-build: VERCEL_ENV=${VERCEL_ENV:-unset} is not production -> skip (previews are disabled)"
   exit 0
