@@ -379,3 +379,64 @@
     display: none;
   }
 }
+
+/* The second door into the app: an upload link inside the topic box, with a CSS-only tooltip. */
+.hm-brief-field {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+.hm-brief-field input {
+  padding-right: 58px;
+}
+.hm-brief-upload {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: #3d5343;
+  text-decoration: none;
+}
+.hm-brief-upload:hover {
+  background: #e9efdf;
+}
+.hm-brief-upload:focus-visible {
+  outline: 3px solid #526b48;
+  outline-offset: 2px;
+}
+.hm-brief-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: -6px;
+  z-index: 8;
+  width: max-content;
+  max-width: 260px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #293b32;
+  color: #fffef8;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s;
+}
+.hm-brief-upload:hover .hm-brief-tooltip,
+.hm-brief-upload:focus-visible .hm-brief-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+@media (max-width: 620px) {
+  .hm-brief-tooltip {
+    right: 0;
+    max-width: 210px;
+  }
+}

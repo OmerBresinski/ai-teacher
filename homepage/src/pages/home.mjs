@@ -12,8 +12,10 @@ const hero = `
     <form class="hm-brief" id="start" method="get" action="${appHref("/lessons/new")}">
       <label for="hero-topic">What are you teaching?</label>
       <div class="hm-brief-row">
-        <input id="hero-topic" name="topic" required maxlength="500" placeholder="Year 8 English: writing a persuasive speech" autocomplete="off">
-        <a class="hm-brief-upload" href="${appHref("/lessons/new?source=1")}" aria-label="Start from your own PowerPoint, PDF or Word file">${uploadIcon}<span class="hm-brief-tooltip" aria-hidden="true">Or start from your own PowerPoint, PDF or Word file.</span></a>
+        <div class="hm-brief-field">
+          <input id="hero-topic" name="topic" required maxlength="500" placeholder="Year 8 English: writing a persuasive speech" autocomplete="off">
+          <a class="hm-brief-upload" href="${appHref("/lessons/new?source=1")}" aria-label="Start from your own PowerPoint, PDF or Word file">${uploadIcon}<span class="hm-brief-tooltip" aria-hidden="true">Or start from your own PowerPoint, PDF or Word file.</span></a>
+        </div>
         <button type="submit">Create a lesson ${arrowIcon}</button>
       </div>
     </form>

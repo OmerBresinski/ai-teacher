@@ -622,3 +622,36 @@ img {
   overflow: visible;
   vertical-align: -0.06em;
 }
+
+/* Wide policy tables scroll inside their own column rather than widening the page. */
+.reading-table {
+  overflow-x: auto;
+  margin: 24px 0;
+  border: 1px solid var(--line, #b9c3b0);
+  border-radius: 12px;
+}
+.reading-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: left;
+}
+.reading-table th,
+.reading-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line, #b9c3b0);
+  vertical-align: top;
+  min-width: 150px;
+}
+.reading-table tr:last-child td {
+  border-bottom: 0;
+}
+.reading-table th {
+  background: var(--sage, #e5ecd8);
+  font-weight: 600;
+}
+.footer-legal {
+  font-size: 14px;
+  color: var(--muted, #526052);
+}
