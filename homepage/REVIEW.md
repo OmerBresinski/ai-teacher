@@ -1,56 +1,45 @@
 # Homepage review record
 
-## Historical source-site review — 10 September 2026
+## Launch cut — 13 September 2026 (TEACH-307)
 
-The record below was carried over from the original Gather / Good Company site. Its counts and results describe that original build, not a fresh run against this repository. The current-change verification record follows it.
+The site was rebuilt for the MVP launch: eleven routes, DayBack throughout, one end-to-end flow,
+real policy pages and example lessons generated from an asset manifest. The earlier record
+described a different site and has been removed with the routes it described.
 
-### Independent work
+### What changed
 
-Four implementation agents owned home/how, feature pages, interactive examples and information pages. Separate copy and system audits reviewed the assembled implementation. Root integrated the components and performed browser review and iteration.
+- 28 routes cut to 11. The feature pages, guides, for-schools, pricing, the access list, contact,
+  service providers, the design-system page and the embedded lesson animation are deleted from
+  `src/` and the build, not hidden. `check.mjs` asserts the exact route set and fails on any
+  reference to a removed route.
+- One brand. No string from either former brand survives in the source or the output, and every
+  page title is branded DayBack with no duplicated suffix.
+- No work-in-progress language. The footer note, the hero status line, the `noscript` notice and
+  the two forms that sent nothing are gone, with the two scripts that drove them.
+  `check.mjs` fails the build on any of the banned phrases in `dist/` or in the source.
+- The hero box is a real `GET` form to `${appUrl}/lessons/new`, with an upload link to `?source=1`
+  and a CSS-only tooltip. It works with JavaScript disabled.
+- Example lessons are exported images read from `assets/examples/<slug>/manifest.json`.
+- Privacy, terms and cookie notices are real notices with named processors, transfers, retention
+  and rights. The placeholder company facts they carry are listed in the launch checklist.
 
-### Changes made through review
+### Verified for this change
 
-- Kept Good Company as the brand headline; added clear material descriptions.
-- Preserved Answers as the fourth character. Lesson review is cross-material capability.
-- Reused canonical sample data across home, feature previews and full lessons; corrected inconsistent timings, questions, answers and review locations.
-- Changed dominant preview CTA to an actually usable lesson instead of an unconnected signup.
-- Corrected self-linking Examples closing action.
-- Removed decorative editing affordances that did not work.
-- Raised supporting UI text to14px minimum and aligned display type with shared roles.
-- Strengthened input boundaries with a dedicated control-border colour.
-- Fixed keyboard-focus character signatures and pause being overridden by iframe visibility.
-- Normalised duplicated Gather suffixes in page titles.
-- Preserved honest form and policy status rather than implying a live service.
+- `bun run homepage:check`: 11 routes, one H1 per page, no duplicate IDs, no broken links, anchors
+  or assets, no forbidden brand or work-in-progress string, every title branded.
+- `bun run homepage:lint`: clean apart from the inherited CSS specificity and `!important`
+  warnings the imported stylesheets have always reported.
+- Every route loaded at 1440 and 390 in Chromium: zero page errors and zero console errors, and
+  `document.documentElement.scrollWidth` is 390 at a 390 viewport. The `Cannot read properties of
+  null (reading 'addEventListener')` error on `/` came from the deleted `examples.js`, which called
+  `root.querySelector(".ex-slide-viewer")` when `root` was itself the slide viewer; the file is
+  deleted with the markup it drove.
+- `apps/web/e2e/homepage-launch.spec.ts`: hero form submits the encoded topic to the application
+  with JavaScript on and off, an empty field does not navigate, the upload link points at
+  `?source=1`, navigation links resolve, an example page renders images with real alt text, 390
+  does not overflow, no route logs a page error, and axe reports no serious or critical violations
+  on home, an example lesson, the FAQ and the privacy notice.
+- Light-theme full-page screenshots of all eleven routes at 1440 and 390.
 
-### Historically verified
-
--27 generated site routes: all internal links/assets/anchors valid, one H1 each, no duplicate IDs.
--54 total landing-lab HTML pages pass syntax/asset checks including prior prototypes.
--All27 site pages checked at1440px and390px: no horizontal viewport overflow, no browser page errors, no visible scanned UI text below14px.
--Mobile menu open/Escape/close behaviour.
--Contact and access forms: invalid email rejected; valid data produces explicit unsent/unsaved preview feedback.
--Both lesson explorers: tab deep links, arrow-key tab navigation, corrected-slide links and slide controls at390px.
--Worksheet printing shows pupil sheet and excludes answers, navigation and print controls.
--Automated axe WCAG2A/AA +2.1AA checks on Home, Slides, Year7 example, Contact, Help and How it works: no violations reported.
--Manual visual review of homepage, mobile hero, feature page, sample explorer and shared layouts.
-
-Automated checks supplement visual and keyboard review; they are not a claim of complete accessibility certification. Live product integrations and launch policy facts remain outside this static preview.
-
-
-## Current DayBack landing-page update
-
-The shared shell and landing metadata now use DayBack. The homepage focuses on a slides-first
-Years 3–6 MVP: a grounded topic hero followed by a lightweight browser for the five authored
-Year 4 sound teaching slides and a direct topic action. Original characters, Gabarito font, cream palette
-and the local-only preview boundary are preserved.
-
-Current checks run for this change:
-
-- All 28 generated routes pass asset/link/anchor checks, one-H1/duplicate-ID checks and preview-indexing guards.
-- Root lint and typecheck pass. Homepage lint passes with inherited CSS specificity warnings.
-- Seven Chromium tests pass: both preview forms with/without JavaScript; coherent 3/7/9 sample selection, answers and full-lesson destinations; keyboard navigation and mobile overflow; and no-JavaScript lesson links.
-- Fresh light-theme screenshots inspected at 1440px and 390px, including all three selections and the answer disclosure. Year 7 was iterated to use the canonical arrangement/flow slide and particle diagram matching the worksheet questions.
-- Axe WCAG 2 A/AA and 2.1 AA checks report no violations on the homepage, new Year 9 lesson and how-it-works page.
-- Homepage motion pause, mobile menu Escape behaviour and five original character wrappers verified; no browser page errors in the checked flows. The font, artwork and animation source files are unchanged.
-
-This change did not re-run the historical full 27-page visual sweep or printing audit. It does not certify curriculum alignment or make the preview a live generation service.
+Automated checks supplement visual and keyboard review; they are not a claim of complete
+accessibility certification. The site does not certify curriculum alignment.
