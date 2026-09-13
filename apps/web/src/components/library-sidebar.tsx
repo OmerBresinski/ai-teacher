@@ -34,12 +34,12 @@ const SIGN_OUT_ICON = <LogOut {...ICON} />;
 const KIT_ICON = <SwatchBook {...ICON} />;
 const WORDMARK = (
   <Display as="span" size="md" className="whitespace-nowrap">
-    TeachDeck
+    DayBack
   </Display>
 );
 const MARK = (
   <Display as="span" size="md">
-    T
+    D
   </Display>
 );
 
