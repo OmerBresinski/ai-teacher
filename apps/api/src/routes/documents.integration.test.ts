@@ -14,7 +14,7 @@ import {
 } from "@tj/domain/documents/fixtures";
 import { createApp } from "../app";
 import type { ErrorEnvelope } from "../errors";
-import { silentLogger, TEST_ENV } from "../test-helpers";
+import { captureLogger, silentLogger, TEST_ENV } from "../test-helpers";
 import { WORKSPACE_HEADER } from "../workspace";
 import type { toDocumentJson, toSummaryJson } from "./documents";
 
@@ -61,6 +61,29 @@ describeDb("/documents against Postgres", () => {
   }
 
   describe("POST /documents", () => {
+    test("a real Postgres NUL rejection never logs the private Document parameters", async () => {
+      const { logger, lines } = captureLogger();
+      const safeApp = createApp({ env: TEST_ENV, db: t.db, logger });
+      const marker = "PRIVATE_DOCUMENT_CANARY_282";
+      const response = await safeApp.request("/documents", {
+        method: "POST",
+        headers: headers(wsA, {
+          "content-type": "application/json",
+          "x-request-id": "document-282",
+        }),
+        body: JSON.stringify({
+          kind: "lesson",
+          body: { ...lessonFixture(), title: `${marker}\u0000` },
+        }),
+      });
+      expect(response.status).toBe(500);
+      expect(await response.text()).not.toContain(marker);
+      expect(lines.join("")).not.toContain(marker);
+      expect(lines.join("")).not.toContain("params");
+      expect(lines.join("")).toContain("document-282");
+      expect(lines.join("")).toContain("unhandled error");
+    });
+
     test("201: mints a new id and rewrites body.id (Import / Make a copy)", async () => {
       const input = lessonFixture();
       const res = await send(wsA, "POST", "/documents", { kind: "lesson", body: input });

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { parseLesson, parseWorksheet } from "@tj/domain/documents";
@@ -40,6 +40,34 @@ const ALL_STAGES = ["check-input", "plan", "generate", "illustrate", "evaluate",
 const PLANNED_VERSION = `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}+${PROMPT_VERSIONS["verify-facts"]}`;
 
 describe("runLessonPipeline", () => {
+  test("raw persistence errors bypass Mastra diagnostics but retain identity for retry decisions", async () => {
+    const marker = "PRIVATE_WORKFLOW_282";
+    const original = Object.assign(new Error(marker), {
+      params: [marker],
+      cause: { token: marker },
+    });
+    const { logger, lines } = memoryLogger();
+    const stderr: string[] = [];
+    const consoleError = spyOn(console, "error").mockImplementation((...args) => {
+      stderr.push(Bun.inspect(args));
+    });
+    const deps = recordingDeps(scriptedPipelineAi(), { logger });
+    deps.persist = async () => {
+      throw original;
+    };
+    try {
+      const caught = await runLessonPipeline(
+        { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
+        deps,
+      ).catch((error: unknown) => error);
+      expect(caught).toBe(original);
+      expect([...lines, ...stderr].join("")).not.toContain(marker);
+      expect(lines.join("")).toContain("generation stage failed");
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   test("a full run on the fixture script: persists per stage and slide, documents are valid", async () => {
     const ai = scriptedPipelineAi();
     const deps = recordingDeps(ai);

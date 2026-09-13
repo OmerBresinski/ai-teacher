@@ -12,5 +12,6 @@ export * from "./jobs";
 export * from "./objects/index";
 export * from "./primitives";
 export * from "./result";
+export * from "./safe-error";
 export * from "./states";
 export * from "./storage";

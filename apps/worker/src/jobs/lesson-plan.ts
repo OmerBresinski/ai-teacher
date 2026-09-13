@@ -115,7 +115,7 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
         return;
       }
       if (isAiError(error, "unconfigured") || isAiError(error, "invalid_model")) {
-        throw new NonRetryableError(error.message);
+        throw new NonRetryableError(error.message, { cause: error });
       }
       // The brief itself was refused (TEACH-137): a re-run cannot fix the input. `error.message`
       // is the fixed per-check text from `@tj/generation`, never the model's words, so it can
@@ -125,13 +125,13 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
           { lessonId, findings: error.findings.map((f) => f.check) },
           "lesson brief rejected by the input check",
         );
-        throw new NonRetryableError(error.message);
+        throw new NonRetryableError(error.message, { cause: error });
       }
       // A Source's `extracted.json` is gone or unreadable (ADR 0027 §6): a re-run cannot bring it
       // back, and planning without the material would silently give the teacher the wrong lesson.
       if (error instanceof SourceUnavailable) {
         logger.warn({ lessonId, sourceId: error.sourceId }, "source unavailable");
-        throw new NonRetryableError(error.message);
+        throw new NonRetryableError(error.message, { cause: error });
       }
       if (!(error instanceof NonRetryableError)) keepLocksForRetry = true;
       throw error;

@@ -1,3 +1,5 @@
+import { safeError } from "@tj/domain";
+
 export type AiErrorCode = "unconfigured" | "provider" | "invalid_model" | "moderated";
 
 /** Error raised by `@tj/ai` for configuration and provider failures. */
@@ -37,7 +39,7 @@ export class ProviderFailure extends Error {
   }
 }
 
-const MESSAGE_MAX = 200;
+export const PROVIDER_FAILURE_MESSAGE = "The model provider request failed.";
 
 function pick<T>(source: object, key: string, guard: (v: unknown) => v is T): T | undefined {
   const value = (source as Record<string, unknown>)[key];
@@ -59,15 +61,15 @@ function isModeration(cause: unknown): boolean {
 export function toProviderFailure(cause: unknown): ProviderFailure {
   if (cause instanceof Error) {
     return new ProviderFailure(
-      cause.name,
-      isModeration(cause) ? MODERATED_MESSAGE : cause.message.slice(0, MESSAGE_MAX),
+      safeError(cause).type,
+      isModeration(cause) ? MODERATED_MESSAGE : PROVIDER_FAILURE_MESSAGE,
       {
         statusCode: pick(cause, "statusCode", isNumber),
         isRetryable: pick(cause, "isRetryable", isBoolean),
       },
     );
   }
-  return new ProviderFailure("UnknownError", String(cause).slice(0, MESSAGE_MAX), {});
+  return new ProviderFailure("UnknownError", PROVIDER_FAILURE_MESSAGE, {});
 }
 
 export function toProviderError(cause: unknown): AiError {

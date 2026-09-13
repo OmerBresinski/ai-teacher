@@ -68,6 +68,25 @@ describe("ResendMailSender", () => {
     expect(lines[0]).not.toContain("re_test");
   });
 
+  test("a provider error name containing private content is not logged or copied to the exception", async () => {
+    const lines: string[] = [];
+    const logger = pino(
+      { level: "trace" },
+      {
+        write: (line) => {
+          lines.push(line);
+        },
+      },
+    );
+    const marker = "PRIVATE_RESEND_282";
+    const { impl } = fakeFetch(422, { name: marker, message: marker });
+    const sender = new ResendMailSender({ apiKey: "re_test", from: "x", fetch: impl }, logger);
+    const error = await sender.send(message).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResendSendError);
+    expect(String(error)).not.toContain(marker);
+    expect(lines.join("")).not.toContain(marker);
+  });
+
   test("success logs the Resend id, not the link", async () => {
     const lines: string[] = [];
     const logger = pino(

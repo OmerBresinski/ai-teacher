@@ -149,11 +149,14 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
       },
     },
     telemetry: { enabled: false },
-    // Route better-auth's own log lines through pino (structured, level-filtered, no colours).
+    // Better Call otherwise console.error()s unexpected failures after Better Auth's logger.
+    // Rethrow to Hono's safe onError; Better Call still handles its typed APIError responses.
+    onAPIError: { throw: true },
+    // Library messages/args may include tokens, SQL parameters or provider response bodies.
     logger: {
       disableColors: true,
-      log: (level, message, ...args) => {
-        logger[level]({ better_auth: true, args }, message);
+      log: (level) => {
+        logger[level]({ better_auth: true }, "authentication event");
       },
     },
   });

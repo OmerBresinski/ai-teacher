@@ -86,11 +86,16 @@ document routes: `"stale"` when the `expectedUpdatedAt` a client sent is behind 
 | `HTTPException`                              | its status    | `bad_request`, `unauthorized`, `forbidden`, `not_found`, `conflict`, `payload_too_large`, `unprocessable`, `rate_limited`, `service_unavailable`, `internal_error` (5xx) or `http_error` (other 4xx) |
 | Unknown route                                | 404           | `not_found`                                 |
 | `/health` with the database down             | 503           | `service_unavailable`, `retryable: true`    |
-| Anything else thrown                         | 500           | `internal_error` — generic message; details are logged with the request id only |
+| Anything else thrown                         | 500           | `internal_error` — generic message; allow-listed error class/code logged with the request id |
 
 `retryable` is `true` for 408/425/429/502/503/504. Use `errorResponse(c, status, code, message,
 retryable)` from `src/errors.ts` to return an envelope from a handler; throw `HTTPException` for the
 common cases.
+
+Production error logs use `safeError` from `@tj/domain`, never raw exception messages, stacks,
+causes or parameters. The logger hook also prevents Pino from implicitly copying `err.message`
+into `msg`. Auth library log arguments are discarded; unexpected auth exceptions reach the same
+safe Hono handler instead of the library's direct console fallback (TEACH-282, ADR 0015).
 
 ## Request body limits (TEACH-281)
 

@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
 import pino from "pino";
-import { AiError, isAiError, ProviderFailure, toProviderError } from "./errors";
+import {
+  AiError,
+  isAiError,
+  PROVIDER_FAILURE_MESSAGE,
+  ProviderFailure,
+  toProviderError,
+} from "./errors";
 
 /** Shaped like the AI SDK's APICallError: content-bearing enumerable fields. */
 class FakeApiCallError extends Error {
@@ -40,7 +46,7 @@ describe("toProviderError", () => {
     expect(wrapped.cause).toBeInstanceOf(ProviderFailure);
     expect(wrapped.cause).toMatchObject({
       name: "AI_APICallError",
-      message: "model call rejected",
+      message: PROVIDER_FAILURE_MESSAGE,
       statusCode: 400,
       isRetryable: false,
     });
@@ -63,7 +69,7 @@ describe("toProviderError", () => {
         },
       }),
     );
-    logger.warn({ err: toProviderError(new FakeApiCallError("model call rejected")) }, "failed");
+    logger.warn({ err: toProviderError(new FakeApiCallError("private prompt text")) }, "failed");
     const serialized = lines.join("");
     expect(serialized).toContain("AI_APICallError");
     expect(serialized).not.toContain("private prompt text");
@@ -71,8 +77,8 @@ describe("toProviderError", () => {
     expect(serialized).not.toContain("requestBodyValues");
   });
 
-  test("truncates long cause messages", () => {
+  test("replaces cause messages rather than truncating private content", () => {
     const wrapped = toProviderError(new Error("x".repeat(500)));
-    expect((wrapped.cause as { message: string }).message).toHaveLength(200);
+    expect((wrapped.cause as { message: string }).message).toBe(PROVIDER_FAILURE_MESSAGE);
   });
 });

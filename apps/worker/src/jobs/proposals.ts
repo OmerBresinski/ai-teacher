@@ -90,7 +90,7 @@ export async function runProposalJob<J extends JobResult["job"]>(
   } catch (error) {
     if (signal.aborted) return undefined;
     if (isAiError(error, "unconfigured") || isAiError(error, "invalid_model")) {
-      throw new NonRetryableError(error.message);
+      throw new NonRetryableError(error.message, { cause: error });
     }
     throw error;
   }

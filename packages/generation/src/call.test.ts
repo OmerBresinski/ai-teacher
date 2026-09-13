@@ -120,7 +120,10 @@ describe("callStructured repairs the text before validating it", () => {
     expect(result.attempts).toBe(2);
     expect(log.text()).not.toContain("repaired before validation");
     // The issue describes what the model sent (a string), not the failed repair (numbers).
-    expect(log.text()).toContain("items: Invalid input: expected array, received string");
+    expect(ai.calls[1]?.promptText).toContain(
+      "items: Invalid input: expected array, received string",
+    );
+    expect(log.text()).toContain("invalid_type: 1");
     expect(log.text()).not.toContain("received number");
   });
 
@@ -147,10 +150,9 @@ describe("callStructured repairs the text before validating it", () => {
       maxOutputTokens: 100,
     });
     const issues = /"issues":(\[[^\]]*\])/.exec(log.text())?.[1];
-    expect(JSON.parse(issues as string)).toEqual([
-      "- items: give more than one item",
-      "- items: no x",
-    ]);
+    expect(JSON.parse(issues as string)).toEqual(["custom: 2"]);
+    expect(ai.calls[1]?.promptText).toContain("- items: give more than one item");
+    expect(ai.calls[1]?.promptText).toContain("- items: no x");
   });
 
   test("one issue per path: the checks zod runs after a type miss are not sent to the model", async () => {
@@ -162,9 +164,10 @@ describe("callStructured repairs the text before validating it", () => {
     await callList(d);
     const issues = /"issues":(\[[^\]]*\])/.exec(log.text())?.[1];
     expect(issues).toBeDefined();
-    expect(JSON.parse(issues as string)).toEqual([
+    expect(JSON.parse(issues as string)).toContain("invalid_type: 1");
+    expect(ai.calls[1]?.promptText).toContain(
       "- items: Invalid input: expected array, received string",
-    ]);
+    );
   });
 });
 
@@ -285,10 +288,9 @@ describe("callStructured", () => {
       bedrock: { reasoningConfig: { maxReasoningEffort: "medium" } },
     });
     expect(log.text()).toContain("retrying once");
-    // The validation issues (path + message) are logged so a production miss is diagnosable…
-    expect(log.text()).toContain("answer: Invalid input: expected string, received number");
-    // …with the key names the model invented reduced to a count (ADR 0015)…
-    expect(log.text()).toContain("1 unrecognized key(s)");
+    // Logs retain finite validation codes/counts; details remain inside the retry prompt.
+    expect(log.text()).toContain("invalid_type: 1");
+    expect(log.text()).toContain("unrecognized_keys: 1");
     expect(log.text()).not.toContain("pupilName");
     expect(log.text()).not.toContain("Aisha");
     // …and neither the model's text nor the prompt reaches the log.
@@ -314,9 +316,9 @@ describe("callStructured", () => {
     expect(d.budget.totals().calls).toBe(2);
     // Both misses' issues reach the log (pino drops a non-Error `cause`), the model's text does not.
     expect(log.text()).toContain("giving up");
-    expect(log.text()).toContain("- The answer was not valid JSON for the requested shape.");
-    expect(log.text()).toContain("- answer: Invalid input: expected string, received number");
-    expect(log.text()).toContain("- 1 unrecognized key(s)");
+    expect(log.text()).toContain("invalid_json: 1");
+    expect(log.text()).toContain("invalid_type: 1");
+    expect(log.text()).toContain("unrecognized_keys: 1");
     expect(log.text()).not.toContain("pupilName");
     expect(log.text()).not.toContain("nope");
     expect(log.text()).not.toContain('"answer":2');
@@ -517,9 +519,38 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
       '- word: pitch.avoid lists "a"secret"',
       "- id: q9secret is not a candidate id",
     ]);
-    expect(log.text()).toContain("word: pitch.avoid lists …");
-    expect(log.text()).toContain("id: … is not a candidate id");
+    expect(log.text()).toContain("custom: 2");
     expect(log.text()).not.toContain("secret");
+  });
+
+  test("unclassified validation messages, dynamic paths and log annotations never reach logs", async () => {
+    const marker = "PRIVATE_VALIDATION_282";
+    const schema = z.object({ word: z.string() }).superRefine((value, ctx) => {
+      ctx.addIssue({
+        code: "custom",
+        path: [value.word],
+        message: value.word,
+        params: { log: value.word },
+      });
+    });
+    const bad = JSON.stringify({ word: marker });
+    const ai = createFakeAi({ script: [bad, bad] });
+    const log = capturingLogger();
+    await expect(
+      callStructured({
+        deps: deps(ai, { logger: log.logger }),
+        stage: "plan",
+        cls: "standard",
+        effort: "medium",
+        prompt,
+        input: "hi",
+        schema,
+        maxOutputTokens: 100,
+      }),
+    ).rejects.toBeInstanceOf(StageFailure);
+    expect(log.text()).not.toContain(marker);
+    expect(log.text()).toContain("custom: 1");
+    expect(ai.calls[1]?.promptText).toContain(marker);
   });
 
   test("the model's text never reaches the log on the accepted path either", async () => {

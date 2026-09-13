@@ -32,7 +32,7 @@ export const aiPingJob = defineJob<"ai.ping", WorkerDeps>(
       );
     } catch (error) {
       if (isAiError(error) && (error.code === "unconfigured" || error.code === "invalid_model")) {
-        throw new NonRetryableError(error.message);
+        throw new NonRetryableError(error.message, { cause: error });
       }
       throw error;
     }

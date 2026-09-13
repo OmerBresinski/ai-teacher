@@ -1,8 +1,9 @@
 import { createDb } from "@tj/db";
-import { JobName } from "@tj/domain";
+import { JobName, safeError } from "@tj/domain";
 import { type BossJob, createBoss, ensureQueues, type JobsContext, runJob } from "@tj/jobs";
 import { createWorkerDeps } from "./deps";
 import { parseEnv } from "./env";
+import { publicJobFailure } from "./job-errors";
 import { registry } from "./jobs";
 import { createLogger } from "./logger";
 
@@ -20,7 +21,7 @@ const boss = createBoss(env.DATABASE_URL);
 const ctx: JobsContext = { boss, db: unsafeDb, sql };
 
 boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
-boss.on("warning", (w) => logger.warn({ warning: w }, "pg-boss warning"));
+boss.on("warning", (w) => logger.warn({ err: safeError(w) }, "pg-boss warning"));
 
 const shutdown = new AbortController();
 const active = new Map<string, Promise<unknown>>();
@@ -47,6 +48,7 @@ for (const name of Object.values(JobName)) {
           shutdown: shutdown.signal,
           logger,
           deps,
+          failureMessage: publicJobFailure,
         });
         active.set(job.id, run);
         try {

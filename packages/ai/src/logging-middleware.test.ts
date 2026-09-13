@@ -3,6 +3,7 @@ import { Writable } from "node:stream";
 import { generateText, streamText, wrapLanguageModel } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
+import { PROVIDER_FAILURE_MESSAGE } from "./errors";
 import { AiError, DEFAULT_MODEL_IDS, isAiError, PRICES } from "./index";
 import { createLoggingMiddleware } from "./logging-middleware";
 import { createFakeAi } from "./testing";
@@ -146,7 +147,7 @@ describe("AI logging middleware", () => {
       expect(isAiError(error, "provider")).toBe(true);
       expect((error as Error & { cause?: unknown }).cause).toMatchObject({
         name: "Error",
-        message: providerError.message,
+        message: PROVIDER_FAILURE_MESSAGE,
       });
     }
 
@@ -188,7 +189,7 @@ describe("AI logging middleware", () => {
     expect(isAiError(caught, "provider")).toBe(true);
     expect((caught as Error & { cause?: unknown }).cause).toMatchObject({
       name: "Error",
-      message: streamError.message,
+      message: PROVIDER_FAILURE_MESSAGE,
     });
     expect(lines).toHaveLength(1);
     const record = JSON.parse(lines[0] ?? "") as { level: number; ai: Record<string, unknown> };
@@ -220,7 +221,7 @@ describe("AI logging middleware", () => {
     expect(isAiError(caught, "provider")).toBe(true);
     expect((caught as Error & { cause?: unknown }).cause).toMatchObject({
       name: "Error",
-      message: cancelError.message,
+      message: PROVIDER_FAILURE_MESSAGE,
     });
     expect(lines).toHaveLength(1);
     const record = JSON.parse(lines[0] ?? "") as { level: number };
