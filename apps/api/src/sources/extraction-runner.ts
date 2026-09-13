@@ -40,7 +40,7 @@ export {
 } from "./runner";
 
 export interface ChildRunnerConfig {
-  /** Path of the child entry (`extract-child.ts` in dev, `dist/sources/extract-child.js` in the image). */
+  /** Source-mode Bun entry in dev, memory-limited Node `.mjs` bundle in production. */
   entry: string;
   /** Wall-clock budget for one document, spawn to answer. */
   deadlineMs: number;
@@ -51,15 +51,15 @@ export interface ChildRunnerConfig {
   /** Bytes of stdout accepted before the child is killed (images are base64 inside it). */
   maxOutputBytes: number;
   /**
-   * Optional address-space limit for the child (`ulimit -v`, KiB) — Linux only, opt-in through
-   * `EXTRACT_CHILD_MAX_VMEM_MB`. Bun/JSC reserves large virtual ranges; verify the value boots
-   * `bun` in the image before relying on it (infra/README.md "Source extraction").
+   * Address-space ceiling for the production Node child, in MiB. Defaults to 1536; validated on
+   * native Railway Linux x64. This is an OS limit, not just the V8 managed-heap size.
    */
   vmemLimitMb?: number;
   /** Extra caps forwarded to the child (tests scale them). */
   limits?: ExtractInput["limits"];
   /** Overridable for tests. */
   bunExecutable?: string;
+  nodeExecutable?: string;
   /** Extra child environment (tests drive the fake child with it). */
   childEnv?: Record<string, string>;
 }
@@ -69,12 +69,13 @@ export const CHILD_RUNNER_DEFAULTS = {
   maxConcurrent: 2,
   maxQueue: 8,
   maxOutputBytes: 128 * 1024 * 1024,
+  vmemLimitMb: 1536,
 } as const;
 
-/** The child entry next to the running api entry: `src/sources/extract-child.ts` or `dist/sources/extract-child.js`. */
+/** The child entry next to the API: source TypeScript or the isolated production Node bundle. */
 export function childEntryFor(apiEntryUrl: string): string {
   const here = fileURLToPath(apiEntryUrl);
-  const ext = here.endsWith(".ts") ? "ts" : "js";
+  const ext = here.endsWith(".ts") ? "ts" : "mjs";
   return join(dirname(here), "sources", `extract-child.${ext}`);
 }
 
@@ -85,7 +86,12 @@ export const ExtractionConfigSchema = z.object({
   EXTRACT_DEADLINE_MS: positiveInt.default(CHILD_RUNNER_DEFAULTS.deadlineMs),
   EXTRACT_MAX_CONCURRENT: positiveInt.default(CHILD_RUNNER_DEFAULTS.maxConcurrent),
   EXTRACT_MAX_QUEUE: positiveInt.default(CHILD_RUNNER_DEFAULTS.maxQueue),
-  EXTRACT_CHILD_MAX_VMEM_MB: positiveInt.optional(),
+  EXTRACT_CHILD_MAX_VMEM_MB: z.coerce
+    .number()
+    .int()
+    .min(1536)
+    .max(2048)
+    .default(CHILD_RUNNER_DEFAULTS.vmemLimitMb),
 });
 
 export function loadChildRunnerConfig(
@@ -97,15 +103,19 @@ export function loadChildRunnerConfig(
     Object.entries(source).filter(([, v]) => v !== undefined && v !== ""),
   );
   const parsed = ExtractionConfigSchema.parse(cleaned);
+  if (
+    source.NODE_ENV === "production" &&
+    (!entry.endsWith(".mjs") || process.platform !== "linux")
+  ) {
+    throw new Error("Production extraction requires the Linux memory-isolated child bundle");
+  }
   return {
     entry,
     deadlineMs: parsed.EXTRACT_DEADLINE_MS,
     maxConcurrent: parsed.EXTRACT_MAX_CONCURRENT,
     maxQueue: parsed.EXTRACT_MAX_QUEUE,
     maxOutputBytes: CHILD_RUNNER_DEFAULTS.maxOutputBytes,
-    ...(parsed.EXTRACT_CHILD_MAX_VMEM_MB !== undefined
-      ? { vmemLimitMb: parsed.EXTRACT_CHILD_MAX_VMEM_MB }
-      : {}),
+    vmemLimitMb: parsed.EXTRACT_CHILD_MAX_VMEM_MB,
   };
 }
 
@@ -186,18 +196,20 @@ export class ChildProcessExtractionRunner implements ExtractionRunner {
   }
 
   private command(): string[] {
-    const bun = this.config.bunExecutable ?? process.execPath;
     const { vmemLimitMb, entry } = this.config;
-    if (vmemLimitMb === undefined) return [bun, entry];
+    if (!entry.endsWith(".mjs")) {
+      return [this.config.bunExecutable ?? process.execPath, "--no-env-file", entry];
+    }
+    if (process.platform !== "linux") throw new ExtractionFailedError("crashed");
     // The limit needs a shell builtin; the script is a constant and the values are positional
     // arguments, never interpolated.
     return [
       "sh",
       "-c",
-      'ulimit -v "$1" && exec "$2" "$3"',
+      'ulimit -c 0; ulimit -v "$1" && exec "$2" --max-old-space-size=256 --max-semi-space-size=8 "$3"',
       "sh",
-      String(vmemLimitMb * 1024),
-      bun,
+      String((vmemLimitMb ?? CHILD_RUNNER_DEFAULTS.vmemLimitMb) * 1024),
+      this.config.nodeExecutable ?? "node",
       entry,
     ];
   }
@@ -212,6 +224,7 @@ export class ChildProcessExtractionRunner implements ExtractionRunner {
         PATH: process.env.PATH ?? "",
         HOME: process.env.HOME ?? "/tmp",
         NODE_ENV: process.env.NODE_ENV ?? "production",
+        DO_NOT_TRACK: "1",
         ...(input.mime ? { EXTRACT_MIME: input.mime } : {}),
         ...(Object.keys(limits).length > 0 ? { EXTRACT_LIMITS: JSON.stringify(limits) } : {}),
         ...this.config.childEnv,

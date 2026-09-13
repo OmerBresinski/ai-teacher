@@ -183,12 +183,13 @@ async function readUpload(form: z.infer<typeof uploadForm>): Promise<Upload> {
  * is a 503 with Retry-After before anything is spawned; a client that went away is a plain abort.
  */
 async function extractOrRefuse(
-  runner: ExtractionRunner,
+  runner: ExtractionRunner | undefined,
   upload: Upload,
   log: Logger | undefined,
   sourceId: string,
   c: Context<AppEnv>,
 ) {
+  if (!runner) throw new HTTPException(503, { message: "Source extraction is unavailable." });
   try {
     return await runner.run(
       { bytes: upload.bytes, mime: upload.mime, name: upload.name },
@@ -289,7 +290,7 @@ export function sourceRoutes(
   unsafeDb: ScopableDb,
   storage: ReadableStorageAdapter | undefined,
   limiter: RateLimiter,
-  extraction: ExtractionRunner,
+  extraction: ExtractionRunner | undefined,
 ) {
   const requireStorage = (): ReadableStorageAdapter => {
     if (!storage) throw new HTTPException(503, { message: STORAGE_UNAVAILABLE_MESSAGE });

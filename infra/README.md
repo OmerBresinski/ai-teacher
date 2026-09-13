@@ -34,7 +34,6 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
 | **OAuth disabled** | Google/Microsoft sign-in off (no client credentials); magic link only. | Set the four `*_CLIENT_ID`/`*_CLIENT_SECRET` variables when the OAuth apps exist. | TEACH-39; `docs/env.md` |
 | **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
-| **Extraction child has no address-space limit in production** | Uploads parse in a killable child bounded by a deadline, an output cap and in-parser ceilings; `EXTRACT_CHILD_MAX_VMEM_MB` is unset. | Repeat the `ulimit -v` measurement on the amd64 image, then set the variable on the api. | TEACH-278; "Source extraction" |
 | **AI rate limit is per api replica (in memory)** | One Railway api replica applies the per-Workspace limit locally. | Use Postgres or Redis before scaling the api horizontally. | TEACH-75; `apps/api/src/rate-limit.ts` |
 
 ## Vercel (web) — TEACH-25
@@ -420,7 +419,7 @@ Multi-stage, pinned to `oven/bun:1.3.6-alpine` (matches `.bun-version`; bump tog
 | --------- | ------------------------------------------------------------------------------------------------------- |
 | `pruner`  | `turbo prune @tj/api @tj/worker --docker` → `json/` (manifests + pruned `bun.lock`), `full/` (sources)  |
 | `deps`    | `bun install --frozen-lockfile --ignore-scripts` from `json/` (layer cached until a manifest changes)     |
-| `build`   | `turbo run build` → `apps/{api,worker}/dist/index.js` + `apps/api/dist/sources/extract-child.js` (the extraction child, TEACH-278); `bun build packages/db/src/migrate.ts` → `packages/db/dist/migrate.js`; then deletes `node_modules` and re-bundles the four files to **prove they are self-contained** |
+| `build`   | `turbo run build` → `apps/{api,worker}/dist/index.js` + `apps/api/dist/sources/extract-child.mjs` (the Node extraction child, TEACH-278); `bun build packages/db/src/migrate.ts` → `packages/db/dist/migrate.js`; then deletes `node_modules` and re-bundles the four files to **prove they are self-contained**. The final image also depends on a synthetic native extraction/memory probe. |
 | `runtime` | non-root `bun` user, `/app/apps/*/dist`, `/app/packages/db/{dist,drizzle}`, `entrypoint.sh`. No sources, no `node_modules`. **~155 MB** (`docker images tj:local`) |
 
 `infra/docker/entrypoint.sh` (`ENTRYPOINT`, default `CMD ["api"]`) `exec`s Bun so SIGTERM reaches
@@ -447,40 +446,47 @@ CI job `docker-build-smoke` runs `docker build .` on every PR.
 
 ## Source extraction (TEACH-278)
 
-`POST /sources` parses uploads in a **child process** (`apps/api/dist/sources/extract-child.js`,
-spawned by `ChildProcessExtractionRunner`, ADR 0027 amendment 2026-09-13). Knobs, all optional
+`POST /sources` parses uploads in a **memory-limited Node child process**
+(`apps/api/dist/sources/extract-child.mjs`, spawned by `ChildProcessExtractionRunner`, ADR 0027).
+The API and worker remain on Bun. Knobs have defaults
 (`infra/env.contract.ts`): `EXTRACT_DEADLINE_MS` (30000), `EXTRACT_MAX_CONCURRENT` (2),
-`EXTRACT_MAX_QUEUE` (8), `EXTRACT_CHILD_MAX_VMEM_MB` (unset). A child past the deadline, aborted by
+`EXTRACT_MAX_QUEUE` (8), `EXTRACT_CHILD_MAX_VMEM_MB` (1536, allowed range 1536–2048 MiB). A child past the deadline, aborted by
 the client or over 128 MiB of output is `SIGKILL`ed and the upload answers the `unreadable`
 refusal; a full queue answers `503` + `Retry-After: 5` before anything is spawned (log line
 `source extraction capacity full`).
 
-`EXTRACT_CHILD_MAX_VMEM_MB` applies `ulimit -v` (address space) to the child through `sh -c`. Bun
-reserves large virtual ranges, so a value that is too low prevents the child from even booting and
-every upload becomes `unreadable`. Verify in the image before setting it:
+`EXTRACT_CHILD_MAX_VMEM_MB` applies Linux `RLIMIT_AS` through `ulimit -v`; it cannot be disabled in
+the production bundle. Node additionally runs with a 256 MiB old-space and 8 MiB semi-space ceiling;
+the OS limit also bounds external buffers. Core dumps are disabled, stderr is discarded and child
+output is capped before parsing. Source-mode local Bun has no portable OS memory limit.
+
+Native Railway x64 verification on 2026-09-13 (isolated project, 1 vCPU / 2 GB container,
+no production variables, synthetic fixtures only):
+
+| Runtime / ceiling | Result |
+| --- | --- |
+| Bun 1.3.6, 512/1024/2048 MiB address space | Boot refused: executable-memory reservation |
+| Bun 1.3.6, 512/1024 MiB data size | Boot refused: executable-memory reservation |
+| Node 24.14.1, 768/1024 MiB address space | Boot refused: V8 CodeRange reservation |
+| **Node 24.14.1, 1536 MiB address space** | Boots; PDF/DOCX/PPTX with embedded images parse; scaled ZIP bomb refused |
+| Node allocation beyond that ceiling | Refused after 469,762,048 allocated buffer bytes, RSS 519,766,016 bytes in the bare-runtime probe; actual runner reports child crash, releases slot, and serves the next valid request |
+
+Deployments `0ce12313-06b5-4293-a378-d8188f9b92c6` (runtime limits) and
+`159816b8-8ac8-452d-acba-03db8e72667b` (actual bundled child/runner) carried the evidence. The
+temporary service had restart policy NEVER and a bounded probe lifetime. Docker now runs the
+checked-in `apps/api/src/sources/testing/resource-probe.ts` against the actual runtime bundle on
+every build; the final image contains its success marker, not the fixture runner.
+
+To reproduce locally in the production image build:
 
 ```sh
-docker run --rm --entrypoint sh -e EXTRACT_MIME=text/plain tj:local -c \
-  'ulimit -v $((2048*1024)) && printf "hello" | bun apps/api/dist/sources/extract-child.js'
-# -> {"ok":true,"extraction":{...}}   the value boots; anything else: raise it or leave unset
+docker build -t tj:local .
+# verify-extraction must log resource-probe-passed; any refusal of a legitimate fixture fails build
 ```
 
-Verified values on `oven/bun:1.3.6-alpine` (2026-09-13, `docker build` of this repo, arm64 host;
-re-measure after a Bun bump and once on the amd64 Railway image before setting it in production):
-
-| `ulimit -v`  | Child boots? | Real PDF + DOCX fixtures | `bun -e` allocating 3 GiB |
-| ------------ | ------------ | ------------------------ | ------------------------- |
-| 512 MiB      | no ("Ran out of executable memory", exit 134) | — | — |
-| 1024 MiB     | yes          | not measured             | not measured              |
-| **2048 MiB** | yes          | both extract (`ok: true`) | killed, exit 1 (the API sees `crashed` → `unreadable`) |
-
-Production does **not** set `EXTRACT_CHILD_MAX_VMEM_MB` yet: the arm64 measurement has to be
-repeated on the amd64 image (`railway ssh` into the api, or a one-off PR environment) before the
-variable is set, otherwise every upload fails closed. Until then the deadline, the output cap and
-the in-parser ceilings (ADR 0027 amendment) apply, but do not establish aggregate memory isolation.
-A local amd64-emulated Bun 1.3.6 boot with a 2048 MiB address-space limit failed with "Ran out of
-executable memory" on 2026-09-13; the arm64 value is not portable evidence. TEACH-278 remains open
-until target-runtime memory containment is proven. Listed under "Known gaps".
+The production API resource limit inspected during validation was 8 GB; default parser concurrency
+is two, each with at most 1536 MiB of address space, plus bounded queue/input/output buffers.
+Changing either runtime version or the resource configuration requires rerunning the probe.
 
 ## Config-as-code (`.railway/railway.ts`, infrastructure-as-code)
 

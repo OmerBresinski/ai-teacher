@@ -916,7 +916,7 @@ const CONTRACT = [
     format: "int",
     files: ["api"],
     description:
-      'Optional `ulimit -v` (MiB) for the extraction child; Linux only. Unset = no address-space limit (the deadline and the in-parser caps still apply). See infra/README.md "Source extraction".',
+      'Linux address-space ceiling in MiB for the production Node extraction child (default 1536, range 1536–2048). Cannot be disabled. Source-mode Bun development has deadline/parser caps only. See infra/README.md "Source extraction".',
   },
 
   // --- web (Vite / Vercel, ADR 0004 / 0010) ---------------------------------------------------------

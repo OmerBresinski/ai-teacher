@@ -211,7 +211,7 @@ describe("ChildProcessExtractionRunner (real child)", () => {
 describe("config", () => {
   test("childEntryFor follows the api entry's layout", () => {
     expect(childEntryFor("file:///app/apps/api/dist/index.js")).toBe(
-      "/app/apps/api/dist/sources/extract-child.js",
+      "/app/apps/api/dist/sources/extract-child.mjs",
     );
     expect(childEntryFor("file:///repo/apps/api/src/index.ts")).toBe(
       "/repo/apps/api/src/sources/extract-child.ts",
@@ -241,5 +241,10 @@ describe("config", () => {
     });
     expect(() => loadChildRunnerConfig({ EXTRACT_MAX_CONCURRENT: "0" }, "/e")).toThrow();
     expect(() => loadChildRunnerConfig({ EXTRACT_DEADLINE_MS: "soon" }, "/e")).toThrow();
+    expect(() => loadChildRunnerConfig({ EXTRACT_CHILD_MAX_VMEM_MB: "0" }, "/e")).toThrow();
+    expect(() => loadChildRunnerConfig({ EXTRACT_CHILD_MAX_VMEM_MB: "999999" }, "/e")).toThrow();
+    expect(() =>
+      loadChildRunnerConfig({ NODE_ENV: "production" }, "/src/extract-child.ts"),
+    ).toThrow("Production extraction requires the Linux memory-isolated child bundle");
   });
 });

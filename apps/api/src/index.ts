@@ -53,7 +53,7 @@ const ai = createAi(env, { logger });
 // Images project: no key degrades to `503` on the route, never a boot failure.
 const images = env.PEXELS_API_KEY ? createPexelsClient({ apiKey: env.PEXELS_API_KEY }) : undefined;
 // Untrusted documents are parsed in a killable child (TEACH-278): the entry sits next to this
-// file in both layouts (`src/sources/extract-child.ts`, `dist/sources/extract-child.js`).
+// file in both layouts (`src/sources/extract-child.ts`, `dist/sources/extract-child.mjs`).
 const extraction = new ChildProcessExtractionRunner(
   loadChildRunnerConfig(process.env, childEntryFor(import.meta.url)),
 );

@@ -14,14 +14,15 @@
  *   stderr                nothing (the parent ignores it; parser messages quote document text)
  *   exit code             0 for either JSON answer; anything else is a crash
  *
- * Built alongside `src/index.ts` into `dist/sources/extract-child.js` (apps/api `build`); the
- * Dockerfile's self-contained check re-bundles it too.
+ * Built into `dist/sources/extract-child.mjs` for the pinned, memory-limited Node child. The API
+ * and worker remain on Bun. Source-mode development/tests can still run this entry with Bun.
  */
+import { buffer } from "node:stream/consumers";
 import { ExtractError, extract, resolveLimits, type SourceMime, sniffMime } from "@tj/extract";
 import { type ChildAnswer, encodeExtraction } from "./protocol";
 
 async function readStdin(): Promise<Uint8Array> {
-  return new Uint8Array(await new Response(Bun.stdin.stream()).arrayBuffer());
+  return new Uint8Array(await buffer(process.stdin));
 }
 
 /** Write the answer and wait for the pipe to drain: `process.exit` right after `write` truncates. */

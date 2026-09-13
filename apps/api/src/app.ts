@@ -99,7 +99,7 @@ export interface CreateAppOptions {
   sourceRateLimit?: Partial<RateLimitConfig>;
   /**
    * Where `POST /sources` parses a document (TEACH-278). `src/index.ts` passes a
-   * `ChildProcessExtractionRunner`; when omitted, extraction runs in-process (unit tests only).
+   * `ChildProcessExtractionRunner`; omission is 503 in production, in-process in dev/tests.
    */
   extraction?: ExtractionRunner;
 }
@@ -236,7 +236,7 @@ function buildApp({
         db.unsafeDb,
         storage,
         sourceLimiter,
-        extraction ?? new InProcessExtractionRunner(),
+        extraction ?? (env.NODE_ENV === "production" ? undefined : new InProcessExtractionRunner()),
       ),
     )
     .route("/", documentRoutes(db.unsafeDb))

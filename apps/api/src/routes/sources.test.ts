@@ -22,6 +22,7 @@ import {
 } from "@tj/extract/testing";
 import { LocalDiskStorage } from "@tj/storage";
 import { createApp } from "../app";
+import type { Auth } from "../auth/auth";
 import type { ErrorEnvelope } from "../errors";
 import {
   ChildProcessExtractionRunner,
@@ -43,6 +44,7 @@ describeDb("POST /sources and DELETE /sources/:id", () => {
   let root: string;
   let storage: LocalDiskStorage;
   let app: ReturnType<typeof createApp>;
+  let userA: string;
   const wsA = newId<WorkspaceId>();
   const wsB = newId<WorkspaceId>();
 
@@ -67,7 +69,8 @@ describeDb("POST /sources and DELETE /sources/:id", () => {
     await truncateTenantTables();
     await rm(root, { recursive: true, force: true });
     storage = new LocalDiskStorage(root);
-    await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsA, workspaceName: "A" });
+    userA = (await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsA, workspaceName: "A" }))
+      .userId;
     await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsB, workspaceName: "B" });
     // Fresh app per test so the per-Workspace limiter starts empty.
     app = createApp({
@@ -301,6 +304,32 @@ describeDb("POST /sources and DELETE /sources/:id", () => {
       const [row] = await sql<{ n: number }[]>`select count(*)::int as n from sources`;
       expect(row?.n).toBe(0);
     };
+
+    test("production cannot fall back to in-process parsing when the runner is missing", async () => {
+      const auth = {
+        api: {
+          getSession: async () => ({
+            user: { id: userA, email: "synthetic@example.test", name: "Synthetic" },
+            session: { id: "synthetic-session", expiresAt: new Date(Date.now() + 60_000) },
+          }),
+        },
+      } as unknown as Auth;
+      const production = createApp({
+        env: { ...TEST_ENV, NODE_ENV: "production" },
+        db: t.db,
+        storage,
+        auth,
+        logger: silentLogger,
+      });
+      const response = await upload(
+        wsA,
+        { file: { bytes: await pdfWithPages(PHOTOSYNTHESIS), name: "synthetic.pdf" } },
+        {},
+        production,
+      );
+      expect(response.status).toBe(503);
+      await nothingStored();
+    });
 
     test("capacity full: 503 with Retry-After before parsing; nothing stored, no row", async () => {
       let called = 0;

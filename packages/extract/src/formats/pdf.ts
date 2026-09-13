@@ -98,25 +98,30 @@ async function readPdf(
   const images: ExtractedImage[] = [];
   let imageBytes = 0;
   for (let page = 1; page <= totalPages && images.length < MAX_IMAGES; page++) {
-    let raw: Awaited<ReturnType<typeof extractImages>>;
+    const pageProxy = await doc.getPage(page);
     try {
-      raw = await extractImages(doc, page);
-    } catch {
-      continue; // a page whose images cannot be decoded still contributes its text
-    }
-    for (const img of raw) {
-      if (img.width < MIN_IMAGE_SIDE || img.height < MIN_IMAGE_SIDE) continue;
-      // pdfjs already dropped anything over `maxImagePixels` before decoding (see
-      // `getDocumentProxy`); this is the belt to that brace, and it bounds our own PNG buffer.
-      if (img.width * img.height > limits.maxImagePixels) continue;
-      const png = encodePng(img, limits.maxImagePixels);
-      if (png === null) continue;
-      imageBytes += png.byteLength;
+      let raw: Awaited<ReturnType<typeof extractImages>>;
+      try {
+        raw = await extractImages(doc, page);
+      } catch {
+        continue; // a page whose images cannot be decoded still contributes its text
+      }
+      for (const img of raw) {
+        if (img.width < MIN_IMAGE_SIDE || img.height < MIN_IMAGE_SIDE) continue;
+        // pdfjs checks each XObject before decode. Aggregate page decoding is additionally
+        // contained by the extraction child's OS memory limit; never run this on API's heap.
+        if (img.width * img.height > limits.maxImagePixels) continue;
+        const png = encodePng(img, limits.maxImagePixels);
+        if (png === null) continue;
+        imageBytes += png.byteLength;
+        if (imageBytes > limits.maxImageBytesTotal) break;
+        images.push({ ref: { page }, mime: "image/png", bytes: png });
+        if (images.length >= MAX_IMAGES) break;
+      }
       if (imageBytes > limits.maxImageBytesTotal) break;
-      images.push({ ref: { page }, mime: "image/png", bytes: png });
-      if (images.length >= MAX_IMAGES) break;
+    } finally {
+      pageProxy.cleanup();
     }
-    if (imageBytes > limits.maxImageBytesTotal) break;
   }
 
   return { kind: "pdf", pages: totalPages, chunks, tables: [], images };
