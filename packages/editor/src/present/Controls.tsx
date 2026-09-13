@@ -254,7 +254,12 @@ export function Controls({ slideCount, stepCount, answerSteps = 0, onExit }: Con
               <TimerIcon {...ICON} />
             </StageButton>
           </PopoverTrigger>
-          <PopoverContent align="end" sideOffset={10} className={cn(STAGE_SCOPE_CLASS, "w-auto")}>
+          <PopoverContent
+            align="end"
+            sideOffset={10}
+            aria-label="Timer"
+            className={cn(STAGE_SCOPE_CLASS, "w-auto")}
+          >
             <TimerPanel />
           </PopoverContent>
         </Popover>

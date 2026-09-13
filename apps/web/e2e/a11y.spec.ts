@@ -239,6 +239,54 @@ test.describe("accessibility (axe)", () => {
     await page.keyboard.press("Escape");
   });
 
+  // TEACH-113: the editor's `?` sheet, present mode's sheet, timer and notes panels, and the
+  // worksheet slash menu — the overlays the earlier tickets left out.
+  test("open overlays are clean: help sheet, present panels, worksheet slash menu", async ({
+    signedInPage: { page, paths },
+  }) => {
+    test.setTimeout(45_000);
+    await page.goto(paths.lesson("demo-water-cycle"));
+    await page.getByRole("group", { name: "Slide canvas" }).focus();
+    await page.keyboard.press("?");
+    await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
+    await settled(page);
+    await expectNoSeriousA11yViolations(page, "editor help sheet", '[role="dialog"]');
+    await page.keyboard.press("Escape");
+
+    await page.goto(paths.lesson("demo-water-cycle", "/present"));
+    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await page.keyboard.press("t");
+    await expect(page.getByRole("dialog", { name: "Timer" })).toBeVisible();
+    await settled(page);
+    await expectNoSeriousA11yViolations(page, "present timer panel");
+    await page.keyboard.press("Escape");
+    // The popover owns the keyboard until its fade-out has unmounted it.
+    await expect(page.getByRole("dialog", { name: "Timer" })).toHaveCount(0);
+    await page.keyboard.press("n");
+    await expect(page.getByRole("complementary", { name: "Presenter notes" })).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "present notes panel");
+    await page.keyboard.press("?");
+    await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
+    await settled(page);
+    await expectNoSeriousA11yViolations(page, "present shortcuts sheet", '[role="dialog"]');
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+
+    // The slash menu: `/` in a fresh paragraph (the gutter + → Blocks → Paragraph).
+    await page.goto(paths.worksheet("fraction-practice"));
+    const first = page.locator(".ws-column .ws-block:not(.ws-rag-slot)").first();
+    await first.hover();
+    await first.getByRole("button", { name: "Insert a block below" }).click();
+    const add = page.getByRole("dialog", { name: "Add a block" });
+    await add.getByRole("tab", { name: "Blocks" }).click();
+    await add.getByRole("button", { name: /^Paragraph/ }).click();
+    await expect(page.locator(".ws-column .ProseMirror")).toBeFocused();
+    await page.keyboard.type("/");
+    await expect(page.getByRole("listbox", { name: "Block types" })).toBeVisible();
+    await settled(page);
+    await expectNoSeriousA11yViolations(page, "worksheet slash menu");
+  });
+
   test("open overlays are clean: export and import dialogs", async ({
     signedInPage: { page, paths },
   }) => {

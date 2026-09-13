@@ -6,7 +6,7 @@ import { makeLine, makeShape, makeTable, makeText, makeTimer } from "../../model
 import { getTheme } from "../../model/themes";
 import { docHasMark } from "../../text/doc-marks";
 import { catcher, pointer, renderEditor, seededLesson } from "../test-harness";
-import { SliderRow } from "./shared";
+import { DropTrigger, SliderRow } from "./shared";
 
 /*
  * TEACH-105: which toolbar the selection routes to (TeachDeck `chrome.test.tsx` catalogue), and
@@ -191,6 +191,34 @@ describe("ShapeToolbar (row 1)", () => {
     fireEvent.blur(field);
     expect(onChange).toHaveBeenLastCalledWith(70);
     expect(onCommit).toHaveBeenCalledTimes(2);
+  });
+});
+
+// TeachDeck `chrome.test.tsx` "DropTrigger chevrons": exactly one chevron by default, none on
+// opt-out, and the accessible name carries the label and the visible value.
+describe("DropTrigger", () => {
+  const chevrons = (root: HTMLElement) => root.querySelectorAll("svg.lucide-chevron-down").length;
+
+  test("draws exactly one chevron by default, none when the caller opts out, and names itself", () => {
+    const { container, unmount } = render(
+      <DropTrigger label="Preset" value="body" text="Body">
+        <span />
+      </DropTrigger>,
+    );
+    const trigger = screen.getByRole("button", { name: "Preset, Body" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(chevrons(container)).toBe(1);
+    unmount();
+
+    const bare = render(
+      <DropTrigger label="Corners" value="0" icon={<span data-testid="icon" />} chevron={false}>
+        <span />
+      </DropTrigger>,
+    );
+    expect(screen.getByRole("button", { name: "Corners" })).toContainElement(
+      screen.getByTestId("icon"),
+    );
+    expect(chevrons(bare.container)).toBe(0);
   });
 });
 

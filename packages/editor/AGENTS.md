@@ -172,5 +172,19 @@ current open, or Replace right after an upload would close the panel it opened. 
 on `mouseDown`+`click`. Search tests stub `globalThis.fetch` (restore it in `afterEach`). Every stylesheet the slide needs travels with the route that paints it: pages in `apps/web`
 import `@tj/editor/styles/editor.css` themselves rather than relying on the library chunk.
 
-Tests: `bun test` in this directory. Behaviour tests only; TeachDeck's vitest files are a
-catalogue of cases, not ported (ADR 0022 §9).
+## Tests
+
+`bun test` in this directory. Behaviour tests only; TeachDeck's vitest files are a catalogue of
+cases, not ported (ADR 0022 §9) — the TEACH-113 gap analysis (checklist comment on that issue) maps
+every catalogue file to the test here that covers it. The pure engines have their own files next to
+the source (`layout/reflow`, `layout/explanation`, `layout/lint`, `layout/tidy`, `layout/fit-plan`,
+`present/ink`, `present/present-reducer`, `present/timer`, `lesson/canvas/place-slide-actions`,
+`lesson/slide-commands`, `model/snapping`, `lesson/transform/{hit-test,resize}`); happy-dom cannot
+lay out text, so anything that measures runs against `layout/test-ruler.ts`. What needs a real
+caret, pointer or download is Playwright's, in `apps/web/e2e`: `editor*`, `present`, `export*`,
+`worksheet-editor`, `worksheet-print`, `handoff` (TeachDeck's handoff acceptance lines end to end:
+one full pointer flow, one keyboard-only flow, the 900×700 smoke) and `a11y` (every editor route
+in the three themes plus every overlay — the theme loop is `page.addInitScript` setting `tj-theme`
+before each `goto`, and an overlay is scanned after its arrival animation has finished, or axe reads
+contrast through the fade). Route chunk ceilings are pinned in `scripts/check-bundle-budget.ts`
+(ADR 0022 §8 amendment).

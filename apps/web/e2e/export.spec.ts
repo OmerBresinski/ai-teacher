@@ -199,6 +199,60 @@ test.describe("library Import", () => {
     expect(page.url()).not.toContain(paths.id("demo-water-cycle"));
   });
 
+  // TEACH-113 row 6: export → import → the same document, modulo what the server mints.
+  test("JSON round-trip: an exported lesson imports as an equal document modulo id and timestamps", async ({
+    signedInPage: { page, paths },
+  }) => {
+    const { readFile } = await import("node:fs/promises");
+    await page.goto(paths.lesson("demo-water-cycle", "/view"));
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Export" });
+    await dialog.getByRole("tab", { name: "JSON" }).click();
+    const download = page.waitForEvent("download");
+    await dialog.getByRole("button", { name: "Export JSON" }).click();
+    const file = await download;
+    const text = await readFile(await file.path(), "utf8");
+    const exported = JSON.parse(text) as Record<string, unknown>;
+
+    await page.goto("/lessons");
+    await page.getByRole("button", { name: "Import" }).click();
+    await page
+      .getByRole("dialog", { name: "Import" })
+      .getByLabel("Import files")
+      .setInputFiles({
+        name: "round-trip.teachdeck.json",
+        mimeType: "application/json",
+        buffer: Buffer.from(text),
+      });
+    await expect(page.getByText("Imported “The water cycle”")).toBeVisible();
+    // Two cards carry the title now; the import is the one under a new id.
+    const cards = page.getByRole("link", { name: "Open The water cycle" });
+    await expect(cards).toHaveCount(2);
+    const hrefs = await cards.evaluateAll((els) => els.map((el) => el.getAttribute("href")));
+    const imported = hrefs.find((h) => h && !h.includes(paths.id("demo-water-cycle")));
+    if (!imported) throw new Error("no imported card");
+    const importedId = imported.split("/").pop() ?? "";
+
+    // Read the stored document back through the same export, and compare.
+    await page.goto(`/l/${importedId}/view`);
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const again = page.getByRole("dialog", { name: "Export" });
+    await again.getByRole("tab", { name: "JSON" }).click();
+    const second = page.waitForEvent("download");
+    await again.getByRole("button", { name: "Export JSON" }).click();
+    const roundTripped = JSON.parse(await readFile(await (await second).path(), "utf8")) as Record<
+      string,
+      unknown
+    >;
+
+    const VOLATILE = ["id", "createdAt", "updatedAt"];
+    const strip = (doc: Record<string, unknown>) =>
+      Object.fromEntries(Object.entries(doc).filter(([k]) => !VOLATILE.includes(k)));
+    expect(roundTripped.id).toBe(importedId);
+    expect(roundTripped.id).not.toBe(exported.id);
+    expect(strip(roundTripped)).toEqual(strip(exported));
+  });
+
   test("row 9: a newer-version file is refused with TeachDeck's copy", async ({
     signedInPage: { page },
   }) => {

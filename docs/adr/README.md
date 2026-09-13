@@ -27,7 +27,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0019 | Adopt the TeachDeck visual system in @tj/ui; shell and editor kits | Accepted, amended 2026-09-06 (×2) |
 | 0020 | Library screens run on an in-memory mock data layer behind TanStack Query | Accepted (amended 2026-09-06) |
 | 0021 | Tie-in document contract: TeachDeck schemas in @tj/domain | Accepted (amended 2026-09-06) |
-| 0022 | @tj/editor: package boundary, kit rule, state model and fonts | Accepted (amended 2026-09-06) |
+| 0022 | @tj/editor: package boundary, kit rule, state model and fonts | Accepted (amended 2026-09-13) |
 | 0023 | Export pipeline: client-side exporters, SPA print routes, JSON import | Accepted (amended 2026-09-12) |
 | 0024 | Document persistence and the lesson brief: `documents` table, document API, `POST /lessons` | Accepted (amended 2026-09-06, 2026-09-12) |
 | 0025 | Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair | Accepted (amended 2026-09-12) |
@@ -63,3 +63,4 @@ Template: `0000-template.md`.
 - 2026-09-12 — ADR 0023 §6, Consequences: Import posts to `POST /documents` through `libraryMutations.importDocument` (server-assigned id); exporters fetch `/files/` images with the session cookie (`include` for the api origin, `omit` elsewhere, `crossorigin` only in capture mode); imported `/files/` references from another Workspace render broken by design; locked lessons export their current state (TEACH-272). See the amendment in `0023-export-pipeline.md`.
 - 2026-09-12 — ADR 0013: `packages/extract` (`@tj/extract`) added to the package map (ADR 0027 §2). See the fifth amendment in `0013-monorepo-layout.md`.
 - 2026-09-12 — ADR 0026: documents store pictures as the api path `/files/<key>`; the origin is resolved at render (`ImageOriginProvider`) and export (`resolveImageSrc`), `API_PUBLIC_BASE_URL` removed, migration 0006 rewrites stored absolute URLs (TEACH-275). See the amendment in `0026-railway-bucket-storage.md`.
+- 2026-09-13 — ADR 0022 §8, §9: route chunk ceilings pinned from measurement + 20% in `scripts/check-bundle-budget.ts` (lesson editor 241 KB, present 109 KB, view 91 KB, lesson print 51 KB, worksheet editor 187 KB, worksheet print 36 KB); the catalogue gap analysis and handoff e2e delivered (TEACH-113). See the fourth amendment in `0022-editor-package-boundary-and-state.md`.

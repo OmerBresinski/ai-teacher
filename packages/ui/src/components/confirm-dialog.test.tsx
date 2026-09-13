@@ -6,6 +6,33 @@ import { useState } from "react";
 import { ConfirmDialog } from "./confirm-dialog";
 
 describe("ConfirmDialog", () => {
+  // TEACH-113: the question is asked from a plain button, which gets focus back on Cancel.
+  it("returns focus to the button that opened it", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Ask
+          </button>
+          <ConfirmDialog
+            confirmLabel="Delete"
+            onConfirm={() => Promise.resolve()}
+            onOpenChange={setOpen}
+            open={open}
+            title="Delete?"
+          />
+        </>
+      );
+    }
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ask" })).toHaveFocus();
+  });
+
   it("disables both actions while a confirmation is pending", async () => {
     let resolve!: () => void;
     const user = userEvent.setup();

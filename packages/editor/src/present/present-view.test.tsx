@@ -195,6 +195,52 @@ describe("PresentView", () => {
     expect(await screen.findByRole("radiogroup", { name: "Timer mode" })).toBeVisible();
   });
 
+  // TEACH-113 (TeachDeck `present-timer.test.ts` "timer controls", through the chrome): a preset
+  // starts the clock and closes the panel; the readout's menu pauses, resumes, resets and clears.
+  it("a timer preset starts the readout; its menu pauses, resumes, resets and clears it", async () => {
+    renderPresent();
+    await start();
+    const user = userEvent.setup();
+    key("t");
+    const panel = await screen.findByRole("dialog", { name: "Timer" });
+    expect(within(panel).getByRole("radiogroup", { name: "Timer mode" })).toBeVisible();
+    await user.click(within(panel).getByRole("button", { name: "5 min" }));
+    expect(screen.queryByRole("dialog", { name: "Timer" })).toBeNull();
+    const readout = screen.getByRole("timer");
+    expect(readout).toHaveTextContent(/^0?5:00$|^0?4:59$/);
+    expect(readout).toHaveAttribute("aria-label", expect.stringMatching(/^Time remaining/));
+
+    const menu = () => screen.getByRole("button", { name: "Timer options" });
+    fireEvent.keyDown(menu(), { key: "Enter" });
+    await user.click(await screen.findByRole("menuitem", { name: "Pause" }));
+    expect(screen.getByRole("timer")).toHaveAttribute(
+      "aria-label",
+      expect.stringMatching(/paused$/),
+    );
+    fireEvent.keyDown(menu(), { key: "Enter" });
+    await user.click(await screen.findByRole("menuitem", { name: "Resume" }));
+    expect(screen.getByRole("timer")).toHaveAttribute(
+      "aria-label",
+      expect.not.stringMatching(/paused$/),
+    );
+    fireEvent.keyDown(menu(), { key: "Enter" });
+    await user.click(await screen.findByRole("menuitem", { name: "Reset" }));
+    expect(screen.getByRole("timer")).toHaveTextContent(/^0?5:00$/);
+    fireEvent.keyDown(menu(), { key: "Enter" });
+    await user.click(await screen.findByRole("menuitem", { name: "Clear" }));
+    expect(screen.queryByRole("timer")).toBeNull();
+
+    // Count up: the panel's Start arms an elapsed clock that reads from zero.
+    key("t");
+    const again = await screen.findByRole("dialog", { name: "Timer" });
+    await user.click(within(again).getByRole("radio", { name: "Count up" }));
+    await user.click(within(again).getByRole("button", { name: "Start" }));
+    expect(screen.getByRole("timer")).toHaveAttribute(
+      "aria-label",
+      expect.stringMatching(/^Time elapsed 0?0:0\d$/),
+    );
+  });
+
   it("onProgress reports the furthest slide once on exit; exit on slide 1 is not 'taught'", async () => {
     const first = renderPresent();
     await start();

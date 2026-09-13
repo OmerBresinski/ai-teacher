@@ -164,3 +164,34 @@ browser and never in the worker. Two rules keep that one run landing on the righ
    copy that is behind). The run gate still stops React's development double mount from running
    twice; `fitVersion` stays the only stamp, so a lesson the teacher has edited (and so saved at
    the current version) is never re-tidied.
+
+## Amendment (2026-09-13, TEACH-113) — §8 route chunk ceilings pinned; §9 the consolidated pass
+
+§8 promised per-chunk budgets "pinned with ~20% headroom" by the consolidated test ticket. Measured
+on the 2026-09-13 build (`bun run build`, gzipped JS + CSS a route adds over the initial load
+through static imports; font files are assets and are not counted) and pinned at measured + 20% in
+`scripts/check-bundle-budget.ts` `BUNDLE_CHUNK_BUDGETS`:
+
+| Route chunk | Measured (gz) | Ceiling |
+| ----------- | ------------- | ------- |
+| `lesson-editor` (`/l/:id`) | 200.9 KB | 241 KB |
+| `lesson-present` (`/l/:id/present`) | 90.9 KB | 109 KB |
+| `lesson-view` (`/l/:id/view`) | 75.8 KB | 91 KB |
+| `lesson-print` (`/l/:id/print`) | 42.4 KB | 51 KB |
+| `worksheet-editor` (`/w/:id`) | 155.5 KB | 187 KB |
+| `worksheet-print` (`/w/:id/print`) | 30.2 KB | 36 KB |
+
+The starting points §8 guessed (present ≤ 200 KB, lesson editor ≤ 450 KB) are superseded by these
+numbers. The initial-load budget (250 KB) is unchanged. `check:bundle-budget` fails when a route
+grows past its ceiling, when a budgeted route no longer exists in the manifest (a renamed page
+cannot silently lose its ceiling), and when an exporter chunk is reached through a static import
+(ADR 0023 §4). A PR that deliberately moves a ceiling re-pins it here and in `apps/web/README.md`
+"Bundle budget".
+
+§9's catalogue reading was completed by TEACH-113: the gap analysis against TeachDeck's editor,
+present, worksheet and export test files is the checklist comment on that issue; the behaviours it
+found missing were added as `bun test` files (`layout/reflow`, `layout/explanation`, `present/ink`,
+`lesson/canvas/place-slide-actions`, `lesson/slide-commands`), the handoff acceptance lines as
+`apps/web/e2e/handoff.spec.ts`, and every editor route and overlay is under axe in the three themes
+(`a11y.spec.ts`).
+

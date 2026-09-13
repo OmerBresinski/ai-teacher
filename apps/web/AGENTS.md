@@ -24,8 +24,10 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
 - **ADR 0009 — consume `@tj/ui`.** Import components from `@tj/ui`; **never run `shadcn add` in
   this app** or copy component source here. Missing component → add it in `packages/ui` (see
   `packages/ui/AGENTS.md`). Theming is `data-theme` on `<html>`.
-- **Bundle budget: 250 KB gzipped initial bundle (F18-R05)**, enforced in CI (TEACH-23). Check
-  `vite build` output before adding dependencies; prefer route-level lazy loading.
+- **Bundle budget: 250 KB gzipped initial bundle (F18-R05)**, enforced in CI (TEACH-23), plus a
+  pinned ceiling per editor route chunk (`scripts/check-bundle-budget.ts` `BUNDLE_CHUNK_BUDGETS`,
+  ADR 0022 §8; the table is in `README.md` "Bundle budget"). Check `vite build` output before
+  adding dependencies; prefer route-level lazy loading.
 - ADR 0012: generation progress arrives over SSE (`EventSource`); on events, update the activity
   tray store and invalidate the relevant TanStack Query keys. Client → server actions are normal
   HTTP requests through the typed `@tj/api-client` (`hc<AppType>`), never `fetch` by hand.
@@ -62,8 +64,17 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   page), `worksheet-editor` (header + blocks + the print route's page count, a typing burst as one
   undo step and its autosave, `/` → slash menu → Question, a real-pointer handle drag, Print opening
   `/print?auto=1` in a new tab via `page.context().waitForEvent("page")`, wrong-kind both ways),
-  `a11y` (the ten signed-in library/document routes × the three themes via `page.addInitScript` setting `tj-theme`, plus open dialogs/menus; `/sign-in` and
-  `/dev/jobs` once in light), `kit` (opt-in,
+  `a11y` (the thirteen signed-in library/document routes — seven shell, six editor: `/l/:id`,
+  `/view`, `/present`, `/print`, `/w/:id`, `/w/:id/print` — × the three themes via
+  `page.addInitScript` setting `tj-theme`, plus every overlay open: library dialogs and card menu,
+  text toolbar, shape toolbar + More drawer, theme dialog, export dialog on each tab, import
+  dialog, add-image panel on both tabs, the editor's `?` sheet, present mode's timer panel, notes
+  panel and shortcuts sheet, the worksheet slash menu, the facts panel and regenerate dialog, the
+  generating view and residual popover; `/sign-in` and `/dev/jobs` once in light), `handoff`
+  (TeachDeck's `MONOREPO-HANDOFF.md` acceptance lines for the editor, TEACH-113: one full pointer
+  flow open → edit text → drag → resize → undo/redo → theme → layout → image → present → overview
+  → back, one keyboard-only flow with focus restoration and nested Escape, and the 900×700
+  narrow-viewport smoke for the lesson and worksheet editors), `kit` (opt-in,
   `E2E_KIT=1`). `src/router.test.ts` pins the registered route set; `packages/ui/src/styles/contrast.test.ts`
   pins token contrast. Workspaces start empty (ADR 0024 §16): `signedInPage` seeds `demoWorkspace()`
   through `POST /__test/seed-library` and hands back `ids` / `paths` (`paths.lesson("demo-water-cycle")`,

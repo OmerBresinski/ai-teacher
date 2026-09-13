@@ -179,6 +179,46 @@ describe("WorksheetEditor", () => {
     expect(markB).toHaveAttribute("aria-pressed", "true");
   });
 
+  // TEACH-113: the answer-space family's toolbar (TeachDeck `BlockToolbar.tsx` answer-box / lines /
+  // word-bank sections) — each control is one committed write.
+  test("answer-space toolbars: box height and line count are spinbuttons; a word bank adds and removes words", () => {
+    const sheet = starterWorksheet("Spaces");
+    const box = { ...newBlock("answer-box"), id: "box" } as WorksheetBlock;
+    const lines = { ...newBlock("lines"), id: "lines" } as WorksheetBlock;
+    const bank = { ...newBlock("word-bank"), id: "bank" } as WorksheetBlock;
+    sheet.blocks = [...sheet.blocks, box, lines, bank];
+    const { container, read } = renderWorksheetEditor(sheet);
+    const at = <T extends WorksheetBlock["type"]>(id: string, type: T) => {
+      const found = read().blocks.find((b) => b.id === id);
+      if (found?.type !== type) throw new Error(`no ${type} block ${id}`);
+      return found as Extract<WorksheetBlock, { type: T }>;
+    };
+    const spin = (name: string, value: string) => {
+      const field = screen.getByRole("spinbutton", { name });
+      fireEvent.focus(field);
+      fireEvent.change(field, { target: { value } });
+      fireEvent.blur(field);
+    };
+
+    select(container, "box");
+    spin("Height", "120");
+    expect(at("box", "answer-box").heightPt).toBe(120);
+
+    select(container, "lines");
+    spin("Lines", "99");
+    expect(at("lines", "lines").count).toBe(30); // clamped to the field's max
+
+    select(container, "bank");
+    const words = () => at("bank", "word-bank").words.length;
+    const before = words();
+    fireEvent.click(screen.getByRole("button", { name: "Word" }));
+    expect(words()).toBe(before + 1);
+    fireEvent.click(screen.getByRole("button", { name: "Remove last word" }));
+    expect(words()).toBe(before);
+    undo();
+    expect(words()).toBe(before + 1);
+  });
+
   test("row 6: word-search size is clamped to 8–15 and the words come from the popover", async () => {
     const sheet = withBlocks([newBlock("word-search")]);
     const { container, read } = renderWorksheetEditor(sheet);
