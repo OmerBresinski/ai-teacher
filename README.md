@@ -353,10 +353,10 @@ Biome is configured once in the root `biome.json` (ADR 0003); packages do not ca
 `apps/web`, production branch **`master`** (ADR 0010 says "production"; the repo's default branch
 is `master`, see Conventions). Live: **<https://app.bresinski.org>**, talking to the
 Railway api at `https://api.bresinski.org` (first-party `SameSite=Lax` cookie on `.bresinski.org`,
-TEACH-36; the `*.vercel.app` / `*.up.railway.app` hosts still answer). Every PR gets a preview whose `VITE_API_URL` is derived
-at build time from the Railway PR-environment URL template
-(`https://api-ai-teacher-pr-{pr}.up.railway.app`, `scripts/vercel-env.ts`); Speed Insights loads in
-production builds only. Config: [`apps/web/vercel.json`](apps/web/vercel.json); runbook, env
+TEACH-36; the `*.vercel.app` / `*.up.railway.app` hosts still answer). PR previews are disabled (the Ignored Build Step skips every
+non-production deployment); when re-enabled, a preview's `VITE_API_URL` is derived at build time from
+the Railway PR-environment URL template (`https://api-ai-teacher-pr-{pr}.up.railway.app`,
+`scripts/vercel-env.ts`). Speed Insights loads in production builds only. Config: [`apps/web/vercel.json`](apps/web/vercel.json); runbook, env
 scopes and dashboard-only steps: [`infra/README.md` → "Vercel (web)"](infra/README.md#vercel-web--teach-25).
 
 ### Railway (api, worker, Postgres)

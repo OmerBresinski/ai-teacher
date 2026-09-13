@@ -177,14 +177,15 @@ on 2026-09-13, `lesson-editor` went to 321.1 KB and the check failed.
 ## Deploy (Vercel, ADR 0010)
 
 Static build on Vercel, project **`teaching-journey-web`**, Root Directory `apps/web`; pushes to
-`master` deploy production, every PR gets a preview. The full runbook (project settings, env
+`master` deploy production; PR previews are disabled (`scripts/vercel-ignore-build.sh` skips every
+non-production deployment). The full runbook (project settings, env
 scopes, Railway pairing, dashboard-only checklist, verified preview) is in
 [`infra/README.md` → "Vercel (web)"](../../infra/README.md#vercel-web--teach-25). In this app:
 
 | File | Role |
 | ---- | ---- |
 | `vercel.json` | `framework: vite`; install/build run from the repo root (`bun install --frozen-lockfile --ignore-scripts`, `bun scripts/vercel-env.ts exec bunx turbo run build --filter=@tj/web`); SPA rewrite `/((?!assets/\|_vercel/).*)` → `/index.html`; `Cache-Control` immutable for `/assets/*`, `no-cache` for the shell; `nosniff`, `DENY`, referrer/permissions policies; `Content-Security-Policy-Report-Only` allowing the inline theme script **by hash** and `connect-src 'self' https:` (static file → API origin cannot be templated). `src/vercel-config.test.ts` guards all of it and prints the new hash if `THEME_INIT_SCRIPT` changes. |
-| `scripts/vercel-ignore-build.sh` | Ignored Build Step: exit 0 (skip) unless `apps/web`, `packages/{ui,api-client,domain,config}`, `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`. |
+| `scripts/vercel-ignore-build.sh` | Ignored Build Step: exit 0 (skip) when `VERCEL_ENV` is not `production` (previews are disabled), or unless `apps/web`, `homepage`, `packages/{ui,editor,slides,api-client,domain,config}`, `bun.lock`, `turbo.json`, root `package.json`/`bunfig.toml` changed since `VERCEL_GIT_PREVIOUS_SHA`. Pinned by `scripts/deploy-watch.test.ts`. |
 | `../../scripts/vercel-env.ts` | Resolves `VITE_APP_ENV` / `VITE_API_URL` at build time: production → the Production `VITE_API_URL`; preview → `RAILWAY_PR_API_URL_TEMPLATE` (`{pr}` = PR number) or `VITE_API_URL_FALLBACK`. Pure function, `bun test scripts/`. |
 | `src/lib/speed-insights.ts` | `@vercel/speed-insights` via dynamic import behind `import.meta.env.VITE_APP_ENV === "production"` (a literal Vite inlines, so preview/dev `dist/` contain none of it — checked on the live preview). Reports the matched route pattern, never the pathname. |
 
