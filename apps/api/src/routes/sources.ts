@@ -32,10 +32,10 @@ import {
   sniffContainer,
 } from "@tj/extract";
 import { type Context, Hono } from "hono";
-import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import type { Logger } from "pino";
 import { z } from "zod";
+import { boundedBodyLimit, smallJsonBodyLimit } from "../body-limits";
 import type { AppEnv } from "../context";
 import { SourceRefusedError } from "../errors";
 import { type RateLimiter, rateLimitByWorkspace } from "../rate-limit";
@@ -137,13 +137,7 @@ const uploadForm = z
 
 const sourceParam = z.object({ id: z.uuid() });
 
-const sourceBodyLimit = () =>
-  bodyLimit({
-    maxSize: SOURCE_BODY_LIMIT_BYTES,
-    onError: () => {
-      throw new HTTPException(413, { message: TOO_LARGE_MESSAGE });
-    },
-  });
+const sourceBodyLimit = () => boundedBodyLimit(SOURCE_BODY_LIMIT_BYTES, TOO_LARGE_MESSAGE);
 
 /**
  * What the request resolved to before extraction: bytes plus how they are described. A file's
@@ -360,16 +354,21 @@ export function sourceRoutes(
         return c.json({ source: toSourceRef(row) }, 201);
       },
     )
-    .delete("/sources/:id", zValidator("param", sourceParam, validationHook), async (c) => {
-      const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-      const store = requireStorage();
-      const ws = forWorkspace(unsafeDb, workspaceId);
-      const { id } = c.req.valid("param");
-      const result = await softDeleteSource(ws, id);
-      if (result === "missing") throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
-      if (result === "bound") throw new HTTPException(409, { message: SOURCE_BOUND_MESSAGE });
-      await deleteSourceObjects(store, workspaceId, id, c.get("logger"));
-      c.get("logger")?.info({ sourceId: id }, "source deleted");
-      return c.body(null, 204);
-    });
+    .delete(
+      "/sources/:id",
+      smallJsonBodyLimit(),
+      zValidator("param", sourceParam, validationHook),
+      async (c) => {
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+        const store = requireStorage();
+        const ws = forWorkspace(unsafeDb, workspaceId);
+        const { id } = c.req.valid("param");
+        const result = await softDeleteSource(ws, id);
+        if (result === "missing") throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+        if (result === "bound") throw new HTTPException(409, { message: SOURCE_BOUND_MESSAGE });
+        await deleteSourceObjects(store, workspaceId, id, c.get("logger"));
+        c.get("logger")?.info({ sourceId: id }, "source deleted");
+        return c.body(null, 204);
+      },
+    );
 }

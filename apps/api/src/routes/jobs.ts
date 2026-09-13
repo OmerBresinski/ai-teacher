@@ -11,6 +11,7 @@ import { cancel } from "@tj/jobs";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
+import { smallJsonBodyLimit } from "../body-limits";
 import type { AppEnv } from "../context";
 import type { EventsRuntime } from "../events/runtime";
 import { parseLastEventId, streamJobEvents } from "../events/stream";
@@ -52,14 +53,19 @@ export function acquireStreamOr429(runtime: EventsRuntime, workspaceId: Workspac
 
 export function jobRoutes(runtime: EventsRuntime | undefined) {
   return new Hono<AppEnv>()
-    .post("/jobs/:id/cancel", zValidator("param", jobParam, validationHook), async (c) => {
-      const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-      const rt = requireRuntime(runtime);
-      const { id } = c.req.valid("param");
-      await assertJobInWorkspace(rt, workspaceId, id);
-      const result = await cancel(rt.jobs, id);
-      return c.json({ status: result.status }, 202);
-    })
+    .post(
+      "/jobs/:id/cancel",
+      smallJsonBodyLimit(),
+      zValidator("param", jobParam, validationHook),
+      async (c) => {
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+        const rt = requireRuntime(runtime);
+        const { id } = c.req.valid("param");
+        await assertJobInWorkspace(rt, workspaceId, id);
+        const result = await cancel(rt.jobs, id);
+        return c.json({ status: result.status }, 202);
+      },
+    )
     .get("/jobs/:id/events", zValidator("param", jobParam, validationHook), async (c) => {
       const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
       const authorization = c.get("streamAuthorization");

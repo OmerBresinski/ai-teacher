@@ -36,9 +36,9 @@ import {
 } from "@tj/db";
 import { DocumentKindSchema, DocumentParseError } from "@tj/domain/documents";
 import { type Context, Hono } from "hono";
-import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
+import { boundedBodyLimit, smallJsonBodyLimit } from "../body-limits";
 import type { AppEnv } from "../context";
 import { ConflictError } from "../errors";
 import { requireJsonBody, validationHook } from "../validation";
@@ -68,12 +68,7 @@ const putBody = z.object({ document: z.unknown(), expectedUpdatedAt: z.iso.datet
 
 /** The 10 MB cap, shared with `POST /lessons`. */
 export const documentBodyLimit = () =>
-  bodyLimit({
-    maxSize: DOCUMENT_BODY_LIMIT_BYTES,
-    onError: () => {
-      throw new HTTPException(413, { message: TOO_LARGE_MESSAGE });
-    },
-  });
+  boundedBodyLimit(DOCUMENT_BODY_LIMIT_BYTES, TOO_LARGE_MESSAGE);
 
 // --- serialisation --------------------------------------------------------------------------------
 
@@ -190,18 +185,24 @@ export function documentRoutes(unsafeDb: ScopableDb) {
         }
       },
     )
-    .delete("/documents/:id", zValidator("param", documentParam, validationHook), async (c) => {
-      const ws = scoped(c);
-      const { id } = c.req.valid("param");
-      if (!(await softDelete(ws, id))) {
-        // Already deleted is idempotent; unknown is 404.
-        const row = await getDocument(ws, id);
-        if (row === null) notFound();
-      }
-      return c.body(null, 204);
-    })
+    .delete(
+      "/documents/:id",
+      smallJsonBodyLimit(),
+      zValidator("param", documentParam, validationHook),
+      async (c) => {
+        const ws = scoped(c);
+        const { id } = c.req.valid("param");
+        if (!(await softDelete(ws, id))) {
+          // Already deleted is idempotent; unknown is 404.
+          const row = await getDocument(ws, id);
+          if (row === null) notFound();
+        }
+        return c.body(null, 204);
+      },
+    )
     .post(
       "/documents/:id/restore",
+      smallJsonBodyLimit(),
       zValidator("param", documentParam, validationHook),
       async (c) => {
         const ws = scoped(c);

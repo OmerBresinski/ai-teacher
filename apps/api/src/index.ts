@@ -11,6 +11,7 @@ import { createStorage } from "@tj/storage";
 import { createApp } from "./app";
 import { createAuth } from "./auth/auth";
 import { logUsersWithoutWorkspace } from "./auth/workspace-hook";
+import { MAX_REQUEST_BODY_BYTES } from "./body-limits";
 import { loadEnv } from "./env";
 import { createEventsRuntime } from "./events/runtime";
 import { createLogger } from "./logger";
@@ -77,6 +78,7 @@ void logUsersWithoutWorkspace(db, logger).catch((err) =>
 const server = Bun.serve({
   port: env.PORT,
   hostname: "0.0.0.0",
+  maxRequestBodySize: MAX_REQUEST_BODY_BYTES,
   fetch: app.fetch,
 });
 

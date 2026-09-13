@@ -15,6 +15,7 @@ import type { JobsContext } from "@tj/jobs";
 import { createApp } from "./app";
 import { type AuthEnv, createAuth } from "./auth/auth";
 import { createPersonalWorkspace, logUsersWithoutWorkspace } from "./auth/workspace-hook";
+import { SMALL_JSON_BODY_BYTES } from "./body-limits";
 import { createEventsRuntime } from "./events/runtime";
 import { CaptureMailSender, extractFirstUrl } from "./mail";
 import { silentLogger, TEST_ENV } from "./test-helpers";
@@ -123,6 +124,24 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       retryable: false,
     });
     expect(typeof body.error.requestId).toBe("string");
+  });
+
+  test("an oversized magic-link body is refused before sending mail; valid login still works", async () => {
+    const response = await app.request(`${BASE}/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: WEB },
+      body: JSON.stringify({
+        email: "bounded@example.test",
+        callbackURL: `${WEB}/`,
+        padding: "x".repeat(SMALL_JSON_BODY_BYTES),
+      }),
+    });
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ error: { code: "payload_too_large" } });
+    expect(mail.last).toBeFalsy();
+    const { res, cookie } = await followLink(await requestMagicLink("bounded@example.test"));
+    expect(res.status).toBe(302);
+    expect((await app.request(`${BASE}/me`, { headers: { cookie } })).status).toBe(200);
   });
 
   test("sign-out invalidates the session → GET /me 401", async () => {

@@ -47,6 +47,7 @@ import { enqueue } from "@tj/jobs";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
+import { smallJsonBodyLimit } from "../body-limits";
 import type { AppEnv } from "../context";
 import { ConflictError } from "../errors";
 import type { EventsRuntime } from "../events/runtime";
@@ -180,6 +181,7 @@ export function lessonRoutes(unsafeDb: ScopableDb, runtime: EventsRuntime | unde
     )
     .post(
       "/lessons/:id/cascade",
+      smallJsonBodyLimit(),
       requireJsonBody(),
       zValidator("param", lessonParam, validationHook),
       zValidator("json", cascadeBody, validationHook),
@@ -196,6 +198,7 @@ export function lessonRoutes(unsafeDb: ScopableDb, runtime: EventsRuntime | unde
     )
     .post(
       "/lessons/:id/regenerate",
+      smallJsonBodyLimit(),
       requireJsonBody(),
       zValidator("param", lessonParam, validationHook),
       zValidator("json", regenerateBody, validationHook),

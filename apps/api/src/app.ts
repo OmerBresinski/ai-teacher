@@ -18,6 +18,7 @@ import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import type { Auth } from "./auth/auth";
 import { requireSession } from "./auth/require-session";
+import { smallJsonBodyLimit } from "./body-limits";
 import type { AppEnv } from "./context";
 import { rejectCrossSiteRequests } from "./csrf";
 import type { Env } from "./env";
@@ -185,7 +186,11 @@ function buildApp({
   });
 
   // TEACH-20: better-auth at /auth/* and guards on every protected path prefix.
-  if (auth) app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
+  if (auth) {
+    // Count bytes without imposing JSON: OAuth POST callbacks may be URL-encoded forms.
+    app.use("/auth/*", smallJsonBodyLimit());
+    app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
+  }
   const csrf = rejectCrossSiteRequests(allowed);
   const guard = requireSession(auth, db, { allowHeaderShim });
   // TEACH-81: the diagnostic ping routes do not exist in production. Registered before the
