@@ -34,6 +34,7 @@ import { useProposals } from "./proposals-context";
 import { useResidualFindings } from "./residual-findings";
 import { SlideBadge } from "./SlideBadge";
 import { addSlideAfter, duplicateSlide, insertSlideAfter, regenerateSlide } from "./slide-commands";
+import { useCompactChrome } from "./use-compact-chrome";
 import { useActiveSlideId, useSessionActions, useSessionUi } from "./use-editor-session";
 
 /*
@@ -91,8 +92,15 @@ export function Navigator() {
   const { bySlide: residuals } = useResidualFindings();
   const { busySlideIds, onRegenerate } = useProposals();
 
-  const [mode, setMode] = useState<Mode>(readMode);
+  const compactChrome = useCompactChrome();
+  const [preferredMode, setMode] = useState<Mode>(readMode);
+  const [phoneExpanded, setPhoneExpanded] = useState(false);
+  const mode = compactChrome ? (phoneExpanded ? "full" : "compact") : preferredMode;
   const toggleMode = () => {
+    if (compactChrome) {
+      setPhoneExpanded((expanded) => !expanded);
+      return;
+    }
     const next: Mode = mode === "full" ? "compact" : "full";
     setMode(next);
     try {
@@ -392,6 +400,7 @@ export function Navigator() {
   return (
     <aside
       data-navigator
+      data-navigator-mode={mode}
       className="flex shrink-0 flex-col border-border border-r bg-background"
       style={{ width: navigatorWidthVar(mode) }}
     >
@@ -484,6 +493,7 @@ export function Navigator() {
           }
         />
         <IconButton
+          data-navigator-toggle
           label={mode === "full" ? "Compact slides" : "Expand slides"}
           size="sm"
           onClick={toggleMode}

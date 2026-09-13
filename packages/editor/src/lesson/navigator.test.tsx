@@ -19,6 +19,27 @@ const abc = (lesson: { slides: { id: string }[] }) => {
 };
 
 describe("Navigator", () => {
+  test("responsive compact chrome preserves the desktop navigator preference", () => {
+    const previous = localStorage.getItem("tj:navigator");
+    localStorage.setItem("tj:navigator", "full");
+    try {
+      const { container } = renderEditor();
+      const thumb = () => container.querySelector<HTMLElement>("[data-navigator-thumb]");
+      expect(thumb()?.style.width).toBe("168px");
+      document.documentElement.style.setProperty("--editor-compact", "1");
+      fireEvent(window, new Event("resize"));
+      expect(thumb()?.style.width).toBe("60px");
+      expect(localStorage.getItem("tj:navigator")).toBe("full");
+      document.documentElement.style.removeProperty("--editor-compact");
+      fireEvent(window, new Event("resize"));
+      expect(thumb()?.style.width).toBe("168px");
+    } finally {
+      document.documentElement.style.removeProperty("--editor-compact");
+      if (previous === null) localStorage.removeItem("tj:navigator");
+      else localStorage.setItem("tj:navigator", previous);
+    }
+  });
+
   test("shows one numbered thumb per slide, the first active", () => {
     renderEditor();
     const options = rows();

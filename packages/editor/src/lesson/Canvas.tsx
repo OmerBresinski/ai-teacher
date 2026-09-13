@@ -33,6 +33,7 @@ import { ContextualToolbar } from "./toolbar/ContextualToolbar";
 import { boxesOf, hitTest } from "./transform/hit-test";
 import { type MarginHandle, type PreviewMap, SelectionLayer } from "./transform/SelectionLayer";
 import { useCanvasKeys } from "./transform/use-canvas-keys";
+import { useCompactChrome } from "./use-compact-chrome";
 import {
   useAnswerShowing,
   useSessionActions,
@@ -124,6 +125,9 @@ export function Canvas({
     [onScaleChange],
   );
 
+  const compactChrome = useCompactChrome();
+  const gutter = compactChrome ? 16 : GUTTER;
+
   /* ---- fit ---------------------------------------------------------------- */
   // Measured on the scroller, not on the content box inside it: the content is sized from the
   // scale, so measuring it would feed the answer back into the question — at 100% it is already
@@ -135,12 +139,12 @@ export function Canvas({
       if (!entry) return;
       const { width, height } = entry.contentRect;
       setFitScale(
-        Math.max(0.05, Math.min((width - GUTTER * 2) / SLIDE_W, (height - GUTTER * 2) / SLIDE_H)),
+        Math.max(0.05, Math.min((width - gutter * 2) / SLIDE_W, (height - gutter * 2) / SLIDE_H)),
       );
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [gutter]);
   const effectiveZoom = zoom === "fit" ? fitScale : zoom;
 
   /* ---- zoom about the pointer ------------------------------------------ */
@@ -243,8 +247,8 @@ export function Canvas({
   };
 
   /* ---- layout ----------------------------------------------------------- */
-  const contentW = SLIDE_W * scale + GUTTER * 2;
-  const contentH = SLIDE_H * scale + GUTTER * 2;
+  const contentW = SLIDE_W * scale + gutter * 2;
+  const contentH = SLIDE_H * scale + gutter * 2;
   const steps = slideStepCount(slide);
 
   return (
@@ -281,7 +285,7 @@ export function Canvas({
         onContextMenu={onContextMenu}
       >
         <div style={{ minWidth: "100%", minHeight: "100%", width: contentW, height: contentH }}>
-          <SlideScaler zoom={effectiveZoom} gutter={GUTTER} onScale={onScale}>
+          <SlideScaler zoom={effectiveZoom} gutter={gutter} onScale={onScale}>
             <div
               ref={stage}
               id={STAGE_ID}

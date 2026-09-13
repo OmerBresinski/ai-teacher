@@ -1,5 +1,6 @@
 import { Button, IconButton, IconGroup, Kbd, KbdGroup, Spinner, Tile } from "@tj/ui";
 import { Copy, FileText, Layers, Plus, Presentation } from "lucide-react";
+import { tokenLabel, useDesignValues } from "./design-values";
 import { KitGroup, Specimen, Variant } from "./frame";
 
 const buttonRows = [
@@ -18,11 +19,12 @@ const buttonSizes = [
 ] as const;
 
 export function Actions() {
+  const values = useDesignValues();
   return (
     <KitGroup
       id="actions"
       title="Actions"
-      rule="One primary per bar; every other action is text or ghost. Filled labels are 600, ghost and text labels 500. Controls sit on the 28, 32 and 36 ladder."
+      rule={`One primary action per bar. Compact controls use ${tokenLabel(values?.["--button-height-xs"], "28px")} and ${tokenLabel(values?.["--button-height"], "32px")}; standard controls use ${tokenLabel(values?.["--reading-control-height"] || values?.["--button-height-lg"], "36px")}. Ghost actions stay quieter beside a fill.`}
     >
       <Specimen
         name="Button, every variant and size"
@@ -44,11 +46,22 @@ export function Actions() {
               </div>
             </Variant>
           ))}
-          <Variant label="Nothing to do yet">
-            <Button variant="primary" disabled>
-              Present
-            </Button>
-          </Variant>
+          <div className="flex flex-wrap gap-6">
+            <Variant label="Unavailable">
+              <Button variant="primary" disabled aria-describedby="kit-action-unavailable">
+                Present
+              </Button>
+              <p id="kit-action-unavailable" className="text-meta text-ink-3">
+                Add a slide to present this lesson.
+              </p>
+            </Variant>
+            <Variant label="Working">
+              <Button variant="primary" disabled aria-busy="true">
+                <Spinner />
+                Planning lesson…
+              </Button>
+            </Variant>
+          </div>
         </div>
       </Specimen>
       <Specimen name="IconButton, states" note="A glyph with a name; the tooltip carries it.">

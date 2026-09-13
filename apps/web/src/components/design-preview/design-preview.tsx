@@ -10,7 +10,7 @@ export function DesignWordmark({ compact = false }: { compact?: boolean }) {
   const [design] = usePreference(storageKey, designs, "current");
   return (
     <Display as="span" size="md" className="whitespace-nowrap">
-      {design === "lessonco" ? (compact ? "L" : "LessonCo") : compact ? "T" : "TeachDeck"}
+      {design === "lessonco" ? (compact ? "D" : "DayBack") : compact ? "T" : "TeachDeck"}
     </Display>
   );
 }
@@ -45,18 +45,20 @@ export function DesignPreview() {
               checked={design === value}
               onChange={() => setDesign(value)}
             />
-            {value === "current" ? "Current" : "LessonCo"}
+            {value === "current" ? "Current" : "DayBack v2"}
           </label>
         ))}
       </fieldset>
       {design === "lessonco" && resolvedTheme !== "light" ? (
         <p>
-          LessonCo styling previews in Light. Choose Light in the normal Theme menu, or the kit’s
-          theme tabs. Switching app design does not change your colour-mode preference.
+          DayBack v2 previews in Light. Choose Light in the normal Theme menu, or the kit’s theme
+          tabs. Switching app design does not change your colour-mode preference.
         </p>
       ) : null}
       {design === "lessonco" ? (
-        <p>Cream, green ink, Gabarito and paper surfaces. The kit reads the active CSS tokens.</p>
+        <p>
+          DayBack v2 · cream, green ink and paper surfaces. The kit shows the active design tokens.
+        </p>
       ) : null}
       <a href="/kit">Open component kit</a>
     </details>

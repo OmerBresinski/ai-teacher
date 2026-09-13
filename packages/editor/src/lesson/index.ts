@@ -20,4 +20,5 @@ export {
   type PasteImageDetail,
 } from "./transform/use-canvas-keys";
 export { COALESCE_MS } from "./use-coalesced-ids";
+export { useCompactChrome } from "./use-compact-chrome";
 export type { RegenerateTarget } from "./use-editor-session";

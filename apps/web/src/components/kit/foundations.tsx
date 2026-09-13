@@ -1,5 +1,6 @@
 import {
   Button,
+  Display,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -130,10 +131,12 @@ export function Foundations() {
           <p className="font-ui text-lead font-semibold">
             Section heading {typeLabel("lead", "15px/22px")}, semibold
           </p>
-          <p className="font-display text-title">Dialog title, display 20</p>
-          <p className="font-display text-[28px] leading-9 tracking-[-0.015em]">
-            Page title, display 28
-          </p>
+          <Display as="h3" size="sm">
+            Dialog title
+          </Display>
+          <Display as="h3" size="lg">
+            Page title
+          </Display>
         </div>
       </Specimen>
       <Specimen

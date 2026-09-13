@@ -1,6 +1,15 @@
 import type { Lesson } from "@tj/domain/documents";
-import { AppBar, AppBarGroup, Button, IconButton, Tooltip } from "@tj/ui";
-import { ArrowLeft, FileText, ListChecks, Play, Redo2, Undo2 } from "lucide-react";
+import {
+  AppBar,
+  AppBarGroup,
+  Button,
+  IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tooltip,
+} from "@tj/ui";
+import { ArrowLeft, ChevronDown, FileText, ListChecks, Play, Redo2, Undo2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { InlineTitle } from "../kit/InlineTitle";
 import { PanelSeparator } from "../kit/Panel";
@@ -8,6 +17,7 @@ import { SaveIndicator } from "../kit/SaveIndicator";
 import * as reducers from "../model/reducers";
 import type { Autosave } from "../model/use-autosave";
 import { useHistory, useLesson } from "./document-context";
+import { useCompactChrome } from "./use-compact-chrome";
 
 /*
  * The editor's top bar (TeachDeck `components/v2/editor/TopBar.tsx`): back arrow → title (inline
@@ -51,6 +61,7 @@ export function TopBar({
   autosave,
 }: TopBarProps) {
   const lesson = useLesson();
+  const compactChrome = useCompactChrome();
   const { dispatch, undo, redo, canUndo, canRedo } = useHistory();
   const worksheetId = lesson.artefacts?.worksheetId;
 
@@ -58,6 +69,46 @@ export function TopBar({
     await autosave.flush();
     onPresent();
   };
+
+  const secondaryActions = (
+    <>
+      <QuietButton
+        label="Theme"
+        hintLabel="Themes arrive with the slide toolbar"
+        onClick={onOpenTheme}
+      />
+      <QuietButton label="Share" hintLabel="Sharing is not available yet" />
+      {onToggleFacts ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-pressed={factsOpen}
+          data-facts-toggle
+          onClick={onToggleFacts}
+        >
+          <ListChecks aria-hidden size={16} strokeWidth={1.5} />
+          Facts
+        </Button>
+      ) : null}
+      {worksheetId && onOpenWorksheet ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          data-worksheet-link={worksheetId}
+          onClick={() => onOpenWorksheet(worksheetId)}
+        >
+          <FileText aria-hidden size={16} strokeWidth={1.5} />
+          Worksheet
+        </Button>
+      ) : onNewWorksheet ? (
+        <Button variant="ghost" size="sm" data-new-worksheet onClick={onNewWorksheet}>
+          <FileText aria-hidden size={16} strokeWidth={1.5} />
+          Worksheet
+        </Button>
+      ) : null}
+      {exportSlot}
+    </>
+  );
 
   return (
     <AppBar data-topbar className="h-(--topbar-height) shrink-0">
@@ -85,41 +136,23 @@ export function TopBar({
         <SaveIndicator autosave={autosave} />
         {/* Theme, Share and Export are the same kind of object three times over, so they take one
             shape — a ghost label — and Present is the only fill in the editor. */}
-        <QuietButton
-          label="Theme"
-          hintLabel="Themes arrive with the slide toolbar"
-          onClick={onOpenTheme}
-        />
-        <QuietButton label="Share" hintLabel="Sharing is not available yet" />
-        {onToggleFacts ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-pressed={factsOpen}
-            data-facts-toggle
-            onClick={onToggleFacts}
-          >
-            <ListChecks aria-hidden size={16} strokeWidth={1.5} />
-            Facts
-          </Button>
-        ) : null}
-        {worksheetId && onOpenWorksheet ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            data-worksheet-link={worksheetId}
-            onClick={() => onOpenWorksheet(worksheetId)}
-          >
-            <FileText aria-hidden size={16} strokeWidth={1.5} />
-            Worksheet
-          </Button>
-        ) : onNewWorksheet ? (
-          <Button variant="ghost" size="sm" data-new-worksheet onClick={onNewWorksheet}>
-            <FileText aria-hidden size={16} strokeWidth={1.5} />
-            Worksheet
-          </Button>
-        ) : null}
-        {exportSlot}
+        {compactChrome ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" aria-label="More lesson actions">
+                More <ChevronDown aria-hidden />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              aria-label="Lesson actions"
+              className="flex w-60 flex-col items-stretch gap-1 p-2"
+            >
+              {secondaryActions}
+            </PopoverContent>
+          </Popover>
+        ) : (
+          secondaryActions
+        )}
         <Button variant="primary" size="sm" onClick={() => void present()}>
           <Play aria-hidden size={16} strokeWidth={1.5} />
           Present
