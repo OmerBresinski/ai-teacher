@@ -18,9 +18,10 @@ import { encodePng } from "./png";
  * Resource order (TEACH-278, audit F03): the page count is read from the proxy before any page is
  * parsed — over `maxPages` returns an empty extraction carrying the count so `screen` answers
  * `too-long` without a byte of text or image work; text is capped at `maxTextChars`; an image is
- * re-encoded only under `maxImagePixels` and while the running total stays under
- * `maxImageBytesTotal`; the proxy is destroyed in `finally` on every path (unpdf 1.8.1 leaves
- * caller-supplied proxies alive).
+ * decoded at all only under `maxImagePixels` (pdfjs `maxImageSize`, read from the XObject
+ * dictionary before decoding) and kept while the encoded total stays under `maxImageBytesTotal`;
+ * the proxy is destroyed in `finally` on every path (unpdf 1.8.1 leaves caller-supplied proxies
+ * alive).
  */
 const MIN_IMAGE_SIDE = 64;
 /** Enough for phase 2 captions; the rest of a picture-heavy PDF is not worth the bucket space. */
@@ -33,8 +34,9 @@ export async function extractPdf(
   let doc: Awaited<ReturnType<typeof getDocumentProxy>>;
   try {
     // pdfjs transfers the buffer to its worker and leaves the caller's detached (byteLength 0);
-    // the API still has to store the original, so it gets a copy.
-    doc = await getDocumentProxy(new Uint8Array(bytes));
+    // the API still has to store the original, so it gets a copy. `maxImageSize` (total pixels)
+    // makes pdfjs skip an image XObject from its dictionary's /Width × /Height, before decoding.
+    doc = await getDocumentProxy(new Uint8Array(bytes), { maxImageSize: limits.maxImagePixels });
   } catch {
     throw new ExtractError("malformed", "pdf");
   }
@@ -97,9 +99,8 @@ async function readPdf(
     }
     for (const img of raw) {
       if (img.width < MIN_IMAGE_SIDE || img.height < MIN_IMAGE_SIDE) continue;
-      // pdfjs has decoded the pixels by now (its display API exposes no pre-decode dimensions);
-      // that allocation is what the child process boundary is for. What is bounded here is ours:
-      // the PNG scanline buffer, the deflate and the encoded total.
+      // pdfjs already dropped anything over `maxImagePixels` before decoding (see
+      // `getDocumentProxy`); this is the belt to that brace, and it bounds our own PNG buffer.
       if (img.width * img.height > limits.maxImagePixels) continue;
       const png = encodePng(img, limits.maxImagePixels);
       if (png === null) continue;

@@ -220,9 +220,11 @@ decoded, and that the pdfjs proxy was never destroyed. The decision is amended a
    central-directory size is a cheap early refusal, never the limit that holds; `maxZipEntries`
    (5 000) is checked at open. `extractPdf` reads `numPages` before parsing a page and returns an
    empty extraction carrying the count when over `maxPages`, so `screen()` still answers
-   `too-long` without any text or image work; text is capped at `maxTextChars` (5 M chars); an
-   image is re-encoded only under `maxImagePixels` (20 M) and while the encoded total stays under
-   `maxImageBytesTotal` (64 MiB); `encodePng` refuses before allocating its scanline buffer; the
+   `too-long` without any text or image work; text is read one page at a time and capped at
+   `maxTextChars` (5 M chars); pdfjs is opened with `maxImageSize = maxImagePixels` (20 M), so an
+   image XObject over it is skipped from its dictionary's /Width × /Height before any decode, and
+   kept images count against `maxImageBytesTotal` (64 MiB); `encodePng` refuses before allocating
+   its scanline buffer; the
    proxy's loading task is destroyed in `finally`. Mammoth's own pass over a DOCX is bounded
    because inflation is deterministic: `readAll()` has already counted every entry it can read.
 2. **Parsing runs in a child process the API can kill.** `apps/api/src/sources/extraction-runner.ts`
@@ -241,10 +243,9 @@ decoded, and that the pdfjs proxy was never destroyed. The decision is amended a
    answer carries the sniffed MIME. The request remains synchronous (§1): the teacher still waits
    for extract → screen → store; only the process boundary is new.
 3. **What this does not do.** A Promise timeout cannot stop synchronous deflation or parsing — only
-   the process kill does. Two allocations happen inside libraries before our caps can see them and
-   are bounded only by the child boundary (deadline, optional address-space limit): pdfjs decodes
-   an image's pixels before `extractImages` reports its dimensions, and mammoth builds a DOCX's
-   whole HTML (bounded by the container's already-counted uncompressed bytes × ~1.4 for base64
-   images) before `maxTextChars` is checked. Memory is otherwise bounded by the caps in (1), not by
-   RSS supervision. Concurrency is per api replica (in-memory), like the rate limiter (ADR 0027
+   the process kill does. One allocation happens inside a library before our caps can see it and
+   is bounded only by the container cap plus the child boundary (deadline, optional address-space
+   limit): mammoth builds a DOCX's whole HTML (≤ the archive's already-counted uncompressed bytes
+   × ~1.4 for base64 images) before `maxTextChars` is checked (TEACH-301). Memory is otherwise
+   bounded by the caps in (1), not by RSS supervision. Concurrency is per api replica (in-memory), like the rate limiter (ADR 0027
    §5; the durable admission design is TEACH-279).

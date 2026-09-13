@@ -215,3 +215,26 @@ describe("sniffMime bounds the central directory", () => {
     expect(sniffContainer(new Uint8Array())).toBeNull();
   });
 });
+
+describe("pdfjs skips an over-size image before decoding it", () => {
+  test("extractImages yields nothing for a page whose image exceeds maxImageSize", async () => {
+    const { extractImages, getDocumentProxy } = await import("unpdf");
+    const bytes = await pdfWithPages(["with a picture"], { imageOnPage: 1 });
+    const bounded = await getDocumentProxy(new Uint8Array(bytes), { maxImageSize: 63 * 63 });
+    try {
+      expect(await extractImages(bounded, 1)).toEqual([]);
+    } finally {
+      await (
+        bounded as unknown as { loadingTask: { destroy(): Promise<void> } }
+      ).loadingTask.destroy();
+    }
+    const unbounded = await getDocumentProxy(new Uint8Array(bytes));
+    try {
+      expect(await extractImages(unbounded, 1)).toHaveLength(1);
+    } finally {
+      await (
+        unbounded as unknown as { loadingTask: { destroy(): Promise<void> } }
+      ).loadingTask.destroy();
+    }
+  });
+});
