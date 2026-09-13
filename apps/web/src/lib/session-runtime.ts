@@ -81,10 +81,23 @@ export function startSessionRuntime(): () => void {
   });
   const check = () => {
     const { client, identity, locked } = sessionBoundary.getSnapshot();
-    if (locked || identity == null) return;
+    if (locked || identity === null) return;
     // Transport/5xx failures are not proof of expiry. Query retains the error for retry, and the
     // next focus/interval checks again; only confirmed 401 or identity change ends this epoch.
-    void client.fetchQuery({ ...meQueryOptions, staleTime: 0 }).catch(() => {});
+    void client
+      .fetchQuery({ ...meQueryOptions, staleTime: 0 })
+      .then((me) => {
+        if (identity !== undefined || sessionBoundary.getSnapshot().client !== client) return;
+        // A previous hint/BFCache check may have failed while the epoch was undecided. Resume
+        // navigation after a later successful check instead of leaving the public error page stuck.
+        return sessionRouter.navigate({
+          to: me ? "/lessons" : "/sign-in",
+          search: {},
+          replace: true,
+          ignoreBlocker: true,
+        });
+      })
+      .catch(() => {});
   };
   const timer = setInterval(check, 30_000);
   window.addEventListener("focus", check);

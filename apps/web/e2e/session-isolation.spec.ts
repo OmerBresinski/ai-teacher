@@ -2,6 +2,38 @@ import { E2E_WEB_URL, expect, signIn, test, uniqueEmail } from "./fixtures";
 
 test.use({ screenshot: "off" });
 
+test("an undecided restored session retries after a transient outage", async ({
+  signedInPage: { page, paths },
+}) => {
+  await page.goto(paths.lesson("demo-water-cycle"));
+  await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
+  await page.route("**/me", (route) =>
+    route.fulfill({
+      status: 500,
+      headers: {
+        "access-control-allow-origin": E2E_WEB_URL,
+        "access-control-allow-credentials": "true",
+      },
+      json: { error: { code: "internal", message: "Synthetic outage" } },
+    }),
+  );
+  const failed = page.waitForResponse(
+    (response) => response.url().endsWith("/me") && response.status() === 500,
+  );
+  await page.evaluate(() =>
+    window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })),
+  );
+  await failed;
+  await expect(page.getByText("Synthetic outage", { exact: true })).toBeVisible();
+  await page.unroute("**/me");
+  const recovered = page.waitForResponse(
+    (response) => response.url().endsWith("/me") && response.status() === 200,
+  );
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await recovered;
+  await expect(page.getByRole("heading", { name: "Lessons", exact: true })).toBeVisible();
+});
+
 test("transient /me failures preserve an active editor and pending local work", async ({
   signedInPage: { page, paths },
 }) => {
