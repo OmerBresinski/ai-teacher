@@ -1,10 +1,16 @@
 import { describe, expect, test } from "bun:test";
+import { getSchema } from "@tiptap/core";
 import { generateHTML } from "@tiptap/html";
-import type { RichDoc } from "@tj/domain/documents";
+import {
+  RICH_MARK_TYPES,
+  RICH_NODE_TYPES,
+  type RichDoc,
+  type RichNode,
+} from "@tj/domain/documents";
 import { docFromBullets, docFromText } from "../model/factories";
 import { baseExtensions } from "./extensions";
 import { serializeDoc, UnknownRichNodeError } from "./serialize";
-import { renderDocHTML } from "./static";
+import { docToPlainText, renderDocHTML } from "./static";
 
 /** Tiptap's own output over the shared extension set — the reference the serialiser must match. */
 const tiptap = (doc: RichDoc) =>
@@ -315,5 +321,29 @@ describe("serializeDoc never emits an executable or injected attribute", () => {
     const doc = link("javascript:alert(1)");
     expect(renderDocHTML(doc)).toBe("<p>click</p>");
     expect(renderDocHTML(doc)).toBe("<p>click</p>");
+  });
+});
+
+describe("legacy documents deeper than the schema allows (TEACH-277 review)", () => {
+  test("renderDocHTML falls back to plain text instead of overflowing the stack", () => {
+    let node: RichNode = { type: "paragraph", content: [t("deep")] };
+    for (let i = 0; i < 20_000; i += 1) {
+      node = { type: "bulletList", content: [{ type: "listItem", content: [node] }] };
+    }
+    const doc: RichDoc = { type: "doc", content: [node] };
+    expect(renderDocHTML(doc)).toBe("<p>deep</p>");
+    expect(docToPlainText(doc)).toBe("deep");
+  });
+});
+
+describe("the closed domain schema mirrors baseExtensions", () => {
+  test("node and mark names of the editor's Tiptap schema are exactly the domain allow-lists", () => {
+    const schema = getSchema(baseExtensions);
+    const nodes = Object.keys(schema.nodes)
+      .filter((n) => n !== "doc")
+      .sort();
+    const marks = Object.keys(schema.marks).sort();
+    expect(nodes).toEqual([...RICH_NODE_TYPES].sort());
+    expect(marks).toEqual([...RICH_MARK_TYPES].sort());
   });
 });

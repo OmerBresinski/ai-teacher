@@ -183,8 +183,12 @@ const BlockSchema: z.ZodType<RichNode> = z.lazy(() =>
   ]),
 ) as z.ZodType<RichNode>;
 
-/** Depth of the deepest `content` chain, computed iteratively so hostile input cannot blow the stack. */
-function contentDepth(root: unknown): number {
+/**
+ * Depth of the deepest `content` chain, computed iteratively so hostile input cannot blow the
+ * stack. Stops counting past `RICH_DOC_MAX_DEPTH`. Renderers use it too: a Document stored before
+ * the schema was closed may nest deeper than any recursive walk can afford.
+ */
+export function richDocDepth(root: unknown): number {
   let max = 0;
   const stack: [unknown, number][] = [[root, 0]];
   while (stack.length > 0) {
@@ -204,7 +208,7 @@ const withDepthBound = <T extends z.ZodTypeAny>(schema: T) =>
   z
     .unknown()
     .superRefine((value, ctx) => {
-      if (contentDepth(value) > RICH_DOC_MAX_DEPTH) {
+      if (richDocDepth(value) > RICH_DOC_MAX_DEPTH) {
         ctx.addIssue({
           code: "custom",
           message: `Rich text nests deeper than ${RICH_DOC_MAX_DEPTH}`,
@@ -234,11 +238,23 @@ export const RichDocSchema: z.ZodType<RichDoc> = withDepthBound(
  */
 export function richDocToPlainText(doc: RichDoc | RichNode): string {
   const out: string[] = [];
-  const walk = (node: RichNode) => {
-    if (node.text) out.push(node.text);
-    for (const child of node.content ?? []) walk(child);
-    if (node.type === "paragraph" || node.type === "listItem") out.push("\n");
-  };
-  walk(doc as RichNode);
+  // Iterative (explicit stack) so a deeply nested legacy doc cannot overflow the call stack.
+  const stack: (RichNode | { after: RichNode })[] = [doc as RichNode];
+  while (stack.length > 0) {
+    const item = stack.pop();
+    if (!item) break;
+    if ("after" in item) {
+      const { after } = item;
+      if (after.type === "paragraph" || after.type === "listItem") out.push("\n");
+      continue;
+    }
+    if (item.text) out.push(item.text);
+    stack.push({ after: item });
+    const children = item.content ?? [];
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      const child = children[i];
+      if (child) stack.push(child);
+    }
+  }
   return out.join("").replace(/\n+$/, "");
 }
