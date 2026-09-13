@@ -1,6 +1,6 @@
 @import "./hero.css";
 
-/* Good Company home blocks. Layout and artwork use the shared type/palette system. */
+/* DayBack home blocks. Layout and artwork use the shared type/palette system. */
 .hm-hero {
   max-width: 1280px;
   margin: auto;
@@ -37,11 +37,6 @@
 }
 .hm-link span {
   font-size: 23px;
-}
-.hm-preview-note {
-  font-size: 14px !important;
-  color: var(--muted, #516357);
-  margin: 18px auto 0;
 }
 .hm-team {
   display: grid;
@@ -368,10 +363,6 @@
     font-size: 14px;
     max-width: 165px;
   }
-  .hm-preview-note {
-    max-width: 300px;
-    line-height: 1.5;
-  }
   .hm-review {
     padding: 25px;
   }
@@ -411,99 +402,99 @@
   }
 }
 
-/* The homepage preview uses the same authored lesson data as the full examples. */
-.hm-samples {
+/* Home example cards read the same manifests as the example pages. */
+.hm-examples {
   background: #e9efdf;
   padding: 64px max(24px, calc((100% - 1180px) / 2)) 52px;
   scroll-margin-top: 24px;
 }
-.hm-samples-heading {
+.hm-examples-heading {
   display: flex;
   justify-content: space-between;
   align-items: end;
   gap: 32px;
   margin-bottom: 38px;
 }
-.hm-samples-heading h2,
+.hm-examples-heading h2,
 .hm-preparation h2 {
   font-size: clamp(36px, 4vw, 54px);
   line-height: 1.08;
   letter-spacing: -0.035em;
   margin: 0 0 14px;
 }
-.hm-samples-heading p:last-child {
+.hm-examples-heading p:last-child {
   margin-bottom: 0;
 }
-.hm-sample-tabs {
+.hm-example-tabs {
   display: flex;
   border: 1px solid #b0bca3;
   border-radius: 100px;
   padding: 4px;
   flex-shrink: 0;
 }
-.hm-sample-tabs a {
+.hm-example-tabs a {
   padding: 11px 23px;
   min-height: 44px;
   text-decoration: none;
   border-radius: 100px;
   white-space: nowrap;
 }
-.hm-sample-tabs .is-selected {
+.hm-example-tabs .is-selected {
   background: #293b32;
   color: #fcf9ee;
 }
-.hm-sample-context {
+.hm-example-context {
   display: flex;
   gap: 20px;
   justify-content: space-between;
   align-items: baseline;
   margin-bottom: 24px;
 }
-.hm-sample-context h3 {
+.hm-example-context h3 {
   font-size: 19px;
   font-weight: 500;
   margin: 0;
 }
-.hm-sample-context span {
+.hm-example-context span {
   font-size: 14px;
   color: var(--muted);
   white-space: nowrap;
 }
-.hm-sample-papers {
+.hm-example-papers {
   display: grid;
   grid-template-columns: 1.1fr 1fr;
   gap: 32px;
   align-items: start;
 }
-.hm-sample-slide,
-.hm-sample-worksheet {
+.hm-example-slide,
+.hm-example-worksheet {
   border: 1px solid #b9c2ac;
   padding: 30px;
   border-radius: 3px;
 }
-.hm-sample-slide {
+.hm-example-slide {
   background: #fcf3cf;
 }
-.hm-sample-worksheet {
+.hm-example-worksheet {
   background: #fffdf5;
 }
-.hm-sample-papers h4 {
+.hm-example-papers h4 {
   font-size: clamp(26px, 2.5vw, 34px);
   letter-spacing: -0.025em;
   line-height: 1.12;
   margin: 20px 0;
 }
-.hm-sample-slide > p:last-child {
+.hm-example-slide > p:last-child {
   font-size: 17px;
   line-height: 1.5;
   margin-bottom: 0;
 }
-.hm-sample-slide .ex-diagram {
+.hm-example-slide .ex-diagram {
   width: 100%;
   height: 190px;
   display: block;
 }
-.hm-sample-slide .ex-big-thought {
+.hm-example-slide .ex-big-thought {
   min-height: 190px;
   display: grid;
   place-content: center;
@@ -511,27 +502,27 @@
   line-height: 1.2;
   text-align: center;
 }
-.hm-sample-worksheet ol {
+.hm-example-worksheet ol {
   padding-left: 22px;
   margin-bottom: 0;
 }
-.hm-sample-worksheet li {
+.hm-example-worksheet li {
   padding-left: 4px;
   margin-bottom: 14px;
   font-size: 16px;
   line-height: 1.5;
 }
-.hm-sample-answers {
+.hm-example-answers {
   border-top: 1px solid var(--line);
   margin-top: 22px;
   padding-top: 12px;
 }
-.hm-sample-answers summary {
+.hm-example-answers summary {
   cursor: pointer;
   min-height: 44px;
   align-content: center;
 }
-.hm-sample-open {
+.hm-example-open {
   margin-top: 22px;
 }
 .hm-preparation {
@@ -565,7 +556,7 @@
   line-height: 1.5;
   margin: 0;
 }
-.hm-featured-sample .hm-sample-papers {
+.hm-featured-example .hm-example-papers {
   grid-template-columns: minmax(0, 1fr);
   max-width: 920px;
   margin-inline: auto;
@@ -577,7 +568,7 @@
 .hm-inline-slides .ex-slide {
   min-height: 590px;
 }
-.hm-sample-actions {
+.hm-example-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -599,10 +590,10 @@
   font-size: 17px;
   text-align: center;
 }
-.hm-featured-sample .hm-sample-slide .ex-diagram {
+.hm-featured-example .hm-example-slide .ex-diagram {
   margin-inline: auto;
 }
-.hm-featured-sample .hm-sample-open {
+.hm-featured-example .hm-example-open {
   display: table;
   margin: 30px auto 0;
 }
@@ -637,39 +628,39 @@
   .hm-sound-task span {
     padding: 12px;
   }
-  .hm-samples {
+  .hm-examples {
     padding: 42px 24px;
   }
-  .hm-samples-heading {
+  .hm-examples-heading {
     flex-direction: column;
     align-items: start;
     gap: 24px;
     margin-bottom: 28px;
   }
-  .hm-sample-tabs {
+  .hm-example-tabs {
     width: 100%;
     justify-content: space-between;
   }
-  .hm-sample-tabs a {
+  .hm-example-tabs a {
     padding-inline: 20px;
   }
-  .hm-sample-context {
+  .hm-example-context {
     display: block;
   }
-  .hm-sample-context span {
+  .hm-example-context span {
     display: block;
     margin-top: 6px;
   }
-  .hm-sample-papers,
+  .hm-example-papers,
   .hm-preparation ol {
     grid-template-columns: 1fr;
     gap: 24px;
   }
-  .hm-sample-slide,
-  .hm-sample-worksheet {
+  .hm-example-slide,
+  .hm-example-worksheet {
     padding: 24px;
   }
-  .hm-sample-slide .ex-diagram {
+  .hm-example-slide .ex-diagram {
     height: 155px;
   }
   .hm-preparation {

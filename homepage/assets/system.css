@@ -1,5 +1,5 @@
 @font-face {
-  font-family: Gather;
+  font-family: DayBack;
   src: url("gabarito.woff2") format("woff2");
   font-weight: 400 900;
   font-display: swap;
@@ -15,7 +15,7 @@
   --yellow: #f5c054;
   --salmon: #efa991;
   --line: #b9c3b0;
-  --font: Gather, Arial, sans-serif;
+  --font: DayBack, Arial, sans-serif;
   --text-sm: 0.875rem;
   --text-base: 1.125rem;
   --text-lead: 1.375rem;
@@ -352,11 +352,6 @@ img {
 }
 .footer-top p {
   margin-top: 1rem;
-}
-.preview-note {
-  font-size: var(--text-sm);
-  color: var(--muted);
-  max-width: 34rem;
 }
 .footer-group {
   display: flex;

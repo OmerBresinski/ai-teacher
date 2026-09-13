@@ -1,52 +1,140 @@
-import { arrowIcon, button, cta, href, pageHero, split } from "../components.mjs";
+import { appHref, arrowIcon, button, cta, href } from "../components.mjs";
+import { assetHref, examples, inWords } from "../examples-data.mjs";
 import { heroCharacter } from "../hero-artwork.mjs";
-import { lessonData } from "./examples.mjs";
-import { homeSamples } from "./home-samples.mjs";
 
-const shadows = lessonData.shadows;
+const uploadIcon = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>`;
 
-const link = (label, url) =>
-  `<a class="hm-link" href="${href(url)}">${label} <span aria-hidden="true">${arrowIcon}</span></a>`;
-const review = `<div class="hm-review"><div class="hm-review-top"><span class="hm-meta">EXAMPLE LESSON REVIEW</span><span class="hm-review-badge">Check</span></div><h3>A second look.<br>A clearer lesson.</h3><div class="hm-review-item"><span class="hm-review-icon" aria-hidden="true">✓</span><div><b>A clearer investigation</b><p>Slide 3</p><del>${shadows.reviewBefore}</del><ins>${shadows.reviewAfter}</ins></div></div><div class="hm-review-item hm-review-attention"><span class="hm-review-icon" aria-hidden="true">!</span><div><b>One for you to review</b><p>${shadows.reviewAttention}</p></div></div><p class="hm-review-note">An illustrative review. Check can miss things; review the lesson before teaching.</p></div>`;
-const note = `<div class="hm-note-scene"><div class="hm-note"><span class="hm-meta">A NOTE FROM YOU</span><p>“Year 3 science, 40 minutes. Explore how moving a torch changes a shadow. Include a practical activity and a word bank.”</p><span class="hm-note-sign">A little context goes a long way.</span></div><div class="hm-note-tags"><span>Your topic</span><span>Your notes</span><span>A resource to reuse</span></div></div>`;
-const edit = `<div class="hm-edit"><div class="hm-edit-bar"><span class="hm-meta">WORKSHEET · A LITTLE SUPPORT</span><span aria-hidden="true">✳︎</span></div><h3>Find the words.<br>Then find your voice.</h3><p>“The toy blocks the <span class="hm-blank"></span>. When the torch moves closer, the shadow gets <span class="hm-blank"></span>.”</p><div class="hm-wordbank"><span>light</span><span>bigger</span><span>smaller</span></div><div class="hm-edit-add">A further question</div><p class="hm-edit-extension">Can you make the same shadow size with the torch in a different position?</p></div>`;
-
-const home = {
-  route: "/",
-  title: "DayBack | Editable lesson slides for teachers",
-  description:
-    "Meet DayBack: turn a topic or your own materials into lesson slides you can review and edit.",
-  scripts: ["/assets/hero-motion.js", "/assets/hero-preview.js"],
-  body: `
-<section class="hm-gather-hero" aria-labelledby="home-title">
+const hero = `
+<section class="hm-hero-band" aria-labelledby="home-title">
   <div class="hm-hero-intro"><h1 id="home-title">Outstanding lessons.<br>Without losing your evening.</h1></div>
-  <div class="hm-gathering">
-    ${heroCharacter("slides", "slides")}${heroCharacter("activity", "worksheet")}${heroCharacter("support", "plan")}${heroCharacter("answers", "answers")}
-    <form class="hm-brief" id="start" data-hero-preview>
-      <label for="hero-topic">What would you like to teach?</label>
-      <div class="hm-brief-row"><input id="hero-topic" data-brief-topic required maxlength="500" placeholder="e.g. Year 4 science — how sound travels" autocomplete="off"><button type="submit" disabled>Create a lesson ${arrowIcon}</button></div>
-      <p class="hm-brief-status" data-brief-status role="status" aria-live="polite"></p>
-      <noscript><p>This local preview needs JavaScript. Nothing is sent or saved.</p></noscript>
+  <div class="hm-hero-stage">
+    ${heroCharacter("slides", "slides")}${heroCharacter("activity", "worksheet")}${heroCharacter("support", "plan")}${heroCharacter("answers", "check")}
+    <form class="hm-brief" id="start" method="get" action="${appHref("/lessons/new")}">
+      <label for="hero-topic">What are you teaching?</label>
+      <div class="hm-brief-row">
+        <input id="hero-topic" name="topic" required maxlength="500" placeholder="Year 8 English: writing a persuasive speech" autocomplete="off">
+        <a class="hm-brief-upload" href="${appHref("/lessons/new?source=1")}" aria-label="Start from your own PowerPoint, PDF or Word file">${uploadIcon}<span class="hm-brief-tooltip" aria-hidden="true">Or start from your own PowerPoint, PDF or Word file.</span></a>
+        <button type="submit">Create a lesson ${arrowIcon}</button>
+      </div>
     </form>
     <p class="hm-grounded-subtitle">Your topic or materials. A complete lesson, ready to edit.</p>
   </div>
   <button class="hm-hero-pause" data-pause-hero aria-pressed="false" hidden>Pause motion</button>
-</section>
-${homeSamples()}
-`,
-};
-const how = {
-  route: "/how-it-works/",
-  title: "How LessonCo works | From a topic to an editable lesson",
+</section>`;
+
+// Both the heading and the count come from the manifests, so the page never names a lesson it
+// cannot show.
+const count = examples.length;
+const exampleStrip = count
+  ? `
+<section class="hm-examples" id="examples" aria-labelledby="examples-title">
+  <div class="hm-examples-heading">
+    <p class="eyebrow">MADE IN DAYBACK</p>
+    <h2 id="examples-title">${count === 1 ? "A lesson,<br>start to finish." : `${inWords(count)[0].toUpperCase() + inWords(count).slice(1)} lessons,<br>start to finish.`}</h2>
+    <p>Every slide, question and answer below came back from a one-line brief.</p>
+  </div>
+  <div class="hm-example-list">${examples
+    .map(
+      (example) => `<article class="hm-example-card">
+      <a class="hm-example-shot" href="${href(`/examples/${example.slug}/`)}" tabindex="-1" aria-hidden="true"><img src="${href(assetHref(example.slug, example.slides[0].src))}" alt="" loading="lazy" width="1440" height="810"></a>
+      <p class="hm-example-brief">“${example.brief}”</p>
+      <p class="hm-example-caption">${example.year} ${example.subject} · ${example.slides.length} slides, worksheet and answer key</p>
+      <a class="hm-link" href="${href(`/examples/${example.slug}/`)}">Open this lesson <span aria-hidden="true">${arrowIcon}</span></a>
+    </article>`,
+    )
+    .join("")}</div>
+</section>`
+  : "";
+
+const steps = [
+  [
+    "Say what you’re teaching.",
+    "A year group and a topic is enough. Add the lesson length, what the class already knows, or your own file.",
+  ],
+  [
+    "Get the whole lesson, checked.",
+    "The slides and the worksheet are checked against each other before you open them. Anything left for you to check is flagged on the slide it sits on.",
+  ],
+  [
+    "Make it yours.",
+    "Rewrite an explanation or add a harder question. Then present from the browser, or export to PowerPoint, PDF or Word.",
+  ],
+];
+
+const howItWorks = `
+<section class="hm-steps" aria-labelledby="steps-title">
+  <div class="hm-steps-heading">
+    <p class="eyebrow">HOW IT WORKS</p>
+    <h2 id="steps-title">One line in.<br>The whole lesson out.</h2>
+  </div>
+  <ol class="hm-step-list">${steps
+    .map(
+      ([title, body], index) =>
+        `<li><span class="hm-step-number" aria-hidden="true">0${index + 1}</span><h3>${title}</h3><p>${body}</p></li>`,
+    )
+    .join("")}</ol>
+</section>`;
+
+const control = `
+<section class="hm-control" aria-labelledby="control-title">
+  <div>
+    <h3 id="control-title">You stay in charge.</h3>
+    <p>DayBack prepares the lesson. You decide what your class gets.</p>
+    <p>Change anything before you teach it.</p>
+  </div>
+</section>`;
+
+export const homeFaqs = [
+  [
+    "Which subjects and year groups?",
+    "Any subject, Reception to Year 13. You pick the year group and the subject, and the lesson is written for that class.",
+  ],
+  [
+    "Can I start from my own slides or documents?",
+    "Yes. Upload up to three files, PDF, PowerPoint or Word, or paste text straight in.",
+  ],
+  [
+    "Can I use it in PowerPoint, or print it?",
+    "Lessons export as PowerPoint, PDF or PNG. Worksheets and answer keys export as PDF or Word. You can also present from the browser, or print any of it.",
+  ],
+  [
+    "Do you store anything about my pupils?",
+    "No. The brief asks about the class, not the children, and it blocks names, email addresses and ID numbers.",
+  ],
+  ["How much does it cost?", "DayBack is free for teachers right now."],
+];
+
+const faq = `
+<section class="hm-faq" aria-labelledby="faq-title">
+  <h2 id="faq-title">Questions teachers ask.</h2>
+  <div class="info-faq">${homeFaqs
+    .map(
+      ([question, answer]) =>
+        `<details><summary>${question}<span aria-hidden="true">+</span></summary><div><p>${answer}</p></div></details>`,
+    )
+    .join("")}</div>
+  <a class="hm-link" href="${href("/help/")}">All the questions teachers ask <span aria-hidden="true">${arrowIcon}</span></a>
+</section>`;
+
+const home = {
+  route: "/",
+  title: "DayBack | Slides, worksheet and answer key from one brief",
   description:
-    "See the LessonCo workflow: start with a brief, review the materials and make the lesson yours.",
-  body: `
-${pageHero({ eyebrow: "FROM YOUR IDEA TO THEIR “I GET IT”", title: "A little context.<br>A lesson to make yours.", description: "LessonCo is being built to use AI for the preparation around your teaching. You choose the class, the learning goal and what to change.", actions: button("Explore a sample lesson", "/examples/") })}
-<div class="hm-how">
-${split({ eyebrow: "01 / YOUR STARTING POINT", title: "Tell us what<br>you’re teaching.", body: "<p>Start with a topic or your own material. Add the year group, lesson length and anything useful about the class’s prior knowledge.</p><p>Class-level context is enough. Leave out pupil names and records.</p>", visual: note })}
-<section class="hm-teamwork"><div class="hm-teamwork-copy"><p class="eyebrow">02 / A LITTLE TEAMWORK</p><h2>The whole lesson<br>comes along.</h2><p>A plan to follow. Slides to explain. Questions to try. Answers to work through.</p><p>Open the materials together and follow the same idea from explanation to practice.</p></div><div class="hm-teamwork-stage"><iframe src="${href("/lesson-building/?embed=1")}" title="Animated preview of the LessonCo team assembling a lesson" loading="lazy"></iframe><p>Workflow animation · not live generation</p></div></section>
-${split({ eyebrow: "03 / A SECOND LOOK", title: "Read the<br>lesson review.", body: `<p>Check is designed to show corrections made during generation and issues that remain.</p><p>Open the review to see what needs a closer look before teaching. It can miss errors; your judgement still matters.</p>${link("Explore lesson checks", "/features/lesson-checks/")}`, visual: review, reverse: true, tone: "sage" })}
-${split({ eyebrow: "04 / YOUR WAY FROM HERE", title: "Make it yours.", body: `<p>Edit the wording, swap an example or change the order. Add support or a question that asks a little more.</p><p>The planned workflow includes presenting from LessonCo and exporting the materials for your usual teaching setup.</p>${link("Look around the sample", "/examples/")}`, visual: edit })}
-</div>${cta({ title: "Meet your next<br>little starting point.", body: "Explore a prepared lesson, from the plan through to the answers." })}`,
+    "Type what you’re teaching. DayBack writes the slides, the worksheet and the answer key, checks they agree with each other, then hands them to you.",
+  scripts: ["/assets/hero-motion.js"],
+  body:
+    hero +
+    exampleStrip +
+    howItWorks +
+    control +
+    faq +
+    cta({
+      title: "Start with the lesson<br>you’re teaching tomorrow.",
+      body: "Type the year group and the topic. The whole lesson comes back checked.",
+      actions:
+        button("Create a lesson", "#start") +
+        (count ? button("Open an example lesson", "/examples/", { secondary: true }) : ""),
+    }),
 };
-export default [home, how];
+
+export default [home];

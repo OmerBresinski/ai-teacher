@@ -1,5 +1,5 @@
-/* The approved gathering is isolated from other marketing and loading artwork. */
-.hm-gather-hero {
+/* The approved hero stage is isolated from other marketing and loading artwork. */
+.hm-hero-band {
   max-width: 1440px;
   margin: auto;
   padding: 22px 24px 42px;
@@ -25,7 +25,7 @@
   line-height: 1.4;
   max-width: 690px;
 }
-.hm-gathering {
+.hm-hero-stage {
   position: relative;
   width: min(1120px, 100%);
   height: auto;
@@ -77,7 +77,7 @@
   top: 80px;
   z-index: 1;
 }
-.hm-answers {
+.hm-check {
   width: 304px;
   right: -83px;
   top: 87px;
@@ -205,9 +205,9 @@
   text-align: center;
 }
 
-/* Intermediate screens retain the gathering's width and staggered depth. */
+/* Intermediate screens retain the hero stage's width and staggered depth. */
 @media (min-width: 761px) and (max-width: 1100px) {
-  .hm-gather-hero {
+  .hm-hero-band {
     padding: 24px 20px 36px;
   }
   .hm-hero-intro h1 {
@@ -220,7 +220,7 @@
   .hm-hero-wide {
     display: none;
   }
-  .hm-gathering {
+  .hm-hero-stage {
     margin-top: 35px;
     padding: 101px 0 100px;
   }
@@ -239,7 +239,7 @@
     left: -35px;
     top: 189px;
   }
-  .hm-answers {
+  .hm-check {
     width: 226px;
     right: -36px;
     top: 197px;
@@ -267,9 +267,9 @@
     font-size: 20px;
   }
 }
-/* On phones, the characters gather around the paper's four corners. */
+/* On phones, the characters stand around the paper's four corners. */
 @media (max-width: 760px) {
-  .hm-gather-hero {
+  .hm-hero-band {
     padding: 24px 16px 32px;
   }
   .hm-hero-intro h1 {
@@ -287,7 +287,7 @@
   .hm-hero-wide {
     display: none;
   }
-  .hm-gathering {
+  .hm-hero-stage {
     width: min(540px, 100%);
     margin-top: 25px;
     padding: 74px 0 169px;
@@ -308,7 +308,7 @@
     top: auto;
     bottom: 9px;
   }
-  .hm-answers {
+  .hm-check {
     width: 162px;
     right: -23px;
     top: auto;
@@ -358,7 +358,7 @@
     width: 140px;
     left: -21px;
   }
-  .hm-answers {
+  .hm-check {
     width: 148px;
     right: -19px;
   }

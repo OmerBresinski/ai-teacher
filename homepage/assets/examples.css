@@ -410,7 +410,7 @@
   line-height: 1.5;
   margin-bottom: 0;
 }
-.ex-after-sample {
+.ex-after-example {
   max-width: 1000px;
   margin: 45px auto 100px;
   padding: 28px 32px;
@@ -420,7 +420,7 @@
   justify-content: space-between;
   gap: 24px;
 }
-.ex-after-sample p {
+.ex-after-example p {
   font-size: 22px;
 }
 .ex-workspace :focus-visible {
@@ -490,7 +490,7 @@
   .ex-correction {
     padding: 22px;
   }
-  .ex-after-sample {
+  .ex-after-example {
     padding: 24px 20px;
     margin-bottom: 65px;
     flex-direction: column;

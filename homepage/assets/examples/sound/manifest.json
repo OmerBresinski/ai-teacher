@@ -1,0 +1,43 @@
+{
+  "year": "Year 4",
+  "subject": "science",
+  "title": "How sound travels",
+  "brief": "Year 4 science, how sound travels",
+  "provisional": true,
+  "slides": [
+    {
+      "src": "slides/01.png",
+      "alt": "Slide 1: Can you see a sound begin? Pupils hold a ruler still, pluck the free end, then watch, listen and compare."
+    },
+    {
+      "src": "slides/02.png",
+      "alt": "Slide 2: Sound starts with a vibration. The ruler moves back and forth, and that vibration makes the nearby air particles vibrate too."
+    },
+    {
+      "src": "slides/03.png",
+      "alt": "Slide 3: The energy travels. A diagram of a plucked ruler, four air particles and an ear, showing energy passing from particle to particle."
+    },
+    {
+      "src": "slides/04.png",
+      "alt": "Slide 4: What if there were no particles? Sound needs a medium such as air, water or a solid, and cannot travel through a vacuum."
+    },
+    {
+      "src": "slides/05.png",
+      "alt": "Slide 5: Predict, test, explain. Pupils shorten the free end of the ruler, predict how the sound will change, then explain the result."
+    }
+  ],
+  "worksheet": {
+    "pages": [
+      {
+        "src": "worksheet/01.png",
+        "alt": "Worksheet page 1: four written questions with space to answer and a word bank of useful terms."
+      }
+    ],
+    "answers": [
+      {
+        "src": "answers/01.png",
+        "alt": "Answer key page 1: a suggested answer under each of the four worksheet questions."
+      }
+    ]
+  }
+}
