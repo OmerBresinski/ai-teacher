@@ -81,6 +81,7 @@ type EntryInternals = JSZip.JSZipObject & {
  */
 export class ZipReader {
   private read = 0;
+  private largest = 0;
 
   constructor(
     private readonly zip: JSZip,
@@ -95,6 +96,11 @@ export class ZipReader {
   /** Inflated bytes counted so far across every entry read. */
   get bytesRead(): number {
     return this.read;
+  }
+
+  /** Actual inflated size, never a central-directory declaration. */
+  get largestEntryBytes(): number {
+    return this.largest;
   }
 
   has(path: string): boolean {
@@ -171,6 +177,7 @@ export class ZipReader {
       helper.on("end", () => {
         if (settled) return;
         settled = true;
+        this.largest = Math.max(this.largest, entryBytes);
         if (!keep) {
           resolve(null);
           return;

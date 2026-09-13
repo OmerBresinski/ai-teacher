@@ -19,7 +19,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ExtractError, type ExtractInput } from "@tj/extract";
 import { z } from "zod";
-import { type ChildAnswer, decodeExtraction } from "./protocol";
+import { decodeExtraction, parseChildAnswer } from "./protocol";
 import {
   ExtractionBusyError,
   ExtractionFailedError,
@@ -177,6 +177,8 @@ export class ChildProcessExtractionRunner implements ExtractionRunner {
     if (options.signal?.aborted) throw new ExtractionFailedError("aborted");
     const release = await this.slots.acquire(options.signal);
     try {
+      // An abort may happen between the slot grant and this async continuation.
+      if (options.signal?.aborted) throw new ExtractionFailedError("aborted");
       return await this.spawn(input, options.signal);
     } finally {
       release();
@@ -200,7 +202,7 @@ export class ChildProcessExtractionRunner implements ExtractionRunner {
     ];
   }
 
-  private spawn(input: RunInput, signal?: AbortSignal): Promise<RunResult> {
+  private async spawn(input: RunInput, signal?: AbortSignal): Promise<RunResult> {
     const limits = { ...this.config.limits, ...input.limits };
     const proc = Bun.spawn(this.command(), {
       stdin: input.bytes,
@@ -216,77 +218,59 @@ export class ChildProcessExtractionRunner implements ExtractionRunner {
       },
     });
 
-    return new Promise<RunResult>((resolve, reject) => {
-      let settled = false;
-      let why: ExtractionFailedError["why"] | null = null;
-      const finish = (fn: () => void) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        signal?.removeEventListener("abort", onAbort);
-        fn();
-      };
-      const kill = (reason: ExtractionFailedError["why"]) => {
-        if (why === null) why = reason;
-        try {
-          proc.kill("SIGKILL");
-        } catch {
-          // already gone
-        }
-      };
-      const timer = setTimeout(() => kill("timeout"), this.config.deadlineMs);
-      const onAbort = () => kill("aborted");
-      signal?.addEventListener("abort", onAbort, { once: true });
-
+    let why: ExtractionFailedError["why"] | null = null;
+    const kill = (reason: ExtractionFailedError["why"]) => {
+      why ??= reason;
+      try {
+        proc.kill("SIGKILL");
+      } catch {
+        // It may have exited between the reader event and this call; finally still reaps it.
+      }
+    };
+    const timer = setTimeout(() => kill("timeout"), this.config.deadlineMs);
+    const onAbort = () => kill("aborted");
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+    const reader = proc.stdout.getReader();
+    try {
       const chunks: Uint8Array[] = [];
       let size = 0;
-      const readOut = async () => {
-        const reader = proc.stdout.getReader();
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          size += value.byteLength;
-          if (size > this.config.maxOutputBytes) {
-            kill("output-too-large");
-            chunks.length = 0;
-            // Keep draining so the child's exit is observed.
-            continue;
-          }
-          chunks.push(value);
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > this.config.maxOutputBytes) {
+          kill("output-too-large");
+          throw new ExtractionFailedError("output-too-large");
         }
-      };
-
-      Promise.all([readOut(), proc.exited])
-        .then(([, exitCode]) => {
-          finish(() => {
-            if (why !== null) {
-              reject(new ExtractionFailedError(why, exitCode));
-              return;
-            }
-            const text = Buffer.concat(chunks.map((c) => Buffer.from(c))).toString("utf8");
-            let parsed: ChildAnswer;
-            try {
-              parsed = JSON.parse(text) as ChildAnswer;
-            } catch {
-              reject(
-                new ExtractionFailedError(exitCode === 0 ? "bad-answer" : "crashed", exitCode),
-              );
-              return;
-            }
-            if (parsed.ok === true) {
-              resolve({ mime: parsed.mime, extraction: decodeExtraction(parsed.extraction) });
-            } else if (parsed.code === "crashed") {
-              reject(new ExtractionFailedError("crashed", exitCode));
-            } else {
-              reject(new ExtractError(parsed.code, parsed.format));
-            }
-          });
-        })
-        .catch(() => {
-          // A reader or pipe failure must not leave the child working after the slot is freed.
-          kill("crashed");
-          finish(() => reject(new ExtractionFailedError(why ?? "crashed")));
-        });
-    });
+        chunks.push(value);
+      }
+      const exitCode = await proc.exited;
+      if (why !== null || exitCode !== 0) {
+        throw new ExtractionFailedError(why ?? "crashed", exitCode);
+      }
+      let parsed: ReturnType<typeof parseChildAnswer>;
+      try {
+        parsed = parseChildAnswer(Buffer.concat(chunks).toString("utf8"));
+      } catch {
+        throw new ExtractionFailedError("bad-answer", exitCode);
+      }
+      if (!parsed.ok) {
+        if (parsed.code === "crashed") throw new ExtractionFailedError("crashed", exitCode);
+        throw new ExtractError(parsed.code, parsed.format);
+      }
+      return { mime: parsed.mime, extraction: decodeExtraction(parsed.extraction) };
+    } catch (error) {
+      kill(why ?? "crashed");
+      if (error instanceof ExtractError || error instanceof ExtractionFailedError) throw error;
+      throw new ExtractionFailedError(why ?? "crashed");
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      await reader.cancel().catch(() => undefined);
+      reader.releaseLock();
+      // A kill request is not process exit. Retain the semaphore slot until the child is reaped.
+      await proc.exited;
+    }
   }
 }

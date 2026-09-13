@@ -27,22 +27,35 @@ if (mode === "garbage") {
   process.stdout.write("not json\n");
   process.exit(0);
 }
-process.stdout.write(
-  `${JSON.stringify({
-    ok: true,
-    mime: process.env.EXTRACT_MIME ?? "text/plain",
-    extraction: {
-      kind: "paste",
-      pages: 1,
-      chunks: [
-        {
-          ref: { section: "Paste" },
-          text: `bytes:${bytes.byteLength} ${process.env.EXTRACT_MIME}`,
-        },
-      ],
-      tables: [],
-      images: [],
-    },
-  })}\n`,
+if (mode === "bad-shape") {
+  await new Promise<void>((resolve) => process.stdout.write('{"ok":true}\n', () => resolve()));
+  process.exit(0);
+}
+if (mode === "unsafe-error") {
+  await new Promise<void>((resolve) =>
+    process.stdout.write('{"ok":false,"code":"private-canary","format":"docx"}\n', () => resolve()),
+  );
+  process.exit(0);
+}
+await new Promise<void>((resolve) =>
+  process.stdout.write(
+    `${JSON.stringify({
+      ok: true,
+      mime: process.env.EXTRACT_MIME ?? "text/plain",
+      extraction: {
+        kind: "paste",
+        pages: 1,
+        chunks: [
+          {
+            ref: { section: "Paste" },
+            text: `bytes:${bytes.byteLength} ${process.env.EXTRACT_MIME}`,
+          },
+        ],
+        tables: [],
+        images: [],
+      },
+    })}\n`,
+    () => resolve(),
+  ),
 );
-process.exit(0);
+process.exit(mode === "answer-then-crash" ? 3 : 0);

@@ -67,7 +67,7 @@ export type Refusal =
  * Resource ceilings for untrusted documents (ADR 0027 §5, amended by TEACH-278). Every one is
  * enforced **before** the allocation it bounds: zip entries are counted while they inflate, a PDF's
  * page count is read before any page is parsed, an image's pixel count before its buffer exists.
- * Values are engineering config sized from the generated fixtures and real teacher files, not
+ * Values are engineering config checked against generated synthetic fixtures, not
  * product limits; `ExtractInput.limits` overrides them in tests.
  */
 export interface ExtractLimits {

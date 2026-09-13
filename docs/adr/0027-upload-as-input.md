@@ -220,13 +220,20 @@ decoded, and that the pdfjs proxy was never destroyed. The decision is amended a
    central-directory size is a cheap early refusal, never the limit that holds; `maxZipEntries`
    (5 000) is checked at open. `extractPdf` reads `numPages` before parsing a page and returns an
    empty extraction carrying the count when over `maxPages`, so `screen()` still answers
-   `too-long` without any text or image work; text is read one page at a time and capped at
+   `too-long` without any text or image work; text is streamed in pdfjs batches and capped at
    `maxTextChars` (5 M chars); pdfjs is opened with `maxImageSize = maxImagePixels` (20 M), so an
    image XObject over it is skipped from its dictionary's /Width × /Height before any decode, and
    kept images count against `maxImageBytesTotal` (64 MiB); `encodePng` refuses before allocating
-   its scanline buffer; the
-   proxy's loading task is destroyed in `finally`. Mammoth's own pass over a DOCX is bounded
-   because inflation is deterministic: `readAll()` has already counted every entry it can read.
+   its scanline buffer; the proxy's loading task is destroyed in `finally`.
+   DOCX ZIP entries are verified before Mammoth reads them. Its `transformDocument` hook then
+   bounds conversion before generating HTML: a 64-level / 50,000-node maximum, six characters per
+   string character for escaping plus 1024 per model node against `maxTextChars`, counting repeated
+   note references as repeated work. Only the pinned default style map is used (embedded maps are
+   ignored). Each image reference reserves the largest verified archive entry against the image
+   byte budget; Mammoth does not expose the image's entry path. This is conservative and can refuse
+   image-heavy files before their actual output reaches the limit. Images are read as buffers and
+   represented by short placeholders in HTML; no base64 HTML copy is built. These engineering
+   ceilings pass the generated legitimate PDF/DOCX/PPTX fixtures, not a benchmark of teacher data.
 2. **Parsing runs in a child process the API can kill.** `apps/api/src/sources/extraction-runner.ts`
    (`ChildProcessExtractionRunner`, injected through `CreateAppOptions.extraction` /
    `sourceRoutes(unsafeDb, storage, limiter, extraction)`) spawns
@@ -241,11 +248,15 @@ decoded, and that the pdfjs proxy was never destroyed. The decision is amended a
    content-free. The API itself reads nothing but the magic bytes (`sniffContainer`); the zip
    central-directory parse (`sniffMime`, now bounded by `maxZipEntries`) runs in the child, whose
    answer carries the sniffed MIME. The request remains synchronous (§1): the teacher still waits
-   for extract → screen → store; only the process boundary is new.
+   for extract → screen → store; only the process boundary is new. Child replies are schema-checked;
+   every exit path reaps the child before releasing its concurrency slot, and stdout is flushed
+   before the child exits.
 3. **What this does not do.** A Promise timeout cannot stop synchronous deflation or parsing — only
-   the process kill does. One allocation happens inside a library before our caps can see it and
-   is bounded only by the container cap plus the child boundary (deadline, optional address-space
-   limit): mammoth builds a DOCX's whole HTML (≤ the archive's already-counted uncompressed bytes
-   × ~1.4 for base64 images) before `maxTextChars` is checked (TEACH-301). Memory is otherwise
-   bounded by the caps in (1), not by RSS supervision. Concurrency is per api replica (in-memory), like the rate limiter (ADR 0027
-   §5; the durable admission design is TEACH-279).
+   the process kill does. Per-entry/per-image caps and bounded conversion are not a hard aggregate
+   RSS limit for third-party parsers. **Production memory isolation remains unverified and blocks
+   TEACH-278 completion:** the optional address-space ceiling passed an arm64 container experiment,
+   but the same 2048 MiB boot probe failed under local amd64 emulation. Do not apply that value to
+   production or claim the process split alone prevents a shared-container OOM. A supported
+   memory ceiling must be verified on the target runtime, or the parser must receive an isolated
+   resource-limited service/container. Concurrency is per api replica (in-memory), like the rate
+   limiter (ADR 0027 §5; durable admission and tenant fairness are TEACH-279).

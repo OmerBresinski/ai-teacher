@@ -460,7 +460,7 @@ reserves large virtual ranges, so a value that is too low prevents the child fro
 every upload becomes `unreadable`. Verify in the image before setting it:
 
 ```sh
-docker run --rm -e EXTRACT_MIME=text/plain tj:local sh -c \
+docker run --rm --entrypoint sh -e EXTRACT_MIME=text/plain tj:local -c \
   'ulimit -v $((2048*1024)) && printf "hello" | bun apps/api/dist/sources/extract-child.js'
 # -> {"ok":true,"extraction":{...}}   the value boots; anything else: raise it or leave unset
 ```
@@ -477,7 +477,10 @@ re-measure after a Bun bump and once on the amd64 Railway image before setting i
 Production does **not** set `EXTRACT_CHILD_MAX_VMEM_MB` yet: the arm64 measurement has to be
 repeated on the amd64 image (`railway ssh` into the api, or a one-off PR environment) before the
 variable is set, otherwise every upload fails closed. Until then the deadline, the output cap and
-the in-parser ceilings (ADR 0027 amendment) are the bounds. Listed under "Known gaps".
+the in-parser ceilings (ADR 0027 amendment) apply, but do not establish aggregate memory isolation.
+A local amd64-emulated Bun 1.3.6 boot with a 2048 MiB address-space limit failed with "Ran out of
+executable memory" on 2026-09-13; the arm64 value is not portable evidence. TEACH-278 remains open
+until target-runtime memory containment is proven. Listed under "Known gaps".
 
 ## Config-as-code (`.railway/railway.ts`, infrastructure-as-code)
 

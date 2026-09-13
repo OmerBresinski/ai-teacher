@@ -79,6 +79,30 @@ describe("ChildProcessExtractionRunner (fake child)", () => {
     });
   });
 
+  test.each(["bad-shape", "unsafe-error"])(
+    "%s rejects without hanging or leaking a slot",
+    async (mode) => {
+      const r = runner({ childEnv: { FAKE_CHILD_MODE: mode } });
+      await expect(r.run(input)).rejects.toMatchObject({ why: "bad-answer" });
+      expect(r.load).toEqual({ running: 0, queued: 0 });
+    },
+  );
+
+  test("valid output does not make a failed process successful", async () => {
+    await expect(
+      runner({ childEnv: { FAKE_CHILD_MODE: "answer-then-crash" } }).run(input),
+    ).rejects.toMatchObject({ why: "crashed", exitCode: 3 });
+  });
+
+  test("abort immediately after acquiring the slot is observed", async () => {
+    const r = runner({ childEnv: { FAKE_CHILD_MODE: "hang" } });
+    const controller = new AbortController();
+    const pending = r.run(input, { signal: controller.signal });
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ why: "aborted" });
+    expect(r.load).toEqual({ running: 0, queued: 0 });
+  });
+
   test("concurrency: one slot + one queue position; the third upload is refused before spawning", async () => {
     const r = runner({
       deadlineMs: 5_000,
@@ -171,6 +195,16 @@ describe("ChildProcessExtractionRunner (real child)", () => {
     await expect(
       real.run({ bytes: new TextEncoder().encode("%PDF-1.7 nope"), mime: MIME.pdf, name: "x" }),
     ).rejects.toBeInstanceOf(ExtractError);
+  }, 30_000);
+
+  test("a real child flushes a response larger than the stdout pipe buffer", async () => {
+    const text = "Synthetic teaching paragraph. ".repeat(40_000);
+    const result = await real.run({
+      bytes: new TextEncoder().encode(text),
+      mime: MIME.paste,
+      name: "large",
+    });
+    expect(result.extraction.chunks[0]?.text).toBe(text.trim());
   }, 30_000);
 });
 

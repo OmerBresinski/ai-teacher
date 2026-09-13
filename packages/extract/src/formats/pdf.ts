@@ -6,6 +6,7 @@ import {
   type ExtractLimits,
   LIMITS,
 } from "../types";
+import { boundedPdfText } from "./pdf-text";
 import { encodePng } from "./png";
 
 /**
@@ -78,8 +79,14 @@ async function readPdf(
   for (let page = 1; page <= totalPages; page++) {
     let raw: string;
     try {
-      raw = await pageText(doc, page);
-    } catch {
+      const proxy = await doc.getPage(page);
+      try {
+        raw = await boundedPdfText(proxy.streamTextContent(), limits.maxTextChars - textChars);
+      } finally {
+        proxy.cleanup();
+      }
+    } catch (error) {
+      if (error instanceof ExtractError) throw error;
       throw new ExtractError("malformed", "pdf");
     }
     textChars += raw.length;
@@ -113,20 +120,6 @@ async function readPdf(
   }
 
   return { kind: "pdf", pages: totalPages, chunks, tables: [], images };
-}
-
-/** A page's text as unpdf 1.8.1 `getPageText` builds it: item strings, a newline where `hasEOL`. */
-async function pageText(
-  doc: Awaited<ReturnType<typeof getDocumentProxy>>,
-  pageNumber: number,
-): Promise<string> {
-  const content = await (await doc.getPage(pageNumber)).getTextContent();
-  let out = "";
-  for (const item of content.items) {
-    if (!("str" in item) || item.str == null) continue;
-    out += item.str + (item.hasEOL ? "\n" : "");
-  }
-  return out;
 }
 
 function normalise(text: string): string {
