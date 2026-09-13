@@ -65,14 +65,14 @@ export const resourceUsage = pgTable("resource_usage", {
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
   kind: resourceKind("kind").notNull(),
   /** `""` for lifetime counters; `YYYY-MM-DD` (UTC) for `spend_usd_day`. */
-  window: text("window").notNull().default(""),
+  windowKey: text("window_key").notNull().default(""),
   /** Settled amount: bytes, rows, jobs, or micro-USD. Never a float. */
   committed: bigint("committed", { mode: "bigint" }).notNull().default(0n),
   /** Outstanding reservations, maintained in the same locked statement as `committed` (§3). */
   held: bigint("held", { mode: "bigint" }).notNull().default(0n),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
-  primaryKey({ columns: [t.workspaceId, t.kind, t.window] }),
+  primaryKey({ columns: [t.workspaceId, t.kind, t.windowKey] }),
   check("resource_usage_committed_nonnegative", sql`${t.committed} >= 0`),
   check("resource_usage_held_nonnegative", sql`${t.held} >= 0`),
 ]);
@@ -80,12 +80,12 @@ export const resourceUsage = pgTable("resource_usage", {
 /** Install-wide counters. NON_TENANT_TABLES: no workspace_id, so forWorkspace() cannot reach it. */
 export const resourceUsageGlobal = pgTable("resource_usage_global", {
   kind: resourceKind("kind").notNull(),
-  window: text("window").notNull().default(""),
+  windowKey: text("window_key").notNull().default(""),
   committed: bigint("committed", { mode: "bigint" }).notNull().default(0n),
   held: bigint("held", { mode: "bigint" }).notNull().default(0n),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
-  primaryKey({ columns: [t.kind, t.window] }),
+  primaryKey({ columns: [t.kind, t.windowKey] }),
   check("resource_usage_global_committed_nonnegative", sql`${t.committed} >= 0`),
   check("resource_usage_global_held_nonnegative", sql`${t.held} >= 0`),
 ]);
@@ -96,7 +96,7 @@ export const resourceReservations = pgTable("resource_reservations", {
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
   scope: text("scope", { enum: ["workspace", "global"] }).notNull(),
   kind: resourceKind("kind").notNull(),
-  window: text("window").notNull().default(""),
+  windowKey: text("window_key").notNull().default(""),
   amount: bigint("amount", { mode: "bigint" }).notNull(),
   /** Set for job reservations so a dead job's hold is recoverable by id. */
   jobId: uuid("job_id"),
@@ -104,7 +104,7 @@ export const resourceReservations = pgTable("resource_reservations", {
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
-  index("resource_reservations_ws_kind_idx").on(t.workspaceId, t.kind, t.window),
+  index("resource_reservations_ws_kind_idx").on(t.workspaceId, t.kind, t.windowKey),
   index("resource_reservations_expires_idx").on(t.expiresAt),
   /** One row per job per kind **per scope**: a job holds both a tenant and a global slot. */
   uniqueIndex("resource_reservations_job_kind_scope_uidx")
@@ -128,15 +128,20 @@ Reservation rows remain, but only as the audit/recovery record of *what* is held
 
 ```ts
 export interface Ceilings { perWorkspace: bigint; global: bigint }
-export type AdmitResult =
-  | { status: "ok"; reservationIds: [string, string] }   // [workspace, global]
-  | { status: "denied"; scope: "workspace" | "global"; kind: ResourceKind; retryAfterSeconds: number };
 
+/** Thrown, not returned: see below. */
+export class AdmissionDenied extends Error {
+  readonly scope: "workspace" | "global";
+  readonly kind: ResourceKind;
+  readonly retryAfterSeconds: number;
+}
+
+/** Resolves with both reservation ids, or throws `AdmissionDenied`. */
 export async function admit(
   tx: ScopableDb, workspaceId: WorkspaceId, kind: ResourceKind,
   amount: bigint, ceilings: Ceilings,
   opts?: { jobId?: JobId; ttlSeconds?: number | null; now?: Date },
-): Promise<AdmitResult>;
+): Promise<{ reservationIds: [string, string] }>;   // [workspace, global]
 
 export async function commitReservation(tx: ScopableDb, reservationId: string, actual: bigint): Promise<void>;
 export async function releaseReservation(tx: ScopableDb, reservationId: string): Promise<void>;
@@ -146,33 +151,43 @@ export async function reclaimOrphanedJobHolds(db: ScopableDb, boss: PgBoss): Pro
 export async function usageFor(ws: WorkspaceDb, kinds?: ResourceKind[]): Promise<ResourceUsageRow[]>;
 ```
 
-`admit` runs **two** statements inside the caller's transaction, in a fixed order — the Workspace
-row first, then the global row — so concurrent admissions cannot deadlock. Each is one statement
-that locks its counter row, tests the ceiling against the values *in that row*, and increments
-`held` only if it passes:
+**`admit` throws on denial rather than returning it.** A denial can happen on the *second* scope,
+after the first has already incremented `held` in the caller's transaction. Returning a value would
+let a handler answer `429` and still commit that partial hold — a slow leak that only the reconciler
+would ever notice. Throwing makes the rollback structural: the transaction cannot commit, and
+`apps/api/src/errors.ts` maps `AdmissionDenied` to the `429` envelope in one place. The same applies
+to `enqueue` (§5.1).
+
+`admit` runs **three plain statements** inside the caller's transaction — no data-modifying CTEs.
+The first two repeat for the global counter, in a fixed order (Workspace row, then global row) so
+concurrent admissions cannot deadlock:
 
 ```sql
--- Statement 1 (workspace). Statement 2 is the same shape against resource_usage_global.
-with locked as (
-  insert into resource_usage (workspace_id, kind, window) values ($1, $2, $3)
-  on conflict (workspace_id, kind, window)
-    -- A no-op SET is still an UPDATE: it takes the row lock even when the row already exists,
-    -- so concurrent admissions for this (workspace, kind, window) serialise here.
-    do update set workspace_id = excluded.workspace_id
-  returning committed, held
-), gate as (
-  update resource_usage set held = held + $4, updated_at = now()
-  where workspace_id = $1 and kind = $2 and window = $3
-    and (select committed + held from locked) + $4 <= $5
-  returning 1
-)
-insert into resource_reservations (id, workspace_id, scope, kind, window, amount, job_id, expires_at)
-select $6, $1, 'workspace', $2, $3, $4, $7, $8 where exists (select 1 from gate)
-returning id;
+-- 1. Ensure the counter row exists. Idempotent, no lock semantics relied on.
+insert into resource_usage (workspace_id, kind, window_key) values ($1, $2, $3)
+on conflict (workspace_id, kind, window_key) do nothing;
+
+-- 2. Admit: one guarded UPDATE. It takes the row lock, and on conflict re-evaluates its WHERE
+--    against the latest committed row version, so two concurrent admissions cannot both pass.
+--    Zero rows returned is a denial, and no side effect has happened yet.
+update resource_usage set held = held + $4, updated_at = now()
+where workspace_id = $1 and kind = $2 and window_key = $3
+  and committed + held + $4 <= $5
+returning held;
+
+-- 3. Record what is held, for audit and recovery.
+insert into resource_reservations (id, workspace_id, scope, kind, window_key, amount, job_id, expires_at)
+values ($6, $1, 'workspace', $2, $3, $4, $7, $8);
 ```
 
-Zero rows returned is a denial, and the caller has not yet performed any side effect. If statement 1
-succeeds and statement 2 denies, the caller's transaction rolls back — nothing to compensate.
+An earlier draft folded steps 1 and 2 into one statement with sibling data-modifying CTEs (`locked`
+that upserted, `gate` that updated the same row). That is **wrong**, and measurably so: two
+data-modifying CTEs touching the same row in one statement do not see each other's effects, and on
+PostgreSQL 16 the shape returned **zero rows while capacity was available** — it would have denied
+every admission. Two ordinary statements inside the transaction are both correct and obvious; the
+`ON CONFLICT DO UPDATE … WHERE` single-statement alternative is also wrong here, because its `WHERE`
+is skipped on the insert path, so the first admission for a new counter would bypass the ceiling.
+
 
 `commitReservation` moves the amount from `held` to `committed` and deletes the reservation row in
 one statement, so a settled amount may be **smaller** than the reservation (a 10 MiB body that
@@ -202,24 +217,40 @@ singleton, so tests inject a fake exactly as they do for `RateLimiter`.
 
 | Path | Kind(s) | Amount | Where |
 | --- | --- | --- | --- |
-| `POST /documents`, `POST /lessons` | `document_count`, `storage_bytes` | 1 row; the validated body's byte length | Inside the transaction that writes the row (§5 for `POST /lessons`) |
-| `PUT /documents/:id` | `storage_bytes` | `max(0, newBytes − oldBytes)`; a shrink is a negative `commitDelta` after the write | Same transaction as `putDocument` |
+| `POST /documents`, `POST /lessons` | `document_count`, `storage_bytes` | 1 row; the request body's byte length as the **estimate**, committed to `pg_column_size(body)` from the insert's `RETURNING` | Inside the transaction that writes the row (§5 for `POST /lessons`) |
+| `PUT /documents/:id` | `storage_bytes` | Estimate `max(0, newLen − oldLen)`; committed to the signed `pg_column_size(body)` difference the update returns, so a shrink credits | Same transaction as `putDocument` |
 | `POST /sources` | `storage_bytes` | Upload byte length, reserved **before** extraction; committed to the true sum of the keys written | Wraps `createSource` + `writeObjects` |
 | `POST /images/pick` | `storage_bytes` | `MAX_PHOTO_BYTES`; committed to `bytes` actually stored | Around `storePhoto` |
 | `enqueue()` | `jobs_outstanding` | 1, `jobId` recorded, no expiry | Same transaction as `boss.send` (§5) |
 | `callStructured` | `spend_usd_day` | The TEACH-280 estimate, micro-USD | Worker, before the in-process Budget reserve |
 | Physical purge of documents/Sources/objects | `storage_bytes`, `document_count` | Negative `commitDelta` of what was actually removed | Same transaction as the purge |
 
-**Soft delete does not reclaim.** ADR 0024 §5 keeps a soft-deleted row and its body in the table,
-and `deleteSourceObjects` only runs on the rollback and hard-delete paths — the bytes are still
-stored, so returning capacity for a soft delete would let a Workspace recycle its ceiling
-indefinitely while its storage grew. Counters therefore track *stored* bytes and rows regardless of
-`deleted_at`, and capacity comes back only on physical removal: the `POST /lessons` failure path's
-`deleteDocument`, `DELETE /sources/:id`'s object removal, and the orphan sweep (TEACH-271). `restore`
-changes nothing, because nothing was reclaimed. The consequence, stated plainly: a Workspace at its
-ceiling must *purge*, not just delete, and until a purge path exists for documents that means
-support intervention. That is a real gap, and it is why `LIMIT_WORKSPACE_DOCUMENTS` is set well
-above plausible use.
+**Reclamation follows the bytes, not the word "delete".** The two paths differ, and the rule has to
+name them separately:
+
+- **Documents.** ADR 0024 §5's soft delete keeps the row *and its body* in the table, so nothing is
+  freed and nothing is credited. `restore` therefore re-admits nothing either. Capacity returns only
+  on physical removal: `POST /lessons`' failure-path `deleteDocument`, or a future purge.
+- **Sources.** `DELETE /sources/:id` soft-deletes the registry row **and physically deletes every
+  object under `<ws>/sources/<id>/`** (`deleteSourceObjects`). The bytes really are gone, so that
+  path **does** credit `storage_bytes` — in the same transaction as the row update, for the byte
+  count the row records. The same applies to the `POST /sources` rollback and the orphan sweep
+  (TEACH-271).
+
+So `document_count` is a count of rows that still exist (soft-deleted included), and `storage_bytes`
+tracks bytes that are still stored. The consequence, stated plainly: a Workspace at its *document*
+ceiling must have rows purged, which today means support intervention — which is why
+`LIMIT_WORKSPACE_DOCUMENTS` sits well above plausible use, and why founder decision 5 asks whether a
+purge path is worth building.
+
+
+**One byte metric, measured once.** A document's stored size is `pg_column_size(body)` — the
+compressed JSONB the row actually occupies — and that is what both the commit and the reconciler use.
+The request body's length is only the *reservation estimate*, which is exactly the
+reserve-then-settle asymmetry §3 already allows (a reservation may settle smaller or larger). Mixing
+the two — admitting on request length and reconciling on `pg_column_size` — would manufacture
+permanent drift, so the commit resolves to `pg_column_size` inside the same transaction via
+`RETURNING`, before the reconciler ever sees the row.
 
 Reads (`GET`), soft delete, cancel and sign-out are **never** admitted: a Workspace at its ceiling
 can still read, export and delete. When the admission store itself is unavailable the API fails
@@ -246,21 +277,36 @@ changing that shape, so this ADR changes it:
 - `enqueue()` gains an optional `tx` (a `ScopableDb` from the caller's transaction) and, when given
   one, does all three things inside it: `admit(jobs_outstanding)`, `boss.send(..., { db:
   fromDrizzle(tx, sql), group: { id: workspaceId } })`, and `insertJobEvent({ type: "queued" })`.
-  `notifyJobEvent` moves **after** the commit (a `NOTIFY` inside a transaction only fires on commit
-  anyway, and the api's listener must never see an id it cannot read).
+  It **throws** `EnqueueDeduplicated` instead of returning `null` when `singletonKey` suppresses the
+  send: a returned `null` cannot roll back a transaction the caller owns, so it would commit the
+  document, the Source claim, the hold and the event for a job that does not exist. The route maps
+  that error to the existing `409`. (Without a `tx`, `enqueue` keeps today's `JobId | null`.)
+- `notifyJobEvent` moves **after** the commit, so `enqueue` returns the inserted event id to its
+  caller and the caller notifies once the transaction has committed. A `NOTIFY` inside a transaction
+  only fires on commit anyway, and the api's listener must never see an id it cannot read. If that
+  post-commit notify fails, nothing is lost and nothing is compensated: the row is committed, and
+  the SSE hub already falls back to polling when its listener is degraded
+  (`apps/api/src/events/listener.ts` sets `hub.setDegraded(true)` and the stream still delivers —
+  there is an existing integration test for exactly that). Best-effort is the contract; say so in
+  the code.
 - `createLessonAndEnqueue` passes its `scoped` handle, so the Source claim, the document row, the
   reservation, the pg-boss row and the `queued` event are one atomic unit. `undoCreate` and
   `enqueue`'s `boss.cancel` compensation both **disappear**: there is no window in which one exists
-  without the others. The `409` for a deduplicated send becomes a rollback of the same transaction.
+  without the others.
 - Callers that have no transaction (the proposal routes) keep today's behaviour by passing no `tx`;
   they get a transaction of their own inside `enqueue`.
 
-A deduplicated send (`singletonKey` → `null`) rolls back, so it leaves no reservation.
-`run-job.ts` releases the hold in the same transaction that writes the terminal `job_events` row
-(`settle`), which is already idempotent under `job_events_one_terminal_per_job_uidx`: if the insert
-loses to the index, the release is not applied twice. A `retry` keeps the hold — the job is still
-outstanding. A cancel does **not** release; only the terminal event does, so a cancel racing a
-worker cannot double-release. `reclaimOrphanedJobHolds` (§3) is the crash backstop.
+**Release needs a transactional settle path, which does not exist yet.** `run-job.ts`'s `settle`
+calls `emitJobEvent`, which is `insertJobEvent` followed by `notifyJobEvent` with no shared
+transaction; `cancel()` does the same for a queued job. Releasing the hold "in the same transaction
+as the terminal event" therefore requires building that path: a helper in `@tj/jobs` that, in one
+transaction, inserts the terminal `job_events` row and calls `releaseReservation` for the job's two
+holds, then notifies after commit. The unique index `job_events_one_terminal_per_job_uidx` gives the
+idempotency: the loser of a race inserts nothing and so releases nothing. Both `run-job.ts`'s
+`settle` and `enqueue.ts`'s queued-cancel branch must go through it — two call sites, one helper. A
+`retry` keeps the hold, because the job is still outstanding. A cancel of a *running* job releases
+nothing: the worker's terminal event does it. `reclaimOrphanedJobHolds` (§3) is the crash backstop.
+
 
 **5.2 Fair selection across Workspaces, with the guarantee stated exactly.**
 `boss.work` passes `groupConcurrency: { default: WORKER_GROUP_CONCURRENCY }` for every queue, and
@@ -293,7 +339,7 @@ event), and that is deliberately out of scope here. `WORKER_GROUP_CONCURRENCY: 2
 - **Reconciler.** A new `usage.reconcile` job (pg-boss cron, one Workspace per run, round-robin)
   recomputes both halves of `storage_bytes` — object storage via `storage.list("<ws>/")` **and** the
   document bodies the same counter charges for, via `sum(pg_column_size(body))` over the Workspace's
-  rows — plus `document_count` from `documents`, then writes the difference with `commitDelta` and
+  rows (the same metric §4 commits, soft-deleted rows included, since their bytes are still stored) — plus `document_count` from `documents`, then writes the difference with `commitDelta` and
   logs `{ workspaceId, kind, drift }`. Counting only the bucket would understate a counter that
   charges for JSONB bodies, so both are in scope or neither is. It is the authority when it
   disagrees with the incremental counter, runs daily, and logs `warn` above 5% drift. It never
@@ -352,19 +398,24 @@ follow), all config, all defaulted:
 ## Testing the follow-on work must include
 
 - `packages/db/src/resource-usage.test.ts` — two genuinely concurrent transactions on separate
-  connections racing the last unit: exactly one `ok`, one `denied`, and `committed + held` never over
-  the ceiling (this is the test that would have caught the aggregate-snapshot race §2 describes);
+  connections racing the last unit: exactly one admits, one throws `AdmissionDenied`, and
+  `committed + held` never exceeds the ceiling. Also a plain single-threaded admission against an
+  **existing** counter row and a **fresh** one, which is the case the rejected single-statement
+  shapes got wrong (§3) (this is the test that would have caught the aggregate-snapshot race §2 describes);
   commit smaller than reservation; `actual > amount` recorded; `held` returning to zero after
   release; the negative-`commitDelta` floor via the check constraint; `resource_usage_global`
   unreachable through `forWorkspace()` **by type**, not by convention.
 - `packages/jobs/src/enqueue.test.ts` / `run-job.test.ts` — one transaction covering reservation +
   send + `queued` event: a failed send or failed event insert leaves none of the three; a
-  deduplicated send leaves no reservation; the terminal event releases exactly one hold; a `retry`
-  does not; a cancel does not; `reclaimOrphanedJobHolds` frees a killed worker's hold and a queued
+  deduplicated send throws `EnqueueDeduplicated` and leaves none of the three; the new transactional
+  settle helper releases exactly one hold per scope and the unique-index loser releases nothing; a
+  `retry` does not release; cancelling a *running* job does not release; `reclaimOrphanedJobHolds` frees a killed worker's hold and a queued
   job's hold is **not** freed by time alone.
-- `apps/api` route tests — the `429` envelope per path, reads/soft-deletes still `200`/`204` at the
-  ceiling, admission-store outage `503` for writes and `200` for reads, and that a soft delete does
-  **not** return capacity.
+- `apps/api` route tests — the `429` envelope per path (from a thrown `AdmissionDenied`, asserting
+  the transaction rolled back and no partial hold remains), reads/soft-deletes still `200`/`204` at
+  the ceiling, admission-store outage `503` for writes and `200` for reads, that a **document** soft
+  delete returns no capacity, and that `DELETE /sources/:id` **does** — it physically removes the
+  objects.
 - `apps/worker` — `spend_usd_day` denial produces the existing partial-Lesson budget finding, with a
   fake AI and no real key; the reconciler corrects drift in both directions, counts document bodies
   as well as objects, and never writes `spend_usd_day`.
