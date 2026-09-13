@@ -31,6 +31,10 @@ function fakeApi(): typeof fetch {
     }
     if (origin !== null && origin !== WEB) return new Response("forbidden", { status: 403 });
     if (origin === null && crossSite) return new Response("forbidden", { status: 403 });
+    // TEACH-81: the dev-only ping routes answer 404 before the session guard in production.
+    if (url.pathname === "/jobs/ai-ping" || url.pathname === "/jobs/ping") {
+      return new Response("not found", { status: 404 });
+    }
     return new Response("unauthorized", { status: 401 });
   }) as typeof fetch;
 }
