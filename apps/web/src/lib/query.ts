@@ -1,6 +1,7 @@
-import { notifyManager, QueryClient, queryOptions } from "@tanstack/react-query";
+import { notifyManager, queryOptions } from "@tanstack/react-query";
 import type { InferResponseType } from "hono/client";
 import { api } from "@/lib/api";
+import { assertCurrentSession, sessionBoundary, sessionRequest } from "./session-boundary";
 
 /** Error envelope returned by every non-2xx API response (apps/api/README.md). */
 export interface ApiErrorEnvelope {
@@ -70,14 +71,9 @@ export async function apiErrorFromResponse(res: ApiResponseLike): Promise<ApiErr
 // delivery lets React batch both into the one render. (The editor's test harness does the same.)
 notifyManager.setScheduler((callback) => callback());
 
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      retry: 1,
-      throwOnError: false,
-    },
-  },
+export let queryClient = sessionBoundary.getSnapshot().client;
+sessionBoundary.subscribe(() => {
+  queryClient = sessionBoundary.getSnapshot().client;
 });
 
 export const queryKeys = {
@@ -104,10 +100,18 @@ export type Me = InferResponseType<typeof api.me.$get, 200>;
  */
 export const meQueryOptions = queryOptions<Me | null, ApiError>({
   queryKey: queryKeys.me,
-  queryFn: async (): Promise<Me | null> => {
-    const res = await api.me.$get();
-    if (res.status === 401) return null;
+  queryFn: async ({ client, signal }): Promise<Me | null> => {
+    if (client === sessionBoundary.getSnapshot().client && sessionBoundary.getSnapshot().locked)
+      return null;
+    const res = await api.me.$get(undefined, sessionRequest(client, signal));
+    if (res.status === 401) {
+      sessionBoundary.confirm(client, null);
+      return null;
+    }
     if (res.status !== 200) throw await apiErrorFromResponse(res);
-    return (await res.json()) as Me;
+    const me = (await res.json()) as Me;
+    assertCurrentSession(client);
+    sessionBoundary.confirm(client, `${me.user.id}:${me.workspaceId}`);
+    return me;
   },
 });

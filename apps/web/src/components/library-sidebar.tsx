@@ -1,5 +1,5 @@
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Display, Sidebar, SidebarItem } from "@tj/ui";
 import {
   CircleHelp,
@@ -14,7 +14,7 @@ import {
 import { lazy, Suspense } from "react";
 import { authClient } from "@/lib/auth";
 import { libraryQueries, librarySelectors } from "@/lib/library";
-import { queryKeys } from "@/lib/query";
+import { sessionBoundary } from "@/lib/session-boundary";
 import { usePreference } from "@/lib/use-preference";
 import { ThemeMenu } from "./theme-menu";
 
@@ -79,17 +79,13 @@ export function LibrarySidebar({
     ...libraryQueries.series(),
     select: librarySelectors.count,
   });
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   function setCollapsed(next: boolean): void {
     setCollapsedFlag(next ? "1" : "0");
   }
 
   async function signOut(): Promise<void> {
-    await authClient.signOut();
-    await queryClient.invalidateQueries({ queryKey: queryKeys.me, refetchType: "all" });
-    await navigate({ to: "/sign-in", search: {} });
+    await sessionBoundary.signOut(() => authClient.signOut());
   }
 
   return (

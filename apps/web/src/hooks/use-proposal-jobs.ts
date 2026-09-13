@@ -8,6 +8,7 @@ import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } fro
 import { api } from "@/lib/api";
 import { isFullDocument, libraryMutations, libraryQueries } from "@/lib/library";
 import { ApiError, apiErrorFromResponse } from "@/lib/query";
+import { sessionIsCurrent, sessionRequest, sessionSignal } from "@/lib/session-boundary";
 import { useJobEvents } from "./use-job-events";
 
 /*
@@ -80,7 +81,7 @@ export function useProposalJobs(
   const queryClient = useQueryClient();
   const { mutateAsync: saveWorksheet } = useMutation(libraryMutations.saveDocument(queryClient));
   const [pending, setPending] = useState<Pending | null>(null);
-  const stream = useJobEvents(pending?.jobId);
+  const stream = useJobEvents(pending?.jobId, queryClient);
   const terminal = stream.terminal;
   const busyRef = useRef(false);
   const held = useRef<Partial<Record<Request["kind"], Request>>>({});
@@ -92,13 +93,19 @@ export function useProposalJobs(
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
-    return () => {
+    const cleanup = () => {
       alive.current = false;
       held.current = {};
       if (retry.current) clearTimeout(retry.current);
       retry.current = null;
     };
-  }, []);
+    const signal = sessionSignal(queryClient);
+    signal.addEventListener("abort", cleanup, { once: true });
+    return () => {
+      signal.removeEventListener("abort", cleanup);
+      cleanup();
+    };
+  }, [queryClient]);
 
   const readLesson = useCallback((): Lesson | undefined => {
     const data = queryClient.getQueryData(libraryQueries.document(lessonId).queryKey);
@@ -120,6 +127,7 @@ export function useProposalJobs(
 
   const send = useCallback(
     async (request: Request): Promise<void> => {
+      if (!alive.current || !sessionIsCurrent(queryClient)) return;
       busyRef.current = true;
       const lesson = readLesson();
       const slideIds =
@@ -131,22 +139,29 @@ export function useProposalJobs(
       try {
         const res =
           request.kind === "cascade"
-            ? await api.lessons[":id"].cascade.$post({
-                param: { id: lessonId },
-                json: { changedFactIds: request.changedFactIds },
-              })
-            : await api.lessons[":id"].regenerate.$post({
-                param: { id: lessonId },
-                json: {
-                  targets: [request.target],
-                  ...(request.instruction ? { instruction: request.instruction } : {}),
+            ? await api.lessons[":id"].cascade.$post(
+                {
+                  param: { id: lessonId },
+                  json: { changedFactIds: request.changedFactIds },
                 },
-              });
+                sessionRequest(queryClient),
+              )
+            : await api.lessons[":id"].regenerate.$post(
+                {
+                  param: { id: lessonId },
+                  json: {
+                    targets: [request.target],
+                    ...(request.instruction ? { instruction: request.instruction } : {}),
+                  },
+                },
+                sessionRequest(queryClient),
+              );
         if (res.status !== 202) throw await apiErrorFromResponse(res);
         const { jobId } = (await res.json()) as { jobId: string };
-        if (alive.current) setPending({ jobId, kind: request.kind, slideIds });
+        if (alive.current && sessionIsCurrent(queryClient))
+          setPending({ jobId, kind: request.kind, slideIds });
       } catch (error) {
-        if (!alive.current) return;
+        if (!alive.current || !sessionIsCurrent(queryClient)) return;
         if (error instanceof ApiError && error.status === 409 && error.reason !== "generating") {
           // The singleton slot: an identical job was sent inside the last few seconds. Hold this
           // one and try again once the slot has passed, so a handoff is never dropped.
@@ -162,7 +177,7 @@ export function useProposalJobs(
         releaseRef.current();
       }
     },
-    [lessonId, readLesson, hold],
+    [lessonId, readLesson, hold, queryClient],
   );
 
   /** Free the lane and send the next held request, if any. */
@@ -227,6 +242,7 @@ async function applyTerminal(args: {
   saveWorksheet: (worksheet: Worksheet) => Promise<unknown>;
 }): Promise<void> {
   const { terminal, kind, lesson, editor, worksheetId, queryClient, saveWorksheet } = args;
+  if (!sessionIsCurrent(queryClient)) return;
   if (terminal.type !== "completed") {
     toast(terminal.type === "failed" ? terminal.error.message : PROPOSALS_FAILED_MESSAGE);
     return;
@@ -240,7 +256,15 @@ async function applyTerminal(args: {
   const first = touched[0];
   // Undo is offered only when the lesson's history gained an entry: a worksheet-only or
   // flagged-only result has nothing of the teacher's to put back (TEACH-170 for the worksheet).
-  const undo = touched.length > 0 ? { label: "Undo", onClick: () => editor.undo() } : undefined;
+  const undo =
+    touched.length > 0
+      ? {
+          label: "Undo",
+          onClick: () => {
+            if (sessionIsCurrent(queryClient)) editor.undo();
+          },
+        }
+      : undefined;
   const worksheetChanged = blockProposals.length > 0 && worksheetId !== undefined;
   if (kind === "regenerate") {
     toast(
@@ -253,7 +277,16 @@ async function applyTerminal(args: {
     toast(cascadeToast(numbers, result.flagged.length, worksheetChanged), {
       duration: 12_000,
       ...(undo ? { action: undo } : {}),
-      ...(first ? { cancel: { label: "View", onClick: () => editor.goToSlide(first) } } : {}),
+      ...(first
+        ? {
+            cancel: {
+              label: "View",
+              onClick: () => {
+                if (sessionIsCurrent(queryClient)) editor.goToSlide(first);
+              },
+            },
+          }
+        : {}),
     });
   }
   if (worksheetChanged) {
@@ -272,26 +305,30 @@ const isProposalResult = (
  * on demand (the lesson page never carries the worksheet chunk), the result is written over the
  * cached worksheet and PUT. Not part of the lesson's undo step (TEACH-170).
  */
-async function applyToWorksheet(
+export async function applyToWorksheet(
   queryClient: QueryClient,
   worksheetId: string,
   proposals: Proposal[],
   save: (worksheet: Worksheet) => Promise<unknown>,
 ): Promise<void> {
+  if (!sessionIsCurrent(queryClient)) return;
   const current = await queryClient
     .fetchQuery(libraryQueries.document(worksheetId, queryClient))
     .catch(() => undefined);
+  if (!sessionIsCurrent(queryClient)) return;
   if (!current || !isFullDocument(current) || !("blocks" in current)) {
     toast(PROPOSALS_FAILED_MESSAGE);
     return;
   }
   const { worksheetReducers } = await import("@tj/editor/worksheet");
+  if (!sessionIsCurrent(queryClient)) return;
   const next = worksheetReducers.applyBlockProposals(current, proposals);
   if (next === current) return;
   queryClient.setQueryData(libraryQueries.document(worksheetId).queryKey, next);
   try {
     await save(next);
   } catch (error) {
+    if (!sessionIsCurrent(queryClient)) return;
     toast(error instanceof Error ? error.message : PROPOSALS_FAILED_MESSAGE);
   }
 }

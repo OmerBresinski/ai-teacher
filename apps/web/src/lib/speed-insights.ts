@@ -16,13 +16,13 @@ function currentRoutePattern(router: AnyRouter): string | null {
   return typeof last?.fullPath === "string" ? last.fullPath : null;
 }
 
-export async function startSpeedInsights(router: AnyRouter): Promise<void> {
-  if (import.meta.env.VITE_APP_ENV !== "production") return;
+export async function startSpeedInsights(router: AnyRouter): Promise<() => void> {
+  if (import.meta.env.VITE_APP_ENV !== "production") return () => {};
   const { injectSpeedInsights } = await import("@vercel/speed-insights");
   const insights = injectSpeedInsights({
     framework: "vite",
     route: currentRoutePattern(router),
   });
-  if (!insights) return;
-  router.subscribe("onResolved", () => insights.setRoute(currentRoutePattern(router)));
+  if (!insights) return () => {};
+  return router.subscribe("onResolved", () => insights.setRoute(currentRoutePattern(router)));
 }

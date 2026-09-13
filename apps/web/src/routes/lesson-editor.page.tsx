@@ -2,14 +2,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ExportControl } from "@tj/editor/export";
 import { LessonEditor, type LessonEditorHandle } from "@tj/editor/lesson";
-import { lazy, Suspense, useCallback, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { EmptyLesson } from "@/components/empty-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { env } from "@/env";
 import { useProposalJobs } from "@/hooks/use-proposal-jobs";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
-import { imageSearchClient } from "@/lib/images";
+import { imageSearchFor } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
 import { openPrintTab } from "@/lib/print-tab";
@@ -38,6 +38,7 @@ const GeneratingLesson = lazy(() =>
 export function LessonEditorPage() {
   const { lessonId } = useParams({ from: lessonEditorRoute.id });
   const queryClient = useQueryClient();
+  const images = useMemo(() => imageSearchFor(queryClient), [queryClient]);
   const navigate = useNavigate();
   const shellReturn = useShellReturn();
   const options = libraryQueries.document(lessonId, queryClient);
@@ -138,7 +139,7 @@ export function LessonEditorPage() {
       onRegenerate={proposals.onRegenerate}
       busySlideIds={proposals.busySlideIds}
       proposalsBusy={proposals.busy}
-      images={imageSearchClient}
+      images={images}
       exportSlot={exportSlot}
     />
   );
