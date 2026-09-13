@@ -11,7 +11,9 @@ Every brief becomes the lesson `POST /lessons` would create (`lessonFromBrief`) 
 the pipeline on the scripted fake (`scriptedPipelineAi()`, the fixtures under `src/fixtures/`).
 The point is not the words — the fixtures are one lesson about states of matter whatever the
 brief — but the recipes, `materialiseSlide` / `materialiseBlock` and the shared `checkLesson` on
-real geometry for eight audiences. The script prints one table and exits:
+real geometry for twelve audiences (eight since TEACH-206, four more secondary briefs since
+TEACH-259 so the Year 7+ sample is nine against three primary; `isSecondaryBrief` draws the
+line at Year 7). The script prints one table and exits:
 
 - `0` — every brief produced a lesson with zero `error` schema findings;
 - `1` — at least one did not; the last line names the brief and the check(s).
@@ -34,7 +36,8 @@ The loop stops as soon as the budget is exceeded; whatever ran is reported with
 
 ```jsonc
 {
-  "sha": "…", "at": "…", "models": { "frontier": "…", "standard": "…", "small": "…" }, "capUsd": 3,
+  "sha": "…", "at": "…", "models": { "frontier": "…", "standard": "…", "small": "…", "judge": "…" },
+  "planFrontierFromYear": 7, "capUsd": 3,
   "briefs": [{ "id": "y8-science-particles", "ok": true, "durationMs": 41200, "firstSlideMs": 7900,
                "slides": 10, "blocks": 8, "calls": 14, "inputTokens": 21000, "outputTokens": 5800,
                "costUsd": 0.12,
@@ -45,12 +48,19 @@ The loop stops as soon as the budget is exceeded; whatever ran is reported with
                              "pitch": 4, "coherence": 3, "questionQuality": 3, "notes": 2,
                              "worksheetValueAdd": 2, "imageFit": null, "verbFit": 3 } } },
                "rubricRationales": { "correctness": "…", "depth": "…", "…": "…" } }],
-  "totals": { "briefs": 8, "completed": 8, "failed": 0, "durationMs": 0, "meanDurationMs": 0,
-              "p50FirstSlideMs": 0, "calls": 0, "inputTokens": 0, "outputTokens": 0, "costUsd": 0,
-              "judgeCostUsd": 0, "findings": { "error": 0, "warning": 0 },
-              "rubric": { "mean": 3.6, "dimensions": { "correctness": 4, "…": 0 } } }
+  "totals": { "briefs": 12, "completed": 12, "failed": 0, "durationMs": 0, "meanDurationMs": 0,
+              "p50FirstSlideMs": 0, "p50PlanMs": 0, "p50VerifyMs": 0, "calls": 0, "inputTokens": 0,
+              "outputTokens": 0, "costUsd": 0, "judgeCostUsd": 0,
+              "findings": { "error": 0, "warning": 0, "specRule": 0 },
+              "rubric": { "mean": 3.6, "dimensions": { "correctness": 4, "…": 0 } } },
+  "bands": { "secondary": { "briefs": 9, "completed": 9, "p50PlanMs": 0, "p50VerifyMs": 0,
+                            "meanCostUsd": 0, "specRule": 0, "rubric": { "mean": 3.6, "dimensions": {} } },
+             "primary": { "…": "…" } }
 }
 ```
+
+`bands` (TEACH-259) is the same reading over the secondary (Year 7+) and primary briefs, printed
+as a second table after the results — the Plan-model question is read from the secondary column.
 
 Counts, timings, tokens, cost and scores only — no prompt, no generated text, no topic (ADR 0015;
 `eval/run.test.ts` greps for the topics). The one exception is `rubricRationales`: the judge's
@@ -83,9 +93,12 @@ changing them; no `@mastra/evals` dependency is needed and no Mastra judge model
   schema checks, not the budget stop): `1 − findings / slides`, clamped. Function-only, never
   spends.
 - `rubric` — the **rubric judge** (`rubricJudgeScorer`, prompt `eval/rubric-prompt.ts`,
-  `rubric-judge.v2`): one structured call on the `frontier` class through the pipeline's own
-  `callStructured` (`stage: "evaluate"`), charged to the run's budget so it counts against
-  `AI_EVAL_RUN_COST_CAP_USD`. It reads the audience block, the brief topic, `factsBlock`, every
+  `rubric-judge.v2`): one structured call on the `frontier` class of the **judge's own
+  `CreatedAi`** through the pipeline's own `callStructured` (`stage: "evaluate"`), charged to the
+  run's budget so it counts against `AI_EVAL_RUN_COST_CAP_USD`. Since TEACH-259 that class is
+  `AI_MODEL_JUDGE`, or the run's `standard` id when unset — so the judge is never the model under
+  test when `AI_PLAN_FRONTIER_FROM_YEAR` puts Plan on Sol (`models.judge` in the results file names
+  it). It reads the audience block, the brief topic, `factsBlock`, every
   slide's plain text and notes and every worksheet block, and scores nine dimensions 1–5:
   `correctness`, `depth`, `pitch`, `coherence`, `questionQuality`, `notes`, `worksheetValueAdd`,
   `imageFit`, `verbFit` (TEACH-228: does the lesson do what the brief's objective verb asks, at the

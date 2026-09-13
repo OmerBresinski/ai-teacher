@@ -3,9 +3,11 @@ import { createAi, createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { objectiveVerbOf } from "../src/shapes";
 import { PLAN_SKELETONS, pipelineScript, routed, scriptedPipelineAi } from "../src/testing";
-import { evalBriefs } from "./briefs";
+import { evalBriefs, isSecondaryBrief } from "./briefs";
 import { RUBRIC_DIMENSIONS } from "./rubric-prompt";
 import {
+  bandTotals,
+  formatBandsTable,
   formatResultsTable,
   median,
   rubricTotals,
@@ -80,6 +82,52 @@ describe("eval:paid", () => {
     expect(totals.rubric.dimensions.imageFit).toBeNull();
     expect(totals.judgeCostUsd).toBe(row.judge?.costUsd ?? null);
     expect(totals.costUsd).toBeCloseTo((row.costUsd ?? 0) + (row.judge?.costUsd ?? 0), 6);
+  });
+
+  test("TEACH-259: a pinned judge takes the rubric call, the plan model routes by year group, and the bands split the rows", async () => {
+    const secondary = evalBriefs().find((b) => b.id === "ks4-science-electrolysis");
+    const primary = evalBriefs().find((b) => b.id === "y3-maths-fractions");
+    if (!secondary || !primary) throw new Error("briefs");
+    const usage = { inputTokens: 1000, outputTokens: 400 };
+    const judge = createFakeAi({ script: [rubricJson(4), rubricJson(3)], usage });
+    const budget = createBudget({ capUsd: 5, capTokens: 10_000_000 });
+    const rows: BriefResult[] = [];
+    for (const brief of [secondary, primary]) {
+      const ai = createFakeAi({
+        script: routed(
+          pipelineScript({ skeleton: PLAN_SKELETONS[objectiveVerbOf(brief.input.brief.answers)] }),
+        ),
+        usage,
+      });
+      rows.push(
+        ...(await runPaidEval(ai, budget, [brief], undefined, { judge, planFrontierFromYear: 7 })),
+      );
+      // Row 3: the pipeline's own fake never saw the judge call …
+      expect(ai.calls.some((c) => c.context?.promptVersion?.startsWith("rubric-judge"))).toBe(
+        false,
+      );
+      // … and Plan ran on the frontier class for Year 10, standard for Year 3 (row 2).
+      const planClasses = new Set(
+        ai.calls.filter((c) => c.context?.stage === "plan").map((c) => c.modelClass),
+      );
+      expect([...planClasses]).toEqual([brief === secondary ? "frontier" : "standard"]);
+    }
+    expect(judge.calls).toHaveLength(2);
+    expect(judge.calls.every((c) => c.modelClass === "frontier")).toBe(true);
+    expect(rows.map((r) => r.scores?.rubric?.mean)).toEqual([4, 3]);
+    const bands = {
+      secondary: bandTotals(
+        rows.filter((r) => isSecondaryBrief(secondary) && r.id === secondary.id),
+      ),
+      primary: bandTotals(rows.filter((r) => r.id === primary.id)),
+    };
+    expect(bands.secondary.rubric.mean).toBe(4);
+    expect(bands.primary.rubric.mean).toBe(3);
+    expect(bands.secondary.meanCostUsd).toBeGreaterThan(0);
+    const table = formatBandsTable(bands);
+    expect(table).toContain("| rubric mean | 4.0 | 3.0 |");
+    expect(table).toContain("| briefs | 1/1 | 1/1 |");
+    expect(table).not.toContain("lectrolysis");
   });
 
   test("rubricTotals: per-dimension means over the scored briefs, null when none scored", () => {

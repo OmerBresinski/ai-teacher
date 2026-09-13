@@ -43,15 +43,25 @@ export function deriveAgeBand(yearGroup: string | undefined): AgeBand | undefine
   const label = yearGroup.trim().toLowerCase();
   if (label === "") return undefined;
   if (/^(reception|nursery|eyfs|early years)/.test(label)) return "eyfs";
-  const match = /^(?:year|yr|y)\s*(\d{1,2})\b/.exec(label);
-  if (match === null) return undefined;
-  const year = Number(match[1]);
+  const year = yearNumberOf(yearGroup);
+  if (year === undefined) return undefined;
   if (year >= 1 && year <= 2) return "ks1";
   if (year >= 3 && year <= 6) return "ks2";
   if (year >= 7 && year <= 9) return "ks3";
   if (year >= 10 && year <= 11) return "ks4";
   if (year >= 12 && year <= 13) return "post16";
   return undefined;
+}
+
+/**
+ * The number in an England year-group label — "Year 9", "Y9", "yr 9" → 9; Reception, EYFS, blank,
+ * "Mixed" or a Scottish P-level → `undefined`. The one place the label is parsed; `deriveAgeBand`
+ * and the Plan model routing (`AI_PLAN_FRONTIER_FROM_YEAR`, TEACH-259) both read it.
+ */
+export function yearNumberOf(yearGroup: string | undefined): number | undefined {
+  if (yearGroup === undefined) return undefined;
+  const match = /^(?:year|yr|y)\s*(\d{1,2})\b/.exec(yearGroup.trim().toLowerCase());
+  return match === null ? undefined : Number(match[1]);
 }
 
 /**

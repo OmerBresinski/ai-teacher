@@ -36,14 +36,16 @@ export async function runVerify(
   facts: LessonFacts,
   briefInput: { topic: string; audience: Audience },
   deps: PipelineDeps,
+  /** Plan's class for this lesson (`planClassFor`, TEACH-259): Verify runs where the facts were written. */
+  cls: "frontier" | "standard",
 ): Promise<VerifyResult> {
-  deps.logger.info({ stage: "plan", call: "verify" }, "plan call");
+  deps.logger.info({ stage: "plan", call: "verify", cls }, "plan call");
   const startedAt = Date.now();
   try {
     const call = await callStructured({
       deps,
       stage: "plan",
-      cls: "standard",
+      cls,
       effort: "high",
       prompt: verifyFactsPrompt,
       input: { audience: briefInput.audience, topic: briefInput.topic, facts },
