@@ -168,15 +168,7 @@
   outline: 3px solid #526b48;
   outline-offset: 4px;
 }
-.hm-brief-status:empty {
-  display: none;
-}
-.hm-brief-status,
-.hm-brief noscript p {
-  margin: 17px 0 0;
-  font-size: 15px;
-  line-height: 1.45;
-}
+
 .hm-hero-pause {
   display: block;
   margin: 8px auto 0;
@@ -217,9 +209,7 @@
     max-width: 640px;
     font-size: 21px;
   }
-  .hm-hero-wide {
-    display: none;
-  }
+
   .hm-hero-stage {
     margin-top: 35px;
     padding: 101px 0 100px;
@@ -284,9 +274,7 @@
     margin-top: 17px;
     max-width: 350px;
   }
-  .hm-hero-wide {
-    display: none;
-  }
+
   .hm-hero-stage {
     width: min(540px, 100%);
     margin-top: 25px;
