@@ -191,4 +191,35 @@ describe("watch lists cover the transitive @tj/* closure (from the manifests)", 
       expect(p).not.toMatch(/^(docs|apps\/web|packages\/ui|packages\/api-client|packages\/editor)/);
     }
   });
+
+  /**
+   * Railway reads `watchPatterns` from its stored service config, not from this repository: the
+   * computed list only reaches production through `railway config apply`. This pin is the list
+   * that was applied last; when the closure grows (a new `@tj/*` runtime dependency) this test
+   * fails in CI until someone runs `railway config plan && railway config apply` and updates the
+   * pin, so the live filter can never silently lag the manifests.
+   */
+  test("image: the computed watch list is the one applied to Railway (2026-09-13)", () => {
+    const APPLIED_IMAGE_WATCH = [
+      "Dockerfile",
+      ".dockerignore",
+      "infra/docker/**",
+      ".railway/**",
+      "package.json",
+      "bun.lock",
+      "bunfig.toml",
+      "turbo.json",
+      "packages/ai/**",
+      "packages/config/**",
+      "packages/db/**",
+      "packages/domain/**",
+      "packages/extract/**",
+      "packages/images/**",
+      "packages/jobs/**",
+      "packages/storage/**",
+      "packages/generation/**",
+      "packages/slides/**",
+    ];
+    expect(IMAGE_WATCH).toEqual(APPLIED_IMAGE_WATCH);
+  });
 });
