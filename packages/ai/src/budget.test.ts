@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createBudget } from "./budget";
 import { DEFAULT_MODEL_IDS } from "./create-ai";
-import { PRICES } from "./prices";
+import { costUsd, PRICES } from "./prices";
 
 const STANDARD = DEFAULT_MODEL_IDS.standard;
 const price = PRICES[STANDARD];
@@ -120,6 +120,102 @@ describe("createBudget", () => {
       outputTokens: 0,
       cachedInputTokens: 1_000_000,
     });
-    expect(budget.totals().costUsd).toBeCloseTo(price.cachedInputPerMTok, 12);
+    expect(budget.totals().costUsd).toBeCloseTo(price.longContext?.cachedInputPerMTok ?? 0, 12);
+  });
+});
+
+describe("atomic reservations", () => {
+  const estimate = { inputTokens: 1000, outputTokens: 100 };
+  const reserve = (budget: ReturnType<typeof createBudget>, modelId: string = STANDARD) => {
+    const result = budget.reserve(modelId, estimate);
+    if (!("reservation" in result)) throw new Error("expected admission");
+    return result.reservation;
+  };
+
+  test("one-call allowance admits one of four competitors, then releases only unused estimate", () => {
+    const capUsd = costUsd(STANDARD, estimate) as number;
+    const budget = createBudget({ capUsd, capTokens: 100_000 });
+    const token = reserve(budget);
+    for (let i = 0; i < 3; i++) expect(budget.reserve(STANDARD, estimate)).toEqual({ by: "usd" });
+    expect(budget.totals()).toMatchObject({
+      calls: 0,
+      reserved: { calls: 1, ...estimate, costUsd: capUsd },
+    });
+    expect(budget.remaining().usd).toBe(0);
+    expect(budget.settle(token, { inputTokens: 100, outputTokens: 10 })).toBe(true);
+    expect(budget.totals()).not.toHaveProperty("reserved");
+    expect(budget.totals().calls).toBe(1);
+    expect(budget.remaining().usd).toBeCloseTo(capUsd * 0.9, 12);
+    expect(budget.settle(token, estimate)).toBe(false);
+    budget.markUncertain(token);
+    expect(budget.totals().calls).toBe(1);
+  });
+
+  test("zero and seeded exhausted budgets deny admission", () => {
+    expect(createBudget({ capUsd: 0, capTokens: 1000 }).reserve(STANDARD, estimate)).toEqual({
+      by: "usd",
+    });
+    const budget = createBudget(
+      { capUsd: 0.5, capTokens: 1000 },
+      { spent: { calls: 1, inputTokens: 1, outputTokens: 1, costUsd: 0.5 } },
+    );
+    expect(budget.reserve(STANDARD, estimate)).toEqual({ by: "usd" });
+  });
+
+  test("uncertain usage remains held, late complete usage settles once, foreign tokens cannot", () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
+    const other = createBudget({ capUsd: 1, capTokens: 100_000 });
+    const token = reserve(budget);
+    const before = budget.remaining();
+    budget.markUncertain(token);
+    budget.markUncertain(token);
+    expect(budget.remaining()).toEqual(before);
+    expect(budget.totals()).toMatchObject({ calls: 0, uncertain: { calls: 1, ...estimate } });
+    expect(other.settle(token, estimate)).toBe(false);
+    expect(budget.settle(token, estimate)).toBe(true);
+    expect(budget.settle(token, estimate)).toBe(false);
+    expect(budget.totals()).not.toHaveProperty("uncertain");
+    expect(budget.totals().calls).toBe(1);
+  });
+
+  test("unpriced reservations switch to token admission before dispatch and retain prior usage", () => {
+    const budget = createBudget(
+      { capUsd: 1, capTokens: 1200 },
+      { spent: { calls: 1, inputTokens: 100, outputTokens: 0, costUsd: 0.2 } },
+    );
+    const token = reserve(budget, "unpriced");
+    expect(budget.remaining()).toEqual({ usd: null, tokens: 0 });
+    expect(budget.reserve(STANDARD, estimate)).toEqual({ by: "tokens" });
+    expect(budget.totals().costUsd).toBe(0.2);
+    budget.markUncertain(token);
+    const resumed = createBudget({ capUsd: 1, capTokens: 1200 }, { spent: budget.totals() });
+    expect(resumed.reserve(STANDARD, estimate)).toEqual({ by: "tokens" });
+  });
+
+  test("resume preserves exact confirmed USD and converts pending estimates to uncertainty", () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
+    reserve(budget);
+    budget.markUncertain(reserve(budget));
+    const prior = { ...budget.totals(), costUsd: 0.07123456 };
+    const resumed = createBudget({ capUsd: 1, capTokens: 100_000 }, { spent: prior });
+    expect(resumed.totals().costUsd).toBe(prior.costUsd);
+    expect(resumed.totals()).not.toHaveProperty("reserved");
+    expect(resumed.totals().uncertain?.calls).toBe(2);
+    expect(resumed.remaining().usd).toBeCloseTo(
+      1 - prior.costUsd - 2 * (costUsd(STANDARD, estimate) as number),
+      12,
+    );
+    expect(prior.reserved?.calls).toBe(1);
+  });
+
+  test("invalid usage never frees a reservation; actual overages are not clamped", () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
+    const token = reserve(budget);
+    expect(budget.settle(token, { inputTokens: Number.NaN, outputTokens: 1 })).toBe(false);
+    expect(budget.totals().uncertain?.calls).toBe(1);
+    expect(() => budget.reserve(STANDARD, { inputTokens: -1, outputTokens: 1 })).toThrow();
+    expect(budget.settle(token, { inputTokens: 1_000_000, outputTokens: 0 })).toBe(true);
+    expect(budget.exceeded()).toEqual({ by: "usd" });
+    expect(budget.totals().inputTokens).toBe(1_000_000);
   });
 });

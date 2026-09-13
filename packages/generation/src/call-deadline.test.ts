@@ -33,6 +33,7 @@ test("two hung attempts are bounded, abort their provider signals and log no con
   expect(performance.now() - started).toBeLessThan(1000);
   expect(ai.calls).toHaveLength(2);
   expect(ai.calls.every((call) => call.abortSignal?.aborted)).toBe(true);
+  expect(deps.budget.totals()).toMatchObject({ calls: 0, uncertain: { calls: 2 } });
   expect(deps.signal.aborted).toBe(false);
   expect(lines.map((line) => JSON.parse(line))).toEqual([
     expect.objectContaining({ msg: "model call timed out", stage: "generate", timeoutMs: 50 }),
@@ -78,6 +79,7 @@ test("cancellation during a hung attempt is not retried or reported as timeout",
   await expect(run(deps)).rejects.toMatchObject({ name: "AbortError" });
   expect(ai.calls).toHaveLength(1);
   expect(lines).toEqual([]);
+  expect(deps.budget.totals().uncertain?.calls).toBe(1);
 });
 
 test("the budget gate still applies before a timeout retry", async () => {
@@ -95,16 +97,18 @@ test("the budget gate still applies before a timeout retry", async () => {
   expect(ai.calls).toHaveLength(1);
 });
 
-test("late provider success cannot overwrite the retry or charge the budget again", async () => {
+test("late provider success reconciles uncertain usage once without overwriting the retry", async () => {
   const late = Promise.withResolvers<string>();
   const ai = createFakeAi({ script: [() => late.promise, good] });
   const deps = recordingDeps(ai);
   const result = await run(deps);
   const totals = deps.budget.totals();
+  expect(totals).toMatchObject({ calls: 1, uncertain: { calls: 1 } });
   late.resolve(JSON.stringify({ answer: "late" }));
   await Bun.sleep(20);
   expect(result.output).toEqual({ answer: "ok" });
-  expect(deps.budget.totals()).toEqual(totals);
+  expect(deps.budget.totals()).toMatchObject({ calls: 2, inputTokens: 2, outputTokens: 2 });
+  expect(deps.budget.totals()).not.toHaveProperty("uncertain");
 });
 
 test("each registered prompt uses its stage-specific deadline across version bumps", () => {

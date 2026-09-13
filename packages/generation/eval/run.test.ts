@@ -46,7 +46,7 @@ describe("eval:paid", () => {
 
   test("a tiny shared cap stops the loop after the first brief and records stoppedBy", async () => {
     const briefs = evalBriefs().slice(0, 3);
-    // The fake charges 1000/400 tokens per call on priced model ids: a cent is gone after one brief.
+    // The input check fits; the next call cannot reserve its maximum, so the loop must stop.
     const budget = createBudget({ capUsd: 0.01, capTokens: 10_000_000 });
     const rows = await runPaidEval(scriptedPipelineAi(), budget, briefs);
     expect(rows.length).toBeLessThan(briefs.length);
@@ -54,7 +54,8 @@ describe("eval:paid", () => {
     expect(totals.stoppedBy).toBe("usd");
     expect(totals.briefs).toBe(3);
     expect(totals.completed + totals.failed).toBe(rows.length);
-    expect(totals.costUsd).toBeGreaterThan(0.01);
+    expect(totals.costUsd).toBeLessThanOrEqual(0.01);
+    expect(totals.costUsd).toBeGreaterThan(0);
   });
 
   test("the paid loop judges each brief: one extra frontier call, judge cost split out, rubric means in the totals", async () => {

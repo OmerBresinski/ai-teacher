@@ -240,6 +240,22 @@ export interface RecordedDeps extends PipelineDeps {
   abort: AbortController;
 }
 
+/** Stage-control tests refuse the N+1st reservation deterministically; @tj/ai tests real USD races. */
+export function callLimitedBudget(maxCalls: number): Budget {
+  const real = createBudget({ capUsd: 1000, capTokens: 100_000_000 });
+  let admitted = 0;
+  return {
+    ...real,
+    reserve(modelId, estimate) {
+      if (admitted >= maxCalls) return { by: "usd" };
+      const result = real.reserve(modelId, estimate);
+      if ("reservation" in result) admitted++;
+      return result;
+    },
+    exceeded: () => (admitted >= maxCalls ? { by: "usd" } : real.exceeded()),
+  };
+}
+
 /** `PipelineDeps` over a fake with a recording `persist` / `onProgress` and a counting `ids`. */
 export function recordingDeps(
   ai: FakeAi,

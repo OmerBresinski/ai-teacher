@@ -1,13 +1,14 @@
 /*
  * Static list prices per model id (ADR 0025 §15). Data only: `costUsd` is the one function.
  *
- * Source: the models.dev registry's Bedrock entries (https://models.dev, `us.openai.gpt-5.6-*`),
+ * Short-context source: the models.dev registry's Bedrock entries (https://models.dev, `us.openai.gpt-5.6-*`),
  * read on 2026-09-09 (TEACH-205 for Luna, TEACH-208 for Terra and Sol), cross-checked against the
  * Bedrock pricing page (https://aws.amazon.com/bedrock/pricing/, OpenAI models, US East) — that
  * page renders its table client-side and the public Price List API does not carry these models,
  * so there is no machine-readable AWS source. One row per `DEFAULT_MODEL_IDS` entry in
  * `create-ai.ts`. A configured model id with no row here is unpriced: `costUsd` returns `null`
- * and the budget falls back to its token cap. A price change is a data edit here and nowhere else.
+ * and the budget falls back to its token cap. Long-context and cache-write rows verified against
+ * the AWS model cards on 2026-09-13 (links in ADR 0025's TEACH-280 amendment).
  */
 
 export interface ModelPrice {
@@ -17,14 +18,58 @@ export interface ModelPrice {
   outputPerMTok: number;
   /** USD per million input tokens served from the prompt cache. */
   cachedInputPerMTok: number;
+  cacheWriteInputPerMTok?: number;
+  longContext?: {
+    aboveInputTokens: number;
+    inputPerMTok: number;
+    outputPerMTok: number;
+    cachedInputPerMTok: number;
+    cacheWriteInputPerMTok: number;
+  };
 }
 
 // Keys are the `DEFAULT_MODEL_IDS` values; `prices.test.ts` pins that they match, and this file
 // stays import-free so `logging-middleware.ts` can read it without a cycle through `create-ai.ts`.
 export const PRICES: Record<string, ModelPrice> = {
-  "us.openai.gpt-5.6-luna": { inputPerMTok: 0.22, outputPerMTok: 1.32, cachedInputPerMTok: 0.022 },
-  "us.openai.gpt-5.6-terra": { inputPerMTok: 2.2, outputPerMTok: 13.2, cachedInputPerMTok: 0.22 },
-  "us.openai.gpt-5.6-sol": { inputPerMTok: 4.4, outputPerMTok: 22, cachedInputPerMTok: 0.44 },
+  "us.openai.gpt-5.6-luna": {
+    inputPerMTok: 0.22,
+    outputPerMTok: 1.32,
+    cachedInputPerMTok: 0.022,
+    cacheWriteInputPerMTok: 0.275,
+    longContext: {
+      aboveInputTokens: 272_000,
+      inputPerMTok: 0.44,
+      outputPerMTok: 1.98,
+      cachedInputPerMTok: 0.044,
+      cacheWriteInputPerMTok: 0.55,
+    },
+  },
+  "us.openai.gpt-5.6-terra": {
+    inputPerMTok: 2.2,
+    outputPerMTok: 13.2,
+    cachedInputPerMTok: 0.22,
+    cacheWriteInputPerMTok: 2.75,
+    longContext: {
+      aboveInputTokens: 272_000,
+      inputPerMTok: 4.4,
+      outputPerMTok: 19.8,
+      cachedInputPerMTok: 0.44,
+      cacheWriteInputPerMTok: 5.5,
+    },
+  },
+  "us.openai.gpt-5.6-sol": {
+    inputPerMTok: 4.4,
+    outputPerMTok: 22,
+    cachedInputPerMTok: 0.44,
+    cacheWriteInputPerMTok: 5.5,
+    longContext: {
+      aboveInputTokens: 272_000,
+      inputPerMTok: 8.8,
+      outputPerMTok: 33,
+      cachedInputPerMTok: 0.88,
+      cacheWriteInputPerMTok: 11,
+    },
+  },
 };
 
 export interface TokenUsage {
@@ -33,6 +78,7 @@ export interface TokenUsage {
   outputTokens: number;
   /** The part of `inputTokens` served from the prompt cache. */
   cachedInputTokens?: number | undefined;
+  cacheWriteInputTokens?: number | undefined;
 }
 
 /** The row for a model id, or `undefined`. Own properties only: `"toString"` is not a model. */
@@ -47,13 +93,17 @@ export function isPriced(modelId: string): boolean {
 
 /** USD for one call, or `null` when the model id is unpriced. */
 export function costUsd(modelId: string, usage: TokenUsage): number | null {
-  const price = priceOf(modelId);
-  if (!price) return null;
+  const row = priceOf(modelId);
+  if (!row) return null;
+  const price =
+    row.longContext && usage.inputTokens > row.longContext.aboveInputTokens ? row.longContext : row;
   const cached = Math.min(usage.cachedInputTokens ?? 0, usage.inputTokens);
-  const uncached = usage.inputTokens - cached;
+  const written = Math.min(usage.cacheWriteInputTokens ?? 0, usage.inputTokens - cached);
+  const uncached = usage.inputTokens - cached - written;
   return (
     (uncached * price.inputPerMTok +
       cached * price.cachedInputPerMTok +
+      written * (price.cacheWriteInputPerMTok ?? price.inputPerMTok) +
       usage.outputTokens * price.outputPerMTok) /
     1_000_000
   );

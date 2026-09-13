@@ -14,7 +14,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { type Budget, type CreatedAi, createAi, createBudget } from "@tj/ai";
+import { type Budget, type BudgetUsage, type CreatedAi, createAi, createBudget } from "@tj/ai";
 import { z } from "zod";
 import type { PhotoPlacer } from "../src";
 import { type EvalBrief, evalBriefs, isSecondaryBrief } from "./briefs";
@@ -63,6 +63,8 @@ export interface EvalTotals {
   outputTokens: number;
   /** The whole budget's spend, judge included; `null` when any priced call was on an unpriced id. */
   costUsd: number | null;
+  reserved?: BudgetUsage;
+  uncertain?: BudgetUsage;
   /** The rubric judge's share of `costUsd` (every attempt, paid or not for a score); `null` when it never ran on a priced id. */
   judgeCostUsd: number | null;
   findings: { error: number; warning: number; specRule: number };
@@ -180,7 +182,7 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
     findings.warning += b.findings.warning;
     findings.specRule += b.findings.specRule ?? 0;
   }
-  const exceeded = budget.exceeded();
+  const exceeded = budget.exceeded() ?? budget.lastRefusal();
   const judged = completed
     .map((b) => b.judge?.costUsd ?? null)
     .filter((c): c is number => c !== null);
@@ -201,6 +203,8 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
     inputTokens: totals.inputTokens,
     outputTokens: totals.outputTokens,
     costUsd: totals.costUsd,
+    ...(totals.reserved ? { reserved: totals.reserved } : {}),
+    ...(totals.uncertain ? { uncertain: totals.uncertain } : {}),
     judgeCostUsd:
       judged.length === 0 ? null : Math.round(judged.reduce((sum, c) => sum + c, 0) * 1e6) / 1e6,
     findings,
@@ -253,7 +257,7 @@ export async function runPaidEval(
 ): Promise<BriefResult[]> {
   const results: BriefResult[] = [];
   for (const brief of briefs) {
-    if (budget.exceeded()) break;
+    if (budget.exceeded() || budget.lastRefusal()) break;
     const run = await runBrief(brief, {
       ai,
       budget,

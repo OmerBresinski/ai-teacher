@@ -3,6 +3,8 @@ import { Writable } from "node:stream";
 import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { shapeIssue, slideSpecSchemaFor } from "@tj/slides";
+import { APICallError } from "ai";
+import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { z } from "zod";
 import { callStructured, imageMediaType, specRuleFinding } from "./call";
@@ -52,6 +54,67 @@ const call = (d: ReturnType<typeof deps>, input = "hi") =>
     schema,
     maxOutputTokens: 100,
   });
+
+test("concurrent structured calls reserve before dispatch and expose BudgetExceeded to stages", async () => {
+  const probeBudget = createBudget({ capUsd: 1, capTokens: 100_000 });
+  let cap: number | undefined;
+  const probe = createFakeAi({
+    fallback: () => {
+      cap = probeBudget.totals().reserved?.costUsd ?? undefined;
+      return JSON.stringify({ answer: "ok" });
+    },
+  });
+  await call(deps(probe, { budget: probeBudget }));
+  if (cap === undefined) throw new Error("provider was reached without a reservation");
+  const budget = createBudget({ capUsd: cap, capTokens: 100_000 });
+  const gate = Promise.withResolvers<string>();
+  const ai = createFakeAi({ fallback: () => gate.promise });
+  const shared = deps(ai, { budget });
+  const first = call(shared);
+  try {
+    const others = await Promise.allSettled(Array.from({ length: 3 }, () => call(shared)));
+    expect(ai.calls).toHaveLength(1);
+    for (const result of others) {
+      expect(result.status).toBe("rejected");
+      if (result.status === "rejected") expect(result.reason).toBeInstanceOf(BudgetExceeded);
+    }
+  } finally {
+    gate.resolve(JSON.stringify({ answer: "ok" }));
+  }
+  expect((await first).output).toEqual({ answer: "ok" });
+  expect(budget.totals().calls).toBe(1);
+});
+
+test("zero budget dispatches no provider call", async () => {
+  const ai = createFakeAi({ text: JSON.stringify({ answer: "unused" }) });
+  await expect(
+    call(deps(ai, { budget: createBudget({ capUsd: 0, capTokens: 100_000 }) })),
+  ).rejects.toBeInstanceOf(BudgetExceeded);
+  expect(ai.calls).toHaveLength(0);
+});
+
+test("retryable provider faults are one reserved dispatch, not hidden SDK transport retries", async () => {
+  const ai = createFakeAi();
+  let calls = 0;
+  const error = new APICallError({
+    message: "synthetic transient failure",
+    url: "https://fake.invalid",
+    requestBodyValues: {},
+    statusCode: 503,
+    isRetryable: true,
+  });
+  ai.model = () =>
+    new MockLanguageModelV4({
+      doGenerate: async () => {
+        calls++;
+        throw error;
+      },
+    });
+  const d = deps(ai);
+  await expect(call(d)).rejects.toBe(error);
+  expect(calls).toBe(1);
+  expect(d.budget.totals()).toMatchObject({ calls: 0, uncertain: { calls: 1 } });
+});
 
 /** A list field, for the Bedrock "list as a string" quirk (`repair-json.ts`). */
 const listSchema = z.strictObject({ items: z.array(z.string()).max(4) });

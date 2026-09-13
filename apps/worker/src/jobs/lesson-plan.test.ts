@@ -1,7 +1,13 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { costUsd, createAi, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi, type FakeAi } from "@tj/ai/testing";
-import { createDocument, deleteDocument, forWorkspace, getDocument } from "@tj/db";
+import {
+  createDocument,
+  deleteDocument,
+  forWorkspace,
+  getDocument,
+  putDocumentAsJob,
+} from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, type LessonId, newId, storageKey, type WorkspaceId } from "@tj/domain";
 import {
@@ -362,33 +368,56 @@ describeDb("lesson.plan job", () => {
     expect(worksheetRow?.generatingJobId).toBeNull();
   });
 
-  test("a resumed Lesson already at its USD cap dispatches no model call", async () => {
-    const jobId = newId<JobId>();
-    const lessonId = await briefLesson(jobId);
-    const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2 + 1;
-    const first = createFakeAi({
-      script: routed(
-        pipelineScript({
-          overrides: {
-            [evaluateIndex]: () => {
-              throw new Error("synthetic provider outage");
+  test.each(["confirmed", "uncertain", "reserved"] as const)(
+    "a resumed Lesson at its USD cap including %s usage dispatches no model call",
+    async (kind) => {
+      const jobId = newId<JobId>();
+      const lessonId = await briefLesson(jobId);
+      const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2 + 1;
+      const first = createFakeAi({
+        script: routed(
+          pipelineScript({
+            overrides: {
+              [evaluateIndex]: () => {
+                throw new Error("synthetic provider outage");
+              },
             },
-          },
-        }),
-      ),
-    });
-    await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(first)).ctx)).rejects.toThrow();
-    const prior = (await storedLesson(lessonId)).generation?.usage;
-    if (!prior || prior.costUsd === null) throw new Error("Missing checkpoint usage");
-    const resumed = createFakeAi({ error: new Error("No model should be dispatched") });
-    await lessonPlanJob(
-      ctx(jobId, lessonId, depsWith(resumed, { capUsd: prior.costUsd, capTokens: 1_000_000 })).ctx,
-    );
-    expect(resumed.calls).toHaveLength(0);
-    const done = await storedLesson(lessonId);
-    expect(done.generation?.usage).toEqual(prior);
-    expect(done.generation?.findings.some((finding) => finding.check === "budget")).toBe(true);
-  });
+          }),
+        ),
+      });
+      await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(first)).ctx)).rejects.toThrow();
+      const checkpoint = await storedLesson(lessonId);
+      let prior = checkpoint.generation?.usage;
+      if (!prior || prior.costUsd === null) throw new Error("Missing checkpoint usage");
+      let capUsd = prior.costUsd;
+      if (kind !== "confirmed") {
+        const held = { calls: 1, inputTokens: 5000, outputTokens: 100, costUsd: 0.5 };
+        prior = { ...prior, [kind]: held };
+        if (!checkpoint.generation) throw new Error("Missing checkpoint");
+        const written = await putDocumentAsJob(
+          ws(),
+          lessonId,
+          { ...checkpoint, generation: { ...checkpoint.generation, usage: prior } },
+          jobId,
+        );
+        expect(written.status).toBe("ok");
+        capUsd += held.costUsd;
+        // Reservations from a dead attempt become uncertain on resume, never free capacity.
+        if (kind === "reserved") {
+          const { reserved: _reserved, ...known } = prior;
+          prior = { ...known, uncertain: held };
+        }
+      }
+      const resumed = createFakeAi({ error: new Error("No model should be dispatched") });
+      await lessonPlanJob(
+        ctx(jobId, lessonId, depsWith(resumed, { capUsd, capTokens: 1_000_000 })).ctx,
+      );
+      expect(resumed.calls).toHaveLength(0);
+      const done = await storedLesson(lessonId);
+      expect(done.generation?.usage).toEqual(prior);
+      expect(done.generation?.findings.some((finding) => finding.check === "budget")).toBe(true);
+    },
+  );
 
   test("an unconfigured provider is a NonRetryableError and releases the lock", async () => {
     const jobId = newId<JobId>();
@@ -502,24 +531,23 @@ describeDb("lesson.plan job", () => {
     expect((await getDocument(ws(), lessonId))?.generatingJobId).toBeNull();
   });
 
-  test("a tiny cost cap completes with a budget finding after at most three calls", async () => {
+  test("a pre-skeleton reservation refusal retains the title and releases the lock without retry", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
     const ai = scriptedPipelineAi();
 
-    // Derived from the price table, not hard-coded dollars: the cap admits the input check
-    // (`small`) and Plan's skeleton call (`standard`) and refuses the facts call, which Plan
-    // records as a finding. The budget is checked before each call, so anything between one and
-    // two standard calls' spend (plus the small one) refuses the second.
+    // This once overshot the cap on the skeleton call. Admission now refuses that call instead.
     const fakeUsage = { inputTokens: 1000, outputTokens: 400 };
     const callUsd = (cls: "small" | "standard") => costUsd(DEFAULT_MODEL_IDS[cls], fakeUsage) ?? 0;
     const capUsd = callUsd("small") + callUsd("standard") / 2;
-    await lessonPlanJob(ctx(jobId, lessonId, depsWith(ai, { capUsd, capTokens: 1_000_000 })).ctx);
+    await expect(
+      lessonPlanJob(ctx(jobId, lessonId, depsWith(ai, { capUsd, capTokens: 1_000_000 })).ctx),
+    ).rejects.toBeInstanceOf(NonRetryableError);
 
-    expect(ai.calls.length).toBeLessThanOrEqual(3);
+    expect(ai.calls).toHaveLength(1);
     const lesson = await storedLesson(lessonId);
-    expect(lesson.generation?.stage).toBe("repaired");
-    expect(lesson.generation?.findings.some((f) => f.check === "budget")).toBe(true);
+    expect(lesson.generation).toBeUndefined();
+    expect(lesson.slides).toHaveLength(1);
     expect((await getDocument(ws(), lessonId))?.generatingJobId).toBeNull();
   });
 

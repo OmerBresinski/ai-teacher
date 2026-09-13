@@ -7,7 +7,8 @@ export class CallTimeout extends Error {
 
 /**
  * Bound one attempt, including a provider that never settles after abort. The same signal aborts
- * the actual request; a late response cannot reach the caller's budget charge or persistence.
+ * the actual request; late content cannot reach the caller or persistence. The provider middleware
+ * may still reconcile its retained uncertain reservation with late complete usage (TEACH-280).
  */
 export async function withCallDeadline<T>(
   signal: AbortSignal,

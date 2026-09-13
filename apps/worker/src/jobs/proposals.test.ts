@@ -6,7 +6,6 @@ import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, JobResultSchema, type LessonId, newId, type WorkspaceId } from "@tj/domain";
 import type { Lesson, SlideElement } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
-import { PROPOSE_CONCURRENCY } from "@tj/generation";
 import { FIXTURES } from "@tj/generation/testing";
 import { NonRetryableError } from "@tj/jobs";
 import { materialiseSlide } from "@tj/slides";
@@ -261,10 +260,8 @@ describeDb("lesson.cascade / lesson.regenerate jobs", () => {
       }).ctx as never,
     );
     expect(result).toBeDefined();
-    // Up to `PROPOSE_CONCURRENCY` calls are in flight before the first charge lands, plus one
-    // that passed the check just before; the rest are refused.
-    expect(ai.calls.length).toBeLessThanOrEqual(PROPOSE_CONCURRENCY + 1);
-    expect(ai.calls.length).toBeLessThan(8);
-    expect(result?.proposals.length).toBeGreaterThan(0);
+    // This allowance cannot fund even one reservation; concurrent calls cannot overspend it.
+    expect(ai.calls).toHaveLength(0);
+    expect(result?.proposals).toHaveLength(0);
   });
 });

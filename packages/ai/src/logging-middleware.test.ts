@@ -96,7 +96,7 @@ describe("AI logging middleware", () => {
       ...context,
       class: "small",
       modelId: DEFAULT_MODEL_IDS.small,
-      costUsd: PRICES[DEFAULT_MODEL_IDS.small]?.inputPerMTok,
+      costUsd: PRICES[DEFAULT_MODEL_IDS.small]?.longContext?.inputPerMTok,
     });
     expect(JSON.stringify(record)).not.toContain(prompt);
   });

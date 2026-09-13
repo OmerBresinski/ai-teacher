@@ -15,6 +15,7 @@ import {
   type Worksheet,
 } from "@tj/domain/documents";
 import {
+  BudgetExceeded,
   InputRejected,
   type PipelineDeps,
   type PipelineInput,
@@ -113,6 +114,11 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
       if (signal.aborted) {
         keepLocksForRetry = signal.reason === "shutdown";
         return;
+      }
+      // Before a skeleton exists there is no certified checkpoint to finish as a partial Lesson.
+      // Keep the title already persisted, release its lock and avoid repeating an unaffordable call.
+      if (error instanceof BudgetExceeded) {
+        throw new NonRetryableError(error.message, { cause: error });
       }
       if (isAiError(error, "unconfigured") || isAiError(error, "invalid_model")) {
         throw new NonRetryableError(error.message, { cause: error });

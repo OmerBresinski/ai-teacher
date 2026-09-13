@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
+import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { parseLesson, parseWorksheet } from "@tj/domain/documents";
 import type { StoredPhoto } from "@tj/images";
@@ -10,6 +10,7 @@ import { slideText } from "./stages/shared";
 import {
   answeringAi,
   CHECK_INPUT_CALLS,
+  callLimitedBudget,
   FIXTURES,
   memoryLogger,
   miss,
@@ -28,10 +29,6 @@ import { resumeFrom, runLessonPipeline } from "./workflow";
 
 const TOTAL_SLIDES = FIXTURES.planSkeleton.outline.length; // 11
 const GENERATED_SLIDES = TOTAL_SLIDES - 2; // 9
-/** What one fake call (1 000 in / 400 out) costs on a class at the current list price. */
-function callUsd(cls: "small" | "standard"): number {
-  return costUsd(DEFAULT_MODEL_IDS[cls], { inputTokens: 1000, outputTokens: 400 }) ?? 0;
-}
 /** Plan persists three times: the title slide, the skeleton, the planned checkpoint. */
 const PLAN_PERSISTS = 3;
 /** Script index of the first slide answer: after the input check and Plan's two answers. */
@@ -40,6 +37,19 @@ const ALL_STAGES = ["check-input", "plan", "generate", "illustrate", "evaluate",
 const PLANNED_VERSION = `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}+${PROMPT_VERSIONS["verify-facts"]}`;
 
 describe("runLessonPipeline", () => {
+  test("the fixture still completes inside the default admission cap without a budget finding", async () => {
+    const budget = createBudget({ capUsd: 0.5, capTokens: 300_000 });
+    const result = await runLessonPipeline(
+      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
+      recordingDeps(scriptedPipelineAi(), { budget }),
+    );
+    expect(result.lesson.slides).toHaveLength(TOTAL_SLIDES);
+    expect(result.lesson.generation?.stage).toBe("repaired");
+    expect(result.lesson.generation?.findings.some((f) => f.check === "budget")).toBe(false);
+    expect(budget.totals()).not.toHaveProperty("reserved");
+    expect(budget.totals()).not.toHaveProperty("uncertain");
+  });
+
   test("raw persistence errors bypass Mastra diagnostics but retain identity for retry decisions", async () => {
     const marker = "PRIVATE_WORKFLOW_282";
     const original = Object.assign(new Error(marker), {
@@ -169,6 +179,7 @@ describe("runLessonPipeline", () => {
     const { lines, logger } = memoryLogger();
     const deps = recordingDeps(ai, {
       logger,
+      budget: createBudget({ capUsd: 0.5, capTokens: 300_000 }),
       images: {
         search: async () => [photo],
         store: async () => stored,
@@ -419,15 +430,9 @@ describe("runLessonPipeline", () => {
     expect(deps.persisted.at(-1)?.lesson.slides).toHaveLength(5);
   });
 
-  // Derived from the price table rather than hard-coded dollars (a model change must not silently
-  // retune these): the cap admits the input check (`small`) and Plan's skeleton call
-  // (`standard`), then refuses the facts call — the budget is checked *before* each call, so a
-  // cap between one and two standard calls' spend refuses the second.
-  const TINY_CAP = { capUsd: callUsd("small") + callUsd("standard") / 2, capTokens: 1_000_000 };
-
-  test("a tiny USD cap stops after Plan's skeleton call, records one budget finding and still completes", async () => {
+  test("a reservation refusal after Plan's skeleton records one budget finding and still completes", async () => {
     const ai = scriptedPipelineAi();
-    const deps = recordingDeps(ai, { budget: createBudget(TINY_CAP) });
+    const deps = recordingDeps(ai, { budget: callLimitedBudget(CHECK_INPUT_CALLS + 1) });
     const { lesson } = await runLessonPipeline(
       { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
       deps,
@@ -588,7 +593,7 @@ describe("runLessonPipeline", () => {
     const ai = scriptedPipelineAi();
     const deps = recordingDeps(ai, {
       logger,
-      budget: createBudget(TINY_CAP),
+      budget: callLimitedBudget(CHECK_INPUT_CALLS + 1),
       abortAfterPersist: PLAN_PERSISTS,
     });
     await runLessonPipeline(
