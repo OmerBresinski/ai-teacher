@@ -149,6 +149,30 @@ than 2 KB):
 | Date | Initial load (gz) | After |
 | --- | --- | --- |
 | 2026-09-06 | 176.6 KB | library shell, cards, dialogs, series detail (TEACH-89 → 94) |
+| 2026-09-13 | 193.9 KB | editor port complete (TEACH-96 → 113) |
+
+### Route chunk budgets (ADR 0022 §8, TEACH-113)
+
+The same script also holds a ceiling per editor route (`BUNDLE_CHUNK_BUDGETS`): the gzipped JS +
+CSS the route's chunk adds over the initial load through its static imports (`dynamicImports` —
+the click-loaded exporters — are not the route's cost, and font files are assets, not code). Pinned
+at measured + 20% on 2026-09-13; a PR that deliberately moves one re-pins it here and in the
+script, with the new measurement. `--chunk <name>=<kb>` overrides a ceiling for a scratch run
+(`bun run check:bundle-budget --chunk lesson-editor=10` must fail). The script also fails when a
+budgeted route is no longer in the manifest, so a renamed page cannot lose its ceiling, and when an
+exporter library is reached through a static import (ADR 0023 §4). The two checks back each other
+up: a static `import "pptxgenjs"` from one module is *folded into* that route's chunk by Rolldown
+(no separate manifest key for the leak check to see), and the ceiling is what catches it — verified
+on 2026-09-13, `lesson-editor` went to 321.1 KB and the check failed.
+
+| Chunk | Route | Measured (gz) | Ceiling |
+| ----- | ----- | ------------- | ------- |
+| `lesson-editor` | `/l/:id` | 200.9 KB | 241 KB |
+| `lesson-present` | `/l/:id/present` | 90.9 KB | 109 KB |
+| `lesson-view` | `/l/:id/view` | 75.8 KB | 91 KB |
+| `lesson-print` | `/l/:id/print` | 42.4 KB | 51 KB |
+| `worksheet-editor` | `/w/:id` | 155.5 KB | 187 KB |
+| `worksheet-print` | `/w/:id/print` | 30.2 KB | 36 KB |
 
 ## Deploy (Vercel, ADR 0010)
 

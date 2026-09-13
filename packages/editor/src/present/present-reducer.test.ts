@@ -122,4 +122,22 @@ describe("presentReducer", () => {
     const s = run(deck(), { type: "next" }, { type: "setNotesOpen", open: true });
     expect(presentReducer(s, { type: "reset", at: 42 })).toEqual(initialPresentState(42));
   });
+
+  // TeachDeck `present-store.test.ts` "pill collapse": the collapsed pill is not a panel.
+  test("the collapsed pill is not a panel: Escape closes the overview, not the pill; reset expands it", () => {
+    expect(initialPresentState(0).pillCollapsed).toBe(false);
+    let s = run(
+      deck(),
+      { type: "setPillCollapsed", collapsed: true },
+      { type: "setOverviewOpen", open: true },
+    );
+    expect(s.pillCollapsed).toBe(true);
+    expect(panelToClose(s)).toBe("overview");
+    s = presentReducer(s, { type: "closePanels" });
+    expect(s.overviewOpen).toBe(false);
+    expect(s.pillCollapsed).toBe(true);
+    expect(panelToClose(s)).toBeNull();
+    expect(presentReducer(s, { type: "closePanels" })).toBe(s);
+    expect(presentReducer(s, { type: "reset", at: 0 }).pillCollapsed).toBe(false);
+  });
 });

@@ -137,6 +137,65 @@ test.describe("present mode", () => {
     await expect(readout).toHaveText(/00:5\d|0:5\d/);
   });
 
+  // TEACH-113: the remaining shortcut groups (Tools H/L, Screen C/F, Panels N/?) and the nested
+  // Escape order — sheet, then panel, then tool, then exit — over the real key handler.
+  test("H, L, C, N and ? each toggle their control; Escape closes the sheet, the panel, the tool, then exits", async ({
+    signedInPage: { page, paths },
+  }) => {
+    await page.goto(PRESENT(paths));
+    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(status(page)).toContainText("Slide 1 of");
+    const pressed = (name: string) =>
+      page.getByRole("button", { name, exact: true }).getAttribute("aria-pressed");
+
+    await page.keyboard.press("h");
+    expect(await pressed("Highlighter")).toBe("true");
+    await page.keyboard.press("l");
+    expect(await pressed("Laser pointer")).toBe("true");
+    expect(await pressed("Highlighter")).toBe("false"); // a tool and the laser are exclusive
+    await page.keyboard.press("l");
+    expect(await pressed("Laser pointer")).toBe("false");
+
+    // C collapses the pill to the counter; the tool buttons go with it, and C brings them back.
+    await page.keyboard.press("c");
+    await expect(page.getByRole("button", { name: "Expand controls" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Highlighter", exact: true })).toHaveCount(0);
+    await page.keyboard.press("c");
+    await expect(page.getByRole("button", { name: "Collapse controls" })).toBeVisible();
+
+    // F asks for fullscreen; headless Chromium refuses, and the deck is still on its slide.
+    await page.keyboard.press("f");
+    await expect(status(page)).toContainText("Slide 1 of");
+
+    // N opens the presenter notes with the next slide; ? the shortcuts sheet on top.
+    await page.keyboard.press("n");
+    const notes = page.getByRole("complementary", { name: "Presenter notes" });
+    await expect(notes).toBeVisible();
+    await expect(notes.getByText(/Next/)).toBeVisible();
+    await page.keyboard.press("h");
+    expect(await pressed("Highlighter")).toBe("true");
+    await page.keyboard.press("?");
+    const sheet = page.getByRole("dialog", { name: "Keyboard shortcuts" });
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toHaveClass(/tj-stage/);
+    for (const group of ["Moving", "Screen", "Tools", "Panels"]) {
+      await expect(sheet.getByRole("heading", { name: group })).toBeVisible();
+    }
+
+    // Nested Escape: the sheet, then the notes panel, then the highlighter, then the exit.
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(notes).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(notes).toBeHidden();
+    expect(await pressed("Highlighter")).toBe("true");
+    await page.keyboard.press("Escape");
+    expect(await pressed("Highlighter")).toBe("false");
+    await expect(page).toHaveURL(/present/);
+    await page.keyboard.press("Escape");
+    await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle")}$`));
+  });
+
   test("presenting from a series chains to the next lesson and exits to the series", async ({
     signedInPage: { page, paths },
   }) => {

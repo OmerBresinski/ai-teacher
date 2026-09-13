@@ -179,6 +179,42 @@ describe("WorksheetEditor", () => {
     expect(markB).toHaveAttribute("aria-pressed", "true");
   });
 
+  // TEACH-113: the answer-space family's toolbar (TeachDeck `BlockToolbar.tsx` answer-box / lines /
+  // word-bank sections) — each control is one committed write.
+  test("answer-space toolbars: box height and line count are spinbuttons; a word bank adds and removes words", () => {
+    const sheet = starterWorksheet("Spaces");
+    const box = { ...newBlock("answer-box"), id: "box" } as WorksheetBlock;
+    const lines = { ...newBlock("lines"), id: "lines" } as WorksheetBlock;
+    const bank = { ...newBlock("word-bank"), id: "bank" } as WorksheetBlock;
+    sheet.blocks = [...sheet.blocks, box, lines, bank];
+    const { container, read } = renderWorksheetEditor(sheet);
+    const at = (id: string) => read().blocks.find((b) => b.id === id);
+
+    select(container, "box");
+    const height = screen.getByRole("spinbutton", { name: "Height" });
+    fireEvent.focus(height);
+    fireEvent.change(height, { target: { value: "120" } });
+    fireEvent.blur(height);
+    expect(at("box")?.type === "answer-box" && at("box")?.heightPt).toBe(120);
+
+    select(container, "lines");
+    const count = screen.getByRole("spinbutton", { name: "Lines" });
+    fireEvent.focus(count);
+    fireEvent.change(count, { target: { value: "99" } });
+    fireEvent.blur(count);
+    expect(at("lines")?.type === "lines" && at("lines")?.count).toBe(30); // clamped
+
+    select(container, "bank");
+    const words = () => (at("bank")?.type === "word-bank" ? at("bank")?.words.length : -1);
+    const before = words();
+    fireEvent.click(screen.getByRole("button", { name: "Word", exact: true }));
+    expect(words()).toBe((before ?? 0) + 1);
+    fireEvent.click(screen.getByRole("button", { name: "Remove last word" }));
+    expect(words()).toBe(before);
+    undo();
+    expect(words()).toBe((before ?? 0) + 1);
+  });
+
   test("row 6: word-search size is clamped to 8–15 and the words come from the popover", async () => {
     const sheet = withBlocks([newBlock("word-search")]);
     const { container, read } = renderWorksheetEditor(sheet);

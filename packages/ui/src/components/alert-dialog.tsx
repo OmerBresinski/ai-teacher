@@ -1,6 +1,7 @@
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
 import type * as React from "react";
 import { cn } from "../lib/cn";
+import { useRestoreOpenerFocus } from "../lib/use-restore-opener-focus";
 import { Button } from "./button";
 
 /*
@@ -23,8 +24,13 @@ function AlertDialogTrigger({
 
 function AlertDialogContent({
   className,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+  // Same as `DialogContent`: a `ConfirmDialog` is controlled from whatever button asked the
+  // question, and that button gets focus back (TEACH-113).
+  const focus = useRestoreOpenerFocus({ onOpenAutoFocus, onCloseAutoFocus });
   return (
     <AlertDialogPrimitive.Portal>
       <AlertDialogPrimitive.Overlay
@@ -37,6 +43,7 @@ function AlertDialogContent({
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[360px] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog bg-card p-6 text-card-foreground shadow-3 outline-none motion-safe:animate-arrive motion-safe:data-[state=closed]:animate-fade-out",
           className,
         )}
+        {...focus}
         {...props}
       />
     </AlertDialogPrimitive.Portal>
