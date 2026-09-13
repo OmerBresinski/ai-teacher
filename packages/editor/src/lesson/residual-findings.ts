@@ -17,9 +17,20 @@ import { type Autosave, useSaveState, useSettledDocument } from "../model/use-au
  * `useComputedResidualFindings`.
  */
 
+/**
+ * An applied Verify correction (TEACH-232): the fact was already fixed and the artefacts written
+ * from the fixed facts, so there is nothing for the teacher to check. It stays on the document for
+ * the eval and the log. The failed-call finding has no `factId` and is kept — that one is
+ * actionable.
+ */
+const isAppliedCorrection = (f: Finding) =>
+  f.check === "fact-verify" && f.target.factId !== undefined;
+
 /** The merge, pure: stored model findings + live schema findings, deduped by `check` + target. */
 export function residualFindings(lesson: Lesson, worksheet?: Worksheet): Finding[] {
-  const stored = (lesson.generation?.findings ?? []).filter((f) => !isSchemaCheck(f.check));
+  const stored = (lesson.generation?.findings ?? []).filter(
+    (f) => !isSchemaCheck(f.check) && !isAppliedCorrection(f),
+  );
   const live = checkLesson(lesson, worksheet);
   const seen = new Set<string>();
   const out: Finding[] = [];

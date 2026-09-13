@@ -53,6 +53,36 @@ describe("residualFindings", () => {
     expect(findings.find((f) => f.check === "budget")?.message).toBe(budget.message);
   });
 
+  test("applied Verify corrections are not things to check; the failed-call finding is", () => {
+    const lesson = generatedLesson();
+    lesson.generation?.findings.push(
+      {
+        check: "fact-verify",
+        severity: "warning",
+        target: { factId: "q3" },
+        message: "Question stem corrected: could be read two ways.",
+      },
+      {
+        check: "fact-verify",
+        severity: "warning",
+        target: { factId: "v1" },
+        message: "Vocabulary term corrected: not the accepted term.",
+      },
+      { check: "pitch", severity: "warning", target: {}, message: "Pitched a year too high." },
+    );
+    const stored = residualFindings(lesson).filter((f) => f.check !== "age-fit");
+    expect(stored.map((f) => f.check)).toEqual(["pitch"]);
+
+    const failed = generatedLesson();
+    failed.generation?.findings.push({
+      check: "fact-verify",
+      severity: "warning",
+      target: {},
+      message: "Fact verification could not be completed.",
+    });
+    expect(residualFindings(failed).some((f) => f.check === "fact-verify")).toBe(true);
+  });
+
   test("without the worksheet the objective-coverage worksheet half is skipped, not failed", () => {
     const lesson = generatedLesson();
     expect(residualFindings(lesson).some((f) => f.check === "objective-coverage")).toBe(false);
