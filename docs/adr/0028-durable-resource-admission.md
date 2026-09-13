@@ -218,8 +218,8 @@ singleton, so tests inject a fake exactly as they do for `RateLimiter`.
 | Path | Kind(s) | Amount | Where |
 | --- | --- | --- | --- |
 | `POST /documents`, `POST /lessons` | `document_count`, `storage_bytes` | 1 row; the request body's byte length as the **estimate**, committed to `pg_column_size(body)` from the insert's `RETURNING` | Inside the transaction that writes the row (§5 for `POST /lessons`) |
-| `PUT /documents/:id` | `storage_bytes` | Estimate `max(0, newLen − oldLen)`; committed to the signed `pg_column_size(body)` difference the update returns, so a shrink credits | Same transaction as `putDocument` |
-| `POST /sources` | `storage_bytes` | Upload byte length, reserved **before** extraction; committed to the true sum of the keys written | Wraps `createSource` + `writeObjects` |
+| `PUT /documents/:id` | `storage_bytes` | Growth only: reserve `newLen − oldLen` when positive, then commit the signed `pg_column_size(body)` difference. A non-growing update reserves **nothing** and applies only the (negative or zero) `commitDelta` | Same transaction as `putDocument` |
+| `POST /sources` | `storage_bytes` | **Two** admissions: the upload's byte length before extraction, then the *measured* size of the extraction output before `writeObjects`; both commit to bytes actually written | Wraps `createSource` + `writeObjects` |
 | `POST /images/pick` | `storage_bytes` | `MAX_PHOTO_BYTES`; committed to `bytes` actually stored | Around `storePhoto` |
 | `enqueue()` | `jobs_outstanding` | 1, `jobId` recorded, no expiry | Same transaction as `boss.send` (§5) |
 | `callStructured` | `spend_usd_day` | The TEACH-280 estimate, micro-USD | Worker, before the in-process Budget reserve |
@@ -243,6 +243,20 @@ ceiling must have rows purged, which today means support intervention — which 
 `LIMIT_WORKSPACE_DOCUMENTS` sits well above plausible use, and why founder decision 5 asks whether a
 purge path is worth building.
 
+
+**A reservation is always positive; a shrink is a delta.** `resource_reservations.amount` is
+`> 0` by constraint, so a write that does not grow must not ask for a zero-sized hold. `PUT` therefore
+reserves only when `newLen > oldLen`; otherwise it skips admission entirely and applies the signed
+`commitDelta` after the write. A shrink can never be denied — it frees capacity.
+
+**Extraction output is admitted separately, because the upload does not bound it.** `POST /sources`
+stores the original *plus* the extracted images and `extracted.json`, so reserving only the upload's
+bytes would let a Workspace exceed `storage_bytes` by whatever extraction adds (bounded by the
+runner's `EXTRACT_MAX_OUTPUT_BYTES`, 128 MiB by default — far too pessimistic to reserve up front).
+The extraction result is in memory before anything is written, so its size is *known* at that point:
+admit it as a second reservation **before** `writeObjects`, and deny before any object exists. Both
+reservations then commit to the bytes actually written. That keeps the ceiling a real ceiling without
+reserving 128 MiB per upload.
 
 **One byte metric, measured once.** A document's stored size is `pg_column_size(body)` — the
 compressed JSONB the row actually occupies — and that is what both the commit and the reconciler use.
@@ -284,11 +298,13 @@ changing that shape, so this ADR changes it:
 - `notifyJobEvent` moves **after** the commit, so `enqueue` returns the inserted event id to its
   caller and the caller notifies once the transaction has committed. A `NOTIFY` inside a transaction
   only fires on commit anyway, and the api's listener must never see an id it cannot read. If that
-  post-commit notify fails, nothing is lost and nothing is compensated: the row is committed, and
-  the SSE hub already falls back to polling when its listener is degraded
-  (`apps/api/src/events/listener.ts` sets `hub.setDegraded(true)` and the stream still delivers —
-  there is an existing integration test for exactly that). Best-effort is the contract; say so in
-  the code.
+  post-commit notify fails the row is still committed, but the existing degraded-polling fallback
+  does **not** cover it: `apps/api/src/events/listener.ts` sets `hub.setDegraded(true)` when the
+  *listener* cannot subscribe, not when a *notifier* throws, so a healthy listener would leave an
+  open stream waiting for an event nobody published. The notifier runs in the api process that owns
+  the hub, so it must mark the hub degraded itself on failure — one call, and the existing polling
+  path (which has an integration test) then delivers the committed row. Without that call this is a
+  hang, not a best-effort degradation; TEACH-304 must test the notifier-failure case specifically.
 - `createLessonAndEnqueue` passes its `scoped` handle, so the Source claim, the document row, the
   reservation, the pg-boss row and the `queued` event are one atomic unit. `undoCreate` and
   `enqueue`'s `boss.cancel` compensation both **disappear**: there is no window in which one exists
@@ -300,10 +316,20 @@ changing that shape, so this ADR changes it:
 calls `emitJobEvent`, which is `insertJobEvent` followed by `notifyJobEvent` with no shared
 transaction; `cancel()` does the same for a queued job. Releasing the hold "in the same transaction
 as the terminal event" therefore requires building that path: a helper in `@tj/jobs` that, in one
-transaction, inserts the terminal `job_events` row and calls `releaseReservation` for the job's two
-holds, then notifies after commit. The unique index `job_events_one_terminal_per_job_uidx` gives the
-idempotency: the loser of a race inserts nothing and so releases nothing. Both `run-job.ts`'s
-`settle` and `enqueue.ts`'s queued-cancel branch must go through it — two call sites, one helper. A
+transaction, inserts the terminal `job_events` row and releases the job's `jobs_outstanding` holds,
+then notifies after commit. Three details the helper must get right, none of which come for free:
+
+- The insert must be `ON CONFLICT DO NOTHING … RETURNING` (or run under a savepoint). `insertJobEvent`
+  is a plain insert today, so a unique-index violation would abort the whole transaction rather than
+  identify a loser — the index alone does not make the helper idempotent. The helper returns
+  winner/loser explicitly, and only the winner releases.
+- It releases the **`jobs_outstanding`** reservations only. A job's `spend_usd_day` holds are settled
+  by the pipeline (§4) and must not be released here, or a terminal event would refund spend.
+- It releases the Workspace hold before the global one, the same order `admit` takes, so a release
+  racing an admission cannot deadlock.
+
+Both `run-job.ts`'s `settle` and `enqueue.ts`'s queued-cancel branch must go through it — two call
+sites, one helper. A
 `retry` keeps the hold, because the job is still outstanding. A cancel of a *running* job releases
 nothing: the worker's terminal event does it. `reclaimOrphanedJobHolds` (§3) is the crash backstop.
 
