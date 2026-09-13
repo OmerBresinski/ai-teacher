@@ -3,15 +3,19 @@
  * unreachable). Cookies are captured from `Set-Cookie` and replayed by hand, as a browser would.
  */
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { insertJobEvent } from "@tj/db";
 import {
   cookieHeaderFromResponse,
   createTestUserWithWorkspace,
   issueSessionCookie,
   withTestDb,
 } from "@tj/db/testing";
+import { type JobId, newId, type WorkspaceId } from "@tj/domain";
+import type { JobsContext } from "@tj/jobs";
 import { createApp } from "./app";
 import { type AuthEnv, createAuth } from "./auth/auth";
 import { createPersonalWorkspace, logUsersWithoutWorkspace } from "./auth/workspace-hook";
+import { createEventsRuntime } from "./events/runtime";
 import { CaptureMailSender, extractFirstUrl } from "./mail";
 import { silentLogger, TEST_ENV } from "./test-helpers";
 
@@ -135,12 +139,94 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     const cleared = cookieHeaderFromResponse(out);
     expect(cleared).not.toContain("tj.session_token=");
     expect((await app.request(`${BASE}/me`, { headers: { cookie: cleared } })).status).toBe(401);
-    // Misbehaving client replaying only the session token: the DB session is gone → 401. (The
-    // `tj.session_data` cache cookie alone would still pass for up to `cookieCache.maxAge`;
-    // that is the documented trade-off of the cookie cache.)
+    // A misbehaving client replaying either the token alone or the complete cached cookie is
+    // refused: protected routes always consult the authoritative session (TEACH-283).
     const tokenOnly = cookie.split("; ").find((p) => p.startsWith("tj.session_token=")) ?? "";
     expect((await app.request(`${BASE}/me`, { headers: { cookie: tokenOnly } })).status).toBe(401);
+    expect((await app.request(`${BASE}/me`, { headers: { cookie } })).status).toBe(401);
   });
+
+  test("deleting a session defeats the original signed cache cookie on reads and writes", async () => {
+    const { cookie } = await followLink(await requestMagicLink("revoked-cache@example.test"));
+    expect(cookie).toContain("tj.session_data=");
+    const session = await auth.api.getSession({
+      headers: new Headers({ cookie }),
+      query: { disableCookieCache: true },
+    });
+    if (!session) throw new Error("Missing signed session fixture");
+    await db.sql`delete from sessions where id = ${session.session.id}`;
+    // Prove this fixture contains a usable display cache, so the test would fail on the old guard.
+    expect(await auth.api.getSession({ headers: new Headers({ cookie }) })).not.toBeNull();
+    expect((await app.request(`${BASE}/me`, { headers: { cookie } })).status).toBe(401);
+    const write = await app.request(`${BASE}/documents`, {
+      method: "POST",
+      headers: { cookie, origin: WEB, "content-type": "application/json" },
+      body: "{}",
+    });
+    expect(write.status).toBe(401);
+  });
+
+  test("an open signed-session stream closes after DB revocation and releases its slot", async () => {
+    const { cookie } = await followLink(await requestMagicLink("revoked-stream@example.test"));
+    const session = await auth.api.getSession({
+      headers: new Headers({ cookie }),
+      query: { disableCookieCache: true },
+    });
+    if (!session) throw new Error("Missing session fixture");
+    const me = await app.request(`${BASE}/me`, { headers: { cookie } });
+    const { workspaceId } = (await me.json()) as { workspaceId: WorkspaceId };
+    const runtime = createEventsRuntime({
+      jobs: { db: db.unsafeDb } as JobsContext,
+      logger: silentLogger,
+      config: { heartbeatMs: 50, pollMs: 50 },
+    });
+    const streamingApp = createApp({
+      env: TEST_ENV,
+      db,
+      auth,
+      events: runtime,
+      logger: silentLogger,
+    });
+    const jobId = newId() as JobId;
+    await insertJobEvent(db.unsafeDb, {
+      type: "started",
+      workspaceId,
+      jobId,
+      at: new Date().toISOString(),
+    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    try {
+      const response = await streamingApp.request(`${BASE}/events`, {
+        headers: { cookie },
+        signal: controller.signal,
+      });
+      expect(response.status).toBe(200);
+      if (!response.body) throw new Error("Missing stream body");
+      const reader = response.body.getReader();
+      let text = "";
+      const decoder = new TextDecoder();
+      while (!text.includes("event: started")) {
+        const chunk = await reader.read();
+        if (chunk.done) throw new Error("Stream ended before replay");
+        text += decoder.decode(chunk.value);
+      }
+      const revokedAt = Date.now();
+      await db.sql`delete from sessions where id = ${session.session.id}`;
+      expect((await app.request(`${BASE}/me`, { headers: { cookie } })).status).toBe(401);
+      while (!(await reader.read()).done) {
+        /* heartbeat frames until authorization expires */
+      }
+      expect(controller.signal.aborted).toBe(false);
+      expect(Date.now() - revokedAt).toBeLessThan(30_000);
+      expect(runtime.openStreams(workspaceId)).toBe(0);
+      expect(runtime.hub.size()).toBe(0);
+    } finally {
+      clearTimeout(timeout);
+      controller.abort();
+      await runtime.stop();
+    }
+  }, 35_000);
 
   test("protected prefixes /jobs/* and /events are guarded even before their routes exist", async () => {
     expect((await app.request(`${BASE}/jobs/abc`)).status).toBe(401);

@@ -15,7 +15,13 @@ describe("GET /me", () => {
     };
     const auth = {
       api: {
-        getSession: async () => ({ user: { id: "user-1", email: "ada@example.com", name: "Ada" } }),
+        getSession: async (options: { query?: { disableCookieCache?: boolean } }) => {
+          expect(options.query?.disableCookieCache).toBe(true);
+          return {
+            user: { id: "user-1", email: "ada@example.com", name: "Ada" },
+            session: { id: "session-1", expiresAt: new Date(Date.now() + 60_000) },
+          };
+        },
       },
     } as unknown as Auth;
     const app = createApp({ env: TEST_ENV, db, auth });

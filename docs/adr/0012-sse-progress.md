@@ -27,3 +27,21 @@ optional `result`, a discriminated union on `result.job` (a `job_events` row has
 so proposal jobs (`lesson.cascade`,
 `lesson.regenerate`) hand a bounded result to the editor over the stream it already follows
 (ADR 0025 §19). `runJob` writes a handler's return value into that field.
+
+## Amendment (TEACH-283, 2026-09-13): stream authorization leases
+
+Both event routes require the server-owned authorization installed by `requireSession` and
+revalidate it before replay. Session identity must still match; revocation, expiry or a failed
+lookup ends the response and releases the hub subscription and stream slot. The explicitly enabled
+development header shim has its own tagged path, never a synthetic production session.
+
+The stream rechecks every 15 seconds with at most one lookup in flight. Authorization is leased for
+at most 30 seconds from the lookup's **start**, capped by the original session expiry. A stalled
+lookup cannot renew the lease; an independent timer aborts the stream at the deadline. Every row
+write checks the lease. Teardown races pending replay/drains against closure, so a blocked DB read
+does not prevent slot release, and late lookup completion cannot restart a closed stream. This
+adds one pre-replay lookup plus at most four periodic lookups per minute per long-lived stream.
+
+Reconnect and Last-Event-ID ordering are unchanged. The separate bounded-backlog replay behavior
+in TEACH-80 remains outstanding; this amendment is authorization, not a claim that backlog paging
+has been fixed. All revocation/resource experiments use synthetic local sessions and rows.
