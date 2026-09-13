@@ -1,5 +1,6 @@
 import { RequestContext } from "@mastra/core/request-context";
 import { createStep, createWorkflow } from "@mastra/core/workflows";
+import { safeError } from "@tj/domain";
 import type { Lesson } from "@tj/domain/documents";
 import { z } from "zod";
 import { checkInput } from "./stages/check-input";
@@ -81,8 +82,8 @@ function shouldRun(stage: PipelineStageName, from: PipelineStageName | null): bo
 
 /**
  * A step: skip when the checkpoint says this stage is done, otherwise run the stage. A thrown
- * error is stashed on the request context before it propagates so `runLessonPipeline` can
- * rethrow the original instance — Mastra serialises step errors to `{ name, message }`.
+ * error stays in-process on the request context so `runLessonPipeline` can rethrow it to the
+ * worker's retry classifier. Mastra receives only a safe sentinel: it logs step errors itself.
  */
 function stageStep(
   stage: PipelineStageName,
@@ -108,7 +109,10 @@ function stageStep(
         return next;
       } catch (error) {
         requestContext.setRaw(FAILURE_KEY, error);
-        throw error;
+        deps.logger.error({ stage, err: safeError(error) }, "generation stage failed");
+        const failure = new Error("Pipeline stage failed.");
+        delete failure.stack;
+        throw failure;
       }
     },
   });
@@ -170,14 +174,8 @@ export async function runLessonPipeline(
     const result = await run.start({ inputData: state, requestContext });
     if (result.status !== "success") {
       const stashed = requestContext.getRaw(FAILURE_KEY);
-      if (stashed instanceof Error) throw stashed;
-      const message =
-        result.status === "failed"
-          ? describe(result.error)
-          : `workflow ended with status ${result.status}`;
-      throw new StageFailure(from ?? "check-input", message, {
-        cause: result.status === "failed" ? result.error : undefined,
-      });
+      if (requestContext.hasRaw(FAILURE_KEY)) throw stashed;
+      throw new StageFailure(from ?? "check-input", "The lesson workflow could not finish.");
     }
     final = result.result;
     outcome = "success";
@@ -206,11 +204,4 @@ export async function runLessonPipeline(
       "generation summary",
     );
   }
-}
-
-function describe(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "object" && error !== null && "message" in error)
-    return String((error as { message: unknown }).message);
-  return String(error);
 }

@@ -10,6 +10,7 @@ import {
 } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import {
+  JOB_FAILURE_MESSAGE,
   type JobEvent,
   JobEventSchema,
   type JobId,
@@ -22,7 +23,7 @@ import { cancel } from "./enqueue";
 import type { emitJobEvent } from "./events";
 import type { BossJob } from "./run-job";
 import { dispositionForTerminal, runJob } from "./run-job";
-import { defineJob, type JobRegistry, type JobsContext } from "./types";
+import { defineJob, type JobRegistry, type JobsContext, NonRetryableError } from "./types";
 
 const t = await withTestDb();
 const describeDb = t.ok ? describe : describe.skip;
@@ -101,6 +102,69 @@ describeDb("runJob dependencies", () => {
       retryLimit: 1,
       state: "active",
     }) as unknown as BossJob<"lesson.cascade">;
+
+  test.each(["retry", "terminal", "non-retryable", "infrastructure", "invalid-payload"])(
+    "%s failures keep content out of logs, events and pg-boss outputs",
+    async (mode) => {
+      const marker = "PRIVATE_JOB_CANARY_282";
+      const lines: string[] = [];
+      const logger = pino(
+        { level: "trace" },
+        {
+          write: (line) => {
+            lines.push(line);
+          },
+        },
+      );
+      const error = Object.assign(
+        mode === "non-retryable" ? new NonRetryableError(marker) : new Error(marker),
+        { cause: { params: [marker] }, token: marker, stack: marker },
+      );
+      const jobId = newId<JobId>();
+      const job = { ...cascadeJob(jobId), retryCount: mode === "terminal" ? 1 : 0 };
+      if (mode === "invalid-payload")
+        (job.data as { payload: unknown }).payload = { [marker]: marker };
+      const registry = {
+        ...stubs,
+        "lesson.cascade": defineJob("lesson.cascade", async () => {
+          throw error;
+        }),
+      };
+      const outcome = await runJob({ boss, db: unsafeDb, sql }, "lesson.cascade", registry, job, {
+        deps: undefined,
+        logger,
+        ...(mode === "infrastructure"
+          ? {
+              emit: async () => {
+                throw error;
+              },
+            }
+          : {}),
+      }).catch((err: unknown) => err);
+      if (mode === "infrastructure") {
+        expect(outcome).toBeInstanceOf(Error);
+        expect((outcome as Error).message).toBe(JOB_FAILURE_MESSAGE);
+        expect((outcome as Error).cause).toBeUndefined();
+      } else {
+        expect(outcome).toMatchObject({
+          status: ["non-retryable", "invalid-payload"].includes(mode) ? "deadletter" : "failed",
+        });
+      }
+      const events = await listJobEvents(unsafeDb, { workspaceId, jobId, limit: 10 });
+      expect(JSON.stringify({ outcome, events, lines })).not.toContain(marker);
+      expect(lines.join("")).toContain(jobId);
+      if (mode === "retry")
+        expect(events.at(-1)?.payload).toMatchObject({
+          type: "progress",
+          progress: { message: "Attempt 1 failed. Retrying." },
+        });
+      if (mode === "terminal")
+        expect(events.at(-1)?.payload).toMatchObject({
+          type: "failed",
+          error: { message: JOB_FAILURE_MESSAGE, retryable: true },
+        });
+    },
+  );
 
   test("a handler's return value rides on the completed event as `result` (ADR 0025 §19)", async () => {
     const result: JobResult = { job: "lesson.cascade", proposals: [], flagged: [] };
@@ -185,7 +249,7 @@ describeDb("runJob dependencies", () => {
       logger: quiet,
       emit: flakyEmit,
     });
-    await expect(first).rejects.toThrow("simulated notify failure");
+    await expect(first).rejects.toThrow(JOB_FAILURE_MESSAGE);
     expect(handlerRuns).toBe(1);
 
     // Second delivery (pg-boss retry): observe the re-issued NOTIFY for the stored terminal row.
@@ -242,7 +306,12 @@ describeDb("runJob dependencies", () => {
       logger: quiet,
     });
     expect(handlerRuns).toBe(0);
-    expect(outcome).toEqual({ id: jobId, status: "deadletter", output: error, event: "failed" });
+    expect(outcome).toEqual({
+      id: jobId,
+      status: "deadletter",
+      output: { message: JOB_FAILURE_MESSAGE, retryable: false },
+      event: "failed",
+    });
     const events = await listJobEvents(unsafeDb, { workspaceId, jobId, limit: 10 });
     expect(events.map((e) => e.type)).toEqual(["failed"]);
   });
@@ -374,13 +443,13 @@ describe("dispositionForTerminal", () => {
     expect(dispositionForTerminal(jobId, row({ type: "failed", ...base, error: soft }))).toEqual({
       id: jobId,
       status: "failed",
-      output: soft,
+      output: { message: JOB_FAILURE_MESSAGE, retryable: true },
       event: "failed",
     });
     expect(dispositionForTerminal(jobId, row({ type: "failed", ...base, error: hard }))).toEqual({
       id: jobId,
       status: "deadletter",
-      output: hard,
+      output: { message: JOB_FAILURE_MESSAGE, retryable: false },
       event: "failed",
     });
   });

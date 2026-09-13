@@ -9,7 +9,7 @@
 
 import type { CreatedAi } from "@tj/ai";
 import type { DbHandle } from "@tj/db";
-import type { ReadableStorageAdapter } from "@tj/domain";
+import { type ReadableStorageAdapter, safeError } from "@tj/domain";
 import type { PexelsClient } from "@tj/images";
 import type { JobsContext } from "@tj/jobs";
 import { Hono } from "hono";
@@ -266,14 +266,14 @@ function buildApp({
     );
   }
 
-  // 6. Errors → envelope. Unknown errors are logged with their stack but never sent to clients.
+  // 6. Errors → envelope. Unknown errors expose only allow-listed diagnostics to logs.
   app.notFound((c) =>
     c.json(envelope(c, "not_found", "That resource does not exist.", false), 404),
   );
   app.onError((err, c) => {
     const e = classifyError(err);
     const log = c.get("logger") ?? logger;
-    if (e.unexpected) log.error({ err, status: e.status }, "unhandled error");
+    if (e.unexpected) log.error({ err: safeError(err), status: e.status }, "unhandled error");
     else log.info({ status: e.status, code: e.code }, "request error");
     return c.json(envelope(c, e.code, e.message, e.retryable, e.fields, e.reason), e.status);
   });

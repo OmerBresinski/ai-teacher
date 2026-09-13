@@ -58,7 +58,7 @@ export function startJobEventsListener({
     const parsed = JobEventNotificationSchema.safeParse(json);
     if (!parsed.success) {
       logger.warn(
-        { channel: JOB_EVENTS_CHANNEL, issues: parsed.error.issues },
+        { channel: JOB_EVENTS_CHANNEL, issueCount: parsed.error.issues.length },
         "job_events notification failed validation; ignored",
       );
       return;

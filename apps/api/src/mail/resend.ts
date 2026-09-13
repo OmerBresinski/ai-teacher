@@ -23,6 +23,21 @@ interface ResendErrorBody {
   message?: string;
 }
 
+const RESEND_ERROR_NAMES = new Set([
+  "validation_error",
+  "missing_required_field",
+  "invalid_access",
+  "invalid_parameter",
+  "invalid_api_key",
+  "restricted_api_key",
+  "rate_limit_exceeded",
+  "application_error",
+]);
+
+function safeResendName(value: unknown): string | undefined {
+  return typeof value === "string" && RESEND_ERROR_NAMES.has(value) ? value : undefined;
+}
+
 /** Thrown when Resend does not accept the message; `status` and `name` are safe to log. */
 export class ResendSendError extends Error {
   constructor(
@@ -62,11 +77,12 @@ export class ResendMailSender implements MailSender {
 
     if (!response.ok) {
       const body = (await response.json().catch(() => ({}))) as ResendErrorBody;
+      const name = safeResendName(body.name);
       this.logger.error(
-        { to: message.to, status: response.status, resendError: body.name },
+        { status: response.status, resendError: name },
         "mail: Resend rejected the message",
       );
-      throw new ResendSendError(response.status, body.name);
+      throw new ResendSendError(response.status, name);
     }
 
     const { id } = (await response.json().catch(() => ({}))) as { id?: string };

@@ -6,6 +6,7 @@ import {
   notifyJobEvent,
 } from "@tj/db";
 import {
+  JOB_FAILURE_MESSAGE,
   type JobError,
   type JobEvent,
   JobId,
@@ -13,6 +14,7 @@ import {
   JobPayloadSchemas,
   type JobPayloads,
   type JobResult as JobResultPayload,
+  safeError,
   WorkspaceId,
 } from "@tj/domain";
 import type { JobResult, JobWithMetadata } from "pg-boss";
@@ -40,6 +42,8 @@ const JobDataEnvelope = z.object({
 });
 
 export interface RunJobOptions<D = unknown> {
+  /** App-owned allow-list of typed refusals. Never return an unclassified error's message. */
+  failureMessage?: (error: unknown) => string | undefined;
   /** Aborted by the worker on SIGTERM/SIGINT; handlers see `signal.reason === "shutdown"`. */
   shutdown?: AbortSignal;
   logger: Logger;
@@ -78,7 +82,8 @@ export function dispositionForTerminal(bossJobId: string, row: JobEventRow): Run
       return {
         id: bossJobId,
         status: stored.error.retryable ? "failed" : "deadletter",
-        output: stored.error,
+        // An older terminal row may predate safe failure messages; never copy it to a new output.
+        output: { message: JOB_FAILURE_MESSAGE, retryable: stored.error.retryable },
         event: "failed",
       };
     default:
@@ -130,11 +135,31 @@ export async function runJob<N extends JobName, D = unknown>(
   bossJob: JobWithMetadata<unknown>,
   opts: RunJobOptions<D>,
 ): Promise<RunJobOutcome> {
+  try {
+    return await runJobAttempt(ctx, name, registry, bossJob, opts);
+  } catch (error) {
+    // Event persistence/notification and pre-run failures also escape to pg-boss. Its error
+    // output serializer must never see SQL parameters, provider bodies or nested causes.
+    opts.logger.error(
+      { err: safeError(error), job: name, bossJobId: bossJob.id },
+      "job infrastructure failed",
+    );
+    throw new Error(JOB_FAILURE_MESSAGE);
+  }
+}
+
+async function runJobAttempt<N extends JobName, D = unknown>(
+  ctx: JobsContext,
+  name: N,
+  registry: JobRegistry<D>,
+  bossJob: JobWithMetadata<unknown>,
+  opts: RunJobOptions<D>,
+): Promise<RunJobOutcome> {
   const envelope = JobDataEnvelope.safeParse(bossJob.data);
   if (!envelope.success) {
     // Without a workspaceId we cannot even write an event; fail terminally and log.
     opts.logger.error(
-      { job: name, bossJobId: bossJob.id, issues: envelope.error.issues },
+      { job: name, bossJobId: bossJob.id, issueCount: envelope.error.issues.length },
       "job data is not a JobData envelope; dead-lettering",
     );
     return { id: bossJob.id, status: "deadletter", event: "failed" };
@@ -177,10 +202,10 @@ export async function runJob<N extends JobName, D = unknown>(
   const payloadResult = JobPayloadSchemas[name].safeParse(envelope.data.payload);
   if (!payloadResult.success) {
     const error: JobError = {
-      message: `invalid ${name} payload: ${payloadResult.error.issues.map((i) => i.message).join("; ")}`,
+      message: "The job contains invalid input. Please start it again.",
       retryable: false,
     };
-    logger.warn({ issues: payloadResult.error.issues }, "payload failed validation");
+    logger.warn({ issueCount: payloadResult.error.issues.length }, "payload failed validation");
     return settle(
       { type: "failed", ...base, at: nowIso(), error },
       { id: bossJob.id, status: "deadletter", output: error, event: "failed" },
@@ -205,7 +230,7 @@ export async function runJob<N extends JobName, D = unknown>(
       const [row] = await ctx.boss.findJobs(name, { id: bossJob.id });
       if (row?.state === "cancelled") abortWith("cancelled");
     } catch (err) {
-      logger.warn({ err }, "cancel poll failed");
+      logger.warn({ err: safeError(err) }, "cancel poll failed");
     } finally {
       polling = false;
     }
@@ -214,7 +239,7 @@ export async function runJob<N extends JobName, D = unknown>(
   const progress = createProgressEmitter({
     minIntervalMs: opts.progressMinIntervalMs ?? PROGRESS_MIN_INTERVAL_MS,
     emit: (p) => emit({ type: "progress", ...base, at: nowIso(), progress: p }).then(() => {}),
-    onError: (err) => logger.warn({ err }, "progress event failed"),
+    onError: (err) => logger.warn({ err: safeError(err) }, "progress event failed"),
   });
 
   const jobCtx: JobContext<N, D> = {
@@ -226,13 +251,12 @@ export async function runJob<N extends JobName, D = unknown>(
     deps: opts.deps,
   };
 
-  await emit({ type: "started", ...base, at: nowIso() });
-  logger.info("job started");
-
   let thrown: unknown;
   let threw = false;
   let result: JobResultPayload | undefined;
   try {
+    await emit({ type: "started", ...base, at: nowIso() });
+    logger.info("job started");
     // A shutdown or cancellation that landed while `started` was being written: the handler has
     // not begun, so do not begin it — the aborted branches below record the outcome.
     if (!abort.signal.aborted) {
@@ -257,7 +281,10 @@ export async function runJob<N extends JobName, D = unknown>(
       const [row] = await ctx.boss.findJobs(name, { id: bossJob.id });
       if (row?.state === "cancelled") abortWith("cancelled");
     } catch (err) {
-      logger.warn({ err }, "final cancel re-read failed; treating the job as not cancelled");
+      logger.warn(
+        { err: safeError(err) },
+        "final cancel re-read failed; treating the job as not cancelled",
+      );
     }
   }
 
@@ -282,13 +309,11 @@ export async function runJob<N extends JobName, D = unknown>(
   const shutdown = abort.signal.aborted && abort.signal.reason === "shutdown";
   const message = shutdown
     ? "worker shut down while the job was running"
-    : thrown instanceof Error
-      ? thrown.message
-      : String(thrown);
+    : (opts.failureMessage?.(thrown) ?? JOB_FAILURE_MESSAGE);
 
   if (thrown instanceof NonRetryableError) {
     const error: JobError = { message, retryable: false };
-    logger.warn({ err: thrown }, "job failed (non-retryable)");
+    logger.warn({ err: safeError(thrown) }, "job failed (non-retryable)");
     return settle(
       { type: "failed", ...base, at: nowIso(), error },
       { id: bossJob.id, status: "deadletter", output: error, event: "failed" },
@@ -302,23 +327,19 @@ export async function runJob<N extends JobName, D = unknown>(
       ...base,
       at: nowIso(),
       progress: {
-        message: `attempt ${bossJob.retryCount + 1} failed (${truncate(message)}); retrying`,
+        message: `Attempt ${bossJob.retryCount + 1} failed. Retrying.`,
       },
     });
-    logger.warn({ err: thrown, shutdown }, "job failed; pg-boss will retry");
+    logger.warn({ err: safeError(thrown), shutdown }, "job failed; pg-boss will retry");
     return { id: bossJob.id, status: "failed", output: { message }, event: "progress" };
   }
 
   const error: JobError = { message, retryable: true };
-  logger.error({ err: thrown, shutdown }, "job failed; no attempts left");
+  logger.error({ err: safeError(thrown), shutdown }, "job failed; no attempts left");
   return settle(
     { type: "failed", ...base, at: nowIso(), error },
     { id: bossJob.id, status: "failed", output: error, event: "failed" },
   );
-}
-
-function truncate(s: string, max = 200): string {
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
 /** Narrow a pg-boss job to the envelope type without trusting it (use `runJob` for validation). */

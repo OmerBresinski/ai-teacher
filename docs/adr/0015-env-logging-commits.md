@@ -23,6 +23,27 @@ The per-app Zod schemas stay, but the set of variables is declared once in
 variable names with it, and per-app tests assert schema/contract parity. `bun run setup` generates
 `BETTER_AUTH_SECRET` locally so the compose path needs no provider.
 
+## Amendment (TEACH-282, 2026-09-13)
+
+Error diagnostics are a positive allow-list (`@tj/domain` `safeError`): finite error class/code
+values plus caller-supplied operation, request and job identifiers. An exception's message, stack,
+cause, SQL params, response body and custom properties are not diagnostics. Pino projects errors
+before its implicit `err.message` → `msg` copy as well as during serialization. Schema failures log
+finite issue codes/counts; even paths, custom messages and purported log annotations can contain
+user/model content. Retry prompts still receive the validation details internally.
+
+Better Auth's message/argument forwarding is disabled; unexpected router errors propagate to
+Hono's safe handler instead of Better Call's raw console fallback. Mastra receives a content-free
+step-failure sentinel while the original stays in the in-process request context for the worker's
+retry classifier. No new Mastra storage or retries are introduced.
+
+Unexpected job failures use fixed public copy in retry progress, terminal events and pg-boss
+outputs, including failures outside a handler. `apps/worker/src/job-errors.ts` explicitly maps
+known input, Source, budget and AI-configuration refusals to safe copy. Retryability is still
+determined independently by cancellation/shutdown and `NonRetryableError`. Previously stored
+terminal failures are not copied verbatim into new pg-boss outputs. Historical records and sink
+retention require their own retention/incident decision; this change does not delete them.
+
 ## Consequences
 
 - Boot-time failures are explicit and readable.

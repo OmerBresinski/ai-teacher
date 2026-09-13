@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { listJobEvents } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
-import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
+import {
+  JOB_FAILURE_MESSAGE,
+  type JobEvent,
+  type JobId,
+  newId,
+  type WorkspaceId,
+} from "@tj/domain";
 import type { PgBoss } from "pg-boss";
 import pino from "pino";
 import { createBoss, ensureQueues } from "./boss";
@@ -215,7 +221,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
       expect(events.map((e) => e.type)).toEqual(["queued", "started", "progress", "failed"]);
       const failed = events.at(-1);
       expect(failed?.type === "failed" && failed.error).toEqual({
-        message: "ping asked to fail at step 2/3",
+        message: JOB_FAILURE_MESSAGE,
         retryable: false,
       });
       // pg-boss: terminal failure, retry_count still 0, so no second `started` ever appears.
@@ -296,7 +302,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
       const events = await eventsFor(jobId);
       expect(events.map((e) => e.type)).toEqual(["started", "progress"]);
       const last = events.at(-1);
-      expect(last?.type === "progress" && last.progress.message).toContain("retrying");
+      expect(last?.type === "progress" && last.progress.message).toContain("Retrying");
     });
 
     test("a retryable error on the last attempt ends in `failed { retryable: true }`", async () => {
@@ -319,7 +325,7 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
       expect(events.map((e) => e.type)).toEqual(["started", "failed"]);
       const last = events.at(-1);
       expect(last?.type === "failed" && last.error).toEqual({
-        message: "still flaky",
+        message: JOB_FAILURE_MESSAGE,
         retryable: true,
       });
     });

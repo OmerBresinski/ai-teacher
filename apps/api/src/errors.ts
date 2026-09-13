@@ -153,7 +153,7 @@ export interface ClassifiedError {
   retryable: boolean;
   fields?: string[];
   reason?: ConflictReason | SourceRefusalReason;
-  /** True when the original error must be logged with its stack (unexpected failure). */
+  /** True when safe error diagnostics must be logged (unexpected failure). */
   unexpected: boolean;
 }
 

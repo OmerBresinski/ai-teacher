@@ -2,7 +2,7 @@
  * Integration: the magic-link flow end to end against the real test database (skips visibly when
  * unreachable). Cookies are captured from `Set-Cookie` and replayed by hand, as a browser would.
  */
-import { afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { insertJobEvent } from "@tj/db";
 import {
   cookieHeaderFromResponse,
@@ -18,7 +18,7 @@ import { createPersonalWorkspace, logUsersWithoutWorkspace } from "./auth/worksp
 import { SMALL_JSON_BODY_BYTES } from "./body-limits";
 import { createEventsRuntime } from "./events/runtime";
 import { CaptureMailSender, extractFirstUrl } from "./mail";
-import { silentLogger, TEST_ENV } from "./test-helpers";
+import { captureLogger, silentLogger, TEST_ENV } from "./test-helpers";
 
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
@@ -142,6 +142,44 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     const { res, cookie } = await followLink(await requestMagicLink("bounded@example.test"));
     expect(res.status).toBe(302);
     expect((await app.request(`${BASE}/me`, { headers: { cookie } })).status).toBe(200);
+  });
+
+  test("auth DB failure and library diagnostics never expose private marker arguments", async () => {
+    const { logger, lines } = captureLogger();
+    const safeAuth = createAuth({ env: AUTH_ENV, db, mail, logger });
+    const safeApp = createApp({ env: TEST_ENV, db, logger, auth: safeAuth });
+    const marker = "PRIVATE_AUTH_TOKEN_CANARY_282";
+    const context = await safeAuth.$context;
+    context.logger.error(marker, { token: marker, cause: new Error(marker) });
+    const requested = await safeApp.request(`${BASE}/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: WEB },
+      body: JSON.stringify({
+        email: "safe-auth@example.test",
+        name: `${marker}\u0000`,
+        callbackURL: `${WEB}/`,
+      }),
+    });
+    expect(requested.status).toBe(200);
+    const link = extractFirstUrl(mail.last?.text ?? "");
+    if (!link) throw new Error("no synthetic link captured");
+    const stderr: string[] = [];
+    const consoleError = spyOn(console, "error").mockImplementation((...args) => {
+      stderr.push(Bun.inspect(args));
+    });
+    let response: Response;
+    try {
+      response = await safeApp.request(link, { redirect: "manual" });
+    } finally {
+      consoleError.mockRestore();
+    }
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toContain(marker);
+    expect(lines.join("")).not.toContain(marker);
+    expect(stderr.join("")).not.toContain(marker);
+    expect(lines.join("")).not.toContain(new URL(link).searchParams.get("token") as string);
+    expect(lines.join("")).toContain("authentication event");
+    expect(await usersCount()).toBe(0);
   });
 
   test("sign-out invalidates the session → GET /me 401", async () => {

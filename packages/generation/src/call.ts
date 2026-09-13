@@ -1,7 +1,7 @@
 import { isAiError, isAnthropicModelId } from "@tj/ai";
-import type { ModelClass } from "@tj/domain";
+import { type ModelClass, safeValidationIssues } from "@tj/domain";
 import type { Finding, FindingSeverity, FindingTarget } from "@tj/domain/documents";
-import { isEditorialIssue, logMessageOf } from "@tj/slides";
+import { isEditorialIssue } from "@tj/slides";
 import {
   generateText,
   type ModelMessage,
@@ -294,10 +294,7 @@ export async function callStructured<I, T>(
       // The failed attempt was still paid for. `error.text` (the model's words) is never logged.
       if (error.usage) deps.budget.charge(modelId, usageOf(error.usage));
       const issues = issuesOf(error);
-      // The issues are logged in full: zod paths and messages (`workedExamples.1.steps.2: Too big …`),
-      // with the one message that would echo the model's words redacted (see `issuesOf`). Without
-      // them a schema miss in production cannot be diagnosed (the 2026-09-07 derivatives lesson
-      // failed Plan twice with only `issues=5` on record).
+      // Log finite issue codes/counts; even paths and custom messages may echo model content.
       deps.logger.info(
         {
           stage,
@@ -458,13 +455,8 @@ export function editorialMissesOf(error: NoObjectGeneratedError): EditorialMiss[
  * The validation issues from a schema miss as plain messages with paths — what the retry prompt
  * shows the model. A JSON parse failure yields one line. Never the model's text.
  *
- * `audience: "log"` is the ADR 0015 variant: every zod message is schema-derived (limits, expected
- * types, our own refinement text) except `unrecognized_keys`, whose message repeats the key names
- * the model invented — those are replaced by a count — and our own `custom` messages that quote
- * the model's words back at it (`mustShow names the subject ("front teeth")`, `pitch.avoid lists
- * "evidence"`, `q9 is not a candidate id`): each such rule declares a log form of its message
- * (`editorialIssue` / `shapeIssue`'s `log`), which is used here. The retry prompt keeps both: the
- * model needs to know which keys to drop and which words it wrote.
+ * `audience: "log"` exposes only allow-listed issue codes/counts (ADR 0015). Arbitrary paths,
+ * messages and custom params stay inside the retry prompt and never reach the log sink.
  *
  * After a wrong type on a path, the follow-on checks on that path are dropped: zod keeps checking
  * a mistyped value as if it were right (`expected array, received string` followed by `Too big:
@@ -476,6 +468,7 @@ export function issuesOf(
   audience: "retry" | "log" = "retry",
 ): string[] {
   const zodIssues = zodIssuesOf(error);
+  if (audience === "log") return zodIssues ? safeValidationIssues(zodIssues) : ["invalid_json: 1"];
   if (zodIssues) {
     const mistyped = new Set<string>();
     const lines: string[] = [];
@@ -484,13 +477,7 @@ export function issuesOf(
       if (mistyped.has(pathKey)) continue;
       if (i.code === "invalid_type") mistyped.add(pathKey);
       const path = pathKey.length > 0 ? `${pathKey}: ` : "";
-      const message =
-        audience === "log"
-          ? i.code === "unrecognized_keys"
-            ? `${i.keys?.length ?? "some"} unrecognized key(s)`
-            : (logMessageOf(i) ?? i.message)
-          : i.message;
-      lines.push(`- ${path}${message}`);
+      lines.push(`- ${path}${i.message}`);
     }
     return lines;
   }
