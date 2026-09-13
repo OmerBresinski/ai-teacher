@@ -6,21 +6,24 @@ import { describe, expect, it } from "bun:test";
  */
 const css = await Bun.file(new URL("./globals.css", import.meta.url)).text();
 
-function blockFor(selector: string): string {
-  const start = css.indexOf(selector);
+function blockFor(selector: string, source = css): string {
+  const start = source.indexOf(selector);
   if (start === -1) throw new Error(`Missing selector: ${selector}`);
-  const open = css.indexOf("{", start);
+  const open = source.indexOf("{", start);
   let depth = 0;
-  for (let index = open; index < css.length; index += 1) {
-    if (css[index] === "{") depth += 1;
-    if (css[index] === "}") depth -= 1;
-    if (depth === 0) return css.slice(open + 1, index);
+  for (let index = open; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") depth -= 1;
+    if (depth === 0) return source.slice(open + 1, index);
   }
   throw new Error(`Unclosed selector: ${selector}`);
 }
 
-type Theme = "light" | "dark" | "high-contrast";
+const daybackCss = await Bun.file(new URL("./lessonco.css", import.meta.url)).text();
+
+type Theme = "light" | "dark" | "high-contrast" | "dayback";
 const BLOCKS: Record<Theme, string> = {
+  dayback: blockFor('html[data-design="lessonco"][data-theme="light"] {', daybackCss),
   light: blockFor(":root {"),
   dark: blockFor('[data-theme="dark"] {'),
   "high-contrast": blockFor('[data-theme="high-contrast"] {'),
@@ -60,7 +63,7 @@ export function contrast(a: string, b: string): number {
   return (l1 + 0.05) / (l2 + 0.05);
 }
 
-const THEMES: Theme[] = ["light", "dark", "high-contrast"];
+const THEMES: Theme[] = ["light", "dark", "high-contrast", "dayback"];
 const TEXT_PAIRS: [string, string][] = [
   ["--foreground", "--background"],
   ["--foreground", "--card"],

@@ -1,4 +1,6 @@
 import { SLIDE_W, type Slide, type Theme } from "@tj/domain/documents";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
+import { Settings2 } from "lucide-react";
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { rectOf, rotatedBounds, unionRect } from "../../model/geometry";
 import {
@@ -6,6 +8,7 @@ import {
   CHROME_GAP as GAP,
   CHROME_MIN_TOP as MIN_TOP,
 } from "../canvas/place-slide-actions";
+import { useCompactChrome } from "../use-compact-chrome";
 import { useSelectedElements, useSessionUi } from "../use-editor-session";
 import { CropToolbar } from "./CropToolbar";
 import { ImageToolbar } from "./ImageToolbar";
@@ -42,6 +45,7 @@ export function ContextualToolbar({
   scale: number;
 }) {
   const selected = useSelectedElements(slide);
+  const compactChrome = useCompactChrome();
   const { editingTextId, crop } = useSessionUi();
 
   const bar = useRef<HTMLDivElement>(null);
@@ -136,6 +140,31 @@ export function ContextualToolbar({
   const half = size.w / 2;
   const left = Math.min(window.innerWidth - EDGE - half, Math.max(EDGE + half, centreX));
 
+  const controls =
+    selected.length === 0 || !only ? (
+      <SlideToolbar slide={slide} theme={theme} />
+    ) : selected.length > 1 ? (
+      <MultiToolbar elements={selected} theme={theme} slideId={slide.id} />
+    ) : only.type === "text" ? (
+      <TextToolbar
+        // A fresh instance on entering/leaving text edit, so its link/menu state starts clean.
+        key={only.id + String(editingTextId === only.id)}
+        element={only}
+        theme={theme}
+        slideId={slide.id}
+      />
+    ) : only.type === "image" && crop?.id === only.id ? (
+      <CropToolbar element={only} />
+    ) : only.type === "image" ? (
+      <ImageToolbar element={only} slideId={slide.id} />
+    ) : only.type === "shape" ? (
+      <ShapeToolbar element={only} theme={theme} slideId={slide.id} />
+    ) : only.type === "line" ? (
+      <LineToolbar element={only} theme={theme} slideId={slide.id} />
+    ) : (
+      <OtherToolbar element={only} theme={theme} slideId={slide.id} />
+    );
+
   return (
     <div
       ref={bar}
@@ -151,28 +180,26 @@ export function ContextualToolbar({
         opacity: size.w === 0 ? 0 : undefined,
       }}
     >
-      {selected.length === 0 || !only ? (
-        <SlideToolbar slide={slide} theme={theme} />
-      ) : selected.length > 1 ? (
-        <MultiToolbar elements={selected} theme={theme} slideId={slide.id} />
-      ) : only.type === "text" ? (
-        <TextToolbar
-          // A fresh instance on entering/leaving text edit, so its link/menu state starts clean.
-          key={only.id + String(editingTextId === only.id)}
-          element={only}
-          theme={theme}
-          slideId={slide.id}
-        />
-      ) : only.type === "image" && crop?.id === only.id ? (
-        <CropToolbar element={only} />
-      ) : only.type === "image" ? (
-        <ImageToolbar element={only} slideId={slide.id} />
-      ) : only.type === "shape" ? (
-        <ShapeToolbar element={only} theme={theme} slideId={slide.id} />
-      ) : only.type === "line" ? (
-        <LineToolbar element={only} theme={theme} slideId={slide.id} />
+      {compactChrome ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Settings2 aria-hidden />
+              {selected.length ? "Selection settings" : "Slide settings"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            aria-label={selected.length ? "Selection settings" : "Slide settings"}
+            data-editor-controls
+            side="bottom"
+            align="end"
+            className="w-[min(360px,calc(100vw-32px))] p-2"
+          >
+            {controls}
+          </PopoverContent>
+        </Popover>
       ) : (
-        <OtherToolbar element={only} theme={theme} slideId={slide.id} />
+        controls
       )}
     </div>
   );

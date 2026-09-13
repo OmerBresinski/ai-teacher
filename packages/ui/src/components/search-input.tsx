@@ -24,7 +24,11 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(functio
 ) {
   const clear = () => onClear?.();
   return (
-    <div className={cn("relative flex h-8 items-center", className)} style={{ width }}>
+    <div
+      data-slot="search-input"
+      className={cn("relative flex h-8 items-center", className)}
+      style={{ width }}
+    >
       <Search
         aria-hidden
         size={16}

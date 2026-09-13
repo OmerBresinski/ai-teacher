@@ -1,4 +1,4 @@
-/* Optional Good Company clone. Loaded by the development preview only.
+/* Optional DayBack v2 app design. Loaded by the development preview only.
  * data-theme keeps ownership of accessibility modes; this light-only overlay
  * does not change lesson slide recipes, worksheet output or the presentation stage.
  */
@@ -14,6 +14,7 @@ html[data-design="lessonco"][data-theme="light"] {
   --font-ui: "LessonCo Gabarito", ui-sans-serif, system-ui, sans-serif;
   --font-display: "LessonCo Gabarito", ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-ui);
+  --reading-control-height: 40px;
   --text-body: 16px;
   --text-body--line-height: 24px;
   --text-lead: 18px;
@@ -39,7 +40,7 @@ html[data-design="lessonco"][data-theme="light"] {
   --secondary: #fffef8;
   --secondary-foreground: #526052;
   --muted: #f3f1e6;
-  --muted-foreground: #526052;
+  --muted-foreground: #626e5e;
   --accent: #edf0e2;
   --accent-foreground: #293b32;
   --accent-active: #e5ecd8;
@@ -57,7 +58,7 @@ html[data-design="lessonco"][data-theme="light"] {
   --sidebar-accent-foreground: #293b32;
   --sidebar-border: #d5dacb;
   --ink-2: #526052;
-  --ink-3: #526052;
+  --ink-3: #626e5e;
   --ink-4: #7d8b76;
   --brand-text: #293b32;
   --brand-tint: #e5ecd8;
@@ -101,6 +102,16 @@ html[data-design="lessonco"][data-theme="light"] {
     letter-spacing: -0.025em;
   }
 
+  [data-slot="display"][data-size="lg"] {
+    font-size: 32px;
+    line-height: 40px;
+  }
+
+  [data-slot="display"][data-size="xl"] {
+    font-size: 40px;
+    line-height: 48px;
+  }
+
   /* Role-specific type keeps reading copy separate from compact editor controls. */
   .text-body:not(
       :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
@@ -118,9 +129,6 @@ html[data-design="lessonco"][data-theme="light"] {
 
   .text-meta:not(
       :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
-    ),
-  .text-xs:not(
-      :where(.tj-stage, .tj-stage *, [data-slide-root], [data-slide-root] *, .ws-sheet, .ws-sheet *)
     ) {
     font-size: 14px;
     line-height: 20px;
@@ -132,6 +140,94 @@ html[data-design="lessonco"][data-theme="light"] {
     font-size: 14px;
     line-height: 20px;
     letter-spacing: 0.04em;
+  }
+
+  [data-slot="search-input"]:not(:where(.tj-stage, .tj-stage *)) {
+    min-height: var(--reading-control-height);
+  }
+
+  /* Reading controls have room for 16px copy; compact editor actions keep their rung. */
+  :where([data-slot="input"], [data-slot="select-trigger"]):not(
+      :where(.tj-stage, .tj-stage *, [data-slide-root] *, .ws-sheet *)
+    ) {
+    min-height: var(--reading-control-height);
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  [data-slot="textarea"]:not(:where(.tj-stage, .tj-stage *, .ws-sheet *)) {
+    padding: 12px;
+  }
+
+  :where([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"]):not(
+      :where(.tj-stage, .tj-stage *, .ws-sheet *)
+    ):enabled:hover:not([aria-invalid="true"]):not(:focus-visible) {
+    border-color: var(--foreground);
+  }
+
+  [data-slot="button"]:where([data-size="default"], [data-size="lg"]):not(
+      :where(.tj-stage, .tj-stage *)
+    ) {
+    min-height: var(--reading-control-height);
+    font-size: 16px;
+  }
+
+  [data-slot="tabs-list"]:not(:where(.tj-stage, .tj-stage *)) {
+    height: auto;
+    min-height: 36px;
+    padding: 4px;
+    background: var(--muted);
+  }
+
+  [data-slot="tabs-trigger"]:not(:where(.tj-stage, .tj-stage *)) {
+    min-height: 28px;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  [data-crop-toolbar] {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 40px;
+    max-width: 100%;
+    padding-block: 4px;
+  }
+
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"] {
+    width: calc(100vw - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+  }
+
+  [data-theme-dialog] [role="radiogroup"] {
+    grid-template-columns: repeat(auto-fit, minmax(184px, 1fr));
+  }
+
+  [data-theme-tile] {
+    max-width: 184px;
+    justify-self: center;
+  }
+
+  [data-sonner-toaster] {
+    --normal-bg: var(--foreground);
+    --normal-text: var(--background);
+    --normal-border: var(--border-strong);
+    font-family: var(--font-ui);
+  }
+
+  /* The comparison page is documentation, so samples get the space before annotations. */
+  [data-kit-header] {
+    margin-bottom: 8px;
+  }
+
+  [data-kit-frame] > div > div {
+    container-type: inline-size;
+  }
+
+  [data-kit-frame] nav a:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 
   [data-slot="toolbar-button"] {
@@ -221,6 +317,152 @@ html[data-design="lessonco"][data-theme="light"] {
     }
     [data-kit-specimen] > div {
       max-width: 100%;
+    }
+  }
+}
+
+/* At tablet widths the specimen, not the viewport, determines whether its label fits beside it. */
+@container (max-width: 700px) {
+  html[data-design="lessonco"][data-theme="light"] [data-kit-specimen] {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 20px;
+  }
+}
+
+/* A compact rail leaves room for the lesson brief on a phone without rewriting the
+ * teacher's desktop preference. Labels stay in the accessibility tree. */
+@media (max-width: 600px) {
+  html[data-design="lessonco"][data-theme="light"] {
+    --editor-compact: 1;
+
+    [data-lesson-editor] > [data-topbar] {
+      height: auto;
+      flex-wrap: wrap;
+      padding-block: 8px;
+    }
+
+    [data-lesson-editor] > [data-topbar] > div {
+      width: 100%;
+      flex-wrap: wrap;
+      margin-left: 0;
+    }
+
+    [data-testid="generating-shell"] > [data-topbar] {
+      height: auto;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      padding-block: 8px;
+    }
+
+    [data-testid="generating-shell"] > [data-topbar] > div:first-child {
+      grid-column: 1 / -1;
+    }
+
+    [data-testid="generating-strip"] {
+      height: auto;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      padding-block: 12px;
+    }
+
+    [data-lesson-editor],
+    [data-testid="generating-shell"] {
+      --navigator-width-sm: 44px;
+    }
+
+    [data-testid="generating-shell"] [data-canvas] > div:first-child {
+      padding: 16px;
+    }
+
+    [data-generating-thumb],
+    [data-testid="generating-shell"] [data-navigator-mode] [data-slot="skeleton"] {
+      display: none;
+    }
+
+    [data-testid="generating-shell"] [data-navigator-mode] li,
+    [data-slide-thumb] > button {
+      min-height: 40px;
+    }
+
+    [data-navigator-row]:focus-visible,
+    [data-slide-thumb] > button:focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: -2px;
+    }
+
+    [data-navigator][data-navigator-mode="compact"] [data-navigator-thumb] {
+      display: none;
+    }
+
+    [data-navigator][data-navigator-mode="compact"] > div:last-child {
+      height: auto;
+      flex-direction: column;
+      padding-block: 4px;
+    }
+
+    [data-contextual-toolbar] {
+      max-width: calc(100vw - 16px);
+    }
+
+    [data-editor-controls] > div {
+      box-shadow: none;
+      flex-wrap: wrap;
+      height: auto;
+      min-height: 40px;
+      padding-block: 4px;
+    }
+
+    [data-canvas-footer] {
+      max-width: calc(100% - 16px);
+      height: auto;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      right: 8px;
+      bottom: 8px;
+    }
+
+    [data-slot="sidebar"] {
+      --sidebar-width: 64px;
+      --sidebar-width-collapsed: 64px;
+    }
+
+    [data-slot="sidebar-header"] {
+      justify-content: center;
+      margin-top: 24px;
+      padding: 0;
+    }
+
+    [data-slot="sidebar-header"]:has([data-slot="sidebar-mobile-mark"])
+      [data-slot="sidebar-wordmark"],
+    [data-slot="sidebar-toggle"],
+    [data-slot="sidebar-count"] {
+      display: none;
+    }
+
+    [data-slot="sidebar-mobile-mark"] {
+      display: inline;
+    }
+
+    [data-slot="sidebar-links"],
+    [data-slot="sidebar-foot"] {
+      padding-inline: 10px;
+    }
+
+    [data-sidebar-item] {
+      justify-content: center;
+      min-height: 44px;
+      padding: 0;
+    }
+
+    [data-slot="sidebar-label"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   }
 }

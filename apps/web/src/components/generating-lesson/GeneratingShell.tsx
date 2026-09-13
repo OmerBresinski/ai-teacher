@@ -1,7 +1,12 @@
 import type { Id, Lesson } from "@tj/domain/documents";
 import type { JobEvent } from "@tj/domain/jobs";
 import { getTheme, SlideScaler, SlideView } from "@tj/editor";
-import { navigatorThumbWidth, navigatorWidthVar, readNavigatorMode } from "@tj/editor/lesson";
+import {
+  navigatorThumbWidth,
+  navigatorWidthVar,
+  readNavigatorMode,
+  useCompactChrome,
+} from "@tj/editor/lesson";
 import { SlideStatic } from "@tj/editor/thumb";
 import { AppBar, AppBarGroup, Button, cn, Display, IconButton, Skeleton } from "@tj/ui";
 import { ArrowDown, ArrowLeft, Check, Lock, Square } from "lucide-react";
@@ -84,7 +89,9 @@ export function GeneratingShell({
   const theme = getTheme(lesson.themeId);
   // The editor's persisted navigator preference, so the column is the width the editor will
   // mount at and nothing reflows at Ready.
-  const [navigatorMode] = useState(readNavigatorMode);
+  const [preferredNavigatorMode] = useState(readNavigatorMode);
+  const compactChrome = useCompactChrome();
+  const navigatorMode = compactChrome ? "compact" : preferredNavigatorMode;
   const thumbWidth = navigatorThumbWidth(navigatorMode);
   const newest = lesson.slides.at(-1);
   // `null` follows the newest slide; an id pins the canvas to that slide while more arrive.
@@ -461,6 +468,7 @@ function ThumbRow({
           {number}
         </span>
         <span
+          data-generating-thumb
           className={cn(
             "block shrink-0 overflow-hidden rounded-chip bg-card",
             current ? "ring-2 ring-primary" : "ring-1 ring-border",

@@ -27,6 +27,8 @@ const sizes: Record<DisplaySize, string> = {
 function Display({ as: Comp = "h2", size = "md", className, children, ...props }: DisplayProps) {
   return (
     <Comp
+      data-slot="display"
+      data-size={size}
       className={cn(
         "font-display font-medium tracking-[-0.01em] text-foreground",
         sizes[size],

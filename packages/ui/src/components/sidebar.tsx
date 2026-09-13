@@ -84,6 +84,7 @@ function Sidebar({
     <SidebarContext.Provider value={context}>
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: keydown bubbles from the focusable items; the nav only redirects focus between them. */}
       <nav
+        data-slot="sidebar"
         aria-label={ariaLabel}
         onKeyDown={onKeyDown}
         style={{ width: collapsed ? "var(--sidebar-width-collapsed)" : "var(--sidebar-width)" }}
@@ -94,28 +95,51 @@ function Sidebar({
         {...props}
       >
         <div
+          data-slot="sidebar-header"
           className={cn(
             "mt-8 flex h-9 items-center",
             collapsed ? "justify-center" : "justify-between pl-[22px] pr-3",
           )}
         >
-          {collapsed ? (mark ?? wordmark) : wordmark}
+          <span data-slot="sidebar-wordmark">{collapsed ? (mark ?? wordmark) : wordmark}</span>
+          {!collapsed && mark ? (
+            <span data-slot="sidebar-mobile-mark" className="hidden" aria-hidden>
+              {mark}
+            </span>
+          ) : null}
           {collapsed ? null : (
-            <IconButton label="Collapse sidebar" size="sm" onClick={toggle}>
+            <IconButton
+              data-slot="sidebar-toggle"
+              label="Collapse sidebar"
+              size="sm"
+              onClick={toggle}
+            >
               <PanelLeft aria-hidden size={16} strokeWidth={1.5} />
             </IconButton>
           )}
         </div>
         {collapsed ? (
-          <IconButton label="Expand sidebar" size="sm" className="mx-auto mt-2" onClick={toggle}>
+          <IconButton
+            data-slot="sidebar-toggle"
+            label="Expand sidebar"
+            size="sm"
+            className="mx-auto mt-2"
+            onClick={toggle}
+          >
             <PanelLeft aria-hidden size={16} strokeWidth={1.5} />
           </IconButton>
         ) : null}
-        <div className={cn("flex flex-col gap-0.5", collapsed ? "mt-4 px-2.5" : "mt-6 px-3")}>
+        <div
+          data-slot="sidebar-links"
+          className={cn("flex flex-col gap-0.5", collapsed ? "mt-4 px-2.5" : "mt-6 px-3")}
+        >
           {children}
         </div>
         {foot ? (
-          <div className={cn("mt-auto flex flex-col gap-0.5 pb-3", collapsed ? "px-2.5" : "px-3")}>
+          <div
+            data-slot="sidebar-foot"
+            className={cn("mt-auto flex flex-col gap-0.5 pb-3", collapsed ? "px-2.5" : "px-3")}
+          >
             {foot}
           </div>
         ) : null}
@@ -173,9 +197,16 @@ function SidebarItem({
         <span className="sr-only">{label}</span>
       ) : (
         <>
-          <span className="min-w-0 flex-1 truncate">{label}</span>
+          <span data-slot="sidebar-label" className="min-w-0 flex-1 truncate">
+            {label}
+          </span>
           {count === undefined ? null : (
-            <span className="shrink-0 text-eyebrow text-ink-3 tabular-nums">{count}</span>
+            <span
+              data-slot="sidebar-count"
+              className="shrink-0 text-eyebrow text-ink-3 tabular-nums"
+            >
+              {count}
+            </span>
           )}
         </>
       )}
