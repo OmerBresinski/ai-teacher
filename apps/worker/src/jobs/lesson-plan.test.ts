@@ -282,15 +282,44 @@ describeDb("lesson.plan job", () => {
     );
     const mid = await storedLesson(lessonId);
     expect(mid.generation?.stage).toBe("generated");
+    const priorUsage = mid.generation?.usage;
+    if (!priorUsage || priorUsage.costUsd === null)
+      throw new Error("Missing priced checkpoint usage");
+    expect(priorUsage.calls).toBeGreaterThan(0);
     expect((await getDocument(ws(), lessonId))?.generatingJobId).toBe(jobId);
     const worksheetId = mid.artefacts?.worksheetId ?? "";
     expect((await getDocument(ws(), worksheetId))?.generatingJobId).toBe(jobId);
 
-    const second = createFakeAi({ script: routed(pipelineScript().slice(evaluateIndex)) });
-    await lessonPlanJob(ctx(jobId, lessonId, depsWith(second)).ctx);
+    const second = createFakeAi({
+      usage: { inputTokens: 1000, outputTokens: 400 },
+      script: routed(pipelineScript().slice(evaluateIndex)),
+    });
+    const resumed = ctx(jobId, lessonId, depsWith(second));
+    const logs: string[] = [];
+    resumed.ctx.logger = pino(
+      { level: "info" },
+      {
+        write: (line) => {
+          logs.push(line);
+        },
+      },
+    );
+    await lessonPlanJob(resumed.ctx);
 
     expect(second.calls.map((c) => c.context?.stage)).toEqual(["evaluate"]);
     const done = await storedLesson(lessonId);
+    expect(done.generation?.usage?.calls).toBe(priorUsage.calls + second.calls.length);
+    expect(done.generation?.usage?.inputTokens).toBe(priorUsage.inputTokens + 1000);
+    expect(done.generation?.usage?.outputTokens).toBe(priorUsage.outputTokens + 400);
+    expect(done.generation?.usage?.costUsd).toBeCloseTo(
+      priorUsage.costUsd +
+        (costUsd(DEFAULT_MODEL_IDS.standard, { inputTokens: 1000, outputTokens: 400 }) ?? 0),
+      10,
+    );
+    const summary = logs
+      .map((line) => JSON.parse(line))
+      .find((line) => line.msg === "generation summary");
+    expect(summary).toMatchObject({ resumed: true, usagePriorUsd: priorUsage.costUsd });
     expect(done.generation?.stage).toBe("repaired");
     expect(done.artefacts?.worksheetId).toBe(worksheetId);
     expect((await getDocument(ws(), lessonId))?.generatingJobId).toBeNull();
@@ -331,6 +360,34 @@ describeDb("lesson.plan job", () => {
     const worksheetRow = await getDocument(ws(), worksheetId);
     expect(worksheetRow?.kind).toBe("worksheet");
     expect(worksheetRow?.generatingJobId).toBeNull();
+  });
+
+  test("a resumed Lesson already at its USD cap dispatches no model call", async () => {
+    const jobId = newId<JobId>();
+    const lessonId = await briefLesson(jobId);
+    const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2 + 1;
+    const first = createFakeAi({
+      script: routed(
+        pipelineScript({
+          overrides: {
+            [evaluateIndex]: () => {
+              throw new Error("synthetic provider outage");
+            },
+          },
+        }),
+      ),
+    });
+    await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(first)).ctx)).rejects.toThrow();
+    const prior = (await storedLesson(lessonId)).generation?.usage;
+    if (!prior || prior.costUsd === null) throw new Error("Missing checkpoint usage");
+    const resumed = createFakeAi({ error: new Error("No model should be dispatched") });
+    await lessonPlanJob(
+      ctx(jobId, lessonId, depsWith(resumed, { capUsd: prior.costUsd, capTokens: 1_000_000 })).ctx,
+    );
+    expect(resumed.calls).toHaveLength(0);
+    const done = await storedLesson(lessonId);
+    expect(done.generation?.usage).toEqual(prior);
+    expect(done.generation?.findings.some((finding) => finding.check === "budget")).toBe(true);
   });
 
   test("an unconfigured provider is a NonRetryableError and releases the lock", async () => {

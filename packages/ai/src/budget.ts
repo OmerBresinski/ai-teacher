@@ -34,12 +34,17 @@ export interface Budget {
   totals(): BudgetTotals;
 }
 
-export function createBudget(options: BudgetOptions): Budget {
+export function createBudget(
+  options: BudgetOptions,
+  initial: { spent?: Readonly<BudgetTotals> } = {},
+): Budget {
   const priced = options.priced ?? ((modelId: string) => costUsd(modelId, ZERO) !== null);
-  let calls = 0;
-  let inputTokens = 0;
-  let outputTokens = 0;
-  let usd: number | null = 0;
+  // Resume the exact aggregate; never infer a model or invent token usage to reconstruct USD.
+  const spent = initial.spent;
+  let calls = spent?.calls ?? 0;
+  let inputTokens = spent?.inputTokens ?? 0;
+  let outputTokens = spent?.outputTokens ?? 0;
+  let usd: number | null = spent === undefined ? 0 : spent.costUsd;
 
   /** The one place the priced/unpriced switch lives. */
   const capIsUsd = () => usd !== null;
@@ -60,8 +65,8 @@ export function createBudget(options: BudgetOptions): Budget {
       };
     },
     exceeded() {
-      if (capIsUsd()) return (usd as number) > options.capUsd ? { by: "usd" } : null;
-      return inputTokens + outputTokens > options.capTokens ? { by: "tokens" } : null;
+      if (capIsUsd()) return (usd as number) >= options.capUsd ? { by: "usd" } : null;
+      return inputTokens + outputTokens >= options.capTokens ? { by: "tokens" } : null;
     },
     totals() {
       return { calls, inputTokens, outputTokens, costUsd: usd };
