@@ -60,7 +60,10 @@ one-line rationale per dimension, kept **only** in this gitignored file (root `.
 rationale never reaches the comment. `firstSlideMs` is the time to the first persist that carried a
 slide, the number the F06 definition of done ("first slide visible in under 10 seconds") is about;
 `planMs` is the time to the `planned` checkpoint (Plan's wall time, the Plan tickets' budget, with
-`p50PlanMs` in the totals and a `p50 plan` row in the comment); `durationMs` is the whole brief
+`p50PlanMs` in the totals and a `p50 plan` row in the comment) — skeleton + facts since TEACH-233,
+Verify being started at the checkpoint and awaited by Generate; `verifyMs` is Verify's own call
+time, read from the pipeline's `facts verified` log record (`p50VerifyMs`, `p50 verify`), so
+`planMs + verifyMs` is what `planMs` measured before; `durationMs` is the whole brief
 **without** the judge call that follows it. `calls`, the tokens and
 `costUsd` on a brief are the lesson's own, so the cost is comparable with the per-lesson target;
 the judge's usage is the `judge` object beside them, taken from the budget's deltas so a judge

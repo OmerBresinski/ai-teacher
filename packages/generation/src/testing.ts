@@ -173,6 +173,13 @@ export function routed(
     if (version.startsWith("pick-or-requery-photo")) {
       return takeAt(pending.findIndex((e) => "pick" in (parsed(e) ?? {})));
     }
+    // Verify runs alongside the first slide batch (TEACH-233): its reply is found by shape too. A
+    // scripted miss for it (a non-JSON entry right where the verify answer sits) is still taken in
+    // list order by the fallthrough below.
+    if (version.startsWith("verify-facts")) {
+      const at = pending.findIndex((e) => Array.isArray(parsed(e)?.corrections));
+      if (at !== -1) return takeAt(at);
+    }
     if (version.startsWith("generate-slide")) {
       const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1];
       return takeAt(

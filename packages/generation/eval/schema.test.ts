@@ -35,6 +35,9 @@ describe("eval:schema", () => {
       expect(row.result.slides).toBeGreaterThan(2);
       expect(row.result.blocks).toBeGreaterThan(0);
       expect(row.result.scores?.schema).toBe(1);
+      // TEACH-233 row 7: Plan's time stops at the checkpoint, Verify's own time is beside it.
+      expect(row.result.planMs).not.toBeNull();
+      expect(row.result.verifyMs).not.toBeNull();
     }
     expect(formatSchemaTable(rows)).toContain("| y8-science-particles | ");
   }, 20_000);

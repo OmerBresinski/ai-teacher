@@ -1,5 +1,7 @@
 import type { Finding, LessonFacts } from "@tj/domain/documents";
 import { LessonFactsSchema } from "@tj/domain/documents";
+import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { type Audience, verifyFactsPrompt } from "../prompts";
 import {
   type VerifyCorrection,
   type VerifyField,
@@ -7,14 +9,76 @@ import {
   verifiableArrayOf,
   verifyOutputSchemaFor,
 } from "../specs";
+import { BudgetExceeded, type PipelineDeps, StageFailure, type VerifyResult } from "../types";
+import { BUDGET_FINDING } from "./shared";
 
 /*
- * Verify (Generation quality, Decision 1; TEACH-212): the patch the subject-specialist call
- * returns, applied to the merged `LessonFacts` before anything is generated. Pure: a new facts
+ * Verify (Generation quality, Decision 1; TEACH-212, TEACH-233): the subject-specialist call over
+ * the merged `LessonFacts` and the patch it returns. `applyVerifyPatch` is pure: a new facts
  * object, the input untouched, the result parsed by `LessonFactsSchema` so a correction can never
  * leave the facts invalid. Same semantics as the editor's `updateFact` reducer, which
- * `@tj/generation` cannot import (ADR 0013). Called from `plan()`; not a pipeline stage.
+ * `@tj/generation` cannot import (ADR 0013). `runVerify` is the call: started by `plan()` after
+ * the facts call and awaited by `generate()` before its first persist, so the Verify latency is
+ * spent alongside the first slide batch; a lesson resumed at `planned` without the promise starts
+ * it in `generate()` itself. Not a pipeline stage.
  */
+
+export type { VerifyResult };
+
+/**
+ * The Verify call and its patch. A cap stop records the budget finding and leaves the facts as they
+ * are; two schema misses (or a provider fault) record `VERIFY_FAILED_FINDING`; a cancel settles
+ * with the facts untouched and no finding — the stage awaiting it checks the signal itself. One
+ * `fact-verify` warning per applied correction, content-free. Logged under `stage: "plan"`: it is
+ * Plan's third call whichever stage awaits it.
+ */
+export async function runVerify(
+  facts: LessonFacts,
+  briefInput: { topic: string; audience: Audience },
+  deps: PipelineDeps,
+): Promise<VerifyResult> {
+  deps.logger.info({ stage: "plan", call: "verify" }, "plan call");
+  const startedAt = Date.now();
+  try {
+    const call = await callStructured({
+      deps,
+      stage: "plan",
+      cls: "standard",
+      effort: "high",
+      prompt: verifyFactsPrompt,
+      input: { audience: briefInput.audience, topic: briefInput.topic, facts },
+      schema: verifyOutputSchemaFor(facts),
+      maxOutputTokens: MAX_OUTPUT_TOKENS.verify,
+    });
+    const patched = applyVerifyPatch(facts, call.output.corrections);
+    deps.logger.info(
+      {
+        stage: "plan",
+        call: "verify",
+        corrections: patched.applied.length,
+        durationMs: Date.now() - startedAt,
+      },
+      "facts verified",
+    );
+    return {
+      facts: patched.applied.length > 0 ? patched.facts : facts,
+      applied: patched.applied,
+      findings: patched.applied.map(verifyFinding),
+    };
+  } catch (error) {
+    if (error instanceof BudgetExceeded) {
+      return { facts, applied: [], findings: [BUDGET_FINDING(error.by, "fact verification")] };
+    }
+    if (error instanceof Error && error.name === "AbortError") {
+      return { facts, applied: [], findings: [] };
+    }
+    deps.logger.warn(
+      { stage: "plan", call: "verify", err: error instanceof StageFailure ? undefined : error },
+      "fact verification failed; facts kept",
+    );
+    return { facts, applied: [], findings: [VERIFY_FAILED_FINDING] };
+  }
+}
 
 /** What the residual badge says for each reason; never the corrected text (ADR 0015). */
 const REASON_LABEL: Record<VerifyReason, string> = {

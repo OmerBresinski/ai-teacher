@@ -35,12 +35,32 @@ const planScript = () => [
   json(FIXTURES.verify),
 ];
 const fullFacts = () => assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
+const PLAN_STAMP = `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}`;
+const VERIFIED_STAMP = `${PLAN_STAMP}+${PROMPT_VERSIONS["verify-facts"]}`;
+/** Plan, then wait for the Verify call it started (TEACH-233) so every scripted call is recorded. */
+async function planVerified(...args: Parameters<typeof plan>) {
+  const state = await plan(...args);
+  const verify = await state.pendingVerify;
+  return { state, verify };
+}
+/** The slide answers for the fixture outline, then the worksheet — what `generate` consumes. */
+const generateScript = () =>
+  routed([
+    ...FIXTURES.planSkeleton.outline
+      .slice(PLANNED_SLIDES)
+      .map((e) => json(FIXTURES.slides[e.kind])),
+    json(FIXTURES.worksheet),
+  ]);
 
 describe("plan", () => {
-  test("title slide first, then the skeleton, then the facts and verify: three persists, three calls, one checkpoint", async () => {
+  test("title slide first, then the skeleton, then the facts: three persists, one checkpoint; Verify is started, not awaited (TEACH-233)", async () => {
     const ai = createFakeAi({ script: planScript(), usage });
     const deps = recordingDeps(ai);
     const state = await plan(initialState(), deps);
+    // The checkpoint is written before the verify answer is in: Plan hands the promise on.
+    expect(state.pendingVerify).toBeInstanceOf(Promise);
+    const verify = await state.pendingVerify;
+    expect(verify?.applied).toEqual([]);
 
     // 1. The title slide is persisted before any model call, with no `generation` yet.
     const [first, second, third] = deps.persisted;
@@ -69,25 +89,18 @@ describe("plan", () => {
     expect(second?.lesson.generation).toBeUndefined();
     expect(deps.progress[1]).toMatchObject({ percent: 6, documentUpdatedAt: second?.updatedAt });
 
-    // 3. Verify announces itself before its call, carrying the skeleton persist; no persist of
-    //    its own. Then the checkpoint with the complete facts (an empty patch: unchanged) and the
-    //    three-version stamp (row 4).
-    expect(deps.progress[2]).toEqual({
-      percent: 8,
-      message: "Checking the facts",
-      documentUpdatedAt: second?.updatedAt,
-    });
+    // 3. The checkpoint with the merged facts (Verify has not answered yet) and Plan's two-version
+    //    stamp; Generate completes it with `verify-facts` once the patch has landed.
     expect(third?.lesson.generation?.stage).toBe("planned");
     expect(third?.lesson.facts).toEqual(fullFacts());
     expect(third?.lesson.generation?.findings).toEqual([]);
-    expect(third?.lesson.generation?.promptVersions.planned).toBe(
-      `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}+${PROMPT_VERSIONS["verify-facts"]}`,
-    );
-    expect(deps.progress[3]).toEqual({
+    expect(third?.lesson.generation?.promptVersions.planned).toBe(PLAN_STAMP);
+    expect(deps.progress[2]).toEqual({
       percent: 10,
       message: "Planned",
       documentUpdatedAt: third?.updatedAt,
     });
+    expect(deps.progress).toHaveLength(3);
     expect(deps.persisted).toHaveLength(3);
     // Row 8: the verify call is the third plan call, standard class at high effort.
     expect(
@@ -110,10 +123,9 @@ describe("plan", () => {
     expect(state.lesson.generation).toMatchObject({
       jobId: deps.context.jobId,
       stage: "planned",
-      promptVersions: {
-        planned: `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}+${PROMPT_VERSIONS["verify-facts"]}`,
-      },
-      usage: { calls: 3, inputTokens: 3000, outputTokens: 1200 },
+      promptVersions: { planned: PLAN_STAMP },
+      // Verify was still in flight at the checkpoint: two calls charged so far.
+      usage: { calls: 2, inputTokens: 2000, outputTokens: 800 },
       findings: [],
     });
     // The objectives slide references the objectives and carries the skeleton prompt's version.
@@ -142,7 +154,7 @@ describe("plan", () => {
       ],
       usage,
     });
-    const state = await plan(initialState(), recordingDeps(ai));
+    const { state } = await planVerified(initialState(), recordingDeps(ai));
     expect(ai.calls).toHaveLength(4);
     expect(state.lesson.facts).toEqual(fullFacts());
   });
@@ -159,7 +171,7 @@ describe("plan", () => {
       ],
       usage,
     });
-    const state = await plan(initialState(), recordingDeps(ai));
+    const { state } = await planVerified(initialState(), recordingDeps(ai));
     expect(ai.calls).toHaveLength(4);
     expect(state.lesson.facts).toEqual(fullFacts());
   });
@@ -192,7 +204,7 @@ describe("plan", () => {
 
     const ai = createFakeAi({ script: planScript(), usage });
     const deps = recordingDeps(ai);
-    const state = await plan(initialState(titleOnly), deps);
+    const { state } = await planVerified(initialState(titleOnly), deps);
     expect(ai.calls).toHaveLength(3);
     expect(state.lesson.slides.map((s) => s.kind)).toEqual(["title", "objectives"]);
     expect(state.lesson.slides[0]).toEqual(titleOnly.slides[0]);
@@ -208,7 +220,7 @@ describe("plan", () => {
 
     const ai = createFakeAi({ script: [json(FIXTURES.planFacts), json(FIXTURES.verify)], usage });
     const deps = recordingDeps(ai);
-    const state = await plan(initialState(afterSkeleton), deps);
+    const { state } = await planVerified(initialState(afterSkeleton), deps);
     expect(ai.calls).toHaveLength(2);
     expect(ai.calls[0]?.context?.promptVersion).toBe(PROMPT_VERSIONS["plan-facts"]);
     // No persist ever drops slide two: the first persist already carries both slides.
@@ -277,7 +289,7 @@ describe("plan", () => {
     };
     for (const [name, lesson] of Object.entries(variants)) {
       const ai = createFakeAi({ script: planScript(), usage });
-      const state = await plan(initialState(lesson), recordingDeps(ai));
+      const { state } = await planVerified(initialState(lesson), recordingDeps(ai));
       expect(ai.calls, name).toHaveLength(3);
       expect(state.lesson.generation?.stage, name).toBe("planned");
     }
@@ -300,24 +312,28 @@ describe("plan", () => {
     ]);
   });
 
-  describe("verify (TEACH-212)", () => {
+  describe("verify (TEACH-212, TEACH-233)", () => {
     const withCorrection = (corrections: unknown[]) =>
       createFakeAi({
         script: [json(FIXTURES.planSkeleton), json(FIXTURES.planFacts), json({ corrections })],
         usage,
       });
 
-    test("row 1: a term correction lands in the persisted facts with one content-free fact-verify warning", async () => {
+    test("row 1: a term correction is in the result Plan hands on, with one content-free fact-verify warning; the checkpoint still has the merged facts", async () => {
       const ai = withCorrection([
         { factId: "v1", field: "term", value: "Clan", reason: "wrong-term" },
       ]);
       const deps = recordingDeps(ai);
-      const state = await plan(initialState(), deps);
-      const facts = deps.persisted.at(-1)?.lesson.facts;
-      expect(facts?.vocabulary[0]?.term).toBe("Clan");
-      expect(facts?.vocabulary[0]?.definition).toBe(fullFacts().vocabulary[0]?.definition);
-      const findings = state.lesson.generation?.findings ?? [];
-      expect(findings).toEqual([
+      const { state, verify } = await planVerified(initialState(), deps);
+      // Plan persisted before Verify answered: the checkpoint is unverified on purpose.
+      expect(deps.persisted.at(-1)?.lesson.facts?.vocabulary[0]?.term).toBe(
+        fullFacts().vocabulary[0]?.term,
+      );
+      expect(state.lesson.generation?.findings).toEqual([]);
+      expect(verify?.facts.vocabulary[0]?.term).toBe("Clan");
+      expect(verify?.facts.vocabulary[0]?.definition).toBe(fullFacts().vocabulary[0]?.definition);
+      expect(verify?.applied).toHaveLength(1);
+      expect(verify?.findings).toEqual([
         {
           check: "fact-verify",
           severity: "warning",
@@ -325,7 +341,7 @@ describe("plan", () => {
           message: "Vocabulary term corrected: not the accepted term.",
         },
       ]);
-      expect(JSON.stringify(findings)).not.toContain("Clan");
+      expect(JSON.stringify(verify?.findings)).not.toContain("Clan");
     });
 
     test("row 2: an unknown fact id is a validation issue the retry names; the second reply is applied", async () => {
@@ -342,26 +358,27 @@ describe("plan", () => {
         ],
         usage,
       });
-      const state = await plan(initialState(), recordingDeps(ai));
+      const { verify } = await planVerified(initialState(), recordingDeps(ai));
       expect(ai.calls).toHaveLength(4);
       expect(ai.calls[3]?.promptText).toContain("unknown fact id v9");
-      expect(state.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
+      expect(verify?.facts.vocabulary[0]?.term).toBe("Clan");
     });
 
-    test("row 5: the budget spent before Verify skips it; planned is reached with one budget finding", async () => {
+    test("row 5: the budget spent before Verify refuses it; planned is reached and the result carries one budget finding", async () => {
       const ai = createFakeAi({ script: planScript(), usage });
       // Two calls' worth and a little: skeleton and facts go ahead, Verify is refused.
       const deps = recordingDeps(ai, {
         budget: createBudget({ capUsd: STANDARD_CALL_USD * 1.5, capTokens: 1_000_000 }),
       });
-      const state = await plan(initialState(), deps);
+      const { state, verify } = await planVerified(initialState(), deps);
       expect(ai.calls).toHaveLength(2);
       expect(state.lesson.generation?.stage).toBe("planned");
       expect(state.lesson.facts).toEqual(fullFacts());
-      expect(state.lesson.generation?.findings.filter((f) => f.check === "budget")).toHaveLength(1);
+      expect(verify?.facts).toEqual(fullFacts());
+      expect(verify?.findings.map((f) => f.check)).toEqual(["budget"]);
     });
 
-    test("a provider fault on Verify is a fact-verify warning too, never a failed job; a cancel still propagates", async () => {
+    test("a provider fault on Verify is a fact-verify warning too, never a rejected promise", async () => {
       const faulty = createFakeAi({
         script: [
           json(FIXTURES.planSkeleton),
@@ -372,11 +389,29 @@ describe("plan", () => {
         ],
         usage,
       });
-      const state = await plan(initialState(), recordingDeps(faulty));
+      const { state, verify } = await planVerified(initialState(), recordingDeps(faulty));
       expect(state.lesson.generation?.stage).toBe("planned");
-      expect(state.lesson.generation?.findings).toEqual([
+      expect(verify?.findings).toEqual([
         expect.objectContaining({ check: "fact-verify", target: {} }),
       ]);
+    });
+
+    test("a cancel during Verify settles the promise with the facts untouched and no finding", async () => {
+      const abort = new AbortController();
+      const ai = createFakeAi({
+        script: [
+          json(FIXTURES.planSkeleton),
+          json(FIXTURES.planFacts),
+          () => {
+            abort.abort(new DOMException("cancelled", "AbortError"));
+            throw abort.signal.reason;
+          },
+        ],
+        usage,
+      });
+      const deps = { ...recordingDeps(ai), signal: abort.signal };
+      const { verify } = await planVerified(initialState(), deps);
+      expect(verify).toEqual({ facts: fullFacts(), applied: [], findings: [] });
     });
 
     test("row 6: two schema misses on Verify leave the facts as they were and one fact-verify warning; the job goes on", async () => {
@@ -384,11 +419,11 @@ describe("plan", () => {
         script: [json(FIXTURES.planSkeleton), json(FIXTURES.planFacts), "not json", "{}"],
         usage,
       });
-      const state = await plan(initialState(), recordingDeps(ai));
+      const { state, verify } = await planVerified(initialState(), recordingDeps(ai));
       expect(ai.calls).toHaveLength(4);
       expect(state.lesson.generation?.stage).toBe("planned");
-      expect(state.lesson.facts).toEqual(fullFacts());
-      expect(state.lesson.generation?.findings).toEqual([
+      expect(verify?.facts).toEqual(fullFacts());
+      expect(verify?.findings).toEqual([
         {
           check: "fact-verify",
           severity: "warning",
@@ -437,11 +472,18 @@ describe("generate", () => {
     expect(deps.persisted.map((p) => p.lesson.slides.length)).toEqual([
       3, 4, 5, 6, 7, 8, 9, 10, 11, 11,
     ]);
-    expect(deps.progress.map((p) => p.message).slice(0, 2)).toEqual([
+    // Verify announces itself inside Writing (TEACH-233), then the slides in outline order.
+    expect(deps.progress.map((p) => p.message).slice(0, 3)).toEqual([
+      "Checking the facts",
       "Slide 3 of 11",
       "Slide 4 of 11",
     ]);
+    expect(deps.progress[0]?.percent).toBe(11);
     expect(deps.progress.at(-1)).toMatchObject({ percent: 85, message: "Worksheet ready" });
+    // The stamp says Verify has run; an empty patch leaves the facts as Plan wrote them.
+    expect(state.lesson.generation?.promptVersions.planned).toBe(VERIFIED_STAMP);
+    expect(state.lesson.facts).toEqual(start.lesson.facts);
+    expect(state.pendingVerify).toBeUndefined();
     expect(state.worksheet).toMatchObject({
       id: state.worksheetId,
       lessonId: state.lesson.id,
@@ -644,7 +686,7 @@ describe("generate", () => {
     expect(maxInFlight).toBeLessThanOrEqual(GENERATE_CONCURRENCY + 1);
     const lengths = deps.persisted.map((p) => p.lesson.slides.length);
     expect(lengths).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 11]);
-    expect(deps.progress.map((p) => p.message).slice(0, 9)).toEqual(
+    expect(deps.progress.map((p) => p.message).slice(1, 10)).toEqual(
       entries.map((_, i) => `Slide ${i + PLANNED_SLIDES + 1} of 11`),
     );
     // The worksheet is on the final write only.
@@ -939,6 +981,240 @@ describe("generate", () => {
     const evaluated = await evaluate(generated, recordingDeps(review));
     expect(evaluated.lesson.generation?.findings[0]).toMatchObject({ severity: "warning" });
     expect(evaluated.lesson.generation?.findings[0]?.fix).toBeUndefined();
+  });
+
+  describe("Verify alongside the first batch (TEACH-233)", () => {
+    /** Plan whose Verify answer is held until `release()`; the answer is `corrections`. */
+    async function plannedWithHeldVerify(corrections: unknown[]) {
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const ai = createFakeAi({
+        script: [
+          json(FIXTURES.planSkeleton),
+          json(FIXTURES.planFacts),
+          async () => {
+            await held;
+            return json({ corrections });
+          },
+        ],
+        usage,
+      });
+      const deps = recordingDeps(ai);
+      const state = await plan(initialState(), deps);
+      return { state, release: () => release(), planAi: ai };
+    }
+    const slideCalls = (ai: ReturnType<typeof createFakeAi>) =>
+      ai.calls.filter((c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-slide"]);
+
+    test("row 1: no corrections — the planned persist precedes the verify answer; no persist waits on it once it is in; same calls as before", async () => {
+      const { state, release, planAi } = await plannedWithHeldVerify([]);
+      // Plan returned with the checkpoint written while the verify call is still out.
+      expect(state.lesson.generation?.stage).toBe("planned");
+      await new Promise((r) => setTimeout(r, 1));
+      expect(planAi.calls).toHaveLength(3);
+      const ai = createFakeAi({ script: generateScript(), usage });
+      const deps = recordingDeps(ai);
+      const run = generate(state, deps);
+      await new Promise((r) => setTimeout(r, 5));
+      // Slide calls went out, nothing was persisted: every persist waits for the patch.
+      expect(slideCalls(ai).length).toBeGreaterThan(0);
+      expect(deps.persisted).toHaveLength(0);
+      release();
+      const result = await run;
+      expect(slideCalls(ai)).toHaveLength(FIXTURES.planSkeleton.outline.length - PLANNED_SLIDES);
+      expect(result.lesson.generation?.promptVersions.planned).toBe(VERIFIED_STAMP);
+      expect(result.lesson.generation?.findings).toEqual([]);
+    });
+
+    test("row 2: Verify corrects v1 — the slide that references v1 is written twice from the patched facts, the others once; the checkpoint carries the patched facts and the finding", async () => {
+      const facts = fullFacts();
+      const v1 = facts.vocabulary[0];
+      if (!v1) throw new Error("fixture");
+      const touched = facts.outline.findIndex((e) => e.factRefs.includes("v1"));
+      const untouched = facts.outline.findIndex(
+        (e, i) => i >= PLANNED_SLIDES && !e.factRefs.includes("v1"),
+      );
+      expect(touched).toBeGreaterThanOrEqual(PLANNED_SLIDES);
+      const { state, release } = await plannedWithHeldVerify([
+        { factId: "v1", field: "term", value: "Clan", reason: "wrong-term" },
+      ]);
+      const ai = createFakeAi({
+        fallback: (call) => {
+          if (call.context?.promptVersion === PROMPT_VERSIONS["generate-worksheet"]) {
+            return json(FIXTURES.worksheet);
+          }
+          const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "";
+          const spec = FIXTURES.slides[kind as keyof typeof FIXTURES.slides];
+          if (!spec) throw new Error(`no fixture for ${kind}`);
+          // A vocabulary slide written from the corrected facts says so, so the test can tell
+          // the second answer from the first.
+          if (kind === "vocabulary" && call.promptText.includes("Clan")) {
+            const vocab = spec as { entries: { term: string; definition: string }[] };
+            return json({
+              ...spec,
+              entries: vocab.entries.map((e, i) => (i === 0 ? { ...e, term: "Clan" } : e)),
+            });
+          }
+          return json(spec);
+        },
+        usage,
+      });
+      const deps = recordingDeps(ai);
+      const run = generate(state, deps);
+      await new Promise((r) => setTimeout(r, 5));
+      expect(deps.persisted).toHaveLength(0);
+      const worksheetCallsBeforeRelease = ai.calls.filter(
+        (c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-worksheet"],
+      ).length;
+      release();
+      const result = await run;
+      const position = (i: number) => `Slide ${i + 1} of ${facts.outline.length}`;
+      expect(slideCalls(ai).filter((c) => c.promptText.includes(position(touched)))).toHaveLength(
+        2,
+      );
+      expect(slideCalls(ai).filter((c) => c.promptText.includes(position(untouched)))).toHaveLength(
+        1,
+      );
+      // The persisted slide is the second answer, written from the patched facts.
+      expect(slideText(result.lesson.slides[touched] as never)).toContain("Clan");
+      expect(deps.persisted[touched - PLANNED_SLIDES]?.lesson.slides[touched]).toEqual(
+        result.lesson.slides[touched],
+      );
+      expect(result.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
+      expect(result.lesson.generation?.findings).toEqual([
+        {
+          check: "fact-verify",
+          severity: "warning",
+          target: { factId: "v1" },
+          message: "Vocabulary term corrected: not the accepted term.",
+        },
+      ]);
+      expect(result.lesson.generation?.promptVersions.planned).toBe(VERIFIED_STAMP);
+      // The worksheet started after the patch: no worksheet call went out before `release()`.
+      expect(worksheetCallsBeforeRelease).toBe(0);
+      expect(
+        ai.calls.some((c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-worksheet"]),
+      ).toBe(true);
+      // Every persist carried the patched facts.
+      for (const p of deps.persisted) expect(p.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
+    });
+
+    test("row 3: Verify fails twice — the failed-call finding, no regeneration, the lesson completes", async () => {
+      const ai = createFakeAi({
+        script: [json(FIXTURES.planSkeleton), json(FIXTURES.planFacts), "not json", "{}"],
+        usage,
+      });
+      const start = await plan(initialState(), recordingDeps(ai));
+      const genAi = createFakeAi({ script: generateScript(), usage });
+      const result = await generate(start, recordingDeps(genAi));
+      expect(slideCalls(genAi)).toHaveLength(FIXTURES.planSkeleton.outline.length - PLANNED_SLIDES);
+      expect(result.lesson.generation?.stage).toBe("generated");
+      expect(result.lesson.generation?.findings).toEqual([
+        expect.objectContaining({ check: "fact-verify", target: {} }),
+      ]);
+      expect(result.lesson.generation?.promptVersions.planned).toBe(VERIFIED_STAMP);
+    });
+
+    test("row 4: resumed from planned without the promise — Verify runs first, before any slide call; a lesson already stamped is not verified again", async () => {
+      const { state, release } = await plannedWithHeldVerify([]);
+      release();
+      await state.pendingVerify;
+      const { pendingVerify: _dropped, ...resumed } = state;
+      const ai = createFakeAi({
+        script: routed([
+          json({
+            corrections: [{ factId: "v1", field: "term", value: "Clan", reason: "wrong-term" }],
+          }),
+          ...FIXTURES.planSkeleton.outline
+            .slice(PLANNED_SLIDES)
+            .map((e) => json(FIXTURES.slides[e.kind])),
+          json(FIXTURES.worksheet),
+        ]),
+        usage,
+      });
+      const result = await generate(resumed, recordingDeps(ai));
+      expect(ai.calls[0]?.context?.promptVersion).toBe(PROMPT_VERSIONS["verify-facts"]);
+      expect(ai.calls[0]?.context?.stage).toBe("plan");
+      // One verify call, and every slide was written once, from the patched facts.
+      expect(slideCalls(ai)).toHaveLength(FIXTURES.planSkeleton.outline.length - PLANNED_SLIDES);
+      expect(result.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
+      expect(result.lesson.generation?.promptVersions.planned).toBe(VERIFIED_STAMP);
+
+      // A second resume (worksheet row lost, say) reads the stamp and asks nothing of Verify.
+      const again = createFakeAi({ script: generateScript(), usage });
+      const partial = {
+        ...resumed,
+        lesson: { ...result.lesson, slides: result.lesson.slides.slice(0, 5) },
+      };
+      await generate(partial, recordingDeps(again));
+      expect(
+        again.calls.some((c) => c.context?.promptVersion === PROMPT_VERSIONS["verify-facts"]),
+      ).toBe(false);
+    });
+
+    test("a cap hit on the regeneration call drops the slide built from unverified facts and stops there", async () => {
+      const { state, release } = await plannedWithHeldVerify([
+        { factId: "v1", field: "term", value: "Clan", reason: "wrong-term" },
+      ]);
+      const facts = fullFacts();
+      const touched = facts.outline.findIndex((e) => e.factRefs.includes("v1"));
+      const ai = createFakeAi({ script: generateScript(), usage });
+      // One batch's worth plus the worksheet: the first four slide calls go ahead; the vocabulary
+      // slide's second call (and every later slide) is refused.
+      const budget = createBudget({ capUsd: SMALL_CALL_USD * 3.5, capTokens: 1_000_000 });
+      const deps = recordingDeps(ai, { budget });
+      const run = generate(state, deps);
+      await new Promise((r) => setTimeout(r, 5));
+      release();
+      const result = await run;
+      expect(result.lesson.generation?.stage).toBe("generated");
+      // Slides before the touched one landed; the touched one and everything after did not.
+      expect(result.lesson.slides).toHaveLength(touched);
+      // The worksheet, which also waited for the patch, may be the first call the cap refused.
+      expect(result.lesson.generation?.findings).toEqual([
+        expect.objectContaining({ check: "fact-verify", target: { factId: "v1" } }),
+        expect.objectContaining({ check: "budget" }),
+      ]);
+      expect(result.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
+    });
+
+    test("skeleton-only facts (the facts call was refused at the cap) are not verified on resume", async () => {
+      const planAi = createFakeAi({ script: planScript(), usage });
+      const budget = createBudget({ capUsd: STANDARD_CALL_USD / 2, capTokens: 1_000_000 });
+      const start = await plan(initialState(), recordingDeps(planAi, { budget }));
+      expect(start.pendingVerify).toBeUndefined();
+      expect(start.lesson.facts?.questions).toEqual([]);
+      const ai = createFakeAi({ script: generateScript(), usage });
+      const result = await generate(start, recordingDeps(ai));
+      expect(
+        ai.calls.some((c) => c.context?.promptVersion === PROMPT_VERSIONS["verify-facts"]),
+      ).toBe(false);
+      expect(result.lesson.generation?.findings.filter((f) => f.check === "budget")).toHaveLength(
+        1,
+      );
+    });
+
+    test("row 5: a budget stop during Verify — one budget finding, no regeneration, slides from the unpatched facts, the lesson completes", async () => {
+      const planAi = createFakeAi({ script: planScript(), usage });
+      // Skeleton and facts go ahead; Verify is refused at the cap.
+      const budget = createBudget({ capUsd: STANDARD_CALL_USD * 1.5, capTokens: 1_000_000 });
+      const start = await plan(initialState(), recordingDeps(planAi, { budget }));
+      expect(planAi.calls).toHaveLength(2);
+      // Generate gets a fresh budget: the stop was Verify's alone.
+      const ai = createFakeAi({ script: generateScript(), usage });
+      const result = await generate(start, recordingDeps(ai));
+      expect(slideCalls(ai)).toHaveLength(FIXTURES.planSkeleton.outline.length - PLANNED_SLIDES);
+      expect(result.lesson.facts).toEqual(fullFacts());
+      expect(result.lesson.generation?.findings).toEqual([
+        expect.objectContaining({
+          check: "budget",
+          message: expect.stringContaining("fact verification"),
+        }),
+      ]);
+      expect(result.lesson.generation?.stage).toBe("generated");
+    });
   });
 
   test("resumes: slides already present are not regenerated", async () => {

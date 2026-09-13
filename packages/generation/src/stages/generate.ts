@@ -23,8 +23,14 @@ import {
   generateWorksheetPrompt,
   pickOrRequeryPrompt,
   type SlidePhoto,
+  verifyFactsPrompt,
 } from "../prompts";
-import { type WorksheetSpec, WorksheetSpecSchema, worksheetSpecSchemaFor } from "../specs";
+import {
+  verifiableArrayOf,
+  type WorksheetSpec,
+  WorksheetSpecSchema,
+  worksheetSpecSchemaFor,
+} from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
 import {
   busyFinding,
@@ -43,6 +49,7 @@ import {
   shapeOf,
   withImageCaption,
 } from "./shared";
+import { runVerify } from "./verify";
 
 /*
  * Generate (ADR 0025 §4, §7, §8, §15; Generation quality §3, TEACH-213): one `small` call per
@@ -55,6 +62,12 @@ import {
  * `budget` finding and moves on to `generated`. An answer accepted with editorial misses
  * (TEACH-257) is materialised like any other; each miss is a `spec-rule` error on the slide or
  * block it became, which Repair rewrites.
+ *
+ * Verify overlaps the first batch (TEACH-233): Plan hands over the running call as
+ * `state.pendingVerify`; the first slides are written from the unverified facts, every persist
+ * waits for the patch, a slide built from a corrected fact is written again, and the worksheet
+ * starts once the patch has landed — so the `generated` checkpoint is still built from verified
+ * facts, and `promptVersions.planned` gains `verify-facts` to say so.
  */
 
 /** The number of slides Plan materialises itself (`title`, `objectives`). */
@@ -63,7 +76,11 @@ export const PLANNED_SLIDES = 2;
 /** Slide calls in flight at once — what the proposal jobs already do in production. */
 export const GENERATE_CONCURRENCY = 4;
 
-/** Progress runs from 10 (planned) to 80 (all slides) then 85 (worksheet). */
+/**
+ * Progress runs from 10 (planned) to 80 (all slides) then 85 (worksheet); 11 "Checking the facts"
+ * is Verify announcing itself inside Writing (TEACH-233) — the strip folds it into that stage.
+ */
+const PROGRESS_VERIFYING = 11;
 const PROGRESS_SLIDES_FROM = 10;
 const PROGRESS_SLIDES_SPAN = 70;
 const PROGRESS_WORKSHEET = 85;
@@ -72,8 +89,8 @@ export { BUDGET_FINDING };
 
 export async function generate(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   let lesson = state.lesson;
-  const facts = lesson.facts;
-  if (!facts) throw new Error("generate: the lesson has no facts; Plan has not run");
+  if (!lesson.facts) throw new Error("generate: the lesson has no facts; Plan has not run");
+  let facts: LessonFacts = lesson.facts;
   const generation = generationOf(lesson);
   const audience = audienceOf(lesson);
   // The writers are told the verb and the confidence (TEACH-230); Plan enforced the rest.
@@ -87,7 +104,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     model: modelId,
     at: deps.now().toISOString(),
   });
-  const stems = stemPlan(facts);
+  let stems = stemPlan(facts);
   let stopped: Finding | null = null;
   // Picture first (TEACH-220): the photograph for every image-text entry is searched and judged as
   // soon as Generate starts, alongside the first slide batch; that entry's slide call waits for its
@@ -97,6 +114,40 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   // A worker that failed (two schema misses) fails the stage; the others start nothing more, so a
   // failed lesson does not keep paying for slides it will never write.
   let failed = false;
+
+  // Verify (TEACH-233): Plan started the call and handed the promise over; slides begin from the
+  // unverified facts and every persist waits for the patch. A resumed lesson has no promise — its
+  // stamp says whether Verify already ran (Generate wrote it after applying the patch) and, when
+  // it did not, Verify runs first, before any slide call. Once the patch lands: the facts and the
+  // stem plan are replaced, the findings recorded, the stamp completed — and any slide already
+  // written from a corrected fact is regenerated below (`slideWork`) before it is persisted.
+  // Skeleton-only facts (Plan's facts call was refused at the cap) have nothing to verify, as in
+  // Plan: Verify is not started for them.
+  const resumedVerify =
+    state.pendingVerify === undefined && !verifyStamped(lesson) && facts.questions.length > 0
+      ? runVerify(facts, { topic: lesson.brief?.topic ?? lesson.title, audience }, deps)
+      : undefined;
+  const pendingVerify = state.pendingVerify ?? resumedVerify;
+  let corrected = new Set<string>();
+  const verified: Promise<void> = pendingVerify
+    ? pendingVerify.then((result) => {
+        // One budget residual per lesson: a cap already hit by Plan's facts call is the same stop.
+        for (const f of result.findings) {
+          if (f.check === "budget" && findings.some((g) => g.check === "budget")) continue;
+          findings.push(f);
+        }
+        if (result.applied.length > 0) {
+          facts = result.facts;
+          stems = stemPlan(facts);
+          corrected = new Set(result.applied.map((c) => c.factId));
+        }
+        lesson = withVerifyStamp({ ...lesson, facts });
+      })
+    : Promise.resolve();
+  if (pendingVerify) {
+    await deps.onProgress(PROGRESS_VERIFYING, "Checking the facts");
+  }
+  if (resumedVerify) await verified;
 
   // Resume support: slides already present (Plan's two, or a partial earlier attempt) stay.
   const first = lesson.slides.length;
@@ -121,6 +172,57 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   const turnOf = (i: number) => gates.get(i - 1)?.promise ?? Promise.resolve();
   const release = (i: number) => gates.get(i)?.open();
 
+  /** One `generate-slide` call for entry `i`, from the facts as they stand when it starts. */
+  const writeSlide = async (
+    i: number,
+    entry: OutlineEntry,
+    photo: SlidePhoto | "none" | undefined,
+  ): Promise<{ slide: Slide; misses: EditorialMiss[]; builtFrom: LessonFacts }> => {
+    const builtFrom = facts;
+    // `OutlineEntrySchema` only admits generatable kinds, so this never fires; it keeps the type.
+    const specSchema = (soft: boolean) =>
+      entry.kind === "image-text"
+        ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
+            soft,
+          })
+        : slideSpecSchemaFor(entry.kind, { soft });
+    const schema = specSchema(false);
+    if (!schema) throw new Error(`generate: no spec schema for slide kind "${entry.kind}"`);
+    const call = await callStructured({
+      deps,
+      stage: "generate",
+      cls: "small",
+      effort: "low",
+      prompt: generateSlidePrompt,
+      input: {
+        referenced: referencedFacts(builtFrom, entry),
+        entry,
+        shape,
+        position: { index: i + 1, total },
+        neighbours: {
+          previous: entries[i - 1]?.brief?.adds,
+          next: entries[i + 1]?.brief?.adds,
+        },
+        reservedStems: stems.reservedFor(i),
+        phase: entry.phase,
+        ...(photo !== undefined ? { photo } : {}),
+        audience,
+        vocabularySlots: vocabularySlots(lesson.themeId),
+        lessonTitle: lesson.title,
+      },
+      schema,
+      soft: specSchema(true),
+      maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
+    });
+    const slide = materialiseSlide(
+      withImageCaption(call.output, entry),
+      lesson.themeId,
+      meta(call.modelId),
+      deps.ids,
+    );
+    return { slide, misses: call.editorialMisses, builtFrom };
+  };
+
   const slideWork = async (i: number) => {
     // A stop or a cancel before this call: nothing starts; the gate still opens so later slides
     // (which also start nothing) do not wait forever.
@@ -136,48 +238,21 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       picked = await picks.get(i);
       if (picked && picked.outcome !== "busy") judged = true;
       const photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
-      // `OutlineEntrySchema` only admits generatable kinds, so this never fires; it keeps the type.
-      const specSchema = (soft: boolean) =>
-        entry.kind === "image-text"
-          ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
-              soft,
-            })
-          : slideSpecSchemaFor(entry.kind, { soft });
-      const schema = specSchema(false);
-      if (!schema) throw new Error(`generate: no spec schema for slide kind "${entry.kind}"`);
-      const call = await callStructured({
-        deps,
-        stage: "generate",
-        cls: "small",
-        effort: "low",
-        prompt: generateSlidePrompt,
-        input: {
-          referenced: referencedFacts(facts, entry),
-          entry,
-          shape,
-          position: { index: i + 1, total },
-          neighbours: {
-            previous: entries[i - 1]?.brief?.adds,
-            next: entries[i + 1]?.brief?.adds,
-          },
-          reservedStems: stems.reservedFor(i),
-          phase: entry.phase,
-          ...(photo !== undefined ? { photo } : {}),
-          audience,
-          vocabularySlots: vocabularySlots(lesson.themeId),
-          lessonTitle: lesson.title,
-        },
-        schema,
-        soft: specSchema(true),
-        maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
-      });
-      slide = materialiseSlide(
-        withImageCaption(call.output, entry),
-        lesson.themeId,
-        meta(call.modelId),
-        deps.ids,
-      );
-      for (const miss of call.editorialMisses) {
+      let written = await writeSlide(i, entry, photo);
+      // The patch landed while this slide was being written: a slide built from a fact Verify
+      // corrected is written again from the corrected facts (TEACH-233). A cap stop on that second
+      // call drops the slide — it was built from unverified facts and may not reach the checkpoint;
+      // the lesson stops here as it does for any slide the cap refuses.
+      await verified;
+      if (written.builtFrom !== facts && touchesCorrected(entry, written.slide, corrected)) {
+        deps.logger.info(
+          { stage: "generate", call: "slide", index: i, reason: "fact-verify" },
+          "slide regenerated from corrected facts",
+        );
+        written = await writeSlide(i, entry, photo);
+      }
+      slide = written.slide;
+      for (const miss of written.misses) {
         findings.push(specRuleFinding(miss, { slideId: slide.id }));
       }
       // The photograph goes in with the text, in the same persist; a slide with no photograph keeps
@@ -203,6 +278,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       // The first slide that could not be generated names the stop.
       if (!stopped) stopped = BUDGET_FINDING(error.by, `slide ${i + 1} of ${total}`);
     }
+    await verified;
     await turnOf(i);
     // A slide landing after an earlier one stopped would leave a gap in the outline order; after a
     // cancel or another worker's failure nothing more is written (the stage throws once every
@@ -219,8 +295,11 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     release(i);
   };
 
+  // The worksheet references many facts, so it starts once Verify has settled rather than being
+  // regenerated (TEACH-233).
   const worksheetWork = async (): Promise<Worksheet | undefined> => {
     if (state.worksheet) return state.worksheet;
+    await verified;
     if (stopped || deps.signal.aborted) return undefined;
     try {
       const call = await callStructured({
@@ -272,6 +351,8 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   const rejected = settled.find((r) => r.status === "rejected");
   if (rejected) throw rejected.reason;
   const worksheet = settled[1].status === "fulfilled" ? settled[1].value : undefined;
+  // Nothing left to write still waits for the patch: the checkpoint carries verified facts.
+  await verified;
 
   throwIfAborted(deps.signal);
   // One budget residual per lesson: when Plan's facts call was already the stop, this is the same
@@ -285,7 +366,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         ...generationOf(lesson),
         stage: "generated",
         promptVersions: {
-          ...generation.promptVersions,
+          ...generationOf(lesson).promptVersions,
           // The photo judge has no checkpoint of its own; its version rides on `generated`.
           generated: judged
             ? joinVersions(generateSlidePrompt.version, pickOrRequeryPrompt.version)
@@ -302,7 +383,48 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     worksheet ? "Worksheet ready" : "Slides ready",
     updatedAt,
   );
-  return { ...state, lesson, worksheet };
+  const { pendingVerify: _settled, ...rest } = state;
+  return { ...rest, lesson, worksheet };
+}
+
+/** Whether Generate has already applied (or recorded the outcome of) Verify for this lesson. */
+export function verifyStamped(lesson: Lesson): boolean {
+  return (lesson.generation?.promptVersions.planned ?? "").endsWith(verifyFactsPrompt.version);
+}
+
+/**
+ * The `planned` stamp completed with Verify's version once its outcome is on the lesson — what a
+ * resumed Generate reads so a lesson is never verified twice (a second run would double the
+ * `fact-verify` findings). The findings themselves are the caller's list, written on its next
+ * persist.
+ */
+function withVerifyStamp(lesson: Lesson): Lesson {
+  if (verifyStamped(lesson)) return lesson;
+  const generation = generationOf(lesson);
+  return {
+    ...lesson,
+    generation: {
+      ...generation,
+      promptVersions: {
+        ...generation.promptVersions,
+        planned: joinVersions(generation.promptVersions.planned ?? "", verifyFactsPrompt.version),
+      },
+    },
+  };
+}
+
+/**
+ * Whether a slide written before Verify's patch landed was built from a fact it corrected: the
+ * entry's references, the references its elements were stamped with, and every misconception —
+ * `referencedFacts` shows all of those to every slide for its notes. The stems *reserved* from a
+ * slide (`stemPlan`) are not content it was built from: they tell the writer what not to use, so a
+ * stem corrected elsewhere leaves this slide's facts as verified as they were.
+ */
+function touchesCorrected(entry: OutlineEntry, slide: Slide, corrected: Set<string>): boolean {
+  if (corrected.size === 0) return false;
+  for (const id of corrected) if (verifiableArrayOf(id) === "misconceptions") return true;
+  if (entry.factRefs.some((id) => corrected.has(id))) return true;
+  return slide.elements.some((e) => e.generatedFrom?.factRefs.some((id) => corrected.has(id)));
 }
 
 /**
