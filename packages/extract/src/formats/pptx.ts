@@ -1,5 +1,13 @@
 import { openZip, ZipReader } from "../mime";
-import type { ExtractedImage, ExtractedTable, Extraction, ImageMime } from "../types";
+import {
+  ExtractError,
+  type ExtractedImage,
+  type ExtractedTable,
+  type Extraction,
+  type ExtractLimits,
+  type ImageMime,
+  LIMITS,
+} from "../types";
 import { attrsOf, childrenOf, collectText, findAll, parseXml, type XmlNode } from "./xml";
 
 /**
@@ -17,8 +25,11 @@ const IMAGE_MIME: Record<string, ImageMime> = {
   webp: "image/webp",
 };
 
-export async function extractPptx(bytes: Uint8Array): Promise<Extraction> {
-  const reader = new ZipReader(await openZip(bytes, "pptx"), "pptx");
+export async function extractPptx(
+  bytes: Uint8Array,
+  limits: ExtractLimits = LIMITS,
+): Promise<Extraction> {
+  const reader = new ZipReader(await openZip(bytes, "pptx"), "pptx", limits);
   const slides = reader
     .paths(SLIDE_PATH)
     .map((path) => ({ path, n: Number(SLIDE_PATH.exec(path)?.[1]) }))
@@ -27,6 +38,7 @@ export async function extractPptx(bytes: Uint8Array): Promise<Extraction> {
   const chunks: Extraction["chunks"] = [];
   const tables: ExtractedTable[] = [];
   const images: ExtractedImage[] = [];
+  let textChars = 0;
 
   for (const { path, n } of slides) {
     const ref = { slide: n };
@@ -48,6 +60,8 @@ export async function extractPptx(bytes: Uint8Array): Promise<Extraction> {
       if (notes.length > 0) text = text.length > 0 ? `${text}\nNotes: ${notes}` : `Notes: ${notes}`;
     }
     if (text.length > 0) chunks.push({ ref, text });
+    textChars += text.length;
+    if (textChars > limits.maxTextChars) throw new ExtractError("too-large", "pptx");
 
     for (const tbl of findAll(tree, "a:tbl")) {
       const rows = findAll(childrenOf(tbl, "a:tbl"), "a:tr").map((tr) =>

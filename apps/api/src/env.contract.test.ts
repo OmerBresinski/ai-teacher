@@ -8,11 +8,13 @@ import { ENV, namesForService, schemaNamesForService } from "../../../infra/env.
 import { EnvSchema } from "./env";
 import { EventsConfigSchema } from "./events/config";
 import { RateLimitConfigSchema } from "./rate-limit";
+import { ExtractionConfigSchema } from "./sources/extraction-runner";
 
 const schemaKeys = [
   ...Object.keys(EnvSchema.shape),
   ...Object.keys(EventsConfigSchema.shape),
   ...Object.keys(RateLimitConfigSchema.shape),
+  ...Object.keys(ExtractionConfigSchema.shape),
 ];
 
 describe("apps/api env schema vs infra/env.contract.ts", () => {

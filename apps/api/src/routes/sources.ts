@@ -23,7 +23,6 @@ import {
   ExtractError,
   type Extraction,
   type ExtractionKind,
-  extract,
   isLowText,
   LIMITS,
   MIME,
@@ -32,7 +31,7 @@ import {
   screen,
   sniffMime,
 } from "@tj/extract";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import type { Logger } from "pino";
@@ -40,6 +39,11 @@ import { z } from "zod";
 import type { AppEnv } from "../context";
 import { SourceRefusedError } from "../errors";
 import { type RateLimiter, rateLimitByWorkspace } from "../rate-limit";
+import {
+  ExtractionBusyError,
+  ExtractionFailedError,
+  type ExtractionRunner,
+} from "../sources/runner";
 import { validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
 import { NOT_FOUND_MESSAGE } from "./documents";
@@ -62,6 +66,7 @@ export const SOURCE_NAME_MAX = 120;
 
 export const STORAGE_UNAVAILABLE_MESSAGE = "Uploads are not available right now.";
 export const TOO_LARGE_MESSAGE = "That file is over 25 MB.";
+export const EXTRACTION_BUSY_MESSAGE = "Uploads are busy right now. Try again in a moment.";
 export const SOURCE_BOUND_MESSAGE = "This file is already part of a lesson.";
 export const SOURCE_RATE_LIMIT_MESSAGE =
   "Too many uploads for this workspace. Try again in a moment.";
@@ -168,12 +173,35 @@ async function readUpload(form: z.infer<typeof uploadForm>): Promise<Upload> {
   };
 }
 
-/** Extract, mapping every failure to the `unreadable` refusal (the cause class is logged, not the text). */
-async function extractOrRefuse(upload: Upload, log: Logger | undefined, sourceId: string) {
+/**
+ * Extract through the runner (a killable child process in production, TEACH-278), mapping every
+ * failure to the `unreadable` refusal — the cause class is logged, never the text. A full runner
+ * is a 503 with Retry-After before anything is spawned; a client that went away is a plain abort.
+ */
+async function extractOrRefuse(
+  runner: ExtractionRunner,
+  upload: Upload,
+  log: Logger | undefined,
+  sourceId: string,
+  c: Context<AppEnv>,
+) {
   try {
-    return await extract({ bytes: upload.bytes, mime: upload.mime, name: upload.name });
+    return await runner.run(
+      { bytes: upload.bytes, mime: upload.mime, name: upload.name },
+      { signal: c.req.raw.signal },
+    );
   } catch (error) {
-    const code = error instanceof ExtractError ? error.code : "unknown";
+    if (error instanceof ExtractionBusyError) {
+      log?.warn({ sourceId, kind: upload.kind }, "source extraction capacity full");
+      c.header("Retry-After", String(error.retryAfterSeconds));
+      throw new HTTPException(503, { message: EXTRACTION_BUSY_MESSAGE });
+    }
+    const code =
+      error instanceof ExtractError
+        ? error.code
+        : error instanceof ExtractionFailedError
+          ? error.why
+          : "unknown";
     log?.warn({ sourceId, kind: upload.kind, extractError: code }, "source extraction failed");
     throw new SourceRefusedError("unreadable", REFUSAL_MESSAGES.unreadable());
   }
@@ -253,6 +281,7 @@ export function sourceRoutes(
   unsafeDb: ScopableDb,
   storage: ReadableStorageAdapter | undefined,
   limiter: RateLimiter,
+  extraction: ExtractionRunner,
 ) {
   const requireStorage = (): ReadableStorageAdapter => {
     if (!storage) throw new HTTPException(503, { message: STORAGE_UNAVAILABLE_MESSAGE });
@@ -273,14 +302,14 @@ export function sourceRoutes(
         const sourceId = newId();
 
         const upload = await readUpload(c.req.valid("form"));
-        const extraction = await extractOrRefuse(upload, log, sourceId);
-        const refusal = screen(extraction);
+        const extracted = await extractOrRefuse(extraction, upload, log, sourceId, c);
+        const refusal = screen(extracted);
         if (refusal !== null) {
-          log?.info({ sourceId, kind: extraction.kind, refused: refusal.reason }, "source refused");
-          throw refusalError(refusal, extraction.kind);
+          log?.info({ sourceId, kind: extracted.kind, refused: refusal.reason }, "source refused");
+          throw refusalError(refusal, extracted.kind);
         }
 
-        const lowText = isLowText(extraction);
+        const lowText = isLowText(extracted);
         const row = await createSource(ws, {
           id: sourceId,
           kind: upload.kind,
@@ -288,11 +317,11 @@ export function sourceRoutes(
           mime: upload.mime,
           byteSize: upload.bytes.byteLength,
           storageKey: storageKey(workspaceId, "sources", sourceId, `original.${EXT[upload.mime]}`),
-          pages: extraction.pages,
+          pages: extracted.pages,
           lowText,
         });
         try {
-          await writeObjects(store, workspaceId, sourceId, upload, extraction, lowText);
+          await writeObjects(store, workspaceId, sourceId, upload, extracted, lowText);
         } catch (error) {
           log?.error({ sourceId, err: error }, "source objects could not be written");
           await deleteSourceObjects(store, workspaceId, sourceId, log);
@@ -302,10 +331,10 @@ export function sourceRoutes(
         log?.info(
           {
             sourceId,
-            kind: extraction.kind,
-            pages: extraction.pages,
-            chunks: extraction.chunks.length,
-            images: extraction.images.length,
+            kind: extracted.kind,
+            pages: extracted.pages,
+            chunks: extracted.chunks.length,
+            images: extracted.images.length,
             lowText,
             bytes: upload.bytes.byteLength,
           },

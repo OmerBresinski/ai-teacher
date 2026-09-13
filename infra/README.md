@@ -34,6 +34,7 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
 | **OAuth disabled** | Google/Microsoft sign-in off (no client credentials); magic link only. | Set the four `*_CLIENT_ID`/`*_CLIENT_SECRET` variables when the OAuth apps exist. | TEACH-39; `docs/env.md` |
 | **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
+| **Extraction child has no address-space limit in production** | Uploads parse in a killable child bounded by a deadline, an output cap and in-parser ceilings; `EXTRACT_CHILD_MAX_VMEM_MB` is unset. | Repeat the `ulimit -v` measurement on the amd64 image, then set the variable on the api. | TEACH-278; "Source extraction" |
 | **AI rate limit is per api replica (in memory)** | One Railway api replica applies the per-Workspace limit locally. | Use Postgres or Redis before scaling the api horizontally. | TEACH-75; `apps/api/src/rate-limit.ts` |
 
 ## Vercel (web) — TEACH-25
@@ -419,7 +420,7 @@ Multi-stage, pinned to `oven/bun:1.3.6-alpine` (matches `.bun-version`; bump tog
 | --------- | ------------------------------------------------------------------------------------------------------- |
 | `pruner`  | `turbo prune @tj/api @tj/worker --docker` → `json/` (manifests + pruned `bun.lock`), `full/` (sources)  |
 | `deps`    | `bun install --frozen-lockfile --ignore-scripts` from `json/` (layer cached until a manifest changes)     |
-| `build`   | `turbo run build` → `apps/{api,worker}/dist/index.js`; `bun build packages/db/src/migrate.ts` → `packages/db/dist/migrate.js`; then deletes `node_modules` and re-bundles the three files to **prove they are self-contained** |
+| `build`   | `turbo run build` → `apps/{api,worker}/dist/index.js` + `apps/api/dist/sources/extract-child.js` (the extraction child, TEACH-278); `bun build packages/db/src/migrate.ts` → `packages/db/dist/migrate.js`; then deletes `node_modules` and re-bundles the four files to **prove they are self-contained** |
 | `runtime` | non-root `bun` user, `/app/apps/*/dist`, `/app/packages/db/{dist,drizzle}`, `entrypoint.sh`. No sources, no `node_modules`. **~155 MB** (`docker images tj:local`) |
 
 `infra/docker/entrypoint.sh` (`ENTRYPOINT`, default `CMD ["api"]`) `exec`s Bun so SIGTERM reaches
@@ -443,6 +444,40 @@ bun run docker:run:worker    # GET :3002/health -> {"ok":true,"activeJobs":0,"bo
 `.dockerignore` keeps the context to manifests, sources, `packages/db/drizzle/**` and
 `infra/docker/`; `apps/web`, `packages/ui`, docs, tests, CI and env files never reach the daemon.
 CI job `docker-build-smoke` runs `docker build .` on every PR.
+
+## Source extraction (TEACH-278)
+
+`POST /sources` parses uploads in a **child process** (`apps/api/dist/sources/extract-child.js`,
+spawned by `ChildProcessExtractionRunner`, ADR 0027 amendment 2026-09-13). Knobs, all optional
+(`infra/env.contract.ts`): `EXTRACT_DEADLINE_MS` (30000), `EXTRACT_MAX_CONCURRENT` (2),
+`EXTRACT_MAX_QUEUE` (8), `EXTRACT_CHILD_MAX_VMEM_MB` (unset). A child past the deadline, aborted by
+the client or over 128 MiB of output is `SIGKILL`ed and the upload answers the `unreadable`
+refusal; a full queue answers `503` + `Retry-After: 5` before anything is spawned (log line
+`source extraction capacity full`).
+
+`EXTRACT_CHILD_MAX_VMEM_MB` applies `ulimit -v` (address space) to the child through `sh -c`. Bun
+reserves large virtual ranges, so a value that is too low prevents the child from even booting and
+every upload becomes `unreadable`. Verify in the image before setting it:
+
+```sh
+docker run --rm -e EXTRACT_MIME=text/plain tj:local sh -c \
+  'ulimit -v $((2048*1024)) && printf "hello" | bun apps/api/dist/sources/extract-child.js'
+# -> {"ok":true,"extraction":{...}}   the value boots; anything else: raise it or leave unset
+```
+
+Verified values on `oven/bun:1.3.6-alpine` (2026-09-13, `docker build` of this repo, arm64 host;
+re-measure after a Bun bump and once on the amd64 Railway image before setting it in production):
+
+| `ulimit -v`  | Child boots? | Real PDF + DOCX fixtures | `bun -e` allocating 3 GiB |
+| ------------ | ------------ | ------------------------ | ------------------------- |
+| 512 MiB      | no ("Ran out of executable memory", exit 134) | — | — |
+| 1024 MiB     | yes          | not measured             | not measured              |
+| **2048 MiB** | yes          | both extract (`ok: true`) | killed, exit 1 (the API sees `crashed` → `unreadable`) |
+
+Production does **not** set `EXTRACT_CHILD_MAX_VMEM_MB` yet: the arm64 measurement has to be
+repeated on the amd64 image (`railway ssh` into the api, or a one-off PR environment) before the
+variable is set, otherwise every upload fails closed. Until then the deadline, the output cap and
+the in-parser ceilings (ADR 0027 amendment) are the bounds. Listed under "Known gaps".
 
 ## Config-as-code (`.railway/railway.ts`, infrastructure-as-code)
 

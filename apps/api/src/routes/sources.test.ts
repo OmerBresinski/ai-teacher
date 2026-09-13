@@ -15,6 +15,7 @@ import {
   docxWith,
   PHOTOSYNTHESIS,
   pdfWithPages,
+  pptxBomb,
   pptxWith,
   ROSTER_ROWS,
   TINY_PNG,
@@ -22,6 +23,12 @@ import {
 import { LocalDiskStorage } from "@tj/storage";
 import { createApp } from "../app";
 import type { ErrorEnvelope } from "../errors";
+import {
+  ChildProcessExtractionRunner,
+  ExtractionBusyError,
+  ExtractionFailedError,
+  type ExtractionRunner,
+} from "../sources/extraction-runner";
 import { silentLogger, TEST_ENV, TEST_ENV_NO_SHIM } from "../test-helpers";
 import { WORKSPACE_HEADER } from "../workspace";
 import { REFUSAL_MESSAGES, SOURCE_BOUND_MESSAGE, TOO_LARGE_MESSAGE } from "./sources";
@@ -281,6 +288,107 @@ describeDb("POST /sources and DELETE /sources/:id", () => {
     const listed: string[] = [];
     for await (const o of storage.list(`${wsA}/`)) listed.push(o.key);
     expect(listed).toEqual([]);
+  });
+
+  /** TEACH-278: the extraction runner is a seam; a full or failing one stores nothing. */
+  describe("extraction runner (TEACH-278)", () => {
+    const appWith = (runner: ExtractionRunner) =>
+      createApp({ env: TEST_ENV, db: t.db, logger: silentLogger, storage, extraction: runner });
+    const nothingStored = async () => {
+      const listed: string[] = [];
+      for await (const o of storage.list(`${wsA}/`)) listed.push(o.key);
+      expect(listed).toEqual([]);
+      const [row] = await sql<{ n: number }[]>`select count(*)::int as n from sources`;
+      expect(row?.n).toBe(0);
+    };
+
+    test("capacity full: 503 with Retry-After before parsing; nothing stored, no row", async () => {
+      let called = 0;
+      const busy = appWith({
+        run: () => {
+          called += 1;
+          return Promise.reject(new ExtractionBusyError(5));
+        },
+      });
+      const res = await upload(
+        wsA,
+        { file: { bytes: await pdfWithPages(PHOTOSYNTHESIS), name: "a.pdf" } },
+        {},
+        busy,
+      );
+      expect(res.status).toBe(503);
+      expect(res.headers.get("retry-after")).toBe("5");
+      expect(called).toBe(1);
+      await nothingStored();
+    });
+
+    test("a killed child (deadline) is the content-free unreadable refusal; nothing stored", async () => {
+      const slow = appWith({ run: () => Promise.reject(new ExtractionFailedError("timeout")) });
+      const res = await upload(
+        wsA,
+        { file: { bytes: await pdfWithPages(PHOTOSYNTHESIS), name: "a.pdf" } },
+        {},
+        slow,
+      );
+      expect(res.status).toBe(422);
+      expect(await errorOf(res)).toMatchObject({
+        reason: "unreadable",
+        message: REFUSAL_MESSAGES.unreadable(),
+      });
+      await nothingStored();
+    });
+
+    test("the real child runner stores a PDF exactly like the in-process path", async () => {
+      const child = appWith(
+        new ChildProcessExtractionRunner({
+          entry: new URL("../sources/extract-child.ts", import.meta.url).pathname,
+          deadlineMs: 20_000,
+          maxConcurrent: 1,
+          maxQueue: 1,
+          maxOutputBytes: 64 * 1024 * 1024,
+        }),
+      );
+      const res = await upload(
+        wsA,
+        {
+          file: {
+            bytes: await pdfWithPages(PHOTOSYNTHESIS, { imageOnPage: 1 }),
+            name: "plants.pdf",
+          },
+        },
+        {},
+        child,
+      );
+      expect(res.status).toBe(201);
+      const { source } = (await res.json()) as { source: SourceRef };
+      expect(await objectsUnder(wsA, source.id)).toEqual([
+        storageKey(wsA, "sources", source.id, "extracted.json"),
+        storageKey(wsA, "sources", source.id, "img", "1.png"),
+        storageKey(wsA, "sources", source.id, "original.pdf"),
+      ]);
+    }, 30_000);
+
+    test("a scaled zip bomb through the real child is unreadable and stores nothing", async () => {
+      const child = appWith(
+        new ChildProcessExtractionRunner({
+          entry: new URL("../sources/extract-child.ts", import.meta.url).pathname,
+          deadlineMs: 20_000,
+          maxConcurrent: 1,
+          maxQueue: 1,
+          maxOutputBytes: 64 * 1024 * 1024,
+          limits: { maxUncompressedBytes: 64 * 1024 },
+        }),
+      );
+      const res = await upload(
+        wsA,
+        { file: { bytes: await pptxBomb(1024 * 1024), name: "b.pptx" } },
+        {},
+        child,
+      );
+      expect(res.status).toBe(422);
+      expect(await errorOf(res)).toMatchObject({ reason: "unreadable" });
+      await nothingStored();
+    }, 30_000);
   });
 
   describe("DELETE /sources/:id", () => {

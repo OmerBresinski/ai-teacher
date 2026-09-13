@@ -2,7 +2,7 @@ import { extractDocx } from "./formats/docx";
 import { extractPaste } from "./formats/paste";
 import { extractPdf } from "./formats/pdf";
 import { extractPptx } from "./formats/pptx";
-import { ExtractError, type ExtractInput, type Extraction, MIME } from "./types";
+import { ExtractError, type ExtractInput, type Extraction, MIME, resolveLimits } from "./types";
 
 export { PASTE_SECTION } from "./formats/paste";
 export { sniffMime } from "./mime";
@@ -16,10 +16,12 @@ export {
   type ExtractInput,
   type Extraction,
   type ExtractionKind,
+  type ExtractLimits,
   type ImageMime,
   LIMITS,
   MIME,
   type Refusal,
+  resolveLimits,
   type SourceMime,
 } from "./types";
 
@@ -29,13 +31,14 @@ export {
  * error and never document text — when the bytes cannot be read.
  */
 export async function extract(input: ExtractInput): Promise<Extraction> {
+  const limits = resolveLimits(input.limits);
   switch (input.mime) {
     case MIME.pdf:
-      return extractPdf(input.bytes);
+      return extractPdf(input.bytes, limits);
     case MIME.pptx:
-      return extractPptx(input.bytes);
+      return extractPptx(input.bytes, limits);
     case MIME.docx:
-      return extractDocx(input.bytes);
+      return extractDocx(input.bytes, limits);
     case MIME.paste:
       return extractPaste(new TextDecoder().decode(input.bytes));
     default:

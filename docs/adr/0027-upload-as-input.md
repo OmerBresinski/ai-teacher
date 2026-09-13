@@ -205,3 +205,40 @@ decision drives §1 below and supersedes the breakdown's sentence.
   needed for that.
 - ADR 0024 §13 and ADR 0025 §20 are amended as stated in §3 and §5; the glossary gains
   **Upload**, **Extraction**, **Locator** and **Roster refusal**.
+
+## Amendment (TEACH-278, 2026-09-13): resource ceilings before allocation; a killable child
+
+Audit findings F02/F03 (Security audit — 13 September 2026) showed the §5 "uncompressed bytes
+read are capped at 200 MB" check ran **after** each zip entry had been inflated in full, that a
+PDF's 300-page rule ran only in `screen()` after every page had been parsed and every image
+decoded, and that the pdfjs proxy was never destroyed. The decision is amended as follows.
+
+1. **Ceilings are enforced before the allocation they bound**, in `@tj/extract`
+   (`LIMITS: ExtractLimits`, `packages/extract/src/types.ts`; `ExtractInput.limits` scales them in
+   tests). `ZipReader` streams each entry through JSZip's chunked inflater and stops at the first
+   chunk past `maxEntryBytes` (64 MiB) or the running `maxUncompressedBytes` (200 MiB); the
+   central-directory size is a cheap early refusal, never the limit that holds; `maxZipEntries`
+   (5 000) is checked at open. `extractPdf` reads `numPages` before parsing a page and returns an
+   empty extraction carrying the count when over `maxPages`, so `screen()` still answers
+   `too-long` without any text or image work; text is capped at `maxTextChars` (5 M chars); an
+   image is re-encoded only under `maxImagePixels` (20 M) and while the encoded total stays under
+   `maxImageBytesTotal` (64 MiB); `encodePng` refuses before allocating its scanline buffer; the
+   proxy's loading task is destroyed in `finally`. Mammoth's own pass over a DOCX is bounded
+   because inflation is deterministic: `readAll()` has already counted every entry it can read.
+2. **Parsing runs in a child process the API can kill.** `apps/api/src/sources/extraction-runner.ts`
+   (`ChildProcessExtractionRunner`, injected through `CreateAppOptions.extraction` /
+   `sourceRoutes(unsafeDb, storage, limiter, extraction)`) spawns
+   `apps/api/src/sources/extract-child.ts` (`dist/sources/extract-child.js` in the image, a second
+   entry of the api build and of the Dockerfile's self-contained check) per upload, pipes the bytes
+   in, reads one JSON answer out and `SIGKILL`s the child at `EXTRACT_DEADLINE_MS` (30 s), on
+   client abort, or when its stdout passes 128 MiB. `EXTRACT_MAX_CONCURRENT` (2) children run at
+   once per replica and `EXTRACT_MAX_QUEUE` (8) uploads may wait; beyond that `POST /sources` is
+   `503` with `Retry-After` before anything is spawned. `EXTRACT_CHILD_MAX_VMEM_MB` optionally adds
+   `ulimit -v` (Linux only; see infra/README.md "Source extraction" for the verified value). The
+   child's stderr is discarded and its answer carries an `ExtractErrorCode` only, so a failure is
+   content-free. The request remains synchronous (§1): the teacher still waits for extract →
+   screen → store; only the process boundary is new.
+3. **What this does not do.** A Promise timeout cannot stop synchronous deflation or parsing — only
+   the process kill does. Memory is bounded by the caps in (1) plus the optional address-space
+   limit, not by RSS supervision. Concurrency is per api replica (in-memory), like the rate
+   limiter (ADR 0027 §5; the durable admission design is TEACH-279).

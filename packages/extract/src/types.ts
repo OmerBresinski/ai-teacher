@@ -23,6 +23,8 @@ export interface ExtractInput {
   mime: SourceMime;
   /** The file name or paste label; used for nothing but error context today. */
   name: string;
+  /** Resource ceilings; tests scale them down. Production uses `LIMITS`. */
+  limits?: Partial<ExtractLimits>;
 }
 
 export interface ExtractedChunk {
@@ -61,13 +63,48 @@ export type Refusal =
   | { reason: "unreadable" }
   | { reason: "too-long"; pages: number };
 
-export const LIMITS = {
-  maxPages: 300,
+/**
+ * Resource ceilings for untrusted documents (ADR 0027 §5, amended by TEACH-278). Every one is
+ * enforced **before** the allocation it bounds: zip entries are counted while they inflate, a PDF's
+ * page count is read before any page is parsed, an image's pixel count before its buffer exists.
+ * Values are engineering config sized from the generated fixtures and real teacher files, not
+ * product limits; `ExtractInput.limits` overrides them in tests.
+ */
+export interface ExtractLimits {
+  /** Pages a PDF may have; more is the `too-long` refusal without parsing a page. */
+  maxPages: number;
   /** Sum of uncompressed zip entries a PPTX/DOCX may make us read. */
+  maxUncompressedBytes: number;
+  /** One zip entry's inflated size (a slide XML, a media file). */
+  maxEntryBytes: number;
+  /** Entries in a zip's central directory (a real deck has a few hundred). */
+  maxZipEntries: number;
+  /** Characters of extracted text across the whole document. */
+  maxTextChars: number;
+  /** Pixels (w × h) of one embedded image we will re-encode; larger ones are skipped. */
+  maxImagePixels: number;
+  /** Encoded bytes of all images kept from one document. */
+  maxImageBytesTotal: number;
+  minTextChars: number;
+  minCharsPerPage: number;
+}
+
+export const LIMITS: Readonly<ExtractLimits> = {
+  maxPages: 300,
   maxUncompressedBytes: 200 * 1024 * 1024,
+  maxEntryBytes: 64 * 1024 * 1024,
+  maxZipEntries: 5_000,
+  maxTextChars: 5_000_000,
+  maxImagePixels: 20_000_000, // 5000 × 4000; RGBA raw = 80 MiB before deflate
+  maxImageBytesTotal: 64 * 1024 * 1024,
   minTextChars: 200,
   minCharsPerPage: 20,
-} as const;
+};
+
+export const resolveLimits = (overrides?: Partial<ExtractLimits>): ExtractLimits => ({
+  ...LIMITS,
+  ...overrides,
+});
 
 export type ExtractErrorCode = "too-large" | "malformed" | "unsupported";
 

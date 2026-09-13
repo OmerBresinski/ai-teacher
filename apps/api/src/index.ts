@@ -16,6 +16,11 @@ import { createEventsRuntime } from "./events/runtime";
 import { createLogger } from "./logger";
 import { CaptureMailSender, loadMailSender } from "./mail";
 import { testRoutesEnabled } from "./routes/test-routes";
+import {
+  ChildProcessExtractionRunner,
+  childEntryFor,
+  loadChildRunnerConfig,
+} from "./sources/extraction-runner";
 
 const env = loadEnv();
 const logger = createLogger(env);
@@ -47,6 +52,11 @@ const storage = createStorage({
 const ai = createAi(env, { logger });
 // Images project: no key degrades to `503` on the route, never a boot failure.
 const images = env.PEXELS_API_KEY ? createPexelsClient({ apiKey: env.PEXELS_API_KEY }) : undefined;
+// Untrusted documents are parsed in a killable child (TEACH-278): the entry sits next to this
+// file in both layouts (`src/sources/extract-child.ts`, `dist/sources/extract-child.js`).
+const extraction = new ChildProcessExtractionRunner(
+  loadChildRunnerConfig(process.env, childEntryFor(import.meta.url)),
+);
 const app = createApp({
   env,
   db,
@@ -58,6 +68,7 @@ const app = createApp({
   storage: storage.adapter,
   ai,
   images,
+  extraction,
 });
 void logUsersWithoutWorkspace(db, logger).catch((err) =>
   logger.warn({ err }, "users-without-workspace self-check failed"),

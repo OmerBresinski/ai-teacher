@@ -6,7 +6,9 @@ import {
   type ExtractedImage,
   type ExtractedTable,
   type Extraction,
+  type ExtractLimits,
   type ImageMime,
+  LIMITS,
 } from "../types";
 
 /**
@@ -24,8 +26,11 @@ const SECTION_MAX = 120;
 const START_SECTION = "Start";
 const IMAGE_MIMES = new Set<string>(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
-export async function extractDocx(bytes: Uint8Array): Promise<Extraction> {
-  const reader = new ZipReader(await openZip(bytes, "docx"), "docx");
+export async function extractDocx(
+  bytes: Uint8Array,
+  limits: ExtractLimits = LIMITS,
+): Promise<Extraction> {
+  const reader = new ZipReader(await openZip(bytes, "docx"), "docx", limits);
   if (!reader.has("word/document.xml")) throw new ExtractError("malformed", "docx");
   await reader.readAll();
 
@@ -35,6 +40,7 @@ export async function extractDocx(bytes: Uint8Array): Promise<Extraction> {
   } catch {
     throw new ExtractError("malformed", "docx");
   }
+  if (html.length > limits.maxTextChars) throw new ExtractError("too-large", "docx");
   const { chunks, tables, images } = walkHtml(html);
   return { kind: "docx", pages: 1, chunks, tables, images };
 }

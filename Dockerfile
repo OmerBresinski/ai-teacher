@@ -49,7 +49,7 @@ RUN bunx turbo run build --filter=@tj/api --filter=@tj/worker \
 # import that was left unresolved ("Could not resolve"). Cheap, and it keeps the runtime stage
 # free of node_modules on purpose (bundle size is the only thing that ships).
 RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules \
- && bun build apps/api/dist/index.js apps/worker/dist/index.js packages/db/dist/migrate.js \
+ && bun build apps/api/dist/index.js apps/api/dist/sources/extract-child.js apps/worker/dist/index.js packages/db/dist/migrate.js \
       --target=bun --outdir /tmp/selfcontained-check >/dev/null \
  && rm -rf /tmp/selfcontained-check
 
@@ -60,6 +60,7 @@ ENV NODE_ENV=production \
     DO_NOT_TRACK=1
 
 COPY --chown=bun:bun infra/docker/entrypoint.sh /app/entrypoint.sh
+# apps/api/dist also holds sources/extract-child.js, the killable extraction child (TEACH-278).
 COPY --from=build --chown=bun:bun /app/apps/api/dist       /app/apps/api/dist
 COPY --from=build --chown=bun:bun /app/apps/worker/dist    /app/apps/worker/dist
 COPY --from=build --chown=bun:bun /app/packages/db/dist    /app/packages/db/dist

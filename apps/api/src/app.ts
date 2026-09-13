@@ -46,6 +46,7 @@ import { MAIL_ASSETS_PREFIX, mailAssetRoutes } from "./routes/mail-assets";
 import { meRoutes } from "./routes/me";
 import { sourceRoutes } from "./routes/sources";
 import { testRoutes, testRoutesEnabled } from "./routes/test-routes";
+import { type ExtractionRunner, InProcessExtractionRunner } from "./sources/runner";
 
 export interface CreateAppOptions {
   env: Pick<Env, "NODE_ENV" | "LOG_LEVEL" | "MAIL_PROVIDER" | "WEB_ORIGIN"> &
@@ -90,6 +91,11 @@ export interface CreateAppOptions {
   imageRateLimit?: Partial<RateLimitConfig>;
   /** `POST /sources` per-Workspace limit (ADR 0027 §5); tests lower it. */
   sourceRateLimit?: Partial<RateLimitConfig>;
+  /**
+   * Where `POST /sources` parses a document (TEACH-278). `src/index.ts` passes a
+   * `ChildProcessExtractionRunner`; when omitted, extraction runs in-process (unit tests only).
+   */
+  extraction?: ExtractionRunner;
 }
 
 function buildApp({
@@ -105,6 +111,7 @@ function buildApp({
   images,
   imageRateLimit,
   sourceRateLimit,
+  extraction,
 }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
   const allowHeaderShim = env.ALLOW_WORKSPACE_HEADER_SHIM === "1";
@@ -211,7 +218,15 @@ function buildApp({
     .route("/", eventRoutes(eventsRuntime))
     .route("/", fileRoutes(storage))
     .route("/", imageRoutes(images, imageLimiter, storage))
-    .route("/", sourceRoutes(db.unsafeDb, storage, sourceLimiter))
+    .route(
+      "/",
+      sourceRoutes(
+        db.unsafeDb,
+        storage,
+        sourceLimiter,
+        extraction ?? new InProcessExtractionRunner(),
+      ),
+    )
     .route("/", documentRoutes(db.unsafeDb))
     .route("/", lessonRoutes(db.unsafeDb, eventsRuntime));
 
