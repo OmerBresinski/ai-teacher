@@ -37,9 +37,12 @@ Four implementation agents owned home/how, feature pages, interactive examples a
 Automated checks supplement visual and keyboard review; they are not a claim of complete accessibility certification. Live product integrations and launch policy facts remain outside this static preview.
 
 
-## Current homepage sample update
+## Current DayBack landing-page update
 
-LessonCo naming and existing preview boundaries remain. The homepage now uses a Year 3 / Year 7 / Year 9 sample selector and consolidates repeated sections. Original characters, Gabarito font, cream palette and animation sources are preserved.
+The shared shell and landing metadata now use DayBack. The homepage focuses on a slides-first
+Years 3–6 MVP: a grounded topic hero followed by a lightweight browser for the five authored
+Year 4 sound teaching slides and a direct topic action. Original characters, Gabarito font, cream palette
+and the local-only preview boundary are preserved.
 
 Current checks run for this change:
 

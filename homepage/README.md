@@ -1,6 +1,6 @@
-# LessonCo homepage
+# DayBack homepage
 
-This is the existing website, provisionally branded LessonCo, migrated from
+This is the existing website, now branded DayBack, migrated from
 `teachdeck/landing-lab/gather/site`, with its original visual design, authored examples and
 motion preserved. It is independent static HTML/CSS/JavaScript, with no backend calls.
 
@@ -31,11 +31,9 @@ source-site audit from verification performed on this repository.
   lesson animation carries the same inline artwork; keep both in sync.
 - `src/pages/{home,features,examples,information,supporting}.mjs`: page copy and markup. Examples
   are canonical authored data, reused by home/features so excerpts stay consistent.
-- `src/pages/home-samples.mjs`: compact Year 3, Year 7 and Year 9 previews read from the same
-  lesson data as the full examples. `upper-year-lessons.mjs` owns the authored Year 9 sample.
-  `assets/home-samples.js` progressively enhances example links into keyboard-accessible tabs;
-  without JavaScript, Year 3 stays visible and the links open the full lessons. Answers use
-  native disclosure controls. Keep previews, complete lessons and their questions/answers in sync.
+- `src/pages/home-samples.mjs`: the lightweight Year 4 sound slide browser featured on the landing page,
+  read from the landing-page sample data. The complete Year 3, Year 7 and Year 9 examples remain
+  available in the examples area; they are outside the Years 3–6 landing-page focus.
 - `assets/`: styles, accessible example interactions, preview form behaviour, font and favicon.
 - `motion/`: original character artwork and animation. `vendor/gsap.min.js` is the original
   GSAP 3.14.2 distribution with its copyright/license header retained. Do not hand-edit it.
@@ -65,18 +63,21 @@ keep their existing rewrite and security headers. Only the embedded lesson anima
 
 Before landing, verify the homepage and a nested example, the embedded animation, mobile menu,
 example tabs/printing and an unknown URL. The config regression tests cover SPA isolation,
-framing, preview indexing and cache policy. `apps/web/e2e/homepage-preview.spec.ts` checks both
-forms with JavaScript enabled/disabled, including mouse clicks, Enter and a request audit. After deployment, verify the same URLs and run the
-repository's production smoke check.
+framing, preview indexing and cache policy. `apps/web/e2e/homepage-preview.spec.ts` checks the
+preview forms with JavaScript enabled/disabled, including mouse clicks, Enter and a request
+audit. After deployment, verify the same URLs and run the repository's production smoke check.
 
 ## Preview and release boundaries
 
-The supplied copy describes intended capabilities. The main action opens an authored sample.
-No accounts, uploads, AI requests, PowerPoint generation, form delivery or mailing-list storage
-are connected. Submit buttons start disabled and only become active after the local validation
-handler is registered. Without JavaScript, a visible explanation replaces that interaction and
-both button clicks and Enter leave details unsent. Valid forms explicitly say nothing was sent or saved. Printing the authored
-worksheet or answer sheet does work. Review corrections are illustrative, not live AI checks.
+The homepage is focused on the slides-first Years 3–6 MVP. The topic field is a non-generating
+preview: it validates locally, then says that lesson creation is not connected and nothing was
+sent or saved. Offline brief persistence and the sign-in prompt remain deferred product work for
+a future PRD. No accounts, uploads, AI requests, PowerPoint generation, form delivery or
+mailing-list storage are connected. Submit buttons start disabled and only become active after
+their local validation handlers are registered. Without JavaScript, a visible explanation
+replaces those interactions and both button clicks and Enter leave details unsent. Valid forms
+explicitly say nothing was sent or saved. Printing the authored worksheet or answer sheet does
+work. Review corrections are illustrative, not live AI checks.
 
 The policy pages preserve unresolved production details rather than inventing legal text or
 service providers. All pages remain `noindex,nofollow`, including a Vercel header. Deployment

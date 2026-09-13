@@ -73,81 +73,72 @@ for (const javaScriptEnabled of [false, true]) {
 }
 
 test.describe("homepage sample lessons", () => {
-  test("switches coherent materials and links, with answers revealed on request", async ({
-    page,
-  }) => {
+  test("browses the prepared Year 4 sound slides", async ({ page }) => {
     await serveHomepage(page);
     await page.goto("http://homepage.test/homepage/");
-    for (const [year, slug, title, question, answer] of [
-      ["Year 3", "shadows", "Change one thing", "A shadow forms", "Light."],
-      [
-        "Year 7",
-        "states-of-matter",
-        "Close together does not mean fixed",
-        "arrangement and movement",
-        "Solid: close together",
-      ],
-      [
-        "Year 9",
-        "conservation-of-mass",
-        "Atoms rearrange. Mass stays.",
-        "120 g before a reaction",
-        "120 g. Atoms rearrange",
-      ],
-    ] as const) {
-      await page.getByRole("tab", { name: year, exact: true }).click();
-      const panel = page.getByRole("tabpanel");
-      await expect(panel).toHaveCount(1);
-      await expect(panel.locator(".hm-sample-slide")).toContainText(title);
-      await expect(panel.locator(".hm-sample-worksheet")).toContainText(question);
-      await expect(panel.locator(".hm-sample-answers ol")).toBeHidden();
-      await panel.getByText("Show the answers", { exact: true }).click();
-      await expect(panel.locator(".hm-sample-answers ol")).toContainText(answer);
-      await expect(panel.getByRole("link", { name: "Explore this lesson" })).toHaveAttribute(
-        "href",
-        `/homepage/examples/${slug}/`,
-      );
-      await panel.getByRole("link", { name: "Explore this lesson" }).click();
-      await expect(page.locator(".ex-lesson-head")).toContainText(year);
-      await page.getByRole("tab", { name: "Worksheet", exact: true }).click();
-      await expect(page.locator("#worksheet")).toContainText(question);
-      await page.getByRole("tab", { name: "Answers", exact: true }).click();
-      await expect(page.locator("#answers")).toContainText(answer);
-      await page.goto("http://homepage.test/homepage/");
-    }
+    await expect(page.locator("[data-slide]:visible")).toContainText("Can you see a sound begin?");
+    await page.getByRole("button", { name: "Next slide" }).click();
+    await expect(page.locator("[data-slide]:visible")).toContainText(
+      "Sound starts with a vibration",
+    );
+    await expect(page.locator("[data-slide-count]")).toHaveText("2 of 5");
   });
 
-  test("supports keyboard selection and narrow screens without overflow", async ({ page }) => {
+  test("keeps the complete landing page within a narrow viewport", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await serveHomepage(page);
     await page.goto("http://homepage.test/homepage/");
-    const first = page.getByRole("tab", { name: "Year 3", exact: true });
-    await first.focus();
-    await page.keyboard.press("ArrowRight");
-    await expect(page.getByRole("tab", { name: "Year 7", exact: true })).toBeFocused();
-    await page.keyboard.press("End");
-    await expect(page.getByRole("tab", { name: "Year 9", exact: true })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    await page.keyboard.press("Home");
-    await expect(first).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("heading", { name: /Outstanding lessons/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "See what you could teach." })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
   });
 });
 
-test.describe("homepage sample lessons without JavaScript", () => {
+for (const javaScriptEnabled of [false, true]) {
+  test.describe(`homepage hero preview with JavaScript ${javaScriptEnabled ? "enabled" : "disabled"}`, () => {
+    test.use({ javaScriptEnabled });
+
+    test("keeps the topic local and does not generate or navigate", async ({ page }) => {
+      const requests: string[] = [];
+      await serveHomepage(page, requests);
+      const url = "http://homepage.test/homepage/";
+      await page.goto(url);
+      const topic = page.getByRole("textbox", { name: "What would you like to teach?" });
+      await topic.fill("Year 7 science — solids, liquids and gases");
+      const submit = page.getByRole("button", { name: "Create a lesson" });
+
+      if (javaScriptEnabled) {
+        await expect(submit).toBeEnabled();
+        await submit.click();
+        await expect(page.getByRole("status")).toContainText("nothing was sent or saved");
+      } else {
+        await expect(submit).toBeDisabled();
+        await expect(page.locator("noscript p")).toContainText("Nothing is sent or saved");
+      }
+
+      await topic.press("Enter");
+      await page.waitForTimeout(150);
+      expect(page.url()).toBe(url);
+      expect(
+        requests.filter((request) => request.includes("?") || !request.startsWith("GET ")),
+      ).toEqual([]);
+      expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([
+        0, 0,
+      ]);
+    });
+  });
+}
+
+test.describe("homepage sample lesson without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
-  test("keeps the default sample and navigable full-lesson choices", async ({ page }) => {
+  test("keeps the featured sample link navigable", async ({ page }) => {
     await serveHomepage(page);
     await page.goto("http://homepage.test/homepage/");
-    await expect(page.locator('[data-sample-panel="shadows"]')).toBeVisible();
-    await page.locator('[data-sample-tab="states-of-matter"]').click();
-    await expect(page.locator(".ex-lesson-head")).toContainText("Year 7 science");
-    await page.goto("http://homepage.test/homepage/");
-    await page.locator('[data-sample-tab="conservation-of-mass"]').click();
-    await expect(page.locator(".ex-lesson-head")).toContainText("Year 9 science");
+    await expect(page.locator("[data-slide]:visible")).toContainText("Can you see a sound begin?");
+    await expect(
+      page.locator("#example").getByRole("link", { name: "Try your own topic" }),
+    ).toHaveAttribute("href", "#start");
   });
 });

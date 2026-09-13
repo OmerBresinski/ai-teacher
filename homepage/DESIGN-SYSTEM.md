@@ -1,4 +1,4 @@
-# LessonCo / Good Company design system
+# DayBack design system
 
 ## Foundation
 
@@ -48,12 +48,13 @@ Other system parts: mobile disclosure navigation, FAQ details, preview forms, le
 
 ## Blocks and composition
 
-1. Home hero and original four-material team.
-2. One connected-material preview: Year 3 shadows, Year 7 particles and Year 9 conservation of mass. Shared canonical excerpts supply the slide, worksheet questions, disclosed answers and full-lesson link.
-3. A compact preparation summary: bring a brief, review the material, adapt it for the class.
-4. Closing invitation.
+1. Grounded hero with the original four-character team behind a prominent topic form.
+2. One lightweight browser for the five authored Year 4 sound teaching slides.
+3. A direct “Try your own topic” action back to the hero, with no simulated editor or generation step.
 
-The homepage consolidates the former review, brief, adaptation and output split sections. The full how-it-works and feature pages retain their detailed examples. The sample switcher progressively enhances full-lesson links; without JavaScript the Year 3 preview remains available and the other choices navigate to their complete lessons.
+The homepage is deliberately focused on the slides-first Years 3–6 MVP. The full how-it-works,
+feature and example pages retain their detailed material; the landing page does not repeat their
+worksheet, pricing or school claims. Its prepared sound slides and topic link remain readable without JavaScript.
 
 Feature pages reuse the structure but show material-specific evidence. Information pages use reading layouts rather than forcing every topic into the same feature composition. The examples explorer is a product-like block with stable tab semantics and separate pupil/teacher print targets.
 

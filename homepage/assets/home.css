@@ -1,3 +1,5 @@
+@import "./hero.css";
+
 /* Good Company home blocks. Layout and artwork use the shared type/palette system. */
 .hm-hero {
   max-width: 1280px;
@@ -563,7 +565,78 @@
   line-height: 1.5;
   margin: 0;
 }
+.hm-featured-sample .hm-sample-papers {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 920px;
+  margin-inline: auto;
+}
+.hm-inline-slides {
+  max-width: 920px;
+  margin-inline: auto;
+}
+.hm-inline-slides .ex-slide {
+  min-height: 590px;
+}
+.hm-sample-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 22px;
+  margin-top: 30px;
+}
+.hm-sound-task {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 38px 0;
+}
+.hm-sound-task span {
+  padding: 22px 16px;
+  border: 1px solid #c7cdbd;
+  border-radius: 12px;
+  background: #f7f2e3;
+  font-size: 17px;
+  text-align: center;
+}
+.hm-featured-sample .hm-sample-slide .ex-diagram {
+  margin-inline: auto;
+}
+.hm-featured-sample .hm-sample-open {
+  display: table;
+  margin: 30px auto 0;
+}
+.hm-control {
+  max-width: 760px;
+  margin: 54px auto 0;
+  padding: 28px 32px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: #f4f1e7;
+  text-align: center;
+}
+.hm-control h3 {
+  margin: 0 0 8px;
+  font-size: 25px;
+}
+.hm-control p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.55;
+}
 @media (max-width: 760px) {
+  .hm-inline-slides .ex-slide {
+    min-height: 480px;
+  }
+  .hm-sound-task {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 22px 0;
+  }
+  .hm-sound-task span {
+    padding: 12px;
+  }
   .hm-samples {
     padding: 42px 24px;
   }
