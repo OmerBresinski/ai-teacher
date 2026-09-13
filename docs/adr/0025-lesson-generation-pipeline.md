@@ -1031,3 +1031,32 @@ which renders locators as `[src p.3]` / `[src slide 4]` / `[src §Heading]` and,
 exist, instructs the model to treat the material's sequence as the default lesson order and its
 terminology as canonical. `plan-skeleton` and `plan-facts` bump `version`. `check-input` is
 unchanged: document text is screened at upload (ADR 0027 §2).
+
+## Amendment (2026-09-13, project Generation quality — TEACH-233)
+
+§5, §7. Plan was ~39 s of every ~62 s lesson — skeleton, facts and Verify strictly in sequence —
+and the teacher watched "Planning" for all of it. Verify now runs **alongside Generate's first
+slide batch** (founder decision of 2026-09-10 closing TEACH-221 cell C: overlap, rather than lower
+the skeleton's effort). The invariant changes precisely from "nothing is built on unverified
+facts" to: **every slide in a `generated` checkpoint is built from verified facts; a slide may be
+*written* from unverified facts and is regenerated before that checkpoint.**
+
+Mechanics. `plan()` persists `planned` right after the facts call, with the merged (unverified)
+facts and `promptVersions.planned = plan-skeleton.vN+plan-facts.vN`, and returns the running
+Verify call as `PipelineState.pendingVerify` (`runVerify` in `stages/verify.ts`; it never
+rejects — a cap stop, two misses or a cancel settle with the facts untouched and the finding, so an
+un-awaited promise cannot fail the job). Mastra passes step output by reference, so the promise
+crosses the Plan → Generate boundary in-process; it is never persisted. `generate()` starts its
+slide calls from the unverified facts at once, announces `11 "Checking the facts"` (inside the
+strip's Writing stage; `apps/web` needs no change) and **awaits the promise before every persist**.
+When the patch lands it replaces the facts and the stem plan, records the `fact-verify` findings,
+and completes the stamp with `+verify-facts.v1`; a slide already written whose outline entry,
+element `factRefs` or any misconception (every slide is shown all of them for its notes) names a
+corrected fact is written again through the same `generate-slide` call before it is persisted. The
+worksheet starts after the patch rather than being regenerated. A resumed lesson at `planned`
+carries no promise: Generate reads the stamp — Verify already ran and is not run again (a second
+run would double the findings) — or runs Verify itself first, before any slide call, so the
+invariant holds by construction for resumes. Expected extra cost is at most a couple of Luna slide
+calls a lesson (~$0.0015) against 6–8 s taken out of the critical path; the eval reports
+`verifyMs` beside `planMs` (`p50 verify` in the PR comment) so the saving is visible and the 30 s
+Plan budget is measured on skeleton + facts alone.

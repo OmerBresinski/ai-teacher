@@ -50,8 +50,10 @@ export interface EvalTotals {
   meanDurationMs: number | null;
   /** Median over briefs that reached a first slide. */
   p50FirstSlideMs: number | null;
-  /** Median Plan wall time over the briefs that reached `planned`. */
+  /** Median Plan wall time over the briefs that reached `planned` (skeleton + facts since TEACH-233). */
   p50PlanMs: number | null;
+  /** Median Verify call time over the briefs whose Verify completed — the time TEACH-233 took out of Plan. */
+  p50VerifyMs: number | null;
   calls: number;
   inputTokens: number;
   outputTokens: number;
@@ -97,6 +99,10 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
     .map((b) => b.planMs)
     .filter((n): n is number => n !== null)
     .sort((a, b) => a - b);
+  const verifies = briefs
+    .map((b) => b.verifyMs ?? null)
+    .filter((n): n is number => n !== null)
+    .sort((a, b) => a - b);
   const totals = budget.totals();
   const findings = { error: 0, warning: 0, specRule: 0 };
   for (const b of briefs) {
@@ -120,6 +126,7 @@ export function summarise(briefs: BriefResult[], all: EvalBrief[], budget: Budge
     p50FirstSlideMs:
       firsts.length === 0 ? null : (firsts[Math.floor((firsts.length - 1) / 2)] ?? null),
     p50PlanMs: median(plans),
+    p50VerifyMs: median(verifies),
     calls: totals.calls,
     inputTokens: totals.inputTokens,
     outputTokens: totals.outputTokens,
@@ -150,18 +157,18 @@ export function rubricTotals(briefs: BriefResult[]): EvalTotals["rubric"] {
 export function formatResultsTable(results: EvalResults): string {
   const usd = (v: number | null) => (v === null ? "-" : `$${v.toFixed(4)}`);
   const lines = [
-    "| brief | ok | ms | plan ms | first slide ms | slides | calls | tokens in/out | cost | errors | warnings | spec-rule | schema | model | rubric |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    "| brief | ok | ms | plan ms | verify ms | first slide ms | slides | calls | tokens in/out | cost | errors | warnings | spec-rule | schema | model | rubric |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
   ];
   for (const b of results.briefs) {
     lines.push(
-      `| ${b.id} | ${b.ok ? "yes" : `no (${b.error})`} | ${b.durationMs} | ${b.planMs ?? "-"} | ${b.firstSlideMs ?? "-"} | ${b.slides} | ${b.calls} | ${b.inputTokens}/${b.outputTokens} | ${usd(b.costUsd)} | ${b.findings.error} | ${b.findings.warning} | ${b.findings.specRule ?? 0} | ${b.scores?.schema ?? "-"} | ${b.scores?.modelFindings ?? "-"} | ${b.scores?.rubric?.mean ?? "-"} |`,
+      `| ${b.id} | ${b.ok ? "yes" : `no (${b.error})`} | ${b.durationMs} | ${b.planMs ?? "-"} | ${b.verifyMs ?? "-"} | ${b.firstSlideMs ?? "-"} | ${b.slides} | ${b.calls} | ${b.inputTokens}/${b.outputTokens} | ${usd(b.costUsd)} | ${b.findings.error} | ${b.findings.warning} | ${b.findings.specRule ?? 0} | ${b.scores?.schema ?? "-"} | ${b.scores?.modelFindings ?? "-"} | ${b.scores?.rubric?.mean ?? "-"} |`,
     );
   }
   const t = results.totals;
   lines.push(
     "",
-    `Totals: ${t.completed}/${t.briefs} briefs, ${t.calls} calls, ${t.inputTokens}/${t.outputTokens} tokens, ${usd(t.costUsd)} (cap $${results.capUsd.toFixed(2)}), mean ${t.meanDurationMs ?? "-"} ms, p50 plan ${t.p50PlanMs ?? "-"} ms, p50 first slide ${t.p50FirstSlideMs ?? "-"} ms, ${t.findings.error} errors / ${t.findings.warning} warnings (${t.findings.specRule} spec-rule), rubric mean ${t.rubric.mean ?? "-"}${t.stoppedBy ? ` — stopped at the ${t.stoppedBy} cap` : ""}`,
+    `Totals: ${t.completed}/${t.briefs} briefs, ${t.calls} calls, ${t.inputTokens}/${t.outputTokens} tokens, ${usd(t.costUsd)} (cap $${results.capUsd.toFixed(2)}), mean ${t.meanDurationMs ?? "-"} ms, p50 plan ${t.p50PlanMs ?? "-"} ms, p50 verify ${t.p50VerifyMs ?? "-"} ms, p50 first slide ${t.p50FirstSlideMs ?? "-"} ms, ${t.findings.error} errors / ${t.findings.warning} warnings (${t.findings.specRule} spec-rule), rubric mean ${t.rubric.mean ?? "-"}${t.stoppedBy ? ` — stopped at the ${t.stoppedBy} cap` : ""}`,
   );
   return lines.join("\n");
 }

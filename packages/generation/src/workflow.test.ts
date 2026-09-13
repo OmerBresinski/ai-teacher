@@ -253,7 +253,7 @@ describe("runLessonPipeline", () => {
     })();
   });
 
-  test("progress: (2, Starting), (6, Planned the lesson), (8, Checking the facts), (10, Planned) … (100, Done); every documentUpdatedAt is the preceding persist", async () => {
+  test("progress: (2, Starting), (6, Planned the lesson), (10, Planned), (11, Checking the facts) … (100, Done); every other documentUpdatedAt is the preceding persist", async () => {
     const deps = recordingDeps(scriptedPipelineAi());
     await runLessonPipeline(
       { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
@@ -266,13 +266,10 @@ describe("runLessonPipeline", () => {
         message: "Planned the lesson",
         documentUpdatedAt: deps.persisted[1]?.updatedAt,
       },
-      // Verify persists nothing of its own: it carries the skeleton persist (TEACH-212).
-      {
-        percent: 8,
-        message: "Checking the facts",
-        documentUpdatedAt: deps.persisted[1]?.updatedAt,
-      },
       { percent: 10, message: "Planned", documentUpdatedAt: deps.persisted[2]?.updatedAt },
+      // Verify announces itself from inside Generate (TEACH-233), between persists: it carries
+      // none, and the strip reads 11 as Writing.
+      { percent: 11, message: "Checking the facts", documentUpdatedAt: undefined },
     ]);
     // The first two persists carry no checkpoint: a retry from either re-runs Plan.
     expect(deps.persisted[0]?.lesson.generation).toBeUndefined();
@@ -283,11 +280,12 @@ describe("runLessonPipeline", () => {
       message: "Done",
       documentUpdatedAt: deps.persisted.at(-1)?.updatedAt,
     });
-    // Every progress message carries the latest persist; only "Checking the facts" (index 2)
-    // repeats one, because Verify persists nothing itself.
+    // Every progress message carries the latest persist; only "Checking the facts" (index 3)
+    // carries none, because Verify persists nothing itself.
     const persistedAt = new Set(deps.persisted.map((p) => p.updatedAt));
     deps.progress.forEach((p, i) => {
-      const expected = deps.persisted[i < 2 ? i : i - 1]?.updatedAt;
+      if (i === 3) return;
+      const expected = deps.persisted[i < 3 ? i : i - 1]?.updatedAt;
       expect(p.documentUpdatedAt).toBe(expected);
       expect(persistedAt.has(p.documentUpdatedAt ?? "")).toBe(true);
     });

@@ -37,6 +37,7 @@ const COLUMNS: Column[] = [
   { label: "judge cost", unit: "usd", read: (t) => t.judgeCostUsd },
   { label: "mean duration", unit: "ms", read: (t) => t.meanDurationMs },
   { label: "p50 plan", unit: "ms", read: (t) => t.p50PlanMs },
+  { label: "p50 verify", unit: "ms", read: (t) => t.p50VerifyMs },
   { label: "p50 first slide", unit: "ms", read: (t) => t.p50FirstSlideMs },
   { label: "calls", unit: "n", read: (t) => t.calls },
   { label: "input tokens", unit: "n", read: (t) => t.inputTokens },

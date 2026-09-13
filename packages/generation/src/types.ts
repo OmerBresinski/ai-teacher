@@ -3,12 +3,14 @@ import type {
   Finding,
   GenerationStage,
   Lesson,
+  LessonFacts,
   SourceLocator,
   SourceRef,
   Worksheet,
 } from "@tj/domain/documents";
 import type { PhotoResult, StoredPhoto } from "@tj/images";
 import type { Logger } from "pino";
+import type { VerifyCorrection } from "./specs";
 
 /*
  * The pipeline's contract with its host (ADR 0025 §17): everything the stages need arrives in
@@ -147,6 +149,19 @@ export interface PipelineState {
   worksheet?: Worksheet;
   /** The `documents` row id the worker created for the worksheet (ADR 0025 §4). */
   worksheetId: string;
+  /**
+   * The Verify call Plan started (TEACH-233), for Generate to await before its first persist.
+   * In-process only: Mastra hands step output on by reference, so it survives the step boundary,
+   * but it is never persisted — a resumed lesson has none and Generate starts Verify itself.
+   */
+  pendingVerify?: Promise<VerifyResult>;
+}
+
+/** What one Verify call settles to (`stages/verify.ts`); a type here so `PipelineState` can name it. */
+export interface VerifyResult {
+  facts: LessonFacts;
+  applied: VerifyCorrection[];
+  findings: Finding[];
 }
 
 /**

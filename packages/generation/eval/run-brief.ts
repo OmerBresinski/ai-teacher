@@ -1,3 +1,4 @@
+import { Writable } from "node:stream";
 import type { Budget, CreatedAi } from "@tj/ai";
 import { type Lesson, lessonFromBrief, type Worksheet } from "@tj/domain/documents";
 import pino from "pino";
@@ -29,8 +30,17 @@ export interface BriefResult {
   durationMs: number;
   /** Time to the first persisted lesson with at least one slide; `null` when none arrived. */
   firstSlideMs: number | null;
-  /** Time to the `planned` checkpoint — Plan's wall time, the number the Plan tickets watch. */
+  /**
+   * Time to the `planned` checkpoint — Plan's wall time, the number the Plan tickets watch. Since
+   * TEACH-233 this is skeleton + facts: Verify is started at the checkpoint and awaited by Generate.
+   */
   planMs: number | null;
+  /**
+   * Verify's own call time, from the pipeline's `facts verified` log record (`durationMs`); `null`
+   * when Verify did not complete (refused at the cap, two misses, or a brief that failed first).
+   * `planMs + verifyMs` is what `planMs` measured before TEACH-233.
+   */
+  verifyMs: number | null;
   slides: number;
   blocks: number;
   calls: number;
@@ -96,6 +106,7 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
   const before = options.budget.totals();
   let firstSlideMs: number | null = null;
   let planMs: number | null = null;
+  let verifyMs: number | null = null;
   let lesson = lessonForBrief(brief, now());
   let worksheet: Worksheet | undefined;
 
@@ -105,9 +116,23 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     ai: options.ai,
     budget: options.budget,
     signal,
-    // Warnings only: a schema miss logs its issue paths and messages (content-free, ADR 0015) and
-    // nothing else, so a failed brief can be read from the run's output.
-    logger: pino({ level: "warn" }),
+    // Warnings reach the run's output: a schema miss logs its issue paths and messages
+    // (content-free, ADR 0015) and nothing else, so a failed brief can be read from it. Info
+    // records are read for one number — Verify's `durationMs` — and dropped.
+    logger: pino(
+      { level: "info" },
+      new Writable({
+        write(chunk, _encoding, callback) {
+          const line = chunk.toString();
+          const record = JSON.parse(line) as { level: number; msg?: string; durationMs?: number };
+          if (record.msg === "facts verified" && typeof record.durationMs === "number") {
+            verifyMs = record.durationMs;
+          }
+          if (record.level >= 40) process.stderr.write(line);
+          callback();
+        },
+      }),
+    ),
     now,
     ids: nextId,
     sources: noSources,
@@ -164,6 +189,7 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     durationMs,
     firstSlideMs,
     planMs,
+    verifyMs,
     slides: lesson.slides.length,
     blocks: worksheet?.blocks.length ?? 0,
     calls: after.calls - before.calls,
