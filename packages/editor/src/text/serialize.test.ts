@@ -4,6 +4,7 @@ import type { RichDoc } from "@tj/domain/documents";
 import { docFromBullets, docFromText } from "../model/factories";
 import { baseExtensions } from "./extensions";
 import { serializeDoc, UnknownRichNodeError } from "./serialize";
+import { renderDocHTML } from "./static";
 
 /** Tiptap's own output over the shared extension set — the reference the serialiser must match. */
 const tiptap = (doc: RichDoc) =>
@@ -124,7 +125,9 @@ const FIXTURES: Record<string, RichDoc> = {
         t("nulls", [
           {
             type: "link",
-            attrs: { href: "https://x.y", target: null, rel: null, class: null, title: "T" },
+            // `target: null` is not here: the serialiser deliberately diverges from Tiptap and
+            // always writes `_blank` (see the TEACH-277 block below).
+            attrs: { href: "https://x.y", rel: null, class: null, title: "T" },
           },
         ]),
         t("full", [
@@ -132,7 +135,7 @@ const FIXTURES: Record<string, RichDoc> = {
             type: "link",
             attrs: {
               href: "https://x.y",
-              target: "_self",
+              target: "_blank",
               rel: "nofollow",
               class: "c",
               title: null,
@@ -204,5 +207,113 @@ describe("serializeDoc matches @tiptap/html byte for byte", () => {
     expect(() =>
       serializeDoc({ type: "doc", content: [p([t("x", [{ type: "highlight" }])])] }),
     ).toThrow(UnknownRichNodeError);
+  });
+});
+
+/**
+ * TEACH-277 (audit F01): the serialiser is the last step before `dangerouslySetInnerHTML` and
+ * cannot trust stored attributes — Documents written before `RichDocSchema` was closed may carry
+ * anything. Tiptap itself would happily emit these anchors, so no parity here: the assertions are
+ * about what must NOT appear.
+ */
+describe("serializeDoc never emits an executable or injected attribute", () => {
+  const link = (href: unknown, extra: Record<string, unknown> = {}) =>
+    ({
+      type: "doc",
+      content: [p([t("click", [{ type: "link", attrs: { href, ...extra } }])])],
+    }) as RichDoc;
+
+  test.each([
+    "javascript:void(document.body.dataset.auditXss=String(1))",
+    "JavaScript:alert(1)",
+    " javascript:alert(1)",
+    "java\tscript:alert(1)",
+    "java\nscript:alert(1)",
+    "\u0001javascript:alert(1)",
+    "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+    "vbscript:msgbox(1)",
+    "file:///etc/passwd",
+    "blob:https://app.example/uuid",
+    "//evil.example/x",
+    "/relative",
+    "bbc.co.uk",
+    "https://",
+    "mailto:",
+    "",
+  ])("href %j renders the text without an anchor", (href) => {
+    const html = serializeDoc(link(href));
+    expect(html).toBe("<p>click</p>");
+    expect(html).not.toContain("<a");
+    expect(html).not.toMatch(/javascript|data:/i);
+  });
+
+  test("a non-string href is not a link", () => {
+    expect(serializeDoc(link(null))).toBe("<p>click</p>");
+    expect(serializeDoc(link(undefined))).toBe("<p>click</p>");
+    expect(serializeDoc(link(["javascript:alert(1)"]))).toBe("<p>click</p>");
+  });
+
+  test("target is always _blank; unknown rel tokens fall back to the safe default", () => {
+    expect(serializeDoc(link("https://x.y", { target: null }))).toBe(
+      '<p><a target="_blank" rel="noopener noreferrer" href="https://x.y">click</a></p>',
+    );
+    expect(serializeDoc(link("https://x.y", { target: "_self" }))).toBe(
+      '<p><a target="_blank" rel="noopener noreferrer" href="https://x.y">click</a></p>',
+    );
+    expect(serializeDoc(link("https://x.y", { target: "_top", rel: "opener" }))).toBe(
+      '<p><a target="_blank" rel="noopener noreferrer" href="https://x.y">click</a></p>',
+    );
+    expect(serializeDoc(link("https://x.y", { rel: "nofollow noopener" }))).toContain(
+      'rel="nofollow noopener"',
+    );
+  });
+
+  test("legitimate http(s) and mailto links survive verbatim", () => {
+    expect(serializeDoc(link("https://a.b/?q=1&r=2"))).toContain('href="https://a.b/?q=1&amp;r=2"');
+    expect(serializeDoc(link("http://a.b/path#frag"))).toContain('href="http://a.b/path#frag"');
+    expect(serializeDoc(link("mailto:head@school.sch.uk"))).toContain(
+      'href="mailto:head@school.sch.uk"',
+    );
+  });
+
+  test("textStyle colour and paragraph alignment cannot carry CSS declarations", () => {
+    const colour = (color: unknown) =>
+      serializeDoc({
+        type: "doc",
+        content: [p([t("c", [{ type: "textStyle", attrs: { color } }])])],
+      });
+    expect(colour("#f00")).toBe('<p><span style="color: #f00;">c</span></p>');
+    expect(colour("rgb(1, 2, 3)")).toBe('<p><span style="color: rgb(1, 2, 3);">c</span></p>');
+    expect(colour("red; background: url(https://evil.example/x)")).toBe("<p><span>c</span></p>");
+    expect(colour("expression(alert(1))")).toBe("<p><span>c</span></p>");
+    expect(colour('red" onmouseover="alert(1)')).toBe("<p><span>c</span></p>");
+    const align = (textAlign: unknown) =>
+      serializeDoc({ type: "doc", content: [p([t("a")], { textAlign })] });
+    expect(align("center")).toBe('<p style="text-align: center;">a</p>');
+    expect(align("center; position: fixed")).toBe("<p>a</p>");
+    expect(align(null)).toBe("<p>a</p>");
+  });
+
+  test("an ordered list start that is not an integer is dropped", () => {
+    const ol = (start: unknown) =>
+      serializeDoc({
+        type: "doc",
+        content: [
+          {
+            type: "orderedList",
+            attrs: { start },
+            content: [{ type: "listItem", content: [p([t("x")])] }],
+          },
+        ],
+      });
+    expect(ol(3)).toBe('<ol start="3"><li><p>x</p></li></ol>');
+    expect(ol(2.5)).toBe("<ol><li><p>x</p></li></ol>");
+    expect(ol('3" onclick="x')).toBe("<ol><li><p>x</p></li></ol>");
+  });
+
+  test("renderDocHTML (the sink's input) carries the same guarantee, cache included", () => {
+    const doc = link("javascript:alert(1)");
+    expect(renderDocHTML(doc)).toBe("<p>click</p>");
+    expect(renderDocHTML(doc)).toBe("<p>click</p>");
   });
 });

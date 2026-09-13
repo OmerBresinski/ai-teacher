@@ -117,3 +117,18 @@ only when a lesson is opened for editing. Under the §2 rule the Lesson gains op
 `generation`, `artefacts`, `sources`; every slide element and worksheet block gains optional
 `generatedFrom` and `authoredBy`; the Worksheet gains optional `lessonId` (ADR 0025 §1–§4, §20).
 No version bump.
+
+## Amendment (TEACH-277, 2026-09-13): the rich-text schema is closed
+
+`RichDocSchema` is no longer opaque. It accepts only the node types (`paragraph`, `text`,
+`hardBreak`, `bulletList`, `orderedList`, `listItem`) and mark types (`link`, `bold`, `italic`,
+`strike`, `code`, `underline`, `textStyle`) that `packages/editor/src/text/extensions.ts`
+produces, bounds nesting at `RICH_DOC_MAX_DEPTH`, and validates every attribute the static
+serialiser writes into HTML: `href` must be an http(s)/mailto address that already carries its
+scheme (`safeLinkHref`), `target` may only be `_blank`, `rel` a few known tokens, `color` a CSS
+colour literal and `textAlign` one of four keywords. Attribute keys the serialiser never emits are
+tolerated so a Tiptap upgrade that adds an inert attribute does not break saves. The serialiser
+(`packages/editor/src/text/serialize.ts`) applies the same helpers again at render time, so a
+Document stored before this amendment renders its unsafe link as plain text instead of an anchor.
+Audit finding F01 (Security audit — 13 September 2026) is the reason: a `javascript:` link mark
+passed the opaque schema and executed on click in the viewer.

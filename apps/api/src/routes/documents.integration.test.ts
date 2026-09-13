@@ -96,6 +96,63 @@ describeDb("/documents against Postgres", () => {
       expect(error.message).toContain("slides.0.kind");
     });
 
+    /**
+     * TEACH-277 (audit F01): the reproduction. A link mark with a javascript: href passed the
+     * opaque RichDocSchema, POST returned 201 and the stored body kept the URL. It is now a 422
+     * from the same parser path as any other invalid document, before anything is written.
+     */
+    test("422 for a rich-text link with an executable href (stored XSS, audit F01)", async () => {
+      const input = lessonFixture();
+      const poisoned = {
+        ...input,
+        slides: input.slides.map((s, i) =>
+          i === 0
+            ? {
+                ...s,
+                elements: s.elements.map((el, j) =>
+                  j === 0 && el.type === "text"
+                    ? {
+                        ...el,
+                        doc: {
+                          type: "doc",
+                          content: [
+                            {
+                              type: "paragraph",
+                              content: [
+                                {
+                                  type: "text",
+                                  text: "click me",
+                                  marks: [
+                                    {
+                                      type: "link",
+                                      attrs: {
+                                        href: "javascript:void(document.body.dataset.auditXss=String(1))",
+                                        target: "_self",
+                                      },
+                                    },
+                                  ],
+                                },
+                              ],
+                            },
+                          ],
+                        },
+                      }
+                    : el,
+                ),
+              }
+            : s,
+        ),
+      };
+      const res = await send(wsA, "POST", "/documents", { kind: "lesson", body: poisoned });
+      expect(res.status).toBe(422);
+      const error = await errorOf(res);
+      expect(error.code).toBe("unprocessable");
+      expect(error.message).toContain("slides.0.elements.0.doc");
+      // Nothing was stored for this workspace.
+      const list = await send(wsA, "GET", "/documents?kind=lesson");
+      expect(((await list.json()) as { items: unknown[] }).items).toHaveLength(0);
+    });
+
     test("a worksheet and a series are accepted too", async () => {
       const sheet = await send(wsA, "POST", "/documents", {
         kind: "worksheet",
