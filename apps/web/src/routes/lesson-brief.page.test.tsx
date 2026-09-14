@@ -12,11 +12,14 @@ const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 const navigate = mock();
 const toastSpy = mock();
+/** What `useSearch` returns: the marketing site's `?topic=` and `?source=1` (TEACH-309). */
+let search: { topic?: string; source?: "1" } = {};
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
   ...actualRouter,
   Link: ({ children, ...props }: { children: ReactNode }) => <a {...props}>{children}</a>,
   useNavigate: () => navigate,
+  useSearch: () => search,
 }));
 const actualUi = await import("@tj/ui");
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
@@ -51,6 +54,7 @@ describe("LessonBriefPage", () => {
   beforeEach(() => {
     navigate.mockReset();
     toastSpy.mockReset();
+    search = {};
     cleanup();
     fakeApi.reset();
     localStorage.clear();
@@ -58,6 +62,22 @@ describe("LessonBriefPage", () => {
   afterAll(() => {
     mock.restore();
     restoreFetch();
+  });
+
+  it("prefills ?topic= from the marketing site, focuses Subject, and runs the guard at once (TEACH-309)", () => {
+    search = { topic: "Fractions of amounts" };
+    renderPage();
+    expect(topicBox()).toHaveValue("Fractions of amounts");
+    expect(screen.getByRole("combobox", { name: "Subject" })).toHaveFocus();
+    expect(createButton()).toBeEnabled();
+    expect(navigate).not.toHaveBeenCalled();
+
+    cleanup();
+    search = { topic: "a pupil called Amelia" };
+    renderPage();
+    // A prefilled topic is treated as typed-and-blurred: the guard hint shows without a blur.
+    expect(screen.getByRole("status")).toHaveTextContent(/pupil/i);
+    expect(createButton()).toBeDisabled();
   });
 
   it("focuses the topic, disables Create until there is one, and defaults the duration by key stage", async () => {
