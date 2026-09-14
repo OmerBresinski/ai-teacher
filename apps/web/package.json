@@ -25,6 +25,7 @@
     "@tj/editor": "workspace:*",
     "@tj/ui": "workspace:*",
     "@vercel/speed-insights": "2.0.0",
+    "gsap": "3.14.2",
     "hono": "4.13.5",
     "lucide-react": "1.40.0",
     "react": "19.2.8",

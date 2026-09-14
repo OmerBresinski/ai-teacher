@@ -33,6 +33,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0025 | Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair | Accepted (amended 2026-09-12) |
 | 0026 | Railway Bucket (S3-compatible) for object storage  | Accepted (amended 2026-09-12) |
 | 0027 | Upload as input: `POST /sources`, `@tj/extract`, `sources` table, `SourceLoader` | Accepted |
+| 0028 | GSAP for the character scenes, click-loaded                        | Accepted |
 
 Template: `0000-template.md`.
 
