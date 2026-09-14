@@ -53,8 +53,8 @@
     "check:bundle-budget": "bun scripts/check-bundle-budget.ts",
     "skills:check": "bun scripts/skills-check.ts",
     "prepare": "lefthook install",
-    "homepage:build": "bun homepage/build.mjs",
-    "homepage:check": "bun run homepage:build && bun homepage/check.mjs",
+    "homepage:build": "bun homepage/build.mjs --allow-provisional",
+    "homepage:check": "bun run homepage:build && bun homepage/check.mjs --allow-provisional",
     "homepage:dev": "bun run homepage:check && bun homepage/serve.mjs",
     "homepage:stage": "bun run homepage:check && bun homepage/stage.mjs",
     "homepage:lint": "biome check homepage"

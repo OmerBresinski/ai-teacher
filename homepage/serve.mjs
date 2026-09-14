@@ -15,7 +15,7 @@ const types = {
   ".svg": "image/svg+xml",
   ".woff2": "font/woff2",
 };
-// biome-ignore lint/suspicious/noUndeclaredEnvVars: standalone local preview port, never deployed as a server.
+// biome-ignore lint/suspicious/noUndeclaredEnvVars: standalone local port, never deployed as a server.
 const port = Number(process.env.PORT || 4186);
 createServer(async (request, response) => {
   try {

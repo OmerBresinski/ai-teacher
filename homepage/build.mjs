@@ -6,13 +6,15 @@ import { shell } from "./src/components.mjs";
 const output = new URL("./dist/", import.meta.url);
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
-for (const directory of ["assets", "motion", "lesson-building", "loading-refined", "production"]) {
+for (const directory of ["assets", "motion"]) {
   await cp(new URL(`./${directory}/`, import.meta.url), new URL(`${directory}/`, output), {
     recursive: true,
   });
 }
 const pages = [];
-for (const name of ["home", "features", "examples", "information", "supporting"]) {
+// `examples` reads homepage/assets/examples/*/manifest.json, so a new lesson is a folder of
+// exported images plus its manifest, never a code change.
+for (const name of ["home", "examples", "information", "supporting"]) {
   const { default: list } = await import(`./src/pages/${name}.mjs`);
   pages.push(...list);
 }
@@ -33,4 +35,4 @@ await writeFile(
     2,
   ),
 );
-console.log(`Built ${pages.length} LessonCo pages into homepage/dist.`);
+console.log(`Built ${pages.length} DayBack pages into homepage/dist.`);

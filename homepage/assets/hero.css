@@ -1,5 +1,5 @@
-/* The approved gathering is isolated from other marketing and loading artwork. */
-.hm-gather-hero {
+/* The approved hero stage is isolated from other marketing and loading artwork. */
+.hm-hero-band {
   max-width: 1440px;
   margin: auto;
   padding: 22px 24px 42px;
@@ -25,7 +25,7 @@
   line-height: 1.4;
   max-width: 690px;
 }
-.hm-gathering {
+.hm-hero-stage {
   position: relative;
   width: min(1120px, 100%);
   height: auto;
@@ -77,7 +77,7 @@
   top: 80px;
   z-index: 1;
 }
-.hm-answers {
+.hm-check {
   width: 304px;
   right: -83px;
   top: 87px;
@@ -163,37 +163,11 @@
   opacity: 0.6;
   cursor: default;
 }
-.hm-brief button:focus-visible,
-.hm-hero-pause:focus-visible {
+.hm-brief button:focus-visible {
   outline: 3px solid #526b48;
   outline-offset: 4px;
 }
-.hm-brief-status:empty {
-  display: none;
-}
-.hm-brief-status,
-.hm-brief noscript p {
-  margin: 17px 0 0;
-  font-size: 15px;
-  line-height: 1.45;
-}
-.hm-hero-pause {
-  display: block;
-  margin: 8px auto 0;
-  padding: 7px 0;
-  min-height: 36px;
-  border: 0;
-  border-bottom: 1px solid #aab3a1;
-  border-radius: 0;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-.hm-hero-pause[hidden] {
-  display: none;
-}
+
 .hm-grounded-subtitle {
   position: relative;
   z-index: 6;
@@ -205,9 +179,9 @@
   text-align: center;
 }
 
-/* Intermediate screens retain the gathering's width and staggered depth. */
+/* Intermediate screens retain the hero stage's width and staggered depth. */
 @media (min-width: 761px) and (max-width: 1100px) {
-  .hm-gather-hero {
+  .hm-hero-band {
     padding: 24px 20px 36px;
   }
   .hm-hero-intro h1 {
@@ -217,10 +191,8 @@
     max-width: 640px;
     font-size: 21px;
   }
-  .hm-hero-wide {
-    display: none;
-  }
-  .hm-gathering {
+
+  .hm-hero-stage {
     margin-top: 35px;
     padding: 101px 0 100px;
   }
@@ -239,7 +211,7 @@
     left: -35px;
     top: 189px;
   }
-  .hm-answers {
+  .hm-check {
     width: 226px;
     right: -36px;
     top: 197px;
@@ -267,9 +239,9 @@
     font-size: 20px;
   }
 }
-/* On phones, the characters gather around the paper's four corners. */
+/* On phones, the characters stand around the paper's four corners. */
 @media (max-width: 760px) {
-  .hm-gather-hero {
+  .hm-hero-band {
     padding: 24px 16px 32px;
   }
   .hm-hero-intro h1 {
@@ -284,10 +256,8 @@
     margin-top: 17px;
     max-width: 350px;
   }
-  .hm-hero-wide {
-    display: none;
-  }
-  .hm-gathering {
+
+  .hm-hero-stage {
     width: min(540px, 100%);
     margin-top: 25px;
     padding: 74px 0 169px;
@@ -308,7 +278,7 @@
     top: auto;
     bottom: 9px;
   }
-  .hm-answers {
+  .hm-check {
     width: 162px;
     right: -23px;
     top: auto;
@@ -344,9 +314,7 @@
     border-radius: 12px;
     font-size: 18px;
   }
-  .hm-hero-pause {
-    margin-top: 10px;
-  }
+
   .hm-grounded-subtitle {
     max-width: 300px;
     margin-top: 24px;
@@ -358,7 +326,7 @@
     width: 140px;
     left: -21px;
   }
-  .hm-answers {
+  .hm-check {
     width: 148px;
     right: -19px;
   }
@@ -375,7 +343,65 @@
   .hm-brief button {
     transition: none;
   }
-  .hm-hero-pause {
-    display: none;
+}
+
+/* The second door into the app: an upload link inside the topic box, with a CSS-only tooltip. */
+.hm-brief-field {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+.hm-brief-field input {
+  padding-right: 58px;
+}
+.hm-brief-upload {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: #3d5343;
+  text-decoration: none;
+}
+.hm-brief-upload:hover {
+  background: #e9efdf;
+}
+.hm-brief-upload:focus-visible {
+  outline: 3px solid #526b48;
+  outline-offset: 2px;
+}
+.hm-brief-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: -6px;
+  z-index: 8;
+  width: max-content;
+  max-width: 260px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #293b32;
+  color: #fffef8;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s;
+}
+.hm-brief-upload:hover .hm-brief-tooltip,
+.hm-brief-upload:focus-visible .hm-brief-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+@media (max-width: 620px) {
+  .hm-brief-tooltip {
+    right: 0;
+    max-width: 210px;
   }
 }
