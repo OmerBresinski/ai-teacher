@@ -146,6 +146,25 @@ describe("findClickLoadedLeaks (TEACH-111 row 8)", () => {
     };
     expect(findClickLoadedLeaks(chained)).toEqual([]);
   });
+
+  test("gsap is guarded too (ADR 0028, TEACH-310)", () => {
+    const gsapKey = "../../node_modules/.bun/gsap@3.14.2/node_modules/gsap/index.js";
+    const reachedOnlyOnClick: Manifest = {
+      ...exporters,
+      "../../apps/web/src/lib/gsap.ts": {
+        file: "assets/gsap-loader.js",
+        dynamicImports: [gsapKey],
+      },
+      [gsapKey]: { file: "assets/gsap.js" },
+    };
+    expect(findClickLoadedLeaks(reachedOnlyOnClick)).toEqual([]);
+
+    const leaky: Manifest = {
+      ...reachedOnlyOnClick,
+      "_route.js": { file: "assets/route.js", imports: [gsapKey] },
+    };
+    expect(findClickLoadedLeaks(leaky)).toEqual([`_route.js -> ${gsapKey}`]);
+  });
 });
 
 describe("route chunk budgets (TEACH-113, ADR 0022 §8)", () => {

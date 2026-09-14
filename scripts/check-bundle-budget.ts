@@ -10,8 +10,9 @@
 //    chunk plus everything its static imports pull in *beyond the initial load*, JS and CSS gzipped,
 //    against a ceiling pinned from measurement + 20%. Font files are assets, not code, and are not
 //    counted. `--chunk lesson-editor=10` overrides one ceiling for a scratch run.
-// 3. Exporters are click-loaded only (ADR 0023 §4) — `CLICK_LOADED_CHUNKS` must never be reached
-//    through a static import.
+// 3. Click-loaded libraries (ADR 0023 §4, ADR 0028) — `CLICK_LOADED_CHUNKS` must never be reached
+//    through a static import: the exporters, and gsap (loaded only via `apps/web/src/lib/gsap.ts`'s
+//    `loadGsap()`).
 //
 //   exit 0  total <= warn threshold (default 200 KB), or the manifest is missing (TEACH-21)
 //   exit 0  warn  < total <= budget  (prints a WARN line)
@@ -84,15 +85,16 @@ export function collectInitialFiles(manifest: Manifest): string[] {
 }
 
 /**
- * Chunks that must only ever be reached through `dynamicImports` (ADR 0023 §4, TEACH-111 row 8):
- * the exporter libraries and the `@tj/editor/export` modules that wrap them. A key is matched
- * against the manifest's source path; `pptxgenjs` and `docx` are their own vendor chunks,
- * `modern-screenshot` is folded into `export/png.ts`'s.
+ * Chunks that must only ever be reached through `dynamicImports` (ADR 0023 §4, TEACH-111 row 8;
+ * ADR 0028, TEACH-310): the exporter libraries and the `@tj/editor/export` modules that wrap them,
+ * plus gsap. A key is matched against the manifest's source path; `pptxgenjs`, `docx` and `gsap`
+ * are their own vendor chunks, `modern-screenshot` is folded into `export/png.ts`'s.
  */
 export const CLICK_LOADED_CHUNKS: readonly RegExp[] = [
   /node_modules\/(\.bun\/)?pptxgenjs/,
   /node_modules\/(\.bun\/)?modern-screenshot/,
   /node_modules\/(\.bun\/)?docx@/,
+  /node_modules\/(\.bun\/)?gsap@/,
   /packages\/editor\/src\/export\/pptx\.ts$/,
   /packages\/editor\/src\/export\/png\.ts$/,
   /packages\/editor\/src\/export\/docx\.ts$/,
