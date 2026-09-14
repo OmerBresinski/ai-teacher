@@ -21,6 +21,13 @@ test.describe("auth", () => {
     const search = new URL(page.url()).searchParams;
     expect(search.get("redirect")).toBe("/dev/jobs");
     await expect(page.getByText("Sign in to Teaching Journey")).toBeVisible();
+
+    // A target with its own query string round-trips whole, not just the path (TEACH-309): the
+    // marketing homepage's ?topic= must survive an unsigned visitor's trip through /sign-in.
+    await page.goto("/lessons/new?topic=The+cycle");
+    await expect(page).toHaveURL(/\/sign-in\?/);
+    const searchWithQuery = new URL(page.url()).searchParams;
+    expect(searchWithQuery.get("redirect")).toBe("/lessons/new?topic=The+cycle");
   });
 
   test("magic link from the form signs in and lands on the redirect target", async ({
@@ -44,6 +51,22 @@ test.describe("auth", () => {
     // A second visit is a plain page load with the session cookie: no redirect to /sign-in.
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+  });
+
+  test("magic link keeps a redirect target's query string intact (TEACH-309)", async ({
+    page,
+    request,
+  }) => {
+    const email = uniqueEmail("query");
+    await page.goto("/sign-in?redirect=%2Flessons%2Fnew%3Ftopic%3DThe%2Bcycle");
+    await page.getByLabel("Email address").fill(email);
+    await page.getByRole("button", { name: "Email me a link" }).click();
+    await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
+
+    const link = await lastMagicLink(request, email);
+    await page.goto(link);
+
+    await expect(page).toHaveURL(/\/lessons\/new\?topic=The\+cycle$/);
   });
 
   test("keyboard-only sign-in: Tab to the field, type, Enter", async ({ page, request }) => {

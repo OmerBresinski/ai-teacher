@@ -37,6 +37,29 @@ test.describe("lesson brief", () => {
     await expect(page.getByTestId("theme-tiles").locator("[data-slide-fluid]")).toHaveCount(6);
   });
 
+  test("?topic= prefills the topic and moves focus to Subject, never auto-submitting (TEACH-309)", async ({
+    signedInPage: { page },
+  }) => {
+    await page.goto("/lessons/new?topic=Fractions%20of%20amounts");
+    await expect(page.getByRole("textbox", { name: "Topic or objective" })).toHaveValue(
+      "Fractions of amounts",
+    );
+    await expect(page.getByRole("combobox", { name: "Subject" })).toBeFocused();
+    // Nothing has submitted: still the brief, not the lesson it would open to.
+    await expect(page).toHaveURL(/\/lessons\/new\?topic=/);
+  });
+
+  test("?source=1 scrolls the drop zone into view and focuses Choose files (TEACH-309)", async ({
+    signedInPage: { page },
+  }) => {
+    await page.goto("/lessons/new?source=1");
+    // `input[type=file]` also carries an implicit "button" role under the same accessible name
+    // (it is `aria-label`led "Choose files" too), so scope to the real `<button>` element.
+    const chooseFiles = page.locator("button", { hasText: "Choose files" });
+    await expect(chooseFiles).toBeFocused();
+    await expect(chooseFiles).toBeInViewport();
+  });
+
   test("the action bar stays in view at any scroll; a bad duration says why the primary is off", async ({
     signedInPage: { page },
   }) => {
