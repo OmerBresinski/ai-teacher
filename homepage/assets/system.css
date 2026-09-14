@@ -114,6 +114,7 @@ svg {
 img {
   height: auto;
 }
+/* Base reset, kept regardless of today's markup: `hidden` must always win. */
 [hidden] {
   display: none !important;
 }

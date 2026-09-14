@@ -49,13 +49,9 @@
   };
   let actors = [],
     timer,
-    nextSlot = 0,
-    manualPause = false;
+    nextSlot = 0;
   const blocked = () =>
-    preference.matches ||
-    document.hidden ||
-    manualPause ||
-    !!document.querySelector("dialog[open]");
+    preference.matches || document.hidden || !!document.querySelector("dialog[open]");
   const ns = "http://www.w3.org/2000/svg";
   function make(host) {
     const svg = host.querySelector("svg"),
@@ -597,12 +593,6 @@
   const dialog = document.querySelector("#brief-dialog");
   if (dialog)
     new MutationObserver(reset).observe(dialog, { attributes: true, attributeFilter: ["open"] });
-  document.querySelector("[data-pause-cast]")?.addEventListener("click", (e) => {
-    manualPause = !manualPause;
-    e.currentTarget.setAttribute("aria-pressed", String(manualPause));
-    e.currentTarget.textContent = manualPause ? "Resume motion" : "Pause motion";
-    reset();
-  });
   function livingTick(_time, delta) {
     if (blocked() || !document.body.hasAttribute("data-living-cast")) return;
     livingTime += Math.min(delta / 1000, 0.05);

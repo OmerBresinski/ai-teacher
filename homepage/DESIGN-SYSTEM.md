@@ -65,7 +65,7 @@ column so the page never does.
 ## Motion
 
 The original cast rig supplies independent ambient behaviours and one signature per character.
-Marketing adds a quiet body-life layer and signatures soften it. Offscreen actors stop. User pause
-persists through scrolling and reduced-motion preferences suppress animation. One full team is
+Marketing adds a quiet body-life layer and signatures soften it. Offscreen actors stop, and a
+reduced-motion preference suppresses animation. There is no manual pause control. One full team is
 enough per page; isolated characters accompany specific material context. The hero cast is
 ambient art: plan, slides, worksheet and check.

@@ -3,9 +3,6 @@
   const hosts = [...document.querySelectorAll("[data-hero-actor]")];
   if (!hosts.length || !window.gsap) return;
   const preference = matchMedia("(prefers-reduced-motion: reduce)");
-  const pause = document.querySelector("[data-pause-hero]");
-  const sharedPause = document.querySelector("[data-pause-cast]");
-  let paused = sharedPause?.getAttribute("aria-pressed") === "true";
   let elapsed = 0;
   const actors = hosts.map((host, index) => {
     const svg = host.querySelector("svg");
@@ -71,7 +68,7 @@
     const blink = resting || blinkTime > 0.18 ? 1 : Math.abs(blinkTime - 0.09) / 0.09;
     for (const eye of actor.eyes) eye.element.setAttribute("ry", Math.max(0.2, eye.radius * blink));
   }
-  const blocked = () => paused || preference.matches || document.hidden;
+  const blocked = () => preference.matches || document.hidden;
   function reset() {
     for (const actor of actors) {
       gsap.killTweensOf(actor);
@@ -139,15 +136,6 @@
     elapsed += Math.min(delta / 1000, 0.05);
     for (const actor of actors) if (actor.visible) paint(actor, false);
   }
-  function reflectPause() {
-    paused = sharedPause?.getAttribute("aria-pressed") === "true";
-    pause?.setAttribute("aria-pressed", String(paused));
-    if (pause) pause.textContent = paused ? "Resume motion" : "Pause motion";
-    reset();
-  }
-  sharedPause?.addEventListener("click", reflectPause);
-  pause?.addEventListener("click", () => sharedPause?.click());
-  if (pause && sharedPause) pause.hidden = false;
   preference.addEventListener("change", reset);
   document.addEventListener("visibilitychange", reset);
   window.addEventListener("pagehide", () => {

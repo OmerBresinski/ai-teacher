@@ -163,29 +163,11 @@
   opacity: 0.6;
   cursor: default;
 }
-.hm-brief button:focus-visible,
-.hm-hero-pause:focus-visible {
+.hm-brief button:focus-visible {
   outline: 3px solid #526b48;
   outline-offset: 4px;
 }
 
-.hm-hero-pause {
-  display: block;
-  margin: 8px auto 0;
-  padding: 7px 0;
-  min-height: 36px;
-  border: 0;
-  border-bottom: 1px solid #aab3a1;
-  border-radius: 0;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-.hm-hero-pause[hidden] {
-  display: none;
-}
 .hm-grounded-subtitle {
   position: relative;
   z-index: 6;
@@ -332,9 +314,7 @@
     border-radius: 12px;
     font-size: 18px;
   }
-  .hm-hero-pause {
-    margin-top: 10px;
-  }
+
   .hm-grounded-subtitle {
     max-width: 300px;
     margin-top: 24px;
@@ -362,9 +342,6 @@
 @media (prefers-reduced-motion: reduce) {
   .hm-brief button {
     transition: none;
-  }
-  .hm-hero-pause {
-    display: none;
   }
 }
 

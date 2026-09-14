@@ -22,13 +22,6 @@
   font-size: 23px;
 }
 
-@media (max-width: 1240px) {
-}
-@media (max-width: 760px) {
-}
-@media (prefers-reduced-motion: reduce) {
-}
-
 /* Launch home blocks: example lessons, the three steps, teacher control and the short FAQ. */
 .hm-examples,
 .hm-steps,

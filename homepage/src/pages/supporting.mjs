@@ -17,7 +17,7 @@ const accessibility = page(
   reading({
     heading: "Accessibility.",
     content: `<p>Every page and every editor control works from the keyboard alone, and focus is always visible where you are.</p>
-      <p>If your device is set to reduce motion, DayBack holds still. Where a page moves on its own, a “Pause motion” control stops it.</p>
+      <p>If your device is set to reduce motion, DayBack holds still.</p>
       <p>We build to WCAG 2.2 AA and test against it. Where a page falls short, tell us and we fix it.</p>
       <p>Tell us what did not work, on which page and with which assistive technology, at ${mail}. A person replies.</p>`,
   }),

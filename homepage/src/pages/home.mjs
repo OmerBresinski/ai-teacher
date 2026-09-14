@@ -21,7 +21,6 @@ const hero = `
     </form>
     <p class="hm-grounded-subtitle">Your topic or materials. A complete lesson, ready to edit.</p>
   </div>
-  <button class="hm-hero-pause" data-pause-hero aria-pressed="false" hidden>Pause motion</button>
 </section>`;
 
 // Both the heading and the count come from the manifests, so the page never names a lesson it
