@@ -1,14 +1,30 @@
 import { describe, expect, it } from "bun:test";
-import { loadGsap, prefersReducedMotion } from "./gsap";
+import { gsapImport, loadGsap, prefersReducedMotion } from "./gsap";
 
 const srcDirectory = new URL("../", import.meta.url);
 
-/** A static `import`/`export ... from "gsap"`, or a bare side-effect `import "gsap"`. Matches
- * single or double quotes; does not match `import("gsap")` (a call, not a `from` clause) or a
- * subpath like `"gsap/Flip"` (ADR 0028's plugin note — those get their own dynamic import too). */
-const STATIC_GSAP_IMPORT = /\bfrom\s+["']gsap["']|^\s*import\s+["']gsap["']/m;
+/** A static `import`/`export ... from "gsap"` (or a plugin subpath like `"gsap/Flip"`, per ADR
+ * 0028's load rule), or a bare side-effect `import "gsap"` / `import "gsap/Flip"`. Matches single
+ * or double quotes; does not match `import("gsap")` (a call, not a `from` clause). */
+const STATIC_GSAP_IMPORT =
+  /\bfrom\s+["']gsap(?:\/[^"']+)?["']|^\s*import\s+["']gsap(?:\/[^"']+)?["']/m;
 
 describe("loadGsap", () => {
+  // Runs first, while the module's cache is still empty, so it can exercise the empty-cache ->
+  // reject -> retry path; every later test in this file relies on the real import succeeding.
+  it("clears the cache on a failed import, so the next call retries and then memoises", async () => {
+    const real = gsapImport.gsap;
+    gsapImport.gsap = () => Promise.reject(new Error("chunk load failed"));
+    try {
+      await expect(loadGsap()).rejects.toThrow("chunk load failed");
+    } finally {
+      gsapImport.gsap = real;
+    }
+
+    const [first, second] = await Promise.all([loadGsap(), loadGsap()]);
+    expect(first).toBe(second);
+  });
+
   it("resolves the same gsap instance on repeat calls", async () => {
     const [first, second] = await Promise.all([loadGsap(), loadGsap()]);
     expect(first).toBe(second);

@@ -7,6 +7,17 @@
  * enforce that; this file is the one allowed exception.
  */
 
+/**
+ * The click-loaded gsap import itself, as a swappable single-entry object — the same pattern
+ * `packages/editor/src/export/ExportControl.tsx`'s `exportLoaders` uses: a unit test can replace
+ * `gsapImport.gsap` with a stub thunk (to simulate a failed chunk load) and put it back, without
+ * `mock.module`, which would leak into other files' tests in the same run. The `import()` call
+ * stays literal so Vite still splits the chunk.
+ */
+export const gsapImport = {
+  gsap: () => import("gsap"),
+};
+
 let gsapPromise: Promise<typeof import("gsap").gsap> | null = null;
 
 /**
@@ -15,15 +26,24 @@ let gsapPromise: Promise<typeof import("gsap").gsap> | null = null;
  * `gsap.config({ nullTargetWarn: false })` exactly once, the first time gsap loads — a scene whose
  * target has already left the DOM (a fast turn transition) should not warn.
  *
+ * A failed load (a dropped chunk request, a flaky network) clears the cache and rethrows, so the
+ * next call retries the dynamic import instead of replaying the same rejection forever.
+ *
  * Call this from the interaction that starts a scene, not at module scope, so the dynamic
  * `import("gsap")` stays a separate chunk Vite loads only on demand.
  */
 export function loadGsap(): Promise<typeof import("gsap").gsap> {
   if (!gsapPromise) {
-    gsapPromise = import("gsap").then(({ gsap }) => {
-      gsap.config({ nullTargetWarn: false });
-      return gsap;
-    });
+    gsapPromise = gsapImport
+      .gsap()
+      .then(({ gsap }) => {
+        gsap.config({ nullTargetWarn: false });
+        return gsap;
+      })
+      .catch((err: unknown) => {
+        gsapPromise = null;
+        throw err;
+      });
   }
   return gsapPromise;
 }

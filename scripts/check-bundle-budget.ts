@@ -385,7 +385,7 @@ export async function run(
   const leaks = findClickLoadedLeaks(manifest);
   if (leaks.length > 0) {
     const lines = leaks.map((leak) => `  ${leak}`).join("\n");
-    const message = `Exporter chunks must load on click only (ADR 0023 §4); statically imported by:\n${lines}`;
+    const message = `Click-loaded chunks must load on click only (ADR 0023 §4, ADR 0028); statically imported by:\n${lines}`;
     out(message);
     if (options.markdownOut) await Bun.write(options.markdownOut, `${message}\n`);
     return ExitCode.Failure;

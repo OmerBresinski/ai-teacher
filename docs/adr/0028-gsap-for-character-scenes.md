@@ -41,9 +41,13 @@ route chunk: `packages/editor/src/export/index.ts` deliberately does not re-expo
    gets the same GSAP instance without re-importing or re-configuring. The first resolution also
    calls `gsap.config({ nullTargetWarn: false })` exactly once — a scene whose target element has
    already left the DOM (a fast turn transition, an aborted generation) should not warn to the
-   console. `gsap.ts` is the *only* file under `apps/web/src` allowed to `import ... from "gsap"`
-   statically; `gsap.test.ts` greps the tree to enforce that, mirroring how `export/index.ts`
-   documents its own dynamic-import-only boundary.
+   console. A failed load (a dropped chunk request) clears the memoised promise and rethrows, so
+   the next call retries instead of replaying the same rejection for the rest of the page's life.
+   `gsap.ts` is the *only* file under `apps/web/src` allowed to `import ... from "gsap"` statically
+   — including a plugin subpath such as `"gsap/Flip"`, since a future plugin loads through this
+   same click-loaded mechanism (Consequences, below), not a separate static dependency; `gsap.test.ts`
+   greps the tree for both forms to enforce that, mirroring how `export/index.ts` documents its own
+   dynamic-import-only boundary.
 3. **`prefersReducedMotion()` sits beside it**, wrapping
    `matchMedia("(prefers-reduced-motion: reduce)").matches`. See the reduced-motion rule below.
 4. **The chunk-budget check is extended, not duplicated.** `gsap` is added to
