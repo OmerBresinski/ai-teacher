@@ -20,7 +20,7 @@ function poisonedLesson() {
   const slide = lesson.slides[0];
   if (!slide) throw new Error("fixture has no slides");
   const text = slide.elements.find((el) => el.type === "text");
-  if (!text || text.type !== "text") throw new Error("fixture has no text element");
+  if (text?.type !== "text") throw new Error("fixture has no text element");
   text.doc = {
     type: "doc",
     content: [
