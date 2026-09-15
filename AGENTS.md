@@ -59,9 +59,9 @@ were the first (P0 — Monorepo Scaffolding → the lesson-creation-flow project
 
 1. Pick a donor: `linear_list_issues` with `project` set to a **Completed** project (check
    `linear_list_projects` `status`) and `state: "Done"`. Prefer the issue whose id the repo cites
-   least — for a candidate `TEACH-67`, `rg -c 'TEACH-67\b' --glob '!node_modules'` at the root, and
-   look at where the hits are: ids that appear only in `docs/p0-ticket-map.md` or in code comments
-   are fine, ids in ADR titles or README headings are not.
+   least — for a candidate `TEACH-67`, run `rg -c 'TEACH-67\b' --glob '!node_modules'` at the
+   root and look at where the hits are: ids that appear only in `docs/p0-ticket-map.md` or in code
+   comments are fine, ids in ADR titles or README headings are not.
 2. One `linear_save_issue` with `id: "<donor>"` and **all** of: new `title`, new `description`,
    `project` (the target), `state: "Backlog"`, `priority`, `labels: []`, `assignee: null`, plus
    `blockedBy`/`blocks` as usual. The `template` parameter is create-only, so paste the Agentic
