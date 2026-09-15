@@ -49,6 +49,36 @@ in `linear_save_issue`; `linear_get_template` shows its sections) and fill every
 than inventing a shape. A ticket is ready when a cold session could open the PR without asking a
 single question.
 
+### Repurpose a Done issue instead of creating one
+
+The workspace is on Linear's free plan and is over its 250-issue cap: `linear_save_issue` without
+an `id` fails with "You've exceeded the free issue limit" (15 Sep 2026), and archiving does not
+free room. Updating an existing issue is not limited, so **every new ticket is a rewrite of a Done
+issue from a Completed project**, until the plan changes. `TEACH-67`, `-12`, `-15`, `-13`, `-16`
+were the first (P0 — Monorepo Scaffolding → the lesson-creation-flow project).
+
+1. Pick a donor: `linear_list_issues` with `project` set to a **Completed** project (check
+   `linear_list_projects` `status`) and `state: "Done"`. Prefer the issue whose id the repo cites
+   least — for a candidate `TEACH-67`, run `rg -c 'TEACH-67\b' --glob '!node_modules'` at the
+   root and look at where the hits are: ids that appear only in `docs/p0-ticket-map.md` or in code
+   comments are fine, ids in ADR titles or README headings are not.
+2. One `linear_save_issue` with `id: "<donor>"` and **all** of: new `title`, new `description`,
+   `project` (the target), `state: "Backlog"`, `priority`, `labels: []`, `assignee: null`, plus
+   `blockedBy`/`blocks` as usual. The `template` parameter is create-only, so paste the Agentic
+   Task sections into `description` yourself, every section filled to the standard above.
+3. Start the description with one blockquote line naming the donor, e.g.
+   `> Repurposed on <date> from the Done P0 issue "<old title>" (workspace hit the free issue
+   limit). Older comments and attachments belong to that original work.` — the issue keeps its
+   history and `createdAt`, so the reader needs the warning.
+4. Detach the donor's PR links: `linear_get_issue` lists `attachments`; `linear_delete_attachment`
+   each one. Otherwise the GitHub integration shows a merged PR on an open ticket.
+5. The **issue id and `gitBranchName` come from the donor** (`omerbres/teach-67-…`); use them as
+   returned — never a made-up number. Linear regenerates the slug from the new title.
+
+Keep the target project's description (the TDD) as the source of truth for ticket numbering
+(T1, T2, …) and add the real `TEACH-n` next to each row once assigned, so the map from design to
+issue survives the renumbering. Tech debt tickets follow the same rule.
+
 ### Tech debt
 
 There is a standing Linear project **Tech debt** (team Teacher AI,
