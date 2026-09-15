@@ -59,16 +59,17 @@ were the first (P0 — Monorepo Scaffolding → the lesson-creation-flow project
 
 1. Pick a donor: `linear_list_issues` with `project` set to a **Completed** project (check
    `linear_list_projects` `status`) and `state: "Done"`. Prefer the issue whose id the repo cites
-   least — `rg -o "TEACH-<n>\b"` at the root; ids that appear only in `docs/p0-ticket-map.md` or
-   in code comments are fine, ids in ADR titles or README headings are not.
+   least — for a candidate `TEACH-67`, `rg -c 'TEACH-67\b' --glob '!node_modules'` at the root, and
+   look at where the hits are: ids that appear only in `docs/p0-ticket-map.md` or in code comments
+   are fine, ids in ADR titles or README headings are not.
 2. One `linear_save_issue` with `id: "<donor>"` and **all** of: new `title`, new `description`,
    `project` (the target), `state: "Backlog"`, `priority`, `labels: []`, `assignee: null`, plus
    `blockedBy`/`blocks` as usual. The `template` parameter is create-only, so paste the Agentic
    Task sections into `description` yourself, every section filled to the standard above.
-3. Start the description with one blockquote line naming the donor:
-   `> Repurposed on <date> from the Done P0 issue "<old title>" (workspace hit the free issue limit).
-   Older comments and attachments belong to that original work.` — the issue keeps its history and
-   `createdAt`, so the reader needs the warning.
+3. Start the description with one blockquote line naming the donor, e.g.
+   `> Repurposed on <date> from the Done P0 issue "<old title>" (workspace hit the free issue
+   limit). Older comments and attachments belong to that original work.` — the issue keeps its
+   history and `createdAt`, so the reader needs the warning.
 4. Detach the donor's PR links: `linear_get_issue` lists `attachments`; `linear_delete_attachment`
    each one. Otherwise the GitHub integration shows a merged PR on an open ticket.
 5. The **issue id and `gitBranchName` come from the donor** (`omerbres/teach-67-…`); use them as
