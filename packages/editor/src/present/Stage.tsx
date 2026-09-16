@@ -7,6 +7,7 @@ import {
   slideStepCount,
 } from "@tj/domain/documents";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useFittedLesson } from "../layout/fit-for-render";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { InkLayer, LaserLayer } from "./InkLayer";
@@ -33,7 +34,8 @@ export type StageProps = {
   theme: Theme;
 };
 
-export function Stage({ lesson, theme }: StageProps) {
+export function Stage({ lesson: stored, theme }: StageProps) {
+  const { lesson } = useFittedLesson(stored);
   const { index, step, direction, blackout } = usePresent().state;
   const reduced = useReducedMotion();
 
