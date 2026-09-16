@@ -71,7 +71,7 @@ const inset = (r: { x: number; y: number; w: number; h: number }) => ({
  */
 export function findOverlaps(slide: Slide): OverlapPair[] {
   const candidates = slide.elements.filter((el) => !isDecorative(el) && el.w > EPS && el.h > EPS);
-  const out: OverlapPair[] = [];
+  const out: OverlapPair[] = [...findStruckThrough(slide)];
   for (let i = 0; i < candidates.length; i++) {
     for (let j = i + 1; j < candidates.length; j++) {
       const a = candidates[i];
@@ -89,6 +89,38 @@ export function findOverlaps(slide: Slide): OverlapPair[] {
       out.push([a.id, b.id]);
     }
   }
+  return out;
+}
+
+/**
+ * How far inside a text box a rule must sit before it reads as struck through it. A rule along a
+ * box's edge is the divider the recipe drew; a rule across its middle is a heading that grew two
+ * lines over the divider under it (the Chalkie audit, Sept 2026: every two-line heading on the
+ * default theme read as crossed out in the PDF, and the fit migration never tidied it because the
+ * rule was excluded here).
+ */
+const STRIKE_INSET = 4;
+
+/**
+ * Hairlines crossing the interior of a text box (or an option card). Decoration never collides
+ * with decoration, and a rule at a box's edge is fine; only a rule through the words counts. Draw
+ * order is kept in the pair so the engine's push-down sees the same pair it would compute itself.
+ */
+export function findStruckThrough(slide: Slide): OverlapPair[] {
+  const out: OverlapPair[] = [];
+  slide.elements.forEach((rule, i) => {
+    // Drawn rules only: a `line` element is a teacher's own stroke, wherever it goes.
+    if (rule.type !== "shape" || rule.h > 2 || rule.rotation) return;
+    const ry = rule.y + rule.h / 2;
+    slide.elements.forEach((el, j) => {
+      if (i === j || el.rotation || isDecorative(el)) return;
+      if (el.type !== "text" && el.type !== "gap-text" && el.type !== "option") return;
+      const r = rectOf(el);
+      if (ry <= r.y + STRIKE_INSET || ry >= r.y + r.h - STRIKE_INSET) return;
+      if (rule.x + rule.w <= r.x + EPS || rule.x >= r.x + r.w - EPS) return;
+      out.push(i < j ? [rule.id, el.id] : [el.id, rule.id]);
+    });
+  });
   return out;
 }
 
