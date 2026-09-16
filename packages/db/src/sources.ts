@@ -87,6 +87,23 @@ export async function unbindSourcesFromLesson(ws: WorkspaceDb, lessonId: string)
 }
 
 /**
+ * Release one Source from `lessonId` (ADR 0027 §5 as amended by ADR 0029: sources may change
+ * after creation). Only a row bound to that lesson is touched; returns the number released (0 or
+ * 1).
+ */
+export async function unbindSource(
+  ws: WorkspaceDb,
+  sourceId: string,
+  lessonId: string,
+): Promise<number> {
+  const rows = await ws
+    .update(sources, and(eq(sources.id, sourceId), eq(sources.lessonId, lessonId)))
+    .set({ lessonId: null, updatedAt: new Date() })
+    .returning({ id: sources.id });
+  return rows.length;
+}
+
+/**
  * Set `deleted_at` on an **unbound** Source. `bound` when a lesson holds it (the row is left as
  * is), `missing` when there is no live row for this Workspace.
  */

@@ -1,6 +1,12 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
-import { type Lesson, type Series, summarise } from "@tj/domain/documents";
+import {
+  type Lesson,
+  type Series,
+  summarise,
+  type Worksheet,
+  type WorksheetGenerationStage,
+} from "@tj/domain/documents";
 import {
   lesson as lessonFixture,
   titleSlide,
@@ -12,15 +18,21 @@ import {
   createDocument,
   deleteDocument,
   escapeLike,
+  findLessonByRequestId,
+  findWorksheetForGeneration,
   getDocument,
   getSeriesWithLessons,
+  handOffLock,
   listSummaries,
+  listWorksheetsOfLesson,
   MalformedCursorError,
   putDocument,
   putDocumentAsJob,
   releaseStaleLock,
   restore,
   STALE_LOCK_AFTER_MS,
+  setContinueWhenPlanned,
+  setPlanRevisionAndLock,
   softDelete,
 } from "./documents";
 import { insertJobEvent } from "./job-events";
@@ -38,6 +50,30 @@ const series = (lessonIds: string[]): Series => ({
   lessonIds,
   createdAt: "2026-09-01T09:00:00.000Z",
   updatedAt: "2026-09-05T15:30:00.000Z",
+});
+
+const worksheetOf = (lessonId: string, stage?: WorksheetGenerationStage): Worksheet => ({
+  ...worksheetFixture(),
+  lessonId,
+  ...(stage === undefined
+    ? {}
+    : {
+        generation: {
+          jobId: newId(),
+          stage,
+          startedAt: "2026-09-16T09:00:00.000Z",
+          promptVersions: {},
+          usage: { calls: 1, inputTokens: 10, outputTokens: 10, costUsd: 0.01 },
+          findings: [],
+          recipeId: "practice",
+          practiceMinutes: 10,
+        },
+      }),
+});
+
+const planned = (revision: number): Lesson => ({
+  ...lessonFixture(),
+  plan: { revision, state: "proposed", jobId: newId() },
 });
 
 describeDb("documents repository", () => {
@@ -604,6 +640,227 @@ describeDb("documents repository", () => {
       if (!after) throw new Error("row vanished");
       const put = await putDocument(wsA, row.id, { ...after.body, title: "Now" }, after.updatedAt);
       expect(put.status).toBe("ok");
+    });
+  });
+
+  describe("lesson_id (ADR 0030)", () => {
+    test("a worksheet's uuid lessonId is promoted, listed, and kept by putDocument", async () => {
+      const lessonId = newId();
+      const row = await createDocument(wsA, "worksheet", worksheetOf(lessonId));
+      expect(row.lessonId).toBe(lessonId);
+      expect((await listWorksheetsOfLesson(wsA, lessonId)).map((r) => r.id)).toEqual([row.id]);
+      const put = await putDocument(wsA, row.id, row.body, row.updatedAt);
+      expect(put.status).toBe("ok");
+      if (put.status !== "ok") return;
+      expect(put.row.lessonId).toBe(lessonId);
+    });
+
+    test("a non-uuid lessonId (a fixture or import key) and a lesson row leave it null", async () => {
+      const keyed = await createDocument(wsA, "worksheet", worksheetFixture());
+      expect(keyed.lessonId).toBeNull();
+      expect((await createDocument(wsA, "lesson", lessonFixture())).lessonId).toBeNull();
+    });
+
+    test("listWorksheetsOfLesson: oldest first, skips soft-deleted rows, other lessons and Workspaces", async () => {
+      const lessonId = newId();
+      const first = await createDocument(wsA, "worksheet", worksheetOf(lessonId));
+      const second = await createDocument(wsA, "worksheet", worksheetOf(lessonId));
+      const deleted = await createDocument(wsA, "worksheet", worksheetOf(lessonId));
+      await softDelete(wsA, deleted.id);
+      await createDocument(wsA, "worksheet", worksheetOf(newId()));
+      await createDocument(wsB, "worksheet", worksheetOf(lessonId));
+      const rows = await listWorksheetsOfLesson(wsA, lessonId);
+      expect(rows.map((r) => r.id)).toEqual([first.id, second.id]);
+    });
+  });
+
+  describe("findWorksheetForGeneration", () => {
+    test("generating: a locked sheet of the lesson wins", async () => {
+      const lessonId = newId();
+      const jobId = newId<JobId>();
+      await createDocument(wsA, "worksheet", worksheetOf(lessonId, "framed"));
+      const locked = await createDocument(wsA, "worksheet", worksheetOf(lessonId), {
+        generatingJobId: jobId,
+      });
+      const found = await findWorksheetForGeneration(wsA, lessonId);
+      expect(found.kind).toBe("generating");
+      if (found.kind !== "generating") return;
+      expect(found.row.id).toBe(locked.id);
+      expect(found.row.generatingJobId).toBe(jobId);
+    });
+
+    test("reusable: an unlocked sheet left at framed", async () => {
+      const lessonId = newId();
+      const row = await createDocument(wsA, "worksheet", worksheetOf(lessonId, "framed"));
+      const found = await findWorksheetForGeneration(wsA, lessonId);
+      expect(found.kind).toBe("reusable");
+      if (found.kind !== "reusable") return;
+      expect(found.row.id).toBe(row.id);
+    });
+
+    test("none: a finished sheet, a soft-deleted framed sheet, or another Workspace's", async () => {
+      const lessonId = newId();
+      await createDocument(wsA, "worksheet", worksheetOf(lessonId, "checked"));
+      const framed = await createDocument(wsA, "worksheet", worksheetOf(lessonId, "framed"));
+      await softDelete(wsA, framed.id);
+      expect(await findWorksheetForGeneration(wsA, lessonId)).toEqual({ kind: "none" });
+      const other = newId();
+      await createDocument(wsA, "worksheet", worksheetOf(other), {
+        generatingJobId: newId<JobId>(),
+      });
+      expect(await findWorksheetForGeneration(wsB, other)).toEqual({ kind: "none" });
+    });
+  });
+
+  describe("findLessonByRequestId", () => {
+    test("finds the lesson in its Workspace only; a repeat requestId is refused", async () => {
+      const requestId = newId();
+      const row = await createDocument(wsA, "lesson", lessonFixture(), { requestId });
+      expect((await findLessonByRequestId(wsA, requestId))?.id).toBe(row.id);
+      expect(await findLessonByRequestId(wsB, requestId)).toBeNull();
+      expect(await findLessonByRequestId(wsA, newId())).toBeNull();
+      // Another Workspace may reuse the key; the same Workspace may not.
+      await createDocument(wsB, "lesson", lessonFixture(), { requestId });
+      await expect(createDocument(wsA, "lesson", lessonFixture(), { requestId })).rejects.toThrow();
+    });
+  });
+
+  describe("setPlanRevisionAndLock (ADR 0029)", () => {
+    const bump =
+      (jobId: JobId) =>
+      (lesson: Lesson): Lesson => ({
+        ...lesson,
+        title: "Re-planned",
+        plan: { revision: (lesson.plan?.revision ?? 0) + 1, state: "proposed", jobId },
+      });
+
+    test("stale: another revision writes nothing", async () => {
+      const row = await createDocument(wsA, "lesson", planned(2));
+      const jobId = newId<JobId>();
+      const result = await setPlanRevisionAndLock(wsA, row.id, {
+        expectedRevision: 1,
+        jobId,
+        patch: bump(jobId),
+      });
+      expect(result).toEqual({ status: "stale", revision: 2 });
+      const after = await getDocument(wsA, row.id);
+      expect(after?.body).toEqual(row.body);
+      expect(after?.updatedAt.getTime()).toBe(row.updatedAt.getTime());
+      expect(after?.generatingJobId).toBeNull();
+    });
+
+    test("ok: the patch is written with promoted columns, a later updated_at and the lock", async () => {
+      const row = await createDocument(wsA, "lesson", planned(2));
+      const jobId = newId<JobId>();
+      const result = await setPlanRevisionAndLock(wsA, row.id, {
+        expectedRevision: 2,
+        jobId,
+        patch: bump(jobId),
+      });
+      expect(result.status).toBe("ok");
+      if (result.status !== "ok") return;
+      expect(result.row.generatingJobId).toBe(jobId);
+      expect(result.row.title).toBe("Re-planned");
+      expect((result.row.body as Lesson).plan).toEqual({
+        revision: 3,
+        state: "proposed",
+        jobId,
+      });
+      expect(result.row.updatedAt.getTime()).toBeGreaterThan(row.updatedAt.getTime());
+      expect(await getDocument(wsA, row.id)).toEqual(result.row);
+    });
+
+    test("generating: a locked lesson is reported and not written", async () => {
+      const holder = newId<JobId>();
+      const row = await createDocument(wsA, "lesson", planned(1), { generatingJobId: holder });
+      const jobId = newId<JobId>();
+      const result = await setPlanRevisionAndLock(wsA, row.id, {
+        expectedRevision: 1,
+        jobId,
+        patch: bump(jobId),
+      });
+      expect(result).toEqual({ status: "generating", jobId: holder });
+      expect((await getDocument(wsA, row.id))?.body).toEqual(row.body);
+    });
+
+    test("a lesson without plan is revision 0", async () => {
+      const row = await createDocument(wsA, "lesson", lessonFixture());
+      const jobId = newId<JobId>();
+      const result = await setPlanRevisionAndLock(wsA, row.id, {
+        expectedRevision: 0,
+        jobId,
+        patch: bump(jobId),
+      });
+      expect(result.status).toBe("ok");
+      if (result.status !== "ok") return;
+      expect((result.row.body as Lesson).plan?.revision).toBe(1);
+    });
+
+    test("two concurrent confirmations of one revision: exactly one wins", async () => {
+      const row = await createDocument(wsA, "lesson", planned(1));
+      const [j1, j2] = [newId<JobId>(), newId<JobId>()];
+      const results = await Promise.all(
+        [j1, j2].map((jobId) =>
+          setPlanRevisionAndLock(wsA, row.id, { expectedRevision: 1, jobId, patch: bump(jobId) }),
+        ),
+      );
+      const statuses = results.map((r) => r.status).sort();
+      expect(statuses).toEqual(["generating", "ok"]);
+    });
+
+    test("missing: unknown id, a worksheet, another Workspace's lesson", async () => {
+      const lesson = await createDocument(wsA, "lesson", planned(1));
+      const sheet = await createDocument(wsA, "worksheet", worksheetOf(lesson.id));
+      const jobId = newId<JobId>();
+      const opts = { expectedRevision: 1, jobId, patch: bump(jobId) };
+      expect(await setPlanRevisionAndLock(wsA, newId(), opts)).toEqual({ status: "missing" });
+      expect(await setPlanRevisionAndLock(wsA, sheet.id, opts)).toEqual({ status: "missing" });
+      expect(await setPlanRevisionAndLock(wsB, lesson.id, opts)).toEqual({ status: "missing" });
+      expect((await getDocument(wsA, lesson.id))?.generatingJobId).toBeNull();
+    });
+
+    test("throws, writing nothing, when the patch changes body.id", async () => {
+      const row = await createDocument(wsA, "lesson", planned(1));
+      await expect(
+        setPlanRevisionAndLock(wsA, row.id, {
+          expectedRevision: 1,
+          jobId: newId<JobId>(),
+          patch: (lesson) => ({ ...lesson, id: "other" }),
+        }),
+      ).rejects.toThrow(/body\.id other does not match/);
+      expect((await getDocument(wsA, row.id))?.generatingJobId).toBeNull();
+    });
+  });
+
+  describe("handOffLock (TDD T10)", () => {
+    test("moves the lock only from its holder, in its Workspace", async () => {
+      const [j1, j2, j3] = [newId<JobId>(), newId<JobId>(), newId<JobId>()];
+      const row = await createDocument(wsA, "lesson", planned(1), { generatingJobId: j1 });
+      expect(await handOffLock(wsB, row.id, j1, j3)).toBe(false);
+      expect(await handOffLock(wsA, row.id, j1, j2)).toBe(true);
+      expect(await handOffLock(wsA, row.id, j1, j3)).toBe(false);
+      expect((await getDocument(wsA, row.id))?.generatingJobId).toBe(j2);
+      const unlocked = await createDocument(wsA, "lesson", planned(1));
+      expect(await handOffLock(wsA, unlocked.id, j1, j2)).toBe(false);
+      expect((await getDocument(wsA, unlocked.id))?.generatingJobId).toBeNull();
+    });
+  });
+
+  describe("setContinueWhenPlanned", () => {
+    test("sets the flag on a locked lesson without moving updated_at; not on other rows", async () => {
+      const row = await createDocument(wsA, "lesson", planned(1), {
+        generatingJobId: newId<JobId>(),
+      });
+      expect(row.continueWhenPlanned).toBe(false);
+      expect(await setContinueWhenPlanned(wsA, row.id, true)).toBe(true);
+      const after = await getDocument(wsA, row.id);
+      expect(after?.continueWhenPlanned).toBe(true);
+      expect(after?.updatedAt.getTime()).toBe(row.updatedAt.getTime());
+      expect(await setContinueWhenPlanned(wsB, row.id, false)).toBe(false);
+      const sheet = await createDocument(wsA, "worksheet", worksheetOf(row.id));
+      expect(await setContinueWhenPlanned(wsA, sheet.id, true)).toBe(false);
+      expect(await setContinueWhenPlanned(wsA, newId(), true)).toBe(false);
+      expect((await getDocument(wsA, row.id))?.continueWhenPlanned).toBe(true);
     });
   });
 

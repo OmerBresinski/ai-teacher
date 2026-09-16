@@ -1,5 +1,17 @@
 import type { Lesson, Series, Slide, Worksheet, WorksheetCover } from "@tj/domain/documents";
-import { index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { tenantColumns, tenantIndexes } from "./_columns";
 
 /**
@@ -24,6 +36,14 @@ import { tenantColumns, tenantIndexes } from "./_columns";
  *   no sweep until F15 decides retention.
  * - `generating_job_id` locks the row while a job writes into it (§18): set in the transaction
  *   that enqueues `lesson.plan`, cleared by the worker on the terminal event.
+ * - `lesson_id` is promoted from a worksheet's `body.lessonId` (ADR 0030) so a lesson's worksheets
+ *   can be listed while either body is locked; `null` for the other kinds and for a worksheet whose
+ *   `lessonId` is not a row id (an imported file, a fixture key).
+ * - `continue_when_planned` asks the plan job to confirm its own plan and hand the lock to
+ *   `lesson.generate` (ADR 0029, auto-continue). It is not the body, so the API may set it while
+ *   the row is locked.
+ * - `request_id` is the client's idempotency key on `POST /lessons` (ADR 0029); unique per
+ *   Workspace where set.
  * - Tenant table: `workspace_id NOT NULL` FK → `workspaces` `ON DELETE CASCADE`. The
  *   `(workspace_id, kind, updated_at)` and `(workspace_id, kind, title)` indexes serve the two
  *   default sort orders of `listSummaries`; `(workspace_id, deleted_at)` serves the exclusion
@@ -46,11 +66,18 @@ export const documents = pgTable(
     cover: jsonb("cover").$type<Slide | WorksheetCover>(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     generatingJobId: uuid("generating_job_id"),
+    lessonId: uuid("lesson_id"),
+    continueWhenPlanned: boolean("continue_when_planned").notNull().default(false),
+    requestId: uuid("request_id"),
   },
   (t) => [
     ...tenantIndexes("documents", t),
     index("documents_workspace_id_kind_updated_at_idx").on(t.workspaceId, t.kind, t.updatedAt),
     index("documents_workspace_id_kind_title_idx").on(t.workspaceId, t.kind, t.title),
     index("documents_workspace_id_deleted_at_idx").on(t.workspaceId, t.deletedAt),
+    index("documents_workspace_id_lesson_id_idx").on(t.workspaceId, t.lessonId),
+    uniqueIndex("documents_workspace_id_request_id_idx")
+      .on(t.workspaceId, t.requestId)
+      .where(sql`request_id is not null`),
   ],
 );

@@ -50,6 +50,13 @@
       "when": 1789245016157,
       "tag": "0006_relative_file_urls",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789592631018,
+      "tag": "0007_documents_lesson_link",
+      "breakpoints": true
     }
   ]
 }
