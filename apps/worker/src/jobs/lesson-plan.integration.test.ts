@@ -118,7 +118,12 @@ describeDb("lesson.plan on pg-boss", () => {
     );
     await createDocument(ws, "lesson", lesson, { id: lessonId, generatingJobId: jobId });
 
-    const sent = await enqueue(ctx, "lesson.plan", { lessonId }, { workspaceId, id: jobId });
+    const sent = await enqueue(
+      ctx,
+      "lesson.plan",
+      { lessonId, revision: 1 },
+      { workspaceId, id: jobId },
+    );
     expect(sent).toBe(jobId);
     const settled = await waitFor(
       async () => (await eventsFor(jobId)).some((e) => e.type === "completed"),

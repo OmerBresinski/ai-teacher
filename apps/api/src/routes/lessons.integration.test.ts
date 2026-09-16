@@ -68,6 +68,8 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     "lesson.plan": lessonPlanJob,
     "lesson.cascade": defineJob("lesson.cascade", async () => {}),
     "lesson.regenerate": defineJob("lesson.regenerate", async () => {}),
+    "lesson.generate": defineJob("lesson.generate", async () => {}),
+    "lesson.worksheet": defineJob("lesson.worksheet", async () => {}),
   };
 
   const headers = (ws: WorkspaceId, extra: Record<string, string> = {}) => ({
@@ -209,6 +211,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       topic: "Phonics warm-up",
       durationMin: 45,
       classContext: { sizeBand: "25to30" },
+      slideCount: 10,
     });
   });
 

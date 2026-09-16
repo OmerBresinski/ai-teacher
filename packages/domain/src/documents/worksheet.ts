@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { FindingSchema } from "./finding";
 import { type Provenance, provenanceFields } from "./generated-from";
+import { GenerationUsageSchema } from "./generation";
 import type { AgeBand } from "./lesson";
 import { AgeBandSchema } from "./lesson";
 import { DocumentParseError, describeIssues, migrate } from "./migrate";
@@ -56,7 +58,30 @@ export type Worksheet = {
   language?: string;
   /** F06 (ADR 0025 §4): the lesson this sheet was generated beside, when it was. */
   lessonId?: Id;
+  /** ADR 0030: the `lesson.worksheet` job's checkpoint, usage and residual findings. */
+  generation?: WorksheetGeneration;
 };
+
+export const WORKSHEET_GENERATION_STAGES = ["framed", "filled", "checked"] as const;
+export type WorksheetGenerationStage = (typeof WORKSHEET_GENERATION_STAGES)[number];
+
+/**
+ * ADR 0030: the worksheet job's own state, a subset of the lesson's `GenerationSchema` plus the
+ * recipe and the practice time it was built for. `recipeId` stays a bounded string until the
+ * recipes move to `@tj/slides` (TEACH-14), which domain cannot import.
+ */
+export const WorksheetGenerationSchema = z.strictObject({
+  jobId: z.string(),
+  stage: z.enum(WORKSHEET_GENERATION_STAGES),
+  startedAt: z.iso.datetime(),
+  completedAt: z.iso.datetime().optional(),
+  promptVersions: z.record(z.string(), z.string()),
+  usage: GenerationUsageSchema,
+  findings: z.array(FindingSchema),
+  recipeId: z.string().max(40),
+  practiceMinutes: z.number().int().positive(),
+});
+export type WorksheetGeneration = z.infer<typeof WorksheetGenerationSchema>;
 
 /**
  * The page-1 header strip.
@@ -257,6 +282,8 @@ export const WorksheetSchema = z.object({
   language: z.string().optional(),
   // F06 (ADR 0025 §4).
   lessonId: z.string().optional(),
+  // ADR 0030.
+  generation: WorksheetGenerationSchema.optional(),
 });
 
 /**

@@ -173,7 +173,7 @@ describe("lessonFromBrief", () => {
       yearGroup: "Year 5",
       ageBand: "ks2",
       language: "en-GB",
-      brief: { topic: "  Fractions of amounts ", durationMin: 60 },
+      brief: { topic: "  Fractions of amounts ", durationMin: 60, slideCount: 10 },
     });
   });
 

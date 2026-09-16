@@ -94,7 +94,8 @@ export async function createLessonAndEnqueue(
     queued = await enqueue(
       runtime.jobs,
       "lesson.plan",
-      { lessonId },
+      // The first plan revision; `stopAfter` and later revisions arrive with TEACH-13.
+      { lessonId, revision: 1 },
       {
         workspaceId: ws.workspaceId,
         id: jobId,

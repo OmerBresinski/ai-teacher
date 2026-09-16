@@ -48,6 +48,8 @@ const aiPingJob = defineJob("ai.ping", async () => {});
 const lessonPlanJob = defineJob("lesson.plan", async () => {});
 const lessonCascadeJob = defineJob("lesson.cascade", async () => {});
 const lessonRegenerateJob = defineJob("lesson.regenerate", async () => {});
+const lessonGenerateJob = defineJob("lesson.generate", async () => {});
+const lessonWorksheetJob = defineJob("lesson.worksheet", async () => {});
 
 const logger = pino({ level: "silent" });
 
@@ -66,6 +68,8 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
     "lesson.plan": lessonPlanJob,
     "lesson.cascade": lessonCascadeJob,
     "lesson.regenerate": lessonRegenerateJob,
+    "lesson.generate": lessonGenerateJob,
+    "lesson.worksheet": lessonWorksheetJob,
   };
 
   async function eventsFor(jobId: JobId): Promise<JobEvent[]> {
@@ -293,6 +297,8 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         "lesson.plan": lessonPlanJob,
         "lesson.cascade": lessonCascadeJob,
         "lesson.regenerate": lessonRegenerateJob,
+        "lesson.generate": lessonGenerateJob,
+        "lesson.worksheet": lessonWorksheetJob,
       };
       const outcome = await runJob(ctx, "ping", reg, fakeJob(jobId, 0), {
         logger,
@@ -315,6 +321,8 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         "lesson.plan": lessonPlanJob,
         "lesson.cascade": lessonCascadeJob,
         "lesson.regenerate": lessonRegenerateJob,
+        "lesson.generate": lessonGenerateJob,
+        "lesson.worksheet": lessonWorksheetJob,
       };
       const outcome = await runJob(ctx, "ping", reg, fakeJob(jobId, 1), {
         logger,
@@ -353,6 +361,8 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         "lesson.plan": lessonPlanJob,
         "lesson.cascade": lessonCascadeJob,
         "lesson.regenerate": lessonRegenerateJob,
+        "lesson.generate": lessonGenerateJob,
+        "lesson.worksheet": lessonWorksheetJob,
       };
       const run = runJob(ctx, "ping", reg, fakeJob(jobId, 1), {
         logger,
@@ -382,6 +392,8 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         "lesson.plan": lessonPlanJob,
         "lesson.cascade": lessonCascadeJob,
         "lesson.regenerate": lessonRegenerateJob,
+        "lesson.generate": lessonGenerateJob,
+        "lesson.worksheet": lessonWorksheetJob,
       };
       const run = runJob(ctx, "ping", reg, fakeJob(jobId, 1), {
         logger,

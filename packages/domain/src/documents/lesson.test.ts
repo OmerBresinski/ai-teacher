@@ -25,6 +25,30 @@ describe("parseLesson", () => {
     expect(parsed).toEqual(input);
   });
 
+  test("a stored lesson without plan parses with plan undefined", () => {
+    const parsed = parseLesson(JSON.parse(JSON.stringify(lesson())));
+    expect(parsed.plan).toBeUndefined();
+  });
+
+  test("keeps a plan revision and rejects a bad one (ADR 0029)", () => {
+    const plan = {
+      revision: 2,
+      state: "confirmed" as const,
+      jobId: "0192f7a0-0000-7000-8000-000000000099",
+      confirmedAt: "2026-09-16T10:00:00.000Z",
+    };
+    expect(parseLesson({ ...lesson(), plan }).plan).toEqual(plan);
+    expect(LessonSchema.safeParse({ ...lesson(), plan: { ...plan, revision: 0 } }).success).toBe(
+      false,
+    );
+    expect(LessonSchema.safeParse({ ...lesson(), plan: { ...plan, state: "done" } }).success).toBe(
+      false,
+    );
+    expect(LessonSchema.safeParse({ ...lesson(), plan: { ...plan, extra: 1 } }).success).toBe(
+      false,
+    );
+  });
+
   test("defaults fitVersion to 0 and createdAt to now when missing", () => {
     const { fitVersion: _fit, createdAt: _created, ...input } = lesson();
     const before = Date.now();

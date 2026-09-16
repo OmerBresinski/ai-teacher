@@ -50,6 +50,17 @@ describe("stageOf", () => {
     expect(stageLine(state)).toBe("Writing the slides and pictures, 5 of 5");
   });
 
+  it("progress.stage wins over the percent (TEACH-311)", () => {
+    const events = runEvents(generationRun, RUN_UP_TO.planning);
+    const last = events.at(-1);
+    if (last?.type !== "progress") throw new Error("expected a progress row");
+    const at = (stage: "check-input" | "evaluate" | "worksheet") =>
+      stageOf([...events, { ...last, progress: { percent: 1, stage } }]).stage;
+    expect(at("check-input")).toBe("planning");
+    expect(at("worksheet")).toBe("writing");
+    expect(at("evaluate")).toBe("checking");
+  });
+
   it("announces at a stage boundary and every fourth slide only", () => {
     const at = (upTo: number) => announcedLine(stageOf(runEvents(generationRun, upTo)));
     expect(at(RUN_UP_TO.planning)).toBe("Planning");

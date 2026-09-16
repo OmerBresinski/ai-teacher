@@ -28,6 +28,12 @@ describe("JobRegistry", () => {
       "lesson.regenerate": defineJob("lesson.regenerate", async ({ payload }) => {
         payload.targets.length.toFixed();
       }),
+      "lesson.generate": defineJob("lesson.generate", async ({ payload }) => {
+        payload.revision.toFixed();
+      }),
+      "lesson.worksheet": defineJob("lesson.worksheet", async ({ payload }) => {
+        payload.recipeId.toUpperCase();
+      }),
     };
     // @ts-expect-error missing job handlers
     const missing: JobRegistry = {};
