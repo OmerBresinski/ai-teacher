@@ -54,7 +54,7 @@ TEACH-311 (PR #290) and TEACH-312 (PR #291) landed the contracts this decision u
 ## Decision
 
 1. **`lesson.worksheet` is its own job with its own row, lock and budget.** `POST
-   /lessons/:id/worksheet` creates (or reuses, item 7) a worksheet row with `lesson_id` and
+   /lessons/:id/worksheet` creates (or reuses, item 8) a worksheet row with `lesson_id` and
    `generating_job_id` set, and enqueues `lesson.worksheet { lessonId, worksheetId, revision,
    recipeId, practiceMinutes }` in one transaction, deleting the row again if the enqueue fails.
    The job writes only the worksheet row, through `putDocumentAsJob`; it never writes the lesson,

@@ -78,7 +78,7 @@ objection does not apply.
    a teacher sees and every fact `lesson.generate` reads is verified. This reverses TEACH-233's
    overlap for the split flow only: the overlap existed to save 6–8 s on a critical path that now
    ends at a screen where the teacher reads the plan. A run without `stopAfter` (skip planning,
-   pinned re-plan, item 7) keeps the TEACH-233 overlap. A lesson resumed at `planned` without the
+   pinned re-plan, item 8) keeps the TEACH-233 overlap. A lesson resumed at `planned` without the
    stamp is verified by Generate first, as today (`verifyStamped()`,
    `packages/generation/src/stages/generate.ts:397`).
 3. **`Lesson.plan` is the revision the teacher is looking at.** `plan = { revision, state, jobId,
