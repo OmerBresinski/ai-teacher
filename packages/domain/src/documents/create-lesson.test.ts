@@ -4,6 +4,7 @@ import {
   CreateLessonSchema,
   defaultDurationMin,
   deriveAgeBand,
+  lessonFromBrief,
   yearNumberOf,
 } from "./create-lesson";
 import { GUARD_MESSAGE } from "./identifier-guard";
@@ -114,6 +115,52 @@ describe("CreateLessonSchema", () => {
       path: ["brief", "topic"],
       message: GUARD_MESSAGE,
     });
+  });
+});
+
+describe("CreateLessonSchema slideCount and level", () => {
+  test("accepts 6, 8, 10 or 12 slides and the three levels", () => {
+    for (const slideCount of [6, 8, 10, 12]) {
+      for (const level of ["easier", "standard", "harder"]) {
+        const input = { brief: { topic: "Fractions", slideCount, level } };
+        expect(CreateLessonSchema.safeParse(input).success).toBe(true);
+      }
+    }
+  });
+
+  test("rejects any other slide count at brief.slideCount", () => {
+    const result = CreateLessonSchema.safeParse({ brief: { topic: "Fractions", slideCount: 7 } });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["brief", "slideCount"]);
+  });
+
+  test("rejects any other level at brief.level", () => {
+    const result = CreateLessonSchema.safeParse({ brief: { topic: "Fractions", level: "hard" } });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["brief", "level"]);
+  });
+});
+
+describe("lessonFromBrief", () => {
+  const now = new Date("2026-09-16T10:00:00.000Z");
+  const id = "0192f7a0-0000-7000-8000-000000000042";
+
+  test("defaults slideCount to 10 when the brief has none", () => {
+    const lesson = lessonFromBrief(
+      CreateLessonSchema.parse({ brief: { topic: "Fractions" } }),
+      id,
+      now,
+    );
+    expect(lesson.brief?.slideCount).toBe(10);
+  });
+
+  test("keeps the slideCount and level the teacher chose", () => {
+    const input = CreateLessonSchema.parse({
+      brief: { topic: "Fractions", slideCount: 6, level: "harder" },
+    });
+    const lesson = lessonFromBrief(input, id, now);
+    expect(lesson.brief?.slideCount).toBe(6);
+    expect(lesson.brief?.level).toBe("harder");
   });
 });
 

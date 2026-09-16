@@ -5,6 +5,14 @@ import { GUARD_MESSAGE } from "./identifier-guard";
 const minimal = (): Brief => ({ topic: "Fractions of amounts", durationMin: 60 });
 
 describe("BriefSchema", () => {
+  test("slideCount is one of 6, 8, 10, 12 and level one of easier, standard, harder", () => {
+    const base = { topic: "Fractions", durationMin: 45 };
+    expect(BriefSchema.safeParse({ ...base, slideCount: 8, level: "standard" }).success).toBe(true);
+    expect(BriefSchema.safeParse({ ...base, slideCount: 9 }).success).toBe(false);
+    expect(BriefSchema.safeParse({ ...base, slideCount: "10" }).success).toBe(false);
+    expect(BriefSchema.safeParse({ ...base, level: "Harder" }).success).toBe(false);
+  });
+
   test("accepts the minimal brief: topic and duration only", () => {
     expect(BriefSchema.parse(minimal())).toEqual(minimal());
   });

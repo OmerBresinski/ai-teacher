@@ -92,7 +92,7 @@ describeDb("lesson.plan job", () => {
       ctx: {
         jobId,
         workspaceId,
-        payload: { lessonId },
+        payload: { lessonId, revision: 1 },
         signal: ac.signal,
         progress: async (
           percent?: number,

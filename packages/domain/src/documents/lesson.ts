@@ -61,11 +61,28 @@ export type Lesson = {
   artefacts?: LessonArtefacts;
   /** F03 (ADR 0025 §20): references to the teacher's source materials; never their text. */
   sources?: SourceRef[];
+  /** ADR 0029: the plan revision the teacher is looking at, and whether it is confirmed. */
+  plan?: LessonPlan;
 };
 
 export type LessonArtefacts = { worksheetId: Id };
 
 export const LessonArtefactsSchema = z.strictObject({ worksheetId: z.string() });
+
+export const LESSON_PLAN_STATES = ["proposed", "confirmed"] as const;
+export type LessonPlanState = (typeof LESSON_PLAN_STATES)[number];
+
+/**
+ * ADR 0029: every re-plan bumps `revision` and hands the lock to a new `jobId`, so a superseded
+ * plan job can never write. `confirmed` means the teacher pressed Generate on this revision.
+ */
+export const LessonPlanSchema = z.strictObject({
+  revision: z.number().int().min(1),
+  state: z.enum(LESSON_PLAN_STATES),
+  jobId: z.string(),
+  confirmedAt: z.iso.datetime().optional(),
+});
+export type LessonPlan = z.infer<typeof LessonPlanSchema>;
 
 export const AgeBandSchema = z.enum(["eyfs", "ks1", "ks2", "ks3", "ks4", "post16"]);
 
@@ -99,6 +116,8 @@ export const LessonSchema = z.object({
   generation: GenerationSchema.optional(),
   artefacts: LessonArtefactsSchema.optional(),
   sources: z.array(SourceRefSchema).optional(),
+  // ADR 0029.
+  plan: LessonPlanSchema.optional(),
 });
 
 export function parseLesson(input: unknown): Lesson {

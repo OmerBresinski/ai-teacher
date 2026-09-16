@@ -33,6 +33,8 @@ export type DocumentSummary = {
   itemCount: number;
   /** Worksheets only: the sum of the question blocks' marks, as the sheet prints them. */
   marks?: number;
+  /** Worksheets only: the lesson the sheet was generated beside (ADR 0030). */
+  lessonId?: string;
   /**
    * What the card thumbnail paints: the first slide of a lesson, the top of page 1 of a worksheet
    * (UX ruling 31), `null` for a series.
@@ -89,6 +91,7 @@ export const DocumentSummarySchema = z.object({
   themeId: z.string().optional(),
   itemCount: z.number().int().nonnegative(),
   marks: z.number().int().nonnegative().optional(),
+  lessonId: z.string().optional(),
   // The tagged worksheet shape first. A slide carries `kind: SlideKind` too, and no `SlideKind`
   // is the literal "worksheet" (`summarise.test.ts` pins that), so every stored slide cover fails
   // the tag and parses through `SlideSchema`.
@@ -257,6 +260,7 @@ export function summarise(doc: Document): DocumentSummary {
       themeId: doc.themeId,
       itemCount: doc.blocks.length,
       marks: worksheetMarks(doc.blocks),
+      ...(doc.lessonId !== undefined ? { lessonId: doc.lessonId } : {}),
       cover: worksheetCoverOf(doc),
     };
   }

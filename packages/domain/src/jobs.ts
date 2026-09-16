@@ -20,6 +20,8 @@ export const JobName = {
   lessonPlan: "lesson.plan",
   lessonCascade: "lesson.cascade",
   lessonRegenerate: "lesson.regenerate",
+  lessonGenerate: "lesson.generate",
+  lessonWorksheet: "lesson.worksheet",
 } as const;
 export type JobName = (typeof JobName)[keyof typeof JobName];
 
@@ -48,17 +50,50 @@ export const AiPingPayloadSchema = z.strictObject({
 export type AiPingPayload = z.infer<typeof AiPingPayloadSchema>;
 export type AiPingPayloadInput = z.input<typeof AiPingPayloadSchema>;
 
+/** A lesson's plan revision (ADR 0029); a job refuses to start when the row has moved on. */
+const PlanRevision = z.number().int().min(1);
+
 /**
- * The F06 Plan stage for one lesson (ADR 0024 §14). Enqueued by `POST /lessons` in the same
- * transaction that creates the `documents` row and sets its generating lock (§6, §18); the worker
- * reads the brief from the row, so the payload carries the id only. Whether Plan, Generate,
- * Evaluate and Repair stay one job is F06's decision; the name and payload do not change.
+ * The F06 Plan stage for one lesson (ADR 0024 §14, ADR 0029). Enqueued by `POST /lessons` in the
+ * same transaction that creates the `documents` row and sets its generating lock (§6, §18); the
+ * worker reads the brief from the row. `revision` is the `Lesson.plan.revision` this job owns;
+ * `stopAfter: "planned"` ends the run at the confirmation boundary (omitted when the teacher skips
+ * planning); `pinObjectives` keeps the teacher's objectives on a re-plan.
  */
 export const LessonPlanPayloadSchema = z.strictObject({
   lessonId: LessonId,
+  revision: PlanRevision,
+  stopAfter: z.literal("planned").optional(),
+  pinObjectives: z.boolean().optional(),
 });
 export type LessonPlanPayload = z.infer<typeof LessonPlanPayloadSchema>;
 export type LessonPlanPayloadInput = z.input<typeof LessonPlanPayloadSchema>;
+
+/**
+ * ADR 0029: the teacher confirmed plan `revision`; resume the pipeline at Generate. Enqueued by
+ * `POST /lessons/:id/generate` after the compare-and-set that hands it the lock.
+ */
+export const LessonGeneratePayloadSchema = z.strictObject({
+  lessonId: LessonId,
+  revision: PlanRevision,
+});
+export type LessonGeneratePayload = z.infer<typeof LessonGeneratePayloadSchema>;
+export type LessonGeneratePayloadInput = z.input<typeof LessonGeneratePayloadSchema>;
+
+/**
+ * ADR 0030: build one worksheet beside a confirmed lesson, on its own row, lock and budget.
+ * `recipeId` and `practiceMinutes` are resolved by the API, never `"auto"` in practice; the recipe
+ * id stays a bounded string until the recipes move to `@tj/slides` (TEACH-14).
+ */
+export const LessonWorksheetPayloadSchema = z.strictObject({
+  lessonId: LessonId,
+  worksheetId: z.uuid(),
+  revision: PlanRevision,
+  recipeId: z.string().max(40),
+  practiceMinutes: z.number().int().positive(),
+});
+export type LessonWorksheetPayload = z.infer<typeof LessonWorksheetPayloadSchema>;
+export type LessonWorksheetPayloadInput = z.input<typeof LessonWorksheetPayloadSchema>;
 
 /** How many facts one cascade may name; a fact edit touches one or a few, never the whole set. */
 export const CASCADE_MAX_FACTS = 50;
@@ -124,6 +159,8 @@ export const JobPayloadSchemas = {
   "lesson.plan": LessonPlanPayloadSchema,
   "lesson.cascade": LessonCascadePayloadSchema,
   "lesson.regenerate": LessonRegeneratePayloadSchema,
+  "lesson.generate": LessonGeneratePayloadSchema,
+  "lesson.worksheet": LessonWorksheetPayloadSchema,
 } as const satisfies Record<JobName, z.ZodType>;
 
 /** Parsed (output) payload type per job name. */
@@ -156,6 +193,18 @@ const jobEventBase = {
   at: IsoDateTime,
 } as const;
 
+/** The pipeline step a progress event reports (ADR 0029); the web's stage line reads it first. */
+export const JOB_PROGRESS_STAGES = [
+  "check-input",
+  "plan",
+  "generate",
+  "illustrate",
+  "evaluate",
+  "repair",
+  "worksheet",
+] as const;
+export type JobProgressStage = (typeof JOB_PROGRESS_STAGES)[number];
+
 export const JobProgressSchema = z.strictObject({
   /** 0–100 when the job can estimate completion; omitted for indeterminate progress. */
   percent: z.number().min(0).max(100).optional(),
@@ -166,6 +215,7 @@ export const JobProgressSchema = z.strictObject({
    * event; the read-only editor refetches `GET /documents/:id` when this changes.
    */
   documentUpdatedAt: IsoDateTime.optional(),
+  stage: z.enum(JOB_PROGRESS_STAGES).optional(),
 });
 export type JobProgress = z.infer<typeof JobProgressSchema>;
 

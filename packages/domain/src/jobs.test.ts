@@ -119,20 +119,89 @@ describe("JobPayloadSchemas.lesson.plan", () => {
   const lessonId = "0192f7a0-0000-7000-8000-000000000042";
 
   test("accepts a UUID lessonId and nothing else", () => {
-    const parsed = JobPayloadSchemas["lesson.plan"].parse({ lessonId });
-    expect(parsed).toEqual({ lessonId: LessonId.parse(lessonId) });
+    const parsed = JobPayloadSchemas["lesson.plan"].parse({ lessonId, revision: 1 });
+    expect(parsed).toEqual({ lessonId: LessonId.parse(lessonId), revision: 1 });
   });
 
   test("rejects a non-UUID lessonId (LessonId brand)", () => {
-    expect(() => JobPayloadSchemas["lesson.plan"].parse({ lessonId: "not-a-uuid" })).toThrow();
+    expect(() =>
+      JobPayloadSchemas["lesson.plan"].parse({ lessonId: "not-a-uuid", revision: 1 }),
+    ).toThrow();
   });
 
   test("rejects unknown fields (strict)", () => {
-    expect(() => JobPayloadSchemas["lesson.plan"].parse({ lessonId, extra: 1 })).toThrow();
+    expect(() =>
+      JobPayloadSchemas["lesson.plan"].parse({ lessonId, revision: 1, extra: 1 }),
+    ).toThrow();
   });
 
   test("rejects a missing lessonId", () => {
-    expect(JobPayloadSchemas["lesson.plan"].safeParse({}).success).toBe(false);
+    expect(JobPayloadSchemas["lesson.plan"].safeParse({ revision: 1 }).success).toBe(false);
+  });
+
+  test("requires a revision of at least 1 (ADR 0029)", () => {
+    expect(JobPayloadSchemas["lesson.plan"].safeParse({ lessonId }).success).toBe(false);
+    expect(JobPayloadSchemas["lesson.plan"].safeParse({ lessonId, revision: 0 }).success).toBe(
+      false,
+    );
+    expect(JobPayloadSchemas["lesson.plan"].safeParse({ lessonId, revision: 1.5 }).success).toBe(
+      false,
+    );
+  });
+
+  test("accepts stopAfter planned and pinObjectives, nothing else for stopAfter", () => {
+    const payload = { lessonId, revision: 2, stopAfter: "planned" as const, pinObjectives: true };
+    expect(JobPayloadSchemas["lesson.plan"].parse(payload)).toEqual({
+      ...payload,
+      lessonId: LessonId.parse(lessonId),
+    });
+    expect(
+      JobPayloadSchemas["lesson.plan"].safeParse({ lessonId, revision: 1, stopAfter: "generated" })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("JobPayloadSchemas.lesson.generate", () => {
+  const lessonId = "0192f7a0-0000-7000-8000-000000000042";
+
+  test("takes a lessonId and a revision, strictly", () => {
+    expect(JobPayloadSchemas["lesson.generate"].parse({ lessonId, revision: 3 })).toEqual({
+      lessonId: LessonId.parse(lessonId),
+      revision: 3,
+    });
+    expect(JobPayloadSchemas["lesson.generate"].safeParse({ lessonId }).success).toBe(false);
+    expect(
+      JobPayloadSchemas["lesson.generate"].safeParse({ lessonId, revision: 1, extra: 1 }).success,
+    ).toBe(false);
+  });
+});
+
+describe("JobPayloadSchemas.lesson.worksheet", () => {
+  const payload = {
+    lessonId: "0192f7a0-0000-7000-8000-000000000042",
+    worksheetId: "0192f7a0-0000-7000-8000-000000000043",
+    revision: 1,
+    recipeId: "retrieval-grid",
+    practiceMinutes: 15,
+  };
+
+  test("accepts the resolved payload", () => {
+    expect(JobPayloadSchemas["lesson.worksheet"].safeParse(payload).success).toBe(true);
+  });
+
+  test("accepts recipeId auto at the schema level; the API resolves it before enqueue", () => {
+    expect(
+      JobPayloadSchemas["lesson.worksheet"].safeParse({ ...payload, recipeId: "auto" }).success,
+    ).toBe(true);
+  });
+
+  test("rejects a long recipeId, non-positive minutes, a bad worksheetId and extra fields", () => {
+    const schema = JobPayloadSchemas["lesson.worksheet"];
+    expect(schema.safeParse({ ...payload, recipeId: "r".repeat(41) }).success).toBe(false);
+    expect(schema.safeParse({ ...payload, practiceMinutes: 0 }).success).toBe(false);
+    expect(schema.safeParse({ ...payload, worksheetId: "nope" }).success).toBe(false);
+    expect(schema.safeParse({ ...payload, extra: 1 }).success).toBe(false);
   });
 });
 
@@ -345,6 +414,18 @@ describe("JobResultSchema (ADR 0025 §19)", () => {
 
 describe("JobEventSchema", () => {
   const base = { jobId, workspaceId, at };
+
+  test("a progress event may name its pipeline stage (ADR 0029)", () => {
+    const event = JobEventSchema.parse({
+      type: "progress",
+      ...base,
+      progress: { percent: 5, stage: "worksheet" },
+    });
+    expect(event.type === "progress" && event.progress.stage).toBe("worksheet");
+    expect(
+      JobEventSchema.safeParse({ type: "progress", ...base, progress: { stage: "foo" } }).success,
+    ).toBe(false);
+  });
 
   test("parses a progress event with percent 50", () => {
     const event = JobEventSchema.parse({ type: "progress", ...base, progress: { percent: 50 } });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BRIEF_DURATION_MAX, BRIEF_DURATION_MIN, BriefSchema } from "./brief";
+import { BRIEF_DURATION_MAX, BRIEF_DURATION_MIN, BriefSchema, DEFAULT_SLIDE_COUNT } from "./brief";
 import { type AgeBand, AgeBandSchema, type Lesson, parseLesson } from "./lesson";
 import { DEFAULT_THEME_ID } from "./theme";
 
@@ -83,7 +83,8 @@ export function defaultDurationMin(ageBand: AgeBand | undefined): number {
 
 /**
  * The empty lesson the brief becomes: canonical Lesson fields from the request, `ageBand` derived
- * from the year group when not given, `durationMin` defaulted by key stage, `title` from the topic.
+ * from the year group when not given, `durationMin` defaulted by key stage, `slideCount` to
+ * `DEFAULT_SLIDE_COUNT`, `title` from the topic.
  * Pure, so `POST /lessons`, the brief screen and the Studio entry all apply the same defaults.
  */
 export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date): Lesson {
@@ -103,6 +104,10 @@ export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date
     ageBand,
     readingLevel: input.readingLevel,
     language: input.language ?? "en-GB",
-    brief: { ...input.brief, durationMin },
+    brief: {
+      ...input.brief,
+      durationMin,
+      slideCount: input.brief.slideCount ?? DEFAULT_SLIDE_COUNT,
+    },
   });
 }

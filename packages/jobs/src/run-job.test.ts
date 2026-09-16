@@ -55,6 +55,8 @@ describeDb("runJob dependencies", () => {
       "lesson.plan": defineJob("lesson.plan", async () => {}),
       "lesson.cascade": defineJob("lesson.cascade", async () => {}),
       "lesson.regenerate": defineJob("lesson.regenerate", async () => {}),
+      "lesson.generate": defineJob("lesson.generate", async () => {}),
+      "lesson.worksheet": defineJob("lesson.worksheet", async () => {}),
     };
     const jobId = newId<JobId>();
     const boss = {
@@ -92,6 +94,8 @@ describeDb("runJob dependencies", () => {
     "lesson.plan": defineJob("lesson.plan", async () => {}),
     "lesson.cascade": defineJob("lesson.cascade", async () => {}),
     "lesson.regenerate": defineJob("lesson.regenerate", async () => {}),
+    "lesson.generate": defineJob("lesson.generate", async () => {}),
+    "lesson.worksheet": defineJob("lesson.worksheet", async () => {}),
   } satisfies JobRegistry;
   const cascadeJob = (jobId: JobId) =>
     ({

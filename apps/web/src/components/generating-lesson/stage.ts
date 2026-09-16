@@ -1,4 +1,4 @@
-import type { JobEvent, JobProgress } from "@tj/domain/jobs";
+import type { JobEvent, JobProgress, JobProgressStage } from "@tj/domain/jobs";
 
 /**
  * The four stages a teacher sees while a lesson is generated (generating-state PRD §3), in the
@@ -34,20 +34,19 @@ export interface StageState {
 
 const ORDER: readonly StageId[] = STAGES.map((s) => s.id);
 
-/** The pipeline's own stage names, as `progress.stage` will carry them (PRD §8). */
-export type PipelineStage = "plan" | "generate" | "illustrate" | "evaluate" | "repair";
-
 /**
- * The worker's `progress.stage`, once it exists (PRD §8); read here so nothing else has to. Dead
- * until `JobProgressSchema` gains the field and `lesson-plan.ts`'s `onProgress` sets it: the
- * schema is strict, so today no event can carry it.
+ * The worker's `progress.stage` (PRD §8); read here so nothing else has to. `JobProgressSchema`
+ * accepts it since TEACH-311, but no worker sets it until TEACH-13. Check-input is part of
+ * Planning and, until the web's worksheet brief (T7), the worksheet stays inside Writing.
  */
-const PIPELINE_STAGES: Record<PipelineStage, StageId> = {
+const PIPELINE_STAGES: Record<JobProgressStage, StageId> = {
+  "check-input": "planning",
   plan: "planning",
   generate: "writing",
   illustrate: "writing",
   evaluate: "checking",
   repair: "checking",
+  worksheet: "writing",
 };
 
 const SLIDE_COUNT = /^Slide (\d+) of (\d+)$/;
@@ -110,8 +109,8 @@ export function stageOf(events: readonly JobEvent[]): StageState {
   return { stage, slide, worksheet, message, terminal, failure };
 }
 
-function stageFromProgress(progress: JobProgress & { stage?: PipelineStage }): StageId | null {
-  if (progress.stage !== undefined) return PIPELINE_STAGES[progress.stage] ?? null;
+function stageFromProgress(progress: JobProgress): StageId | null {
+  if (progress.stage !== undefined) return PIPELINE_STAGES[progress.stage];
   const percent = progress.percent;
   if (percent === undefined) return null;
   if (percent >= 100) return "ready";

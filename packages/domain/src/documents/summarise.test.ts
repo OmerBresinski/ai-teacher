@@ -272,6 +272,18 @@ describe("summarise", () => {
   });
 });
 
+describe("summarise lessonId", () => {
+  test("a worksheet generated beside a lesson carries its lessonId", () => {
+    const summary = summarise({ ...worksheet(), lessonId: "lesson-1" });
+    expect(summary.lessonId).toBe("lesson-1");
+    expect(DocumentSummarySchema.safeParse(summary).success).toBe(true);
+  });
+
+  test("a standalone worksheet has no lessonId key", () => {
+    expect("lessonId" in summarise(worksheet())).toBe(false);
+  });
+});
+
 describe("documentKind", () => {
   test("distinguishes the three kinds", () => {
     expect(documentKind(lesson())).toBe("lesson");

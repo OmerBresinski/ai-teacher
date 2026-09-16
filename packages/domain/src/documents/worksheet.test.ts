@@ -26,6 +26,27 @@ describe("parseWorksheet", () => {
     expect(isWorksheet(input)).toBe(true);
   });
 
+  test("keeps the worksheet job's generation state and refuses an unknown stage (ADR 0030)", () => {
+    const generation = {
+      jobId: "0192f7a0-0000-7000-8000-000000000099",
+      stage: "framed" as const,
+      startedAt: "2026-09-16T10:00:00.000Z",
+      promptVersions: {},
+      usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+      findings: [],
+      recipeId: "retrieval-grid",
+      practiceMinutes: 15,
+    };
+    const input = { ...worksheet(), lessonId: "l1", generation };
+    expect(parseWorksheet(JSON.parse(JSON.stringify(input)))).toEqual(input);
+    expect(() =>
+      parseWorksheet({ ...input, generation: { ...generation, stage: "planned" } }),
+    ).toThrow();
+    expect(() =>
+      parseWorksheet({ ...input, generation: { ...generation, practiceMinutes: 0 } }),
+    ).toThrow();
+  });
+
   test("defaults a sheet saved before Letter existed to A4", () => {
     const { pageSize: _p, ...input } = worksheet();
     expect(parseWorksheet(input).pageSize).toBe("A4");
