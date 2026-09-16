@@ -92,9 +92,14 @@ export function qualityChecks(lesson: Lesson, worksheet?: Worksheet): Finding[] 
 /* readability                                                         */
 /* ------------------------------------------------------------------ */
 
+/** Years above the pitch's reading age at which a primary slide's readability is an error. */
+const READABILITY_ERROR_YEARS = 3;
+const PRIMARY_BANDS = new Set(["eyfs", "ks1", "ks2"]);
+
 function checkReadability(lesson: Lesson, worksheet?: Worksheet): Finding[] {
   const pitch = lesson.facts?.pitch;
   if (!pitch) return [];
+  const primary = PRIMARY_BANDS.has(lesson.ageBand ?? "");
   const findings: Finding[] = [];
   const measure = (text: string, target: Finding["target"], where: string) => {
     const mean = meanSentenceLength(text);
@@ -110,7 +115,11 @@ function checkReadability(lesson: Lesson, worksheet?: Worksheet): Finding[] {
     if (age !== null && age > pitch.readingAgeTarget + 2) {
       findings.push({
         check: "readability",
-        severity: "warning",
+        // Three or more years above the pitch on a primary lesson is a slide the class cannot read
+        // (quality lab, Sept 2026: every Year 4 run had a content slide at age 11–12 against a
+        // pitch of 9, and a warning is never repaired); an error sends it to Repair.
+        severity:
+          primary && age > pitch.readingAgeTarget + READABILITY_ERROR_YEARS ? "error" : "warning",
         target,
         message: `${where} reads at about age ${Math.round(age)}; the pitch is a reading age of ${pitch.readingAgeTarget}.`,
       });
@@ -394,6 +403,8 @@ const IMPERATIVE_OPENERS =
 /** A task that leans on a decision or answer only an earlier question could have set up. */
 const ANAPHORIC_TASK =
   /\b(your (decision|answer|choice)|(this|the) animal|\bit\b|these|this one)\b/i;
+/** A "these/this …" task whose items follow a colon as a list of two or more. */
+const LISTS_ITS_REFERENTS = /\b(these|this)\b[^:?]*:\s*[^,]+,\s*\S/i;
 /** Text that poses the decision such a task refers back to. */
 const POSES_DECISION = /\?|\b(whether|decide|is it|are they|which|what)\b/i;
 
@@ -415,6 +426,8 @@ export function questionless(stem: string): "ok" | "no-question" | "no-referent"
   for (let i = 0; i < sentences.length; i++) {
     const s = sentences[i] as string;
     if (!IMPERATIVE_OPENERS.test(s) || !ANAPHORIC_TASK.test(s)) continue;
+    // "Put these dates in order: AD 43, AD 410, AD 1." — the things referred to follow the colon.
+    if (LISTS_ITS_REFERENTS.test(s)) continue;
     const before = sentences.slice(0, i).join(" ");
     if (!POSES_DECISION.test(before) && !POSES_DECISION.test(s)) return "no-referent";
   }

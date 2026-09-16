@@ -499,6 +499,15 @@ function refineShape(
       ["outline"],
     );
   }
+  // minTeachingSlides (Sept 2026 quality iteration): the lesson length sets how many slides teach —
+  // content, image-text or worked-example — so an hour is not two key ideas and a worksheet.
+  const teaching = content + count("worked-example");
+  if (teaching < shape.minTeachingSlides) {
+    issue(
+      `The outline has ${teaching} teaching slide${teaching === 1 ? "" : "s"} (content, image-text or worked-example); a ${durationMin}-minute lesson needs at least ${shape.minTeachingSlides}, each explaining one key idea or working one example. Add ${shape.minTeachingSlides - teaching} in the explain phase.`,
+      ["outline"],
+    );
+  }
   // minCheckEntries: slides where pupils answer — the practise and check phases together.
   const answering = outline.filter((e) => e.phase === "practise" || e.phase === "check").length;
   if (answering < shape.minCheckEntries) {
@@ -758,13 +767,37 @@ export function tierMinimumsOf(weights: TierWeights): TierWeights {
  * produces may be referenced — the objectives are already wired by the skeleton — the tiers meet
  * the shape's floor.
  */
+/** Vocabulary terms the worksheet's word bank may carry beyond what the vocabulary slide shows. */
+export const VOCABULARY_BEYOND_SLOTS = 2;
+
+/** The ceiling on key ideas (the prompt's "at most five"; the schema's `atMost`). */
+const MAX_KEY_IDEAS = 5;
+
+/**
+ * How many key ideas the facts call writes: one per content or image-text slide in the accepted
+ * skeleton (a content slide is built from exactly one key idea), at least one, at most five. Both
+ * the prompt line and the refinement read this, so the model is asked for the number it is held to.
+ */
+export function keyIdeaTargetOf(skeleton: PlanSkeleton): number {
+  const slides = skeleton.outline.filter((e) => e.kind === "content" || e.kind === "image-text");
+  return Math.max(1, Math.min(MAX_KEY_IDEAS, slides.length));
+}
+
+/** The 0-based outline positions whose slides carry a key idea, for the prompt's line. */
+export function keyIdeaPositionsOf(skeleton: PlanSkeleton): number[] {
+  return skeleton.outline.flatMap((e, i) =>
+    e.kind === "content" || e.kind === "image-text" ? [i] : [],
+  );
+}
+
 export function planFactsSchemaFor(
   skeleton: PlanSkeleton,
   shape: LessonShape,
-  options: SpecSchemaOptions = {},
+  options: SpecSchemaOptions & { vocabularySlots?: number | undefined } = {},
 ): z.ZodType<PlanFacts> {
   const soft = options.soft === true;
   const minimums = tierMinimumsOf(shape.tierWeights);
+  const keyIdeaTarget = keyIdeaTargetOf(skeleton);
   return planFactsShape(soft).superRefine((facts, ctx) => {
     // The ordinal references (below, `refineRef`) are shape; everything written with `issue` —
     // coverage, self-containment, the pitch's own words, the tier floors, kind fit — is editorial
@@ -820,6 +853,27 @@ export function planFactsSchemaFor(
       }
       refineOutlineRefs(ctx, ["outlineFactRefs", i, "factRefs"], entry.factRefs, sizes);
     });
+    // One key idea per content or image-text slide: the count the prompt's line named. The
+    // rejection fires one short of it, not on the exact number — a narrow lesson (an EYFS sound)
+    // can honestly carry one idea across two slides, and a retry must buy real quality
+    // (TEACH-227); two ideas for four teaching slides is the thinness the audit found.
+    if (facts.keyIdeas.length < Math.max(1, keyIdeaTarget - 1)) {
+      issue(
+        `Give ${keyIdeaTarget} key idea${keyIdeaTarget === 1 ? "" : "s"} — one per content or image-text slide (outline positions ${keyIdeaPositionsOf(skeleton).join(", ")}), in that order; you gave ${facts.keyIdeas.length}.`,
+        ["keyIdeas"],
+      );
+    }
+    // The vocabulary slide shows a fixed number of terms; up to two more may ride on the worksheet's
+    // word bank, and any beyond that are taught nowhere a pupil reads.
+    if (options.vocabularySlots !== undefined) {
+      const cap = options.vocabularySlots + VOCABULARY_BEYOND_SLOTS;
+      if (facts.vocabulary.length > cap) {
+        issue(
+          `Too many vocabulary terms: the vocabulary slide shows ${options.vocabularySlots} and the worksheet at most ${VOCABULARY_BEYOND_SLOTS} more; you gave ${facts.vocabulary.length}. Keep the terms the objectives and questions need.`,
+          ["vocabulary"],
+        );
+      }
+    }
     // Every objective is served by a key idea and checked by a question (the prompt's rule; the
     // objectives slide alone does not teach it).
     const served = new Set<number>();

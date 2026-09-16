@@ -42,6 +42,13 @@ export type LessonShape = {
   /** Kinds the outline may not contain. */
   forbiddenKinds: SlideKind[];
   minContent: number;
+  /**
+   * The fewest teaching slides — content, image-text or worked-example — the outline carries, from
+   * the lesson length (one per quarter hour, at most five) and never below `minContent`. The
+   * Chalkie audit (Sept 2026) traced thin lessons to two key ideas in an hour; a key idea is
+   * written per content or image-text slide, so the count of those slides is the lesson's depth.
+   */
+  minTeachingSlides: number;
   minCheckEntries: number;
   explainMinPercent: number;
   practiseMinPercent: number;
@@ -63,6 +70,7 @@ const BASE: Omit<LessonShape, "verb" | "confidence" | "young"> = {
   requiredKinds: [],
   forbiddenKinds: [],
   minContent: 1,
+  minTeachingSlides: 1,
   minCheckEntries: 2,
   explainMinPercent: 30,
   practiseMinPercent: 0,
@@ -167,7 +175,12 @@ export function isYoungClass(yearGroup: string | undefined, ageBand: AgeBand | u
  */
 export function lessonShapeOf(
   answers: Record<string, string> | undefined,
-  klass: { yearGroup?: string | undefined; ageBand?: AgeBand | undefined } = {},
+  klass: {
+    yearGroup?: string | undefined;
+    ageBand?: AgeBand | undefined;
+    /** The lesson length; absent (a test, the judge) leaves `minTeachingSlides` at `minContent`. */
+    durationMin?: number | undefined;
+  } = {},
 ): LessonShape {
   const verb = objectiveVerbOf(answers);
   const confidence = priorConfidenceOf(answers);
@@ -181,5 +194,22 @@ export function lessonShapeOf(
     young: false,
   };
   const withConfidence = BY_CONFIDENCE[confidence](shaped);
-  return isYoungClass(klass.yearGroup, klass.ageBand) ? soften(withConfidence) : withConfidence;
+  const withLength = {
+    ...withConfidence,
+    minTeachingSlides: teachingSlidesFor(withConfidence.minContent, klass.durationMin),
+  };
+  return isYoungClass(klass.yearGroup, klass.ageBand) ? soften(withLength) : withLength;
+}
+
+/** Minutes of lesson per teaching slide: an hour gets four, forty-five minutes three. */
+const MINUTES_PER_TEACHING_SLIDE = 15;
+const MAX_TEACHING_SLIDES = 5;
+
+export function teachingSlidesFor(minContent: number, durationMin: number | undefined): number {
+  if (durationMin === undefined) return minContent;
+  const byLength = Math.min(
+    MAX_TEACHING_SLIDES,
+    Math.floor(durationMin / MINUTES_PER_TEACHING_SLIDE),
+  );
+  return Math.max(minContent, byLength);
 }

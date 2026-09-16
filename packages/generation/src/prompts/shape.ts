@@ -52,6 +52,11 @@ export function shapeBlock(shape: LessonShape): string[] {
     );
   }
   if (shape.minContent > 1) lines.push(`${contentSentence(shape)}.`);
+  if (shape.minTeachingSlides > shape.minContent) {
+    lines.push(
+      `At least ${shape.minTeachingSlides} teaching slides (content, image-text or worked-example), each explaining one key idea or working one example.`,
+    );
+  }
   lines.push(
     `At least ${shape.minCheckEntries} slides where pupils answer (the practise and check phases together).`,
   );

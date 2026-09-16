@@ -73,7 +73,7 @@ export function photoBlock(photo: SlidePhoto | "none"): string[] {
 
 /** The rule the writer follows for an `image-text` slide; shared with Repair. */
 export const IMAGE_TEXT_RULE =
-  "An `image-text` slide is written to its photograph. Say 'the photograph' (singular when there is one). A task — spot, find, count, point to, look for, identify, circle, label — may name only items listed as visible. Describe only what the caption and the visible list say is there; never name a kind of animal, plant, object or place the caption does not name. If the purpose is identify-parts and something required is not visible, describe what is there and tell the teacher in `notes` what the picture cannot show. If there is no photograph, do not mention a picture at all.";
+  "An `image-text` slide is written to its photograph. Say 'the photograph' (singular when there is one). A task — spot, find, count, point to, look for, identify, circle, label — may name only items listed as visible. Describe only what the caption and the visible list say is there; never name a kind of animal, plant, object or place the caption does not name. If a required item is not visible, tell the teacher in `notes` to supply it aloud or on the board; never say what the photograph does not show or lacks. If there is no photograph, do not mention a picture at all.";
 
 const SHAPES = {
   title: '{ "kind": "title", "title", "subtitle", "factRefs", "notes"? }',
@@ -105,7 +105,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v17",
+  version: "generate-slide.v19",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
@@ -118,7 +118,7 @@ export const generateSlidePrompt = {
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
     "`footnote` is one short line pupils read — how long they have, where to write, what to do when finished. Anything addressed to the teacher goes in `notes`; leave `footnote` out rather than fill it.",
     IMAGE_TEXT_RULE,
-    "Keep text short enough to read from the back of a classroom: one idea per slide, no paragraph over forty words.",
+    "Write to the Pitch line: one idea per slide, one fact per sentence, none over its word limit, no semicolons, common words, a hard one defined in the same sentence or cut.",
     "Answers must be correct and unambiguous; distractors plausible.",
     limitsBlock({
       title: SPEC_LIMITS.title,

@@ -1,5 +1,5 @@
 import type { Finding, Lesson, LessonFacts, Slide } from "@tj/domain/documents";
-import { type MaterialiseMeta, materialiseSlide } from "@tj/slides";
+import { type MaterialiseMeta, materialiseSlide, vocabularySlots } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import { planFactsPrompt, planSkeletonPrompt } from "../prompts";
 import {
@@ -157,6 +157,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
 
   // 3. The remaining facts and which outline entry each supports; then the checkpoint.
   deps.logger.info({ stage: "plan", call: "facts", cls }, "plan call");
+  const slots = vocabularySlots(lesson.themeId);
   let planFacts: PlanFactsLike = EMPTY_PLAN_FACTS;
   try {
     const factsCall = await callStructured({
@@ -165,9 +166,9 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
       cls,
       effort: "medium",
       prompt: planFactsPrompt,
-      input: { ...briefInput, skeleton },
-      schema: planFactsSchemaFor(skeleton, shape),
-      soft: planFactsSchemaFor(skeleton, shape, { soft: true }),
+      input: { ...briefInput, skeleton, vocabularySlots: slots },
+      schema: planFactsSchemaFor(skeleton, shape, { vocabularySlots: slots }),
+      soft: planFactsSchemaFor(skeleton, shape, { soft: true, vocabularySlots: slots }),
       maxOutputTokens: MAX_OUTPUT_TOKENS.planFacts,
     });
     planFacts = factsCall.output;

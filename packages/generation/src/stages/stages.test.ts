@@ -517,13 +517,13 @@ describe("generate", () => {
     expect(state.lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(deps.persisted).toHaveLength(slides.length + 1);
     expect(deps.persisted.map((p) => p.lesson.slides.length)).toEqual([
-      3, 4, 5, 6, 7, 8, 9, 10, 11, 11,
+      3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12,
     ]);
     // Verify announces itself inside Writing (TEACH-233), then the slides in outline order.
     expect(deps.progress.map((p) => p.message).slice(0, 3)).toEqual([
       "Checking the facts",
-      "Slide 3 of 11",
-      "Slide 4 of 11",
+      "Slide 3 of 12",
+      "Slide 4 of 12",
     ]);
     expect(deps.progress[0]?.percent).toBe(11);
     expect(deps.progress.at(-1)).toMatchObject({ percent: 85, message: "Worksheet ready" });
@@ -606,7 +606,7 @@ describe("generate", () => {
       expect.objectContaining({
         check: "budget",
         severity: "error",
-        message: expect.stringContaining("slide 7 of 11"),
+        message: expect.stringContaining("slide 7 of 12"),
       }),
     ]);
     expect(deps.progress.at(-1)?.message).toBe("Worksheet ready");
@@ -731,9 +731,9 @@ describe("generate", () => {
     const state = await generate(start, deps);
     expect(maxInFlight).toBeLessThanOrEqual(GENERATE_CONCURRENCY + 1);
     const lengths = deps.persisted.map((p) => p.lesson.slides.length);
-    expect(lengths).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 11]);
-    expect(deps.progress.map((p) => p.message).slice(1, 10)).toEqual(
-      entries.map((_, i) => `Slide ${i + PLANNED_SLIDES + 1} of 11`),
+    expect(lengths).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12]);
+    expect(deps.progress.map((p) => p.message).slice(1, 11)).toEqual(
+      entries.map((_, i) => `Slide ${i + PLANNED_SLIDES + 1} of 12`),
     );
     // The worksheet is on the final write only.
     expect(deps.persisted.slice(0, -1).every((p) => p.worksheet === undefined)).toBe(true);
@@ -1287,7 +1287,7 @@ describe("generate", () => {
     const slideCalls = ai.calls.filter(
       (c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-slide"],
     );
-    expect(slideCalls[0]?.promptText).toContain("Slide 6 of 11");
+    expect(slideCalls[0]?.promptText).toContain("Slide 6 of 12");
     expect(state.lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(state.lesson.slides.slice(0, 5)).toEqual(full.lesson.slides.slice(0, 5));
   });

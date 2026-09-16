@@ -6,6 +6,7 @@ import {
   lessonShapeOf,
   OBJECTIVE_VERBS,
   PRIOR_CONFIDENCES,
+  teachingSlidesFor,
 } from "./shapes";
 
 const shape = (verb: string, confidence: string, yearGroup?: string) =>
@@ -98,5 +99,26 @@ describe("lessonShapeOf (project: Lesson shape by objective verb)", () => {
     expect(isYoungClass("Y10", "ks4")).toBe(false);
     expect(isYoungClass("Key Stage 3", "ks3")).toBe(false);
     expect(isYoungClass("Key Stage 1", "ks1")).toBe(true);
+  });
+});
+
+describe("minTeachingSlides (quality lab, Sept 2026)", () => {
+  test("one teaching slide per quarter hour, at most five, never below minContent", () => {
+    expect(teachingSlidesFor(2, 60)).toBe(4);
+    expect(teachingSlidesFor(2, 45)).toBe(3);
+    expect(teachingSlidesFor(1, 20)).toBe(1);
+    expect(teachingSlidesFor(2, 20)).toBe(2);
+    expect(teachingSlidesFor(1, 120)).toBe(5);
+    expect(teachingSlidesFor(2, undefined)).toBe(2);
+  });
+  test("the shape carries it from the lesson length; the judge's shape (no length) keeps minContent", () => {
+    const hour = lessonShapeOf(
+      { objectiveVerb: "Explain", priorConfidence: "New to it" },
+      { yearGroup: "Year 4", durationMin: 60 },
+    );
+    expect(hour.minTeachingSlides).toBe(4);
+    expect(
+      lessonShapeOf({ objectiveVerb: "Explain" }, { yearGroup: "Year 4" }).minTeachingSlides,
+    ).toBe(2);
   });
 });

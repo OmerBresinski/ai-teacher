@@ -27,8 +27,8 @@ import {
 import { StageFailure } from "./types";
 import { resumeFrom, runLessonPipeline } from "./workflow";
 
-const TOTAL_SLIDES = FIXTURES.planSkeleton.outline.length; // 11
-const GENERATED_SLIDES = TOTAL_SLIDES - 2; // 9
+const TOTAL_SLIDES = FIXTURES.planSkeleton.outline.length; // 12
+const GENERATED_SLIDES = TOTAL_SLIDES - 2; // 10
 /** Plan persists three times: the title slide, the skeleton, the planned checkpoint. */
 const PLAN_PERSISTS = 3;
 /** Script index of the first slide answer: after the input check and Plan's two answers. */
@@ -380,7 +380,7 @@ describe("runLessonPipeline", () => {
   });
 
   test("TEACH-210 row 7: a degenerate slide reply (equal MCQ options) is a validation issue the retry names; the good reply lands", async () => {
-    // Outline position 8 is the multiple-choice slide; its generated-slide call is SLIDES_INDEX + 6
+    // Outline position 9 is the multiple-choice slide; its generated-slide call is SLIDES_INDEX + 7
     // (positions 0–1 are materialised by Plan).
     const goodSpec = FIXTURES.slides["multiple-choice"] as {
       options: { text: string; correct: boolean }[];
@@ -393,7 +393,7 @@ describe("runLessonPipeline", () => {
     });
     // The bad reply is a scripted miss: the routed fake hands it to whichever slide call is next,
     // and that call's retry finds the good multiple-choice spec by kind (TEACH-213).
-    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 6, [
+    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 7, [
       miss(bad),
       JSON.stringify(goodSpec),
     ]);

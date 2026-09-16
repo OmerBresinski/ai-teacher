@@ -11,6 +11,7 @@ import {
   generateText,
   type ModelMessage,
   NoObjectGeneratedError,
+  NoOutputGeneratedError,
   Output,
   type OutputInterface,
 } from "ai";
@@ -298,7 +299,17 @@ export async function callStructured<I, T>(
     return await attempt(userText);
   } catch (error) {
     const timedOut = error instanceof StageFailure && error.reason === "timeout";
-    if (!timedOut && !NoObjectGeneratedError.isInstance(error)) throw error;
+    // An empty answer (the provider returned no output at all) is a hiccup, not a shape problem:
+    // retried once with the same text, like a timeout (quality lab, Sept 2026: two empty answers
+    // from the small class lost a lesson its photograph).
+    const empty = NoOutputGeneratedError.isInstance(error);
+    if (empty) {
+      deps.logger.info(
+        { stage, promptVersion: prompt.version },
+        "model returned no output; retrying once",
+      );
+    }
+    if (!timedOut && !empty && !NoObjectGeneratedError.isInstance(error)) throw error;
     let retryText = userText;
     if (NoObjectGeneratedError.isInstance(error)) {
       // The failed attempt was still paid for. `error.text` (the model's words) is never logged.

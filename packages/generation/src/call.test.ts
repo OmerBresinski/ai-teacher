@@ -624,3 +624,38 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
     expect(log.text()).not.toContain(longStep);
   });
 });
+
+test("an empty answer (no output at all) is retried once with the same text; a second one is a StageFailure (quality lab, Sept 2026)", async () => {
+  // The SDK raises NoOutputGeneratedError when the model returns no content parts at all.
+  const empty = {
+    content: [],
+    finishReason: { unified: "stop" as const, raw: "stop" },
+    usage: {
+      inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+      outputTokens: { total: 0, text: 0, reasoning: undefined },
+      raw: undefined,
+    },
+    warnings: [],
+  };
+  const answer = {
+    ...empty,
+    content: [{ type: "text" as const, text: JSON.stringify({ answer: "second time" }) }],
+  };
+  let calls = 0;
+  const flaky = createFakeAi();
+  flaky.model = () =>
+    new MockLanguageModelV4({
+      doGenerate: async () => {
+        calls++;
+        return calls === 1 ? empty : answer;
+      },
+    });
+  const result = await call(deps(flaky));
+  expect(result.output).toEqual({ answer: "second time" });
+  expect(result.attempts).toBe(2);
+  expect(calls).toBe(2);
+
+  const dead = createFakeAi();
+  dead.model = () => new MockLanguageModelV4({ doGenerate: async () => empty });
+  await expect(call(deps(dead))).rejects.toBeInstanceOf(StageFailure);
+});

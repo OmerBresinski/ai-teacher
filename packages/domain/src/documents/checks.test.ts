@@ -12,6 +12,7 @@ import {
 } from "./fixtures.test-helpers";
 import type { Lesson } from "./lesson";
 import type { LessonFacts } from "./lesson-facts";
+import { questionless } from "./quality-checks";
 import type { Slide, SlideElement } from "./slide";
 import type { Worksheet, WorksheetBlock } from "./worksheet";
 
@@ -401,6 +402,17 @@ describe("checkLesson", () => {
       );
     });
 
+    test("readability: three years above the pitch on a primary lesson is an error, a warning otherwise (quality lab, Sept 2026)", () => {
+      const dense =
+        "Evaporation, condensation and precipitation constitute the fundamental mechanisms whereby atmospheric moisture is continuously redistributed.";
+      const primary = withPitch({ ...generatedLesson(), ageBand: "ks2" as const }, 40, 9);
+      primary.slides.push(contentSlide("s-c", dense));
+      expect(of(checkLesson(primary), "readability").map((f) => f.severity)).toEqual(["error"]);
+      const secondary = withPitch({ ...generatedLesson(), ageBand: "ks3" as const }, 40, 9);
+      secondary.slides.push(contentSlide("s-c", dense));
+      expect(of(checkLesson(secondary), "readability").map((f) => f.severity)).toEqual(["warning"]);
+    });
+
     test("row 9: without facts.pitch there are no readability findings", () => {
       const l = generatedLesson();
       l.slides.push(contentSlide("s-c", `${twentyWords} ${twentyWords}`));
@@ -610,5 +622,16 @@ describe("checkLesson", () => {
         [],
       );
     });
+  });
+});
+
+describe("questionless (quality lab, Sept 2026)", () => {
+  test("an imperative whose referents follow a colon is a question, not a dangling task", () => {
+    expect(
+      questionless("Put these dates in order from earliest to latest: AD 43, AD 410, AD 1."),
+    ).toBe("ok");
+    expect(questionless("Sort these into two groups.")).toBe("no-referent");
+    expect(questionless("Explain your decision: focus on the evidence.")).toBe("no-referent");
+    expect(questionless("A fort has a ditch. Explain your decision.")).toBe("no-referent");
   });
 });
