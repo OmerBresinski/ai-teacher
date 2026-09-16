@@ -226,6 +226,7 @@ export function shapeOf(lesson: Lesson): LessonShape {
   return lessonShapeOf(lesson.brief?.answers, {
     yearGroup: lesson.yearGroup,
     ageBand: lesson.ageBand,
+    durationMin: lesson.brief?.durationMin,
   });
 }
 

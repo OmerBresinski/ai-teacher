@@ -26,6 +26,21 @@
           "index": 2
         }
       ]
+    },
+    {
+      "statement": "A change of state is reversible: the same particles gain or lose energy and nothing is destroyed.",
+      "explanation": "Water freezes at 0 °C and boils at 100 °C. Cooling a gas turns it back to a liquid, and cooling a liquid turns it back to a solid, because the particles lose energy and settle closer together.",
+      "example": "A 250 ml bottle of water left in a freezer at −18 °C is ice by morning; on the kitchen table it melts back into 250 ml of water.",
+      "objectiveRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ]
     }
   ],
   "misconceptions": [
@@ -415,6 +430,15 @@
       "index": 7,
       "factRefs": [
         {
+          "type": "keyIdea",
+          "index": 2
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "factRefs": [
+        {
           "type": "question",
           "index": 2
         },
@@ -425,7 +449,7 @@
       ]
     },
     {
-      "index": 8,
+      "index": 9,
       "factRefs": [
         {
           "type": "question",
@@ -434,7 +458,7 @@
       ]
     },
     {
-      "index": 9,
+      "index": 10,
       "factRefs": [
         {
           "type": "question",
@@ -443,7 +467,7 @@
       ]
     },
     {
-      "index": 10,
+      "index": 11,
       "factRefs": [
         {
           "type": "question",

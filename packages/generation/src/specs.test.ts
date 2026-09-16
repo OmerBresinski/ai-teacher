@@ -631,18 +631,31 @@ describe("planFactsSchemaFor", () => {
     expect(issues(unexplained, noVocabSlide).filter((m) => m.startsWith("vocabulary"))).toEqual([]);
   });
 
-  test("one key idea is enough (a narrow lesson has one); none is not", () => {
+  test("key ideas: one short of a slide each is tolerated (a narrow lesson), two short is an issue naming the count; none is not", () => {
+    // The fixture skeleton has three key-idea slides (positions 4, 5, 7): two ideas pass, one does not.
     const f = facts();
-    f.keyIdeas = f.keyIdeas.slice(0, 1);
-    const only = f.keyIdeas[0];
-    if (!only) throw new Error("fixture");
-    only.objectiveRefs = [O(0), O(1), O(2)];
+    f.keyIdeas = f.keyIdeas.slice(0, 2);
+    const first = f.keyIdeas[0];
+    if (!first) throw new Error("fixture");
+    first.objectiveRefs = [O(0), O(1), O(2)];
     f.outlineFactRefs = f.outlineFactRefs.map((e) =>
-      e.index === 4 || e.index === 5
+      e.index === 7 ? { ...e, factRefs: [{ type: "keyIdea" as const, index: 1 }] } : e,
+    );
+    expect(schema().safeParse(f).success).toBe(true);
+    f.keyIdeas = f.keyIdeas.slice(0, 1);
+    f.outlineFactRefs = f.outlineFactRefs.map((e) =>
+      e.index === 5 || e.index === 7
         ? { ...e, factRefs: [{ type: "keyIdea" as const, index: 0 }] }
         : e,
     );
-    expect(schema().safeParse(f).success).toBe(true);
+    const one = schema().safeParse(f);
+    expect(one.success).toBe(false);
+    if (one.success) return;
+    expect(one.error.issues.map((i) => i.message)).toContainEqual(
+      expect.stringContaining(
+        "Give 3 key ideas — one per content or image-text slide (outline positions 4, 5, 7)",
+      ),
+    );
     f.keyIdeas = [];
     expect(schema().safeParse(f).success).toBe(false);
   });
@@ -736,6 +749,27 @@ describe("planFactsSchemaFor", () => {
     );
   });
 
+  test("vocabulary: the slide's slots plus two for the worksheet; one more is an issue naming both (quality lab, Sept 2026)", () => {
+    const withSlots = (slots: number) =>
+      planFactsSchemaFor(FIXTURES.planSkeleton, EXPLAIN_SOME, { vocabularySlots: slots });
+    // The fixture has six terms: four slots pass, three do not.
+    expect(withSlots(4).safeParse(facts()).success).toBe(true);
+    const r = withSlots(3).safeParse(facts());
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    expect(r.error.issues.map((i) => i.message)).toContainEqual(
+      expect.stringContaining(
+        "the vocabulary slide shows 3 and the worksheet at most 2 more; you gave 6",
+      ),
+    );
+    expect(
+      planFactsSchemaFor(FIXTURES.planSkeleton, EXPLAIN_SOME, {
+        vocabularySlots: 3,
+        soft: true,
+      }).safeParse(facts()).success,
+    ).toBe(true);
+  });
+
   test("the misconception rule is a prompt rule, not a rejection (TEACH-237): no true-false and no misconceptionRef still parses", () => {
     const noTrueFalse = structuredClone(FIXTURES.planSkeleton);
     noTrueFalse.outline = noTrueFalse.outline.map((e) =>
@@ -752,33 +786,33 @@ describe("planFactsSchemaFor", () => {
 describe("assignFactIds", () => {
   test("TEACH-244: an exit question no entry claims is attached to the first check-phase slide", () => {
     const f = structuredClone(FIXTURES.planFacts);
-    // The fixture's exit-ticket entry (index 10) claims questions 7, 8 and 11 (all `exit`). Unclaim 11.
+    // The fixture's exit-ticket entry (index 11) claims questions 7, 8 and 11 (all `exit`). Unclaim 11.
     f.outlineFactRefs = f.outlineFactRefs.map((e) =>
-      e.index === 10
+      e.index === 11
         ? { ...e, factRefs: e.factRefs.filter((r) => !(r.type === "question" && r.index === 11)) }
         : e,
     );
     const facts = assignFactIds(FIXTURES.planSkeleton, f, 60);
     expect(facts.questions[11]?.use).toBe("exit");
-    expect(facts.outline[10]?.factRefs).toContain("q12");
+    expect(facts.outline[11]?.factRefs).toContain("q12");
     // Claimed elsewhere: left alone. A worksheet question is never moved.
     const claimed = structuredClone(f);
-    claimed.outlineFactRefs.push({ index: 9, factRefs: [{ type: "question", index: 11 }] });
+    claimed.outlineFactRefs.push({ index: 10, factRefs: [{ type: "question", index: 11 }] });
     const facts2 = assignFactIds(FIXTURES.planSkeleton, claimed, 60);
-    expect(facts2.outline[10]?.factRefs).not.toContain("q12");
-    expect(facts2.outline[9]?.factRefs).toContain("q12");
+    expect(facts2.outline[11]?.factRefs).not.toContain("q12");
+    expect(facts2.outline[10]?.factRefs).toContain("q12");
     // No check-phase entry: nothing added.
     const noCheck = structuredClone(FIXTURES.planSkeleton);
     noCheck.outline = noCheck.outline.map((e) =>
       e.phase === "check" ? { ...e, phase: "practise" as const } : e,
     );
     const facts3 = assignFactIds(noCheck, f, 60);
-    expect(facts3.outline[10]?.factRefs).not.toContain("q12");
+    expect(facts3.outline[11]?.factRefs).not.toContain("q12");
   });
 
   test("row 6: the fixtures merge into valid LessonFacts with k/m ids, briefs, phases and pitch", () => {
     const facts = assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
-    expect(facts.keyIdeas?.map((k) => k.id)).toEqual(["k1", "k2"]);
+    expect(facts.keyIdeas?.map((k) => k.id)).toEqual(["k1", "k2", "k3"]);
     expect(facts.keyIdeas?.[0]?.objectiveRefs).toEqual(["o1"]);
     expect(facts.misconceptions.map((m) => m.id)).toEqual(["m1", "m2"]);
     expect(facts.questions).toHaveLength(FIXTURES.planFacts.questions.length);

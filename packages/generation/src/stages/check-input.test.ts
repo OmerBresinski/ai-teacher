@@ -53,7 +53,7 @@ describe("check-input", () => {
       deps,
     );
     // 1 check-input + 3 plan (skeleton, facts, verify) + 9 slides + 1 worksheet + 1 evaluate
-    expect(ai.calls).toHaveLength(1 + 3 + 9 + 1 + 1);
+    expect(ai.calls).toHaveLength(1 + 3 + 10 + 1 + 1);
     expect(ai.calls[0]).toMatchObject({
       modelClass: "small",
       context: { stage: "check-input", promptVersion: PROMPT_VERSIONS["check-input"] },

@@ -70,7 +70,7 @@
     },
     {
       "kind": "content",
-      "minutes": 10,
+      "minutes": 6,
       "factRefs": [
         {
           "type": "objective",
@@ -85,7 +85,7 @@
     },
     {
       "kind": "image-text",
-      "minutes": 7,
+      "minutes": 6,
       "factRefs": [
         {
           "type": "objective",
@@ -110,7 +110,7 @@
     },
     {
       "kind": "worked-example",
-      "minutes": 7,
+      "minutes": 6,
       "factRefs": [
         {
           "type": "objective",
@@ -125,6 +125,25 @@
       "brief": {
         "adds": "Walks through one change of state step by step with the particle model.",
         "avoids": "Not the ink example from the content slide."
+      }
+    },
+    {
+      "kind": "content",
+      "minutes": 6,
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 1
+        },
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ],
+      "phase": "explain",
+      "brief": {
+        "adds": "Explains that a change of state is reversible: the same particles gain or lose energy, and water freezes at 0 °C and boils at 100 °C.",
+        "avoids": "Do not repeat the melting-ice picture or the worked example."
       }
     },
     {

@@ -36,7 +36,8 @@ const brief = {
   /** Explain / New to it: the cell with the most Shape sentences. */
   shape: lessonShapeOf(
     { objectiveVerb: "Explain states of matter", priorConfidence: "New to it" },
-    { yearGroup: "Year 8" },
+    // The lesson length sets `minTeachingSlides`, so the Shape block's teaching-slides sentence is pinned.
+    { yearGroup: "Year 8", durationMin: 60 },
   ),
 };
 const audience = audienceOf(sampleBriefLesson());
@@ -46,7 +47,7 @@ const shape = { verb: brief.shape.verb, confidence: brief.shape.confidence };
 export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   "check-input": { topic: brief.topic, answers: brief.answers, audience: brief.audience },
   "plan-skeleton": brief,
-  "plan-facts": { ...brief, skeleton: FIXTURES.planSkeleton },
+  "plan-facts": { ...brief, skeleton: FIXTURES.planSkeleton, vocabularySlots: 4 },
   "verify-facts": { audience, topic: brief.topic, facts },
   "generate-slide": {
     referenced: facts,
@@ -150,24 +151,24 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v16",
-    hash: "e67567ac2067aeb025fba19d1f53b0a7adcfc036a775df15696651478a59afc7",
+    version: "plan-skeleton.v18",
+    hash: "eaa7f7d7d3185e903a685d01c5d60c489b3889a0505d758a6294bad9e1ba2136",
   },
   "plan-facts": {
-    version: "plan-facts.v8",
-    hash: "8703491b17d88e7f5be78294a7a2f1a8c4e315a65898abd4dc766d078c4dd597",
+    version: "plan-facts.v9",
+    hash: "f9dde8a8f18a40752c10ba4154f8b5b1fcf3956997719005c044d71ad1c40483",
   },
   "verify-facts": {
     version: "verify-facts.v1",
-    hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
+    hash: "b2ba889a2c5f9e51e9a62622ddea25b6ca0bbc4c0474870130f4a9c188eb21ee",
   },
   "generate-slide": {
-    version: "generate-slide.v17",
-    hash: "93f1e7176083f7c6582ad25ceee1f8ae6e6fed1513c870024ba6c18ab2e95e96",
+    version: "generate-slide.v19",
+    hash: "0679ee4e2b4ebf498a3cb27025f6a9437c427824a4f92187bd16453125adfb2f",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v9",
-    hash: "939c884f8b07fbf14a493887ec89df5b829ac7e3592370a7efd67c6ed474ce08",
+    hash: "9514aa9ef97ed51da49fb91979a3a8d8ee031dd7dda1ce68f3579821c4b506f2",
   },
   "shortlist-photos": {
     version: "shortlist-photos.v2",
@@ -179,23 +180,23 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   evaluate: {
     version: "evaluate.v6",
-    hash: "e12329a1427665290602ee85bb5fb720fe2ebe33467c07fb16974cd312a9b037",
+    hash: "6f94b2e5d3875006acea23048202b15f14e496c6927286d97c512eac6c025a6b",
   },
   repair: {
-    version: "repair.v11",
-    hash: "bdedd08451aca8165e8ecfb7d4a5796108f62871ca57f75198215c0f04d17a87",
+    version: "repair.v12",
+    hash: "006a662356357ef3417cda232333077b943bae9534773741d8213296ac67ecc5",
   },
   "repair-fact": {
     version: "repair-fact.v2",
-    hash: "8f156fb5f6d9ad596b271de7d50a2f1ba500a75e1e7b63855bd2ff135a3ab9f6",
+    hash: "59212c834ffd32279eeb5535b41ea0796a8774dd5bf262594d9b68ddb28b2207",
   },
   cascade: {
     version: "cascade.v2",
-    hash: "8111e79f21a141c7947e8c148d7a1fdb8956764cd1ea53d41ffda729851df476",
+    hash: "fafb491375bb112a3b70aafc27221948949e7e8ce653f9a0015e639421699ef9",
   },
   regenerate: {
     version: "regenerate.v2",
-    hash: "53cd60826e8944cd65e473c1500fb50c9493ed3822c32105f3c652a269be0dd1",
+    hash: "c80f8c4254fc3b4bd5bb212aa94bbd7ab94b4335256c445562b500bf10df20c4",
   },
 };
 
@@ -251,9 +252,9 @@ describe("prompt versions", () => {
     const without = planSkeletonPrompt.user({ ...brief, sourceTexts: [] });
     expect(without).not.toContain(SOURCE_INSTRUCTION);
     expect(without).not.toContain("[src");
-    expect(planFactsPrompt.user({ ...brief, skeleton: FIXTURES.planSkeleton })).toContain(
-      "[src1 p.3]",
-    );
+    expect(
+      planFactsPrompt.user({ ...brief, skeleton: FIXTURES.planSkeleton, vocabularySlots: 4 }),
+    ).toContain("[src1 p.3]");
   });
 
   test("every prompt states the house rules and asks for JSON", () => {
