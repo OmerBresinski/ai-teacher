@@ -121,7 +121,7 @@ objection does not apply.
    | Route | In | Out | Conflicts |
    | ----- | -- | --- | --------- |
    | `POST /lessons` | `CreateLessonSchema` + `skipPlanning?`, `requestId?` (uuid) | `202 { lessonId, jobId, revision: 1 }` | as today |
-   | `POST /lessons/:id/plan` | `{ expectedRevision, brief: { topic, slideCount?, level?, durationMin?, classContext? }, yearGroup?, subject?, sourceIds? }` | `202 { jobId, revision }` | `409 stale`; `409 generating` once confirmed |
+   | `POST /lessons/:id/plan` | `{ expectedRevision, brief: { topic, slideCount?, level?, durationMin?, classContext? }, yearGroup?, subject?, sourceIds? }` | `202 { jobId, revision }` | `409 stale`; `409 generating` once confirmed; `409 planning` while a plan job holds the lock, until the item 5 gap is closed |
    | `POST /lessons/:id/generate` | `{ expectedRevision, objectives: [{ id?, text }] (1–4), slideCount?, durationMin? }` | `202 { jobId, revision }` | `409 planning` while the plan job holds the lock; `409 stale`; `409 generating` once confirmed; `422` no objectives |
 
    `/generate` requires stage `planned` and no lock. It applies the objectives, sets

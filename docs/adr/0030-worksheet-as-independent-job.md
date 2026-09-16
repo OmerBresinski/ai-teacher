@@ -93,9 +93,9 @@ TEACH-311 (PR #290) and TEACH-312 (PR #291) landed the contracts this decision u
    `RECIPE_PROMPT_VERSION`, `suggestRecipe` and `estimateMinutes` move, with what they import:
    `worksheet/word-search.ts`, `model/factories.ts`, `model/worksheet-factories.ts` and the
    `PLACEHOLDER_IMAGE` constant from `model/layouts.ts`. `@tj/editor` re-exports them so no
-   import site in `apps/web` changes. `@tj/slides` keeps its three dependencies, and `bundle.test.ts` keeps React and
-   Tiptap out. Until the move lands, `recipeId` in the domain schemas stays a bounded string,
-   because `@tj/domain` cannot import `@tj/slides`.
+   import site in `apps/web` changes. `@tj/slides` keeps its three dependencies, and
+   `bundle.test.ts` keeps React and Tiptap out. Until the move lands, `recipeId` in the domain
+   schemas stays a bounded string, because `@tj/domain` cannot import `@tj/slides`.
 5. **No model Evaluate call on the worksheet by default.** The worksheet gets the deterministic
    checks and one repair (item 3), not the model Evaluate call the lesson gets (ADR 0025 §11).
    A worksheet is a projection of facts that Verify has already checked, its questions come from
