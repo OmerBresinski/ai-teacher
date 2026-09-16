@@ -29,3 +29,22 @@ a health endpoint. Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolde
 - ADR 0010: deploys to Railway (EU-West) as a second service from the same root `Dockerfile` with
   a different start command; PR environments pair with the API's.
 - Tests: `bun test` (ADR 0014).
+
+## Jobs
+
+`src/jobs/index.ts` is the registry; every `JobName` needs a handler (a missing key does not
+compile).
+
+| Job | Handler | Decided by |
+| --- | ------- | ---------- |
+| `ping`, `ai.ping` | `ping.ts`, `ai-ping.ts` | ADR 0012, 0018 (demo) |
+| `lesson.plan` | `lesson-plan.ts` — check-input and Plan; stops at `planned` when the payload has `stopAfter`, otherwise runs the whole pipeline | ADR 0025 §5, ADR 0029 |
+| `lesson.generate` | TEACH-13 (placeholder today) — Generate (slides only), Illustrate, Evaluate, Repair from `planned` | ADR 0029 |
+| `lesson.worksheet` | TEACH-14 (placeholder today) — frame, fill, check one worksheet on its own row, lock and budget | ADR 0030 |
+| `lesson.cascade`, `lesson.regenerate` | `lesson-cascade.ts`, `lesson-regenerate.ts` — unlocked proposal jobs | ADR 0025 §18 |
+
+- **A job owns its row through the lock.** Write with `putDocumentAsJob`; `lost_lock` or
+  `missing` → `NonRetryableError`, write nothing further. A plan or generate job whose payload
+  `revision` is not the row's `plan.revision` refuses to start (ADR 0029 items 4–5).
+- **`lesson.worksheet` never writes the lesson row** and charges `AI_WORKSHEET_COST_CAP_USD`, not
+  the lesson's cap (ADR 0030 item 1).

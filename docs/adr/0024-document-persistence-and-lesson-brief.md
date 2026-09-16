@@ -1,6 +1,6 @@
 # 0024 — Document persistence and the lesson brief: `documents` table, document API, `POST /lessons`
 
-- Status: Accepted
+- Status: Accepted (amended 2026-09-16 by ADRs 0029 and 0030)
 - Date: 2026-09-06
 - Related PRD decisions: F01 (SCOPE Now 2, 12; P1, P6, P8; D-001, D-006, D-019; A6), F06 item 1
   (LessonFacts on the lesson), TD project scope note ("backend connects later"); ADRs 0005, 0006,
@@ -192,3 +192,17 @@ already-bound id is `422` — writes the rows as `Lesson.sources` (`SourceRef[]`
 reverting the binding with the document delete on an enqueue failure. §8's "`POST /files` upload"
 is not what shipped: uploads are `POST /sources` (multipart, parsed and screened in the request),
 and `ImageElement.src` data URLs are untouched by ADR 0027.
+
+## Amendment (2026-09-16, ADR 0029 and ADR 0030)
+
+§6: `POST /lessons` writes `Lesson.plan { revision: 1, state, jobId }` and enqueues
+`lesson.plan { lessonId, revision: 1, stopAfter: "planned" }` — without `stopAfter` when the
+request has `skipPlanning: true` — and returns `{ lessonId, jobId, revision }`. An optional
+`requestId` (uuid, `documents.request_id`, unique per Workspace) makes a repeat answer the
+existing lesson. `POST /lessons/:id/plan` and `/generate` follow, each a compare-and-set on the
+revision (ADR 0029 items 4, 7, 11).
+§18: the lesson lock is held by the plan job, released at `planned`, and taken again by
+`POST /lessons/:id/generate` for `lesson.generate` in the same `UPDATE` that confirms the plan —
+or passed with `handOffLock` when auto-continue is set (ADR 0029 items 4, 10). A worksheet row
+has its own lock, held by its own `lesson.worksheet` job; the lesson job no longer locks a
+worksheet (ADR 0030 item 1).

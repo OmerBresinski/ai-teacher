@@ -1,6 +1,6 @@
 # 0012 — Server-sent events for generation progress
 
-- Status: Accepted
+- Status: Accepted (amended 2026-09-16 by ADR 0029)
 - Date: 2026-09-03
 - Related PRD decisions: F18-R04 (activity tray), F13-R03 (streaming, partial completion), F18 §5 (generation never blocks)
 
@@ -45,3 +45,10 @@ adds one pre-replay lookup plus at most four periodic lookups per minute per lon
 Reconnect and Last-Event-ID ordering are unchanged. The separate bounded-backlog replay behavior
 in TEACH-80 remains outstanding; this amendment is authorization, not a claim that backlog paging
 has been fixed. All revocation/resource experiments use synthetic local sessions and rows.
+
+## Amendment (2026-09-16, ADR 0029)
+
+`JobProgressSchema` gains an optional `stage` (`check-input`, `plan`, `generate`, `illustrate`,
+`evaluate`, `repair`, `worksheet`), so the web's stage line no longer guesses from `percent`.
+`ProgressExtra` in `@tj/jobs` carries it beside `documentUpdatedAt`. The event types and replay are
+unchanged; a lesson now has one stream per job (plan, generate, and each worksheet, ADR 0030).

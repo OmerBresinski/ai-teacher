@@ -1,6 +1,6 @@
 # 0027 — Upload as input: `POST /sources`, `@tj/extract`, the `sources` table and the `SourceLoader`
 
-- Status: Accepted (amends ADR 0024 §13 and ADR 0025 §20)
+- Status: Accepted (amends ADR 0024 §13 and ADR 0025 §20; amended 2026-09-16 by ADR 0029)
 - Date: 2026-09-12
 - Related PRD decisions: F03 (D-006, F03-D3, F03-D5, F03-R06, F03-R07, F03-R08), A6 (roster
   refusal), A7 (`Lesson.sources`), ADR 0015 (no document text in logs), ADR 0026 (storage)
@@ -267,3 +267,12 @@ decoded, and that the pdfjs proxy was never destroyed. The decision is amended a
    refusal without storing a Source. This is resource isolation, not a general code-execution
    sandbox. Concurrency is per API replica; durable admission and cross-Workspace fairness remain
    TEACH-279. No new always-on parsing service or paid model call is required.
+
+## Amendment (2026-09-16, ADR 0029): sources may change after creation
+
+§5 bound sources only inside `createLessonAndEnqueue`. `POST /lessons/:id/plan` may now change
+`sourceIds` while the plan is still a proposal: new ids are bound with `bindSourcesToLesson` and
+each dropped id is released with `unbindSource(ws, sourceId, lessonId)`
+(`packages/db/src/sources.ts:94`), inside the same transaction as the revision compare-and-set. A
+lesson still holds at most three sources. A change of sources discards objective edits and
+starts a fresh proposal (ADR 0029 item 8).
