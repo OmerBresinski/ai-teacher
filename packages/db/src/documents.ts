@@ -71,6 +71,29 @@ export type PutDocumentResult =
   | { status: "generating"; jobId: JobId }
   | { status: "missing" };
 
+export type SetPlanRevisionResult =
+  | { status: "ok"; row: DocumentRow }
+  /** `body.plan.revision` (0 when absent) is not the one the caller confirmed against. */
+  | { status: "stale"; revision: number }
+  | { status: "generating"; jobId: JobId }
+  | { status: "missing" };
+
+export interface SetPlanRevisionOptions {
+  /** The revision the client saw; a lesson without `plan` is revision 0. */
+  expectedRevision: number;
+  /** The job that owns the row once this returns `ok`. */
+  jobId: JobId;
+  /** The new body, from the current one. Usually bumps `plan.revision` and sets `plan.jobId`. */
+  patch: (lesson: Lesson) => Lesson;
+}
+
+export type WorksheetForGeneration =
+  /** A sheet of the lesson is being written by a job: answer 409 with its ids. */
+  | { kind: "generating"; row: DocumentRow }
+  /** A sheet whose fill failed after its frame was persisted: the next job reuses the row. */
+  | { kind: "reusable"; row: DocumentRow }
+  | { kind: "none" };
+
 export type PutDocumentAsJobResult =
   | { status: "ok"; row: DocumentRow }
   /** The row is unlocked or locked by another job: a newer job owns it. Write nothing further. */
@@ -100,6 +123,9 @@ export const LIST_MAX_LIMIT = 200;
 // Every column but `body`: what a list row is.
 const { body: _body, ...summaryColumns } = getTableColumns(documents);
 
+// A row id: `newId()` mints UUIDv7, and `documents.lesson_id` is a `uuid` column.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * The next `updated_at` for a row: now, but strictly later than the value it replaces, so two
  * writes inside one millisecond still produce distinct timestamps and a client echoing the older
@@ -122,10 +148,15 @@ export function parseDocumentBody(kind: DocumentKind, input: unknown): DocumentB
   }
 }
 
-/** The promoted list columns for `body` (`summarise()`); `db:backfill-summaries` rewrites them. */
+/**
+ * The promoted columns for `body` (`summarise()`); `db:backfill-summaries` rewrites them.
+ * `lessonId` is promoted only when it is uuid-shaped: an imported or fixture worksheet may name
+ * its lesson by a key that is no row id, and the `uuid` column would reject it.
+ */
 export function promotedColumns(body: DocumentBody) {
   const s = summarise(body);
   return {
+    lessonId: s.lessonId !== undefined && UUID_PATTERN.test(s.lessonId) ? s.lessonId : null,
     title: s.title,
     subject: s.subject ?? null,
     yearGroup: s.yearGroup ?? null,
@@ -276,6 +307,53 @@ export async function getSeriesWithLessons(
   return { series, lessons };
 }
 
+/**
+ * The live worksheets of `lessonId` (the `lesson_id` column, ADR 0030), oldest first. Read from
+ * the column, not `body`, so it answers while either document is locked.
+ */
+export async function listWorksheetsOfLesson(
+  ws: WorkspaceDb,
+  lessonId: string,
+): Promise<DocumentRow[]> {
+  return ws
+    .select(
+      documents,
+      and(
+        eq(documents.kind, "worksheet"),
+        eq(documents.lessonId, lessonId),
+        isNull(documents.deletedAt),
+      ),
+    )
+    .orderBy(asc(documents.createdAt), asc(documents.id));
+}
+
+/**
+ * Which worksheet row `POST /lessons/:id/worksheet` should use (TDD T6/T7): a locked sheet wins
+ * (`generating`), then an unlocked one left at `framed` by a failed fill (`reusable`); otherwise
+ * `none` and the caller creates a row. A finished (`filled`/`checked`) sheet is never reused.
+ */
+export async function findWorksheetForGeneration(
+  ws: WorkspaceDb,
+  lessonId: string,
+): Promise<WorksheetForGeneration> {
+  const rows = await listWorksheetsOfLesson(ws, lessonId);
+  const generating = rows.find((row) => row.generatingJobId !== null);
+  if (generating !== undefined) return { kind: "generating", row: generating };
+  const framed = rows.find((row) => (row.body as Worksheet).generation?.stage === "framed");
+  return framed !== undefined ? { kind: "reusable", row: framed } : { kind: "none" };
+}
+
+/** The lesson `POST /lessons` created for `requestId` (ADR 0029 idempotency), or `null`. */
+export async function findLessonByRequestId(
+  ws: WorkspaceDb,
+  requestId: string,
+): Promise<DocumentRow | null> {
+  const rows = await ws
+    .select(documents, and(eq(documents.kind, "lesson"), eq(documents.requestId, requestId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 // --- writes ------------------------------------------------------------------------------------
 
 /**
@@ -288,7 +366,7 @@ export async function createDocument(
   ws: WorkspaceDb,
   kind: DocumentKind,
   body: unknown,
-  opts: { id?: string; generatingJobId?: JobId } = {},
+  opts: { id?: string; generatingJobId?: JobId; requestId?: string } = {},
 ): Promise<DocumentRow> {
   const id = opts.id ?? newId();
   const parsed = { ...parseDocumentBody(kind, body), id } as DocumentBody;
@@ -303,6 +381,7 @@ export async function createDocument(
       createdAt: now,
       updatedAt: now,
       generatingJobId: opts.generatingJobId ?? null,
+      requestId: opts.requestId ?? null,
     })
     .returning();
   const row = rows[0];
@@ -390,6 +469,85 @@ export async function putDocumentAsJob(
   if (row) return { status: "ok", row };
   const after = await getDocument(ws, id);
   return after === null ? { status: "missing" } : { status: "lost_lock" };
+}
+
+/**
+ * Confirm or re-plan a lesson (ADR 0029, TDD T3/T4): compare-and-set on `body.plan.revision` and
+ * take the generating lock in one transaction. The row is read `FOR UPDATE`, so a concurrent
+ * call waits and then sees the revision this one wrote. `patch` gets the parsed lesson and its
+ * result goes through the same parse/`promotedColumns`/`updatedAt` path as `putDocument`, with
+ * `generating_job_id = jobId`. Nothing is written on `missing` (no row, or not a lesson),
+ * `generating` (already locked) or `stale`. A lesson without `plan` is revision 0, so a row
+ * written before plans existed can enter the flow.
+ */
+export async function setPlanRevisionAndLock(
+  ws: WorkspaceDb,
+  id: string,
+  { expectedRevision, jobId, patch }: SetPlanRevisionOptions,
+): Promise<SetPlanRevisionResult> {
+  return ws.tx(async (scoped) => {
+    const rows = await scoped.select(documents, eq(documents.id, id)).limit(1).for("update");
+    const current = rows[0];
+    if (current === undefined || current.kind !== "lesson") return { status: "missing" };
+    if (current.generatingJobId !== null) {
+      return { status: "generating", jobId: current.generatingJobId as JobId };
+    }
+    const lesson = parseDocumentBody("lesson", current.body) as Lesson;
+    const revision = lesson.plan?.revision ?? 0;
+    if (revision !== expectedRevision) return { status: "stale", revision };
+    const parsed = parseDocumentBody("lesson", patch(lesson));
+    if (parsed.id !== current.id) {
+      throw new Error(`setPlanRevisionAndLock: body.id ${parsed.id} does not match lesson ${id}`);
+    }
+    const written = await scoped
+      .update(documents, and(eq(documents.id, id), isNull(documents.generatingJobId)))
+      .set({
+        body: parsed,
+        ...promotedColumns(parsed),
+        updatedAt: nextUpdatedAt(current.updatedAt),
+        generatingJobId: jobId,
+      })
+      .returning();
+    const row = written[0];
+    // Unreachable while the row lock is held; kept so a miss can never read as success.
+    if (!row) throw new Error(`setPlanRevisionAndLock: lesson ${id} changed under its row lock`);
+    return { status: "ok", row };
+  });
+}
+
+/**
+ * Pass the generating lock from one job to the next (TDD T10, auto-continue): one
+ * `UPDATE … SET generating_job_id = :to WHERE id AND generating_job_id = :from`. `false` when
+ * `from` no longer holds it — a concurrent re-plan took the lock, and the caller must not enqueue.
+ */
+export async function handOffLock(
+  ws: WorkspaceDb,
+  id: string,
+  from: JobId,
+  to: JobId,
+): Promise<boolean> {
+  const rows = await ws
+    .update(documents, and(eq(documents.id, id), eq(documents.generatingJobId, from)))
+    .set({ generatingJobId: to })
+    .returning({ id: documents.id });
+  return rows.length > 0;
+}
+
+/**
+ * Set the auto-continue flag (ADR 0029). Not part of the body, so it is written while the row is
+ * locked and `updated_at` is left alone (an editor's concurrency token must not move). `false`
+ * when there is no lesson row.
+ */
+export async function setContinueWhenPlanned(
+  ws: WorkspaceDb,
+  id: string,
+  value: boolean,
+): Promise<boolean> {
+  const rows = await ws
+    .update(documents, and(eq(documents.id, id), eq(documents.kind, "lesson")))
+    .set({ continueWhenPlanned: value })
+    .returning({ id: documents.id });
+  return rows.length > 0;
 }
 
 /**

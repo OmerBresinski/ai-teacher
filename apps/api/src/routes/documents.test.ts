@@ -131,6 +131,9 @@ describe("serialisers", () => {
     updatedAt: now,
     deletedAt: null,
     generatingJobId: null,
+    lessonId: null,
+    continueWhenPlanned: false,
+    requestId: null,
   };
 
   test("toSummaryJson: ISO strings, nulls become absent optionals, no body, no workspaceId", () => {

@@ -8,6 +8,7 @@ import {
   type NewSource,
   softDeleteSource,
   toSourceRef,
+  unbindSource,
   unbindSourcesFromLesson,
 } from "./sources";
 import { forWorkspace, type WorkspaceDb } from "./tenant";
@@ -140,6 +141,21 @@ describeDb("sources repository", () => {
     expect((await getSource(wsA, a.id))?.lessonId).toBeNull();
     expect((await getSource(wsA, c.id))?.lessonId).toBe(l2);
     expect(await unbindSourcesFromLesson(wsA, l1)).toBe(0);
+  });
+
+  test("unbindSource releases one row only from the lesson it is bound to", async () => {
+    const [l1, l2] = [newId(), newId()];
+    const a = newSource(wsAId, "a.pdf");
+    const b = newSource(wsAId, "b.pdf");
+    for (const s of [a, b]) await createSource(wsA, s);
+    await bindSourcesToLesson(wsA, [a.id, b.id], l1);
+    expect(await unbindSource(wsA, a.id, l2)).toBe(0);
+    expect(await unbindSource(wsB, a.id, l1)).toBe(0);
+    expect((await getSource(wsA, a.id))?.lessonId).toBe(l1);
+    expect(await unbindSource(wsA, a.id, l1)).toBe(1);
+    expect((await getSource(wsA, a.id))?.lessonId).toBeNull();
+    expect((await getSource(wsA, b.id))?.lessonId).toBe(l1);
+    expect(await unbindSource(wsA, a.id, l1)).toBe(0);
   });
 
   describe("softDeleteSource", () => {

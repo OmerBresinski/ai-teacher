@@ -11,14 +11,18 @@ export {
   type DocumentSummaryRow,
   deleteDocument,
   escapeLike,
+  findLessonByRequestId,
+  findWorksheetForGeneration,
   getDocument,
   getSeriesWithLessons,
+  handOffLock,
   LIST_DEFAULT_LIMIT,
   LIST_MAX_LIMIT,
   type ListSort,
   type ListSummariesOptions,
   type ListSummariesResult,
   listSummaries,
+  listWorksheetsOfLesson,
   MalformedCursorError,
   type PutDocumentAsJobResult,
   type PutDocumentResult,
@@ -28,8 +32,13 @@ export {
   type ReleaseStaleLockOptions,
   releaseStaleLock,
   restore,
+  type SetPlanRevisionOptions,
+  type SetPlanRevisionResult,
   STALE_LOCK_AFTER_MS,
+  setContinueWhenPlanned,
+  setPlanRevisionAndLock,
   softDelete,
+  type WorksheetForGeneration,
 } from "./documents";
 export { isUniqueViolation, PG_UNIQUE_VIOLATION } from "./errors";
 export {
@@ -58,6 +67,7 @@ export {
   type SourceRow,
   softDeleteSource,
   toSourceRef,
+  unbindSource,
   unbindSourcesFromLesson,
 } from "./sources";
 export {

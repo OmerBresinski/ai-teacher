@@ -37,7 +37,7 @@ describeDb("migrations", () => {
     expect(rows.map((r) => r.table_name)).toEqual(["documents", "job_events", "workspaces"]);
   });
 
-  test("documents has the document_kind enum and its four indexes (ADR 0024 §3)", async () => {
+  test("documents has the document_kind enum and its tenant-led indexes (ADR 0024 §3, 0007)", async () => {
     const kinds = await sql<{ enumlabel: string }[]>`
       select enumlabel from pg_enum e join pg_type t on t.oid = e.enumtypid
       where t.typname = 'document_kind' order by e.enumsortorder`;
@@ -50,7 +50,20 @@ describeDb("migrations", () => {
       "documents_workspace_id_idx",
       "documents_workspace_id_kind_title_idx",
       "documents_workspace_id_kind_updated_at_idx",
+      "documents_workspace_id_lesson_id_idx",
+      "documents_workspace_id_request_id_idx",
     ]);
+    // Every lookup by lesson_id or request_id stays inside one Workspace (ADR 0007).
+    const defs = await sql<{ indexname: string; indexdef: string }[]>`
+      select indexname, indexdef from pg_indexes
+      where tablename = 'documents' and indexname in
+        ('documents_workspace_id_lesson_id_idx', 'documents_workspace_id_request_id_idx')
+      order by indexname`;
+    expect(defs.map((d) => d.indexdef.replace(/^.* USING /, ""))).toEqual([
+      "btree (workspace_id, lesson_id)",
+      "btree (workspace_id, request_id) WHERE (request_id IS NOT NULL)",
+    ]);
+    expect(defs[1]?.indexdef).toStartWith("CREATE UNIQUE INDEX");
   });
 
   test("0006 rewrites absolute /files/ picture URLs to the relative path and nothing else (TEACH-275)", async () => {
@@ -92,5 +105,35 @@ describeDb("migrations", () => {
       "data:image/png;base64,AAAA",
     ]);
     await sql`delete from documents where id = ${id}`;
+  });
+
+  test("0007 backfills lesson_id from a worksheet body's uuid lessonId only (TEACH-312)", async () => {
+    const statement = readFileSync(
+      new URL("../drizzle/0007_documents_lesson_link.sql", import.meta.url).pathname,
+      "utf8",
+    )
+      .split("--> statement-breakpoint")
+      .map((part) => part.replace(/^--.*$/gm, "").trim())
+      .find((part) => part.startsWith("UPDATE"));
+    expect(statement).toBeDefined();
+    const { workspaceId } = await createTestUserWithWorkspace(unsafeDb);
+    const lessonId = newId();
+    const rows = [
+      { id: newId(), kind: "worksheet", body: { lessonId } },
+      { id: newId(), kind: "worksheet", body: { lessonId: "gen-water-cycle" } },
+      { id: newId(), kind: "worksheet", body: {} },
+      { id: newId(), kind: "lesson", body: { lessonId } },
+    ];
+    for (const row of rows) {
+      await sql`insert into documents (id, workspace_id, kind, body, title, item_count)
+        values (${row.id}, ${workspaceId}, ${row.kind}, ${JSON.stringify(row.body)}::jsonb, 'Raw', 0)`;
+    }
+    await sql.unsafe(statement ?? "");
+    const ids = rows.map((r) => r.id);
+    const after = await sql<{ id: string; lesson_id: string | null }[]>`
+      select id, lesson_id from documents where id in ${sql(ids)}`;
+    const byId = new Map(after.map((r) => [r.id, r.lesson_id]));
+    expect(ids.map((id) => byId.get(id))).toEqual([lessonId, null, null, null]);
+    await sql`delete from documents where id in ${sql(ids)}`;
   });
 });
