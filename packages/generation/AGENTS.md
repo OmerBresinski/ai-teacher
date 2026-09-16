@@ -7,6 +7,19 @@ Repair as pure functions over `PipelineState`, versioned prompt modules in `src/
 and owns persistence through `PipelineDeps.persist`. Read the root [`AGENTS.md`](../../AGENTS.md)
 first.
 
+## Which job runs what
+
+| Job (`apps/worker`) | Entry point here | Decided by |
+| ------------------- | ---------------- | ---------- |
+| `lesson.plan` | `runLessonPipeline` with `stopAfter: "planned"` — check-input, Plan, Verify awaited; without `stopAfter` the whole pipeline | ADR 0029 items 1–2 |
+| `lesson.generate` | `runLessonPipeline` resumed at `planned` (`resumeFrom`) — Generate (slides only), Illustrate, Evaluate, Repair | ADR 0029 item 1 |
+| `lesson.worksheet` | `src/worksheet/` (TEACH-14) — frame, fill, check; no model Evaluate call by default | ADR 0030 |
+| `lesson.cascade`, `lesson.regenerate` | the proposal stages | ADR 0025 §18 |
+| — (`POST /briefs/parse` in `apps/api`) | `parse-brief.ts` (TEACH-16) | ADR 0029 item 13 |
+
+The lesson pipeline no longer writes or reads a worksheet (ADR 0030 item 2); do not add
+worksheet work back into `stages/generate.ts`.
+
 ## Skills to load (in `./.agents/skills/`)
 
 | Skill | Load when… |

@@ -1,6 +1,6 @@
 # 0025 — Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair
 
-- Status: Accepted
+- Status: Accepted (amended 2026-09-16 by ADRs 0029 and 0030)
 - Date: 2026-09-06
 - Related PRD decisions: F06 (SCOPE Now 5, 6, 7, 9, 10; P2, P4, P7; D-007, D-013, D-017; A2–A5,
   A8), F03 A7 (`Lesson.sources`), F05 A7 (`curriculumRef`), F07 item 1 (`authoredBy`,
@@ -1121,3 +1121,33 @@ KS4 English literature, KS5 history), nine of them Year 7+, and the results file
 rubric judge is pinned separately — `AI_MODEL_JUDGE`, the `standard` id by default — through its
 own `CreatedAi`, so it is never the model under test. Whether to set the year (and at which year)
 is the founder's call from the A (unset) vs D (`7`) run recorded on the ticket.
+
+## Amendment (2026-09-16, ADR 0029 and ADR 0030 — confirmed plan, independent worksheet)
+
+ADR 0029 (plan confirmation) and ADR 0030 (the worksheet job) change these items; read them for
+the reasoning.
+
+- §4 (ADR 0030): the worksheet is no longer created by the lesson pipeline. `lesson.worksheet` has
+  its own row, lock and budget; the link is `Worksheet.lessonId`, promoted to
+  `documents.lesson_id` when uuid-shaped. `Lesson.artefacts.worksheetId` is read-only legacy and
+  no longer written. Several worksheets per lesson, one worksheet job at a time.
+- §5 (ADR 0029): two jobs, one pipeline. `lesson.plan` stops at `planned` when its payload has
+  `stopAfter: "planned"`; `lesson.generate` resumes from `planned` through the same
+  `runLessonPipeline` and `resumeFrom` guard. The lock crosses one boundary, through the API, in
+  a compare-and-set on `Lesson.plan.revision`, so this item's objection to a job chain does not
+  apply (ADR 0029 item 6).
+- §7 and the TEACH-233 amendment (ADR 0029): with `stopAfter`, Plan awaits Verify before the
+  `planned` checkpoint. Progress events carry `stage`.
+- §8 (ADR 0030): worksheet blocks are a recipe frame plus a model fill of the placeholder slots.
+- §9 (ADR 0030): the worksheet recipes, `suggestRecipe` and `estimateMinutes` move from
+  `@tj/editor` to `@tj/slides`, which keeps its three dependencies.
+- §10 (ADR 0030): the lesson pipeline calls `checkLesson` without a worksheet; the worksheet half
+  runs in the worksheet job.
+- §11, §12 (ADR 0030): Evaluate and Repair in the lesson pipeline no longer read or repair a
+  worksheet. The worksheet gets deterministic checks and one repair, and no model Evaluate call by
+  default (Omer to confirm).
+- §15 (ADR 0030): `AI_WORKSHEET_COST_CAP_USD` (default `0.10`) caps each worksheet job,
+  separately from the lesson's cap.
+- §22 (ADR 0029, ADR 0030): `lesson-plan.integration.test.ts` asserts "stops at planned; generate
+  completes the slides" instead of the worksheet row; `lesson-generate` and `lesson-worksheet`
+  integration tests are added beside it.

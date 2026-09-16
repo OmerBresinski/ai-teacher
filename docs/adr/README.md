@@ -17,7 +17,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0009 | Tailwind + shadcn/ui as the design-system base     | Accepted (amended 2026-09-05) |
 | 0010 | Hosting: Vercel (web) + Railway (api, worker, PG)  | Accepted |
 | 0011 | Vercel Blob for object storage                     | Superseded by 0026 (2026-09-07) |
-| 0012 | Server-sent events for generation progress         | Accepted (amended 2026-09-06) |
+| 0012 | Server-sent events for generation progress         | Accepted (amended 2026-09-06, 2026-09-16) |
 | 0013 | Monorepo layout and @tj/* package scope            | Accepted (amended 2026-09-06, 2026-09-12) |
 | 0014 | Testing: bun test, Playwright (Vitest retired)     | Accepted |
 | 0015 | Env validation, logging, commit conventions        | Accepted |
@@ -29,11 +29,13 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0021 | Tie-in document contract: TeachDeck schemas in @tj/domain | Accepted (amended 2026-09-06) |
 | 0022 | @tj/editor: package boundary, kit rule, state model and fonts | Accepted (amended 2026-09-13) |
 | 0023 | Export pipeline: client-side exporters, SPA print routes, JSON import | Accepted (amended 2026-09-12) |
-| 0024 | Document persistence and the lesson brief: `documents` table, document API, `POST /lessons` | Accepted (amended 2026-09-06, 2026-09-12) |
-| 0025 | Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair | Accepted (amended 2026-09-12) |
+| 0024 | Document persistence and the lesson brief: `documents` table, document API, `POST /lessons` | Accepted (amended 2026-09-06, 2026-09-12, 2026-09-16) |
+| 0025 | Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair | Accepted (amended 2026-09-12, 2026-09-16) |
 | 0026 | Railway Bucket (S3-compatible) for object storage  | Accepted (amended 2026-09-12) |
-| 0027 | Upload as input: `POST /sources`, `@tj/extract`, `sources` table, `SourceLoader` | Accepted |
+| 0027 | Upload as input: `POST /sources`, `@tj/extract`, `sources` table, `SourceLoader` | Accepted (amended 2026-09-16) |
 | 0028 | GSAP for the character scenes, click-loaded                        | Accepted |
+| 0029 | Plan confirmation: the plan job, the generate job and plan revisions | Accepted |
+| 0030 | The worksheet is an independent job                               | Accepted |
 
 Template: `0000-template.md`.
 
@@ -65,3 +67,8 @@ Template: `0000-template.md`.
 - 2026-09-12 — ADR 0013: `packages/extract` (`@tj/extract`) added to the package map (ADR 0027 §2). See the fifth amendment in `0013-monorepo-layout.md`.
 - 2026-09-12 — ADR 0026: documents store pictures as the api path `/files/<key>`; the origin is resolved at render (`ImageOriginProvider`) and export (`resolveImageSrc`), `API_PUBLIC_BASE_URL` removed, migration 0006 rewrites stored absolute URLs (TEACH-275). See the amendment in `0026-railway-bucket-storage.md`.
 - 2026-09-13 — ADR 0022 §8, §9: route chunk ceilings pinned from measurement + 20% in `scripts/check-bundle-budget.ts` (lesson editor 241 KB, present 109 KB, view 91 KB, lesson print 51 KB, worksheet editor 187 KB, worksheet print 36 KB); the catalogue gap analysis and handoff e2e delivered (TEACH-113). See the fourth amendment in `0022-editor-package-boundary-and-state.md`.
+- 2026-09-16 — ADR 0025 §4, §5, §7, §8, §9, §10–§12, §15, §22: the lesson pipeline splits into `lesson.plan` (stops at `planned`, Verify awaited) and `lesson.generate` behind a plan revision compare-and-set (ADR 0029); the worksheet becomes the independent `lesson.worksheet` job with its own row, lock and budget, linked by `documents.lesson_id`, and the recipes move to `@tj/slides` (ADR 0030). See the amendment in `0025-lesson-generation-pipeline.md`.
+- 2026-09-16 — ADR 0024 §6, §18: `POST /lessons` writes `Lesson.plan`, takes `skipPlanning` and `requestId`, and returns `revision`; the lesson lock is released at `planned` and retaken by `POST /lessons/:id/generate`; a worksheet row has its own lock (ADRs 0029, 0030). See the amendment in `0024-document-persistence-and-lesson-brief.md`.
+- 2026-09-16 — ADR 0012: `progress` gains `stage` (ADR 0029 item 14). See the amendment in `0012-sse-progress.md`.
+- 2026-09-16 — ADR 0027 §5: sources may change after creation through `POST /lessons/:id/plan`, released one by one with `unbindSource`; still at most three per lesson (ADR 0029 item 12). See the amendment in `0027-upload-as-input.md`.
+- 2026-09-16 — ADR 0015 (by reference, file unchanged): the new routes and jobs log ids, revisions, counts and booleans only; `POST /briefs/parse` logs `{ rules, model, dropped, ms }` (ADR 0029 item 15).
