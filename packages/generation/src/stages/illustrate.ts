@@ -214,7 +214,7 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     };
     // After the persist: a lost lock must propagate, not read as a placed picture.
     const { updatedAt } = await deps.persist(snapshot());
-    await deps.onProgress(PROGRESS_ILLUSTRATED, "Pictures placed", updatedAt);
+    await deps.onProgress(PROGRESS_ILLUSTRATED, "Pictures placed", "illustrate", updatedAt);
     counts.placed += 1;
   }
   // Warnings (and the judge's usage) with no placement still have to reach the database;

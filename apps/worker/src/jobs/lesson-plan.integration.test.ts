@@ -8,7 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { createDocument, forWorkspace, getDocument, listJobEvents } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
-import { lessonFromBrief, parseLesson, parseStoredWorksheet } from "@tj/domain/documents";
+import { lessonFromBrief, parseLesson } from "@tj/domain/documents";
 import { FIXTURES, scriptedPipelineAi } from "@tj/generation/testing";
 import {
   type BossJob,
@@ -138,16 +138,10 @@ describeDb("lesson.plan on pg-boss", () => {
     expect(stored.facts).toBeDefined();
     expect(stored.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(stored.generation?.stage).toBe("repaired");
+    // Slides only (ADR 0030 item 2): no worksheet row is written by the lesson job.
     const worksheetId = stored.artefacts?.worksheetId ?? "";
     expect(worksheetId).not.toBe("");
-
-    // The worksheet row, linked both ways.
-    const worksheetRow = await getDocument(ws, worksheetId);
-    expect(worksheetRow?.kind).toBe("worksheet");
-    expect(worksheetRow?.generatingJobId).toBeNull();
-    const worksheet = parseStoredWorksheet(worksheetRow?.body);
-    expect(worksheet.lessonId).toBe(lessonId);
-    expect(worksheet.blocks.length).toBeGreaterThanOrEqual(4);
+    expect(await getDocument(ws, worksheetId)).toBeNull();
 
     // Events: queued, started, progress…, completed; slide progress stamped and monotonic.
     const events = await eventsFor(jobId);

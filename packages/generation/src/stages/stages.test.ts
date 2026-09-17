@@ -17,11 +17,19 @@ import {
   routed,
   sampleBriefLesson,
 } from "../testing";
+import { StageFailure } from "../types";
 import { evaluate, verbFitApplies } from "./evaluate";
-import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES, stemPlan } from "./generate";
+import { GENERATE_CONCURRENCY, generate, materialiseWorksheet, PLANNED_SLIDES } from "./generate";
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
 import { MAX_TARGETS, repair, repairTargets } from "./repair";
-import { BUDGET_FINDING, blockText, slideText, specFieldsCover, specFieldsOf } from "./shared";
+import {
+  audienceOf,
+  BUDGET_FINDING,
+  blockText,
+  slideText,
+  specFieldsCover,
+  specFieldsOf,
+} from "./shared";
 
 const json = (v: unknown) => JSON.stringify(v);
 const usage = { inputTokens: 1000, outputTokens: 400 };
@@ -40,14 +48,30 @@ async function planVerified(...args: Parameters<typeof plan>) {
   const verify = await state.pendingVerify;
   return { state, verify };
 }
-/** The slide answers for the fixture outline, then the worksheet — what `generate` consumes. */
+/** The slide answers for the fixture outline — what `generate` consumes (slides only, ADR 0030). */
 const generateScript = () =>
-  routed([
-    ...FIXTURES.planSkeleton.outline
-      .slice(PLANNED_SLIDES)
-      .map((e) => json(FIXTURES.slides[e.kind])),
-    json(FIXTURES.worksheet),
-  ]);
+  routed(
+    FIXTURES.planSkeleton.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
+  );
+/**
+ * A lesson generated before ADR 0030 carried a worksheet; Evaluate and Repair still take one on
+ * the state (their signatures are unchanged), so the block branch is exercised with a sheet
+ * materialised from the fixture spec, as the old Generate did.
+ */
+const LEGACY_WORKSHEET_ID = "0192f7a0-0000-7000-8000-0000000000ee";
+const withLegacyWorksheet = <S extends { lesson: Parameters<typeof materialiseWorksheet>[2] }>(
+  state: S,
+  deps: Parameters<typeof materialiseWorksheet>[4],
+) => ({
+  ...state,
+  worksheet: materialiseWorksheet(
+    FIXTURES.worksheet,
+    "fake",
+    state.lesson,
+    LEGACY_WORKSHEET_ID,
+    deps,
+  ),
+});
 
 describe("plan", () => {
   test("title slide first, then the skeleton, then the facts: three persists, one checkpoint; Verify is started, not awaited (TEACH-233)", async () => {
@@ -67,6 +91,7 @@ describe("plan", () => {
     expect(deps.progress[0]).toEqual({
       percent: 2,
       message: "Starting",
+      stage: "plan",
       documentUpdatedAt: first?.updatedAt,
     });
     expect(first?.lesson.slides[0]?.elements.every((e) => e.generatedFrom?.model === "none")).toBe(
@@ -95,6 +120,7 @@ describe("plan", () => {
     expect(deps.progress[2]).toEqual({
       percent: 10,
       message: "Planned",
+      stage: "plan",
       documentUpdatedAt: third?.updatedAt,
     });
     expect(deps.progress).toHaveLength(3);
@@ -471,13 +497,146 @@ describe("plan", () => {
           ...FIXTURES.planSkeleton.outline
             .slice(PLANNED_SLIDES)
             .map((e) => json(FIXTURES.slides[e.kind])),
-          json(FIXTURES.worksheet),
         ]),
         usage,
       });
       await generate(resumed, { ...recordingDeps(genAi), planFrontierFromYear: 10 });
       expect(genAi.calls[0]?.context?.promptVersion).toBe(PROMPT_VERSIONS["verify-facts"]);
       expect(genAi.calls[0]?.modelClass).toBe("frontier");
+    });
+  });
+
+  describe("ADR 0029: slideCount, level and pinned objectives", () => {
+    const brief = (patch: Record<string, unknown>) =>
+      sampleBriefLesson({
+        brief: { topic: "States of matter and the particle model", durationMin: 60, ...patch },
+      });
+
+    test("row 3: slideCount 8 with a nine-entry skeleton twice — one retry whose issue text names 8, then StageFailure", async () => {
+      const nine = { ...FIXTURES.planSkeleton, outline: FIXTURES.planSkeleton.outline.slice(0, 9) };
+      const ai = createFakeAi({ script: [json(nine), json(nine)], usage });
+      const deps = recordingDeps(ai);
+      const error = await plan(initialState(brief({ slideCount: 8 })), deps).catch((e) => e);
+      expect(error).toBeInstanceOf(StageFailure);
+      expect((error as StageFailure).stage).toBe("plan");
+      expect(ai.calls).toHaveLength(2);
+      expect(ai.calls[0]?.promptText).toContain("exactly 8 slides");
+      expect(ai.calls[1]?.promptText).toContain("did not validate");
+      expect(ai.calls[1]?.promptText).toContain("exactly 8 entries");
+      expect(ai.calls[1]?.promptText).toContain("this one has 9");
+      // Only the title slide was persisted: the skeleton never landed.
+      expect(deps.persisted).toHaveLength(1);
+    });
+
+    test("row 3, the retry lands: an eight-entry answer is accepted and the lesson plans with eight outline entries", async () => {
+      const nine = { ...FIXTURES.planSkeleton, outline: FIXTURES.planSkeleton.outline.slice(0, 9) };
+      const eight = {
+        ...FIXTURES.planSkeleton,
+        outline: FIXTURES.planSkeleton.outline.slice(0, 8),
+      };
+      const facts = structuredClone(FIXTURES.planFacts);
+      facts.outlineFactRefs = facts.outlineFactRefs.filter((e) => e.index < 8);
+      const ai = createFakeAi({
+        script: [json(nine), json(eight), json(facts), json(FIXTURES.verify)],
+        usage,
+      });
+      const { state } = await planVerified(
+        initialState(brief({ slideCount: 8 })),
+        recordingDeps(ai),
+      );
+      expect(ai.calls).toHaveLength(4);
+      expect(state.lesson.facts?.outline).toHaveLength(8);
+      expect(state.lesson.generation?.stage).toBe("planned");
+    });
+
+    test("row 4: without slideCount the fixture's eleven entries plan as before", async () => {
+      const ai = createFakeAi({ script: planScript(), usage });
+      const { state } = await planVerified(initialState(brief({})), recordingDeps(ai));
+      expect(ai.calls).toHaveLength(3);
+      expect(ai.calls[0]?.promptText).not.toContain("exactly");
+      expect(state.lesson.facts?.outline).toHaveLength(10);
+    });
+
+    test('row 6: level "harder" reaches both Plan prompts beside the audience; the audience block itself is unchanged', async () => {
+      const lesson = brief({ level: "harder" });
+      const ai = createFakeAi({ script: planScript(), usage });
+      await planVerified(initialState(lesson), recordingDeps(ai));
+      const [skeletonCall, factsCall, verifyCall] = ai.calls;
+      expect(skeletonCall?.promptText).toContain("Level: harder");
+      expect(factsCall?.promptText).toContain("Level: harder");
+      expect(factsCall?.promptText).toContain('the level is "harder"');
+      expect(verifyCall?.promptText).not.toContain("harder");
+      // `Audience` is rendered into every prompt of the pipeline (and hashed), so `level` is a
+      // sibling input, not an audience field.
+      expect(audienceOf(lesson)).not.toHaveProperty("level");
+      const plain = createFakeAi({ script: planScript(), usage });
+      await planVerified(initialState(brief({})), recordingDeps(plain));
+      expect(plain.calls[0]?.promptText).not.toContain("Level:");
+    });
+
+    test("row 5: pinObjectives with three objectives over an emptied outline — the skeleton call runs with them, the facts keep their ids and text", async () => {
+      // What `applyObjectiveEdits` leaves after a remove and an add: ids o1, o3, o4.
+      const base = fullFacts();
+      const pinned = [
+        { id: "o1", text: base.objectives[0]?.text ?? "" },
+        { id: "o3", text: base.objectives[2]?.text ?? "" },
+        { id: "o4", text: "Explain why a gas fills its container" },
+      ];
+      const facts = {
+        ...base,
+        objectives: pinned,
+        outline: [],
+        keyIdeas: [],
+        vocabulary: [],
+        workedExamples: [],
+        questions: [],
+        misconceptions: [],
+      };
+      const setup = recordingDeps(createFakeAi({ script: planScript(), usage }));
+      const earlier = await planVerified(initialState(), setup);
+      const rePlan = { ...earlier.state.lesson, facts };
+      const ai = createFakeAi({ script: planScript(), usage });
+      const deps = recordingDeps(ai);
+      const { state } = await planVerified({ ...initialState(rePlan), pinObjectives: true }, deps);
+      // `existingSkeleton` found nothing to resume: the skeleton call ran, told to copy them.
+      expect(ai.calls.map((c) => c.context?.promptVersion)).toEqual([
+        PROMPT_VERSIONS["plan-skeleton"],
+        PROMPT_VERSIONS["plan-facts"],
+        PROMPT_VERSIONS["verify-facts"],
+      ]);
+      // The skeleton prompt lists them by id; the facts prompt, which refers to objectives by
+      // position, by index — with the "fixed by the teacher" heading.
+      pinned.forEach((o, i) => {
+        expect(ai.calls[0]?.promptText).toContain(`${o.id}: ${o.text}`);
+        expect(ai.calls[1]?.promptText).toContain(`${i}: ${o.text}`);
+      });
+      expect(ai.calls[1]?.promptText).toContain("fixed by the teacher");
+      expect(state.lesson.facts?.objectives).toEqual(pinned);
+      // Every reference the plan made to an objective lands on a pinned id.
+      const ids = new Set(pinned.map((o) => o.id));
+      const objectiveRefs = (state.lesson.facts?.outline ?? [])
+        .flatMap((e) => e.factRefs)
+        .filter((ref) => ref.startsWith("o"));
+      expect(objectiveRefs.length).toBeGreaterThan(0);
+      expect(objectiveRefs.every((ref) => ids.has(ref))).toBe(true);
+      expect(
+        state.lesson.facts?.questions.every((q) =>
+          (q.objectiveRefs ?? []).every((r) => ids.has(r)),
+        ),
+      ).toBe(true);
+      expect(state.lesson.slides.map((s) => s.kind)).toEqual(["title", "objectives"]);
+      expect(slideText(state.lesson.slides[1] as never)).toContain("gas fills its container");
+      expect(
+        state.lesson.slides[1]?.elements.every((e) =>
+          e.generatedFrom?.factRefs.every((r) => ids.has(r)),
+        ),
+      ).toBe(true);
+    });
+
+    test("pinObjectives on a lesson without objectives is a programming error", async () => {
+      await expect(
+        plan({ ...initialState(), pinObjectives: true }, recordingDeps(createFakeAi())),
+      ).rejects.toThrow(/no objectives/);
     });
   });
 
@@ -496,15 +655,15 @@ describe("generate", () => {
     return plan(initialState(), deps);
   }
 
-  test("one call per remaining outline entry, then the worksheet; persists after each slide", async () => {
+  test("one call per remaining outline entry, slides only; persists after each slide", async () => {
     const start = await planned();
     const slides = FIXTURES.planSkeleton.outline
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
-    const ai = createFakeAi({ script: routed([...slides, json(FIXTURES.worksheet)]), usage });
+    const ai = createFakeAi({ script: routed(slides), usage });
     const deps = recordingDeps(ai);
     const state = await generate(start, deps);
-    expect(ai.calls).toHaveLength(slides.length + 1);
+    expect(ai.calls).toHaveLength(slides.length);
     // Row 6 (TEACH-213): Generate runs on the small class at low effort.
     expect(
       ai.calls.every(
@@ -517,38 +676,39 @@ describe("generate", () => {
     expect(state.lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(deps.persisted).toHaveLength(slides.length + 1);
     expect(deps.persisted.map((p) => p.lesson.slides.length)).toEqual([
-      3, 4, 5, 6, 7, 8, 9, 10, 11, 11,
+      3, 4, 5, 6, 7, 8, 9, 10, 10,
     ]);
     // Verify announces itself inside Writing (TEACH-233), then the slides in outline order.
     expect(deps.progress.map((p) => p.message).slice(0, 3)).toEqual([
       "Checking the facts",
-      "Slide 3 of 11",
-      "Slide 4 of 11",
+      "Slide 3 of 10",
+      "Slide 4 of 10",
     ]);
     expect(deps.progress[0]?.percent).toBe(11);
-    expect(deps.progress.at(-1)).toMatchObject({ percent: 85, message: "Worksheet ready" });
+    expect(deps.progress.every((p) => p.stage === "generate")).toBe(true);
+    // The `generated` checkpoint is announced at the slides' final mark (no 85, ADR 0030 item 2).
+    expect(deps.progress.at(-1)).toEqual({
+      percent: 80,
+      message: "Slides ready",
+      stage: "generate",
+      documentUpdatedAt: deps.persisted.at(-1)?.updatedAt,
+    });
     // The stamp says Verify has run; an empty patch leaves the facts as Plan wrote them.
     expect(state.lesson.generation?.promptVersions.planned).toBe(VERIFIED_STAMP);
     expect(state.lesson.facts).toEqual(start.lesson.facts);
     expect(state.pendingVerify).toBeUndefined();
-    expect(state.worksheet).toMatchObject({
-      id: state.worksheetId,
-      lessonId: state.lesson.id,
-      includeAnswerKey: true,
-      pageSize: "A4",
-      themeId: "chalk",
-      yearGroup: "Year 8",
-      subject: "Science",
-      header: { title: FIXTURES.worksheet.title, subtitle: FIXTURES.worksheet.subtitle },
-    });
-    expect(state.worksheet?.header.criteria).toEqual(FIXTURES.worksheet.criteria);
-    expect(state.worksheet?.blocks).toHaveLength(FIXTURES.worksheet.blocks.length);
+    // Slides only (ADR 0030 item 2): no worksheet on the state, none persisted, no artefacts.
+    expect(state.worksheet).toBeUndefined();
+    expect(deps.persisted.every((p) => p.worksheet === undefined)).toBe(true);
+    expect(state.lesson.artefacts).toBeUndefined();
+    expect(
+      ai.calls.some((c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-worksheet"]),
+    ).toBe(false);
     expect(state.lesson.generation?.stage).toBe("generated");
     expect(state.lesson.generation?.promptVersions.generated).toBe(
       PROMPT_VERSIONS["generate-slide"],
     );
-    expect(state.lesson.artefacts).toEqual({ worksheetId: state.worksheetId });
-    expect(checkLesson(state.lesson, state.worksheet)).toEqual([]);
+    expect(checkLesson(state.lesson)).toEqual([]);
   });
 
   test("TEACH-263: an extra field on the first slide is stripped without retrying Generate", async () => {
@@ -558,10 +718,10 @@ describe("generate", () => {
       .map((e, i) =>
         json({ ...FIXTURES.slides[e.kind], ...(i === 0 ? { steps: ["Extra."] } : {}) }),
       );
-    const ai = createFakeAi({ script: routed([...slides, json(FIXTURES.worksheet)]), usage });
+    const ai = createFakeAi({ script: routed(slides), usage });
     const deps = recordingDeps(ai);
     const state = await generate(start, deps);
-    expect(ai.calls).toHaveLength(slides.length + 1);
+    expect(ai.calls).toHaveLength(slides.length);
     expect(ai.calls.filter((call) => call.promptText.includes('kind "starter"'))).toHaveLength(1);
     const firstSlide = SlideSchema.parse(state.lesson.slides[PLANNED_SLIDES]);
     expect(firstSlide.kind).toBe("starter");
@@ -578,12 +738,9 @@ describe("generate", () => {
       .map((e) => json(FIXTURES.slides[e.kind]));
     // A scripted reply of the wrong kind for the first slide call (outline[2] is a starter).
     const wrongKind = miss(json(FIXTURES.slides.content));
-    const ai = createFakeAi({
-      script: routed([wrongKind, ...slides, json(FIXTURES.worksheet)]),
-      usage,
-    });
+    const ai = createFakeAi({ script: routed([wrongKind, ...slides]), usage });
     const state = await generate(start, recordingDeps(ai));
-    expect(ai.calls).toHaveLength(slides.length + 2);
+    expect(ai.calls).toHaveLength(slides.length + 1);
     expect(state.lesson.slides[2]?.kind).toBe("starter");
   });
 
@@ -592,24 +749,22 @@ describe("generate", () => {
     const slides = FIXTURES.planSkeleton.outline
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
-    const ai = createFakeAi({ script: routed([...slides, json(FIXTURES.worksheet)]), usage });
-    // The batch and worksheet must each be admitted; the next reservation is refused.
-    const budget = callLimitedBudget(GENERATE_CONCURRENCY + 1);
+    const ai = createFakeAi({ script: routed(slides), usage });
+    // The first batch is admitted; the next reservation is refused.
+    const budget = callLimitedBudget(GENERATE_CONCURRENCY);
     const deps = recordingDeps(ai, { budget });
     const state = await generate(start, deps);
-    expect(ai.calls).toHaveLength(GENERATE_CONCURRENCY + 1);
+    expect(ai.calls).toHaveLength(GENERATE_CONCURRENCY);
     expect(state.lesson.slides).toHaveLength(PLANNED_SLIDES + GENERATE_CONCURRENCY);
-    // The worksheet was already in flight when the cap was hit, so it lands; nothing started after.
-    expect(state.worksheet).toBeDefined();
     expect(state.lesson.generation?.stage).toBe("generated");
     expect(state.lesson.generation?.findings).toEqual([
       expect.objectContaining({
         check: "budget",
         severity: "error",
-        message: expect.stringContaining("slide 7 of 11"),
+        message: expect.stringContaining("slide 7 of 10"),
       }),
     ]);
-    expect(deps.progress.at(-1)?.message).toBe("Worksheet ready");
+    expect(deps.progress.at(-1)).toMatchObject({ percent: 80, message: "Slides ready" });
   });
 
   test("a cancel mid-way throws without claiming `generated`; the slides written stay persisted", async () => {
@@ -617,31 +772,28 @@ describe("generate", () => {
     const slides = FIXTURES.planSkeleton.outline
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
-    const ai = createFakeAi({ script: routed([...slides, json(FIXTURES.worksheet)]), usage });
+    const ai = createFakeAi({ script: routed(slides), usage });
     const deps = recordingDeps(ai, { abortAfterPersist: 2 });
     const error = await generate(start, deps).catch((e) => e);
     expect((error as Error).name).toBe("AbortError");
-    // Nothing is written after the abort: the calls already in flight (one batch and the
-    // worksheet) finish and are dropped.
+    // Nothing is written after the abort: the calls already in flight (one batch) finish and are
+    // dropped.
     expect(deps.persisted).toHaveLength(2);
     expect(deps.persisted.at(-1)?.lesson.generation?.stage).toBe("planned");
-    expect(ai.calls.length).toBeLessThanOrEqual(GENERATE_CONCURRENCY + 1);
+    expect(ai.calls.length).toBeLessThanOrEqual(GENERATE_CONCURRENCY);
   });
 
-  test("row 1: each slide is given the stems reserved for others; the worksheet its own pool and the slides' stems", async () => {
+  test("row 1: each slide is given the stems reserved for others (the pool itself is `question-pool.test.ts`)", async () => {
     const start = await planned();
     const facts = start.lesson.facts;
     if (!facts) throw new Error("no facts");
     const slides = FIXTURES.planSkeleton.outline
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
-    const ai = createFakeAi({ script: routed([...slides, json(FIXTURES.worksheet)]), usage });
+    const ai = createFakeAi({ script: routed(slides), usage });
     await generate(start, recordingDeps(ai));
     const slideCalls = ai.calls.filter(
       (c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-slide"],
-    );
-    const worksheetCall = ai.calls.find(
-      (c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-worksheet"],
     );
     // The multiple-choice slide (outline position 7) references q1; every other question's stem
     // is reserved from it, its own is not.
@@ -652,44 +804,12 @@ describe("generate", () => {
     for (const q of facts.questions.filter((q) => q.id !== "q1" && q.use !== "any")) {
       expect(mc.promptText).toContain(`  - ${q.stem}`);
     }
-    // The worksheet sees exactly the worksheet/any pool — less any worksheet question an outline
-    // entry claims (TEACH-244) — and the slide/exit/claimed stems as reserved.
-    const claimed = new Set(facts.outline.flatMap((e) => e.factRefs));
-    for (const q of facts.questions) {
-      const owned = claimed.has(q.id) && q.use !== "any";
-      const inPool = (q.use === "worksheet" || q.use === "any") && !owned;
-      expect({
-        id: q.id,
-        inPool: worksheetCall?.promptText.includes(`${q.id}: ${q.stem}`),
-      }).toEqual({
-        id: q.id,
-        inPool,
-      });
-      const reserved = q.use === "slide" || q.use === "exit" || owned;
-      expect(worksheetCall?.promptText.includes(`  - ${q.stem}`)).toBe(reserved);
-    }
     // Filtered facts: the slide sees only what its entry references (plus misconceptions).
     expect(mc.promptText).not.toContain("Key ideas:");
     expect(mc.promptText).toContain("Misconceptions:");
   });
 
-  test("TEACH-244: stemPlan drops a worksheet question a slide claims from the sheet's pool; `any` stays", () => {
-    const facts = assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
-    const sheetQ = facts.questions.find((q) => q.use === "worksheet");
-    const anyQ = facts.questions.find((q) => q.use === "any");
-    if (!sheetQ || !anyQ) throw new Error("fixture");
-    const claim = (id: string) => ({
-      ...facts,
-      outline: facts.outline.map((e, i) => (i === 5 ? { ...e, factRefs: [...e.factRefs, id] } : e)),
-    });
-    const owned = stemPlan(claim(sheetQ.id));
-    expect(owned.pool.map((q) => q.id)).not.toContain(sheetQ.id);
-    expect(owned.reservedForWorksheet).toContain(sheetQ.stem);
-    expect(stemPlan(claim(anyQ.id)).pool.map((q) => q.id)).toContain(anyQ.id);
-    expect(stemPlan(facts).pool.map((q) => q.id)).toContain(sheetQ.id);
-  });
-
-  test("rows 2–4: slides resolving out of order are persisted in outline order, one at a time, at most four in flight; the worksheet lands only with the final write", async () => {
+  test("rows 2–4: slides resolving out of order are persisted in outline order, one at a time, at most four in flight", async () => {
     const start = await planned();
     const entries = FIXTURES.planSkeleton.outline.slice(PLANNED_SLIDES);
     let inFlight = 0;
@@ -713,13 +833,10 @@ describe("generate", () => {
         delayed(i, json(FIXTURES.slides[e.kind])),
       ]);
     });
-    // One dispatcher answers every call by what it asks for: the worksheet at once, each slide by
-    // its kind with the scripted delay.
+    // One dispatcher answers every call by what it asks for: each slide by its kind with the
+    // scripted delay.
     const ai = createFakeAi({
       fallback: (call) => {
-        if (call.context?.promptVersion === PROMPT_VERSIONS["generate-worksheet"]) {
-          return json(FIXTURES.worksheet);
-        }
         const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "";
         const reply = byKind.get(kind)?.shift();
         if (!reply) throw new Error(`no scripted reply for ${kind}`);
@@ -729,16 +846,14 @@ describe("generate", () => {
     });
     const deps = recordingDeps(ai);
     const state = await generate(start, deps);
-    expect(maxInFlight).toBeLessThanOrEqual(GENERATE_CONCURRENCY + 1);
+    expect(maxInFlight).toBeLessThanOrEqual(GENERATE_CONCURRENCY);
     const lengths = deps.persisted.map((p) => p.lesson.slides.length);
-    expect(lengths).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 11]);
-    expect(deps.progress.map((p) => p.message).slice(1, 10)).toEqual(
-      entries.map((_, i) => `Slide ${i + PLANNED_SLIDES + 1} of 11`),
+    expect(lengths).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 10]);
+    expect(deps.progress.map((p) => p.message).slice(1, 1 + entries.length)).toEqual(
+      entries.map((_, i) => `Slide ${i + PLANNED_SLIDES + 1} of 10`),
     );
-    // The worksheet is on the final write only.
-    expect(deps.persisted.slice(0, -1).every((p) => p.worksheet === undefined)).toBe(true);
-    expect(deps.persisted.at(-1)?.worksheet).toBeDefined();
-    expect(state.lesson.artefacts).toEqual({ worksheetId: state.worksheetId });
+    expect(deps.persisted.every((p) => p.worksheet === undefined)).toBe(true);
+    expect(state.lesson.artefacts).toBeUndefined();
     expect(state.lesson.slides.map((s) => s.kind)).toEqual(
       FIXTURES.planSkeleton.outline.map((e) => e.kind),
     );
@@ -807,7 +922,6 @@ describe("generate", () => {
           if (hold) await hold.wait;
           return judge;
         }
-        if (version.startsWith("generate-worksheet")) return json(FIXTURES.worksheet);
         const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "";
         const spec = FIXTURES.slides[kind as keyof typeof FIXTURES.slides];
         if (!spec) throw new Error(`no fixture for ${kind}`);
@@ -1088,9 +1202,6 @@ describe("generate", () => {
       ]);
       const ai = createFakeAi({
         fallback: (call) => {
-          if (call.context?.promptVersion === PROMPT_VERSIONS["generate-worksheet"]) {
-            return json(FIXTURES.worksheet);
-          }
           const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "";
           const spec = FIXTURES.slides[kind as keyof typeof FIXTURES.slides];
           if (!spec) throw new Error(`no fixture for ${kind}`);
@@ -1111,9 +1222,6 @@ describe("generate", () => {
       const run = generate(state, deps);
       await new Promise((r) => setTimeout(r, 5));
       expect(deps.persisted).toHaveLength(0);
-      const worksheetCallsBeforeRelease = ai.calls.filter(
-        (c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-worksheet"],
-      ).length;
       release();
       const result = await run;
       const position = (i: number) => `Slide ${i + 1} of ${facts.outline.length}`;
@@ -1138,11 +1246,6 @@ describe("generate", () => {
         },
       ]);
       expect(result.lesson.generation?.promptVersions.planned).toBe(VERIFIED_STAMP);
-      // The worksheet started after the patch: no worksheet call went out before `release()`.
-      expect(worksheetCallsBeforeRelease).toBe(0);
-      expect(
-        ai.calls.some((c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-worksheet"]),
-      ).toBe(true);
       // Every persist carried the patched facts.
       for (const p of deps.persisted) expect(p.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
     });
@@ -1176,7 +1279,6 @@ describe("generate", () => {
           ...FIXTURES.planSkeleton.outline
             .slice(PLANNED_SLIDES)
             .map((e) => json(FIXTURES.slides[e.kind])),
-          json(FIXTURES.worksheet),
         ]),
         usage,
       });
@@ -1188,7 +1290,7 @@ describe("generate", () => {
       expect(result.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
       expect(result.lesson.generation?.promptVersions.planned).toBe(VERIFIED_STAMP);
 
-      // A second resume (worksheet row lost, say) reads the stamp and asks nothing of Verify.
+      // A second resume (a retry after a partial write, say) reads the stamp and asks nothing of Verify.
       const again = createFakeAi({ script: generateScript(), usage });
       const partial = {
         ...resumed,
@@ -1207,9 +1309,9 @@ describe("generate", () => {
       const facts = fullFacts();
       const touched = facts.outline.findIndex((e) => e.factRefs.includes("v1"));
       const ai = createFakeAi({ script: generateScript(), usage });
-      // One batch's worth plus the worksheet: the first four slide calls go ahead; the vocabulary
-      // slide's second call (and every later slide) is refused.
-      const budget = callLimitedBudget(GENERATE_CONCURRENCY + 1);
+      // One batch's worth: the first four slide calls go ahead; the vocabulary slide's second
+      // call (and every later slide) is refused.
+      const budget = callLimitedBudget(GENERATE_CONCURRENCY);
       const deps = recordingDeps(ai, { budget });
       const run = generate(state, deps);
       await new Promise((r) => setTimeout(r, 5));
@@ -1218,7 +1320,6 @@ describe("generate", () => {
       expect(result.lesson.generation?.stage).toBe("generated");
       // Slides before the touched one landed; the touched one and everything after did not.
       expect(result.lesson.slides).toHaveLength(touched);
-      // The worksheet, which also waited for the patch, may be the first call the cap refused.
       expect(result.lesson.generation?.findings).toEqual([
         expect.objectContaining({ check: "fact-verify", target: { factId: "v1" } }),
         expect.objectContaining({ check: "budget" }),
@@ -1270,24 +1371,21 @@ describe("generate", () => {
       .map((e) => json(FIXTURES.slides[e.kind]));
     const full = await generate(
       start,
-      recordingDeps(createFakeAi({ script: routed([...slides, json(FIXTURES.worksheet)]), usage })),
+      recordingDeps(createFakeAi({ script: routed(slides), usage })),
     );
     // The checkpoint a retried job reads: Plan's two slides plus three generated ones.
     const partial = {
       ...start,
       lesson: { ...start.lesson, slides: full.lesson.slides.slice(0, 5) },
     };
-    const ai = createFakeAi({
-      script: routed([...slides.slice(3), json(FIXTURES.worksheet)]),
-      usage,
-    });
+    const ai = createFakeAi({ script: routed(slides.slice(3)), usage });
     const state = await generate(partial, recordingDeps(ai));
     // Row 7: the calls start at entry 5 (the sixth slide).
-    expect(ai.calls).toHaveLength(slides.length - 3 + 1);
+    expect(ai.calls).toHaveLength(slides.length - 3);
     const slideCalls = ai.calls.filter(
       (c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-slide"],
     );
-    expect(slideCalls[0]?.promptText).toContain("Slide 6 of 11");
+    expect(slideCalls[0]?.promptText).toContain("Slide 6 of 10");
     expect(state.lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(state.lesson.slides.slice(0, 5)).toEqual(full.lesson.slides.slice(0, 5));
   });
@@ -1301,7 +1399,6 @@ describe("evaluate", () => {
         ...FIXTURES.planSkeleton.outline
           .slice(PLANNED_SLIDES)
           .map((e) => json(FIXTURES.slides[e.kind])),
-        json(FIXTURES.worksheet),
       ]),
       usage,
     });
@@ -1391,7 +1488,12 @@ describe("evaluate", () => {
     expect(lines.join("\n")).not.toContain(quoted);
     expect(deps.persisted).toHaveLength(1);
     expect(deps.progress).toEqual([
-      { percent: 90, message: "Reviewed", documentUpdatedAt: deps.persisted[0]?.updatedAt },
+      {
+        percent: 90,
+        message: "Reviewed",
+        stage: "evaluate",
+        documentUpdatedAt: deps.persisted[0]?.updatedAt,
+      },
     ]);
   });
 
@@ -1505,7 +1607,7 @@ describe("evaluate", () => {
       // Any other check on the same slide stands.
       expect(verbFitApplies(finding("pitch", { slideId: id }), state)).toBe(true);
     }
-    for (const kind of ["content", "true-false", "exit-ticket"]) {
+    for (const kind of ["content", "multiple-choice", "exit-ticket"]) {
       const id = kindOf(kind);
       if (!id) throw new Error(`fixture changed: no ${kind} slide`);
       expect(verbFitApplies(finding("verb-fit", { slideId: id }), state)).toBe(true);
@@ -1536,13 +1638,15 @@ describe("repair", () => {
         json(FIXTURES.planFacts),
         json(FIXTURES.verify),
         ...skeleton.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
-        json(FIXTURES.worksheet),
       ]),
       usage,
     });
     const setupDeps = recordingDeps(setupAi);
-    const generated = await generate(await plan(initialState(lesson), setupDeps), setupDeps);
-    // Row 1: every slide call and the worksheet call carry the Apply paragraph, never Explain's.
+    const generated = withLegacyWorksheet(
+      await generate(await plan(initialState(lesson), setupDeps), setupDeps),
+      setupDeps,
+    );
+    // Row 1: every slide call carries the Apply paragraph, never Explain's.
     const writerCalls = setupAi.calls.filter((c) => c.context?.stage === "generate");
     expect(writerCalls.length).toBeGreaterThan(1);
     for (const call of writerCalls) {
@@ -1651,7 +1755,6 @@ describe("repair", () => {
         json(FIXTURES.planFacts),
         json(FIXTURES.verify),
         ...skeleton.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
-        json(FIXTURES.worksheet),
       ]),
       usage,
     });
@@ -1710,17 +1813,19 @@ describe("repair", () => {
     });
   });
 
-  test("regenerates only the targeted slide and block in place, then re-checks", async () => {
+  test("regenerates only the targeted slide and block in place, then re-checks (the block on a pre-ADR 0030 worksheet)", async () => {
     const script = [
       ...planScript(),
       ...FIXTURES.planSkeleton.outline
         .slice(PLANNED_SLIDES)
         .map((e) => json(FIXTURES.slides[e.kind])),
-      json(FIXTURES.worksheet),
     ];
     const setupAi = createFakeAi({ script: routed(script), usage });
     const setupDeps = recordingDeps(setupAi);
-    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const generated = withLegacyWorksheet(
+      await generate(await plan(initialState(), setupDeps), setupDeps),
+      setupDeps,
+    );
     const mc = generated.lesson.slides.find((s) => s.kind === "multiple-choice");
     const block = generated.worksheet?.blocks.find((b) => b.type === "question");
     if (!mc || !block || !generated.worksheet) throw new Error("fixture changed");
@@ -1810,7 +1915,12 @@ describe("repair", () => {
     expect(slidePrompt).toContain("option A");
     expect(slidePrompt).toContain("(correct)");
     expect(deps.progress).toEqual([
-      { percent: 100, message: "Done", documentUpdatedAt: deps.persisted[0]?.updatedAt },
+      {
+        percent: 100,
+        message: "Done",
+        stage: "repair",
+        documentUpdatedAt: deps.persisted[0]?.updatedAt,
+      },
     ]);
   });
 
@@ -1820,7 +1930,6 @@ describe("repair", () => {
       ...FIXTURES.planSkeleton.outline
         .slice(PLANNED_SLIDES)
         .map((e) => json(FIXTURES.slides[e.kind])),
-      json(FIXTURES.worksheet),
     ];
     const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
     const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
@@ -1888,7 +1997,6 @@ describe("repair", () => {
       ...FIXTURES.planSkeleton.outline
         .slice(PLANNED_SLIDES)
         .map((e) => json(FIXTURES.slides[e.kind])),
-      json(FIXTURES.worksheet),
     ];
     const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
     const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
@@ -1942,7 +2050,6 @@ describe("repair", () => {
       ...FIXTURES.planSkeleton.outline
         .slice(PLANNED_SLIDES)
         .map((e) => json(FIXTURES.slides[e.kind])),
-      json(FIXTURES.worksheet),
     ];
     const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
     const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
@@ -1989,7 +2096,6 @@ describe("repair", () => {
       ...FIXTURES.planSkeleton.outline
         .slice(PLANNED_SLIDES)
         .map((e) => json(FIXTURES.slides[e.kind])),
-      json(FIXTURES.worksheet),
     ];
     const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
     const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
@@ -2031,7 +2137,6 @@ describe("repair", () => {
       ...FIXTURES.planSkeleton.outline
         .slice(PLANNED_SLIDES)
         .map((e) => json(FIXTURES.slides[e.kind])),
-      json(FIXTURES.worksheet),
     ];
     const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
     const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
@@ -2078,7 +2183,6 @@ describe("specFieldsOf (TEACH-222)", () => {
           ...FIXTURES.planSkeleton.outline
             .slice(PLANNED_SLIDES)
             .map((e) => json(FIXTURES.slides[e.kind])),
-          json(FIXTURES.worksheet),
         ]),
         usage,
       }),

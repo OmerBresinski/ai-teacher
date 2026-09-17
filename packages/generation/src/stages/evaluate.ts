@@ -214,6 +214,6 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
     deps,
   );
   const { updatedAt } = await deps.persist(next, worksheet);
-  await deps.onProgress(90, "Reviewed", updatedAt);
+  await deps.onProgress(90, "Reviewed", "evaluate", updatedAt);
   return { ...state, lesson: next };
 }

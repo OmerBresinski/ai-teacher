@@ -34,6 +34,7 @@ export {
   type ProposeResult,
   proposeFor,
 } from "./stages/proposals";
+export { stemPlan } from "./stages/question-pool";
 export { MAX_TARGETS, repair, repairTargets } from "./stages/repair";
 export { audienceOf, blockText, runBounded, slideText } from "./stages/shared";
 export {
@@ -51,6 +52,7 @@ export {
   generateStep,
   lessonWorkflow,
   type PipelineInput,
+  type PipelineOptions,
   planStep,
   repairStep,
   resumeFrom,

@@ -101,7 +101,7 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
       ids: uid,
       sources: storageSourceLoader(deps.storage, workspaceId, logger),
       persist: makePersist(ws, lessonId, jobId, loaded),
-      onProgress: (percent, message, documentUpdatedAt) =>
+      onProgress: (percent, message, _stage, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt }),
       context: { lessonId, jobId },
       images: imagePlacer(deps, workspaceId),

@@ -33,7 +33,8 @@ describe("eval:schema", () => {
       expect(row.errors, row.result.id).toEqual([]);
       expect(row.result.ok).toBe(true);
       expect(row.result.slides).toBeGreaterThan(2);
-      expect(row.result.blocks).toBeGreaterThan(0);
+      // Slides only (ADR 0030 item 2): the lesson pipeline writes no worksheet.
+      expect(row.result.blocks).toBe(0);
       expect(row.result.scores?.schema).toBe(1);
       // TEACH-233 row 7: Plan's time stops at the checkpoint, Verify's own time is beside it.
       expect(row.result.planMs).not.toBeNull();

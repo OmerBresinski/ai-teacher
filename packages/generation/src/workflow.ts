@@ -21,7 +21,8 @@ import {
 
 /*
  * The in-process Mastra workflow (ADR 0025 §5, §21): five thin steps around the pure stage
- * functions — the input check (TEACH-137) and the four checkpointed stages. The state — the documents plus the worksheet row id — travels as step IO. Mastra
+ * functions — the input check (TEACH-137) and the four checkpointed stages. The state — the lesson
+ * and the run's options — travels as step IO. Mastra
  * validates step IO against Standard JSON Schema; `z.custom<PipelineState>()` declares the type
  * without re-validating a document of up to 1 MB on every hop (`parseLesson` already ran when the
  * row was read, and `persist` validates on write). `deps` ride on the `RequestContext`; they hold
@@ -34,6 +35,12 @@ export const StateSchema = z.custom<PipelineState>(() => true, { message: "pipel
 const DEPS_KEY = "deps";
 const FAILURE_KEY = "failure";
 const RESUME_KEY = "resumeFrom";
+/**
+ * The stage after which the run stops (ADR 0029 item 1): `lesson.plan` with `stopAfter:
+ * "planned"` runs the input check and Plan, and every later step returns its input untouched —
+ * read per step like `RESUME_KEY`, so the split is a flag, not a second workflow.
+ */
+const STOP_KEY = "stopAfter";
 /** Stages whose `execute` actually ran (not skipped), for the summary line. */
 const ENTERED_KEY = "entered";
 /** The last state a stage returned — the last persisted checkpoint — for the summary on failure. */
@@ -65,23 +72,33 @@ function depsOf({ requestContext, runId }: Ctx): PipelineDeps {
 /**
  * The first stage that still has to run for this lesson (ADR 0025 §5 checkpoint resume). No
  * checkpoint means nothing is certified yet, so the run starts from the input check; a lesson at
- * `planned` or later has had its brief checked and resumes after its checkpoint.
+ * `planned` or later has had its brief checked and resumes after its checkpoint. A checkpoint
+ * over facts with no outline is stale, not a resume point: a re-plan (ADR 0029 item 8, TDD §4.4)
+ * empties the outline and leaves the previous revision's `generation` on the row until Plan
+ * rewrites it, and nothing after Plan can run without an outline.
  */
 export function resumeFrom(lesson: Lesson): PipelineStageName | null {
   const done = lesson.generation?.stage;
-  if (!done) return STAGE_ORDER[0] ?? null;
+  if (!done || (lesson.facts?.outline.length ?? 0) === 0) return STAGE_ORDER[0] ?? null;
   const index = STAGE_ORDER.findIndex((stage) => STAGE_CHECKPOINT[stage] === done);
   return STAGE_ORDER[index + 1] ?? null;
 }
 
-/** Whether `stage` runs for a lesson resuming at `from`. */
-function shouldRun(stage: PipelineStageName, from: PipelineStageName | null): boolean {
+/** Whether `stage` runs for a lesson resuming at `from` and stopping after `stopAfter`. */
+function shouldRun(
+  stage: PipelineStageName,
+  from: PipelineStageName | null,
+  stopAfter: PipelineStageName | undefined,
+): boolean {
   if (from === null) return false;
-  return STAGE_ORDER.indexOf(stage) >= STAGE_ORDER.indexOf(from);
+  const at = STAGE_ORDER.indexOf(stage);
+  if (stopAfter !== undefined && at > STAGE_ORDER.indexOf(stopAfter)) return false;
+  return at >= STAGE_ORDER.indexOf(from);
 }
 
 /**
- * A step: skip when the checkpoint says this stage is done, otherwise run the stage. A thrown
+ * A step: skip when the checkpoint says this stage is done or the run stops before it, otherwise
+ * run the stage. A thrown
  * error stays in-process on the request context so `runLessonPipeline` can rethrow it to the
  * worker's retry classifier. Mastra receives only a safe sentinel: it logs step errors itself.
  */
@@ -100,7 +117,8 @@ function stageStep(
       const from = requestContext.hasRaw(RESUME_KEY)
         ? (requestContext.getRaw(RESUME_KEY) as PipelineStageName | null)
         : resumeFrom(inputData.lesson);
-      if (!shouldRun(stage, from)) return inputData;
+      const stopAfter = requestContext.getRaw(STOP_KEY) as PipelineStageName | undefined;
+      if (!shouldRun(stage, from, stopAfter)) return inputData;
       const entered = (requestContext.getRaw(ENTERED_KEY) as PipelineStageName[] | undefined) ?? [];
       requestContext.setRaw(ENTERED_KEY, [...entered, stage]);
       try {
@@ -142,10 +160,21 @@ export const lessonWorkflow = createWorkflow({
 
 export interface PipelineInput {
   lesson: Lesson;
-  /** The `documents` row id the worker minted for the worksheet (ADR 0025 §4). */
-  worksheetId: string;
-  /** The worksheet as already written, when resuming after `generated`. */
+  /** Legacy (ADR 0025 §4): the worksheet row id the worker minted; unread since ADR 0030. */
+  worksheetId?: string;
+  /** Legacy: the worksheet of a lesson generated before ADR 0030, when resuming after `generated`. */
   worksheet?: PipelineState["worksheet"];
+  /** A re-plan with the teacher's objectives pinned (ADR 0029 item 8). */
+  pinObjectives?: boolean;
+}
+
+export interface PipelineOptions {
+  /**
+   * Stop after the `planned` checkpoint (ADR 0029 items 1–2): the `lesson.plan` job's run. Plan
+   * awaits Verify before writing the checkpoint; nothing after it runs. `lesson.generate` runs the
+   * same function without the option and resumes at Generate from the checkpoint.
+   */
+  stopAfter?: "planned";
 }
 
 /**
@@ -155,16 +184,23 @@ export interface PipelineInput {
 export async function runLessonPipeline(
   input: PipelineInput,
   deps: PipelineDeps,
+  options: PipelineOptions = {},
 ): Promise<PipelineState> {
   const startedAt = Date.now();
   const from = resumeFrom(input.lesson);
   const requestContext = new RequestContext();
   requestContext.setRaw(DEPS_KEY, deps);
   requestContext.setRaw(RESUME_KEY, from);
+  // The option names a checkpoint; the steps compare stages, so the key holds the stage that
+  // writes it.
+  const stopStage = STAGE_ORDER.find((stage) => STAGE_CHECKPOINT[stage] === options.stopAfter);
+  if (stopStage !== undefined) requestContext.setRaw(STOP_KEY, stopStage);
   const state: PipelineState = {
     lesson: input.lesson,
     worksheetId: input.worksheetId,
     worksheet: input.worksheet,
+    ...(input.pinObjectives ? { pinObjectives: true } : {}),
+    ...(options.stopAfter !== undefined ? { stopAfter: options.stopAfter } : {}),
   };
   let outcome: "success" | "failed" = "failed";
   let final: PipelineState | undefined;

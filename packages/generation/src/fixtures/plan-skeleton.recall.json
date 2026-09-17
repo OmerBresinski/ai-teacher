@@ -129,7 +129,7 @@
     },
     {
       "kind": "multiple-choice",
-      "minutes": 6,
+      "minutes": 9,
       "factRefs": [
         {
           "type": "objective",
@@ -144,7 +144,7 @@
     },
     {
       "kind": "matching",
-      "minutes": 6,
+      "minutes": 8,
       "factRefs": [
         {
           "type": "objective",
@@ -154,20 +154,6 @@
       "phase": "practise",
       "brief": {
         "adds": "Matches each state to how its particles are arranged."
-      }
-    },
-    {
-      "kind": "fill-gap",
-      "minutes": 5,
-      "factRefs": [
-        {
-          "type": "objective",
-          "index": 1
-        }
-      ],
-      "phase": "practise",
-      "brief": {
-        "adds": "Pupils complete the names of the four changes of state."
       }
     },
     {

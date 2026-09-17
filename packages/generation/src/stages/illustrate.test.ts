@@ -168,7 +168,7 @@ const pick = (id: string, visible: string[] = [], count: "one" | "several" = "on
 const requery = (query: string) => JSON.stringify({ pick: null, visible: [], count: null, query });
 const NONE = JSON.stringify({ pick: null, visible: [], count: null, query: null });
 const run = (lesson: Lesson, deps: ReturnType<typeof recordingDeps>) =>
-  illustrate({ lesson, worksheetId: "w", worksheet: undefined }, deps);
+  illustrate({ lesson }, deps);
 
 describe("illustrate", () => {
   test("the judge may omit the fields it has nothing to say for (the shapes Luna sends in production)", async () => {

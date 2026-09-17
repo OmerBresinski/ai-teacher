@@ -20,19 +20,28 @@ import worksheetFillFixture from "./fixtures/worksheet-fill.json";
 import type { ParseBriefFields, WorksheetFill } from "./prompts";
 import type { ObjectiveVerb } from "./shapes";
 import type { PlanFacts, PlanSkeleton, VerifyOutput, WorksheetSpec } from "./specs";
-import { noSources, type PhotoPlacer, type PipelineDeps, type PipelineState } from "./types";
+import {
+  noSources,
+  type PhotoPlacer,
+  type PipelineDeps,
+  type PipelineStageName,
+  type PipelineState,
+} from "./types";
 
 /*
  * Test helpers for the pipeline and its consumers (ADR 0025 §22): the fixtures as typed values,
- * a scripted fake that answers check-input → Plan (skeleton, facts) → Generate×N → worksheet →
- * Evaluate → Repair in order, the
- * empty lesson `POST /lessons` creates, and a `PipelineDeps` recorder. Network-free.
+ * a scripted fake that answers check-input → Plan (skeleton, facts, verify) → Generate×N →
+ * Evaluate → Repair in order, the empty lesson `POST /lessons` creates, and a `PipelineDeps`
+ * recorder. Network-free. The worksheet fixture stays for the worksheet job (ADR 0030) and the
+ * proposal fakes; the lesson pipeline's script no longer carries it.
  */
 
 /**
  * One skeleton fixture per objective verb (TEACH-229): the same states-of-matter lesson, positions
  * 0–6 identical (title, objectives, starter, vocabulary, content, content, worked-example) so the
- * one `plan-facts.json` fits every one of them, positions 7–10 written to the verb's shape. Each
+ * one `plan-facts.json` fits every one of them, positions 7–9 written to the verb's shape — ten
+ * entries, the `DEFAULT_SLIDE_COUNT` every brief gets, since the count is a shape rule (ADR 0029
+ * item 9). Each
  * satisfies the shape of every eval brief with that verb; `eval:schema` picks by the brief's verb.
  * The Explain one satisfies all three confidences: it is also the e2e worker's script
  * (`apps/worker/src/fake-ai.ts`), and the brief screen pre-selects Explain / New to it.
@@ -61,7 +70,6 @@ export const FIXTURES = {
 
 export const SAMPLE_LESSON_ID = "0192f7a0-0000-7000-8000-000000000042";
 export const SAMPLE_JOB_ID = "0192f7a0-0000-7000-8000-0000000000aa";
-export const SAMPLE_WORKSHEET_ID = "0192f7a0-0000-7000-8000-0000000000ee";
 
 /** The lesson exactly as `POST /lessons` writes it (`lessonFromBrief`): a brief, no slides. */
 export function sampleBriefLesson(patch: Partial<Lesson> = {}): Lesson {
@@ -99,7 +107,7 @@ export const SLIDES_INDEX = CHECK_INPUT_CALLS + PLAN_CALLS;
 
 /**
  * The script for one full run on the fixture plan: 1 check-input + 3 plan (skeleton, facts, verify) +
- * 8 slides + 1 worksheet (+ one illustrate judge per image-text slide, `judges`) + 1 evaluate
+ * 8 slides (+ one illustrate judge per image-text slide, `judges`) + 1 evaluate
  * (+ repair answers when a test injects an `error` finding).
  * `overrides` replaces entries by index so a test can script a schema miss at a chosen call;
  * `checkInput` replaces the input check's answer.
@@ -113,7 +121,7 @@ export function pipelineScript(
     verify?: unknown;
     evaluate?: unknown;
     repairs?: number;
-    /** Illustrate's judge answers, one per image-text slide, between the worksheet and evaluate. */
+    /** Illustrate's judge answers, one per image-text slide, between the slides and evaluate. */
     judges?: FakeScriptEntry[];
     overrides?: Record<number, FakeScriptEntry>;
   } = {},
@@ -125,7 +133,6 @@ export function pipelineScript(
     json(FIXTURES.planFacts),
     json(options.verify ?? FIXTURES.verify),
     ...fixtureSlideScript(skeleton),
-    json(FIXTURES.worksheet),
     ...(options.judges ?? []),
     json(options.evaluate ?? { findings: [] }),
     ...Array.from({ length: options.repairs ?? 0 }, () => json(FIXTURES.repair)),
@@ -137,9 +144,9 @@ export function pipelineScript(
 
 /**
  * Route a positional script for the parallel Generate (TEACH-213). Slide calls start in outline
- * order but a retry, or the worksheet call running alongside them, moves the call order away from
- * the list order, so entries are matched rather than counted: a `generate-worksheet` call takes the
- * first pending worksheet spec (a string or `FakeReply` whose JSON has `blocks`); a
+ * order but a retry, or Verify running alongside them, moves the call order away from the list
+ * order, so entries are matched rather than counted: a `generate-worksheet-fill` call (the
+ * worksheet job, TEACH-14) takes the first pending fill answer (JSON with `slots`); a
  * `generate-slide` call for kind K takes the first pending entry that is either a scripted miss (a
  * non-JSON string, or any entry wrapped in `miss()` — consumed in list order, so a test's "bad
  * reply at slide n" lands on the next slide call) or a slide spec of kind K; every other call,
@@ -175,9 +182,6 @@ export function routed(
     // The fill call (ADR 0030 item 3) answers per slot; it must not take a whole-sheet spec.
     if (version.startsWith("generate-worksheet-fill")) {
       return takeAt(pending.findIndex((e) => Array.isArray(parsed(e)?.slots)));
-    }
-    if (version.startsWith("generate-worksheet")) {
-      return takeAt(pending.findIndex((e) => Array.isArray(parsed(e)?.blocks)));
     }
     // The photo judge runs inside Generate alongside the slide calls (TEACH-220), so its reply is
     // found by shape too, not by position.
@@ -247,7 +251,12 @@ export function scriptedPipelineAi(
 export interface RecordedDeps extends PipelineDeps {
   ai: FakeAi;
   persisted: { lesson: Lesson; worksheet: Worksheet | undefined; updatedAt: string }[];
-  progress: { percent: number; message: string; documentUpdatedAt: string | undefined }[];
+  progress: {
+    percent: number;
+    message: string;
+    stage: PipelineStageName;
+    documentUpdatedAt: string | undefined;
+  }[];
   abort: AbortController;
 }
 
@@ -301,8 +310,8 @@ export function recordingDeps(
       }
       return { updatedAt };
     },
-    onProgress: async (percent, message, documentUpdatedAt) => {
-      progress.push({ percent, message, documentUpdatedAt });
+    onProgress: async (percent, message, stage, documentUpdatedAt) => {
+      progress.push({ percent, message, stage, documentUpdatedAt });
     },
     context: { lessonId: SAMPLE_LESSON_ID, jobId: SAMPLE_JOB_ID },
     images: options.images,
@@ -313,7 +322,7 @@ export function recordingDeps(
 }
 
 export function initialState(lesson: Lesson = sampleBriefLesson()): PipelineState {
-  return { lesson, worksheetId: SAMPLE_WORKSHEET_ID };
+  return { lesson };
 }
 
 /** A pino logger writing JSON lines into memory, so a test can assert what was — and was not — logged. */

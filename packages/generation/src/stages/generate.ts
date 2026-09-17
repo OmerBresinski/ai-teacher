@@ -1,5 +1,4 @@
 import type {
-  FactQuestion,
   Finding,
   Lesson,
   LessonFacts,
@@ -25,12 +24,7 @@ import {
   type SlidePhoto,
   verifyFactsPrompt,
 } from "../prompts";
-import {
-  verifiableArrayOf,
-  type WorksheetSpec,
-  WorksheetSpecSchema,
-  worksheetSpecSchemaFor,
-} from "../specs";
+import { verifiableArrayOf, type WorksheetSpec } from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
 import {
   busyFinding,
@@ -41,6 +35,7 @@ import {
   pickPhoto,
   withPhoto,
 } from "./illustrate";
+import { stemPlan } from "./question-pool";
 import {
   audienceOf,
   BUDGET_FINDING,
@@ -56,19 +51,21 @@ import { runVerify } from "./verify";
  * Generate (ADR 0025 §4, §7, §8, §15; Generation quality §3, TEACH-213): one `small` call per
  * outline entry after the two Plan made, run four at a time from the plan's per-slide briefs —
  * each slide is given what it adds, what its neighbours add, the facts it references and the stems
- * reserved for others, so it needs nothing from the slide before it — and persisted **in outline
- * order** as each lands, so the read-only editor still fills in one by one. The worksheet call
- * runs alongside the slides from its own question pool. Cancel is checked before every call; a
- * budget stop lets in-flight calls finish, starts no new ones, keeps what was written, records a
- * `budget` finding and moves on to `generated`. An answer accepted with editorial misses
- * (TEACH-257) is materialised like any other; each miss is a `spec-rule` error on the slide or
- * block it became, which Repair rewrites.
+ * reserved for others (`stemPlan`, `question-pool.ts`), so it needs nothing from the slide before
+ * it — and persisted **in outline order** as each lands, so the read-only editor still fills in
+ * one by one. Slides only (ADR 0030 item 2): the worksheet is its own job on its own row and
+ * budget, so nothing here writes one and `artefacts.worksheetId` is no longer written. Cancel is
+ * checked before every call; a budget stop lets in-flight calls finish, starts no new ones, keeps
+ * what was written, records a `budget` finding and moves on to `generated`. An answer accepted
+ * with editorial misses (TEACH-257) is materialised like any other; each miss is a `spec-rule`
+ * error on the slide it became, which Repair rewrites.
  *
  * Verify overlaps the first batch (TEACH-233): Plan hands over the running call as
  * `state.pendingVerify`; the first slides are written from the unverified facts, every persist
- * waits for the patch, a slide built from a corrected fact is written again, and the worksheet
- * starts once the patch has landed — so the `generated` checkpoint is still built from verified
- * facts, and `promptVersions.planned` gains `verify-facts` to say so.
+ * waits for the patch, and a slide built from a corrected fact is written again — so the
+ * `generated` checkpoint is still built from verified facts, and `promptVersions.planned` gains
+ * `verify-facts` to say so. A run that stopped at `planned` (ADR 0029 item 2) arrives with the
+ * stamp already on the lesson and no promise, so Verify is never run twice.
  */
 
 /** The number of slides Plan materialises itself (`title`, `objectives`). */
@@ -78,13 +75,14 @@ export const PLANNED_SLIDES = 2;
 export const GENERATE_CONCURRENCY = 4;
 
 /**
- * Progress runs from 10 (planned) to 80 (all slides) then 85 (worksheet); 11 "Checking the facts"
- * is Verify announcing itself inside Writing (TEACH-233) — the strip folds it into that stage.
+ * Progress runs from 10 (planned) to 80 (all slides, then the `generated` checkpoint at the same
+ * mark); 11 "Checking the facts" is Verify announcing itself inside Writing (TEACH-233) — the
+ * strip folds it into that stage. The 85 "Worksheet ready" event is gone with the worksheet.
  */
 const PROGRESS_VERIFYING = 11;
 const PROGRESS_SLIDES_FROM = 10;
 const PROGRESS_SLIDES_SPAN = 70;
-const PROGRESS_WORKSHEET = 85;
+const PROGRESS_GENERATED = PROGRESS_SLIDES_FROM + PROGRESS_SLIDES_SPAN;
 
 export { BUDGET_FINDING };
 
@@ -151,7 +149,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       })
     : Promise.resolve();
   if (pendingVerify) {
-    await deps.onProgress(PROGRESS_VERIFYING, "Checking the facts");
+    await deps.onProgress(PROGRESS_VERIFYING, "Checking the facts", "generate");
   }
   if (resumedVerify) await verified;
 
@@ -295,68 +293,17 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       await deps.onProgress(
         Math.round(PROGRESS_SLIDES_FROM + (PROGRESS_SLIDES_SPAN * (i + 1)) / total),
         `Slide ${i + 1} of ${total}`,
+        "generate",
         updatedAt,
       );
     }
     release(i);
   };
 
-  // The worksheet references many facts, so it starts once Verify has settled rather than being
-  // regenerated (TEACH-233).
-  const worksheetWork = async (): Promise<Worksheet | undefined> => {
-    if (state.worksheet) return state.worksheet;
-    await verified;
-    if (stopped || deps.signal.aborted) return undefined;
-    try {
-      const call = await callStructured({
-        deps,
-        stage: "generate",
-        cls: "small",
-        effort: "low",
-        prompt: generateWorksheetPrompt,
-        input: {
-          objectives: facts.objectives.map((o) => ({ id: o.id, text: o.text })),
-          shape,
-          keyIdeas: facts.keyIdeas ?? [],
-          misconceptions: facts.misconceptions,
-          pool: stems.pool,
-          reservedStems: stems.reservedForWorksheet,
-          pitch: facts.pitch,
-          audience,
-          lessonTitle: lesson.title,
-        },
-        schema: WorksheetSpecSchema,
-        soft: worksheetSpecSchemaFor({ soft: true }),
-        maxOutputTokens: MAX_OUTPUT_TOKENS.worksheet,
-      });
-      const sheet = materialiseWorksheet(
-        call.output,
-        call.modelId,
-        lesson,
-        state.worksheetId,
-        deps,
-      );
-      for (const miss of call.editorialMisses) findings.push(worksheetSpecRuleFinding(miss, sheet));
-      return sheet;
-    } catch (error) {
-      if (error instanceof BudgetExceeded) {
-        if (!stopped) stopped = BUDGET_FINDING(error.by, "the worksheet");
-        return undefined;
-      }
-      throw error;
-    }
-  };
-
   throwIfAborted(deps.signal);
-  // Every worker settles before the stage fails: a rejection must not leave the others writing or
-  // charging the budget after the job has recorded the failure.
-  const settled = await Promise.allSettled([
-    runBounded(indices, GENERATE_CONCURRENCY, slideWork),
-    worksheetWork(),
-  ]);
-  const rejected = settled.find((r) => r.status === "rejected");
-  if (rejected) throw rejected.reason;
-  const worksheet = settled[1].status === "fulfilled" ? settled[1].value : undefined;
+  // `runBounded` settles every worker before it rethrows: a rejection never leaves the others
+  // writing or charging the budget after the job has recorded the failure.
+  await runBounded(indices, GENERATE_CONCURRENCY, slideWork);
   // Nothing left to write still waits for the patch: the checkpoint carries verified facts.
   await verified;
 
@@ -367,7 +314,6 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   lesson = withUsage(
     {
       ...lesson,
-      artefacts: { worksheetId: state.worksheetId },
       generation: {
         ...generationOf(lesson),
         stage: "generated",
@@ -383,14 +329,10 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     },
     deps,
   );
-  const { updatedAt } = await deps.persist(lesson, worksheet);
-  await deps.onProgress(
-    PROGRESS_WORKSHEET,
-    worksheet ? "Worksheet ready" : "Slides ready",
-    updatedAt,
-  );
+  const { updatedAt } = await deps.persist(lesson);
+  await deps.onProgress(PROGRESS_GENERATED, "Slides ready", "generate", updatedAt);
   const { pendingVerify: _settled, ...rest } = state;
-  return { ...rest, lesson, worksheet };
+  return { ...rest, lesson };
 }
 
 /** Whether Generate has already applied (or recorded the outcome of) Verify for this lesson. */
@@ -436,9 +378,10 @@ function touchesCorrected(entry: OutlineEntry, slide: Slide, corrected: Set<stri
 /**
  * A worksheet's editorial miss as a finding: on the block the issue's path names (`blocks.<i>…`),
  * which Repair can rewrite, so an `error`; a miss on the sheet itself (its title, its criteria)
- * has no repair path and is a `warning`.
+ * has no repair path and is a `warning`. Unused by the lesson pipeline since ADR 0030; kept
+ * exported for the worksheet job (TEACH-14), which moves it.
  */
-function worksheetSpecRuleFinding(miss: EditorialMiss, worksheet: Worksheet): Finding {
+export function worksheetSpecRuleFinding(miss: EditorialMiss, worksheet: Worksheet): Finding {
   const [root, index] = miss.path;
   const block =
     root === "blocks" && typeof index === "number" ? worksheet.blocks[index] : undefined;
@@ -507,45 +450,10 @@ export function referencedFacts(facts: LessonFacts, entry: OutlineEntry): Lesson
 }
 
 /**
- * Who may use which question stem (Generation quality §3): a stem the plan gave to one outline
- * entry is reserved from every other slide and from the sheet; the sheet's pool is the
- * `worksheet | any` questions, and its stems are reserved from the slides. `any` is the one tag
- * that leaves a stem open to both.
+ * The worksheet document for a whole-sheet spec. Unused by the lesson pipeline since ADR 0030;
+ * kept exported for the worksheet job (TEACH-14), which moves it.
  */
-export function stemPlan(facts: LessonFacts): {
-  pool: FactQuestion[];
-  reservedFor: (index: number) => string[];
-  reservedForWorksheet: string[];
-} {
-  const byId = new Map(facts.questions.map((q) => [q.id, q]));
-  const owner = new Map<string, number>();
-  facts.outline.forEach((entry, i) => {
-    for (const ref of entry.factRefs) if (byId.has(ref) && !owner.has(ref)) owner.set(ref, i);
-  });
-  // A `worksheet` question an outline entry claims is that slide's (TEACH-244: the sheet had
-  // paraphrased one the plan gave the exit ticket); only `any` stays open to both.
-  const pool = facts.questions.filter(
-    (q) => (q.use === "worksheet" || q.use === "any") && !(owner.has(q.id) && q.use !== "any"),
-  );
-  const mine = (index: number) => new Set(facts.outline[index]?.factRefs ?? []);
-  const reservedFor = (index: number) => {
-    const own = mine(index);
-    return facts.questions
-      .filter((q) => {
-        if (own.has(q.id)) return false;
-        const o = owner.get(q.id);
-        if (o !== undefined && o !== index) return true;
-        return o === undefined && q.use === "worksheet";
-      })
-      .map((q) => q.stem);
-  };
-  const reservedForWorksheet = facts.questions
-    .filter((q) => q.use === "slide" || q.use === "exit" || (owner.has(q.id) && q.use !== "any"))
-    .map((q) => q.stem);
-  return { pool, reservedFor, reservedForWorksheet };
-}
-
-function materialiseWorksheet(
+export function materialiseWorksheet(
   spec: WorksheetSpec,
   modelId: string,
   lesson: Lesson,

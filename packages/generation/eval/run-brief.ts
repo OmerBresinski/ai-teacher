@@ -160,7 +160,7 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
   let ok = true;
   let error: string | undefined;
   try {
-    const final = await runLessonPipeline({ lesson, worksheetId: `eval-${brief.id}-ws` }, deps);
+    const final = await runLessonPipeline({ lesson }, deps);
     lesson = final.lesson;
     worksheet = final.worksheet;
   } catch (e) {

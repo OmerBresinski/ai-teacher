@@ -131,7 +131,16 @@ export interface PipelineDeps {
    * which the next `onProgress` carries so the read-only editor knows to refetch.
    */
   persist: (lesson: Lesson, worksheet?: Worksheet) => Promise<{ updatedAt: string }>;
-  onProgress: (percent: number, message: string, documentUpdatedAt?: string) => Promise<void>;
+  /**
+   * One progress event. `stage` is the pipeline stage emitting it (ADR 0029 item 14): the worker
+   * writes it as `progress.stage` so the client no longer has to read the stage off the percent.
+   */
+  onProgress: (
+    percent: number,
+    message: string,
+    stage: PipelineStageName,
+    documentUpdatedAt?: string,
+  ) => Promise<void>;
   context: PipelineContext;
   /** Pexels + bucket behind illustrate; absent → the step logs and returns the state. */
   images?: PhotoPlacer;
@@ -149,12 +158,28 @@ export interface PipelineDeps {
   imageCounts?: ImageCounts;
 }
 
-/** What flows between stages: the documents and the id the worker minted for the worksheet row. */
+/**
+ * What flows between stages: the lesson, the run's options and the in-process Verify hand-off.
+ * The pipeline writes no worksheet since ADR 0030 item 2; the two worksheet fields stay optional
+ * for a lesson generated before that (Evaluate and Repair still read the sheet when one is
+ * passed) and for the worker until TEACH-13 stops minting the row.
+ */
 export interface PipelineState {
   lesson: Lesson;
+  /** Legacy (ADR 0025 §4): the worksheet of a lesson generated before ADR 0030, when resuming. */
   worksheet?: Worksheet;
-  /** The `documents` row id the worker created for the worksheet (ADR 0025 §4). */
-  worksheetId: string;
+  /** Legacy (ADR 0025 §4): the row id the worker minted; nothing in the pipeline reads it. */
+  worksheetId?: string;
+  /**
+   * Stop after the `planned` checkpoint (ADR 0029 item 1): Plan then awaits Verify and folds
+   * its outcome into that checkpoint (item 2), and `runLessonPipeline` skips every later stage.
+   */
+  stopAfter?: "planned";
+  /**
+   * A re-plan with the teacher's objectives fixed (ADR 0029 item 8): Plan gives the skeleton
+   * call `facts.objectives` as `givenObjectives` and keeps their ids and text.
+   */
+  pinObjectives?: boolean;
   /**
    * The Verify call Plan started (TEACH-233), for Generate to await before its first persist.
    * In-process only: Mastra hands step output on by reference, so it survives the step boundary,

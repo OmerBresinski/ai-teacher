@@ -53,7 +53,8 @@ src/
   call.ts         callStructured: Output.object, one retry, budget charge, abort check
   specs.ts        PlanOutputSchema (+ assignFactIds), WorksheetSpecSchema, Evaluate/Repair outputs
   prompts/        plan, generate-slide, generate-worksheet, evaluate, repair (+ shared, index)
-  stages/         plan, generate, evaluate, repair (+ shared text projections)
+  stages/         plan, generate, evaluate, repair (+ shared text projections); question-pool
+                  (`stemPlan`, shared with the worksheet job)
   workflow.ts     lessonWorkflow, resumeFrom, runLessonPipeline
   testing.ts      fixtures as values, scripted fake, recording deps (`@tj/generation/testing`)
   shapes.ts       lessonShapeOf: the decision table by verb × confidence (data; consumed, not edited)

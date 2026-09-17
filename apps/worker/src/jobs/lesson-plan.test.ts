@@ -10,12 +10,7 @@ import {
 } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, type LessonId, newId, storageKey, type WorkspaceId } from "@tj/domain";
-import {
-  type Lesson,
-  lessonFromBrief,
-  parseLesson,
-  parseStoredWorksheet,
-} from "@tj/domain/documents";
+import { type Lesson, lessonFromBrief, parseLesson } from "@tj/domain/documents";
 import { INPUT_CHECK_MESSAGES } from "@tj/generation";
 import {
   FIXTURES,
@@ -110,7 +105,7 @@ describeDb("lesson.plan job", () => {
   const storedLesson = async (lessonId: LessonId) =>
     parseLesson((await getDocument(ws(), lessonId))?.body);
 
-  test("plans, generates, evaluates and repairs the brief; both rows unlocked; progress carries updatedAt", async () => {
+  test("plans, generates, evaluates and repairs the brief; the row is unlocked; progress carries updatedAt", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
     const ai = scriptedPipelineAi();
@@ -125,14 +120,11 @@ describeDb("lesson.plan job", () => {
     expect(lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(lesson.generation?.stage).toBe("repaired");
     expect(lesson.generation?.jobId).toBe(jobId);
+    // Slides only (ADR 0030 item 2): the pipeline writes no worksheet, so no worksheet row exists.
+    // The handler still mints `artefacts.worksheetId` for the row it expects; TEACH-13 removes that.
     const worksheetId = lesson.artefacts?.worksheetId;
     expect(worksheetId).toBeDefined();
-    const worksheetRow = await getDocument(ws(), worksheetId ?? "");
-    expect(worksheetRow?.kind).toBe("worksheet");
-    expect(worksheetRow?.generatingJobId).toBeNull();
-    const worksheet = parseStoredWorksheet(worksheetRow?.body);
-    expect(worksheet.lessonId).toBe(lessonId);
-    expect(worksheet.blocks.length).toBeGreaterThanOrEqual(4);
+    expect(await getDocument(ws(), worksheetId ?? "")).toBeNull();
 
     // One progress line per stage plus one per generated slide, each stamped with the row's clock.
     const stamped = h.calls.filter(([, , at]) => at !== undefined);
@@ -266,10 +258,10 @@ describeDb("lesson.plan job", () => {
   test("a failed Evaluate keeps the locks; the retry resumes after `generated` without re-planning", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
-    // Evaluate is the call after check + plan + 8 slides + worksheet; make it blow up as the
-    // provider. The script is routed: slide and worksheet replies are matched by shape, since
-    // Generate runs them in parallel (TEACH-213), and the throwing entry is left for Evaluate.
-    const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2 + 1;
+    // Evaluate is the call after check + plan + 9 slides; make it blow up as the provider. The
+    // script is routed: slide replies are matched by shape, since Generate runs them in parallel
+    // (TEACH-213), and the throwing entry is left for Evaluate.
+    const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2;
     const first: FakeAi = createFakeAi({
       script: routed(
         pipelineScript({
@@ -293,8 +285,6 @@ describeDb("lesson.plan job", () => {
       throw new Error("Missing priced checkpoint usage");
     expect(priorUsage.calls).toBeGreaterThan(0);
     expect((await getDocument(ws(), lessonId))?.generatingJobId).toBe(jobId);
-    const worksheetId = mid.artefacts?.worksheetId ?? "";
-    expect((await getDocument(ws(), worksheetId))?.generatingJobId).toBe(jobId);
 
     const second = createFakeAi({
       usage: { inputTokens: 1000, outputTokens: 400 },
@@ -327,45 +317,7 @@ describeDb("lesson.plan job", () => {
       .find((line) => line.msg === "generation summary");
     expect(summary).toMatchObject({ resumed: true, usagePriorUsd: priorUsage.costUsd });
     expect(done.generation?.stage).toBe("repaired");
-    expect(done.artefacts?.worksheetId).toBe(worksheetId);
     expect((await getDocument(ws(), lessonId))?.generatingJobId).toBeNull();
-    expect((await getDocument(ws(), worksheetId))?.generatingJobId).toBeNull();
-  });
-
-  test("a `generated` checkpoint whose worksheet row is missing is recreated under the same id on retry", async () => {
-    const jobId = newId<JobId>();
-    const lessonId = await briefLesson(jobId);
-    const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2 + 1;
-    const first = createFakeAi({
-      script: routed(
-        pipelineScript({
-          overrides: {
-            [evaluateIndex]: () => {
-              throw new Error("provider unreachable");
-            },
-          },
-        }),
-      ),
-    });
-    await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(first)).ctx)).rejects.toThrow();
-    const mid = await storedLesson(lessonId);
-    const worksheetId = mid.artefacts?.worksheetId ?? "";
-    expect(mid.generation?.stage).toBe("generated");
-    // The partial state the review found: checkpoint advanced, worksheet row not there.
-    expect(await deleteDocument(ws(), worksheetId)).toBe(true);
-
-    // Generate re-runs for the worksheet only (every slide is already on the row), then Evaluate.
-    const second = createFakeAi({ script: routed(pipelineScript().slice(evaluateIndex - 1)) });
-    await lessonPlanJob(ctx(jobId, lessonId, depsWith(second)).ctx);
-
-    expect(second.calls.map((c) => c.context?.stage)).toEqual(["generate", "evaluate"]);
-    const done = await storedLesson(lessonId);
-    expect(done.generation?.stage).toBe("repaired");
-    expect(done.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
-    expect(done.artefacts?.worksheetId).toBe(worksheetId);
-    const worksheetRow = await getDocument(ws(), worksheetId);
-    expect(worksheetRow?.kind).toBe("worksheet");
-    expect(worksheetRow?.generatingJobId).toBeNull();
   });
 
   test.each(["confirmed", "uncertain", "reserved"] as const)(
@@ -373,7 +325,7 @@ describeDb("lesson.plan job", () => {
     async (kind) => {
       const jobId = newId<JobId>();
       const lessonId = await briefLesson(jobId);
-      const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2 + 1;
+      const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2;
       const first = createFakeAi({
         script: routed(
           pipelineScript({

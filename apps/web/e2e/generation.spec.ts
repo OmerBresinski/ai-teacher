@@ -3,7 +3,8 @@
  * 250 ms per model answer, ADR 0025 §22). From the brief screen to `/l/$lessonId`: the generating
  * shell and its stage strip, slides arriving before the job ends (the `documentUpdatedAt`
  * refetch, §7), the editor taking over in place with no reload, the residual entry fed by the fake review's warning (§12)
- * and the Worksheet link to the generated sheet (§4). Stop is covered on a second lesson.
+ * (§4). The lesson job writes no worksheet since ADR 0030 (the sheet is its own job, TEACH-14),
+ * so the Worksheet link is no longer part of this run. Stop is covered on a second lesson.
  */
 import { expectNoSeriousA11yViolations } from "./a11y";
 import { expect, test } from "./fixtures";
@@ -11,7 +12,7 @@ import { expect, test } from "./fixtures";
 test.use({ seed: false });
 
 test.describe("lesson generation over the fake worker", () => {
-  test("brief → shell → slides arrive → editor unlocks in place with residuals and a worksheet", async ({
+  test("brief → shell → slides arrive → editor unlocks in place with residuals", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");
@@ -67,10 +68,6 @@ test.describe("lesson generation over the fake worker", () => {
     await footer.click();
     await expect(page.getByRole("list").filter({ hasText: "diagram" })).toBeVisible();
     await page.keyboard.press("Escape");
-
-    // The generated worksheet is one click away.
-    await page.getByRole("button", { name: "Worksheet" }).click();
-    await expect(page).toHaveURL(/\/w\/[0-9a-f-]{36}$/);
   });
 
   test("Stop cancels the job; the partial lesson stays with a way back", async ({

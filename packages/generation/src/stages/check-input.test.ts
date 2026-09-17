@@ -2,13 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
 import type { Finding, Lesson } from "@tj/domain/documents";
 import { PROMPT_VERSIONS } from "../prompts";
-import {
-  initialState,
-  recordingDeps,
-  SAMPLE_WORKSHEET_ID,
-  sampleBriefLesson,
-  scriptedPipelineAi,
-} from "../testing";
+import { initialState, recordingDeps, sampleBriefLesson, scriptedPipelineAi } from "../testing";
 import { INPUT_CHECK_MESSAGES, InputRejected } from "../types";
 import { resumeFrom, runLessonPipeline } from "../workflow";
 import { checkInput } from "./check-input";
@@ -31,10 +25,7 @@ describe("check-input", () => {
   test("a learner-name finding rejects the run before anything is persisted or planned", async () => {
     const ai = scriptedPipelineAi({ checkInput: LEARNER_NAME });
     const deps = recordingDeps(ai);
-    const error = await runLessonPipeline(
-      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
-      deps,
-    ).catch((e) => e);
+    const error = await runLessonPipeline({ lesson: sampleBriefLesson() }, deps).catch((e) => e);
     expect(error).toBeInstanceOf(InputRejected);
     expect((error as InputRejected).findings).toEqual(LEARNER_NAME.findings);
     // The message the worker and the job event carry is the fixed text, never the model's.
@@ -48,12 +39,9 @@ describe("check-input", () => {
   test("a clean brief goes on to Plan: one extra small call, first in the sequence", async () => {
     const ai = scriptedPipelineAi();
     const deps = recordingDeps(ai);
-    const { lesson } = await runLessonPipeline(
-      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
-      deps,
-    );
-    // 1 check-input + 3 plan (skeleton, facts, verify) + 9 slides + 1 worksheet + 1 evaluate
-    expect(ai.calls).toHaveLength(1 + 3 + 9 + 1 + 1);
+    const { lesson } = await runLessonPipeline({ lesson: sampleBriefLesson() }, deps);
+    // 1 check-input + 3 plan (skeleton, facts, verify) + 8 slides + 1 evaluate
+    expect(ai.calls).toHaveLength(1 + 3 + 8 + 1);
     expect(ai.calls[0]).toMatchObject({
       modelClass: "small",
       context: { stage: "check-input", promptVersion: PROMPT_VERSIONS["check-input"] },
@@ -64,23 +52,13 @@ describe("check-input", () => {
 
   test("a lesson resumed at `generated` skips the input check: no call", async () => {
     const first = recordingDeps(scriptedPipelineAi());
-    await runLessonPipeline(
-      { lesson: sampleBriefLesson(), worksheetId: SAMPLE_WORKSHEET_ID },
-      first,
-    );
+    await runLessonPipeline({ lesson: sampleBriefLesson() }, first);
     const generated = first.persisted.find((p) => p.lesson.generation?.stage === "generated");
     if (!generated) throw new Error("no generated checkpoint recorded");
     expect(resumeFrom(generated.lesson)).toBe("illustrate");
 
     const ai = createFakeAi({ script: [json({ findings: [] })], usage });
-    await runLessonPipeline(
-      {
-        lesson: generated.lesson,
-        worksheet: generated.worksheet,
-        worksheetId: SAMPLE_WORKSHEET_ID,
-      },
-      recordingDeps(ai),
-    );
+    await runLessonPipeline({ lesson: generated.lesson }, recordingDeps(ai));
     expect(ai.calls.map((c) => c.context?.stage)).toEqual(["evaluate"]);
   });
 
