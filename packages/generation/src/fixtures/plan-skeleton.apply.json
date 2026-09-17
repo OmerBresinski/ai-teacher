@@ -129,7 +129,7 @@
     },
     {
       "kind": "multiple-choice",
-      "minutes": 8,
+      "minutes": 12,
       "factRefs": [
         {
           "type": "objective",
@@ -144,7 +144,7 @@
     },
     {
       "kind": "matching",
-      "minutes": 8,
+      "minutes": 12,
       "factRefs": [
         {
           "type": "objective",
@@ -154,20 +154,6 @@
       "phase": "practise",
       "brief": {
         "adds": "Pupils apply the model: match each heated or cooled substance to what its particles do."
-      }
-    },
-    {
-      "kind": "fill-gap",
-      "minutes": 8,
-      "factRefs": [
-        {
-          "type": "objective",
-          "index": 2
-        }
-      ],
-      "phase": "practise",
-      "brief": {
-        "adds": "Pupils predict the change of state for three new substances."
       }
     },
     {

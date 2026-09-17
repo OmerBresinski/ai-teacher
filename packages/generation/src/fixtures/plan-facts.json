@@ -416,10 +416,6 @@
       "factRefs": [
         {
           "type": "question",
-          "index": 2
-        },
-        {
-          "type": "misconception",
           "index": 0
         }
       ]
@@ -429,21 +425,12 @@
       "factRefs": [
         {
           "type": "question",
-          "index": 0
-        }
-      ]
-    },
-    {
-      "index": 9,
-      "factRefs": [
-        {
-          "type": "question",
           "index": 3
         }
       ]
     },
     {
-      "index": 10,
+      "index": 9,
       "factRefs": [
         {
           "type": "question",

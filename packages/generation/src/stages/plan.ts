@@ -1,7 +1,7 @@
-import type { Finding, Lesson, LessonFacts, Slide } from "@tj/domain/documents";
+import type { FactId, Finding, Lesson, LessonFacts, Slide } from "@tj/domain/documents";
 import { type MaterialiseMeta, materialiseSlide } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
-import { planFactsPrompt, planSkeletonPrompt } from "../prompts";
+import { planFactsPrompt, planSkeletonPrompt, verifyFactsPrompt } from "../prompts";
 import {
   assignFactIds,
   EMPTY_PLAN_FACTS,
@@ -18,6 +18,7 @@ import {
   type PipelineState,
   SOURCE_TEXT_MAX_CHARS,
 } from "../types";
+import { joinVersions } from "./illustrate";
 import { audienceOf, BUDGET_FINDING, planClassFor, shapeOf } from "./shared";
 import { selectSourceTexts } from "./source-texts";
 import { runVerify, type VerifyResult } from "./verify";
@@ -39,6 +40,16 @@ import { runVerify, type VerifyResult } from "./verify";
  *      latency is spent alongside the first slide batch and every slide in the `generated`
  *      checkpoint is still built from verified facts. A lesson resumed at `planned` carries no
  *      promise: Generate runs Verify itself first, unless the stamp says it already has.
+ *      **When the run stops at `planned`** (`state.stopAfter`, ADR 0029 item 2) the call is
+ *      awaited here instead: the checkpoint carries the patched facts, the `fact-verify` findings
+ *      and the `+verify-facts` stamp, so the teacher reads verified facts on the plan screen and
+ *      the `lesson.generate` job that resumes from it never verifies again.
+ *
+ * The brief's `slideCount` (ADR 0029 item 9) is a shape rule of the skeleton schema — the outline
+ * has exactly that many entries — and its `level` is an input of both Plan prompts; a brief
+ * without either reads as before. With `state.pinObjectives` (item 8) the teacher's objectives
+ * are given to both calls as fixed input: the skeleton is asked to copy them, and whatever it
+ * returns, the facts keep the pinned ids and text.
  *
  * Only the third persist carries `generation`: `stage` is the checkpoint, and a retry that finds
  * a lesson without one re-runs Plan (`resumeFrom`), re-using what the earlier attempt left: the
@@ -77,7 +88,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     slides: resumed ? [title, resumed.objectivesSlide] : [title],
   };
   const first = await deps.persist(withTitle);
-  await deps.onProgress(PROGRESS_STARTING, "Starting", first.updatedAt);
+  await deps.onProgress(PROGRESS_STARTING, "Starting", "plan", first.updatedAt);
 
   // Source text (ADR 0027 §6): loaded by the worker, capped here so two Plan calls stay inside the
   // lesson budget; the log carries counts only (ADR 0015).
@@ -103,12 +114,33 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   // The class Plan's calls run on (TEACH-259): `standard` unless the host routes this year group
   // to the frontier model; Verify below is given the same class.
   const cls = planClassFor(lesson, deps);
+  // The teacher's objectives, pinned (ADR 0029 item 8): the plan screen's re-plan carries them in
+  // `facts.objectives` with an empty outline, which `existingSkeleton` does not mistake for a
+  // checkpoint, so the skeleton call runs and is told to copy them.
+  const pinned = state.pinObjectives
+    ? (lesson.facts?.objectives ?? []).map((o) => ({ id: o.id, text: o.text }))
+    : undefined;
+  if (pinned && pinned.length === 0) {
+    throw new Error("plan: pinObjectives is set but the lesson has no objectives");
+  }
   const briefInput = {
     topic: brief.topic,
     durationMin: brief.durationMin,
     shape,
     audience: audienceOf(lesson),
     sourceTexts: sourceTexts.map((s) => ({ sourceId: s.sourceId, ref: s.ref, text: s.text })),
+    // ADR 0029 item 9: both are optional prompt inputs (TEACH-67); absent, the prompts read as
+    // before. `level` sits beside the audience rather than inside it because the audience block
+    // is rendered into every prompt of the pipeline and is part of their hashed text.
+    slideCount: brief.slideCount,
+    level: brief.level,
+    givenObjectives: pinned,
+  };
+  const skeletonContext = {
+    durationMin: brief.durationMin,
+    shape,
+    slideCount: brief.slideCount,
+    objectiveCount: pinned?.length,
   };
 
   const findings: Finding[] = [];
@@ -122,7 +154,15 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     withSkeleton = { ...withTitle, facts: resumed.facts };
   } else {
     deps.logger.info(
-      { stage: "plan", call: "skeleton", cls, verb: shape.verb, confidence: shape.confidence },
+      {
+        stage: "plan",
+        call: "skeleton",
+        cls,
+        verb: shape.verb,
+        confidence: shape.confidence,
+        slideCount: brief.slideCount ?? null,
+        pinnedObjectives: pinned?.length ?? 0,
+      },
       "plan call",
     );
     const skeletonCall = await callStructured({
@@ -132,11 +172,15 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
       effort: "medium",
       prompt: planSkeletonPrompt,
       input: briefInput,
-      schema: planSkeletonSchemaFor({ durationMin: brief.durationMin, shape }),
-      soft: planSkeletonSchemaFor({ durationMin: brief.durationMin, shape }, { soft: true }),
+      schema: planSkeletonSchemaFor(skeletonContext),
+      soft: planSkeletonSchemaFor(skeletonContext, { soft: true }),
       maxOutputTokens: MAX_OUTPUT_TOKENS.planSkeleton,
     });
-    skeleton = skeletonCall.output;
+    // Pinned objectives are the teacher's words: the model was told to copy them and the schema
+    // held it to the count, so the text is taken from the brief, never from the answer.
+    skeleton = pinned
+      ? { ...skeletonCall.output, learningObjectives: pinned.map((o) => ({ text: o.text })) }
+      : skeletonCall.output;
     for (const miss of skeletonCall.editorialMisses) {
       findings.push(specRuleFinding(miss, {}, "warning"));
     }
@@ -144,7 +188,10 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     const photographable = skeleton.photographable?.yes ?? null;
     deps.logger.info({ stage: "plan", call: "skeleton", photographable }, "skeleton accepted");
     deps.imageCounts = { ...(deps.imageCounts ?? emptyImageCounts()), photographable };
-    const skeletonFacts = assignFactIds(skeleton, EMPTY_PLAN_FACTS, brief.durationMin);
+    const skeletonFacts = withPinnedIds(
+      assignFactIds(skeleton, EMPTY_PLAN_FACTS, brief.durationMin),
+      pinned,
+    );
     const objectives = materialiseObjectives(lesson, skeletonFacts, deps, {
       promptVersion: planSkeletonPrompt.version,
       model: skeletonCall.modelId,
@@ -152,7 +199,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     });
     withSkeleton = { ...withTitle, facts: skeletonFacts, slides: [title, objectives] };
     const second = await deps.persist(withSkeleton);
-    await deps.onProgress(PROGRESS_SKELETON, "Planned the lesson", second.updatedAt);
+    await deps.onProgress(PROGRESS_SKELETON, "Planned the lesson", "plan", second.updatedAt);
   }
 
   // 3. The remaining facts and which outline entry each supports; then the checkpoint.
@@ -178,7 +225,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     if (!(error instanceof BudgetExceeded)) throw error;
     findings.push(BUDGET_FINDING(error.by, "the lesson facts"));
   }
-  const merged = assignFactIds(skeleton, planFacts, brief.durationMin);
+  const merged = withPinnedIds(assignFactIds(skeleton, planFacts, brief.durationMin), pinned);
 
   // 4. Verify (Generation quality Decision 1; TEACH-212, TEACH-233): one specialist read of the
   //    merged facts. Started here, awaited by Generate before its first persist, so its latency is
@@ -189,22 +236,73 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
   const pendingVerify: Promise<VerifyResult> | undefined =
     planFacts !== EMPTY_PLAN_FACTS ? runVerify(merged, briefInput, deps, cls) : undefined;
 
+  // A run that stops here (ADR 0029 item 2) has no Generate to hand the call to: the patch lands
+  // in this checkpoint, with Verify's findings and stamp, and nothing is handed on.
+  let facts = merged;
+  let plannedVersion = PLANNED_VERSION;
+  let handOff = pendingVerify;
+  if (state.stopAfter === "planned" && pendingVerify) {
+    deps.logger.info({ stage: "plan", call: "verify", awaited: true }, "verify awaited");
+    const verified = await pendingVerify;
+    facts = verified.facts;
+    findings.push(...verified.findings);
+    plannedVersion = joinVersions(PLANNED_VERSION, verifyFactsPrompt.version);
+    handOff = undefined;
+  }
+
   const planned: Lesson = {
     ...withSkeleton,
-    facts: merged,
+    facts,
     generation: {
       jobId: deps.context.jobId,
       stage: "planned",
       startedAt,
-      promptVersions: { planned: PLANNED_VERSION },
+      promptVersions: { planned: plannedVersion },
       // The budget is per job, so its totals are the job's usage so far (every stage refreshes).
       usage: deps.budget.totals(),
       findings,
     },
   };
   const third = await deps.persist(planned);
-  await deps.onProgress(PROGRESS_PLANNED, "Planned", third.updatedAt);
-  return { ...state, lesson: planned, pendingVerify };
+  await deps.onProgress(PROGRESS_PLANNED, "Planned", "plan", third.updatedAt);
+  return { ...state, lesson: planned, pendingVerify: handOff };
+}
+
+/**
+ * The facts with the pinned objectives' own ids (ADR 0029 item 8). `assignFactIds` mints `o<n>`
+ * by position; after an add or remove the teacher's ids are not positional (`o1, o3, o4`), so
+ * every objective id — on the objectives, in each fact's `objectiveRefs` (worked examples have
+ * none) and in the outline's `factRefs` — is renamed in one pass from the minted id to the pinned
+ * id at that position.
+ */
+function withPinnedIds(
+  facts: LessonFacts,
+  pinned: { id: string; text: string }[] | undefined,
+): LessonFacts {
+  if (!pinned) return facts;
+  const renamed = new Map<FactId, FactId>();
+  facts.objectives.forEach((o, i) => {
+    const id = pinned[i]?.id;
+    if (id !== undefined && id !== o.id) renamed.set(o.id, id);
+  });
+  if (renamed.size === 0) return facts;
+  const rename = (id: FactId): FactId => renamed.get(id) ?? id;
+  const refs = <T extends { objectiveRefs?: FactId[] }>(list: T[]): T[] =>
+    list.map((fact) =>
+      fact.objectiveRefs ? { ...fact, objectiveRefs: fact.objectiveRefs.map(rename) } : fact,
+    );
+  return {
+    ...facts,
+    objectives: facts.objectives.map((o) => ({ ...o, id: rename(o.id) })),
+    ...(facts.keyIdeas ? { keyIdeas: refs(facts.keyIdeas) } : {}),
+    misconceptions: refs(facts.misconceptions),
+    vocabulary: refs(facts.vocabulary),
+    questions: refs(facts.questions),
+    outline: facts.outline.map((entry) => ({
+      ...entry,
+      factRefs: entry.factRefs.map(rename),
+    })),
+  };
 }
 
 /**
@@ -216,7 +314,8 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
  *   - exactly two slides, `title` then `objectives`, every element of slide two stamped by the
  *     current `plan-skeleton` version and authored by the model;
  *   - facts with objectives and an outline of at least two entries, every other list empty and
- *     no pitch (the facts call writes it);
+ *     no pitch (the facts call writes it) — so a pinned re-plan (ADR 0029 item 8), whose facts
+ *     hold the teacher's objectives over an emptied outline, is never mistaken for one;
  *   - every outline reference resolves to an objective (anything else is not skeleton output);
  *   - the rebuilt skeleton — briefs, phases and picture briefs included — passes
  *     `PlanSkeletonSchema` (the shape and structural rules; the brief-dependent minutes rule was

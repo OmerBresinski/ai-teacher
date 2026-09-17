@@ -10,7 +10,7 @@ import {
   recordingDeps,
   routed,
 } from "../testing";
-import { generate } from "./generate";
+import { generate, materialiseWorksheet } from "./generate";
 import { plan } from "./plan";
 import { repair } from "./repair";
 
@@ -47,14 +47,19 @@ test("a moderated Generate call fails with a metadata-only moderation log", asyn
 for (const scenario of ["slide", "block", "staged fact"] as const) {
   test(`moderated ${scenario} repair preserves the original and continues to the next target`, async () => {
     const start = await planned();
-    const generated = await generate(
-      start,
-      recordingDeps(
-        createFakeAi({
-          script: routed([...fixtureSlideScript(), json(FIXTURES.worksheet)]),
-        }),
+    const genDeps = recordingDeps(createFakeAi({ script: routed(fixtureSlideScript()) }));
+    // Repair still takes a worksheet on the state (a lesson generated before ADR 0030): the
+    // block scenario needs one, materialised from the fixture spec as the old Generate did.
+    const generated = {
+      ...(await generate(start, genDeps)),
+      worksheet: materialiseWorksheet(
+        FIXTURES.worksheet,
+        "fake",
+        start.lesson,
+        "ws-legacy",
+        genDeps,
       ),
-    );
+    };
     const vocab = generated.lesson.slides.find((s) => s.kind === "vocabulary");
     const mc = generated.lesson.slides.find((s) => s.kind === "multiple-choice");
     const block = generated.worksheet?.blocks.find((b) => b.type === "question");

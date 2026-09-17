@@ -251,7 +251,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
     deps,
   );
   const { updatedAt } = await deps.persist(next, worksheet);
-  await deps.onProgress(100, "Done", updatedAt);
+  await deps.onProgress(100, "Done", "repair", updatedAt);
   return { ...state, lesson: next, worksheet };
 }
 

@@ -12,6 +12,7 @@ import {
   LessonFactsSchema,
   QUESTION_TIERS,
   QUESTION_USES,
+  type SlideCount,
 } from "@tj/domain/documents";
 import {
   BlockSpecSchema,
@@ -254,6 +255,17 @@ export type PlanSkeletonContext = {
    * Absent, only the structural rules apply (`PlanSkeletonSchema`: tests and the resume path).
    */
   shape?: LessonShape | undefined;
+  /**
+   * The deck length the brief asked for (ADR 0029 item 9, ruling 75): the outline has exactly this
+   * many entries, title and objectives slides counted. A shape rule — one retry, then a failed
+   * call — never an editorial finding. Absent, the structural 2–16 bound alone applies.
+   */
+  slideCount?: SlideCount | undefined;
+  /**
+   * With pinned objectives (ADR 0029 item 8): exactly this many `learningObjectives`, so the
+   * outline's ordinal references land on the teacher's objectives. A shape rule as above.
+   */
+  objectiveCount?: number | undefined;
 };
 
 /**
@@ -406,6 +418,25 @@ export function planSkeletonSchemaFor(
       if (!phases.has(needed)) {
         issue(`The lesson needs at least one "${needed}" slide.`, ["outline"]);
       }
+    }
+    // The brief's slide count and the pinned objectives' count are shape (ADR 0029 items 8–9):
+    // a deck of the wrong length, or references onto objectives the teacher did not give, is not
+    // something Repair can put right, so the miss is retried and never accepted with a finding.
+    const count = context.slideCount;
+    if (count !== undefined && skeleton.outline.length !== count) {
+      ctx.addIssue({
+        code: "custom",
+        message: `The outline has exactly ${count} entries, counting the title and objectives slides; this one has ${skeleton.outline.length}.`,
+        path: ["outline"],
+      });
+    }
+    const objectives = context.objectiveCount;
+    if (objectives !== undefined && skeleton.learningObjectives.length !== objectives) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Copy the ${objectives} given objectives exactly, in the order given: ${objectives} learningObjectives, no more and no fewer; this answer has ${skeleton.learningObjectives.length}.`,
+        path: ["learningObjectives"],
+      });
     }
     if (context.shape) refineShape(skeleton, context.shape, context.durationMin, issue);
   });

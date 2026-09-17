@@ -180,7 +180,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "plan-facts": {
     version: "plan-facts.v9",
-    hash: "3d2f9cb9d40d383e43c28f7fbd6136813e1466b0aa9d51f73078ea2d34fca616",
+    hash: "c13dea5ab5e5587dd74f09e74d6c90a2081ed0804e43572ac622ab1d3a95cbd4",
   },
   "verify-facts": {
     version: "verify-facts.v1",

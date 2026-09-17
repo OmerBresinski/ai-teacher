@@ -128,22 +128,8 @@
       }
     },
     {
-      "kind": "true-false",
-      "minutes": 6,
-      "factRefs": [
-        {
-          "type": "objective",
-          "index": 0
-        }
-      ],
-      "phase": "practise",
-      "brief": {
-        "adds": "Confronts the misconception that solid particles do not move."
-      }
-    },
-    {
       "kind": "multiple-choice",
-      "minutes": 6,
+      "minutes": 9,
       "factRefs": [
         {
           "type": "objective",
@@ -152,13 +138,12 @@
       ],
       "phase": "practise",
       "brief": {
-        "adds": "Checks which state has particles furthest apart.",
-        "avoids": "Not the true-false statement again."
+        "adds": "Checks which state has particles furthest apart."
       }
     },
     {
       "kind": "open-response",
-      "minutes": 6,
+      "minutes": 9,
       "factRefs": [
         {
           "type": "objective",

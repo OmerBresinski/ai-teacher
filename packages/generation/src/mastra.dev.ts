@@ -67,8 +67,8 @@ export function devDeps(context: { lessonId: string; jobId: string }): PipelineD
       );
       return { updatedAt };
     },
-    onProgress: async (percent, message) => {
-      logger.info({ percent, message }, "studio progress");
+    onProgress: async (percent, message, stage) => {
+      logger.info({ percent, message, stage }, "studio progress");
     },
     context,
   };
@@ -86,8 +86,8 @@ export const STUDIO_PORT = Number(process.env.PORT ?? 4111);
 
 /**
  * What Studio's run form asks for: the same brief `POST /lessons` takes (`CreateLessonSchema`),
- * mapped to the pipeline state with `lessonFromBrief` — the lesson id and worksheet id are
- * minted here since nothing is persisted. The inner `lessonWorkflow` takes a whole `PipelineState`,
+ * mapped to the pipeline state with `lessonFromBrief` — the lesson id is minted here since
+ * nothing is persisted. The inner `lessonWorkflow` takes a whole `PipelineState`,
  * which is not something to type into a form.
  */
 export const StudioInputSchema = CreateLessonSchema.omit({ sourceIds: true }).extend({
@@ -113,7 +113,6 @@ export const studioLessonWorkflow = createWorkflow({
 })
   .map(async ({ inputData }) => ({
     lesson: lessonFromBrief(inputData, crypto.randomUUID(), new Date()),
-    worksheetId: crypto.randomUUID(),
   }))
   .then(lessonWorkflow)
   .commit();

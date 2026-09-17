@@ -752,28 +752,28 @@ describe("planFactsSchemaFor", () => {
 describe("assignFactIds", () => {
   test("TEACH-244: an exit question no entry claims is attached to the first check-phase slide", () => {
     const f = structuredClone(FIXTURES.planFacts);
-    // The fixture's exit-ticket entry (index 10) claims questions 7, 8 and 11 (all `exit`). Unclaim 11.
+    // The fixture's exit-ticket entry (index 9) claims questions 7, 8 and 11 (all `exit`). Unclaim 11.
     f.outlineFactRefs = f.outlineFactRefs.map((e) =>
-      e.index === 10
+      e.index === 9
         ? { ...e, factRefs: e.factRefs.filter((r) => !(r.type === "question" && r.index === 11)) }
         : e,
     );
     const facts = assignFactIds(FIXTURES.planSkeleton, f, 60);
     expect(facts.questions[11]?.use).toBe("exit");
-    expect(facts.outline[10]?.factRefs).toContain("q12");
+    expect(facts.outline[9]?.factRefs).toContain("q12");
     // Claimed elsewhere: left alone. A worksheet question is never moved.
     const claimed = structuredClone(f);
-    claimed.outlineFactRefs.push({ index: 9, factRefs: [{ type: "question", index: 11 }] });
+    claimed.outlineFactRefs.push({ index: 8, factRefs: [{ type: "question", index: 11 }] });
     const facts2 = assignFactIds(FIXTURES.planSkeleton, claimed, 60);
-    expect(facts2.outline[10]?.factRefs).not.toContain("q12");
-    expect(facts2.outline[9]?.factRefs).toContain("q12");
+    expect(facts2.outline[9]?.factRefs).not.toContain("q12");
+    expect(facts2.outline[8]?.factRefs).toContain("q12");
     // No check-phase entry: nothing added.
     const noCheck = structuredClone(FIXTURES.planSkeleton);
     noCheck.outline = noCheck.outline.map((e) =>
       e.phase === "check" ? { ...e, phase: "practise" as const } : e,
     );
     const facts3 = assignFactIds(noCheck, f, 60);
-    expect(facts3.outline[10]?.factRefs).not.toContain("q12");
+    expect(facts3.outline[9]?.factRefs).not.toContain("q12");
   });
 
   test("row 6: the fixtures merge into valid LessonFacts with k/m ids, briefs, phases and pitch", () => {
@@ -961,6 +961,72 @@ describe("WorksheetSpecSchema (TEACH-223)", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues.map((i) => i.path.join("."))).toEqual(["blocks.3.text"]);
+    }
+  });
+});
+
+describe("planSkeletonSchemaFor: slideCount and objectiveCount (ADR 0029 items 8–9)", () => {
+  const eight = () => FIXTURES.planSkeleton.outline.slice(0, 8);
+  const nine = () => FIXTURES.planSkeleton.outline.slice(0, 9);
+  const skeleton = (outline: unknown[], objectives = 3) => ({
+    learningObjectives: Array.from({ length: objectives }, (_, i) => ({ text: `Objective ${i}` })),
+    photographable: NOT_PHOTOGRAPHABLE,
+    outline,
+  });
+  const shapeIssues = (result: { success: boolean; error?: { issues: unknown[] } }) =>
+    ((result.error?.issues ?? []) as { message: string; path: PropertyKey[] }[]).filter(
+      (issue) => !isEditorialIssue(issue),
+    );
+
+  test("row 3: nine entries against slideCount 8 is a shape issue naming 8 on `outline`, in the strict and the soft schema alike", () => {
+    for (const soft of [false, true]) {
+      const result = planSkeletonSchemaFor({ durationMin: 60, slideCount: 8 }, { soft }).safeParse(
+        skeleton(nine()),
+      );
+      expect(result.success).toBe(false);
+      const issues = shapeIssues(result);
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.path).toEqual(["outline"]);
+      expect(issues[0]?.message).toContain("exactly 8");
+      expect(issues[0]?.message).toContain("this one has 9");
+    }
+  });
+
+  test("eight entries against slideCount 8 pass the count; the shape's own rules are unchanged", () => {
+    const result = planSkeletonSchemaFor({ durationMin: 60, slideCount: 8 }).safeParse(
+      skeleton(eight()),
+    );
+    expect(shapeIssues(result)).toEqual([]);
+  });
+
+  test("row 4: without slideCount the structural 2–16 bound alone applies", () => {
+    const strict = planSkeletonSchemaFor({ durationMin: 60 });
+    expect(shapeIssues(strict.safeParse(skeleton(nine())))).toEqual([]);
+    expect(shapeIssues(strict.safeParse(skeleton(eight())))).toEqual([]);
+    expect(strict.safeParse(skeleton(FIXTURES.planSkeleton.outline.slice(0, 1))).success).toBe(
+      false,
+    );
+    const seventeen = [
+      ...FIXTURES.planSkeleton.outline,
+      ...FIXTURES.planSkeleton.outline.slice(2, 9),
+    ];
+    expect(seventeen).toHaveLength(17);
+    expect(strict.safeParse(skeleton(seventeen)).success).toBe(false);
+  });
+
+  test("objectiveCount: an answer with a different number of learningObjectives than pinned is a shape issue on `learningObjectives`", () => {
+    // Every reference on the first objective, so the count is the only thing that can fail.
+    const outline = FIXTURES.planSkeleton.outline.map((e) => ({
+      ...e,
+      factRefs: e.factRefs.map((ref) => ({ ...ref, index: 0 })),
+    }));
+    for (const soft of [false, true]) {
+      const schema = planSkeletonSchemaFor({ durationMin: 60, objectiveCount: 3 }, { soft });
+      const two = shapeIssues(schema.safeParse(skeleton(outline, 2)));
+      expect(two).toHaveLength(1);
+      expect(two[0]?.path).toEqual(["learningObjectives"]);
+      expect(two[0]?.message).toContain("3 given objectives");
+      expect(shapeIssues(schema.safeParse(skeleton(FIXTURES.planSkeleton.outline, 3)))).toEqual([]);
     }
   });
 });
