@@ -17,6 +17,9 @@ type Sheet = {
 };
 
 test.describe("worksheet beside a generated lesson (API level)", () => {
+  // The paced fake writes the whole lesson (~10 s) before the sheet is requested.
+  test.setTimeout(120_000);
+
   test("POST /worksheet → framed → checked; the lesson row is untouched", async ({
     signedInPage: { page },
   }) => {
@@ -31,11 +34,15 @@ test.describe("worksheet beside a generated lesson (API level)", () => {
 
     // The whole pipeline runs over the fake; wait for the lock to clear.
     const lessonRow = async () =>
-      (await (await api.get(`${E2E_API_URL}/documents/${lessonId}`)).json()) as {
-        updatedAt: string;
-        generatingJobId: string | null;
-        body: { generation?: { stage: string }; plan?: { revision: number } };
-      };
+      (
+        (await (await api.get(`${E2E_API_URL}/documents/${lessonId}`)).json()) as {
+          document: {
+            updatedAt: string;
+            generatingJobId: string | null;
+            body: { generation?: { stage: string }; plan?: { revision: number } };
+          };
+        }
+      ).document;
     await expect
       .poll(async () => (await lessonRow()).generatingJobId, { timeout: 60_000 })
       .toBe(null);
@@ -80,9 +87,13 @@ test.describe("worksheet beside a generated lesson (API level)", () => {
     void jobId;
 
     // The sheet itself: the recipe's blocks and the fixture's three items, provenance on each.
-    const doc = (await (await api.get(`${E2E_API_URL}/documents/${worksheetId}`)).json()) as {
-      body: { lessonId: string; blocks: { type: string; generatedFrom?: unknown }[] };
-    };
+    const doc = (
+      (await (await api.get(`${E2E_API_URL}/documents/${worksheetId}`)).json()) as {
+        document: {
+          body: { lessonId: string; blocks: { type: string; generatedFrom?: unknown }[] };
+        };
+      }
+    ).document;
     expect(doc.body.lessonId).toBe(lessonId);
     expect(doc.body.blocks.map((b) => b.type)).toEqual([
       "instructions",
