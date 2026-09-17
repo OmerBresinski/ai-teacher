@@ -58,3 +58,4 @@ export {
   resumeFrom,
   runLessonPipeline,
 } from "./workflow";
+export * from "./worksheet";

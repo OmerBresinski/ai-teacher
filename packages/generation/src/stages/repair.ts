@@ -7,6 +7,7 @@ import {
   type LessonFacts,
   type Slide,
   type Worksheet,
+  type WorksheetBlock,
 } from "@tj/domain/documents";
 import {
   blockSpecSchemaFor,
@@ -17,7 +18,7 @@ import {
   slideSpecSchemaFor,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
-import { repairFactPrompt, repairPrompt } from "../prompts";
+import { type Audience, repairFactPrompt, repairPrompt, type WritingShape } from "../prompts";
 import { VERIFY_FIELDS_BY_ARRAY, verifiableArrayOf, verifyOutputSchemaFor } from "../specs";
 import {
   BudgetExceeded,
@@ -171,42 +172,16 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
       } else if (target.blockId !== undefined && worksheet) {
         const index = worksheet.blocks.findIndex((b) => b.id === target.blockId);
         const block = worksheet.blocks[index];
-        const schema = block ? blockSpecSchemaFor(block.type) : undefined;
-        if (!block || !schema) continue;
-        const soft = blockSpecSchemaFor(block.type, { soft: true });
-        const call = await callStructured({
+        if (!block) continue;
+        const result = await repairBlock(
+          { block, findings: target.findings, facts: staged, audience, lessonShape },
           deps,
-          stage: "repair",
-          cls: "small",
-          effort: "low",
-          prompt: repairPrompt,
-          input: {
-            facts: staged,
-            audience,
-            lessonShape,
-            target: {
-              kind: "block",
-              blockType: block.type,
-              blockId: block.id,
-              text: blockText(block),
-            },
-            findings: target.findings,
-            shape: `a "${block.type}" block spec`,
-          },
-          schema,
-          soft,
-          maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
-        });
+        );
+        if (!result) continue;
         commitFacts();
         repaired.add(target.key);
-        for (const miss of call.editorialMisses) {
-          extra.push(specRuleFinding(miss, { blockId: block.id }, "warning"));
-        }
-        const fresh = {
-          ...materialiseBlock(call.output, meta(call.modelId, deps), deps.ids),
-          id: block.id,
-        };
-        const blocks = worksheet.blocks.map((b, i) => (i === index ? fresh : b));
+        extra.push(...result.findings);
+        const blocks = worksheet.blocks.map((b, i) => (i === index ? result.block : b));
         worksheet = { ...worksheet, blocks } as Worksheet;
       }
     } catch (error) {
@@ -253,6 +228,57 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   const { updatedAt } = await deps.persist(next, worksheet);
   await deps.onProgress(100, "Done", "repair", updatedAt);
   return { ...state, lesson: next, worksheet };
+}
+
+/**
+ * The block branch of the repair pass, shared with the worksheet job (ADR 0030 item 3.iv): one
+ * `small` call regenerates the block's spec with the findings in context, and the block is
+ * re-materialised under its own id. `undefined` for a type the pipeline cannot generate (an image
+ * block the teacher added). An editorial miss the accepted retry still carries is a `spec-rule`
+ * warning on the block: there is no second pass.
+ */
+export async function repairBlock(
+  input: {
+    block: WorksheetBlock;
+    findings: Finding[];
+    facts: LessonFacts;
+    audience: Audience;
+    lessonShape: WritingShape;
+  },
+  deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "now" | "ids">,
+): Promise<{ block: WorksheetBlock; findings: Finding[] } | undefined> {
+  const { block, findings, facts, audience, lessonShape } = input;
+  const schema = blockSpecSchemaFor(block.type);
+  if (!schema) return undefined;
+  const call = await callStructured({
+    deps,
+    stage: "repair",
+    cls: "small",
+    effort: "low",
+    prompt: repairPrompt,
+    input: {
+      facts,
+      audience,
+      lessonShape,
+      target: {
+        kind: "block",
+        blockType: block.type,
+        blockId: block.id,
+        text: blockText(block),
+      },
+      findings,
+      shape: `a "${block.type}" block spec`,
+    },
+    schema,
+    soft: blockSpecSchemaFor(block.type, { soft: true }),
+    maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
+  });
+  return {
+    block: { ...materialiseBlock(call.output, meta(call.modelId, deps), deps.ids), id: block.id },
+    findings: call.editorialMisses.map((miss) =>
+      specRuleFinding(miss, { blockId: block.id }, "warning"),
+    ),
+  };
 }
 
 /** The fact ids the target's `fact-consistency` findings name, first-seen order, deduplicated. */

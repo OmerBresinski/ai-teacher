@@ -3,7 +3,7 @@ import { type Budget, createBudget } from "@tj/ai";
 import { createFakeAi, type FakeAi, type FakeCall, type FakeScriptEntry } from "@tj/ai/testing";
 import type { Finding, Lesson, Worksheet } from "@tj/domain/documents";
 import { parseLesson } from "@tj/domain/documents";
-import type { SlideSpec } from "@tj/slides";
+import { type MaterialiseMeta, materialiseBlock, type SlideSpec } from "@tj/slides";
 import pino, { type Logger } from "pino";
 import evaluateFixture from "./fixtures/evaluate.json";
 import parseBriefFixture from "./fixtures/parse-brief.json";
@@ -17,7 +17,7 @@ import slidesFixture from "./fixtures/slides.json";
 import verifyFixture from "./fixtures/verify.json";
 import worksheetFixture from "./fixtures/worksheet.json";
 import worksheetFillFixture from "./fixtures/worksheet-fill.json";
-import type { ParseBriefFields, WorksheetFill } from "./prompts";
+import { generateWorksheetPrompt, type ParseBriefFields, type WorksheetFill } from "./prompts";
 import type { ObjectiveVerb } from "./shapes";
 import type { PlanFacts, PlanSkeleton, VerifyOutput, WorksheetSpec } from "./specs";
 import {
@@ -59,7 +59,11 @@ export const FIXTURES = {
   planFacts: planFactsFixture as PlanFacts,
   slides: slidesFixture as Record<SlideSpec["kind"], SlideSpec>,
   worksheet: worksheetFixture as WorksheetSpec,
-  /** The fill call's answer for a two-slot frame (ADR 0030 item 3; TEACH-14). */
+  /**
+   * The fill call's answer for the knowledge-check frame built from the fixture facts (ADR 0030
+   * item 3): its one slot, at index 3, takes three multiple-choice items that practise o1, o2 and
+   * o3 from the pool (`q6`, `q13`, `q10`; easy, easy, stretch).
+   */
   worksheetFill: worksheetFillFixture as WorksheetFill,
   /** `/briefs/parse`'s model half when the rules found the year group and minutes (TEACH-16). */
   parseBrief: parseBriefFixture as ParseBriefFields,
@@ -140,6 +144,34 @@ export function pipelineScript(
   for (const [index, entry] of Object.entries(options.overrides ?? {}))
     script[Number(index)] = entry;
   return script;
+}
+
+/**
+ * The script for one `lesson.worksheet` run (ADR 0030 item 3): the fill answer, then a block
+ * repair answer per `repairs` (the first fill block as a spec; `routed` hands it to the repair
+ * call in list order). `fill` replaces the fixture answer, e.g. with a scripted miss.
+ */
+export function worksheetScript(
+  options: { fill?: FakeScriptEntry; repairs?: number } = {},
+): FakeScriptEntry[] {
+  const repair = FIXTURES.worksheetFill.slots[0]?.blocks[0];
+  return [
+    options.fill ?? json(FIXTURES.worksheetFill),
+    ...Array.from({ length: options.repairs ?? 0 }, () => json(repair)),
+  ];
+}
+
+/** A fake answering `worksheetScript`, routed like `scriptedPipelineAi`. */
+export function scriptedWorksheetAi(
+  options: Parameters<typeof worksheetScript>[0] & {
+    usage?: { inputTokens: number; outputTokens: number };
+    pace?: number;
+  } = {},
+): FakeAi {
+  return createFakeAi({
+    script: routed(worksheetScript(options), { pace: options.pace ?? 0 }),
+    usage: options.usage ?? { inputTokens: 1000, outputTokens: 400 },
+  });
 }
 
 /**
@@ -323,6 +355,53 @@ export function recordingDeps(
 
 export function initialState(lesson: Lesson = sampleBriefLesson()): PipelineState {
   return { lesson };
+}
+
+/**
+ * A worksheet written the way Generate wrote one before ADR 0030 (a whole-sheet spec, the
+ * lesson's audience, `lessonId`), for the Evaluate and Repair tests over a legacy lesson whose
+ * sheet still rides in `PipelineState.worksheet`. Test-only since TEACH-14; the worksheet job
+ * frames from a recipe (`src/worksheet/frame.ts`).
+ */
+export function legacyWorksheet(
+  spec: WorksheetSpec,
+  modelId: string,
+  lesson: Lesson,
+  worksheetId: string,
+  deps: Pick<PipelineDeps, "now" | "ids">,
+): Worksheet {
+  const at = deps.now().toISOString();
+  const blockMeta: MaterialiseMeta = {
+    promptVersion: generateWorksheetPrompt.version,
+    model: modelId,
+    at,
+  };
+  const worksheet: Worksheet = {
+    version: 1,
+    id: worksheetId,
+    title: spec.title,
+    themeId: lesson.themeId,
+    createdAt: at,
+    updatedAt: at,
+    header: {
+      showName: true,
+      showDate: true,
+      showClass: true,
+      title: spec.title,
+      subtitle: spec.subtitle,
+      criteria: spec.criteria.length > 0 ? spec.criteria.slice(0, 4) : undefined,
+    },
+    blocks: spec.blocks.map((block) => materialiseBlock(block, blockMeta, deps.ids)),
+    includeAnswerKey: true,
+    pageSize: "A4",
+    ageBand: lesson.ageBand,
+    yearGroup: lesson.yearGroup,
+    subject: lesson.subject,
+    readingLevel: lesson.readingLevel,
+    language: lesson.language,
+    lessonId: lesson.id,
+  };
+  return JSON.parse(JSON.stringify(worksheet)) as Worksheet;
 }
 
 /** A pino logger writing JSON lines into memory, so a test can assert what was — and was not — logged. */
