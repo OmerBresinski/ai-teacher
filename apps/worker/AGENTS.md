@@ -38,11 +38,14 @@ compile).
 | Job | Handler | Decided by |
 | --- | ------- | ---------- |
 | `ping`, `ai.ping` | `ping.ts`, `ai-ping.ts` | ADR 0012, 0018 (demo) |
-| `lesson.plan` | `lesson-plan.ts` — check-input and Plan; stops at `planned` when the payload has `stopAfter`, otherwise runs the whole pipeline | ADR 0025 §5, ADR 0029 |
-| `lesson.generate` | TEACH-13 (placeholder today) — Generate (slides only), Illustrate, Evaluate, Repair from `planned` | ADR 0029 |
+| `lesson.plan` | `lesson-plan.ts` — check-input and Plan; stops at `planned` when the payload has `stopAfter` (and hands the lock to `lesson.generate` when `continue_when_planned` is set), otherwise runs the whole pipeline | ADR 0025 §5, ADR 0029 |
+| `lesson.generate` | `lesson-generate.ts` — re-materialises the objectives slide, then Generate (slides only), Illustrate, Evaluate, Repair from `planned` | ADR 0029 |
 | `lesson.worksheet` | TEACH-14 (placeholder today) — frame, fill, check one worksheet on its own row, lock and budget | ADR 0030 |
 | `lesson.cascade`, `lesson.regenerate` | `lesson-cascade.ts`, `lesson-regenerate.ts` — unlocked proposal jobs | ADR 0025 §18 |
 
+- **Both lesson pipeline jobs run through `lesson-pipeline.ts` (`runLessonJob`)**: ownership and
+  revision checks, budget seeded from the recorded usage, lock kept for a pg-boss retry and
+  released otherwise.
 - **A job owns its row through the lock.** Write with `putDocumentAsJob`; `lost_lock` or
   `missing` → `NonRetryableError`, write nothing further. A plan or generate job whose payload
   `revision` is not the row's `plan.revision` refuses to start (ADR 0029 items 4–5).

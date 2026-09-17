@@ -85,6 +85,12 @@ export interface SetPlanRevisionOptions {
   jobId: JobId;
   /** The new body, from the current one. Usually bumps `plan.revision` and sets `plan.jobId`. */
   patch: (lesson: Lesson) => Lesson;
+  /**
+   * ADR 0029 item 5: a re-plan supersedes the plan job still writing the proposal. With this set,
+   * a row locked by `plan.jobId` while `plan.state` is `proposed` is taken over like an unlocked
+   * one; the old job's next `putDocumentAsJob` is `lost_lock`. Any other lock is `generating`.
+   */
+  supersedeProposal?: boolean;
 }
 
 export type WorksheetForGeneration =
@@ -366,7 +372,13 @@ export async function createDocument(
   ws: WorkspaceDb,
   kind: DocumentKind,
   body: unknown,
-  opts: { id?: string; generatingJobId?: JobId; requestId?: string } = {},
+  opts: {
+    id?: string;
+    generatingJobId?: JobId;
+    requestId?: string;
+    /** ADR 0029 item 10: carry on to `lesson.generate` when the plan job reaches `planned`. */
+    continueWhenPlanned?: boolean;
+  } = {},
 ): Promise<DocumentRow> {
   const id = opts.id ?? newId();
   const parsed = { ...parseDocumentBody(kind, body), id } as DocumentBody;
@@ -382,6 +394,7 @@ export async function createDocument(
       updatedAt: now,
       generatingJobId: opts.generatingJobId ?? null,
       requestId: opts.requestId ?? null,
+      continueWhenPlanned: opts.continueWhenPlanned ?? false,
     })
     .returning();
   const row = rows[0];
@@ -477,22 +490,27 @@ export async function putDocumentAsJob(
  * call waits and then sees the revision this one wrote. `patch` gets the parsed lesson and its
  * result goes through the same parse/`promotedColumns`/`updatedAt` path as `putDocument`, with
  * `generating_job_id = jobId`. Nothing is written on `missing` (no row, or not a lesson),
- * `generating` (already locked) or `stale`. A lesson without `plan` is revision 0, so a row
- * written before plans existed can enter the flow.
+ * `generating` (locked, and not a proposal `supersedeProposal` may take over) or `stale`. A lesson
+ * without `plan` is revision 0, so a row written before plans existed can enter the flow. The
+ * `UPDATE` repeats the lock it checked (`IS NULL`, or the superseded job's id) as its predicate.
  */
 export async function setPlanRevisionAndLock(
   ws: WorkspaceDb,
   id: string,
-  { expectedRevision, jobId, patch }: SetPlanRevisionOptions,
+  { expectedRevision, jobId, patch, supersedeProposal = false }: SetPlanRevisionOptions,
 ): Promise<SetPlanRevisionResult> {
   return ws.tx(async (scoped) => {
     const rows = await scoped.select(documents, eq(documents.id, id)).limit(1).for("update");
     const current = rows[0];
     if (current === undefined || current.kind !== "lesson") return { status: "missing" };
-    if (current.generatingJobId !== null) {
-      return { status: "generating", jobId: current.generatingJobId as JobId };
-    }
     const lesson = parseDocumentBody("lesson", current.body) as Lesson;
+    const held = current.generatingJobId as JobId | null;
+    const superseding =
+      held !== null &&
+      supersedeProposal &&
+      lesson.plan?.state === "proposed" &&
+      lesson.plan.jobId === held;
+    if (held !== null && !superseding) return { status: "generating", jobId: held };
     const revision = lesson.plan?.revision ?? 0;
     if (revision !== expectedRevision) return { status: "stale", revision };
     const parsed = parseDocumentBody("lesson", patch(lesson));
@@ -500,7 +518,13 @@ export async function setPlanRevisionAndLock(
       throw new Error(`setPlanRevisionAndLock: body.id ${parsed.id} does not match lesson ${id}`);
     }
     const written = await scoped
-      .update(documents, and(eq(documents.id, id), isNull(documents.generatingJobId)))
+      .update(
+        documents,
+        and(
+          eq(documents.id, id),
+          held === null ? isNull(documents.generatingJobId) : eq(documents.generatingJobId, held),
+        ),
+      )
       .set({
         body: parsed,
         ...promotedColumns(parsed),

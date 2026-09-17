@@ -112,6 +112,8 @@ test.describe("lesson brief", () => {
     expect((await posted).postDataJSON()).toEqual({
       brief: { topic: "the water cycle", answers: { objectiveVerb: "Explain the water cycle" } },
       themeId: "chalk",
+      // One job to the end until the plan screen ships (TEACH-13 stopgap, T7).
+      skipPlanning: true,
     });
   });
 
@@ -148,6 +150,7 @@ test.describe("lesson brief", () => {
       subject: "Science",
       yearGroup: "Year 5",
       themeId: "chalk",
+      skipPlanning: true,
     });
     const response = await request.response();
     expect(response?.status()).toBe(202);
@@ -218,6 +221,7 @@ test.describe("lesson brief", () => {
         classContext: { notes: "Lively after lunch" },
       },
       themeId: "chalk",
+      skipPlanning: true,
     });
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
   });

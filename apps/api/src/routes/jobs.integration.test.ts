@@ -6,11 +6,19 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { createDb, workspaces } from "@tj/db";
 import { withTestDb } from "@tj/db/testing";
-import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
+import {
+  JOB_PROGRESS_STAGES,
+  type JobEvent,
+  type JobId,
+  type LessonId,
+  newId,
+  type WorkspaceId,
+} from "@tj/domain";
 import {
   type BossJob,
   createBoss,
   defineJob,
+  enqueue,
   ensureQueues,
   type JobRegistry,
   type JobsContext,
@@ -73,7 +81,13 @@ const aiPingJob = defineJob("ai.ping", async () => {});
 const lessonPlanJob = defineJob("lesson.plan", async () => {});
 const lessonCascadeJob = defineJob("lesson.cascade", async () => {});
 const lessonRegenerateJob = defineJob("lesson.regenerate", async () => {});
-const lessonGenerateJob = defineJob("lesson.generate", async () => {});
+/** Reports one pipeline step, as `apps/worker/src/jobs/lesson-generate.ts` does (ADR 0029 item 14). */
+const lessonGenerateJob = defineJob("lesson.generate", async ({ progress }) => {
+  await progress(40, "Writing slide 3 of 8", {
+    stage: "generate",
+    documentUpdatedAt: "2026-09-17T12:00:00.000Z",
+  });
+});
 const lessonWorksheetJob = defineJob("lesson.worksheet", async () => {});
 
 // --- a tiny SSE reader -----------------------------------------------------------------------
@@ -237,23 +251,25 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
     await boss.start();
     await ensureQueues(boss);
     jobsCtx = { boss, db: unsafeDb, sql };
-    await boss.work(
-      "ping",
-      { batchSize: 1, includeMetadata: true, perJobResults: true, pollingIntervalSeconds: 0.5 },
-      async (jobs) => {
-        const results: RunJobOutcome[] = [];
-        for (const job of jobs as BossJob[]) {
-          results.push(
-            await runJob(jobsCtx, "ping", registry, job, {
-              shutdown: shutdown.signal,
-              logger: silentLogger,
-              deps: undefined,
-            }),
-          );
-        }
-        return results;
-      },
-    );
+    for (const name of ["ping", "lesson.generate"] as const) {
+      await boss.work(
+        name,
+        { batchSize: 1, includeMetadata: true, perJobResults: true, pollingIntervalSeconds: 0.5 },
+        async (jobs) => {
+          const results: RunJobOutcome[] = [];
+          for (const job of jobs as BossJob[]) {
+            results.push(
+              await runJob(jobsCtx, name, registry, job, {
+                shutdown: shutdown.signal,
+                logger: silentLogger,
+                deps: undefined,
+              }),
+            );
+          }
+          return results;
+        },
+      );
+    }
   });
 
   afterAll(async () => {
@@ -264,6 +280,7 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
     );
     shutdown.abort();
     await boss.offWork("ping");
+    await boss.offWork("lesson.generate");
     await boss.stop({ graceful: false, close: true });
     await close();
   });
@@ -350,6 +367,35 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
     expect(runtime.hub.isDegraded()).toBe(false);
   }, 20_000);
 
+  test("(a2) a pipeline job's progress event carries its stage over the stream (ADR 0029)", async () => {
+    const jobId = await enqueue(
+      jobsCtx,
+      "lesson.generate",
+      { lessonId: newId<LessonId>(), revision: 1 },
+      { workspaceId: workspaceA },
+    );
+    if (jobId === null) throw new Error("not queued");
+    const { res } = openStream(`/jobs/${jobId}/events`, workspaceA);
+    const { items, ended } = await readSse(await res, { timeoutMs: 15_000 });
+    expect(ended).toBe(true);
+    const progress = items
+      .filter(isMessage)
+      .map((m) => JSON.parse(m.data) as JobEvent)
+      .filter((e) => e.type === "progress");
+    expect(progress).toHaveLength(1);
+    expect(progress[0]).toMatchObject({
+      type: "progress",
+      progress: {
+        percent: 40,
+        stage: "generate",
+        documentUpdatedAt: "2026-09-17T12:00:00.000Z",
+      },
+    });
+    expect(JOB_PROGRESS_STAGES).toContain(
+      (progress[0] as Extract<JobEvent, { type: "progress" }>).progress.stage as never,
+    );
+  }, 20_000);
+
   test("(b) connecting after completion replays everything and ends", async () => {
     const jobId = await enqueuePing(workspaceA, { message: "hi", steps: 1 });
     await waitFor(async () => {
@@ -424,6 +470,7 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
 
   test("cancel of a queued job that never started → `cancelled` written by the API", async () => {
     await boss.offWork("ping");
+    await boss.offWork("lesson.generate");
     try {
       const jobId = await enqueuePing(workspaceA, { message: "hi", steps: 1 });
       const cancelRes = await app.request(`/jobs/${jobId}/cancel`, {

@@ -26,11 +26,21 @@ export type ErrorCode = (typeof ERROR_CODES)[number];
 
 /**
  * Why a `409 conflict` happened on a document write (ADR 0024 §4, §18): `stale` — the
- * `expectedUpdatedAt` the client sent is behind the row; `generating` — a job holds the row's
- * generating lock. The client refetches on either; `reason` only decides the wording.
+ * `expectedUpdatedAt` (or, on the plan routes, `expectedRevision`) the client sent is behind the
+ * row; `generating` — a job holds the row's generating lock, or the plan is already confirmed;
+ * `planning` — the plan job is still writing the proposal (ADR 0029 item 7). The client refetches
+ * on any; `reason` only decides the wording.
  */
-export const CONFLICT_REASONS = ["stale", "generating"] as const;
+export const CONFLICT_REASONS = ["stale", "generating", "planning"] as const;
 export type ConflictReason = (typeof CONFLICT_REASONS)[number];
+
+/** What a plan-route `409` adds so the client can resync without a read (ADR 0029). */
+export interface ConflictDetails {
+  /** The row's current `plan.revision`. */
+  revision?: number;
+  /** The job holding the row, for the client to follow. */
+  jobId?: string;
+}
 
 export interface ErrorEnvelope {
   error: {
@@ -42,7 +52,7 @@ export interface ErrorEnvelope {
     fields?: string[];
     /** `conflict` from the document routes, or `unprocessable` from `POST /sources`. */
     reason?: ConflictReason | SourceRefusalReason;
-  };
+  } & ConflictDetails;
 }
 
 const STATUS_TO_CODE: Partial<Record<number, ErrorCode>> = {
@@ -83,12 +93,14 @@ export const SOURCE_REFUSAL_REASONS = [
 ] as const;
 export type SourceRefusalReason = (typeof SOURCE_REFUSAL_REASONS)[number];
 
-/** A `409` whose envelope carries a `reason`; thrown by the document routes. */
+/** A `409` whose envelope carries a `reason` (and, from the plan routes, `details`). */
 export class ConflictError extends HTTPException {
   readonly reason: ConflictReason;
-  constructor(reason: ConflictReason, message: string) {
+  readonly details: ConflictDetails;
+  constructor(reason: ConflictReason, message: string, details: ConflictDetails = {}) {
     super(409, { message });
     this.reason = reason;
+    this.details = details;
   }
 }
 
@@ -115,6 +127,7 @@ export function envelope(
   retryable: boolean,
   fields?: string[],
   reason?: ConflictReason | SourceRefusalReason,
+  details: ConflictDetails = {},
 ): ErrorEnvelope {
   const requestId = c.get("requestId") ?? c.res.headers.get("x-request-id") ?? "";
   return {
@@ -125,6 +138,8 @@ export function envelope(
       retryable,
       ...(fields ? { fields } : {}),
       ...(reason ? { reason } : {}),
+      ...(details.revision !== undefined ? { revision: details.revision } : {}),
+      ...(details.jobId !== undefined ? { jobId: details.jobId } : {}),
     },
   };
 }
@@ -153,6 +168,7 @@ export interface ClassifiedError {
   retryable: boolean;
   fields?: string[];
   reason?: ConflictReason | SourceRefusalReason;
+  details?: ConflictDetails;
   /** True when safe error diagnostics must be logged (unexpected failure). */
   unexpected: boolean;
 }
@@ -189,9 +205,8 @@ export function classifyError(err: unknown): ClassifiedError {
       code,
       message,
       retryable: RETRYABLE_STATUSES.has(status),
-      ...(err instanceof ConflictError || err instanceof SourceRefusedError
-        ? { reason: err.reason }
-        : {}),
+      ...(err instanceof ConflictError ? { reason: err.reason, details: err.details } : {}),
+      ...(err instanceof SourceRefusedError ? { reason: err.reason } : {}),
       unexpected: status >= 500,
     };
   }

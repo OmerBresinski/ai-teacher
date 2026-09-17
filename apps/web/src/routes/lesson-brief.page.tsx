@@ -269,7 +269,9 @@ export function LessonBriefPage() {
   async function submit(): Promise<void> {
     if (!canCreate) return;
     try {
-      const ids = await createLesson(input);
+      // One job from brief to slides until the plan screen ships (TEACH-13 stopgap; T7 removes
+      // it): without the flag the plan job stops at `planned` and nothing presses Generate.
+      const ids = await createLesson({ ...input, skipPlanning: true });
       writeLastClass({
         subject: state.subject,
         subjectOther: state.subjectOther,

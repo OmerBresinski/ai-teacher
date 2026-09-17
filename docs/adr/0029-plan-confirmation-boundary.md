@@ -105,6 +105,7 @@ objection does not apply.
    `plan.jobId` while `plan.state = "proposed"` — the same row lock and compare-and-set, with
    `generating_job_id IS NULL OR generating_job_id = plan.jobId` — through an option on that
    function, not a second write path. Until then a re-plan during planning is `409 planning`.
+   *Closed by TEACH-13:* the option is `supersedeProposal`, and `POST /lessons/:id/plan` passes it.
 6. **Why ADR 0025 §5's objection does not apply.** §5 rejected a chain in which each job hands the
    lock to the next across at-least-once boundaries: four hand-offs, any of which can run twice
    or not at all. Here the lock crosses **one** boundary (plan → generate), and it crosses it

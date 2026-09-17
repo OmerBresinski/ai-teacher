@@ -223,6 +223,9 @@ function buildApp({
   // `/lessons/*` also matches `/lessons`, which would charge a brief twice.
   app.use("/lessons/:id/cascade", rateLimitByWorkspace(aiLimiter));
   app.use("/lessons/:id/regenerate", rateLimitByWorkspace(aiLimiter));
+  // The plan routes (ADR 0029 item 7): a re-plan and a confirmation each start a pipeline job.
+  app.use("/lessons/:id/plan", rateLimitByWorkspace(aiLimiter));
+  app.use("/lessons/:id/generate", rateLimitByWorkspace(aiLimiter));
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
   const routes = app
@@ -275,7 +278,10 @@ function buildApp({
     const log = c.get("logger") ?? logger;
     if (e.unexpected) log.error({ err: safeError(err), status: e.status }, "unhandled error");
     else log.info({ status: e.status, code: e.code }, "request error");
-    return c.json(envelope(c, e.code, e.message, e.retryable, e.fields, e.reason), e.status);
+    return c.json(
+      envelope(c, e.code, e.message, e.retryable, e.fields, e.reason, e.details),
+      e.status,
+    );
   });
 
   return routes;

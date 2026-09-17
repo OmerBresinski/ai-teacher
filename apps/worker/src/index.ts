@@ -16,9 +16,9 @@ const env = parseEnv();
 const logger = createLogger(env);
 
 const { unsafeDb, sql, close } = createDb(env.DATABASE_URL, { max: 4 });
-const deps = createWorkerDeps(env, logger, unsafeDb);
 const boss = createBoss(env.DATABASE_URL);
 const ctx: JobsContext = { boss, db: unsafeDb, sql };
+const deps = { ...createWorkerDeps(env, logger, unsafeDb), jobs: ctx };
 
 boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
 boss.on("warning", (w) => logger.warn({ err: safeError(w) }, "pg-boss warning"));

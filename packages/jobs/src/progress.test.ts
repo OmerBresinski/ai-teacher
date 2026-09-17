@@ -66,6 +66,16 @@ describe("progress rate limit", () => {
     expect(emitted[1]).toEqual({ percent: 40, message: "slide 3", documentUpdatedAt: later });
   });
 
+  test("stage rides on the event; the latest stage in the window wins (ADR 0029 item 14)", async () => {
+    const { emitter, emitted } = harness();
+    await emitter.emit(10, "Planned", { stage: "plan" });
+    expect(emitted).toEqual([{ percent: 10, message: "Planned", stage: "plan" }]);
+    void emitter.emit(11, "Checking the facts", { stage: "generate" });
+    void emitter.emit(20);
+    await emitter.flush();
+    expect(emitted[1]).toEqual({ percent: 20, message: "Checking the facts", stage: "generate" });
+  });
+
   test("omits undefined fields (strict JobProgressSchema)", async () => {
     const { emitter, emitted } = harness();
     await emitter.emit();

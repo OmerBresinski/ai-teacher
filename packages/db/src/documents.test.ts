@@ -783,6 +783,88 @@ describeDb("documents repository", () => {
       expect((await getDocument(wsA, row.id))?.body).toEqual(row.body);
     });
 
+    describe("supersedeProposal (ADR 0029 item 5)", () => {
+      /** A proposal whose plan job (`plan.jobId`) still holds the lock. */
+      async function planning(state: "proposed" | "confirmed" = "proposed") {
+        const holder = newId<JobId>();
+        const lesson: Lesson = { ...lessonFixture(), plan: { revision: 1, state, jobId: holder } };
+        const row = await createDocument(wsA, "lesson", lesson, { generatingJobId: holder });
+        return { row, holder };
+      }
+
+      test("takes the lock from the running plan job; its next write is lost_lock", async () => {
+        const { row, holder } = await planning();
+        const jobId = newId<JobId>();
+        const result = await setPlanRevisionAndLock(wsA, row.id, {
+          expectedRevision: 1,
+          jobId,
+          patch: bump(jobId),
+          supersedeProposal: true,
+        });
+        expect(result.status).toBe("ok");
+        if (result.status !== "ok") return;
+        expect(result.row.generatingJobId).toBe(jobId);
+        expect((result.row.body as Lesson).plan).toEqual({ revision: 2, state: "proposed", jobId });
+        const late = await putDocumentAsJob(wsA, row.id, row.body, holder);
+        expect(late).toEqual({ status: "lost_lock" });
+        expect((await getDocument(wsA, row.id))?.body).toEqual(result.row.body);
+      });
+
+      test("is still a compare-and-set: a stale revision writes nothing and keeps the lock", async () => {
+        const { row, holder } = await planning();
+        const jobId = newId<JobId>();
+        const result = await setPlanRevisionAndLock(wsA, row.id, {
+          expectedRevision: 0,
+          jobId,
+          patch: bump(jobId),
+          supersedeProposal: true,
+        });
+        expect(result).toEqual({ status: "stale", revision: 1 });
+        expect(await getDocument(wsA, row.id)).toEqual(row);
+        expect(row.generatingJobId).toBe(holder);
+      });
+
+      test("never takes a confirmed plan's lock, another job's lock, or without the option", async () => {
+        const jobId = newId<JobId>();
+        const opts = { expectedRevision: 1, jobId, patch: bump(jobId) };
+        const confirmed = await planning("confirmed");
+        expect(
+          await setPlanRevisionAndLock(wsA, confirmed.row.id, { ...opts, supersedeProposal: true }),
+        ).toEqual({ status: "generating", jobId: confirmed.holder });
+        const proposal = await planning();
+        expect(await setPlanRevisionAndLock(wsA, proposal.row.id, opts)).toEqual({
+          status: "generating",
+          jobId: proposal.holder,
+        });
+        // The lock belongs to a job that is not the proposal's (e.g. a generate job).
+        const other = newId<JobId>();
+        const foreign = await createDocument(wsA, "lesson", planned(1), { generatingJobId: other });
+        expect(
+          await setPlanRevisionAndLock(wsA, foreign.id, { ...opts, supersedeProposal: true }),
+        ).toEqual({ status: "generating", jobId: other });
+        for (const id of [confirmed.row.id, proposal.row.id, foreign.id]) {
+          expect((await getDocument(wsA, id))?.generatingJobId).not.toBe(jobId);
+        }
+      });
+
+      test("two concurrent re-plans of one revision: exactly one wins", async () => {
+        const { row } = await planning();
+        const [j1, j2] = [newId<JobId>(), newId<JobId>()];
+        const results = await Promise.all(
+          [j1, j2].map((jobId) =>
+            setPlanRevisionAndLock(wsA, row.id, {
+              expectedRevision: 1,
+              jobId,
+              patch: bump(jobId),
+              supersedeProposal: true,
+            }),
+          ),
+        );
+        // The loser waits on the row lock, then sees revision 2 held by the winner's proposal.
+        expect(results.map((r) => r.status).sort()).toEqual(["ok", "stale"]);
+      });
+    });
+
     test("a lesson without plan is revision 0", async () => {
       const row = await createDocument(wsA, "lesson", lessonFixture());
       const jobId = newId<JobId>();
@@ -861,6 +943,11 @@ describeDb("documents repository", () => {
       expect(await setContinueWhenPlanned(wsA, sheet.id, true)).toBe(false);
       expect(await setContinueWhenPlanned(wsA, newId(), true)).toBe(false);
       expect((await getDocument(wsA, row.id))?.continueWhenPlanned).toBe(true);
+    });
+
+    test("createDocument writes the flag when asked (POST /lessons with skipPlanning)", async () => {
+      const row = await createDocument(wsA, "lesson", planned(1), { continueWhenPlanned: true });
+      expect(row.continueWhenPlanned).toBe(true);
     });
   });
 

@@ -215,13 +215,26 @@ the same input with the same message. `lessonFromBrief()` applies the defaults t
 (`defaultDurationMin`: 30 / 45 / 60), `title` = the topic cut to 80 characters, `themeId` =
 `DEFAULT_THEME_ID`, `language` = `en-GB`, `slides: []`. The handler then mints the job id, inserts
 the row with `generating_job_id = jobId` **first** (so a fast worker always finds a lock to clear),
-enqueues `lesson.plan { lessonId }` under that id — removing the row again if the enqueue fails —
-and answers `202 { lessonId, jobId }`. The
+enqueues `lesson.plan { lessonId, revision: 1, stopAfter: "planned" }` under that id — removing the
+row again if the enqueue fails — and answers `202 { lessonId, jobId, revision: 1 }`. The body also
+takes `skipPlanning` (the whole pipeline in one job, plan confirmed up front) and `requestId` (a
+repeat in the same Workspace answers the first lesson). The
 client navigates to `/l/$lessonId` and follows `GET /jobs/:jobId/events`; until the worker's
 terminal event clears the lock, `PUT /documents/:lessonId` is `409 conflict` with
 `reason: "generating"`. `/lessons` shares the per-Workspace model-call limiter with
 `/jobs/ai-ping` (`AI_RATE_LIMIT_PER_WORKSPACE` / `AI_RATE_LIMIT_WINDOW_S`), the 10 MB body cap with
-`/documents`, and is in `PROTECTED_PATHS`. Only `{ lessonId, jobId }` is logged.
+`/documents`, and is in `PROTECTED_PATHS`. Only ids, the revision and counts are logged.
+
+The plan screen (ADR 0029): `POST /lessons/:id/plan` `{ expectedRevision, brief, yearGroup?,
+subject?, sourceIds? }` re-plans the proposal and `POST /lessons/:id/generate` `{ expectedRevision,
+objectives, slideCount?, durationMin? }` confirms it. Each is one `setPlanRevisionAndLock`
+compare-and-set that moves the lock to a new job id, then the enqueue under that id (`lesson.plan`
+for a re-plan or a shape change, `lesson.generate` for a text-only confirmation); a failed enqueue
+puts the previous body back and answers `503`. `/plan` supersedes a plan job still writing the
+proposal and cancels it. Conflicts are `409` with `reason` `stale` (and `revision`), `planning`
+(the plan job holds the row) or `generating` (the plan is confirmed), plus `jobId` when locked;
+`/generate` before `planned`, or with no objectives, is `422`. Both routes are rate-limited on
+their own paths.
 
 ## `AppType` and `@tj/api-client`
 
@@ -375,8 +388,9 @@ missing job from a foreign one.
 
 ### AI request limit
 
-`POST /jobs/ai-ping` has an in-memory, per-Workspace fixed-window limit: 10 requests per 60
-seconds by default. Set `AI_RATE_LIMIT_PER_WORKSPACE` and
+`POST /jobs/ai-ping`, `POST /lessons` and the lesson job routes (`/lessons/:id/plan`,
+`/generate`, `/cascade`, `/regenerate`) share an in-memory, per-Workspace fixed-window limit: 30
+requests per 60 seconds by default (a brief can take three: parse, create, generate). Set `AI_RATE_LIMIT_PER_WORKSPACE` and
 `AI_RATE_LIMIT_WINDOW_S` to tune it. An over-limit request returns `429 rate_limited`,
 `retryable: true`, and `Retry-After` in seconds before validation or any model call runs.
 

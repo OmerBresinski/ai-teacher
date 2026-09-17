@@ -24,7 +24,7 @@ export * from "./specs";
 export { checkInput } from "./stages/check-input";
 export { evaluate } from "./stages/evaluate";
 export { BUDGET_FINDING, generate, PLANNED_SLIDES } from "./stages/generate";
-export { plan } from "./stages/plan";
+export { materialiseObjectives, plan } from "./stages/plan";
 export {
   type ImpactSet,
   impactSet,

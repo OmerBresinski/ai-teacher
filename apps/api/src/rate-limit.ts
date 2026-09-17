@@ -26,7 +26,8 @@ export interface RateLimiter {
 }
 
 export const RateLimitConfigSchema = z.object({
-  AI_RATE_LIMIT_PER_WORKSPACE: z.coerce.number().int().positive().default(10),
+  // A brief now costs up to three limited calls (parse, create, generate; ADR 0029), plus re-plans.
+  AI_RATE_LIMIT_PER_WORKSPACE: z.coerce.number().int().positive().default(30),
   AI_RATE_LIMIT_WINDOW_S: z.coerce.number().int().positive().default(60),
   IMAGE_RATE_LIMIT_PER_WORKSPACE: z.coerce.number().int().positive().default(30),
   IMAGE_RATE_LIMIT_WINDOW_S: z.coerce.number().int().positive().default(60),
