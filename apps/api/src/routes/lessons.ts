@@ -29,6 +29,14 @@
  * job still writing the proposal (its next write is `lost_lock`) and cancels it, best effort. If
  * the enqueue fails the previous body is put back and the lock released, so the screen can retry.
  * Logs carry ids, revisions, counts and booleans — never brief or objective text (ADR 0015).
+ *
+ * The worksheet (ADR 0030 items 1, 8–9; TDD T6): `POST /lessons/:id/worksheet` takes **no lesson
+ * lock** and never writes the lesson row — it reads the lesson, requires a confirmed plan at
+ * `expectedRevision`, resolves `"auto"`, and locks a **worksheet** row: the one a failed fill
+ * left at `framed` (re-locked under the new job id), else a new shell with `lessonId`. The row
+ * is written before the job is queued and removed (or unlocked) again if the enqueue fails; a
+ * locked sheet of the lesson is `409 generating` with its ids. `GET /lessons/:id/worksheets`
+ * lists the lesson's sheets from the `lesson_id` column, with each row's lock and `generation`.
  */
 import { zValidator } from "@hono/zod-validator";
 import {
@@ -39,10 +47,13 @@ import {
   type DocumentRow,
   deleteDocument,
   findLessonByRequestId,
+  findWorksheetForGeneration,
   forWorkspace,
   getDocument,
   isUniqueViolation,
+  listWorksheetsOfLesson,
   putDocumentAsJob,
+  relockWorksheet,
   type ScopableDb,
   type SetPlanRevisionOptions,
   type SetPlanRevisionResult,
@@ -67,9 +78,12 @@ import {
   type Lesson,
   lessonFromBrief,
   PlanLessonSchema,
+  RequestWorksheetSchema,
   type SourceRef,
+  type Worksheet,
 } from "@tj/domain/documents";
 import { cancel, enqueue } from "@tj/jobs";
+import { defaultPracticeMinutes, isRecipeId, newWorksheet, resolveRecipe } from "@tj/slides";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -79,7 +93,12 @@ import { ConflictError } from "../errors";
 import type { EventsRuntime } from "../events/runtime";
 import { requireJsonBody, validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
-import { documentBodyLimit, GENERATING_MESSAGE, NOT_FOUND_MESSAGE } from "./documents";
+import {
+  documentBodyLimit,
+  GENERATING_MESSAGE,
+  NOT_FOUND_MESSAGE,
+  toSummaryJson,
+} from "./documents";
 import { requireRuntime } from "./jobs";
 import { confirmLesson, replanLesson } from "./plan-patches";
 
@@ -212,6 +231,15 @@ async function enqueueProposal<J extends ProposalJob>(
 }
 
 export const STALE_PLAN_MESSAGE = "This plan changed elsewhere. Reload to see the latest.";
+export const WORKSHEET_NOT_CONFIRMED_MESSAGE = "Confirm the plan before making a worksheet.";
+export const WORKSHEET_GENERATING_MESSAGE = "A worksheet for this lesson is already being written.";
+export const WORKSHEET_QUEUED_MESSAGE = "A worksheet for this lesson was requested a moment ago.";
+export const UNKNOWN_RECIPE_MESSAGE = "That worksheet recipe does not exist.";
+/**
+ * One `lesson.worksheet` job per lesson per this many seconds (ADR 0030 item 8): the
+ * `singletonKey` slot that makes two requests racing past `findWorksheetForGeneration` one job.
+ */
+export const WORKSHEET_SINGLETON_S = 30;
 export const PLANNING_MESSAGE = "The plan is still being written.";
 export const CONFIRMED_MESSAGE = "This plan is already confirmed.";
 export const NOT_PLANNED_MESSAGE = "This lesson has no plan to confirm yet.";
@@ -592,5 +620,150 @@ export function lessonRoutes(unsafeDb: ScopableDb, runtime: EventsRuntime | unde
         );
         return c.json({ jobId }, 202);
       },
-    );
+    )
+    .post(
+      "/lessons/:id/worksheet",
+      smallJsonBodyLimit(),
+      requireJsonBody(),
+      zValidator("param", lessonParam, validationHook),
+      zValidator("json", RequestWorksheetSchema, validationHook),
+      async (c) => {
+        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+        const input = c.req.valid("json");
+        if (input.recipeId !== "auto" && !isRecipeId(input.recipeId)) {
+          throw new HTTPException(422, { message: UNKNOWN_RECIPE_MESSAGE });
+        }
+        const rt = requireRuntime(runtime);
+        const lessonId = c.req.valid("param").id as LessonId;
+        const ws = forWorkspace(unsafeDb, workspaceId);
+        const row = await getDocument(ws, lessonId);
+        if (row === null || row.kind !== "lesson") {
+          throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+        }
+        const lesson = row.body as Lesson;
+        const plan = lesson.plan;
+        const holder = row.generatingJobId ?? undefined;
+        // Confirmed and planned: the facts the sheet is built from are verified (ADR 0029 item 2).
+        if (
+          plan?.state !== "confirmed" ||
+          lesson.generation?.stage === undefined ||
+          !lesson.facts
+        ) {
+          throw new ConflictError("planning", WORKSHEET_NOT_CONFIRMED_MESSAGE, {
+            ...(plan ? { revision: plan.revision } : {}),
+            ...(holder ? { jobId: holder } : {}),
+          });
+        }
+        if (plan.revision !== input.expectedRevision) {
+          throw new ConflictError("stale", STALE_PLAN_MESSAGE, { revision: plan.revision });
+        }
+        const recipe = resolveRecipe(
+          input.recipeId === "auto" ? "auto" : input.recipeId,
+          lesson.facts,
+        );
+        const practiceMinutes =
+          input.practiceMinutes === "auto" ? defaultPracticeMinutes(recipe) : input.practiceMinutes;
+        const jobId = newId<JobId>();
+        const found = await findWorksheetForGeneration(ws, lessonId);
+        if (found.kind === "generating") {
+          throw new ConflictError("generating", WORKSHEET_GENERATING_MESSAGE, {
+            worksheetId: found.row.id,
+            jobId: found.row.generatingJobId as JobId,
+          });
+        }
+        // The row first, then the job (as `POST /lessons`): a worker that picks the job up at
+        // once must find a lock to clear.
+        const reused = found.kind === "reusable";
+        let worksheetId: string;
+        if (found.kind === "reusable") {
+          worksheetId = found.row.id;
+          if (!(await relockWorksheet(ws, worksheetId, jobId))) {
+            // Taken between the read and the lock: answer with the holder's ids.
+            const now = await findWorksheetForGeneration(ws, lessonId);
+            throw new ConflictError("generating", WORKSHEET_GENERATING_MESSAGE, {
+              worksheetId,
+              ...(now.kind === "generating" ? { jobId: now.row.generatingJobId as JobId } : {}),
+            });
+          }
+        } else {
+          worksheetId = newId();
+          const shell: Worksheet = {
+            ...newWorksheet(lesson.title, lesson.themeId),
+            id: worksheetId,
+            lessonId,
+            ...(lesson.subject !== undefined ? { subject: lesson.subject } : {}),
+            ...(lesson.yearGroup !== undefined ? { yearGroup: lesson.yearGroup } : {}),
+          };
+          await createDocument(ws, "worksheet", shell, { id: worksheetId, generatingJobId: jobId });
+        }
+        const undo = async () => {
+          if (reused) await clearGenerating(ws, worksheetId, jobId).catch(() => undefined);
+          else await deleteDocument(ws, worksheetId).catch(() => undefined);
+        };
+        let queued: JobId | null;
+        try {
+          queued = await enqueue(
+            rt.jobs,
+            "lesson.worksheet",
+            {
+              lessonId,
+              worksheetId,
+              revision: plan.revision,
+              recipeId: recipe.id,
+              practiceMinutes,
+            },
+            {
+              workspaceId,
+              id: jobId,
+              singletonKey: `${lessonId}:worksheet`,
+              singletonSeconds: WORKSHEET_SINGLETON_S,
+            },
+          );
+        } catch (error) {
+          await undo();
+          throw new HTTPException(503, { message: JOBS_UNAVAILABLE_MESSAGE, cause: error });
+        }
+        if (queued === null) {
+          // Inside the throttle slot: another request's job owns this lesson's sheet. Name it
+          // when it is still locked; a finished one has nothing to follow.
+          await undo();
+          const current = await findWorksheetForGeneration(ws, lessonId);
+          throw new ConflictError(
+            "generating",
+            WORKSHEET_QUEUED_MESSAGE,
+            current.kind === "generating"
+              ? { worksheetId: current.row.id, jobId: current.row.generatingJobId as JobId }
+              : {},
+          );
+        }
+        c.get("logger")?.info(
+          {
+            lessonId,
+            worksheetId,
+            jobId,
+            revision: plan.revision,
+            recipeId: recipe.id,
+            practiceMinutes,
+            reused,
+          },
+          "worksheet queued",
+        );
+        return c.json({ worksheetId, jobId }, 202);
+      },
+    )
+    .get("/lessons/:id/worksheets", zValidator("param", lessonParam, validationHook), async (c) => {
+      const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+      const lessonId = c.req.valid("param").id as LessonId;
+      const ws = forWorkspace(unsafeDb, workspaceId);
+      const row = await getDocument(ws, lessonId);
+      if (row === null || row.kind !== "lesson") {
+        throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+      }
+      const rows = await listWorksheetsOfLesson(ws, lessonId);
+      const items = rows.map(({ body, ...summary }) => ({
+        ...toSummaryJson(summary),
+        generation: (body as Worksheet).generation,
+      }));
+      return c.json({ items });
+    });
 }

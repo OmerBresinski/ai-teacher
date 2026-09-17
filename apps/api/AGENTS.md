@@ -43,8 +43,8 @@ Hono application on Bun. The typed contract for `apps/web` (Hono RPC). Read the 
 | `POST /lessons` | `routes/lessons.ts` — creates the row, `plan.revision` 1, enqueues `lesson.plan`; `skipPlanning`, `requestId` | ADR 0024 §6, ADR 0029 |
 | `POST /lessons/:id/plan` | `routes/lessons.ts` — re-plan, compare-and-set on `expectedRevision`; body changes in `routes/plan-patches.ts` | ADR 0029 |
 | `POST /lessons/:id/generate` | `routes/lessons.ts` — confirm the plan, enqueue `lesson.generate` (or a pinned `lesson.plan` on a shape change) | ADR 0029 |
-| `POST /lessons/:id/worksheet` | `routes/lessons.ts` (TEACH-14) — create or reuse a worksheet row, enqueue `lesson.worksheet` | ADR 0030 |
-| `GET /lessons/:id/worksheets` | `routes/lessons.ts` (TEACH-14) — the lesson's worksheets from `documents.lesson_id` | ADR 0030 |
+| `POST /lessons/:id/worksheet` | `routes/lessons.ts` — no lesson lock; reads the confirmed plan at `expectedRevision`, resolves `"auto"` with `@tj/slides`, locks a worksheet row (a `framed` one reused, else a new shell) and enqueues `lesson.worksheet` with a 30 s `singletonKey` slot | ADR 0030 |
+| `GET /lessons/:id/worksheets` | `routes/lessons.ts` — the lesson's worksheets from `documents.lesson_id`, each with `generatingJobId` and `generation`; no limiter | ADR 0030 |
 | `POST /lessons/:id/cascade`, `/regenerate` | `routes/lessons.ts` — unlocked proposal jobs | ADR 0025 §18 |
 | `POST /briefs/parse` | `routes/briefs.ts` (TEACH-16) — rules, then one `small` call under 2 s; stateless | ADR 0029 item 13 |
 
@@ -54,5 +54,8 @@ Hono application on Bun. The typed contract for `apps/web` (Hono RPC). Read the 
   5, 7).
 - **Register `aiLimiter` per path** in `app.ts`, never on `/lessons/*` (it also matches
   `/lessons` and would charge a brief twice). `/briefs` and `/briefs/*` are in `PROTECTED_PATHS`.
+- **`/worksheet` never touches the lesson row** (ADR 0030 item 1): no `setPlanRevisionAndLock`,
+  no `updated_at` bump; the lock it takes is the worksheet's (`createDocument` with
+  `generatingJobId`, or `relockWorksheet`). A recipe outside `WORKSHEET_RECIPE_IDS` is `422`.
 - Log ids, revisions, counts and booleans only — never brief, objective or parse-box text
   (ADR 0015).

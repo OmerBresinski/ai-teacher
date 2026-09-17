@@ -278,6 +278,70 @@ describe("POST /lessons/:id/plan and /generate guards and validation (ADR 0029)"
   });
 });
 
+const WORKSHEET_PATH = `/lessons/${newId<LessonId>()}/worksheet`;
+const WORKSHEETS_PATH = `/lessons/${newId<LessonId>()}/worksheets`;
+const validWorksheet = { expectedRevision: 1 };
+
+describe("POST /lessons/:id/worksheet and GET /lessons/:id/worksheets guards and validation (ADR 0030)", () => {
+  test("401 without a session or shim; 403 cross-site", async () => {
+    const noShim = createApp({ env: TEST_ENV_NO_SHIM, db: fakeSql(true), logger: silentLogger });
+    expect((await noShim.request(WORKSHEET_PATH, post(validWorksheet, {}))).status).toBe(401);
+    expect((await noShim.request(WORKSHEETS_PATH)).status).toBe(401);
+    const crossSite = await testApp().request(
+      WORKSHEET_PATH,
+      post(validWorksheet, {
+        [WORKSPACE_HEADER]: ws,
+        origin: "https://evil.example",
+        "sec-fetch-site": "cross-site",
+      }),
+    );
+    expect(crossSite.status).toBe(403);
+  });
+
+  test.each([
+    ["no expectedRevision", {}, ["expectedRevision"]],
+    ["a negative revision", { expectedRevision: -1 }, ["expectedRevision"]],
+    ["practiceMinutes of 7", { ...validWorksheet, practiceMinutes: 7 }, ["practiceMinutes"]],
+    [
+      "practiceMinutes as a string",
+      { ...validWorksheet, practiceMinutes: "10" },
+      ["practiceMinutes"],
+    ],
+    ["a 41-character recipeId", { ...validWorksheet, recipeId: "r".repeat(41) }, ["recipeId"]],
+    ["lessonId in the body (strict)", { ...validWorksheet, lessonId: "x" }, ["(root)"]],
+  ])("400 validation_failed for %s", async (_label, body, fields) => {
+    const res = await testApp().request(WORKSHEET_PATH, post(body));
+    expect(res.status).toBe(400);
+    expect((await errorBody(res)).error).toMatchObject({ code: "validation_failed", fields });
+  });
+
+  test("a recipe outside the catalogue is 422 before anything is read", async () => {
+    const res = await testApp().request(
+      WORKSHEET_PATH,
+      post({ ...validWorksheet, recipeId: "nope" }),
+    );
+    expect(res.status).toBe(422);
+    expect((await errorBody(res)).error).toMatchObject({
+      code: "unprocessable",
+      message: "That worksheet recipe does not exist.",
+    });
+  });
+
+  test("400 for a non-UUID lesson id on both routes", async () => {
+    expect((await testApp().request("/lessons/nope/worksheet", post(validWorksheet))).status).toBe(
+      400,
+    );
+    expect(
+      (await testApp().request("/lessons/nope/worksheets", { headers: { [WORKSPACE_HEADER]: ws } }))
+        .status,
+    ).toBe(400);
+  });
+
+  test("503 when no job runtime is configured, before any read", async () => {
+    expect((await testApp().request(WORKSHEET_PATH, post(validWorksheet))).status).toBe(503);
+  });
+});
+
 describe("lessonFromBrief", () => {
   const id = newId<LessonId>();
   const now = new Date("2026-09-06T10:00:00.000Z");
