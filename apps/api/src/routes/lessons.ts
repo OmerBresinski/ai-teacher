@@ -155,11 +155,13 @@ export async function createLessonAndEnqueue(
 
 /** The `202` a repeated `requestId` gets: the first call's lesson as it stands now (ADR 0029). */
 function replayed(row: DocumentRow): { lessonId: LessonId; jobId: JobId; revision: number } {
+  // Only this route writes `request_id`, and always with a plan.
   const plan = (row.body as Lesson).plan;
+  if (plan === undefined) throw new Error(`lesson ${row.id} has a requestId but no plan`);
   return {
     lessonId: row.id as LessonId,
-    jobId: (row.generatingJobId ?? plan?.jobId ?? "") as JobId,
-    revision: plan?.revision ?? 0,
+    jobId: (row.generatingJobId ?? plan.jobId) as JobId,
+    revision: plan.revision,
   };
 }
 
@@ -234,30 +236,36 @@ async function lockedConflict(ws: WorkspaceDb, lessonId: LessonId, holder: JobId
 /**
  * `setPlanRevisionAndLock` with its refusals as HTTP errors: `missing` → 404, `stale` → `409
  * stale { revision }`, locked → `lockedConflict`. `prepare` runs first in the same transaction
- * (the Source changes), and `patch` may throw an `HTTPException` for a precondition only the
- * locked row can answer; a throw from either rolls the whole change back. Returns the written
- * lesson and the one it replaced.
+ * (the Source changes) and its result is handed to `patch`, which returns the next lesson and
+ * what it decided (`meta`); `patch` may throw an `HTTPException` for a precondition only the
+ * locked row can answer. A throw from either rolls the whole change back. Returns the written
+ * lesson, the one it replaced, `prepare`'s result and `patch`'s decision.
  */
-async function changePlan(
+async function changePlan<P, M>(
   ws: WorkspaceDb,
   lessonId: LessonId,
-  change: SetPlanRevisionOptions,
-  prepare: (scoped: WorkspaceDb) => Promise<void> = async () => {},
-): Promise<{ lesson: Lesson; previous: Lesson }> {
-  let previous: Lesson | undefined;
+  change: Omit<SetPlanRevisionOptions, "patch"> & {
+    patch: (lesson: Lesson, prepared: P) => { lesson: Lesson; meta: M };
+  },
+  prepare: (scoped: WorkspaceDb) => Promise<P>,
+): Promise<{ lesson: Lesson; previous: Lesson; prepared: P; meta: M }> {
   const result = await ws
     .tx(async (scoped) => {
-      await prepare(scoped);
+      const prepared = await prepare(scoped);
+      let decided: { previous: Lesson; meta: M } | undefined;
       const written = await setPlanRevisionAndLock(scoped, lessonId, {
         ...change,
         patch: (lesson) => {
-          previous = lesson;
-          return change.patch(lesson);
+          const next = change.patch(lesson, prepared);
+          decided = { previous: lesson, meta: next.meta };
+          return next.lesson;
         },
       });
       // Nothing was written: undo what `prepare` did.
       if (written.status !== "ok") throw new PlanRefused(written);
-      return written;
+      // `ok` means `patch` ran.
+      const { previous, meta } = decided as { previous: Lesson; meta: M };
+      return { row: written.row, previous, meta, prepared };
     })
     .catch(async (error: unknown) => {
       if (!(error instanceof PlanRefused)) throw error;
@@ -270,7 +278,12 @@ async function changePlan(
       }
       throw await lockedConflict(ws, lessonId, refused.jobId);
     });
-  return { lesson: result.row.body as Lesson, previous: previous as Lesson };
+  return {
+    lesson: result.row.body as Lesson,
+    previous: result.previous,
+    prepared: result.prepared,
+    meta: result.meta,
+  };
 }
 
 /** Rolls `changePlan`'s transaction back with the refusal it is carrying. */
@@ -406,32 +419,31 @@ export function lessonRoutes(unsafeDb: ScopableDb, runtime: EventsRuntime | unde
         const input = c.req.valid("json");
         const ws = forWorkspace(unsafeDb, workspaceId);
         const jobId = newId<JobId>();
-        let sources: SourceChange | undefined;
-        let pinned = false;
-        const { lesson, previous } = await changePlan(
+        const {
+          lesson,
+          previous,
+          prepared: change,
+          meta: pinned,
+        } = await changePlan<SourceChange | undefined, boolean>(
           ws,
           lessonId,
           {
             expectedRevision: input.expectedRevision,
             jobId,
             supersedeProposal: true,
-            patch: (stored) => {
+            patch: (stored, sources) => {
               if (stored.plan?.state === "confirmed") {
                 throw new ConflictError("generating", CONFIRMED_MESSAGE, {
                   revision: stored.plan.revision,
                 });
               }
               const next = replanLesson(stored, input, { jobId, sources: sources?.sources });
-              pinned = next.pinned;
-              return next.lesson;
+              return { lesson: next.lesson, meta: next.pinned };
             },
           },
-          async (scoped) => {
-            sources = await changeSources(scoped, lessonId, input.sourceIds);
-          },
+          (scoped) => changeSources(scoped, lessonId, input.sourceIds),
         );
         const revision = lesson.plan?.revision ?? 0;
-        const change = sources;
         await enqueueForPlan(
           ws,
           rt,
@@ -485,26 +497,33 @@ export function lessonRoutes(unsafeDb: ScopableDb, runtime: EventsRuntime | unde
         const ws = forWorkspace(unsafeDb, workspaceId);
         const jobId = newId<JobId>();
         const now = new Date();
-        let replan = false;
-        const { lesson, previous } = await changePlan(ws, lessonId, {
-          expectedRevision: input.expectedRevision,
-          jobId,
-          patch: (stored) => {
-            if (stored.plan?.state === "confirmed") {
-              throw new ConflictError("generating", CONFIRMED_MESSAGE, {
-                revision: stored.plan.revision,
-              });
-            }
-            const facts = stored.facts;
-            if (facts === undefined || stored.generation?.stage !== "planned") {
-              throw new HTTPException(422, { message: NOT_PLANNED_MESSAGE });
-            }
-            if (!stored.brief) throw new HTTPException(422, { message: NO_BRIEF_MESSAGE });
-            const next = confirmLesson({ ...stored, facts }, input, { jobId, now });
-            replan = next.replan;
-            return next.lesson;
+        const {
+          lesson,
+          previous,
+          meta: replan,
+        } = await changePlan(
+          ws,
+          lessonId,
+          {
+            expectedRevision: input.expectedRevision,
+            jobId,
+            patch: (stored) => {
+              if (stored.plan?.state === "confirmed") {
+                throw new ConflictError("generating", CONFIRMED_MESSAGE, {
+                  revision: stored.plan.revision,
+                });
+              }
+              const facts = stored.facts;
+              if (facts === undefined || stored.generation?.stage !== "planned") {
+                throw new HTTPException(422, { message: NOT_PLANNED_MESSAGE });
+              }
+              if (!stored.brief) throw new HTTPException(422, { message: NO_BRIEF_MESSAGE });
+              const next = confirmLesson({ ...stored, facts }, input, { jobId, now });
+              return { lesson: next.lesson, meta: next.replan };
+            },
           },
-        });
+          async () => undefined,
+        );
         const revision = lesson.plan?.revision ?? 0;
         if (replan) {
           // A shape change (ADR 0029 item 8): the teacher already confirmed, so no `stopAfter`.

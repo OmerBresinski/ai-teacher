@@ -259,7 +259,9 @@ describeDb("lesson.plan on pg-boss", () => {
 
   test("continue_when_planned: the lock passes to lesson.generate without ever being null", async () => {
     const { ws, jobId, lessonId } = await createAndQueue({ continueWhenPlanned: true });
-    // Watch the lock from the moment the row exists until the generate job has finished.
+    // Watch the lock from the moment the row exists until the generate job has finished. A smoke
+    // check, not the proof: polling can miss a short gap. The guarantee is structural — the
+    // hand-off is one conditional `UPDATE` (`handOffLock`), never a release and a re-lock.
     const holders: (string | null)[] = [];
     let watching = true;
     const watcher = (async () => {
