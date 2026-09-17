@@ -98,6 +98,8 @@ export interface CreateAppOptions {
   imageRateLimit?: Partial<RateLimitConfig>;
   /** `POST /sources` per-Workspace limit (ADR 0027 §5); tests lower it. */
   sourceRateLimit?: Partial<RateLimitConfig>;
+  /** The `lesson.worksheet` throttle slot (ADR 0030 item 8, 30 s); tests shorten it. */
+  worksheetSingletonS?: number;
   /**
    * Where `POST /sources` parses a document (TEACH-278). `src/index.ts` passes a
    * `ChildProcessExtractionRunner`; omission is 503 in production, in-process in dev/tests.
@@ -118,6 +120,7 @@ function buildApp({
   images,
   imageRateLimit,
   sourceRateLimit,
+  worksheetSingletonS,
   extraction,
 }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
@@ -226,6 +229,9 @@ function buildApp({
   // The plan routes (ADR 0029 item 7): a re-plan and a confirmation each start a pipeline job.
   app.use("/lessons/:id/plan", rateLimitByWorkspace(aiLimiter));
   app.use("/lessons/:id/generate", rateLimitByWorkspace(aiLimiter));
+  // The worksheet request (ADR 0030 item 8) starts a job with one model call; the listing under
+  // `/lessons/:id/worksheets` makes none and is not limited.
+  app.use("/lessons/:id/worksheet", rateLimitByWorkspace(aiLimiter));
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
   const routes = app
@@ -248,7 +254,7 @@ function buildApp({
       ),
     )
     .route("/", documentRoutes(db.unsafeDb))
-    .route("/", lessonRoutes(db.unsafeDb, eventsRuntime));
+    .route("/", lessonRoutes(db.unsafeDb, eventsRuntime, { worksheetSingletonS }));
 
   // TEACH-22/121: test-only routes, outside the RPC contract (`AppType` stays clean). The seed
   // route writes into the caller's Workspace, so it sits behind the same guards as `/documents`.

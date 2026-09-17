@@ -2,7 +2,7 @@
   "name": "@tj/slides",
   "version": "0.0.0",
   "private": true,
-  "description": "Pure slide recipes: theme catalogue, grid, layoutSlide, rich-doc builders and materialiseSlide/materialiseBlock; shared by @tj/editor and @tj/generation (ADR 0025 §9).",
+  "description": "Pure slide and worksheet recipes: theme catalogue, grid, layoutSlide, rich-doc builders, materialiseSlide/materialiseBlock and the worksheet recipes; shared by @tj/editor and @tj/generation (ADR 0025 §9, ADR 0030 §4).",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -12,7 +12,8 @@
     "./fonts": "./src/fonts.ts",
     "./themes": "./src/themes.ts",
     "./factories": "./src/factories.ts",
-    "./layouts": "./src/layouts.ts"
+    "./layouts": "./src/layouts.ts",
+    "./worksheet": "./src/worksheet/index.ts"
   },
   "scripts": {
     "lint": "biome check .",

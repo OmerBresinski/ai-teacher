@@ -52,6 +52,7 @@ describeDb("lesson.generate job", () => {
     ai,
     db: unsafeDb,
     caps: { capUsd: 5, capTokens: 1_000_000 },
+    worksheetCapUsd: 0.1,
     storage: memoryStorage(),
   });
 

@@ -85,6 +85,7 @@ describe("doctor: validateEnvFile", () => {
       "AI_MODEL_SMALL",
       "AI_LESSON_COST_CAP_USD",
       "AI_LESSON_TOKEN_CAP",
+      "AI_WORKSHEET_COST_CAP_USD",
       "AI_EVAL_RUN_COST_CAP_USD",
       "MASTRA_TELEMETRY_DISABLED",
     ]);

@@ -72,6 +72,7 @@ describeDb("lesson.plan on pg-boss", () => {
     ai: scriptedPipelineAi(),
     db: unsafeDb,
     caps: { capUsd: 5, capTokens: 1_000_000 },
+    worksheetCapUsd: 0.1,
     storage: memoryStorage(),
   };
   const QUEUES = ["lesson.plan", "lesson.generate"] as const satisfies readonly JobName[];

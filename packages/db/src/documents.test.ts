@@ -29,6 +29,7 @@ import {
   putDocument,
   putDocumentAsJob,
   releaseStaleLock,
+  relockWorksheet,
   restore,
   STALE_LOCK_AFTER_MS,
   setContinueWhenPlanned,
@@ -65,7 +66,7 @@ const worksheetOf = (lessonId: string, stage?: WorksheetGenerationStage): Worksh
           promptVersions: {},
           usage: { calls: 1, inputTokens: 10, outputTokens: 10, costUsd: 0.01 },
           findings: [],
-          recipeId: "practice",
+          recipeId: "knowledge-check" as const,
           practiceMinutes: 10,
         },
       }),
@@ -709,6 +710,36 @@ describeDb("documents repository", () => {
         generatingJobId: newId<JobId>(),
       });
       expect(await findWorksheetForGeneration(wsB, other)).toEqual({ kind: "none" });
+    });
+  });
+
+  describe("relockWorksheet (ADR 0030 item 9)", () => {
+    test("locks an unlocked framed sheet under the new job id and leaves updated_at alone", async () => {
+      const row = await createDocument(wsA, "worksheet", worksheetOf(newId(), "framed"));
+      const jobId = newId<JobId>();
+      expect(await relockWorksheet(wsA, row.id, jobId)).toBe(true);
+      const after = await getDocument(wsA, row.id);
+      expect(after?.generatingJobId).toBe(jobId);
+      expect(after?.updatedAt.toISOString()).toBe(row.updatedAt.toISOString());
+      // Locked now: a second job cannot take it.
+      expect(await relockWorksheet(wsA, row.id, newId<JobId>())).toBe(false);
+      expect((await getDocument(wsA, row.id))?.generatingJobId).toBe(jobId);
+    });
+
+    test("refuses a locked, deleted, missing, non-worksheet or other-Workspace row", async () => {
+      const locked = await createDocument(wsA, "worksheet", worksheetOf(newId()), {
+        generatingJobId: newId<JobId>(),
+      });
+      expect(await relockWorksheet(wsA, locked.id, newId<JobId>())).toBe(false);
+      const deleted = await createDocument(wsA, "worksheet", worksheetOf(newId(), "framed"));
+      await softDelete(wsA, deleted.id);
+      expect(await relockWorksheet(wsA, deleted.id, newId<JobId>())).toBe(false);
+      expect(await relockWorksheet(wsA, newId(), newId<JobId>())).toBe(false);
+      const lesson = await createDocument(wsA, "lesson", lessonFixture());
+      expect(await relockWorksheet(wsA, lesson.id, newId<JobId>())).toBe(false);
+      const foreign = await createDocument(wsA, "worksheet", worksheetOf(newId(), "framed"));
+      expect(await relockWorksheet(wsB, foreign.id, newId<JobId>())).toBe(false);
+      expect((await getDocument(wsA, foreign.id))?.generatingJobId).toBeNull();
     });
   });
 

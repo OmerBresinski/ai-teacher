@@ -10,6 +10,7 @@ import {
   callLimitedBudget,
   FIXTURES,
   initialState,
+  legacyWorksheet,
   memoryLogger,
   miss,
   PLAN_SKELETONS,
@@ -19,7 +20,7 @@ import {
 } from "../testing";
 import { StageFailure } from "../types";
 import { evaluate, verbFitApplies } from "./evaluate";
-import { GENERATE_CONCURRENCY, generate, materialiseWorksheet, PLANNED_SLIDES } from "./generate";
+import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
 import { MAX_TARGETS, repair, repairTargets } from "./repair";
 import {
@@ -59,18 +60,12 @@ const generateScript = () =>
  * materialised from the fixture spec, as the old Generate did.
  */
 const LEGACY_WORKSHEET_ID = "0192f7a0-0000-7000-8000-0000000000ee";
-const withLegacyWorksheet = <S extends { lesson: Parameters<typeof materialiseWorksheet>[2] }>(
+const withLegacyWorksheet = <S extends { lesson: Parameters<typeof legacyWorksheet>[2] }>(
   state: S,
-  deps: Parameters<typeof materialiseWorksheet>[4],
+  deps: Parameters<typeof legacyWorksheet>[4],
 ) => ({
   ...state,
-  worksheet: materialiseWorksheet(
-    FIXTURES.worksheet,
-    "fake",
-    state.lesson,
-    LEGACY_WORKSHEET_ID,
-    deps,
-  ),
+  worksheet: legacyWorksheet(FIXTURES.worksheet, "fake", state.lesson, LEGACY_WORKSHEET_ID, deps),
 });
 
 describe("plan", () => {

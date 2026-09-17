@@ -1,48 +1,76 @@
 {
   "slots": [
     {
-      "index": 2,
+      "index": 3,
       "blocks": [
         {
-          "type": "question",
-          "text": "Describe how the particles are arranged in a solid.",
-          "answer": "They are packed closely together in a regular pattern and only vibrate in place.",
-          "answerLines": 2,
-          "marks": 1,
+          "type": "multiple-choice",
+          "text": "How are the particles arranged in a solid?",
+          "options": [
+            {
+              "text": "Packed closely in a regular pattern, vibrating in place",
+              "correct": true
+            },
+            {
+              "text": "Spread far apart, moving freely",
+              "correct": false
+            },
+            {
+              "text": "Close together but sliding past each other",
+              "correct": false
+            },
+            {
+              "text": "Not moving at all",
+              "correct": false
+            }
+          ],
           "factRefs": ["q6", "o1"]
         },
         {
           "type": "multiple-choice",
           "text": "Which change of state happens when a gas cools down?",
           "options": [
-            { "text": "Melting", "correct": false },
-            { "text": "Boiling", "correct": false },
-            { "text": "Freezing", "correct": false },
-            { "text": "Condensing", "correct": true }
+            {
+              "text": "Melting",
+              "correct": false
+            },
+            {
+              "text": "Boiling",
+              "correct": false
+            },
+            {
+              "text": "Freezing",
+              "correct": false
+            },
+            {
+              "text": "Condensing",
+              "correct": true
+            }
           ],
           "factRefs": ["q13", "o2"]
         },
         {
-          "type": "question",
-          "text": "Why can you pour a liquid but not a solid?",
-          "answer": "Liquid particles can slide past each other; solid particles are held in fixed positions and cannot.",
-          "answerLines": 4,
-          "marks": 2,
-          "factRefs": ["q7", "o1"]
-        }
-      ]
-    },
-    {
-      "index": 4,
-      "blocks": [
-        {
-          "type": "matching",
-          "pairs": [
-            { "left": "Melting", "right": "Solid to liquid" },
-            { "left": "Boiling", "right": "Liquid to gas" },
-            { "left": "Condensing", "right": "Gas to liquid" }
+          "type": "multiple-choice",
+          "text": "A sealed balloon is warmed in the sun. What happens to the gas particles inside?",
+          "options": [
+            {
+              "text": "They move faster and push harder on the balloon",
+              "correct": true
+            },
+            {
+              "text": "They stop moving",
+              "correct": false
+            },
+            {
+              "text": "They turn into a liquid",
+              "correct": false
+            },
+            {
+              "text": "They get bigger",
+              "correct": false
+            }
           ],
-          "factRefs": ["q2", "o2"]
+          "factRefs": ["q10", "o3"]
         }
       ]
     }

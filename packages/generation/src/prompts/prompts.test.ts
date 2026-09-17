@@ -442,21 +442,11 @@ describe("prompt versions", () => {
     ]) {
       expect(generateWorksheetFillPrompt.system).toContain(rule);
     }
-    // The fixture fills the two slots of the sample recipe within their counts and types.
-    const recipe = (
-      SAMPLE_INPUTS["generate-worksheet-fill"] as {
-        recipe: { fillSlots: { index: number; allowedTypes: string[]; count: [number, number] }[] };
-      }
-    ).recipe;
-    expect(FIXTURES.worksheetFill.slots.map((s) => s.index)).toEqual(
-      recipe.fillSlots.map((s) => s.index),
-    );
-    for (const slot of FIXTURES.worksheetFill.slots) {
-      const rule = recipe.fillSlots.find((s) => s.index === slot.index);
-      if (!rule) throw new Error(`no slot ${slot.index} in the sample recipe`);
-      expect(slot.blocks.length).toBeGreaterThanOrEqual(rule.count[0]);
-      expect(slot.blocks.length).toBeLessThanOrEqual(rule.count[1]);
-      for (const block of slot.blocks) expect(rule.allowedTypes).toContain(block.type);
+    // The fixture answers the knowledge-check frame's one slot with the items it allows;
+    // `worksheet/fill.test.ts` holds it to the frame's own slot rule.
+    expect(FIXTURES.worksheetFill.slots.map((s) => s.index)).toEqual([3]);
+    for (const block of FIXTURES.worksheetFill.slots[0]?.blocks ?? []) {
+      expect(block.type).toBe("multiple-choice");
     }
     // The shape line wins over a guide's count (the spec wants exactly 4 options, at most 5 pairs).
     expect(generateWorksheetFillPrompt.system).toContain("the shape wins");

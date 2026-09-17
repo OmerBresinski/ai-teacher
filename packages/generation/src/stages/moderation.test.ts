@@ -6,11 +6,12 @@ import {
   FIXTURES,
   fixtureSlideScript,
   initialState,
+  legacyWorksheet,
   memoryLogger,
   recordingDeps,
   routed,
 } from "../testing";
-import { generate, materialiseWorksheet } from "./generate";
+import { generate } from "./generate";
 import { plan } from "./plan";
 import { repair } from "./repair";
 
@@ -52,13 +53,7 @@ for (const scenario of ["slide", "block", "staged fact"] as const) {
     // block scenario needs one, materialised from the fixture spec as the old Generate did.
     const generated = {
       ...(await generate(start, genDeps)),
-      worksheet: materialiseWorksheet(
-        FIXTURES.worksheet,
-        "fake",
-        start.lesson,
-        "ws-legacy",
-        genDeps,
-      ),
+      worksheet: legacyWorksheet(FIXTURES.worksheet, "fake", start.lesson, "ws-legacy", genDeps),
     };
     const vocab = generated.lesson.slides.find((s) => s.kind === "vocabulary");
     const mc = generated.lesson.slides.find((s) => s.kind === "multiple-choice");

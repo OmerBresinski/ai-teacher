@@ -254,7 +254,10 @@ section records the Railway production runbook. PR environments inherit producti
 Railway creates them.
 
 The api limits model-call requests per Workspace with `AI_RATE_LIMIT_PER_WORKSPACE` and
-`AI_RATE_LIMIT_WINDOW_S`; defaults apply unless those config variables are set.
+`AI_RATE_LIMIT_WINDOW_S`; defaults apply unless those config variables are set. The worker caps
+spend per lesson with `AI_LESSON_COST_CAP_USD` / `AI_LESSON_TOKEN_CAP` and per worksheet with
+`AI_WORKSHEET_COST_CAP_USD` (ADR 0030, TEACH-14; default `0.10`, so the worker service needs no
+new variable — set it on Railway only to change the cap).
 
 | Name | Scope | Services | Where set |
 | ---- | ----- | -------- | --------- |

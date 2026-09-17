@@ -40,6 +40,8 @@ export interface ConflictDetails {
   revision?: number;
   /** The job holding the row, for the client to follow. */
   jobId?: string;
+  /** From `POST /lessons/:id/worksheet` (ADR 0030 item 8): the worksheet a job is already writing. */
+  worksheetId?: string;
 }
 
 export interface ErrorEnvelope {
@@ -140,6 +142,7 @@ export function envelope(
       ...(reason ? { reason } : {}),
       ...(details.revision !== undefined ? { revision: details.revision } : {}),
       ...(details.jobId !== undefined ? { jobId: details.jobId } : {}),
+      ...(details.worksheetId !== undefined ? { worksheetId: details.worksheetId } : {}),
     },
   };
 }

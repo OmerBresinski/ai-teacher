@@ -25,6 +25,7 @@
     "@tj/extract": "workspace:*",
     "@tj/images": "workspace:*",
     "@tj/jobs": "workspace:*",
+    "@tj/slides": "workspace:*",
     "@tj/storage": "workspace:*",
     "ai": "7.0.92",
     "better-auth": "1.7.2",

@@ -1,16 +1,8 @@
-import type {
-  Finding,
-  Lesson,
-  LessonFacts,
-  OutlineEntry,
-  Slide,
-  Worksheet,
-} from "@tj/domain/documents";
+import type { Finding, Lesson, LessonFacts, OutlineEntry, Slide } from "@tj/domain/documents";
 import {
   type ImageTextPhoto,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
-  materialiseBlock,
   materialiseSlide,
   PLACEHOLDER_IMAGE,
   slideSpecSchemaFor,
@@ -19,12 +11,11 @@ import {
 import { callStructured, type EditorialMiss, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import {
   generateSlidePrompt,
-  generateWorksheetPrompt,
   pickOrRequeryPrompt,
   type SlidePhoto,
   verifyFactsPrompt,
 } from "../prompts";
-import { verifiableArrayOf, type WorksheetSpec } from "../specs";
+import { verifiableArrayOf } from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
 import {
   busyFinding,
@@ -375,21 +366,6 @@ function touchesCorrected(entry: OutlineEntry, slide: Slide, corrected: Set<stri
   return slide.elements.some((e) => e.generatedFrom?.factRefs.some((id) => corrected.has(id)));
 }
 
-/**
- * A worksheet's editorial miss as a finding: on the block the issue's path names (`blocks.<i>…`),
- * which Repair can rewrite, so an `error`; a miss on the sheet itself (its title, its criteria)
- * has no repair path and is a `warning`. Unused by the lesson pipeline since ADR 0030; kept
- * exported for the worksheet job (TEACH-14), which moves it.
- */
-export function worksheetSpecRuleFinding(miss: EditorialMiss, worksheet: Worksheet): Finding {
-  const [root, index] = miss.path;
-  const block =
-    root === "blocks" && typeof index === "number" ? worksheet.blocks[index] : undefined;
-  return block
-    ? specRuleFinding({ ...miss, path: miss.path.slice(2) }, { blockId: block.id })
-    : specRuleFinding(miss, {}, "warning");
-}
-
 /** What the slide prompt is told about its photograph (TEACH-220). */
 function photoFor(entry: OutlineEntry, picked: PickedPhoto | undefined): SlidePhoto | "none" {
   if (picked?.outcome !== "placed") return "none";
@@ -449,58 +425,8 @@ export function referencedFacts(facts: LessonFacts, entry: OutlineEntry): Lesson
   return out;
 }
 
-/**
- * The worksheet document for a whole-sheet spec. Unused by the lesson pipeline since ADR 0030;
- * kept exported for the worksheet job (TEACH-14), which moves it.
- */
-export function materialiseWorksheet(
-  spec: WorksheetSpec,
-  modelId: string,
-  lesson: Lesson,
-  worksheetId: string,
-  deps: PipelineDeps,
-): Worksheet {
-  const at = deps.now().toISOString();
-  const blockMeta: MaterialiseMeta = {
-    promptVersion: generateWorksheetPrompt.version,
-    model: modelId,
-    at,
-  };
-  const worksheet: Worksheet = {
-    version: 1,
-    id: worksheetId,
-    title: spec.title,
-    themeId: lesson.themeId,
-    createdAt: at,
-    updatedAt: at,
-    header: {
-      showName: true,
-      showDate: true,
-      showClass: true,
-      title: spec.title,
-      subtitle: spec.subtitle,
-      criteria: spec.criteria.length > 0 ? spec.criteria.slice(0, 4) : undefined,
-    },
-    blocks: spec.blocks.map((block) => materialiseBlock(block, blockMeta, deps.ids)),
-    includeAnswerKey: true,
-    pageSize: "A4",
-    ageBand: lesson.ageBand,
-    yearGroup: lesson.yearGroup,
-    subject: lesson.subject,
-    readingLevel: lesson.readingLevel,
-    language: lesson.language,
-    lessonId: lesson.id,
-  };
-  return stripUndefined(worksheet);
-}
-
 /** Refresh `generation.usage` from the per-job budget (every stage does this after its calls). */
 export function withUsage(lesson: Lesson, deps: Pick<PipelineDeps, "budget">): Lesson {
   const generation = generationOf(lesson);
   return { ...lesson, generation: { ...generation, usage: deps.budget.totals() } };
-}
-
-/** `WorksheetSchema` fields are optional, not nullable; drop the keys a lesson did not set. */
-function stripUndefined<T extends object>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
 }

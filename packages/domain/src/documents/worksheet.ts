@@ -66,9 +66,32 @@ export const WORKSHEET_GENERATION_STAGES = ["framed", "filled", "checked"] as co
 export type WorksheetGenerationStage = (typeof WORKSHEET_GENERATION_STAGES)[number];
 
 /**
+ * The nine worksheet recipes by id (Worksheets and activities, rulings 46 to 55). The recipes
+ * themselves live in `@tj/slides` (`WORKSHEET_RECIPES`, ADR 0030 item 4), which domain cannot
+ * import, so the id list is here and `@tj/slides` asserts the catalogue matches it. The
+ * `/worksheet` request, the job payload and `Worksheet.generation` all validate against it.
+ */
+export const WORKSHEET_RECIPE_IDS = [
+  "exit-ticket",
+  "knowledge-check",
+  "misconception-check",
+  "cloze",
+  "matching",
+  "word-search",
+  "worked-example",
+  "reading",
+  "exam-style",
+] as const;
+export const RecipeIdSchema = z.enum(WORKSHEET_RECIPE_IDS);
+export type RecipeId = z.infer<typeof RecipeIdSchema>;
+
+/** The practice times `POST /lessons/:id/worksheet` offers (ADR 0030 item 8). */
+export const PRACTICE_MINUTES_OPTIONS = [5, 10, 15, 20, 30, 45] as const;
+export type PracticeMinutes = (typeof PRACTICE_MINUTES_OPTIONS)[number];
+
+/**
  * ADR 0030: the worksheet job's own state, a subset of the lesson's `GenerationSchema` plus the
- * recipe and the practice time it was built for. `recipeId` stays a bounded string until the
- * recipes move to `@tj/slides` (TEACH-14), which domain cannot import.
+ * recipe and the practice time it was built for.
  */
 export const WorksheetGenerationSchema = z.strictObject({
   jobId: z.string(),
@@ -78,7 +101,7 @@ export const WorksheetGenerationSchema = z.strictObject({
   promptVersions: z.record(z.string(), z.string()),
   usage: GenerationUsageSchema,
   findings: z.array(FindingSchema),
-  recipeId: z.string().max(40),
+  recipeId: RecipeIdSchema,
   practiceMinutes: z.number().int().positive(),
 });
 export type WorksheetGeneration = z.infer<typeof WorksheetGenerationSchema>;

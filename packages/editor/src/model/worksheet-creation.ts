@@ -1,6 +1,11 @@
 import { type LessonFacts, pupilObjective, type Worksheet } from "@tj/domain/documents";
 import { newWorksheet, numberQuestions } from "./worksheet-factories";
-import { type Job, WORKSHEET_RECIPES, type WorksheetRecipe } from "./worksheet-recipes";
+import {
+  type Job,
+  suggestRecipe,
+  WORKSHEET_RECIPES,
+  type WorksheetRecipe,
+} from "./worksheet-recipes";
 
 /*
  * The worksheet creation flow (TEACH-184; Worksheets and activities, rulings 46 to 55): two steps,
@@ -77,20 +82,13 @@ export function createReducer(state: CreateState, action: CreateAction): CreateS
 }
 
 /** The recipes a job chip leaves showing, in catalogue order. */
-export function visibleRecipes(job: Job | null): WorksheetRecipe[] {
+export function visibleRecipes(job: Job | null): readonly WorksheetRecipe[] {
   return job ? WORKSHEET_RECIPES.filter((r) => r.jobs.includes(job)) : WORKSHEET_RECIPES;
 }
 
-/**
- * Which recipe gets the one Suggested pill: a pure rule on the facts. Misconceptions present →
- * Misconception check; a worked example present → Worked example and practice; otherwise
- * Knowledge check. No facts at all reads as Knowledge check too.
- */
-export function suggestRecipe(facts?: LessonFacts): string {
-  if (facts && facts.misconceptions.length > 0) return "misconception-check";
-  if (facts && facts.workedExamples.length > 0) return "worked-example";
-  return "knowledge-check";
-}
+// The suggestion rule moved to `@tj/slides` with the recipes (ADR 0030 item 4): the API resolves
+// `"auto"` with it. Re-exported so the page and `./worksheet-creation` importers are unchanged.
+export { suggestRecipe };
 
 /** The recipe Kind has selected: the teacher's pick, or the suggestion when there is none. */
 export function selectedRecipe(state: CreateState, facts?: LessonFacts): WorksheetRecipe | null {

@@ -4,11 +4,13 @@ import { guarded } from "./identifier-guard";
 import { type AgeBand, AgeBandSchema, type Lesson, parseLesson } from "./lesson";
 import { FactIdSchema } from "./lesson-facts";
 import { DEFAULT_THEME_ID } from "./theme";
+import { PRACTICE_MINUTES_OPTIONS, type RecipeId } from "./worksheet";
 
 /*
  * `POST /lessons` request and its defaults (ADR 0024 §6, §13; F01 item 2), and the plan screen's
  * `/plan` and `/generate` requests (ADR 0029), so `@tj/api-client` types them. Kept apart from
  * `brief.ts` because it needs `AgeBandSchema` from `lesson.ts`, which itself imports `BriefSchema`.
+ * `POST /lessons/:id/worksheet` (ADR 0030 item 8) lives here too.
  */
 
 const DurationMinSchema = z.number().int().min(BRIEF_DURATION_MIN).max(BRIEF_DURATION_MAX);
@@ -96,6 +98,29 @@ export const GenerateLessonSchema = z.strictObject({
 });
 export type GenerateLesson = z.infer<typeof GenerateLessonSchema>;
 export type GenerateLessonInput = z.input<typeof GenerateLessonSchema>;
+
+/**
+ * `POST /lessons/:id/worksheet` (ADR 0030 item 8): one worksheet beside the confirmed plan at
+ * `expectedRevision`. `recipeId` is a recipe id or `"auto"` (the suggestion for the lesson's
+ * facts); `practiceMinutes` one of the offered times or `"auto"` (the recipe's midpoint).
+ * `recipeId` is typed as a bounded string here, not the enum: an id outside the catalogue is a
+ * well-formed request the route refuses with `422`, not the `400` a malformed body gets, and
+ * the catalogue (`WORKSHEET_RECIPES`, `@tj/slides`) is what the route checks it against.
+ */
+export const RequestWorksheetSchema = z.strictObject({
+  expectedRevision: z.number().int().min(0),
+  recipeId: z.string().max(40).default("auto"),
+  practiceMinutes: z
+    .union([...PRACTICE_MINUTES_OPTIONS.map((m) => z.literal(m)), z.literal("auto")])
+    .default("auto"),
+});
+export type RequestWorksheet = z.infer<typeof RequestWorksheetSchema>;
+export type RequestWorksheetInput = Omit<z.input<typeof RequestWorksheetSchema>, "recipeId"> & {
+  recipeId?: RecipeId | "auto";
+};
+
+/** What `POST /lessons/:id/worksheet` answers: the row and the job to follow. */
+export type WorksheetRequested = { worksheetId: string; jobId: string };
 
 /** `Lesson.title` is the topic, cut to this many characters. */
 export const LESSON_TITLE_MAX = 80;

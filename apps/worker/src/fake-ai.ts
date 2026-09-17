@@ -1,7 +1,7 @@
 import type { ConfiguredAi } from "@tj/ai";
 import { DEFAULT_MODEL_IDS, DEFAULT_REGION } from "@tj/ai";
 import { createFakeAi, type FakeCall, type FakeScriptEntry } from "@tj/ai/testing";
-import { FIXTURES, scriptedPipelineAi } from "@tj/generation/testing";
+import { FIXTURES, scriptedPipelineAi, scriptedWorksheetAi } from "@tj/generation/testing";
 import type { Env } from "./env";
 
 /*
@@ -81,10 +81,14 @@ export function createPerJobFakeAi(env: Pick<Env, "AI_FAKE_DELAY_MS">): Configur
     const fake =
       stage === "cascade" || stage === "regenerate"
         ? createFakeAi({ fallback: proposal, usage: { inputTokens: 1000, outputTokens: 400 } })
-        : scriptedPipelineAi({
-            evaluate: { findings: [FAKE_REVIEW_WARNING] },
-            ...(delay > 0 ? { pace: delay } : {}),
-          });
+        : stage === "worksheet"
+          ? // The worksheet job (ADR 0030): the fixture fill for the knowledge-check frame, then
+            // a block repair should the checks ask for one. Its first call is the fill.
+            scriptedWorksheetAi({ repairs: 1, ...(delay > 0 ? { pace: delay } : {}) })
+          : scriptedPipelineAi({
+              evaluate: { findings: [FAKE_REVIEW_WARNING] },
+              ...(delay > 0 ? { pace: delay } : {}),
+            });
     byJob.set(jobId, fake);
     return fake;
   };

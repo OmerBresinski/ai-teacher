@@ -16,7 +16,7 @@ import {
 } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, type LessonId, newId, storageKey, type WorkspaceId } from "@tj/domain";
-import type { Lesson, LessonFacts } from "@tj/domain/documents";
+import type { Lesson, LessonFacts, Worksheet } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet, lessonFacts } from "@tj/domain/documents/fixtures";
 import {
   type BossJob,
@@ -29,6 +29,7 @@ import {
   type RunJobOutcome,
   runJob,
 } from "@tj/jobs";
+import { defaultPracticeMinutes, newWorksheet, resolveRecipe } from "@tj/slides";
 import type { PgBoss } from "pg-boss";
 import { createApp } from "../app";
 import type { ErrorEnvelope } from "../errors";
@@ -67,6 +68,44 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       }
     },
   );
+  /** Worksheets whose job this loop leaves running (locked) — "still writing". */
+  const holdingSheets = new Set<string>();
+
+  /** The `lesson.worksheet` contract (ADR 0030): write the sheet as `checked`, release its lock. */
+  const lessonWorksheetJob = defineJob<"lesson.worksheet", { db: typeof unsafeDb }>(
+    "lesson.worksheet",
+    async ({ payload, workspaceId, jobId, progress, deps }) => {
+      if (holdingSheets.has(payload.worksheetId)) return;
+      const ws = forWorkspace(deps.db, workspaceId);
+      try {
+        const row = await getDocument(ws, payload.worksheetId);
+        if (row === null) return;
+        const body = row.body as Worksheet;
+        await putDocumentAsJob(
+          ws,
+          payload.worksheetId,
+          {
+            ...body,
+            generation: {
+              jobId,
+              stage: "checked",
+              startedAt: new Date().toISOString(),
+              completedAt: new Date().toISOString(),
+              promptVersions: {},
+              usage: { calls: 1, inputTokens: 10, outputTokens: 10, costUsd: 0.001 },
+              findings: [],
+              recipeId: payload.recipeId,
+              practiceMinutes: payload.practiceMinutes,
+            },
+          },
+          jobId,
+        );
+        await progress(100, "Worksheet ready", { stage: "worksheet" });
+      } finally {
+        await clearGenerating(ws, payload.worksheetId, jobId);
+      }
+    },
+  );
   const registry: JobRegistry<{ db: typeof unsafeDb }> = {
     ping: defineJob("ping", async () => {}),
     "ai.ping": defineJob("ai.ping", async () => {}),
@@ -74,7 +113,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     "lesson.cascade": defineJob("lesson.cascade", async () => {}),
     "lesson.regenerate": defineJob("lesson.regenerate", async () => {}),
     "lesson.generate": defineJob("lesson.generate", async () => {}),
-    "lesson.worksheet": defineJob("lesson.worksheet", async () => {}),
+    "lesson.worksheet": lessonWorksheetJob,
   };
 
   const headers = (ws: WorkspaceId, extra: Record<string, string> = {}) => ({
@@ -109,30 +148,35 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     await boss.start();
     await ensureQueues(boss);
     // Jobs an earlier run left queued would be worked first and hold up the lock assertions.
-    for (const name of ["lesson.plan", "lesson.generate"] as const) await boss.deleteAllJobs(name);
+    for (const name of ["lesson.plan", "lesson.generate", "lesson.worksheet"] as const) {
+      await boss.deleteAllJobs(name);
+    }
     jobsCtx = { boss, db: unsafeDb, sql };
-    await boss.work(
-      "lesson.plan",
-      { batchSize: 1, includeMetadata: true, perJobResults: true, pollingIntervalSeconds: 0.5 },
-      async (jobs) => {
-        const results: RunJobOutcome[] = [];
-        for (const job of jobs as BossJob[]) {
-          results.push(
-            await runJob(jobsCtx, "lesson.plan", registry, job, {
-              shutdown: shutdown.signal,
-              logger: silentLogger,
-              deps: { db: unsafeDb },
-            }),
-          );
-        }
-        return results;
-      },
-    );
+    for (const name of ["lesson.plan", "lesson.worksheet"] as const) {
+      await boss.work(
+        name,
+        { batchSize: 1, includeMetadata: true, perJobResults: true, pollingIntervalSeconds: 0.5 },
+        async (jobs) => {
+          const results: RunJobOutcome[] = [];
+          for (const job of jobs as BossJob[]) {
+            results.push(
+              await runJob(jobsCtx, name, registry, job, {
+                shutdown: shutdown.signal,
+                logger: silentLogger,
+                deps: { db: unsafeDb },
+              }),
+            );
+          }
+          return results;
+        },
+      );
+    }
   });
 
   afterAll(async () => {
     shutdown.abort();
     await boss.offWork("lesson.plan");
+    await boss.offWork("lesson.worksheet");
     await boss.stop({ graceful: false, close: true });
     await close();
   });
@@ -155,6 +199,9 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       jobs: jobsCtx,
       events: runtime,
       rateLimit: { limit: 3, windowMs: 60_000 },
+      // The worksheet throttle slot is one second here, so a second sheet needs no 30 s wait;
+      // the "inside the throttle slot" test requests twice within the same second.
+      worksheetSingletonS: 1,
     });
   });
 
@@ -162,7 +209,10 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     await runtime.stop();
   });
 
-  const jobData = async (name: "lesson.plan" | "lesson.generate", id: string) => {
+  const jobData = async (
+    name: "lesson.plan" | "lesson.generate" | "lesson.worksheet",
+    id: string,
+  ) => {
     const [row] = await boss.findJobs<JobData>(name, { id });
     return row?.data;
   };
@@ -860,6 +910,273 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       const over = await call();
       expect(over.status).toBe(429);
       expect(await errorOf(over)).toMatchObject({ code: "rate_limited" });
+    });
+  });
+
+  describe("POST /lessons/:id/worksheet and GET /lessons/:id/worksheets (ADR 0030)", () => {
+    const postJson = (ws: WorkspaceId, path: string, body: unknown) =>
+      app.request(path, {
+        method: "POST",
+        headers: headers(ws, { "content-type": "application/json" }),
+        body: JSON.stringify(body),
+      });
+    const getJson = (ws: WorkspaceId, path: string) => app.request(path, { headers: headers(ws) });
+    type Accepted = { worksheetId: string; jobId: JobId };
+    type Listed = {
+      items: { id: string; generatingJobId: string | null; generation?: Worksheet["generation"] }[];
+    };
+
+    /**
+     * A confirmed lesson at `planned` with the fixture facts. `lockedBy` keeps the row locked (the
+     * slides job running); `state` / `stage` / `revision` set the plan and checkpoint.
+     */
+    async function seedConfirmed(
+      opts: {
+        ws?: WorkspaceId;
+        state?: "proposed" | "confirmed";
+        stage?: "planned" | "repaired" | null;
+        revision?: number;
+        lockedBy?: JobId | null;
+      } = {},
+    ) {
+      const { artefacts: _artefacts, ...base } = generatedLesson();
+      const lockedBy = opts.lockedBy === undefined ? newId<JobId>() : opts.lockedBy;
+      const lesson: Lesson = {
+        ...base,
+        brief: { topic: "The water cycle", durationMin: 60, slideCount: 10 },
+        facts: lessonFacts(),
+        ...(opts.stage === null
+          ? { generation: undefined }
+          : {
+              generation: {
+                ...(base.generation as NonNullable<Lesson["generation"]>),
+                stage: opts.stage ?? "planned",
+              },
+            }),
+        plan: {
+          revision: opts.revision ?? 1,
+          state: opts.state ?? "confirmed",
+          jobId: newId<JobId>(),
+          confirmedAt: new Date().toISOString(),
+        },
+      };
+      const row = await createDocument(forWorkspace(unsafeDb, opts.ws ?? wsA), "lesson", lesson, {
+        ...(lockedBy ? { generatingJobId: lockedBy } : {}),
+      });
+      return { lessonId: row.id as LessonId, row };
+    }
+
+    const suggested = resolveRecipe("auto", lessonFacts());
+
+    test("202 { worksheetId, jobId }: a locked worksheet row with lesson_id, the resolved payload, the lesson untouched; the job clears the lock", async () => {
+      const { lessonId, row: lessonBefore } = await seedConfirmed();
+      const res = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
+      expect(res.status).toBe(202);
+      const { worksheetId, jobId } = (await res.json()) as Accepted;
+      expect(worksheetId).toMatch(/^[0-9a-f-]{36}$/);
+      expect(jobId).toMatch(/^[0-9a-f-]{36}$/);
+      // "auto" resolved before the enqueue: the suggestion for these facts and its midpoint.
+      expect((await jobData("lesson.worksheet", jobId))?.payload).toEqual({
+        lessonId,
+        worksheetId,
+        revision: 1,
+        recipeId: suggested.id,
+        practiceMinutes: defaultPracticeMinutes(suggested),
+      });
+      const ws = forWorkspace(unsafeDb, wsA);
+      const created = await getDocument(ws, worksheetId);
+      expect(created).toMatchObject({ kind: "worksheet", lessonId, title: "The water cycle" });
+      const shell = created?.body as Worksheet | undefined;
+      expect(shell?.lessonId).toBe(lessonId);
+      expect(shell?.generation).toBeUndefined();
+      // The lesson row: same updatedAt, still locked by the slides job.
+      const lessonAfter = await getDocument(ws, lessonId);
+      expect(lessonAfter?.updatedAt.toISOString()).toBe(lessonBefore.updatedAt.toISOString());
+      expect(lessonAfter?.generatingJobId).toBe(lessonBefore.generatingJobId);
+      // The stub job runs and releases the sheet's lock; the lesson stays as it was.
+      await waitFor(async () => (await getDocument(ws, worksheetId))?.generatingJobId === null);
+      expect((await getDocument(ws, lessonId))?.updatedAt.toISOString()).toBe(
+        lessonBefore.updatedAt.toISOString(),
+      );
+      const list = (await (await getJson(wsA, `/lessons/${lessonId}/worksheets`)).json()) as Listed;
+      expect(list.items.map((i) => i.id)).toEqual([worksheetId]);
+      expect(list.items[0]).toMatchObject({
+        generatingJobId: null,
+        generation: { stage: "checked", recipeId: suggested.id },
+      });
+    });
+
+    test("the same request while the job runs is 409 generating with the same ids; one job in pg-boss", async () => {
+      const { lessonId } = await seedConfirmed();
+      const first = await postJson(wsA, `/lessons/${lessonId}/worksheet`, {
+        expectedRevision: 1,
+        recipeId: "exit-ticket",
+        practiceMinutes: 10,
+      });
+      expect(first.status).toBe(202);
+      const { worksheetId, jobId } = (await first.json()) as Accepted;
+      holdingSheets.add(worksheetId);
+      // Hold the row locked whatever the loop does with the job.
+      await sql`update documents set generating_job_id = ${jobId} where id = ${worksheetId}`;
+      const again = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
+      expect(again.status).toBe(409);
+      expect(await errorOf(again)).toMatchObject({
+        code: "conflict",
+        reason: "generating",
+        worksheetId,
+        jobId,
+      });
+      const jobs = await boss.findJobs<JobData>("lesson.worksheet", {});
+      expect(
+        jobs.filter((j) => (j.data.payload as { lessonId?: string }).lessonId === lessonId),
+      ).toHaveLength(1);
+      expect((await jobData("lesson.worksheet", jobId))?.payload).toMatchObject({
+        recipeId: "exit-ticket",
+        practiceMinutes: 10,
+      });
+      const list = (await (await getJson(wsA, `/lessons/${lessonId}/worksheets`)).json()) as Listed;
+      expect(list.items).toHaveLength(1);
+      expect(list.items[0]?.generatingJobId).toBe(jobId);
+      await clearGenerating(forWorkspace(unsafeDb, wsA), worksheetId, jobId);
+    });
+
+    test("a framed sheet a failed fill left is reused under a new job id", async () => {
+      const { lessonId } = await seedConfirmed();
+      const ws = forWorkspace(unsafeDb, wsA);
+      const framed = await createDocument(ws, "worksheet", {
+        ...newWorksheet("The water cycle"),
+        lessonId,
+        generation: {
+          jobId: newId<JobId>(),
+          stage: "framed",
+          startedAt: new Date().toISOString(),
+          promptVersions: {},
+          usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+          findings: [],
+          recipeId: "knowledge-check",
+          practiceMinutes: 13,
+        },
+      });
+      holdingSheets.add(framed.id);
+      const res = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
+      expect(res.status).toBe(202);
+      const { worksheetId, jobId } = (await res.json()) as Accepted;
+      expect(worksheetId).toBe(framed.id);
+      expect(jobId).not.toBe((framed.body as Worksheet).generation?.jobId);
+      await waitFor(async () => (await getDocument(ws, framed.id))?.generatingJobId === jobId);
+      expect((await getDocument(ws, framed.id))?.updatedAt.toISOString()).toBe(
+        framed.updatedAt.toISOString(),
+      );
+      expect(await sql`select id from documents where lesson_id = ${lessonId}`).toHaveLength(1);
+      await clearGenerating(ws, framed.id, jobId);
+    });
+
+    test("409 planning before confirmation or before planned; 409 stale on another revision", async () => {
+      const proposed = await seedConfirmed({ state: "proposed", lockedBy: null });
+      const res = await postJson(wsA, `/lessons/${proposed.lessonId}/worksheet`, {
+        expectedRevision: 1,
+      });
+      expect(res.status).toBe(409);
+      expect(await errorOf(res)).toMatchObject({ reason: "planning", revision: 1 });
+
+      const holder = newId<JobId>();
+      const unplanned = await seedConfirmed({ stage: null, lockedBy: holder });
+      const early = await postJson(wsA, `/lessons/${unplanned.lessonId}/worksheet`, {
+        expectedRevision: 1,
+      });
+      expect(early.status).toBe(409);
+      expect(await errorOf(early)).toMatchObject({ reason: "planning", jobId: holder });
+
+      const { lessonId } = await seedConfirmed({ revision: 2 });
+      const stale = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
+      expect(stale.status).toBe(409);
+      expect(await errorOf(stale)).toMatchObject({ reason: "stale", revision: 2 });
+      expect(await sql`select id from documents where lesson_id = ${lessonId}`).toHaveLength(0);
+    });
+
+    test("422 for a recipe outside the catalogue; nothing written", async () => {
+      const { lessonId } = await seedConfirmed();
+      const res = await postJson(wsA, `/lessons/${lessonId}/worksheet`, {
+        expectedRevision: 1,
+        recipeId: "nope",
+      });
+      expect(res.status).toBe(422);
+      expect(await sql`select id from documents where lesson_id = ${lessonId}`).toHaveLength(0);
+    });
+
+    test("404 for an unknown id, a worksheet id and another Workspace's lesson, on both routes", async () => {
+      const ws = forWorkspace(unsafeDb, wsA);
+      const sheet = await createDocument(ws, "worksheet", generatedWorksheet());
+      const { lessonId } = await seedConfirmed();
+      for (const id of [newId(), sheet.id]) {
+        expect(
+          (await postJson(wsA, `/lessons/${id}/worksheet`, { expectedRevision: 1 })).status,
+        ).toBe(404);
+        expect((await getJson(wsA, `/lessons/${id}/worksheets`)).status).toBe(404);
+      }
+      expect(
+        (await postJson(wsB, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 })).status,
+      ).toBe(404);
+      expect((await getJson(wsB, `/lessons/${lessonId}/worksheets`)).status).toBe(404);
+    });
+
+    test("a second sheet after the first is checked: 202 with a new worksheetId; GET lists two, oldest first", async () => {
+      const { lessonId } = await seedConfirmed();
+      const ws = forWorkspace(unsafeDb, wsA);
+      const first = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
+      expect(first.status).toBe(202);
+      const a = (await first.json()) as Accepted;
+      await waitFor(async () => (await getDocument(ws, a.worksheetId))?.generatingJobId === null);
+      // One worksheet job per lesson per throttle slot (ADR 0030 item 8): the next slot (one
+      // second in this app) so the second request is not the throttle's 409.
+      await Bun.sleep(1_100);
+      const second = await postJson(wsA, `/lessons/${lessonId}/worksheet`, {
+        expectedRevision: 1,
+        recipeId: "cloze",
+        practiceMinutes: 15,
+      });
+      expect(second.status).toBe(202);
+      const b = (await second.json()) as Accepted;
+      expect(b.worksheetId).not.toBe(a.worksheetId);
+      await waitFor(async () => (await getDocument(ws, b.worksheetId))?.generatingJobId === null);
+      const list = (await (await getJson(wsA, `/lessons/${lessonId}/worksheets`)).json()) as Listed;
+      expect(list.items.map((i) => i.id)).toEqual([a.worksheetId, b.worksheetId]);
+      expect(list.items.map((i) => i.generation?.recipeId)).toEqual([suggested.id, "cloze"]);
+      expect(list.items.every((i) => i.generatingJobId === null)).toBe(true);
+    });
+
+    test("inside the throttle slot a second request is 409 and leaves no orphan row", async () => {
+      const { lessonId } = await seedConfirmed();
+      const ws = forWorkspace(unsafeDb, wsA);
+      const first = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
+      expect(first.status).toBe(202);
+      const a = (await first.json()) as Accepted;
+      // The same slot, whatever the stub loop has done with the first job meanwhile.
+      const again = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
+      expect(again.status).toBe(409);
+      await waitFor(async () => (await getDocument(ws, a.worksheetId))?.generatingJobId === null);
+      expect(await errorOf(again)).toMatchObject({ reason: "generating" });
+      expect(await sql`select id from documents where lesson_id = ${lessonId}`).toHaveLength(1);
+    });
+
+    test("31 calls a minute to /worksheet hit the default model-call limit; the listing is not limited", async () => {
+      const limited = createApp({ env: TEST_ENV, db: t.db, logger: silentLogger, jobs: jobsCtx });
+      const { lessonId } = await seedConfirmed();
+      const path = `/lessons/${newId()}/worksheet`;
+      const call = () =>
+        limited.request(path, {
+          method: "POST",
+          headers: headers(wsA, { "content-type": "application/json" }),
+          body: JSON.stringify({ expectedRevision: 1 }),
+        });
+      for (let i = 0; i < 30; i++) expect((await call()).status).toBe(404);
+      const over = await call();
+      expect(over.status).toBe(429);
+      expect(await errorOf(over)).toMatchObject({ code: "rate_limited" });
+      expect(
+        (await limited.request(`/lessons/${lessonId}/worksheets`, { headers: headers(wsA) }))
+          .status,
+      ).toBe(200);
     });
   });
 

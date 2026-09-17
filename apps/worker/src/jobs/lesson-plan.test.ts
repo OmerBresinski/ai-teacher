@@ -58,6 +58,7 @@ describeDb("lesson.plan job", () => {
     ai,
     db: unsafeDb,
     caps: caps ?? { capUsd: 5, capTokens: 1_000_000 },
+    worksheetCapUsd: 0.1,
     storage: memoryStorage(),
     images,
   });

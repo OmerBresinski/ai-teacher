@@ -38,3 +38,23 @@ void client.jobs.ping.$post({ json: { steps: 3 } });
 
 // @ts-expect-error `steps` must be a number
 void client.jobs.ping.$post({ json: { message: "hi", steps: "3" } });
+
+// The worksheet routes (ADR 0030, TEACH-14): the body is typed from the domain schema and the
+// two answers infer. `recipeId` is a string on the wire (an unknown recipe is the route's 422).
+void client.lessons[":id"].worksheet.$post({
+  param: { id: "01a06a15-1849-7000-ac6a-c07e27fe308b" },
+  json: { expectedRevision: 1, recipeId: "exit-ticket", practiceMinutes: 10 },
+});
+type WorksheetAccepted = InferResponseType<
+  (typeof client.lessons)[":id"]["worksheet"]["$post"],
+  202
+>;
+const _worksheet: WorksheetAccepted = { worksheetId: "w", jobId: "j" as never };
+type WorksheetsOk = InferResponseType<(typeof client.lessons)[":id"]["worksheets"]["$get"], 200>;
+const _worksheets: WorksheetsOk["items"][number]["generatingJobId"] = null;
+
+void client.lessons[":id"].worksheet.$post({
+  param: { id: "01a06a15-1849-7000-ac6a-c07e27fe308b" },
+  // @ts-expect-error `practiceMinutes` is one of the offered times or "auto"
+  json: { expectedRevision: 1, practiceMinutes: 7 },
+});

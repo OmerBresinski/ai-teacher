@@ -1,10 +1,4 @@
-import {
-  PAGE_A4,
-  PAGE_LETTER,
-  type PageSize,
-  type RichDoc,
-  type WorksheetBlock,
-} from "@tj/domain/documents";
+import { PAGE_A4, PAGE_LETTER, type PageSize } from "@tj/domain/documents";
 
 /**
  * Worksheet page geometry, in typographic points (TeachDeck `lib/worksheet/metrics.ts`).
@@ -103,76 +97,13 @@ export function fitScale(width: number, pageW: number = PAGE.w): number {
 
 /* ---- time on task ------------------------------------------------------------ */
 
-/** The marks a sheet is worth: the sum over its question blocks. */
-export function marksTotal(blocks: readonly WorksheetBlock[]): number {
-  return blocks.reduce((sum, b) => sum + (b.type === "question" ? (b.marks ?? 0) : 0), 0);
-}
-
-const wordCount = (doc: RichDoc): number => {
-  const text = (doc.content ?? [])
-    .flatMap((node) => node.content ?? [])
-    .map((leaf) => (typeof leaf.text === "string" ? leaf.text : ""))
-    .join(" ")
-    .trim();
-  return text ? text.split(/\s+/).length : 0;
-};
-
-/**
- * How long a sheet takes a pupil, in whole minutes (TEACH-183). Marks at a minute and a half each,
- * a word search 8, a matching block 4, a paragraph a minute per 80 words, a gap a minute, a
- * multiple choice item a minute; the sum to the nearest five, and never under five. A rough guide
- * for the header and the recipe cards, not a timer.
- */
-export function estimateMinutes(blocks: readonly WorksheetBlock[]): number {
-  let minutes = minutesRaw(marksTotal(blocks));
-  for (const block of blocks) {
-    switch (block.type) {
-      case "word-search":
-        minutes += 8;
-        break;
-      case "matching":
-        minutes += 4;
-        break;
-      case "paragraph":
-        minutes += wordCount(block.doc) / 80;
-        break;
-      case "fill-gap":
-        minutes += block.gaps.length;
-        break;
-      case "multiple-choice":
-        minutes += 1;
-        break;
-      default:
-        break;
-    }
-  }
-  return roundMinutes(minutes);
-}
-
-/** A mark and a half per mark, before rounding. */
-const minutesRaw = (marks: number): number => marks * 1.5;
-
-/** To the nearest five minutes, never under five. */
-const roundMinutes = (minutes: number): number => Math.max(5, Math.round(minutes / 5) * 5);
-
-/**
- * The minutes a sheet takes from its marks alone (TEACH-184 item 7): the same rate and rounding
- * as `estimateMinutes`, so a library card built from `DocumentSummary.marks` says what the sheet
- * header says for a sheet of questions. The summary carries no per-block detail (word searches,
- * matching, gaps), so a sheet with those reads a little short on its card; a `minutes` column on
- * the summary would close that gap and is a schema change, left for later.
- */
-export function minutesForMarks(marks: number): number {
-  return roundMinutes(minutesRaw(marks));
-}
-
-/**
- * The header line and the recipe cards: "12 marks · about 25 min" with the marks switch on,
- * "about 25 min" alone with it off (UX ruling 60). The minutes are the same either way.
- */
-export function sheetSummary(blocks: readonly WorksheetBlock[], showMarks = false): string {
-  const minutes = `about ${estimateMinutes(blocks)} min`;
-  if (!showMarks) return minutes;
-  const marks = marksTotal(blocks);
-  return `${marks} ${marks === 1 ? "mark" : "marks"} · ${minutes}`;
-}
+// Moved to `@tj/slides` with the worksheet recipes (ADR 0030 item 4): the worker sizes the
+// model's fill against the same rule. Re-exported so `./metrics` keeps answering for it.
+export {
+  estimateMinutes,
+  MINUTE_WEIGHTS,
+  marksTotal,
+  minutesForMarks,
+  minutesUnrounded,
+  sheetSummary,
+} from "@tj/slides/worksheet";

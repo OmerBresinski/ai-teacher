@@ -43,6 +43,7 @@ describeDb("lesson.cascade / lesson.regenerate jobs", () => {
     ai,
     db: unsafeDb,
     caps,
+    worksheetCapUsd: 0.1,
     storage: memoryStorage(),
   });
 

@@ -540,6 +540,30 @@ export async function setPlanRevisionAndLock(
 }
 
 /**
+ * Take the generating lock on an unlocked worksheet row (ADR 0030 items 8–9): the row a failed
+ * fill left at `framed`, re-locked for a new `lesson.worksheet` job by `POST /lessons/:id/worksheet`.
+ * One `UPDATE … WHERE id AND kind = 'worksheet' AND generating_job_id IS NULL AND deleted_at IS
+ * NULL`, so two concurrent requests cannot both take it. The lock is not part of the body, so
+ * `updated_at` is left alone. `false` when the row is missing, deleted, not a worksheet, or
+ * already locked.
+ */
+export async function relockWorksheet(ws: WorkspaceDb, id: string, jobId: JobId): Promise<boolean> {
+  const rows = await ws
+    .update(
+      documents,
+      and(
+        eq(documents.id, id),
+        eq(documents.kind, "worksheet"),
+        isNull(documents.generatingJobId),
+        isNull(documents.deletedAt),
+      ),
+    )
+    .set({ generatingJobId: jobId })
+    .returning({ id: documents.id });
+  return rows.length > 0;
+}
+
+/**
  * Pass the generating lock from one job to the next (TDD T10, auto-continue): one
  * `UPDATE … SET generating_job_id = :to WHERE id AND generating_job_id = :from`. `false` when
  * `from` no longer holds it — a concurrent re-plan took the lock, and the caller must not enqueue.
