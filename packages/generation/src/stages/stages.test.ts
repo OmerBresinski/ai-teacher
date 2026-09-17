@@ -549,7 +549,7 @@ describe("plan", () => {
       expect(state.lesson.generation?.stage).toBe("planned");
     });
 
-    test("row 4: without slideCount the fixture's eleven entries plan as before", async () => {
+    test("row 4: without slideCount the fixture's ten entries plan as before", async () => {
       const ai = createFakeAi({ script: planScript(), usage });
       const { state } = await planVerified(initialState(brief({})), recordingDeps(ai));
       expect(ai.calls).toHaveLength(3);
@@ -795,14 +795,29 @@ describe("generate", () => {
     const slideCalls = ai.calls.filter(
       (c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-slide"],
     );
-    // The multiple-choice slide (outline position 7) references q1; every other question's stem
-    // is reserved from it, its own is not.
+    // The multiple-choice slide (outline position 7) references q1: its own stem is open; a stem
+    // another entry owns, or an unclaimed worksheet stem, is reserved from it; an unclaimed
+    // `slide` stem (q3, which no entry of the ten-slide fixture uses) is reserved from nobody.
     const mc = slideCalls.find((c) => c.promptText.includes('kind "multiple-choice"'));
-    const q1 = facts.questions.find((q) => q.id === "q1");
-    if (!mc || !q1) throw new Error("fixture");
-    expect(mc.promptText).not.toContain(`  - ${q1.stem}`);
-    for (const q of facts.questions.filter((q) => q.id !== "q1" && q.use !== "any")) {
-      expect(mc.promptText).toContain(`  - ${q.stem}`);
+    const mcIndex = facts.outline.findIndex((e) => e.kind === "multiple-choice");
+    if (!mc || mcIndex === -1) throw new Error("fixture");
+    const owner = new Map<string, number>();
+    facts.outline.forEach((e, i) => {
+      for (const ref of e.factRefs) if (!owner.has(ref)) owner.set(ref, i);
+    });
+    const own = new Set(facts.outline[mcIndex]?.factRefs);
+    expect(own.has("q1")).toBe(true);
+    for (const q of facts.questions) {
+      const o = owner.get(q.id);
+      const reserved = own.has(q.id)
+        ? false
+        : o === undefined
+          ? q.use === "worksheet"
+          : o !== mcIndex;
+      expect({ id: q.id, reserved: mc.promptText.includes(`  - ${q.stem}`) }).toEqual({
+        id: q.id,
+        reserved,
+      });
     }
     // Filtered facts: the slide sees only what its entry references (plus misconceptions).
     expect(mc.promptText).not.toContain("Key ideas:");

@@ -6,17 +6,27 @@ import { stemPlan } from "./question-pool";
 const facts = () => assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
 
 describe("stemPlan (question-pool)", () => {
-  test("Generation quality §3: each slide is reserved every stem another entry owns and the unclaimed worksheet stems; its own are open", () => {
+  test("Generation quality §3: each slide is reserved every stem another entry owns and the unclaimed worksheet stems; its own, and unclaimed slide stems, are open", () => {
     const f = facts();
-    // The multiple-choice slide (outline position 7) references q1; every other question's stem
-    // is reserved from it, its own is not.
     const mc = f.outline.findIndex((e) => e.kind === "multiple-choice");
-    const q1 = f.questions.find((q) => q.id === "q1");
-    if (mc === -1 || !q1) throw new Error("fixture");
+    if (mc === -1) throw new Error("fixture");
+    const owner = new Map<string, number>();
+    f.outline.forEach((e, i) => {
+      for (const ref of e.factRefs) if (!owner.has(ref)) owner.set(ref, i);
+    });
+    // The slide's own references come first (q1 is also the starter's, and open to both).
+    const own = new Set(f.outline[mc]?.factRefs);
+    expect(own.has("q1")).toBe(true);
+    // q3 is a `slide` question no entry of the ten-slide fixture claims: open to any slide.
+    expect(owner.has("q3")).toBe(false);
     const reserved = stemPlan(f).reservedFor(mc);
-    expect(reserved).not.toContain(q1.stem);
-    for (const q of f.questions.filter((q) => q.id !== "q1" && q.use !== "any")) {
-      expect(reserved).toContain(q.stem);
+    for (const q of f.questions) {
+      const o = owner.get(q.id);
+      const expected = own.has(q.id) ? false : o === undefined ? q.use === "worksheet" : o !== mc;
+      expect({ id: q.id, reserved: reserved.includes(q.stem) }).toEqual({
+        id: q.id,
+        reserved: expected,
+      });
     }
   });
 

@@ -426,14 +426,6 @@
         {
           "type": "question",
           "index": 3
-        },
-        {
-          "type": "question",
-          "index": 2
-        },
-        {
-          "type": "misconception",
-          "index": 0
         }
       ]
     },
