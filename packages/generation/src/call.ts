@@ -163,6 +163,9 @@ export const CALL_TIMEOUT_MS = {
   "verify-facts": 180_000,
   "generate-slide": 180_000,
   "generate-worksheet": 300_000,
+  // One `small` call for the placeholder slots; the API's own 2 s deadline bounds parse-brief.
+  "generate-worksheet-fill": 180_000,
+  "parse-brief": 180_000,
   "shortlist-photos": 180_000,
   "pick-or-requery-photo": 180_000,
   evaluate: 300_000,

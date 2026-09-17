@@ -2,6 +2,8 @@ import { checkInputPrompt } from "./check-input";
 import { evaluatePrompt } from "./evaluate";
 import { generateSlidePrompt } from "./generate-slide";
 import { generateWorksheetPrompt } from "./generate-worksheet";
+import { generateWorksheetFillPrompt } from "./generate-worksheet-fill";
+import { parseBriefPrompt } from "./parse-brief";
 import { pickOrRequeryPrompt } from "./pick-or-requery-photo";
 import { planFactsPrompt } from "./plan-facts";
 import { planSkeletonPrompt } from "./plan-skeleton";
@@ -22,6 +24,15 @@ export type { EvaluateInput } from "./evaluate";
 export type { GenerateSlideInput, SlidePhoto } from "./generate-slide";
 export { IMAGE_TEXT_RULE, photoBlock } from "./generate-slide";
 export type { GenerateWorksheetInput } from "./generate-worksheet";
+export { BLOCK_SHAPES } from "./generate-worksheet";
+export type {
+  FillBlockType,
+  GenerateWorksheetFillInput,
+  WorksheetFill,
+  WorksheetFillRecipe,
+  WorksheetFillSlot,
+} from "./generate-worksheet-fill";
+export type { ParseBriefFields, ParseBriefInput } from "./parse-brief";
 export type { PickOrRequeryInput } from "./pick-or-requery-photo";
 export type { PlanFactsInput } from "./plan-facts";
 export { type PlanSkeletonInput, SOURCE_INSTRUCTION } from "./plan-skeleton";
@@ -37,7 +48,9 @@ export {
   checkInputPrompt,
   evaluatePrompt,
   generateSlidePrompt,
+  generateWorksheetFillPrompt,
   generateWorksheetPrompt,
+  parseBriefPrompt,
   pickOrRequeryPrompt,
   planFactsPrompt,
   planSkeletonPrompt,
@@ -55,6 +68,8 @@ export const PROMPTS = {
   "verify-facts": verifyFactsPrompt,
   "generate-slide": generateSlidePrompt,
   "generate-worksheet": generateWorksheetPrompt,
+  "generate-worksheet-fill": generateWorksheetFillPrompt,
+  "parse-brief": parseBriefPrompt,
   "pick-or-requery-photo": pickOrRequeryPrompt,
   "shortlist-photos": shortlistPhotosPrompt,
   evaluate: evaluatePrompt,
@@ -72,6 +87,8 @@ export const PROMPT_VERSIONS = {
   "verify-facts": verifyFactsPrompt.version,
   "generate-slide": generateSlidePrompt.version,
   "generate-worksheet": generateWorksheetPrompt.version,
+  "generate-worksheet-fill": generateWorksheetFillPrompt.version,
+  "parse-brief": parseBriefPrompt.version,
   "pick-or-requery-photo": pickOrRequeryPrompt.version,
   "shortlist-photos": shortlistPhotosPrompt.version,
   evaluate: evaluatePrompt.version,

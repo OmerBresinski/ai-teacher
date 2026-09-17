@@ -1,0 +1,47 @@
+{
+  "slots": [
+    {
+      "index": 2,
+      "blocks": [
+        {
+          "type": "question",
+          "text": "Describe how the particles are arranged in a solid.",
+          "answer": "They are packed closely together in a regular pattern and only vibrate in place.",
+          "answerLines": 3,
+          "marks": 2,
+          "factRefs": ["q2", "o1"]
+        },
+        {
+          "type": "multiple-choice",
+          "text": "Which state has particles that move freely and fill their container?",
+          "options": [
+            { "text": "Solid", "correct": false },
+            { "text": "Liquid", "correct": false },
+            { "text": "Gas", "correct": true },
+            { "text": "They are the same in all three", "correct": false }
+          ],
+          "factRefs": ["q1", "o1"]
+        },
+        {
+          "type": "fill-gap",
+          "sentence": "Ice ___ when it is heated and steam ___ when it is cooled.",
+          "answers": ["melts", "condenses"],
+          "factRefs": ["q5", "o2"]
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "blocks": [
+        {
+          "type": "question",
+          "text": "A sealed balloon is left in a warm room. Use the particle model to predict what happens to it and explain why.",
+          "answer": "It expands: the gas particles gain energy, move faster and push harder on the balloon, so it takes up more room.",
+          "answerLines": 5,
+          "marks": 3,
+          "factRefs": ["q9", "o3"]
+        }
+      ]
+    }
+  ]
+}
