@@ -196,7 +196,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "generate-worksheet-fill": {
     version: "generate-worksheet-fill.v1",
-    hash: "8ab9b06f27b436dfc9af812c538707041033a417d7840095c54db131f8d2b05d",
+    hash: "cda2c51a0a4dcee3984910be0759fab02691fd7e3f5977ac0a70d0ebef7c316c",
   },
   "parse-brief": {
     version: "parse-brief.v1",
@@ -448,12 +448,18 @@ describe("prompt versions", () => {
         recipe: { fillSlots: { index: number; allowedTypes: string[]; count: [number, number] }[] };
       }
     ).recipe;
+    expect(FIXTURES.worksheetFill.slots.map((s) => s.index)).toEqual(
+      recipe.fillSlots.map((s) => s.index),
+    );
     for (const slot of FIXTURES.worksheetFill.slots) {
       const rule = recipe.fillSlots.find((s) => s.index === slot.index);
-      expect(rule).toBeDefined();
-      expect(slot.blocks.length).toBeGreaterThanOrEqual(rule?.count[0] ?? 0);
-      expect(slot.blocks.length).toBeLessThanOrEqual(rule?.count[1] ?? 0);
+      if (!rule) throw new Error(`no slot ${slot.index} in the sample recipe`);
+      expect(slot.blocks.length).toBeGreaterThanOrEqual(rule.count[0]);
+      expect(slot.blocks.length).toBeLessThanOrEqual(rule.count[1]);
+      for (const block of slot.blocks) expect(rule.allowedTypes).toContain(block.type);
     }
+    // The shape line wins over a guide's count (the spec wants exactly 4 options, at most 5 pairs).
+    expect(generateWorksheetFillPrompt.system).toContain("the shape wins");
   });
 
   test("every prompt states the house rules and asks for JSON", () => {

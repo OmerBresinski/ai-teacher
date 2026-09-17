@@ -87,7 +87,7 @@ export const generateWorksheetFillPrompt = {
     'Within a slot, order the questions by tier: "easy", then "core", then "stretch". Across the sheet, every objective is practised by at least one block.',
     "Each block's `factRefs` names the question it uses and the objectives it practises (the question's own objective ids).",
     "Every question has a full model answer for the answer key.",
-    "The brief gives the JSON shape of each allowed block type and a guide to writing it — exactly those keys, no others.",
+    "The brief gives the JSON shape of each allowed block type and a guide to writing it — exactly those keys, no others. Where the guide's counts differ from the shape's, the shape wins: it is what the sheet accepts.",
     "The blocks together take about the minutes the brief gives: fewer, shorter blocks for a small budget.",
     limitsBlock({
       "block text": SPEC_LIMITS.body,

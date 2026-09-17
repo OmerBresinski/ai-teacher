@@ -7,26 +7,28 @@
           "type": "question",
           "text": "Describe how the particles are arranged in a solid.",
           "answer": "They are packed closely together in a regular pattern and only vibrate in place.",
-          "answerLines": 3,
-          "marks": 2,
-          "factRefs": ["q2", "o1"]
+          "answerLines": 2,
+          "marks": 1,
+          "factRefs": ["q6", "o1"]
         },
         {
           "type": "multiple-choice",
-          "text": "Which state has particles that move freely and fill their container?",
+          "text": "Which change of state happens when a gas cools down?",
           "options": [
-            { "text": "Solid", "correct": false },
-            { "text": "Liquid", "correct": false },
-            { "text": "Gas", "correct": true },
-            { "text": "They are the same in all three", "correct": false }
+            { "text": "Melting", "correct": false },
+            { "text": "Boiling", "correct": false },
+            { "text": "Freezing", "correct": false },
+            { "text": "Condensing", "correct": true }
           ],
-          "factRefs": ["q1", "o1"]
+          "factRefs": ["q13", "o2"]
         },
         {
-          "type": "fill-gap",
-          "sentence": "Ice ___ when it is heated and steam ___ when it is cooled.",
-          "answers": ["melts", "condenses"],
-          "factRefs": ["q5", "o2"]
+          "type": "question",
+          "text": "Why can you pour a liquid but not a solid?",
+          "answer": "Liquid particles can slide past each other; solid particles are held in fixed positions and cannot.",
+          "answerLines": 4,
+          "marks": 2,
+          "factRefs": ["q7", "o1"]
         }
       ]
     },
@@ -34,12 +36,13 @@
       "index": 4,
       "blocks": [
         {
-          "type": "question",
-          "text": "A sealed balloon is left in a warm room. Use the particle model to predict what happens to it and explain why.",
-          "answer": "It expands: the gas particles gain energy, move faster and push harder on the balloon, so it takes up more room.",
-          "answerLines": 5,
-          "marks": 3,
-          "factRefs": ["q9", "o3"]
+          "type": "matching",
+          "pairs": [
+            { "left": "Melting", "right": "Solid to liquid" },
+            { "left": "Boiling", "right": "Liquid to gas" },
+            { "left": "Condensing", "right": "Gas to liquid" }
+          ],
+          "factRefs": ["q2", "o2"]
         }
       ]
     }
