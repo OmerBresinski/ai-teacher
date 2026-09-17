@@ -40,7 +40,7 @@ compile).
 | `ping`, `ai.ping` | `ping.ts`, `ai-ping.ts` | ADR 0012, 0018 (demo) |
 | `lesson.plan` | `lesson-plan.ts` — check-input and Plan; stops at `planned` when the payload has `stopAfter` (and hands the lock to `lesson.generate` when `continue_when_planned` is set), otherwise runs the whole pipeline | ADR 0025 §5, ADR 0029 |
 | `lesson.generate` | `lesson-generate.ts` — re-materialises the objectives slide, then Generate (slides only), Illustrate, Evaluate, Repair from `planned` | ADR 0029 |
-| `lesson.worksheet` | TEACH-14 (placeholder today) — frame, fill, check one worksheet on its own row, lock and budget | ADR 0030 |
+| `lesson.worksheet` | `lesson-worksheet.ts` — frame (no model call), one `small` fill call, checks and one repair for one worksheet on its own row, lock and budget; reads the lesson with no lock | ADR 0030 |
 | `lesson.cascade`, `lesson.regenerate` | `lesson-cascade.ts`, `lesson-regenerate.ts` — unlocked proposal jobs | ADR 0025 §18 |
 
 - **Both lesson pipeline jobs run through `lesson-pipeline.ts` (`runLessonJob`)**: ownership and

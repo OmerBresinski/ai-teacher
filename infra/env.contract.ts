@@ -656,6 +656,20 @@ const CONTRACT = [
       "Per-lesson input + output token cap, used instead of `AI_LESSON_COST_CAP_USD` once a configured model id has no entry in `@tj/ai` `PRICES` (ADR 0025 §15) — the cap is never silently absent.",
   },
   {
+    name: "AI_WORKSHEET_COST_CAP_USD",
+    services: ["worker"],
+    scope: "config",
+    local: "0.10",
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "template",
+    format: "number",
+    files: ["worker"],
+    railwayValue: "0.10",
+    description:
+      "Per-worksheet spend cap in USD for the `lesson.worksheet` job (ADR 0030 item 1): one `small` fill call and at most one repair, charged to the worksheet's own `generation.usage`, never the lesson's. Defaults to 0.10 when unset, so an existing worker service needs no new variable.",
+  },
+  {
     name: "AI_EVAL_RUN_COST_CAP_USD",
     services: ["worker"],
     scope: "config",

@@ -84,6 +84,7 @@ logger.info(
     ai: deps.ai.kind,
     costCapUsd: deps.caps.capUsd,
     tokenCap: deps.caps.capTokens,
+    worksheetCapUsd: deps.worksheetCapUsd,
     images: deps.images ? "pexels" : "disabled",
     storage: deps.storageKind,
   },

@@ -31,7 +31,13 @@ function ctx(deps: Pick<WorkerDeps, "ai">, ac = new AbortController()) {
         calls.push([percent, message]);
       },
       logger: pino({ level: "silent" }),
-      deps: { ...deps, db: fakeDb, caps: TEST_CAPS, storage: memoryStorage() },
+      deps: {
+        ...deps,
+        db: fakeDb,
+        caps: TEST_CAPS,
+        worksheetCapUsd: 0.1,
+        storage: memoryStorage(),
+      },
     },
   };
 }

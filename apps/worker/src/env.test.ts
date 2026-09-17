@@ -19,6 +19,7 @@ describe("worker env", () => {
       AI_MODEL_SMALL: DEFAULT_MODEL_IDS.small,
       AI_LESSON_COST_CAP_USD: 0.5,
       AI_LESSON_TOKEN_CAP: 300_000,
+      AI_WORKSHEET_COST_CAP_USD: 0.1,
       MASTRA_TELEMETRY_DISABLED: undefined,
       PEXELS_API_KEY: undefined,
       AI_FAKE_SCRIPT: undefined,

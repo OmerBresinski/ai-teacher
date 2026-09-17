@@ -155,6 +155,7 @@ describe("targets and reports", () => {
       "PEXELS_API_KEY",
       "AI_LESSON_COST_CAP_USD",
       "AI_LESSON_TOKEN_CAP",
+      "AI_WORKSHEET_COST_CAP_USD",
       "MASTRA_TELEMETRY_DISABLED",
     ]);
     expect(report.extra).toEqual(["ROGUE_VAR"]);
@@ -174,6 +175,7 @@ describe("targets and reports", () => {
       "railway variable set PEXELS_API_KEY --stdin --service worker --skip-deploys  < /path/to/secret",
       "railway variable set --service worker --skip-deploys 'AI_LESSON_COST_CAP_USD=0.50'",
       "railway variable set --service worker --skip-deploys 'AI_LESSON_TOKEN_CAP=300000'",
+      "railway variable set --service worker --skip-deploys 'AI_WORKSHEET_COST_CAP_USD=0.10'",
       "railway variable set --service worker --skip-deploys 'MASTRA_TELEMETRY_DISABLED=1'",
       "# not in the contract: railway variable delete ROGUE_VAR --service worker --environment production   (or add it to infra/env.contract.ts)",
     ]);

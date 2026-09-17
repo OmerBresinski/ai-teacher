@@ -11,8 +11,8 @@ import { createPerJobFakeAi } from "./fake-ai";
 /**
  * Boot-owned dependencies every handler receives as `ctx.deps`. `db` is the same pooled Drizzle
  * client the `JobsContext` holds (one pool per process); handlers reach tenant tables through
- * `forWorkspace(deps.db, workspaceId)` only (ADR 0007). `caps` are the per-job budget limits
- * (ADR 0025 §15); `storage` is the object store the Source loader reads `extracted.json` from
+ * `forWorkspace(deps.db, workspaceId)` only (ADR 0007). `caps` are the per-lesson budget limits
+ * (ADR 0025 §15) and `worksheetCapUsd` the per-worksheet one (ADR 0030 item 1); `storage` is the object store the Source loader reads `extracted.json` from
  * (ADR 0027 §6) — the loader itself is built per job because it is scoped to a Workspace
  * (`storageSourceLoader` in `sources.ts`). `AI_FAKE_SCRIPT` swaps Bedrock for the scripted fake
  * (test and development only; `env.ts` refuses it in production). `images` is the Pexels client +
@@ -25,6 +25,8 @@ export type WorkerDeps = {
   ai: CreatedAi;
   db: Db;
   caps: { capUsd: number; capTokens: number };
+  /** `AI_WORKSHEET_COST_CAP_USD` (ADR 0030 item 1): the worksheet job's own cap, beside the lesson's token cap. */
+  worksheetCapUsd: number;
   /** `AI_PLAN_FRONTIER_FROM_YEAR` (TEACH-259): Plan on `frontier` from this year group; unset → `standard`. */
   planFrontierFromYear?: number;
   storage: ReadableStorageAdapter;
@@ -52,6 +54,7 @@ export function createWorkerDeps(
     ai: env.AI_FAKE_SCRIPT === "pipeline" ? createPerJobFakeAi(env) : createAi(env, { logger }),
     db,
     caps: { capUsd: env.AI_LESSON_COST_CAP_USD, capTokens: env.AI_LESSON_TOKEN_CAP },
+    worksheetCapUsd: env.AI_WORKSHEET_COST_CAP_USD,
     ...(env.AI_PLAN_FRONTIER_FROM_YEAR !== undefined
       ? { planFrontierFromYear: env.AI_PLAN_FRONTIER_FROM_YEAR }
       : {}),

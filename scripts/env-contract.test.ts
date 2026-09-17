@@ -85,6 +85,7 @@ describe("infra/env.contract.ts", () => {
       "PEXELS_API_KEY",
       "AI_LESSON_COST_CAP_USD",
       "AI_LESSON_TOKEN_CAP",
+      "AI_WORKSHEET_COST_CAP_USD",
       "MASTRA_TELEMETRY_DISABLED",
     ]);
     // Set on production so PR environments (copies of production) inherit it (TEACH-38).
