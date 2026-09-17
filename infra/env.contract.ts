@@ -801,7 +801,7 @@ const CONTRACT = [
     format: "int",
     files: ["api"],
     description:
-      "Model-call requests per Workspace per window on `POST /jobs/ai-ping` before `429 rate_limited` (default 10).",
+      "Model-call requests per Workspace per window on `POST /jobs/ai-ping`, `POST /lessons` and the lesson job routes before `429 rate_limited` (default 30).",
   },
   {
     name: "AI_RATE_LIMIT_WINDOW_S",

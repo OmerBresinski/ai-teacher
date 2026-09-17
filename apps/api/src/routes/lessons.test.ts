@@ -1,6 +1,7 @@
 /**
- * Unit rows for `POST /lessons` that need no database: guards, validation, the 503 without a job
- * runtime, `lessonFromBrief` defaults, and cancel-on-insert-failure with a fake `JobsContext`.
+ * Unit rows for `POST /lessons`, `/plan` and `/generate` that need no database: guards,
+ * validation, the 503 without a job runtime, `lessonFromBrief` defaults, the row and payload
+ * `createLessonAndEnqueue` writes, and cancel-on-insert-failure with a fake `JobsContext`.
  */
 import { describe, expect, mock, test } from "bun:test";
 import type { WorkspaceDb } from "@tj/db";
@@ -148,6 +149,132 @@ describe("POST /lessons/:id/cascade and /regenerate guards and validation (ADR 0
   test("503 when no job runtime is configured, before any read", async () => {
     const res = await testApp().request(CASCADE_PATH, post({ changedFactIds: ["o1"] }));
     expect(res.status).toBe(503);
+  });
+});
+
+const PLAN_PATH = `/lessons/${newId<LessonId>()}/plan`;
+const GENERATE_PATH = `/lessons/${newId<LessonId>()}/generate`;
+const validPlan = { expectedRevision: 1, brief: { topic: "Fractions of amounts" } };
+const validGenerate = { expectedRevision: 1, objectives: [{ id: "o1", text: "Find a half" }] };
+
+describe("POST /lessons skipPlanning and requestId validation (ADR 0029)", () => {
+  test.each([
+    ["a non-boolean skipPlanning", { ...validBrief, skipPlanning: "yes" }, ["skipPlanning"]],
+    ["a non-uuid requestId", { ...validBrief, requestId: "abc" }, ["requestId"]],
+    ["a slide count outside 6/8/10/12", { brief: { topic: "x", slideCount: 7 } }, ["brief"]],
+    ["an unknown level", { brief: { topic: "x", level: "expert" } }, ["brief"]],
+  ])("400 validation_failed for %s", async (_label, body, fields) => {
+    const res = await testApp().request("/lessons", post(body));
+    expect(res.status).toBe(400);
+    expect((await errorBody(res)).error).toMatchObject({ code: "validation_failed", fields });
+  });
+});
+
+describe("POST /lessons/:id/plan and /generate guards and validation (ADR 0029)", () => {
+  test.each([
+    ["plan", PLAN_PATH, validPlan],
+    ["generate", GENERATE_PATH, validGenerate],
+  ])("%s: 401 without a session or shim; 403 cross-site", async (_label, path, body) => {
+    const noShim = createApp({ env: TEST_ENV_NO_SHIM, db: fakeSql(true), logger: silentLogger });
+    expect((await noShim.request(path, post(body, {}))).status).toBe(401);
+    const crossSite = await testApp().request(
+      path,
+      post(body, {
+        [WORKSPACE_HEADER]: ws,
+        origin: "https://evil.example",
+        "sec-fetch-site": "cross-site",
+      }),
+    );
+    expect(crossSite.status).toBe(403);
+  });
+
+  test.each([
+    ["plan: no expectedRevision", PLAN_PATH, { brief: { topic: "x" } }, ["expectedRevision"]],
+    [
+      "plan: a negative revision",
+      PLAN_PATH,
+      { ...validPlan, expectedRevision: -1 },
+      ["expectedRevision"],
+    ],
+    ["plan: no brief", PLAN_PATH, { expectedRevision: 1 }, ["brief"]],
+    [
+      "plan: a learner name in the topic",
+      PLAN_PATH,
+      { expectedRevision: 1, brief: { topic: "Help a pupil called Amir" } },
+      ["brief"],
+    ],
+    [
+      "plan: clarifying answers are not re-plannable",
+      PLAN_PATH,
+      { expectedRevision: 1, brief: { topic: "x", answers: { q: "a" } } },
+      ["brief"],
+    ],
+    [
+      "plan: four sourceIds",
+      PLAN_PATH,
+      { ...validPlan, sourceIds: Array(4).fill("0192b6e0-0000-7000-8000-000000000001") },
+      ["sourceIds"],
+    ],
+    ["plan: lessonId in the body (strict)", PLAN_PATH, { ...validPlan, lessonId: "x" }, ["(root)"]],
+    [
+      "generate: five objectives",
+      GENERATE_PATH,
+      { expectedRevision: 1, objectives: Array(5).fill({ text: "Find a half" }) },
+      ["objectives"],
+    ],
+    [
+      "generate: a blank objective",
+      GENERATE_PATH,
+      { expectedRevision: 1, objectives: [{ text: "   " }] },
+      ["objectives"],
+    ],
+    [
+      "generate: an identifier in an objective",
+      GENERATE_PATH,
+      { expectedRevision: 1, objectives: [{ text: "Email amir@example.com the answers" }] },
+      ["objectives"],
+    ],
+    [
+      "generate: an objective id that is not a fact id",
+      GENERATE_PATH,
+      { expectedRevision: 1, objectives: [{ id: "Objective 1", text: "Find a half" }] },
+      ["objectives"],
+    ],
+    [
+      "generate: a slide count of 7",
+      GENERATE_PATH,
+      { ...validGenerate, slideCount: 7 },
+      ["slideCount"],
+    ],
+    ["generate: no objectives field", GENERATE_PATH, { expectedRevision: 1 }, ["objectives"]],
+  ])("400 validation_failed for %s", async (_label, path, body, fields) => {
+    const res = await testApp().request(path, post(body));
+    expect(res.status).toBe(400);
+    expect((await errorBody(res)).error).toMatchObject({ code: "validation_failed", fields });
+  });
+
+  test("400 for a non-UUID lesson id", async () => {
+    expect((await testApp().request("/lessons/nope/plan", post(validPlan))).status).toBe(400);
+    expect((await testApp().request("/lessons/nope/generate", post(validGenerate))).status).toBe(
+      400,
+    );
+  });
+
+  test("generate with no objectives is 422 before anything is read", async () => {
+    const res = await testApp().request(
+      GENERATE_PATH,
+      post({ expectedRevision: 1, objectives: [] }),
+    );
+    expect(res.status).toBe(422);
+    expect((await errorBody(res)).error).toMatchObject({
+      code: "unprocessable",
+      message: "Keep at least one objective.",
+    });
+  });
+
+  test("503 when no job runtime is configured, before any read", async () => {
+    expect((await testApp().request(PLAN_PATH, post(validPlan))).status).toBe(503);
+    expect((await testApp().request(GENERATE_PATH, post(validGenerate))).status).toBe(503);
   });
 });
 
@@ -324,6 +451,47 @@ describe("createLessonAndEnqueue when the enqueue fails", () => {
     ).rejects.toMatchObject({ status: 422 });
     expect(f.created).toEqual([]);
     expect(f.send).not.toHaveBeenCalled();
+  });
+
+  test("the row carries plan revision 1 and the queued payload stops at planned", async () => {
+    const f = fakes("throws");
+    await createLessonAndEnqueue(f.ws, f.runtime, lesson).catch(() => undefined);
+    const row = f.created[0] as {
+      body: { plan?: unknown };
+      generatingJobId: string;
+      continueWhenPlanned: boolean;
+      requestId: string | null;
+    };
+    expect(row.body.plan).toEqual({ revision: 1, state: "proposed", jobId: row.generatingJobId });
+    expect(row.continueWhenPlanned).toBe(false);
+    expect(row.requestId).toBeNull();
+    const data = (f.send.mock.calls[0] as unknown as [string, { payload: unknown }])[1];
+    expect(data.payload).toEqual({ lessonId, revision: 1, stopAfter: "planned" });
+  });
+
+  test("skipPlanning: confirmed up front, continue_when_planned set, no stopAfter", async () => {
+    const f = fakes("throws");
+    const requestId = newId();
+    await createLessonAndEnqueue(f.ws, f.runtime, lesson, [], {
+      skipPlanning: true,
+      requestId,
+    }).catch(() => undefined);
+    const row = f.created[0] as {
+      body: { plan?: unknown };
+      generatingJobId: string;
+      continueWhenPlanned: boolean;
+      requestId: string | null;
+    };
+    expect(row.body.plan).toEqual({
+      revision: 1,
+      state: "confirmed",
+      jobId: row.generatingJobId,
+      confirmedAt: lesson.createdAt,
+    });
+    expect(row.continueWhenPlanned).toBe(true);
+    expect(row.requestId).toBe(requestId);
+    const data = (f.send.mock.calls[0] as unknown as [string, { payload: unknown }])[1];
+    expect(data.payload).toEqual({ lessonId, revision: 1 });
   });
 
   test("enqueue is given the same job id the row was locked with", async () => {

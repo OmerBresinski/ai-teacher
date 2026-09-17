@@ -389,7 +389,12 @@ function materialiseTitle(lesson: Lesson, deps: PipelineDeps): Slide {
   );
 }
 
-function materialiseObjectives(
+/**
+ * The objectives slide from `facts`: at most four objectives, provenance from the outline's
+ * second entry (or the objectives themselves). Exported for `lesson.generate`, which rebuilds the
+ * slide from objectives the teacher edited on the plan screen (ADR 0029 item 8).
+ */
+export function materialiseObjectives(
   lesson: Lesson,
   facts: LessonFacts,
   deps: PipelineDeps,

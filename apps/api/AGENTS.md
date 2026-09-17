@@ -41,16 +41,17 @@ Hono application on Bun. The typed contract for `apps/web` (Hono RPC). Read the 
 | Route | File | Decided by |
 | ----- | ---- | ---------- |
 | `POST /lessons` | `routes/lessons.ts` — creates the row, `plan.revision` 1, enqueues `lesson.plan`; `skipPlanning`, `requestId` | ADR 0024 §6, ADR 0029 |
-| `POST /lessons/:id/plan` | `routes/lessons.ts` (TEACH-13) — re-plan, compare-and-set on `expectedRevision` | ADR 0029 |
-| `POST /lessons/:id/generate` | `routes/lessons.ts` (TEACH-13) — confirm the plan, enqueue `lesson.generate` | ADR 0029 |
+| `POST /lessons/:id/plan` | `routes/lessons.ts` — re-plan, compare-and-set on `expectedRevision`; body changes in `routes/plan-patches.ts` | ADR 0029 |
+| `POST /lessons/:id/generate` | `routes/lessons.ts` — confirm the plan, enqueue `lesson.generate` (or a pinned `lesson.plan` on a shape change) | ADR 0029 |
 | `POST /lessons/:id/worksheet` | `routes/lessons.ts` (TEACH-14) — create or reuse a worksheet row, enqueue `lesson.worksheet` | ADR 0030 |
 | `GET /lessons/:id/worksheets` | `routes/lessons.ts` (TEACH-14) — the lesson's worksheets from `documents.lesson_id` | ADR 0030 |
 | `POST /lessons/:id/cascade`, `/regenerate` | `routes/lessons.ts` — unlocked proposal jobs | ADR 0025 §18 |
 | `POST /briefs/parse` | `routes/briefs.ts` (TEACH-16) — rules, then one `small` call under 2 s; stateless | ADR 0029 item 13 |
 
 - **Plan changes go through `setPlanRevisionAndLock`** (`@tj/db`): the revision check and the new
-  lock are one write. `stale` → `409 stale`; the lock held by a plan job → `409 planning`
-  (ADR 0029 items 4, 5, 7).
+  lock are one write. `stale` → `409 stale`; the lock held by a plan job → `409 planning`, except
+  that `/plan` passes `supersedeProposal` and takes a running proposal's lock (ADR 0029 items 4,
+  5, 7).
 - **Register `aiLimiter` per path** in `app.ts`, never on `/lessons/*` (it also matches
   `/lessons` and would charge a brief twice). `/briefs` and `/briefs/*` are in `PROTECTED_PATHS`.
 - Log ids, revisions, counts and booleans only — never brief, objective or parse-box text

@@ -21,8 +21,8 @@ export interface ProgressEmitter {
 
 /**
  * Leading + trailing throttle: the first call emits immediately; calls inside the window are
- * merged field by field — the latest value of each of `percent`, `message` and
- * `documentUpdatedAt` wins — and the merged event is emitted when the window closes. Nothing is
+ * merged field by field — the latest value of each of `percent`, `message`, `documentUpdatedAt`
+ * and `stage` wins — and the merged event is emitted when the window closes. Nothing is
  * dropped silently — the last progress a handler reports always lands (at most `minIntervalMs`
  * late, or on `flush()`), and a `documentUpdatedAt` reported once inside the window survives a
  * later percent-only call. Events are written sequentially so `job_events.id` order matches call
@@ -55,6 +55,7 @@ export function createProgressEmitter(opts: ProgressEmitterOptions): ProgressEmi
       if (percent !== undefined) p.percent = percent;
       if (message !== undefined) p.message = message;
       if (extra?.documentUpdatedAt !== undefined) p.documentUpdatedAt = extra.documentUpdatedAt;
+      if (extra?.stage !== undefined) p.stage = extra.stage;
       const elapsed = now() - lastEmittedAt;
       if (elapsed >= opts.minIntervalMs && !timer) return write(p);
       pending = { ...pending, ...p };

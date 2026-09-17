@@ -2,6 +2,7 @@ import { type CreatedAi, createAi } from "@tj/ai";
 import type { Db } from "@tj/db";
 import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
 import { createPexelsClient, type PexelsClient } from "@tj/images";
+import type { JobsContext } from "@tj/jobs";
 import { createStorage, type StorageKind } from "@tj/storage";
 import type { Logger } from "pino";
 import type { Env } from "./env";
@@ -16,7 +17,9 @@ import { createPerJobFakeAi } from "./fake-ai";
  * (`storageSourceLoader` in `sources.ts`). `AI_FAKE_SCRIPT` swaps Bedrock for the scripted fake
  * (test and development only; `env.ts` refuses it in production). `images` is the Pexels client +
  * the same object storage behind illustrate (Images project); absent without a key, and the step
- * skips placements instead of failing.
+ * skips placements instead of failing. `jobs` is the worker's own `JobsContext`, for the one job
+ * that enqueues another (the plan job's auto-continue, ADR 0029 item 10); boot sets it, and
+ * without it auto-continue leaves the lesson at `planned`.
  */
 export type WorkerDeps = {
   ai: CreatedAi;
@@ -26,6 +29,7 @@ export type WorkerDeps = {
   planFrontierFromYear?: number;
   storage: ReadableStorageAdapter;
   images?: { client: PexelsClient; storage: StorageAdapter };
+  jobs?: JobsContext;
 };
 
 export function createWorkerDeps(

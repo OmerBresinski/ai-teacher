@@ -67,7 +67,7 @@ is set".
 | `EVENTS_REPLAY_LIMIT` | api | config | — | n/a | n/a | template | Most `job_events` rows replayed when a stream opens (default 500, max 5000). |
 | `EVENTS_HEARTBEAT_MS` | api | config | — | n/a | n/a | template | Interval of the `: ping` SSE comment that keeps proxies awake (default 15000). |
 | `EVENTS_POLL_MS` | api | config | — | n/a | n/a | template | Poll interval while the LISTEN connection is down — degraded mode (default 1000). |
-| `AI_RATE_LIMIT_PER_WORKSPACE` | api | config | — | n/a | n/a | template | Model-call requests per Workspace per window on `POST /jobs/ai-ping` before `429 rate_limited` (default 10). |
+| `AI_RATE_LIMIT_PER_WORKSPACE` | api | config | — | n/a | n/a | template | Model-call requests per Workspace per window on `POST /jobs/ai-ping`, `POST /lessons` and the lesson job routes before `429 rate_limited` (default 30). |
 | `AI_RATE_LIMIT_WINDOW_S` | api | config | — | n/a | n/a | template | Window length in seconds for `AI_RATE_LIMIT_PER_WORKSPACE` (default 60). |
 | `IMAGE_RATE_LIMIT_PER_WORKSPACE` | api | config | — | n/a | n/a | template | Photo-search requests per Workspace per window on `GET /images/search` before `429 rate_limited` (default 30). |
 | `IMAGE_RATE_LIMIT_WINDOW_S` | api | config | — | n/a | n/a | template | Window length in seconds for `IMAGE_RATE_LIMIT_PER_WORKSPACE` (default 60). |

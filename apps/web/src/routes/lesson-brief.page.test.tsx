@@ -175,6 +175,8 @@ describe("LessonBriefPage", () => {
       },
       yearGroup: "Year 5",
       themeId: "chalk",
+      // One job to the end until the plan screen ships (TEACH-13 stopgap, T7).
+      skipPlanning: true,
     });
     // The class is remembered for the next brief.
     expect(JSON.parse(localStorage.getItem(LAST_CLASS_KEY) ?? "{}")).toMatchObject({
@@ -219,6 +221,7 @@ describe("LessonBriefPage", () => {
     expect(lastPost()?.body).toEqual({
       brief: { topic: "The water cycle", durationMin: 45 },
       themeId: "chalk",
+      skipPlanning: true,
     });
   });
 
@@ -277,6 +280,7 @@ describe("LessonBriefPage", () => {
         },
       },
       themeId: "chalk",
+      skipPlanning: true,
     });
   });
 
@@ -360,6 +364,7 @@ describe("LessonBriefPage", () => {
         answers: { objectiveVerb: "Explain the water cycle", priorConfidence: "Revisiting" },
       },
       themeId: "chalk",
+      skipPlanning: true,
     });
   });
 

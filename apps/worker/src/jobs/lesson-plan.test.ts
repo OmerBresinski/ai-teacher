@@ -9,7 +9,15 @@ import {
   putDocumentAsJob,
 } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
-import { type JobId, type LessonId, newId, storageKey, type WorkspaceId } from "@tj/domain";
+import {
+  JOB_PROGRESS_STAGES,
+  type JobId,
+  type LessonId,
+  type LessonPlanPayload,
+  newId,
+  storageKey,
+  type WorkspaceId,
+} from "@tj/domain";
 import { type Lesson, lessonFromBrief, parseLesson } from "@tj/domain/documents";
 import { INPUT_CHECK_MESSAGES } from "@tj/generation";
 import {
@@ -19,14 +27,14 @@ import {
   SLIDES_INDEX,
   scriptedPipelineAi,
 } from "@tj/generation/testing";
-import { NonRetryableError } from "@tj/jobs";
+import { NonRetryableError, type ProgressExtra } from "@tj/jobs";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
 import { SOURCE_UNAVAILABLE_MESSAGE } from "../sources";
 import { memoryStorage } from "../testing/memory-storage";
 import { lessonPlanJob } from "./lesson-plan";
 
-// Integration test against the compose Postgres (ADR 0014): the lock, the worksheet row and the
+// Integration test against the compose Postgres (ADR 0014): the lock, the revision guard and the
 // per-slide writes are real repository calls, so the handler is exercised with the real `@tj/db`
 // rather than a module mock — `mock.module("@tj/db")` would leak into every other test file.
 const t = await withTestDb();
@@ -35,7 +43,7 @@ if (!t.ok) console.warn(`skipping lesson.plan tests: ${t.reason}`);
 
 describeDb("lesson.plan job", () => {
   if (!t.ok) return;
-  const { unsafeDb, truncateTenantTables, close } = t.db;
+  const { unsafeDb, sql, truncateTenantTables, close } = t.db;
   afterAll(() => close());
 
   const workspaceId = newId<WorkspaceId>();
@@ -59,15 +67,16 @@ describeDb("lesson.plan job", () => {
     await createTestUserWithWorkspace(unsafeDb, { workspaceId });
   });
 
-  /** The row `POST /lessons` writes: a brief, no slides, locked by `jobId`. */
+  /** The row `POST /lessons` writes: a brief, no slides, plan revision 1, locked by `jobId`. */
   async function briefLesson(jobId: JobId, patch: Partial<Lesson> = {}) {
     const lessonId = newId<LessonId>();
-    const lesson = {
+    const lesson: Lesson = {
       ...lessonFromBrief(
         { brief: { topic: "States of matter" }, subject: "Science", yearGroup: "Year 8" },
         lessonId,
         new Date("2026-09-06T10:00:00.000Z"),
       ),
+      plan: { revision: 1, state: "confirmed", jobId },
       ...patch,
     };
     await createDocument(ws(), "lesson", lesson, { id: lessonId, generatingJobId: jobId });
@@ -78,23 +87,22 @@ describeDb("lesson.plan job", () => {
     jobId: JobId,
     lessonId: LessonId,
     deps: WorkerDeps,
-    options: { ac?: AbortController } = {},
+    options: { ac?: AbortController; payload?: Partial<LessonPlanPayload> } = {},
   ) {
     const ac = options.ac ?? new AbortController();
     const calls: Array<[number | undefined, string | undefined, string | undefined]> = [];
+    const stages: Array<string | undefined> = [];
     return {
       calls,
+      stages,
       ctx: {
         jobId,
         workspaceId,
-        payload: { lessonId, revision: 1 },
+        payload: { lessonId, revision: 1, ...options.payload } as LessonPlanPayload,
         signal: ac.signal,
-        progress: async (
-          percent?: number,
-          message?: string,
-          extra?: { documentUpdatedAt?: string | undefined },
-        ) => {
+        progress: async (percent?: number, message?: string, extra?: ProgressExtra) => {
           calls.push([percent, message, extra?.documentUpdatedAt]);
+          stages.push(extra?.stage);
         },
         logger: quiet,
         deps,
@@ -120,11 +128,9 @@ describeDb("lesson.plan job", () => {
     expect(lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(lesson.generation?.stage).toBe("repaired");
     expect(lesson.generation?.jobId).toBe(jobId);
-    // Slides only (ADR 0030 item 2): the pipeline writes no worksheet, so no worksheet row exists.
-    // The handler still mints `artefacts.worksheetId` for the row it expects; TEACH-13 removes that.
-    const worksheetId = lesson.artefacts?.worksheetId;
-    expect(worksheetId).toBeDefined();
-    expect(await getDocument(ws(), worksheetId ?? "")).toBeNull();
+    // Slides only (ADR 0030 item 2): no worksheet row, and no worksheet id minted for one.
+    expect(lesson.artefacts).toBeUndefined();
+    expect(await sql`select id from documents where kind = 'worksheet'`).toHaveLength(0);
 
     // One progress line per stage plus one per generated slide, each stamped with the row's clock.
     const stamped = h.calls.filter(([, , at]) => at !== undefined);
@@ -132,6 +138,93 @@ describeDb("lesson.plan job", () => {
     expect(stamped.at(-1)?.[2]).toBe(row?.updatedAt.toISOString());
     const ats = stamped.map(([, , at]) => Date.parse(at ?? ""));
     expect([...ats].sort((a, b) => a - b)).toEqual(ats);
+    // Every progress event names its stage (ADR 0029 item 14).
+    expect(h.stages.length).toBe(h.calls.length);
+    for (const stage of h.stages) expect(JOB_PROGRESS_STAGES).toContain(stage as never);
+    expect(h.stages).toContain("plan");
+    expect(h.stages).toContain("generate");
+  });
+
+  test("stopAfter planned: Plan and Verify only, the stamped checkpoint, the lock released", async () => {
+    const jobId = newId<JobId>();
+    const lessonId = await briefLesson(jobId, {
+      plan: { revision: 1, state: "proposed", jobId },
+    });
+    const ai = scriptedPipelineAi();
+    const h = ctx(jobId, lessonId, depsWith(ai), { payload: { stopAfter: "planned" } });
+
+    await lessonPlanJob(h.ctx);
+
+    expect(new Set(ai.calls.map((c) => c.context?.stage))).toEqual(
+      new Set(["check-input", "plan"]),
+    );
+    const lesson = await storedLesson(lessonId);
+    expect(lesson.generation?.stage).toBe("planned");
+    expect(lesson.generation?.promptVersions.planned).toContain("verify-facts");
+    expect(lesson.slides.map((s) => s.kind)).toEqual(["title", "objectives"]);
+    expect(lesson.plan).toEqual({ revision: 1, state: "proposed", jobId });
+    expect(lesson.artefacts).toBeUndefined();
+    expect((await getDocument(ws(), lessonId))?.generatingJobId).toBeNull();
+    expect(new Set(h.stages)).toEqual(new Set(["plan"]));
+  });
+
+  test("pinObjectives keeps the objectives on the row, ids and text", async () => {
+    const jobId = newId<JobId>();
+    const pinned = FIXTURES.planSkeleton.learningObjectives.map((o, i) => ({
+      id: `o${i + 1}`,
+      text: `${o.text} (edited)`,
+    }));
+    const lessonId = await briefLesson(jobId, {
+      plan: { revision: 2, state: "confirmed", jobId },
+      facts: {
+        objectives: pinned,
+        vocabulary: [],
+        workedExamples: [],
+        questions: [],
+        misconceptions: [],
+        outline: [],
+        durationMin: 60,
+      },
+    });
+    const ai = scriptedPipelineAi();
+    const h = ctx(jobId, lessonId, depsWith(ai), {
+      payload: { revision: 2, pinObjectives: true, stopAfter: "planned" },
+    });
+
+    await lessonPlanJob(h.ctx);
+
+    const lesson = await storedLesson(lessonId);
+    expect(lesson.generation?.stage).toBe("planned");
+    expect(lesson.facts?.objectives.map(({ id, text }) => ({ id, text }))).toEqual(pinned);
+  });
+
+  test("a payload for another plan revision is refused: no write, no model call, lock released", async () => {
+    const jobId = newId<JobId>();
+    const lessonId = await briefLesson(jobId, {
+      plan: { revision: 2, state: "proposed", jobId },
+    });
+    const before = await getDocument(ws(), lessonId);
+    const ai = scriptedPipelineAi();
+
+    await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(ai)).ctx)).rejects.toThrow(
+      new NonRetryableError("revision moved"),
+    );
+
+    expect(ai.calls).toHaveLength(0);
+    const after = await getDocument(ws(), lessonId);
+    expect(after?.updatedAt.toISOString()).toBe(before?.updatedAt.toISOString());
+    expect(after?.generatingJobId).toBeNull();
+  });
+
+  test("a lesson written before plans existed is revision 0 and refused", async () => {
+    const jobId = newId<JobId>();
+    const lessonId = await briefLesson(jobId, { plan: undefined });
+    const ai = scriptedPipelineAi();
+
+    await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(ai)).ctx)).rejects.toThrow(
+      "revision moved",
+    );
+    expect(ai.calls).toHaveLength(0);
   });
 
   test("illustrate places a pexels photo with provenance on the image-text slide", async () => {

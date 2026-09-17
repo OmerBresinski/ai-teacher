@@ -47,7 +47,8 @@ export interface JobContext<K extends JobName, D = unknown> {
    * Emit a `progress` event. Rate-limited to one event per 250 ms: calls inside the window are
    * coalesced field by field and the result is emitted when the window closes (never dropped
    * silently). `extra.documentUpdatedAt` (ADR 0025 §7) tells the read-only editor the document
-   * changed; no content travels in an event.
+   * changed; `extra.stage` (ADR 0029 item 14) names the pipeline step. No content travels in an
+   * event.
    */
   progress: (percent?: number, message?: string, extra?: ProgressExtra) => Promise<void>;
   /** Child logger with `jobId`, `workspaceId`, `job` bound. Never log payload/content bodies. */
@@ -57,7 +58,7 @@ export interface JobContext<K extends JobName, D = unknown> {
 }
 
 /** The optional fields of a `progress` event beyond `percent` and `message`. */
-export type ProgressExtra = Pick<JobProgress, "documentUpdatedAt">;
+export type ProgressExtra = Pick<JobProgress, "documentUpdatedAt" | "stage">;
 
 /**
  * The result a handler for `K` may return (ADR 0025 §19): its member of `JobResultSchema`, or

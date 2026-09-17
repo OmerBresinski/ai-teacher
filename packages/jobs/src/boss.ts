@@ -1,8 +1,11 @@
 import { JobName } from "@tj/domain";
 import { PgBoss } from "pg-boss";
 
-/** Where pg-boss keeps its tables. `pgboss` in dev/prod, `pgboss_test` in integration tests. */
-export type PgBossSchema = "pgboss" | "pgboss_test";
+/**
+ * Where pg-boss keeps its tables. `pgboss` in dev/prod, `pgboss_test` (or a `pgboss_test_*` schema
+ * of its own, for a suite whose stub workers must not take another suite's jobs) in tests.
+ */
+export type PgBossSchema = "pgboss" | "pgboss_test" | `pgboss_test_${string}`;
 
 export interface CreateBossOptions {
   /** Defaults to `"pgboss"`. Tests pass `"pgboss_test"` so they never touch real queues. */

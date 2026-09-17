@@ -1,233 +1,99 @@
-import { createBudget, isAiError } from "@tj/ai";
 import {
-  clearGenerating,
-  createDocument,
-  forWorkspace,
   getDocument,
+  handOffLock,
   putDocumentAsJob,
+  setContinueWhenPlanned,
   type WorkspaceDb,
 } from "@tj/db";
-import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
-import {
-  type Lesson,
-  parseLesson,
-  parseStoredWorksheet,
-  type Worksheet,
-} from "@tj/domain/documents";
-import {
-  BudgetExceeded,
-  InputRejected,
-  type PipelineDeps,
-  type PipelineInput,
-  runLessonPipeline,
-} from "@tj/generation";
-import { storePhoto } from "@tj/images";
-import { defineJob, NonRetryableError } from "@tj/jobs";
-import { uid } from "@tj/slides";
-import type { Logger } from "pino";
+import { type JobId, newId, safeError } from "@tj/domain";
+import { type Lesson, parseLesson } from "@tj/domain/documents";
+import type { PipelineState } from "@tj/generation";
+import { defineJob, enqueue, type JobContext } from "@tj/jobs";
 import type { WorkerDeps } from "../deps";
-import { SourceUnavailable, storageSourceLoader } from "../sources";
+import { runLessonJob } from "./lesson-pipeline";
 
 /**
- * `lesson.plan` — the F06 pipeline under the generating lock (ADR 0025 §4–§7, §12, §15, §24).
+ * `lesson.plan` — check-input and Plan for one plan revision (ADR 0029 items 1–2), under the
+ * lesson's generating lock (`runLessonJob`). With `stopAfter: "planned"` the run ends at the
+ * `planned` checkpoint — Verify awaited, the facts the teacher confirms are verified — and the
+ * lock is released for `POST /lessons/:id/generate`. Without it (skip planning, or a pinned
+ * re-plan after the teacher confirmed) it is the whole pipeline. `pinObjectives` keeps the
+ * objectives already on the row (item 8).
  *
- * `POST /lessons` created the `documents` row with `generating_job_id = jobId` and enqueued this
- * job. The handler reads the locked lesson, mints the worksheet row under the same lock, runs
- * Plan → Generate → Illustrate → Evaluate → Repair through `runLessonPipeline`, and persists after every stage
- * (and every slide) with `putDocumentAsJob`, whose predicate is the lock itself. Each `progress`
- * event carries the lesson's new `updatedAt` so the read-only editor refetches (§7).
- *
- * Retry and resume: `Lesson.generation.stage` is the checkpoint. A second attempt reads the row
- * as it stands and the pipeline skips the stages already done (`resumeFrom`); the worksheet row,
- * when it exists, is passed back in so Evaluate and Repair see both halves. For that to work the
- * retry must find the row still locked by this job, so the locks are **kept** when the attempt
- * ends in a way pg-boss retries (a retryable error, a shutdown abort) and released on every other
- * exit. Should the last attempt fail too, `releaseStaleLock` on `GET /documents/:id` clears a lock
- * whose job has a terminal event (§24). TEACH-82's guard in `runJob` keeps a settled job from
- * running again at all.
- *
- * `clearGenerating` only clears a lock still held by **this** job, so a late finisher never
- * unlocks a lesson a newer job has since locked.
+ * Auto-continue (item 10, TDD T10): when the row's `continue_when_planned` is set, a stopped run
+ * confirms its own plan and hands the lock straight to a `lesson.generate` job — never leaving
+ * the row unlocked in between, so no request can slip into the gap.
  */
-/**
- * The pipeline's image collaborator (Images project): Pexels search plus bucket store, closed
- * over the job's Workspace. Absent without a Pexels key — illustrate then skips placements.
- */
-function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["images"] {
-  const images = deps.images;
-  if (!images) return undefined;
-  return {
-    search: (query, opts) =>
-      images.client.search({ query, ...opts, locale: "en-GB" }).then((page) => page.photos),
-    store: (photo, target) =>
-      storePhoto({
-        photo,
-        target,
-        storage: images.storage,
-        workspaceId,
-      }),
-  };
-}
-
-export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan", async (ctx) => {
-  const { payload, workspaceId, jobId, signal, deps, logger } = ctx;
-  const ws = forWorkspace(deps.db, workspaceId);
-  const lessonId = payload.lessonId;
-  let worksheetId: string | undefined;
-  let keepLocksForRetry = false;
-  try {
-    if (signal.aborted) {
-      keepLocksForRetry = signal.reason === "shutdown";
-      return;
-    }
-    const loaded = await loadLockedLesson(ws, lessonId, jobId, logger);
-    worksheetId = loaded.worksheetId;
-    if (deps.ai.kind === "unconfigured") {
-      throw new NonRetryableError("AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)");
-    }
-    const priorUsage = loaded.input.lesson.generation?.usage;
-    const pipelineDeps: PipelineDeps = {
-      ai: deps.ai,
-      budget: createBudget(deps.caps, { spent: priorUsage }),
-      ...(deps.planFrontierFromYear !== undefined
-        ? { planFrontierFromYear: deps.planFrontierFromYear }
-        : {}),
-      signal,
-      logger: logger.child({
-        resumed: priorUsage !== undefined,
-        usagePriorUsd: priorUsage === undefined ? 0 : priorUsage.costUsd,
-      }),
-      now: () => new Date(),
-      ids: uid,
-      sources: storageSourceLoader(deps.storage, workspaceId, logger),
-      persist: makePersist(ws, lessonId, jobId, loaded),
-      onProgress: (percent, message, _stage, documentUpdatedAt) =>
-        ctx.progress(percent, message, { documentUpdatedAt }),
-      context: { lessonId, jobId },
-      images: imagePlacer(deps, workspaceId),
-    };
-    try {
-      await runLessonPipeline(loaded.input, pipelineDeps);
-    } catch (error) {
-      // What was persisted stays (§5). A cancel is terminal (`runJob` records `cancelled`); a
-      // shutdown is retried by pg-boss, so the next attempt needs the lock.
-      if (signal.aborted) {
-        keepLocksForRetry = signal.reason === "shutdown";
-        return;
-      }
-      // Before a skeleton exists there is no certified checkpoint to finish as a partial Lesson.
-      // Keep the title already persisted, release its lock and avoid repeating an unaffordable call.
-      if (error instanceof BudgetExceeded) {
-        throw new NonRetryableError(error.message, { cause: error });
-      }
-      if (isAiError(error, "unconfigured") || isAiError(error, "invalid_model")) {
-        throw new NonRetryableError(error.message, { cause: error });
-      }
-      // The brief itself was refused (TEACH-137): a re-run cannot fix the input. `error.message`
-      // is the fixed per-check text from `@tj/generation`, never the model's words, so it can
-      // travel into the job's terminal event; the log carries the check codes only.
-      if (error instanceof InputRejected) {
-        logger.info(
-          { lessonId, findings: error.findings.map((f) => f.check) },
-          "lesson brief rejected by the input check",
-        );
-        throw new NonRetryableError(error.message, { cause: error });
-      }
-      // A Source's `extracted.json` is gone or unreadable (ADR 0027 §6): a re-run cannot bring it
-      // back, and planning without the material would silently give the teacher the wrong lesson.
-      if (error instanceof SourceUnavailable) {
-        logger.warn({ lessonId, sourceId: error.sourceId }, "source unavailable");
-        throw new NonRetryableError(error.message, { cause: error });
-      }
-      if (!(error instanceof NonRetryableError)) keepLocksForRetry = true;
-      throw error;
-    }
-  } finally {
-    if (keepLocksForRetry) {
-      logger.info({ lessonId, worksheetId }, "generating locks kept for the retry");
-    } else {
-      await clearGenerating(ws, lessonId, jobId);
-      if (worksheetId) await clearGenerating(ws, worksheetId, jobId);
-      logger.debug({ lessonId, worksheetId }, "generating locks released");
-    }
-  }
+export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan", (ctx) => {
+  const { stopAfter, pinObjectives } = ctx.payload;
+  return runLessonJob(ctx, {
+    input: (lesson) => ({ lesson, ...(pinObjectives ? { pinObjectives: true } : {}) }),
+    options: stopAfter !== undefined ? { stopAfter } : {},
+    ...(stopAfter !== undefined
+      ? { after: (ws: WorkspaceDb, final: PipelineState) => continueToGenerate(ctx, ws, final) }
+      : {}),
+  });
 });
 
-interface LoadedLockedLesson {
-  input: PipelineInput;
-  worksheetId: string;
-  /** Whether the worksheet `documents` row already exists (a resumed run after `generated`). */
-  worksheetRowExists: boolean;
-}
-
 /**
- * The lesson row this job owns, or a `NonRetryableError`: `lesson missing` when the API's failure
- * path hard-deleted it (§6), `lock lost` when it is unlocked or a newer job holds it — nothing is
- * written in either case.
+ * The hand-off, in the only order that never leaves the lock null: confirm the plan with this
+ * job's lock, move the lock to a freshly minted id, enqueue `lesson.generate` under that id, and
+ * only then clear the flag. `true` when the lock now belongs to the generate job.
  *
- * The worksheet row id is fixed here, before Plan, and written onto `lesson.artefacts` by the
- * first `persist`, so every retry of this job looks for the same row: a worksheet created just
- * before the lesson write failed is found and reused rather than orphaned. On a resume the stored
- * worksheet (if any) rides along as state; a checkpoint at or past `generated` whose worksheet row
- * is missing is rolled back to `planned` so Generate recreates it (the slides already on the row
- * are kept, so that costs one call).
+ * Any miss stops quietly and the handler releases its lock as usual: a `lost_lock` or a `false`
+ * from `handOffLock` means a concurrent `/plan` took the row. A failed enqueue takes the lock back
+ * and puts the proposal back, so the lesson sits at `planned` and Generate can still be pressed.
  */
-async function loadLockedLesson(
+async function continueToGenerate(
+  ctx: JobContext<"lesson.plan", WorkerDeps>,
   ws: WorkspaceDb,
-  lessonId: LessonId,
-  jobId: JobId,
-  logger: Logger,
-): Promise<LoadedLockedLesson> {
+  final: PipelineState,
+): Promise<boolean> {
+  const { payload, workspaceId, jobId, deps, logger } = ctx;
+  const lessonId = payload.lessonId;
+  if (final.lesson.generation?.stage !== "planned") return false;
   const row = await getDocument(ws, lessonId);
-  if (row === null || row.kind !== "lesson") throw new NonRetryableError("lesson missing");
-  if (row.generatingJobId !== jobId) throw new NonRetryableError("lock lost");
-  const stored = parseLesson(row.body);
-  if (!stored.brief) throw new NonRetryableError("lesson has no brief to plan from");
-  const worksheetId = stored.artefacts?.worksheetId ?? newId();
-  let lesson: Lesson = stored.artefacts ? stored : { ...stored, artefacts: { worksheetId } };
-
-  const worksheetRow = await getDocument(ws, worksheetId);
-  const worksheetRowExists = worksheetRow !== null && worksheetRow.kind === "worksheet";
-  const worksheet = worksheetRowExists ? parseStoredWorksheet(worksheetRow.body) : undefined;
-  if (!worksheetRowExists && lesson.generation && lesson.generation.stage !== "planned") {
-    logger.warn(
-      { lessonId, worksheetId, stage: lesson.generation.stage },
-      "worksheet row missing at a later checkpoint; resuming from planned to recreate it",
-    );
-    lesson = { ...lesson, generation: { ...lesson.generation, stage: "planned" } };
+  if (row === null || !row.continueWhenPlanned || row.generatingJobId !== jobId) return false;
+  if (deps.jobs === undefined) {
+    logger.warn({ lessonId }, "auto-continue skipped: no job runtime");
+    return false;
   }
-  return { input: { lesson, worksheetId, worksheet }, worksheetId, worksheetRowExists };
-}
+  const proposal = parseLesson(row.body);
+  const plan = proposal.plan;
+  if (plan === undefined || plan.revision !== payload.revision) return false;
 
-/**
- * `PipelineDeps.persist`. The worksheet goes first — created under the same lock the first time a
- * stage hands one over, `putDocumentAsJob` after that — and the lesson, whose `generation.stage`
- * is the checkpoint, last: a failure between the two leaves the checkpoint un-advanced, so the
- * retry re-runs the stage instead of trusting a worksheet that was never written. A `lost_lock` /
- * `missing` answer for either row stops the job for good.
- */
-function makePersist(
-  ws: WorkspaceDb,
-  lessonId: LessonId,
-  jobId: JobId,
-  loaded: Pick<LoadedLockedLesson, "worksheetId" | "worksheetRowExists">,
-): PipelineDeps["persist"] {
-  let worksheetCreated = loaded.worksheetRowExists;
-  return async (lesson: Lesson, worksheet?: Worksheet) => {
-    if (worksheet) {
-      if (worksheetCreated) {
-        const put = await putDocumentAsJob(ws, loaded.worksheetId, worksheet, jobId);
-        if (put.status !== "ok") throw new NonRetryableError(`worksheet ${put.status}`);
-      } else {
-        await createDocument(ws, "worksheet", worksheet, {
-          id: loaded.worksheetId,
-          generatingJobId: jobId,
-        });
-        worksheetCreated = true;
-      }
-    }
-    const result = await putDocumentAsJob(ws, lessonId, lesson, jobId);
-    if (result.status !== "ok") throw new NonRetryableError(`lesson ${result.status}`);
-    return { updatedAt: result.row.updatedAt.toISOString() };
+  const confirmed: Lesson = {
+    ...proposal,
+    plan: { ...plan, state: "confirmed", confirmedAt: new Date().toISOString() },
   };
+  if ((await putDocumentAsJob(ws, lessonId, confirmed, jobId)).status !== "ok") return false;
+  const nextJobId = newId<JobId>();
+  if (!(await handOffLock(ws, lessonId, jobId, nextJobId))) return false;
+
+  let queued: JobId | null = null;
+  try {
+    queued = await enqueue(
+      deps.jobs,
+      "lesson.generate",
+      { lessonId, revision: plan.revision },
+      { workspaceId, id: nextJobId },
+    );
+  } catch (error) {
+    logger.warn({ lessonId, nextJobId, err: safeError(error) }, "auto-continue enqueue failed");
+  }
+  if (queued === null) {
+    if (await handOffLock(ws, lessonId, nextJobId, jobId)) {
+      await putDocumentAsJob(ws, lessonId, proposal, jobId);
+    }
+    return false;
+  }
+  // The generate job owns the row now; a failure to clear the flag must not unlock it.
+  await setContinueWhenPlanned(ws, lessonId, false).catch((error: unknown) =>
+    logger.warn({ lessonId, err: safeError(error) }, "could not clear continue_when_planned"),
+  );
+  logger.info(
+    { lessonId, nextJobId, revision: plan.revision },
+    "plan confirmed automatically; lesson.generate queued",
+  );
+  return true;
 }

@@ -33,7 +33,7 @@ describe("createRateLimiter", () => {
 
 describe("loadRateLimitConfig", () => {
   test("uses defaults and accepts configured values", () => {
-    expect(loadRateLimitConfig({})).toEqual({ limit: 10, windowMs: 60_000 });
+    expect(loadRateLimitConfig({})).toEqual({ limit: 30, windowMs: 60_000 });
     expect(
       loadRateLimitConfig({ AI_RATE_LIMIT_PER_WORKSPACE: "3", AI_RATE_LIMIT_WINDOW_S: "5" }),
     ).toEqual({ limit: 3, windowMs: 5_000 });

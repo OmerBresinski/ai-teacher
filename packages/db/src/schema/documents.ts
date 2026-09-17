@@ -49,6 +49,9 @@ import { tenantColumns, tenantIndexes } from "./_columns";
  *   default sort orders of `listSummaries`; `(workspace_id, deleted_at)` serves the exclusion
  *   filter and a future sweep.
  */
+/** The unique `(workspace_id, request_id)` index; a repeat `POST /lessons` races into it. */
+export const DOCUMENTS_REQUEST_ID_INDEX = "documents_workspace_id_request_id_idx";
+
 export const documentKind = pgEnum("document_kind", ["lesson", "worksheet", "series"]);
 
 export const documents = pgTable(
@@ -76,7 +79,7 @@ export const documents = pgTable(
     index("documents_workspace_id_kind_title_idx").on(t.workspaceId, t.kind, t.title),
     index("documents_workspace_id_deleted_at_idx").on(t.workspaceId, t.deletedAt),
     index("documents_workspace_id_lesson_id_idx").on(t.workspaceId, t.lessonId),
-    uniqueIndex("documents_workspace_id_request_id_idx")
+    uniqueIndex(DOCUMENTS_REQUEST_ID_INDEX)
       .on(t.workspaceId, t.requestId)
       .where(sql`request_id is not null`),
   ],

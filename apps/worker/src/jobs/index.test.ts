@@ -3,8 +3,8 @@ import { NonRetryableError } from "@tj/jobs";
 import { registry } from "./index";
 
 describe("registry placeholders (TEACH-311)", () => {
-  // The handlers ignore their context; TEACH-13 and TEACH-14 replace them with real jobs.
-  for (const name of ["lesson.generate", "lesson.worksheet"] as const) {
+  // The handler ignores its context; TEACH-14 replaces it with the real job.
+  for (const name of ["lesson.worksheet"] as const) {
     test(`${name} fails without retry until its handler lands`, async () => {
       const run = registry[name](undefined as never);
       await expect(run).rejects.toBeInstanceOf(NonRetryableError);
