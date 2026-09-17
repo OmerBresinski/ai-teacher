@@ -199,6 +199,9 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       jobs: jobsCtx,
       events: runtime,
       rateLimit: { limit: 3, windowMs: 60_000 },
+      // The worksheet throttle slot is one second here, so a second sheet needs no 30 s wait;
+      // the "inside the throttle slot" test requests twice within the same second.
+      worksheetSingletonS: 1,
     });
   });
 
@@ -1124,10 +1127,9 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       expect(first.status).toBe(202);
       const a = (await first.json()) as Accepted;
       await waitFor(async () => (await getDocument(ws, a.worksheetId))?.generatingJobId === null);
-      // One worksheet job per lesson per `WORKSHEET_SINGLETON_S` slot (ADR 0030 item 8): wait for
-      // the next slot so the second request is not the throttle's 409.
-      const slotMs = 30_000;
-      await Bun.sleep(slotMs - (Date.now() % slotMs) + 100);
+      // One worksheet job per lesson per throttle slot (ADR 0030 item 8): the next slot (one
+      // second in this app) so the second request is not the throttle's 409.
+      await Bun.sleep(1_100);
       const second = await postJson(wsA, `/lessons/${lessonId}/worksheet`, {
         expectedRevision: 1,
         recipeId: "cloze",
@@ -1141,7 +1143,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       expect(list.items.map((i) => i.id)).toEqual([a.worksheetId, b.worksheetId]);
       expect(list.items.map((i) => i.generation?.recipeId)).toEqual([suggested.id, "cloze"]);
       expect(list.items.every((i) => i.generatingJobId === null)).toBe(true);
-    }, 45_000);
+    });
 
     test("inside the throttle slot a second request is 409 and leaves no orphan row", async () => {
       const { lessonId } = await seedConfirmed();
@@ -1149,9 +1151,10 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       const first = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
       expect(first.status).toBe(202);
       const a = (await first.json()) as Accepted;
-      await waitFor(async () => (await getDocument(ws, a.worksheetId))?.generatingJobId === null);
+      // The same slot, whatever the stub loop has done with the first job meanwhile.
       const again = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
       expect(again.status).toBe(409);
+      await waitFor(async () => (await getDocument(ws, a.worksheetId))?.generatingJobId === null);
       expect(await errorOf(again)).toMatchObject({ reason: "generating" });
       expect(await sql`select id from documents where lesson_id = ${lessonId}`).toHaveLength(1);
     });

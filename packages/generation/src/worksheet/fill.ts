@@ -11,11 +11,11 @@ import {
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import { generateWorksheetFillPrompt } from "../prompts";
-import { worksheetFillSchemaFor } from "../specs";
 import { stemPlan } from "../stages/question-pool";
 import { audienceOf, shapeOf } from "../stages/shared";
 import type { PipelineDeps } from "../types";
 import { type FillSlot, objectivesPractisedBy } from "./frame";
+import { worksheetFillSchemaFor } from "./specs";
 
 /*
  * Fill (ADR 0030 item 3.ii–iii; TDD §7 steps 2–3): one `small` call at low effort for the

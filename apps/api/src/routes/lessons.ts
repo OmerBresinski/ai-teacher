@@ -389,7 +389,16 @@ async function restoreSources(ws: WorkspaceDb, lessonId: LessonId, change: Sourc
   await bindSourcesToLesson(ws, change.removed, lessonId);
 }
 
-export function lessonRoutes(unsafeDb: ScopableDb, runtime: EventsRuntime | undefined) {
+export interface LessonRouteOptions {
+  /** The `lesson.worksheet` throttle slot in seconds; tests shorten `WORKSHEET_SINGLETON_S`. */
+  worksheetSingletonS?: number;
+}
+
+export function lessonRoutes(
+  unsafeDb: ScopableDb,
+  runtime: EventsRuntime | undefined,
+  { worksheetSingletonS = WORKSHEET_SINGLETON_S }: LessonRouteOptions = {},
+) {
   return new Hono<AppEnv>()
     .post(
       "/lessons",
@@ -716,7 +725,7 @@ export function lessonRoutes(unsafeDb: ScopableDb, runtime: EventsRuntime | unde
               workspaceId,
               id: jobId,
               singletonKey: `${lessonId}:worksheet`,
-              singletonSeconds: WORKSHEET_SINGLETON_S,
+              singletonSeconds: worksheetSingletonS,
             },
           );
         } catch (error) {

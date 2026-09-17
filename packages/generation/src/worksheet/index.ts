@@ -6,3 +6,4 @@
 export * from "./check";
 export * from "./fill";
 export * from "./frame";
+export * from "./specs";
