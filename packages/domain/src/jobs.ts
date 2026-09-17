@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ModelClassSchema } from "./ai";
 import { GeneratedFromSchema } from "./documents/generated-from";
 import { QuestionDataSchema, SlideElementSchema } from "./documents/slide";
-import { WorksheetBlockSchema } from "./documents/worksheet";
+import { RecipeIdSchema, WorksheetBlockSchema } from "./documents/worksheet";
 import { JobId, LessonId, WorkspaceId } from "./ids";
 import { IsoDateTime } from "./primitives";
 
@@ -82,14 +82,13 @@ export type LessonGeneratePayloadInput = z.input<typeof LessonGeneratePayloadSch
 
 /**
  * ADR 0030: build one worksheet beside a confirmed lesson, on its own row, lock and budget.
- * `recipeId` and `practiceMinutes` are resolved by the API, never `"auto"` in practice; the recipe
- * id stays a bounded string until the recipes move to `@tj/slides` (TEACH-14).
+ * `recipeId` and `practiceMinutes` are resolved by the API, never `"auto"`.
  */
 export const LessonWorksheetPayloadSchema = z.strictObject({
   lessonId: LessonId,
   worksheetId: z.uuid(),
   revision: PlanRevision,
-  recipeId: z.string().max(40),
+  recipeId: RecipeIdSchema,
   practiceMinutes: z.number().int().positive(),
 });
 export type LessonWorksheetPayload = z.infer<typeof LessonWorksheetPayloadSchema>;

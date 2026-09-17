@@ -27,13 +27,8 @@ const lesson = {
 };
 
 describe("suggestRecipe", () => {
-  test("misconceptions win, then a worked example, then Knowledge check", () => {
+  test("is the `@tj/slides` rule, still reachable from the creation module", () => {
     expect(suggestRecipe(DEMO_LESSON_FACTS)).toBe("misconception-check");
-    expect(suggestRecipe({ ...DEMO_LESSON_FACTS, misconceptions: [] })).toBe("worked-example");
-    expect(suggestRecipe({ ...DEMO_LESSON_FACTS, misconceptions: [], workedExamples: [] })).toBe(
-      "knowledge-check",
-    );
-    expect(suggestRecipe(undefined)).toBe("knowledge-check");
   });
 });
 

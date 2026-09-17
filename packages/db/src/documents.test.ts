@@ -65,7 +65,7 @@ const worksheetOf = (lessonId: string, stage?: WorksheetGenerationStage): Worksh
           promptVersions: {},
           usage: { calls: 1, inputTokens: 10, outputTokens: 10, costUsd: 0.01 },
           findings: [],
-          recipeId: "practice",
+          recipeId: "knowledge-check" as const,
           practiceMinutes: 10,
         },
       }),

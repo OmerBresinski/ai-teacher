@@ -182,7 +182,7 @@ describe("JobPayloadSchemas.lesson.worksheet", () => {
     lessonId: "0192f7a0-0000-7000-8000-000000000042",
     worksheetId: "0192f7a0-0000-7000-8000-000000000043",
     revision: 1,
-    recipeId: "retrieval-grid",
+    recipeId: "knowledge-check",
     practiceMinutes: 15,
   };
 
@@ -190,15 +190,15 @@ describe("JobPayloadSchemas.lesson.worksheet", () => {
     expect(JobPayloadSchemas["lesson.worksheet"].safeParse(payload).success).toBe(true);
   });
 
-  test("accepts recipeId auto at the schema level; the API resolves it before enqueue", () => {
+  test("rejects recipeId auto: the API resolves it before enqueue (ADR 0030 item 8)", () => {
     expect(
       JobPayloadSchemas["lesson.worksheet"].safeParse({ ...payload, recipeId: "auto" }).success,
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  test("rejects a long recipeId, non-positive minutes, a bad worksheetId and extra fields", () => {
+  test("rejects an unknown recipeId, non-positive minutes, a bad worksheetId and extra fields", () => {
     const schema = JobPayloadSchemas["lesson.worksheet"];
-    expect(schema.safeParse({ ...payload, recipeId: "r".repeat(41) }).success).toBe(false);
+    expect(schema.safeParse({ ...payload, recipeId: "retrieval-grid" }).success).toBe(false);
     expect(schema.safeParse({ ...payload, practiceMinutes: 0 }).success).toBe(false);
     expect(schema.safeParse({ ...payload, worksheetId: "nope" }).success).toBe(false);
     expect(schema.safeParse({ ...payload, extra: 1 }).success).toBe(false);

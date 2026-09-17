@@ -34,7 +34,7 @@ describe("parseWorksheet", () => {
       promptVersions: {},
       usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
       findings: [],
-      recipeId: "retrieval-grid",
+      recipeId: "knowledge-check" as const,
       practiceMinutes: 15,
     };
     const input = { ...worksheet(), lessonId: "l1", generation };
@@ -44,6 +44,9 @@ describe("parseWorksheet", () => {
     ).toThrow();
     expect(() =>
       parseWorksheet({ ...input, generation: { ...generation, practiceMinutes: 0 } }),
+    ).toThrow();
+    expect(() =>
+      parseWorksheet({ ...input, generation: { ...generation, recipeId: "retrieval-grid" } }),
     ).toThrow();
   });
 
