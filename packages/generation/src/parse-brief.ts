@@ -258,13 +258,10 @@ export async function parseBrief(
     dropped: 0,
     usedModel: false,
   };
-  // `level` has no rule, so today the model is asked whenever a client is configured; the check
-  // is what the design says ("for what is still blank") and becomes a real skip the day a rule
-  // reads the level.
-  const blank = MODEL_FIELDS.filter((field) => field === "level" || !hits.includes(field));
-  if (blank.length === 0 || deps.ai === undefined || deps.ai.kind === "unconfigured") {
-    return rulesOnly;
-  }
+  // The model is asked for what is still blank, and `level` has no rule, so there is always
+  // something to ask: the only skip is a missing or unconfigured client. The prompt itself
+  // leaves out the fields the rules found (`alreadyKnown`).
+  if (deps.ai === undefined || deps.ai.kind === "unconfigured") return rulesOnly;
 
   // One deadline for the whole call: as `timeoutMs` it bounds an attempt and logs a timeout; as
   // the signal it stops `callStructured`'s retry from doubling it.

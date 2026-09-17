@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AiError } from "@tj/ai";
+import { AiError, createAi } from "@tj/ai";
 import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
 import { newId, type WorkspaceId } from "@tj/domain";
 import { FIXTURES } from "@tj/generation/testing";
@@ -30,12 +30,9 @@ type Parsed = {
 function appWith(script?: FakeScriptEntry[], options: { ai?: "none" | "unconfigured" } = {}) {
   const { logger, lines } = captureLogger();
   const fake = createFakeAi({ script, logger });
+  // `createAi` with no bearer token is the real unconfigured client, as at boot without one.
   const ai =
-    options.ai === "none"
-      ? undefined
-      : options.ai === "unconfigured"
-        ? ({ ...fake, kind: "unconfigured" as const } as unknown as typeof fake)
-        : fake;
+    options.ai === "none" ? undefined : options.ai === "unconfigured" ? createAi({}) : fake;
   const app = createApp({ env: TEST_ENV, db: fakeSql(true), logger, ai });
   const parsed = () =>
     lines
