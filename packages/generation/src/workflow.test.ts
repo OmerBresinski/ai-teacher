@@ -268,19 +268,21 @@ describe("runLessonPipeline", () => {
         ],
       );
       // Effort per stage (Generation quality §6, TEACH-207): Generate at low, Plan and Evaluate at
-      // medium, Verify at high (TEACH-212), the input check at low; every call says so to the
-      // provider and in its context.
+      // medium, Verify at low (was high under TEACH-212; lowered 17 Sept 2026 with the input check,
+      // both are checks not writers); every call says so to the provider and in its context.
       expect(ai.calls.map((c) => c.context?.effort)).toEqual([
         "low",
         "medium",
         "medium",
-        "high",
+        "low",
         ...Array.from({ length: GENERATED_SLIDES + 1 }, () => "low"),
         "medium",
       ]);
-      // Every default is a GPT-5.6 id (TEACH-208), so every call carries the provider option.
+      // Every default is a GPT-5.6 id (TEACH-208), so every call carries the provider option; since
+      // the gateway routing (17 Sept 2026) each call also carries the other providers' effort
+      // settings, so only the Bedrock one is pinned here (`providerOptionsFor` has its own tests).
       for (const call of ai.calls) {
-        expect(call.providerOptions).toEqual({
+        expect(call.providerOptions).toMatchObject({
           bedrock: { reasoningConfig: { maxReasoningEffort: call.context?.effort } },
         });
       }

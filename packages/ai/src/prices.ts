@@ -70,6 +70,71 @@ export const PRICES: Record<string, ModelPrice> = {
       cacheWriteInputPerMTok: 11,
     },
   },
+  // Vercel AI Gateway ids (`provider/model`), the lab's model bench: the gateway's own list
+  // prices from `getAvailableModels()` on 2026-09-17, no markup. They make `--cap` a dollar cap
+  // and the lesson cost line real for those runs; the gateway's per-call cost is recorded too.
+  "openai/gpt-5.6-luna": {
+    inputPerMTok: 0.2,
+    outputPerMTok: 1.2,
+    cachedInputPerMTok: 0.02,
+    cacheWriteInputPerMTok: 0.25,
+  },
+  "openai/gpt-5.6-terra": {
+    inputPerMTok: 2,
+    outputPerMTok: 12,
+    cachedInputPerMTok: 0.2,
+    cacheWriteInputPerMTok: 2.5,
+  },
+  "openai/gpt-5.6-sol": {
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    cachedInputPerMTok: 0.2,
+    cacheWriteInputPerMTok: 2.5,
+  },
+  "google/gemini-3.8-flash": {
+    inputPerMTok: 0.75,
+    outputPerMTok: 3.75,
+    cachedInputPerMTok: 0.075,
+  },
+  "deepseek/deepseek-v4-flash": {
+    inputPerMTok: 0.22,
+    outputPerMTok: 0.66,
+    cachedInputPerMTok: 0.022,
+  },
+  "deepseek/deepseek-v4-pro": {
+    inputPerMTok: 0.66,
+    outputPerMTok: 1.98,
+    cachedInputPerMTok: 0.022,
+  },
+  "alibaba/qwen3.5-flash": {
+    inputPerMTok: 0.1,
+    outputPerMTok: 0.4,
+    cachedInputPerMTok: 0.01,
+    cacheWriteInputPerMTok: 0.125,
+  },
+  "alibaba/qwen3.5-plus": {
+    inputPerMTok: 0.4,
+    outputPerMTok: 2.5,
+    cachedInputPerMTok: 0.04,
+    cacheWriteInputPerMTok: 0.5,
+  },
+  "moonshotai/kimi-k2.6": {
+    inputPerMTok: 0.95,
+    outputPerMTok: 4,
+    cachedInputPerMTok: 0.16,
+  },
+  "anthropic/claude-sonnet-5": {
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    cachedInputPerMTok: 0.2,
+    cacheWriteInputPerMTok: 2.5,
+  },
+  "anthropic/claude-opus-5": {
+    inputPerMTok: 5,
+    outputPerMTok: 25,
+    cachedInputPerMTok: 0.5,
+    cacheWriteInputPerMTok: 6.25,
+  },
 };
 
 export interface TokenUsage {

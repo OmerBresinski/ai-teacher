@@ -13,6 +13,14 @@ import {
   verbBlock,
 } from "./index";
 import { planFactsPrompt } from "./plan-facts";
+import {
+  CURRICULUM_INSTRUCTION,
+  type PlanObjectivesInput,
+  PlanObjectivesOutputSchema,
+  PRIOR_KNOWLEDGE_LABEL,
+  planObjectivesOutputSchemaFor,
+  planObjectivesPrompt,
+} from "./plan-objectives";
 import { planSkeletonPrompt, SOURCE_INSTRUCTION } from "./plan-skeleton";
 
 /*
@@ -200,7 +208,151 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
 };
 
+/*
+ * The objectives call is pinned on its own: it is not in `PROMPTS` yet, so `PromptName` does not
+ * cover it and it cannot sit in `SAMPLE_INPUTS`/`PINNED`. The rule is `promptHash`'s — system plus
+ * the rendered user turn — so it moves into the table above unchanged when the stage is wired up.
+ * A primary sample (Year 4, an hour) with a whole unit, so the count rule and the curriculum
+ * instruction are both part of the hash.
+ */
+const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
+  topic: "The Roman invasion of Britain",
+  durationMin: 60,
+  audience: { ...audience, subject: "History", yearGroup: "Year 4" },
+  shape: lessonShapeOf(
+    { objectiveVerb: "Explain the Roman invasion of Britain", priorConfidence: "New to it" },
+    { yearGroup: "Year 4", durationMin: 60 },
+  ),
+  curriculum: {
+    text: [
+      "Programme of study: the Roman Empire and its impact on Britain.",
+      "Unit: The Roman Empire in Britain (6 lessons).",
+      "Lesson 1 outcome: I can say where the Roman Empire was and when it began.",
+      "Lesson 4 outcome: I can say why Boudica led a revolt.",
+      "Key learning points: the Romans invaded Britain in AD 43; roads and towns changed daily life;",
+      "Boudica's revolt was defeated in AD 61.",
+      "Keywords: empire, invasion, revolt.",
+      "Misconception: pupils think the Romans left no trace in Britain.",
+    ].join("\n"),
+  },
+};
+
+const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
+  version: "plan-objectives.v3",
+  hash: "b14415ac66f0ff837be35621c66f6e3d94947fe2993163361773fbc81f6f1b17",
+};
+
 describe("prompt versions", () => {
+  test("plan-objectives: text hash matches its pinned version", () => {
+    const text = `${planObjectivesPrompt.system}\n---\n${planObjectivesPrompt.user(PLAN_OBJECTIVES_SAMPLE)}`;
+    const actual: { version: string; hash: string } = {
+      version: planObjectivesPrompt.version,
+      hash: new Bun.CryptoHasher("sha256").update(text).digest("hex"),
+    };
+    expect(actual).toEqual(PLAN_OBJECTIVES_PIN);
+  });
+
+  test("plan-objectives: a curriculum unit is anchored, not copied, and the source instruction stays out", () => {
+    const system = planObjectivesPrompt.system;
+    /*
+     * Provider-neutral and short: it runs on whichever gateway model is cheapest. v2's ladder,
+     * prior-knowledge and forbidden-verb rules cost about 60 words over v1's single depth
+     * sentence, so the budget moved from 350 to 410. It is an alarm, not a target — a set of
+     * rules that will not fit under it wants a second call, not a smaller font.
+     */
+    expect(system.trim().split(/\s+/).length).toBeLessThan(410);
+    expect(system).toContain("British English");
+    expect(system).toContain("Never invent or include the name of any pupil");
+    expect(system).toMatch(/JSON/);
+    // No fact ids reach this call, so the house rules' `factRefs` line is left out.
+    expect(system).not.toContain("factRefs");
+    expect(system).toContain("never take one lesson's outcomes as this lesson's objectives");
+    expect(system).toContain("span the unit's arc");
+    expect(system).toContain(
+      "Give 2 objectives under 45 minutes and 3 otherwise; a 4th only at 75 minutes or more",
+    );
+    // The revisiting branch was missed by every bench model but one; v2 drops it.
+    expect(system).not.toContain("revisiting the topic");
+    /*
+     * v3: the ladder is permitted, not the default. Every objective sits at the reach unless a
+     * lower step is genuinely needed, no objective is filler recall, and the bound
+     * `objectives-check.ts` enforces still holds: the last at the reach, none above it, none more
+     * than LADDER_DEPTH levels below it. v2's "not the level of every line" is gone — on a bench
+     * of 104 calls it was read as "a ladder is expected" and cost an Explain lesson a whole slot.
+     */
+    expect(system).toContain("every objective sits at that verb unless a lower level is genuinely");
+    expect(system).toContain("never a fact outside the topic's substance");
+    expect(system).toContain("the last sits at that verb, none above, none over two levels below");
+    expect(system).not.toContain("not the level of every line");
+    expect(system).not.toContain("Match the depth");
+    expect(system).toContain('Never open with "understand"');
+    // The upload instruction made planners copy the unit's first lesson; it must not be reused.
+    expect(system).not.toContain(SOURCE_INSTRUCTION);
+    expect(system).not.toContain("treat the material's own sequence");
+    const withUnit = planObjectivesPrompt.user(PLAN_OBJECTIVES_SAMPLE);
+    expect(withUnit).toContain(CURRICULUM_INSTRUCTION);
+    expect(withUnit).toContain("Boudica");
+    expect(withUnit).toContain("This is an Explain lesson for a class new to the topic.");
+    expect(withUnit).toContain("Lesson length: 60 minutes");
+    expect(withUnit).not.toContain(SOURCE_INSTRUCTION);
+    const without = planObjectivesPrompt.user({
+      ...PLAN_OBJECTIVES_SAMPLE,
+      curriculum: undefined,
+    });
+    expect(without).not.toContain(CURRICULUM_INSTRUCTION);
+    expect(without).not.toContain("Boudica");
+  });
+
+  test("plan-objectives: the prior-knowledge line is rendered and the system rule names it", () => {
+    // Supplying the fact is half of it; the system must point at the line, or the input is inert.
+    expect(planObjectivesPrompt.system).toContain(`"${PRIOR_KNOWLEDGE_LABEL}"`);
+    expect(planObjectivesPrompt.system).toContain("keep every objective inside that material");
+    const covered = planObjectivesPrompt.user({
+      ...PLAN_OBJECTIVES_SAMPLE,
+      priorKnowledge: "read Act 1 scenes 1 to 5",
+    });
+    expect(covered).toContain(`${PRIOR_KNOWLEDGE_LABEL}: read Act 1 scenes 1 to 5`);
+    expect(planObjectivesPrompt.user(PLAN_OBJECTIVES_SAMPLE)).not.toContain(PRIOR_KNOWLEDGE_LABEL);
+  });
+
+  test("plan-objectives: the anchor field exists only when an extract was retrieved", () => {
+    const plain = { text: "Explain why the Romans invaded Britain" };
+    const anchored = { ...plain, curriculumAnchor: "the Roman Empire and its impact on Britain" };
+    const parse = (hasCurriculum: boolean, objectives: unknown[]) =>
+      planObjectivesOutputSchemaFor(hasCurriculum).safeParse({ objectives }).success;
+    // With an extract the anchor is required, so a missing one is a retry, not a silent gap.
+    expect(parse(true, [anchored, anchored])).toBe(true);
+    expect(parse(true, [anchored, plain])).toBe(false);
+    // With none the field does not exist, so it cannot be asked for.
+    expect(parse(false, [plain, plain])).toBe(true);
+    /*
+     * A model that invents the anchor anyway (Luna, 2 of 3 no-source calls) must not cost a ~5s
+     * retry: the no-source objective is a plain object, so the stray key is stripped and the set
+     * parses without it.
+     */
+    const stripped = planObjectivesOutputSchemaFor(false).safeParse({
+      objectives: [anchored, plain],
+    });
+    expect(stripped.success).toBe(true);
+    expect(stripped.success && stripped.data.objectives[0]).toEqual(plain);
+    // Both keep the 2-to-4 bound.
+    expect(parse(false, [plain])).toBe(false);
+    expect(parse(true, [anchored, anchored, anchored, anchored, anchored])).toBe(false);
+  });
+
+  test("plan-objectives: the schema takes 2 to 4 objectives and nothing else", () => {
+    const one = { text: "Explain why the Romans invaded Britain" };
+    const anchored = { ...one, curriculumAnchor: "the Roman Empire and its impact on Britain" };
+    const parse = (objectives: unknown[]) =>
+      PlanObjectivesOutputSchema.safeParse({ objectives }).success;
+    expect(parse([one, anchored])).toBe(true);
+    expect(parse([anchored, anchored, anchored, anchored])).toBe(true);
+    expect(parse([one])).toBe(false);
+    expect(parse([one, one, one, one, one])).toBe(false);
+    expect(parse([{ ...one, id: "o1" }, one])).toBe(false);
+    expect(parse([{ ...one, curriculumAnchor: "x".repeat(161) }, one])).toBe(false);
+  });
+
   test("TEACH-258: every embedded slide, block and worksheet example passes its editorial schema", () => {
     // Pretty-printed example() objects have unindented braces; shape sketches are inline.
     const examples = (system: string) =>

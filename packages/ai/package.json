@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "5.0.74",
+    "@ai-sdk/openai": "4.0.58",
     "@tj/domain": "workspace:*",
     "ai": "7.0.92",
     "image-meta": "0.2.2",

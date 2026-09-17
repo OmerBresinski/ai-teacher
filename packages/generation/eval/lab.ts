@@ -1,6 +1,17 @@
 #!/usr/bin/env bun
 // bun packages/generation/eval/lab.ts --brief <id|path> --label <name> [--cap 2] [--no-judge]
-//   [--no-images] [--plan-frontier-from-year N]
+//   [--no-images] [--plan-frontier-from-year N] [--from <snapshot.json>]
+//   [--model <stage|prompt>=<model id>[,…]] [--only <stage>] [--effort <stage|prompt>=<low|medium|high>[,…]]
+//   [--source <file>]   (a text file Plan reads as a teacher-provided Source, e.g. a curriculum extract)
+//   [--dry-run]         (print the resolved plan — every call's model, effort, cap, price — and exit; no model calls)
+//
+// `--from` starts the pipeline from a saved snapshot's documents (a `03-planned-*.json` replays
+// Generate onward on a frozen plan); `--model` sends a stage's calls to another model id, a
+// Bedrock id, a Vercel AI Gateway `provider/model` id (AI_GATEWAY_API_KEY) or an
+// `openrouter/<vendor>/<model>` id (OPENROUTER_API_KEY) — the model bench. A route key is a stage
+// (`plan`, `generate`, …) or a prompt name (`verify-facts`, `plan-facts`), the prompt name winning,
+// so a Plan bench can pin the fact-checker to one model. `--only <stage>` runs that one stage
+// function on the snapshot and stops: no downstream stage touches the output being measured.
 //
 // The quality lab: ONE brief through the real pipeline on Bedrock, with a snapshot of the documents
 // at every persist (so each stage's output can be read on its own), the rubric judge, the
@@ -10,10 +21,10 @@
 // gitignored `eval/results/lab/<label>/` — full content, for a person to read locally. Never run
 // in CI; never log content (the pino stream below keeps warnings only).
 
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { Writable } from "node:stream";
-import { type Budget, type CreatedAi, createAi, createBudget } from "@tj/ai";
+import { type Budget, type CreatedAi, createAi, createBudget, PRICES } from "@tj/ai";
 import {
   blockText,
   type CreateLesson,
@@ -32,9 +43,21 @@ import { createPexelsClient } from "@tj/images";
 import { type LanguageModelMiddleware, wrapLanguageModel } from "ai";
 import pino from "pino";
 import { z } from "zod";
-import { noSources, type PhotoPlacer, type PipelineDeps, runLessonPipeline } from "../src";
+import {
+  evaluate,
+  generate,
+  noSources,
+  type PhotoPlacer,
+  type PipelineDeps,
+  type PipelineState,
+  plan,
+  repair,
+  runLessonPipeline,
+} from "../src";
+import { MAX_OUTPUT_TOKENS } from "../src/call";
 import { PROMPT_VERSIONS } from "../src/prompts";
 import { objectiveVerbOf, priorConfidenceOf } from "../src/shapes";
+import { illustrate } from "../src/stages/illustrate";
 import { type EvalBrief, evalBriefs } from "./briefs";
 import { evalPhotoPlacer } from "./photo-placer";
 import { scoreLesson } from "./scorers";
@@ -42,6 +65,8 @@ import { scoreLesson } from "./scorers";
 const EnvSchema = z.object({
   AWS_BEARER_TOKEN_BEDROCK: z.string().optional(),
   AWS_REGION: z.string().optional(),
+  AI_GATEWAY_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
   AI_MODEL_FRONTIER: z.string().optional(),
   AI_MODEL_STANDARD: z.string().optional(),
   AI_MODEL_SMALL: z.string().optional(),
@@ -98,7 +123,33 @@ function recordingAi(real: CreatedAi, file: string): CreatedAi {
     context: { stage?: string; promptVersion?: string } | undefined,
   ): LanguageModelMiddleware => ({
     wrapGenerate: async ({ doGenerate, params }) => {
-      const result = await doGenerate();
+      const startedAt = Date.now();
+      let result: Awaited<ReturnType<typeof doGenerate>>;
+      try {
+        result = await doGenerate();
+      } catch (error) {
+        // The failure's own status and body, by stage: the pipeline's log keeps only the wrapper.
+        // Walk the cause chain: `@tj/ai` wraps the provider's error, whose body names the fault.
+        const chain: { statusCode?: number; message?: string; responseBody?: string }[] = [];
+        for (
+          let e = error as { cause?: unknown } | undefined, n = 0;
+          e && n < 5;
+          e = e.cause as never, n++
+        ) {
+          const x = e as { statusCode?: number; message?: string; responseBody?: string };
+          chain.push({
+            statusCode: x.statusCode,
+            message: x.message,
+            responseBody: x.responseBody?.slice(0, 2000),
+          });
+        }
+        await appendFile(
+          file,
+          `${JSON.stringify({ stage: context?.stage, promptVersion: context?.promptVersion, durationMs: Date.now() - startedAt, error: chain })}\n`,
+        );
+        throw error;
+      }
+      const durationMs = Date.now() - startedAt;
       const text = result.content
         .map((part) => ("text" in part && typeof part.text === "string" ? part.text : ""))
         .join("");
@@ -108,9 +159,13 @@ function recordingAi(real: CreatedAi, file: string): CreatedAi {
             `${m.role}: ${typeof m.content === "string" ? m.content : m.content.map((c) => ("text" in c ? c.text : `[${c.type}]`)).join("")}`,
         )
         .join("\n\n");
+      // The gateway prices each call itself; kept so a bench on unpriced ids can still be summed.
+      const gateway = (result.providerMetadata as { gateway?: Record<string, unknown> } | undefined)
+        ?.gateway;
+      const gatewayCost = gateway?.cost as string | undefined;
       await appendFile(
         file,
-        `${JSON.stringify({ stage: context?.stage, promptVersion: context?.promptVersion, prompt, text })}\n`,
+        `${JSON.stringify({ stage: context?.stage, promptVersion: context?.promptVersion, durationMs, prompt, text, usage: result.usage, gatewayCost, gateway })}\n`,
       );
       return result;
     },
@@ -519,9 +574,37 @@ if (import.meta.main) {
     process.exit(2);
   }
   const capUsd = Number(arg("cap") ?? 2);
-  const created = createAi(env);
+  /** `--model plan=openai/gpt-5.6-sol,generate=google/gemini-3.8-flash`: stage → model id. */
+  const routes: Record<string, string> = Object.fromEntries(
+    (arg("model") ?? "")
+      .split(",")
+      .filter(Boolean)
+      .map((pair) => {
+        const [stage, id] = pair.split("=");
+        if (!stage || !id) throw new Error(`--model: expected <stage>=<model id>, got "${pair}"`);
+        return [stage.trim(), id.trim()];
+      }),
+  );
+  const promptName = (version: string | undefined) => version?.replace(/\.v\d+$/, "");
+  /** `--effort plan=low,verify-facts=medium`: stage or prompt name → reasoning effort. */
+  const efforts: Record<string, "low" | "medium" | "high"> = Object.fromEntries(
+    (arg("effort") ?? "")
+      .split(",")
+      .filter(Boolean)
+      .map((pair) => {
+        const [key, level] = pair.split("=");
+        if (!key || !level || !["low", "medium", "high"].includes(level))
+          throw new Error(`--effort: expected <stage|prompt>=<low|medium|high>, got "${pair}"`);
+        return [key.trim(), level as "low" | "medium" | "high"];
+      }),
+  );
+  const created = createAi(env, {
+    route: (_cls, context) =>
+      routes[promptName(context?.promptVersion) ?? ""] ??
+      (context?.stage ? routes[context.stage] : undefined),
+  });
   if (created.kind === "unconfigured") {
-    console.error("lab: AWS_BEARER_TOKEN_BEDROCK is unset");
+    console.error("lab: set AWS_BEARER_TOKEN_BEDROCK, AI_GATEWAY_API_KEY or OPENROUTER_API_KEY");
     process.exit(2);
   }
   const label0 = arg("label") ?? "run";
@@ -553,8 +636,36 @@ if (import.meta.main) {
   const ids = () => `lab${(++counter).toString(36)}`;
   let lesson = lessonFromBrief(brief.input, `lab-${brief.id}`, now());
   let worksheet: Worksheet | undefined;
+  // `--source <file>`: the file's text as the lesson's one Source (ADR 0027), the way a teacher's
+  // upload reaches Plan — here a curriculum extract, to measure grounding against no source.
+  const sourcePath = arg("source");
+  let sources = noSources;
+  if (sourcePath) {
+    const text = await readFile(resolve(sourcePath), "utf8");
+    const name = sourcePath.split("/").pop() ?? "source.md";
+    lesson = { ...lesson, sources: [{ id: "lab-src", kind: "paste", name }] };
+    sources = async () => [{ sourceId: "lab-src", ref: { section: name.slice(0, 120) }, text }];
+  }
+  const from = arg("from");
+  if (from) {
+    // A saved snapshot's documents; the pipeline resumes after their checkpoint (ADR 0025 §5).
+    const saved = JSON.parse(await readFile(resolve(from), "utf8")) as {
+      lesson: Lesson;
+      worksheet?: Worksheet;
+    };
+    lesson = sourcePath
+      ? {
+          ...saved.lesson,
+          sources: [
+            { id: "lab-src", kind: "paste", name: sourcePath.split("/").pop() ?? "source.md" },
+          ],
+        }
+      : saved.lesson;
+    worksheet = saved.worksheet;
+  }
   const snapshots: Snapshot[] = [];
   let verifyMs: number | null = null;
+  let verifyCorrections: number | null = null;
   const logLines: string[] = [];
 
   const signal = new AbortController().signal;
@@ -570,8 +681,10 @@ if (import.meta.main) {
           const line = chunk.toString();
           try {
             const rec = JSON.parse(line) as { level: number; msg?: string; durationMs?: number };
-            if (rec.msg === "facts verified" && typeof rec.durationMs === "number")
+            if (rec.msg === "facts verified" && typeof rec.durationMs === "number") {
               verifyMs = rec.durationMs;
+              verifyCorrections = (rec as { corrections?: number }).corrections ?? null;
+            }
             if (rec.level >= 40) process.stderr.write(line);
             logLines.push(line);
           } catch {
@@ -583,7 +696,7 @@ if (import.meta.main) {
     ),
     now,
     ids,
-    sources: noSources,
+    sources,
     persist: async (l, w) => {
       lesson = l;
       worksheet = w;
@@ -611,16 +724,113 @@ if (import.meta.main) {
       );
     },
     context,
+    effortFor: (stage, name, effort) => efforts[name] ?? efforts[stage] ?? effort,
     ...(images ? { images } : {}),
     ...(planFrontierFromYear !== undefined ? { planFrontierFromYear } : {}),
   };
 
+  const only = arg("only");
+  if (flag("dry-run")) {
+    // The calls each stage makes (mirrors the stage files; effort and cap as they set them).
+    const CALLS: Record<string, [prompt: string, cls: string, effort: string, cap: number][]> = {
+      "check-input": [["check-input", "small", "low", MAX_OUTPUT_TOKENS.checkInput]],
+      plan: [
+        ["plan-skeleton", "standard", "medium", MAX_OUTPUT_TOKENS.planSkeleton],
+        ["plan-facts", "standard", "medium", MAX_OUTPUT_TOKENS.planFacts],
+        ["verify-facts", "standard", "low", MAX_OUTPUT_TOKENS.verify],
+      ],
+      generate: [
+        ["generate-slide", "small", "low", MAX_OUTPUT_TOKENS.slide],
+        ["generate-worksheet", "small", "low", MAX_OUTPUT_TOKENS.worksheet],
+      ],
+      illustrate: [
+        ["shortlist-photos", "small", "low", MAX_OUTPUT_TOKENS.shortlist],
+        ["pick-or-requery-photo", "standard", "low", 300],
+      ],
+      evaluate: [["evaluate", "standard", "medium", MAX_OUTPUT_TOKENS.evaluate]],
+      repair: [["repair", "small", "low", MAX_OUTPUT_TOKENS.repair]],
+    };
+    const stages = only ? [only] : Object.keys(CALLS);
+    const unused = new Set([...Object.keys(routes), ...Object.keys(efforts)]);
+    const L: string[] = [];
+    L.push(
+      `brief ${brief.id}; snapshot ${from ?? "-"} (stage ${lesson.generation?.stage ?? "none"}, ${lesson.slides.length} slides); source ${sourcePath ?? "-"}; cap $${capUsd}; stages ${stages.join(",")}`,
+    );
+    L.push(
+      "| stage | call | class | model id | via | effort | out cap | $/M in/out | est. reservation |",
+      "|---|---|---|---|---|---|---:|---|---:|",
+    );
+    for (const stage of stages) {
+      for (const [name, cls, defaultEffort, cap] of CALLS[stage] ?? []) {
+        const routedId = routes[name] ?? routes[stage] ?? ai.modelId(cls as never);
+        for (const k of [name, stage]) unused.delete(k);
+        const effort = efforts[name] ?? efforts[stage] ?? defaultEffort;
+        const price = PRICES[routedId];
+        const via = routedId.startsWith("openai/")
+          ? "openai (pinned)"
+          : routedId.includes("/")
+            ? "gateway"
+            : "bedrock";
+        const est = price
+          ? ((3000 * price.inputPerMTok + cap * price.outputPerMTok) / 1e6).toFixed(3)
+          : "unpriced→token cap";
+        L.push(
+          `| ${stage} | ${name} | ${cls} | ${routedId} | ${via} | ${effort} | ${cap} | ${price ? `${price.inputPerMTok}/${price.outputPerMTok}` : "-"} | ${est} |`,
+        );
+      }
+    }
+    if (unused.size) L.push(`REFUSED: overrides that match no call: ${[...unused].join(", ")}`);
+    console.log(L.join("\n"));
+    process.exit(unused.size ? 2 : 0);
+  }
+  const stageFns: Record<
+    string,
+    (state: PipelineState, deps: PipelineDeps) => Promise<PipelineState>
+  > = { plan, generate, illustrate, evaluate, repair };
+  if (only && !stageFns[only]) {
+    console.error(`lab: --only must be one of ${Object.keys(stageFns).join(", ")}`);
+    process.exit(2);
+  }
+
   let ok = true;
   let error: string | undefined;
   try {
-    const final = await runLessonPipeline({ lesson, worksheetId: `lab-${brief.id}-ws` }, deps);
-    lesson = final.lesson;
-    worksheet = final.worksheet;
+    if (only) {
+      // One stage on the snapshot's documents, nothing after it. Plan hands Verify on as a
+      // promise for Generate to await; here the lab awaits it and keeps the corrected facts.
+      const run = stageFns[only];
+      if (!run) throw new Error("unreachable");
+      let state = await run(
+        { lesson, ...(worksheet ? { worksheet } : {}), worksheetId: `lab-${brief.id}-ws` },
+        deps,
+      );
+      if (state.pendingVerify) {
+        const result = await state.pendingVerify;
+        const generation = state.lesson.generation;
+        state = {
+          ...state,
+          lesson: {
+            ...state.lesson,
+            facts: result.facts,
+            ...(generation
+              ? {
+                  generation: {
+                    ...generation,
+                    findings: [...generation.findings, ...result.findings],
+                  },
+                }
+              : {}),
+          },
+        };
+      }
+      lesson = state.lesson;
+      worksheet = state.worksheet;
+      await deps.persist(lesson, worksheet);
+    } else {
+      const final = await runLessonPipeline({ lesson, worksheetId: `lab-${brief.id}-ws` }, deps);
+      lesson = final.lesson;
+      worksheet = final.worksheet;
+    }
   } catch (e) {
     ok = false;
     error = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
@@ -651,10 +861,10 @@ if (import.meta.main) {
   const R: string[] = [];
   R.push(`# Lab run ${label} — ${brief.id}`, "");
   R.push(
-    `- ok: ${ok}${error ? ` (${error})` : ""}; ${lesson.slides.length} slides, ${worksheet?.blocks.length ?? 0} blocks; duration ${(durationMs / 1000).toFixed(1)} s; verify ${verifyMs ?? "-"} ms`,
+    `- ok: ${ok}${error ? ` (${error})` : ""}; ${lesson.slides.length} slides, ${worksheet?.blocks.length ?? 0} blocks; duration ${(durationMs / 1000).toFixed(1)} s; verify ${verifyMs ?? "-"} ms, ${verifyCorrections ?? "-"} corrections${only ? `; only ${only}` : ""}`,
   );
   R.push(
-    `- models: frontier ${ai.modelId("frontier")}, standard ${ai.modelId("standard")}, small ${ai.modelId("small")}; judge ${judge?.modelId("frontier") ?? "-"}; planFrontierFromYear ${planFrontierFromYear ?? "-"}`,
+    `- models: frontier ${ai.modelId("frontier")}, standard ${ai.modelId("standard")}, small ${ai.modelId("small")}; judge ${judge?.modelId("frontier") ?? "-"}; planFrontierFromYear ${planFrontierFromYear ?? "-"}; routes ${JSON.stringify(routes)}; efforts ${JSON.stringify(efforts)}${from ? `; from ${from}` : ""}${sourcePath ? `; source ${sourcePath}` : ""}`,
   );
   R.push(
     `- prompt versions in code: ${Object.entries(PROMPT_VERSIONS)

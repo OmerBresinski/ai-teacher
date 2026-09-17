@@ -99,7 +99,8 @@ describe("plan", () => {
     });
     expect(deps.progress).toHaveLength(3);
     expect(deps.persisted).toHaveLength(3);
-    // Row 8: the verify call is the third plan call, standard class at high effort.
+    // Row 8: the verify call is the third plan call, standard class; low effort since 17 Sep 2026
+    // (at "high" through a gateway the checker reasoned its whole output cap away and answered nothing).
     expect(
       ai.calls.map((c) => [
         c.modelClass,
@@ -110,7 +111,7 @@ describe("plan", () => {
     ).toEqual([
       ["standard", "plan", PROMPT_VERSIONS["plan-skeleton"], "medium"],
       ["standard", "plan", PROMPT_VERSIONS["plan-facts"], "medium"],
-      ["standard", "plan", PROMPT_VERSIONS["verify-facts"], "high"],
+      ["standard", "plan", PROMPT_VERSIONS["verify-facts"], "low"],
     ]);
 
     expect(state.lesson.facts).toEqual(fullFacts());

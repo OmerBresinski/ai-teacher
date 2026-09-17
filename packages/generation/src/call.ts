@@ -9,13 +9,15 @@ import type { Finding, FindingSeverity, FindingTarget } from "@tj/domain/documen
 import { isEditorialIssue } from "@tj/slides";
 import {
   generateText,
+  jsonSchema,
   type ModelMessage,
   NoObjectGeneratedError,
   NoOutputGeneratedError,
   Output,
   type OutputInterface,
+  type Schema,
 } from "ai";
-import type { z } from "zod";
+import { z } from "zod";
 import { CallTimeout, withCallDeadline } from "./call-deadline";
 import type { PromptName } from "./prompts";
 import { type JsonRepairKind, repairJsonText } from "./repair-json";
@@ -59,7 +61,7 @@ export interface StructuredPrompt<I> {
 export type ReasoningEffort = "low" | "medium" | "high";
 
 export interface CallStructuredOptions<I, T> {
-  deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context">;
+  deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "effortFor">;
   stage: StageName;
   cls: ModelClass;
   effort: ReasoningEffort;
@@ -143,7 +145,9 @@ export const MAX_OUTPUT_TOKENS = {
   planSkeleton: 2500,
   planFacts: 7000,
   // At most twelve short corrections.
-  verify: 1500,
+  // Reasoning tokens count against this cap on GPT-5.6 ids: at effort "high" the checker spent the
+  // whole 1 500 thinking and answered nothing, twice, on one planner's facts (gateway, 2026-09-17).
+  verify: 4000,
   slide: 1500,
   worksheet: 4000,
   // Up to twenty findings, each with its evidence span (TEACH-216).
@@ -198,8 +202,9 @@ const RETRY_SUFFIX =
 function repairingObjectOutput<T>(
   schema: z.ZodType<T>,
   onRepair: (repairs: JsonRepairKind[]) => void,
+  modelId: string,
 ): OutputInterface<T> {
-  const inner = Output.object({ schema });
+  const inner = Output.object({ schema: wireSchemaFor(schema, modelId) });
   return {
     name: inner.name,
     responseFormat: inner.responseFormat,
@@ -230,32 +235,75 @@ function repairingObjectOutput<T>(
   };
 }
 
+/** Keywords Gemini's schema dialect refuses; validation of them stays with zod on the answer. */
+const GEMINI_UNSUPPORTED = new Set(["minItems", "maxItems"]);
+
+export function isGoogleModelId(modelId: string): boolean {
+  return /^google\//.test(modelId);
+}
+
+/**
+ * The schema as sent on the wire. A Gemini id through the gateway refuses a schema carrying array
+ * bounds ("Request contains an invalid argument", bisected 2026-09-17), so those keywords are
+ * stripped from the JSON schema the provider sees while the zod schema still validates the answer
+ * in full — a miss on a bound is a schema miss like any other. Every other id gets the zod schema.
+ */
+export function wireSchemaFor<T>(schema: z.ZodType<T>, modelId: string): z.ZodType<T> | Schema<T> {
+  if (!isGoogleModelId(modelId)) return schema;
+  const strip = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(strip);
+    if (node && typeof node === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+        if (!GEMINI_UNSUPPORTED.has(key)) out[key] = strip(value);
+      }
+      return out;
+    }
+    return node;
+  };
+  const json = strip(z.toJSONSchema(schema, { target: "draft-7", unrepresentable: "any" }));
+  return jsonSchema<T>(json as never, {
+    validate: (value) => {
+      const parsed = schema.safeParse(value);
+      return parsed.success
+        ? { success: true, value: parsed.data }
+        : { success: false, error: parsed.error };
+    },
+  });
+}
+
 export async function callStructured<I, T>(
   options: CallStructuredOptions<I, T>,
 ): Promise<CallResult<T>> {
-  const { deps, stage, cls, effort, prompt, input, schema, soft, maxOutputTokens, images } =
-    options;
+  const { deps, stage, cls, prompt, input, schema, soft, maxOutputTokens, images } = options;
+  // The stage's effort unless the host overrides it (the lab's effort bench).
+  const effort =
+    deps.effortFor?.(stage, prompt.version.replace(/\.v\d+$/, ""), options.effort) ??
+    options.effort;
   const timeoutMs = options.timeoutMs ?? callTimeoutMs(prompt.version);
   // Cancel is checked between model calls (ADR 0025 §5); the fake ignores `abortSignal`, so the
   // check is here rather than trusted to the provider.
   throwIfAborted(deps.signal);
   const exceeded = deps.budget.exceeded();
   if (exceeded) throw new BudgetExceeded(exceeded.by);
-  const modelId = deps.ai.modelId(cls);
-  const model = withGenerationBudget(
-    deps.ai.model(cls, callContext(deps, stage, prompt.version, effort)),
-    modelId,
-    deps.budget,
-  );
+  // The id the call actually runs on: the class's, unless the host routed this call elsewhere
+  // (the lab's model bench), so the budget prices what was used and the log names it.
+  const routed = deps.ai.model(cls, callContext(deps, stage, prompt.version, effort));
+  const modelId = typeof routed === "string" ? routed : routed.modelId;
+  const model = withGenerationBudget(routed, modelId, deps.budget);
   const userText = prompt.user(input);
-  const output = repairingObjectOutput(schema, (repairs) => {
-    // Repair kinds only — never the text (ADR 0015). Counted so a model change that makes the
-    // quirk common (or rare) shows up in the logs.
-    deps.logger.info(
-      { stage, promptVersion: prompt.version, repairs },
-      "structured output repaired before validation",
-    );
-  });
+  const output = repairingObjectOutput(
+    schema,
+    (repairs) => {
+      // Repair kinds only — never the text (ADR 0015). Counted so a model change that makes the
+      // quirk common (or rare) shows up in the logs.
+      deps.logger.info(
+        { stage, promptVersion: prompt.version, repairs },
+        "structured output repaired before validation",
+      );
+    },
+    modelId,
+  );
 
   const attempt = async (text: string): Promise<CallResult<T>> => {
     try {
@@ -409,9 +457,33 @@ export function imageMediaType(url: string): string {
  * nothing is sent and the call runs as it did before. The `effort` still reaches the log through
  * the call context. Dead for the pipeline once every class is a GPT-5.6 id (Generation quality §6).
  */
-function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
+export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
   if (isAnthropicModelId(modelId)) return {};
-  return { providerOptions: { bedrock: { reasoningConfig: { maxReasoningEffort: effort } } } };
+  return {
+    providerOptions: {
+      bedrock: { reasoningConfig: { maxReasoningEffort: effort } },
+      // The same effort when the call goes through a gateway (`provider/model` ids, the lab's
+      // model bench): each provider reads only its own namespace, so the others are inert.
+      // Without this a GPT-5.6 id thinks at its default effort and the reasoning tokens eat the
+      // `maxOutputTokens` budget, truncating the JSON (observed 2026-09-17 via the Vercel gateway).
+      openai: {
+        reasoningEffort: effort,
+        // Direct to OpenAI (the pinned gateway route) strict mode refuses a schema with an optional
+        // property ("'required' … must include every key"); Bedrock's route never minded. Our
+        // schemas have optional fields, and zod validates the answer anyway.
+        ...(modelId.startsWith("openai/") ? { strictJsonSchema: false } : {}),
+      },
+      // Gemini 3 reads a level, not an effort; Qwen and DeepSeek think or not (smoke-tested
+      // 2026-09-17: Gemini at its default spent the whole slide budget thinking, Qwen 3 373 tokens).
+      google: { thinkingConfig: { thinkingLevel: effort === "high" ? "high" : "low" } },
+      alibaba: { enableThinking: effort === "high" },
+      deepseek: { thinking: { type: effort === "high" ? "enabled" : "disabled" } },
+      // The Vercel gateway may serve an `openai/` id from its own Bedrock credentials, where the
+      // effort is ignored (Sol at "low" reasoned more than at "medium", 2026-09-17): pin the
+      // vendor so the setting reaches the model. Inert outside the gateway.
+      ...(modelId.startsWith("openai/") ? { gateway: { only: ["openai"] } } : {}),
+    },
+  };
 }
 
 function usageOf(usage: {

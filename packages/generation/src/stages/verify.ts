@@ -46,7 +46,7 @@ export async function runVerify(
       deps,
       stage: "plan",
       cls,
-      effort: "high",
+      effort: "low",
       prompt: verifyFactsPrompt,
       input: { audience: briefInput.audience, topic: briefInput.topic, facts },
       schema: verifyOutputSchemaFor(facts),
