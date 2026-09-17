@@ -33,6 +33,7 @@ export * from "./rich-text";
 export * from "./series";
 export * from "./slide";
 export * from "./source-ref";
+export * from "./subjects";
 export * from "./summarise";
 export * from "./text";
 export * from "./text-guards";

@@ -35,6 +35,7 @@ import {
   type RateLimitConfig,
   rateLimitByWorkspace,
 } from "./rate-limit";
+import { briefRoutes } from "./routes/briefs";
 import {
   DEV_JOB_PATHS,
   devJobRoutes,
@@ -122,6 +123,7 @@ function buildApp({
   sourceRateLimit,
   worksheetSingletonS,
   extraction,
+  ai,
 }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
   const allowHeaderShim = env.ALLOW_WORKSPACE_HEADER_SHIM === "1";
@@ -214,6 +216,8 @@ function buildApp({
     "/lessons/*",
     "/sources",
     "/sources/*",
+    "/briefs",
+    "/briefs/*",
   ] as const;
   for (const path of PROTECTED_PATHS) {
     app.use(path, csrf);
@@ -232,6 +236,8 @@ function buildApp({
   // The worksheet request (ADR 0030 item 8) starts a job with one model call; the listing under
   // `/lessons/:id/worksheets` makes none and is not limited.
   app.use("/lessons/:id/worksheet", rateLimitByWorkspace(aiLimiter));
+  // The brief parse (ADR 0029 item 13) makes one model call inside the request.
+  app.use("/briefs/parse", rateLimitByWorkspace(aiLimiter));
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
   const routes = app
@@ -254,7 +260,8 @@ function buildApp({
       ),
     )
     .route("/", documentRoutes(db.unsafeDb))
-    .route("/", lessonRoutes(db.unsafeDb, eventsRuntime, { worksheetSingletonS }));
+    .route("/", lessonRoutes(db.unsafeDb, eventsRuntime, { worksheetSingletonS }))
+    .route("/", briefRoutes(ai));
 
   // TEACH-22/121: test-only routes, outside the RPC contract (`AppType` stays clean). The seed
   // route writes into the caller's Workspace, so it sits behind the same guards as `/documents`.

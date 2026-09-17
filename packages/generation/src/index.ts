@@ -18,6 +18,22 @@ export {
   type StructuredPrompt,
   specRuleFinding,
 } from "./call";
+export {
+  MODEL_FIELDS,
+  type ModelField,
+  mergeModelFields,
+  PARSE_BRIEF_DEADLINE_MS,
+  type ParseBriefDeps,
+  type ParseBriefOutput,
+  ParseBriefOutputSchema,
+  type ParseBriefRequest,
+  type ParseBriefResult,
+  type ParseBriefRules,
+  parseBrief,
+  parseBriefRules,
+  RULE_FIELDS,
+  type RuleField,
+} from "./parse-brief";
 export * from "./prompts";
 export * from "./shapes";
 export * from "./specs";

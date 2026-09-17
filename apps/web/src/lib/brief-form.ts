@@ -3,6 +3,7 @@ import {
   type ClassContext,
   type CreateLessonInput,
   CreateLessonSchema,
+  SUBJECTS as DOMAIN_SUBJECTS,
   findNamePatterns,
   lessonFromBrief,
   NEED_CATEGORIES,
@@ -29,25 +30,10 @@ import { queryKeys } from "./query";
  * it and `lesson-brief.page.test.tsx` asserts the request shapes through the page.
  */
 
-/** England's labels (TeachDeck `year-groups.ts` plus Reception); the label is what is stored. */
-export const YEAR_GROUPS = ["Reception", ...Array.from({ length: 13 }, (_, i) => `Year ${i + 1}`)];
+/** The form's year-group and subject lists come from `@tj/domain` (TEACH-16) so `POST /briefs/parse` reads the same labels; "Other…" is this form's own affordance. */
+export { YEAR_GROUPS } from "@tj/domain/documents";
 export const OTHER_SUBJECT = "Other…";
-export const SUBJECTS = [
-  "English",
-  "Maths",
-  "Science",
-  "History",
-  "Geography",
-  "Art and design",
-  "Computing",
-  "Design and technology",
-  "Languages",
-  "Music",
-  "PE",
-  "PSHE",
-  "RE",
-  OTHER_SUBJECT,
-];
+export const SUBJECTS: readonly string[] = [...DOMAIN_SUBJECTS, OTHER_SUBJECT];
 export const SIZE_BAND_LABELS: Record<SizeBand, string> = {
   under15: "Under 15",
   "15to24": "15–24",

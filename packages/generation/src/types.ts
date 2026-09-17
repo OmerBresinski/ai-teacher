@@ -35,10 +35,11 @@ export type PipelineStageName =
 
 /**
  * Every stage a model call can belong to, as it appears in call contexts and failures: the
- * pipeline's four plus the two proposal jobs (§18), which write no checkpoint, and the worksheet
- * job's one stage (ADR 0030 item 3).
+ * pipeline's four plus the two proposal jobs (§18), which write no checkpoint, the worksheet
+ * job's one stage (ADR 0030 item 3) and the API's brief parse (ADR 0029 item 13), which runs
+ * outside any job.
  */
-export type StageName = PipelineStageName | "cascade" | "regenerate" | "worksheet";
+export type StageName = PipelineStageName | "cascade" | "regenerate" | "worksheet" | "parse-brief";
 
 /**
  * The checkpoint each pipeline stage writes to `Lesson.generation.stage` (ADR 0025 §3, §5);

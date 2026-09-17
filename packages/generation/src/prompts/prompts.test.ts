@@ -5,14 +5,8 @@ import { assignFactIds, PITCH_BOUNDS, WorksheetSpecSchema } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
 import { generateWorksheetFillPrompt, type WorksheetFill } from "./generate-worksheet-fill";
-import {
-  PROMPT_VERSIONS,
-  PROMPTS,
-  type PromptName,
-  promptHash,
-  VERB_WRITING,
-  verbBlock,
-} from "./index";
+import { promptHash } from "./hash";
+import { PROMPT_VERSIONS, PROMPTS, type PromptName, VERB_WRITING, verbBlock } from "./index";
 import { parseBriefPrompt } from "./parse-brief";
 import { planFactsPrompt } from "./plan-facts";
 import { planSkeletonPrompt, SOURCE_INSTRUCTION } from "./plan-skeleton";

@@ -224,8 +224,9 @@ describe("watch lists cover the transitive @tj/* closure (from the manifests)", 
    * fails in CI until someone runs `railway config plan && railway config apply` and updates the
    * pin, so the live filter can never silently lag the manifests.
    */
-  // TEACH-14 (2026-09-17) added `@tj/slides` to `apps/api`, which moves it up the list: the same
-  // set as applied on 2026-09-13, so the live filter is unchanged and no apply was needed.
+  // TEACH-14 (2026-09-17) added `@tj/slides` to `apps/api`, which moves it up the list, and
+  // TEACH-16 (2026-09-17) added `@tj/generation` the same way: both the same set as applied on
+  // 2026-09-13, so the live filter is unchanged and no apply was needed.
   test("image: the computed watch list is the one applied to Railway (2026-09-13)", () => {
     const APPLIED_IMAGE_WATCH = [
       "Dockerfile",
@@ -241,11 +242,11 @@ describe("watch lists cover the transitive @tj/* closure (from the manifests)", 
       "packages/db/**",
       "packages/domain/**",
       "packages/extract/**",
+      "packages/generation/**",
       "packages/images/**",
       "packages/jobs/**",
       "packages/slides/**",
       "packages/storage/**",
-      "packages/generation/**",
     ];
     expect(IMAGE_WATCH).toEqual(APPLIED_IMAGE_WATCH);
   });

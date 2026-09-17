@@ -97,13 +97,3 @@ export const PROMPT_VERSIONS = {
   cascade: cascadePrompt.version,
   regenerate: regeneratePrompt.version,
 } as const satisfies Record<PromptName, string>;
-
-/**
- * SHA-256 of a prompt's text: `system` plus `user(sampleInput)`. The test snapshots this per
- * version so a wording change without a version bump fails CI (ADR 0025 §17).
- */
-export function promptHash(name: PromptName, sampleInput: unknown): string {
-  const prompt = PROMPTS[name] as { system: string; user: (input: never) => string };
-  const text = `${prompt.system}\n---\n${prompt.user(sampleInput as never)}`;
-  return new Bun.CryptoHasher("sha256").update(text).digest("hex");
-}
