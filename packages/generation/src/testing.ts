@@ -6,6 +6,7 @@ import { parseLesson } from "@tj/domain/documents";
 import type { SlideSpec } from "@tj/slides";
 import pino, { type Logger } from "pino";
 import evaluateFixture from "./fixtures/evaluate.json";
+import parseBriefFixture from "./fixtures/parse-brief.json";
 import planFactsFixture from "./fixtures/plan-facts.json";
 import planSkeletonApply from "./fixtures/plan-skeleton.apply.json";
 import planSkeletonEvaluate from "./fixtures/plan-skeleton.evaluate.json";
@@ -15,6 +16,8 @@ import repairFixture from "./fixtures/repair.json";
 import slidesFixture from "./fixtures/slides.json";
 import verifyFixture from "./fixtures/verify.json";
 import worksheetFixture from "./fixtures/worksheet.json";
+import worksheetFillFixture from "./fixtures/worksheet-fill.json";
+import type { ParseBriefFields, WorksheetFill } from "./prompts";
 import type { ObjectiveVerb } from "./shapes";
 import type { PlanFacts, PlanSkeleton, VerifyOutput, WorksheetSpec } from "./specs";
 import { noSources, type PhotoPlacer, type PipelineDeps, type PipelineState } from "./types";
@@ -47,6 +50,10 @@ export const FIXTURES = {
   planFacts: planFactsFixture as PlanFacts,
   slides: slidesFixture as Record<SlideSpec["kind"], SlideSpec>,
   worksheet: worksheetFixture as WorksheetSpec,
+  /** The fill call's answer for a two-slot frame (ADR 0030 item 3; TEACH-14). */
+  worksheetFill: worksheetFillFixture as WorksheetFill,
+  /** `/briefs/parse`'s model half when the rules found the year group and minutes (TEACH-16). */
+  parseBrief: parseBriefFixture as ParseBriefFields,
   evaluate: evaluateFixture as { findings: Finding[] },
   repair: repairFixture as SlideSpec,
   verify: verifyFixture as VerifyOutput,
@@ -165,6 +172,10 @@ export function routed(
   const takeAt = (at: number) => (at === -1 ? pending.shift() : pending.splice(at, 1)[0]);
   const take = (call: FakeCall): FakeScriptEntry | undefined => {
     const version = call.context?.promptVersion ?? "";
+    // The fill call (ADR 0030 item 3) answers per slot; it must not take a whole-sheet spec.
+    if (version.startsWith("generate-worksheet-fill")) {
+      return takeAt(pending.findIndex((e) => Array.isArray(parsed(e)?.slots)));
+    }
     if (version.startsWith("generate-worksheet")) {
       return takeAt(pending.findIndex((e) => Array.isArray(parsed(e)?.blocks)));
     }

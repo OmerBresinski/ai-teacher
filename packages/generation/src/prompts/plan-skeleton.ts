@@ -1,4 +1,9 @@
-import { GENERATABLE_SLIDE_KINDS, type SourceLocator } from "@tj/domain/documents";
+import {
+  type BriefLevel,
+  GENERATABLE_SLIDE_KINDS,
+  type SlideCount,
+  type SourceLocator,
+} from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
 import type { LessonShape } from "../shapes";
 import { shapeBlock } from "./shape";
@@ -14,7 +19,10 @@ import { describeRef } from "./source-ref";
  * rendered as a Shape block of plain sentences, each of which `planSkeletonSchemaFor` also checks.
  * Four phases in order, a brief per slide saying what it adds, kinds chosen for what they are good
  * at. The model refers to objectives by position; ids are minted afterwards (`assignFactIds`).
- * Bump `version` whenever `system` or `user` changes wording (`shape.ts` included).
+ * Since ADR 0029 (items 8 and 9) the brief may fix the slide count, nudge the level and pin the
+ * teacher's objectives (a re-plan after the plan screen); each is an optional input rendered in
+ * the user turn, so a brief without them reads as before. Bump `version` whenever `system` or
+ * `user` changes wording (`shape.ts` included).
  */
 
 export type PlanSkeletonInput = {
@@ -25,6 +33,23 @@ export type PlanSkeletonInput = {
   audience: Audience;
   /** Extracted Source passages (F03, ADR 0027 §6), already capped by `selectSourceTexts`. */
   sourceTexts: { sourceId: string; ref: SourceLocator; text: string }[];
+  /** Exactly this many outline slides, title and objectives slides included (ruling 75). */
+  slideCount?: SlideCount | undefined;
+  /** Pitch nudge, one band either way from the year group's usual (ruling 74). */
+  level?: BriefLevel | undefined;
+  /**
+   * The teacher's objectives, pinned (ADR 0029 item 8): copied verbatim in this order, none
+   * proposed. The ids are what `assignFactIds` mints by position, so they are shown for the
+   * teacher's benefit and stay stable through the re-plan.
+   */
+  givenObjectives?: { id: string; text: string }[] | undefined;
+};
+
+/** What each level asks of the pitch, in the words both Plan prompts read (ADR 0029 item 9). */
+const LEVEL_LINES: Record<BriefLevel, string> = {
+  easier: "easier — pitch one band below what this year group and reading level would usually get",
+  standard: "standard — pitch at what this year group and reading level would usually get",
+  harder: "harder — pitch one band above what this year group and reading level would usually get",
 };
 
 /** What the model is told when the lesson has material to follow (ADR 0027 §6). */
@@ -126,13 +151,15 @@ const EXAMPLE = {
 
 /**
  * The brief as the user turn, shared with `plan-facts` so both calls see the same lesson: topic,
- * length, audience, then the Shape block (what this verb and class require), then any sources.
+ * length, audience (with the level, when the brief sets one), then the Shape block (what this
+ * verb and class require), then any sources.
  */
 export function briefBlock(input: PlanSkeletonInput): string[] {
   const parts = [
     `Topic or objective: ${input.topic}`,
     `Lesson length: ${input.durationMin} minutes`,
     audienceBlock(input.audience),
+    ...(input.level ? [`Level: ${LEVEL_LINES[input.level]}`] : []),
     "Shape:",
     ...shapeBlock(input.shape).map((line) => `  ${line}`),
   ];
@@ -146,8 +173,31 @@ export function briefBlock(input: PlanSkeletonInput): string[] {
   return parts;
 }
 
+/**
+ * How many objectives and slides to give — the brief's fixed count when it has one, the range
+ * otherwise — and, for a pinned re-plan, the objectives to copy.
+ */
+function askBlock(input: PlanSkeletonInput): string[] {
+  const parts: string[] = [];
+  if (input.givenObjectives && input.givenObjectives.length > 0) {
+    parts.push("Objectives, fixed by the teacher (id: text):");
+    for (const o of input.givenObjectives) parts.push(`  ${o.id}: ${o.text}`);
+    parts.push(
+      'Copy these objectives into "learningObjectives" verbatim, in this order, and propose no others. Refer to them by position: index 0 is the first one listed.',
+    );
+  } else {
+    parts.push("Give 1–4 objectives.");
+  }
+  parts.push(
+    input.slideCount
+      ? `The outline has exactly ${input.slideCount} slides, counting the title and objectives slides.`
+      : "Give 8–12 outline slides for an hour-long lesson (fewer for a shorter one).",
+  );
+  return parts;
+}
+
 export const planSkeletonPrompt = {
-  version: "plan-skeleton.v16",
+  version: "plan-skeleton.v17",
   system: [
     "You are an experienced UK teacher planning one lesson from a brief.",
     "Produce only the lesson's skeleton: the learning objectives and an outline of slides with the minutes each takes. The key ideas, vocabulary, worked examples and questions come in a later step, so do not write them here.",
@@ -161,7 +211,7 @@ export const planSkeletonPrompt = {
     'Kind fit: a "content" slide explains exactly one key idea; a "worked-example" slide works through one example step by step; "sort" is only for a genuine sequence (steps that happen in an order), never for classifying; "matching" only when the three right-hand sides are three different things; "true-false" only to confront a misconception; "multiple-choice" for a question with plausible wrong answers; "image-text" only for a real thing a photograph can show — a part must be visible from the outside.',
     '"brief": { "adds": what this slide contributes that no other slide does, in one sentence; "avoids"?: what it must not repeat from a neighbouring slide }. Two slides never add the same thing.',
     'Refer to objectives from the outline by position: { "type": "objective", "index": 0-based }. Only objectives can be referenced here. Every outline slide after the first two names at least one objective.',
-    "Give 1–4 objectives and 8–12 outline slides for an hour-long lesson (fewer for a shorter one).",
+    "The brief says how many objectives and outline slides to give. When it fixes the objectives, copy them exactly as written — same text, same order, none added, merged, reworded or dropped.",
     'Say whether the topic can be photographed — "photographable": { "yes", "why": one sentence } — by this test: a real place, object, organism, material, weather, artefact or everyday scene is; a diagram, map, chart, process or abstract idea is not. When it is, one explain slide is an "image-text" slide. An "image-text" slide shows one photograph of a real thing beside the text. Give it "imageBrief": { "subject": the exact query you would type into a stock-photo search engine that knows nothing about this lesson — two to four plain words, British English, no adjectives of mood, carrying the lesson\'s own context from the brief so it stands alone (the topic decides what an ambiguous word means: "oak leaf", never "leaf"; a part or property alone is never enough), "mustShow": two or three concrete things a pupil could see for the slide\'s task, each a different external feature so that an ordinary photograph of the whole subject, as a stranger would take it, is likely to show at least one of them — nouns a camera captures ("bushy tail", "small ears", "whiskers"; "open flower", "petals", "stem"; "river bank", "flowing water"); the slide\'s text is written to whichever are actually visible; a part seen only in a close-up or when the subject is doing something (teeth, tongue, roots, the inside of anything) is not a "mustShow" item — the slide\'s text names it instead; never a process, or the kind of thing itself ("rodent", "flower", "river" belong in "subject"); "purpose": "identify-parts" | "observe" | "compare" | "context"; "avoid": what would spoil the picture for pupils — for a living subject usually a cage, fence, bars, glass or hands in front of it }. Use it for places, objects, organisms, materials, weather, artefacts and everyday scenes — not for diagrams, maps, charts or anything abstract. At most three image-text slides in a lesson.',
     limitsBlock({ "each objective": SPEC_LIMITS.item }),
     "",
@@ -169,6 +219,6 @@ export const planSkeletonPrompt = {
     example(EXAMPLE),
   ].join("\n"),
   user(input: PlanSkeletonInput): string {
-    return briefBlock(input).join("\n");
+    return [...briefBlock(input), "", ...askBlock(input)].join("\n");
   },
 } as const;

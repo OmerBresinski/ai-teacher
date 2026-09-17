@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { blockSpecSchemaFor, slideSpecSchemaFor } from "@tj/slides";
 import { lessonShapeOf } from "../shapes";
-import { assignFactIds, WorksheetSpecSchema } from "../specs";
+import { assignFactIds, PITCH_BOUNDS, WorksheetSpecSchema } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
+import { generateWorksheetFillPrompt, type WorksheetFill } from "./generate-worksheet-fill";
 import {
   PROMPT_VERSIONS,
   PROMPTS,
@@ -12,6 +13,7 @@ import {
   VERB_WRITING,
   verbBlock,
 } from "./index";
+import { parseBriefPrompt } from "./parse-brief";
 import { planFactsPrompt } from "./plan-facts";
 import { planSkeletonPrompt, SOURCE_INSTRUCTION } from "./plan-skeleton";
 
@@ -38,10 +40,25 @@ const brief = {
     { objectiveVerb: "Explain states of matter", priorConfidence: "New to it" },
     { yearGroup: "Year 8" },
   ),
+  /** ADR 0029 item 9: the fixed count and the level are in the hash; pinned objectives are not. */
+  slideCount: 10 as const,
+  level: "harder" as const,
 };
 const audience = audienceOf(sampleBriefLesson());
 /** The verb and confidence the writers and the reviewer are told (TEACH-230). */
 const shape = { verb: brief.shape.verb, confidence: brief.shape.confidence };
+/** The whole-sheet writer and the fill writer see the same lesson (ADR 0030 item 3). */
+const worksheetInput = {
+  objectives: facts.objectives,
+  shape,
+  keyIdeas: facts.keyIdeas ?? [],
+  misconceptions: facts.misconceptions,
+  pool: facts.questions.filter((q) => q.use === "worksheet" || q.use === "any"),
+  reservedStems: ["In which state of matter are the particles furthest apart?"],
+  pitch: facts.pitch,
+  audience,
+  lessonTitle: "States of matter",
+};
 
 export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   "check-input": { topic: brief.topic, answers: brief.answers, audience: brief.audience },
@@ -60,16 +77,24 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
     vocabularySlots: 4,
     lessonTitle: "States of matter",
   },
-  "generate-worksheet": {
-    objectives: facts.objectives,
-    shape,
-    keyIdeas: facts.keyIdeas ?? [],
-    misconceptions: facts.misconceptions,
-    pool: facts.questions.filter((q) => q.use === "worksheet" || q.use === "any"),
-    reservedStems: ["In which state of matter are the particles furthest apart?"],
-    pitch: facts.pitch,
-    audience,
-    lessonTitle: "States of matter",
+  "generate-worksheet": worksheetInput,
+  "generate-worksheet-fill": {
+    ...worksheetInput,
+    recipe: {
+      id: "practise-core",
+      job: "practise",
+      fillSlots: [
+        { index: 2, allowedTypes: ["question", "multiple-choice"], count: [2, 3] },
+        { index: 4, allowedTypes: ["fill-gap", "matching"], count: [1, 1] },
+      ],
+      minutesBudget: 15,
+    },
+  },
+  "parse-brief": {
+    text: "Year 8 states of matter, 50 minutes, lower set",
+    yearGroups: ["Year 7", "Year 8", "Year 9"],
+    subjects: ["Science", "Maths", "English"],
+    alreadyKnown: { yearGroup: "Year 8", durationMin: 50 },
   },
   "shortlist-photos": {
     topic: brief.topic,
@@ -150,12 +175,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v16",
-    hash: "e67567ac2067aeb025fba19d1f53b0a7adcfc036a775df15696651478a59afc7",
+    version: "plan-skeleton.v17",
+    hash: "6636dd50d34902275a3129c22d2ba1676bd3c5daec114e862afdac4f76199d1f",
   },
   "plan-facts": {
-    version: "plan-facts.v8",
-    hash: "8703491b17d88e7f5be78294a7a2f1a8c4e315a65898abd4dc766d078c4dd597",
+    version: "plan-facts.v9",
+    hash: "3d2f9cb9d40d383e43c28f7fbd6136813e1466b0aa9d51f73078ea2d34fca616",
   },
   "verify-facts": {
     version: "verify-facts.v1",
@@ -168,6 +193,14 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "generate-worksheet": {
     version: "generate-worksheet.v9",
     hash: "939c884f8b07fbf14a493887ec89df5b829ac7e3592370a7efd67c6ed474ce08",
+  },
+  "generate-worksheet-fill": {
+    version: "generate-worksheet-fill.v1",
+    hash: "cda2c51a0a4dcee3984910be0759fab02691fd7e3f5977ac0a70d0ebef7c316c",
+  },
+  "parse-brief": {
+    version: "parse-brief.v1",
+    hash: "fc3302b61a3673236ebee7e2616e9db83d2d7390cda5a4f091304af99294eba8",
   },
   "shortlist-photos": {
     version: "shortlist-photos.v2",
@@ -222,10 +255,28 @@ describe("prompt versions", () => {
     const sheets = examples(PROMPTS["generate-worksheet"].system);
     expect(sheets).toHaveLength(1);
     expect(WorksheetSpecSchema.safeParse(sheets[0]).success).toBe(true);
+    // The fill example and the fill fixture are block specs per slot (ADR 0030 item 3).
+    const fills = examples(PROMPTS["generate-worksheet-fill"].system) as unknown as WorksheetFill[];
+    expect(fills).toHaveLength(1);
+    for (const fill of [fills[0] as WorksheetFill, FIXTURES.worksheetFill]) {
+      for (const slot of fill.slots) {
+        expect(slot.blocks.length).toBeGreaterThan(0);
+        for (const block of slot.blocks) {
+          const schema = blockSpecSchemaFor(block.type);
+          expect(schema).toBeDefined();
+          expect(() => schema?.parse(block), block.type).not.toThrow();
+        }
+      }
+    }
   });
 
   test("TEACH-258: examples replace prose within each prompt's baseline word budget", () => {
-    const budgets = { "generate-slide": 1009, "generate-worksheet": 639, repair: 503 } as const;
+    const budgets = {
+      "generate-slide": 1009,
+      "generate-worksheet": 639,
+      "generate-worksheet-fill": 639,
+      repair: 503,
+    } as const;
     for (const name of Object.keys(budgets) as (keyof typeof budgets)[]) {
       expect(PROMPTS[name].system.trim().split(/\s+/).length, name).toBeLessThan(budgets[name]);
     }
@@ -254,6 +305,161 @@ describe("prompt versions", () => {
     expect(planFactsPrompt.user({ ...brief, skeleton: FIXTURES.planSkeleton })).toContain(
       "[src1 p.3]",
     );
+  });
+
+  test("TEACH-67: the skeleton takes the fixed slide count, the level and the pinned objectives", () => {
+    const RANGE = "Give 8–12 outline slides for an hour-long lesson (fewer for a shorter one).";
+    const fixed = planSkeletonPrompt.user({ ...brief, slideCount: 8 });
+    expect(fixed).toContain(
+      "The outline has exactly 8 slides, counting the title and objectives slides.",
+    );
+    expect(fixed).not.toContain(RANGE);
+    expect(fixed).toContain("Give 1–4 objectives.");
+    const open = planSkeletonPrompt.user({ ...brief, slideCount: undefined, level: undefined });
+    expect(open).toContain(RANGE);
+    expect(open).not.toContain("exactly");
+    expect(open).not.toContain("Level:");
+    // The level is a word in the audience, never a number (ruling 74), and both Plan calls see it.
+    expect(fixed).toContain("Level: harder — pitch one band above");
+    expect(planFactsPrompt.user({ ...brief, skeleton: FIXTURES.planSkeleton })).toContain(
+      "Level: harder — pitch one band above",
+    );
+    expect(planSkeletonPrompt.user({ ...brief, level: "easier" })).toContain(
+      "Level: easier — pitch one band below",
+    );
+    // Pinned objectives (ADR 0029 item 8): copied verbatim, in order, none proposed.
+    const pinned = planSkeletonPrompt.user({
+      ...brief,
+      givenObjectives: [
+        { id: "o1", text: "Explain how particles move in each state" },
+        { id: "o2", text: "Predict what heating does to a solid" },
+      ],
+    });
+    expect(pinned).toContain("Objectives, fixed by the teacher (id: text):");
+    expect(pinned).toContain(
+      "  o1: Explain how particles move in each state\n  o2: Predict what heating does to a solid",
+    );
+    expect(pinned).toContain(
+      'Copy these objectives into "learningObjectives" verbatim, in this order, and propose no others.',
+    );
+    expect(pinned).not.toContain("Give 1–4 objectives.");
+    expect(pinned).toContain("exactly 10 slides");
+    expect(planSkeletonPrompt.system).toContain("copy them exactly as written");
+    expect(planSkeletonPrompt.system).not.toContain("Give 1–4 objectives and 8–12 outline slides");
+  });
+
+  test("TEACH-67: the facts call is told the one-band nudge with the schema's bounds", () => {
+    const withSkeleton = { ...brief, skeleton: FIXTURES.planSkeleton };
+    const harder = planFactsPrompt.user(withSkeleton);
+    expect(harder).toContain(
+      'Pitch: the level is "harder", so raise "readingAgeTarget" and "sentenceLengthMax" by one band',
+    );
+    expect(harder).toContain(
+      "Stay within 5–18 for the reading age and 6–30 for the sentence length.",
+    );
+    expect(PITCH_BOUNDS).toEqual({ readingAge: [5, 18], sentenceLength: [6, 30] });
+    expect(planFactsPrompt.user({ ...withSkeleton, level: "easier" })).toContain(
+      'the level is "easier", so lower',
+    );
+    for (const level of ["standard", undefined] as const) {
+      expect(planFactsPrompt.user({ ...withSkeleton, level })).not.toContain("Pitch: the level");
+    }
+    expect(planFactsPrompt.system).toContain('A "Level" line in the brief moves');
+    // Pinned objectives are served as written, and the outline still lists them by position.
+    const pinned = planFactsPrompt.user({
+      ...withSkeleton,
+      givenObjectives: [{ id: "o1", text: "X" }],
+    });
+    expect(pinned).toContain("Objectives (fixed by the teacher; serve them as written):");
+    expect(harder).toContain("\nObjectives:\n");
+  });
+
+  test("TEACH-67: parse-brief asks only for what the rules did not find and never for the topic", () => {
+    const input = SAMPLE_INPUTS["parse-brief"] as {
+      text: string;
+      yearGroups: string[];
+      subjects: string[];
+    };
+    const known = parseBriefPrompt.user({ ...input, alreadyKnown: { yearGroup: "Year 8" } });
+    expect(known).not.toContain("yearGroup");
+    expect(known).toContain('"subject": one of "Science", "Maths", "English", or "Other"');
+    expect(known).toContain('"durationMin": whole minutes');
+    expect(known).toContain('"level": "easier", "standard" or "harder"');
+    expect(known).toContain(`\n"""\n${input.text}\n"""`);
+    const blank = parseBriefPrompt.user({ ...input, alreadyKnown: {} });
+    expect(blank).toContain('"yearGroup": one of "Year 7", "Year 8", "Year 9"');
+    const all = parseBriefPrompt.user({
+      ...input,
+      alreadyKnown: { yearGroup: "Year 8", subject: "Science", durationMin: 50 },
+    });
+    expect(all).not.toContain("yearGroup");
+    expect(all).not.toContain("subject");
+    expect(all).not.toContain("durationMin");
+    expect(all).toContain('"level"');
+    for (const rule of [
+      "When a field is unknown, omit the key.",
+      "Never return the topic, a title, a person's name or any key not asked for.",
+      "never repeat or contradict them",
+    ]) {
+      expect(parseBriefPrompt.system).toContain(rule);
+    }
+    expect(parseBriefPrompt.system).not.toContain("topic:");
+    // The fixture is the model's half of a parse whose rules found the year group and minutes.
+    expect(FIXTURES.parseBrief).toEqual({ subject: "Science", level: "easier" });
+  });
+
+  test("TEACH-67: the fill prompt lists every slot with its types and count, the guides, and the reserved stems", () => {
+    const text = generateWorksheetFillPrompt.user(
+      SAMPLE_INPUTS["generate-worksheet-fill"] as never,
+    );
+    expect(text).toContain(
+      "Recipe: practise-core (practise). The filled blocks take about 15 minutes.",
+    );
+    expect(text).toContain("  slot 2: 2–3 blocks; types: question, multiple-choice");
+    expect(text).toContain("  slot 4: exactly 1 block; types: fill-gap, matching");
+    // Each allowed type once, with its shape and its guide, good and bad.
+    for (const type of ["question", "multiple-choice", "fill-gap", "matching"]) {
+      expect(text.split(`- ${type}: { "type": "${type}"`)).toHaveLength(2);
+    }
+    expect(text).not.toContain("- word-bank:");
+    expect(text).toContain("  A matching block pairs 3 to 6 items");
+    expect(text).toContain("  Good: 'Which of these is a rodent?'");
+    expect(text).toContain("  Bad: 'Rodents ___ ___ ___.'");
+    expect(text).toContain(
+      "Used on the slides and exit ticket — do not use these stems:\n  - In which state of matter are the particles furthest apart?",
+    );
+    expect(text).toContain("Objective verb: Explain.");
+    expect(text).toContain("Question pool for the sheet");
+    expect(text).toContain("Answer with the fill JSON.");
+    // The carried-over rules and the per-slot ones are in the system prompt.
+    for (const rule of [
+      "You fill only the numbered slots the brief lists",
+      "Use only those types, within that count.",
+      "use a pool question's stem, answer and distractors as given",
+      "never one from the reserved list",
+      'order the questions by tier: "easy", then "core", then "stretch"',
+      "every objective is practised by at least one block",
+    ]) {
+      expect(generateWorksheetFillPrompt.system).toContain(rule);
+    }
+    // The fixture fills the two slots of the sample recipe within their counts and types.
+    const recipe = (
+      SAMPLE_INPUTS["generate-worksheet-fill"] as {
+        recipe: { fillSlots: { index: number; allowedTypes: string[]; count: [number, number] }[] };
+      }
+    ).recipe;
+    expect(FIXTURES.worksheetFill.slots.map((s) => s.index)).toEqual(
+      recipe.fillSlots.map((s) => s.index),
+    );
+    for (const slot of FIXTURES.worksheetFill.slots) {
+      const rule = recipe.fillSlots.find((s) => s.index === slot.index);
+      if (!rule) throw new Error(`no slot ${slot.index} in the sample recipe`);
+      expect(slot.blocks.length).toBeGreaterThanOrEqual(rule.count[0]);
+      expect(slot.blocks.length).toBeLessThanOrEqual(rule.count[1]);
+      for (const block of slot.blocks) expect(rule.allowedTypes).toContain(block.type);
+    }
+    // The shape line wins over a guide's count (the spec wants exactly 4 options, at most 5 pairs).
+    expect(generateWorksheetFillPrompt.system).toContain("the shape wins");
   });
 
   test("every prompt states the house rules and asks for JSON", () => {

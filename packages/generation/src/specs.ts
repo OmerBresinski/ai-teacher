@@ -592,6 +592,13 @@ const MisconceptionOrdinalSchema = z.strictObject({
   index: z.number().int().nonnegative(),
 });
 
+/**
+ * The bounds `pitch` may take (reading age in years, longest sentence in words). The facts
+ * prompt quotes them, so a `level` nudge (ADR 0029 item 9) never asks for a value the schema
+ * would refuse.
+ */
+export const PITCH_BOUNDS = { readingAge: [5, 18], sentenceLength: [6, 30] } as const;
+
 /*
  * The top level is strict — an unknown list is a real shape error worth a retry — but every fact
  * item is `z.object`, which strips unknown keys (TEACH-256): a model that adds `explanation` to a
@@ -705,8 +712,16 @@ function planFactsShape(soft: boolean) {
       "questions",
     ),
     pitch: z.object({
-      readingAgeTarget: z.number().int().min(5).max(18),
-      sentenceLengthMax: z.number().int().min(6).max(30),
+      readingAgeTarget: z
+        .number()
+        .int()
+        .min(PITCH_BOUNDS.readingAge[0])
+        .max(PITCH_BOUNDS.readingAge[1]),
+      sentenceLengthMax: z
+        .number()
+        .int()
+        .min(PITCH_BOUNDS.sentenceLength[0])
+        .max(PITCH_BOUNDS.sentenceLength[1]),
       avoid: atMost(soft, z.array(line(SPEC_LIMITS.word)), 6, "words to avoid"),
     }),
     /** Per outline entry (by position), the facts from these lists it covers. */

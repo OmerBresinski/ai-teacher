@@ -1,5 +1,6 @@
+import type { BriefLevel } from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
-import type { PlanSkeleton } from "../specs";
+import { PITCH_BOUNDS, type PlanSkeleton } from "../specs";
 import { briefBlock, type PlanSkeletonInput } from "./plan-skeleton";
 import { tierLine } from "./shape";
 import { example, HOUSE_RULES, limitsBlock } from "./shared";
@@ -12,13 +13,24 @@ import { example, HOUSE_RULES, limitsBlock } from "./shared";
  * outline slide each supports. The question tiers follow the lesson's shape (`tierWeights`,
  * TEACH-229): a Recall lesson for a new class leans easy, a Revisiting one leans stretch. Ordinal
  * references, ids minted after (`assignFactIds`). This call is what the teacher waits on before
- * the slides start; it is the substance of the lesson, so it is allowed to be long. Bump
- * `version` whenever `system` or `user` changes wording (`shape.ts` included).
+ * the slides start; it is the substance of the lesson, so it is allowed to be long. The brief's
+ * `level` (ADR 0029 item 9) moves the pitch one band either way, inside the schema's bounds; its
+ * `givenObjectives` are treated as fixed. Bump `version` whenever `system` or `user` changes
+ * wording (`shape.ts` included).
  */
 
 export type PlanFactsInput = PlanSkeletonInput & {
   skeleton: PlanSkeleton;
 };
+
+const bounds = ([low, high]: readonly [number, number]) => `${low}–${high}`;
+
+/** The one-band nudge for a non-standard level, with the bounds the schema enforces. */
+function pitchNudge(level: BriefLevel): string | undefined {
+  if (level === "standard") return undefined;
+  const move = level === "easier" ? "lower" : "raise";
+  return `Pitch: the level is "${level}", so ${move} "readingAgeTarget" and "sentenceLengthMax" by one band from what the year group and reading level alone would give. Stay within ${bounds(PITCH_BOUNDS.readingAge)} for the reading age and ${bounds(PITCH_BOUNDS.sentenceLength)} for the sentence length.`;
+}
 
 const O = (index: number) => ({ type: "objective", index });
 
@@ -87,7 +99,7 @@ const EXAMPLE = {
 };
 
 export const planFactsPrompt = {
-  version: "plan-facts.v8",
+  version: "plan-facts.v9",
   system: [
     "You are an experienced UK teacher completing the plan for one lesson.",
     "You are given the lesson's objectives and its outline of slides, each with a brief saying what it adds. Produce the facts the slides and worksheet will be built from, then say which outline slide each fact supports.",
@@ -100,7 +112,7 @@ export const planFactsPrompt = {
     "Then up to 8 vocabulary terms with pupil-level definitions, and up to 4 worked examples with at most 6 short steps each; where a worked example heads off a misconception, say which.",
     "Every fact is self-contained: a worked-example problem or question stem never says 'a photo shows', 'the diagram', 'pictured above' or 'this animal' — name the thing and its features in words, because no slide is guaranteed a picture. Every vocabulary term is used in at least one key idea's explanation or example, so the lesson teaches it before a question asks about it. \"pitch.avoid\" never lists a vocabulary term.",
     'Then at least 12 questions, split across "easy", "core" and "stretch" in the counts the brief\'s "Question tiers" line gives. Tag each "use": "slide" for a whole-class question, "worksheet" for independent practice, "exit" for the exit ticket, "any" — so no stem is used twice across slides, sheet and exit ticket. Each has the answer and a one-sentence reasoning. For every question that will be a multiple-choice or true-false slide, give three distractors, each the answer a pupil holding a named misconception would give.',
-    'Then "pitch": the reading age to write for, the longest sentence in words, and up to 6 words to avoid, all judged from the year group and reading level given.',
+    'Then "pitch": the reading age to write for, the longest sentence in words, and up to 6 words to avoid, all judged from the year group and reading level given. A "Level" line in the brief moves the reading age and the sentence length one band down ("easier") or up ("harder"), never outside the bounds the brief states.',
     'Every fact names the objectives it serves: "objectiveRefs": [{ "type": "objective", "index": 0-based }]. Every objective is served by at least one key idea and checked by at least one question.',
     'Refer to facts by list and position: { "type": "keyIdea" | "misconception" | "vocabulary" | "workedExample" | "question", "index": 0-based }. In "outlineFactRefs", "index" is the 0-based position of the outline slide; list only slides from position 2 onwards and only the facts that slide draws on. A content slide needs its key idea; a worked-example slide needs its worked example; a question slide needs a question; a vocabulary slide needs vocabulary; a true-false slide names the misconception it confronts.',
     limitsBlock({
@@ -124,7 +136,14 @@ export const planFactsPrompt = {
   ].join("\n"),
   user(input: PlanFactsInput): string {
     const parts = briefBlock(input);
-    parts.push(tierLine(input.shape), "", "Objectives:");
+    parts.push(tierLine(input.shape));
+    const nudge = input.level && pitchNudge(input.level);
+    if (nudge) parts.push(nudge);
+    const fixed = input.givenObjectives && input.givenObjectives.length > 0;
+    parts.push(
+      "",
+      fixed ? "Objectives (fixed by the teacher; serve them as written):" : "Objectives:",
+    );
     input.skeleton.learningObjectives.forEach((o, i) => {
       parts.push(`  ${i}: ${o.text}`);
     });

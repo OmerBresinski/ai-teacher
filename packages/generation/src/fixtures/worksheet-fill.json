@@ -1,0 +1,50 @@
+{
+  "slots": [
+    {
+      "index": 2,
+      "blocks": [
+        {
+          "type": "question",
+          "text": "Describe how the particles are arranged in a solid.",
+          "answer": "They are packed closely together in a regular pattern and only vibrate in place.",
+          "answerLines": 2,
+          "marks": 1,
+          "factRefs": ["q6", "o1"]
+        },
+        {
+          "type": "multiple-choice",
+          "text": "Which change of state happens when a gas cools down?",
+          "options": [
+            { "text": "Melting", "correct": false },
+            { "text": "Boiling", "correct": false },
+            { "text": "Freezing", "correct": false },
+            { "text": "Condensing", "correct": true }
+          ],
+          "factRefs": ["q13", "o2"]
+        },
+        {
+          "type": "question",
+          "text": "Why can you pour a liquid but not a solid?",
+          "answer": "Liquid particles can slide past each other; solid particles are held in fixed positions and cannot.",
+          "answerLines": 4,
+          "marks": 2,
+          "factRefs": ["q7", "o1"]
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "blocks": [
+        {
+          "type": "matching",
+          "pairs": [
+            { "left": "Melting", "right": "Solid to liquid" },
+            { "left": "Boiling", "right": "Liquid to gas" },
+            { "left": "Condensing", "right": "Gas to liquid" }
+          ],
+          "factRefs": ["q2", "o2"]
+        }
+      ]
+    }
+  ]
+}

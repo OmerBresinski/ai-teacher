@@ -16,7 +16,9 @@ import {
  * question pool — the plan's `use: worksheet | any` questions, in three tiers — concurrently with
  * the slides, with the stems the slides took as an exclusion list, so it practises rather than
  * repeats. Since TEACH-230 it is told the objective verb too (`verbBlock`): what the practice is
- * for — stating, explaining, working a method or judging.
+ * for — stating, explaining, working a method or judging. `generate-worksheet-fill` (ADR 0030
+ * item 3) reads the same input and shares `BLOCK_SHAPES` and `worksheetBrief`; this whole-sheet
+ * prompt stays until the fill path is live (TEACH-14).
  */
 
 export type GenerateWorksheetInput = {
@@ -35,7 +37,8 @@ export type GenerateWorksheetInput = {
   lessonTitle: string;
 };
 
-const BLOCK_SHAPES = {
+/** The JSON shape per block type, exactly the keys `blockSpecSchemaFor` accepts. */
+export const BLOCK_SHAPES = {
   heading: '{ "type": "heading", "text", "level": 1 | 2, "factRefs" }',
   instructions: '{ "type": "instructions", "text", "factRefs" }',
   paragraph: '{ "type": "paragraph", "text", "factRefs" }',
@@ -113,48 +116,55 @@ export const generateWorksheetPrompt = {
     }),
   ].join("\n"),
   user(input: GenerateWorksheetInput): string {
-    const parts = [
-      `Lesson: ${input.lessonTitle}`,
-      audienceBlock(input.audience),
-      verbBlock(input.shape),
-      "",
-      "Objectives:",
-    ];
-    for (const o of input.objectives) parts.push(`  ${o.id}: ${o.text}`);
-    if (input.keyIdeas.length > 0) {
-      parts.push("Key ideas taught:");
-      for (const k of input.keyIdeas) {
-        parts.push(`  ${k.id}: ${k.statement} [${k.objectiveRefs.join(", ")}]`);
-      }
-    }
-    if (input.misconceptions.length > 0) {
-      parts.push("Misconceptions to practise against:");
-      for (const m of input.misconceptions) {
-        parts.push(`  ${m.id}: believes ${m.belief}; correct: ${m.correction}`);
-      }
-    }
-    parts.push("", "Question pool for the sheet (tier, use) [objectives]:");
-    for (const q of input.pool) {
-      const tags = [q.tier, q.use].filter(Boolean).join(", ");
-      const objectives = q.objectiveRefs ? ` [${q.objectiveRefs.join(", ")}]` : "";
-      parts.push(`  ${q.id}: ${q.stem}${tags ? ` (${tags})` : ""}${objectives}`);
-      parts.push(`    Answer: ${q.answer} (${q.reasoning})`);
-      if (q.distractors && q.distractors.length > 0) {
-        parts.push(`    Distractors: ${q.distractors.map((d) => d.text).join("; ")}`);
-      }
-    }
-    if (input.pitch) {
-      const avoid = input.pitch.avoid.length > 0 ? `; avoid: ${input.pitch.avoid.join(", ")}` : "";
-      parts.push(
-        "",
-        `Pitch: reading age ${input.pitch.readingAgeTarget}, sentences of at most ${input.pitch.sentenceLengthMax} words${avoid}.`,
-      );
-    }
-    if (input.reservedStems.length > 0) {
-      parts.push("", "Used on the slides and exit ticket — do not use these stems:");
-      for (const stem of input.reservedStems) parts.push(`  - ${stem}`);
-    }
-    parts.push("", "Answer with the worksheet JSON.");
-    return parts.join("\n");
+    return [...worksheetBrief(input), "", "Answer with the worksheet JSON."].join("\n");
   },
 } as const;
+
+/**
+ * The lesson as the worksheet writer sees it: title, audience, verb, objectives, key ideas,
+ * misconceptions, the question pool, the pitch and the stems the slides took.
+ */
+export function worksheetBrief(input: GenerateWorksheetInput): string[] {
+  const parts = [
+    `Lesson: ${input.lessonTitle}`,
+    audienceBlock(input.audience),
+    verbBlock(input.shape),
+    "",
+    "Objectives:",
+  ];
+  for (const o of input.objectives) parts.push(`  ${o.id}: ${o.text}`);
+  if (input.keyIdeas.length > 0) {
+    parts.push("Key ideas taught:");
+    for (const k of input.keyIdeas) {
+      parts.push(`  ${k.id}: ${k.statement} [${k.objectiveRefs.join(", ")}]`);
+    }
+  }
+  if (input.misconceptions.length > 0) {
+    parts.push("Misconceptions to practise against:");
+    for (const m of input.misconceptions) {
+      parts.push(`  ${m.id}: believes ${m.belief}; correct: ${m.correction}`);
+    }
+  }
+  parts.push("", "Question pool for the sheet (tier, use) [objectives]:");
+  for (const q of input.pool) {
+    const tags = [q.tier, q.use].filter(Boolean).join(", ");
+    const objectives = q.objectiveRefs ? ` [${q.objectiveRefs.join(", ")}]` : "";
+    parts.push(`  ${q.id}: ${q.stem}${tags ? ` (${tags})` : ""}${objectives}`);
+    parts.push(`    Answer: ${q.answer} (${q.reasoning})`);
+    if (q.distractors && q.distractors.length > 0) {
+      parts.push(`    Distractors: ${q.distractors.map((d) => d.text).join("; ")}`);
+    }
+  }
+  if (input.pitch) {
+    const avoid = input.pitch.avoid.length > 0 ? `; avoid: ${input.pitch.avoid.join(", ")}` : "";
+    parts.push(
+      "",
+      `Pitch: reading age ${input.pitch.readingAgeTarget}, sentences of at most ${input.pitch.sentenceLengthMax} words${avoid}.`,
+    );
+  }
+  if (input.reservedStems.length > 0) {
+    parts.push("", "Used on the slides and exit ticket — do not use these stems:");
+    for (const stem of input.reservedStems) parts.push(`  - ${stem}`);
+  }
+  return parts;
+}
