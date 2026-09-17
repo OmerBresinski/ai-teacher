@@ -58,3 +58,26 @@ void client.lessons[":id"].worksheet.$post({
   // @ts-expect-error `practiceMinutes` is one of the offered times or "auto"
   json: { expectedRevision: 1, practiceMinutes: 7 },
 });
+
+// The brief parse (ADR 0029 item 13, TEACH-16): `text` is required, `yearGroups` optional, and the
+// answer is the brief fields plus what the model filled.
+void client.briefs.parse.$post({
+  json: { text: "Year 8 history: the causes of the First World War" },
+});
+void client.briefs.parse.$post({ json: { text: "fractions", yearGroups: ["Year 5"] } });
+type ParsedBrief = InferResponseType<typeof client.briefs.parse.$post, 200>;
+const _parsed: ParsedBrief = {
+  topic: "the causes of the First World War",
+  yearGroup: "Year 8",
+  subject: "History",
+  level: "standard",
+  durationMin: 50,
+  inferred: ["level"],
+};
+const _parsedLevel: ParsedBrief["level"] = "harder";
+
+// @ts-expect-error `text` is required
+void client.briefs.parse.$post({ json: { yearGroups: ["Year 5"] } });
+
+// @ts-expect-error `level` is one of the brief levels
+const _badLevel: ParsedBrief["level"] = "hardest";

@@ -150,6 +150,8 @@ export const MAX_OUTPUT_TOKENS = {
   // Six ids (TEACH-227).
   shortlist: 200,
   repair: 1500,
+  // Four short fields (TEACH-16).
+  parseBrief: 120,
 } as const;
 
 /**

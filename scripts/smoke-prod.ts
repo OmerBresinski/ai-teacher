@@ -89,6 +89,15 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 401,
     },
     {
+      // ADR 0029 item 13: the brief parse is the first browser-facing POST under `/briefs`; it
+      // ends in a model call, so the guard pair on the new prefix must answer before any spend.
+      name: "app origin, POST /briefs/parse JSON, reaches the session guard",
+      method: "POST",
+      path: "/briefs/parse",
+      headers: { ...browser, "Content-Type": "application/json" },
+      expect: 401,
+    },
+    {
       // ADR 0025 §18: the proposal routes live under the guarded `/lessons/*` prefix with a path
       // parameter; a guard that matched only the exact `/lessons` would let this through.
       name: "app origin, POST /lessons/:id/cascade JSON, reaches the session guard",
@@ -173,6 +182,17 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       name: "foreign origin POST /lessons/:id/cascade is rejected before the session guard",
       method: "POST",
       path: "/lessons/0192f7a0-0000-7000-8000-000000000042/cascade",
+      headers: {
+        Origin: "https://evil.example",
+        "Sec-Fetch-Site": "cross-site",
+        "Content-Type": "application/json",
+      },
+      expect: 403,
+    },
+    {
+      name: "foreign origin POST /briefs/parse is rejected before the session guard",
+      method: "POST",
+      path: "/briefs/parse",
       headers: {
         Origin: "https://evil.example",
         "Sec-Fetch-Site": "cross-site",
