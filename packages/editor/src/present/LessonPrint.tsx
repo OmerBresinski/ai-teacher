@@ -2,6 +2,7 @@ import type { Lesson, Slide } from "@tj/domain/documents";
 import { useEffect, useMemo, useRef } from "react";
 import { CAPTURE_READY_ATTR, waitForSlidePaint } from "../export/paint";
 import { parseSlideRange } from "../export/range";
+import { useFittedLesson } from "../layout/fit-for-render";
 import { getTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
 
@@ -39,8 +40,11 @@ function chunk(items: Page[], size: number): Page[][] {
   return out;
 }
 
-export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
+export function LessonPrint({ lesson: stored, options = {} }: LessonPrintProps) {
   const { auto = false, answers = false, notes = false, handout3 = false, slides = "" } = options;
+  // Fitted in memory before anything is captured (`fit-for-render.ts`): the stored layout is what
+  // the recipes drew, and a heading that grew over its divider must not reach the PDF.
+  const { lesson, fitted } = useFittedLesson(stored);
   const theme = getTheme(lesson.themeId);
   const printed = useRef(false);
   const root = useRef<HTMLDivElement>(null);
@@ -61,6 +65,7 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
   // so the dialog opens once per mount.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the pages and options are the trigger (what was painted), not a read
   useEffect(() => {
+    if (!fitted) return;
     let cancelled = false;
     const settle = async () => {
       await waitForSlidePaint(root.current ?? document);
@@ -76,7 +81,7 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
       cancelled = true;
       document.documentElement.removeAttribute(CAPTURE_READY_ATTR);
     };
-  }, [auto, pages, answers, notes, handout3]);
+  }, [auto, pages, answers, notes, handout3, fitted]);
 
   const a4 = notes || handout3;
   const pageCss = a4

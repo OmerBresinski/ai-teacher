@@ -1,4 +1,6 @@
 /** Text fitting engine (TeachDeck SPEC "Text fitting engine"). */
+
+export { fitLessonForRender, useFittedLesson } from "./fit-for-render";
 export {
   type FitPlan,
   fitMigrationMessage,

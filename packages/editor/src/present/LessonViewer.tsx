@@ -10,6 +10,7 @@ import {
 import { AppBar, AppBarGroup, AppBarTitle, Button, cn, IconButton, Skeleton, Switch } from "@tj/ui";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { memo, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { useFittedLesson } from "../layout/fit-for-render";
 import { getTheme } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideStatic } from "../slide/SlideStatic";
@@ -52,13 +53,17 @@ export type LessonViewerProps = {
 };
 
 export function LessonViewer({
-  lesson,
+  lesson: stored,
   onPresent,
   onDuplicate,
   leading,
   exportSlot,
   pending,
 }: LessonViewerProps) {
+  // The stored layout until the fonts settle, then the deck fitted in memory (`fit-for-render.ts`).
+  // Not while slides are still arriving: a continuation slide the fit adds would read as an arrival
+  // and put the "n of N" count off the plan; the deck is fitted once generation is done.
+  const { lesson } = useFittedLesson(stored, { enabled: pending === undefined });
   const theme = getTheme(lesson.themeId);
   const [index, setIndex] = useState(0);
   const [step, setStep] = useState(0);

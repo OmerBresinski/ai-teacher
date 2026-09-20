@@ -50,18 +50,26 @@ describe("findOverlaps", () => {
     expect(findOverlaps(slide)).toEqual([]);
   });
 
-  test("ignores a hairline rule drawn through the layout", () => {
-    const rule: SlideElement = {
+  test("ignores a hairline rule along a box's edge, flags one struck through its words", () => {
+    const rule = (y: number): SlideElement => ({
       id: "rule",
       type: "shape",
       shape: "rect",
       x: 58,
-      y: 120,
+      y,
       w: 844,
       h: 1,
-    };
+    });
     const body = textEl("body", { x: 58, y: 100, w: 400, h: 100 });
-    expect(findOverlaps(slideOf([rule, body]))).toEqual([]);
+    // The divider the recipe drew under a one-line heading: at the edge, not an overlap.
+    expect(findOverlaps(slideOf([rule(200), body]))).toEqual([]);
+    expect(findOverlaps(slideOf([rule(98), body]))).toEqual([]);
+    // A heading that grew two lines over its divider reads as crossed out: an overlap, in draw order.
+    expect(findOverlaps(slideOf([rule(150), body]))).toEqual([["rule", "body"]]);
+    expect(findOverlaps(slideOf([body, rule(150)]))).toEqual([["body", "rule"]]);
+    // Two rules crossing, or a rule off to the side of the box: still decoration.
+    expect(findOverlaps(slideOf([rule(150), { ...rule(150), id: "rule2", y: 151 }]))).toEqual([]);
+    expect(findOverlaps(slideOf([{ ...rule(150), x: 500 }, body]))).toEqual([]);
   });
 
   test("ignores a line element", () => {
