@@ -11,7 +11,6 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
 | `tanstack-query` | queries, mutations, cache keys, invalidation, prefetch in loaders |
 | `shadcn` | composing UI from `@tj/ui`; understanding shadcn component APIs |
 | `vercel-react-best-practices` | writing or reviewing React for performance/bundle size |
-| `deploy-to-vercel` | Vercel project, preview deployments, environment variables |
 
 ## Constraints that override the skills
 

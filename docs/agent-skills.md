@@ -30,7 +30,6 @@ branch HEAD at install time (`gh api repos/<o>/<r>/commits/HEAD -q .sha`); the C
 | `ai-sdk` | [vercel/ai](https://github.com/vercel/ai) (`skills/use-ai-sdk`) | `d0b6d6d83aadb4188afc13b504b2fb2d88468050` (`packages/generation` copy: `efdfd6290d783864f00ebdf5a0aad8711f2eb2db`, 2026-09-06, identical content) | `packages/ai/.agents/skills/ai-sdk`, `apps/worker/.agents/skills/ai-sdk`, `apps/api/.agents/skills/ai-sdk`, `packages/generation/.agents/skills/ai-sdk` | Vercel AI SDK API (`generateText`, `streamText`, `Output.object`, middleware, `ai/test` mocks). **Its "use the Vercel AI Gateway" and "fetch model IDs from `ai-gateway.vercel.sh`" advice is overridden by ADR 0018 (Bedrock via `createAi`, model IDs from env).** | P2 (TEACH-69..72); ADR 0018; F13 |
 | `hono` | [honojs/skills](https://github.com/honojs/skills) (`skills/hono`) — successor of `yusukebe/hono-skill`, see below | `b04b90bfe0a3a41789045bc114b5834d0333e15c` | `apps/api/.agents/skills/hono` | Official Hono skill: routing, middleware, `@hono/zod-validator`, `streamSSE`, testing, RPC (`hc<AppType>`). | TEACH-16, TEACH-19, TEACH-20; ADR 0005, 0012, 0015 |
 | `vercel-react-best-practices` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (`skills/react-best-practices`) | `063bee94c3f4df8453406c830b0a7df0f2860278` | `apps/web/.agents/skills/vercel-react-best-practices`, `packages/editor/.agents/skills/vercel-react-best-practices` | React performance rules (waterfalls, bundle size, re-renders). Next.js-specific sections do not apply (Vite SPA). | TEACH-21, TEACH-23 (bundle budget); ADR 0004; F18-R05 |
-| `deploy-to-vercel` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (`skills/deploy-to-vercel`) | `063bee94c3f4df8453406c830b0a7df0f2860278` | `apps/web/.agents/skills/deploy-to-vercel` | Vercel CLI deploys, preview URLs, project linking, env vars. | TEACH-25, TEACH-26; ADR 0010, 0011 |
 | `use-railway` | [railwayapp/railway-skills](https://github.com/railwayapp/railway-skills) (`plugins/railway/skills/use-railway`) | `5d1e97178f86c82795d6737928bd641e0552166a` | `apps/api/.agents/skills/use-railway`, `apps/worker/.agents/skills/use-railway` | Railway CLI/API: services, Postgres, variables, PR environments, domains, `.railway/railway.ts` IaC, troubleshooting. | TEACH-24, TEACH-26; ADR 0006, 0010 |
 | `mastra` | [mastra-ai/skills](https://github.com/mastra-ai/skills) (`skills/mastra`) | `690d5d6cc6e918e73264b483ad3894ade7c763d9` | `packages/generation/.agents/skills/mastra` | Official Mastra skill: documentation lookup (embedded `node_modules/@mastra/*/dist/docs`, then mastra.ai), `createStep`/`createWorkflow`, `RequestContext`, scorers, common errors. **Its model-router (`"provider/model"` strings), storage, server and Studio-in-production advice is overridden by ADR 0025 §21: Mastra is composed in-process only, models come from `@tj/ai` `createAi` (ADR 0018), no `new Mastra()` outside `mastra.dev.ts`.** Installed 2026-09-06. | TEACH-129, TEACH-131, TEACH-132; ADR 0025 §17, §21, §23 |
 | `thermo-nuclear-code-quality-review` | [cursor/plugins](https://github.com/cursor/plugins) (`cursor-team-kit/skills/thermo-nuclear-code-quality-review`) | `93b00b89ef425a9c1bac0d0b317dfc49c930ac99` | `.agents/skills/thermo-nuclear-code-quality-review` | Strict maintainability review of a branch's diff (abstractions, file size, spaghetti growth). Loaded by the **review agent** in the delivery workflow (root `AGENTS.md` → "Delivery workflow"), never by the implementing agent. | P1 hardening (TEACH-37/38) |
@@ -40,7 +39,7 @@ Per location, on disk:
 | Location | `.agents/skills/` | `.claude/skills/` (symlinks → `../../.agents/skills/<name>`) | Manifest |
 | -------- | ----------------- | ------------------------------------------------------------ | -------- |
 | repo root | `thermo-nuclear-code-quality-review` | same one | `skills-lock.json` |
-| `apps/web` | `tanstack-router`, `tanstack-query`, `shadcn`, `vercel-react-best-practices`, `deploy-to-vercel` | same five | `apps/web/skills-lock.json` |
+| `apps/web` | `tanstack-router`, `tanstack-query`, `shadcn`, `vercel-react-best-practices` | same four | `apps/web/skills-lock.json` |
 | `apps/api` | `hono`, `use-railway`, `ai-sdk` | same three | `apps/api/skills-lock.json` |
 | `apps/worker` | `use-railway`, `ai-sdk` | same two | `apps/worker/skills-lock.json` |
 | `packages/ai` | `ai-sdk` | same one | `packages/ai/skills-lock.json` |
@@ -119,6 +118,16 @@ is also on the gitleaks path allowlist (generated into `.gitleaks.toml` from
 - No other substitutions; every other skill existed under the requested name in the requested repo.
   No fallback copies from the founder's global `~/.agents/skills` were needed.
 
+### Removed skills
+
+- **`deploy-to-vercel`** (vercel-labs/agent-skills), removed 2026-09-20. Its `resources/deploy.sh`
+  and `deploy-codex.sh` "no-auth fallback" tar the whole target directory (excluding only
+  `node_modules`, `.git`, `.env`, `.env.*`) and POST it unauthenticated to a Vercel-hosted endpoint,
+  and `SKILL.md` tells agents to fall back to it whenever the CLI is not authenticated. Skills are
+  never hand-edited (ADR 0017), so the skill was removed rather than patched. Vercel guidance lives
+  in [`infra/README.md`](../infra/README.md); do not re-install it. The 2026-09-04 audit table above
+  still lists it, as a dated record.
+
 ## Re-install / update
 
 The `skills` CLI installs **relative to the current working directory**, not the git root: run each
@@ -139,8 +148,7 @@ A="--agent universal claude-code -y"
   && $S https://github.com/tanstack-skills/tanstack-skills --skill tanstack-router $A \
   && $S https://github.com/tanstack-skills/tanstack-skills --skill tanstack-query  $A \
   && $S https://github.com/shadcn-ui/ui                      --skill shadcn          $A \
-  && $S https://github.com/vercel-labs/agent-skills          --skill vercel-react-best-practices $A \
-  && $S https://github.com/vercel-labs/agent-skills          --skill deploy-to-vercel $A )
+  && $S https://github.com/vercel-labs/agent-skills          --skill vercel-react-best-practices $A )
 
 ( cd apps/api \
   && $S https://github.com/honojs/skills                     --skill hono            $A \
