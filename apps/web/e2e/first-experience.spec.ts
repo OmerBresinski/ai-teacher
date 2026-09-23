@@ -58,11 +58,11 @@ test.describe("first-experience design preview", () => {
     await page.getByRole("button", { name: "Add another worksheet" }).click();
     await page.getByRole("button", { name: "Add another worksheet" }).click();
     await expect(page.getByRole("region", { name: /^Worksheet / })).toHaveCount(3);
-    await expect(page.getByRole("button", { name: "Make 3 worksheets" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Include 3 worksheets" })).toBeVisible();
     await page.getByRole("button", { name: "Remove worksheet 2" }).click();
     await expect(page.getByRole("region", { name: /^Worksheet / })).toHaveCount(2);
 
-    await page.getByRole("button", { name: "Make 2 worksheets" }).click();
+    await page.getByRole("button", { name: "Include 2 worksheets" }).click();
     await expect(page.getByTestId("creation-generating")).toHaveAttribute(
       "data-preview-state",
       "empty",
