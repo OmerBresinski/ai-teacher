@@ -1,6 +1,6 @@
 import { Button } from "@tj/ui";
-import { ArrowLeft, FileText, Paperclip, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { FileText, Paperclip, X } from "lucide-react";
+import { lazy, Suspense, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { CreationShell } from "@/components/lesson-creation/creation-shell";
 import {
@@ -12,6 +12,10 @@ import {
   WorksheetStep,
 } from "@/components/lesson-creation/step-fields";
 
+const EditorPreview = lazy(() =>
+  import("@/components/lesson-creation/editor-preview").then((m) => ({ default: m.EditorPreview })),
+);
+
 type Stage = "brief" | "objectives" | "worksheet" | "generating";
 const TITLES: Record<Stage, string> = {
   brief: "Let’s start with your idea.",
@@ -20,9 +24,9 @@ const TITLES: Record<Stage, string> = {
   generating: "Your lesson is coming together.",
 };
 const OBJECTIVES: ObjectiveDraft[] = [
-  { id: "o1", text: "Explain that sounds are made by vibrations." },
-  { id: "o2", text: "Describe how sound travels through different materials." },
-  { id: "o3", text: "Use evidence to explain how distance affects volume." },
+  { id: "o1", text: "Describe evaporation, condensation and precipitation." },
+  { id: "o2", text: "Explain how water moves through the water cycle." },
+  { id: "o3", text: "Use the water cycle to explain where rain comes from." },
 ];
 
 /** Local visual fixture composing the same callback-driven components used by the app.
@@ -51,13 +55,13 @@ export function DevFirstExperiencePage() {
 
   const [stage, setStage] = useState<Stage>("brief");
   const [brief, setBrief] = useState<IntakeBrief>({
-    topic: "How sound travels",
-    yearGroup: "Year 4",
+    topic: "The water cycle",
+    yearGroup: "Year 5",
     level: "standard",
     files: [],
   });
   const [objectives, setObjectives] = useState(OBJECTIVES);
-  const [slideCount, setSlideCount] = useState("8");
+  const [slideCount, setSlideCount] = useState("7");
   const [duration, setDuration] = useState("60");
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
     { id: "sheet-1", recipe: "knowledge-check", minutes: "10" },
@@ -127,9 +131,19 @@ export function DevFirstExperiencePage() {
       ) : null}
     </div>
   );
+  if (stage === "generating")
+    return (
+      <Suspense fallback={<div className="creation-shell">Opening your lesson…</div>}>
+        <EditorPreview
+          onBack={() => go("worksheet")}
+          onRestart={() => go("brief")}
+          worksheetCount={includeWorksheets ? worksheets.length : 0}
+        />
+      </Suspense>
+    );
   return (
     <>
-      <CreationShell stage={stage} title={TITLES[stage]} working={stage === "generating"}>
+      <CreationShell stage={stage} title={TITLES[stage]}>
         {stage === "brief" ? (
           <BriefStep
             brief={brief}
@@ -166,38 +180,6 @@ export function DevFirstExperiencePage() {
               go("generating");
             }}
           />
-        ) : null}
-        {stage === "generating" ? (
-          <div className="creation-form">
-            <p className="text-muted-foreground">
-              {brief.topic} · {brief.yearGroup}
-            </p>
-            <div className="creation-preview-result">
-              <span className="creation-working-dot" aria-hidden="true" />
-              <span>Slides</span>
-              <span className="text-muted-foreground">{slideCount} slides</span>
-            </div>
-            {includeWorksheets
-              ? worksheets.map((sheet, index) => (
-                  <div className="creation-preview-result" key={sheet.id}>
-                    <FileText size={20} />
-                    <span>Worksheet {index + 1}</span>
-                    <span className="text-muted-foreground">{sheet.minutes} minutes</span>
-                  </div>
-                ))
-              : null}
-            <p className="text-meta text-muted-foreground">
-              Animation preview — no lesson is being generated.
-            </p>
-            <div className="creation-actions">
-              <Button variant="link" onClick={() => go("worksheet")}>
-                <ArrowLeft /> Back to worksheets
-              </Button>
-              <Button variant="link" onClick={() => go("brief")}>
-                Start again
-              </Button>
-            </div>
-          </div>
         ) : null}
       </CreationShell>
       <footer className="creation-preview-label">Design preview · local sample content</footer>

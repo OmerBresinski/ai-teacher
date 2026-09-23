@@ -272,3 +272,144 @@
     margin-left: 0;
   }
 }
+
+.creation-objective {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  padding-block: 10px;
+}
+.creation-objective-number {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  padding-inline: 2px;
+}
+.creation-step .creation-objective-input {
+  min-height: 44px;
+  resize: none;
+  overflow: hidden;
+  border-color: transparent;
+  background: transparent;
+  border-radius: 5px;
+  box-shadow: none;
+  padding: 10px 6px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.creation-step .creation-objective-input:focus-visible {
+  background: var(--card);
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px var(--ring);
+}
+.creation-editor-preview {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.creation-editor-surface {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.creation-editor-surface > .h-dvh {
+  height: 100%;
+}
+.creation-editor-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 12px;
+  padding: 6px 20px;
+  background: var(--background);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.creation-editor-footer > span {
+  margin-right: auto;
+}
+.creation-editor-preview [data-canvas-companion] {
+  position: absolute;
+  width: 480px;
+  height: 340px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition:
+    top 650ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    left 650ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.creation-editor-companion {
+  width: 480px;
+  height: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: center bottom;
+  transition: transform 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.creation-editor-companion .handover-stage {
+  margin: 0;
+  width: 480px;
+  height: 300px;
+}
+.creation-editor-companion p {
+  margin-top: 0;
+  color: var(--muted-foreground);
+  font-size: 16px;
+}
+/* The populated companion is a real footer row after the lock, never an overlay. */
+.creation-editor-preview [data-has-slides="true"] [data-canvas-companion] {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: 100%;
+  height: 140px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+.creation-editor-preview [data-has-slides="true"] .creation-editor-companion {
+  width: 240px;
+  height: 140px;
+  transform: none;
+}
+.creation-editor-preview [data-has-slides="true"] .handover-stage {
+  width: 240px;
+  height: 140px;
+}
+@media (max-width: 720px) {
+  .creation-editor-footer {
+    gap: 4px;
+    padding-inline: 8px;
+    flex-wrap: wrap;
+  }
+  .creation-editor-footer > span {
+    width: 100%;
+  }
+  .creation-editor-companion,
+  .creation-editor-preview [data-canvas-companion] {
+    width: 340px;
+  }
+  .creation-editor-companion .handover-stage {
+    width: 340px;
+  }
+  .creation-editor-preview [data-canvas] > .p-10 {
+    padding: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .creation-editor-preview [data-canvas-companion],
+  .creation-editor-companion {
+    transition: none;
+  }
+}
+
+.creation-editor-preview [data-has-slides="true"] .creation-editor-companion p {
+  visibility: hidden;
+}

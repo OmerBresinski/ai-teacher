@@ -30,6 +30,7 @@ for (const viewport of [
   test(`${viewport.name}: captures the brief, transition, worksheet choices and result`, async ({
     page,
   }) => {
+    test.setTimeout(55_000);
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: "no-preference", colorScheme: "light" });
     await page.goto("/dev/first-experience");
@@ -55,6 +56,11 @@ for (const viewport of [
     await page.waitForTimeout(120);
     await page.screenshot({ path: `/tmp/first-experience-${viewport.name}-mid-transition.png` });
     await expect(page.getByTestId("creation-objectives")).toBeVisible();
+    await settleFiniteAnimations(page);
+    await page.screenshot({
+      path: `/tmp/first-experience-${viewport.name}-objectives.png`,
+      fullPage: true,
+    });
 
     await page.getByRole("button", { name: "Generate" }).click();
     await expect(page.getByTestId("creation-worksheet")).toBeVisible();
@@ -68,7 +74,12 @@ for (const viewport of [
     await page
       .getByRole("button", { name: "Just the slides" })
       .evaluate((button: HTMLButtonElement) => button.click());
-    await expect(page.getByRole("button", { name: "Back to worksheets" })).toBeEnabled();
+    const editorPreview = page.getByTestId("creation-generating");
+    await expect(editorPreview).toHaveAttribute("data-preview-state", "empty");
+    await page.screenshot({
+      path: `/tmp/first-experience-${viewport.name}-editor-empty.png`,
+      fullPage: true,
+    });
     await captureMotionSequence(page, `first-experience-${viewport.name}-worksheet-to-slides`);
     await page.waitForTimeout(900);
     await page.screenshot({
@@ -78,16 +89,39 @@ for (const viewport of [
     await page.screenshot({
       path: `/tmp/first-experience-${viewport.name}-slides-working-loop-b.png`,
     });
-
-    await page.getByRole("button", { name: "Back to worksheets" }).click();
-    await settleFiniteAnimations(page);
-
-    await page.getByRole("button", { name: "Make 2 worksheets" }).click();
-    await expect(page.getByTestId("creation-generating")).toBeVisible();
-    await settleFiniteAnimations(page);
+    await expect(editorPreview).toHaveAttribute("data-preview-state", "partial", {
+      timeout: 5_000,
+    });
     await page.screenshot({
-      path: `/tmp/first-experience-${viewport.name}-result.png`,
+      path: `/tmp/first-experience-${viewport.name}-editor-partial.png`,
+      fullPage: true,
+    });
+    await expect(editorPreview).toHaveAttribute("data-preview-state", "ready", {
+      timeout: 25_000,
+    });
+    const readySlides = page.getByRole("listbox", { name: "Slides" }).getByRole("option");
+    await expect(readySlides.last()).toHaveAttribute("aria-selected", "true");
+    await page.screenshot({
+      path: `/tmp/first-experience-${viewport.name}-editor-ready.png`,
       fullPage: true,
     });
   });
 }
+
+test("short desktop keeps the populated Slides actor clear of the lock line", async ({ page }) => {
+  test.setTimeout(15_000);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/dev/first-experience");
+  await page.getByRole("button", { name: "Skip planning" }).click();
+  await page.getByRole("button", { name: "Just the slides" }).click();
+  const preview = page.getByTestId("creation-generating");
+  await expect(preview).toHaveAttribute("data-preview-state", "partial", { timeout: 7_000 });
+
+  const actorBody = await page
+    .locator('[data-canvas-companion] .person[data-actor="1"] .body')
+    .boundingBox();
+  const lock = await page.getByTestId("generating-lock").boundingBox();
+  await page.screenshot({ path: "/tmp/first-experience-short-desktop-editor-partial.png" });
+  if (!actorBody || !lock) throw new Error("short-desktop layout missing");
+  expect(actorBody.y).toBeGreaterThanOrEqual(lock.y + lock.height);
+});
