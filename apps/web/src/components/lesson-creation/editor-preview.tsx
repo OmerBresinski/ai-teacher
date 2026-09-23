@@ -113,7 +113,10 @@ function LocalEditor({
             onViewSlide={setSelected}
             className="h-full"
             canvasCompanion={
-              <GenerationCompanion initialStage={worksheetCount ? "worksheet" : "objectives"} />
+              <GenerationCompanion
+                initialStage={worksheetCount ? "worksheet" : "objectives"}
+                progress={count ? arrived / count : 0}
+              />
             }
           />
         )}

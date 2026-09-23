@@ -3,7 +3,13 @@ import { useLayoutEffect, useRef } from "react";
 import { CharacterHost, type CharacterStage } from "./character-host";
 
 /** One actor stage travels from the introduction into its measured editor slot. */
-export function GenerationCompanion({ initialStage }: { initialStage: CharacterStage }) {
+export function GenerationCompanion({
+  initialStage,
+  progress,
+}: {
+  initialStage: CharacterStage;
+  progress: number;
+}) {
   const anchor = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const scrim = useRef<HTMLDivElement>(null);
@@ -53,7 +59,11 @@ export function GenerationCompanion({ initialStage }: { initialStage: CharacterS
     <div ref={anchor} className="creation-generation-anchor" data-handover="passing">
       <div ref={scrim} className="creation-generation-scrim" aria-hidden="true" />
       <div ref={stage} className="creation-generation-actor">
-        <CharacterHost stage="generating" initialStage={initialStage} />
+        <CharacterHost
+          stage="generating"
+          initialStage={initialStage}
+          slidesPhase={progress >= 0.75 ? "stacking" : "making"}
+        />
       </div>
     </div>
   );

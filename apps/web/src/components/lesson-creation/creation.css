@@ -157,19 +157,36 @@
 .creation-step .creation-actions > button:first-child {
   padding-inline: 28px;
 }
-.creation-disclosure summary {
-  cursor: pointer;
-  width: fit-content;
+.creation-disclosure-trigger {
+  font-size: 16px;
+  padding: 0;
+  min-height: 32px;
   color: var(--muted-foreground);
-  text-underline-offset: 5px;
+  justify-content: flex-start;
 }
-.creation-disclosure[open] {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.creation-disclosure-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 220ms ease,
+    opacity 180ms ease;
 }
-.creation-disclosure[open] summary {
-  margin-bottom: 16px;
+.creation-disclosure[data-open="true"] .creation-disclosure-content {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.creation-disclosure-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.creation-disclosure-inset {
+  padding: 8px 4px 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .creation-disclosure-content {
+    transition: none;
+  }
 }
 .creation-upload {
   display: flex;
@@ -453,4 +470,8 @@
   .creation-generation-actor .handover-stage {
     transition: none;
   }
+}
+/* The kit's radio positioning must not create a separate row above its pill label. */
+.creation-level-options .creation-level-option > [data-slot="radio-group-item"] {
+  position: absolute;
 }

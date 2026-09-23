@@ -17,19 +17,23 @@ const OWNER: Record<CharacterStage, number> = {
   generating: 1,
   complete: 3,
 };
-const BEAT = [0, 4, 6, 9];
+const BEAT = [0, 3, 6, 9];
 
 /** React owns lifetime; the original rig owns articulated hands and their actual props. */
 export function CharacterHost({
   stage,
   initialStage = "brief",
+  slidesPhase = "making",
 }: {
   stage: CharacterStage;
   initialStage?: CharacterStage;
+  slidesPhase?: "making" | "stacking";
 }) {
   const element = useRef<HTMLDivElement>(null);
   const rig = useRef<HandoverRig | null>(null);
   const previous = useRef<CharacterStage>(initialStage);
+  const phase = useRef(slidesPhase);
+  phase.current = slidesPhase;
   useEffect(() => {
     if (!element.current) return;
     previous.current = initialStage;
@@ -58,8 +62,20 @@ export function CharacterHost({
             if (beat === 9) work(10, false);
             return;
           }
-          const next = to === 0 ? (beat === 0 ? 1 : 0) : to === 2 ? (beat === 6 ? 7 : 6) : 4;
-          work(next, to === 1 || (to === 2 && next === 6));
+          const next =
+            to === 0
+              ? beat === 0
+                ? 1
+                : 0
+              : to === 2
+                ? beat === 6
+                  ? 7
+                  : 6
+                : phase.current === "stacking"
+                  ? 4
+                  : 3;
+          // Finish the current creation gesture before sorting its completed deck.
+          work(next, to === 1 ? !(beat === 3 && next === 4) : to === 2 && next === 6);
         },
       });
     };
