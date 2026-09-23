@@ -10,6 +10,7 @@
  * `bundle.test.ts` holds the line.
  */
 
+export * from "./callout";
 export * from "./choose-variant";
 export * from "./demo-lesson";
 export * from "./explanation-metrics";

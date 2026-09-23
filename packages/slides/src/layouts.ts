@@ -41,7 +41,7 @@ export const PLACEHOLDER_IMAGE =
 const OPTICAL_BIAS = 10;
 
 /** Full content width. */
-const FULL = SAFE.w;
+export const FULL = SAFE.w;
 /** Six-column halves; the right one ends on the safe edge, not the grid's (TD item 4, `grid.ts`). */
 const HALF_W = HALF.w; // 413
 const RIGHT_X = HALF.xs[1]; // 489
@@ -50,10 +50,10 @@ const SAFE_BOTTOM = SAFE.y + SAFE.h; // 497
 
 /** Hairline under a slide heading, and where the body block starts (92 / 116 at 800x450). */
 const HAIRLINE_Y = snapY(110);
-const BODY_Y = snapY(140);
+export const BODY_Y = snapY(140);
 
 type Rect = { x: number; y: number; w: number; h: number };
-type Layout = { elements: SlideElement[]; question?: QuestionData };
+export type Layout = { elements: SlideElement[]; question?: QuestionData };
 
 /**
  * One rendered line of a preset, in slide points. Measured at the size the renderer
@@ -85,10 +85,10 @@ const optionCardH = (t: Theme, lines = 1) =>
   OPTION.border * 2;
 
 /** Vertically centre a block of height h, with the optical bias, on the rhythm. */
-const centreY = (h: number) => snapY(Math.round((SLIDE_H - h) / 2 - OPTICAL_BIAS));
+export const centreY = (h: number) => snapY(Math.round((SLIDE_H - h) / 2 - OPTICAL_BIAS));
 
 /** Text element with style overrides merged in. */
-function text(
+export function text(
   preset: TextPreset,
   content: string | RichDoc,
   rect: Rect,
@@ -100,7 +100,7 @@ function text(
   return el;
 }
 
-function shape(
+export function shape(
   kind: ShapeElement["shape"],
   rect: Rect,
   props: Partial<ShapeElement> = {},
@@ -435,6 +435,9 @@ function contentSlide(t: Theme): Layout {
   };
 }
 
+/** The text column beside the image-text recipe's picture: the numbers `applyCallout` restacks. */
+export const IMAGE_TEXT_COLUMN = { x: 480, w: 422 } as const;
+
 /** Image left (full-bleed) / text right — the deliberate grid break. */
 function imageTextSlide(t: Theme): Layout {
   const image: ImageElement = {
@@ -453,8 +456,8 @@ function imageTextSlide(t: Theme): Layout {
   const headH = boxH(t, "heading", 2);
   const bodyH = boxH(t, "body", 4);
   const top = centreY(capH + 12 + headH + 19 + bodyH);
-  const X = 480;
-  const W = 422;
+  const X = IMAGE_TEXT_COLUMN.x;
+  const W = IMAGE_TEXT_COLUMN.w;
   return {
     elements: [
       image,
@@ -950,7 +953,7 @@ function slotItems(kind: ListKind): string[] {
 }
 
 /** Inset between a card's edge and the text on it. */
-const CARD_PAD = SPACE[3];
+export const CARD_PAD = SPACE[3];
 
 /**
  * Headed list, `cards`: each item on its own surface card, three across for up to three
