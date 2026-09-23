@@ -15,6 +15,7 @@ import {
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
 import { z } from "zod";
+import { CALLOUT_LABELS, CALLOUT_NAMES, isCalloutElement } from "./callout";
 import { diagramVariantFor, FIGURE_TEMPLATES, RIGHT_TRIANGLE } from "./figures";
 import { lastColLeft, SAFE_RIGHT, spanWidth } from "./grid";
 import {
@@ -1060,3 +1061,53 @@ function specText(spec: SlideSpec): string[] {
       return [spec.stem];
   }
 }
+
+/* ---- TEACH-75: the callout through materialise ----------------------- */
+
+describe("materialiseSlide with a callout (UX ruling 84)", () => {
+  const plain = (slide: Slide) =>
+    slide.elements
+      .map((el) => ("doc" in el && el.doc ? richDocToPlainText(el.doc) : ""))
+      .join("\n");
+  const callout = { kind: "watch-out" as const, text: "Vapour is invisible; clouds are droplets." };
+
+  for (const theme of THEMES) {
+    for (const [kind, variant] of [
+      ["content", "headed"],
+      ["content", "two-column"],
+      ["image-text", "default"],
+    ] as const) {
+      test(`${kind}/${variant} on ${theme.id}: label and text on the slide, three named elements, stamped`, () => {
+        const spec = { ...minimalSpec(kind), callout } as SlideSpec;
+        const slide = materialiseSlide(spec, theme.id, meta, counter(), variant);
+        expect(SlideSchema.safeParse(slide).success).toBe(true);
+        const text = plain(slide);
+        expect(text).toContain(CALLOUT_LABELS["watch-out"]);
+        expect(text).toContain(callout.text);
+        const names = slide.elements.filter(isCalloutElement).map((el) => el.name);
+        expect(names).toEqual([CALLOUT_NAMES.card, CALLOUT_NAMES.label, CALLOUT_NAMES.text]);
+        for (const el of slide.elements) expect(el.authoredBy).toBe("ai");
+      });
+    }
+  }
+
+  test("a worked example keeps its four steps and goes without the card (no room, measured)", () => {
+    const spec = {
+      ...minimalSpec("worked-example"),
+      steps: ["One", "Two", "Three", "Four"],
+      callout,
+    } as SlideSpec;
+    const slide = materialiseSlide(spec, "chalk", meta, counter());
+    expect(slide.elements.some(isCalloutElement)).toBe(false);
+    expect(plain(slide)).not.toContain(callout.text);
+    expect(plain(slide)).toContain("Four");
+  });
+
+  test("is deterministic with a callout: the trio's ids come from the supplier", () => {
+    const spec = { ...minimalSpec("content"), callout } as SlideSpec;
+    const a = materialiseSlide(spec, "chalk", meta, counter(), "headed");
+    const b = materialiseSlide(spec, "chalk", meta, counter(), "headed");
+    expect(a).toEqual(b);
+    for (const el of a.elements.filter(isCalloutElement)) expect(el.id).toMatch(/^e\d+$/);
+  });
+});

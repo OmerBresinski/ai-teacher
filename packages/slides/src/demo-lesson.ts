@@ -53,7 +53,14 @@ export const DEMO_LESSON_SPECS: readonly SlideSpec[] = [
     kind: "content",
     factRefs: ["o1", "o2"],
     heading: "The sun powers the whole cycle",
-    body: "The sun heats water in rivers, lakes and seas until it evaporates into water vapour, a gas you cannot see. High in the sky the vapour cools and condenses into tiny droplets. Millions of droplets together make a cloud, and when they grow heavy enough they fall as rain.",
+    // Thirty-one words: two columns with the callout under them (over twenty-four), within the
+    // thirty-six the columns hold above a card (`CALLOUT_TWO_COLUMN_MIN_WORDS`).
+    body: "The sun heats water in rivers, lakes and seas until it evaporates into water vapour. High in the sky the vapour cools and condenses into tiny droplets that gather into cloud.",
+    // The demo's misconception, as the true-false slide checks it (UX ruling 84).
+    callout: {
+      kind: "watch-out",
+      text: "Clouds are tiny drops of liquid water, not water vapour; vapour is invisible.",
+    },
   },
   {
     kind: "image-text",
@@ -154,6 +161,7 @@ export function demoLessonSlides(
     if (spec.kind === "content") contentSeen = true;
     const variant = chooseVariant(spec.kind, {
       firstContent,
+      hasCallout: "callout" in spec && spec.callout !== undefined,
       index,
       total: specs.length,
       hasImage: spec.kind === "image-text" || (spec.kind === "title" && !!options.titleImage),
