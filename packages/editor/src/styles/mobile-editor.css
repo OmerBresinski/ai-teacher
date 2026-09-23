@@ -193,3 +193,23 @@ button.mobile-lesson-paper:focus-visible {
 .mobile-editor-sheet [data-insert-rail] > .mt-auto > [aria-hidden="true"] {
   display: none;
 }
+
+[data-editor-companion="desktop"] {
+  width: clamp(220px, 23vw, 320px);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  transition: width 250ms ease;
+}
+[data-editor-companion="mobile"] {
+  height: 190px;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: height 250ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-editor-companion] {
+    transition: none;
+  }
+}

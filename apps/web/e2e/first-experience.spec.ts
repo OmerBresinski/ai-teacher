@@ -143,22 +143,12 @@ test.describe("first-experience design preview", () => {
       "data-preview-state",
       "empty",
     );
-    await expect(page.locator("[data-canvas-companion] .handover-stage")).toHaveAttribute(
-      "data-holder",
-      "Slides",
+    await expect(page.locator(".creation-generation-actor")).toHaveAttribute(
+      "data-handover",
+      "settled",
     );
-
-    const scene = page.locator(".handover-stage .production-scene");
-    await expect(scene).toHaveCount(1);
-    await expect(scene.locator("#package, [id$='package']")).toHaveCount(1);
-    const visibleOwners = await scene
-      .locator(".person")
-      .evaluateAll(
-        (actors) =>
-          actors.filter((actor) => Number.parseFloat(getComputedStyle(actor).opacity) > 0.05)
-            .length,
-      );
-    expect(visibleOwners).toBe(1);
+    await expect(page.locator(".handover-stage")).toHaveAttribute("data-holder", "Slides");
+    await expect(page.locator(".handover-stage")).toHaveCSS("animation-name", "none");
   });
 
   test("slides populate progressively, preserve selection, and hand over without a layout jump", async ({

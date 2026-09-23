@@ -33,6 +33,16 @@ export function buildBeat(context, n) {
     go({ x: 320, y: 251, gazeMix: 0 }, 1.78, 0.85);
     tl.to({}, { duration: 0.3 }, 2.63);
   }
+  if (n === 11) {
+    // A declined worksheet acknowledges the choice and leaves empty-handed.
+    const { from, to } = context;
+    actors[to].x = 560;
+    actors[to].alpha = 0;
+    go({ gesture: 1, look: 2 }, 0, 0.25);
+    go({ gesture: 0, look: 0 }, 0.35, 0.3);
+    tl.to(actors[from], { x: 150, alpha: 0, duration: 0.85, ease: "sine.inOut" }, 0.65);
+    tl.to(actors[to], { x: 320, alpha: 1, duration: 0.85, ease: "sine.inOut" }, 0.85);
+  }
   if (n === 3) {
     p.pending = 1;
     p.stackGap = 0;
