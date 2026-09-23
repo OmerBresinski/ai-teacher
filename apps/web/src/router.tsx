@@ -13,6 +13,7 @@ import { env } from "@/env";
 import { rememberShell } from "@/lib/last-shell";
 import { queryClient } from "@/lib/query";
 import { authLayoutRoute } from "@/routes/auth.route";
+import { devFirstExperienceRoute } from "@/routes/dev-first-experience.route";
 import { devJobsRoute } from "@/routes/dev-jobs.route";
 import {
   lessonEditorRoute,
@@ -41,6 +42,7 @@ const DEV_ROUTES = devJobsRoute ? [devJobsRoute] : [];
 
 export const routeTree = rootRoute.addChildren([
   signInRoute,
+  ...(devFirstExperienceRoute ? [devFirstExperienceRoute] : []),
   authLayoutRoute.addChildren([
     libraryLayoutRoute.addChildren([
       indexRoute,
