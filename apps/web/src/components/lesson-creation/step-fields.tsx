@@ -124,7 +124,15 @@ export function BriefStep({
               >
                 {["easier", "standard", "harder"].map((level) => (
                   <div key={level} className="creation-level-option">
-                    <RadioGroupItem id={`${id}-${level}`} value={level} className="sr-only" />
+                    <RadioGroupItem
+                      id={`${id}-${level}`}
+                      value={level}
+                      className="sr-only"
+                      onFocus={() => {
+                        // Roving focus can arrive after keyup; selection follows the focused radio.
+                        if (brief.level !== level) onChange({ ...brief, level });
+                      }}
+                    />
                     <Label htmlFor={`${id}-${level}`} className="creation-level-pill">
                       {level[0]?.toUpperCase()}
                       {level.slice(1)}
