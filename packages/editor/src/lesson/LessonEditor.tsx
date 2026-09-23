@@ -85,6 +85,8 @@ export type LessonEditorProps = {
   images?: ImageSearchClient;
   /** Where the export control sits once it exists (E1). */
   exportSlot?: ReactNode;
+  /** Optional generation companion finishing alongside the editable lesson. */
+  companion?: ReactNode;
   /**
    * The generated worksheet (`lesson.artefacts.worksheetId`), once the app has fetched it, so the
    * objective-coverage check sees both halves (ADR 0025 §10); absent, that half is skipped.
@@ -137,6 +139,7 @@ export function LessonEditor({
   onPresent,
   images,
   exportSlot,
+  companion,
   worksheet,
   onOpenWorksheet,
   onNewWorksheet,
@@ -410,6 +413,9 @@ export function LessonEditor({
                         factsOpen={factsOpen}
                         autosave={autosave}
                       />
+                      {mobile && companion ? (
+                        <aside data-editor-companion="mobile">{companion}</aside>
+                      ) : null}
                       <div className="flex min-h-0 flex-1">
                         {mobile ? (
                           <MobileLessonEditor
@@ -444,6 +450,9 @@ export function LessonEditor({
                             />
                           </>
                         )}
+                        {!mobile && companion ? (
+                          <aside data-editor-companion="desktop">{companion}</aside>
+                        ) : null}
                         {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
                       </div>
                       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />

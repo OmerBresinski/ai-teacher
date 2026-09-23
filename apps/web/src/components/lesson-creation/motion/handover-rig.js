@@ -14,11 +14,12 @@ export function createHandoverRig(root) {
     paused = false,
     complete = false,
     fanMode = false,
+    worksheetSource = false,
     tl = null,
     handoff = null;
   const names = ["Plan", "Slides", "Worksheet", "Check"],
     keys = ["support", "slides", "activity", "answers"];
-  const beats = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3].map((owner) => ["", owner]);
+  const beats = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 2].map((owner) => ["", owner]);
   const ownerOf = () => handoff?.from ?? beats[current][1];
   const receiverOf = () => handoff?.to ?? ownerOf() + 1;
   const actors = names.map((_, i) => ({ x: i === 0 ? 320 : 760, alpha: i === 0 ? 1 : 0 }));
@@ -313,7 +314,7 @@ export function createHandoverRig(root) {
     fanHands.forEach((e) => {
       e.style.display = fanMode ? "" : "none";
     });
-    $("#package").style.opacity = fanMode ? 0 : 1;
+    $("#package").style.opacity = fanMode || current === 11 ? 0 : 1;
     $("#package").setAttribute(
       "transform",
       `translate(${p.x} ${p.y + 28 * p.compare}) rotate(${p.r})`,
@@ -322,7 +323,7 @@ export function createHandoverRig(root) {
       h = 26.5,
       seg = width / 3;
     scene.querySelector(".brief").innerHTML =
-      `<path d="M${-width / 2} ${-h}l${seg} ${-7 * p.fold} ${seg} ${7 * p.fold} ${seg} ${-7 * p.fold}v53l${-seg} ${7 * p.fold} ${-seg} ${-7 * p.fold} ${-seg} ${7 * p.fold}Z" fill="#d6e2bd"/><path d="M${-seg / 2} ${-h - 7 * p.fold}v53M${seg / 2} ${-h}v53" opacity="${p.fold}"/><path d="M${-width * 0.38} -10h${width * 0.22}M${-width * 0.38} 2h${width * 0.2}M${width * 0.08} -9h${width * 0.24}M${width * 0.08} 4h${width * 0.2}"/>`;
+      `<path d="M${-width / 2} ${-h}l${seg} ${-7 * p.fold} ${seg} ${7 * p.fold} ${seg} ${-7 * p.fold}v53l${-seg} ${7 * p.fold} ${-seg} ${-7 * p.fold} ${-seg} ${7 * p.fold}Z" fill="${worksheetSource ? "#faf5df" : "#d6e2bd"}"/><path d="M${-seg / 2} ${-h - 7 * p.fold}v53M${seg / 2} ${-h}v53" opacity="${p.fold}"/><path d="M${-width * 0.38} -10h${width * 0.22}M${-width * 0.38} 2h${width * 0.2}M${width * 0.08} -9h${width * 0.24}M${width * 0.08} 4h${width * 0.2}"/>`;
     scene.querySelector(".brief").style.opacity = 1 - p.deck + p.deck * p.stackGap;
     scene.querySelector(".slide-sun").style.opacity = p.ink;
     slideInk.style.fillOpacity = p.ink;
@@ -381,7 +382,7 @@ export function createHandoverRig(root) {
     }
     scene.querySelector(".approved").style.opacity = p.seal;
     $("#comparison").style.opacity = 1;
-    $("#comparison").style.visibility = current >= 9 ? "visible" : "hidden";
+    $("#comparison").style.visibility = [9, 10].includes(current) ? "visible" : "hidden";
     scene.querySelectorAll(".compare-page").forEach((e, i) => {
       e.setAttribute(
         "transform",
@@ -475,6 +476,10 @@ export function createHandoverRig(root) {
           x: right.x + (other.x - right.x) * p.grip * p.offer,
           y: right.y + (other.y - right.y) * p.grip * p.offer,
         };
+      }
+      if (current === 11) {
+        left = { x: a.x - 84, y: 255 };
+        right = { x: a.x + 86, y: 253 - (i === owner ? 36 * p.gesture : 0) };
       }
       for (const [j, h] of [
         [0, left],
@@ -599,7 +604,9 @@ export function createHandoverRig(root) {
     tl?.kill();
     handoff = options.handoff ?? null;
     current = n;
+    worksheetSource = n === 3 && options.withWorksheet === true;
     if (options.reset !== false) canonical(n);
+    if (options.withWorksheet === false) p.sheet = 0;
     if (handoff) {
       actors.forEach((actor, i) => {
         Object.assign(actor, {

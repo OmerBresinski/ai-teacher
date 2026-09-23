@@ -1,68 +1,123 @@
 import { gsap } from "gsap";
 import { useLayoutEffect, useRef } from "react";
-import { CharacterHost, type CharacterStage } from "./character-host";
+import { GenerationStory } from "./generation-story";
 
-/** One actor stage travels from the introduction into its measured editor slot. */
+/** A persistent stage follows real editor slots across the generating→editable transition. */
 export function GenerationCompanion({
-  initialStage,
+  destination,
+  includedWorksheet,
   progress,
+  ready,
+  paused,
+  onExited,
 }: {
-  initialStage: CharacterStage;
+  destination: HTMLElement | null;
+  includedWorksheet: boolean;
   progress: number;
+  ready: boolean;
+  paused: boolean;
+  onExited: () => void;
 }) {
-  const anchor = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const scrim = useRef<HTMLDivElement>(null);
+  const first = useRef(true);
+  const finishing = useRef(false);
+  const flight = useRef<gsap.core.Timeline | null>(null);
+  const exit = useRef<gsap.core.Tween | null>(null);
   useLayoutEffect(() => {
-    const target = anchor.current;
     const actor = stage.current;
-    if (!target || !actor) return;
-    const motion = matchMedia("(prefers-reduced-motion: reduce)");
-    let timeline: gsap.core.Timeline | undefined;
-    const settle = () => {
-      timeline?.kill();
-      gsap.set(actor, { x: 0, y: 0, scale: 1 });
-      gsap.set(scrim.current, { opacity: 0 });
-      target.dataset.handover = "settled";
+    if (!actor || !destination) return;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    const place = () => {
+      flight.current?.kill();
+      const box = destination.getBoundingClientRect();
+      gsap.set(actor, { x: box.left, y: box.top, width: box.width, height: box.height, scale: 1 });
+      gsap.set(scrim.current, { autoAlpha: 0 });
+      actor.dataset.handover = "settled";
     };
-    const context = gsap.context(() => {
-      if (motion.matches) return settle();
-      const box = target.getBoundingClientRect();
+    const box = destination.getBoundingClientRect();
+    if (first.current && !reduced.matches) {
+      first.current = false;
+      gsap.set(scrim.current, { autoAlpha: 1 });
       const width = Math.min(620, window.innerWidth - 32);
-      target.dataset.handover = "passing";
       gsap.set(actor, {
-        x: window.innerWidth / 2 - box.left - box.width / 2,
-        y: window.innerHeight / 2 - box.top - box.height / 2,
+        x: (window.innerWidth - box.width) / 2,
+        y: (window.innerHeight - box.height) / 2,
+        width: box.width,
+        height: box.height,
         scale: width / box.width,
       });
-      timeline = gsap.timeline({ onComplete: settle });
-      timeline.call(
-        () => {
-          target.dataset.handover = "settling";
+      flight.current = gsap.timeline({
+        onComplete: () => {
+          actor.dataset.handover = "settled";
         },
-        undefined,
+      });
+      flight.current.call(
+        () => {
+          actor.dataset.handover = "settling";
+        },
+        [],
         2.05,
       );
-      timeline.to(actor, { x: 0, y: 0, scale: 1, duration: 0.85, ease: "power3.inOut" }, 2.05);
-      timeline.to(scrim.current, { opacity: 0, duration: 0.6, ease: "power2.out" }, 2.05);
-    }, target);
-    // A new viewport invalidates the flight coordinates; settle into its real slot immediately.
-    window.addEventListener("resize", settle);
-    motion.addEventListener("change", settle);
+      flight.current.to(
+        actor,
+        { x: box.left, y: box.top, scale: 1, duration: 0.85, ease: "power3.inOut" },
+        2.05,
+      );
+      flight.current.to(scrim.current, { autoAlpha: 0, duration: 0.6 }, 2.05);
+    } else {
+      first.current = false;
+      actor.dataset.handover = "settled";
+      gsap.set(scrim.current, { autoAlpha: 0 });
+      flight.current?.kill();
+      flight.current = gsap.timeline();
+      flight.current.to(actor, {
+        x: box.left,
+        y: box.top,
+        width: box.width,
+        height: box.height,
+        scale: 1,
+        duration: reduced.matches ? 0 : 0.3,
+      });
+    }
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    reduced.addEventListener("change", place);
     return () => {
-      window.removeEventListener("resize", settle);
-      motion.removeEventListener("change", settle);
-      context.revert();
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+      reduced.removeEventListener("change", place);
     };
-  }, []);
+  }, [destination]);
+  useLayoutEffect(
+    () => () => {
+      flight.current?.kill();
+      exit.current?.kill();
+      first.current = true;
+      finishing.current = false;
+    },
+    [],
+  );
+  const finish = () => {
+    if (finishing.current) return;
+    finishing.current = true;
+    flight.current?.kill();
+    exit.current = gsap.to(stage.current, {
+      opacity: 0,
+      duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 0.3,
+      onComplete: onExited,
+    });
+  };
   return (
-    <div ref={anchor} className="creation-generation-anchor" data-handover="passing">
-      <div ref={scrim} className="creation-generation-scrim" aria-hidden="true" />
-      <div ref={stage} className="creation-generation-actor">
-        <CharacterHost
-          stage="generating"
-          initialStage={initialStage}
-          slidesPhase={progress >= 0.75 ? "stacking" : "making"}
+    <div className="creation-generation-layer" aria-hidden="true">
+      <div ref={scrim} className="creation-generation-scrim" />
+      <div ref={stage} className="creation-generation-actor" data-handover="passing">
+        <GenerationStory
+          includedWorksheet={includedWorksheet}
+          progress={progress}
+          ready={ready}
+          paused={paused}
+          onFinished={finish}
         />
       </div>
     </div>

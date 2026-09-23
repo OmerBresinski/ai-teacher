@@ -60,6 +60,8 @@ function LocalEditor({
   const [stopped, setStopped] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [presenting, setPresenting] = useState(false);
+  const [destination, setDestination] = useState<HTMLDivElement | null>(null);
+  const [storyFinished, setStoryFinished] = useState(false);
   const count = lesson?.slides.length ?? 0;
   useEffect(() => {
     if (stopped || ready) return;
@@ -86,12 +88,14 @@ function LocalEditor({
       },
     }),
   ];
+  const companionSlot = <div ref={setDestination} className="creation-generation-anchor" />;
   if (presenting) return <PresentView lesson={lesson} onExit={() => setPresenting(false)} />;
   return (
     <div
       className="creation-editor-preview"
       data-testid="creation-generating"
       data-preview-state={ready ? "ready" : arrived ? "partial" : "empty"}
+      data-story-finished={storyFinished}
     >
       <div className="creation-editor-surface">
         {ready ? (
@@ -102,6 +106,7 @@ function LocalEditor({
             onBack={onBack}
             onPresent={() => setPresenting(true)}
             initialSlideId={selected ?? lesson.slides.at(-1)?.id}
+            companion={companionSlot}
           />
         ) : (
           <GeneratingShell
@@ -112,15 +117,20 @@ function LocalEditor({
             stop={{ sent: stopped }}
             onViewSlide={setSelected}
             className="h-full"
-            canvasCompanion={
-              <GenerationCompanion
-                initialStage={worksheetCount ? "worksheet" : "objectives"}
-                progress={count ? arrived / count : 0}
-              />
-            }
+            canvasCompanion={companionSlot}
           />
         )}
       </div>
+      {!storyFinished ? (
+        <GenerationCompanion
+          destination={destination}
+          includedWorksheet={worksheetCount > 0}
+          progress={count ? arrived / count : 0}
+          ready={ready}
+          paused={stopped}
+          onExited={() => setStoryFinished(true)}
+        />
+      ) : null}
       <footer className="creation-editor-footer">
         <span>
           Local preview · sample lesson

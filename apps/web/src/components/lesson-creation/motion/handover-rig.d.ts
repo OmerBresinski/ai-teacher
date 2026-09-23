@@ -3,6 +3,7 @@ export interface HandoverRig {
     beat: number,
     options?: {
       reset?: boolean;
+      withWorksheet?: boolean;
       speed?: number;
       handoff?: { from: number; to: number };
       onComplete?: () => void;

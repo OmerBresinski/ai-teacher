@@ -355,7 +355,7 @@
   align-self: center;
 }
 .creation-generation-actor {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 81;
   transform-origin: center;
@@ -373,11 +373,8 @@
   backdrop-filter: blur(3px);
   pointer-events: none;
 }
-.creation-generation-anchor[data-handover="settled"] .creation-generation-actor {
+.creation-generation-actor[data-handover="settled"] {
   z-index: 2;
-}
-.creation-generation-anchor[data-handover="settled"] .creation-generation-scrim {
-  visibility: hidden;
 }
 @media (max-width: 760px) {
   .creation-editor-footer {
@@ -463,8 +460,13 @@
 .creation-generation-actor .handover-stage {
   transition: transform 850ms cubic-bezier(0.65, 0, 0.35, 1);
 }
-.creation-generation-anchor:not([data-handover="passing"]) .handover-stage {
+.creation-generation-actor:not([data-handover="passing"]) .handover-stage {
   transform: scale(1.35);
+}
+/* Make room for both actors during the final side-stage transfer. */
+.creation-generation-actor:not([data-handover="passing"]) .handover-stage[data-beat="5"] {
+  transform: scale(0.95);
+  transition-duration: 350ms;
 }
 @media (prefers-reduced-motion: reduce) {
   .creation-generation-actor .handover-stage {
@@ -566,4 +568,14 @@
   .creation-layout {
     margin-top: 16px;
   }
+}
+
+.creation-generation-layer {
+  pointer-events: none;
+}
+.creation-editor-preview[data-story-finished="true"] [data-editor-companion="desktop"] {
+  width: 0;
+}
+.creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
+  height: 0;
 }
