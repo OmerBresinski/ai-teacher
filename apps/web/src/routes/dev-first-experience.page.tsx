@@ -1,6 +1,6 @@
 import { Button } from "@tj/ui";
 import { ArrowLeft, FileText, Paperclip, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { CreationShell } from "@/components/lesson-creation/creation-shell";
 import {
@@ -28,6 +28,27 @@ const OBJECTIVES: ObjectiveDraft[] = [
 /** Local visual fixture composing the same callback-driven components used by the app.
  * It deliberately never calls auth, upload, planning or generation endpoints. */
 export function DevFirstExperiencePage() {
+  useLayoutEffect(() => {
+    // This isolated art-direction preview does not change saved app preferences.
+    const html = document.documentElement;
+    const design = html.getAttribute("data-design");
+    const theme = html.getAttribute("data-theme");
+    const apply = () => {
+      html.setAttribute("data-design", "lessonco");
+      html.setAttribute("data-theme", "light");
+    };
+    apply();
+    // The app ThemeProvider applies its stored preference in a passive mount effect.
+    const frame = requestAnimationFrame(apply);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (design === null) html.removeAttribute("data-design");
+      else html.setAttribute("data-design", design);
+      if (theme === null) html.removeAttribute("data-theme");
+      else html.setAttribute("data-theme", theme);
+    };
+  }, []);
+
   const [stage, setStage] = useState<Stage>("brief");
   const [brief, setBrief] = useState<IntakeBrief>({
     topic: "How sound travels",
