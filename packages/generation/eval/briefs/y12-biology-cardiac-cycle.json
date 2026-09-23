@@ -1,0 +1,16 @@
+{
+  "brief": {
+    "topic": "The cardiac cycle: pressure and volume changes in the heart",
+    "durationMin": 60,
+    "classContext": {
+      "sizeBand": "15to24",
+      "priorKnowledge": "Structure of the heart and blood vessels done at GCSE and recapped last week. Haven't done the pressure graph yet."
+    },
+    "answers": {
+      "objectiveVerb": "Explain the pressure and volume changes and valve movements during the cardiac cycle",
+      "priorConfidence": "Some prior knowledge"
+    }
+  },
+  "subject": "Biology",
+  "yearGroup": "Year 12"
+}

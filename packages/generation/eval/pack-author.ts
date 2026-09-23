@@ -2,6 +2,8 @@
 // bun packages/generation/eval/pack-author.ts --topic <id> --arm luna-rewrite|sol-rewrite|sol-knowledge
 //   [--dry-run] [--cap 0.10] [--out <dir>] [--no-check]
 //   or: bun packages/generation/eval/pack-author.ts --mode recall --topic <id> [--only sec1] (W7 arm M)
+//   or: --mode recall-checklist --checklist <file> (W7b arm C: written against a given checklist)
+//   or: --mode recall-selfchecklist (W7b arm S: pack-checklist first, stored in the pack)
 //
 // Writes one topic pack by one authoring arm (quality PRD np1, the thing under test):
 //   luna-rewrite   gpt-5.6-luna rewrites the section's facts from its source sentences, in its own words
@@ -37,18 +39,22 @@ import { type FactOverlapRow, factText, sectionOverlap } from "./packs/overlap";
 import {
   assertNoStubs,
   checkFactText,
+  PackChecklistOutputSchema,
   type PackCheckOutput,
   PackCheckOutputSchema,
   type PackKnowledgeOutput,
   PackKnowledgeOutputSchema,
   PackLinkOutputSchema,
   PackRecallOutputSchema,
+  PackRecallV2OutputSchema,
   type PackWriteOutput,
   PackWriteOutputSchema,
+  packChecklistPrompt,
   packCheckPrompt,
   packKnowledgePrompt,
   packLinkPrompt,
   packRecallPrompt,
+  packRecallV2Prompt,
   packRewritePrompt,
 } from "./packs/prompts";
 import {
@@ -85,7 +91,12 @@ export const MAX_OUTPUT_TOKENS_PACK = {
   // pack-recall.v1 on Sol: the rewrite's facts without evidence (Sol rewrite averaged ~2,840
   // output tokens a section with evidence, reasoning included). Kept under $0.03 a call at list
   // price so one smoke call fits a $0.03 cap.
-  recall: 2800,
+  // W7 run 1 (23 Sept): externalities sec1 hit 2,800 exactly and failed validation; cells sec1 used
+  // 2,582. Raised to the rewrite's ceiling so the cap is not why a recall section fails.
+  recall: 4000,
+  // pack-checklist.v1 (W7b): six to twelve one-line items plus medium-effort reasoning. No
+  // observation yet; set with headroom so truncation is not why a section fails.
+  checklist: 2000,
 } as const;
 
 /** The deps a call needs, one per model the arm uses; `luna`/`sol` name the checker each runs on. */
@@ -469,6 +480,19 @@ export async function authorPack(
 /* ------------------------------ W7 arm M: Sol from memory -------------------------------- */
 
 export const RECALL_ARM = "sol-recall";
+/** W7b: C writes against a given checklist, S against one pack-checklist writes first. */
+export const RECALL_CHECKLIST_ARM = "sol-recall-checklist";
+export const RECALL_SELFCHECKLIST_ARM = "sol-recall-selfchecklist";
+export const RECALL_ARMS = [RECALL_ARM, RECALL_CHECKLIST_ARM, RECALL_SELFCHECKLIST_ARM] as const;
+export type RecallArm = (typeof RECALL_ARMS)[number];
+
+/** What a C or S section was written against, and what the writer said it left out. */
+const SectionChecklistSchema = z.strictObject({
+  source: z.enum(["given", "model"]),
+  basis: PackChecklistOutputSchema.shape.basis.optional(),
+  items: z.array(z.string().min(1)).min(1),
+  uncovered: z.array(z.string()),
+});
 
 /*
  * A recall pack: the pack schema with no sources, so every `evidence` list and every section's
@@ -478,16 +502,18 @@ export const RECALL_ARM = "sol-recall";
  */
 const noEvidence = { evidence: z.array(EvidenceSchema).max(0) };
 export const RecallPackSchema = PackSchema.extend({
-  arm: z.literal(RECALL_ARM),
+  arm: z.enum(RECALL_ARMS),
   provenance: z.strictObject({
     writer: z.string().startsWith("model-recall: "),
     writerPrompt: z.string(),
+    checklistPrompt: z.string().optional(),
   }),
   sources: z.array(z.never()).max(0),
   sections: z
     .array(
       SectionSchema.extend({
         sentenceIds: z.array(z.string()).max(0),
+        checklist: SectionChecklistSchema.optional(),
         facts: z.strictObject({
           keyIdeas: z.array(PackKeyIdeaSchema.extend(noEvidence)),
           misconceptions: z.array(PackMisconceptionSchema.extend(noEvidence)),
@@ -503,10 +529,19 @@ export type RecallPack = z.infer<typeof RecallPackSchema>;
 
 export interface RecallReport {
   topic: string;
-  arm: typeof RECALL_ARM;
-  sections: { id: string; outcome: string; facts: number; writeMs: number }[];
+  arm: RecallArm;
+  sections: {
+    id: string;
+    outcome: string;
+    facts: number;
+    writeMs: number;
+    /** C and S: checklist size and how many items the writer listed as uncovered. */
+    checklist?: { items: number; uncovered: number };
+  }[];
   facts: number;
   status: { executed: boolean; complete: boolean; incomplete: string[] };
+  /** S: a checklist written for a section whose recall call then failed, so it is not lost. */
+  unusedChecklists?: Record<string, z.infer<typeof SectionChecklistSchema>>;
 }
 
 /**
@@ -514,38 +549,85 @@ export interface RecallReport {
  * no link and no check (the W7 audit is done in session, blind to arm). A failed section is named
  * in the report and `complete` is false; it never throws for one.
  */
+export interface RecallOptions extends Pick<AuthorOptions, "only" | "now"> {
+  /** Default `sol-recall` (M, pack-recall.v1). C and S write with pack-recall.v2. */
+  arm?: RecallArm;
+  /** C: each section's checklist by section id (`sec2`); a section with none is not written. */
+  checklists?: Readonly<Record<string, readonly string[]>>;
+}
+
 export async function recallPack(
   topic: ExperimentTopic,
   writer: PipelineDeps,
-  options: Pick<AuthorOptions, "only" | "now"> = {},
+  options: RecallOptions = {},
 ): Promise<{ pack: RecallPack; report: RecallReport }> {
   const now = options.now ?? (() => new Date());
+  const arm = options.arm ?? RECALL_ARM;
+  const writerPrompt = arm === RECALL_ARM ? packRecallPrompt : packRecallV2Prompt;
   const sections: RecallPack["sections"] = [];
   const reports: RecallReport["sections"] = [];
   const incomplete: string[] = [];
   let modelId = "";
+  const unusedChecklists: Record<string, z.infer<typeof SectionChecklistSchema>> = {};
   for (const [i, spec] of topic.sections.entries()) {
     const id = `sec${i + 1}`;
     if (options.only && !options.only.includes(id)) continue;
     const t0 = Date.now();
+    let checklist: z.infer<typeof SectionChecklistSchema> | undefined;
     try {
-      const r = await callStructured({
-        deps: writer,
-        stage: "plan",
-        cls: "standard",
-        effort: "medium",
-        prompt: packRecallPrompt,
-        input: {
-          topic: topic.id,
-          subject: topic.subject,
-          yearGroup: topic.yearGroup,
-          outcome: spec.outcome,
-        },
-        schema: PackRecallOutputSchema,
-        maxOutputTokens: MAX_OUTPUT_TOKENS_PACK.recall,
-      });
+      if (arm === RECALL_CHECKLIST_ARM) {
+        const items = options.checklists?.[id];
+        if (!items?.length) throw new Error("no checklist given for this section");
+        checklist = { source: "given", items: [...items], uncovered: [] };
+      } else if (arm === RECALL_SELFCHECKLIST_ARM) {
+        const c = await callStructured({
+          deps: writer,
+          stage: "plan",
+          cls: "standard",
+          effort: "medium",
+          prompt: packChecklistPrompt,
+          input: { subject: topic.subject, yearGroup: topic.yearGroup, outcome: spec.outcome },
+          schema: PackChecklistOutputSchema,
+          maxOutputTokens: MAX_OUTPUT_TOKENS_PACK.checklist,
+        });
+        checklist = {
+          source: "model",
+          basis: c.output.basis,
+          items: c.output.items,
+          uncovered: [],
+        };
+      }
+      const input = {
+        topic: topic.id,
+        subject: topic.subject,
+        yearGroup: topic.yearGroup,
+        outcome: spec.outcome,
+      };
+      const r =
+        arm === RECALL_ARM
+          ? await callStructured({
+              deps: writer,
+              stage: "plan",
+              cls: "standard",
+              effort: "medium",
+              prompt: packRecallPrompt,
+              input,
+              schema: PackRecallOutputSchema,
+              maxOutputTokens: MAX_OUTPUT_TOKENS_PACK.recall,
+            })
+          : await callStructured({
+              deps: writer,
+              stage: "plan",
+              cls: "standard",
+              effort: "medium",
+              prompt: packRecallV2Prompt,
+              input: { ...input, checklist: checklist?.items },
+              schema: PackRecallV2OutputSchema,
+              maxOutputTokens: MAX_OUTPUT_TOKENS_PACK.recall,
+            });
       modelId = r.modelId;
-      const o = r.output;
+      const { uncovered, ...o } = { uncovered: undefined, ...r.output };
+      if (checklist) checklist.uncovered = uncovered ?? [];
       const facts = {
         keyIdeas: o.keyIdeas.map((x) => ({ ...x, evidence: [] })),
         misconceptions: o.misconceptions.map((x) => ({ ...x, evidence: [] })),
@@ -553,30 +635,41 @@ export async function recallPack(
         workedExamples: o.workedExamples.map((x) => ({ ...x, evidence: [] })),
         questions: o.questions.map((x) => ({ ...x, evidence: [] })),
       };
-      sections.push({ id, outcome: spec.outcome, sentenceIds: [], facts });
+      sections.push({
+        id,
+        outcome: spec.outcome,
+        sentenceIds: [],
+        ...(checklist ? { checklist } : {}),
+        facts,
+      });
       reports.push({
         id,
         outcome: spec.outcome,
         facts: FACT_TYPES.reduce((n, t) => n + facts[t].length, 0),
         writeMs: Date.now() - t0,
+        ...(checklist
+          ? { checklist: { items: checklist.items.length, uncovered: checklist.uncovered.length } }
+          : {}),
       });
     } catch (error) {
+      if (checklist?.source === "model") unusedChecklists[id] = checklist;
       incomplete.push(
         `${id}: writing failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
   const pack: RecallPack = {
-    id: `${topic.id}.${RECALL_ARM}`,
+    id: `${topic.id}.${arm}`,
     topic: topic.id,
     subject: topic.subject,
     yearGroup: topic.yearGroup,
-    arm: RECALL_ARM,
+    arm,
     writtenAt: now().toISOString(),
     provenance: {
       // "model-recall: gpt-6-sol": the model the facts came from, with no source behind them.
       writer: `model-recall: ${modelId.split("/").pop() ?? modelId}`,
-      writerPrompt: packRecallPrompt.version,
+      writerPrompt: writerPrompt.version,
+      ...(arm === RECALL_SELFCHECKLIST_ARM ? { checklistPrompt: packChecklistPrompt.version } : {}),
     },
     sources: [],
     sections,
@@ -585,7 +678,7 @@ export async function recallPack(
     pack,
     report: {
       topic: topic.id,
-      arm: RECALL_ARM,
+      arm,
       sections: reports,
       facts: reports.reduce((n, r) => n + r.facts, 0),
       status: {
@@ -593,6 +686,7 @@ export async function recallPack(
         complete: incomplete.length === 0 && sections.length === topic.sections.length,
         incomplete,
       },
+      ...(Object.keys(unusedChecklists).length ? { unusedChecklists } : {}),
     },
   };
 }
@@ -600,6 +694,44 @@ export async function recallPack(
 /* ----------------------------------------------------------------------------------------- */
 
 const EnvSchema = z.object({ AI_GATEWAY_API_KEY: z.string().optional() });
+
+/**
+ * `--topics <file>`: a JSON array of topics in the np1 topic shape, read instead of np1's own (W7
+ * keeps its sealed outcomes outside the repo). `--pack-dir <dir>`: where packs are written and
+ * merged, instead of `eval/packs/`. Outcomes here may run to 160 characters (Oak pupil-outcome form).
+ */
+const TopicsFileSchema = z.array(
+  z.object({
+    id: z.string(),
+    brief: z.string(),
+    subject: z.string(),
+    yearGroup: z.string(),
+    sources: z
+      .array(
+        z.object({
+          kind: z.enum(["wikipedia", "html"]),
+          ref: z.string(),
+          licence: z.enum(["CC-BY-SA-4.0", "CC-BY-4.0", "permission", "public-domain"]),
+        }),
+      )
+      .min(1),
+    sourceNote: z.string().optional(),
+    sections: z
+      .array(
+        z.object({ outcome: z.string().min(8).max(160), headings: z.array(z.string()).min(1) }),
+      )
+      .min(1),
+  }),
+);
+async function experimentWithTopics(exp: Experiment): Promise<Experiment> {
+  const file = arg("topics");
+  if (!file) return exp;
+  return {
+    ...exp,
+    topics: TopicsFileSchema.parse(await Bun.file(file).json()) as ExperimentTopic[],
+  };
+}
+const packDir = () => arg("pack-dir") ?? join(import.meta.dir, "packs");
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -654,28 +786,52 @@ export function routedAi(
  * `eval/results/packs/<topic>.sol-recall/` (report.json, ledger.json, calls.jsonl). With `--only`
  * and a pack already on disk, the named sections replace theirs and the rest are kept.
  */
-async function runRecall(exp: Experiment, topic: ExperimentTopic): Promise<never> {
+/** `--checklist <file>` for C: `{ "sec1": ["item", …], … }`, one list per section id. */
+const ChecklistFileSchema = z.record(
+  z.string().regex(/^sec\d+$/),
+  z.array(z.string().trim().min(1)).min(1),
+);
+
+async function runRecall(exp: Experiment, topic: ExperimentTopic, arm: RecallArm): Promise<never> {
   const writerId = exp.models.writerSol ?? "";
   const n = topic.sections.length;
   const only = arg("only")?.split(",");
   const calls = only ? only.length : n;
   const p = PRICES[writerId];
-  const worst = p
-    ? (calls * (1000 * p.inputPerMTok + MAX_OUTPUT_TOKENS_PACK.recall * p.outputPerMTok)) / 1e6
+  const perSection = p
+    ? 1000 * p.inputPerMTok +
+      MAX_OUTPUT_TOKENS_PACK.recall * p.outputPerMTok +
+      (arm === RECALL_SELFCHECKLIST_ARM
+        ? 500 * p.inputPerMTok + MAX_OUTPUT_TOKENS_PACK.checklist * p.outputPerMTok
+        : 0)
     : Number.NaN;
-  console.log(`pack ${topic.id} by ${RECALL_ARM} (${packRecallPrompt.version}, ${writerId})`);
+  const worst = (calls * perSection) / 1e6;
+  const checklistFile = arg("checklist");
+  if (arm === RECALL_CHECKLIST_ARM && !checklistFile) {
+    console.error("--mode recall-checklist needs --checklist <file>");
+    process.exit(2);
+  }
+  const checklists =
+    arm === RECALL_CHECKLIST_ARM && checklistFile
+      ? ChecklistFileSchema.parse(await Bun.file(checklistFile).json())
+      : undefined;
+  const writerPrompt = arm === RECALL_ARM ? packRecallPrompt : packRecallV2Prompt;
+  const prompts =
+    arm === RECALL_SELFCHECKLIST_ARM ? [packChecklistPrompt, writerPrompt] : [writerPrompt];
   console.log(
-    `${calls} call(s), no sources, no checks; at most $${worst.toFixed(4)} at the ${MAX_OUTPUT_TOKENS_PACK.recall}-token output cap`,
+    `pack ${topic.id} by ${arm} (${prompts.map((x) => x.version).join(" then ")}, ${writerId})`,
+  );
+  console.log(
+    `${calls} section(s), no sources, no checks; at most $${worst.toFixed(4)} at the output caps`,
   );
   for (const [i, s] of topic.sections.entries())
     if (!only || only.includes(`sec${i + 1}`)) console.log(`sec${i + 1}: ${s.outcome}`);
   if (flag("dry-run")) process.exit(0);
-  assertNoStubs([packRecallPrompt]);
+  assertNoStubs(prompts);
   const env = EnvSchema.parse(process.env);
-  const outDir =
-    arg("out") ?? join(import.meta.dir, "results", "packs", `${topic.id}.${RECALL_ARM}`);
+  const outDir = arg("out") ?? join(import.meta.dir, "results", "packs", `${topic.id}.${arm}`);
   await mkdir(outDir, { recursive: true });
-  const ledger = createLedger({ run: `pack-${topic.id}-${RECALL_ARM}` });
+  const ledger = createLedger({ run: `pack-${topic.id}-${arm}` });
   const budget = createBudget({ capUsd: Number(arg("cap") ?? 0.1), capTokens: 2_000_000 });
   const writer = depsFor(
     routedAi(env, writerId, ledger, join(outDir, "calls.jsonl")),
@@ -687,8 +843,8 @@ async function runRecall(exp: Experiment, topic: ExperimentTopic): Promise<never
   for (let k = 2; await Bun.file(join(outDir, ledgerName)).exists(); k++)
     ledgerName = `ledger-${k}.json`;
   try {
-    const { pack, report } = await recallPack(topic, writer, { only });
-    const packPath = join(import.meta.dir, "packs", `${topic.id}.${RECALL_ARM}.json`);
+    const { pack, report } = await recallPack(topic, writer, { only, arm, checklists });
+    const packPath = join(packDir(), `${topic.id}.${arm}.json`);
     let out = pack;
     if (only && (await Bun.file(packPath).exists())) {
       const existing = RecallPackSchema.parse(await Bun.file(packPath).json());
@@ -722,17 +878,23 @@ async function runRecall(exp: Experiment, topic: ExperimentTopic): Promise<never
 }
 
 if (import.meta.main) {
-  const exp = loadExperiment();
+  const exp = await experimentWithTopics(loadExperiment());
   const topicId = arg("topic");
-  if (arg("mode") === "recall") {
+  const recallArmFor: Record<string, RecallArm> = {
+    recall: RECALL_ARM,
+    "recall-checklist": RECALL_CHECKLIST_ARM,
+    "recall-selfchecklist": RECALL_SELFCHECKLIST_ARM,
+  };
+  const recallArm = recallArmFor[arg("mode") ?? ""];
+  if (recallArm) {
     const recallTopic = exp.topics.find((t) => t.id === topicId);
     if (!recallTopic) {
       console.error(
-        `usage: pack-author.ts --mode recall --topic <${exp.topics.map((t) => t.id).join("|")}> [--only sec1,…] [--dry-run] [--cap usd]`,
+        `usage: pack-author.ts --mode recall|recall-checklist|recall-selfchecklist --topic <${exp.topics.map((t) => t.id).join("|")}> [--checklist <file>] [--only sec1,…] [--dry-run] [--cap usd]`,
       );
       process.exit(2);
     }
-    await runRecall(exp, recallTopic);
+    await runRecall(exp, recallTopic, recallArm);
   }
   const arm = arg("arm") as AuthoringArm | undefined;
   const topic = exp.topics.find((t) => t.id === topicId);
@@ -805,7 +967,7 @@ if (import.meta.main) {
   const only = arg("only")?.split(",");
   const written = await authorPack(exp, topic, arm, deps, { check: !flag("no-check"), only });
   let { pack, report } = written;
-  const packPath = join(import.meta.dir, "packs", `${topic.id}.${arm}.json`);
+  const packPath = join(packDir(), `${topic.id}.${arm}.json`);
   const reportPath = join(outDir, "report.json");
   // `--only` on an arm with no pack yet is a partial first run: written as it is, complete false.
   if (only && (await Bun.file(packPath).exists())) {
@@ -849,6 +1011,15 @@ if (import.meta.main) {
         incomplete,
       },
     };
+  }
+  if (pack.sections.length === 0) {
+    // Nothing written: flush the ledger (a refused or failed call may still have spent) and say why.
+    await writeFile(
+      join(outDir, `ledger-failed-${Date.now()}.json`),
+      JSON.stringify(ledger.toJSON(), null, 2),
+    );
+    console.log(`no section written: ${report.status.incomplete.join("; ")}\n${ledger.markdown()}`);
+    process.exit(1);
   }
   PackSchema.parse(pack);
   await writeFile(packPath, `${JSON.stringify(pack, null, 2)}\n`);

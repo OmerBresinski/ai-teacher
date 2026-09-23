@@ -3,6 +3,7 @@ import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
+import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import { PROMPT_VERSIONS, VERB_WRITING } from "../prompts";
 import { lessonShapeOf } from "../shapes";
 import { assignFactIds, OUTLINE_FROM_FACTS_VERSION, planFactsSchemaFor } from "../specs";
@@ -1617,6 +1618,132 @@ describe("evaluate", () => {
     const ai = createFakeAi({ script: [json({ findings: [] })], usage });
     const next = await evaluate(withVerify, recordingDeps(ai));
     expect(next.lesson.generation?.findings).toContainEqual(verify);
+  });
+
+  test("w0b: a numeric mismatch in a fact becomes a fact-consistency error on the slide built from it, so Repair's repair-fact call corrects the fact", async () => {
+    const state = await generated();
+    const generation = state.lesson.generation;
+    const facts = state.lesson.facts;
+    const v1 = facts?.vocabulary[0];
+    if (!generation || !facts || !v1) throw new Error("fixture");
+    const wrong = `${v1.definition} Four rows of 3 make 3 × 4 = 13.`;
+    // Verify's warning, as `runVerify` records it: the fact only, which Repair never reads.
+    const verifyWarning: Finding = {
+      check: "fact-verify",
+      severity: "warning",
+      target: { factId: "v1" },
+      message: NUMERIC_MESSAGE,
+      evidence: "3 × 4 = 13",
+    };
+    const withSlip = {
+      ...state,
+      lesson: {
+        ...state.lesson,
+        facts: {
+          ...facts,
+          vocabulary: facts.vocabulary.map((v) =>
+            v.id === "v1" ? { ...v, definition: wrong } : v,
+          ),
+        },
+        generation: { ...generation, findings: [...generation.findings, verifyWarning] },
+      },
+    };
+    const citing = withSlip.lesson.slides.filter(
+      (s, i) =>
+        facts.outline[i]?.factRefs.includes("v1") ||
+        s.elements.some((e) => e.generatedFrom?.factRefs.includes("v1")),
+    );
+    const vocab = citing.find((s) => s.kind === "vocabulary");
+    if (!vocab) throw new Error("fixture: the vocabulary slide cites v1");
+    const evaluated = await evaluate(
+      withSlip,
+      recordingDeps(createFakeAi({ script: [json({ findings: [] })], usage })),
+    );
+    const found = evaluated.lesson.generation?.findings ?? [];
+    expect(found).toContainEqual({
+      check: "fact-consistency",
+      severity: "error",
+      target: { slideId: vocab.id, factId: "v1" },
+      message: NUMERIC_MESSAGE,
+      evidence: "3 × 4 = 13",
+    });
+    // Replaced, not doubled: Verify's warning is gone once the error carries it.
+    expect(found).not.toContainEqual(verifyWarning);
+    expect(found.filter((f) => f.check === "fact-consistency")).toHaveLength(citing.length);
+
+    const ai = createFakeAi({
+      script: citing.flatMap((s) => [
+        json({
+          corrections: [
+            {
+              factId: "v1",
+              field: "definition",
+              value: `${v1.definition} Four rows of 3 make 3 × 4 = 12.`,
+              reason: "arithmetic",
+            },
+          ],
+        }),
+        json(FIXTURES.slides[s.kind as keyof typeof FIXTURES.slides]),
+      ]),
+      usage,
+    });
+    const repaired = await repair(evaluated, recordingDeps(ai));
+    expect(ai.calls[0]?.context?.promptVersion).toBe(PROMPT_VERSIONS["repair-fact"]);
+    expect(ai.calls[0]?.promptText).toContain("3 × 4 = 13");
+    expect(ai.calls[1]?.context?.promptVersion).toBe(PROMPT_VERSIONS.repair);
+    expect(repaired.lesson.facts?.vocabulary[0]?.definition).toContain("3 × 4 = 12");
+    expect(numericFactMismatches(repaired.lesson.facts as never)).toEqual([]);
+    expect(repaired.lesson.generation?.findings.some((f) => f.check === "fact-consistency")).toBe(
+      false,
+    );
+  });
+
+  test("w0b: a numeric mismatch in a fact no slide cites stays a warning on the fact", async () => {
+    const state = await generated();
+    const facts = state.lesson.facts;
+    if (!facts) throw new Error("fixture");
+    const uncite = (refs: string[]) => refs.filter((r) => r !== "v1");
+    const next = await evaluate(
+      {
+        ...state,
+        lesson: {
+          ...state.lesson,
+          slides: state.lesson.slides.map((s) => ({
+            ...s,
+            elements: s.elements.map((e) =>
+              e.generatedFrom
+                ? {
+                    ...e,
+                    generatedFrom: {
+                      ...e.generatedFrom,
+                      factRefs: uncite(e.generatedFrom.factRefs),
+                    },
+                  }
+                : e,
+            ),
+          })) as never,
+          facts: {
+            ...facts,
+            outline: facts.outline.map((e) => ({ ...e, factRefs: uncite(e.factRefs) })) as never,
+            vocabulary: facts.vocabulary.map((v) =>
+              v.id === "v1" ? { ...v, definition: `${v.definition} 3 × 4 = 13.` } : v,
+            ),
+          },
+        },
+      },
+      recordingDeps(createFakeAi({ script: [json({ findings: [] })], usage })),
+    );
+    const found = next.lesson.generation?.findings ?? [];
+    expect(found).toContainEqual({
+      check: "fact-verify",
+      severity: "warning",
+      target: { factId: "v1" },
+      message: NUMERIC_MESSAGE,
+      evidence: "3 × 4 = 13",
+    });
+    expect(found.some((f) => f.check === "fact-consistency" && f.target.factId === "v1")).toBe(
+      false,
+    );
   });
 
   test("a review that fails twice becomes a warning; the schema checks still run", async () => {

@@ -857,6 +857,13 @@ export function planFactsSchemaFor(
       }
     });
     facts.questions.forEach((q, i) => {
+      for (const j of distractorsEchoingAnswer(q)) {
+        issue(
+          "This distractor repeats the answer: every option must differ from the correct one.",
+          ["questions", i, "distractors", j],
+          "distractor-equals-answer",
+        );
+      }
       q.distractors?.forEach((d, j) => {
         if (d.misconceptionRef) {
           refineRef(
@@ -988,6 +995,50 @@ const ID_PREFIX: Record<FactListType | "outline", string> = {
 };
 
 /**
+ * Whether a question can be set on a step that prints its stem only (the exit ticket, a shared
+ * practise slide, an open-response or discussion slide) and still be a whole question. Structural:
+ * its declared `forms` (absent: the native form) include open-response, it declares no true-false
+ * form (a true-false statement poses no question on its own line), and it has fewer than three
+ * distractors — three make multiple choice its form everywhere downstream, since `LessonFacts`
+ * keeps no `forms`, and a stem shown without them is a question missing its options.
+ */
+/**
+ * Option text compared without case, whitespace, quotes, brackets or sentence punctuation. Signs
+ * that carry meaning in an answer (`-`, `+`, `=`, `/`, `×`, `÷`, `°`) are kept: "x + 1" and
+ * "x - 1" stay different options.
+ */
+export function optionKey(text: string): string {
+  return text.toLowerCase().replace(/[\s.,;:!?'"‘’“”()[\]]+/g, "");
+}
+
+/**
+ * The indices of a question's distractors that repeat its answer (text compared by `optionKey`):
+ * a multiple-choice slide built from it would show the correct option twice, once marked wrong.
+ */
+export function distractorsEchoingAnswer(q: {
+  answer: string;
+  distractors?: readonly { text: string }[] | undefined;
+}): number[] {
+  const answer = optionKey(q.answer);
+  return (q.distractors ?? []).flatMap((d, j) =>
+    answer !== "" && optionKey(d.text) === answer ? [j] : [],
+  );
+}
+
+export function askableAsStem(q: {
+  forms?: readonly string[] | undefined;
+  distractors?: readonly unknown[] | undefined;
+}): boolean {
+  const declared = q.forms ?? [];
+  const distractors = q.distractors?.length ?? 0;
+  if (distractors >= 3) return false;
+  return (
+    declared.length === 0 ||
+    (declared.includes("open-response") && !declared.includes("true-false"))
+  );
+}
+
+/**
  * Merge the skeleton and the facts, mint the stable fact ids and rewrite every ordinal reference
  * (the outline's `factRefs`, each fact's `objectiveRefs` / `misconceptionRef`) to them. Pure; the
  * result validates against `LessonFactsSchema` (asserted here so a bug fails loudly, not later).
@@ -1016,16 +1067,8 @@ export function assignFactIds(
   }
   // A question written for the exit ticket (`use: "exit"`) that no entry claims goes to the first
   // check-phase slide (TEACH-244): otherwise its writer never sees it and reaches for a worksheet
-  // question instead. Deterministic — no schema issue, no retry. Not a question that cannot be
-  // asked openly (declared `forms` without open-response, or none declared and three distractors,
-  // its native multiple choice): a check slide prints stems only, and `outlineFromFacts` leaves
-  // such a question off the exit ticket on purpose.
-  const stemOnly = (q: PlanFactsLike["questions"][number]) => {
-    const declared = (q as { forms?: readonly string[] }).forms ?? [];
-    return declared.length > 0
-      ? declared.includes("open-response")
-      : (q.distractors?.length ?? 0) < 3;
-  };
+  // question instead. Deterministic — no schema issue, no retry. Only a question `askableAsStem`:
+  // a check slide prints stems only, and `outlineFromFacts` leaves any other off on purpose.
   const check = skeleton.outline.findIndex((entry) => entry.phase === "check");
   if (check !== -1) {
     const claimed = new Set(
@@ -1035,7 +1078,7 @@ export function assignFactIds(
         .map((ref) => ref.index),
     );
     facts.questions.forEach((q, index) => {
-      if (q.use !== "exit" || claimed.has(index) || !stemOnly(q)) return;
+      if (q.use !== "exit" || claimed.has(index) || !askableAsStem(q)) return;
       added.set(check, [...(added.get(check) ?? []), { type: "question", index }]);
     });
   }

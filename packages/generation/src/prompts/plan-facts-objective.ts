@@ -3,6 +3,7 @@ import { editorialIssue, SPEC_LIMITS, type SpecSchemaOptions } from "@tj/slides"
 import { z } from "zod";
 import { leadingVerb, verbLevel } from "../objectives-check";
 import type { LessonShape } from "../shapes";
+import { distractorsEchoingAnswer } from "../specs";
 import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
 import { shapeBlock } from "./shape";
 import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
@@ -165,6 +166,19 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  * facts and terms right for the year group (named in the audience block) and says to leave the
  * rest out: an explicit way out, which Luna takes where "use them where they fit" gave none. The
  * pack-fill call's user turn carries the same constant.
+ *
+ * v13 (24 Sept 2026, W0 answer tells; 384 -> 436 system words): one rule on multiple-choice
+ * options. The `answer` doubles as the open-response model answer, so Luna wrote it as a full
+ * sentence with a full stop while the limits line made each distractor "one short phrase": the
+ * correct option was strictly the longest in 13 of 14 MC questions and the only one with a full
+ * stop in 11 (facts-tells-v12, 3 briefs; lab checks mc-tell-longest / mc-tell-punctuation). The
+ * rule gives the method, not only the goal (Luna guide 3): the answer as a short option within
+ * the distractor cap, distractors in its form, one at least as long, no full stops. "A distractor
+ * is one short phrase" leaves the limits line, now said once in the rule. `generate-slide` copies
+ * question, answer and distractors verbatim, so the fix lives here only. First wording, "the
+ * answer is shown as one option among the distractors", was read as a placement: Luna copied the
+ * answer into `distractors` in 8 of 9 MC questions (facts-tells-v13a). Now "beside its
+ * distractors" and "each distractor, a wrong option".
  */
 
 export type PlanFactsObjectiveInput = {
@@ -292,7 +306,26 @@ const workedExampleSchema = (line: Line, objectiveCount?: number) =>
     misconceptionRef: MisconceptionOrdinalSchema.optional(),
   });
 
-const questionSchema = (line: Line) =>
+/**
+ * w0b: a distractor that repeats the answer (`distractorsEchoingAnswer`: case, whitespace and
+ * sentence punctuation aside) is an editorial issue in the strict build, so the call retries; the
+ * soft build accepts it and the outline drops the question from multiple choice. Schema only: the
+ * system text and its hash are unchanged.
+ */
+const questionSchema = (line: Line, soft: boolean) =>
+  questionShape(line).superRefine((q, ctx) => {
+    if (soft) return;
+    for (const j of distractorsEchoingAnswer(q))
+      ctx.addIssue(
+        editorialIssue(
+          "This distractor repeats the answer: every option must differ from the correct one.",
+          ["distractors", j, "text"],
+          "distractor-equals-answer",
+        ),
+      );
+  });
+
+const questionShape = (line: Line) =>
   z.object({
     stem: line(SPEC_LIMITS.stem),
     answer: line(SPEC_LIMITS.answer),
@@ -338,7 +371,7 @@ function planFactsObjectiveShape(workedExamplesMin: 0 | 1, soft: boolean, object
       .array(workedExampleSchema(line, objectiveCount))
       .min(workedExamplesMin)
       .max(1),
-    questions: z.array(questionSchema(line)).min(3).max(4),
+    questions: z.array(questionSchema(line, soft)).min(3).max(4),
   });
 }
 
@@ -440,7 +473,7 @@ const FACTS_HOUSE_RULES = HOUSE_RULES.split("\n")
  * Kept in v5 although the caps are schema: `refine` caps never reach the provider's JSON schema,
  * so this line is the only place the model meets the numbers, and a miss is an editorial repair.
  */
-const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; stem and answer ${SPEC_LIMITS.stem}; reasoning ${SPEC_LIMITS.footnote}; distractor ${SPEC_LIMITS.option}. A distractor is one short phrase; a quotation is one line, cut with an ellipsis.`;
+const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; stem and answer ${SPEC_LIMITS.stem}; reasoning ${SPEC_LIMITS.footnote}; distractor ${SPEC_LIMITS.option}. A quotation is one line, cut with an ellipsis.`;
 
 /**
  * The shape sketch: one line of placeholders, so no model spends its budget copying content. The
@@ -459,7 +492,7 @@ export const SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}],"questions":[{"stem":"…","answer":"…","reasoning":"…","tier":"core","use":"slide","demand":"apply","forms":["multiple-choice","open-response"],"keyIdeaRefs":[{"type":"keyIdea","index":0}],"distractors":[{"text":"…"},{"text":"…"},{"text":"…"}]}]}';
 
 export const planFactsObjectivePrompt = {
-  version: "plan-facts-objective.v12",
+  version: "plan-facts-objective.v13",
   system: [
     "You are an experienced UK teacher writing one lesson's substance, one objective at a time.",
     "You see the lesson's objectives and the one to write for. Other calls write the others: do not teach them here.",
@@ -472,6 +505,7 @@ export const planFactsObjectivePrompt = {
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Questions cover all three tiers: at least one "easy", one "core" and one "stretch".',
     'Where a worked example or distractor heads off the misconception, say so in "misconceptionRef".',
+    'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then each distractor, a wrong option, in the same form, with at least one as long as the answer and no option ending in a full stop, so length and punctuation never give the answer away.',
     'Follow the brief\'s worked-example line. A worked example is the method on one problem; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index from the list, this one included.',
     '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set as written: multiple-choice, true-false, open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it, by index in your keyIdeas, from 0.',
     `Where the brief gives "${PRIOR_KNOWLEDGE_LABEL}", treat it as met and build nothing outside it.`,

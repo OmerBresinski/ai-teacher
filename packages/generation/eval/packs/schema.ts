@@ -145,8 +145,8 @@ export type PackFacts = z.infer<typeof PackFactsSchema>;
 
 export const SectionSchema = z.strictObject({
   id: z.string().regex(/^sec\d+$/),
-  /** One learning outcome, in the objectives call's own form (verb first, ≤ 16 words). */
-  outcome: z.string().min(8).max(120),
+  /** One learning outcome: the objectives call's form (verb first, ≤ 16 words) or, in W7, an Oak pupil outcome ("I can …", up to 160 characters). */
+  outcome: z.string().min(8).max(160),
   /** The source sentences this section was written from (the arm's input window). */
   sentenceIds: z.array(z.string().regex(/^s\d+\.\d+$/)).min(1),
   facts: PackFactsSchema,

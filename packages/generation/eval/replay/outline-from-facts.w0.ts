@@ -1,3 +1,4 @@
+// The outline step at 48f3355 (the w0 lab runs, 23 Sep), before the w0 option and exit-ticket fixes: the OLD side of `eval/replay-outline.ts --w0`. Frozen; do not edit.
 import type {
   CalloutKind,
   GeneratableSlideKind,
@@ -5,17 +6,15 @@ import type {
   SlideCount,
 } from "@tj/domain/documents";
 import { QUESTION_TIERS } from "@tj/domain/documents";
-import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
-import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
-import type { LessonShape } from "./shapes";
+import type { QuestionDemand, QuestionForm } from "../../src/merge-objective-facts";
+import { explainSentence, practiseSentence, slidesFor } from "../../src/prompts/shape";
+import type { LessonShape } from "../../src/shapes";
 import {
-  askableAsStem,
-  distractorsEchoingAnswer,
   EXPLAIN_KINDS,
   type OrdinalRef,
   type PlanFactsLike,
   type PlanSkeleton,
-} from "./specs";
+} from "../../src/specs";
 
 /*
  * The outline, built in code from the merged per-objective facts (ADR 0025 §7: the skeleton the
@@ -264,65 +263,43 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         : [distractors.length >= 3 ? "multiple-choice" : "open-response"];
     return forms.filter((f) => f !== "true-false" || tagged);
   };
+  const admitsOpen = (i: number) => formsOf(i).includes("open-response");
   /**
-   * Question `i` may go on a step that prints its stem only (the shared practise slide, an
-   * open-response or discussion slide, the exit ticket): `askableAsStem` — declared (or natively)
-   * open, with fewer than three distractors and no declared true-false form. Three distractors
-   * make multiple choice its form everywhere downstream (`LessonFacts` keeps no `forms`), and a
-   * true-false statement is not a question on its own; either shown as a bare stem is a question
-   * without its options (w0: 12 option-less stems on 8 lab decks, two exit tickets failing
-   * `checkLesson`).
+   * Question `i` has a form a practise slide can show: open, true/false, or multiple choice with
+   * the three distractors a four-option slide needs. A multiple-choice-only question with fewer
+   * would fall back to a stem with no options.
    */
-  const admitsOpen = (i: number) => {
-    const q = facts.questions[i];
-    return q !== undefined && askableAsStem(q);
-  };
-  const tfUsable = (i: number) =>
-    formsOf(i).includes("true-false") && !shape.forbiddenKinds.includes("true-false");
-  /** Multiple choice with three distractors, none repeating the answer (the slide would show it twice). */
-  const mcUsable = (i: number) => {
-    const q = facts.questions[i];
+  const showable = (i: number) => {
+    const forms = formsOf(i);
     return (
-      q !== undefined &&
-      formsOf(i).includes("multiple-choice") &&
-      (q.distractors?.length ?? 0) >= 3 &&
-      distractorsEchoingAnswer(q).length === 0
+      forms.includes("open-response") ||
+      forms.includes("true-false") ||
+      (forms.includes("multiple-choice") && (facts.questions[i]?.distractors?.length ?? 0) >= 3)
     );
   };
-  /**
-   * Question `i` has a form a practise slide can show with everything it needs: asked as a stem
-   * (`admitsOpen`), true/false with its misconception, or multiple choice with the three
-   * distractors a four-option slide needs. Anything else would reach a slide as a stem without
-   * its options, so it is not placed.
-   */
-  const showable = (i: number) => admitsOpen(i) || tfUsable(i) || mcUsable(i);
   /** A practise slide from question `i` in one of its declared forms (`open` asks for open-response). */
   const questionSlot = (o: number, i: number, open = false): Slot => {
     const q = facts.questions[i];
     const distractors = q?.distractors ?? [];
     const tagged = distractors.find((d) => d.misconceptionRef !== undefined);
+    const forms = formsOf(i);
     let kind: Kind;
     let misconception: number | undefined;
-    if (open && admitsOpen(i)) {
+    if (open && forms.includes("open-response")) {
       kind = "open-response";
     } else if (
       shape.requireMisconceptionConfronted &&
       !has("true-false") &&
-      tfUsable(i) &&
+      forms.includes("true-false") &&
       tagged
     ) {
       kind = "true-false";
       misconception = tagged.misconceptionRef?.index;
-    } else if (mcUsable(i)) {
+    } else if (forms.includes("multiple-choice") && distractors.length >= 3) {
       kind = "multiple-choice";
-    } else if (admitsOpen(i)) {
-      kind = shape.forbiddenKinds.includes("open-response") ? "discussion" : "open-response";
-    } else if (tfUsable(i) && tagged) {
-      // Declared true-false only: the slide that prints the statement with its true/false options.
-      kind = "true-false";
-      misconception = tagged.misconceptionRef?.index;
+    } else if (shape.forbiddenKinds.includes("open-response")) {
+      kind = "discussion";
     } else {
-      // Not reached: callers place only `showable` questions.
       kind = "open-response";
     }
     const seq = slots.length;
@@ -582,8 +559,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       rank: [2, covered[0]?.[0] ?? 0, slots.length],
     });
   };
-  /** The open-response slide the shape requires: P8 never turns it into a practice set. */
-  let requiredOpen: Slot | undefined;
   if (required.has("open-response") && !has("open-response")) {
     if (!needOpen) noMaterial("open-response", "question that can be asked openly");
     else if (budget <= 0) noRoom("open-response");
@@ -609,7 +584,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       }
       if (slot === undefined) noMaterial("open-response", "question left to ask openly");
       else if (!place(slot)) noRoom("open-response");
-      else requiredOpen = slot;
     }
   }
   placeSharedPractise();
@@ -772,48 +746,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // for the exit ticket, and a set step is a stem with no options, so only a question the facts
   // declared askable openly joins one. Unpractised objectives first, then the harder tiers (the single-question
   // slides took the easiest); the set is asked easiest first.
-  // The exit ticket's stand-ins are chosen before the practice set below takes its questions: an
-  // exit question that cannot be asked as a line of the ticket, on an objective with no exit
-  // question that can, keeps an unused fair open question on that objective (slide questions
-  // first, then the worksheet's, easiest tier first). Otherwise the set could take the last one
-  // and the objective would go unchecked (w0 cardiac-L-1).
-  const firstObjectiveOf = (i: number) => refIndices(facts.questions[i]?.objectiveRefs)[0];
-  const exitSubstitute = (i: number, taken: readonly number[]) => {
-    const o = firstObjectiveOf(i);
-    if (o === undefined) return undefined;
-    return facts.questions
-      .flatMap((q, j) =>
-        q.use !== "exit" &&
-        !used.questions.has(j) &&
-        !taken.includes(j) &&
-        names(q.objectiveRefs, o) &&
-        admitsOpen(j) &&
-        fair(j)
-          ? [j]
-          : [],
-      )
-      .sort(
-        (a, b) =>
-          Number(facts.questions[a]?.use === "worksheet") -
-            Number(facts.questions[b]?.use === "worksheet") ||
-          tierRank(a) - tierRank(b) ||
-          a - b,
-      )[0];
-  };
-  const reservedExit = new Map<number, number>();
-  {
-    const exits = facts.questions.flatMap((q, i) => (q.use === "exit" && fair(i) ? [i] : []));
-    for (const i of exits) {
-      if (admitsOpen(i)) continue;
-      const o = firstObjectiveOf(i);
-      if (o !== undefined && exits.some((j) => admitsOpen(j) && firstObjectiveOf(j) === o))
-        continue;
-      const swap = exitSubstitute(i, [...reservedExit.values()]);
-      if (swap === undefined) continue;
-      reservedExit.set(i, swap);
-      used.questions.add(swap);
-    }
-  }
   const setPool = () =>
     facts.questions
       .flatMap((q, i) =>
@@ -834,7 +766,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       );
   const firstObjective = (i: number) => facts.questions[i]?.objectiveRefs[0]?.index ?? 0;
   const spare = (s: Slot) =>
-    s !== requiredOpen &&
     s.phase === "practise" &&
     s.question !== undefined &&
     (s.kind === "multiple-choice" || s.kind === "open-response") &&
@@ -1074,11 +1005,11 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // asked openly (multiple-choice-native) is replaced: dropped when its objective already has an
   // open exit question, else swapped for an unused fair open question on that objective (slide
   // questions first, then the worksheet's, easiest tier first). Only when none exists does it stay,
-  // and the brief says to set it with its options; one without three options is left off.
+  // and the brief says to set it with its options.
   const exitQuestions: number[] = [];
   const withOptions: number[] = [];
+  const firstObjectiveOf = (i: number) => refIndices(facts.questions[i]?.objectiveRefs)[0];
   const openExit = fairExit.filter(admitsOpen);
-  let dropped = false;
   for (const i of fairExit) {
     if (admitsOpen(i)) {
       exitQuestions.push(i);
@@ -1086,27 +1017,33 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     }
     const o = firstObjectiveOf(i);
     if (o !== undefined && openExit.some((j) => firstObjectiveOf(j) === o)) continue;
-    const swap = reservedExit.get(i) ?? exitSubstitute(i, exitQuestions);
+    const swap = facts.questions
+      .flatMap((q, j) =>
+        q.use !== "exit" &&
+        o !== undefined &&
+        !used.questions.has(j) &&
+        !exitQuestions.includes(j) &&
+        names(q.objectiveRefs, o) &&
+        admitsOpen(j) &&
+        fair(j)
+          ? [j]
+          : [],
+      )
+      .sort(
+        (a, b) =>
+          Number(facts.questions[a]?.use === "worksheet") -
+            Number(facts.questions[b]?.use === "worksheet") ||
+          tierRank(a) - tierRank(b) ||
+          a - b,
+      )[0];
     if (swap !== undefined) {
       used.questions.add(swap);
       exitQuestions.push(swap);
-    } else if (
-      (facts.questions[i]?.distractors?.length ?? 0) >= 3 &&
-      distractorsEchoingAnswer(facts.questions[i] ?? { answer: "" }).length === 0
-    ) {
-      // Its options exist: the brief names its objective, so the item is set with them listed.
+    } else {
       exitQuestions.push(i);
       withOptions.push(i);
-    } else {
-      dropped = true;
-      // A true-false statement, or a stem whose options are too few or repeat its answer: on a line of the exit
-      // ticket it would be a claim no question poses (w0 trig-1, forces-2), so it is not placed.
-      gap(
-        `Exit question ${i + 1} (${o === undefined ? "no objective" : nth(o).toLowerCase()}) cannot be asked as a line of the exit ticket and no open question replaces it, so it is left off.`,
-      );
     }
   }
-  const exitCount = dropped ? exitQuestions.length : count;
   const optioned = dedupe(withOptions.map((i) => (firstObjectiveOf(i) ?? 0) + 1));
   const optionsNote =
     optioned.length === 0
@@ -1117,7 +1054,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     factRefs: objectiveRefs(all),
     phase: "check",
     brief: brief(
-      `${exitCount} question${exitCount === 1 ? "" : "s"}, ${dropped ? "on the objectives the facts let it ask" : "one per objective"}${withheld ? ", each on what the slides taught" : ""}.${optionsNote}`,
+      `${count} question${count === 1 ? "" : "s"}, one per objective${withheld ? ", each on what the slides taught" : ""}.${optionsNote}`,
     ),
   });
   outlineFactRefs.push({

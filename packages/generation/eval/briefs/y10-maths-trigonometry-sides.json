@@ -1,0 +1,19 @@
+{
+  "brief": {
+    "topic": "Right-angled trigonometry: using SOHCAHTOA to find missing sides",
+    "durationMin": 60,
+    "classContext": {
+      "sizeBand": "25to30",
+      "needs": {
+        "lowerAttaining": 5
+      },
+      "priorKnowledge": "Confident with Pythagoras and labelling hypotenuse. Have not met sin, cos or tan yet."
+    },
+    "answers": {
+      "objectiveVerb": "Apply the sine, cosine and tangent ratios to find missing sides in right-angled triangles",
+      "priorConfidence": "New to it"
+    }
+  },
+  "subject": "Maths",
+  "yearGroup": "Year 10"
+}

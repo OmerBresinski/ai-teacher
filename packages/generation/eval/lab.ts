@@ -82,11 +82,13 @@ import {
   MAX_OUTPUT_TOKENS_OBJECTIVES,
   runLabPipeline,
 } from "../src/lab/plan-pipeline";
+import { NUMERIC_CHECK, numericFactMismatches, numericMismatches } from "../src/numeric-check";
 import { EXIT_OPTIONS_NOTE, outlineFromFacts } from "../src/outline-from-facts";
 import { PROMPT_VERSIONS } from "../src/prompts";
 import { planFactsObjectivePrompt } from "../src/prompts/plan-facts-objective";
 import { planObjectivesPrompt } from "../src/prompts/plan-objectives";
 import { objectiveVerbOf, priorConfidenceOf } from "../src/shapes";
+import { distractorsEchoingAnswer, optionKey } from "../src/specs";
 import { illustrate } from "../src/stages/illustrate";
 import { shapeOf } from "../src/stages/shared";
 import { type EvalBrief, evalBriefs, np1Briefs } from "./briefs";
@@ -270,6 +272,7 @@ interface LabFinding {
 }
 
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+const round4 = (n: number) => Math.round(n * 1e4) / 1e4;
 
 function elementTexts(slide: Slide): {
   id: string;
@@ -616,6 +619,78 @@ export function labChecks(lesson: Lesson, worksheet?: Worksheet): LabFinding[] {
     if (correct.length !== 1 || others.length === 0) return;
     for (const tell of mcTells(correct[0] ?? "", others))
       out.push({ check: `mc-tell-${tell}`, slide: i + 1, detail: `slide ${i + 1} (${slide.id})` });
+  });
+
+  // (h4) A distractor that repeats its answer (case, spacing and sentence punctuation aside), on
+  // the facts and on each rendered multiple-choice slide. Code-only.
+  for (const q of facts.questions) {
+    for (const j of distractorsEchoingAnswer(q))
+      out.push({
+        check: "distractor-equals-answer",
+        detail: `${q.id} (facts) distractor ${j + 1}: "${q.answer.slice(0, 80)}"`,
+      });
+  }
+  slides.forEach((slide, i) => {
+    const data = slide.question;
+    if (data?.type !== "multiple-choice") return;
+    const text = new Map(elementTexts(slide).map((e) => [e.id, e.text]));
+    const correct = new Set(
+      data.options.filter((o) => o.correct).map((o) => optionKey(text.get(o.id) ?? "")),
+    );
+    for (const o of data.options) {
+      if (!o.correct && correct.has(optionKey(text.get(o.id) ?? "")))
+        out.push({
+          check: "distractor-equals-answer",
+          slide: i + 1,
+          detail: `slide ${i + 1} (${slide.id})`,
+        });
+    }
+  });
+
+  // (h5) Arithmetic that does not work out (`numeric-check.ts`, code, no model): the facts'
+  // authoritative text, then what the deck teaches — content and worked-example slides and each
+  // multiple-choice slide's correct option. Stems, distractors and true/false statements may be
+  // wrong on purpose and are not read.
+  for (const m of numericFactMismatches(facts))
+    out.push({
+      check: NUMERIC_CHECK,
+      detail: `${m.factId}.${m.field}${m.index === undefined ? "" : `[${m.index}]`} (facts): "${m.text}" (${round4(m.left)} vs ${round4(m.right)})`,
+    });
+  slides.forEach((slide, i) => {
+    const data = slide.question;
+    const correctIds = new Set(
+      data?.type === "multiple-choice"
+        ? data.options.filter((o) => o.correct).map((o) => o.id)
+        : [],
+    );
+    const taught = slide.kind === "content" || slide.kind === "worked-example";
+    for (const el of elementTexts(slide)) {
+      if (!taught && !correctIds.has(el.id)) continue;
+      for (const m of numericMismatches(el.text))
+        out.push({
+          check: NUMERIC_CHECK,
+          slide: i + 1,
+          detail: `slide ${i + 1} (${slide.id}) ${el.id}: "${m.text}" (${round4(m.left)} vs ${round4(m.right)})`,
+        });
+    }
+  });
+
+  // (h6) The objectives slide names every objective (cardiac-L-1, w0): each objective's text,
+  // case and spacing aside, appears on it. Code-only.
+  slides.forEach((slide, i) => {
+    if (slide.kind !== "objectives") return;
+    const shown = norm(
+      elementTexts(slide)
+        .map((e) => e.text)
+        .join("\n"),
+    );
+    const missing = facts.objectives.filter((o) => !shown.includes(norm(o.text).slice(0, 40)));
+    if (missing.length > 0)
+      out.push({
+        check: "objectives-slide-incomplete",
+        slide: i + 1,
+        detail: `slide ${i + 1} shows ${facts.objectives.length - missing.length} of ${facts.objectives.length} objectives; missing ${missing.map((o) => o.id).join(",")}`,
+      });
   });
 
   // (i) Worksheet-tagged questions when no worksheet was requested still reserve pool.

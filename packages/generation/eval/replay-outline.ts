@@ -10,6 +10,16 @@
 // `question-on-untaught-key-idea` on the saved deck (before) and on the new outline (after).
 // `fidelity` says whether the OLD replay rebuilds the saved outline's kinds: the saved facts drop
 // the questions' `forms` and `demand`, so a question's slide form can differ.
+//
+// `--w0` (w0 fixes, 24 Sep): the w0 lab runs (`w0-*-L-*`) and the np1 `-ff` runs, each through the
+// outline at 48f3355 (`eval/replay/outline-from-facts.w0.ts`) and the current one, with the lost
+// `forms` declarations SIMULATED as plan-facts-objective v12 writes them (facts-c-v9: three
+// distractors → multiple-choice + open-response; a stem opening "True or false" → true-false +
+// open-response; else open-response). Counts per run: MC-native stems planned on stem-only steps
+// without their options, true/false exit lines, MC exit items set with options; and on the saved
+// deck: the checkLesson referent errors it recorded, numeric mismatches, objectives-slide gaps and
+// echoed distractors. The simulation reads stem text only to rebuild a lost declaration; the
+// pipeline itself never does.
 
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -24,6 +34,7 @@ import { shapeOf } from "../src/stages/shared";
 import { toOutlineFacts } from "./from-facts";
 import { isMcNative, labChecks } from "./lab";
 import { outlineFromFacts as outlineBefore } from "./replay/outline-from-facts.before";
+import { outlineFromFacts as outlineW0 } from "./replay/outline-from-facts.w0";
 
 const ROOT = join(import.meta.dir, "results", "lab");
 const PITCH = { readingAgeTarget: 10, sentenceLengthMax: 16, avoid: [] };
@@ -110,7 +121,123 @@ function mcCounts(lesson: Lesson) {
   };
 }
 
+type Sim = OutlineFacts["questions"][number] & { forms?: string[] };
+
+/** The lost `forms` declarations, as v12 writes them (see the header). */
+function simulateForms(facts: OutlineFacts): OutlineFacts {
+  return {
+    ...facts,
+    questions: facts.questions.map((q): Sim => {
+      const forms =
+        (q.distractors?.length ?? 0) >= 3
+          ? ["multiple-choice", "open-response"]
+          : /^true or false/i.test(q.stem)
+            ? ["true-false", "open-response"]
+            : ["open-response"];
+      return { ...q, forms } as Sim;
+    }),
+  } as OutlineFacts;
+}
+
+async function w0(): Promise<void> {
+  const runs = (await readdir(ROOT))
+    .filter((d) => /^w0-.*-L-\d+$/.test(d) || /^np1.*-ff$/.test(d))
+    .sort();
+  const L: string[] = [
+    "| run | sim fidelity | MC stems w/o options: saved deck / planned before→after | true/false exit lines before→after | MC exit items with options before→after | referent errors (saved) | numeric (saved facts+deck) | objectives slide gaps (saved) | echoed distractors (saved) |",
+    "|---|---|---|---|---|---|---|---|---|",
+  ];
+  const t = {
+    saved: 0,
+    mcB: 0,
+    mcA: 0,
+    tfB: 0,
+    tfA: 0,
+    optB: 0,
+    optA: 0,
+    ref: 0,
+    num: 0,
+    obj: 0,
+    echo: 0,
+    same: 0,
+  };
+  for (const run of runs) {
+    let lesson: Lesson;
+    let incomplete: string[] = [];
+    try {
+      lesson = JSON.parse(await readFile(join(ROOT, run, "lesson.json"), "utf8")) as Lesson;
+      const result = JSON.parse(await readFile(join(ROOT, run, "result.json"), "utf8")) as {
+        status?: { incomplete?: string[] };
+      };
+      incomplete = result.status?.incomplete ?? [];
+    } catch {
+      continue;
+    }
+    const saved = lesson.facts;
+    if (!saved || !lesson.brief) continue;
+    const facts = simulateForms(toOutlineFacts(saved));
+    const input = {
+      topic: lesson.brief.topic,
+      objectives: saved.objectives.map((o) => ({ text: o.text })),
+      facts,
+      shape: shapeOf(lesson),
+      slideCount: lesson.brief.slideCount ?? 10,
+    } as Parameters<typeof outlineFromFacts>[0];
+    const measureOf = (r: OutlineFromFactsResult) => {
+      const merged = assignFactIds(
+        r.skeleton,
+        { ...facts, outlineFactRefs: r.outlineFactRefs, pitch: PITCH } as never,
+        saved.durationMin,
+      );
+      const found = labChecks({ ...lesson, facts: merged, slides: [] });
+      const exit = r.outlineFactRefs.find((e) => e.index === r.skeleton.outline.length - 1);
+      return {
+        kinds: r.skeleton.outline.map((e) => e.kind).join(","),
+        mc: found.filter((f) => f.check === "mc-stem-without-options").length,
+        opt: found.filter((f) => f.check === "mc-options-on-stem-step").length,
+        tf: (exit?.factRefs ?? []).filter(
+          (f) =>
+            f.type === "question" &&
+            ((facts.questions[f.index] as Sim | undefined)?.forms ?? []).includes("true-false"),
+        ).length,
+      };
+    };
+    const b = measureOf(outlineW0(input as never) as unknown as OutlineFromFactsResult);
+    const a = measureOf(outlineFromFacts(input));
+    const onDeck = labChecks(lesson);
+    const n = (check: string) => onDeck.filter((f) => f.check === check).length;
+    const row = {
+      saved: n("mc-stem-without-options"),
+      ref: incomplete.filter((m) => /no question posed/.test(m)).length,
+      num: n("numeric-mismatch"),
+      obj: n("objectives-slide-incomplete"),
+      echo: n("distractor-equals-answer"),
+    };
+    const same = b.kinds === saved.outline.map((e) => e.kind).join(",");
+    L.push(
+      `| ${run} | ${same ? "same" : "differs"} | ${row.saved} / ${b.mc}→${a.mc} | ${b.tf}→${a.tf} | ${b.opt}→${a.opt} | ${row.ref} | ${row.num} | ${row.obj} | ${row.echo} |`,
+    );
+    t.saved += row.saved;
+    t.mcB += b.mc;
+    t.mcA += a.mc;
+    t.tfB += b.tf;
+    t.tfA += a.tf;
+    t.optB += b.opt;
+    t.optA += a.opt;
+    t.ref += row.ref;
+    t.num += row.num;
+    t.obj += row.obj;
+    t.echo += row.echo;
+    t.same += same ? 1 : 0;
+  }
+  L.push(
+    `| **total** | ${t.same} same | ${t.saved} / ${t.mcB}→${t.mcA} | ${t.tfB}→${t.tfA} | ${t.optB}→${t.optA} | ${t.ref} | ${t.num} | ${t.obj} | ${t.echo} |`,
+  );
+  console.log(L.join("\n"));
+}
+
 async function main() {
+  if (process.argv.includes("--w0")) return w0();
   const glob = arg("glob") ?? "np1";
   // A `--from-facts` rerun (`<run>-ff`) reuses its original's facts: not a run of its own here.
   // `--originals`: only each brief's first run, not its `-ff`, `-ff2`, `-capped` or `-superseded` reruns.

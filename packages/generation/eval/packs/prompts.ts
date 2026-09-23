@@ -319,6 +319,91 @@ export const packRecallPrompt: StructuredPrompt<PackRecallInput> = {
     ].join("\n"),
 };
 
+/* ------------------------- W7b: checklist before recall (C and S arms) ------------------------ */
+
+/**
+ * A checklist call's answer. `basis` comes first so the list is written against it, and it is an
+ * enum so the call cannot invent a specification code. `none` is the dynamic-knowledge-base case
+ * (an outcome no curriculum covers); downstream can treat that list as judgement, not a spec.
+ * The prose count is six to twelve with an escape hatch, so the schema's floor is one.
+ */
+export const PackChecklistOutputSchema = z.strictObject({
+  basis: z.enum(["exam-specification", "programme-of-study", "none"]),
+  items: z.array(line).min(1).max(12),
+});
+export type PackChecklistOutput = z.infer<typeof PackChecklistOutputSchema>;
+
+export interface PackChecklistInput {
+  subject: string;
+  yearGroup: string;
+  outcome: string;
+}
+
+/*
+ * pack-checklist.v1 (24 Sept 2026, PE; gpt-6-sol, medium; W7b arm S). W7's audits found M's gaps
+ * were the named specifics a teacher of the band expects (Plautius, Dreadnought, Liebknecht and
+ * Luxemburg, Seeckt) and A-level depth on Weimar (10 of 21 facts below band); none were errors.
+ * So the call asks for specifics, not headings (one contrastive pair, from a topic outside the
+ * W7 sample), and states the depth both ways ("not shallower", "nothing first taught later").
+ * `basis` is declared first and is an enum: the list is written against it, and `none` makes an
+ * outcome no curriculum covers explicit instead of silently padded (Greg, 24 Sept: the dynamic
+ * knowledge base will ask for outcomes with no defined curriculum). The count has an escape hatch
+ * because a hard floor on a niche outcome forces invented items. Certainty rule as pack-recall.v1.
+ * No topic line: the outcome carries the content and the topic id is a slug.
+ */
+export const packChecklistPrompt: StructuredPrompt<PackChecklistInput> = {
+  version: "pack-checklist.v1",
+  system: [
+    "You list what a lesson on one outcome must cover, for a UK school teacher. You are given the subject, the year group with its key stage in England, and the outcome.",
+    "",
+    "basis: exam-specification when a GCSE, A-level or other UK exam specification in this subject covers the outcome at this year group; programme-of-study when the national curriculum for England covers it; none when neither does, and then work from what a well-read teacher of this year group would expect.",
+    "",
+    'items: six to twelve, most essential first (fewer only when you cannot name six you are certain of). Each is one line naming one thing the lesson must cover (a person, event, date, term, process, case or standard example) as specifically as a teacher marking against the basis expects it: "word equation for photosynthesis: carbon dioxide + water → glucose + oxygen", not "photosynthesis". Only what this outcome needs, at the depth this year group is taught: not shallower, and nothing first taught at a later key stage. Put a date, number or name in an item only when you are certain of it.',
+  ].join("\n"),
+  user: (i) =>
+    [
+      `Subject: ${i.subject}; Year group: ${i.yearGroup}${keyStageOf(i.yearGroup)}`,
+      `Outcome: ${i.outcome}`,
+    ].join("\n"),
+};
+
+/** pack-recall.v1's answer plus `uncovered`: the checklist items the facts leave out, verbatim. */
+export const PackRecallV2OutputSchema = PackRecallOutputSchema.extend({
+  uncovered: z.array(line).optional(),
+});
+export type PackRecallV2Output = z.infer<typeof PackRecallV2OutputSchema>;
+
+export interface PackRecallV2Input extends PackRecallInput {
+  /** What the section must cover, one line an item; absent, the call is pack-recall.v1. */
+  checklist?: readonly string[];
+}
+
+/*
+ * pack-recall.v2 (24 Sept 2026, PE; gpt-6-sol, medium; W7b arms C and S). pack-recall.v1 with an
+ * optional checklist. The system text is v1's, byte for byte, and the checklist and its one rule
+ * go on the user line only when a checklist is given, so v2 without one is v1 (the M arm stays
+ * comparable) and no call names an input it does not have. The rule sits under "correct" in v1's
+ * ranking: an item it is not certain of is listed in `uncovered`, verbatim so code can diff it
+ * against the checklist, rather than guessed to fill coverage. Coverage is placed in key ideas,
+ * misconceptions and vocabulary (questions stay answered by those), and one fact may carry
+ * several items, because v1's counts (three key ideas, three terms) stay and a checklist runs to
+ * twelve.
+ */
+export const packRecallV2Prompt: StructuredPrompt<PackRecallV2Input> = {
+  version: "pack-recall.v2",
+  system: packRecallPrompt.system,
+  user: (i) => {
+    const base = packRecallPrompt.user(i);
+    if (!i.checklist?.length) return base;
+    return [
+      base,
+      "Checklist of what this section must cover:",
+      ...i.checklist.map((item) => `- ${item}`),
+      "Cover every checklist item in your key ideas, misconceptions or vocabulary; one fact may cover several items, in its statement, explanation or example. In uncovered, copy exactly each item your facts do not cover. Leave an item uncovered rather than state anything in it you are not certain of.",
+    ].join("\n");
+  },
+};
+
 export const packKnowledgePrompt: StructuredPrompt<PackKnowledgeInput> = {
   version: `pack-knowledge.v0${STUB_SUFFIX}`,
   system: STUB_SYSTEM("pack-knowledge"),

@@ -3,7 +3,9 @@ import { LessonFactsSchema } from "@tj/domain/documents";
 import { isEditorialIssue, slideSpecSchemaFor } from "@tj/slides";
 import { lessonShapeOf, OBJECTIVE_VERBS, PRIOR_CONFIDENCES } from "./shapes";
 import {
+  askableAsStem,
   assignFactIds,
+  distractorsEchoingAnswer,
   EMPTY_PLAN_FACTS,
   EvaluateOutputSchema,
   PlanSkeletonSchema,
@@ -543,6 +545,21 @@ describe("planFactsSchemaFor", () => {
   const schema = (shape = EXPLAIN_SOME) => planFactsSchemaFor(FIXTURES.planSkeleton, shape);
   const facts = () => structuredClone(FIXTURES.planFacts);
 
+  test("a distractor that repeats the answer is an editorial issue: strict retries, soft accepts", () => {
+    const f = facts();
+    const q = f.questions.find((x) => (x.distractors?.length ?? 0) > 0);
+    const d = q?.distractors?.[0];
+    if (!q || !d) throw new Error("fixture has no question with distractors");
+    d.text = `${q.answer.toLowerCase()} `;
+    const r = schema().safeParse(f);
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    expect(r.error.issues.some((i) => /repeats the answer/.test(i.message))).toBe(true);
+    expect(
+      planFactsSchemaFor(FIXTURES.planSkeleton, EXPLAIN_SOME, { soft: true }).safeParse(f).success,
+    ).toBe(true);
+  });
+
   test("TEACH-256: an unknown key on a fact item is stripped, not fatal; an unknown top-level key still is", () => {
     const f = facts() as Record<string, unknown> & { workedExamples: Record<string, unknown>[] };
     f.workedExamples[0] = { ...f.workedExamples[0], explanation: "extra" };
@@ -781,9 +798,53 @@ describe("assignFactIds", () => {
     if (!q12) throw new Error("fixture has no question 12");
     q12.distractors = [{ text: "a" }, { text: "b" }, { text: "c" }];
     expect(assignFactIds(FIXTURES.planSkeleton, mc, 60).outline[9]?.factRefs).not.toContain("q12");
-    // Declared askable openly: attached as before.
+    // Declared askable openly as well: still not attached, its three options would be missing (w0).
     Object.assign(q12, { forms: ["multiple-choice", "open-response"] });
+    expect(assignFactIds(FIXTURES.planSkeleton, mc, 60).outline[9]?.factRefs).not.toContain("q12");
+    // Two distractors and declared open: attached.
+    q12.distractors = [{ text: "a" }, { text: "b" }];
     expect(assignFactIds(FIXTURES.planSkeleton, mc, 60).outline[9]?.factRefs).toContain("q12");
+    // A declared true-false statement is not a question on a line of its own: not attached.
+    Object.assign(q12, { forms: ["true-false", "open-response"], distractors: [] });
+    expect(assignFactIds(FIXTURES.planSkeleton, mc, 60).outline[9]?.factRefs).not.toContain("q12");
+  });
+
+  test("distractorsEchoingAnswer: case, spacing and sentence punctuation ignored, maths signs kept", () => {
+    expect(
+      distractorsEchoingAnswer({
+        answer: "Water resistance.",
+        distractors: [
+          { text: "water  resistance" },
+          { text: "Air resistance" },
+          { text: "‘Water resistance’" },
+        ],
+      }),
+    ).toEqual([0, 2]);
+    expect(
+      distractorsEchoingAnswer({
+        answer: "x + 1",
+        distractors: [{ text: "x - 1" }, { text: "X+1" }],
+      }),
+    ).toEqual([1]);
+    expect(distractorsEchoingAnswer({ answer: "4", distractors: undefined })).toEqual([]);
+  });
+
+  test("askableAsStem: open, fewer than three distractors, no declared true-false", () => {
+    const d = (n: number) => Array.from({ length: n }, (_, i) => ({ text: `d${i}` }));
+    expect(askableAsStem({ distractors: d(0) })).toBe(true);
+    expect(askableAsStem({ distractors: d(2) })).toBe(true);
+    expect(askableAsStem({ distractors: d(3) })).toBe(false);
+    expect(askableAsStem({ forms: ["multiple-choice", "open-response"], distractors: d(3) })).toBe(
+      false,
+    );
+    expect(askableAsStem({ forms: ["multiple-choice", "open-response"], distractors: d(2) })).toBe(
+      true,
+    );
+    expect(askableAsStem({ forms: ["multiple-choice"], distractors: d(2) })).toBe(false);
+    expect(askableAsStem({ forms: ["true-false", "open-response"], distractors: d(0) })).toBe(
+      false,
+    );
+    expect(askableAsStem({ forms: ["open-response"], distractors: d(1) })).toBe(true);
   });
 
   test("row 6: the fixtures merge into valid LessonFacts with k/m ids, briefs, phases and pitch", () => {

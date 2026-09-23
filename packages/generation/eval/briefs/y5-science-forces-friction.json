@@ -1,0 +1,19 @@
+{
+  "brief": {
+    "topic": "Forces: gravity, air resistance, water resistance and friction",
+    "durationMin": 60,
+    "classContext": {
+      "sizeBand": "25to30",
+      "needs": {
+        "send": 3
+      },
+      "notes": "Want a quick hands-on bit if possible, e.g. dropping paper spinners or sliding a shoe on different surfaces."
+    },
+    "answers": {
+      "objectiveVerb": "Explain how air resistance, water resistance and friction slow moving objects down",
+      "priorConfidence": "New to it"
+    }
+  },
+  "subject": "Science",
+  "yearGroup": "Year 5"
+}

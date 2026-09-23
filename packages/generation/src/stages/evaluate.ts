@@ -1,5 +1,6 @@
 import { checkLesson, FACT_ARRAYS, type Finding, type LessonFacts } from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS, SPEC_RULE_CHECK } from "../call";
+import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import { evaluatePrompt } from "../prompts";
 import { EvaluateOutputSchema } from "../specs";
 import {
@@ -81,6 +82,46 @@ function imageFitAsError(finding: Finding, state: PipelineState): Finding {
   return { ...finding, severity: "error", fix: { kind: "regenerate-slide" } };
 }
 
+/**
+ * Numeric mismatches as errors Repair acts on (w0b): Verify records each one as a `fact-verify`
+ * warning on the fact, which Repair never reads (it acts on errors that name a slide or block).
+ * Here each mismatch in the current facts becomes a `fact-consistency` error on every slide built
+ * from that fact (its outline entry's references or its elements' stamps), naming the fact, so
+ * Repair patches the fact through `repair-fact` and regenerates the slide from it. A mismatch no
+ * slide cites stays a warning. Verify's numeric warnings are replaced by these, never doubled.
+ */
+export function numericAsErrors(state: PipelineState): Finding[] {
+  const facts = state.lesson.facts;
+  if (!facts) return [];
+  const out: Finding[] = [];
+  for (const m of numericFactMismatches(facts)) {
+    const citing = state.lesson.slides.filter(
+      (slide, i) =>
+        facts.outline[i]?.factRefs.includes(m.factId) ||
+        slide.elements.some((e) => e.generatedFrom?.factRefs.includes(m.factId)),
+    );
+    if (citing.length === 0) {
+      out.push({
+        check: "fact-verify",
+        severity: "warning",
+        target: { factId: m.factId },
+        message: NUMERIC_MESSAGE,
+        evidence: m.text,
+      });
+      continue;
+    }
+    for (const slide of citing)
+      out.push({
+        check: "fact-consistency",
+        severity: "error",
+        target: { slideId: slide.id, factId: m.factId },
+        message: NUMERIC_MESSAGE,
+        evidence: m.text,
+      });
+  }
+  return out;
+}
+
 /** Slide kinds every lesson has whatever its verb: the shape never asks them to serve it. */
 const VERB_FIT_EXEMPT_KINDS: ReadonlySet<string> = new Set([
   "title",
@@ -136,7 +177,10 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
   const generation = generationOf(lesson);
   // Findings Generate recorded (a budget stop) survive, as do illustrate's image warnings and
   // Verify's fact corrections — none is recomputable here; everything else is recomputed below.
-  const carried = generation.findings.filter((f) => CARRIED_CHECKS.has(f.check));
+  const carried = generation.findings.filter(
+    (f) => CARRIED_CHECKS.has(f.check) && f.message !== NUMERIC_MESSAGE,
+  );
+  const numeric = numericAsErrors(state);
   const schema = checkLesson(lesson, worksheet);
 
   // Photographed slides (TEACH-220): each placed image-text slide's thumbnail — the picture the
@@ -208,7 +252,7 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
         ...generation,
         stage: "evaluated",
         promptVersions: { ...generation.promptVersions, evaluated: evaluatePrompt.version },
-        findings: [...carried, ...schema, ...model],
+        findings: [...carried, ...numeric, ...schema, ...model],
       },
     },
     deps,

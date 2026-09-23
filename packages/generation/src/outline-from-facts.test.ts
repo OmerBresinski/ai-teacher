@@ -393,13 +393,18 @@ describe("outlineFromFacts: question kinds", () => {
       n: 2,
       slideCount: 10,
       shape: shapeOf("Explain"),
-      options: { forms: ["multiple-choice", "open-response"] },
+      options: { forms: ["multiple-choice", "open-response"], distractors: 2 },
     });
-    const at = kinds(r).indexOf("open-response");
-    expect(at).toBeGreaterThan(-1);
-    const q = refsAt(r, at).find((ref) => ref.type === "question");
-    expect(r.facts.questions[q?.index ?? -1]?.stem).toBe("Slide question for objective 2?");
-    expect(r.result.skeleton.outline[at]?.brief?.adds).toMatch(/^Pupils explain: /);
+    // With two distractors every slide question is asked openly; the required one is objective 2's.
+    const open = kinds(r).flatMap((k, at) => (k === "open-response" ? [at] : []));
+    expect(open.length).toBeGreaterThan(0);
+    const stems = open.map((at) => {
+      const q = refsAt(r, at).find((ref) => ref.type === "question");
+      return r.facts.questions[q?.index ?? -1]?.stem;
+    });
+    expect(stems).toContain("Slide question for objective 2?");
+    for (const at of open)
+      expect(r.result.skeleton.outline[at]?.brief?.adds).toMatch(/^Pupils explain: /);
   });
 
   test("no open-response is forced from a multiple-choice question: without a declaration the gap says so", () => {
@@ -615,7 +620,11 @@ describe("outlineFromFacts: the shared practise slide (ruling 81)", () => {
       n: 3,
       slideCount: 8,
       shape: shapeOf("Apply"),
-      options: { workedExamples: false, forms: ["multiple-choice", "open-response"] },
+      options: {
+        workedExamples: false,
+        forms: ["multiple-choice", "open-response"],
+        distractors: 2,
+      },
     });
     const k = kinds(r);
     expect(k).toHaveLength(8);
@@ -650,7 +659,7 @@ describe("outlineFromFacts: the shared practise slide (ruling 81)", () => {
       n: 2,
       slideCount: 6,
       shape: shapeOf("Apply"),
-      options: { forms: ["multiple-choice", "open-response"] },
+      options: { forms: ["multiple-choice", "open-response"], distractors: 2 },
     });
     const k = kinds(r);
     expect(k.slice(2, 4).every((x) => x === "content" || x === "worked-example")).toBe(true);
@@ -665,14 +674,14 @@ describe("outlineFromFacts: the shared practise slide (ruling 81)", () => {
     const r = run({
       n: 3,
       slideCount: 8,
-      options: { forms: ["multiple-choice", "open-response"] },
+      options: { forms: ["multiple-choice", "open-response"], distractors: 2 },
     });
     expect(kinds(r)).toContain("open-response");
     expect(r.result.coverage.every((c) => c.checked.length > 0)).toBe(true);
   });
 
   test("the shared slide falls back on worksheet questions, never an exit question", () => {
-    const facts = factsFor(2, { forms: ["multiple-choice", "open-response"] });
+    const facts = factsFor(2, { forms: ["multiple-choice", "open-response"], distractors: 2 });
     const r = run({
       n: 2,
       slideCount: 6,
@@ -710,12 +719,15 @@ describe("outlineFromFacts: the shared practise slide (ruling 81)", () => {
     expect(r.result.coverage.every((c) => c.practised.length > 0)).toBe(true);
   });
 
-  test("room for a practise slide per objective: each objective practised, the last multiple-choice slide becomes a practice set of the unused questions", () => {
+  test("room for a practise slide per objective: each objective practised, the last single-question slide becomes a practice set of the unused questions", () => {
     for (const slideCount of [10, 12] as const) {
-      const r = run({ n: 3, slideCount, options: { forms: ["multiple-choice", "open-response"] } });
+      const r = run({
+        n: 3,
+        slideCount,
+        options: { forms: ["multiple-choice", "open-response"], distractors: 2 },
+      });
       const k = kinds(r);
       expect(k.filter((x) => x === "instructions")).toHaveLength(1);
-      expect(k).toContain("multiple-choice");
       expect(r.result.coverage.every((c) => c.practised.length > 0)).toBe(true);
       const { refs } = shared(r);
       expect(refs.length).toBeGreaterThanOrEqual(3);
@@ -1048,5 +1060,101 @@ describe("outlineFromFacts: the exit ticket prints stems only (W2e)", () => {
     exit.forms = ["multiple-choice", "open-response"];
     const r = run({ n: 1, slideCount: 8, facts });
     expect(exitQuestions(r)).toEqual([facts.questions.indexOf(exit)]);
+  });
+});
+
+describe("outlineFromFacts: no question without its options (w0)", () => {
+  const exitQuestions = (r: ReturnType<typeof run>) =>
+    refsAt(r, r.result.skeleton.outline.length - 1).flatMap((ref) =>
+      ref.type === "question" ? [ref.index] : [],
+    );
+  const STEM_ONLY = new Set(["instructions", "open-response", "discussion", "exit-ticket"]);
+  const stemOnlyQuestions = (r: ReturnType<typeof run>) =>
+    r.result.skeleton.outline.flatMap((entry, position) =>
+      STEM_ONLY.has(entry.kind)
+        ? refsAt(r, position)
+            .filter((ref) => ref.type === "question")
+            .map((ref) => ({ kind: entry.kind, q: r.facts.questions[ref.index] }))
+        : [],
+    );
+
+  test("a question with three distractors declared open as well is set as multiple choice, never as a bare stem", () => {
+    for (const slideCount of [6, 8, 10, 12] as const) {
+      for (const verb of ["Explain", "Apply"] as const) {
+        const r = run({
+          n: 3,
+          slideCount,
+          shape: shapeOf(verb),
+          options: { forms: ["multiple-choice", "open-response"] },
+        });
+        const brief = r.result.skeleton.outline.at(-1)?.brief?.adds ?? "";
+        for (const { kind, q } of stemOnlyQuestions(r)) {
+          if ((q?.distractors?.length ?? 0) < 3) continue;
+          // Only the exit ticket may carry one, and then its brief lists the options.
+          expect(kind).toBe("exit-ticket");
+          expect(brief).toMatch(/Multiple choice for objective/);
+        }
+        if (slideCount >= 10) expect(kinds(r)).toContain("multiple-choice");
+      }
+    }
+  });
+
+  test("a declared true-false exit question is swapped for an open question on its objective", () => {
+    const facts = factsFor(1, { distractors: 2, forms: ["open-response"] });
+    const exit = facts.questions.find((q) => q.use === "exit");
+    if (!exit) throw new Error("fixture has no exit question");
+    Object.assign(exit, { forms: ["true-false", "open-response"], distractors: [] });
+    const r = run({ n: 1, slideCount: 8, facts });
+    const asked = exitQuestions(r);
+    expect(asked).not.toContain(facts.questions.indexOf(exit));
+    expect(asked).toHaveLength(1);
+    expect(facts.questions[asked[0] ?? -1]?.use).not.toBe("exit");
+  });
+
+  test("the exit ticket's stand-ins are kept from the practice set: every objective is still checked", () => {
+    for (const slideCount of [8, 10, 12] as const) {
+      const facts = factsFor(3, { distractors: 2, forms: ["open-response"] });
+      for (const q of facts.questions)
+        if (q.use === "exit") Object.assign(q, { forms: ["true-false", "open-response"] });
+      const r = run({ n: 3, slideCount, facts });
+      expect(r.result.coverage.every((c) => c.checked.length > 0)).toBe(true);
+      const asked = exitQuestions(r);
+      expect(asked.map((i) => facts.questions[i]?.use)).not.toContain("exit");
+      const set = r.result.outlineFactRefs.flatMap((e) =>
+        e.factRefs.filter((f) => f.type === "question").map((f) => f.index),
+      );
+      // No question is asked twice.
+      expect(new Set(set).size).toBe(set.length);
+    }
+  });
+
+  test("a declared true-false exit question with nothing to swap in is left off, and the gap and brief say so", () => {
+    const facts = factsFor(1, { distractors: 3 });
+    const exit = facts.questions.find((q) => q.use === "exit");
+    if (!exit) throw new Error("fixture has no exit question");
+    Object.assign(exit, { forms: ["true-false", "open-response"], distractors: [] });
+    const r = run({ n: 1, slideCount: 8, facts });
+    expect(exitQuestions(r)).toEqual([]);
+    expect(r.result.gaps.some((g) => /cannot be asked as a line of the exit ticket/.test(g))).toBe(
+      true,
+    );
+    expect(r.result.skeleton.outline.at(-1)?.brief?.adds).toMatch(
+      /^0 questions, on the objectives/,
+    );
+  });
+});
+
+describe("outlineFromFacts: a distractor that repeats the answer", () => {
+  test("the question is not placed as multiple choice, nor as a bare stem", () => {
+    const facts = factsFor(2);
+    for (const q of facts.questions) {
+      const first = q.distractors?.[0];
+      if (q.use === "slide" && first) first.text = ` ${q.answer.toUpperCase()}. `;
+    }
+    const r = run({ n: 2, slideCount: 10, facts });
+    const placed = r.result.outlineFactRefs.flatMap((e) =>
+      e.factRefs.filter((f) => f.type === "question").map((f) => f.index),
+    );
+    for (const i of placed) expect(facts.questions[i]?.use).not.toBe("slide");
   });
 });

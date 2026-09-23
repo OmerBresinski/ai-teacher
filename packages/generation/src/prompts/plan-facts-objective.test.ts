@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SPEC_LIMITS } from "@tj/slides";
+import { isEditorialIssue, SPEC_LIMITS } from "@tj/slides";
 import { lessonShapeOf } from "../shapes";
 import { audienceOf } from "../stages/shared";
 import { sampleBriefLesson } from "../testing";
@@ -55,8 +55,8 @@ const SAMPLE: PlanFactsObjectiveInput = {
 };
 
 const PIN: { version: string; hash: string } = {
-  version: "plan-facts-objective.v12",
-  hash: "c94aec8d9d3db9181cc10cb32755046b51cddc29e673f0d5972d5158a0244df1",
+  version: "plan-facts-objective.v13",
+  hash: "3254b0c16062ac57e554996faa00575e7857821e920be1a3a562be8ddd9b0b7e",
 };
 
 /** One objective's facts, as the schema accepts them; the pieces tests vary field by field. */
@@ -125,8 +125,9 @@ describe("plan-facts-objective", () => {
      */
     // v5 (minimalism rubric, 23 Sept 2026) trimmed 448 to 350; v6 369; v7 317; v8 331; v9 368 (the
     // three declarations, review pack np1, paid for in part by the shared JSON line and the
-    // misconception clause); v11 384 (keyIdeaRefs: one sketch slot, one clause). The alarm follows it.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(390);
+    // misconception clause); v11 384 (keyIdeaRefs: one sketch slot, one clause); v13 436 (the
+    // multiple-choice option rule, answer tells 93% -> 29% longest). The alarm follows it.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(440);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).toMatch(/JSON/);
@@ -404,6 +405,46 @@ describe("plan-facts-objective", () => {
     expect(soft.safeParse(facts({ questions: [{ ...QUESTION, tier: "medium" }] })).success).toBe(
       false,
     );
+  });
+
+  test("w0b: a distractor that repeats the answer (case, spaces, punctuation aside) is an editorial issue: the strict build rejects it so the call retries, the soft build accepts", () => {
+    const hard = planFactsObjectiveOutputSchemaFor(SAMPLE);
+    const soft = planFactsObjectiveOutputSchemaFor(SAMPLE, { soft: true });
+    const withDistractors = (texts: string[]) =>
+      facts({
+        questions: [
+          { ...QUESTION, distractors: texts.map((text) => ({ text })) },
+          QUESTION,
+          QUESTION,
+        ],
+      });
+    const distinct = withDistractors(["Only soldiers used them", "Nothing changed", "Trade fell"]);
+    expect(hard.safeParse(distinct).success).toBe(true);
+    const echo = withDistractors([
+      "Only soldiers used them",
+      "  goods could be carried FURTHER, and faster between towns ",
+      "Trade fell",
+    ]);
+    const result = hard.safeParse(echo);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([
+      expect.objectContaining({
+        path: ["questions", 0, "distractors", 1, "text"],
+        message:
+          "This distractor repeats the answer: every option must differ from the correct one.",
+      }),
+    ]);
+    expect(result.error?.issues.every(isEditorialIssue)).toBe(true);
+    expect(soft.safeParse(echo).success).toBe(true);
+    // Maths signs are content, not punctuation: "-3" is not "3".
+    const signed = facts({
+      questions: [
+        { ...QUESTION, answer: "3", distractors: [{ text: "-3" }, { text: "6" }, { text: "9" }] },
+        QUESTION,
+        QUESTION,
+      ],
+    });
+    expect(hard.safeParse(signed).success).toBe(true);
   });
 
   test("both builds require the floored call's worked example", () => {
