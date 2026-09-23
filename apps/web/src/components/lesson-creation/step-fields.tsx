@@ -413,7 +413,7 @@ export function WorksheetStep({
       <div className="creation-step-footer">
         <div className="creation-actions">
           <Button variant="inverse" onClick={onMake}>
-            Make {worksheets.length > 1 ? `${worksheets.length} worksheets` : "worksheet"}{" "}
+            Include {worksheets.length > 1 ? `${worksheets.length} worksheets` : "worksheet"}{" "}
             <ArrowRight />
           </Button>
           <Button variant="link" onClick={onSkip}>
