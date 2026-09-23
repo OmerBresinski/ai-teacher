@@ -1,0 +1,300 @@
+.creation-shell {
+  min-height: calc(100dvh - 56px);
+  --reading-control-height: 48px;
+  background: var(--background);
+  color: var(--foreground);
+  padding: 28px clamp(20px, 5vw, 72px) 64px;
+}
+.creation-header {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+.creation-brand {
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.06em;
+  text-decoration: none;
+}
+.creation-brand span {
+  color: var(--muted-foreground);
+}
+.creation-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 640px);
+  gap: 48px;
+  max-width: 868px;
+  transform: translateX(clamp(-114px, calc((1100px - 100vw) / 2), 0px));
+  margin: clamp(44px, 8vh, 104px) auto 0;
+  align-items: start;
+}
+.creation-step {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+  animation: creation-enter 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.creation-step h1 {
+  outline: none;
+}
+.creation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.creation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+}
+.creation-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.creation-objectives {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.creation-objective {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+}
+.creation-objective textarea {
+  flex: 1;
+}
+.creation-character {
+  position: sticky;
+  top: 120px;
+  width: 180px;
+  height: 190px;
+  margin-top: 16px;
+  isolation: isolate;
+}
+.creation-character-art {
+  animation: creation-enter 350ms ease both;
+}
+.creation-character svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  stroke: #34483b;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  color: #34483b;
+}
+.creation-character .happy-mouth {
+  display: none;
+}
+.creation-character .body {
+  transform-origin: 50% 90%;
+  animation: creation-breathe 4s ease-in-out infinite;
+}
+.creation-character .arm-right {
+  transform-box: fill-box;
+  transform-origin: bottom left;
+  animation: creation-wave 6s ease-in-out infinite;
+}
+.creation-character[data-working="true"] .body {
+  animation-duration: 1.8s;
+}
+.creation-character-shadow {
+  position: absolute;
+  z-index: -1;
+  bottom: 16px;
+  left: 25%;
+  width: 50%;
+  height: 9px;
+  border-radius: 50%;
+  background: #34483b;
+  opacity: 0.12;
+  filter: blur(3px);
+}
+.creation-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.creation-sheet-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+@keyframes creation-enter {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes creation-breathe {
+  0%,
+  100% {
+    transform: rotate(-1deg);
+  }
+  50% {
+    transform: rotate(1deg) translateY(-2px);
+  }
+}
+@keyframes creation-wave {
+  0%,
+  70%,
+  100% {
+    transform: rotate(0);
+  }
+  80%,
+  90% {
+    transform: rotate(-8deg);
+  }
+  85%,
+  95% {
+    transform: rotate(3deg);
+  }
+}
+@media (max-width: 720px) {
+  .creation-shell {
+    padding-top: 20px;
+  }
+  .creation-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+    max-width: 640px;
+  }
+  .creation-character {
+    position: relative;
+    top: auto;
+    width: 108px;
+    height: 108px;
+    margin: 0;
+  }
+  .creation-character-shadow {
+    bottom: 5px;
+  }
+  .creation-step {
+    gap: 24px;
+  }
+}
+@media (max-width: 430px) {
+  .creation-fields {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .creation-step,
+  .creation-character-art,
+  .creation-character .body,
+  .creation-character .arm-right {
+    animation: none;
+  }
+}
+.creation-step {
+  view-transition-name: creation-content;
+}
+.creation-character {
+  view-transition-name: creation-host;
+}
+.creation-step h1 {
+  font-size: clamp(32px, 3.4vw, 44px);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+.creation-step [data-slot="textarea"],
+.creation-step [data-slot="select-trigger"] {
+  min-height: 48px;
+}
+.creation-step .creation-actions > button {
+  min-height: 48px;
+}
+.creation-step .creation-actions > button:first-child {
+  padding-inline: 28px;
+}
+.creation-disclosure summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--muted-foreground);
+  text-underline-offset: 5px;
+}
+.creation-disclosure[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.creation-disclosure[open] summary {
+  margin-bottom: 16px;
+}
+.creation-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 8px;
+}
+.creation-preview-label {
+  max-width: 1320px;
+  padding: 24px clamp(20px, 5vw, 72px);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  margin: auto;
+}
+.creation-preview-result {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+.creation-preview-result > :last-child {
+  margin-left: auto;
+}
+.creation-working-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--foreground);
+  animation: creation-breathe 1.8s ease-in-out infinite;
+}
+::view-transition-old(creation-content) {
+  animation: creation-leave 140ms ease both;
+}
+::view-transition-new(creation-content) {
+  animation: creation-enter 240ms 80ms ease both;
+}
+::view-transition-group(creation-host) {
+  animation-duration: 300ms;
+}
+@keyframes creation-leave {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .creation-working-dot {
+    animation: none;
+  }
+  ::view-transition-group(*) {
+    animation: none;
+  }
+}
+/* Only the changing content and host transition; the page frame never flashes. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+.creation-preview-label {
+  min-height: 56px;
+  padding-block: 16px;
+}

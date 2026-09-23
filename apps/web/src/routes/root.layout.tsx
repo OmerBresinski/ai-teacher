@@ -1,4 +1,4 @@
-import { HeadContent, Outlet } from "@tanstack/react-router";
+import { HeadContent, Outlet, useRouterState } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 
 /**
@@ -22,14 +22,19 @@ const DesignPreview = import.meta.env.DEV
   : () => null;
 
 export function RootLayout() {
+  const cleanPreview = useRouterState({
+    select: (state) => state.location.pathname === "/dev/first-experience",
+  });
   return (
     <>
       <HeadContent />
       <Outlet />
-      <Suspense fallback={null}>
-        <Devtools />
-        <DesignPreview />
-      </Suspense>
+      {cleanPreview ? null : (
+        <Suspense fallback={null}>
+          <Devtools />
+          <DesignPreview />
+        </Suspense>
+      )}
     </>
   );
 }
