@@ -33,6 +33,7 @@ import { FactsPanel } from "./FactsPanel";
 import { HelpDialog } from "./HelpDialog";
 import { InsertRail } from "./InsertRail";
 import { isInTextField, matchesBinding } from "./keys";
+import { MobileLessonEditor } from "./MobileLessonEditor";
 import { Navigator } from "./Navigator";
 import { NO_PROPOSALS, type ProposalsApi, ProposalsContext } from "./proposals-context";
 import { RegenerateDialog } from "./RegenerateDialog";
@@ -47,6 +48,7 @@ import {
   useEditorSessionState,
 } from "./use-editor-session";
 import { useHistoryKeys } from "./use-history-keys";
+import { useMobileEditor } from "./use-mobile-editor";
 
 /*
  * The lesson editor shell (TeachDeck `components/v2/editor/EditorShell.tsx`): TopBar over
@@ -145,6 +147,7 @@ export function LessonEditor({
   editorRef,
   initialSlideId,
 }: LessonEditorProps) {
+  const mobile = useMobileEditor();
   const autosave = useAutosave(onSave);
   const { lesson, ...history } = useDocumentHistory({
     queryKey,
@@ -408,21 +411,39 @@ export function LessonEditor({
                         autosave={autosave}
                       />
                       <div className="flex min-h-0 flex-1">
-                        <InsertRail
-                          onInsert={insert}
-                          onHelp={() => setHelpOpen(true)}
-                          images={images}
-                        />
-                        <Navigator />
-                        <Canvas
-                          slide={slide}
-                          theme={theme}
-                          onFocusChange={setCanvasFocused}
-                          onScaleChange={onScaleChange}
-                          onInsert={insert}
-                          images={images}
-                          lessonId={lessonId}
-                        />
+                        {mobile ? (
+                          <MobileLessonEditor
+                            initialSlideId={initialSlideId}
+                            canvas={{
+                              slide,
+                              theme,
+                              onFocusChange: setCanvasFocused,
+                              onScaleChange,
+                              onInsert: insert,
+                              images,
+                              lessonId,
+                            }}
+                            insert={{ onInsert: insert, onHelp: () => setHelpOpen(true), images }}
+                          />
+                        ) : (
+                          <>
+                            <InsertRail
+                              onInsert={insert}
+                              onHelp={() => setHelpOpen(true)}
+                              images={images}
+                            />
+                            <Navigator />
+                            <Canvas
+                              slide={slide}
+                              theme={theme}
+                              onFocusChange={setCanvasFocused}
+                              onScaleChange={onScaleChange}
+                              onInsert={insert}
+                              images={images}
+                              lessonId={lessonId}
+                            />
+                          </>
+                        )}
                         {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
                       </div>
                       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
