@@ -229,14 +229,14 @@ export function ObjectivesStep({
         onGenerate();
       }}
     >
-      <p className="text-muted-foreground">
+      <p className="creation-step-context">
         {brief.topic} · {brief.yearGroup}
         {brief.level !== "standard"
           ? ` · ${brief.level === "easier" ? "Easier" : "Harder"} level`
           : ""}
       </p>
       <div className="creation-objectives">
-        <p>By the end of the lesson, pupils can:</p>
+        <p className="creation-objective-instruction">By the end of the lesson, pupils can:</p>
         {objectives.map((objective, index) => (
           <div key={objective.id} className="creation-objective">
             <span className="creation-objective-number" aria-hidden="true">
@@ -262,46 +262,55 @@ export function ObjectivesStep({
           </div>
         ))}
         <Button
-          className="self-start"
+          className="creation-add-action"
           variant="link"
+          size="sm"
           disabled={objectives.length >= 4}
           onClick={() => onChange([...objectives, { id: crypto.randomUUID(), text: "" }])}
         >
           <Plus /> Add objective
         </Button>
       </div>
-      <div className="creation-generation-options">
-        <ChoiceField
-          compact
-          label="Slides"
-          value={slideCount}
-          onChange={onSlideCount}
-          options={[6, 7, 8, 10, 12].map((value) => ({
-            value: String(value),
-            label: `${value} slides`,
-          }))}
-        />
-        <ChoiceField
-          compact
-          label="Lesson length"
-          value={duration}
-          onChange={onDuration}
-          options={[30, 45, 60, 90].map((value) => ({
-            value: String(value),
-            label: `${value} minutes`,
-          }))}
-        />
-      </div>
-      <div className="creation-actions">
+      <div className="creation-step-footer">
+        <div className="creation-generation-options">
+          <ChoiceField
+            compact
+            label="Slides"
+            value={slideCount}
+            onChange={onSlideCount}
+            options={[6, 7, 8, 10, 12].map((value) => ({
+              value: String(value),
+              label: `${value} slides`,
+            }))}
+          />
+          <ChoiceField
+            compact
+            label="Lesson length"
+            value={duration}
+            onChange={onDuration}
+            options={[30, 45, 60, 90].map((value) => ({
+              value: String(value),
+              label: `${value} minutes`,
+            }))}
+          />
+        </div>
+        <div className="creation-actions">
+          <Button
+            variant="inverse"
+            type="submit"
+            disabled={!objectives.length || objectives.some((item) => !item.text.trim())}
+          >
+            Continue <ArrowRight />
+          </Button>
+        </div>
         <Button
-          variant="inverse"
-          type="submit"
-          disabled={!objectives.length || objectives.some((item) => !item.text.trim())}
+          variant="link"
+          size="sm"
+          className="creation-back"
+          aria-label="Back to the brief"
+          onClick={onBack}
         >
-          Generate <ArrowRight />
-        </Button>
-        <Button variant="link" onClick={onBack}>
-          <ArrowLeft /> Back to the brief
+          <ArrowLeft /> Back
         </Button>
       </div>
     </form>
@@ -334,79 +343,93 @@ export function WorksheetStep({
   onSkip: () => void;
 }) {
   return (
-    <div className="creation-form">
-      {worksheets.map((worksheet, index) => (
-        <section
-          className="creation-sheet"
-          key={worksheet.id}
-          aria-label={`Worksheet ${index + 1}`}
-        >
-          {worksheets.length > 1 ? (
-            <div className="creation-sheet-heading">
-              <span className="font-medium">Worksheet {index + 1}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`Remove worksheet ${index + 1}`}
-                onClick={() => onChange(worksheets.filter((item) => item.id !== worksheet.id))}
-              >
-                <X />
-              </Button>
+    <div className="creation-form creation-worksheet-form">
+      <div className="creation-worksheet-list">
+        {worksheets.map((worksheet, index) => (
+          <section
+            className="creation-sheet"
+            key={worksheet.id}
+            aria-label={`Worksheet ${index + 1}`}
+          >
+            {worksheets.length > 1 ? (
+              <div className="creation-sheet-heading">
+                <span>Worksheet {index + 1}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Remove worksheet ${index + 1}`}
+                  onClick={() => onChange(worksheets.filter((item) => item.id !== worksheet.id))}
+                >
+                  <X />
+                </Button>
+              </div>
+            ) : null}
+            <div className="creation-worksheet-fields">
+              <ChoiceField
+                label="Activity type"
+                value={worksheet.recipe}
+                options={RECIPES}
+                onChange={(recipe) =>
+                  onChange(
+                    worksheets.map((item) =>
+                      item.id === worksheet.id ? { ...item, recipe } : item,
+                    ),
+                  )
+                }
+              />
+              <ChoiceField
+                compact
+                label="Practice time"
+                value={worksheet.minutes}
+                options={[5, 10, 15, 20, 30, 45].map((value) => ({
+                  value: String(value),
+                  label: `About ${value} min`,
+                }))}
+                onChange={(minutes) =>
+                  onChange(
+                    worksheets.map((item) =>
+                      item.id === worksheet.id ? { ...item, minutes } : item,
+                    ),
+                  )
+                }
+              />
             </div>
-          ) : null}
-          <div className="creation-fields">
-            <ChoiceField
-              label="Activity type"
-              value={worksheet.recipe}
-              options={RECIPES}
-              onChange={(recipe) =>
-                onChange(
-                  worksheets.map((item) => (item.id === worksheet.id ? { ...item, recipe } : item)),
-                )
-              }
-            />
-            <ChoiceField
-              label="Practice time"
-              value={worksheet.minutes}
-              options={[5, 10, 15, 20, 30, 45].map((value) => ({
-                value: String(value),
-                label: `About ${value} minutes`,
-              }))}
-              onChange={(minutes) =>
-                onChange(
-                  worksheets.map((item) =>
-                    item.id === worksheet.id ? { ...item, minutes } : item,
-                  ),
-                )
-              }
-            />
-          </div>
-        </section>
-      ))}
-      <Button
-        variant="link"
-        className="self-start"
-        onClick={() =>
-          onChange([
-            ...worksheets,
-            { id: crypto.randomUUID(), recipe: "exit-ticket", minutes: "5" },
-          ])
-        }
-      >
-        <Plus /> Add another worksheet
-      </Button>
-      <div className="creation-actions">
-        <Button variant="inverse" onClick={onMake}>
-          Make {worksheets.length > 1 ? `${worksheets.length} worksheets` : "worksheet"}{" "}
-          <ArrowRight />
-        </Button>
-        <Button variant="link" onClick={onSkip}>
-          Just the slides
+          </section>
+        ))}
+        <Button
+          variant="link"
+          className="creation-add-action"
+          size="sm"
+          onClick={() =>
+            onChange([
+              ...worksheets,
+              { id: crypto.randomUUID(), recipe: "exit-ticket", minutes: "5" },
+            ])
+          }
+        >
+          <Plus /> Add another worksheet
         </Button>
       </div>
-      <Button variant="link" className="self-start" onClick={onBack}>
-        <ArrowLeft /> Back to objectives
-      </Button>
+      <div className="creation-step-footer">
+        <div className="creation-actions">
+          <Button variant="inverse" onClick={onMake}>
+            Make {worksheets.length > 1 ? `${worksheets.length} worksheets` : "worksheet"}{" "}
+            <ArrowRight />
+          </Button>
+          <Button variant="link" onClick={onSkip}>
+            Just the slides
+          </Button>
+        </div>
+        <Button
+          variant="link"
+          size="sm"
+          className="creation-back"
+          aria-label="Back to objectives"
+          onClick={onBack}
+        >
+          <ArrowLeft /> Back
+        </Button>
+      </div>
     </div>
   );
 }
