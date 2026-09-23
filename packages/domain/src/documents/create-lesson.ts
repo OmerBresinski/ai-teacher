@@ -126,6 +126,24 @@ export type WorksheetRequested = { worksheetId: string; jobId: string };
 export const LESSON_TITLE_MAX = 80;
 
 /**
+ * The lesson title for a topic: the topic itself when it fits `LESSON_TITLE_MAX`, else cut at the
+ * last clause break (`,` `;` `:` or a dash) in the second half of the limit, else at the last word
+ * break with an ellipsis, never mid-word unless the topic has no break at all. Structural only.
+ */
+export function lessonTitle(topic: string, max = LESSON_TITLE_MAX): string {
+  const trimmed = topic.replace(/\s+/g, " ").trim();
+  if (trimmed.length <= max) return trimmed;
+  const head = trimmed.slice(0, max);
+  const clause = Math.max(
+    ...[", ", "; ", ": ", " - ", " – ", " — "].map((b) => head.lastIndexOf(b)),
+  );
+  if (clause > max / 2) return head.slice(0, clause).trim();
+  const word = trimmed.slice(0, max - 1).lastIndexOf(" ");
+  const kept = word > max / 2 ? trimmed.slice(0, word) : trimmed.slice(0, max - 1);
+  return `${kept.replace(/[\s,;:.\-–—]+$/, "")}…`;
+}
+
+/**
  * The key stage a year-group label implies (England): Reception / Nursery / EYFS → `eyfs`,
  * Year 1–2 → `ks1`, 3–6 → `ks2`, 7–9 → `ks3`, 10–11 → `ks4`, 12–13 → `post16`. Anything else
  * (blank, "Mixed", a Scottish P-level) is `undefined` and the caller leaves `ageBand` unset.
@@ -186,7 +204,7 @@ export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date
   return parseLesson({
     version: 1,
     id: lessonId,
-    title: input.brief.topic.trim().slice(0, LESSON_TITLE_MAX),
+    title: lessonTitle(input.brief.topic),
     themeId: input.themeId ?? DEFAULT_THEME_ID,
     slides: [],
     createdAt: at,

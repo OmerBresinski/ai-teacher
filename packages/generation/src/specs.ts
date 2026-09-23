@@ -1016,7 +1016,16 @@ export function assignFactIds(
   }
   // A question written for the exit ticket (`use: "exit"`) that no entry claims goes to the first
   // check-phase slide (TEACH-244): otherwise its writer never sees it and reaches for a worksheet
-  // question instead. Deterministic — no schema issue, no retry.
+  // question instead. Deterministic — no schema issue, no retry. Not a question that cannot be
+  // asked openly (declared `forms` without open-response, or none declared and three distractors,
+  // its native multiple choice): a check slide prints stems only, and `outlineFromFacts` leaves
+  // such a question off the exit ticket on purpose.
+  const stemOnly = (q: PlanFactsLike["questions"][number]) => {
+    const declared = (q as { forms?: readonly string[] }).forms ?? [];
+    return declared.length > 0
+      ? declared.includes("open-response")
+      : (q.distractors?.length ?? 0) < 3;
+  };
   const check = skeleton.outline.findIndex((entry) => entry.phase === "check");
   if (check !== -1) {
     const claimed = new Set(
@@ -1026,7 +1035,7 @@ export function assignFactIds(
         .map((ref) => ref.index),
     );
     facts.questions.forEach((q, index) => {
-      if (q.use !== "exit" || claimed.has(index)) return;
+      if (q.use !== "exit" || claimed.has(index) || !stemOnly(q)) return;
       added.set(check, [...(added.get(check) ?? []), { type: "question", index }]);
     });
   }

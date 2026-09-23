@@ -91,6 +91,11 @@ export type OutlineFromFactsResult = {
 
 /** The brief's `adds` / `avoids` cap (`SPEC_LIMITS.item`), restated so this module has no `@tj/slides` import. */
 const BRIEF_MAX = 160;
+/**
+ * The exit ticket's brief names the items to set as multiple choice with their options (an exit
+ * question the facts give no open form and no open substitute); the lab check reads it.
+ */
+export const EXIT_OPTIONS_NOTE = "Multiple choice for objective";
 /** The fixed slots: title, objectives and the closing exit ticket. */
 const FIXED_SLOTS = 3;
 /** How many terms one vocabulary slide shows at most (the widest theme grid). */
@@ -253,6 +258,19 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     return forms.filter((f) => f !== "true-false" || tagged);
   };
   const admitsOpen = (i: number) => formsOf(i).includes("open-response");
+  /**
+   * Question `i` has a form a practise slide can show: open, true/false, or multiple choice with
+   * the three distractors a four-option slide needs. A multiple-choice-only question with fewer
+   * would fall back to a stem with no options.
+   */
+  const showable = (i: number) => {
+    const forms = formsOf(i);
+    return (
+      forms.includes("open-response") ||
+      forms.includes("true-false") ||
+      (forms.includes("multiple-choice") && (facts.questions[i]?.distractors?.length ?? 0) >= 3)
+    );
+  };
   /** A practise slide from question `i` in one of its declared forms (`open` asks for open-response). */
   const questionSlot = (o: number, i: number, open = false): Slot => {
     const q = facts.questions[i];
@@ -314,7 +332,11 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   const worksheetQuestionOf = (o: number) =>
     facts.questions
       .flatMap((q, j) =>
-        q.use === "worksheet" && !used.questions.has(j) && names(q.objectiveRefs, o) && fair(j)
+        q.use === "worksheet" &&
+        !used.questions.has(j) &&
+        names(q.objectiveRefs, o) &&
+        showable(j) &&
+        fair(j)
           ? [j]
           : [],
       )
@@ -336,7 +358,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       : refIndices(facts.questions[i]?.objectiveRefs).every((o) => fullyTaught(o));
   };
   const firstUnusedQuestion = (o: number) =>
-    questionsOf(o).find((i) => !used.questions.has(i) && fair(i));
+    questionsOf(o).find((i) => !used.questions.has(i) && showable(i) && fair(i));
   const pickWorkedExample = (among: number[]) => {
     const free = among.filter((x) => !used.workedExamples.has(x));
     return free.find((x) => facts.workedExamples[x]?.misconceptionRef !== undefined) ?? free[0];
@@ -497,9 +519,11 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       // ticket rather than overflowing the slide.
       const short = (i: number | undefined) =>
         i !== undefined && (facts.questions[i]?.stem.length ?? Infinity) <= SHARED_STEM_MAX;
+      // The slide prints stems only, so a question joins it only when the facts let it be asked
+      // openly (`admitsOpen`): a multiple-choice-native stem there would have no options.
       const i =
         questionsOf(o).find(
-          (j) => !used.questions.has(j) && !taken.has(j) && short(j) && fair(j),
+          (j) => !used.questions.has(j) && !taken.has(j) && short(j) && admitsOpen(j) && fair(j),
         ) ??
         facts.questions
           .flatMap((q, j) =>
@@ -508,6 +532,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
             !taken.has(j) &&
             names(q.objectiveRefs, o) &&
             short(j) &&
+            admitsOpen(j) &&
             fair(j)
               ? [j]
               : [],
@@ -669,7 +694,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // objective, then questions.
   while (budget > 0 && teachMore() === "placed") {}
   facts.questions.forEach((q, i) => {
-    if (budget <= 0 || used.questions.has(i) || !isSlideQuestion(q) || !fair(i)) return;
+    if (budget <= 0 || used.questions.has(i) || !isSlideQuestion(q) || !showable(i) || !fair(i))
+      return;
     place(questionSlot(q.objectiveRefs[0]?.index ?? 0, i));
   });
 
@@ -967,14 +993,62 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   });
 
   // Only fair exit questions: one testing a key idea left off is withheld (gap above).
-  const exitQuestions = facts.questions.flatMap((q, i) => (q.use === "exit" && fair(i) ? [i] : []));
+  const fairExit = facts.questions.flatMap((q, i) => (q.use === "exit" && fair(i) ? [i] : []));
   const withheld = facts.questions.some((q, i) => q.use === "exit" && !fair(i));
+  // An exit-ticket item is a stem with no options, so an exit question the facts do not let be
+  // asked openly (multiple-choice-native) is replaced: dropped when its objective already has an
+  // open exit question, else swapped for an unused fair open question on that objective (slide
+  // questions first, then the worksheet's, easiest tier first). Only when none exists does it stay,
+  // and the brief says to set it with its options.
+  const exitQuestions: number[] = [];
+  const withOptions: number[] = [];
+  const firstObjectiveOf = (i: number) => refIndices(facts.questions[i]?.objectiveRefs)[0];
+  const openExit = fairExit.filter(admitsOpen);
+  for (const i of fairExit) {
+    if (admitsOpen(i)) {
+      exitQuestions.push(i);
+      continue;
+    }
+    const o = firstObjectiveOf(i);
+    if (o !== undefined && openExit.some((j) => firstObjectiveOf(j) === o)) continue;
+    const swap = facts.questions
+      .flatMap((q, j) =>
+        q.use !== "exit" &&
+        o !== undefined &&
+        !used.questions.has(j) &&
+        !exitQuestions.includes(j) &&
+        names(q.objectiveRefs, o) &&
+        admitsOpen(j) &&
+        fair(j)
+          ? [j]
+          : [],
+      )
+      .sort(
+        (a, b) =>
+          Number(facts.questions[a]?.use === "worksheet") -
+            Number(facts.questions[b]?.use === "worksheet") ||
+          tierRank(a) - tierRank(b) ||
+          a - b,
+      )[0];
+    if (swap !== undefined) {
+      used.questions.add(swap);
+      exitQuestions.push(swap);
+    } else {
+      exitQuestions.push(i);
+      withOptions.push(i);
+    }
+  }
+  const optioned = dedupe(withOptions.map((i) => (firstObjectiveOf(i) ?? 0) + 1));
+  const optionsNote =
+    optioned.length === 0
+      ? ""
+      : ` ${EXIT_OPTIONS_NOTE}${optioned.length === 1 ? "" : "s"} ${optioned.join(" and ")}, ${optioned.length === 1 ? "with" : "each with"} its options listed.`;
   outline.push({
     kind: "exit-ticket",
     factRefs: objectiveRefs(all),
     phase: "check",
     brief: brief(
-      `${count} question${count === 1 ? "" : "s"}, one per objective${withheld ? ", each on what the slides taught" : ""}.`,
+      `${count} question${count === 1 ? "" : "s"}, one per objective${withheld ? ", each on what the slides taught" : ""}.${optionsNote}`,
     ),
   });
   outlineFactRefs.push({

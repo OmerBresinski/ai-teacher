@@ -5,6 +5,7 @@ import {
   defaultDurationMin,
   deriveAgeBand,
   lessonFromBrief,
+  lessonTitle,
   yearNumberOf,
 } from "./create-lesson";
 import { GUARD_MESSAGE } from "./identifier-guard";
@@ -176,5 +177,29 @@ describe("yearNumberOf", () => {
     expect(yearNumberOf("P5")).toBeUndefined();
     expect(yearNumberOf("")).toBeUndefined();
     expect(yearNumberOf(undefined)).toBeUndefined();
+  });
+});
+
+describe("lessonTitle", () => {
+  test("keeps a topic that fits", () => {
+    expect(lessonTitle("  Volcanoes  ")).toBe("Volcanoes");
+  });
+
+  test("cuts a long topic at a clause break, not mid-phrase", () => {
+    const topic =
+      "The causes of the First World War, including alliances, militarism and the assassination at Sarajevo";
+    expect(lessonTitle(topic)).toBe("The causes of the First World War, including alliances");
+    expect(lessonTitle(topic).length).toBeLessThanOrEqual(80);
+  });
+
+  test("without a clause break, cuts at a word break with an ellipsis", () => {
+    const topic = `${"word ".repeat(20)}end`;
+    const title = lessonTitle(topic);
+    expect(title.length).toBeLessThanOrEqual(80);
+    expect(title.endsWith("word…")).toBe(true);
+  });
+
+  test("a topic with no break is cut hard to the limit", () => {
+    expect(lessonTitle("a".repeat(200))).toHaveLength(80);
   });
 });

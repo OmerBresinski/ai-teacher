@@ -774,6 +774,16 @@ describe("assignFactIds", () => {
     );
     const facts3 = assignFactIds(noCheck, f, 60);
     expect(facts3.outline[9]?.factRefs).not.toContain("q12");
+    // A multiple-choice-native exit question (three distractors, no declared open form) is not
+    // attached: the check slide would print its stem without options.
+    const mc = structuredClone(f);
+    const q12 = mc.questions[11];
+    if (!q12) throw new Error("fixture has no question 12");
+    q12.distractors = [{ text: "a" }, { text: "b" }, { text: "c" }];
+    expect(assignFactIds(FIXTURES.planSkeleton, mc, 60).outline[9]?.factRefs).not.toContain("q12");
+    // Declared askable openly: attached as before.
+    Object.assign(q12, { forms: ["multiple-choice", "open-response"] });
+    expect(assignFactIds(FIXTURES.planSkeleton, mc, 60).outline[9]?.factRefs).toContain("q12");
   });
 
   test("row 6: the fixtures merge into valid LessonFacts with k/m ids, briefs, phases and pitch", () => {

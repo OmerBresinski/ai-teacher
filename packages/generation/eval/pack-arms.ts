@@ -252,10 +252,11 @@ export interface AdmissionRule {
   correct: "yes";
   rejectSupportedByEvidence: "no";
   /**
-   * np2 gates (pack-check.v2, `experiments/pack-gates.v2.json`): a fact is dropped when any checker
-   * records `pitched` = no or `valuesStated` = no, or records neither (a v1 verdict cannot pass).
+   * np2 gates (pack-check.v2): a fact is dropped when any checker records `pitched` = no, or no
+   * `pitched` at all (a v1 verdict cannot pass). v2 (`experiments/pack-gates.v2.json`) also rejects
+   * `valuesStated` = no or missing; v3 (`pack-gates.v3.json`, pitched only) leaves it out.
    */
-  gates?: { rejectPitched: "no"; rejectValuesStated: "no" };
+  gates?: { rejectPitched: "no"; rejectValuesStated?: "no" | undefined };
 }
 
 const GatesNoteSchema = z.object({
@@ -264,14 +265,22 @@ const GatesNoteSchema = z.object({
   checkers: z.array(z.enum(["luna", "sol"])).min(1),
   correct: z.literal("yes"),
   rejectSupportedByEvidence: z.literal("no"),
-  gates: z.strictObject({ rejectPitched: z.literal("no"), rejectValuesStated: z.literal("no") }),
+  gates: z.strictObject({
+    rejectPitched: z.literal("no"),
+    rejectValuesStated: z.literal("no").optional(),
+  }),
 });
 
-/** The np2 admission rule, registered in `experiments/pack-gates.v2.json` (np1.json untouched). */
-export async function loadPackGatesV2(): Promise<AdmissionRule & { rule: string }> {
-  const path = `${import.meta.dir}/experiments/pack-gates.v2.json`;
+/** A registered pack admission rule, `experiments/pack-gates.<version>.json` (np1.json untouched). */
+export async function loadPackGates(
+  version: "v2" | "v3",
+): Promise<AdmissionRule & { rule: string }> {
+  const path = `${import.meta.dir}/experiments/pack-gates.${version}.json`;
   return GatesNoteSchema.parse(await Bun.file(path).json());
 }
+
+/** The np2 admission rule, registered in `experiments/pack-gates.v2.json`. */
+export const loadPackGatesV2 = () => loadPackGates("v2");
 
 /** Why a checker's verdict failed the rule, one tag per failed test (`correct`, `pitched`, ...). */
 export function failedTests(v: CheckVerdict | null, rule: AdmissionRule): string[] {
@@ -281,7 +290,8 @@ export function failedTests(v: CheckVerdict | null, rule: AdmissionRule): string
   if (v.supportedByEvidence === rule.rejectSupportedByEvidence) out.push("supported");
   if (rule.gates) {
     if (v.pitched === undefined || v.pitched === rule.gates.rejectPitched) out.push("pitched");
-    if (v.valuesStated === undefined || v.valuesStated === rule.gates.rejectValuesStated)
+    const values = rule.gates.rejectValuesStated;
+    if (values !== undefined && (v.valuesStated === undefined || v.valuesStated === values))
       out.push("valuesStated");
   }
   return out;
@@ -301,7 +311,8 @@ export interface DroppedFact {
 /**
  * The pre-registered admission rule (np1.json `packAdmission`), applied structurally: a fact stays
  * only if every named checker recorded `correct` = yes and none recorded `supportedByEvidence` =
- * no; with np2's `gates`, also none recorded `pitched` = no or `valuesStated` = no. A missing verdict or a missing section in the report fails the fact. Facts are numbered as
+ * no; with np2's `gates`, also none recorded `pitched` = no (and, under v2, `valuesStated` = no).
+ * A missing verdict or a missing section in the report fails the fact. Facts are numbered as
  * the checkers saw them (FACT_TYPES order, then position). Misconception refs are renumbered to
  * the kept misconceptions; a ref to a dropped misconception is removed.
  */

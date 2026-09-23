@@ -22,7 +22,7 @@ import {
 import { assignFactIds } from "../src/specs";
 import { shapeOf } from "../src/stages/shared";
 import { toOutlineFacts } from "./from-facts";
-import { labChecks } from "./lab";
+import { isMcNative, labChecks } from "./lab";
 import { outlineFromFacts as outlineBefore } from "./replay/outline-from-facts.before";
 
 const ROOT = join(import.meta.dir, "results", "lab");
@@ -49,6 +49,10 @@ type Row = {
   gapsAfter: number;
   labBefore: string;
   labAfter: string;
+  mcStemSaved: number;
+  mcStemAfter: number;
+  mcOptionsAfter: number;
+  mc: ReturnType<typeof mcCounts>;
   kindsAfter: string;
   newGaps: string[];
 };
@@ -89,10 +93,36 @@ function labCounts(lesson: Lesson): string {
   return `${n("key-idea-not-taught")}/${n("question-on-untaught-key-idea")}`;
 }
 
+/** Lab `mc-stem-without-options` findings, and the option tells on the facts and on MC slides. */
+function mcCounts(lesson: Lesson) {
+  const findings = labChecks(lesson);
+  const n = (check: string, slides: boolean) =>
+    findings.filter((f) => f.check === check && (f.slide !== undefined) === slides).length;
+  return {
+    stem: findings.filter((f) => f.check === "mc-stem-without-options").length,
+    withOptions: findings.filter((f) => f.check === "mc-options-on-stem-step").length,
+    factsLongest: n("mc-tell-longest", false),
+    factsPunct: n("mc-tell-punctuation", false),
+    slidesLongest: n("mc-tell-longest", true),
+    slidesPunct: n("mc-tell-punctuation", true),
+    mcSlides: lesson.slides.filter((s) => s.question?.type === "multiple-choice").length,
+    mcFacts: (lesson.facts?.questions ?? []).filter(isMcNative).length,
+  };
+}
+
 async function main() {
   const glob = arg("glob") ?? "np1";
   // A `--from-facts` rerun (`<run>-ff`) reuses its original's facts: not a run of its own here.
-  const runs = (await readdir(ROOT)).filter((d) => d.startsWith(glob) && !d.endsWith("-ff")).sort();
+  // `--originals`: only each brief's first run, not its `-ff`, `-ff2`, `-capped` or `-superseded` reruns.
+  const originals = process.argv.includes("--originals");
+  const runs = (await readdir(ROOT))
+    .filter(
+      (d) =>
+        d.startsWith(glob) &&
+        !d.endsWith("-ff") &&
+        (!originals || !/-ff\d*(-|$)|-capped|-superseded/.test(d)),
+    )
+    .sort();
   const rows: Row[] = [];
   const skipped: string[] = [];
   for (const run of runs) {
@@ -148,6 +178,10 @@ async function main() {
       gapsAfter: after.gaps.length,
       labBefore: labCounts(lesson),
       labAfter: labCounts({ ...lesson, facts: merged, slides: [] }),
+      mcStemSaved: mcCounts(lesson).stem,
+      mcStemAfter: mcCounts({ ...lesson, facts: merged, slides: [] }).stem,
+      mcOptionsAfter: mcCounts({ ...lesson, facts: merged, slides: [] }).withOptions,
+      mc: mcCounts(lesson),
       kindsAfter: after.skeleton.outline
         .slice(2, -1)
         .map((e, i) =>
@@ -179,6 +213,22 @@ async function main() {
   }
   L.push(
     `| **total (${rows.length} runs)** | ${rows.filter((r) => r.fidelity === "same").length} same | ${sum("keyIdeas")} | ${sum("contentBefore")}→${sum("contentAfter")} | ${sum("unplacedBefore")}→${sum("unplacedAfter")} | ${sum("untaughtTestedBefore")}→${sum("untaughtTestedAfter")} | ${sum("exitBefore")}→${sum("exitAfter")} | ${sum("gapsBefore")}→${sum("gapsAfter")} | |`,
+  );
+  L.push(
+    "",
+    "Multiple-choice-native stems on stem-only steps (exit ticket, instructions, open-response, discussion, starter), and option tells (code-only: correct option strictly longest; only one with terminal punctuation):",
+    "",
+    "| run | MC stems w/o options saved outline→new | exit items set with options (new) | MC-native facts | tells on facts longest/punct | MC slides | tells on saved MC slides longest/punct |",
+    "|---|---|---|---|---|---|---|",
+  );
+  for (const r of rows) {
+    L.push(
+      `| ${r.run} | ${r.mcStemSaved}→${r.mcStemAfter} | ${r.mcOptionsAfter} | ${r.mc.mcFacts} | ${r.mc.factsLongest}/${r.mc.factsPunct} | ${r.mc.mcSlides} | ${r.mc.slidesLongest}/${r.mc.slidesPunct} |`,
+    );
+  }
+  const mcSum = (key: keyof ReturnType<typeof mcCounts>) => rows.reduce((t, r) => t + r.mc[key], 0);
+  L.push(
+    `| **total (${rows.length} runs)** | ${sum("mcStemSaved")}→${sum("mcStemAfter")} | ${sum("mcOptionsAfter")} | ${mcSum("mcFacts")} | ${mcSum("factsLongest")}/${mcSum("factsPunct")} | ${mcSum("mcSlides")} | ${mcSum("slidesLongest")}/${mcSum("slidesPunct")} |`,
   );
   L.push("", "New outlines (between objectives and exit ticket):");
   for (const r of rows) L.push(`- ${r.run}: ${r.kindsAfter}`);

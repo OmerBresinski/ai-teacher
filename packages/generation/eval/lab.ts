@@ -82,7 +82,7 @@ import {
   MAX_OUTPUT_TOKENS_OBJECTIVES,
   runLabPipeline,
 } from "../src/lab/plan-pipeline";
-import { outlineFromFacts } from "../src/outline-from-facts";
+import { EXIT_OPTIONS_NOTE, outlineFromFacts } from "../src/outline-from-facts";
 import { PROMPT_VERSIONS } from "../src/prompts";
 import { planFactsObjectivePrompt } from "../src/prompts/plan-facts-objective";
 import { planObjectivesPrompt } from "../src/prompts/plan-objectives";
@@ -315,6 +315,36 @@ function elementTexts(slide: Slide): {
 const REFERENT =
   /\b(this|that) (road|fort|coin|object)\b|\b(this|the|that) (picture|photo(?:graph)?|image|diagram|map|chart|table|graph|drawing|painting)\b|\b(shown (?:here|below|above)|in the picture|in the photograph|look at the (?:picture|photo|image|diagram|map))\b/i;
 
+/** Kinds that print a question's stem with no options: an MC-native stem there asks nothing answerable. */
+export const STEM_ONLY_KINDS: ReadonlySet<string> = new Set([
+  "exit-ticket",
+  "instructions",
+  "open-response",
+  "discussion",
+  "starter",
+]);
+
+/** Multiple-choice is the question's native form: three or more distractors. */
+export const isMcNative = (q: { distractors?: readonly unknown[] | undefined }) =>
+  (q.distractors?.length ?? 0) >= 3;
+
+const TERMINAL = /[.!?]["'”’)]*$/;
+
+/**
+ * The option tells a pupil can read without knowing the answer, by length and punctuation only:
+ * `longest` — the correct option is strictly the longest; `punctuation` — it is the only option
+ * that ends in terminal punctuation. Code-only: never reads what the options mean.
+ */
+export function mcTells(correct: string, others: readonly string[]): ("longest" | "punctuation")[] {
+  const tells: ("longest" | "punctuation")[] = [];
+  const c = correct.trim();
+  const rest = others.map((o) => o.trim());
+  if (rest.length === 0) return tells;
+  if (rest.every((o) => c.length > o.length)) tells.push("longest");
+  if (TERMINAL.test(c) && rest.every((o) => !TERMINAL.test(o))) tells.push("punctuation");
+  return tells;
+}
+
 export function labChecks(lesson: Lesson, worksheet?: Worksheet): LabFinding[] {
   const out: LabFinding[] = [];
   const facts = lesson.facts;
@@ -524,6 +554,69 @@ export function labChecks(lesson: Lesson, worksheet?: Worksheet): LabFinding[] {
         detail: `${o.id} "${o.text}": taught on [${taught.join(",")}], checked on [${checked.join(",")}]`,
       });
   }
+
+  // (h2) A multiple-choice-native question (three or more distractors: its native form, since
+  // lesson facts keep no declared `forms`) on a step that prints only its stem. Code-only.
+  // An exit ticket may set one as multiple choice: on a rendered deck its answer and distractors
+  // all appear on the slide; on an outline alone, the brief names its objective for options.
+  facts.outline.forEach((entry, oi) => {
+    if (!STEM_ONLY_KINDS.has(entry.kind)) return;
+    const slide = slides[byId.get(entry.id) ?? -1];
+    const shown = slide
+      ? norm(
+          elementTexts(slide)
+            .map((e) => e.text)
+            .join("\n"),
+        )
+      : undefined;
+    const noted = new Set(
+      (entry.brief?.adds.split(EXIT_OPTIONS_NOTE)[1]?.match(/\d+/g) ?? []).map(Number),
+    );
+    for (const r of entry.factRefs) {
+      const q = qById.get(r);
+      if (!q || !isMcNative(q)) continue;
+      const options = [q.answer, ...(q.distractors ?? []).map((d) => d.text)];
+      const objective = facts.objectives.findIndex((o) => o.id === q.objectiveRefs?.[0]) + 1;
+      const withOptions =
+        entry.kind === "exit-ticket" &&
+        (shown === undefined
+          ? noted.has(objective)
+          : options.every((t) => shown.includes(norm(t).slice(0, 30))));
+      if (withOptions)
+        out.push({
+          check: "mc-options-on-stem-step",
+          slide: oi + 1,
+          detail: `${entry.id} (${entry.kind}) sets ${q.id} with its options ${shown === undefined ? "(planned)" : "(rendered)"}`,
+        });
+      else
+        out.push({
+          check: "mc-stem-without-options",
+          slide: oi + 1,
+          detail: `${entry.id} (${entry.kind}) asks ${q.id} without its ${q.distractors?.length} options: "${q.stem.slice(0, 80)}"`,
+        });
+    }
+  });
+
+  // (h3) Option tells (code-only, length and terminal punctuation): the facts' answer against its
+  // distractors, and each rendered multiple-choice slide's correct option against the others.
+  for (const q of facts.questions) {
+    if (!isMcNative(q)) continue;
+    for (const tell of mcTells(
+      q.answer,
+      (q.distractors ?? []).map((d) => d.text),
+    ))
+      out.push({ check: `mc-tell-${tell}`, detail: `${q.id} (facts): "${q.stem.slice(0, 80)}"` });
+  }
+  slides.forEach((slide, i) => {
+    const data = slide.question;
+    if (data?.type !== "multiple-choice") return;
+    const text = new Map(elementTexts(slide).map((e) => [e.id, e.text]));
+    const correct = data.options.filter((o) => o.correct).map((o) => text.get(o.id) ?? "");
+    const others = data.options.filter((o) => !o.correct).map((o) => text.get(o.id) ?? "");
+    if (correct.length !== 1 || others.length === 0) return;
+    for (const tell of mcTells(correct[0] ?? "", others))
+      out.push({ check: `mc-tell-${tell}`, slide: i + 1, detail: `slide ${i + 1} (${slide.id})` });
+  });
 
   // (i) Worksheet-tagged questions when no worksheet was requested still reserve pool.
   const uses = { slide: 0, worksheet: 0, exit: 0, any: 0, untagged: 0 };

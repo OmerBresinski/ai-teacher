@@ -532,7 +532,10 @@ describe("outlineFromFacts: briefs", () => {
       "Pupils say what they already think about Rivers before being told.",
     );
     expect(adds("vocabulary")).toBe("Defines the key words: term 1a, term 1b, term 2a, term 2b.");
-    expect(adds("exit-ticket")).toBe("2 questions, one per objective.");
+    // The fixture's exit questions are multiple-choice-native with no open question to swap in.
+    expect(adds("exit-ticket")).toBe(
+      "2 questions, one per objective. Multiple choice for objectives 1 and 2, each with its options listed.",
+    );
     expect(adds("multiple-choice")).toMatch(/^Checks: Slide question/);
   });
 });
@@ -643,7 +646,12 @@ describe("outlineFromFacts: the shared practise slide (ruling 81)", () => {
   });
 
   test("two objectives at six slides: two teaching slides and one shared practise slide", () => {
-    const r = run({ n: 2, slideCount: 6, shape: shapeOf("Apply") });
+    const r = run({
+      n: 2,
+      slideCount: 6,
+      shape: shapeOf("Apply"),
+      options: { forms: ["multiple-choice", "open-response"] },
+    });
     const k = kinds(r);
     expect(k.slice(2, 4).every((x) => x === "content" || x === "worked-example")).toBe(true);
     expect(k[4]).toBe("instructions");
@@ -664,7 +672,7 @@ describe("outlineFromFacts: the shared practise slide (ruling 81)", () => {
   });
 
   test("the shared slide falls back on worksheet questions, never an exit question", () => {
-    const facts = factsFor(2);
+    const facts = factsFor(2, { forms: ["multiple-choice", "open-response"] });
     const r = run({
       n: 2,
       slideCount: 6,
@@ -674,6 +682,19 @@ describe("outlineFromFacts: the shared practise slide (ruling 81)", () => {
       "worksheet",
       "worksheet",
     ]);
+  });
+
+  test("the shared slide prints stems only: a multiple-choice-native question never joins it", () => {
+    // Native forms: three distractors make every slide and worksheet question multiple choice.
+    const r = run({ n: 2, slideCount: 6, shape: shapeOf("Apply") });
+    expect(kinds(r)).not.toContain("instructions");
+    for (const [position, entry] of r.result.skeleton.outline.entries()) {
+      if (entry.kind !== "instructions" && entry.kind !== "open-response") continue;
+      for (const ref of refsAt(r, position)) {
+        if (ref.type === "question")
+          expect(r.facts.questions[ref.index]?.distractors?.length ?? 0).toBeLessThan(3);
+      }
+    }
   });
 
   test("the shared slide counts once towards the practise floor", () => {
@@ -915,8 +936,8 @@ describe("outlineFromFacts: every key idea taught, every question fair (np1 RC1)
     }
     // The exit ticket still checks the objectives that are fully taught.
     expect(exitRefs(r).length).toBe(3 - untaught.size);
-    expect(r.result.skeleton.outline.at(-1)?.brief?.adds).toBe(
-      "3 questions, one per objective, each on what the slides taught.",
+    expect(r.result.skeleton.outline.at(-1)?.brief?.adds).toMatch(
+      /^3 questions, one per objective, each on what the slides taught\. Multiple choice for objectives? /,
     );
   });
 
@@ -973,5 +994,59 @@ describe("outlineFromFacts: every key idea taught, every question fair (np1 RC1)
         false,
       );
     }
+  });
+});
+
+describe("outlineFromFacts: the exit ticket prints stems only (W2e)", () => {
+  const exitAt = (r: ReturnType<typeof run>) => r.result.skeleton.outline.length - 1;
+  const exitQuestions = (r: ReturnType<typeof run>) =>
+    refsAt(r, exitAt(r)).flatMap((ref) => (ref.type === "question" ? [ref.index] : []));
+
+  test("a multiple-choice-native exit question is swapped for an open question on its objective", () => {
+    const facts = factsFor(1);
+    facts.questions.push({
+      stem: "Open worksheet question for objective 1?",
+      answer: "A full answer",
+      reasoning: "Because.",
+      tier: "core",
+      use: "worksheet",
+      objectiveRefs: [obj(0)],
+    });
+    const open = facts.questions.length - 1;
+    const r = run({ n: 1, slideCount: 8, facts });
+    expect(exitQuestions(r)).toEqual([open]);
+    // The objective is still checked, and the swapped question is on no other slide.
+    expect(r.result.coverage[0]?.checked).toEqual([exitAt(r)]);
+    const elsewhere = r.result.outlineFactRefs
+      .filter((e) => e.index !== exitAt(r))
+      .flatMap((e) => e.factRefs.filter((f) => f.type === "question").map((f) => f.index));
+    expect(elsewhere).not.toContain(open);
+    expect(r.result.unplaced.questions).not.toContain(open);
+    expect(r.result.skeleton.outline.at(-1)?.brief?.adds).toBe("1 question, one per objective.");
+  });
+
+  test("dropped when its objective already has an open exit question", () => {
+    const facts = factsFor(1);
+    facts.questions.push({
+      stem: "Open exit question for objective 1?",
+      answer: "A full answer",
+      reasoning: "Because.",
+      tier: "core",
+      use: "exit",
+      objectiveRefs: [obj(0)],
+    });
+    const r = run({ n: 1, slideCount: 8, facts });
+    const asked = exitQuestions(r);
+    expect(asked).toEqual([facts.questions.length - 1]);
+    expect(r.result.skeleton.outline.at(-1)?.brief?.adds).not.toMatch(/Multiple choice/);
+  });
+
+  test("an exit question declared askable openly stays", () => {
+    const facts = factsFor(1);
+    const exit = facts.questions.find((q) => q.use === "exit");
+    if (!exit) throw new Error("fixture has no exit question");
+    exit.forms = ["multiple-choice", "open-response"];
+    const r = run({ n: 1, slideCount: 8, facts });
+    expect(exitQuestions(r)).toEqual([facts.questions.indexOf(exit)]);
   });
 });

@@ -47,8 +47,21 @@ export const SourceSchema = z.strictObject({
   /** Wikipedia: the REST `content-revision-id`; other sources: an ETag or sha256 of the body. */
   revision: z.string().min(1),
   fetchedAt: z.string().datetime(),
-  licence: z.enum(["CC-BY-SA-4.0", "CC-BY-4.0", "permission", "public-domain"]),
+  licence: z.enum(["CC-BY-SA-4.0", "CC-BY-4.0", "permission", "public-domain", "OGL-3.0"]),
   sentences: z.array(SentenceSchema),
+  /** Set when the source is one Oak National Academy lesson (`oak-import.ts`); `url` is its uri. */
+  oak: z
+    .strictObject({
+      kind: z.literal("oak"),
+      lessonSlug: z.string().min(1),
+      /** The lesson's page on the Oak website, built from the slug. */
+      webUrl: z.string().url(),
+      subject: z.string().min(1),
+      keyStage: z.string().min(1),
+      yearGroups: z.array(z.string()),
+      units: z.array(z.strictObject({ uri: z.string().url(), title: z.string().min(1) })),
+    })
+    .optional(),
 });
 export type PackSource = z.infer<typeof SourceSchema>;
 
@@ -59,8 +72,23 @@ export const EvidenceSchema = z.strictObject({
 });
 export type Evidence = z.infer<typeof EvidenceSchema>;
 
+/**
+ * Set on a fact copied from Oak (`oak-import.ts`): the Oak item it came from, and which of the
+ * fact's required fields Oak has no counterpart for and were filled with a verbatim copy of the
+ * item's own text (e.g. a key learning point is a statement only, so `explanation` and `example`
+ * repeat it). A later fill step knows exactly which fields are placeholders.
+ */
+export const OakFactOriginSchema = z.strictObject({
+  itemUri: z.string().url(),
+  copiedFields: z.array(z.string().min(1)),
+});
+
 const withEvidence = <T extends z.ZodRawShape>(shape: T) =>
-  z.strictObject({ ...shape, evidence: z.array(EvidenceSchema).min(1) });
+  z.strictObject({
+    ...shape,
+    evidence: z.array(EvidenceSchema).min(1),
+    oak: OakFactOriginSchema.optional(),
+  });
 
 const MisconceptionOrdinal = z.strictObject({
   type: z.literal("misconception"),
@@ -131,7 +159,7 @@ export const PackSchema = z.strictObject({
   subject: z.string().min(1),
   yearGroup: z.string().min(1),
   /** Which authoring arm wrote the facts; a pack is one arm's output, never a mix. */
-  arm: z.enum(["luna-rewrite", "sol-rewrite", "sol-knowledge", "hand"]),
+  arm: z.enum(["luna-rewrite", "sol-rewrite", "sol-knowledge", "hand", "oak-import"]),
   writtenAt: z.string().datetime(),
   /** The prompt versions and model ids the facts were written and linked with. */
   provenance: z.strictObject({

@@ -14,9 +14,9 @@ import {
   defaultDurationMin,
   deriveAgeBand,
   type GenerateLesson,
-  LESSON_TITLE_MAX,
   type Lesson,
   type LessonFacts,
+  lessonTitle,
   type PlanLesson,
   type SourceRef,
 } from "@tj/domain/documents";
@@ -72,7 +72,7 @@ export function replanLesson(
   };
   const next: Lesson = {
     ...withoutCheckpoint(lesson),
-    title: topicChanged ? input.brief.topic.trim().slice(0, LESSON_TITLE_MAX) : lesson.title,
+    title: topicChanged ? lessonTitle(input.brief.topic) : lesson.title,
     yearGroup,
     ageBand,
     subject: input.subject ?? lesson.subject,

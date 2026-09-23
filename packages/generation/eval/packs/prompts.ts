@@ -267,6 +267,58 @@ export const packRewritePrompt: StructuredPrompt<PackWriteInput> = {
     ].join("\n"),
 };
 
+/** A recall call's answer: the rewrite call's lists and counts, with no evidence (no sources). */
+export const PackRecallOutputSchema = z.strictObject({
+  keyIdeas: z.array(z.strictObject(bare.keyIdea)).min(1).max(3),
+  misconceptions: z.array(z.strictObject(bare.misconception)).max(2),
+  vocabulary: z.array(z.strictObject(bare.vocabulary)).max(3),
+  workedExamples: z.array(z.strictObject(bare.workedExample)).max(1),
+  questions: z.array(z.strictObject(bare.question)).min(3).max(4),
+});
+export type PackRecallOutput = z.infer<typeof PackRecallOutputSchema>;
+
+export type PackRecallInput = PackKnowledgeInput;
+
+/*
+ * pack-recall.v1 (23 Sept 2026, PE; gpt-6-sol, medium; W7 arm M, "Sol from memory"). pack-rewrite.v2
+ * with every source clause removed (evidence, the copying check, own words, "from the sentences"),
+ * so the two arms differ only in where the facts come from. The checker described is W7's audit.
+ * Goals re-ranked for writing without a source: correct first, with a certainty rule for the
+ * values a writer adds most easily (dates, numbers, names; pack-check.v2 notes) and contested
+ * claims named as contested (the arm's non-Oak topics are Freud and his critics, Weimar); pitched
+ * second, with the key stage derived in code (`keyStageOf`, the pack-check.v2 finding that a
+ * supplied key stage makes the pitch call work) and the Years 7-9 band split from GCSE, since
+ * "Years 7-11: GCSE precision" is the band the np1 cells packs over-pitched. Counts in prose once
+ * (the gateway's non-strict route ignores minItems/maxItems). Not in `PACK_PROMPTS`: np1 freezes
+ * a hash of every entry there, and W7 is not np1.
+ */
+export const packRecallPrompt: StructuredPrompt<PackRecallInput> = {
+  version: "pack-recall.v1",
+  system: [
+    "You write teacher-facing facts, in British English, from your own knowledge, for one section of a UK school topic pack. You are given the topic, the subject, the year group with its key stage in England, and the section's outcome.",
+    "",
+    "How the output is checked: an auditor verifies every item against reputable sources and rates it true, an acceptable simplification, misleading or false; and rates it above, at or below the key stage against the national curriculum or exam-board specification.",
+    "",
+    "What matters, in order:",
+    "1. Correct. Every part of an item is true as written, each distractor's wrongness included; a simplification for the year group must stay true. Give a date, number, name or attribution only when you are certain of it, otherwise leave it out. Where experts disagree, say so rather than state one view as settled.",
+    "2. Pitched. Only concepts and terms pupils are taught at this key stage in this subject; leave out anything first taught later. Years 1-6: short concrete sentences in everyday words; Years 7-9: Key Stage 3 depth; Years 10-11: GCSE precision; Years 12-13: A-level detail and terminology.",
+    "3. Useful. Only what a pupil needs to reach this outcome, not the rest of the topic. Every string is slide-ready and makes sense on its own.",
+    "",
+    "Lists:",
+    "- keyIdeas, one to three, in teaching order. statement: one claim; explanation: how or why; example: a concrete case.",
+    "- misconceptions, up to two: errors pupils of this year group really make about this outcome. Omit rather than invent; none is fine.",
+    '- vocabulary, up to three: the terms this year group must learn for the outcome. sense: the meaning taught here (e.g. "in geography, not everyday use"); band: the years the definition is pitched at, as "Y5" or "Y7-9"; definition: in words the year group already has, none of them the term\'s own.',
+    "- workedExamples, one only when the outcome asks pupils to apply a method, formula or procedure to a concrete problem; otherwise none.",
+    "- questions, three or four, at least one at each tier (easy, core, stretch), each answered by a fact in your key ideas or vocabulary. demand is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). forms lists every way the question can be set as written: multiple-choice, true-false, open-response. Multiple-choice needs three distractors: the same kind of thing as the answer, believable to this year group, never a second correct answer; when three such distractors are not available, set the question as open-response and give none. Where a distractor or worked example heads off a misconception, say so in misconceptionRef.",
+  ].join("\n"),
+  user: (i) =>
+    [
+      `Topic: ${i.topic}`,
+      `Subject: ${i.subject}; Year group: ${i.yearGroup}${keyStageOf(i.yearGroup)}`,
+      `Outcome: ${i.outcome}`,
+    ].join("\n"),
+};
+
 export const packKnowledgePrompt: StructuredPrompt<PackKnowledgeInput> = {
   version: `pack-knowledge.v0${STUB_SUFFIX}`,
   system: STUB_SYSTEM("pack-knowledge"),

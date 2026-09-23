@@ -1,0 +1,127 @@
+{
+  "id": "cells.sol-recall",
+  "topic": "cells",
+  "subject": "Science",
+  "yearGroup": "Year 7",
+  "arm": "sol-recall",
+  "writtenAt": "2026-09-23T21:46:32.410Z",
+  "provenance": {
+    "writer": "model-recall: gpt-6-sol",
+    "writerPrompt": "pack-recall.v1"
+  },
+  "sources": [],
+  "sections": [
+    {
+      "id": "sec1",
+      "outcome": "Describe the parts of an animal cell and what each part does",
+      "sentenceIds": [],
+      "facts": {
+        "keyIdeas": [
+          {
+            "statement": "The cell membrane controls what enters and leaves an animal cell.",
+            "explanation": "It surrounds the cell and allows some substances to pass through.",
+            "example": "Oxygen enters a muscle cell through its cell membrane.",
+            "evidence": []
+          },
+          {
+            "statement": "The nucleus controls an animal cell's activities.",
+            "explanation": "It contains the genetic instructions the cell uses.",
+            "example": "A muscle cell's nucleus contains instructions used to make the proteins it needs.",
+            "evidence": []
+          },
+          {
+            "statement": "Mitochondria are where aerobic respiration releases energy for cell activities.",
+            "explanation": "Mitochondria are in the cytoplasm, the jelly-like material where many chemical reactions take place.",
+            "example": "Muscle cells often have many mitochondria because contracting requires energy.",
+            "evidence": []
+          }
+        ],
+        "misconceptions": [
+          {
+            "belief": "The nucleus controls what enters and leaves an animal cell.",
+            "correction": "The cell membrane controls what enters and leaves; the nucleus controls the cell's activities.",
+            "evidence": []
+          },
+          {
+            "belief": "The cytoplasm is just a filler between the cell's parts.",
+            "correction": "Many chemical reactions take place in the cytoplasm.",
+            "evidence": []
+          }
+        ],
+        "vocabulary": [
+          {
+            "term": "cell membrane",
+            "sense": "part of an animal cell",
+            "band": "Y7-9",
+            "definition": "The thin outer layer that controls what enters and leaves a cell.",
+            "evidence": []
+          },
+          {
+            "term": "nucleus",
+            "sense": "part of an animal cell",
+            "band": "Y7-9",
+            "definition": "The part that contains genetic instructions and controls the cell's activities.",
+            "evidence": []
+          },
+          {
+            "term": "mitochondria",
+            "sense": "parts of an animal cell",
+            "band": "Y7-9",
+            "definition": "Small parts of a cell where aerobic respiration releases energy.",
+            "evidence": []
+          }
+        ],
+        "workedExamples": [],
+        "questions": [
+          {
+            "stem": "Which part of an animal cell controls what enters and leaves it?",
+            "answer": "The cell membrane.",
+            "reasoning": "The cell membrane surrounds the cell and controls which substances pass through.",
+            "tier": "easy",
+            "use": "slide",
+            "demand": "recall",
+            "forms": ["multiple-choice", "open-response"],
+            "distractors": [
+              {
+                "text": "The nucleus",
+                "misconceptionRef": {
+                  "type": "misconception",
+                  "index": 0
+                }
+              },
+              {
+                "text": "The cytoplasm"
+              },
+              {
+                "text": "The mitochondria"
+              }
+            ],
+            "evidence": []
+          },
+          {
+            "stem": "Describe what the nucleus and cytoplasm each do in an animal cell.",
+            "answer": "The nucleus controls the cell's activities. Many chemical reactions take place in the cytoplasm.",
+            "reasoning": "The nucleus contains genetic instructions, while the cytoplasm is the jelly-like material where many reactions happen.",
+            "tier": "core",
+            "use": "worksheet",
+            "demand": "explanation",
+            "forms": ["open-response"],
+            "distractors": [],
+            "evidence": []
+          },
+          {
+            "stem": "Why do muscle cells often have many mitochondria?",
+            "answer": "Muscle cells need energy to contract, and aerobic respiration in mitochondria releases energy.",
+            "reasoning": "Having many mitochondria helps meet the energy needs of muscle contraction.",
+            "tier": "stretch",
+            "use": "exit",
+            "demand": "explanation",
+            "forms": ["open-response"],
+            "distractors": [],
+            "evidence": []
+          }
+        ]
+      }
+    }
+  ]
+}
