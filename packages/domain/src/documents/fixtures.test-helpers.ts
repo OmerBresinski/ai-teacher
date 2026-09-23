@@ -203,6 +203,8 @@ export const lessonFacts = (): LessonFacts => ({
     // An explain entry keeps the fixture clean for `explanation-share` (TEACH-210): the pipeline's
     // outlines carry one; this four-slide lesson simply has not materialised its content slide.
     { id: "s4", kind: "content", factRefs: ["o1", "v1"] },
+    // Ruling 81: every objective has a teaching entry, so `objective-taught` stays quiet.
+    { id: "s6", kind: "content", factRefs: ["o2"] },
     { id: "s5", kind: "multiple-choice", factRefs: ["q1", "o1"] },
   ],
   durationMin: 60,

@@ -144,7 +144,7 @@ export function applyObjectiveEdits(
     ...structuredClone(facts),
     objectives: edited,
     vocabulary: survivors(facts.vocabulary),
-    workedExamples: facts.workedExamples.map((x) => dropMisconceptionRef(structuredClone(x))),
+    workedExamples: survivors(facts.workedExamples).map(dropMisconceptionRef),
     questions: survivors(facts.questions).map((q) =>
       q.distractors === undefined
         ? q

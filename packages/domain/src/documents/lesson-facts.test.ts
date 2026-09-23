@@ -340,3 +340,37 @@ describe("generatable kinds (ADR 0025 §8)", () => {
     expect(GeneratableBlockTypeSchema.safeParse("image").success).toBe(false);
   });
 });
+
+describe("callouts, worked-example objectiveRefs (ruling 81, quality PRD G3)", () => {
+  test("a lesson written before these fields (minutes, no callout, no objectiveRefs on examples) still parses", () => {
+    const facts = lessonFacts();
+    expect(facts.outline.every((e) => typeof e.minutes === "number")).toBe(true);
+    expect(facts.outline.some((e) => "callout" in e)).toBe(false);
+    expect(facts.workedExamples.some((x) => "objectiveRefs" in x)).toBe(false);
+    expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
+    expect(parseLesson({ ...generatedLesson(), facts }).facts).toEqual(facts);
+  });
+
+  test("a worked example's objectiveRefs must name objectives", () => {
+    const facts = lessonFacts();
+    const x = facts.workedExamples[0] as (typeof facts.workedExamples)[number];
+    facts.workedExamples[0] = { ...x, objectiveRefs: ["o1"] };
+    expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
+    facts.workedExamples[0] = { ...x, objectiveRefs: ["v1"] };
+    expect(LessonFactsSchema.safeParse(facts).success).toBe(false);
+  });
+
+  test("a callout names facts of its kind: watch-out a misconception, key-words vocabulary", () => {
+    const facts = lessonFacts();
+    const at = facts.outline.findIndex((e) => e.kind === "content");
+    const entry = facts.outline[at] as (typeof facts.outline)[number];
+    facts.outline[at] = { ...entry, callout: { kind: "key-words", factRefs: ["v1", "v2"] } };
+    expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
+    facts.outline[at] = { ...entry, callout: { kind: "watch-out", factRefs: ["v1"] } };
+    const wrong = LessonFactsSchema.safeParse(facts);
+    expect(wrong.success).toBe(false);
+    expect(wrong.error?.issues[0]?.path).toEqual(["outline", at, "callout", "factRefs", 0]);
+    facts.outline[at] = { ...entry, callout: { kind: "key-words", factRefs: [] } };
+    expect(LessonFactsSchema.safeParse(facts).success).toBe(false);
+  });
+});

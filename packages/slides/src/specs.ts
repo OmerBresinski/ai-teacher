@@ -1,5 +1,6 @@
 import {
   allDistinct,
+  CALLOUT_KINDS,
   decodeEntities,
   GENERATABLE_BLOCK_TYPES,
   GENERATABLE_SLIDE_KINDS,
@@ -136,6 +137,8 @@ export const SPEC_LIMITS = {
   answer: 200,
   notes: 2000,
   word: 40,
+  /** A callout box's text: one short line beside the body (quality PRD G3). */
+  callout: 120,
 } as const;
 
 /**
@@ -276,6 +279,16 @@ function buildSpecs(soft: boolean) {
     notes: notesLine(SPEC_LIMITS.notes).optional(),
   };
 
+  /**
+   * The labelled box a teaching slide may carry (quality PRD G3): a "watch-out" names the
+   * misconception, an "example" the key idea's example, "key-words" the terms. The outline
+   * assigns it (`OutlineEntry.callout`); whether this slide should carry one, and of which kind,
+   * is the generation stage's check against that entry, not the spec's.
+   */
+  const callout = z
+    .object({ kind: z.enum(CALLOUT_KINDS), text: line(SPEC_LIMITS.callout) })
+    .optional();
+
   /* ---------------------------------------------------------------- */
   /* Slide specs                                                       */
   /* ---------------------------------------------------------------- */
@@ -327,6 +340,7 @@ function buildSpecs(soft: boolean) {
       ...specBase,
       heading: line(SPEC_LIMITS.heading),
       body: line(SPEC_LIMITS.body),
+      callout,
     }),
     z.object({
       kind: z.literal("image-text"),
@@ -335,12 +349,14 @@ function buildSpecs(soft: boolean) {
       caption: line(SPEC_LIMITS.caption).optional(),
       heading: line(SPEC_LIMITS.heading),
       body: line(SPEC_LIMITS.body),
+      callout,
     }),
     z.object({
       kind: z.literal("worked-example"),
       ...specBase,
       heading: line(SPEC_LIMITS.heading).optional(),
       question: line(SPEC_LIMITS.question),
+      callout,
       // The working is one numbered doc, so a fifth step overflows the card rather than crashing:
       // editorial (TEACH-245 asks the writer to merge, not drop).
       steps: rule(

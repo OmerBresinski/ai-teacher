@@ -318,6 +318,52 @@ describe("checkLesson", () => {
     });
   });
 
+  describe("objective-taught (ruling 81)", () => {
+    const withOutline = (outline: LessonFacts["outline"]): Lesson => {
+      const l = generatedLesson();
+      const facts = lessonFacts();
+      facts.outline = outline;
+      l.facts = facts;
+      return l;
+    };
+    const taught = (l: Lesson) => checkLesson(l).filter((f) => f.check === "objective-taught");
+
+    test("an objective no content, picture or worked-example entry names is one warning, by position", () => {
+      const findings = taught(
+        withOutline([
+          { id: "s1", kind: "title", factRefs: [] },
+          { id: "s2", kind: "objectives", factRefs: ["o1", "o2"] },
+          { id: "s3", kind: "content", factRefs: ["o1"] },
+          { id: "s4", kind: "vocabulary", factRefs: ["o2", "v1"] },
+          { id: "s5", kind: "multiple-choice", factRefs: ["o2", "q1"] },
+        ]),
+      );
+      expect(findings).toEqual([
+        {
+          check: "objective-taught",
+          severity: "warning",
+          target: { factId: "o2" },
+          message: "Objective 2 has no slide that teaches it.",
+        },
+      ]);
+    });
+
+    test("an image-text or worked-example entry teaches", () => {
+      expect(
+        taught(
+          withOutline([
+            { id: "s3", kind: "image-text", factRefs: ["o1"] },
+            { id: "s4", kind: "worked-example", factRefs: ["o2"] },
+          ]),
+        ),
+      ).toEqual([]);
+    });
+
+    test("an empty outline is not checked", () => {
+      expect(taught(withOutline([]))).toEqual([]);
+    });
+  });
+
   describe("quality checks (TEACH-210)", () => {
     const withPitch = (l: Lesson, sentenceLengthMax = 12, readingAgeTarget = 9) => {
       if (!l.facts) throw new Error("fixture");
