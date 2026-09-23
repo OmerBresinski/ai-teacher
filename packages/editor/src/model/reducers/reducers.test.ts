@@ -605,6 +605,32 @@ describe("first teacher edit (TEACH-74)", () => {
     ).toBe("ai");
   });
 
+  test("the fitting engine's write is not a text edit, even when it shortens the words", () => {
+    const t = aiText("One\nTwo\nThree");
+    const { lesson, slideId } = blank(t);
+    // A tidy split: the head stays in the box, the rest went to a continuation slide.
+    const fitted = r.fitElement(lesson, slideId, t.id, {
+      y: 120,
+      h: 60,
+      fontSize: 24,
+      doc: docFromText("One\nTwo"),
+    });
+    expect(fitted).not.toBe(lesson);
+    const e = el(fitted, slideId, t.id) as TextElement;
+    expect({ y: e.y, h: e.h, fontSize: e.style.fontSize }).toEqual({ y: 120, h: 60, fontSize: 24 });
+    expect(e.doc).toEqual(docFromText("One\nTwo"));
+    expect(prov(fitted, slideId, t.id)).toEqual({ authoredBy: "ai", originalText: undefined });
+    expect("originalText" in (e.generatedFrom ?? {})).toBe(false);
+    expect(parseLesson(fitted)).toEqual(fitted);
+    // Not silent: a tidy is an undo step and dirties the document.
+    expect(r.isSilentReducer(r.fitElement)).toBe(false);
+    // A missing element is a no-op that returns the same lesson.
+    expect(r.fitElement(lesson, slideId, "nope", { y: 0, h: 0 })).toBe(lesson);
+    // The teacher's next text edit still flips, keeping the words the box held after the fit.
+    const typed = r.updateElement(fitted, slideId, t.id, { doc: docFromText("One\nTwo\nFour") });
+    expect(prov(typed, slideId, t.id)).toEqual({ authoredBy: "teacher", originalText: "One\nTwo" });
+  });
+
   test("row 6: the same words with a bold mark do not flip", () => {
     const t = aiText("Water evaporates.");
     const { lesson, slideId } = blank(t);

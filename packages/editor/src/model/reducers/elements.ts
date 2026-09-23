@@ -6,6 +6,7 @@ import {
   type Id,
   type Lesson,
   plainTextOf,
+  type RichDoc,
   type Slide,
   type SlideElement,
 } from "@tj/domain/documents";
@@ -70,10 +71,12 @@ export type ElementPatch<T extends SlideElement = SlideElement> = Partial<T> | (
 
 /**
  * Apply a patch to an immer draft: a mutator runs on it, an object is assigned over it. The funnel
- * for every element edit but layout measurement, so this is where an `"ai"` element's first text
+ * for every element edit the teacher makes, so this is where an `"ai"` element's first text
  * change flips it to the teacher's and keeps the AI's words (`flipToTeacher`, TEACH-74). Plain
  * text is compared, never `doc` identity: Tiptap rebuilds the doc on every keystroke, and a
- * re-mark (bold over the same words), a move or a restyle is not a text edit.
+ * re-mark (bold over the same words), a move or a restyle is not a text edit. The two writes the
+ * app makes on its own bypass it: layout measurement (`updateElementLayout`) and the fitting
+ * engine (`fitElement`), which may shorten a box's words when it splits them across a slide.
  */
 const applyPatch = <T extends SlideElement>(el: SlideElement, patch: ElementPatch<T>) => {
   const wasAi = el.authoredBy === "ai";
@@ -130,6 +133,38 @@ export const updateElementLayout = silent(
     });
   },
 );
+
+/** What the fitting engine may write on one element (`tidySlide`): nothing else. */
+export type FitPatch = {
+  y: number;
+  h: number;
+  /** A stepped-down size; left alone when the engine did not step it. */
+  fontSize?: number;
+  /** The head of the words after a split, the rest having gone to a continuation slide. */
+  doc?: RichDoc;
+};
+
+/**
+ * The fitting engine's write on a specific slide: position, height, a stepped size and, after a
+ * split, the head of the words. One undo step like any edit (a tidy is undoable), but not an edit
+ * of the words — the teacher typed nothing, and `tidySlide` runs on its own (`useFitMigration`,
+ * the toolbar button) — so it never goes through `applyPatch`: an `"ai"` element stays the AI's,
+ * `originalText` is not written, and the element stays in the fact cascade (ADR 0025 §18). The
+ * patch is a closed shape, not a mutator, so no other kind of write can borrow this path.
+ */
+export const fitElement = (lesson: Lesson, slideId: Id, id: Id, fit: FitPatch): Lesson =>
+  editSlide(lesson, slideId, (s) => {
+    const el = findElement(s, id);
+    if (!el) return;
+    el.y = fit.y;
+    el.h = fit.h;
+    if (fit.fontSize !== undefined) {
+      if (el.type === "text" || el.type === "gap-text")
+        el.style = { ...el.style, fontSize: fit.fontSize };
+      else if (el.type === "option") el.textStyle = { ...el.textStyle, fontSize: fit.fontSize };
+    }
+    if (fit.doc && isTextLike(el)) el.doc = fit.doc;
+  });
 
 export type Transform = {
   dx?: number;

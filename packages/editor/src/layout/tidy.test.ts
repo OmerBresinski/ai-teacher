@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { Lesson, TextElement } from "@tj/domain/documents";
+import { type Lesson, parseLesson, type TextElement } from "@tj/domain/documents";
+import { generatedFrom } from "@tj/domain/documents/fixtures";
 import { materialiseSlide } from "@tj/slides";
 import { docFromText, newLesson, newSlide } from "../model/factories";
 import { getTheme } from "../model/themes";
@@ -89,6 +90,35 @@ describe("tidySlide", () => {
     const heading = next?.elements.find((e) => e.type === "text" && e.style.preset === "heading");
     expect(docToPlainText((heading as TextElement).doc)).toBe("Learning objectives (continued)");
     expect(tidyMessage(out.outcome)).toContain("continued on");
+  });
+
+  test("TEACH-74: a split of an ai list is the engine's doing, not a teacher edit", () => {
+    const items = Array.from(
+      { length: 40 },
+      (_, i) => `Item number ${i + 1} on this very long list of things`,
+    );
+    const list: TextElement = {
+      ...text("list", 120, 300, items.join("\n")),
+      generatedFrom: generatedFrom(["o1"]),
+      authoredBy: "ai",
+    };
+    const lesson = lessonWith([text("h", 43, 60, "Learning objectives", "heading"), list]);
+    const sid = lesson.slides[0]?.id ?? "";
+    const out = tidySlide(lesson, sid, ruler);
+    expect(out.outcome.continued).toBeGreaterThanOrEqual(1);
+    // The head of the list is shorter now, but nobody typed: still the AI's, nothing kept.
+    const head = out.lesson.slides[0]?.elements.find((e) => e.id === "list") as TextElement;
+    expect(docToPlainText(head.doc).length).toBeLessThan(items.join("\n").length);
+    expect(head.authoredBy).toBe("ai");
+    expect(head.generatedFrom?.originalText).toBeUndefined();
+    expect("originalText" in (head.generatedFrom ?? {})).toBe(false);
+    // The carried-over tail keeps the same provenance: the AI wrote those words too.
+    const tail = out.lesson.slides[1]?.elements.find(
+      (e) => e.type === "text" && e.style.preset !== "heading",
+    ) as TextElement;
+    expect(tail.authoredBy).toBe("ai");
+    expect(tail.generatedFrom).toEqual(generatedFrom(["o1"]));
+    expect(parseLesson(out.lesson)).toEqual(out.lesson);
   });
 
   test("an unknown slide id is a no-op", () => {
