@@ -1,11 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
+  type ImageElement,
   type Lesson,
+  type Provenance,
   parseLesson,
   type ShapeElement,
   type SlideElement,
+  type TextElement,
 } from "@tj/domain/documents";
-import { newLesson, newSlide, newText, uid } from "../factories";
+import { generatedFrom } from "@tj/domain/documents/fixtures";
+import { docFromText, newLesson, newSlide, newText, uid } from "../factories";
 import { unionRect } from "../geometry";
 import * as r from "./index";
 
@@ -540,5 +544,164 @@ describe("arrange", () => {
     expect(r.group(lesson, slideId, [a.id])).toEqual({ lesson, id: null });
     expect(r.group(one, slideId, [g1 as string, c.id])).toEqual({ lesson: one, id: null });
     expect(r.ungroup(lesson, slideId, a.id)).toEqual({ lesson, ids: [] });
+  });
+});
+
+/*
+ * TEACH-74: the first text edit of an `"ai"` element flips it to the teacher's and keeps the AI's
+ * plain text as `generatedFrom.originalText`; anything that is not a text change leaves it alone.
+ */
+describe("first teacher edit (TEACH-74)", () => {
+  const ai = (factRefs: string[] = []): Provenance => ({
+    generatedFrom: generatedFrom(factRefs),
+    authoredBy: "ai",
+  });
+  const aiText = (value: string) =>
+    newText("body", value, { x: 0, y: 0, w: 400, h: 40 }, ai(["o1"]));
+  const prov = (lesson: Lesson, slideId: string, id: string) => {
+    const e = el(lesson, slideId, id);
+    return { authoredBy: e.authoredBy, originalText: e.generatedFrom?.originalText };
+  };
+
+  test("rows 3–4: a doc change flips to teacher and keeps the text before it; later edits keep it", () => {
+    const t = aiText("Water evaporates.");
+    const { lesson, slideId } = blank(t);
+    const once = r.updateElement(lesson, slideId, t.id, { doc: docFromText("Water boils.") });
+    expect(prov(once, slideId, t.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: "Water evaporates.",
+    });
+    expect(el(once, slideId, t.id).generatedFrom?.factRefs).toEqual(["o1"]);
+    expect(parseLesson(once)).toEqual(once);
+    // The source is untouched (immer).
+    expect(prov(lesson, slideId, t.id)).toEqual({ authoredBy: "ai", originalText: undefined });
+
+    const twice = r.updateElement(once, slideId, t.id, { doc: docFromText("Water freezes.") });
+    expect(prov(twice, slideId, t.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: "Water evaporates.",
+    });
+    // The mutator form flips the same way.
+    const mutated = r.updateElement<TextElement>(lesson, slideId, t.id, (e) => {
+      e.doc = docFromText("Water boils.");
+    });
+    expect(prov(mutated, slideId, t.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: "Water evaporates.",
+    });
+  });
+
+  test("row 5: a move or a style patch is not a text edit", () => {
+    const t = aiText("Water evaporates.");
+    const { lesson, slideId } = blank(t);
+    const moved = r.updateElement(lesson, slideId, t.id, { x: 10, y: 10 });
+    expect(prov(moved, slideId, t.id)).toEqual({ authoredBy: "ai", originalText: undefined });
+    const styled = r.updateElement<TextElement>(lesson, slideId, t.id, {
+      style: { preset: "body", fontSize: 30 },
+    });
+    expect(prov(styled, slideId, t.id)).toEqual({ authoredBy: "ai", originalText: undefined });
+    expect(
+      r.updateElementLayout(lesson, slideId, t.id, { h: 80 }).slides[0]?.elements[0]?.authoredBy,
+    ).toBe("ai");
+  });
+
+  test("row 6: the same words with a bold mark do not flip", () => {
+    const t = aiText("Water evaporates.");
+    const { lesson, slideId } = blank(t);
+    const bold = r.updateElement(lesson, slideId, t.id, {
+      doc: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Water evaporates.", marks: [{ type: "bold" }] }],
+          },
+        ],
+      },
+    });
+    expect((el(bold, slideId, t.id) as TextElement).doc).not.toBe(t.doc);
+    expect(prov(bold, slideId, t.id)).toEqual({ authoredBy: "ai", originalText: undefined });
+  });
+
+  test("row 7: a teacher's or a teacher-inserted element keeps its provenance as it is", () => {
+    const inserted = newText("body", "Mine", { x: 0, y: 0, w: 400, h: 40 });
+    const teacher = newText(
+      "body",
+      "Theirs",
+      { x: 0, y: 60, w: 400, h: 40 },
+      {
+        generatedFrom: generatedFrom(["o1"]),
+        authoredBy: "teacher",
+      },
+    );
+    const { lesson, slideId } = blank(inserted, teacher);
+    const next = r.updateElements(lesson, slideId, [inserted.id, teacher.id], {
+      doc: docFromText("Changed"),
+    });
+    expect(el(next, slideId, inserted.id).authoredBy).toBeUndefined();
+    expect(el(next, slideId, inserted.id).generatedFrom).toBeUndefined();
+    expect(el(next, slideId, teacher.id).authoredBy).toBe("teacher");
+    expect(el(next, slideId, teacher.id).generatedFrom).toEqual(generatedFrom(["o1"]));
+  });
+
+  test("row 8: an image replace keeps the previous alt; no alt flips without originalText", () => {
+    const image: ImageElement = {
+      id: uid(),
+      type: "image",
+      x: 0,
+      y: 0,
+      w: 200,
+      h: 100,
+      src: "/files/ws/images/cloud.jpg",
+      fit: "cover",
+      alt: "A cloud",
+      ...ai(["v1"]),
+    };
+    const { lesson, slideId } = blank(image);
+    // The `AddImagePanel` replace patch (TEACH-153): a fresh picture, the flip spelt out.
+    const replace = {
+      alt: undefined,
+      credit: undefined,
+      creditUrl: undefined,
+      crop: undefined,
+      focal: undefined,
+      imageTransform: undefined,
+      source: undefined,
+      authoredBy: "teacher" as const,
+      src: "/files/ws/images/rain.jpg",
+    };
+    const replaced = r.updateElement<ImageElement>(lesson, slideId, image.id, replace);
+    expect(prov(replaced, slideId, image.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: "A cloud",
+    });
+    const blind = blank({ ...image, alt: undefined });
+    const replacedBlind = r.updateElement<ImageElement>(blind.lesson, blind.slideId, image.id, {
+      ...replace,
+      alt: "Rain",
+    });
+    expect(prov(replacedBlind, blind.slideId, image.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: undefined,
+    });
+    expect("originalText" in (el(replacedBlind, blind.slideId, image.id).generatedFrom ?? {})).toBe(
+      false,
+    );
+  });
+
+  test("row 11: a grouped child flips on its own; the group and its sibling do not", () => {
+    const a = aiText("Alpha");
+    const b = aiText("Beta");
+    const { lesson, slideId } = blank(a, b);
+    const { lesson: grouped, id: g } = r.group(lesson, slideId, [a.id, b.id]);
+    const next = r.updateElement(grouped, slideId, a.id, { doc: docFromText("Alpha edited") });
+    const grp = el(next, slideId, g as string);
+    if (grp.type !== "group") throw new Error("grouped");
+    expect(grp.authoredBy).toBeUndefined();
+    const [ca, cb] = grp.children;
+    expect(ca?.authoredBy).toBe("teacher");
+    expect(ca?.generatedFrom?.originalText).toBe("Alpha");
+    expect(cb?.authoredBy).toBe("ai");
+    expect(cb?.generatedFrom?.originalText).toBeUndefined();
   });
 });

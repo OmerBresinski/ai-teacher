@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { MAX_CRITERIA, parseWorksheet, type WorksheetBlock } from "@tj/domain/documents";
+import { generatedFrom } from "@tj/domain/documents/fixtures";
+import { docFromText } from "../../model/factories";
 import { newBlock, starterWorksheet } from "../../model/worksheet-factories";
 import * as r from "./index";
 
@@ -167,5 +169,69 @@ describe("worksheet reducers", () => {
     expect(r.setCorrectOption(w, mc.id, a.id)).toBe(w);
     expect(r.setCorrectOption(w, mc.id, "missing")).toBe(w);
     expect(r.setCorrectOption(w, "missing", a.id)).toBe(w);
+  });
+});
+
+/* TEACH-74: the first text edit of an `"ai"` block flips it and keeps the AI's plain text. */
+describe("first teacher edit (TEACH-74)", () => {
+  const ai = () => ({ generatedFrom: generatedFrom(["o1"]), authoredBy: "ai" as const });
+  type ParagraphBlock = Extract<WorksheetBlock, { type: "paragraph" }>;
+  type ImageBlock = Extract<WorksheetBlock, { type: "image" }>;
+  const prov = (w: ReturnType<typeof sheet>, id: string) => {
+    const b = w.blocks.find((x) => x.id === id);
+    return { authoredBy: b?.authoredBy, originalText: b?.generatedFrom?.originalText };
+  };
+
+  test("row 9: updateBlock with a doc patch and with a mutator flips and keeps originalText once", () => {
+    const block: ParagraphBlock = {
+      ...(newBlock("paragraph") as ParagraphBlock),
+      doc: docFromText("Water evaporates."),
+      ...ai(),
+    };
+    const w = r.insertBlock(sheet(), block);
+    const patched = r.updateBlock<ParagraphBlock>(w, block.id, {
+      doc: docFromText("Water boils."),
+    });
+    expect(prov(patched, block.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: "Water evaporates.",
+    });
+    expect(() => parseWorksheet(patched)).not.toThrow();
+    const again = r.updateBlock<ParagraphBlock>(patched, block.id, (b) => {
+      b.doc = docFromText("Water freezes.");
+    });
+    expect(prov(again, block.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: "Water evaporates.",
+    });
+    const mutated = r.updateBlock<ParagraphBlock>(w, block.id, (b) => {
+      b.doc = docFromText("Water boils.");
+    });
+    expect(prov(mutated, block.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: "Water evaporates.",
+    });
+    // The source is untouched, and a non-text patch does not flip.
+    expect(prov(w, block.id)).toEqual({ authoredBy: "ai", originalText: undefined });
+    const question: QuestionBlock = { ...(newBlock("question") as QuestionBlock), ...ai() };
+    const withQ = r.insertBlock(w, question);
+    const marks = r.updateBlock<QuestionBlock>(withQ, question.id, { marks: 4 });
+    expect(prov(marks, question.id)).toEqual({ authoredBy: "ai", originalText: undefined });
+  });
+
+  test("the LayoutToolbar image replace keeps the previous alt as originalText", () => {
+    const image: ImageBlock = {
+      ...(newBlock("image") as ImageBlock),
+      src: "/files/ws/images/cloud.jpg",
+      alt: "A cloud",
+      ...ai(),
+    };
+    const w = r.insertBlock(sheet(), image);
+    const replaced = r.updateBlock<ImageBlock>(w, image.id, (b) => {
+      b.src = "/files/ws/images/rain.jpg";
+      b.alt = "Rain";
+      b.authoredBy = "teacher";
+    });
+    expect(prov(replaced, image.id)).toEqual({ authoredBy: "teacher", originalText: "A cloud" });
   });
 });

@@ -1,7 +1,13 @@
 /** Block-list reducers: insert, update, delete, move, duplicate. Numbering is re-derived by `edit`. */
 
 import type { Proposal } from "@tj/domain";
-import type { Id, Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import {
+  flipToTeacher,
+  type Id,
+  plainTextOf,
+  type Worksheet,
+  type WorksheetBlock,
+} from "@tj/domain/documents";
 import { uid } from "../../model/factories";
 import { edit, type WithId } from "./core";
 
@@ -14,7 +20,9 @@ export const insertBlock = (worksheet: Worksheet, block: WorksheetBlock, afterId
 
 /**
  * Patch one block, or run a mutator over its draft. The type parameter narrows the patch to the
- * block the caller knows it is editing; an unknown id is a no-op.
+ * block the caller knows it is editing; an unknown id is a no-op. An `"ai"` block's first text
+ * change flips it to the teacher's and keeps the AI's words (`flipToTeacher`, TEACH-74); plain
+ * text is compared, so a re-mark or a non-text patch (`marks`, `answerLines`) never flips.
  */
 export function updateBlock<T extends WorksheetBlock>(
   worksheet: Worksheet,
@@ -24,8 +32,11 @@ export function updateBlock<T extends WorksheetBlock>(
   return edit(worksheet, (w) => {
     const block = w.blocks.find((b) => b.id === id);
     if (!block) return;
+    const wasAi = block.authoredBy === "ai";
+    const before = wasAi ? plainTextOf(block) : undefined;
     if (typeof patch === "function") patch(block as T);
     else Object.assign(block, patch);
+    if (wasAi && plainTextOf(block) !== before) flipToTeacher(block, before);
   });
 }
 

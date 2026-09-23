@@ -1,6 +1,14 @@
 /** Element reducers on one slide: add, patch, transform, delete, duplicate, paste. */
 
-import type { ElementType, Id, Lesson, Slide, SlideElement } from "@tj/domain/documents";
+import {
+  type ElementType,
+  flipToTeacher,
+  type Id,
+  type Lesson,
+  plainTextOf,
+  type Slide,
+  type SlideElement,
+} from "@tj/domain/documents";
 import { cloneElement } from "../factories";
 import { rectOf, unionRect } from "../geometry";
 import { editQuietly, editSlide, findElement, silent, type WithId } from "./core";
@@ -60,10 +68,19 @@ const addAbove = (lesson: Lesson, copies: SlideElement[], sourceIds: Id[], slide
 
 export type ElementPatch<T extends SlideElement = SlideElement> = Partial<T> | ((el: T) => void);
 
-/** Apply a patch to an immer draft: a mutator runs on it, an object is assigned over it. */
+/**
+ * Apply a patch to an immer draft: a mutator runs on it, an object is assigned over it. The funnel
+ * for every element edit but layout measurement, so this is where an `"ai"` element's first text
+ * change flips it to the teacher's and keeps the AI's words (`flipToTeacher`, TEACH-74). Plain
+ * text is compared, never `doc` identity: Tiptap rebuilds the doc on every keystroke, and a
+ * re-mark (bold over the same words), a move or a restyle is not a text edit.
+ */
 const applyPatch = <T extends SlideElement>(el: SlideElement, patch: ElementPatch<T>) => {
+  const wasAi = el.authoredBy === "ai";
+  const before = wasAi ? plainTextOf(el) : undefined;
   if (typeof patch === "function") patch(el as T);
   else Object.assign(el, patch);
+  if (wasAi && plainTextOf(el) !== before) flipToTeacher(el, before);
 };
 
 /** Patch by object or by a mutator run on the immer draft. Reaches into a group's children. */

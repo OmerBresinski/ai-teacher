@@ -1,5 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
-import { expect, type SeededPaths, test } from "./fixtures";
+import type { Lesson } from "@tj/domain/documents";
+import { generatedLesson } from "@tj/domain/documents/fixtures";
+import { E2E_API_URL, E2E_WEB_URL, expect, type SeededPaths, test } from "./fixtures";
 
 /*
  * In-place text editing on `/l/$lessonId` (TEACH-104): rows 1, 2, 7 and 9 of the acceptance table
@@ -196,5 +198,63 @@ test.describe("text editing", () => {
     await expect(field).toHaveCount(0);
     await expect(panel).toContainText("Really.");
     await expect(stage(page)).toBeFocused();
+  });
+});
+
+/*
+ * TEACH-74 (topic graph PRD §5.6, TG-12): the first teacher edit of an AI-authored text keeps the
+ * AI's words in the saved document. Seeds `generatedLesson()` (provenance on every element), so
+ * `test.use({ seed: false })` and no demo library.
+ */
+test.describe("first teacher edit keeps the original AI text (TEACH-74)", () => {
+  test.use({ seed: false });
+
+  test("typing into an ai text flips it to teacher and saves generatedFrom.originalText", async ({
+    signedInPage: { page },
+  }) => {
+    const seeded = await page.request.post(`${E2E_API_URL}/__test/seed-library`, {
+      headers: { origin: E2E_WEB_URL },
+      data: {
+        documents: [
+          {
+            key: "lesson",
+            kind: "lesson",
+            body: { ...generatedLesson(), updatedAt: new Date().toISOString() },
+          },
+        ],
+      },
+    });
+    expect(seeded.ok(), await seeded.text()).toBe(true);
+    const lessonId = ((await seeded.json()) as { ids: Record<string, string> }).ids.lesson ?? "";
+    expect(lessonId).toBeTruthy();
+
+    await page.goto(`/l/${lessonId}`);
+    // The fixture's title and subtitle share one rect; the subtitle (`t2`) is drawn last, so it
+    // is the box a double-click lands on.
+    const subtitle = page.locator('[data-slide-frame] [data-element-id="t2"]');
+    await expect(subtitle).toContainText("Year 4 · Science");
+    await dblclickAt(page, subtitle);
+    const pm = proseMirror(page);
+    await expect(pm).toBeFocused();
+    await page.keyboard.press("End");
+    await page.keyboard.type(" and rain");
+    await page.keyboard.press("Escape");
+    await expect(subtitle).toContainText("Year 4 · Science and rain");
+    await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
+
+    const saved = await page.request.get(`${E2E_API_URL}/documents/${lessonId}`, {
+      headers: { origin: E2E_WEB_URL },
+    });
+    expect(saved.ok(), await saved.text()).toBe(true);
+    const lesson = ((await saved.json()) as { document: { body: Lesson } }).document.body;
+    const byId = (id: string) => lesson.slides[0]?.elements.find((e) => e.id === id);
+    const edited = byId("t2");
+    expect(edited?.authoredBy).toBe("teacher");
+    expect(edited?.generatedFrom?.originalText).toBe("Year 4 · Science");
+    expect(edited?.generatedFrom?.factRefs).toEqual([]);
+    // The title the teacher never touched is still the AI's, with nothing recorded.
+    const untouched = byId("t1");
+    expect(untouched?.authoredBy).toBe("ai");
+    expect(untouched?.generatedFrom?.originalText).toBeUndefined();
   });
 });
