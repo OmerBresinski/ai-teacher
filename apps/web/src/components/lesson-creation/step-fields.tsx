@@ -12,7 +12,7 @@ import {
   Textarea,
 } from "@tj/ui";
 import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
-import { useId, useLayoutEffect, useRef } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { Field } from "@/components/brief/field";
 
 export function ChoiceField({
@@ -66,6 +66,7 @@ export function BriefStep({
   filePicker?: React.ReactNode;
 }) {
   const id = useId();
+  const [levelOpen, setLevelOpen] = useState(false);
   return (
     <form
       className="creation-form"
@@ -94,26 +95,47 @@ export function BriefStep({
           label: `Year ${year}`,
         }))}
       />
-      <details className="creation-disclosure">
-        <summary>Adjust the level</summary>
-        <RadioGroup
-          aria-label="Reading level"
-          orientation="horizontal"
-          className="creation-level-options"
-          value={brief.level}
-          onValueChange={(level) => onChange({ ...brief, level })}
+      <div className="creation-disclosure" data-open={levelOpen}>
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="creation-disclosure-trigger"
+          aria-expanded={levelOpen}
+          aria-controls={`${id}-level-options`}
+          onClick={() => setLevelOpen((open) => !open)}
         >
-          {["easier", "standard", "harder"].map((level) => (
-            <div key={level} className="creation-level-option">
-              <RadioGroupItem id={`${id}-${level}`} value={level} className="sr-only" />
-              <Label htmlFor={`${id}-${level}`} className="creation-level-pill">
-                {level[0]?.toUpperCase()}
-                {level.slice(1)}
-              </Label>
+          Adjust the level <span aria-hidden="true">{levelOpen ? "−" : "+"}</span>
+        </Button>
+        <div
+          id={`${id}-level-options`}
+          className="creation-disclosure-content"
+          aria-hidden={!levelOpen}
+          inert={!levelOpen}
+        >
+          <div className="creation-disclosure-clip">
+            <div className="creation-disclosure-inset">
+              <RadioGroup
+                aria-label="Reading level"
+                orientation="horizontal"
+                className="creation-level-options"
+                value={brief.level}
+                onValueChange={(level) => onChange({ ...brief, level })}
+              >
+                {["easier", "standard", "harder"].map((level) => (
+                  <div key={level} className="creation-level-option">
+                    <RadioGroupItem id={`${id}-${level}`} value={level} className="sr-only" />
+                    <Label htmlFor={`${id}-${level}`} className="creation-level-pill">
+                      {level[0]?.toUpperCase()}
+                      {level.slice(1)}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
             </div>
-          ))}
-        </RadioGroup>
-      </details>
+          </div>
+        </div>
+      </div>
       <div className="creation-actions">
         <Button variant="inverse" type="submit" disabled={!brief.topic.trim()}>
           Next <ArrowRight />
