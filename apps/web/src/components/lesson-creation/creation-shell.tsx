@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Display } from "@tj/ui";
 import { type ReactNode, useEffect } from "react";
-import { characters } from "./characters";
+import { CharacterHost, type CharacterStage } from "./character-host";
 import "./creation.css";
 
 export function CreationShell({
@@ -10,7 +10,7 @@ export function CreationShell({
   children,
   working = false,
 }: {
-  stage: "brief" | "planning" | "objectives" | "worksheet" | "generating";
+  stage: CharacterStage;
   title: string;
   children: ReactNode;
   working?: boolean;
@@ -19,8 +19,6 @@ export function CreationShell({
   useEffect(() => {
     document.getElementById("creation-title")?.focus({ preventScroll: true });
   }, [stage]);
-  const character =
-    stage === "worksheet" ? "activity" : stage === "generating" ? "slides" : "support";
   return (
     <main className="creation-shell">
       <header className="creation-header">
@@ -30,10 +28,7 @@ export function CreationShell({
       </header>
       <div className="creation-layout">
         <aside aria-hidden="true" className="creation-character" data-working={working}>
-          <div key={character} className="creation-character-art">
-            {characters[character]}
-          </div>
-          <span className="creation-character-shadow" />
+          <CharacterHost stage={stage} />
         </aside>
         <section
           key={stage}

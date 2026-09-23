@@ -82,7 +82,7 @@ test.describe("first-experience design preview", () => {
     await page.goto(PATH);
     await expect(page.getByRole("heading", { name: "Let’s start with your idea." })).toBeFocused();
     await expect(page.getByTestId("creation-brief")).toHaveCSS("animation-name", "none");
-    await expect(page.locator(".creation-character .body")).toHaveCSS("animation-name", "none");
+    await expect(page.locator(".handover-stage")).toHaveAttribute("data-holder", "Plan");
 
     await page.getByRole("button", { name: "Next" }).focus();
     await page.keyboard.press("Enter");
@@ -92,5 +92,53 @@ test.describe("first-experience design preview", () => {
     await page.getByRole("button", { name: "Generate" }).focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { name: "Something to practise with?" })).toBeFocused();
+  });
+
+  test("rapid navigation leaves one complete handover scene with one visible owner", async ({
+    page,
+  }) => {
+    await page.goto(PATH);
+    await page.getByRole("button", { name: "Skip planning" }).click();
+    await expect(page.getByRole("combobox", { name: "Activity type" })).toBeEnabled();
+    await page.getByRole("button", { name: "Back to objectives" }).click();
+    await page.getByRole("button", { name: "Back to the brief" }).click();
+    await page.getByRole("button", { name: "Skip planning" }).click();
+    await expect(page.getByTestId("creation-worksheet")).toBeVisible();
+    await page.waitForTimeout(2_400);
+
+    const scene = page.locator(".handover-stage .production-scene");
+    await expect(scene).toHaveCount(1);
+    await expect(scene.locator("#package, [id$='package']")).toHaveCount(1);
+    const visibleOwners = await scene
+      .locator(".person")
+      .evaluateAll(
+        (actors) =>
+          actors.filter((actor) => Number.parseFloat(getComputedStyle(actor).opacity) > 0.05)
+            .length,
+      );
+    expect(visibleOwners).toBe(1);
+  });
+
+  test("reduced motion settles each handover immediately without duplicate props", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(PATH);
+    await page.getByRole("button", { name: "Skip planning" }).click();
+    await expect(page.getByRole("combobox", { name: "Activity type" })).toBeEnabled();
+    await page.getByRole("button", { name: "Just the slides" }).click();
+    await expect(page.getByRole("button", { name: "Back to worksheets" })).toBeEnabled();
+
+    const scene = page.locator(".handover-stage .production-scene");
+    await expect(scene).toHaveCount(1);
+    await expect(scene.locator("#package, [id$='package']")).toHaveCount(1);
+    const visibleOwners = await scene
+      .locator(".person")
+      .evaluateAll(
+        (actors) =>
+          actors.filter((actor) => Number.parseFloat(getComputedStyle(actor).opacity) > 0.05)
+            .length,
+      );
+    expect(visibleOwners).toBe(1);
   });
 });

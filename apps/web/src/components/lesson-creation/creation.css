@@ -75,47 +75,6 @@
   margin-top: 16px;
   isolation: isolate;
 }
-.creation-character-art {
-  animation: creation-enter 350ms ease both;
-}
-.creation-character svg {
-  display: block;
-  width: 100%;
-  overflow: visible;
-  stroke: #34483b;
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  fill: none;
-  color: #34483b;
-}
-.creation-character .happy-mouth {
-  display: none;
-}
-.creation-character .body {
-  transform-origin: 50% 90%;
-  animation: creation-breathe 4s ease-in-out infinite;
-}
-.creation-character .arm-right {
-  transform-box: fill-box;
-  transform-origin: bottom left;
-  animation: creation-wave 6s ease-in-out infinite;
-}
-.creation-character[data-working="true"] .body {
-  animation-duration: 1.8s;
-}
-.creation-character-shadow {
-  position: absolute;
-  z-index: -1;
-  bottom: 16px;
-  left: 25%;
-  width: 50%;
-  height: 9px;
-  border-radius: 50%;
-  background: #34483b;
-  opacity: 0.12;
-  filter: blur(3px);
-}
 .creation-sheet {
   display: flex;
   flex-direction: column;
@@ -139,28 +98,13 @@
     transform: translateY(0);
   }
 }
-@keyframes creation-breathe {
+@keyframes creation-progress-pulse {
   0%,
   100% {
-    transform: rotate(-1deg);
+    opacity: 1;
   }
   50% {
-    transform: rotate(1deg) translateY(-2px);
-  }
-}
-@keyframes creation-wave {
-  0%,
-  70%,
-  100% {
-    transform: rotate(0);
-  }
-  80%,
-  90% {
-    transform: rotate(-8deg);
-  }
-  85%,
-  95% {
-    transform: rotate(3deg);
+    opacity: 0.4;
   }
 }
 @media (max-width: 720px) {
@@ -180,9 +124,6 @@
     height: 108px;
     margin: 0;
   }
-  .creation-character-shadow {
-    bottom: 5px;
-  }
   .creation-step {
     gap: 24px;
   }
@@ -194,18 +135,12 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .creation-step,
-  .creation-character-art,
-  .creation-character .body,
-  .creation-character .arm-right {
+  .creation-step {
     animation: none;
   }
 }
 .creation-step {
   view-transition-name: creation-content;
-}
-.creation-character {
-  view-transition-name: creation-host;
 }
 .creation-step h1 {
   font-size: clamp(32px, 3.4vw, 44px);
@@ -264,16 +199,13 @@
   height: 12px;
   border-radius: 50%;
   background: var(--foreground);
-  animation: creation-breathe 1.8s ease-in-out infinite;
+  animation: creation-progress-pulse 1.8s ease-in-out infinite;
 }
 ::view-transition-old(creation-content) {
   animation: creation-leave 140ms ease both;
 }
 ::view-transition-new(creation-content) {
   animation: creation-enter 240ms 80ms ease both;
-}
-::view-transition-group(creation-host) {
-  animation-duration: 300ms;
 }
 @keyframes creation-leave {
   to {
@@ -289,7 +221,7 @@
     animation: none;
   }
 }
-/* Only the changing content and host transition; the page frame never flashes. */
+/* Only changing content transitions; the page frame and live rig never flash. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
@@ -297,4 +229,46 @@
 .creation-preview-label {
   min-height: 56px;
   padding-block: 16px;
+}
+
+/* Articulated rig owns transforms: no competing CSS bobbing or arm animation. */
+.creation-character {
+  view-transition-name: none;
+}
+.handover-stage {
+  position: relative;
+  width: 320px;
+  height: 214px;
+  margin-left: -100px;
+}
+.handover-stage > svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: #293b32;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.handover-stage svg svg {
+  width: 504px;
+  height: 360px;
+}
+@media (max-width: 1100px) {
+  .handover-stage {
+    width: 240px;
+    height: 160px;
+    margin-left: -60px;
+  }
+}
+@media (max-width: 720px) {
+  .creation-character {
+    width: 280px;
+    height: 187px;
+  }
+  .handover-stage {
+    width: 280px;
+    height: 187px;
+    margin-left: 0;
+  }
 }
