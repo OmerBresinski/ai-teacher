@@ -287,6 +287,7 @@ export function GeneratingShell({
           className="relative flex min-w-0 flex-1 flex-col bg-canvas"
           data-canvas
           data-has-slides={Boolean(shown)}
+          data-companion-layout={canvasCompanion ? "side" : undefined}
         >
           <div className="min-h-0 flex-1 p-10">
             {shown ? (

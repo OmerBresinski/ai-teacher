@@ -1,6 +1,6 @@
 import { Button } from "@tj/ui";
 import { FileText, Paperclip, X } from "lucide-react";
-import { lazy, Suspense, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { CreationShell } from "@/components/lesson-creation/creation-shell";
 import {
@@ -12,9 +12,9 @@ import {
   WorksheetStep,
 } from "@/components/lesson-creation/step-fields";
 
-const EditorPreview = lazy(() =>
-  import("@/components/lesson-creation/editor-preview").then((m) => ({ default: m.EditorPreview })),
-);
+const loadEditorPreview = () =>
+  import("@/components/lesson-creation/editor-preview").then((m) => ({ default: m.EditorPreview }));
+const EditorPreview = lazy(loadEditorPreview);
 
 type Stage = "brief" | "objectives" | "worksheet" | "generating";
 const TITLES: Record<Stage, string> = {
@@ -54,6 +54,9 @@ export function DevFirstExperiencePage() {
   }, []);
 
   const [stage, setStage] = useState<Stage>("brief");
+  useEffect(() => {
+    if (stage === "objectives" || stage === "worksheet") void loadEditorPreview();
+  }, [stage]);
   const [brief, setBrief] = useState<IntakeBrief>({
     topic: "The water cycle",
     yearGroup: "Year 5",

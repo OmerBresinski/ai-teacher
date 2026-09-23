@@ -66,6 +66,7 @@ export function MobileGeneratingShell({
         ) : null}
       </div>
       <main className="flex min-h-0 flex-1 flex-col">
+        {running && canvasCompanion ? <div data-mobile-companion>{canvasCompanion}</div> : null}
         <MobileSlideList
           slides={lesson.slides}
           theme={theme}
@@ -74,11 +75,7 @@ export function MobileGeneratingShell({
           footer={
             running ? (
               <div className="mobile-generation-next" data-mobile-loading-slot>
-                {canvasCompanion ? (
-                  <div data-mobile-companion>{canvasCompanion}</div>
-                ) : (
-                  <p>{count === 0 ? "Preparing your lesson" : "Making the next slide"}</p>
-                )}
+                <p>{count === 0 ? "Preparing your lesson" : "Making the next slide"}</p>
               </div>
             ) : count === 0 ? (
               <p className="p-6 text-center text-ink-3">

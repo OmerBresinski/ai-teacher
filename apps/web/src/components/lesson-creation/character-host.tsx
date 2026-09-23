@@ -32,6 +32,7 @@ export function CharacterHost({
   const previous = useRef<CharacterStage>(initialStage);
   useEffect(() => {
     if (!element.current) return;
+    previous.current = initialStage;
     const context = gsap.context(() => {
       rig.current = createHandoverRig(element.current as HTMLDivElement);
     });
@@ -40,7 +41,7 @@ export function CharacterHost({
       rig.current = null;
       context.revert();
     };
-  }, []);
+  }, [initialStage]);
   useEffect(() => {
     const actor = rig.current;
     if (!actor) return;

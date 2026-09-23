@@ -329,61 +329,40 @@
 .creation-editor-footer > span {
   margin-right: auto;
 }
-.creation-editor-preview [data-canvas-companion] {
-  position: absolute;
-  width: 480px;
-  height: 340px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  transition:
-    top 650ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    left 650ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    transform 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.creation-editor-companion {
-  width: 480px;
-  height: 340px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transform-origin: center bottom;
-  transition: transform 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.creation-editor-companion .handover-stage {
-  margin: 0;
-  width: 480px;
-  height: 300px;
-}
-.creation-editor-companion p {
-  margin-top: 0;
-  color: var(--muted-foreground);
-  font-size: 16px;
-}
-/* The populated companion is a real footer row after the lock, never an overlay. */
-.creation-editor-preview [data-has-slides="true"] [data-canvas-companion] {
-  position: relative;
-  top: auto;
-  left: auto;
-  transform: none;
+/* The same articulated scene flies into a measured, dedicated editor slot. */
+.creation-generation-anchor {
   width: 100%;
-  height: 140px;
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  overflow: hidden;
+  height: 260px;
+  position: relative;
+  pointer-events: none;
+  align-self: center;
 }
-.creation-editor-preview [data-has-slides="true"] .creation-editor-companion {
-  width: 240px;
-  height: 140px;
-  transform: none;
+.creation-generation-actor {
+  position: absolute;
+  inset: 0;
+  z-index: 81;
+  transform-origin: center;
 }
-.creation-editor-preview [data-has-slides="true"] .handover-stage {
-  width: 240px;
-  height: 140px;
+.creation-generation-actor .handover-stage {
+  margin: 0;
+  width: 100%;
+  height: 100%;
 }
-@media (max-width: 720px) {
+.creation-generation-scrim {
+  position: fixed;
+  inset: 56px 0 0;
+  z-index: 80;
+  background: color-mix(in srgb, var(--background) 92%, transparent);
+  backdrop-filter: blur(3px);
+  pointer-events: none;
+}
+.creation-generation-anchor[data-handover="settled"] .creation-generation-actor {
+  z-index: 2;
+}
+.creation-generation-anchor[data-handover="settled"] .creation-generation-scrim {
+  visibility: hidden;
+}
+@media (max-width: 760px) {
   .creation-editor-footer {
     gap: 4px;
     padding-inline: 8px;
@@ -392,24 +371,86 @@
   .creation-editor-footer > span {
     width: 100%;
   }
-  .creation-editor-companion,
-  .creation-editor-preview [data-canvas-companion] {
-    width: 340px;
-  }
-  .creation-editor-companion .handover-stage {
-    width: 340px;
-  }
-  .creation-editor-preview [data-canvas] > .p-10 {
-    padding: 12px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .creation-editor-preview [data-canvas-companion],
-  .creation-editor-companion {
-    transition: none;
+  .creation-generation-anchor {
+    height: 190px;
+    max-width: 360px;
+    margin-inline: auto;
   }
 }
 
-.creation-editor-preview [data-has-slides="true"] .creation-editor-companion p {
-  visibility: hidden;
+.creation-level-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.creation-level-pill {
+  position: relative;
+  min-height: 44px;
+  padding: 7px 17px;
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+}
+.creation-level-option:has([data-state="checked"]) .creation-level-pill {
+  background: var(--accent);
+  color: var(--foreground);
+  border-color: var(--foreground);
+  box-shadow: inset 0 0 0 1px var(--foreground);
+}
+.creation-level-option:has(:focus-visible) .creation-level-pill {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+.creation-level-option {
+  position: relative;
+}
+.creation-generation-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+.creation-compact-choice > div > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.creation-compact-choice [data-slot="select-trigger"] {
+  min-width: 136px;
+  width: auto;
+  border: 0;
+  border-bottom: 1px solid var(--border-control);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 4px;
+}
+[data-testid="creation-objectives"] {
+  gap: 20px;
+}
+[data-testid="creation-objectives"] .creation-form {
+  gap: 16px;
+}
+[data-testid="creation-objectives"] .creation-objectives {
+  gap: 8px;
+}
+[data-testid="creation-objectives"] .creation-objective {
+  padding-block: 4px;
+}
+
+.creation-generation-actor .handover-stage {
+  transition: transform 850ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+.creation-generation-anchor:not([data-handover="passing"]) .handover-stage {
+  transform: scale(1.35);
+}
+@media (prefers-reduced-motion: reduce) {
+  .creation-generation-actor .handover-stage {
+    transition: none;
+  }
 }
