@@ -145,14 +145,20 @@ export type CalloutHost = "content" | "image-text" | "worked-example";
  * - Image-text: the card in the text column under the body, sized to its text; the column's stack
  *   is re-centred with the card counted, and the body keeps what is left above the cards' common
  *   bottom edge.
- * - Worked example: unchanged. The working card already runs to the foot and four one-line steps
- *   fill it on every theme (TEACH-247); `workedExampleCalloutRoom` measures what a card would
- *   leave the working, and it is less than one line everywhere, so the callout goes without and
- *   the steps keep their room. The spec keeps the field so the schema is one shape for the three
- *   kinds; the outline should not assign one here until a recipe change frees the room.
+ * - Worked example: unchanged, the callout dropped. The working card already runs to the foot and
+ *   four one-line steps fill it on every theme (TEACH-247); `workedExampleCalloutRoom` measures
+ *   what a card would leave the working, and even a one-line card leaves less than two body lines
+ *   everywhere (32 to 63pt against 163 to 193 for four steps), so the callout goes without and the
+ *   steps keep their room, the fallback TEACH-75 names for exactly this measurement. The spec
+ *   keeps the field because the outline (`lab-plan-pipeline`, `outlineFromFacts`) assigns a
+ *   "watch-out" to a worked example whose example carries a misconception; until a recipe change
+ *   frees the room, that callout is written and not shown, which the outline or a ruling has to
+ *   settle, not this function.
  *
- * A content `statement` has no column to hold a card: `chooseVariant` never picks it for a spec
- * with a callout, so reaching it here is a caller's bug and is refused, not silently dropped.
+ * The two refusals differ on purpose. A content `statement` has no column to hold a card and
+ * `chooseVariant` never picks it for a spec with a callout, so reaching it here is a caller's bug
+ * and throws. A worked example with a callout is a valid spec the recipe cannot hold, a content
+ * condition like a fifth step (TEACH-245), so it is dropped rather than crashing a generation.
  */
 export function applyCallout(
   laid: Layout,
