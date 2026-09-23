@@ -172,8 +172,11 @@ export type LessonPhase = (typeof LESSON_PHASES)[number];
 export type OutlineEntry = {
   id: FactId;
   kind: GeneratableSlideKind;
-  /** Whole minutes the slide is expected to take; the sum is checked against `durationMin`. */
-  minutes: number;
+  /**
+   * Whole minutes, on lessons planned before ruling 82 only. A lesson's size is its slide count;
+   * new outlines need carry no minutes and no check reads them.
+   */
+  minutes?: number;
   /** The facts this slide covers. */
   factRefs: FactId[];
   /** Required exactly on `image-text` entries; forbidden elsewhere (checked below). */
@@ -274,7 +277,7 @@ export const OutlineBriefSchema = z.strictObject({
 export const OutlineEntrySchema = z.strictObject({
   id: FactIdSchema,
   kind: GeneratableSlideKindSchema,
-  minutes: z.number().int().min(1),
+  minutes: z.number().int().min(1).optional(),
   factRefs: z.array(FactIdSchema),
   imageBrief: ImageBriefSchema.optional(),
   brief: OutlineBriefSchema.optional(),
