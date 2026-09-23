@@ -64,7 +64,6 @@ const STEM_BLOCK_TYPES: ReadonlySet<string> = new Set(["question", "multiple-cho
 /** Kinds where a footnote (the `small` text) must not repeat an item (a `body` line). */
 const FOOTNOTE_KINDS: ReadonlySet<string> = new Set(["starter", "instructions", "exit-ticket"]);
 
-/** Explain-phase kinds: the minutes that teach rather than test. */
 /** The kinds that teach; the same set Plan's explain-share rule counts (`@tj/generation` specs). */
 const EXPLAIN_KINDS: ReadonlySet<string> = new Set([
   "content",
@@ -92,10 +91,15 @@ export function qualityChecks(lesson: Lesson, worksheet?: Worksheet): Finding[] 
 /* readability                                                         */
 /* ------------------------------------------------------------------ */
 
+/** Years above the pitch's reading age at which a primary slide's readability is an error. */
+const READABILITY_ERROR_YEARS = 3;
+const PRIMARY_BANDS = new Set(["eyfs", "ks1", "ks2"]);
+
 function checkReadability(lesson: Lesson, worksheet?: Worksheet): Finding[] {
   const pitch = lesson.facts?.pitch;
   if (!pitch) return [];
   const findings: Finding[] = [];
+  const primary = PRIMARY_BANDS.has(lesson.ageBand ?? "");
   const measure = (text: string, target: Finding["target"], where: string) => {
     const mean = meanSentenceLength(text);
     if (mean !== null && mean > pitch.sentenceLengthMax) {
@@ -110,7 +114,11 @@ function checkReadability(lesson: Lesson, worksheet?: Worksheet): Finding[] {
     if (age !== null && age > pitch.readingAgeTarget + 2) {
       findings.push({
         check: "readability",
-        severity: "warning",
+        // Three or more years above the pitch on a primary lesson is a slide the class cannot read
+        // (quality lab, Sept 2026: every Year 4 run had a content slide at age 11–12 against a
+        // pitch of 9, and a warning is never repaired); an error sends it to Repair.
+        severity:
+          primary && age > pitch.readingAgeTarget + READABILITY_ERROR_YEARS ? "error" : "warning",
         target,
         message: `${where} reads at about age ${Math.round(age)}; the pitch is a reading age of ${pitch.readingAgeTarget}.`,
       });
@@ -201,18 +209,19 @@ function checkRepetition(lesson: Lesson, worksheet?: Worksheet): Finding[] {
 
 function checkExplanationShare(lesson: Lesson): Finding[] {
   const facts = lesson.facts;
-  if (!facts || facts.outline.length === 0) return [];
-  const explain = facts.outline
-    .filter((entry) => EXPLAIN_KINDS.has(entry.kind))
-    .reduce((sum, entry) => sum + entry.minutes, 0);
-  // Integer arithmetic, as `timing` does.
-  if (explain * 100 >= facts.durationMin * EXPLANATION_SHARE_MIN_PERCENT) return [];
+  if (!facts) return [];
+  // Counted in slides (ruling 82): the outline after the title and objectives slides.
+  const taught = facts.outline.filter((e) => e.kind !== "title" && e.kind !== "objectives");
+  if (taught.length === 0) return [];
+  const explain = taught.filter((entry) => EXPLAIN_KINDS.has(entry.kind)).length;
+  const floor = Math.floor((taught.length * EXPLANATION_SHARE_MIN_PERCENT) / 100);
+  if (explain >= floor) return [];
   return [
     {
       check: "explanation-share",
       severity: "warning",
       target: {},
-      message: `Only ${explain} of ${facts.durationMin} minutes explain (content, worked example, picture, vocabulary); at least ${EXPLANATION_SHARE_MIN_PERCENT}% should.`,
+      message: `Only ${explain} of ${taught.length} slides explain (content, worked example, picture, vocabulary); at least ${EXPLANATION_SHARE_MIN_PERCENT}% should.`,
     },
   ];
 }
@@ -396,6 +405,8 @@ const ANAPHORIC_TASK =
   /\b(your (decision|answer|choice)|(this|the) animal|\bit\b|these|this one)\b/i;
 /** Text that poses the decision such a task refers back to. */
 const POSES_DECISION = /\?|\b(whether|decide|is it|are they|which|what)\b/i;
+/** A "these/this …" task whose items follow a colon as a list of two or more. */
+const LISTS_ITS_REFERENTS = /\b(these|this)\b[^:?]*:\s*[^,]+,\s*\S/i;
 
 /**
  * Whether a stem asks anything (TEACH-223). "no-question": no `?` and no sentence opens with an
@@ -415,6 +426,8 @@ export function questionless(stem: string): "ok" | "no-question" | "no-referent"
   for (let i = 0; i < sentences.length; i++) {
     const s = sentences[i] as string;
     if (!IMPERATIVE_OPENERS.test(s) || !ANAPHORIC_TASK.test(s)) continue;
+    // "Put these dates in order: AD 43, AD 410, AD 1." — the things referred to follow the colon.
+    if (LISTS_ITS_REFERENTS.test(s)) continue;
     const before = sentences.slice(0, i).join(" ");
     if (!POSES_DECISION.test(before) && !POSES_DECISION.test(s)) return "no-referent";
   }

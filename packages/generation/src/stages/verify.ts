@@ -38,6 +38,8 @@ export async function runVerify(
   deps: PipelineDeps,
   /** Plan's class for this lesson (`planClassFor`, TEACH-259): Verify runs where the facts were written. */
   cls: "frontier" | "standard",
+  /** A host's lower output cap (the lab, per checker); production always takes `MAX_OUTPUT_TOKENS.verify`. */
+  options: { maxOutputTokens?: number | undefined } = {},
 ): Promise<VerifyResult> {
   deps.logger.info({ stage: "plan", call: "verify", cls }, "plan call");
   const startedAt = Date.now();
@@ -46,11 +48,11 @@ export async function runVerify(
       deps,
       stage: "plan",
       cls,
-      effort: "high",
+      effort: "low",
       prompt: verifyFactsPrompt,
       input: { audience: briefInput.audience, topic: briefInput.topic, facts },
       schema: verifyOutputSchemaFor(facts),
-      maxOutputTokens: MAX_OUTPUT_TOKENS.verify,
+      maxOutputTokens: options.maxOutputTokens ?? MAX_OUTPUT_TOKENS.verify,
     });
     const patched = applyVerifyPatch(facts, call.output.corrections);
     deps.logger.info(

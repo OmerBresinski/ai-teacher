@@ -1,0 +1,11 @@
+{
+  "id": "np2-pack-gates",
+  "note": "Pack admission gates v2. A new rule, not an edit of np1's frozen packAdmission (np1.json is unchanged and np1 runs keep its rule). Applies to packs checked with pack-check.v2; a v1 verdict has no pitched or valuesStated and so fails every fact. First measured by a Sol-only recheck of five np1 packs (scratchpad/quality-prd/lab/np1/rootcause/pack-gates.md).",
+  "registeredAt": "2026-09-23T20:42:31.000Z",
+  "checkPrompt": "pack-check.v2",
+  "rule": "A pack fact is used by the grounded and packed arms only if BOTH checkers (luna, sol) answered correct = yes AND neither answered supportedByEvidence = no, pitched = no or valuesStated = no; a missing verdict or a missing pitched/valuesStated field fails. Applied in code (pack-arms.ts admitPack with gates) from the verdicts recorded in the pack's report.",
+  "checkers": ["luna", "sol"],
+  "correct": "yes",
+  "rejectSupportedByEvidence": "no",
+  "gates": { "rejectPitched": "no", "rejectValuesStated": "no" }
+}

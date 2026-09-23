@@ -13,6 +13,11 @@ export interface TestDbHandle extends DbHandle {
    * IDENTITY CASCADE` — every application table, identity included — call in `beforeEach`.
    */
   truncateTenantTables: () => Promise<void>;
+  /**
+   * `TRUNCATE kb_pack, kb_source, kb_threshold, kb_match_log, kb_fact_signal RESTART IDENTITY
+   * CASCADE` — the knowledge store (TG-2), which `truncateTenantTables` leaves alone.
+   */
+  truncateKnowledgeTables: () => Promise<void>;
 }
 
 export type WithTestDbResult = { ok: true; db: TestDbHandle } | { ok: false; reason: string };
@@ -73,6 +78,12 @@ export async function withTestDb(opts: { max?: number } = {}): Promise<WithTestD
     truncateTenantTables: async () => {
       await handle.unsafeDb.execute(
         rawSql`truncate table job_events, documents, sources, workspaces, sessions, accounts, verifications, users restart identity cascade`,
+      );
+    },
+    truncateKnowledgeTables: async () => {
+      // kb_pack cascades to sections, embeddings, aliases, exclusion phrases, facts and edges.
+      await handle.unsafeDb.execute(
+        rawSql`truncate table kb_pack, kb_source, kb_threshold, kb_match_log, kb_fact_signal restart identity cascade`,
       );
     },
     close: async () => {

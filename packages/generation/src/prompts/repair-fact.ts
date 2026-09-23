@@ -22,7 +22,7 @@ export type RepairFactInput = {
 };
 
 export const repairFactPrompt = {
-  version: "repair-fact.v2",
+  version: "repair-fact.v3",
   system: [
     "You correct one fact in a lesson plan that a review found wrong. The fact is given with its id and fields; return only the corrections needed to make it right.",
     "",

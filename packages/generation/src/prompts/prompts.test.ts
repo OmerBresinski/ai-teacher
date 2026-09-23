@@ -165,64 +165,64 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
 
 const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "check-input": {
-    version: "check-input.v3",
-    hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
+    version: "check-input.v4",
+    hash: "a4f3ff2d86262252006017bc4176e8d7a384fdeeaa87982b32c66a6044c8db69",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v17",
-    hash: "6636dd50d34902275a3129c22d2ba1676bd3c5daec114e862afdac4f76199d1f",
+    version: "plan-skeleton.v19",
+    hash: "7333757394f2391ab9921f089296dc415cabdbd195308ff6ce552ab54453d6a2",
   },
   "plan-facts": {
-    version: "plan-facts.v9",
-    hash: "c13dea5ab5e5587dd74f09e74d6c90a2081ed0804e43572ac622ab1d3a95cbd4",
+    version: "plan-facts.v11",
+    hash: "a582769329a1e3bc2652808dd41c8fc87c8c68e18b1f6b95d8c46407c44253c3",
   },
   "verify-facts": {
-    version: "verify-facts.v1",
-    hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
+    version: "verify-facts.v2",
+    hash: "10c364455e0b08d0be7acb86fdb9360649e8868a3e9a98005af774630e9169a4",
   },
   "generate-slide": {
-    version: "generate-slide.v17",
-    hash: "93f1e7176083f7c6582ad25ceee1f8ae6e6fed1513c870024ba6c18ab2e95e96",
+    version: "generate-slide.v22",
+    hash: "de143709dc710def05d4ef4684b5d05a0695541830c496b43167966305ddc74c",
   },
   "generate-worksheet": {
-    version: "generate-worksheet.v9",
-    hash: "939c884f8b07fbf14a493887ec89df5b829ac7e3592370a7efd67c6ed474ce08",
+    version: "generate-worksheet.v10",
+    hash: "a0cd4c974c6ef8701734f2efc73676e98e101c9857f178fd8e9385913ec16a3e",
   },
   "generate-worksheet-fill": {
-    version: "generate-worksheet-fill.v1",
-    hash: "cda2c51a0a4dcee3984910be0759fab02691fd7e3f5977ac0a70d0ebef7c316c",
+    version: "generate-worksheet-fill.v2",
+    hash: "dcfcd48eb742584bab6a4bab5d25ce9a40fc7aa76de4cea828f2175e11a074b8",
   },
   "parse-brief": {
-    version: "parse-brief.v1",
-    hash: "fc3302b61a3673236ebee7e2616e9db83d2d7390cda5a4f091304af99294eba8",
+    version: "parse-brief.v2",
+    hash: "b4507f7a3335f4638d0460bfaa95e4bde0df51bebcee9521ba1f7a4f703d9be9",
   },
   "shortlist-photos": {
-    version: "shortlist-photos.v2",
-    hash: "1bca44f4c61f12113e44be1ec038d596c4dba84dafd8cbb0ffa0807240f2d081",
+    version: "shortlist-photos.v3",
+    hash: "7fbcbfb66ce32bc9e3c99c189cdf72991c772c79dc6e0dba9360d8dad75e8be6",
   },
   "pick-or-requery-photo": {
-    version: "pick-or-requery-photo.v6",
-    hash: "f3ac118e19b5ff1051618ca4823658c778e38d0c076d292c3e15b8a5cd9b6b26",
+    version: "pick-or-requery-photo.v7",
+    hash: "5d38c9bafd55fa9938b767a885661963f6e0416bbc571642829eb5735726520f",
   },
   evaluate: {
-    version: "evaluate.v6",
-    hash: "e12329a1427665290602ee85bb5fb720fe2ebe33467c07fb16974cd312a9b037",
+    version: "evaluate.v7",
+    hash: "b3efa762a89735395e2106d1520f99f1037a8f5344e61b4c1ff761ab704dbad1",
   },
   repair: {
-    version: "repair.v11",
-    hash: "bdedd08451aca8165e8ecfb7d4a5796108f62871ca57f75198215c0f04d17a87",
+    version: "repair.v13",
+    hash: "fd53ad4bf2a2b430cd0514d5e22616d66503f0c3b2b1c463b00dad368ea5a521",
   },
   "repair-fact": {
-    version: "repair-fact.v2",
-    hash: "8f156fb5f6d9ad596b271de7d50a2f1ba500a75e1e7b63855bd2ff135a3ab9f6",
+    version: "repair-fact.v3",
+    hash: "6e73bc9bae5de3c29b18a7d60a3b0829b8f8aea81df6003517e91853692ebe43",
   },
   cascade: {
-    version: "cascade.v2",
-    hash: "8111e79f21a141c7947e8c148d7a1fdb8956764cd1ea53d41ffda729851df476",
+    version: "cascade.v3",
+    hash: "026a9136c27701467d3c9175431114664ad646ad39c2df0f13d5699765b3667d",
   },
   regenerate: {
-    version: "regenerate.v2",
-    hash: "53cd60826e8944cd65e473c1500fb50c9493ed3822c32105f3c652a269be0dd1",
+    version: "regenerate.v3",
+    hash: "df75739369a00d8ce89e1d5e8e5e50a5deb7ea9cafe827c88c16f62019da4e3f",
   },
 };
 
@@ -266,7 +266,9 @@ describe("prompt versions", () => {
 
   test("TEACH-258: examples replace prose within each prompt's baseline word budget", () => {
     const budgets = {
-      "generate-slide": 1009,
+      // v19 was 990 words; v20 (minimalism rubric, 23 Sep 2026) is 956. v22 (+15: the two-key-idea
+      // content rule and its 60-word body) is 971 and must stay under this.
+      "generate-slide": 980,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
       repair: 503,
@@ -302,7 +304,8 @@ describe("prompt versions", () => {
   });
 
   test("TEACH-67: the skeleton takes the fixed slide count, the level and the pinned objectives", () => {
-    const RANGE = "Give 8–12 outline slides for an hour-long lesson (fewer for a shorter one).";
+    const RANGE =
+      "Give 8–12 outline slides, counting the title and objectives slides; fewer for a lesson much shorter than an hour.";
     const fixed = planSkeletonPrompt.user({ ...brief, slideCount: 8 });
     expect(fixed).toContain(
       "The outline has exactly 8 slides, counting the title and objectives slides.",
@@ -446,11 +449,13 @@ describe("prompt versions", () => {
     expect(generateWorksheetFillPrompt.system).toContain("the shape wins");
   });
 
-  test("every prompt states the house rules and asks for JSON", () => {
+  test("every prompt states the house rules", () => {
+    // "Answer with the requested JSON only" left the house rules on 23 Sept 2026: `call.ts` repairs
+    // the text and validates it against the schema, so no prompt has to ask for JSON.
     for (const prompt of Object.values(PROMPTS)) {
       expect(prompt.system).toContain("British English");
       expect(prompt.system).toContain("Never invent or include the name of any pupil");
-      expect(prompt.system).toMatch(/JSON/);
+      expect(prompt.system).not.toContain("JSON only");
     }
   });
 
@@ -474,7 +479,24 @@ describe("prompt versions", () => {
       "At least 2 content slides, each explaining one mechanism (how or why).",
     );
     expect(revisiting).not.toContain("the definition first");
-    expect(skeleton).toContain("Explain slides take at least 40% of the minutes.");
+    // Ruling 82: the floors are slides after the title and objectives, whole slides for a fixed
+    // count (10 → 8 taught; 40% → 3), the percentage when the brief leaves the count open.
+    expect(skeleton).toContain(
+      "At least 3 of the 8 slides after the title and objectives slides are explain slides.",
+    );
+    const open = PROMPTS["plan-skeleton"].user({
+      ...(SAMPLE_INPUTS["plan-skeleton"] as object),
+      slideCount: undefined,
+    } as never);
+    expect(open).toContain(
+      "At least 40% of the slides after the title and objectives slides are explain slides.",
+    );
+    // No outline minutes anywhere in either Plan call; the skeleton's lesson-length line is the
+    // brief's, and `factsBlock` renders none since 23 Sept 2026 (ruling 82).
+    for (const text of [skeleton, open, planSkeletonPrompt.system]) {
+      expect(text.replace(/Lesson length: \d+ minutes/, "")).not.toMatch(/minute|\bmin\b/);
+    }
+    expect(outlineOfExample().some((e) => "minutes" in e)).toBe(false);
     expect(skeleton).toContain(
       "Confront the misconception on a true-false slide or as a multiple-choice distractor.",
     );
@@ -484,6 +506,8 @@ describe("prompt versions", () => {
     const facts = PROMPTS["plan-facts"].user(SAMPLE_INPUTS["plan-facts"] as never);
     expect(facts).toContain("This is an Explain lesson for a class new to the topic.");
     expect(facts).toContain("Question tiers: 5 easy, 5 core, 2 stretch (at least 12 in all).");
+    expect(facts).toContain("Outline (position: kind, phase — what the slide adds):");
+    expect(facts.replace(/Lesson length: \d+ minutes/, "")).not.toMatch(/minute|\bmin\b/);
     // TEACH-240: mustShow names what an ordinary photograph shows; our own example used to be "front teeth".
     expect(planSkeletonPrompt.system).toContain("a stranger would take it");
     expect(planSkeletonPrompt.system).not.toContain('"front teeth"');
@@ -534,11 +558,62 @@ describe("prompt versions", () => {
     expect(steps[3]).toMatch(/^So /);
     const vocab = PROMPTS["generate-slide"].user({
       ...(SAMPLE_INPUTS["generate-slide"] as object),
-      entry: { kind: "vocabulary", minutes: 5, factRefs: ["v1"] },
+      entry: { kind: "vocabulary", factRefs: ["v1"] },
       vocabularySlots: 4,
     } as never);
     expect(vocab).toContain("at most 4 vocabulary entries");
     expect(vocab).toContain("keep every term another shown definition uses");
+  });
+
+  test("UX ruling 81: the shared practise slide asks its questions verbatim and keeps the answers in notes", () => {
+    const system = PROMPTS["generate-slide"].system;
+    const rule = system.slice(
+      system.indexOf("When an `instructions` slide's facts include questions"),
+    );
+    expect(rule).not.toBe(system);
+    const line = rule.slice(0, rule.indexOf("\n"));
+    expect(line).toContain('`heading` "Your turn"');
+    expect(line).toContain("stems verbatim, in the order this slide's facts name them");
+    expect(line).toContain("with no number (the layout numbers them)");
+    expect(line).toContain('`notes` gives each answer on its own line ("1. <answer>")');
+    expect(line).toContain("the misconception to watch for");
+    expect(line).toContain("mini-whiteboards or books");
+    // Minimalism rubric (v20): the reserved stems are listed once, in the user turn, with the one
+    // instruction not to use them; the system prompt no longer repeats "never a reserved stem".
+    expect(system).not.toContain("reserved stem");
+    const user = PROMPTS["generate-slide"].user(SAMPLE_INPUTS["generate-slide"] as never);
+    expect(user).toContain("do not use these stems");
+  });
+
+  test("quality PRD G3: the slide line assigns the callout; the shape shows it once, conditionally", () => {
+    const system = PROMPTS["generate-slide"].system;
+    expect(system).toContain("`callout`, where shown, only when the slide line assigns one");
+    expect(system).toContain('"callout"?: { "kind", "text" }');
+    expect(system).toContain("callout text ≤ 120");
+    // Only the three teaching kinds carry the box.
+    const shapeLines = system.split("\n").filter((l) => l.includes('"callout"?'));
+    expect(shapeLines.map((l) => l.slice(2, l.indexOf(":")))).toEqual([
+      "content",
+      "image-text",
+      "worked-example",
+    ]);
+    const base = SAMPLE_INPUTS["generate-slide"] as object;
+    const withBox = PROMPTS["generate-slide"].user({
+      ...base,
+      entry: {
+        kind: "content",
+        factRefs: ["k1"],
+        callout: { kind: "watch-out", factRefs: ["m1"] },
+      },
+    } as never);
+    expect(withBox).toContain(
+      'This slide carries a "watch-out" callout: set `callout` to kind "watch-out" with `text` one line for pupils, from m1 only.',
+    );
+    const without = PROMPTS["generate-slide"].user({
+      ...base,
+      entry: { kind: "content", factRefs: ["k1"] },
+    } as never);
+    expect(without).not.toContain("callout");
   });
 
   test("TEACH-241: the judge picks a photo showing at least one required item, not all of them", () => {
@@ -570,6 +645,8 @@ describe("prompt versions", () => {
     expect(text).toContain("Year 8");
     expect(text).toContain("o1:");
     expect(text).toContain('kind "vocabulary"');
+    // Ruling 82: the slide line has no minutes, whether or not the entry still carries them.
+    expect(text).toContain('Slide 4 of 10: kind "vocabulary", explain phase, covering facts');
   });
 
   test("TEACH-230 row 1: an Apply content slide is told the Apply paragraph and not the Explain one", () => {
@@ -579,7 +656,7 @@ describe("prompt versions", () => {
     });
     const text = PROMPTS["generate-slide"].user({
       ...(SAMPLE_INPUTS["generate-slide"] as object),
-      entry: { kind: "content", minutes: 5, factRefs: ["k1"] },
+      entry: { kind: "content", factRefs: ["k1"] },
       shape: { verb: apply.verb, confidence: apply.confidence },
     } as never);
     expect(text).toContain("Objective verb: Apply.");

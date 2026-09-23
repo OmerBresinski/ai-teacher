@@ -8,6 +8,8 @@ import {
   DEFAULT_REGION,
   isAiError,
   isAnthropicModelId,
+  isGatewayModelId,
+  isOpenRouterModelId,
 } from "./index";
 
 function createMemoryLogger() {
@@ -94,6 +96,161 @@ describe("createAi", () => {
       throw new Error("Expected ai.modelId to throw");
     } catch (error) {
       expect(isAiError(error, "invalid_model")).toBe(true);
+    }
+  });
+});
+
+describe("Vercel AI Gateway ids (the lab's model bench)", () => {
+  test("isGatewayModelId is the slash: `provider/model` ids only", () => {
+    expect(isGatewayModelId("google/gemini-3.8-flash")).toBe(true);
+    expect(isGatewayModelId("openai/gpt-5.6-luna")).toBe(true);
+    for (const id of [
+      DEFAULT_MODEL_IDS.small,
+      "us.anthropic.claude-sonnet-5",
+      "anthropic.claude-sonnet-5",
+    ])
+      expect(isGatewayModelId(id)).toBe(false);
+  });
+
+  test("a gateway key alone configures the client as `gateway`; a Bedrock id then fails at model()", () => {
+    const ai = createAi({ AI_GATEWAY_API_KEY: "gw-key", AI_MODEL_SMALL: "openai/gpt-5.6-luna" });
+    expect(ai.kind).toBe("gateway");
+    expect(ai.model("small")).toBeDefined();
+    try {
+      ai.model("standard"); // the default Bedrock id, no Bedrock key
+      throw new Error("Expected ai.model to throw");
+    } catch (error) {
+      expect(isAiError(error, "unconfigured")).toBe(true);
+      expect((error as Error).message).toContain("AWS_BEARER_TOKEN_BEDROCK");
+    }
+  });
+
+  test("a Bedrock key alone keeps `bedrock` and rejects a gateway id at model()", () => {
+    const ai = createAi({
+      AWS_BEARER_TOKEN_BEDROCK: "test-key",
+      AI_MODEL_SMALL: "google/gemini-3.8-flash",
+    });
+    expect(ai.kind).toBe("bedrock");
+    try {
+      ai.model("small");
+      throw new Error("Expected ai.model to throw");
+    } catch (error) {
+      expect(isAiError(error, "unconfigured")).toBe(true);
+      expect((error as Error).message).toContain("AI_GATEWAY_API_KEY");
+    }
+  });
+
+  test("both keys: each id goes to its own provider, and the gateway request carries the id", async () => {
+    const urls: string[] = [];
+    const requests: string[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      urls.push(String(url instanceof Request ? url.url : url));
+      // The gateway names the model in a header or the path, Bedrock in the path: search all of it.
+      requests.push(JSON.stringify({ url: urls.at(-1), headers: init?.headers, body: init?.body }));
+      return new Response("{}", { status: 500 });
+    }) as unknown as typeof globalThis.fetch;
+    try {
+      const ai = createAi({
+        AWS_BEARER_TOKEN_BEDROCK: "test-key",
+        AI_GATEWAY_API_KEY: "gw-key",
+        AI_MODEL_SMALL: "google/gemini-3.8-flash",
+      });
+      expect(ai.kind).toBe("bedrock");
+      await generateText({ model: ai.model("small"), prompt: "x", maxRetries: 0 }).catch(
+        () => undefined,
+      );
+      expect(urls[0]).toContain("ai-gateway.vercel.sh");
+      expect(requests[0]).toContain("google/gemini-3.8-flash");
+      await generateText({ model: ai.model("standard"), prompt: "x", maxRetries: 0 }).catch(
+        () => undefined,
+      );
+      expect(urls[1]).toContain("bedrock");
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  test("route(cls, context) swaps the model id for one call and the log line shows the id used", async () => {
+    const { lines, logger } = createMemoryLogger();
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response("{}", { status: 500 })) as unknown as typeof globalThis.fetch;
+    try {
+      const ai = createAi(
+        { AWS_BEARER_TOKEN_BEDROCK: "test-key", AI_GATEWAY_API_KEY: "gw-key" },
+        {
+          logger,
+          route: (_cls, context) =>
+            context?.stage === "generate" ? "google/gemini-3.8-flash" : undefined,
+        },
+      );
+      await generateText({
+        model: ai.model("small", { stage: "generate" }),
+        prompt: "x",
+        maxRetries: 0,
+      }).catch(() => undefined);
+      await generateText({
+        model: ai.model("small", { stage: "plan" }),
+        prompt: "x",
+        maxRetries: 0,
+      }).catch(() => undefined);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    const ids = lines
+      .map((l) => JSON.parse(l) as { ai?: { modelId?: string } })
+      .map((r) => r.ai?.modelId)
+      .filter(Boolean);
+    expect(ids).toEqual(["google/gemini-3.8-flash", DEFAULT_MODEL_IDS.small]);
+  });
+});
+
+describe("OpenRouter ids (`openrouter/<vendor>/<model>`)", () => {
+  test("the prefix decides: an OpenRouter id is not a gateway id", () => {
+    expect(isOpenRouterModelId("openrouter/google/gemini-3.8-flash")).toBe(true);
+    expect(isGatewayModelId("openrouter/google/gemini-3.8-flash")).toBe(false);
+    expect(isOpenRouterModelId("google/gemini-3.8-flash")).toBe(false);
+    expect(isOpenRouterModelId(DEFAULT_MODEL_IDS.small)).toBe(false);
+  });
+
+  test("an OpenRouter key alone configures `openrouter`; the request goes to openrouter.ai with the prefix stripped", async () => {
+    const requests: string[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      requests.push(
+        JSON.stringify({ url: String(url instanceof Request ? url.url : url), body: init?.body }),
+      );
+      return new Response("{}", { status: 500 });
+    }) as unknown as typeof globalThis.fetch;
+    try {
+      const ai = createAi({
+        OPENROUTER_API_KEY: "or-key",
+        AI_MODEL_SMALL: "openrouter/google/gemini-3.8-flash",
+      });
+      expect(ai.kind).toBe("openrouter");
+      await generateText({ model: ai.model("small"), prompt: "x", maxRetries: 0 }).catch(
+        () => undefined,
+      );
+      expect(requests[0]).toContain("https://openrouter.ai/api/v1/");
+      expect(requests[0]).toContain('\\"model\\":\\"google/gemini-3.8-flash\\"');
+      expect(requests[0]).not.toContain("openrouter/google");
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  test("an OpenRouter id without the key fails at model() naming the variable", () => {
+    const ai = createAi({
+      AWS_BEARER_TOKEN_BEDROCK: "test-key",
+      AI_MODEL_SMALL: "openrouter/openai/gpt-5.6-luna",
+    });
+    try {
+      ai.model("small");
+      throw new Error("Expected ai.model to throw");
+    } catch (error) {
+      expect(isAiError(error, "unconfigured")).toBe(true);
+      expect((error as Error).message).toContain("OPENROUTER_API_KEY");
     }
   });
 });

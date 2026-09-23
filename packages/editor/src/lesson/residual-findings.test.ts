@@ -97,7 +97,7 @@ describe("residualFindings", () => {
     const by = findingsBySlide([
       { check: "a", severity: "warning", target: { slideId: "s1" }, message: "" },
       { check: "b", severity: "error", target: { slideId: "s1" }, message: "" },
-      { check: "timing", severity: "warning", target: {}, message: "" },
+      { check: "objective-taught", severity: "warning", target: {}, message: "" },
     ]);
     expect([...by.keys()]).toEqual(["s1"]);
     expect(by.get("s1")).toHaveLength(2);

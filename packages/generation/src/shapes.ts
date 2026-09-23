@@ -43,6 +43,12 @@ export type LessonShape = {
   forbiddenKinds: SlideKind[];
   minContent: number;
   minCheckEntries: number;
+  /**
+   * The explain and practise floors, counted in slides (ruling 82): a percent of the outline's
+   * slides after the title and objectives slides, the exit ticket included, rounded down
+   * (`slideShare` in `specs.ts`). Explain counts teaching kinds in the explain phase; practise
+   * counts every practise-phase slide. The names are kept from when the floors were minutes.
+   */
   explainMinPercent: number;
   practiseMinPercent: number;
   /** Apply: the method comes before any practice. */

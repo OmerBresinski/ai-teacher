@@ -1,0 +1,482 @@
+{
+  "id": "y4-history-romans",
+  "from": "lab bench facts-round1 luna repeat 1, openai/gpt-5.6-luna, merged by mergeObjectiveFacts",
+  "topic": "The Romans in Britain",
+  "durationMin": 60,
+  "yearGroup": "Year 4",
+  "subject": "History",
+  "answers": {
+    "objectiveVerb": "Explain the Romans in Britain",
+    "priorConfidence": "New to it"
+  },
+  "objectives": [
+    {
+      "text": "Name two reasons why the Romans chose to invade Britain."
+    },
+    {
+      "text": "Explain why Queen Boudica led a rebellion against Roman control."
+    },
+    {
+      "text": "Explain how Roman settlements changed everyday life across Britain."
+    }
+  ],
+  "facts": {
+    "keyIdeas": [
+      {
+        "statement": "The Romans wanted Britain's wealth and useful resources.",
+        "explanation": "Britain had valuable goods and materials, such as metals, grain and cattle. Taking control could bring wealth to Rome and help the Romans trade and collect taxes.",
+        "example": "In AD 43, Emperor Claudius ordered the invasion of Britain partly because its resources could make the Roman Empire richer.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "Claudius wanted military success and greater power.",
+        "explanation": "A successful invasion would give Emperor Claudius a famous victory. It would strengthen his position as emperor and complete the conquest that Julius Caesar had attempted in 55 and 54 BC.",
+        "example": "In AD 43, Claudius led the Roman conquest of Britain to win glory, although Julius Caesar had only attempted invasions in 55 and 54 BC.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "Boudica led the Iceni rebellion because Roman rule took away land, wealth and independence.",
+        "explanation": "The Iceni had been allies of Rome, but Roman officials later treated their kingdom as Roman property. Many Britons disliked taxes, lost land and foreign control.",
+        "example": "After King Prasutagus died in AD 60 or 61, the Romans took control of Iceni land and wealth.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "statement": "Boudica’s family was treated cruelly, helping turn anger into rebellion.",
+        "explanation": "The Roman historian Tacitus wrote that Boudica was flogged and her daughters were attacked. Boudica then led the Iceni and other Britons against Roman control.",
+        "example": "Tacitus recorded that Boudica led an army against the Roman settlement of Camulodunum, now Colchester, in AD 60 or 61.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "statement": "Roman settlements changed travel, trade and services in many parts of Britain.",
+        "explanation": "The Romans built roads linking towns, planned towns with straight streets, and created places for markets, public baths and government. These made travel, buying and selling, and meeting other people easier.",
+        "example": "At Londinium, Roman roads and a market helped people move goods and meet traders.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "statement": "Roman settlement changed life most in towns, but many people in the countryside kept older ways of living.",
+        "explanation": "Some people used Roman buildings, roads, baths and water supplies. However, Roman rule did not make every Briton live in a town or abandon Celtic customs, homes or farming.",
+        "example": "The Roman town of Verulamium, near modern St Albans, had planned streets and public buildings, while nearby farmers still worked the land.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "misconceptions": [
+      {
+        "belief": "The Romans invaded Britain only because they wanted more land for Roman people to live on.",
+        "correction": "Two important reasons were Britain's wealth and resources, and Claudius's wish for military glory and stronger rule. Settling land was not the only reason.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "belief": "Boudica rebelled only because she wanted to become a Roman ruler.",
+        "correction": "She rebelled because Roman officials seized Iceni land and wealth, mistreated her family and threatened her people’s independence.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "belief": "The Romans changed everyday life in exactly the same way for everyone in Britain.",
+        "correction": "Changes were strongest in Roman towns and near major roads. Many people in the countryside continued farming and kept some older customs, while also using new Roman goods or routes.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "vocabulary": [
+      {
+        "term": "invade",
+        "definition": "Enter another country with an army to take control of it.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "resources",
+        "definition": "Useful supplies found in a place, such as metals, food or animals.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "rebellion",
+        "definition": "An organised attempt by people to fight against the ruler or government controlling them.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "term": "confiscated",
+        "definition": "Taken away by an authority, often without the owner agreeing.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "term": "settlement",
+        "definition": "A place where people build homes and live, such as a village or town.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "term": "grid plan",
+        "definition": "A town layout with straight roads crossing at regular angles, like squares on a board.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "workedExamples": [
+      {
+        "problem": "Explain why Boudica led a rebellion against Roman control.",
+        "steps": [
+          "Prasutagus, king of the Iceni, died in AD 60 or 61.",
+          "The Romans took control of Iceni land and wealth.",
+          "Boudica and her daughters were treated cruelly, according to Tacitus.",
+          "Boudica and other Britons rebelled against Roman rule."
+        ],
+        "answer": "Boudica led the rebellion because the Romans seized Iceni property, mistreated her family and threatened her people’s independence.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      }
+    ],
+    "questions": [
+      {
+        "stem": "Name one reason why the Romans wanted to invade Britain.",
+        "answer": "Britain had valuable resources, such as metals, grain and cattle.",
+        "reasoning": "Controlling these resources could make Rome richer through trade and taxes.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "Britain had no useful goods."
+          },
+          {
+            "text": "The Romans wanted to learn British songs."
+          },
+          {
+            "text": "Britain was already part of Rome."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Which pair gives two reasons for the Roman invasion of Britain?",
+        "answer": "Britain's wealth and Claudius's wish for military glory.",
+        "reasoning": "The invasion could enrich Rome and give Claudius a famous victory.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "Cold weather and empty farmland."
+          },
+          {
+            "text": "Building schools and spreading football."
+          },
+          {
+            "text": "Helping Boudica and leaving Rome."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Name the Roman leader who invaded Britain in AD 43 and one reason for the invasion.",
+        "answer": "Emperor Claudius; he wanted military glory or Britain's wealth and resources.",
+        "reasoning": "Claudius ordered the invasion for political and economic reasons.",
+        "tier": "core",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "Julius Caesar; he conquered Britain in AD 43."
+          },
+          {
+            "text": "Boudica; she wanted Roman wealth."
+          },
+          {
+            "text": "Hadrian; he invaded Britain in 55 BC."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Who led a rebellion against Roman control in Britain?",
+        "answer": "Queen Boudica of the Iceni.",
+        "reasoning": "Boudica was the Iceni queen who led an uprising in AD 60 or 61.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "Emperor Claudius"
+          },
+          {
+            "text": "Julius Caesar"
+          },
+          {
+            "text": "Hadrian"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Which was an important reason for Boudica’s rebellion?",
+        "answer": "The Romans took Iceni land and wealth and mistreated her family.",
+        "reasoning": "These actions made Boudica and many other Britons resist Roman control.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "She wanted to become Roman emperor",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          },
+          {
+            "text": "The Romans invited her to rule Rome"
+          },
+          {
+            "text": "She wanted to build Hadrian’s Wall"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "How did the Romans’ treatment of Boudica’s family help cause the rebellion?",
+        "answer": "It changed anger about Roman rule into a decision to fight.",
+        "reasoning": "The reported mistreatment of Boudica and her daughters gave her a powerful reason to lead resistance.",
+        "tier": "core",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "It made Boudica grateful to Rome"
+          },
+          {
+            "text": "It made Boudica leave Britain"
+          },
+          {
+            "text": "It ended Roman control peacefully"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Which judgement best explains why Boudica rebelled?",
+        "answer": "Several causes combined: loss of independence, seized property and cruel treatment of her family.",
+        "reasoning": "The rebellion was caused by both wider anger at Roman rule and personal mistreatment.",
+        "tier": "stretch",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "One small argument caused everything"
+          },
+          {
+            "text": "Boudica rebelled only to gain treasure"
+          },
+          {
+            "text": "The Romans asked Boudica to attack them"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Explain one way Roman roads changed everyday life in Britain.",
+        "answer": "They made travel and carrying goods between settlements quicker and easier.",
+        "reasoning": "Roads linked places, so people and goods could move more easily.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "They stopped all farming in Britain."
+          },
+          {
+            "text": "They made every road into a river."
+          },
+          {
+            "text": "They meant everyone lived in Londinium."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "Explain how a Roman town could change daily life for people living there.",
+        "answer": "Planned streets, markets, baths and public buildings gave people new places to trade, wash and meet.",
+        "reasoning": "These buildings and services provided activities that were less common before Roman towns grew.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "It made every person become a Roman soldier."
+          },
+          {
+            "text": "It removed the need for food and water."
+          },
+          {
+            "text": "It forced every Briton to live in one town."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "Which statement best explains how Roman settlements changed Britain?",
+        "answer": "They introduced towns, roads and public buildings, but changes were greater in some places than others.",
+        "reasoning": "Roman influence was strong in towns and near roads, while many rural people kept older ways of life.",
+        "tier": "core",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "They changed every person’s life in exactly the same way."
+          },
+          {
+            "text": "They built no new places for people to live or trade."
+          },
+          {
+            "text": "They only changed Britain by winning battles."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "Evaluate this judgement: 'Roman settlement completely changed everyday life across Britain.'",
+        "answer": "It is partly correct because towns and roads brought major changes, but it is too strong because many rural people kept older ways.",
+        "reasoning": "Evidence shows both change in settled areas and continuity in the countryside.",
+        "tier": "stretch",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "It is fully correct because no older customs survived."
+          },
+          {
+            "text": "It is wrong because Roman settlements had no effect."
+          },
+          {
+            "text": "It is fully correct because every Briton lived in a town."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ]
+  },
+  "duplicates": {
+    "keyIdeas": 0,
+    "misconceptions": 0,
+    "vocabulary": 0,
+    "workedExamples": 0,
+    "questions": 0
+  }
+}

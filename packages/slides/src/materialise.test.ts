@@ -671,6 +671,11 @@ describe("materialiseSlide with a variant", () => {
       "Water at 3.5 degrees.",
       "Then ice.",
     ]);
+    // A line break wins over the first full stop: one paragraph per key idea (generate-slide v22).
+    expect(splitAtFullStop("First idea. Its example.\n\nSecond idea. Its example.")).toEqual([
+      "First idea. Its example.",
+      "Second idea. Its example.",
+    ]);
     const two = materialiseSlide(
       {
         ...minimalSpec("content"),

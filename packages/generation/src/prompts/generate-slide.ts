@@ -18,7 +18,27 @@ import {
  * its neighbours' briefs, the facts it references in full, every misconception, and the stems
  * reserved for other slides and the worksheet — so slides can be written in parallel. Since
  * TEACH-230 it is also told the lesson's objective verb (`verbBlock`): what a content, worked-example,
- * open-response or exit-ticket slide is *for* under Recall, Explain, Apply or Evaluate.
+ * open-response or exit-ticket slide is *for* under Recall, Explain, Apply or Evaluate. UX ruling
+ * 82: an outline entry has no minutes, so the slide line gives kind, phase and facts only. UX
+ * ruling 81: an `instructions` slide whose facts are questions is the shared practise slide; its
+ * steps are those stems verbatim and its answers go in `notes`. Quality PRD G3: when the outline
+ * assigns the entry a callout, the slide line names its kind and fact ids and the writer fills
+ * `callout` from them; `withAssignedCallout` (specs.ts) checks presence and kind.
+ *
+ * v20 (23 Sep 2026, minimalism rubric): dropped the geometry sentence (a per-kind schema admits no
+ * such field), the `factRefs` echo (HOUSE_RULES says it), two "never a reserved stem" (the user turn
+ * lists them), the forty-words line (the limits block) and "answers correct, distractors plausible"
+ * (questions are copied verbatim; no bench failure it fixed).
+ *
+ * v22 (23 Sep 2026, np1 root cause RC1 follow-up): `outline-from-facts` now puts up to two key
+ * ideas on one content slide, and v21's content rule spoke of "the key idea" only. A content slide
+ * whose facts include two key ideas teaches both: the heading says what joins them, the body is
+ * two short paragraphs, one per idea, in up to 60 words (the one-idea body stays 40). The number
+ * lives in the content shape only; `SPEC_LIMITS.body` (400 characters) already holds 60 words, so
+ * no schema change. Renderer: a body over forty words is laid out `two-column` (`chooseVariant`);
+ * `splitAtFullStop` (`@tj/slides`) now splits at the first line break when there is one, so each
+ * column carries one idea (a first draft asked for "the first in one sentence": Luna wrote the
+ * first idea across two sentences on 3 of 3 long bodies, so a full-stop split cut it in half).
  */
 
 export type GenerateSlideInput = {
@@ -82,10 +102,12 @@ const SHAPES = {
     '{ "kind": "starter", "heading"?, "items": [1–3 strings], "footnote"?, "factRefs", "notes"? }',
   vocabulary:
     '{ "kind": "vocabulary", "entries": [{ "term", "definition" }] (1–slots), "factRefs", "notes"? }',
-  content: '{ "kind": "content", "heading", "body" (≤ 40 words), "factRefs", "notes"? }',
-  "image-text": '{ "kind": "image-text", "heading", "body" (≤ 40 words), "factRefs", "notes"? }',
+  content:
+    '{ "kind": "content", "heading", "body" (≤ 40 words; ≤ 60 with two key ideas), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+  "image-text":
+    '{ "kind": "image-text", "heading", "body" (≤ 40 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "worked-example":
-    '{ "kind": "worked-example", "heading"?, "question" (one or two lines), "steps": [1–4 strings, each one short line of about 56 characters], "factRefs", "notes"? }',
+    '{ "kind": "worked-example", "heading"?, "question" (one or two lines), "steps": [1–4 strings, each one short line of about 56 characters], "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   instructions:
     '{ "kind": "instructions", "heading"?, "steps": [1–4 strings], "footnote"?, "factRefs", "notes"? }',
   discussion: '{ "kind": "discussion", "prompt", "footnote"?, "factRefs", "notes"? }',
@@ -105,21 +127,19 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v17",
+  version: "generate-slide.v22",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
-    "The slide's kind is fixed; you supply its text and answers only. A layout recipe places them, so give no positions, sizes or formatting.",
     "",
     "Rules:",
     HOUSE_RULES,
-    "Follow this slide's brief and the supplied facts; do not repeat its neighbours. Include the outline entry's fact ids in `factRefs`.",
-    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading, its explanation, example and any useful analogy in the body. Question slides use the supplied question, answer and distractors verbatim; never a reserved stem.",
+    "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
+    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading, its explanation, example and any useful analogy in the body. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.",
+    'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
     "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
     "`footnote` is one short line pupils read — how long they have, where to write, what to do when finished. Anything addressed to the teacher goes in `notes`; leave `footnote` out rather than fill it.",
     IMAGE_TEXT_RULE,
-    "Keep text short enough to read from the back of a classroom: one idea per slide, no paragraph over forty words.",
-    "Answers must be correct and unambiguous; distractors plausible.",
     limitsBlock({
       title: SPEC_LIMITS.title,
       "heading/subtitle": SPEC_LIMITS.heading,
@@ -133,10 +153,11 @@ export const generateSlidePrompt = {
       definition: SPEC_LIMITS.definition,
       footnote: SPEC_LIMITS.footnote,
       answer: SPEC_LIMITS.answer,
+      "callout text": SPEC_LIMITS.callout,
       notes: SPEC_LIMITS.notes,
     }),
     "",
-    "The JSON shape per kind:",
+    "The JSON shape per kind (`callout`, where shown, only when the slide line assigns one):",
     ...Object.entries(SHAPES).map(([kind, shape]) => `- ${kind}: ${shape}`),
     "",
     "Example for a true-false slide:",
@@ -179,7 +200,7 @@ export const generateSlidePrompt = {
       "",
       factsBlock(input.referenced),
       "",
-      `Slide ${input.position.index} of ${input.position.total}: kind "${input.entry.kind}", ${input.entry.minutes} minutes${input.phase ? `, ${input.phase} phase` : ""}, covering facts ${input.entry.factRefs.join(", ") || "(none named)"}.`,
+      `Slide ${input.position.index} of ${input.position.total}: kind "${input.entry.kind}"${input.phase ? `, ${input.phase} phase` : ""}, covering facts ${input.entry.factRefs.join(", ") || "(none named)"}.`,
     ];
     if (input.entry.brief) {
       parts.push(`This slide adds: ${input.entry.brief.adds}`);
@@ -188,6 +209,12 @@ export const generateSlidePrompt = {
     if (input.neighbours.previous)
       parts.push(`The slide before adds: ${input.neighbours.previous}`);
     if (input.neighbours.next) parts.push(`The slide after adds: ${input.neighbours.next}`);
+    if (input.entry.callout) {
+      const { kind, factRefs } = input.entry.callout;
+      parts.push(
+        `This slide carries a "${kind}" callout: set \`callout\` to kind "${kind}" with \`text\` one line for pupils, from ${factRefs.join(", ")} only.`,
+      );
+    }
     if (input.photo !== undefined) parts.push(...photoBlock(input.photo));
     if (input.entry.kind === "vocabulary") {
       parts.push(

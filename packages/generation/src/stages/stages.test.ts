@@ -5,7 +5,7 @@ import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
 import { PROMPT_VERSIONS, VERB_WRITING } from "../prompts";
 import { lessonShapeOf } from "../shapes";
-import { assignFactIds, planFactsSchemaFor } from "../specs";
+import { assignFactIds, OUTLINE_FROM_FACTS_VERSION, planFactsSchemaFor } from "../specs";
 import {
   callLimitedBudget,
   FIXTURES,
@@ -120,7 +120,8 @@ describe("plan", () => {
     });
     expect(deps.progress).toHaveLength(3);
     expect(deps.persisted).toHaveLength(3);
-    // Row 8: the verify call is the third plan call, standard class at high effort.
+    // Row 8: the verify call is the third plan call, standard class; low effort since 17 Sep 2026
+    // (at "high" through a gateway the checker reasoned its whole output cap away and answered nothing).
     expect(
       ai.calls.map((c) => [
         c.modelClass,
@@ -131,7 +132,7 @@ describe("plan", () => {
     ).toEqual([
       ["standard", "plan", PROMPT_VERSIONS["plan-skeleton"], "medium"],
       ["standard", "plan", PROMPT_VERSIONS["plan-facts"], "medium"],
-      ["standard", "plan", PROMPT_VERSIONS["verify-facts"], "high"],
+      ["standard", "plan", PROMPT_VERSIONS["verify-facts"], "low"],
     ]);
 
     expect(state.lesson.facts).toEqual(fullFacts());
@@ -704,6 +705,70 @@ describe("generate", () => {
       PROMPT_VERSIONS["generate-slide"],
     );
     expect(checkLesson(state.lesson)).toEqual([]);
+  });
+
+  test("a callout box on a slide with no assigned callout is never an editorial miss outside the lab outline", async () => {
+    // Production's Plan assigns no callouts (`outline-from-facts` is not in the planned stamp),
+    // so a writer that adds a box, or leaves one out, is accepted as written: no retry, no
+    // spec-rule finding, the box kept.
+    const start = await planned();
+    const box = { kind: "watch-out", text: "Not every road was straight." };
+    const slides = FIXTURES.planSkeleton.outline
+      .slice(PLANNED_SLIDES)
+      .map((e) =>
+        json(
+          e.kind === "content"
+            ? { ...FIXTURES.slides[e.kind], callout: box }
+            : FIXTURES.slides[e.kind],
+        ),
+      );
+    const ai = createFakeAi({ script: routed(slides), usage });
+    const state = await generate(start, recordingDeps(ai));
+    expect(ai.calls).toHaveLength(slides.length);
+    expect(state.lesson.generation?.findings.filter((f) => f.check === "spec-rule")).toEqual([]);
+    expect(state.lesson.generation?.promptVersions.planned?.includes("outline-from-facts")).toBe(
+      false,
+    );
+  });
+
+  test("with the lab outline's stamp the same unassigned box is an editorial miss, accepted on the retry", async () => {
+    const start = await planned();
+    const generation = start.lesson.generation;
+    if (!generation) throw new Error("planned");
+    const labStart = {
+      ...start,
+      lesson: {
+        ...start.lesson,
+        generation: {
+          ...generation,
+          promptVersions: {
+            ...generation.promptVersions,
+            planned: `${generation.promptVersions.planned}+outline-from-facts`,
+          },
+        },
+      },
+    };
+    const box = { kind: "watch-out", text: "Not every road was straight." };
+    const contentAt = FIXTURES.planSkeleton.outline
+      .slice(PLANNED_SLIDES)
+      .findIndex((e) => e.kind === "content");
+    const slides = FIXTURES.planSkeleton.outline
+      .slice(PLANNED_SLIDES)
+      .map((e, i) =>
+        json(
+          i === contentAt ? { ...FIXTURES.slides[e.kind], callout: box } : FIXTURES.slides[e.kind],
+        ),
+      );
+    // The unassigned box is refused once, then accepted with the miss recorded (`soft`).
+    const ai = createFakeAi({
+      script: routed(slides.flatMap((s, i) => (i === contentAt ? [s, s] : [s]))),
+      usage,
+    });
+    const state = await generate(labStart, recordingDeps(ai));
+    expect(ai.calls).toHaveLength(slides.length + 1);
+    const misses = state.lesson.generation?.findings.filter((f) => f.check === "spec-rule") ?? [];
+    expect(misses).toHaveLength(1);
+    expect(misses[0]?.message).toContain("no callout");
   });
 
   test("TEACH-263: an extra field on the first slide is stripped without retrying Generate", async () => {
@@ -2245,5 +2310,71 @@ describe("specFieldsOf (TEACH-222)", () => {
       ],
     } as unknown as typeof slide;
     expect(specFieldsCover(odd)).toBe(false);
+  });
+});
+
+describe("generate: callouts are checked only against a plan that assigns them", () => {
+  test("a production plan assigns no callouts, so a slide that writes a box is not an editorial miss", async () => {
+    // Plan's stamp has no `outline-from-facts`: the writer's box is neither demanded nor refused.
+    const start = await plan(
+      initialState(),
+      recordingDeps(createFakeAi({ script: planScript(), usage })),
+    );
+    expect(start.lesson.generation?.promptVersions.planned).not.toContain("outline-from-facts");
+    const slides = FIXTURES.planSkeleton.outline.slice(PLANNED_SLIDES).map((e) =>
+      json({
+        ...FIXTURES.slides[e.kind],
+        ...(e.kind === "content"
+          ? { callout: { kind: "watch-out", text: "A box no plan assigned." } }
+          : {}),
+      }),
+    );
+    const ai = createFakeAi({ script: routed(slides), usage });
+    const state = await generate(start, recordingDeps(ai));
+    // One call per slide: no retry for the box, and no spec-rule finding about it.
+    expect(ai.calls).toHaveLength(slides.length);
+    expect(
+      state.lesson.generation?.findings.filter(
+        (f) => f.check === "spec-rule" && /callout/i.test(f.message),
+      ),
+    ).toEqual([]);
+  });
+
+  test("the stamp is read one version per `+`, whole: a version that merely contains the outline's name does not turn the check on", async () => {
+    const start = await plan(
+      initialState(),
+      recordingDeps(createFakeAi({ script: planScript(), usage })),
+    );
+    const generation = start.lesson.generation;
+    if (!generation) throw new Error("planned");
+    const stamped = {
+      ...start,
+      lesson: {
+        ...start.lesson,
+        generation: {
+          ...generation,
+          promptVersions: {
+            ...generation.promptVersions,
+            planned: `${generation.promptVersions.planned}+${OUTLINE_FROM_FACTS_VERSION}-lite`,
+          },
+        },
+      },
+    };
+    const slides = FIXTURES.planSkeleton.outline.slice(PLANNED_SLIDES).map((e) =>
+      json({
+        ...FIXTURES.slides[e.kind],
+        ...(e.kind === "content"
+          ? { callout: { kind: "watch-out", text: "A box no plan assigned." } }
+          : {}),
+      }),
+    );
+    const ai = createFakeAi({ script: routed(slides), usage });
+    const state = await generate(stamped, recordingDeps(ai));
+    expect(ai.calls).toHaveLength(slides.length);
+    expect(
+      state.lesson.generation?.findings.filter(
+        (f) => f.check === "spec-rule" && /callout/i.test(f.message),
+      ),
+    ).toEqual([]);
   });
 });

@@ -1,0 +1,2120 @@
+{
+  "id": "romans.sol-rewrite",
+  "topic": "romans",
+  "subject": "History",
+  "yearGroup": "Year 4",
+  "arm": "sol-rewrite",
+  "writtenAt": "2026-09-23T16:25:41.205Z",
+  "provenance": {
+    "writer": "openai/gpt-6-sol",
+    "writerPrompt": "pack-rewrite.v2"
+  },
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+      "title": "Roman Britain",
+      "revision": "1374504531",
+      "fetchedAt": "2026-09-23T14:21:51.381Z",
+      "licence": "CC-BY-SA-4.0",
+      "sentences": [
+        {
+          "id": "s1.1",
+          "heading": "Roman Britain",
+          "text": "Roman Britain was the territory that became the Roman province of Britannia after the Roman conquest of Britain, consisting of a large part of the island of Great Britain."
+        },
+        {
+          "id": "s1.2",
+          "heading": "Roman Britain",
+          "text": "The occupation lasted from 43 AD to 410 AD."
+        },
+        {
+          "id": "s1.3",
+          "heading": "Roman Britain",
+          "text": "Britain was invaded by Julius Caesar in 55 and 54 BC as part of the Gallic Wars."
+        },
+        {
+          "id": "s1.4",
+          "heading": "Roman Britain",
+          "text": "According to Caesar, the Britons had been overrun or culturally assimilated by the Belgae during the British Iron Age and had been aiding Caesar's enemies."
+        },
+        {
+          "id": "s1.5",
+          "heading": "Roman Britain",
+          "text": "The Belgae were the only Celtic tribe to cross the sea into Britain, for to all other Celtic tribes this land was unknown."
+        },
+        {
+          "id": "s1.6",
+          "heading": "Roman Britain",
+          "text": "Caesar received tribute, installed the Celtic king Mandubracius over the Trinovantes, and returned to Gaul."
+        },
+        {
+          "id": "s1.7",
+          "heading": "Roman Britain",
+          "text": "Planned invasions under Augustus were called off in 34, 27, and 25 BC. In 40 AD, Caligula assembled 200,000 men at the Channel on the continent, only to have them gather seashells (musculi) according to Suetonius, perhaps as a symbolic gesture to proclaim Caligula's victory over the sea."
+        },
+        {
+          "id": "s1.8",
+          "heading": "Roman Britain",
+          "text": "Three years later, Claudius directed four legions to invade Britain and restore the exiled king Verica over the Atrebates."
+        },
+        {
+          "id": "s1.9",
+          "heading": "Roman Britain",
+          "text": "The Romans defeated the Catuvellauni, and then organized their conquests as the province of Britain."
+        },
+        {
+          "id": "s1.10",
+          "heading": "Roman Britain",
+          "text": "By 47 AD, the Romans held the lands southeast of the Fosse Way."
+        },
+        {
+          "id": "s1.11",
+          "heading": "Roman Britain",
+          "text": "Control over Wales was delayed by reverses and the effects of Boudica's uprising, but the Romans expanded steadily northwards."
+        },
+        {
+          "id": "s1.12",
+          "heading": "Roman Britain",
+          "text": "The conquest of Britain continued under command of Gnaeus Julius Agricola (77–84 AD), who expanded the Roman Empire as far as Caledonia."
+        },
+        {
+          "id": "s1.13",
+          "heading": "Roman Britain",
+          "text": "In mid-84 AD, Agricola faced the armies of the Caledonians, led by Calgacus, at the Battle of Mons Graupius."
+        },
+        {
+          "id": "s1.14",
+          "heading": "Roman Britain",
+          "text": "Battle casualties were estimated by Tacitus to be upwards of 10,000 on the Caledonian side and about 360 on the Roman side."
+        },
+        {
+          "id": "s1.15",
+          "heading": "Roman Britain",
+          "text": "The bloodbath at Mons Graupius concluded the forty-year conquest of Britain, a period that possibly saw between 100,000 and 250,000 Britons killed."
+        },
+        {
+          "id": "s1.16",
+          "heading": "Roman Britain",
+          "text": "In the context of pre-industrial warfare and of a total population of Britain of c. 2 million, these are very high figures."
+        },
+        {
+          "id": "s1.17",
+          "heading": "Roman Britain",
+          "text": "Under the 2nd-century emperors Hadrian and Antoninus Pius, two walls were built to defend the Roman province from the Caledonians, Hadrian’s Wall and the Antonine Wall, the first of stone and the second largely of turf."
+        },
+        {
+          "id": "s1.18",
+          "heading": "Roman Britain",
+          "text": "The first is the better preserved."
+        },
+        {
+          "id": "s1.19",
+          "heading": "Roman Britain",
+          "text": "Around 197 AD, the Severan Reforms divided Britain into two provinces: Britannia Superior and Britannia Inferior."
+        },
+        {
+          "id": "s1.20",
+          "heading": "Roman Britain",
+          "text": "In the early fourth century, Britannia was divided into four provinces under the direction of a vicarius, who administered the Diocese of the Britains, and who was himself under the overall authority of the praetorian prefecture of the Gallic region, based at Trier."
+        },
+        {
+          "id": "s1.21",
+          "heading": "Roman Britain",
+          "text": "A fifth province, Valentia, is attested in the later 4th century."
+        },
+        {
+          "id": "s1.22",
+          "heading": "Roman Britain",
+          "text": "For much of the later period of the Roman occupation, Britannia was subject to barbarian invasions and often came under the control of imperial usurpers and imperial pretenders."
+        },
+        {
+          "id": "s1.23",
+          "heading": "Roman Britain",
+          "text": "The final Roman withdrawal from Britain occurred around 410 AD; the native kingdoms are considered to have formed Sub-Roman Britain after that."
+        },
+        {
+          "id": "s1.24",
+          "heading": "Roman Britain",
+          "text": "Following the conquest of the Britons, a distinctive Romano-British culture emerged as the Romans introduced improved agriculture, urban planning, industrial production, and architecture."
+        },
+        {
+          "id": "s1.25",
+          "heading": "Roman Britain",
+          "text": "The Roman goddess Britannia became the female personification of Britain."
+        },
+        {
+          "id": "s1.26",
+          "heading": "Roman Britain",
+          "text": "After the initial invasions, Roman historians generally only mention Britain in passing."
+        },
+        {
+          "id": "s1.27",
+          "heading": "Roman Britain",
+          "text": "Thus, most present knowledge derives from archaeological investigations and occasional epigraphic evidence lauding the Britannic achievements of an emperor."
+        },
+        {
+          "id": "s1.28",
+          "heading": "Roman Britain",
+          "text": "Roman citizens settled in Britain from many parts of the Empire."
+        },
+        {
+          "id": "s1.29",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Britain had trading links with the Mediterranean world for centuries before the Roman conquest."
+        },
+        {
+          "id": "s1.30",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "The tin deposits in Cornwall and Devon in the southwest of Britain are one of the richest in Europe."
+        },
+        {
+          "id": "s1.31",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Tin was used to make bronze and Britain played an important role in supplying it during the Bronze Age."
+        },
+        {
+          "id": "s1.32",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Diodorus Siculus claims in Bibliotheca Historica that the centre of the tin trade was the island of Ictis."
+        },
+        {
+          "id": "s1.33",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "This claim is likely transmitted via Posidonius from a now lost text by the Greek explorer Pytheas who travelled to Britain around 320 BC. Britain was regarded as a place of mystery, with some writers such as Strabo, doubting it existed."
+        },
+        {
+          "id": "s1.34",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Herodotus had heard of Cassiterides, or “tin islands” which may have been Britain, but he did not know if they were real."
+        },
+        {
+          "id": "s1.35",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "The first direct Roman contact was when Julius Caesar undertook two expeditions in 55 and 54 BC, as part of his conquest of Gaul, believing the Britons were helping the Gallic resistance."
+        },
+        {
+          "id": "s1.36",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "The first expedition was more a reconnaissance than a full invasion and gained a foothold on the coast of Kent but was unable to advance further because of storm damage to the ships and a lack of cavalry."
+        },
+        {
+          "id": "s1.37",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Despite the military failure, it was a political success, with the Roman Senate declaring a 20-day public holiday in Rome to honour the unprecedented achievement of obtaining hostages from Britain and defeating Belgic tribes on returning to the continent."
+        },
+        {
+          "id": "s1.38",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "The second invasion involved a substantially larger force and Caesar coerced or invited many of the native Celtic tribes to pay tribute and give hostages in return for peace."
+        },
+        {
+          "id": "s1.39",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "A friendly local king, Mandubracius, was installed, and his rival, Cassivellaunus, was brought to terms."
+        },
+        {
+          "id": "s1.40",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Hostages were taken, but historians disagree over whether any tribute was paid after Caesar returned to Gaul."
+        },
+        {
+          "id": "s1.41",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Caesar conquered no territory and left no troops behind, but he established clients and brought Britain into Rome's sphere of influence."
+        },
+        {
+          "id": "s1.42",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Augustus planned invasions in 34, 27 and 25 BC, but circumstances were never favourable, and the relationship between Britain and Rome settled into one of diplomacy and trade."
+        },
+        {
+          "id": "s1.43",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Strabo, writing late in Augustus's reign, claimed that taxes on trade brought in more annual revenue than any conquest could."
+        },
+        {
+          "id": "s1.44",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Archaeology shows that there was an increase in imported luxury goods in southeastern Britain."
+        },
+        {
+          "id": "s1.45",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Strabo also mentions British kings who sent embassies to Augustus, and Augustus's own Res Gestae refers to two British kings he received as refugees."
+        },
+        {
+          "id": "s1.46",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "When some of Tiberius's ships were carried to Britain in a storm during his campaigns in Germany in 16 AD, they came back with tales of monsters."
+        },
+        {
+          "id": "s1.47",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "Rome appears to have encouraged a balance of power in southern Britain, supporting two powerful kingdoms: the Catuvellauni, ruled by the descendants of Tasciovanus, and the Atrebates, ruled by the descendants of Commius."
+        },
+        {
+          "id": "s1.48",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "This policy was followed until 39 or 40 AD, when Caligula received an exiled member of the Catuvellaunian dynasty and planned an invasion of Britain that collapsed in farcical circumstances before it left Gaul."
+        },
+        {
+          "id": "s1.49",
+          "heading": "Roman Britain > History > Early contact",
+          "text": "When Claudius successfully invaded in 43 AD, it was in aid of another fugitive British ruler, Verica of the Atrebates."
+        },
+        {
+          "id": "s1.50",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "The invasion force in 43 AD was led by Aulus Plautius, but it is unclear how many legions were sent."
+        },
+        {
+          "id": "s1.51",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "The Legio II Augusta, commanded by future emperor Vespasian, was the only one directly attested to have taken part."
+        },
+        {
+          "id": "s1.52",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "The Legio IX Hispana, the XIV Gemina (later styled Martia Victrix) and the XX (later styled Valeria Victrix) are known to have served during the Boudican revolt of 60/61 AD, and were probably there since the initial invasion."
+        },
+        {
+          "id": "s1.53",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "This is not certain because the Roman army was flexible, with units being moved around whenever necessary."
+        },
+        {
+          "id": "s1.54",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "The IX Hispana may have been permanently stationed, with records showing it at Eboracum (York) in 71 AD and on a building inscription there dated 108 AD, before being destroyed in the east of the Empire, possibly during the Bar Kokhba revolt."
+        },
+        {
+          "id": "s1.55",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "The invasion was delayed by a troop mutiny until an imperial freedman persuaded them to overcome their fear of crossing the Ocean and campaigning beyond the limits of the known world."
+        },
+        {
+          "id": "s1.56",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "They sailed in three divisions, and probably landed at Richborough in Kent; at least part of the force may have landed near Fishbourne, West Sussex."
+        },
+        {
+          "id": "s1.57",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "The Catuvellauni and their allies were defeated in two battles: the first, assuming a Richborough landing, on the river Medway, the second on the river Thames."
+        },
+        {
+          "id": "s1.58",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "One of their leaders, Togodumnus, was killed, but his brother Caratacus survived to continue resistance elsewhere."
+        },
+        {
+          "id": "s1.59",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "Plautius halted at the Thames and sent for Claudius, who arrived with reinforcements, including artillery and elephants, for the final march to the Catuvellaunian capital, Camulodunum (Colchester)."
+        },
+        {
+          "id": "s1.60",
+          "heading": "Roman Britain > History > Roman invasion",
+          "text": "Vespasian subdued the southwest, Cogidubnus was set up as a friendly king of several territories, and treaties were made with tribes outside direct Roman control."
+        },
+        {
+          "id": "s1.61",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "After capturing the south of the island, the Romans turned their attention to what is now Wales."
+        },
+        {
+          "id": "s1.62",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "The Silures, Ordovices and Deceangli remained implacably opposed to the invaders and for the first few decades were the focus of Roman military attention, despite occasional minor revolts among Roman allies like the Brigantes and the Iceni."
+        },
+        {
+          "id": "s1.63",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "The Silures were led by Caratacus, and he carried out an effective guerrilla campaign against Governor Publius Ostorius Scapula."
+        },
+        {
+          "id": "s1.64",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "In 51 AD, Ostorius lured Caratacus into a set-piece battle and defeated him."
+        },
+        {
+          "id": "s1.65",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "The British leader sought refuge among the Brigantes, but their queen, Cartimandua, proved her loyalty by surrendering him to the Romans."
+        },
+        {
+          "id": "s1.66",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "He was brought as a captive to Rome, where a dignified speech he made during Claudius's triumph persuaded the emperor to spare his life."
+        },
+        {
+          "id": "s1.67",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "The Silures were still not pacified, and Cartimandua's ex-husband Venutius replaced Caratacus as the most prominent leader of British resistance."
+        },
+        {
+          "id": "s1.68",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "On Nero's accession, Roman Britain extended as far north as Lindum."
+        },
+        {
+          "id": "s1.69",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Gaius Suetonius Paulinus, the conqueror of Mauretania (modern day Algeria and Morocco), then became governor of Britain, and in 60 and 61 he moved against Mona (Anglesey) to settle accounts with Druidism once and for all."
+        },
+        {
+          "id": "s1.70",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Paulinus led his army across the Menai Strait and massacred the Druids and burnt their sacred groves."
+        },
+        {
+          "id": "s1.71",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "While Paulinus was campaigning in Mona, the southeast of Britain rose in revolt under the leadership of Boudica."
+        },
+        {
+          "id": "s1.72",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "She was the widow of the recently deceased king of the Iceni, Prasutagus."
+        },
+        {
+          "id": "s1.73",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "The Roman historian Tacitus reports that Prasutagus had left a will leaving half his kingdom to Nero in the hope that the remainder would be left untouched."
+        },
+        {
+          "id": "s1.74",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "He was wrong."
+        },
+        {
+          "id": "s1.75",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "When his will was enforced, Rome[clarification needed] responded by violently seizing the tribe's lands in full."
+        },
+        {
+          "id": "s1.76",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Boudica protested."
+        },
+        {
+          "id": "s1.77",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "In consequence, Rome[clarification needed] punished her and her daughters by flogging and rape."
+        },
+        {
+          "id": "s1.78",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "In response, the Iceni, joined by the Trinovantes, destroyed the Roman colony at Camulodunum (Colchester) and routed the part of the IXth Legion that was sent to relieve it."
+        },
+        {
+          "id": "s1.79",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Paulinus rode to London (then called Londinium), the rebels' next target, but concluded it could not be defended."
+        },
+        {
+          "id": "s1.80",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Abandoned, it was destroyed, as was Verulamium (St. Albans)."
+        },
+        {
+          "id": "s1.81",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Between seventy and eighty thousand people are said to have been killed in the three cities."
+        },
+        {
+          "id": "s1.82",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "But Paulinus regrouped with two of the three legions still available to him, chose a battlefield, and, despite being outnumbered by more than twenty to one, defeated the rebels in the Battle of Watling Street."
+        },
+        {
+          "id": "s1.83",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Boudica died not long afterwards, by self-administered poison or by illness."
+        },
+        {
+          "id": "s1.84",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "During this time, the Emperor Nero considered withdrawing Roman forces from Britain altogether."
+        },
+        {
+          "id": "s1.85",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "There was further turmoil in 69, the \"Year of the Four Emperors\"."
+        },
+        {
+          "id": "s1.86",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "As civil war raged in Rome, weak governors were unable to control the legions in Britain, and Venutius of the Brigantes seized his chance."
+        },
+        {
+          "id": "s1.87",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "The Romans had previously defended Cartimandua against him, but this time were unable to do so."
+        },
+        {
+          "id": "s1.88",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Cartimandua was evacuated, and Venutius was left in control of the north of the country."
+        },
+        {
+          "id": "s1.89",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "After Vespasian secured the empire, his first two appointments as governor, Quintus Petillius Cerialis and Sextus Julius Frontinus, took on the task of subduing the Brigantes and Silures respectively."
+        },
+        {
+          "id": "s1.90",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Frontinus extended Roman rule to all of South Wales, and initiated exploitation of the mineral resources, such as the gold mines at Dolaucothi."
+        },
+        {
+          "id": "s1.91",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "In the following years, the Romans conquered more of the island, increasing the size of Roman Britain."
+        },
+        {
+          "id": "s1.92",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Governor Gnaeus Julius Agricola, father-in-law to the historian Tacitus, conquered the Ordovices in 78."
+        },
+        {
+          "id": "s1.93",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "With the XX Valeria Victrix legion, Agricola defeated the Caledonians in 84 at the Battle of Mons Graupius, in north-east Scotland."
+        },
+        {
+          "id": "s1.94",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "This was the high-water mark of Roman territory in Britain: shortly after his victory, Agricola was recalled from Britain back to Rome and awarded the ornaments of a triumph, before returning to continue as governor."
+        },
+        {
+          "id": "s1.95",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "By 87 the decision was taken to abandon most of the land north of the Cheviot Hills allowing for troops to be moved to other frontiers which were under pressure."
+        },
+        {
+          "id": "s1.96",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "Tacitus reports Agricola as feeling bitter about this turn of events."
+        },
+        {
+          "id": "s1.97",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "For much of the history of Roman Britain, a large number of soldiers were garrisoned on the island."
+        },
+        {
+          "id": "s1.98",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "This required that the emperor station a trusted senior man as governor of the province."
+        },
+        {
+          "id": "s1.99",
+          "heading": "Roman Britain > History > Establishment of Roman rule",
+          "text": "As a result, many future emperors served as governors or legates in this province, including Vespasian, Pertinax, and Gordian I."
+        },
+        {
+          "id": "s1.100",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "There is no historical source describing the decades that followed Agricola's recall."
+        },
+        {
+          "id": "s1.101",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Even the name of his replacement is unknown."
+        },
+        {
+          "id": "s1.102",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Archaeology has shown that some Roman forts south of the Forth–Clyde isthmus were rebuilt and enlarged; others appear to have been abandoned."
+        },
+        {
+          "id": "s1.103",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "By 87 the frontier had been consolidated on the Stanegate."
+        },
+        {
+          "id": "s1.104",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Roman coins and pottery have been found circulating at native settlement sites in the Scottish Lowlands in the years before 100, indicating growing Romanisation."
+        },
+        {
+          "id": "s1.105",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Some of the most important sources for this era are the writing tablets from the fort at Vindolanda in Northumberland, mostly dating to 90–110."
+        },
+        {
+          "id": "s1.106",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "These tablets provide evidence for the operation of a Roman fort at the edge of the Roman Empire, where officers' wives maintained polite society while merchants, hauliers and military personnel kept the fort operational and supplied."
+        },
+        {
+          "id": "s1.107",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Around 105 there appears to have been a serious setback at the hands of the tribes of the Picts: several Roman forts were destroyed by fire, with human remains and damaged armour at Trimontium (at modern Newstead, in SE Scotland) indicating hostilities at least at that site."
+        },
+        {
+          "id": "s1.108",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "There is also circumstantial evidence that auxiliary reinforcements were sent from Germany, and an unnamed British war of the period is mentioned on the gravestone of a tribune of Cyrene."
+        },
+        {
+          "id": "s1.109",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Trajan's Dacian Wars may have led to troop reductions in the area or even total withdrawal followed by slighting of the forts by the Picts rather than an unrecorded military defeat."
+        },
+        {
+          "id": "s1.110",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "The Romans were also in the habit of destroying their own forts during an orderly withdrawal, in order to deny resources to an enemy."
+        },
+        {
+          "id": "s1.111",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "In either case, the frontier probably moved south to the line of the Stanegate at the Solway–Tyne isthmus around this time."
+        },
+        {
+          "id": "s1.112",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "A new crisis occurred at the beginning of Hadrian's reign (117): a rising in the north which was suppressed by Quintus Pompeius Falco."
+        },
+        {
+          "id": "s1.113",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "When Hadrian reached Britannia on his famous tour of the Roman provinces around 120, he directed an extensive defensive wall, known to posterity as Hadrian's Wall, to be built close to the line of the Stanegate frontier."
+        },
+        {
+          "id": "s1.114",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Hadrian appointed Aulus Platorius Nepos as governor to undertake this work who brought the Legio VI Victrix legion with him from Germania Inferior."
+        },
+        {
+          "id": "s1.115",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "This replaced the famous Legio IX Hispana, whose disappearance has been much discussed."
+        },
+        {
+          "id": "s1.116",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Archaeology indicates considerable political instability in Scotland during the first half of the 2nd century, and the shifting frontier at this time should be seen in this context."
+        },
+        {
+          "id": "s1.117",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "In the reign of Antoninus Pius (138–161) the Hadrianic border was briefly extended north to the Forth–Clyde isthmus, where the Antonine Wall was built around 142 following the military reoccupation of the Scottish lowlands by a new governor, Quintus Lollius Urbicus."
+        },
+        {
+          "id": "s1.118",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "The first Antonine occupation of Scotland ended as a result of a further crisis in 155–157, when the Brigantes revolted."
+        },
+        {
+          "id": "s1.119",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "With limited options to despatch reinforcements, the Romans moved their troops south, and this rising was suppressed by Governor Gnaeus Julius Verus."
+        },
+        {
+          "id": "s1.120",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Within a year the Antonine Wall was recaptured, but by 163 or 164 it was abandoned."
+        },
+        {
+          "id": "s1.121",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "The second occupation was probably connected with Antoninus's undertakings to protect the Votadini or his pride in enlarging the empire, since the retreat to the Hadrianic frontier occurred not long after his death when a more objective strategic assessment of the benefits of the Antonine Wall could be made."
+        },
+        {
+          "id": "s1.122",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "The Romans did not entirely withdraw from Scotland at this time: the large fort at Newstead was maintained along with seven smaller outposts until at least 180."
+        },
+        {
+          "id": "s1.123",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "During the twenty-year period following the reversion of the frontier to Hadrian's Wall in 163/4, Rome was concerned with continental issues, primarily problems in the Danubian provinces."
+        },
+        {
+          "id": "s1.124",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Increasing numbers of hoards of buried coins in Britain at this time indicate that peace was not entirely achieved."
+        },
+        {
+          "id": "s1.125",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Sufficient Roman silver has been found in Scotland to suggest more than ordinary trade, and it is likely that the Romans were reinforcing treaty agreements by paying tribute to their implacable enemies, the Picts."
+        },
+        {
+          "id": "s1.126",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Under Marcus Aurelius, in 175, an army of Sarmatian cavalry, consisting of 5,500 men, arrived in Britannia."
+        },
+        {
+          "id": "s1.127",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "In 180, Hadrian's Wall was breached by the Picts and the commanding officer or governor was killed there in what Cassius Dio described as the most serious war of the reign of Commodus."
+        },
+        {
+          "id": "s1.128",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Ulpius Marcellus was sent as replacement governor and by 184 he had won a new peace, only to be faced with a mutiny from his own troops."
+        },
+        {
+          "id": "s1.129",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Unhappy with Marcellus's strictness, they tried to elect a legate named Priscus as usurper governor; he refused, but Marcellus was lucky to leave the province alive."
+        },
+        {
+          "id": "s1.130",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "The Roman army in Britannia continued its insubordination: they sent a delegation of 1,500 to Rome to demand the execution of Tigidius Perennis, a Praetorian prefect who they felt had earlier wronged them by posting lowly equites to legate ranks in Britannia."
+        },
+        {
+          "id": "s1.131",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Commodus met the party outside Rome and agreed to have Perennis killed, but this only made them feel more secure in their mutiny."
+        },
+        {
+          "id": "s1.132",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "The future emperor Pertinax (lived 126–193) was sent to Britannia to quell the mutiny and was initially successful in regaining control, but a riot broke out among the troops."
+        },
+        {
+          "id": "s1.133",
+          "heading": "Roman Britain > History > Occupation of and retreat from southern Scotland",
+          "text": "Pertinax was attacked and left for dead, and asked to be recalled to Rome, where he briefly succeeded Commodus as emperor in 192."
+        },
+        {
+          "id": "s1.134",
+          "heading": "Roman Britain > History > Third century",
+          "text": "The death of Commodus put into motion a series of events which eventually led to civil war."
+        },
+        {
+          "id": "s1.135",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Following the short reign of Pertinax, several rivals for the emperorship emerged, including Septimius Severus and Clodius Albinus."
+        },
+        {
+          "id": "s1.136",
+          "heading": "Roman Britain > History > Third century",
+          "text": "The latter was the new governor of Britannia, and had seemingly won the natives over after their earlier rebellions; he also controlled three legions, making him a potentially significant claimant."
+        },
+        {
+          "id": "s1.137",
+          "heading": "Roman Britain > History > Third century",
+          "text": "His sometime rival Severus promised him the title of Caesar in return for Albinus's support against Pescennius Niger in the east."
+        },
+        {
+          "id": "s1.138",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Once Niger was neutralised, Severus turned on his ally in Britannia; it is likely that Albinus saw he would be the next target and was already preparing for war."
+        },
+        {
+          "id": "s1.139",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Albinus crossed to Gaul in 195, where the provinces were also sympathetic to him, and set up at Lugdunum."
+        },
+        {
+          "id": "s1.140",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Severus arrived in February 196, and the ensuing battle was decisive."
+        },
+        {
+          "id": "s1.141",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Albinus came close to victory, but Severus's reinforcements won the day, and the British governor committed suicide."
+        },
+        {
+          "id": "s1.142",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Severus soon purged Albinus's sympathisers and perhaps confiscated large tracts of land in Britain as punishment."
+        },
+        {
+          "id": "s1.143",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Albinus had demonstrated the major problem posed by Roman Britain."
+        },
+        {
+          "id": "s1.144",
+          "heading": "Roman Britain > History > Third century",
+          "text": "In order to maintain security, the province required the presence of three legions, but command of these forces provided an ideal power base for ambitious rivals."
+        },
+        {
+          "id": "s1.145",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Deploying those legions elsewhere would strip the island of its garrison, leaving the province defenceless against uprisings by the native Celtic tribes and against invasion by the Picts and Scots."
+        },
+        {
+          "id": "s1.146",
+          "heading": "Roman Britain > History > Third century",
+          "text": "The traditional view is that northern Britain descended into anarchy during Albinus's absence."
+        },
+        {
+          "id": "s1.147",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Cassius Dio records that the new Governor, Virius Lupus, was obliged to buy peace from a fractious northern tribe known as the Maeatae."
+        },
+        {
+          "id": "s1.148",
+          "heading": "Roman Britain > History > Third century",
+          "text": "The succession of militarily distinguished governors who were subsequently appointed suggests that enemies of Rome were posing a difficult challenge, and Lucius Alfenus Senecio's report to Rome in 207 describes barbarians \"rebelling, over-running the land, taking loot and creating destruction\"."
+        },
+        {
+          "id": "s1.149",
+          "heading": "Roman Britain > History > Third century",
+          "text": "In order to rebel, of course, one must be a subject – the Maeatae clearly did not consider themselves such."
+        },
+        {
+          "id": "s1.150",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Senecio requested either reinforcements or an Imperial expedition, and Severus chose the latter, despite being 62 years old."
+        },
+        {
+          "id": "s1.151",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Archaeological evidence shows that Senecio had been rebuilding the defences of Hadrian's Wall and the forts beyond it, and Severus's arrival in Britain prompted the enemy tribes to sue for peace immediately."
+        },
+        {
+          "id": "s1.152",
+          "heading": "Roman Britain > History > Third century",
+          "text": "The emperor had not come all that way to leave without a victory, and it is likely that he wished to provide his teenage sons Caracalla and Geta with first-hand experience of controlling a hostile barbarian land."
+        },
+        {
+          "id": "s1.153",
+          "heading": "Roman Britain > History > Third century",
+          "text": "An invasion of Caledonia led by Severus and probably numbering around 20,000 troops moved north in 208 or 209, crossing the Wall and passing through eastern Scotland on a route similar to that used by Agricola."
+        },
+        {
+          "id": "s1.154",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Harried by punishing guerrilla raids by the northern tribes and slowed by an unforgiving terrain, Severus was unable to meet the Caledonians on a battlefield."
+        },
+        {
+          "id": "s1.155",
+          "heading": "Roman Britain > History > Third century",
+          "text": "The emperor's forces pushed north as far as the River Tay, but little appears to have been achieved by the invasion, as peace treaties were signed with the Caledonians."
+        },
+        {
+          "id": "s1.156",
+          "heading": "Roman Britain > History > Third century",
+          "text": "By 210 Severus had returned to York, and the frontier had once again become Hadrian's Wall."
+        },
+        {
+          "id": "s1.157",
+          "heading": "Roman Britain > History > Third century",
+          "text": "He assumed the title Britannicus but the title meant little with regard to the unconquered north, which clearly remained outside the authority of the Empire."
+        },
+        {
+          "id": "s1.158",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Almost immediately, another northern tribe, the Maeatae, went to war."
+        },
+        {
+          "id": "s1.159",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Caracalla left with a punitive expedition, but by the following year his ailing father had died and he and his brother left the province to press their claim to the throne."
+        },
+        {
+          "id": "s1.160",
+          "heading": "Roman Britain > History > Third century",
+          "text": "As one of his last acts, Severus tried to solve the problem of powerful and rebellious governors in Britain by dividing the province into Britannia Superior and Britannia Inferior."
+        },
+        {
+          "id": "s1.161",
+          "heading": "Roman Britain > History > Third century",
+          "text": "This kept the potential for rebellion in check for almost a century."
+        },
+        {
+          "id": "s1.162",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Historical sources provide little information on the following decades, a period known as the Long Peace."
+        },
+        {
+          "id": "s1.163",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Even so, the number of buried hoards found from this period rises, suggesting continuing unrest."
+        },
+        {
+          "id": "s1.164",
+          "heading": "Roman Britain > History > Third century",
+          "text": "A string of forts were built along the coast of southern Britain to control piracy; and over the following hundred years they increased in number, becoming the Saxon Shore Forts."
+        },
+        {
+          "id": "s1.165",
+          "heading": "Roman Britain > History > Third century",
+          "text": "During the middle of the 3rd century, the Roman Empire was convulsed by barbarian invasions, rebellions and new imperial pretenders."
+        },
+        {
+          "id": "s1.166",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Britannia apparently avoided these troubles, but increasing inflation had its economic effect."
+        },
+        {
+          "id": "s1.167",
+          "heading": "Roman Britain > History > Third century",
+          "text": "In 259 a so-called Gallic Empire was established when Postumus rebelled against Gallienus."
+        },
+        {
+          "id": "s1.168",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Britannia was part of this until 274 when Aurelian reunited the empire."
+        },
+        {
+          "id": "s1.169",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Around the year 280, a half-British officer named Bonosus was in command of the Romans' Rhenish fleet when the Germans managed to burn it at anchor."
+        },
+        {
+          "id": "s1.170",
+          "heading": "Roman Britain > History > Third century",
+          "text": "To avoid punishment, he proclaimed himself emperor at Colonia Agrippina (Cologne) but was crushed by Marcus Aurelius Probus."
+        },
+        {
+          "id": "s1.171",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Soon afterwards, an unnamed governor of one of the British provinces also attempted an uprising."
+        },
+        {
+          "id": "s1.172",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Probus put it down by sending irregular troops of Vandals and Burgundians across the Channel."
+        },
+        {
+          "id": "s1.173",
+          "heading": "Roman Britain > History > Third century",
+          "text": "The Carausian Revolt led to a short-lived Britannic Empire from 286 to 296."
+        },
+        {
+          "id": "s1.174",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Carausius was a Menapian naval commander of the Britannic fleet; he revolted upon learning of a death sentence ordered by the emperor Maximian on charges of having abetted Frankish and Saxon pirates and having embezzled recovered treasure."
+        },
+        {
+          "id": "s1.175",
+          "heading": "Roman Britain > History > Third century",
+          "text": "He consolidated control over all the provinces of Britain and some of northern Gaul while Maximian dealt with other uprisings."
+        },
+        {
+          "id": "s1.176",
+          "heading": "Roman Britain > History > Third century",
+          "text": "An invasion in 288 failed to unseat him and an uneasy peace ensued, with Carausius issuing coins and inviting official recognition."
+        },
+        {
+          "id": "s1.177",
+          "heading": "Roman Britain > History > Third century",
+          "text": "In 293, the junior emperor Constantius Chlorus launched a second offensive, besieging the rebel port of Gesoriacum (Boulogne-sur-Mer) by land and sea."
+        },
+        {
+          "id": "s1.178",
+          "heading": "Roman Britain > History > Third century",
+          "text": "After it fell, Constantius attacked Carausius's other Gallic holdings and Frankish allies and Carausius was usurped by his treasurer, Allectus."
+        },
+        {
+          "id": "s1.179",
+          "heading": "Roman Britain > History > Third century",
+          "text": "Julius Asclepiodotus landed an invasion fleet near Southampton and defeated Allectus in a land battle."
+        },
+        {
+          "id": "s1.180",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "In a reform carried out by 312, the Diocese of Britain was divided into four provinces, Maxima Caesariensis, Flavia Caesariensis, Britannia Prima and Britannia Secunda."
+        },
+        {
+          "id": "s1.181",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "The diocese was governed by a vicarius, and Britain was part of the Gallic region under the overall authority of a praetorian prefect, based at Trier."
+        },
+        {
+          "id": "s1.182",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "The vicarius was based at Londinium as the principal city of the diocese."
+        },
+        {
+          "id": "s1.183",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "Londinium and Eboracum continued as provincial capitals and the territory was divided up into smaller provinces for administrative efficiency."
+        },
+        {
+          "id": "s1.184",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "Civilian and military authority of a province was no longer exercised by one official, and the governor was stripped of military command, which was handed over to the Dux Britanniarum by 314."
+        },
+        {
+          "id": "s1.185",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "The governor of a province assumed more financial duties (the procurators of the Treasury ministry were slowly phased out in the first three decades of the 4th century)."
+        },
+        {
+          "id": "s1.186",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "The Dux was commander of the troops of the Northern Region, primarily along Hadrian's Wall, and his responsibilities included protection of the frontier."
+        },
+        {
+          "id": "s1.187",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "He had significant autonomy due in part to the distance from his superiors."
+        },
+        {
+          "id": "s1.188",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "The tasks of the vicarius were to control and coordinate the activities of governors; monitor but not interfere with the daily functioning of the Treasury and Crown Estates, which had their own administrative infrastructure; and act as the regional quartermaster-general of the armed forces."
+        },
+        {
+          "id": "s1.189",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "In short, as the sole civilian official with superior authority, he had general oversight of the administration, as well as direct control, while not absolute, over governors who were part of the prefecture; the other two fiscal departments were not."
+        },
+        {
+          "id": "s1.190",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "The early-4th-century Verona List, the late-4th-century work of Sextus Rufus, and the early-5th-century List of Offices and work of Polemius Silvius all list four provinces by some variation of the names Britannia I, Britannia II, Maxima Caesariensis, and Flavia Caesariensis; all of these seem to have initially been directed by a governor (praeses) of equestrian rank."
+        },
+        {
+          "id": "s1.191",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "The 5th-century sources list a fifth province named Valentia and give its governor and Maxima's a consular rank."
+        },
+        {
+          "id": "s1.192",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "Ammianus mentions Valentia as well, describing its creation by Theodosius the Elder in 369 after the quelling of the Great Conspiracy."
+        },
+        {
+          "id": "s1.193",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "Ammianus considered it a re-creation of a formerly lost province, leading some to think there had been an earlier fifth province under another name, sometimes conflated with \"Vespasiana\" a fictional province invented in Charles Bertram's 18th-century forgery De Situ Britanniae and leading others to place Valentia beyond Hadrian's Wall, in the territory abandoned south of the Antonine Wall."
+        },
+        {
+          "id": "s1.194",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "Reconstructions of the provinces and provincial capitals during this period partially rely on ecclesiastical records."
+        },
+        {
+          "id": "s1.195",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "On the assumption that the early bishoprics mimicked the imperial hierarchy, scholars use the list of bishops for the 314 Council of Arles."
+        },
+        {
+          "id": "s1.196",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "The list is patently corrupt: the British delegation is given as including a Bishop \"Eborius\" of Eboracum and two bishops \"from Londinium\" (one de civitate Londinensi and the other de civitate colonia Londinensium)."
+        },
+        {
+          "id": "s1.197",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "The error is variously emended: Bishop Ussher proposed Colonia, Selden Col. or Colon."
+        },
+        {
+          "id": "s1.198",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "Camalodun., and Spelman Colonia Cameloduni (all various names of Colchester); Gale and Bingham offered colonia Lindi and Henry Colonia Lindum (both Lincoln); and Bishop Stillingfleet and Francis Thackeray read it as a scribal error of Civ."
+        },
+        {
+          "id": "s1.199",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "Londin. for an original Civ."
+        },
+        {
+          "id": "s1.200",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "II (Caerleon)."
+        },
+        {
+          "id": "s1.201",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "On the basis of the Verona List, the priest and deacon who accompanied the bishops in some manuscripts are ascribed to the fourth province."
+        },
+        {
+          "id": "s1.202",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "In the 12th century, Gerald of Wales described the supposedly metropolitan sees of the early British church established by the legendary Saints Fagan and \"Duvian\"."
+        },
+        {
+          "id": "s1.203",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "He placed Britannia Prima in Wales and western England with its capital at \"Urbs Legionum\" (Caerleon); Britannia Secunda in Kent and southern England with its capital at \"Dorobernia\" (Canterbury); Flavia in Mercia and central England with its capital at \"Lundonia\" (London); \"Maximia\" in northern England with its capital at Eboracum (York); and Valentia in \"Albania which is now Scotland\" with its capital at St Andrews."
+        },
+        {
+          "id": "s1.204",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "Modern scholars generally dispute the last: some place Valentia at or beyond Hadrian's Wall but St Andrews is beyond even the Antonine Wall and Gerald seems to have simply been supporting the antiquity of its church for political reasons."
+        },
+        {
+          "id": "s1.205",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "A common modern reconstruction places the consular province of Maxima at Londinium, on the basis of its status as the seat of the diocesan vicarius; places Prima in the west according to Gerald's traditional account but moves its capital to Corinium of the Dobunni (Cirencester) on the basis of an artifact recovered there referring to Lucius Septimius, a provincial rector; places Flavia north of Maxima, with its capital placed at Lindum Colonia (Lincoln) to match one emendation of the bishops list from Arles; and places Secunda in the north with its capital at Eboracum (York)."
+        },
+        {
+          "id": "s1.206",
+          "heading": "Roman Britain > History > Fourth-century government",
+          "text": "Valentia is placed variously in northern Wales around Deva (Chester); beside Hadrian's Wall around Luguvalium (Carlisle); and between the walls along Dere Street."
+        },
+        {
+          "id": "s1.207",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "Emperor Constantius returned to Britain in 306, despite his poor health, with an army aiming to invade northern Britain, the provincial defences having been rebuilt in the preceding years."
+        },
+        {
+          "id": "s1.208",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "Little is known of his campaigns with scant archaeological evidence, but fragmentary historical sources suggest he reached the far north of Britain and won a major battle in early summer before returning south."
+        },
+        {
+          "id": "s1.209",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "His son Constantine (later Constantine the Great) spent a year in northern Britain at his father's side, campaigning against the Picts beyond Hadrian's Wall in the summer and autumn."
+        },
+        {
+          "id": "s1.210",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "Constantius died in York in July 306 with his son at his side."
+        },
+        {
+          "id": "s1.211",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "Constantine then successfully used Britain as the starting point of his march to the imperial throne, unlike the earlier usurper, Albinus."
+        },
+        {
+          "id": "s1.212",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "In the middle of the century, the province was loyal for a few years to the usurper Magnentius, who succeeded Constans following the latter's death."
+        },
+        {
+          "id": "s1.213",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "After the defeat and death of Magnentius in the Battle of Mons Seleucus in 353, Constantius II dispatched his chief imperial notary Paulus Catena to Britain to hunt down Magnentius's supporters."
+        },
+        {
+          "id": "s1.214",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "The investigation deteriorated into a witch-hunt, which forced the vicarius Flavius Martinus to intervene."
+        },
+        {
+          "id": "s1.215",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "When Paulus retaliated by accusing Martinus of treason, the vicarius attacked Paulus with a sword, with the aim of assassinating him, but in the end he committed suicide."
+        },
+        {
+          "id": "s1.216",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "As the 4th century progressed, there were increasing attacks from the Saxons in the east and the Scoti (Irish) in the west."
+        },
+        {
+          "id": "s1.217",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "A series of forts had been built, starting around 280, to defend the coasts, but these preparations were not enough when, in 367, a general assault of Saxons, Picts, Scoti and Attacotti, combined with apparent dissension in the garrison on Hadrian's Wall, left Roman Britain prostrate."
+        },
+        {
+          "id": "s1.218",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "The invaders overwhelmed the entire western and northern regions of Britannia and the cities were sacked."
+        },
+        {
+          "id": "s1.219",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "This crisis, sometimes called the Barbarian Conspiracy or the Great Conspiracy, was settled by Theodosius the Elder from 368 with a string of military and civil reforms."
+        },
+        {
+          "id": "s1.220",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "Theodosius crossed from Bononia (Boulogne-sur-Mer) and marched on Londinium where he began to deal with the invaders and made his base."
+        },
+        {
+          "id": "s1.221",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "An amnesty was promised to deserters which enabled Theodosius to regarrison abandoned forts."
+        },
+        {
+          "id": "s1.222",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "By the end of the year Hadrian's Wall was retaken and order returned."
+        },
+        {
+          "id": "s1.223",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "Considerable reorganization was undertaken in Britain, including the creation of a new province named Valentia, probably to better address the state of the far north."
+        },
+        {
+          "id": "s1.224",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "A new Dux Britanniarum was appointed, Dulcitius, with Civilis to head a new civilian administration."
+        },
+        {
+          "id": "s1.225",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "Another imperial usurper, Magnus Maximus, raised the standard of revolt at Segontium (Caernarfon) in north Wales in 383, and crossed the English Channel."
+        },
+        {
+          "id": "s1.226",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "Maximus held much of the western empire, and fought a successful campaign against the Picts and Scots around 384."
+        },
+        {
+          "id": "s1.227",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "His continental exploits required troops from Britain, and it appears that forts at Chester and elsewhere were abandoned in this period, triggering raids and settlement in north Wales by the Irish."
+        },
+        {
+          "id": "s1.228",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "His rule was ended in 388, but not all the British troops may have returned: the Empire's military resources were stretched to the limit along the Rhine and Danube."
+        },
+        {
+          "id": "s1.229",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "Around 396 there were more barbarian incursions into Britain."
+        },
+        {
+          "id": "s1.230",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "Stilicho led a punitive expedition."
+        },
+        {
+          "id": "s1.231",
+          "heading": "Roman Britain > History > Fourth-century history",
+          "text": "It seems peace was restored by 399, and it is likely that no further garrisoning was ordered; by 401 more troops were withdrawn, to assist in the war against Alaric I."
+        },
+        {
+          "id": "s1.232",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "The traditional view of historians, informed by the work of Michael Rostovtzeff, was of a widespread economic decline at the beginning of the 5th century."
+        },
+        {
+          "id": "s1.233",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Consistent archaeological evidence has told another story, and the accepted view is undergoing re-evaluation."
+        },
+        {
+          "id": "s1.234",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Some features are agreed: more opulent but fewer urban houses, an end to new public building and some abandonment of existing ones, with the exception of defensive structures, and the widespread formation of dark earth (deposits indicating increased horticulture within urban precincts)."
+        },
+        {
+          "id": "s1.235",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "The abandonment of some sites is now believed to be later than had been thought."
+        },
+        {
+          "id": "s1.236",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Many buildings changed use but were not destroyed."
+        },
+        {
+          "id": "s1.237",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "There was a growing number of barbarian attacks, but these targeted vulnerable rural settlements rather than towns."
+        },
+        {
+          "id": "s1.238",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Some villas such as Chedworth, Great Casterton in Rutland and Hucclecote in Gloucestershire had new mosaic floors laid around this time, suggesting that economic problems may have been limited and patchy."
+        },
+        {
+          "id": "s1.239",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Many suffered some decay before being abandoned in the 5th century; the story of Saint Patrick indicates that villas were still occupied until at least 430."
+        },
+        {
+          "id": "s1.240",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Exceptionally, new buildings were still going up in this period in Verulamium and Cirencester."
+        },
+        {
+          "id": "s1.241",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Some urban centres, for example Canterbury, Cirencester, Wroxeter, Winchester and Gloucester, remained active during the 5th and 6th centuries, surrounded by large farming estates."
+        },
+        {
+          "id": "s1.242",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Urban life had generally grown less intense by the fourth quarter of the 4th century, and coins minted between 378 and 388 are very rare, indicating a likely combination of economic decline, diminishing numbers of troops, problems with the payment of soldiers and officials or with unstable conditions during the usurpation of Magnus Maximus 383–87."
+        },
+        {
+          "id": "s1.243",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Coinage circulation increased during the 390s, but never attained the levels of earlier decades."
+        },
+        {
+          "id": "s1.244",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Copper coins are very rare after 402, though minted silver and gold coins from hoards indicate they were still present in the province even if they were not being spent."
+        },
+        {
+          "id": "s1.245",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "By 407 there were very few new Roman coins going into circulation, and by 430 it is likely that coinage as a medium of exchange had been abandoned."
+        },
+        {
+          "id": "s1.246",
+          "heading": "Roman Britain > History > End of Roman rule",
+          "text": "Mass-produced wheel thrown pottery ended at approximately the same time; the rich continued to use metal and glass vessels, while the poor made do with humble \"grey ware\" or resorted to leather or wooden containers."
+        },
+        {
+          "id": "s1.247",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "Towards the end of the 4th century Roman rule in Britain came under increasing pressure from barbarian attacks."
+        },
+        {
+          "id": "s1.248",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "Apparently, there were not enough troops to mount an effective defence."
+        },
+        {
+          "id": "s1.249",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "After elevating two disappointing usurpers, the army chose a soldier, Constantine III, to become emperor in 407."
+        },
+        {
+          "id": "s1.250",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "He crossed to Gaul but was defeated by Honorius; it is unclear how many troops remained or ever returned, or whether a commander-in-chief in Britain was ever reappointed."
+        },
+        {
+          "id": "s1.251",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "A Saxon incursion in 408 was apparently repelled by the Britons, and in 409 Zosimus records that the natives expelled the Roman civilian administration."
+        },
+        {
+          "id": "s1.252",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "Zosimus may be referring to the Bagaudae rebellion of the Breton inhabitants of Armorica since he describes how, in the aftermath of the revolt, all of Armorica and the rest of Gaul followed the example of the Brettaniai."
+        },
+        {
+          "id": "s1.253",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "A letter from Emperor Honorius in 410 has traditionally been seen as rejecting a British appeal for help, but it may have been addressed to Bruttium or Bologna."
+        },
+        {
+          "id": "s1.254",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "With the imperial layers of the military and civil government gone, administration and justice fell to municipal authorities, and local warlords gradually emerged all over Britain, still utilizing Romano-British ideals and conventions."
+        },
+        {
+          "id": "s1.255",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "Historian Stuart Laycock has investigated this process and emphasised elements of continuity from the British tribes in the pre-Roman and Roman periods, through to the native post-Roman kingdoms."
+        },
+        {
+          "id": "s1.256",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "In British tradition, pagan Saxons were invited by Vortigern to assist in fighting the Picts, Scoti, and Déisi."
+        },
+        {
+          "id": "s1.257",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "(Germanic migration into Roman Britannia may have begun much earlier."
+        },
+        {
+          "id": "s1.258",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "There is recorded evidence, for example, of Germanic auxiliaries supporting the legions in Britain in the 1st and 2nd centuries.)"
+        },
+        {
+          "id": "s1.259",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "The new arrivals rebelled, plunging the country into a series of wars that eventually led to the Saxon occupation of Lowland Britain by 600."
+        },
+        {
+          "id": "s1.260",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "Around this time, many Britons fled to Brittany (hence its name), Galicia and probably Ireland."
+        },
+        {
+          "id": "s1.261",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "A significant date in sub-Roman Britain is the Groans of the Britons, an unanswered appeal to Aetius, leading general of the western Empire, for assistance against Saxon invasion in 446."
+        },
+        {
+          "id": "s1.262",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "Another is the Battle of Deorham in 577, after which the significant cities of Bath, Cirencester and Gloucester fell and the Saxons reached the western sea."
+        },
+        {
+          "id": "s1.263",
+          "heading": "Roman Britain > History > Sub-Roman Britain",
+          "text": "Historians generally reject the historicity of King Arthur, who is supposed to have resisted the Anglo-Saxon conquest according to later medieval legends."
+        },
+        {
+          "id": "s1.264",
+          "heading": "Roman Britain > Trade",
+          "text": "During the Roman period Britain's continental trade was principally directed across the Southern North Sea and Eastern Channel, focusing on the narrow Strait of Dover, with more limited links via the Atlantic seaways."
+        },
+        {
+          "id": "s1.265",
+          "heading": "Roman Britain > Trade",
+          "text": "The most important British ports were London and Richborough, whilst the continental ports most heavily engaged in trade with Britain were Boulogne and the sites of Domburg and Colijnsplaat at the mouth of the river Scheldt."
+        },
+        {
+          "id": "s1.266",
+          "heading": "Roman Britain > Trade",
+          "text": "During the Late Roman period it is likely that the shore forts played some role in continental trade alongside their defensive functions."
+        },
+        {
+          "id": "s1.267",
+          "heading": "Roman Britain > Trade",
+          "text": "Exports to Britain included: coin; pottery, particularly red-gloss terra sigillata (samian ware) from southern, central and eastern Gaul, as well as various other wares from Gaul and the Rhine provinces; olive oil from southern Spain in amphorae; wine from Gaul in amphorae and barrels; salted fish products from the western Mediterranean and Brittany in barrels and amphorae; preserved olives from southern Spain in amphorae; lava quern-stones from Mayen on the middle Rhine; glass; and some agricultural products."
+        },
+        {
+          "id": "s1.268",
+          "heading": "Roman Britain > Trade",
+          "text": "Britain's exports are harder to detect archaeologically, but will have included metals, such as silver and gold and some lead, iron and copper."
+        },
+        {
+          "id": "s1.269",
+          "heading": "Roman Britain > Trade",
+          "text": "Other exports probably included agricultural products, oysters and salt, whilst large quantities of coin would have been re-exported back to the continent as well."
+        },
+        {
+          "id": "s1.270",
+          "heading": "Roman Britain > Trade",
+          "text": "These products moved as a result of private trade and also through payments and contracts established by the Roman state to support its military forces and officials on the island, as well as through state taxation and extraction of resources."
+        },
+        {
+          "id": "s1.271",
+          "heading": "Roman Britain > Trade",
+          "text": "Up until the mid-3rd century AD, the Roman state's payments appear to have been unbalanced, with far more products sent to Britain, to support its large military force (which had reached c. 53,000 by the mid-2nd century), than were extracted from the island."
+        },
+        {
+          "id": "s1.272",
+          "heading": "Roman Britain > Trade",
+          "text": "It has been argued that Roman Britain's continental trade peaked in the late 1st century AD and thereafter declined as a result of an increasing reliance on local products by the population of Britain, caused by economic development on the island and by the Roman state's desire to save money by shifting away from expensive long-distance imports."
+        },
+        {
+          "id": "s1.273",
+          "heading": "Roman Britain > Trade",
+          "text": "Evidence has been outlined that suggests that the principal decline in Roman Britain's continental trade may have occurred in the late 2nd century AD, from c. 165 AD onwards."
+        },
+        {
+          "id": "s1.274",
+          "heading": "Roman Britain > Trade",
+          "text": "This has been linked to the economic impact of contemporary empire-wide crises: the Antonine Plague and the Marcomannic Wars."
+        },
+        {
+          "id": "s1.275",
+          "heading": "Roman Britain > Trade",
+          "text": "From the mid-3rd century AD onwards, Britain no longer received such a wide range and extensive quantity of foreign imports as it did during the earlier part of the Roman period; vast quantities of coin from continental mints reached the island, whilst there is historical evidence for the export of large amounts of British grain to the continent during the mid-4th century."
+        },
+        {
+          "id": "s1.276",
+          "heading": "Roman Britain > Trade",
+          "text": "During the latter part of the Roman period British agricultural products, paid for by both the Roman state and by private consumers, clearly played an important role in supporting the military garrisons and urban centres of the northwestern continental Empire."
+        },
+        {
+          "id": "s1.277",
+          "heading": "Roman Britain > Trade",
+          "text": "This came about as a result of the rapid decline in the size of the British garrison from the mid-3rd century onwards (thus freeing up more goods for export), and because of 'Germanic' incursions across the Rhine, which appear to have reduced rural settlement and agricultural output in northern Gaul."
+        },
+        {
+          "id": "s1.278",
+          "heading": "Roman Britain > Economy",
+          "text": "Mineral extraction sites such as the Dolaucothi gold mine were probably first worked by the Roman army from c. 75 AD, and at some later stage passed to civilian operators."
+        },
+        {
+          "id": "s1.279",
+          "heading": "Roman Britain > Economy",
+          "text": "The mine developed as a series of opencast workings, mainly by the use of hydraulic mining methods."
+        },
+        {
+          "id": "s1.280",
+          "heading": "Roman Britain > Economy",
+          "text": "They are described by Pliny the Elder in his Natural History in great detail."
+        },
+        {
+          "id": "s1.281",
+          "heading": "Roman Britain > Economy",
+          "text": "Essentially, water supplied by aqueducts was used to prospect for ore veins by stripping away soil to reveal the bedrock."
+        },
+        {
+          "id": "s1.282",
+          "heading": "Roman Britain > Economy",
+          "text": "If veins were present, they were attacked using fire-setting and the ore removed for comminution."
+        },
+        {
+          "id": "s1.283",
+          "heading": "Roman Britain > Economy",
+          "text": "The dust was washed in a small stream of water and the heavy gold dust and gold nuggets collected in riffles."
+        },
+        {
+          "id": "s1.284",
+          "heading": "Roman Britain > Economy",
+          "text": "The diagram at right shows how Dolaucothi developed from c. 75 through to the 1st century."
+        },
+        {
+          "id": "s1.285",
+          "heading": "Roman Britain > Economy",
+          "text": "When opencast work was no longer feasible, tunnels were driven to follow the veins."
+        },
+        {
+          "id": "s1.286",
+          "heading": "Roman Britain > Economy",
+          "text": "The evidence from the site shows advanced technology probably under the control of army engineers."
+        },
+        {
+          "id": "s1.287",
+          "heading": "Roman Britain > Economy",
+          "text": "The Wealden ironworking zone, the lead and silver mines of the Mendip Hills and the tin mines of Cornwall seem to have been private enterprises leased from the government for a fee."
+        },
+        {
+          "id": "s1.288",
+          "heading": "Roman Britain > Economy",
+          "text": "Mining had long been practised in Britain (see Grimes Graves), but the Romans introduced new technical knowledge and large-scale industrial production to revolutionise the industry."
+        },
+        {
+          "id": "s1.289",
+          "heading": "Roman Britain > Economy",
+          "text": "It included hydraulic mining to prospect for ore by removing overburden as well as work alluvial deposits."
+        },
+        {
+          "id": "s1.290",
+          "heading": "Roman Britain > Economy",
+          "text": "The water needed for such large-scale operations was supplied by one or more aqueducts, those surviving at Dolaucothi being especially impressive."
+        },
+        {
+          "id": "s1.291",
+          "heading": "Roman Britain > Economy",
+          "text": "Many prospecting areas were in dangerous, upland country, and, although mineral exploitation was presumably one of the main reasons for the Roman invasion, it had to wait until these areas were subdued."
+        },
+        {
+          "id": "s1.292",
+          "heading": "Roman Britain > Economy",
+          "text": "By the 3rd and 4th centuries, small towns could often be found near villas."
+        },
+        {
+          "id": "s1.293",
+          "heading": "Roman Britain > Economy",
+          "text": "In these towns, villa owners and small-scale farmers could obtain specialist tools."
+        },
+        {
+          "id": "s1.294",
+          "heading": "Roman Britain > Economy",
+          "text": "Lowland Britain in the 4th century was agriculturally prosperous enough to export grain to the continent."
+        },
+        {
+          "id": "s1.295",
+          "heading": "Roman Britain > Economy",
+          "text": "This prosperity lay behind the blossoming of villa building and decoration that occurred between 300 and 350."
+        },
+        {
+          "id": "s1.296",
+          "heading": "Roman Britain > Economy",
+          "text": "Britain's cities also consumed Roman-style pottery and other goods, and were centres through which goods could be distributed elsewhere."
+        },
+        {
+          "id": "s1.297",
+          "heading": "Roman Britain > Economy",
+          "text": "During the first two centuries of Roman rule, Britain is said to have been hugely reliant on imported pottery, but by the fourth century, it was self-sufficient."
+        },
+        {
+          "id": "s1.298",
+          "heading": "Roman Britain > Economy",
+          "text": "This has been cited as an example of economic development, and at least one town, Durobrivae, primarily manufactured pottery."
+        },
+        {
+          "id": "s1.299",
+          "heading": "Roman Britain > Economy",
+          "text": "At Wroxeter in Shropshire, stock smashed into a gutter during a 2nd-century fire reveals that Gaulish samian ware was being sold alongside mixing bowls from the Mancetter-Hartshill industry of the West Midlands."
+        },
+        {
+          "id": "s1.300",
+          "heading": "Roman Britain > Economy",
+          "text": "Roman designs were most popular, but rural craftsmen still produced items derived from the Iron Age La Tène artistic traditions."
+        },
+        {
+          "id": "s1.301",
+          "heading": "Roman Britain > Economy",
+          "text": "Britain was home to much gold, which attracted Roman invaders."
+        },
+        {
+          "id": "s1.302",
+          "heading": "Roman Britain > Economy",
+          "text": "By the 3rd century, Britain's economy was diverse and well established, with commerce extending into the non-Romanised north."
+        },
+        {
+          "id": "s1.303",
+          "heading": "Roman Britain > Government",
+          "text": "Under the Roman Empire, administration of peaceful provinces was ultimately the remit of the Senate, but those, like Britain, that required permanent garrisons, were placed under the Emperor's control."
+        },
+        {
+          "id": "s1.304",
+          "heading": "Roman Britain > Government",
+          "text": "In practice imperial provinces were run by resident governors who were members of the Senate and had held the consulship."
+        },
+        {
+          "id": "s1.305",
+          "heading": "Roman Britain > Government",
+          "text": "These men were carefully selected, often having strong records of military success and administrative ability."
+        },
+        {
+          "id": "s1.306",
+          "heading": "Roman Britain > Government",
+          "text": "In Britain, a governor's role was primarily military, but numerous other tasks were also his responsibility, such as maintaining diplomatic relations with local client kings, building roads, ensuring the public courier system functioned, supervising the civitates and acting as a judge in important legal cases."
+        },
+        {
+          "id": "s1.307",
+          "heading": "Roman Britain > Government",
+          "text": "When not campaigning, he would travel the province hearing complaints and recruiting new troops."
+        },
+        {
+          "id": "s1.308",
+          "heading": "Roman Britain > Government",
+          "text": "To assist him in legal matters he had an adviser, the legatus juridicus, and those in Britain appear to have been distinguished lawyers perhaps because of the challenge of incorporating tribes into the imperial system and devising a workable method of taxing them."
+        },
+        {
+          "id": "s1.309",
+          "heading": "Roman Britain > Government",
+          "text": "Financial administration was dealt with by a procurator with junior posts for each tax-raising power."
+        },
+        {
+          "id": "s1.310",
+          "heading": "Roman Britain > Government",
+          "text": "Each legion in Britain had a commander who answered to the governor and, in time of war, probably directly ruled troublesome districts."
+        },
+        {
+          "id": "s1.311",
+          "heading": "Roman Britain > Government",
+          "text": "Each of these commands carried a tour of duty of two to three years in different provinces."
+        },
+        {
+          "id": "s1.312",
+          "heading": "Roman Britain > Government",
+          "text": "Below these posts was a network of administrative managers covering intelligence gathering, sending reports to Rome, organising military supplies and dealing with prisoners."
+        },
+        {
+          "id": "s1.313",
+          "heading": "Roman Britain > Government",
+          "text": "A staff of seconded soldiers provided clerical services."
+        },
+        {
+          "id": "s1.314",
+          "heading": "Roman Britain > Government",
+          "text": "Colchester was probably the earliest capital of Roman Britain, but it was soon eclipsed by London with its strong mercantile connections."
+        },
+        {
+          "id": "s1.315",
+          "heading": "Roman Britain > Government",
+          "text": "The different forms of municipal organisation in Britannia were known as civitas (which were subdivided, amongst other forms, into colonies such as York, Colchester, Gloucester and Lincoln and municipalities such as Verulamium), and were each governed by a senate of local landowners, whether Brythonic or Roman, who elected magistrates concerning judicial and civic affairs."
+        },
+        {
+          "id": "s1.316",
+          "heading": "Roman Britain > Government",
+          "text": "The various civitates sent representatives to a yearly provincial council in order to profess loyalty to the Roman state, to send direct petitions to the Emperor in times of extraordinary need, and to worship the imperial cult."
+        },
+        {
+          "id": "s1.317",
+          "heading": "Roman Britain > Demographics",
+          "text": "Roman Britain had an estimated population between 2.8 million and 3 million people at the end of the second century."
+        },
+        {
+          "id": "s1.318",
+          "heading": "Roman Britain > Demographics",
+          "text": "At the end of the fourth century, it had an estimated population of 3.6 million people, of whom 125,000 consisted of the Roman army and their families and dependents."
+        },
+        {
+          "id": "s1.319",
+          "heading": "Roman Britain > Demographics",
+          "text": "The urban population of Roman Britain was about 240,000 people at the end of the fourth century."
+        },
+        {
+          "id": "s1.320",
+          "heading": "Roman Britain > Demographics",
+          "text": "The capital city of Londinium is estimated to have had a population of about 60,000 people."
+        },
+        {
+          "id": "s1.321",
+          "heading": "Roman Britain > Demographics",
+          "text": "Londinium was an ethnically diverse city with inhabitants from the Roman Empire, including natives of Britannia, continental Europe, the Middle East, and North Africa."
+        },
+        {
+          "id": "s1.322",
+          "heading": "Roman Britain > Demographics",
+          "text": "There was also cultural diversity in other Roman-British towns, which were sustained by considerable migration, from Britannia and other Roman territories, including continental Europe, Roman Syria, the Eastern Mediterranean and North Africa."
+        },
+        {
+          "id": "s1.323",
+          "heading": "Roman Britain > Demographics",
+          "text": "In a 2012 study, around 45 percent of sites investigated dating from the Roman period had at least one individual of North African origin."
+        },
+        {
+          "id": "s1.324",
+          "heading": "Roman Britain > Demographics > Town and country",
+          "text": "During their occupation of Britain, the Romans founded a number of important settlements, many of which survive."
+        },
+        {
+          "id": "s1.325",
+          "heading": "Roman Britain > Demographics > Town and country",
+          "text": "The towns suffered attrition in the later 4th century, when public building ceased and some were abandoned to private use."
+        },
+        {
+          "id": "s1.326",
+          "heading": "Roman Britain > Demographics > Town and country",
+          "text": "Place names survived the deurbanised Sub-Roman and early Anglo-Saxon periods, and historiography has been at pains to signal the expected survivals, but archaeology shows that a bare handful of Roman towns were continuously occupied."
+        },
+        {
+          "id": "s1.327",
+          "heading": "Roman Britain > Demographics > Town and country",
+          "text": "According to S.T."
+        },
+        {
+          "id": "s1.328",
+          "heading": "Roman Britain > Demographics > Town and country",
+          "text": "Loseby, the very idea of a town as a centre of power and administration was reintroduced to England by the Roman Christianising mission to Canterbury, and its urban revival was delayed to the 10th century."
+        },
+        {
+          "id": "s1.329",
+          "heading": "Roman Britain > Demographics > Town and country",
+          "text": "Roman towns can be broadly grouped in two categories."
+        },
+        {
+          "id": "s1.330",
+          "heading": "Roman Britain > Demographics > Town and country",
+          "text": "Civitates, \"public towns\" were formally laid out on a grid plan, and their role in imperial administration occasioned the construction of public buildings."
+        },
+        {
+          "id": "s1.331",
+          "heading": "Roman Britain > Demographics > Town and country",
+          "text": "The much more numerous category of vici, \"small towns\" grew on informal plans, often round a camp or at a ford or crossroads; some were not small, others were scarcely urban, some not even defended by a wall, the characteristic feature of a place of any importance."
+        },
+        {
+          "id": "s1.332",
+          "heading": "Roman Britain > Demographics > Town and country",
+          "text": "Cities and towns which have Roman origins, or were extensively developed by them are listed with their Latin names in brackets; civitates are marked C."
+        },
+        {
+          "id": "s1.333",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "The druids, the Celtic priestly caste who were believed to originate in Britain, were outlawed by Claudius, and in 61 AD they vainly defended their sacred groves from destruction by the Romans on the island of Mona (Anglesey)."
+        },
+        {
+          "id": "s1.334",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "Under Roman rule the Britons continued to worship native Celtic deities, such as Ancasta, but often conflated with their Roman equivalents, like Mars Rigonemetos at Nettleham."
+        },
+        {
+          "id": "s1.335",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "The degree to which earlier native beliefs survived is difficult to gauge precisely."
+        },
+        {
+          "id": "s1.336",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "Certain European ritual traits such as the significance of the number 3, the importance of the head and of water sources such as springs remain in the archaeological record, but the differences in the votive offerings made at the baths at Bath, Somerset, before and after the Roman conquest suggest that continuity was only partial."
+        },
+        {
+          "id": "s1.337",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "Worship of the Roman emperor is widely recorded, especially at military sites."
+        },
+        {
+          "id": "s1.338",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "The founding of a Roman temple to Claudius at Camulodunum was one of the impositions that led to the revolt of Boudica."
+        },
+        {
+          "id": "s1.339",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "By the 3rd century, Pagans Hill Roman Temple in Somerset was able to exist peaceably and it did so into the 5th century."
+        },
+        {
+          "id": "s1.340",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "Pagan religious practices were supported by priests, represented in Britain by votive deposits of priestly regalia such as chain crowns from West Stow and Willingham Fen."
+        },
+        {
+          "id": "s1.341",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "Eastern cults such as Mithraism grew in popularity towards the end of the occupation."
+        },
+        {
+          "id": "s1.342",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "The London Mithraeum is one example of the popularity of mystery religions among the soldiery."
+        },
+        {
+          "id": "s1.343",
+          "heading": "Roman Britain > Religion > Pagan",
+          "text": "Temples to Mithras also exist in military contexts at Vindobala on Hadrian's Wall (the Rudchester Mithraeum) and at Segontium in Roman Wales (the Caernarfon Mithraeum)."
+        },
+        {
+          "id": "s1.344",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "It is not clear when or how Christianity came to Britain."
+        },
+        {
+          "id": "s1.345",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "A 2nd-century \"word square\" has been discovered in Mamucium, the Roman settlement of Manchester."
+        },
+        {
+          "id": "s1.346",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "It consists of an anagram of PATER NOSTER carved on a piece of amphora."
+        },
+        {
+          "id": "s1.347",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "There has been discussion by academics whether the \"word square\" is a Christian artefact, but if it is, it is one of the earliest examples of early Christianity in Britain."
+        },
+        {
+          "id": "s1.348",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "The earliest confirmed written evidence for Christianity in Britain is a statement by Tertullian, c. 200 AD, in which he described \"all the limits of the Spains, and the diverse nations of the Gauls, and the haunts of the Britons, inaccessible to the Romans, but subjugated to Christ\"."
+        },
+        {
+          "id": "s1.349",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "Archaeological evidence for Christian communities begins to appear in the 3rd and 4th centuries."
+        },
+        {
+          "id": "s1.350",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "Small timber churches are suggested at Lincoln and Silchester and baptismal fonts have been found at Icklingham and the Saxon Shore Fort at Richborough."
+        },
+        {
+          "id": "s1.351",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "The Icklingham font is made of lead, and visible in the British Museum."
+        },
+        {
+          "id": "s1.352",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "A Roman Christian graveyard exists at the same site in Icklingham."
+        },
+        {
+          "id": "s1.353",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "A possible Roman 4th-century church and associated burial ground was also discovered at Butt Road on the south-west outskirts of Colchester during the construction of the new police station there, overlying an earlier pagan cemetery."
+        },
+        {
+          "id": "s1.354",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "The Water Newton Treasure is a hoard of Christian silver church plate from the early 4th century and the Roman villas at Lullingstone and Hinton St Mary contained Christian wall paintings and mosaics respectively."
+        },
+        {
+          "id": "s1.355",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "A large 4th-century cemetery at Poundbury with its east–west oriented burials and lack of grave goods has been interpreted as an early Christian burial ground, although such burial rites were also becoming increasingly common in pagan contexts during the period."
+        },
+        {
+          "id": "s1.356",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "The Church in Britain seems to have developed the customary diocesan system, as evidenced from the records of the Council of Arles in Gaul in 314: represented at the council were bishops from thirty-five sees from Europe and North Africa, including three bishops from Britain, Eborius of York, Restitutus of London, and Adelphius, possibly a bishop of Lincoln."
+        },
+        {
+          "id": "s1.357",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "No other early sees are documented, and the material remains of early church structures are far to seek."
+        },
+        {
+          "id": "s1.358",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "The existence of a church in the forum courtyard of Lincoln and the martyrium of Saint Alban on the outskirts of Roman Verulamium are exceptional."
+        },
+        {
+          "id": "s1.359",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "Alban, the first British Christian martyr and by far the most prominent, is believed to have died in the early 4th century (some date him in the middle 3rd century), followed by Saints Julius and Aaron of Isca Augusta."
+        },
+        {
+          "id": "s1.360",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "Christianity was legalised in the Roman Empire by Constantine I in 313."
+        },
+        {
+          "id": "s1.361",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "Theodosius I made Christianity the state religion of the empire in 391, and by the 5th century it was well established."
+        },
+        {
+          "id": "s1.362",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "One belief labelled a heresy by the church authorities – Pelagianism – was originated by a British monk teaching in Rome: Pelagius lived c. 354 to c. 420/440."
+        },
+        {
+          "id": "s1.363",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "A letter found on a lead tablet in Bath, Somerset, datable to c. 363, had been widely publicised as documentary evidence regarding the state of Christianity in Britain during Roman times."
+        },
+        {
+          "id": "s1.364",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "According to its first translator, it was written in Wroxeter by a Christian man called Vinisius to a Christian woman called Nigra, and was claimed as the first epigraphic record of Christianity in Britain."
+        },
+        {
+          "id": "s1.365",
+          "heading": "Roman Britain > Religion > Christianity",
+          "text": "This translation of the letter was apparently based on grave paleographical errors, and the text has nothing to do with Christianity, and in fact relates to pagan rituals."
+        },
+        {
+          "id": "s1.366",
+          "heading": "Roman Britain > Environmental changes",
+          "text": "The Romans introduced a number of species to Britain, including possibly the now-rare Roman nettle (Urtica pilulifera), said to have been used by soldiers to warm their arms and legs, and the edible snail Helix pomatia."
+        },
+        {
+          "id": "s1.367",
+          "heading": "Roman Britain > Environmental changes",
+          "text": "There is some evidence they may have introduced rabbits, of the smaller southern Mediterranean type."
+        },
+        {
+          "id": "s1.368",
+          "heading": "Roman Britain > Environmental changes",
+          "text": "The European rabbit (Oryctolagus cuniculus) prevalent in modern Britain is assumed to have been introduced from the continent after the Norman invasion of 1066."
+        },
+        {
+          "id": "s1.369",
+          "heading": "Roman Britain > Environmental changes",
+          "text": "Box (Buxus sempervirens) is rarely recorded before the Roman period, but becomes a common find in towns and villas."
+        },
+        {
+          "id": "s1.370",
+          "heading": "Roman Britain > Legacy",
+          "text": "During their occupation of Britain the Romans built an extensive network of roads which continued to be used in later centuries and many are still followed today."
+        },
+        {
+          "id": "s1.371",
+          "heading": "Roman Britain > Legacy",
+          "text": "The Romans also built water supply, sanitation and wastewater systems."
+        },
+        {
+          "id": "s1.372",
+          "heading": "Roman Britain > Legacy",
+          "text": "Many of Britain's major cities, such as London (Londinium), Manchester (Mamucium) and York (Eboracum), were founded by the Romans, but the original Roman settlements were abandoned not long after the Romans left."
+        },
+        {
+          "id": "s1.373",
+          "heading": "Roman Britain > Legacy",
+          "text": "Unlike many other areas of the Western Roman Empire, the current majority language is not a Romance language, or a language descended from the pre-Roman inhabitants."
+        },
+        {
+          "id": "s1.374",
+          "heading": "Roman Britain > Legacy",
+          "text": "The British language at the time of the invasion was Common Brittonic, and remained so after the Romans withdrew."
+        },
+        {
+          "id": "s1.375",
+          "heading": "Roman Britain > Legacy",
+          "text": "It later split into regional languages, notably Cumbric, Cornish, Breton and Welsh."
+        },
+        {
+          "id": "s1.376",
+          "heading": "Roman Britain > Legacy",
+          "text": "Examination of these languages suggests some 800 Latin words were incorporated into Common Brittonic (see Brittonic languages)."
+        },
+        {
+          "id": "s1.377",
+          "heading": "Roman Britain > Legacy",
+          "text": "The current majority language, English, is based on the languages of the Germanic tribes who migrated to the island from continental Europe from the 5th century onwards."
+        }
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "id": "sec1",
+      "outcome": "Explain why the Romans invaded Britain",
+      "sentenceIds": [
+        "s1.1",
+        "s1.2",
+        "s1.3",
+        "s1.4",
+        "s1.5",
+        "s1.6",
+        "s1.7",
+        "s1.8",
+        "s1.9",
+        "s1.10",
+        "s1.11",
+        "s1.12",
+        "s1.13",
+        "s1.14",
+        "s1.15",
+        "s1.16",
+        "s1.17",
+        "s1.18",
+        "s1.19",
+        "s1.20",
+        "s1.21",
+        "s1.22",
+        "s1.23",
+        "s1.24",
+        "s1.25",
+        "s1.26",
+        "s1.27",
+        "s1.28",
+        "s1.29",
+        "s1.30",
+        "s1.31",
+        "s1.32",
+        "s1.33",
+        "s1.34",
+        "s1.35",
+        "s1.36",
+        "s1.37",
+        "s1.38",
+        "s1.39",
+        "s1.40",
+        "s1.41",
+        "s1.42",
+        "s1.43",
+        "s1.44",
+        "s1.45",
+        "s1.46",
+        "s1.47",
+        "s1.48",
+        "s1.49",
+        "s1.50",
+        "s1.51",
+        "s1.52",
+        "s1.53",
+        "s1.54",
+        "s1.55",
+        "s1.56",
+        "s1.57",
+        "s1.58",
+        "s1.59",
+        "s1.60"
+      ],
+      "facts": {
+        "keyIdeas": [
+          {
+            "statement": "Caesar invaded Britain because he believed Britons were helping people resist his conquest of Gaul.",
+            "explanation": "He thought people in Britain were supporting his enemies across the sea.",
+            "example": "Caesar made two trips to Britain, in 55 and 54 BC.",
+            "evidence": [
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.35"],
+                "snippet": "believing the Britons were helping the Gallic resistance"
+              }
+            ]
+          },
+          {
+            "statement": "Claudius invaded Britain in AD 43 to help Verica, a British ruler who had fled.",
+            "explanation": "Claudius wanted Verica to rule the Atrebates again.",
+            "example": "Claudius sent four legions to Britain to put Verica back in power.",
+            "evidence": [
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.49"],
+                "snippet": "When Claudius successfully invaded in 43 AD, it was in aid of another fugitive British ruler, Verica of the Atrebates."
+              },
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.8"],
+                "snippet": "Claudius directed four legions to invade Britain and restore the exiled king Verica over the Atrebates."
+              }
+            ]
+          }
+        ],
+        "misconceptions": [
+          {
+            "belief": "Caesar and Claudius invaded Britain for the same reason.",
+            "correction": "Caesar believed Britons were helping his enemies in Gaul. Claudius invaded to help Verica regain his position.",
+            "evidence": [
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.35"],
+                "snippet": "believing the Britons were helping the Gallic resistance"
+              },
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.8"],
+                "snippet": "restore the exiled king Verica over the Atrebates"
+              }
+            ]
+          }
+        ],
+        "vocabulary": [
+          {
+            "term": "Gallic resistance",
+            "sense": "Opposition to Caesar in Gaul",
+            "band": "Y4",
+            "definition": "People opposing Caesar’s attempt to take control of Gaul.",
+            "evidence": [
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.35"],
+                "snippet": "as part of his conquest of Gaul, believing the Britons were helping the Gallic resistance"
+              }
+            ]
+          },
+          {
+            "term": "exiled",
+            "sense": "Used to describe Verica",
+            "band": "Y4",
+            "definition": "Made to leave one’s country.",
+            "evidence": [
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.8"],
+                "snippet": "restore the exiled king Verica"
+              }
+            ]
+          }
+        ],
+        "workedExamples": [],
+        "questions": [
+          {
+            "stem": "Why did Caesar invade Britain?",
+            "answer": "He believed Britons were helping people resist his conquest of Gaul.",
+            "reasoning": "Caesar thought people in Britain were supporting his enemies in Gaul.",
+            "tier": "easy",
+            "use": "slide",
+            "demand": "explanation",
+            "forms": ["open-response"],
+            "distractors": [],
+            "evidence": [
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.35"],
+                "snippet": "believing the Britons were helping the Gallic resistance"
+              }
+            ]
+          },
+          {
+            "stem": "Why did Claudius order an invasion of Britain in AD 43?",
+            "answer": "He wanted to help Verica rule the Atrebates again.",
+            "reasoning": "Verica was an exiled ruler, and Claudius sent troops to restore him.",
+            "tier": "core",
+            "use": "worksheet",
+            "demand": "explanation",
+            "forms": ["open-response"],
+            "distractors": [],
+            "evidence": [
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.49"],
+                "snippet": "When Claudius successfully invaded in 43 AD, it was in aid of another fugitive British ruler, Verica of the Atrebates."
+              },
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.8"],
+                "snippet": "Claudius directed four legions to invade Britain and restore the exiled king Verica over the Atrebates."
+              }
+            ]
+          },
+          {
+            "stem": "Did Caesar and Claudius invade Britain for the same reason? Explain your answer.",
+            "answer": "No. Caesar believed Britons were helping his enemies in Gaul, while Claudius wanted to restore Verica as ruler of the Atrebates.",
+            "reasoning": "The two invasions had different stated aims: stopping help for Caesar’s enemies and helping an exiled ruler.",
+            "tier": "stretch",
+            "use": "exit",
+            "demand": "judgement",
+            "forms": ["open-response"],
+            "distractors": [],
+            "evidence": [
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.35"],
+                "snippet": "believing the Britons were helping the Gallic resistance"
+              },
+              {
+                "url": "https://en.wikipedia.org/wiki/Roman_Britain",
+                "sentenceIds": ["s1.8"],
+                "snippet": "restore the exiled king Verica over the Atrebates"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

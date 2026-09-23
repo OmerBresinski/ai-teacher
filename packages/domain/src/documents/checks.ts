@@ -19,9 +19,6 @@ export * from "./finding";
  * `Lesson.artefacts.worksheetId` has loaded.
  */
 
-/** How far the outline may drift from the brief's duration before `timing` warns: 10 %. */
-export const TIMING_TOLERANCE_PERCENT = 10;
-
 /**
  * The `check` names `checkLesson` produces: the four schema checks here and the deterministic
  * quality checks in `quality-checks.ts` (TEACH-210). Anything else on `Lesson.generation.findings`
@@ -31,7 +28,7 @@ export const SCHEMA_CHECKS: ReadonlySet<string> = new Set([
   "question-answer",
   "objective-coverage",
   "vocabulary-in-facts",
-  "timing",
+  "objective-taught",
   ...QUALITY_CHECKS,
 ]);
 export const isSchemaCheck = (check: string): boolean => SCHEMA_CHECKS.has(check);
@@ -42,7 +39,7 @@ export function checkLesson(lesson: Lesson, worksheet?: Worksheet): Finding[] {
     ...checkQuestionAnswers(lesson, worksheet),
     ...checkObjectiveCoverage(lesson, worksheet),
     ...checkVocabularyInFacts(lesson),
-    ...checkTiming(lesson),
+    ...checkObjectivesTaught(lesson),
     ...qualityChecks(lesson, worksheet),
   ];
 }
@@ -233,25 +230,36 @@ function checkVocabularyInFacts(lesson: Lesson): Finding[] {
 }
 
 /* ------------------------------------------------------------------ */
-/* timing                                                              */
+/* objective-taught                                                    */
 /* ------------------------------------------------------------------ */
 
-/** The outline's minutes add up to the brief's duration, within the tolerance. */
-function checkTiming(lesson: Lesson): Finding[] {
+/** Outline kinds that teach an objective (ruling 81); vocabulary and practice kinds do not. */
+const TEACHING_KINDS: ReadonlySet<string> = new Set(["content", "image-text", "worked-example"]);
+
+/**
+ * Every objective is named by at least one teaching entry of the outline (ruling 81). The outline
+ * gives up practice before teaching, so this fires only when there are more objectives than the
+ * slide count can teach; the teacher's objectives stay, and the gap is a thing to check.
+ */
+function checkObjectivesTaught(lesson: Lesson): Finding[] {
   const facts = lesson.facts;
-  if (!facts) return [];
-  const planned = facts.outline.reduce((sum, entry) => sum + entry.minutes, 0);
-  // Integer arithmetic: `durationMin * 0.1` is not exact in floating point.
-  const drift = Math.abs(planned - facts.durationMin) * 100;
-  if (drift <= facts.durationMin * TIMING_TOLERANCE_PERCENT) return [];
-  return [
-    {
-      check: "timing",
+  if (!facts || facts.outline.length === 0) return [];
+  const taught = new Set<string>();
+  for (const entry of facts.outline) {
+    if (!TEACHING_KINDS.has(entry.kind)) continue;
+    for (const ref of entry.factRefs) taught.add(ref);
+  }
+  const findings: Finding[] = [];
+  facts.objectives.forEach((objective, i) => {
+    if (taught.has(objective.id)) return;
+    findings.push({
+      check: "objective-taught",
       severity: "warning",
-      target: {},
-      message: `The outline plans ${planned} minutes for a ${facts.durationMin}-minute lesson.`,
-    },
-  ];
+      target: { factId: objective.id },
+      message: `Objective ${i + 1} has no slide that teaches it.`,
+    });
+  });
+  return findings;
 }
 
 /* ------------------------------------------------------------------ */

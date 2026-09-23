@@ -52,13 +52,17 @@ export function verbBlock(shape: WritingShape): string {
   return `Objective verb: ${shape.verb}. ${VERB_WRITING[shape.verb]}\n${CONFIDENCE_WRITING[shape.confidence](shape.verb)}`;
 }
 
-/** Rules stated in every system prompt (ADR 0024 §2: no learner names; F06: British English). */
+/**
+ * Rules stated in every system prompt (ADR 0024 §2: no learner names; F06: British English). The
+ * "JSON only, no prose" line went on 23 Sept 2026 (minimalism rubric 5): every call runs through
+ * `call.ts`, which repairs the text (`repair-json.ts`) and validates it against the schema, so the
+ * rule restated what code enforces.
+ */
 export const HOUSE_RULES = [
   "Write in British English spelling and conventions.",
   "Never invent or include the name of any pupil, student or member of staff.",
   "Pitch the language at the reading level and year group given; explain any word a pupil at that level would not know.",
   "Every fact id you are given is stable: echo the exact ids in `factRefs`, never invent new ones.",
-  "Answer with the requested JSON only, no prose before or after it.",
 ].join("\n");
 
 /** What the pipeline knows about the class, as one block the prompts embed. */
@@ -153,7 +157,7 @@ export function factsBlock(facts: LessonFacts): string {
       `Pitch: reading age ${facts.pitch.readingAgeTarget}, sentences of at most ${facts.pitch.sentenceLengthMax} words${avoid}.`,
     );
   }
-  out.push(`Lesson length: ${facts.durationMin} minutes.`);
+  // No lesson length: minutes size nothing a writer or reviewer does (UX ruling 82, 23 Sept 2026).
   return out.join("\n");
 }
 

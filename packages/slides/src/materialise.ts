@@ -280,10 +280,17 @@ function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: Conten
 }
 
 /**
- * Split a body at its first full stop that is followed by more text: the first sentence
- * left, the rest right. A body with no such full stop comes back whole with an empty right.
+ * Split a body at its first line break, when it has one (a content slide teaching two key ideas
+ * writes one paragraph per idea, `generate-slide` v22), else at its first full stop that is
+ * followed by more text: the first sentence left, the rest right. A body with neither comes back
+ * whole with an empty right.
  */
 export function splitAtFullStop(body: string): [string, string] {
+  const trimmed = body.trim();
+  const br = trimmed.search(/\s*\n\s*/);
+  if (br > 0) {
+    return [trimmed.slice(0, br).trim(), trimmed.slice(br).replace(/\s+/g, " ").trim()];
+  }
   const at = body.search(/\.\s+\S/);
   if (at < 0) return [body.trim(), ""];
   return [body.slice(0, at + 1).trim(), body.slice(at + 1).trim()];

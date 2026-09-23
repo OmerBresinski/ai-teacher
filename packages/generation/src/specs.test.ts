@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { LessonFactsSchema } from "@tj/domain/documents";
-import { isEditorialIssue } from "@tj/slides";
+import { isEditorialIssue, slideSpecSchemaFor } from "@tj/slides";
 import { lessonShapeOf, OBJECTIVE_VERBS, PRIOR_CONFIDENCES } from "./shapes";
 import {
   assignFactIds,
@@ -12,6 +12,7 @@ import {
   usesTerm,
   verifyOutputSchemaFor,
   WorksheetSpecSchema,
+  withAssignedCallout,
   worksheetSpecSchemaFor,
 } from "./specs";
 import { FIXTURES, PLAN_SKELETONS } from "./testing";
@@ -27,19 +28,20 @@ const shapeOf = (verb: string, confidence: string, yearGroup = "Year 8") =>
 const EXPLAIN_SOME = shapeOf("Explain", "Some prior knowledge");
 
 /**
- * A valid 60-minute skeleton for the default cell (Explain / Some): 24 explain minutes of 60, two
+ * A valid skeleton for the default cell (Explain / Some): 3 explain slides of the 7 after title and
+ * objectives (the floor is 2), two
  * content slides, a worked example, an open-response, phases in order.
  */
 const outline = (): Record<string, unknown>[] => [
-  { kind: "title", minutes: 2, factRefs: [] },
-  { kind: "objectives", minutes: 3, factRefs: [O(0)] },
-  { kind: "starter", minutes: 5, factRefs: [O(0)], phase: "starter", brief },
-  { kind: "content", minutes: 10, factRefs: [O(0)], phase: "explain", brief },
-  { kind: "content", minutes: 6, factRefs: [O(0)], phase: "explain", brief },
-  { kind: "worked-example", minutes: 8, factRefs: [O(0)], phase: "explain", brief },
-  { kind: "multiple-choice", minutes: 8, factRefs: [O(0)], phase: "practise", brief },
-  { kind: "open-response", minutes: 7, factRefs: [O(0)], phase: "practise", brief },
-  { kind: "exit-ticket", minutes: 11, factRefs: [O(0)], phase: "check", brief },
+  { kind: "title", factRefs: [] },
+  { kind: "objectives", factRefs: [O(0)] },
+  { kind: "starter", factRefs: [O(0)], phase: "starter", brief },
+  { kind: "content", factRefs: [O(0)], phase: "explain", brief },
+  { kind: "content", factRefs: [O(0)], phase: "explain", brief },
+  { kind: "worked-example", factRefs: [O(0)], phase: "explain", brief },
+  { kind: "multiple-choice", factRefs: [O(0)], phase: "practise", brief },
+  { kind: "open-response", factRefs: [O(0)], phase: "practise", brief },
+  { kind: "exit-ticket", factRefs: [O(0)], phase: "check", brief },
 ];
 
 /** The skeleton's own answer on the topic (TEACH-238); "no" so the test outlines need no picture. */
@@ -48,7 +50,7 @@ const NOT_PHOTOGRAPHABLE = { yes: false, why: "River processes are a diagram, no
 /** Structural rules only unless a shape is given. */
 const parse = (
   entries: unknown[],
-  context: Parameters<typeof planSkeletonSchemaFor>[0] = { durationMin: 60 },
+  context: Parameters<typeof planSkeletonSchemaFor>[0] = {},
   /** `null` omits the field (a model answer that forgot it; the resume path). */
   photographable: { yes: boolean; why: string } | null = NOT_PHOTOGRAPHABLE,
 ) =>
@@ -64,51 +66,52 @@ const messagesOf = (result: ReturnType<typeof parse>) =>
 describe("planSkeletonSchemaFor", () => {
   test("the fixture skeleton and a well-formed outline parse, with and without the default shape", () => {
     expect(parse(outline()).success).toBe(true);
-    expect(parse(outline(), { durationMin: 60, shape: EXPLAIN_SOME }).success).toBe(true);
+    expect(parse(outline(), { shape: EXPLAIN_SOME }).success).toBe(true);
     expect(
-      planSkeletonSchemaFor({ durationMin: 60, shape: EXPLAIN_SOME }).safeParse(
-        FIXTURES.planSkeleton,
-      ).success,
+      planSkeletonSchemaFor({ shape: EXPLAIN_SOME }).safeParse(FIXTURES.planSkeleton).success,
     ).toBe(true);
   });
 
-  test("row 1: explain minutes 8 of 60 is an issue that names the 18 needed (the shape's 30 %)", () => {
+  test("row 1: the explain share is counted in slides and the issue repeats the Shape sentence (ruling 82)", () => {
+    // 16 entries: 14 after title and objectives; 30 % of 14 rounds down to 4; three teach.
     const entries = outline();
-    entries[3] = { ...entries[3], minutes: 4 };
-    entries[4] = { ...entries[4], minutes: 2 };
-    entries[5] = { ...entries[5], minutes: 2 };
-    entries[6] = { ...entries[6], minutes: 20 };
-    const messages = messagesOf(parse(entries, { durationMin: 60, shape: EXPLAIN_SOME }));
+    const exit = entries.pop();
+    const mc = { kind: "multiple-choice", factRefs: [O(0)], phase: "practise", brief };
+    entries.push(...Array.from({ length: 7 }, () => ({ ...mc })), exit ?? {});
+    expect(entries).toHaveLength(16);
+    const messages = messagesOf(parse(entries, { shape: EXPLAIN_SOME }));
     expect(messages).toContainEqual(
-      expect.stringContaining("explain phase needs at least 18 minutes (30% of 60)"),
+      "outline: At least 4 of the 14 slides after the title and objectives slides are explain slides. This outline has 3. Add 1 content, worked-example, image-text or vocabulary slide in the explain phase.",
     );
-    expect(messages).toContainEqual(
-      expect.stringContaining(
-        "it has 8. Add 10 minutes to content, worked-example, image-text or vocabulary slides.",
-      ),
-    );
+    expect(messages.join("\n")).not.toContain("minute");
     // Without a shape (the structural schema) the share is not checked.
     expect(parse(entries).success).toBe(true);
+  });
+
+  test("outline entries may carry minutes (lessons planned before ruling 82) and need not", () => {
+    const old = outline().map((e) => ({ ...e, minutes: 5 }));
+    expect(messagesOf(parse(old, { shape: EXPLAIN_SOME }))).toEqual([]);
+    expect(messagesOf(parse(outline(), { shape: EXPLAIN_SOME }))).toEqual([]);
   });
 
   describe("TEACH-237: the rules that rejected a good outline in production", () => {
     const EXPLAIN_NEW = shapeOf("Explain", "New to it", "Year 5");
     /** The rodents outline the worker rejected twice on 2026-09-10 (reconstructed from the messages). */
     const rodents = (): Record<string, unknown>[] => [
-      { kind: "title", minutes: 2, factRefs: [] },
-      { kind: "objectives", minutes: 3, factRefs: [O(0)] },
-      { kind: "starter", minutes: 5, factRefs: [O(0)], phase: "starter", brief },
-      { kind: "content", minutes: 8, factRefs: [O(0)], phase: "explain", brief },
-      { kind: "vocabulary", minutes: 5, factRefs: [O(0)], phase: "explain", brief },
-      { kind: "content", minutes: 8, factRefs: [O(0)], phase: "explain", brief },
-      { kind: "worked-example", minutes: 7, factRefs: [O(0)], phase: "explain", brief },
-      { kind: "multiple-choice", minutes: 6, factRefs: [O(0)], phase: "practise", brief },
-      { kind: "open-response", minutes: 8, factRefs: [O(0)], phase: "practise", brief },
-      { kind: "exit-ticket", minutes: 8, factRefs: [O(0)], phase: "check", brief },
+      { kind: "title", factRefs: [] },
+      { kind: "objectives", factRefs: [O(0)] },
+      { kind: "starter", factRefs: [O(0)], phase: "starter", brief },
+      { kind: "content", factRefs: [O(0)], phase: "explain", brief },
+      { kind: "vocabulary", factRefs: [O(0)], phase: "explain", brief },
+      { kind: "content", factRefs: [O(0)], phase: "explain", brief },
+      { kind: "worked-example", factRefs: [O(0)], phase: "explain", brief },
+      { kind: "multiple-choice", factRefs: [O(0)], phase: "practise", brief },
+      { kind: "open-response", factRefs: [O(0)], phase: "practise", brief },
+      { kind: "exit-ticket", factRefs: [O(0)], phase: "check", brief },
     ];
 
     test("row 1: the production outline — vocabulary in the explain phase, 23 + 5 explain minutes of 60 — parses for Explain / New to it", () => {
-      expect(messagesOf(parse(rodents(), { durationMin: 60, shape: EXPLAIN_NEW }))).toEqual([]);
+      expect(messagesOf(parse(rodents(), { shape: EXPLAIN_NEW }))).toEqual([]);
     });
 
     test("vocabulary counts towards the explain share and may open the explain phase before the definition", () => {
@@ -117,49 +120,49 @@ describe("planSkeletonSchemaFor", () => {
       const [vocab] = entries.splice(4, 1);
       if (!vocab) throw new Error("fixture");
       entries.splice(3, 0, vocab);
-      expect(messagesOf(parse(entries, { durationMin: 60, shape: EXPLAIN_NEW }))).toEqual([]);
+      expect(messagesOf(parse(entries, { shape: EXPLAIN_NEW }))).toEqual([]);
       // But a worked-example after the vocabulary is still not the definition.
       const wrong = rodents();
       wrong[5] = { ...wrong[5], kind: "worked-example" };
       wrong[3] = { ...wrong[3], kind: "worked-example" };
-      expect(messagesOf(parse(wrong, { durationMin: 60, shape: EXPLAIN_NEW }))).toContainEqual(
+      expect(messagesOf(parse(wrong, { shape: EXPLAIN_NEW }))).toContainEqual(
         expect.stringMatching(
           /^outline\.3\.kind: Outline position 3 is the first explain-phase slide \(after any vocabulary\) and is a worked-example/,
         ),
       );
     });
 
-    test("row 2: a phase two minutes under its share passes; three under names the minutes to add", () => {
-      // 24 needed (40 % of 60). 22 passes.
-      const short2 = rodents();
-      short2[6] = { ...short2[6], minutes: 1 };
-      expect(messagesOf(parse(short2, { durationMin: 60, shape: EXPLAIN_NEW }))).toEqual([]);
-      // 21 fails, asking for 3 (back to the full share), not 1.
-      const short3 = rodents();
-      short3[6] = { ...short3[6], minutes: 0 };
-      short3[4] = { ...short3[4], minutes: 5 };
-      expect(messagesOf(parse(short3, { durationMin: 60, shape: EXPLAIN_NEW }))).toContainEqual(
-        "outline: The explain phase needs at least 24 minutes (40% of 60); it has 21. Add 3 minutes to content, worked-example, image-text or vocabulary slides.",
-      );
-      // The practise share tolerates the same two minutes (Apply: 24 of 60; 22 passes, 21 fails).
-      const apply = (practise: number) => {
+    test("row 2: a share rounds down and allows no shortfall; the issue names the slides to add", () => {
+      const mc = { kind: "multiple-choice", factRefs: [O(0)], phase: "practise", brief };
+      /** The rodents outline with `n` more practise slides before the exit ticket. */
+      const longer = (n: number) => {
         const e = rodents();
-        e[7] = { ...e[7], minutes: practise - 8 };
-        return messagesOf(
-          parse(e, { durationMin: 60, shape: shapeOf("Apply", "Some prior knowledge") }),
-        );
+        const exit = e.pop();
+        e.push(...Array.from({ length: n }, () => ({ ...mc })), exit ?? {});
+        return e;
       };
-      expect(apply(22)).not.toContainEqual(expect.stringContaining("practise phase needs"));
-      expect(apply(21)).toContainEqual(
-        "outline: The practise phase needs at least 24 minutes (40% of 60); it has 21. Add 3 minutes to practise slides.",
+      const explainNew = (n: number) => messagesOf(parse(longer(n), { shape: EXPLAIN_NEW }));
+      // Four teaching slides. 40 % of 10 is exactly 4; of 11, 4.4 rounds down to 4: both pass.
+      expect(explainNew(2)).toEqual([]);
+      expect(explainNew(3)).toEqual([]);
+      // 40 % of 13 rounds down to 5: one short.
+      expect(explainNew(5)).toContainEqual(
+        "outline: At least 5 of the 13 slides after the title and objectives slides are explain slides. This outline has 4. Add 1 content, worked-example, image-text or vocabulary slide in the explain phase.",
       );
+      // Apply's practise share: 40 % of 8 is 3 with two practise slides; one more passes.
+      const apply = (n: number) =>
+        messagesOf(parse(longer(n), { shape: shapeOf("Apply", "Some prior knowledge") }));
+      expect(apply(0)).toContainEqual(
+        "outline: At least 3 of the 8 slides after the title and objectives slides are in the practise phase. This outline has 2. Add 1 practise slide.",
+      );
+      expect(apply(1)).not.toContainEqual(expect.stringContaining("practise phase."));
     });
 
     test("row 3: an imageBrief with six avoid items passes the Plan schema and then the domain schema (assignFactIds)", () => {
       const entries = rodents();
       const avoid = ["cage", "fence", "bars", "glass", "hands", "toys"];
       entries[5] = { ...entries[5], kind: "image-text", imageBrief: { ...RIVER, avoid } };
-      const result = parse(entries, { durationMin: 60, shape: EXPLAIN_NEW });
+      const result = parse(entries, { shape: EXPLAIN_NEW });
       expect(messagesOf(result)).toEqual([]);
       if (!result.success) return;
       const facts = assignFactIds(result.data, EMPTY_PLAN_FACTS, 60);
@@ -181,7 +184,7 @@ describe("planSkeletonSchemaFor", () => {
 
   test("a missing brief or phase from position 2 names the position; one on the title is refused", () => {
     const bare = outline();
-    bare[3] = { kind: "content", minutes: 10, factRefs: [O(0)] };
+    bare[3] = { kind: "content", factRefs: [O(0)] };
     const messages = messagesOf(parse(bare));
     expect(messages).toContainEqual(
       expect.stringContaining("outline.3.brief: Outline position 3 needs a brief"),
@@ -205,13 +208,12 @@ describe("planSkeletonSchemaFor", () => {
   });
 
   test("a class new to the topic needs an explain slide per objective", () => {
-    const context = { durationMin: 60, shape: shapeOf("Explain", "New to it") };
+    const context = { shape: shapeOf("Explain", "New to it") };
     const schema = planSkeletonSchemaFor(context);
     const entries = outline();
-    entries[3] = { kind: "vocabulary", minutes: 4, factRefs: [O(0)], phase: "starter", brief };
+    entries[3] = { kind: "vocabulary", factRefs: [O(0)], phase: "starter", brief };
     entries.splice(4, 0, {
       kind: "content",
-      minutes: 10,
       factRefs: [O(0)],
       phase: "explain",
       brief,
@@ -240,7 +242,7 @@ describe("planSkeletonSchemaFor", () => {
     ).toEqual([]);
     // Any other confidence: the rule does not apply.
     expect(
-      planSkeletonSchemaFor({ durationMin: 60, shape: EXPLAIN_SOME }).safeParse({
+      planSkeletonSchemaFor({ shape: EXPLAIN_SOME }).safeParse({
         learningObjectives: [{ text: "A" }, { text: "B" }],
         photographable: NOT_PHOTOGRAPHABLE,
         outline: outline(),
@@ -249,7 +251,7 @@ describe("planSkeletonSchemaFor", () => {
   });
 
   describe("TEACH-238: the model says whether the topic can be photographed", () => {
-    const EXPLAIN_NEW = { durationMin: 60, shape: shapeOf("Explain", "New to it", "Year 5") };
+    const EXPLAIN_NEW = { shape: shapeOf("Explain", "New to it", "Year 5") };
     const yes = { yes: true, why: "A rodent is a real animal a camera captures." };
 
     test("row 1: a yes with no image-text slide is one issue at outline; the why is never in the message (it is logged on a retry)", () => {
@@ -285,7 +287,6 @@ describe("planSkeletonSchemaFor", () => {
       const entries = outline();
       entries.splice(3, 0, {
         kind: "vocabulary",
-        minutes: 4,
         factRefs: [O(0)],
         phase: "starter",
         brief,
@@ -296,13 +297,12 @@ describe("planSkeletonSchemaFor", () => {
 
   describe("the lesson shape's deterministic column (TEACH-229)", () => {
     const withShape = (entries: unknown[], verb: string, confidence: string, year?: string) =>
-      messagesOf(parse(entries, { durationMin: 60, shape: shapeOf(verb, confidence, year) }));
+      messagesOf(parse(entries, { shape: shapeOf(verb, confidence, year) }));
 
     test("row 1: Explain / New to it with a worked-example opening the explain phase names the position and the content slide that defines", () => {
       const entries = outline();
       entries.splice(3, 0, {
         kind: "vocabulary",
-        minutes: 4,
         factRefs: [O(0)],
         phase: "starter",
         brief,
@@ -326,7 +326,6 @@ describe("planSkeletonSchemaFor", () => {
       const entries = outline();
       entries.splice(3, 0, {
         kind: "vocabulary",
-        minutes: 4,
         factRefs: [O(0)],
         phase: "starter",
         brief,
@@ -362,10 +361,8 @@ describe("planSkeletonSchemaFor", () => {
       expect(messages).toContainEqual(
         "outline.5.phase: Outline position 5 is a practise slide but the worked-example (the method) is at position 6; pupils practise only after the method. Move the worked-example before position 5, in the explain phase.",
       );
-      // Apply wants 40 % practise: the default outline's 15 of 60 is named too.
-      expect(messages).toContainEqual(
-        expect.stringContaining("practise phase needs at least 24 minutes (40% of 60); it has 15"),
-      );
+      // Apply wants 40 % practise, in slides: 2 of the 7, which the two practise slides meet.
+      expect(messages.join("\n")).not.toContain("practise phase.");
     });
 
     test("row 4 (withdrawn by TEACH-237): Evaluate / Some with no matching, sort or second worked-example is a prompt rule, not an issue", () => {
@@ -453,7 +450,6 @@ describe("planSkeletonSchemaFor", () => {
     const entries = outline();
     entries[3] = {
       kind: "image-text",
-      minutes: 10,
       factRefs: [O(0)],
       phase: "explain",
       brief,
@@ -490,7 +486,6 @@ describe("planSkeletonSchemaFor", () => {
     const missing = outline();
     missing[3] = {
       kind: "image-text",
-      minutes: 10,
       factRefs: [O(0)],
       phase: "explain",
       brief,
@@ -524,17 +519,22 @@ describe("planSkeletonSchemaFor", () => {
     const entries = outline();
     entries[3] = {
       kind: "multiple-choice",
-      minutes: 10,
       factRefs: [O(0)],
       phase: "explain",
       brief,
     };
-    const messages = messagesOf(parse(entries, { durationMin: 60, shape: EXPLAIN_SOME }));
+    // Three more practise slides: 30 % of 10 is 3, and only the content and worked-example teach.
+    const exit = entries.pop();
+    const mc = { kind: "multiple-choice", factRefs: [O(0)], phase: "practise", brief };
+    entries.push({ ...mc }, { ...mc }, { ...mc }, exit ?? {});
+    const messages = messagesOf(parse(entries, { shape: EXPLAIN_SOME }));
     expect(messages).toContainEqual(
       "outline.3.phase: Outline position 3 is a multiple-choice slide in the explain phase; explain slides are content, worked-example, image-text or vocabulary. Give it the phase it belongs to, or change its kind.",
     );
     expect(messages).toContainEqual(
-      expect.stringContaining("explain phase needs at least 18 minutes"),
+      expect.stringContaining(
+        "At least 3 of the 10 slides after the title and objectives slides are explain slides. This outline has 2.",
+      ),
     );
   });
 });
@@ -811,9 +811,9 @@ describe("assignFactIds", () => {
       {
         learningObjectives: [{ text: "Describe rivers" }],
         outline: [
-          { kind: "title", minutes: 2, factRefs: [] },
-          { kind: "objectives", minutes: 3, factRefs: [O(0)] },
-          { kind: "image-text", minutes: 6, factRefs: [O(0)], imageBrief: RIVER },
+          { kind: "title", factRefs: [] },
+          { kind: "objectives", factRefs: [O(0)] },
+          { kind: "image-text", factRefs: [O(0)], imageBrief: RIVER },
         ],
       },
       EMPTY_PLAN_FACTS,
@@ -1032,7 +1032,7 @@ describe("planSkeletonSchemaFor: slideCount and objectiveCount (ADR 0029 items 8
 });
 
 describe("TEACH-257: editorial and shape rules in the Plan and worksheet schemas", () => {
-  const SKELETON = { durationMin: 60, shape: EXPLAIN_SOME };
+  const SKELETON = { shape: EXPLAIN_SOME };
   const skeleton = (entries: unknown[], patch: Record<string, unknown> = {}) => ({
     learningObjectives: [{ text: "Describe rivers" }],
     photographable: NOT_PHOTOGRAPHABLE,
@@ -1099,7 +1099,6 @@ describe("TEACH-257: editorial and shape rules in the Plan and worksheet schemas
     const picture = outline();
     picture[3] = {
       kind: "image-text",
-      minutes: 10,
       factRefs: [O(0)],
       phase: "explain",
       brief,
@@ -1174,5 +1173,78 @@ describe("TEACH-257: editorial and shape rules in the Plan and worksheet schemas
       criteria: [],
       blocks: sheet.blocks.slice(1),
     });
+  });
+});
+
+describe("withAssignedCallout (quality PRD G3): the box is present exactly when assigned, of that kind", () => {
+  const content = {
+    kind: "content",
+    heading: "Roman roads",
+    body: "Straight and paved.",
+    factRefs: ["k1"],
+  };
+  const box = { kind: "watch-out" as const, text: "Not every Roman road was straight." };
+  const schemaFor = (
+    callout: { kind: "watch-out" | "example" | "key-words"; factRefs: string[] } | undefined,
+    soft = false,
+  ) =>
+    withAssignedCallout(
+      slideSpecSchemaFor("content", { soft }) as NonNullable<ReturnType<typeof slideSpecSchemaFor>>,
+      callout,
+      { soft },
+    );
+  const watch = { kind: "watch-out" as const, factRefs: ["m1"] };
+  const issuesOf = (r: {
+    success: boolean;
+    error?: { issues: { path: PropertyKey[]; message: string }[] };
+  }) => (r.success ? [] : (r.error?.issues ?? []).map((i) => `${i.path.join(".")}: ${i.message}`));
+
+  test("assigned and given, same kind: accepted with the text kept", () => {
+    const r = schemaFor(watch).safeParse({ ...content, callout: box });
+    expect(r.success).toBe(true);
+    if (r.success && r.data.kind === "content") expect(r.data.callout).toEqual(box);
+  });
+
+  test("assigned but missing: one editorial issue at callout", () => {
+    const r = schemaFor(watch).safeParse(content);
+    expect(issuesOf(r)).toEqual([
+      'callout: This slide carries a "watch-out" callout: give `callout` with that kind and one line of text.',
+    ]);
+    if (!r.success) expect(r.error.issues.every(isEditorialIssue)).toBe(true);
+  });
+
+  test("given but not assigned: one editorial issue at callout", () => {
+    const r = schemaFor(undefined).safeParse({ ...content, callout: box });
+    expect(issuesOf(r)).toEqual(["callout: This slide has no callout: leave `callout` out."]);
+  });
+
+  test("wrong kind: one editorial issue at callout.kind", () => {
+    const r = schemaFor(watch).safeParse({ ...content, callout: { ...box, kind: "example" } });
+    expect(issuesOf(r)).toEqual([
+      'callout.kind: `callout.kind` must be "watch-out", the kind this slide was assigned.',
+    ]);
+  });
+
+  test("the text cap is the slides schema's (120, ceiling 180) and an unknown kind is shape", () => {
+    expect(
+      schemaFor(watch).safeParse({ ...content, callout: { ...box, text: "x".repeat(181) } })
+        .success,
+    ).toBe(false);
+    expect(
+      schemaFor(watch, true).safeParse({ ...content, callout: { ...box, text: "x".repeat(181) } })
+        .success,
+    ).toBe(true);
+    expect(
+      schemaFor(watch, true).safeParse({ ...content, callout: { ...box, kind: "tip" } }).success,
+    ).toBe(false);
+  });
+
+  test("the soft build applies none of the three rules", () => {
+    expect(schemaFor(watch, true).safeParse(content).success).toBe(true);
+    expect(schemaFor(undefined, true).safeParse({ ...content, callout: box }).success).toBe(true);
+    expect(
+      schemaFor(watch, true).safeParse({ ...content, callout: { ...box, kind: "example" } })
+        .success,
+    ).toBe(true);
   });
 });

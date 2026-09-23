@@ -19,6 +19,7 @@ import { z } from "zod";
 import type { PhotoPlacer } from "../src";
 import { type EvalBrief, evalBriefs, isSecondaryBrief } from "./briefs";
 import { evalPhotoPlacer } from "./photo-placer";
+import { DEFAULT_CONCURRENCY, mapPool } from "./pool";
 import { RUBRIC_DIMENSIONS, type RubricDimension } from "./rubric-prompt";
 import { type BriefResult, runBrief } from "./run-brief";
 import { rubricMean } from "./scorers";
@@ -247,29 +248,37 @@ export function formatResultsTable(results: EvalResults): string {
   return lines.join("\n");
 }
 
-/** Run every brief in order over one budget; stops once the budget is exceeded. */
+/**
+ * Run every brief over one budget, at most `concurrency` briefs in flight (results in brief
+ * order). Every call inside the pipeline reserves its worst case against the shared budget
+ * before it is sent (`withGenerationBudget`), so a brief is never started once the budget is
+ * exceeded or a reservation has been refused, and an in-flight brief stops at its first refusal.
+ */
 export async function runPaidEval(
   ai: CreatedAi,
   budget: Budget,
   briefs = evalBriefs(),
   images?: PhotoPlacer,
-  options: { judge?: CreatedAi; planFrontierFromYear?: number } = {},
+  options: { judge?: CreatedAi; planFrontierFromYear?: number; concurrency?: number } = {},
 ): Promise<BriefResult[]> {
-  const results: BriefResult[] = [];
-  for (const brief of briefs) {
-    if (budget.exceeded() || budget.lastRefusal()) break;
-    const run = await runBrief(brief, {
-      ai,
-      budget,
-      judge: options.judge ?? true,
-      images,
-      ...(options.planFrontierFromYear !== undefined
-        ? { planFrontierFromYear: options.planFrontierFromYear }
-        : {}),
-    });
-    results.push(run.result);
-  }
-  return results;
+  const results = await mapPool(
+    briefs,
+    options.concurrency ?? DEFAULT_CONCURRENCY,
+    async (brief) => {
+      if (budget.exceeded() || budget.lastRefusal()) return null;
+      const run = await runBrief(brief, {
+        ai,
+        budget,
+        judge: options.judge ?? true,
+        images,
+        ...(options.planFrontierFromYear !== undefined
+          ? { planFrontierFromYear: options.planFrontierFromYear }
+          : {}),
+      });
+      return run.result;
+    },
+  );
+  return results.filter((r): r is BriefResult => r !== null);
 }
 
 async function gitSha(): Promise<string> {

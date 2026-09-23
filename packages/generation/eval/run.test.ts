@@ -47,8 +47,11 @@ describe("eval:paid", () => {
   test("a tiny shared cap stops the loop after the first brief and records stoppedBy", async () => {
     const briefs = evalBriefs().slice(0, 3);
     // The input check fits; the next call cannot reserve its maximum, so the loop must stop.
+    // One brief at a time, so the refusal lands before the second brief is admitted.
     const budget = createBudget({ capUsd: 0.01, capTokens: 10_000_000 });
-    const rows = await runPaidEval(scriptedPipelineAi(), budget, briefs);
+    const rows = await runPaidEval(scriptedPipelineAi(), budget, briefs, undefined, {
+      concurrency: 1,
+    });
     expect(rows.length).toBeLessThan(briefs.length);
     const totals = summarise(rows, briefs, budget);
     expect(totals.stoppedBy).toBe("usd");

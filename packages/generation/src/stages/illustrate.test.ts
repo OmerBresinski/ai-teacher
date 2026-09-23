@@ -10,7 +10,7 @@ import {
 } from "@tj/slides";
 import { memoryLogger, recordingDeps, SAMPLE_JOB_ID, sampleBriefLesson } from "../testing";
 import type { PhotoPlacer } from "../types";
-import { illustrate } from "./illustrate";
+import { factQueryHints, illustrate } from "./illustrate";
 
 const meta: MaterialiseMeta = {
   promptVersion: "generate-slide.v4",
@@ -214,6 +214,12 @@ describe("illustrate", () => {
     // Both query candidates are searched to gather the pool; one judge call sees both portraits.
     expect(searches).toEqual(["river severn dawn", "river severn"]);
     expect(stores).toEqual(["p2"]);
+    // The slide's text predates the photograph: an image-fit error sends it to Repair.
+    expect(
+      state.lesson.generation?.findings.filter(
+        (f) => f.check === "image-fit" && f.severity === "error",
+      ),
+    ).toHaveLength(1);
     expect(ai.calls).toHaveLength(1);
     expect(ai.calls[0]?.context?.stage).toBe("illustrate");
     expect(ai.calls[0]?.promptText).toContain("p1");
@@ -227,7 +233,7 @@ describe("illustrate", () => {
         visible: [],
         count: "one",
         alt: "Photo p2",
-        promptVersion: "pick-or-requery-photo.v6",
+        promptVersion: "pick-or-requery-photo.v7",
         thumbnail: second.src.tiny,
       },
     });
@@ -244,7 +250,7 @@ describe("illustrate", () => {
       failed: 0,
     });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
-    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v6");
+    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v7");
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 
@@ -384,7 +390,7 @@ describe("illustrate", () => {
       visible: ["petals"],
       count: "one",
       alt: "Photo A",
-      promptVersion: "pick-or-requery-photo.v6",
+      promptVersion: "pick-or-requery-photo.v7",
       thumbnail: `data:image/png;base64,${PNG}`,
     });
 
@@ -493,7 +499,7 @@ describe("illustrate", () => {
     const brief = { subject: "rodent incisors", mustShow: ["front teeth"] };
     const state = await run(imageLesson([brief]), recordingDeps(ai, { images, logger }));
     expect(ai.calls).toHaveLength(3);
-    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v2");
+    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v3");
     expect(ai.calls[0]?.promptText).toContain(
       "do not reject a caption for not mentioning them: front teeth",
     );
@@ -784,5 +790,69 @@ describe("illustrate", () => {
     const deps = recordingDeps(judge(pick("p")), { images });
     deps.abort.abort(new DOMException("cancelled", "AbortError"));
     await expect(run(imageLesson([{ subject: "river" }]), deps)).rejects.toThrowError(DOMException);
+  });
+});
+
+describe("factQueryHints (quality lab, Sept 2026)", () => {
+  const lessonWith = (
+    index: number,
+    text: { statement: string; explanation: string; example: string },
+  ): Lesson => {
+    const base = imageLesson([{ subject: "roman fort britain" }]);
+    return {
+      ...base,
+      facts: {
+        ...(base.facts as NonNullable<Lesson["facts"]>),
+        keyIdeas: [{ id: "k1", objectiveRefs: [], ...text }],
+        outline: (base.facts as NonNullable<Lesson["facts"]>).outline.map((e, i) =>
+          i === index ? { ...e, factRefs: ["k1"] } : e,
+        ),
+      },
+    };
+  };
+
+  test("named things the slide's key idea cites come first, at most two, never a sentence opener", () => {
+    const lesson = lessonWith(0, {
+      statement: "Roman forts were army bases.",
+      explanation: "The Romans built forts along Hadrian's Wall in northern England.",
+      example:
+        "At Housesteads Roman Fort the stone walls and gateways still stand; so does Chesters Roman Fort.",
+    });
+    expect(factQueryHints(lesson, 0)).toEqual(["Hadrian's Wall", "Housesteads Roman Fort"]);
+    // A slide whose entry names no key idea gets no hint.
+    expect(
+      factQueryHints(
+        {
+          ...lesson,
+          facts: {
+            ...(lesson.facts as NonNullable<Lesson["facts"]>),
+            outline: (lesson.facts as NonNullable<Lesson["facts"]>).outline.map((e) => ({
+              ...e,
+              factRefs: [],
+            })),
+          },
+        },
+        0,
+      ),
+    ).toEqual([]);
+  });
+
+  test("the hints are searched before the brief's subject and each query keeps at most ten results", async () => {
+    const lesson = lessonWith(0, {
+      statement: "Roman forts were army bases.",
+      explanation: "Soldiers lived at Housesteads Roman Fort.",
+      example: "The fort stands on Hadrian's Wall.",
+    });
+    const { images, searches } = fakeImages(async (query) =>
+      Array.from({ length: 20 }, (_, i) => pexelsPhoto(`${query.slice(0, 3)}${i}`, true)),
+    );
+    const ai = judge(pick("Hou0"));
+    await run(lesson, recordingDeps(ai, { images }));
+    expect(searches).toEqual(["Housesteads Roman Fort", "Hadrian's Wall", "roman fort britain"]);
+    // Ten from each query: the two hints and the subject share the pool of thirty.
+    expect(ai.calls[0]?.promptText).toContain("Hou0");
+    expect(ai.calls[0]?.promptText).toContain("Had0");
+    expect(ai.calls[0]?.promptText).toContain("rom0");
+    expect(ai.calls[0]?.promptText).not.toContain("Hou10");
   });
 });

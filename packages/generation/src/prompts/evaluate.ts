@@ -40,7 +40,7 @@ export type EvaluateInput = {
 };
 
 export const evaluatePrompt = {
-  version: "evaluate.v6",
+  version: "evaluate.v7",
   system: [
     "You review a generated classroom lesson against the facts it was built from.",
     "Report problems only; do not praise, rewrite or add content.",

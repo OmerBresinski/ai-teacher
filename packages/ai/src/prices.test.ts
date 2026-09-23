@@ -4,7 +4,10 @@ import { costUsd, isPriced, PRICES } from "./prices";
 
 describe("PRICES", () => {
   test("has a row for exactly the three default model ids", () => {
-    expect(Object.keys(PRICES).sort()).toEqual(Object.values(DEFAULT_MODEL_IDS).sort());
+    // Every default id has a row; gateway ids (the model bench) may have rows too.
+    for (const id of Object.values(DEFAULT_MODEL_IDS)) expect(Object.keys(PRICES)).toContain(id);
+    for (const id of Object.keys(PRICES))
+      expect(id.includes("/") || Object.values(DEFAULT_MODEL_IDS).includes(id as never)).toBe(true);
     for (const price of Object.values(PRICES)) {
       expect(price.inputPerMTok).toBeGreaterThan(0);
       expect(price.outputPerMTok).toBeGreaterThan(price.inputPerMTok);

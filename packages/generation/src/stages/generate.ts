@@ -15,7 +15,7 @@ import {
   type SlidePhoto,
   verifyFactsPrompt,
 } from "../prompts";
-import { verifiableArrayOf } from "../specs";
+import { OUTLINE_FROM_FACTS_VERSION, verifiableArrayOf, withAssignedCallout } from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
 import {
   busyFinding,
@@ -96,6 +96,14 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   });
   let stems = stemPlan(facts);
   let stopped: Finding | null = null;
+  // Callouts are assigned only by the lab's code-written outline (`outlineFromFacts`, stamped in
+  // `promptVersions.planned`). Production's Plan never assigns one, so there a slide that writes a
+  // box, or leaves one out, is never an editorial miss. The stamp is read as `joinVersions`
+  // writes it: one version per `+`, compared whole, so a version that merely contains the name
+  // does not turn the check on.
+  const calloutsAssigned = (generation.promptVersions.planned ?? "")
+    .split("+")
+    .includes(OUTLINE_FROM_FACTS_VERSION);
   // Picture first (TEACH-220): the photograph for every image-text entry is searched and judged as
   // soon as Generate starts, alongside the first slide batch; that entry's slide call waits for its
   // own pick and no other. Nothing here fails the lesson.
@@ -175,12 +183,15 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   ): Promise<{ slide: Slide; misses: EditorialMiss[]; builtFrom: LessonFacts }> => {
     const builtFrom = facts;
     // `OutlineEntrySchema` only admits generatable kinds, so this never fires; it keeps the type.
-    const specSchema = (soft: boolean) =>
-      entry.kind === "image-text"
-        ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
-            soft,
-          })
-        : slideSpecSchemaFor(entry.kind, { soft });
+    const specSchema = (soft: boolean) => {
+      const base =
+        entry.kind === "image-text"
+          ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
+              soft,
+            })
+          : slideSpecSchemaFor(entry.kind, { soft });
+      return base && (calloutsAssigned ? withAssignedCallout(base, entry.callout, { soft }) : base);
+    };
     const schema = specSchema(false);
     if (!schema) throw new Error(`generate: no spec schema for slide kind "${entry.kind}"`);
     const call = await callStructured({

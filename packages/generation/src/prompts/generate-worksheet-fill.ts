@@ -74,7 +74,7 @@ const countOf = ([low, high]: [number, number]) =>
   `${low === high ? `exactly ${low}` : `${low}–${high}`} ${high === 1 ? "block" : "blocks"}`;
 
 export const generateWorksheetFillPrompt = {
-  version: "generate-worksheet-fill.v1",
+  version: "generate-worksheet-fill.v2",
   system: [
     "You write the practice blocks of a worksheet that a layout recipe has already framed, from the lesson's facts.",
     "The recipe wrote the headings, instructions and any blocks it derives itself. You fill only the numbered slots the brief lists; you never rewrite, move or add to the frame.",

@@ -12,6 +12,7 @@ import {
 } from "./fixtures.test-helpers";
 import type { Lesson } from "./lesson";
 import type { LessonFacts } from "./lesson-facts";
+import { questionless } from "./quality-checks";
 import type { Slide, SlideElement } from "./slide";
 import type { Worksheet, WorksheetBlock } from "./worksheet";
 
@@ -182,11 +183,11 @@ describe("checkLesson", () => {
       })),
       misconceptions: [],
       outline: [
-        { id: "s1", kind: "title", minutes: 2, factRefs: [] },
-        { id: "s2", kind: "objectives", minutes: 3, factRefs: ["o1", "o2", "o3"] },
-        { id: "s3", kind: "multiple-choice", minutes: 15, factRefs: ["o1", "q1", "q2", "q3"] },
-        { id: "s4", kind: "true-false", minutes: 15, factRefs: ["o2", "q4", "q5"] },
-        { id: "s5", kind: "exit-ticket", minutes: 25, factRefs: ["o3", "q6", "q7", "q8"] },
+        { id: "s1", kind: "title", factRefs: [] },
+        { id: "s2", kind: "objectives", factRefs: ["o1", "o2", "o3"] },
+        { id: "s3", kind: "multiple-choice", factRefs: ["o1", "q1", "q2", "q3"] },
+        { id: "s4", kind: "true-false", factRefs: ["o2", "q4", "q5"] },
+        { id: "s5", kind: "exit-ticket", factRefs: ["o3", "q6", "q7", "q8"] },
       ],
       durationMin: 60,
     });
@@ -318,32 +319,49 @@ describe("checkLesson", () => {
     });
   });
 
-  describe("timing", () => {
-    const withMinutes = (total: number, durationMin: number): Lesson => {
+  describe("objective-taught (ruling 81)", () => {
+    const withOutline = (outline: LessonFacts["outline"]): Lesson => {
       const l = generatedLesson();
       const facts = lessonFacts();
-      facts.durationMin = durationMin;
-      facts.outline = [{ id: "s1", kind: "content", minutes: total, factRefs: [] }];
+      facts.outline = outline;
       l.facts = facts;
       return l;
     };
+    const taught = (l: Lesson) => checkLesson(l).filter((f) => f.check === "objective-taught");
 
-    test("outline minutes 70 for a 60-minute lesson is a warning", () => {
-      const findings = checkLesson(withMinutes(70, 60));
+    test("an objective no content, picture or worked-example entry names is one warning, by position", () => {
+      const findings = taught(
+        withOutline([
+          { id: "s1", kind: "title", factRefs: [] },
+          { id: "s2", kind: "objectives", factRefs: ["o1", "o2"] },
+          { id: "s3", kind: "content", factRefs: ["o1"] },
+          { id: "s4", kind: "vocabulary", factRefs: ["o2", "v1"] },
+          { id: "s5", kind: "multiple-choice", factRefs: ["o2", "q1"] },
+        ]),
+      );
       expect(findings).toEqual([
-        expect.objectContaining({ check: "timing", severity: "warning", target: {} }),
+        {
+          check: "objective-taught",
+          severity: "warning",
+          target: { factId: "o2" },
+          message: "Objective 2 has no slide that teaches it.",
+        },
       ]);
-      expect(findings[0]?.message).toContain("70");
     });
 
-    test("outline minutes 65 (and 66, 54) for a 60-minute lesson is within tolerance", () => {
-      expect(checkLesson(withMinutes(65, 60))).toEqual([]);
-      expect(checkLesson(withMinutes(66, 60))).toEqual([]);
-      expect(checkLesson(withMinutes(54, 60))).toEqual([]);
+    test("an image-text or worked-example entry teaches; minutes are not needed", () => {
+      expect(
+        taught(
+          withOutline([
+            { id: "s3", kind: "image-text", factRefs: ["o1"] },
+            { id: "s4", kind: "worked-example", factRefs: ["o2"] },
+          ]),
+        ),
+      ).toEqual([]);
     });
 
-    test("53 minutes for a 60-minute lesson is a warning", () => {
-      expect(checkLesson(withMinutes(53, 60)).map((f) => f.check)).toEqual(["timing"]);
+    test("an empty outline is not checked", () => {
+      expect(taught(withOutline([]))).toEqual([]);
     });
   });
 
@@ -401,6 +419,17 @@ describe("checkLesson", () => {
       );
     });
 
+    test("readability: three years above the pitch on a primary lesson is an error, a warning otherwise (quality lab, Sept 2026)", () => {
+      const dense =
+        "Evaporation, condensation and precipitation constitute the fundamental mechanisms whereby atmospheric moisture is continuously redistributed.";
+      const primary = withPitch({ ...generatedLesson(), ageBand: "ks2" as const }, 40, 9);
+      primary.slides.push(contentSlide("s-c", dense));
+      expect(of(checkLesson(primary), "readability").map((f) => f.severity)).toEqual(["error"]);
+      const secondary = withPitch({ ...generatedLesson(), ageBand: "ks3" as const }, 40, 9);
+      secondary.slides.push(contentSlide("s-c", dense));
+      expect(of(checkLesson(secondary), "readability").map((f) => f.severity)).toEqual(["warning"]);
+    });
+
     test("row 9: without facts.pitch there are no readability findings", () => {
       const l = generatedLesson();
       l.slides.push(contentSlide("s-c", `${twentyWords} ${twentyWords}`));
@@ -435,20 +464,31 @@ describe("checkLesson", () => {
       expect(of(checkLesson(generatedLesson(), generatedWorksheet()), "repetition")).toEqual([]);
     });
 
-    test("row 12: an outline with 8 explain minutes of 60 is one explanation-share warning", () => {
+    test("row 12: explanation-share counts slides after title and objectives, rounding the floor down", () => {
       const l = generatedLesson();
       if (!l.facts) throw new Error("fixture");
+      const practice = (n: number) =>
+        Array.from({ length: n }, (_, i) => ({
+          id: `p${i}`,
+          kind: "multiple-choice" as const,
+          factRefs: ["q1"],
+        }));
+      // 7 slides after title/objectives: floor(7 × 30 %) = 2 explain slides needed; 1 is short.
       l.facts.outline = [
-        { id: "s1", kind: "title", minutes: 2, factRefs: [] },
-        { id: "s2", kind: "content", minutes: 8, factRefs: ["o1"] },
-        { id: "s3", kind: "multiple-choice", minutes: 50, factRefs: ["q1"] },
+        { id: "s1", kind: "title", factRefs: [] },
+        { id: "s2", kind: "objectives", factRefs: ["o1"] },
+        { id: "s3", kind: "content", factRefs: ["o1"] },
+        ...practice(6),
       ];
       const findings = of(checkLesson(l), "explanation-share");
       expect(findings).toEqual([expect.objectContaining({ severity: "warning", target: {} })]);
-      expect(findings[0]?.message).toContain("8 of 60 minutes");
-      // 18 of 60 (exactly 30 %) passes.
-      l.facts.outline[1] = { id: "s2", kind: "content", minutes: 18, factRefs: ["o1"] };
-      l.facts.outline[2] = { id: "s3", kind: "multiple-choice", minutes: 40, factRefs: ["q1"] };
+      expect(findings[0]?.message).toContain("1 of 7 slides");
+      // 2 of 7 meets the floor.
+      l.facts.outline = [
+        ...l.facts.outline.slice(0, 3),
+        { id: "s4", kind: "worked-example", factRefs: ["o1"] },
+        ...practice(5),
+      ];
       expect(of(checkLesson(l), "explanation-share")).toEqual([]);
     });
 
@@ -610,5 +650,16 @@ describe("checkLesson", () => {
         [],
       );
     });
+  });
+});
+
+describe("questionless (quality lab, Sept 2026)", () => {
+  test("an imperative whose referents follow a colon is a question, not a dangling task", () => {
+    expect(
+      questionless("Put these dates in order from earliest to latest: AD 43, AD 410, AD 1."),
+    ).toBe("ok");
+    expect(questionless("Sort these into two groups.")).toBe("no-referent");
+    expect(questionless("Explain your decision: focus on the evidence.")).toBe("no-referent");
+    expect(questionless("A fort has a ditch. Explain your decision.")).toBe("no-referent");
   });
 });

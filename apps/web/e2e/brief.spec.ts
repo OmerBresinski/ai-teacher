@@ -60,7 +60,7 @@ test.describe("lesson brief", () => {
     await expect(chooseFiles).toBeInViewport();
   });
 
-  test("the action bar stays in view at any scroll; a bad duration says why the primary is off", async ({
+  test("the action bar stays in view at any scroll; an empty topic says why the primary is off", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");
@@ -73,12 +73,10 @@ test.describe("lesson brief", () => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await expect(planIt).toBeInViewport();
 
-    await page.getByRole("spinbutton", { name: "Duration (minutes)" }).fill("3");
+    await page.getByRole("textbox", { name: "Topic or objective" }).fill("");
     await expect(planIt).toBeDisabled();
-    await expect(page.getByRole("status")).toHaveText(
-      "Duration must be between 5 and 180 minutes.",
-    );
-    await page.getByRole("spinbutton", { name: "Duration (minutes)" }).fill("30");
+    await expect(page.getByRole("status")).toHaveText("Type a topic to plan the lesson.");
+    await page.getByRole("textbox", { name: "Topic or objective" }).fill("The water cycle");
     await expect(planIt).toBeEnabled();
     await expect(page.getByRole("status")).toHaveCount(0);
   });
@@ -128,8 +126,8 @@ test.describe("lesson brief", () => {
     await page.getByRole("combobox", { name: "Year group" }).click();
     await page.getByRole("option", { name: "Year 5" }).click();
 
-    const duration = page.getByRole("spinbutton", { name: "Duration (minutes)" });
-    await expect(duration).toHaveAttribute("placeholder", "60");
+    // Lesson length is neither shown nor asked (UX ruling 82); the API defaults it by key stage.
+    await expect(page.getByRole("spinbutton", { name: /duration/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Plan it" })).toBeEnabled();
     // The suggested answers travel untouched: the first question is open, the second unasked.
     await expect(page.getByRole("radio", { name: "Explain" })).toBeChecked();
@@ -172,17 +170,9 @@ test.describe("lesson brief", () => {
     await expect(page.getByRole("combobox", { name: "Subject" })).toHaveText("Science");
     await expect(page.getByRole("combobox", { name: "Year group" })).toHaveText("Year 5");
     await expect(page.getByText("From your last lesson")).toHaveCount(2);
-    await expect(page.getByRole("spinbutton", { name: "Duration (minutes)" })).toHaveAttribute(
-      "placeholder",
-      "60",
-    );
     await page.getByRole("combobox", { name: "Year group" }).click();
     await page.getByRole("option", { name: "Year 1", exact: true }).click();
     await expect(page.getByText("From your last lesson")).toHaveCount(1);
-    await expect(page.getByRole("spinbutton", { name: "Duration (minutes)" })).toHaveAttribute(
-      "placeholder",
-      "45",
-    );
   });
 
   test("skipping both questions posts no answers; the guard blocks a pupil reference", async ({
@@ -194,7 +184,6 @@ test.describe("lesson brief", () => {
     await page.getByRole("button", { name: "Skip" }).click();
     await page.getByRole("button", { name: "Skip" }).click();
     await expect(page.getByText("Skipped — the plan decides.")).toHaveCount(2);
-    await page.getByRole("spinbutton", { name: "Duration (minutes)" }).fill("45");
 
     await page.getByRole("button", { name: "Add class context" }).click();
     const notes = page.getByRole("textbox", { name: "Notes" });
@@ -217,7 +206,6 @@ test.describe("lesson brief", () => {
     expect((await posted).postDataJSON()).toEqual({
       brief: {
         topic: "The water cycle",
-        durationMin: 45,
         classContext: { notes: "Lively after lunch" },
       },
       themeId: "chalk",

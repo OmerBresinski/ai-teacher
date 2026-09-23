@@ -57,6 +57,13 @@
       "when": 1789592631018,
       "tag": "0007_documents_lesson_link",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790171508567,
+      "tag": "0008_knowledge_store",
+      "breakpoints": true
     }
   ]
 }

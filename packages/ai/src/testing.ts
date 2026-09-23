@@ -152,6 +152,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
   };
 
   const ai = createConfiguredAi({
+    kind: "bedrock",
     region: DEFAULT_REGION,
     modelIds,
     logger,

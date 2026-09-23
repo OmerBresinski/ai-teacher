@@ -1,0 +1,477 @@
+{
+  "id": "np1",
+  "title": "Do topic packs make better lessons? (narrow slice, honest simulation)",
+  "frozenAt": "2026-09-23T15:48:41.000Z",
+  "rules": [
+    "Briefs and pack topics are fixed here before any run; a change is a new experiment id.",
+    "Every run records the sha256 of every prompt it used; a run whose hashes differ from promptHashes is refused unless --unfrozen, and then marked unfrozen.",
+    "Every attempt counts: failed and incomplete runs stay in the cost, with status executed/complete/accepted.",
+    "Code never judges meaning: overlap is a word n-gram length, evidence is verbatim containment, coverage and correctness are model declarations recorded per checker.",
+    "The judge sees shuffled labels and the deck only; the key file is written apart from the scores."
+  ],
+  "models": {
+    "writerLuna": "openai/gpt-5.6-luna",
+    "writerSol": "openai/gpt-6-sol",
+    "linker": "openai/gpt-5.6-luna",
+    "checkerLuna": "openai/gpt-5.6-luna",
+    "checkerSol": "openai/gpt-6-sol",
+    "lesson": "openai/gpt-5.6-luna",
+    "select": "openai/gpt-5.6-luna",
+    "judge": "anthropic/claude-sonnet-5"
+  },
+  "lessonArms": ["live", "grounded", "packed"],
+  "authoringArms": ["luna-rewrite", "sol-rewrite"],
+  "packArmForLessons": "luna-rewrite",
+  "packAdmission": {
+    "registeredAt": "2026-09-23T16:56:29.000Z",
+    "rule": "A pack fact is used by the grounded and packed arms only if BOTH checkers answered correct = yes AND neither answered supportedByEvidence = no; a missing verdict fails. Registered before any np1 lesson call; applied in code (pack-arms.ts admitPack) from the verdicts recorded in eval/results/packs/<pack id>/report.json.",
+    "checkers": ["luna", "sol"],
+    "correct": "yes",
+    "rejectSupportedByEvidence": "no"
+  },
+  "repeats": 1,
+  "briefs": {
+    "regression": ["y4-history-romans", "y10-history-ww1-causes"],
+    "heldOut": ["y7-science-cells", "y9-history-russian-revolution", "y12-economics-externalities"],
+    "reserve": ["y13-psychology-freud-critics"]
+  },
+  "windowMaxSentences": 80,
+  "topics": [
+    {
+      "id": "romans",
+      "brief": "y4-history-romans",
+      "subject": "History",
+      "yearGroup": "Year 4",
+      "sources": [
+        {
+          "kind": "wikipedia",
+          "ref": "Roman_Britain",
+          "licence": "CC-BY-SA-4.0"
+        }
+      ],
+      "sections": [
+        {
+          "outcome": "Explain why the Romans invaded Britain",
+          "headings": [
+            "Roman Britain",
+            "Roman Britain > History > Early contact",
+            "Roman Britain > History > Roman invasion"
+          ]
+        },
+        {
+          "outcome": "Explain how the Romans established their rule and faced Boudica's revolt",
+          "headings": ["Roman Britain > History > Establishment of Roman rule"]
+        },
+        {
+          "outcome": "Explain how Roman rule changed towns, trade and everyday life in Britain",
+          "headings": [
+            "Roman Britain > Trade",
+            "Roman Britain > Economy",
+            "Roman Britain > Demographics > Town and country",
+            "Roman Britain > Legacy"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ratio",
+      "brief": "y6-maths-ratio",
+      "subject": "Maths",
+      "yearGroup": "Year 6",
+      "sources": [
+        {
+          "kind": "wikipedia",
+          "ref": "Ratio",
+          "licence": "CC-BY-SA-4.0"
+        }
+      ],
+      "sourceNote": "OpenStax Prealgebra 2e ch. 5.1 (Ratios and Rate) is the better source (Greg holds permission); its pages are app-rendered, so the html fetcher needs the archive JSON endpoint — open item, not wired. Wikipedia's Ratio page does not teach sharing in a ratio: the rewrite arms are expected to be thin on section 3, which is a finding about sources, not a defect to paper over. Regression pool, not in the np1 run (two regression briefs kept: romans, ww1-causes).",
+      "sections": [
+        {
+          "outcome": "Write a ratio in its simplest form using colon notation",
+          "headings": ["Ratio", "Ratio > Notation and terminology", "Ratio > Reduction"]
+        },
+        {
+          "outcome": "Convert between a ratio and the fraction each part is of the whole",
+          "headings": [
+            "Ratio > Number of terms and use of fractions",
+            "Ratio > Proportions and percentage ratios"
+          ]
+        },
+        {
+          "outcome": "Calculate the amounts when a total is shared in a given ratio",
+          "headings": ["Ratio", "Ratio > Units", "Ratio > Proportions and percentage ratios"]
+        }
+      ]
+    },
+    {
+      "id": "photosynthesis",
+      "brief": "y8-science-photosynthesis",
+      "subject": "Science",
+      "yearGroup": "Year 8",
+      "sources": [
+        {
+          "kind": "wikipedia",
+          "ref": "Photosynthesis",
+          "licence": "CC-BY-SA-4.0"
+        }
+      ],
+      "sections": [
+        {
+          "outcome": "Describe the word equation for photosynthesis and where in a plant it happens",
+          "headings": ["Photosynthesis", "Photosynthesis > Overview"]
+        },
+        {
+          "outcome": "Explain how leaves and chloroplasts are adapted for photosynthesis",
+          "headings": [
+            "Photosynthesis > Photosynthetic membranes and organelles",
+            "Photosynthesis > Light-dependent reactions"
+          ]
+        },
+        {
+          "outcome": "Explain how light, carbon dioxide and temperature affect the rate of photosynthesis",
+          "headings": [
+            "Photosynthesis > Factors",
+            "Photosynthesis > Factors > Light intensity (irradiance), wavelength and temperature",
+            "Photosynthesis > Factors > Carbon dioxide levels and photorespiration"
+          ]
+        }
+      ],
+      "sourceNote": "Regression pool, not in the np1 run: used as a test topic in the prompt bake-off, so no longer held out; the run keeps two regression briefs (romans, ww1-causes)."
+    },
+    {
+      "id": "ww1-causes",
+      "brief": "y10-history-ww1-causes",
+      "subject": "History",
+      "yearGroup": "Year 10",
+      "sources": [
+        {
+          "kind": "wikipedia",
+          "ref": "Causes_of_World_War_I",
+          "licence": "CC-BY-SA-4.0"
+        }
+      ],
+      "sections": [
+        {
+          "outcome": "Explain how the alliance system divided Europe into two blocs by 1907",
+          "headings": [
+            "Causes of World War I > Polarization of Europe, 1887–1914",
+            "Causes of World War I > Polarization of Europe, 1887–1914 > German realignment to Austria-Hungary and Russian realignment to France, 1887–1892",
+            "Causes of World War I > Polarization of Europe, 1887–1914 > French distrust of Germany",
+            "Causes of World War I > Polarization of Europe, 1887–1914 > British alignment towards France and Russia, 1898–1907: The Triple Entente"
+          ]
+        },
+        {
+          "outcome": "Explain how the arms race and military planning raised the risk of war",
+          "headings": [
+            "Causes of World War I > Arms race",
+            "Causes of World War I > Arms race > Anglo-German naval race",
+            "Causes of World War I > Technical and military factors > Short-war illusion",
+            "Causes of World War I > Technical and military factors > Primacy of offensive and war by timetable"
+          ]
+        },
+        {
+          "outcome": "Evaluate how far the assassination at Sarajevo caused the outbreak of war",
+          "headings": [
+            "Causes of World War I > Immediate causes > Assassination of Archduke Franz Ferdinand by Serbian nationalists, 28 June 1914",
+            "Causes of World War I > Immediate causes > July Crisis",
+            "Causes of World War I > Polarization of Europe, 1887–1914 > Balkan Wars, 1912–1913: Growth of Serbian and Russian power",
+            "Causes of World War I > Historiography"
+          ]
+        }
+      ],
+      "sourceNote": "Regression (was held out; used as a test topic in the prompt bake-off that shaped these prompts)."
+    },
+    {
+      "id": "freud-critics",
+      "brief": "y13-psychology-freud-critics",
+      "subject": "Psychology",
+      "yearGroup": "Year 13",
+      "sources": [
+        {
+          "kind": "wikipedia",
+          "ref": "Id, ego and superego",
+          "licence": "CC-BY-SA-4.0"
+        }
+      ],
+      "sourceNote": "Reserve demo of partial coverage (KS5): the Wikipedia page carries little on critics; a second source (SEP entry on Freud, short attributed excerpts only) is the planned addition before this topic runs. Also a bake-off test topic, so not held out.",
+      "sections": [
+        {
+          "outcome": "Describe the roles of the id, ego and superego in Freud's structural model",
+          "headings": [
+            "Id, ego and superego > Id",
+            "Id, ego and superego > Ego",
+            "Id, ego and superego > Superego"
+          ]
+        },
+        {
+          "outcome": "Explain how the three parts interact within the psychic apparatus",
+          "headings": [
+            "Id, ego and superego",
+            "Id, ego and superego > History and translation of the terms",
+            "Id, ego and superego > Psychic apparatus"
+          ]
+        },
+        {
+          "outcome": "Evaluate criticisms of Freud's structural model",
+          "headings": [
+            "Id, ego and superego > Structural model and neuropsychoanalysis",
+            "Id, ego and superego > Advantages of the structural model"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cells",
+      "brief": "y7-science-cells",
+      "subject": "Science",
+      "yearGroup": "Year 7",
+      "sources": [
+        {
+          "kind": "html",
+          "ref": "https://simple.wikipedia.org/wiki/Cell_(biology)",
+          "licence": "CC-BY-SA-4.0"
+        },
+        {
+          "kind": "html",
+          "ref": "https://simple.wikipedia.org/wiki/Plant_cell",
+          "licence": "CC-BY-SA-4.0"
+        },
+        {
+          "kind": "wikipedia",
+          "ref": "Cell (biology)",
+          "licence": "CC-BY-SA-4.0"
+        },
+        {
+          "kind": "wikipedia",
+          "ref": "Plant cell",
+          "licence": "CC-BY-SA-4.0"
+        },
+        {
+          "kind": "wikipedia",
+          "ref": "Red blood cell",
+          "licence": "CC-BY-SA-4.0"
+        },
+        {
+          "kind": "wikipedia",
+          "ref": "Root hair",
+          "licence": "CC-BY-SA-4.0"
+        }
+      ],
+      "sourceNote": "Held-out (chosen after the 15:48 freeze). Outcomes paraphrase Oak KS3 Biology unit 'Cells' (Year 7) lessons 4, 5 and 7. Pitch follows the source, so Simple English Wikipedia leads are included where they exist; en.wikipedia's Cell (biology) lead and its Animal cells > Structure / Plant cells sections are university-pitched and are the only en text that names the organelles. Both 'Plant cell' pages share the root heading 'Plant cell' and both are wanted in section 2.",
+      "sections": [
+        {
+          "outcome": "Describe the parts of an animal cell and what each part does",
+          "headings": [
+            "Cell",
+            "Cell (biology)",
+            "Cell (biology) > Types > Animal cells > Structure"
+          ]
+        },
+        {
+          "outcome": "Describe the parts a plant cell has that an animal cell does not, and what they do",
+          "headings": ["Plant cell", "Cell (biology) > Types > Plant cells"]
+        },
+        {
+          "outcome": "Explain how a red blood cell and a root hair cell are adapted to their jobs",
+          "headings": [
+            "Red blood cell",
+            "Red blood cell > Structure > Mammals",
+            "Root hair",
+            "Root hair > Function",
+            "Root hair > Importance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "externalities",
+      "brief": "y12-economics-externalities",
+      "subject": "Economics",
+      "yearGroup": "Year 12",
+      "sources": [
+        {
+          "kind": "wikipedia",
+          "ref": "Market failure",
+          "licence": "CC-BY-SA-4.0"
+        },
+        {
+          "kind": "wikipedia",
+          "ref": "Externality",
+          "licence": "CC-BY-SA-4.0"
+        },
+        {
+          "kind": "html",
+          "ref": "https://openstax.org/books/principles-microeconomics-3e/pages/12-1-the-economics-of-pollution",
+          "licence": "CC-BY-4.0"
+        }
+      ],
+      "sourceNote": "Held-out (chosen after the 15:48 freeze). No Oak coverage; outcomes paraphrase the A-level specification bullets on market failure and externalities (private, external and social costs and benefits; diagram; welfare loss) in our own words. OpenStax Principles of Microeconomics 3e §12.1 (CC BY 4.0) renders enough server-side for the html fetcher (74 sentences) and is pitched at the introductory level a Year 12 class works at; Wikipedia's Externality page carries the diagram sections.",
+      "sections": [
+        {
+          "outcome": "Explain what market failure is and why externalities are one cause of it",
+          "headings": [
+            "Market failure",
+            "Market failure > Categories",
+            "Market failure > Categories > Externalities",
+            "Externality"
+          ]
+        },
+        {
+          "outcome": "Distinguish private, external and social costs and benefits in negative and positive externalities",
+          "headings": [
+            "Externality > Definitions",
+            "Externality > Examples > Negative",
+            "Externality > Examples > Negative > Negative production externalities",
+            "Externality > Examples > Negative > Negative consumption externalities",
+            "Externality > Examples > Positive",
+            "Externality > Examples > Positive > Positive production externalities",
+            "Externality > Examples > Positive > Positive consumption externalities",
+            "12.1 The Economics of Pollution > 12.1 The Economics of Pollution > Externalities"
+          ]
+        },
+        {
+          "outcome": "Explain, using a diagram, how a negative externality causes overproduction and a welfare loss",
+          "headings": [
+            "Externality > Supply and demand diagram",
+            "Externality > Supply and demand diagram > External costs",
+            "Externality > Supply and demand diagram > External benefits",
+            "12.1 The Economics of Pollution > 12.1 The Economics of Pollution > Pollution as a Negative Externality"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "russian-revolution",
+      "brief": "y9-history-russian-revolution",
+      "subject": "History",
+      "yearGroup": "Year 9",
+      "sources": [
+        {
+          "kind": "wikipedia",
+          "ref": "Russian Revolution",
+          "licence": "CC-BY-SA-4.0"
+        },
+        {
+          "kind": "wikipedia",
+          "ref": "February Revolution",
+          "licence": "CC-BY-SA-4.0"
+        },
+        {
+          "kind": "wikipedia",
+          "ref": "October Revolution",
+          "licence": "CC-BY-SA-4.0"
+        },
+        {
+          "kind": "wikipedia",
+          "ref": "Russian Civil War",
+          "licence": "CC-BY-SA-4.0"
+        }
+      ],
+      "sourceNote": "Held-out (chosen after the 15:48 freeze; replaces the Industrial Revolution, whose Oak unit turned out to be the pack-select bake-off's test cards). Outcomes paraphrase Oak KS3 History unit 'The Russian Revolution: did communism completely transform Russian society?' (Year 9) lessons 2, 3 and 4. Windows chosen for Year 9 pitch and the 80-sentence cap (78 / 71 / 72 sentences); War Communism and the Red Terror are expected to be thin in the Civil War window (the Repression section is 38 sentences of KS4+ detail and was left out), a finding about sources.",
+      "sections": [
+        {
+          "outcome": "Explain why tsarist rule in Russia came to an end in February 1917",
+          "headings": [
+            "Russian Revolution > Background > Political issues",
+            "February Revolution > Causes > Long-term causes",
+            "February Revolution > Causes > Short-term causes",
+            "February Revolution > Events > Tsar's return and abdication"
+          ]
+        },
+        {
+          "outcome": "Explain how the Bolsheviks took power in October 1917 and what their government did first",
+          "headings": [
+            "October Revolution",
+            "October Revolution > Outcome > New government established",
+            "October Revolution > Outcome > Governmental reforms",
+            "Russian Civil War > Warfare > Peace with the Central Powers"
+          ]
+        },
+        {
+          "outcome": "Explain how the Reds won the Russian Civil War and what it cost ordinary Russians",
+          "headings": [
+            "Russian Civil War",
+            "Russian Revolution > Russian Civil War",
+            "Russian Civil War > Aftermath > Casualties",
+            "Russian Civil War > Aftermath > Casualties > Civilian casualties"
+          ]
+        }
+      ]
+    }
+  ],
+  "estimates": {
+    "note": "Token counts per call from the v9 facts bench and wf1-romans-1 ledger where measured, otherwise sized from the input the harness renders (80 sentences ≈ 2,700 tokens). Lesson stage costs are wf1-romans-1 (Luna, medium, no verify, no images).",
+    "tokens": {
+      "pack-rewrite": {
+        "in": 3200,
+        "out": 1400
+      },
+      "pack-knowledge": {
+        "in": 700,
+        "out": 1200
+      },
+      "pack-link": {
+        "in": 4400,
+        "out": 400
+      },
+      "pack-check": {
+        "in": 1300,
+        "out": 300
+      },
+      "pack-select": {
+        "in": 600,
+        "out": 80
+      },
+      "pack-fill": {
+        "in": 1500,
+        "out": 800
+      },
+      "rubric-judge": {
+        "in": 5500,
+        "out": 700
+      },
+      "judge-addendum": {
+        "in": 4500,
+        "out": 400
+      }
+    },
+    "lessonStagesUsd": {
+      "objectives": 0.00037,
+      "facts": 0.0069,
+      "generate": 0.0056,
+      "evaluate": 0.0029,
+      "repair": 0.0021
+    },
+    "objectivesPerLesson": 3,
+    "referenceTokensPerFactsCall": 2000,
+    "fillRate": 0.5
+  },
+  "promptHashes": {
+    "check-input": "119850398ec7b6c541528301c457abbe5aa6aee9cac20ae535d3177d65eecebc",
+    "plan-skeleton": "cc42b4d49d21e64e3fa067fc9061eacb7497d79e515617ee0148910d28a0566c",
+    "plan-facts": "6662f31bd53fce81c5aaa3edb5df93d14efb8f09bd2138717493199293837f26",
+    "verify-facts": "9149d5744c8f710d459b5bd10153e0bc1f28e7167468975e6421866f223b6dce",
+    "generate-slide": "e67039fa85133c77a33ca79478349372dfeb95ca4e2bd04e8023aa503f578d1e",
+    "generate-worksheet": "2d4073e8bc0dfeb523b2b57c39bdfd989b62dcd15c50c99a8ac84fa9b8c82240",
+    "generate-worksheet-fill": "4a689885b28b5243a8d72777e91249e1d9045bf1f7c39c79c62a4b6ae3f0fbe6",
+    "parse-brief": "36084db131a8fcef127630ba4f108fd739ee4bb4efe7f3605bc745ee7dab115e",
+    "pick-or-requery-photo": "543e4baae10cd3faa85e1b59bd7d5f8ec2ae5a4299752dd427c9918167a29c41",
+    "shortlist-photos": "46095442ff3711eef010e59932ba73611d111ed58295cc6164b9a83f6f7df46a",
+    "evaluate": "2814493a62fe10f3ca366e956db57c7661963c294677a20fd0c9504f2308323c",
+    "repair": "2c6fa5982065db134ccbefce627a68456c16189b78da7919b9ce3a946ba5d3a7",
+    "repair-fact": "270ba58faff0ac80f244dc5b091b5e7662d8ecc899aa40767e23684e1c67931d",
+    "cascade": "5a492b703d0e6b6a2eebd75bd0c4e701dd34b1220a1823de415e6a2043ec242d",
+    "regenerate": "bfb759bda4d15f129c54e19083db529a978f7a791a52b70ee6db19ac55525922",
+    "plan-objectives": "2f33be1741d31c37609e904b2e4b5bad47c3a4ef1d028625cf8a297ff1c02fff",
+    "plan-facts-objective": "67f70cb36897cc42d99cd50087c4b6fdff889c09f7211f3e797e664338d2c494",
+    "pack-rewrite": "a8aef4c51495c0ac9b43ae7d2d5c431abcb32f44e841401254266b420946ad44",
+    "pack-knowledge": "e691e383a29ed55a12ff69a5632fcc14753b3adcb116ce66ac9ffdab73e22d71",
+    "pack-link": "6d7751ab4b2e147f0a4ef76df35b5ff271326db2b00e09803ced85e77ccc792a",
+    "pack-check": "52be8f9a8bd5ced9f242ff24c7c1910a6d540ea009af3bebf4e83f3365d8a902",
+    "pack-select": "bb6811d6b4a3fc75095eade3a1341ff1c5d087fef98b18d96e872b881bfe13f7",
+    "pack-fill": "5a204f5eb8b5fddfd94e263eb289225a85d07eaf7e99f6bf827c29c98167d008",
+    "judge-addendum": "2c3a5d1824e67cf83395e4f447a71607c88648157d300b46e8a4be99f68bbe29",
+    "rubric-judge": "a5de07f8b2fa135efd8fb220b7b33a6f54b1e3dcd7ea6a1863f8b33c305ee513"
+  }
+}

@@ -203,7 +203,7 @@ describe("runLessonPipeline", () => {
         visible: ["ice cubes", "meltwater"],
         count: "one",
         alt: "River",
-        promptVersion: "pick-or-requery-photo.v6",
+        promptVersion: "pick-or-requery-photo.v7",
         thumbnail: photo.src.tiny,
       },
     });
@@ -214,8 +214,8 @@ describe("runLessonPipeline", () => {
     expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1);
     const judge = ai.calls.find((call) => call.context?.stage === "illustrate");
     expect(judge?.modelClass).toBe("standard");
-    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v6");
-    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v6");
+    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v7");
+    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v7");
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
     expect(summary.generation.images).toEqual({
       photographable: true,
@@ -262,19 +262,21 @@ describe("runLessonPipeline", () => {
         ],
       );
       // Effort per stage (Generation quality §6, TEACH-207): Generate at low, Plan and Evaluate at
-      // medium, Verify at high (TEACH-212), the input check at low; every call says so to the
-      // provider and in its context.
+      // medium, Verify at low (was high under TEACH-212; lowered 17 Sept 2026 with the input check,
+      // both are checks not writers); every call says so to the provider and in its context.
       expect(ai.calls.map((c) => c.context?.effort)).toEqual([
         "low",
         "medium",
         "medium",
-        "high",
+        "low",
         ...Array.from({ length: GENERATED_SLIDES }, () => "low"),
         "medium",
       ]);
-      // Every default is a GPT-5.6 id (TEACH-208), so every call carries the provider option.
+      // Every default is a GPT-5.6 id (TEACH-208), so every call carries the provider option; since
+      // the gateway routing (17 Sept 2026) each call also carries the other providers' effort
+      // settings, so only the Bedrock one is pinned here (`providerOptionsFor` has its own tests).
       for (const call of ai.calls) {
-        expect(call.providerOptions).toEqual({
+        expect(call.providerOptions).toMatchObject({
           bedrock: { reasoningConfig: { maxReasoningEffort: call.context?.effort } },
         });
       }

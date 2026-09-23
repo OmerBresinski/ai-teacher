@@ -1,0 +1,526 @@
+{
+  "id": "y6-science-evolution",
+  "from": "lab bench facts-round8 luna repeat 1 (plan-facts-objective.v4), openai/gpt-5.6-luna, merged by mergeObjectiveFacts",
+  "topic": "Evolution and inheritance: adaptation and natural selection",
+  "durationMin": 60,
+  "yearGroup": "Year 6",
+  "subject": "Science",
+  "answers": {
+    "objectiveVerb": "Explain how living things adapt and evolve",
+    "priorConfidence": "New to it"
+  },
+  "objectives": [
+    {
+      "text": "Define adaptation as a feature that helps a living thing survive in its environment"
+    },
+    {
+      "text": "Describe how an adaptation helps an animal or plant survive in its environment"
+    },
+    {
+      "text": "Explain how natural selection can make useful adaptations more common over generations"
+    }
+  ],
+  "facts": {
+    "keyIdeas": [
+      {
+        "statement": "An adaptation is a feature that helps a living thing survive in its environment.",
+        "explanation": "A feature can be a body part, body covering or behaviour. It helps the living thing meet its needs, such as finding food, staying safe or coping with conditions.",
+        "example": "A polar bear's thick fur is a feature that helps it survive in the cold Arctic environment.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "An adaptation is useful because it suits the environment where the living thing lives.",
+        "explanation": "The same feature may not be useful everywhere. A feature is an adaptation when it helps a particular living thing survive in its own surroundings and conditions.",
+        "example": "The waxy coating on a holly leaf helps the plant survive in the damp woodlands of Britain.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "An adaptation helps a living thing meet a need in its environment.",
+        "explanation": "It may help an animal get food, stay safe, keep warm, or avoid losing water. The feature is useful because it suits the conditions where the living thing lives.",
+        "example": "A polar bear's thick fur traps warm air, helping it keep warm in the cold Arctic environment.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "statement": "One adaptation can help in more than one way.",
+        "explanation": "A feature may help a living thing survive by finding food and avoiding danger, or by saving water and protecting it from other animals.",
+        "example": "A cactus has spines instead of broad leaves. This helps it lose less water in a hot desert and makes it harder for animals to eat.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "statement": "Natural selection makes a useful inherited feature more common over generations.",
+        "explanation": "Offspring vary. If a feature helps some living things survive and reproduce, they are more likely to pass that feature to their offspring. After many generations, more of the population may have it.",
+        "example": "During the nineteenth-century Industrial Revolution in England, dark peppered moths were harder for birds to see on soot-darkened tree trunks, so dark moths became more common in some polluted areas.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "statement": "Natural selection acts on differences that already exist in a population.",
+        "explanation": "A living thing does not choose to develop a useful feature because it needs one. Individuals with a helpful inherited difference are more likely to survive and reproduce, so the difference can spread through the population.",
+        "example": "Peppered moths were not all the same colour; birds were more likely to eat the moths that stood out against the tree trunks.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "misconceptions": [
+      {
+        "belief": "A living thing chooses to develop a useful feature when it needs one.",
+        "correction": "An adaptation is an existing feature that helps survival. Living things do not choose or instantly grow adaptations because they need them.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "belief": "An adaptation helps a living thing because it chooses to develop or practise that feature.",
+        "correction": "An adaptation is a feature an organism has. It helps because the feature suits its environment; the organism does not choose to grow it when needed.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "belief": "An animal changes its body during its lifetime because it needs a feature, then passes that change to its offspring.",
+        "correction": "Natural selection starts with inherited differences between offspring. Those with a helpful difference are more likely to survive and reproduce, so the difference becomes more common over many generations.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "vocabulary": [
+      {
+        "term": "adaptation",
+        "definition": "A feature that helps a living thing survive in its environment.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "environment",
+        "definition": "The surroundings and conditions in which a living thing lives.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "camouflage",
+        "definition": "Colours or patterns that make a living thing harder to see in its surroundings.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "term": "insulation",
+        "definition": "A layer or covering that slows heat moving into or out of something.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "term": "variation",
+        "definition": "Differences between individuals of the same kind of living thing.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "term": "generation",
+        "definition": "A group of offspring born at about the same time, or the step from parents to their offspring.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "workedExamples": [
+      {
+        "problem": "Suppose some beetles are brown and some are green. On brown tree bark, explain how brown colouring could become more common over generations.",
+        "steps": [
+          "There is variation: some beetles are brown and some are green.",
+          "Birds eat more of the green beetles because they are easier to see.",
+          "More brown beetles survive and reproduce than green beetles.",
+          "Their offspring may inherit brown colouring, so brown beetles become more common over generations."
+        ],
+        "answer": "Brown colouring becomes more common because brown beetles survive and reproduce more often, passing the inherited feature to offspring.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ],
+        "misconceptionRef": {
+          "type": "misconception",
+          "index": 2
+        }
+      }
+    ],
+    "questions": [
+      {
+        "stem": "Which sentence correctly defines an adaptation?",
+        "answer": "A feature that helps a living thing survive in its environment.",
+        "reasoning": "An adaptation is a useful feature that suits the surroundings where the living thing lives.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "A place where an animal lives"
+          },
+          {
+            "text": "A change a living thing chooses to make",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "Any feature that all living things share"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Complete the definition: An adaptation is a feature that helps a living thing…",
+        "answer": "survive in its environment.",
+        "reasoning": "The feature must help the living thing survive in its particular surroundings and conditions.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "change its environment"
+          },
+          {
+            "text": "choose its parents",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "become a different species immediately"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "A cactus has a thick, waxy outer covering. Which statement best identifies this as an adaptation?",
+        "answer": "It is a feature that helps the cactus survive in its environment.",
+        "reasoning": "The covering is a feature of the cactus and helps it live in its surroundings.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "It is a place where the cactus grows"
+          },
+          {
+            "text": "It is a feature the cactus chose to grow",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "It is a feature that every plant must have"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Which example is an adaptation?",
+        "answer": "A duck's webbed feet help it swim in ponds and lakes.",
+        "reasoning": "Webbed feet are a feature that helps the duck survive in its watery environment.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "A duck swims in a pond"
+          },
+          {
+            "text": "A duck decides to grow webbed feet",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "A pond is where a duck lives"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Which statement best describes how a polar bear's thick fur helps it survive?",
+        "answer": "It traps warm air, helping the polar bear keep warm in the cold Arctic.",
+        "reasoning": "The fur suits the cold conditions by slowing heat loss.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "It helps the polar bear swim faster."
+          },
+          {
+            "text": "It makes the polar bear need no food."
+          },
+          {
+            "text": "It makes the Arctic warmer."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Describe how cactus spines help a cactus survive in a hot desert.",
+        "answer": "They are small instead of broad leaves, so less water escapes, and they can deter animals from eating the cactus.",
+        "reasoning": "The spines suit a dry environment by reducing water loss and offering protection.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "They collect all the cactus's food from the air."
+          },
+          {
+            "text": "They make the cactus walk to water."
+          },
+          {
+            "text": "They give the cactus broad leaves for shade."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "A fish has a streamlined body. Describe how this adaptation helps it survive in water.",
+        "answer": "Its shape reduces resistance from the water, helping it move efficiently to find food or escape danger.",
+        "reasoning": "A streamlined shape makes movement through water easier.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "It allows the fish to breathe air on land."
+          },
+          {
+            "text": "It makes the water warmer around the fish."
+          },
+          {
+            "text": "It stops the fish needing to find food."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Explain why camouflage can help a prey animal survive.",
+        "answer": "Camouflage makes the animal harder for predators to see, so it is less likely to be caught and eaten.",
+        "reasoning": "The colour or pattern suits the animal's surroundings and helps it avoid danger.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "It makes the animal invisible everywhere."
+          },
+          {
+            "text": "It gives the animal more energy."
+          },
+          {
+            "text": "It means predators cannot see any animals."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Which sequence best explains how a useful inherited feature becomes more common?",
+        "answer": "Variation, different survival and reproduction, then more offspring inherit the feature.",
+        "reasoning": "Existing differences affect survival and reproduction, so inherited useful features can spread over generations.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "Need, change during life, then pass on the change.",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 2
+            }
+          },
+          {
+            "text": "All individuals change in the same way at once."
+          },
+          {
+            "text": "The environment directly gives every individual the feature."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "Suppose darker mice are harder for owls to see on dark soil. Explain why dark fur may become more common.",
+        "answer": "Dark mice are more likely to survive and reproduce, so they may pass dark fur to more offspring over generations.",
+        "reasoning": "Being harder to see increases the chance of surviving long enough to reproduce.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "The mice choose to grow darker fur."
+          },
+          {
+            "text": "Owls change the mice's genes by hunting them."
+          },
+          {
+            "text": "Every mouse becomes dark during its lifetime."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "Why must offspring vary for natural selection to make an adaptation more common?",
+        "answer": "Without differences, some individuals would not have a feature that gives them a survival or reproduction advantage.",
+        "reasoning": "Natural selection needs inherited differences for survival and reproduction to differ.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "Variation makes all offspring identical."
+          },
+          {
+            "text": "Variation means an animal chooses its features."
+          },
+          {
+            "text": "Variation stops features being inherited."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "A drought leaves only hard seeds for finches. Some have thicker beaks, and this difference is inherited. Explain how thicker beaks could become more common.",
+        "answer": "Finches with thicker beaks may eat more, survive and reproduce more, passing the inherited beak shape to more offspring over generations.",
+        "reasoning": "The food supply favours a heritable difference that helps finches survive and reproduce.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "Finches grow thicker beaks because they need them."
+          },
+          {
+            "text": "All finches develop thick beaks in one generation."
+          },
+          {
+            "text": "Thin-beaked finches choose to have no offspring."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ]
+  },
+  "duplicates": {
+    "keyIdeas": 0,
+    "misconceptions": 0,
+    "vocabulary": 0,
+    "workedExamples": 0,
+    "questions": 0
+  }
+}

@@ -16,7 +16,7 @@ import { example, HOUSE_RULES, limitsBlock } from "./shared";
  * the slides start; it is the substance of the lesson, so it is allowed to be long. The brief's
  * `level` (ADR 0029 item 9) moves the pitch one band either way, inside the schema's bounds; its
  * `givenObjectives` are treated as fixed. Bump `version` whenever `system` or `user` changes
- * wording (`shape.ts` included).
+ * wording (`shape.ts` included). UX ruling 82: the outline it is shown carries no minutes.
  */
 
 export type PlanFactsInput = PlanSkeletonInput & {
@@ -99,7 +99,7 @@ const EXAMPLE = {
 };
 
 export const planFactsPrompt = {
-  version: "plan-facts.v9",
+  version: "plan-facts.v11",
   system: [
     "You are an experienced UK teacher completing the plan for one lesson.",
     "You are given the lesson's objectives and its outline of slides, each with a brief saying what it adds. Produce the facts the slides and worksheet will be built from, then say which outline slide each fact supports.",
@@ -147,11 +147,11 @@ export const planFactsPrompt = {
     input.skeleton.learningObjectives.forEach((o, i) => {
       parts.push(`  ${i}: ${o.text}`);
     });
-    parts.push("Outline (position: kind, minutes, phase — what the slide adds):");
+    parts.push("Outline (position: kind, phase — what the slide adds):");
     input.skeleton.outline.forEach((entry, i) => {
       const phase = entry.phase ? `, ${entry.phase}` : "";
       const adds = entry.brief ? ` — ${entry.brief.adds}` : "";
-      parts.push(`  ${i}: ${entry.kind}, ${entry.minutes} min${phase}${adds}`);
+      parts.push(`  ${i}: ${entry.kind}${phase}${adds}`);
     });
     return parts.join("\n");
   },

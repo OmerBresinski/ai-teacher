@@ -153,6 +153,15 @@ export interface PipelineDeps {
    */
   planFrontierFromYear?: number;
   /**
+   * Lab and eval only: the reasoning effort a call runs at, given the stage, the prompt name
+   * (`plan-facts`) and the effort the stage asked for. Unset in production: the stage's choice.
+   */
+  effortFor?: (
+    stage: string,
+    promptName: string,
+    effort: "low" | "medium" | "high",
+  ) => "low" | "medium" | "high";
+  /**
    * Where illustrate reports its counts for the summary line. Stages cannot see the
    * `RequestContext`, so the per-run counts ride here instead (the same shape of channel as
    * `budget`, which stages charge the same way). Created by illustrate when absent.
@@ -202,13 +211,16 @@ export interface VerifyResult {
  * document it was writing. Plan and Generate failures fail the job; Evaluate and Repair failures
  * are recorded as findings by the stage itself and never reach here.
  */
+export type StageFailureReason = "timeout" | "objectives-check";
+
 export class StageFailure extends Error {
-  override readonly name = "StageFailure";
-  readonly reason: "timeout" | undefined;
+  override readonly name: string = "StageFailure";
+  /** `timeout`: a call ran past its bound; `objectives-check`: the lab stopped before facts. */
+  readonly reason: StageFailureReason | undefined;
   constructor(
     readonly stage: StageName,
     message: string,
-    options: { cause?: unknown; reason?: "timeout" } = {},
+    options: { cause?: unknown; reason?: StageFailureReason } = {},
   ) {
     super(message, options);
     this.reason = options.reason;

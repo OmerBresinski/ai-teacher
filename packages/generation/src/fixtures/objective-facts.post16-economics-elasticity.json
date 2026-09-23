@@ -1,0 +1,498 @@
+{
+  "id": "post16-economics-elasticity",
+  "from": "lab bench facts-round4 luna repeat 1, openai/gpt-5.6-luna, merged by mergeObjectiveFacts",
+  "topic": "Price elasticity of demand and its determinants",
+  "durationMin": 60,
+  "yearGroup": "Year 12",
+  "subject": "Economics",
+  "answers": {
+    "objectiveVerb": "Evaluate price elasticity of demand and its determinants",
+    "priorConfidence": "New to it"
+  },
+  "objectives": [
+    {
+      "text": "Calculate price elasticity of demand from percentage changes in price, quantity demanded."
+    },
+    {
+      "text": "Interpret PED values to identify elastic, inelastic or unitary demand."
+    },
+    {
+      "text": "Evaluate which determinant most affects price elasticity of demand in a market, giving a reason."
+    }
+  ],
+  "facts": {
+    "keyIdeas": [
+      {
+        "statement": "Price elasticity of demand (PED) is calculated by dividing the percentage change in quantity demanded by the percentage change in price.",
+        "explanation": "Use PED = percentage change in quantity demanded ÷ percentage change in price. Calculate each percentage change from its original value before dividing.",
+        "example": "If a shop raises a book's price from £10 to £12, the price change is £2, which is 20% of the original £10.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "Percentage change uses the original value as the base, not the new value.",
+        "explanation": "Calculate percentage change as (new value − original value) ÷ original value × 100. A fall gives a negative percentage change.",
+        "example": "If quantity demanded falls from 500 units to 440 units, the change is −60 units, so the percentage change is −60 ÷ 500 × 100 = −12%.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "PED is usually negative, but demand is classified using its absolute value.",
+        "explanation": "A fall in price normally causes quantity demanded to rise, so the formula produces a negative value. Ignore the minus sign when deciding whether demand is elastic, inelastic or unitary.",
+        "example": "A calculated PED of −1.8 has an absolute value of 1.8, so demand is elastic.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "statement": "The size of PED shows how strongly quantity demanded responds to a price change.",
+        "explanation": "If the absolute value is greater than 1, demand is elastic. If it is less than 1, demand is inelastic. If it equals 1, demand is unitary.",
+        "example": "A calculated PED of −0.4 means demand is inelastic because its absolute value, 0.4, is below 1.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "statement": "The availability of close substitutes is often the strongest determinant of PED because it affects how easily consumers can switch after a price change.",
+        "explanation": "If close substitutes are readily available, a price rise may cause a large fall in quantity demanded, making demand more elastic. However, the strongest determinant depends on the market and the time period considered.",
+        "example": "For UK rail travel, commuters may have few practical substitutes on some routes, so demand may be relatively inelastic in the short run.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "statement": "A strong evaluation identifies the most important determinant in the market, explains its effect on consumers' choices and compares it with another determinant.",
+        "explanation": "The proportion of income, whether the good is a necessity, brand loyalty and the time available to adjust can also affect PED. A reasoned judgement must use the market's specific circumstances.",
+        "example": "For a branded soft drink, strong brand loyalty may matter more than the product's small share of household income because loyal consumers may not switch when its price rises.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "misconceptions": [
+      {
+        "belief": "The percentage change should be calculated using the new price or quantity as the base.",
+        "correction": "Always divide the change by the original value. Using the new value produces the wrong percentage and therefore the wrong PED.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "belief": "A negative PED must mean that demand is inelastic.",
+        "correction": "The minus sign shows the usual inverse relationship between price and quantity demanded. Classification depends on the absolute value: −2 is elastic, −0.5 is inelastic and −1 is unitary.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "belief": "The same determinant is always the most important for every market.",
+        "correction": "The most important determinant depends on the market. Close substitutes may dominate for one product, while necessity, income share, brand loyalty or time may matter more elsewhere.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "vocabulary": [
+      {
+        "term": "Percentage change",
+        "definition": "The change in an amount compared with its original amount, expressed as a percentage.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "Quantity demanded",
+        "definition": "The amount of a good or service consumers are willing and able to buy at a particular price.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "Elasticity",
+        "definition": "A measure of how strongly one quantity responds when another quantity changes.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "term": "Unitary",
+        "definition": "Having an absolute value exactly equal to 1, so the percentage changes are equal in size.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "term": "Close substitute",
+        "definition": "A different product that meets a similar need and can be chosen instead when the original product becomes more expensive.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "term": "Time period",
+        "definition": "The length of time consumers have to respond to a change in price and change their buying habits.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "workedExamples": [
+      {
+        "problem": "Suppose a cinema raises its ticket price from £10 to £12, and quantity demanded falls from 500 to 440 tickets. Calculate PED.",
+        "steps": [
+          "Calculate the price change: £12 − £10 = £2.",
+          "Calculate the percentage price change: £2 ÷ £10 × 100 = 20%.",
+          "Calculate the quantity change: 440 − 500 = −60 tickets.",
+          "Calculate the percentage quantity change: −60 ÷ 500 × 100 = −12%.",
+          "Divide percentage change in quantity demanded by percentage change in price: −12% ÷ 20%."
+        ],
+        "answer": "PED = −0.6.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "problem": "Suppose a market has a calculated PED of −0.7. Interpret this value.",
+        "steps": [
+          "Ignore the minus sign because it shows the direction of the relationship.",
+          "Take the absolute value: |−0.7| = 0.7.",
+          "Compare 0.7 with 1; it is less than 1.",
+          "Use the rule for a value below 1."
+        ],
+        "answer": "Demand is inelastic: a percentage change in price causes a smaller percentage change in quantity demanded.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ],
+        "misconceptionRef": {
+          "type": "misconception",
+          "index": 1
+        }
+      },
+      {
+        "problem": "Suppose a town's only pharmacy raises the price of a prescription medicine. Evaluate whether close substitutes or the proportion of income is likely to affect its PED more.",
+        "steps": [
+          "Identify close substitutes: prescription medicines may have no safe alternative for a patient.",
+          "Explain the effect: without an alternative, patients cannot easily reduce quantity demanded after a price rise.",
+          "Compare the proportion of income: the medicine may take a significant share of a low-income patient's budget, encouraging a response.",
+          "Judge using the market: medical need and limited safe alternatives are likely to outweigh the income effect.",
+          "Recognise limits: the judgement could change if doctors can prescribe an equally effective alternative."
+        ],
+        "answer": "Limited close substitutes are likely to affect PED more because medical need and safety restrict switching, although the judgement depends on available alternatives.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ],
+        "misconceptionRef": {
+          "type": "misconception",
+          "index": 2
+        }
+      }
+    ],
+    "questions": [
+      {
+        "stem": "A product's price rises from £20 to £25. Calculate the percentage change in price.",
+        "answer": "25%.",
+        "reasoning": "The £5 rise is divided by the original £20: £5 ÷ £20 × 100 = 25%.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Price falls from £50 to £40 and quantity demanded rises from 1,000 to 1,200 units. Calculate PED.",
+        "answer": "−1.",
+        "reasoning": "Price changes by −20% and quantity demanded by 20%; 20% ÷ −20% = −1.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Price rises from £8 to £10 and quantity demanded falls from 600 to 480 units. Calculate PED.",
+        "answer": "−0.8.",
+        "reasoning": "Price changes by 25% and quantity demanded by −20%; −20% ÷ 25% = −0.8.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "A price rises from £12 to £15 and quantity demanded falls from 800 to 600 units. Calculate PED, showing both percentage changes.",
+        "answer": "−1.33 (approximately).",
+        "reasoning": "Price changes by 25% and quantity demanded by −25%; −25% ÷ 25% = −1, so check: 600−800 is −200, and −200÷800 = −25%; PED is −1.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "A product has a PED of −2.5. How should this demand be classified?",
+        "answer": "Elastic demand.",
+        "reasoning": "The absolute value is 2.5, which is greater than 1.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "Inelastic demand",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          },
+          {
+            "text": "Unitary demand"
+          },
+          {
+            "text": "No relationship between price and demand"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "A product has a PED of −1. What does this value mean?",
+        "answer": "Demand is unitary.",
+        "reasoning": "The absolute value is exactly 1, so the percentage changes are equal in size.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "Demand is elastic"
+          },
+          {
+            "text": "Demand is inelastic"
+          },
+          {
+            "text": "Demand is perfectly inelastic"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "A product has a PED of −0.3. Interpret this value.",
+        "answer": "Demand is inelastic.",
+        "reasoning": "The absolute value is 0.3, below 1, so quantity demanded responds proportionately less than price.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "Demand is elastic"
+          },
+          {
+            "text": "Demand is unitary"
+          },
+          {
+            "text": "The negative sign makes it elastic",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Which PED value represents the strongest response of quantity demanded to price, using absolute values?",
+        "answer": "−3.0.",
+        "reasoning": "Its absolute value is 3.0, larger than the absolute values of −0.2 and −1.0.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "−0.2"
+          },
+          {
+            "text": "−1.0"
+          },
+          {
+            "text": "The most negative-looking value, −0.2",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Which determinant is most likely to make demand for a product elastic?",
+        "answer": "The availability of many close substitutes.",
+        "reasoning": "Consumers can switch to alternatives when the product's price rises, causing a relatively large change in quantity demanded.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "The product is essential for survival.",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 2
+            }
+          },
+          {
+            "text": "The product has no alternatives.",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 2
+            }
+          },
+          {
+            "text": "Consumers have no time to change their habits.",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 2
+            }
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "Evaluate whether close substitutes are the most important determinant of PED for a branded breakfast cereal. Give one reason and one comparison.",
+        "answer": "They may be most important because many similar cereals are available, but strong brand loyalty could reduce switching and make it less important.",
+        "reasoning": "The judgement links substitutes to switching and compares this effect with consumers' loyalty to the brand.",
+        "tier": "core",
+        "use": "worksheet",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "Evaluate which determinant is likely to affect PED more for electricity in the short run: close substitutes or the time period.",
+        "answer": "The time period is likely to matter greatly because households cannot quickly change appliances or insulation; limited substitutes also make short-run demand inelastic.",
+        "reasoning": "The short run restricts adjustment, so consumers have fewer practical ways to reduce electricity use immediately.",
+        "tier": "core",
+        "use": "worksheet",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "A government wants to predict the effect of a price rise for a luxury holiday. Evaluate whether income share, close substitutes or time is the most important determinant.",
+        "answer": "Close substitutes may be most important because consumers can choose another destination, while time also matters because they can compare options before booking.",
+        "reasoning": "The best judgement depends on how easily destinations can be substituted and how much time consumers have before purchase.",
+        "tier": "stretch",
+        "use": "exit",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ],
+        "distractors": []
+      }
+    ]
+  },
+  "duplicates": {
+    "keyIdeas": 0,
+    "misconceptions": 0,
+    "vocabulary": 0,
+    "workedExamples": 0,
+    "questions": 0
+  }
+}

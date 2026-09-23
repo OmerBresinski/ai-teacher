@@ -108,7 +108,7 @@ describe("eval:schema", () => {
   test("schemaErrors lists error check names once each, ignoring warnings", () => {
     expect(
       schemaErrors([
-        { check: "timing", severity: "warning", target: {}, message: "" },
+        { check: "objective-taught", severity: "warning", target: {}, message: "" },
         { check: "question-answer", severity: "error", target: { slideId: "a" }, message: "" },
         { check: "question-answer", severity: "error", target: { slideId: "b" }, message: "" },
         { check: "objective-coverage", severity: "error", target: { factId: "o" }, message: "" },

@@ -1,0 +1,27 @@
+{
+  "name": "@tj/knowledge",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed repository over the knowledge store (topic graph) tables in @tj/db: packs, sections, append-only facts, aliases, exact-cosine candidate scan, subject locks and match logging (TG-2).",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@tj/db": "workspace:*",
+    "@tj/domain": "workspace:*",
+    "drizzle-orm": "0.45.2"
+  },
+  "devDependencies": {
+    "@tj/config": "workspace:*",
+    "typescript": "5.9.3"
+  }
+}

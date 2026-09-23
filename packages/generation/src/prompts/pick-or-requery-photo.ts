@@ -114,7 +114,7 @@ const EXAMPLE_REQUERY: PickOrRequery = {
 };
 
 export const pickOrRequeryPrompt = {
-  version: "pick-or-requery-photo.v6",
+  version: "pick-or-requery-photo.v7",
   system: [
     "You choose the photograph for one slide of a school lesson from stock-photo search results. You see each candidate photograph (numbered to match its id) and its caption.",
     "",

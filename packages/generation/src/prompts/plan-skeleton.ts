@@ -23,6 +23,10 @@ import { describeRef } from "./source-ref";
  * teacher's objectives (a re-plan after the plan screen); each is an optional input rendered in
  * the user turn, so a brief without them reads as before. Bump `version` whenever `system` or
  * `user` changes wording (`shape.ts` included).
+ *
+ * UX ruling 82: no slide carries minutes. The lesson's size is its slide count, the outline is
+ * asked for without "minutes", and the Shape block states the explain and practise floors as
+ * slides after the title and objectives slides (whole slides when the brief fixes the count).
  */
 
 export type PlanSkeletonInput = {
@@ -63,10 +67,9 @@ const EXAMPLE = {
   ],
   photographable: { yes: true, why: "A buttercup is a real thing a camera captures." },
   outline: [
-    { kind: "title", minutes: 2, factRefs: [] },
+    { kind: "title", factRefs: [] },
     {
       kind: "objectives",
-      minutes: 3,
       factRefs: [
         { type: "objective", index: 0 },
         { type: "objective", index: 1 },
@@ -74,14 +77,12 @@ const EXAMPLE = {
     },
     {
       kind: "starter",
-      minutes: 4,
       phase: "starter",
       factRefs: [{ type: "objective", index: 0 }],
       brief: { adds: "Pupils list what they think a flower is for before being told." },
     },
     {
       kind: "content",
-      minutes: 7,
       phase: "explain",
       factRefs: [{ type: "objective", index: 0 }],
       brief: {
@@ -91,7 +92,6 @@ const EXAMPLE = {
     },
     {
       kind: "image-text",
-      minutes: 7,
       phase: "explain",
       factRefs: [{ type: "objective", index: 0 }],
       imageBrief: {
@@ -107,7 +107,6 @@ const EXAMPLE = {
     },
     {
       kind: "content",
-      minutes: 8,
       phase: "explain",
       factRefs: [{ type: "objective", index: 1 }],
       brief: {
@@ -117,28 +116,24 @@ const EXAMPLE = {
     },
     {
       kind: "worked-example",
-      minutes: 6,
       phase: "explain",
       factRefs: [{ type: "objective", index: 1 }],
       brief: { adds: "Reasons step by step why a flower with no stamens sets no seed." },
     },
     {
       kind: "multiple-choice",
-      minutes: 5,
       phase: "practise",
       factRefs: [{ type: "objective", index: 1 }],
       brief: { adds: "Confronts the idea that petals make the seeds." },
     },
     {
       kind: "open-response",
-      minutes: 6,
       phase: "practise",
       factRefs: [{ type: "objective", index: 1 }],
       brief: { adds: "Pupils explain why bees matter to a fruit grower." },
     },
     {
       kind: "exit-ticket",
-      minutes: 5,
       phase: "check",
       factRefs: [
         { type: "objective", index: 0 },
@@ -161,7 +156,7 @@ export function briefBlock(input: PlanSkeletonInput): string[] {
     audienceBlock(input.audience),
     ...(input.level ? [`Level: ${LEVEL_LINES[input.level]}`] : []),
     "Shape:",
-    ...shapeBlock(input.shape).map((line) => `  ${line}`),
+    ...shapeBlock(input.shape, input.slideCount).map((line) => `  ${line}`),
   ];
   if (input.sourceTexts.length > 0) {
     parts.push(SOURCE_INSTRUCTION);
@@ -191,23 +186,23 @@ function askBlock(input: PlanSkeletonInput): string[] {
   parts.push(
     input.slideCount
       ? `The outline has exactly ${input.slideCount} slides, counting the title and objectives slides.`
-      : "Give 8–12 outline slides for an hour-long lesson (fewer for a shorter one).",
+      : "Give 8–12 outline slides, counting the title and objectives slides; fewer for a lesson much shorter than an hour.",
   );
   return parts;
 }
 
 export const planSkeletonPrompt = {
-  version: "plan-skeleton.v17",
+  version: "plan-skeleton.v19",
   system: [
     "You are an experienced UK teacher planning one lesson from a brief.",
-    "Produce only the lesson's skeleton: the learning objectives and an outline of slides with the minutes each takes. The key ideas, vocabulary, worked examples and questions come in a later step, so do not write them here.",
+    "Produce only the lesson's skeleton: the learning objectives and an outline of slides. The key ideas, vocabulary, worked examples and questions come in a later step, so do not write them here.",
     "",
     "Rules:",
     HOUSE_RULES,
     `The outline uses only these slide kinds: ${GENERATABLE_SLIDE_KINDS.join(", ")}.`,
     'The outline starts with a "title" slide and then an "objectives" slide. Those two carry no "phase" or "brief". Every slide after them carries both.',
     'Phases, in this order and never going back: "starter" (one short slide that surfaces what pupils already think), "explain" (the teaching — this is most of the lesson), "practise" (pupils answer, with the misconceptions confronted), "check" (an exit-ticket or plenary that covers every objective). A lesson has at least one explain, one practise and one check slide.',
-    'The brief\'s "Shape" block says what a lesson of this kind, for this class, must contain: which slide kinds to include or leave out, what the first explain slide is, the share of the minutes the explain and practise phases take. Every sentence in it is checked, so the outline meets every one. Explain slides are "content", "worked-example", "image-text" and "vocabulary"; only they count towards the explain share. Outline minutes add up to the lesson length within ten per cent. When the class is new to the topic, every objective gets its own content or worked-example slide.',
+    'The brief\'s "Shape" block says what a lesson of this kind, for this class, must contain: which slide kinds to include or leave out, what the first explain slide is, how many of the slides after the title and objectives slides are explain slides and practise-phase slides. Every sentence in it is checked, so the outline meets every one. Explain slides are "content", "worked-example", "image-text" and "vocabulary"; only they count as explain slides. When the class is new to the topic, every objective gets its own content or worked-example slide.',
     'Kind fit: a "content" slide explains exactly one key idea; a "worked-example" slide works through one example step by step; "sort" is only for a genuine sequence (steps that happen in an order), never for classifying; "matching" only when the three right-hand sides are three different things; "true-false" only to confront a misconception; "multiple-choice" for a question with plausible wrong answers; "image-text" only for a real thing a photograph can show — a part must be visible from the outside.',
     '"brief": { "adds": what this slide contributes that no other slide does, in one sentence; "avoids"?: what it must not repeat from a neighbouring slide }. Two slides never add the same thing.',
     'Refer to objectives from the outline by position: { "type": "objective", "index": 0-based }. Only objectives can be referenced here. Every outline slide after the first two names at least one objective.',
