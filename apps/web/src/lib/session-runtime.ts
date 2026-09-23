@@ -79,7 +79,12 @@ export function startSessionRuntime(): () => void {
         });
     });
   });
+  // This public local-data fixture intentionally never starts an authenticated session.
+  const localFixture = () =>
+    (import.meta.env.DEV || import.meta.env.VITE_APP_ENV === "preview") &&
+    sessionRouter.latestLocation.pathname === "/dev/first-experience";
   const check = () => {
+    if (localFixture()) return;
     const { client, identity, locked } = sessionBoundary.getSnapshot();
     if (locked || identity === null) return;
     // Transport/5xx failures are not proof of expiry. Query retains the error for retry, and the
@@ -87,7 +92,12 @@ export function startSessionRuntime(): () => void {
     void client
       .fetchQuery({ ...meQueryOptions, staleTime: 0 })
       .then((me) => {
-        if (identity !== undefined || sessionBoundary.getSnapshot().client !== client) return;
+        if (
+          localFixture() ||
+          identity !== undefined ||
+          sessionBoundary.getSnapshot().client !== client
+        )
+          return;
         // A previous hint/BFCache check may have failed while the epoch was undecided. Resume
         // navigation after a later successful check instead of leaving the public error page stuck.
         return sessionRouter.navigate({

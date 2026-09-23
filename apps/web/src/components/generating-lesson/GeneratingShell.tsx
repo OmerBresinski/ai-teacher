@@ -6,6 +6,7 @@ import {
   navigatorWidthVar,
   readNavigatorMode,
   useCompactChrome,
+  useMobileEditor,
 } from "@tj/editor/lesson";
 import { SlideStatic } from "@tj/editor/thumb";
 import { AppBar, AppBarGroup, Button, cn, Display, IconButton, Skeleton } from "@tj/ui";
@@ -18,6 +19,7 @@ import {
   useState,
 } from "react";
 import { pendingSlides } from "@/lib/pending-slides";
+import { MobileGeneratingShell } from "./MobileGeneratingShell";
 import { announcedLine, STAGES, type StageState, stageLine, stageOf, stageStatus } from "./stage";
 
 /*
@@ -86,6 +88,7 @@ export function GeneratingShell({
   className,
   onViewSlide,
 }: GeneratingShellProps) {
+  const mobile = useMobileEditor();
   const state = stageOf(events);
   const stopped = state.terminal === "failed" || state.terminal === "cancelled";
   const running = state.terminal === null;
@@ -147,6 +150,24 @@ export function GeneratingShell({
 
   const line = stopped ? stoppedLine(state) : stageLine(state);
   const stopDisabled = Boolean(stop?.pending || stop?.sent);
+
+  if (mobile) {
+    return (
+      <MobileGeneratingShell
+        lesson={lesson}
+        state={state}
+        line={line}
+        lockLine={lockLine(state)}
+        canvasCompanion={canvasCompanion}
+        onBack={onBack}
+        onStop={onStop}
+        stop={stop}
+        exportSlot={exportSlot}
+        className={className}
+        onViewSlide={onViewSlide}
+      />
+    );
+  }
 
   return (
     <div

@@ -27,12 +27,14 @@ export function SlideTabs({
   stageRef,
   stageId,
   scale,
+  inline = false,
 }: {
   slide: Slide;
   stageRef: RefObject<HTMLDivElement | null>;
   /** Id of the slide stage, which is what the two tabs switch between states of. */
   stageId: string;
   scale: number;
+  inline?: boolean;
 }) {
   const { setPreviewAnswer, setPreviewStep } = useSessionActions();
   const { previewStep } = useSessionUi();
@@ -65,15 +67,19 @@ export function SlideTabs({
     <Panel
       ref={barRef}
       data-slide-tabs
-      style={{
-        position: "fixed",
-        left,
-        top,
-        zIndex: 41,
-        // Unmeasured for one un-painted render: transparent, not `visibility: hidden`, which would
-        // also drop the controls from the accessibility tree.
-        opacity: size.w === 0 ? 0 : undefined,
-      }}
+      style={
+        inline
+          ? { position: "relative" }
+          : {
+              position: "fixed",
+              left,
+              top,
+              zIndex: 41,
+              // Unmeasured for one un-painted render: transparent, not `visibility: hidden`, which would
+              // also drop the controls from the accessibility tree.
+              opacity: size.w === 0 ? 0 : undefined,
+            }
+      }
     >
       <Tabs value={showing ? "answer" : "question"} onValueChange={pick}>
         <TabsList aria-label="Slide state">

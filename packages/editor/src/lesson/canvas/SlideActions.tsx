@@ -41,6 +41,7 @@ export function SlideActions({
   toolbarRef,
   tabsRef,
   scale,
+  inline = false,
 }: {
   slide: Slide;
   /** The 960x540 slide frame. */
@@ -50,6 +51,7 @@ export function SlideActions({
   /** The Question / Answer tabs' wrapper: the other end of the same band. */
   tabsRef?: RefObject<HTMLDivElement | null>;
   scale: number;
+  inline?: boolean;
 }) {
   const lesson = useLesson();
   const history = useHistory();
@@ -68,16 +70,18 @@ export function SlideActions({
     deps: [slide.id, index, scale, slideCount],
   });
 
-  if (hidden || !frame) return null;
+  if (!inline && (hidden || !frame)) return null;
   const id = slide.id;
   const deps = { history, lesson, session };
 
-  const { left, top: placedTop } = placeSlideActions({
-    slide: frame,
-    pill: { w: size.w, h: size.h },
-    viewport,
-    avoid,
-  });
+  const { left, top: placedTop } = frame
+    ? placeSlideActions({
+        slide: frame,
+        pill: { w: size.w, h: size.h },
+        viewport,
+        avoid,
+      })
+    : { left: 0, top: 0 };
   // Floating chrome never rides nearer the top than the bar plus the panel gap (72px).
   const top = Math.max(placedTop, CHROME_MIN_TOP);
   const only = slideCount <= 1;
@@ -88,15 +92,19 @@ export function SlideActions({
       ref={barRef}
       data-slide-actions
       aria-label="Slide actions"
-      style={{
-        position: "fixed",
-        left,
-        top,
-        zIndex: 41,
-        // Unmeasured for one un-painted render: transparent, not `visibility: hidden`, which would
-        // also drop the controls from the accessibility tree.
-        opacity: size.w === 0 ? 0 : undefined,
-      }}
+      style={
+        inline
+          ? { position: "relative" }
+          : {
+              position: "fixed",
+              left,
+              top,
+              zIndex: 41,
+              // Unmeasured for one un-painted render: transparent, not `visibility: hidden`, which would
+              // also drop the controls from the accessibility tree.
+              opacity: size.w === 0 ? 0 : undefined,
+            }
+      }
     >
       <PillButton
         label="Duplicate slide"

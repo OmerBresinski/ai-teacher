@@ -1,7 +1,25 @@
 import { SLIDE_W, type Slide, type Theme } from "@tj/domain/documents";
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@tj/ui";
 import { Settings2 } from "lucide-react";
-import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { rectOf, rotatedBounds, unionRect } from "../../model/geometry";
 import {
   CHROME_EDGE as EDGE,
@@ -10,6 +28,7 @@ import {
 } from "../canvas/place-slide-actions";
 import { useCompactChrome } from "../use-compact-chrome";
 import { useSelectedElements, useSessionUi } from "../use-editor-session";
+import { useMobileEditor } from "../use-mobile-editor";
 import { CropToolbar } from "./CropToolbar";
 import { ImageToolbar } from "./ImageToolbar";
 import { LineToolbar } from "./LineToolbar";
@@ -38,14 +57,17 @@ export function ContextualToolbar({
   theme,
   stageRef,
   scale,
+  mobileActions,
 }: {
   slide: Slide;
   theme: Theme;
   stageRef: RefObject<HTMLDivElement | null>;
   scale: number;
+  mobileActions?: ReactNode;
 }) {
   const selected = useSelectedElements(slide);
   const compactChrome = useCompactChrome();
+  const mobile = useMobileEditor();
   const { editingTextId, crop } = useSessionUi();
 
   const bar = useRef<HTMLDivElement>(null);
@@ -163,6 +185,29 @@ export function ContextualToolbar({
       <LineToolbar element={only} theme={theme} slideId={slide.id} />
     ) : (
       <OtherToolbar element={only} theme={theme} slideId={slide.id} />
+    );
+
+  if (mobile)
+    return (
+      <div data-contextual-toolbar className="mobile-context-trigger" ref={bar}>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <Settings2 aria-hidden />
+              {selected.length ? "Selection settings" : "Slide settings"}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="mobile-editor-sheet" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle>{selected.length ? "Selection settings" : "Slide settings"}</DialogTitle>
+            </DialogHeader>
+            <div data-editor-controls className="mobile-context-controls">
+              {controls}
+            </div>
+            <div className="mobile-slide-actions">{mobileActions}</div>
+          </DialogContent>
+        </Dialog>
+      </div>
     );
 
   return (

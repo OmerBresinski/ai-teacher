@@ -49,6 +49,7 @@ export type InsertRailProps = {
   onHelp: () => void;
   /** Pexels search + pick for the Add image panel, injected by the app. */
   images?: ImageSearchClient;
+  showLabels?: boolean;
 };
 
 /**
@@ -58,7 +59,12 @@ export type InsertRailProps = {
  * opens the one slide picker on its Activities tab (TEACH-185): an activity is a whole slide,
  * inserted after the one on the canvas, not an element.
  */
-export const InsertRail = memo(function InsertRail({ onInsert, onHelp, images }: InsertRailProps) {
+export const InsertRail = memo(function InsertRail({
+  onInsert,
+  onHelp,
+  images,
+  showLabels,
+}: InsertRailProps) {
   const lesson = useLesson();
   const theme = getTheme(lesson.themeId);
   const history = useHistory();
@@ -69,7 +75,7 @@ export const InsertRail = memo(function InsertRail({ onInsert, onHelp, images }:
   const activeSlideId = useActiveSlide(lesson.slides)?.id ?? null;
 
   return (
-    <Rail aria-label="Insert">
+    <Rail aria-label="Insert" showLabels={showLabels}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <RailButton label="Text" shortcut={hint("t")}>

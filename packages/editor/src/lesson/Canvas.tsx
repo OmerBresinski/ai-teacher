@@ -42,6 +42,7 @@ import {
   useSessionUi,
   useZoom,
 } from "./use-editor-session";
+import { useMobileEditor } from "./use-mobile-editor";
 
 /*
  * The editor canvas (TeachDeck `components/v2/editor/Canvas.tsx`): a scroll region holding the
@@ -184,6 +185,7 @@ export function Canvas({
   }, [spill]);
 
   const compactChrome = useCompactChrome();
+  const mobile = useMobileEditor();
   const gutter = compactChrome ? 16 : GUTTER;
 
   /* ---- fit ---------------------------------------------------------------- */
@@ -435,19 +437,42 @@ export function Canvas({
       >
         {/* Wrapped so the pill can measure the toolbar's own floating box. */}
         <div ref={toolbar}>
-          <ContextualToolbar slide={slide} theme={theme} stageRef={stage} scale={scale} />
+          <ContextualToolbar
+            slide={slide}
+            theme={theme}
+            stageRef={stage}
+            scale={scale}
+            mobileActions={
+              mobile ? (
+                <>
+                  <SlideActions inline slide={slide} stageRef={stage} scale={scale} />
+                  <SlideTabs
+                    inline
+                    slide={slide}
+                    stageRef={stage}
+                    stageId={STAGE_ID}
+                    scale={scale}
+                  />
+                </>
+              ) : undefined
+            }
+          />
         </div>
-        <SlideActions
-          slide={slide}
-          stageRef={stage}
-          toolbarRef={toolbar}
-          tabsRef={tabs}
-          scale={scale}
-        />
-        {/* Wrapped so the pill can measure the tabs' own floating box. */}
-        <div ref={tabs}>
-          <SlideTabs slide={slide} stageRef={stage} stageId={STAGE_ID} scale={scale} />
-        </div>
+        {!mobile ? (
+          <>
+            <SlideActions
+              slide={slide}
+              stageRef={stage}
+              toolbarRef={toolbar}
+              tabsRef={tabs}
+              scale={scale}
+            />
+            {/* Wrapped so the pill can measure the tabs' own floating box. */}
+            <div ref={tabs}>
+              <SlideTabs slide={slide} stageRef={stage} stageId={STAGE_ID} scale={scale} />
+            </div>
+          </>
+        ) : null}
       </div>
       <CanvasFooter scale={scale} steps={steps} />
       <ElementContextMenu
