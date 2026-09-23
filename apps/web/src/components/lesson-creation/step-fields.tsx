@@ -1,5 +1,8 @@
 import {
   Button,
+  Label,
+  RadioGroup,
+  RadioGroupItem,
   Select,
   SelectContent,
   SelectGroup,
@@ -17,7 +20,9 @@ export function ChoiceField({
   value,
   options,
   onChange,
+  compact = false,
 }: {
+  compact?: boolean;
   label: string;
   value: string;
   options: readonly { value: string; label: string }[];
@@ -25,22 +30,24 @@ export function ChoiceField({
 }) {
   const id = useId();
   return (
-    <Field id={id} label={label}>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id={id} className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-    </Field>
+    <div className={compact ? "creation-compact-choice" : undefined}>
+      <Field id={id} label={label}>
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger id={id} className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
+    </div>
   );
 }
 
@@ -89,16 +96,23 @@ export function BriefStep({
       />
       <details className="creation-disclosure">
         <summary>Adjust the level</summary>
-        <ChoiceField
-          label="Reading level"
+        <RadioGroup
+          aria-label="Reading level"
+          orientation="horizontal"
+          className="creation-level-options"
           value={brief.level}
-          onChange={(level) => onChange({ ...brief, level })}
-          options={[
-            { value: "easier", label: "Easier" },
-            { value: "standard", label: "Standard" },
-            { value: "harder", label: "Harder" },
-          ]}
-        />
+          onValueChange={(level) => onChange({ ...brief, level })}
+        >
+          {["easier", "standard", "harder"].map((level) => (
+            <div key={level} className="creation-level-option">
+              <RadioGroupItem id={`${id}-${level}`} value={level} className="sr-only" />
+              <Label htmlFor={`${id}-${level}`} className="creation-level-pill">
+                {level[0]?.toUpperCase()}
+                {level.slice(1)}
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
       </details>
       <div className="creation-actions">
         <Button variant="inverse" type="submit" disabled={!brief.topic.trim()}>
@@ -226,8 +240,9 @@ export function ObjectivesStep({
           <Plus /> Add objective
         </Button>
       </div>
-      <div className="creation-fields">
+      <div className="creation-generation-options">
         <ChoiceField
+          compact
           label="Slides"
           value={slideCount}
           onChange={onSlideCount}
@@ -237,6 +252,7 @@ export function ObjectivesStep({
           }))}
         />
         <ChoiceField
+          compact
           label="Lesson length"
           value={duration}
           onChange={onDuration}

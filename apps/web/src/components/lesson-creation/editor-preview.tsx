@@ -7,7 +7,7 @@ import { demoLibrary } from "@tj/editor/starter";
 import { Button } from "@tj/ui";
 import { useEffect, useState } from "react";
 import { GeneratingShell } from "@/components/generating-lesson/GeneratingShell";
-import { CharacterHost } from "./character-host";
+import { GenerationCompanion } from "./generation-companion";
 import "@tj/editor/styles/editor.css";
 
 const KEY = ["first-experience-local-preview"] as const;
@@ -68,7 +68,7 @@ function LocalEditor({
         if (arrived < count) setArrived(arrived + 1);
         else setReady(true);
       },
-      arrived === 0 ? 5000 : arrived === count ? 1800 : 2400,
+      arrived === 0 ? 2600 : arrived === count ? 1800 : 2400,
     );
     return () => window.clearTimeout(timer);
   }, [arrived, count, ready, stopped]);
@@ -113,16 +113,7 @@ function LocalEditor({
             onViewSlide={setSelected}
             className="h-full"
             canvasCompanion={
-              <div className="creation-editor-companion">
-                <CharacterHost stage="generating" initialStage="worksheet" />
-                <p>
-                  {stopped
-                    ? "Preview paused"
-                    : arrived === 0
-                      ? "Putting your slides together"
-                      : "Making the next slide"}
-                </p>
-              </div>
+              <GenerationCompanion initialStage={worksheetCount ? "worksheet" : "objectives"} />
             }
           />
         )}
