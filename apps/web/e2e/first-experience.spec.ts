@@ -10,7 +10,7 @@ async function openObjectives(page: import("@playwright/test").Page) {
 
 async function openWorksheets(page: import("@playwright/test").Page) {
   await openObjectives(page);
-  await page.getByRole("button", { name: "Generate" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByTestId("creation-worksheet")).toBeVisible();
 }
 
@@ -47,8 +47,8 @@ test.describe("first-experience design preview", () => {
       "Compare two sound sources.",
     );
 
-    await page.getByRole("button", { name: "Generate" }).click();
-    await expect(page.getByRole("heading", { name: "Something to practise with?" })).toBeFocused();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "Add a worksheet?" })).toBeFocused();
     const activityType = page.getByRole("combobox", { name: "Activity type" });
     await expect(activityType).toHaveCount(1);
     await expect(activityType).toHaveCSS("height", "48px");
@@ -78,7 +78,7 @@ test.describe("first-experience design preview", () => {
     await expect(page.getByTestId("creation-objectives")).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Slides" })).toContainText("7 slides");
 
-    await page.getByRole("button", { name: "Generate" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: "Just the slides" }).click();
     await expect(page.getByTestId("creation-generating")).toHaveAttribute(
       "data-preview-state",
@@ -101,9 +101,9 @@ test.describe("first-experience design preview", () => {
     await expect(page.getByRole("heading", { name: "Learning objectives" })).toBeFocused();
     await expect(page.getByTestId("creation-objectives")).toHaveCSS("animation-name", "none");
 
-    await page.getByRole("button", { name: "Generate" }).focus();
+    await page.getByRole("button", { name: "Continue" }).focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("heading", { name: "Something to practise with?" })).toBeFocused();
+    await expect(page.getByRole("heading", { name: "Add a worksheet?" })).toBeFocused();
   });
 
   test("rapid navigation leaves one complete handover scene with one visible owner", async ({

@@ -62,7 +62,7 @@ for (const viewport of [
       fullPage: true,
     });
 
-    await page.getByRole("button", { name: "Generate" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByTestId("creation-worksheet")).toBeVisible();
     await page.getByRole("button", { name: "Add another worksheet" }).click();
     await settleFiniteAnimations(page);

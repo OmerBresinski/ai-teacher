@@ -448,7 +448,7 @@
   padding-inline: 4px;
 }
 [data-testid="creation-objectives"] {
-  gap: 20px;
+  gap: 8px;
 }
 [data-testid="creation-objectives"] .creation-form {
   gap: 16px;
@@ -474,4 +474,91 @@
 /* The kit's radio positioning must not create a separate row above its pill label. */
 .creation-level-options .creation-level-option > [data-slot="radio-group-item"] {
   position: absolute;
+}
+
+.creation-step-context {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--muted-foreground);
+  margin-bottom: 12px;
+}
+.creation-objective-instruction {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  margin-bottom: 2px;
+}
+.creation-step .creation-objective-input {
+  font-weight: 400;
+  font-size: 17px;
+}
+.creation-objective-input:hover:not(:focus-visible) {
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+}
+.creation-objective-number {
+  font-size: 12px;
+}
+.creation-step .creation-objective > button,
+.creation-step .creation-sheet-heading > button {
+  color: var(--muted-foreground);
+}
+.creation-objective > button:not(:hover):not(:focus-visible) {
+  opacity: 0.65;
+}
+.creation-add-action,
+.creation-back {
+  align-self: flex-start;
+  padding-inline: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+.creation-step-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 8px;
+}
+.creation-step-footer .creation-actions {
+  padding-top: 0;
+}
+.creation-step-footer .creation-back {
+  margin-top: -8px;
+}
+.creation-worksheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.creation-worksheet-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(136px, 1fr);
+  gap: 20px;
+  align-items: end;
+}
+.creation-worksheet-fields .creation-compact-choice [data-slot="select-trigger"] {
+  width: 100%;
+}
+.creation-worksheet-fields [data-slot="label"] {
+  font-size: 14px;
+  font-weight: 400;
+}
+.creation-sheet {
+  padding-bottom: 0;
+  border-bottom: 0;
+  gap: 8px;
+}
+.creation-sheet + .creation-sheet {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.creation-sheet-heading {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 400;
+}
+@media (max-width: 480px) {
+  .creation-worksheet-fields {
+    gap: 12px;
+  }
 }

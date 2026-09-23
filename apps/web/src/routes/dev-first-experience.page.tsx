@@ -20,7 +20,7 @@ type Stage = "brief" | "objectives" | "worksheet" | "generating";
 const TITLES: Record<Stage, string> = {
   brief: "Let’s start with your idea.",
   objectives: "Learning objectives",
-  worksheet: "Something to practise with?",
+  worksheet: "Add a worksheet?",
   generating: "Your lesson is coming together.",
 };
 const OBJECTIVES: ObjectiveDraft[] = [
