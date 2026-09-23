@@ -272,9 +272,11 @@ describe("runLessonPipeline", () => {
         ...Array.from({ length: GENERATED_SLIDES }, () => "low"),
         "medium",
       ]);
-      // Every default is a GPT-5.6 id (TEACH-208), so every call carries the provider option.
+      // Every default is a GPT-5.6 id (TEACH-208), so every call carries the provider option; each
+      // call also carries the gateway providers' effort settings, so only the Bedrock one is pinned
+      // here (`providerOptionsFor` has its own tests).
       for (const call of ai.calls) {
-        expect(call.providerOptions).toEqual({
+        expect(call.providerOptions).toMatchObject({
           bedrock: { reasoningConfig: { maxReasoningEffort: call.context?.effort } },
         });
       }

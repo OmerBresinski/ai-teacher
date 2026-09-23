@@ -153,6 +153,15 @@ export interface PipelineDeps {
    */
   planFrontierFromYear?: number;
   /**
+   * Lab and eval only: the reasoning effort a call runs at, given the stage, the prompt name
+   * (`plan-facts`) and the effort the stage asked for. Unset in production: the stage's choice.
+   */
+  effortFor?: (
+    stage: string,
+    promptName: string,
+    effort: "low" | "medium" | "high",
+  ) => "low" | "medium" | "high";
+  /**
    * Where illustrate reports its counts for the summary line. Stages cannot see the
    * `RequestContext`, so the per-run counts ride here instead (the same shape of channel as
    * `budget`, which stages charge the same way). Created by illustrate when absent.
