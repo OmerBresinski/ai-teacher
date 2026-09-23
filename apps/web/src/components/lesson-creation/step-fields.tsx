@@ -9,7 +9,7 @@ import {
   Textarea,
 } from "@tj/ui";
 import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
-import { useId } from "react";
+import { useId, useLayoutEffect, useRef } from "react";
 import { Field } from "@/components/brief/field";
 
 export function ChoiceField({
@@ -112,6 +112,49 @@ export function BriefStep({
   );
 }
 
+function ObjectiveInput({
+  value,
+  label,
+  onChange,
+}: {
+  value: string;
+  label: string;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: remeasure the DOM after controlled text changes.
+  useLayoutEffect(() => {
+    const input = ref.current;
+    if (!input) return;
+    const resize = () => {
+      input.style.height = "0px";
+      input.style.height = `${input.scrollHeight}px`;
+    };
+    resize();
+    // Only width changes need reflow; the callback itself changes height.
+    let width = input.clientWidth;
+    const widths = new ResizeObserver(() => {
+      if (input.clientWidth !== width) {
+        width = input.clientWidth;
+        resize();
+      }
+    });
+    widths.observe(input);
+    return () => widths.disconnect();
+  }, [value]);
+  return (
+    <Textarea
+      ref={ref}
+      className="creation-objective-input"
+      aria-label={label}
+      required
+      rows={1}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
 export type ObjectiveDraft = { id: string; text: string };
 export function ObjectivesStep({
   brief,
@@ -152,16 +195,15 @@ export function ObjectivesStep({
         <p>By the end of the lesson, pupils can:</p>
         {objectives.map((objective, index) => (
           <div key={objective.id} className="creation-objective">
-            <Textarea
-              aria-label={`Objective ${index + 1}`}
-              required
-              rows={2}
+            <span className="creation-objective-number" aria-hidden="true">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <ObjectiveInput
+              label={`Objective ${index + 1}`}
               value={objective.text}
-              onChange={(event) =>
+              onChange={(text) =>
                 onChange(
-                  objectives.map((item) =>
-                    item.id === objective.id ? { ...item, text: event.target.value } : item,
-                  ),
+                  objectives.map((item) => (item.id === objective.id ? { ...item, text } : item)),
                 )
               }
             />
@@ -189,7 +231,7 @@ export function ObjectivesStep({
           label="Slides"
           value={slideCount}
           onChange={onSlideCount}
-          options={[6, 8, 10, 12].map((value) => ({
+          options={[6, 7, 8, 10, 12].map((value) => ({
             value: String(value),
             label: `${value} slides`,
           }))}

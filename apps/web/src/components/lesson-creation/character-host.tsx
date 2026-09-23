@@ -20,10 +20,16 @@ const OWNER: Record<CharacterStage, number> = {
 const BEAT = [0, 4, 6, 9];
 
 /** React owns lifetime; the original rig owns articulated hands and their actual props. */
-export function CharacterHost({ stage }: { stage: CharacterStage }) {
+export function CharacterHost({
+  stage,
+  initialStage = "brief",
+}: {
+  stage: CharacterStage;
+  initialStage?: CharacterStage;
+}) {
   const element = useRef<HTMLDivElement>(null);
   const rig = useRef<HandoverRig | null>(null);
-  const previous = useRef<CharacterStage>("brief");
+  const previous = useRef<CharacterStage>(initialStage);
   useEffect(() => {
     if (!element.current) return;
     const context = gsap.context(() => {

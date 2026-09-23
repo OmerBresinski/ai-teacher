@@ -14,6 +14,14 @@ async function openWorksheets(page: import("@playwright/test").Page) {
   await expect(page.getByTestId("creation-worksheet")).toBeVisible();
 }
 
+async function openGenerating(page: import("@playwright/test").Page) {
+  await openWorksheets(page);
+  await page.getByRole("button", { name: "Just the slides" }).click();
+  const preview = page.getByTestId("creation-generating");
+  await expect(preview).toHaveAttribute("data-preview-state", "empty");
+  return preview;
+}
+
 test.describe("first-experience design preview", () => {
   test("edits objectives, preserves them through Back, and can make several worksheets", async ({
     page,
@@ -55,9 +63,11 @@ test.describe("first-experience design preview", () => {
     await expect(page.getByRole("region", { name: /^Worksheet / })).toHaveCount(2);
 
     await page.getByRole("button", { name: "Make 2 worksheets" }).click();
-    await expect(page.getByTestId("creation-generating")).toBeVisible();
-    await expect(page.getByText(/^Worksheet [12]$/)).toHaveCount(2);
-    await expect(page.getByText("Animation preview — no lesson is being generated.")).toBeVisible();
+    await expect(page.getByTestId("creation-generating")).toHaveAttribute(
+      "data-preview-state",
+      "empty",
+    );
+    await expect(page.getByText(/2 worksheets selected/)).toBeVisible();
   });
 
   test("Just the slides omits worksheets and Back returns to the objective choices", async ({
@@ -66,13 +76,15 @@ test.describe("first-experience design preview", () => {
     await openWorksheets(page);
     await page.getByRole("button", { name: "Back to objectives" }).click();
     await expect(page.getByTestId("creation-objectives")).toBeVisible();
-    await expect(page.getByRole("combobox", { name: "Slides" })).toContainText("8 slides");
+    await expect(page.getByRole("combobox", { name: "Slides" })).toContainText("7 slides");
 
     await page.getByRole("button", { name: "Generate" }).click();
     await page.getByRole("button", { name: "Just the slides" }).click();
-    await expect(page.getByTestId("creation-generating")).toBeVisible();
-    await expect(page.getByText("Slides", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Worksheet \d+$/)).toHaveCount(0);
+    await expect(page.getByTestId("creation-generating")).toHaveAttribute(
+      "data-preview-state",
+      "empty",
+    );
+    await expect(page.getByText(/worksheet selected/)).toHaveCount(0);
   });
 
   test("keyboard activation moves focus and reduced motion removes the entry animations", async ({
@@ -127,7 +139,14 @@ test.describe("first-experience design preview", () => {
     await page.getByRole("button", { name: "Skip planning" }).click();
     await expect(page.getByRole("combobox", { name: "Activity type" })).toBeEnabled();
     await page.getByRole("button", { name: "Just the slides" }).click();
-    await expect(page.getByRole("button", { name: "Back to worksheets" })).toBeEnabled();
+    await expect(page.getByTestId("creation-generating")).toHaveAttribute(
+      "data-preview-state",
+      "empty",
+    );
+    await expect(page.locator("[data-canvas-companion] .handover-stage")).toHaveAttribute(
+      "data-holder",
+      "Slides",
+    );
 
     const scene = page.locator(".handover-stage .production-scene");
     await expect(scene).toHaveCount(1);
@@ -140,5 +159,78 @@ test.describe("first-experience design preview", () => {
             .length,
       );
     expect(visibleOwners).toBe(1);
+  });
+
+  test("slides populate progressively, preserve selection, and hand over without a layout jump", async ({
+    page,
+  }) => {
+    test.setTimeout(40_000);
+    const preview = await openGenerating(page);
+    const surface = page.locator(".creation-editor-surface");
+    const before = await surface.boundingBox();
+    if (!before) throw new Error("preview surface missing");
+
+    const thumbs = page.getByRole("navigation", { name: "Slides" }).getByRole("button", {
+      name: /^Slide \d+$/,
+    });
+    await expect(thumbs).toHaveCount(0);
+    await expect(thumbs).toHaveCount(1, { timeout: 7_000 });
+    await expect(thumbs).toHaveCount(2, { timeout: 4_000 });
+    await thumbs.first().click();
+    await expect(thumbs.first()).toHaveAttribute("aria-current", "true");
+    const selectedId = await page.locator("[data-canvas-slide]").getAttribute("data-canvas-slide");
+    expect(selectedId).toBeTruthy();
+
+    await expect(thumbs).toHaveCount(3, { timeout: 4_000 });
+    await expect(thumbs.first()).toHaveAttribute("aria-current", "true");
+    await expect(page.locator("[data-canvas-slide]")).toHaveAttribute(
+      "data-canvas-slide",
+      selectedId ?? "",
+    );
+
+    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 25_000 });
+    await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible();
+    await expect(page.locator("[data-canvas] [data-slide-root]")).toHaveAttribute(
+      "data-slide-id",
+      selectedId ?? "",
+    );
+    const after = await surface.boundingBox();
+    if (!after) throw new Error("editor surface missing");
+    expect(Math.abs(after.width - before.width)).toBeLessThan(2);
+    expect(Math.abs(after.height - before.height)).toBeLessThan(2);
+  });
+
+  test("Back and Start again unmount the local generation fixture", async ({ page }) => {
+    test.setTimeout(20_000);
+    await openGenerating(page);
+    await page.getByRole("button", { name: "Start again" }).click();
+    await expect(page.getByTestId("creation-brief")).toBeVisible();
+    await page.waitForTimeout(5_200);
+    await expect(page.getByTestId("creation-generating")).toHaveCount(0);
+
+    await openGenerating(page);
+    await page.getByRole("button", { name: "Back to worksheets" }).click();
+    await expect(page.getByTestId("creation-worksheet")).toBeVisible();
+    await page.waitForTimeout(5_200);
+    await expect(page.getByTestId("creation-generating")).toHaveCount(0);
+  });
+
+  test("long objectives grow on mobile without losing focus or overflowing", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openObjectives(page);
+    const objective = page.getByRole("textbox", { name: "Objective 1" });
+    await objective.focus();
+    const initialHeight = await objective.evaluate(
+      (element) => element.getBoundingClientRect().height,
+    );
+    await objective.fill(
+      "Explain how vibrations make sounds and compare how those vibrations travel through solids, liquids and gases using precise scientific evidence.",
+    );
+    await expect(objective).toBeFocused();
+    const box = await objective.boundingBox();
+    if (!box) throw new Error("objective missing");
+    expect(box.height).toBeGreaterThan(initialHeight);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
   });
 });

@@ -54,6 +54,8 @@ export type GeneratingShellProps = {
    * nothing when there is no honest number).
    */
   estimate?: ReactNode;
+  /** Optional art-direction companion; stays mounted as the first slide arrives. */
+  canvasCompanion?: ReactNode;
   onBack: () => void;
   onStop: () => void;
   /**
@@ -76,6 +78,7 @@ export function GeneratingShell({
   lesson,
   events,
   estimate,
+  canvasCompanion,
   onBack,
   onStop,
   stop,
@@ -259,7 +262,11 @@ export function GeneratingShell({
           </ul>
         </nav>
 
-        <main className="flex min-w-0 flex-1 flex-col bg-canvas" data-canvas>
+        <main
+          className="relative flex min-w-0 flex-1 flex-col bg-canvas"
+          data-canvas
+          data-has-slides={Boolean(shown)}
+        >
           <div className="min-h-0 flex-1 p-10">
             {shown ? (
               <SlideScaler zoom="fit">
@@ -278,7 +285,7 @@ export function GeneratingShell({
                   <SlideView slide={shown} theme={theme} mode="view" />
                 </div>
               </SlideScaler>
-            ) : (
+            ) : canvasCompanion ? null : (
               <div className="flex h-full flex-col items-center justify-center text-center">
                 {/* The title in Lora before the first slide; the strip's dot is the spinner. */}
                 <Display as="span" size="lg" className="block">
@@ -315,6 +322,7 @@ export function GeneratingShell({
               </Button>
             ) : null}
           </div>
+          {canvasCompanion ? <div data-canvas-companion>{canvasCompanion}</div> : null}
         </main>
       </div>
     </div>
