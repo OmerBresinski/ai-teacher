@@ -562,3 +562,8 @@
     gap: 12px;
   }
 }
+@media (min-width: 761px) and (max-height: 700px) {
+  .creation-layout {
+    margin-top: 16px;
+  }
+}
