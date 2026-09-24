@@ -6,9 +6,9 @@ import {
   type PlanFactsObjectivePosition,
   REFERENCE_INSTRUCTION,
 } from "./plan-facts-objective";
-import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
+import { CURRICULUM_INSTRUCTION } from "./plan-objectives";
 import { shapeBlock } from "./shape";
-import { audienceBlock, HOUSE_RULES } from "./shared";
+import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./shared";
 
 /*
  * Plan, teach call, one objective at a time (lab/pw, wave 2; 24 Sept 2026). `plan-facts-objective`
@@ -32,10 +32,19 @@ import { audienceBlock, HOUSE_RULES } from "./shared";
  * appended. The item schemas are restated here rather than imported because v14 does not export
  * them; when v14 retires, move them here and import from this file.
  *
- * Input: `PlanFactsObjectiveInput` unchanged (the code path that built one builds this).
+ * Input: `PlanFactsObjectiveInput` plus the starter's questions (`retrieval`, contract C1).
+ *
+ * v2 (24 Sept 2026 audit, FIX-PLAN B1/B7): prior knowledge is read from the audience block alone
+ * (it was sent twice, under two labels); the starter's questions are shown as earlier learning, so
+ * a prerequisite the starter asks is not taught again as new; the pitch line keeps the content
+ * inside the year group's key stage (KS1 plants was taught photosynthesis in 3 of 4 runs).
+ * `priorKnowledge` stays on the input type for the callers and is no longer rendered.
  */
 
-export type PlanTeachObjectiveInput = PlanFactsObjectiveInput;
+export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
+  /** The starter's retrieval questions (C1): earlier learning, not taught here. Optional. */
+  retrieval?: Retrieval | undefined;
+};
 
 /** A text slot as `specs.ts` builds one; the soft build drops the cap only (see v14 `lineFor`). */
 const lineFor =
@@ -152,9 +161,7 @@ export function workedExampleLine(position: PlanFactsObjectivePosition): string 
 }
 
 /** The house rules less the `factRefs` line (no ids here) and the language-only pitch line (v14). */
-const TEACH_HOUSE_RULES = HOUSE_RULES.split("\n")
-  .filter((rule) => !rule.startsWith("Every fact id") && !rule.startsWith("Pitch the language"))
-  .join("\n");
+const TEACH_HOUSE_RULES = houseRules("british", "names");
 
 /** v14's limits line, the question fields removed. */
 const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
@@ -164,14 +171,14 @@ export const TEACH_SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v1",
+  version: "plan-teach-objective.v2",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
     "",
     "Rules:",
     TEACH_HOUSE_RULES,
-    "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
+    "Pitch the content, language, numbers and problem steps at the year group and reading level given, teaching nothing beyond that year group's key stage; explain any word a pupil at that level would not know.",
     "Write one or two key ideas, one misconception and up to two vocabulary terms.",
     "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers); the worked example takes a case of its own.",
     'A worked example may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea\'s date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.',
@@ -179,7 +186,7 @@ export const planTeachObjectivePrompt = {
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
     'Follow the brief\'s worked-example line. A worked example is the method on one problem; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
-    `Where the brief gives "${PRIOR_KNOWLEDGE_LABEL}", treat it as met and build nothing outside it.`,
+    'Where the brief gives "Prior knowledge", treat it as met and build nothing outside it.',
     LENGTH_LIMITS,
     "",
     "JSON, in this shape:",
@@ -188,13 +195,11 @@ export const planTeachObjectivePrompt = {
   user(input: PlanTeachObjectiveInput): string {
     const [shapeLine] = shapeBlock(input.shape);
     const parts = [`Topic or objective: ${input.topic}`, audienceBlock(input.audience)];
-    if (input.priorKnowledge) {
-      parts.push(`${PRIOR_KNOWLEDGE_LABEL}: ${input.priorKnowledge}`);
-    }
     parts.push(`Lesson shape: ${shapeLine}`, "", "Objectives of the lesson, by index:");
     input.objectives.forEach((objective, i) => {
       parts.push(`  ${i}: ${objective.text}`);
     });
+    parts.push(...retrievalBlock(input.retrieval));
     const target = input.objectives[input.target];
     parts.push(
       "",
