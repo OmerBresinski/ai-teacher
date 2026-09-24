@@ -7,7 +7,7 @@ import { distractorsEchoingAnswer } from "../specs";
 import { QUESTION_DEMANDS, QUESTION_FORMS } from "./plan-facts-objective";
 import type { PlanTeachObjectiveOutput } from "./plan-teach-objective";
 import { shapeBlock } from "./shape";
-import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
+import { type Audience, audienceBlock, houseRules } from "./shared";
 
 /*
  * Plan, question-set call (lab/pw, wave 4; 24 Sept 2026): the questions for ONE objective and ONE
@@ -239,9 +239,7 @@ export function taughtBlock(taught: PlanTeachObjectiveOutput): string {
 }
 
 /** The house rules less the `factRefs` line (no ids here) and the language-only pitch line (v14). */
-const QUESTION_HOUSE_RULES = HOUSE_RULES.split("\n")
-  .filter((rule) => !rule.startsWith("Every fact id") && !rule.startsWith("Pitch the language"))
-  .join("\n");
+const QUESTION_HOUSE_RULES = houseRules("british", "names");
 
 /** v14's limits line, the question fields only. */
 const LENGTH_LIMITS = `Length limits (characters): stem and answer ${SPEC_LIMITS.stem}; reasoning ${SPEC_LIMITS.footnote}; distractor ${SPEC_LIMITS.option}. A quotation is one line, cut with an ellipsis.`;

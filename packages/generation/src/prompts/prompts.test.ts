@@ -238,12 +238,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "6e73bc9bae5de3c29b18a7d60a3b0829b8f8aea81df6003517e91853692ebe43",
   },
   cascade: {
-    version: "cascade.v3",
-    hash: "026a9136c27701467d3c9175431114664ad646ad39c2df0f13d5699765b3667d",
+    version: "cascade.v4",
+    hash: "2ac2c429f2b3dc487829d322366acd6de3a88bc9d96d3e9b503f982fc27766d0",
   },
   regenerate: {
-    version: "regenerate.v3",
-    hash: "df75739369a00d8ce89e1d5e8e5e50a5deb7ea9cafe827c88c16f62019da4e3f",
+    version: "regenerate.v4",
+    hash: "decd8c0815c63c391acb2023b23a89aae83d1e2a886167ca0f238cac03bd5102",
   },
 };
 

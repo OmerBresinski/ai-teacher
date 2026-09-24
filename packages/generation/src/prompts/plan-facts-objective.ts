@@ -6,7 +6,7 @@ import type { LessonShape } from "../shapes";
 import { distractorsEchoingAnswer } from "../specs";
 import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
 import { shapeBlock } from "./shape";
-import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
+import { type Audience, audienceBlock, houseRules } from "./shared";
 
 /*
  * Plan, facts call, one objective at a time (F06-R13; ADR 0025 §17). The objectives call runs
@@ -517,9 +517,7 @@ function workedExampleLine(position: PlanFactsObjectivePosition): string | undef
  * sentence saying all three, with the house rule's "explain any word" clause kept, replaces it
  * rather than standing beside it.
  */
-const FACTS_HOUSE_RULES = HOUSE_RULES.split("\n")
-  .filter((rule) => !rule.startsWith("Every fact id") && !rule.startsWith("Pitch the language"))
-  .join("\n");
+const FACTS_HOUSE_RULES = houseRules("british", "names");
 
 /**
  * The caps `specs.ts` and `@tj/slides` enforce, stated so the model does not learn them from a
