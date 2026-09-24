@@ -7,6 +7,7 @@ import { sampleBriefLesson } from "../testing";
 import { planFactsObjectivePrompt, SHAPE_SKETCH } from "./plan-facts-objective";
 import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
 import {
+  EXIT_LINE,
   type PlanQuestionSetInput,
   type PlanQuestionSetOutput,
   PlanQuestionSetOutputSchema,
@@ -71,8 +72,8 @@ const SAMPLE: PlanQuestionSetInput = {
 };
 
 const PIN: { version: string; hash: string } = {
-  version: "plan-question-set.v2",
-  hash: "0e01265260eeccece337866556273e9aa1e53b16b43583cb7581b2da1d74642e",
+  version: "plan-question-set.v3",
+  hash: "386928365d92c18021eeb73b143b2a89e5385d505622324ea0ec93c2cbff4017",
 };
 
 const QUESTION = {
@@ -195,7 +196,12 @@ describe("plan-question-set", () => {
     expect(rendered).toContain(
       "Already asked of this objective, in its other set (write different questions):\n  - How did Roman roads change trade in Britain?\n  - What was a forum for?",
     );
-    expect(rendered).toMatch(/\nWrite 2 "exit" questions\.\nTiers: one "easy" and one "core"\.$/);
+    expect(rendered).toMatch(/\nWrite 2 "exit" questions\.\nTiers: one "easy" and one "core"\.\n/);
+    // v3: an exit call carries the exit quiz's line budget, from the outline's own caps.
+    expect(rendered.endsWith(`\n${EXIT_LINE}`)).toBe(true);
+    expect(EXIT_LINE).toBe(
+      'Each is one line of the exit quiz: either multiple choice, with a stem of at most 100 characters and the answer and each distractor at most 30; or "forms" ["open-response"] with no distractors and a stem of at most 160 characters.',
+    );
     // Nothing the call does not use: no curriculum, reference, prior-knowledge or other objectives.
     expect(rendered).not.toContain(CURRICULUM_INSTRUCTION);
     expect(rendered).not.toContain("Reference facts");
@@ -207,6 +213,7 @@ describe("plan-question-set", () => {
     const one = planQuestionSetPrompt.user({ ...bare, use: "slide", count: 1 });
     expect(one).not.toContain("Already asked");
     expect(one).toMatch(/\nWrite 1 "slide" question\.\nTier: "core"\.$/);
+    expect(one).not.toContain("exit quiz");
     expect(planQuestionSetPrompt.user({ ...bare, use: "slide", count: 4 })).toMatch(
       /\nWrite 4 "slide" questions\.\nTiers: at least one "easy", one "core" and one "stretch"\.$/,
     );

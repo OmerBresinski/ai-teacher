@@ -1142,11 +1142,30 @@ describe("lab r1 structure: sets, cycle checks, starter, exit quiz", () => {
     ).toBeGreaterThanOrEqual(EXIT_MIN);
   });
 
+  test("pw prompts-2: an exit question that rewords one already on the quiz stays off it", () => {
+    const facts = factsFor(3);
+    const reworded = facts.questions
+      .filter((q) => q.use === "exit")
+      .map((q) => ({ ...q, stem: q.stem.replace("Exit", "Second exit") }));
+    const r = run({
+      n: 3,
+      slideCount: 10,
+      facts: { ...facts, questions: [...facts.questions, ...reworded] },
+    });
+    const qs = questionRefs(r, exitAt(r));
+    expect(qs.some((i) => i >= facts.questions.length)).toBe(false);
+  });
+
   test("two exit questions per objective (facts v14): six items, two per objective", () => {
     const facts = factsFor(3);
     const extra = facts.questions
       .filter((q) => q.use === "exit")
-      .map((q) => ({ ...q, stem: q.stem.replace("Exit", "Second exit") }));
+      // A second question of its own on each objective, not the first reworded (a repeat stays off).
+      .map((q, k) => ({
+        ...q,
+        stem: `Give a fresh case that shows idea ${k + 1} in practice.`,
+        answer: "A case of its own",
+      }));
     const r = run({
       n: 3,
       slideCount: 10,

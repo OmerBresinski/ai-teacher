@@ -1,6 +1,7 @@
 import { QUESTION_TIERS, QUESTION_USES } from "@tj/domain/documents";
 import { editorialIssue, SPEC_LIMITS, type SpecSchemaOptions } from "@tj/slides";
 import { z } from "zod";
+import { LINE_MAX, MC_LINE_MAX } from "../lab/coded-slides";
 import type { LessonShape } from "../shapes";
 import { distractorsEchoingAnswer } from "../specs";
 import { QUESTION_DEMANDS, QUESTION_FORMS } from "./plan-facts-objective";
@@ -249,8 +250,22 @@ const LENGTH_LIMITS = `Length limits (characters): stem and answer ${SPEC_LIMITS
 export const QUESTION_SET_SHAPE_SKETCH =
   '{"questions":[{"stem":"…","answer":"…","reasoning":"…","tier":"core","use":"…","demand":"apply","forms":["multiple-choice","open-response"],"keyIdeaRefs":[{"type":"keyIdea","index":0}],"distractors":[{"text":"…"},{"text":"…"},{"text":"…"}]}]}';
 
+/**
+ * v3 (pw prompts-2): the exit quiz prints each exit question as one line, and the outline leaves off
+ * any that does not fit (`settable`: stem-only when under three distractors, else the multiple-choice
+ * line with its four options). v2 said "one line" without the budget, and 33 of 111 l1/l2 exit
+ * questions missed it (22 MC lines over 240, 8 stems over 160, 3 true-false only), each leaving its
+ * objective off the ticket. The numbers are the outline's own caps, the MC line split into a stem and
+ * per-option cap: one 220-character total still missed 7 of 33 on Luna (a model cannot sum five
+ * fields); per-field caps are what it can count.
+ */
+const EXIT_MC_STEM = 100;
+/** Four options share what the stem leaves of the line, less the letters and separators (16). */
+const EXIT_OPTION = Math.floor((MC_LINE_MAX - EXIT_MC_STEM - 16) / 4 / 5) * 5;
+export const EXIT_LINE = `Each is one line of the exit quiz: either multiple choice, with a stem of at most ${EXIT_MC_STEM} characters and the answer and each distractor at most ${EXIT_OPTION}; or "forms" ["open-response"] with no distractors and a stem of at most ${LINE_MAX} characters.`;
+
 export const planQuestionSetPrompt = {
-  version: "plan-question-set.v2",
+  version: "plan-question-set.v3",
   system: [
     "You are an experienced UK teacher writing the questions for one objective of a lesson, for one use, from the text its slides will teach.",
     "",
@@ -291,6 +306,7 @@ export const planQuestionSetPrompt = {
     }
     const noun = input.count === 1 ? "question" : "questions";
     parts.push("", `Write ${input.count} "${input.use}" ${noun}.`, tierLine(input.count));
+    if (input.use === "exit") parts.push(EXIT_LINE);
     return parts.join("\n");
   },
 } as const;

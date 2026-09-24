@@ -11,6 +11,7 @@ import { lessonShapeOf } from "../shapes";
 import { callLimitedBudget, FIXTURES, recordingDeps, sampleBriefLesson } from "../testing";
 import { StageFailure } from "../types";
 import {
+  fitsExitLine,
   LAB_PLANNED_VERSION,
   LAB_WAVES_PLANNED_VERSION,
   LabPlanBlocked,
@@ -779,6 +780,45 @@ describe("labPlan --waves (lab pw)", () => {
       questions: good.questions.map((q, i) => (i === 1 ? { ...q, keyIdeaRefs: [] } : q)),
     } as PlanQuestionSetOutput;
     expect(questionSetProblem(orphan, 3, 2)).toBe("question 2 names no supplied key idea");
+    // pw prompts-2: an exit question the exit quiz cannot print as a line, and a set that repeats itself.
+    const open = (stem: string) => ({
+      ...good.questions[0],
+      stem,
+      forms: ["open-response"],
+      distractors: [],
+    });
+    const exitSet = (qs: unknown[]) => ({ questions: qs }) as PlanQuestionSetOutput;
+    expect(questionSetProblem(exitSet([open("What is a forum?")]), 1, 2, "exit")).toBeUndefined();
+    expect(
+      questionSetProblem(exitSet([open(`What is a forum? ${"x".repeat(160)}`)]), 1, 2, "exit"),
+    ).toBe("exit question 1 does not fit one line of the exit quiz");
+    // A slide set is not held to the line.
+    expect(
+      questionSetProblem(exitSet([open(`What is a forum? ${"x".repeat(160)}`)]), 1, 2),
+    ).toBeUndefined();
+    const mc = (text: string) => ({
+      ...good.questions[0],
+      stem: "Which road ran from Dover?",
+      answer: "Watling Street",
+      forms: ["multiple-choice", "open-response"],
+      distractors: [{ text }, { text: "Fosse Way" }, { text: "Ermine Street" }],
+    });
+    expect(fitsExitLine(mc("Dere Street") as never)).toBe(true);
+    expect(fitsExitLine(mc("Watling Street") as never)).toBe(false); // an option repeats the answer
+    expect(fitsExitLine(mc("x".repeat(200)) as never)).toBe(false); // over the multiple-choice line
+    const repeat = exitSet([
+      {
+        ...open("Why did the government move children from cities such as London in 1939?"),
+        answer: "To protect them from bombing",
+      },
+      {
+        ...open(
+          "Why did the government move children from a British city to the countryside in 1939?",
+        ),
+        answer: "To protect them from possible bombing",
+      },
+    ]);
+    expect(questionSetProblem(repeat, 2, 2, "exit")).toBe("questions 1 and 2 ask the same thing");
   });
 
   test("a teach call that fails leaves its objective without facts; a set that fails leaves its questions out; the run goes on", async () => {

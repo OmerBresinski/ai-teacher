@@ -6,6 +6,7 @@ import {
   LINE_MAX,
   misconceptionLine,
   questionLine,
+  sameQuestion,
   seededOrder,
   withAnswersReveal,
   withShuffledOptions,
@@ -186,5 +187,41 @@ describe("the retrieval starter (r2)", () => {
     const coded = codedSetSpec(entry("starter", ["o1", "q1", "q2"]), facts, "s");
     expect((coded?.spec as { items?: string[] } | undefined)?.items).toHaveLength(2);
     expect(codedSetSpec(entry("starter", ["o1", "m1"]), facts, "s")).toBeUndefined();
+  });
+});
+
+describe("sameQuestion (pw prompts-2)", () => {
+  test("the same question reworded repeats; a new number or a new question does not", () => {
+    const q = (stem: string, answer: string) => ({ stem, answer });
+    expect(
+      sameQuestion(
+        q(
+          "Why did the British government move children from cities such as London in 1939?",
+          "To protect them from possible bombing by moving them to safer places",
+        ),
+        q(
+          "Why did the government move children from a British city to the countryside in 1939?",
+          "To protect them from possible bombing in the city",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      sameQuestion(
+        q("Simplify the ratio 8:12 by dividing both parts by their HCF.", "2:3"),
+        q(
+          "A shop has 15 red pens and 25 blue pens. Simplify the ratio by dividing both parts by their HCF.",
+          "3:5",
+        ),
+      ),
+    ).toBe(false);
+    expect(
+      sameQuestion(
+        q("How can a sea wall reduce erosion of a cliff?", "It reflects wave energy"),
+        q(
+          "Why might a sea wall cause problems further along the coast?",
+          "It can increase erosion elsewhere",
+        ),
+      ),
+    ).toBe(false);
   });
 });

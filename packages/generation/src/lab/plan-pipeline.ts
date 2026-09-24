@@ -37,7 +37,13 @@ import {
   planTeachObjectiveOutputSchemaFor,
   planTeachObjectivePrompt,
 } from "../prompts/plan-teach-objective";
-import { assignFactIds, OUTLINE_FROM_FACTS_VERSION, type PlanFactsLike } from "../specs";
+import {
+  askableAsStem,
+  assignFactIds,
+  distractorsEchoingAnswer,
+  OUTLINE_FROM_FACTS_VERSION,
+  type PlanFactsLike,
+} from "../specs";
 import { evaluate } from "../stages/evaluate";
 import { generate } from "../stages/generate";
 import { illustrate } from "../stages/illustrate";
@@ -54,6 +60,7 @@ import {
   StageFailure,
   type VerifyResult,
 } from "../types";
+import { fitsLine, questionLine, sameQuestion } from "./coded-slides";
 import { type ObjectiveQuestionDemand, questionDemand, sketchTaught } from "./question-demand";
 
 /*
@@ -830,6 +837,7 @@ export function questionSetProblem(
   output: PlanQuestionSetOutput,
   count: number,
   keyIdeaCount: number,
+  use: QuestionSetUse = "slide",
 ): string | undefined {
   if (output.questions.length < count - 1)
     return `${output.questions.length} questions for ${count} asked`;
@@ -837,7 +845,35 @@ export function questionSetProblem(
     .slice(0, count)
     .findIndex((q) => !(q.keyIdeaRefs ?? []).some((r) => r.index >= 0 && r.index < keyIdeaCount));
   if (orphan >= 0) return `question ${orphan + 1} names no supplied key idea`;
+  const asked = output.questions.slice(0, count);
+  if (use === "exit") {
+    const long = asked.findIndex((q) => !fitsExitLine(q));
+    if (long >= 0) return `exit question ${long + 1} does not fit one line of the exit quiz`;
+  }
+  for (let b = 1; b < asked.length; b++) {
+    const a = asked
+      .slice(0, b)
+      .findIndex((q) => sameQuestion(q, asked[b] as (typeof asked)[number]));
+    if (a >= 0) return `questions ${a + 1} and ${b + 1} ask the same thing`;
+  }
   return undefined;
+}
+
+/**
+ * The outline's `settable` for one exit question, before the outline runs (pw prompts-2): under
+ * three distractors, asked as a stem that fits a line; three or more, a multiple-choice line whose
+ * options do not repeat the answer and which fits the multiple-choice cap. An exit question that
+ * fails is left off the quiz, and its objective with it.
+ */
+export function fitsExitLine(q: PlanQuestionSetOutput["questions"][number]): boolean {
+  const line = questionLine(q);
+  if (askableAsStem(q)) return fitsLine(line);
+  return (
+    (q.forms ?? []).includes("multiple-choice") &&
+    line.mc === true &&
+    distractorsEchoingAnswer(q).length === 0 &&
+    fitsLine(line)
+  );
 }
 
 /**
@@ -977,7 +1013,7 @@ export async function runWaves(
             let why: string;
             try {
               first = await ask();
-              const problem = questionSetProblem(first.output, count, taught.keyIdeas.length);
+              const problem = questionSetProblem(first.output, count, taught.keyIdeas.length, use);
               if (!problem) return first;
               why = problem;
             } catch (error) {

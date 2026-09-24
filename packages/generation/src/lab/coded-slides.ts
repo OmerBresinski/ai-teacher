@@ -133,6 +133,78 @@ export function mcOptions(
   return shuffled(options, seed);
 }
 
+/** Words that carry no content for `sameQuestion`: short words and the usual question frame. */
+const FRAME_WORDS = new Set([
+  "what",
+  "which",
+  "why",
+  "how",
+  "does",
+  "did",
+  "that",
+  "this",
+  "these",
+  "those",
+  "with",
+  "from",
+  "into",
+  "they",
+  "their",
+  "them",
+  "there",
+  "when",
+  "would",
+  "could",
+  "should",
+  "about",
+  "your",
+  "have",
+  "been",
+  "were",
+  "will",
+  "than",
+  "then",
+  "some",
+  "most",
+  "more",
+  "each",
+  "because",
+]);
+const contentWords = (text: string): Set<string> =>
+  new Set(
+    (text.toLowerCase().match(/[a-z]+|\d+(?:\.\d+)?/g) ?? []).filter(
+      (w) => /\d/.test(w) || (w.length >= 4 && !FRAME_WORDS.has(w)),
+    ),
+  );
+/** Share of the smaller question's content words the other repeats at or above which two questions ask the same thing. */
+export const SAME_QUESTION_OVERLAP = 0.6;
+/**
+ * Two questions ask the same thing: their stems and answers share most content words (words of
+ * four letters or more outside the question frame, and every number). Measured on the l1/l2 exit
+ * quizzes (pw prompts-2): a slide question topped up beside the exit question written in parallel
+ * on the same key idea ("Why did the government move children from cities in 1939?" twice). Two
+ * questions whose numbers differ are never the same ("Simplify 8:12" and "Simplify 15:25" are two
+ * practice items), so a set of practice on one method is not a repeat.
+ */
+export function sameQuestion(
+  a: Pick<LineQuestion, "stem" | "answer">,
+  b: Pick<LineQuestion, "stem" | "answer">,
+): boolean {
+  const x = contentWords(`${a.stem} ${a.answer}`);
+  const y = contentWords(`${b.stem} ${b.answer}`);
+  const numbers = (set: Set<string>) =>
+    [...set]
+      .filter((w) => /\d/.test(w))
+      .sort()
+      .join(" ");
+  if (numbers(x) !== numbers(y)) return false;
+  const smaller = Math.min(x.size, y.size);
+  if (smaller === 0) return false;
+  let shared = 0;
+  for (const w of x) if (y.has(w)) shared++;
+  return shared / smaller >= SAME_QUESTION_OVERLAP;
+}
+
 /** A question as one line of a set, with its answer. */
 export function questionLine(q: LineQuestion, seed = ""): Line {
   const options = mcOptions(q, seed);

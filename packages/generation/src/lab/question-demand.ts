@@ -189,7 +189,8 @@ export function placeholderQuestions(
     for (const use of ["slide", "exit"] as const) {
       for (let n = 0; n < per[use]; n++) {
         const stem = padTo(
-          `${use} question ${n + 1} for objective ${o + 1}?`,
+          // A tag of its own ("1.2"), so no two placeholders read as one question (`sameQuestion`).
+          `${use} question ${o + 1}.${n + 1}?`,
           PLACEHOLDER_STEM_CHARS,
         );
         questions.push({

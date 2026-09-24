@@ -17,11 +17,10 @@ import {
   SET_MAX,
   SET_MIN,
   STARTER_MAX,
-  sameQuestion,
-} from "./lab/coded-slides";
-import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
-import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
-import type { LessonShape } from "./shapes";
+} from "../../src/lab/coded-slides";
+import type { QuestionDemand, QuestionForm } from "../../src/merge-objective-facts";
+import { explainSentence, practiseSentence, slidesFor } from "../../src/prompts/shape";
+import type { LessonShape } from "../../src/shapes";
 import {
   askableAsStem,
   distractorsEchoingAnswer,
@@ -29,7 +28,7 @@ import {
   type OrdinalRef,
   type PlanFactsLike,
   type PlanSkeleton,
-} from "./specs";
+} from "../../src/specs";
 
 /*
  * The outline, built in code from the merged per-objective facts (ADR 0025 §7: the skeleton the
@@ -1078,12 +1077,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         ? facts.questions[it.index]?.objectiveRefs
         : facts.misconceptions[it.index]?.objectiveRefs,
     );
-  /** Two question items ask the same thing (`sameQuestion`); a misconception line never repeats. */
-  const repeats = (a: ExitItem, b: ExitItem) => {
-    const x = a.type === "question" ? facts.questions[a.index] : undefined;
-    const y = b.type === "question" ? facts.questions[b.index] : undefined;
-    return x !== undefined && y !== undefined && sameQuestion(x, y);
-  };
   const questionItem = (i: number): ExitItem => ({
     type: "question",
     index: i,
@@ -1109,9 +1102,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         return { i, at, n };
       })
       .sort((a, b) => a.n - b.n || a.at - b.at)
-      .map((r) => questionItem(r.i))
-      // pw: a later exit question that asks what an earlier one asks stays off the quiz.
-      .filter((it, at, all) => !all.slice(0, at).some((prior) => repeats(prior, it)));
+      .map((r) => questionItem(r.i));
     const kept = keptLines(
       ranked.map((it) => ({ ...it.line, it })),
       EXIT_QUIZ_MAX,
@@ -1138,7 +1129,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       for (const it of sorted) {
         if (exitItems.length >= EXIT_QUIZ_MIN) return;
         if (!fitsLine(it.line) || chars() + it.line.text.length > EXIT_CHARS) continue;
-        if (exitItems.some((on) => repeats(on, it))) continue;
         exitItems.push(it);
       }
     };
