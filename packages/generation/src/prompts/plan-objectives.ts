@@ -146,6 +146,19 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *  - 276 -> 346 system words (role +5, the rule 40, the prior-knowledge clause 6, the sketch's one
  *    retrieval item 19); the test's alarm moves to 360 with the growth accounted for above.
  *
+ * v13 (24 Sept 2026, rounds r3/r4 recorded runs, `eval/results/lab/*` "starter retrieval"): in 4 of
+ * 13 v12 runs the three questions asked this lesson's own content, the objectives the same answer
+ * had just written, so the starter pre-tested the lesson and the blind judges marked it
+ * tested-not-taught again (Y9 coasts: "waves compressing air in cracks" and "hard and soft
+ * engineering" are objectives 1 and 3 restated; Y4 Romans: Claudius, slide 4; Y11 rates: powder
+ * versus lump, the surface-area objective; Y10 Tempest: whom Prospero controls, the topic). v12
+ * bounded the source by time only ("earlier lessons that this lesson builds on ... answerable
+ * before this lesson begins"), and every brief's shape line says the class has "some prior
+ * knowledge of the topic", so the topic itself read as fair game. The bound is now the one thing
+ * the call can check against: the objectives, which precede `retrieval` in the answer. The rule
+ * asks for what "the objectives build on and none of them covers"; the time clause is gone, since
+ * "learned in an earlier lesson" says it once and it did not hold on its own. 346 -> 343 words.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -177,9 +190,9 @@ const objectiveText = z.string().min(8).max(120);
 const curriculumAnchor = z.string().max(160);
 
 /**
- * One retrieval question for the starter, with its answer (v12). Prior knowledge from earlier
- * lessons, so a pupil can answer it before this lesson teaches anything; the outline places the
- * three on the starter slide.
+ * One retrieval question for the starter, with its answer (v12). Knowledge from an earlier lesson
+ * that the objectives build on and none of them covers (v13), so a pupil can answer it before this
+ * lesson teaches anything; the outline places the three on the starter slide.
  */
 export const PlanRetrievalQuestionSchema = z.strictObject({
   question: z.string().min(8).max(200),
@@ -262,7 +275,7 @@ const SHAPE_SKETCH =
   '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "curriculumAnchor": "the Roman Empire and its impact on Britain" }], "retrieval": [{ "question": "What metal did Iron Age Britons use to make tools?", "answer": "Iron" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v12",
+  version: "plan-objectives.v13",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
@@ -271,7 +284,7 @@ export const planObjectivesPrompt = {
     "Each objective is one idea, at most 16 words, starting with one observable verb: what a pupil can do by the end.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
     "Give as many objectives as the topic has: usually two or three; one for one tight skill; four only for four distinct parts. Never split one idea or add a filler line to make another.",
-    "Each retrieval question, with its answer, asks what this year group already knows from earlier lessons that this lesson builds on, so it is answerable before this lesson begins, in one line or by picking from options the question names.",
+    "Each retrieval question, with its answer, asks something this year group learned in an earlier lesson that the objectives build on and none of them covers, in one line or by picking from options the question names.",
     `Where the brief gives "${PRIOR_KNOWLEDGE_LABEL}", keep every objective inside that material, still reach the lesson's verb, and draw the retrieval questions from it.`,
     'Where the topic spans the curriculum extract\'s unit, the objectives span its arc, not its opening lesson. Put the learning point or bullet each objective serves in "curriculumAnchor".',
     "",

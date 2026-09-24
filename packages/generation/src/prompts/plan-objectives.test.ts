@@ -42,8 +42,8 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 };
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v12",
-  hash: "4190154b975c3dcc388019875552b9c983d1f6f2ae8f7062691200a6d109d7ee",
+  version: "plan-objectives.v13",
+  hash: "01d178fc53eb553fcb2afc04780dafc860c40cee11cc2beb2d1b987f52e8ac6b",
 };
 
 describe("plan-objectives", () => {
@@ -64,7 +64,7 @@ describe("plan-objectives", () => {
      */
     // v7 (minimalism rubric, 23 Sept 2026) trimmed 409 to 299; v8 303; v9 297; v10 276. The alarm
     // follows it down. v12 (24 Sept) adds the retrieval questions: 346, each clause on a judged
-    // failure (see the file header), so the alarm moves up once, by that growth.
+    // failure (see the file header), so the alarm moves up once, by that growth. v13: 343.
     expect(system.trim().split(/\s+/).length).toBeLessThan(360);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
@@ -178,12 +178,15 @@ describe("plan-objectives", () => {
   test("retrieval: three prior-knowledge questions for the starter, asked once, optional in the schema", () => {
     /*
      * v12 (round 1 judges): starters built from the lesson's own questions were marked
-     * tested-not-taught in 8 of 12 decks. The prose carries the count and the test the judge
-     * applies; the sketch carries the slot; the schema pins the count and bounds each string.
+     * tested-not-taught in 8 of 12 decks. The prose carries the count; the sketch carries the
+     * slot; the schema pins the count and bounds each string. v13 (r3/r4 runs): 4 of 13 v12
+     * starters restated the objectives, so the bound is the objectives themselves, not a time
+     * clause.
      */
     const system = planObjectivesPrompt.system;
     expect(system).toContain("three retrieval questions for its starter");
-    expect(system).toContain("answerable before this lesson begins");
+    expect(system).toContain("the objectives build on and none of them covers");
+    expect(system).not.toContain("answerable before this lesson begins");
     expect(system).toContain('"retrieval": [{ "question"');
     // The count appears once in the prose (the sketch shows one item, as it does for objectives).
     expect(system.match(/three retrieval/g)).toHaveLength(1);
