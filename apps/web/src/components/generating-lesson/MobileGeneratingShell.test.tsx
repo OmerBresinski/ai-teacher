@@ -27,7 +27,7 @@ it("shows full slide cards without desktop rails and preserves Stop and export",
   );
   expect(document.querySelectorAll("[data-mobile-slide]").length).toBe(lesson.slides.length);
   expect(document.querySelector("[data-insert-rail-placeholder]")).toBeNull();
-  expect(document.querySelector("[data-mobile-loading-slot]")).toHaveTextContent("Slide companion");
+  expect(document.querySelector("[data-mobile-companion]")).toHaveTextContent("Slide companion");
   expect(screen.getByRole("button", { name: "Export" })).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Stop" }));
   expect(onStop).toHaveBeenCalledTimes(1);

@@ -1,3 +1,4 @@
+import { SLIDE_COUNTS } from "@tj/domain/documents";
 import {
   Button,
   Label,
@@ -193,6 +194,7 @@ function ObjectiveInput({
       ref={ref}
       className="creation-objective-input"
       aria-label={label}
+      maxLength={300}
       required
       rows={1}
       value={value}
@@ -207,9 +209,7 @@ export function ObjectivesStep({
   objectives,
   onChange,
   slideCount,
-  duration,
   onSlideCount,
-  onDuration,
   onBack,
   onGenerate,
 }: {
@@ -217,9 +217,9 @@ export function ObjectivesStep({
   objectives: ObjectiveDraft[];
   onChange: (objectives: ObjectiveDraft[]) => void;
   slideCount: string;
-  duration: string;
+  duration?: string;
   onSlideCount: (value: string) => void;
-  onDuration: (value: string) => void;
+  onDuration?: (value: string) => void;
   onBack: () => void;
   onGenerate: () => void;
 }) {
@@ -268,6 +268,9 @@ export function ObjectivesStep({
           variant="link"
           size="sm"
           disabled={objectives.length >= 4}
+          aria-label={
+            objectives.length >= 4 ? "Add objective — maximum 4 objectives reached" : undefined
+          }
           onClick={() => onChange([...objectives, { id: crypto.randomUUID(), text: "" }])}
         >
           <Plus /> Add objective
@@ -280,19 +283,9 @@ export function ObjectivesStep({
             label="Slides"
             value={slideCount}
             onChange={onSlideCount}
-            options={[6, 7, 8, 10, 12].map((value) => ({
+            options={SLIDE_COUNTS.map((value) => ({
               value: String(value),
               label: `${value} slides`,
-            }))}
-          />
-          <ChoiceField
-            compact
-            label="Lesson length"
-            value={duration}
-            onChange={onDuration}
-            options={[30, 45, 60, 90].map((value) => ({
-              value: String(value),
-              label: `${value} minutes`,
             }))}
           />
         </div>
@@ -333,12 +326,14 @@ const RECIPES = [
 ];
 export function WorksheetStep({
   worksheets,
+  maxWorksheets = Infinity,
   onChange,
   onBack,
   onMake,
   onSkip,
 }: {
   worksheets: WorksheetDraft[];
+  maxWorksheets?: number;
   onChange: (worksheets: WorksheetDraft[]) => void;
   onBack: () => void;
   onMake: () => void;
@@ -398,19 +393,21 @@ export function WorksheetStep({
             </div>
           </section>
         ))}
-        <Button
-          variant="link"
-          className="creation-add-action"
-          size="sm"
-          onClick={() =>
-            onChange([
-              ...worksheets,
-              { id: crypto.randomUUID(), recipe: "exit-ticket", minutes: "5" },
-            ])
-          }
-        >
-          <Plus /> Add another worksheet
-        </Button>
+        {worksheets.length < maxWorksheets ? (
+          <Button
+            variant="link"
+            className="creation-add-action"
+            size="sm"
+            onClick={() =>
+              onChange([
+                ...worksheets,
+                { id: crypto.randomUUID(), recipe: "exit-ticket", minutes: "5" },
+              ])
+            }
+          >
+            <Plus /> Add another worksheet
+          </Button>
+        ) : null}
       </div>
       <div className="creation-step-footer">
         <div className="creation-actions">

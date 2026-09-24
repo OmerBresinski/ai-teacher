@@ -47,8 +47,8 @@ describe("router", () => {
     const ids = Object.keys(router.routesById);
     const authed = ids.filter((id) => id !== "__root__" && id !== "/sign-in" && id !== "/auth");
     expect(authed.every((id) => id.startsWith("/auth/"))).toBe(true);
-    // The seven shell pages share the pathless `library` layout (sidebar, dialogs, shell memory).
-    expect(ids.filter((id) => id.startsWith("/auth/library/"))).toHaveLength(7);
+    // The six shell pages share the pathless `library` layout (sidebar, dialogs, shell memory).
+    expect(ids.filter((id) => id.startsWith("/auth/library/"))).toHaveLength(6);
     // Document routes sit beside it: no sidebar. (`/auth/dev/jobs` joins them in dev/preview only.)
     expect(ids.filter((id) => /^\/auth\/(l|w)\//.test(id))).toHaveLength(6);
   });

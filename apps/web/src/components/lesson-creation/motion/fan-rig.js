@@ -1,5 +1,3 @@
-import { gsap } from "gsap";
-
 // Original Fan.Check.Square geometry and gestures; demo gallery/observers removed.
 const card = (fill = "#faf4df") =>
   `<rect x="-31" y="-22" width="62" height="44" rx="2" fill="${fill}"/><path class="detail" d="M-20 10 -8-3 3 6 14-8 23 10Z" fill="#e88f52"/><circle class="detail" cx="16" cy="-10" r="4" fill="#f5c054"/>`;
@@ -11,7 +9,7 @@ function svg(i) {
   return `<svg class="scene" viewBox="0 0 420 300" aria-hidden="true"><defs><clipPath id="${id}"><rect x="0" y="0" width="326" height="300"/></clipPath></defs><path d="M34 252H389" stroke="#bec9b9"/><ellipse cx="205" cy="251" rx="76" ry="5" fill="#293b32" opacity=".07" stroke="none"/>${i === 2 ? `<g class="receiver"><path d="M319 182 343 173 392 182v61l-24 8-49-8Z" fill="#cbdcb5"/><path d="m319 182 49 9 24-9M368 191v60"/><path d="M319 194v33" stroke-width="5"/><g class="display"><path d="M339 197 359 201v24l-20-4Z" fill="#faf4df"/><path d="m342 215 5-8 5 7 4-3" stroke-width="1.5"/></g><circle class="indicator" cx="351" cy="236" r="2" fill="#81976a"/></g>` : ""}${i === 2 ? pile(76, 238, "#faf4df") : ""}<path class="legs"/><g class="body"><path class="side" d="M-65-70-53-78 65-67 54-59v128l-119-9Z" fill="#dfab43"/><path d="M-64-66 55-56V70L-64 60Z" fill="#faf4df"/><path d="M-59-70 64-58V66L-59 54Z" fill="#f5c054"/><path class="detail" d="M-41-47 44-39"/><path d="M-38 30-17 9-1 23 19 1 48 37Z" fill="#e88f52"/><circle cx="38" cy="-22" r="9" fill="#fff3cb"/><g class="face"><g class="eyes"><path class="eye-left" fill="#293b32" stroke="none" d="M-25 -13C-25 -17 -19 -17 -19 -13C-19 -9 -25 -9 -25 -13Z"/><path class="eye-right" fill="#293b32" stroke="none" d="M-1 -11C-1 -15 5 -15 5 -11C5 -7 -1 -7 -1 -11Z"/></g><path class="mouth" d="M-15-1q7 9 16 1"/></g></g><path class="arm left"/><path class="arm right"/><g ${i === 2 ? `clip-path="url(#${id})"` : ""}><g class="held"><g class="fan-a">${card()}</g><g class="fan-b">${card("#e4edcf")}</g><g class="fan-c">${card("#faf4df")}</g></g></g><path class="fingers left"/><path class="fingers right"/></svg>`;
 }
 // Scene coordinates are explicit so a carried slide and its gripping hands cannot drift apart.
-function setup(el, i) {
+function setup(el, i, gsap) {
   const b = el.querySelector(".body"),
     held = el.querySelector(".held"),
     left = el.querySelector(".arm.left"),
@@ -206,4 +204,4 @@ function setup(el, i) {
   return state;
 }
 
-export const fanRig = { markup: () => svg(1), mount: (el) => setup(el, 1) };
+export const fanRig = { markup: () => svg(1), mount: (el, gsap) => setup(el, 1, gsap) };

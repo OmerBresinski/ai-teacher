@@ -1,5 +1,5 @@
-import { gsap } from "gsap";
-import { type Ref, useEffect, useImperativeHandle, useRef } from "react";
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { loadGsap } from "@/lib/gsap";
 import type { CharacterCapture } from "./character-origin";
 import { createHandoverRig, type HandoverRig } from "./motion/handover-rig.js";
 
@@ -32,6 +32,20 @@ export function CharacterHost({
   initialStage?: CharacterStage;
   slidesPhase?: "making" | "stacking";
 }) {
+  const [gsap, setGsap] = useState<Awaited<ReturnType<typeof loadGsap>> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void loadGsap()
+      .then((runtime) => {
+        if (!cancelled) setGsap(runtime);
+      })
+      .catch(() => {
+        /* Characters are optional; the form remains usable if its chunk fails. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const element = useRef<HTMLDivElement>(null);
   const rig = useRef<HandoverRig | null>(null);
   useImperativeHandle(
@@ -53,20 +67,20 @@ export function CharacterHost({
   const phase = useRef(slidesPhase);
   phase.current = slidesPhase;
   useEffect(() => {
-    if (!element.current) return;
+    if (!element.current || !gsap) return;
     previous.current = initialStage;
     const context = gsap.context(() => {
-      rig.current = createHandoverRig(element.current as HTMLDivElement);
+      rig.current = createHandoverRig(element.current as HTMLDivElement, gsap);
     });
     return () => {
       rig.current?.dispose();
       rig.current = null;
       context.revert();
     };
-  }, [initialStage]);
+  }, [initialStage, gsap]);
   useEffect(() => {
     const actor = rig.current;
-    if (!actor) return;
+    if (!actor || !gsap) return;
     const from = OWNER[previous.current],
       to = OWNER[stage];
     previous.current = stage;
@@ -93,7 +107,7 @@ export function CharacterHost({
                   ? 4
                   : 3;
           // Finish the current creation gesture before sorting its completed deck.
-          work(next, to === 1 ? !(beat === 3 && next === 4) : to === 2 && next === 6);
+          work(next, to === 1 ? beat !== 3 : to === 2 && next === 6);
         },
       });
     };
@@ -118,6 +132,6 @@ export function CharacterHost({
       cancelled = true;
       media.removeEventListener("change", changed);
     };
-  }, [stage]);
+  }, [stage, gsap]);
   return <div ref={element} className="handover-stage" aria-hidden="true" />;
 }

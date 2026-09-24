@@ -1,53 +1,61 @@
-import { gsap } from "gsap";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { CHARACTER_ENTRY_SECONDS, type CharacterOrigin } from "./character-origin";
 import { createHandoverRig, type HandoverRig } from "./motion/handover-rig.js";
 
 /** Data drives the story; completed gestures hand over without holding up the editor. */
 export function GenerationStory({
+  gsap,
   includedWorksheet,
   origin,
   progress,
   ready,
+  checking,
+  skipIntro = false,
   paused,
   onFinished,
 }: {
+  gsap: typeof import("gsap").gsap;
   includedWorksheet: boolean;
   origin: CharacterOrigin | null;
   progress: number;
   ready: boolean;
+  checking?: boolean;
+  skipIntro?: boolean;
   paused: boolean;
   onFinished: () => void;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const rig = useRef<HandoverRig | null>(null);
-  const latest = useRef({ progress, ready, paused, onFinished });
-  latest.current = { progress, ready, paused, onFinished };
+  const latest = useRef({ progress, ready, checking: checking ?? ready, paused, onFinished });
+  latest.current = { progress, ready, checking: checking ?? ready, paused, onFinished };
   useLayoutEffect(() => {
     const root = element.current;
     if (!root) return;
     let cancelled = false;
     const context = gsap.context(() => {
-      rig.current = createHandoverRig(root);
+      rig.current = createHandoverRig(root, gsap);
     });
     const actor = rig.current;
     if (!actor) return;
     const finish = () => {
       if (!cancelled) latest.current.onFinished();
     };
+    const inspectLoop = () => {
+      if (cancelled) return;
+      actor.play(9, {
+        withWorksheet: includedWorksheet,
+        onComplete: () => {
+          if (latest.current.ready) actor.play(10, { reset: false, onComplete: finish });
+          else inspectLoop();
+        },
+      });
+    };
     const inspect = () => {
       if (cancelled) return;
       actor.play(5, {
         handoff: { from: 1, to: 3 },
         speed: 1.45,
-        onComplete: () => {
-          actor.play(9, {
-            withWorksheet: includedWorksheet,
-            onComplete: () => {
-              actor.play(10, { reset: false, onComplete: finish });
-            },
-          });
-        },
+        onComplete: inspectLoop,
       });
     };
     const work = (beat: number, reset = true) => {
@@ -56,16 +64,27 @@ export function GenerationStory({
         reset,
         withWorksheet: includedWorksheet,
         onComplete: () => {
-          if (latest.current.ready && beat === 4) return inspect();
-          const next = latest.current.ready || latest.current.progress >= 0.75 ? 4 : 3;
-          work(next, !(beat === 3 && next === 4));
+          if (latest.current.ready && !latest.current.checking) return finish();
+          if ((latest.current.checking || latest.current.ready) && beat === 4) return inspect();
+          const next =
+            latest.current.checking || latest.current.ready || latest.current.progress >= 0.75
+              ? 4
+              : 3;
+          // Keep the completed deck under the next blank slide; do not resurrect the brief.
+          work(next, beat !== 3);
         },
       });
     };
-    let entry: gsap.core.Tween | null = null;
-    root.dataset.entry = origin && !actor.reduced ? "travelling" : "arrived";
+    let entry: ReturnType<typeof gsap.delayedCall> | null = null;
+    root.dataset.entry = origin && !actor.reduced && !skipIntro ? "travelling" : "arrived";
     if (actor.reduced) actor.settle(3);
-    else {
+    else if (skipIntro) {
+      if (latest.current.ready && !latest.current.checking) finish();
+      else if (latest.current.checking || latest.current.ready) {
+        actor.settle(4);
+        inspect();
+      } else work(3);
+    } else {
       if (origin) actor.restore(origin.pose);
       else actor.settle(7);
       entry = gsap.delayedCall(origin ? CHARACTER_ENTRY_SECONDS : 0, () => {
@@ -96,7 +115,7 @@ export function GenerationStory({
       rig.current = null;
       context.revert();
     };
-  }, [includedWorksheet, origin]);
+  }, [includedWorksheet, origin, skipIntro, gsap]);
   useEffect(() => {
     rig.current?.pause(paused);
   }, [paused]);

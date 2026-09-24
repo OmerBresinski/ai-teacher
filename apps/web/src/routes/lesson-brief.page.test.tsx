@@ -1,411 +1,131 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { GUARD_MESSAGE } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
-import { queryKeys } from "@/lib/query";
 import { installFakeApi } from "@/test/fake-api";
 
-const { fakeApi, restore: restoreFetch } = installFakeApi();
-
+const { fakeApi, restore } = installFakeApi();
 const navigate = mock();
-const toastSpy = mock();
-/** What `useSearch` returns: the marketing site's `?topic=` and `?source=1` (TEACH-309). */
-let search: { topic?: string; source?: "1" } = {};
+let search: { topic?: string; source?: "1"; lesson?: string } = {};
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
   ...actualRouter,
-  Link: ({ children, ...props }: { children: ReactNode }) => <a {...props}>{children}</a>,
+  Link: ({ children }: { children: ReactNode }) => <a href="/lessons">{children}</a>,
   useNavigate: () => navigate,
   useSearch: () => search,
 }));
-const actualUi = await import("@tj/ui");
-mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
-
+mock.module("@/components/lesson-creation/character-host", () => ({ CharacterHost: () => null }));
 const { LessonBriefPage } = await import("./lesson-brief.page");
-
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const view = render(
-    <QueryClientProvider client={queryClient}>
+function show() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
       <TooltipProvider>
         <LessonBriefPage />
       </TooltipProvider>
     </QueryClientProvider>,
   );
-  return { ...view, queryClient };
 }
-
-const topicBox = () => screen.getByRole("textbox", { name: "Topic or objective" });
-const createButton = () => screen.getByRole("button", { name: "Plan it" });
-const LAST_CLASS_KEY = "tj:brief:last-class";
-const lastPost = () => fakeApi.requests.filter((r) => r.path === "/lessons").at(-1);
-
-/** Radix Select opens on a real pointer sequence, so drive it with user-event. */
-async function pickYearGroup(label: string): Promise<void> {
-  const user = userEvent.setup();
-  await user.click(screen.getByRole("combobox", { name: "Year group" }));
-  await user.click(screen.getByRole("option", { name: label }));
-}
-
-describe("LessonBriefPage", () => {
+const post = () =>
+  fakeApi.requests.filter((r) => r.path === "/lessons").at(-1)?.body as {
+    brief: Record<string, unknown>;
+    requestId: string;
+    skipPlanning: boolean;
+    yearGroup: string;
+  };
+describe("real lesson intake", () => {
   beforeEach(() => {
-    navigate.mockReset();
-    toastSpy.mockReset();
-    search = {};
     cleanup();
     fakeApi.reset();
+    fakeApi.requests.length = 0;
+    navigate.mockReset();
     localStorage.clear();
+    search = {};
   });
   afterAll(() => {
-    mock.restore();
-    restoreFetch();
-  });
-
-  it("prefills ?topic= from the marketing site, focuses Subject, and runs the guard at once (TEACH-309)", () => {
-    search = { topic: "Fractions of amounts" };
-    renderPage();
-    expect(topicBox()).toHaveValue("Fractions of amounts");
-    expect(screen.getByRole("combobox", { name: "Subject" })).toHaveFocus();
-    expect(createButton()).toBeEnabled();
-    expect(navigate).not.toHaveBeenCalled();
-
     cleanup();
-    search = { topic: "a pupil called Amelia" };
-    renderPage();
-    // A prefilled topic is treated as typed-and-blurred: the guard hint shows without a blur.
-    expect(screen.getByRole("status")).toHaveTextContent(/pupil/i);
-    expect(createButton()).toBeDisabled();
+    restore();
+    mock.restore();
   });
-
-  it("focuses the topic, disables Create until there is one, and defaults the duration by key stage", async () => {
-    renderPage();
-    expect(topicBox()).toHaveFocus();
-    expect(createButton()).toBeDisabled();
-    const duration = screen.getByRole("spinbutton", { name: "Duration (minutes)" });
-    expect(duration).toHaveAttribute("placeholder", "60");
-
-    // The disabled primary says why.
-    expect(screen.getByRole("status")).toHaveTextContent("Type a topic to plan the lesson.");
-    fireEvent.change(topicBox(), { target: { value: "Fractions of amounts" } });
-    expect(createButton()).toBeEnabled();
-    expect(screen.queryByRole("status")).toBeNull();
-    // The first question appears alone, with the suggestion pre-selected and marked.
-    const explain = screen.getByRole("radio", { name: "Explain" });
-    expect(explain).toBeChecked();
-    expect(explain).toHaveAccessibleDescription(/suggested/);
-    expect(screen.queryByRole("radio", { name: "New to it" })).toBeNull();
-
-    await pickYearGroup("Year 1");
-    await waitFor(() => expect(duration).toHaveAttribute("placeholder", "45"));
-    await pickYearGroup("Reception");
-    await waitFor(() => expect(duration).toHaveAttribute("placeholder", "30"));
-  });
-
-  it("a pasted Source rides along as sourceIds; without one the key is absent (ADR 0027 §7)", async () => {
-    renderPage();
-    fireEvent.change(topicBox(), { target: { value: "Photosynthesis" } });
-    const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Paste text instead" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Text to use as material" }), {
-      target: { value: "Chlorophyll is the green pigment in leaves." },
-    });
-    await user.click(screen.getByRole("button", { name: "Add" }));
-    await screen.findByRole("button", { name: "Remove Pasted text" });
-    expect(screen.getByText("text")).toBeTruthy();
-    const uploaded = fakeApi.requests.find((r) => r.path === "/sources" && r.method === "POST");
-    expect(uploaded?.body).toBeInstanceOf(FormData);
-    const [sourceId] = [...fakeApi.sources.keys()];
-
-    fireEvent.click(createButton());
+  it("preserves homepage topic and creates an idempotent proposed plan without minutes", async () => {
+    search = { topic: "The water cycle" };
+    show();
+    expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("The water cycle");
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
-    expect(lastPost()?.body).toMatchObject({ sourceIds: [sourceId] });
+    expect(post().skipPlanning).toBe(false);
+    expect(post().brief).toEqual({ topic: "The water cycle", level: "standard", slideCount: 8 });
+    expect(post().requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(navigate.mock.calls[0]?.[0]).toMatchObject({
+      to: "/lessons/new",
+      search: { lesson: expect.any(String) },
+    });
   });
-
-  it("Plan it waits for an upload in flight and says why (ADR 0027 §7)", async () => {
-    renderPage();
-    fireEvent.change(topicBox(), { target: { value: "Photosynthesis" } });
-    expect(createButton()).toBeEnabled();
-    let release: (() => void) | undefined;
-    const realFetch = globalThis.fetch;
-    globalThis.fetch = (async (input, init) => {
-      const url = String(input instanceof Request ? input.url : input);
-      if (url.endsWith("/sources") && init?.method === "POST") {
-        await new Promise<void>((resolve) => {
-          release = resolve;
-        });
+  it("reuses the exact request id and payload after an uncertain create response", async () => {
+    search = { topic: "Rocks" };
+    const transport = globalThis.fetch;
+    const sent: unknown[] = [];
+    let first = true;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/lessons") && init?.method === "POST") {
+        sent.push(JSON.parse(String(init.body)));
+        if (first) {
+          first = false;
+          throw new TypeError("Connection lost");
+        }
       }
-      return realFetch(input, init);
+      return transport(input, init);
     }) as typeof fetch;
     try {
-      const user = userEvent.setup();
-      await user.click(screen.getByRole("button", { name: "Paste text instead" }));
-      fireEvent.change(screen.getByRole("textbox", { name: "Text to use as material" }), {
-        target: { value: "Chlorophyll is the green pigment in leaves." },
-      });
-      await user.click(screen.getByRole("button", { name: "Add" }));
-      await waitFor(() => expect(createButton()).toBeDisabled());
-      expect(screen.getByRole("status")).toHaveTextContent(
-        "Wait for your files to finish uploading.",
-      );
-      release?.();
-      await screen.findByRole("button", { name: "Remove Pasted text" });
-      await waitFor(() => expect(createButton()).toBeEnabled());
+      show();
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      await screen.findByRole("alert");
+      await waitFor(() => expect(screen.getByRole("button", { name: "Next" })).toBeEnabled());
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      await waitFor(() => expect(navigate).toHaveBeenCalled());
+      expect(sent).toHaveLength(2);
+      expect(sent[0]).toEqual(sent[1]);
     } finally {
-      globalThis.fetch = realFetch;
+      globalThis.fetch = transport;
     }
   });
 
-  it("posts the brief with the default answers and no durationMin, then opens the lesson", async () => {
-    const { queryClient } = renderPage();
-    fireEvent.change(topicBox(), { target: { value: "Fractions of amounts" } });
-    await pickYearGroup("Year 5");
-    fireEvent.click(createButton());
-
+  it("skip planning opens the real editor through the one-job path", async () => {
+    search = { topic: "Rocks" };
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Skip planning" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
-    expect(lastPost()?.body).toEqual({
-      brief: {
-        topic: "Fractions of amounts",
-        answers: {
-          objectiveVerb: "Explain fractions of amounts",
-          priorConfidence: "New to it",
-        },
-      },
-      yearGroup: "Year 5",
-      themeId: "chalk",
-      // One job to the end until the plan screen ships (TEACH-13 stopgap, T7).
-      skipPlanning: true,
-    });
-    // The class is remembered for the next brief.
-    expect(JSON.parse(localStorage.getItem(LAST_CLASS_KEY) ?? "{}")).toMatchObject({
-      yearGroup: "Year 5",
-      themeId: "chalk",
-    });
-    // The new row is the locked one: `POST /lessons` inserts it under its job's lock.
-    const created = fakeApi.live("lesson").find((row) => row.generatingJobId !== null);
-    expect(created?.body.title).toBe("Fractions of amounts");
-    expect(navigate).toHaveBeenCalledWith({
-      to: "/l/$lessonId",
-      params: { lessonId: created?.id },
-    });
-    // The lesson page paints from the cache before its first GET: body and lock are seeded, and
-    // the entry is marked stale so the page reconciles with the row in the background.
-    const id = created?.id ?? "";
-    const seeded = queryClient.getQueryData<{ title: string; slides: unknown[] }>(
-      queryKeys.libraryDocument(id),
-    );
-    expect(seeded?.title).toBe("Fractions of amounts");
-    expect(seeded?.slides).toEqual([]);
-    expect(queryClient.getQueryData(queryKeys.libraryDocumentMeta(id))).toMatchObject({
-      generatingJobId: created?.generatingJobId,
-    });
-    expect(queryClient.getQueryState(queryKeys.libraryDocument(id))?.isInvalidated).toBe(true);
+    expect(post().skipPlanning).toBe(true);
+    expect(navigate.mock.calls[0]?.[0]).toMatchObject({ to: "/l/$lessonId" });
   });
-
-  it("skipping both questions sends no answers; a typed duration travels as durationMin", async () => {
-    renderPage();
-    fireEvent.change(topicBox(), { target: { value: "The water cycle" } });
-    // One question at a time: Skip settles the first and reveals the second.
-    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
-    expect(screen.getByRole("radio", { name: "New to it" })).toBeChecked();
-    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
-    expect(screen.getAllByText("Skipped — the plan decides.")).toHaveLength(2);
-    expect(screen.queryByRole("radio", { name: "New to it" })).toBeNull();
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Duration (minutes)" }), {
-      target: { value: "45" },
-    });
-    fireEvent.click(createButton());
-    await waitFor(() => expect(navigate).toHaveBeenCalled());
-    expect(lastPost()?.body).toEqual({
-      brief: { topic: "The water cycle", durationMin: 45 },
-      themeId: "chalk",
-      skipPlanning: true,
-    });
+  it("preserves blank lesson and source controls including pasted text", () => {
+    search = { source: "1" };
+    show();
+    expect(screen.getByRole("button", { name: "Blank lesson" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Paste text instead" })).toBeTruthy();
+    expect(screen.getByLabelText("Choose files", { selector: "input" })).toHaveAttribute(
+      "accept",
+      ".pdf,.pptx,.docx",
+    );
   });
-
-  it("the identifier guard blocks Create and marks the match; a Title Case topic passes", async () => {
-    renderPage();
-    fireEvent.change(topicBox(), { target: { value: "Year 6 Key Stage 2 Vikings" } });
-    fireEvent.blur(topicBox());
-    expect(screen.queryByRole("alert")).toBeNull();
-    expect(createButton()).toBeEnabled();
-
-    fireEvent.click(screen.getByRole("button", { name: "Add class context" }));
-    const notes = screen.getByRole("textbox", { name: "Notes" });
-    fireEvent.change(notes, { target: { value: "A pupil called Jamie struggles" } });
-    fireEvent.blur(notes);
-    const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent(GUARD_MESSAGE);
-    expect(alert.querySelector("mark")).toHaveTextContent("pupil called");
-    expect(notes).toHaveAttribute("aria-invalid", "true");
-    expect(createButton()).toBeDisabled();
-
-    fireEvent.change(notes, { target: { value: "Lively after lunch" } });
-    expect(screen.queryByRole("alert")).toBeNull();
-    expect(createButton()).toBeEnabled();
-  });
-
-  it("class context travels as counts and text; an out-of-range duration explains itself", async () => {
-    renderPage();
-    fireEvent.change(topicBox(), { target: { value: "Rivers" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add class context" }));
-    fireEvent.click(screen.getByRole("radio", { name: "25–30" }));
-    fireEvent.change(screen.getByRole("spinbutton", { name: "SEND" }), { target: { value: "3" } });
-    fireEvent.change(screen.getByRole("textbox", { name: "What the class already knows" }), {
-      target: { value: "Named the parts of a river" },
-    });
-    const duration = screen.getByRole("spinbutton", { name: "Duration (minutes)" });
-    fireEvent.change(duration, { target: { value: "2" } });
-    expect(screen.getByRole("alert")).toHaveTextContent("Between 5 and 180 minutes.");
-    expect(createButton()).toBeDisabled();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Duration must be between 5 and 180 minutes.",
-    );
-    expect(createButton()).toHaveAccessibleDescription(
-      "Duration must be between 5 and 180 minutes.",
-    );
-    fireEvent.change(duration, { target: { value: "" } });
-
-    fireEvent.click(createButton());
-    await waitFor(() => expect(navigate).toHaveBeenCalled());
-    expect(lastPost()?.body).toEqual({
-      brief: {
-        topic: "Rivers",
-        classContext: {
-          sizeBand: "25to30",
-          needs: { send: 3 },
-          priorKnowledge: "Named the parts of a river",
-        },
-      },
-      themeId: "chalk",
-      skipPlanning: true,
-    });
-  });
-
-  it("an API failure toasts the message, marks its fields and keeps the form", async () => {
-    fakeApi.failNext(
-      (r) => r.path === "/lessons",
-      () =>
-        new Response(
-          JSON.stringify({
-            error: {
-              code: "validation_failed",
-              message: "The request contains invalid fields.",
-              fields: ["brief"],
-            },
-          }),
-          { status: 400 },
-        ),
-    );
-    renderPage();
-    fireEvent.change(topicBox(), { target: { value: "Fractions of amounts" } });
-    fireEvent.click(createButton());
-    await waitFor(() =>
-      expect(toastSpy).toHaveBeenCalledWith("The request contains invalid fields."),
-    );
-    expect(navigate).not.toHaveBeenCalled();
-    expect(topicBox()).toHaveValue("Fractions of amounts");
-    expect(topicBox()).toHaveAttribute("aria-invalid", "true");
-    // Editing clears the server's mark: it described the request that was sent.
-    fireEvent.change(topicBox(), { target: { value: "Fractions of amounts and shapes" } });
-    expect(topicBox()).not.toHaveAttribute("aria-invalid");
-
-    fakeApi.failNext(
-      (r) => r.path === "/lessons",
-      () =>
-        new Response(
-          JSON.stringify({
-            error: {
-              code: "rate_limited",
-              message: "Too many lessons at once — try again in a minute.",
-            },
-          }),
-          { status: 429 },
-        ),
-    );
-    fireEvent.click(createButton());
-    await waitFor(() =>
-      expect(toastSpy).toHaveBeenCalledWith("Too many lessons at once — try again in a minute."),
-    );
-    expect(navigate).not.toHaveBeenCalled();
-  });
-
-  it("Enter accepts the suggestion and reveals the next question; Change reopens", async () => {
-    renderPage();
-    fireEvent.change(topicBox(), { target: { value: "The water cycle" } });
-    const explain = screen.getByRole("radio", { name: "Explain" });
-    fireEvent.keyDown(explain, { key: "Enter" });
-    expect(screen.getByTestId("question-objectiveVerb-done")).toHaveTextContent("Explain");
-    const newToIt = screen.getByRole("radio", { name: "New to it" });
-    await waitFor(() => expect(newToIt).toHaveFocus());
-    fireEvent.click(screen.getByRole("radio", { name: "Revisiting" }));
-    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
-    expect(screen.getByTestId("question-priorConfidence-done")).toHaveTextContent("Revisiting");
-    expect(createButton()).toHaveFocus();
-    // Reopening the first question keeps the second on screen with its settled answer.
-    fireEvent.click(screen.getAllByRole("button", { name: "Change" })[0] as HTMLElement);
-    expect(screen.getByRole("radio", { name: "Explain" })).toBeChecked();
-    expect(screen.getByTestId("question-priorConfidence-done")).toHaveTextContent("Revisiting");
-    expect(screen.queryByRole("radio", { name: "Revisiting" })).toBeNull();
-    // Re-settling it changes nothing else.
-    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
-    expect(screen.getByTestId("question-objectiveVerb-done")).toHaveTextContent("Explain");
-    expect(screen.getByTestId("question-priorConfidence-done")).toHaveTextContent("Revisiting");
-    expect(createButton()).toHaveFocus();
-
-    // What is submitted is what is on screen.
-    fireEvent.click(createButton());
-    await waitFor(() => expect(navigate).toHaveBeenCalled());
-    expect(lastPost()?.body).toEqual({
-      brief: {
-        topic: "The water cycle",
-        answers: { objectiveVerb: "Explain the water cycle", priorConfidence: "Revisiting" },
-      },
-      themeId: "chalk",
-      skipPlanning: true,
-    });
-  });
-
-  it("pre-fills the remembered class with a hint that clears once the field is changed", async () => {
+  it("remembers the class without skipping decisions", async () => {
     localStorage.setItem(
-      LAST_CLASS_KEY,
+      "tj:brief:last-class",
       JSON.stringify({
+        yearGroup: "Year 6",
         subject: "Science",
         subjectOther: "",
-        yearGroup: "Year 5",
-        themeId: "beacon",
+        themeId: "chalk",
       }),
     );
-    renderPage();
-    expect(screen.getByRole("combobox", { name: "Subject" })).toHaveTextContent("Science");
-    expect(screen.getByRole("combobox", { name: "Year group" })).toHaveTextContent("Year 5");
-    expect(screen.getAllByText("From your last lesson")).toHaveLength(2);
-    expect(screen.getByRole("radio", { name: "Beacon" })).toBeChecked();
-    await pickYearGroup("Year 3");
-    await waitFor(() => expect(screen.getAllByText("From your last lesson")).toHaveLength(1));
-  });
-
-  it("renders empty with nothing stored, or with a corrupt value; the drop zone sits above the topic", () => {
-    localStorage.setItem(LAST_CLASS_KEY, "{not json");
-    renderPage();
-    expect(screen.getByRole("combobox", { name: "Subject" })).toHaveTextContent("Not set");
-    expect(screen.queryByText("From your last lesson")).toBeNull();
-    // ADR 0027 §7: one page, no upload tab — the material block is part of the same form.
-    expect(screen.queryByRole("tab")).toBeNull();
-    const zone = screen.getByRole("region", { name: /Start from your material/ });
-    expect(zone).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Choose files" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Paste text instead" })).toBeEnabled();
-    expect(
-      screen.getByText("Only upload material you may use for your own teaching."),
-    ).toBeTruthy();
-    expect(
-      zone.compareDocumentPosition(topicBox()) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Blank lesson" })).toBeEnabled();
-    // Six theme tiles as a radio group, arrow keys included by the native control.
-    expect(screen.getAllByRole("radio")).toHaveLength(6);
+    search = { topic: "Light" };
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(post().yearGroup).toBe("Year 6");
+    expect(post().skipPlanning).toBe(false);
   });
 });

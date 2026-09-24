@@ -22,4 +22,4 @@ export interface HandoverRig {
   readonly reduced: boolean;
   dispose(): void;
 }
-export function createHandoverRig(root: HTMLElement): HandoverRig;
+export function createHandoverRig(root: HTMLElement, gsap: typeof import("gsap").gsap): HandoverRig;

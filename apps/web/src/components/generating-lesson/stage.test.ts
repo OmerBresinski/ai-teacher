@@ -120,6 +120,14 @@ describe("stageOf", () => {
     expect(stageOf([withStage("repair", 40)]).stage).toBe("checking");
   });
 
+  it("does not call a completed planning-only job slide-ready", () => {
+    const events = runEvents(generationRun, RUN_UP_TO.ready);
+    const state = stageOf(events, true);
+    expect(state.stage).toBe("planning");
+    expect(stageStatus("writing", state)).toBe("todo");
+    expect(stageStatus("ready", state)).toBe("todo");
+  });
+
   it("keeps the failure text and the terminal for the stopped states", () => {
     const failed = stageOf(withTerminal(generationRun, RUN_UP_TO.writing + 1, "failed"));
     expect(failed.terminal).toBe("failed");

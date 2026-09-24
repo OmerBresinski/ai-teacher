@@ -28,12 +28,15 @@ type Notice = { id: number; message: string };
 
 export function SourceDropZone({
   sources,
+  boundSourceIds = [],
   onChange,
   onBusyChange,
   disabled = false,
   focusChooseFiles = false,
 }: {
   sources: SourceRef[];
+  /** Existing lesson sources are unbound transactionally by /plan, never deleted here. */
+  boundSourceIds?: readonly string[];
   /**
    * Receives an updater, not a list: an upload finishing while a removal is in flight (or the
    * other way round) must each apply to the list as it is *then*, never to the render they started
@@ -150,7 +153,7 @@ export function SourceDropZone({
 
   const removeSource = async (source: SourceRef) => {
     try {
-      await remove.mutateAsync(source.id);
+      if (!boundSourceIds.includes(source.id)) await remove.mutateAsync(source.id);
       onChange((current) => current.filter((s) => s.id !== source.id));
       setAnnouncement(`Removed ${source.name}`);
     } catch (error) {

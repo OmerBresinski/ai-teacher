@@ -7,6 +7,7 @@ import { libraryCache } from "@/lib/library";
 import { apiErrorFromResponse, queryKeys } from "@/lib/query";
 import { sessionIsCurrent, sessionMutation, sessionRequest } from "@/lib/session-boundary";
 import { GeneratingShell } from "./GeneratingShell";
+import { type StageState, stageOf } from "./stage";
 
 /**
  * `/l/$lessonId` while a `lesson.plan` job holds the generating lock (ADR 0024 §18, ADR 0025 §7):
@@ -30,8 +31,12 @@ export function GeneratingLesson({
   onStopped,
   onViewSlide,
   exportSlot,
+  canvasCompanion,
+  onStage,
 }: {
   lesson: Lesson;
+  canvasCompanion?: ReactNode;
+  onStage?: (state: StageState) => void;
   jobId: string;
   /** The estimate text for the top bar's slot (TEACH-201). */
   estimate?: ReactNode;
@@ -49,6 +54,14 @@ export function GeneratingLesson({
   // without one (a message-only tick) must not reset the value and re-trigger a refetch.
   const documentUpdatedAt = lastDocumentUpdatedAt(stream.events);
   const terminal = stream.terminal;
+  useEffect(() => {
+    onStage?.(
+      stageOf(
+        stream.events.map((record) => record.event),
+        lesson.plan?.state === "proposed",
+      ),
+    );
+  }, [stream.events, onStage, lesson.plan?.state]);
 
   // The stream is the external subscription; these invalidations are its side effects on the
   // cache (ADR 0012), not derived state. The body refetch waits `REFETCH_DEBOUNCE_MS` so a burst
@@ -97,6 +110,7 @@ export function GeneratingLesson({
 
   return (
     <GeneratingShell
+      canvasCompanion={canvasCompanion}
       lesson={lesson}
       events={stream.events.map((record) => record.event)}
       estimate={estimate}
