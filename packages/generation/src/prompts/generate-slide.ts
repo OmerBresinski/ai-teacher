@@ -39,6 +39,15 @@ import {
  * `splitAtFullStop` (`@tj/slides`) now splits at the first line break when there is one, so each
  * column carries one idea (a first draft asked for "the first in one sentence": Luna wrote the
  * first idea across two sentences on 3 of 3 long bodies, so a full-stop split cut it in half).
+ *
+ * v23 (24 Sep 2026, lab r3, checks.md §3 / judge B testedNotTaught): the questions that later
+ * test a teaching slide's key ideas reach its writer (`laterQuestions`, read-only, lab only).
+ * Round-1/2 exit and check items asked for a quotation, a name, a reason, an example or a step
+ * the facts held and the slide compressed away ("I'll break my staff", Duke of Milan, why not
+ * every child was evacuated, a named defence mechanism, PED from percentage changes). The user
+ * turn lists them with their answers and one instruction: teach here what each answer rests on,
+ * within the slide's limits. System text unchanged; the production render (no field) is
+ * byte-identical, so the pinned hash did not move.
  */
 
 export type GenerateSlideInput = {
@@ -133,7 +142,7 @@ const SHAPES = {
 } as const;
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v22",
+  version: "generate-slide.v23",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -230,6 +239,13 @@ export const generateSlidePrompt = {
     if (input.reservedStems.length > 0) {
       parts.push("", "Reserved for other slides or the worksheet — do not use these stems:");
       for (const stem of input.reservedStems) parts.push(`  - ${stem}`);
+    }
+    if (input.laterQuestions?.length) {
+      parts.push("", "Asked of pupils later in the lesson, on later slides (shown for reference):");
+      for (const q of input.laterQuestions) parts.push(`  - ${q.stem} — answer: ${q.answer}`);
+      parts.push(
+        "Teach here, within this slide's limits, what each answer rests on: the name, quotation, reason, example or step a pupil needs to give it.",
+      );
     }
     parts.push("", `Answer with the JSON for a "${input.entry.kind}" slide.`);
     return parts.join("\n");

@@ -201,7 +201,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "10c364455e0b08d0be7acb86fdb9360649e8868a3e9a98005af774630e9169a4",
   },
   "generate-slide": {
-    version: "generate-slide.v22",
+    // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
+    version: "generate-slide.v23",
     hash: "de143709dc710def05d4ef4684b5d05a0695541830c496b43167966305ddc74c",
   },
   "generate-worksheet": {
@@ -636,6 +637,30 @@ describe("prompt versions", () => {
       entry: { kind: "content", factRefs: ["k1"] },
     } as never);
     expect(without).not.toContain("callout");
+  });
+
+  test("lab r3: a teaching slide is shown the questions that later test it, and told to teach what their answers need", () => {
+    const base = SAMPLE_INPUTS["generate-slide"] as object;
+    const withLater = PROMPTS["generate-slide"].user({
+      ...base,
+      laterQuestions: [
+        { stem: "Which state has particles furthest apart?", answer: "Gas" },
+        { stem: "Explain why a gas fills its container.", answer: "Its particles move freely." },
+      ],
+    } as never);
+    expect(withLater).toContain(
+      "Asked of pupils later in the lesson, on later slides (shown for reference):\n  - Which state has particles furthest apart? — answer: Gas\n  - Explain why a gas fills its container. — answer: Its particles move freely.\nTeach here, within this slide's limits, what each answer rests on",
+    );
+    // The block sits after the reserved stems and before the closing line, once.
+    expect(withLater.indexOf("Asked of pupils later")).toBeGreaterThan(
+      withLater.indexOf("Reserved for other slides"),
+    );
+    expect(withLater.split("Asked of pupils later")).toHaveLength(2);
+    // Absent or empty (production, and lab slides nothing later tests): the block is not rendered.
+    const without = PROMPTS["generate-slide"].user(base as never);
+    const empty = PROMPTS["generate-slide"].user({ ...base, laterQuestions: [] } as never);
+    expect(without).not.toContain("later in the lesson");
+    expect(empty).toBe(without);
   });
 
   test("TEACH-241: the judge picks a photo showing at least one required item, not all of them", () => {
