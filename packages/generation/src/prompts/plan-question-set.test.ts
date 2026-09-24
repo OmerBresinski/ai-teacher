@@ -72,8 +72,8 @@ const SAMPLE: PlanQuestionSetInput = {
 };
 
 const PIN: { version: string; hash: string } = {
-  version: "plan-question-set.v3",
-  hash: "386928365d92c18021eeb73b143b2a89e5385d505622324ea0ec93c2cbff4017",
+  version: "plan-question-set.v4",
+  hash: "ca6aedc63efcaeba6089046a5787773bf5e68c7bb11b50f3357a4bee6c3e2f8c",
 };
 
 const QUESTION = {
@@ -115,18 +115,25 @@ describe("plan-question-set", () => {
     expect(system).toContain(
       "the fact, reason, method or quotation its answer needs being stated there",
     );
-    expect(system).toContain("a case of its own rather than repeating the taught example");
+    expect(system).toContain(
+      "a case of its own rather than repeating any example in the taught text",
+    );
     // The count and the use come from the packet line; the system names the line, not a number.
     expect(system).toContain('Write as many questions as the brief\'s "Write" line says');
     expect(system).toContain('set "use" to that use');
     expect(system).not.toMatch(/four to six|Two questions are for/);
     expect(system).toContain("Follow the brief's tier line.");
     expect(system).not.toContain('at least one "easy"');
+    // v4 (audit B3): three distractors, the true-false condition, and no exit sentence (EXIT_LINE says it).
+    expect(system).toContain(
+      'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors, each a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
+    );
+    expect(system).toContain(
+      '"forms" lists every way the question can be set: multiple-choice, true-false (only with a distractor that has a "misconceptionRef", never on exit), open-response.',
+    );
+    expect(system).not.toContain("answered in one line or by choosing an option");
     // v14's question rules, byte for byte.
     for (const kept of [
-      "answered in one line or by choosing an option",
-      'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then each distractor, a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
-      '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set: multiple-choice, true-false, open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it',
       "Pitch the language, numbers and problem steps at the year group and reading level given",
       "A quotation is one line, cut with an ellipsis.",
     ]) {
@@ -194,13 +201,13 @@ describe("plan-question-set", () => {
       "Worked example: Why did the Romans build a road from Dover to London?\n  1. Dover is where soldiers landed.\n  2. London was the biggest town.\n  Answer: So soldiers",
     );
     expect(rendered).toContain(
-      "Already asked of this objective, in its other set (write different questions):\n  - How did Roman roads change trade in Britain?\n  - What was a forum for?",
+      "Already asked of this objective; write different questions:\n  - How did Roman roads change trade in Britain?\n  - What was a forum for?",
     );
     expect(rendered).toMatch(/\nWrite 2 "exit" questions\.\nTiers: one "easy" and one "core"\.\n/);
     // v3: an exit call carries the exit quiz's line budget, from the outline's own caps.
     expect(rendered.endsWith(`\n${EXIT_LINE}`)).toBe(true);
     expect(EXIT_LINE).toBe(
-      'Each is one line of the exit quiz: either multiple choice, with a stem of at most 100 characters and the answer and each distractor at most 30; or "forms" ["open-response"] with no distractors and a stem of at most 160 characters.',
+      'Each is one line of the exit quiz: either multiple choice, with a stem of at most 100 characters and the answer and each distractor at most 30; or "forms" ["open-response"] with no distractors and a stem of at most 160 characters. These caps replace the general length limits.',
     );
     // Nothing the call does not use: no curriculum, reference, prior-knowledge or other objectives.
     expect(rendered).not.toContain(CURRICULUM_INSTRUCTION);
