@@ -73,7 +73,7 @@ const SAMPLE: PlanQuestionSetInput = {
 
 const PIN: { version: string; hash: string } = {
   version: "plan-question-set.v4",
-  hash: "ca6aedc63efcaeba6089046a5787773bf5e68c7bb11b50f3357a4bee6c3e2f8c",
+  hash: "76a53b0d7fe6720c67bf3ad25b0332b232eeb52e9f0c435e1a459528f90c9373",
 };
 
 const QUESTION = {
@@ -126,7 +126,7 @@ describe("plan-question-set", () => {
     expect(system).not.toContain('at least one "easy"');
     // v4 (audit B3): three distractors, the true-false condition, and no exit sentence (EXIT_LINE says it).
     expect(system).toContain(
-      'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors, each a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
+      'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors (without three real errors to use, leave multiple-choice out of "forms"), each a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
     );
     expect(system).toContain(
       '"forms" lists every way the question can be set: multiple-choice, true-false (only with a distractor that has a "misconceptionRef", never on exit), open-response.',

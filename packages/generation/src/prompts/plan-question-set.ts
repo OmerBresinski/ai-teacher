@@ -50,7 +50,8 @@ import { type Audience, audienceBlock, houseRules, type Retrieval, retrievalBloc
  * Luna to copy "slide" on exit calls. Soft-build count tolerance as described above
  * (`planQuestionSetShape`); the strict build stays exact.
  *
- * v4 (24 Sept 2026 audit, FIX-PLAN B3): "three distractors" (18 of 92 multiple-choice items had two
+ * v4 (24 Sept 2026 audit, FIX-PLAN B3): "three distractors", with the way out the Luna guide (rule 7)
+ * measured, leave multiple-choice out when three real errors are not there (18 of 92 items had two
  * or four, and the outline cannot set them); true-false only with a misconception-tagged
  * distractor and never on exit (the outline drops it otherwise); "any example in the taught text"
  * (every key idea has its own example, and three sets restated one); the system's "exit" sentence
@@ -286,7 +287,7 @@ export const planQuestionSetPrompt = {
     "Follow the brief's tier line.",
     "Every quantity carries its unit, in the answer and each option as well as the stem: 5 stickers, not 5.",
     'Where a distractor heads off the misconception, say so in "misconceptionRef".',
-    'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors, each a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
+    'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors (without three real errors to use, leave multiple-choice out of "forms"), each a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
     '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set: multiple-choice, true-false (only with a distractor that has a "misconceptionRef", never on exit), open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it, by the index shown.',
     LENGTH_LIMITS,
     "",
