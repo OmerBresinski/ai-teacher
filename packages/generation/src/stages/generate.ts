@@ -15,6 +15,7 @@ import {
   withAnswersReveal,
   withShuffledOptions,
 } from "../lab/coded-slides";
+import { laterQuestionsFor } from "../lab/later-questions";
 import {
   generateSlidePrompt,
   pickOrRequeryPrompt,
@@ -209,6 +210,10 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     };
     const schema = specSchema(false);
     if (!schema) throw new Error(`generate: no spec schema for slide kind "${entry.kind}"`);
+    // Lab only (r3): a teaching slide sees the later questions that test its key ideas.
+    const laterQuestions = calloutsAssigned
+      ? laterQuestionsFor(builtFrom, i, lesson.id)
+      : undefined;
     const call = await callStructured({
       deps,
       stage: "generate",
@@ -227,6 +232,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         reservedStems: stems.reservedFor(i),
         phase: entry.phase,
         ...(photo !== undefined ? { photo } : {}),
+        ...(laterQuestions ? { laterQuestions } : {}),
         audience,
         vocabularySlots: vocabularySlots(lesson.themeId),
         lessonTitle: lesson.title,

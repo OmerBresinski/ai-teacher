@@ -61,7 +61,7 @@ const LETTERS = ["A", "B", "C", "D"] as const;
 type LineQuestion = Pick<FactQuestion, "stem" | "answer"> & {
   distractors?: readonly { text: string }[] | undefined;
 };
-export type Line = { text: string; answer: string; mc?: boolean };
+export type Line = { text: string; answer: string; mc?: boolean; ref?: string };
 
 /** 32-bit FNV-1a: a stable seed from a string (lesson id and slide). */
 function hash(seed: string): number {
@@ -171,7 +171,7 @@ export function codedSetSpec(
   entry: OutlineEntry,
   facts: LessonFacts,
   seed: string,
-): { spec: SlideSpec; answers: string[] } | undefined {
+): { spec: SlideSpec; answers: string[]; questionRefs: string[] } | undefined {
   const coded = CODED[entry.kind];
   if (!coded) return undefined;
   const questions = new Map(facts.questions.map((q) => [q.id, q]));
@@ -190,7 +190,7 @@ export function codedSetSpec(
     const m = misconceptions.get(ref);
     if (q) {
       asked += 1;
-      lines.push(questionLine(q, `${seed}:${ref}`));
+      lines.push({ ...questionLine(q, `${seed}:${ref}`), ref });
     } else if (m && entry.kind !== "starter") lines.push(misconceptionLine(m));
   }
   // A starter or check slide with no question is the model's (a misconception discussed, prior
@@ -209,7 +209,10 @@ export function codedSetSpec(
       : entry.kind === "starter"
         ? { kind: "starter", ...base, items }
         : { kind: "exit-ticket", ...base, items };
-  return { spec, answers };
+  // The lesson questions the set actually prints (a line over the caps is dropped): what
+  // `laterQuestionsFor` hands the teaching slides before it.
+  const questionRefs = kept.flatMap((l) => (l.ref && questions.has(l.ref) ? [l.ref] : []));
+  return { spec, answers, questionRefs };
 }
 
 /**

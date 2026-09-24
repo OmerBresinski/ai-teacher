@@ -63,6 +63,12 @@ export type GenerateSlideInput = {
    */
   photo?: SlidePhoto | "none" | undefined;
   audience: Audience;
+  /**
+   * Lab only (r3, `laterQuestionsFor`): on a teaching slide, the questions later in the lesson that
+   * test its key ideas, stem and answer, read-only; at most 4, shortest first. Absent in
+   * production and when no later slide asks about this slide's key ideas.
+   */
+  laterQuestions?: { stem: string; answer: string }[] | undefined;
   /** How many vocabulary entries the theme's grid shows (`vocabularySlots`). */
   vocabularySlots: number;
   lessonTitle: string;

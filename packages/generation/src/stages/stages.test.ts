@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
 import {
   checkLesson,
@@ -10,8 +10,14 @@ import {
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
 import { CODE_MODEL, codedSetSpec, isCodeBuilt, withShuffledOptions } from "../lab/coded-slides";
+import { laterQuestionsFor } from "../lab/later-questions";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
-import { PROMPT_VERSIONS, VERB_WRITING } from "../prompts";
+import {
+  type GenerateSlideInput,
+  generateSlidePrompt,
+  PROMPT_VERSIONS,
+  VERB_WRITING,
+} from "../prompts";
 import { lessonShapeOf } from "../shapes";
 import { assignFactIds, OUTLINE_FROM_FACTS_VERSION, planFactsSchemaFor } from "../specs";
 import {
@@ -784,6 +790,61 @@ describe("generate", () => {
     const misses = state.lesson.generation?.findings.filter((f) => f.check === "spec-rule") ?? [];
     expect(misses).toHaveLength(1);
     expect(misses[0]?.message).toContain("no callout");
+  });
+
+  test("lab r3: a teaching slide's input carries the later questions on its key ideas; production's never does", async () => {
+    const start = await planned();
+    const generation = start.lesson.generation;
+    const facts = start.lesson.facts;
+    if (!generation || !facts) throw new Error("planned");
+    // Every question tests the first key idea, which the first content slide teaches.
+    const k = facts.keyIdeas?.[0]?.id;
+    if (!k) throw new Error("fixture has no key idea");
+    const taughtAt = facts.outline.findIndex((e) => e.kind === "content");
+    const withIdeas = {
+      ...facts,
+      questions: facts.questions.map((q) => ({ ...q, keyIdeaRefs: [k] })),
+      outline: facts.outline.map((e, i) =>
+        i === taughtAt ? { ...e, factRefs: [...e.factRefs, k] } : e,
+      ),
+    };
+    const run = async (planned: string) => {
+      const inputs: GenerateSlideInput[] = [];
+      const original = generateSlidePrompt.user.bind(generateSlidePrompt);
+      const spy = spyOn(generateSlidePrompt, "user").mockImplementation(
+        (input: GenerateSlideInput) => {
+          inputs.push(input);
+          return original(input);
+        },
+      );
+      const slides = withIdeas.outline
+        .slice(PLANNED_SLIDES)
+        .map((e) => json(FIXTURES.slides[e.kind]));
+      const ai = createFakeAi({ script: routed([...slides, ...slides]), usage });
+      const lesson = {
+        ...start.lesson,
+        facts: withIdeas,
+        generation: { ...generation, promptVersions: { ...generation.promptVersions, planned } },
+      };
+      try {
+        await generate({ ...start, lesson }, recordingDeps(ai));
+      } finally {
+        spy.mockRestore();
+      }
+      return { inputs, lesson };
+    };
+    const lab = await run(`${generation.promptVersions.planned}+${OUTLINE_FROM_FACTS_VERSION}`);
+    const taught = lab.inputs.find((input) => input.position.index === taughtAt + 1);
+    const expected = laterQuestionsFor(withIdeas, taughtAt, lab.lesson.id);
+    expect(expected?.length ?? 0).toBeGreaterThan(0);
+    expect(taught?.laterQuestions).toEqual(expected);
+    // Not a teaching slide, or one naming no key idea: no field.
+    expect(
+      lab.inputs.filter((input) => input.laterQuestions !== undefined).map((i) => i.position.index),
+    ).toEqual([taughtAt + 1]);
+    const production = await run(generation.promptVersions.planned ?? "");
+    expect(production.inputs.length).toBeGreaterThan(0);
+    expect(production.inputs.every((input) => !("laterQuestions" in input))).toBe(true);
   });
 
   test("TEACH-263: an extra field on the first slide is stripped without retrying Generate", async () => {
