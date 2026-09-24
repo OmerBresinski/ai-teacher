@@ -47,6 +47,7 @@ import {
   type CreateLesson,
   CreateLessonSchema,
   checkLesson,
+  DEFAULT_SLIDE_COUNT,
   type Finding,
   type Lesson,
   type LessonFacts,
@@ -74,19 +75,28 @@ import {
 import { MAX_OUTPUT_TOKENS } from "../src/call";
 import {
   LAB_PLANNED_VERSION,
+  LAB_WAVES_PLANNED_VERSION,
   type LabFromFacts,
   type LabStatus,
   labPlanMarkdown,
   labStatusLine,
   MAX_OUTPUT_TOKENS_FACTS,
   MAX_OUTPUT_TOKENS_OBJECTIVES,
+  MAX_OUTPUT_TOKENS_QUESTION_SET,
+  MAX_OUTPUT_TOKENS_TEACH,
   runLabPipeline,
 } from "../src/lab/plan-pipeline";
+import { questionDemand, sketchTaught } from "../src/lab/question-demand";
 import { NUMERIC_CHECK, numericFactMismatches, numericMismatches } from "../src/numeric-check";
 import { outlineFromFacts } from "../src/outline-from-facts";
 import { PROMPT_VERSIONS } from "../src/prompts";
-import { planFactsObjectivePrompt } from "../src/prompts/plan-facts-objective";
+import {
+  carriesWorkedExample,
+  planFactsObjectivePrompt,
+} from "../src/prompts/plan-facts-objective";
 import { planObjectivesPrompt } from "../src/prompts/plan-objectives";
+import { planQuestionSetPrompt } from "../src/prompts/plan-question-set";
+import { planTeachObjectivePrompt } from "../src/prompts/plan-teach-objective";
 import { objectiveVerbOf, priorConfidenceOf } from "../src/shapes";
 import { distractorsEchoingAnswer, optionKey } from "../src/specs";
 import { illustrate } from "../src/stages/illustrate";
@@ -261,6 +271,35 @@ export function stageWallLine(
   }
   parts.push(`after ${((totalMs - from) / 1000).toFixed(1)} s`);
   return parts.join(", ");
+}
+
+/**
+ * `--dry-run --waves`: the question-set calls the outline would demand for a lesson of this brief
+ * with `objectiveCount` objectives (a retrieval starter assumed, as v12+ objectives always write
+ * one), one count per (objective, use) with a demand; the sketch is `runWaves`'s own.
+ */
+function dryRunQuestionSets(lesson: Lesson, objectiveCount: number): number[] {
+  const shape = shapeOf(lesson);
+  const objectives = Array.from({ length: objectiveCount }, (_, i) => ({
+    text: `Objective ${i + 1}`,
+  }));
+  const { counts } = questionDemand({
+    topic: lesson.brief?.topic ?? lesson.title,
+    objectives,
+    facts: sketchTaught(
+      objectives,
+      objectives.map((_, target) => carriesWorkedExample({ shape, objectives, target })),
+    ),
+    shape,
+    slideCount: lesson.brief?.slideCount ?? DEFAULT_SLIDE_COUNT,
+    priorKnowledge: lesson.brief?.classContext?.priorKnowledge,
+    retrieval: [
+      { question: "r1", answer: "a" },
+      { question: "r2", answer: "b" },
+      { question: "r3", answer: "c" },
+    ],
+  });
+  return counts.flatMap((c) => [c.slide, c.exit].filter((n) => n > 0));
 }
 
 function arg(name: string): string | undefined {
@@ -892,6 +931,11 @@ if (import.meta.main) {
     throw new Error(`--from-facts: the run is brief ${saved.briefId}, --brief says ${briefRef}`);
   const capUsd = Number(arg("cap") ?? 2);
   const labPlanOn = flag("lab-plan") || saved !== undefined;
+  /** Lab pw: the plan's facts in waves (teach per objective, then question sets per objective and use). */
+  const wavesOn = flag("waves");
+  if (wavesOn && !labPlanOn) throw new Error("--waves needs --lab-plan");
+  if (wavesOn && saved)
+    throw new Error("--waves and --from-facts do not combine: no facts call is made");
   /** Verify under `--from-facts` is opt-in (`--verify`): the facts were verified when written. */
   const verifyOn = saved ? flag("verify") : !flag("no-verify");
   /**
@@ -931,6 +975,8 @@ if (import.meta.main) {
   if (armName && !experiment?.lessonArms.includes(armName))
     throw new Error(`--arm: expected ${experiment?.lessonArms.join("|")}, got "${armName}"`);
   if (armName && !labPlanOn) throw new Error("--arm needs --lab-plan");
+  if (armName && wavesOn)
+    throw new Error("--arm and --waves do not combine: an arm only changes the facts");
   if (armName && saved)
     throw new Error("--arm and --from-facts do not combine: an arm only changes the facts");
   const promptHashes = currentPromptHashes();
@@ -1152,12 +1198,33 @@ if (import.meta.main) {
           ? [
               ["plan-objectives", "standard", planEffort ?? "medium", MAX_OUTPUT_TOKENS_OBJECTIVES],
               // One per objective, in parallel; three is the usual count at ten slides.
-              ...Array.from({ length: objectiveCount }, (): [string, string, string, number] => [
-                "plan-facts-objective",
-                "standard",
-                planEffort ?? "medium",
-                MAX_OUTPUT_TOKENS_FACTS,
-              ]),
+              ...(wavesOn
+                ? [
+                    ...Array.from(
+                      { length: objectiveCount },
+                      (): [string, string, string, number] => [
+                        "plan-teach-objective",
+                        "standard",
+                        planEffort ?? "medium",
+                        MAX_OUTPUT_TOKENS_TEACH,
+                      ],
+                    ),
+                    // One per (objective, use) the outline demands, from the count-only sketch.
+                    ...dryRunQuestionSets(lesson, objectiveCount).map(
+                      (count): [string, string, string, number] => [
+                        `plan-question-set×${count}`,
+                        "standard",
+                        planEffort ?? "medium",
+                        MAX_OUTPUT_TOKENS_QUESTION_SET,
+                      ],
+                    ),
+                  ]
+                : Array.from({ length: objectiveCount }, (): [string, string, string, number] => [
+                    "plan-facts-objective",
+                    "standard",
+                    planEffort ?? "medium",
+                    MAX_OUTPUT_TOKENS_FACTS,
+                  ])),
               ...(!verifyOn
                 ? []
                 : [
@@ -1217,7 +1284,7 @@ if (import.meta.main) {
     const L: string[] = [];
     let total = 0;
     L.push(
-      `brief ${brief.id}; snapshot ${from ?? "-"} (stage ${lesson.generation?.stage ?? "none"}, ${lesson.slides.length} slides); source ${sourcePath ?? "-"}; cap $${capUsd}; stages ${stages.join(",")}${labPlanOn ? `; lab plan (${planObjectivesPrompt.version}, ${planFactsObjectivePrompt.version} × ${objectiveCount}, verify ${verifyOn ? "on" : "off"}${saved ? `; FROM FACTS of ${saved.run} (${saved.factsFrom}): no objectives/select/facts call` : ""})` : ""}${armName ? `; arm ${armName}${pack ? ` on pack ${pack.id} (${pack.sections.length} sections${packDropped ? `, ${packDropped.length} facts not admitted` : ""})` : ""}; prompts ${frozen?.ok ? "frozen" : "NOT frozen"}` : ""}`,
+      `brief ${brief.id}; snapshot ${from ?? "-"} (stage ${lesson.generation?.stage ?? "none"}, ${lesson.slides.length} slides); source ${sourcePath ?? "-"}; cap $${capUsd}; stages ${stages.join(",")}${labPlanOn ? `; lab plan (${planObjectivesPrompt.version}, ${wavesOn ? `waves: ${planTeachObjectivePrompt.version} × ${objectiveCount} → ${planQuestionSetPrompt.version} per (objective, use)` : `${planFactsObjectivePrompt.version} × ${objectiveCount}`}, verify ${verifyOn ? "on" : "off"}${saved ? `; FROM FACTS of ${saved.run} (${saved.factsFrom}): no objectives/select/facts call` : ""})` : ""}${armName ? `; arm ${armName}${pack ? ` on pack ${pack.id} (${pack.sections.length} sections${packDropped ? `, ${packDropped.length} facts not admitted` : ""})` : ""}; prompts ${frozen?.ok ? "frozen" : "NOT frozen"}` : ""}`,
     );
     L.push(
       "| stage | call | class | model id | via | effort | out cap | $/M in/out | est. reservation |",
@@ -1294,6 +1361,7 @@ if (import.meta.main) {
         verifyMaxOutputTokens,
         ...(planEffort ? { effort: planEffort } : {}),
         ...(labArm ? { arm: labArm } : {}),
+        ...(wavesOn ? { waves: true } : {}),
       });
       lesson = result.state.lesson;
       worksheet = result.state.worksheet;
@@ -1415,7 +1483,7 @@ if (import.meta.main) {
       );
   }
   if (labPlanOn) {
-    R.push("", `## Lab plan (${LAB_PLANNED_VERSION})`, "");
+    R.push("", `## Lab plan (${wavesOn ? LAB_WAVES_PLANNED_VERSION : LAB_PLANNED_VERSION})`, "");
     R.push(labPlanReport ? labPlanMarkdown(labPlanReport) : "(the plan path did not complete)");
   }
   R.push(
@@ -1531,7 +1599,7 @@ if (import.meta.main) {
       2,
     ),
   );
-  console.log(R.slice(0, labPlanOn ? 9 + 5 + (labPlanReport?.gaps.length ?? 0) : 9).join("\n"));
+  console.log(R.slice(0, labPlanOn ? 10 + 5 + (labPlanReport?.gaps.length ?? 0) : 10).join("\n"));
   console.log(`\ncost ledger\n${ledger.markdown()}`);
   console.log(`\nwrote ${dir}`);
   process.exit(status.executed ? 0 : 1);

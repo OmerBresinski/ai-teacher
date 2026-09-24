@@ -75,20 +75,22 @@ for (const scenario of ["slide", "block", "staged fact"] as const) {
         message: "Wrong option.",
       },
     ];
+    // The targets' calls run at once (lab pw), in a fixed order: the first target's fact patch
+    // is call 1, the second target's slide call is call 2, and the first target's slide call,
+    // which waited for its patch, is call 3 — the refusal lands on it.
     const ai = createFakeAi({
-      script: [
-        ...(scenario === "staged fact"
+      script:
+        scenario === "staged fact"
           ? [
               json({
                 corrections: [
                   { factId: "v1", field: "term", value: "Corpuscle", reason: "wrong-term" },
                 ],
               }),
+              json(FIXTURES.repair),
+              refusal,
             ]
-          : []),
-        refusal,
-        json(FIXTURES.repair),
-      ],
+          : [refusal, json(FIXTURES.repair)],
     });
     const { logger, lines } = memoryLogger();
     const result = await repair(

@@ -6,11 +6,13 @@ import { ledgerStageOf } from "../../eval/ledger";
 import { MAX_OUTPUT_TOKENS } from "../call";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
 import { planFactsObjectiveOutputSchemaFor } from "../prompts/plan-facts-objective";
+import type { PlanQuestionSetOutput } from "../prompts/plan-question-set";
 import { lessonShapeOf } from "../shapes";
 import { callLimitedBudget, FIXTURES, recordingDeps, sampleBriefLesson } from "../testing";
 import { StageFailure } from "../types";
 import {
   LAB_PLANNED_VERSION,
+  LAB_WAVES_PLANNED_VERSION,
   LabPlanBlocked,
   labPlan,
   labPlanMarkdown,
@@ -18,6 +20,7 @@ import {
   labStatusLine,
   MAX_OUTPUT_TOKENS_OBJECTIVES,
   MISSING_MATERIAL_CHECK,
+  questionSetProblem,
   runLabPipeline,
 } from "./plan-pipeline";
 
@@ -110,6 +113,30 @@ test("the fixture slices pass the per-objective schema (the stubs answer in the 
   });
 });
 
+/** A question set as the split call returns one: `count` questions, each on the taught key idea 0. */
+function questionSetAnswer(
+  set: { target: number; use: "slide" | "exit"; count: number },
+  keyIdeaIndex = 0,
+) {
+  return {
+    questions: Array.from({ length: set.count }, (_, n) => ({
+      stem: `${set.use} question ${n + 1} on objective ${set.target + 1}: which is right?`,
+      answer: `Right answer ${n + 1}`,
+      reasoning: "The taught key idea says so.",
+      tier: n === 0 ? "easy" : n === 1 ? "core" : "stretch",
+      use: set.use,
+      demand: "recall",
+      forms: ["multiple-choice", "open-response"],
+      keyIdeaRefs: [{ type: "keyIdea", index: keyIdeaIndex }],
+      distractors: [
+        { text: `Wrong option ${n + 1}a` },
+        { text: `Wrong option ${n + 1}b` },
+        { text: `Wrong option ${n + 1}c` },
+      ],
+    })),
+  };
+}
+
 /** A fake answering by prompt version, whatever the order calls arrive in. */
 function labAi(
   options: {
@@ -117,6 +144,13 @@ function labAi(
     /** The objectives call's retrieval set (v12); omitted: an answer without one, as v11 gave. */
     retrieval?: unknown;
     facts?: (call: FakeCall, target: number) => string | Promise<string>;
+    /** Lab pw: the teach call's answer (default the fixture slice without its questions). */
+    teach?: (call: FakeCall, target: number) => string | Promise<string>;
+    /** Lab pw: a question set's answer (default `count` questions on key idea 0). */
+    questionSet?: (
+      call: FakeCall,
+      set: { target: number; use: "slide" | "exit"; count: number },
+    ) => string | Promise<string>;
     verify?: unknown;
     /** The slide answer; default the fixture slide of the entry's kind. */
     slide?: (call: FakeCall, kind: string) => string;
@@ -134,6 +168,20 @@ function labAi(
       // The prompt (v9) lists objectives by 0-based index and names the target the same way.
       const target = Number(/Write the facts for objective (\d+)/.exec(call.promptText)?.[1]);
       return options.facts ? options.facts(call, target) : json(factsAnswerFor(target));
+    }
+    if (version.startsWith("plan-teach-objective")) {
+      const target = Number(/for objective (\d+):/.exec(call.promptText)?.[1]);
+      if (options.teach) return options.teach(call, target);
+      const { questions: _questions, ...taught } = factsAnswerFor(target);
+      return json(taught);
+    }
+    if (version.startsWith("plan-question-set")) {
+      const m = /Write (\d+) "(slide|exit)" question/.exec(call.promptText);
+      const count = Number(m?.[1]);
+      const use = m?.[2] as "slide" | "exit";
+      const target = romans.objectives.findIndex((o) => call.promptText.includes(o.text));
+      if (options.questionSet) return options.questionSet(call, { target, use, count });
+      return json(questionSetAnswer({ target, use, count }));
     }
     if (version.startsWith("verify-facts")) return json(options.verify ?? { corrections: [] });
     if (version.startsWith("generate-slide")) {
@@ -606,5 +654,165 @@ describe("runLabPipeline", () => {
     // The plan's reasons stay first after a failure line, and are never repeated.
     const planned = { ...plan, complete: false, incomplete: ["objective 2: no slide teaches it"] };
     expect(labRunStatus(planned, lesson).incomplete).toEqual(["objective 2: no slide teaches it"]);
+  });
+});
+
+describe("labPlan --waves (lab pw)", () => {
+  const countOf = (ai: ReturnType<typeof labAi>, name: string) =>
+    versionsOf(ai).filter((v) => v === name).length;
+  /** The objectives call's retrieval set (v12+ always writes one): the starter prints it, so the
+   * demand is the pinned `question-demand.test.ts` one — slide [4, 4, 0], exit [2, 2, 2]. */
+  const retrieval = [
+    { question: "Who invaded Britain in AD 43?", answer: "The Romans" },
+    { question: "What is an empire?", answer: "Lands ruled by one state" },
+    { question: "Name one Roman road.", answer: "Watling Street" },
+  ];
+
+  test("teach per objective, then that objective's question sets the moment its teach returns; the merge and outline read the result unchanged", async () => {
+    // Objective 1's teach call is held until another objective's question set has been asked
+    // for: the sets do not wait for the slowest teach.
+    let firstSetAsked: () => void = () => {};
+    const aSetWasAsked = new Promise<void>((resolve) => {
+      firstSetAsked = resolve;
+    });
+    let setsBeforeTeach1Returned = 0;
+    const ai = labAi({
+      retrieval,
+      teach: async (_call, target) => {
+        if (target === 0) {
+          await Promise.race([aSetWasAsked, new Promise((r) => setTimeout(r, 500))]);
+          setsBeforeTeach1Returned = countOf(ai, "plan-question-set");
+        }
+        const { questions: _q, ...taught } = factsAnswerFor(target);
+        return json(taught);
+      },
+      questionSet: async (_call, set) => {
+        firstSetAsked();
+        return json(questionSetAnswer(set));
+      },
+    });
+    const deps = recordingDeps(ai);
+    const state = await labPlan({ lesson: romansLesson() }, deps, { waves: true });
+
+    expect(countOf(ai, "plan-objectives")).toBe(1);
+    expect(countOf(ai, "plan-facts-objective")).toBe(0);
+    expect(countOf(ai, "plan-teach-objective")).toBe(3);
+    // Three objectives at ten slides: slide sets for the first two, an exit set for each.
+    expect(countOf(ai, "plan-question-set")).toBe(5);
+    expect(setsBeforeTeach1Returned).toBeGreaterThanOrEqual(1);
+
+    const report = state.labPlan;
+    expect(report.waves?.demand).toEqual([
+      { slide: 4, exit: 2 },
+      { slide: 4, exit: 2 },
+      { slide: 0, exit: 2 },
+    ]);
+    expect(report.waves?.counts).toEqual([
+      { slide: 5, exit: 2 },
+      { slide: 5, exit: 2 },
+      { slide: 0, exit: 2 },
+    ]);
+    expect(report.waves?.regenerated).toEqual([]);
+    expect(report.waves?.setsFailed).toEqual([]);
+    expect(report.factsFailed).toEqual([]);
+
+    const lesson = state.lesson;
+    expect(lesson.generation?.promptVersions.planned).toBe(LAB_WAVES_PLANNED_VERSION);
+    expect(lesson.facts?.questions).toHaveLength(5 + 2 + 5 + 2 + 2);
+    expect(lesson.facts?.keyIdeas).toHaveLength(romans.facts.keyIdeas.length);
+    // Every question carries its objective and, via the merge, the taught key idea it named.
+    expect(
+      lesson.facts?.questions.every(
+        (q) => (q.objectiveRefs ?? []).length === 1 && q.keyIdeaRefs?.length === 1,
+      ),
+    ).toBe(true);
+    expect(lesson.facts?.outline).toHaveLength(10);
+    expect(lesson.facts?.outline.at(-1)?.kind).toBe("exit-ticket");
+    expect(checkLesson(lesson).filter((f) => f.severity === "error")).toEqual([]);
+    expect(report.status.complete).toBe(true);
+    expect(labPlanMarkdown(report)).toContain("- waves: demand o1 slide 4/exit 2");
+  });
+
+  test("a set the schema refuses twice (short by more than one; a key idea not supplied) is asked for once more", async () => {
+    const asked: string[] = [];
+    const ai = labAi({
+      retrieval,
+      questionSet: (_call, set) => {
+        const key = `o${set.target + 1}/${set.use}`;
+        asked.push(key);
+        const nth = asked.filter((k) => k === key).length;
+        // o1/slide: two of five on both of the first call's attempts (strict, then soft, which
+        // admits `count − 1` at least); whole on the regeneration.
+        if (key === "o1/slide" && nth <= 2)
+          return json(questionSetAnswer({ ...set, count: set.count - 3 }));
+        // o2/exit: a key idea the teach call did not supply, both attempts; then good.
+        if (key === "o2/exit" && nth <= 2) return json(questionSetAnswer(set, 7));
+        return json(questionSetAnswer(set));
+      },
+    });
+    const state = await labPlan({ lesson: romansLesson() }, recordingDeps(ai), { waves: true });
+    // Five sets; o1/slide and o2/exit cost two refused attempts and one regeneration each.
+    const perKey = Object.fromEntries(
+      [...new Set(asked)].sort().map((k) => [k, asked.filter((x) => x === k).length]),
+    );
+    expect(perKey).toEqual({
+      "o1/exit": 1,
+      "o1/slide": 3,
+      "o2/exit": 3,
+      "o2/slide": 1,
+      "o3/exit": 1,
+    });
+    expect(state.labPlan.waves?.regenerated.map((r) => r.split(":")[0]).sort()).toEqual([
+      "o1/slide",
+      "o2/exit",
+    ]);
+    expect(state.labPlan.waves?.setsFailed).toEqual([]);
+    expect(state.lesson.facts?.questions).toHaveLength(5 + 2 + 5 + 2 + 2);
+  });
+
+  test("questionSetProblem: the code check behind the schema — an empty keyIdeaRefs list, or a short set the soft schema let through", () => {
+    const good = questionSetAnswer({ target: 0, use: "slide", count: 3 }) as PlanQuestionSetOutput;
+    expect(questionSetProblem(good, 3, 2)).toBeUndefined();
+    expect(questionSetProblem(good, 4, 2)).toBeUndefined();
+    expect(questionSetProblem(good, 5, 2)).toBe("3 questions for 5 asked");
+    const orphan = {
+      questions: good.questions.map((q, i) => (i === 1 ? { ...q, keyIdeaRefs: [] } : q)),
+    } as PlanQuestionSetOutput;
+    expect(questionSetProblem(orphan, 3, 2)).toBe("question 2 names no supplied key idea");
+  });
+
+  test("a teach call that fails leaves its objective without facts; a set that fails leaves its questions out; the run goes on", async () => {
+    const ai = labAi({
+      retrieval,
+      teach: (_call, target) => {
+        if (target === 2) throw new Error("provider down");
+        const { questions: _q, ...taught } = factsAnswerFor(target);
+        return json(taught);
+      },
+      questionSet: (_call, set) => {
+        if (set.target === 1 && set.use === "exit") throw new Error("provider down");
+        return json(questionSetAnswer(set));
+      },
+    });
+    const state = await labPlan({ lesson: romansLesson() }, recordingDeps(ai), { waves: true });
+    expect(state.labPlan.factsFailed).toEqual([2]);
+    expect(state.labPlan.waves?.setsFailed).toEqual(["o2/exit"]);
+    expect(state.lesson.facts?.questions).toHaveLength(5 + 2 + 5);
+    expect(state.labPlan.status.complete).toBe(false);
+    expect(state.labPlan.status.incomplete).toContain("objective 3: its facts call did not return");
+  });
+
+  test("the whole pipeline under --waves: generate, evaluate and repair run on the waves' facts", async () => {
+    const ai = labAi({ retrieval });
+    const deps = recordingDeps(ai);
+    const { status, state } = await runLabPipeline({ lesson: romansLesson() }, deps, {
+      waves: true,
+      verify: false,
+    });
+    expect(status.executed).toBe(true);
+    expect(state.lesson.generation?.stage).toBe("repaired");
+    expect(state.lesson.slides).toHaveLength(10);
+    expect(countOf(ai, "plan-facts-objective")).toBe(0);
+    expect(countOf(ai, "verify-facts")).toBe(0);
   });
 });

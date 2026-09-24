@@ -16,6 +16,7 @@ import {
 import { checkObjectives, describeIssues } from "../objectives-check";
 import { type OutlineFromFactsResult, outlineFromFacts } from "../outline-from-facts";
 import {
+  carriesWorkedExample,
   type PlanFactsObjectiveInput,
   planFactsObjectiveOutputSchemaFor,
   planFactsObjectivePrompt,
@@ -25,6 +26,17 @@ import {
   planObjectivesOutputSchemaFor,
   planObjectivesPrompt,
 } from "../prompts/plan-objectives";
+import {
+  type PlanQuestionSetOutput,
+  planQuestionSetOutputSchemaFor,
+  planQuestionSetPrompt,
+  type QuestionSetUse,
+} from "../prompts/plan-question-set";
+import {
+  type PlanTeachObjectiveOutput,
+  planTeachObjectiveOutputSchemaFor,
+  planTeachObjectivePrompt,
+} from "../prompts/plan-teach-objective";
 import { assignFactIds, OUTLINE_FROM_FACTS_VERSION, type PlanFactsLike } from "../specs";
 import { evaluate } from "../stages/evaluate";
 import { generate } from "../stages/generate";
@@ -42,6 +54,7 @@ import {
   StageFailure,
   type VerifyResult,
 } from "../types";
+import { type ObjectiveQuestionDemand, questionDemand, sketchTaught } from "./question-demand";
 
 /*
  * The lab's plan path (quality PRD, lab wf1; production `stages/plan.ts` untouched): the
@@ -101,6 +114,15 @@ export interface LabPlanOptions {
    * objectives check still runs (code). Not combined with `arm`: an arm only changes the facts.
    */
   fromFacts?: LabFromFacts | undefined;
+  /**
+   * Lab pw, `--waves`: the facts in waves instead of one facts call per objective — wave 2 one
+   * `plan-teach-objective` call per objective (the taught text, no questions), wave 3 the question
+   * demand from the outline (`questionDemand`, code, before any question exists), wave 4 one
+   * `plan-question-set` call per (objective, use) with the exact count, started the moment that
+   * objective's teach call returns. Merge, outline and every stage after run as on the old path,
+   * which `false` (default) keeps untouched for the A/B. Not combined with an arm.
+   */
+  waves?: boolean | undefined;
 }
 
 /** A saved run's plan inputs, for `LabPlanOptions.fromFacts`. */
@@ -165,6 +187,8 @@ export interface LabPlanReport {
   slideCount: number;
   verify: "started" | "off" | "skipped" | "blocked";
   timings: { objectivesMs: number; factsWallMs: number; totalMs: number };
+  /** Under `--waves`: the demand, the counts asked, and what the waves did per objective. */
+  waves?: LabWavesReport | undefined;
   /** Under an arm: where each objective's facts came from (`call`, `pack`, `pack+fill:<types>`). */
   arm?: { name: string; factsSource: string[] } | undefined;
   /** Under `fromFacts`: the run whose objectives and facts were reused (no plan calls made). */
@@ -175,8 +199,23 @@ export interface LabPlanReport {
 
 export type LabPlanState = PipelineState & { labPlan: LabPlanReport };
 
+export interface LabWavesReport {
+  /** What the outline will place, per objective (`questionDemand`, from the count-only sketch). */
+  demand: ObjectiveQuestionDemand[];
+  /** What each question-set call was asked for (demand plus the spare); 0 means no call. */
+  counts: ObjectiveQuestionDemand[];
+  /** Per objective: the teach call's time and the time to its last question set (from the wave's start). */
+  perObjective: { teachMs: number; questionsMs: number }[];
+  /** `o<n>/<use>` sets regenerated once by the code check, with why. */
+  regenerated: string[];
+  /** `o<n>/<use>` sets whose call did not return; their questions are missing from the facts. */
+  setsFailed: string[];
+}
+
 /** The `promptVersions.planned` stamp this path writes; Generate appends Verify's. */
 export const LAB_PLANNED_VERSION = `${planObjectivesPrompt.version}+${planFactsObjectivePrompt.version}+${OUTLINE_FROM_FACTS_VERSION}`;
+/** The stamp under `--waves`: the two split prompts in place of the facts call. */
+export const LAB_WAVES_PLANNED_VERSION = `${planObjectivesPrompt.version}+${planTeachObjectivePrompt.version}+${planQuestionSetPrompt.version}+${OUTLINE_FROM_FACTS_VERSION}`;
 
 /** The finding the lab writes for material the outline could not supply. */
 export const MISSING_MATERIAL_CHECK = "missing-material";
@@ -206,6 +245,15 @@ const PROGRESS_PLANNED = 10;
  */
 export const MAX_OUTPUT_TOKENS_OBJECTIVES = 1600;
 export const MAX_OUTPUT_TOKENS_FACTS = 4000;
+/**
+ * Lab pw, the split calls. The facts call's answers were ~2.5k output tokens (text ≈ 1.3k, of
+ * which questions 51%, plus up to ~2k hidden reasoning at medium, r1: 5 of 36 at the 2 400 cap).
+ * Teach writes the other half of the text (≈ 650) with the same reasoning allowance: 3 000. A
+ * question set writes ≈ 130 tokens a question, at most six a call (≈ 800) with reasoning: 2 400.
+ * A call that reaches its cap is a schema miss and one retry, as before.
+ */
+export const MAX_OUTPUT_TOKENS_TEACH = 3000;
+export const MAX_OUTPUT_TOKENS_QUESTION_SET = 2400;
 
 /** The objectives failed their structural check: the lab stops before any facts call. */
 export class LabPlanBlocked extends StageFailure {
@@ -240,6 +288,8 @@ export async function labPlan(
   const effort = options.effort ?? "medium";
   const fromFacts = options.fromFacts;
   if (fromFacts && options.arm) throw new Error("labPlan: fromFacts and an arm do not combine");
+  const waves = options.waves === true && !fromFacts;
+  if (waves && options.arm) throw new Error("labPlan: waves and an arm do not combine");
 
   // 1. The title slide from the Brief, persisted before any call (as Plan does).
   const title =
@@ -383,66 +433,90 @@ export async function labPlan(
   const factsSource = factsPlans.map((p) =>
     p.mode === "call" ? "call" : p.filled.length > 0 ? `pack+fill:${p.filled.join(",")}` : "pack",
   );
+  let wavesReport: LabWavesReport | undefined;
+  const wavesOutputs = async (): Promise<(ObjectiveFactsOutput | null)[]> => {
+    const ran = await runWaves(
+      {
+        deps,
+        cls,
+        effort,
+        topic,
+        shape,
+        audience,
+        objectives: objectives.map((o) => ({ text: o.text })),
+        slideCount,
+        priorKnowledge: brief.classContext?.priorKnowledge,
+        curriculum,
+        retrieval,
+      },
+      { findings, factsFailed, budgetFailed },
+    );
+    wavesReport = ran.report;
+    editorialMisses += ran.editorialMisses;
+    return ran.outputs;
+  };
   const outputs = fromFacts
     ? []
-    : await Promise.all(
-        objectives.map(async (_, target): Promise<ObjectiveFactsOutput | null> => {
-          const factsPlan = factsPlans[target] ?? { mode: "call" as const };
-          if (factsPlan.mode === "pack") {
-            deps.logger.info(
-              { stage: "plan", call: "facts", target, source: "pack" },
-              "facts from pack",
-            );
-            return factsPlan.output;
-          }
-          const input: PlanFactsObjectiveInput = {
-            topic,
-            shape,
-            audience,
-            objectives: objectives.map((o) => ({ text: o.text })),
-            target,
-            priorKnowledge: brief.classContext?.priorKnowledge,
-            curriculum,
-            // The grounded arm's reference facts ride in the prompt's own slot (v10), not the extract.
-            ...(factsPlan.reference ? { reference: { text: factsPlan.reference } } : {}),
-          };
-          deps.logger.info({ stage: "plan", call: "facts", target, cls }, "plan call");
-          try {
-            const call = await callStructured({
-              deps,
-              stage: "plan",
-              cls,
-              effort,
-              prompt: planFactsObjectivePrompt,
-              input,
-              schema: planFactsObjectiveOutputSchemaFor(input),
-              soft: planFactsObjectiveOutputSchemaFor(input, { soft: true }),
-              maxOutputTokens: MAX_OUTPUT_TOKENS_FACTS,
-            });
-            for (const miss of call.editorialMisses)
-              findings.push(specRuleFinding(miss, {}, "warning"));
-            editorialMisses += call.editorialMisses.length;
-            return call.output;
-          } catch (error) {
-            factsFailed.push(target);
-            if (error instanceof BudgetExceeded) {
-              budgetFailed.push({ target, by: error.by });
+    : waves
+      ? await wavesOutputs()
+      : await Promise.all(
+          objectives.map(async (_, target): Promise<ObjectiveFactsOutput | null> => {
+            const factsPlan = factsPlans[target] ?? { mode: "call" as const };
+            if (factsPlan.mode === "pack") {
+              deps.logger.info(
+                { stage: "plan", call: "facts", target, source: "pack" },
+                "facts from pack",
+              );
+              return factsPlan.output;
+            }
+            const input: PlanFactsObjectiveInput = {
+              topic,
+              shape,
+              audience,
+              objectives: objectives.map((o) => ({ text: o.text })),
+              target,
+              priorKnowledge: brief.classContext?.priorKnowledge,
+              curriculum,
+              // The grounded arm's reference facts ride in the prompt's own slot (v10), not the extract.
+              ...(factsPlan.reference ? { reference: { text: factsPlan.reference } } : {}),
+            };
+            deps.logger.info({ stage: "plan", call: "facts", target, cls }, "plan call");
+            try {
+              const call = await callStructured({
+                deps,
+                stage: "plan",
+                cls,
+                effort,
+                prompt: planFactsObjectivePrompt,
+                input,
+                schema: planFactsObjectiveOutputSchemaFor(input),
+                soft: planFactsObjectiveOutputSchemaFor(input, { soft: true }),
+                maxOutputTokens: MAX_OUTPUT_TOKENS_FACTS,
+              });
+              for (const miss of call.editorialMisses)
+                findings.push(specRuleFinding(miss, {}, "warning"));
+              editorialMisses += call.editorialMisses.length;
+              return call.output;
+            } catch (error) {
+              factsFailed.push(target);
+              if (error instanceof BudgetExceeded) {
+                budgetFailed.push({ target, by: error.by });
+                return null;
+              }
+              if (error instanceof Error && error.name === "AbortError") throw error;
+              deps.logger.warn(
+                {
+                  stage: "plan",
+                  call: "facts",
+                  target,
+                  err: error instanceof StageFailure ? undefined : error,
+                },
+                "facts call failed; objective left without facts",
+              );
               return null;
             }
-            if (error instanceof Error && error.name === "AbortError") throw error;
-            deps.logger.warn(
-              {
-                stage: "plan",
-                call: "facts",
-                target,
-                err: error instanceof StageFailure ? undefined : error,
-              },
-              "facts call failed; objective left without facts",
-            );
-            return null;
-          }
-        }),
-      );
+          }),
+        );
   factsFailed.sort((a, b) => a - b);
   // One budget finding naming every objective the cap stopped, not only the first to fail.
   if (budgetFailed.length > 0) {
@@ -555,7 +629,7 @@ export async function labPlan(
       jobId: deps.context.jobId,
       stage: "planned",
       startedAt,
-      promptVersions: { planned: LAB_PLANNED_VERSION },
+      promptVersions: { planned: waves ? LAB_WAVES_PLANNED_VERSION : LAB_PLANNED_VERSION },
       usage: deps.budget.totals(),
       findings,
     },
@@ -577,6 +651,7 @@ export async function labPlan(
     slideCount,
     verify,
     timings: { objectivesMs, factsWallMs, totalMs: Date.now() - t0 },
+    ...(wavesReport ? { waves: wavesReport } : {}),
     ...(options.arm ? { arm: { name: options.arm.name, factsSource } } : {}),
     ...(fromFacts ? { fromFacts: fromFacts.source } : {}),
     status: { executed: false, complete: incomplete.length === 0, incomplete, accepted: null },
@@ -710,6 +785,12 @@ export function labPlanMarkdown(report: LabPlanReport): string {
   L.push(`- gaps (${report.gaps.length}):${report.gaps.length ? "" : " none"}`);
   for (const g of report.gaps) L.push(`  - ${g}`);
   L.push(`- verify: ${report.verify}`);
+  if (report.waves) {
+    const w = report.waves;
+    L.push(
+      `- waves: demand ${w.demand.map((d, i) => `o${i + 1} slide ${d.slide}/exit ${d.exit}`).join(", ")}; asked ${w.counts.map((d, i) => `o${i + 1} ${d.slide}/${d.exit}`).join(", ")}; teach→sets ms ${w.perObjective.map((t, i) => `o${i + 1} ${t.teachMs}→${t.questionsMs}`).join(", ")}; regenerated ${w.regenerated.length ? w.regenerated.join("; ") : "none"}; sets failed ${w.setsFailed.length ? w.setsFailed.join(", ") : "none"}`,
+    );
+  }
   if (report.fromFacts)
     L.push(
       `- from facts: ${report.fromFacts} (no objectives, select or facts call; facts held fixed)`,
@@ -719,6 +800,226 @@ export function labPlanMarkdown(report: LabPlanReport): string {
       `- arm ${report.arm.name}: facts from ${report.arm.factsSource.map((s, i) => `o${i + 1} ${s}`).join(", ")}`,
     );
   return L.join("\n");
+}
+
+/** The inputs the waves share: the plan's brief as the prompts read it. */
+interface WavesInput {
+  deps: PipelineDeps;
+  cls: Parameters<typeof callStructured>[0]["cls"];
+  effort: "low" | "medium" | "high";
+  topic: string;
+  shape: ReturnType<typeof shapeOf>;
+  audience: ReturnType<typeof audienceOf>;
+  objectives: { text: string }[];
+  slideCount: number;
+  priorKnowledge?: string | undefined;
+  curriculum?: { text: string } | undefined;
+  retrieval?: PlanRetrievalQuestion[] | undefined;
+}
+
+/**
+ * Why a question set is asked for again (once): more than one question fewer than the outline
+ * demanded (the strict schema pins the count; the soft one, which the retry accepts, admits
+ * `count − 1` to `count + 2`, and a one-item shortfall is taken as it is: the spare covers it), or
+ * a question that names no key idea the teach call supplied (`keyIdeaRefs` outside the taught
+ * list are dropped by the merge, and a question with none left falls back to "fair once the
+ * objective is fully taught", which is not what the split promised). `undefined` when the set is
+ * usable; the caller keeps the first `count` questions of a long answer.
+ */
+export function questionSetProblem(
+  output: PlanQuestionSetOutput,
+  count: number,
+  keyIdeaCount: number,
+): string | undefined {
+  if (output.questions.length < count - 1)
+    return `${output.questions.length} questions for ${count} asked`;
+  const orphan = output.questions
+    .slice(0, count)
+    .findIndex((q) => !(q.keyIdeaRefs ?? []).some((r) => r.index >= 0 && r.index < keyIdeaCount));
+  if (orphan >= 0) return `question ${orphan + 1} names no supplied key idea`;
+  return undefined;
+}
+
+/**
+ * Waves 2–4 (lab pw): the demand from the outline over a count-only sketch (wave 3 first, code,
+ * so nothing waits on it), then per objective, all at once: the teach call, and the moment it
+ * returns, that objective's question-set calls in parallel, one per use with a count. The
+ * objective's output is `{ ...taught, questions: [...slide set, ...exit set] }`, the shape the
+ * merge already reads. A teach call that fails leaves the objective without facts (as a facts
+ * call did); a set that fails leaves its questions out and is named in the report; the code check
+ * asks once more for a set that came back wrong and takes the second answer as it is.
+ */
+export async function runWaves(
+  input: WavesInput,
+  sink: {
+    findings: Finding[];
+    factsFailed: number[];
+    budgetFailed: { target: number; by: "usd" | "tokens" }[];
+  },
+): Promise<{
+  outputs: (ObjectiveFactsOutput | null)[];
+  report: LabWavesReport;
+  editorialMisses: number;
+}> {
+  const { deps, cls, effort, topic, shape, audience, objectives } = input;
+  const position = (target: number) => ({ shape, objectives, target });
+  const { demand, counts } = questionDemand({
+    topic,
+    objectives,
+    facts: sketchTaught(
+      objectives,
+      objectives.map((_, target) => carriesWorkedExample(position(target))),
+    ),
+    shape,
+    slideCount: input.slideCount as Parameters<typeof questionDemand>[0]["slideCount"],
+    priorKnowledge: input.priorKnowledge,
+    retrieval: input.retrieval,
+  });
+  deps.logger.info(
+    { stage: "plan", call: "demand", demand, counts },
+    "question demand from the outline",
+  );
+  const regenerated: string[] = [];
+  const setsFailed: string[] = [];
+  const perObjective: LabWavesReport["perObjective"] = objectives.map(() => ({
+    teachMs: 0,
+    questionsMs: 0,
+  }));
+  let editorialMisses = 0;
+  const t0 = Date.now();
+  /** Errors a call's failure is recorded for, never thrown: the lesson goes on without the part. */
+  const recordFailure = (error: unknown, target: number, what: string): "recorded" | never => {
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    if (error instanceof BudgetExceeded) {
+      sink.budgetFailed.push({ target, by: error.by });
+      return "recorded";
+    }
+    deps.logger.warn(
+      { stage: "plan", call: what, target, err: error instanceof StageFailure ? undefined : error },
+      `${what} call failed`,
+    );
+    return "recorded";
+  };
+  const outputs = await Promise.all(
+    objectives.map(async (objective, target): Promise<ObjectiveFactsOutput | null> => {
+      const teachInput: PlanFactsObjectiveInput = {
+        topic,
+        shape,
+        audience,
+        objectives,
+        target,
+        priorKnowledge: input.priorKnowledge,
+        curriculum: input.curriculum,
+      };
+      deps.logger.info({ stage: "plan", call: "teach", target, cls }, "plan call");
+      let taught: PlanTeachObjectiveOutput;
+      try {
+        const call = await callStructured({
+          deps,
+          stage: "plan",
+          cls,
+          effort,
+          prompt: planTeachObjectivePrompt,
+          input: teachInput,
+          schema: planTeachObjectiveOutputSchemaFor(teachInput),
+          soft: planTeachObjectiveOutputSchemaFor(teachInput, { soft: true }),
+          maxOutputTokens: MAX_OUTPUT_TOKENS_TEACH,
+        });
+        for (const miss of call.editorialMisses)
+          sink.findings.push(specRuleFinding(miss, {}, "warning"));
+        editorialMisses += call.editorialMisses.length;
+        taught = call.output;
+      } catch (error) {
+        sink.factsFailed.push(target);
+        recordFailure(error, target, "teach");
+        return null;
+      }
+      const timing = perObjective[target] as LabWavesReport["perObjective"][number];
+      timing.teachMs = Date.now() - t0;
+      const uses = (["slide", "exit"] as const).filter((use) => (counts[target]?.[use] ?? 0) > 0);
+      const sets = await Promise.all(
+        uses.map(async (use: QuestionSetUse): Promise<PlanQuestionSetOutput["questions"]> => {
+          const count = counts[target]?.[use] ?? 0;
+          const setInput = {
+            topic,
+            shape,
+            audience,
+            objective: objective.text,
+            taught,
+            use,
+            count,
+          };
+          const ask = () =>
+            callStructured({
+              deps,
+              stage: "plan",
+              cls,
+              effort,
+              prompt: planQuestionSetPrompt,
+              input: setInput,
+              schema: planQuestionSetOutputSchemaFor(setInput),
+              soft: planQuestionSetOutputSchemaFor(setInput, { soft: true }),
+              maxOutputTokens: MAX_OUTPUT_TOKENS_QUESTION_SET,
+            });
+          deps.logger.info(
+            { stage: "plan", call: "question-set", target, use, count },
+            "plan call",
+          );
+          const key = `o${target + 1}/${use}`;
+          /**
+           * One regeneration a set: a call the schema refused twice (the count off by more than
+           * one, a `keyIdeaRefs` index outside the taught list, a cap stop) or an accepted answer
+           * the code check faults (`questionSetProblem`) is asked for once more; the second
+           * answer stands, or the set is left out.
+           */
+          const askOnce = async (): Promise<Awaited<ReturnType<typeof ask>>> => {
+            let first: Awaited<ReturnType<typeof ask>> | undefined;
+            let why: string;
+            try {
+              first = await ask();
+              const problem = questionSetProblem(first.output, count, taught.keyIdeas.length);
+              if (!problem) return first;
+              why = problem;
+            } catch (error) {
+              if (!(error instanceof StageFailure)) throw error;
+              why = error.message;
+            }
+            regenerated.push(`${key}: ${why}`);
+            deps.logger.warn(
+              { stage: "plan", call: "question-set", target, use, why },
+              "question set regenerated",
+            );
+            try {
+              return await ask();
+            } catch (error) {
+              if (first && error instanceof StageFailure) return first;
+              throw error;
+            }
+          };
+          try {
+            const call = await askOnce();
+            for (const miss of call.editorialMisses)
+              sink.findings.push(specRuleFinding(miss, {}, "warning"));
+            editorialMisses += call.editorialMisses.length;
+            // The soft schema admits up to two over: the outline asked for `count`, so that is
+            // what goes in (a long answer's tail was never going to be placed).
+            return call.output.questions.slice(0, count);
+          } catch (error) {
+            setsFailed.push(key);
+            recordFailure(error, target, "question-set");
+            return [];
+          }
+        }),
+      );
+      timing.questionsMs = Date.now() - t0;
+      return { ...taught, questions: sets.flat() } as ObjectiveFactsOutput;
+    }),
+  );
+  return {
+    outputs,
+    report: { demand, counts, perObjective, regenerated, setsFailed },
+    editorialMisses,
+  };
 }
 
 /**
