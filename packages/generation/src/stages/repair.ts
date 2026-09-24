@@ -18,7 +18,7 @@ import {
   slideSpecSchemaFor,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
-import { isCodeBuilt, withShuffledOptions } from "../lab/coded-slides";
+import { isCodeBuilt, isRetrievalStarter, withShuffledOptions } from "../lab/coded-slides";
 import {
   type Audience,
   type RepairInput,
@@ -122,14 +122,23 @@ const keyOf = (finding: Finding): string | undefined => {
  * quick quizzes by design, and in round 1 a verb-fit rewrite ("asks pupils to choose, not
  * explain") turned 10 clean quizzes into long "explain" items, merged items and dropped options
  * (r1-h-y2-plants-L and r1-cb-y5-fractions-L slide 10). The warning stays a residual.
+ *
+ * `retrieval`: the retrieval starter (lab r4, `isRetrievalStarter`), never a target at any
+ * severity. Its questions are earlier lessons' and Repair's only source is this lesson's facts, so
+ * a rewrite can only pre-test what the lesson is about to teach (r3-h-y9-coasts-L: an error that
+ * the facts did not define weathering had it rewritten about fetch and managed retreat). An error
+ * on it, a wrong answer included, stays a residual for the teacher.
  */
 export function repairTargets(
   findings: Finding[],
   codeBuilt: ReadonlySet<string> = new Set(),
+  retrieval: ReadonlySet<string> = new Set(),
 ): Target[] {
+  const onRetrieval = (f: Finding) =>
+    f.target.slideId !== undefined && retrieval.has(f.target.slideId);
   const byKey = new Map<string, Target>();
   for (const finding of findings) {
-    if (finding.severity !== "error") continue;
+    if (finding.severity !== "error" || onRetrieval(finding)) continue;
     const key = keyOf(finding);
     if (key === undefined) continue;
     const { slideId, blockId } = finding.target;
@@ -144,7 +153,8 @@ export function repairTargets(
     (f) =>
       f.severity === "warning" &&
       rank(f) >= 0 &&
-      !(f.target.slideId !== undefined && codeBuilt.has(f.target.slideId)),
+      !(f.target.slideId !== undefined && codeBuilt.has(f.target.slideId)) &&
+      !onRetrieval(f),
   );
   const warningOnly = new Map<string, Target>();
   for (const finding of actionable) {
@@ -235,12 +245,15 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   const repaired = new Set<string>();
   const extra: Finding[] = [];
 
-  // Lab only: slides printed in code are not rewritten for a warning, and a rewritten
-  // multiple-choice slide gets Generate's seeded option order back (the model lists the answer
-  // first, so without it the answer is A again).
+  // Lab only: slides printed in code are not rewritten for a warning, the retrieval starter is
+  // never rewritten (r4), and a rewritten multiple-choice slide gets Generate's seeded option
+  // order back (the model lists the answer first, so without it the answer is A again).
   const lab = isOutlineFromFacts(generation.promptVersions.planned);
   const codeBuilt = new Set(lesson.slides.filter(isCodeBuilt).map((s) => s.id));
-  for (const target of repairTargets(generation.findings, codeBuilt)) {
+  const retrieval = new Set(
+    lesson.slides.filter((s) => isRetrievalStarter(s, facts)).map((s) => s.id),
+  );
+  for (const target of repairTargets(generation.findings, codeBuilt, retrieval)) {
     throwIfAborted(deps.signal);
     // Facts first (TEACH-216): a `fact-consistency` finding that names the wrong fact patches the
     // fact before the artefact is regenerated from it, so the two do not drift apart again. The

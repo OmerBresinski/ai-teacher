@@ -38,6 +38,20 @@ export function isCodeBuilt(slide: Slide): boolean {
   return stamps.length > 0 && stamps.every((m) => m === CODE_MODEL);
 }
 
+/**
+ * Lab r4: whether a slide is the retrieval starter, the set `codedSetSpec` prints from
+ * `LessonFacts.retrieval` whenever the facts carry one (a code-built starter then always is it).
+ * Its questions are about earlier lessons by design, so its answers are not in this lesson's facts:
+ * a check that reads it against them cannot be right, and a rewrite from them would pre-test what
+ * the lesson is about to teach (r3-h-y9-coasts-L: fetch and managed retreat replaced weathering).
+ */
+export function isRetrievalStarter(
+  slide: Slide,
+  facts: Pick<LessonFacts, "retrieval"> | undefined,
+): boolean {
+  return slide.kind === "starter" && (facts?.retrieval?.length ?? 0) > 0 && isCodeBuilt(slide);
+}
+
 /** A list item's cap (`SPEC_LIMITS.item`), restated so the outline has no `@tj/slides` import. */
 export const LINE_MAX = 160;
 /**

@@ -4,12 +4,19 @@ import {
   checkLesson,
   type Finding,
   type Lesson,
+  type LessonFacts,
   type Slide,
   SlideSchema,
 } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
-import { CODE_MODEL, codedSetSpec, isCodeBuilt, withShuffledOptions } from "../lab/coded-slides";
+import {
+  CODE_MODEL,
+  codedSetSpec,
+  isCodeBuilt,
+  isRetrievalStarter,
+  withShuffledOptions,
+} from "../lab/coded-slides";
 import { laterQuestionsFor } from "../lab/later-questions";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import {
@@ -33,7 +40,7 @@ import {
   sampleBriefLesson,
 } from "../testing";
 import { StageFailure } from "../types";
-import { evaluate, verbFitApplies } from "./evaluate";
+import { evaluate, factConsistencyApplies, verbFitApplies } from "./evaluate";
 import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
 import { MAX_TARGETS, MAX_WARNING_TARGETS, repair, repairContext, repairTargets } from "./repair";
@@ -1893,6 +1900,53 @@ describe("evaluate", () => {
     expect(verbFitApplies(finding("verb-fit", { blockId: "b1" }), state)).toBe(true);
     expect(verbFitApplies(finding("verb-fit", {}), state)).toBe(true);
   });
+
+  test("lab r4: factConsistencyApplies drops fact-consistency on the retrieval starter only", async () => {
+    const base = await generated();
+    const finding = (check: string, target: Finding["target"]): Finding => ({
+      check,
+      severity: "error",
+      target,
+      message: "The supplied facts do not define weathering.",
+    });
+    const index = base.lesson.slides.findIndex((s) => s.kind === "starter");
+    const starter = base.lesson.slides[index] as Slide;
+    const content = base.lesson.slides.find((s) => s.kind === "content") as Slide;
+    // A model-written starter, and a code-built one with no retrieval set, are checked as before.
+    expect(factConsistencyApplies(finding("fact-consistency", { slideId: starter.id }), base)).toBe(
+      true,
+    );
+    const coded = {
+      ...starter,
+      elements: starter.elements.map((el) =>
+        el.generatedFrom
+          ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+          : el,
+      ),
+    };
+    const slides = base.lesson.slides.map((s, i) => (i === index ? coded : s));
+    const noSet = { ...base, lesson: { ...base.lesson, slides } };
+    expect(
+      factConsistencyApplies(finding("fact-consistency", { slideId: starter.id }), noSet),
+    ).toBe(true);
+    const facts = {
+      ...(base.lesson.facts as LessonFacts),
+      retrieval: [{ question: "What is weathering?", answer: "Rock wearing away in place" }],
+    };
+    const state = { ...noSet, lesson: { ...noSet.lesson, facts } };
+    expect(isRetrievalStarter(coded, facts)).toBe(true);
+    expect(
+      factConsistencyApplies(finding("fact-consistency", { slideId: starter.id }), state),
+    ).toBe(false);
+    // Any other check on it stands, as does this check on a model-written slide.
+    expect(
+      factConsistencyApplies(finding("answer-correctness", { slideId: starter.id }), state),
+    ).toBe(true);
+    expect(
+      factConsistencyApplies(finding("fact-consistency", { slideId: content.id }), state),
+    ).toBe(true);
+    expect(factConsistencyApplies(finding("fact-consistency", {}), state)).toBe(true);
+  });
 });
 
 describe("repair", () => {
@@ -2858,6 +2912,103 @@ describe("Repair leaves the code-built quizzes alone and reshuffles what it rewr
     expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
     expect(out.lesson.generation?.findings.some((f) => f.check === "verb-fit")).toBe(true);
     expect(out.lesson.slides[index]).toEqual(target);
+  });
+
+  // Lab r4 (r3-h-y9-coasts-L): the retrieval starter as `codedSetSpec` prints it, its elements
+  // stamped `CODE_MODEL` and the facts carrying the set it was printed from.
+  const withRetrievalStarter = (
+    state: Awaited<ReturnType<Awaited<ReturnType<typeof labLesson>>>>,
+  ) => {
+    const index = state.lesson.slides.findIndex((s) => s.kind === "starter");
+    const slides = state.lesson.slides.map((s, i) =>
+      i !== index
+        ? s
+        : {
+            ...s,
+            elements: s.elements.map((el) =>
+              el.generatedFrom
+                ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+                : el,
+            ),
+          },
+    );
+    const facts = {
+      ...(state.lesson.facts as LessonFacts),
+      retrieval: [
+        { question: "What is weathering?", answer: "The wearing away of rock in place" },
+        { question: "What is longshore drift?", answer: "Sediment moved along a beach by waves" },
+      ],
+    };
+    return { index, state: { ...state, lesson: { ...state.lesson, slides, facts } } };
+  };
+
+  test("r3-h-y9-coasts-L: a fact-consistency error on the retrieval starter gets no repair call and the slide is unchanged", async () => {
+    const evaluatedWith = await labLesson();
+    const { index, state: base } = withRetrievalStarter(evaluatedWith([]));
+    const target = base.lesson.slides[index] as Slide;
+    expect(isRetrievalStarter(target, base.lesson.facts)).toBe(true);
+    const finding = {
+      ...e("fact-consistency", target.id),
+      message: "The supplied facts do not define weathering or longshore drift.",
+    };
+    const state = {
+      ...base,
+      lesson: {
+        ...base.lesson,
+        generation: {
+          ...(base.lesson.generation as NonNullable<Lesson["generation"]>),
+          findings: [finding],
+        },
+      },
+    };
+    const ai = answering();
+    const out = await repair(state, recordingDeps(ai));
+    expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
+    expect(out.lesson.slides[index]).toEqual(target);
+    // The error stays a residual: nothing regenerated its target.
+    expect(out.lesson.generation?.findings).toContainEqual(finding);
+  });
+
+  test("the same fact-consistency error on a model-written slide still repairs it", async () => {
+    const evaluatedWith = await labLesson();
+    const { state: base } = withRetrievalStarter(evaluatedWith([]));
+    const index = base.lesson.slides.findIndex((s) => s.kind === "content");
+    const target = base.lesson.slides[index] as Slide;
+    expect(isRetrievalStarter(target, base.lesson.facts)).toBe(false);
+    const state = {
+      ...base,
+      lesson: {
+        ...base.lesson,
+        generation: {
+          ...(base.lesson.generation as NonNullable<Lesson["generation"]>),
+          findings: [e("fact-consistency", target.id)],
+        },
+      },
+    };
+    const ai = answering();
+    const out = await repair(state, recordingDeps(ai));
+    const repairs = ai.calls.filter((c) => c.context?.stage === "repair");
+    expect(repairs).toHaveLength(1);
+    expect(repairs[0]?.promptText).toContain(target.id);
+    expect(out.lesson.slides[index]).not.toEqual(target);
+    expect(out.lesson.generation?.findings.some((f) => f.check === "fact-consistency")).toBe(false);
+  });
+
+  test("repairTargets never targets the retrieval starter, at either severity; a code-built set still repairs an error", () => {
+    const targets = repairTargets(
+      [
+        e("fact-consistency", "starter"),
+        w("verb-fit", "starter"),
+        e("answer-correctness", "quiz"),
+        e("fact-consistency", "content"),
+      ],
+      new Set(["starter", "quiz"]),
+      new Set(["starter"]),
+    );
+    expect(targets.map((t) => [t.key, t.findings.map((f) => f.check)])).toEqual([
+      ["slide:quiz", ["answer-correctness"]],
+      ["slide:content", ["fact-consistency"]],
+    ]);
   });
 
   test("a multiple-choice slide Repair rewrites on the lab path gets Generate's seeded option order", async () => {

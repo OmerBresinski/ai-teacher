@@ -1,5 +1,6 @@
 import { checkLesson, FACT_ARRAYS, type Finding, type LessonFacts } from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS, SPEC_RULE_CHECK } from "../call";
+import { isRetrievalStarter } from "../lab/coded-slides";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import { evaluatePrompt } from "../prompts";
 import { EvaluateOutputSchema } from "../specs";
@@ -95,10 +96,12 @@ export function numericAsErrors(state: PipelineState): Finding[] {
   if (!facts) return [];
   const out: Finding[] = [];
   for (const m of numericFactMismatches(facts)) {
+    // Lab r4: the retrieval starter carries its entry's refs but prints none of them.
     const citing = state.lesson.slides.filter(
       (slide, i) =>
-        facts.outline[i]?.factRefs.includes(m.factId) ||
-        slide.elements.some((e) => e.generatedFrom?.factRefs.includes(m.factId)),
+        !isRetrievalStarter(slide, facts) &&
+        (facts.outline[i]?.factRefs.includes(m.factId) ||
+          slide.elements.some((e) => e.generatedFrom?.factRefs.includes(m.factId))),
     );
     if (citing.length === 0) {
       out.push({
@@ -140,6 +143,19 @@ export function verbFitApplies(finding: Finding, state: PipelineState): boolean 
   if (finding.check !== "verb-fit" || finding.target.slideId === undefined) return true;
   const slide = state.lesson.slides.find((s) => s.id === finding.target.slideId);
   return slide === undefined || !VERB_FIT_EXEMPT_KINDS.has(slide.kind);
+}
+
+/**
+ * Lab r4: whether a `fact-consistency` finding can be right about its target. On the retrieval
+ * starter (`isRetrievalStarter`) it never can: its questions are earlier lessons' by design, so
+ * "the facts do not define …" is the check reading a slide the facts were never meant to cover
+ * (r3-h-y9-coasts-L). It is dropped and counted with the other dropped findings; any other check
+ * on that slide, and this check anywhere else, stands.
+ */
+export function factConsistencyApplies(finding: Finding, state: PipelineState): boolean {
+  if (finding.check !== "fact-consistency" || finding.target.slideId === undefined) return true;
+  const slide = state.lesson.slides.find((s) => s.id === finding.target.slideId);
+  return slide === undefined || !isRetrievalStarter(slide, state.lesson.facts);
 }
 
 /** Ids `applyVerifyPatch` can correct: every fact array except the objectives. */
@@ -219,7 +235,9 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       images,
     });
     const filtered = knownTargetsWithEvidence(call.output.findings, state);
-    const applicable = filtered.kept.filter((f) => verbFitApplies(f, state));
+    const applicable = filtered.kept.filter(
+      (f) => verbFitApplies(f, state) && factConsistencyApplies(f, state),
+    );
     model = applicable.map((f) => imageFitAsError(f, state));
     const dropped = filtered.dropped + (filtered.kept.length - applicable.length);
     if (dropped > 0) {
