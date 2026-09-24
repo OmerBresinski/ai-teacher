@@ -1,0 +1,588 @@
+{
+  "run": "w1-h-y7-ratio-W",
+  "topic": "Simplifying and sharing in a ratio",
+  "objectives": [
+    {
+      "text": "Explain how dividing both parts of a ratio by a common factor simplifies it"
+    },
+    {
+      "text": "Explain how to share an amount in a given ratio by finding the value of one part"
+    }
+  ],
+  "shape": {
+    "firstExplainKind": "content",
+    "requiredKinds": ["worked-example", "open-response"],
+    "forbiddenKinds": [],
+    "minContent": 2,
+    "minCheckEntries": 2,
+    "explainMinPercent": 30,
+    "practiseMinPercent": 0,
+    "requireWorkedExampleBeforePractise": false,
+    "requireVocabulary": false,
+    "requireMisconceptionConfronted": true,
+    "requireTwoCases": false,
+    "tierWeights": {
+      "easy": 4,
+      "core": 5,
+      "stretch": 3
+    },
+    "judgementStem": null,
+    "verb": "Explain",
+    "confidence": "Some prior knowledge",
+    "young": false
+  },
+  "slideCount": 10,
+  "priorKnowledge": null,
+  "retrieval": [
+    {
+      "question": "What is the highest common factor of 12 and 18?",
+      "answer": "6"
+    },
+    {
+      "question": "What is one quarter of 20?",
+      "answer": "5"
+    },
+    {
+      "question": "Which ratio is equivalent to 2:3: 4:6, 4:5 or 6:8?",
+      "answer": "4:6"
+    }
+  ],
+  "facts": {
+    "keyIdeas": [
+      {
+        "statement": "Divide both parts of a ratio by the same common factor to simplify it.",
+        "explanation": "Choose a number that divides exactly into both parts. Divide each part by it. The comparison stays the same, but the ratio uses smaller numbers.",
+        "example": "Case: 12 red counters:18 blue counters. Both counts divide exactly by 6: 12 counters ÷ 6 = 2 counters and 18 counters ÷ 6 = 3 counters. So 12:18 simplifies to 2:3.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "A simplified ratio has no common factor greater than 1.",
+        "explanation": "Keep dividing both parts by a common factor when possible. Stop when no number greater than 1 divides exactly into both parts.",
+        "example": "Case: 2 red counters:3 blue counters is simplified because no whole number greater than 1 divides exactly into both 2 counters and 3 counters.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "To share an amount in a ratio, add the ratio parts and divide the total by that number.",
+        "explanation": "The answer to this division is the value of one part. Multiply it by each ratio number to find each share.",
+        "example": "A triangle's angles are in the ratio 2 parts:3 parts:4 parts. There are 9 parts altogether, so 180° ÷ 9 parts = 20° per part. The angles are 40°, 60° and 80°.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      }
+    ],
+    "misconceptions": [
+      {
+        "belief": "You can divide only one part of a ratio, or divide the two parts by different numbers.",
+        "correction": "Both parts must be divided by the same common factor. Otherwise, the comparison changes and the new ratio is not equivalent to the original one.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "belief": "Divide the total amount by just one of the ratio numbers.",
+        "correction": "First add all the ratio parts. Dividing the total by the combined number of parts finds the value of one part.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      }
+    ],
+    "vocabulary": [
+      {
+        "term": "common factor",
+        "definition": "A whole number that divides exactly into two or more numbers.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "simplify",
+        "definition": "To rewrite a ratio using smaller whole numbers without changing the comparison it represents.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "share",
+        "definition": "Give an amount to groups according to a rule.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "term": "one-part value",
+        "definition": "The amount represented by one equal group in a ratio.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      }
+    ],
+    "workedExamples": [
+      {
+        "problem": "Suppose £48 is shared between 2 people in the ratio 3 parts:5 parts. Find each share.",
+        "steps": [
+          "Add the ratio parts: 3 parts + 5 parts = 8 parts.",
+          "Find the one-part value: £48 ÷ 8 parts = £6 per part.",
+          "Find the first share: 3 parts × £6 per part = £18.",
+          "Find the second share: 5 parts × £6 per part = £30.",
+          "Check the shares: £18 + £30 = £48."
+        ],
+        "answer": "The two shares are £18 and £30.",
+        "misconceptionRef": {
+          "type": "misconception",
+          "index": 1
+        },
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      }
+    ],
+    "questions": [
+      {
+        "stem": "A box has 8 green pens and 12 black pens. Divide both parts by which common factor to simplify the ratio?",
+        "answer": "Divide both parts by 4",
+        "reasoning": "4 divides exactly into both 8 and 12.",
+        "keyIdeaRefs": ["k1"],
+        "use": "slide",
+        "tier": "easy",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ],
+        "distractors": [
+          {
+            "text": "Divide the green part by 4 and the black part by 2",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "Divide both parts by 3"
+          },
+          {
+            "text": "Divide only the black part by 4",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          }
+        ]
+      },
+      {
+        "stem": "Why must both parts of a ratio be divided by the same common factor?",
+        "answer": "So the comparison stays the same",
+        "reasoning": "Using different divisors changes the comparison.",
+        "keyIdeaRefs": ["k1"],
+        "use": "slide",
+        "tier": "core",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ],
+        "distractors": [
+          {
+            "text": "So only one part becomes smaller",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "So the two parts use different numbers",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "So the ratio always becomes 1:1"
+          }
+        ]
+      },
+      {
+        "stem": "A basket has 15 apples and 25 oranges. What is the simplified ratio of apples to oranges?",
+        "answer": "3 apples:5 oranges",
+        "reasoning": "Divide both parts by the common factor 5.",
+        "keyIdeaRefs": ["k1", "k2"],
+        "use": "slide",
+        "tier": "core",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ],
+        "distractors": [
+          {
+            "text": "5 apples:3 oranges"
+          },
+          {
+            "text": "3 apples:10 oranges",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "15 apples:5 oranges",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          }
+        ]
+      },
+      {
+        "stem": "Is 6 blue beads:9 yellow beads simplified? Choose an answer and give the next step.",
+        "answer": "No; divide both parts by 3 to get 2 blue beads:3 yellow beads",
+        "reasoning": "3 divides exactly into both 6 and 9.",
+        "keyIdeaRefs": ["k1", "k2"],
+        "use": "slide",
+        "tier": "core",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ],
+        "distractors": [
+          {
+            "text": "Yes; no common factor greater than 1 exists"
+          },
+          {
+            "text": "No; divide only 9 yellow beads by 3",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "Yes; the ratio has two different numbers"
+          }
+        ]
+      },
+      {
+        "stem": "Suppose a recipe uses 24 grams of flour and 36 grams of sugar. Simplify the ratio by dividing both parts by a common factor, then state why you should stop.",
+        "answer": "4 grams:6 grams, then 2 grams:3 grams; stop because no common factor greater than 1 remains",
+        "reasoning": "Divide both parts by 6, then by 2; 2 and 3 have no common factor greater than 1.",
+        "keyIdeaRefs": ["k1", "k2"],
+        "use": "slide",
+        "tier": "stretch",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "A box has 15 red beads and 25 blue beads. Which ratio is the simplest equivalent ratio?",
+        "answer": "3 red beads:5 blue beads",
+        "reasoning": "Divide both parts by the same common factor, 5.",
+        "keyIdeaRefs": ["k1"],
+        "use": "exit",
+        "tier": "easy",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ],
+        "distractors": [
+          {
+            "text": "15 red beads:5 blue beads",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "3 red beads:25 blue beads",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "5 red beads:5 blue beads",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          }
+        ]
+      },
+      {
+        "stem": "True or false: 4 green counters:6 yellow counters is simplified because both parts are even.",
+        "answer": "False — 4 green counters:6 yellow counters can be divided by 2",
+        "reasoning": "A simplified ratio has no common factor greater than 1.",
+        "keyIdeaRefs": ["k2"],
+        "use": "exit",
+        "tier": "core",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "A tray has 18 red tiles and 30 blue tiles. Divide both parts by 3, giving 6 red tiles:10 blue tiles. Is this fully simplified? Give the next step and final ratio.",
+        "answer": "No; divide 6 red tiles and 10 blue tiles by 2 to get 3 red tiles:5 blue tiles",
+        "reasoning": "Keep dividing by a common factor until none greater than 1 remains.",
+        "keyIdeaRefs": ["k1", "k2"],
+        "use": "exit",
+        "tier": "stretch",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "A total of 72 counters is shared in the ratio 1 part:2 parts:3 parts. How many parts are there altogether?",
+        "answer": "6 parts",
+        "reasoning": "Add 1 part, 2 parts and 3 parts.",
+        "keyIdeaRefs": ["k3"],
+        "use": "slide",
+        "tier": "easy",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "A shop shares 56 stickers in the ratio 3 parts:5 parts. What is the value of one part?",
+        "answer": "7 stickers per part",
+        "reasoning": "There are 8 parts, so 56 stickers ÷ 8 parts = 7 stickers per part.",
+        "keyIdeaRefs": ["k3"],
+        "use": "slide",
+        "tier": "core",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ],
+        "distractors": [
+          {
+            "text": "8 stickers per part"
+          },
+          {
+            "text": "18⅔ stickers per part",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          },
+          {
+            "text": "11.2 stickers per part",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          }
+        ]
+      },
+      {
+        "stem": "Suppose £84 is shared in the ratio 2 parts:5 parts. Find both shares.",
+        "answer": "£24 and £60",
+        "reasoning": "There are 7 parts, so £84 ÷ 7 parts = £12 per part. Multiply by 2 parts and 5 parts.",
+        "keyIdeaRefs": ["k3"],
+        "use": "slide",
+        "tier": "core",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "Which method correctly shares £90 in the ratio 2 parts:3 parts:4 parts?",
+        "answer": "Add to 9 parts, then £90 ÷ 9 parts = £10 per part",
+        "reasoning": "First find the combined number of ratio parts, then divide the total.",
+        "keyIdeaRefs": ["k3"],
+        "use": "slide",
+        "tier": "core",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ],
+        "distractors": [
+          {
+            "text": "Divide £90 by 2 parts to get £45 per part",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          },
+          {
+            "text": "Divide £90 by 4 parts to get £22.50 per part",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          },
+          {
+            "text": "Add £90 to 9 parts to get £99 per part"
+          }
+        ]
+      },
+      {
+        "stem": "A pupil says the largest share is £50 because £150 is divided by 3 parts. Is this correct? Explain and give all shares for the ratio 2 parts:3 parts:5 parts.",
+        "answer": "No. There are 10 parts, so £15 per part; the shares are £30, £45 and £75.",
+        "reasoning": "Add all the ratio parts before dividing £150. Then multiply £15 per part by each ratio number.",
+        "keyIdeaRefs": ["k3"],
+        "use": "slide",
+        "tier": "stretch",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "Suppose £36 is shared in the ratio 1 part:2 parts. What should you do first?",
+        "answer": "Add 1 part + 2 parts = 3 parts",
+        "reasoning": "First add all the ratio parts before dividing the total.",
+        "keyIdeaRefs": ["k3"],
+        "use": "exit",
+        "tier": "easy",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ],
+        "distractors": [
+          {
+            "text": "Divide £36 by 1 part = £36 per part",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          },
+          {
+            "text": "Divide £36 by 2 parts = £18 per part",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          },
+          {
+            "text": "Multiply 1 part × 2 parts = 2 parts"
+          }
+        ]
+      },
+      {
+        "stem": "£40 is shared in the ratio 2 parts:6 parts. What are the two shares?",
+        "answer": "£10 and £30",
+        "reasoning": "There are 8 parts, so each part is £5; multiply by 2 parts and 6 parts.",
+        "keyIdeaRefs": ["k3"],
+        "use": "exit",
+        "tier": "core",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ],
+        "distractors": [
+          {
+            "text": "£20 and £60",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          },
+          {
+            "text": "£8 and £32"
+          },
+          {
+            "text": "£5 and £35"
+          }
+        ]
+      },
+      {
+        "stem": "Suppose £84 is shared in the ratio 2 parts:3 parts:7 parts. What are the three shares?",
+        "answer": "£14, £21 and £49",
+        "reasoning": "There are 12 parts, so each part is £7; multiply by 2 parts, 3 parts and 7 parts.",
+        "keyIdeaRefs": ["k3"],
+        "use": "exit",
+        "tier": "stretch",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ],
+        "distractors": [
+          {
+            "text": "£42, £28 and £12",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          },
+          {
+            "text": "£7, £21 and £56"
+          },
+          {
+            "text": "£14, £28 and £42"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -4,7 +4,7 @@ import {
   type OutlineFromFactsResult,
   outlineFromFacts,
 } from "../outline-from-facts";
-import { EXIT_QUIZ_MAX, SET_MAX } from "./coded-slides";
+import { EXIT_QUIZ_MAX, MC_LINE_MAX, questionLine, SET_MAX } from "./coded-slides";
 /** The uses the question-set calls write (`plan-question-set`): a slide question, an exit question. */
 export type QuestionSetUse = "slide" | "exit";
 
@@ -129,6 +129,49 @@ export function sketchTaught(
 
 const TIERS = ["easy", "core", "stretch"] as const;
 
+/**
+ * A placeholder's stem length. The outline's set and exit budgets are in characters
+ * (`SET_CHARS`, `EXIT_CHARS`, `MC_LINE_MAX`), so a placeholder has to be as long as a real
+ * question, not a token: with one-line placeholders the fill placed four to a set and six on
+ * the exit quiz, while the real questions (pw w1/b1, ten lessons, 160 questions) made a median
+ * multiple-choice line of exactly `MC_LINE_MAX` and a median stem of 80 characters, and the
+ * fill placed two or three to a set and three or four on the quiz — the waves asked 16 a lesson
+ * and placed 5–9. So a placeholder is a multiple-choice question with an 80-character stem whose
+ * line is as long as a real one may be and still be placed (`MC_LINE_MAX`): the budgets then
+ * bite as they do on real questions. The stem stays under `SHARED_STEM_MAX` (120), so the
+ * shared practise slide's own filter reads it as a real stem would usually pass.
+ */
+export const PLACEHOLDER_STEM_CHARS = 80;
+
+/** Pad `text` with a filler to `length` characters (or leave it when already longer). */
+const padTo = (text: string, length: number) =>
+  text.length >= length ? text : `${text} ${"x".repeat(length - text.length - 1)}`;
+
+/**
+ * A placeholder's options, sized so its multiple-choice line (`questionLine`: the stem, then the
+ * four lettered options) is exactly `MC_LINE_MAX` characters long.
+ */
+function placeholderOptions(stem: string, n: number) {
+  const probe = {
+    stem,
+    answer: `Answer ${n + 1}`,
+    distractors: [{ text: "Wrong 1" }, { text: "Wrong 2" }, { text: "Wrong 3" }],
+  };
+  // The line's fixed part: the stem, the four letters and the separators. The options share the rest.
+  const fixed = questionLine({
+    ...probe,
+    answer: "",
+    distractors: probe.distractors.map(() => ({ text: "" })),
+  }).text.length;
+  const room = Math.max(0, MC_LINE_MAX - fixed);
+  const each = Math.floor(room / 4);
+  const extra = room - each * 4;
+  return {
+    answer: padTo(probe.answer, each + extra),
+    distractors: probe.distractors.map((d) => ({ text: padTo(d.text, each) })),
+  };
+}
+
 /** The placeholder questions for every objective and use, shaped to pass every outline filter. */
 export function placeholderQuestions(
   taught: TaughtForDemand,
@@ -145,16 +188,19 @@ export function placeholderQuestions(
     );
     for (const use of ["slide", "exit"] as const) {
       for (let n = 0; n < per[use]; n++) {
+        const stem = padTo(
+          `${use} question ${n + 1} for objective ${o + 1}?`,
+          PLACEHOLDER_STEM_CHARS,
+        );
         questions.push({
-          stem: `${use} question ${n + 1} for objective ${o + 1}?`,
-          answer: `Answer ${n + 1}`,
+          stem,
+          ...placeholderOptions(stem, n),
           reasoning: "Because.",
           tier: TIERS[n % TIERS.length] ?? "core",
           use,
           demand: applies ? "apply" : "recall",
           forms: ["multiple-choice", "open-response"],
           keyIdeaRefs,
-          distractors: [{ text: "Wrong 1" }, { text: "Wrong 2" }, { text: "Wrong 3" }],
           objectiveRefs: [obj(o)],
         });
       }

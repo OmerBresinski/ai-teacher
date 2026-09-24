@@ -1199,14 +1199,17 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   if (sets.length > 0) {
     // r1: every set (a cycle's check, or ruling 81's shared slide) is topped up to `SET_MAX` with
     // the pool's questions on objectives it already asks about, so its place in the running order
-    // (after the cycle that makes it fair) does not move.
+    // (after the cycle that makes it fair) does not move. Within the set's character budget
+    // (`withinSet`, the lines it already holds counted): the coded slide keeps only what fits
+    // `SET_CHARS`, so a question topped up past it was marked used and never shown (pw, Sept 2026:
+    // the demand fill read four 240-character lines to a set that prints two).
     for (const set of sets) {
       const within = pool.filter(
         (i) =>
           !used.questions.has(i) &&
           refIndices(facts.questions[i]?.objectiveRefs).every((o) => set.objectives.includes(o)),
       );
-      const questions = [...(set.questions ?? []), ...within].slice(0, SET_MAX).sort(setOrder);
+      const questions = withinSet([...(set.questions ?? []), ...within], SET_MAX).sort(setOrder);
       for (const i of questions) used.questions.add(i);
       set.questions = questions;
     }
@@ -1222,9 +1225,10 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
             )[0]
         : undefined;
     if (set && pool.length > 0) {
-      const questions = [...(set.question === undefined ? [] : [set.question]), ...pool]
-        .slice(0, SET_MAX)
-        .sort(setOrder);
+      const questions = withinSet(
+        [...(set.question === undefined ? [] : [set.question]), ...pool],
+        SET_MAX,
+      ).sort(setOrder);
       for (const i of questions) used.questions.add(i);
       set.kind = "instructions";
       delete set.question;
