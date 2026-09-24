@@ -649,7 +649,7 @@ describe("prompt versions", () => {
       ],
     } as never);
     expect(withLater).toContain(
-      "Asked of pupils later in the lesson, on later slides (shown for reference):\n  - Which state has particles furthest apart? — answer: Gas\n  - Explain why a gas fills its container. — answer: Its particles move freely.\nTeach here, within this slide's limits, what each answer rests on",
+      "Asked of pupils later in the lesson, on later slides (shown for reference):\n  - Which state has particles furthest apart? — answer: Gas\n  - Explain why a gas fills its container. — answer: Its particles move freely.\nTeach here, within this slide's limits, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions or repeating their answer text.",
     );
     // The block sits after the reserved stems and before the closing line, once.
     expect(withLater.indexOf("Asked of pupils later")).toBeGreaterThan(

@@ -244,7 +244,7 @@ export const generateSlidePrompt = {
       parts.push("", "Asked of pupils later in the lesson, on later slides (shown for reference):");
       for (const q of input.laterQuestions) parts.push(`  - ${q.stem} — answer: ${q.answer}`);
       parts.push(
-        "Teach here, within this slide's limits, what each answer rests on: the name, quotation, reason, example or step a pupil needs to give it.",
+        "Teach here, within this slide's limits, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions or repeating their answer text.",
       );
     }
     parts.push("", `Answer with the JSON for a "${input.entry.kind}" slide.`);
