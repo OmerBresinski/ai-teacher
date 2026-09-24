@@ -477,3 +477,49 @@ describe("plan-facts-objective", () => {
     ).toBe(true);
   });
 });
+
+describe("plan-facts-objective: an answer listed as a fourth distractor", () => {
+  const question = (distractors: string[]) => ({
+    stem: "Which is a unit fraction?",
+    answer: "one third",
+    reasoning: "One part of three equal parts.",
+    tier: "core",
+    use: "slide",
+    demand: "recall",
+    forms: ["multiple-choice"],
+    distractors: distractors.map((text) => ({ text })),
+  });
+  const facts = (q: unknown) => ({
+    keyIdeas: [
+      {
+        statement: "A unit fraction has numerator one.",
+        explanation: "One part.",
+        example: "1/3 of 12 is 4.",
+      },
+    ],
+    misconceptions: [
+      { belief: "Bigger denominator, bigger part.", correction: "More parts means smaller parts." },
+    ],
+    vocabulary: [],
+    workedExamples: [],
+    questions: [q, q, q],
+  });
+  test("is dropped when it is the extra fourth option", () => {
+    const r = PlanFactsObjectiveOutputSchema.safeParse(
+      facts(question(["One third", "two thirds", "three quarters", "one half"])),
+    );
+    expect(r.success).toBe(true);
+    if (r.success)
+      expect(r.data.questions[0]?.distractors?.map((d) => d.text)).toEqual([
+        "two thirds",
+        "three quarters",
+        "one half",
+      ]);
+  });
+  test("stays a miss when it takes one of three slots", () => {
+    const r = PlanFactsObjectiveOutputSchema.safeParse(
+      facts(question(["one third", "two thirds", "one half"])),
+    );
+    expect(r.success).toBe(false);
+  });
+});

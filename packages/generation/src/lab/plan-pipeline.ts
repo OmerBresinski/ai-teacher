@@ -185,12 +185,14 @@ const PROGRESS_PLANNED = 10;
  *   Was 800 (max × 1.3); np1-romans-grounded spent 800 twice on hidden reasoning and returned
  *   nothing, so 1 200. Visible output is small, the reasoning is not, and the cap bounds both.
  * - facts: benches `facts-c-v5`…`v8` (Luna, n = 32): p90 1 686, p99 1 859, max 2 201 (the
- *   Evaluate briefs' long answers). Cap 2 400 (max × 1.1; p99 × 1.3).
+ *   Evaluate briefs' long answers). Cap 2 400 (max × 1.1; p99 × 1.3). r1 (v14, four to six
+ *   questions): 5 of 36 calls hit 2 400 with 1 400–2 100 of it hidden reasoning and lost the
+ *   objective, so 4 000.
  *
  * Neither cap admits a run-away answer: a call that reaches it is a schema miss and one retry.
  */
 export const MAX_OUTPUT_TOKENS_OBJECTIVES = 1200;
-export const MAX_OUTPUT_TOKENS_FACTS = 2400;
+export const MAX_OUTPUT_TOKENS_FACTS = 4000;
 
 /** The objectives failed their structural check: the lab stops before any facts call. */
 export class LabPlanBlocked extends StageFailure {

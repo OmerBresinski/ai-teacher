@@ -348,7 +348,7 @@ const workedExampleSchema = (line: Line, objectiveCount?: number) =>
  * system text and its hash are unchanged.
  */
 const questionSchema = (line: Line, soft: boolean) =>
-  questionShape(line).superRefine((q, ctx) => {
+  z.preprocess(dropExtraAnswerDistractor, questionShape(line)).superRefine((q, ctx) => {
     if (soft) return;
     for (const j of distractorsEchoingAnswer(q))
       ctx.addIssue(
@@ -359,6 +359,23 @@ const questionSchema = (line: Line, soft: boolean) =>
         ),
       );
   });
+
+/**
+ * r1: Luna's retries list the answer itself as a fourth distractor ("A", then the three wrong
+ * options): 3 of 3 retried calls in CB/r1, each failing the three-distractor cap and losing the
+ * objective. When there are more than three and one repeats the answer, that one is dropped before
+ * parsing; with three or fewer an echo stays an editorial miss, since a real distractor is missing.
+ */
+function dropExtraAnswerDistractor(value: unknown): unknown {
+  if (typeof value !== "object" || value === null) return value;
+  const q = value as { answer?: unknown; distractors?: unknown };
+  if (typeof q.answer !== "string" || !Array.isArray(q.distractors) || q.distractors.length <= 3)
+    return value;
+  const texts = q.distractors.map((d) => ({ text: typeof d?.text === "string" ? d.text : "" }));
+  const echoes = new Set(distractorsEchoingAnswer({ answer: q.answer, distractors: texts }));
+  if (echoes.size === 0) return value;
+  return { ...q, distractors: q.distractors.filter((_, j) => !echoes.has(j)) };
+}
 
 const questionShape = (line: Line) =>
   z.object({
