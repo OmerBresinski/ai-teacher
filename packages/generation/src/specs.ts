@@ -272,6 +272,12 @@ export type PlanSkeletonContext = {
    * outline's ordinal references land on the teacher's objectives. A shape rule as above.
    */
   objectiveCount?: number | undefined;
+  /**
+   * Learning cycles (the lab's code-written outline, w0b flow): explain and practise slides may
+   * alternate — teach, check, teach, check — so a practise slide may come before a later explain
+   * slide. The starter still opens and the check phase still closes. Absent, phases never go back.
+   */
+  learningCycles?: boolean | undefined;
 };
 
 /**
@@ -397,7 +403,8 @@ export function planSkeletonSchemaFor(
         path: ["outline"],
       });
     }
-    // Phases run starter → explain → practise → check and never go back.
+    // Phases run starter → explain → practise → check and never go back (with `learningCycles`,
+    // explain and practise alternate).
     let last = -1;
     let lastPhase: string | undefined;
     const phases = new Set<string>();
@@ -410,7 +417,10 @@ export function planSkeletonSchemaFor(
           ["outline", i, "phase"],
         );
       }
-      const rank = PHASE_ORDER[entry.phase];
+      const rank =
+        context.learningCycles === true && entry.phase === "practise"
+          ? PHASE_ORDER.explain
+          : PHASE_ORDER[entry.phase];
       if (rank < last) {
         issue(
           `Outline position ${i} is a "${entry.phase}" slide but position ${i - 1} is already "${lastPhase}"; phases run starter, explain, practise, check and never go back. Move this slide before the first "${lastPhase}" slide, or give it the phase "${lastPhase}".`,

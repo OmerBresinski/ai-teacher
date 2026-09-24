@@ -216,7 +216,7 @@ function recordingAi(real: CreatedAi, file: string): CreatedAi {
       const gatewayCost = gateway?.cost as string | undefined;
       await appendFile(
         file,
-        `${JSON.stringify({ stage: context?.stage, promptVersion: context?.promptVersion, durationMs, prompt, text, usage: result.usage, gatewayCost, gateway })}\n`,
+        `${JSON.stringify({ at: new Date(startedAt).toISOString(), stage: context?.stage, promptVersion: context?.promptVersion, modelId: result.response?.modelId, finishReason: result.finishReason, durationMs, prompt, text, usage: result.usage, gatewayCost, gateway })}\n`,
       );
       return result;
     },
@@ -955,7 +955,8 @@ if (import.meta.main) {
   // Every call is metered into the lesson's cost ledger (per stage, priced from `PRICES`): THE
   // cost figure of the run; the budget's totals are shown only as what was reserved and settled.
   const ledger = createLedger({ run: label0 });
-  const ai = meteringAi(flag("record") ? recordingAi(created, recordFile) : created, ledger);
+  // Every call is recorded (prompt, output, usage, finish reason) unless --no-record: evals need the inputs.
+  const ai = meteringAi(flag("no-record") ? created : recordingAi(created, recordFile), ledger);
   const judgeCreated: CreatedAi | undefined = flag("no-judge")
     ? undefined
     : createAi({ ...env, AI_MODEL_FRONTIER: env.AI_MODEL_JUDGE ?? ai.modelId("frontier") });

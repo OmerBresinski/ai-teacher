@@ -42,6 +42,7 @@ function shapeIssues(input: OutlineFromFactsInput) {
   const parsed = planSkeletonSchemaFor({
     shape: input.shape,
     slideCount: input.slideCount,
+    learningCycles: true,
   }).safeParse(result.skeleton);
   return parsed.success
     ? []

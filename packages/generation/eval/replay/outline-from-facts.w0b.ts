@@ -1,3 +1,5 @@
+// The outline step at ca69928, before the w0b flow change (starter, learning cycles, model then
+// practise, short exit ticket): the "before" arm of `eval/replay-flow.ts`. Frozen; do not edit.
 import type {
   CalloutKind,
   GeneratableSlideKind,
@@ -5,9 +7,9 @@ import type {
   SlideCount,
 } from "@tj/domain/documents";
 import { QUESTION_TIERS } from "@tj/domain/documents";
-import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
-import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
-import type { LessonShape } from "./shapes";
+import type { QuestionDemand, QuestionForm } from "../../src/merge-objective-facts";
+import { explainSentence, practiseSentence, slidesFor } from "../../src/prompts/shape";
+import type { LessonShape } from "../../src/shapes";
 import {
   askableAsStem,
   distractorsEchoingAnswer,
@@ -15,7 +17,7 @@ import {
   type OrdinalRef,
   type PlanFactsLike,
   type PlanSkeleton,
-} from "./specs";
+} from "../../src/specs";
 
 /*
  * The outline, built in code from the merged per-objective facts (ADR 0025 §7: the skeleton the
@@ -23,9 +25,9 @@ import {
  * outline before any fact existed (`plan-skeleton`) and only then for the facts, so the outline
  * promised slides the facts could not always supply. Now the objectives call runs first, one facts
  * call per objective follows (`mergeObjectiveFacts`), and this module decides which fact goes on
- * which slide: one content slide per objective first, then the starter, then what the lesson's
- * shape (`shapes.ts`) requires, then practice per objective and whatever else the facts hold,
- * until the slide count is spent. The result is the same `PlanSkeleton` + `outlineFactRefs` pair
+ * which slide: one content slide per objective first, then what the lesson's shape (`shapes.ts`)
+ * requires, then practice per objective, a starter, and whatever else the facts hold, until the
+ * slide count is spent. The result is the same `PlanSkeleton` + `outlineFactRefs` pair
  * `assignFactIds` has always merged, so nothing downstream can tell who wrote the outline. Pure
  * and deterministic: no model call, no I/O; thin facts become sentences in `gaps`, never a throw.
  *
@@ -52,30 +54,6 @@ import {
  *   no room. A question without the declaration (saved runs, older facts) falls back to the
  *   objective: fair only when every key idea of every objective it names is on a slide. A question
  *   held back either way is named in a gap.
- *
- * Lesson flow (w0b, 24 Sep: the lab plan lost practice 2.44 v 3.19 and flow 2.25 v 3.25 to
- * production; "no starter" and "thin practice" in 6 of 8 pairs). Which slides exist is still the
- * fill above; the running order and three priorities changed:
- * - A starter opens the lesson (it used to be placed after all practice and rarely fitted a
- *   ten-slide deck). It retrieves the prior knowledge the brief declares (`priorKnowledge`, the
- *   class context), and then outranks the shared practise slide's second objective (ruling 81
- *   below keeps the starter's slot). Without declared prior knowledge it asks what pupils already
- *   think, on the first misconception, a gap says why, and it takes a slot only once every
- *   objective is taught and practised, the shape's kinds and floors are met and the remaining
- *   worked examples are placed. It carries no question: it tests nothing this lesson teaches.
- * - Learning cycles, not all practice at the end: the teaching slides run objective by objective,
- *   at most two content slides a cycle with the objective's worked example after them, and each
- *   practise slide sits straight after the cycle that makes it fair — the earliest cycle by which
- *   every key idea it declares (`keyIdeaRefs`; else every key idea of each objective it names) is
- *   on a slide; an `apply` question also waits for its objective's worked example. A judgement
- *   the facts declared closes the practise slides; plenary and exit ticket close the lesson. The
- *   skeleton passes `planSkeletonSchemaFor` with `learningCycles`.
- * - Model, then practise: an objective whose questions declare an `apply` demand gets its worked
- *   example placed before the shape's kinds and floors take the budget, and so before its practice.
- *   An objective with apply questions and no worked example is a gap: the facts must supply one.
- * - The exit ticket is short: 3–5 items (`EXIT_MIN`, `EXIT_MAX`), one per objective first; a
- *   ticket the exit questions leave under three is topped up with unused fair questions that can
- *   be asked as a line of it.
  */
 
 /** A question as the outline reads it: the facts' fields plus the optional declarations. */
@@ -101,8 +79,6 @@ export type OutlineFromFactsInput = {
   facts: OutlineFacts;
   shape: LessonShape;
   slideCount: SlideCount;
-  /** The brief's class-context prior knowledge, when the teacher gave it: what the starter retrieves. */
-  priorKnowledge?: string | undefined;
 };
 
 /** Outline positions, per objective. */
@@ -120,8 +96,6 @@ export type OutlineFromFactsResult = {
   unplaced: { keyIdeas: number[]; workedExamples: number[]; questions: number[] };
   /** Plain sentences a log or the plan screen can show: what the facts did not allow. */
   gaps: string[];
-  /** The learning cycles in running order: outline positions of the teaching slides, then of the checks after them. */
-  cycles: { teach: number[]; check: number[] }[];
 };
 
 /** The brief's `adds` / `avoids` cap (`SPEC_LIMITS.item`), restated so this module has no `@tj/slides` import. */
@@ -146,11 +120,6 @@ export const KEY_IDEAS_PER_CONTENT = 2;
 const SHARED_STEM_MAX = 120;
 /** Objectives one shared practise slide covers at most: an `instructions` slide holds 1–4 steps. */
 const SHARED_PRACTISE_MAX = 4;
-/** Content slides one learning cycle teaches before its check: a slide, or a pair. */
-const CONTENT_PER_CYCLE = 2;
-/** The exit ticket's length: a short quiz, not three extended answers (uk-teacher review, w0b judges). */
-export const EXIT_MIN = 3;
-export const EXIT_MAX = 5;
 
 type Kind = GeneratableSlideKind;
 
@@ -170,8 +139,6 @@ type Slot = {
   questions?: number[];
   misconception?: number;
   terms?: number[];
-  /** A judgement the facts declared: it closes the practise slides, after every cycle. */
-  closing?: boolean;
   /** Lexicographic running-order key: phase, objective, then the fact order. */
   rank: number[];
 };
@@ -180,7 +147,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   const { facts, shape, slideCount, topic } = input;
   const count = input.objectives.length;
   const all = Array.from({ length: count }, (_, i) => i);
-  const priorKnowledge = input.priorKnowledge?.trim() ?? "";
   const gaps: string[] = [];
   const gap = (sentence: string) => {
     if (!gaps.includes(sentence)) gaps.push(sentence);
@@ -371,7 +337,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       objectives: refIndices(q?.objectiveRefs),
       question: i,
       ...(misconception === undefined ? {} : { misconception }),
-      ...(last ? { closing: true } : {}),
       rank: [2, last ? count : o, seq],
     };
   };
@@ -525,29 +490,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     }
   }
 
-  // P1c: model, then practise (w0b trig: a side calculation tested and never modelled). An
-  // objective whose questions the facts call declared `apply` gets its worked example now, before
-  // the shape's kinds and floors spend the budget; the running order puts it before the
-  // objective's practice. No worked example for it is a gap for the facts call to close.
-  for (const o of all) {
-    const applies = facts.questions.some((q) => q.demand === "apply" && names(q.objectiveRefs, o));
-    if (!applies) continue;
-    const own = ownedWorkedExamples.filter((x) => ownersOf[x]?.includes(o));
-    if (own.length === 0) {
-      gap(
-        `${nth(o)}'s questions ask pupils to apply it and the facts have no worked example for it, so no slide models it before they practise.`,
-      );
-      continue;
-    }
-    if (own.some((x) => used.workedExamples.has(x))) continue;
-    const x = pickWorkedExample(own);
-    if (x === undefined || budget <= practiseReserve() || !place(workedExampleSlot(o, x))) {
-      gap(
-        `${nth(o)}'s questions ask pupils to apply it and a ${slideCount}-slide deck has no room for its worked example.`,
-      );
-    }
-  }
-
   // P2: the shape's required kinds and floors. The worked example before the vocabulary slide: a
   // content slide hands out its objective's unshown terms, nothing else gives the method. Neither
   // takes the slot kept for practice.
@@ -631,21 +573,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       taken.add(i);
       return [[o, i]];
     });
-    // A retrieval starter's slot is kept while there is none (w0b flow): with prior knowledge
-    // declared, retrieving it outranks a slide of practice; without, the practice comes first and
-    // the starter takes what is left.
-    const room = budget - (count > 0 && priorKnowledge !== "" && !has("starter") ? 1 : 0);
-    if (pending.length < 2 || room >= pending.length || room <= 0) return;
-    // Learning cycles (w0b): the slots beyond the shared one give the first objectives a check of
-    // their own, straight after their cycle; the shared slide takes the rest (two or more). The
-    // spare slots used to go to splitting a paired content slide.
-    let spare = room - 1;
-    while (spare > 0 && pending.length > 2) {
-      const [o, i] = pending.shift() ?? [];
-      if (o === undefined || i === undefined) break;
-      place(questionSlot(o, i));
-      spare -= 1;
-    }
+    if (pending.length < 2 || budget >= pending.length || budget <= 0) return;
     const covered = pending.slice(0, SHARED_PRACTISE_MAX);
     place({
       kind: "instructions",
@@ -687,36 +615,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     }
   }
   placeSharedPractise();
-
-  // The starter (w0b flow), never in the slot kept for practice. It asks before teaching by
-  // design, so it carries no question and tests nothing this lesson teaches. A retrieval starter
-  // (prior knowledge declared) comes here, P2b: after the shape's required kinds and the shared
-  // practise slide, which kept its slot, and before the floors. Without declared prior knowledge
-  // it waits until every objective is practised, the floors are met and the remaining worked
-  // examples are placed (P5).
-  const placeStarter = () => {
-    if (count === 0) return;
-    const placed =
-      budget > practiseReserve() &&
-      place({
-        kind: "starter",
-        phase: "starter",
-        primary: 0,
-        objectives: [0],
-        ...(priorKnowledge === "" && facts.misconceptions.length > 0 ? { misconception: 0 } : {}),
-        rank: [0],
-      });
-    if (!placed)
-      gap(
-        `A ${slideCount}-slide deck has no room for a starter once every objective is taught and practised.`,
-      );
-    else if (priorKnowledge === "") {
-      gap(
-        `The brief declares no prior knowledge, so the starter asks what pupils already think about ${topic} instead of retrieving an earlier idea.`,
-      );
-    }
-  };
-  if (priorKnowledge !== "") placeStarter();
 
   // Enough slides where pupils answer, the exit ticket counted.
   while (practiseCount() + 1 < shape.minCheckEntries) {
@@ -814,9 +712,17 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     place(workedExampleSlot(ownersOf[x]?.[0] ?? 0, x));
   }
 
-  // P5: the starter when no prior knowledge is declared (above), after the remaining worked
-  // examples.
-  if (priorKnowledge === "") placeStarter();
+  // P5: the starter — what pupils already think.
+  if (budget > 0 && count > 0) {
+    place({
+      kind: "starter",
+      phase: "starter",
+      primary: 0,
+      objectives: [0],
+      ...(facts.misconceptions.length > 0 ? { misconception: 0 } : {}),
+      rank: [0],
+    });
+  }
 
   // P6: the rest of the facts — paired key ideas split onto slides of their own, round-robin by
   // objective, then questions.
@@ -998,98 +904,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
 
   /* ---- the running order, refs, briefs, callouts ---- */
 
-  /**
-   * Learning cycles (w0b flow): the starter and the vocabulary slide open; then, objective by
-   * objective, up to `CONTENT_PER_CYCLE` content slides and (after the objective's last content
-   * slide) the worked examples whose last owner it is, each cycle followed by the practise slides
-   * it makes fair; then the practise slides a declared judgement closes; then the plenary. Sorts
-   * `slots` in place and returns the cycles as slot lists.
-   */
-  function orderInCycles(): { teach: Slot[]; check: Slot[] }[] {
-    const byRank = (a: Slot, b: Slot) => compareRanks(a.rank, b.rank);
-    const lastOwner = (s: Slot) => Math.max(s.primary, ...s.objectives);
-    const cycles: { teach: Slot[]; check: Slot[] }[] = [];
-    for (const o of all) {
-      const contents = slots.filter((s) => s.kind === "content" && s.primary === o).sort(byRank);
-      const examples = slots
-        .filter((s) => s.kind === "worked-example" && lastOwner(s) === o)
-        .sort(byRank);
-      for (let c = 0; c < contents.length; c += CONTENT_PER_CYCLE) {
-        cycles.push({ teach: contents.slice(c, c + CONTENT_PER_CYCLE), check: [] });
-      }
-      const last = cycles.at(-1);
-      if (examples.length === 0) continue;
-      if (contents.length > 0 && last) last.teach.push(...examples);
-      else cycles.push({ teach: examples, check: [] });
-    }
-    const cycleOf = new Map<Slot, number>();
-    cycles.forEach((c, i) => {
-      for (const s of c.teach) cycleOf.set(s, i);
-    });
-    const keyIdeaCycle = new Map<number, number>();
-    const objectiveEnd = new Map<number, number>();
-    const exampleCycle = new Map<number, number>();
-    cycles.forEach((c, i) => {
-      for (const s of c.teach) {
-        for (const k of s.keyIdeas ?? []) if (!keyIdeaCycle.has(k)) keyIdeaCycle.set(k, i);
-        for (const o of [s.primary, ...s.objectives]) objectiveEnd.set(o, i);
-        if (s.kind === "worked-example") for (const o of s.objectives) exampleCycle.set(o, i);
-      }
-    });
-    const lastCycle = cycles.length - 1;
-    /** The earliest cycle after which practise slide `s` is fair; `lastCycle + 1` closes. */
-    const checkCycle = (s: Slot): number => {
-      if (s.closing) return lastCycle + 1;
-      const asked = s.questions ?? (s.question === undefined ? [] : [s.question]);
-      let at = -1;
-      for (const i of asked) {
-        const declared = testedKeyIdeas(i);
-        const named = refIndices(facts.questions[i]?.objectiveRefs);
-        const tested = declared.length > 0 ? declared : named.flatMap(keyIdeasOf);
-        for (const k of tested) at = Math.max(at, keyIdeaCycle.get(k) ?? lastCycle);
-        if (tested.length === 0)
-          for (const o of named) at = Math.max(at, objectiveEnd.get(o) ?? -1);
-      }
-      // A discussion confronts its objective's misconception: after that objective is taught.
-      if (asked.length === 0)
-        for (const o of s.objectives) at = Math.max(at, objectiveEnd.get(o) ?? -1);
-      // Model, then practise: a question the facts declared `apply` never comes before a worked
-      // example of an objective it names. (Without `keyIdeaRefs` a question already follows its
-      // objective's whole cycle, the worked example included.)
-      for (const i of asked) {
-        if (facts.questions[i]?.demand !== "apply") continue;
-        for (const o of refIndices(facts.questions[i]?.objectiveRefs)) {
-          at = Math.max(at, exampleCycle.get(o) ?? -1);
-        }
-      }
-      return at < 0 ? lastCycle : at;
-    };
-    const closing: Slot[] = [];
-    for (const s of slots.filter((x) => x.phase === "practise").sort(byRank)) {
-      const at = checkCycle(s);
-      const cycle = cycles[at];
-      if (cycle === undefined) closing.push(s);
-      else cycle.check.push(s);
-    }
-    const placedInCycles = new Set([
-      ...cycles.flatMap((c) => [...c.teach, ...c.check]),
-      ...closing,
-    ]);
-    const opening = slots
-      .filter((s) => !placedInCycles.has(s) && (s.phase === "starter" || s.kind === "vocabulary"))
-      .sort(byRank);
-    const rest = slots.filter((s) => !placedInCycles.has(s) && !opening.includes(s)).sort(byRank);
-    const ordered = [
-      ...opening,
-      ...cycles.flatMap((c) => [...c.teach, ...c.check]),
-      ...closing,
-      ...rest,
-    ];
-    slots.splice(0, slots.length, ...ordered);
-    return cycles;
-  }
-
-  const cycleSlots = orderInCycles();
+  slots.sort((a, b) => compareRanks(a.rank, b.rank));
   const exitPosition = slots.length + 2;
 
   const shownTerms = new Set(slots.find((s) => s.kind === "vocabulary")?.terms ?? []);
@@ -1121,10 +936,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     let avoids: string | undefined;
     switch (slot.kind) {
       case "starter": {
-        adds =
-          priorKnowledge === ""
-            ? `Pupils say what they already think about ${topic} before being told.`
-            : `Retrieval: pupils recall what the class has already covered: ${priorKnowledge}`;
+        adds = `Pupils say what they already think about ${topic} before being told.`;
         if (slot.misconception !== undefined) {
           refs.push({ type: "misconception", index: slot.misconception });
         }
@@ -1296,63 +1108,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       );
     }
   }
-  // A short exit ticket (w0b): at most `EXIT_MAX` items, one per objective before any objective's
-  // second, in the facts' order; under `EXIT_MIN`, topped up with unused fair questions that can be
-  // asked as a line of it, objectives with the fewest items first, easiest tier first. Exit
-  // questions left over stay unclaimed (`assignFactIds` still hands them to the first check slide).
-  if (exitQuestions.length > EXIT_MAX) {
-    const round = new Map<number, number>();
-    const keyed = exitQuestions.map((i, at) => {
-      const o = firstObjectiveOf(i) ?? count;
-      const n = round.get(o) ?? 0;
-      round.set(o, n + 1);
-      return { i, at, n };
-    });
-    const kept = new Set(
-      [...keyed]
-        .sort((a, b) => a.n - b.n || a.at - b.at)
-        .slice(0, EXIT_MAX)
-        .map((k) => k.i),
-    );
-    const over = exitQuestions.filter((i) => !kept.has(i));
-    exitQuestions.splice(0, exitQuestions.length, ...exitQuestions.filter((i) => kept.has(i)));
-    gap(
-      `The exit ticket holds ${EXIT_MAX} items, so exit question${over.length === 1 ? "" : "s"} ${over.map((i) => i + 1).join(", ")} ${over.length === 1 ? "is" : "are"} left off it.`,
-    );
-  }
-  while (exitQuestions.length > 0 && exitQuestions.length < EXIT_MIN) {
-    const itemsOn = (o: number) =>
-      exitQuestions.filter((i) => names(facts.questions[i]?.objectiveRefs, o)).length;
-    const next = facts.questions
-      .flatMap((q, j) =>
-        q.use !== "exit" &&
-        !used.questions.has(j) &&
-        !exitQuestions.includes(j) &&
-        q.demand !== "judgement" &&
-        admitsOpen(j) &&
-        fair(j)
-          ? [j]
-          : [],
-      )
-      .sort(
-        (a, b) =>
-          Math.min(...refIndices(facts.questions[a]?.objectiveRefs).map(itemsOn)) -
-            Math.min(...refIndices(facts.questions[b]?.objectiveRefs).map(itemsOn)) ||
-          tierRank(a) - tierRank(b) ||
-          a - b,
-      )[0];
-    if (next === undefined) {
-      gap(
-        `The exit ticket has ${exitQuestions.length} item${exitQuestions.length === 1 ? "" : "s"}: the facts have no other unused question that can be asked as a line of it.`,
-      );
-      break;
-    }
-    used.questions.add(next);
-    exitQuestions.push(next);
-  }
-  const exitCount = dropped
-    ? exitQuestions.length
-    : Math.max(exitQuestions.length, Math.min(count, EXIT_MAX));
+  const exitCount = dropped ? exitQuestions.length : count;
   const optioned = dedupe(withOptions.map((i) => (firstObjectiveOf(i) ?? 0) + 1));
   const optionsNote =
     optioned.length === 0
@@ -1363,7 +1119,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     factRefs: objectiveRefs(all),
     phase: "check",
     brief: brief(
-      `${exitCount} question${exitCount === 1 ? "" : "s"}, ${dropped ? "on the objectives the facts let it ask" : exitCount === count ? "one per objective" : "short items across the objectives"}${withheld ? ", each on what the slides taught" : ""}.${optionsNote}`,
+      `${exitCount} question${exitCount === 1 ? "" : "s"}, ${dropped ? "on the objectives the facts let it ask" : "one per objective"}${withheld ? ", each on what the slides taught" : ""}.${optionsNote}`,
     ),
   });
   outlineFactRefs.push({
@@ -1417,12 +1173,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     ),
   };
 
-  const positionOf = (slot: Slot) => slots.indexOf(slot) + 2;
-  const cycles = cycleSlots.map((c) => ({
-    teach: c.teach.map(positionOf),
-    check: c.check.map(positionOf),
-  }));
-
   return {
     skeleton: { learningObjectives: input.objectives.map((o) => ({ text: o.text })), outline },
     outlineFactRefs,
@@ -1430,7 +1180,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     coverage,
     unplaced,
     gaps,
-    cycles,
   };
 }
 

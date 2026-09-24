@@ -436,6 +436,7 @@ export async function labPlan(
     facts: merged,
     shape,
     slideCount,
+    priorKnowledge: brief.classContext?.priorKnowledge,
   });
   const planFacts: PlanFactsLike = { ...merged, outlineFactRefs: outline.outlineFactRefs };
   const facts = assignFactIds(outline.skeleton, planFacts, brief.durationMin);

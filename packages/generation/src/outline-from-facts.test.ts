@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { SLIDE_COUNTS, type SlideCount } from "@tj/domain/documents";
-import { clip, type OutlineFacts, outlineFromFacts } from "./outline-from-facts";
+import {
+  clip,
+  EXIT_MAX,
+  EXIT_MIN,
+  type OutlineFacts,
+  outlineFromFacts,
+} from "./outline-from-facts";
 import { slidesFor } from "./prompts/shape";
 import { type LessonShape, lessonShapeOf } from "./shapes";
 import { assignFactIds, planSkeletonSchemaFor } from "./specs";
@@ -148,6 +154,7 @@ function run(over: {
   slideCount?: SlideCount;
   facts?: OutlineFacts;
   options?: Options;
+  priorKnowledge?: string;
 }) {
   const n = over.n ?? 2;
   const facts = over.facts ?? factsFor(n, over.options);
@@ -159,6 +166,7 @@ function run(over: {
     facts,
     shape,
     slideCount,
+    ...(over.priorKnowledge === undefined ? {} : { priorKnowledge: over.priorKnowledge }),
   });
   return { result, facts, shape, slideCount };
 }
@@ -252,14 +260,13 @@ describe("outlineFromFacts: priorities", () => {
     expect(refsAt(r, k.indexOf("vocabulary")).every((ref) => ref.type === "vocabulary")).toBe(true);
   });
 
-  test("phases run starter → explain → practise → check and the exit ticket closes", () => {
-    // Two objectives: with three, the remaining worked examples (placed before the starter) fill
-    // the deck and no starter fits, which is the intended trade.
+  test("the starter opens, explain and practise alternate in cycles, the exit ticket closes", () => {
     const r = run({ n: 2, slideCount: 12, shape: shapeOf("Apply") });
-    const order = { starter: 0, explain: 1, practise: 2, check: 3 };
+    const order = { starter: 0, explain: 1, practise: 1, check: 3 };
     const ranks = r.result.skeleton.outline.slice(2).map((e) => order[e.phase ?? "check"]);
     expect([...ranks].sort((a, b) => a - b)).toEqual(ranks);
-    expect(kinds(r)).toContain("starter");
+    expect(kinds(r)[2]).toBe("starter");
+    expect(kinds(r).at(-1)).toBe("exit-ticket");
     const method = kinds(r).indexOf("worked-example");
     const firstPractise = r.result.skeleton.outline.findIndex((e) => e.phase === "practise");
     expect(method).toBeLessThan(firstPractise);
@@ -295,9 +302,11 @@ describe("outlineFromFacts: slide shares (ruling 82)", () => {
     expect(practiseSlides(r)).toBeGreaterThanOrEqual(2); // floor(6 × 40 / 100)
     expect(explainSlides(r)).toBeGreaterThanOrEqual(1); // floor(6 × 30 / 100)
     expect(r.result.gaps.some((g) => /practise phase|explain slide/.test(g))).toBe(false);
-    const parsed = planSkeletonSchemaFor({ shape: shapeOf("Apply"), slideCount: 8 }).safeParse(
-      r.result.skeleton,
-    );
+    const parsed = planSkeletonSchemaFor({
+      shape: shapeOf("Apply"),
+      slideCount: 8,
+      learningCycles: true,
+    }).safeParse(r.result.skeleton);
     const shareIssues = parsed.success
       ? []
       : parsed.error.issues.filter((i) => /slides after the title/.test(i.message));
@@ -324,7 +333,24 @@ describe("outlineFromFacts: slide shares (ruling 82)", () => {
     });
     for (const o of [0, 1, 2]) expect(r.result.coverage[o]?.taught.length).toBeGreaterThan(0);
     // Three content slides, the shared practise slide, one more practise slide: the share holds.
+    // No prior knowledge is declared, so practice outranks the starter (w0b flow).
     expect(practiseSlides(r)).toBe(2);
+    expect(kinds(r)).not.toContain("starter");
+  });
+
+  test("the same deck with prior knowledge declared: the retrieval starter takes the second practise slot", () => {
+    const r = run({
+      n: 3,
+      shape: shapeOf("Apply"),
+      slideCount: 8,
+      options: { bare: true, workedExamples: false },
+      priorKnowledge: "Fractions.",
+    });
+    expect(kinds(r)[2]).toBe("starter");
+    expect(practiseSlides(r)).toBe(1);
+    expect(kinds(r)).toContain("instructions");
+    expect(r.result.coverage.every((c) => c.practised.length > 0)).toBe(true);
+    expect(r.result.gaps.some((g) => /in the practise phase/.test(g))).toBe(true);
   });
 
   test("four objectives in an 8-slide Apply deck: teaching takes four slots and the share is a gap", () => {
@@ -848,7 +874,9 @@ describe("outlineFromFacts: the two gates", () => {
     test(`${name} at ${slideCount} passes planSkeletonSchemaFor and assignFactIds`, () => {
       const options = name.includes("no worked") ? { workedExamples: false } : {};
       const r = run({ n, shape, slideCount, options });
-      const parsed = planSkeletonSchemaFor({ shape, slideCount }).safeParse(r.result.skeleton);
+      const parsed = planSkeletonSchemaFor({ shape, slideCount, learningCycles: true }).safeParse(
+        r.result.skeleton,
+      );
       expect(parsed.success ? [] : unexplained(parsed.error.issues, r.result.gaps)).toEqual([]);
       const merged = assignFactIds(
         r.result.skeleton,
@@ -1156,5 +1184,250 @@ describe("outlineFromFacts: a distractor that repeats the answer", () => {
       e.factRefs.filter((f) => f.type === "question").map((f) => f.index),
     );
     for (const i of placed) expect(facts.questions[i]?.use).not.toBe("slide");
+  });
+});
+
+describe("outlineFromFacts: lesson flow (w0b)", () => {
+  const questionsAt = (r: ReturnType<typeof run>, position: number) =>
+    refsAt(r, position).flatMap((f) => (f.type === "question" ? [f.index] : []));
+  const keyIdeasAt = (r: ReturnType<typeof run>, position: number) =>
+    refsAt(r, position).flatMap((f) => (f.type === "keyIdea" ? [f.index] : []));
+  /** Outline position of the slide that first carries key idea `k`. */
+  const taughtAt = (r: ReturnType<typeof run>, k: number) =>
+    r.result.outlineFactRefs.find((e) => keyIdeasAt(r, e.index).includes(k))?.index ?? Infinity;
+  const exitRefs = (r: ReturnType<typeof run>) =>
+    questionsAt(r, r.result.skeleton.outline.length - 1);
+
+  describe("rule 1: a starter near the start", () => {
+    test("declared prior knowledge: the starter opens the lesson and retrieves it, asking nothing this lesson teaches", () => {
+      const r = run({
+        n: 3,
+        slideCount: 10,
+        priorKnowledge: "Pythagoras and labelling the hypotenuse.",
+      });
+      const outline = r.result.skeleton.outline;
+      expect(outline[2]?.kind).toBe("starter");
+      expect(outline[2]?.phase).toBe("starter");
+      expect(outline[2]?.brief?.adds).toBe(
+        "Retrieval: pupils recall what the class has already covered: Pythagoras and labelling the hypotenuse.",
+      );
+      expect(refsAt(r, 2)).toEqual([]);
+      expect(r.result.gaps.some((g) => /declares no prior knowledge/.test(g))).toBe(false);
+    });
+
+    test("no prior knowledge declared: the starter asks what pupils think, on the first misconception, and a gap says why", () => {
+      const r = run({ n: 2, slideCount: 12 });
+      expect(r.result.skeleton.outline[2]?.kind).toBe("starter");
+      expect(refsAt(r, 2)).toEqual([mis(0)]);
+      expect(r.result.gaps).toContain(
+        "The brief declares no prior knowledge, so the starter asks what pupils already think about Rivers instead of retrieving an earlier idea.",
+      );
+    });
+
+    test("a deck with no room once every objective is taught says so in a gap", () => {
+      const r = run({ n: 3, slideCount: 6, options: { keyIdeasPer: 1 } });
+      expect(kinds(r)).not.toContain("starter");
+      expect(r.result.gaps.some((g) => /no room for a starter/.test(g))).toBe(true);
+    });
+
+    for (const slideCount of [10, 12] as const) {
+      test(`a ${slideCount}-slide deck of three objectives with prior knowledge declared has its starter at position 2`, () => {
+        for (const verb of ["Explain", "Apply", "Describe", "Recall", "Evaluate"]) {
+          const r = run({ n: 3, slideCount, shape: shapeOf(verb), priorKnowledge: "Unit 1." });
+          expect(kinds(r)[2]).toBe("starter");
+        }
+      });
+    }
+
+    test("without declared prior knowledge the starter waits until every objective is practised and the floors are met", () => {
+      const r = run({ n: 3, slideCount: 10, shape: shapeOf("Apply") });
+      expect(r.result.coverage.every((c) => c.practised.length > 0)).toBe(true);
+      expect(r.result.gaps.some((g) => /in the practise phase/.test(g))).toBe(false);
+      const withPrior = run({
+        n: 3,
+        slideCount: 10,
+        shape: shapeOf("Apply"),
+        priorKnowledge: "Unit 1.",
+      });
+      expect(kinds(withPrior)[2]).toBe("starter");
+    });
+  });
+
+  describe("rule 2: learning cycles", () => {
+    test("each objective's teaching is followed by its own check before the next objective is taught", () => {
+      const r = run({ n: 3, slideCount: 12 });
+      expect(r.result.cycles).toHaveLength(3);
+      r.result.cycles.forEach((c, i) => {
+        expect(c.check.length).toBeGreaterThan(0);
+        const next = r.result.cycles[i + 1];
+        for (const at of c.check) {
+          expect(at).toBeGreaterThan(Math.max(...c.teach));
+          if (next) expect(at).toBeLessThan(Math.min(...next.teach));
+        }
+      });
+      // The first cycle's check tests the first objective only.
+      const first = r.result.cycles[0]?.check[0] ?? -1;
+      for (const i of questionsAt(r, first)) {
+        expect(r.facts.questions[i]?.objectiveRefs.map((o) => o.index)).toEqual([0]);
+      }
+    });
+
+    test("an apply question declaring an early key idea still waits for its objective's worked example", () => {
+      const facts = factsFor(1, { keyIdeasPer: 3 });
+      const slide = facts.questions.find((q) => q.use === "slide");
+      if (!slide) throw new Error("fixture has no slide question");
+      Object.assign(slide, { keyIdeaRefs: [{ type: "keyIdea", index: 0 }], demand: "apply" });
+      const r = run({ n: 1, slideCount: 12, facts, options: { keyIdeasPer: 3 } });
+      const i = facts.questions.indexOf(slide);
+      const at = r.result.outlineFactRefs.find((e) => questionsAt(r, e.index).includes(i))?.index;
+      const example = kinds(r).indexOf("worked-example");
+      expect(example).toBeGreaterThan(0);
+      expect(at ?? 0).toBeGreaterThan(example);
+    });
+
+    test("a question placed in a cycle comes after every key idea it declares (keyIdeaRefs), and may come before its objective's later ideas", () => {
+      // Objective 1 with three key ideas: two cycles; a question declaring only key idea 0 is
+      // checked after the first cycle, before key idea 2 is taught.
+      const facts = factsFor(1, { keyIdeasPer: 3 });
+      const slide = facts.questions.find((q) => q.use === "slide");
+      if (!slide) throw new Error("fixture has no slide question");
+      Object.assign(slide, { keyIdeaRefs: [{ type: "keyIdea", index: 0 }] });
+      const r = run({ n: 1, slideCount: 12, facts, options: { keyIdeasPer: 3 } });
+      const i = facts.questions.indexOf(slide);
+      const at = r.result.outlineFactRefs.find((e) => questionsAt(r, e.index).includes(i))?.index;
+      expect(at).toBeDefined();
+      expect(at ?? 0).toBeGreaterThan(taughtAt(r, 0));
+      expect(r.result.cycles.length).toBeGreaterThan(1);
+      expect(r.result.cycles[0]?.check).toContain(at ?? -1);
+    });
+
+    test("no slide asks a question before every key idea it may test is on an earlier slide", () => {
+      for (const n of [1, 2, 3, 4]) {
+        for (const slideCount of SLIDE_COUNTS) {
+          const r = run({ n, slideCount });
+          const exit = r.result.skeleton.outline.length - 1;
+          for (const entry of r.result.outlineFactRefs) {
+            if (entry.index === exit) continue;
+            for (const i of questionsAt(r, entry.index)) {
+              const owners = r.facts.questions[i]?.objectiveRefs.map((o) => o.index) ?? [];
+              const ideas = r.facts.keyIdeas.flatMap((k, j) =>
+                k.objectiveRefs.some((o) => owners.includes(o.index)) ? [j] : [],
+              );
+              for (const k of ideas) expect(taughtAt(r, k)).toBeLessThan(entry.index);
+            }
+          }
+        }
+      }
+    });
+
+    test("a declared judgement closes the practise slides, after every cycle", () => {
+      const r = run({
+        n: 3,
+        slideCount: 12,
+        shape: shapeOf("Evaluate"),
+        options: { bare: true, demand: "judgement" },
+      });
+      const outline = r.result.skeleton.outline;
+      const judged = outline.findIndex((e) => /^Pupils judge/.test(e.brief?.adds ?? ""));
+      expect(judged).toBeGreaterThan(0);
+      const lastTeach = Math.max(...r.result.cycles.flatMap((c) => c.teach));
+      expect(judged).toBeGreaterThan(lastTeach);
+    });
+
+    test("the skeleton passes planSkeletonSchemaFor with learningCycles and fails it without", () => {
+      const r = run({ n: 3, slideCount: 12, shape: shapeOf("Explain") });
+      const withCycles = planSkeletonSchemaFor({ learningCycles: true }).safeParse(
+        r.result.skeleton,
+      );
+      expect(withCycles.success).toBe(true);
+      const without = planSkeletonSchemaFor({}).safeParse(r.result.skeleton);
+      expect(without.success).toBe(false);
+    });
+  });
+
+  describe("rule 2: a short exit ticket", () => {
+    test(`more exit questions than ${EXIT_MAX}: ${EXIT_MAX} items, every objective first, and a gap`, () => {
+      const facts = factsFor(3, { bare: true });
+      const extra = facts.questions.filter((q) => q.use === "exit");
+      for (const q of extra) {
+        facts.questions.push(
+          { ...q, stem: `${q.stem} (second)`, distractors: [] },
+          { ...q, stem: `${q.stem} (third)`, distractors: [] },
+        );
+      }
+      for (const q of extra) q.distractors = [];
+      const r = run({ n: 3, slideCount: 10, facts });
+      const items = exitRefs(r);
+      expect(items).toHaveLength(EXIT_MAX);
+      const objectivesChecked = new Set(
+        items.map((i) => facts.questions[i]?.objectiveRefs[0]?.index),
+      );
+      expect(objectivesChecked).toEqual(new Set([0, 1, 2]));
+      expect(r.result.gaps.some((g) => /The exit ticket holds 5 items/.test(g))).toBe(true);
+    });
+
+    test(`fewer exit questions than ${EXIT_MIN}: topped up with unused fair questions askable as a line`, () => {
+      const facts = factsFor(1, { bare: true });
+      for (const q of facts.questions) if (q.use !== "exit") q.distractors = [];
+      const exit = facts.questions.find((q) => q.use === "exit");
+      if (exit) exit.distractors = [];
+      const r = run({ n: 1, slideCount: 8, facts });
+      const items = exitRefs(r);
+      expect(items.length).toBeGreaterThanOrEqual(EXIT_MIN);
+      expect(items.length).toBeLessThanOrEqual(EXIT_MAX);
+      // No question is both practised on a slide and on the exit ticket.
+      const onSlides = r.result.outlineFactRefs
+        .filter((e) => e.index !== r.result.skeleton.outline.length - 1)
+        .flatMap((e) => questionsAt(r, e.index));
+      for (const i of items) expect(onSlides).not.toContain(i);
+    });
+  });
+
+  describe("rule 3: model, then practise", () => {
+    test("an objective whose questions declare apply gets its worked example, before its practice", () => {
+      // Eight slides, three objectives, Describe: no worked example is required, so without the
+      // declaration none would fit before practice.
+      const facts = factsFor(3);
+      for (const q of facts.questions) {
+        if (q.objectiveRefs[0]?.index === 1) Object.assign(q, { demand: "apply" });
+      }
+      const r = run({ n: 3, slideCount: 10, shape: shapeOf("Describe"), facts });
+      const outline = r.result.skeleton.outline;
+      const example = outline.findIndex(
+        (e, i) =>
+          e.kind === "worked-example" &&
+          refsAt(r, i).some((f) => f.type === "workedExample" && f.index === 1),
+      );
+      expect(example).toBeGreaterThan(0);
+      const practised = r.result.coverage[1]?.practised ?? [];
+      expect(practised.length).toBeGreaterThan(0);
+      for (const at of practised) expect(at).toBeGreaterThan(example);
+      // Its objective's content comes first: the example sits in its cycle, after the teaching.
+      expect(example).toBeGreaterThan(Math.min(...(r.result.coverage[1]?.taught ?? [])));
+    });
+
+    test("without the declaration a placed worked example still comes before its objective's practice", () => {
+      for (const verb of ["Explain", "Apply"]) {
+        const r = run({ n: 3, slideCount: 12, shape: shapeOf(verb) });
+        r.result.skeleton.outline.forEach((e, i) => {
+          if (e.kind !== "worked-example") return;
+          for (const o of e.factRefs.map((f) => f.index)) {
+            for (const at of r.result.coverage[o]?.practised ?? []) expect(at).toBeGreaterThan(i);
+          }
+        });
+      }
+    });
+
+    test("apply questions and no worked example for the objective: a gap, nothing invented", () => {
+      const facts = factsFor(2, { workedExamples: false });
+      for (const q of facts.questions) Object.assign(q, { demand: "apply" });
+      const r = run({ n: 2, slideCount: 10, facts });
+      expect(kinds(r)).not.toContain("worked-example");
+      for (const o of [1, 2]) {
+        expect(r.result.gaps).toContain(
+          `Objective ${o}'s questions ask pupils to apply it and the facts have no worked example for it, so no slide models it before they practise.`,
+        );
+      }
+    });
   });
 });

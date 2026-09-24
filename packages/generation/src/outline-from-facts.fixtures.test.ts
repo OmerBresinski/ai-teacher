@@ -12,7 +12,7 @@ import {
 } from "./outline-from-facts";
 import { slidesFor } from "./prompts/shape";
 import { lessonShapeOf } from "./shapes";
-import { assignFactIds, PlanSkeletonSchema, planSkeletonSchemaFor } from "./specs";
+import { assignFactIds, planSkeletonSchemaFor } from "./specs";
 
 /*
  * The outline step over real facts: the five lab briefs' merged per-objective facts
@@ -27,6 +27,8 @@ import { assignFactIds, PlanSkeletonSchema, planSkeletonSchemaFor } from "./spec
 
 const FIXTURES = { romans, ratio, evolution, macbeth, elasticity } as const;
 const PITCH = { readingAgeTarget: 10, sentenceLengthMax: 16, avoid: [] };
+/** The structural rules, with explain and practise alternating in learning cycles (w0b flow). */
+const CycleSkeletonSchema = planSkeletonSchemaFor({ learningCycles: true });
 
 function inputFor(fixture: (typeof FIXTURES)[keyof typeof FIXTURES], slideCount: SlideCount) {
   const facts = fixture.facts as unknown as OutlineFacts;
@@ -96,7 +98,7 @@ describe("outlineFromFacts over the five lab briefs", () => {
         });
 
         test("passes the skeleton's structural rules", () => {
-          const parsed = PlanSkeletonSchema.safeParse(skeleton);
+          const parsed = CycleSkeletonSchema.safeParse(skeleton);
           expect(
             parsed.success ? [] : unexplained(parsed.error.issues, facts, input, result.gaps),
           ).toEqual([]);
@@ -104,7 +106,7 @@ describe("outlineFromFacts over the five lab briefs", () => {
 
         if (slideCount >= 8) {
           test("passes the lesson shape's rules with the brief's slide count", () => {
-            const schema = planSkeletonSchemaFor({ shape, slideCount });
+            const schema = planSkeletonSchemaFor({ shape, slideCount, learningCycles: true });
             const parsed = schema.safeParse(skeleton);
             expect(
               parsed.success ? [] : unexplained(parsed.error.issues, facts, input, result.gaps),
@@ -222,15 +224,20 @@ describe("outlineFromFacts over the five lab briefs", () => {
           }
         });
 
-        test("briefs are distinct and phases never go back", () => {
+        test("briefs are distinct; the starter opens, cycles alternate, the check phase closes", () => {
           const adds = skeleton.outline.slice(2).map((e) => e.brief?.adds);
           expect(new Set(adds).size).toBe(adds.length);
-          const order = { starter: 0, explain: 1, practise: 2, check: 3 } as const;
+          // Explain and practise alternate in learning cycles; starter first, check last.
+          const order = { starter: 0, explain: 1, practise: 1, check: 3 } as const;
           let last = -1;
           for (const entry of skeleton.outline) {
             if (!entry.phase) continue;
             expect(order[entry.phase]).toBeGreaterThanOrEqual(last);
             last = order[entry.phase];
+          }
+          // Every check comes after the teaching slides of its cycle.
+          for (const c of result.cycles) {
+            for (const at of c.check) expect(at).toBeGreaterThan(Math.max(...c.teach));
           }
         });
 
