@@ -196,11 +196,12 @@ function recordingAi(real: CreatedAi, file: string): CreatedAi {
         }
         await appendFile(
           file,
-          `${JSON.stringify({ stage: context?.stage, promptVersion: context?.promptVersion, durationMs: Date.now() - startedAt, error: chain })}\n`,
+          `${JSON.stringify({ at: new Date(startedAt).toISOString(), startedAt: new Date(startedAt).toISOString(), endedAt: new Date().toISOString(), stage: context?.stage, promptVersion: context?.promptVersion, durationMs: Date.now() - startedAt, error: chain })}\n`,
         );
         throw error;
       }
-      const durationMs = Date.now() - startedAt;
+      const endedAt = Date.now();
+      const durationMs = endedAt - startedAt;
       const text = result.content
         .map((part) => ("text" in part && typeof part.text === "string" ? part.text : ""))
         .join("");
@@ -216,7 +217,9 @@ function recordingAi(real: CreatedAi, file: string): CreatedAi {
       const gatewayCost = gateway?.cost as string | undefined;
       await appendFile(
         file,
-        `${JSON.stringify({ at: new Date(startedAt).toISOString(), stage: context?.stage, promptVersion: context?.promptVersion, modelId: result.response?.modelId, finishReason: result.finishReason, durationMs, prompt, text, usage: result.usage, gatewayCost, gateway })}\n`,
+        // `startedAt`/`endedAt` (lab pw): the call's real start and end, so a critical-path timeline
+        // can be drawn from the file; `at` stays as the start for older readers.
+        `${JSON.stringify({ at: new Date(startedAt).toISOString(), startedAt: new Date(startedAt).toISOString(), endedAt: new Date(endedAt).toISOString(), stage: context?.stage, promptVersion: context?.promptVersion, modelId: result.response?.modelId, finishReason: result.finishReason, durationMs, prompt, text, usage: result.usage, gatewayCost, gateway })}\n`,
       );
       return result;
     },
@@ -229,6 +232,35 @@ function recordingAi(real: CreatedAi, file: string): CreatedAi {
         middleware: middleware(context),
       }),
   };
+}
+
+/**
+ * Per-stage wall time from the progress events: a stage runs from the previous stage's last event
+ * to its own last event (Plan from the start), so overlapping work (Verify inside Generate) is
+ * charged to the stage that was waiting on it. The tail after the last event (judge, files) is
+ * "after".
+ */
+export function stageWallLine(
+  events: readonly { atMs: number; stage: string | undefined }[],
+  totalMs: number,
+): string {
+  const order: string[] = [];
+  const last = new Map<string, number>();
+  for (const e of events) {
+    if (!e.stage) continue;
+    if (!last.has(e.stage)) order.push(e.stage);
+    last.set(e.stage, e.atMs);
+  }
+  if (order.length === 0) return "no stage events";
+  const parts: string[] = [];
+  let from = 0;
+  for (const stage of order) {
+    const to = last.get(stage) ?? from;
+    parts.push(`${stage} ${((to - from) / 1000).toFixed(1)} s`);
+    from = to;
+  }
+  parts.push(`after ${((totalMs - from) / 1000).toFixed(1)} s`);
+  return parts.join(", ");
 }
 
 function arg(name: string): string | undefined {
@@ -1039,6 +1071,8 @@ if (import.meta.main) {
   let verifyMs: number | null = null;
   let verifyCorrections: number | null = null;
   const logLines: string[] = [];
+  /** Every progress event with its stage (lab pw): the per-stage wall times in REPORT.md. */
+  const progressEvents: { atMs: number; stage: string | undefined; percent: number }[] = [];
 
   const signal = new AbortController().signal;
   const context = { lessonId: lesson.id, jobId: `lab-job-${brief.id}-${label}` };
@@ -1090,7 +1124,8 @@ if (import.meta.main) {
       );
       return { updatedAt: now().toISOString() };
     },
-    onProgress: async (percent, message) => {
+    onProgress: async (percent, message, stage) => {
+      progressEvents.push({ atMs: Date.now() - startedAt, stage, percent });
       process.stderr.write(
         `[${Math.round((Date.now() - startedAt) / 1000)}s] ${percent}% ${message}\n`,
       );
@@ -1360,6 +1395,7 @@ if (import.meta.main) {
   R.push(
     `- ${lesson.slides.length} slides, ${worksheet?.blocks.length ?? 0} blocks; duration ${(durationMs / 1000).toFixed(1)} s; verify ${verifyMs ?? "-"} ms, ${verifyCorrections ?? "-"} corrections${only ? `; only ${only}` : ""}`,
   );
+  R.push(`- stage wall: ${stageWallLine(progressEvents, durationMs)}`);
   R.push(
     `- models: frontier ${ai.modelId("frontier")}, standard ${ai.modelId("standard")}, small ${ai.modelId("small")}; judge ${judge?.modelId("frontier") ?? "-"}; planFrontierFromYear ${planFrontierFromYear ?? "-"}; routes ${JSON.stringify(routes)}; efforts ${JSON.stringify(efforts)}${from ? `; from ${from}` : ""}${sourcePath ? `; source ${sourcePath}` : ""}`,
   );
