@@ -158,8 +158,22 @@ export const PackSchema = z.strictObject({
   topic: z.string().min(1),
   subject: z.string().min(1),
   yearGroup: z.string().min(1),
-  /** Which authoring arm wrote the facts; a pack is one arm's output, never a mix. */
-  arm: z.enum(["luna-rewrite", "sol-rewrite", "sol-knowledge", "hand", "oak-import"]),
+  /**
+   * Which authoring arm wrote the facts; a pack is one arm's output, never a mix. The recall arms
+   * (W7b) are listed so a recall pack adapted for the lab (`pack-recall-adapter.ts`) is a `Pack`;
+   * a recall pack file itself still fails this schema (no sources, no evidence) and is parsed by
+   * `RecallPackSchema`.
+   */
+  arm: z.enum([
+    "luna-rewrite",
+    "sol-rewrite",
+    "sol-knowledge",
+    "hand",
+    "oak-import",
+    "sol-recall",
+    "sol-recall-checklist",
+    "sol-recall-selfchecklist",
+  ]),
   writtenAt: z.string().datetime(),
   /** The prompt versions and model ids the facts were written and linked with. */
   provenance: z.strictObject({

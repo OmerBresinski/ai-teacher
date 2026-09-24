@@ -9,7 +9,10 @@
 //                       Unless `--model` says otherwise every call goes to openai/gpt-5.6-luna on the
 //                       gateway and `verify-facts` to openai/gpt-6-sol; `--no-verify` makes no Verify call)
 //   [--dry-run]         (print the resolved plan — every call's model, effort, cap, price — and exit; no model calls)
-//   [--arm live|grounded|packed] [--pack <pack.json>] [--unfrozen]
+//   [--arm live|grounded|packed] [--pack <pack.json>] [--pack-drop <ids.txt>] [--unfrozen]
+//                       (a recall pack — Sol from memory, no evidence — is adapted by
+//                       `eval/pack-recall-adapter.ts`; `--pack-drop` lists the fact ids, secN.fK,
+//                       that failed the in-session check and are removed before use)
 //                       (the topic-pack experiment np1, `eval/experiments/np1.json`, with `--lab-plan`:
 //                       the arm's hooks from `eval/pack-arms.ts`; the pack defaults to
 //                       `eval/packs/<topic>.<packArmForLessons>.json`; every prompt's hash is recorded
@@ -109,6 +112,7 @@ import {
   MAX_OUTPUT_TOKENS_SELECT,
   type SelectRecord,
 } from "./pack-arms";
+import { adaptRecallPack, parseDropList, parseLabPack } from "./pack-recall-adapter";
 import { type Pack, PackSchema } from "./packs/schema";
 import { evalPhotoPlacer } from "./photo-placer";
 import { scoreLesson } from "./scorers";
@@ -974,6 +978,9 @@ if (import.meta.main) {
   await mkdir(join(dir, "snapshots"), { recursive: true });
   let pack: Pack | undefined;
   let packDropped: DroppedFact[] | null = null;
+  /** Set for a recall pack: whether a `--pack-drop` list (the in-session check) was applied. */
+  let packRecall: { checked: boolean; dropFile: string | null } | null = null;
+  const packDropFile = arg("pack-drop");
   if (experiment && armName && armName !== "live") {
     const topic = topicForBrief(experiment, brief.id);
     const packPath =
@@ -985,10 +992,25 @@ if (import.meta.main) {
     const raw = await readFile(resolve(packPath), "utf8").catch(() => null);
     // A dry run may precede the pack (it is written by `pack-author.ts`); a live run needs it.
     if (raw === null && !flag("dry-run")) throw new Error(`lab: pack not found at ${packPath}`);
-    if (raw !== null) pack = PackSchema.parse(JSON.parse(raw));
+    if (raw !== null) {
+      const parsed = parseLabPack(JSON.parse(raw));
+      if (parsed.kind === "recall") {
+        // A recall pack (Sol from memory, no evidence) has no checker verdicts: its facts are
+        // checked in session and the failures handed over as `--pack-drop`; see the adapter.
+        const drop = packDropFile
+          ? parseDropList(await readFile(resolve(packDropFile), "utf8"))
+          : undefined;
+        const adapted = adaptRecallPack(parsed.pack, drop);
+        pack = adapted.pack;
+        packDropped = adapted.dropped;
+        packRecall = { checked: adapted.checked, dropFile: packDropFile ?? null };
+      } else pack = parsed.pack;
+    }
+    if (packDropFile && !packRecall && pack)
+      throw new Error("--pack-drop applies to a recall pack; this pack has checker verdicts");
     // The pre-registered admission rule: only facts both checkers passed reach the arm. The
     // verdicts are the pack author's recorded report; a live run with a rule needs it.
-    if (pack && experiment.packAdmission) {
+    if (pack && experiment.packAdmission && !packRecall) {
       const reportPath = join(import.meta.dir, "results", "packs", pack.id, "report.json");
       const report = await readFile(reportPath, "utf8").catch(() => null);
       if (report === null) {
@@ -1182,7 +1204,7 @@ if (import.meta.main) {
     const L: string[] = [];
     let total = 0;
     L.push(
-      `brief ${brief.id}; snapshot ${from ?? "-"} (stage ${lesson.generation?.stage ?? "none"}, ${lesson.slides.length} slides); source ${sourcePath ?? "-"}; cap $${capUsd}; stages ${stages.join(",")}${labPlanOn ? `; lab plan (${planObjectivesPrompt.version}, ${planFactsObjectivePrompt.version} × ${objectiveCount}, verify ${verifyOn ? "on" : "off"}${saved ? `; FROM FACTS of ${saved.run} (${saved.factsFrom}): no objectives/select/facts call` : ""})` : ""}${armName ? `; arm ${armName}${pack ? ` on pack ${pack.id} (${pack.sections.length} sections${packDropped ? `, ${packDropped.length} facts not admitted` : ""})` : ""}; prompts ${frozen?.ok ? "frozen" : "NOT frozen"}` : ""}`,
+      `brief ${brief.id}; snapshot ${from ?? "-"} (stage ${lesson.generation?.stage ?? "none"}, ${lesson.slides.length} slides); source ${sourcePath ?? "-"}; cap $${capUsd}; stages ${stages.join(",")}${labPlanOn ? `; lab plan (${planObjectivesPrompt.version}, ${planFactsObjectivePrompt.version} × ${objectiveCount}, verify ${verifyOn ? "on" : "off"}${saved ? `; FROM FACTS of ${saved.run} (${saved.factsFrom}): no objectives/select/facts call` : ""})` : ""}${armName ? `; arm ${armName}${pack ? ` on pack ${pack.id} (${pack.sections.length} sections${packDropped ? `, ${packDropped.length} facts not admitted` : ""}${packRecall ? `, recall pack ${packRecall.checked ? "checked in session" : "UNCHECKED"}` : ""})` : ""}; prompts ${frozen?.ok ? "frozen" : "NOT frozen"}` : ""}`,
     );
     L.push(
       "| stage | call | class | model id | via | effort | out cap | $/M in/out | est. reservation |",
@@ -1481,9 +1503,16 @@ if (import.meta.main) {
               id: experiment?.id,
               arm: armName,
               pack: pack ? { id: pack.id, arm: pack.arm, writtenAt: pack.writtenAt } : null,
-              admission: experiment?.packAdmission
-                ? { rule: experiment.packAdmission.rule, dropped: packDropped }
-                : null,
+              admission: packRecall
+                ? {
+                    rule: "recall pack: facts checked in session; the ids in --pack-drop are removed before use",
+                    checked: packRecall.checked,
+                    dropFile: packRecall.dropFile,
+                    dropped: packDropped,
+                  }
+                : experiment?.packAdmission
+                  ? { rule: experiment.packAdmission.rule, dropped: packDropped }
+                  : null,
               selections,
               frozen: frozen?.ok ?? null,
               promptHashes,
