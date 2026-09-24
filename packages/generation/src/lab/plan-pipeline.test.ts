@@ -768,6 +768,11 @@ describe("labPlan --waves (lab pw)", () => {
       );
       expect(given).toHaveLength(3 + 5);
       expect(given.every((r) => JSON.stringify(r) === JSON.stringify(starter))).toBe(true);
+      // Contract C1: the prompts render them, once, as the labelled starter block.
+      const rendered = [...teach.mock.results, ...sets.mock.results].map((r) => String(r.value));
+      const block =
+        "Starter (earlier learning, not this lesson):\n  - Who invaded Britain in AD 43? — The Romans";
+      expect(rendered.every((text) => text.split(block).length === 2)).toBe(true);
     } finally {
       teach.mockRestore();
       sets.mockRestore();

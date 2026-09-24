@@ -23,6 +23,7 @@ import {
   type GenerateSlideInput,
   generateSlidePrompt,
   PROMPT_VERSIONS,
+  repairPrompt,
   VERB_WRITING,
 } from "../prompts";
 import { lessonShapeOf } from "../shapes";
@@ -3087,6 +3088,20 @@ describe("Repair leaves the code-built quizzes alone and reshuffles what it rewr
     });
     expect(plan.currentFactRefs?.length).toBeGreaterThan(0);
     expect(repairPlanOf(slide, undefined).planned).toBeUndefined();
+    // The repair prompt renders both under the names the contract fixes.
+    const text = repairPrompt.user({
+      facts: generatedLesson().facts as LessonFacts,
+      audience: {},
+      lessonShape: { verb: "Explain", confidence: "New to it" },
+      target: { kind: "slide", slideKind: slide.kind, slideId: slide.id, text: "x" },
+      findings: [],
+      shape: "a slide spec",
+      ...plan,
+    });
+    expect(text).toContain(
+      "Planned to teach o3, k5, k6, v5: Hard engineering with two examples. Avoid: the seawall case",
+    );
+    expect(text).toContain(`factRefs: ${plan.currentFactRefs?.join(", ")}`);
   });
 
   test("lab pw: the targets' calls run at once and the outcomes land in target order whichever call returned first", async () => {
