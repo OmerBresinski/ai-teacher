@@ -44,6 +44,11 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *    per call; a two-question exit set cannot hold it. Code renders the tier line from the count
  *    (`tierLine`) and the system says to follow it.
  *
+ * v2 (24 Sept 2026, Sonnet review): the sketch's `use` slot is the placeholder every other slot
+ * uses ("…"), not "slide". The value is pinned per call by the schema, so a literal only invited
+ * Luna to copy "slide" on exit calls. Soft-build count tolerance as described above
+ * (`planQuestionSetShape`); the strict build stays exact.
+ *
  * Output item: EXACTLY v14's question item (same keys, key order, caps, enums), so `merge-objective-
  * facts.ts` and the outline read `{ ...teach, questions: [...sets] }` unchanged: `keyIdeaRefs`
  * index the taught key ideas as the block shows them (0-based), `misconceptionRef` index 0 is the
@@ -152,7 +157,10 @@ const questionSchema = (line: Line, soft: boolean, use?: QuestionSetUse, keyIdea
 
 /**
  * `{ questions: [...] }`. The general form takes any use and one or more questions; a call's form
- * (`planQuestionSetOutputSchemaFor`) pins the use, the exact count and the key-idea bound.
+ * (`planQuestionSetOutputSchemaFor`) pins the use, the count and the key-idea bound. The strict
+ * build wants the count exactly; the soft build (v2) accepts max(1, count - 1) to count + 2, so a
+ * one-item shortfall or a couple of extras on the retry is not a third attempt on a parallel call:
+ * the caller keeps the first `count` and treats the shortfall as acceptable.
  */
 function planQuestionSetShape(
   soft: boolean,
@@ -161,9 +169,13 @@ function planQuestionSetShape(
   keyIdeaCount?: number,
 ) {
   const items = z.array(questionSchema(lineFor(soft), soft, use, keyIdeaCount));
-  return z.strictObject({
-    questions: count === undefined ? items.min(1) : items.min(count).max(count),
-  });
+  const questions =
+    count === undefined
+      ? items.min(1)
+      : soft
+        ? items.min(Math.max(1, count - 1)).max(count + 2)
+        : items.min(count).max(count);
+  return z.strictObject({ questions });
 }
 
 export const PlanQuestionSetOutputSchema = planQuestionSetShape(false);
@@ -235,10 +247,10 @@ const LENGTH_LIMITS = `Length limits (characters): stem and answer ${SPEC_LIMITS
 
 /** v14's question item, unchanged, inside the one list this call writes. */
 export const QUESTION_SET_SHAPE_SKETCH =
-  '{"questions":[{"stem":"…","answer":"…","reasoning":"…","tier":"core","use":"slide","demand":"apply","forms":["multiple-choice","open-response"],"keyIdeaRefs":[{"type":"keyIdea","index":0}],"distractors":[{"text":"…"},{"text":"…"},{"text":"…"}]}]}';
+  '{"questions":[{"stem":"…","answer":"…","reasoning":"…","tier":"core","use":"…","demand":"apply","forms":["multiple-choice","open-response"],"keyIdeaRefs":[{"type":"keyIdea","index":0}],"distractors":[{"text":"…"},{"text":"…"},{"text":"…"}]}]}';
 
 export const planQuestionSetPrompt = {
-  version: "plan-question-set.v1",
+  version: "plan-question-set.v2",
   system: [
     "You are an experienced UK teacher writing the questions for one objective of a lesson, for one use, from the text its slides will teach.",
     "",

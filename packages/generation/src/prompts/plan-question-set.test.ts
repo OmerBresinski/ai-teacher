@@ -71,8 +71,8 @@ const SAMPLE: PlanQuestionSetInput = {
 };
 
 const PIN: { version: string; hash: string } = {
-  version: "plan-question-set.v1",
-  hash: "dbe60f3c0fd132f7d89650fc6f61cd1f144333a42037ba8e5bb1bd781e553f8c",
+  version: "plan-question-set.v2",
+  hash: "0e01265260eeccece337866556273e9aa1e53b16b43583cb7581b2da1d74642e",
 };
 
 const QUESTION = {
@@ -164,7 +164,11 @@ describe("plan-question-set", () => {
     );
     // The sketch is v14's question item, unchanged, inside the one list.
     const v14Item = SHAPE_SKETCH.slice(SHAPE_SKETCH.indexOf('"questions":'));
-    expect(QUESTION_SET_SHAPE_SKETCH).toBe(`{${v14Item}`);
+    // v2: the `use` slot is a placeholder like every other; the schema pins the value per call.
+    expect(QUESTION_SET_SHAPE_SKETCH).toBe(
+      `{${v14Item.replace('"use":"slide"', '"use":"…"')}}`.slice(0, -1),
+    );
+    expect(QUESTION_SET_SHAPE_SKETCH).not.toContain('"use":"slide"');
     expect(system).toContain(QUESTION_SET_SHAPE_SKETCH);
   });
 
@@ -255,7 +259,16 @@ describe("plan-question-set", () => {
     expect(live(long)).toBe(false);
     const soft = planQuestionSetOutputSchemaFor(SAMPLE, { soft: true });
     expect(soft.safeParse(long).success).toBe(true);
-    expect(soft.safeParse(set([QUESTION])).success).toBe(false);
+    // v2: the soft build takes max(1, count - 1) to count + 2, so a near miss is not a third attempt.
+    expect(soft.safeParse(set([QUESTION])).success).toBe(true);
+    expect(soft.safeParse(set([QUESTION, QUESTION, QUESTION, QUESTION])).success).toBe(true);
+    expect(soft.safeParse(set([QUESTION, QUESTION, QUESTION, QUESTION, QUESTION])).success).toBe(
+      false,
+    );
+    expect(soft.safeParse(set([])).success).toBe(false);
+    const single = planQuestionSetOutputSchemaFor({ ...SAMPLE, count: 1 }, { soft: true });
+    expect(single.safeParse(set([QUESTION])).success).toBe(true);
+    expect(single.safeParse(set([])).success).toBe(false);
     expect(soft.safeParse(set([QUESTION, { ...QUESTION, use: "slide" }])).success).toBe(false);
   });
 
