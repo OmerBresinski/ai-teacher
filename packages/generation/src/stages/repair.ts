@@ -10,11 +10,13 @@ import {
   type WorksheetBlock,
 } from "@tj/domain/documents";
 import {
+  type BlockSpec,
   blockSpecSchemaFor,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
+  type SlideSpec,
   slideSpecSchemaFor,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
@@ -30,6 +32,7 @@ import type { RepairContextSlide } from "../prompts/repair";
 import {
   isOutlineFromFacts,
   VERIFY_FIELDS_BY_ARRAY,
+  type VerifyCorrection,
   verifiableArrayOf,
   verifyOutputSchemaFor,
 } from "../specs";
@@ -47,6 +50,7 @@ import {
   generationOf,
   imageTextPhotoOf,
   normaliseText,
+  runBounded,
   shapeOf,
   slideHaystack,
   slidePhotoOf,
@@ -95,6 +99,36 @@ export const ACTIONABLE_WARNINGS: readonly string[] = [
  * already an error target rides along in the same call for nothing.
  */
 export const MAX_WARNING_TARGETS = 2;
+
+/**
+ * Repair calls in flight at once (lab pw). `MAX_TARGETS` error targets plus the two warning-only
+ * ones is eight at most; six starts every target of the usual pass at once and the last two wait
+ * for a free slot, well under one call's latency.
+ */
+export const REPAIR_CONCURRENCY = 6;
+
+/** One target's result, applied in target order once every call has settled. */
+type TargetOutcome =
+  | {
+      kind: "slide";
+      key: string;
+      index: number;
+      corrections: VerifyCorrection[];
+      spec: SlideSpec;
+      modelId: string;
+      findings: Finding[];
+    }
+  | {
+      kind: "block";
+      key: string;
+      index: number;
+      corrections: VerifyCorrection[];
+      spec: BlockSpec;
+      modelId: string;
+      findings: Finding[];
+    }
+  | { kind: "budget"; by: "usd" | "tokens" }
+  | { kind: "failed"; finding: Finding };
 
 type Target = {
   key: string;
@@ -253,41 +287,47 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   const retrieval = new Set(
     lesson.slides.filter((s) => isRetrievalStarter(s, facts)).map((s) => s.id),
   );
-  for (const target of repairTargets(generation.findings, codeBuilt, retrieval)) {
+  // Every target's calls run at once (bounded, lab pw): the targets are distinct slides or blocks,
+  // so their calls are independent. Each is worked against the lesson AS IT STOOD when Repair
+  // started (its read-only context, its slide index), and the outcomes are applied afterwards in
+  // target order, whichever call returned first — the materialised ids, the facts patches and
+  // the findings come out the same on every run.
+  const base = lesson;
+  const baseFacts = facts;
+  const baseWorksheet = worksheet;
+  const targets = repairTargets(generation.findings, codeBuilt, retrieval);
+  const outcomes: (TargetOutcome | undefined)[] = new Array(targets.length);
+  const work = async (t: number) => {
     throwIfAborted(deps.signal);
+    const target = targets[t] as Target;
     // Facts first (TEACH-216): a `fact-consistency` finding that names the wrong fact patches the
     // fact before the artefact is regenerated from it, so the two do not drift apart again. The
     // patch is staged on this target's copy and committed with the regenerated artefact: a target
     // that could not be repaired leaves the facts as they were, never corrected facts beside an
     // artefact still built on the old ones.
-    let staged = facts;
-    const stagedFindings: Finding[] = [];
-    const commitFacts = () => {
-      facts = staged;
-      lesson = { ...lesson, facts };
-      extra.push(...stagedFindings);
-    };
+    let staged = baseFacts;
+    const corrections: VerifyCorrection[] = [];
     try {
       for (const factId of wrongFacts(target.findings)) {
         const patched = await repairFact(staged, factId, target.findings, audience, deps);
         staged = patched.facts;
-        stagedFindings.push(...patched.applied.map(verifyFinding));
+        corrections.push(...patched.applied);
       }
       if (target.slideId !== undefined) {
-        const index = lesson.slides.findIndex((s) => s.id === target.slideId);
-        const slide = lesson.slides[index];
+        const index = base.slides.findIndex((s) => s.id === target.slideId);
+        const slide = base.slides[index];
         // A kind the pipeline cannot generate (an image slide the teacher added) cannot be repaired.
         // An image-text slide keeps its photograph: its text is re-checked against the same evidence.
         const specSchema = (soft: boolean) =>
           !slide
             ? undefined
             : slide.kind === "image-text"
-              ? imageTextSpecSchemaFor(imageTextPhotoOf(slide, lesson.facts?.outline[index]), {
+              ? imageTextSpecSchemaFor(imageTextPhotoOf(slide, base.facts?.outline[index]), {
                   soft,
                 })
               : slideSpecSchemaFor(slide.kind, { soft });
         const schema = specSchema(false);
-        if (!slide || !schema) continue;
+        if (!slide || !schema) return;
         // The slides around it, read-only (lab round 1), rendered by `repair.v14`.
         const input: RepairInput = {
           facts: staged,
@@ -301,12 +341,12 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
             // The labelled fields, when they carry everything the flat text does; else the text.
             ...(specFieldsCover(slide) ? { fields: specFieldsOf(slide) } : {}),
             ...(slide.kind === "image-text"
-              ? { photo: slidePhotoOf(slide, lesson.facts?.outline[index]) }
+              ? { photo: slidePhotoOf(slide, base.facts?.outline[index]) }
               : {}),
           },
           findings: target.findings,
           shape: `a "${slide.kind}" slide spec`,
-          context: { slides: repairContext(lesson, index, target.findings) },
+          context: { slides: repairContext(base, index, target.findings) },
         };
         const call = await callStructured({
           deps,
@@ -320,56 +360,106 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           retryCapMisses: true,
           maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
         });
-        commitFacts();
-        repaired.add(target.key);
-        for (const miss of call.editorialMisses) {
-          extra.push(specRuleFinding(miss, { slideId: slide.id }, "warning"));
-        }
-        const spec = lab ? withShuffledOptions(call.output, `${lesson.id}:${index}`) : call.output;
-        const fresh: Slide = keepPhoto(slide, {
-          ...materialiseSlide(
-            withImageCaption(spec, lesson.facts?.outline[index]),
-            lesson.themeId,
-            meta(call.modelId, deps),
-            deps.ids,
+        outcomes[t] = {
+          kind: "slide",
+          key: target.key,
+          index,
+          corrections,
+          spec: lab ? withShuffledOptions(call.output, `${base.id}:${index}`) : call.output,
+          modelId: call.modelId,
+          findings: call.editorialMisses.map((miss) =>
+            specRuleFinding(miss, { slideId: slide.id }, "warning"),
           ),
-          id: slide.id,
-        });
-        lesson = { ...lesson, slides: lesson.slides.map((s, i) => (i === index ? fresh : s)) };
-      } else if (target.blockId !== undefined && worksheet) {
-        const index = worksheet.blocks.findIndex((b) => b.id === target.blockId);
-        const block = worksheet.blocks[index];
-        if (!block) continue;
-        const result = await repairBlock(
+        };
+      } else if (target.blockId !== undefined && baseWorksheet) {
+        const index = baseWorksheet.blocks.findIndex((b) => b.id === target.blockId);
+        const block = baseWorksheet.blocks[index];
+        if (!block) return;
+        const result = await repairBlockSpec(
           { block, findings: target.findings, facts: staged, audience, lessonShape },
           deps,
         );
-        if (!result) continue;
-        commitFacts();
-        repaired.add(target.key);
-        extra.push(...result.findings);
-        const blocks = worksheet.blocks.map((b, i) => (i === index ? result.block : b));
-        worksheet = { ...worksheet, blocks } as Worksheet;
+        if (!result) return;
+        outcomes[t] = { kind: "block", key: target.key, index, corrections, ...result };
       }
     } catch (error) {
       throwIfAborted(deps.signal);
       if (error instanceof BudgetExceeded) {
-        extra.push(BUDGET_FINDING(error.by, "the repair pass"));
-        break;
+        outcomes[t] = { kind: "budget", by: error.by };
+        return;
       }
       const moderated = isAiError(error, "moderated");
       if (error instanceof StageFailure || moderated) {
-        extra.push({
-          check: "repair",
-          severity: "warning",
-          target: { slideId: target.slideId, blockId: target.blockId },
-          message: moderated
-            ? `The review could not rewrite this ${target.slideId !== undefined ? "slide" : "block"}; check it yourself.`
-            : "This item could not be repaired automatically; please check it.",
-        });
-        continue;
+        outcomes[t] = {
+          kind: "failed",
+          finding: {
+            check: "repair",
+            severity: "warning",
+            target: { slideId: target.slideId, blockId: target.blockId },
+            message: moderated
+              ? `The review could not rewrite this ${target.slideId !== undefined ? "slide" : "block"}; check it yourself.`
+              : "This item could not be repaired automatically; please check it.",
+          },
+        };
+        return;
       }
       throw error;
+    }
+  };
+  // `runBounded` settles every worker before it rethrows, so a cancel or a real failure never
+  // leaves another target's call writing after the job has recorded it.
+  await runBounded(
+    targets.map((_, i) => i),
+    REPAIR_CONCURRENCY,
+    work,
+  );
+
+  // The outcomes, in target order. A target's fact corrections are replayed on the running facts
+  // (two targets that patched different facts both land); one `budget` finding names the pass
+  // however many targets the cap refused, and what was regenerated before the cap is kept.
+  let budgetStopped = false;
+  for (const outcome of outcomes) {
+    if (!outcome) continue;
+    if (outcome.kind === "budget") {
+      if (!budgetStopped) extra.push(BUDGET_FINDING(outcome.by, "the repair pass"));
+      budgetStopped = true;
+      continue;
+    }
+    if (outcome.kind === "failed") {
+      extra.push(outcome.finding);
+      continue;
+    }
+    if (outcome.corrections.length > 0) {
+      const patched = applyVerifyPatch(facts, outcome.corrections);
+      facts = patched.facts;
+      lesson = { ...lesson, facts };
+      extra.push(...patched.applied.map(verifyFinding));
+    }
+    repaired.add(outcome.key);
+    extra.push(...outcome.findings);
+    if (outcome.kind === "slide") {
+      const original = base.slides[outcome.index] as Slide;
+      const fresh: Slide = keepPhoto(original, {
+        ...materialiseSlide(
+          withImageCaption(outcome.spec, base.facts?.outline[outcome.index]),
+          lesson.themeId,
+          meta(outcome.modelId, deps),
+          deps.ids,
+        ),
+        id: original.id,
+      });
+      lesson = {
+        ...lesson,
+        slides: lesson.slides.map((s, i) => (i === outcome.index ? fresh : s)),
+      };
+    } else if (worksheet) {
+      const original = worksheet.blocks[outcome.index] as WorksheetBlock;
+      const block = {
+        ...materialiseBlock(outcome.spec, meta(outcome.modelId, deps), deps.ids),
+        id: original.id,
+      };
+      const blocks = worksheet.blocks.map((b, i) => (i === outcome.index ? block : b));
+      worksheet = { ...worksheet, blocks } as Worksheet;
     }
   }
 
@@ -414,6 +504,28 @@ export async function repairBlock(
   },
   deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "now" | "ids">,
 ): Promise<{ block: WorksheetBlock; findings: Finding[] } | undefined> {
+  const result = await repairBlockSpec(input, deps);
+  if (!result) return undefined;
+  return {
+    block: {
+      ...materialiseBlock(result.spec, meta(result.modelId, deps), deps.ids),
+      id: input.block.id,
+    },
+    findings: result.findings,
+  };
+}
+
+/** The block branch's call alone: the accepted spec, not yet materialised (ids are handed out in target order). */
+async function repairBlockSpec(
+  input: {
+    block: WorksheetBlock;
+    findings: Finding[];
+    facts: LessonFacts;
+    audience: Audience;
+    lessonShape: WritingShape;
+  },
+  deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "now" | "ids">,
+): Promise<{ spec: BlockSpec; modelId: string; findings: Finding[] } | undefined> {
   const { block, findings, facts, audience, lessonShape } = input;
   const schema = blockSpecSchemaFor(block.type);
   if (!schema) return undefined;
@@ -442,7 +554,8 @@ export async function repairBlock(
     maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
   });
   return {
-    block: { ...materialiseBlock(call.output, meta(call.modelId, deps), deps.ids), id: block.id },
+    spec: call.output,
+    modelId: call.modelId,
     findings: call.editorialMisses.map((miss) =>
       specRuleFinding(miss, { blockId: block.id }, "warning"),
     ),

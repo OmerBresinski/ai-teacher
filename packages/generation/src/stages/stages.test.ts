@@ -42,6 +42,10 @@ import {
 import { StageFailure } from "../types";
 import { evaluate, factConsistencyApplies, verbFitApplies } from "./evaluate";
 import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
+
+/** A budget that admits four calls: what one batch was before `GENERATE_CONCURRENCY` rose (lab pw). */
+const FOUR_CALLS = 4;
+
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
 import { MAX_TARGETS, MAX_WARNING_TARGETS, repair, repairContext, repairTargets } from "./repair";
 import {
@@ -893,12 +897,13 @@ describe("generate", () => {
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
     const ai = createFakeAi({ script: routed(slides), usage });
-    // The first batch is admitted; the next reservation is refused.
-    const budget = callLimitedBudget(GENERATE_CONCURRENCY);
+    // Four calls are admitted (every slide starts at once under `GENERATE_CONCURRENCY`, so the
+    // reservations are made in index order); the fifth reservation is refused.
+    const budget = callLimitedBudget(FOUR_CALLS);
     const deps = recordingDeps(ai, { budget });
     const state = await generate(start, deps);
-    expect(ai.calls).toHaveLength(GENERATE_CONCURRENCY);
-    expect(state.lesson.slides).toHaveLength(PLANNED_SLIDES + GENERATE_CONCURRENCY);
+    expect(ai.calls).toHaveLength(FOUR_CALLS);
+    expect(state.lesson.slides).toHaveLength(PLANNED_SLIDES + FOUR_CALLS);
     expect(state.lesson.generation?.stage).toBe("generated");
     expect(state.lesson.generation?.findings).toEqual([
       expect.objectContaining({
@@ -967,7 +972,7 @@ describe("generate", () => {
     expect(mc.promptText).toContain("Misconceptions:");
   });
 
-  test("rows 2–4: slides resolving out of order are persisted in outline order, one at a time, at most four in flight", async () => {
+  test("rows 2–4: slides resolving out of order are persisted in outline order, one at a time, at most GENERATE_CONCURRENCY in flight", async () => {
     const start = await planned();
     const entries = FIXTURES.planSkeleton.outline.slice(PLANNED_SLIDES);
     let inFlight = 0;
@@ -1467,9 +1472,9 @@ describe("generate", () => {
       const facts = fullFacts();
       const touched = facts.outline.findIndex((e) => e.factRefs.includes("v1"));
       const ai = createFakeAi({ script: generateScript(), usage });
-      // One batch's worth: the first four slide calls go ahead; the vocabulary slide's second
+      // Four calls' worth: the first four slide calls go ahead; the vocabulary slide's second
       // call (and every later slide) is refused.
-      const budget = callLimitedBudget(GENERATE_CONCURRENCY);
+      const budget = callLimitedBudget(FOUR_CALLS);
       const deps = recordingDeps(ai, { budget });
       const run = generate(state, deps);
       await new Promise((r) => setTimeout(r, 5));
@@ -2912,6 +2917,58 @@ describe("Repair leaves the code-built quizzes alone and reshuffles what it rewr
     expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
     expect(out.lesson.generation?.findings.some((f) => f.check === "verb-fit")).toBe(true);
     expect(out.lesson.slides[index]).toEqual(target);
+  });
+
+  test("lab pw: the targets' calls run at once and the outcomes land in target order whichever call returned first", async () => {
+    const evaluatedWith = await labLesson();
+    const slides = evaluatedWith([]).lesson.slides;
+    const chosen = slides.filter((s) => s.kind === "content" || s.kind === "worked-example");
+    expect(chosen.length).toBeGreaterThanOrEqual(2);
+    const targets = chosen.slice(0, 3);
+    const findings = targets.map((s) => e("answer-correctness", s.id));
+    // A fake that answers each target after the scripted delay; `slowest` returns last.
+    const timed = (slowest: string) => {
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const ai = createFakeAi({
+        fallback: async (call) => {
+          inFlight += 1;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "content";
+          const slow = call.promptText.includes(slowest);
+          await new Promise((r) => setTimeout(r, slow ? 30 : 1));
+          inFlight -= 1;
+          return json(FIXTURES.slides[kind as keyof typeof FIXTURES.slides]);
+        },
+        usage,
+      });
+      return { ai, max: () => maxInFlight };
+    };
+    const first = timed(targets[0]?.id ?? "");
+    const a = await repair(evaluatedWith(findings), recordingDeps(first.ai));
+    expect(first.ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(
+      targets.length,
+    );
+    expect(first.max()).toBeGreaterThanOrEqual(2);
+    const last = timed(targets.at(-1)?.id ?? "");
+    const b = await repair(evaluatedWith(findings), recordingDeps(last.ai));
+    // Same slides, same ids, same findings: the order the calls returned in left no trace.
+    expect(b.lesson.slides).toEqual(a.lesson.slides);
+    expect(b.lesson.generation?.findings).toEqual(a.lesson.generation?.findings);
+    for (const t of targets) {
+      const i = slides.findIndex((s) => s.id === t.id);
+      expect(a.lesson.slides[i]?.id).toBe(t.id);
+      expect(a.lesson.slides[i]).not.toEqual(t);
+    }
+    // Element ids are handed out in target order, not completion order.
+    const idsOf = (i: number) => (a.lesson.slides[i]?.elements ?? []).map((el) => el.id);
+    const positions = targets.map((t) => slides.findIndex((s) => s.id === t.id));
+    const numeric = (id: string) => Number(id.replace(/^e/, ""));
+    for (let k = 1; k < positions.length; k++) {
+      const prev = idsOf(positions[k - 1] as number).map(numeric);
+      const next = idsOf(positions[k] as number).map(numeric);
+      expect(Math.min(...next)).toBeGreaterThan(Math.max(...prev));
+    }
   });
 
   // Lab r4 (r3-h-y9-coasts-L): the retrieval starter as `codedSetSpec` prints it, its elements
