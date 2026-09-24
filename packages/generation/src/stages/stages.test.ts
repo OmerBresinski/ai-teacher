@@ -52,6 +52,7 @@ import {
   audienceOf,
   BUDGET_FINDING,
   blockText,
+  retrievalInput,
   slideText,
   specFieldsCover,
   specFieldsOf,
@@ -1951,6 +1952,50 @@ describe("evaluate", () => {
       factConsistencyApplies(finding("fact-consistency", { slideId: content.id }), state),
     ).toBe(true);
     expect(factConsistencyApplies(finding("fact-consistency", {}), state)).toBe(true);
+  });
+});
+
+describe("evaluate reviews only what a model wrote (audit A2, C1)", () => {
+  test("a slide printed in code is left out of the review; the others go in", async () => {
+    const ai0 = createFakeAi({
+      script: routed([
+        ...planScript(),
+        ...FIXTURES.planSkeleton.outline
+          .slice(PLANNED_SLIDES)
+          .map((e) => json(FIXTURES.slides[e.kind])),
+      ]),
+      usage,
+    });
+    const d0 = recordingDeps(ai0);
+    const state = await generate(await plan(initialState(), d0), d0);
+    const index = state.lesson.slides.findIndex((s) => s.elements.some((e) => e.generatedFrom));
+    const target = state.lesson.slides[index] as Slide;
+    const coded = {
+      ...target,
+      elements: target.elements.map((el) =>
+        el.generatedFrom
+          ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+          : el,
+      ),
+    };
+    const slides = state.lesson.slides.map((s, i) => (i === index ? coded : s));
+    const withCoded = { ...state, lesson: { ...state.lesson, slides } };
+    const ai = createFakeAi({ script: [json({ findings: [] })], usage });
+    await evaluate(withCoded, recordingDeps(ai));
+    const prompt = ai.calls[0]?.promptText ?? "";
+    expect(prompt).not.toContain(`[slideId ${coded.id},`);
+    const other = slides.find((s, i) => i !== index && s.elements.some((e) => e.generatedFrom));
+    expect(prompt).toContain(`[slideId ${(other as Slide).id},`);
+  });
+
+  test("retrievalInput: the starter's questions, or nothing", () => {
+    expect(retrievalInput({})).toEqual({});
+    expect(retrievalInput({ retrieval: [] })).toEqual({});
+    expect(
+      retrievalInput({
+        retrieval: [{ question: "What is weathering?", answer: "Rock breaking down" }],
+      }),
+    ).toEqual({ retrieval: [{ question: "What is weathering?", answer: "Rock breaking down" }] });
   });
 });
 

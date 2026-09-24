@@ -257,3 +257,11 @@ export async function runBounded<T>(
   const rejected = settled.find((r) => r.status === "rejected");
   if (rejected) throw rejected.reason;
 }
+
+/** Contract C1: the starter's retrieval questions as an optional prompt input (absent when none). */
+export function retrievalInput(facts: {
+  retrieval?: { question: string; answer: string }[] | undefined;
+}): { retrieval?: { question: string; answer: string }[] } {
+  const r = facts.retrieval?.map(({ question, answer }) => ({ question, answer }));
+  return r && r.length > 0 ? { retrieval: r } : {};
+}

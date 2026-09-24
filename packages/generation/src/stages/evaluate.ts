@@ -1,6 +1,6 @@
 import { checkLesson, FACT_ARRAYS, type Finding, type LessonFacts } from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS, SPEC_RULE_CHECK } from "../call";
-import { isRetrievalStarter } from "../lab/coded-slides";
+import { isCodeBuilt, isRetrievalStarter } from "../lab/coded-slides";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import { evaluatePrompt } from "../prompts";
 import { EvaluateOutputSchema } from "../specs";
@@ -18,6 +18,7 @@ import {
   generationOf,
   normaliseText,
   photoThumbnails,
+  retrievalInput,
   shapeOf,
   slideHaystack,
   slideText,
@@ -215,15 +216,23 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
       prompt: evaluatePrompt,
       input: {
         facts,
+        // Contract C1 (audit FIX-PLAN): the starter's questions, rendered by the evaluate prompt.
+        ...retrievalInput(facts),
         audience: audienceOf(lesson),
         shape: { verb, confidence },
-        slides: lesson.slides.map((s) => ({
-          id: s.id,
-          kind: s.kind,
-          text: slideText(s),
-          notes: s.notes,
-          ...(photos.indexOf(s.id) === -1 ? {} : { photo: photos.indexOf(s.id) + 1 }),
-        })),
+        // Audit A2: slides the lab printed in code from the facts (starter, checks, exit quiz) are
+        // left out. Their correctness is the facts' (Verify owns it), Repair discards every warning
+        // on them, and they drew 85% of findings (132/156 over l1/l2). Production slides never
+        // carry the code stamp, so this changes nothing there.
+        slides: lesson.slides
+          .filter((s) => !isCodeBuilt(s))
+          .map((s) => ({
+            id: s.id,
+            kind: s.kind,
+            text: slideText(s),
+            notes: s.notes,
+            ...(photos.indexOf(s.id) === -1 ? {} : { photo: photos.indexOf(s.id) + 1 }),
+          })),
         blocks: (worksheet?.blocks ?? []).map((b) => ({
           id: b.id,
           type: b.type,
