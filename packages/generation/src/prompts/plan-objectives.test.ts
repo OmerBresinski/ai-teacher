@@ -43,7 +43,7 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
   version: "plan-objectives.v12",
-  hash: "144cc2024cd0c482f440fa550d6668819461dad28dc155a68fb3df804ad5a6f3",
+  hash: "4190154b975c3dcc388019875552b9c983d1f6f2ae8f7062691200a6d109d7ee",
 };
 
 describe("plan-objectives", () => {

@@ -255,10 +255,11 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
 /**
  * The shape sketch: one line, so no model spends its budget copying a worked example. One
  * retrieval item shown (the count is in the prose), from the unit before: a Year 4 Romans lesson
- * builds on Year 3's Iron Age, so the sample asks about that, not about the Romans.
+ * builds on Year 3's Iron Age, so the sample is one short recall on that unit and names nothing
+ * from this lesson's topic (reviewer, 24 Sept: no X-or-Y template, so the form is not copied).
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "curriculumAnchor": "the Roman Empire and its impact on Britain" }], "retrieval": [{ "question": "Which came first in Britain: the Iron Age or the Romans?", "answer": "The Iron Age" }] }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "curriculumAnchor": "the Roman Empire and its impact on Britain" }], "retrieval": [{ "question": "What metal did Iron Age Britons use to make tools?", "answer": "Iron" }] }';
 
 export const planObjectivesPrompt = {
   version: "plan-objectives.v12",
