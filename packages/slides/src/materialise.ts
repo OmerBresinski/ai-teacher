@@ -309,7 +309,7 @@ function fillContent(
 
 /**
  * The labelled card under the body (UX ruling 84, TEACH-75) when the spec carries one; a spec
- * without one leaves the recipe untouched, so every layout snapshot holds. The trio is minted
+ * without one leaves the recipe untouched, so every layout snapshot holds. The four are minted
  * after `reid`, so its ids come from `ids` here for the same determinism as the recipe's.
  */
 function withCallout(

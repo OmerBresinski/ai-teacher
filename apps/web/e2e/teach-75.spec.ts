@@ -55,7 +55,7 @@ test.describe("slide callouts", () => {
     ).toHaveCount(1);
 
     // Delete the card alone: the last shape on the slide (the other is the heading's hairline;
-    // the trio is appended after the recipe), clicked at its top-left inset where no text sits.
+    // the four are appended after the recipe), clicked at its top-left inset where no text sits.
     const shapes = page.locator('[data-slide-frame] [data-element-id][data-element-type="shape"]');
     await expect(shapes).toHaveCount(2);
     const cardBox = (await centre(shapes.last())).box;

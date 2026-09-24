@@ -1,6 +1,8 @@
 /**
  * TEACH-75 PR screenshots. Opt-in: `TEACH_SCREENSHOTS=1 … e2e/teach-75-screenshots.spec.ts`;
- * `TEACH_SHOTS_DIR` is where the PNGs land (default `/tmp`).
+ * `TEACH_SHOTS_DIR` is where the PNGs land (default `/tmp`). Shoot against a production build of the
+ * web app (the default ports' `vite preview`), not Vite dev: dev mounts the "Design preview" switcher and router devtools over the
+ * page, and the switcher lands in the top right of every present-mode crop.
  *
  * The seeded demo's content slide with its "WATCH OUT" card in the editor, in present and as the
  * navigator thumbnail; then a fixture deck through `chooseVariant` carrying every callout kind on

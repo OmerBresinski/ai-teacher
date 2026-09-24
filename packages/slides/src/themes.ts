@@ -1,4 +1,4 @@
-import type { TextPreset, Theme } from "@tj/domain/documents";
+import type { CalloutKind, TextPreset, Theme } from "@tj/domain/documents";
 import { FONT_STACKS } from "./fonts";
 
 /**
@@ -214,6 +214,38 @@ export const THEMES: Theme[] = [
 ];
 
 export { DEFAULT_THEME_ID } from "@tj/domain/documents";
+
+/**
+ * A callout's colours (UX ruling 84, TEACH-75): the card's tint, its hairline, the ink its label
+ * and text share, and the drawn icon's stroke. One hue per kind, as Chalkie's cards are (rose for
+ * a warning, mint for an example, amber for key words), so a deck shows at a glance which card is
+ * which.
+ */
+export type CalloutTone = { fill: string; line: string; ink: string; icon: string };
+
+/**
+ * The callout tokens, one set for the light themes and one for the dark, chosen by `Theme.dark`.
+ * Light: a pale tint of the hue with a hairline one step darker and the hue's dark as the ink.
+ * Dark: a wash of the hue a step up from the ground with the hue's pale as the ink. Every ink is
+ * 7:1 or better on its fill and every icon 4.5:1 or better (`themes.test.ts`), so the card reads
+ * from the back of the room on every theme.
+ */
+export const CALLOUT_TONES: Record<"light" | "dark", Record<CalloutKind, CalloutTone>> = {
+  light: {
+    "watch-out": { fill: "#FBE4E2", line: "#E7B4AF", ink: "#5C1313", icon: "#B42318" },
+    example: { fill: "#DDF2E9", line: "#A6D6C3", ink: "#0B4A36", icon: "#12795A" },
+    "key-words": { fill: "#F9E8C4", line: "#DDBB75", ink: "#523805", icon: "#8F5A00" },
+  },
+  dark: {
+    "watch-out": { fill: "#3B2A31", line: "#58404A", ink: "#F7CACA", icon: "#F29A9A" },
+    example: { fill: "#1E3832", line: "#2E5249", ink: "#A8E6D0", icon: "#6CCFAB" },
+    "key-words": { fill: "#3A3222", line: "#584A2E", ink: "#FAD18A", icon: "#F2B551" },
+  },
+};
+
+/** The tone a callout of `kind` takes on theme `t`. */
+export const calloutTone = (t: Theme, kind: CalloutKind): CalloutTone =>
+  CALLOUT_TONES[t.dark ? "dark" : "light"][kind];
 
 export function getTheme(id: string | undefined | null): Theme {
   return THEMES.find((t) => t.id === id) ?? (THEMES[0] as Theme);

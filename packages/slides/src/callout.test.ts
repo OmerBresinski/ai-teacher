@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   CALLOUT_KINDS,
+  type IconElement,
   richDocToPlainText,
   type ShapeElement,
   SLIDE_H,
@@ -11,6 +12,8 @@ import {
 } from "@tj/domain/documents";
 import {
   applyCallout,
+  CALLOUT_ICON,
+  CALLOUT_ICONS,
   CALLOUT_LABELS,
   CALLOUT_LINES,
   CALLOUT_NAMES,
@@ -21,11 +24,11 @@ import {
   workedExampleCalloutRoom,
 } from "./callout";
 import { SAFE, SPACE, TRIM } from "./grid";
-import { boxH, FULL, IMAGE_TEXT_COLUMN, layoutSlide } from "./layouts";
+import { boxH, CARD_PAD, FULL, IMAGE_TEXT_COLUMN, layoutSlide } from "./layouts";
 import { type IdSupplier, materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import { ceilingOf, type SlideSpec, SPEC_LIMITS } from "./specs";
-import { fontFloor, getTheme, THEMES } from "./themes";
+import { CALLOUT_TONES, calloutTone, fontFloor, getTheme, THEMES } from "./themes";
 
 /*
  * The slide callout (UX ruling 84, TEACH-75): geometry per kind, theme and text length. The
@@ -83,12 +86,23 @@ const workedExample = (callout?: CalloutSpec): SlideSpec => ({
 
 const trio = (slide: Slide) => {
   const card = slide.elements.find((el) => el.name === CALLOUT_NAMES.card);
+  const icon = slide.elements.find((el) => el.name === CALLOUT_NAMES.icon);
   const label = slide.elements.find((el) => el.name === CALLOUT_NAMES.label);
   const text = slide.elements.find((el) => el.name === CALLOUT_NAMES.text);
-  if (card?.type !== "shape" || label?.type !== "text" || text?.type !== "text") {
-    throw new Error("callout trio missing");
+  if (
+    card?.type !== "shape" ||
+    icon?.type !== "icon" ||
+    label?.type !== "text" ||
+    text?.type !== "text"
+  ) {
+    throw new Error("callout elements missing");
   }
-  return { card, label, text } as { card: ShapeElement; label: TextElement; text: TextElement };
+  return { card, icon, label, text } as {
+    card: ShapeElement;
+    icon: IconElement;
+    label: TextElement;
+    text: TextElement;
+  };
 };
 const inside = (el: SlideElement, r: { x: number; y: number; w: number; h: number }) =>
   el.x >= r.x && el.y >= r.y && el.x + el.w <= r.x + r.w && el.y + el.h <= r.y + r.h;
@@ -106,25 +120,41 @@ describe("callout labels and colours", () => {
   });
 
   for (const theme of THEMES) {
-    it(`${theme.id}: the card is the theme's surface, the label accent for watch-out, muted otherwise`, () => {
+    it(`${theme.id}: the card, icon, label and text take the kind's tone from the theme's set`, () => {
+      const set = CALLOUT_TONES[theme.dark ? "dark" : "light"];
       for (const kind of CALLOUT_KINDS) {
         const spec = content({ kind, text: SHORT });
         const slide = materialiseSlide(spec, theme.id, meta, counter(), "headed");
-        const { card, label, text } = trio(slide);
+        const { card, icon, label, text } = trio(slide);
+        expect(calloutTone(theme, kind)).toBe(set[kind]);
         expect(card.shape).toBe("rounded");
-        expect(card.fill).toBe(theme.colors.surface);
+        expect(card.fill).toBe(set[kind].fill);
+        expect(card.stroke).toBe(set[kind].line);
         expect(card.radius).toBe(theme.radius);
+        expect(icon.icon).toBe(CALLOUT_ICONS[kind]);
+        expect(icon.color).toBe(set[kind].icon);
+        expect(icon.w).toBe(CALLOUT_ICON);
         expect(label.style.preset).toBe("caption");
         expect(plain(label)).toBe(CALLOUT_LABELS[kind]);
-        expect(label.style.color).toBe(
-          kind === "watch-out" ? theme.colors.accent : theme.colors.muted,
-        );
+        expect(label.style.color).toBe(set[kind].ink);
         expect(text.style.preset).toBe("small");
-        expect(text.style.color).toBeUndefined();
+        expect(text.style.color).toBe(set[kind].ink);
         expect(plain(text)).toBe(SHORT);
+        // The icon heads the label row, the label beside it and centred on it.
+        expect(icon.x).toBe(card.x + CARD_PAD);
+        expect(label.x).toBeGreaterThanOrEqual(icon.x + icon.w);
+        expect(label.y + label.h / 2).toBeCloseTo(icon.y + icon.h / 2, 5);
+        expect(text.y).toBeGreaterThanOrEqual(icon.y + icon.h);
       }
     });
   }
+
+  it("gives each kind its own hue and icon, so no two cards look alike", () => {
+    for (const set of Object.values(CALLOUT_TONES)) {
+      expect(new Set(CALLOUT_KINDS.map((k) => set[k].fill)).size).toBe(CALLOUT_KINDS.length);
+    }
+    expect(new Set(Object.values(CALLOUT_ICONS)).size).toBe(CALLOUT_KINDS.length);
+  });
 });
 
 describe("the card is sized to its text", () => {
@@ -151,10 +181,11 @@ describe("callout on a content slide", () => {
           const added = slide.elements.slice(without.elements.length);
           expect(added.map((el) => el.name)).toEqual([
             CALLOUT_NAMES.card,
+            CALLOUT_NAMES.icon,
             CALLOUT_NAMES.label,
             CALLOUT_NAMES.text,
           ]);
-          expect(slide.elements.filter(isCalloutElement)).toHaveLength(3);
+          expect(slide.elements.filter(isCalloutElement)).toHaveLength(4);
           expect(new Set(slide.elements.map((el) => el.id)).size).toBe(slide.elements.length);
           for (const el of added) expect(el.authoredBy).toBe("ai");
 
@@ -282,9 +313,11 @@ describe("callout geometry sweep", () => {
             materialiseSlide(imageText({ kind, text }), theme.id, meta, counter()),
           ];
           for (const slide of slides) {
-            const { card, label, text: textEl } = trio(slide);
+            const { card, icon, label, text: textEl } = trio(slide);
             expect(inside(card, trim)).toBe(true);
+            expect(inside(icon, card)).toBe(true);
             expect(inside(label, card)).toBe(true);
+            expect(icon.y + icon.h).toBeLessThanOrEqual(textEl.y);
             expect(inside(textEl, card)).toBe(true);
             expect(label.y + label.h).toBeLessThanOrEqual(textEl.y);
             expect(plain(label)).toBe(CALLOUT_LABELS[kind]);
