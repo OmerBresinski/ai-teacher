@@ -1937,7 +1937,7 @@ describe("repair", () => {
     for (const call of fixer.calls) {
       expect(call.promptText).toContain("Objective verb: Apply.");
       expect(call.promptText).toContain(VERB_WRITING.Apply);
-      expect(call.promptText).toContain("[verb-fit]");
+      expect(call.promptText).toContain("[verb-fit, error]");
     }
     expect(blockText(repaired.worksheet?.blocks.find((b) => b.id === block.id) as never)).toContain(
       "column addition",
@@ -2665,7 +2665,7 @@ describe("Repair acts on the warnings judges punish (lab round 1)", () => {
     );
     const repairs = ai.calls.filter((c) => c.context?.stage === "repair");
     expect(repairs).toHaveLength(1);
-    expect(repairs[0]?.promptText).toContain("[verb-fit] Names, does not explain.");
+    expect(repairs[0]?.promptText).toContain("[verb-fit, warning] Names, does not explain.");
     const quiet = answering();
     await repair(evaluatedWith([w("pitch", target.id, evidence)]), recordingDeps(quiet));
     expect(quiet.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);

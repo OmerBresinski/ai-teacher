@@ -25,6 +25,7 @@ import {
   repairPrompt,
   type WritingShape,
 } from "../prompts";
+import type { RepairContextSlide } from "../prompts/repair";
 import { VERIFY_FIELDS_BY_ARRAY, verifiableArrayOf, verifyOutputSchemaFor } from "../specs";
 import {
   BudgetExceeded,
@@ -157,15 +158,7 @@ const TEACHING_KINDS: ReadonlySet<string> = new Set(["content", "image-text", "w
 /** The most read-only slides one repair call is shown. */
 export const MAX_CONTEXT_SLIDES = 6;
 
-/** One other slide a repair call sees and must not rewrite (lab round 1). */
-export type RepairContextSlide = {
-  /** 1-based position in the deck. */
-  position: number;
-  kind: string;
-  text: string;
-  /** Why it is shown: next to the target, holds the repeated text, or taught before the target. */
-  why: "before" | "after" | "repeats" | "taught-earlier";
-};
+export type { RepairContextSlide } from "../prompts/repair";
 
 /**
  * The read-only slides a repair of `lesson.slides[index]` needs (lab round 1): the slides either
@@ -257,9 +250,8 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
               : slideSpecSchemaFor(slide.kind, { soft });
         const schema = specSchema(false);
         if (!slide || !schema) continue;
-        // The slides around it, read-only (lab round 1). `repair.v13` does not render them yet;
-        // the prompt-engineer adds that (scratchpad/quality-prd/lab/r1/checks.md).
-        const input: RepairInput & { context: { slides: RepairContextSlide[] } } = {
+        // The slides around it, read-only (lab round 1), rendered by `repair.v14`.
+        const input: RepairInput = {
           facts: staged,
           audience,
           lessonShape,

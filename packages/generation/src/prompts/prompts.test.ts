@@ -6,7 +6,14 @@ import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
 import { generateWorksheetFillPrompt, type WorksheetFill } from "./generate-worksheet-fill";
 import { promptHash } from "./hash";
-import { PROMPT_VERSIONS, PROMPTS, type PromptName, VERB_WRITING, verbBlock } from "./index";
+import {
+  PROMPT_VERSIONS,
+  PROMPTS,
+  type PromptName,
+  type RepairInput,
+  VERB_WRITING,
+  verbBlock,
+} from "./index";
 import { parseBriefPrompt } from "./parse-brief";
 import { planFactsPrompt } from "./plan-facts";
 import { planSkeletonPrompt, SOURCE_INSTRUCTION } from "./plan-skeleton";
@@ -131,6 +138,13 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
     target: { kind: "slide", slideKind: "multiple-choice", slideId: "s7", text: "Which state?" },
     findings: [
       {
+        check: "verb-fit",
+        severity: "warning",
+        target: { slideId: "s7" },
+        message: "Asks pupils to name, not explain.",
+        evidence: "Which state?",
+      },
+      {
         check: "answer-correctness",
         severity: "error",
         target: { slideId: "s7" },
@@ -139,6 +153,12 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
       },
     ],
     shape: 'a "multiple-choice" slide spec',
+    context: {
+      slides: [
+        { position: 5, kind: "content", text: "Solids keep their shape.", why: "taught-earlier" },
+        { position: 6, kind: "worked-example", text: "Is ice a solid?", why: "before" },
+      ],
+    },
   },
   "repair-fact": {
     audience,
@@ -209,8 +229,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "b3efa762a89735395e2106d1520f99f1037a8f5344e61b4c1ff761ab704dbad1",
   },
   repair: {
-    version: "repair.v13",
-    hash: "fd53ad4bf2a2b430cd0514d5e22616d66503f0c3b2b1c463b00dad368ea5a521",
+    version: "repair.v14",
+    hash: "051cbf3a9bf021040bd8b2290038fe7aff788f42a26cc349f2f8b21355ce9787",
   },
   "repair-fact": {
     version: "repair-fact.v3",
@@ -271,7 +291,9 @@ describe("prompt versions", () => {
       "generate-slide": 980,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
-      repair: 503,
+      // v13 was 415 words. v14 (lab round 1, +97: errors first and answer lines kept, once-in-the-
+      // lesson against the slides shown, taught-earlier scope, verb-fit at the class's level) is 512.
+      repair: 520,
     } as const;
     for (const name of Object.keys(budgets) as (keyof typeof budgets)[]) {
       expect(PROMPTS[name].system.trim().split(/\s+/).length, name).toBeLessThan(budgets[name]);
@@ -704,6 +726,24 @@ describe("prompt versions", () => {
     expect(VERB_WRITING.Recall).toContain("three things");
     expect(VERB_WRITING.Apply).toContain("three short problems");
     expect(PROMPTS.repair.system).toContain("A verb-fit problem is fixed by changing the task");
+  });
+
+  test("lab r1: Repair shows the read-only slides after the target and lists errors before warnings", () => {
+    const text = PROMPTS.repair.user(SAMPLE_INPUTS.repair as never);
+    const target = text.indexOf('Slide s7 (kind "multiple-choice") currently says:');
+    const others = text.indexOf("Other slides in the lesson, for reference only");
+    const problems = text.indexOf("Problems reported:");
+    expect(target).toBeGreaterThan(-1);
+    expect(others).toBeGreaterThan(target);
+    expect(problems).toBeGreaterThan(others);
+    expect(text).toContain("Slide 5 (content, taught earlier):\nSolids keep their shape.");
+    expect(text).toContain("Slide 6 (worked-example, before the target):\nIs ice a solid?");
+    expect(text.indexOf("- [answer-correctness, error] Wrong.")).toBeLessThan(
+      text.indexOf("- [verb-fit, warning] Asks pupils to name, not explain."),
+    );
+    // A block repair has no context and renders no header for it.
+    const { context: _context, ...withoutContext } = SAMPLE_INPUTS.repair as never as RepairInput;
+    expect(PROMPTS.repair.user(withoutContext)).not.toContain("Other slides in the lesson");
     // Every verb has a paragraph naming the four kinds the ticket names.
     for (const paragraph of Object.values(VERB_WRITING)) {
       for (const kind of ["`content`", "`worked-example`", "`exit-ticket`"]) {
