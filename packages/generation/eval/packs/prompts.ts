@@ -578,9 +578,9 @@ export interface PackFillInput extends PlanFactsObjectiveInput {
  */
 /** The counts line: rewritten to the lists named in the brief. */
 export const FACTS_COUNTS_LINE =
-  "Write one or two key ideas, one misconception, up to two vocabulary terms, and three or four questions.";
+  "Write one or two key ideas, one misconception, up to two vocabulary terms, and four to six questions.";
 const FILL_COUNTS_LINE =
-  'Write only the lists the brief\'s "Lists to write" line names (one or two key ideas, one misconception, up to two vocabulary terms, three or four questions).';
+  'Write only the lists the brief\'s "Lists to write" line names (one or two key ideas, one misconception, up to two vocabulary terms, four to six questions).';
 /** The misconceptionRef rule: dropped, since `packWithFill` strips the ref from every filled item. */
 export const FACTS_MISCONCEPTION_REF_LINE =
   'Where a worked example or distractor heads off the misconception, say so in "misconceptionRef".';
@@ -629,8 +629,14 @@ const fillSystem = (() => {
   }, base);
 })();
 
+/*
+ * pack-fill.v4 (24 Sept 2026): plan-facts-objective v14 reaches it through the shared text (the
+ * example, fresh-case, pitch, `use` and distractor rules) and its question count, four to six,
+ * since `fillSchemaFor` picks from the facts schema (ceiling now 6, floor 3). The fill call has no
+ * key ideas of its own, so v14's retrieval question (`keyIdeaRefs` empty) costs it nothing.
+ */
 export const packFillPrompt: StructuredPrompt<PackFillInput> = {
-  version: "pack-fill.v3",
+  version: "pack-fill.v4",
   system: fillSystem,
   user: (i) => {
     const types = FACT_TYPES.filter((t) => i.types.includes(t));

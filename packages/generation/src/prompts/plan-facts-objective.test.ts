@@ -55,8 +55,8 @@ const SAMPLE: PlanFactsObjectiveInput = {
 };
 
 const PIN: { version: string; hash: string } = {
-  version: "plan-facts-objective.v13",
-  hash: "3254b0c16062ac57e554996faa00575e7857821e920be1a3a562be8ddd9b0b7e",
+  version: "plan-facts-objective.v14",
+  hash: "76e8a40a4882737d73146948cf17b33d1518251ff1f1503930ddfb7006687fc1",
 };
 
 /** One objective's facts, as the schema accepts them; the pieces tests vary field by field. */
@@ -90,9 +90,11 @@ const facts = (over: Record<string, unknown> = {}) => ({
   misconceptions: [MISCONCEPTION],
   vocabulary: [VOCABULARY],
   workedExamples: [WORKED_EXAMPLE],
-  questions: [QUESTION, QUESTION, QUESTION],
+  questions: [QUESTION, QUESTION, QUESTION, QUESTION],
   ...over,
 });
+/** Three more questions, so a test varying one question carries the v14 target of four. */
+const REST = [QUESTION, QUESTION, QUESTION];
 
 describe("plan-facts-objective", () => {
   test("text hash matches its pinned version", () => {
@@ -126,10 +128,27 @@ describe("plan-facts-objective", () => {
     // v5 (minimalism rubric, 23 Sept 2026) trimmed 448 to 350; v6 369; v7 317; v8 331; v9 368 (the
     // three declarations, review pack np1, paid for in part by the shared JSON line and the
     // misconception clause); v11 384 (keyIdeaRefs: one sketch slot, one clause); v13 436 (the
-    // multiple-choice option rule, answer tells 93% -> 29% longest). The alarm follows it.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(440);
+    // multiple-choice option rule, answer tells 93% -> 29% longest); v14 538 (cb cause 5: five
+    // rules the judges marked and the prompt never asked for, each named to a lab output in the
+    // prompt file's header). The alarm follows it.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(545);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
+    // v14: pitch is one sentence here, covering numbers and problem steps (Y5-L: amounts to 35,
+    // one step on every question), in place of the shared language-only house rule.
+    expect(system).toContain("Pitch the language, the numbers and the steps a problem takes");
+    expect(system).not.toContain("Pitch the language at the reading level");
+    // v14: a key idea's example is a named case (Y4-L, Y11-L restated the statement; Y10-L o1 had
+    // no quotation), the worked example and questions take their own (Y11-L x1 became its exit
+    // question), `use` is defined with two quick exit questions and one retrieval question (no
+    // v13 call knew what "exit" meant), and a distractor is a real error (Y4-L "build pyramids").
+    expect(system).toContain("A key idea's example is one named case");
+    expect(system).toContain("or a quotation from the text studied");
+    expect(system).toContain("take a case of their own");
+    expect(system).toContain('"use" is where a question is set. Two are "exit"');
+    expect(system).toContain('so its "keyIdeaRefs" is empty');
+    expect(system).toContain("a wrong option a pupil reaches by a real error");
+    expect(system).not.toContain("three or four");
     expect(system).toMatch(/JSON/);
     // No fact ids reach this call, so the house rules' `factRefs` line is left out.
     expect(system).not.toContain("factRefs");
@@ -218,8 +237,12 @@ describe("plan-facts-objective", () => {
   test("one objective's facts: the counts are a third of a lesson's", () => {
     const parse = (value: unknown) => PlanFactsObjectiveOutputSchema.safeParse(value).success;
     expect(parse(facts())).toBe(true);
-    // Vocabulary and the worked example are optional; a key idea, the misconception and 3 questions are not.
+    // Vocabulary and the worked example are optional; a key idea, the misconception and 3 questions
+    // are not. v14 asks for four to six (two exit, one retrieval, the rest slide or worksheet): the
+    // prose states the target, the floor of 3 is tolerance, so a short answer is not a retry.
     expect(parse(facts({ vocabulary: [], workedExamples: [] }))).toBe(true);
+    expect(parse(facts({ questions: [QUESTION, QUESTION, QUESTION] }))).toBe(true);
+    expect(parse(facts({ questions: [...REST, ...REST] }))).toBe(true);
     expect(parse(facts({ keyIdeas: [] }))).toBe(false);
     expect(parse(facts({ keyIdeas: [KEY_IDEA, KEY_IDEA, KEY_IDEA] }))).toBe(false);
     expect(parse(facts({ misconceptions: [] }))).toBe(false);
@@ -227,9 +250,7 @@ describe("plan-facts-objective", () => {
     expect(parse(facts({ vocabulary: [VOCABULARY, VOCABULARY, VOCABULARY] }))).toBe(false);
     expect(parse(facts({ workedExamples: [WORKED_EXAMPLE, WORKED_EXAMPLE] }))).toBe(false);
     expect(parse(facts({ questions: [QUESTION, QUESTION] }))).toBe(false);
-    expect(parse(facts({ questions: [QUESTION, QUESTION, QUESTION, QUESTION, QUESTION] }))).toBe(
-      false,
-    );
+    expect(parse(facts({ questions: [...REST, ...REST, QUESTION] }))).toBe(false);
     // Item text caps are the ones `specs.ts` enforces, so a merged item cannot break the slides.
     expect(parse(facts({ keyIdeas: [{ ...KEY_IDEA, statement: "x".repeat(161) }] }))).toBe(false);
     // An invented list is a real shape error; a stray key on an item is stripped, not a retry.
@@ -248,13 +269,16 @@ describe("plan-facts-objective", () => {
     expect(planFactsObjectivePrompt.system).toContain('"keyIdeaRefs" lists every key idea');
     // Optional: absence (older outputs, pack fills) parses and the outline falls back.
     expect(parse(facts())).toBe(true);
-    expect(
-      parse(facts({ questions: [QUESTION, QUESTION, { ...QUESTION, keyIdeaRefs: refs(0, 1) }] })),
-    ).toBe(true);
+    expect(parse(facts({ questions: [...REST, { ...QUESTION, keyIdeaRefs: refs(0, 1) }] }))).toBe(
+      true,
+    );
+    // v14: the retrieval question needs none of this call's key ideas, so its list is empty; the
+    // outline reads that as the starter's question (the `use` enum has no starter value).
+    expect(parse(facts({ questions: [...REST, { ...QUESTION, keyIdeaRefs: [] }] }))).toBe(true);
     // At most two key ideas per call, so an index past 1 is a shape error.
-    expect(
-      parse(facts({ questions: [QUESTION, QUESTION, { ...QUESTION, keyIdeaRefs: refs(2) }] })),
-    ).toBe(false);
+    expect(parse(facts({ questions: [...REST, { ...QUESTION, keyIdeaRefs: refs(2) }] }))).toBe(
+      false,
+    );
   });
 
   test("v9: a worked example names its objectives and a question declares demand and forms", () => {
@@ -280,7 +304,7 @@ describe("plan-facts-objective", () => {
     expect(live(facts({ workedExamples: [two] }))).toBe(true);
     const { demand: _d, forms: _f, ...bare } = QUESTION;
     const q = (over: Record<string, unknown>) =>
-      facts({ questions: [{ ...bare, ...over }, QUESTION, QUESTION] });
+      facts({ questions: [{ ...bare, ...over }, ...REST] });
     expect(general(q({ forms: ["true-false"] }))).toBe(false);
     expect(general(q({ demand: "recall" }))).toBe(false);
     expect(general(q({ demand: "evaluate", forms: ["true-false"] }))).toBe(false);
@@ -389,11 +413,7 @@ describe("plan-facts-objective", () => {
     expect(soft.safeParse(longAnswer).success).toBe(true);
     // `questions.N.reasoning` was the other cap the bench broke; `footnote` is its limit.
     const longReasoning = facts({
-      questions: [
-        { ...QUESTION, reasoning: "x".repeat(SPEC_LIMITS.footnote + 20) },
-        QUESTION,
-        QUESTION,
-      ],
+      questions: [{ ...QUESTION, reasoning: "x".repeat(SPEC_LIMITS.footnote + 20) }, ...REST],
     });
     expect(hard.safeParse(longReasoning).success).toBe(false);
     expect(soft.safeParse(longReasoning).success).toBe(true);
@@ -402,9 +422,9 @@ describe("plan-facts-objective", () => {
       soft.safeParse(facts({ vocabulary: [{ ...VOCABULARY, definition: "  " }] })).success,
     ).toBe(false);
     expect(soft.safeParse(facts({ questions: [QUESTION, QUESTION] })).success).toBe(false);
-    expect(soft.safeParse(facts({ questions: [{ ...QUESTION, tier: "medium" }] })).success).toBe(
-      false,
-    );
+    expect(
+      soft.safeParse(facts({ questions: [{ ...QUESTION, tier: "medium" }, ...REST] })).success,
+    ).toBe(false);
   });
 
   test("w0b: a distractor that repeats the answer (case, spaces, punctuation aside) is an editorial issue: the strict build rejects it so the call retries, the soft build accepts", () => {
@@ -412,11 +432,7 @@ describe("plan-facts-objective", () => {
     const soft = planFactsObjectiveOutputSchemaFor(SAMPLE, { soft: true });
     const withDistractors = (texts: string[]) =>
       facts({
-        questions: [
-          { ...QUESTION, distractors: texts.map((text) => ({ text })) },
-          QUESTION,
-          QUESTION,
-        ],
+        questions: [{ ...QUESTION, distractors: texts.map((text) => ({ text })) }, ...REST],
       });
     const distinct = withDistractors(["Only soldiers used them", "Nothing changed", "Trade fell"]);
     expect(hard.safeParse(distinct).success).toBe(true);
@@ -440,8 +456,7 @@ describe("plan-facts-objective", () => {
     const signed = facts({
       questions: [
         { ...QUESTION, answer: "3", distractors: [{ text: "-3" }, { text: "6" }, { text: "9" }] },
-        QUESTION,
-        QUESTION,
+        ...REST,
       ],
     });
     expect(hard.safeParse(signed).success).toBe(true);
