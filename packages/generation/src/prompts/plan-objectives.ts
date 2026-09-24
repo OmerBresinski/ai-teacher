@@ -125,6 +125,27 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  * (`Output.object`, `repairJsonText`, schema validation), the same ground v10 used to drop the house
  * rules' "JSON only" line (rubric 5). The user turn now ends on its last input.
  *
+ * v12 (24 Sept 2026, round 1 blind judges): the call also returns three retrieval questions, with
+ * answers, for the lesson's starter (`retrieval`, optional in the schema, always asked for in the
+ * prose). Round 1 left the starter to the outline, which filled it with the lesson's own easiest
+ * questions; the B judge marked those tested-not-taught in 8 of 12 lab decks (Y4 Romans "Which
+ * emperor ordered the invasion in AD 43?" before slide 4 teaches Claudius; Y7 ratio "Share £42 in
+ * 2:5" before sharing is taught; Y6 evacuation "When did evacuation begin?" before slide 4) and
+ * marked two more starters down as prediction discussion, not retrieval. This call is the one that
+ * knows the objectives before any slide exists, so it names what comes BEFORE them.
+ *  - One rule, three clauses, each on a judged failure: the source (earlier lessons this lesson
+ *    builds on: the tested-not-taught starters), the test the judge applies (answerable before
+ *    this lesson begins), the form (one line or a choice: the discussion starters).
+ *  - The count is in the prose, once, and the schema pins it at three: on the gateway's
+ *    non-strict route only prose counts reach the model (openai.md 2026-09-23), and Luna writes to
+ *    the number it is given.
+ *  - The prior-knowledge rule gains "and draw the retrieval questions from it", so the label is
+ *    still named once (Luna guide 12) and the teacher's own line feeds the starter first.
+ *  - The slot is in the sketch, so it is filled although the schema leaves it optional (CORE
+ *    2026-09-23): recorded fixtures, `fromFacts` reruns and the bench parse without it.
+ *  - 276 -> 346 system words (role +5, the rule 40, the prior-knowledge clause 6, the sketch's one
+ *    retrieval item 19); the test's alarm moves to 360 with the growth accounted for above.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -155,12 +176,32 @@ export const PRIOR_KNOWLEDGE_LABEL = "What the class has already covered";
 const objectiveText = z.string().min(8).max(120);
 const curriculumAnchor = z.string().max(160);
 
+/**
+ * One retrieval question for the starter, with its answer (v12). Prior knowledge from earlier
+ * lessons, so a pupil can answer it before this lesson teaches anything; the outline places the
+ * three on the starter slide.
+ */
+export const PlanRetrievalQuestionSchema = z.strictObject({
+  question: z.string().min(8).max(200),
+  answer: z.string().min(1).max(120),
+});
+export type PlanRetrievalQuestion = z.output<typeof PlanRetrievalQuestionSchema>;
+
+/**
+ * Exactly three: the prose says "three" and Luna writes to the number it is given, so the schema
+ * pins it rather than buying tolerance. Optional at the top level so a recorded set, a
+ * `fromFacts` rerun or the bench parses without it; the sketch shows the slot, so a live call
+ * fills it.
+ */
+const retrieval = z.array(PlanRetrievalQuestionSchema).length(3).optional();
+
 /** With a curriculum extract: every objective must carry its anchor. */
 const AnchoredOutputSchema = z.strictObject({
   objectives: z
     .array(z.strictObject({ text: objectiveText, curriculumAnchor }))
     .min(1)
     .max(4),
+  retrieval,
 });
 
 /**
@@ -174,6 +215,7 @@ const UnanchoredOutputSchema = z.strictObject({
     .array(z.object({ text: objectiveText }))
     .min(1)
     .max(4),
+  retrieval,
 });
 
 export type PlanObjectivesSchema = typeof AnchoredOutputSchema | typeof UnanchoredOutputSchema;
@@ -197,6 +239,7 @@ export const PlanObjectivesOutputSchema = z.strictObject({
     .array(z.strictObject({ text: objectiveText, curriculumAnchor: curriculumAnchor.optional() }))
     .min(1)
     .max(4),
+  retrieval,
 });
 export type PlanObjectivesOutput = z.output<typeof PlanObjectivesOutputSchema>;
 
@@ -209,21 +252,26 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
   .filter((rule) => !rule.startsWith("Every fact id"))
   .join("\n");
 
-/** The shape sketch: one line, so no model spends its budget copying a worked example. */
+/**
+ * The shape sketch: one line, so no model spends its budget copying a worked example. One
+ * retrieval item shown (the count is in the prose), from the unit before: a Year 4 Romans lesson
+ * builds on Year 3's Iron Age, so the sample asks about that, not about the Romans.
+ */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "curriculumAnchor": "the Roman Empire and its impact on Britain" }] }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "curriculumAnchor": "the Roman Empire and its impact on Britain" }], "retrieval": [{ "question": "Which came first in Britain: the Iron Age or the Romans?", "answer": "The Iron Age" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v11",
+  version: "plan-objectives.v12",
   system: [
-    "You are an experienced UK teacher writing the learning objectives for one lesson.",
+    "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
     "Rules:",
     OBJECTIVE_HOUSE_RULES,
     "Each objective is one idea, at most 16 words, starting with one observable verb: what a pupil can do by the end.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
     "Give as many objectives as the topic has: usually two or three; one for one tight skill; four only for four distinct parts. Never split one idea or add a filler line to make another.",
-    `Where the brief gives "${PRIOR_KNOWLEDGE_LABEL}", keep every objective inside that material and still reach the lesson's verb.`,
+    "Each retrieval question, with its answer, asks what this year group already knows from earlier lessons that this lesson builds on, so it is answerable before this lesson begins, in one line or by picking from options the question names.",
+    `Where the brief gives "${PRIOR_KNOWLEDGE_LABEL}", keep every objective inside that material, still reach the lesson's verb, and draw the retrieval questions from it.`,
     'Where the topic spans the curriculum extract\'s unit, the objectives span its arc, not its opening lesson. Put the learning point or bullet each objective serves in "curriculumAnchor".',
     "",
     "JSON, in this shape:",
