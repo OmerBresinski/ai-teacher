@@ -1377,6 +1377,7 @@ export const VERIFY_FIELDS = [
   "answer",
   "stem",
   "reasoning",
+  "distractors",
   "statement",
   "explanation",
   "example",
@@ -1405,7 +1406,7 @@ export const VERIFY_FIELDS_BY_ARRAY: Record<
   keyIdeas: ["statement", "explanation", "example", "analogy"],
   vocabulary: ["term", "definition"],
   workedExamples: ["problem", "steps", "answer"],
-  questions: ["stem", "answer", "reasoning"],
+  questions: ["stem", "answer", "reasoning", "distractors"],
   misconceptions: ["belief", "correction"],
 };
 
@@ -1418,6 +1419,7 @@ export const VERIFY_LIMITS: Record<VerifyField, number> = {
   answer: SPEC_LIMITS.answer,
   stem: SPEC_LIMITS.stem,
   reasoning: SPEC_LIMITS.footnote,
+  distractors: SPEC_LIMITS.option,
   statement: SPEC_LIMITS.item,
   explanation: SPEC_LIMITS.body,
   example: SPEC_LIMITS.body,
@@ -1429,7 +1431,7 @@ export const VERIFY_LIMITS: Record<VerifyField, number> = {
 export const VerifyCorrectionSchema = z.strictObject({
   factId: FactIdSchema,
   field: z.enum(VERIFY_FIELDS),
-  /** For `steps`: which step. */
+  /** For `steps` and `distractors`: which one, 0-based. */
   index: z.number().int().nonnegative().optional(),
   value: line(SPEC_LIMITS.body),
   reason: z.enum(VERIFY_REASONS),
@@ -1456,12 +1458,16 @@ export function verifiableArrayOf(id: FactId): Exclude<FactArray, "objectives"> 
  * field's own limit. Messages name the id and the field so the retry can fix them.
  */
 export function verifyOutputSchemaFor(facts: LessonFacts): z.ZodType<VerifyOutput> {
-  const byId = new Map<FactId, { array: Exclude<FactArray, "objectives">; steps?: number }>();
+  const byId = new Map<
+    FactId,
+    { array: Exclude<FactArray, "objectives">; steps?: number; distractors?: number }
+  >();
   for (const key of Object.keys(VERIFY_FIELDS_BY_ARRAY) as Exclude<FactArray, "objectives">[]) {
     for (const fact of facts[key] ?? []) {
       byId.set(fact.id, {
         array: key,
         ...("steps" in fact ? { steps: fact.steps.length } : {}),
+        ...("distractors" in fact ? { distractors: fact.distractors?.length ?? 0 } : {}),
       });
     }
   }
@@ -1488,17 +1494,18 @@ export function verifyOutputSchemaFor(facts: LessonFacts): z.ZodType<VerifyOutpu
         );
         return;
       }
-      if (c.field === "steps") {
+      if (c.field === "steps" || c.field === "distractors") {
+        const count = fact[c.field] ?? 0;
         if (c.index === undefined) {
-          issue((id) => `a steps correction on ${id} needs an index`, ["index"]);
-        } else if (c.index >= (fact.steps ?? 0)) {
+          issue((id) => `a ${c.field} correction on ${id} needs an index`, ["index"]);
+        } else if (c.index >= count) {
           issue(
-            (id) => `${id} has ${fact.steps ?? 0} steps; index ${c.index} does not exist`,
+            (id) => `${id} has ${count} ${c.field}; index ${c.index} does not exist`,
             ["index"],
           );
         }
       } else if (c.index !== undefined) {
-        issue(() => "index is only for steps corrections", ["index"]);
+        issue(() => "index is only for steps and distractors corrections", ["index"]);
       }
       if (c.value.length > VERIFY_LIMITS[c.field]) {
         issue(

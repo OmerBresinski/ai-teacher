@@ -45,6 +45,27 @@ describe("applyVerifyPatch", () => {
     expect(applied).toHaveLength(1);
   });
 
+  test("audit A6: a distractors correction with an index replaces that option's text only", () => {
+    const before = facts();
+    const i = before.questions.findIndex((q) => (q.distractors?.length ?? 0) > 1);
+    const q = before.questions[i];
+    if (!q?.distractors) throw new Error("fixture has no question with distractors");
+    const correction = c({ factId: q.id, field: "distractors", index: 1, value: "Clay" });
+    const { facts: after, applied } = applyVerifyPatch(before, [
+      correction,
+      c({ factId: q.id, field: "distractors", index: 9, value: "Sand" }),
+      c({ factId: q.id, field: "distractors", value: "Sand" }),
+    ]);
+    expect(after.questions[i]?.distractors?.map((d) => d.text)).toEqual(
+      q.distractors.map((d, j) => (j === 1 ? "Clay" : d.text)),
+    );
+    expect(after.questions[i]?.distractors?.[1]?.misconceptionRef).toEqual(
+      q.distractors[1]?.misconceptionRef,
+    );
+    expect(applied).toEqual([correction]);
+    expect(verifyFinding(correction).message).toMatch(/^Question distractor corrected: /);
+  });
+
   test("row 4: an empty patch returns equal facts and nothing applied", () => {
     const before = facts();
     const { facts: after, applied } = applyVerifyPatch(before, []);

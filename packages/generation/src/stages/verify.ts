@@ -120,6 +120,7 @@ const FIELD_LABEL: Record<VerifyField, string> = {
   answer: "answer",
   stem: "stem",
   reasoning: "reasoning",
+  distractors: "distractor",
   statement: "statement",
   explanation: "explanation",
   example: "example",
@@ -172,6 +173,11 @@ export function applyVerifyPatch(
       const steps = fact.steps;
       if (!Array.isArray(steps) || c.index === undefined || c.index >= steps.length) continue;
       steps[c.index] = c.value;
+    } else if (c.field === "distractors") {
+      const distractors = fact.distractors as { text: string }[] | undefined;
+      const distractor = c.index === undefined ? undefined : distractors?.[c.index];
+      if (!distractor) continue;
+      distractor.text = c.value;
     } else {
       if (!(c.field in fact) && c.field !== "analogy") continue;
       fact[c.field] = c.value;
