@@ -457,7 +457,7 @@ describe("runLessonPipeline", () => {
     const error = await runLessonPipeline({ lesson: sampleBriefLesson() }, deps).catch((e) => e);
     expect((error as Error).name).toBe("AbortError");
     expect(deps.persisted.at(-1)?.lesson.generation?.stage).toBe("planned");
-    // One batch (four slides) was in flight; nothing started after the abort.
+    // Only the slides already in flight (at most one batch) were called; nothing started after the abort.
     const generateCalls = ai.calls.filter((c) => c.context?.stage === "generate");
     expect(generateCalls.length).toBeLessThanOrEqual(GENERATE_CONCURRENCY);
     expect(deps.persisted.at(-1)?.lesson.slides).toHaveLength(4);

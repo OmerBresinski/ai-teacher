@@ -69,8 +69,14 @@ import { runVerify } from "./verify";
 /** The number of slides Plan materialises itself (`title`, `objectives`). */
 export const PLANNED_SLIDES = 2;
 
-/** Slide calls in flight at once — what the proposal jobs already do in production. */
-export const GENERATE_CONCURRENCY = 4;
+/**
+ * Slide calls in flight at once. Was 4 (what the proposal jobs do); 10 since lab pw: a 10-slide
+ * lesson has 8 slides to write (title and objectives are code), so every slide of the usual lesson
+ * starts at once and the stage's wall time is one call, not two; a 60-minute lesson (16 slides)
+ * takes two waves. Nothing else depends on the number: slides are persisted in outline order by
+ * `turnOf` whatever order they return in, and the budget reserves each call before it starts.
+ */
+export const GENERATE_CONCURRENCY = 10;
 
 /**
  * Progress runs from 10 (planned) to 80 (all slides, then the `generated` checkpoint at the same
