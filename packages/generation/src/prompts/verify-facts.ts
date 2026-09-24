@@ -17,6 +17,8 @@ import { type Audience, audienceBlock, example, factsBlock, houseRules } from ".
  * says which rendered text is which field (a question's rendered answer and distractors were
  * pasted into `answer`). "the outline, briefs, pitch, objectives or ids" went: the schema admits
  * no such field.
+ *
+ * v4 (A6): distractors are a correctable field, given by index like steps.
  */
 
 export type VerifyFactsInput = {
@@ -39,7 +41,7 @@ const EXAMPLE = {
 };
 
 export const verifyFactsPrompt = {
-  version: "verify-facts.v3",
+  version: "verify-facts.v4",
   system: [
     "You are a subject specialist checking a lesson plan's facts before it is taught. You are given every fact with its id; return only the corrections that are needed.",
     "",
@@ -47,8 +49,8 @@ export const verifyFactsPrompt = {
     houseRules("british", "names"),
     "Check for: a term that is not the accepted term for this subject at this year group; a name, event, entity or quantity that does not exist or is invented; an answer that is wrong, or could be read two ways; arithmetic or logic in a worked example's steps that does not follow; a key-idea statement that is false or overgeneralised for this level; a misconception whose correction is itself wrong; anything outside the topic.",
     "Do not make stylistic edits, add facts or reorder anything. Return an empty list only when every answer and step checks out.",
-    "Field map: a key idea reads `statement — explanation`, a misconception `believes <belief>; correct: <correction>`, vocabulary `term — definition`, a worked example `problem` then its steps (step 1 is index 0), a question `stem`; every other field is labelled.",
-    `Each correction names the fact by its id, the field (${VERIFY_FIELDS.join(", ")}; for a step give "field": "steps" and the 0-based "index"), the corrected value, and the reason (${VERIFY_REASONS.join(", ")}). At most 12 corrections; give the most important first.`,
+    "Field map: a key idea reads `statement — explanation`, a misconception `believes <belief>; correct: <correction>`, vocabulary `term — definition`, a worked example `problem` then its steps (step 1 is index 0), a question `stem`, then its distractors (the first is index 0); every other field is labelled.",
+    `Each correction names the fact by its id, the field (${VERIFY_FIELDS.join(", ")}; for a step or a distractor also give the 0-based "index"), the corrected value, and the reason (${VERIFY_REASONS.join(", ")}). At most 12 corrections; give the most important first.`,
     `Length limits (characters): ${Object.entries(VERIFY_LIMITS)
       .map(([field, max]) => `${field} ${max}`)
       .join(", ")}.`,

@@ -197,8 +197,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "a582769329a1e3bc2652808dd41c8fc87c8c68e18b1f6b95d8c46407c44253c3",
   },
   "verify-facts": {
-    version: "verify-facts.v3",
-    hash: "195e23663e86cc7a7508a50bbe8cd34ccd7e0224622551566f5b9c9900685b16",
+    version: "verify-facts.v4",
+    hash: "d4818445390ef7635afc6675f2303170ff3e95dfa6581ad769cdec20797ea42f",
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
@@ -234,8 +234,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
-    version: "repair-fact.v4",
-    hash: "902ad8e38b65249267ceed807fbab78c5c34b5d6ecb597d86270c3c320c82765",
+    version: "repair-fact.v5",
+    hash: "c4eb2f681babc21303581384470cbff4e89adb4e06b6d908fa2c2a91e34b14e7",
   },
   cascade: {
     version: "cascade.v4",
