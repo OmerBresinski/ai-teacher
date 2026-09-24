@@ -1,6 +1,6 @@
 import { gsap } from "gsap";
 import { useLayoutEffect, useRef } from "react";
-import type { CharacterOrigin } from "./character-origin";
+import { CHARACTER_ENTRY_SECONDS, type CharacterOrigin } from "./character-origin";
 import { GenerationStory } from "./generation-story";
 
 /** A persistent stage follows real editor slots across the generating→editable transition. */
@@ -62,14 +62,13 @@ export function GenerationCompanion({
             }
           : centre,
       );
-      const travel = origin ? 0.4 : 0;
+      const travel = origin ? CHARACTER_ENTRY_SECONDS : 0;
       flight.current = gsap.timeline({
         onComplete: () => {
           actor.dataset.handover = "settled";
         },
       });
-      if (origin)
-        flight.current.to(actor, { ...centre, duration: travel, ease: "power2.inOut" }, 0);
+      if (origin) flight.current.to(actor, { ...centre, duration: travel, ease: "sine.inOut" }, 0);
       flight.current.call(
         () => {
           actor.dataset.handover = "settling";
@@ -79,7 +78,7 @@ export function GenerationCompanion({
       );
       flight.current.to(
         actor,
-        { x: box.left, y: box.top, scale: 1, duration: 0.85, ease: "power3.inOut" },
+        { x: box.left, y: box.top, scale: 1, duration: 0.85, ease: "sine.inOut" },
         2.05 + travel,
       );
       flight.current.to(scrim.current, { autoAlpha: 0, duration: 0.6 }, 2.05 + travel);

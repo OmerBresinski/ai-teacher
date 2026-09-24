@@ -75,17 +75,19 @@ export function BriefStep({
         onNext();
       }}
     >
-      <Field id={id} label="Topic">
-        <Textarea
-          id={id}
-          required
-          rows={3}
-          placeholder="What would you like to teach?"
-          value={brief.topic}
-          onChange={(event) => onChange({ ...brief, topic: event.target.value })}
-        />
-      </Field>
-      {filePicker}
+      <div className="creation-brief-source">
+        <Field id={id} label="Topic">
+          <Textarea
+            id={id}
+            required
+            rows={3}
+            placeholder="What would you like to teach?"
+            value={brief.topic}
+            onChange={(event) => onChange({ ...brief, topic: event.target.value })}
+          />
+        </Field>
+        {filePicker}
+      </div>
       <ChoiceField
         label="Year group"
         value={brief.yearGroup}
