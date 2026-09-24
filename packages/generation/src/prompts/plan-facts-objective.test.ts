@@ -56,7 +56,7 @@ const SAMPLE: PlanFactsObjectiveInput = {
 
 const PIN: { version: string; hash: string } = {
   version: "plan-facts-objective.v14",
-  hash: "76e8a40a4882737d73146948cf17b33d1518251ff1f1503930ddfb7006687fc1",
+  hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
 };
 
 /** One objective's facts, as the schema accepts them; the pieces tests vary field by field. */
@@ -128,25 +128,30 @@ describe("plan-facts-objective", () => {
     // v5 (minimalism rubric, 23 Sept 2026) trimmed 448 to 350; v6 369; v7 317; v8 331; v9 368 (the
     // three declarations, review pack np1, paid for in part by the shared JSON line and the
     // misconception clause); v11 384 (keyIdeaRefs: one sketch slot, one clause); v13 436 (the
-    // multiple-choice option rule, answer tells 93% -> 29% longest); v14 538 (cb cause 5: five
+    // multiple-choice option rule, answer tells 93% -> 29% longest); v14 487 (cb cause 5: four
     // rules the judges marked and the prompt never asked for, each named to a lab output in the
-    // prompt file's header). The alarm follows it.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(545);
+    // prompt file's header; the rest is v2–v13 measured wording). The alarm follows it.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(495);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     // v14: pitch is one sentence here, covering numbers and problem steps (Y5-L: amounts to 35,
-    // one step on every question), in place of the shared language-only house rule.
-    expect(system).toContain("Pitch the language, the numbers and the steps a problem takes");
+    // one step on every question) and keeping the house rule's two clauses, in place of the
+    // shared language-only line.
+    expect(system).toContain("Pitch the language, numbers and problem steps");
+    expect(system).toContain("explain any word a pupil at that level would not know");
     expect(system).not.toContain("Pitch the language at the reading level");
     // v14: a key idea's example is a named case (Y4-L, Y11-L restated the statement; Y10-L o1 had
     // no quotation), the worked example and questions take their own (Y11-L x1 became its exit
-    // question), `use` is defined with two quick exit questions and one retrieval question (no
-    // v13 call knew what "exit" meant), and a distractor is a real error (Y4-L "build pyramids").
+    // question), two quick exit questions (no v13 call knew what "exit" meant; the starter is the
+    // outline's own selection, nothing is marked here), and a distractor is a real error (Y4-L
+    // "build pyramids"). The v2 invention sentence is unchanged.
     expect(system).toContain("A key idea's example is one named case");
-    expect(system).toContain("or a quotation from the text studied");
+    expect(system).toContain("quotation or worked numbers");
     expect(system).toContain("take a case of their own");
-    expect(system).toContain('"use" is where a question is set. Two are "exit"');
-    expect(system).toContain('so its "keyIdeaRefs" is empty');
+    expect(system).toContain('Two questions are for "exit" use, each answered in one line');
+    expect(system).not.toContain("starter");
+    expect(system).not.toContain('"keyIdeaRefs" is empty');
+    expect(system).toContain("a key idea's date, figure or case is real");
     expect(system).toContain("a wrong option a pupil reaches by a real error");
     expect(system).not.toContain("three or four");
     expect(system).toMatch(/JSON/);
@@ -238,8 +243,8 @@ describe("plan-facts-objective", () => {
     const parse = (value: unknown) => PlanFactsObjectiveOutputSchema.safeParse(value).success;
     expect(parse(facts())).toBe(true);
     // Vocabulary and the worked example are optional; a key idea, the misconception and 3 questions
-    // are not. v14 asks for four to six (two exit, one retrieval, the rest slide or worksheet): the
-    // prose states the target, the floor of 3 is tolerance, so a short answer is not a retry.
+    // are not. v14 asks for four to six (one cycle's check set of 2–4 plus 2 exit): the prose
+    // states the target, the floor of 3 is tolerance, so a short answer is not a retry.
     expect(parse(facts({ vocabulary: [], workedExamples: [] }))).toBe(true);
     expect(parse(facts({ questions: [QUESTION, QUESTION, QUESTION] }))).toBe(true);
     expect(parse(facts({ questions: [...REST, ...REST] }))).toBe(true);
@@ -272,9 +277,6 @@ describe("plan-facts-objective", () => {
     expect(parse(facts({ questions: [...REST, { ...QUESTION, keyIdeaRefs: refs(0, 1) }] }))).toBe(
       true,
     );
-    // v14: the retrieval question needs none of this call's key ideas, so its list is empty; the
-    // outline reads that as the starter's question (the `use` enum has no starter value).
-    expect(parse(facts({ questions: [...REST, { ...QUESTION, keyIdeaRefs: [] }] }))).toBe(true);
     // At most two key ideas per call, so an index past 1 is a shape error.
     expect(parse(facts({ questions: [...REST, { ...QUESTION, keyIdeaRefs: refs(2) }] }))).toBe(
       false,

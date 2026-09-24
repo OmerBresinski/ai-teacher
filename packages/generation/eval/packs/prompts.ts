@@ -631,9 +631,8 @@ const fillSystem = (() => {
 
 /*
  * pack-fill.v4 (24 Sept 2026): plan-facts-objective v14 reaches it through the shared text (the
- * example, fresh-case, pitch, `use` and distractor rules) and its question count, four to six,
- * since `fillSchemaFor` picks from the facts schema (ceiling now 6, floor 3). The fill call has no
- * key ideas of its own, so v14's retrieval question (`keyIdeaRefs` empty) costs it nothing.
+ * example and fresh-case, pitch, exit and distractor rules) and its question count, four to six,
+ * since `fillSchemaFor` picks from the facts schema (ceiling now 6, floor 3).
  */
 export const packFillPrompt: StructuredPrompt<PackFillInput> = {
   version: "pack-fill.v4",
