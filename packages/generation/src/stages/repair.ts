@@ -20,7 +20,14 @@ import {
   slideSpecSchemaFor,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
-import { isCodeBuilt, isRetrievalStarter, withShuffledOptions } from "../lab/coded-slides";
+import {
+  CODE_MODEL,
+  codedSetSpec,
+  isCodeBuilt,
+  isRetrievalStarter,
+  withAnswersReveal,
+  withShuffledOptions,
+} from "../lab/coded-slides";
 import {
   type Audience,
   type RepairInput,
@@ -127,6 +134,8 @@ type TargetOutcome =
       modelId: string;
       findings: Finding[];
     }
+  /** Audit A3: a set printed in code; only its facts are patched, and it is re-printed from them. */
+  | { kind: "facts"; key: string; corrections: VerifyCorrection[] }
   | { kind: "budget"; by: "usd" | "tokens" }
   | { kind: "failed"; finding: Finding };
 
@@ -313,6 +322,13 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         staged = patched.facts;
         corrections.push(...patched.applied);
       }
+      // Audit A3: a slide printed in code from the facts is never rewritten by the model (a rewrite
+      // drifts from the facts it was printed from); its facts are patched above and the set is
+      // re-printed from them once every outcome has landed.
+      if (lab && target.slideId !== undefined && codeBuilt.has(target.slideId)) {
+        outcomes[t] = { kind: "facts", key: target.key, corrections };
+        return;
+      }
       if (target.slideId !== undefined) {
         const index = base.slides.findIndex((s) => s.id === target.slideId);
         const slide = base.slides[index];
@@ -344,6 +360,9 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
               ? { photo: slidePhotoOf(slide, base.facts?.outline[index]) }
               : {}),
           },
+          // Contract C2, C3 (audit FIX-PLAN): what the slide was planned to teach and what it
+          // cites now, so a warning fix keeps every planned fact (the coasts groyne bug).
+          ...repairPlanOf(slide, base.facts?.outline[index]),
           findings: target.findings,
           shape: `a "${slide.kind}" slide spec`,
           context: { slides: repairContext(base, index, target.findings) },
@@ -435,6 +454,10 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
       lesson = { ...lesson, facts };
       extra.push(...patched.applied.map(verifyFinding));
     }
+    if (outcome.kind === "facts") {
+      if (outcome.corrections.length > 0) repaired.add(outcome.key);
+      continue;
+    }
     repaired.add(outcome.key);
     extra.push(...outcome.findings);
     if (outcome.kind === "slide") {
@@ -462,6 +485,10 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
       worksheet = { ...worksheet, blocks } as Worksheet;
     }
   }
+
+  // Audit A3: every set printed in code from a fact Repair patched is printed again from the
+  // patched facts, with the same seed as Generate, so the quizzes never contradict the facts.
+  if (lab) lesson = reprintPatchedSets(lesson, outcomes, deps);
 
   throwIfAborted(deps.signal);
   const schema = checkLesson(lesson, worksheet);
@@ -670,6 +697,50 @@ function staleAfterRepair(
   }
   const block = worksheet?.blocks.find((b) => b.id === blockId);
   return !block || !normaliseText(blockText(block)).includes(needle);
+}
+
+/**
+ * Contract C2 and C3: the slide's outline entry (its planned facts and the brief's "adds" and
+ * "avoids" as one line) and the facts its elements cite now. Empty when there is no entry.
+ */
+export function repairPlanOf(
+  slide: Slide,
+  entry: { factRefs: string[]; brief?: { adds: string; avoids?: string } } | undefined,
+): { planned?: { factRefs: string[]; brief: string }; currentFactRefs?: string[] } {
+  const current = [...new Set(slide.elements.flatMap((e) => e.generatedFrom?.factRefs ?? []))];
+  const brief = entry?.brief
+    ? `${entry.brief.adds}${entry.brief.avoids ? ` Avoid: ${entry.brief.avoids}` : ""}`
+    : "";
+  return {
+    ...(entry ? { planned: { factRefs: [...entry.factRefs], brief } } : {}),
+    ...(current.length > 0 ? { currentFactRefs: current } : {}),
+  };
+}
+
+/** The code-built sets citing a patched fact, printed again from the lesson's (patched) facts. */
+export function reprintPatchedSets(
+  lesson: Lesson,
+  outcomes: readonly (TargetOutcome | undefined)[],
+  deps: Pick<PipelineDeps, "now" | "ids">,
+): Lesson {
+  const facts = lesson.facts;
+  const patched = new Set(
+    outcomes.flatMap((o) =>
+      o && "corrections" in o ? o.corrections.map((c) => c.factId as string) : [],
+    ),
+  );
+  if (!facts || patched.size === 0) return lesson;
+  const slides = lesson.slides.map((slide, i) => {
+    if (!isCodeBuilt(slide)) return slide;
+    const refs = slide.elements.flatMap((e) => e.generatedFrom?.factRefs ?? []);
+    if (!refs.some((r) => patched.has(r))) return slide;
+    const entry = facts.outline[i];
+    const coded = entry ? codedSetSpec(entry, facts, `${lesson.id}:${i}`) : undefined;
+    if (!coded) return slide;
+    const fresh = materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL, deps), deps.ids);
+    return { ...withAnswersReveal(fresh), id: slide.id };
+  });
+  return { ...lesson, slides };
 }
 
 const meta = (modelId: string, deps: Pick<PipelineDeps, "now">): MaterialiseMeta => ({

@@ -47,7 +47,15 @@ import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
 const FOUR_CALLS = 4;
 
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
-import { MAX_TARGETS, MAX_WARNING_TARGETS, repair, repairContext, repairTargets } from "./repair";
+import {
+  MAX_TARGETS,
+  MAX_WARNING_TARGETS,
+  repair,
+  repairContext,
+  repairPlanOf,
+  repairTargets,
+  reprintPatchedSets,
+} from "./repair";
 import {
   audienceOf,
   BUDGET_FINDING,
@@ -2292,7 +2300,8 @@ describe("repair", () => {
     ]);
     // Row 2 (TEACH-222): the slide's current text is shown field by field, never the caption line.
     const slidePrompt = ai.calls[0]?.promptText ?? "";
-    expect(slidePrompt).toContain("heading: ");
+    // Audit C5: a question kind's heading is labelled by its spec field, `stem`.
+    expect(slidePrompt).toContain("stem: ");
     expect(slidePrompt).toContain("option A");
     expect(slidePrompt).toContain("(correct)");
     expect(deps.progress).toEqual([
@@ -2578,6 +2587,30 @@ describe("specFieldsOf (TEACH-222)", () => {
       expect(fields.map((f) => f.text)).not.toContain("KEY IDEA");
       expect(fields.map((f) => f.text)).not.toContain("QUESTION");
     }
+  });
+
+  test("audit C5: fields carry spec names, so a worked-example shows its question and 0-based steps", async () => {
+    const setupDeps = recordingDeps(
+      createFakeAi({
+        script: routed([
+          ...planScript(),
+          ...FIXTURES.planSkeleton.outline
+            .slice(PLANNED_SLIDES)
+            .map((e) => json(FIXTURES.slides[e.kind])),
+        ]),
+        usage,
+      }),
+    );
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const worked = generated.lesson.slides.find((s) => s.kind === "worked-example") as Slide;
+    const names = specFieldsOf(worked).map((f) => f.field);
+    expect(names).toContain("question");
+    expect(names).toContain("steps[0]");
+    expect(names).toContain("steps[2]");
+    expect(names).not.toContain("body");
+    const mc = generated.lesson.slides.find((s) => s.kind === "multiple-choice") as Slide;
+    expect(specFieldsOf(mc).map((f) => f.field)).toContain("stem");
+    expect(specFieldsOf(mc).map((f) => f.field)).not.toContain("heading");
   });
 
   test("a slide whose text the projection cannot label is not covered, so Repair shows the flat text", () => {
@@ -2962,6 +2995,93 @@ describe("Repair leaves the code-built quizzes alone and reshuffles what it rewr
     expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
     expect(out.lesson.generation?.findings.some((f) => f.check === "verb-fit")).toBe(true);
     expect(out.lesson.slides[index]).toEqual(target);
+  });
+
+  test("audit A3: an error on a slide printed in code gets no slide rewrite; with no fact named it stays a residual", async () => {
+    const evaluatedWith = await labLesson();
+    const base = evaluatedWith([]).lesson.slides;
+    const index = base.findIndex((s) => s.kind === "exit-ticket");
+    const coded = base.map((s, i) =>
+      i !== index
+        ? s
+        : {
+            ...s,
+            elements: s.elements.map((el) =>
+              el.generatedFrom
+                ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+                : el,
+            ),
+          },
+    );
+    const target = coded[index] as Slide;
+    const ai = answering();
+    const out = await repair(
+      evaluatedWith([e("answer-correctness", target.id)], coded),
+      recordingDeps(ai),
+    );
+    expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
+    expect(out.lesson.slides[index]).toEqual(target);
+    expect(out.lesson.generation?.findings.some((f) => f.check === "answer-correctness")).toBe(
+      true,
+    );
+  });
+
+  test("audit A3: reprintPatchedSets prints a code-built set again only when a fact it cites was patched", async () => {
+    const evaluatedWith = await labLesson();
+    const state = evaluatedWith([]);
+    const index = state.lesson.slides.findIndex((s) => s.kind === "exit-ticket");
+    const slides = state.lesson.slides.map((s, i) =>
+      i !== index
+        ? s
+        : {
+            ...s,
+            elements: s.elements.map((el) =>
+              el.generatedFrom
+                ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+                : el,
+            ),
+          },
+    );
+    const lesson = { ...state.lesson, slides };
+    const cited = (slides[index] as Slide).elements.flatMap(
+      (el) => el.generatedFrom?.factRefs ?? [],
+    );
+    expect(cited.length).toBeGreaterThan(0);
+    const deps = recordingDeps(answering());
+    // Nothing patched: the lesson comes back as it was.
+    expect(reprintPatchedSets(lesson, [], deps)).toBe(lesson);
+    const correction = {
+      factId: cited[0] as string,
+      field: "answer" as const,
+      value: "x",
+      reason: "wrong-answer" as const,
+    };
+    const out = reprintPatchedSets(
+      lesson,
+      [{ kind: "facts", key: "slide:x", corrections: [correction] }],
+      deps,
+    );
+    const fresh = out.slides[index] as Slide;
+    expect(fresh.id).toBe((slides[index] as Slide).id);
+    expect(isCodeBuilt(fresh)).toBe(true);
+    // Other slides are the same objects.
+    expect(out.slides.filter((s, i) => i !== index && s !== slides[i])).toEqual([]);
+  });
+
+  test("audit C2/C3: repairPlanOf gives the planned facts, the brief as one line, and the cited facts", () => {
+    const slide = generatedLesson().slides.find((s) =>
+      s.elements.some((el) => (el.generatedFrom?.factRefs.length ?? 0) > 0),
+    ) as Slide;
+    const plan = repairPlanOf(slide, {
+      factRefs: ["o3", "k5", "k6", "v5"],
+      brief: { adds: "Hard engineering with two examples.", avoids: "the seawall case" },
+    });
+    expect(plan.planned).toEqual({
+      factRefs: ["o3", "k5", "k6", "v5"],
+      brief: "Hard engineering with two examples. Avoid: the seawall case",
+    });
+    expect(plan.currentFactRefs?.length).toBeGreaterThan(0);
+    expect(repairPlanOf(slide, undefined).planned).toBeUndefined();
   });
 
   test("lab pw: the targets' calls run at once and the outcomes land in target order whichever call returned first", async () => {
