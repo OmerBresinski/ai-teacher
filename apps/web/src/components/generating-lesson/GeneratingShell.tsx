@@ -89,7 +89,7 @@ export function GeneratingShell({
   onViewSlide,
 }: GeneratingShellProps) {
   const mobile = useMobileEditor();
-  const state = stageOf(events);
+  const state = stageOf(events, lesson.plan?.state === "proposed");
   const stopped = state.terminal === "failed" || state.terminal === "cancelled";
   const running = state.terminal === null;
   const theme = getTheme(lesson.themeId);

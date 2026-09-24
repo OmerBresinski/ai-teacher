@@ -11,24 +11,35 @@ import { COPYRIGHT_NOTICE, LIMIT_NOTICE, SourceDropZone } from "./SourceDropZone
 const { fakeApi, restore } = installFakeApi();
 
 /** The zone as the brief mounts it: the parent owns the list. */
-function Harness({ initial = [] as SourceRef[] }: { initial?: SourceRef[] }) {
+function Harness({
+  initial = [] as SourceRef[],
+  boundSourceIds = [],
+}: {
+  initial?: SourceRef[];
+  boundSourceIds?: string[];
+}) {
   const [sources, setSources] = useState<SourceRef[]>(initial);
   const [busy, setBusy] = useState(false);
   return (
     <>
-      <SourceDropZone sources={sources} onChange={setSources} onBusyChange={setBusy} />
+      <SourceDropZone
+        boundSourceIds={boundSourceIds}
+        sources={sources}
+        onChange={setSources}
+        onBusyChange={setBusy}
+      />
       <output data-testid="ids">{sources.map((s) => s.id).join(",")}</output>
       <output data-testid="busy">{String(busy)}</output>
     </>
   );
 }
 
-function renderZone(initial?: SourceRef[]) {
+function renderZone(initial?: SourceRef[], boundSourceIds?: string[]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Harness initial={initial} />
+        <Harness initial={initial} boundSourceIds={boundSourceIds} />
       </TooltipProvider>
     </QueryClientProvider>,
   );
@@ -47,6 +58,14 @@ describe("SourceDropZone", () => {
   });
   afterEach(() => cleanup());
   afterAll(() => restore());
+
+  it("removes a bound source only from the draft for transactional replan", async () => {
+    const source = { id: "bound-source", name: "plants.pdf", kind: "file", pages: 2 } as SourceRef;
+    renderZone([source], [source.id]);
+    fireEvent.click(screen.getByRole("button", { name: "Remove plants.pdf" }));
+    await waitFor(() => expect(ids()).toBe(""));
+    expect(fakeApi.requests.filter((r) => r.method === "DELETE")).toHaveLength(0);
+  });
 
   it("renders the controls and the copyright line with no chips", () => {
     renderZone();

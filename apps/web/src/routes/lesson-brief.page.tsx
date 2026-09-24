@@ -1,76 +1,40 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   CreateLessonSchema,
-  defaultDurationMin,
-  deriveAgeBand,
   findNamePatterns,
   GUARD_MESSAGE,
+  type Lesson,
+  type SourceRef,
 } from "@tj/domain/documents";
+import { Button, Spinner } from "@tj/ui";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import type { CharacterCapture } from "@/components/lesson-creation/character-origin";
+import { CreationShell } from "@/components/lesson-creation/creation-shell";
 import {
-  Button,
-  Display,
-  Input,
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Spinner,
-  Textarea,
-  toast,
-} from "@tj/ui";
-import { lazy, type ReactNode, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
-import { ActionBar } from "@/components/brief/action-bar";
-import { ClassContextFields } from "@/components/brief/class-context-fields";
-import { Field, GuardHint } from "@/components/brief/field";
-import { QuestionBlock } from "@/components/brief/question-block";
-import { ThemeTiles } from "@/components/brief/theme-tiles";
+  BriefStep,
+  type IntakeBrief,
+  type ObjectiveDraft,
+  ObjectivesStep,
+  type WorksheetDraft,
+  WorksheetStep,
+} from "@/components/lesson-creation/step-fields";
 import { useLibraryActions } from "@/components/library/use-library-actions";
 import { SourceDropZone } from "@/components/source-drop-zone/SourceDropZone";
-import {
-  type BriefState,
-  briefInputOf,
-  type GuardedField,
-  hasGuardHits,
-  INITIAL_BRIEF,
-  OTHER_SUBJECT,
-  SUBJECTS,
-  seedGeneratingLesson,
-  YEAR_GROUPS,
-} from "@/lib/brief-form";
+import { useJobEvents } from "@/hooks/use-job-events";
+import { api } from "@/lib/api";
 import { readLastClass, writeLastClass } from "@/lib/brief-memory";
 import {
-  CONFIDENCE_QUESTION,
-  confidenceOptions,
-  OBJECTIVE_QUESTION,
-  objectiveOptions,
-  SUGGESTED_CONFIDENCE_INDEX,
-  shouldAskQuestions,
-  suggestedObjectiveIndex,
-} from "@/lib/brief-questions";
-import { libraryMutations } from "@/lib/library";
-import { LIBRARY_THEMES } from "@/lib/library-themes";
-import { ApiError } from "@/lib/query";
+  confirmLesson,
+  objectiveEdits,
+  replanLesson,
+  seedConfirmedGeneration,
+} from "@/lib/lesson-intake";
+import { rememberGenerationOrigin, rememberWorksheetIntent } from "@/lib/lesson-worksheets";
+import { libraryMutations, libraryQueries } from "@/lib/library";
+import { ApiError, apiErrorFromResponse } from "@/lib/query";
+import { sessionRequest } from "@/lib/session-boundary";
 import { lessonBriefRoute } from "./lesson-brief.route";
-
-/**
- * `/lessons/new` — the lesson brief (F01 item 2; TEACH-122, TEACH-177). One screen: topic,
- * subject and year group (pre-filled from the last lesson planned in this browser, and said so),
- * a duration that defaults by key stage, six theme tiles drawn as the title slide, optional
- * class context behind a disclosure, and two clarifying questions asked one at a time with the
- * suggestion marked. `CreateLessonSchema` is the only validator — the same one `POST /lessons`
- * runs — so the identifier guard says the same thing here and on the server (ADR 0024 §1–2, §6,
- * §13). "Plan it" sits in a sticky action bar and, when disabled, says why. It posts the brief,
- * seeds the new lesson into the cache and lands on `/l/$lessonId`, where the generating view
- * follows the job. "Blank lesson" keeps the old dialog for a teacher who wants to start empty; it
- * is the only entry point for a blank lesson until Home's tile grows a menu. The form model lives
- * in `lib/brief-form.ts`.
- *
- * The upload entry (F03: a deck, chapter or scheme of work as the brief) has no tab here any
- * more; when it ships it becomes a quiet line under the topic, not a disabled control.
- */
 
 const NewDocumentDialog = lazy(() =>
   import("@/components/new-document-dialog").then(({ NewDocumentDialog }) => ({
@@ -78,416 +42,364 @@ const NewDocumentDialog = lazy(() =>
   })),
 );
 
-const DURATION_HINT = "Between 5 and 180 minutes.";
-const DURATION_REASON = "Duration must be between 5 and 180 minutes.";
-const SOURCES_BUSY_REASON = "Wait for your files to finish uploading.";
-const REMEMBERED_HINT = "From your last lesson";
-const QUESTION_COUNT = 2;
-
-function SelectField({
-  id,
-  label,
-  value,
-  onValueChange,
-  items,
-  invalid,
-  hint,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onValueChange: (value: string) => void;
-  items: readonly string[];
-  invalid?: boolean;
-  hint?: ReactNode;
-}) {
-  return (
-    <Field id={id} label={label} hint={hint}>
-      <Select value={value} onValueChange={onValueChange}>
-        <SelectTrigger
-          id={id}
-          aria-invalid={invalid}
-          aria-describedby={hint ? `${id}-hint` : undefined}
-          className="w-full data-[placeholder]:!text-foreground"
-        >
-          <SelectValue placeholder="Not set" />
-        </SelectTrigger>
-        <SelectContent position="popper">
-          <SelectGroup>
-            {items.map((item) => (
-              <SelectItem key={item} value={item}>
-                {item}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-    </Field>
-  );
-}
-
-/**
- * The brief with the last lesson's class filled in, and which fields that covered. `topicFromUrl`
- * (the marketing homepage's `?topic=`, TEACH-309) wins for `topic` only — the remembered subject
- * and year group are unaffected.
- */
-function initialBrief(topicFromUrl?: string): {
-  state: BriefState;
-  remembered: ReadonlySet<"subject" | "yearGroup">;
-} {
-  const last = readLastClass();
-  const remembered = new Set<"subject" | "yearGroup">();
-  const state = { ...INITIAL_BRIEF };
-  if (last) {
-    if (last.subject && SUBJECTS.includes(last.subject)) {
-      state.subject = last.subject;
-      state.subjectOther = last.subject === OTHER_SUBJECT ? last.subjectOther : "";
-      remembered.add("subject");
-    }
-    if (last.yearGroup && YEAR_GROUPS.includes(last.yearGroup)) {
-      state.yearGroup = last.yearGroup;
-      remembered.add("yearGroup");
-    }
-    if (LIBRARY_THEMES.some((theme) => theme.id === last.themeId)) state.themeId = last.themeId;
-  }
-  if (topicFromUrl) state.topic = topicFromUrl;
-  return { state, remembered };
-}
-
+/** Shared production intake. The URL and stored plan own resume; local state owns unsaved edits. */
 export function LessonBriefPage() {
-  const topicId = useId();
-  const subjectId = useId();
-  const subjectOtherId = useId();
-  const yearGroupId = useId();
-  const durationId = useId();
-  const themeId = useId();
-  const reasonId = useId();
+  const search = useSearch({ from: lessonBriefRoute.id });
+  return (
+    <LessonIntake
+      key={search.lesson ?? "new"}
+      lessonId={search.lesson}
+      topic={search.topic}
+      focusSources={search.source === "1"}
+    />
+  );
+}
+
+function LessonIntake({
+  lessonId,
+  topic,
+  focusSources,
+}: {
+  lessonId?: string;
+  topic?: string;
+  focusSources: boolean;
+}) {
+  const client = useQueryClient();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const actions = useLibraryActions();
-  const { mutateAsync: createLesson, isPending } = useMutation(
-    libraryMutations.createLesson(queryClient),
-  );
-  const { topic: topicParam, source } = useSearch({ from: lessonBriefRoute.id });
-  const topicFromUrl = topicParam?.trim() || undefined;
-  const focusSources = source === "1";
-  const [initial] = useState(() => initialBrief(topicFromUrl));
-  const [state, setState] = useState<BriefState>(initial.state);
-  const [remembered, setRemembered] = useState(initial.remembered);
-  // A prefilled topic runs through the identifier guard exactly as a typed-and-blurred one would
-  // (TEACH-309 acceptance 6): only its length is silently altered.
-  const [touched, setTouched] = useState<ReadonlySet<GuardedField>>(
-    () => new Set<GuardedField>(topicFromUrl ? ["topic"] : []),
-  );
-  const [serverFields, setServerFields] = useState<ReadonlySet<string>>(() => new Set());
-  const [blank, setBlank] = useState({ open: false, session: 0 });
-  // Which clarifying questions are settled (accepted or skipped), and how many are on screen.
-  // `revealed` never decreases: reopening the first question keeps the second in view with its
-  // answer, since that answer is still in state and still submitted.
-  const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
-  const [revealed, setRevealed] = useState(1);
-  const [revealedByKey, setRevealedByKey] = useState(false);
+  const [last] = useState(readLastClass);
+  const [brief, setBrief] = useState<IntakeBrief>({
+    topic: topic ?? "",
+    yearGroup: last?.yearGroup || "Year 4",
+    level: "standard",
+    files: [],
+  });
+  const [sources, setSources] = useState<SourceRef[]>([]);
   const [sourcesBusy, setSourcesBusy] = useState(false);
-  const submitRef = useRef<HTMLButtonElement>(null);
-
-  // An edit clears the API's field marks: they describe the request that was sent, not this one.
-  const patch = (change: Partial<BriefState>) => {
-    setState((current) => ({ ...current, ...change }));
-    setServerFields((current) => (current.size === 0 ? current : new Set()));
-    if ("subject" in change || "yearGroup" in change) {
-      setRemembered((current) => {
-        const next = new Set(current);
-        if ("subject" in change) next.delete("subject");
-        if ("yearGroup" in change) next.delete("yearGroup");
-        return next;
-      });
-    }
+  const [sourcesOpen, setSourcesOpen] = useState(focusSources);
+  const [blank, setBlank] = useState(false);
+  const [step, setStep] = useState<"brief" | "objectives" | "worksheet">("brief");
+  const [objectives, setObjectives] = useState<ObjectiveDraft[]>([]);
+  const [slideCount, setSlideCount] = useState("8");
+  const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
+    { id: "initial", recipe: "knowledge-check", minutes: "10" },
+  ]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const request = useRef<{ id: string; input: ReturnType<typeof CreateLessonSchema.parse> } | null>(
+    null,
+  );
+  const initialized = useRef(false);
+  const character = useRef<CharacterCapture>(null);
+  const document = useQuery({
+    ...libraryQueries.document(lessonId ?? "", client),
+    enabled: !!lessonId,
+  });
+  const meta = useQuery({ ...libraryQueries.documentMeta(lessonId ?? ""), enabled: !!lessonId });
+  const lesson = document.data && "slides" in document.data ? (document.data as Lesson) : undefined;
+  const jobId = meta.data?.generatingJobId ?? undefined;
+  const stream = useJobEvents(
+    jobId ?? (initialized.current ? undefined : lesson?.plan?.jobId),
+    client,
+  );
+  const create = useMutation(libraryMutations.createLesson(client));
+  const refresh = async () => {
+    await document.refetch();
+    await meta.refetch();
   };
-  const touch = (field: GuardedField) =>
-    setTouched((current) => (current.has(field) ? current : new Set(current).add(field)));
-
-  const input = useMemo(() => briefInputOf(state), [state]);
-  const parsed = useMemo(() => CreateLessonSchema.safeParse(input), [input]);
-  const topic = state.topic.trim();
-  const durationDefault = defaultDurationMin(deriveAgeBand(state.yearGroup || undefined));
-  const durationInvalid =
-    state.duration.trim() !== "" &&
-    parsed.error?.issues.some((issue) => issue.path.join(".") === "brief.durationMin");
-  const canCreate =
-    parsed.success && topic.length > 0 && !hasGuardHits(state) && !isPending && !sourcesBusy;
-  const topicHit = touched.has("topic") && findNamePatterns(state.topic).length > 0;
-  const invalid = (field: string) => serverFields.has(field) || undefined;
-  const askQuestions = shouldAskQuestions(topic);
-  const objectiveSuggested = suggestedObjectiveIndex(topic);
-  const subjectName = state.subject === OTHER_SUBJECT ? state.subjectOther.trim() : state.subject;
-  const tileSubtitle = [state.yearGroup, subjectName].filter(Boolean).join(" · ");
-
-  // Why "Plan it" is disabled, in one line under the bar (TEACH-177 item 4).
-  const reason = isPending
-    ? null
-    : sourcesBusy
-      ? SOURCES_BUSY_REASON
-      : topic.length === 0
-        ? "Type a topic to plan the lesson."
-        : hasGuardHits(state)
-          ? GUARD_MESSAGE
-          : durationInvalid
-            ? DURATION_REASON
-            : parsed.success
-              ? null
-              : (parsed.error.issues[0]?.message ?? "Check the form.");
-
-  const settle = (index: number) => {
-    const next = new Set(settled).add(index);
-    setSettled(next);
-    if (next.size >= QUESTION_COUNT) {
-      submitRef.current?.focus();
+  // SSE provides the truth; terminal events release the stored lock before objectives are offered.
+  const terminal = stream.terminal;
+  useEffect(() => {
+    if (!terminal || !lessonId) return;
+    void client.invalidateQueries({ queryKey: ["library", "document", lessonId] });
+    void client.invalidateQueries({ queryKey: ["library", "document-meta", lessonId] });
+  }, [terminal, lessonId, client]);
+  useEffect(() => {
+    if (!lesson) return;
+    if (lesson.plan?.state === "confirmed") {
+      void navigate({ to: "/l/$lessonId", params: { lessonId: lesson.id } });
       return;
     }
-    if (index + 1 >= revealed) {
-      setRevealed(index + 1 + 1);
-      setRevealedByKey(true);
-    }
-  };
-  const reopen = (index: number) =>
-    setSettled((current) => {
-      const next = new Set(current);
-      next.delete(index);
-      return next;
+    if (initialized.current || jobId || !meta.isSuccess || lesson.generation?.stage !== "planned")
+      return;
+    initialized.current = true;
+    setBrief({
+      topic: lesson.brief?.topic ?? lesson.title,
+      yearGroup: lesson.yearGroup ?? "Year 4",
+      level: lesson.brief?.level ?? "standard",
+      files: [],
     });
+    setSources(lesson.sources ?? []);
+    setObjectives((lesson.facts?.objectives ?? []).map(({ id, text }) => ({ id, text })));
+    setSlideCount(String(lesson.brief?.slideCount ?? 8));
+    setStep("objectives");
+  }, [lesson, jobId, meta.isSuccess, navigate]);
 
-  // `?topic=` moves focus to Subject, so a stray Enter cannot submit the form (TEACH-309
-  // acceptance 1). `?source=1` takes priority and hands focus to the drop zone instead
-  // (SourceDropZone owns that scroll-and-focus, acceptance 4). Runs once, on mount, from the
-  // URL the page opened with.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only.
-  useEffect(() => {
-    if (focusSources || !topicFromUrl) return;
-    document.getElementById(subjectId)?.focus();
-  }, []);
-
-  async function submit(): Promise<void> {
-    if (!canCreate) return;
-    try {
-      // One job from brief to slides until the plan screen ships (TEACH-13 stopgap; T7 removes
-      // it): without the flag the plan job stops at `planned` and nothing presses Generate.
-      const ids = await createLesson({ ...input, skipPlanning: true });
-      writeLastClass({
-        subject: state.subject,
-        subjectOther: state.subjectOther,
-        yearGroup: state.yearGroup,
-        themeId: state.themeId,
-      });
-      seedGeneratingLesson(queryClient, input, ids);
-      await navigate({ to: "/l/$lessonId", params: { lessonId: ids.lessonId } });
-    } catch (error) {
-      // The message is the API's plain sentence (F18-R12); the form keeps every value.
-      toast(error instanceof Error ? error.message : "Something went wrong.");
-      if (error instanceof ApiError && error.fields) setServerFields(new Set(error.fields));
+  async function fail(cause: unknown) {
+    setError(
+      cause instanceof Error ? cause.message : "Something went wrong. Your choices are still here.",
+    );
+    if (lessonId) {
+      if (cause instanceof ApiError && cause.reason === "stale") {
+        initialized.current = false;
+        await refresh().catch(() => undefined);
+        setError(
+          "This plan changed elsewhere. The latest plan has been loaded. Please review it before continuing.",
+        );
+      } else await refresh().catch(() => undefined);
     }
   }
-
-  const rememberedHint = (id: string) => (
-    <p id={`${id}-hint`} className="text-meta text-ink-3">
-      {REMEMBERED_HINT}
-    </p>
-  );
-
+  async function plan(skip: boolean) {
+    if (busy || sourcesBusy || findNamePatterns(brief.topic).length > 0) return;
+    setBusy(true);
+    setError("");
+    try {
+      const input = CreateLessonSchema.parse({
+        brief: { topic: brief.topic.trim(), level: brief.level, slideCount: Number(slideCount) },
+        yearGroup: brief.yearGroup,
+        ...(last?.themeId ? { themeId: last.themeId } : {}),
+        sourceIds: sources.map(({ id }) => id),
+        skipPlanning: skip,
+      });
+      if (lessonId && lesson) {
+        const unchanged =
+          lesson.generation?.stage === "planned" &&
+          lesson.brief?.topic === input.brief.topic &&
+          lesson.yearGroup === input.yearGroup &&
+          (lesson.brief?.level ?? "standard") === input.brief.level &&
+          JSON.stringify((lesson.sources ?? []).map(({ id }) => id)) ===
+            JSON.stringify(input.sourceIds);
+        if (unchanged) {
+          setStep("objectives");
+          return;
+        }
+        const replanned = await replanLesson(client, lessonId, {
+          expectedRevision: lesson.plan?.revision ?? 0,
+          brief: input.brief,
+          yearGroup: input.yearGroup,
+          subject: lesson.brief?.topic === input.brief.topic ? lesson.subject : "",
+          sourceIds: input.sourceIds,
+        });
+        client.setQueryData(["library", "document-meta", lessonId], {
+          ...meta.data,
+          generatingJobId: replanned.jobId,
+        });
+        initialized.current = false;
+        await refresh();
+      } else {
+        // Keep the exact payload and request id on an uncertain response; never create a second paid job.
+        request.current ??= { id: crypto.randomUUID(), input };
+        const ids = await create.mutateAsync({
+          ...request.current.input,
+          requestId: request.current.id,
+        });
+        writeLastClass({
+          subject: last?.subject ?? "",
+          subjectOther: last?.subjectOther ?? "",
+          yearGroup: brief.yearGroup,
+          themeId: last?.themeId ?? "",
+        });
+        if (request.current.input.skipPlanning)
+          await navigate({ to: "/l/$lessonId", params: { lessonId: ids.lessonId } });
+        else
+          await navigate({ to: "/lessons/new", search: { lesson: ids.lessonId }, replace: true });
+      }
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status < 500) request.current = null;
+      await fail(cause);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function generate(includeWorksheet: boolean) {
+    if (!lesson || busy) return;
+    const origin = character.current?.capture() ?? null;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await confirmLesson(client, lesson.id, {
+        expectedRevision: lesson.plan?.revision ?? 0,
+        objectives: objectiveEdits(lesson, objectives),
+        slideCount: Number(slideCount) as 6 | 8 | 10 | 12,
+      });
+      const worksheet = worksheets[0];
+      rememberWorksheetIntent(
+        client,
+        lesson.id,
+        includeWorksheet && worksheet
+          ? {
+              recipeId: worksheet.recipe,
+              practiceMinutes: Number(worksheet.minutes),
+              expectedRevision: result.revision,
+            }
+          : null,
+      );
+      rememberGenerationOrigin(client, lesson.id, origin);
+      await seedConfirmedGeneration(client, lesson, result);
+      await navigate({ to: "/l/$lessonId", params: { lessonId: lesson.id } });
+    } catch (cause) {
+      await fail(cause);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const planning = !!lessonId && (!!jobId || !initialized.current);
+  const failed = terminal?.type === "failed" || terminal?.type === "cancelled";
+  const loadingError = document.isError || meta.isError;
+  const title = planning
+    ? "Planning your lesson"
+    : step === "brief"
+      ? "Let’s start with your idea."
+      : step === "objectives"
+        ? "Learning objectives"
+        : "Add a worksheet?";
   return (
-    <main className="min-h-dvh px-6 py-8 lg:px-12">
-      <div className="mx-auto flex max-w-2xl flex-col gap-6">
-        <Display as="h1" size="lg">
-          New lesson
-        </Display>
-
-        <form
-          className="flex flex-col gap-5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submit();
-          }}
-        >
-          <SourceDropZone
-            sources={state.sources}
-            onChange={(update) =>
-              setState((current) => ({ ...current, sources: update(current.sources) }))
-            }
-            onBusyChange={setSourcesBusy}
-            disabled={isPending}
-            focusChooseFiles={focusSources}
-          />
-
-          <Field
-            id={topicId}
-            label="Topic or objective"
-            hint={
-              topicHit ? (
-                <GuardHint id={`${topicId}-hint`} text={state.topic} />
-              ) : (
-                <p id={`${topicId}-hint`} className="text-meta text-ink-3">
-                  What the class should learn. A sentence is plenty. Two short questions follow.
-                </p>
-              )
-            }
-          >
-            <Textarea
-              id={topicId}
-              autoFocus={!topicFromUrl}
-              required
-              rows={3}
-              value={state.topic}
-              onChange={(event) => patch({ topic: event.target.value })}
-              onBlur={() => touch("topic")}
-              aria-invalid={topicHit || invalid("brief")}
-              aria-describedby={`${topicId}-hint`}
-              placeholder="Fractions of amounts"
-            />
-          </Field>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SelectField
-              id={subjectId}
-              label="Subject"
-              value={state.subject}
-              onValueChange={(subject) => patch({ subject })}
-              items={SUBJECTS}
-              invalid={invalid("subject")}
-              hint={remembered.has("subject") ? rememberedHint(subjectId) : undefined}
-            />
-            {state.subject === OTHER_SUBJECT ? (
-              <Field id={subjectOtherId} label="Which subject?">
-                <Input
-                  id={subjectOtherId}
-                  value={state.subjectOther}
-                  maxLength={80}
-                  onChange={(event) => patch({ subjectOther: event.target.value })}
-                />
-              </Field>
-            ) : null}
-            <SelectField
-              id={yearGroupId}
-              label="Year group"
-              value={state.yearGroup}
-              onValueChange={(yearGroup) => patch({ yearGroup })}
-              items={YEAR_GROUPS}
-              invalid={invalid("yearGroup")}
-              hint={remembered.has("yearGroup") ? rememberedHint(yearGroupId) : undefined}
-            />
-            <Field
-              id={durationId}
-              label="Duration (minutes)"
-              hint={
-                <p
-                  id={`${durationId}-hint`}
-                  className={
-                    durationInvalid ? "text-meta text-destructive" : "text-meta text-ink-3"
-                  }
-                  role={durationInvalid ? "alert" : undefined}
-                >
-                  {durationInvalid
-                    ? DURATION_HINT
-                    : `Leave empty for ${durationDefault} minutes, the usual length for this year group.`}
-                </p>
-              }
-            >
-              <Input
-                id={durationId}
-                type="number"
-                inputMode="numeric"
-                min={5}
-                max={180}
-                step={5}
-                value={state.duration}
-                placeholder={String(durationDefault)}
-                onChange={(event) => patch({ duration: event.target.value })}
-                aria-invalid={durationInvalid || undefined}
-                aria-describedby={`${durationId}-hint`}
-              />
-            </Field>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <span className="text-body font-medium text-foreground" id={themeId}>
-              Theme
-            </span>
-            <ThemeTiles
-              labelId={themeId}
-              topic={topic}
-              subtitle={tileSubtitle}
-              value={state.themeId}
-              onValueChange={(next) => patch({ themeId: next })}
-            />
-          </div>
-
-          <ClassContextFields state={state} touched={touched} onChange={patch} onBlur={touch} />
-
-          {askQuestions ? (
-            <div className="flex flex-col gap-3" data-testid="clarifying-questions">
-              <QuestionBlock
-                question={OBJECTIVE_QUESTION}
-                options={objectiveOptions(topic)}
-                answer={state.objective}
-                suggestedIndex={objectiveSuggested}
-                done={settled.has(0)}
-                onChange={(objective) => patch({ objective })}
-                onAccept={() => settle(0)}
-                onReopen={() => reopen(0)}
-              />
-              {revealed > 1 ? (
-                <QuestionBlock
-                  question={CONFIDENCE_QUESTION}
-                  options={confidenceOptions()}
-                  answer={state.confidence}
-                  suggestedIndex={SUGGESTED_CONFIDENCE_INDEX}
-                  done={settled.has(1)}
-                  autoFocus={revealedByKey}
-                  onChange={(confidence) => patch({ confidence })}
-                  onAccept={() => settle(1)}
-                  onReopen={() => reopen(1)}
-                />
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="flex items-center gap-2 text-meta text-ink-3">
-            <span>Or start without a plan:</span>
+    <CreationShell
+      stage={planning ? "planning" : step}
+      characterRef={character}
+      title={title}
+      working={planning && !failed}
+    >
+      {findNamePatterns(brief.topic).length > 0 ? <p role="status">{GUARD_MESSAGE}</p> : null}
+      {error ? <p role="alert">{error}</p> : null}
+      {request.current && error && !lessonId ? (
+        <p>
+          Your last request will be checked again when you choose Next. Your edited brief will not
+          create a second lesson.
+        </p>
+      ) : null}
+      {planning ? (
+        <div className="creation-form">
+          <p role="status">
+            {terminal?.type === "failed"
+              ? terminal.error.message
+              : failed
+                ? "Planning stopped. You can try again with the same brief."
+                : loadingError
+                  ? "We couldn’t load your plan."
+                  : "Finding the key ideas and checking the facts."}
+          </p>
+          {failed || loadingError || (!jobId && document.isSuccess && !lesson?.facts) ? (
             <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setBlank((current) => ({ open: true, session: current.session + 1 }))}
+              onClick={() => {
+                if (lesson) {
+                  initialized.current = true;
+                  setBrief({
+                    topic: lesson.brief?.topic ?? lesson.title,
+                    yearGroup: lesson.yearGroup ?? "Year 4",
+                    level: lesson.brief?.level ?? "standard",
+                    files: [],
+                  });
+                  setSources(lesson.sources ?? []);
+                  setStep("brief");
+                } else void refresh();
+              }}
             >
+              {" "}
+              {lesson ? "Review the brief" : "Try again"}{" "}
+            </Button>
+          ) : (
+            <Spinner />
+          )}
+          {jobId && !failed ? (
+            <Button
+              variant="link"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const response = await api.jobs[":id"].cancel.$post(
+                    { param: { id: jobId } },
+                    sessionRequest(client),
+                  );
+                  if (response.status !== 202) throw await apiErrorFromResponse(response);
+                } catch (cause) {
+                  await fail(cause);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Stop planning
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <>
+          <fieldset disabled={busy || sourcesBusy} className="min-w-0 border-0 p-0 m-0">
+            {step === "brief" ? (
+              <BriefStep
+                brief={brief}
+                onChange={setBrief}
+                onNext={() => void plan(false)}
+                onSkip={() => void plan(!lessonId)}
+                filePicker={
+                  <div className="creation-upload">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setSourcesOpen(!sourcesOpen)}
+                      aria-expanded={sourcesOpen}
+                    >
+                      Add materials
+                    </Button>
+                    {sourcesOpen ? (
+                      <SourceDropZone
+                        sources={sources}
+                        boundSourceIds={lesson?.sources?.map(({ id }) => id)}
+                        onChange={setSources}
+                        onBusyChange={setSourcesBusy}
+                        disabled={busy}
+                        focusChooseFiles={focusSources}
+                      />
+                    ) : null}
+                  </div>
+                }
+              />
+            ) : step === "objectives" ? (
+              <ObjectivesStep
+                brief={brief}
+                objectives={objectives}
+                onChange={setObjectives}
+                slideCount={slideCount}
+                onSlideCount={setSlideCount}
+                duration=""
+                onDuration={() => {}}
+                onBack={() => setStep("brief")}
+                onGenerate={() => setStep("worksheet")}
+              />
+            ) : (
+              <WorksheetStep
+                worksheets={worksheets}
+                onChange={setWorksheets}
+                maxWorksheets={1}
+                onBack={() => setStep("objectives")}
+                onMake={() => void generate(true)}
+                onSkip={() => void generate(false)}
+              />
+            )}
+          </fieldset>
+          {busy ? (
+            <p role="status">
+              <Spinner /> Saving your choices…
+            </p>
+          ) : null}
+          {step === "brief" && !lessonId ? (
+            <Button variant="link" size="sm" onClick={() => setBlank(true)}>
               Blank lesson
             </Button>
-          </div>
-
-          <ActionBar reason={reason} reasonId={reasonId} bleed="page">
-            <Button
-              ref={submitRef}
-              type="submit"
-              variant="primary"
-              size="lg"
-              disabled={!canCreate}
-              aria-describedby={reason ? reasonId : undefined}
-            >
-              {isPending ? <Spinner /> : null}
-              Plan it
-            </Button>
-          </ActionBar>
-        </form>
-      </div>
-
+          ) : null}
+        </>
+      )}
       <Suspense fallback={null}>
-        {blank.session > 0 ? (
+        {blank ? (
           <NewDocumentDialog
-            key={blank.session}
-            open={blank.open}
-            onOpenChange={(open) => {
-              if (!open) setBlank((current) => ({ ...current, open: false }));
-            }}
+            open
+            onOpenChange={setBlank}
             onCreate={(values) => actions.createNewDocument("lesson", values)}
           />
         ) : null}
       </Suspense>
-    </main>
+    </CreationShell>
   );
 }

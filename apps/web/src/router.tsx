@@ -47,12 +47,12 @@ export const routeTree = rootRoute.addChildren([
     libraryLayoutRoute.addChildren([
       indexRoute,
       lessonsRoute,
-      lessonBriefRoute,
       worksheetsRoute,
       worksheetCreateRoute,
       seriesIndexRoute,
       seriesDetailRoute,
     ]),
+    lessonBriefRoute,
     lessonEditorRoute,
     lessonViewRoute,
     lessonPresentRoute,

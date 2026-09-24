@@ -59,7 +59,7 @@ const SLIDE_COUNT = /^Slide (\d+) of (\d+)$/;
  * backwards: a late event with a lower percent (the worker coalesces at 250ms) cannot undo a
  * stage already reached.
  */
-export function stageOf(events: readonly JobEvent[]): StageState {
+export function stageOf(events: readonly JobEvent[], planningOnly = false): StageState {
   let stage: StageId = "planning";
   let slide: StageState["slide"] = null;
   let worksheet = false;
@@ -70,7 +70,7 @@ export function stageOf(events: readonly JobEvent[]): StageState {
   for (const event of events) {
     if (event.type === "completed") {
       terminal = "completed";
-      stage = "ready";
+      stage = planningOnly ? "planning" : "ready";
       continue;
     }
     if (event.type === "failed") {
@@ -85,7 +85,7 @@ export function stageOf(events: readonly JobEvent[]): StageState {
     if (event.type !== "progress") continue;
     const { progress } = event;
     if (progress.message !== undefined) message = progress.message;
-    const next = stageFromProgress(progress);
+    const next = planningOnly ? "planning" : stageFromProgress(progress);
     if (next !== null && ORDER.indexOf(next) > ORDER.indexOf(stage)) stage = next;
     const count = progress.message?.match(SLIDE_COUNT);
     if (count && stage === "writing") {
@@ -121,7 +121,8 @@ function stageFromProgress(progress: JobProgress): StageId | null {
 
 /** Ticked, live or still to come, for one strip item. */
 export function stageStatus(id: StageId, state: StageState): StageStatus {
-  if (state.terminal === "completed") return "done";
+  if (state.terminal === "completed")
+    return ORDER.indexOf(id) <= ORDER.indexOf(state.stage) ? "done" : "todo";
   const current = ORDER.indexOf(state.stage);
   const own = ORDER.indexOf(id);
   if (own < current) return "done";

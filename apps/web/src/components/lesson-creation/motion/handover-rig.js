@@ -1,11 +1,10 @@
-import { gsap } from "gsap";
 import { artwork } from "./artwork.js";
 import { fanRig } from "./fan-rig.js";
 import { buildBeat } from "./work-beats.js";
 
 // Original production rig: scoped geometry/contacts only. No demo UI, readiness, or global controller.
 let serial = 0;
-export function createHandoverRig(root) {
+export function createHandoverRig(root, gsap) {
   const prefix = `intake-rig-${serial++}-`;
   const $ = (selector) =>
     root.querySelector(selector.replace(/#([\w-]+)/g, (_, id) => `#${prefix}${id}`));
@@ -97,7 +96,7 @@ export function createHandoverRig(root) {
     fanSVG = scene.querySelector('[data-actor="1"] svg');
   fanSVG.setAttribute("width", "504");
   fanSVG.setAttribute("height", "360");
-  const fan = fanRig.mount(fanSVG);
+  const fan = fanRig.mount(fanSVG, gsap);
   fanSVG.querySelectorAll(":scope > path,:scope > ellipse").forEach((e) => {
     if (!e.classList.contains("legs")) e.style.display = "none";
   });
@@ -640,6 +639,7 @@ export function createHandoverRig(root) {
         onComplete: options.onComplete,
       },
       n,
+      gsap,
     );
     tl.timeScale(options.speed ?? 1.2);
     if (pref.matches) {

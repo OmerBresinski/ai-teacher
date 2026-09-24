@@ -68,7 +68,7 @@ export function DevFirstExperiencePage() {
     files: [],
   });
   const [objectives, setObjectives] = useState(OBJECTIVES);
-  const [slideCount, setSlideCount] = useState("7");
+  const [slideCount, setSlideCount] = useState("8");
   const [duration, setDuration] = useState("60");
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
     { id: "sheet-1", recipe: "knowledge-check", minutes: "10" },

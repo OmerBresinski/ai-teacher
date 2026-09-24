@@ -1,6 +1,5 @@
-import { gsap } from "gsap";
 // Source production.js work beats. All hand/prop contact timing is preserved.
-export function buildBeat(context, n) {
+export function buildBeat(context, n, gsap) {
   const { p, actors, fan, questionNodes, questionLengths, draw, setFanMode, onComplete } = context;
   const tl = gsap.timeline({ paused: true, onUpdate: draw, onComplete });
   const go = (v, t, d = 0.6, e = "sine.inOut") => tl.to(p, { ...v, duration: d, ease: e }, t);

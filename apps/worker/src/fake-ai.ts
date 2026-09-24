@@ -1,7 +1,7 @@
 import type { ConfiguredAi } from "@tj/ai";
 import { DEFAULT_MODEL_IDS, DEFAULT_REGION } from "@tj/ai";
 import { createFakeAi, type FakeCall, type FakeScriptEntry } from "@tj/ai/testing";
-import { FIXTURES, scriptedPipelineAi, scriptedWorksheetAi } from "@tj/generation/testing";
+import { FIXTURES, scriptedWorksheetAi } from "@tj/generation/testing";
 import type { Env } from "./env";
 
 /*
@@ -68,8 +68,66 @@ function markSpec(spec: Record<string, unknown>, mark: string): Record<string, u
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const OUTLINE_INDICES_BY_COUNT = {
+  6: [0, 1, 2, 4, 7, 9],
+  8: [0, 1, 2, 4, 5, 6, 7, 9],
+  10: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+} as const;
+const MINUTES_BY_COUNT = {
+  6: [3, 4, 8, 20, 18, 7],
+  8: [2, 3, 5, 12, 8, 10, 15, 5],
+  10: [2, 3, 4, 5, 10, 6, 8, 9, 9, 4],
+} as const;
+
+/** The e2e fake follows the call's prompt version, so split plan/generate jobs never drift. */
+function pipelineAnswer(
+  call: FakeCall,
+  selectedOutlineByJob: Map<string, readonly number[]>,
+): string {
+  const version = call.context?.promptVersion ?? "";
+  if (version.startsWith("check-input")) return JSON.stringify({ findings: [] });
+  if (version.startsWith("plan-skeleton")) {
+    const requested = Number(/outline has exactly (\d+) slides/.exec(call.promptText)?.[1] ?? 10);
+    const indices = OUTLINE_INDICES_BY_COUNT[requested as keyof typeof OUTLINE_INDICES_BY_COUNT];
+    const skeleton = FIXTURES.planSkeleton;
+    if (indices) selectedOutlineByJob.set(call.context?.jobId ?? "", indices);
+    const outline = indices
+      ? indices.map((index, position) => ({
+          ...skeleton.outline[index],
+          minutes: MINUTES_BY_COUNT[requested as keyof typeof MINUTES_BY_COUNT][position],
+        }))
+      : skeleton.outline;
+    return JSON.stringify({
+      ...skeleton,
+      outline,
+    });
+  }
+  if (version.startsWith("plan-facts")) {
+    const indices = selectedOutlineByJob.get(call.context?.jobId ?? "");
+    if (!indices) return JSON.stringify(FIXTURES.planFacts);
+    return JSON.stringify({
+      ...FIXTURES.planFacts,
+      outlineFactRefs: FIXTURES.planFacts.outlineFactRefs
+        .filter((entry) => indices.includes(entry.index))
+        .map((entry) => ({ ...entry, index: indices.indexOf(entry.index) })),
+    });
+  }
+  if (version.startsWith("verify-facts")) return JSON.stringify(FIXTURES.verify);
+  if (version.startsWith("generate-slide")) {
+    const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1];
+    const spec = kind ? FIXTURES.slides[kind as keyof typeof FIXTURES.slides] : undefined;
+    return JSON.stringify(spec ?? {});
+  }
+  if (version.startsWith("evaluate")) {
+    return JSON.stringify({ findings: [FAKE_REVIEW_WARNING] });
+  }
+  if (version.startsWith("repair")) return JSON.stringify(FIXTURES.repair);
+  return JSON.stringify({});
+}
+
 export function createPerJobFakeAi(env: Pick<Env, "AI_FAKE_DELAY_MS">): ConfiguredAi {
   const byJob = new Map<string, ConfiguredAi>();
+  const selectedOutlineByJob = new Map<string, readonly number[]>();
   const delay = env.AI_FAKE_DELAY_MS;
   const proposal: FakeScriptEntry = async (call) => {
     if (delay > 0) await sleep(delay);
@@ -85,9 +143,12 @@ export function createPerJobFakeAi(env: Pick<Env, "AI_FAKE_DELAY_MS">): Configur
           ? // The worksheet job (ADR 0030): the fixture fill for the knowledge-check frame, then
             // a block repair should the checks ask for one. Its first call is the fill.
             scriptedWorksheetAi({ repairs: 1, ...(delay > 0 ? { pace: delay } : {}) })
-          : scriptedPipelineAi({
-              evaluate: { findings: [FAKE_REVIEW_WARNING] },
-              ...(delay > 0 ? { pace: delay } : {}),
+          : createFakeAi({
+              fallback: async (call) => {
+                if (delay > 0) await sleep(delay);
+                return pipelineAnswer(call, selectedOutlineByJob);
+              },
+              usage: { inputTokens: 1000, outputTokens: 400 },
             });
     byJob.set(jobId, fake);
     return fake;

@@ -16,7 +16,11 @@ describe("createPerJobFakeAi", () => {
     const ai = createPerJobFakeAi({ AI_FAKE_DELAY_MS: 0 });
     const first = async (jobId: string) => {
       const { text } = await generateText({
-        model: ai.model("small", { jobId, stage: "check-input" }),
+        model: ai.model("small", {
+          jobId,
+          stage: "check-input",
+          promptVersion: "check-input.v3",
+        }),
         prompt: "x",
       });
       return text;
@@ -26,12 +30,66 @@ describe("createPerJobFakeAi", () => {
     expect(await first("job-b")).toBe(JSON.stringify({ findings: [] }));
     // The same job's second call moves on to Plan's skeleton.
     const { text } = await generateText({
-      model: ai.model("standard", { jobId: "job-a", stage: "plan" }),
-      prompt: "x",
+      model: ai.model("standard", {
+        jobId: "job-a",
+        stage: "plan",
+        promptVersion: "plan-skeleton.v17",
+      }),
+      prompt: "The outline has exactly 10 slides.",
     });
     expect(JSON.parse(text)).toHaveProperty("outline");
     expect(ai.kind).toBe("bedrock");
     expect(ai.modelId("small")).toBeString();
+  });
+
+  test.each([6, 8] as const)(
+    "the plan fixture honours a requested %i-slide outline",
+    async (count) => {
+      const ai = createPerJobFakeAi({ AI_FAKE_DELAY_MS: 0 });
+      const { text } = await generateText({
+        model: ai.model("standard", {
+          jobId: `plan-${count}`,
+          stage: "plan",
+          promptVersion: "plan-skeleton.v17",
+        }),
+        prompt: `The outline has exactly ${count} slides, counting the title and objectives slides.`,
+      });
+      expect(JSON.parse(text).outline).toHaveLength(count);
+      const facts = await generateText({
+        model: ai.model("standard", {
+          jobId: `plan-${count}`,
+          stage: "plan",
+          promptVersion: "plan-facts.v9",
+        }),
+        prompt: "Write the facts for this outline.",
+      });
+      const refs = JSON.parse(facts.text).outlineFactRefs as Array<{ index: number }>;
+      expect(refs.every((entry) => entry.index >= 2 && entry.index < count)).toBe(true);
+    },
+  );
+
+  test("a fresh generate job routes slide and evaluate calls by prompt version", async () => {
+    const ai = createPerJobFakeAi({ AI_FAKE_DELAY_MS: 0 });
+    const jobId = "generate-after-plan";
+    const slide = await generateText({
+      model: ai.model("standard", {
+        jobId,
+        stage: "generate",
+        promptVersion: "generate-slide.v1",
+      }),
+      prompt: 'Write the slide with kind "content".',
+    });
+    expect(JSON.parse(slide.text).kind).toBe("content");
+
+    const review = await generateText({
+      model: ai.model("standard", {
+        jobId,
+        stage: "evaluate",
+        promptVersion: "evaluate.v1",
+      }),
+      prompt: "Review the lesson.",
+    });
+    expect(JSON.parse(review.text).findings).toEqual([FAKE_REVIEW_WARNING]);
   });
 
   test("the review answer carries one lesson-level warning", () => {
