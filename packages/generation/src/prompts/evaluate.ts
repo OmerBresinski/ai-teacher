@@ -20,7 +20,7 @@ import {
  * told which parts of a lesson are exempt — the parts every lesson has whatever its verb — so the
  * check lands on the mechanism, method or judgement slides and the core and stretch tasks only.
  *
- * v8 (24 Sept 2026 audit, FIX-PLAN B1/B2): British English is the only house rule (a reviewer
+ * v8 (24 Sept 2026 audit, FIX-PLAN B1/B2): British English and no names (ADR 0024) are the only house rules (a reviewer
  * writes no pupil text and no `factRefs`); `evidence` states the schema's cap and asks for the
  * shortest span (3 of 28 calls retried on it, and whole-body quotes licensed whole-slide repairs);
  * the starter's questions render as earlier learning (C1: 6 of 28 calls flagged the starter as
@@ -57,7 +57,7 @@ export const evaluatePrompt = {
     "Report problems only; do not praise, rewrite or add content.",
     "",
     "Rules:",
-    houseRules("british"),
+    houseRules("british", "names"),
     'Each finding has a `check` from this list and nothing else: "answer-correctness" (a stated answer is wrong or does not follow from the facts); "fact-consistency" (the slide or block says something the facts contradict, or uses a term the facts do not); "kind-misuse" (the slide kind does not fit the task — a sort with no order, a matching with identical right-hand sides, a true-false with two claims); "repetition" (the same stem or the same key phrase on two items); "pitch" (language or examples above or below the reading level — say which); "notes-quality" (notes that do not say what to say, what misconception to watch for, or what to ask); "image-fit" (a photographed slide sets a task — spot, find, count, point to, identify, circle, label — that does not work with the photograph shown, or describes the photograph wrongly); "verb-fit" (a slide or worksheet block whose task does not serve the objective verb — a Recall lesson asking for a judgement, an Apply lesson with no method, an Explain content slide that lists facts without how or why).',
     "You are told the lesson's objective verb and what each kind of slide, and the worksheet, is for under it; a slide or block that does what another verb would ask for is a `verb-fit` finding (a warning), with the task phrase as `evidence`. `verb-fit` is for the slides that teach the mechanism, method or judgement and for the core and stretch tasks. It is never a finding on the parts every lesson has whatever its verb: the title, objectives, starter and vocabulary slides; the first content slide when the class is new to the topic or the lesson is Recall (it defines, by design); a true-false or multiple-choice that confronts a misconception (a judgement is the requested form); the easy tier of the worksheet (retrieval is what it opens with); or the number of items on an exit-ticket (the recipe fixes it).",
     "Some slides carry a photograph: `[slideId …, image-text, photo N]` means the N-th image given is that slide's photograph. Look at it and check every task the text sets against it; if one does not work, report `image-fit` (a warning) with the task phrase as `evidence`.",

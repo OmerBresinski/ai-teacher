@@ -198,7 +198,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "verify-facts": {
     version: "verify-facts.v3",
-    hash: "f051f4e004314eef3ace2180ab9ebdf01499da5c582e5ee449f27ab67e6fc105",
+    hash: "195e23663e86cc7a7508a50bbe8cd34ccd7e0224622551566f5b9c9900685b16",
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
@@ -227,11 +227,11 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   evaluate: {
     version: "evaluate.v8",
-    hash: "ce7ca528c0a2220d3f903565b1fc41770ebe45dd9154968487a873d72e2115ff",
+    hash: "6207e235c290272a2b5c20309f9ab92655be19f0ca67b18416b8a6998e1d73ff",
   },
   repair: {
-    version: "repair.v14",
-    hash: "ca1c5adaf0500f8000c6d10f3fa79367641af34fac360ed2bb5c8bf6b381d090",
+    version: "repair.v15",
+    hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
     version: "repair-fact.v3",
@@ -766,6 +766,31 @@ describe("prompt versions", () => {
     expect(text.indexOf("- [answer-correctness, error] Wrong.")).toBeLessThan(
       text.indexOf("- [verb-fit, warning] Asks pupils to name, not explain."),
     );
+    // Audit B6: the plan (C2) and the current factRefs (C3) render only when given; the photo rule
+    // travels with the photograph, not in the system text.
+    expect(text).not.toContain("Planned to teach");
+    expect(PROMPTS.repair.system).not.toContain(
+      "An `image-text` slide is written to its photograph",
+    );
+    const planned = PROMPTS.repair.user({
+      ...(SAMPLE_INPUTS.repair as RepairInput),
+      planned: { factRefs: ["k6", "q3"], brief: "Shows how a groyne traps sand." },
+      currentFactRefs: ["k6"],
+    });
+    expect(planned).toContain(
+      "Which state?\nfactRefs: k6\n\nPlanned to teach k6, q3: Shows how a groyne traps sand.\nKeep every fact the slide was planned to teach; fix a warning without dropping one.",
+    );
+    const photographed = PROMPTS.repair.user({
+      ...(SAMPLE_INPUTS.repair as RepairInput),
+      target: {
+        kind: "slide",
+        slideKind: "image-text",
+        slideId: "s4",
+        text: "Look",
+        photo: "none",
+      },
+    });
+    expect(photographed).toContain("An `image-text` slide is written to its photograph");
     // A block repair has no context and renders no header for it.
     const { context: _context, ...withoutContext } = SAMPLE_INPUTS.repair as never as RepairInput;
     expect(PROMPTS.repair.user(withoutContext)).not.toContain("Other slides in the lesson");

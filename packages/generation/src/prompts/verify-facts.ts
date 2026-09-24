@@ -9,7 +9,7 @@ import { type Audience, audienceBlock, example, factsBlock, houseRules } from ".
  * `standard` call at `low` effort (`stages/verify.ts`); the patch is applied by `applyVerifyPatch`.
  * Bump `version` whenever `system` or `user` changes wording.
  *
- * v3 (24 Sept 2026 audit, FIX-PLAN B1/B2/B5): British English is the only house rule (the pitch
+ * v3 (24 Sept 2026 audit, FIX-PLAN B1/B2/B5): British English and no names (ADR 0024) are the only house rules (the pitch
  * rule invited restyling labelled "ambiguous"; the `factRefs` rule has no field here). "An empty
  * list is a good answer" let two low-effort calls return `[]` in a second without checking; it now
  * says when an empty list is right. The per-field caps are stated from `VERIFY_LIMITS` (a third of
@@ -44,7 +44,7 @@ export const verifyFactsPrompt = {
     "You are a subject specialist checking a lesson plan's facts before it is taught. You are given every fact with its id; return only the corrections that are needed.",
     "",
     "Rules:",
-    houseRules("british"),
+    houseRules("british", "names"),
     "Check for: a term that is not the accepted term for this subject at this year group; a name, event, entity or quantity that does not exist or is invented; an answer that is wrong, or could be read two ways; arithmetic or logic in a worked example's steps that does not follow; a key-idea statement that is false or overgeneralised for this level; a misconception whose correction is itself wrong; anything outside the topic.",
     "Do not make stylistic edits, add facts or reorder anything. Return an empty list only when every answer and step checks out.",
     "Field map: a key idea reads `statement — explanation`, a misconception `believes <belief>; correct: <correction>`, vocabulary `term — definition`, a worked example `problem` then its steps (step 1 is index 0), a question `stem`; every other field is labelled.",
