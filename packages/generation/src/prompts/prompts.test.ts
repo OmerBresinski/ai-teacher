@@ -226,8 +226,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "5d38c9bafd55fa9938b767a885661963f6e0416bbc571642829eb5735726520f",
   },
   evaluate: {
-    version: "evaluate.v7",
-    hash: "b3efa762a89735395e2106d1520f99f1037a8f5344e61b4c1ff761ab704dbad1",
+    version: "evaluate.v8",
+    hash: "ce7ca528c0a2220d3f903565b1fc41770ebe45dd9154968487a873d72e2115ff",
   },
   repair: {
     version: "repair.v14",
