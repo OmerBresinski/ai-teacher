@@ -5,6 +5,7 @@ import type {
   SlideCount,
 } from "@tj/domain/documents";
 import { QUESTION_TIERS } from "@tj/domain/documents";
+import { fitsLine, questionLine, SET_MAX, SET_MIN } from "./lab/coded-slides";
 import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
 import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
 import type { LessonShape } from "./shapes";
@@ -145,7 +146,9 @@ export const KEY_IDEAS_PER_CONTENT = 2;
 /** The longest question stem a shared practise slide takes: four have to fit on one slide. */
 const SHARED_STEM_MAX = 120;
 /** Objectives one shared practise slide covers at most: an `instructions` slide holds 1–4 steps. */
-const SHARED_PRACTISE_MAX = 4;
+const SHARED_PRACTISE_MAX = SET_MAX;
+/** The questions a cycle's check set asks (r1: "a check of 2–3 after each cycle"); P8 may take it to `SET_MAX`. */
+const CHECK_SET = 3;
 /** Content slides one learning cycle teaches before its check: a slide, or a pair. */
 const CONTENT_PER_CYCLE = 2;
 /** The exit ticket's length: a short quiz, not three extended answers (uk-teacher review, w0b judges). */
@@ -425,6 +428,60 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   };
   const firstUnusedQuestion = (o: number) =>
     questionsOf(o).find((i) => !used.questions.has(i) && showable(i) && fair(i));
+  /**
+   * Question `i` can be one line of a question set (r1, ruling 89 pending): asked as a stem, or
+   * multiple choice with its four options on the line, and the line fits a list item. The form is
+   * the one a single slide would show; nothing is inferred.
+   */
+  const settable = (i: number) => {
+    const q = facts.questions[i];
+    return q !== undefined && (admitsOpen(i) || mcUsable(i)) && fitsLine(questionLine(q));
+  };
+  /**
+   * A check set on objective `o`: unused fair settable questions that name it, slide questions
+   * before the worksheet's, easiest tier first; never an exit question.
+   */
+  const setFor = (o: number, max: number) =>
+    shape.forbiddenKinds.includes("instructions")
+      ? []
+      : facts.questions
+          .flatMap((q, i) =>
+            q.use !== "exit" &&
+            !used.questions.has(i) &&
+            names(q.objectiveRefs, o) &&
+            settable(i) &&
+            fair(i)
+              ? [i]
+              : [],
+          )
+          .sort(
+            (a, b) =>
+              Number(facts.questions[a]?.use === "worksheet") -
+                Number(facts.questions[b]?.use === "worksheet") ||
+              tierRank(a) - tierRank(b) ||
+              a - b,
+          )
+          .slice(0, max);
+  const setSlot = (o: number, questions: number[]): Slot => ({
+    kind: "instructions",
+    phase: "practise",
+    primary: o,
+    objectives: dedupe(
+      questions.flatMap((i) => refIndices(facts.questions[i]?.objectiveRefs)),
+    ).sort((a, b) => a - b),
+    questions,
+    rank: [2, o, slots.length],
+  });
+  /**
+   * The check on objective `o`: a set of 2–3 questions when the facts have them, else a slide of
+   * the one question that fits; `undefined` when none is fair.
+   */
+  const checkSlot = (o: number): Slot | undefined => {
+    const set = setFor(o, CHECK_SET);
+    if (set.length >= SET_MIN) return setSlot(o, set);
+    const i = firstUnusedQuestion(o);
+    return i === undefined ? undefined : questionSlot(o, i);
+  };
   const pickWorkedExample = (among: number[]) => {
     const free = among.filter((x) => !used.workedExamples.has(x));
     return free.find((x) => facts.workedExamples[x]?.misconceptionRef !== undefined) ?? free[0];
@@ -612,7 +669,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       // openly (`admitsOpen`): a multiple-choice-native stem there would have no options.
       const i =
         questionsOf(o).find(
-          (j) => !used.questions.has(j) && !taken.has(j) && short(j) && admitsOpen(j) && fair(j),
+          (j) => !used.questions.has(j) && !taken.has(j) && short(j) && settable(j) && fair(j),
         ) ??
         facts.questions
           .flatMap((q, j) =>
@@ -621,7 +678,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
             !taken.has(j) &&
             names(q.objectiveRefs, o) &&
             short(j) &&
-            admitsOpen(j) &&
+            settable(j) &&
             fair(j)
               ? [j]
               : [],
@@ -729,14 +786,14 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     const o = [...all]
       .sort((a, b) => Number(practised(a)) - Number(practised(b)) || a - b)
       .find((candidate) => firstUnusedQuestion(candidate) !== undefined);
-    const i = o === undefined ? undefined : firstUnusedQuestion(o);
-    if (o === undefined || i === undefined) {
+    const slot = o === undefined ? undefined : checkSlot(o);
+    if (slot === undefined) {
       gap(
         `The shape needs ${shape.minCheckEntries} slides where pupils answer and the facts have questions for ${practiseCount() + 1}.`,
       );
       break;
     }
-    if (!place(questionSlot(o, i))) {
+    if (!place(slot)) {
       gap(
         `The shape needs ${shape.minCheckEntries} slides where pupils answer and a ${slideCount}-slide deck has room for ${practiseCount() + 1}.`,
       );
@@ -778,8 +835,16 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     const o = [...all]
       .sort((a, b) => Number(practised(a)) - Number(practised(b)) || a - b)
       .find((candidate) => firstUnusedQuestion(candidate) !== undefined);
-    let i = o === undefined ? undefined : firstUnusedQuestion(o);
-    let owner = o;
+    const slot = o === undefined ? undefined : checkSlot(o);
+    if (slot !== undefined) {
+      if (!place(slot)) {
+        shareFull.practise = true;
+        break;
+      }
+      continue;
+    }
+    let i: number | undefined;
+    let owner: number | undefined;
     // The slide questions ran out: a worksheet question fills the floor instead. The worksheet is
     // its own optional job (ADR 0030), so nothing else is sure to use it, and `stemPlan` gives a
     // claimed worksheet question to its slide. Never an exit question.
@@ -795,8 +860,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   placeSharedPractise();
   for (const o of all) {
     if (practised(o) || budget <= 0) continue;
-    const i = firstUnusedQuestion(o);
-    if (i !== undefined) place(questionSlot(o, i));
+    const slot = checkSlot(o);
+    if (slot !== undefined) place(slot);
   }
   for (const o of all) {
     if (!practised(o) && firstUnusedQuestion(o) !== undefined) {
@@ -913,13 +978,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   const setPool = () =>
     facts.questions
       .flatMap((q, i) =>
-        q.use !== "exit" &&
-        !used.questions.has(i) &&
-        q.stem.length <= SHARED_STEM_MAX &&
-        admitsOpen(i) &&
-        fair(i)
-          ? [i]
-          : [],
+        q.use !== "exit" && !used.questions.has(i) && settable(i) && fair(i) ? [i] : [],
       )
       .sort(
         (a, b) =>
@@ -935,35 +994,50 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     s.question !== undefined &&
     (s.kind === "multiple-choice" || s.kind === "open-response") &&
     facts.questions[s.question]?.demand !== "judgement" &&
-    (facts.questions[s.question]?.stem.length ?? Infinity) <= SHARED_STEM_MAX &&
-    admitsOpen(s.question) &&
+    settable(s.question) &&
     (!required.has(s.kind) || countOf(s.kind) > 1);
   const pool = shape.forbiddenKinds.includes("instructions") ? [] : setPool();
-  const set =
-    slots.find((s) => s.kind === "instructions" && s.phase === "practise") ??
-    (pool.length >= 2
-      ? slots
-          .filter(spare)
-          .sort(
-            (a, b) =>
-              Number(a.kind !== "multiple-choice") - Number(b.kind !== "multiple-choice") ||
-              compareRanks(b.rank, a.rank),
-          )[0]
-      : undefined);
-  if (set && pool.length > 0) {
-    const questions = [
-      ...(set.questions ?? (set.question === undefined ? [] : [set.question])),
-      ...pool,
-    ]
-      .slice(0, SHARED_PRACTISE_MAX)
-      .sort((a, b) => tierRank(a) - tierRank(b) || firstObjective(a) - firstObjective(b) || a - b);
-    for (const i of questions) used.questions.add(i);
-    set.kind = "instructions";
-    delete set.question;
-    set.questions = questions;
-    set.objectives = dedupe(
-      questions.flatMap((i) => refIndices(facts.questions[i]?.objectiveRefs)),
-    ).sort((a, b) => a - b);
+  /** Asked easiest first, then by objective. */
+  const setOrder = (a: number, b: number) =>
+    tierRank(a) - tierRank(b) || firstObjective(a) - firstObjective(b) || a - b;
+  const sets = slots.filter((s) => s.kind === "instructions" && s.phase === "practise");
+  if (sets.length > 0) {
+    // r1: every set (a cycle's check, or ruling 81's shared slide) is topped up to `SET_MAX` with
+    // the pool's questions on objectives it already asks about, so its place in the running order
+    // (after the cycle that makes it fair) does not move.
+    for (const set of sets) {
+      const within = pool.filter(
+        (i) =>
+          !used.questions.has(i) &&
+          refIndices(facts.questions[i]?.objectiveRefs).every((o) => set.objectives.includes(o)),
+      );
+      const questions = [...(set.questions ?? []), ...within].slice(0, SET_MAX).sort(setOrder);
+      for (const i of questions) used.questions.add(i);
+      set.questions = questions;
+    }
+  } else {
+    const set =
+      pool.length >= 2
+        ? slots
+            .filter(spare)
+            .sort(
+              (a, b) =>
+                Number(a.kind !== "multiple-choice") - Number(b.kind !== "multiple-choice") ||
+                compareRanks(b.rank, a.rank),
+            )[0]
+        : undefined;
+    if (set && pool.length > 0) {
+      const questions = [...(set.question === undefined ? [] : [set.question]), ...pool]
+        .slice(0, SET_MAX)
+        .sort(setOrder);
+      for (const i of questions) used.questions.add(i);
+      set.kind = "instructions";
+      delete set.question;
+      set.questions = questions;
+      set.objectives = dedupe(
+        questions.flatMap((i) => refIndices(facts.questions[i]?.objectiveRefs)),
+      ).sort((a, b) => a - b);
+    }
   }
 
   if (budget > 0) {

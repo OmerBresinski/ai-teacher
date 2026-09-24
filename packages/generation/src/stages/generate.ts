@@ -9,6 +9,7 @@ import {
   vocabularySlots,
 } from "@tj/slides";
 import { callStructured, type EditorialMiss, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
+import { codedSetSpec, withAnswersReveal } from "../lab/coded-slides";
 import {
   generateSlidePrompt,
   pickOrRequeryPrompt,
@@ -182,6 +183,17 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     photo: SlidePhoto | "none" | undefined,
   ): Promise<{ slide: Slide; misses: EditorialMiss[]; builtFrom: LessonFacts }> => {
     const builtFrom = facts;
+    // Lab only (r1 structure): a question set — starter, check or exit quiz — is printed from the
+    // facts in code, answers revealed on the slide; no model call, so no item is invented.
+    const coded = calloutsAssigned
+      ? codedSetSpec(entry, builtFrom, `${lesson.id}:${i}`)
+      : undefined;
+    if (coded) {
+      const slide = withAnswersReveal(
+        materialiseSlide(coded.spec, lesson.themeId, meta("code"), deps.ids),
+      );
+      return { slide, misses: [], builtFrom };
+    }
     // `OutlineEntrySchema` only admits generatable kinds, so this never fires; it keeps the type.
     const specSchema = (soft: boolean) => {
       const base =
