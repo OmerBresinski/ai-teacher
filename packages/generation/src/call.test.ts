@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
-import { createBudget } from "@tj/ai";
+import { AiError, createBudget, ProviderFailure } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { shapeIssue, slideSpecSchemaFor } from "@tj/slides";
 import { APICallError, type Schema } from "ai";
@@ -117,6 +117,51 @@ test("retryable provider faults are one reserved dispatch, not hidden SDK transp
   await expect(call(d)).rejects.toBe(error);
   expect(calls).toBe(1);
   expect(d.budget.totals()).toMatchObject({ calls: 0, uncertain: { calls: 1 } });
+});
+
+describe("provider failures that are not permanent are retried once", () => {
+  const fault = (isRetryable?: boolean) =>
+    new AiError("provider", "Bedrock model call failed: The model provider request failed.", {
+      cause: new ProviderFailure("APICallError", "The model provider request failed.", {
+        statusCode: 503,
+        ...(isRetryable === undefined ? {} : { isRetryable }),
+      }),
+    });
+  const flaky = (first: AiError) => {
+    const ai = createFakeAi();
+    let calls = 0;
+    ai.model = () =>
+      new MockLanguageModelV4({
+        doGenerate: async () => {
+          calls++;
+          if (calls === 1) throw first;
+          return {
+            content: [{ type: "text", text: JSON.stringify({ answer: "ok" }) }],
+            finishReason: { unified: "stop", raw: "stop" },
+            usage: {
+              inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+              outputTokens: { total: 5, text: 5, reasoning: 0 },
+            },
+            warnings: [],
+          };
+        },
+      });
+    return { ai, calls: () => calls };
+  };
+  test("a retryable or unlabelled provider failure is retried and the answer kept", async () => {
+    for (const first of [fault(true), fault()]) {
+      const { ai, calls } = flaky(first);
+      const result = await call(deps(ai));
+      expect(result.output).toEqual({ answer: "ok" });
+      expect(calls()).toBe(2);
+    }
+  });
+  test("a provider failure marked permanent is not retried", async () => {
+    const first = fault(false);
+    const { ai, calls } = flaky(first);
+    await expect(call(deps(ai))).rejects.toBe(first);
+    expect(calls()).toBe(1);
+  });
 });
 
 /** A list field, for the Bedrock "list as a string" quirk (`repair-json.ts`). */

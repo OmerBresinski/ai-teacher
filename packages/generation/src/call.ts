@@ -292,6 +292,9 @@ export function wireSchemaFor<T>(schema: z.ZodType<T>, modelId: string): z.ZodTy
   });
 }
 
+/** The pause before retrying a provider failure, so a burst has passed. */
+export const PROVIDER_RETRY_DELAY_MS = 1500;
+
 export async function callStructured<I, T>(
   options: CallStructuredOptions<I, T>,
 ): Promise<CallResult<T>> {
@@ -377,7 +380,20 @@ export async function callStructured<I, T>(
         "model returned no output; retrying once",
       );
     }
-    if (!timedOut && !empty && !NoObjectGeneratedError.isInstance(error)) throw error;
+    // A provider failure the provider does not call permanent is a hiccup too: retried once after a
+    // short pause (r2, 24 Sept: a burst of provider failures in one second lost a whole lesson's
+    // facts, since nothing retried them).
+    const provider =
+      isAiError(error, "provider") &&
+      (error.cause as { isRetryable?: boolean } | undefined)?.isRetryable !== false;
+    if (provider) {
+      deps.logger.warn(
+        { stage, promptVersion: prompt.version },
+        "model provider request failed; retrying once",
+      );
+      await new Promise((resolve) => setTimeout(resolve, PROVIDER_RETRY_DELAY_MS));
+    }
+    if (!timedOut && !empty && !provider && !NoObjectGeneratedError.isInstance(error)) throw error;
     let retryText = userText;
     // A first answer that misses only editorial rules and passes the soft schema is kept: if the
     // retry comes back worse (a shape miss, no output, a timeout), it is accepted rather than lost
