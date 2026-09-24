@@ -49,8 +49,8 @@ const SAMPLE: PlanTeachObjectiveInput = {
 };
 
 const PIN: { version: string; hash: string } = {
-  version: "plan-teach-objective.v1",
-  hash: "d56a4d52b309ef063a56b19e7f9dfe0602da322626c5e386cb43cfbaaf014f6e",
+  version: "plan-teach-objective.v2",
+  hash: "b21f50f882b9f225c4a98ccbe99f2119815050b71ca45e8c192a5faf24271dc6",
 };
 
 const KEY_IDEA = {
@@ -100,17 +100,22 @@ describe("plan-teach-objective", () => {
     expect(system).not.toContain("minute");
     // v14's teach rules, byte for byte where the sentence concerns only these fields.
     for (const kept of [
-      "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
       "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers)",
       "a key idea's date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.",
       "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
       'Follow the brief\'s worked-example line. A worked example is the method on one problem; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
-      `Where the brief gives "${PRIOR_KNOWLEDGE_LABEL}", treat it as met and build nothing outside it.`,
       "A quotation is one line, cut with an ellipsis.",
     ]) {
       expect(v14).toContain(kept);
       expect(system).toContain(kept);
     }
+    // v2 (audit B1): prior knowledge is read from the audience block.
+    expect(system).toContain(
+      "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
+    );
+    expect(system).toContain(
+      'Where the brief gives "Prior knowledge", treat it as met and build nothing outside it.',
+    );
     // Reworded for the split: the counts line without questions, the case rule without questions,
     // the units rule with "problem" for "question", the ref rule for the worked example alone.
     expect(system).toContain(
@@ -168,9 +173,25 @@ describe("plan-teach-objective", () => {
     expect(
       workedExampleLine({ ...SAMPLE, shape: lessonShapeOf({ objectiveVerb: "Recall" }, {}) }),
     ).toBeUndefined();
-    const covered = planTeachObjectivePrompt.user({ ...SAMPLE, priorKnowledge: "the Roman army" });
-    expect(covered).toContain(`${PRIOR_KNOWLEDGE_LABEL}: the Roman army`);
-    expect(rendered).not.toContain(PRIOR_KNOWLEDGE_LABEL);
+    // Prior knowledge is rendered once, by the audience block (v2), never under the objectives label.
+    const covered = planTeachObjectivePrompt.user({
+      ...SAMPLE,
+      audience: { ...SAMPLE.audience, classContext: { priorKnowledge: "the Roman army" } },
+      priorKnowledge: "the Roman army",
+    });
+    expect(covered.split("the Roman army")).toHaveLength(2);
+    expect(covered).toContain("Prior knowledge: the Roman army");
+    expect(covered).not.toContain(PRIOR_KNOWLEDGE_LABEL);
+    // The starter's questions (C1), labelled as earlier learning, only when given.
+    expect(rendered).not.toContain("Starter (earlier learning");
+    expect(
+      planTeachObjectivePrompt.user({
+        ...SAMPLE,
+        retrieval: [{ question: "What did Roman soldiers carry?", answer: "A shield" }],
+      }),
+    ).toContain(
+      "Starter (earlier learning, not this lesson):\n  - What did Roman soldiers carry? — A shield",
+    );
     const bare = planTeachObjectivePrompt.user({
       ...SAMPLE,
       curriculum: undefined,

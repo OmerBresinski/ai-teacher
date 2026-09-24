@@ -48,6 +48,16 @@ import {
  * turn lists them with their answers and one instruction: teach here what each answer rests on,
  * within the slide's limits. System text unchanged; the production render (no field) is
  * byte-identical, so the pinned hash did not move.
+ *
+ * v24 (24 Sept 2026 audit, FIX-PLAN B4): a slide whose facts include vocabulary is told, in the
+ * user turn, to define each term where it is first used or in `notes` (the outline puts terms on
+ * content slides and no rule said to define them). The later-questions line no longer says "or
+ * repeating their answer text": the question writer answers from the taught text, so no slide
+ * could teach what an answer rests on without repeating it. Reserved stems go only to the kinds
+ * that compose a stem or task (`STEM_KINDS`); a content, worked-example or copied-question slide
+ * writes none, and the list was up to 700 characters of noise on each. Not done: a per-kind system
+ * text. The system text is the same on every call, so the provider caches it; moving the shapes and
+ * examples into the user turn would shrink the call but lose that cache, costing more per slide.
  */
 
 export type GenerateSlideInput = {
@@ -141,8 +151,20 @@ const SHAPES = {
   plenary: '{ "kind": "plenary", "heading"?, "items": [1–3 strings], "factRefs", "notes"? }',
 } as const;
 
+/** The kinds that compose a stem, prompt or task of their own, so the reserved stems apply. */
+const STEM_KINDS: ReadonlySet<string> = new Set([
+  "starter",
+  "instructions",
+  "discussion",
+  "matching",
+  "fill-gap",
+  "sort",
+  "exit-ticket",
+  "plenary",
+]);
+
 export const generateSlidePrompt = {
-  version: "generate-slide.v23",
+  version: "generate-slide.v24",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -236,7 +258,12 @@ export const generateSlidePrompt = {
         `This theme shows at most ${input.vocabularySlots} vocabulary entries. When there are more terms than that, keep every term another shown definition uses, then the terms the objectives name; put the rest in \`notes\` with their definitions.`,
       );
     }
-    if (input.reservedStems.length > 0) {
+    if (input.entry.kind !== "vocabulary" && input.referenced.vocabulary.length > 0) {
+      parts.push(
+        "Define each vocabulary term in a few words where the slide first uses it, or in `notes` if that will not fit.",
+      );
+    }
+    if (input.reservedStems.length > 0 && STEM_KINDS.has(input.entry.kind)) {
       parts.push("", "Reserved for other slides or the worksheet — do not use these stems:");
       for (const stem of input.reservedStems) parts.push(`  - ${stem}`);
     }
@@ -244,7 +271,7 @@ export const generateSlidePrompt = {
       parts.push("", "Asked of pupils later in the lesson, on later slides (shown for reference):");
       for (const q of input.laterQuestions) parts.push(`  - ${q.stem} — answer: ${q.answer}`);
       parts.push(
-        "Teach here, within this slide's limits, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions or repeating their answer text.",
+        "Teach here, within this slide's limits, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions.",
       );
     }
     parts.push("", `Answer with the JSON for a "${input.entry.kind}" slide.`);

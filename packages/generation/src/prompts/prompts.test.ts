@@ -197,13 +197,13 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "a582769329a1e3bc2652808dd41c8fc87c8c68e18b1f6b95d8c46407c44253c3",
   },
   "verify-facts": {
-    version: "verify-facts.v2",
-    hash: "10c364455e0b08d0be7acb86fdb9360649e8868a3e9a98005af774630e9169a4",
+    version: "verify-facts.v3",
+    hash: "195e23663e86cc7a7508a50bbe8cd34ccd7e0224622551566f5b9c9900685b16",
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
-    version: "generate-slide.v23",
-    hash: "de143709dc710def05d4ef4684b5d05a0695541830c496b43167966305ddc74c",
+    version: "generate-slide.v24",
+    hash: "019a45f1c00021b8c83097eb21f48d92a96fbc7380451c7f4d299ac23b87003d",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -226,24 +226,24 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "5d38c9bafd55fa9938b767a885661963f6e0416bbc571642829eb5735726520f",
   },
   evaluate: {
-    version: "evaluate.v7",
-    hash: "b3efa762a89735395e2106d1520f99f1037a8f5344e61b4c1ff761ab704dbad1",
+    version: "evaluate.v8",
+    hash: "6207e235c290272a2b5c20309f9ab92655be19f0ca67b18416b8a6998e1d73ff",
   },
   repair: {
-    version: "repair.v14",
-    hash: "ca1c5adaf0500f8000c6d10f3fa79367641af34fac360ed2bb5c8bf6b381d090",
+    version: "repair.v15",
+    hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
-    version: "repair-fact.v3",
-    hash: "6e73bc9bae5de3c29b18a7d60a3b0829b8f8aea81df6003517e91853692ebe43",
+    version: "repair-fact.v4",
+    hash: "902ad8e38b65249267ceed807fbab78c5c34b5d6ecb597d86270c3c320c82765",
   },
   cascade: {
-    version: "cascade.v3",
-    hash: "026a9136c27701467d3c9175431114664ad646ad39c2df0f13d5699765b3667d",
+    version: "cascade.v4",
+    hash: "2ac2c429f2b3dc487829d322366acd6de3a88bc9d96d3e9b503f982fc27766d0",
   },
   regenerate: {
-    version: "regenerate.v3",
-    hash: "df75739369a00d8ce89e1d5e8e5e50a5deb7ea9cafe827c88c16f62019da4e3f",
+    version: "regenerate.v4",
+    hash: "decd8c0815c63c391acb2023b23a89aae83d1e2a886167ca0f238cac03bd5102",
   },
 };
 
@@ -604,7 +604,10 @@ describe("prompt versions", () => {
     // Minimalism rubric (v20): the reserved stems are listed once, in the user turn, with the one
     // instruction not to use them; the system prompt no longer repeats "never a reserved stem".
     expect(system).not.toContain("reserved stem");
-    const user = PROMPTS["generate-slide"].user(SAMPLE_INPUTS["generate-slide"] as never);
+    const user = PROMPTS["generate-slide"].user({
+      ...(SAMPLE_INPUTS["generate-slide"] as object),
+      entry: { kind: "instructions", factRefs: ["q4"] },
+    } as never);
     expect(user).toContain("do not use these stems");
   });
 
@@ -649,11 +652,11 @@ describe("prompt versions", () => {
       ],
     } as never);
     expect(withLater).toContain(
-      "Asked of pupils later in the lesson, on later slides (shown for reference):\n  - Which state has particles furthest apart? — answer: Gas\n  - Explain why a gas fills its container. — answer: Its particles move freely.\nTeach here, within this slide's limits, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions or repeating their answer text.",
+      "Asked of pupils later in the lesson, on later slides (shown for reference):\n  - Which state has particles furthest apart? — answer: Gas\n  - Explain why a gas fills its container. — answer: Its particles move freely.\nTeach here, within this slide's limits, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions.",
     );
-    // The block sits after the reserved stems and before the closing line, once.
-    expect(withLater.indexOf("Asked of pupils later")).toBeGreaterThan(
-      withLater.indexOf("Reserved for other slides"),
+    // The block sits before the closing line, once.
+    expect(withLater.indexOf("Asked of pupils later")).toBeLessThan(
+      withLater.indexOf("Answer with the JSON"),
     );
     expect(withLater.split("Asked of pupils later")).toHaveLength(2);
     // Absent or empty (production, and lab slides nothing later tests): the block is not rendered.
@@ -661,6 +664,25 @@ describe("prompt versions", () => {
     const empty = PROMPTS["generate-slide"].user({ ...base, laterQuestions: [] } as never);
     expect(without).not.toContain("later in the lesson");
     expect(empty).toBe(without);
+  });
+
+  test("audit B4: reserved stems reach only the kinds that compose one; vocabulary is defined where used", () => {
+    const base = SAMPLE_INPUTS["generate-slide"] as { referenced: object };
+    const render = (kind: string) =>
+      PROMPTS["generate-slide"].user({ ...base, entry: { kind, factRefs: ["v1", "k1"] } } as never);
+    expect(render("sort")).toContain("Reserved for other slides");
+    for (const kind of ["content", "worked-example", "multiple-choice", "vocabulary"]) {
+      expect(render(kind)).not.toContain("Reserved for other slides");
+    }
+    const define = "Define each vocabulary term in a few words where the slide first uses it";
+    expect(render("content")).toContain(define);
+    expect(render("vocabulary")).not.toContain(define);
+    const noVocabulary = PROMPTS["generate-slide"].user({
+      ...base,
+      referenced: { ...base.referenced, vocabulary: [] },
+      entry: { kind: "content", factRefs: ["k1"] },
+    } as never);
+    expect(noVocabulary).not.toContain(define);
   });
 
   test("TEACH-241: the judge picks a photo showing at least one required item, not all of them", () => {
@@ -766,6 +788,31 @@ describe("prompt versions", () => {
     expect(text.indexOf("- [answer-correctness, error] Wrong.")).toBeLessThan(
       text.indexOf("- [verb-fit, warning] Asks pupils to name, not explain."),
     );
+    // Audit B6: the plan (C2) and the current factRefs (C3) render only when given; the photo rule
+    // travels with the photograph, not in the system text.
+    expect(text).not.toContain("Planned to teach");
+    expect(PROMPTS.repair.system).not.toContain(
+      "An `image-text` slide is written to its photograph",
+    );
+    const planned = PROMPTS.repair.user({
+      ...(SAMPLE_INPUTS.repair as RepairInput),
+      planned: { factRefs: ["k6", "q3"], brief: "Shows how a groyne traps sand." },
+      currentFactRefs: ["k6"],
+    });
+    expect(planned).toContain(
+      "Which state?\nfactRefs: k6\n\nPlanned to teach k6, q3: Shows how a groyne traps sand.\nKeep every fact the slide was planned to teach; fix a warning without dropping one.",
+    );
+    const photographed = PROMPTS.repair.user({
+      ...(SAMPLE_INPUTS.repair as RepairInput),
+      target: {
+        kind: "slide",
+        slideKind: "image-text",
+        slideId: "s4",
+        text: "Look",
+        photo: "none",
+      },
+    });
+    expect(photographed).toContain("An `image-text` slide is written to its photograph");
     // A block repair has no context and renders no header for it.
     const { context: _context, ...withoutContext } = SAMPLE_INPUTS.repair as never as RepairInput;
     expect(PROMPTS.repair.user(withoutContext)).not.toContain("Other slides in the lesson");

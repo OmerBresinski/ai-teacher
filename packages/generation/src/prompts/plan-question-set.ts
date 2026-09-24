@@ -7,7 +7,7 @@ import { distractorsEchoingAnswer } from "../specs";
 import { QUESTION_DEMANDS, QUESTION_FORMS } from "./plan-facts-objective";
 import type { PlanTeachObjectiveOutput } from "./plan-teach-objective";
 import { shapeBlock } from "./shape";
-import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
+import { type Audience, audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./shared";
 
 /*
  * Plan, question-set call (lab/pw, wave 4; 24 Sept 2026): the questions for ONE objective and ONE
@@ -50,6 +50,16 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  * Luna to copy "slide" on exit calls. Soft-build count tolerance as described above
  * (`planQuestionSetShape`); the strict build stays exact.
  *
+ * v4 (24 Sept 2026 audit, FIX-PLAN B3): "three distractors", with the way out the Luna guide (rule 7)
+ * measured, leave multiple-choice out when three real errors are not there (18 of 92 items had two
+ * or four, and the outline cannot set them); true-false only with a misconception-tagged
+ * distractor and never on exit (the outline drops it otherwise); "any example in the taught text"
+ * (every key idea has its own example, and three sets restated one); the system's "exit" sentence
+ * is gone (EXIT_LINE says it), and on exit calls EXIT_LINE's caps replace the general ones, so an
+ * exit distractor has one cap, not two. The `avoid` branch is worded as a plain instruction; the
+ * exit call receives the slide set's stems (contract C4). The starter's questions render as
+ * earlier learning (C1).
+ *
  * Output item: EXACTLY v14's question item (same keys, key order, caps, enums), so `merge-objective-
  * facts.ts` and the outline read `{ ...teach, questions: [...sets] }` unchanged: `keyIdeaRefs`
  * index the taught key ideas as the block shows them (0-based), `misconceptionRef` index 0 is the
@@ -75,6 +85,8 @@ export type PlanQuestionSetInput = {
   count: number;
   /** Stems already written for this objective's other set, when that set came first. Optional. */
   avoid?: string[] | undefined;
+  /** The starter's retrieval questions (C1): earlier learning, not this lesson. Optional. */
+  retrieval?: Retrieval | undefined;
 };
 
 const lineFor =
@@ -239,9 +251,7 @@ export function taughtBlock(taught: PlanTeachObjectiveOutput): string {
 }
 
 /** The house rules less the `factRefs` line (no ids here) and the language-only pitch line (v14). */
-const QUESTION_HOUSE_RULES = HOUSE_RULES.split("\n")
-  .filter((rule) => !rule.startsWith("Every fact id") && !rule.startsWith("Pitch the language"))
-  .join("\n");
+const QUESTION_HOUSE_RULES = houseRules("british", "names");
 
 /** v14's limits line, the question fields only. */
 const LENGTH_LIMITS = `Length limits (characters): stem and answer ${SPEC_LIMITS.stem}; reasoning ${SPEC_LIMITS.footnote}; distractor ${SPEC_LIMITS.option}. A quotation is one line, cut with an ellipsis.`;
@@ -262,10 +272,10 @@ export const QUESTION_SET_SHAPE_SKETCH =
 const EXIT_MC_STEM = 100;
 /** Four options share what the stem leaves of the line, less the letters and separators (16). */
 const EXIT_OPTION = Math.floor((MC_LINE_MAX - EXIT_MC_STEM - 16) / 4 / 5) * 5;
-export const EXIT_LINE = `Each is one line of the exit quiz: either multiple choice, with a stem of at most ${EXIT_MC_STEM} characters and the answer and each distractor at most ${EXIT_OPTION}; or "forms" ["open-response"] with no distractors and a stem of at most ${LINE_MAX} characters.`;
+export const EXIT_LINE = `Each is one line of the exit quiz: either multiple choice, with a stem of at most ${EXIT_MC_STEM} characters and the answer and each distractor at most ${EXIT_OPTION}; or "forms" ["open-response"] with no distractors and a stem of at most ${LINE_MAX} characters. These caps replace the general length limits.`;
 
 export const planQuestionSetPrompt = {
-  version: "plan-question-set.v3",
+  version: "plan-question-set.v4",
   system: [
     "You are an experienced UK teacher writing the questions for one objective of a lesson, for one use, from the text its slides will teach.",
     "",
@@ -273,13 +283,12 @@ export const planQuestionSetPrompt = {
     QUESTION_HOUSE_RULES,
     "Pitch the language, numbers and problem steps at the year group and reading level given.",
     'Write as many questions as the brief\'s "Write" line says, all for the use it names, and set "use" to that use.',
-    'A judge reads each question beside the taught text and nothing else. What matters, in order: every question is answerable from the taught text alone, the fact, reason, method or quotation its answer needs being stated there; each takes a case of its own rather than repeating the taught example, and may invent its scenario and numbers, saying so ("a shop", "suppose").',
-    'An "exit" question is answered in one line or by choosing an option, so the teacher can check it at a glance.',
+    'A judge reads each question beside the taught text and nothing else. What matters, in order: every question is answerable from the taught text alone, the fact, reason, method or quotation its answer needs being stated there; each takes a case of its own rather than repeating any example in the taught text, and may invent its scenario and numbers, saying so ("a shop", "suppose").',
     "Follow the brief's tier line.",
     "Every quantity carries its unit, in the answer and each option as well as the stem: 5 stickers, not 5.",
     'Where a distractor heads off the misconception, say so in "misconceptionRef".',
-    'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then each distractor, a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
-    '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set: multiple-choice, true-false, open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it, by the index shown.',
+    'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors (without three real errors to use, leave multiple-choice out of "forms"), each a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
+    '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set: multiple-choice, true-false (only with a distractor that has a "misconceptionRef", never on exit), open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it, by the index shown.',
     LENGTH_LIMITS,
     "",
     "JSON, in this shape:",
@@ -296,12 +305,10 @@ export const planQuestionSetPrompt = {
       "",
       "Taught text for this objective, as the slides will say it:",
       taughtBlock(input.taught),
+      ...retrievalBlock(input.retrieval),
     ];
     if (input.avoid && input.avoid.length > 0) {
-      parts.push(
-        "",
-        "Already asked of this objective, in its other set (write different questions):",
-      );
+      parts.push("", "Already asked of this objective; write different questions:");
       for (const stem of input.avoid) parts.push(`  - ${stem}`);
     }
     const noun = input.count === 1 ? "question" : "questions";

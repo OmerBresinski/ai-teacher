@@ -18,6 +18,13 @@ import {
  * rewritten slide is written to the objective verb too. Since lab round 1 (v14) a slide call is
  * also shown up to six other slides read-only, and the verb-fit, repetition and tested-not-taught
  * warnings arrive with the errors (scratchpad/quality-prd/lab/r1/checks.md §3).
+ *
+ * v15 (24 Sept 2026 audit, FIX-PLAN B6): the target's plan reaches the call (contract C2: the
+ * facts it was planned to teach and its brief, with one rule beside them — a verb-fit warning fix
+ * deleted the groyne example an exit question needed) and so do its current `factRefs` (C3). The
+ * target lines carry spec-field labels from the caller (C5). The image-text rule moves from the
+ * system text to the user turn, beside the photograph it is about, so the calls with no
+ * photograph (all of them in the lab) do not carry it.
  */
 
 /** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */
@@ -66,10 +73,17 @@ export type RepairInput = {
   shape: string;
   /** Other slides shown read-only (slide repairs only; lab round 1). */
   context?: { slides: RepairContextSlide[] } | undefined;
+  /** What the outline planned the target to teach (C2): its fact ids and brief. Optional. */
+  planned?: { factRefs: string[]; brief: string } | undefined;
+  /** The target's `factRefs` as it stands (C3). Optional. */
+  currentFactRefs?: string[] | undefined;
 };
 
+/** The image-text rule and what an image-fit fix may change, sent beside the photograph. */
+const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
+
 export const repairPrompt = {
-  version: "repair.v14",
+  version: "repair.v15",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",
@@ -81,7 +95,6 @@ export const repairPrompt = {
     "Make each point, example and quotation once: where another slide shown already makes it, take a different one from the facts.",
     "A question, task or model answer asks only what the slides marked taught earlier and the target's facts state; for tested-not-taught, narrow the task to that.",
     "Write to the supplied objective verb. A verb-fit problem is fixed by changing the task, not the kind, at the class's level: in Years 1 and 2 an explain item may keep its naming question and add the reason, answered in one short sentence aloud or on one line.",
-    `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`,
     "An unanchored task such as 'Explain your decision' needs its question first: 'Is a guinea pig a rodent? Explain your decision.'",
     "",
     "Example answer for a multiple-choice slide:",
@@ -136,7 +149,17 @@ export const repairPrompt = {
       ...(t.kind === "slide" && t.fields && t.fields.length > 0
         ? t.fields.map((f) => `${f.field}: ${f.text}`)
         : [t.text]),
-      ...(t.kind === "slide" && t.photo !== undefined ? ["", ...photoBlock(t.photo)] : []),
+      ...(input.currentFactRefs?.length ? [`factRefs: ${input.currentFactRefs.join(", ")}`] : []),
+      ...(input.planned
+        ? [
+            "",
+            `Planned to teach ${input.planned.factRefs.join(", ")}: ${input.planned.brief}`,
+            "Keep every fact the slide was planned to teach; fix a warning without dropping one.",
+          ]
+        : []),
+      ...(t.kind === "slide" && t.photo !== undefined
+        ? ["", ...photoBlock(t.photo), PHOTO_RULE]
+        : []),
       ...(others.length > 0
         ? [
             "",
