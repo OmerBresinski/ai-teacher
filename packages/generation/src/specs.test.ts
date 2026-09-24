@@ -1247,6 +1247,66 @@ describe("TEACH-257: editorial and shape rules in the Plan and worksheet schemas
   });
 });
 
+describe("planFactsSchemaFor: a misplaced callout is editorial and dropped, never fatal (CB run, 24 Sept)", () => {
+  const strict = planFactsSchemaFor(FIXTURES.planSkeleton, EXPLAIN_SOME);
+  const soft = planFactsSchemaFor(FIXTURES.planSkeleton, EXPLAIN_SOME, { soft: true });
+  const withCallouts = (callouts: Record<number, unknown>) => {
+    const f = structuredClone(FIXTURES.planFacts);
+    f.outlineFactRefs = f.outlineFactRefs.map((entry, i) =>
+      callouts[i] ? { ...entry, callout: callouts[i] as never } : entry,
+    );
+    return f;
+  };
+  const good = { kind: "key-words", refs: [{ type: "vocabulary", index: 1 }] };
+
+  test("a callout on its own list validates in both builds and is kept", () => {
+    const f = withCallouts({ 1: good });
+    expect(strict.safeParse(f).success).toBe(true);
+    expect(soft.parse(f).outlineFactRefs[1]?.callout).toEqual(good as never);
+  });
+
+  test("the wrong list or an index past the end: editorial issues in strict, the callout dropped in soft", () => {
+    const f = withCallouts({
+      1: good,
+      2: { kind: "example", refs: [{ type: "misconception", index: 0 }] },
+      3: {
+        kind: "key-words",
+        refs: [
+          { type: "vocabulary", index: 0 },
+          { type: "keyIdea", index: 0 },
+        ],
+      },
+      4: { kind: "watch-out", refs: [{ type: "misconception", index: 9 }] },
+    });
+    const r = strict.safeParse(f);
+    expect(r.success).toBe(false);
+    const issues = r.error?.issues ?? [];
+    expect(issues.every((issue) => isEditorialIssue(issue))).toBe(true);
+    expect(issues.map((i) => i.path.join("."))).toEqual([
+      "outlineFactRefs.2.callout.refs.0",
+      "outlineFactRefs.3.callout.refs.1",
+      "outlineFactRefs.4.callout.refs.0",
+    ]);
+    expect(issues[0]?.message).toBe(
+      'Callout kind "example" may cite only keyIdea references, index below 2.',
+    );
+    const out = soft.parse(f);
+    expect(out.outlineFactRefs.map((e) => e.callout?.kind)).toEqual([
+      undefined,
+      "key-words",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    // The slide keeps its facts; only the box goes.
+    expect(out.outlineFactRefs[2]?.factRefs).toEqual(f.outlineFactRefs[2]?.factRefs as never);
+    expect(() => assignFactIds(FIXTURES.planSkeleton, out, 60)).not.toThrow();
+  });
+});
+
 describe("withAssignedCallout (quality PRD G3): the box is present exactly when assigned, of that kind", () => {
   const content = {
     kind: "content",

@@ -541,13 +541,75 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
     expect(log.text()).not.toContain("did not validate on the retry");
   });
 
-  test("a mixed second miss (one shape issue beside editorial ones) still fails the call", async () => {
+  test("a mixed second miss after a shape miss still fails the call", async () => {
     const ai = createFakeAi({
-      script: [worked([longStep]), worked([longStep, ""])],
+      script: [worked("not an array"), worked([longStep, ""])],
     });
     const log = capturingLogger();
     await expect(run(ai, log)).rejects.toBeInstanceOf(StageFailure);
     expect(log.text()).toContain('"editorialOnly":false');
+    expect(log.text()).toContain("giving up");
+  });
+
+  test("keep the best answer: an editorial-only first answer survives a retry that misses shape (CB run, 24 Sept)", async () => {
+    const ai = createFakeAi({
+      script: [worked([longStep]), worked([longStep, ""])],
+    });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(ai.calls).toHaveLength(2);
+    expect(result.attempts).toBe(2);
+    // The first answer, parsed by the soft schema, with its own misses.
+    expect(result.output).toMatchObject({ kind: "worked-example", steps: [longStep] });
+    expect(result.editorialMisses).toEqual([
+      { path: ["steps", 0], message: "Too long: at most 84 characters." },
+    ]);
+    expect(log.text()).toContain("first answer accepted");
+    expect(log.text()).not.toContain("giving up");
+  });
+
+  test("keep the best answer: a retry that is itself editorial-only is still the one accepted", async () => {
+    const shorter = "y".repeat(85);
+    const ai = createFakeAi({ script: [worked([longStep]), worked([shorter])] });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(result.output).toMatchObject({ steps: [shorter] });
+    expect(log.text()).not.toContain("first answer accepted");
+  });
+
+  test("keep the best answer: without a soft schema the first answer is not kept", async () => {
+    const ai = createFakeAi({ script: [worked([longStep]), worked("not an array")] });
+    const log = capturingLogger();
+    await expect(run(ai, log, false)).rejects.toBeInstanceOf(StageFailure);
+    expect(log.text()).toContain("giving up");
+  });
+
+  test("keep the best answer: an editorial-only first answer survives an empty retry", async () => {
+    const response = (text: string | undefined) => ({
+      content: text === undefined ? [] : [{ type: "text" as const, text }],
+      finishReason: { unified: "stop" as const, raw: "stop" },
+      usage: {
+        inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+        outputTokens: { total: 5, text: 5, reasoning: undefined },
+        raw: undefined,
+      },
+      warnings: [],
+    });
+    let calls = 0;
+    const ai = createFakeAi();
+    ai.model = () =>
+      new MockLanguageModelV4({
+        doGenerate: async () => {
+          calls++;
+          return calls === 1 ? response(worked([longStep])) : response(undefined);
+        },
+      });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(calls).toBe(2);
+    expect(result.output).toMatchObject({ steps: [longStep] });
+    expect(result.editorialMisses.map((m) => m.path)).toEqual([["steps", 0]]);
+    expect(log.text()).toContain("first answer accepted");
   });
 
   test("without a soft schema an editorial-only second miss fails as before, logged editorialOnly: true", async () => {

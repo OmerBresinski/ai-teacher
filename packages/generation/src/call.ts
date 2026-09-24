@@ -38,7 +38,9 @@ import {
  * only** (ADR 0025 §7, TEACH-257): every issue carries the `editorialIssue` tag and the caller gave
  * a `soft` build of the schema. Then the retry's answer is parsed with the soft schema, accepted,
  * and each issue comes back as an `EditorialMiss` for the stage to record as a `spec-rule` finding
- * (`specRuleFinding`), which Repair acts on. A shape miss — a type, a missing field, a list the
+ * (`specRuleFinding`), which Repair acts on. The best answer is kept: when the first answer missed
+ * only editorial rules and the retry does worse (a shape miss, no output, a timeout), the first is
+ * accepted the same way, with its own misses. A shape miss — a type, a missing field, a list the
  * recipe has no slot for, invalid JSON — still fails the call: the model did not give us the thing.
  * Nothing about the prompt or the model's text is logged (ADR 0015); only the issue messages
  * travel back into the retry prompt.
@@ -368,7 +370,23 @@ export async function callStructured<I, T>(
     }
     if (!timedOut && !empty && !NoObjectGeneratedError.isInstance(error)) throw error;
     let retryText = userText;
+    // A first answer that misses only editorial rules and passes the soft schema is kept: if the
+    // retry comes back worse (a shape miss, no output, a timeout), it is accepted rather than lost
+    // (CB run, 24 Sept: two objectives lost their facts when a cap-only first answer was retried
+    // into a shape failure).
+    let fallback: CallResult<T> | undefined;
     if (NoObjectGeneratedError.isInstance(error)) {
+      const firstMisses = editorialMissesOf(error);
+      const firstAccepted = firstMisses && soft ? softParse(soft, error.text) : undefined;
+      if (firstMisses && firstAccepted !== undefined) {
+        fallback = {
+          output: firstAccepted,
+          usage: usageOf(error.usage ?? {}),
+          attempts: 2,
+          modelId,
+          editorialMisses: firstMisses,
+        };
+      }
       // The failed attempt was still paid for. `error.text` (the model's words) is never logged.
       const issues = issuesOf(error);
       // Log finite issue codes/counts; even paths and custom messages may echo model content.
@@ -377,7 +395,7 @@ export async function callStructured<I, T>(
           stage,
           promptVersion: prompt.version,
           issues: issuesOf(error, "log"),
-          editorialOnly: editorialMissesOf(error) !== null,
+          editorialOnly: firstMisses !== null,
         },
         "structured output did not validate; retrying once",
       );
@@ -391,7 +409,20 @@ export async function callStructured<I, T>(
       const second = await attempt(retryText);
       return { ...second, attempts: 2 };
     } catch (again) {
-      if (!NoObjectGeneratedError.isInstance(again)) throw again;
+      if (!NoObjectGeneratedError.isInstance(again)) {
+        // A retry that timed out or came back empty loses nothing when the first answer is kept.
+        const lost =
+          NoOutputGeneratedError.isInstance(again) ||
+          (again instanceof StageFailure && again.reason === "timeout");
+        if (fallback && lost) {
+          deps.logger.warn(
+            { stage, promptVersion: prompt.version },
+            "structured output retry returned nothing; first answer accepted",
+          );
+          return fallback;
+        }
+        throw again;
+      }
       const misses = editorialMissesOf(again);
       const logged = {
         stage,
@@ -411,6 +442,14 @@ export async function callStructured<I, T>(
           modelId,
           editorialMisses: misses,
         };
+      }
+      // The retry did worse than a first answer that missed only editorial rules: keep that one.
+      if (fallback) {
+        deps.logger.warn(
+          logged,
+          "structured output did not validate on the retry; first answer accepted",
+        );
+        return fallback;
       }
       // pino's `err` serializer drops a non-Error `cause`, so the second miss is logged here.
       deps.logger.warn(logged, "structured output did not validate on the retry; giving up");

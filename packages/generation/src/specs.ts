@@ -51,7 +51,7 @@ export { BlockSpecSchema, SlideSpecSchema };
  * Shape and editorial rules (ADR 0025 §7, TEACH-257; the tag and the two builds are `@tj/slides`'
  * `editorialIssue` / `SpecSchemaOptions`). Here the shape rules are the field types, the non-empty
  * strings, the list floors, every ordinal reference (a dangling id would fail `LessonFactsSchema`
- * in `assignFactIds` with no retry) and the caps `@tj/domain` re-checks on the stored facts
+ * in `assignFactIds` with no retry) except a callout's, which the soft build drops instead, and the caps `@tj/domain` re-checks on the stored facts
  * (`PlanImageBriefSchema`). Everything else we ask of the content — text caps, list ceilings,
  * counts, coverage, wording, phases, the lesson shape — is editorial: `callStructured` accepts a
  * retry that misses only those and Plan records them as `spec-rule` warnings.
@@ -833,7 +833,7 @@ export function planFactsSchemaFor(
 ): z.ZodType<PlanFacts> {
   const soft = options.soft === true;
   const minimums = tierMinimumsOf(shape.tierWeights);
-  return planFactsShape(soft).superRefine((facts, ctx) => {
+  const refined = planFactsShape(soft).superRefine((facts, ctx) => {
     // The ordinal references (below, `refineRef`) are shape; everything written with `issue` —
     // coverage, self-containment, the pitch's own words, the tier floors, kind fit — is editorial
     // and left out of the soft build.
@@ -894,10 +894,19 @@ export function planFactsSchemaFor(
         });
       }
       refineOutlineRefs(ctx, ["outlineFactRefs", i, "factRefs"], entry.factRefs, sizes);
-      if (entry.callout) {
-        const only = CALLOUT_LIST[entry.callout.kind];
-        refineOutlineRefs(ctx, ["outlineFactRefs", i, "callout", "refs"], entry.callout.refs, {
-          [only]: sizes[only],
+      // A callout citing the wrong list (or past its end) is a cosmetic miss, not a broken plan:
+      // editorial here, and the soft build drops the callout (`dropMisplacedCallouts`).
+      const callout = entry.callout;
+      if (callout) {
+        const only = CALLOUT_LIST[callout.kind];
+        callout.refs.forEach((ref, j) => {
+          if (!calloutRefFits(callout.kind, ref, sizes)) {
+            issue(
+              `Callout kind "${callout.kind}" may cite only ${only} references, index below ${sizes[only]}.`,
+              ["outlineFactRefs", i, "callout", "refs", j],
+              "callout-ref-misplaced",
+            );
+          }
         });
       }
     });
@@ -981,6 +990,41 @@ export function planFactsSchemaFor(
       }
     });
   });
+  return soft ? refined.transform(dropMisplacedCallouts) : refined;
+}
+
+/** Whether one callout reference cites its kind's list and lands inside it. */
+function calloutRefFits(
+  kind: (typeof CALLOUT_KINDS)[number],
+  ref: OrdinalRef,
+  sizes: Record<"keyIdea" | "misconception" | "vocabulary", number>,
+): boolean {
+  const only = CALLOUT_LIST[kind];
+  return ref.type === only && ref.index < sizes[only];
+}
+
+/**
+ * The soft build's answer with every callout that cites a wrong or missing fact left out, so the
+ * plan keeps the slide and loses only the box; the strict build reported each one as editorial,
+ * so the stage records it as a `spec-rule` warning.
+ */
+function dropMisplacedCallouts(facts: PlanFacts): PlanFacts {
+  const sizes = {
+    keyIdea: facts.keyIdeas.length,
+    misconception: facts.misconceptions.length,
+    vocabulary: facts.vocabulary.length,
+  };
+  return {
+    ...facts,
+    outlineFactRefs: facts.outlineFactRefs.map((entry) => {
+      const callout = entry.callout;
+      if (!callout || callout.refs.every((ref) => calloutRefFits(callout.kind, ref, sizes))) {
+        return entry;
+      }
+      const { callout: _dropped, ...rest } = entry;
+      return rest;
+    }),
+  };
 }
 
 /** The fact list each callout kind is filled from (the ordinal twin of the domain's `CALLOUT_SOURCE`). */
