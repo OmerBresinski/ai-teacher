@@ -230,7 +230,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   repair: {
     version: "repair.v14",
-    hash: "051cbf3a9bf021040bd8b2290038fe7aff788f42a26cc349f2f8b21355ce9787",
+    hash: "ca1c5adaf0500f8000c6d10f3fa79367641af34fac360ed2bb5c8bf6b381d090",
   },
   "repair-fact": {
     version: "repair-fact.v3",
@@ -292,7 +292,7 @@ describe("prompt versions", () => {
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
       // v13 was 415 words. v14 (lab round 1, +97: errors first and answer lines kept, once-in-the-
-      // lesson against the slides shown, taught-earlier scope, verb-fit at the class's level) is 512.
+      // lesson against the slides shown, taught-earlier scope, verb-fit at the class's level) is 512; the review wording (errors, then warnings) makes it 515.
       repair: 520,
     } as const;
     for (const name of Object.keys(budgets) as (keyof typeof budgets)[]) {

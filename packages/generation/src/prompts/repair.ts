@@ -77,7 +77,7 @@ export const repairPrompt = {
     "Rules:",
     HOUSE_RULES,
     "Answers must agree with the facts.",
-    "Fix every problem listed, errors first, changing the text a finding quotes and what depends on it; other items and headings stay. `notes` are classroom guidance, never a change log, and keep their answer lines.",
+    "Fix every problem listed — errors, then warnings — changing only the text each quotes and what depends on it; other items and headings stay. `notes` are classroom guidance, never a change log, and keep their answer lines.",
     "Make each point, example and quotation once: where another slide shown already makes it, take a different one from the facts.",
     "A question, task or model answer asks only what the slides marked taught earlier and the target's facts state; for tested-not-taught, narrow the task to that.",
     "Write to the supplied objective verb. A verb-fit problem is fixed by changing the task, not the kind, at the class's level: in Years 1 and 2 an explain item may keep its naming question and add the reason, answered in one short sentence aloud or on one line.",
