@@ -810,7 +810,7 @@ describe("materialiseSlide with a callout (UX ruling 84)", () => {
       ["content", "two-column"],
       ["image-text", "default"],
     ] as const) {
-      test(`${kind}/${variant} on ${theme.id}: label and text on the slide, three named elements, stamped`, () => {
+      test(`${kind}/${variant} on ${theme.id}: label and text on the slide, four named elements, stamped`, () => {
         const spec = { ...minimalSpec(kind), callout } as SlideSpec;
         const slide = materialiseSlide(spec, theme.id, meta, counter(), variant);
         expect(SlideSchema.safeParse(slide).success).toBe(true);
@@ -818,7 +818,12 @@ describe("materialiseSlide with a callout (UX ruling 84)", () => {
         expect(text).toContain(CALLOUT_LABELS["watch-out"]);
         expect(text).toContain(callout.text);
         const names = slide.elements.filter(isCalloutElement).map((el) => el.name);
-        expect(names).toEqual([CALLOUT_NAMES.card, CALLOUT_NAMES.label, CALLOUT_NAMES.text]);
+        expect(names).toEqual([
+          CALLOUT_NAMES.card,
+          CALLOUT_NAMES.icon,
+          CALLOUT_NAMES.label,
+          CALLOUT_NAMES.text,
+        ]);
         for (const el of slide.elements) expect(el.authoredBy).toBe("ai");
       });
     }

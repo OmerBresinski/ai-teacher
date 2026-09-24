@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { parseLesson, type TextPreset } from "@tj/domain/documents";
+import { CALLOUT_KINDS, parseLesson, type TextPreset } from "@tj/domain/documents";
 import { newLesson, newSlide } from "./factories";
 import {
+  calloutTone,
   DEFAULT_THEME_ID,
   FIT_VERSION,
   fontFloor,
@@ -70,4 +71,31 @@ describe("theme catalogue", () => {
       expect(() => parseLesson(JSON.parse(JSON.stringify(lesson)))).not.toThrow();
     }
   });
+});
+
+/** WCAG 2 contrast ratio between two `#RRGGBB` colours. */
+function contrast(a: string, b: string): number {
+  const lum = (hex: string) => {
+    const [r, g, bl] = [1, 3, 5].map((i) => {
+      const v = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    }) as [number, number, number];
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+describe("callout tones", () => {
+  for (const theme of THEMES) {
+    test(`${theme.id}: each card's ink reads at 7:1, its icon at 4.5:1, and the card stands off the ground`, () => {
+      for (const kind of CALLOUT_KINDS) {
+        const tone = calloutTone(theme, kind);
+        expect(contrast(tone.ink, tone.fill), `${kind} ink`).toBeGreaterThanOrEqual(7);
+        expect(contrast(tone.icon, tone.fill), `${kind} icon`).toBeGreaterThanOrEqual(4.5);
+        // The hairline (light) or the wash (dark) is what separates the card from the slide.
+        expect(contrast(tone.line, theme.colors.background), `${kind} edge`).toBeGreaterThan(1.3);
+      }
+    });
+  }
 });

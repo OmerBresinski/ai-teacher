@@ -128,7 +128,7 @@ describe("a callout in the image-text column", () => {
         theme.id,
       );
       expect(out.overflow).toContain(CALLOUT_NAMES.text);
-      expect(out.slide.elements.filter(isCalloutElement)).toHaveLength(3);
+      expect(out.slide.elements.filter(isCalloutElement)).toHaveLength(4);
     });
   }
 });

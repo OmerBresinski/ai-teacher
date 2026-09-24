@@ -1,10 +1,12 @@
 import type {
   CalloutKind,
+  IconElement,
   ShapeElement,
   SlideElement,
   TextElement,
   Theme,
 } from "@tj/domain/documents";
+import { uid } from "./factories";
 import type { Rect } from "./geometry";
 import { BASELINE, SAFE, SPACE } from "./grid";
 import {
@@ -21,17 +23,20 @@ import {
 } from "./layouts";
 import { SAFE_BOTTOM } from "./metrics";
 import { resolveFontSize } from "./text-style";
+import { calloutTone } from "./themes";
 
 /*
  * The slide callout (UX ruling 84, TEACH-75): Chalkie's labelled card under the body, refined to
- * the design system. One rounded card on `surface` with the theme's radius (the worked example's
- * "Working card" recipe), a `caption` eyebrow as its label ("WATCH OUT", "EXAMPLE", "KEY WORDS")
- * and the text in `small`, one size down from the body, as Chalkie sets it. The card sits in the
- * text column under the body, full column width, never over a picture, and is sized to its text
- * as Chalkie's is: the body above gives up room only when the card reaches into its box. No
- * emoji, no tint per kind: the kind shows in the label's colour alone.
+ * the design system. One rounded card with the theme's radius, tinted per kind with a hairline in
+ * the same hue (`CALLOUT_TONES`: rose for a warning, mint for an example, amber for key words, a
+ * light and a dark set); a drawn lucide icon per kind at the head of the label row, where Chalkie
+ * puts an emoji; a `caption` eyebrow as the label ("WATCH OUT", "EXAMPLE", "KEY WORDS"); and the
+ * text in `small`, one size down from the body, label and text in the hue's ink as Chalkie sets
+ * them. The card sits in the text column under the body, full column width, never over a picture,
+ * and is sized to its text as Chalkie's is: the body above gives up room only when the card
+ * reaches into its box.
  *
- * `applyCallout` is the only entry: a laid-out recipe in, the same layout plus three named elements
+ * `applyCallout` is the only entry: a laid-out recipe in, the same layout plus four named elements
  * out. A spec without a callout never reaches it, so every recipe stays byte-identical.
  */
 
@@ -42,9 +47,20 @@ export const CALLOUT_LABELS: Record<CalloutKind, string> = {
   "key-words": "KEY WORDS",
 };
 
-/** The three elements a callout adds, by `name`; the card first so the text stays above it. */
+/**
+ * The drawn icon each kind carries (lucide names from the editor's icon set): Chalkie's warning
+ * sign, magnifier and key, drawn in the theme's stroke rather than set as emoji.
+ */
+export const CALLOUT_ICONS: Record<CalloutKind, string> = {
+  "watch-out": "triangle-alert",
+  example: "search",
+  "key-words": "key",
+};
+
+/** The four elements a callout adds, by `name`; the card first so the rest stay above it. */
 export const CALLOUT_NAMES = {
   card: "Callout card",
+  icon: "Callout icon",
   label: "Callout label",
   text: "Callout text",
 } as const;
@@ -74,9 +90,21 @@ const ADVANCE = 0.5;
 /** Gap between the label row and the text, the working card's `capH + 12` tightened one step. */
 const LABEL_GAP = 8;
 
-/** Which kind is a warning: the one label set in the accent, the others in `muted`. */
-const labelColour = (t: Theme, kind: CalloutKind): string =>
-  kind === "watch-out" ? t.colors.accent : t.colors.muted;
+/**
+ * The icon's square, in slide points: Chalkie's 24px emoji at 720 wide is 32pt here against a
+ * 19pt label; ours stands about 1.7 caption sizes tall, as theirs does, and sets the label row's
+ * height, the label centred on it.
+ */
+export const CALLOUT_ICON = 28;
+
+/** Gap between the icon and the label. */
+const ICON_GAP = 8;
+
+/** The card's hairline, in points (non-scaling in the renderer). */
+const CARD_STROKE = 1.5;
+
+/** Height of the label row: the icon or the caption box, whichever is taller. */
+const labelRowH = (t: Theme): number => Math.max(CALLOUT_ICON, boxH(t, "caption"));
 
 export type CalloutSpec = { kind: CalloutKind; text: string };
 
@@ -93,7 +121,7 @@ export function calloutLines(t: Theme, text: string, width: number, max: number)
 
 /** Height of a callout card holding `lines` lines of `small` under its label. */
 export function calloutHeight(t: Theme, lines: number): number {
-  return CARD_PAD + boxH(t, "caption") + LABEL_GAP + boxH(t, "small", lines) + CARD_PAD;
+  return CARD_PAD + labelRowH(t) + LABEL_GAP + boxH(t, "small", lines) + CARD_PAD;
 }
 
 /** Where every card's bottom edge sits: short of the safe edge by the working card's margin. */
@@ -103,31 +131,55 @@ const CARD_BOTTOM = SAFE_BOTTOM - SPACE[1];
 const bottomAnchoredY = (h: number): number => Math.floor((CARD_BOTTOM - h) / BASELINE) * BASELINE;
 
 /**
- * The trio for a card at `rect`: the rounded surface, the label at the inset, the text beneath.
- * Ungrouped, as the working card is, so each is selectable and deletable on its own.
+ * The four for a card at `rect`: the tinted card, the icon and the label on one row at the inset,
+ * the text beneath. Ungrouped, as the working card is, so each is selectable and deletable on its
+ * own.
  */
 export function calloutElements(
   t: Theme,
   callout: CalloutSpec,
   rect: Rect,
-): [ShapeElement, TextElement, TextElement] {
+): [ShapeElement, IconElement, TextElement, TextElement] {
+  const tone = calloutTone(t, callout.kind);
   const capH = boxH(t, "caption");
+  const rowH = labelRowH(t);
   const inner = rect.w - 2 * CARD_PAD;
-  const textY = rect.y + CARD_PAD + capH + LABEL_GAP;
+  const rowY = rect.y + CARD_PAD;
+  const labelX = rect.x + CARD_PAD + CALLOUT_ICON + ICON_GAP;
+  const textY = rowY + rowH + LABEL_GAP;
+  const icon: IconElement = {
+    id: uid(),
+    type: "icon",
+    x: rect.x + CARD_PAD,
+    y: rowY + (rowH - CALLOUT_ICON) / 2,
+    w: CALLOUT_ICON,
+    h: CALLOUT_ICON,
+    icon: CALLOUT_ICONS[callout.kind],
+    color: tone.icon,
+    strokeWidth: 2.25,
+    name: CALLOUT_NAMES.icon,
+  };
   return [
-    shape("rounded", rect, { fill: t.colors.surface, radius: t.radius, name: CALLOUT_NAMES.card }),
+    shape("rounded", rect, {
+      fill: tone.fill,
+      stroke: tone.line,
+      strokeWidth: CARD_STROKE,
+      radius: t.radius,
+      name: CALLOUT_NAMES.card,
+    }),
+    icon,
     text(
       "caption",
       CALLOUT_LABELS[callout.kind],
-      { x: rect.x + CARD_PAD, y: rect.y + CARD_PAD, w: inner, h: capH },
-      { color: labelColour(t, callout.kind) },
+      { x: labelX, y: rowY + (rowH - capH) / 2, w: rect.x + rect.w - CARD_PAD - labelX, h: capH },
+      { color: tone.ink },
       { name: CALLOUT_NAMES.label },
     ),
     text(
       "small",
       callout.text,
       { x: rect.x + CARD_PAD, y: textY, w: inner, h: rect.y + rect.h - CARD_PAD - textY },
-      {},
+      { color: tone.ink },
       { name: CALLOUT_NAMES.text },
     ),
   ];
@@ -137,7 +189,7 @@ export function calloutElements(
 export type CalloutHost = "content" | "image-text" | "worked-example";
 
 /**
- * Lay the callout into a filled recipe: append the trio and shrink the box that gives up the room.
+ * Lay the callout into a filled recipe: append the four and shrink the box that gives up the room.
  *
  * - Content `headed` and `two-column`: the card across `FULL`, bottom-anchored like the working
  *   card, sized to its text; a body box (both columns) that reaches within `SPACE[2]` of the card
@@ -243,8 +295,9 @@ function texts(laid: Layout, where: (el: TextElement) => boolean): TextElement[]
   return laid.elements.filter((el): el is TextElement => el.type === "text" && where(el));
 }
 
-/** Whether an element is one of a callout's trio, for a filter or a test. */
+/** Whether an element is one of a callout's four, for a filter or a test. */
 export const isCalloutElement = (el: SlideElement): boolean =>
   el.name === CALLOUT_NAMES.card ||
+  el.name === CALLOUT_NAMES.icon ||
   el.name === CALLOUT_NAMES.label ||
   el.name === CALLOUT_NAMES.text;
