@@ -1,6 +1,6 @@
 import { gsap } from "gsap";
 import { useEffect, useLayoutEffect, useRef } from "react";
-import type { CharacterOrigin } from "./character-origin";
+import { CHARACTER_ENTRY_SECONDS, type CharacterOrigin } from "./character-origin";
 import { createHandoverRig, type HandoverRig } from "./motion/handover-rig.js";
 
 /** Data drives the story; completed gestures hand over without holding up the editor. */
@@ -68,7 +68,7 @@ export function GenerationStory({
     else {
       if (origin) actor.restore(origin.pose);
       else actor.settle(7);
-      entry = gsap.delayedCall(origin ? 0.4 : 0, () => {
+      entry = gsap.delayedCall(origin ? CHARACTER_ENTRY_SECONDS : 0, () => {
         root.dataset.entry = "arrived";
         actor.play(includedWorksheet ? 8 : 11, {
           handoff: { from: 2, to: 1 },

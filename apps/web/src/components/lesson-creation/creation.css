@@ -458,7 +458,7 @@
 }
 
 .creation-generation-actor .handover-stage {
-  transition: transform 850ms cubic-bezier(0.65, 0, 0.35, 1);
+  transition: transform 850ms cubic-bezier(0.37, 0, 0.63, 1);
 }
 .creation-generation-actor:not([data-handover="passing"]) .handover-stage {
   transform: scale(1.35);
@@ -589,4 +589,12 @@
   [data-shadow]:not([data-shadow="2"])
 ) {
   visibility: hidden;
+}
+
+[data-testid="creation-brief"] .creation-form {
+  gap: 24px;
+}
+.creation-brief-source {
+  display: grid;
+  gap: 8px;
 }

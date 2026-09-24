@@ -7,3 +7,5 @@ export interface CharacterOrigin {
 export interface CharacterCapture {
   capture(): CharacterOrigin | null;
 }
+
+export const CHARACTER_ENTRY_SECONDS = 0.6;
