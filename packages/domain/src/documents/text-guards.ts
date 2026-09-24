@@ -57,11 +57,18 @@ export const hasLeakedPupilPhrase = (text: string): boolean =>
 export const hasLeakedRepairPhrase = (text: string): boolean =>
   LEAKED_REPAIR_PHRASES.some((re) => re.test(text));
 
-/** Case- and whitespace-insensitive key for comparing two answer options or two stems. */
+/**
+ * Case-, punctuation- and whitespace-insensitive key for comparing two answer options or two
+ * stems. Maths operators, a decimal point between digits and a free-standing minus are kept, so
+ * "40 ÷ 5 × 3" and "40 × 5 ÷ 3" stay different (lab cb-y5-fractions-P).
+ */
 export function normaliseText(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/(?<=^|[\s\d(])-(?=[\s\d(])/g, " \u2212 ")
+    .replace(/[÷×+\u2212=<>%/]/g, (op) => ` ${op} `)
+    .replace(/[^\p{L}\p{N}\s÷×+\u2212=<>%/.]/gu, " ")
+    .replace(/(?<!\d)\.|\.(?!\d)/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

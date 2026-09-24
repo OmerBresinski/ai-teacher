@@ -663,3 +663,23 @@ describe("questionless (quality lab, Sept 2026)", () => {
     expect(questionless("A fort has a ditch. Explain your decision.")).toBe("no-referent");
   });
 });
+
+describe('questionless: a bare "it" (lab round 1, cb-y1-animals-P/L)', () => {
+  test('"it" after a noun it can name is not a dangling task', () => {
+    // Recorded stems that raised degenerate-question and set off harmful repairs.
+    expect(questionless("Explain how a puppy changes as it grows into an adult dog.")).toBe("ok");
+    expect(questionless("Describe two changes a kitten may make as it becomes an adult cat.")).toBe(
+      "ok",
+    );
+    expect(
+      questionless("Explain how a caterpillar changes before it becomes an adult butterfly."),
+    ).toBe("ok");
+    expect(questionless("Explain why Prospero forgives them when it is in his power.")).toBe("ok");
+  });
+
+  test('"it" with nothing before it to name is still dangling', () => {
+    expect(questionless("Explain why it melts.")).toBe("no-referent");
+    expect(questionless("Describe how it moves.")).toBe("no-referent");
+    expect(questionless("Is it a rodent? Explain why it is.")).toBe("ok");
+  });
+});
