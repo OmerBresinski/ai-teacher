@@ -49,7 +49,13 @@ import { generate } from "../stages/generate";
 import { illustrate } from "../stages/illustrate";
 import { materialiseObjectives, TITLE_PROMPT_VERSION } from "../stages/plan";
 import { repair } from "../stages/repair";
-import { audienceOf, BUDGET_FINDING, planClassFor, shapeOf } from "../stages/shared";
+import {
+  audienceOf,
+  BUDGET_FINDING,
+  planClassFor,
+  retrievalInput,
+  shapeOf,
+} from "../stages/shared";
 import { selectSourceTexts } from "../stages/source-texts";
 import { runVerify } from "../stages/verify";
 import {
@@ -947,6 +953,7 @@ export async function runWaves(
         target,
         priorKnowledge: input.priorKnowledge,
         curriculum: input.curriculum,
+        ...retrievalInput(input),
       };
       deps.logger.info({ stage: "plan", call: "teach", target, cls }, "plan call");
       let taught: PlanTeachObjectiveOutput;
@@ -988,6 +995,7 @@ export async function runWaves(
           use,
           count,
           ...(avoid.length > 0 ? { avoid } : {}),
+          ...retrievalInput(input),
         };
         const ask = () =>
           callStructured({

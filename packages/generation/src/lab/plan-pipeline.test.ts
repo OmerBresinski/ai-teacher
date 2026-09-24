@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { type Budget, createBudget, type FakeCall } from "@tj/ai";
 import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
 import { checkLesson, type Lesson } from "@tj/domain/documents";
@@ -6,7 +6,8 @@ import { ledgerStageOf } from "../../eval/ledger";
 import { MAX_OUTPUT_TOKENS } from "../call";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
 import { planFactsObjectiveOutputSchemaFor } from "../prompts/plan-facts-objective";
-import type { PlanQuestionSetOutput } from "../prompts/plan-question-set";
+import { type PlanQuestionSetOutput, planQuestionSetPrompt } from "../prompts/plan-question-set";
+import { planTeachObjectivePrompt } from "../prompts/plan-teach-objective";
 import { lessonShapeOf } from "../shapes";
 import { callLimitedBudget, FIXTURES, recordingDeps, sampleBriefLesson } from "../testing";
 import { StageFailure } from "../types";
@@ -753,6 +754,24 @@ describe("labPlan --waves (lab pw)", () => {
     const o3 = prompts.filter((p) => p.target === 2);
     expect(o3.map((p) => p.use)).toEqual(["exit"]);
     expect(o3[0]?.text).not.toContain("Already asked of this objective");
+  });
+
+  test("audit A7: teach and every question set are given the starter's retrieval questions", async () => {
+    const teach = spyOn(planTeachObjectivePrompt, "user");
+    const sets = spyOn(planQuestionSetPrompt, "user");
+    try {
+      const ai = labAi({ retrieval, questionSet: (_call, set) => json(questionSetAnswer(set)) });
+      await labPlan({ lesson: romansLesson() }, recordingDeps(ai), { waves: true });
+      const starter = retrieval.map(({ question, answer }) => ({ question, answer }));
+      const given = [...teach.mock.calls, ...sets.mock.calls].map(
+        ([i]) => (i as { retrieval?: unknown }).retrieval,
+      );
+      expect(given).toHaveLength(3 + 5);
+      expect(given.every((r) => JSON.stringify(r) === JSON.stringify(starter))).toBe(true);
+    } finally {
+      teach.mockRestore();
+      sets.mockRestore();
+    }
   });
 
   test("a set the schema refuses twice (short by more than one; a key idea not supplied) is asked for once more", async () => {
