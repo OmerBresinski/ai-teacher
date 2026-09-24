@@ -676,6 +676,53 @@ export function createHandoverRig(root) {
   document.addEventListener("visibilitychange", visibility);
   return {
     play,
+    snapshot(active) {
+      // A teacher can move on before the preceding handover finishes. Carry only
+      // the current screen's character, never its outgoing predecessor.
+      const state = { ...p };
+      let beat = current;
+      if (handoff) {
+        beat = [0, 3, 7, 9][active];
+        Object.assign(state, {
+          x: actors[active].x,
+          fold: 0,
+          offer: 0,
+          grip: 0,
+          outerRelease: 0,
+          gesture: 0,
+          tool: 0,
+          toolAlpha: 0,
+          compare: 0,
+          deck: active === 1 ? 1 : 0,
+          sheet: active === 2 ? 1 : 0,
+          sx: 0,
+          sy: 0,
+          sheetGrip: 1,
+        });
+      }
+      const offsetX = actors[active].x - 320;
+      state.x -= offsetX;
+      return {
+        beat,
+        offsetX,
+        state,
+        actors: actors.map((actor, index) => ({
+          ...actor,
+          x: index === active ? 320 : actor.x,
+          alpha: index === active ? 1 : 0,
+        })),
+      };
+    },
+    restore(pose) {
+      tl?.kill();
+      current = pose.beat;
+      handoff = null;
+      Object.assign(p, pose.state);
+      actors.forEach((actor, i) => {
+        Object.assign(actor, pose.actors[i]);
+      });
+      draw();
+    },
     settle,
     pause,
     get reduced() {

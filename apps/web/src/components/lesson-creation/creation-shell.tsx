@@ -1,16 +1,19 @@
 import { Link } from "@tanstack/react-router";
 import { Display } from "@tj/ui";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, type Ref, useEffect } from "react";
 import { CharacterHost, type CharacterStage } from "./character-host";
+import type { CharacterCapture } from "./character-origin";
 import "./creation.css";
 
 export function CreationShell({
   stage,
+  characterRef,
   title,
   children,
   working = false,
 }: {
   stage: CharacterStage;
+  characterRef?: Ref<CharacterCapture>;
   title: string;
   children: ReactNode;
   working?: boolean;
@@ -28,7 +31,7 @@ export function CreationShell({
       </header>
       <div className="creation-layout">
         <aside aria-hidden="true" className="creation-character" data-working={working}>
-          <CharacterHost stage={stage} />
+          <CharacterHost stage={stage} captureRef={characterRef} />
         </aside>
         <section
           key={stage}

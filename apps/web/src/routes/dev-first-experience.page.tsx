@@ -2,6 +2,10 @@ import { Button } from "@tj/ui";
 import { FileText, Paperclip, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import type {
+  CharacterCapture,
+  CharacterOrigin,
+} from "@/components/lesson-creation/character-origin";
 import { CreationShell } from "@/components/lesson-creation/creation-shell";
 import {
   BriefStep,
@@ -70,15 +74,19 @@ export function DevFirstExperiencePage() {
     { id: "sheet-1", recipe: "knowledge-check", minutes: "10" },
   ]);
   const [includeWorksheets, setIncludeWorksheets] = useState(false);
+  const character = useRef<CharacterCapture>(null);
+  const [characterOrigin, setCharacterOrigin] = useState<CharacterOrigin | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const transition = useRef<ViewTransition | null>(null);
   function go(next: Stage) {
     transition.current?.skipTransition();
+    if (next === "generating") setCharacterOrigin(character.current?.capture() ?? null);
     const update = () => {
       flushSync(() => setStage(next));
       window.scrollTo({ top: 0, behavior: "instant" });
     };
     if (
+      next !== "generating" &&
       document.startViewTransition &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches
     ) {
@@ -138,6 +146,7 @@ export function DevFirstExperiencePage() {
     return (
       <Suspense fallback={<div className="creation-shell">Opening your lesson…</div>}>
         <EditorPreview
+          characterOrigin={characterOrigin}
           onBack={() => go("worksheet")}
           onRestart={() => go("brief")}
           worksheetCount={includeWorksheets ? worksheets.length : 0}
@@ -146,7 +155,7 @@ export function DevFirstExperiencePage() {
     );
   return (
     <>
-      <CreationShell stage={stage} title={TITLES[stage]}>
+      <CreationShell characterRef={character} stage={stage} title={TITLES[stage]}>
         {stage === "brief" ? (
           <BriefStep
             brief={brief}
