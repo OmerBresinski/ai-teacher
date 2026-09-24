@@ -7,13 +7,10 @@ import {
   CURRICULUM_USE,
   type PlanObjectivesInput,
   PlanObjectivesOutputSchema,
-  PlanRetrievalQuestionSchema,
   PRIOR_KNOWLEDGE_LABEL,
   PRIOR_KNOWLEDGE_USE,
   planObjectivesOutputSchemaFor,
   planObjectivesPrompt,
-  retrievalForStarter,
-  TEACHER_NOTES_USE,
 } from "./plan-objectives";
 import { SOURCE_INSTRUCTION } from "./plan-skeleton";
 
@@ -47,8 +44,8 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 };
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v15",
-  hash: "57650706a87f75336fe2498d325cd58ea8ba0b371551e7db35106de4f8b33dc7",
+  version: "plan-objectives.v16",
+  hash: "7dfceb15100fb19879eccf252f503c9c527fbfe846b37cb2968cdafbbd9f25f8",
 };
 
 describe("plan-objectives", () => {
@@ -70,9 +67,8 @@ describe("plan-objectives", () => {
     // v7 (minimalism rubric, 23 Sept 2026) trimmed 409 to 299; v8 303; v9 297; v10 276. The alarm
     // follows it down. v12 (24 Sept) adds the retrieval questions: 346, each clause on a judged
     // failure (see the file header), so the alarm moves up once, by that growth. v13: 343. v14: 314,
-    // the prior-knowledge and curriculum rules moved to the user turn beside their inputs. v15: 354,
-    // the retrieval rule names its earlier topic and the objective rule its linking explanation.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(360);
+    // the prior-knowledge and curriculum rules moved to the user turn beside their inputs. v16: 309.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(330);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
@@ -174,37 +170,6 @@ describe("plan-objectives", () => {
     expect(plain).not.toContain(PRIOR_KNOWLEDGE_USE);
   });
 
-  test("teacher notes get their use line, only when given", () => {
-    // v15: judges faulted a Year 13 set that ignored "consider supporting and contrasting schools".
-    const notes = { ...audience.classContext, notes: "Deep dive. Consider contrasting schools." };
-    const withNotes = planObjectivesPrompt.user({
-      ...PLAN_OBJECTIVES_SAMPLE,
-      audience: { ...PLAN_OBJECTIVES_SAMPLE.audience, classContext: notes },
-    });
-    expect(withNotes).toContain("Teacher notes: Deep dive. Consider contrasting schools.");
-    expect(withNotes).toContain(TEACHER_NOTES_USE);
-    const plain = planObjectivesPrompt.user({
-      ...PLAN_OBJECTIVES_SAMPLE,
-      audience: { ...PLAN_OBJECTIVES_SAMPLE.audience, classContext: undefined },
-    });
-    expect(plain).not.toContain(TEACHER_NOTES_USE);
-    expect(planObjectivesPrompt.system).not.toContain("teacher notes");
-  });
-
-  test("the retrieval item's working field is dropped before the starter", () => {
-    const item = {
-      from: "Iron Age Britain, Year 3",
-      question: "Why were hill forts built?",
-      answer: "Defence",
-    };
-    expect(PlanRetrievalQuestionSchema.safeParse(item).success).toBe(true);
-    expect(
-      PlanRetrievalQuestionSchema.safeParse({ question: item.question, answer: item.answer })
-        .success,
-    ).toBe(true);
-    expect(retrievalForStarter([item])).toEqual([{ question: item.question, answer: item.answer }]);
-  });
-
   test("the anchor field exists only when an extract was retrieved", () => {
     const plain = { text: "Explain why the Romans invaded Britain" };
     const anchored = { ...plain, curriculumAnchor: "the Roman Empire and its impact on Britain" };
@@ -240,27 +205,20 @@ describe("plan-objectives", () => {
      * clause.
      */
     const system = planObjectivesPrompt.system;
-    expect(system).toContain("the retrieval questions for its starter");
-    // v15: tying each question to an objective read as one per objective (4 and 2, retries), so
-    // the count is its own sentence, independent of the objectives.
-    expect(system).toContain("Write three retrieval questions, however many objectives there are.");
+    expect(system).toContain("three retrieval questions for its starter");
     // v14 (latency-lab judges): the call cannot know earlier lessons, so each question is derived
     // from an objective: a prerequisite it needs that no objective teaches, one a pupil in this
     // year group could get wrong, three different ones.
-    // v15 (v14 judged): "no objective teaches" still let the starter ask the topic's own parts
-    // (a groyne under hard engineering, puppy and chick in a Year 1 animals lesson), so each item
-    // names the earlier topic it comes from, first, in a working field, and uses the knowledge.
-    expect(system).toContain(
-      "one thing an objective needs a pupil to bring from an earlier topic, never this lesson's topic",
-    );
-    expect(system).toContain(
-      'in "from", name that objective\'s number and the earlier topic and year',
-    );
-    expect(system).toContain(
-      "a pupil uses the knowledge (a short calculation, a reason, a comparison)",
-    );
-    expect(system).toContain('"retrieval": [{ "from"');
+    expect(system).toContain("that an objective needs pupils to know already");
+    expect(system).toContain("could plausibly have forgotten");
+    // v16 (checklist judge): "no objective teaches" was read against the objectives' wording, so
+    // a groyne under "engineering methods" passed. The rule is about the lesson, examples included.
+    expect(system).toContain("None asks what the lesson teaches, its examples included.");
+    // v16: a category word met v14's "not a heading"; the members are named instead.
+    expect(system).toContain("where it covers several factors, methods or strategies, name them");
+    expect(system).toContain("a different term, fact or method");
     expect(system).not.toMatch(/earlier lesson|answerable before this lesson begins/);
+    expect(system).toContain('"retrieval": [{ "question"');
     // The sketch shows no anchor slot: a no-extract call filled anchors it was shown.
     expect(system).not.toContain("curriculumAnchor");
     // The count appears once in the prose (the sketch shows one item, as it does for objectives).
