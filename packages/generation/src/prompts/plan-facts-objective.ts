@@ -179,6 +179,41 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  * answer is shown as one option among the distractors", was read as a placement: Luna copied the
  * answer into `distractors` in 8 of 9 MC questions (facts-tells-v13a). Now "beside its
  * distractors" and "each distractor, a wrong option".
+ *
+ * v14 (24 Sept 2026, cb SYNTHESIS cause 5, 12 of 14 traced runs; 436 -> 487 system words). The
+ * judges marked what the prompt never asked for. Each rule below names the lab output it answers
+ * (`cb/attrib/*-L.attrib.md`, Luna, v13); the log is `quality-prd/lab/r1/prompt.md`.
+ *  - A key idea's example is one named case, and the worked example and questions take their own:
+ *    Y4-L k1 "Britain had valuable resources, including metals" and k4 "A town might have a forum"
+ *    restate the statement; Y11-L k3–k6 name no reaction (`no-concrete` fired on four); Y10-L o1
+ *    had no quotation in either attempt while o2 and o3, which quoted, were the calls the judges
+ *    passed ("quotation" is in the list for that). Y11-L x1 (20 g powder vs lumps) reappears as
+ *    its exit question almost word for word; Y5-L's worked example repeated the key idea's
+ *    example; Y8-L o3's steps were the key ideas again. The v2 invention sentence is unchanged.
+ *  - Pitch covers numbers and problem steps: Y5-L amounts up to 35, one step even on stretch. The
+ *    shared "Pitch the language" house rule is filtered out of this call and its two clauses,
+ *    reading level and "explain any word", kept in the one sentence that replaces it.
+ *  - Two quick "exit" questions per objective: no v13 line said what "exit" meant, so Y4-L o1
+ *    wrote none and every other call marked its stretch judgement essay "exit" (Y4 o2/o3, Y10
+ *    o3/o1, Y11 o1/o2/o3, Y8 o2, Y13 o1); judges scored flow 1 and practice 2 on "three extended
+ *    written answers". Count: the outline (lab/r1s) draws per objective one cycle's check set of
+ *    2–4 short questions plus 2 exit items for a 4–6 item quiz across objectives, so 4–6 per
+ *    objective is the smallest supply; the prose says "four to six", the schema ceiling is 6 and
+ *    the floor stays 3 as tolerance (a short answer is not a retry on the slowest call; recorded
+ *    3-question fixtures still parse). The starter is the outline's own selection, not a marked
+ *    question here: `merge-objective-facts.ts` strips `keyIdeaRefs`, so an empty list cannot
+ *    carry a signal, and "any" keeps its meaning (flexible use, `plan-facts.ts`).
+ *  - A distractor is a wrong option a pupil reaches by a real error: Y4-L "To learn how to build
+ *    pyramids", "Only farms and villages" ×3; Y11-L "The reaction stops immediately"; Y5-L
+ *    "Add 6 counters to 24 counters"; Y10-L "Ariel's island". One clause inside the v13 rule,
+ *    keeping its measured wording ("wrong option", "beside its distractors"); "wording" joins
+ *    length and punctuation in the tell the rule describes, for the shared "Only".
+ *  - Cut: "You see the lesson's objectives and the one to write for" (the user turn shows it).
+ * Not added, on rubric 3: a stem-contains-answer rule (Y10-L, one case; a code check is the
+ * cheaper fix), "each key idea has a question" (Y5-L, one case; `keyIdeaRefs` gives code the
+ * signal), the four-option lists that repeat the answer (w0b schema check already retries), an
+ * invention allowance for key-idea examples (Y11-L, one case).
+ * Not measured live: the A/B against v13 follows this commit.
  */
 
 export type PlanFactsObjectiveInput = {
@@ -357,9 +392,13 @@ const questionShape = (line: Line) =>
  * object stays strict, so an invented list is still a parse error.
  *
  * The counts are a third of a whole lesson's: one or two key ideas, the objective's own
- * misconception, and enough questions to tier it. They are stated here and once in the system
- * text, nowhere else (CORE 2026-09-16: a number belongs in one place). `objectiveCount` bounds a
- * worked example's refs to the objectives the call listed; left out, any index parses.
+ * misconception, and enough questions to tier it and to feed the starter, the checks and the
+ * exit quiz (v14: the prose asks for four to six, two of them exit; the floor
+ * here stays 3 so a short answer is accepted, not retried on the slowest call of the fan-out,
+ * and the recorded 3-question fixtures still parse). The prose states the target and the schema
+ * buys tolerance (CORE 2026-09-16); the number is in the system text and nowhere else.
+ * `objectiveCount` bounds a worked example's refs to the objectives the call listed; left out,
+ * any index parses.
  */
 function planFactsObjectiveShape(workedExamplesMin: 0 | 1, soft: boolean, objectiveCount?: number) {
   const line = lineFor(soft);
@@ -371,7 +410,7 @@ function planFactsObjectiveShape(workedExamplesMin: 0 | 1, soft: boolean, object
       .array(workedExampleSchema(line, objectiveCount))
       .min(workedExamplesMin)
       .max(1),
-    questions: z.array(questionSchema(line, soft)).min(3).max(4),
+    questions: z.array(questionSchema(line, soft)).min(3).max(6),
   });
 }
 
@@ -454,11 +493,15 @@ function workedExampleLine(position: PlanFactsObjectivePosition): string | undef
 }
 
 /**
- * The house rules, less the `factRefs` line: this call is given no fact ids and its schema has no
- * `factRefs`, so the sentence is an instruction about a field that does not exist here.
+ * The house rules, less two lines. The `factRefs` line: this call is given no fact ids and its
+ * schema has no `factRefs`, so the sentence is an instruction about a field that does not exist
+ * here. The "Pitch the language" line (v14): this call pitches numbers and problem steps as well
+ * as language (Y5-L: amounts up to 35 and one step on every question, stretch included), and one
+ * sentence saying all three, with the house rule's "explain any word" clause kept, replaces it
+ * rather than standing beside it.
  */
 const FACTS_HOUSE_RULES = HOUSE_RULES.split("\n")
-  .filter((rule) => !rule.startsWith("Every fact id"))
+  .filter((rule) => !rule.startsWith("Every fact id") && !rule.startsWith("Pitch the language"))
   .join("\n");
 
 /**
@@ -492,22 +535,25 @@ export const SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}],"questions":[{"stem":"…","answer":"…","reasoning":"…","tier":"core","use":"slide","demand":"apply","forms":["multiple-choice","open-response"],"keyIdeaRefs":[{"type":"keyIdea","index":0}],"distractors":[{"text":"…"},{"text":"…"},{"text":"…"}]}]}';
 
 export const planFactsObjectivePrompt = {
-  version: "plan-facts-objective.v13",
+  version: "plan-facts-objective.v14",
   system: [
     "You are an experienced UK teacher writing one lesson's substance, one objective at a time.",
-    "You see the lesson's objectives and the one to write for. Other calls write the others: do not teach them here.",
+    "Other calls write the others: do not teach them here.",
     "",
     "Rules:",
     FACTS_HOUSE_RULES,
-    "Write one or two key ideas, one misconception, up to two vocabulary terms, and three or four questions.",
+    "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
+    "Write one or two key ideas, one misconception, up to two vocabulary terms, and four to six questions.",
+    "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers); the worked example and each question take a case of their own.",
     'A worked example or question may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea\'s date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.',
     "Every quantity carries its unit, in each step and answer as well as the question: 35 ÷ 7 = 5 stickers, not 5.",
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Questions cover all three tiers: at least one "easy", one "core" and one "stretch".',
+    'Two questions are for "exit" use, each answered in one line or by choosing an option.',
     'Where a worked example or distractor heads off the misconception, say so in "misconceptionRef".',
-    'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then each distractor, a wrong option, in the same form, with at least one as long as the answer and no option ending in a full stop, so length and punctuation never give the answer away.',
-    'Follow the brief\'s worked-example line. A worked example is the method on one problem; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index from the list, this one included.',
-    '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set as written: multiple-choice, true-false, open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it, by index in your keyIdeas, from 0.',
+    'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then each distractor, a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
+    'Follow the brief\'s worked-example line. A worked example is the method on one problem; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
+    '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set: multiple-choice, true-false, open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it, by index from 0.',
     `Where the brief gives "${PRIOR_KNOWLEDGE_LABEL}", treat it as met and build nothing outside it.`,
     LENGTH_LIMITS,
     "",
