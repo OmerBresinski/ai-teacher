@@ -9,7 +9,7 @@ import {
   vocabularySlots,
 } from "@tj/slides";
 import { callStructured, type EditorialMiss, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
-import { codedSetSpec, withAnswersReveal } from "../lab/coded-slides";
+import { codedSetSpec, withAnswersReveal, withShuffledOptions } from "../lab/coded-slides";
 import {
   generateSlidePrompt,
   pickOrRequeryPrompt,
@@ -232,8 +232,12 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       soft: specSchema(true),
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
+    // Lab only: the model lists the answer first, so the options go out in a seeded order.
+    const spec = calloutsAssigned
+      ? withShuffledOptions(call.output, `${lesson.id}:${i}`)
+      : call.output;
     const slide = materialiseSlide(
-      withImageCaption(call.output, entry),
+      withImageCaption(spec, entry),
       lesson.themeId,
       meta(call.modelId),
       deps.ids,

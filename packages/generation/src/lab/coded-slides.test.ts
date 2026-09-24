@@ -6,7 +6,9 @@ import {
   LINE_MAX,
   misconceptionLine,
   questionLine,
+  seededOrder,
   withAnswersReveal,
+  withShuffledOptions,
 } from "./coded-slides";
 
 const mc = {
@@ -103,5 +105,32 @@ describe("codedSetSpec (r1)", () => {
       "s",
     );
     expect((coded?.spec as { steps: string[] } | undefined)?.steps).toEqual([open.stem]);
+  });
+});
+
+describe("seeded option order (r1, SYNTHESIS cause 6)", () => {
+  test("the same seed gives the same order; across slides the answer is not always A", () => {
+    expect(seededOrder(4, "lesson-1:5")).toEqual(seededOrder(4, "lesson-1:5"));
+    expect([...seededOrder(4, "x")].sort()).toEqual([0, 1, 2, 3]);
+    const spec = {
+      kind: "multiple-choice" as const,
+      factRefs: [],
+      stem: "Which?",
+      options: [
+        { text: "right", correct: true },
+        { text: "w1", correct: false },
+        { text: "w2", correct: false },
+        { text: "w3", correct: false },
+      ],
+    };
+    const at = Array.from({ length: 20 }, (_, i) => {
+      const out = withShuffledOptions(spec, `lesson-1:${i}`);
+      return out.kind === "multiple-choice" ? out.options.findIndex((o) => o.correct) : -1;
+    });
+    expect(new Set(at).size).toBeGreaterThan(2);
+    expect(at.filter((a) => a === 0).length).toBeLessThan(12);
+    expect(withShuffledOptions(spec, "lesson-1:3")).toEqual(
+      withShuffledOptions(spec, "lesson-1:3"),
+    );
   });
 });

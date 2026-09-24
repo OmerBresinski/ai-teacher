@@ -83,6 +83,15 @@ export function shuffled<T>(items: readonly T[], seed: string): T[] {
   return seededOrder(items.length, seed).map((i) => items[i] as T);
 }
 
+/**
+ * A multiple-choice spec with its options in the seeded order (SYNTHESIS cause 6: the model lists
+ * the answer first, so it was always A). Any other spec is returned as it is.
+ */
+export function withShuffledOptions(spec: SlideSpec, seed: string): SlideSpec {
+  if (spec.kind !== "multiple-choice") return spec;
+  return { ...spec, options: shuffled(spec.options, seed) };
+}
+
 /** Multiple choice: the answer and the first three distractors, in the seeded order. */
 export function mcOptions(
   q: LineQuestion,
