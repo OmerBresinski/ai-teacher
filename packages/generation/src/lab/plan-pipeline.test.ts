@@ -16,6 +16,7 @@ import {
   labPlanMarkdown,
   labRunStatus,
   labStatusLine,
+  MAX_OUTPUT_TOKENS_OBJECTIVES,
   MISSING_MATERIAL_CHECK,
   runLabPipeline,
 } from "./plan-pipeline";
@@ -113,6 +114,8 @@ test("the fixture slices pass the per-objective schema (the stubs answer in the 
 function labAi(
   options: {
     objectives?: unknown;
+    /** The objectives call's retrieval set (v12); omitted: an answer without one, as v11 gave. */
+    retrieval?: unknown;
     facts?: (call: FakeCall, target: number) => string | Promise<string>;
     verify?: unknown;
     /** The slide answer; default the fixture slide of the entry's kind. */
@@ -123,7 +126,10 @@ function labAi(
   const fallback: FakeScriptEntry = async (call) => {
     const version = call.context?.promptVersion ?? "";
     if (version.startsWith("plan-objectives"))
-      return json({ objectives: options.objectives ?? romans.objectives });
+      return json({
+        objectives: options.objectives ?? romans.objectives,
+        ...(options.retrieval === undefined ? {} : { retrieval: options.retrieval }),
+      });
     if (version.startsWith("plan-facts-objective")) {
       // The prompt (v9) lists objectives by 0-based index and names the target the same way.
       const target = Number(/Write the facts for objective (\d+)/.exec(call.promptText)?.[1]);
@@ -347,6 +353,93 @@ describe("labPlan", () => {
     expect(run.status.executed).toBe(false);
     expect(run.status.complete).toBe(false);
     expect(run.state.lesson.slides.map((s) => s.kind)).toEqual(["title"]);
+  });
+});
+
+/** Year 3 knowledge under the Year 4 Romans lesson: answerable before it begins. */
+const RETRIEVAL = [
+  { question: "Which came first in Britain: the Iron Age or the Romans?", answer: "The Iron Age" },
+  { question: "What is an invasion?", answer: "An army entering a country to take it over" },
+  { question: "Name the sea between Britain and France.", answer: "The English Channel" },
+];
+
+describe("the retrieval starter (lab r2)", () => {
+  test("the objectives cap is 1 600 and the objectives call reserves it", async () => {
+    expect(MAX_OUTPUT_TOKENS_OBJECTIVES).toBe(1600);
+    const budget = reserveRecordingBudget();
+    await labPlan({ lesson: romansLesson() }, recordingDeps(labAi(), { budget }), {
+      verify: false,
+    });
+    expect(budget.reservedOutput[0]).toBe(1600);
+  });
+
+  test("retrieval rides from the objectives call to the facts and the report; the starter takes no question of the lesson's", async () => {
+    const state = await labPlan(
+      { lesson: romansLesson() },
+      recordingDeps(labAi({ retrieval: RETRIEVAL })),
+      { verify: false },
+    );
+    const facts = state.lesson.facts;
+    expect(facts?.retrieval).toEqual(RETRIEVAL);
+    expect(state.labPlan.retrieval).toEqual(RETRIEVAL);
+    expect(labPlanMarkdown(state.labPlan)).toContain(
+      "starter retrieval (3): 1. Which came first in Britain",
+    );
+    const starter = facts?.outline.find((e) => e.kind === "starter");
+    expect(starter).toBeDefined();
+    expect(starter?.brief?.adds).toMatch(/^Retrieval: 3 quick questions on earlier lessons/);
+    const questionIds = new Set(facts?.questions.map((q) => q.id));
+    expect(starter?.factRefs.some((id) => questionIds.has(id))).toBe(false);
+    // The lesson's questions keep to the checks and the exit quiz: the same count, none added.
+    expect(facts?.questions).toHaveLength(romans.facts.questions.length);
+    expect(facts?.questions.some((q) => RETRIEVAL.some((r) => r.question === q.stem))).toBe(false);
+  });
+
+  test("the pipeline prints the set on the starter, answers shown; no check, exit item or tested-not-taught finding comes of it", async () => {
+    const ai = labAi({ retrieval: RETRIEVAL });
+    const { state, status } = await runLabPipeline({ lesson: romansLesson() }, recordingDeps(ai));
+    const lesson = state.lesson;
+    expect(lesson.slides).toHaveLength(10);
+    const at = lesson.slides.findIndex((s) => s.kind === "starter");
+    expect(at).toBeGreaterThan(1);
+    const text = (i: number) => JSON.stringify(lesson.slides[i]?.elements ?? []);
+    for (const r of RETRIEVAL) {
+      expect(text(at)).toContain(r.question);
+      expect(text(at)).toContain(r.answer);
+    }
+    expect(lesson.slides[at]?.elements.find((e) => e.name === "Answers")?.revealStep).toBe(1);
+    // Nowhere else: not a check, not the exit quiz.
+    lesson.slides.forEach((_, i) => {
+      if (i === at) return;
+      for (const r of RETRIEVAL) expect(text(i)).not.toContain(r.question);
+    });
+    // Written in code: no generate-slide call was asked for the starter.
+    expect(
+      ai.calls.some(
+        (c) =>
+          (c.context?.promptVersion ?? "").startsWith("generate-slide") &&
+          /kind "starter"/.test(c.promptText),
+      ),
+    ).toBe(false);
+    const findings = checkLesson(lesson);
+    expect(
+      findings.filter(
+        (f) => f.check === "tested-not-taught" && f.target.slideId === lesson.slides[at]?.id,
+      ),
+    ).toEqual([]);
+    expect(findings.filter((f) => f.severity === "error")).toEqual([]);
+    expect(status.executed).toBe(true);
+  });
+
+  test("without retrieval (v11 answers, old runs) the starter is round 1's and the facts carry no set", async () => {
+    const state = await labPlan({ lesson: romansLesson() }, recordingDeps(labAi()), {
+      verify: false,
+    });
+    expect(state.lesson.facts?.retrieval).toBeUndefined();
+    expect(state.labPlan.retrieval).toBeUndefined();
+    expect(labPlanMarkdown(state.labPlan)).not.toContain("starter retrieval");
+    const starter = state.lesson.facts?.outline.find((e) => e.kind === "starter");
+    expect(starter?.brief?.adds).not.toMatch(/earlier lessons/);
   });
 });
 

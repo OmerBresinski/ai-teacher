@@ -17,10 +17,10 @@ import {
   SET_MAX,
   SET_MIN,
   STARTER_MAX,
-} from "./lab/coded-slides";
-import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
-import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
-import type { LessonShape } from "./shapes";
+} from "../../src/lab/coded-slides";
+import type { QuestionDemand, QuestionForm } from "../../src/merge-objective-facts";
+import { explainSentence, practiseSentence, slidesFor } from "../../src/prompts/shape";
+import type { LessonShape } from "../../src/shapes";
 import {
   askableAsStem,
   distractorsEchoingAnswer,
@@ -28,7 +28,7 @@ import {
   type OrdinalRef,
   type PlanFactsLike,
   type PlanSkeleton,
-} from "./specs";
+} from "../../src/specs";
 
 /*
  * The outline, built in code from the merged per-objective facts (ADR 0025 §7: the skeleton the
@@ -116,13 +116,6 @@ export type OutlineFromFactsInput = {
   slideCount: SlideCount;
   /** The brief's class-context prior knowledge, when the teacher gave it: what the starter retrieves. */
   priorKnowledge?: string | undefined;
-  /**
-   * Lab r2: the objectives call's retrieval questions (prior knowledge from earlier lessons). When
-   * present the starter is their set, printed in code from `LessonFacts.retrieval`, and takes no
-   * question of this lesson's facts, which stay for the checks and the exit quiz. Absent (older
-   * runs, replays): the round-1 starter.
-   */
-  retrieval?: readonly { question: string; answer: string }[] | undefined;
 };
 
 /** Outline positions, per objective. */
@@ -186,8 +179,6 @@ type Slot = {
   /** The shared practise slide's questions, one per objective it covers (ruling 81). */
   questions?: number[];
   misconception?: number;
-  /** A starter that prints the retrieval set (lab r2): no question or misconception of the lesson's. */
-  retrieval?: boolean;
   terms?: number[];
   /** A judgement the facts declared: it closes the practise slides, after every cycle. */
   closing?: boolean;
@@ -200,7 +191,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   const count = input.objectives.length;
   const all = Array.from({ length: count }, (_, i) => i);
   const priorKnowledge = input.priorKnowledge?.trim() ?? "";
-  const retrieves = (input.retrieval?.length ?? 0) > 0;
   const gaps: string[] = [];
   const gap = (sentence: string) => {
     if (!gaps.includes(sentence)) gaps.push(sentence);
@@ -826,18 +816,14 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         phase: "starter",
         primary: 0,
         objectives: [0],
-        ...(retrieves
-          ? { retrieval: true }
-          : priorKnowledge === "" && facts.misconceptions.length > 0
-            ? { misconception: 0 }
-            : {}),
+        ...(priorKnowledge === "" && facts.misconceptions.length > 0 ? { misconception: 0 } : {}),
         rank: [0],
       });
     if (!placed)
       gap(
         `A ${slideCount}-slide deck has no room for a starter once every objective is taught and practised.`,
       );
-    else if (priorKnowledge === "" && !retrieves) {
+    else if (priorKnowledge === "") {
       gap(
         `The brief declares no prior knowledge, so the starter asks what pupils already think about ${topic} instead of retrieving an earlier idea.`,
       );
@@ -846,19 +832,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // r1: the starter's slot comes before every optional slide. With prior knowledge declared it
   // retrieves it (the model writes it from the brief); without, it is a quick retrieval set of the
   // lesson's easiest questions, one per objective, before the cycle checks take theirs; with fewer
-  // than two such questions, it asks what pupils already think (as before). r2: with a retrieval
-  // set it is that set, in the same slot, and none of the lesson's questions.
-  if (!has("starter") && retrieves && priorKnowledge === "" && count > 0 && budget > 0) {
-    place({
-      kind: "starter",
-      phase: "starter",
-      primary: 0,
-      objectives: [0],
-      retrieval: true,
-      rank: [0],
-    });
-  }
-  if (!has("starter") && !retrieves && priorKnowledge === "" && count > 0 && budget > 0) {
+  // than two such questions, it asks what pupils already think (as before).
+  if (!has("starter") && priorKnowledge === "" && count > 0 && budget > 0) {
     const easiest = all
       .flatMap((o) => {
         const i = facts.questions
@@ -1392,9 +1367,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       case "starter": {
         const asked = slot.questions ?? [];
         refs.push(...asked.map((index): OrdinalRef => ({ type: "question", index })));
-        adds = slot.retrieval
-          ? `Retrieval: ${input.retrieval?.length ?? 0} quick questions on earlier lessons pupils answer from memory before the teaching.`
-          : asked.length > 0
+        adds =
+          asked.length > 0
             ? `Retrieval: ${asked.length} quick questions pupils answer from memory before the teaching.`
             : priorKnowledge === ""
               ? `Pupils say what they already think about ${topic} before being told.`

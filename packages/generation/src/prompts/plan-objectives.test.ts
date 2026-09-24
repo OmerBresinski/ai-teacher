@@ -42,8 +42,8 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 };
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v11",
-  hash: "b0cbfb79958853869fb8870831f623a0c0b7962ff4a65a9faaba8177e25693fc",
+  version: "plan-objectives.v12",
+  hash: "4190154b975c3dcc388019875552b9c983d1f6f2ae8f7062691200a6d109d7ee",
 };
 
 describe("plan-objectives", () => {
@@ -62,8 +62,10 @@ describe("plan-objectives", () => {
      * Provider-neutral and short: it runs on whichever gateway model is cheapest. The budget is
      * an alarm, not a target — a set of rules that will not fit under it wants a second call.
      */
-    // v7 (minimalism rubric, 23 Sept 2026) trimmed 409 to 299; v8 303; v9 297; v10 276. The alarm follows it down.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(310);
+    // v7 (minimalism rubric, 23 Sept 2026) trimmed 409 to 299; v8 303; v9 297; v10 276. The alarm
+    // follows it down. v12 (24 Sept) adds the retrieval questions: 346, each clause on a judged
+    // failure (see the file header), so the alarm moves up once, by that growth.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(360);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
@@ -136,6 +138,9 @@ describe("plan-objectives", () => {
     // Supplying the fact is half of it; the system must point at the line, or the input is inert.
     expect(planObjectivesPrompt.system).toContain(`"${PRIOR_KNOWLEDGE_LABEL}"`);
     expect(planObjectivesPrompt.system).toContain("keep every objective inside that material");
+    // v12: the same sentence feeds the starter, so the label is named once (Luna guide 12).
+    expect(planObjectivesPrompt.system).toContain("draw the retrieval questions from it");
+    expect(planObjectivesPrompt.system.split(PRIOR_KNOWLEDGE_LABEL).length - 1).toBe(1);
     const covered = planObjectivesPrompt.user({
       ...PLAN_OBJECTIVES_SAMPLE,
       priorKnowledge: "read Act 1 scenes 1 to 5",
@@ -168,6 +173,47 @@ describe("plan-objectives", () => {
     expect(parse(true, [anchored])).toBe(true);
     expect(parse(false, [])).toBe(false);
     expect(parse(true, [anchored, anchored, anchored, anchored, anchored])).toBe(false);
+  });
+
+  test("retrieval: three prior-knowledge questions for the starter, asked once, optional in the schema", () => {
+    /*
+     * v12 (round 1 judges): starters built from the lesson's own questions were marked
+     * tested-not-taught in 8 of 12 decks. The prose carries the count and the test the judge
+     * applies; the sketch carries the slot; the schema pins the count and bounds each string.
+     */
+    const system = planObjectivesPrompt.system;
+    expect(system).toContain("three retrieval questions for its starter");
+    expect(system).toContain("answerable before this lesson begins");
+    expect(system).toContain('"retrieval": [{ "question"');
+    // The count appears once in the prose (the sketch shows one item, as it does for objectives).
+    expect(system.match(/three retrieval/g)).toHaveLength(1);
+    const q = (n: number) => ({
+      question: `Which came first: the Iron Age or the Romans? ${n}`,
+      answer: "The Iron Age",
+    });
+    const one = { text: "Explain why the Romans invaded Britain" };
+    const anchored = { ...one, curriculumAnchor: "the Roman Empire and its impact on Britain" };
+    const parse = (hasCurriculum: boolean, retrieval?: unknown) =>
+      planObjectivesOutputSchemaFor(hasCurriculum).safeParse({
+        objectives: [hasCurriculum ? anchored : one],
+        ...(retrieval === undefined ? {} : { retrieval }),
+      }).success;
+    for (const hasCurriculum of [true, false]) {
+      // Optional: a recorded set, a from-facts rerun or the bench parses without it.
+      expect(parse(hasCurriculum)).toBe(true);
+      expect(parse(hasCurriculum, [q(1), q(2), q(3)])).toBe(true);
+      // Exactly three: Luna writes to the prose number, so two or four is a retry, not a gap.
+      expect(parse(hasCurriculum, [q(1), q(2)])).toBe(false);
+      expect(parse(hasCurriculum, [q(1), q(2), q(3), q(4)])).toBe(false);
+      // Each item is a question and its answer, both non-empty, nothing else.
+      expect(parse(hasCurriculum, [q(1), q(2), { ...q(3), answer: "" }])).toBe(false);
+      expect(parse(hasCurriculum, [q(1), q(2), { question: "Which came first?" }])).toBe(false);
+      expect(parse(hasCurriculum, [q(1), q(2), { ...q(3), options: ["a"] }])).toBe(false);
+    }
+    expect(
+      PlanObjectivesOutputSchema.safeParse({ objectives: [one], retrieval: [q(1), q(2), q(3)] })
+        .success,
+    ).toBe(true);
   });
 
   test("the permissive schema takes 1 to 4 objectives and nothing else", () => {
