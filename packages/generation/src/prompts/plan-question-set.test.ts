@@ -1,0 +1,311 @@
+import { describe, expect, test } from "bun:test";
+import { isEditorialIssue, SPEC_LIMITS } from "@tj/slides";
+import { mergeObjectiveFacts } from "../merge-objective-facts";
+import { lessonShapeOf } from "../shapes";
+import { audienceOf } from "../stages/shared";
+import { sampleBriefLesson } from "../testing";
+import { planFactsObjectivePrompt, SHAPE_SKETCH } from "./plan-facts-objective";
+import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
+import {
+  type PlanQuestionSetInput,
+  type PlanQuestionSetOutput,
+  PlanQuestionSetOutputSchema,
+  planQuestionSetOutputSchemaFor,
+  planQuestionSetPrompt,
+  QUESTION_SET_SHAPE_SKETCH,
+  taughtBlock,
+  tierLine,
+} from "./plan-question-set";
+import { PlanTeachObjectiveOutputSchema } from "./plan-teach-objective";
+
+/*
+ * lab/pw wave 4: one objective's questions for one use, from the teach call's output. Pinned the
+ * way `plan-facts-objective` is; the sample carries two key ideas, an analogy, a worked example
+ * and an `avoid` list, so every branch of the taught block is in the hash.
+ */
+const audience = audienceOf(sampleBriefLesson());
+
+const TAUGHT = PlanTeachObjectiveOutputSchema.parse({
+  keyIdeas: [
+    {
+      statement: "Roman roads let soldiers and goods move quickly between new towns.",
+      explanation: "Straight, paved roads meant an army could march to trouble in days, not weeks.",
+      example: "Watling Street ran from Dover to Wroxeter, about 250 miles.",
+    },
+    {
+      statement: "Roman towns had a forum, baths and straight streets.",
+      explanation: "A town was planned on a grid, with the forum as its market and meeting place.",
+      example: "Colchester was the first Roman town in Britain.",
+      analogy: "A forum was like a town square with a market on it.",
+    },
+  ],
+  misconceptions: [
+    {
+      belief: "The Romans left no trace in Britain.",
+      correction: "Roads, baths and town walls from Roman Britain still stand today.",
+    },
+  ],
+  vocabulary: [{ term: "forum", definition: "The open square at the centre of a Roman town." }],
+  workedExamples: [
+    {
+      problem: "Why did the Romans build a road from Dover to London?",
+      steps: ["Dover is where soldiers landed.", "London was the biggest town."],
+      answer: "So soldiers and supplies could reach the biggest town quickly.",
+      objectiveRefs: [{ type: "objective", index: 1 }],
+    },
+  ],
+});
+
+const SAMPLE: PlanQuestionSetInput = {
+  topic: "The Roman invasion of Britain",
+  audience: { ...audience, subject: "History", yearGroup: "Year 4" },
+  shape: lessonShapeOf(
+    { objectiveVerb: "Explain the Roman invasion of Britain", priorConfidence: "New to it" },
+    { yearGroup: "Year 4" },
+  ),
+  objective: "Explain how the Romans changed daily life in Britain",
+  taught: TAUGHT,
+  use: "exit",
+  count: 2,
+  avoid: ["How did Roman roads change trade in Britain?", "What was a forum for?"],
+};
+
+const PIN: { version: string; hash: string } = {
+  version: "plan-question-set.v1",
+  hash: "dbe60f3c0fd132f7d89650fc6f61cd1f144333a42037ba8e5bb1bd781e553f8c",
+};
+
+const QUESTION = {
+  stem: "Why could a Roman army reach trouble in days rather than weeks?",
+  answer: "Straight, paved roads joined the towns.",
+  reasoning: "Key idea 0 states the roads and the reason.",
+  tier: "core",
+  use: "exit",
+  demand: "explanation",
+  forms: ["open-response"],
+  keyIdeaRefs: [{ type: "keyIdea", index: 0 }],
+};
+const set = (questions: unknown[]) => ({ questions });
+
+describe("plan-question-set", () => {
+  test("text hash matches its pinned version", () => {
+    const text = `${planQuestionSetPrompt.system}\n---\n${planQuestionSetPrompt.user(SAMPLE)}`;
+    const actual: { version: string; hash: string } = {
+      version: planQuestionSetPrompt.version,
+      hash: new Bun.CryptoHasher("sha256").update(text).digest("hex"),
+    };
+    expect(actual).toEqual(PIN);
+  });
+
+  test("the system text is v14's question rules, the taught-text rule, and no teach rule", () => {
+    const system = planQuestionSetPrompt.system;
+    const v14 = planFactsObjectivePrompt.system;
+    // v14 is 487 words; this call is 357: v14 question rules plus the one judge sentence. The alarm follows the count.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(365);
+    expect(system).toContain("British English");
+    expect(system).toContain("Never invent or include the name of any pupil");
+    expect(system).not.toContain("factRefs");
+    // The rule the split exists for: the judged "tested but not taught" class. The check is
+    // described (Luna guide 1) and the goals ranked (guide 2), answerable first.
+    expect(system).toContain(
+      "A judge reads each question beside the taught text and nothing else.",
+    );
+    expect(system).toContain("every question is answerable from the taught text alone");
+    expect(system).toContain(
+      "the fact, reason, method or quotation its answer needs being stated there",
+    );
+    expect(system).toContain("a case of its own rather than repeating the taught example");
+    // The count and the use come from the packet line; the system names the line, not a number.
+    expect(system).toContain('Write as many questions as the brief\'s "Write" line says');
+    expect(system).toContain('set "use" to that use');
+    expect(system).not.toMatch(/four to six|Two questions are for/);
+    expect(system).toContain("Follow the brief's tier line.");
+    expect(system).not.toContain('at least one "easy"');
+    // v14's question rules, byte for byte.
+    for (const kept of [
+      "answered in one line or by choosing an option",
+      'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then each distractor, a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
+      '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set: multiple-choice, true-false, open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it',
+      "Pitch the language, numbers and problem steps at the year group and reading level given",
+      "A quotation is one line, cut with an ellipsis.",
+    ]) {
+      expect(v14).toContain(kept);
+      expect(system).toContain(kept);
+    }
+    // Reworded for the split: the index is the one the taught block shows; units name the
+    // question's own fields; the ref rule names the distractor alone; no "explain any word".
+    expect(system).toContain(
+      '"keyIdeaRefs" lists every key idea a pupil needs to answer it, by the index shown.',
+    );
+    expect(system).toContain(
+      "Every quantity carries its unit, in the answer and each option as well as the stem",
+    );
+    expect(system).toContain(
+      'Where a distractor heads off the misconception, say so in "misconceptionRef".',
+    );
+    expect(system).not.toContain("explain any word");
+    // No teach rule: key ideas, vocabulary, the worked-example line, prior knowledge, invention of
+    // real figures, and no input the call is not given.
+    for (const gone of [
+      "Write one or two key ideas",
+      "Vocabulary is the terms",
+      "worked-example line",
+      "objectiveRefs",
+      PRIOR_KNOWLEDGE_LABEL,
+      "curriculum extract",
+      "never estimated",
+      "outline",
+      "minute",
+    ]) {
+      expect(system).not.toContain(gone);
+    }
+    expect(system).toContain(
+      `Length limits (characters): stem and answer ${SPEC_LIMITS.stem}; reasoning ${SPEC_LIMITS.footnote}; distractor ${SPEC_LIMITS.option}.`,
+    );
+    // The sketch is v14's question item, unchanged, inside the one list.
+    const v14Item = SHAPE_SKETCH.slice(SHAPE_SKETCH.indexOf('"questions":'));
+    expect(QUESTION_SET_SHAPE_SKETCH).toBe(`{${v14Item}`);
+    expect(system).toContain(QUESTION_SET_SHAPE_SKETCH);
+  });
+
+  test("the user turn shows the taught text indexed as the refs copy it, the use and the count", () => {
+    const rendered = planQuestionSetPrompt.user(SAMPLE);
+    expect(rendered).toContain(
+      "Lesson shape: This is an Explain lesson for a class new to the topic.",
+    );
+    expect(rendered).toContain("Objective: Explain how the Romans changed daily life in Britain");
+    expect(rendered).toContain("Taught text for this objective, as the slides will say it:");
+    expect(rendered).toContain(
+      "Key ideas, by index:\n  0: Roman roads let soldiers and goods move quickly between new towns. — Straight, paved roads",
+    );
+    expect(rendered).toContain("\n  1: Roman towns had a forum, baths and straight streets. —");
+    expect(rendered).toContain("    Example: Colchester was the first Roman town in Britain.");
+    expect(rendered).toContain("    Analogy: A forum was like a town square");
+    expect(rendered).toContain(
+      "Misconceptions, by index:\n  0: believes The Romans left no trace in Britain.; correct: Roads, baths",
+    );
+    expect(rendered).toContain("Vocabulary:\n  forum — The open square");
+    expect(rendered).toContain(
+      "Worked example: Why did the Romans build a road from Dover to London?\n  1. Dover is where soldiers landed.\n  2. London was the biggest town.\n  Answer: So soldiers",
+    );
+    expect(rendered).toContain(
+      "Already asked of this objective, in its other set (write different questions):\n  - How did Roman roads change trade in Britain?\n  - What was a forum for?",
+    );
+    expect(rendered).toMatch(/\nWrite 2 "exit" questions\.\nTiers: one "easy" and one "core"\.$/);
+    // Nothing the call does not use: no curriculum, reference, prior-knowledge or other objectives.
+    expect(rendered).not.toContain(CURRICULUM_INSTRUCTION);
+    expect(rendered).not.toContain("Reference facts");
+    expect(rendered).not.toContain(PRIOR_KNOWLEDGE_LABEL);
+    expect(rendered).not.toContain("by index:\n  0: Explain");
+    expect(rendered).not.toMatch(/Lesson length|minutes/);
+    // Without `avoid` the block is absent; a set of one takes the singular and the core tier.
+    const { avoid: _a, ...bare } = SAMPLE;
+    const one = planQuestionSetPrompt.user({ ...bare, use: "slide", count: 1 });
+    expect(one).not.toContain("Already asked");
+    expect(one).toMatch(/\nWrite 1 "slide" question\.\nTier: "core"\.$/);
+    expect(planQuestionSetPrompt.user({ ...bare, use: "slide", count: 4 })).toMatch(
+      /\nWrite 4 "slide" questions\.\nTiers: at least one "easy", one "core" and one "stretch"\.$/,
+    );
+    expect(tierLine(3)).toBe('Tiers: at least one "easy", one "core" and one "stretch".');
+    // The block renders only what the teach call wrote.
+    const thin = taughtBlock({ ...TAUGHT, vocabulary: [], workedExamples: [] });
+    expect(thin).not.toContain("Vocabulary");
+    expect(thin).not.toContain("Worked example");
+  });
+
+  test("the item is v14's question shape; the per-call schema pins use, count and the key-idea bound", () => {
+    const general = (value: unknown) => PlanQuestionSetOutputSchema.safeParse(value).success;
+    const live = (value: unknown) =>
+      planQuestionSetOutputSchemaFor(SAMPLE).safeParse(value).success;
+    // General: any use, one or more questions, an index past the second key idea rejected.
+    expect(general(set([QUESTION]))).toBe(true);
+    expect(general(set([{ ...QUESTION, use: "slide" }, QUESTION, QUESTION]))).toBe(true);
+    expect(general(set([]))).toBe(false);
+    expect(general(set([{ ...QUESTION, use: "starter" }]))).toBe(false);
+    expect(general(set([{ ...QUESTION, keyIdeaRefs: [{ type: "keyIdea", index: 2 }] }]))).toBe(
+      false,
+    );
+    expect(general({ ...set([QUESTION]), keyIdeas: [] })).toBe(false);
+    // Live: exactly `count`, every `use` the brief's, refs within the taught key ideas.
+    expect(live(set([QUESTION, QUESTION]))).toBe(true);
+    expect(live(set([QUESTION]))).toBe(false);
+    expect(live(set([QUESTION, QUESTION, QUESTION]))).toBe(false);
+    expect(live(set([QUESTION, { ...QUESTION, use: "slide" }]))).toBe(false);
+    expect(
+      live(set([QUESTION, { ...QUESTION, keyIdeaRefs: [{ type: "keyIdea", index: 1 }] }])),
+    ).toBe(true);
+    const oneIdea = planQuestionSetOutputSchemaFor({
+      ...SAMPLE,
+      taught: { ...TAUGHT, keyIdeas: TAUGHT.keyIdeas.slice(0, 1) },
+    });
+    expect(
+      oneIdea.safeParse(
+        set([QUESTION, { ...QUESTION, keyIdeaRefs: [{ type: "keyIdea", index: 1 }] }]),
+      ).success,
+    ).toBe(false);
+    // v14's enums, forms and optional refs are unchanged.
+    const { keyIdeaRefs: _k, ...noRefs } = QUESTION;
+    expect(live(set([noRefs, noRefs]))).toBe(true);
+    expect(live(set([{ ...QUESTION, demand: "evaluate" }, QUESTION]))).toBe(false);
+    expect(live(set([{ ...QUESTION, forms: [] }, QUESTION]))).toBe(false);
+    expect(live(set([{ ...QUESTION, forms: ["fill-gap"] }, QUESTION]))).toBe(false);
+    expect(live(set([{ ...QUESTION, tier: "medium" }, QUESTION]))).toBe(false);
+    // Caps as v14: reasoning at `footnote`; the soft build drops caps and keeps use and count.
+    const long = set([{ ...QUESTION, reasoning: "x".repeat(SPEC_LIMITS.footnote + 20) }, QUESTION]);
+    expect(live(long)).toBe(false);
+    const soft = planQuestionSetOutputSchemaFor(SAMPLE, { soft: true });
+    expect(soft.safeParse(long).success).toBe(true);
+    expect(soft.safeParse(set([QUESTION])).success).toBe(false);
+    expect(soft.safeParse(set([QUESTION, { ...QUESTION, use: "slide" }])).success).toBe(false);
+  });
+
+  test("w0b and r1 carry over: an echoed distractor is an editorial issue, a fourth echo is dropped", () => {
+    const mc = (distractors: string[]) => ({
+      ...QUESTION,
+      answer: "Straight roads",
+      forms: ["multiple-choice"],
+      distractors: distractors.map((text) => ({ text })),
+    });
+    const hard = planQuestionSetOutputSchemaFor(SAMPLE);
+    const echo = hard.safeParse(set([mc(["Straight roads.", "Boats", "Horses"]), QUESTION]));
+    expect(echo.success).toBe(false);
+    expect(echo.error?.issues.every(isEditorialIssue)).toBe(true);
+    expect(
+      planQuestionSetOutputSchemaFor(SAMPLE, { soft: true }).safeParse(
+        set([mc(["Straight roads.", "Boats", "Horses"]), QUESTION]),
+      ).success,
+    ).toBe(true);
+    const four = hard.safeParse(
+      set([mc(["Straight roads", "Boats", "Horses", "Walls"]), QUESTION]),
+    );
+    expect(four.success && four.data.questions[0]?.distractors?.map((d) => d.text)).toEqual([
+      "Boats",
+      "Horses",
+      "Walls",
+    ]);
+  });
+
+  test("appends to the teach output and merges as v14's questions did", () => {
+    const parsed: PlanQuestionSetOutput = planQuestionSetOutputSchemaFor(SAMPLE).parse(
+      set([
+        {
+          ...QUESTION,
+          keyIdeaRefs: [{ type: "keyIdea", index: 1 }],
+          distractors: [
+            { text: "Nothing at all", misconceptionRef: { type: "misconception", index: 0 } },
+          ],
+        },
+        QUESTION,
+      ]),
+    );
+    const merged = mergeObjectiveFacts([{ ...TAUGHT, questions: parsed.questions }]);
+    expect(merged.questions).toHaveLength(2);
+    expect(merged.questions[0]?.objectiveRefs).toEqual([{ type: "objective", index: 0 }]);
+    expect(merged.questions[0]?.keyIdeaRefs).toEqual([{ type: "keyIdea", index: 1 }]);
+    expect(merged.questions[0]?.distractors[0]?.misconceptionRef).toEqual({
+      type: "misconception",
+      index: 0,
+    });
+    expect(merged.questions[1]?.use).toBe("exit");
+  });
+});
