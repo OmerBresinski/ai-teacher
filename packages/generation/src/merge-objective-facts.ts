@@ -119,8 +119,35 @@ export type MergedObjectiveFacts = {
     workedExamples: number;
     questions: number;
     conflicts: MergeConflict[];
+    /**
+     * Audit A5: objectives (0-based) whose worked example uses the same numbers as one of the
+     * same call's key-idea examples, so the next slide's example pre-solves it (Y7 ratio k4/x1).
+     * Flagged, not changed.
+     */
+    exampleRepeats: number[];
   };
 };
+
+/** The numbers in a text, in order ("£40 in 3:2" → 40,3,2). */
+const numbersOf = (text: string) => text.match(/\d+(?:\.\d+)?/g) ?? [];
+
+/**
+ * Whether one of a call's worked examples uses the same two or more numbers, in the same order,
+ * as one of its key-idea examples: the same problem, worked twice.
+ */
+export function repeatsKeyIdeaExample(
+  output: Pick<Output, "keyIdeas" | "workedExamples">,
+): boolean {
+  const examples = output.keyIdeas
+    .map((k) => numbersOf(k.example ?? "").join(","))
+    .filter((n) => n.split(",").length >= 2);
+  return output.workedExamples.some((w) => {
+    const n = numbersOf(w.problem).join(",");
+    return (
+      n.split(",").length >= 2 && examples.some((e) => e === n || e.includes(n) || n.includes(e))
+    );
+  });
+}
 
 /**
  * Meaning-preserving normalisation only: lower case, curly quotes and apostrophes straightened,
@@ -174,6 +201,7 @@ export function mergeObjectiveFacts(outputs: readonly (Output | null)[]): Merged
       workedExamples: 0,
       questions: 0,
       conflicts: [],
+      exampleRepeats: [],
     },
   };
 
@@ -243,8 +271,19 @@ export function mergeObjectiveFacts(outputs: readonly (Output | null)[]): Merged
       keyIdeas.add(normaliseText(k.statement), { ...k, objectiveRefs: [ref] }, ref),
     );
     for (const v of output.vocabulary) {
+      // Audit A5: a term another objective already defined keeps the first definition; this
+      // objective joins its refs. Two definitions of one word on two slides read as a contradiction.
+      const first = merged.vocabulary.findIndex(
+        (m) => normaliseText(m.term) === normaliseText(v.term),
+      );
+      if (first >= 0) {
+        merged.vocabulary[first]?.objectiveRefs.push(ref);
+        merged.duplicates.vocabulary++;
+        continue;
+      }
       vocabulary.add(normaliseText(v.term), { ...v, objectiveRefs: [ref] }, ref);
     }
+    if (repeatsKeyIdeaExample(output)) merged.duplicates.exampleRepeats.push(index);
     for (const w of output.workedExamples) {
       const { misconceptionRef, objectiveRefs: declared, ...rest } = w;
       // The objectives the call names for the example (existing ones only, in order, once each);

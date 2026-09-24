@@ -280,6 +280,7 @@ const emptyDuplicates = (): LabPlanReport["duplicates"] => ({
   workedExamples: 0,
   questions: 0,
   conflicts: [],
+  exampleRepeats: [],
 });
 
 export async function labPlan(
@@ -776,7 +777,7 @@ export function labPlanMarkdown(report: LabPlanReport): string {
   );
   const d = report.duplicates;
   L.push(
-    `- merge dropped as exact duplicates: key ideas ${d.keyIdeas}, misconceptions ${d.misconceptions}, vocabulary ${d.vocabulary}, worked examples ${d.workedExamples}, questions ${d.questions}; conflicts kept: ${d.conflicts.length}${d.conflicts.length ? ` (${d.conflicts.map((c) => `${c.list} "${c.key}" ×${c.indices.length}`).join("; ")})` : ""}`,
+    `- merge dropped as exact duplicates: key ideas ${d.keyIdeas}, misconceptions ${d.misconceptions}, vocabulary ${d.vocabulary}, worked examples ${d.workedExamples}, questions ${d.questions}; conflicts kept: ${d.conflicts.length}${d.conflicts.length ? ` (${d.conflicts.map((c) => `${c.list} "${c.key}" ×${c.indices.length}`).join("; ")})` : ""}; worked example repeats a key-idea example: ${(d.exampleRepeats ?? []).length ? (d.exampleRepeats ?? []).map((i) => `o${i + 1}`).join(", ") : "none"}`,
   );
   L.push(
     `- outline: ${report.slideCount} slides, ${report.callouts} callouts; coverage ${report.coverage

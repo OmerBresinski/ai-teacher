@@ -3,6 +3,7 @@ import {
   mergeObjectiveFacts,
   normaliseText,
   type ObjectiveFactsOutput,
+  repeatsKeyIdeaExample,
 } from "./merge-objective-facts";
 
 const q = (stem: string, misconceptionRef?: { type: "misconception"; index: number }) => ({
@@ -30,6 +31,7 @@ const NO_DUPLICATES = {
   workedExamples: 0,
   questions: 0,
   conflicts: [],
+  exampleRepeats: [] as number[],
 };
 
 describe("normaliseText", () => {
@@ -103,7 +105,7 @@ describe("mergeObjectiveFacts", () => {
     expect(m.duplicates.conflicts).toEqual([]);
   });
 
-  test("the same term with two definitions is kept twice and recorded as a conflict; no first-wins", () => {
+  test("audit A5: a term defined again by a later objective keeps the first definition; the later objective joins its refs", () => {
     const m = mergeObjectiveFacts([
       output({ vocabulary: [{ term: "ratio part", definition: "one share" }] }),
       output({
@@ -115,46 +117,51 @@ describe("mergeObjectiveFacts", () => {
       output({
         keyIdeas: [{ statement: "Third", explanation: "e", example: "x" }],
         misconceptions: [{ belief: "Third belief", correction: "c" }],
-        vocabulary: [{ term: "ratio part", definition: "the size of one share" }],
+        vocabulary: [{ term: "ratio part", definition: "one share" }],
         questions: [q("Third?")],
       }),
     ]);
-    expect(m.vocabulary.map((v) => v.definition)).toEqual([
-      "one share",
-      "one equal share",
-      "the size of one share",
-    ]);
-    expect(m.vocabulary.map((v) => v.objectiveRefs.map((r) => r.index))).toEqual([[0], [1], [2]]);
-    expect(m.duplicates.vocabulary).toBe(0);
-    expect(m.duplicates.conflicts).toEqual([
-      { list: "vocabulary", key: "ratio part", indices: [0, 1, 2], objectives: [[0], [1], [2]] },
-    ]);
+    expect(m.vocabulary.map((v) => v.definition)).toEqual(["one share"]);
+    expect(m.vocabulary.map((v) => v.objectiveRefs.map((r) => r.index))).toEqual([[0, 1, 2]]);
+    expect(m.duplicates.vocabulary).toBe(2);
+    expect(m.duplicates.conflicts).toEqual([]);
   });
 
   test("a conflict names every objective behind each kept item, including duplicates merged before and after it arose", () => {
+    const k = (explanation: string) => ({ statement: "Parts add up", explanation, example: "x" });
     const m = mergeObjectiveFacts([
-      output({ vocabulary: [{ term: "ratio part", definition: "one share" }] }),
-      // Objective 2 repeats objective 1's entry exactly: merged into index 0, no conflict yet.
-      output({
-        keyIdeas: [{ statement: "Other", explanation: "e", example: "x" }],
-        vocabulary: [{ term: "Ratio part", definition: "one share" }],
-      }),
-      // Objective 3 defines it differently: the conflict.
-      output({
-        keyIdeas: [{ statement: "Third", explanation: "e", example: "x" }],
-        vocabulary: [{ term: "ratio part", definition: "the size of one share" }],
-      }),
+      output({ keyIdeas: [k("one share")] }),
+      // Objective 2 repeats objective 1's key idea exactly: merged into index 0, no conflict yet.
+      output({ keyIdeas: [k("one share")] }),
+      // Objective 3 explains it differently: the conflict.
+      output({ keyIdeas: [k("the size of one share")] }),
       // Objective 4 repeats objective 1's entry again, after the conflict was recorded.
+      output({ keyIdeas: [k("one share")] }),
+    ]);
+    expect(m.keyIdeas.map((v) => v.objectiveRefs.map((r) => r.index))).toEqual([[0, 1, 3], [2]]);
+    expect(m.duplicates.keyIdeas).toBe(2);
+    expect(m.duplicates.conflicts).toEqual([
+      { list: "keyIdeas", key: "parts add up", indices: [0, 1], objectives: [[0, 1, 3], [2]] },
+    ]);
+  });
+
+  test("audit A5: a worked example on the same numbers as a key-idea example is flagged by objective", () => {
+    const m = mergeObjectiveFacts([
       output({
-        keyIdeas: [{ statement: "Fourth", explanation: "e", example: "x" }],
-        vocabulary: [{ term: "ratio part", definition: "one share" }],
+        keyIdeas: [
+          { statement: "Share", explanation: "e", example: "Share £40 in 3:2: £24 and £16." },
+        ],
+        workedExamples: [
+          { problem: "Share £40 in the ratio 3:2.", steps: ["Add."], answer: "£24, £16" },
+        ],
+      }),
+      output({
+        keyIdeas: [{ statement: "Simplify", explanation: "e", example: "12:18 is 2:3." }],
+        workedExamples: [{ problem: "Simplify 20:30.", steps: ["Divide."], answer: "2:3" }],
       }),
     ]);
-    expect(m.vocabulary.map((v) => v.objectiveRefs.map((r) => r.index))).toEqual([[0, 1, 3], [2]]);
-    expect(m.duplicates.vocabulary).toBe(2);
-    expect(m.duplicates.conflicts).toEqual([
-      { list: "vocabulary", key: "ratio part", indices: [0, 1], objectives: [[0, 1, 3], [2]] },
-    ]);
+    expect(m.duplicates.exampleRepeats).toEqual([0]);
+    expect(repeatsKeyIdeaExample({ keyIdeas: [], workedExamples: [] })).toBe(false);
   });
 
   test("the same stem with a different answer is a conflict, both questions kept", () => {
