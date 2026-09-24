@@ -434,6 +434,11 @@ describe("callStructured", () => {
     // …and neither the model's text nor the prompt reaches the log.
     expect(log.text()).not.toContain('"answer":1');
     expect(log.text()).not.toContain("system text");
+    // The retry carries the failed answer, so a miss is an edit, not a fresh answer (audit A1).
+    expect(ai.calls[1]?.promptText).toContain(
+      'Your previous answer:\n{"answer":1,"pupilName":"Aisha"}',
+    );
+    expect(ai.calls[1]?.promptText).toContain("did not validate");
   });
 
   test("a second miss is a StageFailure naming the stage, with the issues as cause and in the log", async () => {

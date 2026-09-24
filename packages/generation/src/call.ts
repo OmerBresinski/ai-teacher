@@ -246,6 +246,8 @@ export function callTimeoutMs(version: string, modelId?: string): number {
   return Object.hasOwn(CALL_TIMEOUT_MS, name) ? CALL_TIMEOUT_MS[name as PromptName] : 300_000;
 }
 
+/** The failed answer, sent back so a miss is an edit of it rather than a fresh answer (audit A1). */
+const RETRY_PREVIOUS = "\n\nYour previous answer:\n";
 const RETRY_PREFIX = "\n\nYour previous answer did not validate:\n";
 /**
  * The retry's closing instruction. The misses seen in production are shape misses (a list or the
@@ -253,7 +255,7 @@ const RETRY_PREFIX = "\n\nYour previous answer did not validate:\n";
  * Schema-neutral on purpose: some lists hold strings and some keys are optional.
  */
 const RETRY_SUFFIX =
-  "\n\nAnswer again with the complete answer as one JSON object in the shape shown. Lists are JSON arrays, never strings containing JSON; do not wrap the answer or any part of it in a string; no prose.";
+  "\n\nAnswer again with the complete answer as one JSON object in the shape shown, keeping what was right and changing only what the issues name. Lists are JSON arrays, never strings containing JSON; do not wrap the answer or any part of it in a string; no prose.";
 
 /**
  * `Output.object` with a repair pass: when the text fails to parse or validate, `repairJsonText`
@@ -494,7 +496,10 @@ export async function callStructured<I, T>(
         },
         "structured output did not validate; retrying once",
       );
-      retryText = `${userText}${RETRY_PREFIX}${issues.join("\n")}${RETRY_SUFFIX}`;
+      // The previous answer rides along (audit A1): without it a one-field cap miss made the model
+      // rewrite every field (objectives l2-h-y9-coasts-W6N swapped all three objectives).
+      const previous = error.text?.trim() ? `${RETRY_PREVIOUS}${error.text.trim()}` : "";
+      retryText = `${userText}${previous}${RETRY_PREFIX}${issues.join("\n")}${RETRY_SUFFIX}`;
     }
     // The retry is a second model call: the same two gates apply before it.
     throwIfAborted(deps.signal);
