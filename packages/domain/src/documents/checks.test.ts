@@ -684,6 +684,76 @@ describe('questionless: a bare "it" (lab round 1, cb-y1-animals-P/L)', () => {
   });
 });
 
+describe('questionless: "it" naming a noun in an earlier sentence (lab round 2)', () => {
+  test("a scenario sentence gives the task its referent", () => {
+    // Recorded false degenerate-question errors (r1-h-y2-plants-L slide 7, r1-cb-y1-animals-L exit).
+    expect(
+      questionless(
+        "Suppose a small plant is left in a dark cupboard. Explain why it may grow weak and pale.",
+      ),
+    ).toBe("ok");
+    expect(
+      questionless("A foal is a young horse. Explain how you know it will become an adult horse."),
+    ).toBe("ok");
+    expect(
+      questionless(
+        "A lamb is a young sheep. Explain why it will grow into an adult sheep, not a goat or rabbit.",
+      ),
+    ).toBe("ok");
+  });
+
+  test("an earlier sentence with no noun phrase does not rescue it", () => {
+    expect(questionless("Look closely. Explain why it melts.")).toBe("no-referent");
+    expect(questionless("Ice is cold. Explain why it melts.")).toBe("no-referent");
+    // "your decision" is not "it": a scenario still poses no decision.
+    expect(questionless("A fort has a ditch. Explain your decision.")).toBe("no-referent");
+  });
+});
+
+describe("questionless: a label or length frame before the task (lab round 2)", () => {
+  test("recorded exit items that open with a label or frame are tasks", () => {
+    expect(
+      questionless(
+        "Exit: Name one way Freud proposed that repressed material might appear indirectly.",
+      ),
+    ).toBe("ok");
+    expect(
+      questionless("In one line, explain why increasing surface area increases reaction rate."),
+    ).toBe("ok");
+    expect(
+      questionless("In one sentence, explain what coastal erosion does and where it happens."),
+    ).toBe("ok");
+    expect(
+      questionless(
+        "Exit: Complete the sentence: Evacuated children did not all have the same experience because…",
+      ),
+    ).toBe("ok");
+  });
+
+  test("a label with no task after it still asks nothing", () => {
+    expect(questionless("The rodent family.")).toBe("no-question");
+    expect(questionless("Exit: The rodent family.")).toBe("no-question");
+    expect(questionless("In one line, the rodent family.")).toBe("no-question");
+    expect(questionless("Exit: Explain why it melts.")).toBe("no-referent");
+    expect(questionless("Compare these: a seawall, a groyne.")).toBe("ok");
+  });
+
+  test("recorded maths tasks (r1-h-y7-ratio-P) are tasks", () => {
+    expect(questionless("Simplify 42:56 and explain why your new ratio is equivalent.")).toBe("ok");
+    expect(
+      questionless(
+        "A learner shares 48 in the ratio 1:3 as 16 and 32. Spot and explain the error.",
+      ),
+    ).toBe("ok");
+    expect(questionless("Share £72 in the ratio 5:7. Give a check for your answer.")).toBe("ok");
+    expect(
+      questionless(
+        "Share 42 counters in the ratio 2:5. Explain how you know your answer is consistent with the ratio.",
+      ),
+    ).toBe("ok");
+  });
+});
+
 describe("tested-not-taught (lab round 1)", () => {
   const bare = (id: string, kind: Slide["kind"]): Slide => ({ id, kind, elements: [] }) as Slide;
   const withFacts = (facts: LessonFacts, kinds: [string, Slide["kind"]][]): Lesson => ({
