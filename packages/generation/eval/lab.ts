@@ -1292,9 +1292,12 @@ if (import.meta.main) {
     );
     for (const stage of stages) {
       for (const [name, cls, defaultEffort, cap] of CALLS[stage] ?? []) {
-        const routedId = routes[name] ?? routes[stage] ?? ai.modelId(cls as never);
-        for (const k of [name, stage]) unused.delete(k);
-        const effort = efforts[name] ?? efforts[stage] ?? defaultEffort;
+        // A waves set call is listed as `plan-question-set×3`; its route and effort are the
+        // prompt's (the live run routes by prompt version), so the suffix is not part of the key.
+        const prompt = name.replace(/×\d+$/, "");
+        const routedId = routes[prompt] ?? routes[stage] ?? ai.modelId(cls as never);
+        for (const k of [prompt, stage]) unused.delete(k);
+        const effort = efforts[prompt] ?? efforts[stage] ?? defaultEffort;
         const price = PRICES[routedId];
         const via = routedId.startsWith("openai/")
           ? "openai (pinned)"

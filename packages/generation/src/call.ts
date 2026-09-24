@@ -568,7 +568,11 @@ export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
       },
       // Gemini 3 reads a level, not an effort; Qwen and DeepSeek think or not (smoke-tested
       // 2026-09-17: Gemini at its default spent the whole slide budget thinking, Qwen 3 373 tokens).
-      google: { thinkingConfig: { thinkingLevel: effort === "high" ? "high" : "low" } },
+      // Gemini 2.5 reads a token budget instead (0 turns thinking off on Flash-Lite, which is its
+      // default there); a level sent to a 2.5 id is refused. Untested live as of 2026-09-24.
+      google: /^google\/gemini-2\./.test(modelId)
+        ? { thinkingConfig: { thinkingBudget: effort === "high" ? 4096 : 0 } }
+        : { thinkingConfig: { thinkingLevel: effort === "high" ? "high" : "low" } },
       alibaba: { enableThinking: effort === "high" },
       deepseek: { thinking: { type: effort === "high" ? "enabled" : "disabled" } },
       // The Vercel gateway may serve an `openai/` id from its own Bedrock credentials, where the

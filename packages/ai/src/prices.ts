@@ -110,6 +110,24 @@ export const PRICES: Record<string, ModelPrice> = {
     outputPerMTok: 3.75,
     cachedInputPerMTok: 0.075,
   },
+  // Gateway list prices from `/v1/models` on 2026-09-24 (lab pw: the small Gemini routes for the
+  // plan and slide calls). The gateway lists no cache-write price for these, so a write is
+  // charged at the input price.
+  "google/gemini-2.5-flash-lite": {
+    inputPerMTok: 0.1,
+    outputPerMTok: 0.4,
+    cachedInputPerMTok: 0.01,
+  },
+  "google/gemini-3.1-flash-lite": {
+    inputPerMTok: 0.25,
+    outputPerMTok: 1.5,
+    cachedInputPerMTok: 0.03,
+  },
+  "google/gemini-3.5-flash-lite": {
+    inputPerMTok: 0.3,
+    outputPerMTok: 2.5,
+    cachedInputPerMTok: 0.03,
+  },
   "deepseek/deepseek-v4-flash": {
     inputPerMTok: 0.22,
     outputPerMTok: 0.66,
