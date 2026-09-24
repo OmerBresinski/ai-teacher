@@ -50,7 +50,7 @@ const SAMPLE: PlanTeachObjectiveInput = {
 
 const PIN: { version: string; hash: string } = {
   version: "plan-teach-objective.v2",
-  hash: "989fa44834f7d6abbf88fed348222c8bbfdca38d7923ef0a214085d92a9407cc",
+  hash: "b21f50f882b9f225c4a98ccbe99f2119815050b71ca45e8c192a5faf24271dc6",
 };
 
 const KEY_IDEA = {
@@ -109,9 +109,9 @@ describe("plan-teach-objective", () => {
       expect(v14).toContain(kept);
       expect(system).toContain(kept);
     }
-    // v2 (audit B1/B7): the key-stage clause, and prior knowledge read from the audience block.
+    // v2 (audit B1): prior knowledge is read from the audience block.
     expect(system).toContain(
-      "Pitch the content, language, numbers and problem steps at the year group and reading level given, teaching nothing beyond that year group's key stage; explain any word a pupil at that level would not know.",
+      "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
     );
     expect(system).toContain(
       'Where the brief gives "Prior knowledge", treat it as met and build nothing outside it.',

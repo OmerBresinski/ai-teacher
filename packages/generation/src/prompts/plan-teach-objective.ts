@@ -36,8 +36,10 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  *
  * v2 (24 Sept 2026 audit, FIX-PLAN B1/B7): prior knowledge is read from the audience block alone
  * (it was sent twice, under two labels); the starter's questions are shown as earlier learning, so
- * a prerequisite the starter asks is not taught again as new; the pitch line keeps the content
- * inside the year group's key stage (KS1 plants was taught photosynthesis in 3 of 4 runs).
+ * a prerequisite the starter asks is not taught again as new. B7 (keep content inside the key
+ * stage) was tried and not kept: on the Y2 plants brief, "teaching nothing beyond that year group's
+ * key stage" and a national-curriculum variant both still wrote "leaves make food" in 6 of 6 runs
+ * (Luna guide rule 8: an instruction does not overturn the model's framing; the source does).
  * `priorKnowledge` stays on the input type for the callers and is no longer rendered.
  */
 
@@ -178,7 +180,7 @@ export const planTeachObjectivePrompt = {
     "",
     "Rules:",
     TEACH_HOUSE_RULES,
-    "Pitch the content, language, numbers and problem steps at the year group and reading level given, teaching nothing beyond that year group's key stage; explain any word a pupil at that level would not know.",
+    "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
     "Write one or two key ideas, one misconception and up to two vocabulary terms.",
     "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers); the worked example takes a case of its own.",
     'A worked example may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea\'s date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.',
