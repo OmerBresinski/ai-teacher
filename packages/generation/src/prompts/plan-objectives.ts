@@ -184,6 +184,25 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *    bounds them (the teacher's use). `CURRICULUM_INSTRUCTION` is shared with the teach call and
  *    unchanged. 343 -> 314 system words.
  *
+ * v15 (24 Sept 2026, v14 judged blind 3.50 against v13's 3.12, but starter faults 29 against 33):
+ *  - v14's "needs ... and that no objective teaches" still let the starter ask parts inside an
+ *    objective (a groyne under hard engineering, puppy and chick in a Year 1 animals lesson). Each
+ *    item now opens with a working field, `from`: the objective's number and the earlier topic and
+ *    year the knowledge comes from, never this lesson's topic. Writing it first commits the model
+ *    to a source outside the lesson; `retrievalForStarter` drops it before the outline. A first
+ *    draft asking only for "a different, earlier topic" drifted off the lesson (seasons in a plants
+ *    lesson, Animal Farm for Prospero); naming the objective tied it back. Naming the objective
+ *    then read as one question per objective (4 and 2 questions, schema retries), so the count is
+ *    its own sentence, "however many objectives there are", and the role line no longer says it.
+ *  - Trivial items ("What is demand?" at Year 12): the question makes a pupil use the knowledge,
+ *    a short calculation, a reason or a comparison. The sketch item is a reason question.
+ *  - Objectives listing factors or conditions and imprecise methods: the objective rule asks for
+ *    the concept "exactly, in the subject's terms" and, where several factors share one
+ *    explanation, that explanation rather than the list.
+ *  - Teacher notes ignored (a Year 13 "contrasting schools" note): `TEACHER_NOTES_USE` follows the
+ *    notes in the user turn, only when there are some.
+ *  - Cost, measured on 24 calls: median 4.5 -> 7.3 s, output 473 -> 613 tokens. 314 -> 354 words.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -220,6 +239,10 @@ export const PRIOR_KNOWLEDGE_LABEL = "What the class has already covered";
 export const PRIOR_KNOWLEDGE_USE =
   "That is what the class knows before this lesson: draw the retrieval questions from it. The objectives still teach this lesson's topic, and where it names how far the class has read in a text, they use nothing beyond that point.";
 
+/** What this call does with the teacher's notes (v15): sent after them, only when there are some. */
+export const TEACHER_NOTES_USE =
+  "At least one objective carries out what the teacher notes ask for.";
+
 /** What this call does with a retrieved unit (v14): sent after the extract, only when there is one. */
 export const CURRICULUM_USE =
   'Where the topic spans this unit, the objectives span its arc, not its opening lesson. Put the learning point or bullet each objective serves in "curriculumAnchor".';
@@ -233,10 +256,23 @@ const curriculumAnchor = z.string().max(160);
  * teaches anything; the outline places the three on the starter slide.
  */
 export const PlanRetrievalQuestionSchema = z.strictObject({
+  /**
+   * v15: the earlier topic and year the question comes from, written first so the model commits
+   * to a topic outside this lesson before it writes the question. A working field: the pipeline
+   * keeps only question and answer (`retrievalForStarter`). Optional so recorded sets parse.
+   */
+  from: z.string().min(3).max(120).optional(),
   question: z.string().min(8).max(200),
   answer: z.string().min(1).max(120),
 });
 export type PlanRetrievalQuestion = z.output<typeof PlanRetrievalQuestionSchema>;
+
+/** The starter's questions as the outline and the lesson facts take them: `from` is dropped (v15). */
+export function retrievalForStarter(
+  items: readonly PlanRetrievalQuestion[],
+): { question: string; answer: string }[] {
+  return items.map(({ question, answer }) => ({ question, answer }));
+}
 
 /**
  * Exactly three: the prose says "three" and Luna writes to the number it is given, so the schema
@@ -311,19 +347,19 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
  * is asked for beside an extract (`CURRICULUM_USE`), so a no-extract call is not shown the slot.
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "from": "objective 1: Iron Age Britain, Year 3", "question": "Why did Iron Age tribes build hill forts?", "answer": "To defend themselves from attack by other tribes" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v14",
+  version: "plan-objectives.v15",
   system: [
-    "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
+    "You are an experienced UK teacher writing one lesson's learning objectives and the retrieval questions for its starter.",
     "",
     "Rules:",
     OBJECTIVE_HOUSE_RULES,
-    "Each objective is one idea, at most 16 words, starting with one observable verb: what a pupil can do by the end. Name the concept, process or method it is about, not a heading.",
+    "Each objective is one idea, at most 16 words, starting with one observable verb: what a pupil can do by the end. Name its concept, process or method exactly, in the subject's terms; where several factors or conditions share one explanation, name that explanation, not the list.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
     "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: usually two or three; one for one tight skill; four only for four distinct parts; no filler line.",
-    "Each retrieval question checks a different term, fact or method that one of the objectives needs a pupil to know already and that no objective teaches, one a pupil in this year group could plausibly have forgotten. Ask it in one line or by picking from options the question names.",
+    "Write three retrieval questions, however many objectives there are. Each tests one thing an objective needs a pupil to bring from an earlier topic, never this lesson's topic; in \"from\", name that objective's number and the earlier topic and year. Pitch it at this year group: a pupil uses the knowledge (a short calculation, a reason, a comparison), in one line or by picking from options it names.",
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,
@@ -331,6 +367,7 @@ export const planObjectivesPrompt = {
   user(input: PlanObjectivesInput): string {
     const [shapeLine] = shapeBlock(input.shape);
     const parts = [`Topic or objective: ${input.topic}`, audienceBlock(input.audience)];
+    if (input.audience.classContext?.notes) parts.push(TEACHER_NOTES_USE);
     if (input.priorKnowledge) {
       parts.push(`${PRIOR_KNOWLEDGE_LABEL}: ${input.priorKnowledge}`, PRIOR_KNOWLEDGE_USE);
     }

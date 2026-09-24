@@ -25,6 +25,7 @@ import {
   type PlanRetrievalQuestion,
   planObjectivesOutputSchemaFor,
   planObjectivesPrompt,
+  retrievalForStarter,
 } from "../prompts/plan-objectives";
 import {
   type PlanQuestionSetOutput,
@@ -365,7 +366,7 @@ export async function labPlan(
   // fact question, so no check, practise slide or exit quiz can reach it.
   const retrieval =
     objectivesCall.output.retrieval && objectivesCall.output.retrieval.length > 0
-      ? objectivesCall.output.retrieval
+      ? retrievalForStarter(objectivesCall.output.retrieval)
       : undefined;
   // Saved objectives were anchored to the original run's extract, which a from-facts run does not reload.
   const hasSource = fromFacts
