@@ -202,8 +202,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
-    version: "generate-slide.v23",
-    hash: "de143709dc710def05d4ef4684b5d05a0695541830c496b43167966305ddc74c",
+    version: "generate-slide.v24",
+    hash: "019a45f1c00021b8c83097eb21f48d92a96fbc7380451c7f4d299ac23b87003d",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -604,7 +604,10 @@ describe("prompt versions", () => {
     // Minimalism rubric (v20): the reserved stems are listed once, in the user turn, with the one
     // instruction not to use them; the system prompt no longer repeats "never a reserved stem".
     expect(system).not.toContain("reserved stem");
-    const user = PROMPTS["generate-slide"].user(SAMPLE_INPUTS["generate-slide"] as never);
+    const user = PROMPTS["generate-slide"].user({
+      ...(SAMPLE_INPUTS["generate-slide"] as object),
+      entry: { kind: "instructions", factRefs: ["q4"] },
+    } as never);
     expect(user).toContain("do not use these stems");
   });
 
@@ -649,11 +652,11 @@ describe("prompt versions", () => {
       ],
     } as never);
     expect(withLater).toContain(
-      "Asked of pupils later in the lesson, on later slides (shown for reference):\n  - Which state has particles furthest apart? — answer: Gas\n  - Explain why a gas fills its container. — answer: Its particles move freely.\nTeach here, within this slide's limits, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions or repeating their answer text.",
+      "Asked of pupils later in the lesson, on later slides (shown for reference):\n  - Which state has particles furthest apart? — answer: Gas\n  - Explain why a gas fills its container. — answer: Its particles move freely.\nTeach here, within this slide's limits, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions.",
     );
-    // The block sits after the reserved stems and before the closing line, once.
-    expect(withLater.indexOf("Asked of pupils later")).toBeGreaterThan(
-      withLater.indexOf("Reserved for other slides"),
+    // The block sits before the closing line, once.
+    expect(withLater.indexOf("Asked of pupils later")).toBeLessThan(
+      withLater.indexOf("Answer with the JSON"),
     );
     expect(withLater.split("Asked of pupils later")).toHaveLength(2);
     // Absent or empty (production, and lab slides nothing later tests): the block is not rendered.
@@ -661,6 +664,25 @@ describe("prompt versions", () => {
     const empty = PROMPTS["generate-slide"].user({ ...base, laterQuestions: [] } as never);
     expect(without).not.toContain("later in the lesson");
     expect(empty).toBe(without);
+  });
+
+  test("audit B4: reserved stems reach only the kinds that compose one; vocabulary is defined where used", () => {
+    const base = SAMPLE_INPUTS["generate-slide"] as { referenced: object };
+    const render = (kind: string) =>
+      PROMPTS["generate-slide"].user({ ...base, entry: { kind, factRefs: ["v1", "k1"] } } as never);
+    expect(render("sort")).toContain("Reserved for other slides");
+    for (const kind of ["content", "worked-example", "multiple-choice", "vocabulary"]) {
+      expect(render(kind)).not.toContain("Reserved for other slides");
+    }
+    const define = "Define each vocabulary term in a few words where the slide first uses it";
+    expect(render("content")).toContain(define);
+    expect(render("vocabulary")).not.toContain(define);
+    const noVocabulary = PROMPTS["generate-slide"].user({
+      ...base,
+      referenced: { ...base.referenced, vocabulary: [] },
+      entry: { kind: "content", factRefs: ["k1"] },
+    } as never);
+    expect(noVocabulary).not.toContain(define);
   });
 
   test("TEACH-241: the judge picks a photo showing at least one required item, not all of them", () => {
