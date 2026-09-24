@@ -83,7 +83,7 @@ import {
   runLabPipeline,
 } from "../src/lab/plan-pipeline";
 import { NUMERIC_CHECK, numericFactMismatches, numericMismatches } from "../src/numeric-check";
-import { EXIT_OPTIONS_NOTE, outlineFromFacts } from "../src/outline-from-facts";
+import { outlineFromFacts } from "../src/outline-from-facts";
 import { PROMPT_VERSIONS } from "../src/prompts";
 import { planFactsObjectivePrompt } from "../src/prompts/plan-facts-objective";
 import { planObjectivesPrompt } from "../src/prompts/plan-objectives";
@@ -560,8 +560,8 @@ export function labChecks(lesson: Lesson, worksheet?: Worksheet): LabFinding[] {
 
   // (h2) A multiple-choice-native question (three or more distractors: its native form, since
   // lesson facts keep no declared `forms`) on a step that prints only its stem. Code-only.
-  // An exit ticket may set one as multiple choice: on a rendered deck its answer and distractors
-  // all appear on the slide; on an outline alone, the brief names its objective for options.
+  // A lab set slide sets one as multiple choice: on a rendered deck its answer and distractors all
+  // appear on the slide; on an outline alone, the set kinds are printed with their options.
   facts.outline.forEach((entry, oi) => {
     if (!STEM_ONLY_KINDS.has(entry.kind)) return;
     const slide = slides[byId.get(entry.id) ?? -1];
@@ -572,19 +572,16 @@ export function labChecks(lesson: Lesson, worksheet?: Worksheet): LabFinding[] {
             .join("\n"),
         )
       : undefined;
-    const noted = new Set(
-      (entry.brief?.adds.split(EXIT_OPTIONS_NOTE)[1]?.match(/\d+/g) ?? []).map(Number),
-    );
     for (const r of entry.factRefs) {
       const q = qById.get(r);
       if (!q || !isMcNative(q)) continue;
       const options = [q.answer, ...(q.distractors ?? []).map((d) => d.text)];
-      const objective = facts.objectives.findIndex((o) => o.id === q.objectiveRefs?.[0]) + 1;
+      // r1: the lab prints its set slides (starter, check, exit quiz) in code, a multiple-choice
+      // question with its four options on the line (`codedSetSpec`).
       const withOptions =
-        entry.kind === "exit-ticket" &&
-        (shown === undefined
-          ? noted.has(objective)
-          : options.every((t) => shown.includes(norm(t).slice(0, 30))));
+        shown === undefined
+          ? ["starter", "instructions", "exit-ticket"].includes(entry.kind)
+          : options.every((t) => shown.includes(norm(t).slice(0, 30)));
       if (withOptions)
         out.push({
           check: "mc-options-on-stem-step",

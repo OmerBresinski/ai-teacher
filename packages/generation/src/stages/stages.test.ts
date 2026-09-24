@@ -3,6 +3,7 @@ import { createFakeAi } from "@tj/ai/testing";
 import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
+import { codedSetSpec } from "../lab/coded-slides";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import { PROMPT_VERSIONS, VERB_WRITING } from "../prompts";
 import { lessonShapeOf } from "../shapes";
@@ -766,7 +767,14 @@ describe("generate", () => {
       usage,
     });
     const state = await generate(labStart, recordingDeps(ai));
-    expect(ai.calls).toHaveLength(slides.length + 1);
+    // r1: the lab prints its set slides (the exit quiz here) in code, with no call.
+    const labFacts = labStart.lesson.facts;
+    if (!labFacts) throw new Error("fixture has no facts");
+    const coded = labFacts.outline
+      .slice(PLANNED_SLIDES)
+      .filter((e) => codedSetSpec(e, labFacts, "s") !== undefined).length;
+    expect(coded).toBeGreaterThan(0);
+    expect(ai.calls).toHaveLength(slides.length + 1 - coded);
     const misses = state.lesson.generation?.findings.filter((f) => f.check === "spec-rule") ?? [];
     expect(misses).toHaveLength(1);
     expect(misses[0]?.message).toContain("no callout");

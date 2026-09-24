@@ -6,8 +6,13 @@ import type {
 } from "@tj/domain/documents";
 import { QUESTION_TIERS } from "@tj/domain/documents";
 import {
+  EXIT_CHARS,
+  EXIT_QUIZ_MAX,
+  EXIT_QUIZ_MIN,
   fitsLine,
   keptLines,
+  type Line,
+  misconceptionLine,
   questionLine,
   SET_MAX,
   SET_MIN,
@@ -134,11 +139,6 @@ export type OutlineFromFactsResult = {
 
 /** The brief's `adds` / `avoids` cap (`SPEC_LIMITS.item`), restated so this module has no `@tj/slides` import. */
 const BRIEF_MAX = 160;
-/**
- * The exit ticket's brief names the items to set as multiple choice with their options (an exit
- * question the facts give no open form and no open substitute); the lab check reads it.
- */
-export const EXIT_OPTIONS_NOTE = "Multiple choice for objective";
 /** The fixed slots: title, objectives and the closing exit ticket. */
 const FIXED_SLOTS = 3;
 /** How many terms one vocabulary slide shows at most (the widest theme grid). */
@@ -159,8 +159,8 @@ const CHECK_SET = 3;
 /** Content slides one learning cycle teaches before its check: a slide, or a pair. */
 const CONTENT_PER_CYCLE = 2;
 /** The exit ticket's length: a short quiz, not three extended answers (uk-teacher review, w0b judges). */
-export const EXIT_MIN = 3;
-export const EXIT_MAX = 5;
+export const EXIT_MIN = EXIT_QUIZ_MIN;
+export const EXIT_MAX = EXIT_QUIZ_MAX;
 
 type Kind = GeneratableSlideKind;
 
@@ -491,6 +491,17 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
    * the one question that fits; `undefined` when none is fair.
    */
   const checkSlot = (o: number): Slot | undefined => {
+    // A shape that confronts a misconception keeps its one true/false slide.
+    if (shape.requireMisconceptionConfronted && !has("true-false")) {
+      const tf = questionsOf(o).find(
+        (i) =>
+          !used.questions.has(i) &&
+          tfUsable(i) &&
+          fair(i) &&
+          questionSlot(o, i).kind === "true-false",
+      );
+      if (tf !== undefined) return questionSlot(o, tf);
+    }
     const set = setFor(o, CHECK_SET);
     if (set.length >= SET_MIN) return setSlot(o, set);
     const i = firstUnusedQuestion(o);
@@ -578,30 +589,22 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
    */
   const reserve = (anyQuestion = false) => {
     const starter = count > 0 && !has("starter") ? 1 : 0;
-    const checks = all
-      .slice(0, -1)
-      .filter(
-        (o) =>
-          !practised(o) &&
-          facts.questions.some(
-            (q, i) =>
-              q.use !== "exit" &&
-              isSlideQuestion(q) &&
-              names(q.objectiveRefs, o) &&
-              !used.questions.has(i),
-          ),
-      ).length;
+    const checks = all.slice(0, -1).filter(
+      (o) =>
+        !practised(o) &&
+        // Only a check that can be fair is kept: an objective whose key ideas are still being
+        // placed (its questions untested yet) lets teaching go on until one is.
+        facts.questions.some(
+          (q, i) =>
+            q.use !== "exit" &&
+            isSlideQuestion(q) &&
+            names(q.objectiveRefs, o) &&
+            !used.questions.has(i) &&
+            fair(i),
+        ),
+    ).length;
     return starter + Math.max(checks, practiseReserve(anyQuestion));
   };
-
-  // Facts v14 (lab/r1p): a question with `use: "any"` that declares `keyIdeaRefs: []` tests no
-  // key idea of this lesson — it is the starter's retrieval question on prior knowledge. It is kept
-  // for the starter only: no check, set, floor or exit quiz takes it. Saved v13 facts carry no
-  // such marker (and no `keyIdeaRefs`), so their starter falls back below.
-  const retrievalQuestions = facts.questions.flatMap((q, i) =>
-    q.use === "any" && q.keyIdeaRefs !== undefined && q.keyIdeaRefs.length === 0 ? [i] : [],
-  );
-  for (const i of retrievalQuestions) used.questions.add(i);
 
   // P1: every objective taught, in order, each content slide carrying up to two of its key ideas.
   // (A short deck used to let the required worked example teach its objective in place of a
@@ -830,17 +833,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // retrieves it (the model writes it from the brief); without, it is a quick retrieval set of the
   // lesson's easiest questions, one per objective, before the cycle checks take theirs; with fewer
   // than two such questions, it asks what pupils already think (as before).
-  const retrieval = retrievalQuestions.filter(settable).slice(0, STARTER_MAX);
-  if (retrieval.length > 0 && count > 0 && budget > 0) {
-    place({
-      kind: "starter",
-      phase: "starter",
-      primary: 0,
-      objectives: dedupe(retrieval.flatMap((i) => refIndices(facts.questions[i]?.objectiveRefs))),
-      questions: retrieval,
-      rank: [0],
-    });
-  }
   if (!has("starter") && priorKnowledge === "" && count > 0 && budget > 0) {
     const easiest = all
       .flatMap((o) => {
@@ -855,8 +847,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       })
       .sort((a, b) => tierRank(a) - tierRank(b) || a - b)
       .slice(0, STARTER_MAX);
-    // A question keeps its objective's only check: the starter takes one only when the objective
-    // has another to check with.
+    // The starter takes a question only where its objective keeps a set's worth (two) for its
+    // check: a cycle check of two outranks one more starter item.
     const spareFor = (i: number) =>
       refIndices(facts.questions[i]?.objectiveRefs).every(
         (o) =>
@@ -867,7 +859,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
               names(q.objectiveRefs, o) &&
               !used.questions.has(j) &&
               showable(j),
-          ).length > 0,
+          ).length >= SET_MIN,
       );
     const picked = easiest.filter(spareFor).sort((a, b) => a - b);
     if (picked.length >= SET_MIN) {
@@ -1045,47 +1037,113 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // for the exit ticket, and a set step is a stem with no options, so only a question the facts
   // declared askable openly joins one. Unpractised objectives first, then the harder tiers (the single-question
   // slides took the easiest); the set is asked easiest first.
-  // The exit ticket's stand-ins are chosen before the practice set below takes its questions: an
-  // exit question that cannot be asked as a line of the ticket, on an objective with no exit
-  // question that can, keeps an unused fair open question on that objective (slide questions
-  // first, then the worksheet's, easiest tier first). Otherwise the set could take the last one
-  // and the objective would go unchecked (w0 cardiac-L-1).
+  // r1 exit quiz, chosen before P8 tops the sets up: 4–6 quick items (multiple choice with its
+  // options, a one-line answer, or true/false on a misconception), printed from the facts in code
+  // with the answers revealed on the slide — no model writes or pads it. The facts' fair exit
+  // questions first, one per objective before any objective's second; under four, unused fair
+  // slide and worksheet questions (never a declared judgement), then true/false lines on the
+  // misconceptions of taught objectives, the objectives with the fewest items first.
   const firstObjectiveOf = (i: number) => refIndices(facts.questions[i]?.objectiveRefs)[0];
-  const exitSubstitute = (i: number, taken: readonly number[]) => {
-    const o = firstObjectiveOf(i);
-    if (o === undefined) return undefined;
-    return facts.questions
-      .flatMap((q, j) =>
-        q.use !== "exit" &&
-        !used.questions.has(j) &&
-        !taken.includes(j) &&
-        names(q.objectiveRefs, o) &&
-        admitsOpen(j) &&
-        fair(j)
-          ? [j]
-          : [],
-      )
-      .sort(
-        (a, b) =>
-          Number(facts.questions[a]?.use === "worksheet") -
-            Number(facts.questions[b]?.use === "worksheet") ||
-          tierRank(a) - tierRank(b) ||
-          a - b,
-      )[0];
-  };
-  const reservedExit = new Map<number, number>();
+  type ExitItem = { type: "question" | "misconception"; index: number; line: Line };
+  const exitItems: ExitItem[] = [];
+  const itemObjectives = (it: ExitItem) =>
+    refIndices(
+      it.type === "question"
+        ? facts.questions[it.index]?.objectiveRefs
+        : facts.misconceptions[it.index]?.objectiveRefs,
+    );
+  const questionItem = (i: number): ExitItem => ({
+    type: "question",
+    index: i,
+    line: questionLine(facts.questions[i] ?? { stem: "", answer: "" }),
+  });
   {
-    const exits = facts.questions.flatMap((q, i) => (q.use === "exit" && fair(i) ? [i] : []));
+    const exits = facts.questions.flatMap((q, i) =>
+      q.use === "exit" && !used.questions.has(i) && fair(i) ? [i] : [],
+    );
     for (const i of exits) {
-      if (admitsOpen(i)) continue;
-      const o = firstObjectiveOf(i);
-      if (o !== undefined && exits.some((j) => admitsOpen(j) && firstObjectiveOf(j) === o))
-        continue;
-      const swap = exitSubstitute(i, [...reservedExit.values()]);
-      if (swap === undefined) continue;
-      reservedExit.set(i, swap);
-      used.questions.add(swap);
+      if (settable(i)) continue;
+      gap(
+        `Exit question ${i + 1} cannot be a line of the exit quiz (no form a line can show, or too long), so it is left off.`,
+      );
     }
+    const round = new Map<number, number>();
+    const ranked = exits
+      .filter(settable)
+      .map((i, at) => {
+        const o = firstObjectiveOf(i) ?? count;
+        const n = round.get(o) ?? 0;
+        round.set(o, n + 1);
+        return { i, at, n };
+      })
+      .sort((a, b) => a.n - b.n || a.at - b.at)
+      .map((r) => questionItem(r.i));
+    const kept = keptLines(
+      ranked.map((it) => ({ ...it.line, it })),
+      EXIT_QUIZ_MAX,
+      EXIT_CHARS,
+    ).map((l) => l.it);
+    exitItems.push(...kept);
+    const over = ranked.filter((it) => !kept.includes(it));
+    if (over.length > 0) {
+      gap(
+        `The exit quiz holds ${EXIT_QUIZ_MAX} items, so exit question${over.length === 1 ? "" : "s"} ${over.map((it) => it.index + 1).join(", ")} ${over.length === 1 ? "is" : "are"} left off it.`,
+      );
+    }
+    const itemsOn = (o: number) => exitItems.filter((it) => itemObjectives(it).includes(o)).length;
+    const fewest = (objectives: number[]) => Math.min(...objectives.map(itemsOn));
+    const chars = () => exitItems.reduce((n, it) => n + it.line.text.length, 0);
+    const topUp = (candidates: ExitItem[]) => {
+      const sorted = candidates.sort(
+        (a, b) =>
+          fewest(itemObjectives(a)) - fewest(itemObjectives(b)) ||
+          (a.type === "question" ? tierRank(a.index) : 0) -
+            (b.type === "question" ? tierRank(b.index) : 0) ||
+          a.index - b.index,
+      );
+      for (const it of sorted) {
+        if (exitItems.length >= EXIT_QUIZ_MIN) return;
+        if (!fitsLine(it.line) || chars() + it.line.text.length > EXIT_CHARS) continue;
+        exitItems.push(it);
+      }
+    };
+    topUp(
+      facts.questions.flatMap((q, i) =>
+        q.use !== "exit" &&
+        !used.questions.has(i) &&
+        q.demand !== "judgement" &&
+        settable(i) &&
+        fair(i)
+          ? [questionItem(i)]
+          : [],
+      ),
+    );
+    const onSlide = new Set(
+      slots.flatMap((x) =>
+        x.kind === "true-false" && x.misconception !== undefined ? [x.misconception] : [],
+      ),
+    );
+    topUp(
+      facts.misconceptions.flatMap((m, i) =>
+        !onSlide.has(i) &&
+        m.objectiveRefs.length > 0 &&
+        refIndices(m.objectiveRefs).every((o) => taught(o))
+          ? [{ type: "misconception" as const, index: i, line: misconceptionLine(m) }]
+          : [],
+      ),
+    );
+    if (exitItems.length < EXIT_QUIZ_MIN) {
+      gap(
+        `The exit quiz has ${exitItems.length} item${exitItems.length === 1 ? "" : "s"}: the facts have no other question or misconception that can be a line of it.`,
+      );
+    }
+    for (const it of exitItems) if (it.type === "question") used.questions.add(it.index);
+    exitItems.sort(
+      (a, b) =>
+        Math.min(...itemObjectives(a), count) - Math.min(...itemObjectives(b), count) ||
+        Number(a.type === "misconception") - Number(b.type === "misconception") ||
+        a.index - b.index,
+    );
   }
   const setPool = () =>
     facts.questions
@@ -1447,118 +1505,20 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     });
   });
 
-  // Only fair exit questions: one testing a key idea left off is withheld (gap above).
-  const fairExit = facts.questions.flatMap((q, i) => (q.use === "exit" && fair(i) ? [i] : []));
+  // The exit quiz (chosen above): its items as refs, in objective order.
   const withheld = facts.questions.some((q, i) => q.use === "exit" && !fair(i));
-  // An exit-ticket item is a stem with no options, so an exit question the facts do not let be
-  // asked openly (multiple-choice-native) is replaced: dropped when its objective already has an
-  // open exit question, else swapped for an unused fair open question on that objective (slide
-  // questions first, then the worksheet's, easiest tier first). Only when none exists does it stay,
-  // and the brief says to set it with its options; one without three options is left off.
-  const exitQuestions: number[] = [];
-  const withOptions: number[] = [];
-  const openExit = fairExit.filter(admitsOpen);
-  let dropped = false;
-  for (const i of fairExit) {
-    if (admitsOpen(i)) {
-      exitQuestions.push(i);
-      continue;
-    }
-    const o = firstObjectiveOf(i);
-    if (o !== undefined && openExit.some((j) => firstObjectiveOf(j) === o)) continue;
-    const swap = reservedExit.get(i) ?? exitSubstitute(i, exitQuestions);
-    if (swap !== undefined) {
-      used.questions.add(swap);
-      exitQuestions.push(swap);
-    } else if (
-      (facts.questions[i]?.distractors?.length ?? 0) >= 3 &&
-      distractorsEchoingAnswer(facts.questions[i] ?? { answer: "" }).length === 0
-    ) {
-      // Its options exist: the brief names its objective, so the item is set with them listed.
-      exitQuestions.push(i);
-      withOptions.push(i);
-    } else {
-      dropped = true;
-      // A true-false statement, or a stem whose options are too few or repeat its answer: on a line of the exit
-      // ticket it would be a claim no question poses (w0 trig-1, forces-2), so it is not placed.
-      gap(
-        `Exit question ${i + 1} (${o === undefined ? "no objective" : nth(o).toLowerCase()}) cannot be asked as a line of the exit ticket and no open question replaces it, so it is left off.`,
-      );
-    }
-  }
-  // A short exit ticket (w0b): at most `EXIT_MAX` items, one per objective before any objective's
-  // second, in the facts' order; under `EXIT_MIN`, topped up with unused fair questions that can be
-  // asked as a line of it, objectives with the fewest items first, easiest tier first. Exit
-  // questions left over stay unclaimed (`assignFactIds` still hands them to the first check slide).
-  if (exitQuestions.length > EXIT_MAX) {
-    const round = new Map<number, number>();
-    const keyed = exitQuestions.map((i, at) => {
-      const o = firstObjectiveOf(i) ?? count;
-      const n = round.get(o) ?? 0;
-      round.set(o, n + 1);
-      return { i, at, n };
-    });
-    const kept = new Set(
-      [...keyed]
-        .sort((a, b) => a.n - b.n || a.at - b.at)
-        .slice(0, EXIT_MAX)
-        .map((k) => k.i),
-    );
-    const over = exitQuestions.filter((i) => !kept.has(i));
-    exitQuestions.splice(0, exitQuestions.length, ...exitQuestions.filter((i) => kept.has(i)));
-    gap(
-      `The exit ticket holds ${EXIT_MAX} items, so exit question${over.length === 1 ? "" : "s"} ${over.map((i) => i + 1).join(", ")} ${over.length === 1 ? "is" : "are"} left off it.`,
-    );
-  }
-  while (exitQuestions.length > 0 && exitQuestions.length < EXIT_MIN) {
-    const itemsOn = (o: number) =>
-      exitQuestions.filter((i) => names(facts.questions[i]?.objectiveRefs, o)).length;
-    const next = facts.questions
-      .flatMap((q, j) =>
-        q.use !== "exit" &&
-        !used.questions.has(j) &&
-        !exitQuestions.includes(j) &&
-        q.demand !== "judgement" &&
-        admitsOpen(j) &&
-        fair(j)
-          ? [j]
-          : [],
-      )
-      .sort(
-        (a, b) =>
-          Math.min(...refIndices(facts.questions[a]?.objectiveRefs).map(itemsOn)) -
-            Math.min(...refIndices(facts.questions[b]?.objectiveRefs).map(itemsOn)) ||
-          tierRank(a) - tierRank(b) ||
-          a - b,
-      )[0];
-    if (next === undefined) {
-      gap(
-        `The exit ticket has ${exitQuestions.length} item${exitQuestions.length === 1 ? "" : "s"}: the facts have no other unused question that can be asked as a line of it.`,
-      );
-      break;
-    }
-    used.questions.add(next);
-    exitQuestions.push(next);
-  }
-  const exitCount = dropped
-    ? exitQuestions.length
-    : Math.max(exitQuestions.length, Math.min(count, EXIT_MAX));
-  const optioned = dedupe(withOptions.map((i) => (firstObjectiveOf(i) ?? 0) + 1));
-  const optionsNote =
-    optioned.length === 0
-      ? ""
-      : ` ${EXIT_OPTIONS_NOTE}${optioned.length === 1 ? "" : "s"} ${optioned.join(" and ")}, ${optioned.length === 1 ? "with" : "each with"} its options listed.`;
+  const n = exitItems.length;
   outline.push({
     kind: "exit-ticket",
     factRefs: objectiveRefs(all),
     phase: "check",
     brief: brief(
-      `${exitCount} question${exitCount === 1 ? "" : "s"}, ${dropped ? "on the objectives the facts let it ask" : exitCount === count ? "one per objective" : "short items across the objectives"}${withheld ? ", each on what the slides taught" : ""}.${optionsNote}`,
+      `${n} quick item${n === 1 ? "" : "s"} across the objectives${withheld ? ", each on what the slides taught" : ""}; the answers are revealed on the slide.`,
     ),
   });
   outlineFactRefs.push({
     index: exitPosition,
-    factRefs: exitQuestions.map((index): OrdinalRef => ({ type: "question", index })),
+    factRefs: exitItems.map((it): OrdinalRef => ({ type: it.type, index: it.index })),
   });
 
   // The shares the fill could not reach are gaps too, so a schema issue always has its sentence.
@@ -1594,9 +1554,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     practised: slots.flatMap((s, i) =>
       s.phase === "practise" && s.objectives.includes(o) ? [i + 2] : [],
     ),
-    checked: exitQuestions.some((i) => names(facts.questions[i]?.objectiveRefs, o))
-      ? [exitPosition]
-      : [],
+    checked: exitItems.some((it) => itemObjectives(it).includes(o)) ? [exitPosition] : [],
   }));
 
   const unplaced = {

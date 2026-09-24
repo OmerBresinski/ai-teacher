@@ -57,7 +57,7 @@ describe("lab question lines (r1)", () => {
   });
   test("a misconception is a true/false line on its belief, answered false with its correction", () => {
     expect(misconceptionLine(facts.misconceptions?.[0] ?? { belief: "", correction: "" })).toEqual({
-      text: "True or false: Veins carry blue blood.",
+      text: "True or false? Veins carry blue blood.",
       answer: "False. Blood in veins is dark red.",
     });
   });
@@ -77,7 +77,7 @@ describe("codedSetSpec (r1)", () => {
     const coded = codedSetSpec(entry("exit-ticket", ["o1", "q1", "q3", "m1"]), facts, "L:9");
     const items = (coded?.spec as { items: string[] } | undefined)?.items ?? [];
     expect(items).toHaveLength(3);
-    expect(items[2]).toContain("True or false");
+    expect(items[2]).toContain("True or false?");
     const slide = withAnswersReveal(
       materialiseSlide(coded?.spec as never, "chalk", {
         promptVersion: "code",

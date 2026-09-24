@@ -3,6 +3,7 @@ import {
   DEFAULT_SLIDE_COUNT,
   type Finding,
   type Lesson,
+  type LessonFacts,
   type Worksheet,
 } from "@tj/domain/documents";
 import { materialiseSlide } from "@tj/slides";
@@ -439,7 +440,10 @@ export async function labPlan(
     priorKnowledge: brief.classContext?.priorKnowledge,
   });
   const planFacts: PlanFactsLike = { ...merged, outlineFactRefs: outline.outlineFactRefs };
-  const facts = assignFactIds(outline.skeleton, planFacts, brief.durationMin);
+  const facts = withExitAsPlanned(
+    assignFactIds(outline.skeleton, planFacts, brief.durationMin),
+    outline.outlineFactRefs,
+  );
   deps.logger.info(
     {
       stage: "plan",
@@ -673,4 +677,28 @@ export function labPlanMarkdown(report: LabPlanReport): string {
       `- arm ${report.arm.name}: facts from ${report.arm.factsSource.map((s, i) => `o${i + 1} ${s}`).join(", ")}`,
     );
   return L.join("\n");
+}
+
+/**
+ * r1: the exit quiz prints exactly the items the outline chose (`codedSetSpec`). `assignFactIds`
+ * hands every exit question no entry claims to the first check-phase slide (TEACH-244, for a
+ * model-written ticket), which in the lab is the exit quiz: those are the questions the outline
+ * left off on purpose (untaught, or too long for a line), so they are taken back off it here.
+ */
+export function withExitAsPlanned(
+  facts: LessonFacts,
+  planned: PlanFactsLike["outlineFactRefs"],
+): LessonFacts {
+  const at = facts.outline.length - 1;
+  const exit = facts.outline[at];
+  if (exit?.kind !== "exit-ticket") return facts;
+  const chosen = new Set(
+    (planned.find((e) => e.index === at)?.factRefs ?? []).flatMap((r) =>
+      r.type === "question" ? [facts.questions[r.index]?.id] : [],
+    ),
+  );
+  const questionIds = new Set(facts.questions.map((q) => q.id));
+  const factRefs = exit.factRefs.filter((id) => !questionIds.has(id) || chosen.has(id));
+  if (factRefs.length === exit.factRefs.length) return facts;
+  return { ...facts, outline: facts.outline.map((e, i) => (i === at ? { ...e, factRefs } : e)) };
 }

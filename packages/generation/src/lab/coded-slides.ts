@@ -34,6 +34,8 @@ export const LINE_MAX = 160;
 export const MC_LINE_MAX = 240;
 /** The text one set slide carries at most, its lines together (a content body is 400). */
 export const SET_CHARS = 600;
+/** The exit quiz's text on one slide, its lines together (six lines of about 140). */
+export const EXIT_CHARS = 840;
 /** A set: 2–4 lines (the `instructions` list holds four; the starter three). */
 export const SET_MIN = 2;
 export const SET_MAX = 4;
@@ -110,17 +112,21 @@ export function questionLine(q: LineQuestion, seed = ""): Line {
 /** A misconception as a true/false line: its belief, which the facts declare false. */
 export function misconceptionLine(m: Pick<Misconception, "belief" | "correction">): Line {
   const belief = m.belief.trim().replace(/[.!]+$/, "");
-  return { text: `True or false: ${belief}.`, answer: `False. ${m.correction.trim()}` };
+  return { text: `True or false? ${belief}.`, answer: `False. ${m.correction.trim()}` };
 }
 
 export const fitsLine = (line: Line) => line.text.length <= (line.mc ? MC_LINE_MAX : LINE_MAX);
 
 /** The lines a set keeps: each fits, at most `max`, within `SET_CHARS` together, in order. */
-export function keptLines<T extends Line>(lines: readonly T[], max: number): T[] {
+export function keptLines<T extends Line>(
+  lines: readonly T[],
+  max: number,
+  chars_ = SET_CHARS,
+): T[] {
   const kept: T[] = [];
   let chars = 0;
   for (const line of lines) {
-    if (!fitsLine(line) || kept.length >= max || chars + line.text.length > SET_CHARS) continue;
+    if (!fitsLine(line) || kept.length >= max || chars + line.text.length > chars_) continue;
     kept.push(line);
     chars += line.text.length;
   }
@@ -161,7 +167,7 @@ export function codedSetSpec(
   // A starter or check slide with no question is the model's (a misconception discussed, prior
   // knowledge retrieved); the exit quiz is code's whenever it has a line.
   if ((entry.kind !== "exit-ticket" && asked === 0) || lines.length === 0) return undefined;
-  const kept = keptLines(lines, coded.max);
+  const kept = keptLines(lines, coded.max, entry.kind === "exit-ticket" ? EXIT_CHARS : SET_CHARS);
   if (kept.length === 0) return undefined;
   const answers = kept.map((l) => l.answer);
   const footnote = `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`;

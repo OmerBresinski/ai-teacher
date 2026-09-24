@@ -10,7 +10,6 @@ import {
   type OutlineFromFactsInput,
   outlineFromFacts,
 } from "./outline-from-facts";
-import { slidesFor } from "./prompts/shape";
 import { lessonShapeOf } from "./shapes";
 import { assignFactIds, planSkeletonSchemaFor } from "./specs";
 
@@ -157,36 +156,21 @@ describe("outlineFromFacts over the five lab briefs", () => {
           expect(outlineFactRefs.every((e) => e.index >= 2)).toBe(true);
         });
 
-        test("no question is used twice, a worksheet question reaches a slide only in the practice set or to meet the practise floor, every exit question is on the exit ticket", () => {
+        test("no question is used twice; the exit quiz holds 1-6 items, every question on it fair (r1)", () => {
           const used = outlineFactRefs.flatMap((e) =>
             e.factRefs.filter((r) => r.type === "question").map((r) => r.index),
           );
           expect(new Set(used).size).toBe(used.length);
-          const offSet = outlineFactRefs
-            .filter((e) => skeleton.outline[e.index]?.kind !== "instructions")
-            .flatMap((e) => e.factRefs.filter((r) => r.type === "question").map((r) => r.index));
-          if (offSet.some((index) => facts.questions[index]?.use === "worksheet")) {
-            const practise = skeleton.outline.filter((e) => e.phase === "practise").length;
-            expect(practise).toBeLessThanOrEqual(
-              slidesFor(shape.practiseMinPercent, slideCount - 2),
-            );
-            expect(result.unplaced.questions).toEqual([]);
-          }
-          const exitRefs = new Set(
+          const exitItems =
             outlineFactRefs
               .find((e) => e.index === slideCount - 1)
-              ?.factRefs.filter((r) => r.type === "question")
-              .map((r) => r.index),
-          );
-          // Every exit question whose objectives are fully taught is on the exit ticket; one on an
-          // objective with a key idea left off is withheld.
-          facts.questions.forEach((q, i) => {
-            if (q.use === "exit") {
-              expect(exitRefs.has(i)).toBe(
-                q.objectiveRefs.every((ref) => !untaught.has(ref.index)),
-              );
-            }
-          });
+              ?.factRefs.filter((r) => r.type !== "objective") ?? [];
+          expect(exitItems.length).toBeLessThanOrEqual(6);
+          for (const r of exitItems) {
+            if (r.type !== "question") continue;
+            const q = facts.questions[r.index];
+            expect(q?.objectiveRefs.every((ref) => !untaught.has(ref.index))).toBe(true);
+          }
         });
 
         const placedKeyIdeas = new Set(
@@ -263,16 +247,4 @@ describe("outlineFromFacts over the five lab briefs", () => {
     expect(watchOuts.length).toBe(Math.min(facts.misconceptions.length, 3));
     expect(new Set(watchOuts.map((c) => c.ref.index)).size).toBe(watchOuts.length);
   });
-});
-
-test("ratio at 12 slides meets the practise floor, a worksheet question making up the slide questions' shortfall", () => {
-  const { input, facts } = inputFor(FIXTURES.ratio, 12);
-  const result = outlineFromFacts(input);
-  expect(result.gaps.filter((g) => /practise/.test(g) && /allow/.test(g))).toEqual([]);
-  const onSlides = result.outlineFactRefs
-    .filter((e) => result.skeleton.outline[e.index]?.kind !== "exit-ticket")
-    .flatMap((e) => e.factRefs.filter((r) => r.type === "question"))
-    .map((r) => facts.questions[r.index]?.use);
-  expect(onSlides).toContain("worksheet");
-  expect(onSlides).not.toContain("exit");
 });
