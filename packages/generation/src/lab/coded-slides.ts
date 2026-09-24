@@ -27,6 +27,13 @@ import type { SlideSpec } from "@tj/slides";
 
 /** A list item's cap (`SPEC_LIMITS.item`), restated so the outline has no `@tj/slides` import. */
 export const LINE_MAX = 160;
+/**
+ * A multiple-choice line carries its four options, so it may run longer than a stem (36 of 49
+ * cb/w0b multiple-choice questions fit 240, 14 fit 160); a set stays within `SET_CHARS`.
+ */
+export const MC_LINE_MAX = 240;
+/** The text one set slide carries at most, its lines together (a content body is 400). */
+export const SET_CHARS = 600;
 /** A set: 2–4 lines (the `instructions` list holds four; the starter three). */
 export const SET_MIN = 2;
 export const SET_MAX = 4;
@@ -39,7 +46,7 @@ const LETTERS = ["A", "B", "C", "D"] as const;
 type LineQuestion = Pick<FactQuestion, "stem" | "answer"> & {
   distractors?: readonly { text: string }[] | undefined;
 };
-export type Line = { text: string; answer: string };
+export type Line = { text: string; answer: string; mc?: boolean };
 
 /** 32-bit FNV-1a: a stable seed from a string (lesson id and slide). */
 function hash(seed: string): number {
@@ -96,6 +103,7 @@ export function questionLine(q: LineQuestion, seed = ""): Line {
   return {
     text: `${q.stem.trim()} ${options.map((o, i) => `${LETTERS[i]} ${o.text.trim()}`).join("  ")}`,
     answer: `${LETTERS[at]} (${options[at]?.text.trim() ?? ""})`,
+    mc: true,
   };
 }
 
@@ -105,7 +113,19 @@ export function misconceptionLine(m: Pick<Misconception, "belief" | "correction"
   return { text: `True or false: ${belief}.`, answer: `False. ${m.correction.trim()}` };
 }
 
-export const fitsLine = (line: Line) => line.text.length <= LINE_MAX;
+export const fitsLine = (line: Line) => line.text.length <= (line.mc ? MC_LINE_MAX : LINE_MAX);
+
+/** The lines a set keeps: each fits, at most `max`, within `SET_CHARS` together, in order. */
+export function keptLines<T extends Line>(lines: readonly T[], max: number): T[] {
+  const kept: T[] = [];
+  let chars = 0;
+  for (const line of lines) {
+    if (!fitsLine(line) || kept.length >= max || chars + line.text.length > SET_CHARS) continue;
+    kept.push(line);
+    chars += line.text.length;
+  }
+  return kept;
+}
 
 /** The set kinds the lab writes in code, with their heading and line cap. */
 const CODED: Partial<Record<OutlineEntry["kind"], { heading: string; max: number }>> = {
@@ -141,7 +161,7 @@ export function codedSetSpec(
   // A starter or check slide with no question is the model's (a misconception discussed, prior
   // knowledge retrieved); the exit quiz is code's whenever it has a line.
   if ((entry.kind !== "exit-ticket" && asked === 0) || lines.length === 0) return undefined;
-  const kept = lines.filter(fitsLine).slice(0, coded.max);
+  const kept = keptLines(lines, coded.max);
   if (kept.length === 0) return undefined;
   const answers = kept.map((l) => l.answer);
   const footnote = `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`;
@@ -166,7 +186,7 @@ export function withAnswersReveal(slide: Slide): Slide {
   const foot = slide.elements.find((e) => e.type === "text" && e.style.preset === "small");
   if (!body || !foot) return slide;
   const bottom = foot.y + foot.h;
-  const top = body.y + Math.round(body.h * 0.62);
+  const top = body.y + Math.round(body.h * 0.7);
   return {
     ...slide,
     elements: slide.elements.map((e) => {

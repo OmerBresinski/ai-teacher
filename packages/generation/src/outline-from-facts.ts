@@ -5,7 +5,14 @@ import type {
   SlideCount,
 } from "@tj/domain/documents";
 import { QUESTION_TIERS } from "@tj/domain/documents";
-import { fitsLine, questionLine, SET_MAX, SET_MIN } from "./lab/coded-slides";
+import {
+  fitsLine,
+  keptLines,
+  questionLine,
+  SET_MAX,
+  SET_MIN,
+  STARTER_MAX,
+} from "./lab/coded-slides";
 import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
 import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
 import type { LessonShape } from "./shapes";
@@ -442,26 +449,33 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
    * before the worksheet's, easiest tier first; never an exit question.
    */
   const setFor = (o: number, max: number) =>
-    shape.forbiddenKinds.includes("instructions")
-      ? []
-      : facts.questions
-          .flatMap((q, i) =>
-            q.use !== "exit" &&
-            !used.questions.has(i) &&
-            names(q.objectiveRefs, o) &&
-            settable(i) &&
-            fair(i)
-              ? [i]
-              : [],
-          )
-          .sort(
-            (a, b) =>
-              Number(facts.questions[a]?.use === "worksheet") -
-                Number(facts.questions[b]?.use === "worksheet") ||
-              tierRank(a) - tierRank(b) ||
-              a - b,
-          )
-          .slice(0, max);
+    shape.forbiddenKinds.includes("instructions") ? [] : withinSet(setCandidates(o), max);
+  /** Candidates in order, kept while the set's text fits one slide (`keptLines`). */
+  const withinSet = (candidates: number[], max: number) => {
+    const lines = candidates.map((i) => ({
+      i,
+      ...questionLine(facts.questions[i] ?? { stem: "", answer: "" }),
+    }));
+    return keptLines(lines, max).map((l) => l.i);
+  };
+  const setCandidates = (o: number) =>
+    facts.questions
+      .flatMap((q, i) =>
+        q.use !== "exit" &&
+        !used.questions.has(i) &&
+        names(q.objectiveRefs, o) &&
+        settable(i) &&
+        fair(i)
+          ? [i]
+          : [],
+      )
+      .sort(
+        (a, b) =>
+          Number(facts.questions[a]?.use === "worksheet") -
+            Number(facts.questions[b]?.use === "worksheet") ||
+          tierRank(a) - tierRank(b) ||
+          a - b,
+      );
   const setSlot = (o: number, questions: number[]): Slot => ({
     kind: "instructions",
     phase: "practise",
@@ -556,6 +570,39 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       ? 1
       : 0;
 
+  /**
+   * r1 (structure): the slots kept while teaching, the kinds and the extras are placed — the
+   * starter's (it opens every lesson) and a check for each objective but the last that has a
+   * question to ask (the exit quiz follows the last cycle, so its check is kept only when there is
+   * room). Never fewer than the one practise slot `practiseReserve` keeps.
+   */
+  const reserve = (anyQuestion = false) => {
+    const starter = count > 0 && !has("starter") ? 1 : 0;
+    const checks = all
+      .slice(0, -1)
+      .filter(
+        (o) =>
+          !practised(o) &&
+          facts.questions.some(
+            (q, i) =>
+              q.use !== "exit" &&
+              isSlideQuestion(q) &&
+              names(q.objectiveRefs, o) &&
+              !used.questions.has(i),
+          ),
+      ).length;
+    return starter + Math.max(checks, practiseReserve(anyQuestion));
+  };
+
+  // Facts v14 (lab/r1p): a question with `use: "any"` that declares `keyIdeaRefs: []` tests no
+  // key idea of this lesson — it is the starter's retrieval question on prior knowledge. It is kept
+  // for the starter only: no check, set, floor or exit quiz takes it. Saved v13 facts carry no
+  // such marker (and no `keyIdeaRefs`), so their starter falls back below.
+  const retrievalQuestions = facts.questions.flatMap((q, i) =>
+    q.use === "any" && q.keyIdeaRefs !== undefined && q.keyIdeaRefs.length === 0 ? [i] : [],
+  );
+  for (const i of retrievalQuestions) used.questions.add(i);
+
   // P1: every objective taught, in order, each content slide carrying up to two of its key ideas.
   // (A short deck used to let the required worked example teach its objective in place of a
   // content slide; the objective's key ideas then went untaught, so it no longer does.)
@@ -569,7 +616,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // key idea is worse than a missing vocabulary slide or worked example, which are only gaps.
   for (
     let next = nextKeyIdeas();
-    budget > practiseReserve(true) && next !== undefined;
+    budget > reserve(true) && next !== undefined;
     next = nextKeyIdeas()
   ) {
     place(contentSlot(next[0], next[1]));
@@ -598,7 +645,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     }
     if (own.some((x) => used.workedExamples.has(x))) continue;
     const x = pickWorkedExample(own);
-    if (x === undefined || budget <= practiseReserve() || !place(workedExampleSlot(o, x))) {
+    if (x === undefined || budget <= reserve() || !place(workedExampleSlot(o, x))) {
       gap(
         `${nth(o)}'s questions ask pupils to apply it and a ${slideCount}-slide deck has no room for its worked example.`,
       );
@@ -622,7 +669,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       if (
         x === undefined ||
         o === undefined ||
-        budget <= practiseReserve() ||
+        budget <= reserve() ||
         !place(workedExampleSlot(o, x))
       ) {
         noRoom("worked-example");
@@ -637,7 +684,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         terms.flatMap((i) => refIndices(facts.vocabulary[i]?.objectiveRefs)),
       );
       const placed =
-        budget > practiseReserve() &&
+        budget > reserve() &&
         place({
           kind: "vocabulary",
           phase: "explain",
@@ -691,8 +738,11 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     // A retrieval starter's slot is kept while there is none (w0b flow): with prior knowledge
     // declared, retrieving it outranks a slide of practice; without, the practice comes first and
     // the starter takes what is left.
-    const room = budget - (count > 0 && priorKnowledge !== "" && !has("starter") ? 1 : 0);
-    if (pending.length < 2 || room >= pending.length || room <= 0) return;
+    const room = budget - (count > 0 && !has("starter") ? 1 : 0);
+    // r1: the last objective's check may be the exit quiz that follows its cycle, so a deck with a
+    // slot for every other objective's check gives each its own rather than sharing one.
+    const own = pending.filter(([o]) => o < count - 1).length;
+    if (pending.length < 2 || room >= pending.length || room >= own || room <= 0) return;
     // Learning cycles (w0b): the slots beyond the shared one give the first objectives a check of
     // their own, straight after their cycle; the shared slide takes the rest (two or more). The
     // spare slots used to go to splitting a paired content slide.
@@ -700,7 +750,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     while (spare > 0 && pending.length > 2) {
       const [o, i] = pending.shift() ?? [];
       if (o === undefined || i === undefined) break;
-      place(questionSlot(o, i));
+      place(checkSlot(o) ?? questionSlot(o, i));
       spare -= 1;
     }
     const covered = pending.slice(0, SHARED_PRACTISE_MAX);
@@ -738,8 +788,11 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
           }
         }
       }
+      // r1: it never takes a slot kept for the starter or a cycle check, unless it is that check.
+      const checks = (x: Slot) =>
+        x.objectives.some((o) => o < count - 1 && !practised(o)) ? 1 : 0;
       if (slot === undefined) noMaterial("open-response", "question left to ask openly");
-      else if (!place(slot)) noRoom("open-response");
+      else if (budget <= reserve() - checks(slot) || !place(slot)) noRoom("open-response");
       else requiredOpen = slot;
     }
   }
@@ -773,7 +826,70 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       );
     }
   };
-  if (priorKnowledge !== "") placeStarter();
+  // r1: the starter's slot comes before every optional slide. With prior knowledge declared it
+  // retrieves it (the model writes it from the brief); without, it is a quick retrieval set of the
+  // lesson's easiest questions, one per objective, before the cycle checks take theirs; with fewer
+  // than two such questions, it asks what pupils already think (as before).
+  const retrieval = retrievalQuestions.filter(settable).slice(0, STARTER_MAX);
+  if (retrieval.length > 0 && count > 0 && budget > 0) {
+    place({
+      kind: "starter",
+      phase: "starter",
+      primary: 0,
+      objectives: dedupe(retrieval.flatMap((i) => refIndices(facts.questions[i]?.objectiveRefs))),
+      questions: retrieval,
+      rank: [0],
+    });
+  }
+  if (!has("starter") && priorKnowledge === "" && count > 0 && budget > 0) {
+    const easiest = all
+      .flatMap((o) => {
+        const i = facts.questions
+          .flatMap((q, j) =>
+            q.use !== "exit" && !used.questions.has(j) && names(q.objectiveRefs, o) && settable(j)
+              ? [j]
+              : [],
+          )
+          .sort((a, b) => tierRank(a) - tierRank(b) || a - b)[0];
+        return i === undefined ? [] : [i];
+      })
+      .sort((a, b) => tierRank(a) - tierRank(b) || a - b)
+      .slice(0, STARTER_MAX);
+    // A question keeps its objective's only check: the starter takes one only when the objective
+    // has another to check with.
+    const spareFor = (i: number) =>
+      refIndices(facts.questions[i]?.objectiveRefs).every(
+        (o) =>
+          facts.questions.filter(
+            (q, j) =>
+              j !== i &&
+              q.use !== "exit" &&
+              names(q.objectiveRefs, o) &&
+              !used.questions.has(j) &&
+              showable(j),
+          ).length > 0,
+      );
+    const picked = easiest.filter(spareFor).sort((a, b) => a - b);
+    if (picked.length >= SET_MIN) {
+      place({
+        kind: "starter",
+        phase: "starter",
+        primary: 0,
+        objectives: dedupe(picked.flatMap((i) => refIndices(facts.questions[i]?.objectiveRefs))),
+        questions: picked,
+        rank: [0],
+      });
+    }
+  }
+  if (!has("starter")) placeStarter();
+
+  // r1: a check after each learning cycle, before the floors and extras: every objective in order,
+  // a set of 2–3 questions where the facts have them (the running order puts each after its cycle).
+  for (const o of all) {
+    if (practised(o) || budget <= 0) continue;
+    const slot = checkSlot(o);
+    if (slot !== undefined) place(slot);
+  }
 
   // Enough slides where pupils answer, the exit ticket counted.
   while (practiseCount() + 1 < shape.minCheckEntries) {
@@ -879,10 +995,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     place(workedExampleSlot(ownersOf[x]?.[0] ?? 0, x));
   }
 
-  // P5: the starter when no prior knowledge is declared (above), after the remaining worked
-  // examples.
-  if (priorKnowledge === "") placeStarter();
-
   // P6: the rest of the facts — paired key ideas split onto slides of their own, round-robin by
   // objective, then questions.
   while (budget > 0 && teachMore() === "placed") {}
@@ -924,7 +1036,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     place({ kind: "plenary", phase: "check", primary: 0, objectives: all, rank: [3, 0] });
   }
 
-  // P8: a practice set. The facts carry three or four questions per objective and a 10-slide deck
+  // P8: a practice set. The facts carry three to six questions per objective (v14) and a 10-slide deck
   // gave about three of them a slide each (np1 -ff: 48 of 223 on practise slides); the worksheet
   // that took the rest is its own optional job (ADR 0030). An `instructions` slide holds up to four
   // short stems (ruling 81), so the unused slide and worksheet questions fill one, without a slot of
@@ -1195,10 +1307,14 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     let avoids: string | undefined;
     switch (slot.kind) {
       case "starter": {
+        const asked = slot.questions ?? [];
+        refs.push(...asked.map((index): OrdinalRef => ({ type: "question", index })));
         adds =
-          priorKnowledge === ""
-            ? `Pupils say what they already think about ${topic} before being told.`
-            : `Retrieval: pupils recall what the class has already covered: ${priorKnowledge}`;
+          asked.length > 0
+            ? `Retrieval: ${asked.length} quick questions pupils answer from memory before the teaching.`
+            : priorKnowledge === ""
+              ? `Pupils say what they already think about ${topic} before being told.`
+              : `Retrieval: pupils recall what the class has already covered: ${priorKnowledge}`;
         if (slot.misconception !== undefined) {
           refs.push({ type: "misconception", index: slot.misconception });
         }
