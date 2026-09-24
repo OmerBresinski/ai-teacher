@@ -18,7 +18,13 @@ import {
   slideSpecSchemaFor,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
-import { type Audience, repairFactPrompt, repairPrompt, type WritingShape } from "../prompts";
+import {
+  type Audience,
+  type RepairInput,
+  repairFactPrompt,
+  repairPrompt,
+  type WritingShape,
+} from "../prompts";
 import { VERIFY_FIELDS_BY_ARRAY, verifiableArrayOf, verifyOutputSchemaFor } from "../specs";
 import {
   BudgetExceeded,
@@ -51,6 +57,11 @@ import { applyVerifyPatch, verifyFinding } from "./verify";
  * (same slide id, new element ids). `checkLesson` runs again; what remains, plus the model's
  * findings, are the residuals. Never runs twice; the job completes whatever is left.
  *
+ * Since lab round 1 the actionable warnings (`ACTIONABLE_WARNINGS`: tested-not-taught, verb-fit,
+ * repetition) are acted on too: they ride with an error on the same target, and up to
+ * `MAX_WARNING_TARGETS` targets are taken on for them alone. Each slide call also gets the slides
+ * around it as read-only context (`repairContext`).
+ *
  * A `spec-rule` error from Generate (TEACH-257) is repaired like any other: the target is
  * regenerated against the full schema. A repair answer that itself still misses an editorial rule
  * on both attempts is accepted, and each miss is recorded as a `spec-rule` **warning** — the
@@ -59,21 +70,141 @@ import { applyVerifyPatch, verifyFinding } from "./verify";
 
 export const MAX_TARGETS = 6;
 
-type Target = { key: string; slideId?: string; blockId?: string; findings: Finding[] };
+/**
+ * The warnings the judges punish and Repair can act on (lab round 1), in the order a warning-only
+ * target is chosen: the structural `tested-not-taught` first, then the model's `verb-fit` and
+ * `repetition`. Any other warning (pitch, notes-quality, readability) is left as a residual.
+ */
+export const ACTIONABLE_WARNINGS: readonly string[] = [
+  "tested-not-taught",
+  "verb-fit",
+  "repetition",
+];
 
-/** The `error` findings by target, in first-seen order, capped. */
+/**
+ * Targets Repair takes on for actionable warnings alone, on top of the error targets: the cost
+ * bound. The CB runs (24 Sept) made 0–6 repair calls a lesson; this adds at most two targets, one
+ * call each (plus a retry only when that answer misses the schema). A warning on a slide that is
+ * already an error target rides along in the same call for nothing.
+ */
+export const MAX_WARNING_TARGETS = 2;
+
+type Target = {
+  key: string;
+  slideId?: string;
+  blockId?: string;
+  findings: Finding[];
+  /** Chosen for its actionable warnings alone (`MAX_WARNING_TARGETS`). */
+  warningOnly?: boolean;
+};
+
+const keyOf = (finding: Finding): string | undefined => {
+  const { slideId, blockId } = finding.target;
+  if (slideId !== undefined) return `slide:${slideId}`;
+  if (blockId !== undefined) return `block:${blockId}`;
+  return undefined;
+};
+
+/**
+ * The `error` findings by target, in first-seen order, capped at `MAX_TARGETS`; each carries the
+ * actionable warnings on the same target too. Then up to `MAX_WARNING_TARGETS` targets with
+ * actionable warnings and no error, ranked by `ACTIONABLE_WARNINGS` and then first-seen order.
+ */
 export function repairTargets(findings: Finding[]): Target[] {
   const byKey = new Map<string, Target>();
   for (const finding of findings) {
     if (finding.severity !== "error") continue;
+    const key = keyOf(finding);
+    if (key === undefined) continue;
     const { slideId, blockId } = finding.target;
-    if (slideId === undefined && blockId === undefined) continue;
-    const key = slideId !== undefined ? `slide:${slideId}` : `block:${blockId}`;
     const target = byKey.get(key) ?? { key, slideId, blockId, findings: [] };
     target.findings.push(finding);
     byKey.set(key, target);
   }
-  return [...byKey.values()].slice(0, MAX_TARGETS);
+  const errorTargets = [...byKey.values()].slice(0, MAX_TARGETS);
+  const chosen = new Map(errorTargets.map((t) => [t.key, t]));
+  const rank = (f: Finding) => ACTIONABLE_WARNINGS.indexOf(f.check);
+  const actionable = findings.filter((f) => f.severity === "warning" && rank(f) >= 0);
+  const warningOnly = new Map<string, Target>();
+  for (const finding of actionable) {
+    const key = keyOf(finding);
+    if (key === undefined || byKey.has(key)) {
+      if (key !== undefined) chosen.get(key)?.findings.push(finding);
+      continue;
+    }
+    const { slideId, blockId } = finding.target;
+    const target = warningOnly.get(key) ?? {
+      key,
+      slideId,
+      blockId,
+      findings: [],
+      warningOnly: true,
+    };
+    target.findings.push(finding);
+    warningOnly.set(key, target);
+  }
+  const best = (t: Target) => Math.min(...t.findings.map(rank));
+  const extra = [...warningOnly.values()]
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => best(a.t) - best(b.t) || a.i - b.i)
+    .slice(0, MAX_WARNING_TARGETS)
+    .map(({ t }) => t);
+  return [...errorTargets, ...extra];
+}
+
+/** Outline kinds whose slides teach; a `tested-not-taught` repair is shown what they said. */
+const TEACHING_KINDS: ReadonlySet<string> = new Set(["content", "image-text", "worked-example"]);
+/** The most read-only slides one repair call is shown. */
+export const MAX_CONTEXT_SLIDES = 6;
+
+/** One other slide a repair call sees and must not rewrite (lab round 1). */
+export type RepairContextSlide = {
+  /** 1-based position in the deck. */
+  position: number;
+  kind: string;
+  text: string;
+  /** Why it is shown: next to the target, holds the repeated text, or taught before the target. */
+  why: "before" | "after" | "repeats" | "taught-earlier";
+};
+
+/**
+ * The read-only slides a repair of `lesson.slides[index]` needs (lab round 1): the slides either
+ * side, so a rewrite does not recreate a neighbour's point (cb-y1-animals-P D8); any other slide
+ * holding a repetition finding's quoted evidence; and, for a `tested-not-taught` finding, the
+ * teaching slides before it, so the task is rewritten to what they teach and no untaught clause is
+ * added (cb-y1-animals-P D4, cb-y4-romans-P). At most `MAX_CONTEXT_SLIDES`, chosen in that order
+ * (nearest teaching slides first) and returned in deck order.
+ */
+export function repairContext(
+  lesson: Lesson,
+  index: number,
+  findings: Finding[],
+): RepairContextSlide[] {
+  const why = new Map<number, RepairContextSlide["why"]>();
+  const add = (i: number, reason: RepairContextSlide["why"]) => {
+    if (i !== index && i >= 0 && i < lesson.slides.length && !why.has(i)) why.set(i, reason);
+  };
+  for (const f of findings) {
+    if (f.check !== "repetition" || f.evidence === undefined) continue;
+    const needle = normaliseText(f.evidence);
+    lesson.slides.forEach((s, i) => {
+      if (needle && slideHaystack(s).includes(needle)) add(i, "repeats");
+    });
+  }
+  add(index - 1, "before");
+  add(index + 1, "after");
+  if (findings.some((f) => f.check === "tested-not-taught")) {
+    for (let i = index - 1; i >= 0; i--) {
+      if (TEACHING_KINDS.has(lesson.slides[i]?.kind ?? "")) add(i, "taught-earlier");
+    }
+  }
+  return [...why.entries()]
+    .slice(0, MAX_CONTEXT_SLIDES)
+    .sort(([a], [b]) => a - b)
+    .map(([i, reason]) => {
+      const slide = lesson.slides[i] as Slide;
+      return { position: i + 1, kind: slide.kind, text: slideText(slide), why: reason };
+    });
 }
 
 export async function repair(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
@@ -126,30 +257,34 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
               : slideSpecSchemaFor(slide.kind, { soft });
         const schema = specSchema(false);
         if (!slide || !schema) continue;
+        // The slides around it, read-only (lab round 1). `repair.v13` does not render them yet;
+        // the prompt-engineer adds that (scratchpad/quality-prd/lab/r1/checks.md).
+        const input: RepairInput & { context: { slides: RepairContextSlide[] } } = {
+          facts: staged,
+          audience,
+          lessonShape,
+          target: {
+            kind: "slide",
+            slideKind: slide.kind,
+            slideId: slide.id,
+            text: slideText(slide),
+            // The labelled fields, when they carry everything the flat text does; else the text.
+            ...(specFieldsCover(slide) ? { fields: specFieldsOf(slide) } : {}),
+            ...(slide.kind === "image-text"
+              ? { photo: slidePhotoOf(slide, lesson.facts?.outline[index]) }
+              : {}),
+          },
+          findings: target.findings,
+          shape: `a "${slide.kind}" slide spec`,
+          context: { slides: repairContext(lesson, index, target.findings) },
+        };
         const call = await callStructured({
           deps,
           stage: "repair",
           cls: "small",
           effort: "low",
           prompt: repairPrompt,
-          input: {
-            facts: staged,
-            audience,
-            lessonShape,
-            target: {
-              kind: "slide",
-              slideKind: slide.kind,
-              slideId: slide.id,
-              text: slideText(slide),
-              // The labelled fields, when they carry everything the flat text does; else the text.
-              ...(specFieldsCover(slide) ? { fields: specFieldsOf(slide) } : {}),
-              ...(slide.kind === "image-text"
-                ? { photo: slidePhotoOf(slide, lesson.facts?.outline[index]) }
-                : {}),
-            },
-            findings: target.findings,
-            shape: `a "${slide.kind}" slide spec`,
-          },
+          input,
           schema,
           soft: specSchema(true),
           retryCapMisses: true,
