@@ -683,3 +683,117 @@ describe('questionless: a bare "it" (lab round 1, cb-y1-animals-P/L)', () => {
     expect(questionless("Is it a rodent? Explain why it is.")).toBe("ok");
   });
 });
+
+describe("tested-not-taught (lab round 1)", () => {
+  const bare = (id: string, kind: Slide["kind"]): Slide => ({ id, kind, elements: [] }) as Slide;
+  const withFacts = (facts: LessonFacts, kinds: [string, Slide["kind"]][]): Lesson => ({
+    ...generatedLesson(),
+    facts,
+    slides: kinds.map(([id, kind]) => bare(id, kind)),
+  });
+  const of = (l: Lesson) => checkLesson(l).filter((f) => f.check === "tested-not-taught");
+
+  test("cb-y13-freud-L: the plenary and exit ticket cover objectives 2 and 3, which no slide teaches", () => {
+    // The recorded outline and slide kinds; only o1 got facts (its o2/o3 facts calls failed).
+    const facts: LessonFacts = {
+      ...lessonFacts(),
+      objectives: [
+        { id: "o1", text: "Describe Freud's model of the mind" },
+        { id: "o2", text: "Explain psychosexual stages and fixation" },
+        { id: "o3", text: "Evaluate later schools of thought" },
+      ],
+      keyIdeas: [
+        {
+          id: "k1",
+          statement: "The mind has three parts.",
+          explanation: "e",
+          example: "x",
+          objectiveRefs: ["o1"],
+        },
+        {
+          id: "k2",
+          statement: "Defences protect the ego.",
+          explanation: "e",
+          example: "x",
+          objectiveRefs: ["o1"],
+        },
+      ],
+      misconceptions: [{ id: "m1", belief: "b", correction: "c", objectiveRefs: ["o1"] }],
+      questions: [
+        { id: "q1", stem: "Which part?", answer: "Id", reasoning: "r", objectiveRefs: ["o1"] },
+      ],
+      outline: [
+        { id: "e0", kind: "title", factRefs: [] },
+        { id: "e1", kind: "objectives", factRefs: ["o1", "o2", "o3"] },
+        { id: "e2", kind: "starter", phase: "starter", factRefs: ["o1", "m1"] },
+        { id: "e3", kind: "content", phase: "explain", factRefs: ["o1", "k1", "v1", "v2"] },
+        { id: "e4", kind: "content", phase: "explain", factRefs: ["o1", "k2"] },
+        { id: "e5", kind: "multiple-choice", phase: "practise", factRefs: ["o1", "q1"] },
+        { id: "e6", kind: "plenary", phase: "check", factRefs: ["o1", "o2", "o3"] },
+        { id: "e7", kind: "exit-ticket", phase: "check", factRefs: ["o1", "o2", "o3"] },
+      ],
+    };
+    const l = withFacts(facts, [
+      ["lab5", "title"],
+      ["lab9", "objectives"],
+      ["labe", "starter"],
+      ["labs", "content"],
+      ["labw", "content"],
+      ["labk", "multiple-choice"],
+      ["labo", "plenary"],
+      ["lab11", "exit-ticket"],
+    ]);
+    const findings = of(l);
+    expect(findings.map((f) => [f.target.slideId, f.severity, f.fix?.kind])).toEqual([
+      ["labo", "warning", "regenerate-slide"],
+      ["lab11", "warning", "regenerate-slide"],
+    ]);
+    expect(findings[0]?.message).toContain("objective 2, which no earlier slide teaches");
+    expect(findings[0]?.message).toContain("objective 3");
+    expect(findings[0]?.message).not.toContain("objective 1");
+  });
+
+  test("a question whose declared key idea is taught only later, or never, is flagged; one taught earlier is not", () => {
+    const facts: LessonFacts = {
+      ...lessonFacts(),
+      keyIdeas: [
+        {
+          id: "k1",
+          statement: "Heat makes water evaporate.",
+          explanation: "e",
+          example: "x",
+          objectiveRefs: ["o1"],
+        },
+        {
+          id: "k2",
+          statement: "Cooling vapour condenses.",
+          explanation: "e",
+          example: "x",
+          objectiveRefs: ["o2"],
+        },
+      ],
+      questions: [
+        { id: "q1", stem: "What happens?", answer: "a", reasoning: "r", keyIdeaRefs: ["k1"] },
+        { id: "q2", stem: "Why?", answer: "a", reasoning: "r", keyIdeaRefs: ["k1", "k2"] },
+      ],
+      outline: [
+        { id: "e0", kind: "content", phase: "explain", factRefs: ["o1", "k1"] },
+        { id: "e1", kind: "multiple-choice", phase: "practise", factRefs: ["o1", "q1"] },
+        { id: "e2", kind: "open-response", phase: "practise", factRefs: ["o1", "q2"] },
+        { id: "e3", kind: "content", phase: "explain", factRefs: ["o2", "k2"] },
+      ],
+    };
+    const findings = of(
+      withFacts(facts, [
+        ["a", "content"],
+        ["b", "multiple-choice"],
+        ["c", "open-response"],
+        ["d", "content"],
+      ]),
+    );
+    expect(findings.map((f) => f.target.slideId)).toEqual(["c"]);
+    expect(findings[0]?.message).toContain('"Cooling vapour condenses."');
+    // The shared fixture teaches everything it asks: nothing to report.
+    expect(of(generatedLesson())).toEqual([]);
+  });
+});

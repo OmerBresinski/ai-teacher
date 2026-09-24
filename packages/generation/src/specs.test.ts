@@ -1379,3 +1379,26 @@ describe("withAssignedCallout (quality PRD G3): the box is present exactly when 
     ).toBe(true);
   });
 });
+
+describe("assignFactIds keeps a question's declared key ideas (lab round 1, tested-not-taught)", () => {
+  test("ordinal keyIdeaRefs become key idea ids; out-of-range refs drop; forms and demand still go", () => {
+    const f = structuredClone(FIXTURES.planFacts);
+    const n = f.keyIdeas.length;
+    const questions = f.questions as unknown as Record<string, unknown>[];
+    questions[0] = {
+      ...questions[0],
+      keyIdeaRefs: [
+        { type: "keyIdea", index: 0 },
+        { type: "keyIdea", index: 0 },
+        { type: "keyIdea", index: n },
+      ],
+      forms: ["open-response"],
+      demand: "apply",
+    };
+    const facts = assignFactIds(FIXTURES.planSkeleton, f as never, 60);
+    expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
+    expect(facts.questions[0]?.keyIdeaRefs).toEqual(["k1"]);
+    expect(facts.questions[0]).not.toHaveProperty("forms");
+    expect(facts.questions[1]).not.toHaveProperty("keyIdeaRefs");
+  });
+});
