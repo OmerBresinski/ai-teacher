@@ -61,7 +61,8 @@ export interface StructuredPrompt<I> {
  * maps to `reasoning.effort` for an OpenAI id and `output_config.effort` for an Anthropic one.
  * `xhigh` / `max` are not offered: nothing in the pipeline needs them.
  */
-export type ReasoningEffort = "low" | "medium" | "high";
+/** `none` (GPT-5.6/6 Luna: no reasoning at all) is lab-only; `minimal` is refused by those ids. */
+export type ReasoningEffort = "none" | "low" | "medium" | "high";
 
 export interface CallStructuredOptions<I, T> {
   deps: Pick<
@@ -616,7 +617,8 @@ export function providerOptionsFor(modelId: string, effort: ReasoningEffort, tie
   if (isAnthropicModelId(modelId)) return {};
   return {
     providerOptions: {
-      bedrock: { reasoningConfig: { maxReasoningEffort: effort } },
+      // Bedrock reads no `none`; its route is not the lab bench, so the lowest it takes stands in.
+      bedrock: { reasoningConfig: { maxReasoningEffort: effort === "none" ? "low" : effort } },
       // The same effort when the call goes through a gateway (`provider/model` ids, the lab's
       // model bench): each provider reads only its own namespace, so the others are inert.
       // Without this a GPT-5.6 id thinks at its default effort and the reasoning tokens eat the

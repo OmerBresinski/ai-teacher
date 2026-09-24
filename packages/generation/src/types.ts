@@ -162,8 +162,8 @@ export interface PipelineDeps {
   effortFor?: (
     stage: string,
     promptName: string,
-    effort: "low" | "medium" | "high",
-  ) => "low" | "medium" | "high";
+    effort: "none" | "low" | "medium" | "high",
+  ) => "none" | "low" | "medium" | "high";
   /**
    * Lab only: the OpenAI service tier a call asks for, given the stage and the prompt name
    * (`"priority"`: faster, twice the list price). Unset (production): the account's default tier.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // bun packages/generation/eval/lab.ts --brief <id|path> --label <name> [--cap 2] [--no-judge]
 //   [--no-images] [--plan-frontier-from-year N] [--from <snapshot.json>]
-//   [--model <stage|prompt>=<model id>[,…]] [--only <stage>] [--effort <stage|prompt>=<low|medium|high>[,…]] [--priority <stage|prompt>[,…]]
+//   [--model <stage|prompt>=<model id>[,…]] [--only <stage>] [--effort <stage|prompt>=<none|low|medium|high>[,…]] [--priority <stage|prompt>[,…]]
 //   [--source <file>]   (a text file Plan reads as a teacher-provided Source, e.g. a curriculum extract)
 //   [--lab-plan] [--no-verify] [--plan-effort low|medium|high]
 //                       (the lab plan path, `src/lab/plan-pipeline.ts`: objectives call → per-objective
@@ -1068,15 +1068,17 @@ if (import.meta.main) {
   }
   const promptName = (version: string | undefined) => version?.replace(/\.v\d+$/, "");
   /** `--effort plan=low,verify-facts=medium`: stage or prompt name → reasoning effort. */
-  const efforts: Record<string, "low" | "medium" | "high"> = Object.fromEntries(
+  const efforts: Record<string, "none" | "low" | "medium" | "high"> = Object.fromEntries(
     (arg("effort") ?? "")
       .split(",")
       .filter(Boolean)
       .map((pair) => {
         const [key, level] = pair.split("=");
-        if (!key || !level || !["low", "medium", "high"].includes(level))
-          throw new Error(`--effort: expected <stage|prompt>=<low|medium|high>, got "${pair}"`);
-        return [key.trim(), level as "low" | "medium" | "high"];
+        if (!key || !level || !["none", "low", "medium", "high"].includes(level))
+          throw new Error(
+            `--effort: expected <stage|prompt>=<none|low|medium|high>, got "${pair}"`,
+          );
+        return [key.trim(), level as "none" | "low" | "medium" | "high"];
       }),
   );
   /**

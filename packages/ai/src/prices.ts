@@ -94,6 +94,14 @@ export const PRICES: Record<string, ModelPrice> = {
     cachedInputPerMTok: 0.01,
     cacheWriteInputPerMTok: 0.125,
   },
+  // GPT-6 Luna on the gateway's fast route (gateway-only; OpenAI direct 404s the id): gateway
+  // list price from `/v1/models` on 2026-09-24, twice gpt-6-luna.
+  "openai/gpt-6-luna-fast": {
+    inputPerMTok: 0.2,
+    outputPerMTok: 1,
+    cachedInputPerMTok: 0.02,
+    cacheWriteInputPerMTok: 0.25,
+  },
   "openai/gpt-5.6-terra": {
     inputPerMTok: 2,
     outputPerMTok: 12,

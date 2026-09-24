@@ -145,3 +145,9 @@ test("a priority call asks OpenAI's priority tier and is priced at its row; othe
     serviceTier: "priority",
   });
 });
+
+test("effort none reaches OpenAI as none; Bedrock, which has no none, gets low", () => {
+  const sent = providerOptionsFor("openai/gpt-6-luna-fast", "none").providerOptions;
+  expect(sent?.openai).toMatchObject({ reasoningEffort: "none" });
+  expect(sent?.bedrock).toEqual({ reasoningConfig: { maxReasoningEffort: "low" } });
+});
