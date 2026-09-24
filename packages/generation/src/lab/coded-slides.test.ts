@@ -134,3 +134,57 @@ describe("seeded option order (r1, SYNTHESIS cause 6)", () => {
     );
   });
 });
+
+describe("the retrieval starter (r2)", () => {
+  const retrieval = [
+    { question: "Which organ pumps blood around the body?", answer: "The heart" },
+    {
+      question: "What do we breathe in to stay alive: oxygen or carbon dioxide?",
+      answer: "Oxygen",
+    },
+    { question: "Name one thing blood carries.", answer: "Oxygen (or food, or water)" },
+  ];
+  const withRetrieval = { ...facts, retrieval } as LessonFacts;
+
+  test("a starter prints the three retrieval questions, answers shown, and none of the lesson's", () => {
+    const coded = codedSetSpec(entry("starter", ["o1"]), withRetrieval, "L:2");
+    const spec = coded?.spec as { kind: string; items: string[]; footnote: string; notes: string };
+    expect(spec.kind).toBe("starter");
+    expect(spec.items).toEqual(retrieval.map((r) => r.question));
+    expect(coded?.answers).toEqual(retrieval.map((r) => r.answer));
+    expect(spec.footnote).toBe(
+      "Answers: 1 The heart  ·  2 Oxygen  ·  3 Oxygen (or food, or water)",
+    );
+    expect(spec.notes).toContain("3. Oxygen (or food, or water)");
+    // A question ref on the entry (none is placed with a retrieval set) is still not printed.
+    const refs = codedSetSpec(entry("starter", ["o1", "q1", "q2"]), withRetrieval, "L:2");
+    expect((refs?.spec as { items?: string[] } | undefined)?.items).toEqual(
+      retrieval.map((r) => r.question),
+    );
+    const slide = withAnswersReveal(
+      materialiseSlide(coded?.spec as never, "chalk", {
+        promptVersion: "code",
+        model: "code",
+        at: "2026-09-24T00:00:00.000Z",
+      }),
+    );
+    expect(slide.elements.find((e) => e.name === "Answers")?.revealStep).toBe(1);
+    expect(plain(slide)).toContain("The heart");
+    expect(plain(slide)).toContain("Which organ pumps blood");
+  });
+
+  test("the retrieval set never reaches a check or the exit quiz", () => {
+    const check = codedSetSpec(entry("instructions", ["o1", "q1", "q2"]), withRetrieval, "s");
+    const exit = codedSetSpec(entry("exit-ticket", ["o1", "q1", "q3"]), withRetrieval, "s");
+    for (const coded of [check, exit]) {
+      const text = JSON.stringify(coded?.spec);
+      for (const r of retrieval) expect(text).not.toContain(r.question);
+    }
+  });
+
+  test("without a retrieval set the starter is round 1's: its question refs, or the model's", () => {
+    const coded = codedSetSpec(entry("starter", ["o1", "q1", "q2"]), facts, "s");
+    expect((coded?.spec as { items?: string[] } | undefined)?.items).toHaveLength(2);
+    expect(codedSetSpec(entry("starter", ["o1", "m1"]), facts, "s")).toBeUndefined();
+  });
+});

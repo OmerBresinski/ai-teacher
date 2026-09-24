@@ -20,7 +20,11 @@ import {
   planFactsObjectiveOutputSchemaFor,
   planFactsObjectivePrompt,
 } from "../prompts/plan-facts-objective";
-import { planObjectivesOutputSchemaFor, planObjectivesPrompt } from "../prompts/plan-objectives";
+import {
+  type PlanRetrievalQuestion,
+  planObjectivesOutputSchemaFor,
+  planObjectivesPrompt,
+} from "../prompts/plan-objectives";
 import { assignFactIds, OUTLINE_FROM_FACTS_VERSION, type PlanFactsLike } from "../specs";
 import { evaluate } from "../stages/evaluate";
 import { generate } from "../stages/generate";
@@ -106,6 +110,8 @@ export interface LabFromFacts {
   objectives: { text: string; curriculumAnchor?: string | undefined }[];
   /** The merged facts (ordinal refs), as `mergeObjectiveFacts` returns them. */
   facts: Omit<MergedObjectiveFacts, "duplicates">;
+  /** The saved run's retrieval set (`LessonFacts.retrieval`), when it had one. */
+  retrieval?: PlanRetrievalQuestion[] | undefined;
 }
 
 /** How one objective's facts are obtained under an arm. */
@@ -143,6 +149,8 @@ export interface LabStatus {
 
 export interface LabPlanReport {
   objectives: { text: string; curriculumAnchor?: string | undefined }[];
+  /** Lab r2: the starter's retrieval questions from the objectives call; absent when it wrote none. */
+  retrieval?: PlanRetrievalQuestion[] | undefined;
   /** `describeIssues` lines from `checkObjectives`; non-empty only on a blocked run. */
   objectiveIssues: string[];
   /** 0-based objectives whose facts call did not return (budget, schema, provider). */
@@ -184,6 +192,11 @@ const PROGRESS_PLANNED = 10;
  * - objectives: benches `objectives-c-v7`, `v7b`, `v8` (Luna, n = 11): max 598 output tokens.
  *   Was 800 (max × 1.3); np1-romans-grounded spent 800 twice on hidden reasoning and returned
  *   nothing, so 1 200. Visible output is small, the reasoning is not, and the cap bounds both.
+ *   v12 adds three retrieval questions (lab r2, `quality-prd/lab/r2/prompt-objectives.md`): the 12
+ *   r1 v11 calls wrote at most 541 (text 112, reasoning 472); the three items add 105–135 text
+ *   tokens and the second sub-task up to the worst reasoning again, so worst case
+ *   541 + 135 + 472 ≈ 1 150, 4% under 1 200. Cap 1 600 (≈ worst × 1.4); the reservation rises by
+ *   400 × $1.20/M ≈ $0.0005 a call.
  * - facts: benches `facts-c-v5`…`v8` (Luna, n = 32): p90 1 686, p99 1 859, max 2 201 (the
  *   Evaluate briefs' long answers). Cap 2 400 (max × 1.1; p99 × 1.3). r1 (v14, four to six
  *   questions): 5 of 36 calls hit 2 400 with 1 400–2 100 of it hidden reasoning and lost the
@@ -191,7 +204,7 @@ const PROGRESS_PLANNED = 10;
  *
  * Neither cap admits a run-away answer: a call that reaches it is a schema miss and one retry.
  */
-export const MAX_OUTPUT_TOKENS_OBJECTIVES = 1200;
+export const MAX_OUTPUT_TOKENS_OBJECTIVES = 1600;
 export const MAX_OUTPUT_TOKENS_FACTS = 4000;
 
 /** The objectives failed their structural check: the lab stops before any facts call. */
@@ -269,7 +282,10 @@ export async function labPlan(
   );
   const tObjectives = Date.now();
   const objectivesCall = fromFacts
-    ? { output: { objectives: fromFacts.objectives }, modelId: "none" }
+    ? {
+        output: { objectives: fromFacts.objectives, retrieval: fromFacts.retrieval },
+        modelId: "none",
+      }
     : await callStructured({
         deps,
         stage: "plan",
@@ -288,6 +304,12 @@ export async function labPlan(
       });
   const objectivesMs = Date.now() - tObjectives;
   const objectives = objectivesCall.output.objectives;
+  // Lab r2: prior knowledge for the starter, carried to the outline and onto the facts; never a
+  // fact question, so no check, practise slide or exit quiz can reach it.
+  const retrieval =
+    objectivesCall.output.retrieval && objectivesCall.output.retrieval.length > 0
+      ? objectivesCall.output.retrieval
+      : undefined;
   // Saved objectives were anchored to the original run's extract, which a from-facts run does not reload.
   const hasSource = fromFacts
     ? objectives.some((o) => "curriculumAnchor" in o && o.curriculumAnchor !== undefined)
@@ -301,6 +323,7 @@ export async function labPlan(
   if (objectiveIssues.length > 0) {
     const report: LabPlanReport = {
       objectives,
+      ...(retrieval ? { retrieval } : {}),
       objectiveIssues,
       factsFailed: [],
       editorialMisses: 0,
@@ -440,12 +463,16 @@ export async function labPlan(
     shape,
     slideCount,
     priorKnowledge: brief.classContext?.priorKnowledge,
+    retrieval,
   });
   const planFacts: PlanFactsLike = { ...merged, outlineFactRefs: outline.outlineFactRefs };
-  const facts = withExitAsPlanned(
+  const assigned = withExitAsPlanned(
     assignFactIds(outline.skeleton, planFacts, brief.durationMin),
     outline.outlineFactRefs,
   );
+  const facts: LessonFacts = retrieval
+    ? { ...assigned, retrieval: retrieval.map((r) => ({ question: r.question, answer: r.answer })) }
+    : assigned;
   deps.logger.info(
     {
       stage: "plan",
@@ -530,6 +557,7 @@ export async function labPlan(
 
   const labPlanReport: LabPlanReport = {
     objectives,
+    ...(retrieval ? { retrieval } : {}),
     objectiveIssues,
     factsFailed,
     editorialMisses,
@@ -648,6 +676,10 @@ export function labPlanMarkdown(report: LabPlanReport): string {
   L.push(
     `- objectives check: ${report.objectiveIssues.length === 0 ? "pass" : `BLOCKED: ${report.objectiveIssues.join("; ")}`}`,
   );
+  if (report.retrieval)
+    L.push(
+      `- starter retrieval (${report.retrieval.length}): ${report.retrieval.map((r, i) => `${i + 1}. ${r.question} (${r.answer})`).join(" | ")}`,
+    );
   if (report.verify === "blocked") return L.join("\n");
   L.push(
     `- facts calls: ${report.objectives.length - report.factsFailed.length}/${report.objectives.length} returned${report.factsFailed.length ? ` (failed: ${report.factsFailed.map((i) => i + 1).join(", ")})` : ""}; ${report.editorialMisses} editorial misses; wall ${report.timings.factsWallMs} ms (objectives ${report.timings.objectivesMs} ms)`,

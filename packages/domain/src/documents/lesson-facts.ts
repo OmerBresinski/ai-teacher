@@ -224,6 +224,8 @@ export type LessonFacts = {
   pitch?: Pitch;
   outline: OutlineEntry[];
   durationMin: number;
+  /** Lab r2: the starter's retrieval questions (prior knowledge); not facts, no id, no check reads them. */
+  retrieval?: RetrievalQuestion[];
 };
 
 export const CurriculumRefSchema = z.strictObject({
@@ -340,6 +342,17 @@ export const FACT_ID_PREFIXES: Record<FactArray, string> = {
 export const isFactIdOf = (array: FactArray, id: FactId): boolean =>
   id.startsWith(FACT_ID_PREFIXES[array]);
 
+/**
+ * A starter retrieval question with its answer (lab r2): prior knowledge from earlier lessons,
+ * written by the objectives call. Not a fact: it has no id, no `factRefs` point at it, and no check
+ * reads it; only the lab's coded starter prints it.
+ */
+export const RetrievalQuestionSchema = z.strictObject({
+  question: z.string(),
+  answer: z.string(),
+});
+export type RetrievalQuestion = z.infer<typeof RetrievalQuestionSchema>;
+
 export const LessonFactsSchema = z
   .strictObject({
     objectives: z.array(ObjectiveSchema),
@@ -351,6 +364,8 @@ export const LessonFactsSchema = z
     pitch: PitchSchema.optional(),
     outline: z.array(OutlineEntrySchema),
     durationMin: z.number().int().min(1),
+    /** Lab r2: the starter's retrieval set, when the objectives call wrote one. */
+    retrieval: z.array(RetrievalQuestionSchema).optional(),
   })
   .superRefine((facts, ctx) => {
     // Ids are the addressing scheme for `factRefs`, so they must be unique across every array

@@ -156,6 +156,7 @@ function run(over: {
   facts?: OutlineFacts;
   options?: Options;
   priorKnowledge?: string;
+  retrieval?: { question: string; answer: string }[];
 }) {
   const n = over.n ?? 2;
   const facts = over.facts ?? factsFor(n, over.options);
@@ -168,6 +169,7 @@ function run(over: {
     shape,
     slideCount,
     ...(over.priorKnowledge === undefined ? {} : { priorKnowledge: over.priorKnowledge }),
+    ...(over.retrieval === undefined ? {} : { retrieval: over.retrieval }),
   });
   return { result, facts, shape, slideCount };
 }
@@ -1155,5 +1157,74 @@ describe("lab r1 structure: sets, cycle checks, starter, exit quiz", () => {
     for (const o of [0, 1, 2]) {
       expect(qs.filter((i) => r.facts.questions[i]?.objectiveRefs[0]?.index === o)).toHaveLength(2);
     }
+  });
+});
+
+describe("the retrieval starter (lab r2)", () => {
+  const retrieval = [
+    { question: "What does a river carry downstream?", answer: "Water and sediment" },
+    { question: "Where does a river start: its source or its mouth?", answer: "Its source" },
+    { question: "Name one way water reaches a river.", answer: "Rain running off the land" },
+  ];
+  /** The round-1 deck of the easiest-question starter test: a second worksheet question each. */
+  const richer = () => {
+    const facts = factsFor(3);
+    const more = facts.questions
+      .filter((q) => q.use === "worksheet")
+      .map((q) => ({ ...q, stem: q.stem.replace("Worksheet", "Another worksheet") }));
+    return { ...facts, questions: [...facts.questions, ...more] };
+  };
+  const questionRefs = (r: ReturnType<typeof run>, position: number) =>
+    refsAt(r, position).flatMap((f) => (f.type === "question" ? [f.index] : []));
+  const placedQuestions = (r: ReturnType<typeof run>) =>
+    r.result.outlineFactRefs.flatMap((e) =>
+      e.factRefs.flatMap((f) => (f.type === "question" ? [f.index] : [])),
+    );
+
+  test("no prior knowledge: the starter keeps round 1's slot and is the retrieval set, with no question of the lesson's", () => {
+    const facts = richer();
+    const before = run({ n: 3, slideCount: 10, facts });
+    const after = run({ n: 3, slideCount: 10, facts, retrieval });
+    expect(questionRefs(before, 2).length).toBeGreaterThanOrEqual(2);
+    expect(kinds(after)[2]).toBe("starter");
+    expect(refsAt(after, 2)).toEqual([]);
+    expect(after.result.skeleton.outline[2]?.brief?.adds).toBe(
+      "Retrieval: 3 quick questions on earlier lessons pupils answer from memory before the teaching.",
+    );
+    expect(kinds(after)).toHaveLength(10);
+    // The questions the starter no longer takes stay for the checks and the exit quiz.
+    expect(placedQuestions(after).length).toBeGreaterThanOrEqual(
+      placedQuestions(before).length - questionRefs(before, 2).length,
+    );
+    expect(after.result.gaps.some((g) => /declares no prior knowledge/.test(g))).toBe(false);
+  });
+
+  test("declared prior knowledge: the retrieval set takes the round-1 starter slot, no misconception, no question", () => {
+    const before = run({ n: 3, slideCount: 10, priorKnowledge: "The water cycle." });
+    const after = run({ n: 3, slideCount: 10, priorKnowledge: "The water cycle.", retrieval });
+    expect(kinds(after)).toEqual(kinds(before));
+    const at = kinds(after).indexOf("starter");
+    expect(refsAt(after, at)).toEqual([]);
+    expect(after.result.skeleton.outline[at]?.brief?.adds).toMatch(/on earlier lessons/);
+  });
+
+  test("the retrieval set is never a check or exit item, and no slide after the starter is a retrieval slide", () => {
+    for (const slideCount of [6, 8, 10, 12] as SlideCount[]) {
+      const r = run({ n: 3, slideCount, retrieval });
+      const starters = kinds(r).flatMap((k, i) => (k === "starter" ? [i] : []));
+      expect(starters.length).toBeLessThanOrEqual(1);
+      for (const i of starters) expect(questionRefs(r, i)).toEqual([]);
+      // Every question ref on a check or the exit quiz is a lesson fact.
+      for (const e of r.result.outlineFactRefs)
+        for (const f of e.factRefs)
+          if (f.type === "question") expect(r.facts.questions[f.index]).toBeDefined();
+    }
+  });
+
+  test("an empty retrieval list is round 1's starter", () => {
+    const facts = richer();
+    const none = run({ n: 3, slideCount: 10, facts });
+    const empty = run({ n: 3, slideCount: 10, facts, retrieval: [] });
+    expect(empty.result.outlineFactRefs).toEqual(none.result.outlineFactRefs);
   });
 });

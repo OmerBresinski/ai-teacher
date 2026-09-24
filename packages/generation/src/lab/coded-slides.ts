@@ -151,8 +151,8 @@ const CODED: Partial<Record<OutlineEntry["kind"], { heading: string; max: number
 
 /**
  * The spec of a lab set slide, built from the entry's question and misconception refs, or
- * `undefined` when the entry is not one (another kind, or a starter with no question: that one
- * retrieves the brief's prior knowledge and the model writes it). `seed`: lesson id and position.
+ * `undefined` when the entry is not one (another kind, or a starter with no question and no
+ * retrieval set: that one retrieves the brief's prior knowledge and the model writes it). `seed`: lesson id and position.
  */
 export function codedSetSpec(
   entry: OutlineEntry,
@@ -165,7 +165,14 @@ export function codedSetSpec(
   const misconceptions = new Map((facts.misconceptions ?? []).map((m) => [m.id, m]));
   const lines: Line[] = [];
   let asked = 0;
-  for (const ref of entry.factRefs) {
+  // Lab r2: a starter prints the objectives call's retrieval questions (prior knowledge, answers
+  // shown) whenever the facts carry them; the outline then gives it no question of the lesson's.
+  const retrieval = entry.kind === "starter" ? (facts.retrieval ?? []) : [];
+  for (const r of retrieval) {
+    asked += 1;
+    lines.push({ text: r.question.trim(), answer: r.answer.trim() });
+  }
+  for (const ref of retrieval.length > 0 ? [] : entry.factRefs) {
     const q = questions.get(ref);
     const m = misconceptions.get(ref);
     if (q) {

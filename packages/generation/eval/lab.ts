@@ -1252,6 +1252,7 @@ if (import.meta.main) {
                 source: saved.run,
                 objectives: saved.objectives,
                 facts: saved.facts as unknown as LabFromFacts["facts"],
+                ...(saved.lessonFacts.retrieval ? { retrieval: saved.lessonFacts.retrieval } : {}),
               },
             }
           : {}),
