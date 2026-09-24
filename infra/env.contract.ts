@@ -555,6 +555,32 @@ const CONTRACT = [
       "Amazon Bedrock API key (bearer). Required in production; when unset in development/test `@tj/ai` is `unconfigured` and AI jobs/routes fail fast. Never set on Vercel (ADR 0018).",
   },
   {
+    name: "AI_GATEWAY_API_KEY",
+    services: ["api", "worker"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api", "worker"],
+    description:
+      "Vercel AI Gateway key. Optional: when set, `@tj/ai` routes any `provider/model` model id (e.g. `google/gemini-3.8-flash`) through the gateway; when unset those ids are unavailable and Bedrock ids are unaffected. Set on Railway, never in git.",
+  },
+  {
+    name: "OPENROUTER_API_KEY",
+    services: ["api", "worker"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api", "worker"],
+    description:
+      "OpenRouter key. Optional: when set, `@tj/ai` routes any `openrouter/<vendor>/<model>` model id through OpenRouter; when unset those ids are unavailable and Bedrock ids are unaffected. Set on Railway, never in git.",
+  },
+  {
     name: "AWS_REGION",
     services: ["api", "worker"],
     scope: "config",

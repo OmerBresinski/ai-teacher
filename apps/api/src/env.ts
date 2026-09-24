@@ -79,6 +79,10 @@ export const EnvSchema = z
     // --- AI provider (ADR 0018) ------------------------------------------------------------
     AWS_BEARER_TOKEN_BEDROCK: optionalString,
     AWS_REGION: z.string().default(DEFAULT_REGION),
+    /** Vercel AI Gateway key: routes `provider/model` ids there (`@tj/ai`). Optional. */
+    AI_GATEWAY_API_KEY: optionalString,
+    /** OpenRouter key: routes `openrouter/<vendor>/<model>` ids there (`@tj/ai`). Optional. */
+    OPENROUTER_API_KEY: optionalString,
     AI_MODEL_FRONTIER: z.string().min(1).default(DEFAULT_MODEL_IDS.frontier),
     AI_MODEL_STANDARD: z.string().min(1).default(DEFAULT_MODEL_IDS.standard),
     AI_MODEL_SMALL: z.string().min(1).default(DEFAULT_MODEL_IDS.small),

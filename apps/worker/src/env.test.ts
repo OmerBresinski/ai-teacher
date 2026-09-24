@@ -14,6 +14,8 @@ describe("worker env", () => {
       NODE_ENV: "development",
       AWS_BEARER_TOKEN_BEDROCK: undefined,
       AWS_REGION: DEFAULT_REGION,
+      AI_GATEWAY_API_KEY: undefined,
+      OPENROUTER_API_KEY: undefined,
       AI_MODEL_FRONTIER: DEFAULT_MODEL_IDS.frontier,
       AI_MODEL_STANDARD: DEFAULT_MODEL_IDS.standard,
       AI_MODEL_SMALL: DEFAULT_MODEL_IDS.small,
@@ -130,5 +132,18 @@ describe("worker env", () => {
       exit.mockRestore();
       error.mockRestore();
     }
+  });
+
+  test("keeps the gateway and OpenRouter keys so @tj/ai can route to them", () => {
+    const env = parseEnv({
+      DATABASE_URL: DB,
+      AI_GATEWAY_API_KEY: "gateway-key",
+      OPENROUTER_API_KEY: "openrouter-key",
+    });
+    expect(env.AI_GATEWAY_API_KEY).toBe("gateway-key");
+    expect(env.OPENROUTER_API_KEY).toBe("openrouter-key");
+    const blank = parseEnv({ DATABASE_URL: DB, AI_GATEWAY_API_KEY: " ", OPENROUTER_API_KEY: "" });
+    expect(blank.AI_GATEWAY_API_KEY).toBeUndefined();
+    expect(blank.OPENROUTER_API_KEY).toBeUndefined();
   });
 });

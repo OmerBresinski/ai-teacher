@@ -42,6 +42,24 @@ describe("parseEnv", () => {
     expect(blank.env.AWS_BEARER_TOKEN_BEDROCK).toBeUndefined();
   });
 
+  test("keeps the gateway and OpenRouter keys so @tj/ai can route to them", () => {
+    const r = parseEnv({
+      ...base,
+      AI_GATEWAY_API_KEY: "gateway-key",
+      OPENROUTER_API_KEY: "openrouter-key",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.env.AI_GATEWAY_API_KEY).toBe("gateway-key");
+    expect(r.env.OPENROUTER_API_KEY).toBe("openrouter-key");
+
+    const blank = parseEnv({ ...base, AI_GATEWAY_API_KEY: " ", OPENROUTER_API_KEY: "" });
+    expect(blank.ok).toBe(true);
+    if (!blank.ok) return;
+    expect(blank.env.AI_GATEWAY_API_KEY).toBeUndefined();
+    expect(blank.env.OPENROUTER_API_KEY).toBeUndefined();
+  });
+
   test("requires the Bedrock key in production", () => {
     const production = parseEnv({
       ...base,

@@ -78,6 +78,8 @@ describe("infra/env.contract.ts", () => {
       "S3_ACCESS_KEY_ID",
       "S3_SECRET_ACCESS_KEY",
       "AWS_BEARER_TOKEN_BEDROCK",
+      "AI_GATEWAY_API_KEY",
+      "OPENROUTER_API_KEY",
       "AWS_REGION",
       "AI_MODEL_FRONTIER",
       "AI_MODEL_STANDARD",
