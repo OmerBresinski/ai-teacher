@@ -159,6 +159,31 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  * asks for what "the objectives build on and none of them covers"; the time clause is gone, since
  * "learned in an earlier lesson" says it once and it did not hold on its own. 346 -> 343 words.
  *
+ * v14 (24 Sept 2026, latency-lab blind judges: 36 gpt-5.6-luna sets on 12 brief-only topics, plus
+ * the curriculum-input round; `scratchpad/quality-prd/lab/latency/PROMPT-objectives.md`). The call
+ * gets the brief alone, so every rule now reads off the brief and the objectives it writes.
+ *  - Retrieval (faulted in ~33 of 36 sets: "3 + 4" for Year 7, "who wrote The Tempest" for Year
+ *    10, density before rates, the lesson's own content): v13 asked for what the class "learned in
+ *    an earlier lesson", which the call cannot know, and the sketch's own item was trivia with its
+ *    answer in the question. The rule now derives each question from an objective (a term, fact or
+ *    method it needs that no objective teaches), asks for a check a pupil in this year group could
+ *    fail, and asks for three different ones (duplicates were faulted). A first smoke with "taught
+ *    before this topic" in place of "no objective teaches" still let a ratio starter ask equivalent
+ *    ratios, objective 2, and kept a Year 10 starter off the play the class has read. The sketch item is the
+ *    prerequisite of the sample objective.
+ *  - Objectives (overlap or split ~13, missing core ~10, vague ~7): the count rule counts the
+ *    topic's distinct parts, which together cover its core at the year's level with no two sharing
+ *    an idea; the objective rule asks for the concept, process or method by name, not a heading.
+ *    "Never split one idea or add a filler line" is folded into that sentence ("no filler line").
+ *  - The prior-knowledge and curriculum rules leave the system text for the user turn, beside the
+ *    input they govern (`PRIOR_KNOWLEDGE_USE`, `CURRICULUM_USE`), so a brief without them is not
+ *    steered by them and the no-extract sketch no longer shows `curriculumAnchor` (judges faulted
+ *    identical invented anchors). The prior-knowledge rule is rewritten: fed earlier units, v13's
+ *    "keep every objective inside that material" pulled lessons backward (2.44 against 3.61); it
+ *    now feeds the starter, the objectives still teach the topic, and only a text read so far
+ *    bounds them (the teacher's use). `CURRICULUM_INSTRUCTION` is shared with the teach call and
+ *    unchanged. 343 -> 314 system words.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -186,13 +211,26 @@ export const CURRICULUM_INSTRUCTION =
 /** How the prior-knowledge line is introduced, and the phrase the system rule names. */
 export const PRIOR_KNOWLEDGE_LABEL = "What the class has already covered";
 
+/**
+ * What this call does with the prior-knowledge line (v14): sent beside the line, only when there
+ * is one, so no brief without it is steered by it. It feeds the starter; it never replaces the
+ * topic (v13's "keep every objective inside that material" pulled lessons back into the earlier
+ * units it listed); and a text read so far still bounds the objectives, the teacher's use.
+ */
+export const PRIOR_KNOWLEDGE_USE =
+  "That is what the class knows before this lesson: draw the retrieval questions from it. The objectives still teach this lesson's topic, and where it names how far the class has read in a text, they use nothing beyond that point.";
+
+/** What this call does with a retrieved unit (v14): sent after the extract, only when there is one. */
+export const CURRICULUM_USE =
+  'Where the topic spans this unit, the objectives span its arc, not its opening lesson. Put the learning point or bullet each objective serves in "curriculumAnchor".';
+
 const objectiveText = z.string().min(8).max(120);
 const curriculumAnchor = z.string().max(160);
 
 /**
- * One retrieval question for the starter, with its answer (v12). Knowledge from an earlier lesson
- * that the objectives build on and none of them covers (v13), so a pupil can answer it before this
- * lesson teaches anything; the outline places the three on the starter slide.
+ * One retrieval question for the starter, with its answer (v12). A prerequisite one of the
+ * objectives needs and none of them teaches (v14), so a pupil can answer it before this lesson
+ * teaches anything; the outline places the three on the starter slide.
  */
 export const PlanRetrievalQuestionSchema = z.strictObject({
   question: z.string().min(8).max(200),
@@ -267,26 +305,25 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
 
 /**
  * The shape sketch: one line, so no model spends its budget copying a worked example. One
- * retrieval item shown (the count is in the prose), from the unit before: a Year 4 Romans lesson
- * builds on Year 3's Iron Age, so the sample is one short recall on that unit and names nothing
- * from this lesson's topic (reviewer, 24 Sept: no X-or-Y template, so the form is not copied).
+ * retrieval item shown (the count is in the prose): the term the sample objective rests on
+ * ("why the Romans invaded" needs "empire"), a prerequisite a Year 4 pupil could get wrong, not
+ * v12/v13's Iron Age item, which was trivia with its answer in the question. No anchor: the field
+ * is asked for beside an extract (`CURRICULUM_USE`), so a no-extract call is not shown the slot.
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "curriculumAnchor": "the Roman Empire and its impact on Britain" }], "retrieval": [{ "question": "What metal did Iron Age Britons use to make tools?", "answer": "Iron" }] }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v13",
+  version: "plan-objectives.v14",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
     "Rules:",
     OBJECTIVE_HOUSE_RULES,
-    "Each objective is one idea, at most 16 words, starting with one observable verb: what a pupil can do by the end.",
+    "Each objective is one idea, at most 16 words, starting with one observable verb: what a pupil can do by the end. Name the concept, process or method it is about, not a heading.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
-    "Give as many objectives as the topic has: usually two or three; one for one tight skill; four only for four distinct parts. Never split one idea or add a filler line to make another.",
-    "Each retrieval question, with its answer, asks something this year group learned in an earlier lesson that the objectives build on and none of them covers, in one line or by picking from options the question names.",
-    `Where the brief gives "${PRIOR_KNOWLEDGE_LABEL}", keep every objective inside that material, still reach the lesson's verb, and draw the retrieval questions from it.`,
-    'Where the topic spans the curriculum extract\'s unit, the objectives span its arc, not its opening lesson. Put the learning point or bullet each objective serves in "curriculumAnchor".',
+    "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: usually two or three; one for one tight skill; four only for four distinct parts; no filler line.",
+    "Each retrieval question checks a different term, fact or method that one of the objectives needs a pupil to know already and that no objective teaches, one a pupil in this year group could plausibly have forgotten. Ask it in one line or by picking from options the question names.",
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,
@@ -295,10 +332,12 @@ export const planObjectivesPrompt = {
     const [shapeLine] = shapeBlock(input.shape);
     const parts = [`Topic or objective: ${input.topic}`, audienceBlock(input.audience)];
     if (input.priorKnowledge) {
-      parts.push(`${PRIOR_KNOWLEDGE_LABEL}: ${input.priorKnowledge}`);
+      parts.push(`${PRIOR_KNOWLEDGE_LABEL}: ${input.priorKnowledge}`, PRIOR_KNOWLEDGE_USE);
     }
     parts.push(`Lesson shape: ${shapeLine}`);
-    if (input.curriculum) parts.push("", CURRICULUM_INSTRUCTION, input.curriculum.text);
+    if (input.curriculum) {
+      parts.push("", CURRICULUM_INSTRUCTION, input.curriculum.text, "", CURRICULUM_USE);
+    }
     return parts.join("\n");
   },
 } as const;

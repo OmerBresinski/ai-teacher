@@ -4,9 +4,11 @@ import { audienceOf } from "../stages/shared";
 import { sampleBriefLesson } from "../testing";
 import {
   CURRICULUM_INSTRUCTION,
+  CURRICULUM_USE,
   type PlanObjectivesInput,
   PlanObjectivesOutputSchema,
   PRIOR_KNOWLEDGE_LABEL,
+  PRIOR_KNOWLEDGE_USE,
   planObjectivesOutputSchemaFor,
   planObjectivesPrompt,
 } from "./plan-objectives";
@@ -42,8 +44,8 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 };
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v13",
-  hash: "01d178fc53eb553fcb2afc04780dafc860c40cee11cc2beb2d1b987f52e8ac6b",
+  version: "plan-objectives.v14",
+  hash: "4ea0e783706038ed2a2f74a96186bb819be4965cb80cf015997294d659b822be",
 };
 
 describe("plan-objectives", () => {
@@ -64,8 +66,9 @@ describe("plan-objectives", () => {
      */
     // v7 (minimalism rubric, 23 Sept 2026) trimmed 409 to 299; v8 303; v9 297; v10 276. The alarm
     // follows it down. v12 (24 Sept) adds the retrieval questions: 346, each clause on a judged
-    // failure (see the file header), so the alarm moves up once, by that growth. v13: 343.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(360);
+    // failure (see the file header), so the alarm moves up once, by that growth. v13: 343. v14: 314,
+    // the prior-knowledge and curriculum rules moved to the user turn beside their inputs.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(330);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
@@ -84,10 +87,9 @@ describe("plan-objectives", () => {
     expect(system).toContain("at most 16 words");
     expect(system).not.toContain("in words the class can read");
     expect(system).not.toMatch(/Never open with|160 characters/);
-    // The extract's nature is `CURRICULUM_INSTRUCTION`'s to state, beside the extract; the system
-    // keeps only the clause it lacks (span the arc, not lesson 1) and names the anchor field.
-    expect(system).toContain("span its arc, not its opening lesson");
-    expect(system).toContain('"curriculumAnchor"');
+    // v14: the extract's rules travel with the extract. The system text, sent on every call, says
+    // nothing about an extract or the anchor field, so a brief-only call is not steered by them.
+    expect(system).not.toMatch(/extract|curriculumAnchor/);
     expect(system).not.toContain("not this lesson's plan");
     // The upload instruction made planners copy the unit's first lesson; it must not be reused.
     expect(system).not.toContain(SOURCE_INSTRUCTION);
@@ -95,6 +97,11 @@ describe("plan-objectives", () => {
     const withUnit = planObjectivesPrompt.user(PLAN_OBJECTIVES_SAMPLE);
     expect(withUnit).toContain(CURRICULUM_INSTRUCTION);
     expect(withUnit).toContain("Boudica");
+    // The use clause (span the arc, name the anchor field) follows the extract it governs.
+    expect(withUnit).toContain(CURRICULUM_USE);
+    expect(CURRICULUM_USE).toContain("span its arc, not its opening lesson");
+    expect(CURRICULUM_USE).toContain('"curriculumAnchor"');
+    expect(withUnit.indexOf(CURRICULUM_USE)).toBeGreaterThan(withUnit.indexOf("Boudica"));
     // Ruling 82: lesson length is no longer a size control, so it is not in this call at all.
     expect(withUnit).not.toContain("Lesson length");
     expect(withUnit).not.toMatch(/minutes/);
@@ -102,16 +109,21 @@ describe("plan-objectives", () => {
     const without = planObjectivesPrompt.user({ ...PLAN_OBJECTIVES_SAMPLE, curriculum: undefined });
     expect(without).not.toContain(CURRICULUM_INSTRUCTION);
     expect(without).not.toContain("Boudica");
+    expect(without).not.toContain(CURRICULUM_USE);
   });
 
   test("the count comes from the topic: plain numbers in the system, no slide count anywhere", () => {
     // Ruling 81 (rewritten 23 Sept): the topic sets the count, usually two or three (ruling 64: 1-4).
     const system = planObjectivesPrompt.system;
-    expect(system).toContain("Give as many objectives as the topic has: usually two or three");
+    // v14: the count follows the topic's distinct parts, which together cover its core, so two
+    // lines on one idea and a thin set are both outside the rule (latency-lab judges).
+    expect(system).toContain("Give one objective for each distinct part of the topic");
+    expect(system).toContain("cover its core at this year group's level and no two share an idea");
+    expect(system).toContain("usually two or three");
     // v10: "building on each other and sharing its key ideas" named no bench failure (rubric 3).
     expect(system).not.toContain("building on each other");
     expect(system).toContain("one for one tight skill; four only for four distinct parts");
-    expect(system).toContain("Never split one idea or add a filler line to make another");
+    expect(system).toContain("no filler line");
     expect(system).not.toMatch(/slide count|slides\b|ceiling/i);
     expect(system).not.toMatch(/minutes/);
     // A single objective must not be told to open below the reach (the check needs it AT the reach).
@@ -134,19 +146,28 @@ describe("plan-objectives", () => {
     }
   });
 
-  test("the prior-knowledge line is rendered and the system rule names it", () => {
-    // Supplying the fact is half of it; the system must point at the line, or the input is inert.
-    expect(planObjectivesPrompt.system).toContain(`"${PRIOR_KNOWLEDGE_LABEL}"`);
-    expect(planObjectivesPrompt.system).toContain("keep every objective inside that material");
-    // v12: the same sentence feeds the starter, so the label is named once (Luna guide 12).
-    expect(planObjectivesPrompt.system).toContain("draw the retrieval questions from it");
-    expect(planObjectivesPrompt.system.split(PRIOR_KNOWLEDGE_LABEL).length - 1).toBe(1);
+  test("the prior-knowledge line is rendered with its use, and only when given", () => {
+    // Supplying the fact is half of it; the line must be pointed at, or the input is inert. v14:
+    // the use travels beside the line, so a brief without one is not steered by it.
+    const system = planObjectivesPrompt.system;
+    expect(system).not.toContain(PRIOR_KNOWLEDGE_LABEL);
+    // v13's "keep every objective inside that material" pulled lessons back into earlier units.
+    expect(system).not.toContain("keep every objective inside that material");
+    expect(PRIOR_KNOWLEDGE_USE).not.toContain("keep every objective inside");
+    expect(PRIOR_KNOWLEDGE_USE).toContain("draw the retrieval questions from it");
+    expect(PRIOR_KNOWLEDGE_USE).toContain("The objectives still teach this lesson's topic");
+    // The teacher's scope line still bounds the objectives ("read Act 1 scenes 1 to 5").
+    expect(PRIOR_KNOWLEDGE_USE).toContain("how far the class has read in a text");
     const covered = planObjectivesPrompt.user({
       ...PLAN_OBJECTIVES_SAMPLE,
       priorKnowledge: "read Act 1 scenes 1 to 5",
     });
-    expect(covered).toContain(`${PRIOR_KNOWLEDGE_LABEL}: read Act 1 scenes 1 to 5`);
-    expect(planObjectivesPrompt.user(PLAN_OBJECTIVES_SAMPLE)).not.toContain(PRIOR_KNOWLEDGE_LABEL);
+    expect(covered).toContain(
+      `${PRIOR_KNOWLEDGE_LABEL}: read Act 1 scenes 1 to 5\n${PRIOR_KNOWLEDGE_USE}`,
+    );
+    const plain = planObjectivesPrompt.user(PLAN_OBJECTIVES_SAMPLE);
+    expect(plain).not.toContain(PRIOR_KNOWLEDGE_LABEL);
+    expect(plain).not.toContain(PRIOR_KNOWLEDGE_USE);
   });
 
   test("the anchor field exists only when an extract was retrieved", () => {
@@ -185,9 +206,18 @@ describe("plan-objectives", () => {
      */
     const system = planObjectivesPrompt.system;
     expect(system).toContain("three retrieval questions for its starter");
-    expect(system).toContain("the objectives build on and none of them covers");
-    expect(system).not.toContain("answerable before this lesson begins");
+    // v14 (latency-lab judges): the call cannot know earlier lessons, so each question is derived
+    // from an objective: a prerequisite it needs that no objective teaches, one a pupil in this
+    // year group could get wrong, three different ones.
+    expect(system).toContain(
+      "that one of the objectives needs a pupil to know already and that no objective teaches",
+    );
+    expect(system).toContain("could plausibly have forgotten");
+    expect(system).toContain("a different term, fact or method");
+    expect(system).not.toMatch(/earlier lesson|answerable before this lesson begins/);
     expect(system).toContain('"retrieval": [{ "question"');
+    // The sketch shows no anchor slot: a no-extract call filled anchors it was shown.
+    expect(system).not.toContain("curriculumAnchor");
     // The count appears once in the prose (the sketch shows one item, as it does for objectives).
     expect(system.match(/three retrieval/g)).toHaveLength(1);
     const q = (n: number) => ({
