@@ -1,5 +1,6 @@
 import { gsap } from "gsap";
-import { useEffect, useRef } from "react";
+import { type Ref, useEffect, useImperativeHandle, useRef } from "react";
+import type { CharacterCapture } from "./character-origin";
 import { createHandoverRig, type HandoverRig } from "./motion/handover-rig.js";
 
 export type CharacterStage =
@@ -22,15 +23,32 @@ const BEAT = [0, 3, 6, 9];
 /** React owns lifetime; the original rig owns articulated hands and their actual props. */
 export function CharacterHost({
   stage,
+  captureRef,
   initialStage = "brief",
   slidesPhase = "making",
 }: {
   stage: CharacterStage;
+  captureRef?: Ref<CharacterCapture>;
   initialStage?: CharacterStage;
   slidesPhase?: "making" | "stacking";
 }) {
   const element = useRef<HTMLDivElement>(null);
   const rig = useRef<HandoverRig | null>(null);
+  useImperativeHandle(
+    captureRef,
+    () => ({
+      capture() {
+        const svg = element.current?.querySelector("svg");
+        if (!svg || !rig.current) return null;
+        const { left, top, width, height } = svg.getBoundingClientRect();
+        if (!width || !height) return null;
+        const pose = rig.current.snapshot(OWNER[stage]);
+        const scale = Math.min(width / 480, height / 280);
+        return { bounds: { left: left + pose.offsetX * scale, top, width, height }, pose };
+      },
+    }),
+    [stage],
+  );
   const previous = useRef<CharacterStage>(initialStage);
   const phase = useRef(slidesPhase);
   phase.current = slidesPhase;

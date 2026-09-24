@@ -7,6 +7,7 @@ import { demoLibrary } from "@tj/editor/starter";
 import { Button } from "@tj/ui";
 import { useEffect, useState } from "react";
 import { GeneratingShell } from "@/components/generating-lesson/GeneratingShell";
+import type { CharacterOrigin } from "./character-origin";
 import { GenerationCompanion } from "./generation-companion";
 import "@tj/editor/styles/editor.css";
 
@@ -18,10 +19,12 @@ export function EditorPreview({
   onBack,
   onRestart,
   worksheetCount,
+  characterOrigin,
 }: {
   onBack: () => void;
   onRestart: () => void;
   worksheetCount: number;
+  characterOrigin: CharacterOrigin | null;
 }) {
   const [client] = useState(() => {
     const cache = new QueryClient({
@@ -40,7 +43,12 @@ export function EditorPreview({
   }, [client]);
   return (
     <QueryClientProvider client={client}>
-      <LocalEditor onBack={onBack} onRestart={onRestart} worksheetCount={worksheetCount} />
+      <LocalEditor
+        onBack={onBack}
+        onRestart={onRestart}
+        worksheetCount={worksheetCount}
+        characterOrigin={characterOrigin}
+      />
     </QueryClientProvider>
   );
 }
@@ -49,10 +57,12 @@ function LocalEditor({
   onBack,
   onRestart,
   worksheetCount,
+  characterOrigin,
 }: {
   onBack: () => void;
   onRestart: () => void;
   worksheetCount: number;
+  characterOrigin: CharacterOrigin | null;
 }) {
   const { data: lesson } = useQuery<Lesson>({ queryKey: KEY });
   const [arrived, setArrived] = useState(0);
@@ -124,6 +134,7 @@ function LocalEditor({
       {!storyFinished ? (
         <GenerationCompanion
           destination={destination}
+          origin={characterOrigin}
           includedWorksheet={worksheetCount > 0}
           progress={count ? arrived / count : 0}
           ready={ready}

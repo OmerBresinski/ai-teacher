@@ -1,16 +1,19 @@
 import { gsap } from "gsap";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import type { CharacterOrigin } from "./character-origin";
 import { createHandoverRig, type HandoverRig } from "./motion/handover-rig.js";
 
 /** Data drives the story; completed gestures hand over without holding up the editor. */
 export function GenerationStory({
   includedWorksheet,
+  origin,
   progress,
   ready,
   paused,
   onFinished,
 }: {
   includedWorksheet: boolean;
+  origin: CharacterOrigin | null;
   progress: number;
   ready: boolean;
   paused: boolean;
@@ -18,9 +21,9 @@ export function GenerationStory({
 }) {
   const element = useRef<HTMLDivElement>(null);
   const rig = useRef<HandoverRig | null>(null);
-  const latest = useRef({ progress, ready, onFinished });
-  latest.current = { progress, ready, onFinished };
-  useEffect(() => {
+  const latest = useRef({ progress, ready, paused, onFinished });
+  latest.current = { progress, ready, paused, onFinished };
+  useLayoutEffect(() => {
     const root = element.current;
     if (!root) return;
     let cancelled = false;
@@ -59,18 +62,27 @@ export function GenerationStory({
         },
       });
     };
+    let entry: gsap.core.Tween | null = null;
+    root.dataset.entry = origin && !actor.reduced ? "travelling" : "arrived";
     if (actor.reduced) actor.settle(3);
     else {
-      actor.settle(7);
-      actor.play(includedWorksheet ? 8 : 11, {
-        handoff: { from: 2, to: 1 },
-        speed: includedWorksheet ? 1.45 : 1,
-        onComplete: () => work(latest.current.ready ? 4 : 3),
+      if (origin) actor.restore(origin.pose);
+      else actor.settle(7);
+      entry = gsap.delayedCall(origin ? 0.4 : 0, () => {
+        root.dataset.entry = "arrived";
+        actor.play(includedWorksheet ? 8 : 11, {
+          handoff: { from: 2, to: 1 },
+          speed: includedWorksheet ? 1.45 : 1,
+          onComplete: () => work(latest.current.ready ? 4 : 3),
+        });
+        actor.pause(latest.current.paused);
       });
     }
     const media = matchMedia("(prefers-reduced-motion: reduce)");
     const changed = () => {
       if (media.matches) {
+        entry?.kill();
+        root.dataset.entry = "arrived";
         actor.settle(3);
         if (latest.current.ready) finish();
       } else work(3);
@@ -78,12 +90,13 @@ export function GenerationStory({
     media.addEventListener("change", changed);
     return () => {
       cancelled = true;
+      entry?.kill();
       media.removeEventListener("change", changed);
       actor.dispose();
       rig.current = null;
       context.revert();
     };
-  }, [includedWorksheet]);
+  }, [includedWorksheet, origin]);
   useEffect(() => {
     rig.current?.pause(paused);
   }, [paused]);

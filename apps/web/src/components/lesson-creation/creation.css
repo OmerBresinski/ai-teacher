@@ -579,3 +579,14 @@
 .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
   height: 0;
 }
+
+/* The receiver cannot appear until the incoming solo character reaches centre. */
+.handover-stage[data-entry="travelling"]
+:is(
+  [data-actor]:not([data-actor="2"]),
+  [data-limbs]:not([data-limbs="2"]),
+  [data-fingers]:not([data-fingers="2"]),
+  [data-shadow]:not([data-shadow="2"])
+) {
+  visibility: hidden;
+}

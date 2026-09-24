@@ -1,10 +1,12 @@
 import { gsap } from "gsap";
 import { useLayoutEffect, useRef } from "react";
+import type { CharacterOrigin } from "./character-origin";
 import { GenerationStory } from "./generation-story";
 
 /** A persistent stage follows real editor slots across the generating→editable transition. */
 export function GenerationCompanion({
   destination,
+  origin,
   includedWorksheet,
   progress,
   ready,
@@ -12,6 +14,7 @@ export function GenerationCompanion({
   onExited,
 }: {
   destination: HTMLElement | null;
+  origin: CharacterOrigin | null;
   includedWorksheet: boolean;
   progress: number;
   ready: boolean;
@@ -40,31 +43,46 @@ export function GenerationCompanion({
       first.current = false;
       gsap.set(scrim.current, { autoAlpha: 1 });
       const width = Math.min(620, window.innerWidth - 32);
-      gsap.set(actor, {
+      const centre = {
         x: (window.innerWidth - box.width) / 2,
         y: (window.innerHeight - box.height) / 2,
         width: box.width,
         height: box.height,
         scale: width / box.width,
-      });
+      };
+      gsap.set(
+        actor,
+        origin
+          ? {
+              x: origin.bounds.left,
+              y: origin.bounds.top,
+              width: origin.bounds.width,
+              height: origin.bounds.height,
+              scale: 1,
+            }
+          : centre,
+      );
+      const travel = origin ? 0.4 : 0;
       flight.current = gsap.timeline({
         onComplete: () => {
           actor.dataset.handover = "settled";
         },
       });
+      if (origin)
+        flight.current.to(actor, { ...centre, duration: travel, ease: "power2.inOut" }, 0);
       flight.current.call(
         () => {
           actor.dataset.handover = "settling";
         },
         [],
-        2.05,
+        2.05 + travel,
       );
       flight.current.to(
         actor,
         { x: box.left, y: box.top, scale: 1, duration: 0.85, ease: "power3.inOut" },
-        2.05,
+        2.05 + travel,
       );
-      flight.current.to(scrim.current, { autoAlpha: 0, duration: 0.6 }, 2.05);
+      flight.current.to(scrim.current, { autoAlpha: 0, duration: 0.6 }, 2.05 + travel);
     } else {
       first.current = false;
       actor.dataset.handover = "settled";
@@ -88,7 +106,7 @@ export function GenerationCompanion({
       window.removeEventListener("scroll", place, true);
       reduced.removeEventListener("change", place);
     };
-  }, [destination]);
+  }, [destination, origin]);
   useLayoutEffect(
     () => () => {
       flight.current?.kill();
@@ -114,6 +132,7 @@ export function GenerationCompanion({
       <div ref={stage} className="creation-generation-actor" data-handover="passing">
         <GenerationStory
           includedWorksheet={includedWorksheet}
+          origin={origin}
           progress={progress}
           ready={ready}
           paused={paused}
