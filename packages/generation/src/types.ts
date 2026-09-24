@@ -117,6 +117,9 @@ export function emptyImageCounts(): ImageCounts {
   return { photographable: null, requested: 0, placed: 0, empty: 0, failed: 0 };
 }
 
+/** An OpenAI service tier a lab call can ask for. */
+export type ServiceTier = "priority";
+
 export interface PipelineDeps {
   ai: CreatedAi;
   budget: Budget;
@@ -161,6 +164,11 @@ export interface PipelineDeps {
     promptName: string,
     effort: "low" | "medium" | "high",
   ) => "low" | "medium" | "high";
+  /**
+   * Lab only: the OpenAI service tier a call asks for, given the stage and the prompt name
+   * (`"priority"`: faster, twice the list price). Unset (production): the account's default tier.
+   */
+  serviceTierFor?: (stage: string, promptName: string) => ServiceTier | undefined;
   /**
    * Where illustrate reports its counts for the summary line. Stages cannot see the
    * `RequestContext`, so the per-run counts ride here instead (the same shape of channel as

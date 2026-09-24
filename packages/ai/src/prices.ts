@@ -79,6 +79,14 @@ export const PRICES: Record<string, ModelPrice> = {
     cachedInputPerMTok: 0.02,
     cacheWriteInputPerMTok: 0.25,
   },
+  // Luna on OpenAI's priority tier (the lab's `--priority-plan`, priced under `<id>@priority`):
+  // twice the standard rate, per OpenAI's priority processing pricing (checked 2026-09-24).
+  "openai/gpt-5.6-luna@priority": {
+    inputPerMTok: 0.4,
+    outputPerMTok: 2.4,
+    cachedInputPerMTok: 0.04,
+    cacheWriteInputPerMTok: 0.5,
+  },
   // Gateway list price from `getAvailableModels()` on 2026-09-23 (lab model bench).
   "openai/gpt-6-luna": {
     inputPerMTok: 0.1,

@@ -25,6 +25,7 @@ import {
   BudgetExceeded,
   callContext,
   type PipelineDeps,
+  type ServiceTier,
   StageFailure,
   type StageName,
   throwIfAborted,
@@ -63,7 +64,10 @@ export interface StructuredPrompt<I> {
 export type ReasoningEffort = "low" | "medium" | "high";
 
 export interface CallStructuredOptions<I, T> {
-  deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "effortFor">;
+  deps: Pick<
+    PipelineDeps,
+    "ai" | "budget" | "signal" | "logger" | "context" | "effortFor" | "serviceTierFor"
+  >;
   stage: StageName;
   cls: ModelClass;
   effort: ReasoningEffort;
@@ -351,9 +355,14 @@ export async function callStructured<I, T>(
   // (the lab's model bench), so the budget prices what was used and the log names it.
   const routed = deps.ai.model(cls, callContext(deps, stage, prompt.version, effort));
   const modelId = typeof routed === "string" ? routed : routed.modelId;
+  // The lab's priority tier (OpenAI ids only): priced from its own row, so the cap and the cost
+  // line see the doubled rate.
+  const tier = isOpenAiRoute(modelId)
+    ? deps.serviceTierFor?.(stage, prompt.version.replace(/\.v\d+$/, ""))
+    : undefined;
   // The deadline follows the routed model: a fast route's bound, else the class's.
   const timeoutMs = options.timeoutMs ?? callTimeoutMs(prompt.version, modelId);
-  const model = withGenerationBudget(routed, modelId, deps.budget);
+  const model = withGenerationBudget(routed, tieredModelId(modelId, tier), deps.budget);
   const userText = prompt.user(input);
   const output = repairingObjectOutput(
     schema,
@@ -380,7 +389,7 @@ export async function callStructured<I, T>(
           maxOutputTokens,
           maxRetries: 0,
           // The same effort on the retry: a schema miss is a shape problem, not a thinking one.
-          ...providerOptionsFor(modelId, effort),
+          ...providerOptionsFor(modelId, effort, tier),
         }),
       );
       const usage = usageOf(result.usage);
@@ -582,6 +591,19 @@ export function imageMediaType(url: string): string {
   return "image/jpeg";
 }
 
+/** An OpenAI model id on the gateway (`openai/…`); the only route a service tier applies to. */
+function isOpenAiRoute(modelId: string): boolean {
+  return modelId.startsWith("openai/");
+}
+
+/**
+ * The id a call is priced under: `openai/gpt-5.6-luna@priority` for a priority call (its own row
+ * in `PRICES`), else the model id itself.
+ */
+export function tieredModelId(modelId: string, tier: ServiceTier | undefined): string {
+  return tier ? `${modelId}@${tier}` : modelId;
+}
+
 /**
  * The provider options one call sends. For an OpenAI id `@ai-sdk/amazon-bedrock` maps
  * `reasoningConfig.maxReasoningEffort` to `reasoning.effort`. For an Anthropic id it would write
@@ -590,7 +612,7 @@ export function imageMediaType(url: string): string {
  * nothing is sent and the call runs as it did before. The `effort` still reaches the log through
  * the call context. Dead for the pipeline once every class is a GPT-5.6 id (Generation quality §6).
  */
-export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
+export function providerOptionsFor(modelId: string, effort: ReasoningEffort, tier?: ServiceTier) {
   if (isAnthropicModelId(modelId)) return {};
   return {
     providerOptions: {
@@ -605,6 +627,7 @@ export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
         // property ("'required' … must include every key"); Bedrock's route never minded. Our
         // schemas have optional fields, and zod validates the answer anyway.
         ...(modelId.startsWith("openai/") ? { strictJsonSchema: false } : {}),
+        ...(tier ? { serviceTier: tier } : {}),
       },
       // Gemini 3 reads a level, not an effort; Qwen and DeepSeek think or not (smoke-tested
       // 2026-09-17: Gemini at its default spent the whole slide budget thinking, Qwen 3 373 tokens).

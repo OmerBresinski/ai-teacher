@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Lesson, LessonFacts } from "@tj/domain/documents";
 import { assignFactIds } from "../src/specs";
 import { FIXTURES, sampleBriefLesson } from "../src/testing";
-import { labChecks } from "./lab";
+import { labChecks, parsePriority, readinessLine } from "./lab";
 
 /* The w0 lab checks added for the zero-spend fixes: objectives shown, echoed distractors, numbers. */
 
@@ -64,4 +64,45 @@ describe("labChecks: w0 additions", () => {
     expect(found.map((x) => x.slide)).toEqual([undefined, 3]);
     expect(found[0]?.detail).toMatch("sin(40°) = 6 cm ÷ 10 cm");
   });
+});
+
+describe("readiness marks (lab pw latency)", () => {
+  const t0 = 1_000_000;
+  const events = [
+    { atMs: 500, stage: "plan" },
+    { atMs: 33_000, stage: "plan" },
+    { atMs: 38_000, stage: "generate" },
+    { atMs: 42_000, stage: "generate" },
+    { atMs: 60_000, stage: "evaluate" },
+    { atMs: 66_000, stage: "repair" },
+  ];
+  const calls = [
+    { promptVersion: "plan-objectives.v13", endedAt: t0 + 7_000 },
+    { promptVersion: "plan-teach-objective.v1", endedAt: t0 + 20_000 },
+    { promptVersion: "generate-slide.v23", endedAt: t0 + 37_000 },
+    { promptVersion: "generate-slide.v23", endedAt: t0 + 35_500 },
+  ];
+
+  test("first objectives and first slide from call ends; ready before Evaluate; checked after Repair", () => {
+    expect(readinessLine(events, calls, t0)).toBe(
+      "title slide at 0.5 s, first objectives at 7.0 s, first slide at 35.5 s, ready at 42.0 s, checked-and-repaired at 66.0 s",
+    );
+  });
+
+  test("a mark the run never reached is a dash", () => {
+    expect(readinessLine(events.slice(0, 2), [], t0)).toBe(
+      "title slide at 0.5 s, first objectives at -, first slide at -, ready at -, checked-and-repaired at -",
+    );
+  });
+
+  test("illustrate counts toward ready", () => {
+    expect(readinessLine([...events, { atMs: 45_000, stage: "illustrate" }], calls, t0)).toContain(
+      "ready at 45.0 s",
+    );
+  });
+});
+
+test("--priority names stages or prompts, comma-separated; unset is none", () => {
+  expect([...parsePriority("plan, evaluate,")]).toEqual(["plan", "evaluate"]);
+  expect(parsePriority(undefined).size).toBe(0);
 });

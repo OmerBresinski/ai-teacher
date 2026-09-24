@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // bun packages/generation/eval/lab.ts --brief <id|path> --label <name> [--cap 2] [--no-judge]
 //   [--no-images] [--plan-frontier-from-year N] [--from <snapshot.json>]
-//   [--model <stage|prompt>=<model id>[,…]] [--only <stage>] [--effort <stage|prompt>=<low|medium|high>[,…]]
+//   [--model <stage|prompt>=<model id>[,…]] [--only <stage>] [--effort <stage|prompt>=<low|medium|high>[,…]] [--priority <stage|prompt>[,…]]
 //   [--source <file>]   (a text file Plan reads as a teacher-provided Source, e.g. a curriculum extract)
 //   [--lab-plan] [--no-verify] [--plan-effort low|medium|high]
 //                       (the lab plan path, `src/lab/plan-pipeline.ts`: objectives call → per-objective
@@ -178,7 +178,7 @@ function labPhotoPlacer(apiKey: string): PhotoPlacer {
  * JSON lines under the run directory — so a stage that returns "none" (the photo judge) can be read
  * with what it was shown. Content on local disk only; never in the pipeline's logs (ADR 0015).
  */
-function recordingAi(real: CreatedAi, file: string): CreatedAi {
+function recordingAi(real: CreatedAi, file: string, onCall?: (call: CallEnd) => void): CreatedAi {
   if (real.kind === "unconfigured") return real;
   const middleware = (
     context: { stage?: string; promptVersion?: string } | undefined,
@@ -212,6 +212,7 @@ function recordingAi(real: CreatedAi, file: string): CreatedAi {
       }
       const endedAt = Date.now();
       const durationMs = endedAt - startedAt;
+      onCall?.({ promptVersion: context?.promptVersion, endedAt });
       const text = result.content
         .map((part) => ("text" in part && typeof part.text === "string" ? part.text : ""))
         .join("");
@@ -225,11 +226,15 @@ function recordingAi(real: CreatedAi, file: string): CreatedAi {
       const gateway = (result.providerMetadata as { gateway?: Record<string, unknown> } | undefined)
         ?.gateway;
       const gatewayCost = gateway?.cost as string | undefined;
+      // The tier OpenAI says it served (`priority` under `--priority`), so the flag is checked, not assumed.
+      const serviceTier = (
+        result.providerMetadata as { openai?: { serviceTier?: unknown } } | undefined
+      )?.openai?.serviceTier;
       await appendFile(
         file,
         // `startedAt`/`endedAt` (lab pw): the call's real start and end, so a critical-path timeline
         // can be drawn from the file; `at` stays as the start for older readers.
-        `${JSON.stringify({ at: new Date(startedAt).toISOString(), startedAt: new Date(startedAt).toISOString(), endedAt: new Date(endedAt).toISOString(), stage: context?.stage, promptVersion: context?.promptVersion, modelId: result.response?.modelId, finishReason: result.finishReason, durationMs, prompt, text, usage: result.usage, gatewayCost, gateway })}\n`,
+        `${JSON.stringify({ at: new Date(startedAt).toISOString(), startedAt: new Date(startedAt).toISOString(), endedAt: new Date(endedAt).toISOString(), stage: context?.stage, promptVersion: context?.promptVersion, modelId: result.response?.modelId, finishReason: result.finishReason, durationMs, prompt, text, usage: result.usage, gatewayCost, serviceTier, gateway })}\n`,
       );
       return result;
     },
@@ -242,6 +247,52 @@ function recordingAi(real: CreatedAi, file: string): CreatedAi {
         middleware: middleware(context),
       }),
   };
+}
+
+/** One recorded call's end (epoch ms), for the readiness marks. */
+export interface CallEnd {
+  promptVersion: string | undefined;
+  endedAt: number;
+}
+
+/**
+ * When a teacher could first see something, and when the lesson is whole (lab pw latency): the
+ * title slide (built from the brief and saved before any call, marked by Plan's first event), the
+ * objectives call's answer, the first written slide, "ready" (the deck written and illustrated:
+ * the last event before Evaluate, which then runs off the teacher's path), and "checked" (Evaluate
+ * and Repair done, their fixes patched in). Seconds from the run's start; `-` for a mark the run
+ * never reached (a `--no-record` run has no call ends).
+ */
+export function readinessLine(
+  events: readonly { atMs: number; stage: string | undefined }[],
+  calls: readonly CallEnd[],
+  startedAt: number,
+): string {
+  const s = (ms: number | undefined) => (ms === undefined ? "-" : `${(ms / 1000).toFixed(1)} s`);
+  const firstEnd = (prefix: string) => {
+    const ends = calls
+      .filter((c) => c.promptVersion?.startsWith(prefix))
+      .map((c) => c.endedAt - startedAt);
+    return ends.length > 0 ? Math.min(...ends) : undefined;
+  };
+  const lastOf = (stages: readonly string[]) => {
+    const at = events.filter((e) => e.stage && stages.includes(e.stage)).map((e) => e.atMs);
+    return at.length > 0 ? Math.max(...at) : undefined;
+  };
+  const title = events.find((e) => e.stage === "plan")?.atMs;
+  const ready = lastOf(["generate", "illustrate"]);
+  const checked = lastOf(["evaluate", "repair"]);
+  return `title slide at ${s(title)}, first objectives at ${s(firstEnd("plan-objectives"))}, first slide at ${s(firstEnd("generate-slide"))}, ready at ${s(ready)}, checked-and-repaired at ${s(checked)}`;
+}
+
+/** `--priority plan,evaluate`: the stage or prompt names whose calls ask the priority tier. */
+export function parsePriority(value: string | undefined): Set<string> {
+  return new Set(
+    (value ?? "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean),
+  );
 }
 
 /**
@@ -986,6 +1037,11 @@ if (import.meta.main) {
   const planEffort = arg("plan-effort") as "low" | "medium" | "high" | undefined;
   if (planEffort && !["low", "medium", "high"].includes(planEffort))
     throw new Error(`--plan-effort: expected low|medium|high, got "${planEffort}"`);
+  /**
+   * `--priority plan` (or prompt names, comma-separated): those calls ask OpenAI's priority tier
+   * and are priced at its rate. Gateway `openai/` routes only; other routes are sent as before.
+   */
+  const priority = parsePriority(arg("priority"));
   // The topic-pack experiment's arm (np1): its models join the routes, its prompt set is checked
   // against the frozen hashes, and its pack is loaded before anything is paid for.
   const armName = arg("arm") as LessonArm | undefined;
@@ -1052,7 +1108,11 @@ if (import.meta.main) {
   // cost figure of the run; the budget's totals are shown only as what was reserved and settled.
   const ledger = createLedger({ run: label0 });
   // Every call is recorded (prompt, output, usage, finish reason) unless --no-record: evals need the inputs.
-  const ai = meteringAi(flag("no-record") ? created : recordingAi(created, recordFile), ledger);
+  const callEnds: CallEnd[] = [];
+  const ai = meteringAi(
+    flag("no-record") ? created : recordingAi(created, recordFile, (c) => callEnds.push(c)),
+    ledger,
+  );
   const judgeCreated: CreatedAi | undefined = flag("no-judge")
     ? undefined
     : createAi({ ...env, AI_MODEL_FRONTIER: env.AI_MODEL_JUDGE ?? ai.modelId("frontier") });
@@ -1199,6 +1259,12 @@ if (import.meta.main) {
     },
     context,
     effortFor: (stage, name, effort) => efforts[name] ?? efforts[stage] ?? effort,
+    ...(priority.size > 0
+      ? {
+          serviceTierFor: (stage: string, name: string) =>
+            priority.has(name) || priority.has(stage) ? ("priority" as const) : undefined,
+        }
+      : {}),
     ...(images ? { images } : {}),
     ...(planFrontierFromYear !== undefined ? { planFrontierFromYear } : {}),
   };
@@ -1488,8 +1554,9 @@ if (import.meta.main) {
     `- ${lesson.slides.length} slides, ${worksheet?.blocks.length ?? 0} blocks; duration ${(durationMs / 1000).toFixed(1)} s; verify ${verifyMs ?? "-"} ms, ${verifyCorrections ?? "-"} corrections${only ? `; only ${only}` : ""}`,
   );
   R.push(`- stage wall: ${stageWallLine(progressEvents, durationMs)}`);
+  R.push(`- readiness: ${readinessLine(progressEvents, callEnds, startedAt)}`);
   R.push(
-    `- models: frontier ${ai.modelId("frontier")}, standard ${ai.modelId("standard")}, small ${ai.modelId("small")}; judge ${judge?.modelId("frontier") ?? "-"}; planFrontierFromYear ${planFrontierFromYear ?? "-"}; routes ${JSON.stringify(routes)}; efforts ${JSON.stringify(efforts)}${from ? `; from ${from}` : ""}${sourcePath ? `; source ${sourcePath}` : ""}`,
+    `- models: frontier ${ai.modelId("frontier")}, standard ${ai.modelId("standard")}, small ${ai.modelId("small")}; judge ${judge?.modelId("frontier") ?? "-"}; planFrontierFromYear ${planFrontierFromYear ?? "-"}; routes ${JSON.stringify(routes)}; efforts ${JSON.stringify(efforts)}; priority ${priority.size > 0 ? [...priority].join(",") : "-"}${from ? `; from ${from}` : ""}${sourcePath ? `; source ${sourcePath}` : ""}`,
   );
   R.push(
     `- prompt versions in code: ${Object.entries(PROMPT_VERSIONS)

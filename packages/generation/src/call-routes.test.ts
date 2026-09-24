@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { z } from "zod";
 import {
@@ -8,6 +9,7 @@ import {
   FAST_CALL_TIMEOUT_MS,
   isFastModelId,
   providerOptionsFor,
+  tieredModelId,
 } from "./call";
 import { memoryLogger, recordingDeps } from "./testing";
 
@@ -93,5 +95,53 @@ test("Gemini 2.5 gets a thinking budget (off at low); Gemini 3 a thinking level"
   });
   expect(google("google/gemini-3.5-flash-lite", "high")).toEqual({
     thinkingConfig: { thinkingLevel: "high" },
+  });
+});
+
+test("a priority call asks OpenAI's priority tier and is priced at its row; others are untouched", async () => {
+  const run = async (routed: string, tier: boolean) => {
+    const ai = createFakeAi({
+      text: '{"answer":"x"}',
+      usage: { inputTokens: 1000, outputTokens: 1000 },
+      modelIds: { standard: routed },
+    });
+    const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
+    const deps = {
+      ...recordingDeps(ai, { budget }),
+      ...(tier
+        ? {
+            serviceTierFor: (stage: string) =>
+              stage === "plan" ? ("priority" as const) : undefined,
+          }
+        : {}),
+    };
+    await callStructured({
+      deps,
+      stage: "plan",
+      cls: "standard",
+      effort: "medium",
+      prompt: { version: "plan-teach-objective.v1", system: "s", user: () => "u" },
+      input: null,
+      schema: z.object({ answer: z.string() }),
+      maxOutputTokens: 100,
+    });
+    const sent = ai.calls[0]?.providerOptions as { openai?: { serviceTier?: string } };
+    return { tier: sent.openai?.serviceTier, cost: budget.totals().costUsd };
+  };
+  // Luna at 1k in / 1k out: $0.0002 + $0.0012 standard; twice that on priority.
+  const standard = await run("openai/gpt-5.6-luna", false);
+  expect(standard.tier).toBeUndefined();
+  expect(standard.cost).toBeCloseTo(0.0014, 8);
+  const priority = await run("openai/gpt-5.6-luna", true);
+  expect(priority.tier).toBe("priority");
+  expect(priority.cost).toBeCloseTo(0.0028, 8);
+  // A Bedrock id never asks a tier, even when the host would.
+  expect((await run("us.openai.gpt-5.6-luna", true)).tier).toBeUndefined();
+  expect(tieredModelId("openai/gpt-5.6-luna", undefined)).toBe("openai/gpt-5.6-luna");
+  expect(
+    providerOptionsFor("openai/gpt-5.6-luna", "low", "priority").providerOptions?.openai,
+  ).toMatchObject({
+    reasoningEffort: "low",
+    serviceTier: "priority",
   });
 });

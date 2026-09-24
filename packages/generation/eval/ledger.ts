@@ -10,7 +10,7 @@
 
 import { type CreatedAi, costUsd, isPriced, type TokenUsage } from "@tj/ai";
 import { type LanguageModelMiddleware, wrapLanguageModel } from "ai";
-import type { CallUsage } from "../src/call";
+import { type CallUsage, tieredModelId } from "../src/call";
 
 export const LEDGER_STAGES = [
   "objectives",
@@ -241,10 +241,18 @@ export function meteringAi(
 ): CreatedAi {
   if (real.kind === "unconfigured") return real;
   const middleware = (stage: LedgerStage, model: string): LanguageModelMiddleware => ({
-    wrapGenerate: async ({ doGenerate }) => {
+    wrapGenerate: async ({ doGenerate, params }) => {
       const result = await doGenerate();
       const usage = tokenUsageOf(result.usage);
-      if (usage) ledger.record({ stage, model, usage });
+      // A priority call (the lab's `--priority-plan`) is priced from its own row, as the budget does.
+      const tier = (params.providerOptions?.openai as { serviceTier?: unknown } | undefined)
+        ?.serviceTier;
+      if (usage)
+        ledger.record({
+          stage,
+          model: tier === "priority" ? tieredModelId(model, tier) : model,
+          usage,
+        });
       return result;
     },
   });
