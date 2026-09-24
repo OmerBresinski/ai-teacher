@@ -29,6 +29,7 @@ export const SCHEMA_CHECKS: ReadonlySet<string> = new Set([
   "objective-coverage",
   "vocabulary-in-facts",
   "objective-taught",
+  "tested-not-taught",
   ...QUALITY_CHECKS,
 ]);
 export const isSchemaCheck = (check: string): boolean => SCHEMA_CHECKS.has(check);
@@ -40,6 +41,7 @@ export function checkLesson(lesson: Lesson, worksheet?: Worksheet): Finding[] {
     ...checkObjectiveCoverage(lesson, worksheet),
     ...checkVocabularyInFacts(lesson),
     ...checkObjectivesTaught(lesson),
+    ...checkTestedNotTaught(lesson),
     ...qualityChecks(lesson, worksheet),
   ];
 }
@@ -257,6 +259,69 @@ function checkObjectivesTaught(lesson: Lesson): Finding[] {
       severity: "warning",
       target: { factId: objective.id },
       message: `Objective ${i + 1} has no slide that teaches it.`,
+    });
+  });
+  return findings;
+}
+
+/* ------------------------------------------------------------------ */
+/* tested-not-taught                                                   */
+/* ------------------------------------------------------------------ */
+
+/** The phases whose slides ask pupils something; a starter asks before teaching by design. */
+const ASKING_PHASES: ReadonlySet<string> = new Set(["practise", "check"]);
+
+/**
+ * A practice or check slide that asks about something no earlier slide teaches (lab round 1; the
+ * judges' "tested but not taught"). Structural only, from the outline's fact references: a
+ * question whose declared `keyIdeaRefs` name a key idea no earlier teaching entry carries, or an
+ * objective the slide covers that no earlier teaching entry names, directly or through one of its
+ * key ideas (cb-y13-freud-L: the plenary and exit ticket covered o2 and o3, which nothing taught).
+ * A warning on the slide, so Repair rewrites the task to what the earlier slides teach.
+ */
+function checkTestedNotTaught(lesson: Lesson): Finding[] {
+  const facts = lesson.facts;
+  if (!facts || facts.outline.length === 0) return [];
+  const keyIdeas = new Map((facts.keyIdeas ?? []).map((k) => [k.id, k]));
+  const questions = new Map(facts.questions.map((q) => [q.id, q]));
+  const objectiveNumber = new Map(facts.objectives.map((o, i) => [o.id, i + 1]));
+  const taughtIdeas = new Set<FactId>();
+  const taughtObjectives = new Set<FactId>();
+  const findings: Finding[] = [];
+  facts.outline.forEach((entry, i) => {
+    if (TEACHING_KINDS.has(entry.kind)) {
+      for (const ref of entry.factRefs) {
+        if (objectiveNumber.has(ref)) taughtObjectives.add(ref);
+        const idea = keyIdeas.get(ref);
+        if (!idea) continue;
+        taughtIdeas.add(ref);
+        for (const o of idea.objectiveRefs) taughtObjectives.add(o);
+      }
+      return;
+    }
+    if (entry.phase === undefined || !ASKING_PHASES.has(entry.phase)) return;
+    const slide = lesson.slides[i];
+    if (!slide || slide.kind !== entry.kind) return;
+    const reasons: string[] = [];
+    for (const ref of entry.factRefs) {
+      const n = objectiveNumber.get(ref);
+      if (n !== undefined && !taughtObjectives.has(ref)) {
+        reasons.push(`objective ${n}, which no earlier slide teaches`);
+      }
+      for (const k of questions.get(ref)?.keyIdeaRefs ?? []) {
+        const idea = keyIdeas.get(k);
+        if (idea && !taughtIdeas.has(k)) {
+          reasons.push(`the key idea "${idea.statement}", which no earlier slide teaches`);
+        }
+      }
+    }
+    if (reasons.length === 0) return;
+    findings.push({
+      check: "tested-not-taught",
+      severity: "warning",
+      target: { slideId: slide.id },
+      message: `Slide "${slide.kind}" asks about ${[...new Set(reasons)].join("; and ")}. Ask only what the earlier slides teach.`,
+      fix: { kind: "regenerate-slide" },
     });
   });
   return findings;

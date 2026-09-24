@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
-import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
+import {
+  checkLesson,
+  type Finding,
+  type Lesson,
+  type Slide,
+  SlideSchema,
+} from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
 import { codedSetSpec } from "../lab/coded-slides";
@@ -24,7 +30,7 @@ import { StageFailure } from "../types";
 import { evaluate, verbFitApplies } from "./evaluate";
 import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
-import { MAX_TARGETS, repair, repairTargets } from "./repair";
+import { MAX_TARGETS, MAX_WARNING_TARGETS, repair, repairContext, repairTargets } from "./repair";
 import {
   audienceOf,
   BUDGET_FINDING,
@@ -1939,7 +1945,7 @@ describe("repair", () => {
     for (const call of fixer.calls) {
       expect(call.promptText).toContain("Objective verb: Apply.");
       expect(call.promptText).toContain(VERB_WRITING.Apply);
-      expect(call.promptText).toContain("[verb-fit]");
+      expect(call.promptText).toContain("[verb-fit, error]");
     }
     expect(blockText(repaired.worksheet?.blocks.find((b) => b.id === block.id) as never)).toContain(
       "column addition",
@@ -2511,5 +2517,165 @@ describe("generate: callouts are checked only against a plan that assigns them",
         (f) => f.check === "spec-rule" && /callout/i.test(f.message),
       ),
     ).toEqual([]);
+  });
+});
+
+describe("Repair acts on the warnings judges punish (lab round 1)", () => {
+  const w = (check: string, slideId: string, evidence?: string): Finding => ({
+    check,
+    severity: "warning",
+    target: { slideId },
+    message: "m",
+    ...(evidence === undefined ? {} : { evidence }),
+  });
+  const e = (check: string, slideId: string): Finding => ({
+    check,
+    severity: "error",
+    target: { slideId },
+    message: "m",
+  });
+
+  test("cb-y1-animals-L: the error target carries nothing extra; two of the three verb-fit slides become targets; pitch stays a residual", () => {
+    // Evaluate call 15's findings, as recorded (messages shortened).
+    const targets = repairTargets([
+      e("fact-consistency", "labp"),
+      w("verb-fit", "lab12", "What is one feature that a kitten and its cat parent can both have?"),
+      w("verb-fit", "laby", "What happens to a young animal as it becomes an adult?"),
+      w(
+        "verb-fit",
+        "lab1e",
+        "It changes its body shape and later becomes an adult butterfly with wings.",
+      ),
+      w("pitch", "labp", "Their shape, body covering or way of moving can change too."),
+    ]);
+    expect(
+      targets.map((t) => [t.key, t.findings.map((f) => f.check), t.warningOnly ?? false]),
+    ).toEqual([
+      ["slide:labp", ["fact-consistency"], false],
+      ["slide:lab12", ["verb-fit"], true],
+      ["slide:laby", ["verb-fit"], true],
+    ]);
+    expect(targets.filter((t) => t.warningOnly)).toHaveLength(MAX_WARNING_TARGETS);
+  });
+
+  test("cb-y10-tempest-L: the repetition warning on lab14 becomes a target beside the error; tested-not-taught outranks verb-fit; a warning rides with its slide's error", () => {
+    const tempest = repairTargets([
+      e("fact-consistency", "labo"),
+      w(
+        "repetition",
+        "lab14",
+        "Which word in “But this rough magic / I here abjure” shows that Prospero deliberately gives up magic?",
+      ),
+    ]);
+    expect(tempest.map((t) => t.key)).toEqual(["slide:labo", "slide:lab14"]);
+    const ranked = repairTargets([
+      w("verb-fit", "a"),
+      w("repetition", "b"),
+      w("tested-not-taught", "c"),
+      e("answer-correctness", "d"),
+      w("verb-fit", "d"),
+      { ...w("repetition", "x"), target: {} },
+    ]);
+    expect(ranked.map((t) => [t.key, t.findings.map((f) => f.check)])).toEqual([
+      ["slide:d", ["answer-correctness", "verb-fit"]],
+      ["slide:c", ["tested-not-taught"]],
+      ["slide:a", ["verb-fit"]],
+    ]);
+  });
+
+  test("repairContext: the neighbours, the slide holding repeated text, and the teaching slides before a tested-not-taught target", () => {
+    const slide = (id: string, kind: Slide["kind"], body: string): Slide =>
+      ({
+        id,
+        kind,
+        elements: [
+          {
+            id: `${id}-t`,
+            type: "text",
+            doc: {
+              type: "doc",
+              content: [{ type: "paragraph", content: [{ type: "text", text: body }] }],
+            },
+            style: { preset: "body" },
+            frame: { x: 0, y: 0, w: 10, h: 10 },
+          },
+        ],
+      }) as unknown as Slide;
+    const lesson = {
+      ...sampleBriefLesson(),
+      slides: [
+        slide("s0", "title", "Title"),
+        slide("s1", "content", "A kitten grows into a cat."),
+        slide("s2", "content", "A tadpole becomes a frog."),
+        slide("s3", "worked-example", "Rough magic I here abjure."),
+        slide("s4", "multiple-choice", "Which word shows he gives up magic?"),
+        slide("s5", "exit-ticket", "Explain why."),
+        slide("s6", "plenary", "Rough magic I here abjure again."),
+      ],
+    } as Lesson;
+    const ctx = (findings: Finding[]) =>
+      repairContext(lesson, 5, findings).map((c) => [c.position, c.why]);
+    expect(ctx([])).toEqual([
+      [5, "before"],
+      [7, "after"],
+    ]);
+    expect(ctx([w("repetition", "s5", "rough magic I here abjure")])).toEqual([
+      [4, "repeats"],
+      [5, "before"],
+      [7, "repeats"],
+    ]);
+    expect(ctx([w("tested-not-taught", "s5")])).toEqual([
+      [2, "taught-earlier"],
+      [3, "taught-earlier"],
+      [4, "taught-earlier"],
+      [5, "before"],
+      [7, "after"],
+    ]);
+    expect(repairContext(lesson, 5, [])[0]?.text).toContain("Which word shows he gives up magic?");
+  });
+
+  test("a verb-fit warning alone gets one repair call on its slide; a pitch warning alone gets none", async () => {
+    const script = [
+      ...planScript(),
+      ...FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((x) => json(FIXTURES.slides[x.kind])),
+    ];
+    const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const target = generated.lesson.slides.find((s) => s.kind === "multiple-choice") as Slide;
+    const evaluatedWith = (findings: Finding[]) => ({
+      ...generated,
+      lesson: {
+        ...generated.lesson,
+        generation: {
+          ...(generated.lesson.generation as NonNullable<typeof generated.lesson.generation>),
+          stage: "evaluated" as const,
+          findings,
+        },
+      },
+    });
+    const answering = () =>
+      createFakeAi({
+        fallback: (call) => {
+          const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "content";
+          return json(FIXTURES.slides[kind as keyof typeof FIXTURES.slides]);
+        },
+        usage,
+      });
+    const evidence = slideText(target).split("\n")[0] ?? "";
+    const ai = answering();
+    await repair(
+      evaluatedWith([
+        { ...w("verb-fit", target.id, evidence), message: "Names, does not explain." },
+      ]),
+      recordingDeps(ai),
+    );
+    const repairs = ai.calls.filter((c) => c.context?.stage === "repair");
+    expect(repairs).toHaveLength(1);
+    expect(repairs[0]?.promptText).toContain("[verb-fit, warning] Names, does not explain.");
+    const quiet = answering();
+    await repair(evaluatedWith([w("pitch", target.id, evidence)]), recordingDeps(quiet));
+    expect(quiet.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
   });
 });

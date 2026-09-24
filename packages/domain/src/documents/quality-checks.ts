@@ -401,8 +401,24 @@ function elementText(element: SlideElement): string | undefined {
 const IMPERATIVE_OPENERS =
   /^(explain|describe|give|name|state|list|write|compare|contrast|suggest|calculate|work out|identify|decide|choose|select|complete|show|draw|sketch|label|predict|justify|evaluate|discuss|define|outline|summarise|summarize|use|find|match|sort|order|put|circle|tick|underline|fill|add|count|measure|estimate|solve|prove|convert|read|look|think|imagine|plan|design|create|make|say|tell|record|note|why|how|what|which|when|where|who|is|are|does|do|can|could|should|would|will)\b/i;
 /** A task that leans on a decision or answer only an earlier question could have set up. */
-const ANAPHORIC_TASK =
-  /\b(your (decision|answer|choice)|(this|the) animal|\bit\b|these|this one)\b/i;
+const ANAPHORIC_TASK = /\b(your (decision|answer|choice)|(this|the) animal|these|this one)\b/i;
+/** A bare "it"; dangling only when nothing before it in the sentence could be what it names. */
+const BARE_IT = /\bit\b/i;
+/**
+ * A noun phrase "it" can refer back to: a determiner or number and a word ("a puppy", "two
+ * changes"), or a capitalised word after the first ("Explain why Prospero ...").
+ */
+const ANTECEDENT =
+  /\b(a|an|the|this|that|each|every|his|her|their|its|our|my|one|two|three|\d+)\s+\p{L}/iu;
+const PROPER_NOUN = /\s\p{Lu}\p{L}/u;
+
+/** Whether a sentence leans on "it" with no noun before it ("Explain why it melts."). */
+function danglingIt(sentence: string): boolean {
+  const at = sentence.search(BARE_IT);
+  if (at < 0) return false;
+  const before = sentence.slice(0, at);
+  return !ANTECEDENT.test(before) && !PROPER_NOUN.test(before);
+}
 /** Text that poses the decision such a task refers back to. */
 const POSES_DECISION = /\?|\b(whether|decide|is it|are they|which|what)\b/i;
 /** A "these/this …" task whose items follow a colon as a list of two or more. */
@@ -425,7 +441,7 @@ export function questionless(stem: string): "ok" | "no-question" | "no-referent"
   }
   for (let i = 0; i < sentences.length; i++) {
     const s = sentences[i] as string;
-    if (!IMPERATIVE_OPENERS.test(s) || !ANAPHORIC_TASK.test(s)) continue;
+    if (!IMPERATIVE_OPENERS.test(s) || !(ANAPHORIC_TASK.test(s) || danglingIt(s))) continue;
     // "Put these dates in order: AD 43, AD 410, AD 1." — the things referred to follow the colon.
     if (LISTS_ITS_REFERENTS.test(s)) continue;
     const before = sentences.slice(0, i).join(" ");

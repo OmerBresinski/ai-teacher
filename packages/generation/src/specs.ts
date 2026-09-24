@@ -1165,8 +1165,8 @@ export function assignFactIds(
       }),
     ),
     questions: facts.questions.map((question, i) => {
-      // The per-objective call's declarations (`forms`, `demand`, `keyIdeaRefs`) are read by the
-      // outline step and go no further: `LessonFacts` does not carry them.
+      // The per-objective call's `forms` and `demand` are read by the outline step and go no
+      // further: `LessonFacts` does not carry them. `keyIdeaRefs` is kept.
       const {
         objectiveRefs: refs,
         distractors,
@@ -1174,17 +1174,24 @@ export function assignFactIds(
         tier,
         forms: _forms,
         demand: _demand,
-        keyIdeaRefs: _keyIdeaRefs,
+        keyIdeaRefs: declared,
         ...q
       } = question as typeof question & {
         forms?: unknown;
         demand?: unknown;
-        keyIdeaRefs?: unknown;
+        keyIdeaRefs?: OrdinalRef[] | undefined;
       };
+      // Kept as ids (lab round 1): `tested-not-taught` checks each is taught before it is asked.
+      const keyIdeaRefs = dedupe(
+        (declared ?? [])
+          .filter((r) => r.type === "keyIdea" && r.index < facts.keyIdeas.length)
+          .map(refId),
+      );
       return {
         id: id("question", i),
         ...q,
         ...objectiveRefs(refs),
+        ...optional("keyIdeaRefs", keyIdeaRefs.length > 0 ? keyIdeaRefs : undefined),
         ...optional(
           "distractors",
           distractors?.map((d) => ({ text: d.text, ...misconceptionRef(d.misconceptionRef) })),

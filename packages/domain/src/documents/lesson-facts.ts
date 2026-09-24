@@ -124,6 +124,11 @@ export type FactQuestion = {
   answer: string;
   reasoning: string;
   objectiveRefs?: FactId[];
+  /**
+   * The key ideas a pupil needs to answer it, as the per-objective facts call declares them. Absent
+   * when the facts call does not declare them (the monolithic plan-facts call).
+   */
+  keyIdeaRefs?: FactId[];
   distractors?: Distractor[];
   use?: QuestionUse;
   tier?: QuestionTier;
@@ -273,6 +278,7 @@ export const FactQuestionSchema = z.strictObject({
   answer: z.string(),
   reasoning: z.string(),
   objectiveRefs: ObjectiveRefsSchema.optional(),
+  keyIdeaRefs: z.array(FactIdSchema).optional(),
   distractors: z.array(DistractorSchema).optional(),
   use: z.enum(QUESTION_USES).optional(),
   tier: z.enum(QUESTION_TIERS).optional(),

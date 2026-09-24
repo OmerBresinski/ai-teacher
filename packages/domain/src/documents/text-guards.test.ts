@@ -78,3 +78,20 @@ describe("text guards", () => {
     expect(isDoubleStatement(`${long} and short`)).toBe(false);
   });
 });
+
+describe("normaliseText keeps maths (lab round 1, cb-y5-fractions-P)", () => {
+  test("options that differ only in their operators stay distinct", () => {
+    expect(allDistinct(["40 ÷ 5 × 3", "40 × 5 ÷ 3", "40 ÷ 3 × 5", "5 ÷ 40 × 3"])).toBe(true);
+    expect(allDistinct(["40 ÷ 5", "40 × 5"])).toBe(true);
+    expect(allDistinct(["40 - 5", "40 + 5"])).toBe(true);
+    expect(allDistinct(["3.4", "3/4", "34"])).toBe(true);
+  });
+
+  test("spacing, case and ordinary punctuation still do not count", () => {
+    expect(normaliseText("40÷5")).toBe(normaliseText("40 ÷ 5"));
+    expect(normaliseText("40 − 5")).toBe(normaliseText("40 - 5"));
+    expect(normaliseText("A well-known fact.")).toBe("a well known fact");
+    expect(normaliseText("It is 2.5 m.")).toBe("it is 2.5 m");
+    expect(allDistinct(["24", "24."])).toBe(false);
+  });
+});
