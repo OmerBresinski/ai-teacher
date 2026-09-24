@@ -734,6 +734,27 @@ describe("labPlan --waves (lab pw)", () => {
     expect(labPlanMarkdown(report)).toContain("- waves: demand o1 slide 2/exit 1");
   });
 
+  test("audit A4: an objective's exit set is written after its slide set and told the slide stems", async () => {
+    const prompts: { use: string; target: number; text: string }[] = [];
+    const ai = labAi({
+      retrieval,
+      questionSet: (call, set) => {
+        prompts.push({ use: set.use, target: set.target, text: call.promptText });
+        return json(questionSetAnswer(set));
+      },
+    });
+    await labPlan({ lesson: romansLesson() }, recordingDeps(ai), { waves: true });
+    const o1 = prompts.filter((p) => p.target === 0);
+    expect(o1.map((p) => p.use)).toEqual(["slide", "exit"]);
+    expect(o1[0]?.text).not.toContain("Already asked of this objective");
+    expect(o1[1]?.text).toContain("Already asked of this objective");
+    expect(o1[1]?.text).toContain("slide question 1 on objective 1: which is right?");
+    // An objective with no slide set: its exit set has nothing to avoid.
+    const o3 = prompts.filter((p) => p.target === 2);
+    expect(o3.map((p) => p.use)).toEqual(["exit"]);
+    expect(o3[0]?.text).not.toContain("Already asked of this objective");
+  });
+
   test("a set the schema refuses twice (short by more than one; a key idea not supplied) is asked for once more", async () => {
     const asked: string[] = [];
     const ai = labAi({

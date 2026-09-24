@@ -973,80 +973,87 @@ export async function runWaves(
       const timing = perObjective[target] as LabWavesReport["perObjective"][number];
       timing.teachMs = Date.now() - t0;
       const uses = (["slide", "exit"] as const).filter((use) => (counts[target]?.[use] ?? 0) > 0);
-      const sets = await Promise.all(
-        uses.map(async (use: QuestionSetUse): Promise<PlanQuestionSetOutput["questions"]> => {
-          const count = counts[target]?.[use] ?? 0;
-          const setInput = {
-            topic,
-            shape,
-            audience,
-            objective: objective.text,
-            taught,
-            use,
-            count,
-          };
-          const ask = () =>
-            callStructured({
-              deps,
-              stage: "plan",
-              cls,
-              effort,
-              prompt: planQuestionSetPrompt,
-              input: setInput,
-              schema: planQuestionSetOutputSchemaFor(setInput),
-              soft: planQuestionSetOutputSchemaFor(setInput, { soft: true }),
-              maxOutputTokens: MAX_OUTPUT_TOKENS_QUESTION_SET,
-            });
-          deps.logger.info(
-            { stage: "plan", call: "question-set", target, use, count },
-            "plan call",
-          );
-          const key = `o${target + 1}/${use}`;
-          /**
-           * One regeneration a set: a call the schema refused twice (the count off by more than
-           * one, a `keyIdeaRefs` index outside the taught list, a cap stop) or an accepted answer
-           * the code check faults (`questionSetProblem`) is asked for once more; the second
-           * answer stands, or the set is left out.
-           */
-          const askOnce = async (): Promise<Awaited<ReturnType<typeof ask>>> => {
-            let first: Awaited<ReturnType<typeof ask>> | undefined;
-            let why: string;
-            try {
-              first = await ask();
-              const problem = questionSetProblem(first.output, count, taught.keyIdeas.length, use);
-              if (!problem) return first;
-              why = problem;
-            } catch (error) {
-              if (!(error instanceof StageFailure)) throw error;
-              why = error.message;
-            }
-            regenerated.push(`${key}: ${why}`);
-            deps.logger.warn(
-              { stage: "plan", call: "question-set", target, use, why },
-              "question set regenerated",
-            );
-            try {
-              return await ask();
-            } catch (error) {
-              if (first && error instanceof StageFailure) return first;
-              throw error;
-            }
-          };
+      const writeSet = async (
+        use: QuestionSetUse,
+        avoid: string[],
+      ): Promise<PlanQuestionSetOutput["questions"]> => {
+        const count = counts[target]?.[use] ?? 0;
+        const setInput = {
+          topic,
+          shape,
+          audience,
+          objective: objective.text,
+          taught,
+          use,
+          count,
+          ...(avoid.length > 0 ? { avoid } : {}),
+        };
+        const ask = () =>
+          callStructured({
+            deps,
+            stage: "plan",
+            cls,
+            effort,
+            prompt: planQuestionSetPrompt,
+            input: setInput,
+            schema: planQuestionSetOutputSchemaFor(setInput),
+            soft: planQuestionSetOutputSchemaFor(setInput, { soft: true }),
+            maxOutputTokens: MAX_OUTPUT_TOKENS_QUESTION_SET,
+          });
+        deps.logger.info({ stage: "plan", call: "question-set", target, use, count }, "plan call");
+        const key = `o${target + 1}/${use}`;
+        /**
+         * One regeneration a set: a call the schema refused twice (the count off by more than
+         * one, a `keyIdeaRefs` index outside the taught list, a cap stop) or an accepted answer
+         * the code check faults (`questionSetProblem`) is asked for once more; the second
+         * answer stands, or the set is left out.
+         */
+        const askOnce = async (): Promise<Awaited<ReturnType<typeof ask>>> => {
+          let first: Awaited<ReturnType<typeof ask>> | undefined;
+          let why: string;
           try {
-            const call = await askOnce();
-            for (const miss of call.editorialMisses)
-              sink.findings.push(specRuleFinding(miss, {}, "warning"));
-            editorialMisses += call.editorialMisses.length;
-            // The soft schema admits up to two over: the outline asked for `count`, so that is
-            // what goes in (a long answer's tail was never going to be placed).
-            return call.output.questions.slice(0, count);
+            first = await ask();
+            const problem = questionSetProblem(first.output, count, taught.keyIdeas.length, use);
+            if (!problem) return first;
+            why = problem;
           } catch (error) {
-            setsFailed.push(key);
-            recordFailure(error, target, "question-set");
-            return [];
+            if (!(error instanceof StageFailure)) throw error;
+            why = error.message;
           }
-        }),
-      );
+          regenerated.push(`${key}: ${why}`);
+          deps.logger.warn(
+            { stage: "plan", call: "question-set", target, use, why },
+            "question set regenerated",
+          );
+          try {
+            return await ask();
+          } catch (error) {
+            if (first && error instanceof StageFailure) return first;
+            throw error;
+          }
+        };
+        try {
+          const call = await askOnce();
+          for (const miss of call.editorialMisses)
+            sink.findings.push(specRuleFinding(miss, {}, "warning"));
+          editorialMisses += call.editorialMisses.length;
+          // The soft schema admits up to two over: the outline asked for `count`, so that is
+          // what goes in (a long answer's tail was never going to be placed).
+          return call.output.questions.slice(0, count);
+        } catch (error) {
+          setsFailed.push(key);
+          recordFailure(error, target, "question-set");
+          return [];
+        }
+      };
+      // Audit A4 / C4: the exit set is written after the slide set and told its stems, so the
+      // exit quiz does not restate the slide questions (24 of 62 exit items near-duplicated one
+      // when the two calls ran blind in parallel). This puts one set call on the critical path.
+      const sets: PlanQuestionSetOutput["questions"][] = [];
+      for (const use of uses) {
+        const avoid = sets.flat().map((q) => q.stem);
+        sets.push(await writeSet(use, avoid));
+      }
       timing.questionsMs = Date.now() - t0;
       return { ...taught, questions: sets.flat() } as ObjectiveFactsOutput;
     }),
