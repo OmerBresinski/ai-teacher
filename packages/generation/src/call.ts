@@ -175,8 +175,10 @@ export const MAX_OUTPUT_TOKENS = {
 } as const;
 
 /**
- * Failure bounds, not latency targets: valid Bedrock slide responses took 87–100 s in the
- * TEACH-258 probe. Short calls get 3 minutes, larger outputs/judges 5; never an unbounded wait.
+ * Failure bounds, not latency targets, for the class models (Bedrock ids, Sol, Terra, the
+ * Anthropic ids): valid Bedrock slide responses took 87–100 s in the TEACH-258 probe. Short calls
+ * get 3 minutes, larger outputs/judges 5; never an unbounded wait. A fast route has its own table
+ * (`FAST_CALL_TIMEOUT_MS`).
  */
 export const CALL_TIMEOUT_MS = {
   "check-input": 180_000,
@@ -197,8 +199,45 @@ export const CALL_TIMEOUT_MS = {
   regenerate: 300_000,
 } satisfies Record<PromptName, number>;
 
-export function callTimeoutMs(version: string): number {
+/**
+ * A fast route: a small gateway model — Luna, or a Gemini Flash-Lite — where a call that runs to
+ * several times its worst normal case is lost, not slow. Bedrock ids (Luna on Bedrock included:
+ * unmeasured there), Sol, Terra and the Anthropic ids keep the class table above.
+ */
+export function isFastModelId(modelId: string): boolean {
+  return (
+    /^openai\/gpt-[\d.]+-luna$/.test(modelId) || /^google\/gemini-[\d.]+-flash-lite$/.test(modelId)
+  );
+}
+
+/**
+ * The bounds on a fast route, by prompt: 2–3× the p99 of the successful calls in the lab's
+ * r5, e2, w1 and b1 runs on `openai/gpt-5.6-luna` (24 Sept 2026; n = 9–138 a prompt), rounded
+ * up — evaluate 30 s, plan-facts-objective 59 s, plan-objectives 29 s, plan-question-set 20 s,
+ * generate-slide 16 s, plan-teach-objective 15 s, verify-facts 11 s, repair 10 s, repair-fact
+ * 6 s. One retry stays (`callStructured`), so a hung call costs at most two bounds. A prompt with
+ * no row here (unmeasured on a fast route) keeps the class table's bound. Why it matters: on
+ * 24 Sept five lessons' evaluate and repair calls hung through a nine-minute system sleep; the
+ * 180–300 s bounds only cut them on wake, and a bound this size would have too — but a gateway
+ * stall in a live run is now cut in 30–90 s instead of 3–5 minutes.
+ */
+export const FAST_CALL_TIMEOUT_MS: Readonly<Record<string, number>> = {
+  evaluate: 90_000,
+  "generate-slide": 45_000,
+  "plan-facts-objective": 150_000,
+  "plan-objectives": 75_000,
+  "plan-question-set": 60_000,
+  "plan-teach-objective": 45_000,
+  repair: 30_000,
+  "repair-fact": 30_000,
+  "verify-facts": 30_000,
+};
+
+/** The deadline for a prompt version; with the routed model id, a fast route's own bound. */
+export function callTimeoutMs(version: string, modelId?: string): number {
   const name = version.replace(/\.v\d+$/, "");
+  if (modelId !== undefined && isFastModelId(modelId) && Object.hasOwn(FAST_CALL_TIMEOUT_MS, name))
+    return FAST_CALL_TIMEOUT_MS[name] as number;
   return Object.hasOwn(CALL_TIMEOUT_MS, name) ? CALL_TIMEOUT_MS[name as PromptName] : 300_000;
 }
 
@@ -303,7 +342,6 @@ export async function callStructured<I, T>(
   const effort =
     deps.effortFor?.(stage, prompt.version.replace(/\.v\d+$/, ""), options.effort) ??
     options.effort;
-  const timeoutMs = options.timeoutMs ?? callTimeoutMs(prompt.version);
   // Cancel is checked between model calls (ADR 0025 §5); the fake ignores `abortSignal`, so the
   // check is here rather than trusted to the provider.
   throwIfAborted(deps.signal);
@@ -313,6 +351,8 @@ export async function callStructured<I, T>(
   // (the lab's model bench), so the budget prices what was used and the log names it.
   const routed = deps.ai.model(cls, callContext(deps, stage, prompt.version, effort));
   const modelId = typeof routed === "string" ? routed : routed.modelId;
+  // The deadline follows the routed model: a fast route's bound, else the class's.
+  const timeoutMs = options.timeoutMs ?? callTimeoutMs(prompt.version, modelId);
   const model = withGenerationBudget(routed, modelId, deps.budget);
   const userText = prompt.user(input);
   const output = repairingObjectOutput(

@@ -302,6 +302,24 @@ function dryRunQuestionSets(lesson: Lesson, objectiveCount: number): number[] {
   return counts.flatMap((c) => [c.slide, c.exit].filter((n) => n > 0));
 }
 
+/**
+ * Prevent idle sleep while this process lives (macOS: `caffeinate -i -w <pid>` exits with it).
+ * Timers cannot fire and sockets cannot settle while the machine sleeps, so a deadline of 300 s
+ * became 560 s of wall clock on 24 Sept. Elsewhere, or without the tool, the run goes on as before.
+ */
+export function holdAwake(spawn: typeof Bun.spawn = Bun.spawn): boolean {
+  if (process.platform !== "darwin") return false;
+  try {
+    const child = spawn(["caffeinate", "-i", "-w", String(process.pid)], {
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+    child.unref();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i === -1 ? undefined : process.argv[i + 1];
@@ -1025,6 +1043,9 @@ if (import.meta.main) {
     process.exit(2);
   }
   const label0 = label;
+  // A live run holds the Mac awake: on 24 Sept five lessons' evaluate and repair calls hung
+  // through a nine-minute idle "maintenance sleep" and were cut only on wake (pw code-2 notes).
+  if (!flag("dry-run")) holdAwake();
   const recordFile = join(import.meta.dir, "results", "lab", label0, "calls.jsonl");
   await mkdir(join(import.meta.dir, "results", "lab", label0), { recursive: true });
   // Every call is metered into the lesson's cost ledger (per stage, priced from `PRICES`): THE
