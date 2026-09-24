@@ -851,8 +851,9 @@ describe("TEACH-257: an editorial miss on both attempts does not lose the lesson
 
   const runWith = async (repairAnswers: string[]) => {
     const script = pipelineScript();
-    // Both attempts of the worked-example slide break the step cap; Repair then answers.
-    script.splice(WORKED_INDEX, 1, badWorked, badWorked);
+    // The worked-example slide breaks the step cap; a cap-only miss is kept without a retry (lab
+    // round 1); Repair then answers.
+    script.splice(WORKED_INDEX, 1, badWorked);
     script.push(...repairAnswers);
     const ai = answeringAi(script);
     const deps = recordingDeps(ai);
@@ -864,11 +865,11 @@ describe("TEACH-257: an editorial miss on both attempts does not lose the lesson
     const { lesson, ai, deps } = await runWith([JSON.stringify(workedExample)]);
     expect(lesson.generation?.stage).toBe("repaired");
     expect(lesson.slides).toHaveLength(TOTAL_SLIDES);
-    // The retry named the rule; the second miss was accepted, not a StageFailure.
+    // No retry: the first answer was accepted with its cap miss, not a StageFailure.
     const retries = ai.calls.filter(
       (c) => c.context?.stage === "generate" && c.promptText.includes("Too long: at most 84"),
     );
-    expect(retries).toHaveLength(1);
+    expect(retries).toHaveLength(0);
     const generated = deps.persisted.find((p) => p.lesson.generation?.stage === "generated");
     const worked = generated?.lesson.slides.find((s) => s.kind === "worked-example");
     expect(worked).toBeDefined();
@@ -890,7 +891,7 @@ describe("TEACH-257: an editorial miss on both attempts does not lose the lesson
     expect(slideText(final as never)).not.toContain(longStep);
   });
 
-  test("row 5, Repair misses too: the slide is rewritten as returned and one spec-rule warning remains; no second pass", async () => {
+  test("row 5, Repair misses too (it retries a cap miss): the slide is rewritten as returned and one spec-rule warning remains; no second pass", async () => {
     const { lesson, ai } = await runWith([badWorked, badWorked]);
     expect(lesson.generation?.stage).toBe("repaired");
     expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(2);

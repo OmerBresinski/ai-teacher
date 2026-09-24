@@ -76,6 +76,15 @@ export interface CallStructuredOptions<I, T> {
    * it every second miss is a `StageFailure`, as before.
    */
   soft?: z.ZodType<T> | undefined;
+  /**
+   * Retry a first answer whose only misses are text-length caps (`isCapMiss`). Off by default: such
+   * an answer is accepted as it is and its misses returned, because a retry regenerates the whole
+   * answer (lab CB run, 24 Sept: 6 of 14 runs lost content that way) and the stage after it acts on
+   * the misses — Repair rewrites a slide's `spec-rule` error, and a fact's text reaches a pupil only
+   * through a slide, whose own caps Generate and Repair hold. Repair sets it: nothing runs after
+   * Repair to shorten its answer.
+   */
+  retryCapMisses?: boolean | undefined;
   maxOutputTokens: number;
   /** Per attempt; defaults to the bound for this prompt (TEACH-235). */
   timeoutMs?: number;
@@ -378,6 +387,26 @@ export async function callStructured<I, T>(
     if (NoObjectGeneratedError.isInstance(error)) {
       const firstMisses = editorialMissesOf(error);
       const firstAccepted = firstMisses && soft ? softParse(soft, error.text) : undefined;
+      // Only text caps were missed: the answer is taken as it is, with no retry (see
+      // `retryCapMisses`).
+      if (
+        firstMisses &&
+        firstAccepted !== undefined &&
+        !options.retryCapMisses &&
+        firstMisses.every(isCapMiss)
+      ) {
+        deps.logger.info(
+          { stage, promptVersion: prompt.version, issues: issuesOf(error, "log") },
+          "structured output missed only text caps; accepted without a retry",
+        );
+        return {
+          output: firstAccepted,
+          usage: usageOf(error.usage ?? {}),
+          attempts: 1,
+          modelId,
+          editorialMisses: firstMisses,
+        };
+      }
       if (firstMisses && firstAccepted !== undefined) {
         fallback = {
           output: firstAccepted,
@@ -588,6 +617,15 @@ export function editorialMissesOf(error: NoObjectGeneratedError): EditorialMiss[
   if (issues === undefined) return null;
   if (!issues.every((issue) => isEditorialIssue(issue))) return null;
   return issues.map((issue) => ({ path: issue.path ?? [], message: issue.message }));
+}
+
+/**
+ * Whether an editorial miss is a text-length cap: the `Too long: at most N characters.` rule every
+ * text slot builder shares (`@tj/slides` `tooLong`, `specs.ts` and `plan-facts-objective.ts`
+ * `lineFor`). A list ceiling, a repeated option or a leak is not one.
+ */
+export function isCapMiss(miss: EditorialMiss): boolean {
+  return /^Too long: at most \d+ characters\.$/.test(miss.message);
 }
 
 /**
