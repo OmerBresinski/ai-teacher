@@ -18,6 +18,7 @@ import {
   slideSpecSchemaFor,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
+import { isCodeBuilt, withShuffledOptions } from "../lab/coded-slides";
 import {
   type Audience,
   type RepairInput,
@@ -26,7 +27,12 @@ import {
   type WritingShape,
 } from "../prompts";
 import type { RepairContextSlide } from "../prompts/repair";
-import { VERIFY_FIELDS_BY_ARRAY, verifiableArrayOf, verifyOutputSchemaFor } from "../specs";
+import {
+  isOutlineFromFacts,
+  VERIFY_FIELDS_BY_ARRAY,
+  verifiableArrayOf,
+  verifyOutputSchemaFor,
+} from "../specs";
 import {
   BudgetExceeded,
   type PipelineDeps,
@@ -110,8 +116,17 @@ const keyOf = (finding: Finding): string | undefined => {
  * The `error` findings by target, in first-seen order, capped at `MAX_TARGETS`; each carries the
  * actionable warnings on the same target too. Then up to `MAX_WARNING_TARGETS` targets with
  * actionable warnings and no error, ranked by `ACTIONABLE_WARNINGS` and then first-seen order.
+ *
+ * `codeBuilt`: the slides the lab printed in code from the facts (starter, check sets, exit quiz;
+ * `isCodeBuilt`). A warning on one is never acted on, alone or riding with an error: those sets are
+ * quick quizzes by design, and in round 1 a verb-fit rewrite ("asks pupils to choose, not
+ * explain") turned 10 clean quizzes into long "explain" items, merged items and dropped options
+ * (r1-h-y2-plants-L and r1-cb-y5-fractions-L slide 10). The warning stays a residual.
  */
-export function repairTargets(findings: Finding[]): Target[] {
+export function repairTargets(
+  findings: Finding[],
+  codeBuilt: ReadonlySet<string> = new Set(),
+): Target[] {
   const byKey = new Map<string, Target>();
   for (const finding of findings) {
     if (finding.severity !== "error") continue;
@@ -125,7 +140,12 @@ export function repairTargets(findings: Finding[]): Target[] {
   const errorTargets = [...byKey.values()].slice(0, MAX_TARGETS);
   const chosen = new Map(errorTargets.map((t) => [t.key, t]));
   const rank = (f: Finding) => ACTIONABLE_WARNINGS.indexOf(f.check);
-  const actionable = findings.filter((f) => f.severity === "warning" && rank(f) >= 0);
+  const actionable = findings.filter(
+    (f) =>
+      f.severity === "warning" &&
+      rank(f) >= 0 &&
+      !(f.target.slideId !== undefined && codeBuilt.has(f.target.slideId)),
+  );
   const warningOnly = new Map<string, Target>();
   for (const finding of actionable) {
     const key = keyOf(finding);
@@ -215,7 +235,12 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   const repaired = new Set<string>();
   const extra: Finding[] = [];
 
-  for (const target of repairTargets(generation.findings)) {
+  // Lab only: slides printed in code are not rewritten for a warning, and a rewritten
+  // multiple-choice slide gets Generate's seeded option order back (the model lists the answer
+  // first, so without it the answer is A again).
+  const lab = isOutlineFromFacts(generation.promptVersions.planned);
+  const codeBuilt = new Set(lesson.slides.filter(isCodeBuilt).map((s) => s.id));
+  for (const target of repairTargets(generation.findings, codeBuilt)) {
     throwIfAborted(deps.signal);
     // Facts first (TEACH-216): a `fact-consistency` finding that names the wrong fact patches the
     // fact before the artefact is regenerated from it, so the two do not drift apart again. The
@@ -287,9 +312,10 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         for (const miss of call.editorialMisses) {
           extra.push(specRuleFinding(miss, { slideId: slide.id }, "warning"));
         }
+        const spec = lab ? withShuffledOptions(call.output, `${lesson.id}:${index}`) : call.output;
         const fresh: Slide = keepPhoto(slide, {
           ...materialiseSlide(
-            withImageCaption(call.output, lesson.facts?.outline[index]),
+            withImageCaption(spec, lesson.facts?.outline[index]),
             lesson.themeId,
             meta(call.modelId, deps),
             deps.ids,

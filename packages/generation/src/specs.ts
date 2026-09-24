@@ -1335,6 +1335,15 @@ export const CALLOUT_KIND = (kind: CalloutKind) =>
  */
 export const OUTLINE_FROM_FACTS_VERSION = "outline-from-facts";
 
+/**
+ * Whether a lesson's outline is the lab's code-written one, read from `promptVersions.planned` as
+ * `joinVersions` writes it: one version per `+`, compared whole, so a version that merely contains
+ * the name does not count. Generate and Repair both key the lab's code-side steps on it.
+ */
+export function isOutlineFromFacts(planned: string | undefined): boolean {
+  return (planned ?? "").split("+").includes(OUTLINE_FROM_FACTS_VERSION);
+}
+
 export function withAssignedCallout(
   schema: z.ZodType<SlideSpec>,
   callout: OutlineCallout | undefined,

@@ -25,6 +25,19 @@ import type { SlideSpec } from "@tj/slides";
  * footnote's place, and in the notes.
  */
 
+/** The `generatedFrom.model` a slide printed in code carries (no model wrote it). */
+export const CODE_MODEL = "code";
+
+/**
+ * Whether a slide is one the lab printed in code (a question set: starter, check or exit quiz):
+ * every element that records its provenance names `CODE_MODEL`. A slide Repair has rewritten
+ * names the repair model and is not.
+ */
+export function isCodeBuilt(slide: Slide): boolean {
+  const stamps = slide.elements.flatMap((e) => (e.generatedFrom ? [e.generatedFrom.model] : []));
+  return stamps.length > 0 && stamps.every((m) => m === CODE_MODEL);
+}
+
 /** A list item's cap (`SPEC_LIMITS.item`), restated so the outline has no `@tj/slides` import. */
 export const LINE_MAX = 160;
 /**

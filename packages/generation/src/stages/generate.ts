@@ -9,14 +9,19 @@ import {
   vocabularySlots,
 } from "@tj/slides";
 import { callStructured, type EditorialMiss, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
-import { codedSetSpec, withAnswersReveal, withShuffledOptions } from "../lab/coded-slides";
+import {
+  CODE_MODEL,
+  codedSetSpec,
+  withAnswersReveal,
+  withShuffledOptions,
+} from "../lab/coded-slides";
 import {
   generateSlidePrompt,
   pickOrRequeryPrompt,
   type SlidePhoto,
   verifyFactsPrompt,
 } from "../prompts";
-import { OUTLINE_FROM_FACTS_VERSION, verifiableArrayOf, withAssignedCallout } from "../specs";
+import { isOutlineFromFacts, verifiableArrayOf, withAssignedCallout } from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
 import {
   busyFinding,
@@ -102,9 +107,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   // box, or leaves one out, is never an editorial miss. The stamp is read as `joinVersions`
   // writes it: one version per `+`, compared whole, so a version that merely contains the name
   // does not turn the check on.
-  const calloutsAssigned = (generation.promptVersions.planned ?? "")
-    .split("+")
-    .includes(OUTLINE_FROM_FACTS_VERSION);
+  const calloutsAssigned = isOutlineFromFacts(generation.promptVersions.planned);
   // Picture first (TEACH-220): the photograph for every image-text entry is searched and judged as
   // soon as Generate starts, alongside the first slide batch; that entry's slide call waits for its
   // own pick and no other. Nothing here fails the lesson.
@@ -190,7 +193,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       : undefined;
     if (coded) {
       const slide = withAnswersReveal(
-        materialiseSlide(coded.spec, lesson.themeId, meta("code"), deps.ids),
+        materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
       );
       return { slide, misses: [], builtFrom };
     }

@@ -9,7 +9,7 @@ import {
 } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
-import { codedSetSpec } from "../lab/coded-slides";
+import { CODE_MODEL, codedSetSpec, isCodeBuilt, withShuffledOptions } from "../lab/coded-slides";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import { PROMPT_VERSIONS, VERB_WRITING } from "../prompts";
 import { lessonShapeOf } from "../shapes";
@@ -2677,5 +2677,148 @@ describe("Repair acts on the warnings judges punish (lab round 1)", () => {
     const quiet = answering();
     await repair(evaluatedWith([w("pitch", target.id, evidence)]), recordingDeps(quiet));
     expect(quiet.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
+  });
+});
+
+describe("Repair leaves the code-built quizzes alone and reshuffles what it rewrites (lab round 2)", () => {
+  const w = (check: string, slideId: string, evidence?: string): Finding => ({
+    check,
+    severity: "warning",
+    target: { slideId },
+    message: "m",
+    ...(evidence === undefined ? {} : { evidence }),
+  });
+  const e = (check: string, slideId: string): Finding => ({
+    check,
+    severity: "error",
+    target: { slideId },
+    message: "m",
+  });
+
+  test("r1-h-y2-plants-L and r1-cb-y5-fractions-L: verb-fit on a code-built set is no target, alone or beside an error", () => {
+    // Evaluate's findings as recorded; lab18 (plants) and lab1j, labr (fractions) were printed in code.
+    const plants = repairTargets(
+      [
+        e("degenerate-question", "laby"),
+        w(
+          "verb-fit",
+          "lab18",
+          "Suppose a young plant is growing in a pot. Which two things does it need?",
+        ),
+        w(
+          "verb-fit",
+          "lab18",
+          "A potted plant has drooping leaves and dry soil. What is the best action?",
+        ),
+        w("pitch", "lab1g"),
+      ],
+      new Set(["lab18"]),
+    );
+    expect(plants.map((t) => [t.key, t.findings.map((f) => f.check)])).toEqual([
+      ["slide:laby", ["degenerate-question"]],
+    ]);
+    const fractions = repairTargets(
+      [
+        w("verb-fit", "lab1j", "Find one quarter of 28 buttons."),
+        w("verb-fit", "labr", "Which answer is 4/7 of 21 stickers?"),
+      ],
+      new Set(["lab1j", "labr"]),
+    );
+    expect(fractions).toEqual([]);
+    // An error on a code-built set is still repaired, without the verb-fit riding along.
+    const erred = repairTargets(
+      [e("answer-correctness", "lab1j"), w("verb-fit", "lab1j"), w("verb-fit", "model")],
+      new Set(["lab1j"]),
+    );
+    expect(erred.map((t) => [t.key, t.findings.map((f) => f.check)])).toEqual([
+      ["slide:lab1j", ["answer-correctness"]],
+      ["slide:model", ["verb-fit"]],
+    ]);
+  });
+
+  const labLesson = async () => {
+    const script = [
+      ...planScript(),
+      ...FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((x) => json(FIXTURES.slides[x.kind])),
+    ];
+    const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const generation = generated.lesson.generation as NonNullable<
+      typeof generated.lesson.generation
+    >;
+    return (findings: Finding[], slides = generated.lesson.slides) => ({
+      ...generated,
+      lesson: {
+        ...generated.lesson,
+        slides,
+        generation: {
+          ...generation,
+          stage: "evaluated" as const,
+          promptVersions: {
+            ...generation.promptVersions,
+            planned: `${generation.promptVersions.planned ?? "plan"}+${OUTLINE_FROM_FACTS_VERSION}`,
+          },
+          findings,
+        },
+      },
+    });
+  };
+  const answering = () =>
+    createFakeAi({
+      fallback: (call) => {
+        const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "content";
+        return json(FIXTURES.slides[kind as keyof typeof FIXTURES.slides]);
+      },
+      usage,
+    });
+
+  test("a verb-fit warning on a slide printed in code gets no repair call and stays a residual", async () => {
+    const evaluatedWith = await labLesson();
+    const base = evaluatedWith([]).lesson.slides;
+    const index = base.findIndex((s) => s.kind === "exit-ticket");
+    const coded = base.map((s, i) =>
+      i !== index
+        ? s
+        : {
+            ...s,
+            elements: s.elements.map((el) =>
+              el.generatedFrom
+                ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+                : el,
+            ),
+          },
+    );
+    const target = coded[index] as Slide;
+    expect(isCodeBuilt(target)).toBe(true);
+    const ai = answering();
+    const out = await repair(evaluatedWith([w("verb-fit", target.id)], coded), recordingDeps(ai));
+    expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
+    expect(out.lesson.generation?.findings.some((f) => f.check === "verb-fit")).toBe(true);
+    expect(out.lesson.slides[index]).toEqual(target);
+  });
+
+  test("a multiple-choice slide Repair rewrites on the lab path gets Generate's seeded option order", async () => {
+    const evaluatedWith = await labLesson();
+    const state = evaluatedWith([]);
+    const index = state.lesson.slides.findIndex((s) => s.kind === "multiple-choice");
+    const target = state.lesson.slides[index] as Slide;
+    const out = await repair(
+      evaluatedWith([e("answer-correctness", target.id)]),
+      recordingDeps(answering()),
+    );
+    const fixture = FIXTURES.slides["multiple-choice"] as { options: { text: string }[] };
+    const expected = (
+      withShuffledOptions(
+        fixture as unknown as Parameters<typeof withShuffledOptions>[0],
+        `${state.lesson.id}:${index}`,
+      ) as unknown as { options: { text: string }[] }
+    ).options.map((o) => o.text);
+    expect(expected).not.toEqual(fixture.options.map((o) => o.text));
+    const text = slideText(out.lesson.slides[index] as Slide);
+    const at = expected.map((o) => text.indexOf(o));
+    expect(at.every((n) => n >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 });
