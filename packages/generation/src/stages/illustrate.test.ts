@@ -673,9 +673,11 @@ describe("illustrate", () => {
 
   test("a judge call that fails counts failed and the next slide still places", async () => {
     const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
-    const ai = judge(() => {
+    // A provider failure is retried once (call.ts), so the first slide's judge fails twice.
+    const down = () => {
       throw new Error("model down");
-    }, pick("p"));
+    };
+    const ai = judge(down, down, pick("p"));
     const deps = recordingDeps(ai, { images });
     const state = await run(imageLesson([{ subject: "first" }, { subject: "second" }]), deps);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
