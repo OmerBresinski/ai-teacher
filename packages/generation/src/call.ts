@@ -352,8 +352,11 @@ export async function callStructured<I, T>(
     const timedOut = error instanceof StageFailure && error.reason === "timeout";
     // An empty answer (the provider returned no output at all) is a hiccup, not a shape problem:
     // retried once with the same text, like a timeout (quality lab, Sept 2026: two empty answers
-    // from the small class lost a lesson its photograph).
-    const empty = NoOutputGeneratedError.isInstance(error);
+    // from the small class lost a lesson its photograph). With `Output.object` a response with no
+    // content surfaces as a NoObjectGeneratedError with no text, not a NoOutputGeneratedError.
+    const empty =
+      NoOutputGeneratedError.isInstance(error) ||
+      (NoObjectGeneratedError.isInstance(error) && !error.text?.trim());
     if (empty) {
       deps.logger.info(
         { stage, promptVersion: prompt.version },
@@ -362,7 +365,7 @@ export async function callStructured<I, T>(
     }
     if (!timedOut && !empty && !NoObjectGeneratedError.isInstance(error)) throw error;
     let retryText = userText;
-    if (NoObjectGeneratedError.isInstance(error)) {
+    if (!empty && NoObjectGeneratedError.isInstance(error)) {
       // The failed attempt was still paid for. `error.text` (the model's words) is never logged.
       const issues = issuesOf(error);
       // Log finite issue codes/counts; even paths and custom messages may echo model content.

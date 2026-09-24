@@ -653,7 +653,8 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
 });
 
 test("an empty answer (no output at all) is retried once with the same text; a second one is a StageFailure (quality lab, Sept 2026)", async () => {
-  // The SDK raises NoOutputGeneratedError when the model returns no content parts at all.
+  // With Output.object the SDK raises NoObjectGeneratedError (no text) when the model returns no
+  // content parts at all; it must take the empty-answer path, not the did-not-validate one.
   const empty = {
     content: [],
     finishReason: { unified: "stop" as const, raw: "stop" },
@@ -669,18 +670,26 @@ test("an empty answer (no output at all) is retried once with the same text; a s
     content: [{ type: "text" as const, text: JSON.stringify({ answer: "second time" }) }],
   };
   let calls = 0;
+  const prompts: string[] = [];
   const flaky = createFakeAi();
   flaky.model = () =>
     new MockLanguageModelV4({
-      doGenerate: async () => {
+      doGenerate: async (options) => {
         calls++;
+        prompts.push(JSON.stringify(options.prompt));
         return calls === 1 ? empty : answer;
       },
     });
-  const result = await call(deps(flaky));
+  const log = capturingLogger();
+  const result = await call(deps(flaky, { logger: log.logger }));
   expect(result.output).toEqual({ answer: "second time" });
   expect(result.attempts).toBe(2);
   expect(calls).toBe(2);
+  // One retry, with the same text: no "did not validate" correction appended.
+  expect(prompts[1]).toBe(prompts[0]);
+  expect(prompts[1]).not.toContain("did not validate");
+  expect(log.text()).toContain("model returned no output; retrying once");
+  expect(log.text()).not.toContain("structured output did not validate");
 
   const dead = createFakeAi();
   dead.model = () => new MockLanguageModelV4({ doGenerate: async () => empty });
