@@ -314,6 +314,16 @@ describe("labPlan", () => {
     expect(state.labPlan.status.complete).toBe(false);
   });
 
+  test("an objective a few words over the cap is kept and the facts calls run", async () => {
+    const long =
+      "Explain how Roman roads, forts and towns changed daily life for the people living in Britain back then";
+    const ai = labAi({ objectives: [{ text: long }, { text: "Explain Boudica's revolt" }] });
+    const state = await labPlan({ lesson: romansLesson() }, recordingDeps(ai), { verify: false });
+    expect(long.split(" ").length).toBeGreaterThan(16);
+    expect(versionsOf(ai).filter((v) => v === "plan-facts-objective").length).toBeGreaterThan(0);
+    expect(state.labPlan.objectiveIssues ?? []).toEqual([]);
+  });
+
   test("objectives that break the structural check block the run before any facts call", async () => {
     const ai = labAi({
       objectives: [{ text: "Understand the Romans" }, { text: "Explain Boudica's revolt" }],

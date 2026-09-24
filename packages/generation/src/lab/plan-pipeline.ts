@@ -315,7 +315,15 @@ export async function labPlan(
     ? objectives.some((o) => "curriculumAnchor" in o && o.curriculumAnchor !== undefined)
     : curriculum !== undefined;
   const check = checkObjectives(objectives, shape.verb, { hasSource });
-  const objectiveIssues = describeIssues(check.issues);
+  // An objective a few words over the cap is editorial, not a broken plan: it is logged and the
+  // lesson goes on (r3, 24 Sept: a 17-word objective against 16 stopped a whole lesson).
+  const objectiveIssues = describeIssues(check.issues.filter((i) => i.kind !== "too-long"));
+  const longObjectives = describeIssues(check.issues.filter((i) => i.kind === "too-long"));
+  if (longObjectives.length > 0)
+    deps.logger.warn(
+      { stage: "plan", call: "objectives", long: longObjectives.length },
+      "objective over the word cap; kept",
+    );
   deps.logger.info(
     { stage: "plan", call: "objectives", count: objectives.length, issues: check.issues.length },
     objectiveIssues.length === 0 ? "objectives accepted" : "objectives blocked by the check",
