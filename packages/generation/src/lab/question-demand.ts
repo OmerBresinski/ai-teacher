@@ -14,7 +14,8 @@ export type QuestionSetUse = "slide" | "exit";
  * what gets placed plus one spare where the outline's filters can reject an item.
  *
  * The outline (`outlineFromFacts`, 1.6k lines) decides where questions go by running its fill
- * against the facts: a check set of 2–3 after each objective's cycle, single practise slides for
+ * against the facts: a check set of 2–3 after each cycle the flow checks (every cycle without a
+ * flow; l6d), the closing slide's exit question or quiz, single practise slides for
  * the shape's floors and kinds, the exit quiz's one-per-objective ranking and top-up, each step
  * asking of a question whether it is `fair` (its key ideas are on a slide), `showable` (a form a
  * slide can print), `settable` (a line that fits a set) and unused. Re-deriving those rules here

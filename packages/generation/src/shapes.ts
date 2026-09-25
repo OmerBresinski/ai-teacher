@@ -62,7 +62,76 @@ export type LessonShape = {
   tierWeights: TierWeights;
   /** The open-response stem shape the writers are told (Evaluate only; softened when young). */
   judgementStem: "which … and why" | "which … and one reason" | null;
+  /** l6d: set only by `withFlow`, from the objectives call's `flow`; absent, the outline runs as before. */
+  opener?: Opener | undefined;
+  /** l6d: the objectives (0-based) whose cycle ends in a check; the others get none mid-lesson. */
+  checkAfter?: number[] | undefined;
+  /** l6d: the closing check's form; absent, the exit quiz. */
+  close?: Close | undefined;
 };
+
+/*
+ * l6d (Greg, 26 Sep 2026: "it should reflect the topic and year group"): the lesson's flow, chosen
+ * by the objectives call from the subject, the kind of topic and the year group, replaces the verb
+ * table's kinds and floors. The verb, confidence, tier weights and judgement stem stay the table's.
+ * What stays fixed is only what keeps a deck whole: the slide count, every objective taught, and a
+ * closing check in the chosen form (the outline falls back to the quiz when the facts cannot
+ * supply that form). Counts the table used to set (minimum content slides, answer slides, explain
+ * and practise shares) go to their floor, so the budget follows the flow.
+ */
+export const OPENERS = ["hook", "retrieval", "none"] as const;
+export type Opener = (typeof OPENERS)[number];
+export const PRACTICE_FORMS = ["questions", "discussion", "both"] as const;
+export type PracticeForm = (typeof PRACTICE_FORMS)[number];
+export const CLOSES = ["quiz", "written", "debate", "matching"] as const;
+export type Close = (typeof CLOSES)[number];
+
+/** The objectives call's `flow`, as written: `checkAfter` holds 1-based objective numbers. */
+export type LessonFlow = {
+  opener: Opener;
+  workedExample: boolean;
+  commonMistake: boolean;
+  vocabulary: boolean;
+  checkAfter: number[];
+  practice: PracticeForm;
+  close: Close;
+};
+
+const FLOW_KINDS: SlideKind[] = ["worked-example", "vocabulary", "open-response"];
+
+/**
+ * The shape with the flow's choices in place of the table's. Objective numbers outside
+ * `1..objectiveCount` are dropped (a structural guard; the model's choice is otherwise kept).
+ */
+export function withFlow(
+  shape: LessonShape,
+  flow: LessonFlow,
+  objectiveCount: number,
+): LessonShape {
+  const kinds: SlideKind[] = [
+    ...(flow.workedExample ? (["worked-example"] as const) : []),
+    ...(flow.vocabulary ? (["vocabulary"] as const) : []),
+    ...(flow.practice === "questions" ? [] : (["open-response"] as const)),
+  ];
+  const checkAfter = [...new Set(flow.checkAfter)]
+    .filter((n) => Number.isInteger(n) && n >= 1 && n <= objectiveCount)
+    .map((n) => n - 1)
+    .sort((a, b) => a - b);
+  return {
+    ...shape,
+    requiredKinds: [...shape.requiredKinds.filter((k) => !FLOW_KINDS.includes(k)), ...kinds],
+    requireVocabulary: flow.vocabulary,
+    requireWorkedExampleBeforePractise: flow.workedExample,
+    requireMisconceptionConfronted: flow.commonMistake,
+    minContent: 1,
+    minCheckEntries: 1,
+    explainMinPercent: 0,
+    practiseMinPercent: 0,
+    opener: flow.opener,
+    checkAfter,
+    close: flow.close,
+  };
+}
 
 const BASE: Omit<LessonShape, "verb" | "confidence" | "young"> = {
   firstExplainKind: null,

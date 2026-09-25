@@ -90,6 +90,17 @@ import {
  * - The exit ticket is short: 3–5 items (`EXIT_MIN`, `EXIT_MAX`), one per objective first; a
  *   ticket the exit questions leave under three is topped up with unused fair questions that can
  *   be asked as a line of it.
+ *
+ * l6d (Greg, 26 Sep: "it should reflect the topic and year group"): with a flow (`withFlow`, the
+ * objectives call's choice) the lesson's shape is the model's, not the verb table's. The opener is
+ * the retrieval set, a hook (pupils say what they think, on the first misconception) or nothing;
+ * only the objectives in `checkAfter` get a check after their cycle (the reserve, the shared
+ * practise slide and P3 follow it); the flow's worked example, vocabulary and open-response are the
+ * required kinds, and P4 adds spare worked examples only when the flow asked for them; the closing
+ * slide is the exit quiz, one open exit question written or debated (a declared judgement first),
+ * or a matching slide of three taught key words, falling back to the quiz with a gap when the
+ * facts lack the material. The floors left are the slide count, every objective taught, and that
+ * closing check. Without a flow every step runs as before.
  */
 
 /** A question as the outline reads it: the facts' fields plus the optional declarations. */
@@ -166,6 +177,8 @@ const SHARED_PRACTISE_MAX = SET_MAX;
 const CHECK_SET = 3;
 /** Content slides one learning cycle teaches before its check: a slide, or a pair. */
 const CONTENT_PER_CYCLE = 2;
+/** A matching slide's pairs (`generate-slide`'s matching shape: exactly three). */
+const MATCHING_PAIRS = 3;
 /** The exit ticket's length: a short quiz, not three extended answers (uk-teacher review, w0b judges). */
 export const EXIT_MIN = EXIT_QUIZ_MIN;
 export const EXIT_MAX = EXIT_QUIZ_MAX;
@@ -201,7 +214,13 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   const count = input.objectives.length;
   const all = Array.from({ length: count }, (_, i) => i);
   const priorKnowledge = input.priorKnowledge?.trim() ?? "";
-  const retrieves = (input.retrieval?.length ?? 0) > 0;
+  // l6d: a hook or no opener leaves the retrieval set off the deck.
+  const retrieves =
+    (input.retrieval?.length ?? 0) > 0 && (shape.opener ?? "retrieval") === "retrieval";
+  const hooks = shape.opener === "hook";
+  const opens = shape.opener !== "none";
+  /** l6d: whether objective `o`'s cycle ends in a check (the flow's `checkAfter`; absent, every one). */
+  const checksAt = (o: number) => shape.checkAfter === undefined || shape.checkAfter.includes(o);
   const gaps: string[] = [];
   const gap = (sentence: string) => {
     if (!gaps.includes(sentence)) gaps.push(sentence);
@@ -361,7 +380,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     let kind: Kind;
     let misconception: number | undefined;
     if (open && admitsOpen(i)) {
-      kind = "open-response";
+      kind = shape.forbiddenKinds.includes("open-response") ? "discussion" : "open-response";
     } else if (
       shape.requireMisconceptionConfronted &&
       !has("true-false") &&
@@ -599,10 +618,11 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
    * room). Never fewer than the one practise slot `practiseReserve` keeps.
    */
   const reserve = (anyQuestion = false) => {
-    const starter = count > 0 && !has("starter") ? 1 : 0;
+    const starter = opens && count > 0 && !has("starter") ? 1 : 0;
     const checks = all.slice(0, -1).filter(
       (o) =>
         !practised(o) &&
+        checksAt(o) &&
         // Only a check that can be fair is kept: an objective whose key ideas are still being
         // placed (its questions untested yet) lets teaching go on until one is.
         facts.questions.some(
@@ -720,7 +740,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     // A question naming two objectives is taken once, for the first of them.
     const taken = new Set<number>();
     const pending = all.flatMap((o): [number, number][] => {
-      if (practised(o)) return [];
+      if (practised(o) || !checksAt(o)) return [];
       // Four verbatim stems share one slide, and an `instructions` step is capped at an item's
       // length, so only a short question goes on it; an objective with none is left to the exit
       // ticket rather than overflowing the slide.
@@ -752,7 +772,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     // A retrieval starter's slot is kept while there is none (w0b flow): with prior knowledge
     // declared, retrieving it outranks a slide of practice; without, the practice comes first and
     // the starter takes what is left.
-    const room = budget - (count > 0 && !has("starter") ? 1 : 0);
+    const room = budget - (opens && count > 0 && !has("starter") ? 1 : 0);
     // r1: the last objective's check may be the exit quiz that follows its cycle, so a deck with a
     // slot for every other objective's check gives each its own rather than sharing one.
     const own = pending.filter(([o]) => o < count - 1).length;
@@ -819,7 +839,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // it waits until every objective is practised, the floors are met and the remaining worked
   // examples are placed (P5).
   const placeStarter = () => {
-    if (count === 0) return;
+    if (count === 0 || !opens) return;
     const placed =
       budget > practiseReserve() &&
       place({
@@ -829,7 +849,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         objectives: [0],
         ...(retrieves
           ? { retrieval: true }
-          : priorKnowledge === "" && facts.misconceptions.length > 0
+          : (priorKnowledge === "" || hooks) && facts.misconceptions.length > 0
             ? { misconception: 0 }
             : {}),
         rank: [0],
@@ -838,7 +858,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       gap(
         `A ${slideCount}-slide deck has no room for a starter once every objective is taught and practised.`,
       );
-    else if (priorKnowledge === "" && !retrieves) {
+    else if (priorKnowledge === "" && !retrieves && !hooks) {
       gap(
         `The brief declares no prior knowledge, so the starter asks what pupils already think about ${topic} instead of retrieving an earlier idea.`,
       );
@@ -859,7 +879,15 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       rank: [0],
     });
   }
-  if (!has("starter") && !retrieves && priorKnowledge === "" && count > 0 && budget > 0) {
+  if (
+    !has("starter") &&
+    !retrieves &&
+    !hooks &&
+    opens &&
+    priorKnowledge === "" &&
+    count > 0 &&
+    budget > 0
+  ) {
     const easiest = all
       .flatMap((o) => {
         const i = facts.questions
@@ -904,7 +932,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // r1: a check after each learning cycle, before the floors and extras: every objective in order,
   // a set of 2–3 questions where the facts have them (the running order puts each after its cycle).
   for (const o of all) {
-    if (practised(o) || budget <= 0) continue;
+    if (practised(o) || budget <= 0 || !checksAt(o)) continue;
     const slot = checkSlot(o);
     if (slot !== undefined) place(slot);
   }
@@ -993,12 +1021,12 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // P3: every objective practised.
   placeSharedPractise();
   for (const o of all) {
-    if (practised(o) || budget <= 0) continue;
+    if (practised(o) || budget <= 0 || !checksAt(o)) continue;
     const slot = checkSlot(o);
     if (slot !== undefined) place(slot);
   }
   for (const o of all) {
-    if (!practised(o) && firstUnusedQuestion(o) !== undefined) {
+    if (!practised(o) && checksAt(o) && firstUnusedQuestion(o) !== undefined) {
       gap(
         `${nth(o)} has a slide question but a ${slideCount}-slide deck has no room to practise it; the exit ticket is its only check.`,
       );
@@ -1007,7 +1035,10 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
 
   // P4: the remaining worked examples — each is the method or the model answer for its objective,
   // worth more than a starter (Macbeth's three model paragraphs all went unplaced behind one).
-  for (const x of ownedWorkedExamples) {
+  // l6d: a flow without worked examples keeps only the ones P1c placed to model an apply question.
+  for (const x of shape.opener !== undefined && !shape.requireWorkedExampleBeforePractise
+    ? []
+    : ownedWorkedExamples) {
     if (budget <= 0) break;
     if (used.workedExamples.has(x)) continue;
     place(workedExampleSlot(ownersOf[x]?.[0] ?? 0, x));
@@ -1089,7 +1120,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     index: i,
     line: questionLine(facts.questions[i] ?? { stem: "", answer: "" }),
   });
-  {
+  const closer = chooseCloser();
+  if (closer.kind === "exit-ticket") {
     const exits = facts.questions.flatMap((q, i) =>
       q.use === "exit" && !used.questions.has(i) && fair(i) ? [i] : [],
     );
@@ -1288,6 +1320,70 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
    * it makes fair; then the practise slides a declared judgement closes; then the plenary. Sorts
    * `slots` in place and returns the cycles as slot lists.
    */
+  /**
+   * l6d: the closing check in the flow's form. `written` and `debate` ask one exit question the
+   * facts declared askable openly (a declared judgement first, then the last objective's);
+   * `matching` pairs three key words with their meanings. Without the material the form needs, or
+   * with no flow, the exit quiz: some closing check always ends the deck.
+   */
+  function chooseCloser():
+    | { kind: "exit-ticket" }
+    | {
+        kind: "open-response" | "discussion" | "matching";
+        objectives: number[];
+        refs: OrdinalRef[];
+        adds: string;
+      } {
+    const form = shape.close ?? "quiz";
+    if (form === "written" || form === "debate") {
+      const open = facts.questions.flatMap((q, i) =>
+        q.use === "exit" && !used.questions.has(i) && admitsOpen(i) && fair(i) ? [i] : [],
+      );
+      const lastOf = (i: number) => Math.max(-1, ...refIndices(facts.questions[i]?.objectiveRefs));
+      const i = [...open].sort(
+        (a, b) =>
+          Number(facts.questions[b]?.demand === "judgement") -
+            Number(facts.questions[a]?.demand === "judgement") ||
+          lastOf(b) - lastOf(a) ||
+          a - b,
+      )[0];
+      const q = i === undefined ? undefined : facts.questions[i];
+      if (i !== undefined && q !== undefined) {
+        used.questions.add(i);
+        const debate = form === "debate";
+        return {
+          kind: debate ? "discussion" : "open-response",
+          objectives: refIndices(q.objectiveRefs),
+          refs: [{ type: "question", index: i }],
+          adds: debate
+            ? `Closing debate, ending on a success check (what a strong answer includes): ${q.stem}`
+            : `Exit: pupils write a short answer: ${q.stem}`,
+        };
+      }
+      gap(
+        `The flow closes with ${form === "debate" ? "a debate" : "a written answer"} and the facts have no exit question that can be asked openly, so the lesson ends on the exit quiz.`,
+      );
+      return { kind: "exit-ticket" };
+    }
+    if (form === "matching") {
+      const terms = facts.vocabulary
+        .flatMap((v, t) => (refIndices(v.objectiveRefs).every((o) => taught(o)) ? [t] : []))
+        .slice(0, MATCHING_PAIRS);
+      if (terms.length === MATCHING_PAIRS) {
+        return {
+          kind: "matching",
+          objectives: dedupe(terms.flatMap((t) => refIndices(facts.vocabulary[t]?.objectiveRefs))),
+          refs: terms.map((index): OrdinalRef => ({ type: "vocabulary", index })),
+          adds: `Pupils match each key word to its meaning: ${terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", ")}.`,
+        };
+      }
+      gap(
+        `The flow closes with a matching task and the facts have ${terms.length} key word${terms.length === 1 ? "" : "s"} on taught objectives, so the lesson ends on the exit quiz.`,
+      );
+    }
+    return { kind: "exit-ticket" };
+  }
+
   function orderInCycles(): { teach: Slot[]; check: Slot[] }[] {
     const byRank = (a: Slot, b: Slot) => compareRanks(a.rank, b.rank);
     const lastOwner = (s: Slot) => Math.max(s.primary, ...s.objectives);
@@ -1406,13 +1502,15 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       case "starter": {
         const asked = slot.questions ?? [];
         refs.push(...asked.map((index): OrdinalRef => ({ type: "question", index })));
-        adds = slot.retrieval
-          ? `Retrieval: ${input.retrieval?.length ?? 0} quick questions on earlier lessons pupils answer from memory before the teaching.`
-          : asked.length > 0
-            ? `Retrieval: ${asked.length} quick questions pupils answer from memory before the teaching.`
-            : priorKnowledge === ""
-              ? `Pupils say what they already think about ${topic} before being told.`
-              : `Retrieval: pupils recall what the class has already covered: ${priorKnowledge}`;
+        adds = hooks
+          ? `Hook: pupils say what they already think about ${topic} before being told.`
+          : slot.retrieval
+            ? `Retrieval: ${input.retrieval?.length ?? 0} quick questions on earlier lessons pupils answer from memory before the teaching.`
+            : asked.length > 0
+              ? `Retrieval: ${asked.length} quick questions pupils answer from memory before the teaching.`
+              : priorKnowledge === ""
+                ? `Pupils say what they already think about ${topic} before being told.`
+                : `Retrieval: pupils recall what the class has already covered: ${priorKnowledge}`;
         if (slot.misconception !== undefined) {
           refs.push({ type: "misconception", index: slot.misconception });
         }
@@ -1545,21 +1643,32 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     });
   });
 
-  // The exit quiz (chosen above): its items as refs, in objective order.
-  const withheld = facts.questions.some((q, i) => q.use === "exit" && !fair(i));
-  const n = exitItems.length;
-  outline.push({
-    kind: "exit-ticket",
-    factRefs: objectiveRefs(all),
-    phase: "check",
-    brief: brief(
-      `${n} quick item${n === 1 ? "" : "s"} across the objectives${withheld ? ", each on what the slides taught" : ""}; the answers are revealed on the slide.`,
-    ),
-  });
-  outlineFactRefs.push({
-    index: exitPosition,
-    factRefs: exitItems.map((it): OrdinalRef => ({ type: it.type, index: it.index })),
-  });
+  // The closing check (chosen above): the exit quiz's items as refs, in objective order, or the
+  // one question or the terms of the flow's closing form.
+  if (closer.kind === "exit-ticket") {
+    const withheld = facts.questions.some((q, i) => q.use === "exit" && !fair(i));
+    const n = exitItems.length;
+    outline.push({
+      kind: "exit-ticket",
+      factRefs: objectiveRefs(all),
+      phase: "check",
+      brief: brief(
+        `${n} quick item${n === 1 ? "" : "s"} across the objectives${withheld ? ", each on what the slides taught" : ""}; the answers are revealed on the slide.`,
+      ),
+    });
+    outlineFactRefs.push({
+      index: exitPosition,
+      factRefs: exitItems.map((it): OrdinalRef => ({ type: it.type, index: it.index })),
+    });
+  } else {
+    outline.push({
+      kind: closer.kind,
+      factRefs: objectiveRefs(closer.objectives),
+      phase: "check",
+      brief: brief(closer.adds),
+    });
+    outlineFactRefs.push({ index: exitPosition, factRefs: closer.refs });
+  }
 
   // The shares the fill could not reach are gaps too, so a schema issue always has its sentence.
   const explainSlides = outline.filter(
@@ -1594,7 +1703,11 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     practised: slots.flatMap((s, i) =>
       s.phase === "practise" && s.objectives.includes(o) ? [i + 2] : [],
     ),
-    checked: exitItems.some((it) => itemObjectives(it).includes(o)) ? [exitPosition] : [],
+    checked:
+      exitItems.some((it) => itemObjectives(it).includes(o)) ||
+      (closer.kind !== "exit-ticket" && closer.objectives.includes(o))
+        ? [exitPosition]
+        : [],
   }));
 
   const unplaced = {
