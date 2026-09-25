@@ -234,6 +234,19 @@ describe("tidyMessage", () => {
         changed: false,
       }),
     ).toBe("Nothing left to tidy: 2 boxes still covers the room the reason needs");
+    expect(
+      tidyMessage({
+        moved: 0,
+        stepped: 1,
+        continued: 0,
+        overflow: ["x", "y"],
+        overflowText: ["The Provisional Government continued the\u2026", "Working card"],
+        laneOverflow: [],
+        changed: true,
+      }),
+    ).toBe(
+      'Tidied: 1 size stepped down. 2 boxes will not fit at the smallest readable size ("The Provisional Government continued the\u2026", "Working card")',
+    );
   });
 });
 
@@ -578,5 +591,10 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     const out = tidySlide(lesson, sidOf(lesson), ruler);
     expect(out.outcome.continued).toBe(0);
     expect(out.outcome.overflow).toEqual(["p"]);
+    // The toast names the box by its first words, so the teacher knows which one it means.
+    expect(out.outcome.overflowText).toEqual(["and then another thing happened\u2026"]);
+    expect(tidyMessage(out.outcome)).toContain(
+      '1 box will not fit at the smallest readable size ("and then another thing happened\u2026")',
+    );
   });
 });

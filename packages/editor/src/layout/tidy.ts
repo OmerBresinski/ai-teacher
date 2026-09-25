@@ -48,6 +48,8 @@ export type TidyOutcome = {
   continued: number;
   /** Ids still overflowing after everything the engine could do. */
   overflow: Id[];
+  /** The first words of each of those boxes, in `overflow` order, so the toast can name them. */
+  overflowText?: string[];
   /** Ids still standing in the lane the "Why?" panel is owed. */
   laneOverflow: Id[];
   changed: boolean;
@@ -483,6 +485,17 @@ function fitAndSplit(
   return { slides, results };
 }
 
+/** How a toast names a box: its first few words, or a card's name. */
+function nameOf(el: SlideElement | undefined): string | undefined {
+  if (!el) return undefined;
+  if (reducers.isTextLike(el)) {
+    const words = docToPlainText(el.doc).trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return undefined;
+    return words.length > 5 ? `${words.slice(0, 5).join(" ")}\u2026` : words.join(" ");
+  }
+  return el.name?.trim() || undefined;
+}
+
 const sizeOf = (el: SlideElement): number | undefined =>
   el.type === "text" || el.type === "gap-text"
     ? el.style.fontSize
@@ -519,6 +532,8 @@ export function tidySlide(
   // What still does not fit, on any of the slides the tidy produced.
   const overflow = [...new Set(results.flatMap((r) => r.overflow))];
   const laneOverflow = [...new Set(results.flatMap((r) => r.laneOverflow))];
+  const everyElement = new Map(slides.flatMap((s) => s.elements).map((e) => [e.id, e]));
+  const overflowText = overflow.flatMap((id) => nameOf(everyElement.get(id)) ?? []);
 
   const changed = tidied.elements.filter((next) => {
     const prev = before.get(next.id);
@@ -528,7 +543,7 @@ export function tidySlide(
   });
 
   if (changed.length === 0 && continuations.length === 0 && removed.length === 0) {
-    return { lesson, outcome: { ...EMPTY, overflow, laneOverflow } };
+    return { lesson, outcome: { ...EMPTY, overflow, overflowText, laneOverflow } };
   }
 
   // `fitElement`, not `updateElement`: a split leaves the head of the words in the box, and that
@@ -556,6 +571,7 @@ export function tidySlide(
       stepped: head.stepped.length,
       continued: continuations.length,
       overflow,
+      overflowText,
       laneOverflow,
       changed: true,
     },
@@ -571,15 +587,18 @@ export const tidySlideReducer = (lesson: Lesson, slideId: Id, measure: Measurer)
 
 /**
  * The sentence the toast shows. Plain counting — and it says so when something still does not fit,
- * because the engine will not go below the text's own projector floor to hide the problem.
+ * because the engine will not go below the text's own projector floor to hide the problem — and
+ * names the box by its first words, so a teacher knows which one without hunting for it.
  */
 export function tidyMessage(o: TidyOutcome): string {
   const n = o.overflow.length;
   const overflowing = new Set(o.overflow);
   const lane = o.laneOverflow.filter((id) => !overflowing.has(id)).length;
   const count = (k: number) => (k === 1 ? "1 box" : `${k} boxes`);
+  const named = (o.overflowText ?? []).map((t) => `"${t}"`);
+  const which = named.length ? ` (${named.join(", ")})` : "";
   const stuck = [
-    n ? `${count(n)} will not fit at the smallest readable size` : "",
+    n ? `${count(n)} will not fit at the smallest readable size${which}` : "",
     lane ? `${count(lane)} still covers the room the reason needs` : "",
   ]
     .filter(Boolean)
