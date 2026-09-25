@@ -58,6 +58,14 @@ import {
  * writes none, and the list was up to 700 characters of noise on each. Not done: a per-kind system
  * text. The system text is the same on every call, so the provider caches it; moving the shapes and
  * examples into the user turn would shrink the call but lose that cache, costing more per slide.
+ *
+ * v25 (25 Sept 2026, luna-direct DIAGNOSIS FM3): "asserted, not explained" was the commonest
+ * explanation fault (29 whys in 57 decks, every cell), and no deck reached the 5 anchor ("an
+ * example, and the misconception it heads off is named"). The content rule now orders the body as
+ * a build-up: the claim in the heading, the reason it holds, then the example showing that reason.
+ * The outline often puts the WATCH OUT callout on another slide (02f34f: the groyne watch-out on
+ * the erosion slide), so a teaching slide without its own watch-out is told, by a code-built line
+ * (`ownMisconceptions`), to name its objective's misconception in one closing sentence.
  */
 
 export type GenerateSlideInput = {
@@ -163,15 +171,34 @@ const STEM_KINDS: ReadonlySet<string> = new Set([
   "plenary",
 ]);
 
+/**
+ * v25: the misconceptions a teaching slide names itself. A `content` or `image-text` slide whose
+ * key ideas share an objective with a misconception names it in the body, unless this slide's own
+ * watch-out callout carries it. Code decides, so the line is bare (CORE 2026-09-22: an exception
+ * on a packet line is decided in code). Empty for every other slide, which keeps their text as v24.
+ */
+export function ownMisconceptions(input: GenerateSlideInput): string[] {
+  if (input.entry.kind !== "content" && input.entry.kind !== "image-text") return [];
+  if (input.entry.callout?.kind === "watch-out") return [];
+  const objectives = new Set(
+    (input.referenced.keyIdeas ?? [])
+      .filter((k) => input.entry.factRefs.includes(k.id))
+      .flatMap((k) => k.objectiveRefs ?? []),
+  );
+  return input.referenced.misconceptions
+    .filter((m) => (m.objectiveRefs ?? []).some((o) => objectives.has(o)))
+    .map((m) => m.id);
+}
+
 export const generateSlidePrompt = {
-  version: "generate-slide.v24",
+  version: "generate-slide.v25",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
     "Rules:",
     HOUSE_RULES,
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
-    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading, its explanation, example and any useful analogy in the body. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.",
+    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading; the body builds it up: the reason it holds, then the example showing it, and any useful analogy. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.",
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
     "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
@@ -250,6 +277,12 @@ export const generateSlidePrompt = {
       const { kind, factRefs } = input.entry.callout;
       parts.push(
         `This slide carries a "${kind}" callout: set \`callout\` to kind "${kind}" with \`text\` one line for pupils, from ${factRefs.join(", ")} only.`,
+      );
+    }
+    const misconceptions = ownMisconceptions(input);
+    if (misconceptions.length > 0) {
+      parts.push(
+        `Its misconception (${misconceptions.join(", ")}): end the body with one sentence on what some pupils think and why it is wrong.`,
       );
     }
     if (input.photo !== undefined) parts.push(...photoBlock(input.photo));
