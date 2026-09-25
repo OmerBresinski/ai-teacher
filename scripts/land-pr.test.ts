@@ -9,6 +9,9 @@ import {
   parseLandPrArgs,
   parseRequiredChecks,
   parseVercelProduction,
+  railwayLinkArgs,
+  railwayListArgs,
+  railwayLogsCommand,
   reviewThreadsPageInfo,
 } from "./land-pr";
 import { ExitCode, UserFacingError } from "./lib/exit";
@@ -485,7 +488,7 @@ Fetching deployments in omerbresinskis-projects
       },
     });
     await expect(landPr(42, {}, fake.deps)).rejects.toThrow(
-      "railway logs -p a79752e1-8bf5-41d0-b832-f1b64aaf6d2f",
+      "railway logs new-api -e production -s api --build",
     );
   });
 
@@ -591,5 +594,37 @@ Fetching deployments in omerbresinskis-projects
         expect((error as UserFacingError).exitCode).toBe(ExitCode.Usage);
       }
     }
+  });
+});
+
+describe("railway CLI arguments (4.x has no -p/--project flag)", () => {
+  const PROJECT = "a79752e1-8bf5-41d0-b832-f1b64aaf6d2f";
+
+  test("deployment list targets the service and environment only, never a project flag", () => {
+    for (const service of ["api", "worker"] as const) {
+      const args = railwayListArgs(service);
+      expect(args.slice(0, 2)).toEqual(["deployment", "list"]);
+      expect(args).toContain("--json");
+      expect(args[args.indexOf("-s") + 1]).toBe(service);
+      expect(args[args.indexOf("-e") + 1]).toBe("production");
+      expect(args).not.toContain("-p");
+      expect(args).not.toContain("--project");
+      expect(args).not.toContain(PROJECT);
+    }
+  });
+
+  test("the project is selected by linking a directory to it non-interactively", () => {
+    const args = railwayLinkArgs();
+    expect(args[0]).toBe("link");
+    expect(args[args.indexOf("-p") + 1]).toBe(PROJECT);
+    expect(args[args.indexOf("-e") + 1]).toBe("production");
+  });
+
+  test("the logs hint names the deployment and the link it needs, without -p", () => {
+    const hint = railwayLogsCommand("worker", "dep-1");
+    expect(hint).toContain("railway logs dep-1 -e production -s worker --build");
+    expect(hint).toContain(`railway link -p ${PROJECT} -e production`);
+    expect(hint.split("\n")[0]).not.toContain("-p");
+    expect(railwayLogsCommand("api", null)).toContain("railway logs -e production -s api --build");
   });
 });
