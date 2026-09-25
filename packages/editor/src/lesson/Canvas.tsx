@@ -153,6 +153,14 @@ export function Canvas({
     stage.current?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [editingTextId, snapBack]);
 
+  /**
+   * While a text box is being typed into, the slide's bottom edge opens so the lines that run
+   * off it stay in sight (the scroll region follows the caret as usual); the moment editing ends
+   * the slide clips again. Sideways overflow is clipped throughout, and no other surface
+   * (thumbnails, present, export) mounts this frame.
+   */
+  const spill = editingTextId !== null;
+
   const compactChrome = useCompactChrome();
   const gutter = compactChrome ? 16 : GUTTER;
 
@@ -351,7 +359,8 @@ export function Canvas({
                   position: "absolute",
                   inset: 0,
                   borderRadius: "inherit",
-                  overflow: "clip",
+                  overflowX: "clip",
+                  overflowY: spill ? "visible" : "clip",
                   isolation: "isolate",
                 }}
               >
@@ -364,6 +373,7 @@ export function Canvas({
                   revealAnswer={showingAnswer}
                   answerProgress={answerStepsTaken(slide, previewStep)}
                   transformOverride={preview ?? undefined}
+                  spill={spill}
                 />
               </div>
               {/* An inset hairline in the theme's own line colour gives the slide an edge against the gutter. */}

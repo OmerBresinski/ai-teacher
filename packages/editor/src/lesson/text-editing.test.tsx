@@ -226,10 +226,23 @@ describe("the slide frame while typing past the bottom edge", () => {
   const rootOf = (c: HTMLElement) =>
     c.querySelector<HTMLElement>("[data-slide-frame] [data-slide-root]") as HTMLElement;
 
+  const clipping = (el: HTMLElement) => `${el.style.overflowX}/${el.style.overflowY}`;
+
   test("neither the frame nor the slide root is a scroll container: both clip", () => {
     const { container } = renderEditor(textLesson());
-    expect(frameOf(container).style.overflow).toBe("clip");
-    expect(rootOf(container).style.overflow).toBe("clip");
+    expect(clipping(frameOf(container))).toBe("clip/clip");
+    expect(clipping(rootOf(container))).toBe("clip/clip");
+  });
+
+  test("while a box is being typed into, both let text spill past the bottom edge; Escape clips again", async () => {
+    const { container } = renderEditor(textLesson());
+    const pm = await openEditor(container);
+    expect(clipping(frameOf(container))).toBe("clip/visible");
+    expect(clipping(rootOf(container))).toBe("clip/visible");
+    fireEvent.keyDown(pm, { key: "Escape" });
+    await waitFor(() => expect(proseMirror(container)).toBeNull());
+    expect(clipping(frameOf(container))).toBe("clip/clip");
+    expect(clipping(rootOf(container))).toBe("clip/clip");
   });
 
   test("a scroll the frame or the slide root reports is undone at once", async () => {

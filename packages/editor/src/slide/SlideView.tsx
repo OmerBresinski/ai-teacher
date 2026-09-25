@@ -43,6 +43,12 @@ export type SlideViewProps = {
    */
   transformOverride?: ReadonlyMap<string, ElementTransform>;
   /**
+   * Edit mode: let content past the bottom edge show instead of clipping it. The canvas sets it
+   * while a text box is being typed into, so the teacher sees the lines that run off the slide;
+   * sideways overflow stays clipped. Ignored in every other mode.
+   */
+  spill?: boolean;
+  /**
    * The api origin stored `/files/<key>` pictures are loaded from (TEACH-275). Set by an entry
    * that mounts a slide outside an `ImageOriginProvider` (the export stage); otherwise inherited.
    */
@@ -67,6 +73,7 @@ export function SlideView({
   answerProgress = 0,
   className,
   transformOverride,
+  spill = false,
   imageOrigin,
 }: SlideViewProps) {
   /**
@@ -118,8 +125,11 @@ export function SlideView({
     height: SLIDE_H,
     // In the editor the root must not be a scroll container: `hidden` let Chromium caret-scroll
     // it while typing past the bottom edge (the canvas snaps it back, `Canvas.tsx`). `clip`
-    // paints the same and cannot scroll. Other modes keep the value they were captured with.
-    overflow: mode === "edit" ? "clip" : "hidden",
+    // paints the same and cannot scroll, and while a box is being typed into the bottom edge
+    // opens (`spill`). Other modes keep the value they were captured with.
+    ...(mode === "edit"
+      ? { overflowX: "clip" as const, overflowY: spill ? ("visible" as const) : ("clip" as const) }
+      : { overflow: "hidden" as const }),
     background: bg?.color ?? theme.colors.background,
     color: theme.colors.ink,
     fontFamily: theme.fonts.body,

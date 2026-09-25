@@ -227,6 +227,22 @@ test.describe("text editing", () => {
       [0, 0],
     ]);
     expect(Math.abs((await offset()) - before)).toBeLessThan(1);
+    // ...and the line under the caret is painted below the slide's edge, where a hand could
+    // click it: the frame opens its bottom edge while a box is being typed into.
+    const painted = (text: string) =>
+      page.evaluate((t) => {
+        const line = [...document.querySelectorAll("[data-slide-frame] .td-rt p")].find(
+          (p) => p.textContent === t,
+        );
+        if (!line) return "no line";
+        const b = line.getBoundingClientRect();
+        const frame = document
+          .querySelector("[data-slide-clip]")
+          ?.getBoundingClientRect() as DOMRect;
+        const hit = document.elementFromPoint(b.left + 8, b.top + b.height / 2);
+        return { belowEdge: b.top >= frame.bottom, inSlide: !!hit?.closest("[data-slide-root]") };
+      }, text);
+    expect(await painted("Line 8")).toEqual({ belowEdge: true, inSlide: true });
 
     await page.keyboard.press("Escape");
     await expect(proseMirror(page)).toHaveCount(0);
@@ -235,6 +251,8 @@ test.describe("text editing", () => {
       [0, 0],
     ]);
     expect(Math.abs((await offset()) - before)).toBeLessThan(1);
+    // Clipped again: the same line sits past the edge and nothing of the slide is under it.
+    expect(await painted("Line 8")).toEqual({ belowEdge: true, inSlide: false });
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(title).not.toContainText("Line 8");
   });
