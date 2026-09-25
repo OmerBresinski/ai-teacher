@@ -1,4 +1,5 @@
 import type { Id, Lesson, RichDoc, Slide, SlideElement, Theme } from "@tj/domain/documents";
+import { BODY_Y } from "@tj/slides";
 import { cloneSlide, docFromText } from "../model/factories";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
@@ -6,6 +7,10 @@ import { docToPlainText } from "../text/static";
 import { explanationReserve, hasExplanationPanel, reservedLines } from "./explanation";
 import {
   docLineCount,
+  isBackdrop,
+  isFrozen,
+  isHairline,
+  isLayerBelow,
   type Measurer,
   type ReflowResult,
   reflowSlide,
@@ -54,55 +59,78 @@ function splittableDoc(el: SlideElement): RichDoc | null {
   return docLineCount(el.doc) > 1 ? el.doc : null;
 }
 
-/** Mark a continuation slide's heading so a teacher can see it is a second page. */
-function markContinued(slide: Slide): void {
-  const heading = slide.elements.find(
-    (el) => el.type === "text" && (el.style.preset === "heading" || el.style.preset === "title"),
-  );
-  if (heading?.type !== "text") return;
-  const text = docToPlainText(heading.doc).trim();
-  if (!text || /continued/i.test(text)) return;
-  heading.doc = docFromText(`${text} (continued)`);
-}
+/** Sub-point noise from rounding is not a move. */
+const EPS = 0.5;
+
+const isHeadingText = (el: SlideElement): boolean =>
+  el.type === "text" && (el.style.preset === "heading" || el.style.preset === "title");
+
+/** What every continuation keeps from its source: the backdrop, the heading and the rule under it. */
+const isChrome = (el: SlideElement): boolean =>
+  isBackdrop(el) || isHeadingText(el) || isHairline(el);
 
 /**
- * Split the element at `splitAt` across a continuation slide. Returns the head doc to leave behind
- * and the new slide to insert, or null when there is nothing sensible to split.
+ * A box that flows down the slide and can be carried onto a continuation. A card, an image or an
+ * icon is not one: a card travels with the text that sits on it, an image stays where it was put.
  */
-function planSplit(
-  slide: Slide,
-  reflowed: SlideElement[],
-  splitAt: number,
-  measure: Measurer,
-): { head: RichDoc; continuation: Slide } | null {
-  const el = reflowed[splitAt];
-  if (!el) return null;
-  const doc = splittableDoc(el);
-  const parts = doc ? textPartsOf(el, slide) : null;
-  if (!doc || !parts) return null;
+const isFlow = (el: SlideElement): boolean => !isChrome(el) && !isFrozen(el) && !isLayerBelow(el);
 
-  const available = Math.max(parts.chrome + 1, SAFE_BOTTOM - el.y);
-  const { head, tail } = splitDocToFit(
-    doc,
-    {
-      width: el.w,
-      style: parts.style,
-      preset: parts.preset,
-      inset: parts.inset,
-      chrome: parts.chrome,
-    },
-    available / (1 + SAFETY),
-    measure,
-  );
-  if (!tail) return null;
+/** Reading order: top edge, then draw order. */
+const byY = (a: { y: number; index: number }, b: { y: number; index: number }) =>
+  a.y - b.y || a.index - b.index;
 
-  const continuation = cloneSlide({ ...slide, elements: reflowed });
-  const carried = continuation.elements[splitAt];
-  if (!carried || (carried.type !== "text" && carried.type !== "gap-text")) return null;
-  carried.doc = tail;
-  carried.y = el.y;
-  markContinued(continuation);
-  return { head, continuation };
+/**
+ * Does `el` sit on `card`? Its top edge inside the card and its width within the card's: the
+ * bottom is not checked, because editing rewrites an auto-height box's stored height to its
+ * content, and a box a teacher has just typed into runs past the card it was laid on.
+ */
+const sitsOn = (card: SlideElement, el: SlideElement): boolean =>
+  el.x >= card.x - EPS &&
+  el.x + el.w <= card.x + card.w + EPS &&
+  el.y >= card.y - EPS &&
+  el.y < card.y + card.h - EPS;
+
+/** The card an element sits on, if any: a layer below, not the backdrop. */
+const cardOf = (el: SlideElement, authored: SlideElement[]): SlideElement | undefined =>
+  authored.find((o) => o.id !== el.id && isLayerBelow(o) && !isBackdrop(o) && sitsOn(o, el));
+
+/**
+ * Where carried text starts on a continuation: the recipes' body top, or higher when the source
+ * slide's own body starts higher (a title slide has no heading band to clear).
+ */
+const bodyTopOf = (authored: SlideElement[]): number =>
+  Math.min(BODY_Y, ...authored.filter(isFlow).map((el) => el.y));
+
+/**
+ * Question slides are never split (ruling 91): an option grid that does not fit takes a roomier
+ * layout at generation, and a continuation would leave the question on one slide and its answers
+ * on the next.
+ */
+const QUESTION_KINDS: ReadonlySet<Slide["kind"]> = new Set([
+  "multiple-choice",
+  "true-false",
+  "matching",
+  "fill-gap",
+  "sort",
+  "image-match",
+  "open-response",
+  "exit-ticket",
+]);
+const isQuestionSlide = (slide: Slide): boolean =>
+  slide.question !== undefined || QUESTION_KINDS.has(slide.kind);
+
+/**
+ * Mark a continuation slide's heading so a teacher can see it is a second page. Only the heading's
+ * first line is kept: lines a teacher typed into the heading box stay on the slide they typed them
+ * on, and are not repeated over every continuation.
+ */
+function markContinued(slide: Slide): void {
+  const heading = slide.elements.find(isHeadingText);
+  if (heading?.type !== "text") return;
+  const first = heading.doc.content?.[0];
+  const text = docToPlainText(first ?? heading.doc).trim();
+  if (!text || /continued/i.test(text)) return;
+  heading.doc = docFromText(`${text} (continued)`);
 }
 
 /**
@@ -114,12 +142,201 @@ const reflowOptions = (slide: Slide, theme: Theme, measure: Measurer) =>
     ? { fitBottom: SAFE_BOTTOM - explanationReserve(theme, reservedLines(slide, theme, measure)) }
     : {};
 
+type Plan = {
+  /** The head slide's elements once the overspill has gone: shortened, or with boxes removed. */
+  head: SlideElement[];
+  continuation: Slide;
+};
+
+type Candidate = { el: SlideElement; index: number; y: number };
+
+/**
+ * Build the continuation for one target box. `split` leaves the head of the box's doc behind and
+ * carries the tail; `move` carries the whole box. Either way every flow element below the target
+ * comes along, re-stacked from the body top under the source's heading (marked continued), its
+ * backdrop and heading rule; the boxes that were fully placed above the target stay behind. A
+ * target that sits on a card brings the card and what else is on it (a worked example's Working
+ * card and its WORKING caption), and the card grows to fill the room it now has.
+ */
+function buildPlan(
+  slide: Slide,
+  reflowed: SlideElement[],
+  order: Candidate[],
+  target: Candidate,
+  mode: "split" | "move",
+  theme: Theme,
+  measure: Measurer,
+): Plan | null {
+  const el = target.el;
+  const authored = slide.elements;
+  const src = authored[target.index] ?? el;
+  const bodyTop = bodyTopOf(authored);
+
+  const card = cardOf(src, authored);
+  const reflowedCard = card ? reflowed.find((r) => r.id === card.id) : undefined;
+  // A card keeps its bottom edge: pushed down by what is above it, it gives up height rather than
+  // running off the slide (the recipes stop it short of the safe edge by the engine's cushion).
+  const cardFit = (y: number, bottom: number) =>
+    Math.max(1, Math.floor(Math.min(bottom - y, (SAFE_BOTTOM - y) / (1 + SAFETY))));
+  const cardBottom = card ? Math.min(card.y + card.h, SAFE_BOTTOM) : SAFE_BOTTOM;
+  const group = new Set<Id>();
+  if (card) {
+    group.add(card.id);
+    for (const o of authored) if (o.id !== card.id && sitsOn(card, o)) group.add(o.id);
+  }
+  /** Flow content that stays on the head above the target, so moving the target leaves a slide. */
+  const staysAbove = order.some((c) => isFlow(c.el) && byY(c, target) < 0 && !group.has(c.el.id));
+
+  let headDoc: RichDoc | null = null;
+  let tail: RichDoc | null = null;
+  let tailH = el.h;
+  if (mode === "split") {
+    const doc = splittableDoc(el);
+    const parts = doc ? textPartsOf(el, slide) : null;
+    if (!doc || !parts) return null;
+    const base = {
+      width: el.w,
+      style: parts.style,
+      preset: parts.preset,
+      // The size the layout settled on, so the split measures what the slide shows.
+      fontSize: parts.style?.fontSize,
+      inset: parts.inset,
+      chrome: parts.chrome,
+    };
+    // The room on this slide, from where the box landed after the push and step-down; on a card,
+    // to the card's own foot.
+    const limit =
+      card && reflowedCard
+        ? Math.min(
+            SAFE_BOTTOM,
+            reflowedCard.y + cardFit(reflowedCard.y, cardBottom) - (src.x - card.x),
+          )
+        : SAFE_BOTTOM;
+    const available = Math.max(parts.chrome + 1, limit - el.y);
+    const room = available / (1 + SAFETY);
+    const split = splitDocToFit(doc, base, room, measure);
+    if (!split.tail) return null;
+    // When not even the first line fits where the box stands, the box goes whole, and a card it
+    // sits on goes with it rather than staying behind empty. Unless it is the only content: then
+    // the first line stays and is reported, because a slide of just a heading helps nobody.
+    if (staysAbove && measure({ ...base, doc: split.head }) > room + EPS)
+      return buildPlan(slide, reflowed, order, target, "move", theme, measure);
+    headDoc = split.head;
+    tail = split.tail;
+    tailH = Math.max(1, Math.round(measure({ ...base, doc: tail })));
+  }
+
+  const after = order.filter((c) => isFlow(c.el) && byY(c, target) > 0);
+  const moving = new Set<Id>([el.id, ...after.map((c) => c.el.id)]);
+  const shift = reflowedCard ? bodyTop - reflowedCard.y : bodyTop - el.y;
+  // Boxes under a shortened target close up beneath its tail.
+  const trailing = mode === "split" && !card ? tailH - el.h : 0;
+
+  const elements: SlideElement[] = [];
+  let targetIdx = -1;
+  reflowed.forEach((r, i) => {
+    const a = authored[i] ?? r;
+    if (isChrome(a)) {
+      // Authored geometry and size: a heading stepped down to make room here starts again at full
+      // size. A rule below the body top belongs to the content it sat under, not the heading.
+      if (isHairline(a) && a.y > bodyTop + EPS) return;
+      elements.push(structuredClone(a));
+      return;
+    }
+    if (r.id === el.id) {
+      const next = structuredClone(r);
+      if (tail && (next.type === "text" || next.type === "gap-text")) next.doc = tail;
+      next.y = r.y + shift;
+      next.h = tailH;
+      targetIdx = elements.length;
+      elements.push(next);
+      return;
+    }
+    if (group.has(r.id)) {
+      const next = structuredClone(r);
+      if (card && r.id === card.id) {
+        next.y = bodyTop;
+        next.h = cardFit(bodyTop, cardBottom);
+      } else next.y = r.y + shift;
+      elements.push(next);
+      return;
+    }
+    if (moving.has(r.id)) {
+      const next = structuredClone(r);
+      // Below a card the card's bottom edge has not moved; elsewhere the box follows the target.
+      next.y = card ? r.y : r.y + shift + trailing;
+      elements.push(next);
+    }
+  });
+  if (targetIdx < 0) return null;
+
+  const continuation = cloneSlide({ ...slide, elements });
+  markContinued(continuation);
+
+  if (mode === "move") {
+    // Only worth it when the box lands higher than it stood here; otherwise the next round would
+    // move it again, slide after slide, and it is better reported as one box that will not fit.
+    const landed = reflowSlide(
+      continuation,
+      theme,
+      measure,
+      reflowOptions(continuation, theme, measure),
+    );
+    const at = landed.elements[targetIdx];
+    if (!at || at.y > el.y - EPS) return null;
+  }
+
+  const removed = new Set(moving);
+  if (mode === "split") removed.delete(el.id);
+  else for (const id of group) removed.add(id);
+  const head = reflowed
+    .filter((r) => !removed.has(r.id))
+    .map((r) => {
+      if (r.id === el.id && headDoc && (r.type === "text" || r.type === "gap-text"))
+        return { ...r, doc: headDoc };
+      if (card && r.id === card.id) return { ...r, h: cardFit(r.y, cardBottom) };
+      return r;
+    });
+  return { head, continuation };
+}
+
+/**
+ * Decide what goes onto a continuation slide, or null when nothing sensible can. The target is the
+ * topmost overflowing flow box: split if it is a list or several paragraphs, else moved whole with
+ * everything under it; and when moving it gains nothing (a single paragraph at the top of the body
+ * that is simply too tall), the next splittable box below it is split instead and the paragraph is
+ * reported as it is.
+ */
+function planSplit(
+  slide: Slide,
+  reflowed: SlideElement[],
+  overflow: Id[],
+  theme: Theme,
+  measure: Measurer,
+): Plan | null {
+  if (isQuestionSlide(slide)) return null;
+  const over = new Set(overflow);
+  const order = reflowed.map((el, index) => ({ el, index, y: el.y })).sort(byY);
+  const candidates = order.filter((c) => over.has(c.el.id) && isFlow(c.el));
+  const first = candidates[0];
+  if (!first) return null;
+  const attempt = (target: Candidate, mode: "split" | "move") =>
+    buildPlan(slide, reflowed, order, target, mode, theme, measure);
+
+  if (splittableDoc(first.el)) return attempt(first, "split");
+  const moved = attempt(first, "move");
+  if (moved) return moved;
+  const next = candidates.find((c) => c !== first && splittableDoc(c.el));
+  return next ? attempt(next, "split") : null;
+}
+
 /** A slide can spill onto at most this many continuation slides in one tidy. */
 const MAX_CONTINUATIONS = 6;
 
 /**
  * Reflow a slide and, while it still will not fit at the smallest legible size, carry the overspill
- * onto a continuation slide — and reflow that too.
+ * onto a continuation slide — and reflow that too, so each continuation is filled before the next
+ * one starts.
  */
 function fitAndSplit(
   slide: Slide,
@@ -135,17 +352,9 @@ function fitAndSplit(
     let next: Slide | null = null;
 
     if (result.splitAt !== undefined && round < MAX_CONTINUATIONS) {
-      const at = result.splitAt;
-      const plan = planSplit(current, result.elements, at, measure);
+      const plan = planSplit(current, result.elements, result.overflow, theme, measure);
       if (plan) {
-        current = {
-          ...current,
-          elements: result.elements.map((el, i) =>
-            i === at && (el.type === "text" || el.type === "gap-text")
-              ? { ...el, doc: plan.head }
-              : el,
-          ),
-        };
+        current = { ...current, elements: plan.head };
         // Settle the shortened slide before recording it.
         result = reflowSlide(current, theme, measure, reflowOptions(current, theme, measure));
         next = plan.continuation;
@@ -187,11 +396,16 @@ export function tidySlide(
   const { slides, results } = fitAndSplit(slide, theme, measure);
 
   const head = results[0];
-  const last = results[results.length - 1];
   const tidied = slides[0];
-  if (!head || !last || !tidied) return { lesson, outcome: EMPTY };
+  if (!head || !tidied) return { lesson, outcome: EMPTY };
   const continuations = slides.slice(1);
   const before = new Map(slide.elements.map((e) => [e.id, e]));
+  const kept = new Set(tidied.elements.map((e) => e.id));
+  // Boxes carried whole onto a continuation leave the head slide.
+  const removed = slide.elements.filter((e) => !kept.has(e.id)).map((e) => e.id);
+  // What still does not fit, on any of the slides the tidy produced.
+  const overflow = [...new Set(results.flatMap((r) => r.overflow))];
+  const laneOverflow = [...new Set(results.flatMap((r) => r.laneOverflow))];
 
   const changed = tidied.elements.filter((next) => {
     const prev = before.get(next.id);
@@ -200,11 +414,8 @@ export function tidySlide(
     return sizeOf(prev) !== sizeOf(next) || docOf(prev) !== docOf(next);
   });
 
-  if (changed.length === 0 && continuations.length === 0) {
-    return {
-      lesson,
-      outcome: { ...EMPTY, overflow: last.overflow, laneOverflow: last.laneOverflow },
-    };
+  if (changed.length === 0 && continuations.length === 0 && removed.length === 0) {
+    return { lesson, outcome: { ...EMPTY, overflow, laneOverflow } };
   }
 
   // `fitElement`, not `updateElement`: a split leaves the head of the words in the box, and that
@@ -218,6 +429,7 @@ export function tidySlide(
       doc: docOf(next),
     });
   }
+  if (removed.length > 0) out = reducers.deleteElements(out, slideId, removed);
   let after = slideId;
   for (const continuation of continuations) {
     out = reducers.insertSlide(out, continuation, after);
@@ -230,8 +442,8 @@ export function tidySlide(
       moved: head.moved.length,
       stepped: head.stepped.length,
       continued: continuations.length,
-      overflow: last.overflow,
-      laneOverflow: last.laneOverflow,
+      overflow,
+      laneOverflow,
       changed: true,
     },
   };
