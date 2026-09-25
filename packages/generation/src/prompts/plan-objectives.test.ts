@@ -44,8 +44,8 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 };
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v17",
-  hash: "a09065671819509c56ce37caf97c1a2107e38b1191703f356f692c4dc958a19a",
+  version: "plan-objectives.v18",
+  hash: "4ce288b25f09eec5f5a6a357bfb931677dcbc5a6d210dad01f9bbc64174308e6",
 };
 
 describe("plan-objectives", () => {
@@ -70,6 +70,7 @@ describe("plan-objectives", () => {
     // the prior-knowledge and curriculum rules moved to the user turn beside their inputs. v16: 309.
     // v17: 337, the unhedged count, the list-as-parts rule and "No objective restates the topic"
     // (gpt-6-luna gave one topic-restating objective on list-shaped topics); the alarm moves once.
+    // v18: 343, "it has one right answer" on the starter (3 of 9 gpt-6-luna low question faults).
     expect(system.trim().split(/\s+/).length).toBeLessThan(345);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
@@ -224,6 +225,7 @@ describe("plan-objectives", () => {
     // v16: a category word met v14's "not a heading"; the members are named instead.
     expect(system).toContain("where it covers several factors, methods or strategies, name them");
     expect(system).toContain("a different term, fact or method");
+    expect(system).toContain("options the question names; it has one right answer.");
     expect(system).not.toMatch(/earlier lesson|answerable before this lesson begins/);
     expect(system).toContain('"retrieval": [{ "question"');
     // The sketch shows no anchor slot: a no-extract call filled anchors it was shown.

@@ -274,8 +274,20 @@ const EXIT_MC_STEM = 100;
 const EXIT_OPTION = Math.floor((MC_LINE_MAX - EXIT_MC_STEM - 16) / 4 / 5) * 5;
 export const EXIT_LINE = `Each is one line of the exit quiz: either multiple choice, with a stem of at most ${EXIT_MC_STEM} characters and the answer and each distractor at most ${EXIT_OPTION}; or "forms" ["open-response"] with no distractors and a stem of at most ${LINE_MAX} characters. These caps replace the general length limits.`;
 
+/*
+ * v5 (25 Sept 2026, luna-direct yes/no deck checklist, `lab/luna-direct/RESULTS.md`): on gpt-6-luna
+ * low, 7 of 144 questions had a second defensible answer ("anotherCorrect", 0 on 5.6-luna low) and
+ * 2 a wrong key. Most were "name one" items keyed to one answer where several are right ("Name
+ * one hard engineering method…", "Which part of a plant can grow into a new plant?", "Write an
+ * equivalent ratio to 18:30…"). A question now has one right answer, or its answer lists every
+ * that is right; a distractor must be wrong by the taught text, which is the check
+ * the judge applies. Distractors (37 throwaway in DIAGNOSIS FM2) start from the taught
+ * misconception applied to the question's case; v4's separate misconceptionRef sentence is folded
+ * into that clause.
+ */
+
 export const planQuestionSetPrompt = {
-  version: "plan-question-set.v4",
+  version: "plan-question-set.v5",
   system: [
     "You are an experienced UK teacher writing the questions for one objective of a lesson, for one use, from the text its slides will teach.",
     "",
@@ -286,8 +298,8 @@ export const planQuestionSetPrompt = {
     'A judge reads each question beside the taught text and nothing else. What matters, in order: every question is answerable from the taught text alone, the fact, reason, method or quotation its answer needs being stated there; each takes a case of its own rather than repeating any example in the taught text, and may invent its scenario and numbers, saying so ("a shop", "suppose").',
     "Follow the brief's tier line.",
     "Every quantity carries its unit, in the answer and each option as well as the stem: 5 stickers, not 5.",
-    'Where a distractor heads off the misconception, say so in "misconceptionRef".',
-    'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors (without three real errors to use, leave multiple-choice out of "forms"), each a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
+    'Each question has one right answer; where several are right ("name one…"), "answer" lists each.',
+    'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors (without three real errors to use, leave multiple-choice out of "forms"), each wrong by the taught text and reached by a real error: the taught misconception applied to this case (give its "misconceptionRef"), a neighbouring idea or a wrong step. Write them in the same form, with at least one as long as the answer and none ending in a full stop, so length, punctuation and wording never give the answer away.',
     '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set: multiple-choice, true-false (only with a distractor that has a "misconceptionRef", never on exit), open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it, by the index shown.',
     LENGTH_LIMITS,
     "",

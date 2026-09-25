@@ -72,8 +72,8 @@ const SAMPLE: PlanQuestionSetInput = {
 };
 
 const PIN: { version: string; hash: string } = {
-  version: "plan-question-set.v4",
-  hash: "76a53b0d7fe6720c67bf3ad25b0332b232eeb52e9f0c435e1a459528f90c9373",
+  version: "plan-question-set.v5",
+  hash: "3c74a0d47d8bc67c4a945a3b9a522abb090a772bd0985b7db05fdd3fc00b0c75",
 };
 
 const QUESTION = {
@@ -102,7 +102,8 @@ describe("plan-question-set", () => {
     const system = planQuestionSetPrompt.system;
     const v14 = planFactsObjectivePrompt.system;
     // v14 is 487 words; this call is 357: v14 question rules plus the one judge sentence. The alarm follows the count.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(365);
+    // v4: 361. v5: 376, the one-right-answer sentence (7 "anotherCorrect" on gpt-6-luna low).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(380);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
@@ -125,8 +126,14 @@ describe("plan-question-set", () => {
     expect(system).toContain("Follow the brief's tier line.");
     expect(system).not.toContain('at least one "easy"');
     // v4 (audit B3): three distractors, the true-false condition, and no exit sentence (EXIT_LINE says it).
+    // v5 (luna-direct checklist): each distractor wrong by the taught text, the taught misconception
+    // first among the real errors, its ref folded into the clause.
     expect(system).toContain(
-      'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors (without three real errors to use, leave multiple-choice out of "forms"), each a wrong option a pupil reaches by a real error (the misconception, a neighbouring idea, a wrong step), in the same form, with at least one as long as the answer and no option ending in a full stop, so length, punctuation and wording never give the answer away.',
+      'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors (without three real errors to use, leave multiple-choice out of "forms"), each wrong by the taught text and reached by a real error: the taught misconception applied to this case (give its "misconceptionRef"), a neighbouring idea or a wrong step. Write them in the same form, with at least one as long as the answer and none ending in a full stop, so length, punctuation and wording never give the answer away.',
+    );
+    // v5: a "name one" item keyed to one of several right answers was the commonest question fault.
+    expect(system).toContain(
+      'Each question has one right answer; where several are right ("name one…"), "answer" lists each.',
     );
     expect(system).toContain(
       '"forms" lists every way the question can be set: multiple-choice, true-false (only with a distractor that has a "misconceptionRef", never on exit), open-response.',
@@ -148,9 +155,8 @@ describe("plan-question-set", () => {
     expect(system).toContain(
       "Every quantity carries its unit, in the answer and each option as well as the stem",
     );
-    expect(system).toContain(
-      'Where a distractor heads off the misconception, say so in "misconceptionRef".',
-    );
+    // v5: folded into the multiple-choice clause.
+    expect(system).not.toContain("Where a distractor heads off the misconception");
     expect(system).not.toContain("explain any word");
     // No teach rule: key ideas, vocabulary, the worked-example line, prior knowledge, invention of
     // real figures, and no input the call is not given.
