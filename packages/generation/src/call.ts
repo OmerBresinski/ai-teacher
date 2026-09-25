@@ -2,6 +2,7 @@ import {
   BudgetReservationError,
   isAiError,
   isAnthropicModelId,
+  isOpenAiModelId,
   withGenerationBudget,
 } from "@tj/ai";
 import { type ModelClass, safeValidationIssues } from "@tj/domain";
@@ -478,7 +479,7 @@ export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
         // OpenAI's strict mode refuses a schema whose `required` does not list every key; the
         // pipeline's schemas have optional fields, and zod validates the answer in full anyway.
         // Bedrock's route never minded, so the key is sent for `openai/` ids only.
-        ...(modelId.startsWith("openai/") ? { strictJsonSchema: false } : {}),
+        ...(isOpenAiModelId(modelId) ? { strictJsonSchema: false } : {}),
       },
       // Gemini 3 reads a level, not an effort; Qwen and DeepSeek think or not (smoke-tested
       // 2026-09-17: Gemini at its default spent the whole slide budget thinking, Qwen 3 373 tokens).
@@ -489,7 +490,7 @@ export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
       // effort is ignored (Sol at "low" reasoned more than at "medium", 2026-09-17): pin the
       // vendor so the setting reaches the model. Read only by the gateway; inert on the direct
       // route.
-      ...(modelId.startsWith("openai/") ? { gateway: { only: ["openai"] } } : {}),
+      ...(isOpenAiModelId(modelId) ? { gateway: { only: ["openai"] } } : {}),
     },
   };
 }
