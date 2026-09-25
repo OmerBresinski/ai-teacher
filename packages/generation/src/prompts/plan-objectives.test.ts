@@ -44,8 +44,8 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 };
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v16",
-  hash: "7dfceb15100fb19879eccf252f503c9c527fbfe846b37cb2968cdafbbd9f25f8",
+  version: "plan-objectives.v17",
+  hash: "a09065671819509c56ce37caf97c1a2107e38b1191703f356f692c4dc958a19a",
 };
 
 describe("plan-objectives", () => {
@@ -68,7 +68,9 @@ describe("plan-objectives", () => {
     // follows it down. v12 (24 Sept) adds the retrieval questions: 346, each clause on a judged
     // failure (see the file header), so the alarm moves up once, by that growth. v13: 343. v14: 314,
     // the prior-knowledge and curriculum rules moved to the user turn beside their inputs. v16: 309.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(330);
+    // v17: 337, the unhedged count, the list-as-parts rule and "No objective restates the topic"
+    // (gpt-6-luna gave one topic-restating objective on list-shaped topics); the alarm moves once.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(345);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
@@ -119,10 +121,15 @@ describe("plan-objectives", () => {
     // lines on one idea and a thin set are both outside the rule (latency-lab judges).
     expect(system).toContain("Give one objective for each distinct part of the topic");
     expect(system).toContain("cover its core at this year group's level and no two share an idea");
-    expect(system).toContain("usually two or three");
+    // v17 (gpt-6-luna): the hedge went; "usually" was read as licence for one objective.
+    expect(system).toContain("two or three; one only when the topic is a single method or skill");
+    expect(system).not.toContain("usually two or three");
     // v10: "building on each other and sharing its key ideas" named no bench failure (rubric 3).
     expect(system).not.toContain("building on each other");
-    expect(system).toContain("one for one tight skill; four only for four distinct parts");
+    expect(system).toContain("four only for four distinct parts");
+    // v17: a topic about several needs or factors is several parts, and none is the topic restated.
+    expect(system).toContain("has a part for each, or for each close pair");
+    expect(system).toContain("No objective restates the topic.");
     expect(system).toContain("no filler line");
     expect(system).not.toMatch(/slide count|slides\b|ceiling/i);
     expect(system).not.toMatch(/minutes/);
