@@ -22,6 +22,7 @@ import type { ImageSearchClient } from "../images/image-search";
 import { nextStep, ZoomControl } from "../kit/ZoomControl";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
+import { applySlideClip } from "../slide/slide-clip";
 import { type CanvasMenuState, ElementContextMenu } from "./canvas/ElementContextMenu";
 import { SlideActions } from "./canvas/SlideActions";
 import { SlideTabs } from "./canvas/SlideTabs";
@@ -145,21 +146,42 @@ export function Canvas({
       }
     }
   }, []);
-  // When editing ends, the slide itself comes back into view as well: following the caret
-  // through the scroll region can leave the slide's top rows above the viewport.
+  /**
+   * Where the scroll region stood when editing began. Following the caret through it is the one
+   * scroll the editor makes on the teacher's behalf, and it can leave the slide's top rows above
+   * the viewport; when editing ends the region goes back exactly there, so a pan or zoom the
+   * teacher set up before editing is kept. Nothing is scrolled into view on our own account: a
+   * region the caret never moved is left alone.
+   */
+  const regionAtEditStart = useRef<{ top: number; left: number } | null>(null);
   useEffect(() => {
-    if (editingTextId !== null) return;
+    const region = scroller.current;
+    if (editingTextId !== null) {
+      if (regionAtEditStart.current === null && region) {
+        regionAtEditStart.current = { top: region.scrollTop, left: region.scrollLeft };
+      }
+      return;
+    }
     snapBack();
-    stage.current?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    const start = regionAtEditStart.current;
+    regionAtEditStart.current = null;
+    if (region && start && (region.scrollTop !== start.top || region.scrollLeft !== start.left)) {
+      region.scrollTop = start.top;
+      region.scrollLeft = start.left;
+    }
   }, [editingTextId, snapBack]);
 
   /**
    * While a text box is being typed into, the slide's bottom edge opens so the lines that run
    * off it stay in sight (the scroll region follows the caret as usual); the moment editing ends
    * the slide clips again. Sideways overflow is clipped throughout, and no other surface
-   * (thumbnails, present, export) mounts this frame.
+   * (thumbnails, present, export) mounts this frame. The rule itself, with its `hidden`
+   * fallback for engines without `clip`, is `applySlideClip`; it is written before paint.
    */
   const spill = editingTextId !== null;
+  useLayoutEffect(() => {
+    if (clip.current) applySlideClip(clip.current, spill);
+  }, [spill]);
 
   const compactChrome = useCompactChrome();
   const gutter = compactChrome ? 16 : GUTTER;
@@ -359,8 +381,7 @@ export function Canvas({
                   position: "absolute",
                   inset: 0,
                   borderRadius: "inherit",
-                  overflowX: "clip",
-                  overflowY: spill ? "visible" : "clip",
+                  // `overflow` is written by `applySlideClip` above, not here.
                   isolation: "isolate",
                 }}
               >

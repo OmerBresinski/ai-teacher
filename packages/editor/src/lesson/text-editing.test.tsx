@@ -271,3 +271,39 @@ describe("the slide frame while typing past the bottom edge", () => {
     expect(frame.scrollTop).toBe(0);
   });
 });
+
+describe("the canvas scroll region when editing ends", () => {
+  /*
+   * Following the caret is the one scroll the editor makes for the teacher; Escape puts the
+   * region back where it stood when editing began. Nothing is scrolled into view on the editor's
+   * own account, so a zoom and pan set up before editing survive it.
+   */
+  const region = (c: HTMLElement) =>
+    c.querySelector<HTMLElement>("[data-canvas-scroller]") as HTMLElement;
+
+  test("a zoom and pan made before editing are back after Escape", async () => {
+    const { container } = renderEditor(textLesson());
+    fireEvent.click(within(container).getByRole("button", { name: "Zoom in" }));
+    const r = region(container);
+    r.scrollTop = 120;
+    r.scrollLeft = 80;
+    const pm = await openEditor(container);
+    // The caret takes the region further down while the teacher types.
+    r.scrollTop = 500;
+    r.scrollLeft = 96;
+    fireEvent.keyDown(pm, { key: "Escape" });
+    await waitFor(() => expect(proseMirror(container)).toBeNull());
+    expect([r.scrollTop, r.scrollLeft]).toEqual([120, 80]);
+  });
+
+  test("a region the caret never moved is left alone", async () => {
+    const { container } = renderEditor(textLesson());
+    const r = region(container);
+    r.scrollTop = 120;
+    r.scrollLeft = 80;
+    const pm = await openEditor(container);
+    fireEvent.keyDown(pm, { key: "Escape" });
+    await waitFor(() => expect(proseMirror(container)).toBeNull());
+    expect([r.scrollTop, r.scrollLeft]).toEqual([120, 80]);
+  });
+});
