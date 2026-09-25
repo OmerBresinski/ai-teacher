@@ -699,20 +699,20 @@ describe("labPlan --waves (lab pw)", () => {
     expect(countOf(ai, "plan-objectives")).toBe(1);
     expect(countOf(ai, "plan-facts-objective")).toBe(0);
     expect(countOf(ai, "plan-teach-objective")).toBe(3);
-    // Three objectives at ten slides: slide sets for the first two, an exit set for each.
-    expect(countOf(ai, "plan-question-set")).toBe(5);
+    // Three objectives at ten slides (l6c): a slide set and an exit set for each.
+    expect(countOf(ai, "plan-question-set")).toBe(6);
     expect(setsBeforeTeach1Returned).toBeGreaterThanOrEqual(1);
 
     const report = state.labPlan;
     expect(report.waves?.demand).toEqual([
+      { slide: 2, exit: 2 },
       { slide: 2, exit: 1 },
       { slide: 2, exit: 1 },
-      { slide: 0, exit: 1 },
     ]);
     expect(report.waves?.counts).toEqual([
+      { slide: 3, exit: 2 },
       { slide: 3, exit: 1 },
       { slide: 3, exit: 1 },
-      { slide: 0, exit: 1 },
     ]);
     expect(report.waves?.regenerated).toEqual([]);
     expect(report.waves?.setsFailed).toEqual([]);
@@ -720,7 +720,7 @@ describe("labPlan --waves (lab pw)", () => {
 
     const lesson = state.lesson;
     expect(lesson.generation?.promptVersions.planned).toBe(LAB_WAVES_PLANNED_VERSION);
-    expect(lesson.facts?.questions).toHaveLength(3 + 1 + 3 + 1 + 1);
+    expect(lesson.facts?.questions).toHaveLength(3 + 2 + 3 + 1 + 3 + 1);
     expect(lesson.facts?.keyIdeas).toHaveLength(romans.facts.keyIdeas.length);
     // Every question carries its objective and, via the merge, the taught key idea it named.
     expect(
@@ -732,7 +732,7 @@ describe("labPlan --waves (lab pw)", () => {
     expect(lesson.facts?.outline.at(-1)?.kind).toBe("exit-ticket");
     expect(checkLesson(lesson).filter((f) => f.severity === "error")).toEqual([]);
     expect(report.status.complete).toBe(true);
-    expect(labPlanMarkdown(report)).toContain("- waves: demand o1 slide 2/exit 1");
+    expect(labPlanMarkdown(report)).toContain("- waves: demand o1 slide 2/exit 2");
   });
 
   test("audit A4: an objective's exit set is written after its slide set and told the slide stems", async () => {
@@ -750,9 +750,9 @@ describe("labPlan --waves (lab pw)", () => {
     expect(o1[0]?.text).not.toContain("Already asked of this objective");
     expect(o1[1]?.text).toContain("Already asked of this objective");
     expect(o1[1]?.text).toContain("slide question 1 on objective 1: which is right?");
-    // An objective with no slide set: its exit set has nothing to avoid.
+    // l6c: the last objective has a slide set too (its cycle is checked), then its exit set.
     const o3 = prompts.filter((p) => p.target === 2);
-    expect(o3.map((p) => p.use)).toEqual(["exit"]);
+    expect(o3.map((p) => p.use)).toEqual(["slide", "exit"]);
     expect(o3[0]?.text).not.toContain("Already asked of this objective");
   });
 
@@ -766,7 +766,7 @@ describe("labPlan --waves (lab pw)", () => {
       const given = [...teach.mock.calls, ...sets.mock.calls].map(
         ([i]) => (i as { retrieval?: unknown }).retrieval,
       );
-      expect(given).toHaveLength(3 + 5);
+      expect(given).toHaveLength(3 + 6);
       expect(given.every((r) => JSON.stringify(r) === JSON.stringify(starter))).toBe(true);
       // Contract C1: the prompts render them, once, as the labelled starter block.
       const rendered = [...teach.mock.results, ...sets.mock.results].map((r) => String(r.value));
@@ -797,7 +797,7 @@ describe("labPlan --waves (lab pw)", () => {
       },
     });
     const state = await labPlan({ lesson: romansLesson() }, recordingDeps(ai), { waves: true });
-    // Five sets; o1/slide and o2/exit cost two refused attempts and one regeneration each.
+    // Six sets; o1/slide and o2/exit cost two refused attempts and one regeneration each.
     const perKey = Object.fromEntries(
       [...new Set(asked)].sort().map((k) => [k, asked.filter((x) => x === k).length]),
     );
@@ -807,13 +807,15 @@ describe("labPlan --waves (lab pw)", () => {
       "o2/exit": 3,
       "o2/slide": 1,
       "o3/exit": 1,
+      "o3/slide": 1,
     });
     expect(state.labPlan.waves?.regenerated.map((r) => r.split(":")[0]).sort()).toEqual([
       "o1/slide",
       "o2/exit",
     ]);
     expect(state.labPlan.waves?.setsFailed).toEqual([]);
-    expect(state.lesson.facts?.questions).toHaveLength(3 + 1 + 3 + 1 + 1);
+    // Slide sets of three and exit sets of one for each objective; o1's exit set is two (the quiz's floor).
+    expect(state.lesson.facts?.questions).toHaveLength(3 + 2 + 3 + 1 + 3 + 1);
   });
 
   test("questionSetProblem: the code check behind the schema — an empty keyIdeaRefs list, or a short set the soft schema let through", () => {
@@ -882,7 +884,8 @@ describe("labPlan --waves (lab pw)", () => {
     const state = await labPlan({ lesson: romansLesson() }, recordingDeps(ai), { waves: true });
     expect(state.labPlan.factsFailed).toEqual([2]);
     expect(state.labPlan.waves?.setsFailed).toEqual(["o2/exit"]);
-    expect(state.lesson.facts?.questions).toHaveLength(3 + 1 + 3);
+    // o1's slide and exit sets (the exit floor gives o1 two), o2's slide set; o3's sets fall with its teach.
+    expect(state.lesson.facts?.questions).toHaveLength(3 + 2 + 3);
     expect(state.labPlan.status.complete).toBe(false);
     expect(state.labPlan.status.incomplete).toContain("objective 3: its facts call did not return");
   });

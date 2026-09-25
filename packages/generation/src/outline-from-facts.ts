@@ -87,9 +87,16 @@ import {
  * - Model, then practise: an objective whose questions declare an `apply` demand gets its worked
  *   example placed before the shape's kinds and floors take the budget, and so before its practice.
  *   An objective with apply questions and no worked example is a gap: the facts must supply one.
- * - The exit ticket is short: 3–5 items (`EXIT_MIN`, `EXIT_MAX`), one per objective first; a
- *   ticket the exit questions leave under three is topped up with unused fair questions that can
- *   be asked as a line of it.
+ * - The exit ticket is short: 4–6 quick items (`EXIT_MIN`, `EXIT_MAX`), assembled in code from the
+ *   facts' exit questions, one per objective first; a quiz the exit questions leave under four is
+ *   topped up with unused fair questions that can be asked as a line of it, then true/false lines
+ *   on the misconceptions of taught objectives.
+ *
+ * Every cycle checked (l6c, luna-direct DIAGNOSIS FM1, 26 Sep): `reserve` keeps a check slot for
+ * every objective, the last included, before P1b, P1c and P2 spend the budget on further teaching;
+ * a ten-slide three-objective deck is therefore starter, three cycles of one content slide and a
+ * check of 2–3, and the exit quiz. `questionDemand` (`lab/question-demand.ts`) reads this off the
+ * fill, so the question-set calls write a set for the last objective too.
  */
 
 /** A question as the outline reads it: the facts' fields plus the optional declarations. */
@@ -162,7 +169,7 @@ export const KEY_IDEAS_PER_CONTENT = 2;
 const SHARED_STEM_MAX = 120;
 /** Objectives one shared practise slide covers at most: an `instructions` slide holds 1–4 steps. */
 const SHARED_PRACTISE_MAX = SET_MAX;
-/** The questions a cycle's check set asks (r1: "a check of 2–3 after each cycle"); P8 may take it to `SET_MAX`. */
+/** The questions a cycle's check set asks at most (r1, l6c: "a check of 2–3 after each cycle"), P8's top-up included. */
 const CHECK_SET = 3;
 /** Content slides one learning cycle teaches before its check: a slide, or a pair. */
 const CONTENT_PER_CYCLE = 2;
@@ -278,6 +285,15 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     );
   const practised = (o: number) =>
     slots.some((s) => s.phase === "practise" && s.objectives.includes(o));
+  /**
+   * l6c (luna-direct DIAGNOSIS FM1: 32 single-item or single-open-question checks): a cycle is
+   * checked by a practise slot other than the shape's open-response slide, which asks one
+   * extended question. The open-response slide still counts as practice (coverage, floors).
+   */
+  const checked = (o: number) =>
+    slots.some(
+      (s) => s.phase === "practise" && s.kind !== "open-response" && s.objectives.includes(o),
+    );
   const place = (slot: Slot): boolean => {
     if (budget <= 0) return false;
     slots.push(slot);
@@ -594,15 +610,18 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
 
   /**
    * r1 (structure): the slots kept while teaching, the kinds and the extras are placed — the
-   * starter's (it opens every lesson) and a check for each objective but the last that has a
-   * question to ask (the exit quiz follows the last cycle, so its check is kept only when there is
-   * room). Never fewer than the one practise slot `practiseReserve` keeps.
+   * starter's (it opens every lesson) and a check for every objective that has a question to ask.
+   * l6c (luna-direct DIAGNOSIS FM1): the last objective's check is kept too. It used to be left to
+   * the exit quiz, so a three-objective ten-slide deck taught its third cycle and never checked it
+   * (48 cycles without a check in 57 decks); the slide count is fixed (ruling 75), so what gives
+   * way is a teaching extra — the vocabulary slide, the second worked example — not the check.
+   * Never fewer than the one practise slot `practiseReserve` keeps.
    */
   const reserve = (anyQuestion = false) => {
     const starter = count > 0 && !has("starter") ? 1 : 0;
-    const checks = all.slice(0, -1).filter(
+    const checks = all.filter(
       (o) =>
-        !practised(o) &&
+        !checked(o) &&
         // Only a check that can be fair is kept: an objective whose key ideas are still being
         // placed (its questions untested yet) lets teaching go on until one is.
         facts.questions.some(
@@ -753,10 +772,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     // declared, retrieving it outranks a slide of practice; without, the practice comes first and
     // the starter takes what is left.
     const room = budget - (count > 0 && !has("starter") ? 1 : 0);
-    // r1: the last objective's check may be the exit quiz that follows its cycle, so a deck with a
-    // slot for every other objective's check gives each its own rather than sharing one.
-    const own = pending.filter(([o]) => o < count - 1).length;
-    if (pending.length < 2 || room >= pending.length || room >= own || room <= 0) return;
+    // l6c: every objective's check counts, the last one's included (its cycle is checked on a
+    // slide, not left to the exit quiz), so a deck with a slot per check gives each its own.
+    if (pending.length < 2 || room >= pending.length || room <= 0) return;
     // Learning cycles (w0b): the slots beyond the shared one give the first objectives a check of
     // their own, straight after their cycle; the shared slide takes the rest (two or more). The
     // spare slots used to go to splitting a paired content slide.
@@ -802,11 +820,11 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
           }
         }
       }
-      // r1: it never takes a slot kept for the starter or a cycle check, unless it is that check.
-      const checks = (x: Slot) =>
-        x.objectives.some((o) => o < count - 1 && !practised(o)) ? 1 : 0;
+      // r1: it never takes a slot kept for the starter or a cycle check. l6c: it is never that
+      // check either (one extended question is not a quick check of 2–3), so it needs a slot of
+      // its own; a full deck makes it a gap.
       if (slot === undefined) noMaterial("open-response", "question left to ask openly");
-      else if (budget <= reserve() - checks(slot) || !place(slot)) noRoom("open-response");
+      else if (budget <= reserve() || !place(slot)) noRoom("open-response");
       else requiredOpen = slot;
     }
   }
@@ -904,7 +922,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // r1: a check after each learning cycle, before the floors and extras: every objective in order,
   // a set of 2–3 questions where the facts have them (the running order puts each after its cycle).
   for (const o of all) {
-    if (practised(o) || budget <= 0) continue;
+    if (checked(o) || budget <= 0) continue;
     const slot = checkSlot(o);
     if (slot !== undefined) place(slot);
   }
@@ -993,7 +1011,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // P3: every objective practised.
   placeSharedPractise();
   for (const o of all) {
-    if (practised(o) || budget <= 0) continue;
+    if (checked(o) || budget <= 0) continue;
     const slot = checkSlot(o);
     if (slot !== undefined) place(slot);
   }
@@ -1219,7 +1237,10 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
           !used.questions.has(i) &&
           refIndices(facts.questions[i]?.objectiveRefs).every((o) => set.objectives.includes(o)),
       );
-      const questions = withinSet([...(set.questions ?? []), ...within], SET_MAX).sort(setOrder);
+      // l6c: a cycle's check stays a quick check of 2–3 (`CHECK_SET`); ruling 81's shared slide,
+      // one question per objective, may hold `SET_MAX`.
+      const cap = set.objectives.length === 1 ? CHECK_SET : SET_MAX;
+      const questions = withinSet([...(set.questions ?? []), ...within], cap).sort(setOrder);
       for (const i of questions) used.questions.add(i);
       set.questions = questions;
     }

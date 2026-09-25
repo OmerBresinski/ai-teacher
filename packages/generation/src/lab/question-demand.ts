@@ -4,7 +4,7 @@ import {
   type OutlineFromFactsResult,
   outlineFromFacts,
 } from "../outline-from-facts";
-import { EXIT_QUIZ_MAX, MC_LINE_MAX, questionLine, SET_MAX } from "./coded-slides";
+import { EXIT_QUIZ_MAX, EXIT_QUIZ_MIN, MC_LINE_MAX, questionLine, SET_MAX } from "./coded-slides";
 /** The uses the question-set calls write (`plan-question-set`): a slide question, an exit question. */
 export type QuestionSetUse = "slide" | "exit";
 
@@ -235,6 +235,19 @@ export function questionDemand(
     const d = demand[o];
     if (d) d[use] += 1;
   });
+  // l6c (luna-direct DIAGNOSIS FM1: 10 of 57 exits had three items or fewer): the exit quiz is
+  // 4–6 quick items, but a placeholder's multiple-choice line is at the cap (`MC_LINE_MAX`), so
+  // `EXIT_CHARS` lets the fill place only three of them and the demand read one per objective.
+  // Real exit items are short lines, so the demand is topped up to `EXIT_QUIZ_MIN` in total, the
+  // objective with the fewest exit items first (the earliest on a tie); the fill still caps the
+  // quiz at assembly.
+  while (count > 0 && demand.reduce((n, d) => n + d.exit, 0) < EXIT_QUIZ_MIN) {
+    const fewest = demand.reduce(
+      (best, d) => (d.exit < best.exit ? d : best),
+      demand[0] ?? { slide: 0, exit: 0 },
+    );
+    fewest.exit += 1;
+  }
   const counts = demand.map((d) => ({
     slide: d.slide > 0 ? d.slide + SPARE.slide : 0,
     exit: d.exit > 0 ? d.exit + SPARE.exit : 0,

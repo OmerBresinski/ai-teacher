@@ -233,11 +233,13 @@ describe("outlineFromFacts: the count and the fixed slots", () => {
 
 describe("outlineFromFacts: priorities", () => {
   test("an objective's key ideas share its content slide, so the required worked example still fits", () => {
-    const r = run({ n: 2, slideCount: 8, shape: shapeOf("Apply") });
+    // l6c: at eight slides the five slots are the starter, two content slides and a check per
+    // objective, so the required worked example is a gap there (below); at ten it fits.
+    const r = run({ n: 2, slideCount: 10, shape: shapeOf("Apply") });
     const k = kinds(r);
     expect(k).toContain("worked-example");
-    // Five slots: two content slides carrying both of their objective's key ideas, the worked
-    // example, a practise slide per objective. Every key idea is taught.
+    // Two content slides carrying both of their objective's key ideas, the worked example, a
+    // practise slide per objective. Every key idea is taught.
     expect(k.filter((x) => x === "content")).toHaveLength(2);
     const keyIdeas = k.flatMap((kind, i) =>
       kind === "content"
@@ -1011,13 +1013,14 @@ describe("outlineFromFacts: lesson flow (w0b)", () => {
 
   describe("rule 3: model, then practise", () => {
     test("an objective whose questions declare apply gets its worked example, before its practice", () => {
-      // Eight slides, three objectives, Describe: no worked example is required, so without the
-      // declaration none would fit before practice.
+      // Twelve slides, three objectives, Describe: no worked example is required, so without the
+      // declaration none would fit before practice. (l6c: at ten slides the three checks and the
+      // starter take every slot after the content slides, so the example is a gap there.)
       const facts = factsFor(3);
       for (const q of facts.questions) {
         if (q.objectiveRefs[0]?.index === 1) Object.assign(q, { demand: "apply" });
       }
-      const r = run({ n: 3, slideCount: 10, shape: shapeOf("Describe"), facts });
+      const r = run({ n: 3, slideCount: 12, shape: shapeOf("Describe"), facts });
       const outline = r.result.skeleton.outline;
       const example = outline.findIndex(
         (e, i) =>
@@ -1245,5 +1248,135 @@ describe("the retrieval starter (lab r2)", () => {
     const none = run({ n: 3, slideCount: 10, facts });
     const empty = run({ n: 3, slideCount: 10, facts, retrieval: [] });
     expect(empty.result.outlineFactRefs).toEqual(none.result.outlineFactRefs);
+  });
+});
+
+/*
+ * l6c (luna-direct DIAGNOSIS FM1, 26 Sep): every learning cycle is followed by a check of 2–3
+ * items, the last objective's included; the exit quiz is 4–6 items. The slide count is fixed
+ * (ruling 75), so what gives way is a teaching extra, and a gap says which.
+ */
+describe("outlineFromFacts: every cycle checked (l6c)", () => {
+  const retrieval = [
+    { question: "What is a river's source?", answer: "Where it starts" },
+    { question: "Name one UK river.", answer: "The Thames" },
+  ];
+  const questionsAt = (r: ReturnType<typeof run>, position: number) =>
+    refsAt(r, position).filter((f) => f.type === "question").length;
+
+  test("three objectives at ten slides: starter, three cycles of a content slide and a check of 2–3, the exit quiz", () => {
+    const r = run({ n: 3, slideCount: 10, shape: shapeOf("Describe"), retrieval });
+    expect(kinds(r)).toEqual([
+      "title",
+      "objectives",
+      "starter",
+      "content",
+      "instructions",
+      "content",
+      "instructions",
+      "content",
+      "instructions",
+      "exit-ticket",
+    ]);
+    expect(r.result.cycles).toHaveLength(3);
+    for (const cycle of r.result.cycles) expect(cycle.check).toHaveLength(1);
+    for (const c of r.result.coverage) expect(c.practised.length).toBeGreaterThan(0);
+    // Each check is a set of 2–3 of its objective's questions, never one.
+    for (const at of [4, 6, 8]) {
+      expect(questionsAt(r, at)).toBeGreaterThanOrEqual(2);
+      expect(questionsAt(r, at)).toBeLessThanOrEqual(3);
+    }
+    expect(r.result.gaps.some((g) => g.includes("the exit ticket is its only check"))).toBe(false);
+    // The exit quiz: 4–6 items, assembled in code from the facts.
+    const exit = questionsAt(r, 9) + refsAt(r, 9).filter((f) => f.type === "misconception").length;
+    expect(exit).toBeGreaterThanOrEqual(EXIT_MIN);
+    expect(exit).toBeLessThanOrEqual(EXIT_MAX);
+  });
+
+  test("the last objective's check outranks the shape's worked example and vocabulary; each is a gap", () => {
+    const r = run({ n: 3, slideCount: 10, shape: shapeOf("Apply"), retrieval });
+    expect(kinds(r).filter((k) => k === "instructions")).toHaveLength(3);
+    expect(kinds(r)).not.toContain("worked-example");
+    expect(r.result.gaps).toContain(
+      "The shape needs a worked-example slide and a 10-slide deck has no room for one.",
+    );
+    // Objective 3 is checked on a slide, not left to the exit ticket.
+    expect(r.result.coverage[2]?.practised.length).toBeGreaterThan(0);
+  });
+
+  test("two objectives at eight slides: both cycles checked, the required worked example gives way", () => {
+    const r = run({ n: 2, slideCount: 8, shape: shapeOf("Apply") });
+    expect(kinds(r)).toEqual([
+      "title",
+      "objectives",
+      "starter",
+      "content",
+      "instructions",
+      "content",
+      "instructions",
+      "exit-ticket",
+    ]);
+    expect(r.result.gaps.some((g) => g.startsWith("The shape needs a worked-example slide"))).toBe(
+      true,
+    );
+  });
+
+  test("with room to spare the checks still come after every teaching extra is placed: twelve slides, three objectives", () => {
+    const r = run({ n: 3, slideCount: 12, shape: shapeOf("Apply"), retrieval });
+    expect(kinds(r)).toContain("worked-example");
+    expect(kinds(r).filter((k) => k === "instructions")).toHaveLength(3);
+    expect(r.result.cycles.every((c) => c.check.length === 1)).toBe(true);
+  });
+
+  test("a cycle's check stays at three when the facts offer more: the top-up stops at `CHECK_SET`", () => {
+    const facts = factsFor(3);
+    for (let o = 0; o < 3; o++) {
+      for (let q = 0; q < 3; q++) {
+        facts.questions.push({
+          stem: `Extra question ${q + 1} for objective ${o + 1}?`,
+          answer: `Extra ${o + 1}.${q + 1}`,
+          reasoning: "Because.",
+          tier: "core",
+          use: "slide",
+          objectiveRefs: [obj(o)],
+        });
+      }
+    }
+    const r = run({ n: 3, slideCount: 10, shape: shapeOf("Describe"), facts, retrieval });
+    const checks = kinds(r).flatMap((k, i) => (k === "instructions" ? [i] : []));
+    expect(checks).toHaveLength(3);
+    for (const at of checks) {
+      expect(questionsAt(r, at)).toBeGreaterThanOrEqual(2);
+      expect(questionsAt(r, at)).toBeLessThanOrEqual(3);
+    }
+  });
+
+  test("an Explain lesson: the open-response slide never stands in for a cycle's check; a full deck makes it a gap", () => {
+    // One extended question is not a quick check of 2–3 (DIAGNOSIS FM1: single-open-question checks).
+    const r = run({
+      n: 3,
+      slideCount: 10,
+      shape: shapeOf("Explain"),
+      retrieval,
+      options: { bare: true },
+    });
+    expect(kinds(r).filter((k) => k === "instructions")).toHaveLength(3);
+    expect(kinds(r)).not.toContain("open-response");
+    expect(r.result.gaps).toContain(
+      "The shape needs a open-response slide and a 10-slide deck has no room for one.",
+    );
+    for (const cycle of r.result.cycles) expect(cycle.check.length).toBeGreaterThan(0);
+  });
+
+  test("with room, the open-response slide comes as well as every cycle's check: twelve slides", () => {
+    const r = run({
+      n: 3,
+      slideCount: 12,
+      shape: shapeOf("Explain"),
+      retrieval,
+      options: { bare: true },
+    });
+    expect(kinds(r)).toContain("open-response");
+    expect(kinds(r).filter((k) => k === "instructions")).toHaveLength(3);
   });
 });

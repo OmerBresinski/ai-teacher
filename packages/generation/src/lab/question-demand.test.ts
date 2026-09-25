@@ -4,7 +4,14 @@ import ratio from "../fixtures/question-demand.w1-h-y7-ratio-W.json";
 import { type OutlineFacts, outlineFromFacts } from "../outline-from-facts";
 import type { LessonShape } from "../shapes";
 import { lessonShapeOf } from "../shapes";
-import { EXIT_QUIZ_MAX, fitsLine, MC_LINE_MAX, questionLine, SET_CHARS } from "./coded-slides";
+import {
+  EXIT_QUIZ_MAX,
+  EXIT_QUIZ_MIN,
+  fitsLine,
+  MC_LINE_MAX,
+  questionLine,
+  SET_CHARS,
+} from "./coded-slides";
 import {
   PLACEHOLDER_STEM_CHARS,
   PLACEHOLDERS_PER_OBJECTIVE,
@@ -51,15 +58,15 @@ const demandFor = (n: number, slideCount: 10 | 12 = 10, withRetrieval = true) =>
 };
 
 describe("questionDemand", () => {
-  test("two objectives at ten slides: a set of two on each, three exit lines across them", () => {
+  test("two objectives at ten slides: a set of two on each, four exit lines across them (l6c: the quiz's floor)", () => {
     const { demand, counts, outline } = demandFor(2);
     expect(demand).toEqual([
       { slide: 2, exit: 2 },
-      { slide: 2, exit: 1 },
+      { slide: 2, exit: 2 },
     ]);
     expect(counts).toEqual([
       { slide: 2 + SPARE.slide, exit: 2 + SPARE.exit },
-      { slide: 2 + SPARE.slide, exit: 1 + SPARE.exit },
+      { slide: 2 + SPARE.slide, exit: 2 + SPARE.exit },
     ]);
     expect(outline.skeleton.outline.map((e) => e.kind)).toEqual([
       "title",
@@ -75,26 +82,40 @@ describe("questionDemand", () => {
     ]);
   });
 
-  test("three objectives at ten slides: the last objective's only check is the exit quiz, so no slide set for it", () => {
-    const { demand, counts } = demandFor(3);
+  test("three objectives at ten slides (l6c): a check set for every cycle, the last included; four exit lines", () => {
+    const { demand, counts, outline } = demandFor(3);
     expect(demand).toEqual([
+      { slide: 2, exit: 2 },
       { slide: 2, exit: 1 },
       { slide: 2, exit: 1 },
-      { slide: 0, exit: 1 },
     ]);
-    // No call for a set of none; the spare rides on the slide sets only.
+    // The spare rides on the slide sets only.
     expect(counts).toEqual([
+      { slide: 3, exit: 2 },
       { slide: 3, exit: 1 },
       { slide: 3, exit: 1 },
-      { slide: 0, exit: 1 },
     ]);
     const exitLines = demand.reduce((n, d) => n + d.exit, 0);
+    expect(exitLines).toBeGreaterThanOrEqual(EXIT_QUIZ_MIN);
     expect(exitLines).toBeLessThanOrEqual(EXIT_QUIZ_MAX);
+    // The budget: starter, three cycles of a content slide and its check, the exit quiz.
+    expect(outline.skeleton.outline.map((e) => e.kind)).toEqual([
+      "title",
+      "objectives",
+      "starter",
+      "content",
+      "instructions",
+      "content",
+      "instructions",
+      "content",
+      "instructions",
+      "exit-ticket",
+    ]);
   });
 
   test("without a retrieval set the round-1 starter takes one easy question per objective, so the slide demand rises by one", () => {
     const { demand } = demandFor(3, 10, false);
-    expect(demand.map((d) => d.slide)).toEqual([3, 3, 1]);
+    expect(demand.map((d) => d.slide)).toEqual([3, 3, 3]);
   });
 
   test("a placeholder is as long as a real question: an 80-character stem, a multiple-choice line at the cap", () => {
@@ -148,11 +169,11 @@ describe("questionDemand", () => {
       const o = q.objectiveRefs[0]?.index ?? 0;
       (placed[o] as { slide: number; exit: number })[q.use === "exit" ? "exit" : "slide"] += 1;
     });
-    // What the real questions achieved: a set of three and two exit lines on objective 1, one
-    // open-response slide and three exit lines on objective 2.
+    // What the real questions achieved: a set of three and two exit lines on objective 1; on
+    // objective 2 the open-response slide and (l6c) a check set of three, and three exit lines.
     expect(placed).toEqual([
       { slide: 3, exit: 2 },
-      { slide: 1, exit: 3 },
+      { slide: 4, exit: 3 },
     ]);
     // The demand from the count-only sketch, before any question existed.
     const { demand, counts } = questionDemand({
@@ -161,14 +182,16 @@ describe("questionDemand", () => {
     });
     expect(demand).toEqual([
       { slide: 2, exit: 2 },
-      { slide: 2, exit: 1 },
+      { slide: 2, exit: 2 },
     ]);
     const asked = counts.reduce((n, c) => n + c.slide + c.exit, 0);
     const got = placed.reduce((n, c) => n + c.slide + c.exit, 0);
     const sets = counts.flatMap((c) => [c.slide, c.exit]).filter((n) => n > 0).length;
-    // Asked ≈ placed + at most one spare a set (here 9 asked for 9 placed, over 4 sets).
+    // Asked ≈ placed + at most one spare a set (here 10 asked for 12 placed, over 4 sets).
     expect(asked).toBeLessThanOrEqual(got + sets);
-    expect(asked).toBeGreaterThanOrEqual(got - 1);
+    // l6c: the real run also places an open-response slide beside objective 2's check set; the
+    // sketch's placeholders all carry distractors, so the demand cannot foresee that one question.
+    expect(asked).toBeGreaterThanOrEqual(got - 2);
     // Every slide set asked for is at least the two lines a check needs, plus the spare.
     for (const c of counts) if (c.slide > 0) expect(c.slide).toBeGreaterThanOrEqual(3);
   });
