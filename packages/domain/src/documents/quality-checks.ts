@@ -399,14 +399,15 @@ function elementText(element: SlideElement): string | undefined {
 
 /** The words a task may open a sentence with and still be a task. */
 const IMPERATIVE_OPENERS =
-  /^(explain|describe|give|name|state|list|write|compare|contrast|suggest|calculate|work out|identify|decide|choose|select|complete|show|draw|sketch|label|predict|justify|evaluate|discuss|define|outline|summarise|summarize|use|find|match|sort|order|put|circle|tick|underline|fill|add|count|measure|estimate|solve|prove|convert|read|look|think|imagine|plan|design|create|make|say|tell|record|note|simplify|spot|share|expand|factorise|factorize|rewrite|why|how|what|which|when|where|who|is|are|does|do|can|could|should|would|will)\b/i;
+  /^(explain|describe|give|name|state|list|write|compare|contrast|suggest|calculate|work out|identify|decide|choose|select|complete|show|draw|sketch|label|predict|justify|evaluate|discuss|define|outline|summarise|summarize|use|find|match|sort|order|put|circle|tick|underline|fill|finish|add|count|measure|estimate|solve|prove|convert|read|look|think|imagine|plan|design|create|make|say|tell|record|note|simplify|spot|share|expand|factorise|factorize|rewrite|why|how|what|which|when|where|who|is|are|does|do|can|could|should|would|will)\b/i;
 /**
  * What may come before a task's imperative and leave it a task (lab round 2, recorded exit items
  * that raised "asks nothing"): a short label and a colon ("Exit: Name one way …"), or a length
- * frame ("In one line, explain …", "In one sentence, explain …").
+ * frame ("In one line, explain …", "In one sentence, explain …"), or both stacked ("Exit: In one
+ * line, explain …": luna-direct, gpt-6-luna at low, every lesson the check blocked).
  */
 const TASK_PREFIX =
-  /^(?:\p{L}+(?:\s\p{L}+)?:\s*|in (?:one|a|two|three) (?:word|line|sentence|phrase)s?,\s*)/iu;
+  /^(?:\p{L}+(?:\s\p{L}+)?:\s*|in (?:one|a|two|three) (?:word|line|sentence|phrase)s?,\s*)+/iu;
 /**
  * The sentence from its task's imperative on: the sentence itself when it opens with one, else the
  * sentence after a label or length frame when that does ("Put these in order: …" stays whole).

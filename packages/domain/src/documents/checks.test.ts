@@ -730,8 +730,20 @@ describe("questionless: a label or length frame before the task (lab round 2)", 
     ).toBe("ok");
   });
 
+  test("a label and a length frame stacked, and 'finish' as the imperative, are tasks (luna-direct, gpt-6-luna at low)", () => {
+    expect(questionless("Exit: In one line, explain what billeting arranged for evacuees.")).toBe(
+      "ok",
+    );
+    expect(questionless("Exit: Finish the sentence: Plants need light so their leaves can…")).toBe(
+      "ok",
+    );
+    expect(questionless("Finish the sentence: A ratio compares two quantities by…")).toBe("ok");
+    expect(questionless("In one line, exit: name one push factor.")).toBe("ok");
+  });
+
   test("a label with no task after it still asks nothing", () => {
     expect(questionless("The rodent family.")).toBe("no-question");
+    expect(questionless("Exit: In one line, the rodent family.")).toBe("no-question");
     expect(questionless("Exit: The rodent family.")).toBe("no-question");
     expect(questionless("In one line, the rodent family.")).toBe("no-question");
     expect(questionless("Exit: Explain why it melts.")).toBe("no-referent");
