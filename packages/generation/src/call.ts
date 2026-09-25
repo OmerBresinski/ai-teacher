@@ -630,10 +630,12 @@ export function providerOptionsFor(modelId: string, effort: ReasoningEffort, tie
       // `maxOutputTokens` budget, truncating the JSON (observed 2026-09-17 via the Vercel gateway).
       openai: {
         reasoningEffort: effort,
-        // Direct to OpenAI (the pinned gateway route) strict mode refuses a schema with an optional
-        // property ("'required' … must include every key"); Bedrock's route never minded. Our
-        // schemas have optional fields, and zod validates the answer anyway.
-        ...(modelId.startsWith("openai/") ? { strictJsonSchema: false } : {}),
+        // Direct to OpenAI (the pinned gateway route, and the direct provider) strict mode refuses
+        // a schema with an optional property ("'required' … must include every key"); Bedrock's
+        // route never minded. Our schemas have optional fields, and zod validates the answer
+        // anyway. Sent for every call: the direct provider strips the `openai/` prefix from
+        // `modelId`, and the other vendors do not read this namespace.
+        strictJsonSchema: false,
         ...(tier ? { serviceTier: tier } : {}),
       },
       // Gemini 3 reads a level, not an effort; Qwen and DeepSeek think or not (smoke-tested
