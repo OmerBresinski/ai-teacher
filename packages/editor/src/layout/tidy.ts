@@ -257,6 +257,67 @@ const reflowOptions = (slide: Slide, theme: Theme, measure: Measurer) =>
     ? { fitBottom: SAFE_BOTTOM - explanationReserve(theme, reservedLines(slide, theme, measure)) }
     : {};
 
+/**
+ * Lift a slide's body back to the top. A slide that overflows with a gap above its first box (a
+ * generated layout that put the paragraph low, or a head slide whose lines have just gone to a
+ * continuation) gains that room first: everything below the heading band moves up together, and
+ * the next reflow pushes down whatever now meets the heading. Null when the body already starts
+ * at the top.
+ */
+function restack(slide: Slide, reflowed: SlideElement[]): SlideElement[] | null {
+  const bodyTop = bodyTopOf(slide.elements);
+  const movable = (el: SlideElement) =>
+    !isFrozen(el) &&
+    !isBackdrop(el) &&
+    !isHeadingText(el) &&
+    !(isHairline(el) && el.y <= bodyTop + EPS);
+  const tops = reflowed.filter((el) => movable(el) && !isHairline(el)).map((el) => el.y);
+  if (tops.length === 0) return null;
+  const shift = bodyTop - Math.min(...tops);
+  if (shift >= -EPS) return null;
+  return reflowed.map((el) => (movable(el) ? { ...el, y: el.y + shift } : el));
+}
+
+/**
+ * One heading size for the whole chain: the smallest any slide in it needed, so a continuation
+ * never shouts louder than its head or its neighbours.
+ */
+function levelHeadings(slides: Slide[], theme: Theme, measure: Measurer): Slide[] {
+  const sizeOfHeading = (el: SlideElement) =>
+    el.type === "text" ? (el.style.fontSize ?? theme.sizes[el.style.preset]) : Number.NaN;
+  const sizes = slides
+    .map((s) => s.elements.find(isHeadingText))
+    .filter((el): el is SlideElement => !!el)
+    .map(sizeOfHeading);
+  if (sizes.length < 2) return slides;
+  const size = Math.min(...sizes);
+  return slides.map((s) => ({
+    ...s,
+    elements: s.elements.map((el) => {
+      if (el.type !== "text" || !isHeadingText(el) || sizeOfHeading(el) === size) return el;
+      const next = { ...el, style: { ...el.style, fontSize: size } };
+      const parts = textPartsOf(next);
+      if (parts?.autoHeight)
+        next.h = Math.max(
+          1,
+          Math.round(
+            measure({
+              doc: parts.doc,
+              width: next.w,
+              style: parts.style,
+              preset: parts.preset,
+              role: parts.role,
+              fontSize: size,
+              inset: parts.inset,
+              chrome: parts.chrome,
+            }),
+          ),
+        );
+      return next;
+    }),
+  }));
+}
+
 type Plan = {
   /** The head slide's elements once the overspill has gone: shortened, or with boxes removed. */
   head: SlideElement[];
@@ -326,7 +387,9 @@ function buildPlan(
           )
         : SAFE_BOTTOM;
     const available = Math.max(parts.chrome + 1, limit - el.y);
-    const room = available / (1 + SAFETY);
+    // The engine's 4% cushion applies to a box's own height against the safe edge; a card's foot
+    // is already inside that edge by more than the cushion, so text on a card fills to the foot.
+    const room = card ? available : available / (1 + SAFETY);
     const split = splitToFit(doc, base, room, measure);
     if (!split.tail) return null;
     // When not even the first line fits where the box stands, the box goes whole, and a card it
@@ -352,10 +415,11 @@ function buildPlan(
   reflowed.forEach((r, i) => {
     const a = authored[i] ?? r;
     if (isChrome(a)) {
-      // Authored geometry and size: a heading stepped down to make room here starts again at full
-      // size. A rule below the body top belongs to the content it sat under, not the heading.
+      // As it stands on this slide, size included, so the chain's headings match. A rule below
+      // the body top belongs to the content it sat under, not the heading.
       if (isHairline(a) && a.y > bodyTop + EPS) return;
-      elements.push(structuredClone(a));
+      // A heading rule goes back to where it was drawn, not where a tall heading pushed it here.
+      elements.push(isHairline(a) ? { ...structuredClone(r), y: a.y } : structuredClone(r));
       return;
     }
     if (r.id === el.id) {
@@ -466,6 +530,15 @@ function fitAndSplit(
     let result = reflowSlide(current, theme, measure, reflowOptions(current, theme, measure));
     let next: Slide | null = null;
 
+    if (result.splitAt !== undefined && !isQuestionSlide(current)) {
+      // Room above the body is spent before anything goes to another slide.
+      const lifted = restack(current, result.elements);
+      if (lifted) {
+        current = { ...current, elements: lifted };
+        result = reflowSlide(current, theme, measure, reflowOptions(current, theme, measure));
+      }
+    }
+
     if (result.splitAt !== undefined && round < MAX_CONTINUATIONS) {
       const plan = planSplit(current, result.elements, result.overflow, theme, measure);
       if (plan) {
@@ -482,7 +555,7 @@ function fitAndSplit(
     current = next;
   }
 
-  return { slides, results };
+  return { slides: levelHeadings(slides, theme, measure), results };
 }
 
 /** How a toast names a box: its first few words, or a card's name. */
@@ -567,8 +640,15 @@ export function tidySlide(
   return {
     lesson: out,
     outcome: {
-      moved: head.moved.length,
-      stepped: head.stepped.length,
+      // Counted against the slide as it was, not the engine's last pass over an already lifted one.
+      moved: changed.filter((next) => {
+        const prev = before.get(next.id);
+        return !!prev && Math.abs(prev.y - next.y) > 0.5;
+      }).length,
+      stepped: changed.filter((next) => {
+        const prev = before.get(next.id);
+        return !!prev && sizeOf(prev) !== sizeOf(next);
+      }).length,
       continued: continuations.length,
       overflow,
       overflowText,

@@ -330,6 +330,20 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     );
     const counts = lists.map((l) => (l ? docLineCount(l.doc) : 0));
     expect(counts.reduce((a, b) => a + b, 0)).toBe(18);
+    // Filled greedily: every continuation but the last holds the same number of items (the
+    // capacity), the last the remainder, and there are exactly as many as that needs.
+    const capacity = counts[1] ?? 0;
+    expect(capacity).toBeGreaterThan(1);
+    for (let i = 1; i < slides.length - 1; i++) expect(counts[i]).toBe(capacity);
+    expect(counts[slides.length - 1]).toBeLessThanOrEqual(capacity);
+    expect(out.outcome.continued).toBe(Math.ceil((18 - (counts[0] ?? 0)) / capacity));
+    // The heading is the same size, and the same height, on every slide of the chain.
+    const headings = slides.map((s) =>
+      s.elements.find((e) => e.type === "text" && e.style.preset === "heading"),
+    );
+    const sizes = new Set(headings.map((h) => (h?.type === "text" ? h.style.fontSize : -1)));
+    expect(sizes.size).toBe(1);
+    expect(new Set(headings.map((h) => h?.h)).size).toBe(1);
     // Every continuation but the last is full: one more item would not fit on it.
     for (let i = 1; i < slides.length - 1; i++) {
       const s = slides[i];
@@ -498,11 +512,16 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     const headText = docToPlainText(headBody.doc);
     expect(headText.startsWith("The Provisional Government")).toBe(true);
     expect(headText).toMatch(/[.!?]$/);
+    // The head is re-stacked from the top: no gap is left where the lines used to be.
+    expect(headBody.y).toBe(BODY_Y);
     const carried = bodies(cont);
     expect(carried.length).toBe(1);
     const tail = carried[0];
     if (!tail) throw new Error("tail");
-    expect(tail.y).toBe(BODY_Y);
+    // Straight under the heading band: the "(continued)" heading wraps, so its rule sits lower.
+    const contRule = cont?.elements.find((e) => e.type === "shape" && e.h === 1);
+    expect(tail.y).toBeGreaterThanOrEqual(BODY_Y);
+    expect(tail.y - ((contRule?.y ?? BODY_Y) + 1)).toBeLessThanOrEqual(49);
     const all = [cont, ...more].map((s) => docToPlainText(bodies(s)[0]?.doc ?? { type: "doc" }));
     expect(`${headText}\n${all.join("\n")}`.replace(/\s+/g, " ")).toBe(
       [aiParagraph, ...teacherLines].join(" "),
@@ -512,11 +531,30 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     );
   });
 
-  test("slide 4 as generated: the paragraph that ran off the slide continues at a sentence end", () => {
+  test("slide 4 as generated: the paragraph that ran off the slide is lifted to the body top and fits", () => {
     const lesson = lessonOf([
       text("labh", 43, 87, "The Bolsheviks gained support as the Government lost it", "heading"),
       rule("labi", 329),
       text("labj", 371, 201, aiParagraph),
+    ]);
+    const out = tidySlide(lesson, sidOf(lesson), ruler);
+    expect(out.outcome.continued).toBe(0);
+    expect(out.outcome.overflow).toEqual([]);
+    const head = out.lesson.slides[0];
+    const headBody = byId(head, "labj");
+    if (headBody?.type !== "text") throw new Error("head body");
+    expect(headBody.y).toBe(BODY_Y);
+    expect(docToPlainText(headBody.doc)).toBe(aiParagraph);
+    const ruleEl = byId(head, "labi");
+    expect((ruleEl?.y ?? 0) < BODY_Y).toBe(true);
+    expect(reflowSlide(head as Slide, theme, ruler).overflow).toEqual([]);
+  });
+
+  test("a paragraph too long for the lifted head continues at a sentence end", () => {
+    const lesson = lessonOf([
+      text("labh", 43, 87, "The Bolsheviks gained support as the Government lost it", "heading"),
+      rule("labi", 329),
+      text("labj", 371, 201, `${aiParagraph} ${aiParagraph}`),
     ]);
     const out = tidySlide(lesson, sidOf(lesson), ruler);
     expect(out.outcome.continued).toBe(1);
@@ -526,10 +564,10 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     if (headBody?.type !== "text") throw new Error("head body");
     const headText = docToPlainText(headBody.doc);
     expect(headText).toMatch(/[.!?]$/);
+    expect(headBody.y).toBe(BODY_Y);
     const tailText = docToPlainText(bodies(cont)[0]?.doc ?? { type: "doc" });
-    expect(`${headText} ${tailText}`).toBe(aiParagraph);
-    expect(reflowSlide(head as Slide, theme, ruler).overflow).toEqual([]);
-    expect(tidyMessage(out.outcome)).toBe("Tidied: list continued on a new slide");
+    expect(`${headText} ${tailText}`).toBe(`${aiParagraph} ${aiParagraph}`);
+    expect(tidyMessage(out.outcome)).toContain("list continued on a new slide");
   });
 
   test("a sentence split keeps marks and never leaves an empty run", () => {
@@ -572,12 +610,20 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     const out = tidySlide(lesson, sidOf(lesson), ruler);
     expect(out.outcome.continued).toBe(1);
     const [head, cont] = out.lesson.slides;
-    expect(byId(head, "labj")).toBeUndefined();
     expect(byId(head, "labh")).toBeDefined();
     const carried = bodies(cont);
     expect(carried.length).toBe(1);
-    expect(docToPlainText(carried[0]?.doc ?? { type: "doc" })).toContain("Kornilov");
+    const tailText = docToPlainText(carried[0]?.doc ?? { type: "doc" });
+    expect(tailText).toContain("Kornilov");
+    // What stays behind (if anything) ends at a sentence end, and nothing is lost.
+    const left = byId(head, "labj");
+    const headText = left?.type === "text" ? docToPlainText(left.doc) : "";
+    if (headText) expect(headText).toMatch(/[.!?]$/);
+    expect([headText, tailText].filter(Boolean).join(" ")).toBe(aiParagraph);
     expect(headingOf(cont)).toBe(`${heading} (continued)`);
+    // The heading rule sits under the one-line heading on the continuation, above the paragraph.
+    const contRule = cont?.elements.find((e) => e.type === "shape" && e.h === 1);
+    expect((contRule?.y ?? 0) < (carried[0]?.y ?? 0)).toBe(true);
     expect(out.outcome.overflow).toEqual([]);
     expect(reflowSlide(cont as Slide, theme, ruler).overflow).toEqual([]);
   });
