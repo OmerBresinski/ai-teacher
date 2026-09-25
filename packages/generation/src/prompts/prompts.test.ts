@@ -18,6 +18,7 @@ import {
 import { parseBriefPrompt } from "./parse-brief";
 import { planFactsPrompt } from "./plan-facts";
 import { planSkeletonPrompt, SOURCE_INSTRUCTION } from "./plan-skeleton";
+import { verifyFactsPrompt } from "./verify-facts";
 
 /*
  * ADR 0025 §17: every prompt's wording is pinned to its version. Change the text → change the
@@ -198,8 +199,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "a582769329a1e3bc2652808dd41c8fc87c8c68e18b1f6b95d8c46407c44253c3",
   },
   "verify-facts": {
-    version: "verify-facts.v5",
-    hash: "c1e3e317cc2a04ffd7437986f8e17162173391016d39eaa4199ec601680795e4",
+    version: "verify-facts.v6",
+    hash: "e80585b89cd1ea9fc83f21b6f193109e72d5e022bef4407ea26ffd6061183e22",
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
@@ -880,5 +881,15 @@ describe("generate-slide v25: a teaching slide names its misconception", () => {
     const question = { ...input, entry: { ...base, kind: "multiple-choice" } } as typeof input;
     expect(ownMisconceptions(question)).toEqual([]);
     expect(generateSlidePrompt.user(question)).not.toContain("Its misconception");
+  });
+});
+
+/* verify-facts v6 (l6c): the user turn lists the starter's retrieval set as `r1`–`rN` lines (code on
+ * lab/l6c-code); the field map says which fields a starter line has. */
+describe("verify-facts v6: the field map names a starter line's fields", () => {
+  test("a starter question is `question — answer`, corrected as stem or answer", () => {
+    expect(verifyFactsPrompt.system).toContain(
+      "a starter question `question — answer` (fields stem, answer); every other field is labelled.",
+    );
   });
 });
