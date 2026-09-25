@@ -75,6 +75,7 @@ export function fitSlide(slide: Slide, theme: Theme): FitResult {
     ] as const) {
       if (!column || !alt || alt.overflow.length === 0) break;
       column = stepOnce(column, theme, ids, role);
+      if (role === undefined) column = pitchRows(column, theme);
       alt = reflowSlide(column, theme, measure, options);
     }
     if (column && alt && preferColumn(slide, result, alt)) {
@@ -97,8 +98,12 @@ function stemOf(slide: Slide): Id[] {
 
 /** Padding inside a full-width answer row; the 2x2 grid's cards keep the renderer's 24. */
 const ROW_PAD = SPACE[1];
-/** The gap between answer rows, before the engine's cushion. */
-const ROW_GAP = SPACE[0];
+/**
+ * The least gap between answer rows (the pitch lands on the baseline, so a row's actual gap is
+ * this or up to six points more), before the engine's cushion: enough that the rows read as
+ * separate cards, as the 2x2 grid's gutter does.
+ */
+const ROW_GAP = SPACE[2];
 
 /**
  * The multiple-choice recipe's four cards laid as one column of full-width rows
@@ -114,28 +119,40 @@ function columnOptions(slide: Slide, theme: Theme): Slide | null {
   if (cards.length < 2 || cards.some((card) => isFrozen(card) || card.textStyle?.padding)) {
     return null;
   }
-  const top = Math.min(...cards.map((card) => card.y));
   const left = Math.min(...cards.map((card) => card.x));
   const width = Math.max(...cards.map((card) => card.x + card.w)) - left;
-  const parts = textPartsOf(cards[0] as OptionElement, slide);
-  if (!parts) return null;
+  return pitchRows(
+    {
+      ...slide,
+      elements: slide.elements.map((el) =>
+        el.type === "option"
+          ? { ...el, x: left, w: width, textStyle: { ...el.textStyle, padding: ROW_PAD } }
+          : el,
+      ),
+    },
+    theme,
+  );
+}
+
+/**
+ * The column's rows one line tall at the size their cards now carry, from the top row down on
+ * the baseline pitch. Run again once the options have stepped down, so the shorter row keeps
+ * `ROW_GAP` rather than the taller row's pitch.
+ */
+function pitchRows(column: Slide, theme: Theme): Slide {
+  const cards = column.elements.filter((el): el is OptionElement => el.type === "option");
+  const parts = cards[0] ? textPartsOf(cards[0], column) : null;
+  if (!parts) return column;
+  const top = Math.min(...cards.map((card) => card.y));
   const size = resolveTextStyle(parts.style, theme, parts.preset, parts.role).fontSize;
   const rowH = Math.ceil(size * OPTION.line) + 2 * ROW_PAD + 2 * OPTION.border;
   const pitch = Math.ceil((rowH + ROW_GAP) / BASELINE) * BASELINE;
   const rows = new Map<OptionElement, number>(cards.map((card, i) => [card, top + i * pitch]));
   return {
-    ...slide,
-    elements: slide.elements.map((el) => {
+    ...column,
+    elements: column.elements.map((el) => {
       const y = el.type === "option" ? rows.get(el) : undefined;
-      if (el.type !== "option" || y === undefined) return el;
-      return {
-        ...el,
-        x: left,
-        y,
-        w: width,
-        h: rowH,
-        textStyle: { ...el.textStyle, padding: ROW_PAD },
-      };
+      return el.type !== "option" || y === undefined ? el : { ...el, y, h: rowH };
     }),
   };
 }

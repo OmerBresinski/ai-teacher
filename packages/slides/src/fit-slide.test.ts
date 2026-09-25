@@ -113,12 +113,15 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
       expect(card.w).toBe(SAFE.w);
       expect(card.textStyle?.padding).toBe(SPACE[1]);
     }
-    // One line each: every row is as tall as the first, and A to D read top to bottom.
+    // One line each: every row is as tall as the first, and A to D read top to bottom with at
+    // least a 14pt gap between rows (T28-8: the rows read as separate cards), landed on the pitch.
     const heights = new Set(cards.map((card) => card.h));
     expect(heights.size).toBe(1);
     for (let i = 1; i < cards.length; i++) {
       const prev = cards[i - 1] as OptionElement;
-      expect((cards[i] as OptionElement).y).toBeGreaterThanOrEqual(bottom(prev) + SPACE[0]);
+      const gap = (cards[i] as OptionElement).y - bottom(prev);
+      expect(gap).toBeGreaterThanOrEqual(SPACE[2]);
+      expect(gap).toBeLessThan(SPACE[2] + 7);
     }
     // The stem stays on the question floor: shrinking it would buy the cards no room.
     expect(byPreset(slide, "heading")[0]?.style.fontSize).toBeUndefined();
@@ -193,8 +196,14 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
       expect(card.textStyle?.fontSize).toBeLessThan(31);
       expect(bottom(card)).toBeLessThanOrEqual(SAFE_BOTTOM);
     }
-    for (let i = 1; i < cards.length; i++)
-      expect((cards[i] as OptionElement).y).toBeGreaterThan(bottom(cards[i - 1] as OptionElement));
+    // The rows keep the column's gap at the stepped size (re-pitched for the shorter row, not
+    // left on the floor size's pitch), and the last row, two lines, still ends clear of the foot.
+    for (let i = 1; i < cards.length; i++) {
+      const gap = (cards[i] as OptionElement).y - bottom(cards[i - 1] as OptionElement);
+      expect(gap).toBeGreaterThanOrEqual(SPACE[2]);
+      expect(gap).toBeLessThan(SPACE[2] + 7);
+    }
+    expect(bottom(cards[3] as OptionElement)).toBeLessThanOrEqual(SAFE_BOTTOM - SPACE[2]);
     expect(byPreset(slide, "heading")[0]?.style.fontSize).toBeUndefined();
     expect(fitSlide(slide, theme).overflow).toEqual([]);
   });
