@@ -9,6 +9,8 @@ export interface AiEnv {
   AI_GATEWAY_API_KEY?: string | undefined;
   /** OpenRouter key: routes any `openrouter/<vendor>/<model>` id there (OpenAI-compatible API). */
   OPENROUTER_API_KEY?: string | undefined;
+  /** OpenAI key: serves `openai/<model>` ids directly, ahead of the gateway (ADR 0031). */
+  OPENAI_API_KEY?: string | undefined;
   AI_MODEL_FRONTIER?: string | undefined;
   AI_MODEL_STANDARD?: string | undefined;
   AI_MODEL_SMALL?: string | undefined;
@@ -40,7 +42,7 @@ export interface AiCallContext {
 
 export interface ConfiguredAi {
   /** `bedrock` when a Bedrock key is set (others may also be); otherwise the one remote that is. */
-  kind: "bedrock" | "gateway" | "openrouter";
+  kind: "openai" | "bedrock" | "gateway" | "openrouter";
   region: string;
   /** `context` is carried onto the `ai` log line of every call made through this model. */
   model(modelClass: ModelClass, context?: AiCallContext): LanguageModel;

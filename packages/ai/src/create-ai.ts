@@ -139,19 +139,23 @@ export function createAi(env: AiEnv, options: CreateAiOptions = {}): CreatedAi {
   const apiKey = env.AWS_BEARER_TOKEN_BEDROCK?.trim();
   const gatewayKey = env.AI_GATEWAY_API_KEY?.trim();
   const openRouterKey = env.OPENROUTER_API_KEY?.trim();
+  const openAiKey = env.OPENAI_API_KEY?.trim();
   const region = env.AWS_REGION?.trim() || DEFAULT_REGION;
   const modelIds = modelIdsFromEnv(env);
-  if (!apiKey && !gatewayKey && !openRouterKey) return unconfiguredAi(region, modelIds);
+  if (!apiKey && !gatewayKey && !openRouterKey && !openAiKey)
+    return unconfiguredAi(region, modelIds);
 
   const logger = options.logger ?? pino({ level: "silent" });
   warnUnpricedModels(logger, modelIds);
   const bedrock = apiKey ? createAmazonBedrock({ apiKey, region }) : undefined;
+  // Direct OpenAI for `openai/<model>` ids (prefix stripped), ahead of the gateway (ADR 0031).
+  const openai = openAiKey ? createOpenAI({ apiKey: openAiKey }) : undefined;
   const gateway = gatewayKey ? createGateway({ apiKey: gatewayKey }) : undefined;
   const openRouter = openRouterKey
     ? createOpenAI({ apiKey: openRouterKey, baseURL: OPENROUTER_BASE_URL, name: "openrouter" })
     : undefined;
   return createConfiguredAi({
-    kind: bedrock ? "bedrock" : gateway ? "gateway" : "openrouter",
+    kind: openai ? "openai" : bedrock ? "bedrock" : gateway ? "gateway" : "openrouter",
     region,
     modelIds,
     logger,
@@ -165,6 +169,8 @@ export function createAi(env: AiEnv, options: CreateAiOptions = {}): CreatedAi {
           );
         return openRouter.chat(modelId.slice(OPENROUTER_PREFIX.length));
       }
+      if (openai && modelId.startsWith("openai/"))
+        return openai.chat(modelId.slice("openai/".length));
       if (isGatewayModelId(modelId)) {
         if (!gateway)
           throw new AiError(

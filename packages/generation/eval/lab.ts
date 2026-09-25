@@ -128,6 +128,7 @@ const EnvSchema = z.object({
   AWS_REGION: z.string().optional(),
   AI_GATEWAY_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
   AI_MODEL_FRONTIER: z.string().optional(),
   AI_MODEL_STANDARD: z.string().optional(),
   AI_MODEL_SMALL: z.string().optional(),
@@ -1097,7 +1098,9 @@ if (import.meta.main) {
       (context?.stage ? routes[context.stage] : undefined),
   });
   if (created.kind === "unconfigured") {
-    console.error("lab: set AWS_BEARER_TOKEN_BEDROCK, AI_GATEWAY_API_KEY or OPENROUTER_API_KEY");
+    console.error(
+      "lab: set AWS_BEARER_TOKEN_BEDROCK, AI_GATEWAY_API_KEY, OPENROUTER_API_KEY or OPENAI_API_KEY",
+    );
     process.exit(2);
   }
   const label0 = label;
