@@ -173,8 +173,8 @@ export type OutlineEntry = {
   id: FactId;
   kind: GeneratableSlideKind;
   /**
-   * Whole minutes, on lessons planned before ruling 82 only. A lesson's size is its slide count;
-   * new outlines need carry no minutes and no check reads them.
+   * Whole minutes the planner still writes; nothing reads them. A lesson's size is its slide
+   * count (ruling 82); the field goes when the plan prompts stop writing it.
    */
   minutes?: number;
   /** The facts this slide covers. */

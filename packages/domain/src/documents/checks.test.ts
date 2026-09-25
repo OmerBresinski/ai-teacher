@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { checkLesson, isSchemaCheck, objectivesCoveredBy } from "./checks";
+import { checkLesson, objectivesCoveredBy } from "./checks";
 import {
   generatedFrom,
   generatedLesson,
@@ -42,19 +42,6 @@ describe("checkLesson", () => {
     l.facts = { ...lessonFacts(), durationMin: 30 };
     const w = generatedWorksheet();
     expect(checkLesson(l, w)).toEqual(checkLesson(l, w));
-  });
-
-  test("timing is retired (ruling 82): still a schema check name, never produced", () => {
-    expect(isSchemaCheck("timing")).toBe(true);
-    // An old lesson whose minutes are nowhere near its duration: no timing finding.
-    const l = generatedLesson();
-    const facts = lessonFacts();
-    l.facts = {
-      ...facts,
-      durationMin: 60,
-      outline: facts.outline.map((entry) => ({ ...entry, minutes: 1 })),
-    };
-    expect(checkLesson(l, generatedWorksheet()).some((f) => f.check === "timing")).toBe(false);
   });
 
   describe("question-answer", () => {

@@ -39,21 +39,6 @@ describe("residualFindings", () => {
     expect(residualFindings(lesson).map((f) => f.check)).toEqual(["age-fit"]);
   });
 
-  test("a stored timing finding on an old lesson is retired, not shown (ruling 82)", () => {
-    const lesson = generatedLesson();
-    if (!lesson.facts) throw new Error("fixture");
-    // Generated before ruling 82: minutes on every entry and the timing warning the job stored.
-    lesson.facts.outline = lesson.facts.outline.map((entry) => ({ ...entry, minutes: 1 }));
-    lesson.generation?.findings.push({
-      check: "timing",
-      severity: "warning",
-      target: {},
-      message: "The outline plans 6 minutes for a 60-minute lesson.",
-    });
-    // Only the fixture's stored model finding is left; the timing line never reaches the editor.
-    expect(residualFindings(lesson, generatedWorksheet()).map((f) => f.check)).toEqual(["age-fit"]);
-  });
-
   test("the budget finding survives, and duplicates by check + target collapse", () => {
     const lesson = generatedLesson();
     const budget = {

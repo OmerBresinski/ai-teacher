@@ -278,7 +278,7 @@ describe("LessonFactsSchema", () => {
     ]);
   });
 
-  test("minutes are optional (ruling 82); when an old lesson has them they are whole and at least one", () => {
+  test("minutes are optional (ruling 82); when present they are whole and at least one", () => {
     expect(LessonFactsSchema.safeParse(lessonFacts()).success).toBe(true);
     const facts = lessonFacts();
     facts.outline[0] = { ...(facts.outline[0] as (typeof facts.outline)[number]), minutes: 0 };
