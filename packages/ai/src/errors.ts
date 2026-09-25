@@ -77,5 +77,5 @@ export function toProviderError(cause: unknown): AiError {
   if (isModeration(cause)) {
     return new AiError("moderated", MODERATED_MESSAGE, { cause: toProviderFailure(cause) });
   }
-  return new AiError("provider", "Bedrock model call failed", { cause: toProviderFailure(cause) });
+  return new AiError("provider", "Model call failed", { cause: toProviderFailure(cause) });
 }

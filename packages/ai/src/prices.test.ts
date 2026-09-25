@@ -14,6 +14,20 @@ describe("PRICES", () => {
       expect(price.cachedInputPerMTok).toBeLessThan(price.inputPerMTok);
     }
   });
+
+  test("every `openai/` id the lab routes is priced, so a budget is a dollar cap on the direct route (ADR 0031)", () => {
+    for (const id of [
+      "openai/gpt-5.6-luna",
+      "openai/gpt-5.6-terra",
+      "openai/gpt-5.6-sol",
+      "openai/gpt-6-luna",
+      "openai/gpt-6-sol",
+    ])
+      expect(isPriced(id)).toBe(true);
+    // Gateway-only (404 direct) and the lab's priority tier are deliberately absent.
+    expect(isPriced("openai/gpt-6-luna-fast")).toBe(false);
+    expect(isPriced("openai/gpt-5.6-luna@priority")).toBe(false);
+  });
 });
 
 describe("costUsd", () => {

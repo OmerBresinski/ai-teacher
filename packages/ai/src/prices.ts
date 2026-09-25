@@ -70,16 +70,20 @@ export const PRICES: Record<string, ModelPrice> = {
       cacheWriteInputPerMTok: 11,
     },
   },
-  // Vercel AI Gateway ids (`provider/model`), the lab's model bench: the gateway's own list
-  // prices from `getAvailableModels()` on 2026-09-17, no markup. They make `--cap` a dollar cap
-  // and the lesson cost line real for those runs; the gateway's per-call cost is recorded too.
+  // `provider/model` ids. The `openai/` rows are OpenAI's list prices (platform.openai.com/pricing;
+  // the Vercel AI Gateway showed the same numbers with no markup when it listed them on
+  // 2026-09-17 and 2026-09-23): one row prices a direct call (ADR 0031) and a gateway call alike,
+  // so a lesson budget is a dollar cap on either route. The other vendors' rows are the gateway's
+  // list prices from `getAvailableModels()` on 2026-09-17 (the lab's model bench). Not listed:
+  // `openai/gpt-6-luna-fast` (gateway-only; OpenAI direct returns 404 for it) and the priority
+  // service tier (lab-only, 2x these prices).
   "openai/gpt-5.6-luna": {
     inputPerMTok: 0.2,
     outputPerMTok: 1.2,
     cachedInputPerMTok: 0.02,
     cacheWriteInputPerMTok: 0.25,
   },
-  // Gateway list price from `getAvailableModels()` on 2026-09-23 (lab model bench).
+  // Listed 2026-09-23 (lab model bench).
   "openai/gpt-6-luna": {
     inputPerMTok: 0.1,
     outputPerMTok: 0.5,
@@ -98,7 +102,7 @@ export const PRICES: Record<string, ModelPrice> = {
     cachedInputPerMTok: 0.2,
     cacheWriteInputPerMTok: 2.5,
   },
-  // Gateway list price from `getAvailableModels()` on 2026-09-23: the lab plan path's fact checker.
+  // Listed 2026-09-23: the lab plan path's fact checker.
   "openai/gpt-6-sol": {
     inputPerMTok: 2,
     outputPerMTok: 10,

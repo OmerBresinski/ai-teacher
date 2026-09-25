@@ -21,7 +21,8 @@ interface LoggingMiddlewareOptions {
 interface AiLogFields extends AiCallContext {
   class: ModelClass;
   modelId: string;
-  provider: "bedrock";
+  /** The wrapped model's `provider` string (`openai.chat`, `amazon-bedrock`, …), never a key. */
+  provider: string;
   durationMs: number;
   inputTokens: number | null;
   outputTokens: number | null;
@@ -47,6 +48,7 @@ function contextFields(context: AiCallContext | undefined): AiCallContext {
 function logSuccess(
   logger: pino.Logger,
   options: LoggingMiddlewareOptions,
+  provider: string,
   startedAt: number,
   usage: {
     inputTokens: {
@@ -66,7 +68,7 @@ function logSuccess(
     ...contextFields(options.context),
     class: options.modelClass,
     modelId: options.modelId,
-    provider: "bedrock",
+    provider,
     durationMs: Date.now() - startedAt,
     inputTokens,
     outputTokens,
@@ -86,13 +88,18 @@ function logSuccess(
   logger.info({ ai });
 }
 
-function logError(logger: pino.Logger, options: LoggingMiddlewareOptions, startedAt: number) {
+function logError(
+  logger: pino.Logger,
+  options: LoggingMiddlewareOptions,
+  provider: string,
+  startedAt: number,
+) {
   logger.warn({
     ai: {
       ...contextFields(options.context),
       class: options.modelClass,
       modelId: options.modelId,
-      provider: "bedrock",
+      provider,
       durationMs: Date.now() - startedAt,
       inputTokens: null,
       outputTokens: null,
@@ -102,23 +109,34 @@ function logError(logger: pino.Logger, options: LoggingMiddlewareOptions, starte
   });
 }
 
-/** Logs only call metadata and token usage; request and response content never leave the SDK. */
+/**
+ * Logs only call metadata and token usage; request and response content never leave the SDK.
+ * `provider` is the wrapped model's own string (the hook receives the model), so a direct OpenAI
+ * call is told apart from a Bedrock one in the log (ADR 0031 §7).
+ */
 export function createLoggingMiddleware(
   options: LoggingMiddlewareOptions,
 ): LanguageModelMiddleware {
   return {
-    wrapGenerate: async ({ doGenerate }) => {
+    wrapGenerate: async ({ doGenerate, model }) => {
       const startedAt = Date.now();
       try {
         const result = await doGenerate();
-        logSuccess(options.logger, options, startedAt, result.usage, result.finishReason.unified);
+        logSuccess(
+          options.logger,
+          options,
+          model.provider,
+          startedAt,
+          result.usage,
+          result.finishReason.unified,
+        );
         return result;
       } catch (error) {
-        logError(options.logger, options, startedAt);
+        logError(options.logger, options, model.provider, startedAt);
         throw toProviderError(error);
       }
     },
-    wrapStream: async ({ doStream }) => {
+    wrapStream: async ({ doStream, model }) => {
       const startedAt = Date.now();
       try {
         const result = await doStream();
@@ -128,7 +146,7 @@ export function createLoggingMiddleware(
         const logStreamError = () => {
           if (logged) return;
           logged = true;
-          logError(options.logger, options, startedAt);
+          logError(options.logger, options, model.provider, startedAt);
         };
 
         return {
@@ -146,6 +164,7 @@ export function createLoggingMiddleware(
                   logSuccess(
                     options.logger,
                     options,
+                    model.provider,
                     startedAt,
                     next.value.usage,
                     next.value.finishReason.unified,
@@ -168,7 +187,7 @@ export function createLoggingMiddleware(
           }),
         };
       } catch (error) {
-        logError(options.logger, options, startedAt);
+        logError(options.logger, options, model.provider, startedAt);
         throw toProviderError(error);
       }
     },

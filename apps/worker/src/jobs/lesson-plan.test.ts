@@ -370,7 +370,7 @@ describeDb("lesson.plan job", () => {
 
     // `@tj/ai` wraps provider failures as a retryable `AiError`; the handler rethrows it as-is.
     await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(first)).ctx)).rejects.toThrow(
-      "Bedrock model call failed",
+      "Model call failed",
     );
     const mid = await storedLesson(lessonId);
     expect(mid.generation?.stage).toBe("generated");
