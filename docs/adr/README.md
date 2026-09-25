@@ -36,7 +36,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0028 | GSAP for the character scenes, click-loaded                        | Accepted |
 | 0029 | Plan confirmation: the plan job, the generate job and plan revisions | Accepted |
 | 0030 | The worksheet is an independent job                               | Accepted |
-| 0031 | AI provider: OpenAI direct in @tj/ai; Bedrock retired | Accepted |
+| 0031 | AI provider: OpenAI direct in @tj/ai; Bedrock kept until the planner switch | Accepted |
 
 Template: `0000-template.md`.
 
