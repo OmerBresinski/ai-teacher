@@ -165,6 +165,14 @@
  * so it wins. Under break-spaces a trailing space has to occupy room on its line instead of
  * hanging past the edge, so the last word of any line that ends within one space-width of
  * the box re-wraps the moment editing starts. Two classes beat one; keep the static value.
+ *
+ * ProseMirror chose break-spaces on purpose: with pre-wrap, a space typed at the end of a
+ * full line hangs past the edge and the caret sits at the box's right edge until the next
+ * character wraps it down. We accept that one-keystroke caret position, because the static
+ * value is the one the fit engine measures with (`layout/measure.ts` lays text out in a
+ * `.td-rt` node under this stylesheet) and the one every stored box width and height was
+ * fitted against. Changing `.td-rt` to break-spaces instead would re-wrap tight boxes in
+ * every stored lesson, in the editor, thumbnails, present and export alike.
  */
 .td-rt.ProseMirror {
   white-space: pre-wrap;

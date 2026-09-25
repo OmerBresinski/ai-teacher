@@ -141,6 +141,13 @@ test.describe("text editing", () => {
     const target = boxes.reduce((a, b) => (b.lines.length > a.lines.length ? b : a));
     expect(target.lines.length).toBeGreaterThan(1);
     const element = page.locator(`[data-slide-frame] [data-element-id="${target.id}"]`);
+    // The wrap is the per-line text; the tops only guard against a vertical shift, so they get
+    // a pixel of slack for caret layers and font metrics settling when the editor focuses.
+    const expectSameLines = (got: { top: number; text: string }[]) => {
+      expect(got.map((l) => l.text)).toEqual(target.lines.map((l) => l.text));
+      const drift = got.map((l, i) => Math.abs(l.top - (target.lines[i]?.top ?? Number.NaN)));
+      expect(Math.max(...drift)).toBeLessThanOrEqual(1);
+    };
 
     await dblclickAt(page, element);
     const pm = proseMirror(page);
@@ -150,7 +157,7 @@ test.describe("text editing", () => {
       const measure = new Function(`return (${fn})`)() as (root: Element) => unknown[];
       return measure(el) as { top: number; text: string }[];
     }, probe.toString());
-    expect(editing).toEqual(target.lines);
+    expectSameLines(editing);
 
     await page.keyboard.press("Escape");
     await expect(proseMirror(page)).toHaveCount(0);
@@ -158,7 +165,7 @@ test.describe("text editing", () => {
       const measure = new Function(`return (${fn})`)() as (root: Element) => unknown[];
       return measure(el) as { top: number; text: string }[];
     }, probe.toString());
-    expect(after).toEqual(target.lines);
+    expectSameLines(after);
   });
 
   test("row 2: typing then Escape commits as one undo step and hands focus back to the canvas", async ({
