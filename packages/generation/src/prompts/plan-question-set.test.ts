@@ -72,8 +72,8 @@ const SAMPLE: PlanQuestionSetInput = {
 };
 
 const PIN: { version: string; hash: string } = {
-  version: "plan-question-set.v5",
-  hash: "3c74a0d47d8bc67c4a945a3b9a522abb090a772bd0985b7db05fdd3fc00b0c75",
+  version: "plan-question-set.v6",
+  hash: "41f1a443ff4e5de9f231ef294ceaef0733690a87a924484e0a30804713098045",
 };
 
 const QUESTION = {
@@ -103,7 +103,8 @@ describe("plan-question-set", () => {
     const v14 = planFactsObjectivePrompt.system;
     // v14 is 487 words; this call is 357: v14 question rules plus the one judge sentence. The alarm follows the count.
     // v4: 361. v5: 376, the one-right-answer sentence (7 "anotherCorrect" on gpt-6-luna low).
-    expect(system.trim().split(/\s+/).length).toBeLessThan(380);
+    // v6: 392, the part-way clause (both round-B question-set faults were a part-way answer the stem allowed).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(395);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
@@ -133,7 +134,7 @@ describe("plan-question-set", () => {
     );
     // v5: a "name one" item keyed to one of several right answers was the commonest question fault.
     expect(system).toContain(
-      'Each question has one right answer; where several are right ("name one…"), "answer" lists each.',
+      'Each question has one right answer: where a pupil could stop part way, the stem asks for the finished form ("simplest form"); where several are right ("name one…"), "answer" lists each.',
     );
     expect(system).toContain(
       '"forms" lists every way the question can be set: multiple-choice, true-false (only with a distractor that has a "misconceptionRef", never on exit), open-response.',
