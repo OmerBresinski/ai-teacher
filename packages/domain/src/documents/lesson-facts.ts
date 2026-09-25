@@ -224,7 +224,7 @@ export type LessonFacts = {
   pitch?: Pitch;
   outline: OutlineEntry[];
   durationMin: number;
-  /** Lab r2: the starter's retrieval questions (prior knowledge); not facts, no id, no check reads them. */
+  /** Lab r2: the starter's retrieval questions (prior knowledge); not facts, no id. Verify reads them as `r1`–`rN` (l6c). */
   retrieval?: RetrievalQuestion[];
 };
 
@@ -344,8 +344,8 @@ export const isFactIdOf = (array: FactArray, id: FactId): boolean =>
 
 /**
  * A starter retrieval question with its answer (lab r2): prior knowledge from earlier lessons,
- * written by the objectives call. Not a fact: it has no id, no `factRefs` point at it, and no check
- * reads it; only the lab's coded starter prints it.
+ * written by the objectives call. Not a fact: it has no id and no `factRefs` point at it; verify
+ * checks it as `r<n>` (l6c); only the lab's coded starter prints it.
  */
 export const RetrievalQuestionSchema = z.strictObject({
   question: z.string(),
