@@ -1,9 +1,16 @@
-import type { Id, Slide, SlideElement, TextElement, Theme } from "@tj/domain/documents";
+import type {
+  Id,
+  OptionElement,
+  Slide,
+  SlideElement,
+  TextElement,
+  Theme,
+} from "@tj/domain/documents";
 import { SLIDE_H } from "@tj/domain/documents";
 import { explanationReserve, hasExplanationPanel, RESERVED_LINES } from "./explanation-metrics";
 import { contains } from "./geometry";
 import { BASELINE, SAFE, SPACE, snapY } from "./grid";
-import { SAFE_BOTTOM } from "./metrics";
+import { OPTION, SAFE_BOTTOM } from "./metrics";
 import {
   isFrozen,
   isLayerBelow,
@@ -23,11 +30,13 @@ import { resolveTextStyle } from "./text-style";
  * heading through its rule, answer cards over each other, a worked example off its card.
  *
  * This runs the editor's own fitting engine (`./reflow.ts`: fit, push down, step down) with the
- * headless ruler (`./text-measure.ts`), then does the two things that engine leaves to a human
+ * headless ruler (`./text-measure.ts`), then does the things that engine leaves to a human
  * because they are recipe knowledge, not geometry:
  *
  * - a card grows with the text laid on it, so the worked example's steps stay on their card;
- * - the title stack is re-centred as one block once its title has grown.
+ * - the title stack is re-centred as one block once its title has grown;
+ * - a multiple choice whose options wrap in the recipe's 2x2 cards is re-laid as one column of
+ *   full-width rows (`columnOptions`), where each option has a line two and a half times as long.
  *
  * What still overruns at the legibility floor is returned, not hidden: splitting a slide is the
  * editor's Tidy (`@tj/editor/layout/tidy.ts`), which runs on first open (TEACH-251).
@@ -51,8 +60,17 @@ export function fitSlide(slide: Slide, theme: Theme): FitResult {
     panel?.type === "true-false" || panel?.type === "multiple-choice"
       ? { fitBottom: SAFE_BOTTOM - explanationReserve(theme, RESERVED_LINES[panel.type]) }
       : {};
-  const start = slide.kind === "worked-example" ? raiseCard(slide, theme, measure) : slide;
-  const result = reflowSlide(start, theme, measure, { ...lane, keep: stemOf(start) });
+  let start = slide.kind === "worked-example" ? raiseCard(slide, theme, measure) : slide;
+  const options = { ...lane, keep: stemOf(start) };
+  let result = reflowSlide(start, theme, measure, options);
+  if (slide.kind === "multiple-choice") {
+    const column = columnOptions(slide, theme);
+    const alt = column ? reflowSlide(column, theme, measure, options) : null;
+    if (column && alt && preferColumn(slide, result, alt)) {
+      start = column;
+      result = alt;
+    }
+  }
   if (start === slide && !changed(slide, result)) return { slide, overflow: overflowOf(slide) };
   let elements = growCards(start.elements, result.elements);
   if (slide.kind === "title") elements = restackTitle(start.elements, elements);
@@ -64,6 +82,69 @@ function stemOf(slide: Slide): Id[] {
   if (!slide.question) return [];
   const stem = slide.elements.find((el) => el.type === "text" && el.style.preset === "heading");
   return stem ? [stem.id] : [];
+}
+
+/** Padding inside a full-width answer row; the 2x2 grid's cards keep the renderer's 24. */
+const ROW_PAD = SPACE[1];
+/** The gap between answer rows, before the engine's cushion. */
+const ROW_GAP = SPACE[0];
+
+/**
+ * The multiple-choice recipe's four cards laid as one column of full-width rows
+ * (`layouts.ts` `multipleChoiceSlide` draws a 2x2 grid for one-line options). A row gives an
+ * option about two and a half times the grid card's line (the card's chrome — chip, tick lane,
+ * padding — is spent once per card either way), and a tighter padding, so a phrase that wraps
+ * in a card sits on one line. Rows start where the grid started, one line tall at the option
+ * floor, on the baseline pitch; the engine then grows any that wrap and pushes the rest down.
+ * Null when the slide does not carry the recipe's cards.
+ */
+function columnOptions(slide: Slide, theme: Theme): Slide | null {
+  const cards = slide.elements.filter((el): el is OptionElement => el.type === "option");
+  if (cards.length < 2 || cards.some((card) => isFrozen(card) || card.textStyle?.padding)) {
+    return null;
+  }
+  const top = Math.min(...cards.map((card) => card.y));
+  const left = Math.min(...cards.map((card) => card.x));
+  const width = Math.max(...cards.map((card) => card.x + card.w)) - left;
+  const parts = textPartsOf(cards[0] as OptionElement, slide);
+  if (!parts) return null;
+  const size = resolveTextStyle(parts.style, theme, parts.preset, parts.role).fontSize;
+  const rowH = Math.ceil(size * OPTION.line) + 2 * ROW_PAD + 2 * OPTION.border;
+  const pitch = Math.ceil((rowH + ROW_GAP) / BASELINE) * BASELINE;
+  const rows = new Map<OptionElement, number>(cards.map((card, i) => [card, top + i * pitch]));
+  return {
+    ...slide,
+    elements: slide.elements.map((el) => {
+      const y = el.type === "option" ? rows.get(el) : undefined;
+      if (el.type !== "option" || y === undefined) return el;
+      return {
+        ...el,
+        x: left,
+        y,
+        w: width,
+        h: rowH,
+        textStyle: { ...el.textStyle, padding: ROW_PAD },
+      };
+    }),
+  };
+}
+
+/**
+ * The grid is the recipe's design and stays while its cards hold their copy on one line. Once
+ * an option wraps in its card the column is the better fit, if it fits; and when neither fits
+ * at the option floor, the one that ends higher is the lesser overflow (the last row of a
+ * column stays on the slide where a grid's second row runs off it).
+ */
+function preferColumn(slide: Slide, grid: ReflowResult, column: ReflowResult): boolean {
+  const foot = (elements: SlideElement[]) =>
+    Math.max(...elements.filter((el) => el.type === "option").map((el) => el.y + el.h));
+  const gridFits = grid.overflow.length === 0;
+  const columnFits = column.overflow.length === 0;
+  const wrapped = grid.elements.some(
+    (el, i) => el.type === "option" && el.h > (slide.elements[i]?.h ?? 0) + 0.5,
+  );
+  if (columnFits) return wrapped || !gridFits;
+  return !gridFits && foot(column.elements) < foot(grid.elements);
 }
 
 /** Past the safe area as drawn (the lint's test); the engine's 4% cushion is for its own fit. */

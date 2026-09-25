@@ -209,8 +209,11 @@ export function textPartsOf(
     // The chip is dropped when it only repeats the card's own words; assume it is
     // drawn when a label exists, which is the conservative (wider) reading.
     const hasChip = !!el.label?.trim();
+    // A card's own padding when it carries one (a full-width answer row, `fit-slide.ts`), else
+    // the renderer's default; `OptionView` reads the same field.
+    const pad = el.textStyle?.padding ?? OPTION.pad;
     const inset =
-      OPTION.pad * 2 +
+      pad * 2 +
       OPTION.border * 2 +
       (scorable ? OPTION.tickLane : 0) +
       (hasChip ? OPTION.chip + OPTION.chipGap : 0);
@@ -221,7 +224,7 @@ export function textPartsOf(
       // An answer card sits on the 31pt option floor whichever stop it is set in.
       role: "option",
       inset,
-      chrome: OPTION.pad * 2 + OPTION.border * 2,
+      chrome: pad * 2 + OPTION.border * 2,
       autoHeight: el.textStyle?.autoHeight !== false,
     };
   }

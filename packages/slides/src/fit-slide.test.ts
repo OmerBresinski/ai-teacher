@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { OptionElement, Slide, SlideElement, TextElement } from "@tj/domain/documents";
+import { SLIDE_H } from "@tj/domain/documents";
 import { docFromText } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE } from "./grid";
@@ -92,7 +93,7 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     expect(bottom(body)).toBeLessThanOrEqual(SAFE_BOTTOM);
   });
 
-  test("two-line answer cards grow in equal rows and the second row moves clear of the first", () => {
+  test("options that wrap in the grid's cards are laid as full-width rows, one line each, in order", () => {
     const slide = make({
       kind: "multiple-choice",
       stem: "Which slogan helped the Bolsheviks gain support in 1917?",
@@ -107,17 +108,47 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     });
     const cards = slide.elements.filter((el): el is OptionElement => el.type === "option");
     expect(cards).toHaveLength(4);
-    for (const a of cards)
-      for (const b of cards)
-        if (a !== b) expect(overlapX(a, b) && overlapY(a, b), `${a.id} over ${b.id}`).toBe(false);
+    for (const card of cards) {
+      expect(card.x).toBe(SAFE.x);
+      expect(card.w).toBe(SAFE.w);
+      expect(card.textStyle?.padding).toBe(SPACE[1]);
+    }
+    // One line each: every row is as tall as the first, and A to D read top to bottom.
     const heights = new Set(cards.map((card) => card.h));
     expect(heights.size).toBe(1);
+    for (let i = 1; i < cards.length; i++) {
+      const prev = cards[i - 1] as OptionElement;
+      expect((cards[i] as OptionElement).y).toBeGreaterThanOrEqual(bottom(prev) + SPACE[0]);
+    }
     // The stem stays on the question floor: shrinking it would buy the cards no room.
     expect(byPreset(slide, "heading")[0]?.style.fontSize).toBeUndefined();
     for (const card of cards) expect(bottom(card)).toBeLessThanOrEqual(SAFE_BOTTOM);
+    expect(fitSlide(slide, theme).overflow).toEqual([]);
+    // The answer data still points at the same cards.
+    expect(slide.question?.type === "multiple-choice" && slide.question.options[0]?.id).toBe(
+      (cards[0] as OptionElement).id,
+    );
   });
 
-  test("cards no 2x2 grid can hold at the option floor are reported, not left overlapping", () => {
+  test("options of a word or two keep the recipe's 2x2 grid", () => {
+    const slide = make({
+      kind: "multiple-choice",
+      stem: "In which year did the Tsar abdicate?",
+      options: [
+        { text: "1917", correct: true },
+        { text: "1905", correct: false },
+        { text: "1914", correct: false },
+        { text: "1921", correct: false },
+      ],
+      factRefs: ["q2"],
+    });
+    const cards = slide.elements.filter((el): el is OptionElement => el.type === "option");
+    expect(new Set(cards.map((card) => card.x)).size).toBe(2);
+    expect(new Set(cards.map((card) => card.y)).size).toBe(2);
+    for (const card of cards) expect(card.textStyle?.padding).toBeUndefined();
+  });
+
+  test("cards no layout can hold at the option floor take the column, its last row on the slide, and are reported", () => {
     const slide = make({
       kind: "multiple-choice",
       stem: "Which event was an important turning point in ending tsarist rule in February 1917?",
@@ -135,8 +166,14 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     const cards = slide.elements.filter((el): el is OptionElement => el.type === "option");
     for (const a of cards)
       for (const b of cards) if (a !== b) expect(overlapX(a, b) && overlapY(a, b)).toBe(false);
-    // The residual the pipeline must answer (shorter options, or a split): the fit says so.
-    expect(fitSlide(slide, theme).overflow.length).toBeGreaterThan(0);
+    // The column ends higher than the grid would (its second row ran off the slide entirely):
+    // the last row still stands on the slide, past the safe area.
+    for (const card of cards) expect(card.w).toBe(SAFE.w);
+    const last = cards[cards.length - 1] as OptionElement;
+    expect(bottom(last)).toBeGreaterThan(SAFE_BOTTOM);
+    expect(bottom(last)).toBeLessThanOrEqual(SLIDE_H);
+    // The residual the pipeline must answer (shorter options): the fit says so.
+    expect(fitSlide(slide, theme).overflow).toEqual([last.id]);
   });
 
   test("a one-line question hands its second line to the working, which stays on its card", () => {
