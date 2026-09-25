@@ -20,14 +20,20 @@ export * from "./finding";
  */
 
 /**
- * The `check` names `checkLesson` produces: the four schema checks here and the deterministic
+ * The `check` names `checkLesson` produces: the three schema checks here and the deterministic
  * quality checks in `quality-checks.ts` (TEACH-210). Anything else on `Lesson.generation.findings`
  * is a model check (or the budget stop) and is shown as stored; these are always recomputed.
+ *
+ * `timing` is retired (UX ruling 82: a lesson's size is its slide count, so the outline's minutes
+ * are never checked against the brief's duration). It stays in this set so a `timing` finding a
+ * job stored on an older lesson is filtered like any schema finding and, never produced live,
+ * disappears; without the entry it would be shown as a model finding and handed to repair.
  */
 export const SCHEMA_CHECKS: ReadonlySet<string> = new Set([
   "question-answer",
   "objective-coverage",
   "vocabulary-in-facts",
+  "timing",
   ...QUALITY_CHECKS,
 ]);
 export const isSchemaCheck = (check: string): boolean => SCHEMA_CHECKS.has(check);
