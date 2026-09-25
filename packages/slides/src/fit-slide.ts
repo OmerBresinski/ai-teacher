@@ -20,7 +20,8 @@ import {
   textPartsOf,
 } from "./reflow";
 import { measureHeadless } from "./text-measure";
-import { resolveTextStyle } from "./text-style";
+import { floorBelow, ladderStops, resolveTextStyle } from "./text-style";
+import type { TextRole } from "./themes";
 
 /*
  * Fit a slide to its text before anything renders it (TEACH-28). A recipe in `layouts.ts` is
@@ -64,8 +65,18 @@ export function fitSlide(slide: Slide, theme: Theme): FitResult {
   const options = { ...lane, keep: stemOf(start) };
   let result = reflowSlide(start, theme, measure, options);
   if (slide.kind === "multiple-choice") {
-    const column = columnOptions(slide, theme);
-    const alt = column ? reflowSlide(column, theme, measure, options) : null;
+    let column = columnOptions(slide, theme);
+    let alt = column ? reflowSlide(column, theme, measure, options) : null;
+    // UX ruling 91: when the column still overruns at the floor, the type steps down one size,
+    // once — the options first, then the stem — and only what is left after that is reported.
+    for (const [ids, role] of [
+      [optionIds(column), undefined],
+      [stemOf(column ?? slide), "question"],
+    ] as const) {
+      if (!column || !alt || alt.overflow.length === 0) break;
+      column = stepOnce(column, theme, ids, role);
+      alt = reflowSlide(column, theme, measure, options);
+    }
     if (column && alt && preferColumn(slide, result, alt)) {
       start = column;
       result = alt;
@@ -125,6 +136,35 @@ function columnOptions(slide: Slide, theme: Theme): Slide | null {
         h: rowH,
         textStyle: { ...el.textStyle, padding: ROW_PAD },
       };
+    }),
+  };
+}
+
+const optionIds = (slide: Slide | null): Id[] =>
+  slide ? slide.elements.filter((el) => el.type === "option").map((el) => el.id) : [];
+
+/**
+ * One stop down the theme's ladder for the named elements, under the role's floor if that is
+ * where the next stop is, and never past `floorBelow` (UX ruling 91: one size, once). Written
+ * as an explicit size, which `resolveFontSize` honours to that stop and the engine's own
+ * step-down (clamped at the floor) will not move again. `role` names what the text is doing where
+ * the element cannot (`fit-slide` knows a stem is a question; the engine does not).
+ */
+function stepOnce(slide: Slide, theme: Theme, ids: readonly Id[], role?: TextRole): Slide {
+  return {
+    ...slide,
+    elements: slide.elements.map((el) => {
+      if (!ids.includes(el.id)) return el;
+      const parts = textPartsOf(el, slide);
+      if (!parts) return el;
+      const at = role ?? parts.role;
+      const current = resolveTextStyle(parts.style, theme, parts.preset, at).fontSize;
+      const next = ladderStops(theme).find((s) => s < current - 0.5);
+      if (next === undefined || next < floorBelow(theme, parts.preset, at)) return el;
+      if (el.type === "option") return { ...el, textStyle: { ...el.textStyle, fontSize: next } };
+      if (el.type === "text" || el.type === "gap-text")
+        return { ...el, style: { ...el.style, fontSize: next } };
+      return el;
     }),
   };
 }

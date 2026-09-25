@@ -81,7 +81,7 @@ import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { contains, type Rect } from "./geometry";
 import { BASELINE, SPACE } from "./grid";
 import { OPTION, SAFE_BOTTOM, withSafety } from "./metrics";
-import { resolveTextStyle } from "./text-style";
+import { ladderStops, resolveTextStyle, STEPPABLE } from "./text-style";
 import { fontFloor, type TextRole } from "./themes";
 
 /* ------------------------------------------------------------------ */
@@ -94,11 +94,9 @@ const EPS = 0.5;
 /** How many times the type may step down before we split instead. */
 const MAX_STEPS = 3;
 
-/** Presets the step-down touches. Never `title`/`subtitle` (focal), never `caption` (a label). */
-export const STEPPABLE: readonly TextPreset[] = ["heading", "body", "small"];
-
-/** The theme's own type ladder, largest first, used as the step-down stops. */
-const LADDER: readonly TextPreset[] = ["title", "subtitle", "heading", "body", "small"];
+// `STEPPABLE` (the presets the step-down touches; never `title`/`subtitle`, focal, nor `caption`, a
+// label) lives in `text-style.ts` beside the floor it relaxes, and is re-exported here.
+export { STEPPABLE };
 
 /* ------------------------------------------------------------------ */
 /* Measurement contract                                                */
@@ -235,10 +233,7 @@ export function textPartsOf(
 /* Type ladder                                                         */
 /* ------------------------------------------------------------------ */
 
-/** The distinct sizes of the theme's ladder, largest first. */
-function stops(theme: Theme): number[] {
-  return Array.from(new Set(LADDER.map((p) => theme.sizes[p]))).sort((a, b) => b - a);
-}
+const stops = ladderStops;
 
 /**
  * One stop down the theme ladder, clamped to the role's legibility floor.

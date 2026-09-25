@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import type { OptionElement, Slide, SlideElement, TextElement } from "@tj/domain/documents";
-import { SLIDE_H } from "@tj/domain/documents";
 import { docFromText } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE } from "./grid";
@@ -9,6 +8,7 @@ import { SAFE_BOTTOM } from "./metrics";
 import { reflowSlide } from "./reflow";
 import type { SlideSpec } from "./specs";
 import { measureHeadless } from "./text-measure";
+import { floorBelow } from "./text-style";
 import { getTheme } from "./themes";
 
 /*
@@ -148,7 +148,26 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     for (const card of cards) expect(card.textStyle?.padding).toBeUndefined();
   });
 
-  test("cards no layout can hold at the option floor take the column, its last row on the slide, and are reported", () => {
+  test("options of eighty characters each step once and no further; what is left is reported", () => {
+    const long = (n: number) =>
+      `Option ${n}: soldiers, sailors and workers across the capital refused every order given`;
+    const slide = make({
+      kind: "multiple-choice",
+      stem: "Which event was an important turning point in ending tsarist rule in February 1917?",
+      options: [1, 2, 3, 4].map((n) => ({ text: long(n), correct: n === 1 })),
+      factRefs: ["q1"],
+    });
+    const cards = slide.elements.filter((el): el is OptionElement => el.type === "option");
+    // One stop under the 31pt option floor (UX ruling 91), never a second.
+    for (const card of cards)
+      expect(card.textStyle?.fontSize).toBe(floorBelow(theme, "small", "option"));
+    expect(byPreset(slide, "heading")[0]?.style.fontSize).toBe(
+      floorBelow(theme, "heading", "question"),
+    );
+    expect(fitSlide(slide, theme).overflow.length).toBeGreaterThan(0);
+  });
+
+  test("the showcase's 86-character option (slide 7): full-width rows, one stop down, inside the safe area", () => {
     const slide = make({
       kind: "multiple-choice",
       stem: "Which event was an important turning point in ending tsarist rule in February 1917?",
@@ -166,14 +185,18 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     const cards = slide.elements.filter((el): el is OptionElement => el.type === "option");
     for (const a of cards)
       for (const b of cards) if (a !== b) expect(overlapX(a, b) && overlapY(a, b)).toBe(false);
-    // The column ends higher than the grid would (its second row ran off the slide entirely):
-    // the last row still stands on the slide, past the safe area.
-    for (const card of cards) expect(card.w).toBe(SAFE.w);
-    const last = cards[cards.length - 1] as OptionElement;
-    expect(bottom(last)).toBeGreaterThan(SAFE_BOTTOM);
-    expect(bottom(last)).toBeLessThanOrEqual(SLIDE_H);
-    // The residual the pipeline must answer (shorter options): the fit says so.
-    expect(fitSlide(slide, theme).overflow).toEqual([last.id]);
+    // Full-width rows at one stop under the option floor (UX ruling 91), A to D in order, every
+    // row inside the safe area; the stem did not need to step.
+    for (const card of cards) {
+      expect(card.w).toBe(SAFE.w);
+      expect(card.textStyle?.fontSize).toBe(floorBelow(theme, "small", "option"));
+      expect(card.textStyle?.fontSize).toBeLessThan(31);
+      expect(bottom(card)).toBeLessThanOrEqual(SAFE_BOTTOM);
+    }
+    for (let i = 1; i < cards.length; i++)
+      expect((cards[i] as OptionElement).y).toBeGreaterThan(bottom(cards[i - 1] as OptionElement));
+    expect(byPreset(slide, "heading")[0]?.style.fontSize).toBeUndefined();
+    expect(fitSlide(slide, theme).overflow).toEqual([]);
   });
 
   test("a one-line question hands its second line to the working, which stays on its card", () => {
