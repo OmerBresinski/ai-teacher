@@ -159,8 +159,8 @@ export interface PipelineDeps {
   effortFor?: (
     stage: string,
     promptName: string,
-    effort: "low" | "medium" | "high",
-  ) => "low" | "medium" | "high";
+    effort: "none" | "low" | "medium" | "high",
+  ) => "none" | "low" | "medium" | "high";
   /**
    * Where illustrate reports its counts for the summary line. Stages cannot see the
    * `RequestContext`, so the per-run counts ride here instead (the same shape of channel as

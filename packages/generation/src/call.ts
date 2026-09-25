@@ -53,12 +53,14 @@ export interface StructuredPrompt<I> {
 /**
  * How hard the model may think on one call (Generation quality §6). Required on every call so no
  * stage is left at the provider's default by omission; the per-stage values are the project's
- * table, set at the call sites, never in a prompt. Carried to Bedrock as
- * `providerOptions.bedrock.reasoningConfig.maxReasoningEffort`, which `@ai-sdk/amazon-bedrock`
- * maps to `reasoning.effort` for an OpenAI id and `output_config.effort` for an Anthropic one.
- * `xhigh` / `max` are not offered: nothing in the pipeline needs them.
+ * table, set at the call sites, never in a prompt. Sent to OpenAI as `openai.reasoningEffort`
+ * (ADR 0031) and to Bedrock as `providerOptions.bedrock.reasoningConfig.maxReasoningEffort`,
+ * which `@ai-sdk/amazon-bedrock` maps to `reasoning.effort` for an OpenAI id and
+ * `output_config.effort` for an Anthropic one. `none` is the direct route's "do not reason";
+ * Bedrock has no such level, so it is sent `low` there. `minimal` is never offered (the Luna ids
+ * refuse it), nor `xhigh` / `max`: nothing in the pipeline needs them.
  */
-export type ReasoningEffort = "low" | "medium" | "high";
+export type ReasoningEffort = "none" | "low" | "medium" | "high";
 
 export interface CallStructuredOptions<I, T> {
   deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "effortFor">;
@@ -456,27 +458,26 @@ export function imageMediaType(url: string): string {
 }
 
 /**
- * The provider options one call sends. For an OpenAI id `@ai-sdk/amazon-bedrock` maps
- * `reasoningConfig.maxReasoningEffort` to `reasoning.effort`. For an Anthropic id it would write
- * `output_config.effort`, which the Haiku the `small` class still runs on may not accept, and
- * `@tj/ai` already disables thinking on those ids (`NO_THINKING`) so effort has nothing to act on:
- * nothing is sent and the call runs as it did before. The `effort` still reaches the log through
- * the call context. Dead for the pipeline once every class is a GPT-5.6 id (Generation quality §6).
+ * The provider options one call sends: the same effort under every provider's namespace, since
+ * each provider reads only its own and the rest are inert. An `openai/` id (direct, or the gateway
+ * as fallback — ADR 0031) reads `openai.reasoningEffort`; without it a GPT-5.6 id thinks at its
+ * default effort and the reasoning tokens eat the `maxOutputTokens` budget, truncating the JSON
+ * (observed 2026-09-17). A Bedrock id reads `bedrock.reasoningConfig`, which
+ * `@ai-sdk/amazon-bedrock` maps to `reasoning.effort`; Bedrock has no `none`, so that is `low`
+ * there. An Anthropic id gets nothing: `@tj/ai` already disables thinking on those ids
+ * (`NO_THINKING`), so effort has nothing to act on and the call runs as before. The `effort`
+ * still reaches the log through the call context.
  */
 export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
   if (isAnthropicModelId(modelId)) return {};
   return {
     providerOptions: {
-      bedrock: { reasoningConfig: { maxReasoningEffort: effort } },
-      // The same effort when the call goes through a gateway (`provider/model` ids, the lab's
-      // model bench): each provider reads only its own namespace, so the others are inert.
-      // Without this a GPT-5.6 id thinks at its default effort and the reasoning tokens eat the
-      // `maxOutputTokens` budget, truncating the JSON (observed 2026-09-17 via the Vercel gateway).
+      bedrock: { reasoningConfig: { maxReasoningEffort: effort === "none" ? "low" : effort } },
       openai: {
         reasoningEffort: effort,
-        // Direct to OpenAI (the pinned gateway route) strict mode refuses a schema with an optional
-        // property ("'required' … must include every key"); Bedrock's route never minded. Our
-        // schemas have optional fields, and zod validates the answer anyway.
+        // OpenAI's strict mode refuses a schema whose `required` does not list every key; the
+        // pipeline's schemas have optional fields, and zod validates the answer in full anyway.
+        // Bedrock's route never minded, so the key is sent for `openai/` ids only.
         ...(modelId.startsWith("openai/") ? { strictJsonSchema: false } : {}),
       },
       // Gemini 3 reads a level, not an effort; Qwen and DeepSeek think or not (smoke-tested
@@ -486,7 +487,8 @@ export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
       deepseek: { thinking: { type: effort === "high" ? "enabled" : "disabled" } },
       // The Vercel gateway may serve an `openai/` id from its own Bedrock credentials, where the
       // effort is ignored (Sol at "low" reasoned more than at "medium", 2026-09-17): pin the
-      // vendor so the setting reaches the model. Inert outside the gateway.
+      // vendor so the setting reaches the model. Read only by the gateway; inert on the direct
+      // route.
       ...(modelId.startsWith("openai/") ? { gateway: { only: ["openai"] } } : {}),
     },
   };

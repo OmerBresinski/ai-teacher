@@ -7,7 +7,13 @@ import { APICallError, type Schema } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { z } from "zod";
-import { callStructured, imageMediaType, specRuleFinding, wireSchemaFor } from "./call";
+import {
+  callStructured,
+  imageMediaType,
+  providerOptionsFor,
+  specRuleFinding,
+  wireSchemaFor,
+} from "./call";
 import { BudgetExceeded, type PipelineDeps, StageFailure } from "./types";
 
 const schema = z.strictObject({ answer: z.string() });
@@ -259,6 +265,39 @@ describe("wireSchemaFor (Gemini's schema dialect)", () => {
   });
 });
 
+describe("providerOptionsFor (the effort under every provider's namespace, ADR 0031)", () => {
+  test("A8: an `openai/` id at `none` sends reasoningEffort none, non-strict schema, and Bedrock's floor `low`", () => {
+    expect(providerOptionsFor("openai/gpt-5.6-luna", "none")).toEqual({
+      providerOptions: {
+        bedrock: { reasoningConfig: { maxReasoningEffort: "low" } },
+        openai: { reasoningEffort: "none", strictJsonSchema: false },
+        google: { thinkingConfig: { thinkingLevel: "low" } },
+        alibaba: { enableThinking: false },
+        deepseek: { thinking: { type: "disabled" } },
+        gateway: { only: ["openai"] },
+      },
+    });
+  });
+
+  test("A9: a Bedrock id sends the effort as is, with no strictJsonSchema and no gateway pin", () => {
+    const options = providerOptionsFor("us.openai.gpt-5.6-luna", "medium").providerOptions;
+    expect(options?.openai).toEqual({ reasoningEffort: "medium" });
+    expect(options?.bedrock.reasoningConfig.maxReasoningEffort).toBe("medium");
+    expect(options && "gateway" in options).toBe(false);
+  });
+
+  test("A10: an Anthropic id gets no provider options at all", () => {
+    expect(providerOptionsFor("us.anthropic.claude-sonnet-5", "low")).toEqual({});
+  });
+
+  test("every offered effort is forwarded verbatim to OpenAI; `minimal` is not in the type", () => {
+    for (const effort of ["none", "low", "medium", "high"] as const) {
+      const sent = providerOptionsFor("openai/gpt-5.6-luna", effort).providerOptions?.openai;
+      expect(sent?.reasoningEffort).toBe(effort);
+    }
+  });
+});
+
 describe("callStructured", () => {
   test("returns the parsed object, charges the budget and carries the stage context", async () => {
     const ai = createFakeAi({
@@ -306,6 +345,31 @@ describe("callStructured", () => {
       deepseek: { thinking: { type: "disabled" } },
     });
     expect(ai.calls[0]?.context?.effort).toBe("low");
+  });
+
+  test("A12: the host's effortFor can turn a call down to `none`, and the fake records it as sent", async () => {
+    const ai = createFakeAi({
+      script: [JSON.stringify({ answer: "42" })],
+      modelIds: { standard: "openai/gpt-5.6-luna" },
+    });
+    const d = deps(ai, { effortFor: () => "none" });
+    await callStructured({
+      deps: d,
+      stage: "generate",
+      cls: "standard",
+      effort: "medium",
+      prompt,
+      input: "hi",
+      schema,
+      maxOutputTokens: 100,
+    });
+    const sent = ai.calls[0]?.providerOptions as {
+      openai: { reasoningEffort: string; strictJsonSchema: boolean };
+      bedrock: { reasoningConfig: { maxReasoningEffort: string } };
+    };
+    expect(sent.openai).toEqual({ reasoningEffort: "none", strictJsonSchema: false });
+    expect(sent.bedrock.reasoningConfig.maxReasoningEffort).toBe("low");
+    expect(ai.calls[0]?.context?.effort).toBe("none");
   });
 
   test("row 1 (TEACH-220): images ride as image parts on the user turn, on the retry too", async () => {
