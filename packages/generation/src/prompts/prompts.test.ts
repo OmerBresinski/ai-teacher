@@ -197,8 +197,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "a582769329a1e3bc2652808dd41c8fc87c8c68e18b1f6b95d8c46407c44253c3",
   },
   "verify-facts": {
-    version: "verify-facts.v4",
-    hash: "d4818445390ef7635afc6675f2303170ff3e95dfa6581ad769cdec20797ea42f",
+    version: "verify-facts.v5",
+    hash: "c1e3e317cc2a04ffd7437986f8e17162173391016d39eaa4199ec601680795e4",
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.

@@ -217,6 +217,12 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *  - "No objective restates the topic" is its own sentence: at effort `low` Luna drops a trailing
  *    exclusion inside a long sentence (v16 note above).
  *
+ * v18 (25 Sept 2026, luna-direct yes/no deck checklist): 3 of gpt-6-luna low's 9 question faults
+ *    were starter items, two keyed wrong and one with a second right option ("The Home Front"
+ *    among the options). Each retrieval question now has one right answer (+6 words; one
+ *    sentence covers the open and the picking form). The knowledge errors themselves need verify to see the starter
+ *    (CHANGES.md change 4: code, not a prompt rule).
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -347,7 +353,7 @@ const SHAPE_SKETCH =
   '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v17",
+  version: "plan-objectives.v18",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
@@ -356,7 +362,7 @@ export const planObjectivesPrompt = {
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
     "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",
-    "Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Ask it in one line or by picking from options the question names.",
+    "Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Ask it in one line or by picking from options the question names; it has one right answer.",
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,
