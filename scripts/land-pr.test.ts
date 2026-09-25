@@ -9,6 +9,8 @@ import {
   parseLandPrArgs,
   parseRequiredChecks,
   parseVercelProduction,
+  RailwayLink,
+  type RailwayLinkDeps,
   railwayLinkArgs,
   railwayListArgs,
   railwayLogsCommand,
@@ -626,5 +628,76 @@ describe("railway CLI arguments (4.x has no -p/--project flag)", () => {
     expect(hint).toContain(`railway link -p ${PROJECT} -e production`);
     expect(hint.split("\n")[0]).not.toContain("-p");
     expect(railwayLogsCommand("api", null)).toContain("railway logs -e production -s api --build");
+  });
+});
+
+describe("RailwayLink lifecycle", () => {
+  function fakeLink(options: { linkExit?: number } = {}) {
+    const calls: {
+      mkdtemp: number;
+      railway: Array<{ args: string[]; cwd: string }>;
+      rm: string[];
+    } = {
+      mkdtemp: 0,
+      railway: [],
+      rm: [],
+    };
+    const deps: RailwayLinkDeps = {
+      mkdtemp: async () => {
+        calls.mkdtemp += 1;
+        return `/tmp/land-pr-railway-${calls.mkdtemp}`;
+      },
+      railway: async (args, cwd) => {
+        calls.railway.push({ args, cwd });
+        return { exitCode: args[0] === "link" ? (options.linkExit ?? 0) : 0, stdout: "" };
+      },
+      rm: async (dir) => {
+        calls.rm.push(dir);
+      },
+    };
+    return { link: new RailwayLink(deps), calls };
+  }
+
+  test("links once, memoised across calls, and unlinks then removes the directory on dispose", async () => {
+    const { link, calls } = fakeLink();
+    const [first, second] = await Promise.all([link.cwd(), link.cwd()]);
+    expect(first).toBe("/tmp/land-pr-railway-1");
+    expect(second).toBe(first);
+    expect(calls.mkdtemp).toBe(1);
+    expect(calls.railway).toEqual([{ args: railwayLinkArgs(), cwd: first }]);
+
+    await link.dispose();
+    expect(calls.railway.at(-1)).toEqual({ args: ["unlink", "--yes"], cwd: first });
+    expect(calls.rm).toEqual([first]);
+
+    await link.dispose();
+    expect(calls.railway).toHaveLength(2);
+    expect(calls.rm).toHaveLength(1);
+  });
+
+  test("removes the directory without unlinking when the link itself failed", async () => {
+    const { link, calls } = fakeLink({ linkExit: 1 });
+    await expect(link.cwd()).rejects.toThrow("Could not link a temporary directory");
+    await link.dispose();
+    expect(calls.railway.map((call) => call.args[0])).toEqual(["link"]);
+    expect(calls.rm).toEqual(["/tmp/land-pr-railway-1"]);
+  });
+
+  test("disposing while the link is still pending waits for it, then cleans up", async () => {
+    const { link, calls } = fakeLink();
+    const pending = link.cwd();
+    const disposed = link.dispose();
+    await expect(pending).resolves.toBe("/tmp/land-pr-railway-1");
+    await disposed;
+    expect(calls.railway.map((call) => call.args[0])).toEqual(["link", "unlink"]);
+    expect(calls.rm).toEqual(["/tmp/land-pr-railway-1"]);
+  });
+
+  test("makes no Railway or filesystem calls when never used (--no-deploy)", async () => {
+    const { link, calls } = fakeLink();
+    await link.dispose();
+    expect(calls.mkdtemp).toBe(0);
+    expect(calls.railway).toHaveLength(0);
+    expect(calls.rm).toHaveLength(0);
   });
 });

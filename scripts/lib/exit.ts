@@ -9,6 +9,8 @@ export const ExitCode = {
   Usage: 2,
   /** Interrupted by SIGINT (128 + 2). */
   Interrupted: 130,
+  /** Terminated by SIGTERM (128 + 15). */
+  Terminated: 143,
 } as const;
 
 export type ExitCodeValue = (typeof ExitCode)[keyof typeof ExitCode];
