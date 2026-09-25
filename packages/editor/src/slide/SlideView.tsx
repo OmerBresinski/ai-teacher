@@ -116,7 +116,10 @@ export function SlideView({
     position: "relative",
     width: SLIDE_W,
     height: SLIDE_H,
-    overflow: "hidden",
+    // In the editor the root must not be a scroll container: `hidden` let Chromium caret-scroll
+    // it while typing past the bottom edge (the canvas snaps it back, `Canvas.tsx`). `clip`
+    // paints the same and cannot scroll. Other modes keep the value they were captured with.
+    overflow: mode === "edit" ? "clip" : "hidden",
     background: bg?.color ?? theme.colors.background,
     color: theme.colors.ink,
     fontFamily: theme.fonts.body,

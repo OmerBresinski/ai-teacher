@@ -214,3 +214,47 @@ describe("the explanation panel", () => {
     expect("explanation" in (read().slides[0]?.question ?? {})).toBe(false);
   });
 });
+
+describe("the slide frame while typing past the bottom edge", () => {
+  /*
+   * Chromium keeps the caret in view by scrolling every scrollable ancestor, and an
+   * `overflow: hidden` box counts. Both clippers round the slide are `clip` instead, and the
+   * canvas snaps either back should an engine still report a scroll (t74-2 §2).
+   */
+  const frameOf = (c: HTMLElement) =>
+    c.querySelector<HTMLElement>("[data-slide-clip]") as HTMLElement;
+  const rootOf = (c: HTMLElement) =>
+    c.querySelector<HTMLElement>("[data-slide-frame] [data-slide-root]") as HTMLElement;
+
+  test("neither the frame nor the slide root is a scroll container: both clip", () => {
+    const { container } = renderEditor(textLesson());
+    expect(frameOf(container).style.overflow).toBe("clip");
+    expect(rootOf(container).style.overflow).toBe("clip");
+  });
+
+  test("a scroll the frame or the slide root reports is undone at once", async () => {
+    const { container } = renderEditor(textLesson());
+    await openEditor(container);
+    const frame = frameOf(container);
+    const root = rootOf(container);
+    frame.scrollTop = 40;
+    frame.scrollLeft = 3;
+    expect(frame.scrollTop).toBe(40);
+    fireEvent.scroll(frame);
+    expect([frame.scrollTop, frame.scrollLeft]).toEqual([0, 0]);
+    root.scrollTop = 40;
+    fireEvent.scroll(root);
+    expect(root.scrollTop).toBe(0);
+  });
+
+  test("when editing ends the frame is back at the top of the slide", async () => {
+    const { container } = renderEditor(textLesson());
+    const pm = await openEditor(container);
+    const frame = frameOf(container);
+    frame.scrollTop = 40;
+    expect(frame.scrollTop).toBe(40);
+    fireEvent.keyDown(pm, { key: "Escape" });
+    await waitFor(() => expect(proseMirror(container)).toBeNull());
+    expect(frame.scrollTop).toBe(0);
+  });
+});

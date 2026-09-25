@@ -197,4 +197,45 @@ test.describe("text editing", () => {
     await expect(panel).toContainText("Really.");
     await expect(stage(page)).toBeFocused();
   });
+
+  test("typing past the bottom edge never scrolls the slide inside its frame; Escape leaves it where it was", async ({
+    signedInPage: { page, paths },
+  }) => {
+    await page.goto(EDITOR(paths));
+    const title = elements(page).filter({ hasText: "The water cycle" }).first();
+    const frame = page.locator("[data-slide-clip]");
+    const root = page.locator("[data-slide-frame] [data-slide-root]");
+    // Where the heading sits in the frame, before anything is typed.
+    const offset = async () => (await box(title)).y - (await box(frame)).y;
+    const scrolled = () =>
+      Promise.all([frame, root].map((l) => l.evaluate((el) => [el.scrollTop, el.scrollLeft])));
+    const before = await offset();
+
+    await dblclickAt(page, title);
+    const pm = proseMirror(page);
+    await expect(pm).toBeFocused();
+    await page.keyboard.press("End");
+    for (let i = 1; i <= 8; i++) {
+      await page.keyboard.press("Enter");
+      await page.keyboard.type(`Line ${i}`);
+    }
+    // The caret is now below the slide's bottom edge: Chromium would caret-scroll an
+    // `overflow: hidden` frame and push the heading up under the frame edge (t74-2 §2).
+    await expect(pm).toContainText("Line 8");
+    expect(await scrolled()).toEqual([
+      [0, 0],
+      [0, 0],
+    ]);
+    expect(Math.abs((await offset()) - before)).toBeLessThan(1);
+
+    await page.keyboard.press("Escape");
+    await expect(proseMirror(page)).toHaveCount(0);
+    expect(await scrolled()).toEqual([
+      [0, 0],
+      [0, 0],
+    ]);
+    expect(Math.abs((await offset()) - before)).toBeLessThan(1);
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(title).not.toContainText("Line 8");
+  });
 });
