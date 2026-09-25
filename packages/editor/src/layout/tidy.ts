@@ -1,4 +1,12 @@
-import type { Id, Lesson, RichDoc, Slide, SlideElement, Theme } from "@tj/domain/documents";
+import type {
+  Id,
+  Lesson,
+  RichDoc,
+  RichNode,
+  Slide,
+  SlideElement,
+  Theme,
+} from "@tj/domain/documents";
 import { BODY_Y } from "@tj/slides";
 import { cloneSlide, docFromText } from "../model/factories";
 import * as reducers from "../model/reducers";
@@ -11,6 +19,7 @@ import {
   isFrozen,
   isHairline,
   isLayerBelow,
+  type MeasureInput,
   type Measurer,
   type ReflowResult,
   reflowSlide,
@@ -53,14 +62,118 @@ const EMPTY: TidyOutcome = {
   changed: false,
 };
 
-/** The doc an element carries, if it is one the engine can split. */
-function splittableDoc(el: SlideElement): RichDoc | null {
-  if (el.type !== "text" && el.type !== "gap-text") return null;
-  return docLineCount(el.doc) > 1 ? el.doc : null;
-}
-
 /** Sub-point noise from rounding is not a move. */
 const EPS = 0.5;
+
+/* ------------------------------------------------------------------ */
+/* Splitting a lone paragraph at a sentence                            */
+/* ------------------------------------------------------------------ */
+
+/** Where a new sentence starts: after . ! ? (and any closing quote or bracket) and a space. */
+const SENTENCE_START = /[.!?]["'\u201d\u2019)\]]*\s+/g;
+
+const sentenceStarts = (text: string): number[] => {
+  const out: number[] = [];
+  for (const m of text.matchAll(SENTENCE_START)) {
+    const at = (m.index ?? 0) + m[0].length;
+    if (at < text.length) out.push(at);
+  }
+  return out;
+};
+
+/** A paragraph made of text runs only (marks allowed): the kind a sentence split can cut. */
+const isPlainParagraph = (node: RichNode | undefined): node is RichNode =>
+  node?.type === "paragraph" &&
+  (node.content ?? []).every((n) => n.type === "text" && typeof n.text === "string");
+
+const paragraphText = (p: RichNode): string => (p.content ?? []).map((n) => n.text ?? "").join("");
+
+/** Cut a paragraph's text runs at `offset`, keeping each run's marks; no run is left empty. */
+function cutParagraph(p: RichNode, offset: number): [RichNode, RichNode] {
+  const head: RichNode[] = [];
+  const tail: RichNode[] = [];
+  let seen = 0;
+  for (const run of p.content ?? []) {
+    const text = run.text ?? "";
+    const end = seen + text.length;
+    if (end <= offset) head.push(run);
+    else if (seen >= offset) tail.push(run);
+    else {
+      head.push({ ...run, text: text.slice(0, offset - seen) });
+      tail.push({ ...run, text: text.slice(offset - seen) });
+    }
+    seen = end;
+  }
+  const last = head[head.length - 1];
+  if (last) head[head.length - 1] = { ...last, text: (last.text ?? "").trimEnd() };
+  const first = tail[0];
+  if (first) tail[0] = { ...first, text: (first.text ?? "").trimStart() };
+  const kept = (runs: RichNode[]) => runs.filter((r) => (r.text ?? "").length > 0);
+  return [
+    { ...p, content: kept(head) },
+    { ...p, content: kept(tail) },
+  ];
+}
+
+const docOfNode = (node: RichNode): RichDoc => ({ type: "doc", content: [node] });
+
+/**
+ * Split a doc that is one paragraph at the last sentence end that lets the head fit `room`. At
+ * least one sentence stays. Null when there is no sentence end to cut at, or the paragraph is not
+ * plain text runs.
+ */
+function splitParagraphToFit(
+  doc: RichDoc,
+  base: Omit<MeasureInput, "doc">,
+  room: number,
+  measure: Measurer,
+): { head: RichDoc; tail: RichDoc } | null {
+  const p = doc.content?.[0];
+  if (!p || doc.content?.length !== 1 || !isPlainParagraph(p)) return null;
+  const starts = sentenceStarts(paragraphText(p));
+  if (starts.length === 0) return null;
+  let fits = 0;
+  for (let n = 1; n <= starts.length; n++) {
+    const [head] = cutParagraph(p, starts[n - 1] ?? 0);
+    if (measure({ ...base, doc: docOfNode(head) }) > room + EPS) break;
+    fits = n;
+  }
+  const [head, tail] = cutParagraph(p, starts[Math.max(1, fits) - 1] ?? 0);
+  return { head: docOfNode(head), tail: docOfNode(tail) };
+}
+
+/**
+ * Split a doc so that its head fits `room`: on list items or blocks first and, when the head is
+ * then one paragraph that still overruns, at a sentence end inside that paragraph.
+ */
+function splitToFit(
+  doc: RichDoc,
+  base: Omit<MeasureInput, "doc">,
+  room: number,
+  measure: Measurer,
+): { head: RichDoc; tail: RichDoc | null } {
+  const blocks =
+    docLineCount(doc) > 1 ? splitDocToFit(doc, base, room, measure) : { head: doc, tail: null };
+  if (docLineCount(blocks.head) === 1 && measure({ ...base, doc: blocks.head }) > room + EPS) {
+    const bySentence = splitParagraphToFit(blocks.head, base, room, measure);
+    if (bySentence) {
+      const rest = blocks.tail?.content ?? [];
+      return {
+        head: bySentence.head,
+        tail: { type: "doc", content: [...(bySentence.tail.content ?? []), ...rest] },
+      };
+    }
+  }
+  return blocks;
+}
+
+/** The doc an element carries, if it is one the engine can split: several items or blocks, or one paragraph of several sentences. */
+function splittableDoc(el: SlideElement): RichDoc | null {
+  if (el.type !== "text" && el.type !== "gap-text") return null;
+  if (docLineCount(el.doc) > 1) return el.doc;
+  const p = el.doc.content?.[0];
+  return p && isPlainParagraph(p) && sentenceStarts(paragraphText(p)).length > 0 ? el.doc : null;
+}
 
 const isHeadingText = (el: SlideElement): boolean =>
   el.type === "text" && (el.style.preset === "heading" || el.style.preset === "title");
@@ -184,8 +297,6 @@ function buildPlan(
     group.add(card.id);
     for (const o of authored) if (o.id !== card.id && sitsOn(card, o)) group.add(o.id);
   }
-  /** Flow content that stays on the head above the target, so moving the target leaves a slide. */
-  const staysAbove = order.some((c) => isFlow(c.el) && byY(c, target) < 0 && !group.has(c.el.id));
 
   let headDoc: RichDoc | null = null;
   let tail: RichDoc | null = null;
@@ -214,13 +325,15 @@ function buildPlan(
         : SAFE_BOTTOM;
     const available = Math.max(parts.chrome + 1, limit - el.y);
     const room = available / (1 + SAFETY);
-    const split = splitDocToFit(doc, base, room, measure);
+    const split = splitToFit(doc, base, room, measure);
     if (!split.tail) return null;
     // When not even the first line fits where the box stands, the box goes whole, and a card it
-    // sits on goes with it rather than staying behind empty. Unless it is the only content: then
-    // the first line stays and is reported, because a slide of just a heading helps nobody.
-    if (staysAbove && measure({ ...base, doc: split.head }) > room + EPS)
-      return buildPlan(slide, reflowed, order, target, "move", theme, measure);
+    // sits on goes with it rather than staying behind empty. If moving it gains nothing, the first
+    // line stays here and is reported.
+    if (measure({ ...base, doc: split.head }) > room + EPS) {
+      const moved = buildPlan(slide, reflowed, order, target, "move", theme, measure);
+      if (moved) return moved;
+    }
     headDoc = split.head;
     tail = split.tail;
     tailH = Math.max(1, Math.round(measure({ ...base, doc: tail })));

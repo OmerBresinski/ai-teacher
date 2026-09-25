@@ -475,21 +475,78 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
       text("labj", 371, 201, [aiParagraph, ...teacherLines].join("\n")),
     ]);
     const out = tidySlide(lesson, sidOf(lesson), ruler);
-    expect(out.outcome.continued).toBe(1);
-    const [head, cont] = out.lesson.slides;
+    expect(out.outcome.continued).toBeGreaterThanOrEqual(1);
+    expect(out.outcome.continued).toBeLessThanOrEqual(2);
+    expect(out.outcome.overflow).toEqual([]);
+    const [head, cont, ...more] = out.lesson.slides;
     const headBody = byId(head, "labj");
     if (headBody?.type !== "text") throw new Error("head body");
-    expect(docToPlainText(headBody.doc)).toContain("Kornilov");
+    // The AI paragraph is cut at a sentence end where it stood, the rest goes on with the lines.
+    const headText = docToPlainText(headBody.doc);
+    expect(headText.startsWith("The Provisional Government")).toBe(true);
+    expect(headText).toMatch(/[.!?]$/);
     const carried = bodies(cont);
     expect(carried.length).toBe(1);
     const tail = carried[0];
     if (!tail) throw new Error("tail");
-    expect(docLineCount(tail.doc)).toBe(6 - (docLineCount(headBody.doc) - 1));
-    expect(docToPlainText(tail.doc)).toContain("Teacher line 6");
     expect(tail.y).toBe(BODY_Y);
+    const all = [cont, ...more].map((s) => docToPlainText(bodies(s)[0]?.doc ?? { type: "doc" }));
+    expect(`${headText}\n${all.join("\n")}`.replace(/\s+/g, " ")).toBe(
+      [aiParagraph, ...teacherLines].join(" "),
+    );
     expect(headingOf(cont)).toBe(
       "The Bolsheviks gained support as the Government lost it (continued)",
     );
+  });
+
+  test("slide 4 as generated: the paragraph that ran off the slide continues at a sentence end", () => {
+    const lesson = lessonOf([
+      text("labh", 43, 87, "The Bolsheviks gained support as the Government lost it", "heading"),
+      rule("labi", 329),
+      text("labj", 371, 201, aiParagraph),
+    ]);
+    const out = tidySlide(lesson, sidOf(lesson), ruler);
+    expect(out.outcome.continued).toBe(1);
+    expect(out.outcome.overflow).toEqual([]);
+    const [head, cont] = out.lesson.slides;
+    const headBody = byId(head, "labj");
+    if (headBody?.type !== "text") throw new Error("head body");
+    const headText = docToPlainText(headBody.doc);
+    expect(headText).toMatch(/[.!?]$/);
+    const tailText = docToPlainText(bodies(cont)[0]?.doc ?? { type: "doc" });
+    expect(`${headText} ${tailText}`).toBe(aiParagraph);
+    expect(reflowSlide(head as Slide, theme, ruler).overflow).toEqual([]);
+    expect(tidyMessage(out.outcome)).toBe("Tidied: list continued on a new slide");
+  });
+
+  test("a sentence split keeps marks and never leaves an empty run", () => {
+    const lesson = lessonOf([
+      text("h", 43, 60, "Marks", "heading"),
+      {
+        ...text("p", 140, 300, ""),
+        doc: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                { type: "text", text: `${aiParagraph} `, marks: [{ type: "bold" }] },
+                { type: "text", text: `${aiParagraph} ${aiParagraph}` },
+              ],
+            },
+          ],
+        },
+      },
+    ]);
+    const out = tidySlide(lesson, sidOf(lesson), ruler);
+    expect(out.outcome.continued).toBeGreaterThanOrEqual(1);
+    for (const s of out.lesson.slides)
+      for (const b of bodies(s))
+        for (const run of b.doc.content?.[0]?.content ?? [])
+          expect(run.text?.length).toBeGreaterThan(0);
+    const headP = byId(out.lesson.slides[0], "p");
+    if (headP?.type !== "text") throw new Error("head");
+    expect(headP.doc.content?.[0]?.content?.[0]?.marks).toEqual([{ type: "bold" }]);
   });
 
   test("lines typed into the heading push the paragraph onto a continuation whole, under a one-line heading", () => {
@@ -513,9 +570,10 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
   });
 
   test("a lone paragraph taller than the slide is reported, never moved from slide to slide", () => {
+    // One sentence, so there is no sentence end to cut at.
     const lesson = lessonOf([
       text("h", 43, 60, "One paragraph", "heading"),
-      text("p", 140, 300, Array.from({ length: 6 }, () => aiParagraph).join(" ")),
+      text("p", 140, 300, "and then another thing happened ".repeat(60).trim()),
     ]);
     const out = tidySlide(lesson, sidOf(lesson), ruler);
     expect(out.outcome.continued).toBe(0);
