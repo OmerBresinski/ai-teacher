@@ -205,6 +205,18 @@ describe("confirmLesson (/generate)", () => {
     expect(lesson.plan?.revision).toBe(2);
   });
 
+  test("a new slide count with a new duration re-plans, and the facts carry the duration too", () => {
+    const before = planned();
+    const { lesson, replan } = confirmLesson(
+      before,
+      { expectedRevision: 1, objectives: sameObjectives(before), slideCount: 6, durationMin: 45 },
+      { jobId, now },
+    );
+    expect(replan).toBe(true);
+    expect(lesson.brief?.durationMin).toBe(45);
+    expect(lesson.facts).toEqual({ ...pinnedFacts(before.facts), durationMin: 45 });
+  });
+
   test("a new duration is stored but re-plans nothing (ruling 82: the size is the slide count)", () => {
     const before = planned();
     const { lesson, replan } = confirmLesson(

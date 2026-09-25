@@ -125,18 +125,19 @@ export function confirmLesson(
         },
       }
     : {};
+  // The stored duration follows the brief in both branches; nothing is re-planned for it.
+  const withDuration = (facts: LessonFacts): LessonFacts =>
+    input.durationMin !== undefined ? { ...facts, durationMin: input.durationMin } : facts;
   if (!replan) {
-    // The stored duration follows the brief; nothing is re-planned for it.
-    const facts =
-      input.durationMin !== undefined
-        ? { ...edited.facts, durationMin: input.durationMin }
-        : edited.facts;
-    return { lesson: { ...lesson, ...briefPatch, facts, plan }, replan };
+    return {
+      lesson: { ...lesson, ...briefPatch, facts: withDuration(edited.facts), plan },
+      replan,
+    };
   }
   return {
     lesson: {
       ...withoutCheckpoint(lesson),
-      facts: edited.shapeChanged ? edited.facts : pinnedFacts(edited.facts),
+      facts: withDuration(edited.shapeChanged ? edited.facts : pinnedFacts(edited.facts)),
       ...briefPatch,
       slides: [],
       plan,
