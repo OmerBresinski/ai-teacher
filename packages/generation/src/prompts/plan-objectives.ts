@@ -204,6 +204,19 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *  - Cut to stay under v14's length: "Rules:" and "what a pupil can do by the end" (the verb is
  *    already observable). 314 -> 309 system words.
  *
+ * v17 (25 Sept 2026, gpt-6-luna luna-direct bench, `lab/luna-direct/LUNA6-PROMPTING.md` §2-§4):
+ *  - Too few objectives. gpt-6-luna read v14's hedged "usually two or three; one for one tight
+ *    skill" as licence for one: Y2 "what plants need" gave a single objective in 3 of 6 runs, the
+ *    topic restated ("explain what plants need to grow and stay healthy"); median 2 objectives a
+ *    deck against 3 on gpt-5.6-luna, and every later call fans out from that count (fewer claims,
+ *    restated slides, thin exits: DIAGNOSIS FM3, FM6, section 2). The count is now unhedged, the
+ *    one-objective case has a test the brief can be checked against (a single method or skill),
+ *    and a topic about several needs, factors, causes or methods counts as several parts ("or for each close pair" keeps a five-item list
+ *    inside four). v16's "name them" made one lumped objective look compliant (6-low p3; "two
+ *    ideas in one objective" 1 -> 4 on the v16 checklist), so the list rule says parts, not names.
+ *  - "No objective restates the topic" is its own sentence: at effort `low` Luna drops a trailing
+ *    exclusion inside a long sentence (v16 note above).
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -334,14 +347,15 @@ const SHAPE_SKETCH =
   '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v16",
+  version: "plan-objectives.v17",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
     OBJECTIVE_HOUSE_RULES,
     "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts or methods; where it covers several factors, methods or strategies, name them.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
-    "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: usually two or three; one for one tight skill; four only for four distinct parts; no filler line.",
+    "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
+    "No objective restates the topic.",
     "Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Ask it in one line or by picking from options the question names.",
     "",
     "JSON, in this shape:",
