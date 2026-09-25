@@ -348,7 +348,7 @@ describe("callStructured", () => {
     // Every provider namespace carries the same effort; a provider reads only its own.
     expect(ai.calls[0]?.providerOptions).toEqual({
       bedrock: { reasoningConfig: { maxReasoningEffort: "low" } },
-      openai: { reasoningEffort: "low" },
+      openai: { reasoningEffort: "low", strictJsonSchema: false },
       google: { thinkingConfig: { thinkingLevel: "low" } },
       alibaba: { enableThinking: false },
       deepseek: { thinking: { type: "disabled" } },
