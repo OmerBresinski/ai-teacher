@@ -37,6 +37,7 @@ import {
   planTeachObjectiveOutputSchemaFor,
   planTeachObjectivePrompt,
 } from "../prompts/plan-teach-objective";
+import { type LessonFlow, withFlow } from "../shapes";
 import {
   askableAsStem,
   assignFactIds,
@@ -186,6 +187,8 @@ export interface LabPlanReport {
   objectives: { text: string; curriculumAnchor?: string | undefined }[];
   /** Lab r2: the starter's retrieval questions from the objectives call; absent when it wrote none. */
   retrieval?: PlanRetrievalQuestion[] | undefined;
+  /** l6d: the lesson's flow from the objectives call; absent on saved runs and older prompts. */
+  flow?: LessonFlow | undefined;
   /** `describeIssues` lines from `checkObjectives`; non-empty only on a blocked run. */
   objectiveIssues: string[];
   /** 0-based objectives whose facts call did not return (budget, schema, provider). */
@@ -331,7 +334,7 @@ export async function labPlan(
     options.arm?.curriculum ??
     (selected.length > 0 ? { text: selected.map((s) => s.text).join("\n\n") } : undefined);
 
-  const shape = shapeOf(lesson);
+  const briefShape = shapeOf(lesson);
   const audience = audienceOf(lesson);
   const cls = planClassFor(lesson, deps);
   const topic = brief.topic;
@@ -341,7 +344,7 @@ export async function labPlan(
   // 2. The objectives call. A set that fails the structural check blocks the run here: no facts
   //    call is paid for, the report names the issues, the caller reads them.
   deps.logger.info(
-    { stage: "plan", call: "objectives", cls, verb: shape.verb, fromFacts: fromFacts?.source },
+    { stage: "plan", call: "objectives", cls, verb: briefShape.verb, fromFacts: fromFacts?.source },
     fromFacts ? "objectives from a saved run" : "plan call",
   );
   const tObjectives = Date.now();
@@ -358,7 +361,7 @@ export async function labPlan(
         prompt: planObjectivesPrompt,
         input: {
           topic,
-          shape,
+          shape: briefShape,
           audience,
           priorKnowledge: brief.classContext?.priorKnowledge,
           curriculum,
@@ -370,8 +373,15 @@ export async function labPlan(
   const objectives = objectivesCall.output.objectives;
   // Lab r2: prior knowledge for the starter, carried to the outline and onto the facts; never a
   // fact question, so no check, practise slide or exit quiz can reach it.
+  // l6d: the flow the objectives call chose replaces the verb table's kinds and floors for every
+  // later step (teach, question sets, demand, outline); without one (a saved run) nothing changes.
+  const flow = "flow" in objectivesCall.output ? objectivesCall.output.flow : undefined;
+  const shape = flow ? withFlow(briefShape, flow, objectives.length) : briefShape;
+  // A hook or no opener: the retrieval set stays off the deck and off the facts verify sees.
   const retrieval =
-    objectivesCall.output.retrieval && objectivesCall.output.retrieval.length > 0
+    objectivesCall.output.retrieval &&
+    objectivesCall.output.retrieval.length > 0 &&
+    (flow === undefined || flow.opener === "retrieval")
       ? objectivesCall.output.retrieval
       : undefined;
   // Saved objectives were anchored to the original run's extract, which a from-facts run does not reload.
@@ -396,6 +406,7 @@ export async function labPlan(
     const report: LabPlanReport = {
       objectives,
       ...(retrieval ? { retrieval } : {}),
+      ...(flow ? { flow } : {}),
       objectiveIssues,
       factsFailed: [],
       editorialMisses: 0,
@@ -654,6 +665,7 @@ export async function labPlan(
   const labPlanReport: LabPlanReport = {
     objectives,
     ...(retrieval ? { retrieval } : {}),
+    ...(flow ? { flow } : {}),
     objectiveIssues,
     factsFailed,
     editorialMisses,
@@ -776,6 +788,10 @@ export function labPlanMarkdown(report: LabPlanReport): string {
   if (report.retrieval)
     L.push(
       `- starter retrieval (${report.retrieval.length}): ${report.retrieval.map((r, i) => `${i + 1}. ${r.question} (${r.answer})`).join(" | ")}`,
+    );
+  if (report.flow)
+    L.push(
+      `- flow: opener ${report.flow.opener}; worked example ${report.flow.workedExample}; common mistake ${report.flow.commonMistake}; vocabulary ${report.flow.vocabulary}; checks after [${report.flow.checkAfter.join(", ")}]; practice ${report.flow.practice}; close ${report.flow.close}`,
     );
   if (report.verify === "blocked") return L.join("\n");
   L.push(

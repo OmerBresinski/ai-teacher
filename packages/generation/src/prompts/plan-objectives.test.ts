@@ -44,8 +44,8 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 };
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v19",
-  hash: "bc94c5cf44e1f137ef0b50804d5deaa872a71a341c310072bc83f7d85376acb3",
+  version: "plan-objectives.v20",
+  hash: "5f468fc93ff6e3110ae76f6905ac7376e5c4c431c30ca2b615bfa5ff416568d9",
 };
 
 describe("plan-objectives", () => {
@@ -73,7 +73,11 @@ describe("plan-objectives", () => {
     // v18: 343, "it has one right answer" on the starter (3 of 9 gpt-6-luna low question faults).
     // v19: 352, the starter's "goes beyond" sentence and its options method; the objectives clause
     // got shorter (at most two named). The alarm moves once.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(355);
+    // v20 (l6d): 487, the lesson's flow (a new output, not a rule on an old one). The alarm moves once.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(495);
+    // The flow's choices are in the sketch as alternatives, so no sample value is copied.
+    expect(system).toContain('"close": "quiz|written|debate|matching"');
+    expect(system).toContain("a method, a concept, a text or source, or a debate");
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");

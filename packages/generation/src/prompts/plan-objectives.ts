@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { LessonShape } from "../shapes";
+import { CLOSES, type LessonShape, OPENERS, PRACTICE_FORMS } from "../shapes";
 import { shapeBlock } from "./shape";
 import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
 
@@ -238,6 +238,17 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *    endorses the lumped objective (openai.md 2026-09-25). "At most two to an objective" keeps
  *    v16's naming (no category word for the starter to collide with) and caps the list.
  *
+ * v20 (26 Sept 2026, l6d; Greg: "it should reflect the topic and year group"): the call also
+ * chooses the lesson's `flow` (opener, worked example, common mistake, vocabulary, which cycles end
+ * in a check, practice form, closing form), which replaces the verb table's kinds and floors in the
+ * outline (`withFlow`). This is the one call that sees the brief before any fact exists, so it
+ * decides the shape the facts are then asked to fill. The enums and booleans are in the sketch, as
+ * alternatives, so no sample value is copied; the prose says only what each field means and the
+ * three inputs to choose from (subject, year group, kind of topic). No flow per subject is listed:
+ * the choice is the model's. Optional in the schema, so recorded sets parse without it and the
+ * outline then runs as before. 352 -> 487 system words (the sketch's flow object is 45 of them),
+ * all new capability; the bench decides whether any field is dead weight.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -300,6 +311,22 @@ export type PlanRetrievalQuestion = z.output<typeof PlanRetrievalQuestionSchema>
  */
 const retrieval = z.array(PlanRetrievalQuestionSchema).length(3).optional();
 
+/**
+ * The lesson's flow (v20, `withFlow`): optional so a recorded set or a `fromFacts` rerun parses
+ * without it; the sketch shows the slot, so a live call fills it. `checkAfter` holds 1-based
+ * objective numbers; out-of-range ones are dropped in code.
+ */
+export const PlanFlowSchema = z.strictObject({
+  opener: z.enum(OPENERS),
+  workedExample: z.boolean(),
+  commonMistake: z.boolean(),
+  vocabulary: z.boolean(),
+  checkAfter: z.array(z.number().int()).max(4),
+  practice: z.enum(PRACTICE_FORMS),
+  close: z.enum(CLOSES),
+});
+const flow = PlanFlowSchema.optional();
+
 /** With a curriculum extract: every objective must carry its anchor. */
 const AnchoredOutputSchema = z.strictObject({
   objectives: z
@@ -307,6 +334,7 @@ const AnchoredOutputSchema = z.strictObject({
     .min(1)
     .max(4),
   retrieval,
+  flow,
 });
 
 /**
@@ -321,6 +349,7 @@ const UnanchoredOutputSchema = z.strictObject({
     .min(1)
     .max(4),
   retrieval,
+  flow,
 });
 
 export type PlanObjectivesSchema = typeof AnchoredOutputSchema | typeof UnanchoredOutputSchema;
@@ -345,6 +374,7 @@ export const PlanObjectivesOutputSchema = z.strictObject({
     .min(1)
     .max(4),
   retrieval,
+  flow,
 });
 export type PlanObjectivesOutput = z.output<typeof PlanObjectivesOutputSchema>;
 
@@ -365,12 +395,12 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
  * is asked for beside an extract (`CURRICULUM_USE`), so a no-extract call is not shown the slot.
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }], "flow": { "opener": "hook|retrieval|none", "workedExample": true|false, "commonMistake": true|false, "vocabulary": true|false, "checkAfter": [objective numbers], "practice": "questions|discussion|both", "close": "quiz|written|debate|matching" } }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v19",
+  version: "plan-objectives.v20",
   system: [
-    "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
+    "You are an experienced UK teacher writing one lesson's learning objectives, three retrieval questions for its starter, and its flow.",
     "",
     OBJECTIVE_HOUSE_RULES,
     "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts or methods, at most two to an objective.",
@@ -378,6 +408,7 @@ export const planObjectivesPrompt = {
     "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",
     "Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. None goes beyond what this year group has been taught. Ask it in one line with one right answer or, where several could fit, by picking from options the question names.",
+    'The flow fits the lesson to its subject, its year group and what the topic is: a method, a concept, a text or source, or a debate. "opener": a hook (a question or puzzle that draws pupils in) or the retrieval questions. "workedExample": a method or model answer shown step by step. "commonMistake": a slide on a mistake pupils often make. "vocabulary": terms pupils must learn. "checkAfter": the objectives followed by a quick check; [] for none before the end. "practice": what pupils do after the teaching. "close": how pupils show what they learned at the end: a quiz, a short written answer, a debate with a success check, or matching (up to Year 2).',
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,
