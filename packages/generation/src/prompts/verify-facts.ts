@@ -63,11 +63,21 @@ export const verifyFactsPrompt = {
     example(EXAMPLE),
   ].join("\n"),
   user(input: VerifyFactsInput): string {
+    // l6c (DIAGNOSIS FM5): the starter's retrieval set, as `r<n>` lines after the facts. Kept out
+    // of `factsBlock`, which slide, evaluate and repair share, so their prompts do not move; with
+    // no retrieval set this prompt is unchanged too.
+    const retrieval = input.facts.retrieval ?? [];
     return [
       audienceBlock(input.audience),
       `Topic: ${input.topic}`,
       "",
       factsBlock(input.facts),
+      ...(retrieval.length > 0
+        ? [
+            "Starter questions (earlier learning, not this lesson):",
+            ...retrieval.map((r, i) => `  r${i + 1}: ${r.question} — ${r.answer}`),
+          ]
+        : []),
     ].join("\n");
   },
 } as const;

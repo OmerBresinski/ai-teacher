@@ -1443,6 +1443,20 @@ export const VerifyOutputSchema = z.strictObject({
 });
 export type VerifyOutput = z.infer<typeof VerifyOutputSchema>;
 
+/**
+ * l6c (luna-direct DIAGNOSIS FM5: 9 of 38 false claims came from the starter, which verify never
+ * saw): the starter's retrieval questions are shown to verify as `r1`–`rN` (`retrieval[i - 1]`).
+ * They are not facts (no minted id, nothing refers to them), so they sit outside
+ * `VERIFY_FIELDS_BY_ARRAY`; a correction on one names `stem` (the question) or `answer`.
+ */
+export const RETRIEVAL_VERIFY_FIELDS = ["stem", "answer"] as const satisfies readonly VerifyField[];
+
+/** The 0-based `retrieval` position a verify id `r<n>` names, or `undefined` when it is not one. */
+export function retrievalIndexOf(id: string): number | undefined {
+  const m = /^r([1-9]\d*)$/.exec(id);
+  return m ? Number(m[1]) - 1 : undefined;
+}
+
 /** The fact array `id` was minted for, or `undefined` for an objective or an unknown id. */
 export function verifiableArrayOf(id: FactId): Exclude<FactArray, "objectives"> | undefined {
   for (const key of Object.keys(VERIFY_FIELDS_BY_ARRAY) as Exclude<FactArray, "objectives">[]) {
@@ -1477,6 +1491,24 @@ export function verifyOutputSchemaFor(facts: LessonFacts): z.ZodType<VerifyOutpu
       // `field` is enum-checked before this runs and is ours to print.
       const issue = (say: (id: string) => string, path: (string | number)[]) =>
         ctx.addIssue(shapeIssue(say(c.factId), ["corrections", i, ...path], say("…")));
+      const r = retrievalIndexOf(c.factId);
+      if (r !== undefined && r < (facts.retrieval?.length ?? 0)) {
+        if (!(RETRIEVAL_VERIFY_FIELDS as readonly VerifyField[]).includes(c.field)) {
+          issue(
+            (id) =>
+              `${id} has no field "${c.field}"; its fields are ${RETRIEVAL_VERIFY_FIELDS.join(", ")}`,
+            ["field"],
+          );
+        } else if (c.index !== undefined) {
+          issue(() => "index is only for steps and distractors corrections", ["index"]);
+        } else if (c.value.length > VERIFY_LIMITS[c.field]) {
+          issue(
+            () => `the value for ${c.field} must be at most ${VERIFY_LIMITS[c.field]} characters`,
+            ["value"],
+          );
+        }
+        return;
+      }
       const fact = byId.get(c.factId);
       if (!fact) {
         issue(

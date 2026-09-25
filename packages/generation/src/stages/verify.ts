@@ -4,6 +4,7 @@ import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { numericFindings } from "../numeric-check";
 import { type Audience, verifyFactsPrompt } from "../prompts";
 import {
+  retrievalIndexOf,
   type VerifyCorrection,
   type VerifyField,
   type VerifyReason,
@@ -131,6 +132,15 @@ const FIELD_LABEL: Record<VerifyField, string> = {
 
 /** The content-free finding one applied correction leaves on the lesson. */
 export function verifyFinding(correction: VerifyCorrection): Finding {
+  // A starter question is not a fact: no id the editor can open, so the finding targets the lesson.
+  if (retrievalIndexOf(correction.factId) !== undefined) {
+    return {
+      check: "fact-verify",
+      severity: "warning",
+      target: {},
+      message: `Starter question ${correction.field === "stem" ? "question" : "answer"} corrected: ${REASON_LABEL[correction.reason]}.`,
+    };
+  }
   const array = verifiableArrayOf(correction.factId);
   const kind = array ? KIND_LABEL[array] : "Fact";
   return {
@@ -164,6 +174,18 @@ export function applyVerifyPatch(
   const schema = verifyOutputSchemaFor(facts);
   for (const c of corrections) {
     if (!schema.safeParse({ corrections: [c] }).success) continue;
+    const r = retrievalIndexOf(c.factId);
+    if (r !== undefined) {
+      // l6c: a starter tests earlier learning, outside this lesson's topic by design, so an
+      // off-topic correction on it is dropped here rather than excepted in the prompt.
+      const item = next.retrieval?.[r];
+      if (!item || c.reason === "off-topic") continue;
+      if (c.field === "stem") item.question = c.value;
+      else if (c.field === "answer") item.answer = c.value;
+      else continue;
+      applied.push(c);
+      continue;
+    }
     const array = verifiableArrayOf(c.factId);
     if (!array) continue;
     const list = next[array] as { id: string }[] | undefined;
