@@ -418,12 +418,13 @@ export const LessonFactsSchema = z
         }
       });
       // A callout's facts must exist and be of the kind the box shows.
-      entry.callout?.factRefs.forEach((ref, j) => {
-        const array = CALLOUT_SOURCE[entry.callout?.kind ?? "example"];
+      const callout = entry.callout;
+      callout?.factRefs.forEach((ref, j) => {
+        const array = CALLOUT_SOURCE[callout.kind];
         if (!factIds.has(ref) || !isFactIdOf(array, ref)) {
           ctx.addIssue({
             code: "custom",
-            message: `a "${entry.callout?.kind}" callout needs a ${array} id; "${ref}" is not one`,
+            message: `a "${callout.kind}" callout needs a ${array} id; "${ref}" is not one`,
             path: ["outline", i, "callout", "factRefs", j],
           });
         }
