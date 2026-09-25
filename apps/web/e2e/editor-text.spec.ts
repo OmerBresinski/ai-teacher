@@ -99,6 +99,68 @@ test.describe("text editing", () => {
     await expect(page.locator("[data-handle]")).toHaveCount(0);
   });
 
+  test("row 1b: the lines a box shows do not re-wrap when editing starts (TEACH-112)", async ({
+    signedInPage: { page, paths },
+  }) => {
+    await page.goto(EDITOR(paths));
+    await expect(elements(page).first()).toBeVisible();
+    // Tiptap injects `.ProseMirror { white-space: break-spaces }` on mount; under it a trailing
+    // space takes up room on the line, so the last word of a tight line drops. Measure every
+    // text box on the slide, edit the one with the most lines, and expect the same lines back.
+    const probe = (root: Element) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const lines: { top: number; text: string }[] = [];
+      let node = walker.nextNode();
+      while (node) {
+        const text = node.textContent ?? "";
+        for (let i = 0; i < text.length; i++) {
+          const range = document.createRange();
+          range.setStart(node, i);
+          range.setEnd(node, i + 1);
+          const rect = range.getClientRects()[0];
+          const ch = text[i];
+          if (!rect || ch === undefined) continue;
+          const top = Math.round(rect.top);
+          const last = lines[lines.length - 1];
+          if (last && Math.abs(last.top - top) <= 2) last.text += ch;
+          else lines.push({ top, text: ch });
+        }
+        node = walker.nextNode();
+      }
+      return lines.map((l) => ({ top: l.top, text: l.text.trim() }));
+    };
+    const boxes = await elements(page)
+      .locator(".td-rt")
+      .evaluateAll((nodes, fn) => {
+        const measure = new Function(`return (${fn})`)() as (root: Element) => unknown[];
+        return nodes.map((n) => ({
+          id: n.closest("[data-element-id]")?.getAttribute("data-element-id") ?? "",
+          lines: measure(n) as { top: number; text: string }[],
+        }));
+      }, probe.toString());
+    const target = boxes.reduce((a, b) => (b.lines.length > a.lines.length ? b : a));
+    expect(target.lines.length).toBeGreaterThan(1);
+    const element = page.locator(`[data-slide-frame] [data-element-id="${target.id}"]`);
+
+    await dblclickAt(page, element);
+    const pm = proseMirror(page);
+    await expect(pm).toBeFocused();
+    expect(await pm.evaluate((el) => getComputedStyle(el).whiteSpace)).toBe("pre-wrap");
+    const editing = await pm.evaluate((el, fn) => {
+      const measure = new Function(`return (${fn})`)() as (root: Element) => unknown[];
+      return measure(el) as { top: number; text: string }[];
+    }, probe.toString());
+    expect(editing).toEqual(target.lines);
+
+    await page.keyboard.press("Escape");
+    await expect(proseMirror(page)).toHaveCount(0);
+    const after = await richText(element).evaluate((el, fn) => {
+      const measure = new Function(`return (${fn})`)() as (root: Element) => unknown[];
+      return measure(el) as { top: number; text: string }[];
+    }, probe.toString());
+    expect(after).toEqual(target.lines);
+  });
+
   test("row 2: typing then Escape commits as one undo step and hands focus back to the canvas", async ({
     signedInPage: { page, paths },
   }) => {

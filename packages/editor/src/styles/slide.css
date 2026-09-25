@@ -160,6 +160,17 @@
 }
 
 /*
+ * Tiptap injects `.ProseMirror { white-space: break-spaces }` into <head> when the editor
+ * mounts (`injectCSS: true`); it has the same specificity as `.td-rt` above and comes later,
+ * so it wins. Under break-spaces a trailing space has to occupy room on its line instead of
+ * hanging past the edge, so the last word of any line that ends within one space-width of
+ * the box re-wraps the moment editing starts. Two classes beat one; keep the static value.
+ */
+.td-rt.ProseMirror {
+  white-space: pre-wrap;
+}
+
+/*
  * ProseMirror gives an empty paragraph a trailing <br> so it keeps a line box. The
  * static path has to do the same or the text jumps — and the element resizes — the
  * moment the editor mounts or unmounts.
