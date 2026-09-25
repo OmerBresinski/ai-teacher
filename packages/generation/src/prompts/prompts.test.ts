@@ -4,6 +4,7 @@ import { lessonShapeOf } from "../shapes";
 import { assignFactIds, PITCH_BOUNDS, WorksheetSpecSchema } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
+import { generateSlidePrompt, ownMisconceptions } from "./generate-slide";
 import { generateWorksheetFillPrompt, type WorksheetFill } from "./generate-worksheet-fill";
 import { promptHash } from "./hash";
 import {
@@ -202,8 +203,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
-    version: "generate-slide.v24",
-    hash: "019a45f1c00021b8c83097eb21f48d92a96fbc7380451c7f4d299ac23b87003d",
+    version: "generate-slide.v25",
+    hash: "e3953495e78f5e8746ca4a39e00004a8756720a703f2503954ca11d5fcc5a072",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -288,7 +289,8 @@ describe("prompt versions", () => {
   test("TEACH-258: examples replace prose within each prompt's baseline word budget", () => {
     const budgets = {
       // v19 was 990 words; v20 (minimalism rubric, 23 Sep 2026) is 956. v22 (+15: the two-key-idea
-      // content rule and its 60-word body) is 971 and must stay under this.
+      // content rule and its 60-word body) is 971 and must stay under this. v25 (the build-up
+      // order, luna-direct FM3) is 979.
       "generate-slide": 980,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
@@ -842,5 +844,41 @@ describe("prompt versions", () => {
         "no definitions; go straight to the mechanism, method or judgement",
       );
     }
+  });
+});
+
+describe("generate-slide v25: a teaching slide names its misconception", () => {
+  const input = SAMPLE_INPUTS["generate-slide"] as Parameters<typeof generateSlidePrompt.user>[0];
+  const keyIdea = input.referenced.keyIdeas?.[0];
+  const misconception = input.referenced.misconceptions.find((m) =>
+    (m.objectiveRefs ?? []).some((o) => keyIdea?.objectiveRefs?.includes(o)),
+  );
+
+  test("a content slide without its own watch-out gets the line, by id", () => {
+    expect(keyIdea && misconception).toBeTruthy();
+    const content = {
+      ...input,
+      entry: { ...input.entry, kind: "content", factRefs: [keyIdea?.id ?? ""] },
+    } as typeof input;
+    expect(ownMisconceptions(content)).toContain(misconception?.id ?? "");
+    expect(generateSlidePrompt.user(content)).toContain(
+      `(${misconception?.id}): end the body with one sentence on what some pupils think and why it is wrong.`,
+    );
+  });
+
+  test("a watch-out on the slide, or a non-teaching kind, gets none", () => {
+    const base = { ...input.entry, factRefs: [keyIdea?.id ?? ""] };
+    const withCallout = {
+      ...input,
+      entry: {
+        ...base,
+        kind: "content",
+        callout: { kind: "watch-out", factRefs: [misconception?.id ?? ""] },
+      },
+    } as typeof input;
+    expect(ownMisconceptions(withCallout)).toEqual([]);
+    const question = { ...input, entry: { ...base, kind: "multiple-choice" } } as typeof input;
+    expect(ownMisconceptions(question)).toEqual([]);
+    expect(generateSlidePrompt.user(question)).not.toContain("Its misconception");
   });
 });
