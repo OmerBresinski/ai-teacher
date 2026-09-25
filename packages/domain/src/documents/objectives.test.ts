@@ -178,9 +178,6 @@ describe("applyObjectiveEdits", () => {
     expect(result.facts.workedExamples).toEqual([
       { id: "x1", problem: "Why?", steps: ["Heat"], answer: "Vapour" },
     ]);
-    expect(result.facts.workedExamples).toEqual([
-      { id: "x1", problem: "Why?", steps: ["Heat"], answer: "Vapour" },
-    ]);
     expect(result.facts.outline).toEqual([]);
     expect(LessonFactsSchema.safeParse(result.facts).success).toBe(true);
     expect(input).toEqual(before);
