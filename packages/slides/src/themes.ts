@@ -223,29 +223,61 @@ export { DEFAULT_THEME_ID } from "@tj/domain/documents";
  */
 export type CalloutTone = { fill: string; line: string; ink: string; icon: string };
 
+/** The three tones a theme gives its callouts, one per kind. */
+export type CalloutToneSet = Record<CalloutKind, CalloutTone>;
+
 /**
- * The callout tokens, one set for the light themes and one for the dark, chosen by `Theme.dark`.
- * Light: a pale tint of the hue with a hairline one step darker and the hue's dark as the ink.
- * Dark: a wash of the hue a step up from the ground with the hue's pale as the ink. Every ink is
- * 7:1 or better on its fill and every icon 4.5:1 or better (`themes.test.ts`), so the card reads
+ * The callout tokens, a set per theme keyed by its id. Every kind keeps one family across the six
+ * so a card is recognisable from theme to theme: a warm red for a common mistake (the family of
+ * each theme's `incorrect`), a green for an example (its `correct`) and an amber for key words;
+ * the theme then sets the temperature and depth of the tint to its own palette. Light themes: a
+ * pale tint of the hue with a hairline one step darker and the hue's dark as the ink. Night Lab:
+ * a wash of the hue a step up from the ground with the hue's pale as the ink and its own accents
+ * as the icons. Beacon: the tints stay pale but the hairline is the icon's full colour, as its
+ * other cards are edged in near-black. `themes.test.ts` holds every ink at 7:1 or better on its
+ * fill, every icon at 4.5:1 or better, the card's edge off the ground, each kind's hue inside its
+ * family on every theme, and Beacon's hairline at 3:1 on both fill and ground, so the card reads
  * from the back of the room on every theme.
  */
-export const CALLOUT_TONES: Record<"light" | "dark", Record<CalloutKind, CalloutTone>> = {
-  light: {
-    "watch-out": { fill: "#FBE4E2", line: "#E7B4AF", ink: "#5C1313", icon: "#B42318" },
-    example: { fill: "#DDF2E9", line: "#A6D6C3", ink: "#0B4A36", icon: "#12795A" },
-    "key-words": { fill: "#F9E8C4", line: "#DDBB75", ink: "#523805", icon: "#8F5A00" },
+export const CALLOUT_TONES: Record<string, CalloutToneSet> = {
+  chalk: {
+    "watch-out": { fill: "#F7DFD8", line: "#DBA99C", ink: "#5A1D12", icon: "#A83A2E" },
+    example: { fill: "#DCEBD8", line: "#A7C7A2", ink: "#1F4A2C", icon: "#2F6B44" },
+    "key-words": { fill: "#F7E5B9", line: "#D8B86A", ink: "#4E3604", icon: "#8A5800" },
   },
-  dark: {
-    "watch-out": { fill: "#3B2A31", line: "#58404A", ink: "#F7CACA", icon: "#F29A9A" },
-    example: { fill: "#1E3832", line: "#2E5249", ink: "#A8E6D0", icon: "#6CCFAB" },
-    "key-words": { fill: "#3A3222", line: "#584A2E", ink: "#FAD18A", icon: "#F2B551" },
+  playground: {
+    "watch-out": { fill: "#FFDFD8", line: "#F0AA9C", ink: "#661A10", icon: "#A6321F" },
+    example: { fill: "#DAF3E2", line: "#9BD7B2", ink: "#154D2D", icon: "#256840" },
+    "key-words": { fill: "#FFE9B8", line: "#F0C35C", ink: "#553700", icon: "#855000" },
+  },
+  "reading-room": {
+    "watch-out": { fill: "#EFDCD7", line: "#CDA79E", ink: "#54211A", icon: "#9A3B2E" },
+    example: { fill: "#DEE7DA", line: "#ABC0A6", ink: "#23412C", icon: "#2F6B44" },
+    "key-words": { fill: "#EEE2C3", line: "#CBB47A", ink: "#48370E", icon: "#7C5810" },
+  },
+  "exam-hall": {
+    "watch-out": { fill: "#F5DFDE", line: "#D6A9A6", ink: "#571C19", icon: "#9A3B2E" },
+    example: { fill: "#DCEAE2", line: "#A5C7B4", ink: "#15422C", icon: "#1F6B4A" },
+    "key-words": { fill: "#F1E5C6", line: "#CFBA80", ink: "#48370E", icon: "#78580C" },
+  },
+  "night-lab": {
+    "watch-out": { fill: "#3A282D", line: "#5A3F46", ink: "#F8CBC6", icon: "#F08A7A" },
+    example: { fill: "#1D3630", line: "#2F5148", ink: "#B0E5CE", icon: "#86C7A8" },
+    "key-words": { fill: "#3A3222", line: "#5A4A2C", ink: "#FAD38E", icon: "#F2B551" },
+  },
+  beacon: {
+    "watch-out": { fill: "#FFE1DE", line: "#A31212", ink: "#3D0707", icon: "#A31212" },
+    example: { fill: "#DFF3E6", line: "#0B6B3A", ink: "#062E1A", icon: "#0B6B3A" },
+    "key-words": { fill: "#FFEDB8", line: "#7A5200", ink: "#3A2600", icon: "#7A5200" },
   },
 };
 
+/** A theme's set; a theme the table does not know takes Chalk's, or Night Lab's when it is dark. */
+export const calloutTones = (t: Theme): CalloutToneSet =>
+  CALLOUT_TONES[t.id] ?? (CALLOUT_TONES[t.dark ? "night-lab" : "chalk"] as CalloutToneSet);
+
 /** The tone a callout of `kind` takes on theme `t`. */
-export const calloutTone = (t: Theme, kind: CalloutKind): CalloutTone =>
-  CALLOUT_TONES[t.dark ? "dark" : "light"][kind];
+export const calloutTone = (t: Theme, kind: CalloutKind): CalloutTone => calloutTones(t)[kind];
 
 export function getTheme(id: string | undefined | null): Theme {
   return THEMES.find((t) => t.id === id) ?? (THEMES[0] as Theme);

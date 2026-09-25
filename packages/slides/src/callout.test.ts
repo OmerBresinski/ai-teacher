@@ -28,7 +28,7 @@ import { boxH, CARD_PAD, FULL, IMAGE_TEXT_COLUMN, layoutSlide } from "./layouts"
 import { type IdSupplier, materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import { ceilingOf, type SlideSpec, SPEC_LIMITS } from "./specs";
-import { CALLOUT_TONES, calloutTone, fontFloor, getTheme, THEMES } from "./themes";
+import { CALLOUT_TONES, calloutTone, calloutTones, fontFloor, getTheme, THEMES } from "./themes";
 
 /*
  * The slide callout (UX ruling 84, TEACH-75): geometry per kind, theme and text length. The
@@ -112,16 +112,24 @@ const plain = (el: TextElement) => richDocToPlainText(el.doc);
 describe("callout labels and colours", () => {
   it("carries a frozen uppercase label per kind, no emoji", () => {
     expect(CALLOUT_LABELS).toEqual({
-      "watch-out": "WATCH OUT",
+      "watch-out": "COMMON MISTAKE",
       example: "EXAMPLE",
       "key-words": "KEY WORDS",
     });
     for (const kind of CALLOUT_KINDS) expect(/\p{Extended_Pictographic}/u.test(kind)).toBe(false);
   });
 
+  it("draws a warning sign, a lightbulb and an open book (T75-7), never a magnifier or a key", () => {
+    expect(CALLOUT_ICONS).toEqual({
+      "watch-out": "triangle-alert",
+      example: "lightbulb",
+      "key-words": "book-open",
+    });
+  });
+
   for (const theme of THEMES) {
     it(`${theme.id}: the card, icon, label and text take the kind's tone from the theme's set`, () => {
-      const set = CALLOUT_TONES[theme.dark ? "dark" : "light"];
+      const set = calloutTones(theme);
       for (const kind of CALLOUT_KINDS) {
         const spec = content({ kind, text: SHORT });
         const slide = materialiseSlide(spec, theme.id, meta, counter(), "headed");

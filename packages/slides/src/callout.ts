@@ -28,9 +28,9 @@ import { calloutTone } from "./themes";
 /*
  * The slide callout (UX ruling 84, TEACH-75): Chalkie's labelled card under the body, refined to
  * the design system. One rounded card with the theme's radius, tinted per kind with a hairline in
- * the same hue (`CALLOUT_TONES`: rose for a warning, mint for an example, amber for key words, a
- * light and a dark set); a drawn lucide icon per kind at the head of the label row, where Chalkie
- * puts an emoji; a `caption` eyebrow as the label ("WATCH OUT", "EXAMPLE", "KEY WORDS"); and the
+ * the same hue (`CALLOUT_TONES`: a red for a common mistake, a green for an example, an amber for
+ * key words, tuned per theme); a drawn lucide icon per kind at the head of the label row, where
+ * Chalkie puts an emoji; a `caption` eyebrow as the label ("COMMON MISTAKE", "EXAMPLE", "KEY WORDS"); and the
  * text in `small`, one size down from the body, label and text in the hue's ink as Chalkie sets
  * them. The card sits in the text column under the body, full column width, never over a picture,
  * and is sized to its text as Chalkie's is: the body above gives up room only when the card
@@ -40,21 +40,27 @@ import { calloutTone } from "./themes";
  * out. A spec without a callout never reaches it, so every recipe stays byte-identical.
  */
 
-/** The label each kind carries: frozen strings, uppercase like the "KEY IDEA" eyebrow (ruling 8). */
+/**
+ * The label each kind carries: frozen strings, uppercase like the "KEY IDEA" eyebrow (ruling 8).
+ * The kind id `watch-out` is the domain's (`CALLOUT_KINDS`, shared with the outline); its label
+ * says what the card holds, a common mistake (review T75-9), so the id and the label differ.
+ */
 export const CALLOUT_LABELS: Record<CalloutKind, string> = {
-  "watch-out": "WATCH OUT",
+  "watch-out": "COMMON MISTAKE",
   example: "EXAMPLE",
   "key-words": "KEY WORDS",
 };
 
 /**
- * The drawn icon each kind carries (lucide names from the editor's icon set): Chalkie's warning
- * sign, magnifier and key, drawn in the theme's stroke rather than set as emoji.
+ * The drawn icon each kind carries (lucide names from the editor's icon set), drawn in the kind's
+ * colour rather than set as emoji: Chalkie's warning sign for a common mistake; a lightbulb for
+ * an example and an open book for key words, where Chalkie has a magnifier and a key (review
+ * T75-7: the idea and the vocabulary read faster than the tools).
  */
 export const CALLOUT_ICONS: Record<CalloutKind, string> = {
   "watch-out": "triangle-alert",
-  example: "search",
-  "key-words": "key",
+  example: "lightbulb",
+  "key-words": "book-open",
 };
 
 /** The four elements a callout adds, by `name`; the card first so the rest stay above it. */

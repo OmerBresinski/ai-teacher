@@ -3,7 +3,7 @@ import { expect, type SeededPaths, test } from "./fixtures";
 
 /*
  * Slide callouts (TEACH-75, UX ruling 84), rows 7 and 8 of the acceptance table with a real
- * caret and pointer: the seeded demo's content slide carries a "WATCH OUT" card whose three
+ * caret and pointer: the seeded demo's content slide carries a "COMMON MISTAKE" card whose three
  * elements are ordinary elements — the text edits in place, the card deletes on its own and
  * comes back on undo, and present and print show the card because they render elements.
  */
@@ -28,7 +28,7 @@ async function openContentSlide(page: Page, paths: SeededPaths) {
   await page.goto(EDITOR(paths));
   await expect(rows(page).nth(4)).toHaveAttribute("aria-label", "Slide 5, Explanation");
   await rows(page).nth(4).click();
-  await expect(elements(page).filter({ hasText: "WATCH OUT" })).toHaveCount(1);
+  await expect(elements(page).filter({ hasText: "COMMON MISTAKE" })).toHaveCount(1);
   await expect(elements(page).filter({ hasText: CALLOUT_TEXT })).toHaveCount(1);
 }
 
@@ -65,7 +65,7 @@ test.describe("slide callouts", () => {
     await expect(elements(page)).toHaveCount(count - 1);
     await expect(shapes).toHaveCount(1);
     // The label and the text stay, as with the worked example's working card.
-    await expect(elements(page).filter({ hasText: "WATCH OUT" })).toHaveCount(1);
+    await expect(elements(page).filter({ hasText: "COMMON MISTAKE" })).toHaveCount(1);
     await expect(elements(page).filter({ hasText: "Ask the class." })).toHaveCount(1);
 
     const undo = page.getByRole("button", { name: "Undo" });
@@ -82,11 +82,11 @@ test.describe("slide callouts", () => {
     const stage = page.locator('[data-slide-mode="present"]');
     await expect(stage).toHaveCount(1);
     await expect(page.getByRole("status").first()).toContainText("Slide 5 of");
-    await expect(stage.getByText("WATCH OUT")).toBeVisible();
+    await expect(stage.getByText("COMMON MISTAKE")).toBeVisible();
     await expect(stage.getByText(CALLOUT_TEXT)).toBeVisible();
 
     await page.goto(paths.lesson("demo-water-cycle", "/print"));
-    await expect(page.getByText("WATCH OUT")).toBeVisible();
+    await expect(page.getByText("COMMON MISTAKE")).toBeVisible();
     await expect(page.getByText(CALLOUT_TEXT)).toBeVisible();
   });
 });

@@ -328,7 +328,7 @@ function fractionsOfAmounts(): Lesson {
  * 2 — wave 4 floors, 4 Sept 2026: the recipes now lay the vocabulary slide out against
  *     the raised projector floors, so the stored version has to be replaced.
  * 3 — slide callouts, 23 Sept 2026 (TEACH-75): the water cycle's content slide carries a tinted
- *     "WATCH OUT" card with its warning icon under its body.
+ *     "COMMON MISTAKE" card with its warning icon under its body.
  */
 export const DEMO_CONTENT_VERSION = 3;
 

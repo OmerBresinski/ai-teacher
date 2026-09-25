@@ -1,8 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { CALLOUT_KINDS, parseLesson, type TextPreset } from "@tj/domain/documents";
+import {
+  CALLOUT_KINDS,
+  type CalloutKind,
+  parseLesson,
+  type TextPreset,
+} from "@tj/domain/documents";
 import { newLesson, newSlide } from "./factories";
 import {
+  CALLOUT_TONES,
   calloutTone,
+  calloutTones,
   DEFAULT_THEME_ID,
   FIT_VERSION,
   fontFloor,
@@ -87,16 +94,64 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/** Hue in degrees of a hex colour, for the family check; 0 for a grey. */
+function hue(hex: string): number {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  if (d === 0) return 0;
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (Math.round(h * 60) + 360) % 360;
+}
+
+/** The hue band each kind keeps on every theme, read off the icon (the kind's fullest colour). */
+const FAMILY: Record<CalloutKind, (h: number) => boolean> = {
+  "watch-out": (h) => h >= 340 || h <= 20, // red
+  example: (h) => h >= 120 && h <= 170, // green
+  "key-words": (h) => h >= 30 && h <= 50, // amber
+};
+
 describe("callout tones", () => {
+  test("every theme has its own set, keyed by id", () => {
+    for (const theme of THEMES) expect(CALLOUT_TONES[theme.id]).toBeDefined();
+    expect(new Set(THEMES.map((t) => JSON.stringify(calloutTones(t)))).size).toBe(THEMES.length);
+  });
+
+  test("a theme the table does not know takes Chalk's set, or Night Lab's when dark", () => {
+    const chalk = getTheme("chalk");
+    const night = getTheme("night-lab");
+    expect(calloutTones({ ...chalk, id: "new-light" })).toBe(calloutTones(chalk));
+    expect(calloutTones({ ...night, id: "new-dark" })).toBe(calloutTones(night));
+  });
+
   for (const theme of THEMES) {
-    test(`${theme.id}: each card's ink reads at 7:1, its icon at 4.5:1, and the card stands off the ground`, () => {
+    test(`${theme.id}: each card's ink reads at 7:1, its icon at 4.5:1, the card stands off the ground, and each kind keeps its family`, () => {
       for (const kind of CALLOUT_KINDS) {
         const tone = calloutTone(theme, kind);
+        expect(tone).toBe(calloutTones(theme)[kind]);
+        // AAA for the label and text, AA for the icon (a graphic, so 3:1 would do; it gets more).
         expect(contrast(tone.ink, tone.fill), `${kind} ink`).toBeGreaterThanOrEqual(7);
         expect(contrast(tone.icon, tone.fill), `${kind} icon`).toBeGreaterThanOrEqual(4.5);
         // The hairline (light) or the wash (dark) is what separates the card from the slide.
         expect(contrast(tone.line, theme.colors.background), `${kind} edge`).toBeGreaterThan(1.3);
+        expect(FAMILY[kind](hue(tone.icon)), `${kind} icon hue ${hue(tone.icon)}`).toBe(true);
+        expect(FAMILY[kind](hue(tone.ink)), `${kind} ink hue ${hue(tone.ink)}`).toBe(true);
       }
     });
   }
+
+  test("beacon: the hairline itself is AA against the tint and the ground, like its other edges", () => {
+    const beacon = getTheme("beacon");
+    for (const kind of CALLOUT_KINDS) {
+      const tone = calloutTone(beacon, kind);
+      expect(contrast(tone.line, tone.fill), `${kind} line on fill`).toBeGreaterThanOrEqual(3);
+      expect(
+        contrast(tone.line, beacon.colors.background),
+        `${kind} line on ground`,
+      ).toBeGreaterThanOrEqual(3);
+    }
+  });
 });

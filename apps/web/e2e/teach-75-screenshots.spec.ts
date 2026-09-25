@@ -4,7 +4,7 @@
  * web app (the default ports' `vite preview`), not Vite dev: dev mounts the "Design preview" switcher and router devtools over the
  * page, and the switcher lands in the top right of every present-mode crop.
  *
- * The seeded demo's content slide with its "WATCH OUT" card in the editor, in present and as the
+ * The seeded demo's content slide with its "COMMON MISTAKE" card in the editor, in present and as the
  * navigator thumbnail; then a fixture deck through `chooseVariant` carrying every callout kind on
  * a content slide (headed and two-column) and an image-text slide, and a worked example that
  * goes without (measured: no room under the working card), on Chalk, Exam Hall and Night Lab.
@@ -134,7 +134,7 @@ test("captures the demo's callout in the editor, present and the navigator, then
   await expect(rows.nth(4)).toHaveAttribute("aria-label", "Slide 5, Explanation");
   await rows.nth(4).click();
   const stage = page.locator("[data-slide-frame]");
-  await expect(stage.getByText("WATCH OUT")).toBeVisible();
+  await expect(stage.getByText("COMMON MISTAKE")).toBeVisible();
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${OUT}/editor-demo-content-watch-out.png` });
   await rows
