@@ -70,7 +70,7 @@ export function shapeBlock(shape: LessonShape, slideCount?: number): string[] {
   }
   if (shape.minContent > 1) lines.push(`${contentSentence(shape)}.`);
   lines.push(
-    `At least ${shape.minCheckEntries} slides where pupils answer (the practise and check phases together).`,
+    `At least ${shape.minCheckEntries} slide${shape.minCheckEntries === 1 ? "" : "s"} where pupils answer (the practise and check phases together).`,
   );
   lines.push(...shareLines(shape, slideCount));
   if (shape.requireWorkedExampleBeforePractise) {
