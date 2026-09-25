@@ -80,13 +80,12 @@ describe("LessonBriefPage", () => {
     expect(createButton()).toBeDisabled();
   });
 
-  it("focuses the topic, disables Create until there is one, and never asks for a length", async () => {
+  it("focuses the topic, disables Create until there is one, and defaults the duration by key stage", async () => {
     renderPage();
     expect(topicBox()).toHaveFocus();
     expect(createButton()).toBeDisabled();
-    // UX ruling 82: lesson length is neither shown nor asked; the API defaults it by key stage.
-    expect(screen.queryByRole("spinbutton", { name: /duration/i })).toBeNull();
-    expect(screen.queryByText(/minutes/i)).toBeNull();
+    const duration = screen.getByRole("spinbutton", { name: "Duration (minutes)" });
+    expect(duration).toHaveAttribute("placeholder", "60");
 
     // The disabled primary says why.
     expect(screen.getByRole("status")).toHaveTextContent("Type a topic to plan the lesson.");
@@ -99,8 +98,10 @@ describe("LessonBriefPage", () => {
     expect(explain).toHaveAccessibleDescription(/suggested/);
     expect(screen.queryByRole("radio", { name: "New to it" })).toBeNull();
 
+    await pickYearGroup("Year 1");
+    await waitFor(() => expect(duration).toHaveAttribute("placeholder", "45"));
     await pickYearGroup("Reception");
-    expect(screen.queryByText(/minutes/i)).toBeNull();
+    await waitFor(() => expect(duration).toHaveAttribute("placeholder", "30"));
   });
 
   it("a pasted Source rides along as sourceIds; without one the key is absent (ADR 0027 §7)", async () => {
@@ -203,7 +204,7 @@ describe("LessonBriefPage", () => {
     expect(queryClient.getQueryState(queryKeys.libraryDocument(id))?.isInvalidated).toBe(true);
   });
 
-  it("skipping both questions sends no answers and still no durationMin", async () => {
+  it("skipping both questions sends no answers; a typed duration travels as durationMin", async () => {
     renderPage();
     fireEvent.change(topicBox(), { target: { value: "The water cycle" } });
     // One question at a time: Skip settles the first and reveals the second.
@@ -212,10 +213,13 @@ describe("LessonBriefPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(screen.getAllByText("Skipped — the plan decides.")).toHaveLength(2);
     expect(screen.queryByRole("radio", { name: "New to it" })).toBeNull();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Duration (minutes)" }), {
+      target: { value: "45" },
+    });
     fireEvent.click(createButton());
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(lastPost()?.body).toEqual({
-      brief: { topic: "The water cycle" },
+      brief: { topic: "The water cycle", durationMin: 45 },
       themeId: "chalk",
       skipPlanning: true,
     });
@@ -243,7 +247,7 @@ describe("LessonBriefPage", () => {
     expect(createButton()).toBeEnabled();
   });
 
-  it("class context travels as counts and text", async () => {
+  it("class context travels as counts and text; an out-of-range duration explains itself", async () => {
     renderPage();
     fireEvent.change(topicBox(), { target: { value: "Rivers" } });
     fireEvent.click(screen.getByRole("button", { name: "Add class context" }));
@@ -252,6 +256,18 @@ describe("LessonBriefPage", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "What the class already knows" }), {
       target: { value: "Named the parts of a river" },
     });
+    const duration = screen.getByRole("spinbutton", { name: "Duration (minutes)" });
+    fireEvent.change(duration, { target: { value: "2" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("Between 5 and 180 minutes.");
+    expect(createButton()).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Duration must be between 5 and 180 minutes.",
+    );
+    expect(createButton()).toHaveAccessibleDescription(
+      "Duration must be between 5 and 180 minutes.",
+    );
+    fireEvent.change(duration, { target: { value: "" } });
+
     fireEvent.click(createButton());
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(lastPost()?.body).toEqual({

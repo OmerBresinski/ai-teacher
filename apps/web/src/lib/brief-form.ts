@@ -66,6 +66,7 @@ export type BriefState = {
   subject: string;
   subjectOther: string;
   yearGroup: string;
+  duration: string;
   themeId: string;
   classOpen: boolean;
   sizeBand: SizeBand | "";
@@ -83,6 +84,7 @@ export const INITIAL_BRIEF: BriefState = {
   subject: "",
   subjectOther: "",
   yearGroup: "",
+  duration: "",
   themeId: LIBRARY_THEMES[0]?.id ?? "chalk",
   classOpen: false,
   sizeBand: "",
@@ -125,13 +127,11 @@ function classContextOf(state: BriefState): ClassContext | undefined {
   return Object.keys(context).length > 0 ? context : undefined;
 }
 
-/**
- * What `POST /lessons` receives, exactly. Never a `durationMin`: lesson length is not asked (UX
- * ruling 82), so the API defaults it by key stage (`lessonFromBrief`).
- */
+/** What `POST /lessons` receives, exactly (TEACH-122 acceptance: no `durationMin` unless typed). */
 export function briefInputOf(state: BriefState): CreateLessonInput {
   const topic = state.topic.trim();
   const brief: CreateLessonInput["brief"] = { topic };
+  if (state.duration.trim() !== "") brief.durationMin = Number(state.duration);
   const classContext = classContextOf(state);
   if (classContext) brief.classContext = classContext;
   if (shouldAskQuestions(topic)) {

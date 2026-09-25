@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { CreateLessonSchema, findNamePatterns, GUARD_MESSAGE } from "@tj/domain/documents";
+import {
+  CreateLessonSchema,
+  defaultDurationMin,
+  deriveAgeBand,
+  findNamePatterns,
+  GUARD_MESSAGE,
+} from "@tj/domain/documents";
 import {
   Button,
   Display,
@@ -52,7 +58,7 @@ import { lessonBriefRoute } from "./lesson-brief.route";
 /**
  * `/lessons/new` — the lesson brief (F01 item 2; TEACH-122, TEACH-177). One screen: topic,
  * subject and year group (pre-filled from the last lesson planned in this browser, and said so),
- * six theme tiles drawn as the title slide, optional
+ * a duration that defaults by key stage, six theme tiles drawn as the title slide, optional
  * class context behind a disclosure, and two clarifying questions asked one at a time with the
  * suggestion marked. `CreateLessonSchema` is the only validator — the same one `POST /lessons`
  * runs — so the identifier guard says the same thing here and on the server (ADR 0024 §1–2, §6,
@@ -72,6 +78,8 @@ const NewDocumentDialog = lazy(() =>
   })),
 );
 
+const DURATION_HINT = "Between 5 and 180 minutes.";
+const DURATION_REASON = "Duration must be between 5 and 180 minutes.";
 const SOURCES_BUSY_REASON = "Wait for your files to finish uploading.";
 const REMEMBERED_HINT = "From your last lesson";
 const QUESTION_COUNT = 2;
@@ -151,6 +159,7 @@ export function LessonBriefPage() {
   const subjectId = useId();
   const subjectOtherId = useId();
   const yearGroupId = useId();
+  const durationId = useId();
   const themeId = useId();
   const reasonId = useId();
   const navigate = useNavigate();
@@ -200,6 +209,10 @@ export function LessonBriefPage() {
   const input = useMemo(() => briefInputOf(state), [state]);
   const parsed = useMemo(() => CreateLessonSchema.safeParse(input), [input]);
   const topic = state.topic.trim();
+  const durationDefault = defaultDurationMin(deriveAgeBand(state.yearGroup || undefined));
+  const durationInvalid =
+    state.duration.trim() !== "" &&
+    parsed.error?.issues.some((issue) => issue.path.join(".") === "brief.durationMin");
   const canCreate =
     parsed.success && topic.length > 0 && !hasGuardHits(state) && !isPending && !sourcesBusy;
   const topicHit = touched.has("topic") && findNamePatterns(state.topic).length > 0;
@@ -218,9 +231,11 @@ export function LessonBriefPage() {
         ? "Type a topic to plan the lesson."
         : hasGuardHits(state)
           ? GUARD_MESSAGE
-          : parsed.success
-            ? null
-            : (parsed.error.issues[0]?.message ?? "Check the form.");
+          : durationInvalid
+            ? DURATION_REASON
+            : parsed.success
+              ? null
+              : (parsed.error.issues[0]?.message ?? "Check the form.");
 
   const settle = (index: number) => {
     const next = new Set(settled).add(index);
@@ -358,6 +373,37 @@ export function LessonBriefPage() {
               invalid={invalid("yearGroup")}
               hint={remembered.has("yearGroup") ? rememberedHint(yearGroupId) : undefined}
             />
+            <Field
+              id={durationId}
+              label="Duration (minutes)"
+              hint={
+                <p
+                  id={`${durationId}-hint`}
+                  className={
+                    durationInvalid ? "text-meta text-destructive" : "text-meta text-ink-3"
+                  }
+                  role={durationInvalid ? "alert" : undefined}
+                >
+                  {durationInvalid
+                    ? DURATION_HINT
+                    : `Leave empty for ${durationDefault} minutes, the usual length for this year group.`}
+                </p>
+              }
+            >
+              <Input
+                id={durationId}
+                type="number"
+                inputMode="numeric"
+                min={5}
+                max={180}
+                step={5}
+                value={state.duration}
+                placeholder={String(durationDefault)}
+                onChange={(event) => patch({ duration: event.target.value })}
+                aria-invalid={durationInvalid || undefined}
+                aria-describedby={`${durationId}-hint`}
+              />
+            </Field>
           </div>
 
           <div className="flex flex-col gap-1.5">

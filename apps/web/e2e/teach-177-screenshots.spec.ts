@@ -37,8 +37,7 @@ test("captures the remembered class, the one-at-a-time question, the theme tiles
   await page.screenshot({ path: "/tmp/teach-177-theme-tiles.png" });
   await tiles.screenshot({ path: "/tmp/teach-177-theme-tiles-crop.png" });
 
-  // Lesson length is no longer asked (UX ruling 82); an empty topic shows the disabled reason.
-  await page.getByRole("textbox", { name: "Topic or objective" }).fill("");
+  await page.getByRole("spinbutton", { name: "Duration (minutes)" }).fill("3");
   await expect(page.getByRole("button", { name: "Plan it" })).toBeDisabled();
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.waitForTimeout(300);
