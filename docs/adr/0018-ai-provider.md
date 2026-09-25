@@ -1,6 +1,6 @@
 # 0018 — AI provider: Amazon Bedrock through the Vercel AI SDK, in `@tj/ai`
 
-- Status: Accepted
+- Status: Superseded by 0031 (2026-09-25)
 - Date: 2026-09-04
 - Related PRD decisions: F13-R05 (provider adapters), F13-R06 (routing by model class), F13-R10 (observability), F13-R11 (data handling with providers), F13-D3 (two providers), Master PRD principle 6 ("the prompts are not the product")
 

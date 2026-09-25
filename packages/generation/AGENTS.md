@@ -29,9 +29,10 @@ worksheet work back into `stages/generate.ts`.
 
 ## Constraints that override the skills
 
-- **Models only through `deps.ai.model(cls, context)`** (`@tj/ai`, Bedrock — ADR 0018). Never
-  Mastra's model router, never `@ai-sdk/*` directly, never the AI Gateway. `abortSignal` on every
-  call; `callStructured` is the one place a model is called.
+- **Models only through `deps.ai.model(cls, context)`** (`@tj/ai`, OpenAI direct — ADR 0031).
+  Never Mastra's model router, never `@ai-sdk/*` directly, never the AI Gateway from here (`@tj/ai`
+  alone decides the route). `abortSignal` on every call; `callStructured` is the one place a model
+  is called.
 - **Mastra in-process only (ADR 0025 §21).** `createStep`/`createWorkflow` and `RequestContext`
   from `@mastra/core`; `new Mastra()` exists only in `mastra.dev.ts` (Studio). No Mastra storage:
   the checkpoint is `Lesson.generation.stage`. No step `retries`: `callStructured` owns the one
