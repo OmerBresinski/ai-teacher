@@ -10,6 +10,7 @@ import { SLIDE_H } from "@tj/domain/documents";
 import { explanationReserve, hasExplanationPanel, RESERVED_LINES } from "./explanation-metrics";
 import { contains } from "./geometry";
 import { BASELINE, SAFE, SPACE, snapY } from "./grid";
+import { ACCENT_ABOVE, OPTICAL_BIAS } from "./layouts";
 import { OPTION, SAFE_BOTTOM } from "./metrics";
 import {
   isFrozen,
@@ -42,11 +43,6 @@ import type { TextRole } from "./themes";
  * What still overruns at the legibility floor is returned, not hidden: splitting a slide is the
  * editor's Tidy (`@tj/editor/layout/tidy.ts`), which runs on first open (TEACH-251).
  */
-
-/** Optical centring bias, as the title recipe uses it (`layouts.ts` `centreY`). */
-const OPTICAL_BIAS = 10;
-/** The accent rule sits this far above the eyebrow (`layouts.ts` `accentRule`). */
-const ACCENT_ABOVE = 29;
 
 export type FitResult = {
   slide: Slide;
@@ -312,12 +308,12 @@ function restackTitle(before: SlideElement[], after: SlideElement[]): SlideEleme
     Math.ceil((SAFE.y + ACCENT_ABOVE) / BASELINE) * BASELINE,
   );
   const dy = top - first.el0.y;
-  return after.map((el) => {
+  return after.map((el, i) => {
     const at = ys.get(el);
     if (at !== undefined) return { ...el, y: top + at };
     // The accent rule, and anything else not a text or a picture, travels with the eyebrow.
     if (el.type === "image" || isFrozen(el)) return el;
-    const el0 = before[after.indexOf(el)] as SlideElement;
+    const el0 = before[i] as SlideElement;
     return { ...el, y: el0.y + dy };
   });
 }

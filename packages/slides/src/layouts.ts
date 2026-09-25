@@ -37,8 +37,8 @@ export const PLACEHOLDER_IMAGE =
 /* Shared helpers                                                      */
 /* ------------------------------------------------------------------ */
 
-/** Optical vertical centring bias (research: -8 at 800x450). */
-const OPTICAL_BIAS = 10;
+/** Optical vertical centring bias (research: -8 at 800x450). `fit-slide.ts` re-centres with it. */
+export const OPTICAL_BIAS = 10;
 
 /** Full content width. */
 const FULL = SAFE.w;
@@ -205,11 +205,14 @@ function footnote(t: Theme, label: string): TextElement {
 /* Recipes                                                             */
 /* ------------------------------------------------------------------ */
 
-/** The 67x4 accent rule that opens a title or a statement, 29 above the eyebrow. */
+/** How far above the eyebrow the accent rule sits; `fit-slide.ts` keeps it inside the safe area. */
+export const ACCENT_ABOVE = 29;
+
+/** The 67x4 accent rule that opens a title or a statement, `ACCENT_ABOVE` the eyebrow. */
 function accentRule(t: Theme, top: number): ShapeElement {
   return shape(
     "rect",
-    { x: SAFE.x, y: top - 29, w: 67, h: 4 },
+    { x: SAFE.x, y: top - ACCENT_ABOVE, w: 67, h: 4 },
     { fill: t.colors.accent, name: "Accent rule" },
   );
 }
