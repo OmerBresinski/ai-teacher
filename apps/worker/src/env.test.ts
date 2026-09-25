@@ -12,10 +12,10 @@ describe("worker env", () => {
       LOG_LEVEL: "info",
       PORT: 3002,
       NODE_ENV: "development",
+      OPENAI_API_KEY: undefined,
       AWS_BEARER_TOKEN_BEDROCK: undefined,
       AWS_REGION: DEFAULT_REGION,
       AI_GATEWAY_API_KEY: undefined,
-      OPENROUTER_API_KEY: undefined,
       AI_MODEL_FRONTIER: DEFAULT_MODEL_IDS.frontier,
       AI_MODEL_STANDARD: DEFAULT_MODEL_IDS.standard,
       AI_MODEL_SMALL: DEFAULT_MODEL_IDS.small,
@@ -117,15 +117,29 @@ describe("worker env", () => {
     }
   });
 
-  test("requires the Bedrock key in production", () => {
+  test("requires an OpenAI or Bedrock key in production (ADR 0031)", () => {
+    // Either key alone boots (A15: production on Bedrock still validates).
+    expect(
+      parseEnv({ DATABASE_URL: DB, NODE_ENV: "production", OPENAI_API_KEY: "k" }).OPENAI_API_KEY,
+    ).toBe("k");
+    expect(
+      parseEnv({ DATABASE_URL: DB, NODE_ENV: "production", AWS_BEARER_TOKEN_BEDROCK: "b" })
+        .AWS_BEARER_TOKEN_BEDROCK,
+    ).toBe("b");
+
     const exit = spyOn(process, "exit").mockImplementation((() => {
       throw new Error("exit");
     }) as never);
     const error = spyOn(console, "error").mockImplementation(() => {});
     try {
-      expect(() => parseEnv({ DATABASE_URL: DB, NODE_ENV: "production" })).toThrow("exit");
+      // A17: a blank OpenAI key is unset, so with no Bedrock key the readable message names it.
+      expect(() =>
+        parseEnv({ DATABASE_URL: DB, NODE_ENV: "production", OPENAI_API_KEY: " " }),
+      ).toThrow("exit");
       expect(error).toHaveBeenCalledWith(
-        expect.stringContaining("AWS_BEARER_TOKEN_BEDROCK: required in production (ADR 0018)"),
+        expect.stringContaining(
+          "OPENAI_API_KEY: required in production unless AWS_BEARER_TOKEN_BEDROCK is set (ADR 0031)",
+        ),
       );
       expect(exit).toHaveBeenCalledWith(1);
     } finally {
@@ -134,16 +148,16 @@ describe("worker env", () => {
     }
   });
 
-  test("keeps the gateway and OpenRouter keys so @tj/ai can route to them", () => {
+  test("keeps the OpenAI and gateway keys so @tj/ai can route to them", () => {
     const env = parseEnv({
       DATABASE_URL: DB,
+      OPENAI_API_KEY: "openai-key",
       AI_GATEWAY_API_KEY: "gateway-key",
-      OPENROUTER_API_KEY: "openrouter-key",
     });
+    expect(env.OPENAI_API_KEY).toBe("openai-key");
     expect(env.AI_GATEWAY_API_KEY).toBe("gateway-key");
-    expect(env.OPENROUTER_API_KEY).toBe("openrouter-key");
-    const blank = parseEnv({ DATABASE_URL: DB, AI_GATEWAY_API_KEY: " ", OPENROUTER_API_KEY: "" });
+    const blank = parseEnv({ DATABASE_URL: DB, OPENAI_API_KEY: " ", AI_GATEWAY_API_KEY: "" });
+    expect(blank.OPENAI_API_KEY).toBeUndefined();
     expect(blank.AI_GATEWAY_API_KEY).toBeUndefined();
-    expect(blank.OPENROUTER_API_KEY).toBeUndefined();
   });
 });

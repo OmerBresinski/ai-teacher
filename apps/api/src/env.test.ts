@@ -42,39 +42,50 @@ describe("parseEnv", () => {
     expect(blank.env.AWS_BEARER_TOKEN_BEDROCK).toBeUndefined();
   });
 
-  test("keeps the gateway and OpenRouter keys so @tj/ai can route to them", () => {
+  test("keeps the OpenAI and gateway keys so @tj/ai can route to them", () => {
     const r = parseEnv({
       ...base,
+      OPENAI_API_KEY: "openai-key",
       AI_GATEWAY_API_KEY: "gateway-key",
-      OPENROUTER_API_KEY: "openrouter-key",
     });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
+    expect(r.env.OPENAI_API_KEY).toBe("openai-key");
     expect(r.env.AI_GATEWAY_API_KEY).toBe("gateway-key");
-    expect(r.env.OPENROUTER_API_KEY).toBe("openrouter-key");
 
-    const blank = parseEnv({ ...base, AI_GATEWAY_API_KEY: " ", OPENROUTER_API_KEY: "" });
+    const blank = parseEnv({ ...base, OPENAI_API_KEY: " ", AI_GATEWAY_API_KEY: "" });
     expect(blank.ok).toBe(true);
     if (!blank.ok) return;
+    expect(blank.env.OPENAI_API_KEY).toBeUndefined();
     expect(blank.env.AI_GATEWAY_API_KEY).toBeUndefined();
-    expect(blank.env.OPENROUTER_API_KEY).toBeUndefined();
   });
 
-  test("requires the Bedrock key in production", () => {
-    const production = parseEnv({
-      ...base,
-      NODE_ENV: "production",
-      ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "1",
-    });
-    expect(production).toEqual({
-      ok: false,
-      errors: [
-        {
-          variable: "AWS_BEARER_TOKEN_BEDROCK",
-          message: "required in production (ADR 0018)",
-        },
-      ],
-    });
+  test("requires an OpenAI or Bedrock key in production (ADR 0031)", () => {
+    const production = { ...base, NODE_ENV: "production", ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "1" };
+    const required = {
+      variable: "OPENAI_API_KEY",
+      message: "required in production unless AWS_BEARER_TOKEN_BEDROCK is set (ADR 0031)",
+    };
+    // A13: neither key is exactly one error, reported against the OpenAI variable.
+    expect(parseEnv(production)).toEqual({ ok: false, errors: [required] });
+
+    // A14: the OpenAI key alone boots.
+    const openai = parseEnv({ ...production, OPENAI_API_KEY: "k" });
+    expect(openai.ok).toBe(true);
+    if (!openai.ok) return;
+    expect(openai.env.OPENAI_API_KEY).toBe("k");
+    expect(openai.env.AWS_BEARER_TOKEN_BEDROCK).toBeUndefined();
+
+    // A15: production on Bedrock alone still boots; merging changes nothing there.
+    expect(parseEnv({ ...production, AWS_BEARER_TOKEN_BEDROCK: "b" }).ok).toBe(true);
+
+    // A16: the gate is also applied when zod never reaches superRefine (an invalid object): the
+    // AI error comes first, then the field error.
+    const invalid = parseEnv({ ...production, PORT: "not-a-port" });
+    expect(invalid.ok).toBe(false);
+    if (invalid.ok) return;
+    expect(invalid.errors[0]).toEqual(required);
+    expect(invalid.errors[1]?.variable).toBe("PORT");
   });
 
   test("uses the configured small model", () => {
