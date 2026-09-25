@@ -23,7 +23,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0015 | Env validation, logging, commit conventions        | Accepted |
 | 0016 | Deviations from PRD accepted for MVP scaffolding   | Accepted (amended 2026-09-04) |
 | 0017 | Agent skill layout: .agents canonical + symlinks   | Accepted |
-| 0018 | AI provider: Amazon Bedrock via Vercel AI SDK in @tj/ai | Superseded by 0031 (2026-09-25) |
+| 0018 | AI provider: Amazon Bedrock via Vercel AI SDK in @tj/ai | Accepted |
 | 0019 | Adopt the TeachDeck visual system in @tj/ui; shell and editor kits | Accepted, amended 2026-09-06 (×2) |
 | 0020 | Library screens run on an in-memory mock data layer behind TanStack Query | Accepted (amended 2026-09-06) |
 | 0021 | Tie-in document contract: TeachDeck schemas in @tj/domain | Accepted (amended 2026-09-06) |
@@ -36,7 +36,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0028 | GSAP for the character scenes, click-loaded                        | Accepted |
 | 0029 | Plan confirmation: the plan job, the generate job and plan revisions | Accepted |
 | 0030 | The worksheet is an independent job                               | Accepted |
-| 0031 | AI provider: OpenAI direct in @tj/ai; Bedrock kept until the planner switch | Accepted |
+| 0031 | AI provider: OpenAI direct as an opt-in route in @tj/ai; Bedrock stays the default | Accepted |
 
 Template: `0000-template.md`.
 
@@ -73,4 +73,5 @@ Template: `0000-template.md`.
 - 2026-09-16 — ADR 0012: `progress` gains `stage` (ADR 0029 item 14). See the amendment in `0012-sse-progress.md`.
 - 2026-09-16 — ADR 0027 §5: sources may change after creation through `POST /lessons/:id/plan`, released one by one with `unbindSource`; still at most three per lesson (ADR 0029 item 12). See the amendment in `0027-upload-as-input.md`.
 - 2026-09-16 — ADR 0015 (by reference, file unchanged): the new routes and jobs log ids, revisions, counts and booleans only; `POST /briefs/parse` logs `{ rules, model, dropped, ms }` (ADR 0029 item 15).
-- 2026-09-25 — ADR 0016 §1 item 5: model inference moves from Amazon Bedrock (`us-east-1`) to OpenAI's API (US) in flight (ADR 0031); OpenAI replaces AWS as the sub-processor of lesson content in the F15-R01 data-flow statement; same revisit date. See the amendment in `0016-prd-deviations.md`.
+- 2026-09-25 — ADR 0018: Bedrock stays the production provider; ADR 0031 adds an opt-in direct OpenAI route that activates only when `OPENAI_API_KEY` is set and a class is switched to an `openai/` id. See the amendment in `0018-ai-provider.md`.
+- 2026-09-25 — ADR 0016 §1 item 5: unchanged while production is on Bedrock; if a class is switched to an `openai/` id (ADR 0031), inference for it moves to OpenAI's API (US) in flight and OpenAI must be named as a sub-processor of lesson content in the F15-R01 data-flow statement; same revisit date. See the amendment in `0016-prd-deviations.md`.

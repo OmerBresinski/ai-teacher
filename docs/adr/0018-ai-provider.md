@@ -1,6 +1,6 @@
 # 0018 — AI provider: Amazon Bedrock through the Vercel AI SDK, in `@tj/ai`
 
-- Status: Superseded by 0031 (2026-09-25)
+- Status: Accepted
 - Date: 2026-09-04
 - Related PRD decisions: F13-R05 (provider adapters), F13-R06 (routing by model class), F13-R10 (observability), F13-R11 (data handling with providers), F13-D3 (two providers), Master PRD principle 6 ("the prompts are not the product")
 
@@ -113,3 +113,11 @@ judge only (ADR 0025 §23 amendment). No Claude model is in the pipeline; `isAnt
 production — that is the intended state, not an oversight. Provider and mechanism are unchanged:
 Bedrock via `createAmazonBedrock`, one bearer key, classes as configuration.
 
+
+## Amendment (2026-09-25, ADR 0031)
+
+Bedrock stays the production provider. ADR 0031 adds an opt-in direct OpenAI route in `@tj/ai`
+(`openai/<model>` ids served with `OPENAI_API_KEY`) that activates only when that key is set and a
+model class is switched to an `openai/` id; `DEFAULT_MODEL_IDS`, this ADR's mechanism and the
+Bedrock key are unchanged. Whether production leaves Bedrock is decided later, depending on the
+`us.openai.gpt-6-*` profiles on Bedrock (ADR 0031, Consequences).

@@ -116,7 +116,7 @@ function warnUnpricedModels(logger: pino.Logger, modelIds: ModelIds): void {
 }
 
 /**
- * An OpenAI id is `openai/<model>` (`openai/gpt-5.6-luna`): served directly from OpenAI's API
+ * An OpenAI id is `openai/<model>` (`openai/gpt-6-luna`): served directly from OpenAI's API
  * with the prefix stripped (ADR 0031), or by the gateway as a fallback when only its key is set.
  */
 export const OPENAI_PREFIX = "openai/";

@@ -76,7 +76,7 @@ export const EnvSchema = z
     WEB_ORIGIN_PATTERNS: originPatternList,
     LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
 
-    // --- AI provider (ADR 0031; Bedrock per ADR 0018 until retired) ------------------------
+    // --- AI provider (Bedrock per ADR 0018; OpenAI direct opt-in per ADR 0031) ----------------
     /** OpenAI key: serves `openai/<model>` ids directly (`@tj/ai`). */
     OPENAI_API_KEY: optionalString,
     AWS_BEARER_TOKEN_BEDROCK: optionalString,

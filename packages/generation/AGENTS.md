@@ -29,7 +29,7 @@ worksheet work back into `stages/generate.ts`.
 
 ## Constraints that override the skills
 
-- **Models only through `deps.ai.model(cls, context)`** (`@tj/ai`, OpenAI direct — ADR 0031).
+- **Models only through `deps.ai.model(cls, context)`** (`@tj/ai`, Bedrock by default, OpenAI direct opt-in — ADR 0018/0031).
   Never Mastra's model router, never `@ai-sdk/*` directly, never the AI Gateway from here (`@tj/ai`
   alone decides the route). `abortSignal` on every call; `callStructured` is the one place a model
   is called.

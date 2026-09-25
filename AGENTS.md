@@ -344,7 +344,7 @@ packages/
   api-client/   @tj/api-client Hono RPC AppType + typed client factory          ADR 0005
   jobs/         @tj/jobs       pg-boss runtime + typed job registry             ADR 0006
   storage/      @tj/storage    StorageAdapter impls (local disk, Railway S3)   ADR 0026
-  ai/           @tj/ai         Model client: OpenAI direct via Vercel AI SDK, classes ADR 0031
+  ai/           @tj/ai         Model client: Bedrock via Vercel AI SDK (ADR 0018), opt-in OpenAI direct (ADR 0031)
   editor/       @tj/editor     Lesson/worksheet editor, viewer, present, export   ADR 0022
   slides/       @tj/slides     Pure slide recipes, theme catalogue, materialise   ADR 0025
   generation/   @tj/generation Pipeline stages, prompts, in-process Mastra workflow ADR 0025
@@ -377,7 +377,7 @@ edit or copy them (ADR 0017).
 | `tanstack-router` | `apps/web` | defining routes, loaders, search params, navigation (**code-based routes only**, ADR 0004) |
 | `tanstack-query` | `apps/web` | fetching/caching server state, invalidation, mutations |
 | `shadcn` | `packages/ui`, `apps/web`, `packages/editor` | adding or composing UI components (add them in `packages/ui` only, ADR 0009) |
-| `ai-sdk` | `packages/ai`, `apps/worker`, `apps/api` | calling models: `generateText`/`streamText`/structured output through `@tj/ai` (**OpenAI direct via `createAi`; the AI Gateway is a fallback inside `@tj/ai` only**, ADR 0031) |
+| `ai-sdk` | `packages/ai`, `apps/worker`, `apps/api` | calling models: `generateText`/`streamText`/structured output through `@tj/ai` (**Bedrock by default, OpenAI direct as an opt-in route, both via `createAi`; the AI Gateway is a fallback inside `@tj/ai` only**, ADR 0018/0031) |
 | `vercel-react-best-practices` | `apps/web`, `packages/editor` | writing/reviewing React for performance and bundle size (F18-R05: 250 KB gz) |
 | `hono` | `apps/api` | Hono routes, middleware, validation, `streamSSE`, RPC (ADR 0005, 0012) |
 | `use-railway` | `apps/api`, `apps/worker` | Railway services, Postgres, variables, PR environments (ADR 0010) |

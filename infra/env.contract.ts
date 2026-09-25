@@ -552,7 +552,7 @@ const CONTRACT = [
     format: "string",
     files: ["api", "worker"],
     description:
-      "Amazon Bedrock API key (bearer). Serves the legacy Bedrock model ids (no slash). Required in production unless `OPENAI_API_KEY` is set (ADR 0031 supersedes ADR 0018); when unset in development/test those ids fail fast at `model()`. Never set on Vercel.",
+      "Amazon Bedrock API key (bearer). Serves the Bedrock model ids (no slash), the production default (ADR 0018). Required in production unless `OPENAI_API_KEY` is set (ADR 0031); when unset in development/test those ids fail fast at `model()`. Never set on Vercel.",
   },
   {
     name: "OPENAI_API_KEY",
@@ -565,7 +565,7 @@ const CONTRACT = [
     format: "string",
     files: ["api", "worker"],
     description:
-      "OpenAI API key. Serves every `openai/<model>` model id directly (ADR 0031). Required in production unless `AWS_BEARER_TOKEN_BEDROCK` is set; when unset in development/test those ids fail fast at `model()`. Set on Railway (api and worker), never on Vercel, never in git.",
+      "OpenAI API key for the opt-in direct route (ADR 0031): serves every `openai/<model>` model id directly, and changes nothing until a model class is switched to such an id. Required in production unless `AWS_BEARER_TOKEN_BEDROCK` is set; when unset in development/test those ids fail fast at `model()`. Set on Railway (api and worker), never on Vercel, never in git.",
   },
   {
     name: "AI_GATEWAY_API_KEY",

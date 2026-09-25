@@ -10,10 +10,11 @@ Read the root [`AGENTS.md`](../../AGENTS.md), ADR 0031, ADR 0015, and this guide
 
 ## Constraints
 
-- Provider is OpenAI direct through `createAi` (ADR 0031): an `openai/<model>` id is served by
-  `createOpenAI({ apiKey }).chat(...)` with the prefix stripped, from `OPENAI_API_KEY`. Ids without
-  a slash are the legacy Bedrock route (`createAmazonBedrock({ apiKey, region })`, ADR 0018) until
-  the switch ticket retires it. The Vercel AI Gateway is a fallback only, for non-OpenAI
+- Provider is Amazon Bedrock through `createAi` (ADR 0018): ids without a slash go to
+  `createAmazonBedrock({ apiKey, region })` and `DEFAULT_MODEL_IDS` are Bedrock ids. OpenAI direct
+  is an opt-in route (ADR 0031): an `openai/<model>` id is served by
+  `createOpenAI({ apiKey }).chat(...)` with the prefix stripped, from `OPENAI_API_KEY`, and only
+  when that key is set. The Vercel AI Gateway is a fallback only, for non-OpenAI
   `provider/model` ids (the lab's model bench) and for `openai/` ids when no OpenAI key is set;
   it is never the production path.
 - Never fetch model IDs from `ai-gateway.vercel.sh`; use environment variables or

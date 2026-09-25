@@ -34,11 +34,14 @@ option are resolved.
 
 ## Amendment (2026-09-25, ADR 0031)
 
-Item 5: model inference moves from Amazon Bedrock in `us-east-1` to OpenAI's API, called
-directly (ADR 0031). Prompts and completions still transit the US in flight and nothing is stored
-by us there; OpenAI states that API inputs are not used for training and are retained per its API
-data-usage policy. The deviation from F13-R11 is unchanged in kind and its revisit date (before
-M3, with item 1) stands. F15-R01's data-flow statement must name **OpenAI** as the sub-processor
-of lesson content in place of AWS (Bedrock); the Cohort Profile allow-list (F02-R10) is still
-what keeps learner data out of that flow. The "`eu.` inference profiles" fix no longer applies;
-an EU endpoint is now a question for OpenAI's data-residency options at the revisit.
+Item 5 stands as written while production is on Bedrock. ADR 0031 adds an opt-in direct OpenAI
+route; **if** a model class is switched to an `openai/` id, inference for that class moves from
+Amazon Bedrock in `us-east-1` to OpenAI's API (US). Prompts and completions would still transit
+the US in flight and nothing is stored by us there; OpenAI states that API inputs are not used
+for training and are retained per its API data-usage policy. The deviation from F13-R11 is
+unchanged in kind and its revisit date (before M3, with item 1) stands. At the moment the route
+is switched on, F15-R01's data-flow statement must name **OpenAI** as a sub-processor of lesson
+content alongside or in place of AWS (Bedrock); the Cohort Profile allow-list (F02-R10) is still
+what keeps learner data out of that flow. The "`eu.` inference profiles" fix still applies on
+Bedrock; on the OpenAI route an EU endpoint is a question for OpenAI's data-residency options at
+the revisit.

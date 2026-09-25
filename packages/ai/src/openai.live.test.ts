@@ -14,7 +14,7 @@ const apiKey = process.env.OPENAI_API_KEY?.trim();
 const liveSuiteName = apiKey ? "openai live" : "openai live — set OPENAI_API_KEY to run";
 /** A real round trip; Bun's 5 s default is not a network budget. */
 const LIVE_TIMEOUT_MS = 30_000;
-const SMALL = process.env.AI_MODEL_SMALL?.trim() || "openai/gpt-5.6-luna";
+const SMALL = process.env.AI_MODEL_SMALL?.trim() || "openai/gpt-6-luna";
 
 (apiKey ? describe : describe.skip)(liveSuiteName, () => {
   test(

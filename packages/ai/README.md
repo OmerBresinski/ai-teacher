@@ -1,8 +1,9 @@
 # @tj/ai
 
-Server-only model client for Teaching Journey: OpenAI direct for `openai/<model>` ids (ADR 0031),
-Amazon Bedrock for the legacy ids without a slash (ADR 0018, until retired), and the Vercel AI
-Gateway as an optional fallback for other `provider/model` ids. `@tj/ai` is consumed from source
+Server-only model client for Teaching Journey: Amazon Bedrock for the ids without a slash (ADR
+0018, the production default), OpenAI direct as an opt-in route for `openai/<model>` ids (ADR
+0031, active only with `OPENAI_API_KEY` set), and the Vercel AI Gateway as an optional fallback
+for other `provider/model` ids. `@tj/ai` is consumed from source
 and is the only package that creates a provider. Apps pass validated environment values to
 `createAi`; this package never reads `process.env`.
 
