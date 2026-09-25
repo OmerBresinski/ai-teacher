@@ -219,6 +219,130 @@ describe("first teacher edit (TEACH-74)", () => {
     expect(prov(marks, question.id)).toEqual({ authoredBy: "ai", originalText: undefined });
   });
 
+  type MCBlock = Extract<WorksheetBlock, { type: "multiple-choice" }>;
+  type MatchingBlock = Extract<WorksheetBlock, { type: "matching" }>;
+  type FillGapBlock = Extract<WorksheetBlock, { type: "fill-gap" }>;
+  type TableBlock = Extract<WorksheetBlock, { type: "table" }>;
+  type WordBankBlock = Extract<WorksheetBlock, { type: "word-bank" }>;
+  type WordSearchBlock = Extract<WorksheetBlock, { type: "word-search" }>;
+  type AnswerBoxBlock = Extract<WorksheetBlock, { type: "answer-box" }>;
+  const teacher = (originalText: string) => ({ authoredBy: "teacher" as const, originalText });
+
+  test("a multiple-choice option edit flips the block; its stem and options are the kept text", () => {
+    const mc: MCBlock = {
+      ...(newBlock("multiple-choice") as MCBlock),
+      doc: docFromText("Which gas do plants take in?"),
+      options: [
+        { id: "a", text: "Oxygen", correct: false },
+        { id: "b", text: "Carbon dioxide", correct: true },
+      ],
+      ...ai(),
+    };
+    const w = r.insertBlock(sheet(), mc);
+    const edited = r.updateBlock<MCBlock>(w, mc.id, (b) => {
+      b.options = b.options.map((o) => (o.id === "a" ? { ...o, text: "Nitrogen" } : o));
+    });
+    expect(prov(edited, mc.id)).toEqual(
+      teacher("Which gas do plants take in?\nOxygen\nCarbon dioxide"),
+    );
+    // Marking a different option correct changes no words.
+    const toggled = r.updateBlock<MCBlock>(w, mc.id, (b) => {
+      b.options = b.options.map((o) => ({ ...o, correct: o.id === "a" }));
+    });
+    expect(prov(toggled, mc.id)).toEqual({ authoredBy: "ai", originalText: undefined });
+  });
+
+  test("a matching pair edit flips a block that has no doc at all", () => {
+    const matching: MatchingBlock = {
+      ...(newBlock("matching") as MatchingBlock),
+      pairs: [
+        { id: "p1", left: "Evaporation", right: "Liquid to gas" },
+        { id: "p2", left: "Condensation", right: "Gas to liquid" },
+      ],
+      ...ai(),
+    };
+    const w = r.insertBlock(sheet(), matching);
+    const edited = r.updateBlock<MatchingBlock>(w, matching.id, (b) => {
+      b.pairs = b.pairs.map((p) => (p.id === "p2" ? { ...p, right: "Gas becomes liquid" } : p));
+    });
+    expect(prov(edited, matching.id)).toEqual(
+      teacher("Evaporation → Liquid to gas\nCondensation → Gas to liquid"),
+    );
+  });
+
+  test("fill-gap answers, a model answer, table cells, word lists, a label and a caption count as words", () => {
+    const fillGap: FillGapBlock = {
+      ...(newBlock("fill-gap") as FillGapBlock),
+      doc: docFromText("The sun ___ water."),
+      gaps: [{ id: "g1", answer: "heats" }],
+      ...ai(),
+    };
+    const question: QuestionBlock = {
+      ...(newBlock("question") as QuestionBlock),
+      doc: docFromText("Why does ice float?"),
+      answer: "It is less dense than water.",
+      ...ai(),
+    };
+    const table: TableBlock = {
+      ...(newBlock("table") as TableBlock),
+      rows: [
+        ["State", "Example"],
+        ["Solid", "Ice"],
+      ],
+      ...ai(),
+    };
+    const bank: WordBankBlock = {
+      ...(newBlock("word-bank") as WordBankBlock),
+      words: ["ice", "steam"],
+      ...ai(),
+    };
+    const search: WordSearchBlock = {
+      ...(newBlock("word-search") as WordSearchBlock),
+      words: ["ice", "steam"],
+      ...ai(),
+    };
+    const box: AnswerBoxBlock = {
+      ...(newBlock("answer-box") as AnswerBoxBlock),
+      label: "Working",
+      ...ai(),
+    };
+    const image: ImageBlock = {
+      ...(newBlock("image") as ImageBlock),
+      src: "/files/ws/images/cloud.jpg",
+      alt: "A cloud",
+      caption: "Figure 1",
+      ...ai(),
+    };
+    let w = sheet();
+    for (const b of [fillGap, question, table, bank, search, box, image]) w = r.insertBlock(w, b);
+
+    const gap = r.updateBlock<FillGapBlock>(w, fillGap.id, (b) => {
+      b.gaps = b.gaps.map((g) => ({ ...g, answer: "warms" }));
+    });
+    expect(prov(gap, fillGap.id)).toEqual(teacher("The sun ___ water.\nheats"));
+    const answer = r.updateBlock<QuestionBlock>(w, question.id, { answer: "Less dense." });
+    expect(prov(answer, question.id)).toEqual(
+      teacher("Why does ice float?\nIt is less dense than water."),
+    );
+    const cell = r.updateBlock<TableBlock>(w, table.id, (b) => {
+      b.rows = b.rows.map((row, i) => (i === 1 ? ["Solid", "Snow"] : row));
+    });
+    expect(prov(cell, table.id)).toEqual(teacher("State | Example\nSolid | Ice"));
+    const word = r.updateBlock<WordBankBlock>(w, bank.id, { words: ["ice", "vapour"] });
+    expect(prov(word, bank.id)).toEqual(teacher("ice\nsteam"));
+    const found = r.updateBlock<WordSearchBlock>(w, search.id, (b) => {
+      b.words.push("rain");
+    });
+    expect(prov(found, search.id)).toEqual(teacher("ice\nsteam"));
+    const label = r.updateBlock<AnswerBoxBlock>(w, box.id, { label: "Show your working" });
+    expect(prov(label, box.id)).toEqual(teacher("Working"));
+    const caption = r.updateBlock<ImageBlock>(w, image.id, { caption: "Figure 2" });
+    expect(prov(caption, image.id)).toEqual(teacher("A cloud\nFigure 1"));
+    // Resizing the word search or the answer box changes no words.
+    const resized = r.updateBlock<AnswerBoxBlock>(w, box.id, { heightPt: 120 });
+    expect(prov(resized, box.id)).toEqual({ authoredBy: "ai", originalText: undefined });
+  });
+
   test("the LayoutToolbar image replace keeps the previous alt as originalText", () => {
     const image: ImageBlock = {
       ...(newBlock("image") as ImageBlock),
@@ -232,6 +356,11 @@ describe("first teacher edit (TEACH-74)", () => {
       b.alt = "Rain";
       b.authoredBy = "teacher";
     });
-    expect(prov(replaced, image.id)).toEqual({ authoredBy: "teacher", originalText: "A cloud" });
+    // The starter block's caption is part of the picture's words, so it is kept with the alt.
+    expect(prov(replaced, image.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: `A cloud\n${image.caption}`,
+    });
+    expect(image.caption).toBeTruthy();
   });
 });

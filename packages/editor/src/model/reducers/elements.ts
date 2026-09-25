@@ -1,11 +1,10 @@
 /** Element reducers on one slide: add, patch, transform, delete, duplicate, paste. */
 
 import {
+  applyProvenancePatch,
   type ElementType,
-  flipToTeacher,
   type Id,
   type Lesson,
-  plainTextOf,
   type RichDoc,
   type Slide,
   type SlideElement,
@@ -71,20 +70,18 @@ export type ElementPatch<T extends SlideElement = SlideElement> = Partial<T> | (
 
 /**
  * Apply a patch to an immer draft: a mutator runs on it, an object is assigned over it. The funnel
- * for every element edit the teacher makes, so this is where an `"ai"` element's first text
- * change flips it to the teacher's and keeps the AI's words (`flipToTeacher`, TEACH-74). Plain
- * text is compared, never `doc` identity: Tiptap rebuilds the doc on every keystroke, and a
- * re-mark (bold over the same words), a move or a restyle is not a text edit. The two writes the
- * app makes on its own bypass it: layout measurement (`updateElementLayout`) and the fitting
- * engine (`fitElement`), which may shorten a box's words when it splits them across a slide.
+ * for every element edit the teacher makes, so this is where an `"ai"` element's first change to
+ * its words (the doc, a table cell, an option label, an alt) flips it to the teacher's and keeps
+ * the AI's words (`applyProvenancePatch`, TEACH-74); a re-mark (bold over the same words), a move
+ * or a restyle is not a text edit. The two writes the app makes on its own bypass it: layout
+ * measurement (`updateElementLayout`) and the fitting engine (`fitElement`), which may shorten a
+ * box's words when it splits them across a slide.
  */
-const applyPatch = <T extends SlideElement>(el: SlideElement, patch: ElementPatch<T>) => {
-  const wasAi = el.authoredBy === "ai";
-  const before = wasAi ? plainTextOf(el) : undefined;
-  if (typeof patch === "function") patch(el as T);
-  else Object.assign(el, patch);
-  if (wasAi && plainTextOf(el) !== before) flipToTeacher(el, before);
-};
+const applyPatch = <T extends SlideElement>(el: SlideElement, patch: ElementPatch<T>) =>
+  applyProvenancePatch(el, (target) => {
+    if (typeof patch === "function") patch(target as T);
+    else Object.assign(target, patch);
+  });
 
 /** Patch by object or by a mutator run on the immer draft. Reaches into a group's children. */
 export const updateElement = <T extends SlideElement>(

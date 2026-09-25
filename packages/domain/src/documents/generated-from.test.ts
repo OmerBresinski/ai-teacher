@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { generatedFrom, generatedLesson, text, textElement } from "./fixtures.test-helpers";
 import {
+  applyProvenancePatch,
   flipToTeacher,
   GeneratedFromSchema,
   type Provenance,
@@ -102,6 +103,105 @@ describe("plainTextOf", () => {
     expect(plainTextOf(divider)).toBeUndefined();
     const labelled: ShapeElement = { ...shape, doc: text("Label") };
     expect(plainTextOf(labelled)).toBe("Label");
+  });
+
+  test("words outside doc are lines after it, in a fixed order, so the text is diffable", () => {
+    const mc: WorksheetBlock = {
+      id: "m",
+      type: "multiple-choice",
+      doc: text("Which gas do plants take in?"),
+      options: [
+        { id: "a", text: "Oxygen", correct: false },
+        { id: "b", text: "Carbon dioxide", correct: true },
+      ],
+    };
+    expect(plainTextOf(mc)).toBe("Which gas do plants take in?\nOxygen\nCarbon dioxide");
+    const matching: WorksheetBlock = {
+      id: "p",
+      type: "matching",
+      pairs: [
+        { id: "1", left: "Evaporation", right: "Liquid to gas" },
+        { id: "2", left: "Condensation", right: "Gas to liquid" },
+      ],
+    };
+    expect(plainTextOf(matching)).toBe("Evaporation → Liquid to gas\nCondensation → Gas to liquid");
+    const fillGap: WorksheetBlock = {
+      id: "g",
+      type: "fill-gap",
+      doc: text("The sun ___ water."),
+      gaps: [{ id: "g1", answer: "heats" }],
+    };
+    expect(plainTextOf(fillGap)).toBe("The sun ___ water.\nheats");
+    const question: WorksheetBlock = {
+      id: "q",
+      type: "question",
+      doc: text("Why does ice float?"),
+      answerLines: 2,
+      answer: "It is less dense.",
+    };
+    expect(plainTextOf(question)).toBe("Why does ice float?\nIt is less dense.");
+    const table: WorksheetBlock = {
+      id: "t",
+      type: "table",
+      rows: [
+        ["State", "Example"],
+        ["Solid", "Ice"],
+      ],
+    };
+    expect(plainTextOf(table)).toBe("State | Example\nSolid | Ice");
+    const bank: WorksheetBlock = { id: "w", type: "word-bank", words: ["ice", "steam"] };
+    expect(plainTextOf(bank)).toBe("ice\nsteam");
+    const box: WorksheetBlock = { id: "x", type: "answer-box", heightPt: 80, label: "Working" };
+    expect(plainTextOf(box)).toBe("Working");
+    const image: WorksheetBlock = {
+      id: "i",
+      type: "image",
+      src: "/files/x.jpg",
+      widthPct: 50,
+      alt: "A cloud",
+      caption: "Figure 1",
+    };
+    expect(plainTextOf(image)).toBe("A cloud\nFigure 1");
+    // No words at all is still undefined, not "".
+    expect(
+      plainTextOf({ id: "e", type: "word-bank", words: [] } as WorksheetBlock),
+    ).toBeUndefined();
+  });
+});
+
+describe("applyProvenancePatch", () => {
+  const aiTarget = (): ProvenanceTarget => ({
+    type: "text",
+    doc: text("Before"),
+    generatedFrom: generatedFrom(["o1"]),
+    authoredBy: "ai",
+  });
+
+  test("a patch that changes the words flips and keeps the text from before the patch", () => {
+    const target = aiTarget();
+    applyProvenancePatch(target, (t) => {
+      t.doc = text("After");
+    });
+    expect(target.authoredBy).toBe("teacher");
+    expect(target.generatedFrom?.originalText).toBe("Before");
+  });
+
+  test("a patch that leaves the words alone does not flip", () => {
+    const target = aiTarget();
+    applyProvenancePatch(target, (t) => {
+      t.doc = text("Before");
+    });
+    expect(target.authoredBy).toBe("ai");
+    expect(target.generatedFrom?.originalText).toBeUndefined();
+  });
+
+  test("a target already the teacher's records nothing", () => {
+    const target: ProvenanceTarget = { ...aiTarget(), authoredBy: "teacher" };
+    applyProvenancePatch(target, (t) => {
+      t.doc = text("After");
+    });
+    expect(target.authoredBy).toBe("teacher");
+    expect(target.generatedFrom?.originalText).toBeUndefined();
   });
 });
 

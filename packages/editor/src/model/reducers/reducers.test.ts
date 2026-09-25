@@ -2,10 +2,12 @@ import { describe, expect, test } from "bun:test";
 import {
   type ImageElement,
   type Lesson,
+  type OptionElement,
   type Provenance,
   parseLesson,
   type ShapeElement,
   type SlideElement,
+  type TableElement,
   type TextElement,
 } from "@tj/domain/documents";
 import { generatedFrom } from "@tj/domain/documents/fixtures";
@@ -588,6 +590,58 @@ describe("first teacher edit (TEACH-74)", () => {
     expect(prov(mutated, slideId, t.id)).toEqual({
       authoredBy: "teacher",
       originalText: "Water evaporates.",
+    });
+  });
+
+  test("words outside doc flip too: a table cell and an option card's label", () => {
+    const table: TableElement = {
+      id: uid(),
+      type: "table",
+      x: 0,
+      y: 0,
+      w: 400,
+      h: 100,
+      rows: [
+        ["State", "Example"],
+        ["Solid", "Ice"],
+      ],
+      ...ai(["o1"]),
+    };
+    const { lesson, slideId } = blank(table);
+    const cell = r.updateElement<TableElement>(lesson, slideId, table.id, (e) => {
+      e.rows = e.rows.map((row, i) => (i === 1 ? ["Solid", "Snow"] : row));
+    });
+    expect(prov(cell, slideId, table.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: "State | Example\nSolid | Ice",
+    });
+    // Column widths are layout, not words.
+    const widths = r.updateElement<TableElement>(lesson, slideId, table.id, {
+      colWidths: [0.5, 0.5],
+    });
+    expect(prov(widths, slideId, table.id)).toEqual({ authoredBy: "ai", originalText: undefined });
+
+    const option: OptionElement = {
+      id: uid(),
+      type: "option",
+      x: 0,
+      y: 0,
+      w: 400,
+      h: 40,
+      doc: docFromText("Oxygen"),
+      label: "A",
+      ...ai(["o1"]),
+    };
+    const withOption = blank(option);
+    const relabelled = r.updateElement<OptionElement>(
+      withOption.lesson,
+      withOption.slideId,
+      option.id,
+      { label: "B" },
+    );
+    expect(prov(relabelled, withOption.slideId, option.id)).toEqual({
+      authoredBy: "teacher",
+      originalText: "Oxygen\nA",
     });
   });
 
