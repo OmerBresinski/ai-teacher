@@ -44,8 +44,8 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 };
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v18",
-  hash: "4ce288b25f09eec5f5a6a357bfb931677dcbc5a6d210dad01f9bbc64174308e6",
+  version: "plan-objectives.v19",
+  hash: "bc94c5cf44e1f137ef0b50804d5deaa872a71a341c310072bc83f7d85376acb3",
 };
 
 describe("plan-objectives", () => {
@@ -71,7 +71,9 @@ describe("plan-objectives", () => {
     // v17: 337, the unhedged count, the list-as-parts rule and "No objective restates the topic"
     // (gpt-6-luna gave one topic-restating objective on list-shaped topics); the alarm moves once.
     // v18: 343, "it has one right answer" on the starter (3 of 9 gpt-6-luna low question faults).
-    expect(system.trim().split(/\s+/).length).toBeLessThan(345);
+    // v19: 352, the starter's "goes beyond" sentence and its options method; the objectives clause
+    // got shorter (at most two named). The alarm moves once.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(355);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
@@ -222,10 +224,16 @@ describe("plan-objectives", () => {
     // v16 (checklist judge): "no objective teaches" was read against the objectives' wording, so
     // a groyne under "engineering methods" passed. The rule is about the lesson, examples included.
     expect(system).toContain("None asks what the lesson teaches, its examples included.");
-    // v16: a category word met v14's "not a heading"; the members are named instead.
-    expect(system).toContain("where it covers several factors, methods or strategies, name them");
+    // v16: a category word met v14's "not a heading"; the members are named instead. v19: at most
+    // two to an objective, since a named list of four was one lumped objective and one crammed slide.
+    expect(system).toContain("Name the actual concepts or methods, at most two to an objective.");
+    expect(system).not.toContain("strategies, name them");
     expect(system).toContain("a different term, fact or method");
-    expect(system).toContain("options the question names; it has one right answer.");
+    // v19: the starter's faults were several-answer "which part" items and Year 3 content at Year 2.
+    expect(system).toContain("None goes beyond what this year group has been taught.");
+    expect(system).toContain(
+      "Ask it in one line with one right answer or, where several could fit, by picking from options the question names.",
+    );
     expect(system).not.toMatch(/earlier lesson|answerable before this lesson begins/);
     expect(system).toContain('"retrieval": [{ "question"');
     // The sketch shows no anchor slot: a no-extract call filled anchors it was shown.

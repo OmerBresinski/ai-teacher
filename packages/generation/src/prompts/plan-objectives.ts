@@ -223,6 +223,21 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *    sentence covers the open and the picking form). The knowledge errors themselves need verify to see the starter
  *    (CHANGES.md change 4: code, not a prompt rule).
  *
+ * v19 (26 Sept 2026, l6-b judged, `lab/l6-b/CHANGES-C.md`):
+ *  - Four of round B's six question faults were starter items (Y2 plants p1, p2), not question-set
+ *    ones: "Which part of a plant usually grows towards the light?" keyed "the stem" (leaves and
+ *    shoots are right too, and phototropism is not earlier learning at Year 2); "What do we call the
+ *    place where a plant grows…" keyed "soil"; "Which part can grow into a fruit?" (Year 3 content).
+ *    v18's "it has one right answer" named the goal and Luna believed each met it. v19 gives the
+ *    method (where several answers could fit, name the options) and states the judge's test as a
+ *    sentence of its own ("None goes beyond what this year group has been taught"); at `low` a
+ *    trailing clause is dropped (v16 note).
+ *  - Round B's coasts decks lost on explanation and fidelity where one objective listed four methods
+ *    ("sea walls, groynes, beach nourishment and managed retreat") and its one slide crammed them.
+ *    v17 split listed topics into parts but kept v16's "where it covers several…, name them", which
+ *    endorses the lumped objective (openai.md 2026-09-25). "At most two to an objective" keeps
+ *    v16's naming (no category word for the starter to collide with) and caps the list.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -353,16 +368,16 @@ const SHAPE_SKETCH =
   '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v18",
+  version: "plan-objectives.v19",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
     OBJECTIVE_HOUSE_RULES,
-    "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts or methods; where it covers several factors, methods or strategies, name them.",
+    "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts or methods, at most two to an objective.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
     "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",
-    "Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Ask it in one line or by picking from options the question names; it has one right answer.",
+    "Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. None goes beyond what this year group has been taught. Ask it in one line with one right answer or, where several could fit, by picking from options the question names.",
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,
