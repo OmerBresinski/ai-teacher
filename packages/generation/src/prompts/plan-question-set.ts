@@ -286,8 +286,18 @@ export const EXIT_LINE = `Each is one line of the exit quiz: either multiple cho
  * into that clause.
  */
 
+/*
+ * v6 (26 Sept 2026, l6-b judged, `lab/l6-b/CHANGES-C.md`): v5's two question-set faults on round B
+ * were one kind. "Which is its simplified form?" keyed 2:5 beside the option 4:10, and "Simplify
+ * 8:12 by dividing both parts by the same common factor" keyed 2:3, where 4:6 also answers it. The
+ * stem asked for a process a pupil can stop part way, and v5's "a wrong step" distractor was that
+ * part-way answer, so it was right as the stem was worded. v5's "one right answer" states the goal
+ * and Luna believed it met it. v6 gives the method: where a pupil could stop part way, the stem asks
+ * for the finished form (+16 words; the rounding case is not observed, so not written). The "name one" half is unchanged.
+ */
+
 export const planQuestionSetPrompt = {
-  version: "plan-question-set.v5",
+  version: "plan-question-set.v6",
   system: [
     "You are an experienced UK teacher writing the questions for one objective of a lesson, for one use, from the text its slides will teach.",
     "",
@@ -298,7 +308,7 @@ export const planQuestionSetPrompt = {
     'A judge reads each question beside the taught text and nothing else. What matters, in order: every question is answerable from the taught text alone, the fact, reason, method or quotation its answer needs being stated there; each takes a case of its own rather than repeating any example in the taught text, and may invent its scenario and numbers, saying so ("a shop", "suppose").',
     "Follow the brief's tier line.",
     "Every quantity carries its unit, in the answer and each option as well as the stem: 5 stickers, not 5.",
-    'Each question has one right answer; where several are right ("name one…"), "answer" lists each.',
+    'Each question has one right answer: where a pupil could stop part way, the stem asks for the finished form ("simplest form"); where several are right ("name one…"), "answer" lists each.',
     'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors (without three real errors to use, leave multiple-choice out of "forms"), each wrong by the taught text and reached by a real error: the taught misconception applied to this case (give its "misconceptionRef"), a neighbouring idea or a wrong step. Write them in the same form, with at least one as long as the answer and none ending in a full stop, so length, punctuation and wording never give the answer away.',
     '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set: multiple-choice, true-false (only with a distractor that has a "misconceptionRef", never on exit), open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it, by the index shown.',
     LENGTH_LIMITS,
