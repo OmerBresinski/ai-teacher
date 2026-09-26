@@ -52,10 +52,9 @@ describe("demoWorkspace", () => {
     expect(fractions?.questions).toHaveLength(4);
     expect(fractions?.misconceptions).toHaveLength(2);
     expect(fractions?.outline.length).toBeGreaterThan(0);
-    // The outline adds up to the duration, as the worker's would.
+    // Both demos carry an outline; its size is its slide count (ruling 82), not minutes.
     for (const key of ["demo-water-cycle", "demo-fractions"]) {
-      const f = facts.get(key);
-      expect(f?.outline.reduce((sum, entry) => sum + entry.minutes, 0)).toBe(f?.durationMin);
+      expect(facts.get(key)?.outline.length).toBeGreaterThan(2);
     }
     for (const [key, value] of facts) {
       if (key !== "demo-water-cycle" && key !== "demo-fractions") expect(value).toBeUndefined();

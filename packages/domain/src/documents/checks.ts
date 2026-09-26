@@ -19,11 +19,8 @@ export * from "./finding";
  * `Lesson.artefacts.worksheetId` has loaded.
  */
 
-/** How far the outline may drift from the brief's duration before `timing` warns: 10 %. */
-export const TIMING_TOLERANCE_PERCENT = 10;
-
 /**
- * The `check` names `checkLesson` produces: the four schema checks here and the deterministic
+ * The `check` names `checkLesson` produces: the three schema checks here and the deterministic
  * quality checks in `quality-checks.ts` (TEACH-210). Anything else on `Lesson.generation.findings`
  * is a model check (or the budget stop) and is shown as stored; these are always recomputed.
  */
@@ -31,7 +28,6 @@ export const SCHEMA_CHECKS: ReadonlySet<string> = new Set([
   "question-answer",
   "objective-coverage",
   "vocabulary-in-facts",
-  "timing",
   ...QUALITY_CHECKS,
 ]);
 export const isSchemaCheck = (check: string): boolean => SCHEMA_CHECKS.has(check);
@@ -42,7 +38,6 @@ export function checkLesson(lesson: Lesson, worksheet?: Worksheet): Finding[] {
     ...checkQuestionAnswers(lesson, worksheet),
     ...checkObjectiveCoverage(lesson, worksheet),
     ...checkVocabularyInFacts(lesson),
-    ...checkTiming(lesson),
     ...qualityChecks(lesson, worksheet),
   ];
 }
@@ -230,28 +225,6 @@ function checkVocabularyInFacts(lesson: Lesson): Finding[] {
     });
   }
   return findings;
-}
-
-/* ------------------------------------------------------------------ */
-/* timing                                                              */
-/* ------------------------------------------------------------------ */
-
-/** The outline's minutes add up to the brief's duration, within the tolerance. */
-function checkTiming(lesson: Lesson): Finding[] {
-  const facts = lesson.facts;
-  if (!facts) return [];
-  const planned = facts.outline.reduce((sum, entry) => sum + entry.minutes, 0);
-  // Integer arithmetic: `durationMin * 0.1` is not exact in floating point.
-  const drift = Math.abs(planned - facts.durationMin) * 100;
-  if (drift <= facts.durationMin * TIMING_TOLERANCE_PERCENT) return [];
-  return [
-    {
-      check: "timing",
-      severity: "warning",
-      target: {},
-      message: `The outline plans ${planned} minutes for a ${facts.durationMin}-minute lesson.`,
-    },
-  ];
 }
 
 /* ------------------------------------------------------------------ */

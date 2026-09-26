@@ -750,6 +750,23 @@ const OPTION_BADGE = 32;
 const OPTION_BADGE_INSET = 10;
 
 /**
+ * Where the option's text sits inside its card before the chip takes its share: `OptionView`'s
+ * padding on both sides — the row's own tighter padding when the fit engine laid the card as a
+ * full-width answer row (`@tj/slides` `fit-slide.ts`), `OPTION_PAD` otherwise — plus the tick lane
+ * on a scorable card. The export and the renderer must agree here or PowerPoint re-wraps the row.
+ */
+export function optionTextFrame(
+  element: OptionElement,
+  scorable: boolean,
+): { x: number; w: number } {
+  const pad = element.textStyle?.padding ?? OPTION_PAD;
+  return {
+    x: element.x + pad,
+    w: element.w - pad - (scorable ? pad + OPTION_TICK_LANE : pad),
+  };
+}
+
+/**
  * The answer card, matching `slide/elements/OptionView.tsx` at rest — or, when `revealed`, in its
  * correct state: the `correct` tint at 10%, a 2pt ring in `correct`, the chip in `correct`, and the
  * tick badge in the top-right corner cut out in the card's own paper (TD item 4 leftover).
@@ -803,8 +820,7 @@ function drawOption(
   // showing, exactly as `OptionView` reserves it, so the text wraps the same way.
   const scorable = question?.type === "multiple-choice" || question?.type === "true-false";
   const label = optionChipLabel(element, docToPlainText(element.doc));
-  let textX = element.x + OPTION_PAD;
-  let textW = element.w - OPTION_PAD - (scorable ? OPTION_PAD + OPTION_TICK_LANE : OPTION_PAD);
+  let { x: textX, w: textW } = optionTextFrame(element, scorable);
   if (label) {
     const chipY = element.y + (element.h - OPTION_CHIP) / 2;
     pptxSlide.addText(label, {

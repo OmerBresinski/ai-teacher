@@ -37,8 +37,8 @@ export const PLACEHOLDER_IMAGE =
 /* Shared helpers                                                      */
 /* ------------------------------------------------------------------ */
 
-/** Optical vertical centring bias (research: -8 at 800x450). */
-const OPTICAL_BIAS = 10;
+/** Optical vertical centring bias (research: -8 at 800x450). `fit-slide.ts` re-centres with it. */
+export const OPTICAL_BIAS = 10;
 
 /** Full content width. */
 const FULL = SAFE.w;
@@ -205,11 +205,14 @@ function footnote(t: Theme, label: string): TextElement {
 /* Recipes                                                             */
 /* ------------------------------------------------------------------ */
 
-/** The 67x4 accent rule that opens a title or a statement, 29 above the eyebrow. */
+/** How far above the eyebrow the accent rule sits; `fit-slide.ts` keeps it inside the safe area. */
+export const ACCENT_ABOVE = 29;
+
+/** The 67x4 accent rule that opens a title or a statement, `ACCENT_ABOVE` the eyebrow. */
 function accentRule(t: Theme, top: number): ShapeElement {
   return shape(
     "rect",
-    { x: SAFE.x, y: top - 29, w: 67, h: 4 },
+    { x: SAFE.x, y: top - ACCENT_ABOVE, w: 67, h: 4 },
     { fill: t.colors.accent, name: "Accent rule" },
   );
 }
@@ -479,12 +482,16 @@ function workedExampleSlide(t: Theme): Layout {
   // no label; the working keeps its caption.
   const capH = boxH(t, "caption");
   const questionH = boxH(t, "body", 2);
-  const pad = SPACE[3];
-  const cardY = snapY(BODY_Y + questionH + SPACE[2]);
+  // The card's inner padding and the gap under the question are one stop tighter than before
+  // (quality lab, Sept 2026): at the theme's body size, four one-line steps plus the list's own
+  // item spacing (0.35em each, `slide.css`) ran 16pt past the card, and the fit engine split the
+  // last step onto a continuation slide rather than step the type down far enough.
+  const pad = SPACE[2];
+  const cardY = snapY(BODY_Y + questionH + SPACE[1]);
   // Short of the safe edge by the fit engine's cushion (`SAFETY`), so the card itself is never
   // reported as an overflow.
   const cardBottom = SAFE_BOTTOM - SPACE[1];
-  const workingY = cardY + pad + capH + 12;
+  const workingY = cardY + pad + capH + SPACE[0];
   return {
     elements: [
       ...headed(t, "Worked example"),

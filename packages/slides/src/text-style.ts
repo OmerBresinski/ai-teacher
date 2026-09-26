@@ -29,10 +29,34 @@ export type ResolvedText = {
   autoHeight: boolean;
 };
 
+/** The theme's own type ladder, largest first: the stops a step-down walks (`reflow.ts`). */
+export const LADDER: readonly TextPreset[] = ["title", "subtitle", "heading", "body", "small"];
+
+/** The distinct sizes of the theme's ladder, largest first. */
+export function ladderStops(theme: Theme): number[] {
+  return Array.from(new Set(LADDER.map((p) => theme.sizes[p]))).sort((a, b) => b - a);
+}
+
+/** The presets a step-down touches; `title`, `subtitle` and `caption` never step, so their floor holds. */
+export const STEPPABLE: readonly TextPreset[] = ["heading", "body", "small"];
+
 /**
- * The projector floor is a property of the role, not of the code path, so the theme's
- * own size and an author override are clamped to the same number. `role` is only passed
- * where the preset cannot say what the text is doing — an option card, set in `small`.
+ * One stop of the theme's ladder below the role's projector floor, or the floor itself when the
+ * ladder has nothing under it. UX ruling 91: when content does not fit at the floor, type may
+ * step down one size, never more; an explicit size is therefore clamped here, not at the floor
+ * (chalk: an option card 31 → 29, a question stem 38 → 36, body copy 26 → 24).
+ */
+export function floorBelow(theme: Theme, preset: TextPreset, role?: TextRole): number {
+  const floor = fontFloor(preset, role);
+  if (!STEPPABLE.includes(preset)) return floor;
+  return ladderStops(theme).find((s) => s < floor - 0.5) ?? floor;
+}
+
+/**
+ * The projector floor is a property of the role, not of the code path, so the theme's own size
+ * is clamped to it whatever the code path; an explicit override may sit one ladder stop under
+ * it (`floorBelow`, UX ruling 91) and no lower. `role` is only passed where the preset cannot
+ * say what the text is doing — an option card, set in `small`.
  */
 export function resolveFontSize(
   theme: Theme,
@@ -40,7 +64,8 @@ export function resolveFontSize(
   override?: number,
   role?: TextRole,
 ): number {
-  return Math.max(override ?? theme.sizes[preset], fontFloor(preset, role));
+  if (override === undefined) return Math.max(theme.sizes[preset], fontFloor(preset, role));
+  return Math.max(override, floorBelow(theme, preset, role));
 }
 
 export function resolveTextStyle(

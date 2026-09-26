@@ -2,8 +2,9 @@ import { describe, expect, mock, test } from "bun:test";
 import { notifyManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { Lesson, ShapeElement } from "@tj/domain/documents";
+import { generatedFrom } from "@tj/domain/documents/fixtures";
 import type { ReactNode } from "react";
-import { newLesson, uid } from "./factories";
+import { docFromText, newLesson, newText, uid } from "./factories";
 import * as r from "./reducers";
 import { HISTORY_LIMIT, isLessonData, useDocumentHistory } from "./use-document-history";
 
@@ -276,6 +277,37 @@ describe("useDocumentHistory", () => {
     }
     expect(steps).toBe(HISTORY_LIMIT);
     expect(result.current.lesson?.title).toBe("T49");
+  });
+
+  test("TEACH-74 row 10: undoing the first text edit restores ai and drops originalText; redo brings both back", () => {
+    const text = newText(
+      "body",
+      "Water evaporates.",
+      { x: 0, y: 0, w: 400, h: 40 },
+      {
+        generatedFrom: generatedFrom(["o1"]),
+        authoredBy: "ai",
+      },
+    );
+    const seed = newLesson("Seed");
+    const first = seed.slides[0];
+    if (first) first.elements = [text];
+    const { result } = setup(seed);
+    const prov = () => {
+      const e = result.current.lesson?.slides[0]?.elements[0];
+      return { authoredBy: e?.authoredBy, originalText: e?.generatedFrom?.originalText };
+    };
+    act(() => {
+      result.current.dispatch(r.updateElement, slideId(seed), text.id, {
+        doc: docFromText("Water boils."),
+      });
+    });
+    expect(prov()).toEqual({ authoredBy: "teacher", originalText: "Water evaporates." });
+    act(() => result.current.undo());
+    expect(prov()).toEqual({ authoredBy: "ai", originalText: undefined });
+    expect(result.current.lesson).toBe(seed);
+    act(() => result.current.redo());
+    expect(prov()).toEqual({ authoredBy: "teacher", originalText: "Water evaporates." });
   });
 
   test("the returned callbacks keep their identity across renders", () => {

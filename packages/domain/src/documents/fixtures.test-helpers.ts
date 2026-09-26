@@ -197,13 +197,13 @@ export const lessonFacts = (): LessonFacts => ({
   ],
   misconceptions: [],
   outline: [
-    { id: "s1", kind: "title", minutes: 2, factRefs: [] },
-    { id: "s2", kind: "objectives", minutes: 3, factRefs: ["o1", "o2"] },
-    { id: "s3", kind: "vocabulary", minutes: 10, factRefs: ["v1", "v2"] },
+    { id: "s1", kind: "title", factRefs: [] },
+    { id: "s2", kind: "objectives", factRefs: ["o1", "o2"] },
+    { id: "s3", kind: "vocabulary", factRefs: ["v1", "v2"] },
     // An explain entry keeps the fixture clean for `explanation-share` (TEACH-210): the pipeline's
     // outlines carry one; this four-slide lesson simply has not materialised its content slide.
-    { id: "s4", kind: "content", minutes: 20, factRefs: ["o1", "v1"] },
-    { id: "s5", kind: "multiple-choice", minutes: 25, factRefs: ["q1", "o1"] },
+    { id: "s4", kind: "content", factRefs: ["o1", "v1"] },
+    { id: "s5", kind: "multiple-choice", factRefs: ["q1", "o1"] },
   ],
   durationMin: 60,
 });

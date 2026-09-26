@@ -207,19 +207,15 @@ export function tidySlide(
     };
   }
 
+  // `fitElement`, not `updateElement`: a split leaves the head of the words in the box, and that
+  // is the engine's doing, not a text edit — an `"ai"` box must not flip to the teacher's here.
   let out = lesson;
   for (const next of changed) {
-    out = reducers.updateElement(out, slideId, next.id, (el: SlideElement) => {
-      el.y = next.y;
-      el.h = next.h;
-      const size = sizeOf(next);
-      if (size !== undefined) {
-        if (el.type === "text" || el.type === "gap-text")
-          el.style = { ...el.style, fontSize: size };
-        else if (el.type === "option") el.textStyle = { ...el.textStyle, fontSize: size };
-      }
-      const doc = docOf(next);
-      if (doc && reducers.isTextLike(el)) el.doc = doc;
+    out = reducers.fitElement(out, slideId, next.id, {
+      y: next.y,
+      h: next.h,
+      fontSize: sizeOf(next),
+      doc: docOf(next),
     });
   }
   let after = slideId;

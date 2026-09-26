@@ -1,7 +1,12 @@
 /** Block-list reducers: insert, update, delete, move, duplicate. Numbering is re-derived by `edit`. */
 
 import type { Proposal } from "@tj/domain";
-import type { Id, Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import {
+  applyProvenancePatch,
+  type Id,
+  type Worksheet,
+  type WorksheetBlock,
+} from "@tj/domain/documents";
 import { uid } from "../../model/factories";
 import { edit, type WithId } from "./core";
 
@@ -14,7 +19,10 @@ export const insertBlock = (worksheet: Worksheet, block: WorksheetBlock, afterId
 
 /**
  * Patch one block, or run a mutator over its draft. The type parameter narrows the patch to the
- * block the caller knows it is editing; an unknown id is a no-op.
+ * block the caller knows it is editing; an unknown id is a no-op. An `"ai"` block's first change
+ * to its words (the doc, an option, a pair, a gap answer, a table cell, …) flips it to the
+ * teacher's and keeps the AI's words (`applyProvenancePatch`, TEACH-74); a re-mark or a non-text
+ * patch (`marks`, `answerLines`, `correct`) never flips.
  */
 export function updateBlock<T extends WorksheetBlock>(
   worksheet: Worksheet,
@@ -24,8 +32,10 @@ export function updateBlock<T extends WorksheetBlock>(
   return edit(worksheet, (w) => {
     const block = w.blocks.find((b) => b.id === id);
     if (!block) return;
-    if (typeof patch === "function") patch(block as T);
-    else Object.assign(block, patch);
+    applyProvenancePatch(block, (b) => {
+      if (typeof patch === "function") patch(b as T);
+      else Object.assign(b, patch);
+    });
   });
 }
 
