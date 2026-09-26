@@ -16,6 +16,7 @@ first.
 | `lesson.worksheet` | `src/worksheet/` — `buildFrame` (no model call), `fillFrame` (one `small` call at low effort against `worksheetFillSchemaFor`), `checkWorksheet` (the sheet half of `checkLesson`, the practice-time rule, one repair through `repairBlock`); no model Evaluate call by default | ADR 0030 |
 | `lesson.cascade`, `lesson.regenerate` | the proposal stages | ADR 0025 §18 |
 | — (`POST /briefs/parse` in `apps/api`) | `parse-brief.ts` (TEACH-16) | ADR 0029 item 13 |
+| — (no job yet; TEACH-93) | `runPlannedLessonPipeline` / `planFromObjectives` (`src/planner/plan-pipeline.ts`): objectives → teach and question sets in waves → outline in code → Generate with code-built sets → Illustrate → Evaluate → Repair | TEACH-91; ADR pending (TEACH-93 at the latest) |
 
 The lesson pipeline no longer writes or reads a worksheet (ADR 0030 item 2); do not add
 worksheet work back into `stages/generate.ts`.
@@ -64,13 +65,13 @@ src/
   workflow.ts     lessonWorkflow, resumeFrom, runLessonPipeline
   testing.ts      fixtures as values, scripted fake, recording deps (`@tj/generation/testing`)
   shapes.ts       lessonShapeOf: the decision table by verb × confidence (data; consumed, not edited)
-  The objectives-first planner's pure modules; not called until TEACH-93 (G) switches it on:
+  The objectives-first planner; not called until TEACH-93 (G) switches it on:
   outline-from-facts.ts     outlineFromFacts: the outline written in code from merged facts
   merge-objective-facts.ts  mergeObjectiveFacts: per-objective outputs merged into one LessonFacts
   objectives-check.ts       checkObjectives: the structural block on the objectives call
   outline-feasibility.ts    outlineFeasibility: can the slide count hold every objective's floor
   numeric-check.ts          numericMismatches / numericFindings: numbers that disagree with facts
-  planner/        coded-slides (starter, quick checks, exit ticket printed from facts, seeded
+  planner/        plan-pipeline (the entry points), coded-slides (starter, quick checks, exit ticket printed from facts, seeded
                   option order), question-demand (counts read off the outline), later-questions
   fixtures/       plan-skeleton.<verb>.json (one per verb, same positions 0–6), plan-facts.json,
                   slides.json, worksheet.json, evaluate.json, repair.json, verify.json
