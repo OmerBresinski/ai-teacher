@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { TextPreset } from "@tj/domain/documents";
-import { fontFloor, MIN_FONT_SIZE, THEMES, textRole } from "../model/themes";
+import { floorBelow } from "@tj/slides";
+import { fontFloor, getTheme, MIN_FONT_SIZE, THEMES, textRole } from "../model/themes";
 import { resolveFontSize, resolveTextStyle } from "../slide/elements/kit";
 import { stepDownSize } from "./reflow";
 
@@ -60,14 +61,28 @@ describe("the floor clamps every path to the same number", () => {
       expect(resolveFontSize(t, "small", undefined, "option")).toBeGreaterThanOrEqual(31);
     }
   });
-  test("lifts an author override too", () => {
+  test("lifts an author override to one ladder stop under the floor, never lower (UX ruling 91)", () => {
+    // Presets the step-down never touches keep the floor itself.
     expect(resolveFontSize(theme, "title", 12)).toBe(48);
-    expect(resolveFontSize(theme, "heading", 12)).toBe(26);
-    expect(resolveFontSize(theme, "heading", 12, "question")).toBe(38);
-    expect(resolveFontSize(theme, "body", 12)).toBe(26);
-    expect(resolveFontSize(theme, "small", 12)).toBe(24);
     expect(resolveFontSize(theme, "caption", 4)).toBe(14);
-    expect(resolveFontSize(theme, "small", 12, "option")).toBe(31);
+    for (const [preset, role] of [
+      ["heading", undefined],
+      ["heading", "question"],
+      ["body", undefined],
+      ["small", undefined],
+      ["small", "option"],
+    ] as const) {
+      const relaxed = floorBelow(theme, preset, role);
+      expect(relaxed).toBeLessThanOrEqual(fontFloor(preset, role));
+      expect(resolveFontSize(theme, preset, 12, role)).toBe(relaxed);
+      expect(resolveFontSize(theme, preset, 200, role)).toBe(200);
+    }
+    // Chalk: an option card 31 → 29, a question stem 38 → 36, body 26 → 24, small stays at 24.
+    const chalk = getTheme("chalk");
+    expect(resolveFontSize(chalk, "small", 12, "option")).toBe(29);
+    expect(resolveFontSize(chalk, "heading", 12, "question")).toBe(36);
+    expect(resolveFontSize(chalk, "body", 12)).toBe(24);
+    expect(resolveFontSize(chalk, "small", 12)).toBe(24);
   });
   test("reports the role on the resolved style, so the toolbar and the exporter agree", () => {
     expect(resolveTextStyle({ preset: "heading" }, theme).role).toBe("heading");
