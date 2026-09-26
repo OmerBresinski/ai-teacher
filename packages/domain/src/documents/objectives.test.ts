@@ -4,9 +4,13 @@ import { type LessonFacts, LessonFactsSchema } from "./lesson-facts";
 import {
   applyObjectiveEdits,
   OBJECTIVES_SLIDE_HEADING,
+  objectiveFromLine,
   objectiveLine,
+  objectiveListLines,
   pupilObjective,
+  stampObjectiveIds,
 } from "./objectives";
+import type { RichDoc } from "./rich-text";
 
 describe("OBJECTIVES_SLIDE_HEADING", () => {
   test("is the stem the slide's lines complete", () => {
@@ -203,5 +207,46 @@ describe("applyObjectiveEdits", () => {
     ]);
     expect(result.shapeChanged).toBe(true);
     expect(result.facts.objectives.map((o) => o.id)).toEqual(["o1", "o4", "o5"]);
+  });
+});
+
+describe("the objectives slide's lines (ruling 96)", () => {
+  const item = (text: string, factId?: string) => ({
+    type: "listItem",
+    ...(factId ? { attrs: { factId } } : {}),
+    content: [{ type: "paragraph", content: text ? [{ type: "text", text }] : undefined }],
+  });
+  const list = (...items: ReturnType<typeof item>[]): RichDoc => ({
+    type: "doc",
+    content: [{ type: "orderedList", attrs: { start: 1 }, content: items }],
+  });
+
+  test("objectiveListLines reads each line's id and words, in order", () => {
+    expect(objectiveListLines(list(item("describe  the  stages", "o1"), item("explain")))).toEqual([
+      { factId: "o1", text: "describe the stages" },
+      { factId: null, text: "explain" },
+    ]);
+  });
+
+  test("a doc with no list is not objective lines", () => {
+    const doc: RichDoc = { type: "doc", content: [{ type: "paragraph" }] };
+    expect(objectiveListLines(doc)).toBeNull();
+    expect(objectiveListLines(undefined)).toBeNull();
+  });
+
+  test("stampObjectiveIds sets and clears ids by position, and is identity when nothing changes", () => {
+    const doc = list(item("a", "o1"), item("b"));
+    const stamped = stampObjectiveIds(doc, ["o1", "o3"]);
+    expect(objectiveListLines(stamped)?.map((l) => l.factId)).toEqual(["o1", "o3"]);
+    expect(stampObjectiveIds(stamped, ["o1", "o3"])).toBe(stamped);
+    expect(objectiveListLines(stampObjectiveIds(stamped, [null, "o3"]))?.[0]?.factId).toBeNull();
+    expect(objectiveListLines(doc)?.[1]?.factId).toBeNull();
+  });
+
+  test("objectiveFromLine capitalises back only when the slide would show the same line", () => {
+    expect(objectiveFromLine("describe the stages")).toBe("Describe the stages");
+    expect(objectiveLine(objectiveFromLine("describe the stages"))).toBe("describe the stages");
+    expect(objectiveFromLine("pH scale readings")).toBe("pH scale readings");
+    expect(objectiveFromLine("  ")).toBe("");
   });
 });

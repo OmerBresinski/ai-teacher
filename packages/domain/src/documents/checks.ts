@@ -35,14 +35,22 @@ export const isSchemaCheck = (check: string): boolean => SCHEMA_CHECKS.has(check
 
 export function checkLesson(lesson: Lesson, worksheet?: Worksheet): Finding[] {
   if (!lesson.facts) return [];
-  return [
+  const findings = [
     ...checkQuestionAnswers(lesson, worksheet),
     ...checkObjectiveCoverage(lesson, worksheet),
     ...checkVocabularyInFacts(lesson),
     ...checkObjectivesTaught(lesson),
     ...qualityChecks(lesson, worksheet),
   ];
+  const ignored = lesson.ignoredChecks ?? [];
+  if (ignored.length === 0) return findings;
+  return findings.filter((f) => !isIgnored(ignored, f));
 }
+
+/** Ruling 96: a check the teacher ignored for one fact ("Ignore" on the objective's line). */
+const isIgnored = (ignored: readonly { check: string; factId: string }[], f: Finding) =>
+  f.target.factId !== undefined &&
+  ignored.some((i) => i.check === f.check && i.factId === f.target.factId);
 
 /* ------------------------------------------------------------------ */
 /* question-answer                                                     */
@@ -119,6 +127,8 @@ function checkObjectiveCoverage(lesson: Lesson, worksheet?: Worksheet): Finding[
   const covers = objectivesCoveredBy(facts);
   const onSlides = new Set<string>();
   for (const slide of lesson.slides) {
+    // The objectives slide names every objective; that states them, it does not cover them.
+    if (slide.kind === "objectives") continue;
     walkElements(slide.elements, (element) => {
       for (const ref of element.generatedFrom?.factRefs ?? []) addCovered(onSlides, ref, covers);
     });
@@ -237,17 +247,47 @@ function checkVocabularyInFacts(lesson: Lesson): Finding[] {
 const TEACHING_KINDS: ReadonlySet<string> = new Set(["content", "image-text", "worked-example"]);
 
 /**
- * Every objective is named by at least one teaching entry of the outline (ruling 81). The outline
- * gives up practice before teaching, so this fires only when there are more objectives than the
- * slide count can teach; the teacher's objectives stay, and the gap is a thing to check.
+ * Each objective's teaching slides (ruling 81, 96): the content, image-text and worked-example
+ * slides with an element that cites the objective, directly or through a fact that stands for it
+ * (`objectivesCoveredBy`). The objectives slide never counts. Slide ids in deck order; an
+ * objective no slide teaches maps to `[]`.
+ */
+export function teachingSlides(lesson: Lesson): Map<FactId, string[]> {
+  const out = new Map<FactId, string[]>();
+  const facts = lesson.facts;
+  if (!facts) return out;
+  for (const objective of facts.objectives) out.set(objective.id, []);
+  const covers = objectivesCoveredBy(facts);
+  for (const slide of lesson.slides) {
+    if (!TEACHING_KINDS.has(slide.kind)) continue;
+    const taught = new Set<string>();
+    walkElements(slide.elements, (element) => {
+      for (const ref of element.generatedFrom?.factRefs ?? []) addCovered(taught, ref, covers);
+    });
+    for (const id of taught) out.get(id)?.push(slide.id);
+  }
+  return out;
+}
+
+/**
+ * Every objective has a slide that teaches it (ruling 81). While the slides are still being
+ * written (`generation.stage` is `planned`) the outline is the rule: it gives up practice before
+ * teaching, so this fires only when there are more objectives than the slide count can teach.
+ * Once the deck exists the slides are the rule (`teachingSlides`), so deleting the last slide that
+ * teaches an objective is a thing to check (ruling 96). A lesson with no outline was not planned
+ * against its objectives and is not checked.
  */
 function checkObjectivesTaught(lesson: Lesson): Finding[] {
   const facts = lesson.facts;
   if (!facts || facts.outline.length === 0) return [];
   const taught = new Set<string>();
-  for (const entry of facts.outline) {
-    if (!TEACHING_KINDS.has(entry.kind)) continue;
-    for (const ref of entry.factRefs) taught.add(ref);
+  if (lesson.generation?.stage === "planned" || lesson.slides.length === 0) {
+    for (const entry of facts.outline) {
+      if (!TEACHING_KINDS.has(entry.kind)) continue;
+      for (const ref of entry.factRefs) taught.add(ref);
+    }
+  } else {
+    for (const [id, slides] of teachingSlides(lesson)) if (slides.length > 0) taught.add(id);
   }
   const findings: Finding[] = [];
   facts.objectives.forEach((objective, i) => {

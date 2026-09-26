@@ -63,7 +63,19 @@ export type Lesson = {
   sources?: SourceRef[];
   /** ADR 0029: the plan revision the teacher is looking at, and whether it is confirmed. */
   plan?: LessonPlan;
+  /**
+   * Ruling 96: checks the teacher chose to ignore for one fact ("Ignore" on an objective no slide
+   * teaches, when she taught it on a slide of her own). `checkLesson` leaves these out.
+   */
+  ignoredChecks?: IgnoredCheck[];
 };
+
+export type IgnoredCheck = { check: string; factId: string };
+
+export const IgnoredCheckSchema = z.strictObject({
+  check: z.string().min(1).max(64),
+  factId: z.string().min(1).max(64),
+});
 
 export type LessonArtefacts = { worksheetId: Id };
 
@@ -118,6 +130,7 @@ export const LessonSchema = z.object({
   sources: z.array(SourceRefSchema).optional(),
   // ADR 0029.
   plan: LessonPlanSchema.optional(),
+  ignoredChecks: z.array(IgnoredCheckSchema).max(64).optional(),
 });
 
 export function parseLesson(input: unknown): Lesson {

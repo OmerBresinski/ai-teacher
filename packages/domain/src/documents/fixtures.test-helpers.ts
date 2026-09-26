@@ -200,8 +200,7 @@ export const lessonFacts = (): LessonFacts => ({
     { id: "s1", kind: "title", factRefs: [] },
     { id: "s2", kind: "objectives", factRefs: ["o1", "o2"] },
     { id: "s3", kind: "vocabulary", factRefs: ["v1", "v2"] },
-    // An explain entry keeps the fixture clean for `explanation-share` (TEACH-210): the pipeline's
-    // outlines carry one; this four-slide lesson simply has not materialised its content slide.
+    // An explain entry keeps the fixture clean for `explanation-share` (TEACH-210).
     { id: "s4", kind: "content", factRefs: ["o1", "v1"] },
     // Ruling 81: every objective has a teaching entry, so `objective-taught` stays quiet.
     { id: "s6", kind: "content", factRefs: ["o2"] },
@@ -211,7 +210,7 @@ export const lessonFacts = (): LessonFacts => ({
 });
 
 /**
- * A four-slide lesson the pipeline could have written: facts, an outline, provenance on every
+ * A six-slide lesson the pipeline could have written: facts, an outline, provenance on every
  * element, generation state at the last stage and a linked worksheet (ADR 0025 §1–§4).
  */
 export const generatedLesson = (): Lesson => ({
@@ -272,6 +271,26 @@ export const generatedLesson = (): Lesson => ({
         explanation: "Heat gives the water molecules enough energy to escape as a gas.",
       },
       notes: "Ask for hands up before revealing.",
+    },
+    // Ruling 96: once the deck exists its slides decide what is taught, so each objective has a
+    // content slide citing it (the outline's s4 and s6), placed last so the first four slides keep their places.
+    {
+      id: "s-teach-1",
+      kind: "content",
+      elements: [
+        generatedText("c1-h", "The water cycle", ["o1"], { style: { preset: "heading" } }),
+        generatedText("c1-b", "Water goes up. It comes back down as rain.", ["o1", "v1"]),
+      ],
+    },
+    {
+      id: "s-teach-2",
+      kind: "content",
+      elements: [
+        generatedText("c2-h", "Evaporation and condensation", ["o2"], {
+          style: { preset: "heading" },
+        }),
+        generatedText("c2-b", "Warm water turns to gas. Cool gas turns back to water.", ["o2"]),
+      ],
     },
   ],
   createdAt: "2026-09-06T09:59:00.000Z",

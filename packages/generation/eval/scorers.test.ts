@@ -47,16 +47,16 @@ describe("eval scorers", () => {
     expect(result.reason).toContain("0 error");
   });
 
-  test("one schema error on four slides scores 0.75", async () => {
+  test("one schema error on six slides scores 5/6", async () => {
     const lesson = generatedLesson();
-    const mc = lesson.slides[3];
+    const mc = lesson.slides.find((s) => s.id === "s-mc");
     if (mc?.question?.type !== "multiple-choice") throw new Error("fixture");
     mc.question = {
       ...mc.question,
       options: mc.question.options.map((o) => ({ ...o, correct: false })),
     };
     const result = await schemaScorer.run({ input: "fixture", output: { lesson } });
-    expect(result.score).toBe(0.75);
+    expect(result.score).toBe(5 / 6);
   });
 
   test("the model-findings scorer counts residual model checks only", async () => {
@@ -67,13 +67,13 @@ describe("eval scorers", () => {
       { check: "budget", severity: "error", target: {}, message: "" },
     );
     const result = await modelFindingsScorer.run({ input: "fixture", output: { lesson } });
-    expect(result.score).toBe(0.75);
-    expect(result.reason).toContain("1 model findings over 4 slides");
+    expect(result.score).toBe(5 / 6);
+    expect(result.reason).toContain("1 model findings over 6 slides");
   });
 
   test("scoreLesson without a judge returns both keyed scores, a null rubric and no content", async () => {
     const scored = await scoreLesson("fixture", { lesson: generatedLesson() });
-    expect(scored).toEqual({ scores: { schema: 1, modelFindings: 0.75, rubric: null } });
+    expect(scored).toEqual({ scores: { schema: 1, modelFindings: 5 / 6, rubric: null } });
     expect(JSON.stringify(scored)).not.toContain("water");
   });
 });
@@ -124,7 +124,7 @@ describe("rubric judge", () => {
     const budget = createBudget({ capUsd: 5, capTokens: 1e6 });
     const scored = await scoreLesson("fixture", { lesson: generatedLesson() }, judgeOn(ai, budget));
     expect(ai.calls).toHaveLength(2);
-    expect(scored.scores).toEqual({ schema: 1, modelFindings: 0.75, rubric: null });
+    expect(scored.scores).toEqual({ schema: 1, modelFindings: 5 / 6, rubric: null });
     expect(scored.rubricRationales).toBeUndefined();
     expect(budget.totals().calls).toBe(2);
   });

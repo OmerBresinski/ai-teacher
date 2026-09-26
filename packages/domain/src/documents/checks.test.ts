@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { checkLesson, objectivesCoveredBy } from "./checks";
+import { checkLesson, objectivesCoveredBy, teachingSlides } from "./checks";
 import {
   generatedFrom,
   generatedLesson,
@@ -130,7 +130,9 @@ describe("checkLesson", () => {
           }
         }
       }
-      const findings = checkLesson(l, generatedWorksheet());
+      const findings = checkLesson(l, generatedWorksheet()).filter(
+        (f) => f.check === "objective-coverage",
+      );
       expect(findings).toEqual([
         expect.objectContaining({
           check: "objective-coverage",
@@ -140,6 +142,16 @@ describe("checkLesson", () => {
         }),
       ]);
       expect(findings[0]?.message).toContain("any slide");
+    });
+
+    test("the objectives slide naming an objective does not cover it (ruling 96)", () => {
+      const l = generatedLesson();
+      l.slides = l.slides.filter((s) => s.id !== "s-teach-2");
+      const coverage = checkLesson(l, generatedWorksheet()).filter(
+        (f) => f.check === "objective-coverage",
+      );
+      // o2 is still named on the objectives slide (`ob-2`), which no longer counts.
+      expect(coverage.map((f) => f.target.factId)).toEqual(["o2"]);
     });
 
     test("an objective referenced on slides but not on the worksheet: skipped without a worksheet, one finding with it", () => {
@@ -198,6 +210,10 @@ describe("checkLesson", () => {
       // The objectives slide names every objective literally, as the recipe does.
       const objectives = slideOf(l, "s-objectives");
       objectives.elements = [generatedText("ob-all", "Objectives", ["o1", "o2", "o3"])];
+      // Every objective is taught on a slide; these tests are about the worksheet half.
+      slideOf(l, "s-teach-1").elements.push(
+        generatedText("c1-all", "All three", ["o1", "o2", "o3"]),
+      );
       return l;
     };
 
@@ -259,11 +275,9 @@ describe("checkLesson", () => {
 
     test("references inside groups count as slide coverage", () => {
       const l = generatedLesson();
-      const objectives = slideOf(l, "s-objectives");
-      const inner = objectives.elements.filter((e) => e.id !== "ob-h");
-      objectives.elements = [
-        objectives.elements[0] as SlideElement,
-        { id: "grp", type: "group", x: 0, y: 0, w: 1, h: 1, children: inner },
+      const content = slideOf(l, "s-teach-2");
+      content.elements = [
+        { id: "grp", type: "group", x: 0, y: 0, w: 1, h: 1, children: content.elements },
       ];
       expect(checkLesson(l, generatedWorksheet())).toEqual([]);
     });
@@ -320,11 +334,13 @@ describe("checkLesson", () => {
   });
 
   describe("objective-taught (ruling 81)", () => {
+    /** While the slides are still being written the outline is the rule. */
     const withOutline = (outline: LessonFacts["outline"]): Lesson => {
       const l = generatedLesson();
       const facts = lessonFacts();
       facts.outline = outline;
       l.facts = facts;
+      if (l.generation) l.generation.stage = "planned";
       return l;
     };
     const taught = (l: Lesson) => checkLesson(l).filter((f) => f.check === "objective-taught");
@@ -362,6 +378,70 @@ describe("checkLesson", () => {
 
     test("an empty outline is not checked", () => {
       expect(taught(withOutline([]))).toEqual([]);
+    });
+
+    describe("once the deck exists, the slides decide (ruling 96)", () => {
+      test("the generated lesson teaches both objectives", () => {
+        expect(taught(generatedLesson())).toEqual([]);
+        expect(teachingSlides(generatedLesson())).toEqual(
+          new Map([
+            ["o1", ["s-teach-1"]],
+            ["o2", ["s-teach-2"]],
+          ]),
+        );
+      });
+
+      test("deleting the only slide teaching o2 is one warning, although the outline still names it", () => {
+        const l = generatedLesson();
+        l.slides = l.slides.filter((s) => s.id !== "s-teach-2");
+        expect(taught(l)).toEqual([
+          {
+            check: "objective-taught",
+            severity: "warning",
+            target: { factId: "o2" },
+            message: "Objective 2 has no slide that teaches it.",
+          },
+        ]);
+      });
+
+      test("the objectives slide, question slides and vocabulary never teach", () => {
+        const l = generatedLesson();
+        l.slides = l.slides.filter((s) => s.kind !== "content");
+        expect(taught(l).map((f) => f.target.factId)).toEqual(["o1", "o2"]);
+        expect(teachingSlides(l)).toEqual(
+          new Map([
+            ["o1", []],
+            ["o2", []],
+          ]),
+        );
+      });
+
+      test("a slide citing a fact that stands for the objective teaches it", () => {
+        const l = generatedLesson();
+        l.slides = l.slides.filter((s) => s.id !== "s-teach-2");
+        l.slides.push({
+          id: "s-x",
+          kind: "worked-example",
+          elements: [generatedText("x", "A puddle dries up.", ["x1"])],
+        });
+        if (!l.facts) throw new Error("fixture");
+        (l.facts.workedExamples[0] as { objectiveRefs?: string[] }).objectiveRefs = ["o2"];
+        expect(taught(l)).toEqual([]);
+        expect(teachingSlides(l).get("o2")).toEqual(["s-x"]);
+      });
+
+      test("an ignored check for that objective is left out, and only for that objective", () => {
+        const l = generatedLesson();
+        l.slides = l.slides.filter((s) => s.kind !== "content");
+        l.ignoredChecks = [{ check: "objective-taught", factId: "o2" }];
+        expect(taught(l).map((f) => f.target.factId)).toEqual(["o1"]);
+        // Ignoring one check never hides another about the same fact.
+        expect(
+          checkLesson(l)
+            .filter((f) => f.check === "objective-coverage")
+            .map((f) => f.target.factId),
+        ).toEqual(["o2"]);
+      });
     });
   });
 

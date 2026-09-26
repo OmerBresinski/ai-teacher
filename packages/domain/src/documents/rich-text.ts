@@ -159,10 +159,16 @@ const ParagraphSchema = z.object({
 
 type ListNode = RichNode;
 
+/**
+ * A list item may name the fact it stands for (ruling 96): each line of the objectives slide
+ * carries its objective's id, so an edit on the line is an edit to that objective. Never rendered.
+ */
+const ListItemAttrsSchema = z.object({ factId: nullish(z.string().min(1).max(64)) }).loose();
+
 const ListItemSchema: z.ZodType<ListNode> = z.lazy(() =>
   z.object({
     type: z.literal("listItem"),
-    attrs: EmptyAttrsSchema,
+    attrs: ListItemAttrsSchema.optional(),
     content: z.array(BlockSchema).optional(),
   }),
 ) as z.ZodType<ListNode>;

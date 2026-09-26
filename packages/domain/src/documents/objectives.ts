@@ -8,6 +8,7 @@
  */
 
 import type { FactId, LessonFacts, Objective } from "./lesson-facts";
+import { type RichDoc, type RichNode, richDocToPlainText } from "./rich-text";
 
 /** The objectives slide heading; the numbered lines under it complete the sentence. */
 export const OBJECTIVES_SLIDE_HEADING = "By the end of this lesson I can";
@@ -160,4 +161,73 @@ export function applyObjectiveEdits(
 /** A copy of the stored objective `id`, which the caller has checked exists. */
 function keep(byId: Map<FactId, Objective>, id: FactId | undefined): Objective {
   return structuredClone(byId.get(id as FactId) as Objective);
+}
+
+/* ------------------------------------------------------------------ */
+/* The objectives slide's lines (ruling 96)                            */
+/* ------------------------------------------------------------------ */
+
+/** One line of the objectives slide's list: the objective it stands for, if stamped, and its words. */
+export type ObjectiveListLine = { factId: FactId | null; text: string };
+
+/** The first list in a doc: the objectives slide's numbered body holds exactly one. */
+function firstList(doc: RichDoc): RichNode | undefined {
+  return doc.content?.find((node) => node.type === "orderedList" || node.type === "bulletList");
+}
+
+const listItems = (list: RichNode): RichNode[] =>
+  (list.content ?? []).filter((node) => node.type === "listItem");
+
+/**
+ * The lines of the objectives slide's list, in order, with the objective id each carries
+ * (`attrs.factId`) and its words on one line. `null` when the doc has no list — the `cards` and
+ * `stepped` layouts, or a box the teacher retyped as paragraphs — which is never read as facts.
+ */
+export function objectiveListLines(doc: RichDoc | undefined): ObjectiveListLine[] | null {
+  const list = doc ? firstList(doc) : undefined;
+  if (!list) return null;
+  return listItems(list).map((item) => {
+    const id = item.attrs?.factId;
+    return {
+      factId: typeof id === "string" && id !== "" ? id : null,
+      text: richDocToPlainText(item).replace(/\s+/g, " ").trim(),
+    };
+  });
+}
+
+/**
+ * The doc with list item `i` carrying `ids[i]` (a `null` clears it). Pure: returns the same doc
+ * when every item already carries its id.
+ */
+export function stampObjectiveIds(doc: RichDoc, ids: readonly (FactId | null)[]): RichDoc {
+  const list = firstList(doc);
+  if (!list) return doc;
+  let changed = false;
+  let i = 0;
+  const content = (list.content ?? []).map((node) => {
+    if (node.type !== "listItem") return node;
+    const want = ids[i++] ?? null;
+    const have = typeof node.attrs?.factId === "string" ? node.attrs.factId : null;
+    if (want === have) return node;
+    changed = true;
+    const { factId: _old, ...rest } = node.attrs ?? {};
+    return { ...node, attrs: want === null ? rest : { ...rest, factId: want } };
+  });
+  if (!changed) return doc;
+  return {
+    ...doc,
+    content: (doc.content ?? []).map((node) => (node === list ? { ...list, content } : node)),
+  };
+}
+
+/**
+ * The stored phrase for a line the teacher typed under the slide's stem: the line with its first
+ * letter capitalised back, when that is what `objectiveLine` turns into the same line; otherwise
+ * the line as typed ("pH scale" stays "pH scale"). Never carries the stem (ruling 64).
+ */
+export function objectiveFromLine(line: string): string {
+  const text = line.trim();
+  if (text === "") return "";
+  const capitalised = text.charAt(0).toUpperCase() + text.slice(1);
+  return objectiveLine(capitalised) === text ? capitalised : text;
 }

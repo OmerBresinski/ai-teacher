@@ -62,7 +62,12 @@ describe("impactSet", () => {
     } as SlideElement);
 
     const { redo, flagged } = impactSet(lesson, worksheet, ["o2"]);
-    expect(redo).toEqual([{ slideId: "s-vocab", elementId: "v-extra" }, { blockId: "wb3" }]);
+    expect(redo).toEqual([
+      { slideId: "s-vocab", elementId: "v-extra" },
+      { slideId: "s-teach-2", elementId: "c2-h" },
+      { slideId: "s-teach-2", elementId: "c2-b" },
+      { blockId: "wb3" },
+    ]);
     expect(flagged).toEqual([{ slideId: "s-objectives", elementId: "ob-2", reason: "teacher" }]);
   });
 

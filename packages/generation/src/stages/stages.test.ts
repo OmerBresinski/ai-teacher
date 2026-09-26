@@ -5,6 +5,7 @@ import {
   type Finding,
   type Lesson,
   type LessonFacts,
+  objectiveListLines,
   type Slide,
   SlideSchema,
 } from "@tj/domain/documents";
@@ -193,6 +194,11 @@ describe("plan", () => {
     // The slide carries the stem in its heading and lists the phrases lower-case (TEACH-198).
     expect(slideText(objectives as never)).toStartWith("By the end of this lesson I can\n");
     expect(slideText(objectives as never)).toContain("\ndescribe the arrangement");
+    // Each line carries its objective's id, in order (ruling 96).
+    const list = objectives?.elements.flatMap((e) =>
+      e.type === "text" ? (objectiveListLines(e.doc) ?? []) : [],
+    );
+    expect(list?.map((l) => l.factId)).toEqual(fullFacts().objectives.map((o) => o.id));
   });
 
   test("a skeleton whose outline refers to vocabulary is a validation issue: one retry", async () => {

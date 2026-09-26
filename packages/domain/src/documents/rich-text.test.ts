@@ -206,3 +206,26 @@ describe("RichDocSchema (closed schema, TEACH-277)", () => {
     expect(safeLinkHref(42)).toBeNull();
   });
 });
+
+describe("list item factId (ruling 96)", () => {
+  const withId = (factId: unknown): RichDoc =>
+    ({
+      type: "doc",
+      content: [
+        {
+          type: "orderedList",
+          content: [{ type: "listItem", attrs: { factId }, content: [{ type: "paragraph" }] }],
+        },
+      ],
+    }) as RichDoc;
+
+  test("an objective id, null or no attrs are accepted", () => {
+    expect(RichDocSchema.safeParse(withId("o1")).success).toBe(true);
+    expect(RichDocSchema.safeParse(withId(null)).success).toBe(true);
+  });
+
+  test("a non-string or empty id is refused", () => {
+    expect(RichDocSchema.safeParse(withId(3)).success).toBe(false);
+    expect(RichDocSchema.safeParse(withId("")).success).toBe(false);
+  });
+});

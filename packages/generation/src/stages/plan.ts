@@ -1,4 +1,12 @@
-import type { FactId, Finding, Lesson, LessonFacts, Slide } from "@tj/domain/documents";
+import {
+  type FactId,
+  type Finding,
+  type Lesson,
+  type LessonFacts,
+  objectiveListLines,
+  type Slide,
+  stampObjectiveIds,
+} from "@tj/domain/documents";
 import { type MaterialiseMeta, materialiseSlide } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import { planFactsPrompt, planSkeletonPrompt, verifyFactsPrompt } from "../prompts";
@@ -393,7 +401,9 @@ function materialiseTitle(lesson: Lesson, deps: PipelineDeps): Slide {
 /**
  * The objectives slide from `facts`: at most four objectives, provenance from the outline's
  * second entry (or the objectives themselves). Exported for `lesson.generate`, which rebuilds the
- * slide from objectives the teacher edited on the plan screen (ADR 0029 item 8).
+ * slide from objectives the teacher edited on the plan screen (ADR 0029 item 8). Each line of the
+ * list carries its objective's id (`attrs.factId`), so the editor can treat an edit on the line as
+ * an edit to that objective (ruling 96).
  */
 export function materialiseObjectives(
   lesson: Lesson,
@@ -402,14 +412,25 @@ export function materialiseObjectives(
   meta: MaterialiseMeta,
 ): Slide {
   const entry = facts.outline[1];
-  return materialiseSlide(
+  const objectives = facts.objectives.slice(0, 4);
+  const slide = materialiseSlide(
     {
       kind: "objectives",
-      items: facts.objectives.slice(0, 4).map((o) => o.text),
+      items: objectives.map((o) => o.text),
       factRefs: entry?.factRefs.length ? entry.factRefs : facts.objectives.map((o) => o.id),
     },
     lesson.themeId,
     meta,
     deps.ids,
   );
+  const ids = objectives.map((o) => o.id);
+  return {
+    ...slide,
+    elements: slide.elements.map((element) => {
+      if (element.type !== "text" || objectiveListLines(element.doc)?.length !== ids.length) {
+        return element;
+      }
+      return { ...element, doc: stampObjectiveIds(element.doc, ids) };
+    }),
+  };
 }
