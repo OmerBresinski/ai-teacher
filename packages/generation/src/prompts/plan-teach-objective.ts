@@ -126,6 +126,13 @@ const keyIdeaSchema = (line: Line) =>
     analogy: line(SPEC_LIMITS.item).optional(),
     shape: z.enum(CONTENT_SHAPES),
     visual: line(SPEC_LIMITS.diagram).optional(),
+    /**
+     * A photograph that shows the idea (look/image-slot): what it is of and up to four things it
+     * must show, in the shape of `ImageBrief`. The slide keeps room for it; `illustrate` finds it.
+     */
+    photo: z
+      .object({ subject: line(60), mustShow: z.array(line(60)).max(4).optional() })
+      .optional(),
   });
 
 const misconceptionSchema = (line: Line) =>
