@@ -390,12 +390,79 @@ function elementText(element: SlideElement): string | undefined {
 
 /** The words a task may open a sentence with and still be a task. */
 const IMPERATIVE_OPENERS =
-  /^(explain|describe|give|name|state|list|write|compare|contrast|suggest|calculate|work out|identify|decide|choose|select|complete|show|draw|sketch|label|predict|justify|evaluate|discuss|define|outline|summarise|summarize|use|find|match|sort|order|put|circle|tick|underline|fill|add|count|measure|estimate|solve|prove|convert|read|look|think|imagine|plan|design|create|make|say|tell|record|note|why|how|what|which|when|where|who|is|are|does|do|can|could|should|would|will)\b/i;
+  /^(explain|describe|give|name|state|list|write|compare|contrast|suggest|calculate|work out|identify|decide|choose|select|complete|show|draw|sketch|label|predict|justify|evaluate|discuss|define|outline|summarise|summarize|use|find|match|sort|order|put|circle|tick|underline|fill|finish|add|count|measure|estimate|solve|prove|convert|read|look|think|imagine|plan|design|create|make|say|tell|record|note|simplify|spot|share|expand|factorise|factorize|rewrite|why|how|what|which|when|where|who|is|are|does|do|can|could|should|would|will)\b/i;
+/**
+ * What may come before a task's imperative and leave it a task (lab round 2, recorded exit items
+ * that raised "asks nothing"): a short label and a colon ("Exit: Name one way …"), or a length
+ * frame ("In one line, explain …", "In one sentence, explain …"), or both stacked ("Exit: In one
+ * line, explain …": luna-direct, gpt-6-luna at low, every lesson the check blocked).
+ */
+const TASK_PREFIX =
+  /^(?:\p{L}+(?:\s\p{L}+)?:\s*|in (?:one|a|two|three) (?:word|line|sentence|phrase)s?,\s*)+/iu;
+/**
+ * A leading condition clause before the imperative (l6-c, l6-d: gpt-6-luna at low, "If one service
+ * raises its price, explain why demand … may be responsive.").
+ */
+const CONDITION_PREFIX = /^(?:if|when|once|after|before|given|using)\b[^,]{1,120},\s*/i;
+/**
+ * The sentence from its task's imperative on: the sentence itself when it opens with one, else the
+ * sentence after a label or length frame when that does ("Put these in order: …" stays whole).
+ */
+function taskOf(sentence: string): string | undefined {
+  if (IMPERATIVE_OPENERS.test(sentence)) return sentence;
+  const rest = sentence.replace(TASK_PREFIX, "").replace(CONDITION_PREFIX, "");
+  return rest !== sentence && IMPERATIVE_OPENERS.test(rest) ? rest : undefined;
+}
+const opensTask = (sentence: string) => taskOf(sentence) !== undefined;
 /** A task that leans on a decision or answer only an earlier question could have set up. */
-const ANAPHORIC_TASK =
-  /\b(your (decision|answer|choice)|(this|the) animal|\bit\b|these|this one)\b/i;
+const ANAPHORIC_TASK = /\b(your (decision|answer|choice)|(this|the) animal|these|this one)\b/i;
+/** The answer an earlier task in the same stem produced. */
+const YOUR_ANSWER = /\byour (answer|choice)\b/i;
+/**
+ * "your answer" to a task the same sentence set first, joined by "and" or "then" (l6-e: "Suppose
+ * 36 beads are shared in the ratio 1:3. Explain how to find each share and check your answer.").
+ * The first clause must itself be a task of three words or more, so "Decide and explain your
+ * answer." still leans on nothing.
+ */
+function answersOwnTask(sentence: string): boolean {
+  const at = sentence.search(YOUR_ANSWER);
+  if (at < 0) return false;
+  const [first, ...rest] = sentence.slice(0, at).split(/\b(?:and|then)\b/i);
+  const clause = (first ?? "").trim();
+  return (
+    rest.length > 0 &&
+    opensTask(clause) &&
+    !ANAPHORIC_TASK.test(clause) &&
+    clause.split(/\s+/).length >= 3
+  );
+}
+/** A bare "it"; dangling only when nothing before it in the sentence could be what it names. */
+const BARE_IT = /\bit\b/i;
+/**
+ * A noun phrase "it" can refer back to: a determiner or number and a word ("a puppy", "two
+ * changes"), or a capitalised word after the first ("Explain why Prospero ...").
+ */
+const ANTECEDENT =
+  /\b(a|an|the|this|that|each|every|his|her|their|its|our|my|one|two|three|\d+)\s+\p{L}/iu;
+const PROPER_NOUN = /\s\p{Lu}\p{L}/u;
+
+/**
+ * Whether a sentence leans on "it" with no noun before it ("Explain why it melts."). A noun in an
+ * earlier sentence of the same stem counts (lab round 2: "Suppose a small plant is left in a dark
+ * cupboard. Explain why it may grow weak and pale."; "A foal is a young horse. Explain how you
+ * know it will become an adult horse."); each earlier sentence is tested on its own, so the
+ * capital that opens the task sentence is never taken for a name.
+ */
+function danglingIt(sentence: string, earlier: readonly string[] = []): boolean {
+  const at = sentence.search(BARE_IT);
+  if (at < 0) return false;
+  const names = (text: string) => ANTECEDENT.test(text) || PROPER_NOUN.test(text);
+  return !names(sentence.slice(0, at)) && !earlier.some(names);
+}
 /** Text that poses the decision such a task refers back to. */
 const POSES_DECISION = /\?|\b(whether|decide|is it|are they|which|what)\b/i;
+/** A "these/this …" task whose items follow a colon as a list of two or more. */
+const LISTS_ITS_REFERENTS = /\b(these|this)\b[^:?]*:\s*[^,]+,\s*\S/i;
 
 /**
  * Whether a stem asks anything (TEACH-223). "no-question": no `?` and no sentence opens with an
@@ -405,17 +472,27 @@ const POSES_DECISION = /\?|\b(whether|decide|is it|are they|which|what)\b/i;
  */
 export function questionless(stem: string): "ok" | "no-question" | "no-referent" {
   const sentences = stem
-    .split(/(?<=[.?!])\s+/)
+    // A quotation's closing mark after its full stop ends the sentence too (l6-c, l6-d: "Suppose
+    // Prospero tells a spirit, “Wait here until I return.” Explain how …").
+    .split(/(?<=[.?!][”"’']?)\s+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
   if (sentences.length === 0) return "ok";
-  if (!stem.includes("?") && !sentences.some((s) => IMPERATIVE_OPENERS.test(s))) {
+  if (!stem.includes("?") && !sentences.some(opensTask)) {
     return "no-question";
   }
   for (let i = 0; i < sentences.length; i++) {
-    const s = sentences[i] as string;
-    if (!IMPERATIVE_OPENERS.test(s) || !ANAPHORIC_TASK.test(s)) continue;
-    const before = sentences.slice(0, i).join(" ");
+    const s = taskOf(sentences[i] as string);
+    const earlier = sentences.slice(0, i);
+    if (s === undefined || !(ANAPHORIC_TASK.test(s) || danglingIt(s, earlier))) continue;
+    // "Put these dates in order: AD 43, AD 410, AD 1." — the things referred to follow the colon.
+    if (LISTS_ITS_REFERENTS.test(s)) continue;
+    const before = earlier.join(" ");
+    // An earlier task sentence poses the answer "your answer" refers to ("Share £72 in the ratio
+    // 5:7. Give a check for your answer.").
+    if (earlier.some(opensTask) && YOUR_ANSWER.test(s) && !danglingIt(s, earlier)) continue;
+    // The same sentence set the task first ("Explain how to find each share and check your answer.").
+    if (answersOwnTask(s) && !danglingIt(s, earlier)) continue;
     if (!POSES_DECISION.test(before) && !POSES_DECISION.test(s)) return "no-referent";
   }
   return "ok";

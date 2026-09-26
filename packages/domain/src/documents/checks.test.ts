@@ -12,6 +12,7 @@ import {
 } from "./fixtures.test-helpers";
 import type { Lesson } from "./lesson";
 import type { LessonFacts } from "./lesson-facts";
+import { questionless } from "./quality-checks";
 import type { Slide, SlideElement } from "./slide";
 import type { Worksheet, WorksheetBlock } from "./worksheet";
 
@@ -638,5 +639,143 @@ describe("checkLesson", () => {
         [],
       );
     });
+  });
+});
+
+describe("questionless (quality lab, Sept 2026)", () => {
+  test("a quoted line or a leading condition before the task still sets a task (l6e)", () => {
+    expect(
+      questionless(
+        "Suppose Prospero tells a spirit, “Wait here until I return.” Explain how the command establishes his authority.",
+      ),
+    ).toBe("ok");
+    expect(
+      questionless(
+        "Suppose several streaming services compete. If one service raises its price, explain why demand for that service may be responsive.",
+      ),
+    ).toBe("ok");
+    expect(questionless("If it rains, the ground.")).toBe("no-question");
+  });
+  test('"your answer" to a task set earlier in the same sentence has its referent (l6f)', () => {
+    expect(
+      questionless(
+        "Suppose 36 beads are shared in the ratio 1:3. Explain how to find each share and check your answer.",
+      ),
+    ).toBe("ok");
+    expect(questionless("Share £72 in the ratio 5:7, then check your answer.")).toBe("ok");
+    expect(questionless("A shop sells pens. Look again and check your answer.")).toBe(
+      "no-referent",
+    );
+    expect(questionless("A shop sells pens. Explain your answer.")).toBe("no-referent");
+  });
+  test("an imperative whose referents follow a colon is a question, not a dangling task", () => {
+    expect(
+      questionless("Put these dates in order from earliest to latest: AD 43, AD 410, AD 1."),
+    ).toBe("ok");
+    expect(questionless("Sort these into two groups.")).toBe("no-referent");
+    expect(questionless("Explain your decision: focus on the evidence.")).toBe("no-referent");
+    expect(questionless("A fort has a ditch. Explain your decision.")).toBe("no-referent");
+  });
+});
+
+describe('questionless: a bare "it" (lab round 1, cb-y1-animals-P/L)', () => {
+  test('"it" after a noun it can name is not a dangling task', () => {
+    // Recorded stems that raised degenerate-question and set off harmful repairs.
+    expect(questionless("Explain how a puppy changes as it grows into an adult dog.")).toBe("ok");
+    expect(questionless("Describe two changes a kitten may make as it becomes an adult cat.")).toBe(
+      "ok",
+    );
+    expect(
+      questionless("Explain how a caterpillar changes before it becomes an adult butterfly."),
+    ).toBe("ok");
+    expect(questionless("Explain why Prospero forgives them when it is in his power.")).toBe("ok");
+  });
+
+  test('"it" with nothing before it to name is still dangling', () => {
+    expect(questionless("Explain why it melts.")).toBe("no-referent");
+    expect(questionless("Describe how it moves.")).toBe("no-referent");
+    expect(questionless("Is it a rodent? Explain why it is.")).toBe("ok");
+  });
+});
+
+describe('questionless: "it" naming a noun in an earlier sentence (lab round 2)', () => {
+  test("a scenario sentence gives the task its referent", () => {
+    // Recorded false degenerate-question errors (r1-h-y2-plants-L slide 7, r1-cb-y1-animals-L exit).
+    expect(
+      questionless(
+        "Suppose a small plant is left in a dark cupboard. Explain why it may grow weak and pale.",
+      ),
+    ).toBe("ok");
+    expect(
+      questionless("A foal is a young horse. Explain how you know it will become an adult horse."),
+    ).toBe("ok");
+    expect(
+      questionless(
+        "A lamb is a young sheep. Explain why it will grow into an adult sheep, not a goat or rabbit.",
+      ),
+    ).toBe("ok");
+  });
+
+  test("an earlier sentence with no noun phrase does not rescue it", () => {
+    expect(questionless("Look closely. Explain why it melts.")).toBe("no-referent");
+    expect(questionless("Ice is cold. Explain why it melts.")).toBe("no-referent");
+    // "your decision" is not "it": a scenario still poses no decision.
+    expect(questionless("A fort has a ditch. Explain your decision.")).toBe("no-referent");
+  });
+});
+
+describe("questionless: a label or length frame before the task (lab round 2)", () => {
+  test("recorded exit items that open with a label or frame are tasks", () => {
+    expect(
+      questionless(
+        "Exit: Name one way Freud proposed that repressed material might appear indirectly.",
+      ),
+    ).toBe("ok");
+    expect(
+      questionless("In one line, explain why increasing surface area increases reaction rate."),
+    ).toBe("ok");
+    expect(
+      questionless("In one sentence, explain what coastal erosion does and where it happens."),
+    ).toBe("ok");
+    expect(
+      questionless(
+        "Exit: Complete the sentence: Evacuated children did not all have the same experience because…",
+      ),
+    ).toBe("ok");
+  });
+
+  test("a label and a length frame stacked, and 'finish' as the imperative, are tasks (luna-direct, gpt-6-luna at low)", () => {
+    expect(questionless("Exit: In one line, explain what billeting arranged for evacuees.")).toBe(
+      "ok",
+    );
+    expect(questionless("Exit: Finish the sentence: Plants need light so their leaves can…")).toBe(
+      "ok",
+    );
+    expect(questionless("Finish the sentence: A ratio compares two quantities by…")).toBe("ok");
+    expect(questionless("In one line, exit: name one push factor.")).toBe("ok");
+  });
+
+  test("a label with no task after it still asks nothing", () => {
+    expect(questionless("The rodent family.")).toBe("no-question");
+    expect(questionless("Exit: In one line, the rodent family.")).toBe("no-question");
+    expect(questionless("Exit: The rodent family.")).toBe("no-question");
+    expect(questionless("In one line, the rodent family.")).toBe("no-question");
+    expect(questionless("Exit: Explain why it melts.")).toBe("no-referent");
+    expect(questionless("Compare these: a seawall, a groyne.")).toBe("ok");
+  });
+
+  test("recorded maths tasks (r1-h-y7-ratio-P) are tasks", () => {
+    expect(questionless("Simplify 42:56 and explain why your new ratio is equivalent.")).toBe("ok");
+    expect(
+      questionless(
+        "A learner shares 48 in the ratio 1:3 as 16 and 32. Spot and explain the error.",
+      ),
+    ).toBe("ok");
+    expect(questionless("Share £72 in the ratio 5:7. Give a check for your answer.")).toBe("ok");
+    expect(
+      questionless(
+        "Share 42 counters in the ratio 2:5. Explain how you know your answer is consistent with the ratio.",
+      ),
+    ).toBe("ok");
   });
 });
