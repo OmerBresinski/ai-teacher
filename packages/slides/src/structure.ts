@@ -1601,7 +1601,10 @@ function splitContent(
   const keep = slide.elements.filter((e) => !bodies.includes(e as TextElement) && e !== slot);
   // Half and half first, as in the examples; a longer text takes up to two thirds before it gives up
   // the panel for the full-width paragraph.
-  const settings = [0.5, 0.6, 0.66].flatMap((share) => sizes.map((size) => ({ share, size })));
+  // A diagram keeps its half: a drawing squeezed to a third is no use.
+  const settings = (slot ? [0.5] : [0.5, 0.6, 0.66]).flatMap((share) =>
+    sizes.map((size) => ({ share, size })),
+  );
   for (const { share, size } of settings) {
     const half = Math.floor((SAFE.w - SPACE[5]) * share);
     const panelX = SAFE.x + half + SPACE[5];
