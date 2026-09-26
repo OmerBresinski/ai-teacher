@@ -27,6 +27,7 @@ import {
   LAYOUT_W_IN,
   lessonAnswers,
   maxRevealStep,
+  optionTextFrame,
   paragraphsToTextProps,
   place,
   pptxDashType,
@@ -269,6 +270,33 @@ describe("textBoxOptions", () => {
       resolveTextStyle({ preset: "body" }, theme),
     );
     expect(options.transparency).toBe(60);
+  });
+});
+
+describe("optionTextFrame", () => {
+  const option = (textStyle?: OptionElement["textStyle"]): OptionElement => ({
+    id: "o1",
+    type: "option",
+    x: 80,
+    y: 300,
+    w: 360,
+    h: 80,
+    doc: doc([para([text("Evaporation")])]),
+    ...(textStyle ? { textStyle } : {}),
+  });
+
+  it("insets the text by the card padding and reserves the tick lane on a scorable card", () => {
+    expect(optionTextFrame(option(), true)).toEqual({ x: 80 + 24, w: 360 - 24 - 24 - 44 });
+    expect(optionTextFrame(option(), false)).toEqual({ x: 80 + 24, w: 360 - 24 - 24 });
+  });
+
+  it("keeps a full-width answer row's own padding, as OptionView does", () => {
+    // `@tj/slides` `fit-slide.ts` lays wrapping options as rows with `padding: ROW_PAD` (10) and
+    // measures the wrap at that width; exporting them at the card padding re-wraps the row.
+    expect(optionTextFrame(option({ padding: 10 }), true)).toEqual({
+      x: 80 + 10,
+      w: 360 - 10 - 10 - 44,
+    });
   });
 });
 
