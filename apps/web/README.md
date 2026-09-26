@@ -124,6 +124,10 @@ product screen and will move/disappear when the activity tray lands (F18-R04).
 
 ## Theme before first paint
 
+New browsers default to light. Saved dark, high-contrast, and system choices are retained;
+only an explicit system choice follows OS appearance. `index.html` also starts in light
+when scripting or storage is unavailable.
+
 `index.html` carries a `<!--theme-init-->` marker; the `tj:theme-init` Vite plugin in
 `vite.config.ts` replaces it with `<script>${THEME_INIT_SCRIPT}</script>` from `@tj/ui` in both
 `vite dev` and `vite build`, so a stored theme applies before the stylesheet loads and the string

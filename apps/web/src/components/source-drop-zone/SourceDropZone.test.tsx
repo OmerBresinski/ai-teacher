@@ -70,7 +70,7 @@ describe("SourceDropZone", () => {
   it("renders the controls and the copyright line with no chips", () => {
     renderZone();
     expect(screen.getByRole("button", { name: "Choose files" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Paste text instead" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: "Paste text" })).toBeEnabled();
     expect(screen.getByText(COPYRIGHT_NOTICE)).toBeTruthy();
     expect(screen.queryByRole("list", { name: "Your material" })).toBeNull();
   });
@@ -94,11 +94,11 @@ describe("SourceDropZone", () => {
     fireEvent.change(fileInput(), { target: { files: [pdf("deck.pptx")] } });
     await screen.findByText("30 slides");
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Paste text instead" }));
+    await user.click(screen.getByRole("tab", { name: "Paste text" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Text to use as material" }), {
       target: { value: "Some pasted material." },
     });
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add text" }));
     await screen.findByRole("button", { name: "Remove Pasted text" });
     expect(screen.getByText("text")).toBeTruthy();
     const second = uploads()[1]?.body;
@@ -134,7 +134,7 @@ describe("SourceDropZone", () => {
     await screen.findByRole("button", { name: "Remove c.pdf" });
     expect(screen.queryByRole("button", { name: "Remove d.pdf" })).toBeNull();
     expect(uploads()).toHaveLength(3);
-    expect(screen.getByText(LIMIT_NOTICE, { selector: "p.text-body" })).toBeTruthy();
+    expect(screen.getAllByText(LIMIT_NOTICE).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Choose files" })).toBeDisabled();
   });
 
