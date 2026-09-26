@@ -5,7 +5,15 @@ import { describe, expect, test } from "bun:test";
  * editor, or the dev-only Studio entry (`mastra.dev.ts`, which constructs `new Mastra()` and is
  * never part of production). Single-output build: the package has no lazy imports.
  */
-const FORBIDDEN = ["react", "@tj/editor", "mastra.dev", "@tiptap/", ".css"];
+/** React as a module (bundled or imported), not the word: prompt text says "reaction" (TEACH-88). */
+const FORBIDDEN = [
+  "node_modules/react/",
+  '"react"',
+  "@tj/editor",
+  "mastra.dev",
+  "@tiptap/",
+  ".css",
+];
 
 describe("@tj/generation", () => {
   test("bundles for bun without React, the editor or the Studio entry", async () => {

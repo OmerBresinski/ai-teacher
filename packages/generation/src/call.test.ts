@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
-import { createBudget } from "@tj/ai";
+import { AiError, createBudget, ProviderFailure } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { shapeIssue, slideSpecSchemaFor } from "@tj/slides";
 import { APICallError, type Schema } from "ai";
@@ -10,10 +10,14 @@ import { z } from "zod";
 import {
   callStructured,
   imageMediaType,
+  isCapMiss,
   providerOptionsFor,
   specRuleFinding,
   wireSchemaFor,
 } from "./call";
+import recordedY1 from "./fixtures/objective-facts.cb-y1-animals-L.cap-miss.json";
+import { planFactsObjectiveOutputSchemaFor } from "./prompts/plan-facts-objective";
+import { lessonShapeOf } from "./shapes";
 import { BudgetExceeded, type PipelineDeps, StageFailure } from "./types";
 
 const schema = z.strictObject({ answer: z.string() });
@@ -120,6 +124,51 @@ test("retryable provider faults are one reserved dispatch, not hidden SDK transp
   await expect(call(d)).rejects.toBe(error);
   expect(calls).toBe(1);
   expect(d.budget.totals()).toMatchObject({ calls: 0, uncertain: { calls: 1 } });
+});
+
+describe("provider failures that are not permanent are retried once", () => {
+  const fault = (isRetryable?: boolean) =>
+    new AiError("provider", "Bedrock model call failed: The model provider request failed.", {
+      cause: new ProviderFailure("APICallError", "The model provider request failed.", {
+        statusCode: 503,
+        ...(isRetryable === undefined ? {} : { isRetryable }),
+      }),
+    });
+  const flaky = (first: AiError) => {
+    const ai = createFakeAi();
+    let calls = 0;
+    ai.model = () =>
+      new MockLanguageModelV4({
+        doGenerate: async () => {
+          calls++;
+          if (calls === 1) throw first;
+          return {
+            content: [{ type: "text", text: JSON.stringify({ answer: "ok" }) }],
+            finishReason: { unified: "stop", raw: "stop" },
+            usage: {
+              inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+              outputTokens: { total: 5, text: 5, reasoning: 0 },
+            },
+            warnings: [],
+          };
+        },
+      });
+    return { ai, calls: () => calls };
+  };
+  test("a retryable or unlabelled provider failure is retried and the answer kept", async () => {
+    for (const first of [fault(true), fault()]) {
+      const { ai, calls } = flaky(first);
+      const result = await call(deps(ai));
+      expect(result.output).toEqual({ answer: "ok" });
+      expect(calls()).toBe(2);
+    }
+  });
+  test("a provider failure marked permanent is not retried", async () => {
+    const first = fault(false);
+    const { ai, calls } = flaky(first);
+    await expect(call(deps(ai))).rejects.toBe(first);
+    expect(calls()).toBe(1);
+  });
 });
 
 /** A list field, for the Bedrock "list as a string" quirk (`repair-json.ts`). */
@@ -456,6 +505,11 @@ describe("callStructured", () => {
     // …and neither the model's text nor the prompt reaches the log.
     expect(log.text()).not.toContain('"answer":1');
     expect(log.text()).not.toContain("system text");
+    // The retry carries the failed answer, so a miss is an edit, not a fresh answer (audit A1).
+    expect(ai.calls[1]?.promptText).toContain(
+      'Your previous answer:\n{"answer":1,"pupilName":"Aisha"}',
+    );
+    expect(ai.calls[1]?.promptText).toContain("did not validate");
   });
 
   test("a second miss is a StageFailure naming the stage, with the issues as cause and in the log", async () => {
@@ -539,6 +593,8 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
       steps: Array.isArray(step) || typeof step === "string" ? step : [step],
     });
   const longStep = "x".repeat(90);
+  // An editorial miss that is not a text cap (a leaked house rule): the retry still happens.
+  const leakyStep = "Answer as JSON.";
   const good = worked(["Warm air passes energy in.", "Particles speed up."]);
   const run = (
     ai: ReturnType<typeof createFakeAi>,
@@ -557,19 +613,19 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
       maxOutputTokens: 100,
     });
 
-  test("row 1: a 90-character step twice resolves with one editorial miss naming steps.0; the warn line says editorialOnly", async () => {
-    const ai = createFakeAi({ script: [worked([longStep]), worked([longStep])] });
+  test("row 1: a 90-character step is accepted on the first answer with one cap miss naming steps.0; no retry (lab round 1)", async () => {
+    const ai = createFakeAi({ script: [worked([longStep]), good] });
     const log = capturingLogger();
     const result = await run(ai, log);
-    expect(result.attempts).toBe(2);
+    expect(result.attempts).toBe(1);
+    expect(ai.calls).toHaveLength(1);
     expect(result.editorialMisses).toEqual([
       { path: ["steps", 0], message: "Too long: at most 84 characters." },
     ]);
-    // The accepted answer is the retry's, parsed (trimmed, decoded) by the soft schema.
+    // The accepted answer is the first one, parsed (trimmed, decoded) by the soft schema.
     expect(result.output).toMatchObject({ kind: "worked-example", steps: [longStep] });
-    expect(ai.calls).toHaveLength(2);
-    expect(log.text()).toContain("did not validate on the retry; accepted");
-    expect(log.text()).toContain('"editorialOnly":true');
+    expect(log.text()).toContain("missed only text caps; accepted without a retry");
+    expect(log.text()).not.toContain("retrying once");
     expect(log.text()).not.toContain("giving up");
     // The finding a stage records from it: spec-rule, on the target it names, path in the message.
     const finding = specRuleFinding(result.editorialMisses[0] as never, { slideId: "s7" });
@@ -579,6 +635,38 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
       target: { slideId: "s7" },
       message: "steps.0: Too long: at most 84 characters.",
     });
+  });
+
+  test("row 1b: a leaked house rule twice resolves on the retry with one editorial miss; the warn line says editorialOnly", async () => {
+    const ai = createFakeAi({ script: [worked([leakyStep]), worked([leakyStep])] });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(result.attempts).toBe(2);
+    expect(ai.calls).toHaveLength(2);
+    expect(result.editorialMisses.map((m) => m.path)).toEqual([["steps", 0]]);
+    expect(isCapMiss(result.editorialMisses[0] as never)).toBe(false);
+    expect(log.text()).toContain("did not validate on the retry; accepted");
+    expect(log.text()).toContain('"editorialOnly":true');
+  });
+
+  test("row 1c: a cap-only first answer is retried as before when the caller asks (Repair: nothing after it trims)", async () => {
+    const ai = createFakeAi({ script: [worked([longStep]), good] });
+    const log = capturingLogger();
+    const result = await callStructured({
+      deps: deps(ai, { logger: log.logger }),
+      stage: "repair",
+      cls: "small",
+      effort: "low",
+      prompt,
+      input: "hi",
+      schema: strict,
+      soft,
+      retryCapMisses: true,
+      maxOutputTokens: 100,
+    });
+    expect(result.attempts).toBe(2);
+    expect(result.editorialMisses).toEqual([]);
+    expect(log.text()).toContain("retrying once");
   });
 
   test('row 2: `steps: "not an array"` twice is a StageFailure as before; the warn line says editorialOnly: false', async () => {
@@ -601,8 +689,10 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
     expect(log.text()).toContain('"editorialOnly":true');
   });
 
-  test("row 4: an editorial miss then a clean answer resolves with no misses (today's happy retry)", async () => {
-    const ai = createFakeAi({ script: [worked([longStep]), good] });
+  // Row 4's intent changed in lab round 1: a cap-only first miss no longer retries (row 1), so the
+  // happy retry is now driven by an editorial miss that is not a text cap.
+  test("row 4: a non-cap editorial miss then a clean answer resolves with no misses (the happy retry)", async () => {
+    const ai = createFakeAi({ script: [worked([leakyStep]), good] });
     const log = capturingLogger();
     const result = await run(ai, log);
     expect(result.attempts).toBe(2);
@@ -611,13 +701,73 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
     expect(log.text()).not.toContain("did not validate on the retry");
   });
 
-  test("a mixed second miss (one shape issue beside editorial ones) still fails the call", async () => {
+  test("a mixed second miss after a shape miss still fails the call", async () => {
     const ai = createFakeAi({
-      script: [worked([longStep]), worked([longStep, ""])],
+      script: [worked("not an array"), worked([longStep, ""])],
     });
     const log = capturingLogger();
     await expect(run(ai, log)).rejects.toBeInstanceOf(StageFailure);
     expect(log.text()).toContain('"editorialOnly":false');
+    expect(log.text()).toContain("giving up");
+  });
+
+  test("keep the best answer: an editorial-only first answer survives a retry that misses shape (CB run, 24 Sept)", async () => {
+    const ai = createFakeAi({
+      script: [worked([leakyStep]), worked([longStep, ""])],
+    });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(ai.calls).toHaveLength(2);
+    expect(result.attempts).toBe(2);
+    // The first answer, parsed by the soft schema, with its own misses.
+    expect(result.output).toMatchObject({ kind: "worked-example", steps: [leakyStep] });
+    expect(result.editorialMisses.map((m) => m.path)).toEqual([["steps", 0]]);
+    expect(log.text()).toContain("first answer accepted");
+    expect(log.text()).not.toContain("giving up");
+  });
+
+  test("keep the best answer: a retry that is itself editorial-only is still the one accepted", async () => {
+    const shorter = "y".repeat(85);
+    const ai = createFakeAi({ script: [worked([leakyStep]), worked([shorter])] });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(result.output).toMatchObject({ steps: [shorter] });
+    expect(log.text()).not.toContain("first answer accepted");
+  });
+
+  test("keep the best answer: without a soft schema the first answer is not kept", async () => {
+    const ai = createFakeAi({ script: [worked([longStep]), worked("not an array")] });
+    const log = capturingLogger();
+    await expect(run(ai, log, false)).rejects.toBeInstanceOf(StageFailure);
+    expect(log.text()).toContain("giving up");
+  });
+
+  test("keep the best answer: an editorial-only first answer survives an empty retry", async () => {
+    const response = (text: string | undefined) => ({
+      content: text === undefined ? [] : [{ type: "text" as const, text }],
+      finishReason: { unified: "stop" as const, raw: "stop" },
+      usage: {
+        inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+        outputTokens: { total: 5, text: 5, reasoning: undefined },
+        raw: undefined,
+      },
+      warnings: [],
+    });
+    let calls = 0;
+    const ai = createFakeAi();
+    ai.model = () =>
+      new MockLanguageModelV4({
+        doGenerate: async () => {
+          calls++;
+          return calls === 1 ? response(worked([leakyStep])) : response(undefined);
+        },
+      });
+    const log = capturingLogger();
+    const result = await run(ai, log);
+    expect(calls).toBe(2);
+    expect(result.output).toMatchObject({ steps: [leakyStep] });
+    expect(result.editorialMisses.map((m) => m.path)).toEqual([["steps", 0]]);
+    expect(log.text()).toContain("first answer accepted");
   });
 
   test("without a soft schema an editorial-only second miss fails as before, logged editorialOnly: true", async () => {
@@ -632,18 +782,24 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
     // The Bedrock quirk (`repair-json.ts`) on top of an editorial miss: the original text is a
     // shape miss (a string where a list goes), the repaired text an editorial one. The repaired
     // reading is the one judged, on both attempts.
-    const wrapped = worked(JSON.stringify([longStep, "Second."]));
+    const wrapped = worked(JSON.stringify([leakyStep, "Second."]));
     const ai = createFakeAi({ script: [wrapped, wrapped] });
     const log = capturingLogger();
     const result = await run(ai, log);
     expect(result.attempts).toBe(2);
-    expect(result.output).toMatchObject({ steps: [longStep, "Second."] });
+    expect(result.output).toMatchObject({ steps: [leakyStep, "Second."] });
     expect(result.editorialMisses.map((m) => m.path)).toEqual([["steps", 0]]);
     expect(log.text()).toContain('"repairs":["parsed-string"]');
     expect(log.text()).toContain('"editorialOnly":true');
-    // The retry was told about the cap, not about a string where a list goes.
-    expect(ai.calls[1]?.promptText).toContain("Too long: at most 84");
+    // The retry was told about the leak, not about a string where a list goes.
+    expect(ai.calls[1]?.promptText).toContain("Pupil-facing text must not contain");
     expect(ai.calls[1]?.promptText).not.toContain("expected array");
+    // The same quirk with only a cap missed is accepted on the first answer.
+    const capped = worked(JSON.stringify([longStep, "Second."]));
+    const once = createFakeAi({ script: [capped, capped] });
+    const onceResult = await run(once, capturingLogger());
+    expect(onceResult.attempts).toBe(1);
+    expect(onceResult.output).toMatchObject({ steps: [longStep, "Second."] });
   });
 
   test("a custom message that quotes the model's words keeps them for the retry and logs its declared log form (ADR 0015)", async () => {
@@ -764,4 +920,45 @@ test("an empty answer (no output at all) is retried once with the same text; a s
   const dead = createFakeAi();
   dead.model = () => new MockLanguageModelV4({ doGenerate: async () => empty });
   await expect(call(deps(dead))).rejects.toBeInstanceOf(StageFailure);
+});
+
+describe("callStructured: a cap-only first answer is kept, not regenerated (lab round 1, cb-y1-animals-L)", () => {
+  // The recorded facts call for objective 0: one reasoning 1 character over its 120 cap. The retry
+  // rewrote everything and turned "may look smaller or different" into an overgeneralisation.
+  const position = {
+    shape: lessonShapeOf(undefined, { yearGroup: recordedY1.yearGroup }),
+    objectives: recordedY1.objectives,
+    target: recordedY1.target,
+  };
+  test("the first answer is accepted with its cap miss, and the retry is never asked for", async () => {
+    const ai = createFakeAi({
+      script: [JSON.stringify(recordedY1.first), JSON.stringify(recordedY1.retry)],
+    });
+    const log = capturingLogger();
+    const result = await callStructured({
+      deps: deps(ai, { logger: log.logger }),
+      stage: "plan",
+      cls: "small",
+      effort: "medium",
+      prompt,
+      input: "hi",
+      schema: planFactsObjectiveOutputSchemaFor(position as never),
+      soft: planFactsObjectiveOutputSchemaFor(position as never, { soft: true }),
+      maxOutputTokens: 7000,
+    });
+    expect(ai.calls).toHaveLength(1);
+    expect(result.attempts).toBe(1);
+    expect(result.editorialMisses).toEqual([
+      { path: ["questions", 3, "reasoning"], message: "Too long: at most 120 characters." },
+    ]);
+    expect(result.output.keyIdeas[1]?.statement).toBe(
+      "Young animals may look smaller or different, but they still have features like their parents.",
+    );
+  });
+
+  test("isCapMiss is the text cap only", () => {
+    expect(isCapMiss({ path: [], message: "Too long: at most 120 characters." })).toBe(true);
+    expect(isCapMiss({ path: [], message: "Every option must be different." })).toBe(false);
+    expect(isCapMiss({ path: [], message: "Too many steps: at most 4." })).toBe(false);
+  });
 });

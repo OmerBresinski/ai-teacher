@@ -131,7 +131,7 @@ describe("plan", () => {
     ).toEqual([
       ["standard", "plan", PROMPT_VERSIONS["plan-skeleton"], "medium"],
       ["standard", "plan", PROMPT_VERSIONS["plan-facts"], "medium"],
-      ["standard", "plan", PROMPT_VERSIONS["verify-facts"], "high"],
+      ["standard", "plan", PROMPT_VERSIONS["verify-facts"], "low"],
     ]);
 
     expect(state.lesson.facts).toEqual(fullFacts());
@@ -790,30 +790,35 @@ describe("generate", () => {
     const slideCalls = ai.calls.filter(
       (c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-slide"],
     );
-    // The multiple-choice slide (outline position 7) references q1: its own stem is open; a stem
-    // another entry owns, or an unclaimed worksheet stem, is reserved from it; an unclaimed
-    // `slide` stem (q3, which no entry of the ten-slide fixture uses) is reserved from nobody.
+    // Reserved stems reach only the kinds that write a stem of their own (generate-slide v24): the
+    // exit ticket (outline position 9) gets them — its own stems open; a stem another entry owns, or
+    // an unclaimed worksheet stem, reserved; an unclaimed `slide` stem (q3) reserved from nobody.
+    // The multiple-choice slide copies its question verbatim, so it gets no reserved list.
     const mc = slideCalls.find((c) => c.promptText.includes('kind "multiple-choice"'));
-    const mcIndex = facts.outline.findIndex((e) => e.kind === "multiple-choice");
-    if (!mc || mcIndex === -1) throw new Error("fixture");
+    const ticket = slideCalls.find((c) => c.promptText.includes('kind "exit-ticket"'));
+    const ticketIndex = facts.outline.findIndex((e) => e.kind === "exit-ticket");
+    if (!mc || !ticket || ticketIndex === -1) throw new Error("fixture");
+    expect(mc.promptText).not.toContain("Reserved for other slides");
     const owner = new Map<string, number>();
     facts.outline.forEach((e, i) => {
       for (const ref of e.factRefs) if (!owner.has(ref)) owner.set(ref, i);
     });
-    const own = new Set(facts.outline[mcIndex]?.factRefs);
-    expect(own.has("q1")).toBe(true);
+    const own = new Set(facts.outline[ticketIndex]?.factRefs);
+    let reservedCount = 0;
     for (const q of facts.questions) {
       const o = owner.get(q.id);
       const reserved = own.has(q.id)
         ? false
         : o === undefined
           ? q.use === "worksheet"
-          : o !== mcIndex;
-      expect({ id: q.id, reserved: mc.promptText.includes(`  - ${q.stem}`) }).toEqual({
+          : o !== ticketIndex;
+      if (reserved) reservedCount++;
+      expect({ id: q.id, reserved: ticket.promptText.includes(`  - ${q.stem}`) }).toEqual({
         id: q.id,
         reserved,
       });
     }
+    expect(reservedCount).toBeGreaterThan(0);
     // Filtered facts: the slide sees only what its entry references (plus misconceptions).
     expect(mc.promptText).not.toContain("Key ideas:");
     expect(mc.promptText).toContain("Misconceptions:");
@@ -1739,7 +1744,7 @@ describe("repair", () => {
     for (const call of fixer.calls) {
       expect(call.promptText).toContain("Objective verb: Apply.");
       expect(call.promptText).toContain(VERB_WRITING.Apply);
-      expect(call.promptText).toContain("[verb-fit]");
+      expect(call.promptText).toContain("[verb-fit, error]");
     }
     expect(blockText(repaired.worksheet?.blocks.find((b) => b.id === block.id) as never)).toContain(
       "column addition",

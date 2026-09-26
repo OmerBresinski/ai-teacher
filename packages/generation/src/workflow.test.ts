@@ -203,7 +203,7 @@ describe("runLessonPipeline", () => {
         visible: ["ice cubes", "meltwater"],
         count: "one",
         alt: "River",
-        promptVersion: "pick-or-requery-photo.v6",
+        promptVersion: "pick-or-requery-photo.v7",
         thumbnail: photo.src.tiny,
       },
     });
@@ -214,8 +214,8 @@ describe("runLessonPipeline", () => {
     expect(ai.calls).toHaveLength(CHECK_INPUT_CALLS + PLAN_CALLS + GENERATED_SLIDES + 1 + 1);
     const judge = ai.calls.find((call) => call.context?.stage === "illustrate");
     expect(judge?.modelClass).toBe("standard");
-    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v6");
-    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v6");
+    expect(judge?.context?.promptVersion).toBe("pick-or-requery-photo.v7");
+    expect(lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v7");
     const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
     expect(summary.generation.images).toEqual({
       photographable: true,
@@ -262,13 +262,13 @@ describe("runLessonPipeline", () => {
         ],
       );
       // Effort per stage (Generation quality §6, TEACH-207): Generate at low, Plan and Evaluate at
-      // medium, Verify at high (TEACH-212), the input check at low; every call says so to the
-      // provider and in its context.
+      // medium, Verify at low (was high under TEACH-212; lowered 17 Sept 2026 with the input check,
+      // both are checks not writers); every call says so to the provider and in its context.
       expect(ai.calls.map((c) => c.context?.effort)).toEqual([
         "low",
         "medium",
         "medium",
-        "high",
+        "low",
         ...Array.from({ length: GENERATED_SLIDES }, () => "low"),
         "medium",
       ]);
@@ -457,7 +457,7 @@ describe("runLessonPipeline", () => {
     const error = await runLessonPipeline({ lesson: sampleBriefLesson() }, deps).catch((e) => e);
     expect((error as Error).name).toBe("AbortError");
     expect(deps.persisted.at(-1)?.lesson.generation?.stage).toBe("planned");
-    // One batch (four slides) was in flight; nothing started after the abort.
+    // Only the slides already in flight (at most one batch) were called; nothing started after the abort.
     const generateCalls = ai.calls.filter((c) => c.context?.stage === "generate");
     expect(generateCalls.length).toBeLessThanOrEqual(GENERATE_CONCURRENCY);
     expect(deps.persisted.at(-1)?.lesson.slides).toHaveLength(4);
@@ -851,8 +851,9 @@ describe("TEACH-257: an editorial miss on both attempts does not lose the lesson
 
   const runWith = async (repairAnswers: string[]) => {
     const script = pipelineScript();
-    // Both attempts of the worked-example slide break the step cap; Repair then answers.
-    script.splice(WORKED_INDEX, 1, badWorked, badWorked);
+    // The worked-example slide breaks the step cap; a cap-only miss is kept without a retry (lab
+    // round 1); Repair then answers.
+    script.splice(WORKED_INDEX, 1, badWorked);
     script.push(...repairAnswers);
     const ai = answeringAi(script);
     const deps = recordingDeps(ai);
@@ -864,11 +865,11 @@ describe("TEACH-257: an editorial miss on both attempts does not lose the lesson
     const { lesson, ai, deps } = await runWith([JSON.stringify(workedExample)]);
     expect(lesson.generation?.stage).toBe("repaired");
     expect(lesson.slides).toHaveLength(TOTAL_SLIDES);
-    // The retry named the rule; the second miss was accepted, not a StageFailure.
+    // No retry: the first answer was accepted with its cap miss, not a StageFailure.
     const retries = ai.calls.filter(
       (c) => c.context?.stage === "generate" && c.promptText.includes("Too long: at most 84"),
     );
-    expect(retries).toHaveLength(1);
+    expect(retries).toHaveLength(0);
     const generated = deps.persisted.find((p) => p.lesson.generation?.stage === "generated");
     const worked = generated?.lesson.slides.find((s) => s.kind === "worked-example");
     expect(worked).toBeDefined();
@@ -890,7 +891,7 @@ describe("TEACH-257: an editorial miss on both attempts does not lose the lesson
     expect(slideText(final as never)).not.toContain(longStep);
   });
 
-  test("row 5, Repair misses too: the slide is rewritten as returned and one spec-rule warning remains; no second pass", async () => {
+  test("row 5, Repair misses too (it retries a cap miss): the slide is rewritten as returned and one spec-rule warning remains; no second pass", async () => {
     const { lesson, ai } = await runWith([badWorked, badWorked]);
     expect(lesson.generation?.stage).toBe("repaired");
     expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(2);

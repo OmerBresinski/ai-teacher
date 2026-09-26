@@ -227,7 +227,7 @@ describe("illustrate", () => {
         visible: [],
         count: "one",
         alt: "Photo p2",
-        promptVersion: "pick-or-requery-photo.v6",
+        promptVersion: "pick-or-requery-photo.v7",
         thumbnail: second.src.tiny,
       },
     });
@@ -244,7 +244,7 @@ describe("illustrate", () => {
       failed: 0,
     });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
-    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v6");
+    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v7");
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 
@@ -384,7 +384,7 @@ describe("illustrate", () => {
       visible: ["petals"],
       count: "one",
       alt: "Photo A",
-      promptVersion: "pick-or-requery-photo.v6",
+      promptVersion: "pick-or-requery-photo.v7",
       thumbnail: `data:image/png;base64,${PNG}`,
     });
 
@@ -493,7 +493,7 @@ describe("illustrate", () => {
     const brief = { subject: "rodent incisors", mustShow: ["front teeth"] };
     const state = await run(imageLesson([brief]), recordingDeps(ai, { images, logger }));
     expect(ai.calls).toHaveLength(3);
-    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v2");
+    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v3");
     expect(ai.calls[0]?.promptText).toContain(
       "do not reject a caption for not mentioning them: front teeth",
     );
@@ -667,9 +667,11 @@ describe("illustrate", () => {
 
   test("a judge call that fails counts failed and the next slide still places", async () => {
     const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
-    const ai = judge(() => {
+    // A provider failure is retried once (call.ts), so the first slide's judge fails twice.
+    const down = () => {
       throw new Error("model down");
-    }, pick("p"));
+    };
+    const ai = judge(down, down, pick("p"));
     const deps = recordingDeps(ai, { images });
     const state = await run(imageLesson([{ subject: "first" }, { subject: "second" }]), deps);
     expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);

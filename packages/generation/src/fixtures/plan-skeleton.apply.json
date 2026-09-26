@@ -11,8 +11,8 @@
     }
   ],
   "photographable": {
-    "yes": true,
-    "why": "Ice, water and steam are things a camera captures."
+    "yes": false,
+    "why": "The method is the particle model, which is a diagram, not a photograph."
   },
   "outline": [
     {
@@ -62,7 +62,7 @@
           "index": 0
         }
       ],
-      "phase": "starter",
+      "phase": "explain",
       "brief": {
         "adds": "Names the four terms the lesson uses, each in one sentence.",
         "avoids": "No examples of changes of state here."
@@ -81,31 +81,6 @@
       "brief": {
         "adds": "Defines the three states of matter and names an everyday example of each.",
         "avoids": "Do not repeat the vocabulary definitions."
-      }
-    },
-    {
-      "kind": "image-text",
-      "minutes": 6,
-      "factRefs": [
-        {
-          "type": "objective",
-          "index": 1
-        },
-        {
-          "type": "objective",
-          "index": 2
-        }
-      ],
-      "phase": "explain",
-      "brief": {
-        "adds": "Pupils watch ice become water and describe what the particles are doing.",
-        "avoids": "Not the examples from the definition slide."
-      },
-      "imageBrief": {
-        "subject": "ice cubes melting",
-        "mustShow": ["ice cubes", "meltwater"],
-        "purpose": "observe",
-        "avoid": ["hands", "glass"]
       }
     },
     {
@@ -154,6 +129,19 @@
       "phase": "practise",
       "brief": {
         "adds": "Pupils apply the model: match each heated or cooled substance to what its particles do."
+      }
+    },
+    {
+      "kind": "open-response",
+      "factRefs": [
+        {
+          "type": "objective",
+          "index": 2
+        }
+      ],
+      "phase": "practise",
+      "brief": {
+        "adds": "Pupils use the particle model to explain one change of state they have not seen."
       }
     },
     {

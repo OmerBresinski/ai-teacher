@@ -50,7 +50,7 @@ export type ShortlistInput = {
 const EXAMPLE: Shortlist = { ids: ["27147699", "1043111", "5622340"] };
 
 export const shortlistPhotosPrompt = {
-  version: "shortlist-photos.v2",
+  version: "shortlist-photos.v3",
   system: [
     "You read the captions of stock-photo search results for one slide of a school lesson and name the few photographs worth looking at. You see captions only, not the pictures.",
     "",

@@ -275,9 +275,11 @@ describeDb("lesson.generate job", () => {
     const jobId = await confirm(lessonId);
     const slides = pipelineScript().slice(SLIDES_INDEX);
     const evaluateAt = slides.length - 1;
-    slides[evaluateAt] = () => {
+    // `callStructured` retries a provider failure once (TEACH-88), so the outage outlasts the retry.
+    const outage = () => {
       throw new Error("provider unreachable");
     };
+    slides.splice(evaluateAt, 1, outage, outage);
     const first = createFakeAi({ script: routed(slides) });
     await expect(
       lessonGenerateJob(

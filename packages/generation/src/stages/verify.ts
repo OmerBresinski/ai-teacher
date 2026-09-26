@@ -3,6 +3,7 @@ import { LessonFactsSchema } from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import { type Audience, verifyFactsPrompt } from "../prompts";
 import {
+  retrievalIndexOf,
   type VerifyCorrection,
   type VerifyField,
   type VerifyReason,
@@ -46,7 +47,7 @@ export async function runVerify(
       deps,
       stage: "plan",
       cls,
-      effort: "high",
+      effort: "low",
       prompt: verifyFactsPrompt,
       input: { audience: briefInput.audience, topic: briefInput.topic, facts },
       schema: verifyOutputSchemaFor(facts),
@@ -110,6 +111,7 @@ const FIELD_LABEL: Record<VerifyField, string> = {
   answer: "answer",
   stem: "stem",
   reasoning: "reasoning",
+  distractors: "distractor",
   statement: "statement",
   explanation: "explanation",
   example: "example",
@@ -120,6 +122,15 @@ const FIELD_LABEL: Record<VerifyField, string> = {
 
 /** The content-free finding one applied correction leaves on the lesson. */
 export function verifyFinding(correction: VerifyCorrection): Finding {
+  // A starter question is not a fact: no id the editor can open, so the finding targets the lesson.
+  if (retrievalIndexOf(correction.factId) !== undefined) {
+    return {
+      check: "fact-verify",
+      severity: "warning",
+      target: {},
+      message: `Starter question ${correction.field === "stem" ? "question" : "answer"} corrected: ${REASON_LABEL[correction.reason]}.`,
+    };
+  }
   const array = verifiableArrayOf(correction.factId);
   const kind = array ? KIND_LABEL[array] : "Fact";
   return {
@@ -153,6 +164,18 @@ export function applyVerifyPatch(
   const schema = verifyOutputSchemaFor(facts);
   for (const c of corrections) {
     if (!schema.safeParse({ corrections: [c] }).success) continue;
+    const r = retrievalIndexOf(c.factId);
+    if (r !== undefined) {
+      // l6c: a starter tests earlier learning, outside this lesson's topic by design, so an
+      // off-topic correction on it is dropped here rather than excepted in the prompt.
+      const item = next.retrieval?.[r];
+      if (!item || c.reason === "off-topic") continue;
+      if (c.field === "stem") item.question = c.value;
+      else if (c.field === "answer") item.answer = c.value;
+      else continue;
+      applied.push(c);
+      continue;
+    }
     const array = verifiableArrayOf(c.factId);
     if (!array) continue;
     const list = next[array] as { id: string }[] | undefined;
@@ -162,6 +185,11 @@ export function applyVerifyPatch(
       const steps = fact.steps;
       if (!Array.isArray(steps) || c.index === undefined || c.index >= steps.length) continue;
       steps[c.index] = c.value;
+    } else if (c.field === "distractors") {
+      const distractors = fact.distractors as { text: string }[] | undefined;
+      const distractor = c.index === undefined ? undefined : distractors?.[c.index];
+      if (!distractor) continue;
+      distractor.text = c.value;
     } else {
       if (!(c.field in fact) && c.field !== "analogy") continue;
       fact[c.field] = c.value;

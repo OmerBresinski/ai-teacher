@@ -180,7 +180,7 @@ describe("proposeFor", () => {
         authoredBy: "ai",
       });
       expect(p.element?.id).not.toBe(original.id);
-      expect(p.generatedFrom.promptVersion).toBe("cascade.v2");
+      expect(p.generatedFrom.promptVersion).toBe("cascade.v4");
     }
     const blockProposal = proposals.find((p) => p.block);
     expect(blockProposal?.target).toEqual({ blockId: "wb3" });
@@ -210,7 +210,7 @@ describe("proposeFor", () => {
         (p) => p.target.slideId === "s-mc" && p.target.elementId === undefined && p.element,
       ),
     ).toBe(true);
-    expect(proposals.every((p) => p.generatedFrom.promptVersion === "regenerate.v2")).toBe(true);
+    expect(proposals.every((p) => p.generatedFrom.promptVersion === "regenerate.v4")).toBe(true);
     // Every proposal of the slide carries the same fresh question and notes, and together they
     // form a valid slide whose answer data names the new element ids.
     const question = proposals[0]?.question;

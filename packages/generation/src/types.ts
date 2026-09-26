@@ -211,13 +211,16 @@ export interface VerifyResult {
  * document it was writing. Plan and Generate failures fail the job; Evaluate and Repair failures
  * are recorded as findings by the stage itself and never reach here.
  */
+export type StageFailureReason = "timeout" | "objectives-check";
+
 export class StageFailure extends Error {
-  override readonly name = "StageFailure";
-  readonly reason: "timeout" | undefined;
+  override readonly name: string = "StageFailure";
+  /** `timeout`: a call ran past its bound; `objectives-check`: the lab stopped before facts. */
+  readonly reason: StageFailureReason | undefined;
   constructor(
     readonly stage: StageName,
     message: string,
-    options: { cause?: unknown; reason?: "timeout" } = {},
+    options: { cause?: unknown; reason?: StageFailureReason } = {},
   ) {
     super(message, options);
     this.reason = options.reason;
