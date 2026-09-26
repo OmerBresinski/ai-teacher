@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { isEditorialIssue, SPEC_LIMITS } from "@tj/slides";
+import { mergeObjectiveFacts } from "../merge-objective-facts";
 import { planFactsObjectivePrompt, SHAPE_SKETCH } from "./plan-facts-objective";
 import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
 import {
   EXIT_LINE,
+  type PlanQuestionSetOutput,
   PlanQuestionSetOutputSchema,
   planQuestionSetOutputSchemaFor,
   planQuestionSetPrompt,
@@ -247,5 +249,29 @@ describe("plan-question-set", () => {
       "Horses",
       "Walls",
     ]);
+  });
+
+  test("appends to the teach output and merges as v14's questions did", () => {
+    const parsed: PlanQuestionSetOutput = planQuestionSetOutputSchemaFor(SAMPLE).parse(
+      set([
+        {
+          ...QUESTION,
+          keyIdeaRefs: [{ type: "keyIdea", index: 1 }],
+          distractors: [
+            { text: "Nothing at all", misconceptionRef: { type: "misconception", index: 0 } },
+          ],
+        },
+        QUESTION,
+      ]),
+    );
+    const merged = mergeObjectiveFacts([{ ...TAUGHT, questions: parsed.questions }]);
+    expect(merged.questions).toHaveLength(2);
+    expect(merged.questions[0]?.objectiveRefs).toEqual([{ type: "objective", index: 0 }]);
+    expect(merged.questions[0]?.keyIdeaRefs).toEqual([{ type: "keyIdea", index: 1 }]);
+    expect(merged.questions[0]?.distractors[0]?.misconceptionRef).toEqual({
+      type: "misconception",
+      index: 0,
+    });
+    expect(merged.questions[1]?.use).toBe("exit");
   });
 });

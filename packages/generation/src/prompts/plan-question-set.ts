@@ -1,7 +1,7 @@
 import { QUESTION_TIERS, QUESTION_USES } from "@tj/domain/documents";
 import { editorialIssue, SPEC_LIMITS, type SpecSchemaOptions } from "@tj/slides";
 import { z } from "zod";
-import { LINE_MAX, MC_LINE_MAX } from "../lab/coded-slides";
+import { LINE_MAX, MC_LINE_MAX } from "../planner/coded-slides";
 import type { LessonShape } from "../shapes";
 import { distractorsEchoingAnswer } from "../specs";
 import { QUESTION_DEMANDS, QUESTION_FORMS } from "./plan-facts-objective";
