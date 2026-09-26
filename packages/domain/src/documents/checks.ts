@@ -138,9 +138,11 @@ function checkObjectiveCoverage(lesson: Lesson, worksheet?: Worksheet): Finding[
     for (const ref of block.generatedFrom?.factRefs ?? []) addCovered(onWorksheet, ref, covers);
   }
   const findings: Finding[] = [];
+  // Until the slides are written only the objectives slide exists; the slide half waits for them.
+  const deck = slidesWritten(lesson);
   for (const objective of facts.objectives) {
     const missing: string[] = [];
-    if (!onSlides.has(objective.id)) missing.push("any slide");
+    if (deck && !onSlides.has(objective.id)) missing.push("any slide");
     if (worksheet && !onWorksheet.has(objective.id)) missing.push("the worksheet");
     if (missing.length === 0) continue;
     findings.push({
@@ -281,7 +283,7 @@ function checkObjectivesTaught(lesson: Lesson): Finding[] {
   const facts = lesson.facts;
   if (!facts || facts.outline.length === 0) return [];
   const taught = new Set<string>();
-  if (lesson.generation?.stage === "planned" || lesson.slides.length === 0) {
+  if (!slidesWritten(lesson)) {
     for (const entry of facts.outline) {
       if (!TEACHING_KINDS.has(entry.kind)) continue;
       for (const ref of entry.factRefs) taught.add(ref);
@@ -305,6 +307,13 @@ function checkObjectivesTaught(lesson: Lesson): Finding[] {
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Whether the deck exists yet: past the `planned` checkpoint, where a lesson holds only its title
+ * and objectives slides while the rest are written (ruling 90).
+ */
+const slidesWritten = (lesson: Lesson): boolean =>
+  lesson.generation?.stage !== "planned" && lesson.slides.length > 0;
 
 function isBlank(value: string | undefined): boolean {
   return !value || value.trim().length === 0;

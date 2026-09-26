@@ -144,6 +144,13 @@ describe("checkLesson", () => {
       expect(findings[0]?.message).toContain("any slide");
     });
 
+    test("at the planned checkpoint the slide half waits for the deck", () => {
+      const l = generatedLesson();
+      l.slides = l.slides.filter((s) => s.kind === "title" || s.kind === "objectives");
+      if (l.generation) l.generation.stage = "planned";
+      expect(checkLesson(l).filter((f) => f.check === "objective-coverage")).toEqual([]);
+    });
+
     test("the objectives slide naming an objective does not cover it (ruling 96)", () => {
       const l = generatedLesson();
       l.slides = l.slides.filter((s) => s.id !== "s-teach-2");
