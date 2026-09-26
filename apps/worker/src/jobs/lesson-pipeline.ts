@@ -21,6 +21,7 @@ import { storePhoto } from "@tj/images";
 import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
+import { effortOverride } from "../effort";
 import { SourceUnavailable, storageSourceLoader } from "../sources";
 
 /**
@@ -106,6 +107,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       ...(deps.planFrontierFromYear !== undefined
         ? { planFrontierFromYear: deps.planFrontierFromYear }
         : {}),
+      ...effortOverride(deps.reasoningEffort),
       signal,
       logger: logger.child({
         resumed: priorUsage !== undefined,

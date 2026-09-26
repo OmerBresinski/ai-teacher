@@ -10,6 +10,7 @@ import type {
 } from "@tj/domain/documents";
 import type { PhotoResult, StoredPhoto } from "@tj/images";
 import type { Logger } from "pino";
+import type { ReasoningEffort } from "./call";
 import type { VerifyCorrection } from "./specs";
 
 /*
@@ -153,14 +154,11 @@ export interface PipelineDeps {
    */
   planFrontierFromYear?: number;
   /**
-   * Lab and eval only: the reasoning effort a call runs at, given the stage, the prompt name
-   * (`plan-facts`) and the effort the stage asked for. Unset in production: the stage's choice.
+   * The reasoning effort a call runs at, given the stage, the prompt name (`plan-facts`) and the
+   * effort the stage asked for. Set by the lab's effort bench, and by the worker when
+   * `AI_REASONING_EFFORT` is set (TEACH-72). Unset: the stage's choice.
    */
-  effortFor?: (
-    stage: string,
-    promptName: string,
-    effort: "none" | "low" | "medium" | "high",
-  ) => "none" | "low" | "medium" | "high";
+  effortFor?: (stage: string, promptName: string, effort: ReasoningEffort) => ReasoningEffort;
   /**
    * Where illustrate reports its counts for the summary line. Stages cannot see the
    * `RequestContext`, so the per-run counts ride here instead (the same shape of channel as
