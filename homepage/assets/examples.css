@@ -408,6 +408,9 @@
   .viewer-thumbs {
     display: none;
   }
+  .lesson-block {
+    padding-bottom: 1.75rem;
+  }
   .lesson-papers {
     grid-template-columns: 1fr;
     gap: 2.5rem;

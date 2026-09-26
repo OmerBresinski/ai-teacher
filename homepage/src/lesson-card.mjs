@@ -6,14 +6,12 @@ export const yearSubject = (example) =>
   `${example.year} · ${example.subject[0].toUpperCase()}${example.subject.slice(1)}`;
 
 // What a lesson ships with, read from its manifest: never promise a worksheet that is not there.
+// Answers are left out: every lesson has them, and the index intro already says so.
 export const materials = (example) =>
   [
     `${example.slides.length} slide${example.slides.length === 1 ? "" : "s"}`,
     ...(example.worksheet ? ["worksheet"] : []),
     ...(example.exitTicket ? ["exit ticket"] : []),
-    ...(example.worksheet?.answers.length || example.slides.some((slide) => slide.answer)
-      ? ["answers"]
-      : []),
   ].join(" · ");
 
 // One card is one link: the cover, the year and subject, the title and the materials all sit
