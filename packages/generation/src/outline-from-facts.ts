@@ -97,9 +97,10 @@ import {
  * only the objectives in `checkAfter` get a check after their cycle (the reserve, the shared
  * practise slide and P3 follow it); the flow's worked example, vocabulary and open-response are the
  * required kinds, and P4 adds spare worked examples only when the flow asked for them; the closing
- * slide is the exit quiz, one open exit question written or debated (a declared judgement first),
- * or a matching slide of three taught key words, falling back to the quiz with a gap when the
- * facts lack the material. The floors left are the slide count, every objective taught, and that
+ * slide is the exit quiz, the exit quiz asked as short written answers (l6e: one per objective
+ * first, never a single open question), or (Year 2 and below) a matching slide of three taught key
+ * words spanning every objective, falling back to the quiz with a gap when the facts lack them. A
+ * flow's mid-lesson check is a set of 2-3 questions, never its one true/false statement (l6e). The floors left are the slide count, every objective taught, and that
  * closing check. Without a flow every step runs as before.
  */
 
@@ -521,8 +522,14 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
    * the one question that fits; `undefined` when none is fair.
    */
   const checkSlot = (o: number): Slot | undefined => {
-    // A shape that confronts a misconception keeps its one true/false slide.
-    if (shape.requireMisconceptionConfronted && !has("true-false")) {
+    // A shape that confronts a misconception keeps its one true/false slide. l6e: not as a flow's
+    // check, which asks 2-3 items (round D: a one-statement check lost on practice); the common
+    // mistake then comes through a practise slide or its teaching slide's callout.
+    if (
+      shape.requireMisconceptionConfronted &&
+      !has("true-false") &&
+      shape.checkAfter === undefined
+    ) {
       const tf = questionsOf(o).find(
         (i) =>
           !used.questions.has(i) &&
@@ -1134,6 +1141,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     const round = new Map<number, number>();
     const ranked = exits
       .filter(settable)
+      // l6e: a written close asks each objective's openly askable exit question first.
+      .sort((a, b) => (closer.written ? Number(!admitsOpen(a)) - Number(!admitsOpen(b)) : 0))
       .map((i, at) => {
         const o = firstObjectiveOf(i) ?? count;
         const n = round.get(o) ?? 0;
@@ -1321,67 +1330,42 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
    * `slots` in place and returns the cycles as slot lists.
    */
   /**
-   * l6d: the closing check in the flow's form. `written` and `debate` ask one exit question the
-   * facts declared askable openly (a declared judgement first, then the last objective's);
-   * `matching` pairs three key words with their meanings. Without the material the form needs, or
-   * with no flow, the exit quiz: some closing check always ends the deck.
+   * l6d, l6e: the closing check in the flow's form. Every form checks every objective with several
+   * items (l6e: round D's single open exit question lost 9 of 11 pairs on practice). `written` is
+   * the exit quiz with each objective's openly askable exit question first, pupils writing every
+   * answer; `matching` pairs three key words, one per objective first, only when they span every
+   * objective. Otherwise, or with no flow, the exit quiz.
    */
   function chooseCloser():
-    | { kind: "exit-ticket" }
-    | {
-        kind: "open-response" | "discussion" | "matching";
-        objectives: number[];
-        refs: OrdinalRef[];
-        adds: string;
-      } {
+    | { kind: "exit-ticket"; written: boolean }
+    | { kind: "matching"; objectives: number[]; refs: OrdinalRef[]; adds: string } {
     const form = shape.close ?? "quiz";
-    if (form === "written" || form === "debate") {
-      const open = facts.questions.flatMap((q, i) =>
-        q.use === "exit" && !used.questions.has(i) && admitsOpen(i) && fair(i) ? [i] : [],
-      );
-      const lastOf = (i: number) => Math.max(-1, ...refIndices(facts.questions[i]?.objectiveRefs));
-      const i = [...open].sort(
-        (a, b) =>
-          Number(facts.questions[b]?.demand === "judgement") -
-            Number(facts.questions[a]?.demand === "judgement") ||
-          lastOf(b) - lastOf(a) ||
-          a - b,
-      )[0];
-      const q = i === undefined ? undefined : facts.questions[i];
-      if (i !== undefined && q !== undefined) {
-        used.questions.add(i);
-        const debate = form === "debate";
-        return {
-          kind: debate ? "discussion" : "open-response",
-          objectives: refIndices(q.objectiveRefs),
-          refs: [{ type: "question", index: i }],
-          adds: debate
-            ? `Closing debate, ending on a success check (what a strong answer includes): ${q.stem}`
-            : `Exit: pupils write a short answer: ${q.stem}`,
-        };
-      }
-      gap(
-        `The flow closes with ${form === "debate" ? "a debate" : "a written answer"} and the facts have no exit question that can be asked openly, so the lesson ends on the exit quiz.`,
-      );
-      return { kind: "exit-ticket" };
-    }
     if (form === "matching") {
-      const terms = facts.vocabulary
-        .flatMap((v, t) => (refIndices(v.objectiveRefs).every((o) => taught(o)) ? [t] : []))
-        .slice(0, MATCHING_PAIRS);
-      if (terms.length === MATCHING_PAIRS) {
+      const termObjectives = (t: number) => refIndices(facts.vocabulary[t]?.objectiveRefs);
+      const onTaught = facts.vocabulary.flatMap((_, t) =>
+        termObjectives(t).every((o) => taught(o)) ? [t] : [],
+      );
+      const terms: number[] = [];
+      for (const o of all) {
+        const t = onTaught.find((x) => !terms.includes(x) && termObjectives(x).includes(o));
+        if (t !== undefined && terms.length < MATCHING_PAIRS) terms.push(t);
+      }
+      for (const t of onTaught)
+        if (terms.length < MATCHING_PAIRS && !terms.includes(t)) terms.push(t);
+      const objectives = dedupe(terms.flatMap(termObjectives)).sort((a, b) => a - b);
+      if (terms.length === MATCHING_PAIRS && all.every((o) => objectives.includes(o))) {
         return {
           kind: "matching",
-          objectives: dedupe(terms.flatMap((t) => refIndices(facts.vocabulary[t]?.objectiveRefs))),
+          objectives,
           refs: terms.map((index): OrdinalRef => ({ type: "vocabulary", index })),
           adds: `Pupils match each key word to its meaning: ${terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", ")}.`,
         };
       }
       gap(
-        `The flow closes with a matching task and the facts have ${terms.length} key word${terms.length === 1 ? "" : "s"} on taught objectives, so the lesson ends on the exit quiz.`,
+        `The flow closes with a matching task and the facts have no ${MATCHING_PAIRS} key words on taught objectives that span every objective, so the lesson ends on the exit quiz.`,
       );
     }
-    return { kind: "exit-ticket" };
+    return { kind: "exit-ticket", written: form === "written" };
   }
 
   function orderInCycles(): { teach: Slot[]; check: Slot[] }[] {
@@ -1653,7 +1637,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       factRefs: objectiveRefs(all),
       phase: "check",
       brief: brief(
-        `${n} quick item${n === 1 ? "" : "s"} across the objectives${withheld ? ", each on what the slides taught" : ""}; the answers are revealed on the slide.`,
+        closer.written
+          ? `${n} short written answer${n === 1 ? "" : "s"} across the objectives, one per objective first${withheld ? ", each on what the slides taught" : ""}; pupils write each answer, then the answers are revealed on the slide.`
+          : `${n} quick item${n === 1 ? "" : "s"} across the objectives${withheld ? ", each on what the slides taught" : ""}; the answers are revealed on the slide.`,
       ),
     });
     outlineFactRefs.push({

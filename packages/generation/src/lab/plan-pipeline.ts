@@ -364,6 +364,7 @@ export async function labPlan(
           shape: briefShape,
           audience,
           priorKnowledge: brief.classContext?.priorKnowledge,
+          slideCount,
           curriculum,
         },
         schema: planObjectivesOutputSchemaFor(curriculum !== undefined),
@@ -376,7 +377,7 @@ export async function labPlan(
   // l6d: the flow the objectives call chose replaces the verb table's kinds and floors for every
   // later step (teach, question sets, demand, outline); without one (a saved run) nothing changes.
   const flow = "flow" in objectivesCall.output ? objectivesCall.output.flow : undefined;
-  const shape = flow ? withFlow(briefShape, flow, objectives.length) : briefShape;
+  const shape = flow ? withFlow(briefShape, flow, objectives.length, audience.ageBand) : briefShape;
   // A hook or no opener: the retrieval set stays off the deck and off the facts verify sees.
   const retrieval =
     objectivesCall.output.retrieval &&

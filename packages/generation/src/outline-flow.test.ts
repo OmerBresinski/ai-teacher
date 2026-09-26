@@ -97,6 +97,7 @@ function run(flow: Partial<LessonFlow>, n = 3, slideCount: SlideCount = 10, f = 
     lessonShapeOf({ objectiveVerb: "Explain", priorConfidence: "Some prior knowledge" }),
     { ...FLOW, ...flow },
     n,
+    "ks1",
   );
   const result = outlineFromFacts({
     topic: "Rivers",
@@ -143,7 +144,7 @@ describe("withFlow", () => {
 
 describe("outlineFromFacts with a flow", () => {
   test("the slide count is exact, every objective is taught, and the deck parses, in every close", () => {
-    for (const close of ["quiz", "written", "debate", "matching"] as const)
+    for (const close of ["quiz", "written", "matching"] as const)
       for (const slideCount of [8, 10, 12] as const) {
         const r = run({ close, checkAfter: [1] }, 3, slideCount);
         expect(r.result.skeleton.outline).toHaveLength(slideCount);
@@ -194,25 +195,38 @@ describe("outlineFromFacts with a flow", () => {
     expect(kinds(run({ opener: "none" }))).not.toContain("starter");
   });
 
-  test("closes: written and debate ask one open exit question, a judgement first", () => {
-    const f = facts(3, { judgement: true });
-    const written = run({ close: "written" }, 3, 10, f);
-    const last = written.result.skeleton.outline.at(-1);
-    expect(last?.kind).toBe("open-response");
-    expect(last?.phase).toBe("check");
-    const refs = written.result.outlineFactRefs.at(-1)?.factRefs ?? [];
-    expect(refs).toHaveLength(1);
-    expect(f.questions[refs[0]?.index ?? -1]?.demand).toBe("judgement");
-    const debate = run({ close: "debate" }, 3, 10, f).result.skeleton.outline.at(-1);
-    expect(debate?.kind).toBe("discussion");
-    expect(debate?.brief?.adds).toMatch(/success check/);
+  test("l6e: a written close is the exit quiz as short written answers, every objective checked", () => {
+    const r = run({ close: "written" }, 3, 10, facts(3, { judgement: true }));
+    const last = r.result.skeleton.outline.at(-1);
+    expect(last?.kind).toBe("exit-ticket");
+    expect(last?.brief?.adds).toMatch(/short written answers/);
+    expect((r.result.outlineFactRefs.at(-1)?.factRefs ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(r.result.coverage.every((c) => c.checked.length > 0)).toBe(true);
   });
 
-  test("closes: matching pairs three taught key words", () => {
-    const r = run({ close: "matching" }, 2, 8);
+  test("l6e: a flow's mid-lesson check is a set, never its one true/false statement", () => {
+    const r = run({ commonMistake: true, checkAfter: [1, 2] }, 3, 10);
+    const checks = r.result.skeleton.outline.filter((e) => e.phase === "practise");
+    expect(checks.length).toBeGreaterThan(0);
+    for (const e of checks) expect(e.kind).not.toBe("true-false");
+  });
+
+  test("closes: matching pairs three taught key words, one per objective first", () => {
+    const r = run({ close: "matching" }, 3, 10);
     expect(r.result.skeleton.outline.at(-1)?.kind).toBe("matching");
     const refs = r.result.outlineFactRefs.at(-1)?.factRefs ?? [];
     expect(refs.map((x) => x.type)).toEqual(["vocabulary", "vocabulary", "vocabulary"]);
+    expect(r.result.coverage.every((c) => c.checked.length > 0)).toBe(true);
+  });
+
+  test("l6e: matching is for Year 2 and below; above it (or unknown) the close is the quiz", () => {
+    const base = lessonShapeOf({});
+    const m = { ...FLOW, close: "matching" as const };
+    expect(withFlow(base, m, 3, "ks1").close).toBe("matching");
+    expect(withFlow(base, m, 3, "eyfs").close).toBe("matching");
+    expect(withFlow(base, m, 3, "ks2").close).toBe("quiz");
+    expect(withFlow(base, m, 3).close).toBe("quiz");
+    expect(withFlow(base, { ...FLOW, close: "written" }, 3, "ks3").close).toBe("written");
   });
 
   test("a close the facts cannot supply falls back to the exit quiz, with a gap", () => {
@@ -221,10 +235,9 @@ describe("outlineFromFacts with a flow", () => {
     const matching = run({ close: "matching" }, 2, 8, f);
     expect(matching.result.skeleton.outline.at(-1)?.kind).toBe("exit-ticket");
     expect(matching.result.gaps.some((g) => /matching/.test(g))).toBe(true);
-    const g = facts(2);
-    g.questions = g.questions.filter((q) => q.distractors !== undefined);
-    const written = run({ close: "written" }, 2, 8, g);
-    expect(written.result.skeleton.outline.at(-1)?.kind).toBe("exit-ticket");
-    expect(written.result.gaps.some((x) => /written answer/.test(x))).toBe(true);
+    // l6e: three pairs cannot span four objectives, so the close is the quiz.
+    const four = run({ close: "matching" }, 4, 12);
+    expect(four.result.skeleton.outline.at(-1)?.kind).toBe("exit-ticket");
+    expect(four.result.gaps.some((g) => /span every objective/.test(g))).toBe(true);
   });
 });

@@ -83,7 +83,14 @@ export const OPENERS = ["hook", "retrieval", "none"] as const;
 export type Opener = (typeof OPENERS)[number];
 export const PRACTICE_FORMS = ["questions", "discussion", "both"] as const;
 export type PracticeForm = (typeof PRACTICE_FORMS)[number];
-export const CLOSES = ["quiz", "written", "debate", "matching"] as const;
+/**
+ * l6e (round D judged, 5-11 against round C, 9 of 11 on practice): the close always checks every
+ * objective with several items. `written` is the exit ticket asked as short written answers, one
+ * per objective, answers keyed; `matching` is for Year 2 and below and only when its terms span
+ * every objective. The single open exit question (`written` as it was) and the closing `debate`
+ * are gone; discussion stays a practice form.
+ */
+export const CLOSES = ["quiz", "written", "matching"] as const;
 export type Close = (typeof CLOSES)[number];
 
 /** The objectives call's `flow`, as written: `checkAfter` holds 1-based objective numbers. */
@@ -99,14 +106,19 @@ export type LessonFlow = {
 
 const FLOW_KINDS: SlideKind[] = ["worked-example", "vocabulary", "open-response"];
 
+/** l6e: the age bands a matching close is for (Year 2 and below). */
+const MATCHING_BANDS: readonly string[] = ["eyfs", "ks1"];
+
 /**
  * The shape with the flow's choices in place of the table's. Objective numbers outside
- * `1..objectiveCount` are dropped (a structural guard; the model's choice is otherwise kept).
+ * `1..objectiveCount` are dropped, and a matching close above Year 2 (`ageBand` not eyfs or ks1;
+ * unknown counts as above) is the quiz: structural guards, the model's choice otherwise kept.
  */
 export function withFlow(
   shape: LessonShape,
   flow: LessonFlow,
   objectiveCount: number,
+  ageBand?: string | undefined,
 ): LessonShape {
   const kinds: SlideKind[] = [
     ...(flow.workedExample ? (["worked-example"] as const) : []),
@@ -129,7 +141,8 @@ export function withFlow(
     practiseMinPercent: 0,
     opener: flow.opener,
     checkAfter,
-    close: flow.close,
+    close:
+      flow.close === "matching" && !MATCHING_BANDS.includes(ageBand ?? "") ? "quiz" : flow.close,
   };
 }
 
