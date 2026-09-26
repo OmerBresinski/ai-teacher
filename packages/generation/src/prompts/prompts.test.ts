@@ -232,9 +232,10 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
     // v26: the copy-down lead, the diagram rule and the shorter slide aims (look uplift); v27
     // tightens the diagram trigger; v28 replaces its "single claim" none case. v29: the label
-    // heading, the lead and the optional `points` (look/headings).
-    version: "generate-slide.v29",
-    hash: "73076601cedcf5495e321153762ba6f1d608d2703463a5da1a57b9c7bda48349",
+    // heading, the lead and the optional `points` (look/headings); v30 restores the 30-word body
+    // and gates `points` on the lead naming three or more things.
+    version: "generate-slide.v30",
+    hash: "05f544ba06e21d9af21664ee9f3020eef552636aecf8e8a17fd13dd577144b26",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -324,8 +325,9 @@ describe("prompt versions", () => {
       // order, luna-direct FM3) is 979. v26 (look uplift: the copy-down lead and the `diagram`
       // rule with its named "none" and type list, Greg 26 Sept) is 1123; v27 (the diagram trigger
       // tightened) is 1138; v28 (the "single claim" none case replaced) is 1144. v29 (label heading,
-      // lead and the `points` slot with its gate, Greg 26 Sept "still not good enough") is 1187.
-      "generate-slide": 1195,
+      // lead and the `points` slot with its gate, Greg 26 Sept "still not good enough") is 1187;
+      // v30 (the 30-word body restored, the countable `points` gate) is 1206.
+      "generate-slide": 1215,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
       // v13 was 415 words. v14 (lab round 1, +97: errors first and answer lines kept, once-in-the-
@@ -611,7 +613,9 @@ describe("prompt versions", () => {
     const withDiagram = shapeLines.filter((line) => line.includes('"diagram"'));
     expect(withDiagram).toHaveLength(1);
     expect(withDiagram[0]).toStartWith("- content:");
-    expect(withDiagram[0]).toContain('"heading" (2–5 words), "body" (lead ≤ 20 words');
+    expect(withDiagram[0]).toContain(
+      '"heading" (2–5 words), "body" (≤ 30 words, its first sentence ≤ 20;',
+    );
     expect(withDiagram[0]).toContain('"points"? [2–4 strings, each ≤ 8 words]');
     expect(system).toContain("heading/subtitle ≤ 60, each item ≤ 110");
     expect(system).toContain("body ≤ 260");
