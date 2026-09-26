@@ -73,6 +73,11 @@ plus a `manifest.json`:
 }
 ```
 
+Two optional fields add teaching material. `slides[].answer` (`{src, alt}`) is the same slide with
+its answers shown; the lesson page offers an Answers switch on that slide only. `exitTicket`
+(`{pages, answers}`) is a printable page of cut-out slips with its own answers page. `worksheet.answers`
+is the teacher's mark scheme, shown by the Mark scheme switch in the worksheet's place.
+
 `worksheet` is optional. A lesson that ships with slides only omits it, and the page then omits the
 Worksheet and Answer key sections and the "worksheet and answer key" half of every caption. Never
 borrow a worksheet from a different lesson to fill the gap.

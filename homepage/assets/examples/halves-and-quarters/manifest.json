@@ -11,7 +11,11 @@
     },
     {
       "src": "slides/02.png",
-      "alt": "Slide 2, starter: Share it fairly. Two children share 10 strawberries. How many does each child get? Ten strawberries above two empty plates. Pupils talk to a partner and may draw it."
+      "alt": "Slide 2, starter: Share it fairly. Two children share 10 strawberries. How many does each child get? Ten strawberries above two empty plates. Pupils talk to a partner and may draw it.",
+      "answer": {
+        "src": "slides/02-answers.png",
+        "alt": "Slide 2 with the answer: each child gets 5, because half of 10 is 5. Five strawberries sit on each plate."
+      }
     },
     {
       "src": "slides/03.png",
@@ -31,11 +35,19 @@
     },
     {
       "src": "slides/07.png",
-      "alt": "Slide 7, practise: True or false? This circle is split into halves. This rectangle is split into halves, shown with one narrow and one wide part. This square is split into quarters. A quarter of 12 is 4."
+      "alt": "Slide 7, practise: True or false? This circle is split into halves. This rectangle is split into halves, shown with one narrow and one wide part. This square is split into quarters. A quarter of 12 is 4.",
+      "answer": {
+        "src": "slides/07-answers.png",
+        "alt": "Slide 7 with answers: true, the circle is split into halves; false, the rectangle’s parts are not equal; true, the square is split into quarters; false, a quarter of 12 is 3."
+      }
     },
     {
       "src": "slides/08.png",
-      "alt": "Slide 8, exit ticket: What is half of 6? What is a quarter of 8? Draw a shape and split it into quarters, with a dashed box to draw in."
+      "alt": "Slide 8, exit ticket: answer on your exit ticket slip, then hand it in. What is half of 6? What is a quarter of 8? Draw a shape and split it into quarters.",
+      "answer": {
+        "src": "slides/08-answers.png",
+        "alt": "Slide 8 with answers: half of 6 is 3; a quarter of 8 is 2; any shape split into four equal parts."
+      }
     }
   ],
   "worksheet": {
@@ -48,7 +60,21 @@
     "answers": [
       {
         "src": "answers/01.png",
-        "alt": "Answer key for Halves and quarters: half of 4 is 2, of 10 is 5, of 14 is 7; a quarter of 4 is 1, of 8 is 2, of 12 is 3; one of four equal parts shaded in each shape; Mia is wrong because a half is bigger than a quarter."
+        "alt": "Mark scheme for the Halves and quarters worksheet, 11 marks: half of 4, 10 and 14 is 2, 5 and 7; a quarter of 4, 8 and 12 is 1, 2 and 3, watching for pupils who halve instead; one of four equal parts shaded in each shape; Mia is wrong because splitting a whole into more equal parts makes each part smaller."
+      }
+    ]
+  },
+  "exitTicket": {
+    "pages": [
+      {
+        "src": "exit-ticket/01.png",
+        "alt": "Exit ticket slips for Halves and quarters, three to a page to cut out: what is half of 6; what is a quarter of 8; draw a shape and split it into quarters."
+      }
+    ],
+    "answers": [
+      {
+        "src": "exit-ticket/answers-01.png",
+        "alt": "Exit ticket answers for Halves and quarters: half of 6 is 3; a quarter of 8 is 2, and pupils answering 4 have found half; any shape split into four equal parts."
       }
     ]
   }

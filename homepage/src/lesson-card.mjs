@@ -10,7 +10,10 @@ export const materials = (example) =>
   [
     `${example.slides.length} slide${example.slides.length === 1 ? "" : "s"}`,
     ...(example.worksheet ? ["worksheet"] : []),
-    ...(example.worksheet?.answers.length ? ["answer key"] : []),
+    ...(example.exitTicket ? ["exit ticket"] : []),
+    ...(example.worksheet?.answers.length || example.slides.some((slide) => slide.answer)
+      ? ["answers"]
+      : []),
   ].join(" · ");
 
 // One card is one link: the cover, the year and subject, the title and the materials all sit

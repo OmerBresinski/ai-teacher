@@ -85,8 +85,14 @@
 }
 
 /* ---- Lesson page ---- */
+/* The head is one compact band so the first slide sits near the top of the screen. */
+.lesson-head {
+  padding-block: clamp(1.25rem, 2.5vw, 2rem) clamp(1.25rem, 2.5vw, 1.75rem);
+}
 .lesson-back {
-  margin-bottom: 1.25rem;
+  min-height: 40px;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
 }
 .lesson-back > span {
   transform: scaleX(-1);
@@ -94,22 +100,81 @@
 .lesson-back:hover > span {
   transform: scaleX(-1) translateX(3px);
 }
+.lesson-title-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+  flex-wrap: wrap;
+}
+.lesson-head .eyebrow {
+  margin-bottom: 0.6rem;
+}
 .lesson-head h1 {
-  font-size: clamp(2.5rem, 4.6vw, 4.25rem);
-  max-width: 20ch;
+  font-size: clamp(2.1rem, 3.4vw, 3.25rem);
+  max-width: 24ch;
 }
 .lesson-materials {
-  margin-top: 1.1rem;
-  font-size: var(--text-lead);
+  font-size: 1rem;
+  font-weight: 500;
   color: var(--muted);
+  padding-bottom: 0.35rem;
 }
-.lesson-subhead {
-  font-size: clamp(1.5rem, 2.2vw, 1.875rem);
-  letter-spacing: -0.02em;
-  margin-bottom: 1.5rem;
+.lesson-block {
+  padding-bottom: clamp(2.5rem, 5vw, 4rem);
+}
+
+/* One switch for answers, on slides and on paper alike. */
+.answer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0 1rem 0 0.75rem;
+  border: 1px solid var(--control-border);
+  border-radius: 99px;
+  background: var(--paper);
+  font-size: 1rem;
+  font-weight: 500;
+}
+.answer-toggle > span[aria-hidden] {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 99px;
+  background: var(--line);
+  transition: background 0.2s;
+}
+.answer-toggle > span[aria-hidden]::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--paper);
+  transition: transform 0.2s var(--ease);
+}
+.answer-toggle[aria-checked="true"] > span[aria-hidden] {
+  background: var(--ink);
+}
+.answer-toggle[aria-checked="true"] > span[aria-hidden]::after {
+  transform: translateX(14px);
+}
+.answer-toggle:hover {
+  border-color: var(--ink);
 }
 
 /* Slides. Without JavaScript every slide is visible in a grid. */
+.viewer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 44px;
+  margin-bottom: 0.75rem;
+}
 .viewer-slides {
   list-style: none;
   margin: 0;
@@ -137,10 +202,10 @@
 }
 .viewer-controls {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.75rem 1.5rem;
-  margin-top: 1.5rem;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1rem;
 }
 .viewer-status {
   font-size: 1rem;
@@ -174,7 +239,6 @@
 }
 /* The strip pads for the focus ring and pulls back so thumbnails sit on the grid edge. */
 .viewer-thumbs {
-  grid-column: 1 / -1;
   position: relative;
   display: grid;
   grid-auto-flow: column;
@@ -211,12 +275,25 @@
     0 0 0 4px var(--ink);
 }
 
-/* Worksheet and answer key: paper pages side by side. */
+/* Worksheet and exit ticket: paper pages side by side, each with its own answers switch. */
 .lesson-papers {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(2rem, 4vw, 3.5rem);
+  gap: clamp(1.5rem, 4vw, 3rem);
   align-items: start;
+}
+.paper-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 44px;
+  margin-bottom: 0.75rem;
+}
+.paper-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .paper-page {
   margin: 0;
@@ -224,64 +301,19 @@
 .paper-page + .paper-page {
   margin-top: 1.5rem;
 }
-.lesson-answers > summary {
-  list-style: none;
+/* Without JavaScript the answers follow the sheet; with it they replace it in the same place. */
+.paper-answers {
+  margin-top: 1.5rem;
 }
-.lesson-answers > summary::-webkit-details-marker {
+.paper-answers-label {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+.paper-doc[data-enhanced] .paper-answers {
+  margin-top: 0;
+}
+.paper-doc[data-enhanced] .paper-answers-label {
   display: none;
-}
-/* Closed, the answer key is a covered page the same size as the worksheet beside it. */
-.lesson-answers:not([open]) > summary {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1240 / 1754;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-paper);
-  /* Faint ruled lines: a page turned over, not an empty box. */
-  background:
-    repeating-linear-gradient(to bottom, transparent 0 34px, rgb(41 59 50 / 0.06) 34px 35px),
-    var(--sage);
-  cursor: pointer;
-}
-.lesson-answers-show {
-  display: inline-flex;
-  align-items: center;
-  min-height: 52px;
-  padding: 0.9rem 1.5rem;
-  border-radius: 99px;
-  background: var(--ink);
-  color: var(--cream);
-  font-size: 1rem;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-.lesson-answers > summary:hover .lesson-answers-show {
-  background: #405347;
-}
-.lesson-answers-hide {
-  display: none;
-}
-/* Open, "Hide" moves up to the heading line so both pages still start at the same height. */
-.lesson-paper-col {
-  position: relative;
-}
-.lesson-answers[open] > summary {
-  position: absolute;
-  top: -0.35rem;
-  right: 0;
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-size: 1rem;
-  font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 6px;
-}
-.lesson-answers[open] > summary > .lesson-answers-show {
-  display: none;
-}
-.lesson-answers[open] .lesson-answers-hide {
-  display: inline;
 }
 
 @media (max-width: 1100px) {
@@ -299,10 +331,12 @@
   .lesson-papers {
     grid-template-columns: 1fr;
   }
-  /* Stacked, a covered full page would only be empty space. */
-  .lesson-answers:not([open]) > summary {
-    aspect-ratio: auto;
-    padding-block: 2.5rem;
+  .viewer-controls {
+    grid-template-columns: 1fr;
+  }
+  .viewer-steps {
+    justify-content: flex-end;
+    grid-row: 1;
   }
 }
 @media (max-width: 560px) {

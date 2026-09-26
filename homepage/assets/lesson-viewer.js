@@ -1,14 +1,30 @@
-// Slide viewer for a lesson page. Without this script every slide stays visible in a grid; with it,
-// one large slide sits on the stage and a strip of thumbnails chooses between them.
+// Lesson page behaviour. Without this script every slide stays visible in a grid and each sheet's
+// answers follow it; with it, one large slide sits on the stage, a strip of thumbnails chooses
+// between them, and an Answers switch reveals a slide's or a sheet's answers in the same place.
 (() => {
+  const setSwitch = (button, on) => button.setAttribute("aria-checked", String(on));
   for (const viewer of document.querySelectorAll("[data-viewer]")) {
     const slides = [...viewer.querySelectorAll(".viewer-slide")];
     const thumbs = [...viewer.querySelectorAll(".viewer-thumb")];
     const status = viewer.querySelector(".viewer-status");
     const steps = [...viewer.querySelectorAll(".viewer-step")];
     const controls = viewer.querySelector(".viewer-controls");
+    const bar = viewer.querySelector(".viewer-bar");
+    const answers = viewer.querySelector("[data-slide-answers]");
     if (slides.length < 2 || !controls) continue;
     let current = 0;
+
+    // Each slide opens on its question; the switch appears only where a slide has answers.
+    const showAnswer = (on) => {
+      const slide = slides[current];
+      const answer = slide.querySelector("[data-answer]");
+      slide.querySelector("img:not([data-answer])").hidden = Boolean(answer && on);
+      if (answer) answer.hidden = !on;
+      setSwitch(answers, Boolean(answer && on));
+    };
+    answers?.addEventListener("click", () => {
+      showAnswer(answers.getAttribute("aria-checked") !== "true");
+    });
 
     const show = (index, focusThumb = false) => {
       current = (index + slides.length) % slides.length;
@@ -23,6 +39,10 @@
         thumb.tabIndex = on ? 0 : -1;
       });
       status.textContent = `Slide ${current + 1} of ${slides.length}`;
+      if (answers) {
+        answers.hidden = !slides[current].hasAttribute("data-has-answer");
+        showAnswer(false);
+      }
       const thumb = thumbs[current];
       // Keep the chosen thumbnail in view inside its own strip, never by scrolling the page.
       const strip = thumb.parentElement;
@@ -52,7 +72,25 @@
     });
 
     controls.hidden = false;
+    if (bar) bar.hidden = false;
     viewer.dataset.enhanced = "";
     show(0);
+  }
+
+  // A printed sheet and its answers share one place on the page.
+  for (const doc of document.querySelectorAll("[data-paper]")) {
+    const toggle = doc.querySelector(".answer-toggle");
+    const sheet = doc.querySelector(".paper-sheet");
+    const answers = doc.querySelector("[data-answers]");
+    if (!toggle || !sheet || !answers) continue;
+    const set = (on) => {
+      setSwitch(toggle, on);
+      sheet.hidden = on;
+      answers.hidden = !on;
+    };
+    toggle.addEventListener("click", () => set(toggle.getAttribute("aria-checked") !== "true"));
+    doc.dataset.enhanced = "";
+    toggle.hidden = false;
+    set(false);
   }
 })();

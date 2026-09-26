@@ -174,16 +174,19 @@ test.describe("top lessons", () => {
     )) {
       expect(alt.trim().length).toBeGreaterThan(0);
     }
-    // A lesson may ship with slides only; when it has a worksheet the answers stay hidden until
-    // the disclosure is opened, and no worksheet heading appears when it has none.
-    const answers = page.locator(".lesson-answers");
-    if ((await answers.count()) > 0) {
-      await expect(page.locator(".lesson-answers img").first()).toBeHidden();
-      await answers.locator("summary").click();
-      await expect(page.locator(".lesson-answers img").first()).toBeVisible();
+    // A lesson may ship with slides only. When it has a worksheet, its mark scheme stays hidden
+    // until the Answers switch is turned on, and then takes the sheet's place; no worksheet
+    // heading appears when it has none.
+    const sheet = page.locator(".paper-doc").filter({ hasText: "Worksheet" });
+    if ((await sheet.count()) > 0) {
+      const toggle = sheet.getByRole("switch");
+      await expect(sheet.locator("[data-answers] img").first()).toBeHidden();
+      await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-checked", "true");
+      await expect(sheet.locator("[data-answers] img").first()).toBeVisible();
+      await expect(sheet.locator(".paper-sheet img").first()).toBeHidden();
     } else {
       await expect(page.getByRole("heading", { name: "Worksheet" })).toHaveCount(0);
-      await expect(page.getByRole("heading", { name: "Answer key" })).toHaveCount(0);
     }
   });
 });
@@ -217,6 +220,20 @@ test.describe("slide viewer", () => {
       await second.press("ArrowRight");
       await expect(page.locator(".viewer-status")).toHaveText(`Slide 3 of ${total}`);
       await expect(page.locator(".viewer-thumb").nth(2)).toBeFocused();
+      // A slide with answers offers the switch; turning it on swaps in the answer image, and
+      // moving to another slide turns it off again.
+      const withAnswer = slides.filter({ has: page.locator("[data-answer]") }).first();
+      if ((await withAnswer.count()) > 0) {
+        const index = await withAnswer.evaluate((el) => [...el.parentElement.children].indexOf(el));
+        await page.locator(".viewer-thumb").nth(index).click();
+        const toggle = page.locator("[data-slide-answers]");
+        await toggle.click();
+        await expect(toggle).toHaveAttribute("aria-checked", "true");
+        await expect(withAnswer.locator("[data-answer]")).toBeVisible();
+        await page.locator(".viewer-thumb").nth(1).click();
+        await expect(toggle).toHaveAttribute("aria-checked", "false");
+      }
+      await page.locator(".viewer-thumb").nth(2).click();
       await page.getByRole("button", { name: "Previous slide" }).click();
       await expect(page.locator(".viewer-status")).toHaveText(`Slide 2 of ${total}`);
       await context.close();

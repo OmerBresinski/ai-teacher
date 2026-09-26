@@ -15,7 +15,11 @@
     },
     {
       "src": "slides/03.png",
-      "alt": "Slide 3, starter: Where does a tree’s mass come from? A, the soil. B, the water it takes up. C, carbon dioxide from the air. D, sunlight. Pupils vote, then justify their answer to a partner."
+      "alt": "Slide 3, starter: Where does a tree’s mass come from? A, the soil. B, the water it takes up. C, carbon dioxide from the air. D, sunlight. Pupils vote, then justify their answer to a partner.",
+      "answer": {
+        "src": "slides/03-answers.png",
+        "alt": "Slide 3 with the answer: C, carbon dioxide from the air. Most of a tree’s dry mass is built from carbon dioxide taken in during photosynthesis."
+      }
     },
     {
       "src": "slides/04.png",
@@ -39,7 +43,11 @@
     },
     {
       "src": "slides/09.png",
-      "alt": "Slide 9, practise: True or false? Oxygen is produced during photosynthesis. Plants only respire at night. Increasing light intensity always increases the rate of photosynthesis. Photosynthesis takes in energy from its surroundings."
+      "alt": "Slide 9, practise: True or false? Oxygen is produced during photosynthesis. Plants only respire at night. Increasing light intensity always increases the rate of photosynthesis. Photosynthesis takes in energy from its surroundings.",
+      "answer": {
+        "src": "slides/09-answers.png",
+        "alt": "Slide 9 with answers: true, oxygen is produced; false, plants respire all the time; false, the rate rises only until another factor limits it; true, photosynthesis takes in energy from its surroundings."
+      }
     },
     {
       "src": "slides/10.png",
@@ -47,11 +55,19 @@
     },
     {
       "src": "slides/11.png",
-      "alt": "Slide 11, fill the gap: Complete the sentences. Photosynthesis takes place in the blank, which contain the green pigment blank. Carbon dioxide enters the leaf through the blank. Water travels up from the roots in the blank. Word bank: chlorophyll, chloroplasts, phloem, stomata, xylem."
+      "alt": "Slide 11, fill the gap: Complete the sentences. Photosynthesis takes place in the blank, which contain the green pigment blank. Carbon dioxide enters the leaf through the blank. Water travels up from the roots in the blank. Word bank: chlorophyll, chloroplasts, phloem, stomata, xylem.",
+      "answer": {
+        "src": "slides/11-answers.png",
+        "alt": "Slide 11 with answers: chloroplasts, chlorophyll, stomata, xylem. Phloem is not used."
+      }
     },
     {
       "src": "slides/12.png",
-      "alt": "Slide 12, exam question: A student measured the rate of photosynthesis in pondweed at different light intensities. Explain why the rate stops increasing at high light intensity, for 3 marks, using the words limiting factor. A graph of rate against light intensity rises and then levels off."
+      "alt": "Slide 12, exam question: A student measured the rate of photosynthesis in pondweed at different light intensities. Explain why the rate stops increasing at high light intensity, for 3 marks, using the words limiting factor. A graph of rate against light intensity rises and then levels off.",
+      "answer": {
+        "src": "slides/12-answers.png",
+        "alt": "Slide 12 with mark points: light is no longer the limiting factor; another factor, such as carbon dioxide concentration or temperature, now limits the rate; so more light has no further effect. One mark each."
+      }
     }
   ],
   "worksheet": {
@@ -64,7 +80,7 @@
     "answers": [
       {
         "src": "answers/01.png",
-        "alt": "Answer key for Photosynthesis with mark points: carbon dioxide and oxygen; energy is transferred from the surroundings by light; the rate increases then levels off because light is limiting at first and another factor limits it at high intensity; glucose is used for respiration, starch, cellulose, amino acids, and fats or oils."
+        "alt": "Mark scheme for the Photosynthesis exam-style worksheet, 10 marks: carbon dioxide and oxygen; energy is transferred from the surroundings by light; the rate increases then levels off, light is limiting at first and then another named factor, two marks for describing and two for explaining; any two uses of glucose, not food or energy on its own."
       }
     ]
   }

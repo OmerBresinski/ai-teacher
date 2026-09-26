@@ -39,11 +39,19 @@
     },
     {
       "src": "slides/09.png",
-      "alt": "Slide 9, sort: Sort the causes into long-term causes, built up over many years, and short-term causes, in the weeks before the war. Cards: the naval race, the murder at Sarajevo, rivalry over colonies, Austria-Hungary’s ultimatum to Serbia, the alliance system, Russia mobilises, Slav nationalism, Germany invades Belgium."
+      "alt": "Slide 9, sort: Sort the causes into long-term causes, built up over many years, and short-term causes, in the weeks before the war. Cards: the naval race, the murder at Sarajevo, rivalry over colonies, Austria-Hungary’s ultimatum to Serbia, the alliance system, Russia mobilises, Slav nationalism, Germany invades Belgium.",
+      "answer": {
+        "src": "slides/09-answers.png",
+        "alt": "Slide 9 with answers: long-term causes are the naval race, rivalry over colonies, the alliance system and Slav nationalism; short-term causes are the murder at Sarajevo, Austria-Hungary’s ultimatum to Serbia, Russia mobilising and Germany invading Belgium."
+      }
     },
     {
       "src": "slides/10.png",
-      "alt": "Slide 10, open response: Your judgement. Which cause mattered most? Rank militarism, alliances, imperialism, nationalism and the assassination in five numbered slots from most to least important, then explain your top choice in a paragraph starting ‘The most important cause was … because …’."
+      "alt": "Slide 10, open response: Your judgement. Which cause mattered most? Rank militarism, alliances, imperialism, nationalism and the assassination in five numbered slots from most to least important, then explain your top choice in a paragraph starting ‘The most important cause was … because …’.",
+      "answer": {
+        "src": "slides/10-answers.png",
+        "alt": "Slide 10 with guidance: there is no single right ranking. A strong answer makes a clear choice, backs it with specific evidence, explains how the causes link, and compares it with at least one other cause."
+      }
     }
   ],
   "worksheet": {
@@ -56,7 +64,7 @@
     "answers": [
       {
         "src": "answers/01.png",
-        "alt": "Answer key for Why did the First World War start?: Austria-Hungary blamed Serbia; Russia mobilised to protect the Slav peoples; Germany’s plan went through neutral Belgium, which Britain had promised in 1839 to protect; evidence of militarism is the naval race or plans to move millions of soldiers."
+        "alt": "Mark scheme for the First World War reading worksheet, 7 marks: Austria-Hungary blamed Serbia; Russia mobilised as protector of the Slav peoples to support Serbia; Germany’s plan went through neutral Belgium, which Britain had promised in 1839 to protect, so Britain declared war; evidence of militarism is the naval race or plans to move millions of soldiers."
       }
     ]
   }

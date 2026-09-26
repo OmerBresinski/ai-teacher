@@ -35,15 +35,27 @@
     },
     {
       "src": "slides/08.png",
-      "alt": "Slide 8, multiple choice: Which one can sound not travel through? A, water in a swimming pool. B, the wooden door of a classroom. C, the air in a playground. D, the empty space between planets. Pupils hold up a letter and explain their choice."
+      "alt": "Slide 8, multiple choice: Which one can sound not travel through? A, water in a swimming pool. B, the wooden door of a classroom. C, the air in a playground. D, the empty space between planets. Pupils hold up a letter and explain their choice.",
+      "answer": {
+        "src": "slides/08-answers.png",
+        "alt": "Slide 8 with the answer: D, the empty space between planets, because empty space has no particles to pass the vibration on."
+      }
     },
     {
       "src": "slides/09.png",
-      "alt": "Slide 9, matching: What is vibrating? Match each sound source to the part that vibrates. 1 guitar, 2 drum, 3 your voice, 4 recorder. A the air inside it, B the strings, C the vocal folds in your throat, D the drum skin."
+      "alt": "Slide 9, matching: What is vibrating? Match each sound source to the part that vibrates. 1 guitar, 2 drum, 3 your voice, 4 recorder. A the air inside it, B the strings, C the vocal folds in your throat, D the drum skin.",
+      "answer": {
+        "src": "slides/09-answers.png",
+        "alt": "Slide 9 with answers: guitar, the strings; drum, the drum skin; your voice, the vocal folds in your throat; recorder, the air inside it."
+      }
     },
     {
       "src": "slides/10.png",
-      "alt": "Slide 10, exit ticket: What must happen to an object for it to make a sound? Name the medium that carries sound from a teacher’s voice to your ear. Why can’t sound travel through space?"
+      "alt": "Slide 10, exit ticket: answer on your exit ticket slip, then hand it in. What must happen to an object for it to make a sound? What carries sound from a teacher’s voice to your ear? Why can’t sound travel through space?",
+      "answer": {
+        "src": "slides/10-answers.png",
+        "alt": "Slide 10 with answers: the object vibrates; the air carries the sound; space has no particles to pass the vibration on."
+      }
     }
   ],
   "worksheet": {
@@ -56,7 +68,21 @@
     "answers": [
       {
         "src": "answers/01.png",
-        "alt": "Answer key for How sound travels: the gaps are vibrates, medium, particles, ear and vacuum; guitar matches the strings, drum the drum skin, voice the vocal folds and recorder the air inside it; there is no medium in space to carry the vibrations."
+        "alt": "Mark scheme for the How sound travels worksheet, 11 marks: the gaps are vibrates, medium, particles, ear and vacuum; guitar matches the strings, drum the drum skin, voice the vocal folds and recorder the air inside it; space has no particles to carry the vibrations, with a mark for each idea."
+      }
+    ]
+  },
+  "exitTicket": {
+    "pages": [
+      {
+        "src": "exit-ticket/01.png",
+        "alt": "Exit ticket slips for How sound travels, three to a page to cut out: what must happen to an object for it to make a sound; what carries sound from a teacher’s voice to your ear; why can’t sound travel through space."
+      }
+    ],
+    "answers": [
+      {
+        "src": "exit-ticket/answers-01.png",
+        "alt": "Exit ticket answers for How sound travels: the object must vibrate; the air carries the sound; space has almost no particles to pass the vibration on, with notes on common part answers."
       }
     ]
   }
