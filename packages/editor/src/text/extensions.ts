@@ -1,3 +1,4 @@
+import { Extension } from "@tiptap/core";
 import { Color } from "@tiptap/extension-color";
 import { Link } from "@tiptap/extension-link";
 import TextAlign from "@tiptap/extension-text-align";
@@ -45,3 +46,22 @@ export const baseExtensions = [
     HTMLAttributes: { target: "_blank", rel: "noopener noreferrer" },
   }),
 ];
+
+/**
+ * The objective a list item stands for (ruling 96): `materialiseObjectives` stamps each line of the
+ * objectives slide with its objective's id, and the slide editor must carry it through every edit.
+ * Not rendered and not parsed from HTML, so a copied line pastes as a new line, and Enter never
+ * copies it onto the new line (`keepOnSplit: false`): a new line is a new objective. Slide editor
+ * only; the worksheet's block editor never sees it.
+ */
+export const ListItemFactId = Extension.create({
+  name: "listItemFactId",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["listItem"],
+        attributes: { factId: { default: null, keepOnSplit: false, rendered: false } },
+      },
+    ];
+  },
+});

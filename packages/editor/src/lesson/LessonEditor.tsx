@@ -178,6 +178,10 @@ export function LessonEditor({
     [proposalsEnabled, onFactsChanged, onRegenerate, busySlideIds, proposalsBusy, reservedFactIds],
   );
   const [canvasFocused, setCanvasFocused] = useState(false);
+  // Read by the stable `writeElementDoc` hook: a new objective line must not mint an id the
+  // worksheet already uses, and waits (`null`) until the worksheet is here.
+  const reservedRef = useRef(reservedFactIds);
+  reservedRef.current = reservedFactIds;
 
   // Canvas writes its measured scale here on every render of SlideScaler. A ref, not state: the
   // scale changes on every zoom frame and `stepZoom` only needs the latest value when ⌘± is pressed.
@@ -220,8 +224,10 @@ export function LessonEditor({
     () => ({
       writeElementHeight: (slideId, id, h) =>
         history.dispatch(reducers.updateElementLayout, slideId, id, { h }),
+      // On the objectives slide the same reducer writes the objectives the lines stand for, so
+      // the slide edit and the fact edit are one undo step (ruling 96).
       writeElementDoc: (slideId, id, doc: RichDoc) =>
-        history.dispatch(reducers.updateElement, slideId, id, { doc } as Partial<SlideElement>),
+        history.dispatch(reducers.writeElementDoc, slideId, id, doc, reservedRef.current),
       writeExplanation: (slideId, text) => history.dispatch(reducers.setExplanation, slideId, text),
       beginTransaction: history.beginTransaction,
       endTransaction: history.endTransaction,

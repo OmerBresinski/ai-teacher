@@ -4,7 +4,7 @@ import type { RichDoc } from "@tj/domain/documents";
 import { useEffect, useRef, useState } from "react";
 import { useEditSession } from "../../model/use-edit-session";
 import { useActiveEditor } from "../../text/active-editor";
-import { baseExtensions } from "../../text/extensions";
+import { baseExtensions, ListItemFactId } from "../../text/extensions";
 import { normaliseDoc } from "../../text/normalise";
 import { useEditorHooks } from "../editor-hooks";
 
@@ -14,9 +14,12 @@ import { useEditorHooks } from "../editor-hooks";
  * line the moment the teacher enters edit mode, auto-height writes the taller value back, and the
  * empty paragraph is committed to the model on the first keystroke. It is off here.
  */
-export const EDITOR_EXTENSIONS: AnyExtension[] = baseExtensions.map((ext) =>
-  ext.name === "starterKit" ? (ext as AnyExtension).configure({ trailingNode: false }) : ext,
-);
+export const EDITOR_EXTENSIONS: AnyExtension[] = [
+  ...baseExtensions.map((ext) =>
+    ext.name === "starterKit" ? (ext as AnyExtension).configure({ trailingNode: false }) : ext,
+  ),
+  ListItemFactId,
+];
 
 /** What an element with no text yet starts from: exactly what Tiptap serialises for it. */
 export const EMPTY_DOC: RichDoc = { type: "doc", content: [{ type: "paragraph" }] };
@@ -129,8 +132,56 @@ export function useInlineEditor({
     if (!editor || editor.isDestroyed || !doc) return;
     const next = normaliseDoc(doc);
     if (same(next, editor.getJSON() as RichDoc)) return;
+    if (adoptListItemIds(editor, next)) return;
     editor.commands.setContent(next as unknown as Content, { emitUpdate: false });
   }, [editor, doc]);
 
   return editor;
+}
+
+/** A doc's list items' `factId`s in document order, and the doc with them all cleared. */
+function listItemIds(doc: RichDoc): { ids: (string | null)[]; bare: string } {
+  const ids: (string | null)[] = [];
+  const strip = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(strip);
+    if (typeof node !== "object" || node === null) return node;
+    const n = node as { type?: string; attrs?: Record<string, unknown> };
+    // Pre-order, as ProseMirror's `descendants` walks: the item's own id before its children's.
+    if (n.type === "listItem") {
+      const id = n.attrs?.factId;
+      ids.push(typeof id === "string" ? id : null);
+    }
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(n)) out[key] = strip(value);
+    if (n.type === "listItem") {
+      const { factId: _id, ...rest } = n.attrs ?? {};
+      out.attrs = rest;
+    }
+    return out;
+  };
+  const bare = JSON.stringify(strip(doc));
+  return { ids, bare };
+}
+
+/**
+ * The reducer stamped an objective id on a line the teacher is typing (ruling 96): the words are
+ * what the editor already shows, only a list item's `factId` differs. Take the ids as attribute
+ * steps, so the caret stays where it is and no update is written back; `setContent` would move
+ * it. Returns false when anything else differs.
+ */
+function adoptListItemIds(editor: Editor, next: RichDoc): boolean {
+  const want = listItemIds(next);
+  const have = listItemIds(editor.getJSON() as RichDoc);
+  if (want.bare !== have.bare || want.ids.length !== have.ids.length) return false;
+  const { tr } = editor.state;
+  let i = 0;
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name !== "listItem") return true;
+    const id = want.ids[i++] ?? null;
+    if ((node.attrs.factId ?? null) !== id) tr.setNodeAttribute(pos, "factId", id);
+    return true;
+  });
+  if (tr.docChanged)
+    editor.view.dispatch(tr.setMeta("preventUpdate", true).setMeta("addToHistory", false));
+  return true;
 }

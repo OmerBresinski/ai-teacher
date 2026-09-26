@@ -46,11 +46,27 @@ export function residualFindings(lesson: Lesson, worksheet?: Worksheet): Finding
 const findingKey = (f: Finding) =>
   [f.check, f.target.slideId, f.target.elementId, f.target.blockId, f.target.factId].join("|");
 
-/** Findings grouped by the slide they point at; lesson-level ones (no `slideId`) are left out. */
-export function findingsBySlide(findings: Finding[]): Map<string, Finding[]> {
+/**
+ * The slide a finding belongs on: its own `slideId`, or — for a lesson-level finding about an
+ * objective (`objective-taught`, `objective-coverage`) — the objectives slide, where that
+ * objective's line is (ruling 96). Anything else lesson-level has no slide.
+ */
+export function findingSlideId(finding: Finding, lesson: Lesson | undefined): string | undefined {
+  if (finding.target.slideId !== undefined) return finding.target.slideId;
+  const factId = finding.target.factId;
+  if (!lesson || factId === undefined) return undefined;
+  if (!lesson.facts?.objectives.some((o) => o.id === factId)) return undefined;
+  return lesson.slides.find((s) => s.kind === "objectives")?.id;
+}
+
+/**
+ * Findings grouped by the slide they belong on (`findingSlideId`); lesson-level ones with no slide
+ * are left out.
+ */
+export function findingsBySlide(findings: Finding[], lesson?: Lesson): Map<string, Finding[]> {
   const map = new Map<string, Finding[]>();
   for (const finding of findings) {
-    const id = finding.target.slideId;
+    const id = findingSlideId(finding, lesson);
     if (id === undefined) continue;
     const list = map.get(id);
     if (list) list.push(finding);
@@ -97,6 +113,6 @@ export function useComputedResidualFindings(
   const current = desired ?? source;
   return useMemo(() => {
     const findings = current ? residualFindings(current, worksheet) : [];
-    return { findings, bySlide: findingsBySlide(findings) };
+    return { findings, bySlide: findingsBySlide(findings, current) };
   }, [current, worksheet]);
 }

@@ -246,7 +246,7 @@ describe("regenerate", () => {
   test("the slide toolbar opens the dialog with the impact preview; confirm calls onRegenerate once", async () => {
     const onRegenerate = mock((_t: unknown, _i: string | undefined) => {});
     renderEditor(generatedLesson(), { onRegenerate });
-    // Slide 1 is active; go to slide 2 (objectives, shares o1 with slide 4).
+    // Slide 1 is active; go to slide 2 (objectives, shares o1 with slide 4, o1 and o2 with 5 and 6).
     const rows = within(screen.getByRole("listbox", { name: "Slides" })).getAllByRole("option");
     const second = rows[1];
     if (!second) throw new Error("row");
@@ -258,7 +258,7 @@ describe("regenerate", () => {
       }),
     );
     const dialog = await screen.findByRole("dialog", { name: "Regenerate slide 2" });
-    expect(dialog).toHaveTextContent("Also changes: slide 4");
+    expect(dialog).toHaveTextContent("Also changes: slides 4, 5, 6");
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Instruction (optional)" }), {
       target: { value: "Shorter" },
     });

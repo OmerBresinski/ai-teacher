@@ -15,5 +15,6 @@ export {
 export * from "./elements";
 export * from "./facts";
 export * from "./lesson";
+export * from "./objective-lines";
 export * from "./question";
 export * from "./slides";

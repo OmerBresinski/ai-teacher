@@ -7,20 +7,29 @@ import { impactPreview, impactSentence, slidesReferencing } from "./impact-previ
 describe("impactPreview", () => {
   test("a slide sharing a fact with another AI slide names that slide", () => {
     const lesson = generatedLesson();
-    // Slide 2 (objectives) carries o1 and o2; slide 4 (multiple-choice) carries q1 and o1.
+    // Slide 2 (objectives) carries o1 and o2; slide 4 (multiple-choice) carries q1 and o1; the
+    // content slides 5 and 6 teach o1 and o2.
     const preview = impactPreview(lesson, { slideId: "s-objectives" });
     expect(preview.factRefs).toEqual(expect.arrayContaining(["o1", "o2"]));
-    expect(preview.slides).toEqual([{ slideId: "s-mc", number: 4 }]);
-    expect(impactSentence(preview)).toBe("Also changes: slide 4");
+    expect(preview.slides).toEqual([
+      { slideId: "s-mc", number: 4 },
+      { slideId: "s-teach-1", number: 5 },
+      { slideId: "s-teach-2", number: 6 },
+    ]);
+    expect(impactSentence(preview)).toBe("Also changes: slides 4, 5, 6");
   });
 
   test("an element target narrows the facts to that element", () => {
     const lesson = generatedLesson();
-    // "ob-2" is derived from o2 only, which no other slide uses.
+    // "ob-2" is derived from o2 only, which only the second content slide teaches.
     const preview = impactPreview(lesson, { slideId: "s-objectives", elementId: "ob-2" });
     expect(preview.factRefs).toEqual(["o2"]);
-    expect(preview.slides).toEqual([]);
-    expect(impactSentence(preview)).toBe("Also changes: —");
+    expect(preview.slides).toEqual([{ slideId: "s-teach-2", number: 6 }]);
+    expect(impactSentence(preview)).toBe("Also changes: slide 6");
+    lesson.slides = lesson.slides.filter((s) => s.id !== "s-teach-2");
+    expect(
+      impactSentence(impactPreview(lesson, { slideId: "s-objectives", elementId: "ob-2" })),
+    ).toBe("Also changes: —");
   });
 
   test("teacher-authored elements are not in the impact set; several slides read as a list", () => {
@@ -45,14 +54,14 @@ describe("impactPreview", () => {
       authoredBy: "teacher",
     };
     const preview = impactPreview(lesson, { slideId: "s-mc", elementId: "q" });
-    expect(preview.slides.map((s) => s.number)).toEqual([1, 2]);
-    expect(impactSentence(preview)).toBe("Also changes: slides 1, 2");
+    expect(preview.slides.map((s) => s.number)).toEqual([1, 2, 5]);
+    expect(impactSentence(preview)).toBe("Also changes: slides 1, 2, 5");
     expect(impactPreview(lesson, { slideId: "missing" })).toEqual({ factRefs: [], slides: [] });
   });
 
   test("slidesReferencing lists the slides a cascade for the facts would touch", () => {
     const lesson = generatedLesson();
-    expect(slidesReferencing(lesson, ["o1"])).toEqual(["s-objectives", "s-mc"]);
+    expect(slidesReferencing(lesson, ["o1"])).toEqual(["s-objectives", "s-mc", "s-teach-1"]);
     expect(slidesReferencing(lesson, ["v2"])).toEqual(["s-vocab"]);
     expect(slidesReferencing(lesson, ["nope"])).toEqual([]);
   });

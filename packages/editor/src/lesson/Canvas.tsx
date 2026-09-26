@@ -24,6 +24,7 @@ import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { applySlideClip } from "../slide/slide-clip";
 import { type CanvasMenuState, ElementContextMenu } from "./canvas/ElementContextMenu";
+import { ObjectiveNotes } from "./canvas/ObjectiveNotes";
 import { SlideActions } from "./canvas/SlideActions";
 import { SlideTabs } from "./canvas/SlideTabs";
 import { pointOnSlide, useImageDrop } from "./canvas/use-image-drop";
@@ -418,6 +419,8 @@ export function Canvas({
                 images={images}
                 lessonId={lessonId}
               />
+              {/* Ruling 96: the objectives slide's line notes, editor-only, over the slide. */}
+              <ObjectiveNotes slide={slide} scale={scale} />
             </div>
           </SlideScaler>
         </div>

@@ -33,7 +33,13 @@ import { hint } from "./keys";
 import { useProposals } from "./proposals-context";
 import { useResidualFindings } from "./residual-findings";
 import { SlideBadge } from "./SlideBadge";
-import { addSlideAfter, duplicateSlide, insertSlideAfter, regenerateSlide } from "./slide-commands";
+import {
+  addSlideAfter,
+  duplicateSlide,
+  insertSlideAfter,
+  regenerateSlide,
+  toastUntaught,
+} from "./slide-commands";
 import { useCompactChrome } from "./use-compact-chrome";
 import { useActiveSlideId, useSessionActions, useSessionUi } from "./use-editor-session";
 
@@ -239,6 +245,8 @@ export function Navigator() {
     let next = lesson;
     for (const id of ids) next = history.dispatch(reducers.deleteSlide, id) ?? next;
     history.endTransaction();
+    const numbers = ids.map((id) => (index.get(id) ?? 0) + 1).sort((a, b) => a - b);
+    if (next !== lesson) toastUntaught(history, lesson, next, numbers);
     // The rail lands on the survivor at the first removed position (or the new last slide).
     const survivor = next.slides[Math.min(firstIdx, next.slides.length - 1)];
     if (next !== lesson && survivor) choose([survivor.id], survivor.id);

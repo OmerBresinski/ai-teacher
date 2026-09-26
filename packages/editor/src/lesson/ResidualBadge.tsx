@@ -11,7 +11,7 @@ import {
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useLesson } from "./document-context";
-import { thingsToCheck, useResidualFindings } from "./residual-findings";
+import { findingSlideId, thingsToCheck, useResidualFindings } from "./residual-findings";
 import { useSessionActions } from "./use-editor-session";
 
 /*
@@ -74,7 +74,10 @@ export function ResidualBadge({ className }: { className?: string }) {
             </li>
           ))}
           {rest.map((f) => {
-            const n = slideNumber(f.target.slideId);
+            const slideId = findingSlideId(f, lesson);
+            const n = slideNumber(slideId);
+            // A finding about an objective lives on the objectives slide's line (ruling 96).
+            const toObjectives = f.target.slideId === undefined && slideId !== undefined;
             return (
               <li
                 key={findingId(f)}
@@ -90,14 +93,14 @@ export function ResidualBadge({ className }: { className?: string }) {
                 />
                 <span className="flex-1">
                   {f.message}
-                  {n !== undefined && f.target.slideId ? (
+                  {n !== undefined && slideId ? (
                     <Button
                       variant="link"
                       size="sm"
                       className="ml-1 h-auto p-0"
-                      onClick={() => f.target.slideId && goTo(f.target.slideId)}
+                      onClick={() => goTo(slideId)}
                     >
-                      Go to slide {n}
+                      {toObjectives ? "Go to objectives" : `Go to slide ${n}`}
                     </Button>
                   ) : null}
                 </span>
