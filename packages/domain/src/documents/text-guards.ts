@@ -121,9 +121,13 @@ export function isDoubleStatement(statement: string, minHalf = 60): boolean {
  * matches.
  */
 const LIST_REFERENCE: readonly RegExp[] = [
-  /\b(?:of|from|among) the following\b/i,
+  // "of the following" only after a choosing word: "State two examples of the following
+  // adaptations" is an open question.
+  /\b(?:which|what|who)(?:\s+\w+)?\s+of the following\b/i,
+  /\b(?:from|among) the following\b/i,
   /\bfrom the (?:options|choices|answers|list|words|terms|statements|box)\b/i,
-  /\b(?:options?|choices?|answers?|statements?|words?|sentences?|terms?|examples?|ones?|list)\s+(?:below|given|shown|listed|provided)\b/i,
+  // "…the answers below" likewise: "Explain why the answers below are wrong" points at working.
+  /\b(?:which|what|who|from|among|choose|select|pick|circle|tick|underline)\b[^.?!]*?\b(?:options?|choices?|answers?|statements?|words?|sentences?|terms?|examples?|ones?|list)\s+(?:below|given|shown|listed|provided)\b/i,
   /\b(?:which|what|who)(?: one)? of these\b/i,
   /\b(?:from|among) these(?=\s*(?:options|choices|answers|words|statements|examples|terms|and\b|[:?.,;]|$))/i,
   /\bchoose from\b/i,
