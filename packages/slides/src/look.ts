@@ -12,7 +12,7 @@ import { SAFE, SPACE, snapY } from "./grid";
 import { HEADING_NAME, isBackdrop } from "./reflow";
 import { docPlainText, joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
-import { readingLeading, readingSize, resolveFontSize } from "./text-style";
+import { readingLeading, readingSize } from "./text-style";
 
 /*
  * The lesson look (quality PRD "look" uplift, 26 Sept 2026): the chrome that gives every slide in a
@@ -41,15 +41,8 @@ export { HEADING_NAME };
 export const KEY_IDEA_NAME = "Explanation card";
 /** The room a teaching slide keeps for a diagram still to be drawn. Drawn in the editor only. */
 export const DIAGRAM_NAME = "Diagram placeholder";
-/**
- * An undrawn diagram's instruction as the teacher sees it in the editor: a slim strip at the foot
- * of the slide, over the content, locked, taking no layout space. Present, export and print never draw it.
- */
-export const DIAGRAM_NOTE_NAME = "Diagram note";
-
-/** A diagram placeholder of either kind: the slot a stored slide keeps, or the editor's strip. */
-export const isDiagramMark = (el: { name?: string }): boolean =>
-  el.name === DIAGRAM_NAME || el.name === DIAGRAM_NOTE_NAME;
+/** The diagram slot a stored slide keeps (before undrawn diagrams stopped shaping the text). */
+export const isDiagramMark = (el: { name?: string }): boolean => el.name === DIAGRAM_NAME;
 
 /** What the slide is for, in the words a class sees on the tag. Kinds not listed get no tag. */
 export const KIND_TAGS: Partial<Record<SlideKind, string>> = {
@@ -297,62 +290,6 @@ export function withDiagramSlot(
     ...slide,
     elements: slide.elements.flatMap((e) => (e === body ? [{ ...body, w: half }, slot] : [e])),
   };
-}
-
-/**
- * An undrawn diagram does not shape the text: the words are laid out as if it were not there, and
- * its instruction is a slim "Diagram to add: …" strip at the foot of the slide, locked so
- * the fit never moves it, for the editor only. TODO(diagram PR): when a real drawing is added, the
- * slide relays around it (`withDiagramSlot` is the layout it will take).
- */
-export function withDiagramNote(
-  slide: Slide,
-  t: Theme,
-  instruction: string,
-  ids: Ids = uid,
-): Slide {
-  if (slide.elements.some(isDiagramMark)) return slide;
-  const text = `Diagram to add: ${instruction}`;
-  // Small type across the measure, as many lines as the instruction takes: the strip grows upward
-  // from the foot of the slide, over the content, since it takes no layout space.
-  const size = resolveFontSize(t, "small");
-  const pad = SPACE[1];
-  const h = Math.ceil(
-    measureHeadless(t)({
-      doc: docFromText(text),
-      width: SAFE.w,
-      style: { preset: "small", fontSize: size },
-      preset: "small",
-      fontSize: size,
-      inset: pad * 2,
-      chrome: pad * 2,
-    }),
-  );
-  const y = SAFE.y + SAFE.h + 26 - h;
-  const note: SlideElement = {
-    id: ids(),
-    type: "shape",
-    shape: "rounded",
-    x: SAFE.x,
-    y,
-    w: SAFE.w,
-    h,
-    fill: t.colors.surface,
-    stroke: t.colors.accent,
-    strokeWidth: 1,
-    radius: t.radius,
-    locked: true,
-    name: DIAGRAM_NOTE_NAME,
-    doc: docFromText(text),
-    textStyle: {
-      preset: "small",
-      color: t.colors.muted,
-      align: "left",
-      valign: "middle",
-      padding: pad,
-    },
-  };
-  return { ...slide, elements: [...slide.elements, note] };
 }
 
 /**

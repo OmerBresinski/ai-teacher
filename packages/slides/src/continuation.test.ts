@@ -1,9 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { isContinuation, type Slide } from "@tj/domain/documents";
 import { fitSlide } from "./fit-slide";
-import { DIAGRAM_NOTE_NAME } from "./look";
 import { materialiseSlide, materialiseSlides, presentedSlide } from "./materialise";
-import { SAFE_BOTTOM } from "./metrics";
 import type { SlideSpec, SlideSpecOf } from "./specs";
 import { docLines } from "./structure";
 import { floorBelow } from "./text-style";
@@ -122,7 +120,7 @@ describe("materialiseSlides: a teaching slide too long for one slide continues",
     expect(heading(one)).toBe("Roman towns and daily life");
   });
 
-  test("an undrawn diagram does not shape the text: words as without it, the instruction a strip", () => {
+  test("an undrawn diagram does not shape the text: words as without it, the instruction on the slide, not in it", () => {
     const diagram = { diagram: "Plan of a Roman town: forum, baths, grid of streets" };
     for (const body of [LONG, LONGER]) {
       const slides = materialiseSlides(spec(body, diagram), "chalk", meta, ids);
@@ -134,20 +132,13 @@ describe("materialiseSlides: a teaching slide too long for one slide continues",
         expect(fitSlide(slide, theme).overflow).toEqual([]);
         expect(slide.elements.some((e) => e.name === "Diagram placeholder")).toBe(false);
       }
-      // The instruction is a locked strip at the foot of the slide, on the first slide only.
-      const note = slides[0]?.elements.find((e) => e.name === DIAGRAM_NOTE_NAME);
-      expect(note?.locked).toBe(true);
-      expect(note && note.y + note.h).toBe(SAFE_BOTTOM + 26);
-      expect(JSON.stringify(note)).toContain("Diagram to add: Plan of a Roman town");
-      for (const s of slides.slice(1)) {
-        expect(s.elements.some((e) => e.name === DIAGRAM_NOTE_NAME)).toBe(false);
-      }
-      // Present and export never draw it.
-      expect(
-        presentedSlide(slides[0] as Slide, theme).elements.some(
-          (e) => e.name === DIAGRAM_NOTE_NAME,
-        ),
-      ).toBe(false);
+      // The instruction rides on the first slide, outside its elements: no layout space, never
+      // drawn by present or export (the editor shows it beside the canvas).
+      expect(slides[0]?.diagram).toEqual({ instruction: diagram.diagram });
+      for (const s of slides.slice(1)) expect(s.diagram).toBeUndefined();
+      expect(JSON.stringify(presentedSlide(slides[0] as Slide, theme).elements)).not.toContain(
+        "Plan of a Roman town",
+      );
     }
   });
 

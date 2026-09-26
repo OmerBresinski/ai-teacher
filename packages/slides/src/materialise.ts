@@ -40,7 +40,6 @@ import {
   type SlidePosition,
   stripLook,
   withDeckChrome,
-  withDiagramNote,
   withDiagramSlot,
 } from "./look";
 import { HEADING_NAME } from "./reflow";
@@ -143,7 +142,8 @@ function materialisePages(
   let slide: Slide = { id: ids(), kind: spec.kind, elements: filled.elements };
   const diagram = spec.kind === "content" ? diagramOf(spec) : undefined;
   // With pages (generation), an undrawn diagram does not shape the text: the words are laid out
-  // as if it were not there and the instruction is the editor's strip (`withDiagramNote`).
+  // as if it were not there, and the instruction rides on the first slide as `slide.diagram`, which
+  // the editor shows beside the canvas. TODO(diagram PR): relay the slide around a real drawing.
   if (diagram && !pages && variantName(spec.kind, variant) === "headed") {
     slide = withDiagramSlot(slide, getTheme(themeId), diagram, ids);
   }
@@ -153,9 +153,7 @@ function materialisePages(
   const fitted = lookAndFitPages(slide, getTheme(themeId), ids, structure, { pages });
   const noted =
     diagram && pages
-      ? fitted.map((page, i) =>
-          i === 0 ? withDiagramNote(page, getTheme(themeId), diagram, ids) : page,
-        )
+      ? fitted.map((page, i) => (i === 0 ? { ...page, diagram: { instruction: diagram } } : page))
       : fitted;
   const out = pages ? noted : noted.slice(0, 1);
   return out.map((page) => ({

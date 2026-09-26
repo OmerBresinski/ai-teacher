@@ -835,6 +835,8 @@ export function repairedToShape(
 export function withDiagramKept(spec: SlideSpec, before: Slide): SlideSpec {
   const kept = keptDiagram(spec);
   if (kept.kind !== "content" || kept.diagram) return kept;
+  if (before.diagram?.instruction)
+    return keptDiagram({ ...kept, diagram: before.diagram.instruction });
   const placeholder = before.elements.find(isDiagramMark);
   const text = placeholder ? slideText({ ...before, elements: [placeholder] }) : "";
   const diagram = text.replace(/^\s*Diagram to add:\s*/, "").trim();

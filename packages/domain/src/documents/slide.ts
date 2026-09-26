@@ -60,6 +60,11 @@ export type Slide = {
    * logic and export never have to walk the element tree.
    */
   question?: QuestionData;
+  /**
+   * A diagram the slide should have and does not yet: the writer's instruction for it. It takes no
+   * layout space; the editor shows it beside the canvas, and present and export never do.
+   */
+  diagram?: { instruction: string };
 };
 
 /* ------------------------------------------------------------------ */
@@ -612,6 +617,7 @@ export const SlideSchema = z
     notes: z.string().optional(),
     transition: z.enum(["none", "fade", "push", "morph"]).optional(),
     question: QuestionDataSchema.optional(),
+    diagram: z.object({ instruction: z.string().max(400) }).optional(),
   })
   .superRefine((slide, ctx) => {
     // Ids are the addressing scheme for the whole model: enforce uniqueness and referential
