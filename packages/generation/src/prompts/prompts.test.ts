@@ -241,7 +241,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // v31: the planned shape's fields on the slide line (CONTENT_BUDGETS); no diagram or points gate.
     // v32 (not benched): re-measured word budgets. v33: master v25's build-up body with the label
     // heading, one soft 40–60-word target, the schema's body ceiling; the shape line a layout hint.
-    version: "generate-slide.v33",
+    // v34: the half-column target beside a planned photo or diagram (user turn only).
+    version: "generate-slide.v34",
     hash: "777da3fd84e1cf8e75f2db14354ea663219f8a51d9bb3fc82afaabb79bcbc866",
   },
   "generate-worksheet": {
@@ -271,8 +272,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   repair: {
     // v17 changes only the user turn (the shape line it copies, the `points` label).
     // v18 changes only the user turn (the content shape it copies, the compare field labels).
-    // v19/v20 change only the user turn (generate-slide v32's, then v33's, shape line).
-    version: "repair.v20",
+    // v19/v20/v21 change only the user turn (generate-slide v32's, v33's, then v34's shape line).
+    version: "repair.v21",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {

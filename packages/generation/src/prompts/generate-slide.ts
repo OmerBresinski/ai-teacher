@@ -1,5 +1,5 @@
 import type { ImagePurpose, LessonFacts, LessonPhase, OutlineEntry } from "@tj/domain/documents";
-import { CONTENT_SHAPES, type ContentShape, SPEC_LIMITS } from "@tj/slides";
+import { COMPOSITION_BUDGETS, CONTENT_SHAPES, type ContentShape, SPEC_LIMITS } from "@tj/slides";
 import {
   type Audience,
   audienceBlock,
@@ -143,6 +143,23 @@ import {
  * and no word caps; "Fill exactly these content fields" is gone. Splitting is the planner's job
  * (plan-teach-objective v6: one idea a slide) and fitting the renderer's (`CONTENT_BUDGETS` stays
  * as its capacity data, for the fallback, not the writer). The misconception sentence is v25's.
+ *
+ * v34 (27 Sept 2026, look/image-plan, `quality-prd/look/GENERATION-RESULTS-8.md`): a content slide
+ * with a planned photograph (its entry's `imageBrief`) or drawing (the plan's `visual`) keeps the
+ * right half for it, and the writer still wrote for the full width: the image-slot run gave 2–9
+ * "(continued)" slides a lesson (rivers 9 of 19). The slide line now says what sits beside it and
+ * gives the half-column target, read from the renderer's measured panel budgets
+ * (`COMPOSITION_BUDGETS[shape].panel`, `@tj/slides`; `budgetFor` returns the full budget for an
+ * explain, which takes a key-term panel only when it fits, but a slot is always there): an explain
+ * body of lead + body words (about 30–45), a list's lead and 2–3 "Label: short sentence" points of
+ * the panel's point length. It still asks for one idea explained with its example in full
+ * sentences, saying less rather than writing fragments (E49: 3–4-word points lost to real
+ * sentences). A slotted slide shows no glossary panel (`structure.ts` `structureDiagram`), so its
+ * vocabulary is defined in a few words or in `notes`, not left to the panel. Full-width slides and
+ * the system text are unchanged; repair gets the same line through `plannedShapeOf`/`shapeLine`.
+ * Probe (8 photo slides, generate-slide only): lists 22–34 words (v33 45–77), 7 of 8 draws inside
+ * the panel budget; explains 37–50 (v33 48–66). "No more (the column holds 45)" beat "about";
+ * splitting the cap into lead + rest made bodies longer (median 47.5 against 44.5).
  */
 
 /** The drawing types a `diagram` instruction opens with; anything else is dropped (`keptDiagram`). */
@@ -237,7 +254,16 @@ export const IMAGE_TEXT_RULE =
   "An `image-text` slide is written to its photograph. Say 'the photograph' (singular when there is one). A task — spot, find, count, point to, look for, identify, circle, label — may name only items listed as visible. Describe only what the caption and the visible list say is there; never name a kind of animal, plant, object or place the caption does not name. If the purpose is identify-parts and something required is not visible, describe what is there and tell the teacher in `notes` what the picture cannot show. If there is no photograph, do not mention a picture at all.";
 
 /** What the plan says a content slide sets out (`plannedShapeOf`). */
-export type PlannedShape = { shape: ContentShape; ideas: number; visual?: string | undefined };
+export type PlannedShape = {
+  shape: ContentShape;
+  ideas: number;
+  visual?: string | undefined;
+  /** v34: what takes the right half beside the words (an explain or a list only). */
+  beside?: "photograph" | "diagram" | undefined;
+};
+
+/** v34: the shapes that keep the right half for a slot; compare and sequence drop it. */
+const SLOTTED: ReadonlySet<ContentShape> = new Set(["explain", "list"]);
 
 const isContentShape = (value: unknown): value is ContentShape =>
   (CONTENT_SHAPES as readonly unknown[]).includes(value);
@@ -258,10 +284,13 @@ export function plannedShapeOf(
   if (!ideas.some((k) => isContentShape(k.shape))) return undefined;
   const own = ideas[0]?.shape;
   const visual = ideas.find((k) => k.visual)?.visual;
+  const shape = ideas.length === 1 && isContentShape(own) ? own : "explain";
+  const beside = visual ? "diagram" : entry.imageBrief ? "photograph" : undefined;
   return {
-    shape: ideas.length === 1 && isContentShape(own) ? own : "explain",
+    shape,
     ideas: ideas.length,
     ...(visual ? { visual } : {}),
+    ...(beside && SLOTTED.has(shape) ? { beside } : {}),
   };
 }
 
@@ -280,6 +309,7 @@ const SHAPE_FIELDS = ["points", "compare", "steps"] as const;
  * ceiling; the counts are the schema's (`specs.ts` content `points`, `compare`, `steps`).
  */
 export function shapeLine(planned: PlannedShape): string {
+  if (planned.beside) return besideLine(planned.shape, planned.beside);
   const fields = (() => {
     switch (planned.shape) {
       case "list":
@@ -293,6 +323,26 @@ export function shapeLine(planned: PlannedShape): string {
     }
   })();
   return `Layout: ${planned.shape}. ${fields}`;
+}
+
+/**
+ * v34: the slide line for an explain or a list beside a photograph or diagram, its word targets
+ * the renderer's half-column budget (`COMPOSITION_BUDGETS[shape].panel`). An explain's range runs
+ * from two thirds of lead + body up to it (32 + 13: about 30–45).
+ */
+function besideLine(shape: ContentShape, beside: "photograph" | "diagram"): string {
+  const panel = COMPOSITION_BUDGETS[shape].panel;
+  if (!panel) throw new Error(`generate-slide: no half-column budget for "${shape}"`);
+  const opening = `A ${beside} takes the right half of this slide, so the words sit in the left half: write for that half, not the 40–60 words of a full-width slide.`;
+  const closing =
+    "Still one idea explained with its example, in full sentences: say less rather than write fragments, and put the rest in `notes`.";
+  if (shape === "list" && panel.points) {
+    const [min, max] = panel.points.count ?? [2, 3];
+    return `Layout: list. ${opening} "body" is one sentence introducing the set, up to ${panel.lead.max} words; "points" holds its members, ${min}–${max} strings, each "Label: short sentence" of up to ${panel.points.max} words in all ("Shield volcano: runny lava spreads far."). ${closing}`;
+  }
+  const most = panel.lead.max + (panel.body?.max ?? 0);
+  const least = Math.round((most * 2) / 3 / 5) * 5;
+  return `Layout: explain. ${opening} "body" carries the whole explanation in ${least}–${most} words, no more (the column holds ${most}), its opening sentence up to ${panel.lead.max} words. ${closing}`;
 }
 
 /**
@@ -389,7 +439,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v33",
+  version: "generate-slide.v34",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -491,7 +541,11 @@ export const generateSlidePrompt = {
         `This theme shows at most ${input.vocabularySlots} vocabulary entries. When there are more terms than that, keep every term another shown definition uses, then the terms the objectives name; put the rest in \`notes\` with their definitions.`,
       );
     }
-    if (input.entry.kind === "content" && input.referenced.vocabulary.length > 0) {
+    if (
+      input.entry.kind === "content" &&
+      !planned?.beside &&
+      input.referenced.vocabulary.length > 0
+    ) {
       parts.push(
         "The side panel shows a vocabulary term's definition beside the body: use the term without defining it.",
       );
