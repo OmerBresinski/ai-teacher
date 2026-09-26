@@ -292,11 +292,13 @@ session with a handoff instead of continuing to another issue. Every edit goes t
    ~2 s; `land` reports `vercel: PENDING (… rate limited?)` (after 90 s in the first case, at
    once in the second) instead of waiting out its timeout. That is not a
    failure of the PR: merge stands, note "Vercel deploy pending — rate limit" in the Linear
-   closing comment, and move on. The deploy catches up on the next successful build. `-p` is the
-   `teaching-journey` project id and is required whenever the CLI runs from a directory that is not
-   `railway link`ed — worktrees never are. `bun run smoke:prod` (`scripts/smoke-prod.ts`) sends the
-   request shapes a
-   real browser produces from the production web origin — including `Sec-Fetch-Site: cross-site`,
+   closing comment, and move on. The deploy catches up on the next successful build. Railway CLI
+   4.x has no `-p` flag: it reads the project from the working directory's `railway link` (or the
+   nearest linked parent), so `land` links a temporary directory to `teaching-journey`/production
+   for the run and unlinks it afterwards; a command run by hand from an unlinked worktree needs
+   `railway link -p <project id> -e production` in a scratch directory first. `bun run smoke:prod`
+   (`scripts/smoke-prod.ts`) sends the request shapes a real browser produces from the production
+   web origin — including `Sec-Fetch-Site: cross-site`,
    which every request carries until TEACH-30 — and must exit 0. Local e2e cannot catch guard
    regressions because the Vite proxy makes requests same-origin (2026-09-05 CSRF incident,
    PR #66). If the deploy or the smoke check failed, fix it before doing anything else — a fix PR
