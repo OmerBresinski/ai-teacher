@@ -9,6 +9,7 @@ import type {
   SlideElement,
   TextElement,
   TextPreset,
+  Theme,
   WorksheetBlock,
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
@@ -24,6 +25,7 @@ import {
   variantName,
   vocabularyGrid,
 } from "./layouts";
+import { applyLook, KEY_IDEA_NAME, withDiagramSlot } from "./look";
 import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./specs";
 import { getTheme } from "./themes";
 
@@ -68,15 +70,27 @@ export function materialiseSlide(
   const laid = reid(layoutSlide(spec.kind, themeId, variant), ids);
   const filled = fillSlide(spec, themeId, laid, ids, variant);
   const stamp = provenance(spec.factRefs, meta);
-  const slide: Slide = {
-    id: ids(),
-    kind: spec.kind,
-    elements: filled.elements.map((element) => stampElement(element, stamp)),
-  };
+  let slide: Slide = { id: ids(), kind: spec.kind, elements: filled.elements };
+  if (spec.kind === "content" && spec.diagram && variantName(spec.kind, variant) === "headed") {
+    slide = withDiagramSlot(slide, getTheme(themeId), spec.diagram, ids);
+  }
   if (filled.question) slide.question = filled.question;
   if (spec.notes) slide.notes = spec.notes;
   // The recipe is sized for its placeholder copy; fit it to the real copy before it is stored.
-  return fitSlide(slide, getTheme(themeId)).slide;
+  const fitted = lookAndFit(slide, getTheme(themeId), ids);
+  return { ...fitted, elements: fitted.elements.map((element) => stampElement(element, stamp)) };
+}
+
+/**
+ * The lesson look (`look.ts`), then the fit. A teaching slide whose lead and card still overrun at
+ * the floor is set as one paragraph instead, which keeps the room the card's inset would take;
+ * whatever overruns then is the fit engine's to report or carry over (UX ruling 91).
+ */
+export function lookAndFit(slide: Slide, theme: Theme, ids: IdSupplier = uid): Slide {
+  const looked = fitSlide(applyLook(slide, theme, ids), theme);
+  const split = looked.slide.elements.some((e) => e.name === KEY_IDEA_NAME);
+  if (!split || looked.overflow.length === 0) return looked.slide;
+  return fitSlide(applyLook(slide, theme, ids, { lead: false }), theme).slide;
 }
 
 type Layout = { elements: SlideElement[]; question?: QuestionData };

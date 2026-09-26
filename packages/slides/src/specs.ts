@@ -139,6 +139,12 @@ export const SPEC_LIMITS = {
   word: 40,
   /** A callout box's text: one short line beside the body (quality PRD G3). */
   callout: 120,
+  /**
+   * What a teaching slide's diagram should show, as an instruction to whoever draws it ("Cycle:
+   * evaporation → condensation → precipitation → collection, clockwise"). The slide keeps room for
+   * it and the editor shows it as a placeholder (`look.ts` `withDiagramSlot`).
+   */
+  diagram: 160,
 } as const;
 
 /**
@@ -340,6 +346,7 @@ function buildSpecs(soft: boolean) {
       ...specBase,
       heading: line(SPEC_LIMITS.heading),
       body: line(SPEC_LIMITS.body),
+      diagram: line(SPEC_LIMITS.diagram).optional(),
       callout,
     }),
     z.object({

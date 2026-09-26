@@ -82,9 +82,35 @@
   background: var(--td-accent);
 }
 
-.td-rt ol > li::marker {
-  color: var(--td-accent);
-  font-weight: 600;
+/*
+ * Numbers sit in a filled accent disc (the lesson look, quality PRD "look", 26 Sept 2026), drawn in
+ * the list's own 1.2em indent so the text measures and wraps exactly as it did with a plain marker.
+ * `counter(list-item)` honours the list's `start`, so a continuation slide keeps counting.
+ */
+.td-rt ol {
+  list-style: none;
+}
+
+.td-rt ol > li {
+  position: relative;
+}
+
+.td-rt ol > li::before {
+  content: counter(list-item);
+  position: absolute;
+  /* In the disc's own em (0.62 of the item's): a 1.04em disc at the indent's left edge. */
+  font-size: 0.62em;
+  left: -1.935em;
+  top: calc((0.5em * var(--td-lh) - 0.52em) / 0.62);
+  width: 1.677em;
+  height: 1.677em;
+  line-height: 1.677em;
+  border-radius: 50%;
+  background: var(--td-accent);
+  color: var(--td-on-accent, #fff);
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .td-rt strong,

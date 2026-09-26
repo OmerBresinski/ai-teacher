@@ -19,6 +19,7 @@ export * from "./fonts";
 export * from "./geometry";
 export * from "./grid";
 export * from "./layouts";
+export * from "./look";
 export * from "./materialise";
 export * from "./metrics";
 export * from "./reflow";

@@ -1,5 +1,6 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { DIAGRAM_NAME } from "@tj/slides";
 import {
   type CSSProperties,
   lazy,
@@ -151,6 +152,7 @@ export function SlideView({
     ["--td-muted" as string]: theme.colors.muted,
     ["--td-accent" as string]: theme.colors.accent,
     ["--td-accent2" as string]: theme.colors.accent2,
+    ["--td-on-accent" as string]: theme.colors.onAccent,
     ["--td-accent-soft" as string]: withAlpha(theme.colors.accent, 0.18),
     ["--td-line" as string]: theme.colors.line,
     ["--td-surface" as string]: theme.colors.surface,
@@ -176,25 +178,29 @@ export function SlideView({
       >
         <SlideBackground theme={theme} background={bg} />
 
-        {slide.elements.map((el, i) => (
-          <ElementFrame
-            key={el.id}
-            element={el}
-            theme={theme}
-            mode={mode}
-            slideId={slide.id}
-            step={effectiveStep}
-            revealAnswer={revealAnswer}
-            answerProgress={answerProgress}
-            question={slide.question}
-            zIndex={i + 1}
-            staggerIndex={stagger.get(el.id)}
-            sortIndex={sortIndex.get(el.id)}
-            optionIndex={optionIndex.get(el.id)}
-            animateReveals={forward}
-            override={mode === "edit" ? transformOverride?.get(el.id) : undefined}
-          />
-        ))}
+        {slide.elements.map((el, i) =>
+          // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
+          // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`).
+          el.name === DIAGRAM_NAME && mode !== "edit" ? null : (
+            <ElementFrame
+              key={el.id}
+              element={el}
+              theme={theme}
+              mode={mode}
+              slideId={slide.id}
+              step={effectiveStep}
+              revealAnswer={revealAnswer}
+              answerProgress={answerProgress}
+              question={slide.question}
+              zIndex={i + 1}
+              staggerIndex={stagger.get(el.id)}
+              sortIndex={sortIndex.get(el.id)}
+              optionIndex={optionIndex.get(el.id)}
+              animateReveals={forward}
+              override={mode === "edit" ? transformOverride?.get(el.id) : undefined}
+            />
+          ),
+        )}
 
         {revealAnswer && slide.question?.type === "matching" ? (
           <MatchingLines slide={slide} theme={theme} question={slide.question} animate={!still} />

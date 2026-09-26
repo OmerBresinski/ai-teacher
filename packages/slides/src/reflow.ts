@@ -172,6 +172,22 @@ export function isLayerBelow(el: SlideElement): boolean {
   return !isHairline(el);
 }
 
+/**
+ * A locked band wholly below the safe area, such as the look's accent bar (`look.ts`): the slide's
+ * edge, not a box in the flow. It never overflows, never takes a lane and is never helped by
+ * smaller type.
+ */
+export function isFootBand(el: SlideElement): boolean {
+  return el.type === "shape" && !!el.locked && el.y >= SAFE_BOTTOM;
+}
+
+/**
+ * The name the lesson look gives a slide heading (`look.ts`). The step-down never touches it,
+ * whoever calls the engine (materialise, the editor's Tidy, a repair): the heading is the slide's
+ * focal line, and a long body steps its own type.
+ */
+export const HEADING_NAME = "Heading";
+
 /** Never repositioned by the engine (SPEC: images and locked elements stay put). */
 export function isFrozen(el: SlideElement): boolean {
   return !!el.locked || el.type === "image" || !!el.rotation || isBackdrop(el);
@@ -388,9 +404,11 @@ function layoutPass(slide: Slide, theme: Theme, measure: Measurer, sizes: Map<Id
  * that stepped the whole slide's type down.
  */
 const safeBottomOf = (s: Slot) =>
-  s.y === s.y0 && s.h <= s.h0 && Math.abs(s.y0 + s.h0 - SAFE_BOTTOM) <= 1
-    ? s.y + s.h
-    : s.y + withSafety(s.h);
+  isFootBand(s.el)
+    ? 0
+    : s.y === s.y0 && s.h <= s.h0 && Math.abs(s.y0 + s.h0 - SAFE_BOTTOM) <= 1
+      ? s.y + s.h
+      : s.y + withSafety(s.h);
 const overflowing = (slots: Slot[], bottom: number) =>
   slots.some((s) => safeBottomOf(s) > bottom + EPS);
 
@@ -431,6 +449,7 @@ export function reflowSlide(
     for (const el of slide.elements) {
       const parts = textPartsOf(el, slide);
       if (!parts || !STEPPABLE.includes(parts.preset) || options.keep?.includes(el.id)) continue;
+      if (el.name === HEADING_NAME) continue;
       const current = sizeOf(theme, parts, sizes.get(el.id));
       const next = stepDownSize(theme, parts.preset, current, parts.role);
       if (next < current - EPS) {

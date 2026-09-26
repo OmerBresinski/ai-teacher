@@ -31,8 +31,6 @@ const texts = (slide: Slide) =>
   slide.elements.filter((el): el is TextElement => el.type === "text");
 const byPreset = (slide: Slide, preset: TextElement["style"]["preset"]) =>
   texts(slide).filter((el) => el.style.preset === preset);
-const rule = (slide: Slide) =>
-  slide.elements.find((el) => el.type === "shape" && el.name === "Rule") as SlideElement;
 const bottom = (el: SlideElement) => el.y + el.h;
 const overlapY = (a: SlideElement, b: SlideElement) => a.y < bottom(b) && b.y < bottom(a);
 const overlapX = (a: SlideElement, b: SlideElement) => a.x < b.x + b.w && b.x < a.x + a.w;
@@ -77,7 +75,7 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     expect(subtitle.y).toBeGreaterThan(title.y);
   });
 
-  test("a two-line heading pushes its rule and the body below it, never through it", () => {
+  test("a two-line heading keeps its size and pushes the body below it, never through it", () => {
     const slide = make({
       kind: "content",
       heading: "War exposed tsarist weaknesses and created a Petrograd crisis",
@@ -88,9 +86,10 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     const [body] = byPreset(slide, "body");
     if (!heading || !body) throw new Error("content");
     expect(heading.h).toBeGreaterThanOrEqual(needed(heading) - 0.5);
-    expect(rule(slide).y).toBeGreaterThanOrEqual(bottom(heading));
-    expect(body.y).toBeGreaterThan(rule(slide).y);
-    expect(bottom(body)).toBeLessThanOrEqual(SAFE_BOTTOM);
+    // The look names the heading so the fit never steps it down (`look.ts`).
+    expect(heading.style.fontSize).toBeUndefined();
+    expect(body.y).toBeGreaterThanOrEqual(bottom(heading));
+    for (const el of texts(slide)) expect(bottom(el)).toBeLessThanOrEqual(SAFE_BOTTOM);
   });
 
   test("options that wrap in the grid's cards are laid as full-width rows, one line each, in order", () => {
