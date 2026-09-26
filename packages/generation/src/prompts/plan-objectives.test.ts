@@ -1,63 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { lessonShapeOf } from "../shapes";
-import { audienceOf } from "../stages/shared";
-import { sampleBriefLesson } from "../testing";
 import {
   CURRICULUM_INSTRUCTION,
   CURRICULUM_USE,
-  type PlanObjectivesInput,
   PlanObjectivesOutputSchema,
   PRIOR_KNOWLEDGE_LABEL,
   PRIOR_KNOWLEDGE_USE,
   planObjectivesOutputSchemaFor,
   planObjectivesPrompt,
 } from "./plan-objectives";
+import { PLAN_OBJECTIVES_SAMPLE } from "./plan-samples";
 import { SOURCE_INSTRUCTION } from "./plan-skeleton";
 
-/*
- * ADR 0025 §17: the prompt's wording is pinned to its version (as `prompts.test.ts` does for the
- * registered prompts). `plan-objectives` is not in the registry until the objectives-first Plan
- * lands, so it is pinned here on its own. A primary sample (Year 4) with a whole unit, so the count
- * rule and the curriculum instruction are both part of the hash.
- */
-const audience = audienceOf(sampleBriefLesson());
-
-const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
-  topic: "The Roman invasion of Britain",
-  audience: { ...audience, subject: "History", yearGroup: "Year 4" },
-  shape: lessonShapeOf(
-    { objectiveVerb: "Explain the Roman invasion of Britain", priorConfidence: "New to it" },
-    { yearGroup: "Year 4" },
-  ),
-  curriculum: {
-    text: [
-      "Programme of study: the Roman Empire and its impact on Britain.",
-      "Unit: The Roman Empire in Britain (6 lessons).",
-      "Lesson 1 outcome: I can say where the Roman Empire was and when it began.",
-      "Lesson 4 outcome: I can say why Boudica led a revolt.",
-      "Key learning points: the Romans invaded Britain in AD 43; roads and towns changed daily life;",
-      "Boudica's revolt was defeated in AD 61.",
-      "Keywords: empire, invasion, revolt.",
-      "Misconception: pupils think the Romans left no trace in Britain.",
-    ].join("\n"),
-  },
-};
-
-const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v18",
-  hash: "4ce288b25f09eec5f5a6a357bfb931677dcbc5a6d210dad01f9bbc64174308e6",
-};
-
 describe("plan-objectives", () => {
-  test("text hash matches its pinned version", () => {
-    const text = `${planObjectivesPrompt.system}\n---\n${planObjectivesPrompt.user(PLAN_OBJECTIVES_SAMPLE)}`;
-    const actual: { version: string; hash: string } = {
-      version: planObjectivesPrompt.version,
-      hash: new Bun.CryptoHasher("sha256").update(text).digest("hex"),
-    };
-    expect(actual).toEqual(PLAN_OBJECTIVES_PIN);
-  });
-
   test("a curriculum unit is anchored, not copied, and the source instruction stays out", () => {
     const system = planObjectivesPrompt.system;
     /*

@@ -183,6 +183,11 @@ export const CALL_TIMEOUT_MS = {
   "check-input": 180_000,
   "plan-skeleton": 180_000,
   "plan-facts": 300_000,
+  // Registered but uncalled until the objectives-first Plan (TEACH-88); the old default bound.
+  "plan-objectives": 300_000,
+  "plan-facts-objective": 300_000,
+  "plan-teach-objective": 300_000,
+  "plan-question-set": 300_000,
   "verify-facts": 180_000,
   "generate-slide": 180_000,
   "generate-worksheet": 300_000,

@@ -44,6 +44,9 @@ worksheet work back into `stages/generate.ts`.
   audit A1) and the validation issue messages; neither is ever logged.
 - **Prompts are versioned modules.** Change wording → bump `version` → update the hash in
   `src/prompts/prompts.test.ts`. The version is written to `generatedFrom.promptVersion`.
+  `plan-objectives`, `plan-facts-objective`, `plan-teach-objective` and `plan-question-set` are
+  registered and pinned but called by nothing in `src/stages/` until the objectives-first Plan
+  lands; their sample inputs live in `src/prompts/plan-samples.ts`.
 - No database, pg-boss or HTTP here; no dependency on `apps/*` or `@tj/editor` (`bundle.test.ts`).
 
 ## Layout

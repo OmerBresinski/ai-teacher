@@ -6,7 +6,11 @@ import { generateWorksheetFillPrompt } from "./generate-worksheet-fill";
 import { parseBriefPrompt } from "./parse-brief";
 import { pickOrRequeryPrompt } from "./pick-or-requery-photo";
 import { planFactsPrompt } from "./plan-facts";
+import { planFactsObjectivePrompt } from "./plan-facts-objective";
+import { planObjectivesPrompt } from "./plan-objectives";
+import { planQuestionSetPrompt } from "./plan-question-set";
 import { planSkeletonPrompt } from "./plan-skeleton";
+import { planTeachObjectivePrompt } from "./plan-teach-objective";
 import { cascadePrompt, regeneratePrompt } from "./propose";
 import { repairPrompt } from "./repair";
 import { repairFactPrompt } from "./repair-fact";
@@ -14,7 +18,9 @@ import { shortlistPhotosPrompt } from "./shortlist-photos";
 import { verifyFactsPrompt } from "./verify-facts";
 
 /*
- * The prompt registry (ADR 0025 §17). Every prompt is a TypeScript module exporting
+ * The prompt registry (ADR 0025 §17). The four per-objective plan prompts (`plan-objectives`,
+ * `plan-facts-objective`, `plan-teach-objective`, `plan-question-set`) are registered and pinned
+ * but called by nothing in `stages/` until the objectives-first Plan lands (TEACH-88 FR1). Every prompt is a TypeScript module exporting
  * `{ version, system, user(input) }`; the version string is written to `generatedFrom` and
  * `generation.promptVersions`, and `prompts.test.ts` pins a hash of each prompt's text to it.
  */
@@ -52,8 +58,12 @@ export {
   generateWorksheetPrompt,
   parseBriefPrompt,
   pickOrRequeryPrompt,
+  planFactsObjectivePrompt,
   planFactsPrompt,
+  planObjectivesPrompt,
+  planQuestionSetPrompt,
   planSkeletonPrompt,
+  planTeachObjectivePrompt,
   regeneratePrompt,
   repairFactPrompt,
   repairPrompt,
@@ -65,6 +75,10 @@ export const PROMPTS = {
   "check-input": checkInputPrompt,
   "plan-skeleton": planSkeletonPrompt,
   "plan-facts": planFactsPrompt,
+  "plan-objectives": planObjectivesPrompt,
+  "plan-facts-objective": planFactsObjectivePrompt,
+  "plan-teach-objective": planTeachObjectivePrompt,
+  "plan-question-set": planQuestionSetPrompt,
   "verify-facts": verifyFactsPrompt,
   "generate-slide": generateSlidePrompt,
   "generate-worksheet": generateWorksheetPrompt,
@@ -84,6 +98,10 @@ export const PROMPT_VERSIONS = {
   "check-input": checkInputPrompt.version,
   "plan-skeleton": planSkeletonPrompt.version,
   "plan-facts": planFactsPrompt.version,
+  "plan-objectives": planObjectivesPrompt.version,
+  "plan-facts-objective": planFactsObjectivePrompt.version,
+  "plan-teach-objective": planTeachObjectivePrompt.version,
+  "plan-question-set": planQuestionSetPrompt.version,
   "verify-facts": verifyFactsPrompt.version,
   "generate-slide": generateSlidePrompt.version,
   "generate-worksheet": generateWorksheetPrompt.version,

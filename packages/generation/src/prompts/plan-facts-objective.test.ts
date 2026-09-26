@@ -1,11 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { isEditorialIssue, SPEC_LIMITS } from "@tj/slides";
 import { lessonShapeOf } from "../shapes";
-import { audienceOf } from "../stages/shared";
-import { sampleBriefLesson } from "../testing";
 import {
   carriesWorkedExample,
-  type PlanFactsObjectiveInput,
   PlanFactsObjectiveOutputSchema,
   planFactsObjectiveOutputSchemaFor,
   planFactsObjectivePrompt,
@@ -13,51 +10,7 @@ import {
   SHAPE_SKETCH,
 } from "./plan-facts-objective";
 import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
-
-/*
- * F06-R13 / ADR 0025 §17: the prompt's wording is pinned to its version, as `prompts.test.ts` does
- * for the registered prompts. `plan-facts-objective` is not in the registry until the per-objective
- * facts fan-out lands, so it is pinned here on its own, the way `plan-objectives` is. The sample
- * carries three objectives and a whole curriculum unit, so the stay-in-your-lane wording, the
- * target line and the curriculum instruction are all part of the hash.
- */
-const audience = audienceOf(sampleBriefLesson());
-
-const SHAPE = lessonShapeOf(
-  { objectiveVerb: "Explain the Roman invasion of Britain", priorConfidence: "New to it" },
-  { yearGroup: "Year 4" },
-);
-
-const SAMPLE: PlanFactsObjectiveInput = {
-  topic: "The Roman invasion of Britain",
-  audience: { ...audience, subject: "History", yearGroup: "Year 4" },
-  shape: SHAPE,
-  objectives: [
-    { text: "Explain why the Romans invaded Britain" },
-    { text: "Explain how the Romans changed daily life in Britain" },
-    { text: "Explain why Boudica led a revolt" },
-  ],
-  target: 1,
-  curriculum: {
-    text: [
-      "Programme of study: the Roman Empire and its impact on Britain.",
-      "Key learning points: the Romans invaded Britain in AD 43; roads and towns changed daily life;",
-      "Boudica's revolt was defeated in AD 61.",
-      "Misconception: pupils think the Romans left no trace in Britain.",
-    ].join("\n"),
-  },
-  reference: {
-    text: [
-      "- Key idea: Roads joined the new towns. Soldiers and goods moved fast. Example: Watling Street.",
-      "- Term: villa — a large Roman country house with farmland.",
-    ].join("\n"),
-  },
-};
-
-const PIN: { version: string; hash: string } = {
-  version: "plan-facts-objective.v14",
-  hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
-};
+import { PLAN_FACTS_OBJECTIVE_SAMPLE as SAMPLE } from "./plan-samples";
 
 /** One objective's facts, as the schema accepts them; the pieces tests vary field by field. */
 const KEY_IDEA = {
@@ -97,15 +50,6 @@ const facts = (over: Record<string, unknown> = {}) => ({
 const REST = [QUESTION, QUESTION, QUESTION];
 
 describe("plan-facts-objective", () => {
-  test("text hash matches its pinned version", () => {
-    const text = `${planFactsObjectivePrompt.system}\n---\n${planFactsObjectivePrompt.user(SAMPLE)}`;
-    const actual: { version: string; hash: string } = {
-      version: planFactsObjectivePrompt.version,
-      hash: new Bun.CryptoHasher("sha256").update(text).digest("hex"),
-    };
-    expect(actual).toEqual(PIN);
-  });
-
   test("v10: reference facts render after the curriculum extract under their own line, only when given", () => {
     const withRef = planFactsObjectivePrompt.user(SAMPLE);
     const refAt = withRef.indexOf(REFERENCE_INSTRUCTION);

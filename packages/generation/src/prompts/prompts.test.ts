@@ -17,6 +17,12 @@ import {
 } from "./index";
 import { parseBriefPrompt } from "./parse-brief";
 import { planFactsPrompt } from "./plan-facts";
+import {
+  PLAN_FACTS_OBJECTIVE_SAMPLE,
+  PLAN_OBJECTIVES_SAMPLE,
+  PLAN_QUESTION_SET_SAMPLE,
+  PLAN_TEACH_OBJECTIVE_SAMPLE,
+} from "./plan-samples";
 import { planSkeletonPrompt, SOURCE_INSTRUCTION } from "./plan-skeleton";
 import { verifyFactsPrompt } from "./verify-facts";
 
@@ -67,6 +73,10 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   "check-input": { topic: brief.topic, answers: brief.answers, audience: brief.audience },
   "plan-skeleton": brief,
   "plan-facts": { ...brief, skeleton: FIXTURES.planSkeleton },
+  "plan-objectives": PLAN_OBJECTIVES_SAMPLE,
+  "plan-facts-objective": PLAN_FACTS_OBJECTIVE_SAMPLE,
+  "plan-teach-objective": PLAN_TEACH_OBJECTIVE_SAMPLE,
+  "plan-question-set": PLAN_QUESTION_SET_SAMPLE,
   "verify-facts": { audience, topic: brief.topic, facts },
   "generate-slide": {
     referenced: facts,
@@ -197,6 +207,22 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "plan-facts": {
     version: "plan-facts.v11",
     hash: "a582769329a1e3bc2652808dd41c8fc87c8c68e18b1f6b95d8c46407c44253c3",
+  },
+  "plan-objectives": {
+    version: "plan-objectives.v18",
+    hash: "4ce288b25f09eec5f5a6a357bfb931677dcbc5a6d210dad01f9bbc64174308e6",
+  },
+  "plan-facts-objective": {
+    version: "plan-facts-objective.v14",
+    hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
+  },
+  "plan-teach-objective": {
+    version: "plan-teach-objective.v3",
+    hash: "c74a0723399b8f7cd3c5fc7256bbd9d3345f450b00d48590e6e1f1f970d7fd2c",
+  },
+  "plan-question-set": {
+    version: "plan-question-set.v7",
+    hash: "5cf0f133c71c328ce0c72ceb9be2e3b4a93cbc81fb4be0234d9b068c9dce8e64",
   },
   "verify-facts": {
     version: "verify-facts.v6",

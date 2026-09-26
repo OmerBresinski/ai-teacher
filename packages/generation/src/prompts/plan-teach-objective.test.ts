@@ -1,55 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { SPEC_LIMITS } from "@tj/slides";
 import { lessonShapeOf } from "../shapes";
-import { audienceOf } from "../stages/shared";
-import { sampleBriefLesson } from "../testing";
 import { planFactsObjectivePrompt, REFERENCE_INSTRUCTION } from "./plan-facts-objective";
 import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
+import { PLAN_TEACH_OBJECTIVE_SAMPLE as SAMPLE } from "./plan-samples";
 import {
-  type PlanTeachObjectiveInput,
   PlanTeachObjectiveOutputSchema,
   planTeachObjectiveOutputSchemaFor,
   planTeachObjectivePrompt,
   TEACH_SHAPE_SKETCH,
   workedExampleLine,
 } from "./plan-teach-objective";
-
-/*
- * lab/pw wave 2: the teach half of `plan-facts-objective` v14, pinned the way that call is. The
- * sample is v14's (three objectives, a curriculum unit, reference facts), so the lane wording, the
- * target line and both instructions are in the hash.
- */
-const audience = audienceOf(sampleBriefLesson());
-
-const SHAPE = lessonShapeOf(
-  { objectiveVerb: "Explain the Roman invasion of Britain", priorConfidence: "New to it" },
-  { yearGroup: "Year 4" },
-);
-
-const SAMPLE: PlanTeachObjectiveInput = {
-  topic: "The Roman invasion of Britain",
-  audience: { ...audience, subject: "History", yearGroup: "Year 4" },
-  shape: SHAPE,
-  objectives: [
-    { text: "Explain why the Romans invaded Britain" },
-    { text: "Explain how the Romans changed daily life in Britain" },
-    { text: "Explain why Boudica led a revolt" },
-  ],
-  target: 1,
-  curriculum: {
-    text: [
-      "Programme of study: the Roman Empire and its impact on Britain.",
-      "Key learning points: the Romans invaded Britain in AD 43; roads and towns changed daily life;",
-      "Boudica's revolt was defeated in AD 61.",
-    ].join("\n"),
-  },
-  reference: { text: "- Term: villa — a large Roman country house with farmland." },
-};
-
-const PIN: { version: string; hash: string } = {
-  version: "plan-teach-objective.v3",
-  hash: "c74a0723399b8f7cd3c5fc7256bbd9d3345f450b00d48590e6e1f1f970d7fd2c",
-};
 
 const KEY_IDEA = {
   statement: "Roman roads let soldiers and goods move quickly between new towns.",
@@ -76,15 +37,6 @@ const taught = (over: Record<string, unknown> = {}) => ({
 });
 
 describe("plan-teach-objective", () => {
-  test("text hash matches its pinned version", () => {
-    const text = `${planTeachObjectivePrompt.system}\n---\n${planTeachObjectivePrompt.user(SAMPLE)}`;
-    const actual: { version: string; hash: string } = {
-      version: planTeachObjectivePrompt.version,
-      hash: new Bun.CryptoHasher("sha256").update(text).digest("hex"),
-    };
-    expect(actual).toEqual(PIN);
-  });
-
   test("the system text is v14's teach rules and nothing about questions", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;

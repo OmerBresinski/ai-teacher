@@ -1,13 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { isEditorialIssue, SPEC_LIMITS } from "@tj/slides";
-import { lessonShapeOf } from "../shapes";
-import { audienceOf } from "../stages/shared";
-import { sampleBriefLesson } from "../testing";
 import { planFactsObjectivePrompt, SHAPE_SKETCH } from "./plan-facts-objective";
 import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
 import {
   EXIT_LINE,
-  type PlanQuestionSetInput,
   PlanQuestionSetOutputSchema,
   planQuestionSetOutputSchemaFor,
   planQuestionSetPrompt,
@@ -15,64 +11,7 @@ import {
   taughtBlock,
   tierLine,
 } from "./plan-question-set";
-import { PlanTeachObjectiveOutputSchema } from "./plan-teach-objective";
-
-/*
- * lab/pw wave 4: one objective's questions for one use, from the teach call's output. Pinned the
- * way `plan-facts-objective` is; the sample carries two key ideas, an analogy, a worked example
- * and an `avoid` list, so every branch of the taught block is in the hash.
- */
-const audience = audienceOf(sampleBriefLesson());
-
-const TAUGHT = PlanTeachObjectiveOutputSchema.parse({
-  keyIdeas: [
-    {
-      statement: "Roman roads let soldiers and goods move quickly between new towns.",
-      explanation: "Straight, paved roads meant an army could march to trouble in days, not weeks.",
-      example: "Watling Street ran from Dover to Wroxeter, about 250 miles.",
-    },
-    {
-      statement: "Roman towns had a forum, baths and straight streets.",
-      explanation: "A town was planned on a grid, with the forum as its market and meeting place.",
-      example: "Colchester was the first Roman town in Britain.",
-      analogy: "A forum was like a town square with a market on it.",
-    },
-  ],
-  misconceptions: [
-    {
-      belief: "The Romans left no trace in Britain.",
-      correction: "Roads, baths and town walls from Roman Britain still stand today.",
-    },
-  ],
-  vocabulary: [{ term: "forum", definition: "The open square at the centre of a Roman town." }],
-  workedExamples: [
-    {
-      problem: "Why did the Romans build a road from Dover to London?",
-      steps: ["Dover is where soldiers landed.", "London was the biggest town."],
-      answer: "So soldiers and supplies could reach the biggest town quickly.",
-      objectiveRefs: [{ type: "objective", index: 1 }],
-    },
-  ],
-});
-
-const SAMPLE: PlanQuestionSetInput = {
-  topic: "The Roman invasion of Britain",
-  audience: { ...audience, subject: "History", yearGroup: "Year 4" },
-  shape: lessonShapeOf(
-    { objectiveVerb: "Explain the Roman invasion of Britain", priorConfidence: "New to it" },
-    { yearGroup: "Year 4" },
-  ),
-  objective: "Explain how the Romans changed daily life in Britain",
-  taught: TAUGHT,
-  use: "exit",
-  count: 2,
-  avoid: ["How did Roman roads change trade in Britain?", "What was a forum for?"],
-};
-
-const PIN: { version: string; hash: string } = {
-  version: "plan-question-set.v7",
-  hash: "5cf0f133c71c328ce0c72ceb9be2e3b4a93cbc81fb4be0234d9b068c9dce8e64",
-};
+import { PLAN_QUESTION_SET_SAMPLE as SAMPLE, PLAN_TAUGHT_SAMPLE as TAUGHT } from "./plan-samples";
 
 const QUESTION = {
   stem: "Why could a Roman army reach trouble in days rather than weeks?",
@@ -87,15 +26,6 @@ const QUESTION = {
 const set = (questions: unknown[]) => ({ questions });
 
 describe("plan-question-set", () => {
-  test("text hash matches its pinned version", () => {
-    const text = `${planQuestionSetPrompt.system}\n---\n${planQuestionSetPrompt.user(SAMPLE)}`;
-    const actual: { version: string; hash: string } = {
-      version: planQuestionSetPrompt.version,
-      hash: new Bun.CryptoHasher("sha256").update(text).digest("hex"),
-    };
-    expect(actual).toEqual(PIN);
-  });
-
   test("the system text is v14's question rules, the taught-text rule, and no teach rule", () => {
     const system = planQuestionSetPrompt.system;
     const v14 = planFactsObjectivePrompt.system;
