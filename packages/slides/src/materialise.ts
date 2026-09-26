@@ -13,6 +13,7 @@ import type {
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
 import { docFromBullets, docFromText, uid } from "./factories";
+import { fitSlide } from "./fit-slide";
 import {
   type ContentVariant,
   docFromNumbered,
@@ -74,7 +75,8 @@ export function materialiseSlide(
   };
   if (filled.question) slide.question = filled.question;
   if (spec.notes) slide.notes = spec.notes;
-  return slide;
+  // The recipe is sized for its placeholder copy; fit it to the real copy before it is stored.
+  return fitSlide(slide, getTheme(themeId)).slide;
 }
 
 type Layout = { elements: SlideElement[]; question?: QuestionData };
