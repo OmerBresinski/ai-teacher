@@ -45,8 +45,12 @@ describe("plan-teach-objective", () => {
     const v14 = planFactsObjectivePrompt.system;
     // v14 is 487 words; the questions took their rules with them. The alarm follows the count
     // (v4 adds the slide shape and visual rules, about 140 words with the example cycle; v6 the
-    // one-idea-a-slide sizing, 21 words).
-    expect(system.trim().split(/\s+/).length).toBeLessThan(490);
+    // one-idea-a-slide sizing, 21 words; v7 the shape rule by what the idea contains, 16 more).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(510);
+    // v7: the shape follows what the idea contains; explain is the narrow default.
+    expect(system).toContain(
+      '"list" when it gives two or more reasons, causes, factors, effects, features, types or ways; "compare" when it sets two named things side by side, even where it gives points on each; "sequence" for a method or process in order; "explain" only for a single claim or mechanism with none of these.',
+    );
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");

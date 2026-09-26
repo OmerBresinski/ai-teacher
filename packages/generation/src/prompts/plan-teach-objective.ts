@@ -72,6 +72,13 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * 40–60 words with its example, and an objective whose teaching needs more writes two, each with
  * its own example (the outline gives each its own slide, `outline-from-facts` P6b). The shape is
  * the layout hint for that slide, no longer a word budget, so its sentence is unchanged.
+ *
+ * v7 (26 Sept 2026, look/shape-plan, `quality-prd/look/GENERATION-RESULTS-6.md`): v6 still tagged
+ * 15 of 16 key ideas explain on the gen6 inputs (Romans, rivers, Tempest, fractions, coasts),
+ * three named factors and reasons among them. The model tagged the statement's framing; the shape
+ * now follows what the idea contains, "list" from two or more reasons, causes, factors, effects,
+ * features, types or ways, "compare" even where it gives points on each of its two named things,
+ * and explain is the narrow default. Two runs: 16 and 18 ideas, explain 6 and 7.
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
@@ -209,7 +216,7 @@ export const TEACH_SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…","shape":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v6",
+  version: "plan-teach-objective.v7",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
@@ -221,7 +228,7 @@ export const planTeachObjectivePrompt = {
     "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers); the worked example takes a case of its own.",
     'A worked example may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea\'s date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.',
     "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",
-    'A key idea\'s "shape" is how its slide sets it out, from what the idea is: "list" for a set of parallel parts, reasons, factors, features or types it names; "compare" for two named things contrasted; "sequence" for a process or method in order; otherwise "explain".',
+    'A key idea\'s "shape" is how its slide sets it out, and follows what the idea contains: "list" when it gives two or more reasons, causes, factors, effects, features, types or ways; "compare" when it sets two named things side by side, even where it gives points on each; "sequence" for a method or process in order; "explain" only for a single claim or mechanism with none of these.',
     `Give a key idea a "visual" when a drawing shows what the words cannot (the parts of a structure, stages in order or round a cycle, two things side by side, a bar model, a value changing on a graph or number line): its type and a colon (${DIAGRAM_TYPES.join(", ").replace(/, ([^,]+)$/, " or $1")}), then the labels in order and what connects them, in the idea's words: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise". Leave it out when a drawing would only put the idea's words in boxes.`,
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
