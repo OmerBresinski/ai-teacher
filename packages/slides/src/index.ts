@@ -14,6 +14,7 @@ export * from "./choose-variant";
 export * from "./demo-lesson";
 export * from "./explanation-metrics";
 export * from "./factories";
+export * from "./figures";
 export * from "./fit-slide";
 export * from "./fonts";
 export * from "./geometry";

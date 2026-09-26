@@ -782,6 +782,258 @@
       }
     ]
   },
+  "diagram/chalk": {
+    "elements": [
+      {
+        "id": "_1",
+        "type": "group",
+        "name": "Right-angled triangle",
+        "x": 58,
+        "y": 43,
+        "w": 413,
+        "h": 454,
+        "children": [
+          {
+            "id": "_2",
+            "type": "path",
+            "x": 101,
+            "y": 5,
+            "w": 296,
+            "h": 395,
+            "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
+              {
+                "x": 1,
+                "y": 1
+              },
+              {
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "closed": true,
+            "stroke": "#2C2A24",
+            "strokeWidth": 3,
+            "name": "Triangle"
+          },
+          {
+            "id": "_3",
+            "type": "path",
+            "x": 101,
+            "y": 376,
+            "w": 24,
+            "h": 24,
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 1
+              }
+            ],
+            "stroke": "#2C2A24",
+            "strokeWidth": 2,
+            "name": "Right angle"
+          },
+          {
+            "id": "_4",
+            "type": "text",
+            "x": 214,
+            "y": 412,
+            "w": 71,
+            "h": 38,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "3 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#2C2A24",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_5",
+            "type": "text",
+            "x": 16,
+            "y": 184,
+            "w": 73,
+            "h": 38,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "4 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "right",
+              "valign": "middle",
+              "color": "#2C2A24",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_6",
+            "type": "text",
+            "x": 261,
+            "y": 160,
+            "w": 40,
+            "h": 38,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "x"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#2C2A24",
+              "padding": 0
+            }
+          }
+        ],
+        "alt": "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.",
+        "figure": {
+          "template": "right-triangle",
+          "values": {
+            "base": {
+              "length": 3,
+              "label": "3 cm"
+            },
+            "height": {
+              "length": 4,
+              "label": "4 cm"
+            },
+            "hypotenuse": {
+              "label": "x"
+            }
+          }
+        }
+      },
+      {
+        "id": "_7",
+        "type": "text",
+        "x": 489,
+        "y": 98,
+        "w": 413,
+        "h": 22,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "DIAGRAM"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "caption",
+          "autoHeight": true,
+          "color": "#6E6656"
+        }
+      },
+      {
+        "id": "_8",
+        "type": "text",
+        "x": 489,
+        "y": 132,
+        "w": 413,
+        "h": 87,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "What the diagram shows"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "autoHeight": true
+        }
+      },
+      {
+        "id": "_9",
+        "type": "text",
+        "x": 489,
+        "y": 238,
+        "w": 413,
+        "h": 180,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Two or three sentences that link the diagram to the idea."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "autoHeight": true
+        }
+      }
+    ]
+  },
   "worked-example/chalk": {
     "elements": [
       {
@@ -3109,6 +3361,258 @@
                 {
                   "type": "text",
                   "text": "Two or three sentences that link the image to the idea."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "autoHeight": true
+        }
+      }
+    ]
+  },
+  "diagram/playground": {
+    "elements": [
+      {
+        "id": "_1",
+        "type": "group",
+        "name": "Right-angled triangle",
+        "x": 58,
+        "y": 43,
+        "w": 413,
+        "h": 454,
+        "children": [
+          {
+            "id": "_2",
+            "type": "path",
+            "x": 102,
+            "y": 4,
+            "w": 296,
+            "h": 395,
+            "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
+              {
+                "x": 1,
+                "y": 1
+              },
+              {
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "closed": true,
+            "stroke": "#33261D",
+            "strokeWidth": 3,
+            "name": "Triangle"
+          },
+          {
+            "id": "_3",
+            "type": "path",
+            "x": 102,
+            "y": 375,
+            "w": 24,
+            "h": 24,
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 1
+              }
+            ],
+            "stroke": "#33261D",
+            "strokeWidth": 2,
+            "name": "Right angle"
+          },
+          {
+            "id": "_4",
+            "type": "text",
+            "x": 214,
+            "y": 411,
+            "w": 73,
+            "h": 39,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "3 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#33261D",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_5",
+            "type": "text",
+            "x": 15,
+            "y": 182,
+            "w": 75,
+            "h": 39,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "4 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "right",
+              "valign": "middle",
+              "color": "#33261D",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_6",
+            "type": "text",
+            "x": 262,
+            "y": 158,
+            "w": 40,
+            "h": 39,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "x"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#33261D",
+              "padding": 0
+            }
+          }
+        ],
+        "alt": "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.",
+        "figure": {
+          "template": "right-triangle",
+          "values": {
+            "base": {
+              "length": 3,
+              "label": "3 cm"
+            },
+            "height": {
+              "length": 4,
+              "label": "4 cm"
+            },
+            "hypotenuse": {
+              "label": "x"
+            }
+          }
+        }
+      },
+      {
+        "id": "_7",
+        "type": "text",
+        "x": 489,
+        "y": 98,
+        "w": 413,
+        "h": 23,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "DIAGRAM"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "caption",
+          "autoHeight": true,
+          "color": "#7A6656"
+        }
+      },
+      {
+        "id": "_8",
+        "type": "text",
+        "x": 489,
+        "y": 133,
+        "w": 413,
+        "h": 90,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "What the diagram shows"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "autoHeight": true
+        }
+      },
+      {
+        "id": "_9",
+        "type": "text",
+        "x": 489,
+        "y": 242,
+        "w": 413,
+        "h": 186,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Two or three sentences that link the diagram to the idea."
                 }
               ]
             }
@@ -5460,6 +5964,258 @@
       }
     ]
   },
+  "diagram/reading-room": {
+    "elements": [
+      {
+        "id": "_1",
+        "type": "group",
+        "name": "Right-angled triangle",
+        "x": 58,
+        "y": 43,
+        "w": 413,
+        "h": 454,
+        "children": [
+          {
+            "id": "_2",
+            "type": "path",
+            "x": 99,
+            "y": 4,
+            "w": 299,
+            "h": 399,
+            "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
+              {
+                "x": 1,
+                "y": 1
+              },
+              {
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "closed": true,
+            "stroke": "#1F2328",
+            "strokeWidth": 3,
+            "name": "Triangle"
+          },
+          {
+            "id": "_3",
+            "type": "path",
+            "x": 99,
+            "y": 379,
+            "w": 24,
+            "h": 24,
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 1
+              }
+            ],
+            "stroke": "#1F2328",
+            "strokeWidth": 2,
+            "name": "Right angle"
+          },
+          {
+            "id": "_4",
+            "type": "text",
+            "x": 213,
+            "y": 415,
+            "w": 71,
+            "h": 35,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "3 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#1F2328",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_5",
+            "type": "text",
+            "x": 16,
+            "y": 186,
+            "w": 71,
+            "h": 35,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "4 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "right",
+              "valign": "middle",
+              "color": "#1F2328",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_6",
+            "type": "text",
+            "x": 259,
+            "y": 163,
+            "w": 40,
+            "h": 35,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "x"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#1F2328",
+              "padding": 0
+            }
+          }
+        ],
+        "alt": "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.",
+        "figure": {
+          "template": "right-triangle",
+          "values": {
+            "base": {
+              "length": 3,
+              "label": "3 cm"
+            },
+            "height": {
+              "length": 4,
+              "label": "4 cm"
+            },
+            "hypotenuse": {
+              "label": "x"
+            }
+          }
+        }
+      },
+      {
+        "id": "_7",
+        "type": "text",
+        "x": 489,
+        "y": 105,
+        "w": 413,
+        "h": 21,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "DIAGRAM"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "caption",
+          "autoHeight": true,
+          "color": "#656C77"
+        }
+      },
+      {
+        "id": "_8",
+        "type": "text",
+        "x": 489,
+        "y": 138,
+        "w": 413,
+        "h": 87,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "What the diagram shows"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "autoHeight": true
+        }
+      },
+      {
+        "id": "_9",
+        "type": "text",
+        "x": 489,
+        "y": 244,
+        "w": 413,
+        "h": 169,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Two or three sentences that link the diagram to the idea."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "autoHeight": true
+        }
+      }
+    ]
+  },
   "worked-example/reading-room": {
     "elements": [
       {
@@ -7787,6 +8543,258 @@
                 {
                   "type": "text",
                   "text": "Two or three sentences that link the image to the idea."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "autoHeight": true
+        }
+      }
+    ]
+  },
+  "diagram/exam-hall": {
+    "elements": [
+      {
+        "id": "_1",
+        "type": "group",
+        "name": "Right-angled triangle",
+        "x": 58,
+        "y": 43,
+        "w": 413,
+        "h": 454,
+        "children": [
+          {
+            "id": "_2",
+            "type": "path",
+            "x": 99,
+            "y": 4,
+            "w": 299,
+            "h": 399,
+            "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
+              {
+                "x": 1,
+                "y": 1
+              },
+              {
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "closed": true,
+            "stroke": "#16191C",
+            "strokeWidth": 3,
+            "name": "Triangle"
+          },
+          {
+            "id": "_3",
+            "type": "path",
+            "x": 99,
+            "y": 379,
+            "w": 24,
+            "h": 24,
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 1
+              }
+            ],
+            "stroke": "#16191C",
+            "strokeWidth": 2,
+            "name": "Right angle"
+          },
+          {
+            "id": "_4",
+            "type": "text",
+            "x": 213,
+            "y": 415,
+            "w": 71,
+            "h": 35,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "3 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#16191C",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_5",
+            "type": "text",
+            "x": 16,
+            "y": 186,
+            "w": 71,
+            "h": 35,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "4 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "right",
+              "valign": "middle",
+              "color": "#16191C",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_6",
+            "type": "text",
+            "x": 259,
+            "y": 163,
+            "w": 40,
+            "h": 35,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "x"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#16191C",
+              "padding": 0
+            }
+          }
+        ],
+        "alt": "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.",
+        "figure": {
+          "template": "right-triangle",
+          "values": {
+            "base": {
+              "length": 3,
+              "label": "3 cm"
+            },
+            "height": {
+              "length": 4,
+              "label": "4 cm"
+            },
+            "hypotenuse": {
+              "label": "x"
+            }
+          }
+        }
+      },
+      {
+        "id": "_7",
+        "type": "text",
+        "x": 489,
+        "y": 112,
+        "w": 413,
+        "h": 20,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "DIAGRAM"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "caption",
+          "autoHeight": true,
+          "color": "#5C646D"
+        }
+      },
+      {
+        "id": "_8",
+        "type": "text",
+        "x": 489,
+        "y": 144,
+        "w": 413,
+        "h": 83,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "What the diagram shows"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "autoHeight": true
+        }
+      },
+      {
+        "id": "_9",
+        "type": "text",
+        "x": 489,
+        "y": 246,
+        "w": 413,
+        "h": 163,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Two or three sentences that link the diagram to the idea."
                 }
               ]
             }
@@ -10138,6 +11146,258 @@
       }
     ]
   },
+  "diagram/night-lab": {
+    "elements": [
+      {
+        "id": "_1",
+        "type": "group",
+        "name": "Right-angled triangle",
+        "x": 58,
+        "y": 43,
+        "w": 413,
+        "h": 454,
+        "children": [
+          {
+            "id": "_2",
+            "type": "path",
+            "x": 99,
+            "y": 5,
+            "w": 298,
+            "h": 397,
+            "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
+              {
+                "x": 1,
+                "y": 1
+              },
+              {
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "closed": true,
+            "stroke": "#ECEDEF",
+            "strokeWidth": 3,
+            "name": "Triangle"
+          },
+          {
+            "id": "_3",
+            "type": "path",
+            "x": 99,
+            "y": 378,
+            "w": 24,
+            "h": 24,
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 1
+              }
+            ],
+            "stroke": "#ECEDEF",
+            "strokeWidth": 2,
+            "name": "Right angle"
+          },
+          {
+            "id": "_4",
+            "type": "text",
+            "x": 213,
+            "y": 414,
+            "w": 70,
+            "h": 36,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "3 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#ECEDEF",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_5",
+            "type": "text",
+            "x": 16,
+            "y": 186,
+            "w": 71,
+            "h": 36,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "4 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "right",
+              "valign": "middle",
+              "color": "#ECEDEF",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_6",
+            "type": "text",
+            "x": 259,
+            "y": 162,
+            "w": 40,
+            "h": 36,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "x"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#ECEDEF",
+              "padding": 0
+            }
+          }
+        ],
+        "alt": "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.",
+        "figure": {
+          "template": "right-triangle",
+          "values": {
+            "base": {
+              "length": 3,
+              "label": "3 cm"
+            },
+            "height": {
+              "length": 4,
+              "label": "4 cm"
+            },
+            "hypotenuse": {
+              "label": "x"
+            }
+          }
+        }
+      },
+      {
+        "id": "_7",
+        "type": "text",
+        "x": 489,
+        "y": 105,
+        "w": 413,
+        "h": 21,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "DIAGRAM"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "caption",
+          "autoHeight": true,
+          "color": "#99A0AB"
+        }
+      },
+      {
+        "id": "_8",
+        "type": "text",
+        "x": 489,
+        "y": 138,
+        "w": 413,
+        "h": 87,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "What the diagram shows"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "autoHeight": true
+        }
+      },
+      {
+        "id": "_9",
+        "type": "text",
+        "x": 489,
+        "y": 244,
+        "w": 413,
+        "h": 174,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Two or three sentences that link the diagram to the idea."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "autoHeight": true
+        }
+      }
+    ]
+  },
   "worked-example/night-lab": {
     "elements": [
       {
@@ -12465,6 +13725,258 @@
                 {
                   "type": "text",
                   "text": "Two or three sentences that link the image to the idea."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "autoHeight": true
+        }
+      }
+    ]
+  },
+  "diagram/beacon": {
+    "elements": [
+      {
+        "id": "_1",
+        "type": "group",
+        "name": "Right-angled triangle",
+        "x": 58,
+        "y": 43,
+        "w": 413,
+        "h": 454,
+        "children": [
+          {
+            "id": "_2",
+            "type": "path",
+            "x": 103,
+            "y": 5,
+            "w": 294,
+            "h": 392,
+            "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
+              {
+                "x": 1,
+                "y": 1
+              },
+              {
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "closed": true,
+            "stroke": "#0E0E0E",
+            "strokeWidth": 3,
+            "name": "Triangle"
+          },
+          {
+            "id": "_3",
+            "type": "path",
+            "x": 103,
+            "y": 373,
+            "w": 24,
+            "h": 24,
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 1
+              }
+            ],
+            "stroke": "#0E0E0E",
+            "strokeWidth": 2,
+            "name": "Right angle"
+          },
+          {
+            "id": "_4",
+            "type": "text",
+            "x": 214,
+            "y": 409,
+            "w": 73,
+            "h": 41,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "3 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#0E0E0E",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_5",
+            "type": "text",
+            "x": 17,
+            "y": 181,
+            "w": 74,
+            "h": 41,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "4 cm"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "right",
+              "valign": "middle",
+              "color": "#0E0E0E",
+              "padding": 0
+            }
+          },
+          {
+            "id": "_6",
+            "type": "text",
+            "x": 262,
+            "y": 156,
+            "w": 40,
+            "h": 41,
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "x"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "small",
+              "autoHeight": true,
+              "align": "center",
+              "valign": "middle",
+              "color": "#0E0E0E",
+              "padding": 0
+            }
+          }
+        ],
+        "alt": "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.",
+        "figure": {
+          "template": "right-triangle",
+          "values": {
+            "base": {
+              "length": 3,
+              "label": "3 cm"
+            },
+            "height": {
+              "length": 4,
+              "label": "4 cm"
+            },
+            "hypotenuse": {
+              "label": "x"
+            }
+          }
+        }
+      },
+      {
+        "id": "_7",
+        "type": "text",
+        "x": 489,
+        "y": 91,
+        "w": 413,
+        "h": 23,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "DIAGRAM"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "caption",
+          "autoHeight": true,
+          "color": "#4A4A46"
+        }
+      },
+      {
+        "id": "_8",
+        "type": "text",
+        "x": 489,
+        "y": 126,
+        "w": 413,
+        "h": 92,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "What the diagram shows"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "autoHeight": true
+        }
+      },
+      {
+        "id": "_9",
+        "type": "text",
+        "x": 489,
+        "y": 237,
+        "w": 413,
+        "h": 193,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Two or three sentences that link the diagram to the idea."
                 }
               ]
             }

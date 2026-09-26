@@ -608,6 +608,24 @@ describe("exportLessonPptx", () => {
     expect(xml.split('rot="16200000"').length - 1).toBe(3);
     expect(xml).not.toMatch(/rot="-/);
   }, 30_000);
+
+  // TEACH-77 row 9. pptxgenjs 4.0.1 has no alt text for a shape or a text box, so the figure's
+  // alt stays on screen only: a known limitation, recorded in the ADR 0032 amendment.
+  it("exports a diagram slide's figure as custom geometry and text boxes, without its alt", async () => {
+    const diagram = newSlide("diagram", "chalk");
+    const lesson = { id: "l1", title: "Diagram", slides: [diagram] } as Lesson;
+    const blob = await exportLessonPptx(lesson, theme, { includeAnswers: false });
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    // The closed triangle and the open right-angle mark.
+    expect(xml.split("<a:custGeom>").length - 1).toBe(2);
+    expect(xml.match(/<a:close ?\/>/g)).toHaveLength(1);
+    for (const label of ["3 cm", "4 cm", "x"]) expect(xml).toContain(`<a:t>${label}</a:t>`);
+    expect(xml.split("<p:txBody>").length - 1).toBe(6);
+    const figure = diagram.elements[0];
+    if (figure?.type !== "group" || !figure.alt) throw new Error("no figure");
+    expect(xml).not.toContain(figure.alt);
+  }, 30_000);
 });
 
 /* ------------------------------------------------------------------ */

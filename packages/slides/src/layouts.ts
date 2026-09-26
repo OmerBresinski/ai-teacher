@@ -16,6 +16,7 @@ import type {
 import { OBJECTIVES_SLIDE_HEADING, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { explanationReserve, RESERVED_LINES } from "./explanation-metrics";
 import { docFromBullets, docFromText, newText, uid } from "./factories";
+import { drawFigure } from "./figures";
 import { BASELINE, GUTTER, HALF, SAFE, SPACE, snapY, spanWidth, THIRD } from "./grid";
 import { OPTION } from "./metrics";
 import { fontFloor, getTheme, type TextRole } from "./themes";
@@ -467,6 +468,56 @@ function imageTextSlide(t: Theme): Layout {
         x: X,
         y: top + capH + 12 + headH + 19,
         w: W,
+        h: bodyH,
+      }),
+    ],
+  };
+}
+
+/**
+ * Where a diagram slide draws its figure: the left half of the safe area, full height. Exported so
+ * the diagram filler (TEACH-89) redraws the figure in the same place.
+ */
+export const FIGURE_RECT: Rect = { x: SAFE.x, y: SAFE.y, w: HALF_W, h: SAFE.h };
+
+/**
+ * Diagram — a figure down the left where image-text has its photograph, the text beside it
+ * (ADR 0032 item 2). The placeholder is a 3-4-x right-angled triangle.
+ */
+function diagramSlide(t: Theme): Layout {
+  const figure = drawFigure(
+    "right-triangle",
+    {
+      base: { length: 3, label: "3 cm" },
+      height: { length: 4, label: "4 cm" },
+      hypotenuse: { label: "x" },
+    },
+    t,
+    FIGURE_RECT,
+  );
+  const capH = boxH(t, "caption");
+  const headH = boxH(t, "heading", 2);
+  const bodyH = boxH(t, "body", 4);
+  const top = centreY(capH + 12 + headH + 19 + bodyH);
+  return {
+    elements: [
+      figure,
+      text(
+        "caption",
+        "DIAGRAM",
+        { x: RIGHT_X, y: top, w: HALF_W, h: capH },
+        { color: t.colors.muted },
+      ),
+      text("heading", "What the diagram shows", {
+        x: RIGHT_X,
+        y: top + capH + 12,
+        w: HALF_W,
+        h: headH,
+      }),
+      text("body", "Two or three sentences that link the diagram to the idea.", {
+        x: RIGHT_X,
+        y: top + capH + 12 + headH + 19,
+        w: HALF_W,
         h: bodyH,
       }),
     ],
@@ -1076,6 +1127,7 @@ export const LIST_VARIANT_NAMES = ["numbered", "cards", "stepped"] as const;
 const SINGLE_VARIANT_NAMES = [
   "grid",
   "photo-left",
+  "figure-left",
   "working-card",
   "prompt",
   "two-cards",
@@ -1183,6 +1235,7 @@ export const LAYOUT_CATALOGUE: {
     },
   ],
   "image-text": one("photo-left", "A picture down the left, the text beside it"),
+  diagram: one("figure-left", "A figure down the left, the text beside it"),
   "worked-example": one("working-card", "The question on top, the working on a card below"),
   instructions: LIST_VARIANTS,
   discussion: one("prompt", "One big prompt"),
@@ -1296,6 +1349,8 @@ export function layoutSlide(
       return contentVariant(t, variant);
     case "image-text":
       return imageTextSlide(t);
+    case "diagram":
+      return diagramSlide(t);
     case "worked-example":
       return workedExampleSlide(t);
     case "instructions":
@@ -1333,6 +1388,7 @@ export const SLIDE_KIND_LABELS: Record<SlideKind, string> = {
   vocabulary: "Key vocabulary",
   content: "Explanation",
   "image-text": "Image and text",
+  diagram: "Diagram",
   "worked-example": "Worked example",
   instructions: "Instructions",
   discussion: "Discussion",
@@ -1362,6 +1418,7 @@ export const SLIDE_KIND_DESCRIPTIONS: Record<SlideKind, string> = {
   vocabulary: "Terms and their definitions",
   content: "One idea, explained",
   "image-text": "A picture beside the text",
+  diagram: "A labelled figure beside the text",
   "worked-example": "A question and the working",
   instructions: "Numbered steps for a task",
   discussion: "A prompt to talk about",
@@ -1378,7 +1435,10 @@ export const SLIDE_KIND_DESCRIPTIONS: Record<SlideKind, string> = {
   blank: "An empty slide",
 };
 
-/** Order shown in the picker: the shape of a lesson, then the question types. */
+/**
+ * Order shown in the picker: the shape of a lesson, then the question types. Every kind is here
+ * or in `PICKER_HIDDEN_KINDS`, never both.
+ */
 export const SLIDE_KIND_ORDER: SlideKind[] = [
   "title",
   "objectives",
@@ -1401,3 +1461,10 @@ export const SLIDE_KIND_ORDER: SlideKind[] = [
   "plenary",
   "blank",
 ];
+
+/**
+ * Kinds only generation makes, so Add slide and the Slide layout menu never offer them: a
+ * diagram needs a Figure template and values, and there is no template picker yet (ADR 0032
+ * amendment, 2026-09-26). An existing slide of one of these kinds still converts to any kind above.
+ */
+export const PICKER_HIDDEN_KINDS: SlideKind[] = ["diagram"];

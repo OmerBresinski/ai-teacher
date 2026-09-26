@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type FigureRef, FigureRefSchema } from "./figure";
 import { type Provenance, provenanceFields } from "./generated-from";
 import { isLinkableHref } from "./links";
 import { type RichDoc, RichDocSchema } from "./rich-text";
@@ -29,6 +30,7 @@ export type SlideKind =
   | "vocabulary"
   | "content"
   | "image-text"
+  | "diagram"
   | "worked-example"
   | "instructions"
   | "discussion"
@@ -306,6 +308,13 @@ export type GroupElement = ElementBase & {
   type: "group";
   /** Children positioned in the group's local space (0,0 = group top-left). */
   children: SlideElement[];
+  /**
+   * What a screen reader announces for the whole group, which then reads as one image. A Figure
+   * template writes it from its values (ADR 0032 amendment, 2026-09-26).
+   */
+  alt?: string;
+  /** The Figure template and values the group was drawn from, when it is a Figure. */
+  figure?: FigureRef;
 };
 
 export type SlideElement =
@@ -549,6 +558,8 @@ const GroupElementSchema = z.object({
   get children() {
     return z.array(SlideElementSchema);
   },
+  alt: z.string().optional(),
+  figure: FigureRefSchema.optional(),
 });
 
 export const SlideElementSchema: z.ZodType<SlideElement> = z.discriminatedUnion("type", [
@@ -614,6 +625,7 @@ export const SlideKindSchema = z.enum([
   "vocabulary",
   "content",
   "image-text",
+  "diagram",
   "worked-example",
   "instructions",
   "discussion",

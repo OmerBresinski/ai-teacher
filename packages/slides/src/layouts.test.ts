@@ -15,10 +15,12 @@ import { SAFE, TRIM } from "./grid";
 import {
   compositionOf,
   derange,
+  FIGURE_RECT,
   LAYOUT_CATALOGUE,
   LIST_SLOTS,
   type ListKind,
   layoutSlide,
+  PICKER_HIDDEN_KINDS,
   SLIDE_KIND_DESCRIPTIONS,
   SLIDE_KIND_LABELS,
   SLIDE_KIND_ORDER,
@@ -46,8 +48,14 @@ function docToPlainText(doc: RichDoc | RichNode): string {
 
 const KINDS = Object.keys(SLIDE_KIND_LABELS) as SlideKind[];
 
-const flatten = (els: SlideElement[]): SlideElement[] =>
-  els.flatMap((el) => (el.type === "group" ? [el, ...flatten(el.children)] : [el]));
+/** Every element, a group's children moved out of its local space onto the slide. */
+const flatten = (els: SlideElement[], dx = 0, dy = 0): SlideElement[] =>
+  els.flatMap((el) => {
+    const placed = { ...el, x: el.x + dx, y: el.y + dy };
+    return placed.type === "group"
+      ? [placed, ...flatten(placed.children, placed.x, placed.y)]
+      : [placed];
+  });
 
 describe("layoutSlide", () => {
   it("describes every SlideKind for the picker", () => {
@@ -55,10 +63,44 @@ describe("layoutSlide", () => {
     for (const kind of KINDS) expect(SLIDE_KIND_DESCRIPTIONS[kind].length, kind).toBeGreaterThan(0);
   });
 
-  it("covers every SlideKind with a label and a picker position", () => {
-    expect(new Set(SLIDE_KIND_ORDER)).toEqual(new Set(KINDS));
-    expect(SLIDE_KIND_ORDER).toHaveLength(KINDS.length);
+  it("covers every SlideKind with a label and a picker position, or hides it from the pickers", () => {
+    expect(new Set([...SLIDE_KIND_ORDER, ...PICKER_HIDDEN_KINDS])).toEqual(new Set(KINDS));
+    expect(SLIDE_KIND_ORDER.length + PICKER_HIDDEN_KINDS.length).toBe(KINDS.length);
+    for (const kind of PICKER_HIDDEN_KINDS) expect(SLIDE_KIND_ORDER, kind).not.toContain(kind);
   });
+
+  // TEACH-77 row 2: Add slide and the Slide layout menu both list `SLIDE_KIND_ORDER`.
+  it("keeps the generated-only diagram out of the pickers", () => {
+    expect(PICKER_HIDDEN_KINDS).toEqual(["diagram"]);
+    expect(SLIDE_KIND_ORDER).toHaveLength(20);
+  });
+
+  // TEACH-77 row 1.
+  for (const theme of THEMES) {
+    it(`diagram on ${theme.id}: the figure left, caption, heading and body right`, () => {
+      const { elements } = layoutSlide("diagram", theme.id);
+      const [figure, caption, heading, body, ...rest] = elements;
+      expect(rest).toHaveLength(0);
+      if (figure?.type !== "group") throw new Error("the figure is not a group");
+      expect(figure.alt).toBe("Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.");
+      expect(figure.figure?.template).toBe("right-triangle");
+      expect([figure.x, figure.y, figure.w, figure.h]).toEqual([
+        FIGURE_RECT.x,
+        FIGURE_RECT.y,
+        FIGURE_RECT.w,
+        FIGURE_RECT.h,
+      ]);
+      const presets = [caption, heading, body].map((el) =>
+        el?.type === "text" ? el.style.preset : el?.type,
+      );
+      expect(presets).toEqual(["caption", "heading", "body"]);
+      if (caption?.type !== "text") throw new Error("no caption");
+      expect(docToPlainText(caption.doc).trim()).toBe("DIAGRAM");
+      expect(caption.style.color).toBe(theme.colors.muted);
+      for (const el of [caption, heading, body])
+        expect(el?.x, "text right of the figure").toBeGreaterThan(figure.x + figure.w);
+    });
+  }
 
   for (const theme of THEMES) {
     for (const kind of KINDS) {

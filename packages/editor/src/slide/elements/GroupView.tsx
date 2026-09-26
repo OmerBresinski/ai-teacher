@@ -3,7 +3,13 @@ import { useMemo } from "react";
 import { ElementFrame } from "./ElementFrame";
 import type { ElementViewProps } from "./kit";
 
-/** Children live in the group's local space, so the frame is just a positioned box. */
+const FRAME = { position: "relative", width: "100%", height: "100%" } as const;
+
+/**
+ * Children live in the group's local space, so the frame is just a positioned box. A group with
+ * `alt` (a Figure, ADR 0032) is one image to a screen reader: its alt text is the name, and the
+ * labels inside it read as part of the image rather than one by one.
+ */
 export function GroupView({
   element,
   theme,
@@ -31,24 +37,27 @@ export function GroupView({
   // inside it or the two transforms compound.
   const childrenAnimate = (element.revealStep ?? 0) === 0;
 
-  return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      {element.children.map((child, i) => (
-        <ElementFrame
-          key={child.id}
-          element={child}
-          theme={theme}
-          mode={mode}
-          slideId={slideId}
-          step={step}
-          revealAnswer={revealAnswer}
-          answerProgress={answerProgress}
-          question={question}
-          zIndex={i + 1}
-          staggerIndex={stagger.get(child.id)}
-          animateReveals={childrenAnimate}
-        />
-      ))}
+  const children = element.children.map((child, i) => (
+    <ElementFrame
+      key={child.id}
+      element={child}
+      theme={theme}
+      mode={mode}
+      slideId={slideId}
+      step={step}
+      revealAnswer={revealAnswer}
+      answerProgress={answerProgress}
+      question={question}
+      zIndex={i + 1}
+      staggerIndex={stagger.get(child.id)}
+      animateReveals={childrenAnimate}
+    />
+  ));
+  return element.alt ? (
+    <div style={FRAME} role="img" aria-label={element.alt}>
+      {children}
     </div>
+  ) : (
+    <div style={FRAME}>{children}</div>
   );
 }
