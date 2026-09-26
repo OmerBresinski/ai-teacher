@@ -308,7 +308,7 @@ function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: Conten
   if (variant === "statement") {
     // No heading on a statement: the heading becomes the eyebrow over the sentence.
     setText(slot(laid, "Eyebrow"), spec.heading);
-    setText(slot(laid, "Statement"), spec.body);
+    setDoc(slot(laid, "Statement"), bodyWithPoints(spec.body, spec.points));
     return laid;
   }
   setText(textOf(laid, "heading"), spec.heading);
@@ -316,15 +316,26 @@ function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: Conten
     const [left, right] = splitAtFullStop(spec.body);
     setText(slot(laid, "Body left"), left);
     const rightSlot = slot(laid, "Body right");
-    if (right) {
-      setText(rightSlot, right);
+    if (right || spec.points?.length) {
+      setDoc(rightSlot, bodyWithPoints(right, spec.points));
       return laid;
     }
     // One sentence with no full stop to split at: the left column carries it all.
     return { ...laid, elements: laid.elements.filter((element) => element !== rightSlot) };
   }
-  setText(textOf(laid, "body"), spec.body);
+  setDoc(textOf(laid, "body"), bodyWithPoints(spec.body, spec.points));
   return laid;
+}
+
+/**
+ * A content body and its optional `points`: the body's paragraphs, then the points as one bullet
+ * list. The look (`leadAndCard`) keeps the first sentence as the lead and puts the rest, list
+ * included, under it.
+ */
+export function bodyWithPoints(body: string, points: string[] | undefined): RichDoc {
+  if (!points?.length) return docFromText(body);
+  const text = body.trim() ? (docFromText(body).content ?? []) : [];
+  return { type: "doc", content: [...text, ...(docFromBullets(points).content ?? [])] };
 }
 
 /**

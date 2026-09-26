@@ -179,6 +179,25 @@ function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
         out.push({ field: `steps[${Number(step[1]) - 1}]`, text });
         continue;
       }
+      // A content slide's `points` sit as a bullet list under its body (`@tj/slides` bodyWithPoints).
+      const list = (element.doc.content ?? []).findIndex((n) => n.type === "bulletList");
+      if (slide.kind === "content" && preset === "body" && list >= 0) {
+        const before = richDocToPlainText({
+          type: "doc",
+          content: element.doc.content?.slice(0, list),
+        }).trim();
+        const points = richDocToPlainText({
+          type: "doc",
+          content: element.doc.content?.slice(list),
+        })
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .join("\n");
+        if (before) out.push({ field: "body", text: before });
+        if (points) out.push({ field: "points", text: points });
+        continue;
+      }
       if (text) out.push({ field: preset === "small" ? "instruction" : (preset ?? "text"), text });
     } else if (element.type === "option") {
       const text = richDocToPlainText(element.doc).trim();

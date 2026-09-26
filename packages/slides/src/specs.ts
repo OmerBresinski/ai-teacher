@@ -346,6 +346,11 @@ function buildSpecs(soft: boolean) {
       ...specBase,
       heading: line(SPEC_LIMITS.heading),
       body: line(SPEC_LIMITS.body),
+      /**
+       * A set of parallel things the body's lead introduces (factors, parts, types), set as bullets
+       * under it (`materialise.ts` `fillContent`, `look.ts` `leadAndCard`). Left out otherwise.
+       */
+      points: items(2, 4).optional(),
       diagram: line(SPEC_LIMITS.diagram).optional(),
       callout,
     }),

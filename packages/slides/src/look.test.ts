@@ -80,6 +80,32 @@ describe("the lesson look", () => {
     });
   }
 
+  test("look/headings: a lead with points sets the lead, then the points as a bullet list", () => {
+    const slide = materialiseSlide(
+      {
+        kind: "content",
+        heading: "Types of volcano",
+        body: "Volcanoes are grouped by the shape their lava builds.",
+        points: ["shield: runny lava, gentle slopes", "composite: layers of ash and lava"],
+        factRefs: ["k1"],
+      },
+      "chalk",
+      META,
+      counter(),
+    );
+    const bodies = slide.elements.filter(
+      (e): e is TextElement => e.type === "text" && e.style.preset === "body",
+    );
+    const lead = bodies.find((e) => !e.name);
+    expect(lead && plain(lead)).toBe("Volcanoes are grouped by the shape their lava builds.");
+    const [list] = named(slide, KEY_IDEA_NAME) as TextElement[];
+    expect(list?.doc.content?.map((n) => n.type)).toEqual(["bulletList"]);
+    expect(list && plain(list)).toBe(
+      "shield: runny lava, gentle slopescomposite: layers of ash and lava",
+    );
+    expect((list?.y ?? 0) >= (lead?.y ?? 0) + (lead?.h ?? 0)).toBe(true);
+  });
+
   test("a question slide keeps its composition and takes the bar alone", () => {
     const slide = materialiseSlide(
       {

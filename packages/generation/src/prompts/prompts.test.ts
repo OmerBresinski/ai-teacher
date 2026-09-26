@@ -231,9 +231,10 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
     // v26: the copy-down lead, the diagram rule and the shorter slide aims (look uplift); v27
-    // tightens the diagram trigger; v28 replaces its "single claim" none case.
-    version: "generate-slide.v28",
-    hash: "fdfc2d9e346d78b9b91b430c1330d3edec9957ab965c3f41e81c5e1b25804e74",
+    // tightens the diagram trigger; v28 replaces its "single claim" none case. v29: the label
+    // heading, the lead and the optional `points` (look/headings).
+    version: "generate-slide.v29",
+    hash: "73076601cedcf5495e321153762ba6f1d608d2703463a5da1a57b9c7bda48349",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -260,7 +261,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "6207e235c290272a2b5c20309f9ab92655be19f0ca67b18416b8a6998e1d73ff",
   },
   repair: {
-    version: "repair.v16",
+    // v17 changes only the user turn (the shape line it copies, the `points` label).
+    version: "repair.v17",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
@@ -321,8 +323,9 @@ describe("prompt versions", () => {
       // content rule and its 60-word body) is 971 and must stay under this. v25 (the build-up
       // order, luna-direct FM3) is 979. v26 (look uplift: the copy-down lead and the `diagram`
       // rule with its named "none" and type list, Greg 26 Sept) is 1123; v27 (the diagram trigger
-      // tightened) is 1138; v28 (the "single claim" none case replaced) is 1144.
-      "generate-slide": 1150,
+      // tightened) is 1138; v28 (the "single claim" none case replaced) is 1144. v29 (label heading,
+      // lead and the `points` slot with its gate, Greg 26 Sept "still not good enough") is 1187.
+      "generate-slide": 1195,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
       // v13 was 415 words. v14 (lab round 1, +97: errors first and answer lines kept, once-in-the-
@@ -589,13 +592,27 @@ describe("prompt versions", () => {
     );
   });
 
+  test("look/headings (v29): the content spec takes 2–4 optional points", () => {
+    const schema = slideSpecSchemaFor("content");
+    const base = {
+      kind: "content",
+      heading: "Types of volcano",
+      body: "Volcanoes differ.",
+      factRefs: [],
+    };
+    expect(schema?.safeParse(base).success).toBe(true);
+    expect(schema?.safeParse({ ...base, points: ["shield", "composite"] }).success).toBe(true);
+    expect(schema?.safeParse({ ...base, points: ["shield"] }).success).toBe(false);
+  });
+
   test("look uplift (v26): only the content shape offers a diagram, and the schema carries it", () => {
     const system = PROMPTS["generate-slide"].system;
     const shapeLines = system.split("\n").filter((line) => line.startsWith("- "));
     const withDiagram = shapeLines.filter((line) => line.includes('"diagram"'));
     expect(withDiagram).toHaveLength(1);
     expect(withDiagram[0]).toStartWith("- content:");
-    expect(withDiagram[0]).toContain("(≤ 30 words; ≤ 45 with two key ideas)");
+    expect(withDiagram[0]).toContain('"heading" (2–5 words), "body" (lead ≤ 20 words');
+    expect(withDiagram[0]).toContain('"points"? [2–4 strings, each ≤ 8 words]');
     expect(system).toContain("heading/subtitle ≤ 60, each item ≤ 110");
     expect(system).toContain("body ≤ 260");
     const content = {

@@ -98,6 +98,18 @@ import {
  * that case and names the real over-fill instead, a drawing that "would only put the body's
  * sentences in boxes": 5 of 11 re-run slides (coasts 3/3, ratio 1/2, Romans 1/3, photosynthesis
  * 0/3), in the proposal's third-to-half range. v26–v28 share the look/generation branch only.
+ *
+ * v29 (26 Sept 2026, look/headings; Greg: "still not good enough" beside the homepage examples):
+ * the examples' teaching slides carry a 2–5-word label as the heading ("Limiting factors"), the
+ * claim as the body's first sentence, and a set of parallel things as 2–4 bullets. The content
+ * heading is now a label and the claim moves to the lead (≤ 20 words); a new optional `points`
+ * (`@tj/slides` specs, 2–4 items) carries the parallel set, which `bodyWithPoints` lays under the
+ * body and the look's `leadAndCard` puts under the lead. The gate for `points` names the shape of
+ * the idea on one side ("a set of parallel things") and what follows the lead on the other, so the
+ * slot is not filled everywhere (openai.md 2026-09-23). The label examples are from topics outside
+ * the benched briefs. Counts live in the shape line only. The diagram none case adds "or points",
+ * so a set already on the slide as bullets is not boxed again. Objectives, title and question
+ * headings are unchanged.
  */
 
 /** The drawing types a `diagram` instruction opens with; anything else is dropped (`keptDiagram`). */
@@ -199,7 +211,7 @@ const SHAPES = {
   vocabulary:
     '{ "kind": "vocabulary", "entries": [{ "term", "definition" }] (1–slots), "factRefs", "notes"? }',
   content:
-    '{ "kind": "content", "heading", "body" (≤ 30 words; ≤ 45 with two key ideas), "diagram"? (≤ 25 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+    '{ "kind": "content", "heading" (2–5 words), "body" (lead ≤ 20 words, then at most two short sentences; ≤ 45 words with two key ideas), "points"? [2–4 strings, each ≤ 8 words], "diagram"? (≤ 25 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "image-text":
     '{ "kind": "image-text", "heading", "body" (≤ 30 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "worked-example":
@@ -263,15 +275,15 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v28",
+  version: "generate-slide.v29",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
     "Rules:",
     HOUSE_RULES,
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
-    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading. The body's first sentence states the key idea in words a pupil could copy down; the rest gives the reason it holds and one example, in short sentences. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea, each opening with its idea. Everything else a teacher would say goes in `notes`. Question slides use the supplied question, answer and distractors verbatim.",
-    '`diagram` is "none" or an instruction for a drawing beside the body. Write one when the drawing shows what the words cannot: where the parts of a structure are, stages in order or round a cycle, two things side by side, a bar model, or how a value changes on a graph or number line. Write "none" when the body is a definition, a word equation or formula, an event, a quotation or a judgement, or when a drawing would only put the body\'s sentences in boxes. Start with its type and a colon (Sequence, Cycle, Parts, Comparison, Bar model, Graph or Number line), then the parts or labels in order and what connects them (arrows, axes), in the body\'s words, few enough for the year group: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise".',
+    'Follow the supplied objective verb. A content slide\'s `heading` is a label naming the idea ("The water cycle", "Types of volcano"); the claim goes in the body\'s first sentence, the lead, in words a pupil could copy down. When the idea is a set of parallel things (factors, parts, features, types), list them in `points`; otherwise the lead is followed by the reason it holds and one example. With two key ideas, teach both: the heading names what joins them, the body is two short paragraphs, one per idea, each opening with its idea. Everything else a teacher would say goes in `notes`. Question slides use the supplied question, answer and distractors verbatim.',
+    '`diagram` is "none" or an instruction for a drawing beside the body. Write one when the drawing shows what the words cannot: where the parts of a structure are, stages in order or round a cycle, two things side by side, a bar model, or how a value changes on a graph or number line. Write "none" when the body is a definition, a word equation or formula, an event, a quotation or a judgement, or when a drawing would only put the body\'s sentences or points in boxes. Start with its type and a colon (Sequence, Cycle, Parts, Comparison, Bar model, Graph or Number line), then the parts or labels in order and what connects them (arrows, axes), in the body\'s words, few enough for the year group: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise".',
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
     "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
