@@ -12,6 +12,7 @@ import { IconView } from "./IconView";
 import { ImageView } from "./ImageView";
 import { LineView } from "./LineView";
 import { OptionView } from "./OptionView";
+import { PathView } from "./PathView";
 import { ShapeView } from "./ShapeView";
 import { TableView } from "./TableView";
 import { TextView } from "./TextView";
@@ -23,6 +24,7 @@ export const ELEMENT_VIEWS: Record<ElementType, (props: any) => ReactElement | n
   image: ImageView,
   shape: ShapeView,
   line: LineView,
+  path: PathView,
   icon: IconView,
   table: TableView,
   embed: EmbedView,
@@ -48,6 +50,7 @@ export {
   ImageView,
   LineView,
   OptionView,
+  PathView,
   ShapeView,
   TableView,
   TextView,

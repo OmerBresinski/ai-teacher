@@ -235,6 +235,25 @@ export type LineElement = ElementBase & {
   arrowEnd?: boolean;
 };
 
+/**
+ * A polyline or smooth curve (ADR 0031): the curves, arcs and closed polygons a Figure needs.
+ * Points are fractions of the bounding box, as on `line`, so the box is the transform target.
+ * `smooth` draws cubic Béziers through the points; `smoothPathSegments` in `@tj/slides` is the
+ * one place they are computed, for the editor and the PPTX exporter alike.
+ */
+export type PathElement = ElementBase & {
+  type: "path";
+  points: { x: number; y: number }[];
+  smooth?: boolean;
+  closed?: boolean;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  dash?: "solid" | "dashed" | "dotted";
+  arrowStart?: boolean;
+  arrowEnd?: boolean;
+};
+
 export type IconElement = ElementBase & {
   type: "icon";
   /** lucide icon name in kebab-case, e.g. 'lightbulb'. */
@@ -294,6 +313,7 @@ export type SlideElement =
   | ImageElement
   | ShapeElement
   | LineElement
+  | PathElement
   | IconElement
   | TableElement
   | EmbedElement
@@ -463,6 +483,20 @@ const LineElementSchema = z.object({
   arrowEnd: z.boolean().optional(),
 });
 
+const PathElementSchema = z.object({
+  ...elementBase,
+  type: z.literal("path"),
+  points: z.array(z.object({ x: z.number(), y: z.number() })).min(2),
+  smooth: z.boolean().optional(),
+  closed: z.boolean().optional(),
+  fill: z.string().optional(),
+  stroke: z.string().optional(),
+  strokeWidth: z.number().optional(),
+  dash: z.enum(["solid", "dashed", "dotted"]).optional(),
+  arrowStart: z.boolean().optional(),
+  arrowEnd: z.boolean().optional(),
+});
+
 const IconElementSchema = z.object({
   ...elementBase,
   type: z.literal("icon"),
@@ -522,6 +556,7 @@ export const SlideElementSchema: z.ZodType<SlideElement> = z.discriminatedUnion(
   ImageElementSchema,
   ShapeElementSchema,
   LineElementSchema,
+  PathElementSchema,
   IconElementSchema,
   TableElementSchema,
   EmbedElementSchema,

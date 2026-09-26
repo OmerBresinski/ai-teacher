@@ -7,7 +7,9 @@ import { describe, expect, test } from "bun:test";
  * static import graph because the editor has `React.lazy` chunks, this package has no lazy
  * imports, so a single-output build (no `splitting`) is the whole picture.
  */
-const FORBIDDEN = ["react", "react-dom", "@tiptap/", "@tj/ui", ".css"];
+// Matched as quoted module names: a bare "react" also matches copy such as "Progress of reaction"
+// (the energy-profile figure's axis, TEACH-164).
+const FORBIDDEN = ['"react', '"@tiptap/', '"@tj/ui', '.css"'];
 
 describe("@tj/slides", () => {
   test("bundles for bun without React, Tiptap, @tj/ui or CSS", async () => {

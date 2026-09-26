@@ -10,11 +10,17 @@
 
 // The layout catalogue and the ten-slide fixture lesson (TEACH-214), for a Bun script or an e2e
 // spec that seeds a lesson laid out through `chooseVariant` without the renderer.
+// TEACH-164 spike: the figure templates, for the screenshot spec to seed diagram slides.
 export {
   chooseVariant,
   DEMO_LESSON_SPECS,
   demoLessonSlides,
+  diagramSlideElements,
+  energyProfileFigure,
+  FIGURE_RECT,
+  getTheme,
   LAYOUT_CATALOGUE,
+  rightTriangleFigure,
   variantsFor,
 } from "@tj/slides";
 export { demoWorksheet } from "./model/demo-worksheet";
