@@ -548,6 +548,66 @@ describe("exportLessonPptx", () => {
     const xml = await zip.file("ppt/slides/slide1.xml")?.async("string");
     expect(xml).toContain("A GIF that could not be fetched");
   }, 30_000);
+
+  const slideXml = async (elements: SlideElement[]): Promise<string> => {
+    const lesson = { id: "l1", title: "Paths", slides: [slide(elements)] } as Lesson;
+    const blob = await exportLessonPptx(lesson, theme, { includeAnswers: false });
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    return (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+  };
+
+  const pathElement = (extra: Partial<SlideElement> = {}): SlideElement =>
+    ({
+      id: "p1",
+      type: "path",
+      x: 100,
+      y: 100,
+      w: 400,
+      h: 300,
+      smooth: true,
+      points: [
+        { x: 0, y: 0.8 },
+        { x: 0.24, y: 0.8 },
+        { x: 0.45, y: 0 },
+        { x: 0.66, y: 1 },
+        { x: 1, y: 1 },
+      ],
+      ...extra,
+    }) as SlideElement;
+
+  it("exports a smooth path as custom geometry with cubic Béziers", async () => {
+    const xml = await slideXml([pathElement({ arrowEnd: true } as Partial<SlideElement>)]);
+    expect(xml).toContain("<a:custGeom>");
+    expect(xml.split("<a:cubicBezTo>").length - 1).toBe(4);
+    expect(xml).toContain("<a:moveTo>");
+    expect(xml).not.toMatch(/<a:close ?\/>/);
+    expect(xml).toContain('<a:tailEnd type="triangle"');
+  }, 30_000);
+
+  it("a closed path ends in a close and carries its fill", async () => {
+    const closed = pathElement({ closed: true, fill: "#FF0000" } as Partial<SlideElement>);
+    const xml = await slideXml([closed]);
+    expect(xml).toContain("<a:custGeom>");
+    expect(xml).toMatch(/<a:close ?\/>/);
+    expect(xml).toContain('<a:srgbClr val="FF0000"');
+  }, 30_000);
+
+  it("a deck without a path has no custom geometry", async () => {
+    const xml = await slideXml([
+      { id: "s", type: "shape", shape: "rect", x: 0, y: 0, w: 100, h: 100 } as SlideElement,
+    ]);
+    expect(xml).not.toContain("custGeom");
+  }, 30_000);
+
+  it("writes a negative rotation as its [0, 360) equivalent", async () => {
+    const xml = await slideXml([
+      { id: "s", type: "shape", shape: "rect", x: 0, y: 0, w: 100, h: 100, rotation: -90 },
+      pathElement({ rotation: -90 }),
+      textElement({ id: "t", rotation: -90 }),
+    ] as SlideElement[]);
+    expect(xml.split('rot="16200000"').length - 1).toBe(3);
+    expect(xml).not.toMatch(/rot="-/);
+  }, 30_000);
 });
 
 /* ------------------------------------------------------------------ */
