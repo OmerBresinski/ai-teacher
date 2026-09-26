@@ -1363,7 +1363,7 @@ function structureDiagram(
   const top = first.y;
   const x = first.x;
   const w = Math.max(SPACE[7], Math.min(first.w, slot.x - SPACE[5] - x));
-  const placedSlot = { ...slot, y: top, h: SAFE_BOTTOM - top } as SlideElement;
+  const placedSlot = diagramPanel(slot, top, slot.x, slot.w, t);
   const asIs: Slide = {
     ...slide,
     elements: slide.elements.map((e) => (e === slot ? placedSlot : e)),
