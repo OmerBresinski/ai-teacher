@@ -1247,3 +1247,56 @@ describe("the retrieval starter (lab r2)", () => {
     expect(empty.result.outlineFactRefs).toEqual(none.result.outlineFactRefs);
   });
 });
+
+describe("a declared judgement on an early objective (l6j, DIAG-ratio-checks gap 2)", () => {
+  /** Three objectives, each with one open question; only the ones in `judged` are declared judgements. */
+  const withJudgements = (judged: number[]) => {
+    const facts = factsFor(3, { bare: true });
+    facts.questions.forEach((q, i) => {
+      const o = q.objectiveRefs?.[0]?.index ?? -1;
+      if (q.distractors === undefined && judged.includes(o)) {
+        facts.questions[i] = { ...q, demand: "judgement" };
+      }
+    });
+    return facts;
+  };
+  const judgedAt = (r: ReturnType<typeof run>) =>
+    r.result.skeleton.outline.findIndex((e) => /^Pupils judge/.test(e.brief?.adds ?? ""));
+
+  for (const slideCount of [10, 12] as const) {
+    test(`${slideCount} slides: objective 1's judgement stays in its own cycle, before objective 2 is taught`, () => {
+      const r = run({ n: 3, slideCount, shape: shapeOf("Explain"), facts: withJudgements([0]) });
+      const judged = judgedAt(r);
+      const cycles = r.result.cycles;
+      expect(cycles.length).toBeGreaterThan(1);
+      expect(judged).toBeGreaterThan(0);
+      expect(judged).toBeLessThan(Math.min(...(cycles[1]?.teach ?? [])));
+      // Objective 1 is practised before objective 2's teaching starts, whichever slide checks it.
+      const secondTeach = Math.min(...(cycles[1]?.teach ?? []));
+      const practisedFirst = r.result.outlineFactRefs.some(
+        (e) =>
+          e.index < secondTeach &&
+          r.result.skeleton.outline[e.index]?.phase === "practise" &&
+          e.factRefs.some(
+            (f) =>
+              f.type === "question" &&
+              r.facts.questions[f.index]?.objectiveRefs?.some((x) => x.index === 0),
+          ),
+      );
+      expect(practisedFirst).toBe(true);
+    });
+  }
+
+  test("a judgement on the last objective is preferred and closes the practise phase", () => {
+    const r = run({
+      n: 3,
+      slideCount: 12,
+      shape: shapeOf("Explain"),
+      facts: withJudgements([0, 2]),
+    });
+    const judged = judgedAt(r);
+    expect(judged).toBeGreaterThan(Math.max(...r.result.cycles.flatMap((c) => c.teach)));
+    const asked = refsAt(r, judged).flatMap((f) => (f.type === "question" ? [f.index] : []));
+    expect(asked.map((i) => r.facts.questions[i]?.objectiveRefs?.[0]?.index)).toEqual([2]);
+  });
+});

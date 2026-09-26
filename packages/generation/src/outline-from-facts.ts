@@ -82,7 +82,7 @@ import {
  *   practise slide sits straight after the cycle that makes it fair — the earliest cycle by which
  *   every key idea it declares (`keyIdeaRefs`; else every key idea of each objective it names) is
  *   on a slide; an `apply` question also waits for its objective's worked example. A judgement
- *   the facts declared closes the practise slides; plenary and exit ticket close the lesson. The
+ *   the facts declared on the last objective closes the practise slides; plenary and exit ticket close the lesson. The
  *   skeleton passes `planSkeletonSchemaFor` with `learningCycles`.
  * - Model, then practise: an objective whose questions declare an `apply` demand gets its worked
  *   example placed before the shape's kinds and floors take the budget, and so before its practice.
@@ -190,7 +190,7 @@ type Slot = {
   /** A starter that prints the retrieval set (lab r2): no question or misconception of the lesson's. */
   retrieval?: boolean;
   terms?: number[];
-  /** A judgement the facts declared: it closes the practise slides, after every cycle. */
+  /** A judgement the facts declared on the last objective: it closes the practise slides, after every cycle. */
   closing?: boolean;
   /** Lexicographic running-order key: phase, objective, then the fact order. */
   rank: number[];
@@ -383,8 +383,13 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       kind = "open-response";
     }
     const seq = slots.length;
-    // A question the facts call declared a judgement closes the practise phase.
-    const last = kind === "open-response" && q?.demand === "judgement";
+    // A question the facts call declared a judgement closes the practise phase when it serves the
+    // last objective; an earlier objective's judgement stays in its own cycle as that objective's
+    // check (l6j: closing it moved o1's only check after the last cycle in 20 of 91 decks).
+    const last =
+      kind === "open-response" &&
+      q?.demand === "judgement" &&
+      (o === count - 1 || refIndices(q?.objectiveRefs).includes(count - 1));
     return {
       kind,
       phase: "practise",
@@ -784,14 +789,17 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     else if (budget <= 0) noRoom("open-response");
     else {
       // A question the facts declared askable openly (`forms`), or wrote without distractors.
-      // One declared a judgement first, then the last objective's, then any: the order is a
-      // structural preference, the form is never inferred from the question's content.
+      // One declared a judgement first, then any, each searched from the last objective back, so
+      // a judgement that closes the lesson is preferred over an early one that checks its own
+      // cycle. The order is a structural preference, the form is never inferred from the content.
       let slot: Slot | undefined;
       const open = (o: number) =>
         questionsOf(o).filter((i) => !used.questions.has(i) && admitsOpen(i) && fair(i));
-      const judged = all.flatMap((o) =>
-        open(o).flatMap((i) => (facts.questions[i]?.demand === "judgement" ? [[o, i]] : [])),
-      )[0];
+      const judged = [...all]
+        .reverse()
+        .flatMap((o) =>
+          open(o).flatMap((i) => (facts.questions[i]?.demand === "judgement" ? [[o, i]] : [])),
+        )[0];
       if (judged !== undefined) slot = questionSlot(judged[0] ?? 0, judged[1] ?? 0, true);
       else {
         for (const o of [...all].reverse()) {
