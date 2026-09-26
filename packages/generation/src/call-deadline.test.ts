@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
 import { z } from "zod";
-import { callStructured, callTimeoutMs } from "./call";
+import { callStructured, callTimeoutMs, isFastModelId } from "./call";
 import { PROMPTS } from "./prompts";
 import { memoryLogger, recordingDeps } from "./testing";
 import { BudgetExceeded, StageFailure } from "./types";
@@ -113,14 +113,43 @@ test("late provider success reconciles uncertain usage once without overwriting 
 
 test("each registered prompt uses its stage-specific deadline across version bumps", () => {
   // In PROMPTS order; the fill and parse-brief calls are short `small` calls (TEACH-67).
-  // The four per-objective plan prompts are registered but uncalled (TEACH-88): the old default.
-  const expected = [
+  // The four per-objective plan prompts run only on the objectives-first path (TEACH-93): the
+  // fast-route bounds, whatever the model.
+  const byName: Record<string, number> = {
+    "plan-objectives": 75,
+    "plan-facts-objective": 150,
+    "plan-teach-objective": 45,
+    "plan-question-set": 60,
+  };
+  const legacy = [
     180, 180, 300, 300, 300, 300, 300, 180, 180, 300, 180, 180, 180, 180, 300, 180, 180, 300, 300,
   ];
+  const expected = Object.values(PROMPTS).map(
+    (prompt, i) => byName[prompt.version.replace(/\.v\d+$/, "")] ?? (legacy[i] as number),
+  );
   expect(Object.values(PROMPTS).map((prompt) => callTimeoutMs(prompt.version))).toEqual(
     expected.map((seconds) => seconds * 1000),
   );
   expect(callTimeoutMs("plan-facts.v99")).toBe(300_000);
   expect(callTimeoutMs("rubric-judge.v2")).toBe(300_000);
   expect(callTimeoutMs("constructor")).toBe(300_000);
+});
+
+test("a Luna route (gateway or direct id) takes the measured fast bounds; Bedrock keeps the class table", () => {
+  for (const id of ["openai/gpt-6-luna", "gpt-6-luna", "openai/gpt-5.6-luna"]) {
+    expect(isFastModelId(id)).toBe(true);
+    expect(callTimeoutMs("generate-slide.v30", id)).toBe(45_000);
+    expect(callTimeoutMs("evaluate.v12", id)).toBe(90_000);
+    expect(callTimeoutMs("verify-facts.v6", id)).toBe(30_000);
+    expect(callTimeoutMs("repair.v15", id)).toBe(30_000);
+    expect(callTimeoutMs("repair-fact.v3", id)).toBe(30_000);
+    // No fast row: the class table's bound.
+    expect(callTimeoutMs("check-input.v4", id)).toBe(180_000);
+  }
+  for (const id of ["us.openai.gpt-6-luna-v1:0", "openai/gpt-6-sol", "us.anthropic.claude-x"]) {
+    expect(isFastModelId(id)).toBe(false);
+    expect(callTimeoutMs("generate-slide.v30", id)).toBe(180_000);
+    expect(callTimeoutMs("evaluate.v12", id)).toBe(300_000);
+  }
+  expect(callTimeoutMs("plan-question-set.v7", "us.anthropic.claude-x")).toBe(60_000);
 });
