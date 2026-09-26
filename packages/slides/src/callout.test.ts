@@ -444,7 +444,7 @@ describe("a long callout in the image-text column", () => {
         const text = prose(n);
         const notes: string[] = [];
         const spec = imageText({ kind: "watch-out", text });
-        const slide = materialiseSlide(spec, theme.id, meta, counter(), undefined, (note) =>
+        const slide = materialiseSlide(spec, theme.id, meta, counter(), undefined, {}, (note) =>
           notes.push(note),
         );
         if (!slide.elements.some(isCalloutElement)) {
@@ -493,7 +493,7 @@ describe("a long callout in the image-text column", () => {
       body: "Warm air rises.",
       callout: { kind: "example", text: prose(900) },
     } as SlideSpec;
-    const slide = materialiseSlide(huge, theme.id, meta, counter(), undefined, (n) =>
+    const slide = materialiseSlide(huge, theme.id, meta, counter(), undefined, {}, (n) =>
       notes.push(n),
     );
     expect(slide.elements.some(isCalloutElement)).toBe(false);
@@ -525,7 +525,7 @@ describe("a long body over an image-text callout", () => {
             body,
             callout: { kind: "watch-out", text: prose(n) },
           };
-          const slide = materialiseSlide(spec, theme.id, meta, counter(), undefined, (note) =>
+          const slide = materialiseSlide(spec, theme.id, meta, counter(), undefined, {}, (note) =>
             notes.push(note),
           );
           const image = slide.elements.find((el) => el.type === "image");
