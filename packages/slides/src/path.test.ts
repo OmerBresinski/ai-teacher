@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type PathSegment, pathData, pathEnds, pathSegments } from "./path";
+import { type PathSegment, pathData, pathEnds, pathSegments, samplePath } from "./path";
 
 const types = (segments: PathSegment[]) => segments.map((s) => s.type);
 const cubics = (segments: PathSegment[]) =>
@@ -188,5 +188,79 @@ describe("pathEnds", () => {
   test("a path with nothing drawn has no ends", () => {
     expect(pathEnds([{ type: "move", x: 0, y: 0 }])).toBeNull();
     expect(pathEnds([])).toBeNull();
+  });
+});
+
+describe("samplePath (TEACH-94)", () => {
+  test("evaluates a cubic with the Bézier formula at t = k / perSegment, both ends included", () => {
+    const points = samplePath(
+      [
+        { type: "move", x: 0, y: 0 },
+        { type: "cubic", x1: 0, y1: 100, x2: 100, y2: 100, x: 100, y: 0 },
+      ],
+      4,
+    );
+    expect(points).toHaveLength(5);
+    expect(points[0]).toEqual({ x: 0, y: 0 });
+    expect(points[4]).toEqual({ x: 100, y: 0 });
+    // B(½) = ⅛·P0 + ⅜·P1 + ⅜·P2 + ⅛·P3.
+    expect(points[2]?.x).toBeCloseTo(50);
+    expect(points[2]?.y).toBeCloseTo(75);
+    // B(¼) = 27/64·P0 + 27/64·P1 + 9/64·P2 + 1/64·P3.
+    expect(points[1]?.x).toBeCloseTo((9 * 100 + 100) / 64);
+    expect(points[1]?.y).toBeCloseTo((27 * 100 + 9 * 100) / 64);
+  });
+
+  test("spaces a straight segment evenly, and a close runs back to the start", () => {
+    const points = samplePath(
+      [
+        { type: "move", x: 0, y: 0 },
+        { type: "line", x: 8, y: 0 },
+        { type: "line", x: 8, y: 8 },
+        { type: "close" },
+      ],
+      2,
+    );
+    expect(points).toEqual([
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 8, y: 0 },
+      { x: 8, y: 0 },
+      { x: 8, y: 4 },
+      { x: 8, y: 8 },
+      { x: 8, y: 8 },
+      { x: 4, y: 4 },
+      { x: 0, y: 0 },
+    ]);
+  });
+
+  test("defaults to 16 points per segment and follows the curve pathSegments draws", () => {
+    const segments = pathSegments(
+      {
+        smooth: true,
+        points: [
+          { x: 0, y: 0.8 },
+          { x: 0.24, y: 0.8 },
+          { x: 0.45, y: 0 },
+          { x: 0.66, y: 1 },
+          { x: 1, y: 1 },
+        ],
+      },
+      400,
+      300,
+    );
+    const points = samplePath(segments);
+    expect(points).toHaveLength(4 * 17);
+    // Monotone: the samples stay between the peak and the lower plateau, and run left to right.
+    for (const [i, p] of points.entries()) {
+      expect(p.y).toBeGreaterThanOrEqual(0);
+      expect(p.y).toBeLessThanOrEqual(300);
+      if (i > 0) expect(p.x).toBeGreaterThanOrEqual(points[i - 1]?.x ?? 0);
+    }
+  });
+
+  test("a path with nothing drawn has no samples", () => {
+    expect(samplePath([])).toEqual([]);
+    expect(samplePath([{ type: "move", x: 3, y: 4 }])).toEqual([]);
   });
 });

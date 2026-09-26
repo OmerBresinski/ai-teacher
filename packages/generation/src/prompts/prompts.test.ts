@@ -202,8 +202,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "a4f3ff2d86262252006017bc4176e8d7a384fdeeaa87982b32c66a6044c8db69",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v20",
-    hash: "415cda03e49c2ae40e1e42b5a6f103bcce626c4d724e576e04632d1572675136",
+    version: "plan-skeleton.v21",
+    hash: "c8f59db9619789216686b892e11fecd5d0788766bc3fe6290461fb05cab99345",
   },
   "plan-facts": {
     version: "plan-facts.v12",
@@ -231,8 +231,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render, and so
-    // did v26 (the figure block, diagram entries only; pinned by its own test below).
-    version: "generate-slide.v26",
+    // did v26 (the figure block, diagram entries only; pinned by its own test below) and v27 (the
+    // energy-profile figure block, TEACH-94).
+    version: "generate-slide.v27",
     hash: "e3953495e78f5e8746ca4a39e00004a8756720a703f2503954ca11d5fcc5a072",
   },
   "generate-worksheet": {
@@ -596,6 +597,10 @@ describe("prompt versions", () => {
       "every objective gets its own content, worked-example or diagram slide",
     );
     for (const fit of Object.values(FIGURE_FIT)) expect(system).toContain(fit);
+    // TEACH-94: the energy profile fits a slide on energy changes or activation energy.
+    expect(system).toContain(
+      '"energy-profile" — a reaction profile (energy level diagram), for exothermic and endothermic reactions or activation energy',
+    );
     expect(system).toContain('"figureBrief": { "template", "purpose"');
     // The photographable test already says a diagram is not photographable.
     expect(system).toContain("a diagram, map, chart, process or abstract idea is not");
@@ -630,6 +635,29 @@ describe("prompt versions", () => {
     expect(generateSlidePrompt.user(sample)).not.toContain("figure");
     // The system text says nothing of diagrams: the block rides only on diagram calls.
     expect(generateSlidePrompt.system).not.toContain("diagram");
+
+    // TEACH-94: an energy profile's block names its own values; its numbers are the two energies.
+    const profile = generateSlidePrompt.user({
+      ...sample,
+      entry: {
+        id: "s7",
+        kind: "diagram",
+        factRefs: ["x1", "o2"],
+        figureBrief: { template: "energy-profile", purpose: "the profile for burning methane" },
+      },
+    });
+    expect(profile).toContain(
+      'This slide draws a "energy-profile" figure for the profile for burning methane.',
+    );
+    expect(profile).toContain(
+      `"figure": { "template": "energy-profile", ${FIGURE_VALUES["energy-profile"]} }`,
+    );
+    for (const field of ["reactants", "products", "activationEnergy", "energyChange"])
+      expect(FIGURE_VALUES["energy-profile"]).toContain(`"${field}"`);
+    expect(profile).toContain("activationEnergy is above 0 and above energyChange");
+    expect(profile).toContain("the labels name the substances and carry no numbers");
+    expect(profile).not.toContain("The labels carry the numbers");
+    expect(profile).not.toContain("right-triangle");
   });
 
   test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {

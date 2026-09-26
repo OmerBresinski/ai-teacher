@@ -9,13 +9,13 @@
  * placeholder through `drawFigure`, so this module sits in the layouts ↔ figures import cycle and
  * the registry in `./index` would read `RIGHT_TRIANGLE` before it exists.
  */
-import type { PathElement, TextElement, Theme } from "@tj/domain/documents";
+import type { PathElement, Theme } from "@tj/domain/documents";
 import { z } from "zod";
 import { editorialIssue } from "../editorial";
-import { newText, uid } from "../factories";
+import { uid } from "../factories";
 import { boxH } from "../layouts";
-import { countLines, lineWidth } from "../text-measure";
 import type { FigureDrawing, FigureTemplate } from "./index";
+import { type FittedLabel, fitLabel, labelText, notToScaleCaption } from "./labels";
 
 /* ------------------------------------------------------------------ */
 /* Values                                                              */
@@ -135,64 +135,21 @@ const GAP = 12;
 const INSET = 4;
 /** Above the "Not drawn to scale" caption. */
 const CAPTION_GAP = 8;
-/** A label's box is this much wider than its text, so a line that fits the ruler never wraps. */
-const LABEL_SLACK = 16;
-const LABEL_MIN_W = 40;
 /**
  * The widest a label's box grows: a label within the editorial cap (12 characters, at most 159
  * points on any theme) stays on one line, and a longer one wraps rather than pushing the drawing
  * out of its box.
  */
 const LABEL_MAX_W = 176;
-/** Past this many lines a label is cut with an ellipsis; the alt text still carries all of it. */
-const LABEL_MAX_LINES = 3;
-const NOT_TO_SCALE = "Not drawn to scale";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-
-const labelWidth = (t: Theme, text: string) =>
-  Math.max(LABEL_MIN_W, Math.ceil(lineWidth(text, "small", t)) + LABEL_SLACK);
-
-/** A label as drawn: its text, wrapped in a box at most `LABEL_MAX_W` wide, and that box's size. */
-type Label = { text: string; w: number; h: number };
-
-function fitLabel(t: Theme, text: string): Label {
-  const w = Math.min(LABEL_MAX_W, labelWidth(t, text));
-  const lines = (s: string) => countLines(s, "small", t, w - LABEL_SLACK);
-  let shown = text;
-  if (lines(text) > LABEL_MAX_LINES) {
-    // The longest start of the label that still fits, with the ellipsis.
-    const cut = (n: number) => `${text.slice(0, n).trimEnd()}…`;
-    let lo = 0;
-    let hi = text.length;
-    while (lo < hi) {
-      const mid = Math.ceil((lo + hi) / 2);
-      if (lines(cut(mid)) <= LABEL_MAX_LINES) lo = mid;
-      else hi = mid - 1;
-    }
-    shown = cut(lo);
-  }
-  return { text: shown, w, h: boxH(t, "small", lines(shown)) };
-}
-
-function label(
-  t: Theme,
-  text: string,
-  box: Box,
-  align: "left" | "center" | "right",
-  color = t.colors.ink,
-): TextElement {
-  const el = newText("small", text, box);
-  el.style = { ...el.style, align, valign: "middle", color, padding: 0 };
-  return el;
-}
 
 /**
  * The triangle with its right angle at the origin, base `w` to the right and height `h` up, and
  * the three label boxes placed outside their sides: base below, height to the left, hypotenuse
  * along its outward normal, each `GAP` clear of its side.
  */
-function placement(w: number, h: number, size: Record<SideName, Label>) {
+function placement(w: number, h: number, size: Record<SideName, FittedLabel>) {
   const base: Box = { x: w / 2 - size.base.w / 2, y: GAP, w: size.base.w, h: size.base.h };
   const height: Box = {
     x: -GAP - size.height.w,
@@ -237,9 +194,9 @@ function drawRightTriangle(
 
   const labelH = boxH(t, "small");
   const labels = {
-    base: fitLabel(t, v.base.label),
-    height: fitLabel(t, v.height.label),
-    hypotenuse: fitLabel(t, v.hypotenuse.label),
+    base: fitLabel(t, v.base.label, { maxW: LABEL_MAX_W }),
+    height: fitLabel(t, v.height.label, { maxW: LABEL_MAX_W }),
+    hypotenuse: fitLabel(t, v.hypotenuse.label, { maxW: LABEL_MAX_W }),
   };
   const room = {
     w: size.w - 2 * INSET,
@@ -313,15 +270,11 @@ function drawRightTriangle(
   const children = [
     triangle,
     mark,
-    label(t, labels.base.text, at(placed.labels.base), "center"),
-    label(t, labels.height.text, at(placed.labels.height), "right"),
-    label(t, labels.hypotenuse.text, at(placed.labels.hypotenuse), "center"),
+    labelText(t, labels.base.text, at(placed.labels.base), "center"),
+    labelText(t, labels.height.text, at(placed.labels.height), "right"),
+    labelText(t, labels.hypotenuse.text, at(placed.labels.hypotenuse), "center"),
   ];
-  if (notToScale) {
-    const w = Math.min(labelWidth(t, NOT_TO_SCALE), size.w - 2 * INSET);
-    const box = { x: INSET, y: size.h - INSET - labelH, w, h: labelH };
-    children.push(label(t, NOT_TO_SCALE, box, "left", t.colors.muted));
-  }
+  if (notToScale) children.push(notToScaleCaption(t, size));
   return { children, alt: rightTriangleAlt(values, notToScale) };
 }
 

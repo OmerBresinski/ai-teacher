@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   FIGURE_TEMPLATE_NAMES,
+  type FigureTemplateName,
   GENERATABLE_BLOCK_TYPES,
   GENERATABLE_SLIDE_KINDS,
   type GeneratableSlideKind,
@@ -141,6 +142,25 @@ const TRIANGLE_345 = {
   height: { length: 4, label: "4 cm" },
   hypotenuse: { label: "x" },
 };
+
+/** Methane burning (TEACH-94): an exothermic energy profile. */
+const METHANE_PROFILE = {
+  reactants: "methane and oxygen",
+  products: "carbon dioxide and water",
+  activationEnergy: 50,
+  energyChange: -90,
+};
+
+/** A diagram spec for each Figure template, so a new template needs one here to compile. */
+const DIAGRAM_VALUES: Record<FigureTemplateName, Record<string, unknown>> = {
+  "right-triangle": TRIANGLE_345,
+  "energy-profile": METHANE_PROFILE,
+};
+const minimalDiagram = (template: FigureTemplateName): SlideSpec =>
+  ({
+    ...minimalSpec("diagram"),
+    figure: { template, values: DIAGRAM_VALUES[template] },
+  }) as SlideSpec;
 
 function walk(elements: SlideElement[], visit: (element: SlideElement) => void): void {
   for (const element of elements) {
@@ -290,6 +310,20 @@ describe("materialiseSlide", () => {
       "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse 6 cm. Not drawn to scale.",
     );
     expect(figure?.children.map(plain)).toContain("Not drawn to scale");
+    expect(SlideSchema.safeParse(slide).success).toBe(true);
+  });
+
+  test("TEACH-94: diagram draws an energy profile from the spec's values, with its alt text", () => {
+    const spec = diagramSpecSchemaFor("energy-profile").parse(minimalDiagram("energy-profile"));
+    const slide = materialiseSlide(spec, "night-lab", meta, counter());
+    const figure = slide.elements.find((el): el is GroupElement => el.type === "group");
+    expect(figure).toMatchObject({ ...FIGURE_RECT, name: "Energy profile", authoredBy: "ai" });
+    expect(figure?.figure).toEqual({ template: "energy-profile", values: METHANE_PROFILE });
+    expect(figure?.alt).toBe(
+      "Energy profile of an exothermic reaction from methane and oxygen to carbon dioxide and water. Activation energy 50, energy change −90.",
+    );
+    expect(figure?.children.filter((c) => c.type === "path")).toHaveLength(1);
+    expect(figure?.children.map(plain)).toEqual(expect.arrayContaining(["Energy", "Ea", "ΔH"]));
     expect(SlideSchema.safeParse(slide).success).toBe(true);
   });
 
@@ -617,8 +651,13 @@ describe("per-kind spec schemas (structured-output providers need a top-level ob
         expect(json.type).toBe("object");
         expect(JSON.stringify(json)).not.toContain("anyOf");
         expect(JSON.stringify(json)).not.toContain("oneOf");
-        expect(schema.safeParse(minimalSpec("diagram")).success).toBe(true);
+        expect(schema.safeParse(minimalDiagram(template)).success).toBe(true);
         expect(schema.safeParse(minimalSpec("content")).success).toBe(false);
+        for (const other of FIGURE_TEMPLATE_NAMES)
+          if (other !== template)
+            expect(schema.safeParse(minimalDiagram(other)).success, `${other} as ${template}`).toBe(
+              false,
+            );
       }
     }
     // The model cannot answer with another template, and its values are the template's own.

@@ -2749,6 +2749,65 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
     expect(kept.lesson.generation?.findings.map((f) => f.check)).toContain("repair");
   });
 
+  test("TEACH-94 row 9: a diagram entry naming energy-profile is generated and materialised with the figure and its alt text", async () => {
+    // A test-local skeleton: the shared Apply fixture with its diagram entry naming the energy
+    // profile. The fixture itself, and `FIXTURES.slides.diagram` (a triangle), stay as they are.
+    const skeleton = structuredClone(APPLY);
+    const entry = skeleton.outline[6];
+    if (entry?.kind !== "diagram") throw new Error("Apply position 6 is not a diagram");
+    entry.figureBrief = {
+      template: "energy-profile",
+      purpose: "the reaction profile for burning methane",
+    };
+    const values = {
+      reactants: "methane and oxygen",
+      products: "carbon dioxide and water",
+      activationEnergy: 50,
+      energyChange: -90,
+    };
+    const answer = {
+      kind: "diagram",
+      heading: "Burning methane releases energy",
+      body: "The products end lower than the reactants, so energy is given out. Label the activation energy on the diagram.",
+      figure: { template: "energy-profile", values },
+      factRefs: ["x1", "o2"],
+      notes: "Ask where the energy goes before anyone labels the arrows.",
+    };
+    const ai = createFakeAi({
+      script: routed([
+        json(skeleton),
+        json(FIXTURES.planFacts),
+        json(FIXTURES.verify),
+        ...skeleton.outline
+          .slice(PLANNED_SLIDES)
+          .map((e) => json(e.kind === "diagram" ? answer : FIXTURES.slides[e.kind])),
+      ]),
+      usage,
+    });
+    const deps = recordingDeps(ai);
+    const state = await generate(await plan(initialState(applyLesson()), deps), deps);
+    expect(state.lesson.facts?.outline[6]?.figureBrief).toEqual(entry.figureBrief);
+    const calls = diagramCalls(ai);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.promptText).toContain(
+      'This slide draws a "energy-profile" figure for the reaction profile for burning methane.',
+    );
+    const slide = state.lesson.slides[6];
+    if (slide?.kind !== "diagram") throw new Error("no diagram slide");
+    expect(SlideSchema.safeParse(slide).success).toBe(true);
+    const figure = figureGroupOf(slide);
+    expect(figure?.name).toBe("Energy profile");
+    expect(figure?.figure).toEqual({ template: "energy-profile", values });
+    expect(figure?.alt).toBe(
+      "Energy profile of an exothermic reaction from methane and oxygen to carbon dioxide and water. Activation energy 50, energy change −90.",
+    );
+    expect(figure?.children.some((c) => c.type === "path")).toBe(true);
+    expect(figure?.generatedFrom?.promptVersion).toBe(PROMPT_VERSIONS["generate-slide"]);
+    expect(slideText(slide)).toContain(answer.heading);
+    expect(state.lesson.generation?.findings).toEqual([]);
+    expect(checkLesson(state.lesson).filter((f) => f.severity === "error")).toEqual([]);
+  });
+
   test("Plan resumed after the skeleton persist keeps the diagram entry's figureBrief", async () => {
     const first = recordingDeps(
       createFakeAi({

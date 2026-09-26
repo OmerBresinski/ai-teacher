@@ -35,6 +35,9 @@ import { describeRef } from "./source-ref";
  * `figureBrief` { template, purpose } on every diagram entry, as `imageBrief` is asked of a picture
  * slide. The JSON example is unchanged: a diagram suits few topics, and an example with one would
  * pull every lesson towards it.
+ *
+ * v21 (TEACH-94): the second Figure template, `energy-profile`, joins the kind-fit sentence, for a
+ * slide on exothermic and endothermic reactions or activation energy.
  */
 
 export type PlanSkeletonInput = {
@@ -200,7 +203,7 @@ function askBlock(input: PlanSkeletonInput): string[] {
 }
 
 export const planSkeletonPrompt = {
-  version: "plan-skeleton.v20",
+  version: "plan-skeleton.v21",
   system: [
     "You are an experienced UK teacher planning one lesson from a brief.",
     "Produce only the lesson's skeleton: the learning objectives and an outline of slides. The key ideas, vocabulary, worked examples and questions come in a later step, so do not write them here.",
