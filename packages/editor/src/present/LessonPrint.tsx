@@ -203,7 +203,7 @@ function CreditsPage({ credits, className }: { credits: ImageCredit[]; className
               {creditSegments(credit).map((segment, i) =>
                 segment.href ? (
                   // biome-ignore lint/suspicious/noArrayIndexKey: a fixed run of one line's text
-                  <a key={i} href={segment.href}>
+                  <a key={i} href={segment.href} target="_blank" rel="noopener noreferrer">
                     {segment.text}
                   </a>
                 ) : (
