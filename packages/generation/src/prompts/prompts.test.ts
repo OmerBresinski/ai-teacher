@@ -230,9 +230,10 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
-    // v26: the copy-down lead, the diagram rule and the shorter slide aims (look uplift).
-    version: "generate-slide.v26",
-    hash: "a0ad1ed967131a4bfab2366de7e838ecebd9c4ea4e14c0d8e4d13593d3b08f44",
+    // v26: the copy-down lead, the diagram rule and the shorter slide aims (look uplift); v27
+    // tightens the diagram trigger.
+    version: "generate-slide.v27",
+    hash: "a724e3a031177922da7bb5334ca412e12c1d144e8c5bd53fc45ff3c1a74a3252",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -319,8 +320,9 @@ describe("prompt versions", () => {
       // v19 was 990 words; v20 (minimalism rubric, 23 Sep 2026) is 956. v22 (+15: the two-key-idea
       // content rule and its 60-word body) is 971 and must stay under this. v25 (the build-up
       // order, luna-direct FM3) is 979. v26 (look uplift: the copy-down lead and the `diagram`
-      // rule with its named "none" and type list, Greg 26 Sept) is 1123.
-      "generate-slide": 1125,
+      // rule with its named "none" and type list, Greg 26 Sept) is 1123; v27 (the diagram trigger
+      // tightened) is 1138.
+      "generate-slide": 1140,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
       // v13 was 415 words. v14 (lab round 1, +97: errors first and answer lines kept, once-in-the-

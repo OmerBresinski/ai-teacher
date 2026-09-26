@@ -67,7 +67,7 @@ import {
  * the erosion slide), so a teaching slide without its own watch-out is told, by a code-built line
  * (`ownMisconceptions`), to name its objective's misconception in one closing sentence.
  *
- * v26 (26 Sept 2026, look uplift, `quality-prd/look/GENERATION-PROPOSAL.md` §1, §2, §5): shorter
+ * v26–v27 (26 Sept 2026, look uplift, `quality-prd/look/GENERATION-PROPOSAL.md` §1, §2, §5): shorter
  * bodies and a diagram instruction. The examples Greg approved carry 15–35 words per teaching slide
  * as a lead sentence plus a short card; ours ran 40–75 in one paragraph. The body is now ≤ 30 words
  * (≤ 45 with two key ideas), its first sentence the idea a pupil could copy down (the look renders
@@ -89,7 +89,11 @@ import {
  * GENERATION-RESULTS.md): with "a definition, reason, …" on the none side, 2 of 11 content slides
  * got a diagram and none of the three photosynthesis slides did (a rate slide wrote "none"). A
  * reason is usually drawable as cause → effect, and a method as steps or a bar model, so the none
- * side now lists only what no drawing shows, and "Bar model" joins the types.
+ * side now lists only what no drawing shows, and "Bar model" joins the types. That gave 8 of 8
+ * on a single-slide re-run, too eager: "can be drawn" is true of everything. The trigger is now
+ * what the drawing shows that the words cannot (position, order, a changing value), and the none
+ * side names a definition, a word equation or formula (the structure pass draws those as a key
+ * card, `structure.ts` `inferStructure`) and a single claim with its reason.
  */
 
 /** The drawing types a `diagram` instruction opens with; anything else is dropped (`keptDiagram`). */
@@ -255,7 +259,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v26",
+  version: "generate-slide.v27",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -263,7 +267,7 @@ export const generateSlidePrompt = {
     HOUSE_RULES,
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
     "Follow the supplied objective verb. On content slides put the key idea's statement in the heading. The body's first sentence states the key idea in words a pupil could copy down; the rest gives the reason it holds and one example, in short sentences. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea, each opening with its idea. Everything else a teacher would say goes in `notes`. Question slides use the supplied question, answer and distractors verbatim.",
-    '`diagram` is "none" or an instruction for a drawing beside the body. Write one when the key idea can be drawn: stages or steps in order, a cycle, a structure with named parts, things compared by the same features, a bar model, or values on a graph or number line. Write "none" when no drawing shows it: a definition, an event, a quotation or a judgement. Start with its type and a colon (Sequence, Cycle, Parts, Comparison, Bar model, Graph or Number line), then the parts or labels in order and what connects them (arrows, axes), in the body\'s words, few enough for the year group: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise".',
+    '`diagram` is "none" or an instruction for a drawing beside the body. Write one when the drawing shows what the words cannot: where the parts of a structure are, stages in order or round a cycle, two things side by side, a bar model, or how a value changes on a graph or number line. Write "none" when the body is a definition, a word equation or formula, a single claim with its reason, an event, a quotation or a judgement. Start with its type and a colon (Sequence, Cycle, Parts, Comparison, Bar model, Graph or Number line), then the parts or labels in order and what connects them (arrows, axes), in the body\'s words, few enough for the year group: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise".',
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
     "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
