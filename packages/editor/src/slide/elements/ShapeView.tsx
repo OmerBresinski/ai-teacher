@@ -1,8 +1,11 @@
 import type { ShapeElement, ShapeKind, Theme } from "@tj/domain/documents";
+import { richDocToPlainText } from "@tj/domain/documents";
+import { DIAGRAM_NAME } from "@tj/slides";
 import { lazy, type ReactNode, Suspense } from "react";
 import { isDocEmpty } from "../../text/static";
 import { type ElementViewProps, resolveTextStyle, textTypeCss } from "./kit";
 import { RichText } from "./RichText";
+import { SlotPlaceholder } from "./SlotPlaceholder";
 import { TextShell } from "./TextView";
 
 /** Edit mode only: the store subscription and, behind another lazy boundary, Tiptap. */
@@ -73,6 +76,15 @@ function speechPath(w: number, h: number, radius: number): string {
 }
 
 export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<ShapeElement>) {
+  // A diagram slot outside the editor is only drawn under the demo switch (`SlideView`): as the
+  // same placeholder as an open photo slot, "Diagram: <instruction>" in small muted type.
+  if (element.name === DIAGRAM_NAME && mode !== "edit") {
+    return (
+      <SlotPlaceholder kind="diagram" theme={theme} radius={element.radius}>
+        {element.doc ? richDocToPlainText(element.doc) : ""}
+      </SlotPlaceholder>
+    );
+  }
   const w = Math.max(1, element.w);
   const h = Math.max(1, element.h);
   const stroke = element.stroke;

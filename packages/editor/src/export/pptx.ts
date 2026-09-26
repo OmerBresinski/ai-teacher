@@ -49,7 +49,7 @@ import type {
   TimerElement,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { type PathSegment, pathSegments } from "@tj/slides";
+import { type PathSegment, pathSegments, presentedSlide } from "@tj/slides";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
@@ -1253,8 +1253,11 @@ export async function exportLessonPptx(
   const background = hexColor(theme.colors.background) ?? "FFFFFF";
 
   try {
+    const total = lesson.slides.length;
     for (const build of buildSlidePlan(lesson)) {
-      const { slide, step, steps } = build;
+      const { step, steps } = build;
+      // Laid out as present shows it: no diagram note to the class, the counter from its place.
+      const slide = presentedSlide(build.slide, theme, { index: build.index, total });
       const pptxSlide = pptx.addSlide();
       pptxSlide.background = { color: hexColor(slide.background?.color) ?? background };
 

@@ -108,6 +108,7 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
                           slide={slide}
                           theme={theme}
                           mode="capture"
+                          position={{ index: number - 1, total }}
                           revealAnswer={reveal(slide)}
                         />
                       </div>
@@ -134,6 +135,7 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
                         slide={slide}
                         theme={theme}
                         mode="capture"
+                        position={{ index: number - 1, total }}
                         revealAnswer={reveal(slide)}
                       />
                     </div>
@@ -150,6 +152,7 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
                       slide={slide}
                       theme={theme}
                       mode="capture"
+                      position={{ index: number - 1, total }}
                       revealAnswer={reveal(slide)}
                     />
                   </div>

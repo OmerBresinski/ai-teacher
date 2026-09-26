@@ -1,6 +1,13 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
+  COUNTER_NAME,
+  counted,
+  isDiagramMark,
+  withoutDiagramSlot,
+  withSlotsShown,
+} from "@tj/slides";
+import {
   type CSSProperties,
   lazy,
   Suspense,
@@ -27,6 +34,7 @@ import {
 } from "./elements/kit";
 import { OverflowGlyph } from "./elements/TextView";
 import { applySlideClip } from "./slide-clip";
+import { slotPlaceholdersOn } from "./slot-placeholders";
 
 const ExplanationEditor = lazy(() => import("./elements/ExplanationEditor"));
 
@@ -45,6 +53,12 @@ export type SlideViewProps = {
   /** Wrong options dimmed so far on a choice question, before the answer fills (TEACH-185). */
   answerProgress?: number;
   className?: string;
+  /**
+   * The slide's place in the deck. A slide counter ("7 / 12", `@tj/slides` `withDeckChrome`) is
+   * drawn from it at render time, so it stays true after a reorder, insert or delete; without a
+   * position (the editor, thumbnails) the counter is not drawn.
+   */
+  position?: { index: number; total: number };
   /**
    * Edit mode: geometry to paint for elements mid-gesture, keyed by element id. The transform layer
    * previews a drag here and dispatches one reducer on release (ADR 0022 §4), so the cache — and
@@ -74,7 +88,7 @@ const ALL = Number.POSITIVE_INFINITY;
  * layer, never DOM inside here.
  */
 export function SlideView({
-  slide,
+  slide: given,
   theme,
   mode,
   step,
@@ -84,7 +98,27 @@ export function SlideView({
   transformOverride,
   spill = false,
   imageOrigin,
+  position,
 }: SlideViewProps) {
+  /**
+   * A diagram instruction with no drawing is a note the editor alone draws: everywhere else the
+   * words are laid out as if the slide had no slot, so the right half is never left empty
+   * (`@tj/slides` `withoutDiagramSlot`). The editor keeps the placeholder.
+   */
+  /**
+   * The demo switch (`slot-placeholders.ts`, off by default and never in production) draws every
+   * slot instead, with what the model asked for; capture (export, print) never does.
+   */
+  const demo = mode !== "edit" && mode !== "capture" && slotPlaceholdersOn();
+  const slide = useMemo(
+    () =>
+      mode === "edit"
+        ? given
+        : demo
+          ? withSlotsShown(given, theme)
+          : withoutDiagramSlot(given, theme),
+    [given, theme, mode, demo],
+  );
   /**
    * `step` unset means "show the finished slide" — what a thumbnail, an export and the
    * viewer want. In the editor, previewStep 0 also means all visible (SPEC §4); a
@@ -151,6 +185,7 @@ export function SlideView({
     ["--td-muted" as string]: theme.colors.muted,
     ["--td-accent" as string]: theme.colors.accent,
     ["--td-accent2" as string]: theme.colors.accent2,
+    ["--td-on-accent" as string]: theme.colors.onAccent,
     ["--td-accent-soft" as string]: withAlpha(theme.colors.accent, 0.18),
     ["--td-line" as string]: theme.colors.line,
     ["--td-surface" as string]: theme.colors.surface,
@@ -176,25 +211,31 @@ export function SlideView({
       >
         <SlideBackground theme={theme} background={bg} />
 
-        {slide.elements.map((el, i) => (
-          <ElementFrame
-            key={el.id}
-            element={el}
-            theme={theme}
-            mode={mode}
-            slideId={slide.id}
-            step={effectiveStep}
-            revealAnswer={revealAnswer}
-            answerProgress={answerProgress}
-            question={slide.question}
-            zIndex={i + 1}
-            staggerIndex={stagger.get(el.id)}
-            sortIndex={sortIndex.get(el.id)}
-            optionIndex={optionIndex.get(el.id)}
-            animateReveals={forward}
-            override={mode === "edit" ? transformOverride?.get(el.id) : undefined}
-          />
-        ))}
+        {slide.elements.map((el, i) =>
+          // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
+          // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`). A slide counter is
+          // drawn only where the slide's place in the deck is known.
+          (isDiagramMark(el) && mode !== "edit" && !demo) ||
+          (el.name === COUNTER_NAME && !position) ? null : (
+            <ElementFrame
+              key={el.id}
+              element={position ? counted(el, position) : el}
+              theme={theme}
+              mode={mode}
+              slideId={slide.id}
+              step={effectiveStep}
+              revealAnswer={revealAnswer}
+              answerProgress={answerProgress}
+              question={slide.question}
+              zIndex={i + 1}
+              staggerIndex={stagger.get(el.id)}
+              sortIndex={sortIndex.get(el.id)}
+              optionIndex={optionIndex.get(el.id)}
+              animateReveals={forward}
+              override={mode === "edit" ? transformOverride?.get(el.id) : undefined}
+            />
+          ),
+        )}
 
         {revealAnswer && slide.question?.type === "matching" ? (
           <MatchingLines slide={slide} theme={theme} question={slide.question} animate={!still} />

@@ -1,8 +1,10 @@
 import type { ImageElement } from "@tj/domain/documents";
+import { isOpenPhotoSlot } from "@tj/slides";
 import { useEffect, useRef, useState } from "react";
 import { useResolvedImageSrc } from "../../images/image-origin";
 import { pictureStyle, renderedFit, type Size } from "../../lesson/image-adjust";
 import type { ElementViewProps } from "./kit";
+import { SlotPlaceholder } from "./SlotPlaceholder";
 
 /**
  * Images are plain <img> so capture and print see a resolved bitmap.
@@ -23,7 +25,21 @@ import type { ElementViewProps } from "./kit";
  * and the print route paints the same bytes. Edit, present and thumb keep the plain `<img>` so
  * their cache entries are not split by credentials mode.
  */
-export function ImageView({ element, theme, mode }: ElementViewProps<ImageElement>) {
+export function ImageView(props: ElementViewProps<ImageElement>) {
+  // A photo slot no photograph has filled (look/image-slot): drawn as what it should show. Present
+  // and export lay it out away (`withoutDiagramSlot`) unless the demo switch is on.
+  if (isOpenPhotoSlot(props.element)) {
+    const { element, theme } = props;
+    return (
+      <SlotPlaceholder kind="photo" theme={theme} radius={element.radius}>
+        Photo: {element.alt}
+      </SlotPlaceholder>
+    );
+  }
+  return <Picture {...props} />;
+}
+
+function Picture({ element, theme, mode }: ElementViewProps<ImageElement>) {
   const radius = element.radius ?? 0;
   const ref = useRef<HTMLImageElement>(null);
   const [measured, setMeasured] = useState<(Size & { src: string }) | null>(null);

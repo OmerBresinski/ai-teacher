@@ -30,6 +30,7 @@ import { SAFE, TRIM } from "../model/grid";
 import { explanationReserve, hasExplanationPanel, RESERVED_LINES } from "./explanation";
 import {
   isBackdrop,
+  isFootBand,
   isHairline,
   isLayerBelow,
   type Measurer,
@@ -155,7 +156,12 @@ export function findLaneOverflow(slide: Slide, theme?: Theme): Id[] {
   const right = SAFE.x + SAFE.w;
   return slide.elements
     .filter(
-      (el) => !isBackdrop(el) && el.x < right && el.x + el.w > SAFE.x && el.y + el.h > lane + EPS,
+      (el) =>
+        !isBackdrop(el) &&
+        !isFootBand(el) &&
+        el.x < right &&
+        el.x + el.w > SAFE.x &&
+        el.y + el.h > lane + EPS,
     )
     .map((el) => el.id);
 }
