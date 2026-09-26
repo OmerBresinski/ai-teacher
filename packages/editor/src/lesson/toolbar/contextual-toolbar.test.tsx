@@ -76,6 +76,31 @@ describe("ContextualToolbar routing", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     expect(toolbar("Slide")).toBeInTheDocument();
   });
+
+  test("a selected path gets a line's frame and the Element bar; there is no path toolbar", () => {
+    const lesson = chromeLesson();
+    const slide = lesson.slides[0];
+    if (!slide) throw new Error("seed");
+    slide.elements.push({
+      id: "path-1",
+      type: "path",
+      x: 700,
+      y: 100,
+      w: 100,
+      h: 60,
+      smooth: true,
+      points: [
+        { x: 0, y: 1 },
+        { x: 0.5, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    });
+    const { container } = renderEditor(lesson);
+    clickAt(container, 750, 130);
+    expect(toolbar("Element")).toBeInTheDocument();
+    expect(container.querySelectorAll("[data-handle]")).toHaveLength(8);
+    expect(container.querySelectorAll("[data-rotate-handle]")).toHaveLength(4);
+  });
 });
 
 describe("ShapeToolbar (row 1)", () => {

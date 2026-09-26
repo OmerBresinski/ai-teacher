@@ -371,6 +371,53 @@ describe("image source (Images project, Decision 5)", () => {
   });
 });
 
+describe("path element (ADR 0032)", () => {
+  const path = (points: { x: number; y: number }[]) => ({
+    id: "p",
+    type: "path",
+    x: 10,
+    y: 20,
+    w: 400,
+    h: 300,
+    points,
+    smooth: true,
+    closed: false,
+    stroke: "#112233",
+    strokeWidth: 2,
+    dash: "dashed",
+    arrowEnd: true,
+  });
+  const withPath = (points: { x: number; y: number }[]) => ({
+    ...lesson(),
+    slides: [{ ...titleSlide(), elements: [path(points)] }],
+  });
+
+  test("a lesson with no path parses unchanged at version 1", () => {
+    const parsed = parseLesson(JSON.parse(JSON.stringify(lesson())));
+    expect(parsed).toEqual(lesson());
+    expect(parsed.version).toBe(1);
+  });
+
+  test("a path with two or more points round-trips; points are not clamped", () => {
+    const input = withPath([
+      { x: 0, y: 0.8 },
+      { x: 0.45, y: -0.1 },
+      { x: 1.2, y: 1 },
+    ]);
+    const parsed = parseLesson(JSON.parse(JSON.stringify(input)));
+    expect(parsed).toEqual(input as never);
+    expect(parsed.version).toBe(1);
+    expect(SlideSchema.safeParse(input.slides[0]).success).toBe(true);
+  });
+
+  test("a path with a single point is rejected at its points", () => {
+    const result = SlideSchema.safeParse(withPath([{ x: 0, y: 0 }]).slides[0]);
+    expect(result.success).toBe(false);
+    expect(result.success ? [] : result.error.issues[0]?.path).toEqual(["elements", 0, "points"]);
+    expect(() => parseLesson(withPath([{ x: 0, y: 0 }]))).toThrow();
+  });
+});
+
 describe("slide helpers", () => {
   test("slideStepCount is the max revealStep plus the answer's reveal steps", () => {
     expect(slideStepCount(titleSlide())).toBe(0);

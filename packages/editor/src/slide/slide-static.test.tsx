@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { render } from "@testing-library/react";
-import type { Slide, SlideElement, SlideKind } from "@tj/domain/documents";
+import type { PathElement, Slide, SlideElement, SlideKind } from "@tj/domain/documents";
+import { pathData, pathSegments } from "@tj/slides";
 import { docFromText, newSlide, uid } from "../model/factories";
 import { getTheme } from "../model/themes";
+import { PathView } from "./elements";
 import { SlideStatic } from "./SlideStatic";
 import { SlideView } from "./SlideView";
 
@@ -48,6 +50,16 @@ describe("SlideStatic", () => {
       element({ type: "image", src: "x.png", fit: "contain" }),
       element({ type: "shape", shape: "ellipse", fill: "#fff", doc }),
       element({ type: "line", from: { x: 0, y: 0 }, to: { x: 1, y: 1 }, arrowEnd: true }),
+      element({
+        type: "path",
+        points: [
+          { x: 0, y: 1 },
+          { x: 0.5, y: 0 },
+          { x: 1, y: 1 },
+        ],
+        smooth: true,
+        arrowEnd: true,
+      }),
       element({ type: "icon", icon: "lightbulb" }),
       element({
         type: "table",
@@ -120,5 +132,66 @@ describe("SlideStatic", () => {
     expect((frames[0] as HTMLElement).style.visibility).not.toBe("hidden");
     expect((frames[1] as HTMLElement).style.visibility).toBe("hidden");
     expect(frames[1]?.getAttribute("aria-hidden")).toBe("true");
+  });
+});
+
+describe("PathView", () => {
+  const path = (extra: Partial<PathElement> = {}): PathElement => ({
+    id: "p",
+    type: "path",
+    x: 0,
+    y: 0,
+    w: 400,
+    h: 300,
+    smooth: true,
+    points: [
+      { x: 0, y: 0.8 },
+      { x: 0.24, y: 0.8 },
+      { x: 0.45, y: 0 },
+      { x: 0.66, y: 1 },
+      { x: 1, y: 1 },
+    ],
+    ...extra,
+  });
+  const view = (element: PathElement) =>
+    render(
+      <PathView
+        element={element}
+        theme={theme}
+        mode="view"
+        slideId="s"
+        hidden={false}
+        ghost={false}
+        revealAnswer={false}
+      />,
+    );
+
+  test("draws one hidden SVG path whose d is the shared curve, unfilled unless closed", () => {
+    const element = path({ fill: "#ff0000" });
+    const { container } = view(element);
+    const svg = container.querySelector("svg");
+    expect(svg?.getAttribute("aria-hidden")).toBe("true");
+    const paths = container.querySelectorAll("path");
+    expect(paths).toHaveLength(1);
+    expect(paths[0]?.getAttribute("d")).toBe(pathData(pathSegments(element, 400, 300)));
+    expect(paths[0]?.getAttribute("fill")).toBe("none");
+    expect(paths[0]?.getAttribute("stroke")).toBe(theme.colors.ink);
+    expect(paths[0]?.getAttribute("stroke-width")).toBe("3");
+    expect(container.querySelector("polygon")).toBeNull();
+  });
+
+  test("a closed path with a fill is filled", () => {
+    const { container } = view(path({ closed: true, fill: "#ff0000" }));
+    expect(container.querySelector("path")?.getAttribute("fill")).toBe("#ff0000");
+    const open = view(path({ closed: true }));
+    expect(open.container.querySelector("path")?.getAttribute("fill")).toBe("none");
+  });
+
+  test("an end arrow is a polygon whose tip is exactly the last point", () => {
+    const { container } = view(path({ arrowEnd: true }));
+    const polygons = container.querySelectorAll("polygon");
+    expect(polygons).toHaveLength(1);
+    const [tip] = (polygons[0]?.getAttribute("points") ?? "").split(" ");
+    expect(tip).toBe("400,300");
   });
 });

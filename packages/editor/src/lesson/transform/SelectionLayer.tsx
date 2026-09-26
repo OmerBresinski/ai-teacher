@@ -519,7 +519,7 @@ export function SelectionLayer({
       for (let i = boxes.length - 1; i >= 0; i--) {
         const b = boxes[i];
         if (!b) continue;
-        const slop = b.el.type === "line" ? 6 / k : 0;
+        const slop = b.el.type === "line" || b.el.type === "path" ? 6 / k : 0;
         if (hitsBox(b, p, slop)) return b;
       }
       return null;

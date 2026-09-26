@@ -37,6 +37,7 @@ import type {
   Lesson,
   LineElement,
   OptionElement,
+  PathElement,
   QuestionData,
   ShapeElement,
   ShapeKind,
@@ -48,11 +49,13 @@ import type {
   TimerElement,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { type PathSegment, pathSegments } from "@tj/slides";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { resolveImageSrc } from "../images/resolve-src";
+import { normaliseAngle } from "../model/geometry";
 import {
   clamp,
   GAP_TOKEN,
@@ -303,7 +306,7 @@ export function textBoxOptions(
     wrap: true,
     fit: r.autoHeight ? "resize" : "none",
   };
-  if (element.rotation) options.rotate = Math.round(element.rotation);
+  if (element.rotation) options.rotate = Math.round(normaliseAngle(element.rotation));
   const fill = hexColor(r.background);
   if (fill) {
     options.fill = { color: fill };
@@ -687,6 +690,9 @@ async function drawElement(
     case "line":
       drawLine(pptxSlide, element, theme);
       return;
+    case "path":
+      drawPath(pptxSlide, element, theme);
+      return;
     case "table":
       drawTable(pptxSlide, element, theme);
       return;
@@ -799,7 +805,7 @@ function drawOption(
         }
       : { type: "none" },
     rectRadius: inches(theme.radius),
-    ...(element.rotation ? { rotate: Math.round(element.rotation) } : {}),
+    ...(element.rotation ? { rotate: Math.round(normaliseAngle(element.rotation)) } : {}),
   });
   // The 10% tint is a second plate over the paper: PowerPoint has one fill per shape, and the
   // renderer's `withAlpha(correct, 0.1)` is exactly that layer over `surface`.
@@ -812,7 +818,7 @@ function drawOption(
       fill: { color: correct, transparency: 90 },
       line: { type: "none" },
       rectRadius: inches(theme.radius),
-      ...(element.rotation ? { rotate: Math.round(element.rotation) } : {}),
+      ...(element.rotation ? { rotate: Math.round(normaliseAngle(element.rotation)) } : {}),
     });
   }
 
@@ -896,7 +902,7 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
     line: stroke && strokeWidth > 0 ? { color: stroke, width: strokeWidth } : { type: "none" },
   };
   if (element.shape === "rounded" || element.shape === "pill") options.rectRadius = inches(radius);
-  if (element.rotation) options.rotate = Math.round(element.rotation);
+  if (element.rotation) options.rotate = Math.round(normaliseAngle(element.rotation));
   const transparency = transparencyOf(element.opacity);
   if (transparency != null && options.fill) options.fill = { ...options.fill, transparency };
   pptxSlide.addShape(pptxShapeName(element.shape), options);
@@ -929,7 +935,62 @@ function drawLine(pptxSlide: PptxGenJS.Slide, element: LineElement, theme: Theme
     h: inches(Math.max(Math.abs(y2 - y1), 0.01)),
     flipH: x2 < x1,
     flipV: y2 < y1,
-    ...(element.rotation ? { rotate: Math.round(element.rotation) } : {}),
+    ...(element.rotation ? { rotate: Math.round(normaliseAngle(element.rotation)) } : {}),
+    line: {
+      color: hexColor(element.stroke ?? theme.colors.ink) ?? "000000",
+      width: element.strokeWidth ?? 3,
+      dashType: pptxDashType(element.dash),
+      beginArrowType: element.arrowStart ? "triangle" : "none",
+      endArrowType: element.arrowEnd ? "triangle" : "none",
+      ...(transparency != null ? { transparency } : {}),
+    },
+  });
+}
+
+type PptxPoint = NonNullable<ShapeOptions["points"]>[number];
+
+/** One path segment as a pptxgenjs custom-geometry point, in inches. */
+function pptxPoint(s: PathSegment): PptxPoint {
+  switch (s.type) {
+    case "move":
+      return { x: inches(s.x), y: inches(s.y), moveTo: true };
+    case "line":
+      return { x: inches(s.x), y: inches(s.y) };
+    case "cubic":
+      return {
+        x: inches(s.x),
+        y: inches(s.y),
+        curve: {
+          type: "cubic",
+          x1: inches(s.x1),
+          y1: inches(s.y1),
+          x2: inches(s.x2),
+          y2: inches(s.y2),
+        },
+      };
+    case "close":
+      return { close: true };
+  }
+}
+
+/**
+ * A `path` element as PowerPoint custom geometry, from the same segments the editor draws
+ * (`pathSegments`, ADR 0032). pptxgenjs 4 writes `custGeom` at runtime but its typings leave the
+ * name out of `SHAPE_NAME`, hence the cast. Point coordinates are inches inside the shape's box:
+ * pptxgenjs reads a number under 100 as inches, which every slide coordinate is.
+ */
+function drawPath(pptxSlide: PptxGenJS.Slide, element: PathElement, theme: Theme): void {
+  const transparency = transparencyOf(element.opacity);
+  const points = pathSegments(element, element.w, element.h).map(pptxPoint);
+  const fill = element.closed ? hexColor(element.fill) : undefined;
+  pptxSlide.addShape("custGeom" as PptxGenJS.SHAPE_NAME, {
+    x: inches(element.x),
+    y: inches(element.y),
+    w: inches(Math.max(element.w, 1)),
+    h: inches(Math.max(element.h, 1)),
+    points,
+    ...(fill ? { fill: { color: fill, ...(transparency != null ? { transparency } : {}) } } : {}),
+    ...(element.rotation ? { rotate: Math.round(normaliseAngle(element.rotation)) } : {}),
     line: {
       color: hexColor(element.stroke ?? theme.colors.ink) ?? "000000",
       width: element.strokeWidth ?? 3,
@@ -1087,7 +1148,7 @@ async function drawImage(
     },
   };
   if (element.alt) options.altText = element.alt;
-  if (element.rotation) options.rotate = Math.round(element.rotation);
+  if (element.rotation) options.rotate = Math.round(normaliseAngle(element.rotation));
   if ((element.radius ?? 0) > 0) options.rounding = true;
   const transparency = transparencyOf(element.opacity);
   if (transparency != null) options.transparency = transparency;
@@ -1137,7 +1198,7 @@ async function drawIcon(
       h: inches(size),
       data,
       altText: element.name ?? element.icon,
-      ...(element.rotation ? { rotate: Math.round(element.rotation) } : {}),
+      ...(element.rotation ? { rotate: Math.round(normaliseAngle(element.rotation)) } : {}),
     });
     return;
   }

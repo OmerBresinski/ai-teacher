@@ -156,7 +156,7 @@ export function isBackdrop(el: SlideElement): boolean {
 
 /** A rule, not a block: a hairline divider is decoration and never collides. */
 export function isHairline(el: SlideElement): boolean {
-  if (el.type === "line") return true;
+  if (el.type === "line" || el.type === "path") return true;
   if (el.type !== "shape") return false;
   return el.h <= 2 || el.w <= 2;
 }

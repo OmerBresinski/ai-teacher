@@ -79,6 +79,25 @@ describe("findOverlaps", () => {
     expect(findOverlaps(slideOf([line, body]))).toEqual([]);
   });
 
+  test("ignores a path element, like a line (ADR 0032)", () => {
+    const path: SlideElement = {
+      id: "path",
+      type: "path",
+      x: 58,
+      y: 100,
+      w: 400,
+      h: 80,
+      smooth: true,
+      points: [
+        { x: 0, y: 1 },
+        { x: 0.5, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    };
+    const body = textEl("body", { x: 58, y: 100, w: 400, h: 100 });
+    expect(findOverlaps(slideOf([path, body]))).toEqual([]);
+  });
+
   test("ignores a full-bleed backdrop image and shape", () => {
     const img: SlideElement = {
       id: "bg",

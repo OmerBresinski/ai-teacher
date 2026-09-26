@@ -21,6 +21,7 @@ export * from "./grid";
 export * from "./layouts";
 export * from "./materialise";
 export * from "./metrics";
+export * from "./path";
 export * from "./reflow";
 export * from "./specs";
 export * from "./text-measure";
