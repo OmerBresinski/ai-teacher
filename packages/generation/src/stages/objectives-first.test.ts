@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { JOB_PROGRESS_STAGES } from "@tj/domain";
 import type { Lesson } from "@tj/domain/documents";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
+import { ONE_IDEA_EXTRA } from "../outline-from-facts";
 import { planObjectivesPrompt } from "../prompts/plan-objectives";
 import { labAi, memoryLogger, recordingDeps, romansLesson, versionsOf } from "../testing";
 import { StageFailure } from "../types";
@@ -325,7 +326,8 @@ describe("the generate job's run from the confirmed objectives (the stamp decide
     });
     expect(versionsOf(ai)).not.toContain("plan-objectives");
     expect(final.lesson.facts?.objectives).toEqual(objectives);
-    expect(final.lesson.facts?.outline).toHaveLength(10);
+    // The pinned count plus P6b's own slide for each laid-out key idea (up to ONE_IDEA_EXTRA).
+    expect(final.lesson.facts?.outline).toHaveLength(10 + ONE_IDEA_EXTRA);
     expect(final.lesson.generation?.stage).toBe("repaired");
   });
 });

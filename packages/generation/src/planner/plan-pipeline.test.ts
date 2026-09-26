@@ -1,7 +1,8 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { type Budget, createBudget } from "@tj/ai";
-import { checkLesson } from "@tj/domain/documents";
+import { checkLesson, entriesWritten, isContinuation, type Lesson } from "@tj/domain/documents";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
+import { ONE_IDEA_EXTRA } from "../outline-from-facts";
 import { planFactsObjectiveOutputSchemaFor } from "../prompts/plan-facts-objective";
 import { type PlanQuestionSetOutput, planQuestionSetPrompt } from "../prompts/plan-question-set";
 import { planTeachObjectivePrompt } from "../prompts/plan-teach-objective";
@@ -20,6 +21,20 @@ import {
   runStatus,
 } from "./plan-pipeline";
 import { factsAnswerFor, labAi, questionSetAnswer, romansLesson, versionsOf } from "./testing";
+
+/**
+ * P6b: a key idea with a planned layout gets its own slide, up to ONE_IDEA_EXTRA past the brief's
+ * 10 (the Romans fixture has enough of them to take all three).
+ */
+const OUTLINED = 10 + ONE_IDEA_EXTRA;
+/** One entry per outline entry, plus any continuation slide its words needed (UX ruling 91). */
+function expectSlidesFor(lesson: Lesson) {
+  const outlined = lesson.facts?.outline.length ?? -1;
+  expect(outlined).toBe(OUTLINED);
+  expect(entriesWritten(lesson.slides)).toBe(outlined);
+  const continued = lesson.slides.filter((s, i) => isContinuation(s, lesson.slides[i - 1]));
+  expect(lesson.slides).toHaveLength(outlined + continued.length);
+}
 
 const json = (v: unknown) => JSON.stringify(v);
 
@@ -197,7 +212,7 @@ describe("the retrieval starter (lab r2)", () => {
       recordingDeps(ai),
     );
     const lesson = state.lesson;
-    expect(lesson.slides).toHaveLength(10);
+    expectSlidesFor(lesson);
     const at = lesson.slides.findIndex((s) => s.kind === "starter");
     expect(at).toBeGreaterThan(1);
     const text = (i: number) => JSON.stringify(lesson.slides[i]?.elements ?? []);
@@ -262,7 +277,7 @@ describe("runPlannedLessonPipeline", () => {
     );
     expect(report.verify).toBe("started");
     expect(state.lesson.generation?.stage).toBe("repaired");
-    expect(state.lesson.slides).toHaveLength(10);
+    expectSlidesFor(state.lesson);
     expect(state.lesson.facts?.vocabulary[0]?.definition).toBe("A corrected definition.");
     expect(state.lesson.generation?.findings.filter((f) => f.check === "fact-verify")).toHaveLength(
       1,
@@ -430,7 +445,7 @@ describe("planFromObjectives: the waves (lab pw)", () => {
         (q) => (q.objectiveRefs ?? []).length === 1 && q.keyIdeaRefs?.length === 1,
       ),
     ).toBe(true);
-    expect(lesson.facts?.outline).toHaveLength(10);
+    expect(lesson.facts?.outline).toHaveLength(OUTLINED);
     expect(lesson.facts?.outline.at(-1)?.kind).toBe("exit-ticket");
     expect(checkLesson(lesson).filter((f) => f.severity === "error")).toEqual([]);
     expect(report.status.complete).toBe(true);
@@ -611,7 +626,7 @@ describe("planFromObjectives: the waves (lab pw)", () => {
     });
     expect(status.executed).toBe(true);
     expect(state.lesson.generation?.stage).toBe("repaired");
-    expect(state.lesson.slides).toHaveLength(10);
+    expectSlidesFor(state.lesson);
     expect(countOf(ai, "plan-facts-objective")).toBe(0);
     expect(countOf(ai, "verify-facts")).toBe(0);
   });
