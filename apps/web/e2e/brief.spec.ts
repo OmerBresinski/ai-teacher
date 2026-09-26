@@ -232,7 +232,8 @@ test.describe("lesson brief: start from your material (ADR 0027 §7)", () => {
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");
-    const zone = page.getByRole("region", { name: /Start from your material/ });
+    await page.getByRole("button", { name: "Add materials" }).click();
+    const zone = page.getByRole("dialog", { name: "Add your materials" });
     await expect(zone).toBeVisible();
     await expect(
       zone.getByText("Only upload material you may use for your own teaching."),
@@ -252,9 +253,9 @@ test.describe("lesson brief: start from your material (ADR 0027 §7)", () => {
     await expect(zone.getByText("1 page")).toBeVisible();
 
     // Pasted text is a second Source.
-    await zone.getByRole("button", { name: "Paste text instead" }).click();
+    await zone.getByRole("tab", { name: "Paste text" }).click();
     await page.getByRole("textbox", { name: "Text to use as material" }).fill(MATERIAL);
-    await zone.getByRole("button", { name: "Add" }).click();
+    await zone.getByRole("button", { name: "Add text" }).click();
     await expect(page.getByRole("button", { name: "Remove Pasted text" })).toBeVisible();
 
     // A class list is refused before anything is stored, with the API's sentence on screen.
@@ -269,7 +270,8 @@ test.describe("lesson brief: start from your material (ADR 0027 §7)", () => {
       /Upload a PDF, PowerPoint/,
     );
 
-    await page.getByRole("textbox", { name: "Topic or objective" }).fill("Photosynthesis");
+    await zone.getByRole("button", { name: "Done" }).click();
+    await page.getByRole("textbox", { name: "Topic", exact: true }).fill("Photosynthesis");
     const posted = page.waitForRequest(
       (request) => request.method() === "POST" && request.url().endsWith("/lessons"),
     );

@@ -33,6 +33,7 @@ import { FactsPanel } from "./FactsPanel";
 import { HelpDialog } from "./HelpDialog";
 import { InsertRail } from "./InsertRail";
 import { isInTextField, matchesBinding } from "./keys";
+import { MobileLessonEditor } from "./MobileLessonEditor";
 import { Navigator } from "./Navigator";
 import { NO_PROPOSALS, type ProposalsApi, ProposalsContext } from "./proposals-context";
 import { RegenerateDialog } from "./RegenerateDialog";
@@ -47,6 +48,7 @@ import {
   useEditorSessionState,
 } from "./use-editor-session";
 import { useHistoryKeys } from "./use-history-keys";
+import { useMobileEditor } from "./use-mobile-editor";
 
 /*
  * The lesson editor shell (TeachDeck `components/v2/editor/EditorShell.tsx`): TopBar over
@@ -83,6 +85,8 @@ export type LessonEditorProps = {
   images?: ImageSearchClient;
   /** Where the export control sits once it exists (E1). */
   exportSlot?: ReactNode;
+  /** Optional generation companion finishing alongside the editable lesson. */
+  companion?: ReactNode;
   /**
    * The generated worksheet (`lesson.artefacts.worksheetId`), once the app has fetched it, so the
    * objective-coverage check sees both halves (ADR 0025 §10); absent, that half is skipped.
@@ -135,6 +139,7 @@ export function LessonEditor({
   onPresent,
   images,
   exportSlot,
+  companion,
   worksheet,
   onOpenWorksheet,
   onNewWorksheet,
@@ -145,6 +150,7 @@ export function LessonEditor({
   editorRef,
   initialSlideId,
 }: LessonEditorProps) {
+  const mobile = useMobileEditor();
   const autosave = useAutosave(onSave);
   const { lesson, ...history } = useDocumentHistory({
     queryKey,
@@ -407,22 +413,46 @@ export function LessonEditor({
                         factsOpen={factsOpen}
                         autosave={autosave}
                       />
+                      {mobile && companion ? (
+                        <aside data-editor-companion="mobile">{companion}</aside>
+                      ) : null}
                       <div className="flex min-h-0 flex-1">
-                        <InsertRail
-                          onInsert={insert}
-                          onHelp={() => setHelpOpen(true)}
-                          images={images}
-                        />
-                        <Navigator />
-                        <Canvas
-                          slide={slide}
-                          theme={theme}
-                          onFocusChange={setCanvasFocused}
-                          onScaleChange={onScaleChange}
-                          onInsert={insert}
-                          images={images}
-                          lessonId={lessonId}
-                        />
+                        {mobile ? (
+                          <MobileLessonEditor
+                            initialSlideId={initialSlideId}
+                            canvas={{
+                              slide,
+                              theme,
+                              onFocusChange: setCanvasFocused,
+                              onScaleChange,
+                              onInsert: insert,
+                              images,
+                              lessonId,
+                            }}
+                            insert={{ onInsert: insert, onHelp: () => setHelpOpen(true), images }}
+                          />
+                        ) : (
+                          <>
+                            <InsertRail
+                              onInsert={insert}
+                              onHelp={() => setHelpOpen(true)}
+                              images={images}
+                            />
+                            <Navigator />
+                            <Canvas
+                              slide={slide}
+                              theme={theme}
+                              onFocusChange={setCanvasFocused}
+                              onScaleChange={onScaleChange}
+                              onInsert={insert}
+                              images={images}
+                              lessonId={lessonId}
+                            />
+                          </>
+                        )}
+                        {!mobile && companion ? (
+                          <aside data-editor-companion="desktop">{companion}</aside>
+                        ) : null}
                         {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
                       </div>
                       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />

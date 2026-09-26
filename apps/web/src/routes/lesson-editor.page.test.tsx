@@ -49,8 +49,9 @@ Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
   },
 });
 
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderPage(
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   const utils = render(
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -170,6 +171,27 @@ describe("LessonEditorPage", () => {
 
     act(() => options.action?.onClick());
     expect(await screen.findByRole("heading", { level: 1, name: "Saved elsewhere" })).toBeVisible();
+  });
+
+  it("keeps manual worksheet creation available for a lesson without a confirmed plan", async () => {
+    renderPage();
+    const action = await screen.findByRole("button", { name: /^Worksheet$/ });
+    fireEvent.click(action);
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/worksheets/new",
+      search: { lesson: "demo-water-cycle" },
+    });
+  });
+
+  it("does not mount an editable cached body before its generation lock is known", async () => {
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(DOCUMENT_KEY, fakeApi.loadDocument("demo-water-cycle"));
+    renderPage(client);
+    expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
+    expect(await screen.findByTestId("generating-shell")).toBeVisible();
+    expect(fakeApi.requests.filter((request) => request.method === "PUT")).toHaveLength(0);
   });
 
   it("a locked lesson shows the generating banner, follows the job and unlocks on completion", async () => {

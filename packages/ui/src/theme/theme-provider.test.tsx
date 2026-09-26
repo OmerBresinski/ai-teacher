@@ -42,16 +42,16 @@ describe("resolveTheme", () => {
 });
 
 describe("ThemeProvider", () => {
-  it("with nothing stored and OS = dark, applies data-theme=dark", () => {
+  it("with nothing stored and OS = dark, defaults to light", () => {
     setMatchMedia({ dark: true });
     render(
       <ThemeProvider>
         <Probe />
       </ThemeProvider>,
     );
-    expect(screen.getByTestId("theme")).toHaveTextContent("system");
-    expect(screen.getByTestId("resolved")).toHaveTextContent("dark");
-    expect(html()).toBe("dark");
+    expect(screen.getByTestId("theme")).toHaveTextContent("light");
+    expect(screen.getByTestId("resolved")).toHaveTextContent("light");
+    expect(html()).toBe("light");
   });
 
   it("with nothing stored and OS = light, applies data-theme=light", () => {
@@ -64,6 +64,7 @@ describe("ThemeProvider", () => {
   });
 
   it("resolves prefers-contrast: more to high-contrast when following the system", () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "system");
     setMatchMedia({ dark: true, moreContrast: true });
     render(
       <ThemeProvider>
@@ -99,6 +100,17 @@ describe("ThemeProvider", () => {
     expect(html()).toBe("light");
   });
 
+  it("preserves a saved dark choice despite the new light default", () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+    expect(html()).toBe("dark");
+  });
+
   it("ignores garbage in storage and falls back to defaultTheme", () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, "sepia");
     render(
@@ -110,6 +122,7 @@ describe("ThemeProvider", () => {
   });
 
   it("follows live OS changes while in system mode, and stops once explicit", async () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "system");
     const user = userEvent.setup();
     render(
       <ThemeProvider>
@@ -178,18 +191,22 @@ describe("THEME_INIT_SCRIPT", () => {
     expect(html()).toBe("high-contrast");
   });
 
-  it("resolves the OS preference when nothing is stored", () => {
+  it("uses light when nothing is stored even with dark or high-contrast OS preferences", () => {
     setMatchMedia({ dark: true });
     run(THEME_INIT_SCRIPT);
-    expect(html()).toBe("dark");
+    expect(html()).toBe("light");
 
     setMatchMedia({ dark: true, moreContrast: true });
     run(THEME_INIT_SCRIPT);
-    expect(html()).toBe("high-contrast");
+    expect(html()).toBe("light");
   });
 
-  it("ignores a stored 'system' or invalid value and resolves from the OS", () => {
+  it("follows the OS only for stored system, and ignores invalid preferences", () => {
+    setMatchMedia({ dark: true });
     window.localStorage.setItem(THEME_STORAGE_KEY, "system");
+    run(THEME_INIT_SCRIPT);
+    expect(html()).toBe("dark");
+    window.localStorage.setItem(THEME_STORAGE_KEY, "sepia");
     run(THEME_INIT_SCRIPT);
     expect(html()).toBe("light");
   });

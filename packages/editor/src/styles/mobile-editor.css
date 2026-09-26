@@ -1,0 +1,215 @@
+.mobile-editor-body {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+}
+.mobile-lesson-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 8px 12px 32px;
+  background: var(--canvas);
+  scroll-padding-block: 12px;
+}
+.mobile-lesson-list[hidden] {
+  display: none;
+}
+.mobile-lesson-card {
+  margin-bottom: 24px;
+}
+.mobile-lesson-card-label {
+  display: flex;
+  min-height: 40px;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  padding-inline: 2px;
+}
+.mobile-lesson-paper {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+  text-align: left;
+}
+button.mobile-lesson-paper {
+  cursor: pointer;
+}
+button.mobile-lesson-paper:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.mobile-lesson-paper > [inert] {
+  height: 100%;
+  width: 100%;
+  pointer-events: none;
+}
+.mobile-editor-focus {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+.mobile-editor-focus-bar {
+  min-height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+}
+.mobile-editor-focus-bar > span {
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+.mobile-context-trigger {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+}
+.mobile-editor-sheet {
+  top: auto;
+  bottom: 0;
+  left: 0;
+  translate: none;
+  transform: none;
+  width: 100%;
+  max-width: 100%;
+  max-height: min(72dvh, 560px);
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  padding: 24px 16px max(24px, env(safe-area-inset-bottom));
+}
+.mobile-editor-sheet [data-insert-rail] {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  border: 0;
+}
+.mobile-context-controls > *,
+.mobile-slide-actions > * {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.mobile-context-controls [role="toolbar"] {
+  flex-wrap: wrap;
+}
+.mobile-slide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+@media (max-width: 760px) {
+  [data-mobile-topbar="true"] {
+    gap: 4px;
+    padding-inline: 8px;
+  }
+  [data-mobile-topbar="true"] > :first-child {
+    min-width: 0;
+    flex: 1;
+  }
+  [data-mobile-topbar="true"] [data-save-state] {
+    display: none;
+  }
+  [data-mobile-topbar="true"] button {
+    flex-shrink: 0;
+  }
+  .mobile-editor-focus [data-canvas-scroller] {
+    bottom: 104px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-editor-sheet {
+    animation: none;
+  }
+}
+
+/* Override the old two-row DayBack compact header; layout belongs to the editor. */
+@media (max-width: 760px) {
+  html[data-design][data-theme] [data-lesson-editor] > [data-topbar][data-mobile-topbar="true"] {
+    height: 56px;
+    min-height: 56px;
+    flex-wrap: nowrap;
+    padding: 4px 8px;
+  }
+  html[data-design][data-theme]
+    [data-lesson-editor]
+    > [data-topbar][data-mobile-topbar="true"]
+    > div {
+    width: auto;
+    flex-wrap: nowrap;
+    margin-left: 0;
+  }
+  [data-mobile-topbar="true"] > :last-child {
+    flex: 0 0 auto;
+    gap: 4px;
+  }
+  [data-mobile-topbar="true"] > :last-child > button {
+    width: 44px;
+    height: 44px;
+    padding-inline: 0;
+  }
+  [data-mobile-topbar="true"] > :first-child > div {
+    min-width: 0;
+  }
+  [data-mobile-topbar="true"] input {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+.mobile-editor-sheet .rail-button-labelled {
+  width: 100%;
+  height: auto;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 4px;
+  font-size: 13px;
+}
+.mobile-editor-sheet [data-insert-rail] > [aria-hidden="true"] {
+  display: none;
+}
+.mobile-editor-sheet [data-insert-rail] > .mt-auto {
+  display: contents;
+}
+.mobile-editor-sheet [data-insert-rail] > .mt-auto > [aria-hidden="true"] {
+  display: none;
+}
+
+[data-editor-companion="desktop"] {
+  width: clamp(220px, 23vw, 320px);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  transition: width 250ms ease;
+}
+[data-editor-companion="mobile"] {
+  height: 190px;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: height 250ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-editor-companion] {
+    transition: none;
+  }
+}

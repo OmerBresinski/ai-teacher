@@ -18,6 +18,7 @@ import * as reducers from "../model/reducers";
 import type { Autosave } from "../model/use-autosave";
 import { useHistory, useLesson } from "./document-context";
 import { useCompactChrome } from "./use-compact-chrome";
+import { useMobileEditor } from "./use-mobile-editor";
 
 /*
  * The editor's top bar (TeachDeck `components/v2/editor/TopBar.tsx`): back arrow → title (inline
@@ -62,6 +63,7 @@ export function TopBar({
 }: TopBarProps) {
   const lesson = useLesson();
   const compactChrome = useCompactChrome();
+  const mobile = useMobileEditor();
   const { dispatch, undo, redo, canUndo, canRedo } = useHistory();
   const worksheetId = lesson.artefacts?.worksheetId;
 
@@ -111,7 +113,7 @@ export function TopBar({
   );
 
   return (
-    <AppBar data-topbar className="h-(--topbar-height) shrink-0">
+    <AppBar data-topbar data-mobile-topbar={mobile} className="h-(--topbar-height) shrink-0">
       {/* The editor's h1 is the title field's static twin, for the landmark outline. */}
       <AppBarGroup>
         <IconButton label="Back to library" onClick={onBack}>
@@ -123,39 +125,55 @@ export function TopBar({
           renameLabel="Rename lesson"
           onCommit={(t) => dispatch(reducers.setTitle, t)}
         />
-        <PanelSeparator />
-        <IconButton label="Undo" disabled={!canUndo} onClick={undo}>
-          <Undo2 aria-hidden size={16} strokeWidth={1.5} />
-        </IconButton>
-        <IconButton label="Redo" disabled={!canRedo} onClick={redo}>
-          <Redo2 aria-hidden size={16} strokeWidth={1.5} />
-        </IconButton>
+        {!mobile ? (
+          <>
+            <PanelSeparator />
+            <IconButton label="Undo" disabled={!canUndo} onClick={undo}>
+              <Undo2 aria-hidden size={16} strokeWidth={1.5} />
+            </IconButton>
+            <IconButton label="Redo" disabled={!canRedo} onClick={redo}>
+              <Redo2 aria-hidden size={16} strokeWidth={1.5} />
+            </IconButton>
+          </>
+        ) : null}
       </AppBarGroup>
 
       <AppBarGroup className="ml-auto gap-2">
         <SaveIndicator autosave={autosave} />
         {/* Theme, Share and Export are the same kind of object three times over, so they take one
             shape — a ghost label — and Present is the only fill in the editor. */}
-        {compactChrome ? (
+        {compactChrome || mobile ? (
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" aria-label="More lesson actions">
-                More <ChevronDown aria-hidden />
+                {!mobile ? "More" : null} <ChevronDown aria-hidden />
               </Button>
             </PopoverTrigger>
             <PopoverContent
               aria-label="Lesson actions"
               className="flex w-60 flex-col items-stretch gap-1 p-2"
             >
+              {mobile ? (
+                <>
+                  <Button variant="ghost" disabled={!canUndo} onClick={undo}>
+                    <Undo2 />
+                    Undo
+                  </Button>
+                  <Button variant="ghost" disabled={!canRedo} onClick={redo}>
+                    <Redo2 />
+                    Redo
+                  </Button>
+                </>
+              ) : null}
               {secondaryActions}
             </PopoverContent>
           </Popover>
         ) : (
           secondaryActions
         )}
-        <Button variant="primary" size="sm" onClick={() => void present()}>
+        <Button variant="primary" size="sm" aria-label="Present" onClick={() => void present()}>
           <Play aria-hidden size={16} strokeWidth={1.5} />
-          Present
+          {!mobile ? "Present" : null}
         </Button>
       </AppBarGroup>
     </AppBar>

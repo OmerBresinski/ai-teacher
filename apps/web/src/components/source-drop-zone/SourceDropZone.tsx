@@ -1,6 +1,23 @@
 import { useMutation } from "@tanstack/react-query";
 import type { SourceRef } from "@tj/domain/documents";
-import { Button, cn, IconButton, Spinner, Textarea } from "@tj/ui";
+import {
+  Button,
+  cn,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  IconButton,
+  Input,
+  Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Textarea,
+} from "@tj/ui";
+import { CharacterHost } from "@/components/lesson-creation/character-host";
+import "./materials.css";
 import { FileText, Presentation, StickyNote, Upload, X } from "lucide-react";
 import { type DragEvent, useEffect, useId, useRef, useState } from "react";
 import {
@@ -28,12 +45,19 @@ type Notice = { id: number; message: string };
 
 export function SourceDropZone({
   sources,
+  boundSourceIds = [],
   onChange,
   onBusyChange,
   disabled = false,
   focusChooseFiles = false,
+  open = true,
+  onOpenChange,
 }: {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   sources: SourceRef[];
+  /** Existing lesson sources are unbound transactionally by /plan, never deleted here. */
+  boundSourceIds?: readonly string[];
   /**
    * Receives an updater, not a list: an upload finishing while a removal is in flight (or the
    * other way round) must each apply to the list as it is *then*, never to the render they started
@@ -58,6 +82,8 @@ export function SourceDropZone({
   const [notices, setNotices] = useState<Notice[]>([]);
   const [announcement, setAnnouncement] = useState("");
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteName, setPasteName] = useState("");
+  const dragDepth = useRef(0);
   const [pasteText, setPasteText] = useState("");
   const [dragging, setDragging] = useState(false);
   const nextKey = useRef(0);
@@ -101,14 +127,36 @@ export function SourceDropZone({
   // One upload at a time: the head of the queue runs, then the queue advances.
   const head = queue[0];
   const running = useRef<number | null>(null);
+  const fingerprints = useRef(new Map<string, string>());
+  const latestSources = useRef(sources);
+  latestSources.current = sources;
   const uploadOne = upload.mutateAsync;
   useEffect(() => {
     if (!head || running.current === head.key) return;
     running.current = head.key;
-    uploadOne(head.input)
+    const uploadUnique = async () => {
+      if (!("file" in head.input)) return uploadOne(head.input);
+      const bytes = await head.input.file.arrayBuffer();
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      const hash = Array.from(new Uint8Array(digest), (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join("");
+      if (latestSources.current.some((source) => fingerprints.current.get(source.id) === hash)) {
+        throw new Error(`${head.label} is already added.`);
+      }
+      const source = await uploadOne(head.input);
+      fingerprints.current.set(source.id, hash);
+      return source;
+    };
+    uploadUnique()
       .then((source) => {
         latestOnChange.current((current) => [...current, source]);
         setAnnouncement(`Added ${source.name}`);
+        if ("text" in head.input) {
+          setPasteText("");
+          setPasteName("");
+          setPasteOpen(false);
+        }
       })
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : "Something went wrong.";
@@ -124,6 +172,10 @@ export function SourceDropZone({
   const addFiles = (files: FileList | File[]) => {
     const items: { label: string; input: UploadSourceInput }[] = [];
     for (const file of Array.from(files)) {
+      if (!/\.(pdf|pptx|docx)$/i.test(file.name)) {
+        notify(`${file.name}: Choose a PDF, PowerPoint or Word file.`);
+        continue;
+      }
       if (file.size > MAX_SOURCE_FILE_BYTES) {
         notify(`${file.name}: ${FILE_TOO_LARGE_MESSAGE}`);
         continue;
@@ -143,14 +195,17 @@ export function SourceDropZone({
   const addPaste = () => {
     const text = pasteText.trim();
     if (text.length === 0) return;
-    enqueue([{ label: "Pasted text", input: { text } }]);
-    setPasteText("");
-    setPasteOpen(false);
+    enqueue([
+      {
+        label: pasteName.trim() || "Pasted text",
+        input: { text, name: pasteName.trim() || undefined },
+      },
+    ]);
   };
 
   const removeSource = async (source: SourceRef) => {
     try {
-      await remove.mutateAsync(source.id);
+      if (!boundSourceIds.includes(source.id)) await remove.mutateAsync(source.id);
       onChange((current) => current.filter((s) => s.id !== source.id));
       setAnnouncement(`Removed ${source.name}`);
     } catch (error) {
@@ -158,165 +213,241 @@ export function SourceDropZone({
     }
   };
 
-  return (
-    <section ref={sectionRef} aria-labelledby={`${inputId}-title`} className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <h2 id={`${inputId}-title`} className="text-body font-medium text-foreground">
-          Start from your material
-          <span className="ml-2 text-meta font-normal text-ink-3">optional</span>
-        </h2>
-        <p className="text-meta text-ink-3">
-          A chapter, last year's slides or a scheme of work. The plan follows its order and its
-          words.
-        </p>
-      </div>
-
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: the drop target is a pointer-only convenience; the real controls are the labelled button and file input inside it. */}
-      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: same — drag events have no keyboard equivalent, and every action is reachable through the buttons. */}
-      <div
-        className={cn(
-          "flex flex-col items-center gap-2 rounded-card border border-dashed p-5 text-center transition-colors",
-          dragging && !inert ? "border-accent bg-accent/5" : "border-border-control/60 bg-card",
-          inert && "opacity-60",
-        )}
-        onDragOver={(event) => {
-          event.preventDefault();
-          if (!inert) setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-        data-testid="source-drop-zone"
-      >
-        <Upload aria-hidden size={20} strokeWidth={1.5} className="text-ink-3" />
-        <p className="text-body text-foreground">
-          {full ? LIMIT_NOTICE : "Drop a PDF, PowerPoint or Word file here"}
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <Button
-            ref={chooseFilesRef}
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={inert}
-            onClick={() => inputRef.current?.click()}
+  const attachmentList =
+    sources.length > 0 || queue.length > 0 ? (
+      <ul className="flex flex-col gap-2" aria-label="Your material">
+        {sources.map((source) => (
+          <li
+            key={source.id}
+            className="flex items-center gap-3 rounded-card border border-border-control/40 bg-card px-3 py-2"
           >
-            Choose files
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={inert}
-            aria-expanded={pasteOpen}
-            aria-controls={pasteId}
-            onClick={() => setPasteOpen((open) => !open)}
-          >
-            Paste text instead
-          </Button>
-        </div>
-        <input
-          ref={inputRef}
-          id={inputId}
-          type="file"
-          accept={SOURCE_ACCEPT}
-          multiple
-          className="sr-only"
-          aria-label="Choose files"
-          disabled={inert}
-          onChange={(event) => {
-            if (event.target.files) addFiles(event.target.files);
-            event.target.value = "";
-          }}
-        />
-        <p className="text-meta text-ink-3">{COPYRIGHT_NOTICE}</p>
-      </div>
-
-      {pasteOpen ? (
-        <div id={pasteId} className="flex flex-col gap-2">
-          <Textarea
-            aria-label="Text to use as material"
-            rows={6}
-            value={pasteText}
-            onChange={(event) => setPasteText(event.target.value)}
-            placeholder="Paste the text of a chapter, a worksheet or your notes"
-          />
-          <div className="flex gap-2">
-            <Button
+            <SourceIcon source={source} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-body text-foreground">{source.name}</p>
+              <p className="text-meta text-ink-3">{describeSource(source)}</p>
+            </div>
+            <IconButton
               type="button"
-              size="sm"
-              disabled={inert || pasteText.trim().length === 0}
-              onClick={addPaste}
+              label={`Remove ${source.name}`}
+              disabled={disabled || remove.isPending}
+              onClick={() => void removeSource(source)}
             >
-              Add
-            </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setPasteOpen(false)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : null}
+              <X aria-hidden size={16} strokeWidth={1.5} />
+            </IconButton>
+          </li>
+        ))}
+        {queue.map((item) => (
+          <li
+            key={item.key}
+            className="flex items-center gap-3 rounded-card border border-border-control/40 bg-card px-3 py-2 text-ink-3"
+          >
+            <Spinner />
+            <p className="truncate text-body">
+              {item.label}
+              <span className="sr-only"> uploading</span>
+            </p>
+          </li>
+        ))}
+      </ul>
+    ) : null;
 
-      {sources.length > 0 || queue.length > 0 ? (
-        <ul className="flex flex-col gap-2" aria-label="Your material">
-          {sources.map((source) => (
-            <li
-              key={source.id}
-              className="flex items-center gap-3 rounded-card border border-border-control/40 bg-card px-3 py-2"
-            >
-              <SourceIcon source={source} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-body text-foreground">{source.name}</p>
-                <p className="text-meta text-ink-3">{describeSource(source)}</p>
+  return (
+    <>
+      {!open ? attachmentList : null}
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          setDragging(false);
+          dragDepth.current = 0;
+          onOpenChange?.(value);
+        }}
+      >
+        <DialogContent
+          size="xl"
+          className="materials-dialog"
+          data-has-materials={sources.length + queue.length > 0}
+          onPaste={(event) => {
+            const files = Array.from(event.clipboardData.files);
+            if (files.length === 0) return;
+            event.preventDefault();
+            if (disabled) return;
+            if (full) {
+              notify(LIMIT_NOTICE);
+              return;
+            }
+            addFiles(files);
+          }}
+        >
+          <section ref={sectionRef} className="materials-body">
+            <header className="materials-header">
+              <div>
+                <DialogTitle>Add your materials</DialogTitle>
+                <DialogDescription>
+                  Bring a chapter, slides or notes into your lesson.
+                </DialogDescription>
               </div>
-              <IconButton
-                type="button"
-                label={`Remove ${source.name}`}
-                disabled={disabled || remove.isPending}
-                onClick={() => void removeSource(source)}
-              >
-                <X aria-hidden size={16} strokeWidth={1.5} />
-              </IconButton>
-            </li>
-          ))}
-          {queue.map((item) => (
-            <li
-              key={item.key}
-              className="flex items-center gap-3 rounded-card border border-border-control/40 bg-card px-3 py-2 text-ink-3"
+              <div className="materials-character" aria-hidden="true">
+                <CharacterHost stage="worksheet" initialStage="worksheet" />
+              </div>
+            </header>
+            <Tabs
+              value={pasteOpen ? "text" : "files"}
+              onValueChange={(value) => setPasteOpen(value === "text")}
             >
-              <Spinner />
-              <p className="truncate text-body">
-                {item.label}
-                <span className="sr-only"> uploading</span>
-              </p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+              <TabsList aria-label="Material input method">
+                <TabsTrigger value="files">Upload files</TabsTrigger>
+                <TabsTrigger value="text">Paste text</TabsTrigger>
+              </TabsList>
+              <TabsContent value={pasteOpen ? "text" : "files"}>
+                {pasteOpen ? (
+                  <div id={pasteId} className="materials-input materials-paste">
+                    <label htmlFor={`${pasteId}-name`}>
+                      Title <span className="text-ink-3 font-normal">(optional)</span>
+                    </label>
+                    <Input
+                      id={`${pasteId}-name`}
+                      value={pasteName}
+                      onChange={(event) => setPasteName(event.target.value)}
+                      placeholder="e.g. Water cycle notes"
+                      maxLength={120}
+                      disabled={inert}
+                    />
+                    <label htmlFor={`${pasteId}-text`}>Your text</label>
+                    <Textarea
+                      id={`${pasteId}-text`}
+                      aria-label="Text to use as material"
+                      rows={6}
+                      value={pasteText}
+                      disabled={inert}
+                      onChange={(event) => setPasteText(event.target.value)}
+                      placeholder="Paste a chapter, curriculum extract or your notes…"
+                    />
+                    <div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={inert || busy || !pasteText.trim()}
+                        onClick={addPaste}
+                      >
+                        Add text
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // biome-ignore lint/a11y/noStaticElementInteractions: drag is supplemental to the labelled file picker.
+                  // biome-ignore lint/a11y/noNoninteractiveElementInteractions: drag is supplemental to the labelled file picker.
+                  <div
+                    className={cn(
+                      "materials-input materials-drop",
+                      dragging && !inert && "is-dragging",
+                      inert && "opacity-60",
+                    )}
+                    onDragEnter={(event) => {
+                      event.preventDefault();
+                      dragDepth.current++;
+                      if (!inert) setDragging(true);
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                    }}
+                    onDragLeave={(event) => {
+                      event.preventDefault();
+                      if (--dragDepth.current <= 0) {
+                        dragDepth.current = 0;
+                        setDragging(false);
+                      }
+                    }}
+                    onDrop={(event) => {
+                      dragDepth.current = 0;
+                      onDrop(event);
+                    }}
+                    data-testid="source-drop-zone"
+                  >
+                    <div className="materials-drop-icon">
+                      <Upload aria-hidden size={28} strokeWidth={1.5} />
+                    </div>
+                    <p className="materials-drop-title">
+                      {full
+                        ? "Your materials are ready"
+                        : dragging
+                          ? "Drop to add to your lesson"
+                          : "Drop or paste your files here"}
+                    </p>
+                    <p className="text-meta text-ink-3">
+                      {full ? LIMIT_NOTICE : "PDF, PowerPoint or Word · Up to 25 MB each"}
+                    </p>
+                    <Button
+                      ref={chooseFilesRef}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={inert}
+                      onClick={() => inputRef.current?.click()}
+                    >
+                      Choose files
+                    </Button>
+                    <input
+                      ref={inputRef}
+                      id={inputId}
+                      type="file"
+                      accept={SOURCE_ACCEPT}
+                      multiple
+                      className="sr-only"
+                      aria-label="Choose files"
+                      disabled={inert}
+                      onChange={(event) => {
+                        if (event.target.files) addFiles(event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+            {sources.length + queue.length > 0 ? (
+              <div className="materials-attachments">
+                <p className="text-meta text-ink-3">
+                  Lesson materials · {sources.length + queue.length}/{MAX_SOURCES}
+                </p>
+                {attachmentList}
+              </div>
+            ) : null}
 
-      {notices.length > 0 ? (
-        <ul className="flex flex-col gap-2" aria-label="Files we could not take">
-          {notices.map((notice) => (
-            <li
-              key={notice.id}
-              className="flex items-start gap-2 rounded-card border border-destructive/40 bg-destructive/5 px-3 py-2 text-body text-foreground"
-            >
-              <p className="flex-1">{notice.message}</p>
-              <IconButton
-                type="button"
-                label="Dismiss"
-                onClick={() => setNotices((current) => current.filter((n) => n.id !== notice.id))}
-              >
-                <X aria-hidden size={16} strokeWidth={1.5} />
-              </IconButton>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+            {notices.length > 0 ? (
+              <ul className="flex flex-col gap-2" aria-label="Files we could not take">
+                {notices.map((notice) => (
+                  <li
+                    key={notice.id}
+                    className="flex items-start gap-2 rounded-card border border-destructive/40 bg-destructive/5 px-3 py-2 text-body text-foreground"
+                  >
+                    <p className="flex-1">{notice.message}</p>
+                    <IconButton
+                      type="button"
+                      label="Dismiss"
+                      onClick={() =>
+                        setNotices((current) => current.filter((n) => n.id !== notice.id))
+                      }
+                    >
+                      <X aria-hidden size={16} strokeWidth={1.5} />
+                    </IconButton>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
 
-      <p id={liveId} aria-live="polite" className="sr-only">
-        {announcement}
-      </p>
-    </section>
+            <p id={liveId} aria-live="polite" className="sr-only">
+              {announcement}
+            </p>
+          </section>
+          <footer className="materials-footer">
+            <p className="text-meta text-ink-3">{COPYRIGHT_NOTICE}</p>
+            <Button type="button" variant="inverse" onClick={() => onOpenChange?.(false)}>
+              Done
+            </Button>
+          </footer>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
