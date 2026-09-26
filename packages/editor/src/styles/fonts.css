@@ -14,6 +14,11 @@
 @import "@fontsource-variable/bricolage-grotesque";
 @import "@fontsource-variable/instrument-sans";
 @import "@fontsource-variable/atkinson-hyperlegible-next";
+@import "@fontsource-variable/fredoka";
+@import "@fontsource-variable/playpen-sans";
+@import "@fontsource-variable/baloo-2";
+@import "@fontsource-variable/nunito";
+@import "@fontsource-variable/outfit";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
 
@@ -28,6 +33,11 @@
   --font-bricolage: "Bricolage Grotesque Variable";
   --font-instrument-sans: "Instrument Sans Variable";
   --font-atkinson: "Atkinson Hyperlegible Next Variable";
+  --font-fredoka: "Fredoka Variable";
+  --font-playpen: "Playpen Sans Variable";
+  --font-baloo: "Baloo 2 Variable";
+  --font-nunito: "Nunito Variable";
+  --font-outfit: "Outfit Variable";
   --font-geist: "Geist Variable";
   --font-geist-mono: "Geist Mono Variable";
 }

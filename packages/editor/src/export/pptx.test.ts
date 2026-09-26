@@ -109,6 +109,8 @@ describe("fontFaceFor", () => {
     expect(fontFaceFor(getTheme("reading-room").fonts.title)).toBe("Source Serif 4");
     expect(fontFaceFor(getTheme("beacon").fonts.body)).toBe("Atkinson Hyperlegible Next");
     expect(fontFaceFor(getTheme("night-lab").fonts.title)).toBe("Bricolage Grotesque");
+    expect(fontFaceFor(getTheme("crayon").fonts.body)).toBe("Playpen Sans");
+    expect(fontFaceFor(getTheme("treehouse").fonts.title)).toBe("Baloo 2");
   });
 
   it("falls back to the first real family, then to Arial", () => {

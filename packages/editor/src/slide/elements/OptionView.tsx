@@ -152,7 +152,7 @@ export function OptionView({
               borderRadius: BADGE,
               background: correctColor,
               // The glyph is cut out of the badge in the card's own paper, the one
-              // colour guaranteed to read against `correct` in all six themes.
+              // colour guaranteed to read against `correct` in every theme (`themes.test.ts`).
               color: theme.colors.surface,
             }}
           >

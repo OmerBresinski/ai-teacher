@@ -122,6 +122,11 @@ export const FONT_FAMILIES: Record<string, string> = {
   bricolage: "Bricolage Grotesque",
   "instrument-sans": "Instrument Sans",
   atkinson: "Atkinson Hyperlegible Next",
+  fredoka: "Fredoka",
+  playpen: "Playpen Sans",
+  baloo: "Baloo 2",
+  nunito: "Nunito",
+  outfit: "Outfit",
   geist: "Geist",
 };
 

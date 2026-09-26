@@ -14,7 +14,7 @@ describe("LessonThumb", () => {
     const slide = container.querySelector("[data-slide-root]") as HTMLElement;
     expect(container.querySelector("[data-slide-fluid]")).not.toBeNull();
     expect(slide.dataset.slideMode).toBe("thumb");
-    expect(slide.style.background.toUpperCase()).toBe("#FFF7EF");
+    expect(slide.style.background.toUpperCase()).toBe("#FFF6DA");
     expect(container.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
   });
 

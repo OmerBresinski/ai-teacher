@@ -33,6 +33,12 @@ export type Theme = {
     background: string;
     surface: string;
     ink: string;
+    /**
+     * Titles and headings (the title, subtitle and heading presets) when the text sets no colour
+     * of its own; `ink` when absent. The playful themes set it to their accent, the way a
+     * children's deck colours its headings. AA on the ground and the cards like `ink`.
+     */
+    heading?: string;
     muted: string;
     accent: string;
     accent2: string;
