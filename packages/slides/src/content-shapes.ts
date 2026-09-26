@@ -40,43 +40,46 @@ export type ShapeComposition = "panel" | "full";
 
 /**
  * What each slot holds, in words, per composition: measured, not guessed (look/shape-render,
- * 26 Sept 2026). The test (`content-shapes.test.ts`, probe in `content-shapes.measure.ts`) re-runs
- * the measure and fails when a font or layout change moves it past the rounding.
+ * 26 Sept 2026, at the reading size of `text-style.ts` `readingSize`). The test
+ * (`content-shapes.test.ts`, probe in `content-shapes.measure.ts`) re-runs the measure and fails
+ * when a font or layout change moves it past the rounding.
  *
  * Method. A content spec of the shape, with N words of teaching prose (5.2 letters a word; plain
  * English runs about 4.7) in each slot and every list at its most members, goes through
  * `materialiseSlide` on each of the six themes (the full-measure explain through `applyLook` and
  * `fitSlide`, the path a slide takes when no panel is placed). It counts only when it comes out as
- * one slide with no overflow, every running text at its preset's own size (no step down, so no
- * continuation either), a one-line display heading, and the composition measured: `panel` has the
- * key-term panel beside the words, `full` has none. Slots are measured in order: the heading (one
- * display line); a compare side's label (one line of its card); the shape's own slot under a lead
- * of one line; then the lead, up to two lines, in what the slot leaves. A budget is the least
- * count across the themes, less a tenth for a slot of ten words or more, so the numbers here are
- * the measure rounded down. Compare and sequence take the full measure only: they have no panel.
+ * one slide with no overflow, all running text at the reading size (no step down, so no
+ * continuation), a one-line display heading, and the composition measured: `panel` has the
+ * key-term panel beside the words, `full` has none. Lead first: the heading (one display line) and
+ * a compare side's label (one line of its card); then the lead, up to two lines across or three
+ * beside the panel, and at most 18 words; then the shape's slot in what is left, up to its target
+ * (points 6, compare points 6, steps 8), the lead giving words back down to 12 while that buys the
+ * slot more (`TARGETS`). A budget is the least count across the themes (Chalk & Cream is the
+ * tightest), an explain body less a tenth. Short of target: compare points 4 (5 with a lead of 10
+ * words), list points beside a panel 5, steps 6 on Chalk & Cream (8 on four themes).
  */
 export const COMPOSITION_BUDGETS: Record<
   ContentShape,
   Partial<Record<ShapeComposition, ShapeBudget>>
 > = {
   explain: {
-    panel: { heading: { max: 4 }, lead: { max: 4 }, body: { max: 19 } },
-    full: { heading: { max: 4 }, lead: { max: 7 }, body: { max: 31 } },
+    panel: { heading: { max: 4 }, lead: { max: 15 }, body: { max: 20 } },
+    full: { heading: { max: 4 }, lead: { max: 18 }, body: { max: 46 } },
   },
   list: {
-    panel: { heading: { max: 4 }, lead: { max: 4 }, points: { max: 4, count: [2, 4] } },
-    full: { heading: { max: 4 }, lead: { max: 8 }, points: { max: 9, count: [2, 4] } },
+    panel: { heading: { max: 4 }, lead: { max: 12 }, points: { max: 5, count: [2, 4] } },
+    full: { heading: { max: 4 }, lead: { max: 18 }, points: { max: 6, count: [2, 4] } },
   },
   compare: {
     full: {
       heading: { max: 4 },
-      lead: { max: 9 },
+      lead: { max: 18 },
       side: { max: 5 },
-      sidePoints: { max: 3, count: [2, 3] },
+      sidePoints: { max: 4, count: [2, 3] },
     },
   },
   sequence: {
-    full: { heading: { max: 4 }, lead: { max: 9 }, steps: { max: 6, count: [2, 4] } },
+    full: { heading: { max: 4 }, lead: { max: 12 }, steps: { max: 6, count: [2, 4] } },
   },
 };
 
@@ -94,12 +97,15 @@ function tightest(shape: ContentShape): ShapeBudget {
 }
 
 /**
- * What each shape's slots hold, in words: the tighter of its compositions, since the writer does
- * not know which one the slide will take. The single source for the slide prompt and the spec
+ * What each shape's slots hold, in words, for the writer: the composition it will get where that
+ * is known when it writes, else the tighter. An explain slide always has its panel (a key term, or
+ * the key idea itself). A list takes the key-term panel only when one of the lesson's terms turns
+ * up in its words, which the writer's own words decide, so it gets the tighter (the panel's).
+ * Compare and sequence have one composition. The single source for the slide prompt and the spec
  * check (`specs.ts`), so the two cannot disagree.
  */
 export const CONTENT_BUDGETS: Record<ContentShape, ShapeBudget> = {
-  explain: tightest("explain"),
+  explain: COMPOSITION_BUDGETS.explain.panel as ShapeBudget,
   list: tightest("list"),
   compare: tightest("compare"),
   sequence: tightest("sequence"),

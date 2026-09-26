@@ -18,7 +18,7 @@ import { SAFE_BOTTOM, withSafety } from "./metrics";
 import { ANSWERS_NAME, HEADING_NAME, isBackdrop } from "./reflow";
 import { joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
-import { floorBelow, resolveFontSize } from "./text-style";
+import { floorBelow, readingLeading, readingSize, resolveFontSize } from "./text-style";
 
 /*
  * Structured components (quality PRD "look", 26 Sept 2026): the shapes the homepage example lessons
@@ -235,6 +235,13 @@ function heightOf(
     }),
   );
 }
+
+/** Running text on a teaching slide: the reading size, then the one step below it (UX ruling 91). */
+const readingSizes = (t: Theme) => {
+  const top = readingSize(t);
+  const next = floorBelow(t, "body");
+  return next < top ? [top, next] : [top];
+};
 
 /** The body size and the one step below it the fit may take (UX ruling 91). */
 const sizesFor = (t: Theme, preset: TextPreset) => {
@@ -551,13 +558,16 @@ export function compareCards(
   const inner = w - CARD_PAD * 2;
   const capSize = resolveFontSize(t, "caption");
   const capH = heightOf(measure, docFromText("X"), inner, "caption", capSize);
-  for (const size of sizesFor(t, "body")) {
+  const leading = readingLeading(t);
+  for (const size of readingSizes(t)) {
     const noteSize = resolveFontSize(t, "small");
     const parts = [left, right].map((side) => {
       const note = side.note
         ? heightOf(measure, docFromText(side.note), inner, "small", noteSize)
         : 0;
-      const body = heightOf(measure, bulletDoc(side.points), inner, "body", size);
+      const body = heightOf(measure, bulletDoc(side.points), inner, "body", size, 0, {
+        lineHeight: leading,
+      });
       return { note, body };
     });
     const noteH = Math.max(...parts.map((p) => p.note));
@@ -598,10 +608,7 @@ export function compareCards(
           ids,
           { x: x + CARD_PAD, y, w: inner, h: parts[i]?.body ?? 0 },
           bulletDoc(side.points),
-          {
-            preset: "body",
-            fontSize: size,
-          },
+          { preset: "body", fontSize: size, lineHeight: leading },
           { name: BODY_NAME },
         ),
       );
@@ -1209,8 +1216,9 @@ function structureContent(
   // Three settings, loosest first: the rest at the body size, the rest a step down (UX ruling 91),
   // then a key card's statement at the body size too. The first that fits the slide wins.
   let last: { els: SlideElement[]; restAt: number; size: number } | undefined;
+  const leading = readingLeading(t);
   const levels = [
-    [resolveFontSize(t, "body"), false, false],
+    [readingSize(t), false, false],
     [floorBelow(t, "body"), false, false],
     [floorBelow(t, "body"), true, false],
     // An equation's card after all its words, which then read as one paragraph above it.
@@ -1222,13 +1230,13 @@ function structureContent(
     if (after && s.keyCard) {
       const words = [lead, restWords].filter(Boolean).join(" ");
       const doc = docFromText(words);
-      const h = heightOf(measure, doc, SAFE.w, "body", size);
+      const h = heightOf(measure, doc, SAFE.w, "body", size, 0, { lineHeight: leading });
       els.push(
         text(
           ids,
           { x: SAFE.x, y, w: SAFE.w, h },
           doc,
-          { preset: "body", fontSize: size },
+          { preset: "body", fontSize: size, lineHeight: leading },
           { name: BODY_NAME },
         ),
       );
@@ -1249,13 +1257,13 @@ function structureContent(
     }
     const para = (words: string) => {
       const doc = docFromText(words);
-      const h = heightOf(measure, doc, SAFE.w, "body", size);
+      const h = heightOf(measure, doc, SAFE.w, "body", size, 0, { lineHeight: leading });
       els.push(
         text(
           ids,
           { x: SAFE.x, y, w: SAFE.w, h },
           doc,
-          { preset: "body", fontSize: size },
+          { preset: "body", fontSize: size, lineHeight: leading },
           { name: BODY_NAME },
         ),
       );
@@ -1277,7 +1285,9 @@ function structureContent(
     y = snapY(placed.bottom + SPACE[3]);
     if (!restWords || s.sequence || shaped)
       return [withTerms({ ...slide, elements: [...keep, ...els] }, t, hints.terms)];
-    const h = heightOf(measure, docFromText(restWords), SAFE.w, "body", size);
+    const h = heightOf(measure, docFromText(restWords), SAFE.w, "body", size, 0, {
+      lineHeight: leading,
+    });
     if (fits(y + h)) {
       para(restWords);
       return [withTerms({ ...slide, elements: [...keep, ...els] }, t, hints.terms)];
@@ -1297,7 +1307,7 @@ function structureContent(
   // plain text did not need, so a slide that fitted stays as it was.
   if (!last || !paginate || fitSlide(slide, t).overflow.length === 0) return plain;
   const doc = docFromText(restWords);
-  const h = heightOf(measure, doc, SAFE.w, "body", resolveFontSize(t, "body"));
+  const h = heightOf(measure, doc, SAFE.w, "body", readingSize(t), 0, { lineHeight: leading });
   const next = continued(
     slide,
     chromeOf(slide),
@@ -1306,7 +1316,7 @@ function structureContent(
         ids,
         { x: SAFE.x, y: last.restAt, w: SAFE.w, h },
         doc,
-        { preset: "body" },
+        { preset: "body", fontSize: readingSize(t), lineHeight: leading },
         { name: BODY_NAME },
       ),
     ],
@@ -1333,10 +1343,14 @@ function splitParagraph(
   if (bodies.length !== 1) return undefined;
   const body = bodies[0] as TextElement;
   const measure = measureHeadless(t);
-  const size = resolveFontSize(t, "body");
+  const size = readingSize(t);
+  const leading = readingLeading(t);
   // The size the fit engine reached: the split is for what it could not fit.
   const reached = body.style.fontSize ?? size;
-  const h = (words: string) => heightOf(measure, docFromText(words), body.w, "body", reached);
+  const h = (words: string) =>
+    heightOf(measure, docFromText(words), body.w, "body", reached, 0, {
+      lineHeight: body.style.lineHeight ?? t.lineHeights.body,
+    });
   const all = sentences(docText(body.doc));
   if (all.length < 2 || fitSlide(slide, t).overflow.length === 0) return undefined;
   let n = all.length - 1;
@@ -1347,10 +1361,10 @@ function splitParagraph(
       ...body,
       id: ids(),
       y,
-      h: heightOf(measure, doc, body.w, "body", size),
+      h: heightOf(measure, doc, body.w, "body", size, 0, { lineHeight: leading }),
       doc,
       name: BODY_NAME,
-      style: { ...body.style, fontSize: size },
+      style: { ...body.style, fontSize: size, lineHeight: leading },
     };
   };
   const keep = slide.elements.filter((e) => e !== body);
@@ -1426,19 +1440,25 @@ function structureDiagram(
     return [withTerms(asIs, t, hints.terms)];
   }
   const measure = measureHeadless(t);
+  const leading = readingLeading(t);
   const words = bodies.map((b) => docText(b.doc)).join(" ");
   const keep = slide.elements.filter((e) => e !== slot && !bodies.includes(e as TextElement));
   const para = (words: string, size: number, width: number): TextElement => {
     const doc = docFromText(words);
     return text(
       ids,
-      { x, y: top, w: width, h: heightOf(measure, doc, width, "body", size) },
+      {
+        x,
+        y: top,
+        w: width,
+        h: heightOf(measure, doc, width, "body", size, 0, { lineHeight: leading }),
+      },
       doc,
-      { preset: "body", fontSize: size },
+      { preset: "body", fontSize: size, lineHeight: leading },
       { name: BODY_NAME },
     );
   };
-  const body = resolveFontSize(t, "body");
+  const body = readingSize(t);
   const floor = floorBelow(t, "body");
   for (const size of [body, floor]) {
     const p = para(words, size, w);
@@ -1545,8 +1565,6 @@ export const PANEL_DEFINITION_NAME = "Side panel definition";
 export const LEAD_NAME = "Lead";
 export const BULLET_NAME = "Bullet";
 export const ITEM_NAME = "Point";
-/** A lead and its points stay at most this many words to take the size a step up. */
-const FEW_WORDS = 25;
 /** A sentence longer than this reads as a paragraph, not a bullet. */
 const ITEM_MAX_WORDS = 22;
 
@@ -1649,9 +1667,8 @@ function splitContent(
   const rest = items.length ? "" : joinSentences(left);
 
   const measure = measureHeadless(t);
-  const body = resolveFontSize(t, "body");
-  const few = wordsIn(joinSentences([lead, rest, ...items])) <= FEW_WORDS;
-  const sizes = [...(few ? [Math.round(body * 1.15)] : []), body, floorBelow(t, "body")];
+  const leading = readingLeading(t);
+  const sizes = readingSizes(t);
   const keep = slide.elements.filter((e) => !bodies.includes(e as TextElement) && e !== slot);
   // Half and half first, as in the examples; a longer text takes up to two thirds before it gives up
   // the panel for the full-width paragraph.
@@ -1666,10 +1683,15 @@ function splitContent(
     const panelW = SAFE.x + SAFE.w - panelX;
     const els: SlideElement[] = [];
     let y = top;
-    const lh = t.lineHeights.body;
+    const lh = leading;
     if (lead) {
       const doc = docFromText(lead);
-      const style = { preset: "body" as const, fontSize: size, fontWeight: 600 };
+      const style = {
+        preset: "body" as const,
+        fontSize: size,
+        fontWeight: 600,
+        lineHeight: leading,
+      };
       const h = heightOf(measure, doc, half, "body", size, 0, style);
       els.push(text(ids, { x: SAFE.x, y, w: half, h }, doc, style, { name: LEAD_NAME }));
       y = snapY(y + h + SPACE[3]);
@@ -1678,7 +1700,7 @@ function splitContent(
     const indent = Math.round(size * 1.3);
     for (const item of items) {
       const doc = docFromText(item);
-      const h = heightOf(measure, doc, half - indent, "body", size);
+      const h = heightOf(measure, doc, half - indent, "body", size, 0, { lineHeight: leading });
       els.push({
         id: ids(),
         type: "shape",
@@ -1695,7 +1717,7 @@ function splitContent(
           ids,
           { x: SAFE.x + indent, y, w: half - indent, h },
           doc,
-          { preset: "body", fontSize: size },
+          { preset: "body", fontSize: size, lineHeight: leading },
           { name: ITEM_NAME },
         ),
       );
@@ -1703,13 +1725,13 @@ function splitContent(
     }
     if (rest) {
       const doc = docFromText(rest);
-      const h = heightOf(measure, doc, half, "body", size);
+      const h = heightOf(measure, doc, half, "body", size, 0, { lineHeight: leading });
       els.push(
         text(
           ids,
           { x: SAFE.x, y, w: half, h },
           doc,
-          { preset: "body", fontSize: size },
+          { preset: "body", fontSize: size, lineHeight: leading },
           { name: BODY_NAME },
         ),
       );

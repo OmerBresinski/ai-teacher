@@ -12,6 +12,7 @@ import { SAFE, SPACE, snapY } from "./grid";
 import { HEADING_NAME, isBackdrop } from "./reflow";
 import { docPlainText, joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
+import { readingLeading, readingSize } from "./text-style";
 
 /*
  * The lesson look (quality PRD "look" uplift, 26 Sept 2026): the chrome that gives every slide in a
@@ -192,10 +193,11 @@ function leadAndCard(els: SlideElement[], t: Theme, ids: Ids): SlideElement[] {
   const measure = measureHeadless(t);
   // Beside a diagram slot the text keeps its half; otherwise it takes the full measure.
   const w = els.some((e) => e.name === DIAGRAM_NAME) ? body.w : SAFE.w;
-  // The lead a step above the body, in a medium weight: the examples' 34 over 29 at 1440.
-  // A stored slide keeps the size its fit gave the body; the card takes that size, the lead a step up.
-  const size = body.style.fontSize ?? t.sizes.body;
-  const leadStyle = { ...body.style, fontSize: Math.round(size * 1.15), fontWeight: 500 };
+  // The lead in a heavier weight at the reading size, the card under it at the same size, as the
+  // examples set them (`readingSize`). A stored slide the fit stepped down keeps its smaller size.
+  const size = Math.min(body.style.fontSize ?? readingSize(t), readingSize(t));
+  const leading = readingLeading(t);
+  const leadStyle = { ...body.style, fontSize: size, fontWeight: 600, lineHeight: leading };
   const leadDoc = docFromText(lead);
   const leadH = Math.ceil(
     measure({ doc: leadDoc, width: w, style: leadStyle, preset: "body", inset: 0, chrome: 0 }),
@@ -207,7 +209,8 @@ function leadAndCard(els: SlideElement[], t: Theme, ids: Ids): SlideElement[] {
       : { type: "doc", content: [...(rest ? (docFromText(rest).content ?? []) : []), ...list] };
   const cardStyle = {
     preset: "body" as const,
-    ...(body.style.fontSize ? { fontSize: body.style.fontSize } : {}),
+    fontSize: size,
+    lineHeight: leading,
     color: t.colors.ink,
     background: accentTint(t),
     radius: t.radius,

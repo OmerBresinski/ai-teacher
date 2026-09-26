@@ -10,7 +10,7 @@ import { HEADING_NAME } from "./reflow";
 import type { SlideSpecOf } from "./specs";
 import { COMPARE_NAME, ITEM_NAME, LEAD_NAME, PANEL_NAME, STEP_NAME } from "./structure";
 import { measureHeadless } from "./text-measure";
-import { resolveFontSize } from "./text-style";
+import { readingLeading, readingSize, resolveFontSize } from "./text-style";
 
 /*
  * The probe behind `CONTENT_BUDGETS` (`content-shapes.ts`) and its test: a content spec of one
@@ -144,7 +144,7 @@ export function check(
   if (heading?.style.fontSize !== Math.round(t.sizes.heading * HEADING_DISPLAY))
     return "heading not one display line";
   // No step down: every running text at its preset's own size or larger.
-  const body = resolveFontSize(t, "body");
+  const body = readingSize(t);
   const small = resolveFontSize(t, "small");
   for (const e of els.filter(isText)) {
     if (e.name === PANEL_NAME || e.name?.startsWith("Side panel")) continue;
@@ -179,8 +179,8 @@ function leadLinesOf(
   lead: string,
   t: Theme,
 ): number {
-  const body = resolveFontSize(t, "body");
-  const lh = body * t.lineHeights.body;
+  const body = readingSize(t);
+  const lh = body * readingLeading(t);
   const texts = els.filter(isText);
   const el =
     shape === "list"
@@ -188,14 +188,14 @@ function leadLinesOf(
       : shape === "compare" || shape === "sequence"
         ? texts.find((e) => e.name === "Body")
         : composition === "full"
-          ? texts.find((e) => e.style.preset === "body" && e.style.fontWeight === 500)
+          ? texts.find((e) => e.style.preset === "body" && e.style.fontWeight === 600 && !e.name)
           : undefined;
-  if (el) return el.h / ((el.style.fontSize ?? body) * t.lineHeights.body);
+  if (el) return el.h / ((el.style.fontSize ?? body) * (el.style.lineHeight ?? t.lineHeights.body));
   const width = Math.floor((SAFE.w - SPACE[5]) / 2);
   const h = measureHeadless(t)({
     doc: docFromText(lead),
     width,
-    style: { preset: "body", fontSize: body },
+    style: { preset: "body", fontSize: body, lineHeight: readingLeading(t) },
     preset: "body",
     inset: 0,
     chrome: 0,
@@ -216,24 +216,48 @@ function largest(ok: (n: number) => boolean, hi = 64): number {
 }
 
 /**
- * What each slot holds on `t`. The heading first (one display line), a compare side's label (one
- * line of its card); then the shape's own slot, every list at its most members, under a lead of
- * one line; then the lead, up to two lines, in what the slot leaves.
+ * The lines a lead may take: two across the full measure, three in a half column beside the
+ * panel (the examples' "Limiting factors": fourteen words over three lines beside its graph).
+ */
+export const leadLinesFor = (composition: ShapeComposition) => (composition === "panel" ? 3 : 2);
+
+/**
+ * What a slot should hold at most, whatever the slide has room for: a lead of one or two
+ * sentences, points and steps short enough to read at a glance (the look brief, 26 Sept 2026).
+ */
+export const TARGETS = { lead: [12, 18], list: 6, compare: 6, sequence: 8 } as const;
+
+/**
+ * What each slot holds on `t`, lead first. The heading (one display line) and a compare side's
+ * label (one line of its card); then the lead, up to `leadLinesFor` lines and `TARGETS.lead[1]`
+ * words; then the shape's own slot, every list at its most members, in what the lead leaves, up
+ * to its target. Where the slot falls short of its target, the lead gives words back, down to
+ * `TARGETS.lead[0]`, while that buys the slot more.
  */
 export function measure(shape: ContentShape, composition: ShapeComposition, t: Theme): Counts {
-  const fits = (c: Counts, lines = 2) => typeof check(shape, composition, c, t, lines) !== "string";
+  const lines = leadLinesFor(composition);
+  const fits = (c: Counts) => typeof check(shape, composition, c, t, lines) !== "string";
   const heading = largest((n) => fits({ heading: n, lead: 3, slot: 2, side: 1 }), 16);
   const side =
     shape === "compare"
       ? largest((n) => fits({ heading, lead: 3, slot: 2, side: n }), 12)
       : undefined;
-  const oneLine = largest((n) => fits({ heading, lead: n, slot: 2, side: 1 }, 1), 32);
-  const slot = largest((n) => fits({ heading, lead: oneLine, slot: n, side: side ?? 1 }));
-  // Wrapping is not quite monotone in the word count: the one-line lead the slot was measured
-  // under stands when the lead grown into what is left comes out shorter.
-  const lead = Math.max(
-    oneLine,
-    largest((n) => fits({ heading, lead: n, slot, side: side ?? 1 }), 48),
-  );
+  const target = shape === "explain" ? Number.POSITIVE_INFINITY : TARGETS[shape];
+  const room = largest((n) => fits({ heading, lead: n, slot: 2, side: 1 }), 48);
+  const slotUnder = (lead: number) =>
+    Math.min(
+      target,
+      largest((n) => fits({ heading, lead, slot: n, side: side ?? 1 })),
+    );
+  let lead = Math.min(room, TARGETS.lead[1]);
+  let slot = slotUnder(lead);
+  const trade = Number.isFinite(target) ? Math.min(lead, TARGETS.lead[0]) : lead;
+  for (let l = lead - 1; slot < target && l >= trade; l--) {
+    const more = slotUnder(l);
+    if (more > slot) {
+      lead = l;
+      slot = more;
+    }
+  }
   return { heading, lead, slot, ...(side === undefined ? {} : { side }) };
 }

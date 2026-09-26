@@ -7,7 +7,7 @@ import {
   type ShapeComposition,
   shapeOf,
 } from "./content-shapes";
-import { type Counts, check, measure } from "./content-shapes.measure";
+import { type Counts, check, leadLinesFor, measure } from "./content-shapes.measure";
 import { THEMES } from "./themes";
 
 /*
@@ -47,9 +47,10 @@ describe("content budgets are what the renderer fits", () => {
           );
         }
         for (const t of THEMES) {
-          expect(check(shape, composition, counts, t), `${t.id} at the budget`).not.toBeTypeOf(
-            "string",
-          );
+          expect(
+            check(shape, composition, counts, t, leadLinesFor(composition)),
+            `${t.id} at the budget`,
+          ).not.toBeTypeOf("string");
         }
         const least = (k: keyof Counts) => Math.min(...measured.map((m) => m[k] ?? 0));
         // Rounded down for safety, but not so far that a change in the fonts would go unnoticed.
