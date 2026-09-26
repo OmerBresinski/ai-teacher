@@ -154,6 +154,17 @@ for (const { route, title } of routes) {
   if (!branded) errors.push(`${route}: title is not branded DayBack ("${title}")`);
   if (route !== "/" && /DayBack.*DayBack/.test(title)) errors.push(`${route}: duplicated suffix`);
 }
+// Each lesson page shows its slides in the viewer, and a worksheet only when its manifest has one.
+for (const example of examples) {
+  const html = await readFile(resolve(root, `./examples/${example.slug}/index.html`), "utf8");
+  const label = `/examples/${example.slug}/`;
+  const slides = (html.match(/class="viewer-slide[" ]/g) || []).length;
+  if (slides !== example.slides.length) errors.push(`${label}: ${slides} slides in the viewer`);
+  if (!html.includes("lesson-viewer.js")) errors.push(`${label}: missing slide viewer script`);
+  if (html.includes(">Worksheet<") !== Boolean(example.worksheet)) {
+    errors.push(`${label}: worksheet section does not match the manifest`);
+  }
+}
 await checkFiles(root);
 await checkSource(source);
 console.log(JSON.stringify({ pages: routes.length, examples: examples.length, errors }, null, 2));

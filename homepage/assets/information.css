@@ -1,18 +1,9 @@
-.info-contained {
-  max-width: 80rem;
-  margin: auto;
-}
-
-.info-faq {
-  max-width: 52rem;
-  margin: 0 auto 4rem;
-  padding: 0 1.5rem;
-}
+/* FAQ list, shared by the home page and /help/. Width comes from the surrounding layout. */
 .info-faq details {
-  border-bottom: 1px solid var(--line, #ccd3c4);
+  border-bottom: 1px solid var(--line);
 }
 .info-faq details:first-child {
-  border-top: 1px solid var(--line, #ccd3c4);
+  border-top: 1px solid var(--line);
 }
 .info-faq summary {
   cursor: pointer;
@@ -28,6 +19,10 @@
 .info-faq summary::-webkit-details-marker {
   display: none;
 }
+.info-faq summary:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
 .info-faq summary > span {
   font-size: 1.8rem;
   font-weight: 400;
@@ -38,7 +33,6 @@
 }
 .info-faq details > div {
   padding: 0 2.5rem 1.4rem 0;
-  max-width: 44rem;
 }
 .info-faq p {
   font-size: 1.1rem;
@@ -46,20 +40,7 @@
   margin: 0;
 }
 .info-help-end {
-  text-align: center;
-  margin: 0 auto 6rem;
-  font-size: 1.25rem;
-}
-.info-help-end p {
-  margin-bottom: 0.75rem;
-}
-
-.info-form input:focus-visible,
-.info-form select:focus-visible,
-.info-form textarea:focus-visible,
-.info-faq summary:focus-visible {
-  outline: 2px solid var(--ink, #293d32);
-  outline-offset: 4px;
+  margin-top: 2.5rem;
 }
 
 @media (max-width: 700px) {

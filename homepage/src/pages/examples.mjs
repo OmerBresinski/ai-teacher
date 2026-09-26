@@ -1,88 +1,107 @@
-import { appButton, arrowIcon, button, cta, href } from "../components.mjs";
-import { assetHref, examples, inWords } from "../examples-data.mjs";
+import { cta, escapeHtml, href, nextIcon, pageHero, textLink } from "../components.mjs";
+import { assetHref, examples } from "../examples-data.mjs";
+import { lessonGrid, yearSubject } from "../lesson-card.mjs";
 
 const image = (slug, item, extra = "") =>
-  `<img src="${href(assetHref(slug, item.src))}" alt="${item.alt.replaceAll('"', "&quot;")}" loading="lazy" ${extra}>`;
+  `<img src="${href(assetHref(slug, item.src))}" alt="${escapeHtml(item.alt)}" ${extra}>`;
 
-const count = examples.length;
-const subjects = [...new Set(examples.map((example) => `${example.year} ${example.subject}`))];
-// A lesson can ship with slides only, so nothing on the page may promise a worksheet that is not
-// there. Every count and every list of materials is read from the manifests.
+// Every list of materials is read from the manifests: a lesson may ship with slides only.
 const anyWorksheet = examples.some((example) => example.worksheet);
-const materials = (example) => (example.worksheet ? "slides, worksheet and answer key" : "slides");
 
 const indexPage = {
   route: "/examples/",
-  title: "Example lessons | DayBack",
-  description: count
-    ? `${count === 1 ? "A lesson" : `${inWords(count)[0].toUpperCase() + inWords(count).slice(1)} lessons`} made in DayBack from one line of brief: ${anyWorksheet ? "slides, worksheet and answer key" : "the slides"}, for ${subjects.join(" and ")}.`
-    : "Lessons made in DayBack from one line of brief.",
+  title: "Top lessons | DayBack",
+  description: anyWorksheet
+    ? "Whole lessons to open and read: every slide, the worksheet and the answers."
+    : "Whole lessons to open and read, slide by slide.",
   body:
-    `<section class="ex-index-head">
-      <h1>${count === 1 ? "A lesson made in DayBack." : "Lessons made in DayBack."}</h1>
-      <p class="lead">Each lesson started as the one line of brief printed above it.</p>
-    </section>
-    <section class="ex-index-grid" aria-label="Example lessons">${examples
+    pageHero({
+      title: "Top lessons.",
+      description: anyWorksheet
+        ? "Open a lesson to see every slide, the worksheet and the answers."
+        : "Open a lesson to see every slide.",
+    }) +
+    (examples.length
+      ? `<section class="section" aria-label="Top lessons"><div class="container">${lessonGrid(examples, { level: 2 })}</div></section>`
+      : "") +
+    cta(),
+};
+
+// Questions | Answers: two buttons, one pressed. Hidden until the script runs, so it never shows
+// without something to do. The label names what each view shows.
+const viewSwitch = (label, extra = "") =>
+  `<div class="view-switch" role="group" aria-label="${label}" hidden ${extra}><button type="button" aria-pressed="true" data-view="questions">Questions</button><button type="button" aria-pressed="false" data-view="answers">Answers</button></div>`;
+
+// Slides: with JavaScript, one large stage slide with every control in one row under it (where the
+// slide is, the counter, the answers switch, previous and next) and a strip of thumbnails; without
+// it, every slide stays visible in a grid.
+const slideViewer = (example) => {
+  const total = example.slides.length;
+  return `<div class="viewer" data-viewer>
+    <ol class="viewer-slides" role="list">${example.slides
       .map(
-        (example) => `<article class="ex-index-card">
-        <a class="ex-index-shot" href="${href(`/examples/${example.slug}/`)}" tabindex="-1" aria-hidden="true">${image(example.slug, { src: example.slides[0].src, alt: "" }, 'width="1440" height="810"')}</a>
-        <p class="ex-index-brief">“${example.brief}”</p>
-        <p class="eyebrow">${example.year} ${example.subject}</p>
-        <h2><a href="${href(`/examples/${example.slug}/`)}">${example.title}</a></h2>
-        <p>${example.slides.length} slides${example.worksheet ? ", worksheet with answer key" : ""}</p>
-        <a class="hm-link" href="${href(`/examples/${example.slug}/`)}">Open this lesson <span aria-hidden="true">${arrowIcon}</span></a>
-      </article>`,
+        (slide, index) =>
+          `<li class="viewer-slide${index === 0 ? " is-current" : ""}"${slide.answer ? " data-has-answer" : ""}>${image(example.slug, slide, `width="1440" height="810"${index > 0 ? ' loading="lazy"' : ""}`)}${slide.answer ? image(example.slug, slide.answer, 'width="1440" height="810" loading="lazy" data-answer') : ""}</li>`,
       )
-      .join("")}</section>` +
-    cta({
-      title: "Type your own topic and<br>read the lesson it makes.",
-      body: "A year group and a topic is enough to start.",
-      actions: appButton("Create a lesson"),
-    }),
+      .join("")}</ol>
+    <div class="viewer-controls" hidden>
+      <p class="viewer-status" aria-live="polite"><span class="vs-word">Slide </span>1<span class="vs-word"> of</span><span class="vs-total"> ${total}</span></p>
+      <div class="viewer-actions">
+        ${viewSwitch("Slide view", "data-slide-answers")}
+        <button type="button" class="viewer-step" data-step="-1" aria-label="Previous slide"><span aria-hidden="true" class="viewer-flip">${nextIcon}</span></button>
+        <button type="button" class="viewer-step" data-step="1" aria-label="Next slide"><span aria-hidden="true">${nextIcon}</span></button>
+      </div>
+      <div class="viewer-thumbs" role="group" aria-label="Choose a slide" style="--count: ${total}">${example.slides
+        .map(
+          (slide, index) =>
+            `<button type="button" class="viewer-thumb" data-index="${index}" aria-label="Slide ${index + 1} of ${total}" aria-pressed="${index === 0}"${index === 0 ? ' aria-current="true"' : ""}><img src="${href(assetHref(example.slug, slide.src))}" alt="" width="1440" height="810" loading="lazy"></button>`,
+        )
+        .join("")}</div>
+    </div>
+  </div>`;
+};
+
+const paperPages = (example, pages) =>
+  pages
+    .map(
+      (page) =>
+        `<figure class="paper-page">${image(example.slug, page, 'loading="lazy"')}</figure>`,
+    )
+    .join("");
+
+// One printed document: the pupil sheet, and its answers behind a switch in the same place.
+// Without JavaScript the answers simply follow the sheet.
+const paperDoc = (example, title, doc, answersLabel) => {
+  const hasAnswers = doc.answers.length > 0;
+  return `<article class="paper-doc" data-paper>
+    <div class="paper-bar"><h2 class="paper-title">${title}</h2>${hasAnswers ? viewSwitch(`${title} view`) : ""}</div>
+    <div class="paper-sheet">${paperPages(example, doc.pages)}</div>
+    ${hasAnswers ? `<div class="paper-answers" data-answers><p class="paper-answers-label">${answersLabel}</p>${paperPages(example, doc.answers)}</div>` : ""}
+  </article>`;
+};
+
+const papersSection = (example) => {
+  const docs = [
+    example.worksheet ? paperDoc(example, "Worksheet", example.worksheet, "Mark scheme") : "",
+    example.exitTicket ? paperDoc(example, "Exit ticket", example.exitTicket, "Answers") : "",
+  ].join("");
+  return docs
+    ? `<section class="container lesson-block" aria-label="Printable sheets"><div class="lesson-papers">${docs}</div></section>`
+    : "";
 };
 
 const lessonPage = (example) => ({
   route: `/examples/${example.slug}/`,
-  title: `${example.title} | ${example.year} ${example.subject} lesson | DayBack`,
-  description: `A ${example.year} ${example.subject} lesson made in DayBack from the brief “${example.brief}”: ${example.slides.length} slides${example.worksheet ? ", a worksheet and the answer key" : ""}.`,
-  body:
-    `<section class="ex-lesson-head">
-      <a class="ex-back" href="${href("/examples/")}">← All example lessons</a>
-      <p class="eyebrow">${example.year} ${example.subject}</p>
-      <h1>${example.title}</h1>
-      <p class="lead">From the brief: “${example.brief}”</p>
+  title: `${example.title} | ${yearSubject(example).replace(" · ", " ")} | DayBack`,
+  description: `${example.title}: a ${example.year} ${example.subject} lesson with ${example.slides.length} slides${example.worksheet ? ", a worksheet" : ""}${example.exitTicket ? ", an exit ticket" : ""} and the answers.`,
+  scripts: ["/assets/lesson-viewer.js"],
+  body: `<section class="container lesson-head">
+      <nav class="lesson-crumbs" aria-label="Breadcrumb"><a href="${href("/examples/")}">Top lessons</a><span aria-hidden="true">/</span><span>${yearSubject(example)}</span></nav>
+      <h1>${escapeHtml(example.title)}</h1>
     </section>
-    <section class="ex-material" aria-labelledby="slides-heading">
-      <h2 id="slides-heading">Slides</h2>
-      <div class="ex-shots">${example.slides.map((slide) => `<figure>${image(example.slug, slide, 'width="1440" height="810"')}</figure>`).join("")}</div>
-    </section>
-    ${
-      example.worksheet
-        ? `<section class="ex-material" aria-labelledby="worksheet-heading">
-      <h2 id="worksheet-heading">Worksheet</h2>
-      <div class="ex-shots ex-shots-paper">${example.worksheet.pages.map((page) => `<figure>${image(example.slug, page)}</figure>`).join("")}</div>
-    </section>
-    ${
-      example.worksheet.answers.length > 0
-        ? `<section class="ex-material" aria-labelledby="answers-heading">
-      <h2 id="answers-heading">Answer key</h2>
-      <details class="ex-answers"><summary>Show answers<span aria-hidden="true">+</span></summary>
-        <div class="ex-shots ex-shots-paper">${example.worksheet.answers.map((page) => `<figure>${image(example.slug, page)}</figure>`).join("")}</div>
-      </details>
-    </section>`
-        : ""
-    }`
-        : ""
-    }` +
-    cta({
-      title: example.worksheet
-        ? "Your topic makes the same<br>three things for your class."
-        : "Your topic makes a whole<br>lesson for your class.",
-      body: "Type the year group and the topic. The whole lesson comes back checked.",
-      actions:
-        appButton("Create a lesson") +
-        button("All example lessons", "/examples/", { secondary: true }),
-    }),
+    <section class="container lesson-block" aria-label="Slides">${slideViewer(example)}</section>
+    ${papersSection(example)}
+    ${cta({ secondary: textLink("All top lessons", "/examples/") })}`,
 });
 
 export default [indexPage, ...examples.map(lessonPage)];

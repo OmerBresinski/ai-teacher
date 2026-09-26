@@ -1,0 +1,81 @@
+{
+  "year": "Year 2",
+  "subject": "maths",
+  "title": "Halves and quarters",
+  "brief": "Year 2 maths, halves and quarters",
+  "provisional": true,
+  "slides": [
+    {
+      "src": "slides/01.png",
+      "alt": "Slide 1, title: Halves and quarters. Year 2 maths. How do we split a whole into equal parts? A circle with one quarter shaded labelled one quarter, and a rectangle with one half shaded labelled one half."
+    },
+    {
+      "src": "slides/02.png",
+      "alt": "Slide 2, starter: Share it fairly. Two children share 10 strawberries. How many does each child get? Ten strawberries above two empty plates. Pupils talk to a partner and may draw it.",
+      "answer": {
+        "src": "slides/02-answers.png",
+        "alt": "Slide 2 with the answer: each child gets 5, because half of 10 is 5. Five strawberries sit on each plate."
+      }
+    },
+    {
+      "src": "slides/03.png",
+      "alt": "Slide 3, vocabulary: Words we will use. Whole: all of something. Equal: the same size. Half: one of 2 equal parts. Quarter: one of 4 equal parts. Each word has a small square picture."
+    },
+    {
+      "src": "slides/04.png",
+      "alt": "Slide 4: One half. A half is one of two equal parts, written as one over two. A circle and a rectangle, each split into two equal parts with one part shaded."
+    },
+    {
+      "src": "slides/05.png",
+      "alt": "Slide 5: One quarter. A quarter is one of four equal parts, written as one over four. Two quarters make one half and four quarters make one whole. A square and a circle, each split into four equal parts with one part shaded."
+    },
+    {
+      "src": "slides/06.png",
+      "alt": "Slide 6, worked example: Finding half of 8. Step 1, count out 8 counters. Step 2, share them into 2 equal groups, one at a time. Step 3, count one group: there are 4. Half of 8 is 4. Two trays each hold 4 counters."
+    },
+    {
+      "src": "slides/07.png",
+      "alt": "Slide 7, practise: True or false? This circle is split into halves. This rectangle is split into halves, shown with one narrow and one wide part. This square is split into quarters. A quarter of 12 is 4.",
+      "answer": {
+        "src": "slides/07-answers.png",
+        "alt": "Slide 7 with answers: true, the circle is split into halves; false, the rectangle’s parts are not equal; true, the square is split into quarters; false, a quarter of 12 is 3."
+      }
+    },
+    {
+      "src": "slides/08.png",
+      "alt": "Slide 8, exit ticket: answer on your exit ticket slip, then hand it in. What is half of 6? What is a quarter of 8? Draw a shape and split it into quarters.",
+      "answer": {
+        "src": "slides/08-answers.png",
+        "alt": "Slide 8 with answers: half of 6 is 3; a quarter of 8 is 2; any shape split into four equal parts."
+      }
+    }
+  ],
+  "worksheet": {
+    "pages": [
+      {
+        "src": "worksheet/01.png",
+        "alt": "Worked example worksheet for Halves and quarters. A worked example shows 6 counters shared into 2 groups of 3, so half of 6 is 3. Then: find half of 4, 10 and 14; find a quarter of 4, 8 and 12; shade one quarter of a square, a circle and a rectangle; and explain whether a quarter is bigger than a half."
+      }
+    ],
+    "answers": [
+      {
+        "src": "answers/01.png",
+        "alt": "Mark scheme for the Halves and quarters worksheet, 11 marks: half of 4, 10 and 14 is 2, 5 and 7; a quarter of 4, 8 and 12 is 1, 2 and 3, watching for pupils who halve instead; one of four equal parts shaded in each shape; Mia is wrong because splitting a whole into more equal parts makes each part smaller."
+      }
+    ]
+  },
+  "exitTicket": {
+    "pages": [
+      {
+        "src": "exit-ticket/01.png",
+        "alt": "Exit ticket slips for Halves and quarters, three to a page to cut out: what is half of 6; what is a quarter of 8; draw a shape and split it into quarters."
+      }
+    ],
+    "answers": [
+      {
+        "src": "exit-ticket/answers-01.png",
+        "alt": "Exit ticket answers for Halves and quarters: half of 6 is 3; a quarter of 8 is 2, and pupils answering 4 have found half; any shape split into four equal parts."
+      }
+    ]
+  }
+}

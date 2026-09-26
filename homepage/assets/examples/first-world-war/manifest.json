@@ -1,0 +1,71 @@
+{
+  "year": "Year 8",
+  "subject": "history",
+  "title": "Why did the First World War start?",
+  "brief": "Year 8 history, why did the First World War start?",
+  "provisional": true,
+  "slides": [
+    {
+      "src": "slides/01.png",
+      "alt": "Slide 1, title: Why did the First World War start? Year 8 history. Enquiry: which cause mattered most? A row of falling dominoes above the year 1914."
+    },
+    {
+      "src": "slides/02.png",
+      "alt": "Slide 2, objectives: The enquiry. I can explain four long-term causes of the war. I can describe how the murder at Sarajevo led to war in six weeks. I can reach a supported judgement on which cause mattered most."
+    },
+    {
+      "src": "slides/03.png",
+      "alt": "Slide 3, starter: A spark or a pile of dry wood? A forest fire starts from one small spark. What really caused the fire: the spark, or the dry wood? Think, pair, share. A spark above a stack of logs."
+    },
+    {
+      "src": "slides/04.png",
+      "alt": "Slide 4, vocabulary: Key words. Alliance: an agreement between countries to support each other. Mobilise: to get an army ready for war. Ultimatum: a final demand, with a threat if it is refused. Neutral: not taking any side in a war."
+    },
+    {
+      "src": "slides/05.png",
+      "alt": "Slide 5: Long-term causes, M.A.I.N. Militarism: great powers built up huge armies and navies, and Britain and Germany raced to build battleships. Alliances: Europe split into two armed groups. Imperialism: competition for colonies and trade created distrust. Nationalism: strong national pride, and Slav peoples in the Balkans wanting their own states."
+    },
+    {
+      "src": "slides/06.png",
+      "alt": "Slide 6: Two alliance systems. The Triple Entente of Britain, France and Russia, and the Triple Alliance of Germany, Austria-Hungary and Italy. Two other promises: Russia saw itself as Serbia’s protector, and Britain had promised in 1839 to protect Belgium."
+    },
+    {
+      "src": "slides/07.png",
+      "alt": "Slide 7: The spark, Sarajevo, 28 June 1914. Archduke Franz Ferdinand, heir to the throne of Austria-Hungary, and his wife Sophie were shot dead in Sarajevo, Bosnia, by Gavrilo Princip, a Bosnian Serb nationalist who wanted Bosnia free of Austria-Hungary."
+    },
+    {
+      "src": "slides/08.png",
+      "alt": "Slide 8: Six weeks from assassination to world war. A timeline: 28 June, Franz Ferdinand is assassinated; 28 July, Austria-Hungary declares war on Serbia; 30 July, Russia mobilises its army; 1 August, Germany declares war on Russia; 3 August, Germany declares war on France; 4 August, Germany invades Belgium and Britain declares war."
+    },
+    {
+      "src": "slides/09.png",
+      "alt": "Slide 9, sort: Sort the causes into long-term causes, built up over many years, and short-term causes, in the weeks before the war. Cards: the naval race, the murder at Sarajevo, rivalry over colonies, Austria-Hungary’s ultimatum to Serbia, the alliance system, Russia mobilises, Slav nationalism, Germany invades Belgium.",
+      "answer": {
+        "src": "slides/09-answers.png",
+        "alt": "Slide 9 with answers: long-term causes are the naval race, rivalry over colonies, the alliance system and Slav nationalism; short-term causes are the murder at Sarajevo, Austria-Hungary’s ultimatum to Serbia, Russia mobilising and Germany invading Belgium."
+      }
+    },
+    {
+      "src": "slides/10.png",
+      "alt": "Slide 10, open response: Your judgement. Which cause mattered most? Rank militarism, alliances, imperialism, nationalism and the assassination in five numbered slots from most to least important, then explain your top choice in a paragraph starting ‘The most important cause was … because …’.",
+      "answer": {
+        "src": "slides/10-answers.png",
+        "alt": "Slide 10 with guidance: there is no single right ranking. A strong answer makes a clear choice, backs it with specific evidence, explains how the causes link, and compares it with at least one other cause."
+      }
+    }
+  ],
+  "worksheet": {
+    "pages": [
+      {
+        "src": "worksheet/01.png",
+        "alt": "Reading worksheet for Why did the First World War start?: a short text explaining how the murder at Sarajevo, Austria-Hungary’s ultimatum, Russia’s mobilisation and Germany’s invasion of neutral Belgium led to war, followed by four questions on the text."
+      }
+    ],
+    "answers": [
+      {
+        "src": "answers/01.png",
+        "alt": "Mark scheme for the First World War reading worksheet, 7 marks: Austria-Hungary blamed Serbia; Russia mobilised as protector of the Slav peoples to support Serbia; Germany’s plan went through neutral Belgium, which Britain had promised in 1839 to protect, so Britain declared war; evidence of militarism is the naval race or plans to move millions of soldiers."
+      }
+    ]
+  }
+}

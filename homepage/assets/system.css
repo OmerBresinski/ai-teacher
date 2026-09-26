@@ -29,6 +29,9 @@
   --radius-card: 12px;
   --control-border: #7d8b76;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* One grid for every page: the same left edge from the header to the footer. */
+  --gutter: clamp(22px, 6vw, 48px);
+  --measure: 44rem;
 }
 * {
   box-sizing: border-box;
@@ -122,8 +125,60 @@ img {
   background: var(--yellow);
 }
 .container {
-  width: min(1200px, 88%);
+  width: min(1200px, 100% - 2 * var(--gutter));
   margin-inline: auto;
+}
+.tone-sage {
+  background: var(--sage);
+}
+.tone-sand {
+  background: var(--sand);
+}
+/* Two cream sections in a row are separated by a rule on the grid, not a new colour. */
+.section-ruled > .container {
+  border-top: 1px solid var(--line);
+  padding-top: calc(var(--section) * 0.75);
+}
+.section:has(+ .section-ruled) {
+  padding-bottom: calc(var(--section) * 0.75);
+}
+.section-ruled {
+  padding-top: 0;
+}
+.section-head {
+  max-width: var(--measure);
+  margin-bottom: clamp(2.5rem, 4vw, 3.5rem);
+}
+.section-head .eyebrow {
+  margin-bottom: 1rem;
+}
+.section-lede {
+  margin-top: 1.1rem;
+  font-size: var(--text-lead);
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 36rem;
+}
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 44px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1px;
+}
+.text-link:hover {
+  text-decoration-thickness: 2px;
+}
+.text-link > span {
+  display: inline-flex;
+  font-size: 1.3rem;
+  transition: transform 0.2s var(--ease);
+}
+.text-link:hover > span {
+  transform: translateX(3px);
 }
 .section {
   padding-block: var(--section);
@@ -170,6 +225,7 @@ img {
     transform 0.2s;
 }
 .button > span {
+  display: inline-flex;
   font-size: 1.45rem;
 }
 .button:hover {
@@ -232,15 +288,27 @@ img {
 .site-header nav > [aria-current] {
   text-decoration: underline;
 }
-.nav-cta {
-  border-bottom: 1px solid var(--ink);
-  gap: 1rem;
+.site-header nav > a.nav-cta {
+  gap: 0.7rem;
+  min-height: 44px;
+  padding: 0 1.1rem 0 1.25rem;
+  border-radius: 99px;
+  background: var(--ink);
+  color: var(--cream);
+  font-weight: 500;
+}
+.site-header nav > a.nav-cta:hover {
+  background: #405347;
+  text-decoration: none;
 }
 .menu-toggle {
   display: none;
 }
 .page-hero {
-  padding-block: 4rem 5rem;
+  padding-block: clamp(3rem, 6vw, 5rem) clamp(2rem, 4vw, 3rem);
+}
+.page-hero + .section {
+  padding-top: 0;
 }
 .page-hero.with-character {
   display: grid;
@@ -279,7 +347,7 @@ img {
 .closing-inner {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 4rem;
 }
 .closing-inner > div:first-child {
@@ -293,7 +361,8 @@ img {
   max-width: 39rem;
 }
 .closing-inner .site-character {
-  flex: 0 0 170px;
+  flex: 0 0 200px;
+  margin-right: clamp(0rem, 6vw, 6rem);
 }
 .site-footer {
   padding: 4rem 0 1.5rem;
@@ -301,7 +370,7 @@ img {
 }
 .footer-top {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr;
+  grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
   gap: 3rem;
 }
 .footer-top p {
@@ -356,9 +425,12 @@ img {
   text-underline-offset: 4px;
 }
 
-.reading {
-  max-width: 760px;
-  margin-inline: auto;
+/* Reading pages keep the grid's left edge, so the text starts under the page title. */
+.container.reading > * {
+  max-width: var(--measure);
+}
+.container.reading > .reading-table {
+  max-width: 60rem;
 }
 .reading > h2 {
   margin: 2.5rem 0 1rem;
@@ -389,16 +461,17 @@ img {
     gap: 2rem;
   }
   .footer-top {
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 2rem;
+  }
+  .footer-top > div:first-child {
+    grid-column: 1 / -1;
   }
 }
 @media (max-width: 760px) {
   :root {
     --text-base: 1rem;
     --text-lead: 1.1875rem;
-  }
-  .container {
-    width: 88%;
   }
   .site-header {
     padding-block: 1.4rem;
@@ -456,9 +529,9 @@ img {
   .closing-inner {
     display: block;
   }
+  /* On a phone the closing block is the words and the button; the character would float alone. */
   .closing-inner .site-character {
-    width: 140px;
-    margin: 1.5rem auto 0;
+    display: none;
   }
   .footer-top {
     grid-template-columns: 1fr 1fr;

@@ -20,6 +20,13 @@ const readManifest = (slug) => {
     if (!slide || typeof slide.src !== "string" || typeof slide.alt !== "string" || !slide.alt) {
       throw new Error(`examples/${slug}/manifest.json: every slide needs a src and a real alt`);
     }
+    // A question slide may carry its answers as a second image, shown by the viewer's switch.
+    if (
+      slide.answer !== undefined &&
+      (typeof slide.answer?.src !== "string" || !slide.answer.alt)
+    ) {
+      throw new Error(`examples/${slug}/manifest.json: a slide answer needs a src and a real alt`);
+    }
   }
   // A lesson may ship with slides only; a worksheet is never borrowed from another lesson.
   const worksheet = manifest.worksheet ?? {};
@@ -31,7 +38,11 @@ const readManifest = (slug) => {
         : { src: entry.src, alt: entry.alt || `${label} page ${index + 1} of ${manifest.title}` },
     );
   const pages = sheet(worksheet.pages, "Worksheet");
-  const answers = sheet(worksheet.answers, "Answer key");
+  const answers = sheet(worksheet.answers, "Mark scheme");
+  // An exit ticket is its own printed sheet: the slips pupils hand in, and their answers.
+  const exit = manifest.exitTicket ?? {};
+  const exitPages = sheet(exit.pages, "Exit ticket");
+  const exitAnswers = sheet(exit.answers, "Exit ticket answers");
   return {
     slug,
     year: manifest.year,
@@ -41,6 +52,7 @@ const readManifest = (slug) => {
     provisional: manifest.provisional === true,
     slides,
     worksheet: pages.length > 0 ? { pages, answers } : null,
+    exitTicket: exitPages.length > 0 ? { pages: exitPages, answers: exitAnswers } : null,
   };
 };
 
@@ -69,6 +81,9 @@ for (const slug of slugs) {
   }
   examples.push(manifest);
 }
+// Youngest year group first, so the grid reads as a school does; ties fall back to the title.
+const yearNumber = (example) => Number.parseInt(example.year.replace(/\D+/g, ""), 10) || 0;
+examples.sort((a, b) => yearNumber(a) - yearNumber(b) || a.title.localeCompare(b.title));
 
 const words = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
 export const inWords = (count) => words[count] ?? String(count);

@@ -1,183 +1,442 @@
-.ex-lesson-head {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 55px 32px 42px;
-}
-.ex-back {
-  display: inline-block;
-  margin-bottom: 42px;
-  color: inherit;
-  font-size: 16px;
-}
-.ex-lesson-head h1 {
-  font-size: clamp(42px, 6vw, 72px);
-  letter-spacing: -0.045em;
-  line-height: 1.04;
-  margin: 18px 0 24px;
-  max-width: 850px;
-}
-.ex-lesson-head > p:not(.eyebrow) {
-  max-width: 650px;
-  font-size: 21px;
-  line-height: 1.5;
-}
+/* Top lessons: the lesson card grid (index and home) and the lesson page. Lessons are exported
+   images read from a manifest, not authored markup. */
 
-@media (max-width: 650px) {
-  .ex-lesson-head {
-    padding: 32px 20px;
-  }
-  .ex-back {
-    margin-bottom: 28px;
-  }
+/* ---- Lesson cards ---- */
+/* Images inside controls and pages, declared first so later state rules win. */
+.viewer-step > span {
+  display: inline-flex;
 }
-@media print {
-  body.ex-printing > * {
-    display: none !important;
-  }
-  body.ex-printing main {
-    display: block !important;
-  }
-  body.ex-printing main > * {
-    display: none !important;
-  }
-  body.ex-printing .ex-workspace {
-    display: block !important;
-    padding: 0;
-    max-width: none;
-  }
-  body.ex-printing .ex-workspace > * {
-    display: none !important;
-  }
-  body.ex-printing .ex-panel.ex-print-target {
-    display: block !important;
-    padding: 0;
-  }
-  body.ex-printing .ex-print {
-    display: none !important;
-  }
-  body.ex-printing {
-    background: white !important;
-    color: black !important;
-  }
-  body.ex-printing .ex-questions li {
-    break-inside: avoid;
-  }
-  body.ex-printing .ex-answer-key li {
-    break-inside: avoid;
-  }
-  body.ex-printing .ex-panel-heading {
-    font-size: 25px;
-    margin-bottom: 20px;
-  }
-  body.ex-printing .ex-answer-space {
-    height: 65px;
-    border-bottom: 1px solid #aaa;
-    background: none;
-  }
-  body.ex-printing .ex-print-head p {
-    font-size: 17px;
-  }
-  body.ex-printing .ex-questions li,
-  body.ex-printing .ex-answer-key p {
-    font-size: 15px;
-  }
-  body.ex-printing .ex-word-bank {
-    break-inside: avoid;
-  }
-}
-
-/* Example lessons are exported images read from a manifest, not authored markup. */
-.ex-index-head {
-  max-width: 1160px;
-  margin: auto;
-  padding: 74px 32px 0;
-}
-.ex-index-head h1 {
-  font-size: clamp(40px, 5vw, 72px);
-  line-height: 1.04;
-  letter-spacing: -0.035em;
-  margin: 0;
-}
-.ex-index-head .lead {
-  max-width: 640px;
-  margin: 20px 0 0;
-}
-.ex-index-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 46px;
-  max-width: 1160px;
-  margin: auto;
-  padding: 46px 32px 80px;
-}
-.ex-index-card {
-  min-width: 0;
-}
-.ex-index-shot {
-  display: block;
-  border: 1px solid #d5dbce;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--paper, #fffef8);
-}
-.ex-index-shot img {
+.viewer-thumb img {
   display: block;
   width: 100%;
-  height: auto;
 }
-.ex-index-brief {
-  margin: 20px 0 14px;
-  font-size: 19px;
-  line-height: 1.5;
+.paper-page img {
+  display: block;
+  width: 100%;
+  border: 1px solid rgb(41 59 50 / 0.12);
+  border-radius: var(--radius-paper);
+  background: white;
+  box-shadow: 0 20px 40px -26px rgb(41 59 50 / 0.45);
 }
-.ex-index-card h2 {
-  font-size: 27px;
+.lesson-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(2rem, 3vw, 2.5rem) clamp(1.25rem, 2vw, 1.75rem);
+}
+.lesson-card > a {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  text-decoration: none;
+  border-radius: var(--radius-card);
+}
+.lesson-card-cover {
+  display: block;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgb(41 59 50 / 0.14);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--paper);
+  transition:
+    transform 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
+}
+.lesson-card-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.lesson-card-meta {
+  margin-top: 1.1rem;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lesson-card-title {
+  margin-top: 0.4rem;
+  font-size: 1.375rem;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  margin: 6px 0 8px;
-}
-.ex-index-card h2 a {
-  color: inherit;
-  text-decoration: none;
-}
-.ex-index-card h2 a:hover {
   text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
   text-underline-offset: 5px;
+  transition: text-decoration-color 0.2s;
 }
-.ex-material {
-  max-width: 1160px;
-  margin: auto;
-  padding: 0 32px 56px;
+.lesson-card-materials {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: var(--muted);
 }
-.ex-material > h2 {
-  font-size: 30px;
-  letter-spacing: -0.02em;
-  margin: 0 0 22px;
-  padding-top: 26px;
-  border-top: 2px solid #d5dbce;
+.lesson-card > a:hover .lesson-card-cover,
+.lesson-card > a:focus-visible .lesson-card-cover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px -14px rgb(41 59 50 / 0.45);
 }
-.ex-shots {
-  display: grid;
-  gap: 26px;
-}
-.ex-shots figure {
-  margin: 0;
-  border: 1px solid #d5dbce;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--paper, #fffef8);
-}
-.ex-shots img {
-  display: block;
-  width: 100%;
-  height: auto;
+.lesson-card > a:hover .lesson-card-title,
+.lesson-card > a:focus-visible .lesson-card-title {
+  text-decoration-color: currentColor;
 }
 
-@media (max-width: 720px) {
-  .ex-index-head,
-  .ex-index-grid,
-  .ex-material {
-    padding-left: 22px;
-    padding-right: 22px;
+/* ---- Lesson page ---- */
+/* The head is two lines: where you are, and the lesson's title. Everything else is on the page. */
+.lesson-head {
+  padding-block: clamp(0.5rem, 1.5vw, 1rem) clamp(1.25rem, 2.5vw, 1.75rem);
+}
+.lesson-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.lesson-crumbs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+.lesson-crumbs a:hover {
+  text-decoration-thickness: 2px;
+}
+.lesson-head h1 {
+  font-size: clamp(2rem, 3.2vw, 2.875rem);
+  max-width: 28ch;
+}
+.lesson-block {
+  padding-bottom: clamp(2.5rem, 5vw, 4rem);
+}
+
+/* Questions | Answers: one quiet segmented control, the same on slides and on paper. The chosen
+   side is a raised paper chip on a soft track, so three of them on a page stay calm. */
+.view-switch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 99px;
+  background: rgb(41 59 50 / 0.07);
+}
+.view-switch button {
+  min-height: 36px;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    box-shadow 0.2s;
+}
+.view-switch button[aria-pressed="true"] {
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow:
+    0 1px 2px rgb(41 59 50 / 0.18),
+    0 0 0 1px rgb(41 59 50 / 0.06);
+}
+.view-switch button:focus-visible {
+  outline-offset: 2px;
+}
+/* On a slide without answers the control keeps its place, so nothing jumps between slides. */
+.view-switch[data-idle] {
+  visibility: hidden;
+}
+
+/* Slides. Without JavaScript every slide is visible in a grid. */
+.viewer-slides {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+.viewer-slide img {
+  display: block;
+  width: 100%;
+  border: 1px solid rgb(41 59 50 / 0.14);
+  border-radius: var(--radius-card);
+  background: var(--paper);
+}
+/* With JavaScript: one stage slide and a thumbnail strip. */
+.viewer[data-enhanced] .viewer-slides {
+  display: block;
+}
+.viewer[data-enhanced] .viewer-slide:not(.is-current) {
+  display: none;
+}
+.viewer[data-enhanced] .viewer-slide img {
+  box-shadow: 0 24px 50px -30px rgb(41 59 50 / 0.5);
+}
+/* Every control in one row right under the slide: where you are, the answers, previous, next. */
+.viewer-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem 1.25rem;
+  margin-top: 1rem;
+}
+.viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.viewer-actions .view-switch {
+  margin-right: 0.4rem;
+}
+.viewer-thumbs {
+  grid-column: 1 / -1;
+}
+.viewer-status {
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.viewer-step {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--control-border);
+  border-radius: 50%;
+  background: var(--paper);
+  font-size: 1.3rem;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.viewer-flip {
+  transform: scaleX(-1);
+}
+/* The strip pads for the focus ring and pulls back so thumbnails sit on the grid edge. */
+.viewer-thumbs {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  /* Every slide on one strip, however long the lesson; a phone scrolls it instead. */
+  grid-auto-columns: calc(
+    (100% - (max(var(--count, 6), 6) - 1) * 0.75rem) /
+    max(var(--count, 6), 6)
+  );
+  gap: 0.75rem;
+  overflow-x: auto;
+  margin: -9px;
+  padding: 9px;
+  scrollbar-width: thin;
+}
+.viewer-thumb {
+  display: block;
+  padding: 0;
+  border: 1px solid rgb(41 59 50 / 0.14);
+  border-radius: var(--radius);
+  background: var(--paper);
+  overflow: hidden;
+  opacity: 0.62;
+  transition:
+    opacity 0.2s,
+    box-shadow 0.2s;
+}
+.viewer-thumb[aria-current="true"] {
+  opacity: 1;
+  box-shadow:
+    0 0 0 2px var(--cream),
+    0 0 0 4px var(--ink);
+}
+
+/* Worksheet and exit ticket: paper pages side by side, each with its own answers switch. */
+.lesson-papers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
+}
+.paper-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 44px;
+  margin-bottom: 0.75rem;
+}
+.paper-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.paper-page {
+  margin: 0;
+}
+.paper-page + .paper-page {
+  margin-top: 1.5rem;
+}
+/* Without JavaScript the answers follow the sheet; with it they replace it in the same place. */
+.paper-answers {
+  margin-top: 1.5rem;
+}
+.paper-answers-label {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+.paper-doc[data-enhanced] .paper-answers {
+  margin-top: 0;
+}
+.paper-doc[data-enhanced] .paper-answers-label {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .lesson-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Hover styles only where there is a real pointer; on touch a tap would leave them stuck on. */
+@media (hover: hover) {
+  .viewer-step:hover {
+    background: var(--ink);
+    color: var(--cream);
+  }
+  .view-switch button:hover {
+    color: var(--ink);
+  }
+  .viewer-thumb:hover {
+    opacity: 1;
+  }
+}
+/* Phone: the slide and the sheets run edge to edge, and the controls shrink to one quiet row:
+   previous, where you are, next, and the answers switch. Thumbnails give way to swiping. */
+@media (max-width: 760px) {
+  .lesson-head {
+    padding-block: 0 1rem;
+  }
+  .lesson-crumbs {
+    margin-bottom: 0.1rem;
+    font-size: 0.875rem;
+  }
+  .lesson-head h1 {
+    font-size: 1.75rem;
+  }
+  .viewer-slides,
+  .paper-sheet,
+  .paper-answers {
+    margin-inline: calc(-1 * var(--gutter));
+  }
+  .viewer-slides {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .paper-doc .paper-page img,
+  .viewer .viewer-slide img {
+    border-inline: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .viewer[data-enhanced] .viewer-slide img {
+    box-shadow: none;
+  }
+  .viewer-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .viewer-actions {
+    display: contents;
+  }
+  .viewer-step {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    font-size: 1.25rem;
+  }
+  .viewer-step[data-step="-1"] {
+    order: 1;
+  }
+  .viewer-status {
+    order: 2;
+    min-width: 3.6em;
+    text-align: center;
+    font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
+  }
+  /* "Slide 3 of 10" is still read out; the eye gets "3 / 10". */
+  .vs-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .vs-total::before {
+    content: "/";
+    margin-inline: 0.3em 0.05em;
+  }
+  .viewer-step[data-step="1"] {
+    order: 3;
+  }
+  .viewer-actions .view-switch {
+    order: 4;
+    margin: 0 0 0 auto;
+  }
+  .view-switch button {
+    min-height: 34px;
+    padding: 0 0.7rem;
+    font-size: 0.875rem;
+  }
+  .viewer-controls {
+    gap: 0.25rem;
+  }
+  .viewer-thumbs {
+    display: none;
+  }
+  .lesson-block {
+    padding-bottom: 1.75rem;
+  }
+  .lesson-papers {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+  /* The sheets start below a rule, so their controls never read as the slide's. */
+  .lesson-block + .lesson-block > .lesson-papers {
+    border-top: 1px solid var(--line);
+    padding-top: 1.75rem;
+  }
+  .viewer-step:active {
+    opacity: 0.55;
+  }
+  /* The narrow layout's arrows are bare icons: a soft round wash on hover, never a filled block. */
+  .viewer-step:hover {
+    background: rgb(41 59 50 / 0.07);
+    color: var(--ink);
+  }
+  .paper-bar {
+    margin-bottom: 0.6rem;
+  }
+  .paper-title {
+    font-size: 1.125rem;
+  }
+}
+@media (max-width: 560px) {
+  .lesson-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,7 +1,8 @@
 # DayBack homepage
 
 The DayBack marketing site: independent static HTML/CSS/JavaScript with no backend calls, built
-from `src/` by a small Node/Bun script. It has eleven routes and sells one flow — a brief goes in,
+from `src/` by a small Node/Bun script. It has ten fixed routes plus one page per Top lesson, and
+sells one flow — a brief goes in,
 a whole lesson comes out — and hands the visitor's topic to the application.
 
 ## Commands
@@ -10,7 +11,7 @@ From the repository root:
 
 ```sh
 bun run homepage:dev    # build, check, then http://localhost:4186/homepage/
-bun run homepage:check  # build 11 pages and validate routes, links, assets, anchors and strings
+bun run homepage:check  # build every page and validate routes, links, assets, anchors and strings
 bun run homepage:lint   # root Biome conventions; vendored GSAP excluded
 bun run homepage:stage  # after a web build: copy homepage output into apps/web/dist/homepage
 ```
@@ -19,7 +20,7 @@ bun run homepage:stage  # after a web build: copy homepage output into apps/web/
 `/homepage`; `bun homepage/build.mjs --base=/` builds for a domain root if needed (pass the same
 `--base=/` to `check.mjs` and `serve.mjs`). `--app=https://…` overrides the application origin the
 hero posts to; it must be an absolute https URL and defaults to `https://app.bresinski.org`.
-`--allow-provisional` lets the build emit an example lesson whose assets are stand-ins. Output is
+`--allow-provisional` lets the build emit a Top lesson whose assets are stand-ins. Output is
 in ignored `homepage/dist/`; never edit or commit generated HTML. No installation or network call
 is required to build this site. Scripts also work with Node.
 
@@ -27,7 +28,7 @@ The visual rules are in `DESIGN-SYSTEM.md`; `REVIEW.md` records what has been ve
 
 ## Routes
 
-`/`, `/examples/`, one `/examples/<slug>/` per emitted lesson, `/help/` (nav label "FAQ"),
+`/`, `/examples/` (Top lessons), one `/examples/<slug>/` per emitted lesson, `/help/` (nav label "FAQ"),
 `/about/`, `/trust/`, `/privacy/`, `/terms/`, `/cookies/`, `/accessibility/`, `/404/`.
 `check.mjs` asserts that exact set and fails on any reference to a route the launch cut removed.
 
@@ -36,13 +37,14 @@ The visual rules are in `DESIGN-SYSTEM.md`; `REVIEW.md` records what has been ve
 - `src/components.mjs`: shared navigation, footer, characters and page shell, plus `href()` for
   internal links and `appHref()` for links into the application. Decorative diagonal arrows use
   `arrowIcon` SVG artwork so browser emoji fonts cannot replace them.
+- `src/lesson-card.mjs`: the Top lesson card and grid, shared by home and `/examples/`.
 - `src/pages/{home,examples,information,supporting}.mjs`: page copy and markup. `home.mjs` holds
-  the hero form and the home sections, `examples.mjs` renders the lesson pages from manifests,
+  the hero form, the proof illustration and the home sections, `examples.mjs` renders the lesson pages from manifests,
   `information.mjs` the FAQ, about, "AI and your data" and 404 pages, `supporting.mjs` the privacy,
   terms, cookie and accessibility notices.
 - `src/examples-data.mjs`: reads the example manifests and decides which lessons the build emits.
 - `assets/`: styles, hero motion, font and favicon.
-- `assets/examples/<slug>/`: one folder per example lesson (see below).
+- `assets/examples/<slug>/`: one folder per Top lesson (see below).
 - `motion/`: original character artwork and animation. `vendor/gsap.min.js` is the original
   GSAP 3.14.2 distribution with its copyright/license header retained. Do not hand-edit it.
 - `config.mjs`, `build.mjs`, `check.mjs`, `stage.mjs`: URL prefix, application origin, generation,
@@ -51,9 +53,9 @@ The visual rules are in `DESIGN-SYSTEM.md`; `REVIEW.md` records what has been ve
 Gabarito's license is in `assets/gabarito-OFL.txt`. Existing CSS specificity and `!important`
 declarations are retained to preserve rendering (Biome reports warnings).
 
-## The example-lesson pipeline
+## The Top lessons pipeline
 
-An example lesson is data, not code. Each lives in `assets/examples/<slug>/` as exported images
+A Top lesson is data, not code. Each lives in `assets/examples/<slug>/` as exported images
 plus a `manifest.json`:
 
 ```json
@@ -70,6 +72,11 @@ plus a `manifest.json`:
   }
 }
 ```
+
+Two optional fields add teaching material. `slides[].answer` (`{src, alt}`) is the same slide with
+its answers shown; the lesson page offers an Answers switch on that slide only. `exitTicket`
+(`{pages, answers}`) is a printable page of cut-out slips with its own answers page. `worksheet.answers`
+is the teacher's mark scheme, shown by the Mark scheme switch in the worksheet's place.
 
 `worksheet` is optional. A lesson that ships with slides only omits it, and the page then omits the
 Worksheet and Answer key sections and the "worksheet and answer key" half of every caption. Never
@@ -99,7 +106,7 @@ immutable caching.
 `apps/web/e2e/homepage-launch.spec.ts` covers the hero form with JavaScript on and off, the upload
 link, navigation, an example page's images, 390 overflow, page errors and axe on four routes. The
 `apps/web` config regression tests cover SPA isolation, framing, indexing and cache policy. Before
-landing, verify the home page, an example lesson, the mobile menu and an unknown URL in a browser.
+landing, verify the home page, a Top lesson, the mobile menu and an unknown URL in a browser.
 
 `noindex,nofollow` and the Vercel `X-Robots-Tag` header are still in place; the launch-config
 ticket removes them together with the domain change. Product decisions and PRDs belong in Linear;

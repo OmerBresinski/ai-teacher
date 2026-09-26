@@ -1,6 +1,6 @@
 /**
  * The DayBack marketing site (`homepage/`) after the launch cut (TEACH-307): eleven routes, a hero
- * form that hands a real topic to the application, example lessons built from an asset manifest,
+ * form that hands a real topic to the application, top lessons built from an asset manifest,
  * and no page errors anywhere. The static build is served through Playwright's router rather than
  * a local HTTP server, exactly as the preceding homepage spec did.
  */
@@ -133,7 +133,7 @@ test.describe("navigation and links", () => {
     await serveHomepage(page);
     await page.goto(`${site}/`);
     const nav = page.locator("#main-nav");
-    await expect(nav.getByRole("link", { name: "Examples", exact: true })).toHaveAttribute(
+    await expect(nav.getByRole("link", { name: "Top lessons", exact: true })).toHaveAttribute(
       "href",
       `/homepage/examples/`,
     );
@@ -141,10 +141,11 @@ test.describe("navigation and links", () => {
       "href",
       `/homepage/help/`,
     );
-    await expect(nav.getByRole("link", { name: "About", exact: true })).toHaveAttribute(
-      "href",
-      `/homepage/about/`,
-    );
+    // About lives in the footer only.
+    await expect(nav.getByRole("link", { name: "About", exact: true })).toHaveCount(0);
+    await expect(
+      page.locator(".site-footer").getByRole("link", { name: "About", exact: true }),
+    ).toHaveAttribute("href", `/homepage/about/`);
     await expect(nav.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute(
       "href",
       `${appOrigin}/sign-in`,
@@ -160,31 +161,92 @@ test.describe("navigation and links", () => {
   });
 });
 
-test.describe("example lessons", () => {
+test.describe("top lessons", () => {
   test("a lesson page renders its exported images with real alt text", async ({ page }) => {
     await serveHomepage(page);
     const lesson = routes().find(({ route }) => /^\/examples\/.+\//.test(route));
     if (!lesson) throw new Error("No example lesson was emitted");
     await page.goto(`${site}${lesson.route}`);
-    const slides = page.locator(".ex-material img");
+    const slides = page.locator(".viewer-slide img");
     expect(await slides.count()).toBeGreaterThan(0);
     for (const alt of await slides.evaluateAll((images) =>
       images.map((image) => (image as HTMLImageElement).alt),
     )) {
       expect(alt.trim().length).toBeGreaterThan(0);
     }
-    // A lesson may ship with slides only; when it has a worksheet the answers stay hidden until
-    // the disclosure is opened, and no worksheet heading appears when it has none.
-    const answers = page.locator(".ex-answers");
-    if ((await answers.count()) > 0) {
-      await expect(page.locator(".ex-answers img").first()).toBeHidden();
-      await answers.locator("summary").click();
-      await expect(page.locator(".ex-answers img").first()).toBeVisible();
+    // A lesson may ship with slides only. When it has a worksheet, its mark scheme stays hidden
+    // until the Answers switch is turned on, and then takes the sheet's place; no worksheet
+    // heading appears when it has none.
+    const sheet = page.locator(".paper-doc").filter({ hasText: "Worksheet" });
+    if ((await sheet.count()) > 0) {
+      const toggle = sheet.getByRole("button", { name: "Answers" });
+      await expect(sheet.locator("[data-answers] img").first()).toBeHidden();
+      await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-pressed", "true");
+      await expect(sheet.getByRole("button", { name: "Questions" })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+      await expect(sheet.locator("[data-answers] img").first()).toBeVisible();
+      await expect(sheet.locator(".paper-sheet img").first()).toBeHidden();
     } else {
       await expect(page.getByRole("heading", { name: "Worksheet" })).toHaveCount(0);
-      await expect(page.getByRole("heading", { name: "Answer key" })).toHaveCount(0);
     }
   });
+});
+
+test.describe("slide viewer", () => {
+  for (const javaScriptEnabled of [true, false]) {
+    test(`${javaScriptEnabled ? "steps through slides" : "shows every slide"} with JavaScript ${javaScriptEnabled ? "on" : "off"}`, async ({
+      browser,
+    }) => {
+      const context = await browser.newContext({ javaScriptEnabled });
+      const page = await context.newPage();
+      await serveHomepage(page);
+      const lesson = routes().find(({ route }) => /^\/examples\/.+\//.test(route));
+      if (!lesson) throw new Error("No example lesson was emitted");
+      await page.goto(`${site}${lesson.route}`);
+      const slides = page.locator(".viewer-slide");
+      const total = await slides.count();
+      if (!javaScriptEnabled) {
+        for (let index = 0; index < total; index++) await expect(slides.nth(index)).toBeVisible();
+        await expect(page.locator(".viewer-controls")).toBeHidden();
+        await context.close();
+        return;
+      }
+      await expect(page.locator(".viewer-status")).toHaveText(`Slide 1 of ${total}`);
+      await expect(slides.nth(1)).toBeHidden();
+      const second = page.locator(".viewer-thumb").nth(1);
+      await second.click();
+      await expect(second).toHaveAttribute("aria-current", "true");
+      await expect(second).toHaveAttribute("aria-pressed", "true");
+      await expect(slides.nth(1)).toBeVisible();
+      await second.press("ArrowRight");
+      await expect(page.locator(".viewer-status")).toHaveText(`Slide 3 of ${total}`);
+      await expect(page.locator(".viewer-thumb").nth(2)).toBeFocused();
+      // A slide with answers offers the switch; turning it on swaps in the answer image, and
+      // moving to another slide turns it off again.
+      const withAnswer = slides.filter({ has: page.locator("[data-answer]") }).first();
+      if ((await withAnswer.count()) > 0) {
+        const index = await withAnswer.evaluate((el) =>
+          [...(el.parentElement?.children ?? [])].indexOf(el),
+        );
+        await page.locator(".viewer-thumb").nth(index).click();
+        const toggle = page
+          .locator("[data-slide-answers]")
+          .getByRole("button", { name: "Answers" });
+        await toggle.click();
+        await expect(toggle).toHaveAttribute("aria-pressed", "true");
+        await expect(withAnswer.locator("[data-answer]")).toBeVisible();
+        await page.locator(".viewer-thumb").nth(1).click();
+        await expect(toggle).toHaveAttribute("aria-pressed", "false");
+      }
+      await page.locator(".viewer-thumb").nth(2).click();
+      await page.getByRole("button", { name: "Previous slide" }).click();
+      await expect(page.locator(".viewer-status")).toHaveText(`Slide 2 of ${total}`);
+      await context.close();
+    });
+  }
 });
 
 test.describe("every route", () => {
@@ -224,6 +286,8 @@ test.describe("accessibility", () => {
       const target = route ?? routes().find(({ route: r }) => /^\/examples\/.+\//.test(r))?.route;
       if (!target) throw new Error("No example lesson was emitted");
       await serveHomepage(page);
+      // Contrast is measured on the settled page, not on a frame halfway through the proof replay.
+      await page.emulateMedia({ reducedMotion: "reduce" });
       await page.goto(`${site}${target}`);
       await expectNoSeriousA11yViolations(page, `homepage ${label}`);
     });
