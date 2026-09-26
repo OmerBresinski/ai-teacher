@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import type { Lesson } from "@tj/domain/documents";
 import { demoWorkspace } from "@tj/editor/starter";
 import JSZip from "jszip";
-import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
+import { E2E_API_URL, E2E_WEB_URL, expect, seedCreditedLesson, test } from "./fixtures";
 
 const PNG = readFileSync(fileURLToPath(new URL("./fixtures/photo-3000x2000.png", import.meta.url)));
 const FILE_URL = `${E2E_API_URL}/files/ws/images/river.jpg`;
@@ -186,5 +186,113 @@ test.describe("PNG export", () => {
       .then(() => true)
       .catch(() => false);
     expect(more).toBe(false);
+  });
+});
+
+// TEACH-161 rows 5–7: the credited lesson ends every PowerPoint and PNG export on "Image credits".
+test.describe("image credits", () => {
+  /** Collect downloads as they land; resolves once `count` have arrived. */
+  const collect = (page: import("@playwright/test").Page, count: number) => {
+    const downloads: import("@playwright/test").Download[] = [];
+    const done = new Promise<import("@playwright/test").Download[]>((resolve) => {
+      page.on("download", (d) => {
+        downloads.push(d);
+        if (downloads.length === count) resolve(downloads);
+      });
+    });
+    return done;
+  };
+
+  /**
+   * Record every progress label and every credits picture the stage mounts. A small deck at 2x
+   * captures faster than an assertion can poll, so the page keeps the log itself.
+   */
+  const watchRun = (page: import("@playwright/test").Page) =>
+    page.evaluate(() => {
+      const log = { labels: [] as string[], credits: [] as string[] };
+      (window as unknown as { __run: typeof log }).__run = log;
+      new MutationObserver(() => {
+        const label = document.querySelector("[data-export-dialog] output")?.textContent ?? "";
+        if (label && log.labels.at(-1) !== label) log.labels.push(label);
+        const credits = document.querySelector("[data-capture-stage] [data-credits-slide]");
+        if (credits && log.credits.at(-1) !== credits.textContent) {
+          log.credits.push(credits.textContent ?? "");
+        }
+      }).observe(document.body, { subtree: true, childList: true, characterData: true });
+    });
+  const runLog = (page: import("@playwright/test").Page) =>
+    page.evaluate(
+      () => (window as unknown as { __run: { labels: string[]; credits: string[] } }).__run,
+    );
+
+  test("PowerPoint: the last slide is the credits slide, with the photographer as a link", async ({
+    signedInPage: { page },
+  }) => {
+    const id = await seedCreditedLesson(page);
+    await page.goto(`/l/${id}`);
+    const dialog = await openExport(page, "PowerPoint");
+    const download = page.waitForEvent("download");
+    await dialog.getByRole("button", { name: "Export PowerPoint" }).click();
+    const zip = await JSZip.loadAsync(readFileSync(await (await download).path()));
+    const slides = Object.keys(zip.files).filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n));
+    expect(slides).toHaveLength(5);
+    const last = (await zip.file("ppt/slides/slide5.xml")?.async("string")) ?? "";
+    expect(last).toContain("Image credits");
+    expect(last).toContain("<a:hlinkClick");
+    const rels = (await zip.file("ppt/slides/_rels/slide5.xml.rels")?.async("string")) ?? "";
+    expect(rels).toContain('Target="https://www.pexels.com/@ada"');
+  });
+
+  test("row 6: PNG of the whole deck downloads every slide, then <slug>-credits.png at 2x", async ({
+    signedInPage: { page },
+  }) => {
+    test.setTimeout(90_000);
+    const id = await seedCreditedLesson(page);
+    await page.goto(`/l/${id}`);
+    const dialog = await openExport(page, "PNG");
+    const files = collect(page, 5);
+    await watchRun(page);
+    await dialog.getByRole("button", { name: "Export PNG" }).click();
+    const downloads = await files;
+    expect((await runLog(page)).labels).toEqual([1, 2, 3, 4, 5].map((n) => `Exporting ${n} of 5`));
+    expect(downloads.map((d) => d.suggestedFilename())).toEqual([
+      "pictures-of-the-sky-1.png",
+      "pictures-of-the-sky-2.png",
+      "pictures-of-the-sky-3.png",
+      "pictures-of-the-sky-4.png",
+      "pictures-of-the-sky-credits.png",
+    ]);
+    const credits = readFileSync(
+      await (downloads.at(-1) as import("@playwright/test").Download).path(),
+    );
+    expect(credits.subarray(1, 4).toString("latin1")).toBe("PNG");
+    expect(pngSize(credits)).toEqual({ width: 1920, height: 1080 });
+    await expect(page.getByText("4 slides exported as PNG")).toBeVisible();
+    await expect(page.locator("[data-capture-stage]")).toHaveCount(0);
+  });
+
+  test("row 7: PNG of slides 1-2 lists only A and B on the credits image", async ({
+    signedInPage: { page },
+  }) => {
+    test.setTimeout(60_000);
+    const id = await seedCreditedLesson(page);
+    await page.goto(`/l/${id}`);
+    const dialog = await openExport(page, "PNG");
+    await dialog.getByRole("textbox", { name: "Slides" }).fill("1-2");
+    const files = collect(page, 3);
+    await watchRun(page);
+    await dialog.getByRole("button", { name: "Export PNG" }).click();
+    const downloads = await files;
+    // The picture is rasterised from the stage: what the stage held is what the file shows.
+    const [text = ""] = (await runLog(page)).credits;
+    expect(text).toContain("Image credits");
+    expect(text).toContain("Photo by Ada on Pexels");
+    expect(text).toContain("Photo by Bob on Pexels");
+    expect(text).not.toContain("Sky by Cy");
+    expect(downloads.map((d) => d.suggestedFilename())).toEqual([
+      "pictures-of-the-sky-1.png",
+      "pictures-of-the-sky-2.png",
+      "pictures-of-the-sky-credits.png",
+    ]);
   });
 });

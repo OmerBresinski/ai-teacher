@@ -3,7 +3,7 @@ import type { Lesson } from "./lesson";
 import type { LessonFacts } from "./lesson-facts";
 import { OBJECTIVES_SLIDE_HEADING } from "./objectives";
 import type { RichDoc } from "./rich-text";
-import type { Slide, SlideElement } from "./slide";
+import type { ImageElement, PhotoSource, Slide, SlideElement } from "./slide";
 import type { Worksheet } from "./worksheet";
 
 /*
@@ -96,6 +96,76 @@ export const lesson = (): Lesson => ({
   yearGroup: "Year 4",
   language: "en-GB",
 });
+
+/** A 1x1 PNG, so a fixture picture paints (print, PNG capture) without a file server. */
+const PIXEL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+const pexelsSource = (id: string, photographer: string): PhotoSource => ({
+  provider: "pexels",
+  id,
+  pageUrl: `https://www.pexels.com/photo/${id}/`,
+  photographer,
+  photographerUrl: `https://www.pexels.com/@${photographer.toLowerCase()}`,
+});
+
+export const imageElement = (id: string, extra: Partial<ImageElement> = {}): ImageElement => ({
+  id,
+  type: "image",
+  x: 560,
+  y: 150,
+  w: 320,
+  h: 213,
+  src: PIXEL,
+  alt: `Picture ${id}`,
+  fit: "cover",
+  ...extra,
+});
+
+/**
+ * The image credits lesson (TEACH-161 row 1): slide 1 has Ada's Pexels photo (A), slide 2 a group
+ * holding Bob's (B) and A again, slide 3 an Openverse-credited picture (C), slide 4 a picture with
+ * no credit at all (D). Its credits page lists A, B, C.
+ */
+export const creditedLesson = (): Lesson => {
+  const slide = (n: number, heading: string, elements: SlideElement[]): Slide => ({
+    id: `s-credit-${n}`,
+    kind: "content",
+    elements: [textElement(`h${n}`, heading, { w: 460 }), ...elements],
+  });
+  return {
+    ...lesson(),
+    id: "demo-image-credits",
+    title: "Pictures of the sky",
+    slides: [
+      slide(1, "Clouds", [imageElement("a", { source: pexelsSource("1001", "Ada") })]),
+      slide(2, "Rain", [
+        {
+          id: "g",
+          type: "group",
+          x: 480,
+          y: 120,
+          w: 440,
+          h: 360,
+          children: [
+            imageElement("b", { x: 0, y: 0, w: 200, h: 150, source: pexelsSource("1002", "Bob") }),
+            imageElement("a2", {
+              x: 220,
+              y: 180,
+              w: 200,
+              h: 150,
+              source: pexelsSource("1001", "Ada"),
+            }),
+          ],
+        } as SlideElement,
+      ]),
+      slide(3, "Sky", [
+        imageElement("c", { credit: "Sky by Cy, CC BY 2.0", creditUrl: "https://openverse.org/x" }),
+      ]),
+      slide(4, "Sun", [imageElement("d")]),
+    ],
+  };
+};
 
 export const worksheet = (): Worksheet => ({
   version: 1,

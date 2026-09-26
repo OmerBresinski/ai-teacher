@@ -7,6 +7,7 @@
  * only under `NODE_ENV=test` + `ENABLE_TEST_ROUTES=1`, see apps/api/README.md) and visits it.
  */
 import { type APIRequestContext, test as base, expect, type Page } from "@playwright/test";
+import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { demoWorkspace } from "@tj/editor/starter";
 import { E2E_API_URL, E2E_WEB_URL } from "../playwright.config";
 
@@ -107,6 +108,22 @@ export async function seedLibrary(page: Page): Promise<SeedIds> {
   );
   const body = (await res.json()) as { ids: SeedIds };
   return body.ids;
+}
+
+/**
+ * Seed `creditedLesson()` (TEACH-161: Ada's Pexels photo, a group with Bob's and Ada's again, an
+ * Openverse-credited picture, one uncredited) and return its server id. Title "Pictures of the sky".
+ */
+export async function seedCreditedLesson(page: Page): Promise<string> {
+  const body = { ...creditedLesson(), updatedAt: new Date().toISOString() };
+  const res = await page.request.post(`${E2E_API_URL}/__test/seed-library`, {
+    headers: { origin: E2E_WEB_URL },
+    data: { documents: [{ key: "credited", kind: "lesson", body }] },
+  });
+  expect(res.ok(), await res.text()).toBe(true);
+  const id = ((await res.json()) as { ids: SeedIds }).ids.credited;
+  if (!id) throw new Error("seed returned no id");
+  return id;
 }
 
 /** Route helpers over the seeded ids, so a spec reads `paths.lesson("demo-water-cycle")`. */
