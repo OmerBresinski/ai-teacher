@@ -22,13 +22,7 @@ import {
   lessonFromBrief,
   parseLesson,
 } from "@tj/domain/documents";
-import {
-  FIXTURES,
-  pipelineScript,
-  routed,
-  SLIDES_INDEX,
-  scriptedPipelineAi,
-} from "@tj/generation/testing";
+import { pipelineScript, routed, SLIDES_INDEX, scriptedPipelineAi } from "@tj/generation/testing";
 import { NonRetryableError, type ProgressExtra } from "@tj/jobs";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
@@ -181,21 +175,19 @@ describeDb("lesson.generate job", () => {
   test("the first persist already carries the re-materialised objectives slide", async () => {
     const lessonId = await plannedLesson();
     const jobId = await confirm(lessonId);
-    // Cancel as the last slide call answers: the slides before it are persisted, the
-    // `generated` checkpoint is not.
+    // Cancel as the first written slide is persisted (its progress event): that slide is in the
+    // row, the `generated` checkpoint is not. Keyed on the persist, not on a slide call, because
+    // every slide call of this lesson is in flight at once (GENERATE_CONCURRENCY).
     const ac = new AbortController();
-    const script = routed(pipelineScript().slice(SLIDES_INDEX));
-    const last = FIXTURES.planSkeleton.outline.length - 3;
-    const entry = script[last];
-    script[last] = async (call) => {
-      ac.abort("cancelled");
-      return typeof entry === "function" ? entry(call) : (entry as string);
+    const ai = createFakeAi({ script: routed(pipelineScript().slice(SLIDES_INDEX)) });
+    const { ctx } = ctxFor<"lesson.generate">(jobId, { lessonId, revision: 1 }, depsWith(ai), ac);
+    const progress = ctx.progress;
+    ctx.progress = async (percent, message, extra) => {
+      await progress(percent, message, extra);
+      if (extra?.stage === "generate" && message?.startsWith("Slide ")) ac.abort("cancelled");
     };
-    const ai = createFakeAi({ script });
 
-    await lessonGenerateJob(
-      ctxFor<"lesson.generate">(jobId, { lessonId, revision: 1 }, depsWith(ai), ac).ctx,
-    );
+    await lessonGenerateJob(ctx);
 
     const lesson = parseLesson((await getDocument(ws(), lessonId))?.body);
     expect(lesson.generation?.stage).toBe("planned");
