@@ -172,6 +172,10 @@ export function SourceDropZone({
   const addFiles = (files: FileList | File[]) => {
     const items: { label: string; input: UploadSourceInput }[] = [];
     for (const file of Array.from(files)) {
+      if (!/\.(pdf|pptx|docx)$/i.test(file.name)) {
+        notify(`${file.name}: Choose a PDF, PowerPoint or Word file.`);
+        continue;
+      }
       if (file.size > MAX_SOURCE_FILE_BYTES) {
         notify(`${file.name}: ${FILE_TOO_LARGE_MESSAGE}`);
         continue;
@@ -262,6 +266,17 @@ export function SourceDropZone({
           size="xl"
           className="materials-dialog"
           data-has-materials={sources.length + queue.length > 0}
+          onPaste={(event) => {
+            const files = Array.from(event.clipboardData.files);
+            if (files.length === 0) return;
+            event.preventDefault();
+            if (disabled) return;
+            if (full) {
+              notify(LIMIT_NOTICE);
+              return;
+            }
+            addFiles(files);
+          }}
         >
           <section ref={sectionRef} className="materials-body">
             <header className="materials-header">
@@ -355,8 +370,8 @@ export function SourceDropZone({
                       {full
                         ? "Your materials are ready"
                         : dragging
-                          ? "Drop them here"
-                          : "Drop your files here"}
+                          ? "Drop to add to your lesson"
+                          : "Drop or paste your files here"}
                     </p>
                     <p className="text-meta text-ink-3">
                       {full ? LIMIT_NOTICE : "PDF, PowerPoint or Word · Up to 25 MB each"}

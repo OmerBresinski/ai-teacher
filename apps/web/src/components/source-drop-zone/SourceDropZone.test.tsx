@@ -139,6 +139,28 @@ describe("SourceDropZone", () => {
     expect(uploads()).toHaveLength(2);
   });
 
+  it("uploads clipboard files from the modal and preserves normal text pasting", async () => {
+    renderZone();
+    fireEvent.paste(screen.getByRole("dialog"), {
+      clipboardData: { files: [pdf("clipboard.pdf")] },
+    });
+    await screen.findByRole("button", { name: "Remove clipboard.pdf" });
+    expect(uploads()).toHaveLength(1);
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", { value: { files: [] } });
+    screen.getByRole("dialog").dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("explains unsupported clipboard files without uploading them", async () => {
+    renderZone();
+    fireEvent.paste(screen.getByRole("dialog"), {
+      clipboardData: { files: [new File(["image"], "image.png")] },
+    });
+    await screen.findAllByText(/Choose a PDF, PowerPoint or Word file/);
+    expect(uploads()).toHaveLength(0);
+  });
+
   it("a file over 25 MB is refused client-side with no request", async () => {
     renderZone();
     fireEvent.change(fileInput(), { target: { files: [pdf("huge.pdf", 25 * 1024 * 1024 + 1)] } });
