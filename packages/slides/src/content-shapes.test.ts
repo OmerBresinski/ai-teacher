@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  budgetFor,
   COMPOSITION_BUDGETS,
   CONTENT_BUDGETS,
   CONTENT_SHAPES,
@@ -64,15 +65,11 @@ describe("content budgets are what the renderer fits", () => {
     }
   }
 
-  test("CONTENT_BUDGETS is the tighter composition of each shape", () => {
-    for (const shape of CONTENT_SHAPES) {
-      const all = Object.values(COMPOSITION_BUDGETS[shape]).filter((b) => b !== undefined);
-      const least = (k: "heading" | "lead" | (typeof SLOT)[ContentShape]) =>
-        Math.min(...all.map((b) => b[k]?.max ?? Number.POSITIVE_INFINITY));
-      expect(CONTENT_BUDGETS[shape].heading.max).toBe(least("heading"));
-      expect(CONTENT_BUDGETS[shape].lead.max).toBe(least("lead"));
-      expect(CONTENT_BUDGETS[shape][SLOT[shape]]?.max).toBe(least(SLOT[shape]));
-    }
+  test("CONTENT_BUDGETS is the composition the writer gets", () => {
+    expect(CONTENT_BUDGETS.explain).toEqual(COMPOSITION_BUDGETS.explain.panel as never);
+    expect(CONTENT_BUDGETS.list).toEqual(COMPOSITION_BUDGETS.list.full as never);
+    expect(budgetFor("list", true)).toEqual(COMPOSITION_BUDGETS.list.panel as never);
+    expect(budgetFor("compare", true)).toEqual(CONTENT_BUDGETS.compare);
   });
 
   test("a spec's fields name its shape", () => {

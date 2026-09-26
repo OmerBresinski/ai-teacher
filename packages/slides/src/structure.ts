@@ -1616,6 +1616,14 @@ function splitContent(
       (x) => x.replace(/[^A-Za-z]/g, "").length > 0,
     );
     if (left.length === 0) left = all;
+  } else if (hints.points?.length) {
+    // The writer's own list: its lead stays the lead, and the lead and its dots take the full
+    // measure, key term or not (a key term is still picked out in the words). Only a diagram
+    // takes a list's right half, which the writer knows when it writes, so its word budget can
+    // follow (`content-shapes.ts`).
+    label = "";
+    statement = docFromText("");
+    left = all;
   } else if (glossary) {
     label = "Key term";
     weight = 400;
@@ -1634,12 +1642,6 @@ function splitContent(
     // restates it ("Chlorophyll, the green substance in plant cells, absorbs …") is cut, and a
     // sentence that is only the definition goes, while something is left to read.
     left = withoutDefinition(all, glossary.term, glossary.definition);
-  } else if (hints.points?.length) {
-    // The writer's own list: its lead stays the lead, so without a key term there is no panel and
-    // the lead and its dots take the full measure.
-    label = "";
-    statement = docFromText("");
-    left = all;
   } else if (all.length >= 2 || (all.length === 1 && points.length >= 2)) {
     label = "Key idea";
     statement = docFromText(all[0] as string);

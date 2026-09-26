@@ -12,7 +12,7 @@ import {
   sameLeadingToken,
 } from "@tj/domain/documents";
 import { z } from "zod";
-import { CONTENT_BUDGETS, type ContentShape, type SlotBudget, shapeOf } from "./content-shapes";
+import { budgetFor, type ContentShape, type SlotBudget, shapeOf } from "./content-shapes";
 
 /*
  * Slide and block specs (ADR 0025 §8): what the model produces for one slide or one worksheet
@@ -247,7 +247,7 @@ type ShapedContent = {
 function shapeWithinBudget(spec: ShapedContent, ctx: z.RefinementCtx): void {
   const shape = shapeOf(spec);
   if (shape === "explain") return;
-  const budget = CONTENT_BUDGETS[shape];
+  const budget = budgetFor(shape, !!spec.diagram);
   const check = (text: string, slot: SlotBudget | undefined, name: string, path: PropertyKey[]) => {
     if (slot && wordsIn(text) > ceilingOf(slot.max)) {
       ctx.addIssue(editorialIssue(overBudget(shape, name, slot.max), path));

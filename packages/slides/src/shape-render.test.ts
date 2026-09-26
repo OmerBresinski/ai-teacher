@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement } from "@tj/domain/documents";
-import { CONTENT_BUDGETS } from "./content-shapes";
+import { COMPOSITION_BUDGETS, CONTENT_BUDGETS } from "./content-shapes";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
 import { COUNTER_NAME, DIAGRAM_NAME, EYEBROW_NAME, KIND_TAG_NAME } from "./look";
@@ -125,7 +125,7 @@ describe("explicit shape fields become the structure hints", () => {
     expect(texts(inferred)).toContain("carbon dioxide + water → glucose + oxygen");
   });
 
-  test("a written list beside a key term: the lead and dots on the left, the term on the panel", () => {
+  test("a written list with a key term keeps the full measure; the term is picked out in the words", () => {
     const slide = materialiseSlide(
       {
         kind: "content",
@@ -138,9 +138,13 @@ describe("explicit shape fields become the structure hints", () => {
       meta,
       undefined,
       0,
-      { glossary: [{ term: "photosynthesis", definition: "How plants make glucose." }] },
+      {
+        terms: ["photosynthesis"],
+        glossary: [{ term: "photosynthesis", definition: "How plants make glucose." }],
+      },
     );
-    expect(named(slide, PANEL_NAME)).toHaveLength(1);
+    expect(named(slide, PANEL_NAME)).toHaveLength(0);
+    expect(JSON.stringify(named(slide, LEAD_NAME))).toContain('"bold"');
     expect(plain(named(slide, LEAD_NAME)[0])).toBe("Three things limit photosynthesis.");
     expect(named(slide, ITEM_NAME)).toHaveLength(3);
   });
@@ -235,6 +239,15 @@ describe("the word budgets as a spec check", () => {
     expect(
       issues({ ...list, points: ["a", "b"], body: words(ceiling(lead) + 1) }).map((i) => i.path),
     ).toEqual([["body"]]);
+  });
+
+  test("a list beside a diagram is held to the half column's budget", () => {
+    const half = COMPOSITION_BUDGETS.list.panel?.points?.max ?? 0;
+    const list = { ...cycle, steps: undefined, points: [words(ceiling(half) + 1), "b"] };
+    expect(issues(list)).toEqual([]);
+    expect(issues({ ...list, diagram: "A leaf in section" }).map((i) => i.path)).toEqual([
+      ["points", 0],
+    ]);
   });
 
   test("a body with no shape field is left to the character cap; the soft build checks nothing", () => {

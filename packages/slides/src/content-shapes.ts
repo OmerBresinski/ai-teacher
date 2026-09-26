@@ -40,46 +40,49 @@ export type ShapeComposition = "panel" | "full";
 
 /**
  * What each slot holds, in words, per composition: measured, not guessed (look/shape-render,
- * 26 Sept 2026, at the reading size of `text-style.ts` `readingSize`). The test
- * (`content-shapes.test.ts`, probe in `content-shapes.measure.ts`) re-runs the measure and fails
- * when a font or layout change moves it past the rounding.
+ * 26 Sept 2026, at the reading size of `text-style.ts` `readingSize`: the theme body on 1.4
+ * leading). The test (`content-shapes.test.ts`, probe in `content-shapes.measure.ts`) re-runs the
+ * measure and fails when a font or layout change moves it past the rounding.
  *
  * Method. A content spec of the shape, with N words of teaching prose (5.2 letters a word; plain
  * English runs about 4.7) in each slot and every list at its most members, goes through
  * `materialiseSlide` on each of the six themes (the full-measure explain through `applyLook` and
  * `fitSlide`, the path a slide takes when no panel is placed). It counts only when it comes out as
  * one slide with no overflow, all running text at the reading size (no step down, so no
- * continuation), a one-line display heading, and the composition measured: `panel` has the
- * key-term panel beside the words, `full` has none. Lead first: the heading (one display line) and
- * a compare side's label (one line of its card); then the lead, up to two lines across or three
- * beside the panel, and at most 18 words; then the shape's slot in what is left, up to its target
- * (points 6, compare points 6, steps 8), the lead giving words back down to 12 while that buys the
- * slot more (`TARGETS`). A budget is the least count across the themes (Chalk & Cream is the
- * tightest), an explain body less a tenth. Short of target: compare points 4 (5 with a lead of 10
- * words), list points beside a panel 5, steps 6 on Chalk & Cream (8 on four themes).
+ * continuation), a one-line display heading, and the composition measured: `panel` has a right
+ * panel beside the words (a key term for explain, a diagram for a list), `full` has none. Lead
+ * first: the heading (one display line) and a compare side's label (one line of its card); then
+ * the lead, up to two lines across or three beside the panel, and at most 18 words; then the
+ * shape's slot in what is left, up to its target (8 words), the lead giving words back down to 12
+ * while that buys the slot more (`TARGETS`). A budget is the least count across the themes (Chalk
+ * & Cream is the tightest), an explain body less a tenth.
+ *
+ * Short of target at a size a class can read from the back: compare points 3 words (three a side
+ * under a two-line lead), steps 6 (four cards across), a list beside a diagram 7-word lead and
+ * 4-word points. Readability wins over the target (Greg, 26 Sept 2026).
  */
 export const COMPOSITION_BUDGETS: Record<
   ContentShape,
   Partial<Record<ShapeComposition, ShapeBudget>>
 > = {
   explain: {
-    panel: { heading: { max: 4 }, lead: { max: 15 }, body: { max: 20 } },
-    full: { heading: { max: 4 }, lead: { max: 18 }, body: { max: 46 } },
+    panel: { heading: { max: 4 }, lead: { max: 13 }, body: { max: 16 } },
+    full: { heading: { max: 4 }, lead: { max: 18 }, body: { max: 31 } },
   },
   list: {
-    panel: { heading: { max: 4 }, lead: { max: 12 }, points: { max: 5, count: [2, 4] } },
-    full: { heading: { max: 4 }, lead: { max: 18 }, points: { max: 6, count: [2, 4] } },
+    panel: { heading: { max: 4 }, lead: { max: 7 }, points: { max: 4, count: [2, 4] } },
+    full: { heading: { max: 4 }, lead: { max: 18 }, points: { max: 8, count: [2, 4] } },
   },
   compare: {
     full: {
       heading: { max: 4 },
       lead: { max: 18 },
       side: { max: 5 },
-      sidePoints: { max: 4, count: [2, 3] },
+      sidePoints: { max: 3, count: [2, 3] },
     },
   },
   sequence: {
-    full: { heading: { max: 4 }, lead: { max: 12 }, steps: { max: 6, count: [2, 4] } },
+    full: { heading: { max: 4 }, lead: { max: 18 }, steps: { max: 6, count: [2, 4] } },
   },
 };
 
@@ -97,16 +100,21 @@ function tightest(shape: ContentShape): ShapeBudget {
 }
 
 /**
- * What each shape's slots hold, in words, for the writer: the composition it will get where that
- * is known when it writes, else the tighter. An explain slide always has its panel (a key term, or
- * the key idea itself). A list takes the key-term panel only when one of the lesson's terms turns
- * up in its words, which the writer's own words decide, so it gets the tighter (the panel's).
- * Compare and sequence have one composition. The single source for the slide prompt and the spec
- * check (`specs.ts`), so the two cannot disagree.
+ * What each shape's slots hold, in words, for the writer: the composition it will get, which is
+ * known when it writes. An explain slide always has its right panel (a key term, the key idea or
+ * a diagram); a written list takes the full measure unless the plan gives it a drawing, when it
+ * gets `COMPOSITION_BUDGETS.list.panel` (`budgetFor`); compare and sequence have one composition.
+ * The single source for the slide prompt and the spec check (`specs.ts`).
  */
 export const CONTENT_BUDGETS: Record<ContentShape, ShapeBudget> = {
   explain: COMPOSITION_BUDGETS.explain.panel as ShapeBudget,
-  list: tightest("list"),
+  list: COMPOSITION_BUDGETS.list.full as ShapeBudget,
   compare: tightest("compare"),
   sequence: tightest("sequence"),
 };
+
+/** The budget a spec of `shape` writes to: a list with a diagram sits beside it in a half column. */
+export function budgetFor(shape: ContentShape, diagram: boolean): ShapeBudget {
+  const panel = COMPOSITION_BUDGETS[shape].panel;
+  return shape === "list" && diagram && panel ? panel : CONTENT_BUDGETS[shape];
+}

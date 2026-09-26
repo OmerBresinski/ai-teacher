@@ -110,15 +110,13 @@ export function resolveTextStyle(
 }
 
 /**
- * Running text on a teaching slide (a lead, its points, a paragraph, a compare card): the projector
- * floor for reading matter (26, SPEC §7), or a theme's body a little smaller where its own sits
- * well above it, on leading close to the homepage examples'. Measured from the examples at 1440
- * wide (`look/examples/photosynthesis` 07): a lead's cap height is 2.8% of the slide's height and
- * a point's 2.5%, at about 1.44 leading, where the theme body (29–31) set 4.1%. The examples sit
- * under our floor, so the floor is as near as we come; the display heading keeps its size.
+ * Running text on a teaching slide (a lead, its points, a paragraph, a compare card): the theme's
+ * body size, clamped to the projector floor (SPEC §7), and the lead set at that size in a heavier
+ * weight rather than a step above it. Readable from the back of a classroom first (Greg, 26 Sept
+ * 2026): the homepage examples set text smaller (a lead's cap height 2.8% of the slide's height,
+ * ours 3.7% at 29), and we do not shrink to match them. Room comes from the leading instead.
  */
-export const readingSize = (t: Theme): number =>
-  Math.max(fontFloor("body"), Math.round(t.sizes.body * 0.85));
+export const readingSize = (t: Theme): number => resolveFontSize(t, "body");
 
-/** The leading of running text on a teaching slide: the theme's, at most 1.4. */
+/** The leading of running text on a teaching slide: the theme's, at most 1.4 (the examples' ~1.44). */
 export const readingLeading = (t: Theme): number => Math.min(t.lineHeights.body, 1.4);

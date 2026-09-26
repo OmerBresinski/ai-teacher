@@ -4,7 +4,7 @@ import { docFromBullets, docFromText } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE } from "./grid";
 import { layoutSlide } from "./layouts";
-import { applyLook, HEADING_DISPLAY } from "./look";
+import { applyLook, DIAGRAM_NAME, HEADING_DISPLAY } from "./look";
 import { materialiseSlide } from "./materialise";
 import { HEADING_NAME } from "./reflow";
 import type { SlideSpecOf } from "./specs";
@@ -123,7 +123,11 @@ export function check(
   t: Theme,
   leadLines = 2,
 ): Slide | string {
-  const spec = specFor(shape, c);
+  // A list's right half is a diagram's (a written list never takes the key-term panel).
+  const spec =
+    shape === "list" && composition === "panel"
+      ? { ...specFor(shape, c), diagram: "A labelled drawing" }
+      : specFor(shape, c);
   const slide =
     shape === "explain" && composition === "full"
       ? fullMeasure(spec, t)
@@ -135,7 +139,7 @@ export function check(
   const els = slide.elements;
   const has = (name: string) => els.some((e) => e.name === name);
   // The composition it was measured for.
-  if ((composition === "panel") !== has(PANEL_NAME)) return "composition";
+  if ((composition === "panel") !== (has(PANEL_NAME) || has(DIAGRAM_NAME))) return "composition";
   if (shape === "compare" && !has(COMPARE_NAME)) return "no compare cards";
   if (shape === "sequence" && !has(STEP_NAME)) return "no steps";
   if (shape === "list" && !has(ITEM_NAME)) return "no dot points";
@@ -225,7 +229,7 @@ export const leadLinesFor = (composition: ShapeComposition) => (composition === 
  * What a slot should hold at most, whatever the slide has room for: a lead of one or two
  * sentences, points and steps short enough to read at a glance (the look brief, 26 Sept 2026).
  */
-export const TARGETS = { lead: [12, 18], list: 6, compare: 6, sequence: 8 } as const;
+export const TARGETS = { lead: [12, 18], list: 8, compare: 8, sequence: 8 } as const;
 
 /**
  * What each slot holds on `t`, lead first. The heading (one display line) and a compare side's
