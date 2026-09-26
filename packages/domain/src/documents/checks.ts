@@ -20,7 +20,7 @@ export * from "./finding";
  */
 
 /**
- * The `check` names `checkLesson` produces: the three schema checks here and the deterministic
+ * The `check` names `checkLesson` produces: the four schema checks here and the deterministic
  * quality checks in `quality-checks.ts` (TEACH-210). Anything else on `Lesson.generation.findings`
  * is a model check (or the budget stop) and is shown as stored; these are always recomputed.
  */
@@ -28,6 +28,7 @@ export const SCHEMA_CHECKS: ReadonlySet<string> = new Set([
   "question-answer",
   "objective-coverage",
   "vocabulary-in-facts",
+  "objective-taught",
   ...QUALITY_CHECKS,
 ]);
 export const isSchemaCheck = (check: string): boolean => SCHEMA_CHECKS.has(check);
@@ -38,6 +39,7 @@ export function checkLesson(lesson: Lesson, worksheet?: Worksheet): Finding[] {
     ...checkQuestionAnswers(lesson, worksheet),
     ...checkObjectiveCoverage(lesson, worksheet),
     ...checkVocabularyInFacts(lesson),
+    ...checkObjectivesTaught(lesson),
     ...qualityChecks(lesson, worksheet),
   ];
 }
@@ -224,6 +226,39 @@ function checkVocabularyInFacts(lesson: Lesson): Finding[] {
       });
     });
   }
+  return findings;
+}
+
+/* ------------------------------------------------------------------ */
+/* objective-taught                                                    */
+/* ------------------------------------------------------------------ */
+
+/** Outline kinds that teach an objective (ruling 81); vocabulary and practice kinds do not. */
+const TEACHING_KINDS: ReadonlySet<string> = new Set(["content", "image-text", "worked-example"]);
+
+/**
+ * Every objective is named by at least one teaching entry of the outline (ruling 81). The outline
+ * gives up practice before teaching, so this fires only when there are more objectives than the
+ * slide count can teach; the teacher's objectives stay, and the gap is a thing to check.
+ */
+function checkObjectivesTaught(lesson: Lesson): Finding[] {
+  const facts = lesson.facts;
+  if (!facts || facts.outline.length === 0) return [];
+  const taught = new Set<string>();
+  for (const entry of facts.outline) {
+    if (!TEACHING_KINDS.has(entry.kind)) continue;
+    for (const ref of entry.factRefs) taught.add(ref);
+  }
+  const findings: Finding[] = [];
+  facts.objectives.forEach((objective, i) => {
+    if (taught.has(objective.id)) return;
+    findings.push({
+      check: "objective-taught",
+      severity: "warning",
+      target: { factId: objective.id },
+      message: `Objective ${i + 1} has no slide that teaches it.`,
+    });
+  });
   return findings;
 }
 

@@ -122,6 +122,7 @@ describe("applyObjectiveEdits", () => {
     ],
     workedExamples: [
       { id: "x1", problem: "Why?", steps: ["Heat"], answer: "Vapour", misconceptionRef: "m1" },
+      { id: "x2", problem: "How?", steps: ["Cool"], answer: "Drops", objectiveRefs: ["o2"] },
     ],
     questions: [
       {
@@ -173,6 +174,7 @@ describe("applyObjectiveEdits", () => {
     expect(result.facts.vocabulary.map((v) => v.id)).toEqual(["v2"]);
     expect(result.facts.misconceptions).toEqual([]);
     expect(result.facts.questions.map((q) => q.id)).toEqual(["q2"]);
+    // x1 serves the whole lesson (it only loses m1); x2 served only o2 (ruling 81).
     expect(result.facts.workedExamples).toEqual([
       { id: "x1", problem: "Why?", steps: ["Heat"], answer: "Vapour" },
     ]);

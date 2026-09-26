@@ -104,6 +104,8 @@ export type WorkedExample = {
   answer: string;
   /** The misconception this example is chosen to head off. */
   misconceptionRef?: FactId;
+  /** Which objectives the example serves; written since the per-objective facts calls, optional before. */
+  objectiveRefs?: FactId[];
 };
 
 /** Where a question may be used, so the same stem is not on a slide, the sheet and the exit ticket. */
@@ -185,9 +187,27 @@ export type OutlineEntry = {
   brief?: OutlineBrief;
   /** Starter → explain → practise → check; absent on title/objectives and on older lessons. */
   phase?: LessonPhase;
+  /** The labelled box the slide carries, and the fact it is filled from; absent on most slides. */
+  callout?: OutlineCallout;
 };
 
 export type OutlineBrief = { adds: string; avoids?: string };
+
+/**
+ * A slide's callout (quality PRD G3): the box names a fact the plan holds, never one the slide
+ * writer invents. "watch-out" points at a misconception, "example" at a key idea (its example),
+ * "key-words" at one or more vocabulary terms.
+ */
+export const CALLOUT_KINDS = ["watch-out", "example", "key-words"] as const;
+export type CalloutKind = (typeof CALLOUT_KINDS)[number];
+export type OutlineCallout = { kind: CalloutKind; factRefs: FactId[] };
+
+/** Which fact array each callout kind draws on. */
+export const CALLOUT_SOURCE: Record<CalloutKind, FactArray> = {
+  "watch-out": "misconceptions",
+  example: "keyIdeas",
+  "key-words": "vocabulary",
+};
 
 export type LessonFacts = {
   objectives: Objective[];
@@ -238,6 +258,8 @@ export const WorkedExampleSchema = z.strictObject({
   steps: z.array(z.string()),
   answer: z.string(),
   misconceptionRef: FactIdSchema.optional(),
+  /** Which objectives the example serves; written since the per-objective facts calls, optional before. */
+  objectiveRefs: ObjectiveRefsSchema.optional(),
 });
 
 export const DistractorSchema = z.strictObject({
@@ -282,6 +304,9 @@ export const OutlineEntrySchema = z.strictObject({
   imageBrief: ImageBriefSchema.optional(),
   brief: OutlineBriefSchema.optional(),
   phase: z.enum(LESSON_PHASES).optional(),
+  callout: z
+    .strictObject({ kind: z.enum(CALLOUT_KINDS), factRefs: z.array(FactIdSchema).min(1) })
+    .optional(),
 });
 
 /** The arrays whose ids `factRefs` may point at. Outline entries are structure, not facts. */
@@ -363,6 +388,7 @@ export const LessonFactsSchema = z
       });
     }
     facts.workedExamples.forEach((x, i) => {
+      checkObjectiveRefs(x.objectiveRefs, ["workedExamples", i, "objectiveRefs"]);
       if (x.misconceptionRef !== undefined) {
         checkRef(x.misconceptionRef, "misconceptions", ["workedExamples", i, "misconceptionRef"]);
       }
@@ -388,6 +414,18 @@ export const LessonFactsSchema = z
             code: "custom",
             message: `outline references missing fact "${ref}"`,
             path: ["outline", i, "factRefs", j],
+          });
+        }
+      });
+      // A callout's facts must exist and be of the kind the box shows.
+      const callout = entry.callout;
+      callout?.factRefs.forEach((ref, j) => {
+        const array = CALLOUT_SOURCE[callout.kind];
+        if (!factIds.has(ref) || !isFactIdOf(array, ref)) {
+          ctx.addIssue({
+            code: "custom",
+            message: `a "${callout.kind}" callout needs a ${array} id; "${ref}" is not one`,
+            path: ["outline", i, "callout", "factRefs", j],
           });
         }
       });

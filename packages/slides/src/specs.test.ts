@@ -692,3 +692,37 @@ describe("TEACH-263: unknown spec keys are stripped without relaxing shape rules
     });
   }
 });
+
+describe("quality PRD G3: content, image-text and worked-example specs carry an optional callout", () => {
+  const box = { kind: "watch-out", text: "Not every Roman road was straight." };
+  const specs: Record<string, Record<string, unknown>> = {
+    content: { kind: "content", ...base, heading: "H", body: "B." },
+    "image-text": { kind: "image-text", ...base, heading: "H", body: "B." },
+    "worked-example": { kind: "worked-example", ...base, question: "Q?", steps: ["a"] },
+  };
+  for (const [kind, spec] of Object.entries(specs)) {
+    test(`${kind}: the box is kept, its kind is an enum, its text is a capped line`, () => {
+      const schema = slideSpecSchemaFor(kind);
+      expect(schema?.parse({ ...spec, callout: box }) as unknown).toEqual({
+        ...spec,
+        callout: box,
+      });
+      expect(schema?.parse(spec) as unknown).toEqual(spec);
+      expect(schema?.safeParse({ ...spec, callout: { ...box, kind: "tip" } }).success).toBe(false);
+      expect(schema?.safeParse({ ...spec, callout: { ...box, text: "" } }).success).toBe(false);
+      const long = schema?.safeParse({ ...spec, callout: { ...box, text: "x".repeat(181) } });
+      expect(long?.success).toBe(false);
+      if (long && !long.success) expect(long.error.issues.every(isEditorialIssue)).toBe(true);
+      expect(
+        slideSpecSchemaFor(kind, { soft: true })?.safeParse({
+          ...spec,
+          callout: { ...box, text: "x".repeat(181) },
+        }).success,
+      ).toBe(true);
+    });
+  }
+  test("a question slide has no callout slot: the key is stripped (TEACH-263)", () => {
+    const tf = { kind: "true-false", ...base, statement: "S.", correct: true };
+    expect(slideSpecSchemaFor("true-false")?.parse({ ...tf, callout: box }) as unknown).toEqual(tf);
+  });
+});
