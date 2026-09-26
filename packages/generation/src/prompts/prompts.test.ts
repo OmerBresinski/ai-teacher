@@ -218,8 +218,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "plan-teach-objective": {
     // v4: each key idea's slide `shape` (CONTENT_SHAPES) and optional `visual`; v5 its wording.
-    version: "plan-teach-objective.v5",
-    hash: "c43f0544ca2b7e8f60bba79f2bdca5a4f388fe32b3901fa323d2f63e69f4b7dd",
+    // v6: a key idea is what one slide explains in 40–60 words (splitting at plan time).
+    version: "plan-teach-objective.v6",
+    hash: "dbc718caa975b843d195772c954a7dd931ea9522afeb12b9ab9fbd16b832aaa6",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",
@@ -236,8 +237,10 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // heading, the lead and the optional `points` (look/headings); v30 restores the 30-word body
     // and gates `points` on the lead naming three or more things.
     // v31: the planned shape's fields on the slide line (CONTENT_BUDGETS); no diagram or points gate.
-    version: "generate-slide.v31",
-    hash: "c649b9afe31466852d25ef4a153713f8131951a8cdcb9b9b753ba69de72b41cc",
+    // v32 (not benched): re-measured word budgets. v33: master v25's build-up body with the label
+    // heading, one soft 40–60-word target, the schema's body ceiling; the shape line a layout hint.
+    version: "generate-slide.v33",
+    hash: "777da3fd84e1cf8e75f2db14354ea663219f8a51d9bb3fc82afaabb79bcbc866",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -266,7 +269,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   repair: {
     // v17 changes only the user turn (the shape line it copies, the `points` label).
     // v18 changes only the user turn (the content shape it copies, the compare field labels).
-    version: "repair.v18",
+    // v19/v20 change only the user turn (generate-slide v32's, then v33's, shape line).
+    version: "repair.v20",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
@@ -618,7 +622,7 @@ describe("prompt versions", () => {
     expect(content).toContain('"points" [strings], "compare": { "left": { "label", "points" }');
     expect(content).toContain('"steps" [strings] as the slide line says');
     expect(system).toContain("heading/subtitle ≤ 60, each item ≤ 110");
-    expect(system).toContain("body ≤ 260");
+    expect(system).toContain("body ≤ 400");
     const cycle = {
       kind: "content",
       heading: "Water moves round a cycle",

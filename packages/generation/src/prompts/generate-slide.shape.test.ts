@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { LessonFacts, OutlineEntry } from "@tj/domain/documents";
-import { CONTENT_BUDGETS, CONTENT_SHAPES } from "@tj/slides";
+import { CONTENT_SHAPES } from "@tj/slides";
 import { plannedShapeOf, shapeLine, withPlannedShape } from "./generate-slide";
 
-/* v31: the planned shape reaches the slide line, with budgets read from CONTENT_BUDGETS. */
+/* v31: the planned shape reaches the slide line; v33: as a layout hint, with no word budgets. */
 
 const idea = (id: string, extra: Record<string, string> = {}) => ({
   id,
@@ -16,7 +16,7 @@ const idea = (id: string, extra: Record<string, string> = {}) => ({
 const facts = (...keyIdeas: ReturnType<typeof idea>[]) => ({ keyIdeas }) as unknown as LessonFacts;
 const entry = (kind: string, factRefs: string[]) => ({ id: "e1", kind, factRefs }) as OutlineEntry;
 
-describe("generate-slide v31 planned shape", () => {
+describe("generate-slide v33 planned shape", () => {
   test("one key idea keeps its shape and visual; two are explain", () => {
     const list = idea("k1", { shape: "list", visual: "Parts: a, b" });
     expect(plannedShapeOf(facts(list), entry("content", ["k1"]))).toEqual({
@@ -52,13 +52,12 @@ describe("generate-slide v31 planned shape", () => {
     expect(shaped).toMatchObject({ filled: true, extra: [] });
   });
 
-  test("each shape's line names only its own field, with the budget's numbers", () => {
+  test("each shape's line names only its own field, in full sentences, with no word cap", () => {
+    // v33 (look/shape-fixes): the line is a layout hint; the budgets stay the renderer's data.
     for (const shape of CONTENT_SHAPES) {
       const line = shapeLine({ shape, ideas: 1 });
-      const b = CONTENT_BUDGETS[shape];
-      expect(line).toStartWith(`Shape: ${shape}.`);
-      expect(line).toContain(`"heading" (a label, ≤ ${b.heading.max} words)`);
-      expect(line).toContain(`≤ ${b.lead.max} words`);
+      expect(line).toStartWith(`Layout: ${shape}.`);
+      expect(line).not.toMatch(/≤ \d+ words|Fill exactly/);
       const own = { explain: "body", list: "points", compare: "compare", sequence: "steps" }[shape];
       for (const other of ['"points"', '"compare"', '"steps"']) {
         if (other !== `"${own}"` && !(shape === "compare" && other === '"points"')) {
@@ -66,10 +65,9 @@ describe("generate-slide v31 planned shape", () => {
         }
       }
     }
-    expect(shapeLine({ shape: "list", ideas: 1 })).toContain(
-      `"points" (${CONTENT_BUDGETS.list.points?.count?.[0]}–${CONTENT_BUDGETS.list.points?.count?.[1]} strings, each ≤ ${CONTENT_BUDGETS.list.points?.max} words`,
-    );
-    expect(shapeLine({ shape: "explain", ideas: 2 })).toContain("two short paragraphs");
+    expect(shapeLine({ shape: "list", ideas: 1 })).toContain('"Label: one full sentence"');
+    expect(shapeLine({ shape: "compare", ideas: 1 })).toContain("2–3 full sentences");
+    expect(shapeLine({ shape: "sequence", ideas: 1 })).toContain("2–4 full sentences in order");
   });
 
   test("the spec keeps its shape's field and the plan's drawing only", () => {

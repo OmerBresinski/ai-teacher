@@ -65,6 +65,13 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * greater power" was explain (reasons were not in the list's examples) and "Prospero's power over
  * Caliban is based on force…" was compare (one thing, the other only implied). The list names
  * "reasons … it names"; compare needs "two named things".
+ *
+ * v6 (26 Sept 2026, look/shape-fixes, `quality-prd/look/GENERATION-RESULTS-5.md`; Greg): E49 lost
+ * 5–15 to master on substance, the shaped slides squeezing an idea into a word budget. Splitting
+ * now happens here, not in the writer: a key idea is one idea its own slide explains in about
+ * 40–60 words with its example, and an objective whose teaching needs more writes two, each with
+ * its own example (the outline gives each its own slide, `outline-from-facts` P6b). The shape is
+ * the layout hint for that slide, no longer a word budget, so its sentence is unchanged.
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
@@ -202,7 +209,7 @@ export const TEACH_SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…","shape":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v5",
+  version: "plan-teach-objective.v6",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
@@ -210,7 +217,7 @@ export const planTeachObjectivePrompt = {
     "Rules:",
     TEACH_HOUSE_RULES,
     "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
-    "Write one or two key ideas, one misconception and up to two vocabulary terms.",
+    "Write one or two key ideas, one misconception and up to two vocabulary terms. A key idea is what one slide explains in about 40–60 words with its example; an objective that needs more writes two.",
     "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers); the worked example takes a case of its own.",
     'A worked example may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea\'s date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.',
     "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",

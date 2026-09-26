@@ -4,6 +4,7 @@ import {
   clip,
   EXIT_MAX,
   EXIT_MIN,
+  ONE_IDEA_EXTRA,
   type OutlineFacts,
   outlineFromFacts,
 } from "./outline-from-facts";
@@ -693,6 +694,24 @@ describe("outlineFromFacts: every key idea taught, every question fair (np1 RC1)
     expect(r.result.skeleton.outline[i]?.brief?.adds).toBe(
       "Explains: Key idea 1 of objective 1 Then: Key idea 2 of objective 1",
     );
+  });
+
+  test("a planned layout gives each key idea its own slide, past the count by at most ONE_IDEA_EXTRA (P6b)", () => {
+    const plain = factsFor(3);
+    const shaped = {
+      ...plain,
+      keyIdeas: plain.keyIdeas.map((k) => ({ ...k, shape: "explain" })),
+    } as OutlineFacts;
+    const r = run({ n: 3, slideCount: 10, facts: shaped });
+    expect(r.result.unplaced.keyIdeas).toEqual([]);
+    expect(contentKeyIdeas(r).every((ks) => ks.length === 1)).toBe(true);
+    expect(contentKeyIdeas(r).flat().sort()).toEqual([0, 1, 2, 3, 4, 5]);
+    const length = r.result.skeleton.outline.length;
+    expect(length).toBeGreaterThan(10);
+    expect(length).toBeLessThanOrEqual(10 + ONE_IDEA_EXTRA);
+    // Only teaching slides are added: the question slides are those of the unshaped plan.
+    const questions = (x: ReturnType<typeof run>) => kinds(x).filter((k) => k !== "content").length;
+    expect(questions(r)).toBe(questions(run({ n: 3, slideCount: 10 })));
   });
 
   test("with room to spare a paired slide is split: one key idea per content slide", () => {

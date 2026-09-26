@@ -42,6 +42,14 @@ import {
  * slide's shape line is followed by generate-slide's line for its planned shape (`shapeLine`), and
  * code keeps only that shape's fields (`withPlannedShape`): on the v4/v31 demo, repairs turned two
  * ratio sequence slides into `points`, and grew bodies to 47 and 61 words. System text unchanged.
+ *
+ * v19 (26 Sept 2026, look/shape-fixes): only the user turn changes. The shape line it copies is
+ * generate-slide v32's: an explain body of up to 50 words (idea, how or why, example), points as
+ * "Label: one full sentence", two full-sentence points a compare side, up to three steps. A
+ * 47-word repaired body is now in range, not a fault. System text unchanged.
+ *
+ * v20 (same day): the shape line it copies is generate-slide v33's layout hint, with no word caps.
+ * System text unchanged.
  */
 
 /** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */
@@ -100,7 +108,7 @@ export type RepairInput = {
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v18",
+  version: "repair.v20",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",

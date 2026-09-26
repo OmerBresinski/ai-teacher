@@ -1,11 +1,5 @@
 import type { ImagePurpose, LessonFacts, LessonPhase, OutlineEntry } from "@tj/domain/documents";
-import {
-  CONTENT_BUDGETS,
-  CONTENT_SHAPES,
-  type ContentShape,
-  type SlotBudget,
-  SPEC_LIMITS,
-} from "@tj/slides";
+import { CONTENT_SHAPES, type ContentShape, SPEC_LIMITS } from "@tj/slides";
 import {
   type Audience,
   audienceBlock,
@@ -135,6 +129,20 @@ import {
  * vocabulary term on a content slide is shown with its definition in the side panel
  * (`structure.ts` glossary), so the body uses the term without defining it (Tempest 04 and
  * photosynthesis 08 said the definition twice).
+ *
+ * v32 (26 Sept 2026, look/shape-fixes, `quality-prd/look/GENERATION-RESULTS-5.md` rounds 1–2,
+ * not benched): larger re-measured word budgets in the shape line. Superseded the same day by v33.
+ *
+ * v33 (same day, Greg's direction after E49 lost 5–15 to master, 12 losses "telegraphic fragments,
+ * too thin to teach from"): the writer is back to master's v25 behaviour, a body that builds the
+ * idea up in full sentences (how or why it holds, then the example, any analogy), with v29's label
+ * heading and `points` only where the plan says the idea is a list. The per-slot word budgets leave
+ * the prompt: one soft target in the content sketch ("about 40–60 words: one idea, explained, with
+ * an example") and the schema's ceiling (`SPEC_LIMITS.body`) in the limits block. The shape line is
+ * a layout hint naming the fields and what each holds, in full sentences, with the schema's counts
+ * and no word caps; "Fill exactly these content fields" is gone. Splitting is the planner's job
+ * (plan-teach-objective v6: one idea a slide) and fitting the renderer's (`CONTENT_BUDGETS` stays
+ * as its capacity data, for the fallback, not the writer). The misconception sentence is v25's.
  */
 
 /** The drawing types a `diagram` instruction opens with; anything else is dropped (`keptDiagram`). */
@@ -166,7 +174,7 @@ export function keptDiagram<T extends { kind: string; diagram?: string | undefin
  * Below `SPEC_LIMITS` on purpose: those also size facts and worksheets. Aims, not walls: the schema
  * still accepts up to `ceilingOf(SPEC_LIMITS.*)`.
  */
-export const SLIDE_AIMS = { heading: 60, item: 110, body: 260 } as const;
+export const SLIDE_AIMS = { heading: 60, item: 110 } as const;
 
 export type GenerateSlideInput = {
   /**
@@ -266,38 +274,25 @@ const SHAPE_FIELD = {
 } as const;
 const SHAPE_FIELDS = ["points", "compare", "steps"] as const;
 
-const budget = (slot: SlotBudget | undefined, name: string): SlotBudget => {
-  if (!slot) throw new Error(`CONTENT_BUDGETS has no "${name}" slot`);
-  return slot;
-};
-const words = (slot: SlotBudget) => `≤ ${slot.max} words`;
-const members = (slot: SlotBudget) =>
-  `${slot.count ? `${slot.count[0]}–${slot.count[1]} strings` : "strings"}, each ${words(slot)}`;
-
-/** v31: the slide line naming this content slide's shape and the fields it fills. */
+/**
+ * v33: the slide line naming this content slide's layout and what each of its fields holds, in
+ * full sentences. No word caps: the content sketch carries the one soft target and the schema the
+ * ceiling; the counts are the schema's (`specs.ts` content `points`, `compare`, `steps`).
+ */
 export function shapeLine(planned: PlannedShape): string {
-  const b = CONTENT_BUDGETS[planned.shape];
-  const heading = `"heading" (a label, ${words(b.heading)})`;
-  const lead = `"body" (the lead alone: one sentence, ${words(b.lead)})`;
   const fields = (() => {
     switch (planned.shape) {
       case "list":
-        return `${lead} and "points" (${members(budget(b.points, "points"))}: one member of the set each, with a few words on it)`;
-      case "compare": {
-        const side = `{ "label" (${words(budget(b.side, "side"))}), "points" [${members(budget(b.sidePoints, "sidePoints"))}] }`;
-        return `${lead} and "compare" ({ "left": ${side}, "right": the same })`;
-      }
+        return `"body" is one sentence introducing the set; "points" holds its members, 2–4 strings, each "Label: one full sentence" saying what that member does or why it matters ("Shield volcano: Runny lava flows a long way, building wide, gentle slopes."), or a plain sentence where that reads better.`;
+      case "compare":
+        return `"body" is one sentence on what the two differ in; "compare" is { "left": { "label", "points" }, "right": the same }, each side's "points" 2–3 full sentences: how that thing works, then an example of it (a quotation, case or number from the facts).`;
       case "sequence":
-        return `${lead} and "steps" (${members(budget(b.steps, "steps"))}, in order)`;
-      default: {
-        const body = budget(b.body, "body");
-        return planned.ideas > 1
-          ? `"body" (two short paragraphs, one per key idea, each opening with its idea; ${words(body)} in all)`
-          : `"body" (${words(body)}: the lead, ${words(b.lead)}, then the reason it holds and one example)`;
-      }
+        return `"body" is one sentence on what the process does; "steps" holds 2–4 full sentences in order, each saying what happens and what it leads to (in a calculation, the working with its numbers).`;
+      default:
+        return `"body" carries the whole explanation.`;
     }
   })();
-  return `Shape: ${planned.shape}. Fill exactly these content fields: ${heading}, ${fields}.`;
+  return `Layout: ${planned.shape}. ${fields}`;
 }
 
 /**
@@ -330,7 +325,7 @@ const SHAPES = {
   vocabulary:
     '{ "kind": "vocabulary", "entries": [{ "term", "definition" }] (1–slots), "factRefs", "notes"? }',
   content:
-    '{ "kind": "content", "heading", "body", then "points" [strings], "compare": { "left": { "label", "points" }, "right": { "label", "points" } } or "steps" [strings] as the slide line says, "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+    '{ "kind": "content", "heading", "body", then "points" [strings], "compare": { "left": { "label", "points" }, "right": { "label", "points" } } or "steps" [strings] as the slide line says (about 40–60 words on the slide in all: one idea, explained, with an example), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "image-text":
     '{ "kind": "image-text", "heading", "body" (≤ 30 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "worked-example":
@@ -394,14 +389,14 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v31",
+  version: "generate-slide.v33",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
     "Rules:",
     HOUSE_RULES,
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
-    'Follow the supplied objective verb. A content slide\'s `heading` is a label naming the idea ("The water cycle", "Types of volcano"); the claim goes in the body\'s first sentence, the lead, in words a pupil could copy down. The slide line gives the slide\'s shape and the fields that shape fills. With two key ideas, the heading names what joins them. Everything else a teacher would say goes in `notes`. Question slides use the supplied question, answer and distractors verbatim.',
+    'Follow the supplied objective verb. A content slide\'s `heading` is a label naming the idea ("The water cycle", "Types of volcano"). Its body opens with the idea in a sentence a pupil could copy down, then builds it up in full sentences: how or why it holds, then the example showing it, and any useful analogy, so a teacher can teach from the slide alone. The slide line may name a layout (list, compare, sequence) and the fields it uses; they hold the same full sentences. With two key ideas, teach both: the heading names what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.',
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
     "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
@@ -413,7 +408,7 @@ export const generateSlidePrompt = {
       "each item": SLIDE_AIMS.item,
       "worked-example question": SPEC_LIMITS.question,
       "each worked-example step": SPEC_LIMITS.step,
-      body: SLIDE_AIMS.body,
+      body: SPEC_LIMITS.body,
       stem: SPEC_LIMITS.stem,
       option: SPEC_LIMITS.option,
       term: SPEC_LIMITS.term,

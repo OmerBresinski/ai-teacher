@@ -10,12 +10,12 @@ import { HEADING_NAME } from "./reflow";
 import type { SlideSpecOf } from "./specs";
 import { COMPARE_NAME, ITEM_NAME, LEAD_NAME, PANEL_NAME, STEP_NAME } from "./structure";
 import { measureHeadless } from "./text-measure";
-import { readingLeading, readingSize, resolveFontSize } from "./text-style";
+import { floorBelow, readingLeading, readingSize, resolveFontSize } from "./text-style";
 
 /*
  * The probe behind `CONTENT_BUDGETS` (`content-shapes.ts`) and its test: a content spec of one
  * shape with a given number of words in each slot, rendered through the real pipeline, and the
- * largest counts that still come out as one slide at the body size in the composition measured.
+ * largest counts that still come out as one slide, at or above the body floor, in the composition measured.
  * Test support only; not exported from the package.
  */
 
@@ -104,7 +104,7 @@ function fullMeasure(spec: SlideSpecOf<"content">, t: Theme): Slide {
   return fitSlide(applyLook({ id: "s", kind: "content", elements }, t), t).slide;
 }
 
-/** Render one shape in one composition; `undefined` when it would not be one slide at body size. */
+/** Render one shape in one composition; `undefined` when it would not be one slide at or above the body floor. */
 export function render(
   shape: ContentShape,
   composition: ShapeComposition,
@@ -115,7 +115,7 @@ export function render(
   return typeof got === "string" ? undefined : got;
 }
 
-/** The rendered slide, or why it is not one slide at the body size in its composition. */
+/** The rendered slide, or why it is not one slide at or above the body floor in its composition. */
 export function check(
   shape: ContentShape,
   composition: ShapeComposition,
@@ -147,16 +147,17 @@ export function check(
   const heading = els.find((e) => e.name === HEADING_NAME) as TextElement | undefined;
   if (heading?.style.fontSize !== Math.round(t.sizes.heading * HEADING_DISPLAY))
     return "heading not one display line";
-  // No step down: every running text at its preset's own size or larger.
-  const body = readingSize(t);
-  const small = resolveFontSize(t, "small");
+  // At or above the body floor: running text may take the one step down the fit allows (UX ruling
+  // 91, `floorBelow`), never more, so the slide still reads from the back of the room.
+  const body = floorBelow(t, "body");
+  const small = floorBelow(t, "small");
   for (const e of els.filter(isText)) {
     if (e.name === PANEL_NAME || e.name?.startsWith("Side panel")) continue;
     const size = e.style.fontSize;
     if (size === undefined) continue;
     if (e.style.preset === "body" && size < body)
-      return `body stepped down: ${e.name ?? "unnamed"} ${size}`;
-    if (e.style.preset === "small" && size < small) return "small stepped down";
+      return `body below the floor: ${e.name ?? "unnamed"} ${size}`;
+    if (e.style.preset === "small" && size < small) return "small below the floor";
   }
   // The lead is one sentence of at most two lines.
   if (leadLinesOf(els, shape, composition, leadText(c), t) > leadLines + 0.05) {
@@ -227,9 +228,17 @@ export const leadLinesFor = (composition: ShapeComposition) => (composition === 
 
 /**
  * What a slot should hold at most, whatever the slide has room for: a lead of one or two
- * sentences, points and steps short enough to read at a glance (the look brief, 26 Sept 2026).
+ * sentences; an explain body after its lead of about two or three sentences (how or why, then an
+ * example: 35–55 words on the slide with the lead); points, compare points and steps of one full
+ * sentence each (look/shape-fixes, 26 Sept 2026, after E49's "telegraphic fragments").
  */
-export const TARGETS = { lead: [12, 18], list: 8, compare: 8, sequence: 8 } as const;
+export const TARGETS = {
+  lead: [12, 18],
+  explain: 36,
+  list: 16,
+  compare: 12,
+  sequence: 12,
+} as const;
 
 /**
  * What each slot holds on `t`, lead first. The heading (one display line) and a compare side's
@@ -246,7 +255,7 @@ export function measure(shape: ContentShape, composition: ShapeComposition, t: T
     shape === "compare"
       ? largest((n) => fits({ heading, lead: 3, slot: 2, side: n }), 12)
       : undefined;
-  const target = shape === "explain" ? Number.POSITIVE_INFINITY : TARGETS[shape];
+  const target = TARGETS[shape];
   const room = largest((n) => fits({ heading, lead: n, slot: 2, side: 1 }), 48);
   const slotUnder = (lead: number) =>
     Math.min(
@@ -255,7 +264,7 @@ export function measure(shape: ContentShape, composition: ShapeComposition, t: T
     );
   let lead = Math.min(room, TARGETS.lead[1]);
   let slot = slotUnder(lead);
-  const trade = Number.isFinite(target) ? Math.min(lead, TARGETS.lead[0]) : lead;
+  const trade = shape === "explain" ? lead : Math.min(lead, TARGETS.lead[0]);
   for (let l = lead - 1; slot < target && l >= trade; l--) {
     const more = slotUnder(l);
     if (more > slot) {

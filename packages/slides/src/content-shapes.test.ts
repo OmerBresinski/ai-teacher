@@ -70,7 +70,7 @@ describe("content budgets are what the renderer fits", () => {
   }
 
   test("CONTENT_BUDGETS is the composition the writer gets", () => {
-    expect(CONTENT_BUDGETS.explain).toEqual(COMPOSITION_BUDGETS.explain.panel as never);
+    expect(CONTENT_BUDGETS.explain).toEqual(COMPOSITION_BUDGETS.explain.full as never);
     expect(CONTENT_BUDGETS.list).toEqual(COMPOSITION_BUDGETS.list.full as never);
     expect(budgetFor("list", true)).toEqual(COMPOSITION_BUDGETS.list.panel as never);
     expect(budgetFor("compare", true)).toEqual(CONTENT_BUDGETS.compare);

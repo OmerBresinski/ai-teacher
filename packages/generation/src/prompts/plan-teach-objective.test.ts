@@ -44,8 +44,9 @@ describe("plan-teach-objective", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;
     // v14 is 487 words; the questions took their rules with them. The alarm follows the count
-    // (v4 adds the slide shape and visual rules, about 140 words with the example cycle).
-    expect(system.trim().split(/\s+/).length).toBeLessThan(470);
+    // (v4 adds the slide shape and visual rules, about 140 words with the example cycle; v6 the
+    // one-idea-a-slide sizing, 21 words).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(490);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
