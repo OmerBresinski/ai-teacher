@@ -416,7 +416,9 @@ export function withDeckChrome(slides: Slide[], t: Theme, ids: Ids = uid): Slide
     const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME);
     const els = slide.elements.filter((e) => e.name !== EYEBROW_NAME && e.name !== COUNTER_NAME);
     const counter = counterText({ index: i, total });
-    const cw = captionWidth(counter, t);
+    // Wide enough for any count: the words are set again at render time ("10 / 13" was clipped
+    // in a box sized for the "1 / 1" a slide was materialised with).
+    const cw = captionWidth("88 / 88", t);
     const lane = tag ? { y: tag.y, h: tag.h } : { y: SAFE.y, h: tagHeight(t) };
     const at = { x: SAFE.x + SAFE.w - cw, ...lane, w: cw };
     // Every slide takes the counter at the top right, the cover aside, where the corner is free

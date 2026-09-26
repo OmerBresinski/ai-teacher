@@ -1226,7 +1226,29 @@ function structureContent(
   }
   if (!s.compare && !s.keyCard && !s.sequence) {
     if (!paginate) return plain;
+    // A written list too long for one slide stays a list across the full measure (the recipe's
+    // body is narrower than the measure: tempest "Prospero's commands and threats" read as a
+    // 629-wide paragraph).
+    const keep = slide.elements.filter((e) => !bodies.includes(e as TextElement));
+    const listed =
+      points.length >= 2
+        ? greedyPages(
+            slide,
+            t,
+            hints,
+            ids,
+            keep,
+            undefined,
+            top,
+            SAFE.x,
+            SAFE.w,
+            joinSentences(bodies.map((b) => docText(proseOf(b.doc)))),
+            points,
+            true,
+          )
+        : undefined;
     return (
+      listed ??
       (points.length ? splitList(slide, bodies, t, hints, ids) : undefined) ??
       splitParagraph(slide, bodies, t, ids, hints.terms) ??
       plain

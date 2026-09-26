@@ -339,3 +339,37 @@ describe("the first slide holds all it can; a continuation never holds one item 
     expect(pages.reduce((n, p) => n + itemsIn(p), 0)).toBe(4);
   });
 });
+
+test("tempest 06: a written list too long for one slide stays dots across the full measure", () => {
+  const t = getTheme("chalk");
+  const spec: Content = {
+    kind: "content",
+    factRefs: [],
+    heading: "Prospero's commands and threats",
+    body: "Prospero makes his authority visible through commands and threats.",
+    points: [
+      "Command: It tells another character what to do, showing that Prospero expects obedience from everyone on the island.",
+      "Threat: It warns of punishment for disobedience, pressuring the character and showing Prospero can enforce his will.",
+      "Example: Prospero warns Ariel, “I will rend an oak”; the threatened punishment shows how his words can pressure Ariel to obey.",
+    ],
+  };
+  const pages = materialiseSlides(spec, "chalk", meta, undefined, 0, { deck: {} });
+  expect(pages.flatMap((p) => p.elements.filter((e) => e.name === ITEM_NAME))).toHaveLength(3);
+  for (const p of pages) {
+    expect(fitSlide(p, t).overflow).toHaveLength(0);
+    const items = p.elements.filter((e) => e.name === ITEM_NAME);
+    for (const e of items) expect(e.x + e.w).toBeGreaterThanOrEqual(SAFE.x + SAFE.w - 2);
+  }
+});
+
+test("the counter's box holds a two-digit count", async () => {
+  const { withDeckChrome, COUNTER_NAME: C } = await import("./look");
+  const t = getTheme("chalk");
+  const s = materialiseSlide(why, "chalk", meta);
+  const deck = withDeckChrome(
+    Array.from({ length: 12 }, () => s),
+    t,
+  );
+  const box = deck[10]?.elements.find((e) => e.name === C);
+  expect(box?.w ?? 0).toBeGreaterThanOrEqual(Math.ceil("88 / 88".length * t.sizes.caption * 0.78));
+});
