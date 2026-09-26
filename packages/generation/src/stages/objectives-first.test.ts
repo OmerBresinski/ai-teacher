@@ -309,6 +309,7 @@ describe("the generate job's run from the confirmed objectives (the stamp decide
     const lesson = confirmed(base, {
       brief: { ...(base.brief as NonNullable<Lesson["brief"]>), slideCount: 10 },
       facts: {
+        durationMin: 60,
         objectives,
         misconceptions: [],
         vocabulary: [],

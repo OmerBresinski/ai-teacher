@@ -11,12 +11,12 @@ first.
 
 | Job (`apps/worker`) | Entry point here | Decided by |
 | ------------------- | ---------------- | ---------- |
-| `lesson.plan` | `runLessonPipeline` with `stopAfter: "planned"` — check-input, Plan, Verify awaited; without `stopAfter` the whole pipeline | ADR 0029 items 1–2 |
-| `lesson.generate` | `runLessonPipeline` resumed at `planned` (`resumeFrom`) — Generate (slides only), Illustrate, Evaluate, Repair | ADR 0029 item 1 |
+| `lesson.plan` | `runLessonPipeline` with `stopAfter: "planned"` — check-input, Plan, Verify awaited; without `stopAfter` the whole pipeline. With `planner: "objectives-first"` (`AI_LESSON_PLANNER`) it runs `objectivesFirstWorkflow` instead: check-input and the objectives step (`stages/objectives.ts`, one call) | ADR 0029 items 1–2; ADR 0033 |
+| `lesson.generate` | `runLessonPipeline` resumed at `planned` (`resumeFrom`) — Generate (slides only), Illustrate, Evaluate, Repair. A lesson stamped by the objectives step (`plannerOf`) resumes at the facts step (`stages/facts.ts`: waves, outline in code) first (`resumeFromObjectivesFirst`) | ADR 0029 item 1; ADR 0033 |
 | `lesson.worksheet` | `src/worksheet/` — `buildFrame` (no model call), `fillFrame` (one `small` call at low effort against `worksheetFillSchemaFor`), `checkWorksheet` (the sheet half of `checkLesson`, the practice-time rule, one repair through `repairBlock`); no model Evaluate call by default | ADR 0030 |
 | `lesson.cascade`, `lesson.regenerate` | the proposal stages | ADR 0025 §18 |
 | — (`POST /briefs/parse` in `apps/api`) | `parse-brief.ts` (TEACH-16) | ADR 0029 item 13 |
-| — (no job yet; TEACH-93) | `runPlannedLessonPipeline` / `planFromObjectives` (`src/planner/plan-pipeline.ts`): objectives → teach and question sets in waves → outline in code → Generate with code-built sets → Illustrate → Evaluate → Repair | TEACH-91; ADR pending (TEACH-93 at the latest) |
+| — (lab, `eval/lab.ts`) | `runPlannedLessonPipeline` / `planFromObjectives` (`src/planner/plan-pipeline.ts`): the objectives and facts steps back to back, plus the lab report | TEACH-91; ADR 0033 |
 
 The lesson pipeline no longer writes or reads a worksheet (ADR 0030 item 2); do not add
 worksheet work back into `stages/generate.ts`.
@@ -62,10 +62,13 @@ src/
                   (`stemPlan`, shared with the worksheet job)
   worksheet/      frame (recipe → sheet + FillSlots), fill (one call, splice, ruling-61 lines),
                   check (checkLesson half, practice time, one repair)
-  workflow.ts     lessonWorkflow, resumeFrom, runLessonPipeline
+  workflow.ts     lessonWorkflow, objectivesFirstWorkflow, resumeFrom, runLessonPipeline
   testing.ts      fixtures as values, scripted fake, recording deps (`@tj/generation/testing`)
   shapes.ts       lessonShapeOf: the decision table by verb × confidence (data; consumed, not edited)
-  The objectives-first planner; not called until TEACH-93 (G) switches it on:
+  The objectives-first planner, behind AI_LESSON_PLANNER (TEACH-93, ADR 0033):
+  stages/objectives-first.ts  stamps, plannerOf / plannerFor, resumeFromObjectivesFirst, the step order
+  stages/objectives.ts        the objectives step (one call, retried once on a failed check)
+  stages/facts.ts             the facts step (runWaves, merge, outline in code, Verify started)
   outline-from-facts.ts     outlineFromFacts: the outline written in code from merged facts
   merge-objective-facts.ts  mergeObjectiveFacts: per-objective outputs merged into one LessonFacts
   objectives-check.ts       checkObjectives: the structural block on the objectives call

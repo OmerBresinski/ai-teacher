@@ -18,6 +18,7 @@ import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import { type JobId, type LessonId, newId, storageKey, type WorkspaceId } from "@tj/domain";
 import type { Lesson, LessonFacts, Worksheet } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet, lessonFacts } from "@tj/domain/documents/fixtures";
+import { OBJECTIVES_FIRST_VERSION } from "@tj/generation";
 import {
   type BossJob,
   createBoss,
@@ -555,6 +556,8 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
         lockedBy?: JobId;
         stage?: "planned" | "repaired";
         sources?: Lesson["sources"];
+        /** The objectives-first plan screen's checkpoint (TEACH-93): objectives, no outline. */
+        objectivesOnly?: boolean;
       } = {},
     ) {
       const { artefacts: _artefacts, ...base } = generatedLesson();
@@ -562,10 +565,11 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       const lesson: Lesson = {
         ...base,
         brief: { topic: "The water cycle", durationMin: 60, slideCount: 10 },
-        facts: facts(),
+        facts: opts.objectivesOnly ? { ...facts(), outline: [] } : facts(),
         generation: {
           ...(base.generation as NonNullable<Lesson["generation"]>),
           stage: opts.stage ?? "planned",
+          ...(opts.objectivesOnly ? { promptVersions: { planned: OBJECTIVES_FIRST_VERSION } } : {}),
         },
         plan: { revision: opts.revision ?? 1, state: opts.state ?? "proposed", jobId: planJobId },
         ...(opts.sources ? { sources: opts.sources } : {}),
@@ -764,6 +768,22 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       });
       expect(again.status).toBe(409);
       expect(await errorOf(again)).toMatchObject({ reason: "generating", jobId });
+    });
+
+    test("an objectives-first plan (objectives, no outline) confirms and queues lesson.generate (TEACH-93)", async () => {
+      const { lessonId, row } = await seedPlanned({ objectivesOnly: true });
+      const res = await postJson(wsA, `/lessons/${lessonId}/generate`, {
+        expectedRevision: 1,
+        objectives: objectivesOf(row.body as Lesson),
+      });
+      expect(res.status).toBe(202);
+      const { jobId } = (await res.json()) as { jobId: JobId };
+      expect(await jobData("lesson.generate", jobId)).toMatchObject({
+        payload: { lessonId, revision: 1 },
+      });
+      const body = (await getDocument(forWorkspace(unsafeDb, wsA), lessonId))?.body as Lesson;
+      expect(body.facts?.outline).toEqual([]);
+      expect(body.generation?.promptVersions.planned).toBe(OBJECTIVES_FIRST_VERSION);
     });
 
     test("a removed objective re-plans pinned with no stopAfter; facts serving only it are gone", async () => {
