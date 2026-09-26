@@ -1050,8 +1050,10 @@ if (import.meta.main) {
   if (armName && !experiment?.lessonArms.includes(armName))
     throw new Error(`--arm: expected ${experiment?.lessonArms.join("|")}, got "${armName}"`);
   if (armName && !labPlanOn) throw new Error("--arm needs --lab-plan");
-  if (armName && wavesOn)
-    throw new Error("--arm and --waves do not combine: an arm only changes the facts");
+  if (armName === "packed" && wavesOn)
+    throw new Error(
+      "--arm packed and --waves do not combine: waves take a reference, not pack facts",
+    );
   if (armName && saved)
     throw new Error("--arm and --from-facts do not combine: an arm only changes the facts");
   const promptHashes = currentPromptHashes();

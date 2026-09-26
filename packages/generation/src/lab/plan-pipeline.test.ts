@@ -5,7 +5,9 @@ import { checkLesson, type Lesson } from "@tj/domain/documents";
 import { ledgerStageOf } from "../../eval/ledger";
 import { MAX_OUTPUT_TOKENS } from "../call";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
+import type { ObjectiveFactsOutput } from "../merge-objective-facts";
 import { planFactsObjectiveOutputSchemaFor } from "../prompts/plan-facts-objective";
+import { planObjectivesPrompt } from "../prompts/plan-objectives";
 import { type PlanQuestionSetOutput, planQuestionSetPrompt } from "../prompts/plan-question-set";
 import { planTeachObjectivePrompt } from "../prompts/plan-teach-objective";
 import { lessonShapeOf } from "../shapes";
@@ -15,6 +17,7 @@ import {
   fitsExitLine,
   LAB_PLANNED_VERSION,
   LAB_WAVES_PLANNED_VERSION,
+  type LabArm,
   LabPlanBlocked,
   labPlan,
   labPlanMarkdown,
@@ -754,6 +757,64 @@ describe("labPlan --waves (lab pw)", () => {
     const o3 = prompts.filter((p) => p.target === 2);
     expect(o3.map((p) => p.use)).toEqual(["exit"]);
     expect(o3[0]?.text).not.toContain("Already asked of this objective");
+  });
+
+  test("l6kp: an arm's curriculum reaches the objectives call and its references the teach calls", async () => {
+    const teach = spyOn(planTeachObjectivePrompt, "user");
+    const objectivesUser = spyOn(planObjectivesPrompt, "user");
+    try {
+      const ai = labAi({
+        retrieval,
+        objectives: romans.objectives.map((o) => ({ ...o, curriculumAnchor: "Roman Britain" })),
+        questionSet: (_call, set) => json(questionSetAnswer(set)),
+      });
+      const arm: LabArm = {
+        name: "grounded",
+        curriculum: { text: "Unit outcomes (one per section):\n1. Roman Britain" },
+        factsFor: async (objectives) =>
+          objectives.map((_, i) =>
+            i === 1 ? { mode: "call" } : { mode: "call", reference: `- Key idea: pack fact ${i}` },
+          ),
+      };
+      const state = await labPlan({ lesson: romansLesson() }, recordingDeps(ai), {
+        waves: true,
+        arm,
+      });
+      const objectivesInput = objectivesUser.mock.calls[0]?.[0] as {
+        curriculum?: { text: string };
+      };
+      expect(objectivesInput.curriculum?.text).toContain("Roman Britain");
+      const refs = teach.mock.calls
+        .map(([i]) => i as { target: number; reference?: { text: string } })
+        .sort((a, b) => a.target - b.target)
+        .map((i) => i.reference?.text);
+      expect(refs).toEqual(["- Key idea: pack fact 0", undefined, "- Key idea: pack fact 2"]);
+      expect(state.labPlan.arm).toEqual({
+        name: "grounded",
+        factsSource: ["call", "call", "call"],
+      });
+      expect(state.labPlan.status.complete).toBe(true);
+    } finally {
+      teach.mockRestore();
+      objectivesUser.mockRestore();
+    }
+  });
+
+  test("l6kp: waves refuse a packed arm's pack facts", async () => {
+    const ai = labAi({ retrieval, questionSet: (_call, set) => json(questionSetAnswer(set)) });
+    const { questions: _q, ...taught } = factsAnswerFor(0);
+    const arm: LabArm = {
+      name: "packed",
+      factsFor: async (objectives) =>
+        objectives.map(() => ({
+          mode: "pack",
+          output: { ...taught, questions: [] } as unknown as ObjectiveFactsOutput,
+          filled: [],
+        })),
+    };
+    await expect(
+      labPlan({ lesson: romansLesson() }, recordingDeps(ai), { waves: true, arm }),
+    ).rejects.toThrow("packed arm");
   });
 
   test("audit A7: teach and every question set are given the starter's retrieval questions", async () => {

@@ -133,7 +133,9 @@ export interface LabPlanOptions {
    * demand from the outline (`questionDemand`, code, before any question exists), wave 4 one
    * `plan-question-set` call per (objective, use) with the exact count, started the moment that
    * objective's teach call returns. Merge, outline and every stage after run as on the old path,
-   * which `false` (default) keeps untouched for the A/B. Not combined with an arm.
+   * which `false` (default) keeps untouched for the A/B. With an arm (l6kp), the arm's curriculum
+   * reaches the objectives call as on the old path, and a `call` plan's reference text reaches
+   * that objective's teach call; a `pack` plan (packed arm) has no teach call to ride and is refused.
    */
   waves?: boolean | undefined;
 }
@@ -303,7 +305,6 @@ export async function labPlan(
   const fromFacts = options.fromFacts;
   if (fromFacts && options.arm) throw new Error("labPlan: fromFacts and an arm do not combine");
   const waves = options.waves === true && !fromFacts;
-  if (waves && options.arm) throw new Error("labPlan: waves and an arm do not combine");
 
   // 1. The title slide from the Brief, persisted before any call (as Plan does).
   const title =
@@ -449,6 +450,8 @@ export async function labPlan(
   );
   let wavesReport: LabWavesReport | undefined;
   const wavesOutputs = async (): Promise<(ObjectiveFactsOutput | null)[]> => {
+    if (factsPlans.some((p) => p.mode === "pack"))
+      throw new Error("labPlan: waves take an arm's reference, not its pack facts (packed arm)");
     const ran = await runWaves(
       {
         deps,
@@ -461,6 +464,7 @@ export async function labPlan(
         slideCount,
         priorKnowledge: brief.classContext?.priorKnowledge,
         curriculum,
+        references: factsPlans.map((p) => (p.mode === "call" ? p.reference : undefined)),
         retrieval,
       },
       { findings, factsFailed, budgetFailed },
@@ -828,6 +832,8 @@ interface WavesInput {
   slideCount: number;
   priorKnowledge?: string | undefined;
   curriculum?: { text: string } | undefined;
+  /** Per objective, an arm's reference text for its teach call (the prompt's own slot), if any. */
+  references?: (string | undefined)[] | undefined;
   retrieval?: PlanRetrievalQuestion[] | undefined;
 }
 
@@ -953,6 +959,7 @@ export async function runWaves(
         target,
         priorKnowledge: input.priorKnowledge,
         curriculum: input.curriculum,
+        ...(input.references?.[target] ? { reference: { text: input.references[target] } } : {}),
         ...retrievalInput(input),
       };
       deps.logger.info({ stage: "plan", call: "teach", target, cls }, "plan call");
