@@ -73,6 +73,11 @@ import {
  * words, what the figure is for, and that the labels carry the numbers of the worked example or
  * question the slide covers. The system text is unchanged (it is at its word budget and cached),
  * so the pinned hash of the non-diagram sample did not move.
+ *
+ * v27 (TEACH-94): the figure block describes the `energy-profile` template's values, and its
+ * numbers line is per template (`FIGURE_NUMBERS`): an energy profile's numbers are its two
+ * energies, and its labels name the substances. The right-triangle block reads as before, and the
+ * system text and the pinned hash are unchanged again.
  */
 
 export type GenerateSlideInput = {
@@ -198,7 +203,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v26",
+  version: "generate-slide.v27",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",

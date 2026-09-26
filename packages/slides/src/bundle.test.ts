@@ -7,7 +7,13 @@ import { describe, expect, test } from "bun:test";
  * static import graph because the editor has `React.lazy` chunks, this package has no lazy
  * imports, so a single-output build (no `splitting`) is the whole picture.
  */
-const FORBIDDEN = ["react", "react-dom", "@tiptap/", "@tj/ui", ".css"];
+/*
+ * Matched as quoted module names, never as bare words: Figure copy and value keys such as
+ * "Progress of reaction" and "reactants" (TEACH-94) contain "react". A bundled React still shows,
+ * as an import of "react", "react-dom" or "react/jsx-runtime", or inlined, in React 19's
+ * `Symbol.for("react.transitional.element")`.
+ */
+const FORBIDDEN = ['"react"', '"react-dom', '"react/', '"react.', '"@tiptap/', '"@tj/ui', '.css"'];
 
 describe("@tj/slides", () => {
   test("bundles for bun without React, Tiptap, @tj/ui or CSS", async () => {

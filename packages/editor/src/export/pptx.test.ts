@@ -8,6 +8,7 @@ import type {
   TextElement,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { drawFigure, FIGURE_RECT } from "@tj/slides";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
@@ -625,6 +626,31 @@ describe("exportLessonPptx", () => {
     const figure = diagram.elements[0];
     if (figure?.type !== "group" || !figure.alt) throw new Error("no figure");
     expect(xml).not.toContain(figure.alt);
+  }, 30_000);
+
+  // TEACH-94 row 7: the energy profile's curve is native custom geometry, and no text is rotated.
+  it("exports an energy profile's curve as custom geometry with cubic Béziers, no text box rotated", async () => {
+    const values = {
+      reactants: "methane and oxygen",
+      products: "carbon dioxide and water",
+      activationEnergy: 50,
+      energyChange: -90,
+    };
+    const figure = drawFigure("energy-profile", values, theme, FIGURE_RECT);
+    const xml = await slideXml([figure]);
+    // One smooth open path: the curve, four cubic segments and no close.
+    expect(xml.split("<a:custGeom>").length - 1).toBe(1);
+    expect(xml.split("<a:cubicBezTo>").length - 1).toBe(4);
+    expect(xml).not.toMatch(/<a:close ?\/>/);
+    // The axes, the guide and the two arrows are lines; the arrows and axes end in a triangle.
+    expect(xml.split('prst="line"').length - 1).toBe(5);
+    expect(xml.split('<a:tailEnd type="triangle"').length - 1).toBe(4);
+    for (const label of ["Energy", "Progress of reaction", "Ea", "ΔH"])
+      expect(xml).toContain(`<a:t>${label}</a:t>`);
+    // Every label is a text box, and nothing in the figure is rotated.
+    expect(xml.split("<p:txBody>").length - 1).toBe(6);
+    expect(xml).not.toMatch(/ rot="/);
+    expect(xml).not.toContain(figure.alt ?? "no alt");
   }, 30_000);
 });
 

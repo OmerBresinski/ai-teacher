@@ -8,7 +8,7 @@ import { z } from "zod";
  */
 
 /** Every Figure template there is a drawing for. */
-export const FIGURE_TEMPLATE_NAMES = ["right-triangle"] as const;
+export const FIGURE_TEMPLATE_NAMES = ["right-triangle", "energy-profile"] as const;
 
 export type FigureTemplateName = (typeof FIGURE_TEMPLATE_NAMES)[number];
 

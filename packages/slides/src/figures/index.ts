@@ -17,8 +17,10 @@ import type {
 } from "@tj/domain/documents";
 import type { z } from "zod";
 import { uid } from "../factories";
+import { ENERGY_PROFILE } from "./energy-profile";
 import { RIGHT_TRIANGLE } from "./right-triangle";
 
+export * from "./energy-profile";
 export * from "./right-triangle";
 
 export type FigureRect = { x: number; y: number; w: number; h: number };
@@ -42,6 +44,7 @@ export type FigureTemplate<V = unknown> = {
 
 export const FIGURE_TEMPLATES: Record<FigureTemplateName, FigureTemplate> = {
   "right-triangle": RIGHT_TRIANGLE,
+  "energy-profile": ENERGY_PROFILE,
 };
 
 const asRecord = (value: unknown): Record<string, unknown> =>
