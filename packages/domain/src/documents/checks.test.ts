@@ -654,6 +654,19 @@ describe("checkLesson", () => {
 });
 
 describe("questionless (quality lab, Sept 2026)", () => {
+  test("a quoted line or a leading condition before the task still sets a task (l6e)", () => {
+    expect(
+      questionless(
+        "Suppose Prospero tells a spirit, “Wait here until I return.” Explain how the command establishes his authority.",
+      ),
+    ).toBe("ok");
+    expect(
+      questionless(
+        "Suppose several streaming services compete. If one service raises its price, explain why demand for that service may be responsive.",
+      ),
+    ).toBe("ok");
+    expect(questionless("If it rains, the ground.")).toBe("no-question");
+  });
   test("an imperative whose referents follow a colon is a question, not a dangling task", () => {
     expect(
       questionless("Put these dates in order from earliest to latest: AD 43, AD 410, AD 1."),
