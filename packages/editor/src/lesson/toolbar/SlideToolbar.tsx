@@ -1,4 +1,5 @@
 import type { Slide, SlideKind, Theme, TransitionId } from "@tj/domain/documents";
+import { slotSideOf } from "@tj/slides";
 import {
   ConfirmDialog,
   DropdownMenuLabel,
@@ -12,7 +13,7 @@ import {
   Tooltip,
   toast,
 } from "@tj/ui";
-import { ImagePlus, Sparkles, WandSparkles } from "lucide-react";
+import { ArrowLeftRight, ImagePlus, Sparkles, WandSparkles } from "lucide-react";
 import { Fragment, memo, useState } from "react";
 import { ColorPicker } from "../../kit/Color";
 import { Panel, PanelSeparator } from "../../kit/Panel";
@@ -156,6 +157,16 @@ export const SlideToolbar = memo(function SlideToolbar({
       {onRegenerate ? (
         <IconButton label="Regenerate slide" onClick={() => openRegenerate({ slideId: slide.id })}>
           <Sparkles aria-hidden {...ICON} />
+        </IconButton>
+      ) : null}
+
+      {/* A photo or diagram slot to the other side of the words (look/slides-layout). */}
+      {slotSideOf(slide) ? (
+        <IconButton
+          label="Swap picture side"
+          onClick={() => history.dispatch(reducers.swapSlotSide, slide.id)}
+        >
+          <ArrowLeftRight aria-hidden {...ICON} />
         </IconButton>
       ) : null}
 

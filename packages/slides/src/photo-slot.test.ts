@@ -22,7 +22,7 @@ import {
 } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import type { SlideSpecOf } from "./specs";
-import { docLines, ITEM_NAME } from "./structure";
+import { alternateSlotSides, docLines, ITEM_NAME, slotSideOf, swapSlotSide } from "./structure";
 import { floorBelow, readingSize } from "./text-style";
 import { getTheme, THEMES } from "./themes";
 
@@ -375,4 +375,41 @@ test("the counter's box holds a two-digit count", async () => {
   );
   const box = deck[10]?.elements.find((e) => e.name === C);
   expect(box?.w ?? 0).toBeGreaterThanOrEqual(Math.ceil("88 / 88".length * t.sizes.caption * 0.78));
+});
+
+describe("the slot takes either side (look/slides-layout)", () => {
+  const box = (e: { x: number; y: number; w: number; h: number }) => [e.w, e.h, e.y];
+  for (const t of THEMES) {
+    test(`${t.id}: the mirror keeps every width and height, and still fits`, () => {
+      for (const spec of [why, reasons]) {
+        const pages = materialiseSlides(spec, t.id, meta, undefined, 0, { photo });
+        const left = pages[0] as Slide;
+        expect(slotSideOf(left)).toBe("left");
+        const right = swapSlotSide(left);
+        expect(slotSideOf(right)).toBe("right");
+        // Same boxes, moved: the budgets measured with the slot on one side hold on the other.
+        expect(right.elements.map(box)).toEqual(left.elements.map(box));
+        expect(fitSlide(right, t).overflow).toHaveLength(0);
+        const img = slot(right);
+        expect(img.x + img.w).toBe(SAFE.x + SAFE.w);
+        for (const e of bodyText(right))
+          expect(e.x + e.w).toBeLessThanOrEqual(img.x - SPACE[5] + 1);
+        // Swapping back is the slide as it was.
+        expect(swapSlotSide(right).elements).toEqual(left.elements);
+      }
+    });
+  }
+
+  test("a deck's slot slides alternate sides, continuations aside, the same every time", () => {
+    const one = materialiseSlides(reasons, "chalk", meta, undefined, 0, { photo });
+    const two = materialiseSlides(why, "chalk", meta, undefined, 0, { photo });
+    const deck = [...one, ...two, ...one];
+    const sides = (slides: Slide[]) => slides.map(slotSideOf).filter(Boolean);
+    expect(sides(alternateSlotSides(deck))).toEqual(["left", "right", "left"]);
+    expect(alternateSlotSides(deck)).toEqual(alternateSlotSides(deck));
+    // A deck already alternating comes back as the same slides.
+    const once = alternateSlotSides(deck);
+    for (const [i, slide] of alternateSlotSides(once).entries())
+      expect(slide).toBe(once[i] as Slide);
+  });
 });

@@ -79,6 +79,11 @@ export type CompareSide = { label: string; note?: string; points: string[] };
  * is inferred from the words when absent (`inferStructure`), so a stored lesson restyles too.
  */
 export type SlideStructure = {
+  /**
+   * The side a photo or diagram slot takes (look/slides-layout), left when absent. Generation
+   * alternates it over a deck's slot slides (`alternateSlotSides` is the same rule for a whole deck).
+   */
+  slotSide?: SlotSide;
   quiz?: QuizLine[];
   compare?: { left: CompareSide; right: CompareSide };
   keyCard?: { label: string; text: string };
@@ -1617,8 +1622,41 @@ function structureDiagram(
   paginate: boolean,
 ): Slide[] {
   return composeBesideSlot(slotSide(slide, "right"), t, hints, ids, paginate).map((page) =>
-    slotSide(page, "left"),
+    slotSide(page, hints.slotSide ?? "left"),
   );
+}
+
+/** The side of a teaching slide a photo or diagram slot takes; the words take the other. */
+export type SlotSide = "left" | "right";
+
+/** Which side a slide's slot is on, or `undefined` for a slide without one. */
+export function slotSideOf(slide: Slide): SlotSide | undefined {
+  const slot = slide.elements.find(isSlot);
+  if (!slot) return undefined;
+  return slot.x < SAFE.x + SAFE.w / 2 - slot.w / 2 ? "left" : "right";
+}
+
+/**
+ * A deck's slot slides alternating sides (look/slides-layout): the first slide with a slot keeps
+ * it at the left, as a diagram slide draws its figure, the next at the right, and so on, so two
+ * slot slides running do not repeat one composition. Deterministic: the same deck always comes
+ * back the same, and a slide with no slot (a continuation among them) does not count. The words
+ * keep their widths on either side (`slotSide`), so the fit and the budgets are the same.
+ */
+export function alternateSlotSides(slides: readonly Slide[]): Slide[] {
+  let k = 0;
+  return slides.map((slide) => {
+    if (slotSideOf(slide) === undefined) return slide;
+    const side: SlotSide = k % 2 === 0 ? "left" : "right";
+    k += 1;
+    return slotSide(slide, side);
+  });
+}
+
+/** The slide with its slot on the other side, for the editor's swap button. */
+export function swapSlotSide(slide: Slide): Slide {
+  const side = slotSideOf(slide);
+  return side === undefined ? slide : slotSide(slide, side === "left" ? "right" : "left");
 }
 
 /**
@@ -1630,10 +1668,10 @@ function structureDiagram(
  * a continuation's full-measure words are not, and stay. A page without a slot, or with it already
  * on that side, comes back as it is (same object), so a stored slide can be restructured.
  */
-export function slotSide(slide: Slide, side: "left" | "right"): Slide {
+export function slotSide(slide: Slide, side: SlotSide): Slide {
   const slot = slide.elements.find(isSlot);
   if (!slot) return slide;
-  const atLeft = slot.x < SAFE.x + SAFE.w / 2 - slot.w / 2;
+  const atLeft = slotSideOf(slide) === "left";
   if (atLeft === (side === "left")) return slide;
   const shift = slot.w + SPACE[5];
   const beside = (e: SlideElement) =>
