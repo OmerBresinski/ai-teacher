@@ -258,3 +258,28 @@ describe("a stored, already structured set", () => {
     expect(named(pages[1]?.elements ?? [], ANSWERS_NAME)).toHaveLength(1);
   });
 });
+
+test("an answers slide's card is measured for its own words, inside the safe area", () => {
+  const t = getTheme("chalk");
+  const long = Array.from(
+    { length: 4 },
+    (_, i) =>
+      `${i + 1} An answer that runs over most of two lines on the slide, with a reason after it.`,
+  ).join("  ·  ");
+  const slide = materialiseSlide(
+    {
+      kind: "exit-ticket",
+      factRefs: [],
+      heading: "Exit ticket",
+      items: ["One?", "Two?", "Three?", "Four?", "Five?", "Six?"],
+      footnote: `Answers: ${long}`,
+    },
+    "chalk",
+    meta,
+  );
+  for (const page of lookAndFitPages(slide, t)) {
+    const panel = named(page.elements, ANSWERS_NAME)[0];
+    if (!panel || panel.revealStep) continue;
+    expect(panel.y + panel.h).toBeLessThanOrEqual(SAFE_BOTTOM);
+  }
+});

@@ -985,7 +985,26 @@ function answersClear(slides: Slide[], t: Theme, ids: Ids, paginate: boolean): S
     const heading = headingOf(slide);
     const top = heading ? snapY(heading.y + heading.h + SPACE[4]) : SAFE.y;
     const { revealStep: _step, reveal: _reveal, ...still } = panel;
-    const answers = { ...still, id: ids(), y: top, h: Math.min(panel.h, SAFE_BOTTOM - top) };
+    // On its own slide the answers take the room under the heading: re-measured at the small
+    // size, a step down when they need it, never cut short by the reveal panel's cap.
+    const room = SAFE_BOTTOM - top;
+    const measure = measureHeadless(t);
+    const ts = (panel as ShapeElement).textStyle ?? {};
+    const pad = ts.padding ?? SPACE[2];
+    const doc = (panel as ShapeElement).doc ?? docFromText("");
+    let size = resolveFontSize(t, "small");
+    let need = heightOf(measure, doc, panel.w, "small", size, pad);
+    if (need > room) {
+      size = floorBelow(t, "small");
+      need = heightOf(measure, doc, panel.w, "small", size, pad);
+    }
+    const answers = {
+      ...still,
+      id: ids(),
+      y: top,
+      h: Math.min(room, withSafety(need)),
+      textStyle: { ...ts, fontSize: size },
+    };
     const next = continued(slide, chromeOf(slide), [answers as SlideElement], ids);
     const named = next.elements.map((e) =>
       heading && e.name === HEADING_NAME && isText(e)
