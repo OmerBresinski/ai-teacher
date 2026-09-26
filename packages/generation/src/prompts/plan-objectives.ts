@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { LessonShape } from "../shapes";
+import { type LessonShape, OPENERS } from "../shapes";
 import { shapeBlock } from "./shape";
 import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
 
@@ -223,6 +223,21 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *    sentence covers the open and the picking form). The knowledge errors themselves need verify to see the starter
  *    (CHANGES.md change 4: code, not a prompt rule).
  *
+ * v22 (26 Sept 2026, l6f; rounds B-E judged, `lab/l6-f/CHANGES.md`). Built on v18 (round B, which
+ *    beat v19 12-4 and v21 17-0 on practice and coverage), not on v19-v21:
+ *  - Starter: v21's sentence. Round C and D's notTaught starters asked about the lesson's own topic
+ *    ("a starter asking about photosynthesis", a Y12 starter on the PED formula), so none asks
+ *    about the topic "even if the class has met it"; "None goes beyond what this year group has
+ *    been taught" (v19: phototropism at Year 2); one right answer carries its method ("the
+ *    largest planet", not "a planet"), with named options where several could fit. v19's "at most
+ *    two to an objective" is not taken: it thinned round C's coverage.
+ *  - Flow: the teaching extras only (opener hook or retrieval, worked example, common mistake,
+ *    vocabulary; `withFlow`). v20-v21's flow also chose the checks and the close, and Luna dropped
+ *    the mid-lesson checks first; here the checks and the exit are not the model's to choose, and
+ *    the outline places an extra only in room they leave. One sentence says each extra costs a
+ *    slide of teaching or practice (v20's free booleans were true on every run); no slide count is
+ *    sent, so the price cannot reach the objective count.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -285,6 +300,18 @@ export type PlanRetrievalQuestion = z.output<typeof PlanRetrievalQuestionSchema>
  */
 const retrieval = z.array(PlanRetrievalQuestionSchema).length(3).optional();
 
+/**
+ * v22: the teaching extras (`LessonFlow`, `withFlow`). Optional so recorded sets, a `fromFacts`
+ * rerun and the bench parse without it; the sketch shows the slot, so a live call fills it.
+ */
+export const PlanFlowSchema = z.strictObject({
+  opener: z.enum(OPENERS),
+  workedExample: z.boolean(),
+  commonMistake: z.boolean(),
+  vocabulary: z.boolean(),
+});
+const flow = PlanFlowSchema.optional();
+
 /** With a curriculum extract: every objective must carry its anchor. */
 const AnchoredOutputSchema = z.strictObject({
   objectives: z
@@ -292,6 +319,7 @@ const AnchoredOutputSchema = z.strictObject({
     .min(1)
     .max(4),
   retrieval,
+  flow,
 });
 
 /**
@@ -306,6 +334,7 @@ const UnanchoredOutputSchema = z.strictObject({
     .min(1)
     .max(4),
   retrieval,
+  flow,
 });
 
 export type PlanObjectivesSchema = typeof AnchoredOutputSchema | typeof UnanchoredOutputSchema;
@@ -330,6 +359,7 @@ export const PlanObjectivesOutputSchema = z.strictObject({
     .min(1)
     .max(4),
   retrieval,
+  flow,
 });
 export type PlanObjectivesOutput = z.output<typeof PlanObjectivesOutputSchema>;
 
@@ -350,19 +380,20 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
  * is asked for beside an extract (`CURRICULUM_USE`), so a no-extract call is not shown the slot.
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }], "flow": { "opener": "hook|retrieval", "workedExample": true|false, "commonMistake": true|false, "vocabulary": true|false } }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v18",
+  version: "plan-objectives.v22",
   system: [
-    "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
+    "You are an experienced UK teacher writing one lesson's learning objectives, three retrieval questions for its starter, and its teaching extras.",
     "",
     OBJECTIVE_HOUSE_RULES,
     "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts or methods; where it covers several factors, methods or strategies, name them.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
     "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",
-    "Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Ask it in one line or by picking from options the question names; it has one right answer.",
+    `Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks about this lesson's topic or what it teaches, its examples included, even if the class has met it. None goes beyond what this year group has been taught. Ask it in one line with one right answer ("the largest planet", not "a planet"); where several could fit, name the options.`,
+    '"flow" fits the teaching to the subject, year group and kind of topic. "opener": a hook (a question or puzzle on what pupils already think) or the retrieval questions. "workedExample", "commonMistake" (a slide on a mistake pupils often make) and "vocabulary" (a slide of new terms) each take a slide from teaching or practice, so switch on only what this topic and year group need.',
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,

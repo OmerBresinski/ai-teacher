@@ -44,8 +44,8 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 };
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v18",
-  hash: "4ce288b25f09eec5f5a6a357bfb931677dcbc5a6d210dad01f9bbc64174308e6",
+  version: "plan-objectives.v22",
+  hash: "c5a94608e1adbab0606c796979745fbea45ee513b2d3eced4f415a722d73c5de",
 };
 
 describe("plan-objectives", () => {
@@ -71,7 +71,9 @@ describe("plan-objectives", () => {
     // v17: 337, the unhedged count, the list-as-parts rule and "No objective restates the topic"
     // (gpt-6-luna gave one topic-restating objective on list-shaped topics); the alarm moves once.
     // v18: 343, "it has one right answer" on the starter (3 of 9 gpt-6-luna low question faults).
-    expect(system.trim().split(/\s+/).length).toBeLessThan(345);
+    // v22: 447, v21's starter sentence (rounds C-D notTaught starters) and the flow sentence and
+    // sketch slot (l6f: the teaching extras, a new output field).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(450);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
@@ -221,11 +223,18 @@ describe("plan-objectives", () => {
     expect(system).toContain("could plausibly have forgotten");
     // v16 (checklist judge): "no objective teaches" was read against the objectives' wording, so
     // a groyne under "engineering methods" passed. The rule is about the lesson, examples included.
-    expect(system).toContain("None asks what the lesson teaches, its examples included.");
+    // v22 (v21's sentence): rounds C-D starters asked about the lesson's own topic.
+    expect(system).toContain(
+      "None asks about this lesson's topic or what it teaches, its examples included, even if the class has met it.",
+    );
+    expect(system).toContain("None goes beyond what this year group has been taught.");
     // v16: a category word met v14's "not a heading"; the members are named instead.
     expect(system).toContain("where it covers several factors, methods or strategies, name them");
     expect(system).toContain("a different term, fact or method");
-    expect(system).toContain("options the question names; it has one right answer.");
+    expect(system).toContain('one right answer ("the largest planet", not "a planet")');
+    expect(system).toContain("where several could fit, name the options.");
+    // v19's cap thinned round C's coverage (lost 4-12 to B); v22 keeps v18's naming.
+    expect(system).not.toContain("at most two to an objective");
     expect(system).not.toMatch(/earlier lesson|answerable before this lesson begins/);
     expect(system).toContain('"retrieval": [{ "question"');
     // The sketch shows no anchor slot: a no-extract call filled anchors it was shown.
@@ -273,5 +282,21 @@ describe("plan-objectives", () => {
     expect(parse([one, one, one, one, one])).toBe(false);
     expect(parse([{ ...one, id: "o1" }, one])).toBe(false);
     expect(parse([{ ...one, curriculumAnchor: "x".repeat(161) }, one])).toBe(false);
+  });
+  test("v22 flow: the teaching extras only, optional in the schema, no slide count", () => {
+    const system = planObjectivesPrompt.system;
+    expect(system).toContain('"opener": a hook');
+    expect(system).toContain("each take a slide from teaching or practice");
+    expect(system).toContain('"flow": { "opener": "hook|retrieval"');
+    // Rounds D-E: a flow that chose the checks or the close dropped them. Neither is offered.
+    expect(system).not.toMatch(/checkAfter|"close"|"practice"|Slides/);
+    const one = { objectives: [{ text: "Explain why the Romans invaded Britain" }] };
+    const flow = { opener: "hook", workedExample: false, commonMistake: true, vocabulary: true };
+    for (const schema of [planObjectivesOutputSchemaFor(false), PlanObjectivesOutputSchema]) {
+      expect(schema.safeParse(one).success).toBe(true);
+      expect(schema.safeParse({ ...one, flow }).success).toBe(true);
+      expect(schema.safeParse({ ...one, flow: { ...flow, opener: "none" } }).success).toBe(false);
+      expect(schema.safeParse({ ...one, flow: { ...flow, checkAfter: [] } }).success).toBe(false);
+    }
   });
 });
