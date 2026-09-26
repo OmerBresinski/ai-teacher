@@ -31,9 +31,13 @@ export function ImageView(props: ElementViewProps<ImageElement>) {
   if (isOpenPhotoSlot(props.element)) {
     const { element, theme } = props;
     return (
-      <SlotPlaceholder kind="photo" theme={theme} radius={element.radius}>
-        Photo: {element.alt}
-      </SlotPlaceholder>
+      <SlotPlaceholder
+        kind="photo"
+        theme={theme}
+        radius={element.radius}
+        height={element.h}
+        text={`Photo: ${element.alt ?? ""}`}
+      />
     );
   }
   return <Picture {...props} />;
