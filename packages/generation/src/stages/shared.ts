@@ -11,11 +11,19 @@ import {
   yearNumberOf,
 } from "@tj/domain/documents";
 import {
+  COMPARE_NAME,
+  COUNTER_NAME,
   diagramSpecSchemaFor,
+  EYEBROW_NAME,
   figureGroupOf,
   type ImageTextPhoto,
+  KIND_TAG_NAME,
+  type PhotoBrief,
   PLACEHOLDER_IMAGE,
+  photoDropped,
+  type SlideSpec,
   type SpecSchemaOptions,
+  shapeFallback,
 } from "@tj/slides";
 import type { Audience, SlidePhoto } from "../prompts";
 import { type LessonShape, lessonShapeOf } from "../shapes";
@@ -184,6 +192,8 @@ function withSpecNames(
   });
 }
 
+const LOOK_CHROME = new Set([COUNTER_NAME, EYEBROW_NAME, KIND_TAG_NAME]);
+
 function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
   const out: { field: string; text: string }[] = [];
   const figure = figureGroupOf(slide);
@@ -192,13 +202,87 @@ function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
       ? slide.question.options.filter((o) => o.correct).map((o) => o.id)
       : [],
   );
+  // A content slide's compare cards (`@tj/slides` compareCards): each card, then its label
+  // (caption) and its points (body), reach Repair as `compare.left.*` / `compare.right.*`.
+  let side: "left" | "right" | undefined;
+  let sideLabelled = false;
   for (const element of slide.elements) {
     if (figure && element === figure) {
       out.push({ field: "figure", text: JSON.stringify(figure.figure) });
-    } else if (element.type === "text") {
+      continue;
+    }
+    if (slide.kind === "content" && element.name === COMPARE_NAME) {
+      side = side === undefined ? "left" : "right";
+      sideLabelled = false;
+      continue;
+    }
+    if (element.type === "text" && side !== undefined) {
+      const text = richDocToPlainText(element.doc).trim();
+      if (!sideLabelled && element.style?.preset === "caption") {
+        sideLabelled = true;
+        if (text) out.push({ field: `compare.${side}.label`, text });
+        continue;
+      }
+      if (sideLabelled && element.style?.preset === "body") {
+        const lines = text
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (lines.length > 0) out.push({ field: `compare.${side}.points`, text: lines.join("\n") });
+        if (side === "right") side = undefined;
+        continue;
+      }
+    }
+    if (element.type === "text") {
       const preset = element.style?.preset;
       if (preset === "caption" && slide.kind !== "diagram") continue;
+      // The look's chrome (`@tj/slides` look.ts) is drawn from the deck, not a spec field.
+      if (element.name !== undefined && LOOK_CHROME.has(element.name)) continue;
       const text = richDocToPlainText(element.doc).trim();
+      // A worked example's working laid as a steps strip (`@tj/slides` structure.ts): one card
+      // per step, named "Step n", and a continuation slide numbers on.
+      const step = element.name?.match(/^Step (\d+)$/);
+      if (step && text) {
+        out.push({ field: `steps[${Number(step[1]) - 1}]`, text });
+        continue;
+      }
+      // The two-column teaching slide (`@tj/slides` splitContent): each point is its own "Point"
+      // text.
+      if (slide.kind === "content" && element.name === "Point" && text) {
+        const last = out.find((f) => f.field === "points");
+        if (last) last.text = `${last.text}\n${text}`;
+        else out.push({ field: "points", text });
+        continue;
+      }
+      // A panel's key idea or key card is the slide's own words; a definition from the lesson's
+      // glossary is shown as its own field.
+      if (element.name === "Side panel text") {
+        if (text) out.push({ field: "body", text });
+        continue;
+      }
+      if (element.name === "Side panel definition") {
+        if (text) out.push({ field: "definition", text });
+        continue;
+      }
+      // A content slide's `points` sit as a bullet list under its body (`@tj/slides` bodyWithPoints).
+      const list = (element.doc.content ?? []).findIndex((n) => n.type === "bulletList");
+      if (slide.kind === "content" && preset === "body" && list >= 0) {
+        const before = richDocToPlainText({
+          type: "doc",
+          content: element.doc.content?.slice(0, list),
+        }).trim();
+        const points = richDocToPlainText({
+          type: "doc",
+          content: element.doc.content?.slice(list),
+        })
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .join("\n");
+        if (before) out.push({ field: "body", text: before });
+        if (points) out.push({ field: "points", text: points });
+        continue;
+      }
       if (text) out.push({ field: preset === "small" ? "instruction" : (preset ?? "text"), text });
     } else if (element.type === "option") {
       const text = richDocToPlainText(element.doc).trim();
@@ -257,6 +341,8 @@ export function specFieldsCover(slide: Slide): boolean {
       (line) =>
         line.length > 0 &&
         !covered.has(line) &&
+        // A step card's number disc (`@tj/slides` structure.ts) is chrome, not a spec field.
+        !/^\d{1,2}$/.test(line) &&
         !/^(answer|answers|correct|model answer):/.test(line),
     )
     .every((line) => shown.has(line));
@@ -335,4 +421,54 @@ export function retrievalInput(facts: {
 }): { retrieval?: { question: string; answer: string }[] } {
   const r = facts.retrieval?.map(({ question, answer }) => ({ question, answer }));
   return r && r.length > 0 ? { retrieval: r } : {};
+}
+
+/** The year and subject a lesson's slides name in the look's top line (`@tj/slides` withDeckChrome). */
+export const deckOf = (lesson: { yearGroup?: string | null; subject?: string | null }) => ({
+  yearGroup: lesson.yearGroup ?? null,
+  subject: lesson.subject ?? null,
+});
+
+/**
+ * A content slide written in a shape it could not be placed in (a compare too long for its cards,
+ * steps too long for the strip): the slide already reads as the lead plus points, so a word budget
+ * missed is not a retry but a metric, logged by shape (`metric: "shape-fallback"`) for the lab to
+ * count. Returns the shape, or `undefined` when the slide took its shape.
+ */
+export function logShapeFallback(
+  logger: PipelineDeps["logger"],
+  stage: "generate" | "repair",
+  index: number,
+  spec: SlideSpec,
+  slide: Slide,
+): string | undefined {
+  const shape = shapeFallback(spec, slide);
+  if (shape) logger.info({ stage, metric: "shape-fallback", shape, index }, "shape fallback");
+  return shape;
+}
+
+/**
+ * The photograph a content slide keeps room for (look/image-slot): its outline entry's image
+ * brief, as a structure hint for `materialiseSlides`. A compare or a sequence is full width, so a
+ * brief on one is dropped and logged (`metric: "photo-dropped"`).
+ */
+export function photoStructure(
+  entry: OutlineEntry | undefined,
+  spec: SlideSpec,
+  logger: PipelineDeps["logger"],
+  stage: "generate" | "repair",
+  index: number,
+): { photo?: PhotoBrief } {
+  const brief = entry?.kind === "content" ? entry.imageBrief : undefined;
+  if (!brief) return {};
+  const photo = { subject: brief.subject, mustShow: brief.mustShow };
+  const dropped = photoDropped(spec, { photo });
+  if (dropped) {
+    logger.info(
+      { stage, metric: "photo-dropped", shape: dropped, index, subject: brief.subject },
+      "photo dropped: the shape is full width",
+    );
+    return {};
+  }
+  return { photo };
 }
