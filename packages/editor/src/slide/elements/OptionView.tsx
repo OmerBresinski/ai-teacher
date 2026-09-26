@@ -70,6 +70,9 @@ export function OptionView({
   );
 
   const correctColor = theme.colors.correct;
+  // A card laid as a full-width answer row carries a tighter padding of its own (`@tj/slides`
+  // `fit-slide.ts`); the fit engine measures it from the same field (`textPartsOf`).
+  const pad = element.textStyle?.padding ?? PAD;
 
   // A chip that only repeats the card's own words is dropped (`optionChipLabel`, shared with the
   // PPTX exporter so the two never drift).
@@ -85,8 +88,8 @@ export function OptionView({
         display: "flex",
         alignItems: "center",
         gap: CHIP_GAP,
-        padding: PAD,
-        paddingRight: scorable ? PAD + TICK_LANE : PAD,
+        padding: pad,
+        paddingRight: scorable ? pad + TICK_LANE : pad,
         boxSizing: "border-box",
         background: correct ? withAlpha(correctColor, 0.1) : theme.colors.surface,
         border: `${correct ? 2 : 1.5}px solid ${correct ? correctColor : theme.colors.line}`,

@@ -135,9 +135,9 @@ describe("applyObjectiveEdits", () => {
       { id: "q2", stem: "Name the cycle", answer: "Water", reasoning: "It repeats" },
     ],
     outline: [
-      { id: "s1", kind: "title", minutes: 2, factRefs: [] },
-      { id: "s2", kind: "objectives", minutes: 3, factRefs: ["o1", "o2", "o3"] },
-      { id: "s3", kind: "content", minutes: 55, factRefs: ["k1", "k2", "v1"] },
+      { id: "s1", kind: "title", factRefs: [] },
+      { id: "s2", kind: "objectives", factRefs: ["o1", "o2", "o3"] },
+      { id: "s3", kind: "content", factRefs: ["k1", "k2", "v1"] },
     ],
   });
 

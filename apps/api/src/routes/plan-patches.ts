@@ -95,8 +95,9 @@ export interface ConfirmResult {
  * `/generate` on a lesson at `planned` with facts: the teacher's objectives applied and the plan
  * `confirmed` for `jobId`. A text-only edit keeps the revision, the checkpoint and the slides —
  * `lesson.generate` re-materialises the objectives slide. Adding or removing an objective, or a
- * new deck length or duration, is a pinned re-plan: revision + 1, outline emptied, checkpoint
- * cleared. A lesson written before plans existed (revision 0) is confirmed as revision 1.
+ * new deck length, is a pinned re-plan: revision + 1, outline emptied, checkpoint cleared. A new
+ * duration is stored on the brief and re-plans nothing: a lesson's size is its slide count
+ * (ruling 82). A lesson written before plans existed (revision 0) is confirmed as revision 1.
  */
 export function confirmLesson(
   lesson: Lesson & { facts: LessonFacts },
@@ -107,9 +108,7 @@ export function confirmLesson(
   const brief = lesson.brief;
   const slideCountChanged =
     input.slideCount !== undefined && input.slideCount !== brief?.slideCount;
-  const durationChanged =
-    input.durationMin !== undefined && input.durationMin !== brief?.durationMin;
-  const replan = edited.shapeChanged || slideCountChanged || durationChanged;
+  const replan = edited.shapeChanged || slideCountChanged;
   const revision = lesson.plan?.revision ?? 0;
   const plan = {
     revision: replan || revision === 0 ? revision + 1 : revision,
@@ -117,20 +116,29 @@ export function confirmLesson(
     jobId,
     confirmedAt: now.toISOString(),
   };
-  if (!replan) return { lesson: { ...lesson, facts: edited.facts, plan }, replan };
+  const briefPatch = brief
+    ? {
+        brief: {
+          ...brief,
+          ...(input.slideCount !== undefined ? { slideCount: input.slideCount } : {}),
+          ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
+        },
+      }
+    : {};
+  // The stored duration follows the brief in both branches; nothing is re-planned for it.
+  const withDuration = (facts: LessonFacts): LessonFacts =>
+    input.durationMin !== undefined ? { ...facts, durationMin: input.durationMin } : facts;
+  if (!replan) {
+    return {
+      lesson: { ...lesson, ...briefPatch, facts: withDuration(edited.facts), plan },
+      replan,
+    };
+  }
   return {
     lesson: {
       ...withoutCheckpoint(lesson),
-      facts: edited.shapeChanged ? edited.facts : pinnedFacts(edited.facts),
-      ...(brief
-        ? {
-            brief: {
-              ...brief,
-              ...(input.slideCount !== undefined ? { slideCount: input.slideCount } : {}),
-              ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
-            },
-          }
-        : {}),
+      facts: withDuration(edited.shapeChanged ? edited.facts : pinnedFacts(edited.facts)),
+      ...briefPatch,
       slides: [],
       plan,
     },

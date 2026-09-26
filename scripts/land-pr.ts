@@ -9,6 +9,9 @@
 // required checks are green; a deploy that outlives the watch is reported in the summary (exit 1)
 // rather than hiding the fact that the PR is already merged.
 
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { parseArgs } from "node:util";
 import { $ } from "bun";
 import { ExitCode, runMain, UserFacingError } from "./lib/exit";
@@ -18,6 +21,7 @@ import { ROOT } from "./lib/paths";
 const VERCEL_PROJECT = "teaching-journey-web";
 const VERCEL_SCOPE = "omerbresinskis-projects";
 const RAILWAY_PROJECT = "a79752e1-8bf5-41d0-b832-f1b64aaf6d2f";
+const RAILWAY_ENVIRONMENT = "production";
 const RAILWAY_SERVICES = ["api", "worker"] as const;
 const UNKNOWN_RETRIES = 10;
 const UNKNOWN_DELAY_MS = 6_000;
@@ -128,6 +132,30 @@ export function unresolvedThreadCount(graphqlJson: unknown): number {
           (node as { isResolved?: unknown }).isResolved === false,
       ).length
     : 0;
+}
+
+/**
+ * Railway CLI 4.x has no `-p`/`--project` flag on `deployment list` or `logs` (4.30.3 rejects it
+ * with "unexpected argument"): the project comes from the working directory's `railway link`, or
+ * the nearest linked parent directory. `realDeps` therefore links a private temporary directory
+ * (`railwayLinkArgs`) and runs every read from there, so `land` works from any worktree and
+ * leaves the developer's own links alone.
+ */
+export function railwayLinkArgs(): string[] {
+  return ["link", "-p", RAILWAY_PROJECT, "-e", RAILWAY_ENVIRONMENT, "--json"];
+}
+
+export function railwayListArgs(service: RailwayService): string[] {
+  return ["deployment", "list", "-e", RAILWAY_ENVIRONMENT, "-s", service, "--json"];
+}
+
+/** The command that shows a failed deployment's build logs, and the link it needs first. */
+export function railwayLogsCommand(service: RailwayService, deploymentId: string | null): string {
+  const deployment = deploymentId === null ? "" : ` ${deploymentId}`;
+  return [
+    `railway logs${deployment} -e ${RAILWAY_ENVIRONMENT} -s ${service} --build`,
+    `(from a directory linked with: railway link -p ${RAILWAY_PROJECT} -e ${RAILWAY_ENVIRONMENT})`,
+  ].join("\n");
 }
 
 export function railwayDeploymentStatus(json: string): string | null {
@@ -618,7 +646,7 @@ async function watchDeploys(
         railway[service] = { ok: true, status: deployment.status };
       } else if (deployment.status === "FAILED" || deployment.status === "CRASHED") {
         throw new UserFacingError(
-          `Railway ${service} deployment ${deployment.status}.\nrailway logs -p ${RAILWAY_PROJECT} -e production -s ${service} --build`,
+          `Railway ${service} deployment ${deployment.status}.\n${railwayLogsCommand(service, deployment.id)}`,
         );
       }
     }
@@ -851,7 +879,81 @@ function shellResultWithStderr(result: {
   };
 }
 
-function realDeps(): LandPrDeps {
+export interface RailwayLinkDeps {
+  /** Creates the private directory and returns its path. */
+  mkdtemp(): Promise<string>;
+  /** Runs `railway <args>` in `cwd`. */
+  railway(args: string[], cwd: string): Promise<CommandResult>;
+  /** Removes the directory. */
+  rm(dir: string): Promise<void>;
+}
+
+/**
+ * A private directory linked to the Railway project for one run (see `railwayLinkArgs`). The
+ * link is made on the first `cwd()` and memoised, so `--no-deploy` never touches Railway.
+ * `dispose()` unlinks (only if the link succeeded) and removes the directory; it is safe to call
+ * more than once and from a signal handler while `cwd()` is still pending.
+ */
+export class RailwayLink {
+  private dir: string | null = null;
+  private linked: Promise<string> | null = null;
+
+  constructor(private readonly deps: RailwayLinkDeps) {}
+
+  cwd(): Promise<string> {
+    this.linked ??= (async () => {
+      const dir = await this.deps.mkdtemp();
+      this.dir = dir;
+      const result = await this.deps.railway(railwayLinkArgs(), dir);
+      requireSuccess(result, "Could not link a temporary directory to the Railway project");
+      return dir;
+    })();
+    return this.linked;
+  }
+
+  async dispose(): Promise<void> {
+    const linked = this.linked;
+    this.linked = null;
+    if (linked === null) return;
+    const wasLinked = await linked.then(
+      () => true,
+      () => false,
+    );
+    const dir = this.dir;
+    this.dir = null;
+    if (dir === null) return;
+    if (wasLinked) await this.deps.railway(["unlink", "--yes"], dir);
+    await this.deps.rm(dir);
+  }
+}
+
+/** `< /dev/null`: `railway link` must never wait on a prompt, even from a terminal. */
+function realRailwayLinkDeps(): RailwayLinkDeps {
+  return {
+    mkdtemp: () => mkdtemp(path.join(os.tmpdir(), "land-pr-railway-")),
+    railway: async (args, cwd) =>
+      shellResult(await $`railway ${args} < /dev/null`.cwd(cwd).quiet().nothrow()),
+    rm: (dir) => rm(dir, { recursive: true, force: true }),
+  };
+}
+
+/**
+ * Ctrl-C or a SIGTERM during the CI or deploy watch must still unlink the temporary directory,
+ * so the signal runs `cleanup` and then exits with the conventional 128 + signal code (the same
+ * codes `dev.ts` reports for its child).
+ */
+function cleanUpOnSignal(cleanup: () => Promise<void>): void {
+  const codes = { SIGINT: ExitCode.Interrupted, SIGTERM: ExitCode.Terminated } as const;
+  for (const signal of Object.keys(codes) as Array<keyof typeof codes>) {
+    process.once(signal, () => {
+      log.step(`${signal}: unlinking the Railway temporary directory`);
+      void cleanup().finally(() => process.exit(codes[signal]));
+    });
+  }
+}
+
+function realDeps(link: RailwayLink): LandPrDeps {
+  const railway = realRailwayLinkDeps();
   return {
     gh: async (args) => shellResult(await $`gh ${args}`.cwd(ROOT).quiet().nothrow()),
     git: async (args) => shellResult(await $`git ${args}`.cwd(ROOT).quiet().nothrow()),
@@ -859,13 +961,7 @@ function realDeps(): LandPrDeps {
       shellResultWithStderr(
         await $`vercel ls ${VERCEL_PROJECT} --scope ${VERCEL_SCOPE}`.cwd(ROOT).quiet().nothrow(),
       ),
-    railwayList: async (service) =>
-      shellResult(
-        await $`railway deployment list -p ${RAILWAY_PROJECT} -e production -s ${service} --json`
-          .cwd(ROOT)
-          .quiet()
-          .nothrow(),
-      ),
+    railwayList: async (service) => railway.railway(railwayListArgs(service), await link.cwd()),
     smoke: async () => shellResult(await $`bun run smoke:prod`.cwd(ROOT).quiet().nothrow()),
     sleep: (ms) => Bun.sleep(ms),
     now: () => Date.now(),
@@ -874,9 +970,15 @@ function realDeps(): LandPrDeps {
 
 async function main(): Promise<number> {
   const { pr, options } = parseLandPrArgs(process.argv.slice(2));
-  const summary = await landPr(pr, options, realDeps());
-  console.log(formatLandPrSummary(summary));
-  return summary.ok ? ExitCode.Ok : ExitCode.Failure;
+  const link = new RailwayLink(realRailwayLinkDeps());
+  cleanUpOnSignal(() => link.dispose());
+  try {
+    const summary = await landPr(pr, options, realDeps(link));
+    console.log(formatLandPrSummary(summary));
+    return summary.ok ? ExitCode.Ok : ExitCode.Failure;
+  } finally {
+    await link.dispose();
+  }
 }
 
 if (import.meta.main) await runMain(main);
