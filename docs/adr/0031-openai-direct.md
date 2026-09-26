@@ -55,9 +55,11 @@ is exercised again.
    `openai.reasoningEffort` (and the same value under the other providers' namespaces, each inert
    outside its provider; Bedrock has no `none` and receives `low`). `minimal` is never sent: the
    Luna ids refuse it. No stage's effort changes in this ADR's PR.
-6. **Structured output is JSON schema, non-strict.** `openai/` ids are sent
-   `strictJsonSchema: false`: OpenAI's strict mode refuses a schema whose `required` does not list
-   every key, and the pipeline's schemas have optional fields. Zod validates the answer in full, as
+6. **Structured output is JSON schema, non-strict.** Every call sends `openai.strictJsonSchema:
+   false`: OpenAI's strict mode refuses a schema whose `required` does not list every key, and the
+   pipeline's schemas have optional fields. It is not keyed on the `openai/` prefix, because the
+   direct provider strips it and the routed id is bare (`gpt-6-luna`); no other provider reads the
+   `openai` namespace. Zod validates the answer in full, as
    before (ADR 0025 §14).
 7. **What the logs say.** `ConfiguredAi.kind` is `openai` when the OpenAI key is set, else
    `bedrock` when the Bedrock key is, else `gateway`; that is the boot log's `ai` field. The `ai`

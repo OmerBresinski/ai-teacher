@@ -279,11 +279,17 @@ describe("providerOptionsFor (the effort under every provider's namespace, ADR 0
     });
   });
 
-  test("A9: a Bedrock id sends the effort as is, with no strictJsonSchema and no gateway pin", () => {
+  test("A9: a Bedrock id sends the effort as is, and no gateway pin", () => {
     const options = providerOptionsFor("us.openai.gpt-5.6-luna", "medium").providerOptions;
-    expect(options?.openai).toEqual({ reasoningEffort: "medium" });
+    expect(options?.openai).toEqual({ reasoningEffort: "medium", strictJsonSchema: false });
     expect(options?.bedrock.reasoningConfig.maxReasoningEffort).toBe("medium");
     expect(options && "gateway" in options).toBe(false);
+  });
+
+  test("the direct OpenAI route's bare id (`gpt-6-luna`) still sends a non-strict schema", () => {
+    // The direct provider strips the `openai/` prefix, so the routed model reports the bare id.
+    const sent = providerOptionsFor("gpt-6-luna", "none").providerOptions?.openai;
+    expect(sent).toEqual({ reasoningEffort: "none", strictJsonSchema: false });
   });
 
   test("A10: an Anthropic id gets no provider options at all", () => {
@@ -339,7 +345,7 @@ describe("callStructured", () => {
     // Every provider namespace carries the same effort; a provider reads only its own.
     expect(ai.calls[0]?.providerOptions).toEqual({
       bedrock: { reasoningConfig: { maxReasoningEffort: "low" } },
-      openai: { reasoningEffort: "low" },
+      openai: { reasoningEffort: "low", strictJsonSchema: false },
       google: { thinkingConfig: { thinkingLevel: "low" } },
       alibaba: { enableThinking: false },
       deepseek: { thinking: { type: "disabled" } },

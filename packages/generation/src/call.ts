@@ -478,8 +478,9 @@ export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
         reasoningEffort: effort,
         // OpenAI's strict mode refuses a schema whose `required` does not list every key; the
         // pipeline's schemas have optional fields, and zod validates the answer in full anyway.
-        // Bedrock's route never minded, so the key is sent for `openai/` ids only.
-        ...(isOpenAiModelId(modelId) ? { strictJsonSchema: false } : {}),
+        // Sent for every call: the direct provider strips the `openai/` prefix, so the routed id
+        // is bare (`gpt-6-luna`) and a prefix check misses it. Only OpenAI reads this namespace.
+        strictJsonSchema: false,
       },
       // Gemini 3 reads a level, not an effort; Qwen and DeepSeek think or not (smoke-tested
       // 2026-09-17: Gemini at its default spent the whole slide budget thinking, Qwen 3 373 tokens).
