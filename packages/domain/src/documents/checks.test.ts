@@ -182,11 +182,11 @@ describe("checkLesson", () => {
       })),
       misconceptions: [],
       outline: [
-        { id: "s1", kind: "title", minutes: 2, factRefs: [] },
-        { id: "s2", kind: "objectives", minutes: 3, factRefs: ["o1", "o2", "o3"] },
-        { id: "s3", kind: "multiple-choice", minutes: 15, factRefs: ["o1", "q1", "q2", "q3"] },
-        { id: "s4", kind: "true-false", minutes: 15, factRefs: ["o2", "q4", "q5"] },
-        { id: "s5", kind: "exit-ticket", minutes: 25, factRefs: ["o3", "q6", "q7", "q8"] },
+        { id: "s1", kind: "title", factRefs: [] },
+        { id: "s2", kind: "objectives", factRefs: ["o1", "o2", "o3"] },
+        { id: "s3", kind: "multiple-choice", factRefs: ["o1", "q1", "q2", "q3"] },
+        { id: "s4", kind: "true-false", factRefs: ["o2", "q4", "q5"] },
+        { id: "s5", kind: "exit-ticket", factRefs: ["o3", "q6", "q7", "q8"] },
       ],
       durationMin: 60,
     });
@@ -318,35 +318,6 @@ describe("checkLesson", () => {
     });
   });
 
-  describe("timing", () => {
-    const withMinutes = (total: number, durationMin: number): Lesson => {
-      const l = generatedLesson();
-      const facts = lessonFacts();
-      facts.durationMin = durationMin;
-      facts.outline = [{ id: "s1", kind: "content", minutes: total, factRefs: [] }];
-      l.facts = facts;
-      return l;
-    };
-
-    test("outline minutes 70 for a 60-minute lesson is a warning", () => {
-      const findings = checkLesson(withMinutes(70, 60));
-      expect(findings).toEqual([
-        expect.objectContaining({ check: "timing", severity: "warning", target: {} }),
-      ]);
-      expect(findings[0]?.message).toContain("70");
-    });
-
-    test("outline minutes 65 (and 66, 54) for a 60-minute lesson is within tolerance", () => {
-      expect(checkLesson(withMinutes(65, 60))).toEqual([]);
-      expect(checkLesson(withMinutes(66, 60))).toEqual([]);
-      expect(checkLesson(withMinutes(54, 60))).toEqual([]);
-    });
-
-    test("53 minutes for a 60-minute lesson is a warning", () => {
-      expect(checkLesson(withMinutes(53, 60)).map((f) => f.check)).toEqual(["timing"]);
-    });
-  });
-
   describe("quality checks (TEACH-210)", () => {
     const withPitch = (l: Lesson, sentenceLengthMax = 12, readingAgeTarget = 9) => {
       if (!l.facts) throw new Error("fixture");
@@ -435,20 +406,31 @@ describe("checkLesson", () => {
       expect(of(checkLesson(generatedLesson(), generatedWorksheet()), "repetition")).toEqual([]);
     });
 
-    test("row 12: an outline with 8 explain minutes of 60 is one explanation-share warning", () => {
+    test("row 12: explanation-share counts slides after title and objectives, rounding the floor down", () => {
       const l = generatedLesson();
       if (!l.facts) throw new Error("fixture");
+      const practice = (n: number) =>
+        Array.from({ length: n }, (_, i) => ({
+          id: `p${i}`,
+          kind: "multiple-choice" as const,
+          factRefs: ["q1"],
+        }));
+      // 7 slides after title/objectives: floor(7 × 30 %) = 2 explain slides needed; 1 is short.
       l.facts.outline = [
-        { id: "s1", kind: "title", minutes: 2, factRefs: [] },
-        { id: "s2", kind: "content", minutes: 8, factRefs: ["o1"] },
-        { id: "s3", kind: "multiple-choice", minutes: 50, factRefs: ["q1"] },
+        { id: "s1", kind: "title", factRefs: [] },
+        { id: "s2", kind: "objectives", factRefs: ["o1"] },
+        { id: "s3", kind: "content", factRefs: ["o1"] },
+        ...practice(6),
       ];
       const findings = of(checkLesson(l), "explanation-share");
       expect(findings).toEqual([expect.objectContaining({ severity: "warning", target: {} })]);
-      expect(findings[0]?.message).toContain("8 of 60 minutes");
-      // 18 of 60 (exactly 30 %) passes.
-      l.facts.outline[1] = { id: "s2", kind: "content", minutes: 18, factRefs: ["o1"] };
-      l.facts.outline[2] = { id: "s3", kind: "multiple-choice", minutes: 40, factRefs: ["q1"] };
+      expect(findings[0]?.message).toContain("1 of 7 slides");
+      // 2 of 7 meets the floor.
+      l.facts.outline = [
+        ...l.facts.outline.slice(0, 3),
+        { id: "s4", kind: "worked-example", factRefs: ["o1"] },
+        ...practice(5),
+      ];
       expect(of(checkLesson(l), "explanation-share")).toEqual([]);
     });
 

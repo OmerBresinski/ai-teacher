@@ -1,6 +1,14 @@
 /** Element reducers on one slide: add, patch, transform, delete, duplicate, paste. */
 
-import type { ElementType, Id, Lesson, Slide, SlideElement } from "@tj/domain/documents";
+import {
+  applyProvenancePatch,
+  type ElementType,
+  type Id,
+  type Lesson,
+  type RichDoc,
+  type Slide,
+  type SlideElement,
+} from "@tj/domain/documents";
 import { cloneElement } from "../factories";
 import { rectOf, unionRect } from "../geometry";
 import { editQuietly, editSlide, findElement, silent, type WithId } from "./core";
@@ -60,11 +68,20 @@ const addAbove = (lesson: Lesson, copies: SlideElement[], sourceIds: Id[], slide
 
 export type ElementPatch<T extends SlideElement = SlideElement> = Partial<T> | ((el: T) => void);
 
-/** Apply a patch to an immer draft: a mutator runs on it, an object is assigned over it. */
-const applyPatch = <T extends SlideElement>(el: SlideElement, patch: ElementPatch<T>) => {
-  if (typeof patch === "function") patch(el as T);
-  else Object.assign(el, patch);
-};
+/**
+ * Apply a patch to an immer draft: a mutator runs on it, an object is assigned over it. The funnel
+ * for every element edit the teacher makes, so this is where an `"ai"` element's first change to
+ * its words (the doc, a table cell, an option label, an alt) flips it to the teacher's and keeps
+ * the AI's words (`applyProvenancePatch`, TEACH-74); a re-mark (bold over the same words), a move
+ * or a restyle is not a text edit. The two writes the app makes on its own bypass it: layout
+ * measurement (`updateElementLayout`) and the fitting engine (`fitElement`), which may shorten a
+ * box's words when it splits them across a slide.
+ */
+const applyPatch = <T extends SlideElement>(el: SlideElement, patch: ElementPatch<T>) =>
+  applyProvenancePatch(el, (target) => {
+    if (typeof patch === "function") patch(target as T);
+    else Object.assign(target, patch);
+  });
 
 /** Patch by object or by a mutator run on the immer draft. Reaches into a group's children. */
 export const updateElement = <T extends SlideElement>(
@@ -113,6 +130,38 @@ export const updateElementLayout = silent(
     });
   },
 );
+
+/** What the fitting engine may write on one element (`tidySlide`): nothing else. */
+export type FitPatch = {
+  y: number;
+  h: number;
+  /** A stepped-down size; left alone when the engine did not step it. */
+  fontSize?: number;
+  /** The head of the words after a split, the rest having gone to a continuation slide. */
+  doc?: RichDoc;
+};
+
+/**
+ * The fitting engine's write on a specific slide: position, height, a stepped size and, after a
+ * split, the head of the words. One undo step like any edit (a tidy is undoable), but not an edit
+ * of the words — the teacher typed nothing, and `tidySlide` runs on its own (`useFitMigration`,
+ * the toolbar button) — so it never goes through `applyPatch`: an `"ai"` element stays the AI's,
+ * `originalText` is not written, and the element stays in the fact cascade (ADR 0025 §18). The
+ * patch is a closed shape, not a mutator, so no other kind of write can borrow this path.
+ */
+export const fitElement = (lesson: Lesson, slideId: Id, id: Id, fit: FitPatch): Lesson =>
+  editSlide(lesson, slideId, (s) => {
+    const el = findElement(s, id);
+    if (!el) return;
+    el.y = fit.y;
+    el.h = fit.h;
+    if (fit.fontSize !== undefined) {
+      if (el.type === "text" || el.type === "gap-text")
+        el.style = { ...el.style, fontSize: fit.fontSize };
+      else if (el.type === "option") el.textStyle = { ...el.textStyle, fontSize: fit.fontSize };
+    }
+    if (fit.doc && isTextLike(el)) el.doc = fit.doc;
+  });
 
 export type Transform = {
   dx?: number;

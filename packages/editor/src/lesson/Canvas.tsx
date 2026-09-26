@@ -22,6 +22,7 @@ import type { ImageSearchClient } from "../images/image-search";
 import { nextStep, ZoomControl } from "../kit/ZoomControl";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
+import { applySlideClip } from "../slide/slide-clip";
 import { type CanvasMenuState, ElementContextMenu } from "./canvas/ElementContextMenu";
 import { SlideActions } from "./canvas/SlideActions";
 import { SlideTabs } from "./canvas/SlideTabs";
@@ -82,7 +83,7 @@ export function Canvas({
 }: CanvasProps) {
   const lesson = useLesson();
   const zoom = useZoom();
-  const { previewStep } = useSessionUi();
+  const { previewStep, editingTextId } = useSessionUi();
   const { setZoom, select, clearSelection } = useSessionActions();
   const read = useSessionRead();
   // The Answer tab and the last reveal step are the same state (SPEC §6), decided once.
@@ -97,6 +98,8 @@ export function Canvas({
 
   const scroller = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  /** The box that clips the slide to its 960x540 edge. */
+  const clip = useRef<HTMLDivElement>(null);
   /** The selection layer's entry point for a press on the margin round the slide. */
   const layer = useRef<MarginHandle | null>(null);
   // The Question / Answer tabs' wrapper: the pill hangs off the other end of the same band, and at
@@ -124,6 +127,61 @@ export function Canvas({
     },
     [onScaleChange],
   );
+
+  /**
+   * The slide never scrolls inside its own frame. Typing past the bottom of a text box made
+   * Chromium caret-scroll the frame and the slide root (both `overflow: hidden`, which is still a
+   * scroll container), so the slide's top rows slid up under the frame edge and stayed there
+   * after Escape. Both are now `overflow: clip`, which no caret, wheel or script can scroll; this
+   * snap-back covers an engine that still treats them as scrollable — on any scroll they report,
+   * and once more when editing ends.
+   */
+  const snapBack = useCallback(() => {
+    const frame = clip.current;
+    if (!frame) return;
+    for (const el of [frame, frame.querySelector<HTMLElement>("[data-slide-root]")]) {
+      if (el && (el.scrollTop !== 0 || el.scrollLeft !== 0)) {
+        el.scrollTop = 0;
+        el.scrollLeft = 0;
+      }
+    }
+  }, []);
+  /**
+   * Where the scroll region stood when editing began. Following the caret through it is the one
+   * scroll the editor makes on the teacher's behalf, and it can leave the slide's top rows above
+   * the viewport; when editing ends the region goes back exactly there, so a pan or zoom the
+   * teacher set up before editing is kept. Nothing is scrolled into view on our own account: a
+   * region the caret never moved is left alone.
+   */
+  const regionAtEditStart = useRef<{ top: number; left: number } | null>(null);
+  useEffect(() => {
+    const region = scroller.current;
+    if (editingTextId !== null) {
+      if (regionAtEditStart.current === null && region) {
+        regionAtEditStart.current = { top: region.scrollTop, left: region.scrollLeft };
+      }
+      return;
+    }
+    snapBack();
+    const start = regionAtEditStart.current;
+    regionAtEditStart.current = null;
+    if (region && start && (region.scrollTop !== start.top || region.scrollLeft !== start.left)) {
+      region.scrollTop = start.top;
+      region.scrollLeft = start.left;
+    }
+  }, [editingTextId, snapBack]);
+
+  /**
+   * While a text box is being typed into, the slide's bottom edge opens so the lines that run
+   * off it stay in sight (the scroll region follows the caret as usual); the moment editing ends
+   * the slide clips again. Sideways overflow is clipped throughout, and no other surface
+   * (thumbnails, present, export) mounts this frame. The rule itself, with its `hidden`
+   * fallback for engines without `clip`, is `applySlideClip`; it is written before paint.
+   */
+  const spill = editingTextId !== null;
+  useLayoutEffect(() => {
+    if (clip.current) applySlideClip(clip.current, spill);
+  }, [spill]);
 
   const compactChrome = useCompactChrome();
   const gutter = compactChrome ? 16 : GUTTER;
@@ -312,11 +370,18 @@ export function Canvas({
             >
               {/* `isolation` contains the slide's own z-indices so the selection layer stays above them. */}
               <div
+                ref={clip}
+                data-slide-clip
+                // Scroll does not bubble, so the capture phase is what hears the slide root too.
+                onScrollCapture={(e) => {
+                  const t = e.target as HTMLElement;
+                  if (t === clip.current || t.hasAttribute?.("data-slide-root")) snapBack();
+                }}
                 style={{
                   position: "absolute",
                   inset: 0,
                   borderRadius: "inherit",
-                  overflow: "hidden",
+                  // `overflow` is written by `applySlideClip` above, not here.
                   isolation: "isolate",
                 }}
               >
@@ -329,6 +394,7 @@ export function Canvas({
                   revealAnswer={showingAnswer}
                   answerProgress={answerStepsTaken(slide, previewStep)}
                   transformOverride={preview ?? undefined}
+                  spill={spill}
                 />
               </div>
               {/* An inset hairline in the theme's own line colour gives the slide an edge against the gutter. */}

@@ -13,6 +13,7 @@
     "./themes": "./src/themes.ts",
     "./factories": "./src/factories.ts",
     "./layouts": "./src/layouts.ts",
+    "./reflow": "./src/reflow.ts",
     "./worksheet": "./src/worksheet/index.ts"
   },
   "scripts": {
