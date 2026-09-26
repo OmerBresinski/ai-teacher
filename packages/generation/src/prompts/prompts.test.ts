@@ -5,7 +5,7 @@ import { assignFactIds, PITCH_BOUNDS, WorksheetSpecSchema } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, PLAN_SKELETONS, sampleBriefLesson } from "../testing";
 import { FIGURE_FIT, FIGURE_NUMBERS, FIGURE_UNKNOWN, FIGURE_VALUES } from "./figures";
-import { generateSlidePrompt, ownMisconceptions } from "./generate-slide";
+import { generateSlidePrompt, keptDiagram, ownMisconceptions } from "./generate-slide";
 import { generateWorksheetFillPrompt, type WorksheetFill } from "./generate-worksheet-fill";
 import { promptHash } from "./hash";
 import {
@@ -219,8 +219,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
   },
   "plan-teach-objective": {
-    version: "plan-teach-objective.v3",
-    hash: "c74a0723399b8f7cd3c5fc7256bbd9d3345f450b00d48590e6e1f1f970d7fd2c",
+    // v4 (look/pr2-generation; look v4–v8 on that branch): each key idea's slide `shape`
+    // (CONTENT_SHAPES) and optional `visual`; a key idea is what one slide explains in 40–60 words;
+    // the shape follows what the idea contains; an optional stock-photo brief when a camera could
+    // show the idea.
+    version: "plan-teach-objective.v4",
+    hash: "ca26e6352f3ca575756edc0b1e6c5af4d8eed51cae6880eb72c219e785e27b8d",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",
@@ -235,8 +239,11 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // did v26 (the figure block, diagram entries only; pinned by its own test below), v27 (the
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
-    version: "generate-slide.v29",
-    hash: "e3953495e78f5e8746ca4a39e00004a8756720a703f2503954ca11d5fcc5a072",
+    // v30 (look/pr2-generation) brings the look branch's system text and shape line (look v26–v35
+    // on that branch: the copy-down lead, the label heading, the planned shape's fields, master
+    // v25's build-up body, and the half-column target beside a planned photo or diagram).
+    version: "generate-slide.v30",
+    hash: "777da3fd84e1cf8e75f2db14354ea663219f8a51d9bb3fc82afaabb79bcbc866",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -265,7 +272,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   repair: {
     // v16 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
-    version: "repair.v16",
+    // v17 (look/pr2-generation; look v17–v21 on that branch) changes only the user turn: the
+    // planned shape line it copies from generate-slide, the `points` and compare field labels.
+    version: "repair.v17",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
@@ -326,8 +335,12 @@ describe("prompt versions", () => {
     const budgets = {
       // v19 was 990 words; v20 (minimalism rubric, 23 Sep 2026) is 956. v22 (+15: the two-key-idea
       // content rule and its 60-word body) is 971 and must stay under this. v25 (the build-up
-      // order, luna-direct FM3) is 979.
-      "generate-slide": 980,
+      // order, luna-direct FM3) is 979. v26 (look uplift: the copy-down lead and the `diagram`
+      // rule with its named "none" and type list, Greg 26 Sept) is 1123; v27 (the diagram trigger
+      // tightened) is 1138; v28 (the "single claim" none case replaced) is 1144. v29 (label heading,
+      // lead and the `points` slot with its gate, Greg 26 Sept "still not good enough") is 1187;
+      // v30 (the 30-word body restored, the countable `points` gate) is 1206.
+      "generate-slide": 1215,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
       // v13 was 415 words. v14 (lab round 1, +97: errors first and answer lines kept, once-in-the-
@@ -772,6 +785,48 @@ describe("prompt versions", () => {
     );
   });
 
+  test("look/headings (v29): the content spec takes 2–4 optional points", () => {
+    const schema = slideSpecSchemaFor("content");
+    const base = {
+      kind: "content",
+      heading: "Types of volcano",
+      body: "Volcanoes differ.",
+      factRefs: [],
+    };
+    expect(schema?.safeParse(base).success).toBe(true);
+    expect(schema?.safeParse({ ...base, points: ["shield", "composite"] }).success).toBe(true);
+    expect(schema?.safeParse({ ...base, points: ["shield"] }).success).toBe(false);
+  });
+
+  test("look uplift (v31): no shape offers a diagram; the content shape defers to the slide line", () => {
+    const system = PROMPTS["generate-slide"].system;
+    const shapeLines = system.split("\n").filter((line) => line.startsWith("- "));
+    expect(shapeLines.filter((line) => line.includes('"diagram"'))).toHaveLength(0);
+    const content = shapeLines.find((line) => line.startsWith("- content:"));
+    expect(content).toContain('"points" [strings], "compare": { "left": { "label", "points" }');
+    expect(content).toContain('"steps" [strings] as the slide line says');
+    expect(system).toContain("heading/subtitle ≤ 60, each item ≤ 110");
+    expect(system).toContain("body ≤ 400");
+    const cycle = {
+      kind: "content",
+      heading: "Water moves round a cycle",
+      body: "Water keeps moving between sea, air and land. The sun heats it, so it rises as vapour.",
+      diagram: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise",
+      factRefs: ["k1"],
+    };
+    expect(slideSpecSchemaFor("content")?.safeParse(cycle).success).toBe(true);
+    // "none" (the named empty value) and any untyped text are dropped; a typed instruction stays.
+    expect(keptDiagram(cycle).diagram).toBe(cycle.diagram);
+    expect(keptDiagram({ ...cycle, diagram: " Number line: 0 to 1 in quarters " }).diagram).toBe(
+      "Number line: 0 to 1 in quarters",
+    );
+    for (const diagram of ["none", "None", "N/A", "A picture of a cliff", "Cycle:"]) {
+      expect("diagram" in keptDiagram({ ...cycle, diagram })).toBe(false);
+    }
+    const question = { kind: "open-response", diagram: "Cycle: a → b" };
+    expect(keptDiagram(question)).toBe(question);
+  });
+
   test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {
     const system = PROMPTS["generate-slide"].system;
     expect(system).toContain("merge neighbouring steps");
@@ -891,7 +946,11 @@ describe("prompt versions", () => {
       expect(render(kind)).not.toContain("Reserved for other slides");
     }
     const define = "Define each vocabulary term in a few words where the slide first uses it";
-    expect(render("content")).toContain(define);
+    const panel = "The side panel shows a vocabulary term's definition beside the body";
+    expect(render("worked-example")).toContain(define);
+    // v31: a content slide's side panel shows the definition, so its body does not repeat it.
+    expect(render("content")).toContain(panel);
+    expect(render("content")).not.toContain(define);
     expect(render("vocabulary")).not.toContain(define);
     const noVocabulary = PROMPTS["generate-slide"].user({
       ...base,

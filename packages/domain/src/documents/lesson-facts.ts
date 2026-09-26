@@ -91,6 +91,19 @@ export type KeyIdea = {
   example: string;
   analogy?: string;
   objectiveRefs: FactId[];
+  /**
+   * How its slide sets it out, one of `@tj/slides` `CONTENT_SHAPES` (explain, list, compare,
+   * sequence), written by the plan's teach call. Absent on facts planned before it.
+   */
+  shape?: string;
+  /** A drawing instruction for its slide's side panel ("Cycle: …"), from the same call. */
+  visual?: string;
+  /**
+   * A photograph that shows it (look/image-slot): a real place, object, organism, artefact or
+   * event, in the shape of `ImageBrief`. Never beside a `visual`: the drawing wins. Its content
+   * slide carries it as the outline entry's `imageBrief`.
+   */
+  photo?: { subject: string; mustShow?: string[] };
 };
 
 export type VocabularyItem = {
@@ -208,7 +221,10 @@ export type OutlineEntry = {
   minutes?: number;
   /** The facts this slide covers. */
   factRefs: FactId[];
-  /** Required exactly on `image-text` entries; forbidden elsewhere (checked below). */
+  /**
+   * Required on `image-text` entries; optional on `content` entries, where it is the photograph
+   * a key idea asked for (look/image-slot); forbidden elsewhere (checked below).
+   */
   imageBrief?: ImageBrief;
   /** Required exactly on `diagram` entries; forbidden elsewhere (checked below). */
   figureBrief?: FigureBrief;
@@ -274,6 +290,11 @@ export const KeyIdeaSchema = z.strictObject({
   example: z.string(),
   analogy: z.string().optional(),
   objectiveRefs: ObjectiveRefsSchema,
+  shape: z.string().optional(),
+  visual: z.string().optional(),
+  photo: z
+    .strictObject({ subject: z.string(), mustShow: z.array(z.string()).optional() })
+    .optional(),
 });
 
 export const VocabularyItemSchema = z.strictObject({
@@ -477,10 +498,14 @@ export const LessonFactsSchema = z
           });
         }
       });
-      if (entry.kind !== "image-text" && entry.imageBrief !== undefined) {
+      if (
+        entry.kind !== "image-text" &&
+        entry.kind !== "content" &&
+        entry.imageBrief !== undefined
+      ) {
         ctx.addIssue({
           code: "custom",
-          message: `imageBrief is only allowed on image-text entries`,
+          message: `imageBrief is only allowed on image-text and content entries`,
           path: ["outline", i, "imageBrief"],
         });
       }

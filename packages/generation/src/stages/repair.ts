@@ -2,9 +2,12 @@ import { isAiError } from "@tj/ai";
 import {
   checkLesson,
   type Finding,
+  isContinuation,
   isSchemaCheck,
   type Lesson,
   type LessonFacts,
+  outlineIndexOf,
+  outlineIndices,
   type Slide,
   type Worksheet,
   type WorksheetBlock,
@@ -13,9 +16,12 @@ import {
   type BlockSpec,
   blockSpecSchemaFor,
   imageTextSpecSchemaFor,
+  isDiagramMark,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
+  materialiseSlides,
+  PHOTO_NAME,
   type SlideSpec,
   slideSpecSchemaFor,
 } from "@tj/slides";
@@ -30,10 +36,16 @@ import {
 } from "../planner/coded-slides";
 import {
   type Audience,
+  keptDiagram,
+  type PlannedShape,
+  plannedShapeOf,
   type RepairInput,
   repairFactPrompt,
   repairPrompt,
+  shapeLine,
+  slideShapeOf,
   type WritingShape,
+  withPlannedShape,
 } from "../prompts";
 import type { RepairContextSlide } from "../prompts/repair";
 import {
@@ -57,7 +69,9 @@ import {
   figureOfEntry,
   generationOf,
   imageTextPhotoOf,
+  logShapeFallback,
   normaliseText,
+  photoStructure,
   runBounded,
   shapeOf,
   slideHaystack,
@@ -122,7 +136,9 @@ type TargetOutcome =
   | {
       kind: "slide";
       key: string;
+      /** The slide's position in the base lesson, and the outline entry it was written from. */
       index: number;
+      entryIndex: number;
       corrections: VerifyCorrection[];
       spec: SlideSpec;
       modelId: string;
@@ -340,18 +356,25 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
       if (target.slideId !== undefined) {
         const index = base.slides.findIndex((s) => s.id === target.slideId);
         const slide = base.slides[index];
+        // A continuation slide (UX ruling 91) shares its entry with the slide before it; it carries
+        // only the rest of the words, so it is not held to the entry's plan.
+        const entryIndex = outlineIndexOf(base.slides, index);
+        const continues = !!slide && isContinuation(slide, base.slides[index - 1]);
+        const entry = continues ? undefined : base.facts?.outline[entryIndex];
         // A kind the pipeline cannot generate (an image slide the teacher added) cannot be repaired.
         // An image-text slide keeps its photograph: its text is re-checked against the same evidence.
         // A diagram keeps its template and is redrawn from the values the rewrite returns, or, when
         // its fact carries the figure (TEACH-253), from that fact's figure as this target's patch
         // left it.
         const factFigure =
-          slide?.kind === "diagram" ? figureOfEntry(staged, base.facts?.outline[index]) : undefined;
+          slide?.kind === "diagram"
+            ? figureOfEntry(staged, base.facts?.outline[entryIndex])
+            : undefined;
         const specSchema = (soft: boolean) =>
           !slide
             ? undefined
             : slide.kind === "image-text"
-              ? imageTextSpecSchemaFor(imageTextPhotoOf(slide, base.facts?.outline[index]), {
+              ? imageTextSpecSchemaFor(imageTextPhotoOf(slide, entry), {
                   soft,
                 })
               : slide.kind === "diagram"
@@ -359,6 +382,11 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
                 : slideSpecSchemaFor(slide.kind, { soft });
         const schema = specSchema(false);
         if (!slide || !schema) return;
+        // generate-slide v31: a content slide keeps its planned shape through a repair.
+        const planned =
+          base.facts && entry && slide.kind === "content"
+            ? plannedShapeOf(base.facts, entry)
+            : undefined;
         // The slides around it, read-only (lab round 1), rendered by `repair.v14`.
         const input: RepairInput = {
           facts: staged,
@@ -371,15 +399,15 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
             text: slideText(slide),
             // The labelled fields, when they carry everything the flat text does; else the text.
             ...(specFieldsCover(slide) ? { fields: specFieldsOf(slide) } : {}),
-            ...(slide.kind === "image-text"
-              ? { photo: slidePhotoOf(slide, base.facts?.outline[index]) }
-              : {}),
+            ...(slide.kind === "image-text" ? { photo: slidePhotoOf(slide, entry) } : {}),
           },
           // Contract C2, C3 (audit FIX-PLAN): what the slide was planned to teach and what it
           // cites now, so a warning fix keeps every planned fact (the coasts groyne bug).
-          ...repairPlanOf(slide, base.facts?.outline[index]),
+          ...repairPlanOf(slide, entry),
           findings: target.findings,
-          shape: `a "${slide.kind}" slide spec`,
+          shape: planned
+            ? `${slideShapeOf(slide.kind)} ${shapeLine(planned)}`
+            : (slideShapeOf(slide.kind) ?? `a "${slide.kind}" slide spec`),
           context: { slides: repairContext(base, index, target.findings) },
         };
         const call = await callStructured({
@@ -398,10 +426,19 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           kind: "slide",
           key: target.key,
           index,
+          entryIndex,
           corrections,
-          spec: lab
-            ? withShuffledOptions(withFactFigure(call.output, factFigure), `${base.id}:${index}`)
-            : withFactFigure(call.output, factFigure),
+          spec: repairedToShape(
+            lab
+              ? withShuffledOptions(
+                  withFactFigure(call.output, factFigure),
+                  `${base.id}:${entryIndex}`,
+                )
+              : withFactFigure(call.output, factFigure),
+            planned,
+            slide,
+            { logger: deps.logger, index },
+          ),
           modelId: call.modelId,
           findings: call.editorialMisses.map((miss) =>
             specRuleFinding(miss, { slideId: slide.id }, "warning"),
@@ -479,21 +516,41 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
     extra.push(...outcome.findings);
     if (outcome.kind === "slide") {
       const original = base.slides[outcome.index] as Slide;
-      const fresh: Slide = keepPhoto(original, {
-        ...materialiseSlide(
-          withImageCaption(outcome.spec, base.facts?.outline[outcome.index]),
-          lesson.themeId,
-          meta(outcome.modelId, deps),
-          deps.ids,
-          undefined,
-          {},
-          (note) => deps.logger.warn({ stage: "repair", index: outcome.index }, note),
-        ),
-        id: original.id,
-      });
+      // A rewrite too long for one slide continues on the next (UX ruling 91), as in Generate.
+      const [first, ...rest] = materialiseSlides(
+        withImageCaption(outcome.spec, base.facts?.outline[outcome.entryIndex]),
+        lesson.themeId,
+        meta(outcome.modelId, deps),
+        deps.ids,
+        undefined,
+        {
+          terms: (lesson.facts?.vocabulary ?? []).map((v) => v.term),
+          glossary: (lesson.facts?.vocabulary ?? []).map((v) => ({
+            term: v.term,
+            definition: v.definition,
+          })),
+          // The slot only where the slide still has one: illustrate may have dropped a repeated
+          // subject's slot, and a rewrite must not bring it back.
+          ...(hasPhotoSlot(original)
+            ? photoStructure(
+                base.facts?.outline[outcome.entryIndex],
+                outcome.spec,
+                deps.logger,
+                "repair",
+                outcome.index,
+              )
+            : {}),
+        },
+        (note) => deps.logger.warn({ stage: "repair", index: outcome.index }, note),
+      );
+      const fresh: Slide = keepPhoto(original, { ...(first as Slide), id: original.id });
+      logShapeFallback(deps.logger, "repair", outcome.index, outcome.spec, fresh);
+      // By id: an earlier outcome that continued onto a new slide has moved every later position.
       lesson = {
         ...lesson,
-        slides: lesson.slides.map((s, i) => (i === outcome.index ? fresh : s)),
+        slides: withoutOldContinuations(lesson.slides, original.id).flatMap((s) =>
+          s.id === original.id ? [fresh, ...rest] : [s],
+        ),
       };
     } else if (worksheet) {
       const original = worksheet.blocks[outcome.index] as WorksheetBlock;
@@ -690,12 +747,46 @@ function factsAround(facts: LessonFacts, factId: string): LessonFacts {
  * The regenerated slide with the original's image element in place of the recipe's fresh
  * placeholder: Repair rewrites the text of an `image-text` slide, never its photograph.
  */
+/** A slide that keeps room for a photograph (look/image-slot), placed or not. */
+export const hasPhotoSlot = (slide: Slide): boolean =>
+  slide.elements.some((e) => e.name === PHOTO_NAME);
+
+/**
+ * The deck without the continuation slides that followed `id` (UX ruling 91): a rewrite brings its
+ * own, so the old ones would be said twice (look/image-slot slots run: "Why the Romans invaded
+ * Britain (continued)" twice, in two wordings).
+ */
+export function withoutOldContinuations(slides: readonly Slide[], id: string): Slide[] {
+  const at = slides.findIndex((s) => s.id === id);
+  if (at < 0) return [...slides];
+  let end = at + 1;
+  while (end < slides.length && isContinuation(slides[end] as Slide, slides[end - 1])) end += 1;
+  return [...slides.slice(0, at + 1), ...slides.slice(end)];
+}
+
 function keepPhoto(original: Slide, fresh: Slide): Slide {
   const image = original.elements.find((e) => e.type === "image");
-  if (!image) return fresh;
+  if (image?.type !== "image") return fresh;
   return {
     ...fresh,
-    elements: fresh.elements.map((e) => (e.type === "image" ? image : e)),
+    elements: fresh.elements.map((e) => {
+      if (e.type !== "image") return e;
+      // A content slide's photo slot (look/image-slot) is laid out again with the rewritten
+      // words: the photograph moves into the new slot's place.
+      if (fresh.kind === "content") {
+        const { src, alt, source, crop, focal, imageTransform } = image;
+        return {
+          ...e,
+          src,
+          ...(alt !== undefined ? { alt } : {}),
+          ...(source !== undefined ? { source } : {}),
+          ...(crop !== undefined ? { crop } : {}),
+          ...(focal !== undefined ? { focal } : {}),
+          ...(imageTransform !== undefined ? { imageTransform } : {}),
+        };
+      }
+      return image;
+    }),
   };
 }
 
@@ -756,14 +847,24 @@ export function reprintPatchedSets(
     ),
   );
   if (!facts || patched.size === 0) return lesson;
-  const slides = lesson.slides.map((slide, i) => {
+  const entryOf = outlineIndices(lesson.slides);
+  const slides = lesson.slides.map((slide, at) => {
     if (!isCodeBuilt(slide)) return slide;
     const refs = slide.elements.flatMap((e) => e.generatedFrom?.factRefs ?? []);
     if (!refs.some((r) => patched.has(r))) return slide;
+    // The seed is the outline entry's, as in Generate (a continuation moves later positions).
+    const i = entryOf[at] ?? at;
     const entry = facts.outline[i];
     const coded = entry ? codedSetSpec(entry, facts, `${lesson.id}:${i}`) : undefined;
     if (!coded) return slide;
-    const fresh = materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL, deps), deps.ids);
+    const fresh = materialiseSlide(
+      coded.spec,
+      lesson.themeId,
+      meta(CODE_MODEL, deps),
+      deps.ids,
+      0,
+      { quiz: coded.quiz },
+    );
     return { ...withAnswersReveal(fresh), id: slide.id };
   });
   return { ...lesson, slides };
@@ -774,3 +875,46 @@ const meta = (modelId: string, deps: Pick<PipelineDeps, "now">): MaterialiseMeta
   model: modelId,
   at: deps.now().toISOString(),
 });
+
+/**
+ * A repaired slide cut to its planned shape (`withPlannedShape`), with its diagram kept. A content
+ * slide with a plan logs the same "slide shape" metric Generate does, so a repair that drops the
+ * planned compare, steps or points (`filled: false`) or writes another shape's field (`extra`) is
+ * seen rather than lost.
+ */
+export function repairedToShape(
+  output: SlideSpec,
+  planned: PlannedShape | undefined,
+  before: Slide,
+  log: { logger: Pick<PipelineDeps["logger"], "info">; index: number },
+): SlideSpec {
+  const shaped = withPlannedShape(output, planned);
+  if (planned && output.kind === "content") {
+    log.logger.info(
+      {
+        slide: log.index,
+        stage: "repair",
+        shape: planned.shape,
+        filled: shaped.filled,
+        extra: shaped.extra,
+      },
+      "slide shape",
+    );
+  }
+  return withDiagramKept(shaped.spec, before);
+}
+
+/**
+ * generate-slide v26: a repaired content slide keeps a typed `diagram` the model returned, else the
+ * one its diagram placeholder carried before the repair ("Diagram to add: <instruction>").
+ */
+export function withDiagramKept(spec: SlideSpec, before: Slide): SlideSpec {
+  const kept = keptDiagram(spec);
+  if (kept.kind !== "content" || kept.diagram) return kept;
+  if (before.diagram?.instruction)
+    return keptDiagram({ ...kept, diagram: before.diagram.instruction });
+  const placeholder = before.elements.find(isDiagramMark);
+  const text = placeholder ? slideText({ ...before, elements: [placeholder] }) : "";
+  const diagram = text.replace(/^\s*Diagram to add:\s*/, "").trim();
+  return diagram ? keptDiagram({ ...kept, diagram }) : kept;
+}

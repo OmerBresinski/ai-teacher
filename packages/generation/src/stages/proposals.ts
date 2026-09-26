@@ -1,11 +1,12 @@
 import type { Proposal, ProposalTarget } from "@tj/domain";
-import type {
-  GeneratedFrom,
-  GroupElement,
-  Lesson,
-  SlideElement,
-  Worksheet,
-  WorksheetBlock,
+import {
+  type GeneratedFrom,
+  type GroupElement,
+  type Lesson,
+  outlineIndexOf,
+  type SlideElement,
+  type Worksheet,
+  type WorksheetBlock,
 } from "@tj/domain/documents";
 import {
   blockSpecSchemaFor,
@@ -231,12 +232,13 @@ export async function proposeFor(
     const slide = lesson.slides[index];
     // A diagram is re-derived with the template stored on its figure group (TEACH-89), or as text
     // around its fact's current figure when the fact carries one (TEACH-253).
-    const factFigure =
-      slide?.kind === "diagram" ? figureOfEntry(facts, facts.outline[index]) : undefined;
+    // A continuation page shares its first page's outline entry.
+    const entry = facts.outline[outlineIndexOf(lesson.slides, index)];
+    const factFigure = slide?.kind === "diagram" ? figureOfEntry(facts, entry) : undefined;
     const schema = !slide
       ? undefined
       : slide.kind === "diagram"
-        ? storedDiagramSchema(slide, facts.outline[index], facts)
+        ? storedDiagramSchema(slide, entry, facts)
         : slideSpecSchemaFor(slide.kind);
     if (!slide || !schema) return [];
     // The figure's values ride with its text, so the rewrite can keep them.
@@ -258,7 +260,7 @@ export async function proposeFor(
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
     const fresh = materialiseSlide(
-      withImageCaption(withFactFigure(call.output, factFigure), lesson.facts?.outline[index]),
+      withImageCaption(withFactFigure(call.output, factFigure), entry),
       lesson.themeId,
       meta(call.modelId),
       deps.ids,

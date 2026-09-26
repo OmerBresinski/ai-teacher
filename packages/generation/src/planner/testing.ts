@@ -42,7 +42,8 @@ const strip = <T extends Item>(x: T) => {
 export function factsAnswerFor(i: number) {
   const f = romans.facts;
   return {
-    keyIdeas: f.keyIdeas.filter((x) => has(x, i)).map(strip),
+    // plan-teach-objective v4: every key idea says how its slide sets it out.
+    keyIdeas: f.keyIdeas.filter((x) => has(x, i)).map((x) => ({ ...strip(x), shape: "explain" })),
     misconceptions: f.misconceptions.filter((x) => has(x, i)).map(strip),
     vocabulary: f.vocabulary.filter((x) => has(x, i)).map(strip),
     // The one worked example goes to the last objective: the reach carries it (v4 of the prompt).

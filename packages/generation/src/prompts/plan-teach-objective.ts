@@ -1,5 +1,6 @@
-import { editorialIssue, SPEC_LIMITS, type SpecSchemaOptions } from "@tj/slides";
+import { CONTENT_SHAPES, editorialIssue, SPEC_LIMITS, type SpecSchemaOptions } from "@tj/slides";
 import { z } from "zod";
+import { DIAGRAM_TYPES } from "./generate-slide";
 import {
   carriesWorkedExample,
   type PlanFactsObjectiveInput,
@@ -50,6 +51,48 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * carry out; otherwise none", which keeps none as the default for prose objectives (the filler the
  * bare "none" line was added against, CORE 2026-09-22). The worked-example rule gains "taken to its
  * finished form", so a method is not stopped part way. Not yet measured.
+ *
+ * look v4 (26 Sept 2026, look/shape-prompt; look GENERATION-RESULTS-3.md open item 1): the slide writer
+ * put `points` on 1 of 13 slides, because inside one slide it cannot tell a set from a claim. This
+ * call, which writes the idea, now also says how its slide sets it out: a required `shape`
+ * (`@tj/slides` CONTENT_SHAPES), decided from what the idea is, and an optional `visual`, the
+ * drawing instruction the slide writer's v28 `diagram` gate used to decide (same types and
+ * trigger, moved here so the drawing is planned with the idea it shows). `visual` is left out of
+ * the sketch on purpose, as `misconceptionRef` is, so it is not filled every time.
+ *
+ * look v5 (same day, look GENERATION-RESULTS-4.md): v4's five lessons tagged 16 key ideas 10 explain,
+ * 2 list, 2 sequence, 1 compare. "The Romans invaded Britain to gain land, valuable resources and
+ * greater power" was explain (reasons were not in the list's examples) and "Prospero's power over
+ * Caliban is based on force…" was compare (one thing, the other only implied). The list names
+ * "reasons … it names"; compare needs "two named things".
+ *
+ * look v6 (26 Sept 2026, look/shape-fixes, `quality-prd/look/GENERATION-RESULTS-5.md`; Greg): E49 lost
+ * 5–15 to master on substance, the shaped slides squeezing an idea into a word budget. Splitting
+ * now happens here, not in the writer: a key idea is one idea its own slide explains in about
+ * 40–60 words with its example, and an objective whose teaching needs more writes two, each with
+ * its own example (the outline gives each its own slide, `outline-from-facts` P6b). The shape is
+ * the layout hint for that slide, no longer a word budget, so its sentence is unchanged.
+ *
+ * look v7 (26 Sept 2026, look/shape-plan, `quality-prd/look/GENERATION-RESULTS-6.md`): v6 still tagged
+ * 15 of 16 key ideas explain on the gen6 inputs (Romans, rivers, Tempest, fractions, coasts),
+ * three named factors and reasons among them. The model tagged the statement's framing; the shape
+ * now follows what the idea contains, "list" from two or more reasons, causes, factors, effects,
+ * features, types or ways, "compare" even where it gives points on each of its two named things,
+ * and explain is the narrow default. Two runs: 16 and 18 ideas, explain 6 and 7.
+ *
+ * look v8 (26 Sept 2026, look/image-plan, `quality-prd/look/GENERATION-RESULTS-7.md`; Greg: room for a
+ * photo on teaching slides, as Chalkie does): the optional `photo` ({subject, mustShow}, a subset of
+ * `ImageBrief`) the contract commit added. Its query wording is plan-skeleton's image-brief rule
+ * (TEACH-220/227/237: a query "that knows nothing about this lesson", context so it stands alone,
+ * things a stranger's ordinary photograph shows). Four drafts on seven topics: "when a photograph
+ * would help" gave 7 of 22 ideas; "whenever a camera could show what it is about … leave it out only
+ * when" gave 13–16 of 20–23 non-maths ideas and 0 on fractions. "A named place only when famous"
+ * gave "Tewkesbury 2007 flood" and "Medmerry coastal wetlands"; "no dates, characters or local place
+ * names" gave searchable subjects. Like `visual`, `photo` stays out of the sketch; the visual-or-photo
+ * rule is prose only, so code should drop `photo` when both come back.
+ *
+ * v4 (27 Sept 2026, look/pr2-generation): look v4–v8 above, numbered on the look branch before it
+ * met master; the text is look v8's.
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
@@ -95,6 +138,15 @@ const keyIdeaSchema = (line: Line) =>
     explanation: line(SPEC_LIMITS.body),
     example: line(SPEC_LIMITS.body),
     analogy: line(SPEC_LIMITS.item).optional(),
+    shape: z.enum(CONTENT_SHAPES),
+    visual: line(SPEC_LIMITS.diagram).optional(),
+    /**
+     * A photograph that shows the idea (look/image-slot): what it is of and up to four things it
+     * must show, in the shape of `ImageBrief`. The slide keeps room for it; `illustrate` finds it.
+     */
+    photo: z
+      .object({ subject: line(60), mustShow: z.array(line(60)).max(4).optional() })
+      .optional(),
   });
 
 const misconceptionSchema = (line: Line) =>
@@ -178,14 +230,14 @@ export function workedExampleLine(position: PlanFactsObjectivePosition): string 
 const TEACH_HOUSE_RULES = houseRules("british", "names");
 
 /** v14's limits line, the question fields removed. */
-const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
+const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; visual ${SPEC_LIMITS.diagram}; photo subject and each mustShow item 60; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
 
 /** v14's sketch without the `questions` list; `misconceptionRef` left out on purpose (v7). */
 export const TEACH_SHAPE_SKETCH =
-  '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
+  '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…","shape":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v3",
+  version: "plan-teach-objective.v4",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
@@ -193,10 +245,13 @@ export const planTeachObjectivePrompt = {
     "Rules:",
     TEACH_HOUSE_RULES,
     "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
-    "Write one or two key ideas, one misconception and up to two vocabulary terms.",
+    "Write one or two key ideas, one misconception and up to two vocabulary terms. A key idea is what one slide explains in about 40–60 words with its example; an objective that needs more writes two.",
     "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers); the worked example takes a case of its own.",
     'A worked example may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea\'s date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.',
     "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",
+    'A key idea\'s "shape" is how its slide sets it out, and follows what the idea contains: "list" when it gives two or more reasons, causes, factors, effects, features, types or ways; "compare" when it sets two named things side by side, even where it gives points on each; "sequence" for a method or process in order; "explain" only for a single claim or mechanism with none of these.',
+    `Give a key idea a "visual" when a drawing shows what the words cannot (the parts of a structure, stages in order or round a cycle, two things side by side, a bar model, a value changing on a graph or number line): its type and a colon (${DIAGRAM_TYPES.join(", ").replace(/, ([^,]+)$/, " or $1")}), then the labels in order and what connects them, in the idea's words: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise". Leave it out when a drawing would only put the idea's words in boxes.`,
+    'Give a key idea a "photo" whenever a camera could show what it is about: a real place, organism, object, artefact or event, a process you can watch happening, or a production of a text. Leave it out only when the idea is abstract (a number, a rule, a calculation) or the only picture would be its words in boxes. A key idea has a "visual" or a "photo", never both: the visual only when a drawing shows what no photograph can (a graph, a bar model, a cycle, the inside of something). "subject" is what you would type into a stock-photo search that knows nothing about this lesson: two to four plain words naming what the picture shows, as the library would tag it ("pipe organ", never "organ"; "wind farm", never "renewable energy"; "Viking longship replica"), with no dates, characters or local place names; only a world-famous landmark is named. "mustShow" is up to four things a pupil must see, each a noun a stranger would recognise in an ordinary photograph of the subject, never a character or named person.',
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
     'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',

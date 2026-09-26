@@ -29,6 +29,38 @@ import {
  * v16: a worked example's or question's figure (TEACH-253) renders under it in `factsBlock` as
  * `Figure (<template>): <values as JSON>`. Only lessons with a figure on a fact render it, so the
  * pinned hash is unchanged.
+ *
+ * look v16 (26 Sept 2026, look uplift): a slide target's `shape` is now Generate's shape line for its
+ * kind (`slideShapeOf`) instead of "a "content" slide spec", so the repair keeps the ≤ 30-word body
+ * and the `diagram` field; the stage keeps a diagram the model drops (`withDiagramKept`). The
+ * system text is unchanged and the pinned sample passes its own shape, so the hash did not move.
+ *
+ * look v17 (26 Sept 2026, generate-slide v29): the content shape line it copies now carries the label
+ * heading, the ≤ 20-word lead and the optional `points`, and a content slide's bullet list reaches
+ * the call labelled `points` (`specFieldsOf`), not folded into `body`. System text unchanged.
+ *
+ * look v18 (26 Sept 2026, look/shape-prompt): only the user turn changes. The content shape it copies
+ * (`slideShapeOf`) is generate-slide v31's, naming `points`, `compare` and `steps`, and a
+ * content slide's compare cards reach the call as `compare.left.label`, `compare.left.points` and
+ * the same for the right (`specFieldsOf`); a steps strip already arrives as `steps[i]`. A content
+ * slide's shape line is followed by generate-slide's line for its planned shape (`shapeLine`), and
+ * code keeps only that shape's fields (`withPlannedShape`): on the v4/v31 demo, repairs turned two
+ * ratio sequence slides into `points`, and grew bodies to 47 and 61 words. System text unchanged.
+ *
+ * look v19 (26 Sept 2026, look/shape-fixes): only the user turn changes. The shape line it copies is
+ * generate-slide v32's: an explain body of up to 50 words (idea, how or why, example), points as
+ * "Label: one full sentence", two full-sentence points a compare side, up to three steps. A
+ * 47-word repaired body is now in range, not a fault. System text unchanged.
+ *
+ * look v20 (same day): the shape line it copies is generate-slide v33's layout hint, with no word caps.
+ * System text unchanged.
+ *
+ * look v21 (27 Sept 2026, look/image-plan): the shape line it copies is generate-slide v34's, which
+ * gives a slide with a planned photograph or diagram the half-column word target. System text
+ * unchanged.
+ *
+ * v17 (27 Sept 2026, look/pr2-generation): look v16–v21 above, numbered on the look branch before
+ * it met master; their text is look v21's. System text unchanged.
  */
 
 /** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */
@@ -87,7 +119,7 @@ export type RepairInput = {
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v16",
+  version: "repair.v17",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",
