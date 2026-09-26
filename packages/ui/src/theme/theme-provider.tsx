@@ -10,6 +10,7 @@ import {
 
 import {
   applyResolvedTheme,
+  DEFAULT_THEME,
   isTheme,
   PREFERS_DARK_QUERY,
   PREFERS_MORE_CONTRAST_QUERY,
@@ -35,7 +36,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export interface ThemeProviderProps {
   children: ReactNode;
-  /** Used when nothing is stored yet. Default `"system"`. */
+  /** Used when nothing is stored yet. Default `"light"`. */
   defaultTheme?: Theme;
   /** localStorage key. Default `"tj-theme"`; must match `createThemeInitScript(storageKey)`. */
   storageKey?: string;
@@ -53,7 +54,7 @@ export interface ThemeProviderProps {
  */
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = DEFAULT_THEME,
   storageKey = THEME_STORAGE_KEY,
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => readStoredTheme(storageKey) ?? defaultTheme);

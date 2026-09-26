@@ -343,16 +343,16 @@ function LessonIntake({
                     >
                       Add materials
                     </Button>
-                    {sourcesOpen ? (
-                      <SourceDropZone
-                        sources={sources}
-                        boundSourceIds={lesson?.sources?.map(({ id }) => id)}
-                        onChange={setSources}
-                        onBusyChange={setSourcesBusy}
-                        disabled={busy}
-                        focusChooseFiles={focusSources}
-                      />
-                    ) : null}
+                    <SourceDropZone
+                      open={sourcesOpen}
+                      onOpenChange={setSourcesOpen}
+                      sources={sources}
+                      boundSourceIds={lesson?.sources?.map(({ id }) => id)}
+                      onChange={setSources}
+                      onBusyChange={setSourcesBusy}
+                      disabled={busy}
+                      focusChooseFiles={focusSources}
+                    />
                   </div>
                 }
               />

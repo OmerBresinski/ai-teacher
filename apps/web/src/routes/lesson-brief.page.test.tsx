@@ -104,12 +104,14 @@ describe("real lesson intake", () => {
   it("preserves blank lesson and source controls including pasted text", () => {
     search = { source: "1" };
     show();
-    expect(screen.getByRole("button", { name: "Blank lesson" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Paste text instead" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Add your materials" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Paste text" })).toBeTruthy();
     expect(screen.getByLabelText("Choose files", { selector: "input" })).toHaveAttribute(
       "accept",
       ".pdf,.pptx,.docx",
     );
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.getByRole("button", { name: "Blank lesson" })).toBeTruthy();
   });
   it("remembers the class without skipping decisions", async () => {
     localStorage.setItem(

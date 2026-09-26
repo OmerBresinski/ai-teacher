@@ -1,12 +1,16 @@
-import { PREFERS_DARK_QUERY, PREFERS_MORE_CONTRAST_QUERY, THEME_STORAGE_KEY } from "./theme";
+import {
+  DEFAULT_THEME,
+  PREFERS_DARK_QUERY,
+  PREFERS_MORE_CONTRAST_QUERY,
+  THEME_STORAGE_KEY,
+} from "./theme";
 
 /**
  * Build the inline `<script>` body that applies the theme before first paint.
  *
- * Mirrors `resolveTheme()`: stored explicit value wins; otherwise `prefers-contrast: more` →
- * high-contrast, `prefers-color-scheme: dark` → dark, else light. Any failure (storage blocked,
- * no matchMedia) is swallowed so the page still renders — `globals.css` then falls back to
- * `html:not([data-theme])` + `prefers-color-scheme`.
+ * Stored themes win; only an explicit "system" follows OS contrast/colour preferences.
+ * Missing or invalid preferences use DEFAULT_THEME, matching ThemeProvider. Failures are
+ * swallowed; the web shell carries data-theme="light" as its no-script fallback.
  *
  * Usage (Vite `index.html`): `<script>${THEME_INIT_SCRIPT}</script>` as the first child of
  * `<head>`, before the stylesheet. Keep it dependency-free and ES5 so it needs no bundling.
@@ -20,7 +24,7 @@ export function createThemeInitScript(storageKey: string = THEME_STORAGE_KEY): s
     `var t=window.localStorage.getItem(${key});` +
     "var m=function(q){return window.matchMedia&&window.matchMedia(q).matches};" +
     'var r=(t==="light"||t==="dark"||t==="high-contrast")?t:' +
-    `(m(${contrast})?"high-contrast":m(${dark})?"dark":"light");` +
+    `t==="system"?(m(${contrast})?"high-contrast":m(${dark})?"dark":"light"):${JSON.stringify(DEFAULT_THEME)};` +
     'document.documentElement.setAttribute("data-theme",r);' +
     "}catch(e){}})();"
   );

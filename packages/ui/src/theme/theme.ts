@@ -16,6 +16,9 @@ export type Theme = (typeof THEMES)[number];
 /** What actually ends up on `<html data-theme>`. */
 export type ResolvedTheme = (typeof RESOLVED_THEMES)[number];
 
+/** First visit defaults to light; following the OS is an explicit user choice. */
+export const DEFAULT_THEME: Theme = "light";
+
 /** localStorage key holding the user's explicit choice. */
 export const THEME_STORAGE_KEY = "tj-theme";
 
