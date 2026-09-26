@@ -1204,7 +1204,19 @@ function structureContent(
   // cannot be placed at the body size or the step below it.
   const shaped = !!(hints.compare || hints.sequence);
   if (!s.compare && !s.sequence) {
-    const split = splitContent(slide, t, bodies, top, words, points, s, hints, ids);
+    const split = splitContent(
+      slide,
+      t,
+      bodies,
+      top,
+      words,
+      points,
+      s,
+      hints,
+      ids,
+      undefined,
+      paginate,
+    );
     if (split) return [split];
   }
   if (!s.compare && !s.keyCard && !s.sequence) {
@@ -1304,13 +1316,27 @@ function structureContent(
   // down to the floor and no further, and for the editor's Tidy to continue (UX ruling 91).
   if (shaped) {
     const listHints = { ...hints, compare: undefined, sequence: undefined, points };
-    const split = splitContent(slide, t, bodies, top, words, points, {}, listHints, ids);
+    const split = splitContent(
+      slide,
+      t,
+      bodies,
+      top,
+      words,
+      points,
+      {},
+      listHints,
+      ids,
+      undefined,
+      paginate,
+    );
     if (split) return [split];
     return paginate ? (splitParagraph(slide, bodies, t, ids, hints.terms) ?? plain) : plain;
   }
   // The words left over continue on the next slide; but a component never costs a slide the
   // plain text did not need, so a slide that fitted stays as it was.
-  if (!last || !paginate || fitSlide(slide, t).overflow.length === 0) return plain;
+  if (!paginate || fitSlide(slide, t).overflow.length === 0) return plain;
+  // No component fitted and the plain words overrun: they continue as a paragraph.
+  if (!last) return splitParagraph(slide, bodies, t, ids, hints.terms) ?? plain;
   const doc = docFromText(restWords);
   const h = heightOf(measure, doc, SAFE.w, "body", readingSize(t), 0, { lineHeight: leading });
   const next = continued(
@@ -1334,9 +1360,10 @@ function structureContent(
 }
 
 /**
- * A teaching paragraph too long for the slide even a step below the body size: the sentences that
- * fit stay, the rest continue on the next slide at the body size (UX ruling 91). `undefined` when
- * it fits, or when it is not one plain paragraph.
+ * A teaching paragraph too long for the slide even a step below the body size, as the slides it
+ * needs (UX ruling 91): split at sentence boundaries into the fewest pages that each fit, as even
+ * as they can be (sentence counts first, then words), so no page is a stub. `undefined` when it
+ * fits, when it is not one plain paragraph, or when no split fits (a sentence longer than a slide).
  */
 function splitParagraph(
   slide: Slide,
@@ -1347,62 +1374,97 @@ function splitParagraph(
 ): Slide[] | undefined {
   if (bodies.length !== 1) return undefined;
   const body = bodies[0] as TextElement;
+  const all = sentences(docText(body.doc));
+  if (all.length < 2) return undefined;
+  const keep = slide.elements.filter((e) => e !== body);
+  const part = bodyPart(body, t, ids);
+  if (fitSlide(slide, t).overflow.length === 0) return undefined;
+  // Set again at the reading leading, it may fit after all.
+  const whole = { ...slide, elements: [...keep, part(joinSentences(all), body.y)] };
+  if (fitsSlide(whole, t)) return [withTerms(whole, t, terms)];
+  return balancedPages(all, t, terms, fitsSlide, (groups) =>
+    groups.map((g, i) =>
+      i === 0
+        ? { ...slide, elements: [...keep, part(joinSentences(g), body.y)] }
+        : continued(slide, chromeOf(slide), [part(joinSentences(g), body.y)], ids),
+    ),
+  );
+}
+
+/** A body paragraph of `words` at the body size, at `y`, `w` wide (the body's own width). */
+function bodyPart(body: TextElement, t: Theme, ids: Ids) {
   const measure = measureHeadless(t);
   const size = readingSize(t);
   const leading = readingLeading(t);
-  // The size the fit engine reached: the split is for what it could not fit.
-  const reached = body.style.fontSize ?? size;
-  const h = (words: string) =>
-    heightOf(measure, docFromText(words), body.w, "body", reached, 0, {
-      lineHeight: body.style.lineHeight ?? t.lineHeights.body,
-    });
-  const all = sentences(docText(body.doc));
-  if (all.length < 2 || fitSlide(slide, t).overflow.length === 0) return undefined;
-  let n = all.length - 1;
-  while (n > 1 && body.y + withSafety(h(joinSentences(all.slice(0, n)))) > SAFE_BOTTOM) n--;
-  const part = (words: string, y: number): TextElement => {
+  return (words: string, y: number, w: number = body.w): TextElement => {
     const doc = docFromText(words);
     return {
       ...body,
       id: ids(),
       y,
-      h: heightOf(measure, doc, body.w, "body", size, 0, { lineHeight: leading }),
+      w,
+      h: heightOf(measure, doc, w, "body", size, 0, { lineHeight: leading }),
       doc,
       name: BODY_NAME,
       style: { ...body.style, fontSize: size, lineHeight: leading },
     };
   };
-  const keep = slide.elements.filter((e) => e !== body);
-  const tail = part(joinSentences(all.slice(n)), body.y);
-  const next = continued(slide, chromeOf(slide), [tail], ids);
-  return [
-    withTerms(
-      { ...slide, elements: [...keep, part(joinSentences(all.slice(0, n)), body.y)] },
-      t,
-      terms,
-    ),
-    ...continuedAgain(next, tail, t, ids, terms),
-  ];
 }
 
+/** Whether a slide fits, a step below the body size at most (the fit engine's floor). */
+const fitsSlide = (slide: Slide, t: Theme) => fitSlide(slide, t).overflow.length === 0;
+
 /**
- * A continuation whose words still overrun at the floor continues again, a sentence boundary at a
- * time, so no page of a long explanation runs off the slide (UX ruling 91).
+ * The first split of `all` into pages that `build` lays out and `fits` accepts, page by page:
+ * the fewest pages, then the most even sentence counts, then the most even word counts, a longer
+ * first page before a longer last one.
  */
-function continuedAgain(
-  next: Slide,
-  body: TextElement,
+function balancedPages(
+  all: string[],
   t: Theme,
-  ids: Ids,
-  terms?: string[],
-): Slide[] {
-  const fitted = fitSlide(next, t).slide;
-  const fittedBody = fitted.elements.find((e) => e.id === body.id) as TextElement | undefined;
-  return (
-    (fittedBody && splitParagraph(fitted, [fittedBody], t, ids, terms)) ?? [
-      withTerms(next, t, terms),
-    ]
-  );
+  terms: string[] | undefined,
+  fits: (page: Slide, t: Theme, index: number) => boolean,
+  build: (groups: string[][]) => Slide[],
+): Slide[] | undefined {
+  const words = all.map(wordsIn);
+  const spread = (xs: number[]) => Math.max(...xs) - Math.min(...xs);
+  for (let k = 2; k <= all.length; k++) {
+    const candidates = cutsOf(all.length, k).map((cuts) => {
+      const bounds = [0, ...cuts, all.length];
+      const runs = bounds.slice(1).map((end, i) => [bounds[i] as number, end] as const);
+      const groups = runs.map(([a, b]) => all.slice(a, b));
+      const sums = runs.map(([a, b]) => words.slice(a, b).reduce((x, y) => x + y, 0));
+      const score = [spread(groups.map((g) => g.length)), spread(sums), -(sums[0] ?? 0)];
+      return { groups, score };
+    });
+    candidates.sort((x, y) => {
+      for (let i = 0; i < x.score.length; i++) {
+        const d = (x.score[i] as number) - (y.score[i] as number);
+        if (d !== 0) return d;
+      }
+      return 0;
+    });
+    for (const { groups } of candidates) {
+      const pages = build(groups);
+      if (pages.every((p, i) => fits(p, t, i))) return pages.map((p) => withTerms(p, t, terms));
+    }
+  }
+  return undefined;
+}
+
+/** Every way to cut `n` items into `k` non-empty runs, as the k-1 cut positions (at most 2000). */
+function cutsOf(n: number, k: number): number[][] {
+  const out: number[][] = [];
+  const walk = (from: number, left: number, acc: number[]) => {
+    if (out.length >= 2000) return;
+    if (left === 0) {
+      out.push(acc);
+      return;
+    }
+    for (let c = from; c <= n - left; c++) walk(c + 1, left - 1, [...acc, c]);
+  };
+  walk(1, k - 1, []);
+  return out;
 }
 
 /**
@@ -1523,6 +1585,7 @@ function structureDiagram(
     hints,
     ids,
     slot,
+    paginate,
   );
   if (asPanel) return [asPanel];
   const top = first.y;
@@ -1539,7 +1602,8 @@ function structureDiagram(
         .slide.elements.filter((e) => bodies.some((b) => b.id === e.id))
         .map((e) => e.y + e.h),
     );
-  if (fitSlide(asIs, t).overflow.length === 0 && columnFoot(asIs) <= SAFE_BOTTOM) {
+  // With pages the words are never stepped down beside the drawing: that is for the loop below.
+  if (!paginate && fitSlide(asIs, t).overflow.length === 0 && columnFoot(asIs) <= SAFE_BOTTOM) {
     return [withTerms(asIs, t, hints.terms)];
   }
   const measure = measureHeadless(t);
@@ -1563,14 +1627,13 @@ function structureDiagram(
   };
   const body = readingSize(t);
   const floor = floorBelow(t, "body");
-  for (const size of [body, floor]) {
+  for (const size of paginate ? [body] : [body, floor]) {
     const p = para(words, size, w);
     if (top + withSafety(p.h) <= SAFE_BOTTOM) {
       return [withTerms({ ...slide, elements: [...keep, p, placedSlot] }, t, hints.terms)];
     }
   }
-  const all = sentences(words);
-  if (!paginate || all.length < 2) {
+  if (!paginate) {
     return [
       withTerms(
         { ...slide, elements: [...keep, para(words, floor, w), placedSlot] },
@@ -1579,20 +1642,24 @@ function structureDiagram(
       ),
     ];
   }
-  let n = all.length - 1;
-  while (
-    n > 1 &&
-    top + withSafety(para(joinSentences(all.slice(0, n)), floor, w).h) > SAFE_BOTTOM
-  ) {
-    n--;
-  }
-  const beside = para(joinSentences(all.slice(0, n)), floor, w);
-  const tail = para(joinSentences(all.slice(n)), body, SAFE.w);
-  const next = continued(slide, chromeOf(slide), [tail], ids);
-  return [
-    withTerms({ ...slide, elements: [...keep, beside, placedSlot] }, t, hints.terms),
-    ...continuedAgain(next, tail, t, ids, hints.terms),
-  ];
+  // With pages the words are not squeezed beside the drawing: the slot gives way and the words
+  // are set as any teaching slide's (full width, then continued evenly, UX ruling 91). The drawing
+  // is a note for the teacher that the class never sees.
+  const unslotted = slide.elements
+    .filter((e) => e !== slot)
+    .map((e) =>
+      bodies.includes(e as TextElement) ? { ...e, name: undefined, x: SAFE.x, w: SAFE.w } : e,
+    );
+  // Its instruction moves to the notes, so the teacher still has it.
+  const said = "doc" in slot && slot.doc ? docText(slot.doc).trim() : "";
+  const notes = [slide.notes, said].filter(Boolean).join("\n\n");
+  return structureContent(
+    { ...slide, elements: unslotted, ...(notes ? { notes } : {}) },
+    t,
+    hints,
+    ids,
+    true,
+  );
 }
 
 /** Key terms on a teaching slide's running text (never its heading, and never a question). */
@@ -1691,6 +1758,8 @@ function splitContent(
   ids: Ids,
   /** A diagram slot: it becomes the panel, and every sentence stays in the left column. */
   slot?: SlideElement,
+  /** With pages: a panel is never kept by stepping the words down beside it. */
+  floorless = false,
 ): Slide | undefined {
   if (top > SAFE.y + SAFE.h * 0.45) return undefined;
   // A sentence that only repeats the heading is not said twice on the slide.
@@ -1795,10 +1864,12 @@ function splitContent(
   // the panel for the full-width paragraph.
   // A diagram keeps its half: a drawing squeezed to a third is no use.
   const across = label === "";
-  const settings = (across ? [1] : slot ? [0.5] : [0.5, 0.6, 0.66]).flatMap((share) =>
-    sizes.map((size) => ({ share, size })),
-  );
+  // Every share at the body size first. With pages nothing steps down beside a panel: the panel
+  // gives way to the full-width paragraph (a step down there, then a continuation, UX ruling 91).
+  const shares = across ? [1] : slot ? [0.5] : [0.5, 0.6, 0.66];
+  const settings = sizes.flatMap((size) => shares.map((share) => ({ share, size })));
   for (const { share, size } of settings) {
+    if (size !== sizes[0] && floorless && !across) break;
     const half = across ? SAFE.w : Math.floor((SAFE.w - SPACE[5]) * share);
     const panelX = SAFE.x + half + SPACE[5];
     const panelW = SAFE.x + SAFE.w - panelX;

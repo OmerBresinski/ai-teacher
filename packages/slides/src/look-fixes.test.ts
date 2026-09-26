@@ -65,7 +65,7 @@ describe("a body beside a diagram slot", () => {
     });
   }
 
-  test("a body too long for the column even a step down continues on the next slide, full measure", () => {
+  test("a body too long for the column even a step down continues across the full measure, the slot given way", () => {
     const t = getTheme("chalk");
     const body = Array.from(
       { length: 16 },
@@ -77,9 +77,11 @@ describe("a body beside a diagram slot", () => {
       meta,
     );
     const pages = lookAndFitPages(slide, t);
-    expect(pages.length).toBe(2);
-    expect(named(pages[0]?.elements ?? [], DIAGRAM_NAME)).toHaveLength(1);
-    expect(named(pages[1]?.elements ?? [], DIAGRAM_NAME)).toHaveLength(0);
+    expect(pages.length).toBeGreaterThanOrEqual(2);
+    // The words are not squeezed beside the drawing: the slot gives way, its instruction kept in
+    // the notes, and the words continue evenly across the full measure.
+    for (const page of pages) expect(named(page.elements, DIAGRAM_NAME)).toHaveLength(0);
+    expect(pages[0]?.notes).toContain("Parts: a cliff");
     for (const page of pages) expect(fitSlide(page, t).overflow).toEqual([]);
     expect(pages.flatMap(texts).join(" ")).toContain("Point 15 adds a sentence of detail here.");
   });

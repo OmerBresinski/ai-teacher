@@ -1573,13 +1573,15 @@ describe("generate", () => {
   });
 
   describe("a teaching slide too long for one slide continues (UX ruling 91)", () => {
-    // 85 words: a full explanation, as the writer now sets one.
+    // 115 words: a full explanation, longer than one slide takes even a step down.
     const LONG_BODY = [
       "Everything is made of tiny particles that are far too small to see, even with a microscope.",
       "How the particles are arranged and how they move decides whether a substance is a solid, a liquid or a gas.",
       "In a solid the particles are packed close together in a regular pattern and only vibrate.",
       "Some pupils think the particles themselves melt, but this is wrong.",
       "Heating gives the particles more energy, so they move further apart.",
+      "In a liquid the particles are still close together but can slide past each other.",
+      "In a gas the particles are far apart and move quickly in every direction.",
     ].join(" ");
     const longScript = () =>
       FIXTURES.planSkeleton.outline

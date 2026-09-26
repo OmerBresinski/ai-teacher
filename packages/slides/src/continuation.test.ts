@@ -4,6 +4,7 @@ import { fitSlide } from "./fit-slide";
 import { materialiseSlide, materialiseSlides } from "./materialise";
 import type { SlideSpec, SlideSpecOf } from "./specs";
 import { docLines } from "./structure";
+import { floorBelow } from "./text-style";
 import { getTheme } from "./themes";
 
 /*
@@ -79,15 +80,28 @@ describe("materialiseSlides: a teaching slide too long for one slide continues",
     expect(new Set(all).size).toBe(all.length);
   });
 
-  test("a body too long for two slides continues again, every slide within the slide", () => {
+  test("a body too long for two slides continues again, evenly, never below the floor", () => {
     const slides = materialiseSlides(spec(LONGER), "chalk", meta, ids);
-    expect(slides.length).toBe(3);
+    expect(slides.length).toBeGreaterThanOrEqual(3);
     for (const slide of slides) expect(fitSlide(slide, theme).overflow).toEqual([]);
-    expect(slides.slice(1).map(heading)).toEqual([
-      "Roman towns and daily life (continued)",
-      "Roman towns and daily life (continued)",
-    ]);
+    for (const slide of slides.slice(1)) {
+      expect(heading(slide)).toBe("Roman towns and daily life (continued)");
+    }
     expect(words(slides)).toBe(LONGER);
+    // No page below the floor, and no page a stub: the sentences shared out evenly.
+    const bodies = slides.map((s) => s.elements.find((e) => e.name === "Body"));
+    for (const b of bodies) {
+      expect(b?.type === "text" && (b.style.fontSize ?? 0) >= floorBelow(theme, "body")).toBe(true);
+    }
+    const counts = slides.map((s) => words([s]).split(/(?<=\.) /).length);
+    expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
+  });
+
+  test("a split is balanced: a continuation is never one short sentence", () => {
+    const slides = materialiseSlides(spec(LONG), "chalk", meta, ids);
+    const counts = slides.map((s) => words([s]).split(/(?<=\.) /).length);
+    expect(counts.length).toBe(2);
+    expect(Math.min(...counts)).toBeGreaterThanOrEqual(2);
   });
 
   test("a body that fits stays one slide, as materialiseSlide sets it", () => {
@@ -106,18 +120,22 @@ describe("materialiseSlides: a teaching slide too long for one slide continues",
     expect(heading(one)).toBe("Roman towns and daily life");
   });
 
-  test("a diagram slide too long for its column continues across the full measure", () => {
+  test("a diagram slide too long for its column gives up the slot and continues across the full measure", () => {
     const slides = materialiseSlides(
-      spec(LONG, { diagram: "Plan of a Roman town: forum, baths, grid of streets" }),
+      spec(LONGER, { diagram: "Plan of a Roman town: forum, baths, grid of streets" }),
       "chalk",
       meta,
       ids,
     );
     expect(slides.length).toBeGreaterThanOrEqual(2);
     for (const slide of slides) expect(fitSlide(slide, theme).overflow).toEqual([]);
-    expect(slides[0]?.elements.some((e) => e.name === "Diagram placeholder")).toBe(true);
-    expect(slides[1]?.elements.some((e) => e.name === "Diagram placeholder")).toBe(false);
-    expect(words(slides)).toBe(LONG);
+    // Too long to sit beside the drawing at the body size: the slot gives way, and its
+    // instruction goes to the first slide's notes.
+    expect(slides.some((s) => s.elements.some((e) => e.name === "Diagram placeholder"))).toBe(
+      false,
+    );
+    expect(slides[0]?.notes).toContain("Plan of a Roman town");
+    expect(words(slides)).toBe(LONGER);
   });
 
   test("a list too long for one slide keeps its lead and first points, then the rest as a list", () => {
