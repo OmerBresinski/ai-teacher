@@ -57,6 +57,7 @@ import { BUDGET_FINDING, withUsage } from "./generate";
 import {
   audienceOf,
   blockText,
+  deckOf,
   generationOf,
   imageTextPhotoOf,
   normaliseText,
@@ -474,6 +475,15 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           lesson.themeId,
           meta(outcome.modelId, deps),
           deps.ids,
+          0,
+          {
+            terms: (lesson.facts?.vocabulary ?? []).map((v) => v.term),
+            glossary: (lesson.facts?.vocabulary ?? []).map((v) => ({
+              term: v.term,
+              definition: v.definition,
+            })),
+            deck: deckOf(lesson),
+          },
         ),
         id: original.id,
       });
@@ -749,7 +759,7 @@ export function reprintPatchedSets(
       meta(CODE_MODEL, deps),
       deps.ids,
       0,
-      { quiz: coded.quiz },
+      { quiz: coded.quiz, deck: deckOf(lesson) },
     );
     return { ...withAnswersReveal(fresh), id: slide.id };
   });

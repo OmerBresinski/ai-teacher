@@ -43,6 +43,7 @@ import { stemPlan } from "./question-pool";
 import {
   audienceOf,
   BUDGET_FINDING,
+  deckOf,
   generationOf,
   planClassFor,
   runBounded,
@@ -208,6 +209,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       const slide = withAnswersReveal(
         materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids, 0, {
           quiz: coded.quiz,
+          deck: deckOf(lesson),
         }),
       );
       return { slide, misses: [], builtFrom };
@@ -269,6 +271,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       {
         terms: builtFrom.vocabulary.map((v) => v.term),
         glossary: builtFrom.vocabulary.map((v) => ({ term: v.term, definition: v.definition })),
+        deck: deckOf(lesson),
       },
     );
     return { slide, misses: call.editorialMisses, builtFrom };

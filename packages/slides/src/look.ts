@@ -1,4 +1,11 @@
-import type { Slide, SlideElement, SlideKind, TextElement, Theme } from "@tj/domain/documents";
+import type {
+  RichDoc,
+  Slide,
+  SlideElement,
+  SlideKind,
+  TextElement,
+  Theme,
+} from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { docFromText, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
@@ -168,11 +175,20 @@ function leadAndCard(els: SlideElement[], t: Theme, ids: Ids): SlideElement[] {
   );
   if (bodies.length !== 1 || els.some((e) => e.type === "image" || e.type === "option")) return els;
   const body = bodies[0] as TextElement;
-  const words = plain(body);
+  // A body with `points` (materialise `bodyWithPoints`) ends in a bullet list: the lead is taken
+  // from the paragraphs before it, and the list goes under the lead with whatever follows it.
+  const nodes = body.doc.content ?? [];
+  const listAt = nodes.findIndex((n) => n.type === "bulletList");
+  const list = listAt < 0 ? [] : nodes.slice(listAt);
+  const words =
+    listAt < 0
+      ? plain(body)
+      : plain({ ...body, doc: { type: "doc", content: nodes.slice(0, listAt) } });
   const all = sentences(words);
-  if (all.length < 2) return els;
-  const lead = all[0] as string;
+  if (all.length < 2 && list.length === 0) return els;
+  const lead = all[0] ?? "";
   const rest = joinSentences(all.slice(1));
+  if (!lead) return els;
   const measure = measureHeadless(t);
   // Beside a diagram slot the text keeps its half; otherwise it takes the full measure.
   const w = els.some((e) => e.name === DIAGRAM_NAME) ? body.w : SAFE.w;
@@ -185,7 +201,10 @@ function leadAndCard(els: SlideElement[], t: Theme, ids: Ids): SlideElement[] {
     measure({ doc: leadDoc, width: w, style: leadStyle, preset: "body", inset: 0, chrome: 0 }),
   );
   const cardY = snapY(body.y + leadH + SPACE[3]);
-  const cardDoc = docFromText(rest);
+  const cardDoc: RichDoc =
+    list.length === 0
+      ? docFromText(rest)
+      : { type: "doc", content: [...(rest ? (docFromText(rest).content ?? []) : []), ...list] };
   const cardStyle = {
     preset: "body" as const,
     ...(body.style.fontSize ? { fontSize: body.style.fontSize } : {}),
@@ -295,7 +314,7 @@ function headingDisplay(heading: TextElement, t: Theme): { fontSize?: number; li
 
 /* ---------------------------------------------------------------- deck chrome */
 
-export const EYEBROW_NAME = "Eyebrow";
+export const EYEBROW_NAME = "Deck line";
 export const COUNTER_NAME = "Slide counter";
 
 /** What the eyebrow says: the year and the subject, as the examples set them ("YEAR 10 · BIOLOGY"). */

@@ -14,7 +14,14 @@ import {
 import { lookAndFitPages, materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import { docPlainText, joinSentences, sentences } from "./sentences";
-import { ANSWERS_NAME, BULLET_NAME, ITEM_NAME, PANEL_NAME, PANEL_TEXT_NAME } from "./structure";
+import {
+  ANSWERS_NAME,
+  BULLET_NAME,
+  ITEM_NAME,
+  PANEL_DEFINITION_NAME,
+  PANEL_NAME,
+  withoutDefinition,
+} from "./structure";
 import { getTheme } from "./themes";
 
 const meta = { promptVersion: "t", model: "m", at: "2026-09-26T00:00:00.000Z" };
@@ -61,7 +68,7 @@ describe("a body beside a diagram slot", () => {
   test("a body too long for the column even a step down continues on the next slide, full measure", () => {
     const t = getTheme("chalk");
     const body = Array.from(
-      { length: 8 },
+      { length: 16 },
       (_, i) => `Point ${i} adds a sentence of detail here.`,
     ).join(" ");
     const slide = materialiseSlide(
@@ -74,7 +81,7 @@ describe("a body beside a diagram slot", () => {
     expect(named(pages[0]?.elements ?? [], DIAGRAM_NAME)).toHaveLength(1);
     expect(named(pages[1]?.elements ?? [], DIAGRAM_NAME)).toHaveLength(0);
     for (const page of pages) expect(fitSlide(page, t).overflow).toEqual([]);
-    expect(pages.flatMap(texts).join(" ")).toContain("Point 7 adds a sentence of detail here.");
+    expect(pages.flatMap(texts).join(" ")).toContain("Point 15 adds a sentence of detail here.");
   });
 });
 
@@ -331,7 +338,7 @@ describe("design pass", () => {
     const s = slide(
       "Waves erode cliffs in two ways. Abrasion scrapes rock with sediment. Hydraulic action forces air into cracks.",
     );
-    const panelText = named(s.elements, PANEL_TEXT_NAME)[0];
+    const panelText = named(s.elements, PANEL_DEFINITION_NAME)[0];
     expect(panelText && panelText.type === "text" && docPlainText(panelText.doc)).toContain(
       "Rock worn away",
     );
@@ -371,5 +378,77 @@ describe("design pass", () => {
       Math.round(t.sizes.heading * HEADING_DISPLAY),
     );
     expect(long?.type === "text" && long.style.fontSize).toBeFalsy();
+  });
+});
+
+describe("merged: points, the diagram panel, the definition said once, the deck line", () => {
+  const t = getTheme("chalk");
+  test("a content spec's points are dot bullets under the lead, beside the panel", () => {
+    const s = materialiseSlide(
+      {
+        kind: "content",
+        factRefs: [],
+        heading: "Limiting factors",
+        body: "The rate is limited by whichever factor is in shortest supply.",
+        points: ["light intensity", "carbon dioxide", "temperature"],
+      },
+      "chalk",
+      meta,
+    );
+    expect(named(s.elements, BULLET_NAME)).toHaveLength(3);
+    expect(
+      named(s.elements, ITEM_NAME).map((e) => (e.type === "text" ? docPlainText(e.doc) : "")),
+    ).toEqual(["light intensity", "carbon dioxide", "temperature"]);
+    expect(fitSlide(s, t).overflow).toEqual([]);
+  });
+
+  test("a diagram slot is the right panel: tinted, the words beside it", () => {
+    const s = materialiseSlide(
+      {
+        kind: "content",
+        factRefs: [],
+        heading: "Cliff erosion",
+        body: "Waves wear cliffs away. Abrasion scrapes rock. Hydraulic action cracks it.",
+        diagram: "Parts: cliff, notch, sea",
+      },
+      "chalk",
+      meta,
+    );
+    const slot = named(s.elements, DIAGRAM_NAME)[0];
+    expect(slot && slot.type === "shape" && slot.strokeWidth).toBe(0);
+    expect(named(s.elements, PANEL_NAME)).toHaveLength(0);
+    for (const e of s.elements) {
+      if (e.type === "text" && e.style.preset === "body")
+        expect(e.x + e.w).toBeLessThanOrEqual(slot?.x ?? 0);
+    }
+  });
+
+  test("the words do not repeat the definition the panel shows", () => {
+    expect(
+      withoutDefinition(
+        [
+          "Chlorophyll, the green substance in plant cells, absorbs light energy.",
+          "This powers photosynthesis.",
+        ],
+        "chlorophyll",
+        "The green substance in plant cells that absorbs light energy for photosynthesis.",
+      ),
+    ).toEqual(["Chlorophyll absorbs light energy.", "This powers photosynthesis."]);
+  });
+
+  test("with the deck known, a generated slide carries the year and subject line", () => {
+    const s = materialiseSlide(
+      { kind: "content", factRefs: [], heading: "Erosion", body: "Waves wear cliffs. Rock falls." },
+      "chalk",
+      meta,
+      undefined,
+      0,
+      { deck: { yearGroup: "Year 9", subject: "Geography" } },
+    );
+    const eyebrow = named(s.elements, EYEBROW_NAME)[0];
+    expect(eyebrow && eyebrow.type === "text" && docPlainText(eyebrow.doc)).toBe(
+      "YEAR 9 · GEOGRAPHY",
+    );
+    expect(named(s.elements, COUNTER_NAME)).toHaveLength(1);
   });
 });

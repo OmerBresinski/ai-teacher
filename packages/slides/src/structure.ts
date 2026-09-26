@@ -78,16 +78,30 @@ export type SlideStructure = {
   sequence?: string[];
   /** The lesson's vocabulary, picked out in running text. */
   terms?: string[];
+  /** The year and subject the look's top line names (`withDeckChrome`). */
+  deck?: { yearGroup?: string | null; subject?: string | null };
   /** The vocabulary's definitions: a term a teaching slide uses can fill its side panel. */
   glossary?: { term: string; definition: string }[];
-  /** A teaching slide's short points (2–4), set as dot bullets under its lead. */
-  items?: string[];
 };
 
 /* ---------------------------------------------------------------- text helpers */
 
 const inline = (n: RichNode): string =>
   n.type === "text" ? (n.text ?? "") : (n.content ?? []).map(inline).join("");
+
+/** A doc without its bullet lists: the prose a content body's `points` follow. */
+export const proseOf = (doc: RichDoc): RichDoc => ({
+  ...doc,
+  content: (doc.content ?? []).filter((n) => n.type !== "bulletList"),
+});
+
+/** The items of a doc's top-level bullet lists: a content spec's `points`. */
+export function pointsOf(doc: RichDoc): string[] {
+  return (doc.content ?? [])
+    .filter((n) => n.type === "bulletList")
+    .flatMap((n) => (n.content ?? []).map((item) => inline(item).trim()))
+    .filter(Boolean);
+}
 
 /** The lines of a doc: its list items, or its paragraphs. */
 export function docLines(doc: RichDoc): string[] {
@@ -1135,14 +1149,17 @@ function structureContent(
   );
   if (bodies.length === 0) return plain;
   const top = Math.min(...bodies.map((b) => b.y));
-  const words = bodies.map((b) => docText(b.doc)).join(" ");
+  // A content spec's `points` arrive as a bullet list at the end of its body (`bodyWithPoints`):
+  // the prose is the words, the list the points.
+  const words = joinSentences(bodies.map((b) => docText(proseOf(b.doc))));
+  const points = bodies.flatMap((b) => pointsOf(b.doc));
   const explicit = hints.compare || hints.keyCard || hints.sequence;
   const inferred = explicit ? undefined : inferStructure(docText(heading.doc), words, hints.terms);
   const s: SlideStructure = explicit ? hints : (inferred?.structure ?? {});
   const restWords = explicit ? words : (inferred?.rest ?? words);
   const lead = explicit ? "" : (inferred?.lead ?? "");
   if (!s.compare && !s.sequence) {
-    const split = splitContent(slide, t, bodies, top, words, s, hints, ids);
+    const split = splitContent(slide, t, bodies, top, words, points, s, hints, ids);
     if (split) return [split];
   }
   if (!s.compare && !s.keyCard && !s.sequence) {
@@ -1328,6 +1345,21 @@ function structureDiagram(
     .sort((a, b) => a.y - b.y);
   const first = bodies[0];
   if (!first) return [withTerms(slide, t, hints.terms)];
+  // The slot is the right panel of the two-column composition, the words the left column.
+  const prose = joinSentences(bodies.map((b) => docText(proseOf(b.doc))));
+  const asPanel = splitContent(
+    slide,
+    t,
+    bodies,
+    first.y,
+    prose,
+    bodies.flatMap((b) => pointsOf(b.doc)),
+    {},
+    hints,
+    ids,
+    slot,
+  );
+  if (asPanel) return [asPanel];
   const top = first.y;
   const x = first.x;
   const w = Math.max(SPACE[7], Math.min(first.w, slot.x - SPACE[5] - x));
@@ -1460,6 +1492,8 @@ export function unmarkTerms(doc: RichDoc, t: Theme): RichDoc {
 export const PANEL_NAME = "Side panel";
 export const PANEL_LABEL_NAME = "Side panel label";
 export const PANEL_TEXT_NAME = "Side panel text";
+/** A side panel's text taken from the lesson's glossary, not from the slide's own words. */
+export const PANEL_DEFINITION_NAME = "Side panel definition";
 export const LEAD_NAME = "Lead";
 export const BULLET_NAME = "Bullet";
 export const ITEM_NAME = "Point";
@@ -1485,9 +1519,12 @@ function splitContent(
   bodies: TextElement[],
   top: number,
   words: string,
+  points: string[],
   s: SlideStructure,
   hints: SlideStructure,
   ids: Ids,
+  /** A diagram slot: it becomes the panel, and every sentence stays in the left column. */
+  slot?: SlideElement,
 ): Slide | undefined {
   if (top > SAFE.y + SAFE.h * 0.45) return undefined;
   // A sentence that only repeats the heading is not said twice on the slide.
@@ -1496,11 +1533,17 @@ function splitContent(
   const all = sentences(words).filter((x) => bare(x) !== said);
   let label: string;
   let statement: RichDoc;
+  let weight = 600;
+  let textName = PANEL_TEXT_NAME;
   let left: string[];
   const glossary = hints.glossary?.find((g) =>
     new RegExp(`\\b${escapeRe(g.term)}`, "i").test(words),
   );
-  if (s.keyCard) {
+  if (slot) {
+    label = "Diagram";
+    statement = docFromText("");
+    left = all;
+  } else if (s.keyCard) {
     label = s.keyCard.label;
     statement = docFromText(s.keyCard.text);
     left = sentences(words.replace(s.keyCard.text, "").replace(/\s+\./g, ".")).filter(
@@ -1509,6 +1552,8 @@ function splitContent(
     if (left.length === 0) left = all;
   } else if (glossary) {
     label = "Key term";
+    weight = 400;
+    textName = PANEL_DEFINITION_NAME;
     statement = {
       type: "doc",
       content: [
@@ -1519,8 +1564,11 @@ function splitContent(
         { type: "paragraph", content: [{ type: "text", text: glossary.definition }] },
       ],
     };
-    left = all;
-  } else if (all.length >= 2) {
+    // The panel carries the definition, so the words do not say it again: an aside that
+    // restates it ("Chlorophyll, the green substance in plant cells, absorbs …") is cut, and a
+    // sentence that is only the definition goes, while something is left to read.
+    left = withoutDefinition(all, glossary.term, glossary.definition);
+  } else if (all.length >= 2 || (all.length === 1 && points.length >= 2)) {
     label = "Key idea";
     statement = docFromText(all[0] as string);
     left = all.slice(1);
@@ -1531,25 +1579,26 @@ function splitContent(
     xs.length >= 2 && xs.length <= 4 && xs.every((x) => wordsIn(x) <= ITEM_MAX_WORDS);
   const ideaInPanel = label === "Key idea";
   const items =
-    hints.items && hints.items.length >= 2
-      ? hints.items.slice(0, 4)
+    points.length >= 2
+      ? points.slice(0, 4)
       : ideaInPanel && short(left)
         ? left
         : !ideaInPanel && short(left.slice(1))
           ? left.slice(1)
           : [];
-  const lead = hints.items?.length
-    ? joinSentences(left)
-    : items.length && !ideaInPanel
-      ? (left[0] as string)
-      : "";
+  const lead =
+    points.length >= 2
+      ? joinSentences(left)
+      : items.length && !ideaInPanel
+        ? (left[0] as string)
+        : "";
   const rest = items.length ? "" : joinSentences(left);
 
   const measure = measureHeadless(t);
   const body = resolveFontSize(t, "body");
   const few = wordsIn(joinSentences([lead, rest, ...items])) <= FEW_WORDS;
   const sizes = [...(few ? [Math.round(body * 1.15)] : []), body, floorBelow(t, "body")];
-  const keep = slide.elements.filter((e) => !bodies.includes(e as TextElement));
+  const keep = slide.elements.filter((e) => !bodies.includes(e as TextElement) && e !== slot);
   // Half and half first, as in the examples; a longer text takes up to two thirds before it gives up
   // the panel for the full-width paragraph.
   const settings = [0.5, 0.6, 0.66].flatMap((share) => sizes.map((size) => ({ share, size })));
@@ -1609,13 +1658,84 @@ function splitContent(
       y = snapY(y + h + SPACE[3]);
     }
     if (!fits(y - SPACE[2])) continue;
-    const panel = sidePanel(label, statement, top, panelX, panelW, t, ids);
+    const panel = slot
+      ? [diagramPanel(slot, top, panelX, panelW, t)]
+      : sidePanel(label, statement, top, panelX, panelW, t, ids, weight, textName);
     if (!panel) continue;
     const next: Slide = { ...slide, elements: [...keep, ...els, ...panel] };
     if (fitSlide(next, t).overflow.length > 0) continue;
     return withTerms(next, t, hints.terms);
   }
   return undefined;
+}
+
+/**
+ * A diagram slot set as the right panel: the same tinted card as the key-term panel, carrying its
+ * instruction in small muted type. Still named `Diagram placeholder`, so the renderer draws it in
+ * the editor only (`withDiagramSlot`): a class never sees "Diagram to add".
+ */
+function diagramPanel(
+  slot: SlideElement,
+  top: number,
+  x: number,
+  w: number,
+  t: Theme,
+): SlideElement {
+  return {
+    ...(slot as ShapeElement),
+    x,
+    y: top,
+    w,
+    h: SAFE_BOTTOM - top,
+    fill: accentTint(t),
+    stroke: accentTint(t),
+    strokeWidth: 0,
+    radius: t.radius,
+    textStyle: {
+      preset: "small",
+      fontSize: floorBelow(t, "small"),
+      color: t.colors.muted,
+      align: "center",
+      valign: "middle",
+      padding: SPACE[4],
+    },
+  } as SlideElement;
+}
+
+const STOP = new Set(
+  "a an the of in on to and or for is are that which by with its it as at from".split(" "),
+);
+const contentWords = (x: string) =>
+  x
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOP.has(w));
+/** The share of `part`'s content words that `whole` also uses. */
+const overlap = (part: string, whole: string) => {
+  const p = contentWords(part);
+  const w = new Set(contentWords(whole));
+  return p.length === 0 ? 0 : p.filter((x) => w.has(x)).length / p.length;
+};
+
+/**
+ * The sentences without the definition a side panel already shows: an aside after the term that
+ * restates it is cut ("Chlorophyll, the green substance in plant cells, absorbs light" →
+ * "Chlorophyll absorbs light"); a sentence that says little but the definition is dropped, unless
+ * it is the only one.
+ */
+export function withoutDefinition(all: string[], term: string, definition: string): string[] {
+  const aside = new RegExp(
+    `^(.*?\\b${escapeRe(term)}\\b)\\s*(?:,\\s*([^,]+?),|\\(([^)]+)\\))\\s*`,
+    "i",
+  );
+  const cut = all.map((x) => {
+    const m = x.match(aside);
+    const said = m ? (m[2] ?? m[3] ?? "") : "";
+    return m && overlap(said, definition) >= 0.5 ? `${m[1]} ${x.slice(m[0].length)}` : x;
+  });
+  const kept = cut.filter((x) => overlap(definition, x) < 0.6);
+  return kept.length > 0 ? kept : cut;
 }
 
 /**
@@ -1630,6 +1750,8 @@ function sidePanel(
   w: number,
   t: Theme,
   ids: Ids,
+  weight = 600,
+  textName = PANEL_TEXT_NAME,
 ): SlideElement[] | undefined {
   const measure = measureHeadless(t);
   const pad = w < 360 ? SPACE[3] : SPACE[5];
@@ -1641,7 +1763,7 @@ function sidePanel(
     resolveFontSize(t, "body"),
     floorBelow(t, "body"),
   ]) {
-    const style = { preset: "body" as const, fontSize: size, fontWeight: 600, lineHeight: 1.3 };
+    const style = { preset: "body" as const, fontSize: size, fontWeight: weight, lineHeight: 1.3 };
     const sh = heightOf(measure, statement, inner, "body", size, 0, style);
     const block = labelH + SPACE[2] + sh;
     if (block > h - pad * 2) continue;
@@ -1671,7 +1793,7 @@ function sidePanel(
         { x: x + pad, y: y0 + labelH + SPACE[2], w: inner, h: sh },
         statement,
         { ...style, color: t.colors.ink },
-        { name: PANEL_TEXT_NAME },
+        { name: textName },
       ),
     ];
   }

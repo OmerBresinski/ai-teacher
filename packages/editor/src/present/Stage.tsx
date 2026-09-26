@@ -152,6 +152,7 @@ export function Stage({ lesson, theme }: StageProps) {
                   slide={slides[outgoing.index] as Slide}
                   theme={theme}
                   step={outgoing.step}
+                  position={{ index: outgoing.index, total: slides.length }}
                 />
               ) : null}
               {/* Annotations belong to the slide they were drawn on, so they
@@ -166,7 +167,12 @@ export function Stage({ lesson, theme }: StageProps) {
             className={outgoing ? `td-present-layer td-in-${kind}` : "td-present-layer"}
             style={{ ["--td-push-from" as string]: outgoing?.dir === 1 ? "100%" : "-100%" }}
           >
-            <SlideLayer slide={slide} theme={theme} step={step} />
+            <SlideLayer
+              slide={slide}
+              theme={theme}
+              step={step}
+              position={{ index: Math.min(index, slides.length - 1), total: slides.length }}
+            />
             <InkLayer slideId={slide.id} />
           </div>
 
@@ -191,13 +197,24 @@ export function Stage({ lesson, theme }: StageProps) {
   );
 }
 
-function SlideLayer({ slide, theme, step }: { slide: Slide; theme: Theme; step: number }) {
+function SlideLayer({
+  slide,
+  theme,
+  step,
+  position,
+}: {
+  slide: Slide;
+  theme: Theme;
+  step: number;
+  position: { index: number; total: number };
+}) {
   const reveal = hasRevealableAnswer(slide) && step >= slideStepCount(slide);
   return (
     <SlideView
       slide={slide}
       theme={theme}
       mode="present"
+      position={position}
       step={step}
       revealAnswer={reveal}
       answerProgress={answerStepsTaken(slide, step)}

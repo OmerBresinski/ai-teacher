@@ -16,7 +16,7 @@ import {
   type StageName,
   throwIfAborted,
 } from "../types";
-import { audienceOf, blockText, runBounded, slideText, withImageCaption } from "./shared";
+import { audienceOf, blockText, deckOf, runBounded, slideText, withImageCaption } from "./shared";
 
 /*
  * Proposal stages (ADR 0025 §18): the impact set of a fact change, and the re-derivation of an
@@ -203,6 +203,8 @@ export async function proposeFor(
       lesson.themeId,
       meta(call.modelId),
       deps.ids,
+      0,
+      { deck: deckOf(lesson) },
     );
     const generatedFrom = { factRefs: call.output.factRefs, ...meta(call.modelId) };
     if (job.elementIds === null) {

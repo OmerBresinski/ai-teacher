@@ -14,7 +14,7 @@ import {
 } from "./look";
 import { materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
-import { BODY_NAME, PANEL_NAME, PANEL_TEXT_NAME } from "./structure";
+import { BODY_NAME, BULLET_NAME, ITEM_NAME, PANEL_NAME, PANEL_TEXT_NAME } from "./structure";
 import { getTheme, THEMES } from "./themes";
 
 const META = { promptVersion: "test", model: "test", at: "2026-09-26T00:00:00.000Z" };
@@ -88,6 +88,30 @@ describe("the lesson look", () => {
       }
     });
   }
+
+  test("look/headings: a lead with points: the lead on the panel, the points as dot bullets", () => {
+    const slide = materialiseSlide(
+      {
+        kind: "content",
+        heading: "Types of volcano",
+        body: "Volcanoes are grouped by the shape their lava builds.",
+        points: ["shield: runny lava, gentle slopes", "composite: layers of ash and lava"],
+        factRefs: ["k1"],
+      },
+      "chalk",
+      META,
+      counter(),
+    );
+    const [idea] = named(slide, PANEL_TEXT_NAME) as TextElement[];
+    expect(idea && plain(idea)).toBe("Volcanoes are grouped by the shape their lava builds.");
+    const points = named(slide, ITEM_NAME) as TextElement[];
+    expect(points.map(plain)).toEqual([
+      "shield: runny lava, gentle slopes",
+      "composite: layers of ash and lava",
+    ]);
+    expect(named(slide, BULLET_NAME)).toHaveLength(2);
+    expect(named(slide, KEY_IDEA_NAME)).toHaveLength(0);
+  });
 
   test("a question slide keeps its composition and takes the bar alone", () => {
     const slide = materialiseSlide(

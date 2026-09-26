@@ -30,6 +30,10 @@ import {
  * kind (`slideShapeOf`) instead of "a "content" slide spec", so the repair keeps the ≤ 30-word body
  * and the `diagram` field; the stage keeps a diagram the model drops (`withDiagramKept`). The
  * system text is unchanged and the pinned sample passes its own shape, so the hash did not move.
+ *
+ * v17 (26 Sept 2026, generate-slide v29): the content shape line it copies now carries the label
+ * heading, the ≤ 20-word lead and the optional `points`, and a content slide's bullet list reaches
+ * the call labelled `points` (`specFieldsOf`), not folded into `body`. System text unchanged.
  */
 
 /** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */
@@ -88,7 +92,7 @@ export type RepairInput = {
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v16",
+  version: "repair.v17",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",

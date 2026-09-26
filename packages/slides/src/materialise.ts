@@ -25,7 +25,7 @@ import {
   variantName,
   vocabularyGrid,
 } from "./layouts";
-import { applyLook, KEY_IDEA_NAME, withDiagramSlot } from "./look";
+import { applyLook, KEY_IDEA_NAME, withDeckChrome, withDiagramSlot } from "./look";
 import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./specs";
 import { type SlideStructure, structureSlide, withTerms } from "./structure";
 import { getTheme } from "./themes";
@@ -82,13 +82,7 @@ export function materialiseSlide(
   if (filled.question) slide.question = filled.question;
   if (spec.notes) slide.notes = spec.notes;
   // The recipe is sized for its placeholder copy; fit it to the real copy before it is stored.
-  // A content spec's short points (a lead and 2–4 items) set as dot bullets beside the panel.
-  const items = (spec as { items?: unknown }).items;
-  const hints =
-    spec.kind === "content" && !structure.items && Array.isArray(items)
-      ? { ...structure, items: items.filter((x): x is string => typeof x === "string") }
-      : structure;
-  const fitted = lookAndFit(slide, getTheme(themeId), ids, hints);
+  const fitted = lookAndFit(slide, getTheme(themeId), ids, structure);
   return { ...fitted, elements: fitted.elements.map((element) => stampElement(element, stamp)) };
 }
 
@@ -110,7 +104,7 @@ export function lookAndFitPages(
   // the fitted look.
   const looked = fitSlide(applyLook(slide, theme, ids), theme).slide;
   const pages = structureSlide(looked, theme, structure, ids, options);
-  return pages.map((page) => {
+  const done = pages.map((page) => {
     const looked = fitSlide(page, theme);
     const split = looked.slide.elements.some((e) => e.name === KEY_IDEA_NAME);
     if (!split || looked.overflow.length === 0) return looked.slide;
@@ -119,6 +113,8 @@ export function lookAndFitPages(
       theme,
     ).slide;
   });
+  // The top line (year, subject, the counter drawn at render time) when the deck is known.
+  return structure.deck ? withDeckChrome(done, theme, structure.deck, ids) : done;
 }
 
 /**
@@ -317,7 +313,7 @@ function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: Conten
   if (variant === "statement") {
     // No heading on a statement: the heading becomes the eyebrow over the sentence.
     setText(slot(laid, "Eyebrow"), spec.heading);
-    setText(slot(laid, "Statement"), spec.body);
+    setDoc(slot(laid, "Statement"), bodyWithPoints(spec.body, spec.points));
     return laid;
   }
   setText(textOf(laid, "heading"), spec.heading);
@@ -325,15 +321,26 @@ function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: Conten
     const [left, right] = splitAtFullStop(spec.body);
     setText(slot(laid, "Body left"), left);
     const rightSlot = slot(laid, "Body right");
-    if (right) {
-      setText(rightSlot, right);
+    if (right || spec.points?.length) {
+      setDoc(rightSlot, bodyWithPoints(right, spec.points));
       return laid;
     }
     // One sentence with no full stop to split at: the left column carries it all.
     return { ...laid, elements: laid.elements.filter((element) => element !== rightSlot) };
   }
-  setText(textOf(laid, "body"), spec.body);
+  setDoc(textOf(laid, "body"), bodyWithPoints(spec.body, spec.points));
   return laid;
+}
+
+/**
+ * A content body and its optional `points`: the body's paragraphs, then the points as one bullet
+ * list. The look (`leadAndCard`) keeps the first sentence as the lead and puts the rest, list
+ * included, under it.
+ */
+export function bodyWithPoints(body: string, points: string[] | undefined): RichDoc {
+  if (!points?.length) return docFromText(body);
+  const text = body.trim() ? (docFromText(body).content ?? []) : [];
+  return { type: "doc", content: [...text, ...(docFromBullets(points).content ?? [])] };
 }
 
 /**
