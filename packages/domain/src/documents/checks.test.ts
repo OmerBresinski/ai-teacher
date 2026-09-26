@@ -667,6 +667,18 @@ describe("questionless (quality lab, Sept 2026)", () => {
     ).toBe("ok");
     expect(questionless("If it rains, the ground.")).toBe("no-question");
   });
+  test('"your answer" to a task set earlier in the same sentence has its referent (l6f)', () => {
+    expect(
+      questionless(
+        "Suppose 36 beads are shared in the ratio 1:3. Explain how to find each share and check your answer.",
+      ),
+    ).toBe("ok");
+    expect(questionless("Share £72 in the ratio 5:7, then check your answer.")).toBe("ok");
+    expect(questionless("A shop sells pens. Look again and check your answer.")).toBe(
+      "no-referent",
+    );
+    expect(questionless("A shop sells pens. Explain your answer.")).toBe("no-referent");
+  });
   test("an imperative whose referents follow a colon is a question, not a dangling task", () => {
     expect(
       questionless("Put these dates in order from earliest to latest: AD 43, AD 410, AD 1."),
