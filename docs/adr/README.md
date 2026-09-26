@@ -37,6 +37,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0029 | Plan confirmation: the plan job, the generate job and plan revisions | Accepted |
 | 0030 | The worksheet is an independent job                               | Accepted |
 | 0031 | AI provider: OpenAI direct as an opt-in route in @tj/ai; Bedrock stays the default | Accepted |
+| 0032 | Figures are drawn by code from named templates, with a `path` element | Accepted |
 
 Template: `0000-template.md`.
 
