@@ -1,13 +1,16 @@
 .materials-dialog {
   padding: 0;
   gap: 0;
+  height: min(720px, calc(100dvh - 48px));
   max-height: calc(100dvh - 48px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 .materials-body {
-  padding: 32px;
+  padding: 24px 32px;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -27,11 +30,11 @@
 }
 .materials-header [data-slot="dialog-description"] {
   margin-top: 10px;
-  max-width: 32ch;
+  max-width: none;
 }
 .materials-character {
-  width: 130px;
-  height: 100px;
+  width: 150px;
+  height: 120px;
   flex-shrink: 0;
   pointer-events: none;
   overflow: hidden;
@@ -89,7 +92,8 @@
 }
 .materials-paste textarea {
   min-height: 150px;
-  max-height: 260px;
+  max-height: 150px;
+  resize: none;
 }
 .materials-attachments {
   display: flex;
@@ -97,6 +101,7 @@
   gap: 8px;
 }
 .materials-footer {
+  flex-shrink: 0;
   padding: 18px 32px;
   border-top: 1px solid var(--border);
   display: flex;
@@ -105,7 +110,8 @@
   gap: 24px;
 }
 .materials-footer p {
-  max-width: 42ch;
+  flex: 1;
+  min-width: 0;
   font-size: 12px;
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -171,4 +177,25 @@
     margin: 0;
     border-radius: 0;
   }
+}
+
+.materials-header {
+  flex-shrink: 0;
+}
+.materials-dialog[data-has-materials="true"] .materials-drop {
+  min-height: 112px;
+  padding: 16px;
+  gap: 6px;
+}
+.materials-dialog[data-has-materials="true"] .materials-drop-icon {
+  display: none;
+}
+.materials-dialog[data-has-materials="true"] .materials-drop-title {
+  font-size: 16px;
+}
+.materials-body > [data-slot="tabs"] {
+  flex-shrink: 0;
+}
+.materials-attachments {
+  min-height: 0;
 }

@@ -46,7 +46,7 @@ function renderZone(initial?: SourceRef[], boundSourceIds?: string[]) {
 }
 
 const pdf = (name = "plants.pdf", bytes = 1400) =>
-  new File([new Uint8Array(bytes)], name, { type: "application/pdf" });
+  new File([new Uint8Array(bytes).fill(name.charCodeAt(0))], name, { type: "application/pdf" });
 const fileInput = () => screen.getByLabelText("Choose files", { selector: "input" });
 const ids = () => screen.getByTestId("ids").textContent ?? "";
 const uploads = () => fakeApi.requests.filter((r) => r.path === "/sources" && r.method === "POST");
@@ -117,6 +117,26 @@ describe("SourceDropZone", () => {
     expect(ids()).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(screen.queryByRole("list", { name: "Files we could not take" })).toBeNull();
+  });
+
+  it("rejects identical bytes even under a different filename", async () => {
+    renderZone();
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    fireEvent.change(fileInput(), { target: { files: [new File([bytes], "original.pdf")] } });
+    await screen.findByRole("button", { name: "Remove original.pdf" });
+    fireEvent.change(fileInput(), { target: { files: [new File([bytes], "renamed.pdf")] } });
+    await screen.findAllByText("renamed.pdf is already added.");
+    expect(uploads()).toHaveLength(1);
+  });
+
+  it("allows the same contents after removing the original attachment", async () => {
+    renderZone();
+    fireEvent.change(fileInput(), { target: { files: [pdf()] } });
+    fireEvent.click(await screen.findByRole("button", { name: "Remove plants.pdf" }));
+    await waitFor(() => expect(ids()).toBe(""));
+    fireEvent.change(fileInput(), { target: { files: [pdf()] } });
+    await screen.findByRole("button", { name: "Remove plants.pdf" });
+    expect(uploads()).toHaveLength(2);
   });
 
   it("a file over 25 MB is refused client-side with no request", async () => {

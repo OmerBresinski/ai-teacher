@@ -127,11 +127,28 @@ export function SourceDropZone({
   // One upload at a time: the head of the queue runs, then the queue advances.
   const head = queue[0];
   const running = useRef<number | null>(null);
+  const fingerprints = useRef(new Map<string, string>());
+  const latestSources = useRef(sources);
+  latestSources.current = sources;
   const uploadOne = upload.mutateAsync;
   useEffect(() => {
     if (!head || running.current === head.key) return;
     running.current = head.key;
-    uploadOne(head.input)
+    const uploadUnique = async () => {
+      if (!("file" in head.input)) return uploadOne(head.input);
+      const bytes = await head.input.file.arrayBuffer();
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      const hash = Array.from(new Uint8Array(digest), (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join("");
+      if (latestSources.current.some((source) => fingerprints.current.get(source.id) === hash)) {
+        throw new Error(`${head.label} is already added.`);
+      }
+      const source = await uploadOne(head.input);
+      fingerprints.current.set(source.id, hash);
+      return source;
+    };
+    uploadUnique()
       .then((source) => {
         latestOnChange.current((current) => [...current, source]);
         setAnnouncement(`Added ${source.name}`);
@@ -241,7 +258,11 @@ export function SourceDropZone({
           onOpenChange?.(value);
         }}
       >
-        <DialogContent size="xl" className="materials-dialog">
+        <DialogContent
+          size="xl"
+          className="materials-dialog"
+          data-has-materials={sources.length + queue.length > 0}
+        >
           <section ref={sectionRef} className="materials-body">
             <header className="materials-header">
               <div>
