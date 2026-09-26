@@ -91,3 +91,13 @@ describe("costUsd", () => {
     expect(costUsd(DEFAULT_MODEL_IDS.frontier, { inputTokens: 0, outputTokens: 0 })).toBe(0);
   });
 });
+
+describe("a bare OpenAI id (the direct provider strips the `openai/` prefix)", () => {
+  test("is priced under its openai/ row, and an id with a vendor prefix is not rewritten", () => {
+    const usage = { inputTokens: 1_000_000, outputTokens: 1_000_000 };
+    expect(isPriced("gpt-6-luna")).toBe(true);
+    expect(costUsd("gpt-6-luna", usage)).toBe(costUsd("openai/gpt-6-luna", usage));
+    expect(isPriced("not-a-model")).toBe(false);
+    expect(isPriced("vendor/gpt-6-luna")).toBe(false);
+  });
+});

@@ -166,7 +166,11 @@ export interface TokenUsage {
 
 /** The row for a model id, or `undefined`. Own properties only: `"toString"` is not a model. */
 function priceOf(modelId: string): ModelPrice | undefined {
-  return Object.hasOwn(PRICES, modelId) ? PRICES[modelId] : undefined;
+  if (Object.hasOwn(PRICES, modelId)) return PRICES[modelId];
+  // The direct OpenAI provider (`OPENAI_API_KEY`) reports the bare id (`gpt-6-luna`): its row is
+  // the gateway's `openai/` one, at the same list price.
+  const direct = `openai/${modelId}`;
+  return !modelId.includes("/") && Object.hasOwn(PRICES, direct) ? PRICES[direct] : undefined;
 }
 
 /** Whether a model id has a row in `PRICES`. */
