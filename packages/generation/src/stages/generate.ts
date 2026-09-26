@@ -15,7 +15,7 @@ import {
   type SlidePhoto,
   verifyFactsPrompt,
 } from "../prompts";
-import { verifiableArrayOf } from "../specs";
+import { retrievalIndexOf, verifiableArrayOf } from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
 import {
   busyFinding,
@@ -359,9 +359,18 @@ function withVerifyStamp(lesson: Lesson): Lesson {
  * slide (`stemPlan`) are not content it was built from: they tell the writer what not to use, so a
  * stem corrected elsewhere leaves this slide's facts as verified as they were.
  */
-function touchesCorrected(entry: OutlineEntry, slide: Slide, corrected: Set<string>): boolean {
+export function touchesCorrected(
+  entry: OutlineEntry,
+  slide: Slide,
+  corrected: Set<string>,
+): boolean {
   if (corrected.size === 0) return false;
   for (const id of corrected) if (verifiableArrayOf(id) === "misconceptions") return true;
+  // l6c: a corrected starter question (`r<n>`) is printed by the retrieval starter, which no
+  // fact id points at.
+  if (entry.kind === "starter" && [...corrected].some((id) => retrievalIndexOf(id) !== undefined)) {
+    return true;
+  }
   if (entry.factRefs.some((id) => corrected.has(id))) return true;
   return slide.elements.some((e) => e.generatedFrom?.factRefs.some((id) => corrected.has(id)));
 }

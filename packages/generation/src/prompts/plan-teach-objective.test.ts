@@ -7,7 +7,6 @@ import { planFactsObjectivePrompt, REFERENCE_INSTRUCTION } from "./plan-facts-ob
 import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
 import {
   type PlanTeachObjectiveInput,
-  type PlanTeachObjectiveOutput,
   PlanTeachObjectiveOutputSchema,
   planTeachObjectiveOutputSchemaFor,
   planTeachObjectivePrompt,

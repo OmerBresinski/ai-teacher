@@ -1,0 +1,236 @@
+{
+  "_source": "lab run cb-y1-animals-L (24 Sept 2026), calls.jsonl lines 0, 1 and 3: objectives, the facts call for objective 0 (first answer) and its retry",
+  "yearGroup": "Year 1",
+  "objectives": [
+    {
+      "text": "Explain how young animals are similar to their parents",
+      "curriculumAnchor": "animals and their young"
+    },
+    {
+      "text": "Explain how young animals grow and change into adults",
+      "curriculumAnchor": "animals and their young"
+    }
+  ],
+  "target": 0,
+  "first": {
+    "keyIdeas": [
+      {
+        "statement": "Young animals are similar to their parents because they are the same kind of animal.",
+        "explanation": "A kitten and its cat parent both have fur, whiskers, four legs and a tail. A chick and its hen parent both have feathers, wings and a beak.",
+        "example": "A puppy is similar to its dog parent because both have fur, four legs, ears and a tail."
+      },
+      {
+        "statement": "Young animals may look smaller or different, but they still have features like their parents.",
+        "explanation": "A young animal does not need to look exactly like its parent. It has some of the same body parts and features.",
+        "example": "A duckling is smaller than a duck, but both have feathers, wings, a beak and webbed feet."
+      }
+    ],
+    "misconceptions": [
+      {
+        "belief": "A young animal must look exactly the same as its parent.",
+        "correction": "Young animals can be smaller or have different colours, but they have some of the same features as their parents."
+      }
+    ],
+    "vocabulary": [
+      {
+        "term": "feature",
+        "definition": "A part or quality of an animal that can be seen."
+      }
+    ],
+    "workedExamples": [],
+    "questions": [
+      {
+        "stem": "Which young animal is similar to a cat parent?",
+        "answer": "A kitten",
+        "reasoning": "A kitten and a cat have fur, four legs, ears and a tail.",
+        "tier": "easy",
+        "use": "slide",
+        "demand": "recall",
+        "forms": ["multiple-choice"],
+        "keyIdeaRefs": [
+          {
+            "type": "keyIdea",
+            "index": 0
+          }
+        ],
+        "distractors": [
+          {
+            "text": "A chick"
+          },
+          {
+            "text": "A tadpole"
+          },
+          {
+            "text": "A young fish"
+          }
+        ]
+      },
+      {
+        "stem": "Give two features that a puppy and its dog parent may both have.",
+        "answer": "Fur and four legs",
+        "reasoning": "Both animals are dogs, so they can share features such as fur and four legs.",
+        "tier": "core",
+        "use": "worksheet",
+        "demand": "apply",
+        "forms": ["open-response"],
+        "keyIdeaRefs": [
+          {
+            "type": "keyIdea",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "True or false: A duckling cannot be similar to a duck because it is smaller.",
+        "answer": "False",
+        "reasoning": "A duckling can be smaller but still share features such as feathers, wings and a beak.",
+        "tier": "core",
+        "use": "exit",
+        "demand": "explanation",
+        "forms": ["true-false"],
+        "keyIdeaRefs": [
+          {
+            "type": "keyIdea",
+            "index": 1
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "A chick and a kitten are both small. Which is the best reason they are not the same kind of animal?",
+        "answer": "They have different features and parents",
+        "reasoning": "Animals of the same kind share features with their parents; chicks and kittens do not share the same features or parents.",
+        "tier": "stretch",
+        "use": "worksheet",
+        "demand": "judgement",
+        "forms": ["multiple-choice", "open-response"],
+        "keyIdeaRefs": [
+          {
+            "type": "keyIdea",
+            "index": 0
+          },
+          {
+            "type": "keyIdea",
+            "index": 1
+          }
+        ],
+        "distractors": [
+          {
+            "text": "They are both young animals"
+          },
+          {
+            "text": "They are both smaller than adults"
+          },
+          {
+            "text": "They both need food and water"
+          }
+        ]
+      }
+    ]
+  },
+  "retry": {
+    "keyIdeas": [
+      {
+        "statement": "Young animals are similar to their parents because they are the same kind of animal.",
+        "explanation": "A young animal has many of the same body features as its parent, such as fur, feathers, wings or a beak.",
+        "example": "A kitten has fur, four legs and a tail, like its cat parent."
+      },
+      {
+        "statement": "Young animals can look smaller than their parents but still share the same features.",
+        "explanation": "A puppy may be smaller than an adult dog, but both have fur, four legs, a tail and a nose.",
+        "example": "A chick has feathers, wings and a beak, like its chicken parent."
+      }
+    ],
+    "misconceptions": [
+      {
+        "belief": "A young animal is a different kind of animal from its parent.",
+        "correction": "A young animal is the same kind of animal as its parent, even if it looks smaller or has softer features."
+      }
+    ],
+    "vocabulary": [
+      {
+        "term": "feature",
+        "definition": "A part or detail of an animal, such as fur, wings or a beak."
+      }
+    ],
+    "workedExamples": [],
+    "questions": [
+      {
+        "stem": "What is one feature that a kitten and its cat parent can both have?",
+        "answer": "Fur",
+        "reasoning": "Both animals can have fur because they are the same kind of animal.",
+        "tier": "easy",
+        "use": "slide",
+        "demand": "recall",
+        "forms": ["open-response"],
+        "keyIdeaRefs": [
+          {
+            "type": "keyIdea",
+            "index": 0
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "Why is a puppy similar to its dog parent?",
+        "answer": "They have some of the same features",
+        "reasoning": "A puppy and a dog are the same kind of animal, so they share body features.",
+        "tier": "core",
+        "use": "worksheet",
+        "demand": "explanation",
+        "forms": ["open-response"],
+        "keyIdeaRefs": [
+          {
+            "type": "keyIdea",
+            "index": 0
+          },
+          {
+            "type": "keyIdea",
+            "index": 1
+          }
+        ],
+        "distractors": []
+      },
+      {
+        "stem": "True or false: A chick is a different kind of animal from a chicken because it is young.",
+        "answer": "False",
+        "reasoning": "A chick is a young chicken, so it is the same kind of animal as its parent.",
+        "tier": "core",
+        "use": "exit",
+        "demand": "judgement",
+        "forms": ["true-false"],
+        "keyIdeaRefs": [
+          {
+            "type": "keyIdea",
+            "index": 0
+          }
+        ],
+        "distractors": [],
+        "misconceptionRef": {
+          "type": "misconception",
+          "index": 0
+        }
+      },
+      {
+        "stem": "A baby penguin and an adult penguin look different in size. Give one reason they are still the same kind of animal.",
+        "answer": "They share features such as a beak, wings or feathers",
+        "reasoning": "Sharing body features shows that they are the same kind of animal.",
+        "tier": "stretch",
+        "use": "worksheet",
+        "demand": "explanation",
+        "forms": ["open-response"],
+        "keyIdeaRefs": [
+          {
+            "type": "keyIdea",
+            "index": 0
+          },
+          {
+            "type": "keyIdea",
+            "index": 1
+          }
+        ],
+        "distractors": []
+      }
+    ]
+  }
+}

@@ -8,7 +8,6 @@ import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives
 import {
   EXIT_LINE,
   type PlanQuestionSetInput,
-  type PlanQuestionSetOutput,
   PlanQuestionSetOutputSchema,
   planQuestionSetOutputSchemaFor,
   planQuestionSetPrompt,

@@ -40,8 +40,8 @@ worksheet work back into `stages/generate.ts`.
 - **The model produces content, never geometry (§8).** Stages ask for `SlideSpec` / `BlockSpec`
   and call `materialiseSlide` / `materialiseBlock` from `@tj/slides`.
 - **Never log prompts, model output or document content (ADR 0015).** Log ids, stage, prompt
-  version, counts and cost. The retry prompt carries validation issue messages only, never
-  `error.text`.
+  version, counts and cost. The retry turn carries the model's previous answer (`error.text`,
+  audit A1) and the validation issue messages; neither is ever logged.
 - **Prompts are versioned modules.** Change wording → bump `version` → update the hash in
   `src/prompts/prompts.test.ts`. The version is written to `generatedFrom.promptVersion`.
 - No database, pg-boss or HTTP here; no dependency on `apps/*` or `@tj/editor` (`bundle.test.ts`).
