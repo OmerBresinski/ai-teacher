@@ -9,7 +9,6 @@
     const status = viewer.querySelector(".viewer-status");
     const steps = [...viewer.querySelectorAll(".viewer-step")];
     const controls = viewer.querySelector(".viewer-controls");
-    const bar = viewer.querySelector(".viewer-bar");
     const answers = viewer.querySelector("[data-slide-answers]");
     if (slides.length < 2 || !controls) continue;
     let current = 0;
@@ -72,7 +71,6 @@
     });
 
     controls.hidden = false;
-    if (bar) bar.hidden = false;
     viewer.dataset.enhanced = "";
     show(0);
   }

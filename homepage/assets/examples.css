@@ -131,11 +131,14 @@
   gap: 0.6rem;
   min-height: 44px;
   padding: 0 1rem 0 0.75rem;
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--ink);
   border-radius: 99px;
   background: var(--paper);
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 .answer-toggle > span[aria-hidden] {
   position: relative;
@@ -162,19 +165,21 @@
 .answer-toggle[aria-checked="true"] > span[aria-hidden]::after {
   transform: translateX(14px);
 }
+.answer-toggle[aria-checked="true"] {
+  background: var(--ink);
+  color: var(--cream);
+}
+.answer-toggle[aria-checked="true"] > span[aria-hidden] {
+  background: var(--yellow);
+}
 .answer-toggle:hover {
-  border-color: var(--ink);
+  background: var(--sand);
+}
+.answer-toggle[aria-checked="true"]:hover {
+  background: #405347;
 }
 
 /* Slides. Without JavaScript every slide is visible in a grid. */
-.viewer-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 44px;
-  margin-bottom: 0.75rem;
-}
 .viewer-slides {
   list-style: none;
   margin: 0;
@@ -200,22 +205,31 @@
 .viewer[data-enhanced] .viewer-slide img {
   box-shadow: 0 24px 50px -30px rgb(41 59 50 / 0.5);
 }
+/* Every control in one row right under the slide: where you are, the answers, previous, next. */
 .viewer-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.75rem 1.25rem;
+  gap: 1rem 1.25rem;
   margin-top: 1rem;
 }
+.viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.viewer-actions .answer-toggle {
+  margin-right: 0.4rem;
+}
+.viewer-thumbs {
+  grid-column: 1 / -1;
+}
 .viewer-status {
+  white-space: nowrap;
   font-size: 1rem;
   font-weight: 500;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-}
-.viewer-steps {
-  display: flex;
-  gap: 0.6rem;
 }
 .viewer-step {
   display: inline-grid;
@@ -331,12 +345,14 @@
   .lesson-papers {
     grid-template-columns: 1fr;
   }
-  .viewer-controls {
-    grid-template-columns: 1fr;
+  .viewer-status {
+    font-size: 0.9375rem;
   }
-  .viewer-steps {
-    justify-content: flex-end;
-    grid-row: 1;
+  .viewer-actions {
+    gap: 0.4rem;
+  }
+  .viewer-actions .answer-toggle {
+    margin-right: 0.2rem;
   }
 }
 @media (max-width: 560px) {

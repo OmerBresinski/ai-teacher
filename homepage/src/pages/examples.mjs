@@ -31,15 +31,12 @@ const indexPage = {
 const answerSwitch = (label, extra = "") =>
   `<button type="button" class="answer-toggle" role="switch" aria-checked="false" hidden ${extra}><span aria-hidden="true"></span>${label}</button>`;
 
-// Slides: with JavaScript, one large stage slide, a switch for its answers and a strip of
-// thumbnails; without it, every slide stays visible in a grid.
+// Slides: with JavaScript, one large stage slide with every control in one row under it (where the
+// slide is, the counter, the answers switch, previous and next) and a strip of thumbnails; without
+// it, every slide stays visible in a grid.
 const slideViewer = (example) => {
   const total = example.slides.length;
   return `<div class="viewer" data-viewer>
-    <div class="viewer-bar" hidden>
-      <p class="viewer-status" aria-live="polite">Slide 1 of ${total}</p>
-      ${answerSwitch("Answers", "data-slide-answers")}
-    </div>
     <ol class="viewer-slides" role="list">${example.slides
       .map(
         (slide, index) =>
@@ -47,16 +44,18 @@ const slideViewer = (example) => {
       )
       .join("")}</ol>
     <div class="viewer-controls" hidden>
+      <p class="viewer-status" aria-live="polite">Slide 1 of ${total}</p>
+      <div class="viewer-actions">
+        ${answerSwitch("Answers", "data-slide-answers")}
+        <button type="button" class="viewer-step" data-step="-1" aria-label="Previous slide"><span aria-hidden="true" class="viewer-flip">${nextIcon}</span></button>
+        <button type="button" class="viewer-step" data-step="1" aria-label="Next slide"><span aria-hidden="true">${nextIcon}</span></button>
+      </div>
       <div class="viewer-thumbs" role="group" aria-label="Choose a slide" style="--count: ${total}">${example.slides
         .map(
           (slide, index) =>
             `<button type="button" class="viewer-thumb" data-index="${index}" aria-label="Slide ${index + 1} of ${total}" aria-pressed="${index === 0}"${index === 0 ? ' aria-current="true"' : ""}><img src="${href(assetHref(example.slug, slide.src))}" alt="" width="1440" height="810" loading="lazy"></button>`,
         )
         .join("")}</div>
-      <div class="viewer-steps">
-        <button type="button" class="viewer-step" data-step="-1" aria-label="Previous slide"><span aria-hidden="true" class="viewer-flip">${nextIcon}</span></button>
-        <button type="button" class="viewer-step" data-step="1" aria-label="Next slide"><span aria-hidden="true">${nextIcon}</span></button>
-      </div>
     </div>
   </div>`;
 };
