@@ -217,9 +217,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
   },
   "plan-teach-objective": {
-    // v4: each key idea's slide `shape` (CONTENT_SHAPES) and optional `visual`.
-    version: "plan-teach-objective.v4",
-    hash: "fbe8ff8c26dbc3b5115e3da36a758ec3eab107587a7fa86356cc82ced4fca665",
+    // v4: each key idea's slide `shape` (CONTENT_SHAPES) and optional `visual`; v5 its wording.
+    version: "plan-teach-objective.v5",
+    hash: "c43f0544ca2b7e8f60bba79f2bdca5a4f388fe32b3901fa323d2f63e69f4b7dd",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",

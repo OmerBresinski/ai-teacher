@@ -38,8 +38,10 @@ import {
  * v18 (26 Sept 2026, look/shape-prompt): only the user turn changes. The content shape it copies
  * (`slideShapeOf`) is generate-slide v31's, naming `points`, `compare` and `steps`, and a
  * content slide's compare cards reach the call as `compare.left.label`, `compare.left.points` and
- * the same for the right (`specFieldsOf`); a steps strip already arrives as `steps[i]`. System
- * text unchanged.
+ * the same for the right (`specFieldsOf`); a steps strip already arrives as `steps[i]`. A content
+ * slide's shape line is followed by generate-slide's line for its planned shape (`shapeLine`), and
+ * code keeps only that shape's fields (`withPlannedShape`): on the v4/v31 demo, repairs turned two
+ * ratio sequence slides into `points`, and grew bodies to 47 and 61 words. System text unchanged.
  */
 
 /** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */

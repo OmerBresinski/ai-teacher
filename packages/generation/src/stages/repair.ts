@@ -32,11 +32,14 @@ import {
 import {
   type Audience,
   keptDiagram,
+  plannedShapeOf,
   type RepairInput,
   repairFactPrompt,
   repairPrompt,
+  shapeLine,
   slideShapeOf,
   type WritingShape,
+  withPlannedShape,
 } from "../prompts";
 import type { RepairContextSlide } from "../prompts/repair";
 import {
@@ -348,6 +351,12 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
               : slideSpecSchemaFor(slide.kind, { soft });
         const schema = specSchema(false);
         if (!slide || !schema) return;
+        // generate-slide v31: a content slide keeps its planned shape through a repair.
+        const entry = base.facts?.outline[index];
+        const planned =
+          base.facts && entry && slide.kind === "content"
+            ? plannedShapeOf(base.facts, entry)
+            : undefined;
         // The slides around it, read-only (lab round 1), rendered by `repair.v14`.
         const input: RepairInput = {
           facts: staged,
@@ -368,7 +377,9 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           // cites now, so a warning fix keeps every planned fact (the coasts groyne bug).
           ...repairPlanOf(slide, base.facts?.outline[index]),
           findings: target.findings,
-          shape: slideShapeOf(slide.kind) ?? `a "${slide.kind}" slide spec`,
+          shape: planned
+            ? `${slideShapeOf(slide.kind)} ${shapeLine(planned)}`
+            : (slideShapeOf(slide.kind) ?? `a "${slide.kind}" slide spec`),
           context: { slides: repairContext(base, index, target.findings) },
         };
         const call = await callStructured({
@@ -389,7 +400,10 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           index,
           corrections,
           spec: withDiagramKept(
-            lab ? withShuffledOptions(call.output, `${base.id}:${index}`) : call.output,
+            withPlannedShape(
+              lab ? withShuffledOptions(call.output, `${base.id}:${index}`) : call.output,
+              planned,
+            ).spec,
             slide,
           ),
           modelId: call.modelId,
