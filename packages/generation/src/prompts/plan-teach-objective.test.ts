@@ -47,8 +47,8 @@ const SAMPLE: PlanTeachObjectiveInput = {
 };
 
 const PIN: { version: string; hash: string } = {
-  version: "plan-teach-objective.v2",
-  hash: "b21f50f882b9f225c4a98ccbe99f2119815050b71ca45e8c192a5faf24271dc6",
+  version: "plan-teach-objective.v3",
+  hash: "c74a0723399b8f7cd3c5fc7256bbd9d3345f450b00d48590e6e1f1f970d7fd2c",
 };
 
 const KEY_IDEA = {
@@ -101,12 +101,15 @@ describe("plan-teach-objective", () => {
       "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers)",
       "a key idea's date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.",
       "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
-      'Follow the brief\'s worked-example line. A worked example is the method on one problem; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
       "A quotation is one line, cut with an ellipsis.",
     ]) {
       expect(v14).toContain(kept);
       expect(system).toContain(kept);
     }
+    // v3 (l6j): the worked-example rule departs from v14 by "taken to its finished form".
+    expect(system).toContain(
+      'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
+    );
     // v2 (audit B1): prior knowledge is read from the audience block.
     expect(system).toContain(
       "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
@@ -163,8 +166,11 @@ describe("plan-teach-objective", () => {
     const refAt = rendered.indexOf(REFERENCE_INSTRUCTION);
     expect(refAt).toBeGreaterThan(rendered.indexOf(CURRICULUM_INSTRUCTION));
     expect(rendered.slice(refAt)).toContain("- Term: villa");
-    // The worked-example line is v14's, on the floored call only (Explain: the reach).
-    expect(rendered).toContain("Worked example: none for this objective.");
+    // Floored in code on the reach (Explain); the other calls decide from the objective (v3).
+    expect(rendered).toContain(
+      "Worked example: one if this objective involves a method pupils carry out; otherwise none.",
+    );
+    expect(rendered).not.toContain("none for this objective");
     expect(planTeachObjectivePrompt.user({ ...SAMPLE, target: 2 })).toContain(
       "Worked example: required for this objective.",
     );
