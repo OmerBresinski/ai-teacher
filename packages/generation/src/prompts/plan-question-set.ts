@@ -296,8 +296,16 @@ export const EXIT_LINE = `Each is one line of the exit quiz: either multiple cho
  * for the finished form (+16 words; the rounding case is not observed, so not written). The "name one" half is unchanged.
  */
 
+/*
+ * v7 (26 Sept 2026, l6e; rounds C and D checklist, `lab/l6-e/CHANGES.md`): the two round-D keyWrong
+ * flags were one kind, a Year 7 ratio key carrying units ("2 cm:3 cm", "It gives 2 ml:3 ml"), which
+ * v1's "every quantity carries its unit" asked for; a simplified ratio compares like quantities and
+ * has none. The unit rule gains that exception (+10 words). The other round-C/D flags were starter
+ * items (the objectives call writes them; plan-objectives v21) or one-offs with no shared shape, so
+ * nothing else is added here.
+ */
 export const planQuestionSetPrompt = {
-  version: "plan-question-set.v6",
+  version: "plan-question-set.v7",
   system: [
     "You are an experienced UK teacher writing the questions for one objective of a lesson, for one use, from the text its slides will teach.",
     "",
@@ -307,7 +315,7 @@ export const planQuestionSetPrompt = {
     'Write as many questions as the brief\'s "Write" line says, all for the use it names, and set "use" to that use.',
     'A judge reads each question beside the taught text and nothing else. What matters, in order: every question is answerable from the taught text alone, the fact, reason, method or quotation its answer needs being stated there; each takes a case of its own rather than repeating any example in the taught text, and may invent its scenario and numbers, saying so ("a shop", "suppose").',
     "Follow the brief's tier line.",
-    "Every quantity carries its unit, in the answer and each option as well as the stem: 5 stickers, not 5.",
+    "Every quantity carries its unit, in the answer and each option as well as the stem: 5 stickers, not 5. A ratio's parts carry none: 2:3, not 2 cm:3 cm.",
     'Each question has one right answer: where a pupil could stop part way, the stem asks for the finished form ("simplest form"); where several are right ("name one…"), "answer" lists each.',
     'Where "forms" includes multiple-choice, pupils see the answer beside its distractors. Write the answer as a short phrase within the distractor limit, then three distractors (without three real errors to use, leave multiple-choice out of "forms"), each wrong by the taught text and reached by a real error: the taught misconception applied to this case (give its "misconceptionRef"), a neighbouring idea or a wrong step. Write them in the same form, with at least one as long as the answer and none ending in a full stop, so length, punctuation and wording never give the answer away.',
     '"demand" is what the question asks of the pupil: recall (name or state), explanation (how or why), apply (use the method) or judgement (decide, with a reason). "forms" lists every way the question can be set: multiple-choice, true-false (only with a distractor that has a "misconceptionRef", never on exit), open-response. "keyIdeaRefs" lists every key idea a pupil needs to answer it, by the index shown.',
