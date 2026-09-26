@@ -228,7 +228,9 @@ test.describe("slide viewer", () => {
       // moving to another slide turns it off again.
       const withAnswer = slides.filter({ has: page.locator("[data-answer]") }).first();
       if ((await withAnswer.count()) > 0) {
-        const index = await withAnswer.evaluate((el) => [...el.parentElement.children].indexOf(el));
+        const index = await withAnswer.evaluate((el) =>
+          [...(el.parentElement?.children ?? [])].indexOf(el),
+        );
         await page.locator(".viewer-thumb").nth(index).click();
         const toggle = page
           .locator("[data-slide-answers]")
