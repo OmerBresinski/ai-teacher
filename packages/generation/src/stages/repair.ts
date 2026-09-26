@@ -21,6 +21,7 @@ import {
   materialiseBlock,
   materialiseSlide,
   materialiseSlides,
+  PHOTO_NAME,
   type SlideSpec,
   slideSpecSchemaFor,
 } from "@tj/slides";
@@ -508,13 +509,17 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
             definition: v.definition,
           })),
           deck: deckOf(lesson),
-          ...photoStructure(
-            base.facts?.outline[outcome.entryIndex],
-            outcome.spec,
-            deps.logger,
-            "repair",
-            outcome.index,
-          ),
+          // The slot only where the slide still has one: illustrate may have dropped a repeated
+          // subject's slot, and a rewrite must not bring it back.
+          ...(hasPhotoSlot(original)
+            ? photoStructure(
+                base.facts?.outline[outcome.entryIndex],
+                outcome.spec,
+                deps.logger,
+                "repair",
+                outcome.index,
+              )
+            : {}),
         },
       );
       const fresh: Slide = keepPhoto(original, { ...(first as Slide), id: original.id });
@@ -522,7 +527,9 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
       // By id: an earlier outcome that continued onto a new slide has moved every later position.
       lesson = {
         ...lesson,
-        slides: lesson.slides.flatMap((s) => (s.id === original.id ? [fresh, ...rest] : [s])),
+        slides: withoutOldContinuations(lesson.slides, original.id).flatMap((s) =>
+          s.id === original.id ? [fresh, ...rest] : [s],
+        ),
       };
     } else if (worksheet) {
       const original = worksheet.blocks[outcome.index] as WorksheetBlock;
@@ -713,6 +720,23 @@ function factsAround(facts: LessonFacts, factId: string): LessonFacts {
  * The regenerated slide with the original's image element in place of the recipe's fresh
  * placeholder: Repair rewrites the text of an `image-text` slide, never its photograph.
  */
+/** A slide that keeps room for a photograph (look/image-slot), placed or not. */
+export const hasPhotoSlot = (slide: Slide): boolean =>
+  slide.elements.some((e) => e.name === PHOTO_NAME);
+
+/**
+ * The deck without the continuation slides that followed `id` (UX ruling 91): a rewrite brings its
+ * own, so the old ones would be said twice (look/image-slot slots run: "Why the Romans invaded
+ * Britain (continued)" twice, in two wordings).
+ */
+export function withoutOldContinuations(slides: readonly Slide[], id: string): Slide[] {
+  const at = slides.findIndex((s) => s.id === id);
+  if (at < 0) return [...slides];
+  let end = at + 1;
+  while (end < slides.length && isContinuation(slides[end] as Slide, slides[end - 1])) end += 1;
+  return [...slides.slice(0, at + 1), ...slides.slice(end)];
+}
+
 function keepPhoto(original: Slide, fresh: Slide): Slide {
   const image = original.elements.find((e) => e.type === "image");
   if (image?.type !== "image") return fresh;

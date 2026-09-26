@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { materialiseSlide, type SlideSpec } from "@tj/slides";
+import type { Slide } from "@tj/domain/documents";
+import { materialiseSlide, materialiseSlides, type SlideSpec } from "@tj/slides";
 import type { PipelineDeps } from "../types";
 import { logShapeFallback, photoStructure } from "./shared";
 
@@ -64,4 +65,64 @@ describe("a content slide's photo brief (look/image-slot)", () => {
     expect(photoStructure(entry, steps, logger, "repair", 3)).toEqual({});
     expect(lines[0]?.[0]).toMatchObject({ metric: "photo-dropped", shape: "sequence", index: 3 });
   });
+});
+
+describe("a repaired slide replaces its old continuations (look/image-slot)", () => {
+  test("the continuations after the rewritten slide go; the next slide stays", async () => {
+    const { withoutOldContinuations } = await import("./repair");
+    const s = (id: string, heading: string): Slide =>
+      ({
+        id,
+        kind: "content",
+        elements: [
+          {
+            id: `${id}h`,
+            type: "text",
+            x: 0,
+            y: 0,
+            w: 10,
+            h: 10,
+            name: "Heading",
+            doc: {
+              type: "doc",
+              content: [{ type: "paragraph", content: [{ type: "text", text: heading }] }],
+            },
+            style: { preset: "heading" },
+          },
+        ],
+      }) as Slide;
+    const deck = [
+      s("a", "Why"),
+      s("b", "Why (continued)"),
+      s("c", "Why (continued)"),
+      s("d", "Roads"),
+      s("e", "Roads (continued)"),
+    ];
+    expect(withoutOldContinuations(deck, "a").map((x) => x.id)).toEqual(["a", "d", "e"]);
+    expect(withoutOldContinuations(deck, "d").map((x) => x.id)).toEqual(["a", "b", "c", "d"]);
+  });
+});
+
+test("a slide keeps room for a photo in a repair only where it still has a slot", async () => {
+  const { hasPhotoSlot } = await import("./repair");
+  const withSlot = materialiseSlides(
+    {
+      kind: "content",
+      factRefs: [],
+      heading: "Forts",
+      body: "A fort was a base. Soldiers lived there.",
+    },
+    "chalk",
+    meta,
+    undefined,
+    0,
+    { photo: { subject: "Roman fort" } },
+  )[0] as Slide;
+  const without = materialiseSlide(
+    { kind: "content", factRefs: [], heading: "Forts", body: "A fort was a base." },
+    "chalk",
+    meta,
+  );
+  expect(hasPhotoSlot(withSlot)).toBe(true);
+  expect(hasPhotoSlot(without)).toBe(false);
 });
