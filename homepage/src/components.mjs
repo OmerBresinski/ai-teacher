@@ -29,7 +29,7 @@ export const arrowIcon = `<svg class="arrow-icon" width="1.15em" height="1.15em"
 // else on this site". Both are vectors so emoji fonts cannot replace them.
 // The DayBack mark: a yellow sun inside an arrow turning back, the direction of undo. The ring and
 // the sun are separate so the header can play the rewind on hover.
-export const brandMark = `<svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle class="brand-sun" cx="24" cy="24" r="7.5" fill="#f5c054"/><g class="brand-ring" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M32 10.14A16 16 0 1 0 37.86 32"/><path d="M32.2 34.05 37.86 32l1.04 5.9"/></g></svg>`;
+export const brandMark = `<svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle class="brand-sun" cx="24" cy="24" r="7.5" fill="#f5c054"/><g class="brand-ring" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M29.47 8.96A16 16 0 1 0 36.26 34.28" fill="none" stroke-width="4.2"/><path d="M42.05 27.39 40.86 38.14 31.66 30.42Z" fill="currentColor" stroke-width="1.6"/></g></svg>`;
 export const nextIcon = `<svg class="arrow-icon" width="1.15em" height="1.15em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true" focusable="false"><path d="M1 12h21M16 6l6 6-6 6"/></svg>`;
 export const button = (label, route = "/examples/", options = {}) =>
   `<a class="button ${options.secondary ? "button-secondary" : ""}" href="${options.external ? route : href(route)}">${label}<span aria-hidden="true">${options.app ? arrowIcon : nextIcon}</span></a>`;
