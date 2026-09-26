@@ -90,10 +90,13 @@ Decided in the 26 Sep design session (Omer, with Greg's agreement) and built in 
 5. Plan names the template on the outline entry as a `figureBrief` (built in TEACH-89).
 
 A spike finding decides the validation design. A slide call that still breaks a **shape** rule
-after its retry fails the whole Generate stage (`packages/generation/src/stages/generate.ts:314-318`),
-so a template's value rules are **editorial** (`editorialIssue`): for `right-triangle`, at least two
-lengths, a² + b² = c² within 1 %, the hypotenuse longer than each leg, labels of at most 12
-characters. Drawing never throws: `drawFigure` parses the values against the template's shape
-first, and values without that shape, or values that cannot give the figure (fewer than two
-lengths, a hypotenuse no longer than a leg), get a schematic fallback drawing captioned "Not drawn
-to scale".
+after its retry throws a `StageFailure` (`callStructured`, `packages/generation/src/call.ts:555`),
+and Generate rethrows it, which fails the whole stage
+(`packages/generation/src/stages/generate.ts:314-318`). So a template's value rules are
+**editorial** (`editorialIssue`): for `right-triangle`, at least two lengths, a² + b² = c² within
+1 %, the hypotenuse longer than each leg, labels of at most 12 characters. Drawing never throws:
+`drawFigure` parses the values against the template's shape first, and values without that shape,
+or values that cannot give the figure (fewer than two lengths, a hypotenuse no longer than a leg),
+get a schematic fallback drawing captioned "Not drawn to scale". An editorial miss can still reach
+the drawing, so a label past the cap wraps inside its box, and one past three lines is cut with an
+ellipsis on the figure while the alt text keeps all of it.

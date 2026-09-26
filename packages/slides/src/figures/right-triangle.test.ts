@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { GroupElement, PathElement, SlideElement, TextElement } from "@tj/domain/documents";
-import { FIGURE_RECT } from "../layouts";
+import { boxH, FIGURE_RECT } from "../layouts";
 import { isEditorialIssue } from "../specs";
 import { getTheme, THEMES } from "../themes";
 // Through the index, not `./right-triangle`: that module is in the layouts ↔ figures import cycle
@@ -200,6 +200,9 @@ describe("rightTriangleValuesSchema", () => {
 
 /* ---- Row 7: labels inside the box and clear of every side --------------------------------- */
 
+const LONG =
+  "the side opposite the right angle, which is always the longest side of the triangle and is found from the other two";
+
 type Point = { x: number; y: number };
 type Box = { x: number; y: number; w: number; h: number };
 
@@ -256,6 +259,20 @@ describe("right-triangle placement on every theme (row 7)", () => {
       v: values(3, 4, 5, ["base 3.0 cm", "height 4 cm", "12.5 metres"]),
     },
     { name: "fallback", v: {} },
+    // Past the editorial cap, as a model answer can be after its retry: the labels wrap.
+    {
+      name: "labels over the cap",
+      v: values(7, 24, undefined, ["base of the ramp", "height of the ramp", "hypotenuse (in cm)"]),
+    },
+    {
+      name: "one long word each",
+      v: values(24, 7, undefined, [
+        "Pneumonoultramicro",
+        "Supercalifragilistic",
+        "Antidisestablishment",
+      ]),
+    },
+    { name: "labels far over the cap", v: values(7, 24, undefined, [LONG, LONG, LONG]) },
   ];
   for (const theme of THEMES) {
     for (const { name, v } of GRID) {
@@ -263,7 +280,9 @@ describe("right-triangle placement on every theme (row 7)", () => {
         const g = drawFigure("right-triangle", v, theme, RECT);
         for (const child of g.children)
           expect(inside(child, RECT), `${child.type} ${child.name ?? ""} inside`).toBe(true);
-        const sides = sidesOf(triangleOf(g));
+        const triangle = triangleOf(g);
+        expect(Math.min(triangle.w, triangle.h), "the triangle stays visible").toBeGreaterThan(40);
+        const sides = sidesOf(triangle);
         const boxes = texts(g);
         for (const box of boxes) {
           for (const [p, q] of sides)
@@ -274,5 +293,27 @@ describe("right-triangle placement on every theme (row 7)", () => {
         }
       });
     }
+
+    it(`keeps a label within the cap on one line on ${theme.id}`, () => {
+      const twelve = GRID.find((row) => row.name === "12-character labels")?.v;
+      const g = drawFigure("right-triangle", twelve, theme, RECT);
+      for (const label of labels(g)) expect(label.h, textOf(label)).toBe(boxH(theme, "small"));
+    });
+
+    it(`cuts a label past three lines with an ellipsis on ${theme.id}, the alt keeping all of it`, () => {
+      const g = drawFigure(
+        "right-triangle",
+        values(7, 24, undefined, [LONG, "b", "c"]),
+        theme,
+        RECT,
+      );
+      const [base] = labels(g);
+      if (!base) throw new Error("no base label");
+      expect(textOf(base).endsWith("…")).toBe(true);
+      expect(LONG.startsWith(textOf(base).slice(0, -1))).toBe(true);
+      expect(base.h).toBe(boxH(theme, "small", 3));
+      expect(g.alt).toContain(`Base ${LONG}`);
+      expect(g.figure?.values).toMatchObject({ base: { label: LONG } });
+    });
   }
 });

@@ -14,7 +14,7 @@ import { z } from "zod";
 import { newText, uid } from "../factories";
 import { boxH } from "../layouts";
 import { editorialIssue } from "../specs";
-import { lineWidth } from "../text-measure";
+import { countLines, lineWidth } from "../text-measure";
 import type { FigureDrawing, FigureTemplate } from "./index";
 
 /* ------------------------------------------------------------------ */
@@ -135,15 +135,45 @@ const GAP = 12;
 const INSET = 4;
 /** Above the "Not drawn to scale" caption. */
 const CAPTION_GAP = 8;
-/** A label's box is this much wider than its text, so it never wraps. */
+/** A label's box is this much wider than its text, so a line that fits the ruler never wraps. */
 const LABEL_SLACK = 16;
 const LABEL_MIN_W = 40;
+/**
+ * The widest a label's box grows: a label within the editorial cap (12 characters, at most 159
+ * points on any theme) stays on one line, and a longer one wraps rather than pushing the drawing
+ * out of its box.
+ */
+const LABEL_MAX_W = 176;
+/** Past this many lines a label is cut with an ellipsis; the alt text still carries all of it. */
+const LABEL_MAX_LINES = 3;
 const NOT_TO_SCALE = "Not drawn to scale";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 const labelWidth = (t: Theme, text: string) =>
   Math.max(LABEL_MIN_W, Math.ceil(lineWidth(text, "small", t)) + LABEL_SLACK);
+
+/** A label as drawn: its text, wrapped in a box at most `LABEL_MAX_W` wide, and that box's size. */
+type Label = { text: string; w: number; h: number };
+
+function fitLabel(t: Theme, text: string): Label {
+  const w = Math.min(LABEL_MAX_W, labelWidth(t, text));
+  const lines = (s: string) => countLines(s, "small", t, w - LABEL_SLACK);
+  let shown = text;
+  if (lines(text) > LABEL_MAX_LINES) {
+    // The longest start of the label that still fits, with the ellipsis.
+    const cut = (n: number) => `${text.slice(0, n).trimEnd()}…`;
+    let lo = 0;
+    let hi = text.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (lines(cut(mid)) <= LABEL_MAX_LINES) lo = mid;
+      else hi = mid - 1;
+    }
+    shown = cut(lo);
+  }
+  return { text: shown, w, h: boxH(t, "small", lines(shown)) };
+}
 
 function label(
   t: Theme,
@@ -162,26 +192,21 @@ function label(
  * the three label boxes placed outside their sides: base below, height to the left, hypotenuse
  * along its outward normal, each `GAP` clear of its side.
  */
-function placement(w: number, h: number, labelW: Record<SideName, number>, labelH: number) {
-  const base: Box = { x: w / 2 - labelW.base / 2, y: GAP, w: labelW.base, h: labelH };
+function placement(w: number, h: number, size: Record<SideName, Label>) {
+  const base: Box = { x: w / 2 - size.base.w / 2, y: GAP, w: size.base.w, h: size.base.h };
   const height: Box = {
-    x: -GAP - labelW.height,
-    y: -h / 2 - labelH / 2,
-    w: labelW.height,
-    h: labelH,
+    x: -GAP - size.height.w,
+    y: -h / 2 - size.height.h / 2,
+    w: size.height.w,
+    h: size.height.h,
   };
   const length = Math.hypot(w, h) || 1;
   const normal = { x: h / length, y: -w / length };
+  const hyp = size.hypotenuse;
   // Far enough along the normal that the box's nearest corner is GAP clear of the hypotenuse.
-  const reach =
-    GAP + Math.abs(normal.x) * (labelW.hypotenuse / 2) + Math.abs(normal.y) * (labelH / 2);
+  const reach = GAP + Math.abs(normal.x) * (hyp.w / 2) + Math.abs(normal.y) * (hyp.h / 2);
   const centre = { x: w / 2 + normal.x * reach, y: -h / 2 + normal.y * reach };
-  const hypotenuse: Box = {
-    x: centre.x - labelW.hypotenuse / 2,
-    y: centre.y - labelH / 2,
-    w: labelW.hypotenuse,
-    h: labelH,
-  };
+  const hypotenuse: Box = { x: centre.x - hyp.w / 2, y: centre.y - hyp.h / 2, w: hyp.w, h: hyp.h };
   const boxes = [{ x: 0, y: -h, w, h }, base, height, hypotenuse];
   const left = Math.min(...boxes.map((b) => b.x));
   const top = Math.min(...boxes.map((b) => b.y));
@@ -211,10 +236,10 @@ function drawRightTriangle(
   const notToScale = !legs?.exact || drawn !== ratio;
 
   const labelH = boxH(t, "small");
-  const labelW = {
-    base: labelWidth(t, v.base.label),
-    height: labelWidth(t, v.height.label),
-    hypotenuse: labelWidth(t, v.hypotenuse.label),
+  const labels = {
+    base: fitLabel(t, v.base.label),
+    height: fitLabel(t, v.height.label),
+    hypotenuse: fitLabel(t, v.hypotenuse.label),
   };
   const room = {
     w: size.w - 2 * INSET,
@@ -224,7 +249,7 @@ function drawRightTriangle(
   // The largest base whose drawing, labels included, fits the room. Every edge of the extent
   // moves monotonically with the base, so halving the interval finds it.
   const fits = (w: number) => {
-    const { extent } = placement(w, w * drawn, labelW, labelH);
+    const { extent } = placement(w, w * drawn, labels);
     return extent.w <= room.w && extent.h <= room.h;
   };
   let lo = 0;
@@ -236,7 +261,8 @@ function drawRightTriangle(
   }
   const W = Math.max(1, Math.floor(lo));
   const H = Math.max(1, Math.round(W * drawn));
-  const { labels, extent } = placement(W, H, labelW, labelH);
+  const placed = placement(W, H, labels);
+  const { extent } = placed;
   // The right angle's vertex, placed so the whole drawing is centred in the room.
   const A = {
     x: Math.round(INSET + (room.w - extent.w) / 2 - extent.x),
@@ -287,9 +313,9 @@ function drawRightTriangle(
   const children = [
     triangle,
     mark,
-    label(t, v.base.label, at(labels.base), "center"),
-    label(t, v.height.label, at(labels.height), "right"),
-    label(t, v.hypotenuse.label, at(labels.hypotenuse), "center"),
+    label(t, labels.base.text, at(placed.labels.base), "center"),
+    label(t, labels.height.text, at(placed.labels.height), "right"),
+    label(t, labels.hypotenuse.text, at(placed.labels.hypotenuse), "center"),
   ];
   if (notToScale) {
     const w = Math.min(labelWidth(t, NOT_TO_SCALE), size.w - 2 * INSET);
