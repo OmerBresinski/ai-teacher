@@ -12,7 +12,6 @@ import {
   photoLabel,
 } from "./look";
 import {
-  DIAGRAM_ICON_NAME,
   materialiseSlide,
   materialiseSlides,
   photoDropped,
@@ -199,23 +198,20 @@ describe("the demo view draws every slot (withSlotsShown)", () => {
     diagram: "Cycle: evaporation → condensation → precipitation → collection",
   };
 
-  test("an undrawn diagram gets the right half, with its instruction and an icon", () => {
+  test("an undrawn diagram gets the right half, with its instruction", () => {
     const [stored] = materialiseSlides(cycle, "chalk", meta);
     expect((stored as Slide).elements.some((e) => e.name === DIAGRAM_NAME)).toBe(false);
     const shown = withSlotsShown(stored as Slide, t);
     const box = shown.elements.find((e) => e.name === DIAGRAM_NAME);
-    const icon = shown.elements.find((e) => e.name === DIAGRAM_ICON_NAME);
     expect(box && "doc" in box && box.doc && docLines(box.doc).join(" ")).toBe(
       "Diagram: Cycle: evaporation → condensation → precipitation → collection",
     );
     expect(box?.x).toBeGreaterThan(SAFE.x + SAFE.w / 3);
-    expect(icon?.type).toBe("icon");
-    expect(icon && box && icon.x > box.x && icon.y > box.y).toBe(true);
     for (const e of bodyText(shown)) expect(e.x + e.w).toBeLessThanOrEqual((box?.x ?? 0) + 1);
     expect(shown.elements.some((e) => e.name === "Side panel")).toBe(false);
     expect(words([shown])).toBe(cycle.body);
     // Export never draws it, even from the demo view.
-    expect(presentedSlide(shown, t).elements.some((e) => e.name === DIAGRAM_ICON_NAME)).toBe(false);
+    expect(presentedSlide(shown, t).elements.some((e) => e.name === DIAGRAM_NAME)).toBe(false);
   });
 
   test("an open photo slot is left for the image view; other slides come back as they are", () => {

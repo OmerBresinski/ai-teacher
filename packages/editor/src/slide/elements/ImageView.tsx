@@ -1,10 +1,10 @@
 import type { ImageElement } from "@tj/domain/documents";
-import { accentTint, isOpenPhotoSlot } from "@tj/slides";
-import { Camera } from "lucide-react";
+import { isOpenPhotoSlot } from "@tj/slides";
 import { useEffect, useRef, useState } from "react";
 import { useResolvedImageSrc } from "../../images/image-origin";
 import { pictureStyle, renderedFit, type Size } from "../../lesson/image-adjust";
 import type { ElementViewProps } from "./kit";
+import { SlotPlaceholder } from "./SlotPlaceholder";
 
 /**
  * Images are plain <img> so capture and print see a resolved bitmap.
@@ -28,48 +28,15 @@ import type { ElementViewProps } from "./kit";
 export function ImageView(props: ElementViewProps<ImageElement>) {
   // A photo slot no photograph has filled (look/image-slot): drawn as what it should show. Present
   // and export lay it out away (`withoutDiagramSlot`) unless the demo switch is on.
-  if (isOpenPhotoSlot(props.element)) return <PhotoPlaceholder {...props} />;
-  return <Picture {...props} />;
-}
-
-/** "Photo: <subject> — <mustShow>" in small muted type on a tinted box, a camera at its corner. */
-function PhotoPlaceholder({ element, theme }: ElementViewProps<ImageElement>) {
-  return (
-    <div
-      data-photo-placeholder=""
-      style={{
-        position: "relative",
-        width: "100%",
-        height: "100%",
-        borderRadius: element.radius || undefined,
-        background: accentTint(theme),
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-        boxSizing: "border-box",
-        textAlign: "center",
-      }}
-    >
-      <Camera
-        aria-hidden
-        size={22}
-        strokeWidth={1.75}
-        color={theme.colors.muted}
-        style={{ position: "absolute", left: 14, top: 14 }}
-      />
-      <span
-        style={{
-          fontFamily: theme.fonts.body,
-          fontSize: theme.sizes.caption,
-          lineHeight: 1.35,
-          color: theme.colors.muted,
-        }}
-      >
+  if (isOpenPhotoSlot(props.element)) {
+    const { element, theme } = props;
+    return (
+      <SlotPlaceholder kind="photo" theme={theme} radius={element.radius}>
         Photo: {element.alt}
-      </span>
-    </div>
-  );
+      </SlotPlaceholder>
+    );
+  }
+  return <Picture {...props} />;
 }
 
 function Picture({ element, theme, mode }: ElementViewProps<ImageElement>) {

@@ -248,8 +248,9 @@ export function withoutDiagramSlot(slide: Slide, theme: Theme): Slide {
  * a slide should have is drawn where it goes, with what the model asked for in small muted type.
  * An open photo slot is left as it is (the image view draws its placeholder); an undrawn diagram
  * (`slide.diagram`, which takes no room at generation) is given the right half, the words laid
- * out beside it, "Diagram: <instruction>" in it and a small icon at its corner. Any other slide
- * comes back as it is (same object).
+ * out beside it and "Diagram: <instruction>" in it, which the renderer draws as the same
+ * placeholder as a photo's (`@tj/editor` `SlotPlaceholder`). Any other slide comes back as it is
+ * (same object).
  */
 export function withSlotsShown(slide: Slide, theme: Theme): Slide {
   const instruction = slide.diagram?.instruction;
@@ -260,27 +261,8 @@ export function withSlotsShown(slide: Slide, theme: Theme): Slide {
       withDiagramSlot(bare, theme, instruction, ids, `Diagram: ${instruction}`),
     );
   }
-  const slot = shown.elements.find((e) => e.name === DIAGRAM_NAME);
-  if (!slot || shown.elements.some((e) => e.name === DIAGRAM_ICON_NAME)) return shown;
-  const size = SLOT_ICON;
-  const icon: SlideElement = {
-    id: `${slot.id}~icon`,
-    type: "icon",
-    icon: "shapes",
-    x: slot.x + SLOT_ICON_INSET,
-    y: slot.y + SLOT_ICON_INSET,
-    w: size,
-    h: size,
-    color: theme.colors.muted,
-    name: DIAGRAM_ICON_NAME,
-  };
-  return { ...shown, elements: [...shown.elements, icon] };
+  return shown;
 }
-
-/** The small icon at a demo slot's corner, and its size and inset in slide points. */
-export const DIAGRAM_ICON_NAME = "Diagram placeholder icon";
-const SLOT_ICON = 22;
-const SLOT_ICON_INSET = 14;
 
 /**
  * A content slide's words laid out again from one body, as the writer gave them: the open slots
@@ -304,7 +286,9 @@ function relaid(slide: Slide, theme: Theme, shape: (bare: Slide, ids: IdSupplier
   const idea = slide.elements.find(
     (e): e is TextElement => e.type === "text" && e.name === PANEL_TEXT_NAME,
   );
-  if (idea) words.unshift({ ...idea, style: { preset: "body" } });
+  const card = slide.elements.find((e) => e.name === PANEL_NAME);
+  if (idea)
+    words.unshift({ ...idea, y: Math.min(card?.y ?? idea.y, idea.y), style: { preset: "body" } });
   const panel = new Set([PANEL_NAME, PANEL_LABEL_NAME, PANEL_TEXT_NAME, PANEL_DEFINITION_NAME]);
   const first = words[0];
   const dropped = new Set<SlideElement>(words);
@@ -312,7 +296,6 @@ function relaid(slide: Slide, theme: Theme, shape: (bare: Slide, ids: IdSupplier
     if (
       panel.has(e.name ?? "") ||
       e.name === DIAGRAM_NAME ||
-      e.name === DIAGRAM_ICON_NAME ||
       e.name === BULLET_NAME ||
       isOpenPhotoSlot(e)
     ) {
@@ -363,7 +346,7 @@ function relaid(slide: Slide, theme: Theme, shape: (bare: Slide, ids: IdSupplier
 export function presentedSlide(slide: Slide, theme: Theme, position?: SlidePosition): Slide {
   const shown = withoutDiagramSlot(slide, theme);
   const elements = shown.elements.flatMap((e) => {
-    if (isDiagramMark(e) || e.name === DIAGRAM_ICON_NAME || isOpenPhotoSlot(e)) return [];
+    if (isDiagramMark(e) || isOpenPhotoSlot(e)) return [];
     if (e.name === COUNTER_NAME) return position ? [counted(e, position)] : [];
     return [e];
   });

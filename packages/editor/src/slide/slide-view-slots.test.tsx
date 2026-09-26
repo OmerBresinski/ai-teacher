@@ -50,7 +50,7 @@ afterEach(() => setSlotPlaceholders(false));
 describe("an open photo slot", () => {
   test("the editor draws the placeholder with what the photo should show", () => {
     const c = shown(withPhoto, "edit");
-    const box = c.querySelector("[data-photo-placeholder]");
+    const box = c.querySelector('[data-slot-placeholder="photo"]');
     expect(box?.textContent).toBe("Photo: Roman legionaries — shields, armour");
     expect(c.querySelector("img")).toBeNull();
   });
@@ -58,7 +58,7 @@ describe("an open photo slot", () => {
   for (const mode of ["present", "view", "capture"] as const) {
     test(`${mode}: no box, the words take the width`, () => {
       const c = shown(withPhoto, mode);
-      expect(c.querySelector("[data-photo-placeholder]")).toBeNull();
+      expect(c.querySelector("[data-slot-placeholder]")).toBeNull();
       expect(c.querySelector(`[data-element-id="${slotId}"]`)).toBeNull();
     });
   }
@@ -67,23 +67,22 @@ describe("an open photo slot", () => {
 describe("the demo switch", () => {
   test("present draws the photo placeholder and the undrawn diagram's slot and icon", () => {
     setSlotPlaceholders(true);
-    expect(shown(withPhoto, "present").querySelector("[data-photo-placeholder]")).not.toBeNull();
+    expect(shown(withPhoto, "present").querySelector("[data-slot-placeholder]")).not.toBeNull();
     const c = shown(withDiagram, "present");
     expect(c.textContent).toContain(
       "Diagram: Cycle: evaporation → condensation → precipitation → collection",
     );
-    // The slot's small icon is drawn (an icon element: an svg).
-    expect(c.querySelectorAll("svg").length).toBeGreaterThan(0);
+    expect(c.querySelector('[data-slot-placeholder="diagram"]')).not.toBeNull();
   });
 
   test("capture (export, print) never draws a placeholder", () => {
     setSlotPlaceholders(true);
-    expect(shown(withPhoto, "capture").querySelector("[data-photo-placeholder]")).toBeNull();
+    expect(shown(withPhoto, "capture").querySelector("[data-slot-placeholder]")).toBeNull();
     expect(shown(withDiagram, "capture").textContent).not.toContain("Diagram:");
   });
 
   test("off, present draws neither", () => {
-    expect(shown(withPhoto, "present").querySelector("[data-photo-placeholder]")).toBeNull();
+    expect(shown(withPhoto, "present").querySelector("[data-slot-placeholder]")).toBeNull();
     expect(shown(withDiagram, "present").textContent).not.toContain("Diagram:");
   });
 });

@@ -3,7 +3,6 @@ import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
   COUNTER_NAME,
   counted,
-  DIAGRAM_ICON_NAME,
   isDiagramMark,
   withoutDiagramSlot,
   withSlotsShown,
@@ -216,7 +215,7 @@ export function SlideView({
           // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
           // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`). A slide counter is
           // drawn only where the slide's place in the deck is known.
-          ((isDiagramMark(el) || el.name === DIAGRAM_ICON_NAME) && mode !== "edit" && !demo) ||
+          (isDiagramMark(el) && mode !== "edit" && !demo) ||
           (el.name === COUNTER_NAME && !position) ? null : (
             <ElementFrame
               key={el.id}
