@@ -72,8 +72,8 @@ const SAMPLE: PlanQuestionSetInput = {
 };
 
 const PIN: { version: string; hash: string } = {
-  version: "plan-question-set.v6",
-  hash: "41f1a443ff4e5de9f231ef294ceaef0733690a87a924484e0a30804713098045",
+  version: "plan-question-set.v7",
+  hash: "5cf0f133c71c328ce0c72ceb9be2e3b4a93cbc81fb4be0234d9b068c9dce8e64",
 };
 
 const QUESTION = {
@@ -104,7 +104,9 @@ describe("plan-question-set", () => {
     // v14 is 487 words; this call is 357: v14 question rules plus the one judge sentence. The alarm follows the count.
     // v4: 361. v5: 376, the one-right-answer sentence (7 "anotherCorrect" on gpt-6-luna low).
     // v6: 392, the part-way clause (both round-B question-set faults were a part-way answer the stem allowed).
-    expect(system.trim().split(/\s+/).length).toBeLessThan(395);
+    // v7 (l6e): 402, the ratio exception to the unit rule (two round-D keyWrong flags).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(410);
+    expect(system).toContain("A ratio's parts carry none: 2:3, not 2 cm:3 cm.");
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
