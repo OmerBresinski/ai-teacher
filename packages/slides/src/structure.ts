@@ -886,7 +886,8 @@ export function structureSlide(
       [OPTION_CHIP_NAME, COMPARE_NAME, STEP_NAME, KEY_CARD_NAME].includes(e.name ?? ""),
     )
   ) {
-    return [slide];
+    // Already structured (a stored slide): only its answers are moved off the questions.
+    return answersClear([slide], t, ids, options.pages !== false);
   }
   switch (slide.kind) {
     case "starter":

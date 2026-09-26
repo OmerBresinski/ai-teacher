@@ -204,3 +204,57 @@ describe("a diagram instruction always gets a layout that keeps the slot", () =>
     expect(chooseVariant("content", { ...ctx, textLength: 10, hasDiagram: true })).toBe("headed");
   });
 });
+
+describe("a stored, already structured set", () => {
+  test("its answers panel moves off the questions when restyled with pages", () => {
+    const t = getTheme("chalk");
+    const q = (id: string, y: number): SlideElement => ({
+      id,
+      type: "text",
+      x: 58,
+      y,
+      w: 844,
+      h: 38,
+      name: "Question",
+      doc: {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: `Question ${id}?` }] }],
+      },
+      style: { preset: "body", fontSize: 24 },
+    });
+    const chip: SlideElement = {
+      id: "c",
+      type: "shape",
+      shape: "rounded",
+      x: 58,
+      y: 196,
+      w: 120,
+      h: 48,
+      name: "Option",
+    };
+    const panel: SlideElement = {
+      id: "p",
+      type: "shape",
+      shape: "rounded",
+      x: 58,
+      y: 216,
+      w: 844,
+      h: 281,
+      name: ANSWERS_NAME,
+      revealStep: 1,
+      doc: {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "1 A" }] }],
+      },
+    };
+    const slide: Slide = {
+      id: "s",
+      kind: "exit-ticket",
+      elements: [q("a", 140), chip, q("b", 287), q("c2", 343), panel],
+    };
+    const pages = lookAndFitPages(slide, t);
+    expect(pages).toHaveLength(2);
+    expect(named(pages[0]?.elements ?? [], ANSWERS_NAME)).toHaveLength(0);
+    expect(named(pages[1]?.elements ?? [], ANSWERS_NAME)).toHaveLength(1);
+  });
+});
