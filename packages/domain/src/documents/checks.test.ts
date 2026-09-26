@@ -779,3 +779,101 @@ describe("questionless: a label or length frame before the task (lab round 2)", 
     ).toBe("ok");
   });
 });
+
+describe("questionless: every recorded l6 instance, and stems that really ask nothing (l6-i)", () => {
+  // Every stem the check raised in the l6 lab outputs (baseline, b2, C to H): all are tasks.
+  const recorded: [round: string, stem: string][] = [
+    [
+      "D, E",
+      "Suppose Prospero tells a spirit, “Wait here until I return.” Explain how the command establishes his authority.",
+    ],
+    [
+      "C, D",
+      "Suppose Prospero tells a servant, “Bring the book.” Explain what this command suggests about his power and what it cannot prove about the servant’s feelings.",
+    ],
+    [
+      "C",
+      "A reader says, “Prospero can influence Ariel only through magic.” Explain how Prospero’s words can influence Ariel and why this challenges the reader’s claim.",
+    ],
+    [
+      "D",
+      "A reader says, “Because the audience knows Prospero arranged a spectacle that the characters do not understand, he has complete power over everyone.” Explain how the dramatic irony shapes the audience’s view of Prospero’s authority, and why the reader’s conclusion is too absolute.",
+    ],
+    [
+      "b2",
+      "A child says, “A plant gets its food from the soil.” Explain what the roots and leaves really do.",
+    ],
+    [
+      "C",
+      "Suppose several similar music-streaming services compete. If one service raises its price, explain why demand for that service may be responsive.",
+    ],
+    [
+      "G",
+      "A firm estimates a product’s PED as −1.2. Classify its demand and explain what this indicates about quantity demanded’s proportional response to price.",
+    ],
+    [
+      "G",
+      "A firm says demand for its essential home internet service must be price inelastic in every circumstance. Assess this claim, including how demand might change over time.",
+    ],
+    [
+      "E, H",
+      "Suppose 36 beads are shared in the ratio 1:3. Explain how to find each share and check your answer.",
+    ],
+    [
+      "H",
+      "Suppose two amounts are in the ratio 16:28. Divide both parts by their highest common factor to give the simplest whole-number ratio.",
+    ],
+    [
+      "H",
+      "A child says evacuees chose their host families before leaving. Correct this account, explaining how they travelled and where the arrangements were made.",
+    ],
+    [
+      "baseline",
+      "A particular brand of washing-up liquid has few close alternatives and costs little. Explain how these features affect its likely price elasticity of demand.",
+    ],
+    // Verbs no list names, told by "<verb> <object>".
+    ["new verb", "Water the seedlings daily and record their height."],
+    ["new verb", "Trace the route the evacuees took."],
+    ["new verb", "Water is needed. Rearrange the steps into the right order."],
+  ];
+  test.each(recorded)("%s: %s sets a task", (_round, stem) => {
+    expect(questionless(stem)).toBe("ok");
+  });
+
+  const asksNothing: string[] = [
+    "The rodent family.",
+    "Exit: The rodent family.",
+    "Plants need light and water.",
+    "Evacuees travelled by train to the countryside.",
+    "Children who were evacuated travelled by train.",
+    "Demand for bread is price inelastic.",
+    "Suppose 36 beads are shared in the ratio 1:3.",
+    "Suppose two amounts are in the ratio 16:28.",
+    "Consider the ratio 16:28.",
+    "A firm estimates a product’s PED as −1.2.",
+    "A child says, “A plant gets its food from the soil.”",
+    "Suppose Prospero tells a spirit, “Wait here.”",
+    "All the animals are mammals.",
+    "In the Blitz, many children were evacuated.",
+    "Sharing the sweets equally is fair.",
+    "Finally the war ended.",
+    "Alfred the Great ruled Wessex.",
+    "Using the diagram.",
+    "If it rains, the ground.",
+  ];
+  test.each(asksNothing)("%s asks nothing", (stem) => {
+    expect(questionless(stem)).toBe("no-question");
+  });
+
+  const leansOnNothing: string[] = [
+    "Sort these into two groups.",
+    "Ice is cold. Sort these into two groups.",
+    "A bat has wings. Sort these into two groups.",
+    "A fort has a ditch. Explain your decision.",
+    "A shop sells pens. Explain your answer.",
+    "Explain why it melts.",
+  ];
+  test.each(leansOnNothing)("%s leans on a question never posed", (stem) => {
+    expect(questionless(stem)).toBe("no-referent");
+  });
+});

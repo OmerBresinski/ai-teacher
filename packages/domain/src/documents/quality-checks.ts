@@ -388,9 +388,37 @@ function elementText(element: SlideElement): string | undefined {
   return undefined;
 }
 
-/** The words a task may open a sentence with and still be a task. */
-const IMPERATIVE_OPENERS =
-  /^(explain|describe|give|name|state|list|write|compare|contrast|suggest|calculate|work out|identify|decide|choose|select|complete|show|draw|sketch|label|predict|justify|evaluate|discuss|define|outline|summarise|summarize|use|find|match|sort|order|put|circle|tick|underline|fill|finish|add|count|measure|estimate|solve|prove|convert|read|look|think|imagine|plan|design|create|make|say|tell|record|note|simplify|spot|share|expand|factorise|factorize|rewrite|why|how|what|which|when|where|who|is|are|does|do|can|could|should|would|will)\b/i;
+/** The words a task may open a sentence with and still be a task: command words and question words. */
+const COMMAND_WORDS =
+  /^(explain|describe|give|name|state|list|write|compare|contrast|suggest|calculate|work out|identify|decide|choose|select|complete|show|draw|sketch|label|predict|justify|evaluate|discuss|define|outline|summarise|summarize|use|find|match|sort|order|put|circle|tick|underline|fill|finish|add|count|measure|estimate|solve|prove|convert|read|look|think|imagine|plan|design|create|make|say|tell|record|note|simplify|spot|share|expand|factorise|factorize|rewrite|analyse|analyze|annotate|apply|argue|assess|categorise|categorize|check|classify|comment|construct|correct|criticise|criticize|deduce|demonstrate|derive|determine|distinguish|divide|examine|explore|express|group|illustrate|infer|interpret|investigate|multiply|plot|rank|recall|recommend|relate|review|round|subtract|test|verify|why|how|what|which|when|where|who|is|are|does|do|can|could|should|would|will)\b/i;
+/**
+ * Closed-class words (determiners, pronouns, prepositions, conjunctions, common adverbs) and the
+ * scenario verbs that open a set-up rather than a task. None of these opens an imperative.
+ */
+const NOT_A_COMMAND =
+  /^(?:the|a|an|this|that|these|those|all|both|each|every|some|any|no|many|most|few|several|such|one|it|there|here|he|she|they|we|you|i|his|her|their|its|our|my|your|in|on|at|by|for|from|with|without|within|to|of|off|into|onto|under|over|through|throughout|across|between|among|against|along|around|behind|beyond|despite|inside|outside|near|past|since|until|upon|towards?|about|above|below|beneath|beside|besides|except|like|unlike|as|during|after|before|once|when|while|whilst|although|though|because|if|unless|whereas|and|but|or|so|yet|nor|also|even|only|just|still|then|now|soon|later|often|sometimes|usually|always|never|today|meanwhile|instead|otherwise|thus|hence|therefore|however|perhaps|maybe|indeed|suppose|assume|let|consider)$/i;
+/**
+ * The words an imperative's object opens with. A sentence whose first word is an open-class word
+ * followed straight by one of these is a command ("Divide both parts …", "Correct this account …",
+ * "Assess this claim …"); a statement's subject is followed by its verb instead ("Plants need …").
+ */
+const OBJECT_OPENER =
+  /^(?:the|a|an|this|these|those|both|each|every|its|their|his|her|your|our|how|why|what|whether)$/i;
+/**
+ * Whether a sentence opens with an imperative: a known command or question word, or any verb, told
+ * by the shape "<open-class word> <object opener>". A gerund or "-ly" adverb is not a command
+ * ("Sharing the sweets is fair.", "Finally the war ended."), nor is a name with a title ("Alfred
+ * the Great ruled Wessex.").
+ */
+function opensImperative(sentence: string): boolean {
+  if (COMMAND_WORDS.test(sentence)) return true;
+  const [first = "", second = "", third = ""] = sentence.split(/\s+/);
+  if (!/^\p{L}+$/u.test(first) || NOT_A_COMMAND.test(first) || /(?:ing|ly)$/i.test(first)) {
+    return false;
+  }
+  if (!OBJECT_OPENER.test(second)) return false;
+  return !(second.toLowerCase() === "the" && /^\p{Lu}/u.test(third));
+}
 /**
  * What may come before a task's imperative and leave it a task (lab round 2, recorded exit items
  * that raised "asks nothing"): a short label and a colon ("Exit: Name one way …"), or a length
@@ -409,13 +437,23 @@ const CONDITION_PREFIX = /^(?:if|when|once|after|before|given|using)\b[^,]{1,120
  * sentence after a label or length frame when that does ("Put these in order: …" stays whole).
  */
 function taskOf(sentence: string): string | undefined {
-  if (IMPERATIVE_OPENERS.test(sentence)) return sentence;
+  if (opensImperative(sentence)) return sentence;
   const rest = sentence.replace(TASK_PREFIX, "").replace(CONDITION_PREFIX, "");
-  return rest !== sentence && IMPERATIVE_OPENERS.test(rest) ? rest : undefined;
+  return rest !== sentence && opensImperative(rest) ? rest : undefined;
 }
 const opensTask = (sentence: string) => taskOf(sentence) !== undefined;
 /** A task that leans on a decision or answer only an earlier question could have set up. */
 const ANAPHORIC_TASK = /\b(your (decision|answer|choice)|(this|the) animal|these|this one)\b/i;
+/**
+ * "these" with its own noun ("these features"), which can point back at a noun phrase; a bare
+ * "these" ("Sort these into two groups.") needs its items shown.
+ */
+function demonstrativeWithNoun(sentence: string): boolean {
+  const noun = /\bthese\s+(\p{L}+)/iu.exec(sentence)?.[1];
+  return noun !== undefined && !NOT_A_COMMAND.test(noun);
+}
+/** Anaphora only a decision or answer can resolve: "your decision", "the animal". */
+const DECISION_ANAPHOR = /\b(your (decision|answer|choice)|(this|the) animal)\b/i;
 /** The answer an earlier task in the same stem produced. */
 const YOUR_ANSWER = /\byour (answer|choice)\b/i;
 /**
@@ -456,8 +494,11 @@ const PROPER_NOUN = /\s\p{Lu}\p{L}/u;
 function danglingIt(sentence: string, earlier: readonly string[] = []): boolean {
   const at = sentence.search(BARE_IT);
   if (at < 0) return false;
-  const names = (text: string) => ANTECEDENT.test(text) || PROPER_NOUN.test(text);
-  return !names(sentence.slice(0, at)) && !earlier.some(names);
+  return !namesSomething(sentence.slice(0, at)) && !earlier.some(namesSomething);
+}
+/** Whether text holds a noun phrase a later "it" or "these" can point back at. */
+function namesSomething(text: string): boolean {
+  return ANTECEDENT.test(text) || PROPER_NOUN.test(text);
 }
 /** Text that poses the decision such a task refers back to. */
 const POSES_DECISION = /\?|\b(whether|decide|is it|are they|which|what)\b/i;
@@ -487,6 +528,17 @@ export function questionless(stem: string): "ok" | "no-question" | "no-referent"
     if (s === undefined || !(ANAPHORIC_TASK.test(s) || danglingIt(s, earlier))) continue;
     // "Put these dates in order: AD 43, AD 410, AD 1." — the things referred to follow the colon.
     if (LISTS_ITS_REFERENTS.test(s)) continue;
+    // "these features" after a sentence that names them, as "it" is (l6-h: "A particular brand of
+    // washing-up liquid has few close alternatives and costs little. Explain how these features
+    // affect …").
+    if (
+      demonstrativeWithNoun(s) &&
+      !DECISION_ANAPHOR.test(s) &&
+      !danglingIt(s, earlier) &&
+      earlier.some(namesSomething)
+    ) {
+      continue;
+    }
     const before = earlier.join(" ");
     // An earlier task sentence poses the answer "your answer" refers to ("Share £72 in the ratio
     // 5:7. Give a check for your answer.").
