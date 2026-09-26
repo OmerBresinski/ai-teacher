@@ -23,11 +23,11 @@
     },
     {
       "src": "slides/05.png",
-      "alt": "Slide 5: Sound needs something to travel through. Four boxes: in a solid the particles are packed tightly and sound travels fastest; in a liquid they are close but can move and sound travels well; in a gas they are far apart and sound travels more slowly; empty space has no particles, so there is no sound."
+      "alt": "Slide 5: Sound needs something to travel through. Four boxes: in a solid the particles are packed tightly and sound travels fastest; in a liquid they are close but can move and sound travels well; in a gas they are far apart and sound travels, but more slowly; empty space has no particles, so there is no sound."
     },
     {
       "src": "slides/06.png",
-      "alt": "Slide 6: Check your understanding. Three questions: What is happening to an object when it makes a sound? Put in order: the ear hears it, the drum vibrates, the air passes the vibration on. Why is space completely silent?"
+      "alt": "Slide 6: Check your understanding. Three questions: What is happening to an object when it makes a sound? Put in order: the ear hears it, the drum vibrates, the air passes the vibration on. Why can’t sound travel through space?"
     }
   ],
   "worksheet": {
@@ -40,7 +40,7 @@
     "answers": [
       {
         "src": "answers/01.png",
-        "alt": "Answer key for How sound travels: an object must vibrate; the order is drum skin vibrates, air particles pass it on, the ear receives it; sound travels through air, water and wood but not empty space; fastest in a solid; space has no particles to pass on vibrations."
+        "alt": "Answer key for How sound travels: an object must vibrate; the order is drum skin vibrates, air particles pass it on, the ear receives it; sound travels through air, water and wood but not empty space; fastest in a solid; space has almost no particles to pass on vibrations."
       }
     ]
   }

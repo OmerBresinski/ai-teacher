@@ -7,7 +7,7 @@
   "slides": [
     {
       "src": "slides/01.png",
-      "alt": "Slide 1, title: Halves and quarters. Year 2 maths. How do we share a whole into equal parts? A circle with one quarter shaded labelled one quarter, and a rectangle with one half shaded labelled one half."
+      "alt": "Slide 1, title: Halves and quarters. Year 2 maths. How do we split a whole into equal parts? A circle with one quarter shaded labelled one quarter, and a rectangle with one half shaded labelled one half."
     },
     {
       "src": "slides/02.png",
@@ -23,11 +23,11 @@
     },
     {
       "src": "slides/05.png",
-      "alt": "Slide 5: Halves and quarters of a number. Eight counters shared into two equal groups of four: half of 8 is 4. Eight counters shared into four equal groups of two: a quarter of 8 is 2."
+      "alt": "Slide 5: Halves and quarters of an amount. Eight counters shared into two equal groups of four: half of 8 is 4. Eight counters shared into four equal groups of two: a quarter of 8 is 2."
     },
     {
       "src": "slides/06.png",
-      "alt": "Slide 6: Your turn. Which shapes show one half? A circle split down the middle (A), a rectangle split into two unequal parts (B) and a triangle split down the middle (C). What is half of 10? What is a quarter of 12?"
+      "alt": "Slide 6: Your turn. Which shapes are split into halves? A circle split down the middle (A), a rectangle split into two unequal parts (B) and a triangle split down the middle (C). What is half of 10? What is a quarter of 12?"
     }
   ],
   "worksheet": {

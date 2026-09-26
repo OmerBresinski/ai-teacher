@@ -68,7 +68,7 @@ const proof = `
             <p class="proof-kicker">Answer key</p>
             <p class="proof-question proof-dim">1. Any two, e.g. a drum, a voice.</p>
             <p class="proof-question"><mark data-proof-anchor="2">2. Something vibrates.</mark></p>
-            <p class="proof-question proof-dim">3. There are no particles to pass it on.</p>
+            <p class="proof-question proof-dim">3. Space has hardly any particles to pass it on.</p>
           </div>
           ${character("answers", { className: "proof-character" })}
         </div>
