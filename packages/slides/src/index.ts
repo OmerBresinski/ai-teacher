@@ -24,6 +24,7 @@ export * from "./materialise";
 export * from "./metrics";
 export * from "./reflow";
 export * from "./specs";
+export * from "./structure";
 export * from "./text-measure";
 export * from "./text-style";
 export * from "./themes";

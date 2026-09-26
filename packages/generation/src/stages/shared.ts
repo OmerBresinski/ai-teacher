@@ -172,6 +172,13 @@ function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
       const preset = element.style?.preset;
       if (preset === "caption") continue;
       const text = richDocToPlainText(element.doc).trim();
+      // A worked example's working laid as a steps strip (`@tj/slides` structure.ts): one card
+      // per step, named "Step n", and a continuation slide numbers on.
+      const step = element.name?.match(/^Step (\d+)$/);
+      if (step && text) {
+        out.push({ field: `steps[${Number(step[1]) - 1}]`, text });
+        continue;
+      }
       if (text) out.push({ field: preset === "small" ? "instruction" : (preset ?? "text"), text });
     } else if (element.type === "option") {
       const text = richDocToPlainText(element.doc).trim();
@@ -221,6 +228,8 @@ export function specFieldsCover(slide: Slide): boolean {
       (line) =>
         line.length > 0 &&
         !captions.has(line) &&
+        // A step card's number disc (`@tj/slides` structure.ts) is chrome, not a spec field.
+        !/^\d{1,2}$/.test(line) &&
         !/^(answer|answers|correct|model answer):/.test(line),
     )
     .every((line) => shown.has(line));

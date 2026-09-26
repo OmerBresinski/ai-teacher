@@ -206,7 +206,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       : undefined;
     if (coded) {
       const slide = withAnswersReveal(
-        materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
+        materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids, 0, {
+          quiz: coded.quiz,
+        }),
       );
       return { slide, misses: [], builtFrom };
     }
@@ -257,11 +259,14 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     const spec = calloutsAssigned
       ? withShuffledOptions(call.output, `${lesson.id}:${i}`)
       : call.output;
+    // The lesson's vocabulary is picked out in the slide's running text (structure.ts key terms).
     const slide = materialiseSlide(
       withImageCaption(keptDiagram(spec), entry),
       lesson.themeId,
       meta(call.modelId),
       deps.ids,
+      0,
+      { terms: builtFrom.vocabulary.map((v) => v.term) },
     );
     return { slide, misses: call.editorialMisses, builtFrom };
   };
