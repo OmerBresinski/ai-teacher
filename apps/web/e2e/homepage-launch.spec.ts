@@ -179,10 +179,14 @@ test.describe("top lessons", () => {
     // heading appears when it has none.
     const sheet = page.locator(".paper-doc").filter({ hasText: "Worksheet" });
     if ((await sheet.count()) > 0) {
-      const toggle = sheet.getByRole("switch");
+      const toggle = sheet.getByRole("button", { name: "Answers" });
       await expect(sheet.locator("[data-answers] img").first()).toBeHidden();
       await toggle.click();
-      await expect(toggle).toHaveAttribute("aria-checked", "true");
+      await expect(toggle).toHaveAttribute("aria-pressed", "true");
+      await expect(sheet.getByRole("button", { name: "Questions" })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
       await expect(sheet.locator("[data-answers] img").first()).toBeVisible();
       await expect(sheet.locator(".paper-sheet img").first()).toBeHidden();
     } else {
@@ -226,12 +230,14 @@ test.describe("slide viewer", () => {
       if ((await withAnswer.count()) > 0) {
         const index = await withAnswer.evaluate((el) => [...el.parentElement.children].indexOf(el));
         await page.locator(".viewer-thumb").nth(index).click();
-        const toggle = page.locator("[data-slide-answers]");
+        const toggle = page
+          .locator("[data-slide-answers]")
+          .getByRole("button", { name: "Answers" });
         await toggle.click();
-        await expect(toggle).toHaveAttribute("aria-checked", "true");
+        await expect(toggle).toHaveAttribute("aria-pressed", "true");
         await expect(withAnswer.locator("[data-answer]")).toBeVisible();
         await page.locator(".viewer-thumb").nth(1).click();
-        await expect(toggle).toHaveAttribute("aria-checked", "false");
+        await expect(toggle).toHaveAttribute("aria-pressed", "false");
       }
       await page.locator(".viewer-thumb").nth(2).click();
       await page.getByRole("button", { name: "Previous slide" }).click();

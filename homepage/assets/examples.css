@@ -85,98 +85,70 @@
 }
 
 /* ---- Lesson page ---- */
-/* The head is one compact band so the first slide sits near the top of the screen. */
+/* The head is two lines: where you are, and the lesson's title. Everything else is on the page. */
 .lesson-head {
-  padding-block: clamp(1.25rem, 2.5vw, 2rem) clamp(1.25rem, 2.5vw, 1.75rem);
+  padding-block: clamp(0.5rem, 1.5vw, 1rem) clamp(1.25rem, 2.5vw, 1.75rem);
 }
-.lesson-back {
-  min-height: 40px;
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
-}
-.lesson-back > span {
-  transform: scaleX(-1);
-}
-.lesson-back:hover > span {
-  transform: scaleX(-1) translateX(3px);
-}
-.lesson-title-row {
+.lesson-crumbs {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.5rem 2rem;
   flex-wrap: wrap;
-}
-.lesson-head .eyebrow {
-  margin-bottom: 0.6rem;
-}
-.lesson-head h1 {
-  font-size: clamp(2.1rem, 3.4vw, 3.25rem);
-  max-width: 24ch;
-}
-.lesson-materials {
-  font-size: 1rem;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9375rem;
   font-weight: 500;
   color: var(--muted);
-  padding-bottom: 0.35rem;
+}
+.lesson-crumbs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+.lesson-crumbs a:hover {
+  text-decoration-thickness: 2px;
+}
+.lesson-head h1 {
+  font-size: clamp(2rem, 3.2vw, 2.875rem);
+  max-width: 28ch;
 }
 .lesson-block {
   padding-bottom: clamp(2.5rem, 5vw, 4rem);
 }
 
-/* One switch for answers, on slides and on paper alike. */
-.answer-toggle {
+/* Questions | Answers: one quiet segmented control, the same on slides and on paper. */
+.view-switch {
   display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-height: 44px;
-  padding: 0 1rem 0 0.75rem;
-  border: 1px solid var(--ink);
+  padding: 3px;
+  border: 1px solid var(--line);
   border-radius: 99px;
   background: var(--paper);
-  font-size: 1rem;
-  font-weight: 600;
+}
+.view-switch button {
+  min-height: 38px;
+  padding: 0 0.95rem;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
   transition:
     background 0.2s,
     color 0.2s;
 }
-.answer-toggle > span[aria-hidden] {
-  position: relative;
-  width: 34px;
-  height: 20px;
-  border-radius: 99px;
-  background: var(--line);
-  transition: background 0.2s;
+.view-switch button:hover {
+  color: var(--ink);
 }
-.answer-toggle > span[aria-hidden]::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--paper);
-  transition: transform 0.2s var(--ease);
-}
-.answer-toggle[aria-checked="true"] > span[aria-hidden] {
-  background: var(--ink);
-}
-.answer-toggle[aria-checked="true"] > span[aria-hidden]::after {
-  transform: translateX(14px);
-}
-.answer-toggle[aria-checked="true"] {
+.view-switch button[aria-pressed="true"] {
   background: var(--ink);
   color: var(--cream);
 }
-.answer-toggle[aria-checked="true"] > span[aria-hidden] {
-  background: var(--yellow);
-}
-.answer-toggle:hover {
-  background: var(--sand);
-}
-.answer-toggle[aria-checked="true"]:hover {
-  background: #405347;
+.view-switch button:focus-visible {
+  outline-offset: 2px;
 }
 
 /* Slides. Without JavaScript every slide is visible in a grid. */
@@ -218,7 +190,7 @@
   align-items: center;
   gap: 0.6rem;
 }
-.viewer-actions .answer-toggle {
+.viewer-actions .view-switch {
   margin-right: 0.4rem;
 }
 .viewer-thumbs {
@@ -339,19 +311,14 @@
    previous, where you are, next, and the answers switch. Thumbnails give way to swiping. */
 @media (max-width: 760px) {
   .lesson-head {
-    padding-block: 0.25rem 1.25rem;
+    padding-block: 0 1rem;
   }
-  .lesson-back {
-    margin-bottom: 0.25rem;
-  }
-  .lesson-head .eyebrow {
-    margin-bottom: 0.4rem;
+  .lesson-crumbs {
+    margin-bottom: 0.1rem;
+    font-size: 0.875rem;
   }
   .lesson-head h1 {
-    font-size: 2rem;
-  }
-  .lesson-title-row {
-    gap: 0.5rem;
+    font-size: 1.75rem;
   }
   .viewer-slides,
   .paper-sheet,
@@ -393,18 +360,38 @@
   }
   .viewer-status {
     order: 2;
-    min-width: 7.5em;
+    min-width: 3.6em;
     text-align: center;
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
+  }
+  /* "Slide 3 of 10" is still read out; the eye gets "3 / 10". */
+  .vs-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .vs-total::before {
+    content: "/";
+    margin-inline: 0.3em 0.05em;
   }
   .viewer-step[data-step="1"] {
     order: 3;
   }
-  .viewer-actions .answer-toggle {
+  .viewer-actions .view-switch {
     order: 4;
     margin: 0 0 0 auto;
-    min-height: 40px;
-    font-size: 0.9375rem;
+  }
+  .view-switch button {
+    min-height: 34px;
+    padding: 0 0.7rem;
+    font-size: 0.875rem;
+  }
+  .viewer-controls {
+    gap: 0.25rem;
   }
   .viewer-thumbs {
     display: none;
@@ -418,10 +405,6 @@
   }
   .paper-title {
     font-size: 1.125rem;
-  }
-  .paper-bar .answer-toggle {
-    min-height: 40px;
-    font-size: 0.9375rem;
   }
 }
 @media (max-width: 560px) {

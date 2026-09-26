@@ -1,6 +1,6 @@
 import { cta, escapeHtml, href, nextIcon, pageHero, textLink } from "../components.mjs";
 import { assetHref, examples } from "../examples-data.mjs";
-import { lessonGrid, materials, yearSubject } from "../lesson-card.mjs";
+import { lessonGrid, yearSubject } from "../lesson-card.mjs";
 
 const image = (slug, item, extra = "") =>
   `<img src="${href(assetHref(slug, item.src))}" alt="${escapeHtml(item.alt)}" ${extra}>`;
@@ -27,9 +27,10 @@ const indexPage = {
     cta(),
 };
 
-// The answers switch: hidden until the script runs, so it never shows without something to do.
-const answerSwitch = (label, extra = "") =>
-  `<button type="button" class="answer-toggle" role="switch" aria-checked="false" hidden ${extra}><span aria-hidden="true"></span>${label}</button>`;
+// Questions | Answers: two buttons, one pressed. Hidden until the script runs, so it never shows
+// without something to do. The label names what each view shows.
+const viewSwitch = (label, extra = "") =>
+  `<div class="view-switch" role="group" aria-label="${label}" hidden ${extra}><button type="button" aria-pressed="true" data-view="questions">Questions</button><button type="button" aria-pressed="false" data-view="answers">Answers</button></div>`;
 
 // Slides: with JavaScript, one large stage slide with every control in one row under it (where the
 // slide is, the counter, the answers switch, previous and next) and a strip of thumbnails; without
@@ -44,9 +45,9 @@ const slideViewer = (example) => {
       )
       .join("")}</ol>
     <div class="viewer-controls" hidden>
-      <p class="viewer-status" aria-live="polite">Slide 1 of ${total}</p>
+      <p class="viewer-status" aria-live="polite"><span class="vs-word">Slide </span>1<span class="vs-word"> of</span><span class="vs-total"> ${total}</span></p>
       <div class="viewer-actions">
-        ${answerSwitch("Answers", "data-slide-answers")}
+        ${viewSwitch("Slide view", "data-slide-answers")}
         <button type="button" class="viewer-step" data-step="-1" aria-label="Previous slide"><span aria-hidden="true" class="viewer-flip">${nextIcon}</span></button>
         <button type="button" class="viewer-step" data-step="1" aria-label="Next slide"><span aria-hidden="true">${nextIcon}</span></button>
       </div>
@@ -73,7 +74,7 @@ const paperPages = (example, pages) =>
 const paperDoc = (example, title, doc, answersLabel) => {
   const hasAnswers = doc.answers.length > 0;
   return `<article class="paper-doc" data-paper>
-    <div class="paper-bar"><h2 class="paper-title">${title}</h2>${hasAnswers ? answerSwitch(answersLabel) : ""}</div>
+    <div class="paper-bar"><h2 class="paper-title">${title}</h2>${hasAnswers ? viewSwitch(`${title} view`) : ""}</div>
     <div class="paper-sheet">${paperPages(example, doc.pages)}</div>
     ${hasAnswers ? `<div class="paper-answers" data-answers><p class="paper-answers-label">${answersLabel}</p>${paperPages(example, doc.answers)}</div>` : ""}
   </article>`;
@@ -95,11 +96,8 @@ const lessonPage = (example) => ({
   description: `${example.title}: a ${example.year} ${example.subject} lesson with ${example.slides.length} slides${example.worksheet ? ", a worksheet" : ""}${example.exitTicket ? ", an exit ticket" : ""} and the answers.`,
   scripts: ["/assets/lesson-viewer.js"],
   body: `<section class="container lesson-head">
-      <a class="text-link lesson-back" href="${href("/examples/")}"><span aria-hidden="true">${nextIcon}</span>Top lessons</a>
-      <div class="lesson-title-row">
-        <div><p class="eyebrow">${yearSubject(example)}</p><h1>${escapeHtml(example.title)}</h1></div>
-        <p class="lesson-materials">${materials(example)}</p>
-      </div>
+      <nav class="lesson-crumbs" aria-label="Breadcrumb"><a href="${href("/examples/")}">Top lessons</a><span aria-hidden="true">/</span><span>${yearSubject(example)}</span></nav>
+      <h1>${escapeHtml(example.title)}</h1>
     </section>
     <section class="container lesson-block" aria-label="Slides">${slideViewer(example)}</section>
     ${papersSection(example)}

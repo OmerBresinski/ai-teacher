@@ -2,7 +2,18 @@
 // answers follow it; with it, one large slide sits on the stage, a strip of thumbnails chooses
 // between them, and an Answers switch reveals a slide's or a sheet's answers in the same place.
 (() => {
-  const setSwitch = (button, on) => button.setAttribute("aria-checked", String(on));
+  // A Questions | Answers group: exactly one button is pressed.
+  const setView = (group, answers) => {
+    for (const button of group.querySelectorAll("button")) {
+      button.setAttribute("aria-pressed", String((button.dataset.view === "answers") === answers));
+    }
+  };
+  const onView = (group, handler) => {
+    group.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-view]");
+      if (button) handler(button.dataset.view === "answers");
+    });
+  };
   for (const viewer of document.querySelectorAll("[data-viewer]")) {
     const slides = [...viewer.querySelectorAll(".viewer-slide")];
     const thumbs = [...viewer.querySelectorAll(".viewer-thumb")];
@@ -19,11 +30,9 @@
       const answer = slide.querySelector("[data-answer]");
       slide.querySelector("img:not([data-answer])").hidden = Boolean(answer && on);
       if (answer) answer.hidden = !on;
-      setSwitch(answers, Boolean(answer && on));
+      setView(answers, Boolean(answer && on));
     };
-    answers?.addEventListener("click", () => {
-      showAnswer(answers.getAttribute("aria-checked") !== "true");
-    });
+    if (answers) onView(answers, showAnswer);
 
     const show = (index, focusThumb = false) => {
       current = (index + slides.length) % slides.length;
@@ -37,7 +46,8 @@
         else thumb.removeAttribute("aria-current");
         thumb.tabIndex = on ? 0 : -1;
       });
-      status.textContent = `Slide ${current + 1} of ${slides.length}`;
+      // Reads "Slide 3 of 10"; a phone shows it as "3 / 10".
+      status.innerHTML = `<span class="vs-word">Slide </span>${current + 1}<span class="vs-word"> of</span><span class="vs-total"> ${slides.length}</span>`;
       if (answers) {
         answers.hidden = !slides[current].hasAttribute("data-has-answer");
         showAnswer(false);
@@ -102,16 +112,16 @@
 
   // A printed sheet and its answers share one place on the page.
   for (const doc of document.querySelectorAll("[data-paper]")) {
-    const toggle = doc.querySelector(".answer-toggle");
+    const toggle = doc.querySelector(".view-switch");
     const sheet = doc.querySelector(".paper-sheet");
     const answers = doc.querySelector("[data-answers]");
     if (!toggle || !sheet || !answers) continue;
     const set = (on) => {
-      setSwitch(toggle, on);
+      setView(toggle, on);
       sheet.hidden = on;
       answers.hidden = !on;
     };
-    toggle.addEventListener("click", () => set(toggle.getAttribute("aria-checked") !== "true"));
+    onView(toggle, set);
     doc.dataset.enhanced = "";
     toggle.hidden = false;
     set(false);
