@@ -109,6 +109,39 @@ describe("codedSetSpec (r1)", () => {
   });
 });
 
+describe("an options-style stem without options (25 Sep, cbm1-cb-y8-rivers-WL)", () => {
+  const q7 = {
+    id: "q7",
+    stem: "Which of the following new housing plans would most reduce flood risk?",
+    answer: "Permeable paving and green roofs",
+    reasoning: "",
+    distractors: [] as { text: string }[],
+    use: "slide" as const,
+  };
+  const q5 = { ...open, id: "q5" };
+  const q6 = { ...open, id: "q6", stem: "Name the vessel that returns blood to the heart." };
+  const with7 = (q: typeof q7) => ({ ...facts, questions: [q5, q6, q] }) as unknown as LessonFacts;
+  test("is left off the check set, and not counted as asked", () => {
+    const coded = codedSetSpec(entry("instructions", ["q5", "q6", "q7"]), with7(q7), "L:5");
+    expect((coded?.spec as { steps: string[] } | undefined)?.steps).toEqual([q5.stem, q6.stem]);
+    expect(coded?.answers).toHaveLength(2);
+    expect(coded?.questionRefs).toEqual(["q5", "q6"]);
+    // Its only question dropped, the check slide is the model's.
+    expect(codedSetSpec(entry("instructions", ["q7"]), with7(q7), "L:5")).toBeUndefined();
+  });
+  test("with three distractors it is printed as one multiple-choice line", () => {
+    const listed = {
+      ...q7,
+      distractors: [{ text: "More car parks" }, { text: "Tarmac drives" }, { text: "Fewer trees" }],
+    };
+    const coded = codedSetSpec(entry("instructions", ["q7"]), with7(listed), "L:5");
+    const steps = (coded?.spec as { steps: string[] } | undefined)?.steps ?? [];
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatch(/ A .+ {2}B .+ {2}C .+ {2}D /);
+    expect(coded?.answers[0]).toMatch(/^[A-D] \(/);
+  });
+});
+
 describe("seeded option order (r1, SYNTHESIS cause 6)", () => {
   test("the same seed gives the same order; across slides the answer is not always A", () => {
     expect(seededOrder(4, "lesson-1:5")).toEqual(seededOrder(4, "lesson-1:5"));

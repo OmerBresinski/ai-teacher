@@ -1,4 +1,5 @@
 import {
+  asksForUnlistedOptions,
   checkLesson,
   DEFAULT_SLIDE_COUNT,
   type Finding,
@@ -667,6 +668,9 @@ export function questionSetProblem(
     .findIndex((q) => !(q.keyIdeaRefs ?? []).some((r) => r.index >= 0 && r.index < keyIdeaCount));
   if (orphan >= 0) return `question ${orphan + 1} names no supplied key idea`;
   const asked = output.questions.slice(0, count);
+  const unlisted = asked.findIndex((q) => asksForUnlistedOptions(q));
+  if (unlisted >= 0)
+    return `question ${unlisted + 1} asks pupils to choose from options it does not list`;
   if (use === "exit") {
     const long = asked.findIndex((q) => !fitsExitLine(q));
     if (long >= 0) return `exit question ${long + 1} does not fit one line of the exit quiz`;

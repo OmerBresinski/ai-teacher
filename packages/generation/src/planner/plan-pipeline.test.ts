@@ -662,6 +662,18 @@ describe("planFromObjectives: the waves (lab pw)", () => {
       },
     ]);
     expect(questionSetProblem(repeat, 2, 2, "exit")).toBe("questions 1 and 2 ask the same thing");
+    // Rivers, 25 Sep: a stem that asks pupils to choose from options it does not list.
+    const rivers = open("Which of the following new housing plans would most reduce flood risk?");
+    expect(questionSetProblem(exitSet([open("What is a forum?"), rivers]), 2, 2)).toBe(
+      "question 2 asks pupils to choose from options it does not list",
+    );
+    expect(
+      questionSetProblem(
+        exitSet([{ ...rivers, distractors: mc("Dere Street").distractors }]),
+        1,
+        2,
+      ),
+    ).toBeUndefined();
   });
 
   test("a teach call that fails leaves its objective without facts; a set that fails leaves its questions out; the run goes on", async () => {

@@ -4,7 +4,7 @@ import type {
   LessonPhase,
   SlideCount,
 } from "@tj/domain/documents";
-import { QUESTION_TIERS } from "@tj/domain/documents";
+import { asksForUnlistedOptions, QUESTION_TIERS } from "@tj/domain/documents";
 import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
 import {
   EXIT_CHARS,
@@ -328,11 +328,12 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
    * make multiple choice its form everywhere downstream (`LessonFacts` keeps no `forms`), and a
    * true-false statement is not a question on its own; either shown as a bare stem is a question
    * without its options (w0: 12 option-less stems on 8 lab decks, two exit tickets failing
-   * `checkLesson`).
+   * `checkLesson`). So is a stem that asks pupils to choose from options it does not list
+   * ("Which of the following…" with no distractors; rivers, 25 Sep).
    */
   const admitsOpen = (i: number) => {
     const q = facts.questions[i];
-    return q !== undefined && askableAsStem(q);
+    return q !== undefined && askableAsStem(q) && !asksForUnlistedOptions(q);
   };
   const tfUsable = (i: number) =>
     formsOf(i).includes("true-false") && !shape.forbiddenKinds.includes("true-false");
@@ -1096,6 +1097,12 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     type: "question",
     index: i,
     line: questionLine(facts.questions[i] ?? { stem: "", answer: "" }),
+  });
+  facts.questions.forEach((q, i) => {
+    if (isSlideQuestion(q) && asksForUnlistedOptions(q) && !showable(i))
+      gap(
+        `Question ${i + 1} asks pupils to choose from options it does not list, so it is left off the slides.`,
+      );
   });
   {
     const exits = facts.questions.flatMap((q, i) =>
