@@ -44,7 +44,11 @@ const entry = (kind: OutlineEntry["kind"], factRefs: string[]): OutlineEntry =>
   ({ kind, factRefs }) as OutlineEntry;
 
 const plain = (slide: Slide) =>
-  slide.elements.flatMap((e) => (e.type === "text" ? [JSON.stringify(e.doc ?? e)] : [])).join(" ");
+  slide.elements
+    .flatMap((e) =>
+      e.type === "text" || (e.type === "shape" && e.doc) ? [JSON.stringify(e.doc ?? e)] : [],
+    )
+    .join(" ");
 
 describe("lab question lines (r1)", () => {
   test("a question with three distractors is one multiple-choice line; its answer names the letter", () => {
@@ -56,10 +60,13 @@ describe("lab question lines (r1)", () => {
     expect(line.answer).toBe(`${letter} (artery)`);
   });
   test("any other question is its stem, answered in a line", () => {
-    expect(questionLine(open)).toEqual({ text: open.stem, answer: "the left ventricle" });
+    expect(questionLine(open)).toMatchObject({ text: open.stem, answer: "the left ventricle" });
+    expect(questionLine(open).quiz).toEqual({ stem: open.stem, answer: "the left ventricle" });
   });
   test("a misconception is a true/false line on its belief, answered false with its correction", () => {
-    expect(misconceptionLine(facts.misconceptions?.[0] ?? { belief: "", correction: "" })).toEqual({
+    expect(
+      misconceptionLine(facts.misconceptions?.[0] ?? { belief: "", correction: "" }),
+    ).toMatchObject({
       text: "True or false? Veins carry blue blood.",
       answer: "False. Blood in veins is dark red.",
     });

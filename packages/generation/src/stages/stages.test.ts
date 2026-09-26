@@ -1327,8 +1327,11 @@ describe("generate", () => {
     });
     const repaired = await repair(errored, recordingDeps(fixer));
     // Row 2 (TEACH-222): the KEY IDEA caption is not part of the current text the model is shown,
-    // so it cannot be copied into `heading`.
-    expect(fixer.calls[0]?.promptText).not.toContain("KEY IDEA");
+    // so it cannot be copied into `heading`. (A neighbour's side-panel label may say it: the
+    // neighbours are shown for reference only.)
+    const current = fixer.calls[0]?.promptText.split("currently says:")[1]?.split("\n\n")[0];
+    expect(current).toBeDefined();
+    expect(current).not.toContain("KEY IDEA");
     expect(fixer.calls[0]?.promptText).toMatch(/heading: .+\nbody: .+/);
     expect(fixer.calls[0]?.promptText).toContain(
       "The photograph on this slide shows: River at dawn",
