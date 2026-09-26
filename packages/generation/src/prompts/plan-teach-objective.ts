@@ -79,6 +79,17 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * now follows what the idea contains, "list" from two or more reasons, causes, factors, effects,
  * features, types or ways, "compare" even where it gives points on each of its two named things,
  * and explain is the narrow default. Two runs: 16 and 18 ideas, explain 6 and 7.
+ *
+ * v8 (26 Sept 2026, look/image-plan, `quality-prd/look/GENERATION-RESULTS-7.md`; Greg: room for a
+ * photo on teaching slides, as Chalkie does): the optional `photo` ({subject, mustShow}, a subset of
+ * `ImageBrief`) the contract commit added. Its query wording is plan-skeleton's image-brief rule
+ * (TEACH-220/227/237: a query "that knows nothing about this lesson", context so it stands alone,
+ * things a stranger's ordinary photograph shows). Four drafts on seven topics: "when a photograph
+ * would help" gave 7 of 22 ideas; "whenever a camera could show what it is about … leave it out only
+ * when" gave 13–16 of 20–23 non-maths ideas and 0 on fractions. "A named place only when famous"
+ * gave "Tewkesbury 2007 flood" and "Medmerry coastal wetlands"; "no dates, characters or local place
+ * names" gave searchable subjects. Like `visual`, `photo` stays out of the sketch; the visual-or-photo
+ * rule is prose only, so code should drop `photo` when both come back.
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
@@ -216,14 +227,14 @@ export function workedExampleLine(position: PlanFactsObjectivePosition): string 
 const TEACH_HOUSE_RULES = houseRules("british", "names");
 
 /** v14's limits line, the question fields removed. */
-const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; visual ${SPEC_LIMITS.diagram}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
+const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; visual ${SPEC_LIMITS.diagram}; photo subject and each mustShow item 60; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
 
 /** v14's sketch without the `questions` list; `misconceptionRef` left out on purpose (v7). */
 export const TEACH_SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…","shape":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v7",
+  version: "plan-teach-objective.v8",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
@@ -237,6 +248,7 @@ export const planTeachObjectivePrompt = {
     "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",
     'A key idea\'s "shape" is how its slide sets it out, and follows what the idea contains: "list" when it gives two or more reasons, causes, factors, effects, features, types or ways; "compare" when it sets two named things side by side, even where it gives points on each; "sequence" for a method or process in order; "explain" only for a single claim or mechanism with none of these.',
     `Give a key idea a "visual" when a drawing shows what the words cannot (the parts of a structure, stages in order or round a cycle, two things side by side, a bar model, a value changing on a graph or number line): its type and a colon (${DIAGRAM_TYPES.join(", ").replace(/, ([^,]+)$/, " or $1")}), then the labels in order and what connects them, in the idea's words: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise". Leave it out when a drawing would only put the idea's words in boxes.`,
+    'Give a key idea a "photo" whenever a camera could show what it is about: a real place, organism, object, artefact or event, a process you can watch happening, or a production of a text. Leave it out only when the idea is abstract (a number, a rule, a calculation) or the only picture would be its words in boxes. A key idea has a "visual" or a "photo", never both: the visual only when a drawing shows what no photograph can (a graph, a bar model, a cycle, the inside of something). "subject" is what you would type into a stock-photo search that knows nothing about this lesson: two to four plain words naming what the picture shows, as the library would tag it ("pipe organ", never "organ"; "wind farm", never "renewable energy"; "Viking longship replica"), with no dates, characters or local place names; only a world-famous landmark is named. "mustShow" is up to four things a pupil must see, each a noun a stranger would recognise in an ordinary photograph of the subject, never a character or named person.',
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
     'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',

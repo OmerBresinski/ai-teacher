@@ -220,8 +220,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // v4: each key idea's slide `shape` (CONTENT_SHAPES) and optional `visual`; v5 its wording.
     // v6: a key idea is what one slide explains in 40–60 words (splitting at plan time).
     // v7: the shape follows what the idea contains (list from two or more reasons, factors...).
-    version: "plan-teach-objective.v7",
-    hash: "a3f60034ac7a3a4987d338e7a37249dec1b73f98b8975cc65515cd4d63324015",
+    // v8: an optional stock-photo brief when a camera could show the idea (look/image-plan).
+    version: "plan-teach-objective.v8",
+    hash: "ca26e6352f3ca575756edc0b1e6c5af4d8eed51cae6880eb72c219e785e27b8d",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",

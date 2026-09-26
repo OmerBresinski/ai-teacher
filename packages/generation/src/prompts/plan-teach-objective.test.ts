@@ -45,8 +45,16 @@ describe("plan-teach-objective", () => {
     const v14 = planFactsObjectivePrompt.system;
     // v14 is 487 words; the questions took their rules with them. The alarm follows the count
     // (v4 adds the slide shape and visual rules, about 140 words with the example cycle; v6 the
-    // one-idea-a-slide sizing, 21 words; v7 the shape rule by what the idea contains, 16 more).
-    expect(system.trim().split(/\s+/).length).toBeLessThan(510);
+    // one-idea-a-slide sizing, 21 words; v7 the shape rule by what the idea contains, 16 more;
+    // v8 the photo rule and its length limit, 194 more).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(700);
+    // v8: a photo when a camera could show the idea, never with a visual; a query that stands alone.
+    expect(system).toContain(
+      'Give a key idea a "photo" whenever a camera could show what it is about',
+    );
+    expect(system).toContain('A key idea has a "visual" or a "photo", never both');
+    expect(system).toContain("a stock-photo search that knows nothing about this lesson");
+    expect(system).toContain("photo subject and each mustShow item 60");
     // v7: the shape follows what the idea contains; explain is the narrow default.
     expect(system).toContain(
       '"list" when it gives two or more reasons, causes, factors, effects, features, types or ways; "compare" when it sets two named things side by side, even where it gives points on each; "sequence" for a method or process in order; "explain" only for a single claim or mechanism with none of these.',
@@ -105,7 +113,7 @@ describe("plan-teach-objective", () => {
       expect(system.toLowerCase()).not.toContain(gone);
     }
     expect(system).toContain(
-      `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; visual ${SPEC_LIMITS.diagram}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}.`,
+      `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; visual ${SPEC_LIMITS.diagram}; photo subject and each mustShow item 60; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}.`,
     );
     // The sketch is v14's without its `questions` list; `misconceptionRef` stays out of it (v7).
     expect(TEACH_SHAPE_SKETCH).not.toContain("questions");
@@ -113,6 +121,7 @@ describe("plan-teach-objective", () => {
     // v4: `shape` is in the sketch (required); `visual` is not, so it is not filled every time.
     expect(TEACH_SHAPE_SKETCH).toContain('"shape":"…"');
     expect(TEACH_SHAPE_SKETCH).not.toContain("visual");
+    expect(TEACH_SHAPE_SKETCH).not.toContain("photo");
     expect(system).toContain(TEACH_SHAPE_SKETCH);
     expect(system.split("objectiveRefs").length - 1).toBe(2);
   });
