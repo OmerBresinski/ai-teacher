@@ -73,7 +73,11 @@ export function ObjectiveNotes({ slide, scale }: { slide: Slide; scale: number }
     proposals.busy && snap !== null && snap.updated.size > 0 && selectedBox !== undefined;
 
   const [measured, setMeasured] = useState<Measured>({});
-  const keys = notes.map((n) => keyOf(n.elementId, "line" in n ? n.line : undefined));
+  // The lines to underline, and the boxes the notes stack under.
+  const keys = notes.flatMap((n) => [
+    keyOf(n.elementId),
+    ...("line" in n ? [keyOf(n.elementId, n.line)] : []),
+  ]);
   // "Updating slides…" sits under the box whose "Update them" was clicked.
   if (updating && snap) keys.push(keyOf(snap.id));
   const wanted = [...new Set(keys)].join("|");
@@ -98,7 +102,8 @@ export function ObjectiveNotes({ slide, scale }: { slide: Slide; scale: number }
       if (!frame) continue;
       const target = line === "box" ? frame : listItem(frame, Number(line));
       if (!target) continue;
-      next[key] = visualLines(target).map((r) => ({
+      const rects = line === "box" ? [frame.getBoundingClientRect()] : visualLines(target);
+      next[key] = rects.map((r) => ({
         x: (r.left - origin.left) / scale,
         y: (r.top - origin.top) / scale,
         w: r.width / scale,
@@ -115,8 +120,9 @@ export function ObjectiveNotes({ slide, scale }: { slide: Slide; scale: number }
     proposals.onFactsChanged?.([factId]);
   };
 
-  // Stacked notes under one line sit one below the other.
-  const stack = new Map<string, number>();
+  // A note never covers the teacher's words: the notes stack under their box, in line order, each
+  // led by its line's number; the underline marks the line itself.
+  const stack = new Map<Id, number>();
   return (
     <div
       ref={layer}
@@ -129,15 +135,15 @@ export function ObjectiveNotes({ slide, scale }: { slide: Slide; scale: number }
     >
       {notes.map((note) => {
         const key = keyOf(note.elementId, "line" in note ? note.line : undefined);
-        const lines = measured[key];
-        if (!lines || lines.length === 0) return null;
+        const box = measured[keyOf(note.elementId)]?.[0];
+        if (!box) return null;
+        const lines = "line" in note ? (measured[key] ?? []) : [];
         const red = note.kind === "over-cap" || note.kind === "empty";
-        const last = lines[lines.length - 1] as LineBox;
         const typing = editingTextId === note.elementId;
         const showNote = red || !typing;
-        const order = stack.get(key) ?? 0;
-        stack.set(key, order + 1);
-        const underline = note.kind !== "old-wording" && note.kind !== "empty";
+        const order = stack.get(note.elementId) ?? 0;
+        if (showNote) stack.set(note.elementId, order + 1);
+        const underline = note.kind === "not-taught" || note.kind === "over-cap";
         return (
           <div key={`${key}:${note.kind}`}>
             {underline
@@ -154,11 +160,12 @@ export function ObjectiveNotes({ slide, scale }: { slide: Slide; scale: number }
               <div
                 className="absolute"
                 style={{
-                  left: note.kind === "empty" ? last.x : lines[0]?.x,
+                  left: box.x,
+                  // A selected box has its rotate handle under it; the notes start below that.
                   top:
-                    note.kind === "empty"
-                      ? last.y + last.h + 4
-                      : last.y + last.h + 6 + (order * 30) / scale,
+                    box.y +
+                    box.h +
+                    ((selection.includes(note.elementId) ? 44 : 8) + order * 34) / scale,
                   transform: `scale(${1 / scale})`,
                   transformOrigin: "top left",
                 }}
@@ -190,10 +197,18 @@ function NotePill({
   const base =
     "pointer-events-auto inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-chip border bg-card px-2.5 text-meta text-ink-2 shadow-[var(--e-1)]";
   const action = "h-auto p-0 text-meta font-medium";
+  const number =
+    "line" in note ? (
+      <span className="font-semibold text-ink tabular-nums">
+        <span className="sr-only">Line </span>
+        {note.line + 1}
+      </span>
+    ) : null;
   switch (note.kind) {
     case "not-taught":
       return (
         <div className={cn(base, "border-warning/40")} data-objective-note="not-taught">
+          {number}
           <AlertTriangle aria-hidden size={14} strokeWidth={1.5} className="text-warning" />
           <span>No slide teaches this yet</span>
           <span aria-hidden>·</span>
@@ -225,6 +240,7 @@ function NotePill({
     case "old-wording":
       return (
         <div className={base} data-objective-note="old-wording">
+          {number}
           <span>{oldWordingSentence(note.slides)}</span>
           {onFactsChanged ? (
             <>
@@ -244,6 +260,7 @@ function NotePill({
     case "over-cap":
       return (
         <div className={cn(base, "border-destructive/40")} data-objective-note="over-cap">
+          {number}
           <AlertTriangle aria-hidden size={14} strokeWidth={1.5} className="text-destructive" />
           <span>Up to four objectives. This line is not saved as one.</span>
         </div>
@@ -259,14 +276,14 @@ function NotePill({
 }
 
 function UpdatingPill({ anchor, scale }: { anchor: LineBox[] | undefined; scale: number }) {
-  const last = anchor?.[anchor.length - 1];
+  const last = anchor?.[0];
   if (!last) return null;
   return (
     <div
       className="absolute"
       style={{
-        left: anchor?.[0]?.x,
-        top: last.y + last.h + 6,
+        left: last.x,
+        top: last.y + last.h + 44 / scale,
         transform: `scale(${1 / scale})`,
         transformOrigin: "top left",
       }}
@@ -320,26 +337,35 @@ function listItem(frame: HTMLElement, line: number): HTMLElement | null {
   return (items[line] as HTMLElement | undefined) ?? null;
 }
 
-/** One box per rendered line of `el`'s words (a wrapped line is two), in screen pixels. */
+/**
+ * One box per rendered line of `el`'s words (a wrapped line is two), in screen pixels. Only text
+ * runs are measured: a block's own box spans every line and would blur them into one.
+ */
 function visualLines(el: HTMLElement): DOMRect[] {
-  const range = document.createRange();
-  range.selectNodeContents(el);
-  const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0 && r.height > 0);
+  const rects: DOMRect[] = [];
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!node.textContent?.trim()) continue;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    for (const r of Array.from(range.getClientRects()))
+      if (r.width > 0 && r.height > 0) rects.push(r);
+  }
   if (rects.length === 0) return [el.getBoundingClientRect()];
   const rows: DOMRect[] = [];
   for (const r of rects) {
-    const row = rows.find((x) => Math.abs(x.bottom - r.bottom) < r.height / 2);
+    const i = rows.findIndex((x) => Math.abs(x.bottom - r.bottom) < r.height / 2);
+    const row = rows[i];
     if (!row) {
       rows.push(new DOMRect(r.left, r.top, r.width, r.height));
       continue;
     }
     const left = Math.min(row.left, r.left);
-    const right = Math.max(row.right, r.right);
     const top = Math.min(row.top, r.top);
-    rows[rows.indexOf(row)] = new DOMRect(
+    rows[i] = new DOMRect(
       left,
       top,
-      right - left,
+      Math.max(row.right, r.right) - left,
       Math.max(row.bottom, r.bottom) - top,
     );
   }
