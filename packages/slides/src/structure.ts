@@ -1414,6 +1414,16 @@ function bodyPart(body: TextElement, t: Theme, ids: Ids) {
 /** Whether a slide fits, a step below the body size at most (the fit engine's floor). */
 const fitsSlide = (slide: Slide, t: Theme) => fitSlide(slide, t).overflow.length === 0;
 
+/** Whether a slide fits as it is, its running text kept at the body size. */
+function atBodySize(slide: Slide, t: Theme): boolean {
+  const fitted = fitSlide(slide, t);
+  if (fitted.overflow.length > 0) return false;
+  const size = readingSize(t);
+  return fitted.slide.elements.every(
+    (e) => !isText(e) || e.name !== BODY_NAME || (e.style.fontSize ?? size) >= size,
+  );
+}
+
 /**
  * The first split of `all` into pages that `build` lays out and `fits` accepts, page by page:
  * the fewest pages, then the most even sentence counts, then the most even word counts, a longer
@@ -1642,23 +1652,26 @@ function structureDiagram(
       ),
     ];
   }
-  // With pages the words are not squeezed beside the drawing: the slot gives way and the words
-  // are set as any teaching slide's (full width, then continued evenly, UX ruling 91). The drawing
-  // is a note for the teacher that the class never sees.
-  const unslotted = slide.elements
-    .filter((e) => e !== slot)
-    .map((e) =>
-      bodies.includes(e as TextElement) ? { ...e, name: undefined, x: SAFE.x, w: SAFE.w } : e,
-    );
-  // Its instruction moves to the notes, so the teacher still has it.
-  const said = "doc" in slot && slot.doc ? docText(slot.doc).trim() : "";
-  const notes = [slide.notes, said].filter(Boolean).join("\n\n");
-  return structureContent(
-    { ...slide, elements: unslotted, ...(notes ? { notes } : {}) },
-    t,
-    hints,
-    ids,
-    true,
+  // With pages: the drawing keeps its space on the first slide and the words beside it stay at the
+  // body size; they continue across the full measure, split evenly (`balancedPages`, UX ruling 91).
+  const all = sentences(words);
+  const oneStepDown = [
+    withTerms({ ...slide, elements: [...keep, para(words, floor, w), placedSlot] }, t, hints.terms),
+  ];
+  if (all.length < 2) return oneStepDown;
+  return (
+    balancedPages(
+      all,
+      t,
+      hints.terms,
+      (p, _t, i) => (i === 0 ? atBodySize(p, t) : fitsSlide(p, t)),
+      (groups) =>
+        groups.map((g, i) =>
+          i === 0
+            ? { ...slide, elements: [...keep, para(joinSentences(g), body, w), placedSlot] }
+            : continued(slide, chromeOf(slide), [para(joinSentences(g), body, SAFE.w)], ids),
+        ),
+    ) ?? oneStepDown
   );
 }
 

@@ -4,7 +4,7 @@ import { fitSlide } from "./fit-slide";
 import { materialiseSlide, materialiseSlides } from "./materialise";
 import type { SlideSpec, SlideSpecOf } from "./specs";
 import { docLines } from "./structure";
-import { floorBelow } from "./text-style";
+import { floorBelow, readingSize } from "./text-style";
 import { getTheme } from "./themes";
 
 /*
@@ -120,7 +120,7 @@ describe("materialiseSlides: a teaching slide too long for one slide continues",
     expect(heading(one)).toBe("Roman towns and daily life");
   });
 
-  test("a diagram slide too long for its column gives up the slot and continues across the full measure", () => {
+  test("a diagram slide too long for its column keeps the slot on the first slide and continues across the full measure", () => {
     const slides = materialiseSlides(
       spec(LONGER, { diagram: "Plan of a Roman town: forum, baths, grid of streets" }),
       "chalk",
@@ -129,12 +129,13 @@ describe("materialiseSlides: a teaching slide too long for one slide continues",
     );
     expect(slides.length).toBeGreaterThanOrEqual(2);
     for (const slide of slides) expect(fitSlide(slide, theme).overflow).toEqual([]);
-    // Too long to sit beside the drawing at the body size: the slot gives way, and its
-    // instruction goes to the first slide's notes.
-    expect(slides.some((s) => s.elements.some((e) => e.name === "Diagram placeholder"))).toBe(
-      false,
-    );
-    expect(slides[0]?.notes).toContain("Plan of a Roman town");
+    // The drawing keeps its space on the first slide, the words beside it at the body size.
+    expect(slides[0]?.elements.some((e) => e.name === "Diagram placeholder")).toBe(true);
+    for (const s of slides.slice(1)) {
+      expect(s.elements.some((e) => e.name === "Diagram placeholder")).toBe(false);
+    }
+    const beside = slides[0]?.elements.find((e) => e.name === "Body");
+    expect(beside?.type === "text" && beside.style.fontSize).toBe(readingSize(theme));
     expect(words(slides)).toBe(LONGER);
   });
 
