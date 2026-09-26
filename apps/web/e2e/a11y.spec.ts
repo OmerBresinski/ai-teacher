@@ -7,8 +7,16 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
+import type { Lesson } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
-import { demoWorkspace } from "@tj/editor/starter";
+import {
+  demoWorkspace,
+  drawFigure,
+  FIGURE_RECT,
+  getTheme,
+  newLesson,
+  newSlide,
+} from "@tj/editor/starter";
 import { expectNoSeriousA11yViolations } from "./a11y";
 import { E2E_API_URL, E2E_WEB_URL, expect, type SeededPaths, test } from "./fixtures";
 
@@ -166,6 +174,56 @@ test.describe("accessibility (axe)", () => {
       await expectNoSeriousA11yViolations(page, `regenerate dialog (${theme})`, '[role="dialog"]');
       await page.keyboard.press("Escape");
     }
+  });
+
+  // TEACH-77 row 8: a diagram slide's figure is one image named by its alt text, in the viewer,
+  // on the presenter's stage and in the editor. Slide 2's figure is clamped, so its muted "Not
+  // drawn to scale" caption is scanned too.
+  test("a diagram slide is clean, its figure named by its alt text", async ({
+    signedInPage: { page },
+  }) => {
+    const lesson: Lesson = { ...newLesson("Pythagoras' theorem", "chalk"), id: "diagram" };
+    const clamped = newSlide("diagram", "chalk");
+    clamped.elements[0] = drawFigure(
+      "right-triangle",
+      {
+        base: { length: 7, label: "7 cm" },
+        height: { length: 24, label: "24 cm" },
+        hypotenuse: { label: "x" },
+      },
+      getTheme("chalk"),
+      FIGURE_RECT,
+    );
+    lesson.slides = [newSlide("diagram", "chalk"), clamped];
+    const res = await page.request.post(`${E2E_API_URL}/__test/seed-library`, {
+      headers: { origin: E2E_WEB_URL },
+      data: { documents: [{ key: "diagram", kind: "lesson", body: lesson }] },
+    });
+    expect(res.ok(), await res.text()).toBe(true);
+    const { ids } = (await res.json()) as { ids: Record<string, string> };
+    const placeholder = "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.";
+    const notToScale =
+      "Right-angled triangle. Base 7 cm, height 24 cm, hypotenuse x. Not drawn to scale.";
+
+    await page.goto(`/l/${ids.diagram}/view`);
+    await expect(page.getByRole("status")).toHaveText("Slide 1 of 2");
+    const viewed = page.locator('[data-slide-mode="view"]');
+    await expect(viewed.getByRole("img", { name: placeholder })).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "/l/:id/view (diagram)");
+
+    await page.goto(`/l/${ids.diagram}/present?slide=2`);
+    await page.getByRole("button", { name: "Stay in this window" }).click();
+    const stage = page.locator('[data-slide-mode="present"]');
+    await expect(stage).toHaveCount(1);
+    await expect(stage.getByRole("img", { name: notToScale })).toBeVisible();
+    await stage.evaluate((el) =>
+      Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+    );
+    await expectNoSeriousA11yViolations(page, "/l/:id/present (diagram)");
+
+    await page.goto(`/l/${ids.diagram}`);
+    await expect(page.getByRole("img", { name: placeholder }).first()).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "/l/:id (diagram)");
   });
 
   // Keep overlay groups independent: the combined walk outgrew CI's 30-second test budget.

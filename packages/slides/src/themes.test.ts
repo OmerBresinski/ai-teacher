@@ -53,6 +53,7 @@ describe("theme catalogue", () => {
         "vocabulary",
         "content",
         "image-text",
+        "diagram",
         "worked-example",
         "instructions",
         "discussion",

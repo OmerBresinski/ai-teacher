@@ -83,6 +83,15 @@ export function countLines(text: string, preset: TextPreset, theme: Theme, width
   return linesIn(text, r, width - 2 * r.padding);
 }
 
+/** How wide `text` is on one line in a `preset` box, in `theme`: a label's box, before any slack. */
+export function lineWidth(text: string, preset: TextPreset, theme: Theme): number {
+  const r = resolveTextStyle({ preset }, theme);
+  const tracking = r.letterSpacing.endsWith("em") ? Number.parseFloat(r.letterSpacing) : 0;
+  const shown = r.textTransform === "uppercase" ? text.toUpperCase() : text;
+  const advances = advancesFor(r.fontFamily, r.fontWeight);
+  return emWidth(shown, advances, tracking) * r.fontSize + 2 * r.padding;
+}
+
 /*
  * The headless ruler (TEACH-28): the `Measurer` the fitting engine (`./reflow.ts`) takes, built
  * on `linesIn` instead of the DOM, so `materialiseSlide` can fit a slide before anything renders

@@ -16,6 +16,7 @@ export * from "./brief";
 export * from "./checks";
 export * from "./class-context";
 export * from "./create-lesson";
+export * from "./figure";
 export * from "./generated-from";
 export * from "./generation";
 export * from "./identifier-guard";

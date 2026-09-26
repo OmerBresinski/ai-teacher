@@ -9,11 +9,16 @@
  */
 
 // The layout catalogue and the ten-slide fixture lesson (TEACH-214), for a Bun script or an e2e
-// spec that seeds a lesson laid out through `chooseVariant` without the renderer.
+// spec that seeds a lesson laid out through `chooseVariant` without the renderer; and the Figure
+// drawing, its place on a diagram slide and the theme it is drawn in (TEACH-77), for a spec that
+// seeds a figure of its own values.
 export {
   chooseVariant,
   DEMO_LESSON_SPECS,
   demoLessonSlides,
+  drawFigure,
+  FIGURE_RECT,
+  getTheme,
   LAYOUT_CATALOGUE,
   variantsFor,
 } from "@tj/slides";

@@ -418,6 +418,85 @@ describe("path element (ADR 0032)", () => {
   });
 });
 
+describe("diagram slide and figure group (TEACH-77, ADR 0032 amendment)", () => {
+  const figure = (template: string) => ({
+    id: "g",
+    type: "group",
+    x: 58,
+    y: 43,
+    w: 400,
+    h: 400,
+    name: "Right-angled triangle",
+    alt: "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.",
+    figure: {
+      template,
+      values: {
+        base: { length: 3, label: "3 cm" },
+        height: { length: 4, label: "4 cm" },
+        hypotenuse: { label: "x" },
+      },
+    },
+    children: [
+      {
+        id: "p",
+        type: "path",
+        x: 20,
+        y: 20,
+        w: 300,
+        h: 400,
+        points: [
+          { x: 0, y: 1 },
+          { x: 1, y: 1 },
+          { x: 0, y: 0 },
+        ],
+        closed: true,
+      },
+    ],
+  });
+  const withFigure = (template: string) => ({
+    ...lesson(),
+    slides: [{ id: "d", kind: "diagram", elements: [figure(template)] }],
+  });
+
+  test("a diagram slide whose group carries alt and figure round-trips at version 1", () => {
+    const input = withFigure("right-triangle");
+    const parsed = parseLesson(JSON.parse(JSON.stringify(input)));
+    expect(parsed).toEqual(input as never);
+    expect(parsed.version).toBe(1);
+    const group = parsed.slides[0]?.elements[0];
+    expect(group?.type === "group" && group.alt).toBe(figure("right-triangle").alt);
+    expect(group?.type === "group" && group.figure?.template).toBe("right-triangle");
+  });
+
+  test("an unknown template name is rejected at its path", () => {
+    const result = SlideSchema.safeParse(withFigure("pie-chart").slides[0]);
+    expect(result.success).toBe(false);
+    expect(result.success ? [] : result.error.issues[0]?.path).toEqual([
+      "elements",
+      0,
+      "figure",
+      "template",
+    ]);
+  });
+
+  test("a stored lesson with no diagram and no figure parses unchanged at version 1", () => {
+    const parsed = parseLesson(JSON.parse(JSON.stringify(lesson())));
+    expect(parsed).toEqual(lesson());
+    expect(parsed.version).toBe(1);
+    const group = {
+      id: "g",
+      type: "group",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 100,
+      children: [],
+    };
+    const plain = parseLesson({ ...lesson(), slides: [{ ...titleSlide(), elements: [group] }] });
+    expect(plain.slides[0]?.elements[0]).toEqual(group as never);
+  });
+});
+
 describe("slide helpers", () => {
   test("slideStepCount is the max revealStep plus the answer's reveal steps", () => {
     expect(slideStepCount(titleSlide())).toBe(0);

@@ -67,3 +67,36 @@ chemistry energy profile, a bar model. The lesson model has no way to produce on
   generatable revisits them.
 - Revisit if the inventory shows most needed figures fall outside a small template set, or if a
   measured sample shows model-authored SVG is reliable for the long tail.
+
+## Amendment (2026-09-26, TEACH-77): generated only; a Figure carries its alt text and values
+
+Decided in the 26 Sep design session (Omer, with Greg's agreement) and built in TEACH-77:
+
+1. **`diagram` is generated only.** `SLIDE_KIND_ORDER` leaves it out and `PICKER_HIDDEN_KINDS`
+   (`packages/slides/src/layouts.ts`) names it, so Add slide and the Slide layout menu do not offer
+   it until there is a template picker. A diagram slide still converts to any other kind.
+2. **A Figure's alt text is an optional `alt` on its `group`**, written by the template from its
+   values ("Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.", plus " Not drawn to
+   scale." when it is not). The renderer draws such a group as `role="img"` with `aria-label` set
+   to it, so the labels inside read as part of the image. PowerPoint gets no alt text: pptxgenjs
+   4.0.1 has none for shapes or text boxes (`ShapeProps` / `TextPropsOptions` lack `altText`).
+   That is a known limitation, not a bug.
+3. **The group stores `figure: { template, values }`** (`FigureRef`, with the names in
+   `FIGURE_TEMPLATE_NAMES`, both in `@tj/domain`): the values as the model gave them, never the
+   geometry. Repair and cascade redraw from them instead of re-deriving values from label text,
+   and "edit a value, redraw" becomes possible later. `alt` and `figure` are optional, so
+   `version` stays 1 (ADR 0021 §2).
+4. A diagram slide counts as an explain / teaching slide (built in TEACH-89).
+5. Plan names the template on the outline entry as a `figureBrief` (built in TEACH-89).
+
+A spike finding decides the validation design. A slide call that still breaks a **shape** rule
+after its retry throws a `StageFailure` (`callStructured`, `packages/generation/src/call.ts:555`),
+and Generate rethrows it, which fails the whole stage
+(`packages/generation/src/stages/generate.ts:314-318`). So a template's value rules are
+**editorial** (`editorialIssue`): for `right-triangle`, at least two lengths, a² + b² = c² within
+1 %, the hypotenuse longer than each leg, labels of at most 12 characters. Drawing never throws:
+`drawFigure` parses the values against the template's shape first, and values without that shape,
+or values that cannot give the figure (fewer than two lengths, a hypotenuse no longer than a leg),
+get a schematic fallback drawing captioned "Not drawn to scale". An editorial miss can still reach
+the drawing, so a label past the cap wraps inside its box, and one past three lines is cut with an
+ellipsis on the figure while the alt text keeps all of it.
