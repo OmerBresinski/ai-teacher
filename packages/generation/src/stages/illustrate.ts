@@ -1,4 +1,11 @@
-import type { Finding, ImageBrief, Lesson, PhotoSource, SlideElement } from "@tj/domain/documents";
+import {
+  type Finding,
+  type ImageBrief,
+  type Lesson,
+  outlineIndices,
+  type PhotoSource,
+  type SlideElement,
+} from "@tj/domain/documents";
 import {
   isBlockedQuery,
   normaliseQuery,
@@ -6,7 +13,7 @@ import {
   type PhotoResult,
   queryCandidates,
 } from "@tj/images";
-import { PLACEHOLDER_IMAGE } from "@tj/slides";
+import { getTheme, isOpenPhotoSlot, PLACEHOLDER_IMAGE, withoutDiagramSlot } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
 import {
   normaliseItem,
@@ -109,7 +116,8 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
   const images = deps.images;
   if (!images) {
     deps.logger.info({ stage: "illustrate" }, "images disabled");
-    return state;
+    // No search, so no second photograph for a repeated subject: its slot goes (look/image-slot).
+    return { ...state, lesson: withoutRepeatedPhotoSlots(state.lesson, deps) };
   }
   // Picture-first picks (Generate, TEACH-220) already counted into `deps.imageCounts`; this step
   // adds the slides it still has to place (the resume path).
@@ -161,15 +169,48 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     );
   };
   let busy = false;
+  // A continuation slide (UX ruling 91) shares its outline entry with the slide before it.
+  const entryOf = outlineIndices(lesson.slides);
+  // A content slide's photograph (look/image-slot) whose subject an earlier slide already asked
+  // for keeps its slot only for a different photograph: every photograph already on the lesson is
+  // left out of its search, and when none is found the slot goes and the words take the width.
+  const subjects = new Set<string>();
+  const used = new Set<string>();
+  for (const s of lesson.slides) {
+    for (const e of s.elements) if (e.type === "image" && e.source) used.add(e.source.id);
+  }
+  const theme = getTheme(lesson.themeId);
+  const withoutSlot = (index: number, reason: string) => {
+    const slide = lesson.slides[index] as Lesson["slides"][number];
+    deps.logger.info(
+      { stage: "illustrate", slideIndex: index, metric: "photo-dropped", reason },
+      "photo slot dropped: repeated subject",
+    );
+    lesson = {
+      ...lesson,
+      slides: lesson.slides.map((s, i) => (i === index ? withoutDiagramSlot(slide, theme) : s)),
+    };
+  };
   for (let index = 0; index < lesson.slides.length; index++) {
     throwIfAborted(deps.signal);
     const slide = lesson.slides[index];
-    const brief = outline[index]?.imageBrief;
-    if (slide?.kind !== "image-text" || !brief) continue;
-    const target = slide.elements.find(
-      (element) => element.type === "image" && element.src === PLACEHOLDER_IMAGE,
+    const entry = entryOf[index] ?? index;
+    const brief = outline[entry]?.imageBrief;
+    const content = slide?.kind === "content";
+    if ((slide?.kind !== "image-text" && !content) || !slide || !brief) continue;
+    const target = slide.elements.find((element) =>
+      content
+        ? isOpenPhotoSlot(element)
+        : element.type === "image" && element.src === PLACEHOLDER_IMAGE,
     );
     if (target?.type !== "image") continue;
+    const subject = normaliseQuery(brief.subject);
+    const repeated = content && subjects.has(subject);
+    subjects.add(subject);
+    if (repeated && busy) {
+      withoutSlot(index, "busy");
+      continue;
+    }
     handled.add(slide.id);
     counts.requested += 1;
     if (busy) {
@@ -179,8 +220,21 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     }
     let placed: PlaceOutcome;
     try {
-      placed = await placeOne({ lesson, slide, brief, images, deps, index });
+      placed = await placeOne({
+        lesson,
+        slide,
+        brief,
+        images,
+        deps,
+        index: entry,
+        ...(repeated ? { exclude: used } : {}),
+      });
     } catch (error) {
+      if (repeated) {
+        if (error instanceof BudgetExceeded) busy = true;
+        withoutSlot(index, "failed");
+        continue;
+      }
       if (error instanceof BudgetExceeded) {
         deps.logger.info({ stage: "illustrate", slideIndex: index }, "illustrate budget stop");
         findings.push(emptyFinding(slide.id, target.id));
@@ -191,6 +245,11 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
       }
       deps.logger.info({ stage: "illustrate", slideIndex: index, err: error }, "illustrate failed");
       counts.failed += 1;
+      continue;
+    }
+    if (repeated && placed.outcome !== "placed") {
+      if (placed.outcome === "busy") busy = true;
+      withoutSlot(index, placed.outcome);
       continue;
     }
     if (placed.outcome === "busy") {
@@ -227,17 +286,20 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
           : candidate,
       ),
     };
+    used.add(placed.photo.source.id);
     // The slide's text was written before this photograph existed (the picture-first pick failed
     // or the job resumed), so it may say there is no picture, or describe the wrong thing. An
     // `error` sends it to Repair, which rewrites the text to the photograph (quality lab, Sept 2026:
     // a placed Hadrian's Wall under notes saying "the slide has no photograph" scored notes 1).
-    findings.push({
-      check: "image-fit",
-      severity: "error",
-      target: { slideId: slide.id, elementId: target.id },
-      message:
-        "The photograph was placed after the text was written; rewrite the text to what it shows.",
-    });
+    // A content slide's photograph illustrates its idea; the words are not about the picture.
+    if (!content)
+      findings.push({
+        check: "image-fit",
+        severity: "error",
+        target: { slideId: slide.id, elementId: target.id },
+        message:
+          "The photograph was placed after the text was written; rewrite the text to what it shows.",
+      });
     // After the persist: a lost lock must propagate, not read as a placed picture.
     const { updatedAt } = await deps.persist(snapshot());
     await deps.onProgress(PROGRESS_ILLUSTRATED, "Pictures placed", "illustrate", updatedAt);
@@ -249,6 +311,35 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     await deps.persist(snapshot());
   }
   return { ...state, lesson: findings.length > 0 || judged ? snapshot() : lesson };
+}
+
+/**
+ * With no photo search (no key): a content slide whose photograph repeats an earlier slide's
+ * subject loses its slot and its words take the width, since no different photograph can be
+ * found (look/image-slot). The first slide to ask for a subject keeps its slot.
+ */
+function withoutRepeatedPhotoSlots(lesson: Lesson, deps: PipelineDeps): Lesson {
+  const outline = lesson.facts?.outline ?? [];
+  const entryOf = outlineIndices(lesson.slides);
+  const theme = getTheme(lesson.themeId);
+  const subjects = new Set<string>();
+  let changed = false;
+  const slides = lesson.slides.map((slide, index) => {
+    const brief = outline[entryOf[index] ?? index]?.imageBrief;
+    if (slide.kind !== "content" || !brief || !slide.elements.some(isOpenPhotoSlot)) return slide;
+    const subject = normaliseQuery(brief.subject);
+    if (!subjects.has(subject)) {
+      subjects.add(subject);
+      return slide;
+    }
+    deps.logger.info(
+      { stage: "illustrate", slideIndex: index, metric: "photo-dropped", reason: "repeated" },
+      "photo slot dropped: repeated subject",
+    );
+    changed = true;
+    return withoutDiagramSlot(slide, theme);
+  });
+  return changed ? { ...lesson, slides } : lesson;
 }
 
 export function joinVersions(existing: string, added: string): string {
@@ -264,7 +355,10 @@ type PlaceArgs = {
   brief: ImageBrief;
   images: PhotoPlacer;
   deps: PipelineDeps;
+  /** The outline entry (a continuation slide shares its entry with the slide before it). */
   index: number;
+  /** Photographs already on the lesson, left out of the pool (a repeated subject, look/image-slot). */
+  exclude?: ReadonlySet<string>;
 };
 
 /**
@@ -392,6 +486,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     for (const photo of photos) {
       if (candidates.length >= MAX_CANDIDATES || kept >= PER_QUERY) break;
       if (candidates.some((seen) => seen.id === photo.id)) continue;
+      if (args.exclude?.has(photo.id)) continue;
       candidates.push(photo);
       kept += 1;
     }

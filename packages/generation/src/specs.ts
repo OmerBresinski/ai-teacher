@@ -5,6 +5,8 @@ import {
   type FactId,
   FactIdSchema,
   FIGURE_TEMPLATE_NAMES,
+  type FigureBrief,
+  type FigureTemplateName,
   FindingSeveritySchema,
   FindingTargetSchema,
   GENERATABLE_SLIDE_KINDS,
@@ -819,6 +821,72 @@ export type PlanFacts = z.infer<typeof PlanFactsShape>;
  * What `assignFactIds` merges: the facts call's answer, or the skeleton-only stand-in below, which
  * has no pitch yet (a lesson's facts are `pitch`-less until the facts call lands).
  */
+/** What the objectives-first teach call adds to a key idea; the older facts call writes none. */
+export type KeyIdeaLayout = {
+  shape?: string | undefined;
+  visual?: string | undefined;
+  photo?: { subject: string; mustShow?: string[] | undefined } | undefined;
+};
+
+/**
+ * A key idea's photograph as it is kept (look/image-slot): none beside a drawing (the prompt says
+ * never both, in prose only; the drawing wins), none without a subject, at most four things to show.
+ */
+export function keptPhoto(k: KeyIdeaLayout): { subject: string; mustShow?: string[] } | undefined {
+  const subject = k.photo?.subject.trim();
+  if (!subject || k.visual?.trim()) return undefined;
+  const mustShow = (k.photo?.mustShow ?? [])
+    .map((m) => m.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+  return { subject: subject.slice(0, 60), ...(mustShow.length ? { mustShow } : {}) };
+}
+
+/**
+ * The image brief a content slide carries (look/image-slot): the first photograph its key ideas
+ * ask for, as a `context` picture. None when any of them has a drawing: the drawing takes the room.
+ */
+/**
+ * The Figure template a content slide's planned drawing matches, as a diagram entry's
+ * `figureBrief` (look/slides-pr): a key idea's `visual` that names a reaction profile or a
+ * right-angled triangle is a figure the code can draw (ADR 0032). Only when the slide also covers
+ * a worked example or question, which a diagram slide's numbers come from (plan-facts v12);
+ * otherwise the instruction stays a note for the teacher.
+ */
+export const FIGURE_VISUALS: { template: FigureTemplateName; pattern: RegExp }[] = [
+  {
+    template: "energy-profile",
+    pattern: /\b(energy|reaction) profile\b|\benergy level diagram\b/i,
+  },
+  { template: "right-triangle", pattern: /\bright[- ]angled? triangle\b/i },
+];
+
+export function contentFigureBrief(
+  ideas: readonly KeyIdeaLayout[],
+  refs: readonly { type: string }[],
+): FigureBrief | undefined {
+  if (!refs.some((r) => r.type === "workedExample" || r.type === "question")) return undefined;
+  for (const k of ideas) {
+    const visual = k.visual?.trim();
+    if (!visual) continue;
+    const match = FIGURE_VISUALS.find((f) => f.pattern.test(visual));
+    if (match) return { template: match.template, purpose: visual.slice(0, 160) };
+  }
+  return undefined;
+}
+
+export function contentPhotoBrief(
+  ideas: readonly KeyIdeaLayout[],
+): { subject: string; mustShow: string[]; purpose: "context" } | undefined {
+  if (ideas.some((k) => k.visual?.trim())) return undefined;
+  for (const k of ideas) {
+    const photo = keptPhoto(k);
+    if (photo)
+      return { subject: photo.subject, mustShow: photo.mustShow ?? [], purpose: "context" };
+  }
+  return undefined;
+}
+
 export type PlanFactsLike = Omit<PlanFacts, "pitch"> & { pitch?: PlanFacts["pitch"] | undefined };
 
 export const EMPTY_PLAN_FACTS: PlanFactsLike = {
@@ -1176,6 +1244,10 @@ export function assignFactIds(
             example: k.example,
             ...optional("analogy", k.analogy),
             objectiveRefs: dedupe(k.objectiveRefs.map(refId)),
+            // The teach call's slide shape and drawing (plan-teach-objective v4), when it wrote them.
+            ...optional("shape", (k as KeyIdeaLayout).shape),
+            ...optional("visual", (k as KeyIdeaLayout).visual),
+            ...optional("photo", keptPhoto(k as KeyIdeaLayout)),
           })),
     ),
     vocabulary: facts.vocabulary.map(({ objectiveRefs: refs, ...v }, i) => ({
@@ -1234,25 +1306,53 @@ export function assignFactIds(
       objectiveRefs: dedupe(m.objectiveRefs.map(refId)),
     })),
     ...optional("pitch", facts.pitch),
-    outline: skeleton.outline.map((entry, i) => ({
-      id: id("outline", i),
-      kind: entry.kind,
-      ...optional("minutes", entry.minutes),
-      factRefs: dedupe([...entry.factRefs, ...(added.get(i) ?? [])].map(refId)),
-      ...optional("imageBrief", entry.imageBrief),
-      ...optional("figureBrief", entry.figureBrief),
-      ...optional("brief", entry.brief),
-      ...optional("phase", entry.phase),
-      ...optional(
-        "callout",
-        callouts.has(i)
-          ? {
-              kind: callouts.get(i)?.kind,
-              factRefs: dedupe((callouts.get(i)?.refs ?? []).map(refId)),
-            }
-          : undefined,
-      ),
-    })),
+    outline: skeleton.outline.map((entry, i) => {
+      const refs = [...entry.factRefs, ...(added.get(i) ?? [])];
+      // A content slide whose planned drawing a Figure template draws becomes that template's
+      // diagram slide (look/slides-pr): the figure is drawn, not left as a note to the teacher.
+      const figured =
+        entry.kind === "content"
+          ? contentFigureBrief(
+              refs
+                .filter((r) => r.type === "keyIdea")
+                .map((r) => facts.keyIdeas[r.index] as KeyIdeaLayout | undefined)
+                .filter((k): k is KeyIdeaLayout => k !== undefined),
+              refs,
+            )
+          : undefined;
+      return {
+        id: id("outline", i),
+        kind: figured ? ("diagram" as const) : entry.kind,
+        ...optional("minutes", entry.minutes),
+        factRefs: dedupe([...entry.factRefs, ...(added.get(i) ?? [])].map(refId)),
+        // A content slide carries the photograph its key ideas ask for as its image brief
+        // (look/image-slot), for the slide to keep room for and `illustrate` to find.
+        ...optional(
+          "imageBrief",
+          entry.imageBrief ??
+            (entry.kind === "content" && !figured
+              ? contentPhotoBrief(
+                  [...entry.factRefs, ...(added.get(i) ?? [])]
+                    .filter((r) => r.type === "keyIdea")
+                    .map((r) => facts.keyIdeas[r.index] as KeyIdeaLayout | undefined)
+                    .filter((k): k is KeyIdeaLayout => k !== undefined),
+                )
+              : undefined),
+        ),
+        ...optional("figureBrief", figured ?? entry.figureBrief),
+        ...optional("brief", entry.brief),
+        ...optional("phase", entry.phase),
+        ...optional(
+          "callout",
+          callouts.has(i)
+            ? {
+                kind: callouts.get(i)?.kind,
+                factRefs: dedupe((callouts.get(i)?.refs ?? []).map(refId)),
+              }
+            : undefined,
+        ),
+      };
+    }),
     durationMin,
   });
 }

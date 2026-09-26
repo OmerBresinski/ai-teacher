@@ -1,10 +1,18 @@
-import type { Finding, Lesson, LessonFacts, OutlineEntry, Slide } from "@tj/domain/documents";
+import {
+  entriesWritten,
+  type Finding,
+  type Lesson,
+  type LessonFacts,
+  type OutlineEntry,
+  type Slide,
+} from "@tj/domain/documents";
 import {
   diagramSpecSchemaFor,
   type ImageTextPhoto,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
   materialiseSlide,
+  materialiseSlides,
   PLACEHOLDER_IMAGE,
   slideSpecSchemaFor,
   vocabularySlots,
@@ -19,9 +27,12 @@ import {
 import { laterQuestionsFor } from "../planner/later-questions";
 import {
   generateSlidePrompt,
+  keptDiagram,
   pickOrRequeryPrompt,
+  plannedShapeOf,
   type SlidePhoto,
   verifyFactsPrompt,
+  withPlannedShape,
 } from "../prompts";
 import {
   isOutlineFromFacts,
@@ -43,7 +54,10 @@ import { stemPlan } from "./question-pool";
 import {
   audienceOf,
   BUDGET_FINDING,
+  deckOf,
   generationOf,
+  logShapeFallback,
+  photoStructure,
   planClassFor,
   runBounded,
   shapeOf,
@@ -169,8 +183,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   }
   if (resumedVerify) await verified;
 
-  // Resume support: slides already present (Plan's two, or a partial earlier attempt) stay.
-  const first = lesson.slides.length;
+  // Resume support: slides already present (Plan's two, or a partial earlier attempt) stay. An
+  // entry whose words needed a continuation slide (UX ruling 91) is one entry however many slides.
+  const first = entriesWritten(lesson.slides);
   const indices = Array.from({ length: Math.max(0, total - first) }, (_, k) => first + k);
   for (const i of indices) {
     const entry = entries[i];
@@ -179,8 +194,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     }
   }
 
-  // Persist in order: slide i writes only after slide i-1 has (one persist at a time, and the
-  // document's `slides.length` grows by exactly one per write — `pendingSlides` relies on it).
+  // Persist in order: entry i writes only after entry i-1 has (one persist at a time, and the
+  // document covers exactly one more outline entry per write — `pendingSlides` relies on it). An
+  // entry's continuation slides land in the same write as its first slide.
   const gates = new Map<number, { promise: Promise<void>; open: () => void }>();
   for (const i of indices) {
     let open: () => void = () => undefined;
@@ -197,7 +213,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     i: number,
     entry: OutlineEntry,
     photo: SlidePhoto | "none" | undefined,
-  ): Promise<{ slide: Slide; misses: EditorialMiss[]; builtFrom: LessonFacts }> => {
+  ): Promise<{ slides: Slide[]; misses: EditorialMiss[]; builtFrom: LessonFacts }> => {
     const builtFrom = facts;
     // Lab only (r1 structure): a question set — starter, check or exit quiz — is printed from the
     // facts in code, answers revealed on the slide; no model call, so no item is invented.
@@ -206,9 +222,12 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       : undefined;
     if (coded) {
       const slide = withAnswersReveal(
-        materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
+        materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids, 0, {
+          quiz: coded.quiz,
+          deck: deckOf(lesson),
+        }),
       );
-      return { slide, misses: [], builtFrom };
+      return { slides: [slide], misses: [], builtFrom };
     }
     // `OutlineEntrySchema` only admits generatable kinds and a diagram entry always carries its
     // figure brief, so the throw below never fires; it keeps the type.
@@ -257,16 +276,41 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
     // Lab only: the model lists the answer first, so the options go out in a seeded order.
-    const spec = calloutsAssigned
+    const shuffled = calloutsAssigned
       ? withShuffledOptions(call.output, `${lesson.id}:${i}`)
       : call.output;
-    const slide = materialiseSlide(
-      withImageCaption(spec, entry),
+    // v31: a content slide keeps its planned shape's fields and the plan's drawing.
+    const planned = plannedShapeOf(builtFrom, entry);
+    const shaped = withPlannedShape(shuffled, planned);
+    if (planned) {
+      deps.logger.info(
+        { slide: i, shape: planned.shape, filled: shaped.filled, extra: shaped.extra },
+        "slide shape",
+      );
+    }
+    const spec = shaped.spec;
+    // The lesson's vocabulary is picked out in the slide's running text (structure.ts key terms).
+    // A teaching slide whose words do not fit at or above the body floor is materialised as the
+    // slides it needs (UX ruling 91), so Evaluate and Repair check what the class will see.
+    const slides = materialiseSlides(
+      withImageCaption(keptDiagram(spec), entry),
       lesson.themeId,
       meta(call.modelId),
       deps.ids,
+      0,
+      {
+        terms: builtFrom.vocabulary.map((v) => v.term),
+        glossary: builtFrom.vocabulary.map((v) => ({ term: v.term, definition: v.definition })),
+        deck: deckOf(lesson),
+        ...photoStructure(entry, spec, deps.logger, "generate", i),
+      },
     );
-    return { slide, misses: call.editorialMisses, builtFrom };
+    const slide = slides[0] as Slide;
+    logShapeFallback(deps.logger, "generate", i, spec, slide);
+    if (slides.length > 1) {
+      deps.logger.info({ slide: i, slides: slides.length }, "slide continued");
+    }
+    return { slides, misses: call.editorialMisses, builtFrom };
   };
 
   const slideWork = async (i: number) => {
@@ -278,7 +322,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       return;
     }
     const entry = entries[i] as (typeof entries)[number];
-    let slide: Slide | undefined;
+    let slides: Slide[] | undefined;
     let picked: PickedPhoto | undefined;
     try {
       picked = await picks.get(i);
@@ -290,21 +334,27 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       // call drops the slide — it was built from unverified facts and may not reach the checkpoint;
       // the lesson stops here as it does for any slide the cap refuses.
       await verified;
-      if (written.builtFrom !== facts && touchesCorrected(entry, written.slide, corrected)) {
+      if (
+        written.builtFrom !== facts &&
+        touchesCorrected(entry, written.slides[0] as Slide, corrected)
+      ) {
         deps.logger.info(
           { stage: "generate", call: "slide", index: i, reason: "fact-verify" },
           "slide regenerated from corrected facts",
         );
         written = await writeSlide(i, entry, photo);
       }
-      slide = written.slide;
+      slides = written.slides;
+      let slide = slides[0] as Slide;
       for (const miss of written.misses) {
         findings.push(specRuleFinding(miss, { slideId: slide.id }));
       }
       // The photograph goes in with the text, in the same persist; a slide with no photograph keeps
       // the placeholder and records the same warning the illustrate step would.
-      if (picked?.outcome === "placed") slide = slideWithPhoto(slide, picked.photo);
-      else if (picked && !deps.signal.aborted) {
+      if (picked?.outcome === "placed") {
+        slide = slideWithPhoto(slide, picked.photo);
+        slides = [slide, ...slides.slice(1)];
+      } else if (picked && !deps.signal.aborted) {
         const slot = slide.elements.find((e) => e.type === "image");
         // A provider rate limit is told apart from "nothing fitted", as the illustrate step does.
         if (slot) {
@@ -329,8 +379,8 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     // A slide landing after an earlier one stopped would leave a gap in the outline order; after a
     // cancel or another worker's failure nothing more is written (the stage throws once every
     // worker has settled, so no persist races the job's failure write).
-    if (slide && lesson.slides.length === i && !deps.signal.aborted && !failed) {
-      lesson = withUsage({ ...lesson, slides: [...lesson.slides, slide] }, deps);
+    if (slides && entriesWritten(lesson.slides) === i && !deps.signal.aborted && !failed) {
+      lesson = withUsage({ ...lesson, slides: [...lesson.slides, ...slides] }, deps);
       const { updatedAt } = await deps.persist(lesson);
       await deps.onProgress(
         Math.round(PROGRESS_SLIDES_FROM + (PROGRESS_SLIDES_SPAN * (i + 1)) / total),

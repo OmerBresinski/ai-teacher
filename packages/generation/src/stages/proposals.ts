@@ -1,11 +1,12 @@
 import type { Proposal, ProposalTarget } from "@tj/domain";
-import type {
-  GeneratedFrom,
-  GroupElement,
-  Lesson,
-  SlideElement,
-  Worksheet,
-  WorksheetBlock,
+import {
+  type GeneratedFrom,
+  type GroupElement,
+  type Lesson,
+  outlineIndexOf,
+  type SlideElement,
+  type Worksheet,
+  type WorksheetBlock,
 } from "@tj/domain/documents";
 import {
   blockSpecSchemaFor,
@@ -31,6 +32,7 @@ import {
 import {
   audienceOf,
   blockText,
+  deckOf,
   runBounded,
   slideText,
   storedDiagramSchema,
@@ -253,10 +255,12 @@ export async function proposeFor(
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
     const fresh = materialiseSlide(
-      withImageCaption(call.output, lesson.facts?.outline[index]),
+      withImageCaption(call.output, lesson.facts?.outline[outlineIndexOf(lesson.slides, index)]),
       lesson.themeId,
       meta(call.modelId),
       deps.ids,
+      0,
+      { deck: deckOf(lesson) },
     );
     const generatedFrom = { factRefs: call.output.factRefs, ...meta(call.modelId) };
     if (job.elementIds === null) {
