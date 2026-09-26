@@ -50,6 +50,10 @@ import {
  *
  * v20 (same day): the shape line it copies is generate-slide v33's layout hint, with no word caps.
  * System text unchanged.
+ *
+ * v21 (27 Sept 2026, look/image-plan): the shape line it copies is generate-slide v34's, which
+ * gives a slide with a planned photograph or diagram the half-column word target. System text
+ * unchanged.
  */
 
 /** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */
@@ -108,7 +112,7 @@ export type RepairInput = {
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v20",
+  version: "repair.v21",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",

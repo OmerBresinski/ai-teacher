@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { LessonFacts, OutlineEntry } from "@tj/domain/documents";
-import { CONTENT_SHAPES } from "@tj/slides";
+import { COMPOSITION_BUDGETS, CONTENT_SHAPES } from "@tj/slides";
 import { plannedShapeOf, shapeLine, withPlannedShape } from "./generate-slide";
 
 /* v31: the planned shape reaches the slide line; v33: as a layout hint, with no word budgets. */
@@ -14,7 +14,8 @@ const idea = (id: string, extra: Record<string, string> = {}) => ({
   ...extra,
 });
 const facts = (...keyIdeas: ReturnType<typeof idea>[]) => ({ keyIdeas }) as unknown as LessonFacts;
-const entry = (kind: string, factRefs: string[]) => ({ id: "e1", kind, factRefs }) as OutlineEntry;
+const entry = (kind: string, factRefs: string[], extra: Record<string, unknown> = {}) =>
+  ({ id: "e1", kind, factRefs, ...extra }) as OutlineEntry;
 
 describe("generate-slide v33 planned shape", () => {
   test("one key idea keeps its shape and visual; two are explain", () => {
@@ -23,6 +24,7 @@ describe("generate-slide v33 planned shape", () => {
       shape: "list",
       ideas: 1,
       visual: "Parts: a, b",
+      beside: "diagram",
     });
     expect(plannedShapeOf(facts(list, idea("k2")), entry("content", ["k1", "k2"]))?.shape).toBe(
       "explain",
@@ -96,5 +98,28 @@ describe("generate-slide v33 planned shape", () => {
     expect("points" in compared.spec).toBe(false);
     const question = { kind: "open-response", points: ["a"] };
     expect(withPlannedShape(question, undefined).spec).toBe(question);
+  });
+
+  test("v34: a planned photograph or diagram gives an explain or a list the half-column target", () => {
+    const photo = { imageBrief: { subject: "Roman road", purpose: "context" } };
+    const explain = plannedShapeOf(facts(idea("k1", { shape: "explain" })), {
+      ...entry("content", ["k1"], photo),
+    });
+    expect(explain?.beside).toBe("photograph");
+    const panel = COMPOSITION_BUDGETS.explain.panel;
+    const most = (panel?.lead.max ?? 0) + (panel?.body?.max ?? 0);
+    const line = shapeLine(explain as NonNullable<typeof explain>);
+    expect(line).toStartWith("Layout: explain. A photograph takes the right half");
+    expect(line).toContain(`–${most} words, no more`);
+    expect(line).toContain("full sentences");
+    const list = shapeLine({ shape: "list", ideas: 1, beside: "photograph" });
+    expect(list).toContain(`up to ${COMPOSITION_BUDGETS.list.panel?.points?.max} words in all`);
+    expect(list).toContain("2–3 strings");
+    // Compare and sequence drop the slot, so they keep the full-width line.
+    const compare = plannedShapeOf(facts(idea("k1", { shape: "compare" })), {
+      ...entry("content", ["k1"], photo),
+    });
+    expect(compare?.beside).toBeUndefined();
+    expect(shapeLine({ shape: "explain", ideas: 1 })).not.toContain("right half");
   });
 });
