@@ -613,6 +613,22 @@ export function compareCards(
 
 /* ---------------------------------------------------------------- steps strip */
 
+/** Whether every word of `text` fits on one line of `width`, so none breaks mid-word. */
+function wordsFit(
+  measure: Measure,
+  text: string,
+  width: number,
+  preset: TextPreset,
+  size: number,
+  t: Theme,
+): boolean {
+  const line = size * t.lineHeights[preset];
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => heightOf(measure, docFromText(word), width, preset, size) <= line * 1.5);
+}
+
 /**
  * A method in order: numbered cards left to right, an arrow between each pair. With `reveal`, step
  * i appears on reveal step i (the worked example's working, one move at a time). `undefined` when
@@ -630,13 +646,23 @@ export function stepsStrip(
   const start = options.start ?? 1;
   if (n < 2 || n > 4) return undefined;
   const measure = measureHeadless(t);
-  const arrow = SPACE[5];
-  const w = Math.floor((SAFE.w - arrow * (n - 1)) / n);
-  const inner = w - CARD_PAD * 2;
   const disc = 26;
-  for (const size of sizesFor(t, "small")) {
+  // The usual gaps first; a long word ("Precipitation") may take a tighter arrow and inset before
+  // the size steps down. A word wider than its card would break mid-word ("Condensatio / n"), so
+  // a strip no setting fits is not drawn.
+  const sizes = sizesFor(t, "small");
+  const usual = Math.floor((SAFE.w - SPACE[5] * (n - 1)) / n) - CARD_PAD * 2;
+  const floor = sizes[sizes.length - 1] as number;
+  const tight = !steps.every((s) => wordsFit(measure, s, usual, "small", floor, t));
+  const settings = [[SPACE[5], CARD_PAD], ...(tight ? [[SPACE[3], SPACE[1]]] : [])].flatMap(
+    ([arrow, pad]) => sizes.map((size) => ({ arrow, pad, size })),
+  );
+  for (const { arrow, pad, size } of settings as { arrow: number; pad: number; size: number }[]) {
+    const w = Math.floor((SAFE.w - arrow * (n - 1)) / n);
+    const inner = w - pad * 2;
+    if (!steps.every((s) => wordsFit(measure, s, inner, "small", size, t))) continue;
     const hs = steps.map((s) => heightOf(measure, docFromText(s), inner, "small", size));
-    const h = CARD_PAD + disc + SPACE[1] + Math.max(...hs) + CARD_PAD;
+    const h = pad + disc + SPACE[1] + Math.max(...hs) + pad;
     if (top + withSafety(h) > bottom) continue;
     const els: SlideElement[] = [];
     steps.forEach((step, i) => {
@@ -665,7 +691,7 @@ export function stepsStrip(
         ...card(
           ids,
           t,
-          { x: x + CARD_PAD, y: top + CARD_PAD, w: disc, h: disc },
+          { x: x + pad, y: top + pad, w: disc, h: disc },
           `Step ${start + i} number`,
           {
             shape: "ellipse",
@@ -686,7 +712,7 @@ export function stepsStrip(
       els.push(
         text(
           ids,
-          { x: x + CARD_PAD, y: top + CARD_PAD + disc + SPACE[1], w: inner, h: hs[i] ?? 0 },
+          { x: x + pad, y: top + pad + disc + SPACE[1], w: inner, h: hs[i] ?? 0 },
           docFromText(step),
           { preset: "small", fontSize: size, color: t.colors.ink },
           { name: `Step ${start + i}`, ...reveal },

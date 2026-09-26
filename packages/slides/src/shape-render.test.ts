@@ -5,6 +5,7 @@ import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
 import { COUNTER_NAME, DIAGRAM_NAME, EYEBROW_NAME, KIND_TAG_NAME } from "./look";
 import { materialiseSlide, withoutDiagramSlot, withShapeHints } from "./materialise";
+import { SAFE_BOTTOM } from "./metrics";
 import { isEditorialIssue, type SlideSpecOf, slideSpecSchemaFor } from "./specs";
 import {
   COMPARE_NAME,
@@ -14,7 +15,9 @@ import {
   LEAD_NAME,
   PANEL_NAME,
   STEP_NAME,
+  stepsStrip,
 } from "./structure";
+import { measureHeadless } from "./text-measure";
 import { floorBelow } from "./text-style";
 import { getTheme, THEMES } from "./themes";
 
@@ -287,5 +290,33 @@ describe("a diagram instruction with no drawing, outside the editor", () => {
     expect(named(shown, EYEBROW_NAME)).toEqual(named(stored, EYEBROW_NAME));
     expect(named(shown, COUNTER_NAME)).toEqual(named(stored, COUNTER_NAME));
     expect(named(shown, KIND_TAG_NAME)).toEqual(named(stored, KIND_TAG_NAME));
+  });
+});
+
+describe("the steps strip never breaks a word", () => {
+  const cycleSteps = ["Evaporation", "Condensation", "Precipitation", "Collection"];
+  for (const t of THEMES) {
+    test(`${t.id}: long words take a tighter strip, one line each, or no strip`, () => {
+      const strip = stepsStrip(cycleSteps, 200, SAFE_BOTTOM, t);
+      if (!strip) return;
+      const measure = measureHeadless(t);
+      for (const n of [1, 2, 3, 4]) {
+        const step = strip.elements.find((e) => e.name === `Step ${n}`) as TextElement;
+        const size = step.style.fontSize ?? 0;
+        const h = measure({
+          doc: step.doc,
+          width: step.w,
+          style: step.style,
+          preset: "small",
+          inset: 0,
+          chrome: 0,
+        });
+        expect(h).toBeLessThanOrEqual(size * t.lineHeights.small * 1.5);
+      }
+    });
+  }
+  test("a word no card can hold: no strip", () => {
+    const steps = ["Pneumonoultramicroscopicsilicovolcanoconiosis", "b", "c", "d"];
+    expect(stepsStrip(steps, 200, SAFE_BOTTOM, getTheme("chalk"))).toBeUndefined();
   });
 });
