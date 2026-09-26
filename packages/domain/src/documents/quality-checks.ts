@@ -409,12 +409,17 @@ const IMPERATIVE_OPENERS =
 const TASK_PREFIX =
   /^(?:\p{L}+(?:\s\p{L}+)?:\s*|in (?:one|a|two|three) (?:word|line|sentence|phrase)s?,\s*)+/iu;
 /**
+ * A leading condition clause before the imperative (l6-c, l6-d: gpt-6-luna at low, "If one service
+ * raises its price, explain why demand … may be responsive.").
+ */
+const CONDITION_PREFIX = /^(?:if|when|once|after|before|given|using)\b[^,]{1,120},\s*/i;
+/**
  * The sentence from its task's imperative on: the sentence itself when it opens with one, else the
  * sentence after a label or length frame when that does ("Put these in order: …" stays whole).
  */
 function taskOf(sentence: string): string | undefined {
   if (IMPERATIVE_OPENERS.test(sentence)) return sentence;
-  const rest = sentence.replace(TASK_PREFIX, "");
+  const rest = sentence.replace(TASK_PREFIX, "").replace(CONDITION_PREFIX, "");
   return rest !== sentence && IMPERATIVE_OPENERS.test(rest) ? rest : undefined;
 }
 const opensTask = (sentence: string) => taskOf(sentence) !== undefined;
@@ -458,7 +463,9 @@ const LISTS_ITS_REFERENTS = /\b(these|this)\b[^:?]*:\s*[^,]+,\s*\S/i;
  */
 export function questionless(stem: string): "ok" | "no-question" | "no-referent" {
   const sentences = stem
-    .split(/(?<=[.?!])\s+/)
+    // A quotation's closing mark after its full stop ends the sentence too (l6-c, l6-d: "Suppose
+    // Prospero tells a spirit, “Wait here until I return.” Explain how …").
+    .split(/(?<=[.?!][”"’']?)\s+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
   if (sentences.length === 0) return "ok";
