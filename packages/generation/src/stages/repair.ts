@@ -63,6 +63,7 @@ import {
   deckOf,
   generationOf,
   imageTextPhotoOf,
+  logShapeFallback,
   normaliseText,
   runBounded,
   shapeOf,
@@ -501,6 +502,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         ),
         id: original.id,
       });
+      logShapeFallback(deps.logger, "repair", outcome.index, outcome.spec, fresh);
       lesson = {
         ...lesson,
         slides: lesson.slides.map((s, i) => (i === outcome.index ? fresh : s)),

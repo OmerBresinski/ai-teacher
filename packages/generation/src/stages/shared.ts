@@ -9,7 +9,13 @@ import {
   type Slide,
   yearNumberOf,
 } from "@tj/domain/documents";
-import { COMPARE_NAME, type ImageTextPhoto, PLACEHOLDER_IMAGE } from "@tj/slides";
+import {
+  COMPARE_NAME,
+  type ImageTextPhoto,
+  PLACEHOLDER_IMAGE,
+  type SlideSpec,
+  shapeFallback,
+} from "@tj/slides";
 import type { Audience, SlidePhoto } from "../prompts";
 import { type LessonShape, lessonShapeOf } from "../shapes";
 import type { PipelineDeps } from "../types";
@@ -378,3 +384,21 @@ export const deckOf = (lesson: { yearGroup?: string | null; subject?: string | n
   yearGroup: lesson.yearGroup ?? null,
   subject: lesson.subject ?? null,
 });
+
+/**
+ * A content slide written in a shape it could not be placed in (a compare too long for its cards,
+ * steps too long for the strip): the slide already reads as the lead plus points, so a word budget
+ * missed is not a retry but a metric, logged by shape (`metric: "shape-fallback"`) for the lab to
+ * count. Returns the shape, or `undefined` when the slide took its shape.
+ */
+export function logShapeFallback(
+  logger: PipelineDeps["logger"],
+  stage: "generate" | "repair",
+  index: number,
+  spec: SlideSpec,
+  slide: Slide,
+): string | undefined {
+  const shape = shapeFallback(spec, slide);
+  if (shape) logger.info({ stage, metric: "shape-fallback", shape, index }, "shape fallback");
+  return shape;
+}

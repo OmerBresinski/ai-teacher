@@ -104,7 +104,8 @@ function tightest(shape: ContentShape): ShapeBudget {
  * known when it writes. An explain slide always has its right panel (a key term, the key idea or
  * a diagram); a written list takes the full measure unless the plan gives it a drawing, when it
  * gets `COMPOSITION_BUDGETS.list.panel` (`budgetFor`); compare and sequence have one composition.
- * The single source for the slide prompt and the spec check (`specs.ts`).
+ * The single source for the slide prompt and the fallback metric (`shapeFallback`): a slot over
+ * its budget is placed by the renderer's fallback, never retried (only `SPEC_LIMITS` retries).
  */
 export const CONTENT_BUDGETS: Record<ContentShape, ShapeBudget> = {
   explain: COMPOSITION_BUDGETS.explain.panel as ShapeBudget,

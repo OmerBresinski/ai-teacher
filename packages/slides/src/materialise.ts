@@ -14,7 +14,7 @@ import type {
   WorksheetBlock,
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
-import { shapeOf } from "./content-shapes";
+import { type ContentShape, shapeOf } from "./content-shapes";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
@@ -44,9 +44,11 @@ import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./
 import {
   BODY_NAME,
   BULLET_NAME,
+  COMPARE_NAME,
   ITEM_NAME,
   LEAD_NAME,
   type SlideStructure,
+  STEP_NAME,
   structureSlide,
   withTerms,
 } from "./structure";
@@ -267,6 +269,23 @@ export function withShapeHints(spec: SlideSpec, structure: SlideStructure = {}):
   if (spec.steps?.length) return { ...rest, sequence: spec.steps };
   if (spec.points?.length) return { ...rest, points: spec.points };
   return structure;
+}
+
+/**
+ * The shape a content spec was written in when the slide could not place it as written: a compare
+ * without its cards, a sequence without its strip, a list without its dot points. The slide then
+ * reads as the lead plus points (`shapeFallbackPoints`), or the fit carries it on (UX ruling 91).
+ * `undefined` when the shape was placed, or the spec names none. A word budget missed this way
+ * is a metric, not a retry: Generate logs it (`shape fallback`) by shape.
+ */
+export function shapeFallback(spec: SlideSpec, slide: Slide): ContentShape | undefined {
+  if (spec.kind !== "content") return undefined;
+  const shape = shapeOf(spec);
+  const has = (name: string) => slide.elements.some((e) => e.name === name);
+  if (shape === "compare" && !has(COMPARE_NAME)) return shape;
+  if (shape === "sequence" && !has(STEP_NAME)) return shape;
+  if (shape === "list" && !has(ITEM_NAME)) return shape;
+  return undefined;
 }
 
 /**

@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement } from "@tj/domain/documents";
-import { COMPOSITION_BUDGETS, CONTENT_BUDGETS } from "./content-shapes";
+import { CONTENT_BUDGETS } from "./content-shapes";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
 import { COUNTER_NAME, DIAGRAM_NAME, EYEBROW_NAME, KIND_TAG_NAME } from "./look";
-import { materialiseSlide, withoutDiagramSlot, withShapeHints } from "./materialise";
+import { materialiseSlide, shapeFallback, withoutDiagramSlot, withShapeHints } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
-import { isEditorialIssue, type SlideSpecOf, slideSpecSchemaFor } from "./specs";
+import { isEditorialIssue, type SlideSpecOf, SPEC_LIMITS, slideSpecSchemaFor } from "./specs";
 import {
   COMPARE_NAME,
   docLines,
@@ -198,69 +198,51 @@ describe("a compare or steps that cannot fit reads as the lead plus points", () 
   }
 });
 
-describe("the word budgets as a spec check", () => {
+describe("a slot over its word budget is placed, not retried", () => {
   const schema = slideSpecSchemaFor("content");
-  const soft = slideSpecSchemaFor("content", { soft: true });
   const words = (n: number) => Array.from({ length: n }, (_, i) => `w${i}`).join(" ");
   const issues = (spec: unknown) => {
     const got = schema?.safeParse(spec);
     return got?.success ? [] : (got?.error.issues ?? []);
   };
-  const ceiling = (max: number) => Math.ceil(max * 1.5);
 
-  test("a slot a little over its budget passes (the TEACH-248 ceiling)", () => {
+  test("steps of 7-11 words against a budget of 6 raise no issue, so no Repair pass", () => {
     const max = CONTENT_BUDGETS.sequence.steps?.max ?? 0;
-    const spec = { ...cycle, steps: [words(ceiling(max)), "b", "c"] };
-    expect(issues(spec)).toEqual([]);
-  });
-
-  test("past the ceiling each slot is an editorial issue at its own path", () => {
-    const max = CONTENT_BUDGETS.sequence.steps?.max ?? 0;
-    const got = issues({ ...cycle, steps: ["a", words(ceiling(max) + 1)] });
-    expect(got.map((i) => i.path)).toEqual([["steps", 1]]);
-    expect(got.every(isEditorialIssue)).toBe(true);
-    expect(got[0]?.message).toContain(`fits about ${max} words`);
-
+    const steps = [words(max + 1), words(11), words(max * 2), words(8)];
+    expect(issues({ ...cycle, steps })).toEqual([]);
     const side = CONTENT_BUDGETS.compare.sidePoints?.max ?? 0;
     const compare = {
       ...coasts,
+      compare: { ...coasts.compare, right: { label: "Soft", points: ["a", words(side * 3)] } },
+    };
+    expect(issues(compare)).toEqual([]);
+    expect(issues({ ...cycle, diagram: "The loop" })).toEqual([]);
+  });
+
+  test("past the hard limit (SPEC_LIMITS) the retry stands", () => {
+    const long = "x".repeat(Math.ceil(SPEC_LIMITS.item * 1.5) + 1);
+    const got = issues({ ...cycle, steps: ["a", long] });
+    expect(got.map((i) => i.path)).toEqual([["steps", 1]]);
+    expect(got.every(isEditorialIssue)).toBe(true);
+  });
+
+  test("shapeFallback names the shape a slide could not place as written", () => {
+    const placed = materialiseSlide(cycle, "chalk", meta);
+    expect(shapeFallback(cycle, placed)).toBeUndefined();
+    const long = (n: number) =>
+      Array.from({ length: n }, (_, i) => `word${i} photosynthesis chlorophyll`).join(" ");
+    const tooLong = { ...cycle, steps: [long(4), long(4), long(4), long(4)] };
+    expect(shapeFallback(tooLong, materialiseSlide(tooLong, "chalk", meta))).toBe("sequence");
+    const cards = {
+      ...coasts,
       compare: {
-        ...coasts.compare,
-        right: { label: "Soft", points: ["a", words(ceiling(side) + 1)] },
+        left: { label: "Hard", points: [long(6), long(6), long(6)] },
+        right: { label: "Soft", points: [long(6), long(6), long(6)] },
       },
     };
-    expect(issues(compare).map((i) => i.path)).toEqual([["compare", "right", "points", 1]]);
-
-    const point = CONTENT_BUDGETS.list.points?.max ?? 0;
-    const list = { ...cycle, steps: undefined, points: [words(ceiling(point) + 1), "b"] };
-    expect(issues(list).map((i) => i.path)).toEqual([["points", 0]]);
-
-    const lead = CONTENT_BUDGETS.list.lead.max;
-    expect(
-      issues({ ...list, points: ["a", "b"], body: words(ceiling(lead) + 1) }).map((i) => i.path),
-    ).toEqual([["body"]]);
-  });
-
-  test("a list beside a diagram is held to the half column's budget", () => {
-    const half = COMPOSITION_BUDGETS.list.panel?.points?.max ?? 0;
-    const list = { ...cycle, steps: undefined, points: [words(ceiling(half) + 1), "b"] };
-    expect(issues(list)).toEqual([]);
-    expect(issues({ ...list, diagram: "A leaf in section" }).map((i) => i.path)).toEqual([
-      ["points", 0],
-    ]);
-  });
-
-  test("a body with no shape field is left to the character cap; the soft build checks nothing", () => {
-    const explain = { ...cycle, steps: undefined, heading: words(12), body: words(60) };
-    expect(issues(explain)).toEqual([]);
-    const over = { ...cycle, steps: ["a", words(40)] };
-    expect(soft?.safeParse(over).success).toBe(true);
-  });
-
-  test("a diagram beside a compare or steps is an editorial issue", () => {
-    const got = issues({ ...cycle, diagram: "The loop" });
-    expect(got.map((i) => i.path)).toEqual([["diagram"]]);
-    expect(got.every(isEditorialIssue)).toBe(true);
+    expect(shapeFallback(cards, materialiseSlide(cards, "chalk", meta))).toBe("compare");
+    const bare = { ...cycle, steps: undefined };
+    expect(shapeFallback(bare, materialiseSlide(bare, "chalk", meta))).toBeUndefined();
   });
 });
 

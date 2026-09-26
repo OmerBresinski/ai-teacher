@@ -47,6 +47,7 @@ import {
   BUDGET_FINDING,
   deckOf,
   generationOf,
+  logShapeFallback,
   planClassFor,
   runBounded,
   shapeOf,
@@ -286,6 +287,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         deck: deckOf(lesson),
       },
     );
+    logShapeFallback(deps.logger, "generate", i, spec, slide);
     return { slide, misses: call.editorialMisses, builtFrom };
   };
 
