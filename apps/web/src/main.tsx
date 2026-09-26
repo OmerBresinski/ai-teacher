@@ -1,11 +1,14 @@
 import "@/styles.css";
 import { RouterProvider } from "@tanstack/react-router";
+import { setSlotPlaceholders } from "@tj/editor";
 import { StrictMode, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
+import { env, slotPlaceholdersEnabled } from "@/env";
 import { sessionBoundary } from "@/lib/session-boundary";
 import { sessionRouter, startSessionRuntime } from "@/lib/session-runtime";
 import { startSpeedInsights } from "@/lib/speed-insights";
 
+setSlotPlaceholders(slotPlaceholdersEnabled(env));
 const stopSessionRuntime = startSessionRuntime();
 import.meta.hot?.dispose(stopSessionRuntime);
 

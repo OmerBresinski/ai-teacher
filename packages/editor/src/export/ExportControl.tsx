@@ -520,12 +520,14 @@ export function ExportControl({
           >
             {staged?.kind === "credits" ? (
               <staged.Credits credits={staged.credits} theme={getTheme(lesson.themeId)} />
-            ) : stagedSlide ? (
+            ) : stagedSlide && staged?.kind === "slide" ? (
               <SlideView
                 slide={stagedSlide}
                 theme={getTheme(lesson.themeId)}
                 mode="capture"
                 revealAnswer={answers && !!stagedSlide.question}
+                // A PNG shows the counter as present does, counted from the slide's place.
+                position={{ index: staged.index, total: lesson.slides.length }}
               />
             ) : null}
           </div>

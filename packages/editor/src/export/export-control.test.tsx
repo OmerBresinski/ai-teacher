@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Lesson, Worksheet } from "@tj/domain/documents";
+import type { Lesson, Slide, SlideElement, Worksheet } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
+import { COUNTER_NAME } from "@tj/slides";
 import { TooltipProvider } from "@tj/ui";
 import { demoWorksheet } from "../model/demo-worksheet";
 import { demoLibrary } from "../model/starter";
@@ -317,6 +318,57 @@ describe("ExportControl (TEACH-111)", () => {
       // The slides themselves carry no credit.
       expect(shots.slice(0, -1).some((s) => s.text.includes("Pexels"))).toBe(false);
       await waitFor(() => expect(document.querySelector("[data-capture-stage]")).toBeNull());
+    } finally {
+      HTMLAnchorElement.prototype.click = original;
+      exportLoaders.png = realPng;
+    }
+  });
+
+  it("PNG: the slide counter is counted from the slide's place, as present shows it", async () => {
+    spyOn(paint, "waitForSlidePaint").mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    const lesson = water();
+    const total = lesson.slides.length;
+    const counter = {
+      id: "counter",
+      type: "text",
+      x: 800,
+      y: 20,
+      w: 100,
+      h: 30,
+      name: COUNTER_NAME,
+      doc: {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "9 / 99" }] }],
+      },
+      style: { preset: "caption" },
+    } as SlideElement;
+    const second = lesson.slides[1] as Slide;
+    lesson.slides[1] = { ...second, elements: [...second.elements, counter] };
+    const seen: string[] = [];
+    const realPng = exportLoaders.png;
+    exportLoaders.png = async () =>
+      ({
+        captureSlidePng: async (el: HTMLElement) => {
+          seen.push(el.textContent ?? "");
+          return new Blob(["png"], { type: "image/png" });
+        },
+        pngFilename: () => "s.png",
+      }) as unknown as Awaited<ReturnType<typeof realPng>>;
+    const original = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = () => {};
+    Object.assign(URL, { createObjectURL: () => "blob:x", revokeObjectURL: () => {} });
+    try {
+      renderControl(lesson);
+      await openDialog(user);
+      await user.click(pickTab("PNG"));
+      const range = screen.getByRole("textbox", { name: "Slides" });
+      await user.clear(range);
+      await user.type(range, "2");
+      await user.click(screen.getByRole("button", { name: "Export PNG" }));
+      await waitFor(() => expect(seen).toHaveLength(1));
+      expect(seen[0]).toContain(`2 / ${total}`);
+      expect(seen[0]).not.toContain("9 / 99");
     } finally {
       HTMLAnchorElement.prototype.click = original;
       exportLoaders.png = realPng;
