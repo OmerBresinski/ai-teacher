@@ -427,6 +427,24 @@ const opensTask = (sentence: string) => taskOf(sentence) !== undefined;
 const ANAPHORIC_TASK = /\b(your (decision|answer|choice)|(this|the) animal|these|this one)\b/i;
 /** The answer an earlier task in the same stem produced. */
 const YOUR_ANSWER = /\byour (answer|choice)\b/i;
+/**
+ * "your answer" to a task the same sentence set first, joined by "and" or "then" (l6-e: "Suppose
+ * 36 beads are shared in the ratio 1:3. Explain how to find each share and check your answer.").
+ * The first clause must itself be a task of three words or more, so "Decide and explain your
+ * answer." still leans on nothing.
+ */
+function answersOwnTask(sentence: string): boolean {
+  const at = sentence.search(YOUR_ANSWER);
+  if (at < 0) return false;
+  const [first, ...rest] = sentence.slice(0, at).split(/\b(?:and|then)\b/i);
+  const clause = (first ?? "").trim();
+  return (
+    rest.length > 0 &&
+    opensTask(clause) &&
+    !ANAPHORIC_TASK.test(clause) &&
+    clause.split(/\s+/).length >= 3
+  );
+}
 /** A bare "it"; dangling only when nothing before it in the sentence could be what it names. */
 const BARE_IT = /\bit\b/i;
 /**
@@ -482,6 +500,8 @@ export function questionless(stem: string): "ok" | "no-question" | "no-referent"
     // An earlier task sentence poses the answer "your answer" refers to ("Share £72 in the ratio
     // 5:7. Give a check for your answer.").
     if (earlier.some(opensTask) && YOUR_ANSWER.test(s) && !danglingIt(s, earlier)) continue;
+    // The same sentence set the task first ("Explain how to find each share and check your answer.").
+    if (answersOwnTask(s) && !danglingIt(s, earlier)) continue;
     if (!POSES_DECISION.test(before) && !POSES_DECISION.test(s)) return "no-referent";
   }
   return "ok";
