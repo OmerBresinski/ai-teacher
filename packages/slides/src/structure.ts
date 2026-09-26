@@ -1692,8 +1692,9 @@ function diagramPanel(
     strokeWidth: 0,
     radius: t.radius,
     textStyle: {
+      // A note to the teacher, not slide copy: caption size, so a 25-word instruction fits.
       preset: "small",
-      fontSize: floorBelow(t, "small"),
+      fontSize: t.sizes.caption,
       color: t.colors.muted,
       align: "center",
       valign: "middle",
