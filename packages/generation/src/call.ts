@@ -2,6 +2,7 @@ import {
   BudgetReservationError,
   isAiError,
   isAnthropicModelId,
+  isOpenAiModelId,
   withGenerationBudget,
 } from "@tj/ai";
 import { type ModelClass, safeValidationIssues } from "@tj/domain";
@@ -9,12 +10,15 @@ import type { Finding, FindingSeverity, FindingTarget } from "@tj/domain/documen
 import { isEditorialIssue } from "@tj/slides";
 import {
   generateText,
+  jsonSchema,
   type ModelMessage,
   NoObjectGeneratedError,
+  NoOutputGeneratedError,
   Output,
   type OutputInterface,
+  type Schema,
 } from "ai";
-import type { z } from "zod";
+import { z } from "zod";
 import { CallTimeout, withCallDeadline } from "./call-deadline";
 import type { PromptName } from "./prompts";
 import { type JsonRepairKind, repairJsonText } from "./repair-json";
@@ -50,15 +54,17 @@ export interface StructuredPrompt<I> {
 /**
  * How hard the model may think on one call (Generation quality §6). Required on every call so no
  * stage is left at the provider's default by omission; the per-stage values are the project's
- * table, set at the call sites, never in a prompt. Carried to Bedrock as
- * `providerOptions.bedrock.reasoningConfig.maxReasoningEffort`, which `@ai-sdk/amazon-bedrock`
- * maps to `reasoning.effort` for an OpenAI id and `output_config.effort` for an Anthropic one.
- * `xhigh` / `max` are not offered: nothing in the pipeline needs them.
+ * table, set at the call sites, never in a prompt. Sent to OpenAI as `openai.reasoningEffort`
+ * (ADR 0031) and to Bedrock as `providerOptions.bedrock.reasoningConfig.maxReasoningEffort`,
+ * which `@ai-sdk/amazon-bedrock` maps to `reasoning.effort` for an OpenAI id and
+ * `output_config.effort` for an Anthropic one. `none` is the direct route's "do not reason";
+ * Bedrock has no such level, so it is sent `low` there. `minimal` is never offered (the Luna ids
+ * refuse it), nor `xhigh` / `max`: nothing in the pipeline needs them.
  */
-export type ReasoningEffort = "low" | "medium" | "high";
+export type ReasoningEffort = "none" | "low" | "medium" | "high";
 
 export interface CallStructuredOptions<I, T> {
-  deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context">;
+  deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "effortFor">;
   stage: StageName;
   cls: ModelClass;
   effort: ReasoningEffort;
@@ -202,8 +208,9 @@ const RETRY_SUFFIX =
 function repairingObjectOutput<T>(
   schema: z.ZodType<T>,
   onRepair: (repairs: JsonRepairKind[]) => void,
+  modelId: string,
 ): OutputInterface<T> {
-  const inner = Output.object({ schema });
+  const inner = Output.object({ schema: wireSchemaFor(schema, modelId) });
   return {
     name: inner.name,
     responseFormat: inner.responseFormat,
@@ -234,32 +241,75 @@ function repairingObjectOutput<T>(
   };
 }
 
+/** Keywords Gemini's schema dialect refuses; validation of them stays with zod on the answer. */
+const GEMINI_UNSUPPORTED = new Set(["minItems", "maxItems"]);
+
+export function isGoogleModelId(modelId: string): boolean {
+  return /^google\//.test(modelId);
+}
+
+/**
+ * The schema as sent on the wire. A Gemini id through the gateway refuses a schema carrying array
+ * bounds ("Request contains an invalid argument", bisected 2026-09-17), so those keywords are
+ * stripped from the JSON schema the provider sees while the zod schema still validates the answer
+ * in full — a miss on a bound is a schema miss like any other. Every other id gets the zod schema.
+ */
+export function wireSchemaFor<T>(schema: z.ZodType<T>, modelId: string): z.ZodType<T> | Schema<T> {
+  if (!isGoogleModelId(modelId)) return schema;
+  const strip = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(strip);
+    if (node && typeof node === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+        if (!GEMINI_UNSUPPORTED.has(key)) out[key] = strip(value);
+      }
+      return out;
+    }
+    return node;
+  };
+  const json = strip(z.toJSONSchema(schema, { target: "draft-7", unrepresentable: "any" }));
+  return jsonSchema<T>(json as never, {
+    validate: (value) => {
+      const parsed = schema.safeParse(value);
+      return parsed.success
+        ? { success: true, value: parsed.data }
+        : { success: false, error: parsed.error };
+    },
+  });
+}
+
 export async function callStructured<I, T>(
   options: CallStructuredOptions<I, T>,
 ): Promise<CallResult<T>> {
-  const { deps, stage, cls, effort, prompt, input, schema, soft, maxOutputTokens, images } =
-    options;
+  const { deps, stage, cls, prompt, input, schema, soft, maxOutputTokens, images } = options;
+  // The stage's effort unless the host overrides it (the lab's effort bench).
+  const effort =
+    deps.effortFor?.(stage, prompt.version.replace(/\.v\d+$/, ""), options.effort) ??
+    options.effort;
   const timeoutMs = options.timeoutMs ?? callTimeoutMs(prompt.version);
   // Cancel is checked between model calls (ADR 0025 §5); the fake ignores `abortSignal`, so the
   // check is here rather than trusted to the provider.
   throwIfAborted(deps.signal);
   const exceeded = deps.budget.exceeded();
   if (exceeded) throw new BudgetExceeded(exceeded.by);
-  const modelId = deps.ai.modelId(cls);
-  const model = withGenerationBudget(
-    deps.ai.model(cls, callContext(deps, stage, prompt.version, effort)),
-    modelId,
-    deps.budget,
-  );
+  // The id the call actually runs on: the class's, unless the host routed this call elsewhere
+  // (the lab's model bench), so the budget prices what was used and the log names it.
+  const routed = deps.ai.model(cls, callContext(deps, stage, prompt.version, effort));
+  const modelId = typeof routed === "string" ? routed : routed.modelId;
+  const model = withGenerationBudget(routed, modelId, deps.budget);
   const userText = prompt.user(input);
-  const output = repairingObjectOutput(schema, (repairs) => {
-    // Repair kinds only — never the text (ADR 0015). Counted so a model change that makes the
-    // quirk common (or rare) shows up in the logs.
-    deps.logger.info(
-      { stage, promptVersion: prompt.version, repairs },
-      "structured output repaired before validation",
-    );
-  });
+  const output = repairingObjectOutput(
+    schema,
+    (repairs) => {
+      // Repair kinds only — never the text (ADR 0015). Counted so a model change that makes the
+      // quirk common (or rare) shows up in the logs.
+      deps.logger.info(
+        { stage, promptVersion: prompt.version, repairs },
+        "structured output repaired before validation",
+      );
+    },
+    modelId,
+  );
 
   const attempt = async (text: string): Promise<CallResult<T>> => {
     try {
@@ -303,9 +353,22 @@ export async function callStructured<I, T>(
     return await attempt(userText);
   } catch (error) {
     const timedOut = error instanceof StageFailure && error.reason === "timeout";
-    if (!timedOut && !NoObjectGeneratedError.isInstance(error)) throw error;
+    // An empty answer (the provider returned no output at all) is a hiccup, not a shape problem:
+    // retried once with the same text, like a timeout (quality lab, Sept 2026: two empty answers
+    // from the small class lost a lesson its photograph). With `Output.object` a response with no
+    // content surfaces as a NoObjectGeneratedError with no text, not a NoOutputGeneratedError.
+    const empty =
+      NoOutputGeneratedError.isInstance(error) ||
+      (NoObjectGeneratedError.isInstance(error) && !error.text?.trim());
+    if (empty) {
+      deps.logger.info(
+        { stage, promptVersion: prompt.version },
+        "model returned no output; retrying once",
+      );
+    }
+    if (!timedOut && !empty && !NoObjectGeneratedError.isInstance(error)) throw error;
     let retryText = userText;
-    if (NoObjectGeneratedError.isInstance(error)) {
+    if (!empty && NoObjectGeneratedError.isInstance(error)) {
       // The failed attempt was still paid for. `error.text` (the model's words) is never logged.
       const issues = issuesOf(error);
       // Log finite issue codes/counts; even paths and custom messages may echo model content.
@@ -396,16 +459,41 @@ export function imageMediaType(url: string): string {
 }
 
 /**
- * The provider options one call sends. For an OpenAI id `@ai-sdk/amazon-bedrock` maps
- * `reasoningConfig.maxReasoningEffort` to `reasoning.effort`. For an Anthropic id it would write
- * `output_config.effort`, which the Haiku the `small` class still runs on may not accept, and
- * `@tj/ai` already disables thinking on those ids (`NO_THINKING`) so effort has nothing to act on:
- * nothing is sent and the call runs as it did before. The `effort` still reaches the log through
- * the call context. Dead for the pipeline once every class is a GPT-5.6 id (Generation quality §6).
+ * The provider options one call sends: the same effort under every provider's namespace, since
+ * each provider reads only its own and the rest are inert. An `openai/` id (direct, or the gateway
+ * as fallback — ADR 0031) reads `openai.reasoningEffort`; without it a GPT-5.6 id thinks at its
+ * default effort and the reasoning tokens eat the `maxOutputTokens` budget, truncating the JSON
+ * (observed 2026-09-17). A Bedrock id reads `bedrock.reasoningConfig`, which
+ * `@ai-sdk/amazon-bedrock` maps to `reasoning.effort`; Bedrock has no `none`, so that is `low`
+ * there. An Anthropic id gets nothing: `@tj/ai` already disables thinking on those ids
+ * (`NO_THINKING`), so effort has nothing to act on and the call runs as before. The `effort`
+ * still reaches the log through the call context.
  */
-function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
+export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
   if (isAnthropicModelId(modelId)) return {};
-  return { providerOptions: { bedrock: { reasoningConfig: { maxReasoningEffort: effort } } } };
+  return {
+    providerOptions: {
+      bedrock: { reasoningConfig: { maxReasoningEffort: effort === "none" ? "low" : effort } },
+      openai: {
+        reasoningEffort: effort,
+        // OpenAI's strict mode refuses a schema whose `required` does not list every key; the
+        // pipeline's schemas have optional fields, and zod validates the answer in full anyway.
+        // Sent for every call: the direct provider strips the `openai/` prefix, so the routed id
+        // is bare (`gpt-6-luna`) and a prefix check misses it. Only OpenAI reads this namespace.
+        strictJsonSchema: false,
+      },
+      // Gemini 3 reads a level, not an effort; Qwen and DeepSeek think or not (smoke-tested
+      // 2026-09-17: Gemini at its default spent the whole slide budget thinking, Qwen 3 373 tokens).
+      google: { thinkingConfig: { thinkingLevel: effort === "high" ? "high" : "low" } },
+      alibaba: { enableThinking: effort === "high" },
+      deepseek: { thinking: { type: effort === "high" ? "enabled" : "disabled" } },
+      // The Vercel gateway may serve an `openai/` id from its own Bedrock credentials, where the
+      // effort is ignored (Sol at "low" reasoned more than at "medium", 2026-09-17): pin the
+      // vendor so the setting reaches the model. Read only by the gateway; inert on the direct
+      // route.
+      ...(isOpenAiModelId(modelId) ? { gateway: { only: ["openai"] } } : {}),
+    },
+  };
 }
 
 function usageOf(usage: {

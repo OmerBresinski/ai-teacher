@@ -49,7 +49,7 @@ function pick<T>(source: object, key: string, guard: (v: unknown) => v is T): T 
 const isNumber = (v: unknown): v is number => typeof v === "number";
 const isBoolean = (v: unknown): v is boolean => typeof v === "boolean";
 
-const MODERATED_MESSAGE = "Bedrock refused the model call under its content policy";
+const MODERATED_MESSAGE = "The provider refused the model call under its content policy";
 function isModeration(cause: unknown): boolean {
   return (
     cause instanceof Error &&
@@ -77,5 +77,5 @@ export function toProviderError(cause: unknown): AiError {
   if (isModeration(cause)) {
     return new AiError("moderated", MODERATED_MESSAGE, { cause: toProviderFailure(cause) });
   }
-  return new AiError("provider", "Bedrock model call failed", { cause: toProviderFailure(cause) });
+  return new AiError("provider", "Model call failed", { cause: toProviderFailure(cause) });
 }

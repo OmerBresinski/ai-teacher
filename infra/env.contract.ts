@@ -540,7 +540,7 @@ const CONTRACT = [
       "Local-disk adapter only: directory that holds stored objects. Defaults to `.data/storage` relative to the process cwd when unset — the api and the worker must point at the **same** directory (the worker reads what `POST /sources` wrote, ADR 0027 §6); `bun run dev` and the e2e config set it for both.",
   },
 
-  // --- AI provider (ADR 0018) ---------------------------------------------------------------------
+  // --- AI provider (ADR 0031; Bedrock per ADR 0018 until retired) ---------------------------------------------------------------------
   {
     name: "AWS_BEARER_TOKEN_BEDROCK",
     services: ["api", "worker"],
@@ -552,7 +552,33 @@ const CONTRACT = [
     format: "string",
     files: ["api", "worker"],
     description:
-      "Amazon Bedrock API key (bearer). Required in production; when unset in development/test `@tj/ai` is `unconfigured` and AI jobs/routes fail fast. Never set on Vercel (ADR 0018).",
+      "Amazon Bedrock API key (bearer). Serves the Bedrock model ids (no slash), the production default (ADR 0018). Required in production unless `OPENAI_API_KEY` is set (ADR 0031); when unset in development/test those ids fail fast at `model()`. Never set on Vercel.",
+  },
+  {
+    name: "OPENAI_API_KEY",
+    services: ["api", "worker"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api", "worker"],
+    description:
+      "OpenAI API key for the opt-in direct route (ADR 0031): serves every `openai/<model>` model id directly, and changes nothing until a model class is switched to such an id. Required in production unless `AWS_BEARER_TOKEN_BEDROCK` is set; when unset in development/test those ids fail fast at `model()`. Set on Railway (api and worker), never on Vercel, never in git.",
+  },
+  {
+    name: "AI_GATEWAY_API_KEY",
+    services: ["api", "worker"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api", "worker"],
+    description:
+      "Vercel AI Gateway key. Optional fallback (ADR 0031): when set, `@tj/ai` routes any non-OpenAI `provider/model` model id (e.g. `google/gemini-3.8-flash`) through the gateway, and `openai/` ids too when `OPENAI_API_KEY` is unset; when unset those ids are unavailable and the other ids are unaffected. Never the production path. Set on Railway, never in git.",
   },
   {
     name: "AWS_REGION",
