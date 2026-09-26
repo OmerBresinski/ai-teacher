@@ -12,6 +12,7 @@ import {
   sameLeadingToken,
 } from "@tj/domain/documents";
 import { z } from "zod";
+import { CONTENT_BUDGETS, type ContentShape, type SlotBudget, shapeOf } from "./content-shapes";
 
 /*
  * Slide and block specs (ADR 0025 §8): what the model produces for one slide or one worksheet
@@ -214,6 +215,65 @@ const gapsMatchAnswers = (spec: { sentence: string; answers: string[] }) =>
 /** A list the recipe can hold more of than the aim, so the cap is editorial: overflow, not a crash. */
 const atMost = (n: number, what: string) => editorialIssue(`Too many ${what}: at most ${n}.`);
 
+/** Words in a slot, as the budgets count them. */
+export const wordsIn = (text: string) => text.split(/\s+/).filter(Boolean).length;
+
+/** The message a slot over its shape's word budget gets: our words and numbers only. */
+export const overBudget = (shape: ContentShape, slot: string, max: number) =>
+  `Too long for a ${shape} slide: a ${slot} fits about ${max} words on the slide; use at most ${ceilingOf(max)}.`;
+
+export const DIAGRAM_BESIDE_SHAPE =
+  "A compare or steps slide takes the full width, so it has no room for a diagram: leave diagram out.";
+
+type ShapedContent = {
+  heading: string;
+  body: string;
+  points?: string[] | undefined;
+  compare?:
+    | { left: { label: string; points: string[] }; right: { label: string; points: string[] } }
+    | undefined;
+  steps?: string[] | undefined;
+  diagram?: string | undefined;
+};
+
+/**
+ * A content spec whose fields name its shape (`content-shapes.ts` `shapeOf`) keeps each slot
+ * within that shape's measured word budget (`CONTENT_BUDGETS`). Editorial, and lenient as every
+ * text cap is (TEACH-248, `ceilingOf`): only past one and a half times the budget is the model
+ * asked to retry, and a retry still over is accepted as a finding, never a failed job; between
+ * the two the fit engine steps the type down and the renderer falls back (`structure.ts`). A body
+ * with no shape field is left to the character cap.
+ */
+function shapeWithinBudget(spec: ShapedContent, ctx: z.RefinementCtx): void {
+  const shape = shapeOf(spec);
+  if (shape === "explain") return;
+  const budget = CONTENT_BUDGETS[shape];
+  const check = (text: string, slot: SlotBudget | undefined, name: string, path: PropertyKey[]) => {
+    if (slot && wordsIn(text) > ceilingOf(slot.max)) {
+      ctx.addIssue(editorialIssue(overBudget(shape, name, slot.max), path));
+    }
+  };
+  check(spec.heading, budget.heading, "heading", ["heading"]);
+  check(spec.body, budget.lead, "lead (body)", ["body"]);
+  if (shape === "list") {
+    for (const [i, p] of (spec.points ?? []).entries())
+      check(p, budget.points, "point", ["points", i]);
+  } else if (shape === "sequence") {
+    for (const [i, p] of (spec.steps ?? []).entries()) check(p, budget.steps, "step", ["steps", i]);
+  } else if (spec.compare) {
+    for (const side of ["left", "right"] as const) {
+      const { label, points } = spec.compare[side];
+      check(label, budget.side, "side label", ["compare", side, "label"]);
+      for (const [i, p] of points.entries()) {
+        check(p, budget.sidePoints, "side point", ["compare", side, "points", i]);
+      }
+    }
+  }
+  if ((shape === "compare" || shape === "sequence") && spec.diagram) {
+    ctx.addIssue(editorialIssue(DIAGRAM_BESIDE_SHAPE, ["diagram"]));
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* The two builds                                                      */
 /* ------------------------------------------------------------------ */
@@ -341,28 +401,31 @@ function buildSpecs(soft: boolean) {
         atMost(6, "entries"),
       ),
     }),
-    z.object({
-      kind: z.literal("content"),
-      ...specBase,
-      heading: line(SPEC_LIMITS.heading),
-      body: line(SPEC_LIMITS.body),
-      /**
-       * A set of parallel things the body's lead introduces (factors, parts, types), set as bullets
-       * under it (`materialise.ts` `fillContent`, `look.ts` `leadAndCard`). Left out otherwise.
-       */
-      points: items(2, 4).optional(),
-      /** Two things side by side (shape `compare`, `content-shapes.ts`): placed as compare cards. */
-      compare: z
-        .object({
-          left: z.object({ label: line(SPEC_LIMITS.term), points: items(2, 3) }),
-          right: z.object({ label: line(SPEC_LIMITS.term), points: items(2, 3) }),
-        })
-        .optional(),
-      /** A process or method in order (shape `sequence`): placed as the steps strip. */
-      steps: items(2, 4).optional(),
-      diagram: line(SPEC_LIMITS.diagram).optional(),
-      callout,
-    }),
+    rules(
+      z.object({
+        kind: z.literal("content"),
+        ...specBase,
+        heading: line(SPEC_LIMITS.heading),
+        body: line(SPEC_LIMITS.body),
+        /**
+         * A set of parallel things the body's lead introduces (factors, parts, types), set as bullets
+         * under it (`materialise.ts` `fillContent`, `look.ts` `leadAndCard`). Left out otherwise.
+         */
+        points: items(2, 4).optional(),
+        /** Two things side by side (shape `compare`, `content-shapes.ts`): placed as compare cards. */
+        compare: z
+          .object({
+            left: z.object({ label: line(SPEC_LIMITS.term), points: items(2, 3) }),
+            right: z.object({ label: line(SPEC_LIMITS.term), points: items(2, 3) }),
+          })
+          .optional(),
+        /** A process or method in order (shape `sequence`): placed as the steps strip. */
+        steps: items(2, 4).optional(),
+        diagram: line(SPEC_LIMITS.diagram).optional(),
+        callout,
+      }),
+      shapeWithinBudget,
+    ),
     z.object({
       kind: z.literal("image-text"),
       ...specBase,

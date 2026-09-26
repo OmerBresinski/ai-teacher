@@ -1,6 +1,6 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { COUNTER_NAME, DIAGRAM_NAME } from "@tj/slides";
+import { COUNTER_NAME, DIAGRAM_NAME, withoutDiagramSlot } from "@tj/slides";
 import {
   type CSSProperties,
   lazy,
@@ -81,7 +81,7 @@ const ALL = Number.POSITIVE_INFINITY;
  * layer, never DOM inside here.
  */
 export function SlideView({
-  slide,
+  slide: given,
   theme,
   mode,
   step,
@@ -93,6 +93,15 @@ export function SlideView({
   imageOrigin,
   position,
 }: SlideViewProps) {
+  /**
+   * A diagram instruction with no drawing is a note the editor alone draws: everywhere else the
+   * words are laid out as if the slide had no slot, so the right half is never left empty
+   * (`@tj/slides` `withoutDiagramSlot`). The editor keeps the placeholder.
+   */
+  const slide = useMemo(
+    () => (mode === "edit" ? given : withoutDiagramSlot(given, theme)),
+    [given, theme, mode],
+  );
   /**
    * `step` unset means "show the finished slide" — what a thumbnail, an export and the
    * viewer want. In the editor, previewStep 0 also means all visible (SPEC §4); a

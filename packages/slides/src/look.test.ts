@@ -14,7 +14,14 @@ import {
 } from "./look";
 import { materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
-import { BODY_NAME, BULLET_NAME, ITEM_NAME, PANEL_NAME, PANEL_TEXT_NAME } from "./structure";
+import {
+  BODY_NAME,
+  BULLET_NAME,
+  ITEM_NAME,
+  LEAD_NAME,
+  PANEL_NAME,
+  PANEL_TEXT_NAME,
+} from "./structure";
 import { getTheme, THEMES } from "./themes";
 
 const META = { promptVersion: "test", model: "test", at: "2026-09-26T00:00:00.000Z" };
@@ -89,7 +96,7 @@ describe("the lesson look", () => {
     });
   }
 
-  test("look/headings: a lead with points: the lead on the panel, the points as dot bullets", () => {
+  test("look/headings: a lead with points: the lead stays the lead, the points as dot bullets", () => {
     const slide = materialiseSlide(
       {
         kind: "content",
@@ -102,8 +109,10 @@ describe("the lesson look", () => {
       META,
       counter(),
     );
-    const [idea] = named(slide, PANEL_TEXT_NAME) as TextElement[];
-    expect(idea && plain(idea)).toBe("Volcanoes are grouped by the shape their lava builds.");
+    // The writer's own list (shape `list`): no key term to set beside it, so no panel takes the lead.
+    const [lead] = named(slide, LEAD_NAME) as TextElement[];
+    expect(lead && plain(lead)).toBe("Volcanoes are grouped by the shape their lava builds.");
+    expect(named(slide, PANEL_TEXT_NAME)).toHaveLength(0);
     const points = named(slide, ITEM_NAME) as TextElement[];
     expect(points.map(plain)).toEqual([
       "shield: runny lava, gentle slopes",

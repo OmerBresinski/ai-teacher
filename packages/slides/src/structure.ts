@@ -76,6 +76,11 @@ export type SlideStructure = {
   keyCard?: { label: string; text: string };
   /** A process or method in order: 2–4 short steps. */
   sequence?: string[];
+  /**
+   * A content spec's own `points` (shape `list`): the body stays the lead and the points go under
+   * it as dots; the key idea never takes the lead to the side panel. Only a key term may fill it.
+   */
+  points?: string[];
   /** The lesson's vocabulary, picked out in running text. */
   terms?: string[];
   /** The year and subject the look's top line names (`withDeckChrome`). */
@@ -1154,10 +1159,17 @@ function structureContent(
   const words = joinSentences(bodies.map((b) => docText(proseOf(b.doc))));
   const points = bodies.flatMap((b) => pointsOf(b.doc));
   const explicit = hints.compare || hints.keyCard || hints.sequence;
-  const inferred = explicit ? undefined : inferStructure(docText(heading.doc), words, hints.terms);
+  // A shape the writer filled (`withShapeHints`) wins over what the words suggest: no inference.
+  const listed = !explicit && !!hints.points?.length;
+  const inferred =
+    explicit || listed ? undefined : inferStructure(docText(heading.doc), words, hints.terms);
   const s: SlideStructure = explicit ? hints : (inferred?.structure ?? {});
   const restWords = explicit ? words : (inferred?.rest ?? words);
   const lead = explicit ? "" : (inferred?.lead ?? "");
+  // A written compare or sequence: its lead stays above the component. Its lines also sit in the
+  // body as dot points (`shapeFallbackPoints`), which is how the slide reads when the component
+  // cannot be placed at the body size or the step below it.
+  const shaped = !!(hints.compare || hints.sequence);
   if (!s.compare && !s.sequence) {
     const split = splitContent(slide, t, bodies, top, words, points, s, hints, ids);
     if (split) return [split];
@@ -1225,6 +1237,7 @@ function structureContent(
     };
     let placed: Placed | undefined;
     if (s.compare) {
+      if (shaped && restWords) para(restWords);
       placed = compareCards(s.compare.left, s.compare.right, y, SAFE_BOTTOM, t, ids);
     } else if (s.keyCard) {
       if (lead) para(lead);
@@ -1236,7 +1249,7 @@ function structureContent(
     if (!placed || !fits(placed.bottom)) continue;
     els.push(...placed.elements);
     y = snapY(placed.bottom + SPACE[3]);
-    if (!restWords || s.sequence)
+    if (!restWords || s.sequence || shaped)
       return [withTerms({ ...slide, elements: [...keep, ...els] }, t, hints.terms)];
     const h = heightOf(measure, docFromText(restWords), SAFE.w, "body", size);
     if (fits(y + h)) {
@@ -1244,6 +1257,15 @@ function structureContent(
       return [withTerms({ ...slide, elements: [...keep, ...els] }, t, hints.terms)];
     }
     last ??= { els, restAt: top, size };
+  }
+  // A written compare or sequence too long for its cards: the lead plus its lines as dot points,
+  // beside a key term when there is one; else the plain lead and card, for the fit engine to step
+  // down to the floor and no further, and for the editor's Tidy to continue (UX ruling 91).
+  if (shaped) {
+    const listHints = { ...hints, compare: undefined, sequence: undefined, points };
+    const split = splitContent(slide, t, bodies, top, words, points, {}, listHints, ids);
+    if (split) return [split];
+    return paginate ? (splitParagraph(slide, bodies, t, ids, hints.terms) ?? plain) : plain;
   }
   // The words left over continue on the next slide; but a component never costs a slide the
   // plain text did not need, so a slide that fitted stays as it was.
@@ -1568,6 +1590,12 @@ function splitContent(
     // restates it ("Chlorophyll, the green substance in plant cells, absorbs …") is cut, and a
     // sentence that is only the definition goes, while something is left to read.
     left = withoutDefinition(all, glossary.term, glossary.definition);
+  } else if (hints.points?.length) {
+    // The writer's own list: its lead stays the lead, so without a key term there is no panel and
+    // the lead and its dots take the full measure.
+    label = "";
+    statement = docFromText("");
+    left = all;
   } else if (all.length >= 2 || (all.length === 1 && points.length >= 2)) {
     label = "Key idea";
     statement = docFromText(all[0] as string);
@@ -1602,11 +1630,12 @@ function splitContent(
   // Half and half first, as in the examples; a longer text takes up to two thirds before it gives up
   // the panel for the full-width paragraph.
   // A diagram keeps its half: a drawing squeezed to a third is no use.
-  const settings = (slot ? [0.5] : [0.5, 0.6, 0.66]).flatMap((share) =>
+  const across = label === "";
+  const settings = (across ? [1] : slot ? [0.5] : [0.5, 0.6, 0.66]).flatMap((share) =>
     sizes.map((size) => ({ share, size })),
   );
   for (const { share, size } of settings) {
-    const half = Math.floor((SAFE.w - SPACE[5]) * share);
+    const half = across ? SAFE.w : Math.floor((SAFE.w - SPACE[5]) * share);
     const panelX = SAFE.x + half + SPACE[5];
     const panelW = SAFE.x + SAFE.w - panelX;
     const els: SlideElement[] = [];
@@ -1661,9 +1690,11 @@ function splitContent(
       y = snapY(y + h + SPACE[3]);
     }
     if (!fits(y - SPACE[2])) continue;
-    const panel = slot
-      ? [diagramPanel(slot, top, panelX, panelW, t)]
-      : sidePanel(label, statement, top, panelX, panelW, t, ids, weight, textName);
+    const panel = across
+      ? []
+      : slot
+        ? [diagramPanel(slot, top, panelX, panelW, t)]
+        : sidePanel(label, statement, top, panelX, panelW, t, ids, weight, textName);
     if (!panel) continue;
     const next: Slide = { ...slide, elements: [...keep, ...els, ...panel] };
     if (fitSlide(next, t).overflow.length > 0) continue;
