@@ -177,7 +177,7 @@ function LessonIntake({
           expectedRevision: lesson.plan?.revision ?? 0,
           brief: input.brief,
           yearGroup: input.yearGroup,
-          subject: lesson.brief?.topic === input.brief.topic ? lesson.subject : "",
+          subject: lesson.brief?.topic === input.brief.topic ? lesson.subject : undefined,
           sourceIds: input.sourceIds,
         });
         client.setQueryData(["library", "document-meta", lessonId], {
