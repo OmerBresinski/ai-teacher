@@ -271,8 +271,8 @@ function drawEnergyProfile(
     reachOf(a) > 0 && above <= smoothstep(reachOf(a)) * rise;
 
   // Down: the energy axis's name, the plot, the lower plateau's names, the axis, its name, the
-  // caption. A label standing on the higher level (the products' name when endothermic, "Ea" in
-  // its fallback place when exothermic) needs room up to the energy axis's name.
+  // caption. A label standing on a level (the products' name when endothermic, "Ea" in its
+  // fallback place over the reactants' plateau) needs room up to the energy axis's name.
   const frame = (labels: Labels, notToScale: boolean) => {
     const plotTop = labels.energy.h + PEAK_TOP_GAP;
     const standing = (h: number) => h + NAME_GAP + CLEAR - PEAK_TOP_GAP;
@@ -296,7 +296,10 @@ function drawEnergyProfile(
       : standing(labels.products.h);
     const peakMin = Math.max(PEAK_GAP, peakNeed / height);
     const drawn = shares(activationEnergy, energyChange, { levels: levelsMin, peak: peakMin });
-    return { plotTop, axisY, plotBottom, height, beside, drawn, fits: levelsMin + peakMin <= 1 };
+    // Endothermic, "Ea" in its fallback place stands on the lower level: the whole span holds it.
+    const activationFits = exothermic || beside || standing(labels.activation.h) <= height;
+    const fits = levelsMin + peakMin <= 1 && activationFits;
+    return { plotTop, axisY, plotBottom, height, beside, drawn, fits };
   };
   // The caption takes room from the plot, so a drawing the first pass clamps is laid out again.
   const layout = (labels: Labels) => {

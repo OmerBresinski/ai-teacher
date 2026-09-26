@@ -364,6 +364,22 @@ const GRID = [
       progressAxis: "W".repeat(24),
     }),
   },
+  // PR #328 review: an endothermic profile whose "Ea" is too wide to sit beside its arrow, with
+  // labels far past their caps and nearly free of spaces; its fallback place once overlapped the
+  // energy axis's name.
+  {
+    name: "unbreakable labels far over their caps, endothermic",
+    v: {
+      reactants:
+        "?iMWli M,.M!MlIWi?,M!Iii..?MiI,i?? M, Wi??,,W,Mi?l, WI.MW!MM.!IMI. Ml!! Ml!. . i?",
+      products: "ilMM,i.?,,M",
+      activationEnergy: 1617.3464612716948,
+      energyChange: 1287.0757086202502,
+      activationLabel: "lWi.?iI,,i!I W,iW M.MlIIMWI.M!MMIMW,",
+      energyAxis: "l,..!??I  ! MW,Wl?MMI!WiiWIW lI!?i !,!i.i!il",
+      progressAxis: "!,MWW.,.lli.WIM?WI.WMlliM!.Il.llI..?M! IMM.  ?. ?.?lI!??!iMWW?! iil M.",
+    },
+  },
   // Past the caps, as a model answer can be after its retry.
   {
     name: "every label far over its cap",
