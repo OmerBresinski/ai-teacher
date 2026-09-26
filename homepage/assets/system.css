@@ -266,8 +266,6 @@ img {
   letter-spacing: -0.055em;
   line-height: 1;
   text-decoration: none;
-}
-.brand {
   display: inline-flex;
   align-items: center;
   gap: 0.14em;
