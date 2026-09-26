@@ -3,6 +3,7 @@ import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { docFromText, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
 import { HEADING_NAME, isBackdrop } from "./reflow";
+import { docPlainText, joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
 
 /*
@@ -89,11 +90,7 @@ export const accentTint = (t: Theme) =>
 
 type Ids = () => string;
 
-const plain = (el: TextElement): string =>
-  JSON.stringify(el.doc)
-    .match(/"text":"((?:[^"\\]|\\.)*)"/g)
-    ?.map((m) => JSON.parse(m.slice(7)) as string)
-    .join("") ?? "";
+const plain = (el: TextElement): string => docPlainText(el.doc);
 
 function tagHeight(t: Theme): number {
   return Math.ceil(t.sizes.caption * t.lineHeights.caption) + TAG_PAD_Y * 2;
@@ -172,10 +169,10 @@ function leadAndCard(els: SlideElement[], t: Theme, ids: Ids): SlideElement[] {
   if (bodies.length !== 1 || els.some((e) => e.type === "image" || e.type === "option")) return els;
   const body = bodies[0] as TextElement;
   const words = plain(body);
-  const at = words.search(/[.!?]\s+\S/);
-  if (at < 0) return els;
-  const lead = words.slice(0, at + 1).trim();
-  const rest = words.slice(at + 1).trim();
+  const all = sentences(words);
+  if (all.length < 2) return els;
+  const lead = all[0] as string;
+  const rest = joinSentences(all.slice(1));
   const measure = measureHeadless(t);
   // Beside a diagram slot the text keeps its half; otherwise it takes the full measure.
   const w = els.some((e) => e.name === DIAGRAM_NAME) ? body.w : SAFE.w;

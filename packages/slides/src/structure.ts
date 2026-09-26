@@ -14,7 +14,8 @@ import { docFromText, uid } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE, snapY } from "./grid";
 import { SAFE_BOTTOM, withSafety } from "./metrics";
-import { ANSWERS_NAME, HEADING_NAME } from "./reflow";
+import { ANSWERS_NAME, HEADING_NAME, isBackdrop } from "./reflow";
+import { joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
 import { floorBelow, resolveFontSize } from "./text-style";
 
@@ -778,9 +779,6 @@ export function markTerms(
 
 /* ---------------------------------------------------------------- inference from words */
 
-const sentences = (text: string): string[] =>
-  (text.match(/[^.!?]+(?:[.!?]+|$)/g) ?? []).map((s) => s.trim()).filter(Boolean);
-
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** A word equation ("a + b → c + d") or a formula in words ("speed = distance ÷ time"). */
@@ -945,11 +943,63 @@ function structureSet(
       ids,
     );
     const kept = slide.elements.filter((e) => e !== old);
-    return [{ ...slide, elements: panel ? [...kept, panel] : kept }];
+    return answersClear(
+      [{ ...slide, elements: panel ? [...kept, panel] : kept }],
+      t,
+      ids,
+      paginate,
+    );
   }
-  return pages.map((page, i) =>
-    i === 0 ? { ...slide, elements: [...rest, ...page] } : continued(slide, rest, page, ids),
+  return answersClear(
+    pages.map((page, i) =>
+      i === 0 ? { ...slide, elements: [...rest, ...page] } : continued(slide, rest, page, ids),
+    ),
+    t,
+    ids,
+    paginate,
   );
+}
+
+/**
+ * The answers never cover the questions. The panel is a reveal on the questions' own slide only
+ * when it clears the foot of the last question; otherwise the answers go on a slide of their own
+ * straight after ("… : answers"), which the teacher reaches with the same next press that would
+ * have revealed the panel. Without pages (a generated slide is one slide) the panel stays for the
+ * editor's Tidy to move.
+ */
+function answersClear(slides: Slide[], t: Theme, ids: Ids, paginate: boolean): Slide[] {
+  if (!paginate) return slides;
+  return slides.flatMap((slide) => {
+    const panel = slide.elements.find((e) => e.name === ANSWERS_NAME && (e.revealStep ?? 0) > 0);
+    if (!panel) return [slide];
+    const fitted = fitSlide(slide, t).slide;
+    const chrome = new Set(chromeOf(slide).map((e) => e.id));
+    const foot = Math.max(
+      0,
+      ...fitted.elements
+        .filter((e) => e.id !== panel.id && !chrome.has(e.id) && !isBackdrop(e) && !e.revealStep)
+        .map((e) => e.y + e.h),
+    );
+    if (panel.y >= foot + SPACE[2]) return [slide];
+    const heading = headingOf(slide);
+    const top = heading ? snapY(heading.y + heading.h + SPACE[4]) : SAFE.y;
+    const { revealStep: _step, reveal: _reveal, ...still } = panel;
+    const answers = { ...still, id: ids(), y: top, h: Math.min(panel.h, SAFE_BOTTOM - top) };
+    const next = continued(slide, chromeOf(slide), [answers as SlideElement], ids);
+    const named = next.elements.map((e) =>
+      heading && e.name === HEADING_NAME && isText(e)
+        ? {
+            ...e,
+            doc: docFromText(`${docText(heading.doc).replace(/ \(continued\)$/, "")}: answers`),
+          }
+        : e,
+    );
+    const { question: _question, ...answersSlide } = next;
+    return [
+      { ...slide, elements: slide.elements.filter((e) => e !== panel) },
+      { ...answersSlide, elements: named },
+    ];
+  });
 }
 
 /**
@@ -1048,12 +1098,10 @@ function structureContent(
 ): Slide[] {
   const plain = [withTerms(slide, t, hints.terms)];
   const heading = headingOf(slide);
-  if (
-    !heading ||
-    slide.elements.some((e) => e.type === "image" || e.name === "Diagram placeholder")
-  ) {
-    return plain;
+  if (heading && slide.elements.some((e) => e.name === DIAGRAM_SLOT)) {
+    return structureDiagram(slide, t, hints, ids, paginate);
   }
+  if (!heading || slide.elements.some((e) => e.type === "image")) return plain;
   const bodies = slide.elements.filter(
     (e): e is TextElement =>
       isText(e) && e.style.preset === "body" && (!e.name || e.name === LEAD_CARD),
@@ -1196,7 +1244,7 @@ function splitParagraph(
   const all = sentences(docText(body.doc));
   if (all.length < 2 || fitSlide(slide, t).overflow.length === 0) return undefined;
   let n = all.length - 1;
-  while (n > 1 && body.y + withSafety(h(all.slice(0, n).join(" "))) > SAFE_BOTTOM) n--;
+  while (n > 1 && body.y + withSafety(h(joinSentences(all.slice(0, n)))) > SAFE_BOTTOM) n--;
   const part = (words: string, y: number): TextElement => {
     const doc = docFromText(words);
     return {
@@ -1210,10 +1258,110 @@ function splitParagraph(
     };
   };
   const keep = slide.elements.filter((e) => e !== body);
-  const next = continued(slide, chromeOf(slide), [part(all.slice(n).join(" "), body.y)], ids);
+  const next = continued(slide, chromeOf(slide), [part(joinSentences(all.slice(n)), body.y)], ids);
   return [
-    withTerms({ ...slide, elements: [...keep, part(all.slice(0, n).join(" "), body.y)] }, t, terms),
+    withTerms(
+      { ...slide, elements: [...keep, part(joinSentences(all.slice(0, n)), body.y)] },
+      t,
+      terms,
+    ),
     withTerms(next, t, terms),
+  ];
+}
+
+const DIAGRAM_SLOT = "Diagram placeholder";
+
+/**
+ * A teaching slide with a diagram slot: the words keep the left column and the slot the right,
+ * from the column's top to the foot of the safe area, so neither runs over the other or past the
+ * slide. Words too long for the column are set as one paragraph at the body size, then a step
+ * down; still too long, the sentences that fit stay beside the diagram and the rest continue on
+ * the next slide at the body size, across the full measure (UX ruling 91). Without pages (a
+ * generated slide is one slide) the paragraph stays a step down for the editor's Tidy to carry.
+ */
+function structureDiagram(
+  slide: Slide,
+  t: Theme,
+  hints: SlideStructure,
+  ids: Ids,
+  paginate: boolean,
+): Slide[] {
+  const slot = slide.elements.find((e) => e.name === DIAGRAM_SLOT) as SlideElement;
+  const bodies = slide.elements
+    .filter(
+      (e): e is TextElement =>
+        isText(e) &&
+        e.style.preset === "body" &&
+        (!e.name || e.name === LEAD_CARD || e.name === BODY_NAME),
+    )
+    .sort((a, b) => a.y - b.y);
+  const first = bodies[0];
+  if (!first) return [withTerms(slide, t, hints.terms)];
+  const top = first.y;
+  const x = first.x;
+  const w = Math.max(SPACE[7], Math.min(first.w, slot.x - SPACE[5] - x));
+  const placedSlot = { ...slot, y: top, h: SAFE_BOTTOM - top } as SlideElement;
+  const asIs: Slide = {
+    ...slide,
+    elements: slide.elements.map((e) => (e === slot ? placedSlot : e)),
+  };
+  const columnFoot = (s: Slide) =>
+    Math.max(
+      ...fitSlide(s, t)
+        .slide.elements.filter((e) => bodies.some((b) => b.id === e.id))
+        .map((e) => e.y + e.h),
+    );
+  if (fitSlide(asIs, t).overflow.length === 0 && columnFoot(asIs) <= SAFE_BOTTOM) {
+    return [withTerms(asIs, t, hints.terms)];
+  }
+  const measure = measureHeadless(t);
+  const words = bodies.map((b) => docText(b.doc)).join(" ");
+  const keep = slide.elements.filter((e) => e !== slot && !bodies.includes(e as TextElement));
+  const para = (words: string, size: number, width: number): TextElement => {
+    const doc = docFromText(words);
+    return text(
+      ids,
+      { x, y: top, w: width, h: heightOf(measure, doc, width, "body", size) },
+      doc,
+      { preset: "body", fontSize: size },
+      { name: BODY_NAME },
+    );
+  };
+  const body = resolveFontSize(t, "body");
+  const floor = floorBelow(t, "body");
+  for (const size of [body, floor]) {
+    const p = para(words, size, w);
+    if (top + withSafety(p.h) <= SAFE_BOTTOM) {
+      return [withTerms({ ...slide, elements: [...keep, p, placedSlot] }, t, hints.terms)];
+    }
+  }
+  const all = sentences(words);
+  if (!paginate || all.length < 2) {
+    return [
+      withTerms(
+        { ...slide, elements: [...keep, para(words, floor, w), placedSlot] },
+        t,
+        hints.terms,
+      ),
+    ];
+  }
+  let n = all.length - 1;
+  while (
+    n > 1 &&
+    top + withSafety(para(joinSentences(all.slice(0, n)), floor, w).h) > SAFE_BOTTOM
+  ) {
+    n--;
+  }
+  const beside = para(joinSentences(all.slice(0, n)), floor, w);
+  const next = continued(
+    slide,
+    chromeOf(slide),
+    [para(joinSentences(all.slice(n)), body, SAFE.w)],
+    ids,
+  );
+  return [
+    withTerms({ ...slide, elements: [...keep, beside, placedSlot] }, t, hints.terms),
+    withTerms(next, t, hints.terms),
   ];
 }
 

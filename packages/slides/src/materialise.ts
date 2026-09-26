@@ -69,6 +69,9 @@ export function materialiseSlide(
   variant: number | string = 0,
   structure: SlideStructure = {},
 ): Slide {
+  // A slide with a diagram instruction is always laid out `headed`: the slot takes the right half,
+  // which a two-column body or a statement would leave no room for (GENERATION-RESULTS finding 3).
+  if (spec.kind === "content" && spec.diagram) variant = "headed";
   const laid = reid(layoutSlide(spec.kind, themeId, variant), ids);
   const filled = fillSlide(spec, themeId, laid, ids, variant);
   const stamp = provenance(spec.factRefs, meta);
