@@ -63,7 +63,7 @@ describe("eval scorers", () => {
     const lesson = generatedLesson();
     // One `age-fit` warning is stored on the fixture; a schema finding and a budget stop are not model checks.
     lesson.generation?.findings.push(
-      { check: "timing", severity: "warning", target: {}, message: "" },
+      { check: "explanation-share", severity: "warning", target: {}, message: "" },
       { check: "budget", severity: "error", target: {}, message: "" },
     );
     const result = await modelFindingsScorer.run({ input: "fixture", output: { lesson } });

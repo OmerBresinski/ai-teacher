@@ -64,7 +64,6 @@ const STEM_BLOCK_TYPES: ReadonlySet<string> = new Set(["question", "multiple-cho
 /** Kinds where a footnote (the `small` text) must not repeat an item (a `body` line). */
 const FOOTNOTE_KINDS: ReadonlySet<string> = new Set(["starter", "instructions", "exit-ticket"]);
 
-/** Explain-phase kinds: the minutes that teach rather than test. */
 /** The kinds that teach; the same set Plan's explain-share rule counts (`@tj/generation` specs). */
 const EXPLAIN_KINDS: ReadonlySet<string> = new Set([
   "content",
@@ -201,18 +200,19 @@ function checkRepetition(lesson: Lesson, worksheet?: Worksheet): Finding[] {
 
 function checkExplanationShare(lesson: Lesson): Finding[] {
   const facts = lesson.facts;
-  if (!facts || facts.outline.length === 0) return [];
-  const explain = facts.outline
-    .filter((entry) => EXPLAIN_KINDS.has(entry.kind))
-    .reduce((sum, entry) => sum + entry.minutes, 0);
-  // Integer arithmetic, as `timing` does.
-  if (explain * 100 >= facts.durationMin * EXPLANATION_SHARE_MIN_PERCENT) return [];
+  if (!facts) return [];
+  // Counted in slides (ruling 82): the outline after the title and objectives slides.
+  const taught = facts.outline.filter((e) => e.kind !== "title" && e.kind !== "objectives");
+  if (taught.length === 0) return [];
+  const explain = taught.filter((entry) => EXPLAIN_KINDS.has(entry.kind)).length;
+  const floor = Math.floor((taught.length * EXPLANATION_SHARE_MIN_PERCENT) / 100);
+  if (explain >= floor) return [];
   return [
     {
       check: "explanation-share",
       severity: "warning",
       target: {},
-      message: `Only ${explain} of ${facts.durationMin} minutes explain (content, worked example, picture, vocabulary); at least ${EXPLANATION_SHARE_MIN_PERCENT}% should.`,
+      message: `Only ${explain} of ${taught.length} slides explain (content, worked example, picture, vocabulary); at least ${EXPLANATION_SHARE_MIN_PERCENT}% should.`,
     },
   ];
 }
