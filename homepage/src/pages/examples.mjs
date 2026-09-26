@@ -44,7 +44,7 @@ const slideViewer = (example) => {
         <button type="button" class="viewer-step" data-step="-1" aria-label="Previous slide"><span aria-hidden="true" class="viewer-flip">${nextIcon}</span></button>
         <button type="button" class="viewer-step" data-step="1" aria-label="Next slide"><span aria-hidden="true">${nextIcon}</span></button>
       </div>
-      <div class="viewer-thumbs" role="group" aria-label="Choose a slide">${example.slides
+      <div class="viewer-thumbs" role="group" aria-label="Choose a slide" style="--count: ${example.slides.length}">${example.slides
         .map(
           (slide, index) =>
             `<button type="button" class="viewer-thumb" data-index="${index}" aria-label="Slide ${index + 1} of ${total}" aria-pressed="${index === 0}"${index === 0 ? ' aria-current="true"' : ""}><img src="${href(assetHref(example.slug, slide.src))}" alt="" width="1440" height="810" loading="lazy"></button>`,

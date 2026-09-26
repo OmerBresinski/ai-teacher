@@ -7,40 +7,56 @@
   "slides": [
     {
       "src": "slides/01.png",
-      "alt": "Slide 1, title: How sound travels. Year 4 science. Where does a sound come from, and how does it reach your ear? A drum sends curved sound lines towards an ear."
+      "alt": "Slide 1, title: How sound travels. Year 4 science. Where does a sound come from, and how does it reach your ear? A drum being hit, with curved sound lines travelling towards an ear."
     },
     {
       "src": "slides/02.png",
-      "alt": "Slide 2: By the end of this lesson. Sounds are made when something vibrates. Vibrations travel through a medium: a solid, a liquid or a gas. We hear when vibrations reach our ears. Sound cannot travel through empty space."
+      "alt": "Slide 2, objectives: By the end of this lesson. I can explain that sounds are made when something vibrates. I can describe how vibrations travel through a medium to the ear. I can explain why sound cannot travel through empty space."
     },
     {
       "src": "slides/03.png",
-      "alt": "Slide 3: Every sound starts with a vibration. A vibration is a very fast movement back and forth. Diagram of a ruler held on a table edge, its free end moving up and down after it is plucked. When the ruler stops moving, the sound stops too."
+      "alt": "Slide 3, starter: Listen for 30 seconds. What sounds can you hear right now? What do you think is making each one? Pupils list three sounds and share with a partner. A 30 second timer."
     },
     {
       "src": "slides/04.png",
-      "alt": "Slide 4: Vibrations pass from particle to particle. A drum on the left, rows of air particles bunched together and spread apart in the middle, and an ear on the right, with an arrow showing the vibration travelling towards the ear. The particles do not travel to your ear; the vibration does."
+      "alt": "Slide 4, vocabulary: Key words. Vibrate: to move back and forth very quickly. Vibration: one quick back-and-forth movement. Medium: what sound travels through, a solid, a liquid or a gas. Vacuum: a space with no particles at all, not even air."
     },
     {
       "src": "slides/05.png",
-      "alt": "Slide 5: Sound needs something to travel through. Four boxes: in a solid the particles are packed tightly and sound travels fastest; in a liquid they are close but can move and sound travels well; in a gas they are far apart and sound travels, but more slowly; empty space has no particles, so there is no sound."
+      "alt": "Slide 5: Every sound starts with a vibration. A vibration is a very fast movement back and forth. Diagram of a ruler pressed onto the edge of a table, with the free end moving up and down after it is plucked. When the ruler stops moving, the sound stops too."
     },
     {
       "src": "slides/06.png",
-      "alt": "Slide 6: Check your understanding. Three questions: What is happening to an object when it makes a sound? Put in order: the ear hears it, the drum vibrates, the air passes the vibration on. Why can’t sound travel through space?"
+      "alt": "Slide 6: Vibrations pass from particle to particle. A drum on the left, columns of air particles bunched together and spread apart in the middle, and an ear on the right, with an arrow showing the vibration travelling to the ear. The particles do not travel to your ear; the vibration does."
+    },
+    {
+      "src": "slides/07.png",
+      "alt": "Slide 7: Sound needs something to travel through. Four boxes: in a solid the particles are packed tightly and sound travels fastest; in a liquid they are close together but able to move and sound travels well; in a gas they are far apart and sound travels, but more slowly; empty space has no particles, so there is no sound."
+    },
+    {
+      "src": "slides/08.png",
+      "alt": "Slide 8, multiple choice: Which one can sound not travel through? A, water in a swimming pool. B, the wooden door of a classroom. C, the air in a playground. D, the empty space between planets. Pupils hold up a letter and explain their choice."
+    },
+    {
+      "src": "slides/09.png",
+      "alt": "Slide 9, matching: What is vibrating? Match each sound source to the part that vibrates. 1 guitar, 2 drum, 3 your voice, 4 recorder. A the air inside it, B the strings, C the vocal folds in your throat, D the drum skin."
+    },
+    {
+      "src": "slides/10.png",
+      "alt": "Slide 10, exit ticket: What must happen to an object for it to make a sound? Name the medium that carries sound from a teacher’s voice to your ear. Why can’t sound travel through space?"
     }
   ],
   "worksheet": {
     "pages": [
       {
         "src": "worksheet/01.png",
-        "alt": "Worksheet for How sound travels, with space for name, class and date and five questions: what must happen for an object to make a sound; number three steps to show how you hear a drum; tick the materials sound can travel through; where sound travels fastest; and why astronauts need radios in space."
+        "alt": "Cloze and matching worksheet for How sound travels: fill five gaps in a paragraph about sound using the word bank ear, medium, particles, vacuum and vibrates; draw lines matching a guitar, drum, voice and recorder to the part that vibrates; and explain why an astronaut cannot hear a spanner banged in empty space."
       }
     ],
     "answers": [
       {
         "src": "answers/01.png",
-        "alt": "Answer key for How sound travels: an object must vibrate; the order is drum skin vibrates, air particles pass it on, the ear receives it; sound travels through air, water and wood but not empty space; fastest in a solid; space has almost no particles to pass on vibrations."
+        "alt": "Answer key for How sound travels: the gaps are vibrates, medium, particles, ear and vacuum; guitar matches the strings, drum the drum skin, voice the vocal folds and recorder the air inside it; there is no medium in space to carry the vibrations."
       }
     ]
   }

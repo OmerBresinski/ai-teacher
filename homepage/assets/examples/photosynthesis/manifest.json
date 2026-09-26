@@ -11,36 +11,60 @@
     },
     {
       "src": "slides/02.png",
-      "alt": "Slide 2: The equation. Word equation: carbon dioxide plus water gives glucose plus oxygen, using light and chlorophyll. Balanced symbol equation: 6CO2 plus 6H2O gives C6H12O6 plus 6O2. Photosynthesis is endothermic: energy is transferred from the environment to the chloroplasts by light."
+      "alt": "Slide 2, objectives: Learning objectives. Write the word and balanced symbol equations for photosynthesis. Explain why photosynthesis is an endothermic reaction. Explain how light intensity, carbon dioxide and temperature limit the rate. Describe how plants use the glucose they make."
     },
     {
       "src": "slides/03.png",
-      "alt": "Slide 3: Where it happens. Photosynthesis happens in chloroplasts, which contain the green pigment chlorophyll. A cross-section of a leaf shows a row of tall palisade cells packed with chloroplasts under the upper epidermis, looser cells below, and carbon dioxide entering through a stoma in the lower surface. Water arrives from the roots in the xylem."
+      "alt": "Slide 3, starter: Where does a tree’s mass come from? A, the soil. B, the water it takes up. C, carbon dioxide from the air. D, sunlight. Pupils vote, then justify their answer to a partner."
     },
     {
       "src": "slides/04.png",
-      "alt": "Slide 4: Limiting factors. The rate of photosynthesis is limited by whichever factor is in shortest supply: light intensity, carbon dioxide concentration, temperature or the amount of chlorophyll. A graph of rate against light intensity rises steeply, where light is limiting, then levels off, where something else is limiting."
+      "alt": "Slide 4, vocabulary: Key terms. Chlorophyll: green pigment that absorbs light. Chloroplast: the part of a plant cell where photosynthesis happens. Stomata: tiny pores in the leaf that let gases in and out. Limiting factor: the factor in shortest supply, which stops the rate rising."
     },
     {
       "src": "slides/05.png",
-      "alt": "Slide 5: How plants use glucose. Glucose is used for respiration, which transfers energy; converted to starch, which is insoluble, for storage; used to make cellulose, which strengthens cell walls; combined with nitrate ions to make amino acids for proteins; and turned into fats and oils stored in seeds."
+      "alt": "Slide 5: The equation. Word equation: carbon dioxide plus water gives glucose plus oxygen, using light and chlorophyll. Balanced symbol equation: 6CO2 plus 6H2O gives C6H12O6 plus 6O2. Photosynthesis is endothermic: energy is transferred from the environment to the chloroplasts by light."
     },
     {
       "src": "slides/06.png",
-      "alt": "Slide 6: Exam practice. A student measured the rate of photosynthesis in pondweed at different light intensities. Explain why the rate stops increasing at high light intensity, for 3 marks, using the words limiting factor. A graph of rate against light intensity rises and then levels off."
+      "alt": "Slide 6: Inside a leaf. Most photosynthesis happens in the palisade cells, packed with chloroplasts near the top of the leaf. A labelled cross-section: upper epidermis, a row of tall palisade cells full of chloroplasts, a spongy layer with air spaces, and a stoma in the lower surface where carbon dioxide enters. Water arrives from the roots in the xylem."
+    },
+    {
+      "src": "slides/07.png",
+      "alt": "Slide 7: Limiting factors. The rate of photosynthesis is limited by whichever factor is in shortest supply: light intensity, carbon dioxide concentration, temperature or the amount of chlorophyll. A graph of rate against light intensity rises steeply, where light is limiting, then levels off, where another factor is limiting."
+    },
+    {
+      "src": "slides/08.png",
+      "alt": "Slide 8, worked example: Describe, then explain, a graph. Step 1, describe the pattern: as light intensity increases, the rate increases, then levels off. Step 2, explain the rise: at low light intensity, light is the limiting factor. Step 3, explain the plateau: another factor, such as carbon dioxide concentration or temperature, is now limiting. A graph of rate against light intensity."
+    },
+    {
+      "src": "slides/09.png",
+      "alt": "Slide 9, practise: True or false? Oxygen is produced during photosynthesis. Plants only respire at night. Increasing light intensity always increases the rate of photosynthesis. Photosynthesis takes in energy from its surroundings."
+    },
+    {
+      "src": "slides/10.png",
+      "alt": "Slide 10: How plants use glucose. Glucose is used for respiration, which transfers energy; converted to starch, which is insoluble, for storage; used to make cellulose, which strengthens cell walls; combined with nitrate ions to make amino acids for proteins; and turned into fats and oils stored in seeds."
+    },
+    {
+      "src": "slides/11.png",
+      "alt": "Slide 11, fill the gap: Complete the sentences. Photosynthesis takes place in the blank, which contain the green pigment blank. Carbon dioxide enters the leaf through the blank. Water travels up from the roots in the blank. Word bank: chlorophyll, chloroplasts, phloem, stomata, xylem."
+    },
+    {
+      "src": "slides/12.png",
+      "alt": "Slide 12, exam question: A student measured the rate of photosynthesis in pondweed at different light intensities. Explain why the rate stops increasing at high light intensity, for 3 marks, using the words limiting factor. A graph of rate against light intensity rises and then levels off."
     }
   ],
   "worksheet": {
     "pages": [
       {
         "src": "worksheet/01.png",
-        "alt": "Worksheet for Photosynthesis, with space for name, class and date and five questions: complete the word equation; name the green pigment and where it is found; what endothermic means; three limiting factors; and two ways a plant uses glucose."
+        "alt": "Exam-style worksheet for Photosynthesis with marks for each question: complete the word equation; explain what endothermic means; describe and explain the shape of a graph of rate against light intensity, for 4 marks; and give two ways a plant uses glucose."
       }
     ],
     "answers": [
       {
         "src": "answers/01.png",
-        "alt": "Answer key for Photosynthesis: carbon dioxide plus water gives glucose plus oxygen; chlorophyll in the chloroplasts; energy is taken in from the surroundings by light; light intensity, carbon dioxide concentration, temperature and amount of chlorophyll; glucose is used for respiration, starch, cellulose, amino acids, and fats or oils."
+        "alt": "Answer key for Photosynthesis with mark points: carbon dioxide and oxygen; energy is transferred from the surroundings by light; the rate increases then levels off because light is limiting at first and another factor limits it at high intensity; glucose is used for respiration, starch, cellulose, amino acids, and fats or oils."
       }
     ]
   }
