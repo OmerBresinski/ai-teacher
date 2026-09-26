@@ -47,7 +47,7 @@ export interface FillResult {
 
 export type FillDeps = Pick<
   PipelineDeps,
-  "ai" | "budget" | "signal" | "logger" | "context" | "now" | "ids"
+  "ai" | "budget" | "signal" | "logger" | "context" | "now" | "ids" | "effortFor"
 >;
 
 export async function fillFrame(input: FillInput, deps: FillDeps): Promise<FillResult> {

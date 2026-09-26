@@ -11,6 +11,7 @@ import {
   callStructured,
   imageMediaType,
   providerOptionsFor,
+  REASONING_EFFORTS,
   specRuleFinding,
   wireSchemaFor,
 } from "./call";
@@ -297,10 +298,19 @@ describe("providerOptionsFor (the effort under every provider's namespace, ADR 0
   });
 
   test("every offered effort is forwarded verbatim to OpenAI; `minimal` is not in the type", () => {
-    for (const effort of ["none", "low", "medium", "high"] as const) {
+    for (const effort of REASONING_EFFORTS) {
       const sent = providerOptionsFor("openai/gpt-5.6-luna", effort).providerOptions?.openai;
       expect(sent?.reasoningEffort).toBe(effort);
     }
+  });
+
+  test("`xhigh` (AI_REASONING_EFFORT only) goes as is to OpenAI and Bedrock, and as `high` elsewhere", () => {
+    const options = providerOptionsFor("openai/gpt-6-luna", "xhigh").providerOptions;
+    expect(options?.openai.reasoningEffort).toBe("xhigh");
+    expect(options?.bedrock.reasoningConfig.maxReasoningEffort).toBe("xhigh");
+    expect(options?.google).toEqual({ thinkingConfig: { thinkingLevel: "high" } });
+    expect(options?.alibaba).toEqual({ enableThinking: true });
+    expect(options?.deepseek).toEqual({ thinking: { type: "enabled" } });
   });
 });
 
