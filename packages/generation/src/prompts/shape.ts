@@ -6,6 +6,12 @@ import type { LessonShape, PriorConfidence } from "../shapes";
  * verb. Every sentence here is also a rule `planSkeletonSchemaFor` / `planFactsSchemaFor` checks,
  * so the model reads what the retry will name. Rendered inside `briefBlock`, so both Plan calls
  * see the same shape; any wording change here bumps `plan-skeleton` and `plan-facts`.
+ *
+ * UX ruling 82: a lesson's size is its slide count, and no slide carries minutes, so the explain
+ * and practise floors are shares of the slides after the title and objectives slides. When the
+ * brief fixes the count the sentences give whole slides (`slidesFor`, the same floor the schema
+ * uses), because a model meets "at least 3 of the 8" more reliably than it does arithmetic on a
+ * percentage; without a count they fall back to the percentage.
  */
 
 const CLASS_OF: Record<PriorConfidence, string> = {
@@ -30,8 +36,19 @@ export function phaseOfKind(kind: string): string {
   return PHASE_OF_KIND[kind] ?? "practise";
 }
 
-/** Sentences the outline is held to; each maps to one refinement in `planSkeletonSchemaFor`. */
-export function shapeBlock(shape: LessonShape): string[] {
+/**
+ * The slides a percent floor asks for among `taught` slides (the outline after the title and
+ * objectives slides): floor(taught × percent / 100), the count `planSkeletonSchemaFor` checks.
+ */
+export function slidesFor(percent: number, taught: number): number {
+  return Math.floor((taught * percent) / 100);
+}
+
+/**
+ * Sentences the outline is held to; each maps to one refinement in `planSkeletonSchemaFor`.
+ * `slideCount` is the brief's fixed outline length, title and objectives slides included.
+ */
+export function shapeBlock(shape: LessonShape, slideCount?: number): string[] {
   const lines = [
     `This is ${article(shape.verb)} ${shape.verb} lesson for ${CLASS_OF[shape.confidence]}.`,
   ];
@@ -55,10 +72,7 @@ export function shapeBlock(shape: LessonShape): string[] {
   lines.push(
     `At least ${shape.minCheckEntries} slides where pupils answer (the practise and check phases together).`,
   );
-  lines.push(`Explain slides take at least ${shape.explainMinPercent}% of the minutes.`);
-  if (shape.practiseMinPercent > 0) {
-    lines.push(`Practise slides take at least ${shape.practiseMinPercent}% of the minutes.`);
-  }
+  lines.push(...shareLines(shape, slideCount));
   if (shape.requireWorkedExampleBeforePractise) {
     lines.push(
       "The worked-example is the method, with steps, and comes before any practise slide; in a subject without calculations it annotates a model answer step by step.",
@@ -81,6 +95,45 @@ export function shapeBlock(shape: LessonShape): string[] {
     );
   }
   return lines;
+}
+
+/**
+ * The explain and practise floors in slides (ruling 82). Explain counts by kind, practise by phase,
+ * as the system prompt defines them. A floor that rounds down to no slides says nothing.
+ */
+function shareLines(shape: LessonShape, slideCount: number | undefined): string[] {
+  const lines: string[] = [];
+  if (slideCount === undefined) {
+    lines.push(
+      `At least ${shape.explainMinPercent}% of the slides after the title and objectives slides are explain slides.`,
+    );
+    if (shape.practiseMinPercent > 0) {
+      lines.push(
+        `At least ${shape.practiseMinPercent}% of the slides after the title and objectives slides are in the practise phase.`,
+      );
+    }
+    return lines;
+  }
+  const taught = Math.max(slideCount - 2, 0);
+  const explain = slidesFor(shape.explainMinPercent, taught);
+  const practise = slidesFor(shape.practiseMinPercent, taught);
+  if (explain > 0) {
+    lines.push(explainSentence(explain, taught));
+  }
+  if (practise > 0) {
+    lines.push(practiseSentence(practise, taught));
+  }
+  return lines;
+}
+
+/** The explain-floor sentence; `refineShape` opens its issue with the same text. */
+export function explainSentence(floor: number, counted: number): string {
+  return `At least ${floor} of the ${counted} slides after the title and objectives slides ${floor === 1 ? "is an explain slide" : "are explain slides"}.`;
+}
+
+/** The practise-floor sentence; `refineShape` opens its issue with the same text. */
+export function practiseSentence(floor: number, counted: number): string {
+  return `At least ${floor} of the ${counted} slides after the title and objectives slides ${floor === 1 ? "is" : "are"} in the practise phase.`;
 }
 
 /**

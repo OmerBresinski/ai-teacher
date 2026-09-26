@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { assignFactIds, type VerifyCorrection } from "../specs";
-import { FIXTURES } from "../testing";
-import { applyVerifyPatch, VERIFY_FAILED_FINDING, verifyFinding } from "./verify";
+import { type Audience, verifyFactsPrompt } from "../prompts";
+import { assignFactIds, type VerifyCorrection, verifyOutputSchemaFor } from "../specs";
+import { answeringAi, FIXTURES, recordingDeps } from "../testing";
+import { touchesCorrected } from "./generate";
+import { applyVerifyPatch, runVerify, VERIFY_FAILED_FINDING, verifyFinding } from "./verify";
 
 /* `applyVerifyPatch` (TEACH-212): pure, immutable, schema-parsed. */
 
@@ -43,6 +45,27 @@ describe("applyVerifyPatch", () => {
       "They break free and slide past each other.",
     ]);
     expect(applied).toHaveLength(1);
+  });
+
+  test("audit A6: a distractors correction with an index replaces that option's text only", () => {
+    const before = facts();
+    const i = before.questions.findIndex((q) => (q.distractors?.length ?? 0) > 1);
+    const q = before.questions[i];
+    if (!q?.distractors) throw new Error("fixture has no question with distractors");
+    const correction = c({ factId: q.id, field: "distractors", index: 1, value: "Clay" });
+    const { facts: after, applied } = applyVerifyPatch(before, [
+      correction,
+      c({ factId: q.id, field: "distractors", index: 9, value: "Sand" }),
+      c({ factId: q.id, field: "distractors", value: "Sand" }),
+    ]);
+    expect(after.questions[i]?.distractors?.map((d) => d.text)).toEqual(
+      q.distractors.map((d, j) => (j === 1 ? "Clay" : d.text)),
+    );
+    expect(after.questions[i]?.distractors?.[1]?.misconceptionRef).toEqual(
+      q.distractors[1]?.misconceptionRef,
+    );
+    expect(applied).toEqual([correction]);
+    expect(verifyFinding(correction).message).toMatch(/^Question distractor corrected: /);
   });
 
   test("row 4: an empty patch returns equal facts and nothing applied", () => {
@@ -107,5 +130,112 @@ describe("verifyFinding", () => {
       "Key idea statement corrected: named something that does not exist.",
     );
     expect(VERIFY_FAILED_FINDING.target).toEqual({});
+  });
+});
+
+/*
+ * l6c (luna-direct DIAGNOSIS FM5: 9 of 38 false claims came from the starter, which verify never
+ * saw): the starter's retrieval set goes through the same call as the facts, as `r1`–`rN`.
+ */
+describe("verify: the starter's retrieval questions (l6c)", () => {
+  const retrieval = [
+    { question: "Who invaded Britain in AD 43?", answer: "The Vikings" },
+    { question: "Who wrote The Tempest?", answer: "Gonzalo" },
+    { question: "Name one Roman road.", answer: "Watling Street" },
+  ];
+  const withStarter = () => ({ ...facts(), retrieval: structuredClone(retrieval) });
+  const audience = { yearGroup: "Year 5", subject: "History" } as unknown as Audience;
+
+  test("the prompt lists r1–r3 after the facts; without a retrieval set it is unchanged", () => {
+    const plain = verifyFactsPrompt.user({ audience, topic: "Romans", facts: facts() });
+    const started = verifyFactsPrompt.user({ audience, topic: "Romans", facts: withStarter() });
+    expect(plain).not.toContain("Starter questions");
+    expect(started.startsWith(plain)).toBe(true);
+    expect(started.slice(plain.length).split("\n")).toEqual([
+      "",
+      "Starter questions (earlier learning, not this lesson):",
+      "  r1: Who invaded Britain in AD 43? — The Vikings",
+      "  r2: Who wrote The Tempest? — Gonzalo",
+      "  r3: Name one Roman road. — Watling Street",
+    ]);
+    const empty = verifyFactsPrompt.user({
+      audience,
+      topic: "Romans",
+      facts: { ...facts(), retrieval: [] },
+    });
+    expect(empty).toBe(plain);
+  });
+
+  test("a wrong-answer on r2.answer patches retrieval[1].answer; a stem correction patches the question", () => {
+    const before = withStarter();
+    const { facts: after, applied } = applyVerifyPatch(before, [
+      c({ factId: "r2", field: "answer", value: "William Shakespeare", reason: "wrong-answer" }),
+      c({
+        factId: "r1",
+        field: "stem",
+        value: "Who invaded Britain in AD 43, under Claudius?",
+        reason: "ambiguous",
+      }),
+    ]);
+    expect(applied).toHaveLength(2);
+    expect(after.retrieval?.[1]).toEqual({
+      question: "Who wrote The Tempest?",
+      answer: "William Shakespeare",
+    });
+    expect(after.retrieval?.[0]?.question).toBe("Who invaded Britain in AD 43, under Claudius?");
+    expect(after.retrieval?.[2]).toEqual(retrieval[2] as { question: string; answer: string });
+    expect(before.retrieval?.[1]?.answer).toBe("Gonzalo");
+  });
+
+  test("an off-topic correction on a starter is dropped; so is an unknown r id, a wrong field or an index", () => {
+    const before = withStarter();
+    const { facts: after, applied } = applyVerifyPatch(before, [
+      c({ factId: "r1", field: "answer", value: "The Romans", reason: "off-topic" }),
+      c({ factId: "r4", field: "answer", value: "Nobody", reason: "wrong-answer" }),
+      c({ factId: "r2", field: "term", value: "Playwright", reason: "wrong-term" }),
+      c({ factId: "r2", field: "answer", index: 0, value: "Shakespeare", reason: "wrong-answer" }),
+    ]);
+    expect(applied).toEqual([]);
+    expect(after.retrieval).toEqual(retrieval);
+    // Without a retrieval set an r id is unknown to the schema, so the call retries it.
+    expect(
+      verifyOutputSchemaFor(facts()).safeParse({
+        corrections: [c({ factId: "r1", field: "answer", value: "x", reason: "wrong-answer" })],
+      }).success,
+    ).toBe(false);
+  });
+
+  test("the finding names the starter, not a fact id the editor cannot open", () => {
+    expect(
+      verifyFinding(
+        c({ factId: "r2", field: "answer", value: "William Shakespeare", reason: "wrong-answer" }),
+      ),
+    ).toEqual({
+      check: "fact-verify",
+      severity: "warning",
+      target: {},
+      message: "Starter question answer corrected: the answer was wrong.",
+    });
+  });
+
+  test("runVerify: the call's r2 correction reaches the facts it hands on", async () => {
+    const reply = JSON.stringify({
+      corrections: [
+        { factId: "r2", field: "answer", value: "William Shakespeare", reason: "wrong-answer" },
+      ],
+    });
+    const deps = recordingDeps(answeringAi([reply]));
+    const result = await runVerify(withStarter(), { topic: "Romans", audience }, deps, "standard");
+    expect(result.applied).toHaveLength(1);
+    expect(result.facts.retrieval?.[1]?.answer).toBe("William Shakespeare");
+  });
+
+  test("generate: a starter written before the patch landed is written again when a starter question was corrected", () => {
+    const starter = { kind: "starter", factRefs: [] } as never;
+    const content = { kind: "content", factRefs: ["k1"] } as never;
+    const slide = { elements: [] } as never;
+    expect(touchesCorrected(starter, slide, new Set(["r2"]))).toBe(true);
+    expect(touchesCorrected(content, slide, new Set(["r2"]))).toBe(false);
+    expect(touchesCorrected(starter, slide, new Set(["v1"]))).toBe(false);
   });
 });

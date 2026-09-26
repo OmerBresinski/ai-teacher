@@ -4,12 +4,27 @@ import { lessonShapeOf } from "../shapes";
 import { assignFactIds, PITCH_BOUNDS, WorksheetSpecSchema } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
+import { generateSlidePrompt, ownMisconceptions } from "./generate-slide";
 import { generateWorksheetFillPrompt, type WorksheetFill } from "./generate-worksheet-fill";
 import { promptHash } from "./hash";
-import { PROMPT_VERSIONS, PROMPTS, type PromptName, VERB_WRITING, verbBlock } from "./index";
+import {
+  PROMPT_VERSIONS,
+  PROMPTS,
+  type PromptName,
+  type RepairInput,
+  VERB_WRITING,
+  verbBlock,
+} from "./index";
 import { parseBriefPrompt } from "./parse-brief";
 import { planFactsPrompt } from "./plan-facts";
+import {
+  PLAN_FACTS_OBJECTIVE_SAMPLE,
+  PLAN_OBJECTIVES_SAMPLE,
+  PLAN_QUESTION_SET_SAMPLE,
+  PLAN_TEACH_OBJECTIVE_SAMPLE,
+} from "./plan-samples";
 import { planSkeletonPrompt, SOURCE_INSTRUCTION } from "./plan-skeleton";
+import { verifyFactsPrompt } from "./verify-facts";
 
 /*
  * ADR 0025 §17: every prompt's wording is pinned to its version. Change the text → change the
@@ -58,6 +73,10 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   "check-input": { topic: brief.topic, answers: brief.answers, audience: brief.audience },
   "plan-skeleton": brief,
   "plan-facts": { ...brief, skeleton: FIXTURES.planSkeleton },
+  "plan-objectives": PLAN_OBJECTIVES_SAMPLE,
+  "plan-facts-objective": PLAN_FACTS_OBJECTIVE_SAMPLE,
+  "plan-teach-objective": PLAN_TEACH_OBJECTIVE_SAMPLE,
+  "plan-question-set": PLAN_QUESTION_SET_SAMPLE,
   "verify-facts": { audience, topic: brief.topic, facts },
   "generate-slide": {
     referenced: facts,
@@ -131,6 +150,13 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
     target: { kind: "slide", slideKind: "multiple-choice", slideId: "s7", text: "Which state?" },
     findings: [
       {
+        check: "verb-fit",
+        severity: "warning",
+        target: { slideId: "s7" },
+        message: "Asks pupils to name, not explain.",
+        evidence: "Which state?",
+      },
+      {
         check: "answer-correctness",
         severity: "error",
         target: { slideId: "s7" },
@@ -139,6 +165,12 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
       },
     ],
     shape: 'a "multiple-choice" slide spec',
+    context: {
+      slides: [
+        { position: 5, kind: "content", text: "Solids keep their shape.", why: "taught-earlier" },
+        { position: 6, kind: "worked-example", text: "Is ice a solid?", why: "before" },
+      ],
+    },
   },
   "repair-fact": {
     audience,
@@ -165,64 +197,81 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
 
 const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "check-input": {
-    version: "check-input.v3",
-    hash: "bed12ac4b597d3498293a741964a456f6e0c531aa49acdde2e20809a19e9a6f5",
+    version: "check-input.v4",
+    hash: "a4f3ff2d86262252006017bc4176e8d7a384fdeeaa87982b32c66a6044c8db69",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v17",
-    hash: "6636dd50d34902275a3129c22d2ba1676bd3c5daec114e862afdac4f76199d1f",
+    version: "plan-skeleton.v19",
+    hash: "7333757394f2391ab9921f089296dc415cabdbd195308ff6ce552ab54453d6a2",
   },
   "plan-facts": {
-    version: "plan-facts.v9",
-    hash: "c13dea5ab5e5587dd74f09e74d6c90a2081ed0804e43572ac622ab1d3a95cbd4",
+    version: "plan-facts.v11",
+    hash: "a582769329a1e3bc2652808dd41c8fc87c8c68e18b1f6b95d8c46407c44253c3",
+  },
+  "plan-objectives": {
+    version: "plan-objectives.v18",
+    hash: "4ce288b25f09eec5f5a6a357bfb931677dcbc5a6d210dad01f9bbc64174308e6",
+  },
+  "plan-facts-objective": {
+    version: "plan-facts-objective.v14",
+    hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
+  },
+  "plan-teach-objective": {
+    version: "plan-teach-objective.v3",
+    hash: "c74a0723399b8f7cd3c5fc7256bbd9d3345f450b00d48590e6e1f1f970d7fd2c",
+  },
+  "plan-question-set": {
+    version: "plan-question-set.v7",
+    hash: "5cf0f133c71c328ce0c72ceb9be2e3b4a93cbc81fb4be0234d9b068c9dce8e64",
   },
   "verify-facts": {
-    version: "verify-facts.v1",
-    hash: "269d0d36bc62828b6e101b686d99fb3925182139ec2adbf86034f9d272398252",
+    version: "verify-facts.v6",
+    hash: "e80585b89cd1ea9fc83f21b6f193109e72d5e022bef4407ea26ffd6061183e22",
   },
   "generate-slide": {
-    version: "generate-slide.v17",
-    hash: "93f1e7176083f7c6582ad25ceee1f8ae6e6fed1513c870024ba6c18ab2e95e96",
+    // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
+    version: "generate-slide.v25",
+    hash: "e3953495e78f5e8746ca4a39e00004a8756720a703f2503954ca11d5fcc5a072",
   },
   "generate-worksheet": {
-    version: "generate-worksheet.v9",
-    hash: "939c884f8b07fbf14a493887ec89df5b829ac7e3592370a7efd67c6ed474ce08",
+    version: "generate-worksheet.v10",
+    hash: "a0cd4c974c6ef8701734f2efc73676e98e101c9857f178fd8e9385913ec16a3e",
   },
   "generate-worksheet-fill": {
-    version: "generate-worksheet-fill.v1",
-    hash: "cda2c51a0a4dcee3984910be0759fab02691fd7e3f5977ac0a70d0ebef7c316c",
+    version: "generate-worksheet-fill.v2",
+    hash: "dcfcd48eb742584bab6a4bab5d25ce9a40fc7aa76de4cea828f2175e11a074b8",
   },
   "parse-brief": {
-    version: "parse-brief.v1",
-    hash: "fc3302b61a3673236ebee7e2616e9db83d2d7390cda5a4f091304af99294eba8",
+    version: "parse-brief.v2",
+    hash: "b4507f7a3335f4638d0460bfaa95e4bde0df51bebcee9521ba1f7a4f703d9be9",
   },
   "shortlist-photos": {
-    version: "shortlist-photos.v2",
-    hash: "1bca44f4c61f12113e44be1ec038d596c4dba84dafd8cbb0ffa0807240f2d081",
+    version: "shortlist-photos.v3",
+    hash: "7fbcbfb66ce32bc9e3c99c189cdf72991c772c79dc6e0dba9360d8dad75e8be6",
   },
   "pick-or-requery-photo": {
-    version: "pick-or-requery-photo.v6",
-    hash: "f3ac118e19b5ff1051618ca4823658c778e38d0c076d292c3e15b8a5cd9b6b26",
+    version: "pick-or-requery-photo.v7",
+    hash: "5d38c9bafd55fa9938b767a885661963f6e0416bbc571642829eb5735726520f",
   },
   evaluate: {
-    version: "evaluate.v6",
-    hash: "e12329a1427665290602ee85bb5fb720fe2ebe33467c07fb16974cd312a9b037",
+    version: "evaluate.v8",
+    hash: "6207e235c290272a2b5c20309f9ab92655be19f0ca67b18416b8a6998e1d73ff",
   },
   repair: {
-    version: "repair.v11",
-    hash: "bdedd08451aca8165e8ecfb7d4a5796108f62871ca57f75198215c0f04d17a87",
+    version: "repair.v15",
+    hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
-    version: "repair-fact.v2",
-    hash: "8f156fb5f6d9ad596b271de7d50a2f1ba500a75e1e7b63855bd2ff135a3ab9f6",
+    version: "repair-fact.v5",
+    hash: "c4eb2f681babc21303581384470cbff4e89adb4e06b6d908fa2c2a91e34b14e7",
   },
   cascade: {
-    version: "cascade.v2",
-    hash: "8111e79f21a141c7947e8c148d7a1fdb8956764cd1ea53d41ffda729851df476",
+    version: "cascade.v4",
+    hash: "2ac2c429f2b3dc487829d322366acd6de3a88bc9d96d3e9b503f982fc27766d0",
   },
   regenerate: {
-    version: "regenerate.v2",
-    hash: "53cd60826e8944cd65e473c1500fb50c9493ed3822c32105f3c652a269be0dd1",
+    version: "regenerate.v4",
+    hash: "decd8c0815c63c391acb2023b23a89aae83d1e2a886167ca0f238cac03bd5102",
   },
 };
 
@@ -266,10 +315,15 @@ describe("prompt versions", () => {
 
   test("TEACH-258: examples replace prose within each prompt's baseline word budget", () => {
     const budgets = {
-      "generate-slide": 1009,
+      // v19 was 990 words; v20 (minimalism rubric, 23 Sep 2026) is 956. v22 (+15: the two-key-idea
+      // content rule and its 60-word body) is 971 and must stay under this. v25 (the build-up
+      // order, luna-direct FM3) is 979.
+      "generate-slide": 980,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
-      repair: 503,
+      // v13 was 415 words. v14 (lab round 1, +97: errors first and answer lines kept, once-in-the-
+      // lesson against the slides shown, taught-earlier scope, verb-fit at the class's level) is 512; the review wording (errors, then warnings) makes it 515.
+      repair: 520,
     } as const;
     for (const name of Object.keys(budgets) as (keyof typeof budgets)[]) {
       expect(PROMPTS[name].system.trim().split(/\s+/).length, name).toBeLessThan(budgets[name]);
@@ -302,7 +356,8 @@ describe("prompt versions", () => {
   });
 
   test("TEACH-67: the skeleton takes the fixed slide count, the level and the pinned objectives", () => {
-    const RANGE = "Give 8–12 outline slides for an hour-long lesson (fewer for a shorter one).";
+    const RANGE =
+      "Give 8–12 outline slides, counting the title and objectives slides; fewer for a lesson much shorter than an hour.";
     const fixed = planSkeletonPrompt.user({ ...brief, slideCount: 8 });
     expect(fixed).toContain(
       "The outline has exactly 8 slides, counting the title and objectives slides.",
@@ -446,11 +501,13 @@ describe("prompt versions", () => {
     expect(generateWorksheetFillPrompt.system).toContain("the shape wins");
   });
 
-  test("every prompt states the house rules and asks for JSON", () => {
+  test("every prompt states the house rules", () => {
+    // "Answer with the requested JSON only" left the house rules on 23 Sept 2026: `call.ts` repairs
+    // the text and validates it against the schema, so no prompt has to ask for JSON.
     for (const prompt of Object.values(PROMPTS)) {
       expect(prompt.system).toContain("British English");
       expect(prompt.system).toContain("Never invent or include the name of any pupil");
-      expect(prompt.system).toMatch(/JSON/);
+      expect(prompt.system).not.toContain("JSON only");
     }
   });
 
@@ -474,7 +531,24 @@ describe("prompt versions", () => {
       "At least 2 content slides, each explaining one mechanism (how or why).",
     );
     expect(revisiting).not.toContain("the definition first");
-    expect(skeleton).toContain("Explain slides take at least 40% of the minutes.");
+    // Ruling 82: the floors are slides after the title and objectives, whole slides for a fixed
+    // count (10 → 8 taught; 40% → 3), the percentage when the brief leaves the count open.
+    expect(skeleton).toContain(
+      "At least 3 of the 8 slides after the title and objectives slides are explain slides.",
+    );
+    const open = PROMPTS["plan-skeleton"].user({
+      ...(SAMPLE_INPUTS["plan-skeleton"] as object),
+      slideCount: undefined,
+    } as never);
+    expect(open).toContain(
+      "At least 40% of the slides after the title and objectives slides are explain slides.",
+    );
+    // No outline minutes anywhere in either Plan call; the skeleton's lesson-length line is the
+    // brief's, and `factsBlock` renders none since 23 Sept 2026 (ruling 82).
+    for (const text of [skeleton, open, planSkeletonPrompt.system]) {
+      expect(text.replace(/Lesson length: \d+ minutes/, "")).not.toMatch(/minute|\bmin\b/);
+    }
+    expect(outlineOfExample().some((e) => "minutes" in e)).toBe(false);
     expect(skeleton).toContain(
       "Confront the misconception on a true-false slide or as a multiple-choice distractor.",
     );
@@ -484,6 +558,8 @@ describe("prompt versions", () => {
     const facts = PROMPTS["plan-facts"].user(SAMPLE_INPUTS["plan-facts"] as never);
     expect(facts).toContain("This is an Explain lesson for a class new to the topic.");
     expect(facts).toContain("Question tiers: 5 easy, 5 core, 2 stretch (at least 12 in all).");
+    expect(facts).toContain("Outline (position: kind, phase — what the slide adds):");
+    expect(facts.replace(/Lesson length: \d+ minutes/, "")).not.toMatch(/minute|\bmin\b/);
     // TEACH-240: mustShow names what an ordinary photograph shows; our own example used to be "front teeth".
     expect(planSkeletonPrompt.system).toContain("a stranger would take it");
     expect(planSkeletonPrompt.system).not.toContain('"front teeth"');
@@ -534,11 +610,108 @@ describe("prompt versions", () => {
     expect(steps[3]).toMatch(/^So /);
     const vocab = PROMPTS["generate-slide"].user({
       ...(SAMPLE_INPUTS["generate-slide"] as object),
-      entry: { kind: "vocabulary", minutes: 5, factRefs: ["v1"] },
+      entry: { kind: "vocabulary", factRefs: ["v1"] },
       vocabularySlots: 4,
     } as never);
     expect(vocab).toContain("at most 4 vocabulary entries");
     expect(vocab).toContain("keep every term another shown definition uses");
+  });
+
+  test("UX ruling 81: the shared practise slide asks its questions verbatim and keeps the answers in notes", () => {
+    const system = PROMPTS["generate-slide"].system;
+    const rule = system.slice(
+      system.indexOf("When an `instructions` slide's facts include questions"),
+    );
+    expect(rule).not.toBe(system);
+    const line = rule.slice(0, rule.indexOf("\n"));
+    expect(line).toContain('`heading` "Your turn"');
+    expect(line).toContain("stems verbatim, in the order this slide's facts name them");
+    expect(line).toContain("with no number (the layout numbers them)");
+    expect(line).toContain('`notes` gives each answer on its own line ("1. <answer>")');
+    expect(line).toContain("the misconception to watch for");
+    expect(line).toContain("mini-whiteboards or books");
+    // Minimalism rubric (v20): the reserved stems are listed once, in the user turn, with the one
+    // instruction not to use them; the system prompt no longer repeats "never a reserved stem".
+    expect(system).not.toContain("reserved stem");
+    const user = PROMPTS["generate-slide"].user({
+      ...(SAMPLE_INPUTS["generate-slide"] as object),
+      entry: { kind: "instructions", factRefs: ["q4"] },
+    } as never);
+    expect(user).toContain("do not use these stems");
+  });
+
+  test("quality PRD G3: the slide line assigns the callout; the shape shows it once, conditionally", () => {
+    const system = PROMPTS["generate-slide"].system;
+    expect(system).toContain("`callout`, where shown, only when the slide line assigns one");
+    expect(system).toContain('"callout"?: { "kind", "text" }');
+    expect(system).toContain("callout text ≤ 120");
+    // Only the three teaching kinds carry the box.
+    const shapeLines = system.split("\n").filter((l) => l.includes('"callout"?'));
+    expect(shapeLines.map((l) => l.slice(2, l.indexOf(":")))).toEqual([
+      "content",
+      "image-text",
+      "worked-example",
+    ]);
+    const base = SAMPLE_INPUTS["generate-slide"] as object;
+    const withBox = PROMPTS["generate-slide"].user({
+      ...base,
+      entry: {
+        kind: "content",
+        factRefs: ["k1"],
+        callout: { kind: "watch-out", factRefs: ["m1"] },
+      },
+    } as never);
+    expect(withBox).toContain(
+      'This slide carries a "watch-out" callout: set `callout` to kind "watch-out" with `text` one line for pupils, from m1 only.',
+    );
+    const without = PROMPTS["generate-slide"].user({
+      ...base,
+      entry: { kind: "content", factRefs: ["k1"] },
+    } as never);
+    expect(without).not.toContain("callout");
+  });
+
+  test("lab r3: a teaching slide is shown the questions that later test it, and told to teach what their answers need", () => {
+    const base = SAMPLE_INPUTS["generate-slide"] as object;
+    const withLater = PROMPTS["generate-slide"].user({
+      ...base,
+      laterQuestions: [
+        { stem: "Which state has particles furthest apart?", answer: "Gas" },
+        { stem: "Explain why a gas fills its container.", answer: "Its particles move freely." },
+      ],
+    } as never);
+    expect(withLater).toContain(
+      "Asked of pupils later in the lesson, on later slides (shown for reference):\n  - Which state has particles furthest apart? — answer: Gas\n  - Explain why a gas fills its container. — answer: Its particles move freely.\nTeach here, within this slide's limits, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions.",
+    );
+    // The block sits before the closing line, once.
+    expect(withLater.indexOf("Asked of pupils later")).toBeLessThan(
+      withLater.indexOf("Answer with the JSON"),
+    );
+    expect(withLater.split("Asked of pupils later")).toHaveLength(2);
+    // Absent or empty (production, and lab slides nothing later tests): the block is not rendered.
+    const without = PROMPTS["generate-slide"].user(base as never);
+    const empty = PROMPTS["generate-slide"].user({ ...base, laterQuestions: [] } as never);
+    expect(without).not.toContain("later in the lesson");
+    expect(empty).toBe(without);
+  });
+
+  test("audit B4: reserved stems reach only the kinds that compose one; vocabulary is defined where used", () => {
+    const base = SAMPLE_INPUTS["generate-slide"] as { referenced: object };
+    const render = (kind: string) =>
+      PROMPTS["generate-slide"].user({ ...base, entry: { kind, factRefs: ["v1", "k1"] } } as never);
+    expect(render("sort")).toContain("Reserved for other slides");
+    for (const kind of ["content", "worked-example", "multiple-choice", "vocabulary"]) {
+      expect(render(kind)).not.toContain("Reserved for other slides");
+    }
+    const define = "Define each vocabulary term in a few words where the slide first uses it";
+    expect(render("content")).toContain(define);
+    expect(render("vocabulary")).not.toContain(define);
+    const noVocabulary = PROMPTS["generate-slide"].user({
+      ...base,
+      referenced: { ...base.referenced, vocabulary: [] },
+      entry: { kind: "content", factRefs: ["k1"] },
+    } as never);
+    expect(noVocabulary).not.toContain(define);
   });
 
   test("TEACH-241: the judge picks a photo showing at least one required item, not all of them", () => {
@@ -570,6 +743,8 @@ describe("prompt versions", () => {
     expect(text).toContain("Year 8");
     expect(text).toContain("o1:");
     expect(text).toContain('kind "vocabulary"');
+    // Ruling 82: the slide line has no minutes, whether or not the entry still carries them.
+    expect(text).toContain('Slide 4 of 10: kind "vocabulary", explain phase, covering facts');
   });
 
   test("TEACH-230 row 1: an Apply content slide is told the Apply paragraph and not the Explain one", () => {
@@ -579,7 +754,7 @@ describe("prompt versions", () => {
     });
     const text = PROMPTS["generate-slide"].user({
       ...(SAMPLE_INPUTS["generate-slide"] as object),
-      entry: { kind: "content", minutes: 5, factRefs: ["k1"] },
+      entry: { kind: "content", factRefs: ["k1"] },
       shape: { verb: apply.verb, confidence: apply.confidence },
     } as never);
     expect(text).toContain("Objective verb: Apply.");
@@ -627,6 +802,49 @@ describe("prompt versions", () => {
     expect(VERB_WRITING.Recall).toContain("three things");
     expect(VERB_WRITING.Apply).toContain("three short problems");
     expect(PROMPTS.repair.system).toContain("A verb-fit problem is fixed by changing the task");
+  });
+
+  test("lab r1: Repair shows the read-only slides after the target and lists errors before warnings", () => {
+    const text = PROMPTS.repair.user(SAMPLE_INPUTS.repair as never);
+    const target = text.indexOf('Slide s7 (kind "multiple-choice") currently says:');
+    const others = text.indexOf("Other slides in the lesson, for reference only");
+    const problems = text.indexOf("Problems reported:");
+    expect(target).toBeGreaterThan(-1);
+    expect(others).toBeGreaterThan(target);
+    expect(problems).toBeGreaterThan(others);
+    expect(text).toContain("Slide 5 (content, taught earlier):\nSolids keep their shape.");
+    expect(text).toContain("Slide 6 (worked-example, before the target):\nIs ice a solid?");
+    expect(text.indexOf("- [answer-correctness, error] Wrong.")).toBeLessThan(
+      text.indexOf("- [verb-fit, warning] Asks pupils to name, not explain."),
+    );
+    // Audit B6: the plan (C2) and the current factRefs (C3) render only when given; the photo rule
+    // travels with the photograph, not in the system text.
+    expect(text).not.toContain("Planned to teach");
+    expect(PROMPTS.repair.system).not.toContain(
+      "An `image-text` slide is written to its photograph",
+    );
+    const planned = PROMPTS.repair.user({
+      ...(SAMPLE_INPUTS.repair as RepairInput),
+      planned: { factRefs: ["k6", "q3"], brief: "Shows how a groyne traps sand." },
+      currentFactRefs: ["k6"],
+    });
+    expect(planned).toContain(
+      "Which state?\nfactRefs: k6\n\nPlanned to teach k6, q3: Shows how a groyne traps sand.\nKeep every fact the slide was planned to teach; fix a warning without dropping one.",
+    );
+    const photographed = PROMPTS.repair.user({
+      ...(SAMPLE_INPUTS.repair as RepairInput),
+      target: {
+        kind: "slide",
+        slideKind: "image-text",
+        slideId: "s4",
+        text: "Look",
+        photo: "none",
+      },
+    });
+    expect(photographed).toContain("An `image-text` slide is written to its photograph");
+    // A block repair has no context and renders no header for it.
+    const { context: _context, ...withoutContext } = SAMPLE_INPUTS.repair as never as RepairInput;
+    expect(PROMPTS.repair.user(withoutContext)).not.toContain("Other slides in the lesson");
     // Every verb has a paragraph naming the four kinds the ticket names.
     for (const paragraph of Object.values(VERB_WRITING)) {
       for (const kind of ["`content`", "`worked-example`", "`exit-ticket`"]) {
@@ -653,5 +871,51 @@ describe("prompt versions", () => {
         "no definitions; go straight to the mechanism, method or judgement",
       );
     }
+  });
+});
+
+describe("generate-slide v25: a teaching slide names its misconception", () => {
+  const input = SAMPLE_INPUTS["generate-slide"] as Parameters<typeof generateSlidePrompt.user>[0];
+  const keyIdea = input.referenced.keyIdeas?.[0];
+  const misconception = input.referenced.misconceptions.find((m) =>
+    (m.objectiveRefs ?? []).some((o) => keyIdea?.objectiveRefs?.includes(o)),
+  );
+
+  test("a content slide without its own watch-out gets the line, by id", () => {
+    expect(keyIdea && misconception).toBeTruthy();
+    const content = {
+      ...input,
+      entry: { ...input.entry, kind: "content", factRefs: [keyIdea?.id ?? ""] },
+    } as typeof input;
+    expect(ownMisconceptions(content)).toContain(misconception?.id ?? "");
+    expect(generateSlidePrompt.user(content)).toContain(
+      `(${misconception?.id}): end the body with one sentence on what some pupils think and why it is wrong.`,
+    );
+  });
+
+  test("a watch-out on the slide, or a non-teaching kind, gets none", () => {
+    const base = { ...input.entry, factRefs: [keyIdea?.id ?? ""] };
+    const withCallout = {
+      ...input,
+      entry: {
+        ...base,
+        kind: "content",
+        callout: { kind: "watch-out", factRefs: [misconception?.id ?? ""] },
+      },
+    } as typeof input;
+    expect(ownMisconceptions(withCallout)).toEqual([]);
+    const question = { ...input, entry: { ...base, kind: "multiple-choice" } } as typeof input;
+    expect(ownMisconceptions(question)).toEqual([]);
+    expect(generateSlidePrompt.user(question)).not.toContain("Its misconception");
+  });
+});
+
+/* verify-facts v6 (l6c): the user turn lists the starter's retrieval set as `r1`–`rN` lines (code on
+ * lab/l6c-code); the field map says which fields a starter line has. */
+describe("verify-facts v6: the field map names a starter line's fields", () => {
+  test("a starter question is `question — answer`, corrected as stem or answer", () => {
+    expect(verifyFactsPrompt.system).toContain(
+      "a starter question `question — answer` (fields stem, answer); every other field is labelled.",
+    );
   });
 });

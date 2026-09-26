@@ -127,6 +127,11 @@ export type FactQuestion = {
   distractors?: Distractor[];
   use?: QuestionUse;
   tier?: QuestionTier;
+  /**
+   * The key ideas a pupil needs to answer it, as the per-objective facts call declares them. Absent
+   * when the facts call does not declare them (the monolithic plan-facts call).
+   */
+  keyIdeaRefs?: FactId[];
 };
 
 /** What pupils at this level typically get wrong, and the correction. */
@@ -219,6 +224,8 @@ export type LessonFacts = {
   pitch?: Pitch;
   outline: OutlineEntry[];
   durationMin: number;
+  /** Lab r2: the starter's retrieval questions (prior knowledge); not facts, no id. Verify reads them as `r1`–`rN` (l6c). */
+  retrieval?: RetrievalQuestion[];
 };
 
 export const CurriculumRefSchema = z.strictObject({
@@ -276,6 +283,7 @@ export const FactQuestionSchema = z.strictObject({
   distractors: z.array(DistractorSchema).optional(),
   use: z.enum(QUESTION_USES).optional(),
   tier: z.enum(QUESTION_TIERS).optional(),
+  keyIdeaRefs: z.array(FactIdSchema).optional(),
 });
 
 export const MisconceptionSchema = z.strictObject({
@@ -334,6 +342,17 @@ export const FACT_ID_PREFIXES: Record<FactArray, string> = {
 export const isFactIdOf = (array: FactArray, id: FactId): boolean =>
   id.startsWith(FACT_ID_PREFIXES[array]);
 
+/**
+ * A starter retrieval question with its answer (lab r2): prior knowledge from earlier lessons,
+ * written by the objectives call. Not a fact: it has no id and no `factRefs` point at it; verify
+ * checks it as `r<n>` (l6c); only the lab's coded starter prints it.
+ */
+export const RetrievalQuestionSchema = z.strictObject({
+  question: z.string(),
+  answer: z.string(),
+});
+export type RetrievalQuestion = z.infer<typeof RetrievalQuestionSchema>;
+
 export const LessonFactsSchema = z
   .strictObject({
     objectives: z.array(ObjectiveSchema),
@@ -345,6 +364,8 @@ export const LessonFactsSchema = z
     pitch: PitchSchema.optional(),
     outline: z.array(OutlineEntrySchema),
     durationMin: z.number().int().min(1),
+    /** Lab r2: the starter's retrieval set, when the objectives call wrote one. */
+    retrieval: z.array(RetrievalQuestionSchema).optional(),
   })
   .superRefine((facts, ctx) => {
     // Ids are the addressing scheme for `factRefs`, so they must be unique across every array

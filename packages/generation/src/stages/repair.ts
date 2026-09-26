@@ -152,6 +152,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           },
           schema,
           soft: specSchema(true),
+          retryCapMisses: true,
           maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
         });
         commitFacts();
@@ -271,6 +272,7 @@ export async function repairBlock(
     },
     schema,
     soft: blockSpecSchemaFor(block.type, { soft: true }),
+    retryCapMisses: true,
     maxOutputTokens: MAX_OUTPUT_TOKENS.repair,
   });
   return {

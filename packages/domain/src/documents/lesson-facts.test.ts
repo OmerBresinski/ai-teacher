@@ -307,6 +307,26 @@ describe("LessonFactsSchema", () => {
   });
 });
 
+describe("LessonFacts.retrieval (starter retrieval set)", () => {
+  test("a lesson with a retrieval set parses, and so does one without; items carry no id", () => {
+    const retrieval = [{ question: "What do plants need to grow?", answer: "Light and water." }];
+    expect(LessonFactsSchema.safeParse({ ...lessonFacts(), retrieval }).success).toBe(true);
+    expect(LessonFactsSchema.safeParse(lessonFacts()).success).toBe(true);
+    const withId = [{ id: "r1", ...retrieval[0] }];
+    expect(LessonFactsSchema.safeParse({ ...lessonFacts(), retrieval: withId }).success).toBe(
+      false,
+    );
+  });
+
+  test("a question may name the key ideas it needs", () => {
+    const facts = lessonFacts();
+    const [first, ...rest] = facts.questions;
+    if (!first) throw new Error("fixture has no question");
+    const questions = [{ ...first, keyIdeaRefs: ["k1"] }, ...rest];
+    expect(LessonFactsSchema.safeParse({ ...facts, questions }).success).toBe(true);
+  });
+});
+
 describe("FactIdSchema", () => {
   test.each(["o1", "v3", "q2", "x1", "s4", "m12"])("accepts %s", (id) => {
     expect(FactIdSchema.safeParse(id).success).toBe(true);

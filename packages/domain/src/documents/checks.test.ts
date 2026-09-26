@@ -12,6 +12,7 @@ import {
 } from "./fixtures.test-helpers";
 import type { Lesson } from "./lesson";
 import type { LessonFacts } from "./lesson-facts";
+import { questionless } from "./quality-checks";
 import type { Slide, SlideElement } from "./slide";
 import type { Worksheet, WorksheetBlock } from "./worksheet";
 
@@ -638,5 +639,278 @@ describe("checkLesson", () => {
         [],
       );
     });
+  });
+});
+
+describe("questionless (quality lab, Sept 2026)", () => {
+  test("a quoted line or a leading condition before the task still sets a task (l6e)", () => {
+    expect(
+      questionless(
+        "Suppose Prospero tells a spirit, “Wait here until I return.” Explain how the command establishes his authority.",
+      ),
+    ).toBe("ok");
+    expect(
+      questionless(
+        "Suppose several streaming services compete. If one service raises its price, explain why demand for that service may be responsive.",
+      ),
+    ).toBe("ok");
+    expect(questionless("If it rains, the ground.")).toBe("no-question");
+  });
+  test('"your answer" to a task set earlier in the same sentence has its referent (l6f)', () => {
+    expect(
+      questionless(
+        "Suppose 36 beads are shared in the ratio 1:3. Explain how to find each share and check your answer.",
+      ),
+    ).toBe("ok");
+    expect(questionless("Share £72 in the ratio 5:7, then check your answer.")).toBe("ok");
+    expect(questionless("A shop sells pens. Look again and check your answer.")).toBe(
+      "no-referent",
+    );
+    expect(questionless("A shop sells pens. Explain your answer.")).toBe("no-referent");
+  });
+  test("an imperative whose referents follow a colon is a question, not a dangling task", () => {
+    expect(
+      questionless("Put these dates in order from earliest to latest: AD 43, AD 410, AD 1."),
+    ).toBe("ok");
+    expect(questionless("Sort these into two groups.")).toBe("no-referent");
+    expect(questionless("Explain your decision: focus on the evidence.")).toBe("no-referent");
+    expect(questionless("A fort has a ditch. Explain your decision.")).toBe("no-referent");
+  });
+});
+
+describe('questionless: a bare "it" (lab round 1, cb-y1-animals-P/L)', () => {
+  test('"it" after a noun it can name is not a dangling task', () => {
+    // Recorded stems that raised degenerate-question and set off harmful repairs.
+    expect(questionless("Explain how a puppy changes as it grows into an adult dog.")).toBe("ok");
+    expect(questionless("Describe two changes a kitten may make as it becomes an adult cat.")).toBe(
+      "ok",
+    );
+    expect(
+      questionless("Explain how a caterpillar changes before it becomes an adult butterfly."),
+    ).toBe("ok");
+    expect(questionless("Explain why Prospero forgives them when it is in his power.")).toBe("ok");
+  });
+
+  test('"it" with nothing before it to name is still dangling', () => {
+    expect(questionless("Explain why it melts.")).toBe("no-referent");
+    expect(questionless("Describe how it moves.")).toBe("no-referent");
+    expect(questionless("Is it a rodent? Explain why it is.")).toBe("ok");
+  });
+});
+
+describe('questionless: "it" naming a noun in an earlier sentence (lab round 2)', () => {
+  test("a scenario sentence gives the task its referent", () => {
+    // Recorded false degenerate-question errors (r1-h-y2-plants-L slide 7, r1-cb-y1-animals-L exit).
+    expect(
+      questionless(
+        "Suppose a small plant is left in a dark cupboard. Explain why it may grow weak and pale.",
+      ),
+    ).toBe("ok");
+    expect(
+      questionless("A foal is a young horse. Explain how you know it will become an adult horse."),
+    ).toBe("ok");
+    expect(
+      questionless(
+        "A lamb is a young sheep. Explain why it will grow into an adult sheep, not a goat or rabbit.",
+      ),
+    ).toBe("ok");
+  });
+
+  test("an earlier sentence with no noun phrase does not rescue it", () => {
+    expect(questionless("Look closely. Explain why it melts.")).toBe("no-referent");
+    expect(questionless("Ice is cold. Explain why it melts.")).toBe("no-referent");
+    // "your decision" is not "it": a scenario still poses no decision.
+    expect(questionless("A fort has a ditch. Explain your decision.")).toBe("no-referent");
+  });
+});
+
+describe("questionless: a label or length frame before the task (lab round 2)", () => {
+  test("recorded exit items that open with a label or frame are tasks", () => {
+    expect(
+      questionless(
+        "Exit: Name one way Freud proposed that repressed material might appear indirectly.",
+      ),
+    ).toBe("ok");
+    expect(
+      questionless("In one line, explain why increasing surface area increases reaction rate."),
+    ).toBe("ok");
+    expect(
+      questionless("In one sentence, explain what coastal erosion does and where it happens."),
+    ).toBe("ok");
+    expect(
+      questionless(
+        "Exit: Complete the sentence: Evacuated children did not all have the same experience because…",
+      ),
+    ).toBe("ok");
+  });
+
+  test("a label and a length frame stacked, and 'finish' as the imperative, are tasks (luna-direct, gpt-6-luna at low)", () => {
+    expect(questionless("Exit: In one line, explain what billeting arranged for evacuees.")).toBe(
+      "ok",
+    );
+    expect(questionless("Exit: Finish the sentence: Plants need light so their leaves can…")).toBe(
+      "ok",
+    );
+    expect(questionless("Finish the sentence: A ratio compares two quantities by…")).toBe("ok");
+    expect(questionless("In one line, exit: name one push factor.")).toBe("ok");
+  });
+
+  test("a label with no task after it still asks nothing", () => {
+    expect(questionless("The rodent family.")).toBe("no-question");
+    expect(questionless("Exit: In one line, the rodent family.")).toBe("no-question");
+    expect(questionless("Exit: The rodent family.")).toBe("no-question");
+    expect(questionless("In one line, the rodent family.")).toBe("no-question");
+    expect(questionless("Exit: Explain why it melts.")).toBe("no-referent");
+    expect(questionless("Compare these: a seawall, a groyne.")).toBe("ok");
+  });
+
+  test("recorded maths tasks (r1-h-y7-ratio-P) are tasks", () => {
+    expect(questionless("Simplify 42:56 and explain why your new ratio is equivalent.")).toBe("ok");
+    expect(
+      questionless(
+        "A learner shares 48 in the ratio 1:3 as 16 and 32. Spot and explain the error.",
+      ),
+    ).toBe("ok");
+    expect(questionless("Share £72 in the ratio 5:7. Give a check for your answer.")).toBe("ok");
+    expect(
+      questionless(
+        "Share 42 counters in the ratio 2:5. Explain how you know your answer is consistent with the ratio.",
+      ),
+    ).toBe("ok");
+  });
+});
+
+describe("questionless: every recorded l6 instance, and stems that really ask nothing (l6-i)", () => {
+  // Every stem the check raised in the l6 lab outputs (baseline, b2, C to H): all are tasks.
+  const recorded: [round: string, stem: string][] = [
+    [
+      "D, E",
+      "Suppose Prospero tells a spirit, “Wait here until I return.” Explain how the command establishes his authority.",
+    ],
+    [
+      "C, D",
+      "Suppose Prospero tells a servant, “Bring the book.” Explain what this command suggests about his power and what it cannot prove about the servant’s feelings.",
+    ],
+    [
+      "C",
+      "A reader says, “Prospero can influence Ariel only through magic.” Explain how Prospero’s words can influence Ariel and why this challenges the reader’s claim.",
+    ],
+    [
+      "D",
+      "A reader says, “Because the audience knows Prospero arranged a spectacle that the characters do not understand, he has complete power over everyone.” Explain how the dramatic irony shapes the audience’s view of Prospero’s authority, and why the reader’s conclusion is too absolute.",
+    ],
+    [
+      "b2",
+      "A child says, “A plant gets its food from the soil.” Explain what the roots and leaves really do.",
+    ],
+    [
+      "C",
+      "Suppose several similar music-streaming services compete. If one service raises its price, explain why demand for that service may be responsive.",
+    ],
+    [
+      "G",
+      "A firm estimates a product’s PED as −1.2. Classify its demand and explain what this indicates about quantity demanded’s proportional response to price.",
+    ],
+    [
+      "G",
+      "A firm says demand for its essential home internet service must be price inelastic in every circumstance. Assess this claim, including how demand might change over time.",
+    ],
+    [
+      "E, H",
+      "Suppose 36 beads are shared in the ratio 1:3. Explain how to find each share and check your answer.",
+    ],
+    [
+      "H",
+      "Suppose two amounts are in the ratio 16:28. Divide both parts by their highest common factor to give the simplest whole-number ratio.",
+    ],
+    [
+      "H",
+      "A child says evacuees chose their host families before leaving. Correct this account, explaining how they travelled and where the arrangements were made.",
+    ],
+    [
+      "baseline",
+      "A particular brand of washing-up liquid has few close alternatives and costs little. Explain how these features affect its likely price elasticity of demand.",
+    ],
+    // Verbs no list names, told by "<verb> <object>".
+    ["new verb", "Water the seedlings daily and record their height."],
+    ["new verb", "Trace the route the evacuees took."],
+    ["new verb", "Water is needed. Rearrange the steps into the right order."],
+    // K18 h arm: a leading frame of any kind, ending in a comma, before the command (l6-k).
+    [
+      "K18",
+      "In a new coastal town, explain how a sea wall and a groyne reduce erosion by different means.",
+    ],
+    [
+      "K18",
+      "In “the silent Iron Man with a cracked helmet”, explain how “silent” and “with a cracked helmet” add different details.",
+    ],
+    [
+      "K18",
+      "In « Elle a chanté », explain how the two parts combine to describe a completed action and why each part is written that way.",
+    ],
+    [
+      "K18",
+      "For the regular verb jouer, explain how to form its past participle and give the result.",
+    ],
+    ["K18", "Besides keeping it firm, name one way water helps a plant."],
+    // Other frames the rule covers without a list of them.
+    ["frame", "In 1940, during the Blitz, explain why children were evacuated."],
+    ["frame", "Having read the extract, identify two ways Prospero shows power."],
+    ["frame", "Briefly, describe the water cycle."],
+    ["frame", "Exit: In your own words, explain what a groyne does."],
+    ["frame", "Using the map, trace the route the evacuees took."],
+    ["frame", "Weigh the bags daily."],
+  ];
+  test.each(recorded)("%s: %s sets a task", (_round, stem) => {
+    expect(questionless(stem)).toBe("ok");
+  });
+
+  const asksNothing: string[] = [
+    "The rodent family.",
+    "Exit: The rodent family.",
+    "Plants need light and water.",
+    "Evacuees travelled by train to the countryside.",
+    "Children who were evacuated travelled by train.",
+    "Demand for bread is price inelastic.",
+    "Suppose 36 beads are shared in the ratio 1:3.",
+    "Suppose two amounts are in the ratio 16:28.",
+    "Consider the ratio 16:28.",
+    "A firm estimates a product’s PED as −1.2.",
+    "A child says, “A plant gets its food from the soil.”",
+    "Suppose Prospero tells a spirit, “Wait here.”",
+    "All the animals are mammals.",
+    "In the Blitz, many children were evacuated.",
+    "Sharing the sweets equally is fair.",
+    "Finally the war ended.",
+    "Alfred the Great ruled Wessex.",
+    "Using the diagram.",
+    "If it rains, the ground.",
+    // Frames and appositives the l6-k rule must not mistake for a task.
+    "Prospero the magician rules the island.",
+    "Prospero the magician controls Ariel.",
+    "Ariel the spirit obeyed the command.",
+    "In the Blitz, children carried gas masks, name tags and food.",
+    "Evacuees carried gas masks, name tags and food.",
+    "In a new coastal town, the sea wall protects the houses.",
+    "For the regular verb jouer, the past participle is joué.",
+    "In 1940, when bombs fell, children left the cities.",
+    "If prices rise, is demand elastic.",
+    "In “the silent Iron Man”, the adjective adds detail.",
+    "Suppose Prospero tells a spirit, “Explain yourself.”",
+  ];
+  test.each(asksNothing)("%s asks nothing", (stem) => {
+    expect(questionless(stem)).toBe("no-question");
+  });
+
+  const leansOnNothing: string[] = [
+    "Sort these into two groups.",
+    "Ice is cold. Sort these into two groups.",
+    "A bat has wings. Sort these into two groups.",
+    "A fort has a ditch. Explain your decision.",
+    "A shop sells pens. Explain your answer.",
+    "Explain why it melts.",
+  ];
+  test.each(leansOnNothing)("%s leans on a question never posed", (stem) => {
+    expect(questionless(stem)).toBe("no-referent");
   });
 });

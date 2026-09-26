@@ -113,7 +113,10 @@ test("late provider success reconciles uncertain usage once without overwriting 
 
 test("each registered prompt uses its stage-specific deadline across version bumps", () => {
   // In PROMPTS order; the fill and parse-brief calls are short `small` calls (TEACH-67).
-  const expected = [180, 180, 300, 180, 180, 300, 180, 180, 180, 180, 300, 180, 180, 300, 300];
+  // The four per-objective plan prompts are registered but uncalled (TEACH-88): the old default.
+  const expected = [
+    180, 180, 300, 300, 300, 300, 300, 180, 180, 300, 180, 180, 180, 180, 300, 180, 180, 300, 300,
+  ];
   expect(Object.values(PROMPTS).map((prompt) => callTimeoutMs(prompt.version))).toEqual(
     expected.map((seconds) => seconds * 1000),
   );

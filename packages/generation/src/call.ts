@@ -39,7 +39,9 @@ import {
  * only** (ADR 0025 §7, TEACH-257): every issue carries the `editorialIssue` tag and the caller gave
  * a `soft` build of the schema. Then the retry's answer is parsed with the soft schema, accepted,
  * and each issue comes back as an `EditorialMiss` for the stage to record as a `spec-rule` finding
- * (`specRuleFinding`), which Repair acts on. A shape miss — a type, a missing field, a list the
+ * (`specRuleFinding`), which Repair acts on. The best answer is kept: when the first answer missed
+ * only editorial rules and the retry does worse (a shape miss, no output, a timeout), the first is
+ * accepted the same way, with its own misses. A shape miss — a type, a missing field, a list the
  * recipe has no slot for, invalid JSON — still fails the call: the model did not give us the thing.
  * Nothing about the prompt or the model's text is logged (ADR 0015); only the issue messages
  * travel back into the retry prompt.
@@ -79,6 +81,15 @@ export interface CallStructuredOptions<I, T> {
    * it every second miss is a `StageFailure`, as before.
    */
   soft?: z.ZodType<T> | undefined;
+  /**
+   * Retry a first answer whose only misses are text-length caps (`isCapMiss`). Off by default: such
+   * an answer is accepted as it is and its misses returned, because a retry regenerates the whole
+   * answer (lab CB run, 24 Sept: 6 of 14 runs lost content that way) and the stage after it acts on
+   * the misses — Repair rewrites a slide's `spec-rule` error, and a fact's text reaches a pupil only
+   * through a slide, whose own caps Generate and Repair hold. Repair sets it: nothing runs after
+   * Repair to shorten its answer.
+   */
+  retryCapMisses?: boolean | undefined;
   maxOutputTokens: number;
   /** Per attempt; defaults to the bound for this prompt (TEACH-235). */
   timeoutMs?: number;
@@ -149,12 +160,16 @@ export const MAX_OUTPUT_TOKENS = {
   // so the cap is never the reason a call fails (TEACH-211).
   planSkeleton: 2500,
   planFacts: 7000,
-  // At most twelve short corrections.
-  verify: 1500,
+  // At most twelve short corrections (under 1 000 tokens of a sentence each), with room for a
+  // low-effort reasoning preamble so the cap is never the reason the check fails. (At effort
+  // "high" a GPT-5.6 checker once spent the whole 1 500 thinking and answered nothing — that is
+  // why Verify runs at "low".)
+  verify: 4000,
   slide: 1500,
   worksheet: 4000,
-  // Up to twenty findings, each with its evidence span (TEACH-216).
-  evaluate: 2500,
+  // Up to twenty findings, each with its evidence span (TEACH-216). 2 500 was reached twice in a
+  // row on the np1 cells decks (no findings, so no repair); reasoning shares the cap.
+  evaluate: 4000,
   // Six ids (TEACH-227).
   shortlist: 200,
   repair: 1500,
@@ -170,6 +185,11 @@ export const CALL_TIMEOUT_MS = {
   "check-input": 180_000,
   "plan-skeleton": 180_000,
   "plan-facts": 300_000,
+  // Registered but uncalled until the objectives-first Plan (TEACH-88); the old default bound.
+  "plan-objectives": 300_000,
+  "plan-facts-objective": 300_000,
+  "plan-teach-objective": 300_000,
+  "plan-question-set": 300_000,
   "verify-facts": 180_000,
   "generate-slide": 180_000,
   "generate-worksheet": 300_000,
@@ -190,6 +210,8 @@ export function callTimeoutMs(version: string): number {
   return Object.hasOwn(CALL_TIMEOUT_MS, name) ? CALL_TIMEOUT_MS[name as PromptName] : 300_000;
 }
 
+/** The failed answer, sent back so a miss is an edit of it rather than a fresh answer (audit A1). */
+const RETRY_PREVIOUS = "\n\nYour previous answer:\n";
 const RETRY_PREFIX = "\n\nYour previous answer did not validate:\n";
 /**
  * The retry's closing instruction. The misses seen in production are shape misses (a list or the
@@ -197,7 +219,7 @@ const RETRY_PREFIX = "\n\nYour previous answer did not validate:\n";
  * Schema-neutral on purpose: some lists hold strings and some keys are optional.
  */
 const RETRY_SUFFIX =
-  "\n\nAnswer again with the complete answer as one JSON object in the shape shown. Lists are JSON arrays, never strings containing JSON; do not wrap the answer or any part of it in a string; no prose.";
+  "\n\nAnswer again with the complete answer as one JSON object in the shape shown, keeping what was right and changing only what the issues name. Lists are JSON arrays, never strings containing JSON; do not wrap the answer or any part of it in a string; no prose.";
 
 /**
  * `Output.object` with a repair pass: when the text fails to parse or validate, `repairJsonText`
@@ -279,6 +301,9 @@ export function wireSchemaFor<T>(schema: z.ZodType<T>, modelId: string): z.ZodTy
     },
   });
 }
+
+/** The pause before retrying a provider failure, so a burst has passed. */
+export const PROVIDER_RETRY_DELAY_MS = 1500;
 
 export async function callStructured<I, T>(
   options: CallStructuredOptions<I, T>,
@@ -368,9 +393,58 @@ export async function callStructured<I, T>(
         "model returned no output; retrying once",
       );
     }
-    if (!timedOut && !empty && !NoObjectGeneratedError.isInstance(error)) throw error;
+    // A provider failure the provider does not call permanent is a hiccup too: retried once after a
+    // short pause (r2, 24 Sept: a burst of provider failures in one second lost a whole lesson's
+    // facts, since nothing retried them).
+    const provider =
+      isAiError(error, "provider") &&
+      (error.cause as { isRetryable?: boolean } | undefined)?.isRetryable !== false;
+    if (provider) {
+      deps.logger.warn(
+        { stage, promptVersion: prompt.version },
+        "model provider request failed; retrying once",
+      );
+      await new Promise((resolve) => setTimeout(resolve, PROVIDER_RETRY_DELAY_MS));
+    }
+    if (!timedOut && !empty && !provider && !NoObjectGeneratedError.isInstance(error)) throw error;
     let retryText = userText;
+    // A first answer that misses only editorial rules and passes the soft schema is kept: if the
+    // retry comes back worse (a shape miss, no output, a timeout), it is accepted rather than lost
+    // (CB run, 24 Sept: two objectives lost their facts when a cap-only first answer was retried
+    // into a shape failure).
+    let fallback: CallResult<T> | undefined;
     if (!empty && NoObjectGeneratedError.isInstance(error)) {
+      const firstMisses = editorialMissesOf(error);
+      const firstAccepted = firstMisses && soft ? softParse(soft, error.text) : undefined;
+      // Only text caps were missed: the answer is taken as it is, with no retry (see
+      // `retryCapMisses`).
+      if (
+        firstMisses &&
+        firstAccepted !== undefined &&
+        !options.retryCapMisses &&
+        firstMisses.every(isCapMiss)
+      ) {
+        deps.logger.info(
+          { stage, promptVersion: prompt.version, issues: issuesOf(error, "log") },
+          "structured output missed only text caps; accepted without a retry",
+        );
+        return {
+          output: firstAccepted,
+          usage: usageOf(error.usage ?? {}),
+          attempts: 1,
+          modelId,
+          editorialMisses: firstMisses,
+        };
+      }
+      if (firstMisses && firstAccepted !== undefined) {
+        fallback = {
+          output: firstAccepted,
+          usage: usageOf(error.usage ?? {}),
+          attempts: 2,
+          modelId,
+          editorialMisses: firstMisses,
+        };
+      }
       // The failed attempt was still paid for. `error.text` (the model's words) is never logged.
       const issues = issuesOf(error);
       // Log finite issue codes/counts; even paths and custom messages may echo model content.
@@ -379,11 +453,14 @@ export async function callStructured<I, T>(
           stage,
           promptVersion: prompt.version,
           issues: issuesOf(error, "log"),
-          editorialOnly: editorialMissesOf(error) !== null,
+          editorialOnly: firstMisses !== null,
         },
         "structured output did not validate; retrying once",
       );
-      retryText = `${userText}${RETRY_PREFIX}${issues.join("\n")}${RETRY_SUFFIX}`;
+      // The previous answer rides along (audit A1): without it a one-field cap miss made the model
+      // rewrite every field (objectives l2-h-y9-coasts-W6N swapped all three objectives).
+      const previous = error.text?.trim() ? `${RETRY_PREVIOUS}${error.text.trim()}` : "";
+      retryText = `${userText}${previous}${RETRY_PREFIX}${issues.join("\n")}${RETRY_SUFFIX}`;
     }
     // The retry is a second model call: the same two gates apply before it.
     throwIfAborted(deps.signal);
@@ -393,7 +470,20 @@ export async function callStructured<I, T>(
       const second = await attempt(retryText);
       return { ...second, attempts: 2 };
     } catch (again) {
-      if (!NoObjectGeneratedError.isInstance(again)) throw again;
+      if (!NoObjectGeneratedError.isInstance(again)) {
+        // A retry that timed out or came back empty loses nothing when the first answer is kept.
+        const lost =
+          NoOutputGeneratedError.isInstance(again) ||
+          (again instanceof StageFailure && again.reason === "timeout");
+        if (fallback && lost) {
+          deps.logger.warn(
+            { stage, promptVersion: prompt.version },
+            "structured output retry returned nothing; first answer accepted",
+          );
+          return fallback;
+        }
+        throw again;
+      }
       const misses = editorialMissesOf(again);
       const logged = {
         stage,
@@ -413,6 +503,14 @@ export async function callStructured<I, T>(
           modelId,
           editorialMisses: misses,
         };
+      }
+      // The retry did worse than a first answer that missed only editorial rules: keep that one.
+      if (fallback) {
+        deps.logger.warn(
+          logged,
+          "structured output did not validate on the retry; first answer accepted",
+        );
+        return fallback;
       }
       // pino's `err` serializer drops a non-Error `cause`, so the second miss is logged here.
       deps.logger.warn(logged, "structured output did not validate on the retry; giving up");
@@ -554,6 +652,15 @@ export function editorialMissesOf(error: NoObjectGeneratedError): EditorialMiss[
   if (issues === undefined) return null;
   if (!issues.every((issue) => isEditorialIssue(issue))) return null;
   return issues.map((issue) => ({ path: issue.path ?? [], message: issue.message }));
+}
+
+/**
+ * Whether an editorial miss is a text-length cap: the `Too long: at most N characters.` rule every
+ * text slot builder shares (`@tj/slides` `tooLong`, `specs.ts` and `plan-facts-objective.ts`
+ * `lineFor`). A list ceiling, a repeated option or a leak is not one.
+ */
+export function isCapMiss(miss: EditorialMiss): boolean {
+  return /^Too long: at most \d+ characters\.$/.test(miss.message);
 }
 
 /**
